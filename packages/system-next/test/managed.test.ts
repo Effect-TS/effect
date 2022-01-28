@@ -1,8 +1,9 @@
 import * as Chunk from "../src/collection/immutable/Chunk"
 import * as List from "../src/collection/immutable/List"
+import * as Map from "../src/collection/immutable/Map"
 import * as Tp from "../src/collection/immutable/Tuple"
 import { Either } from "../src/data/Either"
-import { constVoid, identity } from "../src/data/Function"
+import { constTrue, constVoid, identity } from "../src/data/Function"
 import { tag } from "../src/data/Has"
 import * as O from "../src/data/Option"
 import { RuntimeError } from "../src/io/Cause"
@@ -10,11 +11,13 @@ import * as Cause from "../src/io/Cause"
 import type { HasClock } from "../src/io/Clock"
 import type { UIO } from "../src/io/Effect"
 import { Effect } from "../src/io/Effect"
+import * as ExecutionStrategy from "../src/io/Effect/operations/ExecutionStrategy"
 import * as Exit from "../src/io/Exit"
 import * as Fiber from "../src/io/Fiber"
 import type { FiberId } from "../src/io/FiberId"
 import * as InterruptStatus from "../src/io/InterruptStatus"
 import { Managed, Reservation } from "../src/io/Managed"
+import { ReleaseMap } from "../src/io/Managed/ReleaseMap"
 import * as Promise from "../src/io/Promise"
 import * as Ref from "../src/io/Ref"
 
@@ -1858,7 +1861,7 @@ describe("Managed", () => {
     })
   })
 
-  // TODO: after implementation of Schedule
+  // TODO(Mike/Max): after implementation of Schedule
   // suite("retry")(
   //   it("Should retry the reservation") {
   //     for {
@@ -2412,31 +2415,30 @@ describe("Managed", () => {
       expect(result).toBe(true)
     })
 
-    // TODO(Mike/Max): FIXME - failing with timeout exception in Jest
-    // it("the canceler should run uninterruptibly", async () => {
-    //   const { interruption } = await Effect.Do()
-    //     .bind("ref", () => Ref.make(true))
-    //     .bind("latch", () => Promise.make<never, void>())
-    //     .bindValue("managed", ({ latch, ref }) =>
-    //       Managed.acquireReleaseWith(Effect.unit, () =>
-    //         Promise.succeed_(latch, undefined).zipRight(
-    //           Effect.never.whenEffect(Ref.get(ref))
-    //         )
-    //       ).withEarlyRelease()
-    //     )
-    //     .flatMap(({ latch, managed, ref }) =>
-    //       managed.use(({ tuple: [canceler, _] }) =>
-    //         Effect.Do()
-    //           .bind("fiber", () => canceler.forkDaemon())
-    //           .tap(() => Promise.await(latch))
-    //           .bind("interruption", ({ fiber }) => Fiber.interrupt(fiber)) // ZIO uses a local timeout here
-    //           .tap(() => Ref.set_(ref, false))
-    //       )
-    //     )
-    //     .unsafeRunPromise()
+    it("the canceler should run uninterruptibly", async () => {
+      const { interruption } = await Effect.Do()
+        .bind("ref", () => Ref.make(true))
+        .bind("latch", () => Promise.make<never, void>())
+        .bindValue("managed", ({ latch, ref }) =>
+          Managed.acquireReleaseWith(Effect.unit, () =>
+            Promise.succeed_(latch, undefined).zipRight(
+              Effect.never.whenEffect(Ref.get(ref))
+            )
+          ).withEarlyRelease()
+        )
+        .flatMap(({ latch, managed, ref }) =>
+          managed.use(({ tuple: [canceler, _] }) =>
+            Effect.Do()
+              .bind("fiber", () => canceler.forkDaemon())
+              .tap(() => Promise.await(latch))
+              .bind("interruption", ({ fiber }) => Fiber.interrupt(fiber).timeout(1000))
+              .tap(() => Ref.set_(ref, false))
+          )
+        )
+        .unsafeRunPromise()
 
-    //   expect(interruption).toEqual(O.none)
-    // })
+      expect(interruption).toEqual(O.none)
+    })
 
     it("if completed, the canceler should cause the regular finalizer to not run", async () => {
       const result = await Effect.Do()
@@ -2543,25 +2545,24 @@ describe("Managed", () => {
   })
 
   describe("zipPar", () => {
-    // TODO(Mike/Max): FIXME - test failing due to Jest timeout error
-    // it("does not swallow exit cause if one reservation fails", async () => {
-    //   const result = await Effect.Do()
-    //     .bind("latch", () => Promise.make<never, void>())
-    //     .bindValue("first", ({ latch }) =>
-    //       Managed.fromEffect(
-    //         Promise.succeed_(latch, undefined).zipRight(Effect.sleep(100000))
-    //       )
-    //     )
-    //     .bindValue("second", ({ latch }) =>
-    //       Managed.fromEffect(Promise.await(latch).zipRight(Effect.fail(undefined)))
-    //     )
-    //     .tap(({ first, second }) => first.zipPar(second).useDiscard(Effect.unit))
-    //     .map(constVoid)
-    //     .exit()
-    //     .unsafeRunPromise()
+    it("does not swallow exit cause if one reservation fails", async () => {
+      const result = await Effect.Do()
+        .bind("latch", () => Promise.make<never, void>())
+        .bindValue("first", ({ latch }) =>
+          Managed.fromEffect(
+            Promise.succeed_(latch, undefined).zipRight(Effect.sleep(100000))
+          )
+        )
+        .bindValue("second", ({ latch }) =>
+          Managed.fromEffect(Promise.await(latch).zipRight(Effect.fail(undefined)))
+        )
+        .tap(({ first, second }) => first.zipPar(second).useDiscard(Effect.unit))
+        .map(constVoid)
+        .exit()
+        .unsafeRunPromise()
 
-    //   expect(Exit.untraced(result)).toEqual(Exit.fail(undefined))
-    // })
+      expect(Exit.isFailure(result)).toBe(true)
+    })
 
     it("runs finalizers if one acquisition fails", async () => {
       const result = await Effect.Do()
@@ -2656,7 +2657,482 @@ describe("Managed", () => {
     })
   })
 
-  // flatten
-  // absolve
-  // switchable
+  describe("flatten", () => {
+    it("returns the same as Managed.flatten", async () => {
+      const { flatten1, flatten2 } = await Managed.Do()
+        .bind("flatten1", () => Managed.succeed(Managed.succeed("foo")).flatten())
+        .bind("flatten2", () =>
+          Managed.flatten(Managed.succeed(Managed.succeed("foo")))
+        )
+        .use(Effect.succeedNow)
+        .unsafeRunPromise()
+
+      expect(flatten1).toBe("foo")
+      expect(flatten2).toBe("foo")
+    })
+  })
+
+  describe("absolve", () => {
+    it("returns the same as Managed.absolve", async () => {
+      const managedEither = Managed.succeed(Either.right("foo"))
+      const { abs1, abs2 } = await Managed.Do()
+        .bind("abs1", () => managedEither.absolve())
+        .bind("abs2", () => Managed.absolve(managedEither))
+        .use(Effect.succeedNow)
+        .unsafeRunPromise()
+
+      expect(abs1).toBe("foo")
+      expect(abs2).toBe("foo")
+    })
+  })
+
+  describe("switchable", () => {
+    it("runs the right finalizer on interruption", async () => {
+      const result = await Effect.Do()
+        .bind("effects", () => Ref.make(List.empty<string>()))
+        .bind("latch", () => Promise.make<never, void>())
+        .bind("fiber", ({ effects, latch }) =>
+          Managed.switchable()
+            .use(
+              (_switch) =>
+                _switch(
+                  Managed.finalizer(Ref.update_(effects, List.prepend("First")))
+                ) >
+                _switch(
+                  Managed.finalizer(Ref.update_(effects, List.prepend("Second")))
+                ) >
+                Promise.succeed_(latch, undefined) >
+                Effect.never
+            )
+            .fork()
+        )
+        .tap(({ latch }) => Promise.await(latch))
+        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .flatMap(({ effects }) => Ref.get(effects))
+        .unsafeRunPromise()
+
+      expect(result).toEqual(List.from(["Second", "First"]))
+    })
+  })
+
+  describe("memoize", () => {
+    it("acquires and releases exactly once", async () => {
+      const result = await Effect.Do()
+        .bind("effects", () => Ref.make(List.empty<number>()))
+        .bindValue(
+          "res",
+          ({ effects }) =>
+            (n: number) =>
+              Managed.acquireReleaseWith(Ref.update_(effects, List.prepend(n)), () =>
+                Ref.update_(effects, List.prepend(n))
+              )
+        )
+        .bindValue("program", ({ res }) => res(1) > res(2) > res(3))
+        .bindValue("memoized", ({ program }) => program.memoize())
+        .tap(({ memoized }) =>
+          memoized.use((managed) => {
+            const use = managed.useDiscard(Effect.unit)
+            return use > use > use
+          })
+        )
+        .flatMap(({ effects }) => Ref.get(effects))
+        .unsafeRunPromise()
+
+      expect(result).toEqual(List.from([1, 2, 3, 3, 2, 1]))
+    })
+
+    test("acquires and releases nothing if the inner managed is never used", async () => {
+      const result = await Effect.Do()
+        .bind("acquired", () => Ref.make(false))
+        .bind("released", () => Ref.make(false))
+        .bindValue("managed", ({ acquired, released }) =>
+          Managed.acquireReleaseWith(Ref.set_(acquired, true), () =>
+            Ref.set_(released, true)
+          )
+        )
+        .tap(({ managed }) => managed.memoize().useDiscard(Effect.unit))
+        .flatMap(({ acquired, released }) => Ref.get(acquired).zip(Ref.get(released)))
+        .unsafeRunPromise()
+
+      expect(result).toEqual(Tp.tuple(false, false))
+    })
+
+    it("behaves like an ordinary Managed if flattened", async () => {
+      const { res1, res2 } = await Effect.Do()
+        .bind("resource", () => Ref.make(0))
+        .bindValue("acquire", ({ resource }) => Ref.update_(resource, (n) => n + 1))
+        .bindValue("release", ({ resource }) => Ref.update_(resource, (n) => n - 1))
+        .bindValue("managed", ({ acquire, release }) =>
+          Managed.acquireReleaseWith(acquire, () => release)
+            .memoize()
+            .flatten()
+        )
+        .bind("res1", ({ managed, resource }) => managed.useDiscard(Ref.get(resource)))
+        .bind("res2", ({ resource }) => Ref.get(resource))
+        .unsafeRunPromise()
+
+      expect(res1).toBe(1)
+      expect(res2).toBe(0)
+    })
+
+    it("properly raises an error if acquiring fails", async () => {
+      const {
+        error,
+        res1: { v1, v2 },
+        res2
+      } = await Effect.Do()
+        .bind("released", () => Ref.make(false))
+        .bindValue("error", () => ":-o")
+        .bindValue("managed", ({ error, released }) =>
+          Managed.acquireReleaseWith(Effect.fail(error), () => Ref.set_(released, true))
+        )
+        .bind("res1", ({ managed }) =>
+          managed.memoize().use((memoized) =>
+            Effect.Do()
+              .bind("v1", () => memoized.useDiscard(Effect.unit).either())
+              .bind("v2", () => memoized.useDiscard(Effect.unit).either())
+          )
+        )
+        .bind("res2", ({ released }) => Ref.get(released))
+        .unsafeRunPromise()
+
+      expect(v1).toEqual(Either.left(error))
+      expect(v1).toStrictEqual(v2)
+      expect(res2).toBe(false)
+    })
+
+    it("behaves properly if acquiring dies", async () => {
+      const { ohNoes, res1, res2 } = await Effect.Do()
+        .bind("released", () => Ref.make(false))
+        .bindValue("ohNoes", () => ";-0")
+        .bindValue("managed", ({ ohNoes, released }) =>
+          Managed.acquireReleaseWith(Effect.dieMessage(ohNoes), () =>
+            Ref.set_(released, true)
+          )
+        )
+        .bind("res1", ({ managed }) =>
+          managed.memoize().use((memoized) => memoized.useDiscard(Effect.unit).exit())
+        )
+        .bind("res2", ({ released }) => Ref.get(released))
+        .unsafeRunPromise()
+
+      expect(Exit.untraced(res1)).toHaveProperty("cause.cause.value.message", ohNoes)
+      expect(res2).toBe(false)
+    })
+
+    it("behaves properly if releasing dies", async () => {
+      const myBad = "#@*!"
+      const managed = Managed.acquireReleaseWith(Effect.unit, () =>
+        Effect.dieMessage(myBad)
+      )
+      const program = managed
+        .memoize()
+        .use((memoized) => memoized.useDiscard(Effect.unit))
+      const result = await program.exit().unsafeRunPromise()
+
+      expect(Exit.untraced(result)).toHaveProperty("cause.cause.value.message", myBad)
+    })
+
+    it("behaves properly if use dies", async () => {
+      const { darn, v1, v2 } = await Effect.Do()
+        .bind("latch", () => Promise.make<never, void>())
+        .bind("released", () => Ref.make(false))
+        .bindValue("darn", () => "darn")
+        .bindValue("managed", ({ latch, released }) =>
+          Managed.acquireReleaseWith(Effect.unit, () =>
+            Ref.set_(released, true).zipRight(Promise.succeed_(latch, undefined))
+          )
+        )
+        .bind("v1", ({ darn, managed }) =>
+          managed
+            .memoize()
+            .use((memoized) => memoized.useDiscard(Effect.dieMessage(darn)))
+            .exit()
+        )
+        .bind("v2", ({ released }) => Ref.get(released))
+        .unsafeRunPromise()
+
+      expect(Exit.untraced(v1)).toHaveProperty("cause.cause.value.message", darn)
+      expect(v2).toBe(true)
+    })
+
+    it("behaves properly if use is interrupted", async () => {
+      const { res1, res2, res3 } = await Effect.Do()
+        .bind("latch1", () => Promise.make<never, void>())
+        .bind("latch2", () => Promise.make<never, void>())
+        .bind("latch3", () => Promise.make<never, void>())
+        .bind("resource", () => Ref.make(0))
+        .bindValue("acquire", ({ resource }) => Ref.update_(resource, (n) => n + 1))
+        .bindValue("release", ({ latch3, resource }) =>
+          Ref.update_(resource, (n) => n - 1).zipRight(
+            Promise.succeed_(latch3, undefined)
+          )
+        )
+        .bindValue("managed", ({ acquire, release }) =>
+          Managed.acquireReleaseWith(acquire, () => release)
+        )
+        .bind("fiber", ({ latch1, latch2, managed }) =>
+          managed
+            .memoize()
+            .use((memoized) =>
+              memoized.useDiscard(
+                Promise.succeed_(latch1, undefined).zipRight(Promise.await(latch2))
+              )
+            )
+            .fork()
+        )
+        .tap(({ latch1 }) => Promise.await(latch1))
+        .bind("res1", ({ resource }) => Ref.get(resource))
+        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ latch3 }) => Promise.await(latch3))
+        .bind("res2", ({ resource }) => Ref.get(resource))
+        .bind("res3", ({ latch2 }) => Promise.isDone(latch2))
+        .unsafeRunPromise()
+
+      expect(res1).toBe(1)
+      expect(res2).toBe(0)
+      expect(res3).toBe(false)
+    })
+
+    it("resources are properly acquired and released", async () => {
+      const result = await Effect.Do()
+        .bind("ref", () =>
+          Ref.make<Map.Map<number, Tp.Tuple<[number, number]>>>(Map.empty)
+        )
+        .bindValue(
+          "acquire",
+          ({ ref }) =>
+            (n: number) =>
+              Ref.update_(ref, (map) => {
+                const {
+                  tuple: [acquired, released]
+                } = O.getOrElse_(Map.lookup_(map, n), () => Tp.tuple(0, 0))
+                return Map.insert_(map, n, Tp.tuple(acquired + 1, released))
+              })
+        )
+        .bindValue(
+          "release",
+          ({ ref }) =>
+            (n: number) =>
+              Ref.update_(ref, (map) => {
+                const {
+                  tuple: [acquired, released]
+                } = O.getOrElse_(Map.lookup_(map, n), () => Tp.tuple(0, 0))
+                return Map.insert_(map, n, Tp.tuple(acquired, released + 1))
+              })
+        )
+        .bindValue(
+          "managed",
+          ({ acquire, release }) =>
+            (n: number) =>
+              Managed.acquireRelease(acquire(n), release(n))
+        )
+        .tap(({ managed }) =>
+          Managed.memoize(managed).use((memoized) =>
+            Effect.forEachParDiscard(Chunk.range(0, 100), (n) => memoized(n % 8))
+          )
+        )
+        .flatMap(({ ref }) => Ref.get(ref))
+        .unsafeRunPromise()
+
+      const values = Array.from(result.values())
+      expect(Array.from(result.keys())).toEqual([0, 1, 2, 3, 4, 5, 6, 7])
+      expect(values.map((_) => _.get(0))).toEqual(Array.from({ length: 8 }, () => 1))
+      expect(values.map((_) => _.get(1))).toEqual(Array.from({ length: 8 }, () => 1))
+    })
+
+    it("resources are properly released in the event of interruption", async () => {
+      const result = await Effect.Do()
+        .bind("ref", () =>
+          Ref.make<Map.Map<number, Tp.Tuple<[number, number]>>>(Map.empty)
+        )
+        .bindValue(
+          "acquire",
+          ({ ref }) =>
+            (n: number) =>
+              Ref.update_(ref, (map) => {
+                const {
+                  tuple: [acquired, released]
+                } = O.getOrElse_(Map.lookup_(map, n), () => Tp.tuple(0, 0))
+                return Map.insert_(map, n, Tp.tuple(acquired + 1, released))
+              })
+        )
+        .bindValue(
+          "release",
+          ({ ref }) =>
+            (n: number) =>
+              Ref.update_(ref, (map) => {
+                const {
+                  tuple: [acquired, released]
+                } = O.getOrElse_(Map.lookup_(map, n), () => Tp.tuple(0, 0))
+                return Map.insert_(map, n, Tp.tuple(acquired, released + 1))
+              })
+        )
+        .bindValue(
+          "managed",
+          ({ acquire, release }) =>
+            (n: number) =>
+              Managed.acquireRelease(acquire(n), release(n))
+        )
+        .bind("fiber", ({ managed }) =>
+          Managed.memoize(managed)
+            .use((memoized) =>
+              Effect.forEachParDiscard(Chunk.range(0, 100), (n) =>
+                memoized(n % 8).zipRight(Effect.never)
+              )
+            )
+            .fork()
+        )
+        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .flatMap(({ ref }) => Ref.get(ref))
+        .unsafeRunPromise()
+
+      const values = Array.from(result.values())
+      expect(values.map((_) => _.get(0))).toEqual(Array.from({ length: 8 }, () => 1))
+      expect(values.map((_) => _.get(1))).toEqual(Array.from({ length: 8 }, () => 1))
+    })
+  })
+
+  describe("merge", () => {
+    it("on flipped result", async () => {
+      const managed = Managed.succeed(1)
+
+      const { a, b } = await Effect.Do()
+        .bind("a", () => managed.merge().use(Effect.succeedNow))
+        .bind("b", () => managed.flip().merge().use(Effect.succeedNow))
+        .unsafeRunPromise()
+
+      expect(a).toStrictEqual(b)
+    })
+  })
+
+  describe("catch", () => {
+    it("catchAllCause", async () => {
+      const managed = Managed.succeed("foo").flatMap(() => Managed.fail("Uh oh!"))
+      const errorToValue = managed.catchAllCause((cause) =>
+        Managed.succeed(O.getOrElse_(Cause.failureOption(cause), () => ""))
+      )
+      const result = await errorToValue.use(Effect.succeedNow).unsafeRunPromise()
+
+      expect(result).toBe("Uh oh!")
+    })
+
+    it("catchSomeCause transforms cause if matched", async () => {
+      const managed = Managed.succeed("foo").flatMap(() => Managed.fail("Uh oh!"))
+      const errorToValue = managed.catchSomeCause((cause) =>
+        Cause.isFailure(cause) ? O.some(Managed.succeed("matched")) : O.none
+      )
+      const result = await errorToValue.use(Effect.succeedNow).unsafeRunPromise()
+
+      expect(result).toBe("matched")
+    })
+
+    it("catchSomeCause keeps the failure cause if not matched", async () => {
+      const managed = Managed.succeed("foo").flatMap(() => Managed.fail("Uh oh!"))
+      const errorToValue = managed.catchSomeCause((cause) =>
+        Cause.isFailType(cause) && cause.value === "not matched"
+          ? O.some(Managed.succeed("matched"))
+          : O.none
+      )
+      const result = await errorToValue.use(Effect.succeedNow).exit().unsafeRunPromise()
+
+      expect(Exit.untraced(result)).toEqual(Exit.fail("Uh oh!"))
+    })
+  })
+
+  describe("continueOrFail", () => {
+    it("continueOrFailManaged maps value if the partial function matched", async () => {
+      const result = await Managed.succeed(42)
+        .continueOrFailManaged("Oh No!", (n) =>
+          n === 42 ? O.some(Managed.succeed(84)) : O.none
+        )
+        .use(Effect.succeedNow)
+        .unsafeRunPromise()
+
+      expect(result).toBe(84)
+    })
+
+    it("continueOrFailManaged produces given error if the partial function is not matched", async () => {
+      const result = await Managed.succeed(42)
+        .continueOrFailManaged("Oh No!", (n) =>
+          n === 43 ? O.some(Managed.succeed(84)) : O.none
+        )
+        .use(Effect.succeedNow)
+        .exit()
+        .unsafeRunPromise()
+
+      expect(Exit.untraced(result)).toEqual(Exit.fail("Oh No!"))
+    })
+  })
+
+  describe("ReleaseMap", () => {
+    test("sequential release works when empty", async () => {
+      const result = await ReleaseMap.make
+        .flatMap((_) => _.releaseAll(Exit.unit, ExecutionStrategy.sequential))
+        .map(constTrue)
+        .unsafeRunPromise()
+
+      expect(result).toBe(true)
+    })
+
+    it("runs all finalizers in the presence of defects", async () => {
+      const result = await Ref.make(List.empty<number>())
+        .flatMap((ref) =>
+          ReleaseMap.make
+            .flatMap(
+              (releaseMap) =>
+                releaseMap.add((_) => Ref.update_(ref, List.prepend(1))) >
+                releaseMap.add((_) => Effect.dieMessage("boom")) >
+                releaseMap.add((_) => Ref.update_(ref, List.prepend(3))) >
+                releaseMap.releaseAll(Exit.unit, ExecutionStrategy.sequential)
+            )
+            .exit()
+            .zipRight(Ref.get(ref))
+        )
+        .unsafeRunPromise()
+
+      expect(result).toEqual(List.from([1, 3]))
+    })
+  })
+
+  describe("ignoreReleaseFailures", () => {
+    it("preserves acquire failures", async () => {
+      const result = await Managed.acquireRelease(
+        Effect.fail(2),
+        Effect.dieMessage("die")
+      )
+        .ignoreReleaseFailures()
+        .use(() => Effect.unit)
+        .exit()
+        .unsafeRunPromise()
+
+      expect(Exit.untraced(result)).toEqual(Exit.fail(2))
+    })
+
+    it("preserves use failures", async () => {
+      const result = await Managed.acquireRelease(
+        Effect.succeed(2),
+        Effect.dieMessage("die")
+      )
+        .ignoreReleaseFailures()
+        .use((n) => Effect.fail(n + 3))
+        .exit()
+        .unsafeRunPromise()
+
+      expect(Exit.untraced(result)).toEqual(Exit.fail(5))
+    })
+
+    it("ignores release failures", async () => {
+      const result = await Managed.acquireRelease(
+        Effect.succeed(2),
+        Effect.dieMessage("die")
+      )
+        .ignoreReleaseFailures()
+        .use((n) => Effect.succeed(n + 3))
+        .exit()
+        .unsafeRunPromise()
+
+      expect(Exit.untraced(result)).toEqual(Exit.succeed(5))
+    })
+  })
 })
