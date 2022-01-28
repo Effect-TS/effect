@@ -1,7 +1,4 @@
 // ets_tracing: off
 
-import type * as HKT from "../HKT"
-
-export interface Fail<F extends HKT.HKT> {
-  readonly fail: <E = never>(e: E) => HKT.Kind<F, any, any, any, unknown, E, never>
-}
+export * from "./Run"
+export * from "./Fail"
