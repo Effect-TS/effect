@@ -1,20 +1,8 @@
-import type { InitialVariance, MixVariance } from "./variance"
-
 export declare const URI: unique symbol
 
 export interface Typeclass<F extends HKT> {
   readonly [URI]?: F
 }
-
-type Param = "X" | "I" | "S" | "R" | "E" | "A"
-type ParamVariance<P extends Param> = {
-  X: "_"
-  I: "_"
-  S: "_"
-  R: "-"
-  E: "+"
-  A: "+"
-}[P]
 
 export interface HKT {
   readonly X?: unknown
@@ -56,22 +44,3 @@ export interface ComposeF<F extends HKT, G extends HKT> extends HKT {
     Kind<G, this["X"], this["I"], this["S"], this["R"], this["E"], this["A"]>
   >
 }
-
-// Initial type pere parameterized type depending on variance
-export type Initial<P extends Param> = {
-  X: InitialVariance<ParamVariance<"X">>
-  I: InitialVariance<ParamVariance<"I">>
-  S: InitialVariance<ParamVariance<"S">>
-  R: InitialVariance<ParamVariance<"R">>
-  E: InitialVariance<ParamVariance<"E">>
-  A: InitialVariance<ParamVariance<"A">>
-}[P]
-
-export type Mix<P extends Param, X extends [any, ...any[]]> = {
-  X: MixVariance<ParamVariance<"X">, X>
-  I: MixVariance<ParamVariance<"I">, X>
-  S: MixVariance<ParamVariance<"S">, X>
-  R: MixVariance<ParamVariance<"R">, X>
-  E: MixVariance<ParamVariance<"E">, X>
-  A: MixVariance<ParamVariance<"A">, X>
-}[P]

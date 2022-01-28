@@ -14,25 +14,19 @@ export interface AssociativeBoth<F extends HKT.HKT> {
     fb: HKT.Kind<F, X2, I2, S2, R2, E2, B>
   ) => <X, I, S, R, E, A>(
     fa: HKT.Kind<F, X, I, S, R, E, A>
-  ) => HKT.Kind<
-    F,
-    HKT.Mix<"X", [X2, X]>,
-    HKT.Mix<"I", [I2, I]>,
-    HKT.Mix<"S", [S2, S]>,
-    HKT.Mix<"R", [R2, R]>,
-    HKT.Mix<"E", [E2, E]>,
-    Tp.Tuple<[A, B]>
-  >
+  ) => HKT.Kind<F, X2, I2, S2, R2 & R, E2 | E, Tp.Tuple<[A, B]>>
 }
 
 export interface Any<F extends HKT.HKT> {
-  readonly any: <
-    X = HKT.Initial<"X">,
-    I = HKT.Initial<"I">,
-    S = HKT.Initial<"S">,
-    R = HKT.Initial<"R">,
-    E = HKT.Initial<"E">
-  >() => HKT.Kind<F, X, I, S, R, E, unknown>
+  readonly any: <X = any, I = any, S = any, R = unknown, E = never>() => HKT.Kind<
+    F,
+    X,
+    I,
+    S,
+    R,
+    E,
+    unknown
+  >
 }
 
 /**
@@ -46,13 +40,7 @@ export interface Any<F extends HKT.HKT> {
 export interface Covariant<F extends HKT.HKT> {
   readonly map: <A, B>(
     f: (a: A) => B
-  ) => <
-    X = HKT.Initial<"X">,
-    I = HKT.Initial<"I">,
-    S = HKT.Initial<"S">,
-    R = HKT.Initial<"R">,
-    E = HKT.Initial<"E">
-  >(
+  ) => <X = any, I = any, S = any, R = unknown, E = never>(
     fa: HKT.Kind<F, X, I, S, R, E, A>
   ) => HKT.Kind<F, X, I, S, R, E, B>
 }
@@ -73,15 +61,7 @@ export interface Covariant<F extends HKT.HKT> {
 export interface AssociativeFlatten<F extends HKT.HKT> {
   readonly flatten: <X, I, S, R, E, A, X2, I2, S2, R2, E2>(
     ffa: HKT.Kind<F, X2, I2, S2, R2, E2, HKT.Kind<F, X, I, S, R, E, A>>
-  ) => HKT.Kind<
-    F,
-    HKT.Mix<"X", [X2, X]>,
-    HKT.Mix<"I", [I2, I]>,
-    HKT.Mix<"S", [S2, S]>,
-    HKT.Mix<"R", [R2, R]>,
-    HKT.Mix<"E", [E2, E]>,
-    A
-  >
+  ) => HKT.Kind<F, X2, I2, S2, R2 & R, E2 | E, A>
 }
 
 export type IdentityFlatten<F extends HKT.HKT> = AssociativeFlatten<F> & Any<F>
