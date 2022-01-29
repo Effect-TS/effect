@@ -21,7 +21,7 @@ export function find_<E, Z>(
  * @ets_data_first find_
  */
 export function find<E, Z>(f: (cause: Cause<E>) => Option<Z>) {
-  return (self: Cause<E>): Option<Z> => find_(self, f)
+  return (self: Cause<E>): Option<Z> => self.find(f)
 }
 
 function findSafe<E, Z>(

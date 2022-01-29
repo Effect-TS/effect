@@ -24,5 +24,5 @@ export function mapTrace_<E>(self: Cause<E>, f: (trace: Trace) => Trace): Cause<
  * @ets_data_first mapTrace_
  */
 export function mapTrace(f: (trace: Trace) => Trace) {
-  return <E>(self: Cause<E>): Cause<E> => mapTrace_(self, f)
+  return <E>(self: Cause<E>): Cause<E> => self.mapTrace(f)
 }

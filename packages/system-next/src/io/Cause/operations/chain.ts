@@ -25,5 +25,5 @@ export function chain_<E, E1>(self: Cause<E>, f: (e: E) => Cause<E1>): Cause<E1>
  * @ets_data_first chain_
  */
 export function chain<E, E1>(f: (e: E) => Cause<E1>) {
-  return (self: Cause<E>): Cause<E1> => chain_(self, f)
+  return (self: Cause<E>): Cause<E1> => self.flatMap(f)
 }

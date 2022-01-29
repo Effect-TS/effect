@@ -36,5 +36,5 @@ export function squashWith_<E>(self: Cause<E>, f: (e: E) => unknown): unknown {
  * @ets_data_first squashWith_
  */
 export function squashWith<E>(f: (e: E) => unknown) {
-  return (self: Cause<E>): unknown => squashWith_(self, f)
+  return (self: Cause<E>): unknown => self.squashWith(f)
 }

@@ -47,8 +47,7 @@ export function fold<Z, E>(
   onStacklessCause: (z: Z, stackless: boolean) => Z
 ) {
   return (self: Cause<E>): Z =>
-    fold_(
-      self,
+    self.fold(
       onEmptyCause,
       onFailCause,
       onDieCause,

@@ -63,5 +63,5 @@ export function foldLeft_<E, Z>(
  * @ets_data_first foldLeft_
  */
 export function foldLeft<E, Z>(initial: Z, f: (z: Z, cause: Cause<E>) => Option<Z>) {
-  return (self: Cause<E>): Z => foldLeft_(self, initial, f)
+  return (self: Cause<E>): Z => self.foldLeft(initial, f)
 }

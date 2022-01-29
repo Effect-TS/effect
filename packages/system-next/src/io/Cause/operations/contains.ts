@@ -22,5 +22,5 @@ export function contains_<E, E1>(self: Cause<E>, that: Cause<E1>): boolean {
  * @ets_data_first contains_
  */
 export function contains<E1>(that: Cause<E1>) {
-  return <E>(self: Cause<E>): boolean => contains_(self, that)
+  return <E>(self: Cause<E>): boolean => self.contains(that)
 }

@@ -18,5 +18,5 @@ export function traced_<E>(self: Cause<E>, trace: Trace): Cause<E> {
  * @ets_data_first traced_
  */
 export function traced(trace: Trace) {
-  return <E>(self: Cause<E>): Cause<E> => traced_(self, trace)
+  return <E>(self: Cause<E>): Cause<E> => self.traced(trace)
 }

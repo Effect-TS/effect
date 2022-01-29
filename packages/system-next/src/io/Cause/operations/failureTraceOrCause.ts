@@ -13,8 +13,7 @@ import type { Cause } from "../definition"
 export function failureTraceOrCause<E>(
   self: Cause<E>
 ): Either<Tuple<[E, Trace]>, Cause<never>> {
-  return self.failureTraceOption().fold(
-    () => Either.right(self as Cause<never>),
-    (result) => Either.left(result.value)
-  )
+  return self
+    .failureTraceOption()
+    .fold(() => Either.right(self as Cause<never>), Either.left)
 }
