@@ -15,7 +15,7 @@
     "prettier": "yarn ets:prettier --write \"./{src,test,demo}/**/*.ts\"",
     "demo": "yarn ets:ts-node -O '{\"module\":\"commonjs\"}' --project tsconfig.build.json",
     "pack-dev": "yarn ets:rimraf artifacts && mkdir artifacts && yarn pack --out ./artifacts/%s-%v.tgz",
-    "circular": "yarn ets:madge --circular --no-color --no-spinner build/esm"
+    "circular": "yarn ets:madge --circular --no-color --no-spinner --warning build/esm"
   },
   "publishConfig": {
     "access": "public"
