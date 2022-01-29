@@ -49,9 +49,9 @@ export const Option: OptionOps = {}
 /**
  * @ets unify ets/Option
  */
-export function unify<X extends Option<any>>(
+export function unifyOption<X extends Option<any>>(
   self: X
-): Option<[X] extends [Option<infer OX>] ? OX : never> {
+): Option<[X] extends [Option<infer A>] ? A : never> {
   return self
 }
 
@@ -479,7 +479,7 @@ export function toNullable<A>(ma: Option<A>): A | null {
  * Extracts the value out of the structure, if it exists. Otherwise returns
  * `undefined`.
  *
- * @ets fluent ets/Option toUndefined
+ * @ets getter ets/Option value
  */
 export function toUndefined<A>(ma: Option<A>): A | undefined {
   return isNone(ma) ? undefined : ma.value

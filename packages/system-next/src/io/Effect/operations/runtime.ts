@@ -1,8 +1,6 @@
 import { constFalse, pipe } from "../../../data/Function"
 import { unsafeTrack } from "../../../io/Supervisor"
 import { HasClock, LiveClock } from "../../Clock"
-import type { Exit } from "../../Exit/definition"
-import type { FiberId } from "../../FiberId/definition"
 import * as LoggerSet from "../../Logger/Set"
 import * as LogLevel from "../../LogLevel"
 import { defaultRandom, HasRandom } from "../../Random"
@@ -58,74 +56,29 @@ export const defaultRuntimeConfig: RuntimeConfig = new RuntimeConfig({
   maxOp: 2048
 })
 
-export const {
-  unsafeRunAsync,
-  unsafeRunAsyncCancelable,
-  unsafeRunAsyncWith,
-  unsafeRunPromise,
-  unsafeRunPromiseExit,
-  unsafeRunWith
-} = new Runtime(defaultEnv, defaultRuntimeConfig)
+export const defaultRuntime = new Runtime(defaultEnv, defaultRuntimeConfig)
 
 /**
  * @ets fluent ets/Effect unsafeRunPromise
  */
-export function unsafeRunPromiseMethod<E, A>(
-  self: Effect<DefaultEnv, E, A>,
-  __etsTrace?: string | undefined
-): Promise<A> {
-  return unsafeRunPromise(self, __etsTrace)
-}
-
-/**
- * @ets fluent ets/Effect unsafeRunPromiseExit
- */
-export function unsafeRunPromiseExitMethod<E, A>(
-  self: Effect<DefaultEnv, E, A>,
-  __etsTrace?: string | undefined
-): Promise<Exit<E, A>> {
-  return unsafeRunPromiseExit(self, __etsTrace)
-}
-
-/**
- * @ets fluent ets/Effect unsafeRunWith
- */
-export function unsafeRunWithMethod<E, A>(
-  self: Effect<DefaultEnv, E, A>,
-  k: (exit: Exit<E, A>) => void,
-  __etsTrace?: string | undefined
-): (fiberId: FiberId) => (_: (exit: Exit<E, A>) => void) => void {
-  return unsafeRunWith(self, k, __etsTrace)
-}
-
+export const unsafeRunPromise = defaultRuntime.unsafeRunPromise
 /**
  * @ets fluent ets/Effect unsafeRunAsync
  */
-export function unsafeRunAsynchMethod<E, A>(
-  self: Effect<DefaultEnv, E, A>,
-  __etsTrace?: string | undefined
-): void {
-  return unsafeRunAsync(self, __etsTrace)
-}
-
-/**
- * @ets fluent ets/Effect unsafeRunAsynchWith
- */
-export function unsafeRunAsynchWithMethod<E, A>(
-  self: Effect<DefaultEnv, E, A>,
-  k: (exit: Exit<E, A>) => void,
-  __etsTrace?: string | undefined
-): void {
-  return unsafeRunAsyncWith(self, k, __etsTrace)
-}
-
+export const unsafeRunAsync = defaultRuntime.unsafeRunAsync
 /**
  * @ets fluent ets/Effect unsafeRunAsyncCancelable
  */
-export function unsafeRunAsyncCancelableMethod<E, A>(
-  effect: Effect<DefaultEnv, E, A>,
-  k: (exit: Exit<E, A>) => void,
-  __etsTrace?: string | undefined
-): (fiberId: FiberId) => Exit<E, A> {
-  return unsafeRunAsyncCancelable(effect, k, __etsTrace)
-}
+export const unsafeRunAsyncCancelable = defaultRuntime.unsafeRunAsyncCancelable
+/**
+ * @ets fluent ets/Effect unsafeRunAsyncWith
+ */
+export const unsafeRunAsyncWith = defaultRuntime.unsafeRunAsyncWith
+/**
+ * @ets fluent ets/Effect unsafeRunPromiseExit
+ */
+export const unsafeRunPromiseExit = defaultRuntime.unsafeRunPromiseExit
+/**
+ * @ets fluent ets/Effect unsafeRunWith
+ */
+export const unsafeRunWith = defaultRuntime.unsafeRunWith
