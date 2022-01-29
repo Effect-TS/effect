@@ -1,5 +1,6 @@
 import * as C from "../../../collection/immutable/Chunk/core"
 import * as Tp from "../../../collection/immutable/Tuple"
+import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
 import { Managed } from "../definition"
 
@@ -12,8 +13,8 @@ import { Managed } from "../definition"
  *
  * @ets static ets/ManagedOps forEach
  */
-export function forEach_<R, E, A, B>(
-  as: Iterable<A>,
+export function forEach<R, E, A, B>(
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Managed<R, E, B>,
   __etsTrace?: string
 ): Managed<R, E, C.Chunk<B>> {
@@ -24,20 +25,4 @@ export function forEach_<R, E, A, B>(
       return Tp.tuple((e) => Effect.forEach(C.reverse(fins), (fin) => fin(e)), as)
     })
   )
-}
-
-/**
- * Applies the function `f` to each element of the `Iterable<A>` and
- * returns the results in a new `Chunk<B>`.
- *
- * For a parallel version of this method, see `forEachPar`.
- * If you do not need the results, see `forEachUnit` for a more efficient implementation.
- *
- * @ets_data_first forEach_
- */
-export function forEach<R, E, A, B>(
-  f: (a: A) => Managed<R, E, B>,
-  __etsTrace?: string
-) {
-  return (as: Iterable<A>) => forEach_(as, f)
 }

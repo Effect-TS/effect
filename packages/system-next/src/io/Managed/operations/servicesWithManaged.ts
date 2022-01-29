@@ -4,6 +4,8 @@ import type { Has, Tag } from "../../../data/Has"
 import type { UnionToIntersection } from "../../../data/Utils"
 import { Managed } from "../definition"
 
+// TODO(Mike/Max): revise naming
+
 /**
  * Access a tuple of services with the required service entries monadically.
  *

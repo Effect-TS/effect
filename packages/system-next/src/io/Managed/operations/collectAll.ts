@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import { identity } from "../../../data/Function"
 import { Managed } from "../definition"
 
@@ -8,7 +9,7 @@ import { Managed } from "../definition"
  * @ets static ets/ManagedOps collectAll
  */
 export function collectAll<R, E, A>(
-  as: Iterable<Managed<R, E, A>>,
+  as: LazyArg<Iterable<Managed<R, E, A>>>,
   __etsTrace?: string
 ) {
   return Managed.forEach(as, identity)

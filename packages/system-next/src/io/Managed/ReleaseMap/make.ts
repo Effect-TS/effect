@@ -13,7 +13,7 @@ import { Running } from "./state"
 export const make = Effect.succeed(unsafeMake)
 
 /**
- * Creates a new `ReleaseMap`.
+ * Unsafely creates a new `ReleaseMap`.
  *
  * @ets static ets/ReleaseMapOps unsafeMake
  */

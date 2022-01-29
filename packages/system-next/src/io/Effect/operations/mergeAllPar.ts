@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import { get } from "../../Ref/operations/get"
 import { make } from "../../Ref/operations/make"
 import { update_ } from "../../Ref/operations/update"
@@ -17,8 +18,8 @@ import { Effect } from "../definition"
  * @ets static ets/EffectOps mergeAllPar
  */
 export function mergeAllPar_<R, E, A, B>(
-  as: Iterable<Effect<R, E, A>>,
-  zero: B,
+  as: LazyArg<Iterable<Effect<R, E, A>>>,
+  zero: LazyArg<B>,
   f: (b: B, a: A) => B,
   __etsTrace?: string
 ) {

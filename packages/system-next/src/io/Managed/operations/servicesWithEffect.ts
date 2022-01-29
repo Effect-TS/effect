@@ -5,6 +5,8 @@ import type { UnionToIntersection } from "../../../data/Utils"
 import type { Effect } from "../../Effect"
 import { Managed } from "../definition"
 
+// TODO(Mike/Max): revise naming
+
 /**
  * Access a tuple of services with the required service entries monadically.
  *

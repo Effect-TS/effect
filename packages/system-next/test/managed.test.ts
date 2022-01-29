@@ -1482,8 +1482,8 @@ describe("Managed", () => {
       }
 
       const result = await Managed.reduceAll(
-        List.map_(List.from([1, 2, 3, 4]), res),
         Managed.succeed(List.empty()),
+        List.map_(List.from([1, 2, 3, 4]), res),
         (a1, a2) => List.concat_(a1, a2)
       )
         .use(Effect.succeedNow)
@@ -1495,8 +1495,8 @@ describe("Managed", () => {
     it("runs finalizers", async () => {
       const result = await parallelFinalizers(4, (res) =>
         Managed.reduceAll(
-          List.from(Array.from({ length: 4 }, () => res)),
           Managed.succeed(constVoid),
+          List.from(Array.from({ length: 4 }, () => res)),
           (a, _) => a
         )
       ).unsafeRunPromise()
@@ -1512,8 +1512,8 @@ describe("Managed", () => {
       }
 
       const result = await Managed.reduceAllPar(
-        List.map_(List.from([1, 2, 3, 4]), res),
         Managed.succeed(List.empty()),
+        List.map_(List.from([1, 2, 3, 4]), res),
         (a1, a2) => List.concat_(a1, a2)
       )
         .use(Effect.succeedNow)
@@ -1525,8 +1525,8 @@ describe("Managed", () => {
     it("runs finalizers", async () => {
       const result = await parallelFinalizers(4, (res) =>
         Managed.reduceAllPar(
-          List.from(Array.from({ length: 4 }, () => res)),
           Managed.succeed(constVoid),
+          List.from(Array.from({ length: 4 }, () => res)),
           (a, _) => a
         )
       ).unsafeRunPromise()
@@ -1537,8 +1537,8 @@ describe("Managed", () => {
     it("runs reservations in parallel", async () => {
       const result = await parallelReservations(4, (res) =>
         Managed.reduceAllPar(
-          List.from(Array.from({ length: 4 }, () => res)),
           Managed.succeed(constVoid),
+          List.from(Array.from({ length: 4 }, () => res)),
           (a, _) => a
         )
       ).unsafeRunPromise()
@@ -1549,8 +1549,8 @@ describe("Managed", () => {
     it("runs acquisitions in parallel", async () => {
       const result = await parallelAcquisitions(4, (res) =>
         Managed.reduceAllPar(
-          List.from(Array.from({ length: 4 }, () => res)),
           Managed.succeed(constVoid),
+          List.from(Array.from({ length: 4 }, () => res)),
           (a, _) => a
         )
       ).unsafeRunPromise()
@@ -1566,8 +1566,8 @@ describe("Managed", () => {
       }
 
       const result = await Managed.reduceAllPar(
-        List.map_(List.from([1, 2, 3, 4]), res),
         Managed.succeed(List.empty()),
+        List.map_(List.from([1, 2, 3, 4]), res),
         (a1, a2) => List.concat_(a1, a2)
       )
         .withParallelism(2)
@@ -1584,8 +1584,8 @@ describe("Managed", () => {
     it("Runs finalizers", async () => {
       const result = await parallelFinalizers(4, (res) =>
         Managed.reduceAllPar(
-          List.from(Array.from({ length: 4 }, () => res)),
           Managed.succeed(constVoid),
+          List.from(Array.from({ length: 4 }, () => res)),
           (a, _) => a
         )
       )
@@ -1598,8 +1598,8 @@ describe("Managed", () => {
     it("uses at most n fibers for reservation", async () => {
       const result = await parallelReservations(2, (res) =>
         Managed.reduceAllPar(
-          List.from(Array.from({ length: 4 }, () => res)),
           Managed.succeed(constVoid),
+          List.from(Array.from({ length: 4 }, () => res)),
           (a, _) => a
         )
       )
@@ -1612,8 +1612,8 @@ describe("Managed", () => {
     it("uses at most n fibers for acquisition", async () => {
       const result = await parallelAcquisitions(2, (res) =>
         Managed.reduceAllPar(
-          List.from(Array.from({ length: 4 }, () => res)),
           Managed.succeed(constVoid),
+          List.from(Array.from({ length: 4 }, () => res)),
           (a, _) => a
         )
       )
@@ -1628,6 +1628,7 @@ describe("Managed", () => {
         .bind("releases", () => Ref.make(0))
         .tap(({ releases }) =>
           Managed.reduceAllPar(
+            Managed.finalizer(Effect.dieMessage("Boom")),
             List.from([
               Managed.finalizer(Ref.update_(releases, (n) => n + 1)),
               Managed.finalizer(Effect.dieMessage("Boom")),
@@ -1635,7 +1636,6 @@ describe("Managed", () => {
               Managed.finalizer(Effect.dieMessage("Boom")),
               Managed.finalizer(Ref.update_(releases, (n) => n + 1))
             ]),
-            Managed.finalizer(Effect.dieMessage("Boom")),
             constVoid
           )
             .useDiscard(Effect.unit)

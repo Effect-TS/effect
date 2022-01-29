@@ -1,6 +1,7 @@
 import { unzip } from "../../../collection/immutable/Chunk/api/unzip"
 import * as C from "../../../collection/immutable/Chunk/core"
 import * as Tp from "../../../collection/immutable/Tuple"
+import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
 import { Managed } from "../definition"
 import type { Finalizer } from "../ReleaseMap/finalizer"
@@ -14,8 +15,8 @@ import type { Finalizer } from "../ReleaseMap/finalizer"
  *
  * @ets static ets/ManagedOps forEachDiscard
  */
-export function forEachDiscard_<R, E, A, B>(
-  as: Iterable<A>,
+export function forEachDiscard<R, E, A, B>(
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Managed<R, E, B>,
   __etsTrace?: string
 ): Managed<R, E, void> {
@@ -30,20 +31,4 @@ export function forEachDiscard_<R, E, A, B>(
       )
     })
   )
-}
-
-/**
- * Applies the function `f` to each element of the `Iterable[A]` and runs
- * produced effects sequentially.
- *
- * Equivalent to `forEach(as)(f).unit`, but without the cost of building
- * the list of results.
- *
- * @ets_data_first forEachDiscard_
- */
-export function forEachDiscard<R, E, A, B>(
-  f: (a: A) => Managed<R, E, B>,
-  __etsTrace?: string
-) {
-  return (as: Iterable<A>) => forEachDiscard_(as, f)
 }

@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
 import { sequential } from "../../Effect/operations/ExecutionStrategy"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
@@ -13,8 +14,8 @@ import { ReleaseMap } from "../ReleaseMap"
  *
  * @ets static ets/ManagedOps forEachParDiscard
  */
-export function forEachParDiscard_<R, E, A, X>(
-  as: Iterable<A>,
+export function forEachParDiscard<R, E, A, X>(
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Managed<R, E, X>,
   __etsTrace?: string
 ): Managed<R, E, void> {
@@ -29,19 +30,4 @@ export function forEachParDiscard_<R, E, A, X>(
       )
     )
   })
-}
-
-/**
- * Applies the function `f` to each element of the `Iterable[A]` and runs
- * produced effects in parallel, discarding the results.
- *
- * For a sequential version of this method, see `foreachDiscard`.
- *
- * @ets_data_first forEachParDiscard_
- */
-export function forEachParDiscard<A, R, E, X>(
-  f: (a: A) => Managed<R, E, X>,
-  __etsTrace?: string
-) {
-  return (as: Iterable<A>): Managed<R, E, void> => forEachParDiscard_(as, f)
 }

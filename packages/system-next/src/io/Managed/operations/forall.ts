@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import { Managed } from "../definition"
 
 /**
@@ -6,25 +7,12 @@ import { Managed } from "../definition"
  *
  * @ets static ets/ManagedOps forall
  */
-export function forall_<R, E, A>(
-  as: Iterable<A>,
+export function forall<R, E, A>(
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Managed<R, E, boolean>,
   __etsTrace?: string
 ): Managed<R, E, boolean> {
-  return Managed.succeed(as[Symbol.iterator]).flatMap((iterator) => loop(iterator, f))
-}
-
-/**
- * Determines whether all elements of the `Iterable<A>` satisfy the effectual
- * predicate `f`.
- *
- * @ets_data_first forall_
- */
-export function forall<R, E, A>(
-  f: (a: A) => Managed<R, E, boolean>,
-  __etsTrace?: string
-) {
-  return (as: Iterable<A>): Managed<R, E, boolean> => forall_(as, f)
+  return Managed.succeed(as[Symbol.iterator]()).flatMap((iterator) => loop(iterator, f))
 }
 
 function loop<R, E, A>(

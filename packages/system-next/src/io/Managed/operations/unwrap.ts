@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import type { Effect } from "../../Effect"
 import { Managed } from "../definition"
 
@@ -7,7 +8,7 @@ import { Managed } from "../definition"
  * @ets static ets/ManagedOps unwrap
  */
 export function unwrap<R, E, A>(
-  effect: Effect<R, E, Managed<R, E, A>>,
+  effect: LazyArg<Effect<R, E, Managed<R, E, A>>>,
   __etsTrace?: string
 ): Managed<R, E, A> {
   return Managed.fromEffect(effect).flatten()

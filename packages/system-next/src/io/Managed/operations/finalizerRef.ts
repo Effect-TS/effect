@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import type { Ref } from "../../Ref"
 import { get as refGet } from "../../Ref/operations/get"
 import { make as refMake } from "../../Ref/operations/make"
@@ -12,10 +13,10 @@ import type { Finalizer } from "../ReleaseMap/finalizer"
  * @ets static ets/ManagedOps finalizerRef
  */
 export function finalizerRef<R>(
-  initial: Finalizer,
+  initial: LazyArg<Finalizer>,
   __etsTrace?: string
 ): Managed<R, never, Ref<Finalizer>> {
-  return Managed.acquireReleaseExitWith(refMake<Finalizer>(initial), (ref, exit) =>
+  return Managed.acquireReleaseExitWith(refMake<Finalizer>(initial()), (ref, exit) =>
     refGet(ref).flatMap((fin) => fin(exit))
   )
 }

@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import { Managed } from "../definition"
 
 /**
@@ -15,13 +16,14 @@ import { Managed } from "../definition"
  *
  * @ets static ets/ManagedOps iterate
  */
-export function iterate<Z>(initial: Z) {
+export function iterate<Z>(initial: LazyArg<Z>) {
   return (cont: (z: Z) => boolean) =>
     <R, E>(body: (z: Z) => Managed<R, E, Z>, __etsTrace?: string): Managed<R, E, Z> =>
       Managed.suspend(() => {
-        if (cont(initial)) {
-          return body(initial).flatMap((z2) => iterate(z2)(cont)(body))
+        const initial0 = initial()
+        if (cont(initial0)) {
+          return body(initial0).flatMap((z2) => iterate(z2)(cont)(body))
         }
-        return Managed.succeedNow(initial)
+        return Managed.succeedNow(initial0)
       })
 }

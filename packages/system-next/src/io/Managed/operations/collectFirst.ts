@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import type * as O from "../../../data/Option"
 import { Managed } from "../definition"
 
@@ -7,25 +8,12 @@ import { Managed } from "../definition"
  *
  * @ets static ets/ManagedOps collectFirst
  */
-export function collectFirst_<R, E, A, B>(
-  as: Iterable<A>,
+export function collectFirst<R, E, A, B>(
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Managed<R, E, O.Option<B>>,
   __etsTrace?: string
 ): Managed<R, E, O.Option<B>> {
-  return Managed.succeed(as[Symbol.iterator]).flatMap((iterator) => loop(iterator, f))
-}
-
-/**
- * Collects the first element of the `Iterable<A>` for which the effectual
- * function `f` returns `Some`.
- *
- * @ets_data_first collectFirst_
- */
-export function collectFirst<R, E, A, B>(
-  f: (a: A) => Managed<R, E, O.Option<B>>,
-  __etsTrace?: string
-) {
-  return (as: Iterable<A>): Managed<R, E, O.Option<B>> => collectFirst_(as, f)
+  return Managed.succeed(as[Symbol.iterator]()).flatMap((iterator) => loop(iterator, f))
 }
 
 function loop<R, E, A, B>(

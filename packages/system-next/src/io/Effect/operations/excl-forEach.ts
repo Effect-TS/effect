@@ -7,6 +7,7 @@ import * as ChunkZipWithIndex from "../../../collection/immutable/Chunk/api/zipW
 import * as Chunk from "../../../collection/immutable/Chunk/core"
 import * as Iter from "../../../collection/immutable/Iterable"
 import * as Tp from "../../../collection/immutable/Tuple"
+import type { LazyArg } from "../../../data/Function"
 import { identity } from "../../../data/Function"
 import * as O from "../../../data/Option"
 import { AtomicBoolean } from "../../../support/AtomicBoolean"
@@ -59,7 +60,7 @@ import { sequential } from "./ExecutionStrategy"
  * @ets static ets/EffectOps forEach
  */
 export function forEach_<A, R, E, B>(
-  as: Iterable<A>,
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
@@ -142,11 +143,11 @@ export function forEachWithIndex<A, R, E, B>(
  * @ets static ets/EffectOps forEachDiscard
  */
 export function forEachDiscard_<R, E, A, X>(
-  as: Iterable<A>,
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, X>,
   __etsTrace?: string
 ): Effect<R, E, void> {
-  return Effect.suspendSucceed(() => forEachDiscardLoop(as[Symbol.iterator](), f))
+  return Effect.suspendSucceed(() => forEachDiscardLoop(as()[Symbol.iterator](), f))
 }
 
 /**
@@ -188,7 +189,7 @@ function forEachDiscardLoop<R, E, A, X>(
  * @ets static ets/EffectOps forEachPar
  */
 export function forEachPar_<R, E, A, B>(
-  as: Iterable<A>,
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
@@ -220,14 +221,14 @@ export function forEachPar<R, E, A, B>(
  * and returns the results in a new `Chunk<B>`.
  */
 function forEachParUnbounded<R, E, A, B>(
-  as: Iterable<A>,
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
   return Effect.suspendSucceed(() =>
     Effect.succeed<B[]>(() => []).flatMap((array) =>
       forEachParUnboundedDiscard(
-        Iter.map_(as, (a, n) => [a, n] as [A, number]),
+        Iter.map_(as(), (a, n) => [a, n] as [A, number]),
         ([a, n]) =>
           Effect.suspendSucceed(() => f(a)).flatMap((b) =>
             Effect.succeed(() => {
@@ -240,7 +241,7 @@ function forEachParUnbounded<R, E, A, B>(
 }
 
 function forEachParN<R, E, A, B>(
-  as: Iterable<A>,
+  as: LazyArg<Iterable<A>>,
   n: number,
   f: (a: A) => Effect<R, E, B>,
   __etsTrace?: string
@@ -252,7 +253,7 @@ function forEachParN<R, E, A, B>(
       )
     }
 
-    const as0 = Chunk.from(as)
+    const as0 = Chunk.from(as())
     const size = Chunk.size(as0)
 
     if (size === 0) {
@@ -354,7 +355,7 @@ export function forEachParWithIndex<R, E, A, B>(
  * @ets static ets/EffectOps forEachParDiscard
  */
 export function forEachParDiscard_<R, E, A, X>(
-  as: Iterable<A>,
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, X>,
   __etsTrace?: string
 ): Effect<R, E, void> {
@@ -386,12 +387,12 @@ export function forEachParDiscard<R, E, A, X>(
 }
 
 function forEachParUnboundedDiscard<R, E, A, X>(
-  as: Iterable<A>,
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, X>,
   __etsTrace?: string
 ): Effect<R, E, void> {
   return Effect.suspendSucceed<R, E, void>(() => {
-    const bs = Chunk.from(as)
+    const bs = Chunk.from(as())
     const size = Chunk.size(bs)
 
     if (size === 0) {
@@ -439,13 +440,14 @@ function forEachParUnboundedDiscard<R, E, A, X>(
 }
 
 function forEachParNDiscard<R, E, A, X>(
-  as: Iterable<A>,
+  as: LazyArg<Iterable<A>>,
   n: number,
   f: (a: A) => Effect<R, E, X>,
   __etsTrace?: string
 ): Effect<R, E, void> {
   return Effect.suspendSucceed(() => {
-    const bs = Chunk.from(as)
+    const as0 = as()
+    const bs = Chunk.from(as0)
     const size = Chunk.size(bs)
 
     if (size === 0) {
@@ -466,7 +468,7 @@ function forEachParNDiscard<R, E, A, X>(
     }
 
     return makeBoundedQueue<A>(size).flatMap((queue) =>
-      QCore.offerAll_(queue, as).flatMap(() =>
+      QCore.offerAll_(queue, as0).flatMap(() =>
         collectAllParUnboundedDiscard(worker(queue).replicate(n))
       )
     )

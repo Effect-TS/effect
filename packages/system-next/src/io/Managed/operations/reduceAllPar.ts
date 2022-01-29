@@ -1,4 +1,5 @@
 import * as Iter from "../../../collection/immutable/Iterable"
+import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { locally_ } from "../../FiberRef/operations/locally"
@@ -12,8 +13,8 @@ import { ReleaseMap } from "../ReleaseMap"
  * @ets static ets/ManagedOps reduceAllPar
  */
 export function reduceAllPar_<R, E, A>(
-  as: Iterable<Managed<R, E, A>>,
-  a: Managed<R, E, A>,
+  a: LazyArg<Managed<R, E, A>>,
+  as: LazyArg<Iterable<Managed<R, E, A>>>,
   f: (acc: A, a: A) => A,
   __etsTrace?: string
 ): Managed<R, E, A> {
@@ -23,24 +24,10 @@ export function reduceAllPar_<R, E, A>(
       parallelReleaseMap
     )(
       Effect.reduceAllPar(
-        Iter.map_(as, (managed) => managed.effect.map((_) => _.get(1))),
-        a.effect.map((_) => _.get(1)),
+        Iter.map_(as(), (managed) => managed.effect.map((_) => _.get(1))),
+        a().effect.map((_) => _.get(1)),
         f
       )
     )
   )
-}
-
-/**
- * Reduces an `Iterable<Managed<R, E, A>>` to a single `Managed<R, E, A>`,
- * working in parallel.
- *
- * @ets_data_first reduceAllPar_
- */
-export function reduceAllPar<R, E, A>(
-  a: Managed<R, E, A>,
-  f: (acc: A, a: A) => A,
-  __etsTrace?: string
-) {
-  return (as: Iterable<Managed<R, E, A>>): Managed<R, E, A> => reduceAllPar_(as, a, f)
 }

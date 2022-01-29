@@ -1341,7 +1341,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "InterruptStatus": {
-                    const boolFlag = current.flag.toBoolean
+                    const boolFlag = current.flag().toBoolean
 
                     if (
                       this.interruptStatus &&
@@ -1577,7 +1577,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "SetRuntimeConfig": {
-                    this.runtimeConfig = current.runtimeConfig
+                    this.runtimeConfig = current.runtimeConfig()
                     current = instruction(Effect.unit)
                     break
                   }

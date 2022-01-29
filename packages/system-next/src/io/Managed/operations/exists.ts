@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import { Managed } from "../definition"
 
 /**
@@ -6,25 +7,12 @@ import { Managed } from "../definition"
  *
  * @ets static ets/ManagedOps exists
  */
-export function exists_<R, E, A>(
-  as: Iterable<A>,
+export function exists<R, E, A>(
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Managed<R, E, boolean>,
   __etsTrace?: string
 ): Managed<R, E, boolean> {
-  return Managed.succeed(as[Symbol.iterator]).flatMap((iterator) => loop(iterator, f))
-}
-
-/**
- * Determines whether any element of the `Iterable<A>` satisfies the effectual
- * predicate `f`.
- *
- * @ets_data_first exists_
- */
-export function exists<R, E, A>(
-  f: (a: A) => Managed<R, E, boolean>,
-  __etsTrace?: string
-) {
-  return (as: Iterable<A>): Managed<R, E, boolean> => exists_(as, f)
+  return Managed.succeed(as[Symbol.iterator]()).flatMap((iterator) => loop(iterator, f))
 }
 
 function loop<R, E, A>(

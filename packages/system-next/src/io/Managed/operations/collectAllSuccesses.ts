@@ -1,4 +1,5 @@
 import * as Iter from "../../../collection/immutable/Iterable"
+import type { LazyArg } from "../../../data/Function"
 import * as O from "../../../data/Option"
 import { Managed } from "../definition"
 
@@ -9,11 +10,11 @@ import { Managed } from "../definition"
  * @ets static ets/ManagedOps collectAllSuccesses
  */
 export function collectAllSuccesses<R, E, A>(
-  as: Iterable<Managed<R, E, A>>,
+  as: LazyArg<Iterable<Managed<R, E, A>>>,
   __etsTrace?: string
 ) {
   return Managed.collectAllWith(
-    Iter.map_(as, (_) => _.exit()),
+    Iter.map_(as(), (_) => _.exit()),
     (e) => (e._tag === "Success" ? O.some(e.value) : O.none)
   )
 }

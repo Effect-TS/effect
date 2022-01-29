@@ -1,4 +1,5 @@
 import type * as HashSet from "../../../collection/immutable/HashSet"
+import type { LazyArg } from "../../../data/Function"
 import { interrupt as causeInterrupt } from "../../Cause/definition"
 import { interruptors as causeInterruptors } from "../../Cause/operations/interruptors"
 import { isInterrupted as causeIsInterrupted } from "../../Cause/operations/isInterrupted"
@@ -17,30 +18,41 @@ import { Effect, ICheckInterrupt, IInterruptStatus } from "../definition"
  */
 export interface InterruptStatusRestore {
   readonly restore: <R, E, A>(
-    effect: Effect<R, E, A>,
+    effect: LazyArg<Effect<R, E, A>>,
     __etsTrace?: string
   ) => Effect<R, E, A>
+  /**
+   * Returns a new effect that, if the parent region is uninterruptible, can
+   * be interrupted in the background instantaneously. If the parent region is
+   * interruptible, then the effect can be interrupted normally, in the
+   * foreground.
+   */
   readonly force: <R, E, A>(
-    effect: Effect<R, E, A>,
+    effect: LazyArg<Effect<R, E, A>>,
     __etsTrace?: string
   ) => Effect<R, E, A>
 }
 
 export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
-  constructor(readonly flag: InterruptStatus) {
-    this.restore = this.restore.bind(this)
-    this.force = this.force.bind(this)
+  constructor(readonly flag: InterruptStatus) {}
+
+  restore = <R, E, A>(
+    effect: LazyArg<Effect<R, E, A>>,
+    __etsTrace?: string
+  ): Effect<R, E, A> => {
+    return Effect.suspendSucceed(effect).interruptStatus(this.flag)
   }
 
-  restore<R, E, A>(effect: Effect<R, E, A>, __etsTrace?: string): Effect<R, E, A> {
-    return interruptStatus_(effect, this.flag)
-  }
-
-  force<R, E, A>(effect: Effect<R, E, A>, __etsTrace?: string): Effect<R, E, A> {
-    if (this.flag.isUninterruptible) {
-      return interruptible(disconnect(uninterruptible(effect)))
-    }
-    return interruptStatus_(effect, this.flag, __etsTrace)
+  force = <R, E, A>(
+    effect: LazyArg<Effect<R, E, A>>,
+    __etsTrace?: string
+  ): Effect<R, E, A> => {
+    return Effect.suspendSucceed(() => {
+      if (this.flag.isUninterruptible) {
+        return effect().uninterruptible().disconnect().interruptible()
+      }
+      return effect().interruptStatus(this.flag)
+    })
   }
 }
 
@@ -65,7 +77,7 @@ export const interrupt = Effect.fiberId.flatMap(interruptAs)
  */
 export function interruptStatus_<R, E, A>(
   self: Effect<R, E, A>,
-  flag: InterruptStatus,
+  flag: LazyArg<InterruptStatus>,
   __etsTrace?: string
 ): Effect<R, E, A> {
   return new IInterruptStatus(self, flag, __etsTrace)

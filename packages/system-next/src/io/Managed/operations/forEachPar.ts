@@ -1,4 +1,5 @@
 import type * as C from "../../../collection/immutable/Chunk/core"
+import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
 import { sequential } from "../../Effect/operations/ExecutionStrategy"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
@@ -14,8 +15,8 @@ import { ReleaseMap } from "../ReleaseMap"
  *
  * @ets static ets/ManagedOps forEachPar
  */
-export function forEachPar_<R, E, A, B>(
-  as: Iterable<A>,
+export function forEachPar<R, E, A, B>(
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Managed<R, E, B>,
   __etsTrace?: string
 ): Managed<R, E, C.Chunk<B>> {
@@ -30,19 +31,4 @@ export function forEachPar_<R, E, A, B>(
       )
     )
   })
-}
-
-/**
- * Applies the function `f` to each element of the `Iterable<A>` in parallel,
- * and returns the results in a new `B[]`.
- *
- * For a sequential version of this method, see `forEach`.
- *
- * @ets_data_first forEachPar_
- */
-export function forEachPar<R, E, A, B>(
-  f: (a: A) => Managed<R, E, B>,
-  __etsTrace?: string
-) {
-  return (as: Iterable<A>): Managed<R, E, C.Chunk<B>> => forEachPar_(as, f)
 }

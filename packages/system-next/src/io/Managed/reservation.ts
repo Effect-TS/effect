@@ -35,7 +35,7 @@ export const Reservation: ReservationOps = {}
  *
  * @ets static ets/ReservationOps __call
  */
-export function apply<R, E, A>(
+export function reservationApply<R, E, A>(
   acquire: Effect<R, E, A>,
   release: (exit: Exit<any, any>) => RIO<R, any>
 ): Reservation<R, E, A> {

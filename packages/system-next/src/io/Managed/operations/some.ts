@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import * as O from "../../../data/Option"
 import { Managed } from "../definition"
 
@@ -7,8 +8,8 @@ import { Managed } from "../definition"
  * @ets static ets/ManagedOps some
  */
 export function some<A>(
-  value: A,
+  value: LazyArg<A>,
   __etsTrace?: string
 ): Managed<unknown, never, O.Option<A>> {
-  return Managed.succeed(O.some(value))
+  return Managed.succeed(O.some(value()))
 }

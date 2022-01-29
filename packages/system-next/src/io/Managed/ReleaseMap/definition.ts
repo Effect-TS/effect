@@ -28,6 +28,6 @@ export class ReleaseMapImpl implements ReleaseMap {
 /**
  * @ets static ets/ReleaseMapOps __call
  */
-export function apply(ref: Ref<State>): ReleaseMap {
+export function releaseMapApply(ref: Ref<State>): ReleaseMap {
   return new ReleaseMapImpl(ref)
 }

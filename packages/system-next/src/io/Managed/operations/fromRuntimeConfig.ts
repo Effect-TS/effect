@@ -16,7 +16,7 @@ export function fromRuntimeConfig(
 ): Managed<unknown, never, void> {
   return Managed.fromEffect(Effect.runtimeConfig).flatMap((currentRuntimeConfig) =>
     Managed.acquireRelease(
-      Effect.setRuntimeConfig(runtimeConfig()),
+      Effect.setRuntimeConfig(runtimeConfig),
       Effect.setRuntimeConfig(currentRuntimeConfig)
     )
   )

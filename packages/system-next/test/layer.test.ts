@@ -1,14 +1,13 @@
 import * as C from "../src/collection/immutable/Chunk"
 import * as Tp from "../src/collection/immutable/Tuple"
-import { identity, pipe } from "../src/data/Function"
+import { constFalse, constTrue, identity, pipe } from "../src/data/Function"
 import type { Has } from "../src/data/Has"
 import { tag } from "../src/data/Has"
-import * as Clock from "../src/io/Clock"
-import * as T from "../src/io/Effect"
+import { Effect } from "../src/io/Effect"
 import * as Exit from "../src/io/Exit"
 import * as Fiber from "../src/io/Fiber"
 import * as L from "../src/io/Layer"
-import * as M from "../src/io/Managed"
+import { Managed } from "../src/io/Managed"
 import * as Promise from "../src/io/Promise"
 import * as Ref from "../src/io/Ref"
 
@@ -20,8 +19,8 @@ const Service1Id = Symbol.for("tests/layer/Service1")
 
 class Service1Impl {
   readonly [Service1Id] = Service1Id
-  get one(): T.UIO<number> {
-    return T.succeedNow(1)
+  get one(): Effect<unknown, never, number> {
+    return Effect.succeedNow(1)
   }
 }
 
@@ -35,8 +34,8 @@ const Service2Id = Symbol.for("tests/layer/Service2")
 
 class Service2Impl {
   readonly [Service2Id] = Service2Id
-  get two(): T.UIO<number> {
-    return T.succeedNow(1)
+  get two(): Effect<unknown, never, number> {
+    return Effect.succeedNow(2)
   }
 }
 
@@ -50,8 +49,8 @@ const Service3Id = Symbol.for("tests/layer/Service3")
 
 class Service3Impl {
   readonly [Service3Id] = Service3Id
-  get three(): T.UIO<number> {
-    return T.succeedNow(1)
+  get three(): Effect<unknown, never, number> {
+    return Effect.succeedNow(3)
   }
 }
 
@@ -61,7 +60,7 @@ const Service3 = tag<Service3Impl>(Service3Id)
 // Ref
 // -----------------------------------------------------------------------------
 
-function makeRef(): T.UIO<Ref.Ref<C.Chunk<string>>> {
+function makeRef(): Effect<unknown, never, Ref.Ref<C.Chunk<string>>> {
   return Ref.make(C.empty())
 }
 
@@ -80,8 +79,8 @@ function makeLayer1(
   ref: Ref.Ref<C.Chunk<string>>
 ): L.Layer<unknown, never, Has<Service1Impl>> {
   return L.fromManaged(Service1)(
-    M.acquireReleaseWith_(
-      T.map_(Ref.update_(ref, C.append(acquire1)), () => new Service1Impl()),
+    Managed.acquireReleaseWith(
+      Ref.update_(ref, C.append(acquire1)).map(() => new Service1Impl()),
       () => Ref.update_(ref, C.append(release1))
     )
   )
@@ -91,8 +90,8 @@ function makeLayer2(
   ref: Ref.Ref<C.Chunk<string>>
 ): L.Layer<unknown, never, Has<Service2Impl>> {
   return L.fromManaged(Service2)(
-    M.acquireReleaseWith_(
-      T.map_(Ref.update_(ref, C.append(acquire2)), () => new Service2Impl()),
+    Managed.acquireReleaseWith(
+      Ref.update_(ref, C.append(acquire2)).map(() => new Service2Impl()),
       () => Ref.update_(ref, C.append(release2))
     )
   )
@@ -102,44 +101,37 @@ function makeLayer3(
   ref: Ref.Ref<C.Chunk<string>>
 ): L.Layer<unknown, never, Has<Service3Impl>> {
   return L.fromManaged(Service3)(
-    M.acquireReleaseWith_(
-      T.map_(Ref.update_(ref, C.append(acquire3)), () => new Service3Impl()),
+    Managed.acquireReleaseWith(
+      Ref.update_(ref, C.append(acquire3)).map(() => new Service3Impl()),
       () => Ref.update_(ref, C.append(release3))
     )
   )
 }
 
 describe("Layer", () => {
-  it("sharing with ++", async () => {
+  it("sharing with and", async () => {
     const expected = [acquire1, release1]
 
-    const { actual } = await pipe(
-      T.Do(),
-      T.bind("ref", () => makeRef()),
-      T.bindValue("layer", ({ ref }) => makeLayer1(ref)),
-      T.bindValue("env", ({ layer }) => pipe(layer, L.and(layer), L.build)),
-      T.tap(({ env }) => M.useDiscard_(env, T.unit)),
-      T.bind("actual", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+    const program = Effect.Do()
+      .bind("ref", () => makeRef())
+      .bindValue("layer", ({ ref }) => makeLayer1(ref))
+      .bindValue("env", ({ layer }) => L.build(layer + layer))
+      .tap(({ env }) => env.useDiscard(Effect.unit))
+      .bind("actual", ({ ref }) => Ref.get(ref))
+
+    const { actual } = await program.unsafeRunPromise()
 
     expect(C.toArray(actual)).toEqual(expected)
   })
 
-  it("sharing itself with ++", async () => {
-    const { m, m1 } = await pipe(
-      T.Do(),
-      T.bindValue("m", () => new Service1Impl()),
-      T.bindValue("layer", ({ m }) => L.fromValue(Service1)(m)),
-      T.bindValue("env", ({ layer }) => pipe(layer, L.and(layer), L.and(layer))),
-      T.bind("m1", ({ env }) =>
-        pipe(
-          L.build(env),
-          M.use((m) => T.succeedNow(Service1.read(m)))
-        )
-      ),
-      T.unsafeRunPromise
-    )
+  it("sharing itself with and", async () => {
+    const program = Effect.Do()
+      .bindValue("m", () => new Service1Impl())
+      .bindValue("layer", ({ m }) => L.fromValue(Service1)(m))
+      .bindValue("env", ({ layer }) => L.build(layer + layer + layer))
+      .bind("m1", ({ env }) => env.use((m) => Effect.succeed(Service1.read(m))))
+
+    const { m, m1 } = await program.unsafeRunPromise()
 
     expect(m).toStrictEqual(m1)
   })
@@ -147,33 +139,31 @@ describe("Layer", () => {
   it("sharing with to", async () => {
     const expected = [acquire1, release1]
 
-    const { actual } = await pipe(
-      T.Do(),
-      T.bind("ref", () => makeRef()),
-      T.bindValue("layer", ({ ref }) => makeLayer1(ref)),
-      T.bindValue("env", ({ layer }) => pipe(layer, L.to(layer), L.build)),
-      T.tap(({ env }) => M.useDiscard_(env, T.unit)),
-      T.bind("actual", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+    const program = Effect.Do()
+      .bind("ref", () => makeRef())
+      .bindValue("layer", ({ ref }) => makeLayer1(ref))
+      .bindValue("env", ({ layer }) => L.build(layer >> layer))
+      .tap(({ env }) => env.useDiscard(Effect.unit))
+      .bind("actual", ({ ref }) => Ref.get(ref))
+
+    const { actual } = await program.unsafeRunPromise()
 
     expect(C.toArray(actual)).toEqual(expected)
   })
 
   it("sharing with multiple layers", async () => {
-    const result = await pipe(
-      T.Do(),
-      T.bind("ref", () => makeRef()),
-      T.bindValue("layer1", ({ ref }) => makeLayer1(ref)),
-      T.bindValue("layer2", ({ ref }) => makeLayer2(ref)),
-      T.bindValue("layer3", ({ ref }) => makeLayer3(ref)),
-      T.bindValue("env", ({ layer1, layer2, layer3 }) =>
-        pipe(L.to_(layer1, layer2), L.and(L.to_(layer1, layer3)), L.build)
-      ),
-      T.tap(({ env }) => M.useDiscard_(env, T.unit)),
-      T.bind("actual", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+    const program = Effect.Do()
+      .bind("ref", () => makeRef())
+      .bindValue("layer1", ({ ref }) => makeLayer1(ref))
+      .bindValue("layer2", ({ ref }) => makeLayer2(ref))
+      .bindValue("layer3", ({ ref }) => makeLayer3(ref))
+      .bindValue("env", ({ layer1, layer2, layer3 }) =>
+        L.build((layer1 >> layer2) + (layer1 >> layer3))
+      )
+      .tap(({ env }) => env.useDiscard(Effect.unit))
+      .bind("actual", ({ ref }) => Ref.get(ref))
+
+    const result = await program.unsafeRunPromise()
 
     const actual = C.toArray(result.actual)
 
@@ -186,16 +176,15 @@ describe("Layer", () => {
   })
 
   it("finalizers with ++", async () => {
-    const result = await pipe(
-      T.Do(),
-      T.bind("ref", () => makeRef()),
-      T.bindValue("layer1", ({ ref }) => makeLayer1(ref)),
-      T.bindValue("layer2", ({ ref }) => makeLayer2(ref)),
-      T.bindValue("env", ({ layer1, layer2 }) => pipe(layer1, L.and(layer2), L.build)),
-      T.tap(({ env }) => M.useDiscard_(env, T.unit)),
-      T.bind("actual", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+    const program = Effect.Do()
+      .bind("ref", () => makeRef())
+      .bindValue("layer1", ({ ref }) => makeLayer1(ref))
+      .bindValue("layer2", ({ ref }) => makeLayer2(ref))
+      .bindValue("env", ({ layer1, layer2 }) => L.build(layer1 + layer2))
+      .tap(({ env }) => env.useDiscard(Effect.unit))
+      .bind("actual", ({ ref }) => Ref.get(ref))
+
+    const result = await program.unsafeRunPromise()
 
     const actual = C.toArray(result.actual)
 
@@ -206,34 +195,32 @@ describe("Layer", () => {
   })
 
   it("finalizers with to", async () => {
-    const { actual } = await pipe(
-      T.Do(),
-      T.bind("ref", () => makeRef()),
-      T.bindValue("layer1", ({ ref }) => makeLayer1(ref)),
-      T.bindValue("layer2", ({ ref }) => makeLayer2(ref)),
-      T.bindValue("env", ({ layer1, layer2 }) => pipe(layer1, L.to(layer2), L.build)),
-      T.tap(({ env }) => M.useDiscard_(env, T.unit)),
-      T.bind("actual", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+    const program = Effect.Do()
+      .bind("ref", () => makeRef())
+      .bindValue("layer1", ({ ref }) => makeLayer1(ref))
+      .bindValue("layer2", ({ ref }) => makeLayer2(ref))
+      .bindValue("env", ({ layer1, layer2 }) => L.build(layer1 >> layer2))
+      .tap(({ env }) => env.useDiscard(Effect.unit))
+      .bind("actual", ({ ref }) => Ref.get(ref))
+
+    const { actual } = await program.unsafeRunPromise()
 
     expect(C.toArray(actual)).toEqual([acquire1, acquire2, release2, release1])
   })
 
   it("finalizers with multiple layers", async () => {
-    const { actual } = await pipe(
-      T.Do(),
-      T.bind("ref", () => makeRef()),
-      T.bindValue("layer1", ({ ref }) => makeLayer1(ref)),
-      T.bindValue("layer2", ({ ref }) => makeLayer2(ref)),
-      T.bindValue("layer3", ({ ref }) => makeLayer3(ref)),
-      T.bindValue("env", ({ layer1, layer2, layer3 }) =>
-        pipe(layer1, L.to(layer2), L.to(layer3), L.build)
-      ),
-      T.tap(({ env }) => M.useDiscard_(env, T.unit)),
-      T.bind("actual", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+    const program = Effect.Do()
+      .bind("ref", () => makeRef())
+      .bindValue("layer1", ({ ref }) => makeLayer1(ref))
+      .bindValue("layer2", ({ ref }) => makeLayer2(ref))
+      .bindValue("layer3", ({ ref }) => makeLayer3(ref))
+      .bindValue("env", ({ layer1, layer2, layer3 }) =>
+        L.build((layer1 >> layer2) >> layer3)
+      )
+      .tap(({ env }) => env.useDiscard(Effect.unit))
+      .bind("actual", ({ ref }) => Ref.get(ref))
+
+    const { actual } = await program.unsafeRunPromise()
 
     expect(C.toArray(actual)).toEqual([
       acquire1,
@@ -246,21 +233,20 @@ describe("Layer", () => {
   })
 
   it("map does not interfere with sharing", async () => {
-    const result = await pipe(
-      T.Do(),
-      T.bind("ref", () => makeRef()),
-      T.bindValue("layer1", ({ ref }) => makeLayer1(ref)),
-      T.bindValue("layer2", ({ ref }) => makeLayer2(ref)),
-      T.bindValue("layer3", ({ ref }) => makeLayer3(ref)),
-      T.bindValue("env", ({ layer1, layer2, layer3 }) => {
-        const firstLayer = pipe(layer1, L.map(identity), L.to(layer2))
-        const secondLayer = pipe(layer1, L.to(layer3))
-        return pipe(firstLayer, L.and(secondLayer), L.build)
-      }),
-      T.tap(({ env }) => M.useDiscard_(env, T.unit)),
-      T.bind("actual", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+    const program = Effect.Do()
+      .bind("ref", () => makeRef())
+      .bindValue("layer1", ({ ref }) => makeLayer1(ref))
+      .bindValue("layer2", ({ ref }) => makeLayer2(ref))
+      .bindValue("layer3", ({ ref }) => makeLayer3(ref))
+      .bindValue("env", ({ layer1, layer2, layer3 }) => {
+        const firstLayer = L.map_(layer1, identity) >> layer2
+        const secondLayer = layer1 >> layer3
+        return L.build(firstLayer + secondLayer)
+      })
+      .tap(({ env }) => env.useDiscard(Effect.unit))
+      .bind("actual", ({ ref }) => Ref.get(ref))
+
+    const result = await program.unsafeRunPromise()
 
     const actual = C.toArray(result.actual)
 
@@ -273,21 +259,20 @@ describe("Layer", () => {
   })
 
   it("mapError does not interfere with sharing", async () => {
-    const result = await pipe(
-      T.Do(),
-      T.bind("ref", () => makeRef()),
-      T.bindValue("layer1", ({ ref }) => makeLayer1(ref)),
-      T.bindValue("layer2", ({ ref }) => makeLayer2(ref)),
-      T.bindValue("layer3", ({ ref }) => makeLayer3(ref)),
-      T.bindValue("env", ({ layer1, layer2, layer3 }) => {
-        const firstLayer = pipe(layer1, L.mapError(identity), L.to(layer2))
-        const secondLayer = pipe(layer1, L.to(layer3))
-        return pipe(firstLayer, L.to(secondLayer), L.build)
-      }),
-      T.tap(({ env }) => M.useDiscard_(env, T.unit)),
-      T.bind("actual", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+    const program = Effect.Do()
+      .bind("ref", () => makeRef())
+      .bindValue("layer1", ({ ref }) => makeLayer1(ref))
+      .bindValue("layer2", ({ ref }) => makeLayer2(ref))
+      .bindValue("layer3", ({ ref }) => makeLayer3(ref))
+      .bindValue("env", ({ layer1, layer2, layer3 }) => {
+        const firstLayer = L.mapError_(layer1, identity) >> layer2
+        const secondLayer = layer1 >> layer3
+        return L.build(firstLayer >> secondLayer)
+      })
+      .tap(({ env }) => env.useDiscard(Effect.unit))
+      .bind("actual", ({ ref }) => Ref.get(ref))
+
+    const result = await program.unsafeRunPromise()
 
     const actual = C.toArray(result.actual)
 
@@ -300,21 +285,20 @@ describe("Layer", () => {
   })
 
   it("orDie does not interfere with sharing", async () => {
-    const result = await pipe(
-      T.Do(),
-      T.bind("ref", () => makeRef()),
-      T.bindValue("layer1", ({ ref }) => makeLayer1(ref)),
-      T.bindValue("layer2", ({ ref }) => makeLayer2(ref)),
-      T.bindValue("layer3", ({ ref }) => makeLayer3(ref)),
-      T.bindValue("env", ({ layer1, layer2, layer3 }) => {
-        const firstLayer = pipe(layer1, L.orDie, L.to(layer2))
-        const secondLayer = pipe(layer1, L.to(layer3))
-        return pipe(firstLayer, L.to(secondLayer), L.build)
-      }),
-      T.tap(({ env }) => M.useDiscard_(env, T.unit)),
-      T.bind("actual", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+    const program = Effect.Do()
+      .bind("ref", () => makeRef())
+      .bindValue("layer1", ({ ref }) => makeLayer1(ref))
+      .bindValue("layer2", ({ ref }) => makeLayer2(ref))
+      .bindValue("layer3", ({ ref }) => makeLayer3(ref))
+      .bindValue("env", ({ layer1, layer2, layer3 }) => {
+        const firstLayer = L.orDie(layer1) >> layer2
+        const secondLayer = layer1 >> layer3
+        return L.build(firstLayer >> secondLayer)
+      })
+      .tap(({ env }) => env.useDiscard(Effect.unit))
+      .bind("actual", ({ ref }) => Ref.get(ref))
+
+    const result = await program.unsafeRunPromise()
 
     const actual = C.toArray(result.actual)
 
@@ -326,18 +310,17 @@ describe("Layer", () => {
     expect(actual[5]).toBe(release1)
   })
 
-  it("interruption with ++", async () => {
-    const result = await pipe(
-      T.Do(),
-      T.bind("ref", () => makeRef()),
-      T.bindValue("layer1", ({ ref }) => makeLayer1(ref)),
-      T.bindValue("layer2", ({ ref }) => makeLayer2(ref)),
-      T.bindValue("env", ({ layer1, layer2 }) => pipe(layer1, L.and(layer2), L.build)),
-      T.bind("fiber", ({ env }) => T.fork(M.useDiscard_(env, T.unit))),
-      T.tap(({ fiber }) => Fiber.interrupt(fiber)),
-      T.bind("actual", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+  it("interruption with and", async () => {
+    const program = Effect.Do()
+      .bind("ref", () => makeRef())
+      .bindValue("layer1", ({ ref }) => makeLayer1(ref))
+      .bindValue("layer2", ({ ref }) => makeLayer2(ref))
+      .bindValue("env", ({ layer1, layer2 }) => L.build(layer1 + layer2))
+      .bind("fiber", ({ env }) => env.useDiscard(Effect.unit).fork())
+      .tap(({ fiber }) => Fiber.interrupt(fiber))
+      .bind("actual", ({ ref }) => Ref.get(ref))
+
+    const result = await program.unsafeRunPromise()
 
     const actual = C.toArray(result.actual)
 
@@ -350,17 +333,16 @@ describe("Layer", () => {
   })
 
   it("interruption with to", async () => {
-    const result = await pipe(
-      T.Do(),
-      T.bind("ref", () => makeRef()),
-      T.bindValue("layer1", ({ ref }) => makeLayer1(ref)),
-      T.bindValue("layer2", ({ ref }) => makeLayer2(ref)),
-      T.bindValue("env", ({ layer1, layer2 }) => pipe(layer1, L.to(layer2), L.build)),
-      T.bind("fiber", ({ env }) => T.fork(M.useDiscard_(env, T.unit))),
-      T.tap(({ fiber }) => Fiber.interrupt(fiber)),
-      T.bind("actual", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+    const program = Effect.Do()
+      .bind("ref", () => makeRef())
+      .bindValue("layer1", ({ ref }) => makeLayer1(ref))
+      .bindValue("layer2", ({ ref }) => makeLayer2(ref))
+      .bindValue("env", ({ layer1, layer2 }) => L.build(layer1 >> layer2))
+      .bind("fiber", ({ env }) => env.useDiscard(Effect.unit).fork())
+      .tap(({ fiber }) => Fiber.interrupt(fiber))
+      .bind("actual", ({ ref }) => Ref.get(ref))
+
+    const result = await program.unsafeRunPromise()
 
     const actual = C.toArray(result.actual)
 
@@ -373,20 +355,19 @@ describe("Layer", () => {
   })
 
   it("interruption with multiple layers", async () => {
-    const result = await pipe(
-      T.Do(),
-      T.bind("ref", () => makeRef()),
-      T.bindValue("layer1", ({ ref }) => makeLayer1(ref)),
-      T.bindValue("layer2", ({ ref }) => makeLayer2(ref)),
-      T.bindValue("layer3", ({ ref }) => makeLayer3(ref)),
-      T.bindValue("env", ({ layer1, layer2, layer3 }) =>
-        pipe(layer1, L.to(layer2), L.and(pipe(layer1, L.to(layer3))), L.build)
-      ),
-      T.bind("fiber", ({ env }) => T.fork(M.useDiscard_(env, T.unit))),
-      T.tap(({ fiber }) => Fiber.interrupt(fiber)),
-      T.bind("actual", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+    const program = Effect.Do()
+      .bind("ref", () => makeRef())
+      .bindValue("layer1", ({ ref }) => makeLayer1(ref))
+      .bindValue("layer2", ({ ref }) => makeLayer2(ref))
+      .bindValue("layer3", ({ ref }) => makeLayer3(ref))
+      .bindValue("env", ({ layer1, layer2, layer3 }) =>
+        L.build(layer1 >> (layer2 + (layer1 >> layer3)))
+      )
+      .bind("fiber", ({ env }) => env.useDiscard(Effect.unit).fork())
+      .tap(({ fiber }) => Fiber.interrupt(fiber))
+      .bind("actual", ({ ref }) => Ref.get(ref))
+
+    const result = await program.unsafeRunPromise()
 
     const actual = C.toArray(result.actual)
 
@@ -402,34 +383,31 @@ describe("Layer", () => {
   })
 
   it("layers can be acquired in parallel", async () => {
-    const test = pipe(
-      T.Do(),
-      T.bind("promise", () => Promise.make<never, void>()),
-      T.bindValue("layer1", () => L.fromRawManaged(M.never)),
-      T.bindValue("layer2", ({ promise }) =>
+    const test = Effect.Do()
+      .bind("promise", () => Promise.make<never, void>())
+      .bindValue("layer1", () => L.fromRawManaged(Managed.never))
+      .bindValue("layer2", ({ promise }) =>
         pipe(
-          Promise.succeed_(promise, undefined),
-          M.acquireReleaseWith(() => T.unit),
+          Managed.acquireReleaseWith(
+            Promise.succeed_(promise, undefined),
+            () => Effect.unit
+          ),
           L.fromRawManaged,
           L.map((a) => ({ a }))
         )
-      ),
-      T.bindValue("env", ({ layer1, layer2 }) => pipe(layer1, L.and(layer2), L.build)),
-      T.bind("fiber", ({ env }) => T.forkDaemon(M.useDiscard_(env, T.unit))),
-      T.tap(({ promise }) => Promise.await(promise)),
-      T.tap(({ fiber }) => Fiber.interrupt(fiber)),
-      T.map(() => true)
-    )
+      )
+      .bindValue("env", ({ layer1, layer2 }) => L.build(layer1 + layer2))
+      .bind("fiber", ({ env }) => env.useDiscard(Effect.unit).forkDaemon())
+      .tap(({ promise }) => Promise.await(promise))
+      .tap(({ fiber }) => Fiber.interrupt(fiber))
+      .map(constTrue)
 
     // Given the use of `Managed.never`, race the test against a 10 second
     // timer and fail the test if the computation doesn't complete. This delay
     // time may be increased if it turns out this test is flaky.
-    const result = await pipe(
-      T.sleep(10000),
-      T.zipRight(T.succeedNow(false)),
-      T.race(test),
-      T.unsafeRunPromise
-    )
+    const program = Effect.sleep(10000).zipRight(Effect.succeed(constFalse)).race(test)
+
+    const result = await program.unsafeRunPromise()
 
     expect(result).toBe(true)
   })
@@ -460,51 +438,43 @@ describe("Layer", () => {
 
     const live = pipe(layer1, L.map(ServiceA.read), L.to(layer2))
 
-    const result = await pipe(
-      T.service(ServiceB),
-      T.provideLayer(live),
-      T.unsafeRunPromise
-    )
+    const program = Effect.service(ServiceB).provideLayer(live)
 
-    expect(result.name).toBe("name")
+    const { name } = await program.unsafeRunPromise()
+
+    expect(name).toBe("name")
   })
 
   it("memoization", async () => {
-    const { actual } = await pipe(
-      T.Do(),
-      T.bind("ref", () => makeRef()),
-      T.bindValue("memoized", ({ ref }) => L.memoize(makeLayer1(ref))),
-      T.tap(({ memoized }) =>
-        M.use_(memoized, (layer) =>
-          pipe(
-            T.environment<Has<Service1Impl>>(),
-            T.provideLayer(layer),
-            T.chain(() =>
-              pipe(T.environment<Has<Service1Impl>>(), T.provideLayer(layer))
-            )
-          )
+    const program = Effect.Do()
+      .bind("ref", () => makeRef())
+      .bindValue("memoized", ({ ref }) => L.memoize(makeLayer1(ref)))
+      .tap(({ memoized }) =>
+        memoized.use((layer) =>
+          Effect.environment<Has<Service1Impl>>()
+            .provideLayer(layer)
+            .flatMap(() => Effect.environment<Has<Service1Impl>>().provideLayer(layer))
         )
-      ),
-      T.bind("actual", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+      )
+      .bind("actual", ({ ref }) => Ref.get(ref))
+
+    const { actual } = await program.unsafeRunPromise()
 
     expect(C.toArray(actual)).toEqual([acquire1, release1])
   })
 
   it("orElse", async () => {
-    const result = await pipe(
-      T.Do(),
-      T.bind("ref", () => makeRef()),
-      T.bindValue("layer1", ({ ref }) => makeLayer1(ref)),
-      T.bindValue("layer2", ({ ref }) => makeLayer2(ref)),
-      T.bindValue("env", ({ layer1, layer2 }) =>
-        pipe(layer1, L.to(L.fail("failed!")), L.orElse(layer2), L.build)
-      ),
-      T.bind("fiber", ({ env }) => M.useDiscard_(env, T.unit)),
-      T.bind("actual", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+    const program = Effect.Do()
+      .bind("ref", () => makeRef())
+      .bindValue("layer1", ({ ref }) => makeLayer1(ref))
+      .bindValue("layer2", ({ ref }) => makeLayer2(ref))
+      .bindValue("env", ({ layer1, layer2 }) =>
+        pipe(L.orElse_(layer1 >> L.fail("failed!"), layer2), L.build)
+      )
+      .bind("fiber", ({ env }) => env.useDiscard(Effect.unit))
+      .bind("actual", ({ ref }) => Ref.get(ref))
+
+    const result = await program.unsafeRunPromise()
 
     const actual = C.toArray(result.actual)
 
@@ -530,81 +500,69 @@ describe("Layer", () => {
 
     const live = L.to_(L.fromValue(NumberService)({ value: 1 }), L.passthrough(layer))
 
-    const { i, s } = await pipe(
-      T.Do(),
-      T.bind("i", () => T.service(NumberService)),
-      T.bind("s", () => T.service(ToStringService)),
-      T.provideLayer(live),
-      T.unsafeRunPromise
-    )
+    const program = Effect.Do()
+      .bind("i", () => Effect.service(NumberService))
+      .bind("s", () => Effect.service(ToStringService))
+      .provideLayer(live)
+
+    const { i, s } = await program.unsafeRunPromise()
 
     expect(i.value).toBe(1)
     expect(s.value).toBe("1")
   })
 
-  it("fresh with ++", async () => {
-    const { actual } = await pipe(
-      T.Do(),
-      T.bind("ref", () => makeRef()),
-      T.bindValue("layer", ({ ref }) => makeLayer1(ref)),
-      T.bindValue("env", ({ layer }) => pipe(layer, L.and(L.fresh(layer)), L.build)),
-      T.tap(({ env }) => M.useNow(env)),
-      T.bind("actual", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+  it("fresh with and", async () => {
+    const program = Effect.Do()
+      .bind("ref", () => makeRef())
+      .bindValue("layer", ({ ref }) => makeLayer1(ref))
+      .bindValue("env", ({ layer }) => L.build(layer + L.fresh(layer)))
+      .tap(({ env }) => env.useNow())
+      .bind("actual", ({ ref }) => Ref.get(ref))
+
+    const { actual } = await program.unsafeRunPromise()
 
     expect(C.toArray(actual)).toEqual([acquire1, acquire1, release1, release1])
   })
 
   it("fresh with to", async () => {
-    const { actual } = await pipe(
-      T.Do(),
-      T.bind("ref", () => makeRef()),
-      T.bindValue("layer", ({ ref }) => makeLayer1(ref)),
-      T.bindValue("env", ({ layer }) => pipe(layer, L.to(L.fresh(layer)), L.build)),
-      T.tap(({ env }) => M.useNow(env)),
-      T.bind("actual", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+    const program = Effect.Do()
+      .bind("ref", () => makeRef())
+      .bindValue("layer", ({ ref }) => makeLayer1(ref))
+      .bindValue("env", ({ layer }) => L.build(layer >> L.fresh(layer)))
+      .tap(({ env }) => env.useNow())
+      .bind("actual", ({ ref }) => Ref.get(ref))
+
+    const { actual } = await program.unsafeRunPromise()
 
     expect(C.toArray(actual)).toEqual([acquire1, acquire1, release1, release1])
   })
 
   it("fresh with multiple layers", async () => {
-    const { actual } = await pipe(
-      T.Do(),
-      T.bind("ref", () => makeRef()),
-      T.bindValue("layer", ({ ref }) => makeLayer1(ref)),
-      T.bindValue("env", ({ layer }) =>
-        pipe(layer, L.and(layer), L.and(L.fresh(L.and_(layer, layer))), L.build)
-      ),
-      T.tap(({ env }) => M.useNow(env)),
-      T.bind("actual", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+    const program = Effect.Do()
+      .bind("ref", () => makeRef())
+      .bindValue("layer", ({ ref }) => makeLayer1(ref))
+      .bindValue("env", ({ layer }) => L.build(layer + layer + L.fresh(layer + layer)))
+      .tap(({ env }) => env.useNow())
+      .bind("actual", ({ ref }) => Ref.get(ref))
+
+    const { actual } = await program.unsafeRunPromise()
 
     expect(C.toArray(actual)).toEqual([acquire1, acquire1, release1, release1])
   })
 
   it("fresh with identical fresh layers", async () => {
-    const { actual } = await pipe(
-      T.Do(),
-      T.bind("ref", () => makeRef()),
-      T.bindValue("layer1", ({ ref }) => makeLayer1(ref)),
-      T.bindValue("layer2", ({ ref }) => makeLayer2(ref)),
-      T.bindValue("layer3", ({ ref }) => makeLayer3(ref)),
-      T.bindValue("env", ({ layer1, layer2, layer3 }) =>
-        pipe(
-          L.fresh(layer1),
-          L.to(layer2),
-          L.and(L.to_(L.fresh(layer1), layer3)),
-          L.build
-        )
-      ),
-      T.tap(({ env }) => M.useNow(env)),
-      T.bind("actual", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+    const program = Effect.Do()
+      .bind("ref", () => makeRef())
+      .bindValue("layer1", ({ ref }) => makeLayer1(ref))
+      .bindValue("layer2", ({ ref }) => makeLayer2(ref))
+      .bindValue("layer3", ({ ref }) => makeLayer3(ref))
+      .bindValue("env", ({ layer1, layer2, layer3 }) =>
+        L.build(L.fresh(layer1) >> (layer2 + L.fresh(layer1 >> layer3)))
+      )
+      .tap(({ env }) => env.useNow())
+      .bind("actual", ({ ref }) => Ref.get(ref))
+
+    const { actual } = await program.unsafeRunPromise()
 
     expect(C.toArray(actual)).toHaveLength(8)
   })
@@ -613,31 +571,24 @@ describe("Layer", () => {
     const ChunkServiceId = Symbol()
     const ChunkService = tag<Ref.Ref<C.Chunk<string>>>(ChunkServiceId)
 
-    const { actual } = await pipe(
-      T.Do(),
-      T.bind("testRef", () => Ref.make<C.Chunk<string>>(C.empty())),
-      T.bindValue("layer", ({ testRef }) =>
+    const program = Effect.Do()
+      .bind("testRef", () => Ref.make<C.Chunk<string>>(C.empty()))
+      .bindValue("layer", ({ testRef }) =>
         pipe(
-          Ref.make<C.Chunk<string>>(C.empty()),
-          T.toManagedWith((ref) =>
-            pipe(
-              Ref.get(ref),
-              T.chain((_) => Ref.set_(testRef, _))
-            )
-          ),
-          M.tap(() => M.unit),
+          Ref.make<C.Chunk<string>>(C.empty())
+            .toManagedWith((ref) => Ref.get(ref).flatMap((_) => Ref.set_(testRef, _)))
+            .tap(() => Managed.unit),
           L.fromManaged(ChunkService)
         )
-      ),
-      T.tap(({ layer }) =>
-        pipe(
-          L.build(layer),
-          M.use((_) => pipe(ChunkService.read(_), Ref.update(C.append("test"))))
+      )
+      .tap(({ layer }) =>
+        L.build(layer).use((_) =>
+          pipe(ChunkService.read(_), Ref.update(C.append("test")))
         )
-      ),
-      T.bind("actual", ({ testRef }) => Ref.get(testRef)),
-      T.unsafeRunPromise
-    )
+      )
+      .bind("actual", ({ testRef }) => Ref.get(testRef))
+
+    const { actual } = await program.unsafeRunPromise()
 
     expect(C.toArray(actual)).toEqual(["test"])
   })
@@ -654,23 +605,18 @@ describe("Layer", () => {
   // },
 
   it("error handling", async () => {
-    const sleep = pipe(
-      T.sleep(100),
-      T.provideService(Clock.HasClock)(new Clock.LiveClock())
-    )
+    const sleep = Effect.sleep(100)
     const layer1 = L.fail("foo")
     const layer2 = L.succeed({ bar: "bar" })
     const layer3 = L.succeed({ baz: "baz" })
-    const layer4 = pipe(
-      sleep,
-      M.acquireReleaseWith(() => sleep),
-      M.toLayerRaw,
-      L.map((b) => ({ b }))
+    const layer4 = L.map_(
+      Managed.acquireReleaseWith(sleep, () => sleep).toLayerRaw(),
+      (b) => ({ b })
     )
 
-    const env = pipe(layer1, L.and(pipe(layer2, L.and(layer3), L.andTo(layer4))))
+    const program = Effect.unit.provideLayer(layer1 + (layer2 + layer3 > layer4)).exit()
 
-    const result = await pipe(T.unit, T.provideLayer(env), T.exit, T.unsafeRunPromise)
+    const result = await program.unsafeRunPromise()
 
     expect(Exit.isFailure(result)).toBe(true)
   })
@@ -695,11 +641,9 @@ describe("Layer", () => {
       L.project(PersonService, (_) => AgeService.has({ age: _.age }))
     )
 
-    const { age } = await pipe(
-      T.service(AgeService),
-      T.provideLayer(ageLayer),
-      T.unsafeRunPromise
-    )
+    const program = Effect.service(AgeService).provideLayer(ageLayer)
+
+    const { age } = await program.unsafeRunPromise()
 
     expect(age).toBe(42)
   })
@@ -713,19 +657,18 @@ describe("Layer", () => {
 
     const BarService = tag<BarService>(BarServiceId)
 
-    const { value } = await pipe(
-      T.Do(),
-      T.bind("ref", () => Ref.make("foo")),
-      T.bindValue("layer", ({ ref }) =>
+    const program = Effect.Do()
+      .bind("ref", () => Ref.make("foo"))
+      .bindValue("layer", ({ ref }) =>
         pipe(
           L.fromValue(BarService)({ bar: "bar" }),
           L.tap((r) => Ref.set_(ref, BarService.read(r).bar))
         )
-      ),
-      T.tap(({ layer }) => M.useNow(L.build(layer))),
-      T.bind("value", ({ ref }) => Ref.get(ref)),
-      T.unsafeRunPromise
-    )
+      )
+      .tap(({ layer }) => L.build(layer).useNow())
+      .bind("value", ({ ref }) => Ref.get(ref))
+
+    const { value } = await program.unsafeRunPromise()
 
     expect(value).toBe("bar")
   })
@@ -737,21 +680,20 @@ describe("Layer", () => {
     const StringProviderId = Symbol()
     const StringProvider = tag<string>(StringProviderId)
 
-    const needsNumberAndString = T.environment<Has<number> & Has<string>>()
+    const needsNumberAndString = Effect.environment<Has<number> & Has<string>>()
 
     const providesNumber = L.fromValue(NumberProvider)(10)
     const providesString = L.fromValue(StringProvider)("hi")
 
-    const needsString = pipe(needsNumberAndString, T.provideSomeLayer(providesNumber))
+    const needsString = needsNumberAndString.provideSomeLayer(providesNumber)
 
-    const result = await pipe(
-      needsString,
-      T.provideLayer(providesString),
-      T.map((result) =>
+    const program = needsString
+      .provideLayer(providesString)
+      .map((result) =>
         Tp.tuple(NumberProvider.read(result), StringProvider.read(result))
-      ),
-      T.unsafeRunPromise
-    )
+      )
+
+    const result = await program.unsafeRunPromise()
 
     expect(result.get(0)).toBe(10)
     expect(result.get(1)).toBe("hi")
@@ -771,7 +713,7 @@ describe("Layer", () => {
     interface FooService {
       readonly ref: Ref.Ref<number>
       readonly string: string
-      readonly get: T.UIO<Tp.Tuple<[number, string]>>
+      readonly get: Effect<unknown, never, Tp.Tuple<[number, string]>>
     }
 
     const FooService = tag<FooService>(FooServiceId)
@@ -784,24 +726,21 @@ describe("Layer", () => {
         return FooService.has({
           ref,
           string: s,
-          get: pipe(
-            Ref.get(ref),
-            T.map((i) => Tp.tuple(i, s))
-          )
+          get: Ref.get(ref).map((i) => Tp.tuple(i, s))
         })
       }
     )
 
     const provideNumberRef = L.fromEffect(NumberRefProvider)(Ref.make(10))
     const provideString = L.fromValue(StringProvider)("hi")
-    const needsString = L.to_(provideNumberRef, fooBuilder)
-    const layer = L.to_(provideString, needsString)
+    const needsString = provideNumberRef >> fooBuilder
+    const layer = provideString >> needsString
 
-    const result = await pipe(
-      T.serviceWithEffect(FooService)((_) => _.get),
-      T.provideLayer(layer),
-      T.unsafeRunPromise
+    const program = Effect.serviceWithEffect(FooService)((_) => _.get).provideLayer(
+      layer
     )
+
+    const result = await program.unsafeRunPromise()
 
     expect(result.get(0)).toBe(10)
     expect(result.get(1)).toBe("hi")
@@ -821,7 +760,7 @@ describe("Layer", () => {
     interface FooService {
       readonly ref: Ref.Ref<number>
       readonly string: string
-      readonly get: T.UIO<Tp.Tuple<[number, string]>>
+      readonly get: Effect<unknown, never, Tp.Tuple<[number, string]>>
     }
 
     const FooService = tag<FooService>(FooServiceId)
@@ -834,30 +773,25 @@ describe("Layer", () => {
         return FooService.has({
           ref,
           string: s,
-          get: pipe(
-            Ref.get(ref),
-            T.map((i) => Tp.tuple(i, s))
-          )
+          get: Ref.get(ref).map((i) => Tp.tuple(i, s))
         })
       }
     )
 
     const provideNumberRef = L.fromEffect(NumberRefProvider)(Ref.make(10))
     const provideString = L.fromValue(StringProvider)("hi")
-    const needsString = pipe(provideNumberRef, L.andTo(fooBuilder))
-    const layer = pipe(provideString, L.andTo(needsString))
+    const needsString = provideNumberRef > fooBuilder
+    const layer = provideString > needsString
 
-    const result = await pipe(
-      T.serviceWithEffect(FooService)((_) => _.get),
-      T.chain(({ tuple: [i1, s] }) =>
-        pipe(
-          T.serviceWithEffect(NumberRefProvider)((_) => Ref.get(_)),
-          T.map((i2) => Tp.tuple(i1, i2, s))
+    const program = Effect.serviceWithEffect(FooService)((_) => _.get)
+      .flatMap(({ tuple: [i1, s] }) =>
+        Effect.serviceWithEffect(NumberRefProvider)((_) => Ref.get(_)).map((i2) =>
+          Tp.tuple(i1, i2, s)
         )
-      ),
-      T.provideLayer(layer),
-      T.unsafeRunPromise
-    )
+      )
+      .provideLayer(layer)
+
+    const result = await program.unsafeRunPromise()
 
     expect(result.get(0)).toBe(10)
     expect(result.get(1)).toBe(10)
@@ -899,17 +833,14 @@ describe("Layer", () => {
 
     const cLayer = L.fromFunction(CTag)((_: Has<A>) => new C(ATag.read(_).value))
 
-    const fedB = pipe(L.succeed(new Config(1)), L.to(aLayer), L.to(bLayer))
-    const fedC = pipe(L.succeed(new Config(2)), L.to(aLayer), L.to(cLayer))
+    const fedB = (L.succeed(new Config(1)) >> aLayer) >> bLayer
+    const fedC = (L.succeed(new Config(2)) >> aLayer) >> cLayer
 
-    const result = await pipe(
-      fedB,
-      L.and(fedC),
-      L.build,
-      M.useNow,
-      T.map((_) => Tp.tuple(BTag.read(_), CTag.read(_))),
-      T.unsafeRunPromise
-    )
+    const program = L.build(fedB + fedC)
+      .useNow()
+      .map((_) => Tp.tuple(BTag.read(_), CTag.read(_)))
+
+    const result = await program.unsafeRunPromise()
 
     expect(result.get(0).value).toBe(1)
     expect(result.get(1).value).toBe(1)
