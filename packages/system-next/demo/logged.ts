@@ -32,6 +32,10 @@ export const switched = (n: number) => {
 export const message = isPositive(10)
 export const messageLeft = message.left.value
 
+if (message.isLeft()) {
+  console.log(message.left)
+}
+
 export const program = (numbers + numbersPar).flatMap(
   ({ tuple: [a, b, c, d, e, f] }) =>
     Effect.log(`yay: ${a}`) >
