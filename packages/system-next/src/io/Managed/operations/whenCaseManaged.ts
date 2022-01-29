@@ -1,5 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import type * as O from "../../../data/Option"
+import type { Option } from "../../../data/Option"
 import { Managed } from "../definition"
 
 /**
@@ -10,8 +10,8 @@ import { Managed } from "../definition"
  */
 export function whenCaseManaged<R, E, A, B>(
   managed: LazyArg<Managed<R, E, A>>,
-  pf: (a: A) => O.Option<Managed<R, E, B>>,
+  pf: (a: A) => Option<Managed<R, E, B>>,
   __etsTrace?: string
-): Managed<R, E, O.Option<B>> {
+): Managed<R, E, Option<B>> {
   return Managed.suspend(managed().flatMap((a) => Managed.whenCase(a, pf)))
 }

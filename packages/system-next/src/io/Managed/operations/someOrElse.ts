@@ -1,5 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import * as O from "../../../data/Option"
+import type { Option } from "../../../data/Option"
 import type { Managed } from "../definition"
 
 /**
@@ -8,11 +8,11 @@ import type { Managed } from "../definition"
  * @ets fluent ets/Managed someOrElse
  */
 export function someOrElse_<R, E, A, B>(
-  self: Managed<R, E, O.Option<A>>,
+  self: Managed<R, E, Option<A>>,
   orElse: LazyArg<B>,
   __etsTrace?: string
 ) {
-  return self.map(O.getOrElse(orElse))
+  return self.map((_) => _.getOrElse(orElse))
 }
 
 /**
@@ -21,6 +21,6 @@ export function someOrElse_<R, E, A, B>(
  * @ets_data_first someOrElse_
  */
 export function someOrElse<B>(orElse: LazyArg<B>, __etsTrace?: string) {
-  return <R, E, A>(self: Managed<R, E, O.Option<A>>): Managed<R, E, A | B> =>
+  return <R, E, A>(self: Managed<R, E, Option<A>>): Managed<R, E, A | B> =>
     someOrElse_(self, orElse)
 }

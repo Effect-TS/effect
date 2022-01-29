@@ -1,5 +1,4 @@
 import type { Option } from "../../../data/Option"
-import { map_ as optionMap_ } from "../../../data/Option"
 import { Managed } from "../definition"
 
 /**
@@ -13,7 +12,7 @@ export function reject_<R, E, A, E1>(
   pf: (a: A) => Option<E1>,
   __etsTrace?: string
 ) {
-  return self.rejectManaged((a) => optionMap_(pf(a), Managed.failNow))
+  return self.rejectManaged((a) => pf(a).map(Managed.failNow))
 }
 
 /**

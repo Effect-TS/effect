@@ -1,5 +1,5 @@
 import { NoSuchElementException } from "../../../data/GlobalExceptions"
-import type * as O from "../../../data/Option"
+import type { Option } from "../../../data/Option"
 import type { Managed } from "../definition"
 
 /**
@@ -8,7 +8,7 @@ import type { Managed } from "../definition"
  * @ets fluent ets/Managed someOrFailException
  */
 export function someOrFailException<R, E, A>(
-  self: Managed<R, E, O.Option<A>>,
+  self: Managed<R, E, Option<A>>,
   __etsTrace?: string
 ): Managed<R, E | NoSuchElementException, A> {
   return self.someOrFail(new NoSuchElementException())

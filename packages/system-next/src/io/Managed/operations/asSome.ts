@@ -1,4 +1,4 @@
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { Managed } from "../definition"
 
 /**
@@ -9,6 +9,6 @@ import type { Managed } from "../definition"
 export function asSome<R, E, A>(
   self: Managed<R, E, A>,
   __etsTrace?: string
-): Managed<R, E, O.Option<A>> {
-  return self.map(O.some)
+): Managed<R, E, Option<A>> {
+  return self.map(Option.some)
 }

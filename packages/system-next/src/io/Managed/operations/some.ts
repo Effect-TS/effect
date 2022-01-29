@@ -1,5 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import { Managed } from "../definition"
 
 /**
@@ -10,6 +10,6 @@ import { Managed } from "../definition"
 export function some<A>(
   value: LazyArg<A>,
   __etsTrace?: string
-): Managed<unknown, never, O.Option<A>> {
-  return Managed.succeed(O.some(value()))
+): Managed<unknown, never, Option<A>> {
+  return Managed.succeed(Option.some(value()))
 }

@@ -3,7 +3,7 @@ import {
   lookup as mapLookup
 } from "../../../collection/immutable/Map"
 import * as Tp from "../../../collection/immutable/Tuple"
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { UIO } from "../../Effect"
 import { Effect } from "../../Effect"
 import { modify_ as refModify_ } from "../../Ref/operations/modify"
@@ -23,12 +23,12 @@ export function replace_(
   key: number,
   finalizer: Finalizer,
   __etsTrace?: string
-): UIO<O.Option<Finalizer>> {
+): UIO<Option<Finalizer>> {
   return refModify_(self.ref, (s) => {
     switch (s._tag) {
       case "Exited":
         return Tp.tuple(
-          finalizer(s.exit).map(() => O.none),
+          finalizer(s.exit).map(() => Option.none),
           new Exited(s.nextKey, s.exit, s.update)
         )
       case "Running":
@@ -48,6 +48,6 @@ export function replace_(
  * @ets_data_first replace_
  */
 export function replace(key: number, finalizer: Finalizer, __etsTrace?: string) {
-  return (self: ReleaseMap): Effect<unknown, never, O.Option<Finalizer>> =>
+  return (self: ReleaseMap): Effect<unknown, never, Option<Finalizer>> =>
     replace_(self, key, finalizer)
 }

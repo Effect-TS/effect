@@ -1,5 +1,4 @@
 import type { Option } from "../../../data/Option"
-import { fold_ as optionFold_ } from "../../../data/Option"
 import { Managed } from "../definition"
 
 /**
@@ -15,8 +14,7 @@ export function rejectManaged_<R, E, A, R1, E1>(
   __etsTrace?: string
 ) {
   return self.flatMap((a) =>
-    optionFold_(
-      pf(a),
+    pf(a).fold(
       () => Managed.succeedNow(a),
       (managed) => managed.flatMap((e1) => Managed.failNow(e1))
     )

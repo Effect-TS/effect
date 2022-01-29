@@ -1,6 +1,6 @@
 import * as Tp from "../../../collection/immutable/Tuple"
 import { Either } from "../../../data/Either"
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { HasClock } from "../../Clock"
 import { Effect } from "../../Effect"
 import { sequential } from "../../Effect/operations/ExecutionStrategy"
@@ -27,7 +27,7 @@ export function timeout_<R, E, A>(
   self: Managed<R, E, A>,
   duration: number,
   __etsTrace?: string
-): Managed<R & HasClock, E, O.Option<A>> {
+): Managed<R & HasClock, E, Option<A>> {
   return Managed(
     Effect.uninterruptibleMask(({ restore }) =>
       Effect.Do()
@@ -42,7 +42,7 @@ export function timeout_<R, E, A>(
               currentReleaseMap.value,
               innerReleaseMap
             )(self.effect).raceWith(
-              Effect.sleep(duration).map(() => O.none),
+              Effect.sleep(duration).map(() => Option.none),
               (result, sleeper) =>
                 Fiber.interrupt(sleeper).zipRight(
                   Effect.done(exitMap_(result, (_) => Either.right(_.get(1))))
@@ -60,8 +60,8 @@ export function timeout_<R, E, A>(
                     .ensuring(innerReleaseMap.releaseAll(exitInterrupt(id), sequential))
                     .forkDaemon()
                 )
-                .map(() => O.none),
-            (a) => Effect.succeed(O.some(a))
+                .map(() => Option.none),
+            (a) => Effect.succeed(Option.some(a))
           )
         )
         .map(({ a, earlyRelease }) => Tp.tuple(earlyRelease, a))
@@ -77,6 +77,6 @@ export function timeout_<R, E, A>(
  * and reservation complete in time
  */
 export function timeout(duration: number, __etsTrace?: string) {
-  return <R, E, A>(self: Managed<R, E, A>): Managed<R & HasClock, E, O.Option<A>> =>
+  return <R, E, A>(self: Managed<R, E, A>): Managed<R & HasClock, E, Option<A>> =>
     timeout_(self, duration)
 }

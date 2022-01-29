@@ -1,6 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import type { Option } from "../../../data/Option"
-import { fold, none } from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import { Managed } from "../definition"
 
 /**
@@ -13,7 +12,7 @@ export function fromOption<A>(
   option: LazyArg<Option<A>>,
   __etsTrace?: string
 ): Managed<unknown, Option<never>, A> {
-  return Managed.succeed(option).flatMap(
-    fold(() => Managed.failNow(none), Managed.succeedNow)
+  return Managed.succeed(option).flatMap((_) =>
+    _.fold(() => Managed.failNow(Option.none), Managed.succeedNow)
   )
 }

@@ -3,7 +3,6 @@ import {
   remove_ as mapRemove_
 } from "../../../collection/immutable/Map"
 import * as Tp from "../../../collection/immutable/Tuple"
-import * as O from "../../../data/Option"
 import type { UIO } from "../../Effect"
 import { Effect } from "../../Effect"
 import type { Exit } from "../../Exit"
@@ -30,8 +29,7 @@ export function release_(
       }
       case "Running": {
         return Tp.tuple(
-          O.fold_(
-            mapLookup_(s.finalizers(), key),
+          mapLookup_(s.finalizers(), key).fold(
             () => Effect.unit,
             (fin) => s.update(fin)(exit)
           ),

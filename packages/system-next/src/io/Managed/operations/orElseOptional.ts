@@ -1,5 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import { Managed } from "../definition"
 
 /**
@@ -10,11 +10,13 @@ import { Managed } from "../definition"
  * @ets fluent ets/Managed orElseOptional
  */
 export function orElseOptional_<R, E, A, R2, E2, A2>(
-  self: Managed<R, O.Option<E>, A>,
-  that: LazyArg<Managed<R2, O.Option<E2>, A2>>,
+  self: Managed<R, Option<E>, A>,
+  that: LazyArg<Managed<R2, Option<E2>, A2>>,
   __etsTrace?: string
-): Managed<R & R2, O.Option<E | E2>, A | A2> {
-  return self.catchAll(O.fold(that, (e) => Managed.failNow(O.some<E | E2>(e))))
+): Managed<R & R2, Option<E | E2>, A | A2> {
+  return self.catchAll((_) =>
+    _.fold(that, (e) => Managed.failNow(Option.some<E | E2>(e)))
+  )
 }
 
 /**
@@ -25,8 +27,8 @@ export function orElseOptional_<R, E, A, R2, E2, A2>(
  * @ets_data_first orElseOptional_
  */
 export function orElseOptional<R2, E2, A2>(
-  that: LazyArg<Managed<R2, O.Option<E2>, A2>>,
+  that: LazyArg<Managed<R2, Option<E2>, A2>>,
   __etsTrace?: string
 ) {
-  return <R, E, A>(self: Managed<R, O.Option<E>, A>) => orElseOptional_(self, that)
+  return <R, E, A>(self: Managed<R, Option<E>, A>) => orElseOptional_(self, that)
 }

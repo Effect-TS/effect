@@ -1,4 +1,4 @@
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import { Managed } from "../definition"
 
 /**
@@ -7,12 +7,12 @@ import { Managed } from "../definition"
  * @ets fluent ets/Managed unsome
  */
 export function unsome<R, E, A>(
-  self: Managed<R, O.Option<E>, A>,
+  self: Managed<R, Option<E>, A>,
   __trace?: string
-): Managed<R, E, O.Option<A>> {
+): Managed<R, E, Option<A>> {
   return self.foldManaged(
-    O.fold(() => Managed.succeedNow(O.none), Managed.failNow),
-    (a) => Managed.succeedNow(O.some(a)),
+    (_) => _.fold(() => Managed.succeedNow(Option.none), Managed.failNow),
+    (a) => Managed.succeedNow(Option.some(a)),
     __trace
   )
 }

@@ -1,5 +1,4 @@
 import type { Option } from "../../../data/Option"
-import { fold_ as optionFold_ } from "../../../data/Option"
 import { Managed } from "../definition"
 
 /**
@@ -15,8 +14,7 @@ export function refineOrDieWith_<R, A, E, E1>(
   __etsTrace?: string
 ) {
   return self.catchAll((e) =>
-    optionFold_(
-      pf(e),
+    pf(e).fold(
       () => Managed.dieNow(f(e)),
       (e1) => Managed.failNow(e1)
     )

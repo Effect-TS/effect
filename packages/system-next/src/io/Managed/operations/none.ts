@@ -1,4 +1,4 @@
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import { Managed } from "../definition"
 
 /**
@@ -6,4 +6,6 @@ import { Managed } from "../definition"
  *
  * @ets static ets/ManagedOps none
  */
-export const none: Managed<unknown, never, O.Option<never>> = Managed.succeedNow(O.none)
+export const none: Managed<unknown, never, Option<never>> = Managed.succeedNow(
+  Option.none
+)

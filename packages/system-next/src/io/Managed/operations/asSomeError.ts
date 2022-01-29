@@ -1,4 +1,4 @@
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { Managed } from "../definition"
 
 /**
@@ -7,6 +7,6 @@ import type { Managed } from "../definition"
 export function asSomeError<R, E, A>(
   self: Managed<R, E, A>,
   __etsTrace?: string
-): Managed<R, O.Option<E>, A> {
-  return self.mapError(O.some)
+): Managed<R, Option<E>, A> {
+  return self.mapError(Option.some)
 }

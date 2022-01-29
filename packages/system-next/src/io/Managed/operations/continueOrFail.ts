@@ -1,5 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import * as O from "../../../data/Option"
+import type { Option } from "../../../data/Option"
 import { Managed } from "../definition"
 
 /**
@@ -11,10 +11,10 @@ import { Managed } from "../definition"
 export function continueOrFail_<R, E, A, E1, A2>(
   self: Managed<R, E, A>,
   e: LazyArg<E1>,
-  pf: (a: A) => O.Option<A2>,
+  pf: (a: A) => Option<A2>,
   __etsTrace?: string
 ): Managed<R, E | E1, A2> {
-  return self.continueOrFailManaged(e, (a) => O.map_(pf(a), Managed.succeedNow))
+  return self.continueOrFailManaged(e, (a) => pf(a).map(Managed.succeedNow))
 }
 
 /**
@@ -26,7 +26,7 @@ export function continueOrFail_<R, E, A, E1, A2>(
  */
 export function continueOrFail<E1, A, A2>(
   e: LazyArg<E1>,
-  pf: (a: A) => O.Option<A2>,
+  pf: (a: A) => Option<A2>,
   __etsTrace?: string
 ) {
   return <R, E>(self: Managed<R, E, A>): Managed<R, E | E1, A2> =>

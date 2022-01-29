@@ -1,4 +1,3 @@
-import * as O from "../../../data/Option"
 import type { UIO } from "../../Effect"
 import type { ReleaseMap } from "./definition"
 import type { Finalizer } from "./finalizer"
@@ -20,8 +19,8 @@ export function add_(
   finalizer: Finalizer,
   __etsTrace?: string
 ): UIO<Finalizer> {
-  return self.addIfOpen(finalizer).map(
-    O.fold(
+  return self.addIfOpen(finalizer).map((_) =>
+    _.fold(
       (): Finalizer => noopFinalizer,
       (k): Finalizer =>
         (e) =>

@@ -1,4 +1,4 @@
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import { Managed } from "../definition"
 
 /**
@@ -7,14 +7,15 @@ import { Managed } from "../definition"
  * @ets fluent ets/Managed asNone
  */
 export function asNone<R, E, A>(
-  self: Managed<R, E, O.Option<A>>,
+  self: Managed<R, E, Option<A>>,
   __etsTrace?: string
-): Managed<R, O.Option<E>, void> {
+): Managed<R, Option<E>, void> {
   return self.foldManaged(
-    (e) => Managed.failNow(O.some(e)),
-    O.fold(
-      () => Managed.failNow(O.none),
-      () => Managed.succeedNow(undefined)
-    )
+    (e) => Managed.failNow(Option.some(e)),
+    (_) =>
+      _.fold(
+        () => Managed.failNow(Option.none),
+        () => Managed.succeedNow(undefined)
+      )
   )
 }

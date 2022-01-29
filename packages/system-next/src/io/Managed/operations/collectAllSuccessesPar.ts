@@ -1,6 +1,6 @@
 import * as Iter from "../../../collection/immutable/Iterable"
 import type { LazyArg } from "../../../data/Function"
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import { Managed } from "../definition"
 
 /**
@@ -15,6 +15,6 @@ export function collectAllSuccessesPar<R, E, A>(
 ) {
   return Managed.collectAllWithPar(
     Iter.map_(as(), (_) => _.exit()),
-    (e) => (e._tag === "Success" ? O.some(e.value) : O.none)
+    (e) => (e._tag === "Success" ? Option.some(e.value) : Option.none)
   )
 }

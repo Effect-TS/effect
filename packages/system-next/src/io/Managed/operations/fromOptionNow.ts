@@ -1,5 +1,4 @@
-import type { Option } from "../../../data/Option"
-import { fold, none } from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import { Managed } from "../definition"
 
 /**
@@ -12,7 +11,7 @@ export function fromOptionNow<A>(
   option: Option<A>,
   __etsTrace?: string
 ): Managed<unknown, Option<never>, A> {
-  return Managed.succeedNow(option).flatMap(
-    fold(() => Managed.failNow(none), Managed.succeedNow)
+  return Managed.succeedNow(option).flatMap((_) =>
+    _.fold(() => Managed.failNow(Option.none), Managed.succeedNow)
   )
 }

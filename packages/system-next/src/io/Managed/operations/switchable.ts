@@ -1,4 +1,3 @@
-import { fold as optionFold } from "../../../data/Option"
 import { Effect } from "../../Effect"
 import { sequential } from "../../Effect/operations/ExecutionStrategy"
 import { unit as exitUnit } from "../../Exit/operations/unit"
@@ -31,7 +30,7 @@ export function switchable<R, E, A>(
       Managed.fromEffect(
         releaseMap
           .addIfOpen(() => Effect.unit)
-          .flatMap(optionFold(() => Effect.interrupt, Effect.succeedNow))
+          .flatMap((_) => _.fold(() => Effect.interrupt, Effect.succeedNow))
       )
     )
     .map(
@@ -40,8 +39,8 @@ export function switchable<R, E, A>(
           Effect.uninterruptibleMask(({ restore }) =>
             releaseMap
               .replace(key, () => Effect.unit)
-              .flatMap(
-                optionFold(
+              .flatMap((_) =>
+                _.fold(
                   () => Effect.unit,
                   (fin) => fin(exitUnit)
                 )

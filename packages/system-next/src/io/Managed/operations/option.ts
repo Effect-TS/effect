@@ -1,5 +1,4 @@
-import type { Option } from "../../../data/Option"
-import { none, some } from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { Managed } from "../definition"
 
 /**
@@ -12,5 +11,5 @@ export function option<R, E, A>(
   self: Managed<R, E, A>,
   __etsTrace?: string
 ): Managed<R, never, Option<A>> {
-  return self.fold(() => none, some)
+  return self.fold(() => Option.none, Option.some)
 }

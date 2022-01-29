@@ -1,4 +1,4 @@
-import { some as optionSome } from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import { currentParallelism } from "../../FiberRef/definition/data"
 import { locallyManaged_ } from "../../FiberRef/operations/locallyManaged"
 import type { Managed } from "../definition"
@@ -15,7 +15,7 @@ export function withParallelism_<R, E, A>(
   n: number,
   __etsTrace?: string
 ): Managed<R, E, A> {
-  return locallyManaged_(currentParallelism.value, optionSome(n)).zipRight(self)
+  return locallyManaged_(currentParallelism.value, Option.some(n)).zipRight(self)
 }
 
 /**
