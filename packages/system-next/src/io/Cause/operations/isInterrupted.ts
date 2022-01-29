@@ -1,13 +1,13 @@
-import * as O from "../../../data/Option/core"
+import { Option } from "../../../data/Option/core"
 import type { Cause } from "../definition"
-import { isInterruptType } from "../definition"
-import { find_ } from "./find"
 
 /**
  * Determines if the `Cause` contains an interruption.
+ *
+ * @ets fluent ets/Cause isInterrupted
  */
 export function isInterrupted<E>(self: Cause<E>): boolean {
-  return O.isSome(
-    find_(self, (cause) => (isInterruptType(cause) ? O.some(undefined) : O.none))
-  )
+  return self
+    .find((cause) => (cause.isInterruptType() ? Option.some(undefined) : Option.none))
+    .isSome()
 }

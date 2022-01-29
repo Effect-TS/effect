@@ -1,13 +1,13 @@
-import { none } from "../../../io/Trace/operations/none"
-import type { Cause } from "../definition"
-import { Fail } from "../definition"
-import { chain_ } from "./chain"
+import * as Trace from "../../../io/Trace/operations/none"
+import { Cause } from "../definition"
 
 /**
  * Transforms the error type of this cause with the specified function.
+ *
+ * @ets fluent ets/Cause map
  */
 export function map_<E, E1>(self: Cause<E>, f: (e: E) => E1): Cause<E1> {
-  return chain_(self, (e) => new Fail(f(e), none))
+  return self.flatMap((e) => Cause.fail(f(e), Trace.none))
 }
 
 /**

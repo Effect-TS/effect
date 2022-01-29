@@ -1,11 +1,12 @@
 import type { Cause } from "../definition"
-import { map_ } from "./map"
 
 /**
  * Maps the error value of this cause to the specified constant value.
+ *
+ * @ets fluent ets/Cause as
  */
 export function as_<E, E1>(self: Cause<E>, error: E1): Cause<E1> {
-  return map_(self, () => error)
+  return self.map(() => error)
 }
 
 /**

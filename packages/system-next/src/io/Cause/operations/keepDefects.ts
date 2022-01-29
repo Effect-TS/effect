@@ -1,50 +1,50 @@
-import * as O from "../../../data/Option/core"
+import { Option } from "../../../data/Option/core"
 import type { Cause } from "../definition"
 import { Both, Die, Stackless, Then } from "../definition"
-import { fold_ } from "./fold"
 
 /**
  * Remove all `Fail` and `Interrupt` nodes from this `Cause`, return only
  * `Die` cause/finalizer defects.
+ *
+ * @ets fluent ets/Cause keepDefects
  */
-export function keepDefects<E>(self: Cause<E>): O.Option<Cause<never>> {
-  return fold_<E, O.Option<Cause<never>>>(
-    self,
-    () => O.none,
-    () => O.none,
-    (e, trace) => O.some(new Die(e, trace)),
-    () => O.none,
+export function keepDefects<E>(self: Cause<E>): Option<Cause<never>> {
+  return self.fold<E, Option<Cause<never>>>(
+    () => Option.none,
+    () => Option.none,
+    (e, trace) => Option.some(new Die(e, trace)),
+    () => Option.none,
     (left, right) => {
       if (left._tag === "Some" && right._tag === "Some") {
-        return O.some(new Then(left.value, right.value))
+        return Option.some(new Then(left.value, right.value))
       }
       if (left._tag === "Some" && right._tag === "None") {
-        return O.some(left.value)
+        return Option.some(left.value)
       }
       if (left._tag === "None" && right._tag === "Some") {
-        return O.some(right.value)
+        return Option.some(right.value)
       }
       if (left._tag === "None" && right._tag === "None") {
-        return O.none
+        return Option.none
       }
       throw new Error("Bug")
     },
     (left, right) => {
       if (left._tag === "Some" && right._tag === "Some") {
-        return O.some(new Both(left.value, right.value))
+        return Option.some(new Both(left.value, right.value))
       }
       if (left._tag === "Some" && right._tag === "None") {
-        return O.some(left.value)
+        return Option.some(left.value)
       }
       if (left._tag === "None" && right._tag === "Some") {
-        return O.some(right.value)
+        return Option.some(right.value)
       }
       if (left._tag === "None" && right._tag === "None") {
-        return O.none
+        return Option.none
       }
       throw new Error("Bug")
     },
     (causeOption, stackless) =>
-      O.map_(causeOption, (cause) => new Stackless(cause, stackless))
+      causeOption.map((cause) => new Stackless(cause, stackless))
   )
 }

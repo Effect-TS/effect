@@ -1,14 +1,14 @@
 import * as L from "../../../collection/immutable/List/core"
-import * as O from "../../../data/Option/core"
+import { Option } from "../../../data/Option/core"
 import type { Cause } from "../definition"
-import { isFailType } from "../definition"
-import { reduceLeft_ } from "./reduceLeft"
 
 /**
  * Produces a list of all recoverable errors `E` in the `Cause`.
+ *
+ * @ets fluent ets/Cause failures
  */
 export function failures<E>(self: Cause<E>): L.List<E> {
-  return reduceLeft_(self, L.empty<E>(), (acc, curr) =>
-    isFailType(curr) ? O.some(L.prepend_(acc, curr.value)) : O.some(acc)
+  return self.foldLeft(L.empty<E>(), (acc, curr) =>
+    curr.isFailType() ? Option.some(L.prepend_(acc, curr.value)) : Option.some(acc)
   )
 }

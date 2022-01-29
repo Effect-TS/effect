@@ -1,12 +1,14 @@
-import * as O from "../../../data/Option/core"
+import { Option } from "../../../data/Option/core"
 import type { Cause } from "../definition"
-import { isDieType } from "../definition"
-import { find_ } from "./find"
 
 /**
  * Returns the value associated with the first `Die` in this `Cause` if
  * one exists.
+ *
+ * @ets fluent ets/Cause dieOption
  */
-export function dieOption<E>(self: Cause<E>): O.Option<unknown> {
-  return find_(self, (cause) => (isDieType(cause) ? O.some(cause.value) : O.none))
+export function dieOption<E>(self: Cause<E>): Option<unknown> {
+  return self.find((cause) =>
+    cause.isDieType() ? Option.some(cause.value) : Option.none
+  )
 }

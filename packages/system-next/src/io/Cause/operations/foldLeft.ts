@@ -1,15 +1,17 @@
-import type * as O from "../../../data/Option/core"
+import type { Option } from "../../../data/Option/core"
 import { Stack } from "../../../data/Stack"
 import type { Cause, RealCause } from "../definition"
 import { realCause } from "../definition"
 
 /**
  * Folds over the cause to statefully compute a value.
+ *
+ * @ets fluent ets/Cause foldLeft
  */
-export function reduceLeft_<E, Z>(
+export function foldLeft_<E, Z>(
   self: Cause<E>,
   initial: Z,
-  f: (z: Z, cause: Cause<E>) => O.Option<Z>
+  f: (z: Z, cause: Cause<E>) => Option<Z>
 ): Z {
   let acc: Z = initial
   realCause(self)
@@ -58,11 +60,8 @@ export function reduceLeft_<E, Z>(
 /**
  * Folds over the cause to statefully compute a value.
  *
- * @ets_data_first reduceLeft_
+ * @ets_data_first foldLeft_
  */
-export function reduceLeft<E, Z>(
-  initial: Z,
-  f: (z: Z, cause: Cause<E>) => O.Option<Z>
-) {
-  return (self: Cause<E>): Z => reduceLeft_(self, initial, f)
+export function foldLeft<E, Z>(initial: Z, f: (z: Z, cause: Cause<E>) => Option<Z>) {
+  return (self: Cause<E>): Z => foldLeft_(self, initial, f)
 }

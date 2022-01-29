@@ -5,6 +5,8 @@ import { mapTrace_ } from "./mapTrace"
 
 /**
  * Adds the specified execution trace to traces.
+ *
+ * @ets fluent ets/Cause traced
  */
 export function traced_<E>(self: Cause<E>, trace: Trace): Cause<E> {
   return mapTrace_(self, combine(trace))

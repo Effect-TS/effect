@@ -1,10 +1,11 @@
-import { none } from "../../../io/Trace/operations/none"
+import * as Trace from "../../../io/Trace/operations/none"
 import type { Cause } from "../definition"
-import { mapTrace_ } from "./mapTrace"
 
 /**
  * Returns a `Cause` that has been stripped of all tracing information.
+ *
+ * @ets fluent ets/Cause untraced
  */
 export function untraced<E>(self: Cause<E>): Cause<E> {
-  return mapTrace_(self, () => none)
+  return self.mapTrace(() => Trace.none)
 }

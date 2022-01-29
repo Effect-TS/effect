@@ -1,15 +1,14 @@
 import type { Trace } from "../../../io/Trace/definition"
-import type { Cause } from "../definition"
-import { Both, Die, empty, Fail, Interrupt, Stackless, Then } from "../definition"
-import { fold_ } from "./fold"
+import { Both, Cause, Die, Fail, Interrupt, Stackless, Then } from "../definition"
 
 /**
  * Transforms the traces in this cause with the specified function.
+ *
+ * @ets fluent ets/Cause mapTrace
  */
 export function mapTrace_<E>(self: Cause<E>, f: (trace: Trace) => Trace): Cause<E> {
-  return fold_<E, Cause<E>>(
-    self,
-    () => empty,
+  return self.fold<E, Cause<E>>(
+    Cause.empty,
     (e, trace) => new Fail(e, f(trace)),
     (d, trace) => new Die(d, f(trace)),
     (fiberId, trace) => new Interrupt(fiberId, f(trace)),

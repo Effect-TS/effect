@@ -1,7 +1,9 @@
 /* eslint-disable prefer-const */
 
 import * as Tp from "../../collection/immutable/Tuple"
+import type { Lazy, LazyArg } from "../../data/Function"
 import { Stack } from "../../data/Stack"
+import type * as UT from "../../data/Utils/types"
 import { _A, _U } from "../../support/Symbols"
 
 /**
@@ -12,10 +14,25 @@ import { _A, _U } from "../../support/Symbols"
  * it is internally used to suspend recursive procedures but can be
  * useful whenever you need a fast sync computation that cannot fail
  * and that doesn't require any environment.
+ *
+ * @ets type ets/IO
  */
 export type IO<A> = Succeed<A> | FlatMap<any, A> | Suspend<A>
 
-export const IoURI = Symbol()
+/**
+ * @ets type ets/IOOps
+ */
+export interface IOOps {}
+export const IO: IOOps = {}
+
+/**
+ * @ets unify ets/IO
+ */
+export function unify<X extends IO<any>>(self: X): IO<UT._A<X>> {
+  return self
+}
+
+export const IoURI = Symbol.for("@effect-ts/system/io-light/IO")
 export type IoURI = typeof IoURI
 
 abstract class Base<A> {
@@ -34,7 +51,7 @@ class Succeed<A> extends Base<A> {
 class Suspend<A> extends Base<A> {
   readonly _iotag = "Suspend"
 
-  constructor(readonly f: () => IO<A>) {
+  constructor(readonly f: Lazy<IO<A>>) {
     super()
   }
 }
@@ -48,7 +65,9 @@ class FlatMap<A, B> extends Base<A> {
 }
 
 /**
- * Runs this computation
+ * Runs this computation.
+ *
+ * @ets fluent ets/IO run
  */
 export function run<A>(self: IO<A>): A {
   let stack: Stack<(e: any) => IO<any>> | undefined = undefined
@@ -96,6 +115,17 @@ export function run<A>(self: IO<A>): A {
  * result of this computation by running the first computation, using its
  * result to generate a second computation, and running that computation.
  *
+ * @ets fluent ets/IO flatMap
+ */
+export function chain_<A, B>(self: IO<A>, f: (a: A) => IO<B>): IO<B> {
+  return new FlatMap(self, f)
+}
+
+/**
+ * Extends this computation with another computation that depends on the
+ * result of this computation by running the first computation, using its
+ * result to generate a second computation, and running that computation.
+ *
  * @ets_data_first chain_
  */
 export function chain<A, B>(f: (a: A) => IO<B>) {
@@ -103,12 +133,12 @@ export function chain<A, B>(f: (a: A) => IO<B>) {
 }
 
 /**
- * Extends this computation with another computation that depends on the
- * result of this computation by running the first computation, using its
- * result to generate a second computation, and running that computation.
+ * Returns a computation that effectfully "peeks" at the success of this one.
+ *
+ * @ets fluent ets/IO tap
  */
-export function chain_<A, B>(self: IO<A>, f: (a: A) => IO<B>): IO<B> {
-  return new FlatMap(self, f)
+export function tap_<A>(self: IO<A>, f: (a: A) => IO<any>): IO<A> {
+  return self.flatMap((a) => f(a).map(() => a))
 }
 
 /**
@@ -121,26 +151,32 @@ export function tap<A>(f: (a: A) => IO<any>) {
 }
 
 /**
- * Returns a computation that effectfully "peeks" at the success of this one.
+ * Constructs a computation that always succeeds with the specified value.
+ *
+ * @ets static ets/IOOps succeedNow
  */
-export function tap_<A>(self: IO<A>, f: (a: A) => IO<any>): IO<A> {
-  return chain_(self, (a) => map_(f(a), () => a))
+export function succeedNow<A>(a: A): IO<A> {
+  return new Succeed(a)
 }
 
 /**
- * Constructs a computation that always succeeds with the specified value.
+ * Lift a sync (non failable) computation.
+ *
+ * @ets static ets/IOOps succeed
  */
-export function succeed<A>(a: A): IO<A> {
-  return new Succeed(a)
+export function succeed<A>(f: LazyArg<A>) {
+  return IO.suspend(succeedNow(f()))
 }
 
 /**
  * Extends this computation with another computation that depends on the
  * result of this computation by running the first computation, using its
  * result to generate a second computation, and running that computation.
+ *
+ * @ets fluent ets/IO map
  */
 export function map_<A, B>(self: IO<A>, f: (a: A) => B) {
-  return chain_(self, (a) => succeed(f(a)))
+  return self.flatMap((a) => IO.succeedNow(f(a)))
 }
 
 /**
@@ -163,6 +199,16 @@ export const unit: IO<void> = new Succeed(undefined)
  * Combines this computation with the specified computation combining the
  * results of both using the specified function.
  *
+ * @ets fluent ets/IO zipWith
+ */
+export function zipWith_<A, B, C>(self: IO<A>, that: IO<B>, f: (a: A, b: B) => C) {
+  return self.flatMap((a) => that.map((b) => f(a, b)))
+}
+
+/**
+ * Combines this computation with the specified computation combining the
+ * results of both using the specified function.
+ *
  * @ets_data_first zipWith_
  */
 export function zipWith<A, B, C>(that: IO<B>, f: (a: A, b: B) => C) {
@@ -171,10 +217,12 @@ export function zipWith<A, B, C>(that: IO<B>, f: (a: A, b: B) => C) {
 
 /**
  * Combines this computation with the specified computation combining the
- * results of both using the specified function.
+ * results of both into a tuple.
+ *
+ * @ets fluent ets/IO zip
  */
-export function zipWith_<A, B, C>(self: IO<A>, that: IO<B>, f: (a: A, b: B) => C) {
-  return chain_(self, (a) => map_(that, (b) => f(a, b)))
+export function zip_<A, B>(self: IO<A>, that: IO<B>) {
+  return self.zipWith(that, Tp.tuple)
 }
 
 /**
@@ -188,25 +236,12 @@ export function zip<B>(that: IO<B>) {
 }
 
 /**
- * Combines this computation with the specified computation combining the
- * results of both into a tuple.
+ * Suspend a computation, useful in recursion.
+ *
+ * @ets static ets/IOOps suspend
  */
-export function zip_<A, B>(self: IO<A>, that: IO<B>) {
-  return zipWith_(self, that, Tp.tuple)
-}
-
-/**
- * Suspend a computation, useful in recursion
- */
-export function suspend<A>(f: () => IO<A>): IO<A> {
+export function suspend<A>(f: LazyArg<IO<A>>): IO<A> {
   return new Suspend(f)
-}
-
-/**
- * Lift a sync (non failable) computation
- */
-export function succeedWith<A>(f: () => A) {
-  return suspend(() => succeed<A>(f()))
 }
 
 export class GenIO<A> {
@@ -238,11 +273,13 @@ function run_<Eff extends GenIO<any>, AEff>(
 
 /**
  * Generator
+ *
+ * @ets static ets/IOOps gen
  */
 export function gen<Eff extends GenIO<any>, AEff>(
   f: (i: { <A>(_: IO<A>): GenIO<A> }) => Generator<Eff, AEff, any>
 ): IO<AEff> {
-  return suspend(() => {
+  return IO.suspend(() => {
     const iterator = f(adapter)
     const state = iterator.next()
 

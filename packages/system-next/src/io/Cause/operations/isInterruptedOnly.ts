@@ -1,17 +1,17 @@
-import * as O from "../../../data/Option/core"
+import { constTrue } from "../../../data/Function"
+import { Option } from "../../../data/Option/core"
 import type { Cause } from "../definition"
-import { isDieType, isFailType } from "../definition"
-import { find_ } from "./find"
 
 /**
  * Determines if the `Cause` contains only interruptions and not any `Die` or
  * `Fail` causes.
+ *
+ * @ets fluent ets/Cause isInterruptedOnly
  */
 export function isInterruptedOnly<E>(self: Cause<E>): boolean {
-  return O.getOrElse_(
-    find_(self, (cause) =>
-      isDieType(cause) || isFailType(cause) ? O.some(false) : O.none
-    ),
-    () => true
-  )
+  return self
+    .find((cause) =>
+      cause.isDieType() || cause.isFailType() ? Option.some(false) : Option.none
+    )
+    .getOrElse(constTrue)
 }

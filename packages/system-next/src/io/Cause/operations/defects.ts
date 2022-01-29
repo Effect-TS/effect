@@ -1,16 +1,16 @@
 import * as L from "../../../collection/immutable/List/core"
-import * as O from "../../../data/Option/core"
+import { Option } from "../../../data/Option/core"
 import type { Cause } from "../definition"
-import { isDieType } from "../definition"
-import { reduceLeft_ } from "./reduceLeft"
 
 /**
  * Extracts a list of non-recoverable errors from the `Cause`.
+ *
+ * @ets fluent ets/Cause defects
  */
 export function defects<E>(self: Cause<E>): L.List<unknown> {
   return L.reverse(
-    reduceLeft_(self, L.empty<unknown>(), (causes, cause) =>
-      isDieType(cause) ? O.some(L.prepend_(causes, cause.value)) : O.none
+    self.foldLeft(L.empty<unknown>(), (causes, cause) =>
+      cause.isDieType() ? Option.some(L.prepend_(causes, cause.value)) : Option.none
     )
   )
 }

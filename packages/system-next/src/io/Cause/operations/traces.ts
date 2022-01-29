@@ -1,26 +1,27 @@
 import * as L from "../../../collection/immutable/List/core"
-import * as O from "../../../data/Option/core"
+import { Option } from "../../../data/Option/core"
 import type { Trace } from "../../../io/Trace/definition"
 import type { Cause } from "../definition"
 import { realCause } from "../definition"
-import { reduceLeft_ } from "./reduceLeft"
 
 /**
  * Grabs a list of execution traces from the cause.
+ *
+ * @ets fluent ets/Cause traces
  */
 export function traces<E>(self: Cause<E>): L.List<Trace> {
   return L.reverse(
-    reduceLeft_(self, L.empty<Trace>(), (acc, curr) => {
+    self.foldLeft(L.empty<Trace>(), (acc, curr) => {
       realCause(curr)
       switch (curr._tag) {
         case "Die":
-          return O.some(L.prepend_(acc, curr.trace))
+          return Option.some(L.prepend_(acc, curr.trace))
         case "Fail":
-          return O.some(L.prepend_(acc, curr.trace))
+          return Option.some(L.prepend_(acc, curr.trace))
         case "Interrupt":
-          return O.some(L.prepend_(acc, curr.trace))
+          return Option.some(L.prepend_(acc, curr.trace))
         default:
-          return O.some(acc)
+          return Option.some(acc)
       }
     })
   )
