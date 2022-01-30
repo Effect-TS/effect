@@ -329,11 +329,11 @@ function alterAnnotationRec_<A, B>(
         const altered = f(x.annotation)
         if (O.isSome(altered)) {
           return pushAnnotation_(
-            yield* _(alterAnnotationRec_(f, A.cons_(stack, DontRemove), x.stream)),
+            yield* _(alterAnnotationRec_(f, A.prepend_(stack, DontRemove), x.stream)),
             altered.value
           )
         }
-        return yield* _(alterAnnotationRec_(f, A.cons_(stack, Remove), x.stream))
+        return yield* _(alterAnnotationRec_(f, A.prepend_(stack, Remove), x.stream))
       }
       case "PopAnnotationStream": {
         if (A.isEmpty(stack)) {
@@ -361,7 +361,7 @@ export function alterAnnotation_<A, B>(
   stream: DocStream<A>,
   f: (a: A) => Option<B>
 ): DocStream<B> {
-  return IO.run(alterAnnotationRec_(f, A.empty, stream))
+  return IO.run(alterAnnotationRec_(f, A.empty(), stream))
 }
 
 /**

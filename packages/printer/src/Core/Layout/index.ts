@@ -561,21 +561,21 @@ function compactRec<A>(docs: Array<Doc<A>>, i: number): IO.IO<DocStream<A>> {
           return DS.line_(s, 0)
         }
         case "FlatAlt":
-          return yield* _(compactRec(A.cons_(rest, x.left), i))
+          return yield* _(compactRec(A.prepend_(rest, x.left), i))
         case "Cat":
-          return yield* _(compactRec(A.cons_(A.cons_(rest, x.right), x.left), i))
+          return yield* _(compactRec(A.prepend_(A.prepend_(rest, x.right), x.left), i))
         case "Nest":
-          return yield* _(compactRec(A.cons_(rest, x.doc), i))
+          return yield* _(compactRec(A.prepend_(rest, x.doc), i))
         case "Union":
-          return yield* _(compactRec(A.cons_(rest, x.right), i))
+          return yield* _(compactRec(A.prepend_(rest, x.right), i))
         case "Column":
-          return yield* _(compactRec(A.cons_(rest, x.react(i)), i))
+          return yield* _(compactRec(A.prepend_(rest, x.react(i)), i))
         case "WithPageWidth":
-          return yield* _(compactRec(A.cons_(rest, x.react(PW.unbounded)), i))
+          return yield* _(compactRec(A.prepend_(rest, x.react(PW.unbounded)), i))
         case "Nesting":
-          return yield* _(compactRec(A.cons_(rest, x.react(0)), i))
+          return yield* _(compactRec(A.prepend_(rest, x.react(0)), i))
         case "Annotated":
-          return yield* _(compactRec(A.cons_(rest, x.doc), i))
+          return yield* _(compactRec(A.prepend_(rest, x.doc), i))
       }
     }
     return DS.empty

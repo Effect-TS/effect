@@ -62,7 +62,7 @@ function renderRec(stack: Array<Style>, x: DocStream<Style>): IO.IO<string> {
       case "PushAnnotationStream": {
         const currentStyle = unsafePeek(stack)
         const nextStyle = S.Identity.combine(x.annotation, currentStyle)
-        const rest = yield* _(renderRec(A.cons_(stack, x.annotation), x.stream))
+        const rest = yield* _(renderRec(A.prepend_(stack, x.annotation), x.stream))
         return S.Show.show(nextStyle) + rest
       }
       case "PopAnnotationStream": {

@@ -4,28 +4,24 @@
   "license": "MIT",
   "repository": "https://github.com/Effect-TS/printer.git",
   "homepage": "https://www.matechs.com",
-  "private": false,
   "scripts": {
-    "clean": "rimraf build tsbuildinfo",
-    "build:lib": "ttsc --build  tsconfig.build.json && build-utils package",
-    "build:es6": "ttsc --build  tsconfig.es6.json && babel build/esm/ -d build/esm/ -s --plugins annotate-pure-calls && build-utils package-esm",
-    "build:post-process": "build-utils rewrite-source-maps && build-utils rewrite-locals && yarn prettier:lib",
-    "build": "yarn run build:lib && yarn run build:es6&& yarn run build:post-process",
-    "lint": "eslint . --ext .ts,.tsx",
+    "clean": "yarn ets:rimraf build tsbuildinfo dist",
+    "build-cjs": "yarn ets:tsc -p tsconfig.build.cjs.json",
+    "build-esm": "yarn ets:tsc -p tsconfig.build.esm.json",
+    "build-post": "yarn ets:build-utils pack",
+    "build": "yarn ets:concurrently \"yarn build-cjs\" \"yarn build-esm\" && yarn build-post",
+    "lint": "yarn ets:eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
-    "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
-    "prettier:lib": "prettier --write \"./build/**/*.js\"",
-    "tc": "tsc --noEmit",
-    "demo": "ts-node --compiler ttypescript --project tsconfig.build.json",
-    "circular": "madge --circular --ts-config ./tsconfig.build.json --extensions ts ./src"
+    "prettier": "yarn ets:prettier --write \"./{src,test,demo}/**/*.ts\"",
+    "tc": "yarn ets:tsc --noEmit"
   },
   "publishConfig": {
     "access": "public",
-    "directory": "build"
+    "directory": "dist"
   },
   "sideEffects": false,
   "peerDependencies": {
-    "@effect-ts/core": "^0.44.11"
+    "@effect-ts/core": "^0.53.0"
   },
   "config": {
     "side": [],

@@ -1752,7 +1752,7 @@ export function encloseSep_<A, B, C, D>(
   if (docs.length === 0) return cat_(left, right)
   if (docs.length === 1) return cat_(left, cat_(docs[0]!, right))
   const xs = A.zipWith_(
-    A.cons_(A.replicate_(docs.length - 1, sep), left as Doc<A | C>),
+    A.prepend_(A.replicate_(docs.length - 1, sep), left as Doc<A | C>),
     docs,
     cat_
   )

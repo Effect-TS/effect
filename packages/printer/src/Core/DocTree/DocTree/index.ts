@@ -352,7 +352,7 @@ export function reAnnotate<A, B>(f: (a: A) => B) {
  * Remove all annotations from a `DocTree`.
  */
 export function unAnnotate<A>(tree: DocTree<A>): DocTree<never> {
-  return alterAnnotations_(tree, constant(A.empty))
+  return alterAnnotations_(tree, constant(A.empty()))
 }
 
 export const map_: <A, B>(tree: DocTree<A>, f: (a: A) => B) => DocTree<B> = reAnnotate_
@@ -406,11 +406,11 @@ function getParser<A>() {
       const head = yield* _(parser)
 
       return yield* _(
-        orElse(() => succeed(A.emptyOf<DocTree<A>>()))(
+        orElse(() => succeed(A.empty<DocTree<A>>()))(
           CRec.chainRec((acc: Array<DocTree<A>>) =>
             pipe(
               parser,
-              M.map((a) => E.left(A.snoc_(acc, a))),
+              M.map((a) => E.left(A.append_(acc, a))),
               orElse(() => succeed(E.right(acc)))
             )
           )(A.single(head))
