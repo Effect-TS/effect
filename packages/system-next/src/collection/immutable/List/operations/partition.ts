@@ -1,5 +1,5 @@
 import type { Predicate, Refinement } from "../../../../data/Function"
-import * as Tp from "../../Tuple"
+import { Tuple } from "../../Tuple"
 import type { List } from "../definition"
 import { MutableList } from "../definition"
 
@@ -14,17 +14,14 @@ import { MutableList } from "../definition"
 export function partition_<A, B extends A>(
   self: List<A>,
   f: Refinement<A, B>
-): Tp.Tuple<[List<B>, List<Exclude<A, B>>]>
+): Tuple<[List<B>, List<Exclude<A, B>>]>
+export function partition_<A>(self: List<A>, f: Predicate<A>): Tuple<[List<A>, List<A>]>
 export function partition_<A>(
   self: List<A>,
   f: Predicate<A>
-): Tp.Tuple<[List<A>, List<A>]>
-export function partition_<A>(
-  self: List<A>,
-  f: Predicate<A>
-): Tp.Tuple<[List<A>, List<A>]> {
+): Tuple<[List<A>, List<A>]> {
   return self.reduce(
-    Tp.tuple(MutableList.emptyPushable<A>(), MutableList.emptyPushable<A>()),
+    Tuple(MutableList.emptyPushable<A>(), MutableList.emptyPushable<A>()),
     (acc, a) => (f(a) ? acc.get(0).push(a) : acc.get(1).push(a), acc)
   )
 }
@@ -39,10 +36,10 @@ export function partition_<A>(
  */
 export function partition<A, B extends A>(
   f: Refinement<A, B>
-): (self: List<A>) => Tp.Tuple<[List<B>, List<Exclude<A, B>>]>
+): (self: List<A>) => Tuple<[List<B>, List<Exclude<A, B>>]>
 export function partition<A>(
   f: Predicate<A>
-): (self: List<A>) => Tp.Tuple<[List<A>, List<A>]>
+): (self: List<A>) => Tuple<[List<A>, List<A>]>
 export function partition<A>(f: Predicate<A>) {
-  return (self: List<A>): Tp.Tuple<[List<A>, List<A>]> => self.partition(f)
+  return (self: List<A>): Tuple<[List<A>, List<A>]> => self.partition(f)
 }

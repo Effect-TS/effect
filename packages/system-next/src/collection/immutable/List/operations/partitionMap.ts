@@ -1,5 +1,5 @@
 import type { Either } from "../../../../data/Either"
-import * as Tp from "../../Tuple"
+import { Tuple } from "../../Tuple"
 import type { List } from "../definition"
 import { MutableList } from "../definition"
 
@@ -13,9 +13,9 @@ import { MutableList } from "../definition"
 export function partitionMap_<A, B, C>(
   self: List<A>,
   f: (a: A) => Either<B, C>
-): Tp.Tuple<[List<B>, List<C>]> {
+): Tuple<[List<B>, List<C>]> {
   return self.reduce(
-    Tp.tuple(MutableList.emptyPushable<B>(), MutableList.emptyPushable<C>()),
+    Tuple(MutableList.emptyPushable<B>(), MutableList.emptyPushable<C>()),
     (acc, a) => {
       const fa = f(a)
       if (fa._tag === "Left") {
@@ -36,5 +36,5 @@ export function partitionMap_<A, B, C>(
  * @ets_data_first partitionMap_
  */
 export function partitionMap<A, B, C>(f: (a: A) => Either<B, C>) {
-  return (self: List<A>): Tp.Tuple<[List<B>, List<C>]> => self.partitionMap(f)
+  return (self: List<A>): Tuple<[List<B>, List<C>]> => self.partitionMap(f)
 }

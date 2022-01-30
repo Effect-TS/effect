@@ -1,5 +1,5 @@
 import type { Predicate } from "../../../../data/Function"
-import * as Tp from "../../Tuple"
+import { Tuple } from "../../Tuple"
 import { List } from "../definition"
 
 /**
@@ -12,9 +12,9 @@ import { List } from "../definition"
 export function splitWhen_<A>(
   self: List<A>,
   f: Predicate<A>
-): Tp.Tuple<[List<A>, List<A>]> {
+): Tuple<[List<A>, List<A>]> {
   const idx = self.findIndex(f)
-  return idx === -1 ? Tp.tuple(self, List.empty()) : self.splitAt(idx)
+  return idx === -1 ? Tuple(self, List.empty()) : self.splitAt(idx)
 }
 
 /**
@@ -25,5 +25,5 @@ export function splitWhen_<A>(
  * @ets_data_first splitWhen_
  */
 export function splitWhen<A>(f: Predicate<A>) {
-  return (self: List<A>): Tp.Tuple<[List<A>, List<A>]> => self.splitWhen(f)
+  return (self: List<A>): Tuple<[List<A>, List<A>]> => self.splitWhen(f)
 }

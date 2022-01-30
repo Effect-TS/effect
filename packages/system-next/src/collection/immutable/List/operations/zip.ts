@@ -1,4 +1,4 @@
-import * as Tp from "../../Tuple"
+import { Tuple } from "../../Tuple"
 import type { List } from "../definition"
 
 /**
@@ -8,8 +8,8 @@ import type { List } from "../definition"
  * list.
  * @ets fluent ets/List zip
  */
-export function zip_<A, B>(self: List<A>, that: List<B>): List<Tp.Tuple<[A, B]>> {
-  return self.zipWith(that, Tp.tuple)
+export function zip_<A, B>(self: List<A>, that: List<B>): List<Tuple<[A, B]>> {
+  return self.zipWith(that, (a, b) => Tuple(a, b))
 }
 
 /**
@@ -20,5 +20,5 @@ export function zip_<A, B>(self: List<A>, that: List<B>): List<Tp.Tuple<[A, B]>>
  * @ets_data_first zip_
  */
 export function zip<B>(that: List<B>) {
-  return <A>(self: List<A>): List<Tp.Tuple<[A, B]>> => self.zip(that)
+  return <A>(self: List<A>): List<Tuple<[A, B]>> => self.zip(that)
 }

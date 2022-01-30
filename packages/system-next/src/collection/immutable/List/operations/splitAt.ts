@@ -1,4 +1,4 @@
-import * as Tp from "../../Tuple"
+import { Tuple } from "../../Tuple"
 import type { List } from "../definition"
 
 /**
@@ -10,11 +10,8 @@ import type { List } from "../definition"
  * @complexity `O(log(n))`
  * @ets fluent ets/List splitAt
  */
-export function splitAt_<A>(
-  self: List<A>,
-  index: number
-): Tp.Tuple<[List<A>, List<A>]> {
-  return Tp.tuple(self.slice(0, index), self.slice(index, self.length))
+export function splitAt_<A>(self: List<A>, index: number): Tuple<[List<A>, List<A>]> {
+  return Tuple(self.slice(0, index), self.slice(index, self.length))
 }
 
 /**
@@ -27,5 +24,5 @@ export function splitAt_<A>(
  * @ets_data_first splitAt_
  */
 export function splitAt(index: number) {
-  return <A>(self: List<A>): Tp.Tuple<[List<A>, List<A>]> => self.splitAt(index)
+  return <A>(self: List<A>): Tuple<[List<A>, List<A>]> => self.splitAt(index)
 }
