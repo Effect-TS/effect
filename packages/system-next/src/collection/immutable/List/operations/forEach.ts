@@ -11,7 +11,7 @@ import type { List } from "../definition"
  *
  * @complexity O(n)
  *
- * @ets fluent ets/List forEach
+ * @tsplus fluent ets/List forEach
  */
 export function forEach_<A>(self: List<A>, f: (a: A) => void): void {
   self.reduce(undefined as void, (_, a) => f(a))

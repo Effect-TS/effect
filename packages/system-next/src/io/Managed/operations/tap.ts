@@ -3,7 +3,7 @@ import type { Managed } from "../definition"
 /**
  * Returns a managed that effectfully peeks at the acquired resource.
  *
- * @ets fluent ets/Managed tap
+ * @tsplus fluent ets/Managed tap
  */
 export function tap_<A, R, R2, E, E2, X>(
   self: Managed<R, E, A>,

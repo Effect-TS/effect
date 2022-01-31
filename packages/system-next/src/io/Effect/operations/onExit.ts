@@ -5,7 +5,7 @@ import { Effect } from "../definition"
  * Ensures that a cleanup functions runs, whether this effect succeeds, fails,
  * or is interrupted.
  *
- * @ets fluent ets/Effect onExit
+ * @tsplus fluent ets/Effect onExit
  */
 export function onExit_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,

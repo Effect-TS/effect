@@ -10,7 +10,7 @@ import { ISuspendWith } from "../definition"
  * `flatten(succeed(effect))`. If you wonder if the effect throws
  * exceptions, do not use this method, use `suspend`.
  *
- * @ets static ets/EffectOps suspendSucceedWith
+ * @tsplus static ets/EffectOps suspendSucceedWith
  */
 export function suspendSucceedWith<R, E, A>(
   f: (runtimeConfig: RuntimeConfig, fiberId: FiberId) => Effect<R, E, A>,

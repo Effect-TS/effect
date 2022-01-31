@@ -7,7 +7,7 @@ import type { Effect } from "../definition"
  *
  * This method can be used to "flatten" nested effects.
  *
- * @ets fluent ets/Effect flatten
+ * @tsplus fluent ets/Effect flatten
  */
 export function flatten<R, E, R1, E1, A>(
   self: Effect<R, E, Effect<R1, E1, A>>,

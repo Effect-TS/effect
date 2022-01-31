@@ -4,7 +4,7 @@ import { Managed } from "../definition"
  * Transforms the environment being provided to this effect with the specified
  * function.
  *
- * @ets fluent ets/Managed provideSomeEnvironment
+ * @tsplus fluent ets/Managed provideSomeEnvironment
  */
 export function provideSomeEnvironment_<R0, R, E, A>(
   self: Managed<R, E, A>,

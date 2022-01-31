@@ -13,7 +13,7 @@ import { Effect } from "../definition"
  * yielding the value of the first effect to succeed with a value. Losers of
  * the race will be interrupted immediately
  *
- * @ets fluent ets/Effect raceAll
+ * @tsplus fluent ets/Effect raceAll
  */
 export function raceAll_<R, E, A>(
   self: Effect<R, E, A>,

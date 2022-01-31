@@ -5,7 +5,7 @@ import { List, MutableList } from "../definition"
  * in all positions.
  *
  * @complexity O(n)
- * @ets static ets/ListOps repeat
+ * @tsplus static ets/ListOps repeat
  */
 export function repeat_<A>(value: A, times: number): List<A> {
   const mutableList = MutableList.emptyPushable<A>()

@@ -28,7 +28,7 @@ export function bind<R, E, A, K, N extends string>(
 /**
  * Binds an effectful value in a `do` scope
  *
- * @ets fluent ets/Effect bind
+ * @tsplus fluent ets/Effect bind
  */
 export function bind_<R2, E2, R, E, A, K, N extends string>(
   mk: Effect<R2, E2, K>,
@@ -86,7 +86,7 @@ export function bindValue<A, K, N extends string>(
 /**
  * Like bind for values
  *
- * @ets fluent ets/Effect bindValue
+ * @tsplus fluent ets/Effect bindValue
  */
 export function bindValue_<R2, E2, A, K, N extends string>(
   mk: Effect<R2, E2, K>,
@@ -116,7 +116,7 @@ export function bindValue_<R2, E2, A, K, N extends string>(
 }
 
 /**
- * @ets static ets/EffectOps Do
+ * @tsplus static ets/EffectOps Do
  */
 export function Do() {
   return Effect.succeedNow({})

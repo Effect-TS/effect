@@ -5,7 +5,7 @@ import { Managed } from "../definition"
 /**
  * Provides a layer to the effect, which translates it to another level.
  *
- * @ets fluent ets/Managed provideLayer
+ * @tsplus fluent ets/Managed provideLayer
  */
 export function provideLayer_<R, E, A, E1, A1>(
   self: Managed<A, E1, A1>,

@@ -5,7 +5,7 @@ import type { List } from "../definition"
  * `undefined` is returned.
  *
  * @complexity O(log(n))
- * @ets fluent ets/List unsafeNth
+ * @tsplus fluent ets/List unsafeNth
  */
 export function unsafeNth_<A>(self: List<A>, index: number): A | undefined {
   return self.nth(index).value

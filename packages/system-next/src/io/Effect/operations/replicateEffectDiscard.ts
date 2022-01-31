@@ -4,7 +4,7 @@ import { Effect } from "../definition"
  * Performs this effect the specified number of times, discarding the
  * results.
  *
- * @ets fluent ets/Effect replicateEffectDiscard
+ * @tsplus fluent ets/Effect replicateEffectDiscard
  */
 export function replicateEffectDiscard_<R, E, A>(
   self: Effect<R, E, A>,

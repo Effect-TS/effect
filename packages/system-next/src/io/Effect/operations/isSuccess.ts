@@ -4,7 +4,7 @@ import type { Effect, RIO } from "../definition"
 /**
  * Returns whether this effect is a success.
  *
- * @ets fluent ets/Effect isSuccess
+ * @tsplus fluent ets/Effect isSuccess
  */
 export function isSuccess<R, E, A>(
   self: Effect<R, E, A>,

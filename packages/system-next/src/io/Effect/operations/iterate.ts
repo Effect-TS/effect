@@ -13,7 +13,7 @@ import { Effect } from "../definition"
  * return s
  * ```
  *
- * @ets static ets/EffectOps iterate
+ * @tsplus static ets/EffectOps iterate
  */
 export function iterate<Z>(initial: Z, cont: (z: Z) => boolean) {
   return <R, E>(

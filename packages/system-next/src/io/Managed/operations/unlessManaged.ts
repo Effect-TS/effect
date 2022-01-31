@@ -5,7 +5,7 @@ import { Managed } from "../definition"
 /**
  * The moral equivalent of `if (!p) exp` when `p` has side-effects.
  *
- * @ets fluent ets/Managed unlessManaged
+ * @tsplus fluent ets/Managed unlessManaged
  */
 export function unlessManaged_<R, E, A, R2, E2>(
   self: Managed<R, E, A>,

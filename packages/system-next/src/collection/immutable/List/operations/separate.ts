@@ -8,7 +8,7 @@ import type { List } from "../definition"
  * and one contains the rights
  *
  * @complexity O(n)
- * @ets fluent ets/List separate
+ * @tsplus fluent ets/List separate
  */
 export function separate<B, C>(self: List<Either<B, C>>): Tuple<[List<B>, List<C>]> {
   return self.partitionMap(identity)

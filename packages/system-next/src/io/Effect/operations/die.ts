@@ -10,7 +10,7 @@ import { Effect } from "../definition"
  * be used for terminating a fiber because a defect has been detected in the
  * code.
  *
- * @ets static ets/EffectOps dieNow
+ * @tsplus static ets/EffectOps dieNow
  */
 export function die(defect: unknown, __etsTrace?: string): UIO<never> {
   return Effect.failCauseNow(Cause.die(defect, Trace.none))

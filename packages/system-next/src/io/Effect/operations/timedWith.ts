@@ -3,7 +3,7 @@ import type { Effect } from "../definition"
 /**
  * A more powerful variation of `timed` that allows specifying the clock.
  *
- * @ets fluent ets/Effect timedWith
+ * @tsplus fluent ets/Effect timedWith
  */
 export function timedWith_<R, E, A, R2, E2>(
   self: Effect<R, E, A>,

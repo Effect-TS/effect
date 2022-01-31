@@ -6,7 +6,7 @@ import { foldlNode } from "./_internal/node"
 /**
  * Folds a function over a list. Left-associative.
  *
- * @ets fluent ets/List reduce
+ * @tsplus fluent ets/List reduce
  */
 export function reduce_<A, B>(
   self: List<A>,

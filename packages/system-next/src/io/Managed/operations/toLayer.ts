@@ -6,7 +6,7 @@ import type { Managed } from "../definition"
 /**
  * Constructs a layer from this managed resource.
  *
- * @ets fluent ets/Managed toLayer
+ * @tsplus fluent ets/Managed toLayer
  */
 export function toLayer_<R, E, A>(
   self: Managed<R, E, A>,

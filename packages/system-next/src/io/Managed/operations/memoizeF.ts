@@ -16,7 +16,7 @@ import { Managed } from "../definition"
  * returned. All resources acquired by evaluating the function will be
  * released at the end of the scope.
  *
- * @ets static ets/ManagedOps memoize
+ * @tsplus static ets/ManagedOps memoize
  */
 export function memoizeF<R, E, A, B>(
   f: (a: A) => Managed<R, E, B>,

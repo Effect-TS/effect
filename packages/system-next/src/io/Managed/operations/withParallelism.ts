@@ -8,7 +8,7 @@ import type { Managed } from "../definition"
  * number of fibers for parallel operators as the `acquire` action and setting
  * it back to the original value as the `release` action.
  *
- * @ets fluent ets/Managed withParallelism
+ * @tsplus fluent ets/Managed withParallelism
  */
 export function withParallelism_<R, E, A>(
   self: Managed<R, E, A>,

@@ -4,7 +4,7 @@ import type { Managed } from "../definition"
 /**
  * Maps the success value of this effect to an optional value.
  *
- * @ets fluent ets/Managed asSome
+ * @tsplus fluent ets/Managed asSome
  */
 export function asSome<R, E, A>(
   self: Managed<R, E, A>,

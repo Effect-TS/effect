@@ -7,7 +7,7 @@ import { getPrefixSize } from "./_internal/bits"
  * function returns undefined.
  *
  * @complexity O(1)
- * @ets getter ets/List first
+ * @tsplus getter ets/List first
  */
 export function first<A>(self: List<A>): Option<A> {
   const prefixSize = getPrefixSize(self)

@@ -16,7 +16,7 @@ import { Effect } from "../definition"
  * (unsafely) execute tasks. This is useful for integration with legacy code
  * that must call back into ZIO code.
  *
- * @ets static ets/EffectOps runtime
+ * @tsplus static ets/EffectOps runtime
  */
 export function runtime<R>(__etsTrace?: string): RIO<R, Runtime<R>> {
   return Effect.environment<R>().flatMap(
@@ -28,7 +28,7 @@ export function runtime<R>(__etsTrace?: string): RIO<R, Runtime<R>> {
 export type DefaultEnv = HasClock & HasRandom
 
 /**
- * @ets static ets/EffectOps defaultEnv
+ * @tsplus static ets/EffectOps defaultEnv
  */
 export const defaultEnv: DefaultEnv = {
   [HasClock.key]: new LiveClock(),
@@ -36,7 +36,7 @@ export const defaultEnv: DefaultEnv = {
 } as any
 
 /**
- * @ets static ets/EffectOps defaultRuntimeConfig
+ * @tsplus static ets/EffectOps defaultRuntimeConfig
  */
 export const defaultRuntimeConfig: RuntimeConfig = new RuntimeConfig({
   fatal: constFalse,
@@ -59,26 +59,26 @@ export const defaultRuntimeConfig: RuntimeConfig = new RuntimeConfig({
 export const defaultRuntime = new Runtime(defaultEnv, defaultRuntimeConfig)
 
 /**
- * @ets fluent ets/Effect unsafeRunPromise
+ * @tsplus fluent ets/Effect unsafeRunPromise
  */
 export const unsafeRunPromise = defaultRuntime.unsafeRunPromise
 /**
- * @ets fluent ets/Effect unsafeRunAsync
+ * @tsplus fluent ets/Effect unsafeRunAsync
  */
 export const unsafeRunAsync = defaultRuntime.unsafeRunAsync
 /**
- * @ets fluent ets/Effect unsafeRunAsyncCancelable
+ * @tsplus fluent ets/Effect unsafeRunAsyncCancelable
  */
 export const unsafeRunAsyncCancelable = defaultRuntime.unsafeRunAsyncCancelable
 /**
- * @ets fluent ets/Effect unsafeRunAsyncWith
+ * @tsplus fluent ets/Effect unsafeRunAsyncWith
  */
 export const unsafeRunAsyncWith = defaultRuntime.unsafeRunAsyncWith
 /**
- * @ets fluent ets/Effect unsafeRunPromiseExit
+ * @tsplus fluent ets/Effect unsafeRunPromiseExit
  */
 export const unsafeRunPromiseExit = defaultRuntime.unsafeRunPromiseExit
 /**
- * @ets fluent ets/Effect unsafeRunWith
+ * @tsplus fluent ets/Effect unsafeRunWith
  */
 export const unsafeRunWith = defaultRuntime.unsafeRunWith

@@ -7,7 +7,7 @@ import type { Managed } from "../definition"
  * and provides that fiber. The finalizer for this value will interrupt the fiber
  * and run the original finalizer.
  *
- * @ets fluent ets/Managed fork
+ * @tsplus fluent ets/Managed fork
  */
 export function fork<R, E, A>(
   self: Managed<R, E, A>,

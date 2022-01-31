@@ -17,7 +17,7 @@ import { Managed } from "../definition"
  * A.reverse(as)
  * ```
  *
- * @ets static ets/ManagedOps loop
+ * @tsplus static ets/ManagedOps loop
  */
 export function loop<Z>(
   initial: LazyArg<Z>,

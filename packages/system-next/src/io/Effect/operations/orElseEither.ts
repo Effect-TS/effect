@@ -6,7 +6,7 @@ import { Effect } from "../definition"
  * Returns an effect that will produce the value of this effect, unless it
  * fails, in which case, it will produce the value of the specified effect.
  *
- * @ets fluent ets/Effect orElseEither
+ * @tsplus fluent ets/Effect orElseEither
  */
 export function orElseEither_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,

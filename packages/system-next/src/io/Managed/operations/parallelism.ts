@@ -8,7 +8,7 @@ import { Managed } from "../definition"
  * Retrieves the maximum number of fibers for parallel operators or `None` if
  * it is unbounded.
  *
- * @ets static ets/ManagedOps parallelism
+ * @tsplus static ets/ManagedOps parallelism
  */
 export const parallelism: Managed<unknown, never, Option<number>> = Managed.fromEffect(
   Effect.suspendSucceed(fiberRefGet(currentParallelism.value))

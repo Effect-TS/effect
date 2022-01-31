@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * Lifts an `Effect<R, E, A>` into `Managed<R, E, A>` with a release action. The
  * acquire and release actions will be performed uninterruptibly.
  *
- * @ets static ets/ManagedOps acquireReleaseWith
+ * @tsplus static ets/ManagedOps acquireReleaseWith
  */
 export function acquireReleaseWith<R, R1, E, A>(
   acquire: LazyArg<Effect<R, E, A>>,

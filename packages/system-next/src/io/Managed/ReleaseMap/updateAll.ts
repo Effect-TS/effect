@@ -8,7 +8,7 @@ import { Exited, Running } from "./state"
  * Updates the finalizers associated with this scope using the specified
  * function.
  *
- * @ets fluent ets/ReleaseMap updateAll
+ * @tsplus fluent ets/ReleaseMap updateAll
  */
 export function updateAll_(
   self: ReleaseMap,

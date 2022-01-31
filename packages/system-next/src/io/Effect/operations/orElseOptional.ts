@@ -7,7 +7,7 @@ import { Effect } from "../definition"
  * fails with the `None` value, in which case it will produce the value of
  * the specified effect.
  *
- * @ets fluent ets/Effect orElseOptional
+ * @tsplus fluent ets/Effect orElseOptional
  */
 export function orElseOptional_<R, E, A, R2, E2, A2>(
   self: Effect<R, O.Option<E>, A>,

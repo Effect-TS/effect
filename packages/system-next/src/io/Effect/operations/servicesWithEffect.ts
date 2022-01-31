@@ -9,7 +9,7 @@ import { Effect } from "../definition"
 /**
  * Access a record of services with the required service entries monadically.
  *
- * @ets static ets/EffectOps servicesWithEffectS
+ * @tsplus static ets/EffectOps servicesWithEffectS
  */
 export function servicesWithEffectS<SS extends Record<string, Tag<any>>>(s: SS) {
   return <R = unknown, E = never, B = unknown>(
@@ -32,7 +32,7 @@ export function servicesWithEffectS<SS extends Record<string, Tag<any>>>(s: SS) 
 /**
  * Access a tuple of services with the required service entries monadically.
  *
- * @ets static ets/EffectOps servicesWithEffectT
+ * @tsplus static ets/EffectOps servicesWithEffectT
  */
 export function servicesWithEffectT<SS extends Tag<any>[]>(...s: SS) {
   return <R = unknown, E = never, B = unknown>(

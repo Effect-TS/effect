@@ -14,7 +14,7 @@ import { ReleaseMap } from "../ReleaseMap"
  *   - commutative: `f(a, b) == f(b, a)`
  *   - associative: `f(a, f(b, c)) == f(f(a, b), c)`
  *
- * @ets static ets/ManagedOps mergeAllPar
+ * @tsplus static ets/ManagedOps mergeAllPar
  */
 export function mergeAllPar<R, E, A, B>(
   as: LazyArg<Iterable<Managed<R, E, A>>>,

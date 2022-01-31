@@ -14,7 +14,7 @@ import { Managed } from "../definition"
  * return s
  * ```
  *
- * @ets static ets/ManagedOps iterate
+ * @tsplus static ets/ManagedOps iterate
  */
 export function iterate<Z>(initial: LazyArg<Z>) {
   return (cont: (z: Z) => boolean) =>

@@ -7,7 +7,7 @@ import { Managed } from "../definition"
  * A more powerful version of `withEarlyRelease` that allows specifying an
  * exit value in the event of early release.
  *
- * @ets fluent ets/Managed withEarlyReleaseExit
+ * @tsplus fluent ets/Managed withEarlyReleaseExit
  */
 export function withEarlyReleaseExit_<R, E, A>(
   self: Managed<R, E, A>,

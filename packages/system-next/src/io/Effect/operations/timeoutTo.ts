@@ -11,7 +11,7 @@ import { Effect } from "../definition"
  * If the timeout elapses without producing a value, the running effect will
  * be safely interrupted.
  *
- * @ets fluent ets/Effect timeoutTo
+ * @tsplus fluent ets/Effect timeoutTo
  */
 export function timeoutTo_<R, E, A, B, B1>(
   self: Effect<R, E, A>,

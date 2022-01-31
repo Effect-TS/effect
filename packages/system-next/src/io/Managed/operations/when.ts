@@ -5,7 +5,7 @@ import { Managed } from "../definition"
 /**
  * The moral equivalent of `if (p) exp`.
  *
- * @ets fluent ets/Managed when
+ * @tsplus fluent ets/Managed when
  */
 export function when_<R, E, A>(
   self: Managed<R, E, A>,

@@ -8,7 +8,7 @@ import { foldlCb, someCb } from "./_internal/callbacks"
  * which the predicate returns true.
  *
  * @complexity O(n)
- * @ets fluent ets/List some
+ * @tsplus fluent ets/List some
  */
 export function some_<A>(self: List<A>, f: Predicate<A>): boolean {
   return foldlCb<A, PredState>(someCb, { predicate: f, result: false }, self).result

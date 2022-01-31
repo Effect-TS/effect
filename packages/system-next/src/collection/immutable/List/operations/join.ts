@@ -3,7 +3,7 @@ import type { List } from "../definition"
 /**
  * Concats the strings in the list separated by a specified separator.
  *
- * @ets fluent ets/List join
+ * @tsplus fluent ets/List join
  */
 export function join_(self: List<string>, separator: string): string {
   return self.reduce("", (a, b) => (a.length === 0 ? b : a + separator + b))

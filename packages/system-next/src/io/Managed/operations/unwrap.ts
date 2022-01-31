@@ -5,7 +5,7 @@ import { Managed } from "../definition"
 /**
  * Unwraps a `Managed` that is inside an `Effect`.
  *
- * @ets static ets/ManagedOps unwrap
+ * @tsplus static ets/ManagedOps unwrap
  */
 export function unwrap<R, E, A>(
   effect: LazyArg<Effect<R, E, Managed<R, E, A>>>,

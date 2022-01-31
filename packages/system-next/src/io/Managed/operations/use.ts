@@ -5,7 +5,7 @@ import type { Managed } from "../definition"
 /**
  * Run an effect while acquiring the resource before and releasing it after.
  *
- * @ets fluent ets/Managed use
+ * @tsplus fluent ets/Managed use
  */
 export function use_<R, E, A, R2, E2, B>(
   self: Managed<R, E, A>,

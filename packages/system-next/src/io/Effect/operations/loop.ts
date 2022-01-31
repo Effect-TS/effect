@@ -17,7 +17,7 @@ import { Effect } from "../definition"
  * A.reverse(as)
  * ```
  *
- * @ets static ets/EffectOps loop
+ * @tsplus static ets/EffectOps loop
  */
 export function loop<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
   return <R, E, A>(

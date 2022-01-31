@@ -5,7 +5,7 @@ import { Effect } from "../definition"
 /**
  * Access a the specified services in the environment of the effect.
  *
- * @ets static ets/EffectOps services
+ * @tsplus static ets/EffectOps services
  */
 export function services<Ts extends readonly Tag<any>[]>(...s: Ts) {
   return Effect.environmentWith(

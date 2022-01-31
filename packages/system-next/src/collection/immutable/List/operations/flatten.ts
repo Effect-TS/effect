@@ -6,7 +6,7 @@ import { List } from "../definition"
  *
  * @complexity O(n * log(m)), where n is the length of the outer list and m the
  * length of the inner lists.
- * @ets fluent ets/List flatten
+ * @tsplus fluent ets/List flatten
  */
 export function flatten<A>(self: List<List<A>>): List<A> {
   return self.reduce(List.empty(), (a, b) => a + b)

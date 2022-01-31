@@ -13,7 +13,7 @@ import { Effect } from "../definition"
  * }
  * ```
  *
- * @ets static ets/EffectOps loopDiscard
+ * @tsplus static ets/EffectOps loopDiscard
  */
 export function loopDiscard<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
   return <R, E, X>(

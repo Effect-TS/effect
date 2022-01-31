@@ -3,7 +3,7 @@ import { Managed } from "../definition"
 /**
  * Binds an effectful value in a `do` scope.
  *
- * @ets fluent ets/Managed bind
+ * @tsplus fluent ets/Managed bind
  */
 export function bind_<R2, E2, R, E, A, K, N extends string>(
   self: Managed<R2, E2, K>,
@@ -52,7 +52,7 @@ export function bind<R, E, A, K, N extends string>(
 /**
  * Binds a value in a `do` scope.
  *
- * @ets fluent ets/Managed bindValue
+ * @tsplus fluent ets/Managed bindValue
  */
 export function bindValue_<R2, E2, A, K, N extends string>(
   self: Managed<R2, E2, K>,
@@ -99,7 +99,7 @@ export function bindValue<A, K, N extends string>(
 /**
  * Begin a `do` scope.
  *
- * @ets static ets/ManagedOps Do
+ * @tsplus static ets/ManagedOps Do
  */
 export function Do(__etsTrace?: string) {
   return Managed.succeedNow({})

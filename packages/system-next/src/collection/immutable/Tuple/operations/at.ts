@@ -3,7 +3,7 @@ import type { Tuple } from "../definition"
 /**
  * Gets an element from the tuple.
  *
- * @ets fluent ets/Tuple at
+ * @tsplus fluent ets/Tuple at
  */
 export function at_<Ks extends unknown[], I extends keyof Ks>(
   self: Tuple<Ks>,

@@ -5,7 +5,7 @@ import { Effect } from "../definition"
  * Fail with the returned value if the `PartialFunction` matches, otherwise
  * continue with our held value.
  *
- * @ets fluent ets/Effect reject
+ * @tsplus fluent ets/Effect reject
  */
 export function reject_<R, E, A, E1>(
   self: Effect<R, E, A>,

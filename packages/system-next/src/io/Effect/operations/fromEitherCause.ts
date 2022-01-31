@@ -9,7 +9,7 @@ import { Effect } from "../definition"
 /**
  * Lifts an `Either` into an `Effect` value.
  *
- * @ets static ets/EffectOps fromEitherCause
+ * @tsplus static ets/EffectOps fromEitherCause
  */
 export function fromEitherCause<E, A>(
   either: Either<Cause<E>, A>,

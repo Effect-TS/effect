@@ -4,7 +4,7 @@ import { Managed } from "../definition"
 /**
  * Lifts an `Either` into a `Managed` value.
  *
- * @ets static ets/ManagedOps fromEitherNow
+ * @tsplus static ets/ManagedOps fromEitherNow
  */
 export function fromEitherNow<E, A>(
   either: Either<E, A>,

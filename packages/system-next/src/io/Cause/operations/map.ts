@@ -4,7 +4,7 @@ import { Cause } from "../definition"
 /**
  * Transforms the error type of this cause with the specified function.
  *
- * @ets fluent ets/Cause map
+ * @tsplus fluent ets/Cause map
  */
 export function map_<E, E1>(self: Cause<E>, f: (e: E) => E1): Cause<E1> {
   return self.flatMap((e) => Cause.fail(f(e), Trace.none))

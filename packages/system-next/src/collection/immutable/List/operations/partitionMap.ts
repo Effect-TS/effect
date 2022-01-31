@@ -8,7 +8,7 @@ import { MutableList } from "../definition"
  * and one contains the rights
  *
  * @complexity O(n)
- * @ets fluent ets/List partitionMap
+ * @tsplus fluent ets/List partitionMap
  */
 export function partitionMap_<A, B, C>(
   self: List<A>,

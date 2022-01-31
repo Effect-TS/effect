@@ -23,7 +23,7 @@ export type LayerHashSym = typeof LayerHashSym
  * Because of their excellent composition properties, layers are the idiomatic
  * way in Effect-TS to create services that depend on other services.
  *
- * @ets type ets/Layer
+ * @tsplus type ets/Layer
  */
 export interface Layer<RIn, E, ROut> {
   readonly [_RIn]: (_: RIn) => void

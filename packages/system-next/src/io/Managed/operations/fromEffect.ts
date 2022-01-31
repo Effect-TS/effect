@@ -8,7 +8,7 @@ import * as Finalizer from "../ReleaseMap/finalizer"
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with no release action.
  * The effect will be performed interruptibly.
  *
- * @ets static ets/ManagedOps fromEffect
+ * @tsplus static ets/ManagedOps fromEffect
  */
 export function fromEffect<R, E, A>(
   effect: LazyArg<Effect<R, E, A>>,
@@ -26,7 +26,7 @@ export function fromEffect<R, E, A>(
  * effect will be performed uninterruptibly. You usually want the `fromEffect`
  * variant.
  *
- * @ets static ets/ManagedOps fromEffectUninterruptible
+ * @tsplus static ets/ManagedOps fromEffectUninterruptible
  */
 export function fromEffectUninterruptible<R, E, A>(
   effect: LazyArg<Effect<R, E, A>>,

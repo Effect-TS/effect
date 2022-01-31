@@ -4,8 +4,8 @@ import type { Effect } from "../definition"
 /**
  * Sequentially zips this effect with the specified effect
  *
- * @ets operator ets/Effect &
- * @ets fluent ets/Effect zipFlattenPar
+ * @tsplus operator ets/Effect &
+ * @tsplus fluent ets/Effect zipFlattenPar
  */
 export function zipFlattenPar_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,

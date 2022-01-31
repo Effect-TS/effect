@@ -4,7 +4,7 @@ import type { Effect } from "../definition"
 /**
  * Sequentially zips this effect with the specified effect
  *
- * @ets fluent ets/Effect zip
+ * @tsplus fluent ets/Effect zip
  */
 export function zip_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,

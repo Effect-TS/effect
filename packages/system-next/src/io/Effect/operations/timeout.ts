@@ -19,7 +19,7 @@ import type { Effect } from "../definition"
  * timeout, resulting in earliest possible return, before an underlying effect
  * has been successfully interrupted.
  *
- * @ets fluent ets/Effect timeout
+ * @tsplus fluent ets/Effect timeout
  */
 export function timeout_<R, E, E1, A>(
   self: Effect<R, E, A>,

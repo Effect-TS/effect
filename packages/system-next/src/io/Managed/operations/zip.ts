@@ -5,7 +5,7 @@ import type { Managed } from "../definition"
  * Returns a managed that executes both this managed and the specified managed,
  * in sequence, combining their results with the specified `f` function.
  *
- * @ets fluent ets/Managed zip
+ * @tsplus fluent ets/Managed zip
  */
 export function zip_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,

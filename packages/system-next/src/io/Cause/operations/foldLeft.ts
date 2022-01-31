@@ -6,7 +6,7 @@ import { realCause } from "../definition"
 /**
  * Folds over the cause to statefully compute a value.
  *
- * @ets fluent ets/Cause foldLeft
+ * @tsplus fluent ets/Cause foldLeft
  */
 export function foldLeft_<E, Z>(
   self: Cause<E>,

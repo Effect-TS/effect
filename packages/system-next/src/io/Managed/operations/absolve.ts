@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * Submerges the error case of an `Either` into the `Managed`. The inverse
  * operation of `Managed.either`.
  *
- * @ets fluent ets/Managed absolve
+ * @tsplus fluent ets/Managed absolve
  */
 export function absolveNow<R, E, E2, A>(
   self: Managed<R, E, Either<E2, A>>,
@@ -19,7 +19,7 @@ export function absolveNow<R, E, E2, A>(
  * Submerges the error case of an `Either` into the `Managed`. The inverse
  * operation of `Managed.either`.
  *
- * @ets static ets/ManagedOps absolve
+ * @tsplus static ets/ManagedOps absolve
  */
 export function absolve<R, E, E2, A>(
   self: LazyArg<Managed<R, E, Either<E2, A>>>,

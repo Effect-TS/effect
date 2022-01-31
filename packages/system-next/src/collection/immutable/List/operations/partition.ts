@@ -9,7 +9,7 @@ import { MutableList } from "../definition"
  * the values for which it returns `false`.
  *
  * @complexity O(n)
- * @ets fluent ets/List partition
+ * @tsplus fluent ets/List partition
  */
 export function partition_<A, B extends A>(
   self: List<A>,

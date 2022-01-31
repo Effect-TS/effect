@@ -20,7 +20,7 @@ export interface Scope {
  * Creates a scope in which resources can be safely allocated into together
  * with a release action.
  *
- * @ets static ets/ManagedOps scope
+ * @tsplus static ets/ManagedOps scope
  */
 export const scope: Managed<unknown, never, Scope> = Managed.releaseMap.map(
   (finalizers) =>

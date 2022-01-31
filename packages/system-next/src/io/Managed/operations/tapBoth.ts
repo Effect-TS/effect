@@ -3,7 +3,7 @@ import { Managed } from "../definition"
 /**
  * Returns an effect that effectfully peeks at the failure or success of the acquired resource.
  *
- * @ets fluent ets/Managed tapBoth
+ * @tsplus fluent ets/Managed tapBoth
  */
 export function tapBoth_<R, E, A, R1, E1, R2, E2, X, Y>(
   self: Managed<R, E, A>,

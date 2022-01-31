@@ -4,7 +4,7 @@ import type { Cause } from "../definition"
 /**
  * Flattens a nested cause.
  *
- * @ets fluent ets/Cause flatten
+ * @tsplus fluent ets/Cause flatten
  */
 export function flatten<E>(self: Cause<Cause<E>>): Cause<E> {
   return self.flatMap(identity)

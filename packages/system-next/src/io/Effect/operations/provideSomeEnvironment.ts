@@ -4,7 +4,7 @@ import { Effect } from "../definition"
  * Provides some of the environment required to run this effect,
  * leaving the remainder `R0`.
  *
- * @ets fluent ets/Effect provideSomeEnvironment
+ * @tsplus fluent ets/Effect provideSomeEnvironment
  */
 export function provideSomeEnvironment_<R0, R, E, A>(
   self: Effect<R, E, A>,

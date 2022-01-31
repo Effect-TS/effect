@@ -5,7 +5,7 @@ import { Effect } from "../definition"
  * Reduces an `Iterable<Effect<R, E, A>>` to a single `Effect<R, E, A>`, working
  * sequentially.
  *
- * @ets static ets/EffectOps reduceAll
+ * @tsplus static ets/EffectOps reduceAll
  */
 export function reduceAll_<R, E, A>(
   as: Iterable<Effect<R, E, A>>,

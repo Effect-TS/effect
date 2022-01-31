@@ -7,7 +7,7 @@ import { Managed } from "../definition"
  * access to the resource. The acquire and release actions will be performed
  * uninterruptibly.
  *
- * @ets static ets/ManagedOps acquireReleaseSucceed
+ * @tsplus static ets/ManagedOps acquireReleaseSucceed
  */
 export function acquireReleaseSucceed<A, X>(
   acquire: LazyArg<A>,

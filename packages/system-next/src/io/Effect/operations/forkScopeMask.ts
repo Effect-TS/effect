@@ -18,7 +18,7 @@ export class ForkScopeRestore {
  * scope, passing a function that allows restoring the fork scope to
  * what it was originally.
  *
- * @ets static ets/EffectOps forkScopeMask
+ * @tsplus static ets/EffectOps forkScopeMask
  */
 export function forkScopeMask_<R, E, A>(
   newScope: Scope,

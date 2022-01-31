@@ -8,7 +8,7 @@ import { findNotIndexCb, foldrCb } from "./_internal/callbacks"
  *
  * @complexity `O(k + log(n))` where `k` is the number of elements
  * satisfying the predicate.
- * @ets fluent ets/List takeLastWhile
+ * @tsplus fluent ets/List takeLastWhile
  */
 export function takeLastWhile_<A>(self: List<A>, f: Predicate<A>): List<A> {
   const { index } = foldrCb(findNotIndexCb, { predicate: f, index: 0 }, self)

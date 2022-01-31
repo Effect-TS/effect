@@ -4,7 +4,7 @@ import { Effect } from "../definition"
 /**
  * Converts all failures to unchecked exceptions.
  *
- * @ets fluent ets/Effect orDieKeep
+ * @tsplus fluent ets/Effect orDieKeep
  */
 export function orDieKeep<R, E, A>(effect: Effect<R, E, A>, __etsTrace?: string) {
   return effect.foldCauseEffect(

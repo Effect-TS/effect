@@ -5,7 +5,7 @@ import type { Cause } from "../definition"
 /**
  * Determines if the `Cause` is traced.
  *
- * @ets fluent ets/Cause isTraced
+ * @tsplus fluent ets/Cause isTraced
  */
 export function isTraced<E>(self: Cause<E>): boolean {
   return self

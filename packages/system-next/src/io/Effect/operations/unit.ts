@@ -4,14 +4,14 @@ import { Effect } from "../definition"
 /**
  * An effect that succeeds with a unit value.
  *
- * @ets static ets/EffectOps unit
+ * @tsplus static ets/EffectOps unit
  */
 export const unit: UIO<void> = Effect.succeedNow(undefined)
 
 /**
  * An effect that succeeds with a unit value.
  *
- * @ets static ets/EffectOps unitTraced
+ * @tsplus static ets/EffectOps unitTraced
  */
 export function unitTraced(__etsTrace?: string): UIO<void> {
   return Effect.succeedNow(undefined, __etsTrace)

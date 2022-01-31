@@ -5,10 +5,9 @@
   "explorer.sortOrder": "mixed",
   "files.exclude": {
     "**/.yarn*": true,
-    "**/.ci.*": true,
     "**/.*.js": true,
     "**/.*config": true,
-    "**/.git*": true,
+    //"**/.git*": true,
     "**/.npmignore*": true,
     "**/.husky": true,
     //"**/node_modules": true,

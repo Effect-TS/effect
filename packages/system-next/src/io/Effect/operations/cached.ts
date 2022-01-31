@@ -5,7 +5,7 @@ import type { Effect, IO } from "../definition"
  * Returns an effect that, if evaluated, will return the cached result of this
  * effect. Cached results will expire after `timeToLive` duration.
  *
- * @ets fluent ets/Effect cached
+ * @tsplus fluent ets/Effect cached
  */
 export function cached_<R, E, A>(
   self: Effect<R, E, A>,

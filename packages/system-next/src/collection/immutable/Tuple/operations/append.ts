@@ -4,7 +4,7 @@ import { TupleInternal } from "./_internal/TupleInternal"
 /**
  * Appends a value to a tuple.
  *
- * @ets fluent ets/Tuple append
+ * @tsplus fluent ets/Tuple append
  */
 export function append_<Ks extends unknown[], K>(
   self: Tuple<Ks>,

@@ -3,7 +3,7 @@ import { Managed } from "../definition"
 /**
  * Recovers from all errors.
  *
- * @ets fluent ets/Managed catchAll
+ * @tsplus fluent ets/Managed catchAll
  */
 export function catchAll_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,

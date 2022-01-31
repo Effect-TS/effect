@@ -3,7 +3,7 @@ import type { Managed } from "../definition"
 /**
  * Effectfully map the error channel.
  *
- * @ets fluent ets/Managed flatMapError
+ * @tsplus fluent ets/Managed flatMapError
  */
 export function chainError_<R, E, A, R2, E2>(
   self: Managed<R, E, A>,

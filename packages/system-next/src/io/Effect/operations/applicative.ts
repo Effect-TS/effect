@@ -3,7 +3,7 @@ import type { EffectF } from "../definition"
 import { Effect } from "../definition"
 
 /**
- * @ets static ets/EffectOps Applicative
+ * @tsplus static ets/EffectOps Applicative
  */
 export const Applicative: TypeClasses.Applicative<EffectF> = {
   ap: (fa) => (fab) => fab.flatMap((f) => fa.map((a) => f(a))),

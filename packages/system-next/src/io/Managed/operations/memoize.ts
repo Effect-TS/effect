@@ -8,7 +8,7 @@ import { Managed } from "../definition"
 /**
  * Returns a memoized version of the specified managed.
  *
- * @ets fluent ets/Managed memoize
+ * @tsplus fluent ets/Managed memoize
  */
 export function memoize<R, E, A>(
   self: Managed<R, E, A>,

@@ -6,7 +6,7 @@ import { Effect } from "../definition"
  * Creates an `Effect` value that represents the exit value of the specified
  * fiber.
  *
- * @ets static ets/EffectOps fromFiberEffect
+ * @tsplus static ets/EffectOps fromFiberEffect
  */
 export function fromFiberEffect<R, E, A>(
   fiber: Effect<R, E, Fiber<E, A>>,

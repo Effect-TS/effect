@@ -7,7 +7,7 @@ import { Managed } from "../definition"
  * action that does not need access to the resource. The acquire and release
  * actions will be performed uninterruptibly.
  *
- * @ets static ets/ManagedOps acquireReleaseAttempt
+ * @tsplus static ets/ManagedOps acquireReleaseAttempt
  */
 export function acquireReleaseAttempt<A, X>(
   acquire: LazyArg<A>,

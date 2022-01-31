@@ -7,7 +7,7 @@ import { Effect } from "../definition"
  * Creates an `Effect` value that represents the exit value of the specified
  * fiber.
  *
- * @ets static ets/EffectOps fromFiber
+ * @tsplus static ets/EffectOps fromFiber
  */
 export function fromFiber<E, A>(fiber: Fiber<E, A>, __etsTrace?: string): IO<E, A> {
   return Effect.succeed(() => fiber).flatMap(join)

@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * Returns a new effect that executes this one and times the acquisition of
  * the resource.
  *
- * @ets fluent ets/Managed timed
+ * @tsplus fluent ets/Managed timed
  */
 export function timed<R, E, A>(
   self: Managed<R, E, A>,

@@ -4,7 +4,7 @@ import type { Effect } from "../definition"
 /**
  * Zips this effect and that effect in parallel.
  *
- * @ets fluent ets/Effect zipPar
+ * @tsplus fluent ets/Effect zipPar
  */
 export function zipPar_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,

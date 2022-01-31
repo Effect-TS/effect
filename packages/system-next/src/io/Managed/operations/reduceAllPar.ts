@@ -10,7 +10,7 @@ import { ReleaseMap } from "../ReleaseMap"
  * Reduces an `Iterable<Managed<R, E, A>>` to a single `Managed<R, E, A>`,
  * working in parallel.
  *
- * @ets static ets/ManagedOps reduceAllPar
+ * @tsplus static ets/ManagedOps reduceAllPar
  */
 export function reduceAllPar_<R, E, A>(
   a: LazyArg<Managed<R, E, A>>,

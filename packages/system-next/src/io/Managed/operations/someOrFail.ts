@@ -5,7 +5,7 @@ import { Managed } from "../definition"
 /**
  * Extracts the optional value, or fails with the given error 'e'.
  *
- * @ets fluent ets/Managed someOrFail
+ * @tsplus fluent ets/Managed someOrFail
  */
 export function someOrFail_<R, E, A, E1>(
   self: Managed<R, E, Option<A>>,

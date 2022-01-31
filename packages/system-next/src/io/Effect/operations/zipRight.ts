@@ -3,8 +3,8 @@ import type { Effect } from "../definition"
 /**
  * A variant of `flatMap` that ignores the value produced by this effect.
  *
- * @ets fluent ets/Effect zipRight
- * @ets operator ets/Effect >
+ * @tsplus fluent ets/Effect zipRight
+ * @tsplus operator ets/Effect >
  */
 export function zipRight_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,

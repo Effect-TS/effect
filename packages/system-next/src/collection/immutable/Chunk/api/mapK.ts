@@ -5,7 +5,7 @@ import { append_, empty } from "../core"
 import { reduce_ } from "./reduce"
 
 /**
- * @ets getter ets/Chunk mapK
+ * @tsplus getter ets/Chunk mapK
  */
 export function mapK<A>(self: Chunk<A>) {
   return <G>(G: TypeClasses.Applicative<G>) =>

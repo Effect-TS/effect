@@ -12,7 +12,7 @@ import { ReleaseMap } from "../ReleaseMap"
  *
  * For a sequential version of this method, see `foreachDiscard`.
  *
- * @ets static ets/ManagedOps forEachParDiscard
+ * @tsplus static ets/ManagedOps forEachParDiscard
  */
 export function forEachParDiscard<R, E, A, X>(
   as: LazyArg<Iterable<A>>,

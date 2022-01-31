@@ -5,7 +5,7 @@ import { ITrace } from "../definition"
 /**
  * Capture the trace at the current point.
  *
- * @ets static ets/EffectOps trace
+ * @tsplus static ets/EffectOps trace
  */
 export function trace(__etsTrace?: string): UIO<Trace> {
   return new ITrace(__etsTrace)

@@ -4,7 +4,7 @@ import { Managed } from "../definition"
 /**
  * Converts an option on errors into an option on values.
  *
- * @ets fluent ets/Managed unsome
+ * @tsplus fluent ets/Managed unsome
  */
 export function unsome<R, E, A>(
   self: Managed<R, Option<E>, A>,

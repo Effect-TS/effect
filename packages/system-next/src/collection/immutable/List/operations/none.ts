@@ -6,7 +6,7 @@ import type { List } from "../definition"
  * `false` for every element in the given list.
  *
  * @complexity O(n)
- * @ets fluent ets/List none
+ * @tsplus fluent ets/List none
  */
 export function none_<A>(self: List<A>, f: Predicate<A>): boolean {
   return !self.some(f)

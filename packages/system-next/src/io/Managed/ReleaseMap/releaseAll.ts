@@ -9,7 +9,7 @@ import type { ReleaseMap } from "./definition"
  * execution strategy. After this action finishes, any finalizers added to
  * this scope will be run immediately.
  *
- * @ets fluent ets/ReleaseMap releaseAll
+ * @tsplus fluent ets/ReleaseMap releaseAll
  */
 export function releaseAll_(
   self: ReleaseMap,

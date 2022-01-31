@@ -5,7 +5,7 @@ import { Managed } from "../definition"
 /**
  * Returns a `Managed` with the optional value.
  *
- * @ets static ets/ManagedOps some
+ * @tsplus static ets/ManagedOps some
  */
 export function some<A>(
   value: LazyArg<A>,

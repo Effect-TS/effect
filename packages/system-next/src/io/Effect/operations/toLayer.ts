@@ -15,7 +15,7 @@ export function toLayer<A>(tag: Tag<A>) {
 /**
  * Constructs a layer from this effect.
  *
- * @ets fluent ets/Effect toLayer
+ * @tsplus fluent ets/Effect toLayer
  */
 export function toLayer_<R, E, A>(
   effect: Effect<R, E, A>,

@@ -4,7 +4,7 @@ import { Effect } from "../definition"
 /**
  * Converts an option on errors into an option on values.
  *
- * @ets fluent ets/Effect unsome
+ * @tsplus fluent ets/Effect unsome
  */
 export function unsome<R, E, A>(
   self: Effect<R, O.Option<E>, A>,

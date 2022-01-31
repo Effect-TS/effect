@@ -23,7 +23,7 @@ let newOffset = 0
  * from the right end of the list.
  *
  * @complexity `O(log(n))`
- * @ets fluent ets/List slice
+ * @tsplus fluent ets/List slice
  */
 export function slice_<A>(self: List<A>, from: number, to: number): List<A> {
   /* eslint-disable-next-line prefer-const */

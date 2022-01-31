@@ -36,18 +36,18 @@ export class Some<A> {
 }
 
 /**
- * @ets type ets/Option
+ * @tsplus type ets/Option
  */
 export type Option<A> = None | Some<A>
 
 /**
- * @ets type ets/OptionOps
+ * @tsplus type ets/OptionOps
  */
 export interface OptionOps {}
 export const Option: OptionOps = {}
 
 /**
- * @ets unify ets/Option
+ * @tsplus unify ets/Option
  */
 export function unifyOption<X extends Option<any>>(
   self: X
@@ -59,7 +59,7 @@ export function unifyOption<X extends Option<any>>(
  * Constructs a new `Option` from a nullable type. If the value is `null` or
  * `undefined`, returns `None`, otherwise returns the value wrapped in a `Some`.
  *
- * @ets static ets/OptionOps __call
+ * @tsplus static ets/OptionOps __call
  */
 export function apply<A>(a: A): Option<A> {
   return Option.fromNullable(a)
@@ -68,14 +68,14 @@ export function apply<A>(a: A): Option<A> {
 /**
  * Constructs `None`.
  *
- * @ets static ets/OptionOps none
+ * @tsplus static ets/OptionOps none
  */
 export const none: Option<never> = new None()
 
 /**
  * Constructs `None`.
  *
- * @ets static ets/OptionOps emptyOf
+ * @tsplus static ets/OptionOps emptyOf
  */
 export function emptyOf<A>(): Option<A> {
   return none
@@ -84,7 +84,7 @@ export function emptyOf<A>(): Option<A> {
 /**
  * Constructs `Some<A>`.
  *
- * @ets static ets/OptionOps some
+ * @tsplus static ets/OptionOps some
  */
 export function some<A>(a: A): Option<A> {
   return new Some(a)
@@ -93,7 +93,7 @@ export function some<A>(a: A): Option<A> {
 /**
  * Classic applicative.
  *
- * @ets fluent ets/Option ap
+ * @tsplus fluent ets/Option ap
  */
 export function ap_<A, B>(fab: Option<(a: A) => B>, fa: Option<A>): Option<B> {
   return isNone(fab) ? none : isNone(fa) ? none : some(fab.value(fa.value))
@@ -111,8 +111,8 @@ export function ap<A>(fa: Option<A>) {
 /**
  * Zips `Option<A>` and `Option<B>` into `Option<Tuple<[A, B]>>`.
  *
- * @ets operator ets/Option +
- * @ets fluent ets/Option zip
+ * @tsplus operator ets/Option +
+ * @tsplus fluent ets/Option zip
  */
 export function zip_<A, B>(fa: Option<A>, fb: Option<B>): Option<Tuple<[A, B]>> {
   return chain_(fa, (a) => map_(fb, (b) => Tuple(a, b)))
@@ -139,8 +139,8 @@ export function zipLeft<B>(fb: Option<B>) {
 /**
  * Apply both and return first.
  *
- * @ets operator ets/Option <
- * @ets fluent ets/Option zipLeft
+ * @tsplus operator ets/Option <
+ * @tsplus fluent ets/Option zipLeft
  */
 export function zipLeft_<A, B>(fa: Option<A>, fb: Option<B>): Option<A> {
   return ap_(
@@ -161,8 +161,8 @@ export function zipRight<B>(fb: Option<B>) {
 /**
  * Apply both and return second.
  *
- * @ets operator ets/Option >
- * @ets fluent ets/Option zipRight
+ * @tsplus operator ets/Option >
+ * @tsplus fluent ets/Option zipRight
  */
 export function zipRight_<A, B>(fa: Option<A>, fb: Option<B>): Option<B> {
   return ap_(
@@ -174,7 +174,7 @@ export function zipRight_<A, B>(fa: Option<A>, fb: Option<B>): Option<B> {
 /**
  * Builds a new option constructed using the value of self.
  *
- * @ets fluent ets/Option flatMap
+ * @tsplus fluent ets/Option flatMap
  */
 export function chain_<A, B>(self: Option<A>, f: (a: A) => Option<B>): Option<B> {
   return isNone(self) ? none : f(self.value)
@@ -201,7 +201,7 @@ export function tap<A>(f: (a: A) => Option<any>) {
 /**
  * Like chain but ignores the constructed outout.
  *
- * @ets fluent ets/Option tap
+ * @tsplus fluent ets/Option tap
  */
 export function tap_<A>(ma: Option<A>, f: (a: A) => Option<any>): Option<A> {
   return chain_(ma, (a) => map_(f(a), () => a))
@@ -210,7 +210,7 @@ export function tap_<A>(ma: Option<A>, f: (a: A) => Option<any>): Option<A> {
 /**
  * Flattens nested options.
  *
- * @ets fluent ets/Option flatten
+ * @tsplus fluent ets/Option flatten
  */
 export function flatten<A>(fa: Option<Option<A>>): Option<A> {
   return chain_(fa, identity)
@@ -219,7 +219,7 @@ export function flatten<A>(fa: Option<Option<A>>): Option<A> {
 /**
  * Wraps this option into a second one.
  *
- * @ets fluent ets/Option duplicate
+ * @tsplus fluent ets/Option duplicate
  */
 export function duplicate<A>(ma: Option<A>): Option<Option<A>> {
   return isNone(ma) ? none : some(ma)
@@ -237,7 +237,7 @@ export function exists<A>(predicate: Predicate<A>): (ma: Option<A>) => boolean {
 /**
  * Returns `true` if the predicate is satisfied by the wrapped value.
  *
- * @ets fluent ets/Option exists
+ * @tsplus fluent ets/Option exists
  */
 export function exists_<A>(ma: Option<A>, predicate: Predicate<A>): boolean {
   return isNone(ma) ? false : predicate(ma.value)
@@ -255,7 +255,7 @@ export function extend<A, B>(f: (fa: Option<A>) => B) {
 /**
  * Apply `Option<A> => B` in case self is some returning `Option<B>`.
  *
- * @ets fluent ets/Option extend
+ * @tsplus fluent ets/Option extend
  */
 export function extend_<A, B>(self: Option<A>, f: (fa: Option<A>) => B): Option<B> {
   return isNone(self) ? none : some(f(self))
@@ -280,7 +280,7 @@ export function fold<A, B, C>(
  * value is `None` the default value is returned, otherwise the function is
  * applied to the value inside the `Some` and the result is returned.
  *
- * @ets fluent ets/Option fold
+ * @tsplus fluent ets/Option fold
  */
 export function fold_<A, B, C>(
   ma: Option<A>,
@@ -293,7 +293,7 @@ export function fold_<A, B, C>(
 /**
  * Constructs `Option<A>` from `Either<E, A>` discarding `E`.
  *
- * @ets static ets/OptionOps fromEither
+ * @tsplus static ets/OptionOps fromEither
  */
 export function fromEither<E, A>(ma: Either<E, A>): Option<A> {
   return ma._tag === "Left" ? none : some(ma.right)
@@ -303,7 +303,7 @@ export function fromEither<E, A>(ma: Either<E, A>): Option<A> {
  * Constructs a new `Option` from a nullable type. If the value is `null` or
  * `undefined`, returns `None`, otherwise returns the value wrapped in a `Some`.
  *
- * @ets static ets/OptionOps fromNullable
+ * @tsplus static ets/OptionOps fromNullable
  */
 export function fromNullable<A>(a: A): Option<NonNullable<A>> {
   return a == null ? none : some(a as NonNullable<A>)
@@ -325,7 +325,7 @@ export function fromPredicate<A>(predicate: Predicate<A>): (a: A) => Option<A> {
 /**
  * Returns a smart constructor based on the given predicate.
  *
- * @ets static ets/OptionOps fromPredicate
+ * @tsplus static ets/OptionOps fromPredicate
  */
 export function fromPredicate_<A, B extends A>(
   a: A,
@@ -368,7 +368,7 @@ export function getOrElseS<A>(onNone: LazyArg<A>): (ma: Option<A>) => A {
  * Extracts the value out of the structure, if it exists. Otherwise returns the
  * given default value.
  *
- * @ets fluent ets/Option getOrElse
+ * @tsplus fluent ets/Option getOrElse
  */
 export function getOrElse_<A, B>(ma: Option<A>, onNone: LazyArg<B>): A | B {
   return ma._tag === "None" ? onNone() : ma.value
@@ -378,7 +378,7 @@ export function getOrElse_<A, B>(ma: Option<A>, onNone: LazyArg<B>): A | B {
  * Extracts the value out of the structure, if it exists. Otherwise returns the
  * given default value.
  *
- * @ets fluent ets/Option getOrElseS
+ * @tsplus fluent ets/Option getOrElseS
  */
 export function getOrElseS_<A>(ma: Option<A>, onNone: LazyArg<A>): A {
   return getOrElse_(ma, onNone)
@@ -390,7 +390,7 @@ export function getOrElseS_<A>(ma: Option<A>, onNone: LazyArg<A>): A {
  *
  * This function ensures that a custom type guard definition is type-safe.
  *
- * @ets static ets/OptionOps getRefinement
+ * @tsplus static ets/OptionOps getRefinement
  */
 export function getRefinement<A, B extends A>(
   getOption: (a: A) => Option<B>
@@ -409,7 +409,7 @@ export function getRight<E, A>(ma: Either<E, A>): Option<A> {
 /**
  * Returns `true` if the option is `None`, `false` otherwise.
  *
- * @ets fluent ets/Option isNone
+ * @tsplus fluent ets/Option isNone
  */
 export function isNone<A>(fa: Option<A>): fa is None {
   return fa._tag === "None"
@@ -418,7 +418,7 @@ export function isNone<A>(fa: Option<A>): fa is None {
 /**
  * Returns `true` if the option is an instance of `Some`, `false` otherwise.
  *
- * @ets fluent ets/Option isSome
+ * @tsplus fluent ets/Option isSome
  */
 export function isSome<A>(fa: Option<A>): fa is Some<A> {
   return fa._tag === "Some"
@@ -427,7 +427,7 @@ export function isSome<A>(fa: Option<A>): fa is Some<A> {
 /**
  * Use `A => B` to transform `Option<A>` to `Option<B>`.
  *
- * @ets fluent ets/Option map
+ * @tsplus fluent ets/Option map
  */
 export function map_<A, B>(ma: Option<A>, f: (a: A) => B): Option<B> {
   return isNone(ma) ? none : some(f(ma.value))
@@ -445,7 +445,7 @@ export function map<A, B>(f: (a: A) => B) {
 /**
  * This is `chain` + `fromNullable`, useful when working with optional values.
  *
- * @ets fluent ets/Option mapNullable
+ * @tsplus fluent ets/Option mapNullable
  */
 export function mapNullable_<A, B>(
   ma: Option<A>,
@@ -469,7 +469,7 @@ export function mapNullable<A, B>(
  * Extracts the value out of the structure, if it exists. Otherwise returns
  * `null`.
  *
- * @ets fluent ets/Option toNullable
+ * @tsplus fluent ets/Option toNullable
  */
 export function toNullable<A>(ma: Option<A>): A | null {
   return isNone(ma) ? null : ma.value
@@ -479,7 +479,7 @@ export function toNullable<A>(ma: Option<A>): A | null {
  * Extracts the value out of the structure, if it exists. Otherwise returns
  * `undefined`.
  *
- * @ets getter ets/Option value
+ * @tsplus getter ets/Option value
  */
 export function toUndefined<A>(ma: Option<A>): A | undefined {
   return isNone(ma) ? undefined : ma.value
@@ -489,7 +489,7 @@ export function toUndefined<A>(ma: Option<A>): A | undefined {
  * Transforms an exception into an `Option`. If `f` throws, returns `None`,
  * otherwise returns the output wrapped in `Some`.
  *
- * @ets static ets/OptionOps tryCatch
+ * @tsplus static ets/OptionOps tryCatch
  */
 export function tryCatch<A>(f: Lazy<A>): Option<A> {
   try {
@@ -515,7 +515,7 @@ function raisePartial<X>(): X {
 /**
  * Simulates a partial function.
  *
- * @ets static ets/OptionOps partial
+ * @tsplus static ets/OptionOps partial
  */
 export function partial<ARGS extends any[], A>(
   f: (miss: <X>() => X) => (...args: ARGS) => A

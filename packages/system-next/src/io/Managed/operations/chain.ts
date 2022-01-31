@@ -8,7 +8,7 @@ import { Managed } from "../definition"
  * passing of its value to the specified continuation function `k`, followed
  * by the effect that it returns.
  *
- * @ets fluent ets/Managed flatMap
+ * @tsplus fluent ets/Managed flatMap
  */
 export function chain_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,

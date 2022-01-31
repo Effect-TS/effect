@@ -66,7 +66,7 @@ export interface AdapterWithManaged extends Adapter {
 }
 
 /**
- * @ets static ets/EffectOps genWithManaged
+ * @tsplus static ets/EffectOps genWithManaged
  */
 export function genM<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: AdapterWithManaged) => Generator<Eff, AEff, any>,
@@ -113,7 +113,7 @@ export function genM<Eff extends GenEffect<any, any, any>, AEff>(
 }
 
 /**
- * @ets static ets/EffectOps gen
+ * @tsplus static ets/EffectOps gen
  */
 export function gen<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: Adapter) => Generator<Eff, AEff, any>,

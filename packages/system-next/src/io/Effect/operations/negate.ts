@@ -3,7 +3,7 @@ import type { Effect } from "../definition"
 /**
  * Returns a new effect where boolean value of this effect is negated.
  *
- * @ets fluent ets/Effect negate
+ * @tsplus fluent ets/Effect negate
  */
 export function negate<R, E>(
   self: Effect<R, E, boolean>,

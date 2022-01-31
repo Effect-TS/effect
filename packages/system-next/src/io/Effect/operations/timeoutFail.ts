@@ -6,7 +6,7 @@ import { Effect } from "../definition"
  * The same as `timeout`, but instead of producing a `None` in the event of
  * timeout, it will produce the specified error.
  *
- * @ets fluent ets/Effect timeoutFail
+ * @tsplus fluent ets/Effect timeoutFail
  */
 export function timeoutFail_<R, E, E1, A>(
   self: Effect<R, E, A>,

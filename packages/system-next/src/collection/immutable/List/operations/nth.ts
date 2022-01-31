@@ -8,7 +8,7 @@ import { handleOffset, nodeNth, nodeNthDense } from "./_internal/node"
  * `undefined` is returned.
  *
  * @complexity O(log(n))
- * @ets fluent ets/List nth
+ * @tsplus fluent ets/List nth
  */
 export function nth_<A>(self: List<A>, index: number): Option<A> {
   if (index < 0 || self.length <= index) {

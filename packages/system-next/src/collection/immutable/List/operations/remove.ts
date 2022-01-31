@@ -6,7 +6,7 @@ import type { List } from "../definition"
  * index.
  *
  * @complexity `O(log(n))`
- * @ets fluent ets/List remove
+ * @tsplus fluent ets/List remove
  */
 export function remove_<A>(self: List<A>, from: number, amount: number): List<A> {
   return self.slice(0, from) + self.slice(from + amount, self.length)

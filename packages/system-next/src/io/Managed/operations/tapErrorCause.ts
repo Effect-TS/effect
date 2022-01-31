@@ -5,7 +5,7 @@ import { Managed } from "../definition"
  * Returns an effect that effectually peeks at the cause of the failure of
  * the acquired resource.
  *
- * @ets fluent ets/Managed tapErrorCause
+ * @tsplus fluent ets/Managed tapErrorCause
  */
 export function tapErrorCause_<R, E, A, R1, E1, X>(
   self: Managed<R, E, A>,

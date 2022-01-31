@@ -5,7 +5,7 @@ import { Managed } from "../definition"
  * Recovers from errors by accepting one effect to execute for the case of an
  * error, and one effect to execute for the case of success.
  *
- * @ets fluent ets/Managed foldManaged
+ * @tsplus fluent ets/Managed foldManaged
  */
 export function foldManaged_<R, E, A, R1, E1, A1, R2, E2, A2>(
   self: Managed<R, E, A>,

@@ -5,7 +5,7 @@ import type { Effect } from "../definition"
 /**
  * Unearth the unchecked failure of the effect (opposite of `orDie`).
  *
- * @ets fluent ets/Effect resurrect
+ * @tsplus fluent ets/Effect resurrect
  */
 export function resurrect<R, E, A>(
   self: Effect<R, E, A>,

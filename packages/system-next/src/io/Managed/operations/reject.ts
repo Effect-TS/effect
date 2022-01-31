@@ -5,7 +5,7 @@ import { Managed } from "../definition"
  * Fail with the returned value if the `PartialFunction` matches, otherwise
  * continue with our held value.
  *
- * @ets fluent ets/Managed reject
+ * @tsplus fluent ets/Managed reject
  */
 export function reject_<R, E, A, E1>(
   self: Managed<R, E, A>,

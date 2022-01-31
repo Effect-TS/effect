@@ -6,7 +6,7 @@ import { IOverrideForkScope } from "../definition"
  * Returns a new effect that will utilize the default scope (fiber scope) to
  * supervise any fibers forked within the original effect.
  *
- * @ets fluent ets/Effect resetForkScope
+ * @tsplus fluent ets/Effect resetForkScope
  */
 export function resetForkScope<R, E, A>(
   self: Effect<R, E, A>,

@@ -8,7 +8,7 @@ import type { Managed } from "../definition"
  * For usecases that need access to the `Managed`'s result, see
  * `Managed#onExitFirst`.
  *
- * @ets fluent ets/Managed ensuringFirst
+ * @tsplus fluent ets/Managed ensuringFirst
  */
 export function ensuringFirst_<R, E, A, R2, X>(
   self: Managed<R, E, A>,

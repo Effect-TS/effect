@@ -13,7 +13,7 @@ import { Exited, Running } from "./state"
 /**
  * Removes the finalizer associated with this key and returns it.
  *
- * @ets fluent ets/ReleaseMap remove
+ * @tsplus fluent ets/ReleaseMap remove
  */
 export function remove_(
   self: ReleaseMap,

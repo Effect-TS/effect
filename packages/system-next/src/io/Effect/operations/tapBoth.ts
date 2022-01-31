@@ -6,7 +6,7 @@ import { Effect } from "../definition"
  * Returns an effect that effectfully "peeks" at the failure or success of
  * this effect.
  *
- * @ets fluent ets/Effect tapBoth
+ * @tsplus fluent ets/Effect tapBoth
  */
 export function tapBoth_<R, E, A, R2, E2, X, R3, E3, X1>(
   self: Effect<R, E, A>,

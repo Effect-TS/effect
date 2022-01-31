@@ -5,7 +5,7 @@ import { Effect } from "../definition"
  * passes the effect input `R` along unmodified as the second element
  * of the tuple.
  *
- * @ets fluent ets/Effect onFirst
+ * @tsplus fluent ets/Effect onFirst
  */
 export function onFirst<R, E, A>(self: Effect<R, E, A>, __etsTrace?: string) {
   return self.zip(Effect.environment<R>(), __etsTrace)

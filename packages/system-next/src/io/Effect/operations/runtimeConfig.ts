@@ -6,7 +6,7 @@ import { Effect, ISetRuntimeConfig } from "../definition"
 /**
  * Retrieves the `RuntimeConfig` that this effect is running on.
  *
- * @ets static ets/EffectOps runtimeConfig
+ * @tsplus static ets/EffectOps runtimeConfig
  */
 export const runtimeConfig: UIO<RuntimeConfig> = Effect.suspendSucceedWith(
   (runtimeConfig) => Effect.succeedNow(runtimeConfig)
@@ -15,7 +15,7 @@ export const runtimeConfig: UIO<RuntimeConfig> = Effect.suspendSucceedWith(
 /**
  * Sets the runtime configuration to the specified value.
  *
- * @ets static ets/EffectOps setRuntimeConfig
+ * @tsplus static ets/EffectOps setRuntimeConfig
  */
 export function setRuntimeConfig(
   runtimeConfig: LazyArg<RuntimeConfig>,

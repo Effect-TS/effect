@@ -7,7 +7,7 @@ import { Effect, EffectError } from "../definition"
  * effects. When no environment is required (i.e., when `R == unknown`) it is
  * conceptually equivalent to `flatten(succeed(io))`.
  *
- * @ets static ets/EffectOps suspend
+ * @tsplus static ets/EffectOps suspend
  */
 export function suspend<R, E, A>(
   f: LazyArg<Effect<R, E, A>>,

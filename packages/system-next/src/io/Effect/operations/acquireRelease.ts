@@ -4,7 +4,7 @@ import type { Effect } from "../definition"
  * A less powerful variant of `acquireReleaseWith` where the resource acquired
  * by this effect is not needed.
  *
- * @ets fluent ets/Effect acquireRelease
+ * @tsplus fluent ets/Effect acquireRelease
  */
 export function acquireRelease_<R, E, A, E1, R1, A1, R2, E2, A2>(
   acquire: Effect<R, E, A>,

@@ -6,7 +6,7 @@ import type { Managed } from "../definition"
  * to acquire and use as long as the application is running, like a
  * HTTP server.
  *
- * @ets fluent ets/Managed useForever
+ * @tsplus fluent ets/Managed useForever
  */
 export function useForever<R, E, A>(self: Managed<R, E, A>, __etsTrace?: string) {
   return self.use(() => Effect.never)

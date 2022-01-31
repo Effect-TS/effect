@@ -3,7 +3,7 @@ import type { List } from "../definition"
 /**
  * Extracts the specified property from each object in the list.
  *
- * @ets fluent ets/List pluck
+ * @tsplus fluent ets/List pluck
  */
 export function pluck_<A, K extends keyof A>(self: List<A>, key: K): List<A[K]> {
   return self.map((a) => a[key])

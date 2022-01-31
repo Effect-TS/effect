@@ -6,7 +6,7 @@ import { Effect } from "../definition"
 /**
  * Lifts an `Either` into an `Effect` value.
  *
- * @ets static ets/EffectOps fromEitherNow
+ * @tsplus static ets/EffectOps fromEitherNow
  */
 export function fromEitherNow<E, A>(
   self: Either<E, A>,
@@ -18,7 +18,7 @@ export function fromEitherNow<E, A>(
 /**
  * Lifts an `Either` into an `Effect` value.
  *
- * @ets static ets/EffectOps fromEither
+ * @tsplus static ets/EffectOps fromEither
  */
 export function fromEither<E, A>(
   f: LazyArg<Either<E, A>>,

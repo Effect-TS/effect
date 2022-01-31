@@ -5,7 +5,7 @@ import { Managed } from "../definition"
  * Keeps some of the errors, and terminates the fiber with the rest, using
  * the specified function to convert the `E` into an `unknown`.
  *
- * @ets fluent ets/Managed refineOrDieWith
+ * @tsplus fluent ets/Managed refineOrDieWith
  */
 export function refineOrDieWith_<R, A, E, E1>(
   self: Managed<R, E, A>,

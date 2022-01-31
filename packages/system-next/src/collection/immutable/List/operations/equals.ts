@@ -5,7 +5,7 @@ import { elementEquals } from "./_internal/callbacks"
  * Returns true if the two lists are equivalent.
  *
  * @complexity O(n)
- * @ets fluent ets/List equals
+ * @tsplus fluent ets/List equals
  */
 export function equals_<A>(self: List<A>, that: List<A>): boolean {
   return self.equalsWith(that, elementEquals)

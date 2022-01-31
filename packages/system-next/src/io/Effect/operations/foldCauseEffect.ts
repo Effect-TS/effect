@@ -6,7 +6,7 @@ import { IFold } from "../definition"
  * A more powerful version of `foldEffect` that allows recovering from any kind
  * of failure except interruptions.
  *
- * @ets fluent ets/Effect foldCauseEffect
+ * @tsplus fluent ets/Effect foldCauseEffect
  */
 export function foldCauseEffect_<R, E, A, R2, E2, A2, R3, E3, A3>(
   self: Effect<R, E, A>,

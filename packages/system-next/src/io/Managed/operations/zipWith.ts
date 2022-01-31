@@ -4,7 +4,7 @@ import type { Managed } from "../definition"
  * Returns an effect that executes both this effect and the specified effect,
  * in sequence, combining their results with the specified `f` function.
  *
- * @ets fluent ets/Managed zipWith
+ * @tsplus fluent ets/Managed zipWith
  */
 export function zipWith_<R, E, A, R2, E2, A2, B>(
   self: Managed<R, E, A>,

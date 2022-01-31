@@ -4,7 +4,7 @@ import type { Managed } from "../definition"
  * Provides the `Managed` effect with its required environment, which
  * eliminates its dependency on `R`.
  *
- * @ets fluent ets/Managed provideEnvironment
+ * @tsplus fluent ets/Managed provideEnvironment
  */
 export function provideEnvironment_<R, E, A>(
   self: Managed<R, E, A>,

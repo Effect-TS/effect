@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * Effectfully accesses the specified service in the environment of the
  * effect.
  *
- * @ets static ets/ManagedOps serviceWithEffect
+ * @tsplus static ets/ManagedOps serviceWithEffect
  */
 export function serviceWithEffect<T>(_: Tag<T>) {
   return <R, E, A>(

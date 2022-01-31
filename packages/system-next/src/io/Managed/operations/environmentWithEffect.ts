@@ -4,7 +4,7 @@ import { Managed } from "../definition"
 /**
  * Effectfully accesses the environment of the effect.
  *
- * @ets static ets/ManagedOps environmentWithEffect
+ * @tsplus static ets/ManagedOps environmentWithEffect
  */
 export function environmentWithEffect<R0, R, E, A>(
   f: (_: R0) => Effect<R, E, A>,

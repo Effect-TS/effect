@@ -48,7 +48,7 @@ export interface FunctionN<A extends ReadonlyArray<unknown>, B> {
  * declare function succeed<A>(a: () => A): Effect<unknown, never, A>
  * ```
  *
- * @ets type ets/LazyArgument
+ * @tsplus type tsplus/LazyArgument
  */
 export interface LazyArg<A> {
   (): A

@@ -4,8 +4,8 @@ import type { Managed } from "../definition"
  * Sequentially zips this effect with the specified effect
  * returning the left side.
  *
- * @ets fluent ets/Managed zipLeft
- * @ets operator ets/Managed <
+ * @tsplus fluent ets/Managed zipLeft
+ * @tsplus operator ets/Managed <
  */
 export function zipLeft_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,

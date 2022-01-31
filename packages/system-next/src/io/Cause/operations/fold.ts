@@ -8,7 +8,7 @@ import { realCause } from "../definition"
 /**
  * Folds over the cases of this cause with the specified functions.
  *
- * @ets fluent ets/Cause fold
+ * @tsplus fluent ets/Cause fold
  */
 export function fold_<E, Z>(
   self: Cause<E>,
