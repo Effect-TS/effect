@@ -4,7 +4,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "target": "ES2018",
-    "module": "CommonJS",
+    "module": "ESNext",
     "plugins": [
       {
         "transform": "@effect-ts/tracing-plugin/src/index.ts",
@@ -17,7 +17,9 @@
           "^packages/tracing-plugin/test/(.*)": "(@effect-ts/tracing-plugin/test): test/$1"
         }
       },
-      { "transform": "typescript-transform-paths" }
+      {
+        "transform": "typescript-transform-paths"
+      }
     ]
   }
 }
