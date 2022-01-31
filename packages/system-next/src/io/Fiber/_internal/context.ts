@@ -14,10 +14,9 @@ import { defaultScheduler } from "../../../support/Scheduler"
 import * as StackTraceBuilder from "../../../support/StackTraceBuilder"
 import { Cause, InterruptedException } from "../../Cause"
 import { Effect } from "../../Effect"
-import type { UIO } from "../../Effect/definition/base"
 import type { IFold, Instruction, IRaceWith } from "../../Effect/definition/primitives"
 import { EffectError, instruction } from "../../Effect/definition/primitives"
-import * as Ex from "../../Exit"
+import { Exit } from "../../Exit"
 import * as FiberId from "../../FiberId"
 import type { FiberRef, Runtime } from "../../FiberRef"
 import {
@@ -77,7 +76,7 @@ export class InterruptExit {
 export class Finalizer {
   readonly _tag = "Finalizer"
   constructor(
-    readonly finalizer: UIO<any>,
+    readonly finalizer: Effect<unknown, never, any>,
     readonly handleInterrupts: () => void,
     readonly trace?: string
   ) {}
@@ -154,7 +153,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return this.id
   }
 
-  get status(): UIO<FiberStatus.Status> {
+  get status(): Effect<unknown, never, FiberStatus.Status> {
     return Effect.succeed(() => this.state.get.status)
   }
 
@@ -281,7 +280,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           : frame.apply(previousSuccess)
       )
     }
-    return this.unsafeTryDone(Ex.succeed(previousSuccess))
+    return this.unsafeTryDone(Exit.succeed(previousSuccess))
   }
 
   /**
@@ -364,7 +363,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   })
 
-  interruptAs(fiberId: FiberId.FiberId): UIO<Ex.Exit<E, A>> {
+  interruptAs(fiberId: FiberId.FiberId): Effect<unknown, never, Exit<E, A>> {
     return this.unsafeInterruptAs(fiberId)
   }
 
@@ -381,7 +380,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return undefined
   }
 
-  private unsafeInterruptAs(fiberId: FiberId.FiberId): UIO<Ex.Exit<E, A>> {
+  private unsafeInterruptAs(
+    fiberId: FiberId.FiberId
+  ): Effect<unknown, never, Exit<E, A>> {
     const interruptedCause = Cause.interrupt(fiberId)
 
     return Effect.suspendSucceed(() => {
@@ -476,9 +477,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     )
   }
 
-  get await(): UIO<Ex.Exit<E, A>> {
-    return Effect.asyncInterruptBlockingOn<unknown, never, Ex.Exit<E, A>>((k) => {
-      const cb: Callback<never, Ex.Exit<E, A>> = (x) => k(Effect.done(x))
+  get await(): Effect<unknown, never, Exit<E, A>> {
+    return Effect.asyncInterruptBlockingOn<unknown, never, Exit<E, A>>((k) => {
+      const cb: Callback<never, Exit<E, A>> = (x) => k(Effect.done(x))
       const result = this.unsafeAddObserverMaybe(cb)
 
       if (result) {
@@ -489,7 +490,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }, this.id)
   }
 
-  get children(): UIO<Chunk.Chunk<Fiber.Runtime<any, any>>> {
+  get children(): Effect<unknown, never, Chunk.Chunk<Fiber.Runtime<any, any>>> {
     return this.evalOnEffect(
       Effect.succeed(() => {
         const chunkBuilder = Chunk.builder<Fiber.Runtime<any, any>>()
@@ -506,7 +507,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     )
   }
 
-  get poll(): UIO<Option<Ex.Exit<E, A>>> {
+  get poll(): Effect<unknown, never, Option<Exit<E, A>>> {
     return Effect.succeed(this.unsafePoll)
   }
 
@@ -514,7 +515,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   // FiberRefs
   // -----------------------------------------------------------------------------
 
-  get inheritRefs(): UIO<void> {
+  get inheritRefs(): Effect<unknown, never, void> {
     return Effect.suspendSucceed(() => {
       if (this.fiberRefLocals.size === 0) {
         return Effect.unit
@@ -525,7 +526,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     })
   }
 
-  getRef<K>(ref: FiberRef.Runtime<K>): UIO<K> {
+  getRef<K>(ref: FiberRef.Runtime<K>): Effect<unknown, never, K> {
     return Effect.succeed(() => this.unsafeGetRef(ref))
   }
 
@@ -545,7 +546,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   // Observers
   // -----------------------------------------------------------------------------
 
-  unsafeAddObserverMaybe(k: Callback<never, Ex.Exit<E, A>>): Ex.Exit<E, A> | undefined {
+  unsafeAddObserverMaybe(k: Callback<never, Exit<E, A>>): Exit<E, A> | undefined {
     const oldState = this.state.get
     switch (oldState._tag) {
       case "Executing": {
@@ -570,7 +571,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   }
 
-  unsafeRemoveObserver(k: Callback<never, Ex.Exit<E, A>>): void {
+  unsafeRemoveObserver(k: Callback<never, Exit<E, A>>): void {
     const oldState = this.state.get
 
     if (oldState._tag === "Executing") {
@@ -590,16 +591,16 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   unsafeNotifyObservers(
-    v: Ex.Exit<E, A>,
-    observers: Array<Callback<never, Ex.Exit<E, A>>>
+    v: Exit<E, A>,
+    observers: Array<Callback<never, Exit<E, A>>>
   ): void {
     if (observers.length > 0) {
-      const result = Ex.succeed(v)
+      const result = Exit.succeed(v)
       observers.forEach((k) => k(result))
     }
   }
 
-  unsafeReportUnhandled(exit: Ex.Exit<E, A>, trace?: string): void {
+  unsafeReportUnhandled(exit: Exit<E, A>, trace?: string): void {
     if (exit._tag === "Failure") {
       try {
         this.unsafeLogWith(
@@ -673,7 +674,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return this.unsafeEvalOn(Effect.succeed(() => this._children.add(child)))
   }
 
-  unsafePoll(): Option<Ex.Exit<E, A>> {
+  unsafePoll(): Option<Exit<E, A>> {
     const state = this.state.get
     return state._tag === "Done" ? Option.some(state.value) : Option.none
   }
@@ -682,7 +683,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   // Tracing
   // -----------------------------------------------------------------------------
 
-  get trace(): UIO<Trace> {
+  get trace(): Effect<unknown, never, Trace> {
     return Effect.succeed(() => this.unsafeCaptureTrace([]))
   }
 
@@ -811,7 +812,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   // Finalizer
   // -----------------------------------------------------------------------------
 
-  unsafeAddFinalizer(finalizer: UIO<any>): void {
+  unsafeAddFinalizer(finalizer: Effect<unknown, never, any>): void {
     this.pushContinuation(
       new Finalizer(finalizer, () => {
         this.unsafeDisableInterrupting()
@@ -824,7 +825,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   // Execution
   // -----------------------------------------------------------------------------
 
-  evalOn(effect: UIO<any>, orElse: UIO<any>): UIO<void> {
+  evalOn(
+    effect: Effect<unknown, never, any>,
+    orElse: Effect<unknown, never, any>
+  ): Effect<unknown, never, any> {
     return Effect.suspendSucceed(() => {
       if (this.unsafeEvalOn(effect)) {
         return Effect.unit
@@ -848,7 +852,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     )
   }
 
-  unsafeEvalOn(effect: UIO<any>): boolean {
+  unsafeEvalOn(effect: Effect<unknown, never, any>): boolean {
     const oldState = this.state.get
 
     switch (oldState._tag) {
@@ -875,7 +879,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   }
 
-  unsafeTryDone(exit: Ex.Exit<E, A>): Instruction | undefined {
+  unsafeTryDone(exit: Exit<E, A>): Instruction | undefined {
     const oldState = this.state.get
 
     switch (oldState._tag) {
@@ -902,7 +906,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
           const newExit = interruptorsCause[equalsSym](Cause.empty)
             ? exit
-            : Ex.mapErrorCause_(exit, (cause) =>
+            : exit.mapErrorCause((cause) =>
                 cause.contains(interruptorsCause)
                   ? cause
                   : Cause.then(cause, interruptorsCause)
@@ -922,8 +926,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
             fiberLifetimes.unsafeObserve(lifetime)
           }
 
-          Ex.fold_(
-            newExit,
+          newExit.fold(
             (cause) => {
               if (this.trackMetrics) {
                 fiberFailures.unsafeIncrement()
@@ -988,7 +991,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   }
 
-  unsafeDrainMailbox(): UIO<any> | undefined {
+  unsafeDrainMailbox(): Effect<unknown, never, any> | undefined {
     const oldState = this.state.get
 
     switch (oldState._tag) {
@@ -1012,10 +1015,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   }
 
-  unsafeOnDone(k: Callback<never, Ex.Exit<E, A>>): void {
+  unsafeOnDone(k: Callback<never, Exit<E, A>>): void {
     const result = this.unsafeAddObserverMaybe(k)
     if (result != null) {
-      k(Ex.succeed(result))
+      k(Exit.succeed(result))
     }
   }
 
@@ -1061,7 +1064,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       )
 
       childContext.unsafeOnDone((exit) =>
-        this.runtimeConfig.value.supervisor.unsafeOnEnd(Ex.flatten(exit), childContext)
+        this.runtimeConfig.value.supervisor.unsafeOnEnd(exit.flatten(), childContext)
       )
     }
 
@@ -1079,11 +1082,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   complete<R, R1, R2, E2, A2, R3, E3, A3>(
     winner: Fiber.Fiber<any, any>,
     loser: Fiber.Fiber<any, any>,
-    cont: (
-      exit: Ex.Exit<any, any>,
-      fiber: Fiber.Fiber<any, any>
-    ) => Effect<any, any, any>,
-    winnerExit: Ex.Exit<any, any>,
+    cont: (exit: Exit<any, any>, fiber: Fiber.Fiber<any, any>) => Effect<any, any, any>,
+    winnerExit: Exit<any, any>,
     ab: AtomicReference<boolean>,
     cb: (_: Effect<R & R1 & R2 & R3, E2 | E3, A2 | A3>) => void
   ): void {
@@ -1307,7 +1307,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                       // Error not caught, stack is empty
                       this.unsafeSetInterrupting(true)
 
-                      current = this.unsafeTryDone(Ex.failCause(fullCause))
+                      current = this.unsafeTryDone(Exit.failCause(fullCause))
                     } else {
                       this.unsafeSetInterrupting(false)
 

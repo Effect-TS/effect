@@ -1,13 +1,8 @@
-// -----------------------------------------------------------------------------
-// Model
-// -----------------------------------------------------------------------------
-
 import type { Tuple } from "../../../collection/immutable/Tuple"
 import type { Either } from "../../../data/Either"
 import type { Lazy } from "../../../data/Function"
 import type { Tag } from "../../../data/Has"
-import type { Option } from "../../../data/Option"
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { Supervisor } from "../../../io/Supervisor"
 import type { Cause } from "../../Cause"
 import type { Exit } from "../../Exit"
@@ -366,7 +361,7 @@ export class ILogged<A> extends Base<unknown, never, void> {
   constructor(
     readonly typeTag: Tag<A>,
     readonly message: Lazy<A>,
-    readonly overrideLogLevel: Option<LogLevel> = O.none,
+    readonly overrideLogLevel: Option<LogLevel> = Option.none,
     readonly overrideRef1: FiberRef.Runtime<any> | null = null,
     readonly overrideValue1: any = null,
     readonly trace?: string

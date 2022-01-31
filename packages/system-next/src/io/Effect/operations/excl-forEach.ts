@@ -14,11 +14,8 @@ import { AtomicBoolean } from "../../../support/AtomicBoolean"
 import { AtomicNumber } from "../../../support/AtomicNumber"
 import type { MutableQueue } from "../../../support/MutableQueue"
 import { Bounded, Unbounded } from "../../../support/MutableQueue"
-import * as Cause from "../../Cause"
-import type { Exit } from "../../Exit"
-import { collectAll as exitCollectAll } from "../../Exit/operations/collectAll"
-import { collectAllPar as exitCollectAllPar } from "../../Exit/operations/collectAllPar"
-import { unit as exitUnit } from "../../Exit/operations/unit"
+import { Cause } from "../../Cause"
+import { Exit } from "../../Exit"
 import type { Fiber } from "../../Fiber/definition"
 import { interrupt as interruptFiber } from "../../Fiber/operations/interrupt"
 import * as FiberIdNone from "../../FiberId/operations/none"
@@ -424,13 +421,13 @@ function forEachParUnboundedDiscard<R, E, A, X>(
         restore(promiseAwait(promise)).foldCauseEffect(
           (cause) =>
             forEachParUnbounded(fibers, interruptFiber).flatMap((exits) => {
-              const collected = exitCollectAllPar(exits)
+              const collected = Exit.collectAllPar(exits)
               if (collected._tag === "Some" && collected.value._tag === "Failure") {
                 return Effect.failCauseNow(
-                  Cause.both(Cause.stripFailures(cause), collected.value.cause)
+                  Cause.both(cause.stripFailures(), collected.value.cause)
                 )
               }
-              return Effect.failCauseNow(Cause.stripFailures(cause))
+              return Effect.failCauseNow(cause.stripFailures())
             }),
           (_) => forEachDiscard_(fibers, (_) => _.inheritRefs)
         )

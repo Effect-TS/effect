@@ -2,7 +2,6 @@ import { Tuple } from "../../../collection/immutable/Tuple"
 import { Effect } from "../../Effect"
 import { sequential } from "../../Effect/operations/ExecutionStrategy"
 import type { Exit } from "../../Exit"
-import { zipRight_ as exitZipRight_ } from "../../Exit/operations/zipRight"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { get } from "../../FiberRef/operations/get"
 import { locally_ } from "../../FiberRef/operations/locally"
@@ -38,7 +37,7 @@ export function onExit_<R, E, A, R1, X>(
               .releaseAll(ex, sequential)
               .exit()
               .zipWith(cleanup(exitEA).provideEnvironment(r1).exit(), (l, r) =>
-                Effect.done(exitZipRight_(l, r))
+                Effect.done(l.zipRight(r))
               )
               .flatten()
           )
@@ -59,5 +58,5 @@ export function onExit<E, A, R1, X>(
   cleanup: (exit: Exit<E, A>) => Effect<R1, never, X>,
   __etsTrace?: string | undefined
 ) {
-  return <R>(self: Managed<R, E, A>): Managed<R & R1, E, A> => onExit_(self, cleanup)
+  return <R>(self: Managed<R, E, A>): Managed<R & R1, E, A> => self.onExit(cleanup)
 }

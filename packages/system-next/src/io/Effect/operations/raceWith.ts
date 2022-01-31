@@ -1,4 +1,4 @@
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { Exit } from "../../Exit/definition"
 import type { Fiber } from "../../Fiber/definition"
 import type { Effect } from "../definition"
@@ -17,7 +17,7 @@ export function raceWith_<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   rightWins: (exit: Exit<E1, A1>, fiber: Fiber<E, A>) => Effect<R3, E3, A3>,
   __etsTrace?: string
 ): Effect<R & R1 & R2 & R3, E2 | E3, A2 | A3> {
-  return new IRaceWith(left, right, leftWins, rightWins, O.none, __etsTrace)
+  return new IRaceWith(left, right, leftWins, rightWins, Option.none, __etsTrace)
 }
 
 /**
@@ -32,5 +32,5 @@ export function raceWith<E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   rightWins: (exit: Exit<E1, A1>, fiber: Fiber<E, A>) => Effect<R3, E3, A3>,
   __etsTrace?: string
 ) {
-  return <R>(left: Effect<R, E, A>) => raceWith_(left, right, leftWins, rightWins)
+  return <R>(left: Effect<R, E, A>) => left.raceWith(right, leftWins, rightWins)
 }

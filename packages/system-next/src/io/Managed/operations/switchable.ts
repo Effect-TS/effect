@@ -1,6 +1,6 @@
 import { Effect } from "../../Effect"
 import { sequential } from "../../Effect/operations/ExecutionStrategy"
-import { unit as exitUnit } from "../../Exit/operations/unit"
+import { Exit } from "../../Exit"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { locally_ } from "../../FiberRef/operations/locally"
 import { Managed } from "../definition"
@@ -42,7 +42,7 @@ export function switchable<R, E, A>(
               .flatMap((_) =>
                 _.fold(
                   () => Effect.unit,
-                  (fin) => fin(exitUnit)
+                  (fin) => fin(Exit.unit)
                 )
               )
               .zipRight(Effect.Do())

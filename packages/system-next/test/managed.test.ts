@@ -11,7 +11,7 @@ import type { HasClock } from "../src/io/Clock"
 import type { UIO } from "../src/io/Effect"
 import { Effect } from "../src/io/Effect"
 import * as ExecutionStrategy from "../src/io/Effect/operations/ExecutionStrategy"
-import * as Exit from "../src/io/Exit"
+import { Exit } from "../src/io/Exit"
 import * as Fiber from "../src/io/Fiber"
 import type { FiberId } from "../src/io/FiberId"
 import * as InterruptStatus from "../src/io/InterruptStatus"
@@ -48,7 +48,7 @@ function countDownLatch(n: number): UIO<Effect<HasClock, never, void>> {
 
 function doInterrupt(
   managed: (_: Effect<unknown, never, void>) => Managed<unknown, never, void>
-): Effect<HasClock, never, Tuple<[FiberId, Option<Exit.Exit<never, void>>]>> {
+): Effect<HasClock, never, Tuple<[FiberId, Option<Exit<never, void>>]>> {
   return Effect.Do()
     .bind("fiberId", () => Effect.fiberId)
     .bind("never", () => Promise.make<never, void>())
@@ -62,9 +62,17 @@ function doInterrupt(
     )
     .tap(({ reachedAcquisition }) => Promise.await(reachedAcquisition))
     .bind("interruption", ({ fiberId, managedFiber }) =>
-      managedFiber.interruptAs(fiberId).map(Exit.untraced).timeout(1000)
+      managedFiber
+        .interruptAs(fiberId)
+        .map((_) => _.untraced())
+        .timeout(1000)
     )
-    .map(({ fiberId, interruption }) => Tuple(fiberId, interruption.map(Exit.untraced)))
+    .map(({ fiberId, interruption }) =>
+      Tuple(
+        fiberId,
+        interruption.map((_) => _.untraced())
+      )
+    )
 }
 
 function makeTestManaged(ref: Ref.Ref<number>): Managed<unknown, never, void> {
@@ -166,7 +174,7 @@ describe("Managed", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      expect(Exit.isFailure(result)).toBe(true)
+      expect(result.isFailure()).toBe(true)
     })
 
     it("on die", async () => {
@@ -174,7 +182,7 @@ describe("Managed", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      expect(Exit.isFailure(result)).toBe(true)
+      expect(result.isFailure()).toBe(true)
     })
 
     it("on success", async () => {
@@ -263,7 +271,7 @@ describe("Managed", () => {
     it("invokes with the failure of the use", async () => {
       const exception = new RuntimeError("Use died")
 
-      function res(exits: Ref.Ref<List<Exit.Exit<any, any>>>) {
+      function res(exits: Ref.Ref<List<Exit<any, any>>>) {
         return Managed.acquireReleaseExitWith(Effect.unit, (_, e) =>
           Ref.update_(exits, (_) => _.prepend(e))
         ).zipRight(
@@ -273,7 +281,7 @@ describe("Managed", () => {
         )
       }
 
-      const program = Ref.make(List.empty<Exit.Exit<any, any>>())
+      const program = Ref.make(List.empty<Exit<any, any>>())
         .tap((exits) => res(exits).useDiscard(Effect.die(exception)).exit())
         .flatMap((exits) => Ref.get(exits))
 
@@ -287,7 +295,7 @@ describe("Managed", () => {
       const useException = new RuntimeError("Use died")
       const acquireException = new RuntimeError("Acquire died")
 
-      function res(exits: Ref.Ref<List<Exit.Exit<any, any>>>) {
+      function res(exits: Ref.Ref<List<Exit<any, any>>>) {
         return Managed.acquireReleaseExitWith(Effect.unit, (_, e) =>
           Ref.update_(exits, (_) => _.prepend(e))
         ).zipRight(
@@ -297,7 +305,7 @@ describe("Managed", () => {
         )
       }
 
-      const program = Ref.make(List.empty<Exit.Exit<any, any>>())
+      const program = Ref.make(List.empty<Exit<any, any>>())
         .tap((exits) => res(exits).useDiscard(Effect.die(useException)).exit())
         .flatMap((exits) => Ref.get(exits))
 
@@ -1262,7 +1270,7 @@ describe("Managed", () => {
     it("calls the cleanup", async () => {
       const program = Effect.Do()
         .bind("finalizersRef", () => Ref.make(List.empty<string>()))
-        .bind("resultRef", () => Ref.make(Option.emptyOf<Exit.Exit<never, string>>()))
+        .bind("resultRef", () => Ref.make(Option.emptyOf<Exit<never, string>>()))
         .tap(({ finalizersRef, resultRef }) =>
           Managed.acquireReleaseWith(Effect.succeed("42"), () =>
             Ref.update_(finalizersRef, (_) => _.prepend("First"))
@@ -1306,7 +1314,7 @@ describe("Managed", () => {
 
       const result = await program.unsafeRunPromise()
 
-      expect(Exit.untraced(result)).toEqual(Exit.die(ExampleError))
+      expect(result.untraced()).toEqual(Exit.die(ExampleError))
     })
 
     it("catch throwable after sandboxing", async () => {
@@ -1330,7 +1338,7 @@ describe("Managed", () => {
 
       const result = await program.unsafeRunPromise()
 
-      expect(Exit.untraced(result)).toEqual(Exit.fail("Error"))
+      expect(result.untraced()).toEqual(Exit.fail("Error"))
     })
 
     it("succeeds with None given None error", async () => {
@@ -1354,7 +1362,7 @@ describe("Managed", () => {
     it("calls the cleanup", async () => {
       const program = Effect.Do()
         .bind("finalizersRef", () => Ref.make(List.empty<string>()))
-        .bind("resultRef", () => Ref.make(Option.emptyOf<Exit.Exit<never, string>>()))
+        .bind("resultRef", () => Ref.make(Option.emptyOf<Exit<never, string>>()))
         .tap(({ finalizersRef, resultRef }) =>
           Managed.acquireReleaseWith(Effect.succeed("42"), () =>
             Ref.update_(finalizersRef, (_) => _.prepend("First"))
@@ -1729,7 +1737,7 @@ describe("Managed", () => {
 
       const result = await program.unsafeRunPromise()
 
-      expect(Exit.untraced(result)).toEqual(Exit.fail(Option.none))
+      expect(result.untraced()).toEqual(Exit.fail(Option.none))
     })
 
     it("fails when given an exception", async () => {
@@ -1738,7 +1746,7 @@ describe("Managed", () => {
 
       const result = await program.unsafeRunPromise()
 
-      expect(Exit.untraced(result)).toEqual(Exit.fail(Option.some(exception)))
+      expect(result.untraced()).toEqual(Exit.fail(Option.some(exception)))
     })
   })
 
@@ -1767,7 +1775,7 @@ describe("Managed", () => {
 
       const result = await program.unsafeRunPromise()
 
-      expect(Exit.untraced(result)).toEqual(Exit.fail(ExampleError))
+      expect(result.untraced()).toEqual(Exit.fail(ExampleError))
     })
   })
 
@@ -1800,7 +1808,7 @@ describe("Managed", () => {
 
       const result = await program.unsafeRunPromise()
 
-      expect(Exit.untraced(result)).toEqual(Exit.fail(ExampleError))
+      expect(result.untraced()).toEqual(Exit.fail(ExampleError))
     })
   })
 
@@ -1821,7 +1829,7 @@ describe("Managed", () => {
 
       const result = await program.unsafeRunPromise()
 
-      expect(Exit.isFailure(result)).toBe(true)
+      expect(result.isFailure()).toBe(true)
     })
   })
 
@@ -2348,7 +2356,7 @@ describe("Managed", () => {
       const { effect, result } = await program.unsafeRunPromise()
 
       expect(effect).toBe(true)
-      expect(Exit.untraced(result)).toEqual(Exit.die(new RuntimeError("die")))
+      expect(result.untraced()).toEqual(Exit.die(new RuntimeError("die")))
     })
   })
 
@@ -2554,7 +2562,7 @@ describe("Managed", () => {
         .bind("ref", () => Ref.make(false))
         .bindValue("managed", ({ ref }) =>
           Managed.acquireReleaseExitWith(Effect.unit, (_, e) =>
-            Ref.set_(ref, Exit.isInterrupted(e))
+            Ref.set_(ref, e.isInterrupted())
           )
         )
         .tap(({ managed }) => managed.withEarlyRelease().use((_) => _.get(0)))
@@ -2593,7 +2601,7 @@ describe("Managed", () => {
         .bind("ref", () => Ref.make(false))
         .bindValue("managed", ({ ref }) =>
           Managed.acquireReleaseExitWith(Effect.unit, (_, e) =>
-            Ref.set_(ref, Exit.isSuccess(e))
+            Ref.set_(ref, e.isSuccess())
           )
         )
         .tap(({ managed }) =>
@@ -2657,7 +2665,7 @@ describe("Managed", () => {
 
       const result = await program.unsafeRunPromise()
 
-      expect(Exit.isFailure(result)).toBe(true)
+      expect(result.isFailure()).toBe(true)
     })
 
     it("runs finalizers if one acquisition fails", async () => {
@@ -2707,9 +2715,9 @@ describe("Managed", () => {
 
       const result = await program.unsafeRunPromise()
 
-      expect(Exit.untraced(result)).toHaveProperty("cause.right._tag", "Fail")
-      expect(Exit.untraced(result)).toHaveProperty("cause.left.left._tag", "Interrupt")
-      expect(Exit.untraced(result)).toHaveProperty("cause.left.right._tag", "Interrupt")
+      expect(result.untraced()).toHaveProperty("cause.right._tag", "Fail")
+      expect(result.untraced()).toHaveProperty("cause.left.left._tag", "Interrupt")
+      expect(result.untraced()).toHaveProperty("cause.left.right._tag", "Interrupt")
     })
 
     it("run finalizers if one reservation fails", async () => {
@@ -2932,7 +2940,7 @@ describe("Managed", () => {
 
       const { ohNoes, res1, res2 } = await program.unsafeRunPromise()
 
-      expect(Exit.untraced(res1)).toHaveProperty("cause.cause.value.message", ohNoes)
+      expect(res1.untraced()).toHaveProperty("cause.cause.value.message", ohNoes)
       expect(res2).toBe(false)
     })
 
@@ -2948,7 +2956,7 @@ describe("Managed", () => {
 
       const result = await program.unsafeRunPromise()
 
-      expect(Exit.untraced(result)).toHaveProperty("cause.cause.value.message", myBad)
+      expect(result.untraced()).toHaveProperty("cause.cause.value.message", myBad)
     })
 
     it("behaves properly if use dies", async () => {
@@ -2971,7 +2979,7 @@ describe("Managed", () => {
 
       const { darn, v1, v2 } = await program.unsafeRunPromise()
 
-      expect(Exit.untraced(v1)).toHaveProperty("cause.cause.value.message", darn)
+      expect(v1.untraced()).toHaveProperty("cause.cause.value.message", darn)
       expect(v2).toBe(true)
     })
 
@@ -3173,7 +3181,7 @@ describe("Managed", () => {
 
       const result = await program.unsafeRunPromise()
 
-      expect(Exit.untraced(result)).toEqual(Exit.fail("Uh oh!"))
+      expect(result.untraced()).toEqual(Exit.fail("Uh oh!"))
     })
   })
 
@@ -3200,7 +3208,7 @@ describe("Managed", () => {
 
       const result = await program.unsafeRunPromise()
 
-      expect(Exit.untraced(result)).toEqual(Exit.fail("Oh No!"))
+      expect(result.untraced()).toEqual(Exit.fail("Oh No!"))
     })
   })
 
@@ -3244,7 +3252,7 @@ describe("Managed", () => {
 
       const result = await program.unsafeRunPromise()
 
-      expect(Exit.untraced(result)).toEqual(Exit.fail(2))
+      expect(result.untraced()).toEqual(Exit.fail(2))
     })
 
     it("preserves use failures", async () => {
@@ -3258,7 +3266,7 @@ describe("Managed", () => {
 
       const result = await program.unsafeRunPromise()
 
-      expect(Exit.untraced(result)).toEqual(Exit.fail(5))
+      expect(result.untraced()).toEqual(Exit.fail(5))
     })
 
     it("ignores release failures", async () => {
@@ -3272,7 +3280,7 @@ describe("Managed", () => {
 
       const result = await program.unsafeRunPromise()
 
-      expect(Exit.untraced(result)).toEqual(Exit.succeed(5))
+      expect(result.untraced()).toEqual(Exit.succeed(5))
     })
   })
 })

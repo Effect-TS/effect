@@ -1,5 +1,5 @@
 import type { Cause } from "../../Cause"
-import * as Exit from "../../Exit/operations/failCause"
+import { Exit } from "../../Exit"
 import type { Fiber } from "../definition"
 import { done } from "./done"
 

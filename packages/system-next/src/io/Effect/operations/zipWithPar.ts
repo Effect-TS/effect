@@ -1,4 +1,4 @@
-import { both as causeBoth } from "../../Cause/definition"
+import { Cause } from "../../Cause"
 import type { Exit } from "../../Exit/definition"
 import type { Fiber } from "../../Fiber/definition"
 import { join as fiberJoin } from "../../Fiber/operations/join"
@@ -41,7 +41,7 @@ export function zipWithPar<A, R2, E2, A2, B>(
   __etsTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R2, E | E2, B> =>
-    zipWithPar_(self, that, f)
+    self.zipWithPar(that, f)
 }
 
 function coordinateZipPar<E, B, X, Y>(
@@ -65,8 +65,8 @@ function coordinateZipPar<E, B, X, Y>(
           }
           case "Failure": {
             return leftWinner
-              ? Effect.failCauseNow(causeBoth(winner.cause, e.cause))
-              : Effect.failCauseNow(causeBoth(e.cause, winner.cause))
+              ? Effect.failCauseNow(Cause.both(winner.cause, e.cause))
+              : Effect.failCauseNow(Cause.both(e.cause, winner.cause))
           }
         }
       })

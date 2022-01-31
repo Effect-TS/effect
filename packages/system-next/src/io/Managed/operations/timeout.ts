@@ -4,8 +4,7 @@ import { Option } from "../../../data/Option"
 import type { HasClock } from "../../Clock"
 import { Effect } from "../../Effect"
 import { sequential } from "../../Effect/operations/ExecutionStrategy"
-import { interrupt as exitInterrupt } from "../../Exit/operations/interrupt"
-import { map_ as exitMap_ } from "../../Exit/operations/map"
+import { Exit } from "../../Exit"
 import * as Fiber from "../../Fiber"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { get as fiberRefGet } from "../../FiberRef/operations/get"
@@ -45,7 +44,7 @@ export function timeout_<R, E, A>(
               Effect.sleep(duration).map(() => Option.none),
               (result, sleeper) =>
                 Fiber.interrupt(sleeper).zipRight(
-                  Effect.done(exitMap_(result, (_) => Either.right(_.get(1))))
+                  Effect.done(result.map((_) => Either.right(_.get(1))))
                 ),
               (_, resultFiber) => Effect.succeed(Either.left(resultFiber))
             )
@@ -57,7 +56,9 @@ export function timeout_<R, E, A>(
               Effect.fiberId
                 .flatMap((id) =>
                   Fiber.interrupt(fiber)
-                    .ensuring(innerReleaseMap.releaseAll(exitInterrupt(id), sequential))
+                    .ensuring(
+                      innerReleaseMap.releaseAll(Exit.interrupt(id), sequential)
+                    )
                     .forkDaemon()
                 )
                 .map(() => Option.none),
@@ -78,5 +79,5 @@ export function timeout_<R, E, A>(
  */
 export function timeout(duration: number, __etsTrace?: string) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<R & HasClock, E, Option<A>> =>
-    timeout_(self, duration)
+    self.timeout(duration)
 }

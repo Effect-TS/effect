@@ -1,6 +1,5 @@
 import * as Cause from "../../Cause"
 import type { Exit } from "../../Exit"
-import { fold_ } from "../../Exit/operations/fold"
 import { Effect } from "../definition"
 
 /**
@@ -26,8 +25,7 @@ export function acquireReleaseExitWith_<R, E, A, R1, E1, A1, R2, E2, X>(
           Effect.suspendSucceed(() => release(a, exit)).foldCauseEffect(
             (cause2) =>
               Effect.failCauseNow(
-                fold_(
-                  exit,
+                exit.fold(
                   (cause1) => Cause.then(cause1, cause2),
                   () => cause2
                 )

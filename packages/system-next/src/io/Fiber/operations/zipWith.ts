@@ -1,6 +1,5 @@
 import { Cause } from "../../Cause"
 import { Effect } from "../../Effect"
-import * as Exit from "../../Exit"
 import * as FiberId from "../../FiberId"
 import type { Fiber } from "../definition"
 import { makeSynthetic } from "./makeSynthetic"
@@ -27,11 +26,9 @@ export function zipWith_<E, E1, A, B, C>(
     interruptAs: (id) =>
       self
         .interruptAs(id)
-        .zipWith(that.interruptAs(id), (ea, eb) =>
-          Exit.zipWith_(ea, eb, f, Cause.both)
-        ),
+        .zipWith(that.interruptAs(id), (ea, eb) => ea.zipWith(eb, f, Cause.both)),
     poll: self.poll.zipWith(that.poll, (oa, ob) =>
-      oa.flatMap((ea) => ob.map((eb) => Exit.zipWith_(ea, eb, f, Cause.both)))
+      oa.flatMap((ea) => ob.map((eb) => ea.zipWith(eb, f, Cause.both)))
     )
   })
 }

@@ -2,8 +2,6 @@ import { Tuple } from "../../../collection/immutable/Tuple"
 import { Effect } from "../../Effect"
 import { sequential } from "../../Effect/operations/ExecutionStrategy"
 import type { Exit } from "../../Exit"
-import { map as exitMap } from "../../Exit/operations/map"
-import { zipRight_ as exitZipRight_ } from "../../Exit/operations/zipRight"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { get } from "../../FiberRef/operations/get"
 import { locally_ } from "../../FiberRef/operations/locally"
@@ -34,7 +32,7 @@ export function onExitFirst_<R, E, A, R1, X>(
           )(
             restore(self.effect)
               .exit()
-              .map(exitMap((_) => _.get(1)))
+              .map((e) => e.map((_) => _.get(1)))
           )
         )
         .bind("releaseMapEntry", ({ exitEA, innerReleaseMap, outerReleaseMap, r1 }) =>
@@ -43,7 +41,7 @@ export function onExitFirst_<R, E, A, R1, X>(
               .provideEnvironment(r1)
               .exit()
               .zipWith(innerReleaseMap.releaseAll(e, sequential).exit(), (l, r) =>
-                Effect.done(exitZipRight_(l, r))
+                Effect.done(l.zipRight(r))
               )
               .flatten()
           )
@@ -64,6 +62,5 @@ export function onExitFirst<E, A, R1, X>(
   cleanup: (exit: Exit<E, A>) => Effect<R1, never, X>,
   __etsTrace?: string
 ) {
-  return <R>(self: Managed<R, E, A>): Managed<R & R1, E, A> =>
-    onExitFirst_(self, cleanup)
+  return <R>(self: Managed<R, E, A>): Managed<R & R1, E, A> => self.onExitFirst(cleanup)
 }

@@ -1,5 +1,4 @@
-import type { UIO } from "../../Effect"
-import { done as effectDone } from "../../Effect/operations/done"
+import { Effect } from "../../Effect"
 import type { Exit } from "../../Exit"
 import type { Promise } from "../definition"
 import { completeWith_ } from "./completeWith"
@@ -11,9 +10,9 @@ import { completeWith_ } from "./completeWith"
 export function done_<E, A>(
   self: Promise<E, A>,
   exit: Exit<E, A>,
-  __trace?: string
-): UIO<boolean> {
-  return completeWith_(self, effectDone(exit), __trace)
+  __etsTrace?: string
+): Effect<unknown, never, boolean> {
+  return completeWith_(self, Effect.done(exit))
 }
 
 /**
@@ -22,6 +21,6 @@ export function done_<E, A>(
  *
  * @ets_data_first die_
  */
-export function done<E, A>(exit: Exit<E, A>, __trace?: string) {
-  return (self: Promise<E, A>): UIO<boolean> => done_(self, exit, __trace)
+export function done<E, A>(exit: Exit<E, A>, __etsTrace?: string) {
+  return (self: Promise<E, A>): Effect<unknown, never, boolean> => done_(self, exit)
 }

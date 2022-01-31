@@ -2,10 +2,9 @@ import { reduce_ } from "../../../collection/immutable/Chunk/api/reduce"
 import * as Chunk from "../../../collection/immutable/Chunk/core"
 import { Tuple } from "../../../collection/immutable/Tuple"
 import * as Ref from "../../../io/Ref"
-import * as Exit from "../../Exit"
+import type { Exit } from "../../Exit"
 import * as Fiber from "../../Fiber"
 import * as P from "../../Promise"
-import type { UIO } from "../definition"
 import { Effect } from "../definition"
 
 /**
@@ -38,7 +37,7 @@ export function raceAll_<R, E, A>(
           .bindValue(
             "inheritRefs",
             () =>
-              (res: Tuple<[A, Fiber.Fiber<E, A>]>): UIO<A> =>
+              (res: Tuple<[A, Fiber.Fiber<E, A>]>): Effect<unknown, never, A> =>
                 res.get(1).inheritRefs.map(() => res.get(0))
           )
           .flatMap(({ fs, inheritRefs }) =>
@@ -58,7 +57,7 @@ export function raceAll_<R, E, A>(
  * @ets_data_first raceAll_
  */
 export function raceAll<R, E, A>(as: Iterable<Effect<R, E, A>>, __etsTrace?: string) {
-  return (self: Effect<R, E, A>): Effect<R, E, A> => raceAll_(self, as, __etsTrace)
+  return (self: Effect<R, E, A>): Effect<R, E, A> => self.raceAll(as)
 }
 
 function arbiter<E, A>(
@@ -67,9 +66,8 @@ function arbiter<E, A>(
   promise: P.Promise<E, Tuple<[A, Fiber.Fiber<E, A>]>>,
   fails: Ref.Ref<number>
 ) {
-  return (exit: Exit.Exit<E, A>): UIO<void> => {
-    return Exit.foldEffect_(
-      exit,
+  return (exit: Exit<E, A>): Effect<unknown, never, void> => {
+    return exit.foldEffect(
       (e) =>
         Ref.modify_(fails, (c) =>
           Tuple(c === 0 ? P.failCause_(promise, e).asUnit() : Effect.unit, c - 1)

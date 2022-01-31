@@ -1,6 +1,6 @@
 import type { Tuple } from "../../../collection/immutable/Tuple"
 import type { UIO } from "../../Effect"
-import { interrupt as exitInterrupt } from "../../Exit/operations/interrupt"
+import { Exit } from "../../Exit"
 import { Managed } from "../definition"
 
 /**
@@ -15,5 +15,5 @@ export function withEarlyRelease<R, E, A>(
   self: Managed<R, E, A>,
   __etsTrace?: string
 ): Managed<R, E, Tuple<[UIO<any>, A]>> {
-  return Managed.fiberId.flatMap((id) => self.withEarlyReleaseExit(exitInterrupt(id)))
+  return Managed.fiberId.flatMap((id) => self.withEarlyReleaseExit(Exit.interrupt(id)))
 }

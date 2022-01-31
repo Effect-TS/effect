@@ -4,7 +4,7 @@ import * as Iter from "../../../collection/immutable/Iterable"
 import { Option } from "../../../data/Option"
 import { Cause } from "../../Cause/definition"
 import { Effect } from "../../Effect"
-import * as Exit from "../../Exit"
+import { Exit } from "../../Exit"
 import * as FiberId from "../../FiberId"
 import type { Fiber } from "../definition"
 import { makeSynthetic } from "./makeSynthetic"
@@ -27,7 +27,7 @@ export function collectAll<E, A>(
     inheritRefs: Effect.forEachDiscard(fibers, (fiber) => fiber.inheritRefs),
     poll: Effect.forEach(fibers, (f) => f.poll).map(
       reduceRight(
-        Option.some(Exit.succeed(Chunk.empty()) as Exit.Exit<E, Chunk.Chunk<A>>),
+        Option.some(Exit.succeed(Chunk.empty()) as Exit<E, Chunk.Chunk<A>>),
         (a, b) =>
           a.fold(
             () => Option.none,
@@ -36,12 +36,7 @@ export function collectAll<E, A>(
                 () => Option.none,
                 (rb) =>
                   Option.some(
-                    Exit.zipWith_(
-                      ra,
-                      rb,
-                      (_a, _b) => Chunk.prepend_(_b, _a),
-                      Cause.both
-                    )
+                    ra.zipWith(rb, (_a, _b) => Chunk.prepend_(_b, _a), Cause.both)
                   )
               )
           )
@@ -53,9 +48,8 @@ export function collectAll<E, A>(
       ),
     interruptAs: (fiberId) =>
       Effect.forEach(fibers, (f) => f.interruptAs(fiberId)).map(
-        reduceRight(
-          Exit.succeed(Chunk.empty()) as Exit.Exit<E, Chunk.Chunk<A>>,
-          (a, b) => Exit.zipWith_(a, b, (_a, _b) => Chunk.prepend_(_b, _a), Cause.both)
+        reduceRight(Exit.succeed(Chunk.empty()) as Exit<E, Chunk.Chunk<A>>, (a, b) =>
+          a.zipWith(b, (_a, _b) => Chunk.prepend_(_b, _a), Cause.both)
         )
       )
   })
