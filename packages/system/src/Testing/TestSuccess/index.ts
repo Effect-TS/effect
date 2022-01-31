@@ -1,4 +1,4 @@
-import type * as BA from "../BoolAlgebra"
+import type * as BA from "../BoolAlgebra/index.js"
 
 export const SucceededTypeId = Symbol()
 

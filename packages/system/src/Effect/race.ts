@@ -1,10 +1,10 @@
 // ets_tracing: off
 
 import * as Cause from "../Cause/core.js"
-import * as E from "../Either"
+import * as E from "../Either/index.js"
 import * as Exit from "../Exit/api.js"
 import * as Fiber from "../Fiber/core.js"
-import { pipe } from "../Function"
+import { pipe } from "../Function/index.js"
 import { as_ } from "./as"
 import * as core from "./core.js"
 import { raceWith_ } from "./core-scope"

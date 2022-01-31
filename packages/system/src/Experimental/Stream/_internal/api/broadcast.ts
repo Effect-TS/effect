@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
-import * as M from "../../../../Managed"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as M from "../../../../Managed/index.js"
 import type * as C from "../core.js"
 import * as BroadcastedQueues from "./broadcastedQueues"
 import * as FlattenTake from "./flattenTake.js"

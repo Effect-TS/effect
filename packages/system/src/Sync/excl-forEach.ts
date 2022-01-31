@@ -2,8 +2,8 @@
 
 import * as ChunkCollect from "../Collections/Immutable/Chunk/api/collect.js"
 import * as Chunk from "../Collections/Immutable/Chunk/core.js"
-import { identity } from "../Function"
-import type * as O from "../Option"
+import { identity } from "../Function/index.js"
+import type * as O from "../Option/index.js"
 import type { Sync } from "./core.js"
 import * as core from "./core.js"
 

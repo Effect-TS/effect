@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as L from "../Collections/Immutable/List/core.js"
-import * as O from "../Option"
-import * as S from "../Sync"
+import * as O from "../Option/index.js"
+import * as S from "../Sync/index.js"
 import type { FiberID } from "./id.js"
 import { prettyFiberId } from "./id.js"
 

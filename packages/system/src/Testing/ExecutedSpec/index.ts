@@ -1,5 +1,5 @@
-import * as T from "../../Effect"
-import * as E from "../../Either"
+import * as T from "../../Effect/index.js"
+import * as E from "../../Either/index.js"
 import type * as TAM from "../TestAnnotationMap"
 import type { TestFailure } from "../TestFailure"
 import type { TestSuccess } from "../TestSuccess"

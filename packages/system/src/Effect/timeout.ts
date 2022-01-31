@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as CL from "../Clock"
-import * as O from "../Option"
+import type * as CL from "../Clock/index.js"
+import * as O from "../Option/index.js"
 import type { Effect } from "./effect.js"
 import { timeoutTo_ } from "./timeoutTo.js"
 

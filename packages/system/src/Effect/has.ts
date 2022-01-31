@@ -4,13 +4,13 @@
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
 
-import * as A from "../Collections/Immutable/Array"
-import * as R from "../Collections/Immutable/Dictionary"
+import * as A from "../Collections/Immutable/Array/index.js"
+import * as R from "../Collections/Immutable/Dictionary/index.js"
 import * as core from "../Effect/core.js"
 import type { Effect } from "../Effect/effect.js"
 import type { Has, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
-import { accessCallTrace } from "../Tracing"
+import { accessCallTrace } from "../Tracing/index.js"
 import type { UnionToIntersection } from "../Utils"
 
 /**

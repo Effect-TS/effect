@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Array"
-import { pipe } from "../../Function"
+import * as A from "../../Collections/Immutable/Array/index.js"
+import { pipe } from "../../Function/index.js"
 import type { _A, _E, _R } from "../../Utils"
 import { flattenTuples } from "./_internal/flattenTuples"
 import type { Stream } from "./definitions"

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { pipe } from "../Function"
+import { pipe } from "../Function/index.js"
 import type { Exit } from "./core.js"
 import { chain, map, succeed } from "./core.js"
 

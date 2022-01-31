@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import type * as T from "../../../../Effect"
-import * as M from "../../../../Managed"
-import type * as O from "../../../../Option"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import type * as T from "../../../../Effect/index.js"
+import * as M from "../../../../Managed/index.js"
+import type * as O from "../../../../Option/index.js"
 import type * as C from "../core.js"
 import * as RepeatEffectChunkOption from "./repeatEffectChunkOption.js"
 import * as UnwrapManaged from "./unwrapManaged.js"

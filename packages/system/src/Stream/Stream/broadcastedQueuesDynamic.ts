@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as H from "../../Hub"
-import type * as Q from "../../Queue"
+import * as H from "../../Hub/index.js"
+import type * as Q from "../../Queue/index.js"
 import * as M from "../_internal/managed.js"
-import type * as Take from "../Take"
+import type * as Take from "../Take/index.js"
 import type { Stream } from "./definitions"
 import { toHub_ } from "./toHub.js"
 

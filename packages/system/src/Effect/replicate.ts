@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { range } from "../Collections/Immutable/Array"
+import { range } from "../Collections/Immutable/Array/index.js"
 import type { Effect } from "./effect.js"
 import { collectAllUnit } from "./excl-forEach.js"
 

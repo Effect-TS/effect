@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import "../../Operator"
+import "../../Operator/index.js"
 
 import * as L from "../../Collections/Immutable/List"
-import type { Predicate } from "../../Function"
+import type { Predicate } from "../../Function/index.js"
 import { DoublyLinkedList } from "../DoublyLinkedList"
 
 export class RingBuffer<T> {

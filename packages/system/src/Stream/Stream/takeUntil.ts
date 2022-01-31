@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
-import type { Predicate } from "../../Function"
-import { not, pipe } from "../../Function"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import type { Predicate } from "../../Function/index.js"
+import { not, pipe } from "../../Function/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
-import * as Pull from "../Pull"
+import * as Pull from "../Pull/index.js"
 import { Stream } from "./definitions"
 
 /**

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as A from "../../Collections/Immutable/Chunk"
-import type * as Ex from "../../Exit"
-import * as O from "../../Option"
+import type * as A from "../../Collections/Immutable/Chunk/index.js"
+import type * as Ex from "../../Exit/index.js"
+import * as O from "../../Option/index.js"
 import type * as T from "../_internal/effect.js"
 import type * as F from "../_internal/fiber.js"
 import type { Stream } from "./definitions"

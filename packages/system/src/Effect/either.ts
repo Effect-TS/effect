@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as E from "../Either"
+import * as E from "../Either/index.js"
 import { succeed } from "./core.js"
 import type { Effect, RIO } from "./effect.js"
 import { foldM_ } from "./foldM.js"

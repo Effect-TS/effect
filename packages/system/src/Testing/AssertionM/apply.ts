@@ -1,6 +1,6 @@
-import type { Lazy } from "../../Function"
+import type { Lazy } from "../../Function/index.js"
 import type * as ARM from "../AssertionResultM"
-import type * as R from "../Render"
+import type * as R from "../Render/index.js"
 import { AssertionM } from "./AssertionM"
 
 export function apply<A>(

@@ -1,5 +1,5 @@
 import * as AM from "../AssertionM/api.js"
-import * as BA from "../BoolAlgebra"
+import * as BA from "../BoolAlgebra/index.js"
 import type { AssertionValue } from "./AssertionValue"
 import { makeAssertionValue } from "./makeAssertionValue"
 

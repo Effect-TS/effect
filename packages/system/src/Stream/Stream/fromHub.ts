@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as H from "../../Hub"
+import * as H from "../../Hub/index.js"
 import { chain_ } from "./chain.js"
 import type { Stream } from "./definitions"
 import { fromQueue } from "./fromQueue.js"

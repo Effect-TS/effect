@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
-import * as T from "../../../../Effect"
-import { pipe } from "../../../../Function"
-import * as H from "../../../../Hub"
-import * as M from "../../../../Managed"
-import type * as TK from "../../Take"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as T from "../../../../Effect/index.js"
+import { pipe } from "../../../../Function/index.js"
+import * as H from "../../../../Hub/index.js"
+import * as M from "../../../../Managed/index.js"
+import type * as TK from "../../Take/index.js"
 import type * as C from "../core.js"
 import * as RunIntoHubManaged from "./runIntoHubManaged.js"
 

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as E from "../../../../Either"
-import * as Ex from "../../../../Exit"
-import * as Q from "../../../../Queue"
+import * as E from "../../../../Either/index.js"
+import * as Ex from "../../../../Exit/index.js"
+import * as Q from "../../../../Queue/index.js"
 import * as C from "../core.js"
 import * as ZipRight from "./zipRight.js"
 

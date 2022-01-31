@@ -1,5 +1,5 @@
-import * as O from "../../../../Option"
-import * as Tp from "../../Tuple"
+import * as O from "../../../../Option/index.js"
+import * as Tp from "../../Tuple/index.js"
 import type { Chunk } from "../definition.js"
 import { zipAllWith_ } from "./zipAllWith.js"
 

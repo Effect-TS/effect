@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as Tp from "../Collections/Immutable/Tuple"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import { chain_ } from "./core.js"
 import type { Effect } from "./effect.js"
 import { map_ } from "./map.js"

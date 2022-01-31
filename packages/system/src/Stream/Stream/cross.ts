@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as Tp from "../../Collections/Immutable/Tuple"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import { crossWith_ } from "./crossWith"
 import type { Stream } from "./definitions"
 

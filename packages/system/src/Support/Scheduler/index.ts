@@ -1,4 +1,4 @@
-import type { Lazy } from "../../Function"
+import type { Lazy } from "../../Function/index.js"
 import { DoublyLinkedList } from "../DoublyLinkedList"
 
 let isRunning = false

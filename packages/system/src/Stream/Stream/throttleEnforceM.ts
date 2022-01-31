@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as CL from "../../Clock"
-import type * as A from "../../Collections/Immutable/Chunk"
-import * as Tp from "../../Collections/Immutable/Tuple"
-import { pipe } from "../../Function"
-import * as O from "../../Option"
+import * as CL from "../../Clock/index.js"
+import type * as A from "../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import { pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"

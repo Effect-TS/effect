@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect"
-import * as E from "../../../../Either"
-import * as Ex from "../../../../Exit"
-import * as F from "../../../../Fiber"
-import { pipe } from "../../../../Function"
-import * as M from "../../../../Managed"
+import * as T from "../../../../Effect/index.js"
+import * as E from "../../../../Either/index.js"
+import * as Ex from "../../../../Exit/index.js"
+import * as F from "../../../../Fiber/index.js"
+import { pipe } from "../../../../Function/index.js"
+import * as M from "../../../../Managed/index.js"
 import * as MH from "../_internal/mergeHelpers"
 import * as C from "../core.js"
 import * as FromInput from "./fromInput.js"

@@ -1,9 +1,9 @@
-import type { Lazy } from "../../Function"
-import * as ST from "../../Structural"
+import type { Lazy } from "../../Function/index.js"
+import * as ST from "../../Structural/index.js"
 import { LazyGetter } from "../../Utils"
 import type * as ARM from "../AssertionResultM"
 import * as PR from "../Primitives"
-import type * as R from "../Render"
+import type * as R from "../Render/index.js"
 
 /**
  * An `AssertionM[A]` is capable of producing assertion results on an `A`. As a

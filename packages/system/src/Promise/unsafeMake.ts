@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { FiberID } from "../Fiber/id.js"
-import { AtomicReference } from "../Support/AtomicReference"
+import { AtomicReference } from "../Support/AtomicReference/index.js"
 import { Promise } from "./promise"
 import { Pending } from "./state.js"
 

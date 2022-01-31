@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as T from "../../../../Effect"
-import { identity } from "../../../../Function"
+import type * as T from "../../../../Effect/index.js"
+import { identity } from "../../../../Function/index.js"
 import type * as C from "../core.js"
 import * as FromEffect from "./fromEffect.js"
 import * as MapConcat from "./mapConcat.js"

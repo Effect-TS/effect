@@ -6,7 +6,7 @@ import * as Chunk from "../../Collections/Immutable/Chunk"
 import * as T from "../../Effect"
 import * as P from "../../Promise"
 import type * as MQ from "../../Support/MutableQueue"
-import type * as HB from "./Hub"
+import type * as HB from "./Hub.js"
 
 /**
  * Unsafely completes a promise with the specified value.

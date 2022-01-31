@@ -3,10 +3,10 @@
 /* eslint-disable prefer-const */
 import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import { _A, _E, _R, _U } from "../Effect/commons.js"
-import * as E from "../Either"
-import { pipe } from "../Function"
-import type { Option } from "../Option"
-import { Stack } from "../Stack"
+import * as E from "../Either/index.js"
+import { pipe } from "../Function/index.js"
+import type { Option } from "../Option/index.js"
+import { Stack } from "../Stack/index.js"
 import type * as U from "../Utils"
 
 /**

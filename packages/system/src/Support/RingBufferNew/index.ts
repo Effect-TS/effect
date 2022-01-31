@@ -1,5 +1,5 @@
-import * as Chunk from "../../Collections/Immutable/Chunk"
-import * as O from "../../Option"
+import * as Chunk from "../../Collections/Immutable/Chunk/index.js"
+import * as O from "../../Option/index.js"
 
 export class RingBufferNew<A> {
   private array: Array<A | null>

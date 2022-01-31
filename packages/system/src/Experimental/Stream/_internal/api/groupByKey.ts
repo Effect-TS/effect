@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as Tp from "../../../../Collections/Immutable/Tuple"
-import * as T from "../../../../Effect"
-import type * as GB from "../../GroupBy"
+import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
+import * as T from "../../../../Effect/index.js"
+import type * as GB from "../../GroupBy/index.js"
 import type * as C from "../core.js"
 import * as GroupBy from "./groupBy.js"
 

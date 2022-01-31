@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type * as CS from "../Cause"
-import type * as CL from "../Clock"
+import type * as CL from "../Clock/index.js"
 import { halt, succeed, suspend } from "./core.js"
 import type { Effect } from "./effect.js"
 import { flatten } from "./flatten.js"

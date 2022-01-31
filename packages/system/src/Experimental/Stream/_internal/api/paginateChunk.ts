@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import type * as Tp from "../../../../Collections/Immutable/Tuple"
-import * as O from "../../../../Option"
-import * as CH from "../../Channel"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import type * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
+import * as O from "../../../../Option/index.js"
+import * as CH from "../../Channel/index.js"
 import * as C from "../core.js"
 
 /**

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as A from "../../Collections/Immutable/Chunk"
-import * as Q from "../../Queue"
+import type * as A from "../../Collections/Immutable/Chunk/index.js"
+import * as Q from "../../Queue/index.js"
 import type { Stream } from "./definitions"
 import { ensuringFirst_ } from "./ensuringFirst"
 import { fromChunkQueue } from "./fromChunkQueue.js"

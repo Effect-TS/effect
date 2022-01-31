@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as Chunk from "../../Collections/Immutable/Chunk"
+import type * as Chunk from "../../Collections/Immutable/Chunk/index.js"
 import * as M from "../_internal/managed.js"
-import * as BP from "../BufferedPull"
+import * as BP from "../BufferedPull/index.js"
 import { Stream } from "./definitions"
 
 /**

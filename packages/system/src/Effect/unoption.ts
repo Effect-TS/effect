@@ -1,4 +1,4 @@
-import * as O from "../Option"
+import * as O from "../Option/index.js"
 import { succeed } from "./core.js"
 import type { Effect } from "./effect.js"
 import { fail } from "./fail.js"

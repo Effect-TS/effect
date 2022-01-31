@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type { Chunk } from "../Collections/Immutable/Chunk"
-import { constant, tuple } from "../Function"
-import * as IT from "../Iterable"
-import { fold_ } from "../Option"
+import type { Chunk } from "../Collections/Immutable/Chunk/index.js"
+import { constant, tuple } from "../Function/index.js"
+import * as IT from "../Iterable/index.js"
+import { fold_ } from "../Option/index.js"
 import { parseMs } from "../Utils/parse-ms"
 import type { UIO } from "./_internal/effect.js"
 import * as T from "./_internal/effect-api.js"

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { currentTime } from "../Clock"
+import { currentTime } from "../Clock/index.js"
 import type { Effect } from "./effect.js"
 import { summarized_ } from "./summarized.js"
 

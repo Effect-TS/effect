@@ -1,16 +1,16 @@
 // ets_tracing: off
 
-import "../../../Operator"
+import "../../../Operator/index.js"
 
-import type { Refinement } from "../../../Function"
-import { constant, identity, tuple } from "../../../Function"
+import type { Refinement } from "../../../Function/index.js"
+import { constant, identity, tuple } from "../../../Function/index.js"
 import { NoSuchElementException } from "../../../GlobalExceptions"
-import * as I from "../../../Iterable"
-import * as O from "../../../Option"
-import * as St from "../../../Structural"
-import * as Tp from "../Tuple"
+import * as I from "../../../Iterable/index.js"
+import * as O from "../../../Option/index.js"
+import * as St from "../../../Structural/index.js"
+import * as Tp from "../Tuple/index.js"
 import { fromBitmap, hashFragment, toBitmap } from "./Bitwise"
-import { SIZE } from "./Config"
+import { SIZE } from "./Config/index.js"
 import type { Node, UpdateFn } from "./Nodes"
 import { Empty, isEmptyNode } from "./Nodes"
 

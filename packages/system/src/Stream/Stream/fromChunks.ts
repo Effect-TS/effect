@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as A from "../../Collections/Immutable/Chunk"
+import type * as A from "../../Collections/Immutable/Chunk/index.js"
 import { chain_ } from "./chain.js"
 import type { UIO } from "./definitions"
 import { fromChunk } from "./fromChunk.js"

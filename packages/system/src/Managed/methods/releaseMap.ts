@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as Tp from "../../Collections/Immutable/Tuple"
-import { pipe } from "../../Function"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import { pipe } from "../../Function/index.js"
 import { environment, map } from "../deps"
 import type { Managed } from "../managed.js"
 import { managedApply } from "../managed.js"

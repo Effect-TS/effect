@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as Ex from "../../Exit"
-import { pipe } from "../../Function"
-import * as O from "../../Option"
-import * as BP from "../../Stream/BufferedPull"
-import * as P from "../../Stream/Pull"
+import type * as Ex from "../../Exit/index.js"
+import { pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
+import * as BP from "../../Stream/BufferedPull/index.js"
+import * as P from "../../Stream/Pull/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"

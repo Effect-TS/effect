@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import "../../Operator"
+import "../../Operator/index.js"
 
-import type * as Tp from "../../Collections/Immutable/Tuple"
-import type * as Ex from "../../Exit"
-import { pipe } from "../../Function"
-import type * as O from "../../Option"
-import * as Q from "../../Queue"
+import type * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import type * as Ex from "../../Exit/index.js"
+import { pipe } from "../../Function/index.js"
+import type * as O from "../../Option/index.js"
+import * as Q from "../../Queue/index.js"
 import * as T from "../_internal/effect.js"
 import { chainPar } from "../Stream/chainPar.js"
 import type { Stream } from "../Stream/definitions"

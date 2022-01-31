@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { Cause } from "../Cause"
-import { pipe } from "../Function"
+import { pipe } from "../Function/index.js"
 import * as catchAllCause from "./catchAllCause"
 import { fork } from "./core.js"
 import * as Do from "./do.js"

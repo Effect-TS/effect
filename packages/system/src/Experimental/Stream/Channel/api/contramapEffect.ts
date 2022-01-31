@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as T from "../../../../Effect"
+import type * as T from "../../../../Effect/index.js"
 import * as C from "../core.js"
 import * as ReadWith from "./readWith.js"
 import * as ZipRight from "./zipRight.js"

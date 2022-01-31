@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Ref } from "../Ref/XRef"
-import * as semaphore from "../Semaphore"
+import type { Ref } from "../Ref/XRef.js"
+import * as semaphore from "../Semaphore/index.js"
 import * as T from "./effect.js"
 
 /**

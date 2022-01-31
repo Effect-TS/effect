@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { identity } from "../Function"
-import type { Option } from "../Option"
-import { fold } from "../Option"
+import { identity } from "../Function/index.js"
+import type { Option } from "../Option/index.js"
+import { fold } from "../Option/index.js"
 import type { Effect } from "./effect.js"
 import { mapError_ } from "./mapError.js"
 

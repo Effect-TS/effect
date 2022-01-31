@@ -1,5 +1,5 @@
-import type { Effect } from "../Effect"
-import type { Sync } from "../Sync"
+import type { Effect } from "../Effect/index.js"
+import type { Sync } from "../Sync/index.js"
 import type { UnifiableIndexed } from "./index.js"
 
 export const unifyIndex = Symbol()

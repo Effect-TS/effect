@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as EQ from "../../../../Equal"
+import * as EQ from "../../../../Equal/index.js"
 import type * as C from "../core.js"
 import * as ChangesWith from "./changesWith"
 

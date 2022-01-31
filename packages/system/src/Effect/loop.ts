@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as L from "../Collections/Immutable/List"
-import { pipe } from "../Function"
+import { pipe } from "../Function/index.js"
 import * as core from "./core.js"
 import type { Effect } from "./effect.js"
 import * as map from "./map.js"

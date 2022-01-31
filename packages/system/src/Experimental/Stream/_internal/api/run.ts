@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as T from "../../../../Effect"
-import * as CH from "../../Channel"
-import type * as SK from "../../Sink"
+import type * as T from "../../../../Effect/index.js"
+import * as CH from "../../Channel/index.js"
+import type * as SK from "../../Sink/index.js"
 import type * as C from "../core.js"
 
 /**

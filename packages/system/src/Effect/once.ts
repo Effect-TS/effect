@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { pipe } from "../Function"
-import { getAndSet, makeRef } from "../Ref"
+import { pipe } from "../Function/index.js"
+import { getAndSet, makeRef } from "../Ref/index.js"
 import type { Effect, UIO } from "./effect.js"
 import * as map from "./map.js"
 import { whenM_ } from "./whenM.js"

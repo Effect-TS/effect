@@ -1,8 +1,8 @@
-import * as T from "../../Effect"
-import * as L from "../../Layer"
-import * as Random from "../../Random"
+import * as T from "../../Effect/index.js"
+import * as L from "../../Layer/index.js"
+import * as Random from "../../Random/index.js"
 import * as Annotations from "../Annotations"
-import * as Live from "../Live"
+import * as Live from "../Live/index.js"
 import * as TestClock from "../TestClock"
 
 const defaultEnv = L.succeed(T.defaultEnv)

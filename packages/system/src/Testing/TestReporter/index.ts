@@ -1,6 +1,6 @@
-import type * as T from "../../Effect"
+import type * as T from "../../Effect/index.js"
 import type { Has } from "../../Has"
-import type { ExecutedSpec } from "../ExecutedSpec"
+import type { ExecutedSpec } from "../ExecutedSpec/index.js"
 import type { TestAnnotationRenderer } from "../TestAnnotationRenderer"
 import type { Duration } from "../TestClock"
 import type { TestLogger } from "../TestLogger"

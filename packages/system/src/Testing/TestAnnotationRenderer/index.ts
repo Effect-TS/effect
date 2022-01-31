@@ -1,5 +1,5 @@
 import * as List from "../../Collections/Immutable/List"
-import { pipe } from "../../Function"
+import { pipe } from "../../Function/index.js"
 import type { TestAnnotationMap } from "../TestAnnotationMap"
 
 export interface TestAnnotationRenderer {

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as CL from "../../Clock"
-import * as SC from "../../Schedule"
+import type * as CL from "../../Clock/index.js"
+import * as SC from "../../Schedule/index.js"
 import type * as TR from "../Transducer"
 import { aggregateAsyncWithin_ } from "./aggregateAsyncWithin"
 import type { Stream } from "./definitions"

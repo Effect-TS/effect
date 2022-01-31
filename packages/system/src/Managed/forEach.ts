@@ -2,9 +2,9 @@
 
 import { unzip } from "../Collections/Immutable/Chunk/api/unzip.js"
 import * as Chunk from "../Collections/Immutable/Chunk/core.js"
-import * as Tp from "../Collections/Immutable/Tuple"
-import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"
-import { sequential } from "../Effect/ExecutionStrategy"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import type { ExecutionStrategy } from "../Effect/ExecutionStrategy.js"
+import { sequential } from "../Effect/ExecutionStrategy.js"
 import { makeManagedReleaseMap, mapM_ } from "./core.js"
 import * as T from "./deps"
 import type { Managed } from "./managed.js"

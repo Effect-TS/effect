@@ -1,12 +1,12 @@
 // ets_tracing: off
 
 import * as C from "../../Cause"
-import * as E from "../../Either"
-import { pipe } from "../../Function"
-import * as O from "../../Option"
+import * as E from "../../Either/index.js"
+import { pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
-import type * as SK from "../Sink"
+import type * as SK from "../Sink/index.js"
 import type { Stream } from "./definitions"
 
 /**

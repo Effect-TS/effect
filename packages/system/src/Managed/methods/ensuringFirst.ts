@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Effect } from "../../Effect"
+import type { Effect } from "../../Effect/index.js"
 import { onExitFirst, onExitFirst_ } from "../core.js"
 import type { Managed } from "../managed.js"
 

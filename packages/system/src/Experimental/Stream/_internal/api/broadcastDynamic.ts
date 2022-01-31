@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { pipe } from "../../../../Function"
-import * as M from "../../../../Managed"
+import { pipe } from "../../../../Function/index.js"
+import * as M from "../../../../Managed/index.js"
 import type * as C from "../core.js"
 import * as BroadcastedQueuesDynamic from "./broadcastedQueuesDynamic"
 import * as Chain from "./chain.js"

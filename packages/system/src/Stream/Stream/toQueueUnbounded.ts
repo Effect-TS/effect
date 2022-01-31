@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function"
-import * as Q from "../../Queue"
+import { pipe } from "../../Function/index.js"
+import * as Q from "../../Queue/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
-import type * as TK from "../Take"
+import type * as TK from "../Take/index.js"
 import type { Stream } from "./definitions"
 import { intoManaged_ } from "./intoManaged.js"
 

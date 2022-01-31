@@ -1,14 +1,14 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
-import type { Tuple } from "../Collections/Immutable/Tuple"
-import type { _A, _E, _R } from "../Effect"
+import type { Tuple } from "../Collections/Immutable/Tuple/index.js"
+import type { _A, _E, _R } from "../Effect/index.js"
 import type { Either } from "../Either/core.js"
 import type { Tag } from "../Has"
-import type { Option } from "../Option"
-import { none, some } from "../Option"
-import type { Sync } from "../Sync"
+import type { Option } from "../Option/index.js"
+import { none, some } from "../Option/index.js"
+import type { Sync } from "../Sync/index.js"
 
 export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
   k: infer I

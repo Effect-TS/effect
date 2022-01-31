@@ -1,15 +1,15 @@
 // ets_tracing: off
 
 import * as C from "../../Cause"
-import type * as CL from "../../Clock"
-import { pipe } from "../../Function"
-import * as O from "../../Option"
+import type * as CL from "../../Clock/index.js"
+import { pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
 import { catchSome } from "./catchSome.js"
 import type { Stream } from "./definitions"
 import { timeoutErrorCause } from "./timeoutErrorCause"
 
 export const StreamTimeoutSymbol: unique symbol = Symbol.for(
-  "@matechs/core/Stream/Stream/timeoutTo/StreamTimeout"
+  ".matechs/core/Stream/Stream/timeoutTo/StreamTimeout/index.js"
 )
 
 export class StreamTimeoutError extends Error {

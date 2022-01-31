@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import "../../../Operator"
+import "../../../Operator/index.js"
 
-import { AtomicNumber } from "../../../Support/AtomicNumber"
+import { AtomicNumber } from "../../../Support/AtomicNumber/index.js"
 
 export type TxnId = number
 

@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as CL from "../../Clock"
-import * as Tp from "../../Collections/Immutable/Tuple"
-import * as O from "../../Option"
-import * as SC from "../../Schedule"
+import type * as CL from "../../Clock/index.js"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import * as O from "../../Option/index.js"
+import * as SC from "../../Schedule/index.js"
 import * as T from "../_internal/effect.js"
 import { chain_ } from "./chain.js"
 import { concat_ } from "./concat.js"

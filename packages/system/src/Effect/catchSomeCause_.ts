@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { Cause } from "../Cause/cause"
-import * as O from "../Option"
+import * as O from "../Option/index.js"
 import { foldCauseM_, halt, succeed } from "./core.js"
 import type { Effect } from "./effect.js"
 

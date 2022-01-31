@@ -2,7 +2,7 @@
 
 import type { UIO } from "../Effect/effect.js"
 import { IFiberRefNew } from "../Effect/primitives"
-import { identity } from "../Function"
+import { identity } from "../Function/index.js"
 import { Runtime } from "./fiberRef.js"
 
 /**

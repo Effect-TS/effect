@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as O from "../../../../Option"
+import * as O from "../../../../Option/index.js"
 import * as C from "../core.js"
 import * as ReadWith from "./readWith.js"
 import * as ZipRight from "./zipRight.js"

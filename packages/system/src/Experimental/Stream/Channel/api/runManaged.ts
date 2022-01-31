@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect"
-import { identity } from "../../../../Function"
-import * as M from "../../../../Managed"
+import * as T from "../../../../Effect/index.js"
+import { identity } from "../../../../Function/index.js"
+import * as M from "../../../../Managed/index.js"
 import * as Executor from "../_internal/executor.js"
 import type * as C from "../core.js"
 

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as T from "../../../../Effect"
+import type * as T from "../../../../Effect/index.js"
 import type * as C from "../core.js"
 import * as Effect from "./effect.js"
 import * as Flatten from "./flatten.js"

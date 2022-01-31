@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Canceler } from "../Effect/Canceler"
+import type { Canceler } from "../Effect/Canceler.js"
 import { succeedWith } from "../Effect/core.js"
 import type { IO } from "../Effect/effect.js"
 import type { Promise } from "./promise"

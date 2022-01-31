@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect"
-import type * as O from "../../../../Option"
+import * as T from "../../../../Effect/index.js"
+import type * as O from "../../../../Option/index.js"
 import type * as C from "../core.js"
 import * as WhenCaseEffect from "./whenCaseEffect"
 

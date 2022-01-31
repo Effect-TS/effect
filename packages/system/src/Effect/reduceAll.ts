@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as A from "../Collections/Immutable/Array"
-import * as NA from "../Collections/Immutable/NonEmptyArray"
-import * as O from "../Option"
+import * as A from "../Collections/Immutable/Array/index.js"
+import * as NA from "../Collections/Immutable/NonEmptyArray/index.js"
+import * as O from "../Option/index.js"
 import { suspend } from "./core.js"
 import type { Effect } from "./effect.js"
 import { map_ } from "./map.js"

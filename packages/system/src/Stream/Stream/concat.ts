@@ -1,11 +1,11 @@
 // ets_tracing: off
 
 import * as C from "../../Cause"
-import type * as A from "../../Collections/Immutable/Chunk"
-import { pipe } from "../../Function"
-import * as O from "../../Option"
-import * as Ref from "../../Ref"
-import * as Pull from "../../Stream/Pull"
+import type * as A from "../../Collections/Immutable/Chunk/index.js"
+import { pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
+import * as Ref from "../../Ref/index.js"
+import * as Pull from "../../Stream/Pull/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import { Stream } from "./definitions"

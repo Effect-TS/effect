@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as O from "../../Option"
+import * as O from "../../Option/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import type { Stream } from "./definitions"

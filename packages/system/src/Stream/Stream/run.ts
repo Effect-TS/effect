@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function"
+import { pipe } from "../../Function/index.js"
 import type * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
-import type * as SK from "../Sink"
+import type * as SK from "../Sink/index.js"
 import type { Stream } from "./definitions"
 import { runManaged } from "./runManaged.js"
 

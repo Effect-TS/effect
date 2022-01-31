@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as Tp from "../../../../Collections/Immutable/Tuple"
-import * as T from "../../../../Effect"
+import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
+import * as T from "../../../../Effect/index.js"
 import type * as C from "../core.js"
 import * as Concat from "./concat.js"
 import * as MapAccumEffect from "./mapAccumEffect.js"

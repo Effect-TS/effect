@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as O from "../../Option"
+import * as O from "../../Option/index.js"
 import { catchAll_ } from "./catchAll.js"
 import type { Stream } from "./definitions"
 import { die } from "./die.js"

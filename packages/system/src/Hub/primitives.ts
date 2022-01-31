@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
 export const _RA = "_RA" as const
 export type _RA = typeof _RA

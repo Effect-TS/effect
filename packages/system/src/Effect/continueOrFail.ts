@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { pipe } from "../Function"
+import { pipe } from "../Function/index.js"
 import * as O from "../Option/core.js"
 import { chain_, succeed } from "./core.js"
 import type { Effect } from "./effect.js"

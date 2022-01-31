@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as O from "../Option"
+import type * as O from "../Option/index.js"
 import { asUnit } from "./asUnit"
 import { suspend, unit } from "./core.js"
 import type { Effect } from "./effect.js"

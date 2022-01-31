@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import type * as Tp from "../../Collections/Immutable/Tuple"
-import { pipe } from "../../Function"
+import type * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import { pipe } from "../../Function/index.js"
 import type * as P from "../../Promise"
-import * as Q from "../../Queue"
+import * as Q from "../../Queue/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
-import type * as Take from "../Take"
+import type * as Take from "../Take/index.js"
 import { bufferSignal } from "./_internal/bufferSignal.js"
 import { Stream } from "./definitions"
 

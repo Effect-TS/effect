@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray"
-import * as Tp from "../Collections/Immutable/Tuple"
-import { accessCallTrace } from "../Tracing"
+import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray/index.js"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import { accessCallTrace } from "../Tracing/index.js"
 import type { _E, _R, ForcedTuple } from "../Utils"
 import { map_ } from "./core.js"
 import type { Managed } from "./managed.js"

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
 import * as M from "../_internal/managed.js"
 import { broadcastedQueues_ } from "./broadcastedQueues"
 import type { Stream } from "./definitions"

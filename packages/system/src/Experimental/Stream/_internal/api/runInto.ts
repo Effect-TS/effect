@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect"
-import * as M from "../../../../Managed"
-import type * as Q from "../../../../Queue"
-import type * as TK from "../../Take"
+import * as T from "../../../../Effect/index.js"
+import * as M from "../../../../Managed/index.js"
+import type * as Q from "../../../../Queue/index.js"
+import type * as TK from "../../Take/index.js"
 import type * as C from "../core.js"
 import * as RunIntoManaged from "./runIntoManaged.js"
 

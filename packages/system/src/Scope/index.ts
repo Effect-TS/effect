@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
 import type { Cause } from "../Cause/cause"
 import { empty, then } from "../Cause/cause"
@@ -9,16 +9,16 @@ import { empty, then } from "../Cause/cause"
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-import * as A from "../Collections/Immutable/Array"
+import * as A from "../Collections/Immutable/Array/index.js"
 import { cause } from "../Effect/cause"
 import { succeed, succeedWith, suspend } from "../Effect/core.js"
 import type { UIO } from "../Effect/effect.js"
 import { map_ } from "../Effect/map.js"
 import { uncause } from "../Effect/uncause"
 import { zipWith_ } from "../Effect/zipWith.js"
-import * as E from "../Either"
-import { AtomicNumber } from "../Support/AtomicNumber"
-import { AtomicReference } from "../Support/AtomicReference"
+import * as E from "../Either/index.js"
+import { AtomicNumber } from "../Support/AtomicNumber/index.js"
+import { AtomicReference } from "../Support/AtomicReference/index.js"
 
 /**
  * Represent Common Ops between Global | Local<A>

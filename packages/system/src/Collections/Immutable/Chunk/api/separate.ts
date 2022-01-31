@@ -1,6 +1,6 @@
-import type * as E from "../../../../Either"
-import { identity } from "../../../../Function"
-import type * as Tp from "../../Tuple"
+import type * as E from "../../../../Either/index.js"
+import { identity } from "../../../../Function/index.js"
+import type * as Tp from "../../Tuple/index.js"
 import type * as Chunk from "../core.js"
 import { partitionMap_ } from "./partitionMap.js"
 

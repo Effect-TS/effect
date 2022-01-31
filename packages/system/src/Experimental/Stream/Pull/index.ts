@@ -1,10 +1,10 @@
 import type * as C from "../../../Cause"
-import * as A from "../../../Collections/Immutable/Chunk"
-import * as T from "../../../Effect"
+import * as A from "../../../Collections/Immutable/Chunk/index.js"
+import * as T from "../../../Effect/index.js"
 import { _A, _E } from "../../../Effect/commons"
-import * as O from "../../../Option"
-import * as Q from "../../../Queue"
-import * as Take from "../Take"
+import * as O from "../../../Option/index.js"
+import * as Q from "../../../Queue/index.js"
+import * as Take from "../Take/index.js"
 
 export type Pull<R, E, A> = T.Effect<R, O.Option<E>, A.Chunk<A>>
 

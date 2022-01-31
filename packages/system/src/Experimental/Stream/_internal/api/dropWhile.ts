@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Predicate } from "../../../../Function"
-import * as SK from "../../Sink"
+import type { Predicate } from "../../../../Function/index.js"
+import * as SK from "../../Sink/index.js"
 import type * as C from "../core.js"
 import * as PipeThrough from "./pipeThrough.js"
 

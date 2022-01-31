@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { Cause } from "../Cause"
-import type { Renderer } from "../Cause/Pretty"
+import type { Renderer } from "../Cause/Pretty/index.js"
 import type { Supervisor } from "../Supervisor"
 
 export class Platform<X> {

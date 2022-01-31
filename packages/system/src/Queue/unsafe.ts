@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import { None } from "../Fiber/id.js"
-import { AtomicBoolean } from "../Support/AtomicBoolean"
-import type { MutableQueue } from "../Support/MutableQueue"
-import { Bounded, Unbounded } from "../Support/MutableQueue"
+import { AtomicBoolean } from "../Support/AtomicBoolean/index.js"
+import type { MutableQueue } from "../Support/MutableQueue/index.js"
+import { Bounded, Unbounded } from "../Support/MutableQueue/index.js"
 import { BackPressureStrategy, unsafeCreate } from "./api.js"
 import type { Strategy } from "./core.js"
 import { DroppingStrategy, SlidingStrategy } from "./core.js"

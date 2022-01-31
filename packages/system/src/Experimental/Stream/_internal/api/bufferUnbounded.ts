@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import * as Q from "../../../../Queue"
-import * as CH from "../../Channel"
-import * as TK from "../../Take"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as Q from "../../../../Queue/index.js"
+import * as CH from "../../Channel/index.js"
+import * as TK from "../../Take/index.js"
 import * as C from "../core.js"
 import * as ToQueueUnbounded from "./toQueueUnbounded.js"
 

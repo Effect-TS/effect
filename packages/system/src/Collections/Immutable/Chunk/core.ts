@@ -1,8 +1,8 @@
-import { identity } from "../../../Function"
+import { identity } from "../../../Function/index.js"
 import { ArrayIndexOutOfBoundsException } from "../../../GlobalExceptions"
-import * as O from "../../../Option"
-import * as St from "../../../Structural"
-import * as A from "../Array"
+import * as O from "../../../Option/index.js"
+import * as St from "../../../Structural/index.js"
+import * as A from "../Array/index.js"
 import type { Chunk } from "./definition.js"
 import {
   _Empty,

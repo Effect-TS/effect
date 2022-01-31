@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { identity } from "../../../../Function"
+import { identity } from "../../../../Function/index.js"
 import * as C from "../core.js"
 
 /**

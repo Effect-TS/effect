@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as Ex from "../../Exit"
+import type * as Ex from "../../Exit/index.js"
 import type * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import type { Stream } from "./definitions"

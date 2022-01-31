@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
-import { pipe } from "../../Function"
-import * as H from "../../Hub"
-import type * as XQ from "../../Queue"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import { pipe } from "../../Function/index.js"
+import * as H from "../../Hub/index.js"
+import type * as XQ from "../../Queue/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
-import type * as Take from "../Take"
+import type * as Take from "../Take/index.js"
 import type { Stream } from "./definitions"
 import { intoHubManaged_ } from "./intoHubManaged.js"
 

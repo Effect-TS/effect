@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as CL from "../../Clock"
+import type * as CL from "../../Clock/index.js"
 import type * as H from "../../Has"
-import * as SC from "../../Schedule"
+import * as SC from "../../Schedule/index.js"
 import type { Stream } from "./definitions"
 import { schedule_ } from "./schedule.js"
 

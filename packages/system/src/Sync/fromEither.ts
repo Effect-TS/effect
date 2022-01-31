@@ -1,4 +1,4 @@
-import * as E from "../Either"
+import * as E from "../Either/index.js"
 import { chain_, fail, succeed, succeedWith } from "./core.js"
 
 /**

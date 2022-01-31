@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as H from "../../../../Hub"
+import * as H from "../../../../Hub/index.js"
 import * as C from "../core.js"
 import * as Chain from "./chain.js"
 import * as FromQueue from "./fromQueue.js"

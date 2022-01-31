@@ -1,7 +1,7 @@
 // ets_tracing: off
-import * as Tp from "../Collections/Immutable/Tuple"
-import * as E from "../Either"
-import { identity, pipe } from "../Function"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import * as E from "../Either/index.js"
+import { identity, pipe } from "../Function/index.js"
 import * as T from "./excl-effect.js"
 
 export const TypeId = Symbol()

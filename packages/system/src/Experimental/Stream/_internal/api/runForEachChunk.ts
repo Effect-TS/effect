@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import type * as T from "../../../../Effect"
-import * as SK from "../../Sink"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import type * as T from "../../../../Effect/index.js"
+import * as SK from "../../Sink/index.js"
 import type * as C from "../core.js"
 import * as Run from "./run.js"
 

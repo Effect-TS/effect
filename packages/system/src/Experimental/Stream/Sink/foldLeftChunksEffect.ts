@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as CK from "../../../Collections/Immutable/Chunk"
-import type * as T from "../../../Effect"
+import type * as CK from "../../../Collections/Immutable/Chunk/index.js"
+import type * as T from "../../../Effect/index.js"
 import type * as C from "./core.js"
 import * as DropLeftover from "./dropLeftover.js"
 import * as FoldChunksEffect from "./foldChunksEffect"

@@ -1,4 +1,4 @@
-import type * as Tp from "../../Tuple"
+import type * as Tp from "../../Tuple/index.js"
 import type * as Chunk from "../core.js"
 import { concreteId } from "../definition.js"
 import { splitAt_ } from "./splitAt.js"

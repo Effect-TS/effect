@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function"
-import * as Q from "../../Queue"
-import * as Ref from "../../Ref"
+import { pipe } from "../../Function/index.js"
+import * as Q from "../../Queue/index.js"
+import * as Ref from "../../Ref/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
-import * as Pull from "../Pull"
-import * as Take from "../Take"
+import * as Pull from "../Pull/index.js"
+import * as Take from "../Take/index.js"
 import { Stream } from "./definitions"
 import { toQueueUnbounded } from "./toQueueUnbounded.js"
 

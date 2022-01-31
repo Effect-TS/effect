@@ -2,8 +2,8 @@
 
 import type { Cause } from "../Cause"
 import { failureOrCause } from "../Cause"
-import * as E from "../Either"
-import { pipe } from "../Function"
+import * as E from "../Either/index.js"
+import { pipe } from "../Function/index.js"
 import { bracketExit_ } from "./bracketExit.js"
 import { unit } from "./core.js"
 import type { Effect, RIO } from "./effect.js"

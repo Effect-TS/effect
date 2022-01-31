@@ -1,4 +1,4 @@
-import * as Tp from "../../Collections/Immutable/Tuple"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import * as T from "../deps"
 import type { Managed } from "../managed.js"
 import { makeReleaseMap, releaseAll } from "../ReleaseMap"

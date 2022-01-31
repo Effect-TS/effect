@@ -1,16 +1,16 @@
 // ets_tracing: off
 
 import type * as CS from "../../../../Cause"
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import * as Tp from "../../../../Collections/Immutable/Tuple"
-import * as T from "../../../../Effect"
-import { pipe } from "../../../../Function"
-import * as M from "../../../../Managed"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
+import * as T from "../../../../Effect/index.js"
+import { pipe } from "../../../../Function/index.js"
+import * as M from "../../../../Managed/index.js"
 import * as P from "../../../../Promise"
-import * as CH from "../../Channel"
-import * as SK from "../../Sink"
+import * as CH from "../../Channel/index.js"
+import * as SK from "../../Sink/index.js"
 import * as C from "../core.js"
-import * as HO from "../Handoff"
+import * as HO from "../Handoff.js"
 import * as RunManaged from "./runManaged.js"
 
 const SignalTypeId = Symbol()

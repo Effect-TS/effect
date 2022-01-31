@@ -1,6 +1,6 @@
-import * as T from "../../Effect"
-import { flow } from "../../Function"
-import * as BA from "../BoolAlgebra"
+import * as T from "../../Effect/index.js"
+import { flow } from "../../Function/index.js"
+import * as BA from "../BoolAlgebra/index.js"
 
 export class BoolAlgebraM<R, E, A> {
   readonly [T._R]: (_: R) => void;

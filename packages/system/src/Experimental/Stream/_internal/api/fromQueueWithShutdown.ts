@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as Q from "../../../../Queue"
+import * as Q from "../../../../Queue/index.js"
 import * as C from "../core.js"
 import * as Ensuring from "./ensuring"
 import * as FromQueue from "./fromQueue.js"

@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as Tp from "../../../../Collections/Immutable/Tuple"
-import * as T from "../../../../Effect"
-import { pipe } from "../../../../Function"
-import type * as M from "../../../../Managed"
+import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
+import * as T from "../../../../Effect/index.js"
+import { pipe } from "../../../../Function/index.js"
+import type * as M from "../../../../Managed/index.js"
 import * as RM from "../../../../Managed/ReleaseMap"
 import * as C from "../core.js"
 import * as AcquireReleaseExitWith from "./acquireReleaseExitWith"

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as CK from "../../../Collections/Immutable/Chunk"
-import { pipe } from "../../../Function"
+import * as CK from "../../../Collections/Immutable/Chunk/index.js"
+import { pipe } from "../../../Function/index.js"
 import type * as C from "./core.js"
 import * as FoldLeftChunks from "./foldLeftChunks"
 import * as Map from "./map.js"

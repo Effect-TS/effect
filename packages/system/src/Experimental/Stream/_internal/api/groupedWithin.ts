@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as CL from "../../../../Clock"
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import * as SC from "../../../../Schedule"
-import * as SK from "../../Sink"
+import type * as CL from "../../../../Clock/index.js"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as SC from "../../../../Schedule/index.js"
+import * as SK from "../../Sink/index.js"
 import type * as C from "../core.js"
 import * as AggregateAsyncWithin from "./aggregateAsyncWithin"
 

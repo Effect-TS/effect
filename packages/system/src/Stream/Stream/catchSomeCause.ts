@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type * as C from "../../Cause"
-import * as O from "../../Option"
+import * as O from "../../Option/index.js"
 import { catchAllCause_ } from "./catchAllCause"
 import type { Stream } from "./definitions"
 import { halt } from "./halt.js"

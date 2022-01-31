@@ -4,11 +4,11 @@
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
 import { _A, _E, _R } from "../Effect/commons"
-import type { Either } from "../Either"
-import { identity } from "../Function"
+import type { Either } from "../Either/index.js"
+import { identity } from "../Function/index.js"
 import { NoSuchElementException } from "../GlobalExceptions"
 import type { Has, Tag } from "../Has"
-import type { Option } from "../Option"
+import type { Option } from "../Option/index.js"
 import type * as Utils from "../Utils"
 import { isEither, isOption, isTag } from "../Utils"
 import type { Sync } from "./core.js"

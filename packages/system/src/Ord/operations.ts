@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { Equal } from "../Equal"
-import { makeEqual } from "../Equal"
-import type { Ordering } from "../Ordering"
+import type { Equal } from "../Equal/index.js"
+import { makeEqual } from "../Equal/index.js"
+import type { Ordering } from "../Ordering/index.js"
 import type { Ord } from "./definition.js"
 
 /**

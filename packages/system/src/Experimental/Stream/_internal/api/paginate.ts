@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
-import * as Tp from "../../../../Collections/Immutable/Tuple"
-import type * as O from "../../../../Option"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
+import type * as O from "../../../../Option/index.js"
 import type * as C from "../core.js"
 import * as PaginateChunk from "./paginateChunk.js"
 

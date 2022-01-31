@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as Ex from "../../Exit"
-import * as O from "../../Option"
+import * as Ex from "../../Exit/index.js"
+import * as O from "../../Option/index.js"
 import { collectWhileMap_ } from "./collectWhileMap.js"
 import type { Stream } from "./definitions"
 

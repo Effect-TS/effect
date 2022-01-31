@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as Tp from "../../../Collections/Immutable/Tuple"
+import * as Tp from "../../../Collections/Immutable/Tuple/index.js"
 import type * as C from "./core.js"
 import * as Fold from "./fold.js"
 import * as Map from "./map.js"

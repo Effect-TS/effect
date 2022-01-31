@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as E from "../../Either"
-import { pipe } from "../../Function"
+import * as E from "../../Either/index.js"
+import { pipe } from "../../Function/index.js"
 import type { Stream } from "./definitions"
 import { map_ } from "./map.js"
 import { orElse } from "./orElse"

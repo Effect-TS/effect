@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as O from "../../Option"
+import * as O from "../../Option/index.js"
 import * as T from "../deps-core"
 import { addIfOpen } from "./addIfOpen.js"
 import type { Finalizer } from "./finalizer.js"

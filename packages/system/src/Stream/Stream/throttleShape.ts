@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { HasClock } from "../../Clock"
-import type * as A from "../../Collections/Immutable/Chunk"
+import type { HasClock } from "../../Clock/index.js"
+import type * as A from "../../Collections/Immutable/Chunk/index.js"
 import * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
 import { throttleShapeM_ } from "./throttleShapeM.js"

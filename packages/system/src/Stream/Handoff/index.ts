@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import "../../Operator"
+import "../../Operator/index.js"
 
-import * as Tp from "../../Collections/Immutable/Tuple"
-import { constVoid, pipe } from "../../Function"
-import type { Option } from "../../Option"
-import { none, some } from "../../Option"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import { constVoid, pipe } from "../../Function/index.js"
+import type { Option } from "../../Option/index.js"
+import { none, some } from "../../Option/index.js"
 import * as P from "../../Promise"
 import { matchTag } from "../../Utils"
 import * as T from "../_internal/effect.js"

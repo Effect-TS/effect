@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
 import type * as C from "../core.js"
 import * as Concat from "./concat.js"
 import * as Empty from "./empty.js"

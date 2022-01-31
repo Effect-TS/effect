@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function"
-import * as O from "../../Option"
+import { pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
 import * as P from "../../Promise"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
-import * as Pull from "../Pull"
+import * as Pull from "../Pull/index.js"
 import { Stream } from "./definitions"
 
 /**

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as E from "../../../Either"
-import { identity } from "../../../Function"
+import * as E from "../../../Either/index.js"
+import { identity } from "../../../Function/index.js"
 import type * as C from "./core.js"
 import * as Map from "./map.js"
 import * as RaceBoth from "./raceBoth.js"

@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
-import * as Map from "../../Collections/Immutable/Map"
-import type * as Ex from "../../Exit"
-import { identity, pipe } from "../../Function"
-import * as O from "../../Option"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import * as Map from "../../Collections/Immutable/Map/index.js"
+import type * as Ex from "../../Exit/index.js"
+import { identity, pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
 import * as P from "../../Promise"
-import type * as Q from "../../Queue"
+import type * as Q from "../../Queue/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import type { Stream } from "./definitions"

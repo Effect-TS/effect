@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as A from "../../../../Collections/Immutable/Array"
+import * as A from "../../../../Collections/Immutable/Array/index.js"
 import * as C from "../core.js"
 import * as ZipRight from "./zipRight.js"
 

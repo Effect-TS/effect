@@ -1,21 +1,21 @@
 // ets_tracing: off
 
 import * as C from "../../Cause/core.js"
-import * as A from "../../Collections/Immutable/Chunk"
-import * as Tp from "../../Collections/Immutable/Tuple"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import * as Exit from "../../Exit/api.js"
-import { pipe } from "../../Function"
+import { pipe } from "../../Function/index.js"
 import type * as RM from "../../Managed/ReleaseMap"
 import * as Finalizer from "../../Managed/ReleaseMap/finalizer.js"
 import * as makeReleaseMap from "../../Managed/ReleaseMap/makeReleaseMap"
 import * as releaseAll from "../../Managed/ReleaseMap/releaseAll"
-import * as O from "../../Option"
+import * as O from "../../Option/index.js"
 import * as T from "../_internal/effect.js"
 import type * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
-import * as Pull from "../Pull"
+import * as Pull from "../Pull/index.js"
 
-export const StreamURI = "@matechs/core/Eff/StreamURI"
+export const StreamURI = ".matechs/core/Eff/StreamURI/index.js"
 export type StreamURI = typeof StreamURI
 
 /**

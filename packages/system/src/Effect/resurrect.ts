@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { identity } from "../Function"
-import { some } from "../Option"
+import { identity } from "../Function/index.js"
+import { some } from "../Option/index.js"
 import type { Effect } from "./effect.js"
 import { unrefineWith_ } from "./unrefine.js"
 

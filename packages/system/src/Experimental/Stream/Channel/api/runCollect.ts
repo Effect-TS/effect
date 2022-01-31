@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import type * as Tp from "../../../../Collections/Immutable/Tuple"
-import type * as T from "../../../../Effect"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import type * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
+import type * as T from "../../../../Effect/index.js"
 import type * as C from "../core.js"
 import * as DoneCollect from "./doneCollect.js"
 import * as Run from "./run.js"

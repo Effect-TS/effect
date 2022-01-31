@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as Q from "../../Queue"
-import type * as Take from "../../Stream/Take"
+import type * as Q from "../../Queue/index.js"
+import type * as Take from "../../Stream/Take/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import type { Stream } from "./definitions"

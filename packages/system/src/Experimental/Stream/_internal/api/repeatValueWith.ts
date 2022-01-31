@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as CL from "../../../../Clock"
-import * as T from "../../../../Effect"
-import type * as SC from "../../../../Schedule"
+import type * as CL from "../../../../Clock/index.js"
+import * as T from "../../../../Effect/index.js"
+import type * as SC from "../../../../Schedule/index.js"
 import type * as C from "../core.js"
 import * as RepeatEffectWith from "./repeatEffectWith.js"
 

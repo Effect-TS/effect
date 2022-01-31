@@ -1,11 +1,11 @@
 // ets_tracing: off
 
 import * as CS from "../../../../Cause"
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import * as T from "../../../../Effect"
-import { pipe } from "../../../../Function"
-import * as Q from "../../../../Queue"
-import * as Pull from "../../Pull"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as T from "../../../../Effect/index.js"
+import { pipe } from "../../../../Function/index.js"
+import * as Q from "../../../../Queue/index.js"
+import * as Pull from "../../Pull/index.js"
 import type * as C from "../core.js"
 import * as RepeatEffectChunkOption from "./repeatEffectChunkOption.js"
 

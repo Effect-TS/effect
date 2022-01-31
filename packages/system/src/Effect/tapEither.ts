@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Either } from "../Either"
-import { pipe } from "../Function"
+import type { Either } from "../Either/index.js"
+import { pipe } from "../Function/index.js"
 import * as core from "./core.js"
 import type { Effect } from "./effect.js"
 import { either } from "./either.js"

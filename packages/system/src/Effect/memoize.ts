@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as Tp from "../Collections/Immutable/Tuple"
-import { pipe } from "../Function"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import { pipe } from "../Function/index.js"
 import type { Promise } from "../Promise"
 import { await as promiseAwait } from "../Promise/await.js"
 import { make as promiseMake } from "../Promise/make.js"
-import * as RefM from "../RefM"
+import * as RefM from "../RefM/index.js"
 import { fork, succeed } from "./core.js"
 import * as Do from "./do.js"
 import type { Effect, UIO } from "./effect.js"

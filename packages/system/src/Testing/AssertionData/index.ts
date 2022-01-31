@@ -1,7 +1,7 @@
 import type * as A from "../Assertion"
 import type * as AR from "../AssertionResult"
 import * as makeAssertionValue from "../AssertionValue/makeAssertionValue"
-import * as BA from "../BoolAlgebra"
+import * as BA from "../BoolAlgebra/index.js"
 
 export interface AssertionData {
   assertion: A.Assertion<any>

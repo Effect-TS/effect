@@ -1,4 +1,4 @@
-import type { Option } from "../../../../Option"
+import type { Option } from "../../../../Option/index.js"
 import type * as Chunk from "../core.js"
 import { collect_ } from "./collect.js"
 

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as T from "../../../../Effect"
-import * as O from "../../../../Option"
+import type * as T from "../../../../Effect/index.js"
+import * as O from "../../../../Option/index.js"
 import type * as C from "../core.js"
 import * as Chain from "./chain.js"
 import * as Empty from "./empty.js"

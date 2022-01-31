@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as A from "../Collections/Immutable/Array"
-import * as NEA from "../Collections/Immutable/NonEmptyArray"
+import * as A from "../Collections/Immutable/Array/index.js"
+import * as NEA from "../Collections/Immutable/NonEmptyArray/index.js"
 import { suspend } from "./core.js"
 import type { Effect } from "./effect.js"
 import { orElse_ } from "./orElse"

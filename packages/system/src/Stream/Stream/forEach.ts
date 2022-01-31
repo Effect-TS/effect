@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as A from "../../Collections/Immutable/Chunk"
+import type * as A from "../../Collections/Immutable/Chunk/index.js"
 import type * as T from "../_internal/effect.js"
 import type * as M from "../_internal/managed.js"
-import * as SK from "../Sink"
+import * as SK from "../Sink/index.js"
 import type { Stream } from "./definitions"
 import { run_ } from "./run.js"
 import { runManaged_ } from "./runManaged.js"

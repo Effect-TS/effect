@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
-import * as Tp from "../../../../Collections/Immutable/Tuple"
-import * as AB from "../../../../Support/AtomicBoolean"
-import * as AR from "../../../../Support/AtomicReference"
-import * as CH from "../../Channel"
-import type * as SK from "../../Sink"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
+import * as AB from "../../../../Support/AtomicBoolean/index.js"
+import * as AR from "../../../../Support/AtomicReference/index.js"
+import * as CH from "../../Channel/index.js"
+import type * as SK from "../../Sink/index.js"
 import * as C from "../core.js"
 
 /**

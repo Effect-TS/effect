@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as Ex from "../../../../Exit"
-import * as O from "../../../../Option"
+import * as Ex from "../../../../Exit/index.js"
+import * as O from "../../../../Option/index.js"
 import type * as C from "../core.js"
 import * as CollectWhile from "./collectWhile.js"
 

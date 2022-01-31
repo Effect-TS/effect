@@ -1,10 +1,10 @@
 // ets_tracing: off
 
 import * as C from "../../Cause"
-import type * as A from "../../Collections/Immutable/Chunk"
-import * as Q from "../../Queue"
+import type * as A from "../../Collections/Immutable/Chunk/index.js"
+import * as Q from "../../Queue/index.js"
 import * as T from "../_internal/effect.js"
-import * as Pull from "../Pull"
+import * as Pull from "../Pull/index.js"
 import type { Stream } from "./definitions"
 import { repeatEffectChunkOption } from "./repeatEffectChunkOption.js"
 

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import { NoSuchElementException } from "../GlobalExceptions"
-import type * as O from "../Option"
+import type * as O from "../Option/index.js"
 import type { Effect } from "./effect.js"
 import { someOrFail_ } from "./someOrFail.js"
 

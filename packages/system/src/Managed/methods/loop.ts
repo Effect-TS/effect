@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function"
+import { pipe } from "../../Function/index.js"
 import { chain_, map } from "../core.js"
 import type { Managed } from "../managed.js"
 import { succeed } from "../succeed.js"

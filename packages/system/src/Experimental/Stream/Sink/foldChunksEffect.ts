@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as CK from "../../../Collections/Immutable/Chunk"
-import type * as T from "../../../Effect"
-import type { Predicate } from "../../../Function"
-import * as CH from "../Channel"
+import type * as CK from "../../../Collections/Immutable/Chunk/index.js"
+import type * as T from "../../../Effect/index.js"
+import type { Predicate } from "../../../Function/index.js"
+import * as CH from "../Channel/index.js"
 import * as C from "./core.js"
 
 /**

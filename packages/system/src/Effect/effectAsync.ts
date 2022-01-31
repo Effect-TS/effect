@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import type { FiberID } from "../Fiber/id.js"
-import * as O from "../Option"
-import type { Cb } from "./Cb"
+import * as O from "../Option/index.js"
+import type { Cb } from "./Cb.js"
 import { effectAsyncOptionBlockingOn } from "./core.js"
 import type { Effect } from "./effect.js"
 

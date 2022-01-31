@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Ordering } from "../Ordering"
+import type { Ordering } from "../Ordering/index.js"
 import type { Ord } from "./definition.js"
 import { contramap_, makeOrd } from "./operations"
 

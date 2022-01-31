@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as Tp from "../Collections/Immutable/Tuple"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import * as T from "./deps-core"
 import { managedApply } from "./managed.js"
 import * as Finalizer from "./ReleaseMap/finalizer.js"

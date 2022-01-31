@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as C from "../Cause"
-import type * as Exit from "../Exit"
+import type * as Exit from "../Exit/index.js"
 import type { Status } from "./status"
 import { Done, Running } from "./status"
 

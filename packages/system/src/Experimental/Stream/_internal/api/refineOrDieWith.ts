@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as CS from "../../../../Cause"
-import * as O from "../../../../Option"
-import * as CH from "../../Channel"
+import * as O from "../../../../Option/index.js"
+import * as CH from "../../Channel/index.js"
 import * as C from "../core.js"
 
 /**

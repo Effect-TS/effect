@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as O from "../../../Option"
+import * as O from "../../../Option/index.js"
 import type * as C from "./core.js"
 import * as Fold from "./fold.js"
 

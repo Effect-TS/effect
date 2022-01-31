@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Predicate } from "../../../../Function"
+import type { Predicate } from "../../../../Function/index.js"
 import type * as C from "../core.js"
 import * as Drop from "./drop.js"
 import * as DropWhile from "./dropWhile.js"

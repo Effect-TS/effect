@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as Fiber from "../Fiber"
+import * as Fiber from "../Fiber/index.js"
 import { chain_, succeedWith } from "./core.js"
 import type { Effect, IO } from "./effect.js"
 

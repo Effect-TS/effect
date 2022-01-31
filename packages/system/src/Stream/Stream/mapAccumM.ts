@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
-import type * as Tp from "../../Collections/Immutable/Tuple"
-import { pipe } from "../../Function"
-import * as O from "../../Option"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import type * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import { pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
-import * as BP from "../BufferedPull"
+import * as BP from "../BufferedPull/index.js"
 import { Stream } from "./definitions"
 
 /**

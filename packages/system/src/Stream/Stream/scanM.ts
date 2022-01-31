@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as Tp from "../../Collections/Immutable/Tuple"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import * as T from "../_internal/effect.js"
 import { concat_ } from "./concat.js"
 import type { Stream } from "./definitions"

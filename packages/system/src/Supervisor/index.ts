@@ -5,18 +5,18 @@
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-import "../Operator"
+import "../Operator/index.js"
 
-import * as SS from "../Collections/Immutable/SortedSet"
-import type * as Tp from "../Collections/Immutable/Tuple"
+import * as SS from "../Collections/Immutable/SortedSet/index.js"
+import type * as Tp from "../Collections/Immutable/Tuple/index.js"
 import { succeedWith, suspend, unit } from "../Effect/core.js"
 import type { Effect, UIO } from "../Effect/effect.js"
 import { zip_ } from "../Effect/zip.js"
 import type { Exit } from "../Exit/exit.js"
 import type { Runtime } from "../Fiber/core.js"
 import { runtimeOrd } from "../Fiber/runtimeOrd.js"
-import type * as O from "../Option"
-import { AtomicReference } from "../Support/AtomicReference"
+import type * as O from "../Option/index.js"
+import { AtomicReference } from "../Support/AtomicReference/index.js"
 
 /**
  * A `Supervisor<A>` is allowed to supervise the launching and termination of

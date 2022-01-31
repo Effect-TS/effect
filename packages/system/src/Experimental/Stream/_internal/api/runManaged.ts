@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { pipe } from "../../../../Function"
-import type * as M from "../../../../Managed"
-import * as CH from "../../Channel"
-import type * as SK from "../../Sink"
+import { pipe } from "../../../../Function/index.js"
+import type * as M from "../../../../Managed/index.js"
+import * as CH from "../../Channel/index.js"
+import type * as SK from "../../Sink/index.js"
 import type * as C from "../core.js"
 
 export function runManaged_<R, R1, E, A, E2, B, L>(

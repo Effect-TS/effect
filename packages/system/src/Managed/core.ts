@@ -1,11 +1,11 @@
 // ets_tracing: off
 
 import type { Cause } from "../Cause/cause"
-import * as Tp from "../Collections/Immutable/Tuple"
-import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"
-import { parallel, sequential } from "../Effect/ExecutionStrategy"
-import { pipe } from "../Function"
-import { makeRef } from "../Ref"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import type { ExecutionStrategy } from "../Effect/ExecutionStrategy.js"
+import { parallel, sequential } from "../Effect/ExecutionStrategy.js"
+import { pipe } from "../Function/index.js"
+import { makeRef } from "../Ref/index.js"
 import * as T from "./deps-core"
 import { fromEffect } from "./fromEffect.js"
 import { makeExit_ } from "./makeExit.js"

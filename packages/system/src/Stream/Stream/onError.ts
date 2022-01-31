@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type * as C from "../../Cause"
-import { pipe } from "../../Function"
+import { pipe } from "../../Function/index.js"
 import * as T from "../_internal/effect.js"
 import { catchAllCause_ } from "./catchAllCause"
 import type { Stream } from "./definitions"

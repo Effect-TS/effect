@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { identity } from "../../Function"
+import { identity } from "../../Function/index.js"
 import type * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
 import { fromEffect } from "./fromEffect.js"

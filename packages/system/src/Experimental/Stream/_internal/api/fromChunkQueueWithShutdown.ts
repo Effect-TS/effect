@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import * as Q from "../../../../Queue"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as Q from "../../../../Queue/index.js"
 import type * as C from "../core.js"
 import * as Ensuring from "./ensuring"
 import * as FromChunkQueue from "./fromChunkQueue.js"

@@ -1,12 +1,12 @@
 // ets_tracing: off
 
 import * as C from "../../Cause"
-import * as A from "../../Collections/Immutable/Chunk"
-import * as Tp from "../../Collections/Immutable/Tuple"
-import * as E from "../../Either"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import * as E from "../../Either/index.js"
 import * as Ex from "../../Exit/api.js"
-import { pipe, tuple } from "../../Function"
-import * as O from "../../Option"
+import { pipe, tuple } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
 import * as T from "../_internal/effect.js"
 import { zipChunks_ } from "../_internal/utils"
 import { combineChunks_ } from "./combineChunks"

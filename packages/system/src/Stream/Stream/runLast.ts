@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as SK from "../Sink"
+import * as SK from "../Sink/index.js"
 import type { Stream } from "./definitions"
 import { run_ } from "./run.js"
 

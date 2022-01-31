@@ -2,7 +2,7 @@
 
 import { compact } from "../Collections/Immutable/Chunk/api/compact.js"
 import type * as Chunk from "../Collections/Immutable/Chunk/core.js"
-import type { Option } from "../Option"
+import type { Option } from "../Option/index.js"
 import type { Effect } from "./effect.js"
 import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach.js"
 import { map_ } from "./map.js"

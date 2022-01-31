@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Reservation } from "../Managed"
+import type { Reservation } from "../Managed/index.js"
 import { makeReserve } from "../Managed/core.js"
 import { use_ } from "../Managed/use"
 import type { Effect } from "./effect.js"

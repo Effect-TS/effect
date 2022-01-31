@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as H from "../../../../Hub"
-import * as M from "../../../../Managed"
+import * as H from "../../../../Hub/index.js"
+import * as M from "../../../../Managed/index.js"
 import * as C from "../core.js"
 import * as Ensuring from "./ensuring"
 import * as FromHubManaged from "./fromHubManaged.js"

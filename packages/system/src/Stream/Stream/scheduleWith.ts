@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import type * as CL from "../../Clock"
-import * as A from "../../Collections/Immutable/Chunk"
-import { pipe } from "../../Function"
+import type * as CL from "../../Clock/index.js"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import { pipe } from "../../Function/index.js"
 import type * as H from "../../Has"
-import * as SC from "../../Schedule"
-import * as BP from "../../Stream/BufferedPull"
+import * as SC from "../../Schedule/index.js"
+import * as BP from "../../Stream/BufferedPull/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import { Stream } from "./definitions"

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray"
-import * as Tp from "../Collections/Immutable/Tuple"
+import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray/index.js"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import type { _E, _R, ForcedTuple } from "../Utils"
 import type { Async } from "./core.js"
 import { map_ } from "./core.js"

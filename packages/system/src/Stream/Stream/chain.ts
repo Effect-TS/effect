@@ -1,15 +1,15 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
-import * as Tp from "../../Collections/Immutable/Tuple"
-import { pipe } from "../../Function"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import { pipe } from "../../Function/index.js"
 import type * as RM from "../../Managed/ReleaseMap"
 import * as Finalizer from "../../Managed/ReleaseMap/finalizer.js"
-import type * as Option from "../../Option"
-import * as Ref from "../../Ref"
+import type * as Option from "../../Option/index.js"
+import * as Ref from "../../Ref/index.js"
 import type * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
-import * as Pull from "../Pull"
+import * as Pull from "../Pull/index.js"
 import { Chain, Stream } from "./definitions"
 
 /**

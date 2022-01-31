@@ -1,4 +1,4 @@
-import * as A from "../../Collections/Immutable/Chunk"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
 import type { Stream } from "./definitions"
 import { mapChunks_ } from "./mapChunks"
 

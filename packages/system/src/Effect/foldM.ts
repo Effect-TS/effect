@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import { failureOrCause } from "../Cause/core.js"
-import * as E from "../Either"
+import * as E from "../Either/index.js"
 import { foldCauseM_, halt } from "./core.js"
 import type { Effect } from "./effect.js"
 

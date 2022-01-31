@@ -2,7 +2,7 @@
 
 import * as C from "../Cause"
 import * as E from "../Either/core.js"
-import { pipe } from "../Function"
+import { pipe } from "../Function/index.js"
 import * as O from "../Option/core.js"
 import { foldCauseM_, halt, succeed } from "./core.js"
 import type { Effect } from "./effect.js"

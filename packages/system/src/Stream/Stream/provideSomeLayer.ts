@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as L from "../../Layer"
+import * as L from "../../Layer/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import { chain_ } from "./chain.js"

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { identity, pipe } from "../Function"
-import * as O from "../Option"
+import { identity, pipe } from "../Function/index.js"
+import * as O from "../Option/index.js"
 import { catchAll_ } from "./catchAll.js"
 import { die } from "./die.js"
 import type { Effect } from "./effect.js"

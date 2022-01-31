@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type { HasClock } from "../Clock"
-import * as E from "../Either"
-import { identity, pipe } from "../Function"
-import type { Driver, Schedule } from "../Schedule"
-import * as schedule from "../Schedule"
+import type { HasClock } from "../Clock/index.js"
+import * as E from "../Either/index.js"
+import { identity, pipe } from "../Function/index.js"
+import type { Driver, Schedule } from "../Schedule/index.js"
+import * as schedule from "../Schedule/index.js"
 import * as catchAll from "./catchAll.js"
 import * as core from "./core.js"
 import type { Effect } from "./effect.js"

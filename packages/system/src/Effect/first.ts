@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as Tp from "../Collections/Immutable/Tuple"
+import type * as Tp from "../Collections/Immutable/Tuple/index.js"
 import { access } from "./core.js"
 
 /**

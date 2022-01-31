@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as CS from "../../../../Cause"
-import * as E from "../../../../Either"
+import * as E from "../../../../Either/index.js"
 import type * as C from "../core.js"
 import * as CatchAllCause from "./catchAllCause"
 import * as FailCause from "./failCause"

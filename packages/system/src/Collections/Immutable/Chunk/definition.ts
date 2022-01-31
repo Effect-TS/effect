@@ -1,8 +1,8 @@
 import { _A } from "../../../Effect/commons"
 import { ArrayIndexOutOfBoundsException } from "../../../GlobalExceptions"
-import * as St from "../../../Structural"
-import { AtomicNumber } from "../../../Support/AtomicNumber"
-import * as A from "../Array"
+import * as St from "../../../Structural/index.js"
+import { AtomicNumber } from "../../../Support/AtomicNumber/index.js"
+import * as A from "../Array/index.js"
 
 export const BufferSize = 64
 

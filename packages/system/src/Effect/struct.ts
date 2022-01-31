@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as R from "../Collections/Immutable/Dictionary"
+import * as R from "../Collections/Immutable/Dictionary/index.js"
 import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
 import type { Effect } from "./effect.js"
 import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach.js"

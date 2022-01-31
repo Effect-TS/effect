@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import { compact } from "../Collections/Immutable/Chunk/api/compact.js"
-import { pipe } from "../Function"
-import * as I from "../Iterable"
-import * as O from "../Option"
+import { pipe } from "../Function/index.js"
+import * as I from "../Iterable/index.js"
+import * as O from "../Option/index.js"
 import * as core from "./core.js"
 import type { Effect } from "./effect.js"
 import * as forEach from "./excl-forEach.js"

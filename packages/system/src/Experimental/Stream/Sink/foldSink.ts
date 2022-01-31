@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as CK from "../../../Collections/Immutable/Chunk"
-import * as AR from "../../../Support/AtomicReference"
-import * as CH from "../Channel"
+import * as CK from "../../../Collections/Immutable/Chunk/index.js"
+import * as AR from "../../../Support/AtomicReference/index.js"
+import * as CH from "../Channel/index.js"
 import * as C from "./core.js"
 
 export function foldSink_<

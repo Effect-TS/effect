@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as A from "../../Collections/Immutable/Chunk"
-import { identity, pipe } from "../../Function"
+import type * as A from "../../Collections/Immutable/Chunk/index.js"
+import { identity, pipe } from "../../Function/index.js"
 import type * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
 import { mapConcatChunk } from "./mapConcatChunk.js"

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as CL from "../../../Clock"
-import type * as Tp from "../../../Collections/Immutable/Tuple"
+import * as CL from "../../../Clock/index.js"
+import type * as Tp from "../../../Collections/Immutable/Tuple/index.js"
 import type * as C from "./core.js"
 import * as Summarized from "./summarized.js"
 

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as T from "../../../../Effect"
-import type * as O from "../../../../Option"
-import * as SK from "../../Sink"
+import type * as T from "../../../../Effect/index.js"
+import type * as O from "../../../../Option/index.js"
+import * as SK from "../../Sink/index.js"
 import type * as C from "../core.js"
 import * as Run from "./run.js"
 

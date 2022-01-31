@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { Either } from "../Either"
-import { left, right } from "../Either"
-import * as E from "../Either"
+import type { Either } from "../Either/index.js"
+import { left, right } from "../Either/index.js"
+import * as E from "../Either/index.js"
 import { accessM, provideAll_ } from "./core.js"
 import type { Effect } from "./effect.js"
 import { map_ } from "./map.js"

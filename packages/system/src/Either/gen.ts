@@ -2,7 +2,7 @@
 
 import { _A, _E } from "../Effect/commons"
 import { NoSuchElementException } from "../GlobalExceptions"
-import type { Option } from "../Option"
+import type { Option } from "../Option/index.js"
 import * as Utils from "../Utils"
 import type { Either } from "./core.js"
 import { chain_, left, right } from "./core.js"

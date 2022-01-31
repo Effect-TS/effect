@@ -1,5 +1,5 @@
-import type * as E from "../../../../Either"
-import * as Tp from "../../Tuple"
+import type * as E from "../../../../Either/index.js"
+import * as Tp from "../../Tuple/index.js"
 import * as Chunk from "../core.js"
 import { forEach_ } from "./forEach.js"
 

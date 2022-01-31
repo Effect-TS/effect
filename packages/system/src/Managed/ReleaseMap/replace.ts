@@ -1,16 +1,16 @@
 // ets_tracing: off
 
 import { insert, lookup } from "../../Collections/Immutable/Map/core.js"
-import * as Tp from "../../Collections/Immutable/Tuple"
-import { absurd, pipe } from "../../Function"
-import * as O from "../../Option"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import { absurd, pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
 import * as T from "../deps"
 import * as R from "./deps-ref"
-import { Exited } from "./Exited"
+import { Exited } from "./Exited.js"
 import type { Finalizer } from "./finalizer.js"
 import type { ReleaseMap } from "./ReleaseMap"
-import { Running } from "./Running"
-import type { State } from "./State"
+import { Running } from "./Running.js"
+import type { State } from "./State.js"
 
 export function replace(key: number, finalizer: Finalizer) {
   return (_: ReleaseMap): T.Effect<unknown, never, O.Option<Finalizer>> =>

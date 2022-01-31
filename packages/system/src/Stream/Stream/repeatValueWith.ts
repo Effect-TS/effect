@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as CL from "../../Clock"
-import type * as SC from "../../Schedule"
+import type * as CL from "../../Clock/index.js"
+import type * as SC from "../../Schedule/index.js"
 import * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
 import { repeatEffectWith } from "./repeatEffectWith.js"

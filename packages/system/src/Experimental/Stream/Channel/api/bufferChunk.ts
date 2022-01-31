@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
-import type * as Ref from "../../../../Ref"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import type * as Ref from "../../../../Ref/index.js"
 import type * as C from "../core.js"
 import * as Buffer from "./buffer.js"
 

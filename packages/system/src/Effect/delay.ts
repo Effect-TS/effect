@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { HasClock } from "../Clock"
+import type { HasClock } from "../Clock/index.js"
 import { chain_ } from "./core.js"
 import type { Effect } from "./effect.js"
 import { sleep } from "./sleep.js"

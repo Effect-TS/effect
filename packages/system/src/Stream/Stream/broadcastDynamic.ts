@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function"
+import { pipe } from "../../Function/index.js"
 import * as M from "../_internal/managed.js"
 import { broadcastedQueuesDynamic_ } from "./broadcastedQueuesDynamic"
 import { chain_ } from "./chain.js"

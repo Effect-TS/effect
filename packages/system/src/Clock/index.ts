@@ -5,7 +5,7 @@
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-import "../Operator"
+import "../Operator/index.js"
 
 import { succeedWith, unit } from "../Effect/core.js"
 import type { Effect, UIO } from "../Effect/effect.js"

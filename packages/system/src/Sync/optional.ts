@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as O from "../Option"
+import * as O from "../Option/index.js"
 import type { Sync as Effect } from "./core.js"
 import { fail, foldM_, succeed } from "./core.js"
 

@@ -1,4 +1,4 @@
-import * as St from "../../../../Structural"
+import * as St from "../../../../Structural/index.js"
 import * as Chunk from "../core.js"
 import * as forEach from "./forEach.js"
 

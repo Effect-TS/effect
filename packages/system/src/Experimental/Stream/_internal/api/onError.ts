@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type * as CS from "../../../../Cause"
-import * as T from "../../../../Effect"
+import * as T from "../../../../Effect/index.js"
 import type * as C from "../core.js"
 import * as CatchAllCause from "./catchAllCause"
 import * as FromEffect from "./fromEffect.js"

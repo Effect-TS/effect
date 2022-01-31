@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { FiberContext } from "../Fiber"
+import type { FiberContext } from "../Fiber/index.js"
 import { fork } from "../Managed/fork.js"
 import type { Managed } from "../Managed/managed.js"
 import type { Effect } from "./effect.js"

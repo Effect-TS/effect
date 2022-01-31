@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as CK from "../../../Collections/Immutable/Chunk"
+import * as CK from "../../../Collections/Immutable/Chunk/index.js"
 import * as L from "../../../Collections/Immutable/List"
-import * as Tp from "../../../Collections/Immutable/Tuple"
-import type { Predicate } from "../../../Function"
-import { pipe } from "../../../Function"
+import * as Tp from "../../../Collections/Immutable/Tuple/index.js"
+import type { Predicate } from "../../../Function/index.js"
+import { pipe } from "../../../Function/index.js"
 import type * as C from "./core.js"
 import * as Fold from "./fold.js"
 import * as Map from "./map.js"

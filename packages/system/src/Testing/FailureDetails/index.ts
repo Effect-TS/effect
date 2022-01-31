@@ -1,4 +1,4 @@
-import * as NEA from "../../Collections/Immutable/NonEmptyArray"
+import * as NEA from "../../Collections/Immutable/NonEmptyArray/index.js"
 import type * as AV from "../AssertionValue/AssertionValue"
 import * as l from "../AssertionValue/label.js"
 

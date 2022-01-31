@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect"
+import * as T from "../../../../Effect/index.js"
 import type * as HS from "../../../../Has"
 import * as FromEffect from "./fromEffect.js"
 

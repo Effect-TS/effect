@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as Tp from "../../Collections/Immutable/Tuple"
-import { sequential } from "../../Effect/ExecutionStrategy"
-import { pipe } from "../../Function"
-import { fold } from "../../Option"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import { sequential } from "../../Effect/ExecutionStrategy.js"
+import { pipe } from "../../Function/index.js"
+import { fold } from "../../Option/index.js"
 import { map } from "../core.js"
 import * as T from "../deps"
 import * as Do from "../do.js"

@@ -2,7 +2,7 @@ import * as core from "../../../../Effect/core.js"
 import type { Effect } from "../../../../Effect/effect.js"
 import * as map from "../../../../Effect/map.js"
 import * as zipWith from "../../../../Effect/zipWith.js"
-import * as O from "../../../../Option"
+import * as O from "../../../../Option/index.js"
 import * as Chunk from "../core.js"
 import * as ChunkDef from "../definition.js"
 

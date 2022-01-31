@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as Tp from "../../Collections/Immutable/Tuple"
-import * as E from "../../Either"
+import type * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import * as E from "../../Either/index.js"
 import * as T from "../_internal/effect.js"
 import type * as M from "../_internal/managed.js"
 import type { Stream } from "./definitions"

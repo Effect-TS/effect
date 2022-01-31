@@ -1,10 +1,10 @@
-import * as T from "../../Effect"
+import * as T from "../../Effect/index.js"
 import type * as AM from "../AssertionM/AssertionM"
 import type * as AR from "../AssertionResult"
 import type * as ARM from "../AssertionResultM"
 import * as makeAssertionValue from "../AssertionValue/makeAssertionValue"
-import * as BA from "../BoolAlgebra"
-import * as BAM from "../BoolAlgebraM"
+import * as BA from "../BoolAlgebra/index.js"
+import * as BAM from "../BoolAlgebraM/index.js"
 
 export interface AssertionMData {
   assertion: AM.AssertionM<any>

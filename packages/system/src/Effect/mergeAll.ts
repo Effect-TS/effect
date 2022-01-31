@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { pipe } from "../Function"
-import * as I from "../Iterable"
-import * as Ref from "../Ref"
+import { pipe } from "../Function/index.js"
+import * as I from "../Iterable/index.js"
+import * as Ref from "../Ref/index.js"
 import * as core from "./core.js"
 import type { Effect } from "./effect.js"
 import * as forEach from "./excl-forEach.js"

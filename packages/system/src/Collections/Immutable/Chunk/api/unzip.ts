@@ -1,4 +1,4 @@
-import * as Tp from "../../Tuple"
+import * as Tp from "../../Tuple/index.js"
 import { append_, empty } from "../core.js"
 import type { Chunk } from "../definition.js"
 import { forEach_ } from "./forEach.js"

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as Q from "../../../Queue"
+import * as Q from "../../../Queue/index.js"
 import type * as C from "./core.js"
 import * as ForEachChunk from "./forEachChunk.js"
 

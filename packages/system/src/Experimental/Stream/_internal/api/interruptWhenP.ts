@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type * as P from "../../../../Promise"
-import * as CH from "../../Channel"
+import * as CH from "../../Channel/index.js"
 import * as C from "../core.js"
 
 /**

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect"
-import { pipe } from "../../../../Function"
-import * as M from "../../../../Managed"
+import * as T from "../../../../Effect/index.js"
+import { pipe } from "../../../../Function/index.js"
+import * as M from "../../../../Managed/index.js"
 import * as P from "../../../../Promise"
 import type * as C from "../core.js"
 import * as Chain from "./chain.js"

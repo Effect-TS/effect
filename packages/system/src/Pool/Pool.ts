@@ -1,18 +1,18 @@
 // ets_tracing: off
 
 import * as CS from "../Cause"
-import type * as CL from "../Clock"
+import type * as CL from "../Clock/index.js"
 import * as HS from "../Collections/Immutable/HashSet"
-import * as Tp from "../Collections/Immutable/Tuple"
-import * as T from "../Effect"
-import * as Ex from "../Exit"
-import * as F from "../Fiber"
-import { pipe } from "../Function"
-import * as M from "../Managed"
-import * as Q from "../Queue"
-import * as Ref from "../Ref"
-import * as AT from "./Attempted"
-import * as STR from "./Strategy"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import * as T from "../Effect/index.js"
+import * as Ex from "../Exit/index.js"
+import * as F from "../Fiber/index.js"
+import { pipe } from "../Function/index.js"
+import * as M from "../Managed/index.js"
+import * as Q from "../Queue/index.js"
+import * as Ref from "../Ref/index.js"
+import * as AT from "./Attempted.js"
+import * as STR from "./Strategy.js"
 
 abstract class Pool<Error, Item> {
   readonly [T._E]: () => Error;

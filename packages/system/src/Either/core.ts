@@ -3,11 +3,11 @@
 /**
  * adapted from https://github.com/gcanti/fp-ts
  */
-import * as Tp from "../Collections/Immutable/Tuple"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import type { Lazy, Predicate, Refinement } from "../Function/core.js"
 import type { Option } from "../Option/core.js"
 import { isNone } from "../Option/core.js"
-import * as St from "../Structural"
+import * as St from "../Structural/index.js"
 
 const _leftHash = St.hashString("@effect-ts/system/Either/Left")
 const _rightHash = St.hashString("@effect-ts/system/Either/Right")

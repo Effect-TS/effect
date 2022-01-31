@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { pipe } from "../../../../Function"
-import type * as TK from "../../Take"
+import { pipe } from "../../../../Function/index.js"
+import type * as TK from "../../Take/index.js"
 import type * as C from "../core.js"
 import * as FlattenChunks from "./flattenChunks"
 import * as FlattenExitOption from "./flattenExitOption.js"

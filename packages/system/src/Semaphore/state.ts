@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as Tp from "../Collections/Immutable/Tuple"
-import type * as E from "../Either"
-import type { ImmutableQueue } from "../Support/ImmutableQueue"
+import type * as Tp from "../Collections/Immutable/Tuple/index.js"
+import type * as E from "../Either/index.js"
+import type { ImmutableQueue } from "../Support/ImmutableQueue/index.js"
 import * as T from "./effect.js"
 import type * as P from "./promise"
 

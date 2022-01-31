@@ -1,10 +1,10 @@
 import { _A } from "../../../Effect/commons"
-import { tuple } from "../../../Function"
-import * as IO from "../../../IO"
-import * as St from "../../../Structural"
+import { tuple } from "../../../Function/index.js"
+import * as IO from "../../../IO/index.js"
+import * as St from "../../../Structural/index.js"
 import * as HS from "../HashSet"
 import * as L from "../List/core.js"
-import * as Tp from "../Tuple"
+import * as Tp from "../Tuple/index.js"
 
 export const _ParSeqBrand = Symbol()
 export type _ParSeqBrand = typeof _ParSeqBrand

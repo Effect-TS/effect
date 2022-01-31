@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as SK from "../../Sink"
+import type * as SK from "../../Sink/index.js"
 import * as C from "../core.js"
 
 /**

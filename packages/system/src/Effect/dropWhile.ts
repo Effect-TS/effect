@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Array } from "../Collections/Immutable/Array"
-import type { MutableArray } from "../Support/Mutable"
+import type { Array } from "../Collections/Immutable/Array/index.js"
+import type { MutableArray } from "../Support/Mutable/index.js"
 import { chain_, succeed, suspend } from "./core.js"
 import type { Effect } from "./effect.js"
 import { map_ } from "./map.js"

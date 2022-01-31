@@ -1,11 +1,11 @@
 // ets_tracing: off
 
 import type { Exit } from "../Exit/exit.js"
-import type * as Fiber from "../Fiber"
+import type * as Fiber from "../Fiber/index.js"
 import type { Runtime } from "../Fiber/core.js"
-import * as O from "../Option"
-import type { Scope } from "../Scope"
-import { globalScope } from "../Scope"
+import * as O from "../Option/index.js"
+import type { Scope } from "../Scope/index.js"
+import { globalScope } from "../Scope/index.js"
 import { succeed } from "./core.js"
 import type { Effect, RIO, UIO } from "./effect.js"
 import type { FailureReporter } from "./primitives"

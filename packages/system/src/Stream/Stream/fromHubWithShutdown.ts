@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as H from "../../Hub"
+import * as H from "../../Hub/index.js"
 import type { Stream } from "./definitions"
 import { ensuringFirst_ } from "./ensuringFirst"
 import { fromHub } from "./fromHub.js"

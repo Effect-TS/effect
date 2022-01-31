@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type * as T from "../_internal/effect.js"
-import * as SK from "../Sink"
+import * as SK from "../Sink/index.js"
 import type { Stream } from "./definitions"
 import { run_ } from "./run.js"
 

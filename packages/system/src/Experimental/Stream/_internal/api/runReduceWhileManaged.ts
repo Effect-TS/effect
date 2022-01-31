@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { Predicate } from "../../../../Function"
-import type * as M from "../../../../Managed"
-import * as SK from "../../Sink"
+import type { Predicate } from "../../../../Function/index.js"
+import type * as M from "../../../../Managed/index.js"
+import * as SK from "../../Sink/index.js"
 import type * as C from "../core.js"
 import * as RunManaged from "./runManaged.js"
 

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as Tp from "../Collections/Immutable/Tuple"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import { modify } from "./modify.js"
 /**
  * Atomically modifies the `FiberRef` with the specified function and returns

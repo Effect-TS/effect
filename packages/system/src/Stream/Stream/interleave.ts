@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
 import type { Stream } from "./definitions"
 import { forever } from "./forever.js"
 import { fromChunk } from "./fromChunk.js"

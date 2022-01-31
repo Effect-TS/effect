@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as Tp from "../../../../Collections/Immutable/Tuple"
-import type { Predicate } from "../../../../Function"
-import * as Ref from "../../../../Ref"
+import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
+import type { Predicate } from "../../../../Function/index.js"
+import * as Ref from "../../../../Ref/index.js"
 import * as C from "../core.js"
 import * as ReadWith from "./readWith.js"
 import * as Unwrap from "./unwrap.js"

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
-import * as T from "../../../../Effect"
-import { identity } from "../../../../Function"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as T from "../../../../Effect/index.js"
+import { identity } from "../../../../Function/index.js"
 import type * as C from "../core.js"
 import * as MapConcatChunk from "./mapConcatChunk.js"
 import * as MapEffect from "./mapEffect.js"

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as E from "../../Either"
+import * as E from "../../Either/index.js"
 import { catchAll_ } from "./catchAll.js"
 import type { Stream } from "./definitions"
 import { map_ } from "./map.js"

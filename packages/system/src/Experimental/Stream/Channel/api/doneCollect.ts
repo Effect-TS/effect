@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
-import * as Tp from "../../../../Collections/Immutable/Tuple"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
 import * as C from "../core.js"
 import * as ReadWith from "./readWith.js"
 import * as ZipRight from "./zipRight.js"

@@ -1,14 +1,14 @@
 // ets_tracing: off
 
 /* eslint-disable prefer-const */
-import * as A from "../Collections/Immutable/Array"
-import * as E from "../Either"
-import type { Trace } from "../Fiber"
+import * as A from "../Collections/Immutable/Array/index.js"
+import * as E from "../Either/index.js"
+import type { Trace } from "../Fiber/index.js"
 import type { FiberID } from "../Fiber/id.js"
-import { identity, pipe } from "../Function"
-import * as S from "../IO"
-import * as O from "../Option"
-import { Stack } from "../Stack"
+import { identity, pipe } from "../Function/index.js"
+import * as S from "../IO/index.js"
+import * as O from "../Option/index.js"
+import { Stack } from "../Stack/index.js"
 import type { Both, Cause, Then, Traced } from "./cause"
 import { both, die, empty, fail, interrupt, then, traced } from "./cause"
 import { InterruptedException } from "./errors"

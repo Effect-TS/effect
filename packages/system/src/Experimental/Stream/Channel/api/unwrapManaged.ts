@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { identity } from "../../../../Function"
-import type * as M from "../../../../Managed"
+import { identity } from "../../../../Function/index.js"
+import type * as M from "../../../../Managed/index.js"
 import * as C from "../core.js"
 import * as ManagedOut from "./managedOut.js"
 

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Chunk } from "../Collections/Immutable/Chunk"
+import type { Chunk } from "../Collections/Immutable/Chunk/index.js"
 import type { Effect } from "./effect.js"
 import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach.js"
 import { flip } from "./flip.js"

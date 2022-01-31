@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import type * as CL from "../../Clock"
-import { pipe } from "../../Function"
-import * as O from "../../Option"
+import type * as CL from "../../Clock/index.js"
+import { pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
-import * as Pull from "../Pull"
+import * as Pull from "../Pull/index.js"
 import { Stream } from "./definitions"
 
 /**

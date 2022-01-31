@@ -1,14 +1,14 @@
 // ets_tracing: off
 
 import type { Cause } from "./cause"
-import { pretty } from "./Pretty"
+import { pretty } from "./Pretty/index.js"
 
 //
 // @category FiberFailure
 //
 
 export const FiberFailureSymbol: unique symbol = Symbol.for(
-  "@matechs/core/symbols/errors/FiberFailure"
+  ".matechs/core/symbols/errors/FiberFailure/index.js"
 )
 
 export class FiberFailure<E> extends Error {
@@ -32,7 +32,7 @@ export const isFiberFailure = (u: unknown): u is FiberFailure<unknown> =>
 //
 
 export const UntracedSymbol: unique symbol = Symbol.for(
-  "@matechs/core/symbols/errors/Untraced"
+  ".matechs/core/symbols/errors/Untraced/index.js"
 )
 
 export class Untraced extends Error {
@@ -53,7 +53,7 @@ export const isUntraced = (u: unknown): u is Untraced =>
 //
 
 export const RuntimeSymbol: unique symbol = Symbol.for(
-  "@matechs/core/symbols/errors/Runtime"
+  ".matechs/core/symbols/errors/Runtime/index.js"
 )
 
 export class RuntimeError {
@@ -70,7 +70,7 @@ export const isRuntime = (u: unknown): u is RuntimeError =>
 //
 
 export const InterruptedSymbol: unique symbol = Symbol.for(
-  "@matechs/core/symbols/errors/Interrupted"
+  ".matechs/core/symbols/errors/Interrupted/index.js"
 )
 
 export class InterruptedException extends Error {
@@ -90,7 +90,7 @@ export const isInterruptedException = (u: unknown): u is InterruptedException =>
 //
 
 export const IllegalStateSymbol: unique symbol = Symbol.for(
-  "@matechs/core/symbols/errors/IllegalState"
+  ".matechs/core/symbols/errors/IllegalState.js"
 )
 
 export class IllegalStateException extends Error {
@@ -109,7 +109,7 @@ export const isIllegalStateException = (u: unknown): u is IllegalStateException 
 // @category IllegalState
 //
 export const IllegalArgumentSymbol: unique symbol = Symbol.for(
-  "@matechs/core/symbols/errors/IllegalArgument"
+  ".matechs/core/symbols/errors/IllegalArgument/index.js"
 )
 export class IllegalArgumentException extends Error {
   readonly [IllegalArgumentSymbol] = "IllegalArgumentException"

@@ -4,29 +4,29 @@
 import * as Cause from "../Cause/core.js"
 // effect
 import { RuntimeError } from "../Cause/errors"
-import * as A from "../Collections/Immutable/Array"
+import * as A from "../Collections/Immutable/Array/index.js"
 import * as L from "../Collections/Immutable/List"
 import { forEachUnit_ } from "../Effect/excl-forEach.js"
 import { IFail, instruction, ISucceed } from "../Effect/primitives"
 // either
-import * as E from "../Either"
+import * as E from "../Either/index.js"
 // exit
 import * as Exit from "../Exit/api.js"
 // fiberRef
 import * as FR from "../FiberRef/fiberRef.js"
 import * as update from "../FiberRef/update.js"
-import { constVoid } from "../Function"
+import { constVoid } from "../Function/index.js"
 // option
-import * as O from "../Option"
+import * as O from "../Option/index.js"
 // supervisor / scope
-import * as Scope from "../Scope"
-import * as St from "../Structural"
+import * as Scope from "../Scope/index.js"
+import * as St from "../Structural/index.js"
 import * as Sup from "../Supervisor"
 // support
-import { AtomicReference } from "../Support/AtomicReference"
-import { RingBuffer } from "../Support/RingBuffer"
-import { defaultScheduler } from "../Support/Scheduler"
-import * as X from "../XPure"
+import { AtomicReference } from "../Support/AtomicReference/index.js"
+import { RingBuffer } from "../Support/RingBuffer/index.js"
+import { defaultScheduler } from "../Support/Scheduler/index.js"
+import * as X from "../XPure/index.js"
 import * as T from "./_internal/effect.js"
 // fiber
 import * as Fiber from "./core.js"

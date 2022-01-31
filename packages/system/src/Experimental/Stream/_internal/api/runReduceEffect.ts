@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect"
-import * as M from "../../../../Managed"
+import * as T from "../../../../Effect/index.js"
+import * as M from "../../../../Managed/index.js"
 import type * as C from "../core.js"
 import * as RunReduceWhileManagedEffect from "./runReduceWhileManagedEffect.js"
 

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as O from "../Option"
+import type * as O from "../Option/index.js"
 import { catchAll_ } from "./catchAll.js"
 import type { Effect } from "./effect.js"
 import { fail } from "./fail.js"

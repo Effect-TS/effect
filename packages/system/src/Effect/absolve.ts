@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as E from "../Either"
+import * as E from "../Either/index.js"
 import { chain_ } from "./core.js"
 import type { Effect } from "./effect.js"
 import { fromEither } from "./fromEither.js"

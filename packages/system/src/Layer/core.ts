@@ -1,13 +1,13 @@
 // ets_tracing: off
 
 import * as C from "../Cause"
-import * as CL from "../Clock"
-import * as Tp from "../Collections/Immutable/Tuple"
-import * as E from "../Either"
-import { identity as idFn, pipe } from "../Function"
+import * as CL from "../Clock/index.js"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import * as E from "../Either/index.js"
+import { identity as idFn, pipe } from "../Function/index.js"
 import type { Has, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
-import type * as SC from "../Schedule"
+import type * as SC from "../Schedule/index.js"
 import type * as SCD from "../Schedule/Decision"
 import type { UnionToIntersection } from "../Utils"
 import type { Layer, MergeA, MergeE, MergeR } from "./definitions"

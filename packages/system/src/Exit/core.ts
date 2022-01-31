@@ -2,12 +2,12 @@
 
 import * as C from "../Cause/core.js"
 import { FiberFailure } from "../Cause/errors"
-import * as A from "../Collections/Immutable/Array"
-import * as Tp from "../Collections/Immutable/Tuple"
-import * as E from "../Either"
+import * as A from "../Collections/Immutable/Array/index.js"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import * as E from "../Either/index.js"
 import type { FiberID } from "../Fiber/id.js"
-import { identity, pipe } from "../Function"
-import * as O from "../Option"
+import { identity, pipe } from "../Function/index.js"
+import * as O from "../Option/index.js"
 import type { Exit } from "./exit.js"
 import { Failure, Success } from "./exit.js"
 

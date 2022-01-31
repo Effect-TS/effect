@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as A from "../../../Collections/Immutable/Chunk"
-import * as Tp from "../../../Collections/Immutable/Tuple"
-import * as T from "../../../Effect"
-import * as Ex from "../../../Exit"
-import * as O from "../../../Option"
-import type * as OD from "../../../Ord"
+import * as A from "../../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../../Collections/Immutable/Tuple/index.js"
+import * as T from "../../../Effect/index.js"
+import * as Ex from "../../../Exit/index.js"
+import * as O from "../../../Option/index.js"
+import type * as OD from "../../../Ord/index.js"
 import * as CombineChunks from "../_internal/api/combineChunks"
 import type * as S from "../_internal/core.js"
 import type * as C from "./core.js"

@@ -1,5 +1,6 @@
 {
   "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.preferences.importModuleSpecifierEnding": "js",
   "editor.formatOnSave": false,
   "eslint.format.enable": true,
   "[javascript]": {

@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as E from "../Either"
+import * as E from "../Either/index.js"
 import type { FiberID } from "../Fiber/id.js"
-import type { Canceler } from "./Canceler"
-import type { Cb } from "./Cb"
+import type { Canceler } from "./Canceler.js"
+import type { Cb } from "./Cb.js"
 import type { Effect } from "./effect.js"
 import { effectMaybeAsyncInterruptBlockingOn } from "./effectMaybeAsyncInterrupt"
 

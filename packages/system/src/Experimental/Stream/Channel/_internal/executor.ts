@@ -1,14 +1,14 @@
 // ets_tracing: off
 
-import "../../../../Operator"
+import "../../../../Operator/index.js"
 
 import type * as Cause from "../../../../Cause"
 import * as L from "../../../../Collections/Immutable/List"
-import * as T from "../../../../Effect"
-import * as Either from "../../../../Either"
-import * as Exit from "../../../../Exit"
-import * as F from "../../../../Fiber"
-import * as O from "../../../../Option"
+import * as T from "../../../../Effect/index.js"
+import * as Either from "../../../../Either/index.js"
+import * as Exit from "../../../../Exit/index.js"
+import * as F from "../../../../Fiber/index.js"
+import * as O from "../../../../Option/index.js"
 import * as P from "./primitives"
 
 type ErasedExecutor<Env> = ChannelExecutor<

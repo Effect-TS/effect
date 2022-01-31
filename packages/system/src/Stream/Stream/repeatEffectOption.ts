@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
-import { pipe } from "../../Function"
-import type * as O from "../../Option"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import { pipe } from "../../Function/index.js"
+import type * as O from "../../Option/index.js"
 import * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
 import { repeatEffectChunkOption } from "./repeatEffectChunkOption.js"

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as Tp from "../Collections/Immutable/Tuple"
-import { pipe } from "../Function"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import { pipe } from "../Function/index.js"
 import { suspend } from "./core.js"
 import * as D from "./do.js"
 import type { Effect } from "./effect.js"

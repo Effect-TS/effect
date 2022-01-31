@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as CL from "../../../../Clock"
-import * as T from "../../../../Effect"
-import { pipe } from "../../../../Function"
-import * as SC from "../../../../Schedule"
+import type * as CL from "../../../../Clock/index.js"
+import * as T from "../../../../Effect/index.js"
+import { pipe } from "../../../../Function/index.js"
+import * as SC from "../../../../Schedule/index.js"
 import type * as C from "../core.js"
 import * as CatchAll from "./catchAll.js"
 import * as Tap from "./tap.js"

@@ -1,19 +1,19 @@
 // ets_tracing: off
 
-import "../../Operator"
+import "../../Operator/index.js"
 
 import type { HashMap } from "../../Collections/Immutable/HashMap"
-import type * as T from "../../Effect"
-import * as E from "../../Either"
-import { identity } from "../../Function"
-import * as O from "../../Option"
-import { AtomicReference } from "../../Support/AtomicReference"
+import type * as T from "../../Effect/index.js"
+import * as E from "../../Either/index.js"
+import { identity } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
+import { AtomicReference } from "../../Support/AtomicReference/index.js"
 import { STMEffect } from "../STM/_internal/primitives"
 import * as STM from "../STM/core.js"
-import { makeEntry } from "../STM/Entry"
-import type { Journal, Todo } from "../STM/Journal"
-import { emptyTodoMap } from "../STM/Journal"
-import type { TxnId } from "../STM/TxnId"
+import { makeEntry } from "../STM/Entry/index.js"
+import type { Journal, Todo } from "../STM/Journal/index.js"
+import { emptyTodoMap } from "../STM/Journal/index.js"
+import type { TxnId } from "../STM/TxnId/index.js"
 import { Versioned } from "../STM/Versioned"
 
 export const TRefTypeId = Symbol()

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as I from "../Iterable"
+import * as I from "../Iterable/index.js"
 import { chain_, succeed, suspend } from "./core.js"
 import type { Effect } from "./effect.js"
 

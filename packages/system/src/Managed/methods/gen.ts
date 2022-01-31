@@ -1,14 +1,14 @@
 // ets_tracing: off
 
-import { _A, _E, _R, accessService } from "../../Effect"
+import { _A, _E, _R, accessService } from "../../Effect/index.js"
 import type { Effect } from "../../Effect/effect.js"
 import { fromEither } from "../../Effect/fromEither.js"
 import { getOrFail } from "../../Effect/getOrFail.js"
-import type { Either } from "../../Either"
-import { identity } from "../../Function"
+import type { Either } from "../../Either/index.js"
+import { identity } from "../../Function/index.js"
 import type { NoSuchElementException } from "../../GlobalExceptions"
 import type { Has, Tag } from "../../Has"
-import type { Option } from "../../Option"
+import type { Option } from "../../Option/index.js"
 import type * as Utils from "../../Utils"
 import { isEither, isOption, isTag } from "../../Utils"
 import { chain_, fail } from "../core.js"

@@ -1,5 +1,5 @@
-import * as O from "../../../../Option"
-import type * as Tp from "../../Tuple"
+import * as O from "../../../../Option/index.js"
+import type * as Tp from "../../Tuple/index.js"
 import type { Chunk } from "../core.js"
 import { append_, empty } from "../core.js"
 

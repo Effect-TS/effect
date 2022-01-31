@@ -1,4 +1,4 @@
-import type * as O from "../../Option"
+import type * as O from "../../Option/index.js"
 import type { AssertionValue } from "./AssertionValue"
 import { makeAssertionValue } from "./makeAssertionValue"
 

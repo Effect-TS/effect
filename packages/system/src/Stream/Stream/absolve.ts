@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as E from "../../Either"
+import * as E from "../../Either/index.js"
 import { chain_ } from "./chain.js"
 import type { Stream } from "./definitions"
 import { fail } from "./fail.js"

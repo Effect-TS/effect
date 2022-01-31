@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { pipe } from "../Function"
+import { pipe } from "../Function/index.js"
 import type { Cause } from "./cause"
 import { fail } from "./cause"
 import { chain, map } from "./core.js"

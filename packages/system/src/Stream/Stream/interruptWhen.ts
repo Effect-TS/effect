@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function"
-import * as O from "../../Option"
+import { pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
 import * as T from "../_internal/effect.js"
 import * as F from "../_internal/fiber.js"
 import * as M from "../_internal/managed.js"

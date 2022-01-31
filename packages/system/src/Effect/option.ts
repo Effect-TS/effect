@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as O from "../Option"
+import * as O from "../Option/index.js"
 import { succeed } from "./core.js"
 import type { Effect, RIO } from "./effect.js"
 import { foldM_ } from "./foldM.js"

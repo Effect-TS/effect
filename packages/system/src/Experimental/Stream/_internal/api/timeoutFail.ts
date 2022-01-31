@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as CL from "../../../../Clock"
+import type * as CL from "../../../../Clock/index.js"
 import type * as C from "../core.js"
 import * as Fail from "./fail.js"
 import * as TimeoutTo from "./timeoutTo.js"

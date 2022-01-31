@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import type { Clock } from "../Clock"
-import { currentTime } from "../Clock"
-import * as Tp from "../Collections/Immutable/Tuple"
-import { pipe } from "../Function"
+import type { Clock } from "../Clock/index.js"
+import { currentTime } from "../Clock/index.js"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import { pipe } from "../Function/index.js"
 import type { Has } from "../Has"
-import * as O from "../Option"
-import * as Ref from "../RefM"
+import * as O from "../Option/index.js"
+import * as Ref from "../RefM/index.js"
 import * as core from "./core.js"
 import * as die from "./die.js"
 import * as Do from "./do.js"

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as A from "../../../Collections/Immutable/Array"
-import * as Tp from "../../../Collections/Immutable/Tuple"
+import * as A from "../../../Collections/Immutable/Array/index.js"
+import * as Tp from "../../../Collections/Immutable/Tuple/index.js"
 import type * as C from "./core.js"
 import type * as U from "./utils"
 import * as ZipWithPar from "./zipWithPar.js"

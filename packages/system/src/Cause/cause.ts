@@ -2,15 +2,15 @@
 
 import * as HS from "../Collections/Immutable/HashSet"
 import * as L from "../Collections/Immutable/List/core.js"
-import * as Tp from "../Collections/Immutable/Tuple"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import type { FiberID } from "../Fiber/id.js"
 import { equalsFiberID } from "../Fiber/id.js"
 import type { Trace } from "../Fiber/tracing.js"
-import { tuple } from "../Function"
-import * as IO from "../IO"
-import * as O from "../Option"
-import { Stack } from "../Stack"
-import * as St from "../Structural"
+import { tuple } from "../Function/index.js"
+import * as IO from "../IO/index.js"
+import * as O from "../Option/index.js"
+import { Stack } from "../Stack/index.js"
+import * as St from "../Structural/index.js"
 import type { HasUnify } from "../Utils"
 
 /**

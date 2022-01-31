@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Predicate, Refinement } from "../../../../Function"
+import type { Predicate, Refinement } from "../../../../Function/index.js"
 import type * as C from "../core.js"
 import * as Filter from "./filter.js"
 

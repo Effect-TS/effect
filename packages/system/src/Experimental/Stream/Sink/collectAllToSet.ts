@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as CK from "../../../Collections/Immutable/Chunk"
+import * as CK from "../../../Collections/Immutable/Chunk/index.js"
 import * as HS from "../../../Collections/Immutable/HashSet"
 import type * as C from "./core.js"
 import * as FoldLeftChunks from "./foldLeftChunks"

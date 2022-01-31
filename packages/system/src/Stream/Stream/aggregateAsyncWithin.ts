@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as CL from "../../Clock"
-import type * as A from "../../Collections/Immutable/Chunk"
-import * as E from "../../Either"
-import * as O from "../../Option"
-import type * as SC from "../../Schedule"
+import type * as CL from "../../Clock/index.js"
+import type * as A from "../../Collections/Immutable/Chunk/index.js"
+import * as E from "../../Either/index.js"
+import * as O from "../../Option/index.js"
+import type * as SC from "../../Schedule/index.js"
 import type * as TR from "../Transducer"
 import { aggregateAsyncWithinEither_ } from "./aggregateAsyncWithinEither"
 import type { Stream } from "./definitions"

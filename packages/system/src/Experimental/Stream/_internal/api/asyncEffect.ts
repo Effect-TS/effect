@@ -1,18 +1,18 @@
 // ets_tracing: off
 
 import * as CS from "../../../../Cause"
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import * as T from "../../../../Effect"
-import * as E from "../../../../Either"
-import { pipe } from "../../../../Function"
-import * as M from "../../../../Managed"
-import * as O from "../../../../Option"
-import * as Q from "../../../../Queue"
-import * as CH from "../../Channel"
-import * as TK from "../../Take"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as T from "../../../../Effect/index.js"
+import * as E from "../../../../Either/index.js"
+import { pipe } from "../../../../Function/index.js"
+import * as M from "../../../../Managed/index.js"
+import * as O from "../../../../Option/index.js"
+import * as Q from "../../../../Queue/index.js"
+import * as CH from "../../Channel/index.js"
+import * as TK from "../../Take/index.js"
 import * as C from "../core.js"
-import type { Emit } from "./_internal/Emit"
-import { toEmit } from "./_internal/Emit"
+import type { Emit } from "./_internal/Emit.js"
+import { toEmit } from "./_internal/Emit.js"
 
 /**
  * Creates a stream from an asynchronous callback that can be called multiple times

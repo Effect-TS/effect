@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function"
-import * as Option from "../../Option"
+import { pipe } from "../../Function/index.js"
+import * as Option from "../../Option/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
-import * as Pull from "../Pull"
+import * as Pull from "../Pull/index.js"
 import type * as TR from "../Transducer"
 import { Stream } from "./definitions"
 

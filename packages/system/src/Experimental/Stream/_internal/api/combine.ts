@@ -1,15 +1,15 @@
 // ets_tracing: off
 
 import * as CS from "../../../../Cause"
-import * as Tp from "../../../../Collections/Immutable/Tuple"
-import * as T from "../../../../Effect"
-import * as Ex from "../../../../Exit"
-import { pipe } from "../../../../Function"
-import * as M from "../../../../Managed"
-import * as O from "../../../../Option"
-import * as CH from "../../Channel"
+import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
+import * as T from "../../../../Effect/index.js"
+import * as Ex from "../../../../Exit/index.js"
+import { pipe } from "../../../../Function/index.js"
+import * as M from "../../../../Managed/index.js"
+import * as O from "../../../../Option/index.js"
+import * as CH from "../../Channel/index.js"
 import * as C from "../core.js"
-import * as HO from "../Handoff"
+import * as HO from "../Handoff.js"
 import * as UnfoldEffect from "./unfoldEffect.js"
 
 /**

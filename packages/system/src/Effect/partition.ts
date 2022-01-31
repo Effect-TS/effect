@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as Tp from "../Collections/Immutable/Tuple"
-import { identity } from "../Function"
-import * as I from "../Iterable"
+import type * as Tp from "../Collections/Immutable/Tuple/index.js"
+import { identity } from "../Function/index.js"
+import * as I from "../Iterable/index.js"
 import type { Effect, RIO } from "./effect.js"
 import { either } from "./either.js"
 import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach.js"

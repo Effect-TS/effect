@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as Fiber from "../Fiber"
+import * as Fiber from "../Fiber/index.js"
 import type { Effect } from "./effect.js"
 import { ensuringChildren_ } from "./ensuringChildren"
 

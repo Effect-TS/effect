@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Exit } from "../Exit"
+import type { Exit } from "../Exit/index.js"
 import { bracketExit_ } from "./bracketExit.js"
 import { unit } from "./core.js"
 import type { Effect } from "./effect.js"

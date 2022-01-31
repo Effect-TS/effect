@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as SS from "../Collections/Immutable/SortedSet"
-import type { Runtime } from "../Fiber"
+import * as SS from "../Collections/Immutable/SortedSet/index.js"
+import type { Runtime } from "../Fiber/index.js"
 import { track } from "../Supervisor"
 import { chain_, supervised } from "./core.js"
 import { descriptor } from "./descriptor"

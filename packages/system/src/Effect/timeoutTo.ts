@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Clock } from "../Clock"
-import { pipe } from "../Function"
+import type { Clock } from "../Clock/index.js"
+import { pipe } from "../Function/index.js"
 import type { Has } from "../Has"
 import * as as from "./as"
 import type { Effect } from "./effect.js"

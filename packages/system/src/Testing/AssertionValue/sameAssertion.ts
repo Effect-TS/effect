@@ -1,4 +1,4 @@
-import * as ST from "../../Structural"
+import * as ST from "../../Structural/index.js"
 import type { AssertionValue } from "./AssertionValue"
 
 export function sameAssertion_(self: AssertionValue, that: AssertionValue): boolean {

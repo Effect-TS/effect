@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { constVoid } from "../Function"
+import { constVoid } from "../Function/index.js"
 import type { Effect, RIO } from "./effect.js"
 import { fold_ } from "./fold.js"
 

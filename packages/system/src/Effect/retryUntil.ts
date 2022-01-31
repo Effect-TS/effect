@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { pipe } from "../Function"
+import { pipe } from "../Function/index.js"
 import * as catchAll from "./catchAll.js"
 import * as core from "./core.js"
 import type { Effect } from "./effect.js"

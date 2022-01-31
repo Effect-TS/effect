@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Lazy } from "../Function"
-import { pipe } from "../Function"
+import type { Lazy } from "../Function/index.js"
+import { pipe } from "../Function/index.js"
 import { succeed } from "./core.js"
 import { die } from "./die.js"
 import type { IO, UIO } from "./effect.js"

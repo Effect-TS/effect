@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as M from "../../../../Managed"
+import type * as M from "../../../../Managed/index.js"
 import type * as C from "../core.js"
 import * as RunReduceWhileManaged from "./runReduceWhileManaged.js"
 

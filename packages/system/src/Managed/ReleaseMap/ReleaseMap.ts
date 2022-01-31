@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type * as R from "./deps-ref"
-import type { State } from "./State"
+import type { State } from "./State.js"
 
 export class ReleaseMap {
   constructor(readonly ref: R.Ref<State>) {}
