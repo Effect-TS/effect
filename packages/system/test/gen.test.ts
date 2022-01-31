@@ -4,7 +4,10 @@ import * as T from "../src/Effect/index.js"
 import * as E from "../src/Either/index.js"
 import * as Ex from "../src/Exit/index.js"
 import { pipe } from "../src/Function/index.js"
-import { NoSuchElementException, PrematureGeneratorExit } from "../src/GlobalExceptions/index.js"
+import {
+  NoSuchElementException,
+  PrematureGeneratorExit
+} from "../src/GlobalExceptions/index.js"
 import { tag } from "../src/Has/index.js"
 import * as M from "../src/Managed/index.js"
 import * as O from "../src/Option/index.js"

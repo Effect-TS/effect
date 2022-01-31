@@ -2,7 +2,10 @@
 
 import * as L from "../../Collections/Immutable/List/index.js"
 import type * as E from "../../Either/index.js"
-import { NoSuchElementException, PrematureGeneratorExit } from "../../GlobalExceptions/index.js"
+import {
+  NoSuchElementException,
+  PrematureGeneratorExit
+} from "../../GlobalExceptions/index.js"
 import type * as H from "../../Has/index.js"
 import type * as O from "../../Option/index.js"
 import type * as Utils from "../../Utils/index.js"

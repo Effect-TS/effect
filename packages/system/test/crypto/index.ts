@@ -1,4 +1,4 @@
-import * as crypto from "crypto/index.js"
+import * as crypto from "crypto"
 
 import type { _A } from "../../src//Utils/index.js"
 import * as T from "../../src/Effect/index.js"
