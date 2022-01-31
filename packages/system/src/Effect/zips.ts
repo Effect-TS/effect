@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { as_ } from "./as"
+import { as_ } from "./as.js"
 import { chain_ } from "./core.js"
 import type { Effect } from "./effect.js"
 import { zipWithPar_ } from "./zipWithPar.js"

@@ -1,3 +1,4 @@
+import type { EqualityComparator } from "./utils.js"
 import {
   areArraysEqual,
   areMapsEqual,
@@ -7,8 +8,7 @@ import {
   isPlainObject,
   isPromiseLike,
   sameValueZeroEqual
-} from "./utils"
-import type { EqualityComparator } from "./utils.js"
+} from "./utils.js"
 
 const { isArray } = Array
 

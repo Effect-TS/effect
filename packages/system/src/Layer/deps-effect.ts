@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-export * from "../Effect/as"
+export * from "../Effect/as.js"
 export * from "../Effect/catchAll.js"
 export * from "../Effect/core.js"
 export * from "../Effect/die.js"
@@ -9,7 +9,7 @@ export * from "../Effect/effect.js"
 export * from "../Effect/environment.js"
 export * from "../Effect/fail.js"
 export * from "../Effect/flatten.js"
-export * from "../Effect/has"
+export * from "../Effect/has.js"
 export * from "../Effect/interruption.js"
 export * from "../Effect/map.js"
 export * from "../Effect/onExit.js"

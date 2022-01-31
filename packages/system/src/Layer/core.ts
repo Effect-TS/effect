@@ -10,6 +10,7 @@ import { mergeEnvironments } from "../Has/index.js"
 import type * as SCD from "../Schedule/Decision/index.js"
 import type * as SC from "../Schedule/index.js"
 import type { UnionToIntersection } from "../Utils/index.js"
+import type { Layer, MergeA, MergeE, MergeR } from "./definitions.js"
 import {
   build,
   compose_,
@@ -28,12 +29,11 @@ import {
   LayerSuspend,
   LayerZipWithPar,
   LayerZipWithSeq
-} from "./definitions"
-import type { Layer, MergeA, MergeE, MergeR } from "./definitions.js"
+} from "./definitions.js"
 import * as T from "./deps-effect.js"
 import * as M from "./deps-managed.js"
 
-export * from "./definitions"
+export * from "./definitions.js"
 
 function environmentFor<T>(has: Tag<T>, a: T): M.Managed<{}, never, Has<T>> {
   // @ts-expect-error

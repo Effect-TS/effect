@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 export * from "../Effect/andThen.js"
-export * from "../Effect/as"
+export * from "../Effect/as.js"
 export * from "../Effect/bracketExit.js"
-export * from "../Effect/commons"
+export * from "../Effect/commons.js"
 export * from "../Effect/core.js"
 export * from "../Effect/core-scope.js"
 export * from "../Effect/delay.js"

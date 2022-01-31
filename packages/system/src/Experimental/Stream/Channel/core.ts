@@ -17,7 +17,7 @@ export type {
 
 export { makeSingleProducerAsyncInput } from "./_internal/producer.js"
 
-export * from "./_internal/primitives"
+export * from "./_internal/primitives.js"
 
 /**
  * Pipe the output of a channel into the input of another

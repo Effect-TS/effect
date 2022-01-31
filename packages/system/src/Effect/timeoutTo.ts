@@ -3,7 +3,7 @@
 import type { Clock } from "../Clock/index.js"
 import { pipe } from "../Function/index.js"
 import type { Has } from "../Has/index.js"
-import * as as from "./as"
+import * as as from "./as.js"
 import type { Effect } from "./effect.js"
 import * as interruption from "./interruption.js"
 import * as map from "./map.js"

@@ -40,7 +40,7 @@ export {
   unit,
   die,
   dieWith
-} from "./_internal/primitives"
+} from "./_internal/primitives.js"
 export { _catch as catch }
 
 export const MaxFrames = 200

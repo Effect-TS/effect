@@ -8,6 +8,7 @@ import { identity } from "../Function/index.js"
 import * as O from "../Option/index.js"
 import type { Supervisor } from "../Supervisor/index.js"
 import type { Effect, IO, RIO, UIO } from "./effect.js"
+import type { FailureReporter } from "./primitives.js"
 import {
   ICheckInterrupt,
   ICheckTracingStatus,
@@ -30,8 +31,7 @@ import {
   ITrace,
   ITracingStatus,
   IYield
-} from "./primitives"
-import type { FailureReporter } from "./primitives.js"
+} from "./primitives.js"
 
 /**
  * Effectfully accesses the environment of the effect.

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-export { as, as_ } from "../Effect/as"
+export { as, as_ } from "../Effect/as.js"
 export { asSomeError } from "../Effect/asSomeError.js"
 export { chain, chain_, succeed } from "../Effect/core.js"
 export { bind, bind_, do } from "../Effect/do.js"
