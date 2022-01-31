@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../Operator.js"
+import "../../Operator/index.js"
 
 import * as Chunk from "../../Collections/Immutable/Chunk/index.js"
 import * as T from "../../Effect/index.js"
