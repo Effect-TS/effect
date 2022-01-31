@@ -1,21 +1,20 @@
-import * as O from "../../../../data/Option"
-import type { Effect } from "../../../../io/Effect/definition"
-import { chain_ } from "../../../../io/Effect/operations/chain"
-import { succeedNow } from "../../../../io/Effect/operations/succeedNow"
-import type * as Tp from "../../Tuple"
+import type { Option } from "../../../../data/Option"
+import { Effect } from "../../../../io/Effect/definition"
+import type { Tuple } from "../../Tuple"
 import type { Chunk } from "../core"
 import { append_, empty } from "../core"
 
 function loop<A, R, E, S>(
   s: S,
-  f: (s: S) => Effect<R, E, O.Option<Tp.Tuple<[A, S]>>>,
-  builder: Chunk<A>
+  f: (s: S) => Effect<R, E, Option<Tuple<[A, S]>>>,
+  builder: Chunk<A>,
+  __etsTrace?: string
 ): Effect<R, E, Chunk<A>> {
-  return chain_(f(s), (o) => {
-    if (O.isSome(o)) {
+  return f(s).flatMap((o) => {
+    if (o.isSome()) {
       return loop(o.value.get(1), f, append_(builder, o.value.get(0)))
     } else {
-      return succeedNow(builder)
+      return Effect.succeedNow(builder)
     }
   })
 }
@@ -26,7 +25,8 @@ function loop<A, R, E, S>(
  */
 export function unfoldEffect<A, R, E, S>(
   s: S,
-  f: (s: S) => Effect<R, E, O.Option<Tp.Tuple<[A, S]>>>
+  f: (s: S) => Effect<R, E, Option<Tuple<[A, S]>>>,
+  __etsTrace?: string
 ): Effect<R, E, Chunk<A>> {
   return loop(s, f, empty())
 }

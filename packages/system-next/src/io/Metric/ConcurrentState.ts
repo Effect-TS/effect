@@ -2,8 +2,8 @@ import type { Chunk } from "../../collection/immutable/Chunk/core"
 import * as HM from "../../collection/immutable/HashMap"
 import type { Next } from "../../collection/immutable/Map"
 import type { Tuple } from "../../collection/immutable/Tuple"
-import * as O from "../../data/Option"
-import * as T from "./_internal/effect"
+import type { Option } from "../../data/Option"
+import { Effect } from "../Effect"
 import * as ConcurrentCounter from "./ConcurrentCounter"
 import * as ConcurrentGauge from "./ConcurrentGauge"
 import * as ConcurrentHistogram from "./ConcurrentHistogram"
@@ -76,8 +76,8 @@ export class ConcurrentState {
     })
   }
 
-  state(key: MK.MetricKey): O.Option<MetricState> {
-    return O.map_(HM.get_(this.map, key), toMetricState)
+  state(key: MK.MetricKey): Option<MetricState> {
+    return HM.get_(this.map, key).map(toMetricState)
   }
 
   installListener(listener: MetricListener): void {
@@ -92,7 +92,7 @@ export class ConcurrentState {
    * Increase a named counter by some value.
    */
   getCounter<A>(key: MK.Counter): Counter<A> {
-    let value = O.toNullable(HM.get_(this.map, key))
+    let value = HM.get_(this.map, key).value
     if (value == null) {
       value = new CMS.Counter(key, "", ConcurrentCounter.manual())
       this.map = HM.set_(this.map, key, value)
@@ -114,15 +114,15 @@ export class ConcurrentState {
     }
 
     return new Counter(
-      T.succeed(() => unsafeCount()),
-      (value, __trace) => T.succeed(() => unsafeIncrementBy(value), __trace),
+      Effect.succeed(unsafeCount()),
+      (value) => Effect.succeed(unsafeIncrementBy(value)),
       unsafeCount,
       unsafeIncrementBy
     )
   }
 
   getGauge<A>(key: MK.Gauge): Gauge<A> {
-    let value = O.toNullable(HM.get_(this.map, key))
+    let value = HM.get_(this.map, key).value
     if (value == null) {
       value = new CMS.Gauge(key, "", ConcurrentGauge.manual(0))
       this.map = HM.set_(this.map, key, value)
@@ -133,16 +133,16 @@ export class ConcurrentState {
     const gauge = value as CMS.Gauge
 
     return new Gauge(
-      T.succeed(() => gauge.get),
-      (value, __trace) =>
-        T.succeed(() => {
+      Effect.succeed(gauge.get),
+      (value) =>
+        Effect.succeed(() => {
           const {
             tuple: [v, d]
           } = gauge.set(value)
           self.listener.unsafeGaugeObserved(key, v, d)
         }),
-      (value, __trace) =>
-        T.succeed(() => {
+      (value) =>
+        Effect.succeed(() => {
           const {
             tuple: [v, d]
           } = gauge.adjust(value)
@@ -155,7 +155,7 @@ export class ConcurrentState {
    * Observe a value and feed it into a histogram.
    */
   getHistogram<A>(key: MK.Histogram): Histogram<A> {
-    let value = O.toNullable(HM.get_(this.map, key))
+    let value = HM.get_(this.map, key).value
     if (value == null) {
       value = new CMS.Histogram(
         key,
@@ -175,16 +175,16 @@ export class ConcurrentState {
     }
 
     return new Histogram(
-      T.succeed(() => histogram.histogram.getCount()),
-      T.succeed(() => histogram.histogram.getSum()),
-      T.succeed(() => histogram.histogram.snapshot()),
-      (value, __trace) => T.succeed(() => unsafeObserve(value), __trace),
+      Effect.succeed(histogram.histogram.getCount()),
+      Effect.succeed(histogram.histogram.getSum()),
+      Effect.succeed(histogram.histogram.snapshot()),
+      (value) => Effect.succeed(unsafeObserve(value)),
       unsafeObserve
     )
   }
 
   getSummary<A>(key: MK.Summary): Summary<A> {
-    let value = O.toNullable(HM.get_(this.map, key))
+    let value = HM.get_(this.map, key).value
     if (value == null) {
       value = new CMS.Summary(
         key,
@@ -199,19 +199,19 @@ export class ConcurrentState {
     const summary = value as CMS.Summary
 
     return new Summary(
-      T.succeed(() => summary.summary.getCount()),
-      T.succeed(() => summary.summary.getSum()),
-      (value, __trace) =>
-        T.succeed(() => {
+      Effect.succeed(summary.summary.getCount()),
+      Effect.succeed(summary.summary.getSum()),
+      (value) =>
+        Effect.succeed(() => {
           summary.observe(value, new Date())
           self.listener.unsafeSummaryObserved(key, value)
-        }, __trace),
-      T.succeed(() => summary.summary.snapshot(new Date()))
+        }),
+      Effect.succeed(summary.summary.snapshot(new Date()))
     )
   }
 
   getSetCount<A>(key: MK.SetCount): SetCount<A> {
-    let value = O.toNullable(HM.get_(this.map, key))
+    let value = HM.get_(this.map, key).value
     if (value == null) {
       value = new CMS.SetCount(key, "", ConcurrentSetCount.manual())
       this.map = HM.set_(this.map, key, value)
@@ -235,9 +235,9 @@ export class ConcurrentState {
     }
 
     return new SetCount(
-      T.succeed(unsafeOccurrences),
-      (word, __trace) => T.succeed(() => unsafeOccurrencesFor(word), __trace),
-      (word, __trace) => T.succeed(() => unsafeObserve(word), __trace),
+      Effect.succeed(unsafeOccurrences()),
+      (word) => Effect.succeed(unsafeOccurrencesFor(word)),
+      (word) => Effect.succeed(unsafeObserve(word)),
       unsafeOccurrences,
       unsafeOccurrencesFor,
       unsafeObserve

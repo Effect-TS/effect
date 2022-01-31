@@ -2,7 +2,7 @@ import {
   insert as mapInsert,
   lookup as mapLookup
 } from "../../../collection/immutable/Map"
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import { Option } from "../../../data/Option"
 import type { UIO } from "../../Effect"
 import { Effect } from "../../Effect"
@@ -27,12 +27,12 @@ export function replace_(
   return refModify_(self.ref, (s) => {
     switch (s._tag) {
       case "Exited":
-        return Tp.tuple(
+        return Tuple(
           finalizer(s.exit).map(() => Option.none),
           new Exited(s.nextKey, s.exit, s.update)
         )
       case "Running":
-        return Tp.tuple(
+        return Tuple(
           Effect.succeed(mapLookup(key)(s.finalizers())),
           new Running(s.nextKey, mapInsert(key, finalizer)(s.finalizers()), s.update)
         )

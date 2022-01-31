@@ -1,7 +1,7 @@
 /**
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import type { Either } from "../../../data/Either"
 import type { NoSuchElementException } from "../../../data/GlobalExceptions"
 import type { Has, Tag } from "../../../data/Has"
@@ -88,12 +88,12 @@ export function genM<Eff extends GenEffect<any, any, any>, AEff>(
           state.value.trace
             ? state.value["effect"] instanceof ManagedImpl
               ? state.value["effect"]["effect"]
-                  .provideSomeEnvironment((r0) => Tp.tuple(r0, rm))
+                  .provideSomeEnvironment((r0) => Tuple(r0, rm))
                   .map((_) => _.get(1))
               : (state.value["effect"] as Effect<any, any, any>)
             : state.value["effect"] instanceof ManagedImpl
             ? state.value["effect"]["effect"]
-                .provideSomeEnvironment((r0) => Tp.tuple(r0, rm))
+                .provideSomeEnvironment((r0) => Tuple(r0, rm))
                 .map((_) => _.get(1))
             : (state.value["effect"] as Effect<any, any, any>),
         state.value.trace

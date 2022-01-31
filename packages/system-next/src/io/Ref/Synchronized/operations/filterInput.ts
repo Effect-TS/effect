@@ -1,6 +1,6 @@
-import type * as O from "../../../../data/Option"
+import type { Option } from "../../../../data/Option"
+import { Effect } from "../../../Effect"
 import type { XSynchronized } from "../definition"
-import * as T from "./_internal/effect"
 import { filterInputEffect_ } from "./filterInputEffect"
 
 /**
@@ -11,8 +11,8 @@ import { filterInputEffect_ } from "./filterInputEffect"
 export function filterInput_<RA, RB, EA, EB, A, A1 extends A, B>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
   f: (a: A1) => boolean
-): XSynchronized<RA, RB, O.Option<EA>, EB, A1, B> {
-  return filterInputEffect_(self, (a) => T.succeedNow(f(a)))
+): XSynchronized<RA, RB, Option<EA>, EB, A1, B> {
+  return filterInputEffect_(self, (a) => Effect.succeedNow(f(a)))
 }
 
 /**
@@ -25,5 +25,5 @@ export function filterInput_<RA, RB, EA, EB, A, A1 extends A, B>(
 export function filterInput<A, A1 extends A>(f: (a: A1) => boolean) {
   return <RA, RB, EA, EB, B>(
     self: XSynchronized<RA, RB, EA, EB, A, B>
-  ): XSynchronized<RA, RB, O.Option<EA>, EB, A1, B> => filterInput_(self, f)
+  ): XSynchronized<RA, RB, Option<EA>, EB, A1, B> => filterInput_(self, f)
 }

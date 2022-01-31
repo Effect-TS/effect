@@ -1,4 +1,4 @@
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import * as FiberId from "../../FiberId"
 import type { Fiber } from "../definition"
 import { makeSynthetic } from "./makeSynthetic"
@@ -28,7 +28,7 @@ export function orElse_<E, E1, A, A1>(
           return e1.value._tag === "Success" ? e1 : e2
         }
         case "None": {
-          return O.none
+          return Option.none
         }
       }
     })

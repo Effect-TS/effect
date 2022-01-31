@@ -15,7 +15,6 @@ export function parallelErrors<R, E, A>(
   return self
     .foldCauseEffect((cause) => {
       const f = failures(cause)
-
       if (f.length === 0) {
         return Effect.failCauseNow(<Cause<never>>cause)
       } else {

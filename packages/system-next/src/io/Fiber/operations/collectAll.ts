@@ -1,8 +1,8 @@
 import { reduceRight } from "../../../collection/immutable/Chunk/api/reduceRight"
 import * as Chunk from "../../../collection/immutable/Chunk/core"
 import * as Iter from "../../../collection/immutable/Iterable"
-import * as O from "../../../data/Option"
-import * as Cause from "../../Cause/definition"
+import { Option } from "../../../data/Option"
+import { Cause } from "../../Cause/definition"
 import { Effect } from "../../Effect"
 import * as Exit from "../../Exit"
 import * as FiberId from "../../FiberId"
@@ -27,17 +27,15 @@ export function collectAll<E, A>(
     inheritRefs: Effect.forEachDiscard(fibers, (fiber) => fiber.inheritRefs),
     poll: Effect.forEach(fibers, (f) => f.poll).map(
       reduceRight(
-        O.some(Exit.succeed(Chunk.empty()) as Exit.Exit<E, Chunk.Chunk<A>>),
+        Option.some(Exit.succeed(Chunk.empty()) as Exit.Exit<E, Chunk.Chunk<A>>),
         (a, b) =>
-          O.fold_(
-            a,
-            () => O.none,
+          a.fold(
+            () => Option.none,
             (ra) =>
-              O.fold_(
-                b,
-                () => O.none,
+              b.fold(
+                () => Option.none,
                 (rb) =>
-                  O.some(
+                  Option.some(
                     Exit.zipWith_(
                       ra,
                       rb,

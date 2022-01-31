@@ -8,7 +8,7 @@ import type { Ref } from "../definition"
 /**
  * Creates a new `Ref` with the specified value.
  */
-export function make<A>(value: LazyArg<A>): UIO<Ref<A>> {
+export function make<A>(value: LazyArg<A>, __etsTrace?: string): UIO<Ref<A>> {
   return Effect.succeed(unsafeMake(value()))
 }
 

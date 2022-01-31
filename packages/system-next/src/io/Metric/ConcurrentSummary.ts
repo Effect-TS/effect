@@ -1,9 +1,9 @@
 import { reduce_ } from "../../collection/immutable/Chunk/api/reduce"
 import { splitWhere_ } from "../../collection/immutable/Chunk/api/splitWhere"
 import * as C from "../../collection/immutable/Chunk/core"
-import * as Tp from "../../collection/immutable/Tuple"
-import * as O from "../../data/Option"
-import * as IO from "../../io-light/IO"
+import { Tuple } from "../../collection/immutable/Tuple"
+import { Option } from "../../data/Option"
+import { IO } from "../../io-light/IO"
 import { AtomicNumber } from "../../support/AtomicNumber"
 
 export interface ConcurrentSummary {
@@ -26,11 +26,11 @@ export interface ConcurrentSummary {
    * Create a snapshot.
    * - Chunk of (tuple of (quantile boundary, satisfying value if found))
    */
-  readonly snapshot: (now: Date) => C.Chunk<Tp.Tuple<[number, O.Option<number>]>>
+  readonly snapshot: (now: Date) => C.Chunk<Tuple<[number, Option<number>]>>
 }
 
 class ConcurrentSummaryImpl implements ConcurrentSummary {
-  private values = new Array<Tp.Tuple<[Date, number]>>(this.maxSize)
+  private values = new Array<Tuple<[Date, number]>>(this.maxSize)
 
   private head = new AtomicNumber(0)
 
@@ -58,7 +58,7 @@ class ConcurrentSummaryImpl implements ConcurrentSummary {
   }
 
   // Just before the snapshot we filter out all values older than maxAge
-  snapshot(now: Date): C.Chunk<Tp.Tuple<[number, O.Option<number>]>> {
+  snapshot(now: Date): C.Chunk<Tuple<[number, Option<number>]>> {
     const builder = C.builder<number>()
 
     // If the buffer is not full yet it contains valid items at the 0..last indices
@@ -94,7 +94,7 @@ class ConcurrentSummaryImpl implements ConcurrentSummary {
   observe(value: number, time: Date): void {
     if (this.maxSize > 0) {
       const target = this.head.incrementAndGet() % this.maxSize
-      this.values[target] = Tp.tuple(time, value)
+      this.values[target] = Tuple(time, value)
     }
 
     this.count.set(this.count.get + 1)
@@ -120,7 +120,7 @@ class ResolvedQuantile {
     /**
      * `Some(d)` if a value for the quantile could be found, `None` otherwise.
      */
-    readonly value: O.Option<number>,
+    readonly value: Option<number>,
     /**
      * How many samples have been consumed before this quantile.
      */
@@ -136,7 +136,7 @@ function calculateQuantiles(
   sortedSamples: C.Chunk<number>,
   error: number,
   sortedQuantiles: C.Chunk<number>
-): C.Chunk<Tp.Tuple<[number, O.Option<number>]>> {
+): C.Chunk<Tuple<[number, Option<number>]>> {
   // The number of the samples examined
   const sampleCount = sortedSamples.length
 
@@ -147,48 +147,56 @@ function calculateQuantiles(
   const resolved = reduce_(
     C.unsafeTail(sortedQuantiles),
     C.single(
-      IO.run(
-        resolveQuantiles(
-          O.none,
-          0,
-          C.unsafeHead(sortedQuantiles),
-          sortedSamples,
-          error,
-          sampleCount
-        )
-      )
+      resolveQuantiles(
+        Option.none,
+        0,
+        C.unsafeHead(sortedQuantiles),
+        sortedSamples,
+        error,
+        sampleCount
+      ).run()
     ),
     (curr, q) => {
       const head = C.unsafeHead(curr)
       return C.prepend_(
         curr,
-        IO.run(
-          resolveQuantiles(head.value, head.consumed, q, head.rest, error, sampleCount)
-        )
+        resolveQuantiles(
+          head.value,
+          head.consumed,
+          q,
+          head.rest,
+          error,
+          sampleCount
+        ).run()
       )
     }
   )
 
-  return C.map_(resolved, (rq) => Tp.tuple(rq.quantile, rq.value))
+  return C.map_(resolved, (rq) => Tuple(rq.quantile, rq.value))
 }
 
 function resolveQuantiles(
-  current: O.Option<number>,
+  current: Option<number>,
   consumed: number,
   q: number,
   c: C.Chunk<number>,
   error: number,
   sampleCount: number
-): IO.IO<ResolvedQuantile> {
+): IO<ResolvedQuantile> {
   // If the remaining list of samples is empty there is nothing more to resolve
   if (C.isEmpty(c)) {
-    return IO.succeed(new ResolvedQuantile(q, O.none, consumed, C.empty()))
+    return IO.succeed(new ResolvedQuantile(q, Option.none, consumed, C.empty()))
   }
   // If the quantile is the 100% Quantile, we can take the max of all remaining
   // values as the result
   if (q > 0.999) {
     return IO.succeed(
-      new ResolvedQuantile(q, O.some(C.unsafeLast(c)), consumed + c.length, C.empty())
+      new ResolvedQuantile(
+        q,
+        Option.some(C.unsafeLast(c)),
+        consumed + c.length,
+        C.empty()
+      )
     )
   }
 
@@ -207,7 +215,7 @@ function resolveQuantiles(
 
   if (candConsumed < desired - allowedError) {
     // If we haven't got enough elements yet, recurse
-    return IO.suspend(() =>
+    return IO.suspend(
       resolveQuantiles(C.head(c), candConsumed, q, sameHead.get(1), error, sampleCount)
     )
   } else if (candConsumed > desired + allowedError) {
@@ -218,10 +226,9 @@ function resolveQuantiles(
 
   // If we are in the target interval, select the current head and hand back the leftover after dropping all elements
   // from the sample chunk that are equal to the current head
-  return O.fold_(
-    current,
+  return current.fold(
     () =>
-      IO.suspend(() =>
+      IO.suspend(
         resolveQuantiles(
           C.head(c),
           candConsumed,
@@ -235,7 +242,7 @@ function resolveQuantiles(
       const prevError = Math.abs(desired - curr)
 
       if (candError < prevError) {
-        return IO.suspend(() =>
+        return IO.suspend(
           resolveQuantiles(
             C.head(c),
             candConsumed,
@@ -247,7 +254,7 @@ function resolveQuantiles(
         )
       }
 
-      return IO.succeed(new ResolvedQuantile(q, O.some(curr), consumed, c))
+      return IO.succeed(new ResolvedQuantile(q, Option.some(curr), consumed, c))
     }
   )
 }

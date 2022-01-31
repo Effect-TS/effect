@@ -1,7 +1,7 @@
 import type { Either } from "../../../data/Either"
 import { identity } from "../../../data/Function"
 import * as A from "../Array"
-import * as Tp from "../Tuple"
+import { Tuple } from "../Tuple"
 
 function* genOf<A>(a: A) {
   yield a
@@ -95,14 +95,12 @@ export function map_<A, B>(i: Iterable<A>, f: (a: A, k: number) => B): Iterable<
 }
 
 export function zip<B>(fb: Iterable<B>) {
-  return <A>(fa: Iterable<A>): Iterable<Tp.Tuple<[A, B]>> => zipWith(fa, fb, Tp.tuple)
+  return <A>(fa: Iterable<A>): Iterable<Tuple<[A, B]>> =>
+    zipWith(fa, fb, (a, b) => Tuple(a, b))
 }
 
-export function zip_<A, B>(
-  fa: Iterable<A>,
-  fb: Iterable<B>
-): Iterable<Tp.Tuple<[A, B]>> {
-  return zipWith(fa, fb, Tp.tuple)
+export function zip_<A, B>(fa: Iterable<A>, fb: Iterable<B>): Iterable<Tuple<[A, B]>> {
+  return zipWith(fa, fb, (a, b) => Tuple(a, b))
 }
 
 export function chain<A, B>(f: (a: A) => Iterable<B>) {
@@ -234,7 +232,7 @@ export function flatten<A>(a: Iterable<Iterable<A>>) {
 }
 
 export function partitionMap<A, A1, A2>(f: (a: A) => Either<A1, A2>) {
-  return (as: Iterable<A>): Tp.Tuple<[Iterable<A1>, Iterable<A2>]> =>
+  return (as: Iterable<A>): Tuple<[Iterable<A1>, Iterable<A2>]> =>
     A.separate(Array.from(map_(as, f)))
 }
 

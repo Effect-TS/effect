@@ -1,6 +1,6 @@
 import { reduce_ } from "../../../collection/immutable/Chunk/api/reduce"
 import * as Chunk from "../../../collection/immutable/Chunk/core"
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import * as Ref from "../../../io/Ref"
 import * as Exit from "../../Exit"
 import * as Fiber from "../../Fiber"
@@ -22,7 +22,7 @@ export function raceAll_<R, E, A>(
 ): Effect<R, E, A> {
   const ios = Chunk.from(effects)
   return Effect.Do()
-    .bind("done", () => P.make<E, Tp.Tuple<[A, Fiber.Fiber<E, A>]>>())
+    .bind("done", () => P.make<E, Tuple<[A, Fiber.Fiber<E, A>]>>())
     .bind("fails", () => Ref.make(Chunk.size(ios)))
     .flatMap(({ done, fails }) =>
       Effect.uninterruptibleMask(({ restore }) =>
@@ -38,7 +38,7 @@ export function raceAll_<R, E, A>(
           .bindValue(
             "inheritRefs",
             () =>
-              (res: Tp.Tuple<[A, Fiber.Fiber<E, A>]>): UIO<A> =>
+              (res: Tuple<[A, Fiber.Fiber<E, A>]>): UIO<A> =>
                 res.get(1).inheritRefs.map(() => res.get(0))
           )
           .flatMap(({ fs, inheritRefs }) =>
@@ -64,7 +64,7 @@ export function raceAll<R, E, A>(as: Iterable<Effect<R, E, A>>, __etsTrace?: str
 function arbiter<E, A>(
   fibers: Chunk.Chunk<Fiber.Fiber<E, A>>,
   winner: Fiber.Fiber<E, A>,
-  promise: P.Promise<E, Tp.Tuple<[A, Fiber.Fiber<E, A>]>>,
+  promise: P.Promise<E, Tuple<[A, Fiber.Fiber<E, A>]>>,
   fails: Ref.Ref<number>
 ) {
   return (exit: Exit.Exit<E, A>): UIO<void> => {
@@ -72,10 +72,10 @@ function arbiter<E, A>(
       exit,
       (e) =>
         Ref.modify_(fails, (c) =>
-          Tp.tuple(c === 0 ? P.failCause_(promise, e).asUnit() : Effect.unit, c - 1)
+          Tuple(c === 0 ? P.failCause_(promise, e).asUnit() : Effect.unit, c - 1)
         ).flatten(),
       (a) =>
-        P.succeed_(promise, Tp.tuple(a, winner)).flatMap((set) =>
+        P.succeed_(promise, Tuple(a, winner)).flatMap((set) =>
           set
             ? reduce_(fibers, Effect.unit, (io, f) =>
                 f === winner ? io : io.zipLeft(Fiber.interrupt(f))

@@ -3,7 +3,6 @@ import { splitAt } from "../collection/immutable/Chunk/api/splitAt"
 import * as Ch from "../collection/immutable/Chunk/core"
 import * as It from "../collection/immutable/Iterable"
 import * as SortedMap from "../collection/immutable/SortedMap"
-import * as Tp from "../collection/immutable/Tuple"
 import type { Predicate } from "../data/Function"
 import { not, pipe } from "../data/Function"
 import * as O from "../data/Option"
@@ -144,7 +143,7 @@ export function peek<A>(self: TPriorityQueue<A>): STM.USTM<A> {
       self.map,
       TRef.unsafeGet(journal),
       SortedMap.headOption,
-      O.map(Tp.get(1)),
+      O.map((_) => _.get(1)),
       O.chain(Ch.head),
       (o) => {
         if (o._tag === "None") {
@@ -166,7 +165,12 @@ export function peekOption<A>(self: TPriorityQueue<A>): STM.USTM<O.Option<A>> {
     self.map,
     (map) =>
       [
-        pipe(map, SortedMap.headOption, O.map(Tp.get(1)), O.chain(Ch.head)),
+        pipe(
+          map,
+          SortedMap.headOption,
+          O.map((_) => _.get(1)),
+          O.chain(Ch.head)
+        ),
         map
       ] as const
   )
@@ -222,8 +226,8 @@ export function take<A>(self: TPriorityQueue<A>): STM.USTM<A> {
       map,
       SortedMap.headOption,
       O.chain((tp) => {
-        const a = pipe(tp, Tp.get(1), Ch.tail, O.chain(O.fromPredicate(Ch.isNonEmpty)))
-        const k = Tp.get_(tp, 0)
+        const a = pipe(tp.get(1), Ch.tail, O.chain(O.fromPredicate(Ch.isNonEmpty)))
+        const k = tp.get(0)
 
         TRef.unsafeSet_(
           self.map,
@@ -233,7 +237,7 @@ export function take<A>(self: TPriorityQueue<A>): STM.USTM<A> {
           journal
         )
 
-        return Ch.head(Tp.get_(tp, 1))
+        return Ch.head(tp.get(1))
       }),
       (o) => {
         if (o._tag === "None") {
@@ -258,8 +262,8 @@ export function takeOption<A>(self: TPriorityQueue<A>): STM.USTM<O.Option<A>> {
       map,
       SortedMap.headOption,
       O.chain((tp) => {
-        const a = pipe(tp, Tp.get(1), Ch.tail, O.chain(O.fromPredicate(Ch.isNonEmpty)))
-        const k = Tp.get_(tp, 0)
+        const a = pipe(tp.get(1), Ch.tail, O.chain(O.fromPredicate(Ch.isNonEmpty)))
+        const k = tp.get(0)
 
         TRef.unsafeSet_(
           self.map,
@@ -269,7 +273,7 @@ export function takeOption<A>(self: TPriorityQueue<A>): STM.USTM<O.Option<A>> {
           journal
         )
 
-        return Ch.head(Tp.get_(tp, 1))
+        return Ch.head(tp.get(1))
       })
     )
   })
@@ -301,11 +305,7 @@ export function takeUpTo_<A>(
 
     while (!(e = entries.next()).done) {
       const [a, as] = e.value
-      const [l, r] = pipe(
-        as,
-        splitAt(n - i),
-        (tp) => [Tp.get_(tp, 0), Tp.get_(tp, 1)] as const
-      )
+      const [l, r] = pipe(as, splitAt(n - i), (tp) => [tp.get(0), tp.get(1)] as const)
 
       builder.append(l)
 

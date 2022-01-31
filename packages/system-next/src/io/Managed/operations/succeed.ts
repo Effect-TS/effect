@@ -1,4 +1,4 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
 import { Managed } from "../definition"
@@ -13,5 +13,5 @@ export function succeed<A>(
   f: LazyArg<A>,
   __etsTrace?: string
 ): Managed<unknown, never, A> {
-  return Managed(Effect.succeed(Tp.tuple(Finalizer.noopFinalizer, f())))
+  return Managed(Effect.succeed(Tuple(Finalizer.noopFinalizer, f())))
 }

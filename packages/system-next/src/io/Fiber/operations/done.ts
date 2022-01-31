@@ -1,5 +1,5 @@
 import * as Chunk from "../../../collection/immutable/Chunk/core"
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import { Effect } from "../../Effect"
 import type { Exit } from "../../Exit"
 import * as FiberId from "../../FiberId"
@@ -15,7 +15,7 @@ export function done<E, A>(exit: Exit<E, A>): Fiber<E, A> {
     await: Effect.succeedNow(exit),
     children: Effect.succeedNow(Chunk.empty()),
     inheritRefs: Effect.unit,
-    poll: Effect.succeedNow(O.some(exit)),
+    poll: Effect.succeedNow(Option.some(exit)),
     getRef: (ref) => Effect.succeed(() => ref.initial),
     interruptAs: () => Effect.succeedNow(exit)
   })

@@ -1,10 +1,10 @@
 import type { Either } from "../../../data/Either"
 import type { AtomicReference } from "../../../support/AtomicReference"
+import { Effect } from "../../Effect"
 import type { XRef } from "../definition"
 import { XRefInternal } from "../definition"
 import { Derived } from "./Derived"
 import { DerivedAll } from "./DerivedAll"
-import * as T from "./operations/_internal/effect"
 
 export class Atomic<A> extends XRefInternal<unknown, unknown, never, never, A, A> {
   readonly _tag = "Atomic"
@@ -13,12 +13,12 @@ export class Atomic<A> extends XRefInternal<unknown, unknown, never, never, A, A
     super()
   }
 
-  get get(): T.Effect<unknown, never, A> {
-    return T.succeed(() => this.value.get)
+  get get(): Effect<unknown, never, A> {
+    return Effect.succeed(this.value.get)
   }
 
-  set(a: A): T.Effect<unknown, never, void> {
-    return T.succeed(() => this.value.set(a))
+  set(a: A, __etsTrace?: string): Effect<unknown, never, void> {
+    return Effect.succeed(this.value.set(a))
   }
 
   fold<EC, ED, C, D>(

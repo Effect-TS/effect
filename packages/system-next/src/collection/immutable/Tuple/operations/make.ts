@@ -6,6 +6,6 @@ import { TupleInternal } from "./_internal/TupleInternal"
  *
  * @ets static ets/TupleOps __call
  */
-export function tuple<Ks extends unknown[]>(...args: Ks): Tuple<Ks> {
+export function make<Ks extends unknown[]>(...args: Ks): Tuple<Ks> {
   return new TupleInternal(args)
 }

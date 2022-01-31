@@ -1,4 +1,4 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import { Either } from "../../../data/Either"
 import { Option } from "../../../data/Option"
 import type { HasClock } from "../../Clock"
@@ -37,7 +37,7 @@ export function timeout_<R, E, A>(
           outerReleaseMap.add((exit) => innerReleaseMap.releaseAll(exit, sequential))
         )
         .bind("raceResult", ({ innerReleaseMap }) =>
-          restore<R & HasClock, E, Either<Fiber.Fiber<E, Tp.Tuple<[Finalizer, A]>>, A>>(
+          restore<R & HasClock, E, Either<Fiber.Fiber<E, Tuple<[Finalizer, A]>>, A>>(
             locally_(
               currentReleaseMap.value,
               innerReleaseMap
@@ -64,7 +64,7 @@ export function timeout_<R, E, A>(
             (a) => Effect.succeed(Option.some(a))
           )
         )
-        .map(({ a, earlyRelease }) => Tp.tuple(earlyRelease, a))
+        .map(({ a, earlyRelease }) => Tuple(earlyRelease, a))
     )
   )
 }

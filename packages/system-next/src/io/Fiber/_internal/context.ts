@@ -1,11 +1,10 @@
 import * as Chunk from "../../../collection/immutable/Chunk/core"
 import * as HS from "../../../collection/immutable/HashSet"
 import type { Next } from "../../../collection/immutable/Map"
-import * as E from "../../../data/Either"
+import { Either } from "../../../data/Either"
 import { constVoid, pipe } from "../../../data/Function"
 import type { Tag } from "../../../data/Has"
-import type { Option } from "../../../data/Option"
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import { Stack } from "../../../data/Stack"
 import * as Supervisor from "../../../io/Supervisor"
 import { equalsSym } from "../../../prelude/Structural"
@@ -13,8 +12,7 @@ import { AtomicBoolean } from "../../../support/AtomicBoolean"
 import { AtomicReference } from "../../../support/AtomicReference"
 import { defaultScheduler } from "../../../support/Scheduler"
 import * as StackTraceBuilder from "../../../support/StackTraceBuilder"
-import * as Cause from "../../Cause"
-import { InterruptedException } from "../../Cause"
+import { Cause, InterruptedException } from "../../Cause"
 import { Effect } from "../../Effect"
 import type { UIO } from "../../Effect/definition/base"
 import type { IFold, Instruction, IRaceWith } from "../../Effect/definition/primitives"
@@ -211,12 +209,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   unsafeLogWith(
     typeTag: Tag<any>,
     message: () => any,
-    overrideLogLevel: O.Option<LogLevel.LogLevel>,
+    overrideLogLevel: Option<LogLevel.LogLevel>,
     overrideRef1: FiberRef.Runtime<any> | null = null,
     overrideValue1: any = null,
     trace?: string
   ): void {
-    const logLevel = O.getOrElse_(overrideLogLevel, () =>
+    const logLevel = overrideLogLevel.getOrElse(
       this.unsafeGetRef(currentLogLevel.value)
     )
 
@@ -484,9 +482,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       const result = this.unsafeAddObserverMaybe(cb)
 
       if (result) {
-        return E.right(Effect.succeedNow(result))
+        return Either.right(Effect.succeedNow(result))
       } else {
-        return E.left(Effect.succeed(() => this.unsafeRemoveObserver(cb)))
+        return Either.left(Effect.succeed(() => this.unsafeRemoveObserver(cb)))
       }
     }, this.id)
   }
@@ -607,7 +605,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         this.unsafeLogWith(
           CauseLogger,
           () => exit.cause,
-          O.some(LogLevel.Debug),
+          Option.some(LogLevel.Debug),
           null,
           null,
           trace
@@ -622,8 +620,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   }
 
-  private unsafeAddSuppressed(cause: Cause.Cause<never>): void {
-    if (!Cause.isEmpty(cause)) {
+  private unsafeAddSuppressed(cause: Cause<never>): void {
+    if (!cause.isEmpty()) {
       const oldState = this.state.get
 
       if (oldState._tag === "Executing") {
@@ -641,7 +639,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   }
 
-  private unsafeClearSuppressed(): Cause.Cause<never> {
+  private unsafeClearSuppressed(): Cause<never> {
     const oldState = this.state.get
 
     switch (oldState._tag) {
@@ -659,7 +657,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
         const interruptorsCause = FiberState.interruptorsCause(oldState)
 
-        if (Cause.contains_(oldState.suppressed, interruptorsCause)) {
+        if (oldState.suppressed.contains(interruptorsCause)) {
           return oldState.suppressed
         } else {
           return Cause.then(oldState.suppressed, interruptorsCause)
@@ -675,9 +673,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return this.unsafeEvalOn(Effect.succeed(() => this._children.add(child)))
   }
 
-  unsafePoll(): O.Option<Ex.Exit<E, A>> {
+  unsafePoll(): Option<Ex.Exit<E, A>> {
     const state = this.state.get
-    return state._tag === "Done" ? O.some(state.value) : O.none
+    return state._tag === "Done" ? Option.some(state.value) : Option.none
   }
 
   // -----------------------------------------------------------------------------
@@ -905,7 +903,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           const newExit = interruptorsCause[equalsSym](Cause.empty)
             ? exit
             : Ex.mapErrorCause_(exit, (cause) =>
-                Cause.contains_(cause, interruptorsCause)
+                cause.contains(interruptorsCause)
                   ? cause
                   : Cause.then(cause, interruptorsCause)
               )
@@ -931,8 +929,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                 fiberFailures.unsafeIncrement()
               }
 
-              return Cause.fold_<E, void>(
-                cause,
+              return cause.fold<E, void>(
                 () => fiberFailureCauses.unsafeObserve("<empty>"),
                 (failure, _) => {
                   this.observeFailure(
@@ -1028,7 +1025,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   unsafeFork(
     effect: Instruction,
     trace: TE.TraceElement,
-    forkScope: O.Option<Scope.Scope> = O.none
+    forkScope: Option<Scope.Scope> = Option.none
   ): FiberContext<any, any> {
     const childFiberRefLocals: FiberRefLocals = new Map()
 
@@ -1036,12 +1033,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       childFiberRefLocals.set(k, (k as Runtime<A>).fork(v))
     })
 
-    const parentScope: Scope.Scope = O.getOrElse_(
+    const parentScope: Scope.Scope = (
       forkScope._tag === "Some"
         ? forkScope
-        : this.unsafeGetRef(forkScopeOverride.value) || O.none,
-      () => this.scope
-    )
+        : this.unsafeGetRef(forkScopeOverride.value) || Option.none
+    ).getOrElse(this.scope)
 
     const childId = FiberId.unsafeMake()
     // TODO: WeakSet?
@@ -1060,7 +1056,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       this.runtimeConfig.value.supervisor.unsafeOnStart(
         this.unsafeGetRef(currentEnvironment.value),
         effect,
-        O.some(this),
+        Option.some(this),
         childContext
       )
 
@@ -1283,10 +1279,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     extraTrace = emptyTraceElement
 
                     const cause = current.cause()
-                    const tracedCause = Cause.isTraced(cause)
+                    const tracedCause = cause.isTraced()
                       ? cause
-                      : Cause.traced_(
-                          cause,
+                      : cause.traced(
                           this.unsafeCaptureTrace([
                             TE.parse(current.trace),
                             ...fastPathTrace
@@ -1301,10 +1296,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     // strip the typed failures, and return the remainders and
                     // the interruption.
                     const strippedCause = discardedFolds
-                      ? Cause.stripFailures(tracedCause)
+                      ? tracedCause.stripFailures()
                       : tracedCause
                     const suppressed = this.unsafeClearSuppressed()
-                    const fullCause = Cause.contains_(strippedCause, suppressed)
+                    const fullCause = strippedCause.contains(suppressed)
                       ? strippedCause
                       : Cause.then(strippedCause, suppressed)
 
@@ -1526,10 +1521,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   case "GetForkScope": {
                     current = instruction(
                       current.f(
-                        O.getOrElse_(
-                          this.unsafeGetRef(forkScopeOverride.value),
-                          () => this.scope
-                        )
+                        this.unsafeGetRef(forkScopeOverride.value).getOrElse(this.scope)
                       )
                     )
                     break

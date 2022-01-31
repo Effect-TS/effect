@@ -10,7 +10,7 @@ export function prepend_<Ks extends unknown[], K>(
   self: Tuple<Ks>,
   k: K
 ): Tuple<[K, ...Ks]> {
-  return new TupleInternal([k, ...self.value])
+  return new TupleInternal([k, ...self.tuple])
 }
 
 /**

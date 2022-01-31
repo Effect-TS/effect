@@ -1,4 +1,4 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import type { Logger } from "../definition"
 
 /**
@@ -8,9 +8,9 @@ import type { Logger } from "../definition"
 export function zip_<Message, Output, Output1>(
   self: Logger<Message, Output>,
   that: Logger<Message, Output1>
-): Logger<Message, Tp.Tuple<[Output, Output1]>> {
+): Logger<Message, Tuple<[Output, Output1]>> {
   return (trace, fiberId, logLevel, message, context, spans, location) =>
-    Tp.tuple(
+    Tuple(
       self(trace, fiberId, logLevel, message, context, spans, location),
       that(trace, fiberId, logLevel, message, context, spans, location)
     )
@@ -25,5 +25,5 @@ export function zip_<Message, Output, Output1>(
 export function zip<Message, Output1>(that: Logger<Message, Output1>) {
   return <Output>(
     self: Logger<Message, Output>
-  ): Logger<Message, Tp.Tuple<[Output, Output1]>> => zip_(self, that)
+  ): Logger<Message, Tuple<[Output, Output1]>> => zip_(self, that)
 }

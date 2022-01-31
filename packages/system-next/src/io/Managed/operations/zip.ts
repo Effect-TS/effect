@@ -1,4 +1,4 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import type { Managed } from "../definition"
 
 /**
@@ -11,8 +11,8 @@ export function zip_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
   that: Managed<R2, E2, A2>,
   __etsTrace?: string
-): Managed<R & R2, E | E2, Tp.Tuple<[A, A2]>> {
-  return self.zipWith(that, (a, a2) => Tp.tuple(a, a2))
+): Managed<R & R2, E | E2, Tuple<[A, A2]>> {
+  return self.zipWith(that, (a, a2) => Tuple(a, a2))
 }
 
 /**
@@ -22,7 +22,6 @@ export function zip_<R, E, A, R2, E2, A2>(
  * @ets_data_first zip_
  */
 export function zip<R2, E2, A2>(that: Managed<R2, E2, A2>, __etsTrace?: string) {
-  return <R, E, A>(
-    self: Managed<R, E, A>
-  ): Managed<R & R2, E2 | E, Tp.Tuple<[A, A2]>> => zip_(self, that)
+  return <R, E, A>(self: Managed<R, E, A>): Managed<R & R2, E2 | E, Tuple<[A, A2]>> =>
+    zip_(self, that)
 }

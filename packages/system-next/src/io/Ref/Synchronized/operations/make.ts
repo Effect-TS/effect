@@ -1,21 +1,23 @@
-import { pipe } from "../../../../data/Function"
+import { Effect } from "../../../Effect"
 import * as Semaphore from "../../../Semaphore"
-import * as Ref from "../../operations"
+import { get as refGet } from "../../operations/get"
+import { make as refMake } from "../../operations/make"
+import { set_ as refSet_ } from "../../operations/set"
 import type { Synchronized } from "../definition"
 import { XSynchronized } from "../definition"
-import * as T from "./_internal/effect"
 
 /**
- * Creates a new `ZRef.Synchronized` with the specified value.
+ * Creates a new `XRef.Synchronized` with the specified value.
  */
-export function make<A>(value: A): T.UIO<Synchronized<A>> {
-  return pipe(
-    T.Do(),
-    T.bind("ref", () => Ref.make<A>(value)),
-    T.bind("semaphore", () => Semaphore.make(1)),
-    T.map(
+export function make<A>(
+  value: A,
+  __etsTrace?: string
+): Effect<unknown, never, Synchronized<A>> {
+  return Effect.Do()
+    .bind("ref", () => refMake<A>(value))
+    .bind("semaphore", () => Semaphore.make(1))
+    .map(
       ({ ref, semaphore }) =>
-        new XSynchronized(new Set([semaphore]), Ref.get(ref), (a) => Ref.set_(ref, a))
+        new XSynchronized(new Set([semaphore]), refGet(ref), (a) => refSet_(ref, a))
     )
-  )
 }

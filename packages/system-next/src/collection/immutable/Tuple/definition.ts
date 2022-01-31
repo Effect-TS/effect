@@ -15,7 +15,7 @@ export interface Tuple<T extends ReadonlyArray<unknown>> extends Iterable<T[numb
 
   [Symbol.iterator](): IterableIterator<T[number]>
 
-  value: T
+  tuple: T
 
   get [St.hashSym](): number
 

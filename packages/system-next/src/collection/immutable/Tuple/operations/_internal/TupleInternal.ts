@@ -4,27 +4,27 @@ import { Tuple, TupleSym } from "../../definition"
 export class TupleInternal<T extends readonly unknown[]> implements Tuple<T> {
   readonly [TupleSym]: TupleSym = TupleSym
 
-  constructor(readonly value: T) {}
+  constructor(readonly tuple: T) {}
 
   [Symbol.iterator](): IterableIterator<T[number]> {
-    return this.value[Symbol.iterator]()
+    return this.tuple[Symbol.iterator]()
   }
 
   get [St.hashSym](): number {
-    return St.hashArray(this.value)
+    return St.hashArray(this.tuple)
   }
 
   [St.equalsSym](that: unknown): boolean {
     if (Tuple.isTuple(that)) {
       return (
-        this.value.length === that.value.length &&
-        this.value.every((v, i) => St.equals(v, that.value[i]))
+        this.tuple.length === that.tuple.length &&
+        this.tuple.every((v, i) => St.equals(v, that.tuple[i]))
       )
     }
     return false
   }
 
   get<K extends keyof T>(i: K): T[K] {
-    return this.value[i]
+    return this.tuple[i]
   }
 }

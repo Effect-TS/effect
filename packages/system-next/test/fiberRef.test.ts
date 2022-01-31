@@ -1,9 +1,9 @@
 import * as Chunk from "../src/collection/immutable/Chunk"
-import * as Tp from "../src/collection/immutable/Tuple"
-import * as E from "../src/data/Either"
+import { Tuple } from "../src/collection/immutable/Tuple"
+import { Either } from "../src/data/Either"
 import { identity, pipe } from "../src/data/Function"
-import * as O from "../src/data/Option"
-import * as T from "../src/io/Effect"
+import { Option } from "../src/data/Option"
+import { Effect } from "../src/io/Effect"
 import * as Fiber from "../src/io/Fiber"
 import * as FiberRef from "../src/io/FiberRef"
 import * as Promise from "../src/io/Promise"
@@ -23,300 +23,253 @@ const update2 = "update2"
 describe("FiberRef", () => {
   describe("Create a new FiberRef with a specified value and check if:", () => {
     it("`delete` restores the original value", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.tap(({ fiberRef }) => FiberRef.set_(fiberRef, update)),
-          T.tap(({ fiberRef }) => FiberRef.delete(fiberRef)),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
-        )
-      )
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .tap(({ fiberRef }) => FiberRef.set_(fiberRef, update))
+        .tap(({ fiberRef }) => FiberRef.delete(fiberRef))
+        .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
-      expect(value).toBe(initial)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(initial)
     })
 
     it("`get` returns the current value", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
-        )
-      )
+      const program = FiberRef.make(initial).flatMap(FiberRef.get)
 
-      expect(value).toBe(initial)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(initial)
     })
 
     it("`get` returns the correct value for a child", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bind("child", ({ fiberRef }) => T.fork(FiberRef.get(fiberRef))),
-          T.bind("value", ({ child }) => Fiber.join(child))
-        )
-      )
+      const program = FiberRef.make(initial)
+        .flatMap((fiberRef) => FiberRef.get(fiberRef).fork())
+        .flatMap(Fiber.join)
 
-      expect(value).toBe(initial)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(initial)
     })
 
     it("`getAndUpdate` changes value", async () => {
-      const { value1, value2 } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bind("value1", ({ fiberRef }) =>
-            FiberRef.getAndUpdate_(fiberRef, () => update)
-          ),
-          T.bind("value2", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bind("value1", ({ fiberRef }) =>
+          FiberRef.getAndUpdate_(fiberRef, () => update)
         )
-      )
+        .bind("value2", ({ fiberRef }) => FiberRef.get(fiberRef))
+
+      const { value1, value2 } = await program.unsafeRunPromise()
 
       expect(value1).toBe(initial)
       expect(value2).toBe(update)
     })
 
     it("`getAndUpdateSome` changes value", async () => {
-      const { value1, value2 } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bind("value1", ({ fiberRef }) =>
-            FiberRef.getAndUpdateSome_(fiberRef, () => O.some(update))
-          ),
-          T.bind("value2", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bind("value1", ({ fiberRef }) =>
+          FiberRef.getAndUpdateSome_(fiberRef, () => Option.some(update))
         )
-      )
+        .bind("value2", ({ fiberRef }) => FiberRef.get(fiberRef))
+
+      const { value1, value2 } = await program.unsafeRunPromise()
 
       expect(value1).toBe(initial)
       expect(value2).toBe(update)
     })
 
     it("`getAndUpdateSome` not changes value", async () => {
-      const { value1, value2 } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bind("value1", ({ fiberRef }) =>
-            FiberRef.getAndUpdateSome_(fiberRef, () => O.none)
-          ),
-          T.bind("value2", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bind("value1", ({ fiberRef }) =>
+          FiberRef.getAndUpdateSome_(fiberRef, () => Option.none)
         )
-      )
+        .bind("value2", ({ fiberRef }) => FiberRef.get(fiberRef))
+
+      const { value1, value2 } = await program.unsafeRunPromise()
 
       expect(value1).toBe(initial)
       expect(value2).toBe(initial)
     })
 
     it("`locally` restores original value", async () => {
-      const { local, value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bind("local", ({ fiberRef }) =>
-            pipe(fiberRef, FiberRef.locally(update))(FiberRef.get(fiberRef))
-          ),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bind("local", ({ fiberRef }) =>
+          pipe(fiberRef, FiberRef.locally(update))(FiberRef.get(fiberRef))
         )
-      )
+        .bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
+
+      const { local, value } = await program.unsafeRunPromise()
 
       expect(local).toBe(update)
       expect(value).toBe(initial)
     })
 
     it("`locally` restores parent's value", async () => {
-      const { local, value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bind("child", ({ fiberRef }) =>
-            pipe(FiberRef.get(fiberRef), FiberRef.locally_(fiberRef, update), T.fork)
-          ),
-          T.bind("local", ({ child }) => Fiber.join(child)),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bind("child", ({ fiberRef }) =>
+          pipe(FiberRef.get(fiberRef), FiberRef.locally_(fiberRef, update)).fork()
         )
-      )
+        .bind("local", ({ child }) => Fiber.join(child))
+        .bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
+
+      const { local, value } = await program.unsafeRunPromise()
 
       expect(local).toBe(update)
       expect(value).toBe(initial)
     })
 
     it("`locally` restores undefined value", async () => {
-      const { localValue, value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("child", () => T.fork(FiberRef.make(initial))),
-          // Don't use join as it inherits values from child
-          T.bind("fiberRef", ({ child }) => T.chain_(Fiber.await(child), T.done)),
-          T.bind("localValue", ({ fiberRef }) =>
-            pipe(fiberRef, FiberRef.locally(update))(FiberRef.get(fiberRef))
-          ),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("child", () => FiberRef.make(initial).fork())
+        // Don't use join as it inherits values from child
+        .bind("fiberRef", ({ child }) => Fiber.await(child).flatMap(Effect.done))
+        .bind("localValue", ({ fiberRef }) =>
+          pipe(fiberRef, FiberRef.locally(update))(FiberRef.get(fiberRef))
         )
-      )
+        .bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
+
+      const { localValue, value } = await program.unsafeRunPromise()
 
       expect(localValue).toBe(update)
       expect(value).toBe(initial)
     })
 
     it("`modify` changes value", async () => {
-      const { value1, value2 } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bind("value1", ({ fiberRef }) =>
-            FiberRef.modify_(fiberRef, () => Tp.tuple(1, update))
-          ),
-          T.bind("value2", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bind("value1", ({ fiberRef }) =>
+          FiberRef.modify_(fiberRef, () => Tuple(1, update))
         )
-      )
+        .bind("value2", ({ fiberRef }) => FiberRef.get(fiberRef))
+
+      const { value1, value2 } = await program.unsafeRunPromise()
 
       expect(value1).toBe(1)
       expect(value2).toBe(update)
     })
 
     it("`modifySome` not changes value", async () => {
-      const { value1, value2 } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bind("value1", ({ fiberRef }) =>
-            FiberRef.modifySome_(fiberRef, 2, () => O.none)
-          ),
-          T.bind("value2", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bind("value1", ({ fiberRef }) =>
+          FiberRef.modifySome_(fiberRef, 2, () => Option.none)
         )
-      )
+        .bind("value2", ({ fiberRef }) => FiberRef.get(fiberRef))
+
+      const { value1, value2 } = await program.unsafeRunPromise()
 
       expect(value1).toBe(2)
       expect(value2).toBe(initial)
     })
 
     it("`set` updates the current value", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.tap(({ fiberRef }) => FiberRef.set_(fiberRef, update)),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
-        )
-      )
+      const program = FiberRef.make(initial)
+        .tap(FiberRef.set(update))
+        .flatMap(FiberRef.get)
 
-      expect(value).toBe(update)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(update)
     })
 
     it("`set` by a child doesn't update parent's value", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bind("promise", () => Promise.make<never, void>()),
-          T.tap(({ fiberRef, promise }) =>
-            pipe(
-              FiberRef.set_(fiberRef, update),
-              T.zipRight(Promise.succeed_(promise, undefined)),
-              T.fork
-            )
-          ),
-          T.tap(({ promise }) => Promise.await(promise)),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bind("promise", () => Promise.make<never, void>())
+        .tap(({ fiberRef, promise }) =>
+          FiberRef.set_(fiberRef, update)
+            .zipRight(Promise.succeed_(promise, undefined))
+            .fork()
         )
-      )
+        .tap(({ promise }) => Promise.await(promise))
+        .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
-      expect(value).toBe(initial)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(initial)
     })
 
     it("`updateAndGet` changes value", async () => {
-      const { value1, value2 } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bind("value1", ({ fiberRef }) =>
-            FiberRef.updateAndGet_(fiberRef, () => update)
-          ),
-          T.bind("value2", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bind("value1", ({ fiberRef }) =>
+          FiberRef.updateAndGet_(fiberRef, () => update)
         )
-      )
+        .bind("value2", ({ fiberRef }) => FiberRef.get(fiberRef))
+
+      const { value1, value2 } = await program.unsafeRunPromise()
 
       expect(value1).toBe(update)
       expect(value2).toBe(update)
     })
 
     it("`updateSomeAndGet` changes value", async () => {
-      const { value1, value2 } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bind("value1", ({ fiberRef }) =>
-            FiberRef.updateSomeAndGet_(fiberRef, () => O.some(update))
-          ),
-          T.bind("value2", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bind("value1", ({ fiberRef }) =>
+          FiberRef.updateSomeAndGet_(fiberRef, () => Option.some(update))
         )
-      )
+        .bind("value2", ({ fiberRef }) => FiberRef.get(fiberRef))
+
+      const { value1, value2 } = await program.unsafeRunPromise()
 
       expect(value1).toBe(update)
       expect(value2).toBe(update)
     })
 
     it("`updateSomeAndGet` not changes value", async () => {
-      const { value1, value2 } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bind("value1", ({ fiberRef }) =>
-            FiberRef.updateSomeAndGet_(fiberRef, () => O.none)
-          ),
-          T.bind("value2", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bind("value1", ({ fiberRef }) =>
+          FiberRef.updateSomeAndGet_(fiberRef, () => Option.none)
         )
-      )
+        .bind("value2", ({ fiberRef }) => FiberRef.get(fiberRef))
+
+      const { value1, value2 } = await program.unsafeRunPromise()
 
       expect(value1).toBe(initial)
       expect(value2).toBe(initial)
     })
 
     it("its value is inherited on join", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bind("child", ({ fiberRef }) => T.fork(FiberRef.set_(fiberRef, update))),
-          T.tap(({ child }) => Fiber.join(child)),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
-        )
-      )
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bind("child", ({ fiberRef }) => FiberRef.set_(fiberRef, update).fork())
+        .tap(({ child }) => Fiber.join(child))
+        .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
-      expect(value).toBe(update)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(update)
     })
 
     it("initial value is always available", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("child", () => T.fork(FiberRef.make(initial))),
-          T.bind("fiberRef", ({ child }) => T.chain_(Fiber.await(child), T.done)),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
-        )
-      )
+      const program = Effect.Do()
+        .bind("child", () => FiberRef.make(initial).fork())
+        .bind("fiberRef", ({ child }) => Fiber.await(child).flatMap(Effect.done))
+        .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
-      expect(value).toBe(initial)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(initial)
     })
 
     it("its value is inherited after simple race", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.tap(({ fiberRef }) =>
-            pipe(
-              FiberRef.set_(fiberRef, update1),
-              T.race(FiberRef.set_(fiberRef, update2))
-            )
-          ),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .tap(({ fiberRef }) =>
+          FiberRef.set_(fiberRef, update1).race(FiberRef.set_(fiberRef, update2))
         )
-      )
+        .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
-      expect([update1, update2]).toContain(value)
+      const result = await program.unsafeRunPromise()
+
+      expect([update1, update2]).toContain(result)
     })
 
     // TODO: implement after Schedule
@@ -340,22 +293,20 @@ describe("FiberRef", () => {
     // })
 
     it("its value is not inherited after a race of losers", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bindValue("loser1", ({ fiberRef }) =>
-            T.zipRight_(FiberRef.set_(fiberRef, update1), T.failNow("ups1"))
-          ),
-          T.bindValue("loser2", ({ fiberRef }) =>
-            T.zipRight_(FiberRef.set_(fiberRef, update2), T.failNow("ups2"))
-          ),
-          T.tap(({ loser1, loser2 }) => T.ignore(T.race_(loser1, loser2))),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bindValue("loser1", ({ fiberRef }) =>
+          FiberRef.set_(fiberRef, update1).zipRight(Effect.failNow("ups1"))
         )
-      )
+        .bindValue("loser2", ({ fiberRef }) =>
+          FiberRef.set_(fiberRef, update2).zipRight(Effect.failNow("ups2"))
+        )
+        .tap(({ loser1, loser2 }) => loser1.race(loser2).ignore())
+        .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
-      expect(value).toContain(initial)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toContain(initial)
     })
 
     // TODO: implement after Schedule
@@ -388,29 +339,23 @@ describe("FiberRef", () => {
     // })
 
     it("nothing gets inherited with a failure in zipPar", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bindValue("success", ({ fiberRef }) => FiberRef.set_(fiberRef, update)),
-          T.bindValue("failure1", ({ fiberRef }) =>
-            pipe(FiberRef.set_(fiberRef, update), T.zipRight(T.failNow(":-(")))
-          ),
-          T.bindValue("failure2", ({ fiberRef }) =>
-            pipe(FiberRef.set_(fiberRef, update), T.zipRight(T.failNow(":-O")))
-          ),
-          T.tap(({ failure1, failure2, success }) =>
-            pipe(
-              success,
-              T.zipPar(T.zipPar_(failure1, failure2)),
-              T.orElse(() => T.unit)
-            )
-          ),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bindValue("success", ({ fiberRef }) => FiberRef.set_(fiberRef, update))
+        .bindValue("failure1", ({ fiberRef }) =>
+          FiberRef.set_(fiberRef, update).zipRight(Effect.failNow(":-("))
         )
-      )
+        .bindValue("failure2", ({ fiberRef }) =>
+          FiberRef.set_(fiberRef, update).zipRight(Effect.failNow(":-O"))
+        )
+        .tap(({ failure1, failure2, success }) =>
+          success.zipPar(failure1.zipPar(failure2)).orElse(Effect.unit)
+        )
+        .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
-      expect(value).toContain(initial)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toContain(initial)
     })
 
     it("fork function is applied on fork - 1", async () => {
@@ -418,17 +363,15 @@ describe("FiberRef", () => {
         return x + 1
       }
 
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(0, increment)),
-          T.bind("child", () => T.fork(T.unit)),
-          T.tap(({ child }) => Fiber.join(child)),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
-        )
-      )
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(0, increment))
+        .bind("child", () => Effect.unit.fork())
+        .tap(({ child }) => Fiber.join(child))
+        .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
-      expect(value).toBe(1)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(1)
     })
 
     it("fork function is applied on fork - 2", async () => {
@@ -436,65 +379,54 @@ describe("FiberRef", () => {
         return x + 1
       }
 
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(0, increment)),
-          T.bind("child", () => pipe(T.unit, T.fork, T.chain(Fiber.join), T.fork)),
-          T.tap(({ child }) => Fiber.join(child)),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
-        )
-      )
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(0, increment))
+        .bind("child", () => Effect.unit.fork().flatMap(Fiber.join).fork())
+        .tap(({ child }) => Fiber.join(child))
+        .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
-      expect(value).toBe(2)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(2)
     })
 
     it("join function is applied on join - 1", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(0, identity, Math.max)),
-          T.bind("child", ({ fiberRef }) =>
-            T.fork(FiberRef.update_(fiberRef, (_) => _ + 1))
-          ),
-          T.tap(({ child }) => Fiber.join(child)),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(0, identity, Math.max))
+        .bind("child", ({ fiberRef }) =>
+          FiberRef.update_(fiberRef, (_) => _ + 1).fork()
         )
-      )
+        .tap(({ child }) => Fiber.join(child))
+        .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
-      expect(value).toBe(1)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(1)
     })
 
     it("join function is applied on join - 2", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(0, identity, Math.max)),
-          T.bind("child", ({ fiberRef }) =>
-            T.fork(FiberRef.update_(fiberRef, (_) => _ + 1))
-          ),
-          T.tap(({ fiberRef }) => FiberRef.update_(fiberRef, (_) => _ + 2)),
-          T.tap(({ child }) => Fiber.join(child)),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(0, identity, Math.max))
+        .bind("child", ({ fiberRef }) =>
+          FiberRef.update_(fiberRef, (_) => _ + 1).fork()
         )
-      )
+        .tap(({ fiberRef }) => FiberRef.update_(fiberRef, (_) => _ + 2))
+        .tap(({ child }) => Fiber.join(child))
+        .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
-      expect(value).toBe(2)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(2)
     })
 
     it("its value is inherited in a trivial race", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.tap(({ fiberRef }) =>
-            pipe(FiberRef.set_(fiberRef, update), T.raceAll(Chunk.empty()))
-          ),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
-        )
-      )
+      const program = FiberRef.make(initial)
+        .tap((fiberRef) => FiberRef.set_(fiberRef, update).raceAll(Chunk.empty()))
+        .flatMap(FiberRef.get)
 
-      expect(value).toBe(update)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(update)
     })
 
     // TODO: implement after Schedule, also this test is flaky
@@ -586,48 +518,35 @@ describe("FiberRef", () => {
     // })
 
     it("nothing gets inherited when racing failures with raceAll", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bindValue("loser", ({ fiberRef }) =>
-            pipe(FiberRef.set_(fiberRef, update), T.zipRight(T.failNow("darn")))
-          ),
-          T.tap(({ loser }) =>
-            pipe(
-              loser,
-              T.raceAll(Chunk.fill(63, () => loser)),
-              T.orElse(() => T.unit)
-            )
-          ),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bindValue("loser", ({ fiberRef }) =>
+          FiberRef.set_(fiberRef, update).zipRight(Effect.failNow("darn"))
         )
-      )
+        .tap(({ loser }) => loser.raceAll(Chunk.fill(63, () => loser)) | Effect.unit)
+        .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
-      expect(value).toBe(initial)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(initial)
     })
 
     it("the value of all fibers in inherited when running many effects with collectAllPar", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () =>
-            FiberRef.make(
-              0,
-              () => 0,
-              (x, y) => x + y
-            )
-          ),
-          T.tap(({ fiberRef }) =>
-            T.collectAllPar(
-              Chunk.fill(100000, () => FiberRef.update_(fiberRef, (_) => _ + 1))
-            )
-          ),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
-        )
+      const program = FiberRef.make(
+        0,
+        () => 0,
+        (x, y) => x + y
       )
+        .tap((fiberRef) =>
+          Effect.collectAllPar(
+            Chunk.fill(100000, () => FiberRef.update_(fiberRef, (_) => _ + 1))
+          )
+        )
+        .flatMap((fiberRef) => FiberRef.get(fiberRef))
 
-      expect(value).toBe(100000)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(100000)
     })
 
     it("it can be transformed polymorphically", async () => {
@@ -636,32 +555,27 @@ describe("FiberRef", () => {
         readonly age: number
       }
 
-      function getAge(person: Person): E.Either<never, number> {
-        return E.right(person.age)
+      function getAge(person: Person): Either<never, number> {
+        return Either.right(person.age)
       }
 
       function setAge(age: number) {
-        return (person: Person): E.Either<never, Person> => E.right({ ...person, age })
+        return (person: Person): Either<never, Person> =>
+          Either.right({ ...person, age })
       }
 
-      const { person } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("personRef", () =>
-            FiberRef.make<Person>({ name: "Jane Doe", age: 42 })
-          ),
-          T.bindValue("ageRef", ({ personRef }) =>
-            FiberRef.foldAll_(personRef, identity, identity, identity, setAge, getAge)
-          ),
-          T.bind("fiber", ({ ageRef }) =>
-            T.fork(FiberRef.update_(ageRef, (n) => n + 1))
-          ),
-          T.tap(({ fiber }) => Fiber.join(fiber)),
-          T.bind("person", ({ personRef }) => FiberRef.get(personRef))
+      const program = Effect.Do()
+        .bind("personRef", () => FiberRef.make<Person>({ name: "Jane Doe", age: 42 }))
+        .bindValue("ageRef", ({ personRef }) =>
+          FiberRef.foldAll_(personRef, identity, identity, identity, setAge, getAge)
         )
-      )
+        .bind("fiber", ({ ageRef }) => FiberRef.update_(ageRef, (n) => n + 1).fork())
+        .tap(({ fiber }) => Fiber.join(fiber))
+        .flatMap(({ personRef }) => FiberRef.get(personRef))
 
-      expect(person).toEqual({ name: "Jane Doe", age: 43 })
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual({ name: "Jane Doe", age: 43 })
     })
   })
 })

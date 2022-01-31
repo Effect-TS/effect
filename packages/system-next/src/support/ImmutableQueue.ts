@@ -1,49 +1,49 @@
-import * as L from "../collection/immutable/List"
-import * as Tp from "../collection/immutable/Tuple"
-import * as O from "../data/Option"
+import { List } from "../collection/immutable/List"
+import { Tuple } from "../collection/immutable/Tuple"
+import { Option } from "../data/Option"
 
 export class ImmutableQueue<A> {
-  constructor(private readonly backing: L.List<A>) {}
+  constructor(private readonly backing: List<A>) {}
 
   push(a: A) {
-    return new ImmutableQueue(L.append_(this.backing, a))
+    return new ImmutableQueue(this.backing.append(a))
   }
 
   prepend(a: A) {
-    return new ImmutableQueue(L.prepend_(this.backing, a))
+    return new ImmutableQueue(this.backing.append(a))
   }
 
   get size() {
     return this.backing.length
   }
 
-  dequeue(): O.Option<Tp.Tuple<[NonNullable<A>, ImmutableQueue<A>]>> {
-    if (!L.isEmpty(this.backing)) {
-      return O.some(
-        Tp.tuple(
+  dequeue(): Option<Tuple<[NonNullable<A>, ImmutableQueue<A>]>> {
+    if (!this.backing.isEmpty()) {
+      return Option.some(
+        Tuple(
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          L.unsafeFirst(this.backing)!,
-          new ImmutableQueue(L.tail(this.backing))
+          this.backing.unsafeFirst()!,
+          new ImmutableQueue(this.backing.tail())
         )
       )
     } else {
-      return O.none
+      return Option.none
     }
   }
 
   find(f: (a: A) => boolean) {
-    return L.find_(this.backing, f)
+    return this.backing.find(f)
   }
 
   filter(f: (a: A) => boolean) {
-    return new ImmutableQueue(L.filter_(this.backing, f))
+    return new ImmutableQueue(this.backing.filter(f))
   }
 
   static single<A>(a: A) {
-    return new ImmutableQueue(L.of(a))
+    return new ImmutableQueue(List.single(a))
   }
 
   [Symbol.iterator]() {
-    return L.toArray(this.backing).values()
+    return this.backing.toArray().values()
   }
 }

@@ -1,5 +1,5 @@
 import * as C from "../src/collection/immutable/Chunk"
-import * as Tp from "../src/collection/immutable/Tuple"
+import { Tuple } from "../src/collection/immutable/Tuple"
 import { constFalse, constTrue, identity, pipe } from "../src/data/Function"
 import type { Has } from "../src/data/Has"
 import { tag } from "../src/data/Has"
@@ -689,9 +689,7 @@ describe("Layer", () => {
 
     const program = needsString
       .provideLayer(providesString)
-      .map((result) =>
-        Tp.tuple(NumberProvider.read(result), StringProvider.read(result))
-      )
+      .map((result) => Tuple(NumberProvider.read(result), StringProvider.read(result)))
 
     const result = await program.unsafeRunPromise()
 
@@ -713,7 +711,7 @@ describe("Layer", () => {
     interface FooService {
       readonly ref: Ref.Ref<number>
       readonly string: string
-      readonly get: Effect<unknown, never, Tp.Tuple<[number, string]>>
+      readonly get: Effect<unknown, never, Tuple<[number, string]>>
     }
 
     const FooService = tag<FooService>(FooServiceId)
@@ -726,7 +724,7 @@ describe("Layer", () => {
         return FooService.has({
           ref,
           string: s,
-          get: Ref.get(ref).map((i) => Tp.tuple(i, s))
+          get: Ref.get(ref).map((i) => Tuple(i, s))
         })
       }
     )
@@ -760,7 +758,7 @@ describe("Layer", () => {
     interface FooService {
       readonly ref: Ref.Ref<number>
       readonly string: string
-      readonly get: Effect<unknown, never, Tp.Tuple<[number, string]>>
+      readonly get: Effect<unknown, never, Tuple<[number, string]>>
     }
 
     const FooService = tag<FooService>(FooServiceId)
@@ -773,7 +771,7 @@ describe("Layer", () => {
         return FooService.has({
           ref,
           string: s,
-          get: Ref.get(ref).map((i) => Tp.tuple(i, s))
+          get: Ref.get(ref).map((i) => Tuple(i, s))
         })
       }
     )
@@ -786,7 +784,7 @@ describe("Layer", () => {
     const program = Effect.serviceWithEffect(FooService)((_) => _.get)
       .flatMap(({ tuple: [i1, s] }) =>
         Effect.serviceWithEffect(NumberRefProvider)((_) => Ref.get(_)).map((i2) =>
-          Tp.tuple(i1, i2, s)
+          Tuple(i1, i2, s)
         )
       )
       .provideLayer(layer)
@@ -838,7 +836,7 @@ describe("Layer", () => {
 
     const program = L.build(fedB + fedC)
       .useNow()
-      .map((_) => Tp.tuple(BTag.read(_), CTag.read(_)))
+      .map((_) => Tuple(BTag.read(_), CTag.read(_)))
 
     const result = await program.unsafeRunPromise()
 

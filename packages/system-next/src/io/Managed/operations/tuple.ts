@@ -1,5 +1,5 @@
 import type { NonEmptyArray } from "../../../collection/immutable/NonEmptyArray"
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import type { _E, _R, ForcedTuple } from "../../../data/Utils"
 import { Managed } from "../definition"
 
@@ -17,7 +17,7 @@ export function tuple<T extends NonEmptyArray<Managed<any, any, any>>>(
     0: Managed<any, any, any>
   }
 ): Managed<_R<T[number]>, _E<T[number]>, ForcedTuple<TupleA<T>>> {
-  return Managed.collectAll(t).map((x) => Tp.tuple(...x)) as any
+  return Managed.collectAll(t).map((x) => Tuple(...x)) as any
 }
 
 /**
@@ -30,5 +30,5 @@ export function tuplePar<T extends NonEmptyArray<Managed<any, any, any>>>(
     0: Managed<any, any, any>
   }
 ): Managed<_R<T[number]>, _E<T[number]>, ForcedTuple<TupleA<T>>> {
-  return Managed.collectAllPar(t).map((x) => Tp.tuple(...x)) as any
+  return Managed.collectAllPar(t).map((x) => Tuple(...x)) as any
 }

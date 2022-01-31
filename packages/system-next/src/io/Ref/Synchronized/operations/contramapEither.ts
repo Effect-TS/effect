@@ -1,4 +1,4 @@
-import * as E from "../../../../data/Either"
+import { Either } from "../../../../data/Either"
 import type { XSynchronized } from "../definition"
 import { dimapEither_ } from "./dimapEither"
 
@@ -8,9 +8,9 @@ import { dimapEither_ } from "./dimapEither"
  */
 export function contramapEither_<RA, RB, EA, EB, EC, A, B, C>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
-  f: (c: C) => E.Either<EC, A>
+  f: (c: C) => Either<EC, A>
 ): XSynchronized<RA, RB, EA | EC, EB, C, B> {
-  return dimapEither_(self, f, E.right)
+  return dimapEither_(self, f, Either.right)
 }
 
 /**
@@ -19,7 +19,7 @@ export function contramapEither_<RA, RB, EA, EB, EC, A, B, C>(
  *
  * @ets_data_first contramapEither_
  */
-export function contramapEither<EC, A, C>(f: (c: C) => E.Either<EC, A>) {
+export function contramapEither<EC, A, C>(f: (c: C) => Either<EC, A>) {
   return <RA, RB, EA, EB, B>(
     self: XSynchronized<RA, RB, EA, EB, A, B>
   ): XSynchronized<RA, RB, EA | EC, EB, C, B> => contramapEither_(self, f)

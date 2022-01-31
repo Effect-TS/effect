@@ -8,7 +8,8 @@ import { failCause } from "./failCause"
  */
 export function mapFiber_<E, E1, A, B>(
   self: Fiber<E, A>,
-  f: (a: A) => Fiber<E1, B>
+  f: (a: A) => Fiber<E1, B>,
+  __etsTrace?: string
 ): UIO<Fiber<E | E1, B>> {
   return self.await.map((exit) => {
     switch (exit._tag) {
@@ -28,6 +29,6 @@ export function mapFiber_<E, E1, A, B>(
  *
  * @ets_data_first mapFiber_
  */
-export function mapFiber<E1, A, B>(f: (a: A) => Fiber<E1, B>) {
+export function mapFiber<E1, A, B>(f: (a: A) => Fiber<E1, B>, __etsTrace?: string) {
   return <E>(self: Fiber<E, A>): UIO<Fiber<E | E1, B>> => mapFiber_(self, f)
 }

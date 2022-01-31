@@ -1,13 +1,13 @@
 import * as C from "../../collection/immutable/Chunk/core"
 import type { Next } from "../../collection/immutable/Map"
-import * as Tp from "../../collection/immutable/Tuple"
+import { Tuple } from "../../collection/immutable/Tuple"
 import { AtomicNumber } from "../../support/AtomicNumber"
 
 export interface ConcurrentSetCount {
   readonly getCount: () => number
   readonly getCountFor: (word: string) => number
   readonly observe: (word: string) => void
-  readonly snapshot: () => C.Chunk<Tp.Tuple<[string, number]>>
+  readonly snapshot: () => C.Chunk<Tuple<[string, number]>>
 }
 
 class ConcurrentSetCountImpl implements ConcurrentSetCount {
@@ -41,14 +41,14 @@ class ConcurrentSetCountImpl implements ConcurrentSetCount {
     slot.set(slot.get + 1)
   }
 
-  snapshot(): C.Chunk<Tp.Tuple<[string, number]>> {
-    const builder = C.builder<Tp.Tuple<[string, number]>>()
+  snapshot(): C.Chunk<Tuple<[string, number]>> {
+    const builder = C.builder<Tuple<[string, number]>>()
 
     const iterator = this.values[Symbol.iterator]()
 
     let next: Next<[string, AtomicNumber]>
     while (!(next = iterator.next()).done) {
-      builder.append(Tp.tuple(next.value[0], next.value[1].get))
+      builder.append(Tuple(next.value[0], next.value[1].get))
     }
 
     return builder.build()

@@ -1,5 +1,5 @@
-import type * as E from "../../../../data/Either"
-import * as Tp from "../../Tuple"
+import type { Either } from "../../../../data/Either"
+import { Tuple } from "../../Tuple"
 import * as Chunk from "../core"
 import { forEach_ } from "./forEach"
 
@@ -9,8 +9,8 @@ import { forEach_ } from "./forEach"
  */
 export function partitionMap_<A, B, C>(
   self: Chunk.Chunk<A>,
-  f: (a: A) => E.Either<B, C>
-): Tp.Tuple<[Chunk.Chunk<B>, Chunk.Chunk<C>]> {
+  f: (a: A) => Either<B, C>
+): Tuple<[Chunk.Chunk<B>, Chunk.Chunk<C>]> {
   let bs = Chunk.empty<B>()
   let cs = Chunk.empty<C>()
 
@@ -23,7 +23,7 @@ export function partitionMap_<A, B, C>(
     }
   })
 
-  return Tp.tuple(bs, cs)
+  return Tuple(bs, cs)
 }
 
 /**
@@ -33,7 +33,7 @@ export function partitionMap_<A, B, C>(
  * @ets_data_first partitionMap_
  */
 export function partitionMap<A, B, C>(
-  f: (a: A) => E.Either<B, C>
-): (self: Chunk.Chunk<A>) => Tp.Tuple<[Chunk.Chunk<B>, Chunk.Chunk<C>]> {
+  f: (a: A) => Either<B, C>
+): (self: Chunk.Chunk<A>) => Tuple<[Chunk.Chunk<B>, Chunk.Chunk<C>]> {
   return (self) => partitionMap_(self, f)
 }

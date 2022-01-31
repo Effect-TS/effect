@@ -1,5 +1,5 @@
 import * as C from "../../../collection/immutable/Chunk/core"
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
 import { Managed } from "../definition"
@@ -22,7 +22,7 @@ export function forEach<R, E, A, B>(
     Effect.forEach(as, (a) => f(a).effect).map((res) => {
       const fins = C.map_(res, (k) => k.get(0))
       const as = C.map_(res, (k) => k.get(1))
-      return Tp.tuple((e) => Effect.forEach(C.reverse(fins), (fin) => fin(e)), as)
+      return Tuple((e) => Effect.forEach(C.reverse(fins), (fin) => fin(e)), as)
     })
   )
 }

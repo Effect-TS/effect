@@ -1,4 +1,3 @@
-import * as L from "../../../collection/immutable/List/core"
 import type { Trace } from "../../../io/Trace/definition"
 import { combine_ } from "../../../io/Trace/operations/combine"
 import { none } from "../../../io/Trace/operations/none"
@@ -13,5 +12,5 @@ import type { Cause } from "../definition"
  * @ets fluent ets/Cause trace
  */
 export function trace<E>(self: Cause<E>): Trace {
-  return L.reduce_(self.traces(), none, combine_)
+  return self.traces().reduce(none, combine_)
 }

@@ -1,8 +1,7 @@
-import * as Tp from "../../../collection/immutable/Tuple"
-import * as E from "../../../data/Either/core"
+import { Tuple } from "../../../collection/immutable/Tuple"
+import { Either } from "../../../data/Either/core"
 import { matchTag_ } from "../../../data/Utils"
 import type { IO } from "../../Effect"
-import { absolveNow as effectabsolve } from "../../Effect/operations/absolve"
 import type { XFiberRef } from "../definition"
 import { concrete } from "../definition/concrete"
 
@@ -13,55 +12,48 @@ import { concrete } from "../definition/concrete"
  */
 export function modify_<EA, EB, B, A>(
   self: XFiberRef<EA, EB, A, A>,
-  f: (a: A) => Tp.Tuple<[B, A]>,
-  __trace?: string
+  f: (a: A) => Tuple<[B, A]>,
+  __etsTrace?: string
 ): IO<EA | EB, B> {
   return matchTag_(concrete(self), {
-    Runtime: (_) => _.modify(f, __trace),
+    Runtime: (_) => _.modify(f),
     Derived: (_) =>
       _.use((value, getEither, setEither) =>
-        effectabsolve(
-          value.modify(
-            (s) =>
-              E.fold_(
-                getEither(s),
-                (e) => Tp.tuple(E.left(e), s),
-                (a1) => {
-                  const {
-                    tuple: [b, a2]
-                  } = f(a1)
-                  return E.fold_(
-                    setEither(a2),
-                    (e) => Tp.tuple(E.left(e), s),
-                    (s2) => Tp.tuple(E.widenE<EA | EB>()(E.right(b)), s2)
-                  )
-                }
-              ),
-            __trace
-          )
-        )
-      ),
-    DerivedAll: (_) =>
-      _.use((value, _, getEither, setEither) =>
-        effectabsolve(
-          value.modify((s) =>
-            E.fold_(
-              getEither(s),
-              (e) => Tp.tuple(E.left(e), s),
+        value
+          .modify((s) =>
+            getEither(s).fold(
+              (e) => Tuple(Either.left(e), s),
               (a1) => {
                 const {
                   tuple: [b, a2]
                 } = f(a1)
-                return E.fold_(
-                  setEither(a2)(s),
-                  (e) => Tp.tuple(E.left(e), s),
-                  (s2) => Tp.tuple(E.widenE<EA | EB>()(E.right(b)), s2)
+                return setEither(a2).fold(
+                  (e) => Tuple(Either.left(e), s),
+                  (s2) => Tuple(Either.rightW<B, EA | EB>(b), s2)
                 )
               }
             )
-          ),
-          __trace
-        )
+          )
+          .absolve()
+      ),
+    DerivedAll: (_) =>
+      _.use((value, _, getEither, setEither) =>
+        value
+          .modify((s) =>
+            getEither(s).fold(
+              (e) => Tuple(Either.left(e), s),
+              (a1) => {
+                const {
+                  tuple: [b, a2]
+                } = f(a1)
+                return setEither(a2)(s).fold(
+                  (e) => Tuple(Either.left(e), s),
+                  (s2) => Tuple(Either.rightW<B, EA | EB>(b), s2)
+                )
+              }
+            )
+          )
+          .absolve()
       )
   })
 }
@@ -73,7 +65,6 @@ export function modify_<EA, EB, B, A>(
  *
  * @ets_data_first modify_
  */
-export function modify<B, A>(f: (a: A) => Tp.Tuple<[B, A]>, __trace?: string) {
-  return <EA, EB>(self: XFiberRef<EA, EB, A, A>): IO<EA | EB, B> =>
-    modify_(self, f, __trace)
+export function modify<B, A>(f: (a: A) => Tuple<[B, A]>, __etsTrace?: string) {
+  return <EA, EB>(self: XFiberRef<EA, EB, A, A>): IO<EA | EB, B> => modify_(self, f)
 }

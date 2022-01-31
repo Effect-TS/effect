@@ -1,4 +1,4 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { get as fiberRefGet } from "../../FiberRef/operations/get"
 import { Managed } from "../definition"
@@ -11,5 +11,5 @@ import * as Finalizer from "../ReleaseMap/finalizer"
  * @ets static ets/ManagedOps releaseMap
  */
 export const releaseMap: Managed<unknown, never, ReleaseMap> = Managed(
-  fiberRefGet(currentReleaseMap.value).map((_) => Tp.tuple(Finalizer.noopFinalizer, _))
+  fiberRefGet(currentReleaseMap.value).map((_) => Tuple(Finalizer.noopFinalizer, _))
 )

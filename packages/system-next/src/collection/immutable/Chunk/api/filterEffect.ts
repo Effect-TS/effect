@@ -1,7 +1,4 @@
-import type { Effect } from "../../../../io/Effect/definition"
-import { succeedNow } from "../../../../io/Effect/operations/succeedNow"
-import { suspendSucceed } from "../../../../io/Effect/operations/suspendSucceed"
-import { zipWith_ } from "../../../../io/Effect/operations/zipWith"
+import { Effect } from "../../../../io/Effect/definition"
 import { concreteId } from "../_definition"
 import * as Chunk from "../core"
 
@@ -11,12 +8,13 @@ import * as Chunk from "../core"
  */
 export function filterEffect_<R, E, A>(
   self: Chunk.Chunk<A>,
-  f: (a: A) => Effect<R, E, boolean>
+  f: (a: A) => Effect<R, E, boolean>,
+  __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<A>> {
-  return suspendSucceed(() => {
+  return Effect.suspendSucceed(() => {
     const iterator = concreteId(self).arrayLikeIterator()
     let next
-    let dest: Effect<R, E, Chunk.Chunk<A>> = succeedNow(Chunk.empty<A>())
+    let dest: Effect<R, E, Chunk.Chunk<A>> = Effect.succeedNow(Chunk.empty<A>())
 
     while ((next = iterator.next()) && !next.done) {
       const array = next.value
@@ -24,7 +22,7 @@ export function filterEffect_<R, E, A>(
       let i = 0
       while (i < len) {
         const a = array[i]!
-        dest = zipWith_(dest, f(a), (d, b) => (b ? Chunk.append_(d, a) : d))
+        dest = dest.zipWith(f(a), (d, b) => (b ? Chunk.append_(d, a) : d))
         i++
       }
     }
@@ -39,7 +37,8 @@ export function filterEffect_<R, E, A>(
  * @ets_data_first filterEffect_
  */
 export function filterEffect<R, E, A>(
-  f: (a: A) => Effect<R, E, boolean>
+  f: (a: A) => Effect<R, E, boolean>,
+  __etsTrace?: string
 ): (self: Chunk.Chunk<A>) => Effect<R, E, Chunk.Chunk<A>> {
   return (self) => filterEffect_(self, f)
 }

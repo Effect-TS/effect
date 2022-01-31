@@ -1,6 +1,6 @@
 /* eslint-disable prefer-const */
 
-import * as Tp from "../../collection/immutable/Tuple"
+import { Tuple } from "../../collection/immutable/Tuple"
 import type { Lazy, LazyArg } from "../../data/Function"
 import { Stack } from "../../data/Stack"
 import type * as UT from "../../data/Utils/types"
@@ -222,7 +222,7 @@ export function zipWith<A, B, C>(that: IO<B>, f: (a: A, b: B) => C) {
  * @ets fluent ets/IO zip
  */
 export function zip_<A, B>(self: IO<A>, that: IO<B>) {
-  return self.zipWith(that, Tp.tuple)
+  return self.zipWith(that, (a, b) => Tuple(a, b))
 }
 
 /**

@@ -1,5 +1,5 @@
 import { insert_ as mapInsert_ } from "../../../collection/immutable/Map"
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import { Option } from "../../../data/Option"
 import type { UIO } from "../../Effect"
 import { Effect } from "../../Effect"
@@ -26,13 +26,13 @@ export function addIfOpen_(
   return refModify_(self.ref, (s) => {
     switch (s._tag) {
       case "Exited": {
-        return Tp.tuple(
+        return Tuple(
           finalizer(s.exit).map(() => Option.none),
           new Exited(next(s.nextKey), s.exit, s.update)
         )
       }
       case "Running": {
-        return Tp.tuple(
+        return Tuple(
           Effect.succeed(() => Option.some(s.nextKey)),
           new Running(
             next(s.nextKey),

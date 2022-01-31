@@ -1,4 +1,4 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
 import { Managed } from "../definition"
@@ -16,7 +16,7 @@ export function fromEffect<R, E, A>(
 ) {
   return Managed<R, E, A>(
     Effect.uninterruptibleMask(({ restore }) =>
-      restore(effect).map((a) => Tp.tuple(Finalizer.noopFinalizer, a))
+      restore(effect).map((a) => Tuple(Finalizer.noopFinalizer, a))
     )
   )
 }

@@ -1,4 +1,4 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import { Effect } from "../definition"
 
 /**
@@ -13,13 +13,13 @@ export function summarized_<R, E, A, R2, E2, B, C>(
   summary: Effect<R2, E2, B>,
   f: (start: B, end: B) => C,
   __etsTrace?: string
-): Effect<R & R2, E | E2, Tp.Tuple<[C, A]>> {
+): Effect<R & R2, E | E2, Tuple<[C, A]>> {
   return Effect.suspendSucceed(() =>
     Effect.Do()
       .bind("start", () => summary)
       .bind("value", () => self)
       .bind("end", () => summary)
-      .map(({ end, start, value }) => Tp.tuple(f(start, end), value))
+      .map(({ end, start, value }) => Tuple(f(start, end), value))
   )
 }
 
@@ -35,6 +35,6 @@ export function summarized<R2, E2, B, C>(
   f: (start: B, end: B) => C,
   __etsTrace?: string
 ) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, Tp.Tuple<[C, A]>> =>
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, Tuple<[C, A]>> =>
     summarized_(self, summary, f)
 }

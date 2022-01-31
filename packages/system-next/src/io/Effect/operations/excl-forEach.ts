@@ -6,10 +6,10 @@ import * as ChunkZip from "../../../collection/immutable/Chunk/api/zip"
 import * as ChunkZipWithIndex from "../../../collection/immutable/Chunk/api/zipWithIndex"
 import * as Chunk from "../../../collection/immutable/Chunk/core"
 import * as Iter from "../../../collection/immutable/Iterable"
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import type { LazyArg } from "../../../data/Function"
 import { identity } from "../../../data/Function"
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import { AtomicBoolean } from "../../../support/AtomicBoolean"
 import { AtomicNumber } from "../../../support/AtomicNumber"
 import type { MutableQueue } from "../../../support/MutableQueue"
@@ -193,8 +193,8 @@ export function forEachPar_<R, E, A, B>(
   f: (a: A) => Effect<R, E, B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
-  return Effect.parallelismWith(
-    O.fold(
+  return Effect.parallelismWith((_) =>
+    _.fold(
       () => forEachParUnbounded(as, f),
       (n) => forEachParN(as, n, f)
     )
@@ -226,7 +226,7 @@ function forEachParUnbounded<R, E, A, B>(
   __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
   return Effect.suspendSucceed(() =>
-    Effect.succeed<B[]>(() => []).flatMap((array) =>
+    Effect.succeed<B[]>([]).flatMap((array) =>
       forEachParUnboundedDiscard(
         Iter.map_(as(), (a, n) => [a, n] as [A, number]),
         ([a, n]) =>
@@ -261,15 +261,15 @@ function forEachParN<R, E, A, B>(
     }
 
     function worker(
-      queue: Queue<Tp.Tuple<[A, number]>>,
+      queue: Queue<Tuple<[A, number]>>,
       array: Array<B>
     ): Effect<R, E, void> {
       concreteQueue(queue)
       return queue
         .takeUpTo(1)
         .map(Chunk.head)
-        .flatMap(
-          O.fold(
+        .flatMap((_) =>
+          _.fold(
             () => Effect.unit,
             ({ tuple: [a, n] }) =>
               f(a)
@@ -284,7 +284,7 @@ function forEachParN<R, E, A, B>(
     }
 
     return Effect.succeed(new Array<B>(size)).flatMap((array) =>
-      makeBoundedQueue<Tp.Tuple<[A, number]>>(size).flatMap((queue) =>
+      makeBoundedQueue<Tuple<[A, number]>>(size).flatMap((queue) =>
         QCore.offerAll_(queue, ChunkZipWithIndex.zipWithIndex(as0)).flatMap(() =>
           collectAllParUnboundedDiscard(worker(queue, array).replicate(n)).map(() =>
             Chunk.from(array)
@@ -359,8 +359,8 @@ export function forEachParDiscard_<R, E, A, X>(
   f: (a: A) => Effect<R, E, X>,
   __etsTrace?: string
 ): Effect<R, E, void> {
-  return Effect.parallelismWith(
-    O.fold(
+  return Effect.parallelismWith((_) =>
+    _.fold(
       () => forEachParUnboundedDiscard(as, f),
       (n) => forEachParNDiscard(as, n, f)
     )
@@ -459,8 +459,8 @@ function forEachParNDiscard<R, E, A, X>(
       return queue
         .takeUpTo(1)
         .map(Chunk.head)
-        .flatMap(
-          O.fold(
+        .flatMap((_) =>
+          _.fold(
             () => Effect.unit,
             (a) => f(a).flatMap(() => worker(queue))
           )
@@ -651,7 +651,7 @@ export function collectAllParNDiscard(n: number, __etsTrace?: string) {
  */
 export function collectAllWith_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
-  pf: (a: A) => O.Option<B>,
+  pf: (a: A) => Option<B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
   return collectAll(as).map(ChunkCollect.collect(pf))
@@ -663,7 +663,7 @@ export function collectAllWith_<R, E, A, B>(
  *
  * @ets_data_first collectAllWith_
  */
-export function collectAllWith<A, B>(pf: (a: A) => O.Option<B>, __etsTrace?: string) {
+export function collectAllWith<A, B>(pf: (a: A) => Option<B>, __etsTrace?: string) {
   return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, Chunk.Chunk<B>> =>
     collectAllWith_(as, pf)
 }
@@ -680,7 +680,7 @@ export function collectAllWith<A, B>(pf: (a: A) => O.Option<B>, __etsTrace?: str
  */
 export function collectAllWithPar_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
-  pf: (a: A) => O.Option<B>,
+  pf: (a: A) => Option<B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
   return collectAllPar(as).map(ChunkCollect.collect(pf))
@@ -692,10 +692,7 @@ export function collectAllWithPar_<R, E, A, B>(
  *
  * @ets_data_first collectAllWithPar_
  */
-export function collectAllWithPar<A, B>(
-  pf: (a: A) => O.Option<B>,
-  __etsTrace?: string
-) {
+export function collectAllWithPar<A, B>(pf: (a: A) => Option<B>, __etsTrace?: string) {
   return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, Chunk.Chunk<B>> =>
     collectAllWithPar_(as, pf)
 }
@@ -715,7 +712,7 @@ export function collectAllSuccesses<R, E, A>(
 ): Effect<R, never, Chunk.Chunk<A>> {
   return collectAllWith_(
     Iter.map_(as, (_) => _.exit()),
-    (e) => (e._tag === "Success" ? O.some(e.value) : O.none)
+    (e) => (e._tag === "Success" ? Option.some(e.value) : Option.none)
   )
 }
 
@@ -734,7 +731,7 @@ export function collectAllSuccessesPar<R, E, A>(
 ): Effect<R, never, Chunk.Chunk<A>> {
   return collectAllWithPar_(
     Iter.map_(as, (_) => _.exit()),
-    (e) => (e._tag === "Success" ? O.some(e.value) : O.none)
+    (e) => (e._tag === "Success" ? Option.some(e.value) : Option.none)
   )
 }
 
@@ -779,46 +776,43 @@ export function releaseMapReleaseAll_(
   execStrategy: ExecutionStrategy,
   __etsTrace?: string
 ): UIO<any> {
-  return RefModify.modify_(self.ref, (s): Tp.Tuple<[UIO<any>, State]> => {
+  return RefModify.modify_(self.ref, (s): Tuple<[UIO<any>, State]> => {
     switch (s._tag) {
       case "Exited": {
-        return Tp.tuple(Effect.unit, s)
+        return Tuple(Effect.unit, s)
       }
       case "Running": {
         switch (execStrategy._tag) {
           case "Sequential": {
-            return Tp.tuple(
+            return Tuple(
               forEach_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
                 s.update(f)(ex).exit()
               ).flatMap((results) =>
-                Effect.done(
-                  O.getOrElse_(exitCollectAll(results), () => exitUnit as any)
-                )
+                // @ts-expect-error
+                Effect.done(exitCollectAll(results).getOrElse(exitUnit))
               ),
               new Exited(s.nextKey, ex, s.update)
             )
           }
           case "Parallel": {
-            return Tp.tuple(
+            return Tuple(
               forEachPar_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
                 s.update(f)(ex).exit()
               ).flatMap((results) =>
-                Effect.done(
-                  O.getOrElse_(exitCollectAllPar(results), () => exitUnit as any)
-                )
+                // @ts-expect-error
+                Effect.done(exitCollectAllPar(results).getOrElse(exitUnit))
               ),
               new Exited(s.nextKey, ex, s.update)
             )
           }
           case "ParallelN": {
-            return Tp.tuple(
+            return Tuple(
               forEachPar_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
                 s.update(f)(ex).exit()
               )
                 .flatMap((results) =>
-                  Effect.done(
-                    O.getOrElse_(exitCollectAllPar(results), () => exitUnit as any)
-                  )
+                  // @ts-expect-error
+                  Effect.done(exitCollectAllPar(results).getOrElse(exitUnit))
                 )
                 .withParallelism(execStrategy.n) as UIO<any>,
               new Exited(s.nextKey, ex, s.update)
@@ -862,7 +856,7 @@ export function managedFork<R, E, A>(
             )
           )
         )
-        .map(({ fiber, releaseMapEntry }) => Tp.tuple(releaseMapEntry, fiber))
+        .map(({ fiber, releaseMapEntry }) => Tuple(releaseMapEntry, fiber))
     )
   )
 }
@@ -893,7 +887,7 @@ export function managedUse_<R, E, A, R2, E2, B>(
 // -----------------------------------------------------------------------------
 
 export class BackPressureStrategy<A> implements Strategy<A> {
-  private putters = new Unbounded<Tp.Tuple<[A, Promise<never, boolean>, boolean]>>()
+  private putters = new Unbounded<Tuple<[A, Promise<never, boolean>, boolean]>>()
 
   handleSurplus(
     as: Chunk.Chunk<A>,
@@ -933,10 +927,10 @@ export class BackPressureStrategy<A> implements Strategy<A> {
       bs = Chunk.drop_(bs, 1)
 
       if (Chunk.size(bs) === 0) {
-        this.putters.offer(Tp.tuple(head, p, true))
+        this.putters.offer(Tuple(head, p, true))
         return
       } else {
-        this.putters.offer(Tp.tuple(head, p, false))
+        this.putters.offer(Tuple(head, p, false))
       }
     }
   }

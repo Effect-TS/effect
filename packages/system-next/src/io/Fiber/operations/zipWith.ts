@@ -1,5 +1,4 @@
-import * as O from "../../../data/Option"
-import * as Cause from "../../Cause"
+import { Cause } from "../../Cause"
 import { Effect } from "../../Effect"
 import * as Exit from "../../Exit"
 import * as FiberId from "../../FiberId"
@@ -32,7 +31,7 @@ export function zipWith_<E, E1, A, B, C>(
           Exit.zipWith_(ea, eb, f, Cause.both)
         ),
     poll: self.poll.zipWith(that.poll, (oa, ob) =>
-      O.chain_(oa, (ea) => O.map_(ob, (eb) => Exit.zipWith_(ea, eb, f, Cause.both)))
+      oa.flatMap((ea) => ob.map((eb) => Exit.zipWith_(ea, eb, f, Cause.both)))
     )
   })
 }

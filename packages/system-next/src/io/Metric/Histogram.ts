@@ -1,7 +1,7 @@
 import type { Chunk } from "../../collection/immutable/Chunk/core"
 import type { Tuple } from "../../collection/immutable/Tuple"
 import { _A } from "../../support/Symbols"
-import type { UIO } from "./_internal/effect"
+import type { UIO } from "../Effect"
 
 /**
  * A `Histogram` is a metric representing a collection of numerical with the

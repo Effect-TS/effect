@@ -1,15 +1,15 @@
-import type * as Tp from "../../../../collection/immutable/Tuple"
-import type * as O from "../../../../data/Option"
+import type { Tuple } from "../../../../collection/immutable/Tuple"
+import type { Option } from "../../../../data/Option"
+import { Effect } from "../../../Effect"
 import type { Atomic } from "../Atomic"
-import * as T from "./_internal/effect"
 
 export function modifySome_<A, B>(
   self: Atomic<A>,
   def: B,
-  f: (a: A) => O.Option<Tp.Tuple<[B, A]>>,
-  __trace?: string
-): T.UIO<B> {
-  return T.succeed(() => {
+  f: (a: A) => Option<Tuple<[B, A]>>,
+  __etsTrace?: string
+): Effect<unknown, never, B> {
+  return Effect.succeed(() => {
     const v = self.value.get
     const o = f(v)
 
@@ -19,7 +19,7 @@ export function modifySome_<A, B>(
     }
 
     return def
-  }, __trace)
+  })
 }
 
 /**
@@ -27,8 +27,8 @@ export function modifySome_<A, B>(
  */
 export function modifySome<A, B>(
   def: B,
-  f: (a: A) => O.Option<Tp.Tuple<[B, A]>>,
-  __trace?: string
+  f: (a: A) => Option<Tuple<[B, A]>>,
+  __etsTrace?: string
 ) {
-  return (self: Atomic<A>): T.UIO<B> => modifySome_(self, def, f, __trace)
+  return (self: Atomic<A>): Effect<unknown, never, B> => modifySome_(self, def, f)
 }

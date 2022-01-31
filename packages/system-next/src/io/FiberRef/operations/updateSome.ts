@@ -1,4 +1,4 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import type { Option } from "../../../data/Option"
 import type { IO } from "../../Effect"
 import type { XFiberRef } from "../definition"
@@ -11,16 +11,12 @@ import { modify_ } from "./modify"
 export function updateSome_<EA, EB, A>(
   self: XFiberRef<EA, EB, A, A>,
   f: (a: A) => Option<A>,
-  __trace?: string
+  __etsTrace?: string
 ): IO<EA | EB, void> {
-  return modify_(
-    self,
-    (v) => {
-      const result = f(v)
-      return Tp.tuple(undefined, result._tag === "Some" ? result.value : v)
-    },
-    __trace
-  )
+  return modify_(self, (v) => {
+    const result = f(v)
+    return Tuple(undefined, result._tag === "Some" ? result.value : v)
+  })
 }
 
 /**
@@ -29,7 +25,7 @@ export function updateSome_<EA, EB, A>(
  *
  * @ets_data_first updateSome_
  */
-export function updateSome<A>(f: (a: A) => Option<A>, __trace?: string) {
+export function updateSome<A>(f: (a: A) => Option<A>, __etsTrace?: string) {
   return <EA, EB>(self: XFiberRef<EA, EB, A, A>): IO<EA | EB, void> =>
-    updateSome_(self, f, __trace)
+    updateSome_(self, f)
 }

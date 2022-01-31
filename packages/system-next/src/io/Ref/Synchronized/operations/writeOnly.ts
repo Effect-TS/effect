@@ -1,4 +1,4 @@
-import * as E from "../../../../data/Either"
+import { Either } from "../../../../data/Either"
 import { identity } from "../../../../data/Function"
 import type { XSynchronized } from "../definition"
 
@@ -11,7 +11,7 @@ export function writeOnly<RA, RB, EA, EB, A, B>(
   return self.fold(
     identity,
     () => undefined,
-    E.right,
-    () => E.left(undefined)
+    Either.right,
+    () => Either.left(undefined)
   )
 }

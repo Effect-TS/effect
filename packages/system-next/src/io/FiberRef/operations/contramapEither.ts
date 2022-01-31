@@ -1,4 +1,4 @@
-import * as E from "../../../data/Either"
+import { Either } from "../../../data/Either"
 import type { XFiberRef } from "../definition"
 import { dimapEither_ } from "./dimapEither"
 
@@ -8,9 +8,9 @@ import { dimapEither_ } from "./dimapEither"
  */
 export function contramapEither_<EA, EB, A, B, EC, C>(
   self: XFiberRef<EA, EB, A, B>,
-  f: (c: C) => E.Either<EC, A>
+  f: (c: C) => Either<EC, A>
 ): XFiberRef<EA | EC, EB, C, B> {
-  return dimapEither_(self, f, E.right)
+  return dimapEither_(self, f, Either.right)
 }
 
 /**
@@ -19,7 +19,7 @@ export function contramapEither_<EA, EB, A, B, EC, C>(
  *
  * @ets_data_first contramapEither_
  */
-export function contramapEither<EC, A, C>(f: (c: C) => E.Either<EC, A>) {
+export function contramapEither<EC, A, C>(f: (c: C) => Either<EC, A>) {
   return <EA, EB, B>(self: XFiberRef<EA, EB, A, B>): XFiberRef<EA | EC, EB, C, B> =>
     contramapEither_(self, f)
 }

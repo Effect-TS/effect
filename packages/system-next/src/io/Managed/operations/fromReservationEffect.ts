@@ -1,4 +1,4 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
@@ -39,8 +39,8 @@ export function fromReservationEffect<R, E, A>(
             }
             case "Some": {
               return restore(reserved.acquire).map(
-                (a): Tp.Tuple<[Finalizer, A]> =>
-                  Tp.tuple((exit) => releaseMap.release(releaseKey.value, exit), a)
+                (a): Tuple<[Finalizer, A]> =>
+                  Tuple((exit) => releaseMap.release(releaseKey.value, exit), a)
               )
             }
           }

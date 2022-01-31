@@ -1,4 +1,4 @@
-import type * as C from "../../../collection/immutable/Chunk/core"
+import type { Chunk } from "../../../collection/immutable/Chunk/core"
 import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
 import { sequential } from "../../Effect/operations/ExecutionStrategy"
@@ -19,7 +19,7 @@ export function forEachPar<R, E, A, B>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Managed<R, E, B>,
   __etsTrace?: string
-): Managed<R, E, C.Chunk<B>> {
+): Managed<R, E, Chunk<B>> {
   return ReleaseMap.makeManagedPar.mapEffect((parallelReleaseMap) => {
     const makeInnerMap = locally_(
       currentReleaseMap.value,

@@ -1,7 +1,7 @@
-import * as E from "../../../data/Either"
+import { Either } from "../../../data/Either"
 import type { Predicate, Refinement } from "../../../data/Function"
 import { identity } from "../../../data/Function"
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { XFiberRef } from "../definition"
 import { concreteUnified } from "../definition"
 
@@ -13,21 +13,21 @@ import { concreteUnified } from "../definition"
 export function filterInput_<EA, EB, A, B, C extends A>(
   self: XFiberRef<EA, EB, A, B>,
   f: Refinement<A, C>
-): XFiberRef<O.Option<EA>, EB, C, B>
+): XFiberRef<Option<EA>, EB, C, B>
 export function filterInput_<EA, EB, A, B>(
   self: XFiberRef<EA, EB, A, B>,
   f: Predicate<A>
-): XFiberRef<O.Option<EA>, EB, A, B>
+): XFiberRef<Option<EA>, EB, A, B>
 export function filterInput_<EA, EB, A, B>(
   self: XFiberRef<EA, EB, A, B>,
   f: Predicate<A>
-): XFiberRef<O.Option<EA>, EB, A, B> {
+): XFiberRef<Option<EA>, EB, A, B> {
   concreteUnified(self)
   return self.fold(
-    O.some,
+    Option.some,
     identity,
-    (a) => (f(a) ? E.right(a) : E.left(O.none)),
-    E.right
+    (a) => (f(a) ? Either.right(a) : Either.left(Option.none)),
+    Either.right
   )
 }
 
@@ -40,12 +40,11 @@ export function filterInput_<EA, EB, A, B>(
  */
 export function filterInput<A, C extends A>(
   f: Refinement<A, C>
-): <EA, EB, B>(self: XFiberRef<EA, EB, A, B>) => XFiberRef<O.Option<EA>, EB, C, B>
+): <EA, EB, B>(self: XFiberRef<EA, EB, A, B>) => XFiberRef<Option<EA>, EB, C, B>
 export function filterInput<A>(
   f: Predicate<A>
-): <EA, EB, B>(self: XFiberRef<EA, EB, A, B>) => XFiberRef<O.Option<EA>, EB, A, B>
+): <EA, EB, B>(self: XFiberRef<EA, EB, A, B>) => XFiberRef<Option<EA>, EB, A, B>
 export function filterInput<A>(f: Predicate<A>) {
-  return <EA, EB, B>(
-    self: XFiberRef<EA, EB, A, B>
-  ): XFiberRef<O.Option<EA>, EB, A, B> => filterInput_(self, f)
+  return <EA, EB, B>(self: XFiberRef<EA, EB, A, B>): XFiberRef<Option<EA>, EB, A, B> =>
+    filterInput_(self, f)
 }

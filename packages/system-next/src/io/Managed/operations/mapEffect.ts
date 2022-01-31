@@ -1,4 +1,4 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import type { Effect } from "../../Effect"
 import { Managed } from "../definition"
 
@@ -14,7 +14,7 @@ export function mapEffect_<R, E, A, R2, E2, B>(
   __etsTrace?: string
 ): Managed<R & R2, E | E2, B> {
   return Managed(
-    self.effect.flatMap(({ tuple: [fin, a] }) => f(a).map((_) => Tp.tuple(fin, _)))
+    self.effect.flatMap(({ tuple: [fin, a] }) => f(a).map((_) => Tuple(fin, _)))
   )
 }
 

@@ -1,4 +1,4 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import { Effect } from "../../Effect"
 import { sequential } from "../../Effect/operations/ExecutionStrategy"
 import { fail as exitFail } from "../../Exit/operations/fail"
@@ -38,7 +38,7 @@ export function preallocate<R, E, A>(
             Effect.succeed(
               Managed<unknown, never, A>(
                 fiberRefGet(currentReleaseMap.value).flatMap((releaseMap) =>
-                  releaseMap.add(release).map((_) => Tp.tuple(_, a))
+                  releaseMap.add(release).map((_) => Tuple(_, a))
                 )
               )
             )

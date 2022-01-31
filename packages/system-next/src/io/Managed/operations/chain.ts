@@ -1,4 +1,4 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import { Effect } from "../../Effect"
 import { zipRight_ as exitZipRight_ } from "../../Exit/operations/zipRight"
 import { Managed } from "../definition"
@@ -18,7 +18,7 @@ export function chain_<R, E, A, R2, E2, A2>(
   return Managed<R & R2, E | E2, A2>(
     self.effect.flatMap(({ tuple: [releaseSelf, a] }) =>
       f(a).effect.map(({ tuple: [releaseThat, b] }) =>
-        Tp.tuple(
+        Tuple(
           (e) =>
             releaseThat(e)
               .exit()

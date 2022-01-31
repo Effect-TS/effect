@@ -16,13 +16,13 @@ export function update_<Ks extends readonly unknown[], I extends keyof Ks & numb
     [k in keyof Ks]: k extends `${I}` ? J : Ks[k]
   }>
 > {
-  const len = self.value.length
+  const len = self.tuple.length
   const r = new Array(len)
   for (let k = 0; k < len; k++) {
     if (k === i) {
-      r[k] = f(self.value[k])
+      r[k] = f(self.tuple[k])
     } else {
-      r[k] = self.value[k]
+      r[k] = self.tuple[k]
     }
   }
   return new TupleInternal(r) as any

@@ -7,7 +7,7 @@ import { MutableList } from "../definition"
  * @complexity O(n)
  * @ets static ets/ListOps __call
  */
-export function list<A>(...elements: A[]): List<A> {
+export function make<A>(...elements: A[]): List<A> {
   const mutableList = MutableList.emptyPushable<A>()
   for (const element of elements) {
     mutableList.push(element)

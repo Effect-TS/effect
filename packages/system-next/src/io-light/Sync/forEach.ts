@@ -1,7 +1,7 @@
 import * as ChunkCollect from "../../collection/immutable/Chunk/api/collect"
 import * as Chunk from "../../collection/immutable/Chunk/core"
 import { identity } from "../../data/Function"
-import type * as O from "../../data/Option"
+import type { Option } from "../../data/Option"
 import type { Sync } from "./core"
 import * as core from "./core"
 
@@ -106,7 +106,7 @@ export function collectAllUnit<R, E, A>(as: Iterable<Sync<R, E, A>>, __trace?: s
  */
 export function collectAllWith_<R, E, A, B>(
   as: Iterable<Sync<R, E, A>>,
-  pf: (a: A) => O.Option<B>,
+  pf: (a: A) => Option<B>,
   __trace?: string
 ): Sync<R, E, Chunk.Chunk<B>> {
   return core.map_(collectAll(as), ChunkCollect.collect(pf))
@@ -118,6 +118,6 @@ export function collectAllWith_<R, E, A, B>(
  *
  * @ets_data_first collectAllWith_
  */
-export function collectAllWith<A, B>(pf: (a: A) => O.Option<B>) {
+export function collectAllWith<A, B>(pf: (a: A) => Option<B>) {
   return <R, E>(as: Iterable<Sync<R, E, A>>) => collectAllWith_(as, pf)
 }

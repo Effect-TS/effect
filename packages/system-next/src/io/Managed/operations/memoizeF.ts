@@ -1,5 +1,5 @@
 import * as Map from "../../../collection/immutable/Map"
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import type { Effect } from "../../Effect"
 import type { Promise } from "../../Promise/definition"
 import { await as promiseAwait } from "../../Promise/operations/await"
@@ -35,11 +35,11 @@ export function memoizeF<R, E, A, B>(
             const result = Map.lookup_(map, a)
             switch (result._tag) {
               case "Some": {
-                return Tp.tuple(promiseAwait(result.value), map)
+                return Tuple(promiseAwait(result.value), map)
               }
               case "None": {
                 const promise = promiseUnsafeMake<E, B>(fiberId)
-                return Tp.tuple(
+                return Tuple(
                   scope(f(a))
                     .map((_) => _.get(1))
                     .intoPromise(promise)

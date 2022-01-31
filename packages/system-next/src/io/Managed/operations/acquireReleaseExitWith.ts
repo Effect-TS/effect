@@ -1,4 +1,4 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
 import type { Exit } from "../../Exit/definition"
@@ -26,7 +26,7 @@ export function acquireReleaseExitWith<R, R1, E, A>(
       .bind("releaseMapEntry", ({ a, r, releaseMap }) =>
         releaseMap.add((ex) => release(a, ex).provideEnvironment(r))
       )
-      .map(({ a, releaseMapEntry }) => Tp.tuple(releaseMapEntry, a))
+      .map(({ a, releaseMapEntry }) => Tuple(releaseMapEntry, a))
       .uninterruptible()
   )
 }

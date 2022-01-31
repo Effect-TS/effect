@@ -1,4 +1,4 @@
-import * as L from "../../../collection/immutable/List/core"
+import { List } from "../../../collection/immutable/List"
 import { Option } from "../../../data/Option/core"
 import type { Cause } from "../definition"
 
@@ -7,8 +7,8 @@ import type { Cause } from "../definition"
  *
  * @ets fluent ets/Cause failures
  */
-export function failures<E>(self: Cause<E>): L.List<E> {
-  return self.foldLeft(L.empty<E>(), (acc, curr) =>
-    curr.isFailType() ? Option.some(L.prepend_(acc, curr.value)) : Option.some(acc)
+export function failures<E>(self: Cause<E>): List<E> {
+  return self.foldLeft(List.empty<E>(), (acc, curr) =>
+    curr.isFailType() ? Option.some(acc.prepend(curr.value)) : Option.some(acc)
   )
 }

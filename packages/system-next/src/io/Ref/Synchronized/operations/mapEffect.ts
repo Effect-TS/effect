@@ -1,5 +1,5 @@
+import { Effect } from "../../../Effect"
 import type { XSynchronized } from "../definition"
-import * as T from "./_internal/effect"
 import { dimapEffect_ } from "./dimapEffect"
 
 /**
@@ -8,9 +8,9 @@ import { dimapEffect_ } from "./dimapEffect"
  */
 export function mapEffect_<RA, RB, RC, EA, EB, EC, A, B, C>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
-  f: (b: B) => T.Effect<RC, EC, C>
+  f: (b: B) => Effect<RC, EC, C>
 ): XSynchronized<RA, RB & RC, EA, EB | EC, A, C> {
-  return dimapEffect_(self, T.succeedNow, f)
+  return dimapEffect_(self, Effect.succeedNow, f)
 }
 
 /**
@@ -19,7 +19,7 @@ export function mapEffect_<RA, RB, RC, EA, EB, EC, A, B, C>(
  *
  * @ets_data_first mapEffect_
  */
-export function mapEffect<RC, EC, B, C>(f: (b: B) => T.Effect<RC, EC, C>) {
+export function mapEffect<RC, EC, B, C>(f: (b: B) => Effect<RC, EC, C>) {
   return <RA, RB, EA, EB, A>(
     self: XSynchronized<RA, RB, EA, EB, A, B>
   ): XSynchronized<RA, RB & RC, EA, EB | EC, A, C> => mapEffect_(self, f)

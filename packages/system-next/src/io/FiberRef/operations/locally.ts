@@ -10,10 +10,10 @@ import { concreteUnified } from "../definition/concrete"
 export function locally_<EA, EB, A, B>(
   self: XFiberRef<EA, EB, A, B>,
   value: A,
-  __trace?: string
+  __etsTrace?: string
 ): <R, EC, C>(use: Effect<R, EC, C>) => Effect<R, EA | EC, C> {
   concreteUnified(self)
-  return self.locally(value, __trace)
+  return self.locally(value)
 }
 
 /**
@@ -23,9 +23,8 @@ export function locally_<EA, EB, A, B>(
  *
  * @ets_data_first locally_
  */
-export function locally<R, EC, A, C>(value: A, __trace?: string) {
+export function locally<R, EC, A, C>(value: A, __etsTrace?: string) {
   return <EA, EB, B>(
     self: XFiberRef<EA, EB, A, B>
-  ): ((use: Effect<R, EC, C>) => Effect<R, EA | EC, C>) =>
-    locally_(self, value, __trace)
+  ): ((use: Effect<R, EC, C>) => Effect<R, EA | EC, C>) => locally_(self, value)
 }

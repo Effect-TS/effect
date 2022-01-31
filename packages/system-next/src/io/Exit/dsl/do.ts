@@ -31,7 +31,7 @@ export function bind<E, A, K, N extends string>(
     )
 }
 
-export function bindValue_<A, K, N extends string>(
+export function bindValue<A, K, N extends string>(
   tag: Exclude<N, keyof K>,
   f: (_: K) => A
 ) {

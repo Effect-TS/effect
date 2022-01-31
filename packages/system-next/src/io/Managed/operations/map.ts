@@ -1,4 +1,4 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import { Managed } from "../definition"
 
 /**
@@ -11,7 +11,7 @@ export function map_<R, E, A, B>(
   f: (a: A) => B,
   __etsTrace?: string
 ): Managed<R, E, B> {
-  return Managed(self.effect.map(({ tuple: [fin, a] }) => Tp.tuple(fin, f(a))))
+  return Managed(self.effect.map(({ tuple: [fin, a] }) => Tuple(fin, f(a))))
 }
 
 /**

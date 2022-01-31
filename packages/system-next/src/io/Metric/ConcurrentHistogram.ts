@@ -1,5 +1,5 @@
 import * as C from "../../collection/immutable/Chunk/core"
-import * as Tp from "../../collection/immutable/Tuple"
+import { Tuple } from "../../collection/immutable/Tuple"
 import { AtomicNumber } from "../../support/AtomicNumber"
 
 export interface ConcurrentHistogram {
@@ -19,7 +19,7 @@ export interface ConcurrentHistogram {
   /**
    * Create a snapshot (boundary, sum of all observed values for the bucket with that boundary).
    */
-  readonly snapshot: () => C.Chunk<Tp.Tuple<[number, number]>>
+  readonly snapshot: () => C.Chunk<Tuple<[number, number]>>
 }
 
 class ConcurrentHistogramImpl implements ConcurrentHistogram {
@@ -80,8 +80,8 @@ class ConcurrentHistogramImpl implements ConcurrentHistogram {
     this.sum.set(this.sum.get + value)
   }
 
-  snapshot(): C.Chunk<Tp.Tuple<[number, number]>> {
-    const builder = C.builder<Tp.Tuple<[number, number]>>()
+  snapshot(): C.Chunk<Tuple<[number, number]>> {
+    const builder = C.builder<Tuple<[number, number]>>()
 
     let i = 0
     let accumulated = 0
@@ -89,7 +89,7 @@ class ConcurrentHistogramImpl implements ConcurrentHistogram {
       const boundary = this.boundaries[i]!
       const value = this.values[i]!
       accumulated += value
-      builder.append(Tp.tuple(boundary, accumulated))
+      builder.append(Tuple(boundary, accumulated))
       i += 1
     }
 

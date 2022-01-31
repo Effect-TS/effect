@@ -1,3 +1,4 @@
+import type { MutableList } from "../definition"
 import { Node } from "../definition"
 import {
   BranchBits,
@@ -10,7 +11,6 @@ import {
   setPrefix,
   setSuffix
 } from "./_internal/bits"
-import type { MutableList } from "./_internal/MutableList"
 import { createPath } from "./_internal/node"
 
 /**

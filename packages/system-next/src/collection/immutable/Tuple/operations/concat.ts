@@ -11,7 +11,7 @@ export function concat_<Ks extends unknown[], Hs extends unknown[]>(
   self: Tuple<Ks>,
   that: Tuple<Hs>
 ): Tuple<[...Ks, ...Hs]> {
-  return new TupleInternal([...self.value, ...that.value])
+  return new TupleInternal([...self.tuple, ...that.tuple])
 }
 
 /**

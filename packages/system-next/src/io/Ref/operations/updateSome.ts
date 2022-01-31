@@ -1,10 +1,10 @@
-import * as Tp from "../../../collection/immutable/Tuple"
-import * as O from "../../../data/Option"
+import { Tuple } from "../../../collection/immutable/Tuple"
+import type { Option } from "../../../data/Option"
 import { matchTag_ } from "../../../data/Utils"
+import type { Effect } from "../../Effect"
 import * as A from "../Atomic/operations/updateSome"
 import type { XRef } from "../definition"
 import { concrete } from "../definition"
-import type { Effect } from "./_internal/effect"
 import { modify_ } from "./modify"
 
 /**
@@ -13,24 +13,15 @@ import { modify_ } from "./modify"
  */
 export function updateSome_<RA, RB, EA, EB, A>(
   self: XRef<RA, RB, EA, EB, A, A>,
-  pf: (a: A) => O.Option<A>,
-  __trace?: string
+  pf: (a: A) => Option<A>,
+  __etsTrace?: string
 ): Effect<RA & RB, EA | EB, void> {
   return matchTag_(
     concrete(self),
     {
-      Atomic: (_) => A.updateSome_(_, pf, __trace)
+      Atomic: (_) => A.updateSome_(_, pf)
     },
-    (_) =>
-      modify_(
-        _,
-        (v) =>
-          Tp.tuple(
-            undefined,
-            O.getOrElse_(pf(v), () => v)
-          ),
-        __trace
-      )
+    (_) => modify_(_, (v) => Tuple(undefined, pf(v).getOrElse(v)))
   )
 }
 
@@ -40,8 +31,8 @@ export function updateSome_<RA, RB, EA, EB, A>(
  *
  * @ets_data_first updateSome_
  */
-export function updateSome<A>(pf: (a: A) => O.Option<A>, __trace?: string) {
+export function updateSome<A>(pf: (a: A) => Option<A>, __etsTrace?: string) {
   return <RA, RB, EA, EB>(
     self: XRef<RA, RB, EA, EB, A, A>
-  ): Effect<RA & RB, EA | EB, void> => updateSome_(self, pf, __trace)
+  ): Effect<RA & RB, EA | EB, void> => updateSome_(self, pf)
 }

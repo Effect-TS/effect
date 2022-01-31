@@ -1,5 +1,4 @@
 // TODO: implementation
-import { map_ } from "../../Cause"
 import type { Exit } from "../definition"
 import { failCause } from "./failCause"
 import { succeed } from "./succeed"
@@ -14,7 +13,7 @@ export function mapBoth_<E, A, E1, A1>(
 ): Exit<E1, A1> {
   switch (self._tag) {
     case "Failure":
-      return failCause(map_(self.cause, onFailure))
+      return failCause(self.cause.map(onFailure))
     case "Success":
       return succeed(onSuccess(self.value))
   }

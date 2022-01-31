@@ -1,9 +1,9 @@
-import * as E from "../../../data/Either"
+import { Either } from "../../../data/Either"
 import { identity } from "../../../data/Function"
-import * as O from "../../../data/Option"
-import * as Cause from "../../../io/Cause/definition"
-import * as L from "../List/core"
-import * as Tp from "../Tuple"
+import { Option } from "../../../data/Option"
+import { Cause } from "../../../io/Cause/definition"
+import { List } from "../List"
+import { Tuple } from "../Tuple"
 import type { ParSeq } from "./primitives"
 import * as P from "./primitives"
 
@@ -12,15 +12,15 @@ import * as P from "./primitives"
  * occur in parallel and before any other events then any of these events
  * may be returned.
  */
-export function first<A>(self: ParSeq<A>): O.Option<A> {
+export function first<A>(self: ParSeq<A>): Option<A> {
   // eslint-disable-next-line no-constant-condition
   while (1) {
     switch (self._tag) {
       case "Single": {
-        return O.some(self.a)
+        return Option.some(self.a)
       }
       case "Empty": {
-        return O.none
+        return Option.none
       }
       case "Both": {
         self = self.left
@@ -40,56 +40,56 @@ function foldLoop<A, B>(
   singleCase: (a: A) => B,
   thenCase: (l: B, r: B) => B,
   bothCase: (l: B, r: B) => B,
-  inp: L.List<ParSeq<A>>,
-  out: L.List<E.Either<boolean, B>>
-): L.List<B> {
+  inp: List<ParSeq<A>>,
+  out: List<Either<boolean, B>>
+): List<B> {
   // eslint-disable-next-line no-constant-condition
   while (1) {
-    if (L.isEmpty(inp)) {
-      return L.reduce_(out, L.empty<B>(), (acc, val) => {
+    if (inp.isEmpty()) {
+      return out.reduce(List.empty<B>(), (acc, val) => {
         if (val._tag === "Right") {
-          return L.prepend_(acc, val.right)
+          return acc.prepend(val.right)
         } else {
           if (val.left) {
-            let parSeqs = acc
-            const left = L.unsafeFirst(parSeqs)
-            parSeqs = L.tail(parSeqs)
-            const right = L.unsafeFirst(parSeqs)
-            parSeqs = L.tail(parSeqs)
-            return L.prepend_(parSeqs, bothCase(left!, right!))
+            let parSeqs: List<B> = acc
+            const left = parSeqs.unsafeFirst()
+            parSeqs = parSeqs.tail()
+            const right = parSeqs.unsafeFirst()
+            parSeqs = parSeqs.tail()
+            return parSeqs.prepend(bothCase(left!, right!))
           } else {
-            let parSeqs = acc
-            const left = L.unsafeFirst(parSeqs)
-            parSeqs = L.tail(parSeqs)
-            const right = L.unsafeFirst(parSeqs)
-            parSeqs = L.tail(parSeqs)
-            return L.prepend_(parSeqs, thenCase(left!, right!))
+            let parSeqs: List<B> = acc
+            const left = parSeqs.unsafeFirst()
+            parSeqs = parSeqs.tail()
+            const right = parSeqs.unsafeFirst()
+            parSeqs = parSeqs.tail()
+            return parSeqs.prepend(thenCase(left!, right!))
           }
         }
       })
     } else {
-      const head = L.unsafeFirst(inp)!
-      const parSeqs = L.tail(inp)
+      const head = inp.unsafeFirst()!
+      const parSeqs = inp.tail()
 
       switch (head._tag) {
         case "Empty": {
           inp = parSeqs
-          out = L.prepend_(out, E.right(emptyCase))
+          out = out.prepend(Either.right(emptyCase))
           break
         }
         case "Single": {
           inp = parSeqs
-          out = L.prepend_(out, E.right(singleCase(head.a)))
+          out = out.prepend(Either.right(singleCase(head.a)))
           break
         }
         case "Then": {
-          inp = L.prepend_(L.prepend_(parSeqs, head.right), head.left)
-          out = L.prepend_(out, E.left(false))
+          inp = parSeqs.prepend(head.right).prepend(head.left)
+          out = out.prepend(Either.left(false))
           break
         }
         case "Both": {
-          inp = L.prepend_(L.prepend_(parSeqs, head.right), head.left)
-          out = L.prepend_(out, E.left(true))
+          inp = parSeqs.prepend(head.right).prepend(head.left)
+          out = out.prepend(Either.left(true))
           break
         }
       }
@@ -109,9 +109,14 @@ export function fold_<A, B>(
   thenCase: (l: B, r: B) => B,
   bothCase: (l: B, r: B) => B
 ): B {
-  return L.unsafeFirst(
-    foldLoop(emptyCase, singleCase, thenCase, bothCase, L.of(self), L.empty())
-  )!
+  return foldLoop(
+    emptyCase,
+    singleCase,
+    thenCase,
+    bothCase,
+    List.single(self),
+    List.empty()
+  ).unsafeFirst()!
 }
 
 /**
@@ -158,8 +163,8 @@ export function flatten<A>(self: ParSeq<ParSeq<A>>) {
 /**
  * Converts a ParSeq to a Cause
  */
-export function toCause<A>(self: ParSeq<A>): Cause.Cause<A> {
-  return fold_(self, Cause.empty as Cause.Cause<A>, Cause.fail, Cause.then, Cause.both)
+export function toCause<A>(self: ParSeq<A>): Cause<A> {
+  return fold_(self, Cause.empty as Cause<A>, Cause.fail, Cause.then, Cause.both)
 }
 
 /**
@@ -210,8 +215,8 @@ export function zipWith<A, B, C>(
  * return the Cartesian product of events, combining the elements into a
  * tuple.
  */
-export function zip_<A, B>(self: ParSeq<A>, that: ParSeq<B>): ParSeq<Tp.Tuple<[A, B]>> {
-  return zipWith_(self, that, Tp.tuple)
+export function zip_<A, B>(self: ParSeq<A>, that: ParSeq<B>): ParSeq<Tuple<[A, B]>> {
+  return zipWith_(self, that, (a, b) => Tuple(a, b))
 }
 
 /**
@@ -221,9 +226,7 @@ export function zip_<A, B>(self: ParSeq<A>, that: ParSeq<B>): ParSeq<Tp.Tuple<[A
  *
  * @ets_data_first zip_
  */
-export function zip<B>(
-  that: ParSeq<B>
-): <A>(self: ParSeq<A>) => ParSeq<Tp.Tuple<[A, B]>> {
+export function zip<B>(that: ParSeq<B>): <A>(self: ParSeq<A>) => ParSeq<Tuple<[A, B]>> {
   return (self) => zip_(self, that)
 }
 

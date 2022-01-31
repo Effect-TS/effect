@@ -10,7 +10,7 @@ export function append_<Ks extends unknown[], K>(
   self: Tuple<Ks>,
   k: K
 ): Tuple<[...Ks, K]> {
-  return new TupleInternal([...self.value, k])
+  return new TupleInternal([...self.tuple, k])
 }
 
 /**

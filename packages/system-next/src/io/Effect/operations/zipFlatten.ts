@@ -1,4 +1,5 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import type { MergeTuple } from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import type { Effect } from "../definition"
 
 /**
@@ -11,8 +12,8 @@ export function zipFlatten_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   that: Effect<R2, E2, A2>,
   __etsTrace?: string
-): Effect<R & R2, E | E2, Tp.MergeTuple<A, A2>> {
-  return self.zipWith(that, Tp.mergeTuple)
+): Effect<R & R2, E | E2, MergeTuple<A, A2>> {
+  return self.zipWith(that, Tuple.mergeTuple)
 }
 
 /**
@@ -21,7 +22,6 @@ export function zipFlatten_<R, E, A, R2, E2, A2>(
  * @ets_data_first zipFlatten_
  */
 export function zipFlatten<R2, E2, A2>(that: Effect<R2, E2, A2>, __etsTrace?: string) {
-  return <R, E, A>(
-    self: Effect<R, E, A>
-  ): Effect<R & R2, E | E2, Tp.MergeTuple<A, A2>> => zipFlatten_(self, that)
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, MergeTuple<A, A2>> =>
+    zipFlatten_(self, that)
 }

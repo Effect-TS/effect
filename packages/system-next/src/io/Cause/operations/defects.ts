@@ -1,4 +1,4 @@
-import * as L from "../../../collection/immutable/List/core"
+import { List } from "../../../collection/immutable/List"
 import { Option } from "../../../data/Option/core"
 import type { Cause } from "../definition"
 
@@ -7,10 +7,10 @@ import type { Cause } from "../definition"
  *
  * @ets fluent ets/Cause defects
  */
-export function defects<E>(self: Cause<E>): L.List<unknown> {
-  return L.reverse(
-    self.foldLeft(L.empty<unknown>(), (causes, cause) =>
-      cause.isDieType() ? Option.some(L.prepend_(causes, cause.value)) : Option.none
+export function defects<E>(self: Cause<E>): List<unknown> {
+  return self
+    .foldLeft(List.empty<unknown>(), (causes, cause) =>
+      cause.isDieType() ? Option.some(causes.prepend(cause.value)) : Option.none
     )
-  )
+    .reverse()
 }

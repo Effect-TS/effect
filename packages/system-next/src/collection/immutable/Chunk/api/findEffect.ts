@@ -1,8 +1,5 @@
-import * as O from "../../../../data/Option"
-import type { Effect } from "../../../../io/Effect/definition/base"
-import { chain_ } from "../../../../io/Effect/operations/chain"
-import { succeedNow } from "../../../../io/Effect/operations/succeedNow"
-import { suspendSucceed } from "../../../../io/Effect/operations/suspendSucceed"
+import { Option } from "../../../../data/Option"
+import { Effect } from "../../../../io/Effect/definition/base"
 import { concreteId } from "../_definition"
 import type * as Chunk from "../core"
 
@@ -11,9 +8,10 @@ import type * as Chunk from "../core"
  */
 export function findEffect_<R, E, A>(
   self: Chunk.Chunk<A>,
-  f: (a: A) => Effect<R, E, boolean>
-): Effect<R, E, O.Option<A>> {
-  return suspendSucceed(() => {
+  f: (a: A) => Effect<R, E, boolean>,
+  __etsTrace?: string
+): Effect<R, E, Option<A>> {
+  return Effect.suspendSucceed(() => {
     const iterator = concreteId(self).arrayLikeIterator()
     let next: IteratorResult<Chunk.IterableArrayLike<A>, any>
     const loop = (
@@ -21,17 +19,17 @@ export function findEffect_<R, E, A>(
       array: Chunk.IterableArrayLike<A>,
       i: number,
       length: number
-    ): Effect<R, E, O.Option<A>> => {
+    ): Effect<R, E, Option<A>> => {
       if (i < length) {
         const a = array[i]!
 
-        return chain_(f(a), (r) =>
-          r ? succeedNow(O.some(a)) : loop(iterator, array, i + 1, length)
+        return f(a).flatMap((r) =>
+          r ? Effect.succeedNow(Option.some(a)) : loop(iterator, array, i + 1, length)
         )
       } else if (!(next = iterator.next()).done) {
         return loop(iterator, next.value, 0, next.value.length)
       } else {
-        return succeedNow(O.none)
+        return Effect.succeedNow(Option.none)
       }
     }
 
@@ -40,7 +38,7 @@ export function findEffect_<R, E, A>(
     if (!next.done) {
       return loop(iterator, next.value, 0, next.value.length)
     } else {
-      return succeedNow(O.none)
+      return Effect.succeedNow(Option.none)
     }
   })
 }
@@ -50,6 +48,9 @@ export function findEffect_<R, E, A>(
  *
  * @ets_data_first findEffect_
  */
-export function findEffect<R, E, A>(f: (a: A) => Effect<R, E, boolean>) {
+export function findEffect<R, E, A>(
+  f: (a: A) => Effect<R, E, boolean>,
+  __etsTrace?: string
+) {
   return (self: Chunk.Chunk<A>) => findEffect_(self, f)
 }

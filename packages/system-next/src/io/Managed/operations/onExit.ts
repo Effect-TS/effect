@@ -1,4 +1,4 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import { Effect } from "../../Effect"
 import { sequential } from "../../Effect/operations/ExecutionStrategy"
 import type { Exit } from "../../Exit"
@@ -44,7 +44,7 @@ export function onExit_<R, E, A, R1, X>(
           )
         )
         .bind("a", ({ exitEA }) => Effect.done(exitEA))
-        .map(({ a, releaseMapEntry }) => Tp.tuple(releaseMapEntry, a))
+        .map(({ a, releaseMapEntry }) => Tuple(releaseMapEntry, a))
     )
   )
 }

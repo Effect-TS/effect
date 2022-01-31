@@ -5,7 +5,7 @@ import { isSome, none, some } from "../../../data/Option"
 import type { MutableArray, MutableRecord } from "../../../support/Mutable"
 import type { Dictionary } from "../Dictionary"
 import type { NonEmptyArray } from "../NonEmptyArray"
-import * as Tp from "../Tuple"
+import { Tuple } from "../Tuple"
 import * as C from "./core"
 
 /**
@@ -539,7 +539,7 @@ export function unsafeDeleteAt(i: number): <A>(as: C.Array<A>) => C.Array<A> {
  */
 export function separate<B, C>(
   fa: C.Array<Either<B, C>>
-): Tp.Tuple<[C.Array<B>, C.Array<C>]> {
+): Tuple<[C.Array<B>, C.Array<C>]> {
   const left: MutableArray<B> = []
   const right: MutableArray<C> = []
   for (const e of fa) {
@@ -549,7 +549,7 @@ export function separate<B, C>(
       right.push(e.right)
     }
   }
-  return Tp.tuple(left, right)
+  return Tuple(left, right)
 }
 
 /**

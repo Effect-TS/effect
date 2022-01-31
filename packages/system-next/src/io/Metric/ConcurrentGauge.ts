@@ -1,10 +1,10 @@
-import * as Tp from "../../collection/immutable/Tuple"
+import { Tuple } from "../../collection/immutable/Tuple"
 import { AtomicReference } from "../../support/AtomicReference"
 
 export interface ConcurrentGauge {
   readonly get: number
-  readonly set: (v: number) => Tp.Tuple<[number, number]>
-  readonly adjust: (v: number) => Tp.Tuple<[number, number]>
+  readonly set: (v: number) => Tuple<[number, number]>
+  readonly adjust: (v: number) => Tuple<[number, number]>
 }
 
 class ConcurrentGaugeImpl implements ConcurrentGauge {
@@ -16,14 +16,14 @@ class ConcurrentGaugeImpl implements ConcurrentGauge {
     return this.value.get
   }
 
-  set(v: number): Tp.Tuple<[number, number]> {
+  set(v: number): Tuple<[number, number]> {
     const old = this.value.getAndSet(v)
-    return Tp.tuple(v, v - old)
+    return Tuple(v, v - old)
   }
 
-  adjust(v: number): Tp.Tuple<[number, number]> {
+  adjust(v: number): Tuple<[number, number]> {
     this.value.set(this.value.get + v)
-    return Tp.tuple(this.value.get, v)
+    return Tuple(this.value.get, v)
   }
 }
 

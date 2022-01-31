@@ -2,7 +2,7 @@ import {
   lookup_ as mapLookup_,
   remove_ as mapRemove_
 } from "../../../collection/immutable/Map"
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import type { UIO } from "../../Effect"
 import { Effect } from "../../Effect"
 import type { Exit } from "../../Exit"
@@ -25,10 +25,10 @@ export function release_(
   return refModify_(self.ref, (s) => {
     switch (s._tag) {
       case "Exited": {
-        return Tp.tuple(Effect.unit, s)
+        return Tuple(Effect.unit, s)
       }
       case "Running": {
-        return Tp.tuple(
+        return Tuple(
           mapLookup_(s.finalizers(), key).fold(
             () => Effect.unit,
             (fin) => s.update(fin)(exit)

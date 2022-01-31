@@ -1,4 +1,4 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import { Option } from "../../../data/Option/core"
 import type { Trace } from "../../../io/Trace/definition"
 import type { Cause } from "../definition"
@@ -9,8 +9,8 @@ import type { Cause } from "../definition"
  *
  * @ets fluent ets/Cause failureTraceOption
  */
-export function failureTraceOption<E>(self: Cause<E>): Option<Tp.Tuple<[E, Trace]>> {
+export function failureTraceOption<E>(self: Cause<E>): Option<Tuple<[E, Trace]>> {
   return self.find((cause) =>
-    cause.isFailType() ? Option.some(Tp.tuple(cause.value, cause.trace)) : Option.none
+    cause.isFailType() ? Option.some(Tuple(cause.value, cause.trace)) : Option.none
   )
 }

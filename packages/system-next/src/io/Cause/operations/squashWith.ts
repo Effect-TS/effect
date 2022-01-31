@@ -1,5 +1,4 @@
 import * as HS from "../../../collection/immutable/HashSet"
-import * as L from "../../../collection/immutable/List/core"
 import { ids } from "../../FiberId/operations/ids"
 import type { Cause } from "../definition"
 import { InterruptedException } from "../errors"
@@ -25,7 +24,7 @@ export function squashWith_<E>(self: Cause<E>, f: (e: E) => unknown): unknown {
         )
         return new InterruptedException(`Interrupted by fibers: ${fibers}`)
       }
-      return L.first(self.defects()).getOrElse(() => new InterruptedException())
+      return self.defects().first.getOrElse(new InterruptedException())
     })
 }
 
