@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
-import * as Tp from "../../../../Collections/Immutable/Tuple"
-import type * as O from "../../../../Option"
-import type * as C from "../core"
-import * as PaginateChunk from "./paginateChunk"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
+import type * as O from "../../../../Option/index.js"
+import type * as C from "../core.js"
+import * as PaginateChunk from "./paginateChunk.js"
 
 /**
  * Like `unfold`, but allows the emission of values to end one step further than

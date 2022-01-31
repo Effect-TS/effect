@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { chain_ } from "./core"
-import type { Effect, RIO } from "./effect"
-import { flipWith_ } from "./flipWith"
+import { chain_ } from "./core.js"
+import type { Effect, RIO } from "./effect.js"
+import { flipWith_ } from "./flipWith.js"
 
 /**
  * Creates a composite effect that represents this effect followed by another

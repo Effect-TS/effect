@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { identity } from "../../../../Function"
-import type * as C from "../core"
-import * as MergeWith from "./mergeWith"
+import { identity } from "../../../../Function/index.js"
+import type * as C from "../core.js"
+import * as MergeWith from "./mergeWith.js"
 
 /**
  * Merges this stream and the specified stream together.

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as O from "../../../Option"
-import * as P from "../../../Prelude"
-import { isOption } from "../../../Utils"
+import type * as O from "../../../Option/index.js"
+import * as P from "../../../Prelude/index.js"
+import { isOption } from "../../../Utils/index.js"
 import { Applicative, ApplyZip, Covariant, ForEach, Monad } from "./instances"
 import type * as A from "./operations"
 

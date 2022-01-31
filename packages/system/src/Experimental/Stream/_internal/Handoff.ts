@@ -1,12 +1,12 @@
-import type * as C from "../../../Cause"
-import * as A from "../../../Collections/Immutable/Chunk"
-import * as Tp from "../../../Collections/Immutable/Tuple"
-import * as T from "../../../Effect"
-import { pipe } from "../../../Function"
-import * as O from "../../../Option"
-import * as P from "../../../Promise"
-import * as Ref from "../../../Ref"
-import type * as SER from "./SinkEndReason"
+import type * as C from "../../../Cause/index.js"
+import * as A from "../../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../../Collections/Immutable/Tuple/index.js"
+import * as T from "../../../Effect/index.js"
+import { pipe } from "../../../Function/index.js"
+import * as O from "../../../Option/index.js"
+import * as P from "../../../Promise/index.js"
+import * as Ref from "../../../Ref/index.js"
+import type * as SER from "./SinkEndReason.js"
 
 export class Handoff<A> {
   constructor(readonly ref: Ref.Ref<State<A>>) {}

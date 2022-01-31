@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as E from "../../../../Either"
-import type * as C from "../core"
-import * as Map from "./map"
-import * as OrElse from "./orElse"
+import * as E from "../../../../Either/index.js"
+import type * as C from "../core.js"
+import * as Map from "./map.js"
+import * as OrElse from "./orElse.js"
 
 /**
  * Switches to the provided stream in case this one fails with a typed error.

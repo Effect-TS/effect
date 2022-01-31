@@ -1,7 +1,7 @@
-import * as I from "../../../Iterable"
-import * as O from "../../../Option"
-import * as St from "../../../Structural"
-import { AtomicNumber } from "../../../Support/AtomicNumber"
+import * as I from "../../../Iterable/index.js"
+import * as O from "../../../Option/index.js"
+import * as St from "../../../Structural/index.js"
+import { AtomicNumber } from "../../../Support/AtomicNumber/index.js"
 
 export const HashMapTypeId = Symbol()
 export type HashMapTypeId = typeof HashMapTypeId

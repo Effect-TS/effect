@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type { Reservation } from "../Managed"
-import { makeReserve } from "../Managed/core"
-import { use_ } from "../Managed/use"
-import type { Effect } from "./effect"
+import { makeReserve } from "../Managed/core.js"
+import type { Reservation } from "../Managed/index.js"
+import { use_ } from "../Managed/use.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Acquires a resource, uses the resource, and then releases the resource.

@@ -1,6 +1,6 @@
-import * as T from "../../Effect"
-import { tag } from "../../Has"
-import * as L from "../../Layer"
+import * as T from "../../Effect/index.js"
+import { tag } from "../../Has/index.js"
+import * as L from "../../Layer/index.js"
 
 export const LoggerId = Symbol.for("@effect-ts/system/Test/TestLoggerId")
 

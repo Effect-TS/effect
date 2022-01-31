@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { identity } from "../../Function"
-import type * as O from "../../Option"
-import { collectWhileMap_ } from "./collectWhileMap"
-import type { Stream } from "./definitions"
+import { identity } from "../../Function/index.js"
+import type * as O from "../../Option/index.js"
+import { collectWhileMap_ } from "./collectWhileMap.js"
+import type { Stream } from "./definitions.js"
 
 /**
  * Terminates the stream when encountering the first `None`.

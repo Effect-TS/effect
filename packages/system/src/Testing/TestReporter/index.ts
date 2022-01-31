@@ -1,10 +1,10 @@
-import type * as T from "../../Effect"
-import type { Has } from "../../Has"
-import type { ExecutedSpec } from "../ExecutedSpec"
-import type { TestAnnotationRenderer } from "../TestAnnotationRenderer"
-import type { Duration } from "../TestClock"
-import type { TestLogger } from "../TestLogger"
-import { logLine } from "../TestLogger"
+import type * as T from "../../Effect/index.js"
+import type { Has } from "../../Has/index.js"
+import type { ExecutedSpec } from "../ExecutedSpec/index.js"
+import type { TestAnnotationRenderer } from "../TestAnnotationRenderer/index.js"
+import type { Duration } from "../TestClock/index.js"
+import type { TestLogger } from "../TestLogger/index.js"
+import { logLine } from "../TestLogger/index.js"
 
 /**
  * A `TestReporter[E]` is capable of reporting test results

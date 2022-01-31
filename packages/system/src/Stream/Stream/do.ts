@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function"
-import * as T from "../_internal/effect"
-import { chain } from "./chain"
-import type { Stream } from "./definitions"
-import { fromEffect } from "./fromEffect"
-import { map } from "./map"
+import { pipe } from "../../Function/index.js"
+import * as T from "../_internal/effect.js"
+import { chain } from "./chain.js"
+import type { Stream } from "./definitions.js"
+import { fromEffect } from "./fromEffect.js"
+import { map } from "./map.js"
 
 function bind<R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,

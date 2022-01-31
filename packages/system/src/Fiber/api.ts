@@ -1,18 +1,18 @@
 // ets_tracing: off
 
-import * as Cause from "../Cause/core"
-import { reduceRight as chunkReduceRight } from "../Collections/Immutable/Chunk/api/reduceRight"
-import * as Chunk from "../Collections/Immutable/Chunk/core"
-import * as E from "../Either"
-import * as Exit from "../Exit/api"
-import { constant, pipe } from "../Function"
-import * as IT from "../Iterable"
-import { make } from "../Managed/core"
-import type { Managed } from "../Managed/managed"
-import * as O from "../Option"
-import * as T from "./_internal/effect-api"
-import * as Fiber from "./core"
-import { interrupt } from "./interrupt"
+import * as Cause from "../Cause/core.js"
+import { reduceRight as chunkReduceRight } from "../Collections/Immutable/Chunk/api/reduceRight.js"
+import * as Chunk from "../Collections/Immutable/Chunk/core.js"
+import * as E from "../Either/index.js"
+import * as Exit from "../Exit/api.js"
+import { constant, pipe } from "../Function/index.js"
+import * as IT from "../Iterable/index.js"
+import { make } from "../Managed/core.js"
+import type { Managed } from "../Managed/managed.js"
+import * as O from "../Option/index.js"
+import * as T from "./_internal/effect-api.js"
+import * as Fiber from "./core.js"
+import { interrupt } from "./interrupt.js"
 
 /**
  * Lifts an IO into a `Fiber`.

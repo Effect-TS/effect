@@ -1,5 +1,5 @@
-import type * as Chunk from "../core"
-import { ArrTypeId, concrete } from "../definition"
+import type * as Chunk from "../core.js"
+import { ArrTypeId, concrete } from "../definition.js"
 
 /**
  * Iterate over the chunk applying f

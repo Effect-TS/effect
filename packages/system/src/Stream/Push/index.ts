@@ -1,16 +1,16 @@
 // ets_tracing: off
 
-import "../../Operator"
+import "../../Operator/index.js"
 
-import type { Cause } from "../../Cause"
-import * as A from "../../Collections/Immutable/Chunk"
-import * as Tp from "../../Collections/Immutable/Tuple"
-import * as E from "../../Either"
-import { pipe } from "../../Function"
-import type * as O from "../../Option"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import * as R from "../_internal/ref"
+import type { Cause } from "../../Cause/index.js"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import * as E from "../../Either/index.js"
+import { pipe } from "../../Function/index.js"
+import type * as O from "../../Option/index.js"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import * as R from "../_internal/ref.js"
 
 export interface Push<R, E, I, L, Z> {
   (_: O.Option<A.Chunk<I>>): T.Effect<R, Tp.Tuple<[E.Either<E, Z>, A.Chunk<L>]>, void>

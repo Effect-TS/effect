@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import * as SK from "../../Sink"
-import type * as C from "../core"
-import * as Transduce from "./transduce"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as SK from "../../Sink/index.js"
+import type * as C from "../core.js"
+import * as Transduce from "./transduce.js"
 
 /**
  * Partitions the stream with specified chunkSize

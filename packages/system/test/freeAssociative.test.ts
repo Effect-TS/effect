@@ -1,5 +1,5 @@
-import * as FA from "../src/FreeAssociative"
-import { pipe } from "../src/Function"
+import * as FA from "../src/FreeAssociative/index.js"
+import { pipe } from "../src/Function/index.js"
 
 describe("FreeAssociative", () => {
   it("toArray", () => {

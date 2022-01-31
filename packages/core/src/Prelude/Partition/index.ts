@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as Tp from "../../Collections/Immutable/Tuple"
-import type { Predicate, Refinement } from "../../Function"
-import type * as HKT from "../HKT"
+import type * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import type { Predicate, Refinement } from "../../Function/index.js"
+import type * as HKT from "../HKT/index.js"
 
 export interface Partition<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
   readonly _Partition: "Partition"

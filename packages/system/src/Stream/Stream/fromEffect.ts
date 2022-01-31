@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function"
-import * as O from "../../Option"
-import * as T from "../_internal/effect"
-import type { Stream } from "./definitions"
-import { fromEffectOption } from "./fromEffectOption"
+import { pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
+import * as T from "../_internal/effect.js"
+import type { Stream } from "./definitions.js"
+import { fromEffectOption } from "./fromEffectOption.js"
 
 /**
  * Creates a stream from an effect producing a value of type `A`

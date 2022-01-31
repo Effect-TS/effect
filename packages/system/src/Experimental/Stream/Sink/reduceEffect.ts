@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import * as CK from "../../../Collections/Immutable/Chunk"
-import * as Tp from "../../../Collections/Immutable/Tuple"
-import * as T from "../../../Effect"
-import type { Predicate } from "../../../Function"
-import { pipe } from "../../../Function"
-import * as O from "../../../Option"
-import * as CH from "../Channel"
-import * as C from "./core"
+import * as CK from "../../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../../Collections/Immutable/Tuple/index.js"
+import * as T from "../../../Effect/index.js"
+import type { Predicate } from "../../../Function/index.js"
+import { pipe } from "../../../Function/index.js"
+import * as O from "../../../Option/index.js"
+import * as CH from "../Channel/index.js"
+import * as C from "./core.js"
 
 /**
  * A sink that effectfully folds its inputs with the provided function, termination predicate and initial state.

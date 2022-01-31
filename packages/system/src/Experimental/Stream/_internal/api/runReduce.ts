@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect"
-import * as M from "../../../../Managed"
-import type * as C from "../core"
-import * as RunReduceWhileManaged from "./runReduceWhileManaged"
+import * as T from "../../../../Effect/index.js"
+import * as M from "../../../../Managed/index.js"
+import type * as C from "../core.js"
+import * as RunReduceWhileManaged from "./runReduceWhileManaged.js"
 
 /**
  * Executes a pure fold over the stream of values - reduces all elements in the stream to a value of type `S`.

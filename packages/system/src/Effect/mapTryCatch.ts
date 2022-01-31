@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { chain_, tryCatch } from "./core"
-import type { Effect } from "./effect"
+import { chain_, tryCatch } from "./core.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Returns an effect whose success is mapped by the specified side effecting

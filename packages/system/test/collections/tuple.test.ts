@@ -1,5 +1,5 @@
-import * as Tp from "../../src/Collections/Immutable/Tuple"
-import { pipe } from "../../src/Function"
+import * as Tp from "../../src/Collections/Immutable/Tuple/index.js"
+import { pipe } from "../../src/Function/index.js"
 
 describe("Tuple", () => {
   it("update", () => {

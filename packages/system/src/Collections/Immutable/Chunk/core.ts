@@ -1,9 +1,9 @@
-import { identity } from "../../../Function"
-import { ArrayIndexOutOfBoundsException } from "../../../GlobalExceptions"
-import * as O from "../../../Option"
-import * as St from "../../../Structural"
-import * as A from "../Array"
-import type { Chunk } from "./definition"
+import { identity } from "../../../Function/index.js"
+import { ArrayIndexOutOfBoundsException } from "../../../GlobalExceptions/index.js"
+import * as O from "../../../Option/index.js"
+import * as St from "../../../Structural/index.js"
+import * as A from "../Array/index.js"
+import type { Chunk } from "./definition.js"
 import {
   _Empty,
   concrete,
@@ -14,9 +14,9 @@ import {
   SingletonTypeId,
   Slice,
   SliceTypeId
-} from "./definition"
+} from "./definition.js"
 
-export * from "./definition"
+export * from "./definition.js"
 
 /**
  * Builds a chunk of a single value

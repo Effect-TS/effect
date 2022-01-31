@@ -1,7 +1,7 @@
-import type { Predicate, Refinement } from "../Function"
-import * as core from "./core"
-import type { IO } from "./effect"
-import * as fail from "./fail"
+import type { Predicate, Refinement } from "../Function/index.js"
+import * as core from "./core.js"
+import type { IO } from "./effect.js"
+import * as fail from "./fail.js"
 
 /**
  * Lift a predicate into an effectful function

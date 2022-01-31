@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type { FiberContext } from "../Fiber"
-import { fork } from "../Managed/fork"
-import type { Managed } from "../Managed/managed"
-import type { Effect } from "./effect"
-import { toManaged } from "./toManaged"
+import type { FiberContext } from "../Fiber/index.js"
+import { fork } from "../Managed/fork.js"
+import type { Managed } from "../Managed/managed.js"
+import type { Effect } from "./effect.js"
+import { toManaged } from "./toManaged.js"
 
 /**
  * Forks the fiber in a `Managed`. Using the `Managed` value will

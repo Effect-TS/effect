@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as As from "./as"
 
 export function unit_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(

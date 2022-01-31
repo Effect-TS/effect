@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as C from "./_internal/cause"
-import * as T from "./_internal/effect"
-import * as Exit from "./core"
+import type * as C from "./_internal/cause.js"
+import * as T from "./_internal/effect.js"
+import * as Exit from "./core.js"
 
 /**
  * Folds over the value or cause.
@@ -100,4 +100,4 @@ export {
   zipRight,
   zipRight_,
   zipWith_
-} from "./core"
+} from "./core.js"

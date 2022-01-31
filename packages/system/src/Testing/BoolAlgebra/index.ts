@@ -1,12 +1,12 @@
-import * as A from "../../Collections/Immutable/Array"
-import * as NEA from "../../Collections/Immutable/NonEmptyArray"
-import * as T from "../../Effect"
-import * as E from "../../Either"
-import { flow, identity, pipe } from "../../Function"
-import * as O from "../../Option"
-import * as ST from "../../Structural"
-import { LazyGetter } from "../../Utils"
-import * as PR from "../Primitives"
+import * as A from "../../Collections/Immutable/Array/index.js"
+import * as NEA from "../../Collections/Immutable/NonEmptyArray/index.js"
+import * as T from "../../Effect/index.js"
+import * as E from "../../Either/index.js"
+import { flow, identity, pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
+import * as ST from "../../Structural/index.js"
+import { LazyGetter } from "../../Utils/index.js"
+import * as PR from "../Primitives/index.js"
 
 export const BoolAlgebraTypeId = Symbol()
 export const ValueTypeId = Symbol()

@@ -1,10 +1,10 @@
-import * as core from "../../../../Effect/core"
-import type { Effect } from "../../../../Effect/effect"
-import * as map from "../../../../Effect/map"
-import * as zipWith from "../../../../Effect/zipWith"
-import * as O from "../../../../Option"
-import * as Chunk from "../core"
-import * as ChunkDef from "../definition"
+import * as core from "../../../../Effect/core.js"
+import type { Effect } from "../../../../Effect/effect.js"
+import * as map from "../../../../Effect/map.js"
+import * as zipWith from "../../../../Effect/zipWith.js"
+import * as O from "../../../../Option/index.js"
+import * as Chunk from "../core.js"
+import * as ChunkDef from "../definition.js"
 
 /**
  * Transforms all elements of the chunk for as long as the specified partial function is defined.

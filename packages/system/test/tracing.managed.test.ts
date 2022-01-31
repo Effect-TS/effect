@@ -1,12 +1,12 @@
-import "../src/Tracing/Enable"
+import "../src/Tracing/Enable/index.js"
 
-import { pretty } from "../src/Cause"
-import * as T from "../src/Effect"
-import { assertsFailure } from "../src/Exit"
-//import { prettyTrace } from "../src/Fiber"
-import { pipe } from "../src/Function"
-//import { tag } from "../src/Has"
-import * as M from "../src/Managed"
+import { pretty } from "../src/Cause/index.js"
+import * as T from "../src/Effect/index.js"
+import { assertsFailure } from "../src/Exit/index.js"
+//import { prettyTrace } from "../src/Fiber/index.js"
+import { pipe } from "../src/Function/index.js"
+//import { tag } from "../src/Has/index.js"
+import * as M from "../src/Managed/index.js"
 
 describe("Tracing Managed", () => {
   it("should trace fromEffect", async () => {

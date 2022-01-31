@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import "../../Operator"
+import "../../Operator.js"
 
-import * as Chunk from "../../Collections/Immutable/Chunk"
-import * as T from "../../Effect"
-import * as P from "../../Promise"
-import type * as MQ from "../../Support/MutableQueue"
-import type * as HB from "./Hub"
+import * as Chunk from "../../Collections/Immutable/Chunk/index.js"
+import * as T from "../../Effect/index.js"
+import * as P from "../../Promise/index.js"
+import type * as MQ from "../../Support/MutableQueue/index.js"
+import type * as HB from "./Hub.js"
 
 /**
  * Unsafely completes a promise with the specified value.

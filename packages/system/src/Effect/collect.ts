@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import { compact } from "../Collections/Immutable/Chunk/api/compact"
-import type * as Chunk from "../Collections/Immutable/Chunk/core"
-import type { Option } from "../Option"
-import type { Effect } from "./effect"
-import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach"
-import { map_ } from "./map"
-import { optional } from "./optional"
+import { compact } from "../Collections/Immutable/Chunk/api/compact.js"
+import type * as Chunk from "../Collections/Immutable/Chunk/core.js"
+import type { Option } from "../Option/index.js"
+import type { Effect } from "./effect.js"
+import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach.js"
+import { map_ } from "./map.js"
+import { optional } from "./optional.js"
 
 /**
  * Evaluate each effect in the structure from left to right, collecting the

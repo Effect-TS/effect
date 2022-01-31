@@ -1,8 +1,8 @@
-import * as core from "../../../../Effect/core"
-import type { Effect } from "../../../../Effect/effect"
-import * as coreMap from "../../../../Effect/map"
-import * as Chunk from "../core"
-import { concreteId } from "../definition"
+import * as core from "../../../../Effect/core.js"
+import type { Effect } from "../../../../Effect/effect.js"
+import * as coreMap from "../../../../Effect/map.js"
+import * as Chunk from "../core.js"
+import { concreteId } from "../definition.js"
 
 /**
  * Drops all elements so long as the predicate returns true.

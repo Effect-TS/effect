@@ -2,10 +2,10 @@
 
 import type { Either } from "@effect-ts/system/Either"
 
-import type { ArrayURI } from "../../../Modules"
-import type { URI } from "../../../Prelude"
-import { getApplicativeF } from "../../../Prelude"
-import * as P from "../../../Prelude"
+import type { ArrayURI } from "../../../Modules/index.js"
+import type { URI } from "../../../Prelude/index.js"
+import { getApplicativeF } from "../../../Prelude/index.js"
+import * as P from "../../../Prelude/index.js"
 import * as A from "./operations"
 
 export const Any = P.instance<P.Any<[URI<ArrayURI>]>>({

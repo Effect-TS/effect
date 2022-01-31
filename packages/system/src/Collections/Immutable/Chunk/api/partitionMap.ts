@@ -1,7 +1,7 @@
-import type * as E from "../../../../Either"
-import * as Tp from "../../Tuple"
-import * as Chunk from "../core"
-import { forEach_ } from "./forEach"
+import type * as E from "../../../../Either/index.js"
+import * as Tp from "../../Tuple/index.js"
+import * as Chunk from "../core.js"
+import { forEach_ } from "./forEach.js"
 
 /**
  * Partitions the elements of this chunk into two chunks using the specified

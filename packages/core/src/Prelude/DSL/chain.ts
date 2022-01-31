@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function"
-import type * as HKT from "../HKT"
-import type { Monad } from "../Monad"
+import { pipe } from "../../Function/index.js"
+import type * as HKT from "../HKT/index.js"
+import type { Monad } from "../Monad/index.js"
 
 export function chainF<F extends HKT.URIS, C = HKT.Auto>(
   F: Monad<F, C>

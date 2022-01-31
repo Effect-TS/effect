@@ -1,6 +1,6 @@
-import * as O from "../../../../Option"
-import type * as Chunk from "../core"
-import { concreteId } from "../definition"
+import * as O from "../../../../Option/index.js"
+import type * as Chunk from "../core.js"
+import { concreteId } from "../definition.js"
 
 /**
  * Returns the index of the first element that satisfies the predicate.

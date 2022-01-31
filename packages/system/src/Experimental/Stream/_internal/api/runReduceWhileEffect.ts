@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect"
-import type { Predicate } from "../../../../Function"
-import * as M from "../../../../Managed"
-import type * as C from "../core"
-import * as RunReduceWhileManagedEffect from "./runReduceWhileManagedEffect"
+import * as T from "../../../../Effect/index.js"
+import type { Predicate } from "../../../../Function/index.js"
+import * as M from "../../../../Managed/index.js"
+import type * as C from "../core.js"
+import * as RunReduceWhileManagedEffect from "./runReduceWhileManagedEffect.js"
 
 /**
  * Executes an effectful fold over the stream of values.

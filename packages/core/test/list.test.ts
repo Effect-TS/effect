@@ -1,6 +1,6 @@
 import * as L from "../src/Collections/Immutable/List"
-import { pipe } from "../src/Function"
-import * as S from "../src/Sync"
+import { pipe } from "../src/Function/index.js"
+import * as S from "../src/Sync/index.js"
 
 describe("List", () => {
   it("use list", () => {

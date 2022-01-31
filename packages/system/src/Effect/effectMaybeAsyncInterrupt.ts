@@ -1,16 +1,16 @@
 // ets_tracing: off
 
-import type * as E from "../Either"
-import type { FiberID } from "../Fiber/id"
-import * as O from "../Option"
-import { AtomicReference } from "../Support/AtomicReference"
-import { OneShot } from "../Support/OneShot"
-import type { Canceler } from "./Canceler"
-import type { Cb } from "./Cb"
-import * as core from "./core"
-import type { Effect, UIO } from "./effect"
-import { flatten } from "./flatten"
-import { onInterrupt_ } from "./interruption"
+import type * as E from "../Either/index.js"
+import type { FiberID } from "../Fiber/id.js"
+import * as O from "../Option/index.js"
+import { AtomicReference } from "../Support/AtomicReference/index.js"
+import { OneShot } from "../Support/OneShot/index.js"
+import type { Canceler } from "./Canceler.js"
+import type { Cb } from "./Cb.js"
+import * as core from "./core.js"
+import type { Effect, UIO } from "./effect.js"
+import { flatten } from "./flatten.js"
+import { onInterrupt_ } from "./interruption.js"
 
 /**
  * Imports an asynchronous side-effect into an effect. The side-effect

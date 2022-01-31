@@ -1,15 +1,15 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
 /**
  * Core exports
  */
-export * from "./bindAll"
-export * from "./core"
-export * from "./derive"
-export * from "./do"
-export * from "./excl-forEach"
+export * from "./bindAll.js"
+export * from "./core.js"
+export * from "./derive.js"
+export * from "./do.js"
+export * from "./excl-forEach.js"
 export * from "./has"
-export * from "./struct"
-export * from "./tuple"
+export * from "./struct.js"
+export * from "./tuple.js"

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as Tp from "../../Collections/Immutable/Tuple"
-import type { Either } from "../../Either"
-import type * as HKT from "../HKT"
+import type * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import type { Either } from "../../Either/index.js"
+import type * as HKT from "../HKT/index.js"
 
 export interface PartitionMapWithIndex<F extends HKT.URIS, C = HKT.Auto>
   extends HKT.Base<F, C> {

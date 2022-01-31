@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { asUnit } from "./asUnit"
-import { chain_, suspend, unit } from "./core"
-import type { Effect } from "./effect"
+import { asUnit } from "./asUnit.js"
+import { chain_, suspend, unit } from "./core.js"
+import type { Effect } from "./effect.js"
 
 /**
  * The moral equivalent of `if (!p) exp`

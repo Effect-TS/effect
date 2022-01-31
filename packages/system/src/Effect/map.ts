@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { chain_, succeed } from "./core"
-import type { Effect } from "./effect"
+import { chain_, succeed } from "./core.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Returns an effect whose success is mapped by the specified `f` function.

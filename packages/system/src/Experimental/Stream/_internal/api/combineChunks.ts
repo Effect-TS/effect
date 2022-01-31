@@ -1,17 +1,17 @@
 // ets_tracing: off
 
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import * as Tp from "../../../../Collections/Immutable/Tuple"
-import * as T from "../../../../Effect"
-import type * as Ex from "../../../../Exit"
-import { pipe } from "../../../../Function"
-import * as M from "../../../../Managed"
-import type * as O from "../../../../Option"
-import * as CH from "../../Channel"
-import * as TK from "../../Take"
-import * as C from "../core"
-import * as HO from "../Handoff"
-import * as UnfoldChunkEffect from "./unfoldChunkEffect"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
+import * as T from "../../../../Effect/index.js"
+import type * as Ex from "../../../../Exit/index.js"
+import { pipe } from "../../../../Function/index.js"
+import * as M from "../../../../Managed/index.js"
+import type * as O from "../../../../Option/index.js"
+import * as CH from "../../Channel/index.js"
+import * as TK from "../../Take/index.js"
+import * as C from "../core.js"
+import * as HO from "../Handoff.js"
+import * as UnfoldChunkEffect from "./unfoldChunkEffect.js"
 
 /**
  * Combines the chunks from this stream and the specified stream by repeatedly applying the

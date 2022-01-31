@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { chain_, succeed } from "./core"
-import type { Effect } from "./effect"
+import { chain_, succeed } from "./core.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Repeats this effect while its error satisfies the specified effectful predicate.

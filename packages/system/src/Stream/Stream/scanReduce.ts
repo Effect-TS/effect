@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as T from "../_internal/effect"
-import type { Stream } from "./definitions"
-import { scanReduceM_ } from "./scanReduceM"
+import * as T from "../_internal/effect.js"
+import type { Stream } from "./definitions.js"
+import { scanReduceM_ } from "./scanReduceM.js"
 
 /**
  * Statefully maps over the elements of this stream to produce all intermediate results.

@@ -1,1 +1,1 @@
-export * from "./GroupBy"
+export * from "./GroupBy.js"

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Param } from "./fix"
-import type { Kind, URIS } from "./kind"
+import type { Param } from "./fix.js"
+import type { Kind, URIS } from "./kind.js"
 
 export type Infer<F extends URIS, C, P extends Param | "A" | "C", K> = [K] extends [
   Kind<

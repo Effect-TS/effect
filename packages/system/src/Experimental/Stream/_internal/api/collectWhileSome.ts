@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { identity } from "../../../../Function"
-import type * as O from "../../../../Option"
-import type * as C from "../core"
-import * as CollectWhile from "./collectWhile"
+import { identity } from "../../../../Function/index.js"
+import type * as O from "../../../../Option/index.js"
+import type * as C from "../core.js"
+import * as CollectWhile from "./collectWhile.js"
 
 /**
  * Terminates the stream when encountering the first `None`.

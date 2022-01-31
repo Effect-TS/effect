@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as Chunk from "../Collections/Immutable/Chunk"
-import type { Effect, UIO } from "../Effect/effect"
+import type * as Chunk from "../Collections/Immutable/Chunk/index.js"
+import type { Effect, UIO } from "../Effect/effect.js"
 
 export const _RA = Symbol()
 export type _RA = typeof _RA

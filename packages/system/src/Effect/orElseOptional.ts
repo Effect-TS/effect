@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import { pipe } from "../Function"
-import * as O from "../Option"
-import * as catchAll from "./catchAll"
-import type { Effect } from "./effect"
-import { fail } from "./fail"
+import { pipe } from "../Function/index.js"
+import * as O from "../Option/index.js"
+import * as catchAll from "./catchAll.js"
+import type { Effect } from "./effect.js"
+import { fail } from "./fail.js"
 
 /**
  * Returns an effect that will produce the value of this effect, unless it

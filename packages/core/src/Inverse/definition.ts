@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Identity } from "../Identity"
+import type { Identity } from "../Identity/index.js"
 
 export interface Inverse<A> extends Identity<A> {
   /**

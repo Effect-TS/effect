@@ -1,16 +1,16 @@
 // ets_tracing: off
 
-import * as Tp from "../Collections/Immutable/Tuple"
-import * as absolve from "../Effect/absolve"
-import * as E from "../Either"
-import { identity, pipe } from "../Function"
-import * as O from "../Option"
-import { AtomicReference } from "../Support/AtomicReference"
-import { matchTag } from "../Utils"
-import * as A from "./atomic"
-import * as T from "./effect"
-import type { Ref, XRef } from "./XRef"
-import { Atomic, concrete } from "./XRef"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import * as absolve from "../Effect/absolve.js"
+import * as E from "../Either/index.js"
+import { identity, pipe } from "../Function/index.js"
+import * as O from "../Option/index.js"
+import { AtomicReference } from "../Support/AtomicReference/index.js"
+import { matchTag } from "../Utils/index.js"
+import * as A from "./atomic.js"
+import * as T from "./effect.js"
+import type { Ref, XRef } from "./XRef.js"
+import { Atomic, concrete } from "./XRef.js"
 
 /**
  * Creates a new `XRef` with the specified value.

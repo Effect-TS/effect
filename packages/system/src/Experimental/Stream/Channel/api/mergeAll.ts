@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as C from "../core"
-import * as MergeAllWith from "./mergeAllWith"
+import type * as C from "../core.js"
+import * as MergeAllWith from "./mergeAllWith.js"
 
 export function mergeAll_<Env, InErr, InElem, InDone, OutErr, OutElem>(
   channels: C.Channel<
@@ -47,4 +47,4 @@ export function mergeAll(
   ) => mergeAll_(channels, n, bufferSize, mergeStrategy)
 }
 
-export { MergeStrategy } from "./mergeAllWith"
+export { MergeStrategy } from "./mergeAllWith.js"

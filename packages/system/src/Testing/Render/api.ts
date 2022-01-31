@@ -1,6 +1,6 @@
-import type * as L from "../../Collections/Immutable/List"
-import * as AssertionM from "../AssertionM/AssertionM"
-import * as R from "./definition"
+import type * as L from "../../Collections/Immutable/List/index.js"
+import * as AssertionM from "../AssertionM/AssertionM.js"
+import * as R from "./definition.js"
 
 /**
  * Creates a string representation of a class name.

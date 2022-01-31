@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Async } from "./core"
-import { chain_, map_, succeed } from "./core"
+import type { Async } from "./core.js"
+import { chain_, map_, succeed } from "./core.js"
 
 /**
  * Binds an effectful value in a `do` scope

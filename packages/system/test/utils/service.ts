@@ -1,9 +1,9 @@
 // trace: on
 // tracingModule: ../../src/Tracing
 
-import * as T from "../../src/Effect"
-import { service, tag } from "../../src/Has"
-import type { _A } from "../../src/Utils"
+import * as T from "../../src/Effect/index.js"
+import { service, tag } from "../../src/Has/index.js"
+import type { _A } from "../../src/Utils/index.js"
 
 export const CustomServiceId = Symbol()
 

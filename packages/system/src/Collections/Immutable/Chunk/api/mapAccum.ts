@@ -1,6 +1,6 @@
-import * as Tp from "../../Tuple"
-import * as Chunk from "../core"
-import { concreteId } from "../definition"
+import * as Tp from "../../Tuple/index.js"
+import * as Chunk from "../core.js"
+import { concreteId } from "../definition.js"
 
 /**
  * Statefully maps over the chunk, producing new elements of type `B`.

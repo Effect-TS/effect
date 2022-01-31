@@ -1,5 +1,5 @@
-import * as Tp from "../../Tuple"
-import * as Chunk from "../core"
+import * as Tp from "../../Tuple/index.js"
+import * as Chunk from "../core.js"
 
 /**
  * Returns two splits of this chunk at the specified index.

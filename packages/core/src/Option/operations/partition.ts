@@ -2,9 +2,9 @@
 
 import type * as O from "@effect-ts/system/Option"
 
-import * as Tp from "../../Collections/Immutable/Tuple"
-import type { Predicate, Refinement } from "../../Function"
-import { filter } from "./filter"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import type { Predicate, Refinement } from "../../Function/index.js"
+import { filter } from "./filter.js"
 
 /**
  * Partition

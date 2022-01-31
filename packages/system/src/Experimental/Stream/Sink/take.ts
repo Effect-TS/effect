@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as CK from "../../../Collections/Immutable/Chunk"
-import { pipe } from "../../../Function"
-import * as CH from "../Channel"
-import * as Chain from "./chain"
-import * as C from "./core"
-import * as FoldChunks from "./foldChunks"
+import * as CK from "../../../Collections/Immutable/Chunk/index.js"
+import { pipe } from "../../../Function/index.js"
+import * as CH from "../Channel/index.js"
+import * as Chain from "./chain.js"
+import * as C from "./core.js"
+import * as FoldChunks from "./foldChunks.js"
 
 /*
  * A sink that takes the specified number of values.

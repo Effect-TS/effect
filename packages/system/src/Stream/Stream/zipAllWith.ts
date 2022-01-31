@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as T from "../_internal/effect"
-import type { Stream } from "./definitions"
-import { zipAllWithExec_ } from "./zipAllWithExec"
+import * as T from "../_internal/effect.js"
+import type { Stream } from "./definitions.js"
+import { zipAllWithExec_ } from "./zipAllWithExec.js"
 
 /**
  * Zips this stream with another point-wise. The provided functions will be used to create elements

@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as CL from "../../../../Clock"
-import * as SC from "../../../../Schedule"
-import type * as C from "../core"
-import * as Schedule from "./schedule"
+import type * as CL from "../../../../Clock/index.js"
+import * as SC from "../../../../Schedule/index.js"
+import type * as C from "../core.js"
+import * as Schedule from "./schedule.js"
 
 /**
  * Emits elements of this stream with a fixed delay in between, regardless of how long it

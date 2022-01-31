@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import { NoSuchElementException } from "../GlobalExceptions"
-import * as O from "../Option"
-import { succeed } from "./core"
-import type { IO } from "./effect"
-import { fail } from "./fail"
+import { NoSuchElementException } from "../GlobalExceptions/index.js"
+import * as O from "../Option/index.js"
+import { succeed } from "./core.js"
+import type { IO } from "./effect.js"
+import { fail } from "./fail.js"
 
 /**
  * Lifts an Option into an Effect, if the option is not defined it fails with NoSuchElementException.

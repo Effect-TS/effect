@@ -1,14 +1,14 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
-import { pipe } from "../../Function"
-import * as O from "../../Option"
-import * as BP from "../../Stream/BufferedPull"
-import * as Pull from "../../Stream/Pull"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import * as Ref from "../_internal/ref"
-import { Stream } from "./definitions"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import { pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
+import * as BP from "../../Stream/BufferedPull/index.js"
+import * as Pull from "../../Stream/Pull/index.js"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import * as Ref from "../_internal/ref.js"
+import { Stream } from "./definitions.js"
 
 /**
  * Effectfully transforms all elements of the stream for as long as the specified partial function is defined.

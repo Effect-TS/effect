@@ -1,8 +1,8 @@
-import { Case } from "@effect-ts/system/Case"
+import { Case } from "@effect-ts/system/Case/index.js"
 
-import * as SS from "../../src/Collections/Immutable/SortedSet"
-import { pipe } from "../../src/Function"
-import * as Ord from "../../src/Ord"
+import * as SS from "../../src/Collections/Immutable/SortedSet/index.js"
+import { pipe } from "../../src/Function/index.js"
+import * as Ord from "../../src/Ord/index.js"
 
 class Member extends Case<{ readonly id: string }> {}
 

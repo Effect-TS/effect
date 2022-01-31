@@ -3,7 +3,7 @@
 import type { Either } from "@effect-ts/system/Either"
 import * as E from "@effect-ts/system/Either"
 
-import type { Identity } from "../../Identity"
+import type { Identity } from "../../Identity/index.js"
 
 /**
  * Fold `Identity` through `Either`

@@ -1,11 +1,11 @@
-import * as Chunk from "../../Collections/Immutable/Chunk"
-import * as List from "../../Collections/Immutable/List"
-import type * as SS from "../../Collections/Immutable/SortedSet"
-import * as E from "../../Either"
-import type * as Fiber from "../../Fiber"
-import * as St from "../../Structural"
-import type { AtomicReference } from "../../Support/AtomicReference"
-import { Int } from "../Int"
+import * as Chunk from "../../Collections/Immutable/Chunk/index.js"
+import * as List from "../../Collections/Immutable/List/index.js"
+import type * as SS from "../../Collections/Immutable/SortedSet/index.js"
+import * as E from "../../Either/index.js"
+import type * as Fiber from "../../Fiber/index.js"
+import * as St from "../../Structural/index.js"
+import type { AtomicReference } from "../../Support/AtomicReference/index.js"
+import { Int } from "../Int/index.js"
 
 /**
  * A type of annotation.

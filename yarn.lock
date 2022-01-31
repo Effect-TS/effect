@@ -1988,7 +1988,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/glob@npm:^7.2.0":
+"@types/glob@npm:*, @types/glob@npm:^7.2.0":
   version: 7.2.0
   resolution: "@types/glob@npm:7.2.0"
   dependencies:
@@ -2095,6 +2095,16 @@ __metadata:
   version: 2.4.1
   resolution: "@types/prettier@npm:2.4.1"
   checksum: df330c2d6fe7c282839b0f17701e069a9c6c96d2ff54704e933a1b3c1b98844d963a7cb00c5629d173604892ceee802312bbaeb8a97f5da21e13db8f653b519e
+  languageName: node
+  linkType: hard
+
+"@types/rimraf@npm:^3":
+  version: 3.0.2
+  resolution: "@types/rimraf@npm:3.0.2"
+  dependencies:
+    "@types/glob": "*"
+    "@types/node": "*"
+  checksum: b47fa302f46434cba704d20465861ad250df79467d3d289f9d6490d3aeeb41e8cb32dd80bd1a8fd833d1e185ac719fbf9be12e05ad9ce9be094d8ee8f1405347
   languageName: node
   linkType: hard
 
@@ -4074,6 +4084,7 @@ __metadata:
     "@types/glob": ^7.2.0
     "@types/jest": ^27.4.0
     "@types/node": ^17.0.13
+    "@types/rimraf": ^3
     "@typescript-eslint/eslint-plugin": ^5.10.1
     "@typescript-eslint/parser": ^5.10.1
     babel-plugin-annotate-pure-calls: ^0.4.0
@@ -4101,6 +4112,7 @@ __metadata:
     lerna: ^4.0.0
     prettier: ^2.5.1
     reflect-metadata: ^0.1.13
+    rimraf: ^3.0.2
     ts-jest: ^27.1.3
     ts-node: ^10.4.0
     ts-patch: ^2.0.1
@@ -4305,7 +4317,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-codegen@npm:^0.16.1":
+"eslint-plugin-codegen@npm:0.16.1":
   version: 0.16.1
   resolution: "eslint-plugin-codegen@npm:0.16.1"
   dependencies:
@@ -4323,6 +4335,27 @@ __metadata:
     read-pkg-up: ^7.0.1
     string.prototype.matchall: ^4.0.2
   checksum: 3ce1395c90a10a7a7ceca3e5cb074b042730370a587021d43f87f055108410e6e367add5e1c214201ea44f1ac7e89073a08e9288f1734d2654d48d60145297e1
+  languageName: node
+  linkType: hard
+
+"eslint-plugin-codegen@patch:eslint-plugin-codegen@0.16.1#.yarn/patches/eslint-plugin-codegen.patch::locator=effect-ts%40workspace%3A.":
+  version: 0.16.1
+  resolution: "eslint-plugin-codegen@patch:eslint-plugin-codegen@npm%3A0.16.1#.yarn/patches/eslint-plugin-codegen.patch::version=0.16.1&hash=d4982a&locator=effect-ts%40workspace%3A."
+  dependencies:
+    "@babel/core": ^7.11.6
+    "@babel/generator": ~7.12.0
+    "@babel/parser": ^7.11.5
+    "@babel/traverse": ^7.11.5
+    expect: ^26.0.0
+    fp-ts: ^2.1.0
+    glob: ^7.1.4
+    io-ts: ^2.2.4
+    io-ts-extra: 0.11.6
+    js-yaml: ^3.14.0
+    lodash: ^4.17.15
+    read-pkg-up: ^7.0.1
+    string.prototype.matchall: ^4.0.2
+  checksum: 67739741354c88226b6482f3243aefd1084822e5a34cca7826fae0aa04113f5b337ec21549f0fac3d7f20188805e41957ac3aae86adaadc01623aa50fd66af7a
   languageName: node
   linkType: hard
 

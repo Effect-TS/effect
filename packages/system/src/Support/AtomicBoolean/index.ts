@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import "../../Operator"
+import "../../Operator/index.js"
 
-import { AtomicReference } from "../AtomicReference"
+import { AtomicReference } from "../AtomicReference/index.js"
 
 export class AtomicBoolean extends AtomicReference<boolean> {
   constructor(b: boolean) {

@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-export * from "../Effect/bracket"
-export * from "../Effect/core"
-export * from "../Effect/die"
-export * from "../Effect/effect"
-export * from "../Effect/flatten"
-export * from "../Effect/map"
+export * from "../Effect/bracket.js"
+export * from "../Effect/core.js"
+export * from "../Effect/die.js"
+export * from "../Effect/effect.js"
+export * from "../Effect/flatten.js"
+export * from "../Effect/map.js"
 export * from "../Effect/zips"
-export * from "../Effect/interruption"
+export * from "../Effect/interruption.js"

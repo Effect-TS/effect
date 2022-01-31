@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { ListURI } from "../../../Modules"
-import type { URI } from "../../../Prelude"
-import * as P from "../../../Prelude"
+import type { ListURI } from "../../../Modules/index.js"
+import type { URI } from "../../../Prelude/index.js"
+import * as P from "../../../Prelude/index.js"
 import * as L from "./operations"
 
 export const Any = P.instance<P.Any<[URI<ListURI>]>>({

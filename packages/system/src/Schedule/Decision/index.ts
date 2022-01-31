@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as T from "../effect"
+import * as T from "../effect.js"
 
 export type Decision<Env, Inp, Out> = Done<Out> | Continue<Env, Inp, Out>
 

@@ -1,6 +1,6 @@
-import * as A from "../../Collections/Immutable/Chunk"
-import type { Stream } from "./definitions"
-import { mapChunks_ } from "./mapChunks"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import type { Stream } from "./definitions.js"
+import { mapChunks_ } from "./mapChunks.js"
 
 /**
  * Exposes the underlying chunks of the stream as a stream of chunks of elements

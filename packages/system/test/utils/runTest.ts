@@ -1,6 +1,6 @@
-import * as Cause from "../../src/Cause"
-import * as T from "../../src/Effect"
-import { pipe } from "../../src/Function"
+import * as Cause from "../../src/Cause/index.js"
+import * as T from "../../src/Effect/index.js"
+import { pipe } from "../../src/Function/index.js"
 
 export async function runTest<E, A>(test: T.Effect<unknown, E, A>) {
   const exit = await pipe(test, T.runPromiseExit)

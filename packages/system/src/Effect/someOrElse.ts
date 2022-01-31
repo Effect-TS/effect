@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as O from "../Option"
-import type { Effect } from "./effect"
-import { map_ } from "./map"
+import * as O from "../Option/index.js"
+import type { Effect } from "./effect.js"
+import { map_ } from "./map.js"
 
 /**
  * Extracts the optional value, or returns the given 'orElse'.

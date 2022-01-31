@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as CS from "../../../../Cause"
-import * as E from "../../../../Either"
-import * as C from "../core"
+import * as CS from "../../../../Cause/index.js"
+import * as E from "../../../../Either/index.js"
+import * as C from "../core.js"
 
 export function foldChannel_<
   Env,

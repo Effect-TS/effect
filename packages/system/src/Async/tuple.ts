@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray"
-import * as Tp from "../Collections/Immutable/Tuple"
-import type { _E, _R, ForcedTuple } from "../Utils"
-import type { Async } from "./core"
-import { map_ } from "./core"
-import { collectAll, collectAllPar } from "./excl-forEach"
+import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray/index.js"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import type { _E, _R, ForcedTuple } from "../Utils/index.js"
+import type { Async } from "./core.js"
+import { map_ } from "./core.js"
+import { collectAll, collectAllPar } from "./excl-forEach.js"
 
 export type TupleA<T extends NonEmptyArray<Async<any, any, any>>> = {
   [K in keyof T]: [T[K]] extends [Async<any, any, infer A>] ? A : never

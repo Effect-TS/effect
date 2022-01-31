@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as C from "../core"
-import * as FromIterable from "./fromIterable"
+import type * as C from "../core.js"
+import * as FromIterable from "./fromIterable.js"
 
 /**
  * Creates a stream from the specified values

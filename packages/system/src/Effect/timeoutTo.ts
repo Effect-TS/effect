@@ -1,14 +1,14 @@
 // ets_tracing: off
 
-import type { Clock } from "../Clock"
-import { pipe } from "../Function"
-import type { Has } from "../Has"
+import type { Clock } from "../Clock/index.js"
+import { pipe } from "../Function/index.js"
+import type { Has } from "../Has/index.js"
 import * as as from "./as"
-import type { Effect } from "./effect"
-import * as interruption from "./interruption"
-import * as map from "./map"
-import * as race from "./race"
-import * as sleep from "./sleep"
+import type { Effect } from "./effect.js"
+import * as interruption from "./interruption.js"
+import * as map from "./map.js"
+import * as race from "./race.js"
+import * as sleep from "./sleep.js"
 
 /**
  * Returns an effect that will timeout this effect, returning either the

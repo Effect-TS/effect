@@ -1,6 +1,6 @@
-import * as T from "../src/Effect"
-import { pipe } from "../src/Function"
-import { service, tag } from "../src/Has"
+import * as T from "../src/Effect/index.js"
+import { pipe } from "../src/Function/index.js"
+import { service, tag } from "../src/Has/index.js"
 
 // module definition
 export const CalculatorId = Symbol()

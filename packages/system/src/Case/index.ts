@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as St from "../Structural"
-import type { IsEqualTo } from "../Utils"
+import * as St from "../Structural/index.js"
+import type { IsEqualTo } from "../Utils/index.js"
 
 export const CaseBrand = Symbol()
 

@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type { Predicate } from "../../Function"
-import { not } from "../../Function"
-import type { Stream } from "./definitions"
-import { drop_ } from "./drop"
-import { dropWhile_ } from "./dropWhile"
+import type { Predicate } from "../../Function/index.js"
+import { not } from "../../Function/index.js"
+import type { Stream } from "./definitions.js"
+import { drop_ } from "./drop.js"
+import { dropWhile_ } from "./dropWhile.js"
 
 /**
  * Drops all elements of the stream until the specified predicate evaluates

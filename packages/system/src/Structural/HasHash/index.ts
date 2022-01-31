@@ -1,6 +1,6 @@
 // forked from https://github.com/frptools
 
-import { PCGRandom } from "../../Random/PCG"
+import { PCGRandom } from "../../Random/PCG/index.js"
 
 export const hashSym = Symbol()
 

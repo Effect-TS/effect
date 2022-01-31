@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as O from "../../../../Option"
-import type * as C from "../core"
-import type { Emit } from "./_internal/Emit"
-import * as AsyncMaybe from "./asyncMaybe"
+import * as O from "../../../../Option/index.js"
+import type * as C from "../core.js"
+import type { Emit } from "./_internal/Emit.js"
+import * as AsyncMaybe from "./asyncMaybe.js"
 
 /**
  * Creates a stream from an asynchronous callback that can be called multiple times.

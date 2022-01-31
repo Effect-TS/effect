@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as Tp from "../../../../Collections/Immutable/Tuple"
-import type * as T from "../../../../Effect"
-import * as GB from "../../GroupBy"
-import type * as C from "../core"
+import type * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
+import type * as T from "../../../../Effect/index.js"
+import * as GB from "../../GroupBy/index.js"
+import type * as C from "../core.js"
 
 /**
  * More powerful version of `Stream.groupByKey`

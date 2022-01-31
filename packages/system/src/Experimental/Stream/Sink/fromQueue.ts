@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as Q from "../../../Queue"
-import type * as C from "./core"
-import * as ForEachChunk from "./forEachChunk"
+import * as Q from "../../../Queue/index.js"
+import type * as C from "./core.js"
+import * as ForEachChunk from "./forEachChunk.js"
 
 /**
  * Create a sink which enqueues each element into the specified queue.

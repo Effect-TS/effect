@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type { Identity } from "../../Identity"
-import type { EitherURI } from "../../Modules"
-import * as P from "../../Prelude"
-import { getCompactF } from "./compactOption"
+import type { Identity } from "../../Identity/index.js"
+import type { EitherURI } from "../../Modules/index.js"
+import * as P from "../../Prelude/index.js"
+import { getCompactF } from "./compactOption.js"
 
 /**
  * Get `Witherable` instance given `Identity<E>`

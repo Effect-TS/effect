@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { rechunk, rechunk_ } from "./rechunk"
+import { rechunk, rechunk_ } from "./rechunk.js"
 
 /**
  * Re-chunks the elements of the stream into chunks of

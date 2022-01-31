@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { chain_, succeedWith, suspend } from "./core"
-import type { Effect, RIO } from "./effect"
-import { fail } from "./fail"
+import { chain_, succeedWith, suspend } from "./core.js"
+import type { Effect, RIO } from "./effect.js"
+import { fail } from "./fail.js"
 
 /**
  * Evaluate the predicate,

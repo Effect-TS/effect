@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect"
-import * as Ex from "../../../../Exit"
-import * as CH from "../../Channel"
-import * as MH from "../../Channel/_internal/mergeHelpers"
-import * as C from "../core"
-import * as Map from "./map"
+import * as T from "../../../../Effect/index.js"
+import * as Ex from "../../../../Exit/index.js"
+import * as MH from "../../Channel/_internal/mergeHelpers.js"
+import * as CH from "../../Channel/index.js"
+import * as C from "../core.js"
+import * as Map from "./map.js"
 
 export type TerminationStrategy = "Left" | "Right" | "Both" | "Either"
 

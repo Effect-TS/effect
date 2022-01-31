@@ -1,16 +1,15 @@
 // ets_tracing: off
 
-import * as C from "../Cause"
-import * as CL from "../Clock"
-import * as Tp from "../Collections/Immutable/Tuple"
-import * as E from "../Either"
-import { identity as idFn, pipe } from "../Function"
-import type { Has, Tag } from "../Has"
-import { mergeEnvironments } from "../Has"
-import type * as SC from "../Schedule"
-import type * as SCD from "../Schedule/Decision"
-import type { UnionToIntersection } from "../Utils"
-import type { Layer, MergeA, MergeE, MergeR } from "./definitions"
+import * as C from "../Cause/index.js"
+import * as CL from "../Clock/index.js"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import * as E from "../Either/index.js"
+import { identity as idFn, pipe } from "../Function/index.js"
+import type { Has, Tag } from "../Has/index.js"
+import { mergeEnvironments } from "../Has/index.js"
+import type * as SCD from "../Schedule/Decision/index.js"
+import type * as SC from "../Schedule/index.js"
+import type { UnionToIntersection } from "../Utils/index.js"
 import {
   build,
   compose_,
@@ -30,8 +29,9 @@ import {
   LayerZipWithPar,
   LayerZipWithSeq
 } from "./definitions"
-import * as T from "./deps-effect"
-import * as M from "./deps-managed"
+import type { Layer, MergeA, MergeE, MergeR } from "./definitions.js"
+import * as T from "./deps-effect.js"
+import * as M from "./deps-managed.js"
 
 export * from "./definitions"
 

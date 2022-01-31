@@ -1,4 +1,4 @@
 // codegen:start {preset: barrel, include: ./*.ts}
-export * from "./api"
-export * from "./definition"
+export * from "./api.js"
+export * from "./definition.js"
 // codegen:end

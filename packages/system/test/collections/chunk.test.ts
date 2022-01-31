@@ -1,8 +1,8 @@
-import * as Chunk from "../../src/Collections/Immutable/Chunk"
-import * as Tp from "../../src/Collections/Immutable/Tuple"
-import * as T from "../../src/Effect"
-import { pipe } from "../../src/Function"
-import * as O from "../../src/Option"
+import * as Chunk from "../../src/Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../src/Collections/Immutable/Tuple/index.js"
+import * as T from "../../src/Effect/index.js"
+import { pipe } from "../../src/Function/index.js"
+import * as O from "../../src/Option/index.js"
 
 describe("Chunk", () => {
   it("find & concat", () => {

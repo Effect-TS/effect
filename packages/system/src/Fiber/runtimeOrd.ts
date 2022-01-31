@@ -1,6 +1,6 @@
-import * as Ord from "../Ord"
-import * as Ordering from "../Ordering"
-import type * as Fiber from "./core"
+import * as Ord from "../Ord/index.js"
+import * as Ordering from "../Ordering/index.js"
+import type * as Fiber from "./core.js"
 
 export const runtimeOrd = <E, A>() =>
   Ord.makeOrd<Fiber.Runtime<E, A>>((x, y) =>

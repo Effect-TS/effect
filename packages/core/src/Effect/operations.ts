@@ -1,11 +1,11 @@
 /* eslint-disable prefer-rest-params */
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
 import * as T from "@effect-ts/system/Effect"
 
-import type * as P from "../Prelude"
+import type * as P from "../Prelude/index.js"
 
 /**
  * Like forEach but preserves the type of the collection used
