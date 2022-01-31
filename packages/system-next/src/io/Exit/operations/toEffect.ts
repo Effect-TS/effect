@@ -3,6 +3,8 @@ import type { Exit } from "../definition"
 
 /**
  * Converts the `Exit` to an `Effect`.
+ *
+ * @tsplus fluent ets/Exit toEffect
  */
 export function toEffect<E, A>(
   self: Exit<E, A>,

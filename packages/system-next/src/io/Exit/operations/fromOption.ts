@@ -1,13 +1,14 @@
 import type { Option } from "../../../data/Option"
-import type { Exit } from "../definition"
-import { fail } from "./fail"
-import { succeed } from "./succeed"
+import { Exit } from "../definition"
 
+/**
+ * @tsplus static ets/ExitOps fromOption
+ */
 export function fromOption<A>(option: Option<A>): Exit<void, A> {
   switch (option._tag) {
     case "None":
-      return fail(undefined)
+      return Exit.fail(undefined)
     case "Some":
-      return succeed(option.value)
+      return Exit.succeed(option.value)
   }
 }

@@ -1,11 +1,12 @@
 import type { Exit } from "../definition"
-import { map_ } from "./map"
 
 /**
  * Replaces the success value with the one provided.
+ *
+ * @tsplus fluent ets/Exit as
  */
 export function as_<E, A, A1>(self: Exit<E, A>, value: A1): Exit<E, A1> {
-  return map_(self, () => value)
+  return self.map(() => value)
 }
 
 /**
@@ -14,5 +15,5 @@ export function as_<E, A, A1>(self: Exit<E, A>, value: A1): Exit<E, A1> {
  * @ets_data_first as_
  */
 export function as<A>(value: A) {
-  return <E, A1>(self: Exit<E, A1>): Exit<E, A> => as_(self, value)
+  return <E, A1>(self: Exit<E, A1>): Exit<E, A> => self.as(value)
 }

@@ -4,6 +4,8 @@ import type { Exit } from "../definition"
 
 /**
  * Returns an option of the cause of failure.
+ *
+ * @tsplus fluent ets/Exit causeOption
  */
 export function causeOption<E, A>(self: Exit<E, A>): Option<Cause<E>> {
   switch (self._tag) {
