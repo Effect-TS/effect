@@ -1,5 +1,4 @@
 import type { Effect } from "../definition"
-import { acquireReleaseExitWith_ } from "./acquireReleaseExitWith"
 
 /**
  * When this effect represents acquisition of a resource (for example, opening
@@ -31,7 +30,7 @@ export function acquireReleaseWith_<R, E, A, R1, E1, A1, R2, E2, A2>(
   release: (a: A) => Effect<R2, E2, A2>,
   __etsTrace?: string
 ): Effect<R & R1 & R2, E | E1 | E2, A1> {
-  return acquireReleaseExitWith_(acquire, use, (a, _) => release(a), __etsTrace)
+  return acquire.acquireReleaseExitWith(use, (a, _) => release(a))
 }
 
 /**
@@ -64,5 +63,5 @@ export function acquireReleaseWith<A, E1, R1, A1, R2, E2, A2>(
   __etsTrace?: string
 ) {
   return <R, E>(acquire: Effect<R, E, A>): Effect<R & R1 & R2, E | E1 | E2, A1> =>
-    acquireReleaseWith_(acquire, use, release, __etsTrace)
+    acquireReleaseWith_(acquire, use, release)
 }

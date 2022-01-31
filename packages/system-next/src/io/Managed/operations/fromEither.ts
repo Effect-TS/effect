@@ -1,21 +1,15 @@
 import type { Either } from "../../../data/Either"
-import { fold } from "../../../data/Either"
-import type { Managed } from "../definition"
-import { chain_ } from "./chain"
-import { failNow } from "./failNow"
-import { succeed } from "./succeed"
-import { succeedNow } from "./succeedNow"
+import type { LazyArg } from "../../../data/Function"
+import { Managed } from "../definition"
 
 /**
  * Lifts an `Either` into a `Managed` value.
+ *
+ * @ets static ets/ManagedOps fromEither
  */
 export function fromEither<E, A>(
-  either: Either<E, A>,
-  __trace?: string
+  f: LazyArg<Either<E, A>>,
+  __etsTrace?: string
 ): Managed<unknown, E, A> {
-  return chain_(
-    succeed(() => either),
-    fold(failNow, succeedNow),
-    __trace
-  )
+  return Managed.succeed(f).flatMap((e) => e.fold(Managed.failNow, Managed.succeedNow))
 }

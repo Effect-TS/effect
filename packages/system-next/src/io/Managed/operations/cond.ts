@@ -1,28 +1,17 @@
-import type { Managed } from "../definition"
-import { fail } from "./fail"
-import { succeed } from "./succeed"
-
-/**
- * Evaluate the predicate, return the given `A` as success if predicate returns
- * true, and the given `E` as error otherwise.
- */
-export function cond_<E, A>(
-  pred: boolean,
-  result: () => A,
-  error: () => E
-): Managed<unknown, E, A> {
-  return pred ? succeed(result) : fail(error)
-}
+import type { LazyArg } from "../../../data/Function"
+import { Managed } from "../definition"
 
 /**
  * Evaluate the predicate, return the given `A` as success if predicate returns
  * true, and the given `E` as error otherwise.
  *
- * @ets_data_first cond_
+ * @ets static ets/ManagedOps cond
  */
 export function cond<E, A>(
-  result: () => A,
-  error: () => E
-): (pred: boolean) => Managed<unknown, E, A> {
-  return (pred) => cond_(pred, result, error)
+  pred: LazyArg<boolean>,
+  result: LazyArg<A>,
+  error: LazyArg<E>,
+  __etsTrace?: string
+): Managed<unknown, E, A> {
+  return Managed.suspend(pred() ? Managed.succeed(result) : Managed.fail(error))
 }

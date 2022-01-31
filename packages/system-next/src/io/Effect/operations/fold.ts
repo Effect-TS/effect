@@ -18,8 +18,7 @@ export function fold_<R, E, A, A2, A3>(
   return foldEffect_(
     self,
     (e) => succeedNow(failure(e)),
-    (a) => succeedNow(success(a)),
-    __etsTrace
+    (a) => succeedNow(success(a))
   )
 }
 
@@ -35,6 +34,5 @@ export function fold<E, A, A2, A3>(
   success: (a: A) => A3,
   __etsTrace?: string
 ) {
-  return <R>(self: Effect<R, E, A>): RIO<R, A2 | A3> =>
-    fold_(self, failure, success, __etsTrace)
+  return <R>(self: Effect<R, E, A>): RIO<R, A2 | A3> => fold_(self, failure, success)
 }

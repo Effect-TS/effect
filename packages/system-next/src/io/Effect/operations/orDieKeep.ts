@@ -1,8 +1,5 @@
 import * as Cause from "../../Cause"
-import type { Effect } from "../definition"
-import { failCause } from "./failCause"
-import { foldCauseEffect_ } from "./foldCauseEffect"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
 
 /**
  * Converts all failures to unchecked exceptions.
@@ -10,10 +7,9 @@ import { succeedNow } from "./succeedNow"
  * @ets fluent ets/Effect orDieKeep
  */
 export function orDieKeep<R, E, A>(effect: Effect<R, E, A>, __etsTrace?: string) {
-  return foldCauseEffect_(
-    effect,
-    (ce) => failCause(Cause.chain_(ce, Cause.die)),
-    succeedNow,
+  return effect.foldCauseEffect(
+    (ce) => Effect.failCauseNow(Cause.chain_(ce, Cause.die)),
+    Effect.succeedNow,
     __etsTrace
   )
 }

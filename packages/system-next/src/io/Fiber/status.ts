@@ -1,4 +1,4 @@
-import * as IO from "../../io-light/IO"
+import { IO } from "../../io-light/IO"
 import * as St from "../../prelude/Structural"
 import type * as FiberId from "../FiberId"
 import type { TraceElement } from "../TraceElement"
@@ -86,10 +86,10 @@ export function isDone(status: Status): boolean {
 }
 
 export function isInterrupting(status: Status): boolean {
-  return IO.run(isInterruptingSafe(status))
+  return isInterruptingSafe(status).run()
 }
 
-function isInterruptingSafe(status: Status): IO.IO<boolean> {
+function isInterruptingSafe(status: Status): IO<boolean> {
   switch (status._tag) {
     case "Done": {
       return IO.succeed(false)
@@ -101,13 +101,13 @@ function isInterruptingSafe(status: Status): IO.IO<boolean> {
       return IO.succeed(status.interrupting)
     }
     case "Suspended": {
-      return IO.suspend(() => isInterruptingSafe(status.previous))
+      return IO.suspend(isInterruptingSafe(status.previous))
     }
   }
 }
 
 function withInterruptingSafe(b: boolean) {
-  return (status: Status): IO.IO<Status> => {
+  return (status: Status): IO<Status> => {
     switch (status._tag) {
       case "Done": {
         return IO.succeed(status)
@@ -119,8 +119,7 @@ function withInterruptingSafe(b: boolean) {
         return IO.succeed(new Running(b))
       }
       case "Suspended": {
-        return IO.map_(
-          IO.suspend(() => withInterruptingSafe(b)(status.previous)),
+        return IO.suspend(withInterruptingSafe(b)(status.previous)).map(
           (previous) =>
             new Suspended(
               previous,
@@ -136,14 +135,14 @@ function withInterruptingSafe(b: boolean) {
 }
 
 export function withInterrupting(b: boolean) {
-  return (status: Status) => IO.run(withInterruptingSafe(b)(status))
+  return (status: Status) => withInterruptingSafe(b)(status).run()
 }
 
 export function toFinishing(status: Status): Status {
-  return IO.run(toFinishingSafe(status))
+  return toFinishingSafe(status).run()
 }
 
-function toFinishingSafe(status: Status): IO.IO<Status> {
+function toFinishingSafe(status: Status): IO<Status> {
   switch (status._tag) {
     case "Done": {
       return IO.succeed(status)
@@ -155,7 +154,7 @@ function toFinishingSafe(status: Status): IO.IO<Status> {
       return IO.succeed(status)
     }
     case "Suspended": {
-      return IO.suspend(() => toFinishingSafe(status.previous))
+      return IO.suspend(toFinishingSafe(status.previous))
     }
   }
 }

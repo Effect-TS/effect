@@ -1,6 +1,4 @@
-import type { Effect } from "../definition"
-import { environment } from "./environment"
-import { zip_ } from "./zip"
+import { Effect } from "../definition"
 
 /**
  * Propagates the success value to the second element of a tuple, but
@@ -10,5 +8,5 @@ import { zip_ } from "./zip"
  * @ets fluent ets/Effect onSecond
  */
 export function onSecond<R, E, A>(self: Effect<R, E, A>, __etsTrace?: string) {
-  return zip_(environment<R>(), self, __etsTrace)
+  return Effect.environment<R>().zip(self)
 }

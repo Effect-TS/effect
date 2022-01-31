@@ -1,5 +1,5 @@
 import { _A } from "../../support/Symbols"
-import type { UIO } from "./_internal/effect"
+import type { UIO } from "../Effect"
 
 /**
  * A `Counter` is a metric representing a single numerical value that may be

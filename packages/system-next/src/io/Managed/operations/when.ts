@@ -1,19 +1,18 @@
+import type { LazyArg } from "../../../data/Function"
 import type { Option } from "../../../data/Option"
-import { none } from "../../../data/Option"
-import type { Managed } from "../definition"
-import { asSome } from "./asSome"
-import { succeedNow } from "./succeedNow"
-import { suspend } from "./suspend"
+import { Managed } from "../definition"
 
 /**
- * The moral equivalent of `if (p) exp`
+ * The moral equivalent of `if (p) exp`.
+ *
+ * @ets fluent ets/Managed when
  */
 export function when_<R, E, A>(
   self: Managed<R, E, A>,
-  b: () => boolean,
-  __trace?: string
+  b: LazyArg<boolean>,
+  __etsTrace?: string
 ): Managed<R, E, Option<A>> {
-  return suspend(() => (b() ? asSome(self) : succeedNow(none)), __trace)
+  return Managed.suspend(b() ? self.asSome() : Managed.none)
 }
 
 /**
@@ -21,7 +20,6 @@ export function when_<R, E, A>(
  *
  * @ets_data_first when_
  */
-export function when(b: () => boolean, __trace?: string) {
-  return <R, E, A>(self: Managed<R, E, A>): Managed<R, E, Option<A>> =>
-    when_(self, b, __trace)
+export function when(b: LazyArg<boolean>, __etsTrace?: string) {
+  return <R, E, A>(self: Managed<R, E, A>): Managed<R, E, Option<A>> => when_(self, b)
 }

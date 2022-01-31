@@ -1,7 +1,6 @@
 import type { FiberId } from "../../FiberId"
 import type { UIO } from "../definition"
-import { descriptor } from "./descriptor"
-import { map_ } from "./map"
+import { Effect } from "../definition"
 
 /**
  * Returns the `FiberId` of the fiber executing the effect that calls this
@@ -9,4 +8,4 @@ import { map_ } from "./map"
  *
  * @ets static ets/EffectOps fiberId
  */
-export const fiberId: UIO<FiberId> = map_(descriptor, (_) => _.id)
+export const fiberId: UIO<FiberId> = Effect.descriptor.map((_) => _.id)

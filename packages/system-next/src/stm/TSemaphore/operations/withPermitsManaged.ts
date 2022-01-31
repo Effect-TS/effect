@@ -1,5 +1,4 @@
-import type { Managed } from "../../../io/Managed"
-import { acquireReleaseInterruptible_ } from "../../../io/Managed/operations/acquireReleaseInterruptible"
+import { Managed } from "../../../io/Managed"
 import * as STM from "../../STM"
 import type { TSemaphore } from "../definition"
 import { acquireN_ } from "./acquireN"
@@ -14,7 +13,7 @@ export function withPermitsManaged_(
   permits: number,
   __trace?: string
 ): Managed<unknown, never, void> {
-  return acquireReleaseInterruptible_(
+  return Managed.acquireReleaseInterruptible(
     STM.commit(acquireN_(self, permits)),
     STM.commit(releaseN_(self, permits)),
     __trace

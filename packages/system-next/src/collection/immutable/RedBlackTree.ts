@@ -1,9 +1,9 @@
 import * as A from "../../collection/immutable/Array"
-import * as Tp from "../../collection/immutable/Tuple"
+import { Tuple } from "../../collection/immutable/Tuple"
 import { tuple } from "../../data/Function"
-import * as O from "../../data/Option"
+import { Option } from "../../data/Option"
 import { Stack } from "../../data/Stack"
-import type * as Ord from "../../prelude/Ord"
+import type { Ord } from "../../prelude/Ord"
 import type { Ordering } from "../../prelude/Ordering"
 import * as St from "../../prelude/Structural"
 import * as I from "./Iterable"
@@ -46,7 +46,7 @@ function recountNode<K, V>(node: Node<K, V>) {
  * A Red-Black Tree Iterable
  */
 export interface RedBlackTreeIterable<K, V> extends Iterable<readonly [K, V]> {
-  readonly ord: Ord.Ord<K>
+  readonly ord: Ord<K>
 
   [Symbol.iterator](): RedBlackTreeIterator<K, V>
 }
@@ -57,7 +57,7 @@ export interface RedBlackTreeIterable<K, V> extends Iterable<readonly [K, V]> {
 export class RedBlackTree<K, V> implements RedBlackTreeIterable<K, V> {
   readonly _K!: () => K
   readonly _V!: () => V
-  constructor(readonly ord: Ord.Ord<K>, readonly root: Node<K, V> | undefined) {}
+  constructor(readonly ord: Ord<K>, readonly root: Node<K, V> | undefined) {}
 
   [Symbol.iterator](): RedBlackTreeIterator<K, V> {
     const stack: Node<K, V>[] = []
@@ -85,7 +85,7 @@ export class RedBlackTree<K, V> implements RedBlackTreeIterable<K, V> {
 /**
  * Creates a new Red-Black Tree
  */
-export function make<K, V>(ord: Ord.Ord<K>) {
+export function make<K, V>(ord: Ord<K>) {
   return new RedBlackTree<K, V>(ord, undefined)
 }
 
@@ -284,8 +284,8 @@ export function insert<K, V>(key: K, value: V) {
  */
 export function visitFull<K, V, A>(
   node: Node<K, V>,
-  visit: (key: K, value: V) => O.Option<A>
-): O.Option<A> {
+  visit: (key: K, value: V) => Option<A>
+): Option<A> {
   let current: Node<K, V> | undefined = node
   let stack: Stack<Node<K, V>> | undefined = undefined
   let done = false
@@ -297,7 +297,7 @@ export function visitFull<K, V, A>(
     } else if (stack) {
       const v = visit(stack.value.key, stack.value.value)
 
-      if (O.isSome(v)) {
+      if (v.isSome()) {
         return v
       }
 
@@ -308,7 +308,7 @@ export function visitFull<K, V, A>(
     }
   }
 
-  return O.none
+  return Option.none
 }
 
 /**
@@ -321,7 +321,7 @@ export function forEach_<K, V>(
   if (self.root) {
     visitFull(self.root, (key, value) => {
       visit(key, value)
-      return O.none
+      return Option.none
     })
   }
 }
@@ -339,9 +339,9 @@ export function forEach<K, V>(visit: (key: K, value: V) => void) {
 export function visitGe<K, V, A>(
   node: Node<K, V>,
   min: K,
-  ord: Ord.Ord<K>,
-  visit: (key: K, value: V) => O.Option<A>
-): O.Option<A> {
+  ord: Ord<K>,
+  visit: (key: K, value: V) => Option<A>
+): Option<A> {
   let current: Node<K, V> | undefined = node
   let stack: Stack<Node<K, V>> | undefined = undefined
   let done = false
@@ -358,7 +358,7 @@ export function visitGe<K, V, A>(
       if (ord.compare(min, stack.value.key) <= 0) {
         const v = visit(stack.value.key, stack.value.value)
 
-        if (O.isSome(v)) {
+        if (v.isSome()) {
           return v
         }
       }
@@ -369,7 +369,7 @@ export function visitGe<K, V, A>(
     }
   }
 
-  return O.none
+  return Option.none
 }
 
 /**
@@ -383,7 +383,7 @@ export function forEachGe_<K, V>(
   if (self.root) {
     visitGe(self.root, min, self.ord, (key, value) => {
       visit(key, value)
-      return O.none
+      return Option.none
     })
   }
 }
@@ -401,9 +401,9 @@ export function forEachGe<K, V>(min: K, visit: (key: K, value: V) => void) {
 export function visitLt<K, V, A>(
   node: Node<K, V>,
   max: K,
-  ord: Ord.Ord<K>,
-  visit: (key: K, value: V) => O.Option<A>
-): O.Option<A> {
+  ord: Ord<K>,
+  visit: (key: K, value: V) => Option<A>
+): Option<A> {
   let current: Node<K, V> | undefined = node
   let stack: Stack<Node<K, V>> | undefined = undefined
   let done = false
@@ -415,7 +415,7 @@ export function visitLt<K, V, A>(
     } else if (stack && ord.compare(max, stack.value.key) > 0) {
       const v = visit(stack.value.key, stack.value.value)
 
-      if (O.isSome(v)) {
+      if (v.isSome()) {
         return v
       }
 
@@ -426,7 +426,7 @@ export function visitLt<K, V, A>(
     }
   }
 
-  return O.none
+  return Option.none
 }
 
 /**
@@ -440,7 +440,7 @@ export function forEachLt_<K, V>(
   if (self.root) {
     visitLt(self.root, max, self.ord, (key, value) => {
       visit(key, value)
-      return O.none
+      return Option.none
     })
   }
 }
@@ -459,9 +459,9 @@ export function visitBetween<K, V, A>(
   node: Node<K, V>,
   min: K,
   max: K,
-  ord: Ord.Ord<K>,
-  visit: (key: K, value: V) => O.Option<A>
-): O.Option<A> {
+  ord: Ord<K>,
+  visit: (key: K, value: V) => Option<A>
+): Option<A> {
   let current: Node<K, V> | undefined = node
   let stack: Stack<Node<K, V>> | undefined = undefined
   let done = false
@@ -478,7 +478,7 @@ export function visitBetween<K, V, A>(
       if (ord.compare(min, stack.value.key) <= 0) {
         const v = visit(stack.value.key, stack.value.value)
 
-        if (O.isSome(v)) {
+        if (v.isSome()) {
           return v
         }
       }
@@ -490,7 +490,7 @@ export function visitBetween<K, V, A>(
     }
   }
 
-  return O.none
+  return Option.none
 }
 
 /**
@@ -505,7 +505,7 @@ export function forEachBetween_<K, V>(
   if (self.root) {
     visitBetween(self.root, min, max, self.ord, (key, value) => {
       visit(key, value)
-      return O.none
+      return Option.none
     })
   }
 }
@@ -759,8 +759,7 @@ export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
     } else {
       this.movePrev()
     }
-    return O.fold_(
-      entry,
+    return entry.fold(
       () => ({ done: true, value: this.count }),
       (kv) => ({ done: false, value: kv })
     )
@@ -769,36 +768,36 @@ export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
   /**
    * Returns the key
    */
-  get key(): O.Option<K> {
+  get key(): Option<K> {
     if (this.stack.length > 0) {
-      return O.some(this.stack[this.stack.length - 1]!.key)
+      return Option.some(this.stack[this.stack.length - 1]!.key)
     }
-    return O.none
+    return Option.none
   }
 
   /**
    * Returns the value
    */
-  get value(): O.Option<V> {
+  get value(): Option<V> {
     if (this.stack.length > 0) {
-      return O.some(this.stack[this.stack.length - 1]!.value)
+      return Option.some(this.stack[this.stack.length - 1]!.value)
     }
-    return O.none
+    return Option.none
   }
 
   /**
    * Returns the key
    */
-  get entry(): O.Option<readonly [K, V]> {
+  get entry(): Option<readonly [K, V]> {
     if (this.stack.length > 0) {
-      return O.some(
+      return Option.some(
         tuple(
           this.stack[this.stack.length - 1]!.key,
           this.stack[this.stack.length - 1]!.value
         )
       )
     }
-    return O.none
+    return Option.none
   }
 
   /**
@@ -917,27 +916,27 @@ export class RedBlackTreeIterator<K, V> implements Iterator<readonly [K, V]> {
 /**
  * Returns the first entry in the tree
  */
-export function getFirst<K, V>(tree: RedBlackTree<K, V>): O.Option<Tp.Tuple<[K, V]>> {
+export function getFirst<K, V>(tree: RedBlackTree<K, V>): Option<Tuple<[K, V]>> {
   let n: Node<K, V> | undefined = tree.root
   let c: Node<K, V> | undefined = tree.root
   while (n) {
     c = n
     n = n.left
   }
-  return c ? O.some(Tp.tuple(c.key, c.value)) : O.none
+  return c ? Option.some(Tuple(c.key, c.value)) : Option.none
 }
 
 /**
  * Returns the last entry in the tree
  */
-export function getLast<K, V>(tree: RedBlackTree<K, V>): O.Option<Tp.Tuple<[K, V]>> {
+export function getLast<K, V>(tree: RedBlackTree<K, V>): Option<Tuple<[K, V]>> {
   let n: Node<K, V> | undefined = tree.root
   let c: Node<K, V> | undefined = tree.root
   while (n) {
     c = n
     n = n.right
   }
-  return c ? O.some(Tp.tuple(c.key, c.value)) : O.none
+  return c ? Option.some(Tuple(c.key, c.value)) : Option.none
 }
 
 /**
@@ -996,9 +995,9 @@ export function at(idx: number) {
 export function getAt_<K, V>(
   tree: RedBlackTree<K, V>,
   idx: number
-): O.Option<Tp.Tuple<[K, V]>> {
+): Option<Tuple<[K, V]>> {
   if (idx < 0) {
-    return O.none
+    return Option.none
   }
   let n = tree.root
   let node: Node<K, V> | undefined = undefined
@@ -1012,7 +1011,7 @@ export function getAt_<K, V>(
       idx -= n.left.count
     }
     if (!idx) {
-      return O.some(Tp.tuple(node.key, node.value))
+      return Option.some(Tuple(node.key, node.value))
     }
     idx -= 1
     if (n.right) {
@@ -1024,7 +1023,7 @@ export function getAt_<K, V>(
       break
     }
   }
-  return O.none
+  return Option.none
 }
 
 /**
@@ -1032,7 +1031,7 @@ export function getAt_<K, V>(
  */
 export function getAt(
   idx: number
-): <K, V>(tree: RedBlackTree<K, V>) => O.Option<Tp.Tuple<[K, V]>> {
+): <K, V>(tree: RedBlackTree<K, V>) => Option<Tuple<[K, V]>> {
   return (tree) => getAt_(tree, idx)
 }
 
@@ -1245,8 +1244,7 @@ export function values_<K, V>(
       } else {
         begin.movePrev()
       }
-      return O.fold_(
-        entry,
+      return entry.fold(
         () => ({ value: count, done: true }),
         (entry) => ({ value: entry, done: false })
       )
@@ -1282,8 +1280,7 @@ export function keys_<K, V>(
       } else {
         begin.movePrev()
       }
-      return O.fold_(
-        entry,
+      return entry.fold(
         () => ({ value: count, done: true }),
         (entry) => ({ value: entry, done: false })
       )
@@ -1306,10 +1303,10 @@ export function keys(
 export function from<K, V>(iterable: RedBlackTreeIterable<K, V>): RedBlackTree<K, V>
 export function from<K, V>(
   iterable: Iterable<readonly [K, V]>,
-  ord: Ord.Ord<K>
+  ord: Ord<K>
 ): RedBlackTree<K, V>
 export function from<K, V>(
-  ...args: [RedBlackTreeIterable<K, V>] | [Iterable<readonly [K, V]>, Ord.Ord<K>]
+  ...args: [RedBlackTreeIterable<K, V>] | [Iterable<readonly [K, V]>, Ord<K>]
 ): RedBlackTree<K, V> {
   let tree = args.length === 2 ? make<K, V>(args[1]) : make<K, V>(args[0].ord)
 
@@ -1351,13 +1348,13 @@ export function find<K>(key: K): <V>(tree: RedBlackTree<K, V>) => A.Array<V> {
 /**
  * Finds the item with key if it exists
  */
-export function findFirst_<K, V>(tree: RedBlackTree<K, V>, key: K): O.Option<V> {
+export function findFirst_<K, V>(tree: RedBlackTree<K, V>, key: K): Option<V> {
   const cmp = tree.ord.compare
   let n = tree.root
   while (n) {
     const d = cmp(key, n.key)
     if (St.equals(key, n.key)) {
-      return O.some(n.value)
+      return Option.some(n.value)
     }
     if (d <= 0) {
       n = n.left
@@ -1365,13 +1362,13 @@ export function findFirst_<K, V>(tree: RedBlackTree<K, V>, key: K): O.Option<V> 
       n = n.right
     }
   }
-  return O.none
+  return Option.none
 }
 
 /**
  * Finds the item with key if it exists
  */
-export function findFirst<K>(key: K): <V>(tree: RedBlackTree<K, V>) => O.Option<V> {
+export function findFirst<K>(key: K): <V>(tree: RedBlackTree<K, V>) => Option<V> {
   return (tree) => findFirst_(tree, key)
 }
 

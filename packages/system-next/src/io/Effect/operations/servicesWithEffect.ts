@@ -2,8 +2,7 @@ import * as A from "../../../collection/immutable/Array"
 import * as D from "../../../collection/immutable/Dictionary"
 import type { Has, Tag } from "../../../data/Has"
 import type { UnionToIntersection } from "../../../data/Utils"
-import type { Effect } from "../definition"
-import { environmentWithEffect } from "./environmentWithEffect"
+import { Effect } from "../definition"
 
 // TODO(Mike/Max): Improve naming
 
@@ -19,15 +18,14 @@ export function servicesWithEffectS<SS extends Record<string, Tag<any>>>(s: SS) 
     }) => Effect<R, E, B>,
     __etsTrace?: string
   ) =>
-    environmentWithEffect(
+    Effect.environmentWithEffect(
       (
         r: UnionToIntersection<
           {
             [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? Has<T> : unknown
           }[keyof SS]
         >
-      ) => f(D.map_(s, (v) => r[v.key]) as any),
-      __etsTrace
+      ) => f(D.map_(s, (v) => r[v.key]) as any)
     )
 }
 
@@ -45,14 +43,13 @@ export function servicesWithEffectT<SS extends Tag<any>[]>(...s: SS) {
     ) => Effect<R, E, B>,
     __etsTrace?: string
   ) =>
-    environmentWithEffect(
+    Effect.environmentWithEffect(
       (
         r: UnionToIntersection<
           {
             [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? Has<T> : never
           }[keyof SS & number]
         >
-      ) => f(...(A.map_(s, (v) => r[v.key]) as any)),
-      __etsTrace
+      ) => f(...(A.map_(s, (v) => r[v.key]) as any))
     )
 }

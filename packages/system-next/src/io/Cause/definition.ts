@@ -1,11 +1,10 @@
 import * as HS from "../../collection/immutable/HashSet"
-import * as L from "../../collection/immutable/List/core"
-import * as Tp from "../../collection/immutable/Tuple"
-import { tuple } from "../../data/Function/core"
+import { List } from "../../collection/immutable/List"
+import { Tuple } from "../../collection/immutable/Tuple"
 import { Stack } from "../../data/Stack"
 import type { Trace } from "../../io/Trace/definition"
 import { none } from "../../io/Trace/operations/none"
-import * as IO from "../../io-light/IO/core"
+import { IO } from "../../io-light/IO/core"
 import * as St from "../../prelude/Structural"
 import type { FiberId } from "../FiberId/definition"
 
@@ -20,11 +19,29 @@ import type { FiberId } from "../FiberId/definition"
 // Model
 // -----------------------------------------------------------------------------
 
-export const CauseSym = Symbol()
+export const CauseSym = Symbol.for("@effect-ts/system/io/Cause")
 
+/**
+ * @ets type ets/Cause
+ */
 export interface Cause<E> {
   readonly [CauseSym]: typeof CauseSym
   readonly _E: () => E
+}
+
+/**
+ * @ets type ets/CauseOps
+ */
+export interface CauseOps {}
+export const Cause: CauseOps = {}
+
+/**
+ * @ets unify ets/Cause
+ */
+export function unify<X extends Cause<any>>(
+  self: X
+): Cause<[X] extends [Cause<infer CX>] ? CX : never> {
+  return self
 }
 
 export type RealCause<E> =
@@ -36,34 +53,66 @@ export type RealCause<E> =
   | Then<E>
   | Both<E>
 
+// TODO(Mike/Max): ets_optimize (?)
+// TODO(Mike/Max): expose (?)
+/**
+ * @ets_optimize remove
+ */
 export function realCause<E>(cause: Cause<E>): asserts cause is RealCause<E> {
   //
 }
 
+/**
+ * @ets fluent ets/Cause isEmptyType
+ */
 export function isEmptyType<E>(cause: Cause<E>): cause is Empty {
   realCause(cause)
   return cause._tag === "Empty"
 }
+
+/**
+ * @ets fluent ets/Cause isDieType
+ */
 export function isDieType<E>(cause: Cause<E>): cause is Die {
   realCause(cause)
   return cause._tag === "Die"
 }
+
+/**
+ * @ets fluent ets/Cause isFailType
+ */
 export function isFailType<E>(cause: Cause<E>): cause is Fail<E> {
   realCause(cause)
   return cause._tag === "Fail"
 }
+
+/**
+ * @ets fluent ets/Cause isInterruptType
+ */
 export function isInterruptType<E>(cause: Cause<E>): cause is Interrupt {
   realCause(cause)
   return cause._tag === "Interrupt"
 }
+
+/**
+ * @ets fluent ets/Cause isStacklessType
+ */
 export function isStacklessType<E>(cause: Cause<E>): cause is Stackless<E> {
   realCause(cause)
   return cause._tag === "Stackless"
 }
+
+/**
+ * @ets fluent ets/Cause isThenType
+ */
 export function isThenType<E>(cause: Cause<E>): cause is Then<E> {
   realCause(cause)
   return cause._tag === "Then"
 }
+
+/**
+ * @ets fluent ets/Cause isBothType
+ */
 export function isBothType<E>(cause: Cause<E>): cause is Both<E> {
   realCause(cause)
   return cause._tag === "Both"
@@ -80,10 +129,10 @@ export class Empty implements St.HasEquals, St.HasHash {
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && IO.run(this.__equalsSafe(that))
+    return isCause(that) && this.__equalsSafe(that).run()
   }
 
-  __equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
+  __equalsSafe(that: Cause<unknown>): IO<boolean> {
     const self = this
     return IO.gen(function* (_) {
       realCause(that)
@@ -124,10 +173,10 @@ export class Fail<E> implements St.HasEquals, St.HasHash {
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && IO.run(this.__equalsSafe(that))
+    return isCause(that) && this.__equalsSafe(that).run()
   }
 
-  __equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
+  __equalsSafe(that: Cause<unknown>): IO<boolean> {
     const self = this
     return IO.gen(function* (_) {
       realCause(that)
@@ -163,10 +212,10 @@ export class Die implements St.HasEquals, St.HasHash {
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && IO.run(this.__equalsSafe(that))
+    return isCause(that) && this.__equalsSafe(that).run()
   }
 
-  __equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
+  __equalsSafe(that: Cause<unknown>): IO<boolean> {
     const self = this
     return IO.gen(function* (_) {
       realCause(that)
@@ -202,10 +251,10 @@ export class Interrupt implements St.HasEquals, St.HasHash {
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && IO.run(this.__equalsSafe(that))
+    return isCause(that) && this.__equalsSafe(that).run()
   }
 
-  __equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
+  __equalsSafe(that: Cause<unknown>): IO<boolean> {
     const self = this
     return IO.gen(function* (_) {
       realCause(that)
@@ -238,10 +287,10 @@ export class Stackless<E> implements St.HasEquals, St.HasHash {
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && IO.run(this.__equalsSafe(that))
+    return isCause(that) && this.__equalsSafe(that).run()
   }
 
-  __equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
+  __equalsSafe(that: Cause<unknown>): IO<boolean> {
     const self = this
     realCause(that)
     realCause(self.cause)
@@ -264,10 +313,10 @@ export class Then<E> implements St.HasEquals, St.HasHash {
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && IO.run(this.__equalsSafe(that))
+    return isCause(that) && this.__equalsSafe(that).run()
   }
 
-  __equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
+  __equalsSafe(that: Cause<unknown>): IO<boolean> {
     const self = this
     return IO.gen(function* (_) {
       realCause(that)
@@ -283,7 +332,7 @@ export class Then<E> implements St.HasEquals, St.HasHash {
     })
   }
 
-  private eq(that: Cause<unknown>): IO.IO<boolean> {
+  private eq(that: Cause<unknown>): IO<boolean> {
     const self = this
     realCause(that)
     if (that._tag === "Then") {
@@ -296,7 +345,7 @@ export class Then<E> implements St.HasEquals, St.HasHash {
         )
       })
     }
-    return IO.succeed(false)
+    return IO.succeedNow(false)
   }
 }
 
@@ -313,10 +362,10 @@ export class Both<E> implements St.HasEquals, St.HasHash {
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return isCause(that) && IO.run(this.__equalsSafe(that))
+    return isCause(that) && this.__equalsSafe(that).run()
   }
 
-  __equalsSafe(that: Cause<unknown>): IO.IO<boolean> {
+  __equalsSafe(that: Cause<unknown>): IO<boolean> {
     const self = this
     return IO.gen(function* (_) {
       realCause(that)
@@ -333,7 +382,7 @@ export class Both<E> implements St.HasEquals, St.HasHash {
     })
   }
 
-  private eq(that: Cause<unknown>): IO.IO<boolean> {
+  private eq(that: Cause<unknown>): IO<boolean> {
     const self = this
     realCause(that)
     if (that._tag === "Both") {
@@ -346,39 +395,63 @@ export class Both<E> implements St.HasEquals, St.HasHash {
         )
       })
     }
-    return IO.succeed(false)
+    return IO.succeedNow(false)
   }
 }
 // -----------------------------------------------------------------------------
 // Constructors
 // -----------------------------------------------------------------------------
 
+/**
+ * @ets static ets/CauseOps empty
+ */
 export const empty: Cause<never> = new Empty()
 
+/**
+ * @ets static ets/CauseOps die
+ */
 export function die(defect: unknown, trace: Trace = none): Cause<never> {
   return new Die(defect, trace)
 }
 
+/**
+ * @ets static ets/CauseOps fail
+ */
 export function fail<E>(error: E, trace: Trace = none): Cause<E> {
   return new Fail(error, trace)
 }
 
+/**
+ * @ets static ets/CauseOps interrupt
+ */
 export function interrupt(fiberId: FiberId, trace: Trace = none): Cause<never> {
   return new Interrupt(fiberId, trace)
 }
 
+/**
+ * @ets static ets/CauseOps stack
+ */
 export function stack<E>(cause: Cause<E>): Cause<E> {
   return new Stackless(cause, false)
 }
 
+/**
+ * @ets static ets/CauseOps stackless
+ */
 export function stackless<E>(cause: Cause<E>): Cause<E> {
   return new Stackless(cause, true)
 }
 
+/**
+ * @ets static ets/CauseOps then
+ */
 export function then<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
   return isEmpty(left) ? right : isEmpty(right) ? left : new Then<E1 | E2>(left, right)
 }
 
+/**
+ * @ets static ets/CauseOps both
+ */
 export function both<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
   return isEmpty(left) ? right : isEmpty(right) ? left : new Both<E1 | E2>(left, right)
 }
@@ -389,6 +462,8 @@ export function both<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> 
 
 /**
  * Determines if the provided value is a `Cause`.
+ *
+ * @ets fluent ets/Cause isCause
  */
 export function isCause(self: unknown): self is Cause<unknown> {
   return typeof self === "object" && self != null && CauseSym in self
@@ -396,6 +471,8 @@ export function isCause(self: unknown): self is Cause<unknown> {
 
 /**
  * Determines if the `Cause` is empty.
+ *
+ * @ets fluent ets/Cause isEmpty
  */
 export function isEmpty<E>(cause: Cause<E>): boolean {
   if (isEmptyType(cause) || (isStacklessType(cause) && isEmptyType(cause.cause))) {
@@ -446,19 +523,19 @@ const _emptyHash = St.opt(St.randomInt())
 
 function stepLoop<A>(
   cause: Cause<A>,
-  stack: L.List<Cause<A>>,
+  stack: List<Cause<A>>,
   parallel: HS.HashSet<Cause<A>>,
-  sequential: L.List<Cause<A>>
-): Tp.Tuple<[HS.HashSet<Cause<A>>, L.List<Cause<A>>]> {
+  sequential: List<Cause<A>>
+): Tuple<[HS.HashSet<Cause<A>>, List<Cause<A>>]> {
   while (1) {
     realCause(cause)
     switch (cause._tag) {
       case "Empty": {
-        if (L.isEmpty(stack)) {
-          return Tp.tuple(parallel, sequential)
+        if (stack.isEmpty()) {
+          return Tuple(parallel, sequential)
         } else {
-          cause = L.unsafeFirst(stack)!
-          stack = L.tail(stack)
+          cause = stack.unsafeFirst()!
+          stack = stack.tail()
         }
         break
       }
@@ -485,13 +562,13 @@ function stepLoop<A>(
           }
           default: {
             cause = left
-            sequential = L.prepend_(sequential, right)
+            sequential = sequential.prepend(right)
           }
         }
         break
       }
       case "Both": {
-        stack = L.prepend_(stack, cause.right)
+        stack = stack.prepend(cause.right)
         cause = cause.left
         break
       }
@@ -500,12 +577,12 @@ function stepLoop<A>(
         break
       }
       default: {
-        if (L.isEmpty(stack)) {
-          return Tp.tuple(HS.add_(parallel, cause), sequential)
+        if (stack.isEmpty()) {
+          return Tuple(HS.add_(parallel, cause), sequential)
         } else {
           parallel = HS.add_(parallel, cause)
-          cause = L.unsafeFirst(stack)!
-          stack = L.tail(stack)
+          cause = stack.unsafeFirst()!
+          stack = stack.tail()
           break
         }
       }
@@ -518,28 +595,29 @@ function stepLoop<A>(
  * Takes one step in evaluating a cause, returning a set of causes that fail
  * in parallel and a list of causes that fail sequentially after those causes.
  */
-function step<A>(self: Cause<A>): Tp.Tuple<[HS.HashSet<Cause<A>>, L.List<Cause<A>>]> {
-  return stepLoop(self, L.empty(), HS.make(), L.empty())
+function step<A>(self: Cause<A>): Tuple<[HS.HashSet<Cause<A>>, List<Cause<A>>]> {
+  return stepLoop(self, List.empty(), HS.make(), List.empty())
 }
 
 function flattenCauseLoop<A>(
-  causes: L.List<Cause<A>>,
-  flattened: L.List<HS.HashSet<Cause<A>>>
-): L.List<HS.HashSet<Cause<A>>> {
+  causes: List<Cause<A>>,
+  flattened: List<HS.HashSet<Cause<A>>>
+): List<HS.HashSet<Cause<A>>> {
   while (1) {
-    const [parallel, sequential] = L.reduce_(
-      causes,
-      tuple(HS.make<Cause<A>>(), L.empty<Cause<A>>()),
-      ([parallel, sequential], cause) => {
+    const {
+      tuple: [parallel, sequential]
+    } = causes.reduce(
+      Tuple(HS.make<Cause<A>>(), List.empty<Cause<A>>()),
+      ({ tuple: [parallel, sequential] }, cause) => {
         const {
           tuple: [set, seq]
         } = step(cause)
-        return tuple(HS.union_(parallel, set), L.concat_(sequential, seq))
+        return Tuple(HS.union_(parallel, set), sequential + seq)
       }
     )
-    const updated = HS.size(parallel) > 0 ? L.prepend_(flattened, parallel) : flattened
-    if (L.isEmpty(sequential)) {
-      return L.reverse(updated)
+    const updated = HS.size(parallel) > 0 ? flattened.prepend(parallel) : flattened
+    if (sequential.isEmpty()) {
+      return updated.reverse()
     } else {
       causes = sequential
       flattened = updated
@@ -553,33 +631,30 @@ function flattenCauseLoop<A>(
  * causes that fail in parallel and sequential sets represent causes that fail
  * after each other.
  */
-function flattenCause<E>(self: Cause<E>): L.List<HS.HashSet<Cause<E>>> {
-  return flattenCauseLoop(L.of(self), L.empty())
+function flattenCause<E>(self: Cause<E>): List<HS.HashSet<Cause<E>>> {
+  return flattenCauseLoop(List.single(self), List.empty())
 }
 
 function hashCode<E>(self: Cause<E>): number {
   const flat = flattenCause(self)
-  const size = L.size(flat)
+  const size = flat.size
   let head
   if (size === 0) {
     return _emptyHash
-  } else if (size === 1 && (head = L.unsafeFirst(flat)!) && HS.size(head) === 1) {
-    return L.unsafeFirst(L.from(head))![St.hashSym]
+  } else if (size === 1 && (head = flat.unsafeFirst()!) && HS.size(head) === 1) {
+    return List.from(head).unsafeFirst()![St.hashSym]
   } else {
     return St.hashIterator(flat[Symbol.iterator]())
   }
 }
 
 function sym<E>(
-  f: (a: Cause<E>, b: Cause<E>) => IO.IO<boolean>
-): (a: Cause<E>, b: Cause<E>) => IO.IO<boolean> {
-  return (l, r) =>
-    IO.gen(function* (_) {
-      return (yield* _(f(l, r))) || (yield* _(f(r, l)))
-    })
+  f: (a: Cause<E>, b: Cause<E>) => IO<boolean>
+): (a: Cause<E>, b: Cause<E>) => IO<boolean> {
+  return (l, r) => f(l, r).zipWith(f(r, l), (a, b) => a || b)
 }
 
-function zero<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
+function zero<E>(self: Cause<E>, that: Cause<E>): IO<boolean> {
   if (isThenType(self) && isEmptyType(self.right)) {
     realCause(self.left)
     return self.left.__equalsSafe(that)
@@ -596,10 +671,10 @@ function zero<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
     realCause(self.right)
     return self.right.__equalsSafe(that)
   }
-  return IO.succeed(false)
+  return IO.succeedNow(false)
 }
 
-function associativeThen<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
+function associativeThen<E>(self: Cause<E>, that: Cause<E>): IO<boolean> {
   return IO.gen(function* (_) {
     if (
       isThenType(self) &&
@@ -628,7 +703,7 @@ function associativeThen<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
   })
 }
 
-function distributiveThen<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
+function distributiveThen<E>(self: Cause<E>, that: Cause<E>): IO<boolean> {
   return IO.gen(function* (_) {
     if (
       isThenType(self) &&
@@ -692,7 +767,7 @@ function distributiveThen<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
   })
 }
 
-function associativeBoth<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
+function associativeBoth<E>(self: Cause<E>, that: Cause<E>): IO<boolean> {
   return IO.gen(function* (_) {
     if (
       isBothType(self) &&
@@ -721,7 +796,7 @@ function associativeBoth<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
   })
 }
 
-function distributiveBoth<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
+function distributiveBoth<E>(self: Cause<E>, that: Cause<E>): IO<boolean> {
   return IO.gen(function* (_) {
     if (
       isBothType(self) &&
@@ -783,7 +858,7 @@ function distributiveBoth<E>(self: Cause<E>, that: Cause<E>): IO.IO<boolean> {
   })
 }
 
-function commutativeBoth<E>(self: Both<E>, that: Cause<E>): IO.IO<boolean> {
+function commutativeBoth<E>(self: Both<E>, that: Cause<E>): IO<boolean> {
   return IO.gen(function* (_) {
     if (isBothType(that)) {
       realCause(self.left)

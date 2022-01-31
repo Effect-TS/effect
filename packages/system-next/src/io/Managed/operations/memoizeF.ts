@@ -1,16 +1,12 @@
 import * as Map from "../../../collection/immutable/Map"
-import * as Tp from "../../../collection/immutable/Tuple"
-import { pipe } from "../../../data/Function"
+import { Tuple } from "../../../collection/immutable/Tuple"
+import type { Effect } from "../../Effect"
 import type { Promise } from "../../Promise/definition"
-import { await as awaitPromise } from "../../Promise/operations/await"
-import { unsafeMake as unsafeMakePromise } from "../../Promise/operations/unsafeMake"
-import type { Managed } from "../definition"
-import * as T from "./_internal/effect"
-import * as Ref from "./_internal/ref"
-import * as Do from "./do"
-import { fromEffect } from "./fromEffect"
-import { map } from "./map"
-import { scope } from "./scope"
+import { await as promiseAwait } from "../../Promise/operations/await"
+import { unsafeMake as promiseUnsafeMake } from "../../Promise/operations/unsafeMake"
+import { make as refMake } from "../../Ref/operations/make"
+import { modify_ as refModify_ } from "../../Ref/operations/modify"
+import { Managed } from "../definition"
 
 /**
  * Returns a memoized version of the specified resourceful function in the
@@ -19,42 +15,39 @@ import { scope } from "./scope"
  * evaluated with that input, or else the previously acquired resource will be
  * returned. All resources acquired by evaluating the function will be
  * released at the end of the scope.
+ *
+ * @ets static ets/ManagedOps memoize
  */
 export function memoizeF<R, E, A, B>(
   f: (a: A) => Managed<R, E, B>,
-  __trace?: string
-): Managed<unknown, never, (a: A) => T.Effect<R, E, B>> {
-  return pipe(
-    Do.Do(),
-    Do.bind("fiberId", () => fromEffect(T.fiberId)),
-    Do.bind("ref", () => fromEffect(Ref.make<Map.Map<A, Promise<E, B>>>(Map.empty))),
-    Do.bind("scope", () => scope),
-    map(
-      ({ fiberId, ref, scope }) =>
-        (a: A): T.Effect<R, E, B> =>
-          T.flatten(
-            Ref.modify_(ref, (map) => {
-              const result = Map.lookup_(map, a)
-              switch (result._tag) {
-                case "Some": {
-                  return Tp.tuple(awaitPromise(result.value), map)
-                }
-                case "None": {
-                  const promise = unsafeMakePromise<E, B>(fiberId)
-
-                  return Tp.tuple(
-                    pipe(
-                      scope(f(a)),
-                      T.map((_) => _.get(1)),
-                      T.intoPromise(promise),
-                      T.chain(() => awaitPromise(promise))
-                    ),
-                    Map.insert_(map, a, promise)
-                  )
-                }
-              }
-            })
-          )
+  __etsTrace?: string
+): Managed<unknown, never, (a: A) => Effect<R, E, B>> {
+  return Managed.Do()
+    .bind("fiberId", () => Managed.fiberId)
+    .bind("ref", () =>
+      Managed.fromEffect(refMake<Map.Map<A, Promise<E, B>>>(Map.empty))
     )
-  )
+    .bind("scope", () => Managed.scope)
+    .map(
+      ({ fiberId, ref, scope }) =>
+        (a: A): Effect<R, E, B> =>
+          refModify_(ref, (map) => {
+            const result = Map.lookup_(map, a)
+            switch (result._tag) {
+              case "Some": {
+                return Tuple(promiseAwait(result.value), map)
+              }
+              case "None": {
+                const promise = promiseUnsafeMake<E, B>(fiberId)
+                return Tuple(
+                  scope(f(a))
+                    .map((_) => _.get(1))
+                    .intoPromise(promise)
+                    .flatMap(() => promiseAwait(promise)),
+                  Map.insert_(map, a, promise)
+                )
+              }
+            }
+          }).flatten()
+    )
 }

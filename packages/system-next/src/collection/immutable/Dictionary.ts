@@ -1,10 +1,10 @@
 import type { Either } from "../../data/Either"
 import type { Predicate, Refinement } from "../../data/Function"
-import * as O from "../../data/Option"
+import { Option } from "../../data/Option"
 import type { PredicateWithIndex, RefinementWithIndex } from "../../data/Utils"
 import type { MutableRecord } from "../../support/Mutable"
 import * as A from "./Array"
-import * as Tp from "./Tuple"
+import { Tuple } from "./Tuple"
 
 /* adapted from https://github.com/gcanti/fp-ts */
 
@@ -130,27 +130,23 @@ export function deleteAt_<A>(r: Dictionary<A>, k: string): Dictionary<A> {
 export function updateAt<A>(
   k: string,
   a: A
-): (r: Dictionary<A>) => O.Option<Dictionary<A>> {
+): (r: Dictionary<A>) => Option<Dictionary<A>> {
   return (r: Dictionary<A>) => updateAt_(r, k, a)
 }
 
 /**
  * Update a key value pair
  */
-export function updateAt_<A>(
-  r: Dictionary<A>,
-  k: string,
-  a: A
-): O.Option<Dictionary<A>> {
+export function updateAt_<A>(r: Dictionary<A>, k: string, a: A): Option<Dictionary<A>> {
   if (!hasOwnProperty(r, k)) {
-    return O.none
+    return Option.none
   }
   if (r[k] === a) {
-    return O.some(r)
+    return Option.some(r)
   }
   const out: MutableRecord<string, A> = Object.assign({}, r)
   out[k] = a
-  return O.some(out)
+  return Option.some(out)
 }
 
 /**
@@ -159,7 +155,7 @@ export function updateAt_<A>(
 export function modifyAt<A>(
   k: string,
   f: (a: A) => A
-): (r: Dictionary<A>) => O.Option<Dictionary<A>> {
+): (r: Dictionary<A>) => Option<Dictionary<A>> {
   return (r: Dictionary<A>) => modifyAt_(r, k, f)
 }
 
@@ -170,13 +166,13 @@ export function modifyAt_<A>(
   r: Dictionary<A>,
   k: string,
   f: (a: A) => A
-): O.Option<Dictionary<A>> {
+): Option<Dictionary<A>> {
   if (!hasOwnProperty(r, k)) {
-    return O.none
+    return Option.none
   }
   const out: MutableRecord<string, A> = Object.assign({}, r)
   out[k] = f(r[k]!)
-  return O.some(out)
+  return Option.some(out)
 }
 
 /**
@@ -184,7 +180,7 @@ export function modifyAt_<A>(
  */
 export function pop(
   k: string
-): <A>(r: Dictionary<A>) => O.Option<Tp.Tuple<[A, Dictionary<A>]>> {
+): <A>(r: Dictionary<A>) => Option<Tuple<[A, Dictionary<A>]>> {
   return (r) => pop_(r, k)
 }
 
@@ -194,24 +190,25 @@ export function pop(
 export function pop_<A>(
   r: Dictionary<A>,
   k: string
-): O.Option<Tp.Tuple<[A, Dictionary<A>]>> {
+): Option<Tuple<[A, Dictionary<A>]>> {
   const deleteAtk = deleteAt(k)
   const oa = lookup_(r, k)
-  return O.isNone(oa) ? O.none : O.some(Tp.tuple(oa.value, deleteAtk(r)))
+  return oa.isNone() ? Option.none : Option.some(Tuple(oa.value, deleteAtk(r)))
 }
 
 /**
  * Lookup the value for a key in a record
  */
-export function lookup_<A>(r: Dictionary<A>, k: string): O.Option<A> {
-  return Object.prototype.hasOwnProperty.call(r, k) ? O.some(r[k]!) : O.none
+export function lookup_<A>(r: Dictionary<A>, k: string): Option<A> {
+  return Object.prototype.hasOwnProperty.call(r, k) ? Option.some(r[k]!) : Option.none
 }
 
 /**
  * Lookup the value for a key in a record
  */
-export function lookup(k: string): <A>(r: Dictionary<A>) => O.Option<A> {
-  return (r) => (Object.prototype.hasOwnProperty.call(r, k) ? O.some(r[k]!) : O.none)
+export function lookup(k: string): <A>(r: Dictionary<A>) => Option<A> {
+  return (r) =>
+    Object.prototype.hasOwnProperty.call(r, k) ? Option.some(r[k]!) : Option.none
 }
 
 /**
@@ -329,7 +326,7 @@ export function singleton<A>(k: string, a: A): Dictionary<A> {
  */
 export function partitionMapWithIndex<A, B, C>(
   f: (key: string, a: A) => Either<B, C>
-): (fa: Dictionary<A>) => Tp.Tuple<[Dictionary<B>, Dictionary<C>]> {
+): (fa: Dictionary<A>) => Tuple<[Dictionary<B>, Dictionary<C>]> {
   return (fa) => partitionMapWithIndex_(fa, f)
 }
 
@@ -339,7 +336,7 @@ export function partitionMapWithIndex<A, B, C>(
 export function partitionMapWithIndex_<A, B, C>(
   fa: Dictionary<A>,
   f: (key: string, a: A) => Either<B, C>
-): Tp.Tuple<[Dictionary<B>, Dictionary<C>]> {
+): Tuple<[Dictionary<B>, Dictionary<C>]> {
   const left: MutableRecord<string, B> = {}
   const right: MutableRecord<string, C> = {}
   const keys = Object.keys(fa)
@@ -354,7 +351,7 @@ export function partitionMapWithIndex_<A, B, C>(
         break
     }
   }
-  return Tp.tuple(left, right)
+  return Tuple(left, right)
 }
 
 /**
@@ -362,13 +359,13 @@ export function partitionMapWithIndex_<A, B, C>(
  */
 export function partitionWithIndex<A, B extends A>(
   refinementWithIndex: RefinementWithIndex<string, A, B>
-): (fa: Dictionary<A>) => Tp.Tuple<[Dictionary<A>, Dictionary<B>]>
+): (fa: Dictionary<A>) => Tuple<[Dictionary<A>, Dictionary<B>]>
 export function partitionWithIndex<A>(
   predicateWithIndex: PredicateWithIndex<string, A>
-): (fa: Dictionary<A>) => Tp.Tuple<[Dictionary<A>, Dictionary<A>]>
+): (fa: Dictionary<A>) => Tuple<[Dictionary<A>, Dictionary<A>]>
 export function partitionWithIndex<A>(
   predicateWithIndex: PredicateWithIndex<string, A>
-): (fa: Dictionary<A>) => Tp.Tuple<[Dictionary<A>, Dictionary<A>]> {
+): (fa: Dictionary<A>) => Tuple<[Dictionary<A>, Dictionary<A>]> {
   return (fa) => partitionWithIndex_(fa, predicateWithIndex)
 }
 
@@ -378,15 +375,15 @@ export function partitionWithIndex<A>(
 export function partitionWithIndex_<A, B extends A>(
   fa: Dictionary<A>,
   refinementWithIndex: RefinementWithIndex<string, A, B>
-): Tp.Tuple<[Dictionary<A>, Dictionary<B>]>
+): Tuple<[Dictionary<A>, Dictionary<B>]>
 export function partitionWithIndex_<A>(
   fa: Dictionary<A>,
   predicateWithIndex: PredicateWithIndex<string, A>
-): Tp.Tuple<[Dictionary<A>, Dictionary<A>]>
+): Tuple<[Dictionary<A>, Dictionary<A>]>
 export function partitionWithIndex_<A>(
   fa: Dictionary<A>,
   predicateWithIndex: PredicateWithIndex<string, A>
-): Tp.Tuple<[Dictionary<A>, Dictionary<A>]> {
+): Tuple<[Dictionary<A>, Dictionary<A>]> {
   const left: MutableRecord<string, A> = {}
   const right: MutableRecord<string, A> = {}
   const keys = Object.keys(fa)
@@ -398,17 +395,17 @@ export function partitionWithIndex_<A>(
       left[key] = a
     }
   }
-  return Tp.tuple(left, right)
+  return Tuple(left, right)
 }
 
 /**
  * Filter & map the record entries with f that consumes also the entry index
  */
 export function filterMapWithIndex<A, B>(
-  f: (key: string, a: A) => O.Option<B>
+  f: (key: string, a: A) => Option<B>
 ): (fa: Dictionary<A>) => Dictionary<B>
 export function filterMapWithIndex<A, B>(
-  f: (key: string, a: A) => O.Option<B>
+  f: (key: string, a: A) => Option<B>
 ): (fa: Dictionary<A>) => Dictionary<B> {
   return (fa) => filterMapWithIndex_(fa, f)
 }
@@ -418,13 +415,13 @@ export function filterMapWithIndex<A, B>(
  */
 export function filterMapWithIndex_<A, B>(
   fa: Dictionary<A>,
-  f: (key: string, a: A) => O.Option<B>
+  f: (key: string, a: A) => Option<B>
 ): Dictionary<B> {
   const r: MutableRecord<string, B> = {}
   const keys = Object.keys(fa)
   for (const key of keys) {
     const optionB = f(key, fa[key]!)
-    if (O.isSome(optionB)) {
+    if (optionB.isSome()) {
       r[key] = optionB.value
     }
   }
@@ -517,12 +514,12 @@ export function some_<A>(r: Dictionary<A>, predicate: (a: A) => boolean): boolea
 /**
  * Drop the None entries
  */
-export const compact = <A>(fa: Dictionary<O.Option<A>>): Dictionary<A> => {
+export const compact = <A>(fa: Dictionary<Option<A>>): Dictionary<A> => {
   const r: MutableRecord<string, A> = {}
   const keys = Object.keys(fa)
   for (const key of keys) {
     const optionA = fa[key]!
-    if (O.isSome(optionA)) {
+    if (optionA.isSome()) {
       r[key] = optionA.value
     }
   }
@@ -534,7 +531,7 @@ export const compact = <A>(fa: Dictionary<O.Option<A>>): Dictionary<A> => {
  */
 export const separate = <A, B>(
   fa: Dictionary<Either<A, B>>
-): Tp.Tuple<[Dictionary<A>, Dictionary<B>]> => {
+): Tuple<[Dictionary<A>, Dictionary<B>]> => {
   const left: MutableRecord<string, A> = {}
   const right: MutableRecord<string, B> = {}
   const keys = Object.keys(fa)
@@ -549,7 +546,7 @@ export const separate = <A, B>(
         break
     }
   }
-  return Tp.tuple(left, right)
+  return Tuple(left, right)
 }
 
 /**
@@ -576,14 +573,14 @@ export const filter_: {
  * Filter & map record entries according to a predicate
  */
 export const filterMap =
-  <A, B>(f: (a: A) => O.Option<B>) =>
+  <A, B>(f: (a: A) => Option<B>) =>
   (fa: Dictionary<A>) =>
     filterMap_(fa, f)
 
 /**
  * Filter & map record entries according to a predicate
  */
-export const filterMap_ = <A, B>(fa: Dictionary<A>, f: (a: A) => O.Option<B>) =>
+export const filterMap_ = <A, B>(fa: Dictionary<A>, f: (a: A) => Option<B>) =>
   filterMapWithIndex_(fa, (_, a: A) => f(a))
 
 /**
@@ -592,29 +589,27 @@ export const filterMap_ = <A, B>(fa: Dictionary<A>, f: (a: A) => O.Option<B>) =>
 export const partition: {
   <A, B extends A>(refinement: Refinement<A, B>): (
     fa: Dictionary<A>
-  ) => Tp.Tuple<[Dictionary<A>, Dictionary<B>]>
+  ) => Tuple<[Dictionary<A>, Dictionary<B>]>
   <A>(predicate: Predicate<A>): <K extends string>(
     fa: Dictionary<A>
-  ) => Tp.Tuple<[Dictionary<A>, Dictionary<A>]>
+  ) => Tuple<[Dictionary<A>, Dictionary<A>]>
 } =
   <A>(predicate: Predicate<A>) =>
-  (fa: Dictionary<A>): Tp.Tuple<[Dictionary<A>, Dictionary<A>]> =>
+  (fa: Dictionary<A>): Tuple<[Dictionary<A>, Dictionary<A>]> =>
     partition_(fa, predicate)
 
 /**
  * Partition record entries according to a predicate
  */
 export const partition_: {
-  <A, B extends A>(fa: Dictionary<A>, refinement: Refinement<A, B>): Tp.Tuple<
+  <A, B extends A>(fa: Dictionary<A>, refinement: Refinement<A, B>): Tuple<
     [Dictionary<A>, Dictionary<B>]
   >
-  <A>(fa: Dictionary<A>, predicate: Predicate<A>): Tp.Tuple<
-    [Dictionary<A>, Dictionary<A>]
-  >
+  <A>(fa: Dictionary<A>, predicate: Predicate<A>): Tuple<[Dictionary<A>, Dictionary<A>]>
 } = <A>(
   fa: Dictionary<A>,
   predicate: Predicate<A>
-): Tp.Tuple<[Dictionary<A>, Dictionary<A>]> =>
+): Tuple<[Dictionary<A>, Dictionary<A>]> =>
   partitionWithIndex_(fa, (_, a) => predicate(a))
 
 /**
@@ -623,10 +618,10 @@ export const partition_: {
 export const partitionMap: {
   <A, B, C>(f: (a: A) => Either<B, C>): (
     fa: Dictionary<A>
-  ) => Tp.Tuple<[Dictionary<B>, Dictionary<C>]>
+  ) => Tuple<[Dictionary<B>, Dictionary<C>]>
   <A, B, C>(f: (a: A) => Either<B, C>): (
     fa: Dictionary<A>
-  ) => Tp.Tuple<[Dictionary<B>, Dictionary<C>]>
+  ) => Tuple<[Dictionary<B>, Dictionary<C>]>
 } =
   <A, B, C>(f: (a: A) => Either<B, C>) =>
   (fa: Dictionary<A>) =>
@@ -674,13 +669,13 @@ export const reduceRight_: <A, B>(
 /**
  * Converts a record into an array of [key, value]
  */
-export const toArray: <A>(r: Dictionary<A>) => ReadonlyArray<Tp.Tuple<[string, A]>> =
-  collect(Tp.tuple)
+export const toArray: <A>(r: Dictionary<A>) => ReadonlyArray<Tuple<[string, A]>> =
+  collect((k, a) => Tuple(k, a))
 
 /**
  * Converts an array of [key, value] into a record
  */
-export const fromArray = <V>(_: ReadonlyArray<Tp.Tuple<[string, V]>>): Dictionary<V> =>
+export const fromArray = <V>(_: ReadonlyArray<Tuple<[string, V]>>): Dictionary<V> =>
   A.reduce_(_, {} as Dictionary<V>, (b, { tuple: [k, v] }) =>
     Object.assign(b, { [k]: v })
   )

@@ -1,8 +1,6 @@
 import type { LazyArg } from "../../../data/Function"
 import type { IO } from "../definition"
-import { failNow } from "./failNow"
-import { succeed } from "./succeed"
-import { suspendSucceed } from "./suspendSucceed"
+import { Effect } from "../definition"
 
 /**
  * Imports a synchronous side-effect into a pure value, translating any
@@ -15,11 +13,11 @@ export function tryCatch<E, A>(
   onThrow: (u: unknown) => E,
   __etsTrace?: string
 ): IO<E, A> {
-  return suspendSucceed(() => {
+  return Effect.suspendSucceed(() => {
     try {
-      return succeed(attempt)
+      return Effect.succeed(attempt)
     } catch (error) {
-      return failNow(onThrow(error))
+      return Effect.failNow(onThrow(error))
     }
-  }, __etsTrace)
+  })
 }

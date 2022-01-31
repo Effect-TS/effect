@@ -2,10 +2,8 @@ import * as E from "../../../data/Either"
 import type * as O from "../../../data/Option"
 import type { FiberId } from "../../FiberId"
 import { none } from "../../FiberId/operations/none"
-import type { Effect } from "../definition"
-import { asyncInterruptBlockingOn } from "./asyncInterrupt"
+import { Effect } from "../definition"
 import type { Cb } from "./Cb"
-import { unit } from "./unit"
 
 /**
  * Imports an asynchronous effect into a pure `ZIO` value, possibly returning
@@ -21,7 +19,7 @@ export function asyncMaybe<R, E, A>(
   register: (callback: Cb<Effect<R, E, A>>) => O.Option<Effect<R, E, A>>,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return asyncMaybeBlockingOn(register, none, __etsTrace)
+  return asyncMaybeBlockingOn(register, none)
 }
 
 /**
@@ -42,17 +40,13 @@ export function asyncMaybeBlockingOn<R, E, A>(
   blockingOn: FiberId,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return asyncInterruptBlockingOn(
-    (cb) => {
-      const result = register(cb)
-      switch (result._tag) {
-        case "None":
-          return E.left(unit)
-        case "Some":
-          return E.right(result.value)
-      }
-    },
-    blockingOn,
-    __etsTrace
-  )
+  return Effect.asyncInterruptBlockingOn((cb) => {
+    const result = register(cb)
+    switch (result._tag) {
+      case "None":
+        return E.left(Effect.unit)
+      case "Some":
+        return E.right(result.value)
+    }
+  }, blockingOn)
 }

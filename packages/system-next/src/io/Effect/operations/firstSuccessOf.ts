@@ -18,5 +18,5 @@ export function firstSuccessOf<R, E, A>(
     const head = NA.head(effects)
     const rest = NA.tail(effects)
     return A.reduce_(rest, head, (b, a) => orElse_(b, () => a))
-  }, __etsTrace)
+  })
 }

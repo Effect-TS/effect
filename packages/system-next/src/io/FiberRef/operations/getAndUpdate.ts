@@ -1,4 +1,4 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import type { IO } from "../../Effect"
 import type { XFiberRef } from "../definition"
 import { modify_ } from "./modify"
@@ -10,9 +10,9 @@ import { modify_ } from "./modify"
 export function getAndUpdate_<EA, EB, A>(
   self: XFiberRef<EA, EB, A, A>,
   f: (a: A) => A,
-  __trace?: string
+  __etsTrace?: string
 ): IO<EA | EB, A> {
-  return modify_(self, (v) => Tp.tuple(v, f(v)), __trace)
+  return modify_(self, (v) => Tuple(v, f(v)))
 }
 
 /**
@@ -21,7 +21,7 @@ export function getAndUpdate_<EA, EB, A>(
  *
  * @ets_data_first getAndUpdate_
  */
-export function getAndUpdate<A>(f: (a: A) => A, __trace?: string) {
+export function getAndUpdate<A>(f: (a: A) => A, __etsTrace?: string) {
   return <EA, EB>(self: XFiberRef<EA, EB, A, A>): IO<EA | EB, A> =>
-    getAndUpdate_(self, f, __trace)
+    getAndUpdate_(self, f)
 }

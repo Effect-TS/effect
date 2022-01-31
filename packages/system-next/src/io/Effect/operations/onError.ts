@@ -1,7 +1,6 @@
 import type { Cause } from "../../Cause"
-import type { Effect, RIO } from "../definition"
-import { onExit_ } from "./onExit"
-import { unit } from "./unit"
+import type { RIO } from "../definition"
+import { Effect } from "../definition"
 
 /**
  * Runs the specified effect if this effect fails, providing the error to the
@@ -14,10 +13,9 @@ export function onError_<R, E, A, R2, X>(
   cleanup: (cause: Cause<E>) => RIO<R2, X>,
   __etsTrace?: string
 ): Effect<R & R2, E, A> {
-  return onExit_(
-    self,
-    (exit): RIO<R2, X | void> => (exit._tag === "Success" ? unit : cleanup(exit.cause)),
-    __etsTrace
+  return self.onExit(
+    (exit): RIO<R2, X | void> =>
+      exit._tag === "Success" ? Effect.unit : cleanup(exit.cause)
   )
 }
 
@@ -31,6 +29,5 @@ export function onError<E, R2, X>(
   cleanup: (cause: Cause<E>) => RIO<R2, X>,
   __etsTrace?: string
 ) {
-  return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E, A> =>
-    onError_(self, cleanup, __etsTrace)
+  return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E, A> => onError_(self, cleanup)
 }

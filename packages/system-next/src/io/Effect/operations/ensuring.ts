@@ -37,5 +37,5 @@ export function ensuring_<R, E, A, R1, X>(
  */
 export function ensuring<R1, X>(finalizer: Effect<R1, never, X>, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R1, E, A> =>
-    ensuring_(self, finalizer, __etsTrace)
+    ensuring_(self, finalizer)
 }

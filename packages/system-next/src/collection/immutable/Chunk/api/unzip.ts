@@ -1,4 +1,4 @@
-import * as Tp from "../../Tuple"
+import { Tuple } from "../../Tuple"
 import type { Chunk } from "../_definition"
 import { append_, empty } from "../core"
 import { forEach_ } from "./forEach"
@@ -6,9 +6,7 @@ import { forEach_ } from "./forEach"
 /**
  * The function is reverse of `zip`. Takes an array of pairs and return two corresponding arrays
  */
-export function unzip<A, B>(
-  as: Chunk<Tp.Tuple<[A, B]>>
-): Tp.Tuple<[Chunk<A>, Chunk<B>]> {
+export function unzip<A, B>(as: Chunk<Tuple<[A, B]>>): Tuple<[Chunk<A>, Chunk<B>]> {
   let fa: Chunk<A> = empty()
   let fb: Chunk<B> = empty()
 
@@ -17,5 +15,5 @@ export function unzip<A, B>(
     fb = append_(fb, b)
   })
 
-  return Tp.tuple(fa, fb)
+  return Tuple(fa, fb)
 }

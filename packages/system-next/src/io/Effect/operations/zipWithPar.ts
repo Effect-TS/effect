@@ -1,15 +1,9 @@
-import { both } from "../../Cause/definition"
+import { both as causeBoth } from "../../Cause/definition"
 import type { Exit } from "../../Exit/definition"
 import type { Fiber } from "../../Fiber/definition"
-import { join } from "../../Fiber/operations/join"
+import { join as fiberJoin } from "../../Fiber/operations/join"
 import type { FiberId } from "../../FiberId/definition"
-import type { Effect } from "../definition"
-import { chain_ } from "./chain"
-import { descriptorWith } from "./descriptorWith"
-import { failCause } from "./failCause"
-import { map_ } from "./map"
-import { raceWith_ } from "./raceWith"
-import { transplant } from "./transplant"
+import { Effect } from "../definition"
 
 /**
  * Sequentially zips this effect with the specified effect using the
@@ -24,15 +18,12 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
   __etsTrace?: string
 ): Effect<R & R2, E | E2, B> {
   const g = (b: A2, a: A) => f(a, b)
-
-  return transplant((graft) =>
-    descriptorWith((d) =>
-      raceWith_(
-        graft(self),
+  return Effect.transplant((graft) =>
+    Effect.descriptorWith((d) =>
+      graft(self).raceWith(
         graft(that),
         (ex, fi) => coordinateZipPar<E | E2, B, A, A2>(d.id, f, true, ex, fi),
-        (ex, fi) => coordinateZipPar<E | E2, B, A2, A>(d.id, g, false, ex, fi),
-        __etsTrace
+        (ex, fi) => coordinateZipPar<E | E2, B, A2, A>(d.id, g, false, ex, fi)
       )
     )
   )
@@ -50,7 +41,7 @@ export function zipWithPar<A, R2, E2, A2, B>(
   __etsTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R2, E | E2, B> =>
-    zipWithPar_(self, that, f, __etsTrace)
+    zipWithPar_(self, that, f)
 }
 
 function coordinateZipPar<E, B, X, Y>(
@@ -62,20 +53,20 @@ function coordinateZipPar<E, B, X, Y>(
 ) {
   switch (winner._tag) {
     case "Success": {
-      return chain_(loser.inheritRefs, () =>
-        map_(join(loser), (y) => f(winner.value, y))
+      return loser.inheritRefs.flatMap(() =>
+        fiberJoin(loser).map((y) => f(winner.value, y))
       )
     }
     case "Failure": {
-      return chain_(loser.interruptAs(fiberId), (e) => {
+      return loser.interruptAs(fiberId).flatMap((e) => {
         switch (e._tag) {
           case "Success": {
-            return failCause(winner.cause)
+            return Effect.failCauseNow(winner.cause)
           }
           case "Failure": {
             return leftWinner
-              ? failCause(both(winner.cause, e.cause))
-              : failCause(both(e.cause, winner.cause))
+              ? Effect.failCauseNow(causeBoth(winner.cause, e.cause))
+              : Effect.failCauseNow(causeBoth(e.cause, winner.cause))
           }
         }
       })

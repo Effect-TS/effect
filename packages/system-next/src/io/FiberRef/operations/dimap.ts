@@ -1,4 +1,4 @@
-import * as E from "../../../data/Either"
+import { Either } from "../../../data/Either"
 import type { XFiberRef } from "../definition"
 import { dimapEither_ } from "./dimapEither"
 
@@ -13,8 +13,8 @@ export function dimap_<EA, EB, A, B, C, D>(
 ): XFiberRef<EA, EB, C, D> {
   return dimapEither_(
     self,
-    (c) => E.right(f(c)),
-    (b) => E.right(g(b))
+    (c) => Either.right(f(c)),
+    (b) => Either.right(g(b))
   )
 }
 

@@ -1,5 +1,5 @@
 import * as Chunk from "../src/collection/immutable/Chunk"
-import * as Tp from "../src/collection/immutable/Tuple"
+import { Tuple } from "../src/collection/immutable/Tuple"
 import { pipe } from "../src/data/Function"
 import * as O from "../src/data/Option"
 import * as T from "../src/io/Effect"
@@ -83,7 +83,7 @@ describe("Promise", () => {
         Promise.complete_(
           p,
           T.flip(
-            Ref.modify_(r, (as) => Tp.tuple(Chunk.unsafeHead(as), Chunk.unsafeTail(as)))
+            Ref.modify_(r, (as) => Tuple(Chunk.unsafeHead(as), Chunk.unsafeTail(as)))
           )
         )
       ),
@@ -106,7 +106,7 @@ describe("Promise", () => {
         Promise.completeWith_(
           p,
           T.flip(
-            Ref.modify_(r, (as) => Tp.tuple(Chunk.unsafeHead(as), Chunk.unsafeTail(as)))
+            Ref.modify_(r, (as) => Tuple(Chunk.unsafeHead(as), Chunk.unsafeTail(as)))
           )
         )
       ),

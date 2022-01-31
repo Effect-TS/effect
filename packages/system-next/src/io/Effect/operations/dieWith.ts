@@ -2,7 +2,7 @@ import type { LazyArg } from "../../../data/Function"
 import * as Trace from "../../../io/Trace"
 import * as Cause from "../../Cause"
 import type { UIO } from "../definition"
-import { failCauseWith } from "./failCauseWith"
+import { Effect } from "../definition"
 
 // TODO(Mike/Max): fix name
 
@@ -14,5 +14,5 @@ import { failCauseWith } from "./failCauseWith"
  * @ets static ets/EffectOps die
  */
 export function dieWith<A>(f: LazyArg<A>, __etsTrace?: string): UIO<never> {
-  return failCauseWith(() => Cause.die(f(), Trace.none), __etsTrace)
+  return Effect.failCause(() => Cause.die(f(), Trace.none))
 }

@@ -2,7 +2,7 @@ import type { Chunk } from "../../collection/immutable/Chunk/core"
 import type { Tuple } from "../../collection/immutable/Tuple"
 import type { Option } from "../../data/Option"
 import { _A } from "../../support/Symbols"
-import type { UIO } from "./_internal/effect"
+import type { UIO } from "../Effect"
 
 /**
  * A `Summary` represents a sliding window of a time series along with metrics

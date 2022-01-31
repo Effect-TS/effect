@@ -15,9 +15,7 @@ export function forall_<R, E, A>(
   f: (a: A) => Effect<R, E, boolean>,
   __etsTrace?: string
 ): Effect<R, E, boolean> {
-  return chain_(succeed(as[Symbol.iterator]), (iterator) =>
-    loop(iterator, f, __etsTrace)
-  )
+  return chain_(succeed(as[Symbol.iterator]), (iterator) => loop(iterator, f))
 }
 
 /**
@@ -43,6 +41,6 @@ function loop<R, E, A>(
     return succeedNow(false)
   }
   return chain_(f(next.value), (b) =>
-    b ? suspendSucceed(() => loop(iterator, f, __etsTrace)) : succeedNow(b)
+    b ? suspendSucceed(() => loop(iterator, f)) : succeedNow(b)
   )
 }

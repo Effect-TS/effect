@@ -1,6 +1,6 @@
-import type * as Tp from "../../../../collection/immutable/Tuple"
+import type { Tuple } from "../../../../collection/immutable/Tuple"
+import type { Effect } from "../../../Effect"
 import type { XSynchronized } from "../definition"
-import * as T from "./_internal/effect"
 
 /**
  * Atomically modifies the `XRef.Synchronized` with the specified function,
@@ -9,11 +9,12 @@ import * as T from "./_internal/effect"
  */
 export function modifyEffect_<RA, RB, RC, EA, EB, EC, A, B>(
   self: XSynchronized<RA, RB, EA, EB, A, A>,
-  f: (a: A) => T.Effect<RC, EC, Tp.Tuple<[B, A]>>
-): T.Effect<RA & RB & RC, EA | EB | EC, B> {
+  f: (a: A) => Effect<RC, EC, Tuple<[B, A]>>,
+  __etsTrace?: string
+): Effect<RA & RB & RC, EA | EB | EC, B> {
   return self.withPermit(
-    T.chain_(self.unsafeGet, (a) =>
-      T.chain_(f(a), ({ tuple: [b, a] }) => T.map_(self.unsafeSet(a), () => b))
+    self.unsafeGet.flatMap((a) =>
+      f(a).flatMap(({ tuple: [b, a] }) => self.unsafeSet(a).map(() => b))
     )
   )
 }
@@ -26,9 +27,10 @@ export function modifyEffect_<RA, RB, RC, EA, EB, EC, A, B>(
  * @ets_data_first modifyEffect_
  */
 export function modifyEffect<RC, EC, A, B>(
-  f: (a: A) => T.Effect<RC, EC, Tp.Tuple<[B, A]>>
+  f: (a: A) => Effect<RC, EC, Tuple<[B, A]>>,
+  __etsTrace?: string
 ) {
   return <RA, RB, EA, EB>(
     self: XSynchronized<RA, RB, EA, EB, A, A>
-  ): T.Effect<RA & RB & RC, EA | EB | EC, B> => modifyEffect_(self, f)
+  ): Effect<RA & RB & RC, EA | EB | EC, B> => modifyEffect_(self, f)
 }

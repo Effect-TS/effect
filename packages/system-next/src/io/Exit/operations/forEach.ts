@@ -1,6 +1,4 @@
-import type { Effect } from "../../Effect"
-import { exit } from "../../Effect/operations/exit"
-import { succeedNow } from "../../Effect/operations/succeedNow"
+import { Effect } from "../../Effect"
 import type { Exit } from "../definition"
 import { failCause } from "./failCause"
 
@@ -10,13 +8,14 @@ import { failCause } from "./failCause"
  */
 export function forEach_<E, A, R, E1, B>(
   self: Exit<E, A>,
-  f: (a: A) => Effect<R, E1, B>
+  f: (a: A) => Effect<R, E1, B>,
+  __etsTrace?: string
 ): Effect<R, never, Exit<E | E1, B>> {
   switch (self._tag) {
     case "Failure":
-      return succeedNow(failCause(self.cause))
+      return Effect.succeed(failCause(self.cause))
     case "Success":
-      return exit(f(self.value))
+      return f(self.value).exit()
   }
 }
 
@@ -26,6 +25,9 @@ export function forEach_<E, A, R, E1, B>(
  *
  * @ets_data_first forEach_
  */
-export function forEach<A, R, E1, B>(f: (a: A) => Effect<R, E1, B>) {
+export function forEach<A, R, E1, B>(
+  f: (a: A) => Effect<R, E1, B>,
+  __etsTrace?: string
+) {
   return <E>(self: Exit<E, A>): Effect<R, never, Exit<E | E1, B>> => forEach_(self, f)
 }

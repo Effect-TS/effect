@@ -1,18 +1,18 @@
+import type { LazyArg } from "../../../data/Function"
+import { Effect } from "../../Effect"
 import type { Managed } from "../definition"
 import type { Reservation } from "../reservation"
-import * as T from "./_internal/effect"
 import { fromReservationEffect } from "./fromReservationEffect"
 
 /**
  * Lifts a pure `Reservation<R, E, A>` into `Managed<R, E, A>`. The
  * acquisition step is performed interruptibly.
+ *
+ * @ets static ets/ManagedOps fromReservation
  */
 export function fromReservation<R, E, A>(
-  reservation: Reservation<R, E, A>,
-  __trace?: string
+  reservation: LazyArg<Reservation<R, E, A>>,
+  __etsTrace?: string
 ): Managed<R, E, A> {
-  return fromReservationEffect(
-    T.succeed(() => reservation),
-    __trace
-  )
+  return fromReservationEffect(Effect.succeed(reservation))
 }

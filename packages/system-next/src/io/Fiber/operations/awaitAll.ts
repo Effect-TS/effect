@@ -1,5 +1,5 @@
+import type { UIO } from "../../Effect"
 import type { Fiber } from "../definition"
-import * as T from "./_internal/effect"
 import { collectAll } from "./collectAll"
 
 /**
@@ -7,7 +7,7 @@ import { collectAll } from "./collectAll"
  */
 export function awaitAll(
   fibers: Iterable<Fiber<any, any>>,
-  __trace?: string
-): T.UIO<void> {
-  return T.asUnit(collectAll(fibers).await)
+  __etsTrace?: string
+): UIO<void> {
+  return collectAll(fibers).await.asUnit()
 }

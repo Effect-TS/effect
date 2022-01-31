@@ -1,6 +1,4 @@
-import type { Effect } from "../definition"
-import { environment } from "./environment"
-import { joinEither_ } from "./joinEither"
+import { Effect } from "../definition"
 
 // TODO(Mike/Max): revise => should look like io.onLeft<X>()
 
@@ -10,6 +8,5 @@ import { joinEither_ } from "./joinEither"
  * in either.
  */
 export function onLeft<C>(__etsTrace?: string) {
-  return <R, E, A>(self: Effect<R, E, A>) =>
-    joinEither_(self, environment<C>(), __etsTrace)
+  return <R, E, A>(self: Effect<R, E, A>) => self.joinEither(Effect.environment<C>())
 }

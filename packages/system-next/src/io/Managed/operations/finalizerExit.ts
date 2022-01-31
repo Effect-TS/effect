@@ -1,16 +1,16 @@
-import type { Managed } from "../definition"
-import type { Effect } from "./_internal/effect"
-import { unit } from "./_internal/effect"
-import type * as Ex from "./_internal/exit"
-import { acquireReleaseExitWith_ } from "./acquireReleaseExitWith"
+import { Effect } from "../../Effect"
+import type { Exit } from "../../Exit"
+import { Managed } from "../definition"
 
 /**
  * Creates an effect that only executes the provided function as its
  * release action.
+ *
+ * @ets static ets/ManagedOps finalizerExit
  */
 export function finalizerExit<R, X>(
-  f: (exit: Ex.Exit<any, any>) => Effect<R, never, X>,
-  __trace?: string
+  f: (exit: Exit<any, any>) => Effect<R, never, X>,
+  __etsTrace?: string
 ): Managed<R, never, void> {
-  return acquireReleaseExitWith_(unit, (_, e) => f(e), __trace)
+  return Managed.acquireReleaseExitWith(Effect.unit, (_, e) => f(e))
 }

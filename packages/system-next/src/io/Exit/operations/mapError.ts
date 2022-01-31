@@ -1,5 +1,3 @@
-// TODO: implementation
-import { map_ } from "../../Cause"
 import type { Exit } from "../definition"
 import { failCause } from "./failCause"
 
@@ -9,7 +7,7 @@ import { failCause } from "./failCause"
 export function mapError_<E, A, E1>(self: Exit<E, A>, f: (e: E) => E1): Exit<E1, A> {
   switch (self._tag) {
     case "Failure":
-      return failCause(map_(self.cause, f))
+      return failCause(self.cause.map(f))
     case "Success":
       return self
   }

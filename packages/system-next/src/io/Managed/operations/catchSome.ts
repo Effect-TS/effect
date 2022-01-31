@@ -1,17 +1,17 @@
-import * as O from "../../../data/Option"
-import type { Managed } from "../definition"
-import { catchAll_ } from "./catchAll"
-import { failNow } from "./failNow"
+import type { Option } from "../../../data/Option"
+import { Managed } from "../definition"
 
 /**
  * Recovers from some or all of the error cases.
+ *
+ * @ets fluent ets/Managed catchSome
  */
 export function catchSome_<R, E, A, R1, E1, A1>(
   self: Managed<R, E, A>,
-  pf: (e: E) => O.Option<Managed<R1, E1, A1>>,
-  __trace?: string
+  pf: (e: E) => Option<Managed<R1, E1, A1>>,
+  __etsTrace?: string
 ): Managed<R & R1, E | E1, A | A1> {
-  return catchAll_(self, (e) => O.getOrElse_(pf(e), () => failNow<E | E1>(e)), __trace)
+  return self.catchAll((e) => pf(e).getOrElse(Managed.failNow<E | E1>(e)))
 }
 
 /**
@@ -20,9 +20,9 @@ export function catchSome_<R, E, A, R1, E1, A1>(
  * @ets_data_first catchSome_
  */
 export function catchSome<E, R1, E1, A1>(
-  pf: (e: E) => O.Option<Managed<R1, E1, A1>>,
-  __trace?: string
+  pf: (e: E) => Option<Managed<R1, E1, A1>>,
+  __etsTrace?: string
 ) {
   ;<R, A>(self: Managed<R, E, A>): Managed<R & R1, E | E1, A | A1> =>
-    catchSome_(self, pf, __trace)
+    catchSome_(self, pf)
 }

@@ -1,6 +1,5 @@
 import { awaitAll } from "../../Fiber/operations/awaitAll"
 import type { Effect } from "../definition"
-import { ensuringChildren_ } from "./ensuringChildren"
 
 /**
  * Returns a new effect that will not succeed with its value before first
@@ -12,5 +11,5 @@ export function awaitAllChildren<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return ensuringChildren_(self, awaitAll, __etsTrace)
+  return self.ensuringChildren(awaitAll)
 }

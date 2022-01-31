@@ -1,4 +1,4 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import type { Fiber } from "../definition"
 import { zipWith_ } from "./zipWith"
 
@@ -9,8 +9,8 @@ import { zipWith_ } from "./zipWith"
 export function zip_<E, E1, A, A1>(
   self: Fiber<E, A>,
   that: Fiber<E1, A1>
-): Fiber<E | E1, Tp.Tuple<[A, A1]>> {
-  return zipWith_(self, that, Tp.tuple)
+): Fiber<E | E1, Tuple<[A, A1]>> {
+  return zipWith_(self, that, (a, b) => Tuple(a, b))
 }
 
 /**
@@ -20,5 +20,5 @@ export function zip_<E, E1, A, A1>(
  * @ets_data_first zip_
  */
 export function zip<E1, A1>(that: Fiber<E1, A1>) {
-  return <E, A>(self: Fiber<E, A>): Fiber<E | E1, Tp.Tuple<[A, A1]>> => zip_(self, that)
+  return <E, A>(self: Fiber<E, A>): Fiber<E | E1, Tuple<[A, A1]>> => zip_(self, that)
 }

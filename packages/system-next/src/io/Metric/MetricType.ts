@@ -1,7 +1,7 @@
 import { join_ } from "../../collection/immutable/Chunk/api/join"
 import * as C from "../../collection/immutable/Chunk/core"
 import type { Tuple } from "../../collection/immutable/Tuple"
-import * as O from "../../data/Option"
+import type { Option } from "../../data/Option"
 
 /**
  * `MetricType` represents information about the state of a metric that is
@@ -53,7 +53,7 @@ export class Summary {
 
   constructor(
     readonly error: number,
-    readonly quantiles: C.Chunk<Tuple<[number, O.Option<number>]>>,
+    readonly quantiles: C.Chunk<Tuple<[number, Option<number>]>>,
     readonly count: number,
     readonly sum: number
   ) {}
@@ -62,7 +62,7 @@ export class Summary {
     const quantiles = join_(
       C.map_(
         this.quantiles,
-        ({ tuple: [start, end] }) => `[${start},${O.getOrElse_(end, () => "")}]`
+        ({ tuple: [start, end] }) => `[${start},${end.getOrElse("")}]`
       ),
       ","
     )

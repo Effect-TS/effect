@@ -6,10 +6,10 @@ import * as ChunkZip from "../../../collection/immutable/Chunk/api/zip"
 import * as ChunkZipWithIndex from "../../../collection/immutable/Chunk/api/zipWithIndex"
 import * as Chunk from "../../../collection/immutable/Chunk/core"
 import * as Iter from "../../../collection/immutable/Iterable"
-import * as List from "../../../collection/immutable/List/core"
-import * as Tp from "../../../collection/immutable/Tuple"
-import { identity, pipe } from "../../../data/Function"
-import * as O from "../../../data/Option"
+import { Tuple } from "../../../collection/immutable/Tuple"
+import type { LazyArg } from "../../../data/Function"
+import { identity } from "../../../data/Function"
+import { Option } from "../../../data/Option"
 import { AtomicBoolean } from "../../../support/AtomicBoolean"
 import { AtomicNumber } from "../../../support/AtomicNumber"
 import type { MutableQueue } from "../../../support/MutableQueue"
@@ -18,70 +18,33 @@ import * as Cause from "../../Cause"
 import type { Exit } from "../../Exit"
 import { collectAll as exitCollectAll } from "../../Exit/operations/collectAll"
 import { collectAllPar as exitCollectAllPar } from "../../Exit/operations/collectAllPar"
-import { succeed as exitSucceed } from "../../Exit/operations/succeed"
-import type { FiberContext } from "../../Fiber/_internal/context"
+import { unit as exitUnit } from "../../Exit/operations/unit"
 import type { Fiber } from "../../Fiber/definition"
 import { interrupt as interruptFiber } from "../../Fiber/operations/interrupt"
 import * as FiberIdNone from "../../FiberId/operations/none"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { get as fiberRefGet } from "../../FiberRef/operations/get"
 import { locally_ } from "../../FiberRef/operations/locally"
-import type { Managed } from "../../Managed/definition"
-import { managedApply } from "../../Managed/definition"
-import { add_ as releaseMapAdd_ } from "../../Managed/ReleaseMap/add"
-import type { ReleaseMap } from "../../Managed/ReleaseMap/definition"
-import { make as releaseMapMake } from "../../Managed/ReleaseMap/make"
+import { Managed } from "../../Managed/definition"
+import { ReleaseMap } from "../../Managed/ReleaseMap/definition"
 import type { State } from "../../Managed/ReleaseMap/state"
 import { Exited } from "../../Managed/ReleaseMap/state"
 import type { Promise } from "../../Promise/definition"
 import { await as promiseAwait } from "../../Promise/operations/await"
-import { fail_ } from "../../Promise/operations/fail"
+import { fail_ as promiseFail_ } from "../../Promise/operations/fail"
 import { interruptAs } from "../../Promise/operations/interruptAs"
-import { make } from "../../Promise/operations/make"
-import { succeed as succeed_1 } from "../../Promise/operations/succeed"
-import { unsafeDone_ } from "../../Promise/operations/unsafeDone"
-import { unsafeMake } from "../../Promise/operations/unsafeMake"
+import { make as promiseMake } from "../../Promise/operations/make"
+import { succeed as promiseSucceed } from "../../Promise/operations/succeed"
+import { unsafeDone_ as promiseUnsafeDone_ } from "../../Promise/operations/unsafeDone"
+import { unsafeMake as promiseUnsafeMake } from "../../Promise/operations/unsafeMake"
 import type { Queue, Strategy } from "../../Queue/core"
 import * as QCore from "../../Queue/core"
 import { concreteQueue, XQueueInternal } from "../../Queue/xqueue"
-import type { Effect, RIO, UIO } from "../definition"
-import { acquireReleaseExitWith_ } from "./acquireReleaseExitWith"
-import { asUnit } from "./asUnit"
-import { chain, chain_ } from "./chain"
-import { dieMessage } from "./dieMessage"
-import * as Do from "./do"
-import { done } from "./done"
-import * as Ref from "./excl-deps-ref"
+import * as RefModify from "../../Ref/operations/modify"
+import type { RIO, UIO } from "../definition"
+import { Effect } from "../definition"
 import type { ExecutionStrategy } from "./ExecutionStrategy"
 import { sequential } from "./ExecutionStrategy"
-import { exit } from "./exit"
-import { failCause } from "./failCause"
-import { fiberId } from "./fiberId"
-import { flatten } from "./flatten"
-import { foldCauseEffect_ } from "./foldCauseEffect"
-import { forkDaemon } from "./forkDaemon"
-import {
-  interrupt,
-  onInterrupt_,
-  uninterruptible,
-  uninterruptibleMask
-} from "./interruption"
-import { map, map_ } from "./map"
-import {
-  parallelismWith,
-  withParallelism_,
-  withParallelismUnbounded
-} from "./parallelism"
-import { replicate_ } from "./replicate"
-import { succeed } from "./succeed"
-import { succeedNow } from "./succeedNow"
-import { suspendSucceed } from "./suspendSucceed"
-import { suspendSucceedWith } from "./suspendSucceedWith"
-import { tap, tap_ } from "./tap"
-import { transplant } from "./transplant"
-import { unit } from "./unit"
-import { whenEffect } from "./whenEffect"
-import { zipRight_ } from "./zipRight"
 
 // -----------------------------------------------------------------------------
 // forEach
@@ -97,22 +60,18 @@ import { zipRight_ } from "./zipRight"
  * @ets static ets/EffectOps forEach
  */
 export function forEach_<A, R, E, B>(
-  as: Iterable<A>,
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
-  return suspendSucceed(() => {
+  return Effect.suspendSucceed(() => {
     const acc: B[] = []
-
-    return map_(
-      forEachDiscard_(as, (a) =>
-        map_(f(a), (b) => {
-          acc.push(b)
-        })
-      ),
-      () => Chunk.from(acc)
-    )
-  }, __etsTrace)
+    return forEachDiscard_(as, (a) =>
+      f(a).map((b) => {
+        acc.push(b)
+      })
+    ).map(() => Chunk.from(acc))
+  })
 }
 
 /**
@@ -125,7 +84,7 @@ export function forEach_<A, R, E, B>(
  * @ets_data_first forEach_
  */
 export function forEach<A, R, E, B>(f: (a: A) => Effect<R, E, B>, __etsTrace?: string) {
-  return (as: Iterable<A>) => forEach_(as, f, __etsTrace)
+  return (as: Iterable<A>) => forEach_(as, f)
 }
 
 // -----------------------------------------------------------------------------
@@ -144,20 +103,16 @@ export function forEachWithIndex_<A, R, E, B>(
   f: (a: A, i: number) => Effect<R, E, B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
-  return suspendSucceed(() => {
+  return Effect.suspendSucceed(() => {
     let index = 0
     const acc: B[] = []
-
-    return map_(
-      forEachDiscard_(as, (a) =>
-        map_(f(a, index), (b) => {
-          acc.push(b)
-          index++
-        })
-      ),
-      () => Chunk.from(acc)
-    )
-  }, __etsTrace)
+    return forEachDiscard_(as, (a) =>
+      f(a, index).map((b) => {
+        acc.push(b)
+        index++
+      })
+    ).map(() => Chunk.from(acc))
+  })
 }
 
 /**
@@ -171,7 +126,7 @@ export function forEachWithIndex<A, R, E, B>(
   f: (a: A, i: number) => Effect<R, E, B>,
   __etsTrace?: string
 ) {
-  return (as: Iterable<A>) => forEachWithIndex_(as, f, __etsTrace)
+  return (as: Iterable<A>) => forEachWithIndex_(as, f)
 }
 
 // -----------------------------------------------------------------------------
@@ -188,11 +143,11 @@ export function forEachWithIndex<A, R, E, B>(
  * @ets static ets/EffectOps forEachDiscard
  */
 export function forEachDiscard_<R, E, A, X>(
-  as: Iterable<A>,
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, X>,
   __etsTrace?: string
 ): Effect<R, E, void> {
-  return suspendSucceed(() => forEachDiscardLoop(as[Symbol.iterator](), f), __etsTrace)
+  return Effect.suspendSucceed(() => forEachDiscardLoop(as()[Symbol.iterator](), f))
 }
 
 /**
@@ -208,7 +163,7 @@ export function forEachDiscard<R, E, A, X>(
   f: (a: A) => Effect<R, E, X>,
   __etsTrace?: string
 ): (as: Iterable<A>) => Effect<R, E, void> {
-  return (as) => forEachDiscard_(as, f, __etsTrace)
+  return (as) => forEachDiscard_(as, f)
 }
 
 function forEachDiscardLoop<R, E, A, X>(
@@ -216,7 +171,9 @@ function forEachDiscardLoop<R, E, A, X>(
   f: (a: A) => Effect<R, E, X>
 ): Effect<R, E, void> {
   const next = iterator.next()
-  return next.done ? unit : chain_(f(next.value), () => forEachDiscardLoop(iterator, f))
+  return next.done
+    ? Effect.unit
+    : f(next.value).flatMap(() => forEachDiscardLoop(iterator, f))
 }
 
 // -----------------------------------------------------------------------------
@@ -232,16 +189,15 @@ function forEachDiscardLoop<R, E, A, X>(
  * @ets static ets/EffectOps forEachPar
  */
 export function forEachPar_<R, E, A, B>(
-  as: Iterable<A>,
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
-  return parallelismWith(
-    O.fold(
+  return Effect.parallelismWith((_) =>
+    _.fold(
       () => forEachParUnbounded(as, f),
       (n) => forEachParN(as, n, f)
-    ),
-    __etsTrace
+    )
   )
 }
 
@@ -257,8 +213,7 @@ export function forEachPar<R, E, A, B>(
   f: (a: A) => Effect<R, E, B>,
   __etsTrace?: string
 ) {
-  return (as: Iterable<A>): Effect<R, E, Chunk.Chunk<B>> =>
-    forEachPar_(as, f, __etsTrace)
+  return (as: Iterable<A>): Effect<R, E, Chunk.Chunk<B>> => forEachPar_(as, f)
 }
 
 /**
@@ -266,87 +221,78 @@ export function forEachPar<R, E, A, B>(
  * and returns the results in a new `Chunk<B>`.
  */
 function forEachParUnbounded<R, E, A, B>(
-  as: Iterable<A>,
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
-  return suspendSucceed(
-    () =>
-      chain_(
-        succeed<B[]>(() => []),
-        (array) =>
-          map_(
-            forEachParUnboundedDiscard(
-              Iter.map_(as, (a, n) => [a, n] as [A, number]),
-              ([a, n]) =>
-                chain_(
-                  suspendSucceed(() => f(a)),
-                  (b) =>
-                    succeed(() => {
-                      array[n] = b
-                    })
-                )
-            ),
-            () => Chunk.from(array)
+  return Effect.suspendSucceed(() =>
+    Effect.succeed<B[]>([]).flatMap((array) =>
+      forEachParUnboundedDiscard(
+        Iter.map_(as(), (a, n) => [a, n] as [A, number]),
+        ([a, n]) =>
+          Effect.suspendSucceed(() => f(a)).flatMap((b) =>
+            Effect.succeed(() => {
+              array[n] = b
+            })
           )
-      ),
-    __etsTrace
+      ).map(() => Chunk.from(array))
+    )
   )
 }
 
 function forEachParN<R, E, A, B>(
-  as: Iterable<A>,
+  as: LazyArg<Iterable<A>>,
   n: number,
   f: (a: A) => Effect<R, E, B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
-  return suspendSucceed(() => {
+  return Effect.suspendSucceed(() => {
     if (n < 1) {
-      return dieMessage(`Unexpected nonpositive value "${n}" passed to foreachParN`)
-    }
-
-    const as0 = Chunk.from(as)
-    const size = Chunk.size(as0)
-
-    if (size === 0) {
-      return succeedNow(Chunk.empty(), __etsTrace)
-    }
-
-    function worker(
-      queue: Queue<Tp.Tuple<[A, number]>>,
-      array: Array<B>
-    ): Effect<R, E, void> {
-      concreteQueue(queue)
-      return chain_(
-        map_(queue.takeUpTo(1), Chunk.head),
-        O.fold(
-          () => unit,
-          ({ tuple: [a, n] }) =>
-            chain_(
-              tap_(f(a), (b) =>
-                succeed(() => {
-                  array[n] = b
-                })
-              ),
-              () => worker(queue, array)
-            )
-        )
+      return Effect.dieMessage(
+        `Unexpected nonpositive value "${n}" passed to foreachParN`
       )
     }
 
-    return chain_(
-      succeed(() => new Array<B>(size)),
-      (array) =>
-        chain_(makeBoundedQueue<Tp.Tuple<[A, number]>>(size), (queue) =>
-          chain_(QCore.offerAll_(queue, ChunkZipWithIndex.zipWithIndex(as0)), () =>
-            map_(
-              collectAllParUnboundedDiscard(replicate_(worker(queue, array), n)),
-              () => Chunk.from(array)
-            )
+    const as0 = Chunk.from(as())
+    const size = Chunk.size(as0)
+
+    if (size === 0) {
+      return Effect.succeedNow(Chunk.empty())
+    }
+
+    function worker(
+      queue: Queue<Tuple<[A, number]>>,
+      array: Array<B>
+    ): Effect<R, E, void> {
+      concreteQueue(queue)
+      return queue
+        .takeUpTo(1)
+        .map(Chunk.head)
+        .flatMap((_) =>
+          _.fold(
+            () => Effect.unit,
+            ({ tuple: [a, n] }) =>
+              f(a)
+                .tap((b) =>
+                  Effect.succeed(() => {
+                    array[n] = b
+                  })
+                )
+                .flatMap(() => worker(queue, array))
           )
         )
+    }
+
+    return Effect.succeed(new Array<B>(size)).flatMap((array) =>
+      makeBoundedQueue<Tuple<[A, number]>>(size).flatMap((queue) =>
+        QCore.offerAll_(queue, ChunkZipWithIndex.zipWithIndex(as0)).flatMap(() =>
+          collectAllParUnboundedDiscard(worker(queue, array).replicate(n)).map(() =>
+            Chunk.from(array)
+          )
+        )
+      )
     )
-  }, __etsTrace)
+  })
 }
 
 // -----------------------------------------------------------------------------
@@ -365,27 +311,18 @@ export function forEachParWithIndex_<R, E, A, B>(
   f: (a: A, i: number) => Effect<R, E, B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
-  return suspendSucceed(
-    () =>
-      chain_(
-        succeed<B[]>(() => []),
-        (array) =>
-          map_(
-            forEachParDiscard_(
-              Iter.map_(as, (a, n) => [a, n] as [A, number]),
-              ([a, n]) =>
-                chain_(
-                  suspendSucceed(() => f(a, n)),
-                  (b) =>
-                    succeed(() => {
-                      array[n] = b
-                    })
-                )
-            ),
-            () => Chunk.from(array)
+  return Effect.suspendSucceed(() =>
+    Effect.succeed<B[]>(() => []).flatMap((array) =>
+      forEachParDiscard_(
+        Iter.map_(as, (a, n) => [a, n] as [A, number]),
+        ([a, n]) =>
+          Effect.suspendSucceed(() => f(a, n)).flatMap((b) =>
+            Effect.succeed(() => {
+              array[n] = b
+            })
           )
-      ),
-    __etsTrace
+      ).map(() => Chunk.from(array))
+    )
   )
 }
 
@@ -398,8 +335,7 @@ export function forEachParWithIndex<R, E, A, B>(
   f: (a: A, i: number) => Effect<R, E, B>,
   __etsTrace?: string
 ) {
-  return (as: Iterable<A>): Effect<R, E, Chunk.Chunk<B>> =>
-    forEachParWithIndex_(as, f, __etsTrace)
+  return (as: Iterable<A>): Effect<R, E, Chunk.Chunk<B>> => forEachParWithIndex_(as, f)
 }
 
 // -----------------------------------------------------------------------------
@@ -419,16 +355,15 @@ export function forEachParWithIndex<R, E, A, B>(
  * @ets static ets/EffectOps forEachParDiscard
  */
 export function forEachParDiscard_<R, E, A, X>(
-  as: Iterable<A>,
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, X>,
   __etsTrace?: string
 ): Effect<R, E, void> {
-  return parallelismWith(
-    O.fold(
+  return Effect.parallelismWith((_) =>
+    _.fold(
       () => forEachParUnboundedDiscard(as, f),
       (n) => forEachParNDiscard(as, n, f)
-    ),
-    __etsTrace
+    )
   )
 }
 
@@ -448,63 +383,56 @@ export function forEachParDiscard<R, E, A, X>(
   f: (a: A) => Effect<R, E, X>,
   __etsTrace?: string
 ) {
-  return (as: Iterable<A>): Effect<R, E, void> => forEachParDiscard_(as, f, __etsTrace)
+  return (as: Iterable<A>): Effect<R, E, void> => forEachParDiscard_(as, f)
 }
 
 function forEachParUnboundedDiscard<R, E, A, X>(
-  as: Iterable<A>,
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, X>,
   __etsTrace?: string
 ): Effect<R, E, void> {
-  return suspendSucceed<R, E, void>(() => {
-    const bs = Chunk.from(as)
+  return Effect.suspendSucceed<R, E, void>(() => {
+    const bs = Chunk.from(as())
     const size = Chunk.size(bs)
 
     if (size === 0) {
-      return unit
+      return Effect.unit
     }
 
-    return uninterruptibleMask((status) => {
-      const promise = unsafeMake<void, void>(FiberIdNone.none)
+    return Effect.uninterruptibleMask(({ restore }) => {
+      const promise = promiseUnsafeMake<void, void>(FiberIdNone.none)
       const ref = new AtomicNumber(0)
 
-      return pipe(
-        transplant((graft) =>
-          forEach_(as, (a) =>
-            forkDaemon(
-              graft(
-                foldCauseEffect_(
-                  status.restore(suspendSucceed(() => f(a))),
-                  (cause) => zipRight_(fail_(promise, undefined), failCause(cause)),
-                  () => {
-                    if (ref.incrementAndGet() === size) {
-                      unsafeDone_(promise, unit)
-                      return unit
-                    } else {
-                      return unit
-                    }
-                  }
-                ),
-                __etsTrace
-              )
-            )
-          )
-        ),
-        chain((fibers) =>
-          foldCauseEffect_(
-            status.restore(promiseAwait(promise)),
-            (cause) =>
-              chain_(forEachParUnbounded(fibers, interruptFiber), (exits) => {
-                const collected = exitCollectAllPar(exits)
-                if (collected._tag === "Some" && collected.value._tag === "Failure") {
-                  return failCause(
-                    Cause.both(Cause.stripFailures(cause), collected.value.cause)
-                  )
+      return Effect.transplant((graft) =>
+        forEach_(as, (a) =>
+          graft(
+            restore(Effect.suspendSucceed(() => f(a))).foldCauseEffect(
+              (cause) =>
+                promiseFail_(promise, undefined).zipRight(Effect.failCauseNow(cause)),
+              () => {
+                if (ref.incrementAndGet() === size) {
+                  promiseUnsafeDone_(promise, Effect.unit)
+                  return Effect.unit
+                } else {
+                  return Effect.unit
                 }
-                return failCause(Cause.stripFailures(cause))
-              }),
-            (_) => forEachDiscard_(fibers, (_) => _.inheritRefs)
-          )
+              }
+            )
+          ).forkDaemon()
+        )
+      ).flatMap((fibers) =>
+        restore(promiseAwait(promise)).foldCauseEffect(
+          (cause) =>
+            forEachParUnbounded(fibers, interruptFiber).flatMap((exits) => {
+              const collected = exitCollectAllPar(exits)
+              if (collected._tag === "Some" && collected.value._tag === "Failure") {
+                return Effect.failCauseNow(
+                  Cause.both(Cause.stripFailures(cause), collected.value.cause)
+                )
+              }
+              return Effect.failCauseNow(Cause.stripFailures(cause))
+            }),
+          (_) => forEachDiscard_(fibers, (_) => _.inheritRefs)
         )
       )
     })
@@ -512,37 +440,39 @@ function forEachParUnboundedDiscard<R, E, A, X>(
 }
 
 function forEachParNDiscard<R, E, A, X>(
-  as: Iterable<A>,
+  as: LazyArg<Iterable<A>>,
   n: number,
   f: (a: A) => Effect<R, E, X>,
   __etsTrace?: string
 ): Effect<R, E, void> {
-  return suspendSucceed(() => {
-    const bs = Chunk.from(as)
+  return Effect.suspendSucceed(() => {
+    const as0 = as()
+    const bs = Chunk.from(as0)
     const size = Chunk.size(bs)
 
     if (size === 0) {
-      return unit
-    } else {
-      // eslint-disable-next-line no-inner-declarations
-      function worker(queue: Queue<A>): Effect<R, E, void> {
-        concreteQueue(queue)
-        return chain_(
-          map_(queue.takeUpTo(1), Chunk.head),
-          O.fold(
-            () => unit,
-            (a) => chain_(f(a), () => suspendSucceed(() => worker(queue)))
+      return Effect.unit
+    }
+
+    function worker(queue: Queue<A>): Effect<R, E, void> {
+      concreteQueue(queue)
+      return queue
+        .takeUpTo(1)
+        .map(Chunk.head)
+        .flatMap((_) =>
+          _.fold(
+            () => Effect.unit,
+            (a) => f(a).flatMap(() => worker(queue))
           )
         )
-      }
-
-      return chain_(makeBoundedQueue<A>(size), (queue) =>
-        chain_(QCore.offerAll_(queue, as), () =>
-          collectAllParUnboundedDiscard(replicate_(worker(queue), n))
-        )
-      )
     }
-  }, __etsTrace)
+
+    return makeBoundedQueue<A>(size).flatMap((queue) =>
+      QCore.offerAll_(queue, as0).flatMap(() =>
+        collectAllParUnboundedDiscard(worker(queue).replicate(n))
+      )
+    )
+  })
 }
 
 // -----------------------------------------------------------------------------
@@ -561,16 +491,16 @@ export function forEachExec_<R, E, A, B>(
   strategy: ExecutionStrategy,
   __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
-  return suspendSucceed(() => {
+  return Effect.suspendSucceed(() => {
     switch (strategy._tag) {
       case "Parallel": {
-        return withParallelismUnbounded(forEachPar_(as, f, __etsTrace))
+        return forEachPar_(as, f).withParallelismUnbounded()
       }
       case "ParallelN": {
-        return withParallelism_(forEachPar_(as, f, __etsTrace), strategy.n)
+        return forEachPar_(as, f).withParallelism(strategy.n)
       }
       case "Sequential": {
-        return forEach_(as, f, __etsTrace)
+        return forEach_(as, f)
       }
     }
   })
@@ -588,7 +518,7 @@ export function forEachExec<R, E, A, B>(
   __etsTrace?: string
 ) {
   return (as: Iterable<A>): Effect<R, E, Chunk.Chunk<B>> =>
-    forEachExec_(as, f, strategy, __etsTrace)
+    forEachExec_(as, f, strategy)
 }
 
 // -----------------------------------------------------------------------------
@@ -605,7 +535,7 @@ export function collectAll<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
   __etsTrace?: string
 ) {
-  return forEach_(as, identity, __etsTrace)
+  return forEach_(as, identity)
 }
 
 // -----------------------------------------------------------------------------
@@ -622,7 +552,7 @@ export function collectAllPar<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
   __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<A>> {
-  return forEachPar_(as, identity, __etsTrace)
+  return forEachPar_(as, identity)
 }
 
 // -----------------------------------------------------------------------------
@@ -639,7 +569,7 @@ export function collectAllDiscard<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
   __etsTrace?: string
 ): Effect<R, E, void> {
-  return forEachDiscard_(as, identity, __etsTrace)
+  return forEachDiscard_(as, identity)
 }
 
 // -----------------------------------------------------------------------------
@@ -656,7 +586,7 @@ export function collectAllParDiscard<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
   __etsTrace?: string
 ): Effect<R, E, void> {
-  return forEachParDiscard_(as, identity, __etsTrace)
+  return forEachParDiscard_(as, identity)
 }
 
 // -----------------------------------------------------------------------------
@@ -673,7 +603,7 @@ export function collectAllParUnboundedDiscard<R, E, A>(
   as: Iterable<Effect<R, E, A>>,
   __etsTrace?: string
 ): Effect<R, E, void> {
-  return forEachParUnboundedDiscard(as, identity, __etsTrace)
+  return forEachParUnboundedDiscard(as, identity)
 }
 
 // -----------------------------------------------------------------------------
@@ -693,7 +623,7 @@ export function collectAllParNDiscard_<R, E, A>(
   n: number,
   __etsTrace?: string
 ): Effect<R, E, void> {
-  return forEachParNDiscard(as, n, identity, __etsTrace)
+  return forEachParNDiscard(as, n, identity)
 }
 
 /**
@@ -706,7 +636,7 @@ export function collectAllParNDiscard_<R, E, A>(
  */
 export function collectAllParNDiscard(n: number, __etsTrace?: string) {
   return <R, E, A>(as: Iterable<Effect<R, E, A>>): Effect<R, E, void> =>
-    collectAllParNDiscard_(as, n, __etsTrace)
+    collectAllParNDiscard_(as, n)
 }
 
 // -----------------------------------------------------------------------------
@@ -721,10 +651,10 @@ export function collectAllParNDiscard(n: number, __etsTrace?: string) {
  */
 export function collectAllWith_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
-  pf: (a: A) => O.Option<B>,
+  pf: (a: A) => Option<B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
-  return map_(collectAll(as, __etsTrace), ChunkCollect.collect(pf))
+  return collectAll(as).map(ChunkCollect.collect(pf))
 }
 
 /**
@@ -733,9 +663,9 @@ export function collectAllWith_<R, E, A, B>(
  *
  * @ets_data_first collectAllWith_
  */
-export function collectAllWith<A, B>(pf: (a: A) => O.Option<B>, __etsTrace?: string) {
+export function collectAllWith<A, B>(pf: (a: A) => Option<B>, __etsTrace?: string) {
   return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, Chunk.Chunk<B>> =>
-    collectAllWith_(as, pf, __etsTrace)
+    collectAllWith_(as, pf)
 }
 
 // -----------------------------------------------------------------------------
@@ -750,10 +680,10 @@ export function collectAllWith<A, B>(pf: (a: A) => O.Option<B>, __etsTrace?: str
  */
 export function collectAllWithPar_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,
-  pf: (a: A) => O.Option<B>,
+  pf: (a: A) => Option<B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<B>> {
-  return map_(collectAllPar(as, __etsTrace), ChunkCollect.collect(pf))
+  return collectAllPar(as).map(ChunkCollect.collect(pf))
 }
 
 /**
@@ -762,12 +692,9 @@ export function collectAllWithPar_<R, E, A, B>(
  *
  * @ets_data_first collectAllWithPar_
  */
-export function collectAllWithPar<A, B>(
-  pf: (a: A) => O.Option<B>,
-  __etsTrace?: string
-) {
+export function collectAllWithPar<A, B>(pf: (a: A) => Option<B>, __etsTrace?: string) {
   return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, Chunk.Chunk<B>> =>
-    collectAllWithPar_(as, pf, __etsTrace)
+    collectAllWithPar_(as, pf)
 }
 
 // -----------------------------------------------------------------------------
@@ -784,9 +711,8 @@ export function collectAllSuccesses<R, E, A>(
   __etsTrace?: string
 ): Effect<R, never, Chunk.Chunk<A>> {
   return collectAllWith_(
-    Iter.map_(as, (x) => exit(x)),
-    (e) => (e._tag === "Success" ? O.some(e.value) : O.none),
-    __etsTrace
+    Iter.map_(as, (_) => _.exit()),
+    (e) => (e._tag === "Success" ? Option.some(e.value) : Option.none)
   )
 }
 
@@ -804,9 +730,8 @@ export function collectAllSuccessesPar<R, E, A>(
   __etsTrace?: string
 ): Effect<R, never, Chunk.Chunk<A>> {
   return collectAllWithPar_(
-    Iter.map_(as, (x) => exit(x)),
-    (e) => (e._tag === "Success" ? O.some(e.value) : O.none),
-    __etsTrace
+    Iter.map_(as, (_) => _.exit()),
+    (e) => (e._tag === "Success" ? Option.some(e.value) : Option.none)
   )
 }
 
@@ -823,11 +748,9 @@ export function fiberJoinAll<E, A>(
   as: Iterable<Fiber<E, A>>,
   __etsTrace?: string
 ): Effect<unknown, E, Chunk.Chunk<A>> {
-  return tap_(
-    chain_(fiberWaitAll(as), done),
-    () => forEach_(as, (f) => f.inheritRefs),
-    __etsTrace
-  )
+  return fiberWaitAll(as)
+    .flatMap(Effect.done)
+    .tap(() => forEach_(as, (f) => f.inheritRefs))
 }
 
 /**
@@ -837,10 +760,7 @@ export function fiberWaitAll<E, A>(
   as: Iterable<Fiber<E, A>>,
   __etsTrace?: string
 ): RIO<unknown, Exit<E, Chunk.Chunk<A>>> {
-  return exit(
-    forEachPar_(as, (f) => chain_(f.await, done)),
-    __etsTrace
-  )
+  return forEachPar_(as, (f) => f.await.flatMap(Effect.done)).exit()
 }
 
 // -----------------------------------------------------------------------------
@@ -848,7 +768,7 @@ export function fiberWaitAll<E, A>(
 // -----------------------------------------------------------------------------
 
 /**
- * Releases all the finalizers in the releaseMap according to the ExecutionStrategy
+ * Releases all the finalizers in the releaseMap according to the ExecutionStrategy.
  */
 export function releaseMapReleaseAll_(
   self: ReleaseMap,
@@ -856,76 +776,52 @@ export function releaseMapReleaseAll_(
   execStrategy: ExecutionStrategy,
   __etsTrace?: string
 ): UIO<any> {
-  return pipe(
-    self.ref,
-    Ref.modify((s): Tp.Tuple<[UIO<any>, State]> => {
-      switch (s._tag) {
-        case "Exited": {
-          return Tp.tuple(unit, s)
-        }
-        case "Running": {
-          switch (execStrategy._tag) {
-            case "Sequential": {
-              return Tp.tuple(
-                chain_(
-                  forEach_(
-                    Array.from(s.finalizers()).reverse(),
-                    ([_, f]) => exit(s.update(f)(ex)),
-                    __etsTrace
-                  ),
-                  (results) =>
-                    done(
-                      O.getOrElse_(exitCollectAll(results), () =>
-                        exitSucceed(List.empty())
-                      )
-                    )
-                ),
-                new Exited(s.nextKey, ex, s.update)
+  return RefModify.modify_(self.ref, (s): Tuple<[UIO<any>, State]> => {
+    switch (s._tag) {
+      case "Exited": {
+        return Tuple(Effect.unit, s)
+      }
+      case "Running": {
+        switch (execStrategy._tag) {
+          case "Sequential": {
+            return Tuple(
+              forEach_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
+                s.update(f)(ex).exit()
+              ).flatMap((results) =>
+                // @ts-expect-error
+                Effect.done(exitCollectAll(results).getOrElse(exitUnit))
+              ),
+              new Exited(s.nextKey, ex, s.update)
+            )
+          }
+          case "Parallel": {
+            return Tuple(
+              forEachPar_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
+                s.update(f)(ex).exit()
+              ).flatMap((results) =>
+                // @ts-expect-error
+                Effect.done(exitCollectAllPar(results).getOrElse(exitUnit))
+              ),
+              new Exited(s.nextKey, ex, s.update)
+            )
+          }
+          case "ParallelN": {
+            return Tuple(
+              forEachPar_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
+                s.update(f)(ex).exit()
               )
-            }
-            case "Parallel": {
-              return Tp.tuple(
-                chain_(
-                  forEachPar_(
-                    Array.from(s.finalizers()).reverse(),
-                    ([_, f]) => exit(s.update(f)(ex)),
-                    __etsTrace
-                  ),
-                  (results) =>
-                    done(
-                      O.getOrElse_(exitCollectAllPar(results), () =>
-                        exitSucceed(List.empty())
-                      )
-                    )
-                ),
-                new Exited(s.nextKey, ex, s.update)
-              )
-            }
-            case "ParallelN": {
-              return Tp.tuple(
-                chain_(
-                  forEachParN(
-                    Array.from(s.finalizers()).reverse(),
-                    execStrategy.n,
-                    ([_, f]) => exit(s.update(f)(ex)),
-                    __etsTrace
-                  ),
-                  (results) =>
-                    done(
-                      O.getOrElse_(exitCollectAllPar(results), () =>
-                        exitSucceed(List.empty())
-                      )
-                    )
-                ),
-                new Exited(s.nextKey, ex, s.update)
-              )
-            }
+                .flatMap((results) =>
+                  // @ts-expect-error
+                  Effect.done(exitCollectAllPar(results).getOrElse(exitUnit))
+                )
+                .withParallelism(execStrategy.n) as UIO<any>,
+              new Exited(s.nextKey, ex, s.update)
+            )
           }
         }
       }
-    }),
-    flatten
-  )
+    }
+  }).flatten()
 }
 
 /**
@@ -936,37 +832,31 @@ export function releaseMapReleaseAll_(
 export function managedFork<R, E, A>(
   self: Managed<R, E, A>,
   __etsTrace?: string
-): Managed<R, never, FiberContext<E, A>> {
-  return managedApply(
-    uninterruptibleMask((status) =>
-      pipe(
-        Do.Do(),
-        Do.bind("outerReleaseMap", () => fiberRefGet(currentReleaseMap.value)),
-        Do.bind("innerReleaseMap", () => releaseMapMake),
-        Do.bind("fiber", ({ innerReleaseMap }) =>
+): Managed<R, never, Fiber<E, A>> {
+  return Managed(
+    Effect.uninterruptibleMask(({ restore }) =>
+      Effect.Do()
+        .bind("outerReleaseMap", () => fiberRefGet(currentReleaseMap.value))
+        .bind("innerReleaseMap", () => ReleaseMap.make)
+        .bind("fiber", ({ innerReleaseMap }) =>
           locally_(
             currentReleaseMap.value,
-            innerReleaseMap,
-            __etsTrace
+            innerReleaseMap
           )(
-            forkDaemon(status.restore(map_(self.effect, (_) => _.get(1)))) as RIO<
+            restore(self.effect.map((_) => _.get(1))).forkDaemon() as RIO<
               R,
-              FiberContext<E, A>
+              Fiber<E, A>
             >
           )
-        ),
-        Do.bind("releaseMapEntry", ({ fiber, innerReleaseMap, outerReleaseMap }) =>
-          releaseMapAdd_(
-            outerReleaseMap,
-            (e) =>
-              chain_(interruptFiber(fiber), () =>
-                releaseMapReleaseAll_(innerReleaseMap, e, sequential)
-              ),
-            __etsTrace
+        )
+        .bind("releaseMapEntry", ({ fiber, innerReleaseMap, outerReleaseMap }) =>
+          outerReleaseMap.add((e) =>
+            interruptFiber(fiber).flatMap(() =>
+              releaseMapReleaseAll_(innerReleaseMap, e, sequential)
+            )
           )
-        ),
-        map(({ fiber, releaseMapEntry }) => Tp.tuple(releaseMapEntry, fiber))
-      )
+        )
+        .map(({ fiber, releaseMapEntry }) => Tuple(releaseMapEntry, fiber))
     )
   )
 }
@@ -979,16 +869,14 @@ export function managedUse_<R, E, A, R2, E2, B>(
   f: (a: A) => Effect<R2, E2, B>,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, B> {
-  return chain_(releaseMapMake, (releaseMap) =>
+  return ReleaseMap.make.flatMap((releaseMap) =>
     locally_(
       currentReleaseMap.value,
-      releaseMap,
-      __etsTrace
+      releaseMap
     )(
-      acquireReleaseExitWith_(
-        fiberRefGet(currentReleaseMap.value),
-        () => chain_(self.effect, (_) => f(_.get(1)), __etsTrace),
-        (relMap, ex) => releaseMapReleaseAll_(relMap, ex, sequential, __etsTrace)
+      fiberRefGet(currentReleaseMap.value).acquireReleaseExitWith(
+        () => self.effect.flatMap((_) => f(_.get(1))),
+        (relMap, ex) => releaseMapReleaseAll_(relMap, ex, sequential)
       )
     )
   )
@@ -999,7 +887,7 @@ export function managedUse_<R, E, A, R2, E2, B>(
 // -----------------------------------------------------------------------------
 
 export class BackPressureStrategy<A> implements Strategy<A> {
-  private putters = new Unbounded<Tp.Tuple<[A, Promise<never, boolean>, boolean]>>()
+  private putters = new Unbounded<Tuple<[A, Promise<never, boolean>, boolean]>>()
 
   handleSurplus(
     as: Chunk.Chunk<A>,
@@ -1007,22 +895,19 @@ export class BackPressureStrategy<A> implements Strategy<A> {
     takers: MutableQueue<Promise<never, A>>,
     isShutdown: AtomicBoolean
   ): UIO<boolean> {
-    return suspendSucceedWith((_, fiberId) => {
-      const p = unsafeMake<never, boolean>(fiberId)
+    return Effect.suspendSucceedWith((_, fiberId) => {
+      const p = promiseUnsafeMake<never, boolean>(fiberId)
 
-      return onInterrupt_(
-        suspendSucceed(() => {
-          this.unsafeOffer(as, p)
-          this.unsafeOnQueueEmptySpace(queue, takers)
-          QCore.unsafeCompleteTakers(this, queue, takers)
-          if (isShutdown.get) {
-            return interrupt
-          } else {
-            return promiseAwait(p)
-          }
-        }),
-        () => succeed(() => this.unsafeRemove(p))
-      )
+      return Effect.suspendSucceed(() => {
+        this.unsafeOffer(as, p)
+        this.unsafeOnQueueEmptySpace(queue, takers)
+        QCore.unsafeCompleteTakers(this, queue, takers)
+        if (isShutdown.get) {
+          return Effect.interrupt
+        } else {
+          return promiseAwait(p)
+        }
+      }).onInterrupt(() => Effect.succeed(() => this.unsafeRemove(p)))
     })
   }
 
@@ -1042,10 +927,10 @@ export class BackPressureStrategy<A> implements Strategy<A> {
       bs = Chunk.drop_(bs, 1)
 
       if (Chunk.size(bs) === 0) {
-        this.putters.offer(Tp.tuple(head, p, true))
+        this.putters.offer(Tuple(head, p, true))
         return
       } else {
-        this.putters.offer(Tp.tuple(head, p, false))
+        this.putters.offer(Tuple(head, p, false))
       }
     }
   }
@@ -1078,17 +963,15 @@ export class BackPressureStrategy<A> implements Strategy<A> {
   }
 
   get shutdown(): UIO<void> {
-    return pipe(
-      Do.Do(),
-      Do.bind("fiberId", () => fiberId),
-      Do.bind("putters", () => succeed(() => QCore.unsafePollAll(this.putters))),
-      tap((s) =>
+    return Effect.Do()
+      .bind("fiberId", () => Effect.fiberId)
+      .bind("putters", () => Effect.succeed(() => QCore.unsafePollAll(this.putters)))
+      .tap((s) =>
         forEachPar_(s.putters, ({ tuple: [_, p, lastItem] }) =>
-          lastItem ? interruptAs(s.fiberId)(p) : unit
+          lastItem ? interruptAs(s.fiberId)(p) : Effect.unit
         )
-      ),
-      asUnit
-    )
+      )
+      .asUnit()
   }
 
   get surplusSize(): number {
@@ -1103,10 +986,8 @@ export function makeBoundedQueue<A>(
   capacity: number,
   __etsTrace?: string
 ): UIO<Queue<A>> {
-  return chain_(
-    succeed(() => new Bounded<A>(capacity)),
-    (x) => createQueue_(x, new BackPressureStrategy()),
-    __etsTrace
+  return Effect.succeed(() => new Bounded<A>(capacity)).flatMap((x) =>
+    createQueue_(x, new BackPressureStrategy())
   )
 }
 
@@ -1138,12 +1019,12 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
 
   capacity: number = this.queue.capacity
 
-  isShutdown: UIO<boolean> = succeed(() => this.shutdownFlag.get)
+  isShutdown: UIO<boolean> = Effect.succeed(() => this.shutdownFlag.get)
 
   offer(a: A): Effect<unknown, never, boolean> {
-    return suspendSucceed(() => {
+    return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
-        return interrupt
+        return Effect.interrupt
       } else {
         const noRemaining = (() => {
           if (this.queue.isEmpty) {
@@ -1161,14 +1042,14 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
         })()
 
         if (noRemaining) {
-          return succeedNow(true)
+          return Effect.succeedNow(true)
         }
         const succeeded = this.queue.offer(a)
 
         QCore.unsafeCompleteTakers(this.strategy, this.queue, this.takers)
 
         if (succeeded) {
-          return succeedNow(true)
+          return Effect.succeedNow(true)
         } else {
           return this.strategy.handleSurplus(
             Chunk.single(a),
@@ -1183,9 +1064,9 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
 
   offerAll(as: Iterable<A>): Effect<unknown, never, boolean> {
     const arr = Chunk.from(as)
-    return suspendSucceed(() => {
+    return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
-        return interrupt
+        return Effect.interrupt
       } else {
         const pTakers = this.queue.isEmpty
           ? QCore.unsafePollN(this.takers, Chunk.size(arr))
@@ -1202,7 +1083,7 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
         )
 
         if (Chunk.size(remaining) === 0) {
-          return succeedNow(true)
+          return Effect.succeedNow(true)
         }
 
         const surplus = QCore.unsafeOfferAll(this.queue, remaining)
@@ -1210,7 +1091,7 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
         QCore.unsafeCompleteTakers(this.strategy, this.queue, this.takers)
 
         if (Chunk.size(surplus) === 0) {
-          return succeedNow(true)
+          return Effect.succeedNow(true)
         } else {
           return this.strategy.handleSurplus(
             surplus,
@@ -1223,60 +1104,53 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
     })
   }
 
-  shutdown: UIO<void> = uninterruptible(
-    suspendSucceedWith((_, fiberId) => {
-      this.shutdownFlag.set(true)
+  shutdown: UIO<void> = Effect.suspendSucceedWith((_, fiberId) => {
+    this.shutdownFlag.set(true)
+    return forEachPar_(QCore.unsafePollAll(this.takers), interruptAs(fiberId))
+      .flatMap(() => this.strategy.shutdown)
+      .whenEffect(promiseSucceed<void>(undefined)(this.shutdownHook))
+  }).uninterruptible()
 
-      return whenEffect(succeed_1<void>(undefined)(this.shutdownHook))(
-        chain_(
-          forEachPar_(QCore.unsafePollAll(this.takers), interruptAs(fiberId)),
-          () => this.strategy.shutdown
-        )
-      )
-    })
-  )
-
-  size: UIO<number> = suspendSucceed(() => {
+  size: UIO<number> = Effect.suspendSucceed(() => {
     if (this.shutdownFlag.get) {
-      return interrupt
+      return Effect.interrupt
     } else {
-      return succeedNow(this.queue.size - this.takers.size + this.strategy.surplusSize)
+      return Effect.succeedNow(
+        this.queue.size - this.takers.size + this.strategy.surplusSize
+      )
     }
   })
 
-  take: Effect<unknown, never, A> = suspendSucceedWith((_, fiberId) => {
+  take: Effect<unknown, never, A> = Effect.suspendSucceedWith((_, fiberId) => {
     if (this.shutdownFlag.get) {
-      return interrupt
+      return Effect.interrupt
     }
 
     const item = this.queue.poll(undefined)
 
     if (item) {
       this.strategy.unsafeOnQueueEmptySpace(this.queue, this.takers)
-      return succeedNow(item)
+      return Effect.succeedNow(item)
     } else {
-      const p = unsafeMake<never, A>(fiberId)
+      const p = promiseUnsafeMake<never, A>(fiberId)
 
-      return onInterrupt_(
-        suspendSucceed(() => {
-          this.takers.offer(p)
-          QCore.unsafeCompleteTakers(this.strategy, this.queue, this.takers)
-          if (this.shutdownFlag.get) {
-            return interrupt
-          } else {
-            return promiseAwait(p)
-          }
-        }),
-        () => succeed(() => QCore.unsafeRemove(this.takers, p))
-      )
+      return Effect.suspendSucceed(() => {
+        this.takers.offer(p)
+        QCore.unsafeCompleteTakers(this.strategy, this.queue, this.takers)
+        if (this.shutdownFlag.get) {
+          return Effect.interrupt
+        } else {
+          return promiseAwait(p)
+        }
+      }).onInterrupt(() => Effect.succeed(() => QCore.unsafeRemove(this.takers, p)))
     }
   })
 
-  takeAll: Effect<unknown, never, Chunk.Chunk<A>> = suspendSucceed(() => {
+  takeAll: Effect<unknown, never, Chunk.Chunk<A>> = Effect.suspendSucceed(() => {
     if (this.shutdownFlag.get) {
-      return interrupt
+      return Effect.interrupt
     } else {
-      return succeed(() => {
+      return Effect.succeed(() => {
         const as = QCore.unsafePollAll(this.queue)
         this.strategy.unsafeOnQueueEmptySpace(this.queue, this.takers)
         return as
@@ -1285,11 +1159,11 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
   })
 
   takeUpTo(n: number): Effect<unknown, never, Chunk.Chunk<A>> {
-    return suspendSucceed(() => {
+    return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
-        return interrupt
+        return Effect.interrupt
       } else {
-        return succeed(() => {
+        return Effect.succeed(() => {
           const as = QCore.unsafePollN(this.queue, n)
           this.strategy.unsafeOnQueueEmptySpace(this.queue, this.takers)
           return as
@@ -1307,11 +1181,8 @@ export function createQueue_<A>(
   strategy: Strategy<A>,
   __etsTrace?: string
 ) {
-  return map_(
-    make<never, void>(),
-    (p) =>
-      unsafeCreateQueue(queue, new Unbounded(), p, new AtomicBoolean(false), strategy),
-    __etsTrace
+  return promiseMake<never, void>().map((p) =>
+    unsafeCreateQueue(queue, new Unbounded(), p, new AtomicBoolean(false), strategy)
   )
 }
 
@@ -1321,5 +1192,5 @@ export function createQueue_<A>(
  * @ets_data_first createQueue_
  */
 export function createQueue<A>(strategy: Strategy<A>, __etsTrace?: string) {
-  return (queue: MutableQueue<A>) => createQueue_(queue, strategy, __etsTrace)
+  return (queue: MutableQueue<A>) => createQueue_(queue, strategy)
 }

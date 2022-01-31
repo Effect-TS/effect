@@ -1,37 +1,6 @@
-import type { Managed } from "../definition"
-import type { ExecutionStrategy } from "./_internal/effect"
-import { forEach_ } from "./forEach"
-import { forEachPar_ } from "./forEachPar"
-import { suspend } from "./suspend"
-import { withParallelism_ } from "./withParallelism"
-import { withParallelismUnbounded } from "./withParallelismUnbounded"
-
-/**
- * Applies the function `f` to each element of the `Iterable<A>` in parallel,
- * and returns the results in a new `readonly B[]`.
- *
- * For a sequential version of this method, see `forEach`.
- */
-export function forEachExec_<R, E, A, B>(
-  as: Iterable<A>,
-  es: ExecutionStrategy,
-  f: (a: A) => Managed<R, E, B>,
-  __trace?: string
-) {
-  return suspend(() => {
-    switch (es._tag) {
-      case "Parallel": {
-        return withParallelismUnbounded(forEachPar_(as, f))
-      }
-      case "ParallelN": {
-        return withParallelism_(forEachPar_(as, f), es.n)
-      }
-      case "Sequential": {
-        return forEach_(as, f)
-      }
-    }
-  }, __trace)
-}
+import type { LazyArg } from "../../../data/Function"
+import type { ExecutionStrategy } from "../../Effect/operations/ExecutionStrategy"
+import { Managed } from "../definition"
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
@@ -39,12 +8,25 @@ export function forEachExec_<R, E, A, B>(
  *
  * For a sequential version of this method, see `forEach`.
  *
- * @ets_data_first forEachExec_
+ * @ets static ets/ManagedOps forEachExec
  */
 export function forEachExec<R, E, A, B>(
-  es: ExecutionStrategy,
+  as: LazyArg<Iterable<A>>,
+  executionStrategy: ExecutionStrategy,
   f: (a: A) => Managed<R, E, B>,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return (as: Iterable<A>) => forEachExec_(as, es, f, __trace)
+  return Managed.suspend(() => {
+    switch (executionStrategy._tag) {
+      case "Parallel": {
+        return Managed.forEachPar(as, f).withParallelismUnbounded()
+      }
+      case "ParallelN": {
+        return Managed.forEachPar(as, f).withParallelism(executionStrategy.n)
+      }
+      case "Sequential": {
+        return Managed.forEach(as, f)
+      }
+    }
+  })
 }

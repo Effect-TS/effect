@@ -1,15 +1,11 @@
-import * as Tp from "../../../collection/immutable/Tuple"
-import { pipe } from "../../../data/Function"
-import { provideEnvironment_ } from "../../Effect/operations/provideEnvironment"
+import { Tuple } from "../../../collection/immutable/Tuple"
+import type { LazyArg } from "../../../data/Function"
+import { Effect } from "../../Effect"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { get as fiberRefGet } from "../../FiberRef/operations/get"
-import type { Managed } from "../definition"
-import { managedApply } from "../definition"
-import { addIfOpen_ } from "../ReleaseMap/addIfOpen"
+import { Managed } from "../definition"
 import type { Finalizer } from "../ReleaseMap/finalizer"
-import { release_ } from "../ReleaseMap/release"
 import type { Reservation } from "../reservation"
-import * as T from "./_internal/effect"
 
 /**
  * Creates a `Managed` from a `Reservation` produced by an effect. Evaluating
@@ -20,38 +16,35 @@ import * as T from "./_internal/effect"
  *
  * This two-phase acquisition allows for resource acquisition flows that can
  * be safely interrupted and released.
+ *
+ * @ets static ets/ManagedOps fromReservationEffect
  */
 export function fromReservationEffect<R, E, A>(
-  reservation: T.Effect<R, E, Reservation<R, E, A>>,
-  __trace?: string
+  reservation: LazyArg<Effect<R, E, Reservation<R, E, A>>>,
+  __etsTrace?: string
 ): Managed<R, E, A> {
-  return managedApply(
-    T.uninterruptibleMask((status) =>
-      pipe(
-        T.Do(),
-        T.bind("r", () => T.environment<R>()),
-        T.bind("releaseMap", () => fiberRefGet(currentReleaseMap.value)),
-        T.bind("reserved", () => reservation),
-        T.bind("releaseKey", ({ r, releaseMap, reserved }) =>
-          addIfOpen_(releaseMap, (exit) =>
-            provideEnvironment_(reserved.release(exit), r, __trace)
-          )
-        ),
-        T.chain(({ releaseKey, releaseMap, reserved }) => {
+  return Managed(
+    Effect.uninterruptibleMask(({ restore }) =>
+      Effect.Do()
+        .bind("r", () => Effect.environment<R>())
+        .bind("releaseMap", () => fiberRefGet(currentReleaseMap.value))
+        .bind("reserved", () => reservation())
+        .bind("releaseKey", ({ r, releaseMap, reserved }) =>
+          releaseMap.addIfOpen((exit) => reserved.release(exit).provideEnvironment(r))
+        )
+        .flatMap(({ releaseKey, releaseMap, reserved }) => {
           switch (releaseKey._tag) {
             case "None": {
-              return T.interrupt
+              return Effect.interrupt
             }
             case "Some": {
-              return T.map_(
-                status.restore(reserved.acquire),
-                (a): Tp.Tuple<[Finalizer, A]> =>
-                  Tp.tuple((exit) => release_(releaseMap, releaseKey.value, exit), a)
+              return restore(reserved.acquire).map(
+                (a): Tuple<[Finalizer, A]> =>
+                  Tuple((exit) => releaseMap.release(releaseKey.value, exit), a)
               )
             }
           }
         })
-      )
     )
   )
 }

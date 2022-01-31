@@ -1,7 +1,7 @@
-import * as E from "../../../data/Either"
+import { Either } from "../../../data/Either"
 import type { Predicate, Refinement } from "../../../data/Function"
 import { identity } from "../../../data/Function"
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { XFiberRef } from "../definition"
 import { concreteUnified } from "../definition"
 
@@ -13,18 +13,18 @@ import { concreteUnified } from "../definition"
 export function filterOutput_<EA, EB, A, B, C extends B>(
   self: XFiberRef<EA, EB, A, B>,
   f: Refinement<B, C>
-): XFiberRef<EA, O.Option<EB>, A, C>
+): XFiberRef<EA, Option<EB>, A, C>
 export function filterOutput_<EA, EB, A, B>(
   self: XFiberRef<EA, EB, A, B>,
   f: Predicate<B>
-): XFiberRef<EA, O.Option<EB>, A, B>
+): XFiberRef<EA, Option<EB>, A, B>
 export function filterOutput_<EA, EB, A, B>(
   self: XFiberRef<EA, EB, A, B>,
   f: Predicate<B>
-): XFiberRef<EA, O.Option<EB>, A, B> {
+): XFiberRef<EA, Option<EB>, A, B> {
   concreteUnified(self)
-  return self.fold(identity, O.some, E.right, (b) =>
-    f(b) ? E.right(b) : E.left(O.none)
+  return self.fold(identity, Option.some, Either.right, (b) =>
+    f(b) ? Either.right(b) : Either.left(Option.none)
   )
 }
 
@@ -37,12 +37,11 @@ export function filterOutput_<EA, EB, A, B>(
  */
 export function filterOutput<B, C extends B>(
   f: Refinement<B, C>
-): <EA, EB, A>(self: XFiberRef<EA, EB, A, B>) => XFiberRef<EA, O.Option<EB>, A, C>
+): <EA, EB, A>(self: XFiberRef<EA, EB, A, B>) => XFiberRef<EA, Option<EB>, A, C>
 export function filterOutput<B>(
   f: Predicate<B>
-): <EA, EB, A>(self: XFiberRef<EA, EB, A, B>) => XFiberRef<EA, O.Option<EB>, A, B>
+): <EA, EB, A>(self: XFiberRef<EA, EB, A, B>) => XFiberRef<EA, Option<EB>, A, B>
 export function filterOutput<B>(f: Predicate<B>) {
-  return <EA, EB, A>(
-    self: XFiberRef<EA, EB, A, B>
-  ): XFiberRef<EA, O.Option<EB>, A, B> => filterOutput_(self, f)
+  return <EA, EB, A>(self: XFiberRef<EA, EB, A, B>): XFiberRef<EA, Option<EB>, A, B> =>
+    filterOutput_(self, f)
 }

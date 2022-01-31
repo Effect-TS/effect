@@ -1,23 +1,23 @@
-import type * as Tp from "../../../../collection/immutable/Tuple"
+import type { Tuple } from "../../../../collection/immutable/Tuple"
+import { Effect } from "../../../Effect"
 import type { Atomic } from "../Atomic"
-import * as T from "./_internal/effect"
 
 export function modify_<A, B>(
   self: Atomic<A>,
-  f: (a: A) => Tp.Tuple<[B, A]>,
-  __trace?: string
-): T.UIO<B> {
-  return T.succeed(() => {
+  f: (a: A) => Tuple<[B, A]>,
+  __etsTrace?: string
+): Effect<unknown, never, B> {
+  return Effect.succeed(() => {
     const v = self.value.get
     const o = f(v)
     self.value.set(o.get(1))
     return o.get(0)
-  }, __trace)
+  })
 }
 
 /**
  * @ets_data_first modify_
  */
-export function modify<A, B>(f: (a: A) => Tp.Tuple<[B, A]>, __trace?: string) {
-  return (self: Atomic<A>): T.UIO<B> => modify_(self, f, __trace)
+export function modify<A, B>(f: (a: A) => Tuple<[B, A]>, __etsTrace?: string) {
+  return (self: Atomic<A>): Effect<unknown, never, B> => modify_(self, f)
 }

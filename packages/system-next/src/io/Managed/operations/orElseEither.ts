@@ -1,24 +1,21 @@
-import type { Either } from "../../../data/Either"
-import { left, right } from "../../../data/Either"
-import type { Managed } from "../definition"
-import { foldManaged_ } from "./foldManaged"
-import { map_ } from "./map"
-import { succeedNow } from "./succeedNow"
+import { Either } from "../../../data/Either"
+import type { LazyArg } from "../../../data/Function"
+import { Managed } from "../definition"
 
 /**
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise executes the specified effect.
+ *
+ * @ets fluent ets/Managed orElseEither
  */
 export function orElseEither_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
-  that: () => Managed<R2, E2, A2>,
-  __trace?: string
+  that: LazyArg<Managed<R2, E2, A2>>,
+  __etsTrace?: string
 ): Managed<R & R2, E2, Either<A2, A>> {
-  return foldManaged_(
-    self,
-    () => map_(that(), left),
-    (a) => succeedNow(right(a)),
-    __trace
+  return self.foldManaged(
+    () => that().map(Either.left),
+    (a) => Managed.succeedNow(Either.right(a))
   )
 }
 
@@ -29,9 +26,9 @@ export function orElseEither_<R, E, A, R2, E2, A2>(
  * @ets_data_first orElseEither_
  */
 export function orElseEither<R2, E2, A2>(
-  that: () => Managed<R2, E2, A2>,
-  __trace?: string
+  that: LazyArg<Managed<R2, E2, A2>>,
+  __etsTrace?: string
 ) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<R & R2, E2, Either<A2, A>> =>
-    orElseEither_(self, that, __trace)
+    orElseEither_(self, that)
 }

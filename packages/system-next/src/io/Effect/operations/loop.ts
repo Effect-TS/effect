@@ -1,10 +1,5 @@
 import * as L from "../../../collection/immutable/List"
-import { pipe } from "../../../data/Function"
-import type { Effect } from "../definition"
-import { chain_ } from "./chain"
-import { map, map_ } from "./map"
-import { succeed } from "./succeed"
-import { suspendSucceed } from "./suspendSucceed"
+import { Effect } from "../definition"
 
 /**
  * Loops with the specified effectual function, collecting the results into a
@@ -29,9 +24,7 @@ export function loop<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
     body: (z: Z) => Effect<R, E, A>,
     __etsTrace?: string
   ): Effect<R, E, readonly A[]> => {
-    return map_(loopInternal_(initial, cont, inc, body, __etsTrace), (x) =>
-      Array.from(L.reverse(x))
-    )
+    return loopInternal_(initial, cont, inc, body).map((x) => Array.from(L.reverse(x)))
   }
 }
 
@@ -42,18 +35,15 @@ function loopInternal_<Z, R, E, A>(
   body: (z: Z) => Effect<R, E, A>,
   __etsTrace?: string
 ): Effect<R, E, L.MutableList<A>> {
-  return suspendSucceed(() => {
+  return Effect.suspendSucceed(() => {
     if (cont(initial)) {
-      return chain_(body(initial), (a) =>
-        pipe(
-          loopInternal_(inc(initial), cont, inc, body),
-          map((as) => {
-            L.push_(as, a)
-            return as
-          })
-        )
+      return body(initial).flatMap((a) =>
+        loopInternal_(inc(initial), cont, inc, body).map((as) => {
+          L.push_(as, a)
+          return as
+        })
       )
     }
-    return succeed(() => L.emptyPushable())
+    return Effect.succeed(() => L.emptyPushable())
   }, __etsTrace)
 }

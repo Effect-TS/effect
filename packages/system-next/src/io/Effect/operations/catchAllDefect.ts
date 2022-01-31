@@ -1,6 +1,5 @@
 import * as O from "../../../data/Option"
 import type { Effect } from "../definition"
-import { catchSomeDefect_ } from "./catchSomeDefect"
 
 /**
  * Recovers from all defects with provided function.
@@ -17,7 +16,7 @@ export function catchAllDefect_<R, E, A, R2, E2, A2>(
   f: (defect: unknown) => Effect<R2, E2, A2>,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, A | A2> {
-  return catchSomeDefect_(self, (d) => O.some(f(d)), __etsTrace)
+  return self.catchSomeDefect((d) => O.some(f(d)))
 }
 
 /**
@@ -35,5 +34,5 @@ export function catchAllDefect<R2, E2, A2>(
   __etsTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> =>
-    catchAllDefect_(self, f, __etsTrace)
+    catchAllDefect_(self, f)
 }

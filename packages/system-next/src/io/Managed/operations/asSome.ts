@@ -1,13 +1,14 @@
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { Managed } from "../definition"
-import { map_ } from "./map"
 
 /**
  * Maps the success value of this effect to an optional value.
+ *
+ * @ets fluent ets/Managed asSome
  */
 export function asSome<R, E, A>(
   self: Managed<R, E, A>,
-  __trace?: string
-): Managed<R, E, O.Option<A>> {
-  return map_(self, O.some)
+  __etsTrace?: string
+): Managed<R, E, Option<A>> {
+  return self.map(Option.some)
 }

@@ -1,5 +1,5 @@
 import * as St from "../../prelude/Structural"
-import type * as C from "../Cause"
+import type { Cause } from "../Cause"
 
 // -----------------------------------------------------------------------------
 // Model
@@ -24,7 +24,7 @@ export class Success<A> implements St.HasEquals {
 export class Failure<E> {
   readonly _tag = "Failure"
 
-  constructor(readonly cause: C.Cause<E>) {}
+  constructor(readonly cause: Cause<E>) {}
 
   get [St.hashSym](): number {
     return St.hash(this.cause)

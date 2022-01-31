@@ -1,8 +1,5 @@
 import * as Iter from "../../../collection/immutable/Iterable"
-import type { Effect } from "../definition"
-import { succeed } from "./succeed"
-import { suspendSucceed } from "./suspendSucceed"
-import { zipWith_ } from "./zipWith"
+import { Effect } from "../definition"
 
 /**
  * Filters the collection using the specified effectual predicate.
@@ -14,21 +11,18 @@ export function filter_<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
   __etsTrace?: string
 ): Effect<R, E, readonly A[]> {
-  return suspendSucceed(
-    () =>
-      Iter.reduce_(as, <Effect<R, E, A[]>>succeed(() => []), (io, a) =>
-        zipWith_(
-          io,
-          suspendSucceed(() => f(a)),
-          (as_, p) => {
-            if (p) {
-              as_.push(a)
-            }
-            return as_
+  return Effect.suspendSucceed(() =>
+    Iter.reduce_(as, <Effect<R, E, A[]>>Effect.succeed(() => []), (io, a) =>
+      io.zipWith(
+        Effect.suspendSucceed(() => f(a)),
+        (as_, p) => {
+          if (p) {
+            as_.push(a)
           }
-        )
-      ),
-    __etsTrace
+          return as_
+        }
+      )
+    )
   )
 }
 
@@ -41,5 +35,5 @@ export function filter<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
   __etsTrace?: string
 ) {
-  return (as: Iterable<A>) => filter_(as, f, __etsTrace)
+  return (as: Iterable<A>) => filter_(as, f)
 }

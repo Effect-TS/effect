@@ -1,10 +1,9 @@
-import { tuple } from "../../../data/Function"
-import * as IO from "../../../io-light/IO"
+import { IO } from "../../../io-light/IO"
 import * as St from "../../../prelude/Structural"
 import { _A } from "../../../support/Symbols"
 import * as HS from "../HashSet"
-import * as L from "../List/core"
-import * as Tp from "../Tuple"
+import { List } from "../List"
+import { Tuple } from "../Tuple"
 
 export const _ParSeqBrand = Symbol()
 export type _ParSeqBrand = typeof _ParSeqBrand
@@ -31,12 +30,12 @@ export class Empty implements St.HasEquals, St.HasHash {
   readonly [_A]: () => never;
   readonly [_ParSeqBrand]: _ParSeqBrand = _ParSeqBrand;
   [St.equalsSym](that: unknown): boolean {
-    return isParSeq(that) && IO.run(this.equalsSafe(that))
+    return isParSeq(that) && this.equalsSafe(that).run()
   }
   get [St.hashSym](): number {
     return _emptyHash
   }
-  equalsSafe(that: ParSeq<unknown>): IO.IO<boolean> {
+  equalsSafe(that: ParSeq<unknown>): IO<boolean> {
     return IO.succeed(that._tag === "Empty")
   }
 }
@@ -47,12 +46,12 @@ export class Then<A> implements St.HasEquals, St.HasHash {
   readonly [_ParSeqBrand]: _ParSeqBrand = _ParSeqBrand
   constructor(readonly left: ParSeq<A>, readonly right: ParSeq<A>) {}
   [St.equalsSym](that: unknown): boolean {
-    return isParSeq(that) && IO.run(this.equalsSafe(that))
+    return isParSeq(that) && this.equalsSafe(that).run()
   }
   get [St.hashSym](): number {
     return hashCode(this)
   }
-  equalsSafe(that: ParSeq<unknown>): IO.IO<boolean> {
+  equalsSafe(that: ParSeq<unknown>): IO<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
     return IO.gen(function* (_) {
@@ -64,7 +63,7 @@ export class Then<A> implements St.HasEquals, St.HasHash {
       )
     })
   }
-  private eq(that: ParSeq<unknown>): IO.IO<boolean> {
+  private eq(that: ParSeq<unknown>): IO<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
     if (that._tag === "Then") {
@@ -79,7 +78,7 @@ export class Then<A> implements St.HasEquals, St.HasHash {
   }
 }
 
-function associateThen<A>(self: ParSeq<A>, that: ParSeq<A>): IO.IO<boolean> {
+function associateThen<A>(self: ParSeq<A>, that: ParSeq<A>): IO<boolean> {
   return IO.gen(function* (_) {
     if (
       self._tag === "Then" &&
@@ -103,7 +102,7 @@ function associateThen<A>(self: ParSeq<A>, that: ParSeq<A>): IO.IO<boolean> {
   })
 }
 
-function distributiveThen<A>(self: ParSeq<A>, that: ParSeq<A>): IO.IO<boolean> {
+function distributiveThen<A>(self: ParSeq<A>, that: ParSeq<A>): IO<boolean> {
   return IO.gen(function* (_) {
     if (
       self._tag === "Then" &&
@@ -163,12 +162,12 @@ export class Both<A> implements St.HasEquals, St.HasHash {
   readonly [_ParSeqBrand]: _ParSeqBrand = _ParSeqBrand
   constructor(readonly left: ParSeq<A>, readonly right: ParSeq<A>) {}
   [St.equalsSym](that: unknown): boolean {
-    return isParSeq(that) && IO.run(this.equalsSafe(that))
+    return isParSeq(that) && this.equalsSafe(that).run()
   }
   get [St.hashSym](): number {
     return hashCode(this)
   }
-  equalsSafe(that: ParSeq<unknown>): IO.IO<boolean> {
+  equalsSafe(that: ParSeq<unknown>): IO<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
     return IO.gen(function* (_) {
@@ -181,7 +180,7 @@ export class Both<A> implements St.HasEquals, St.HasHash {
       )
     })
   }
-  private eq(that: ParSeq<unknown>): IO.IO<boolean> {
+  private eq(that: ParSeq<unknown>): IO<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
     if (that._tag === "Both") {
@@ -196,7 +195,7 @@ export class Both<A> implements St.HasEquals, St.HasHash {
   }
 }
 
-function associativeBoth<A>(self: ParSeq<A>, that: ParSeq<A>): IO.IO<boolean> {
+function associativeBoth<A>(self: ParSeq<A>, that: ParSeq<A>): IO<boolean> {
   return IO.gen(function* (_) {
     if (
       self._tag === "Both" &&
@@ -220,7 +219,7 @@ function associativeBoth<A>(self: ParSeq<A>, that: ParSeq<A>): IO.IO<boolean> {
   })
 }
 
-function distributiveBoth<A>(self: ParSeq<A>, that: ParSeq<A>): IO.IO<boolean> {
+function distributiveBoth<A>(self: ParSeq<A>, that: ParSeq<A>): IO<boolean> {
   return IO.gen(function* (_) {
     if (
       self._tag === "Both" &&
@@ -274,7 +273,7 @@ function distributiveBoth<A>(self: ParSeq<A>, that: ParSeq<A>): IO.IO<boolean> {
   })
 }
 
-function commutativeBoth(self: Both<unknown>, that: ParSeq<unknown>): IO.IO<boolean> {
+function commutativeBoth(self: Both<unknown>, that: ParSeq<unknown>): IO<boolean> {
   return IO.gen(function* (_) {
     if (that._tag === "Both") {
       return (
@@ -292,12 +291,12 @@ export class Single<A> implements St.HasEquals, St.HasHash {
   readonly [_ParSeqBrand]: _ParSeqBrand = _ParSeqBrand
   constructor(readonly a: A) {}
   [St.equalsSym](that: unknown): boolean {
-    return isParSeq(that) && IO.run(this.equalsSafe(that))
+    return isParSeq(that) && this.equalsSafe(that).run()
   }
   get [St.hashSym](): number {
     return St.combineHash(St.hashString(this._tag), St.hash(this.a))
   }
-  equalsSafe(that: ParSeq<unknown>): IO.IO<boolean> {
+  equalsSafe(that: ParSeq<unknown>): IO<boolean> {
     return IO.succeed(that._tag === "Single" && St.equals(this.a, that.a))
   }
 }
@@ -318,7 +317,7 @@ function zero<A>(self: ParSeq<A>, that: ParSeq<A>) {
   return IO.succeed(false)
 }
 
-function symmetric<A>(f: (a: ParSeq<A>, b: ParSeq<A>) => IO.IO<boolean>) {
+function symmetric<A>(f: (a: ParSeq<A>, b: ParSeq<A>) => IO<boolean>) {
   return (a: ParSeq<A>, b: ParSeq<A>) =>
     IO.gen(function* (_) {
       return (yield* _(f(a, b))) || (yield* _(f(b, a)))
@@ -377,10 +376,10 @@ export function single<A>(a: A): ParSeq<A> {
  */
 export const empty: ParSeq<never> = new Empty()
 
-function isEmptyLoop<A>(self: L.List<ParSeq<A>>): boolean {
-  while (!L.isEmpty(self)) {
-    const head = L.unsafeFirst(self)!
-    const tail = L.tail(self)
+function isEmptyLoop<A>(self: List<ParSeq<A>>): boolean {
+  while (!self.isEmpty()) {
+    const head = self.unsafeFirst()!
+    const tail = self.tail()
     switch (head._tag) {
       case "Empty": {
         self = tail
@@ -390,11 +389,11 @@ function isEmptyLoop<A>(self: L.List<ParSeq<A>>): boolean {
         return false
       }
       case "Both": {
-        self = L.prepend_(L.prepend_(tail, head.right), head.left)
+        self = tail.prepend(head.right).prepend(head.left)
         break
       }
       case "Then": {
-        self = L.prepend_(L.prepend_(tail, head.right), head.left)
+        self = tail.prepend(head.right).prepend(head.left)
         break
       }
     }
@@ -406,29 +405,29 @@ function isEmptyLoop<A>(self: L.List<ParSeq<A>>): boolean {
  * Checks if the ParSeq is empty
  */
 export function isEmpty<A>(self: ParSeq<A>): boolean {
-  return isEmptyLoop(L.of(self))
+  return isEmptyLoop(List.single(self))
 }
 
 function stepLoop<A>(
   cause: ParSeq<A>,
-  stack: L.List<ParSeq<A>>,
+  stack: List<ParSeq<A>>,
   parallel: HS.HashSet<ParSeq<A>>,
-  sequential: L.List<ParSeq<A>>
-): Tp.Tuple<[HS.HashSet<ParSeq<A>>, L.List<ParSeq<A>>]> {
+  sequential: List<ParSeq<A>>
+): Tuple<[HS.HashSet<ParSeq<A>>, List<ParSeq<A>>]> {
   // eslint-disable-next-line no-constant-condition
   while (1) {
     switch (cause._tag) {
       case "Empty": {
-        if (L.isEmpty(stack)) {
-          return Tp.tuple(parallel, sequential)
+        if (stack.isEmpty()) {
+          return Tuple(parallel, sequential)
         } else {
-          cause = L.unsafeFirst(stack)!
-          stack = L.tail(stack)
+          cause = stack.unsafeFirst()!
+          stack = stack.tail()
         }
         break
       }
       case "Both": {
-        stack = L.prepend_(stack, cause.right)
+        stack = stack.prepend(cause.right)
         cause = cause.left
         break
       }
@@ -450,18 +449,18 @@ function stepLoop<A>(
           }
           default: {
             cause = left
-            sequential = L.prepend_(sequential, right)
+            sequential = sequential.prepend(right)
           }
         }
         break
       }
       default: {
-        if (L.isEmpty(stack)) {
-          return Tp.tuple(HS.add_(parallel, cause), sequential)
+        if (stack.isEmpty()) {
+          return Tuple(HS.add_(parallel, cause), sequential)
         } else {
           parallel = HS.add_(parallel, cause)
-          cause = L.unsafeFirst(stack)!
-          stack = L.tail(stack)
+          cause = stack.unsafeFirst()!
+          stack = stack.tail()
           break
         }
       }
@@ -470,29 +469,28 @@ function stepLoop<A>(
   throw new Error("Bug")
 }
 
-function step<A>(
-  self: ParSeq<A>
-): Tp.Tuple<[HS.HashSet<ParSeq<A>>, L.List<ParSeq<A>>]> {
-  return stepLoop(self, L.empty(), HS.make(), L.empty())
+function step<A>(self: ParSeq<A>): Tuple<[HS.HashSet<ParSeq<A>>, List<ParSeq<A>>]> {
+  return stepLoop(self, List.empty(), HS.make(), List.empty())
 }
 
 function flattenLoop<A>(
-  causes: L.List<ParSeq<A>>,
-  flattened: L.List<HS.HashSet<ParSeq<A>>>
-): L.List<HS.HashSet<ParSeq<A>>> {
+  causes: List<ParSeq<A>>,
+  flattened: List<HS.HashSet<ParSeq<A>>>
+): List<HS.HashSet<ParSeq<A>>> {
   // eslint-disable-next-line no-constant-condition
   while (1) {
-    const [parallel, sequential] = L.reduce_(
-      causes,
-      tuple(HS.make<ParSeq<A>>(), L.empty<ParSeq<A>>()),
-      ([parallel, sequential], cause) => {
+    const {
+      tuple: [parallel, sequential]
+    } = causes.reduce(
+      Tuple(HS.make<ParSeq<A>>(), List.empty<ParSeq<A>>()),
+      ({ tuple: [parallel, sequential] }, cause) => {
         const [set, seq] = step(cause).tuple
-        return tuple(HS.union_(parallel, set), L.concat_(sequential, seq))
+        return Tuple(HS.union_(parallel, set), sequential + seq)
       }
     )
-    const updated = HS.size(parallel) > 0 ? L.prepend_(flattened, parallel) : flattened
-    if (L.isEmpty(sequential)) {
-      return L.reverse(updated)
+    const updated = HS.size(parallel) > 0 ? flattened.prepend(parallel) : flattened
+    if (sequential.isEmpty()) {
+      return updated.reverse()
     } else {
       causes = sequential
       flattened = updated
@@ -502,17 +500,17 @@ function flattenLoop<A>(
 }
 
 function flatten<A>(self: ParSeq<A>) {
-  return flattenLoop(L.of(self), L.empty())
+  return flattenLoop(List.single(self), List.empty())
 }
 
 function hashCode(self: ParSeq<unknown>) {
   const flat = flatten(self)
-  const size = L.size(flat)
+  const size = flat.size
   let head
   if (size === 0) {
     return _emptyHash
-  } else if (size === 1 && (head = L.unsafeFirst(flat)!) && HS.size(head) === 1) {
-    return L.unsafeFirst(L.from(head))![St.hashSym]
+  } else if (size === 1 && (head = flat.unsafeFirst()!) && HS.size(head) === 1) {
+    return List.from(head).unsafeFirst()![St.hashSym]
   } else {
     return St.hashIterator(flat[Symbol.iterator]())
   }

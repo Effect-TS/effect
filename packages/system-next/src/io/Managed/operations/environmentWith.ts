@@ -1,13 +1,13 @@
-import type { Managed } from "../definition"
-import { environment } from "./environment"
-import { map_ } from "./map"
+import { Managed } from "../definition"
 
 /**
  * Create a managed that accesses the environment.
+ *
+ * @ets static ets/ManagedOps environmentWith
  */
 export function environmentWith<R0, A>(
   f: (_: R0) => A,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R0, never, A> {
-  return map_(environment<R0>(), f, __trace)
+  return Managed.environment<R0>().map(f)
 }

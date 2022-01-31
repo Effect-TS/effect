@@ -1,16 +1,17 @@
 import type { Managed } from "../definition"
-import { map_ } from "./map"
 
 /**
  * Maps this `Managed` to the specified constant while preserving the effects of
  * this `Managed`.
+ *
+ * @ets fluent ets/Managed as
  */
 export function as_<R, E, A, B>(
   self: Managed<R, E, A>,
   value: B,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R, E, B> {
-  return map_(self, () => value, __trace)
+  return self.map(() => value)
 }
 
 /**
@@ -19,7 +20,6 @@ export function as_<R, E, A, B>(
  *
  * @ets_data_first as_
  */
-export function as<B>(value: B, __trace?: string) {
-  return <R, E, A>(self: Managed<R, E, A>): Managed<R, E, B> =>
-    as_(self, value, __trace)
+export function as<B>(value: B, __etsTrace?: string) {
+  return <R, E, A>(self: Managed<R, E, A>): Managed<R, E, B> => as_(self, value)
 }

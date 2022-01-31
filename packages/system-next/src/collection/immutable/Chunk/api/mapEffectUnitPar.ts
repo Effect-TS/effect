@@ -1,6 +1,4 @@
-import type { Effect } from "../../../../io/Effect/definition"
-import { forEachParDiscard_ } from "../../../../io/Effect/operations/excl-forEach"
-import { withParallelism_ } from "../../../../io/Effect/operations/parallelism"
+import { Effect } from "../../../../io/Effect/definition"
 import type * as Chunk from "../core"
 
 /**
@@ -9,9 +7,10 @@ import type * as Chunk from "../core"
 export function mapEffectUnitParN_<A, R, E, B>(
   self: Chunk.Chunk<A>,
   n: number,
-  f: (a: A) => Effect<R, E, B>
+  f: (a: A) => Effect<R, E, B>,
+  __etsTrace?: string
 ): Effect<R, E, void> {
-  return withParallelism_(forEachParDiscard_(self, f), n)
+  return Effect.forEachParDiscard(self, f).withParallelism(n)
 }
 
 /**
@@ -21,7 +20,8 @@ export function mapEffectUnitParN_<A, R, E, B>(
  */
 export function mapEffectUnitParN<A, R, E, B>(
   n: number,
-  f: (a: A) => Effect<R, E, B>
+  f: (a: A) => Effect<R, E, B>,
+  __etsTrace?: string
 ): (self: Chunk.Chunk<A>) => Effect<R, E, void> {
   return (self) => mapEffectUnitParN_(self, n, f)
 }

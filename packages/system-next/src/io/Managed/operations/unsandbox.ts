@@ -1,15 +1,14 @@
 import type { Cause } from "../../Cause"
-import type { Managed } from "../definition"
-import { catchAll_ } from "./catchAll"
-import { failCause } from "./failCause"
-import { suspend } from "./suspend"
+import { Managed } from "../definition"
 
 /**
  * The inverse operation to `sandbox`. Submerges the full cause of failure.
+ *
+ * @ets fluent ets/Managed unsandbox
  */
 export function unsandbox<R, E, A>(
   self: Managed<R, Cause<E>, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R, E, A> {
-  return suspend(() => catchAll_(self, failCause, __trace))
+  return Managed.suspend(self.catchAll(Managed.failCauseNow))
 }

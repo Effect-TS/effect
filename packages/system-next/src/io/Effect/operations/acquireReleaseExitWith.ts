@@ -1,14 +1,7 @@
 import * as Cause from "../../Cause"
 import type { Exit } from "../../Exit"
 import { fold_ } from "../../Exit/operations/fold"
-import type { Effect } from "../definition"
-import { chain_ } from "./chain"
-import { done } from "./done"
-import { exit } from "./exit"
-import { failCause } from "./failCause"
-import { foldCauseEffect_ } from "./foldCauseEffect"
-import { uninterruptibleMask } from "./interruption"
-import { suspendSucceed } from "./suspendSucceed"
+import { Effect } from "../definition"
 
 /**
  * Acquires a resource, uses the resource, and then releases the resource.
@@ -25,25 +18,24 @@ export function acquireReleaseExitWith_<R, E, A, R1, E1, A1, R2, E2, X>(
   release: (a: A, e: Exit<E1, A1>) => Effect<R2, E2, X>,
   __etsTrace?: string
 ): Effect<R & R1 & R2, E | E1 | E2, A1> {
-  return uninterruptibleMask(
-    (status) =>
-      chain_(acquire, (a) =>
-        chain_(exit(suspendSucceed(() => status.restore(use(a)))), (exit) =>
-          foldCauseEffect_(
-            suspendSucceed(() => release(a, exit)),
+  return Effect.uninterruptibleMask(({ restore }) =>
+    acquire.flatMap((a) =>
+      Effect.suspendSucceed(() => restore(use(a)))
+        .exit()
+        .flatMap((exit) =>
+          Effect.suspendSucceed(() => release(a, exit)).foldCauseEffect(
             (cause2) =>
-              failCause(
+              Effect.failCauseNow(
                 fold_(
                   exit,
                   (cause1) => Cause.then(cause1, cause2),
                   () => cause2
                 )
               ),
-            () => done(exit)
+            () => Effect.done(exit)
           )
         )
-      ),
-    __etsTrace
+    )
   )
 }
 
@@ -62,5 +54,5 @@ export function acquireReleaseExitWith<A, R1, E1, A1, R2, E2, X>(
   __etsTrace?: string
 ) {
   return <R, E>(acquire: Effect<R, E, A>): Effect<R & R1 & R2, E | E1 | E2, A1> =>
-    acquireReleaseExitWith_(acquire, use, release, __etsTrace)
+    acquireReleaseExitWith_(acquire, use, release)
 }

@@ -1,12 +1,12 @@
+import { Effect } from "../../Effect"
 import type { Fiber } from "../definition"
-import * as T from "./_internal/effect"
 import { mapEffect_ } from "./mapEffect"
 
 /**
  * Maps over the value the Fiber computes.
  */
 export function map_<E, A, B>(self: Fiber<E, A>, f: (a: A) => B): Fiber<E, B> {
-  return mapEffect_(self, (a) => T.succeedNow(f(a)))
+  return mapEffect_(self, (a) => Effect.succeedNow(f(a)))
 }
 
 /**

@@ -1,5 +1,4 @@
-import type { Effect } from "../definition"
-import { catchAll_ } from "./catchAll"
+import { Effect } from "../definition"
 
 /**
  * Recovers from specified error.
@@ -15,16 +14,12 @@ function _catch<N extends keyof E, K extends E[N] & string, E, R1, E1, A1>(
   return <R, A>(
     self: Effect<R, E, A>
   ): Effect<R & R1, Exclude<E, { [n in N]: K }> | E1, A | A1> =>
-    catchAll_(
-      self,
-      (e) => {
-        if (tag in e && e[tag] === k) {
-          return f(e as any)
-        }
-        return fail(e as any)
-      },
-      __etsTrace
-    )
+    self.catchAll((e) => {
+      if (tag in e && e[tag] === k) {
+        return f(e as any)
+      }
+      return Effect.failNow(e as any)
+    })
 }
 
 export { _catch as catch }
@@ -41,14 +36,10 @@ export function catch_<N extends keyof E, K extends E[N] & string, E, R, A, R1, 
   f: (e: Extract<E, { [n in N]: K }>) => Effect<R1, E1, A1>,
   __etsTrace?: string
 ): Effect<R & R1, Exclude<E, { [n in N]: K }> | E1, A | A1> {
-  return catchAll_(
-    self,
-    (e) => {
-      if (tag in e && e[tag] === k) {
-        return f(e as any)
-      }
-      return fail(e as any)
-    },
-    __etsTrace
-  )
+  return self.catchAll((e) => {
+    if (tag in e && e[tag] === k) {
+      return f(e as any)
+    }
+    return Effect.failNow(e as any)
+  })
 }

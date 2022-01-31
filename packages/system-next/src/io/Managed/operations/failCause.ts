@@ -1,14 +1,16 @@
+import type { LazyArg } from "../../../data/Function"
 import type { Cause } from "../../Cause"
-import { failCause as effectFailCause } from "../../Effect/operations/failCause"
-import type { Managed } from "../definition"
-import { fromEffect } from "./fromEffect"
+import { Effect } from "../../Effect"
+import { Managed } from "../definition"
 
 /**
  * Returns an effect that models failure with the specified `Cause`.
+ *
+ * @ets static ets/ManagedOps failCause
  */
 export function failCause<E>(
-  cause: Cause<E>,
-  __trace?: string
+  f: LazyArg<Cause<E>>,
+  __etsTrace?: string
 ): Managed<unknown, E, never> {
-  return fromEffect(effectFailCause(cause, __trace))
+  return Managed.fromEffect(Effect.failCause(f))
 }

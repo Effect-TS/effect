@@ -1,18 +1,18 @@
 import { identity } from "../../../data/Function"
+import type { Effect } from "../../Effect"
 import type { Managed } from "../definition"
-import type { Effect } from "./_internal/effect"
-import { mapEffect_ } from "./mapEffect"
 
 /**
  * Returns an effect that performs the outer effect first, followed by the
  * inner effect, yielding the value of the inner effect.
  *
  * This method can be used to "flatten" nested effects.
+ *
+ * @ets fluent ets/Managed flattenEffect
  */
-
 export function flattenEffect<R2, E2, R, E, A>(
   self: Managed<R2, E2, Effect<R, E, A>>,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return mapEffect_(self, identity, __trace)
+  return self.mapEffect(identity)
 }

@@ -7,7 +7,9 @@ import type { XFiberRef, XFiberRefInternal } from "../definition"
  */
 export function get<EA, EB, A, B>(
   self: XFiberRef<EA, EB, A, B>,
-  __trace?: string
+  __etsTrace?: string
 ): IO<EB, B> {
+  // TODO: using a type cast here instead of `concreteUnified` to prevent a circular
+  // dependency
   return (self as XFiberRefInternal<EA, EB, A, B>).get
 }

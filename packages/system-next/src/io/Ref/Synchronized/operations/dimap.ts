@@ -1,5 +1,5 @@
+import { Effect } from "../../../Effect"
 import type { XSynchronized } from "../definition"
-import * as T from "./_internal/effect"
 import { dimapEffect_ } from "./dimapEffect"
 
 /**
@@ -13,8 +13,8 @@ export function dimap_<RA, RB, EA, EB, A, B, C, D>(
 ): XSynchronized<RA, RB, EA, EB, C, D> {
   return dimapEffect_(
     self,
-    (c) => T.succeedNow(f(c)),
-    (b) => T.succeedNow(g(b))
+    (c) => Effect.succeedNow(f(c)),
+    (b) => Effect.succeedNow(g(b))
   )
 }
 

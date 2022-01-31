@@ -1,8 +1,8 @@
 import type { Either } from "../../../data/Either"
+import * as STM from "../../../stm/STM/core"
+import { Effect } from "../../Effect"
 import * as S from "../../Semaphore"
 import { XRefInternal } from "../definition"
-import * as T from "./operations/_internal/effect"
-import * as STM from "./operations/_internal/stm"
 
 export type Synchronized<A> = XSynchronized<unknown, unknown, never, never, A, A>
 
@@ -42,13 +42,13 @@ export class XSynchronized<RA, RB, EA, EB, A, B> extends XRefInternal<
 
   constructor(
     readonly semaphores: Set<S.Semaphore>,
-    readonly unsafeGet: T.Effect<RB, EB, B>,
-    readonly unsafeSet: (a: A) => T.Effect<RA, EA, void> // readonly unsafeSetAsync: (a: A) => T.Effect<RA, EA, void>
+    readonly unsafeGet: Effect<RB, EB, B>,
+    readonly unsafeSet: (a: A) => Effect<RA, EA, void> // readonly unsafeSetAsync: (a: A) => T.Effect<RA, EA, void>
   ) {
     super()
   }
 
-  get get(): T.Effect<RB, EB, B> {
+  get get(): Effect<RB, EB, B> {
     if (this.semaphores.size === 1) {
       return this.unsafeGet
     } else {
@@ -56,7 +56,7 @@ export class XSynchronized<RA, RB, EA, EB, A, B> extends XRefInternal<
     }
   }
 
-  set(a: A): T.Effect<RA, EA, void> {
+  set(a: A): Effect<RA, EA, void> {
     return this.withPermit(this.unsafeSet(a))
   }
 
@@ -70,8 +70,8 @@ export class XSynchronized<RA, RB, EA, EB, A, B> extends XRefInternal<
       this,
       ea,
       eb,
-      (c) => T.fromEither(() => ca(c)),
-      (b) => T.fromEither(() => bd(b))
+      (c) => Effect.fromEither(ca(c)),
+      (b) => Effect.fromEither(bd(b))
     )
   }
 
@@ -87,18 +87,15 @@ export class XSynchronized<RA, RB, EA, EB, A, B> extends XRefInternal<
       ea,
       eb,
       ec,
-      (c) => (b) => T.fromEither(() => ca(c)(b)),
-      (b) => T.fromEither(() => bd(b))
+      (c) => (b) => Effect.fromEither(ca(c)(b)),
+      (b) => Effect.fromEither(bd(b))
     )
   }
 
-  withPermit<R, E, A>(effect: T.Effect<R, E, A>): T.Effect<R, E, A> {
-    return T.uninterruptibleMask(({ restore }) =>
-      T.chain_(restore(STM.commit(STM.forEach_(this.semaphores, S.acquire))), () =>
-        T.ensuring_(
-          restore(effect),
-          STM.commit(STM.forEach_(this.semaphores, S.release))
-        )
+  withPermit<R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> {
+    return Effect.uninterruptibleMask(({ restore }) =>
+      restore(STM.commit(STM.forEach_(this.semaphores, S.acquire))).flatMap(() =>
+        restore(effect).ensuring(STM.commit(STM.forEach_(this.semaphores, S.release)))
       )
     )
   }
@@ -116,13 +113,13 @@ export function foldEffect_<RA, RB, RC, RD, EA, EB, EC, ED, A, B, C, D>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
-  ca: (_: C) => T.Effect<RC, EC, A>,
-  bd: (_: B) => T.Effect<RD, ED, D>
+  ca: (_: C) => Effect<RC, EC, A>,
+  bd: (_: B) => Effect<RD, ED, D>
 ): XSynchronized<RA & RC, RB & RD, EC, ED, C, D> {
   return new XSynchronized(
     self.semaphores,
-    T.foldEffect_(self.unsafeGet, (e) => T.failNow(eb(e)), bd),
-    (c) => T.chain_(ca(c), (a) => T.mapError_(self.unsafeSet(a), ea))
+    self.unsafeGet.foldEffect((e) => Effect.failNow(eb(e)), bd),
+    (c) => ca(c).flatMap((a) => self.unsafeSet(a).mapError(ea))
   )
 }
 
@@ -139,8 +136,8 @@ export function foldEffect_<RA, RB, RC, RD, EA, EB, EC, ED, A, B, C, D>(
 export function foldEffect<RC, RD, EA, EB, EC, ED, A, B, C, D>(
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
-  ca: (_: C) => T.Effect<RC, EC, A>,
-  bd: (_: B) => T.Effect<RD, ED, D>
+  ca: (_: C) => Effect<RC, EC, A>,
+  bd: (_: B) => Effect<RD, ED, D>
 ) {
   return <RA, RB>(
     self: XSynchronized<RA, RB, EA, EB, A, B>
@@ -158,17 +155,16 @@ export function foldAllEffect_<RA, RB, RC, RD, EA, EB, EC, ED, A, B, C, D>(
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
   ec: (_: EB) => EC,
-  ca: (_: C) => (_: B) => T.Effect<RC, EC, A>,
-  bd: (_: B) => T.Effect<RD, ED, D>
+  ca: (_: C) => (_: B) => Effect<RC, EC, A>,
+  bd: (_: B) => Effect<RD, ED, D>
 ): XSynchronized<RA & RB & RC, RB & RD, EC, ED, C, D> {
   return new XSynchronized(
     self.semaphores,
-    T.foldEffect_(self.get, (e) => T.failNow(eb(e)), bd),
+    self.get.foldEffect((e) => Effect.failNow(eb(e)), bd),
     (c) =>
-      T.foldEffect_(
-        self.get,
-        (e) => T.failNow(ec(e)),
-        (b) => T.chain_(ca(c)(b), (a) => T.mapError_(self.unsafeSet(a), ea))
+      self.get.foldEffect(
+        (e) => Effect.failNow(ec(e)),
+        (b) => ca(c)(b).flatMap((a) => self.unsafeSet(a).mapError(ea))
       )
   )
 }
@@ -185,8 +181,8 @@ export function foldAllEffect<RC, RD, EA, EB, EC, ED, A, B, C, D>(
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
   ec: (_: EB) => EC,
-  ca: (_: C) => (_: B) => T.Effect<RC, EC, A>,
-  bd: (_: B) => T.Effect<RD, ED, D>
+  ca: (_: C) => (_: B) => Effect<RC, EC, A>,
+  bd: (_: B) => Effect<RD, ED, D>
 ) {
   return <RA, RB>(
     self: XSynchronized<RA, RB, EA, EB, A, B>

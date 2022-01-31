@@ -1,57 +1,50 @@
-import * as Tp from "../../../collection/immutable/Tuple"
-import { pipe } from "../../../data/Function"
-import { provideEnvironment_ } from "../../Effect/operations/provideEnvironment"
+import { Tuple } from "../../../collection/immutable/Tuple"
+import { Effect } from "../../Effect"
+import { sequential } from "../../Effect/operations/ExecutionStrategy"
+import type { Exit } from "../../Exit"
+import { zipRight_ as exitZipRight_ } from "../../Exit/operations/zipRight"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { get } from "../../FiberRef/operations/get"
 import { locally_ } from "../../FiberRef/operations/locally"
-import type { Managed } from "../definition"
-import { managedApply } from "../definition"
-import { add_ } from "../ReleaseMap/add"
-import { make } from "../ReleaseMap/make"
-import { releaseAll_ } from "../ReleaseMap/releaseAll"
-import type { Effect } from "./_internal/effect"
-import * as T from "./_internal/effect"
-import type { Exit } from "./_internal/exit"
-import * as Ex from "./_internal/exit"
+import { Managed } from "../definition"
+import { ReleaseMap } from "../ReleaseMap"
 
 /**
  * Ensures that a cleanup function runs when this `Managed` is finalized, after
  * the existing finalizers.
+ *
+ * @ets fluent ets/Managed onExit
  */
 export function onExit_<R, E, A, R1, X>(
   self: Managed<R, E, A>,
   cleanup: (exit: Exit<E, A>) => Effect<R1, never, X>,
-  __trace?: string | undefined
+  __etsTrace?: string | undefined
 ): Managed<R & R1, E, A> {
-  return managedApply(
-    T.uninterruptibleMask((status) =>
-      pipe(
-        T.Do(),
-        T.bind("r1", () => T.environment<R1>()),
-        T.bind("outerReleaseMap", () => get(currentReleaseMap.value)),
-        T.bind("innerReleaseMap", () => make),
-        T.bind("exitEA", ({ innerReleaseMap }) =>
+  return Managed(
+    Effect.uninterruptibleMask(({ restore }) =>
+      Effect.Do()
+        .bind("r1", () => Effect.environment<R1>())
+        .bind("outerReleaseMap", () => get(currentReleaseMap.value))
+        .bind("innerReleaseMap", () => ReleaseMap.make)
+        .bind("exitEA", ({ innerReleaseMap }) =>
           locally_(
             currentReleaseMap.value,
             innerReleaseMap
-          )(T.exit(status.restore(T.map_(self.effect, (_) => _.get(1)))))
-        ),
-        T.bind("releaseMapEntry", ({ exitEA, innerReleaseMap, outerReleaseMap, r1 }) =>
-          add_(outerReleaseMap, (ex) =>
-            pipe(
-              releaseAll_(innerReleaseMap, ex, T.sequential),
-              T.exit,
-              T.zipWith(
-                T.exit(provideEnvironment_(cleanup(exitEA), r1, __trace)),
-                (l, r) => T.done(Ex.zipRight_(l, r))
-              ),
-              T.flatten
-            )
+          )(restore(self.effect.map((_) => _.get(1))).exit())
+        )
+        .bind("releaseMapEntry", ({ exitEA, innerReleaseMap, outerReleaseMap, r1 }) =>
+          outerReleaseMap.add((ex) =>
+            innerReleaseMap
+              .releaseAll(ex, sequential)
+              .exit()
+              .zipWith(cleanup(exitEA).provideEnvironment(r1).exit(), (l, r) =>
+                Effect.done(exitZipRight_(l, r))
+              )
+              .flatten()
           )
-        ),
-        T.bind("a", ({ exitEA }) => T.done(exitEA)),
-        T.map(({ a, releaseMapEntry }) => Tp.tuple(releaseMapEntry, a))
-      )
+        )
+        .bind("a", ({ exitEA }) => Effect.done(exitEA))
+        .map(({ a, releaseMapEntry }) => Tuple(releaseMapEntry, a))
     )
   )
 }
@@ -64,8 +57,7 @@ export function onExit_<R, E, A, R1, X>(
  */
 export function onExit<E, A, R1, X>(
   cleanup: (exit: Exit<E, A>) => Effect<R1, never, X>,
-  __trace?: string | undefined
+  __etsTrace?: string | undefined
 ) {
-  return <R>(self: Managed<R, E, A>): Managed<R & R1, E, A> =>
-    onExit_(self, cleanup, __trace)
+  return <R>(self: Managed<R, E, A>): Managed<R & R1, E, A> => onExit_(self, cleanup)
 }

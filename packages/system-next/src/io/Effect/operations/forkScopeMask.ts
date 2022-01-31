@@ -26,8 +26,12 @@ export function forkScopeMask_<R, E, A>(
   __etsTrace?: string
 ) {
   return forkScopeWith(
-    (scope) => new IOverrideForkScope(f(new ForkScopeRestore(scope)), O.some(newScope)),
-    __etsTrace
+    (scope) =>
+      new IOverrideForkScope(
+        f(new ForkScopeRestore(scope)),
+        O.some(newScope),
+        __etsTrace
+      )
   )
 }
 
@@ -42,5 +46,5 @@ export function forkScopeMask<R, E, A>(
   f: (restore: ForkScopeRestore) => Effect<R, E, A>,
   __etsTrace?: string
 ) {
-  return (newScope: Scope) => forkScopeMask_(newScope, f, __etsTrace)
+  return (newScope: Scope) => forkScopeMask_(newScope, f)
 }

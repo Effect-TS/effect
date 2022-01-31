@@ -1,7 +1,5 @@
 import type { Exit } from "../../Exit/definition"
-import type { Effect } from "../definition"
-import { acquireReleaseExitWith_ } from "./acquireReleaseExitWith"
-import { unit } from "./unit"
+import { Effect } from "../definition"
 
 /**
  * Executes the release effect only if there was an error.
@@ -14,11 +12,10 @@ export function acquireReleaseOnErrorWith_<R, E, A, E1, R1, A1, R2, E2, X>(
   release: (a: A, e: Exit<E1, A1>) => Effect<R2, E2, X>,
   __etsTrace?: string
 ): Effect<R & R1 & R2, E | E1 | E2, A1> {
-  return acquireReleaseExitWith_(
-    acquire,
+  return acquire.acquireReleaseExitWith(
     use,
-    (a, e): Effect<R2, E2, X | void> => (e._tag === "Success" ? unit : release(a, e)),
-    __etsTrace
+    (a, e): Effect<R2, E2, X | void> =>
+      e._tag === "Success" ? Effect.unit : release(a, e)
   )
 }
 
@@ -33,5 +30,5 @@ export function acquireReleaseOnErrorWith<E, A, E1, R1, A1, R2, E2, X>(
   __etsTrace?: string
 ) {
   return <R>(acquire: Effect<R, E, A>) =>
-    acquireReleaseOnErrorWith_(acquire, use, release, __etsTrace)
+    acquireReleaseOnErrorWith_(acquire, use, release)
 }

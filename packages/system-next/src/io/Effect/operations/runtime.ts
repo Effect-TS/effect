@@ -1,4 +1,4 @@
-import { constTrue, constVoid, pipe } from "../../../data/Function"
+import { constFalse, pipe } from "../../../data/Function"
 import { unsafeTrack } from "../../../io/Supervisor"
 import { HasClock, LiveClock } from "../../Clock"
 import * as LoggerSet from "../../Logger/Set"
@@ -9,10 +9,7 @@ import { RuntimeConfig } from "../../RuntimeConfig"
 import * as RuntimeConfigFlag from "../../RuntimeConfig/Flag"
 import * as RuntimeConfigFlags from "../../RuntimeConfig/Flags"
 import type { RIO } from "../definition"
-import { chain_ } from "./chain"
-import { environment } from "./environment"
-import { map_ } from "./map"
-import { runtimeConfig } from "./runtimeConfig"
+import { Effect } from "../definition"
 
 /**
  * Returns an effect that accesses the runtime, which can be used to
@@ -22,9 +19,8 @@ import { runtimeConfig } from "./runtimeConfig"
  * @ets static ets/EffectOps runtime
  */
 export function runtime<R>(__etsTrace?: string): RIO<R, Runtime<R>> {
-  return chain_(
-    environment<R>(),
-    (env) => map_(runtimeConfig, (config) => new Runtime(env, config)),
+  return Effect.environment<R>().flatMap(
+    (env) => Effect.runtimeConfig.map((config) => new Runtime(env, config)),
     __etsTrace
   )
 }
@@ -43,8 +39,10 @@ export const defaultEnv: DefaultEnv = {
  * @ets static ets/EffectOps defaultRuntimeConfig
  */
 export const defaultRuntimeConfig: RuntimeConfig = new RuntimeConfig({
-  fatal: constTrue,
-  reportFatal: constVoid,
+  fatal: constFalse,
+  reportFatal: (defect) => {
+    throw defect
+  },
   supervisor: unsafeTrack(),
   loggers: pipe(
     LoggerSet.defaultSet.value,

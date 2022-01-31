@@ -1,8 +1,5 @@
 import * as Iter from "../../../collection/immutable/Iterable"
-import type { Effect } from "../definition"
-import { chain_ } from "./chain"
-import { succeedNow } from "./succeedNow"
-import { suspendSucceed } from "./suspendSucceed"
+import { Effect } from "../definition"
 
 /**
  * Folds an `Iterable<A>` using an effectual function f, working sequentially from left to right.
@@ -15,12 +12,10 @@ export function reduceRight_<A, Z, R, E>(
   f: (a: A, z: Z) => Effect<R, E, Z>,
   __etsTrace?: string
 ): Effect<R, E, Z> {
-  return suspendSucceed(
-    () =>
-      Iter.reduceRight_(i, succeedNow(zero) as Effect<R, E, Z>, (el, acc) =>
-        chain_(acc, (a) => f(el, a))
-      ),
-    __etsTrace
+  return Effect.suspendSucceed(() =>
+    Iter.reduceRight_(i, Effect.succeedNow(zero) as Effect<R, E, Z>, (el, acc) =>
+      acc.flatMap((a) => f(el, a))
+    )
   )
 }
 
@@ -34,5 +29,5 @@ export function reduceRight<R, E, A, Z>(
   f: (a: A, z: Z) => Effect<R, E, Z>,
   __etsTrace?: string
 ) {
-  return (i: Iterable<A>) => reduceRight_(i, zero, f, __etsTrace)
+  return (i: Iterable<A>) => reduceRight_(i, zero, f)
 }

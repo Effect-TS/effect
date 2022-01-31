@@ -1,6 +1,6 @@
+import { Effect } from "../../Effect"
 import type { UIO } from "../../Effect/definition"
-import { unit } from "../../Effect/operations/unit"
-import type { Exit } from "../operations/_internal/exit"
+import type { Exit } from "../../Exit"
 
 /**
  * A finalizer used in a `ReleaseMap`. The `Exit` value passed to it is
@@ -9,4 +9,4 @@ import type { Exit } from "../operations/_internal/exit"
  */
 export type Finalizer = (exit: Exit<any, any>) => UIO<any>
 
-export const noopFinalizer: Finalizer = () => unit
+export const noopFinalizer: Finalizer = () => Effect.unit

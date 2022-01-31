@@ -1,5 +1,5 @@
+import type { Effect } from "../../../Effect"
 import type { XSynchronized } from "../definition"
-import * as T from "./_internal/effect"
 import { mapEffect_ } from "./mapEffect"
 
 /**
@@ -8,9 +8,9 @@ import { mapEffect_ } from "./mapEffect"
  */
 export function tapOutput_<RA, RB, RC, EA, EB, EC, A, B, X>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
-  f: (b: B) => T.Effect<RC, EC, X>
+  f: (b: B) => Effect<RC, EC, X>
 ): XSynchronized<RA, RB & RC, EA, EB | EC, A, B> {
-  return mapEffect_(self, (a) => T.map_(f(a), () => a))
+  return mapEffect_(self, (a) => f(a).map(() => a))
 }
 
 /**
@@ -19,7 +19,7 @@ export function tapOutput_<RA, RB, RC, EA, EB, EC, A, B, X>(
  *
  * @ets_data_first tapOutput_
  */
-export function tapOutput<B, RC, EC, X>(f: (b: B) => T.Effect<RC, EC, X>) {
+export function tapOutput<B, RC, EC, X>(f: (b: B) => Effect<RC, EC, X>) {
   return <RA, RB, EA, EB, A>(
     self: XSynchronized<RA, RB, EA, EB, A, B>
   ): XSynchronized<RA, RB & RC, EA, EB | EC, A, B> => tapOutput_(self, f)

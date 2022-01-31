@@ -20,5 +20,5 @@ export function forkIn_<R, E, A>(
  */
 export function forkIn(scope: Scope, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): RIO<R, Fiber.Runtime<E, A>> =>
-    forkIn_(self, scope, __etsTrace)
+    forkIn_(self, scope)
 }

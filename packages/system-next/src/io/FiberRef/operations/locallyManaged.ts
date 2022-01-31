@@ -10,10 +10,10 @@ import { concreteUnified } from "../definition"
 export function locallyManaged_<E, A>(
   self: XFiberRef<E, E, A, A>,
   value: A,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<unknown, E, void> {
   concreteUnified(self)
-  return self.locallyManaged(value, __trace)
+  return self.locallyManaged(value)
 }
 
 /**
@@ -23,7 +23,7 @@ export function locallyManaged_<E, A>(
  *
  * @ets_data_first locallyManaged_
  */
-export function locallyManaged<A>(value: A, __trace?: string) {
+export function locallyManaged<A>(value: A, __etsTrace?: string) {
   return <E>(self: XFiberRef<E, E, A, A>): Managed<unknown, E, void> =>
-    locallyManaged_(self, value, __trace)
+    locallyManaged_(self, value)
 }

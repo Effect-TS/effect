@@ -1,7 +1,5 @@
-import type { Managed } from "../definition"
-import { chain_ } from "./chain"
-import { succeedNow } from "./succeedNow"
-import { suspend } from "./suspend"
+import type { LazyArg } from "../../../data/Function"
+import { Managed } from "../definition"
 
 /**
  * Iterates with the specified effectual function. The moral equivalent of:
@@ -15,14 +13,17 @@ import { suspend } from "./suspend"
  *
  * return s
  * ```
+ *
+ * @ets static ets/ManagedOps iterate
  */
-export function iterate<Z>(initial: Z) {
+export function iterate<Z>(initial: LazyArg<Z>) {
   return (cont: (z: Z) => boolean) =>
-    <R, E>(body: (z: Z) => Managed<R, E, Z>, __trace?: string): Managed<R, E, Z> =>
-      suspend(() => {
-        if (cont(initial)) {
-          return chain_(body(initial), (z2) => iterate(z2)(cont)(body))
+    <R, E>(body: (z: Z) => Managed<R, E, Z>, __etsTrace?: string): Managed<R, E, Z> =>
+      Managed.suspend(() => {
+        const initial0 = initial()
+        if (cont(initial0)) {
+          return body(initial0).flatMap((z2) => iterate(z2)(cont)(body))
         }
-        return succeedNow(initial)
-      }, __trace)
+        return Managed.succeedNow(initial0)
+      })
 }

@@ -1,13 +1,15 @@
-import * as O from "../../../data/Option"
-import type { Managed } from "../definition"
-import { succeed } from "./succeed"
+import type { LazyArg } from "../../../data/Function"
+import { Option } from "../../../data/Option"
+import { Managed } from "../definition"
 
 /**
  * Returns a `Managed` with the optional value.
+ *
+ * @ets static ets/ManagedOps some
  */
 export function some<A>(
-  value: A,
-  __trace?: string
-): Managed<unknown, never, O.Option<A>> {
-  return succeed(() => O.some(value), __trace)
+  value: LazyArg<A>,
+  __etsTrace?: string
+): Managed<unknown, never, Option<A>> {
+  return Managed.succeed(Option.some(value()))
 }

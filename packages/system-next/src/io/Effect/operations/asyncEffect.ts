@@ -1,16 +1,9 @@
 import { pipe } from "../../../data/Function"
 import type { Cause } from "../../Cause"
 import * as Promise from "../../Promise"
-import type { Effect } from "../definition"
-import { catchAllCause } from "./catchAllCause"
+import { Effect } from "../definition"
 import type { Cb } from "./Cb"
-import * as Do from "./do"
-import { fork } from "./fork"
-import { uninterruptibleMask } from "./interruption"
-import { intoPromise_ } from "./intoPromise"
-import { map } from "./map"
 import { runtime } from "./runtime"
-import { zipRight } from "./zipRight"
 
 /**
  * Imports an asynchronous effect into a pure `ZIO` value. This formulation is
@@ -23,27 +16,21 @@ export function asyncEffect<R2, E2, R, E, A, X>(
   __etsTrace?: string
 ): Effect<R & R2, E | E2, A> {
   return pipe(
-    Do.Do(),
-    Do.bind("promise", () => Promise.make<E | E2, A>()),
-    Do.bind("runtime", () => runtime<R & R2>()),
-    Do.bind("a", ({ promise, runtime }) =>
-      uninterruptibleMask((status) =>
-        pipe(
-          fork(
-            status.restore(
-              pipe(
-                register((k) => runtime.unsafeRunAsync(intoPromise_(k, promise))),
-                catchAllCause((cause) =>
-                  Promise.failCause_(promise, cause as Cause<E | E2>)
-                )
-              )
-            ),
-            __etsTrace
-          ),
-          zipRight(status.restore(Promise.await(promise)))
+    Effect.Do()
+      .bind("promise", () => Promise.make<E | E2, A>())
+      .bind("runtime", () => runtime<R & R2>())
+      .flatMap(({ promise, runtime }) =>
+        Effect.uninterruptibleMask(({ restore }) =>
+          restore(
+            register((k) =>
+              runtime.unsafeRunAsync(k.intoPromise(promise))
+            ).catchAllCause((cause) =>
+              Promise.failCause_(promise, cause as Cause<E | E2>)
+            )
+          )
+            .fork()
+            .zipRight(restore(Promise.await(promise)))
         )
       )
-    ),
-    map(({ a }) => a)
   )
 }

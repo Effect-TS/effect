@@ -5,7 +5,7 @@ import { not } from "../../data/Function"
 import type { Equal } from "../../prelude/Equal"
 import * as St from "../../prelude/Structural"
 import * as I from "./Iterable"
-import * as Tp from "./Tuple"
+import { Tuple } from "./Tuple"
 
 export class HashSet<V> implements Iterable<V>, St.HasHash, St.HasEquals {
   constructor(readonly keyMap: HM.HashMap<V, unknown>) {}
@@ -296,13 +296,13 @@ export function filter_<A>(set: HashSet<A>, predicate: Predicate<A>): HashSet<A>
  */
 export function partition<A, B extends A>(
   refinement: Refinement<A, B>
-): (set: HashSet<A>) => Tp.Tuple<[HashSet<A>, HashSet<B>]>
+): (set: HashSet<A>) => Tuple<[HashSet<A>, HashSet<B>]>
 export function partition<A>(
   predicate: Predicate<A>
-): (set: HashSet<A>) => Tp.Tuple<[HashSet<A>, HashSet<A>]>
+): (set: HashSet<A>) => Tuple<[HashSet<A>, HashSet<A>]>
 export function partition<A>(
   predicate: Predicate<A>
-): (set: HashSet<A>) => Tp.Tuple<[HashSet<A>, HashSet<A>]> {
+): (set: HashSet<A>) => Tuple<[HashSet<A>, HashSet<A>]> {
   return (set) => partition_(set, predicate)
 }
 
@@ -312,15 +312,15 @@ export function partition<A>(
 export function partition_<A, B extends A>(
   set: HashSet<A>,
   refinement: Refinement<A, B>
-): Tp.Tuple<[HashSet<A>, HashSet<B>]>
+): Tuple<[HashSet<A>, HashSet<B>]>
 export function partition_<A>(
   set: HashSet<A>,
   predicate: Predicate<A>
-): Tp.Tuple<[HashSet<A>, HashSet<A>]>
+): Tuple<[HashSet<A>, HashSet<A>]>
 export function partition_<A>(
   set: HashSet<A>,
   predicate: Predicate<A>
-): Tp.Tuple<[HashSet<A>, HashSet<A>]> {
+): Tuple<[HashSet<A>, HashSet<A>]> {
   const values_ = values(set)
   let e: Next<A>
   const right = beginMutation(make<A>())
@@ -333,7 +333,7 @@ export function partition_<A>(
       add_(left, value)
     }
   }
-  return Tp.tuple(endMutation(left), endMutation(right))
+  return Tuple(endMutation(left), endMutation(right))
 }
 
 /**

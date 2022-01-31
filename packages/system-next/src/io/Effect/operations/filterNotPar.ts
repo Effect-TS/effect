@@ -13,7 +13,7 @@ export function filterNotPar_<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
   __etsTrace?: string
 ) {
-  return filterPar_(as, (x) => map_(f(x), (b) => !b), __etsTrace)
+  return filterPar_(as, (x) => map_(f(x), (b) => !b))
 }
 
 /**
@@ -26,5 +26,5 @@ export function filterNotPar<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
   __etsTrace?: string
 ) {
-  return (as: Iterable<A>) => filterNotPar_(as, f, __etsTrace)
+  return (as: Iterable<A>) => filterNotPar_(as, f)
 }

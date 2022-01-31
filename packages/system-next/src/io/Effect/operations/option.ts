@@ -1,7 +1,6 @@
 import * as O from "../../../data/Option"
-import type { Effect, RIO } from "../definition"
-import { foldEffect_ } from "./foldEffect"
-import { succeedNow } from "./succeedNow"
+import type { RIO } from "../definition"
+import { Effect } from "../definition"
 
 /**
  * Executes this effect, skipping the error but returning optionally the
@@ -13,10 +12,9 @@ export function option<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
 ): RIO<R, O.Option<A>> {
-  return foldEffect_(
-    self,
-    () => succeedNow(O.none),
-    (a) => succeedNow(O.some(a)),
+  return self.foldEffect(
+    () => Effect.succeedNow(O.none),
+    (a) => Effect.succeedNow(O.some(a)),
     __etsTrace
   )
 }

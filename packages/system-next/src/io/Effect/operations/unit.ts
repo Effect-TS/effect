@@ -1,12 +1,12 @@
 import type { UIO } from "../definition"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
 
 /**
  * An effect that succeeds with a unit value.
  *
  * @ets static ets/EffectOps unit
  */
-export const unit: UIO<void> = succeedNow(undefined)
+export const unit: UIO<void> = Effect.succeedNow(undefined)
 
 /**
  * An effect that succeeds with a unit value.
@@ -14,5 +14,5 @@ export const unit: UIO<void> = succeedNow(undefined)
  * @ets static ets/EffectOps unitTraced
  */
 export function unitTraced(__etsTrace?: string): UIO<void> {
-  return succeedNow(undefined, __etsTrace)
+  return Effect.succeedNow(undefined, __etsTrace)
 }

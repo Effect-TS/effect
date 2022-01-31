@@ -1,10 +1,6 @@
 import * as E from "../../../data/Either"
 import { failureOrCause } from "../../Cause"
-import type { Effect } from "../definition"
-import { as_ } from "./as"
-import { failCause } from "./failCause"
-import { foldCauseEffect_ } from "./foldCauseEffect"
-import { zipRight_ } from "./zipRight"
+import { Effect } from "../definition"
 
 /**
  * Returns an effect that effectfully "peeks" at the failure or success of
@@ -18,16 +14,14 @@ export function tapBoth_<R, E, A, R2, E2, X, R3, E3, X1>(
   g: (a: A) => Effect<R3, E3, X1>,
   __etsTrace?: string
 ): Effect<R & R2 & R3, E | E2 | E3, A> {
-  return foldCauseEffect_(
-    self,
+  return self.foldCauseEffect(
     (cause) =>
       E.fold_(
         failureOrCause(cause),
-        (e) => zipRight_(f(e), failCause(cause)),
-        () => failCause(cause)
+        (e) => f(e).zipRight(Effect.failCauseNow(cause)),
+        () => Effect.failCauseNow(cause)
       ),
-    (a) => as_(g(a), a),
-    __etsTrace
+    (a) => g(a).as(a)
   )
 }
 
@@ -43,5 +37,5 @@ export function tapBoth<E, R2, E2, X, A, R3, E3, X1>(
   __etsTrace?: string
 ) {
   ;<R>(self: Effect<R, E, A>): Effect<R & R2 & R3, E | E2 | E3, A> =>
-    tapBoth_(self, f, g, __etsTrace)
+    tapBoth_(self, f, g)
 }

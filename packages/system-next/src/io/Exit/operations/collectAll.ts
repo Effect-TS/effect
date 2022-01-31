@@ -1,26 +1,26 @@
 import * as I from "../../../collection/immutable/Iterable"
-import * as L from "../../../collection/immutable/List/core"
+import { List } from "../../../collection/immutable/List"
 import { pipe } from "../../../data/Function"
-import * as O from "../../../data/Option"
-import { then } from "../../Cause/definition"
+import { Option } from "../../../data/Option"
+import { Cause } from "../../Cause"
 import type { Exit } from "../definition"
 import { map, map_ } from "./map"
 import { zipWith_ } from "./zipWith"
 
 export function collectAll<E, A>(
   exits: Iterable<Exit<E, A>>
-): O.Option<Exit<E, L.List<A>>> {
+): Option<Exit<E, List<A>>> {
   const head = exits[Symbol.iterator]().next()
   if (!head.done && head.value) {
-    return O.some(
+    return Option.some(
       pipe(
         I.skip_(exits, 1),
-        I.reduce(map_(head.value, L.of), (acc, el) =>
-          zipWith_(acc, el, (list, a) => L.prepend_(list, a), then)
+        I.reduce(map_(head.value, List.single), (acc, el) =>
+          zipWith_(acc, el, (list, a) => list.prepend(a), Cause.then)
         ),
-        map(L.reverse)
+        map((_) => _.reverse())
       )
     )
   }
-  return O.none
+  return Option.none
 }

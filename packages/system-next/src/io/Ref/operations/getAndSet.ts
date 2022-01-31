@@ -1,9 +1,9 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import { matchTag_ } from "../../../data/Utils/common"
+import type { Effect } from "../../Effect"
 import * as A from "../Atomic/operations/getAndSet"
 import type { XRef } from "../definition"
 import { concrete } from "../definition"
-import type * as T from "./_internal/effect"
 import { modify_ } from "./modify"
 
 /**
@@ -13,14 +13,14 @@ import { modify_ } from "./modify"
 export function getAndSet_<RA, RB, EA, EB, A>(
   self: XRef<RA, RB, EA, EB, A, A>,
   value: A,
-  __trace?: string
-): T.Effect<RA & RB, EA | EB, A> {
+  __etsTrace?: string
+): Effect<RA & RB, EA | EB, A> {
   return matchTag_(
     concrete(self),
     {
-      Atomic: (_) => A.getAndSet_(_, value, __trace)
+      Atomic: (_) => A.getAndSet_(_, value)
     },
-    (_) => modify_(_, (a) => Tp.tuple(value, a), __trace)
+    (_) => modify_(_, (a) => Tuple(value, a))
   )
 }
 
@@ -30,8 +30,8 @@ export function getAndSet_<RA, RB, EA, EB, A>(
  *
  * @ets_data_first getAndSet_
  */
-export function getAndSet<A>(value: A, __trace?: string) {
+export function getAndSet<A>(value: A, __etsTrace?: string) {
   return <RA, RB, EA, EB>(
     self: XRef<RA, RB, EA, EB, A, A>
-  ): T.Effect<RA & RB, EA | EB, A> => getAndSet_(self, value, __trace)
+  ): Effect<RA & RB, EA | EB, A> => getAndSet_(self, value)
 }

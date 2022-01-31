@@ -1,4 +1,4 @@
-import type * as R from "../operations/_internal/ref"
+import type { Ref } from "../../Ref"
 import type { State } from "./state"
 
 /**
@@ -6,8 +6,28 @@ import type { State } from "./state"
  *
  * The design of `ReleaseMap` is inspired by ResourceT, written by Michael
  * Snoyman @snoyberg.
- * (https://github.com/snoyberg/conduit/blob/master/resourcet/Control/Monad/Trans/Resource/Internal.hs)
+ *
+ * For mor information, see: https://github.com/snoyberg/conduit/blob/master/resourcet/Control/Monad/Trans/Resource/Internal.hs
+ *
+ * @ets type ets/ReleaseMap
  */
-export class ReleaseMap {
-  constructor(readonly ref: R.Ref<State>) {}
+export interface ReleaseMap {
+  readonly ref: Ref<State>
+}
+
+/**
+ * @ets type ets/ReleaseMapOps
+ */
+export interface ReleaseMapOps {}
+export const ReleaseMap: ReleaseMapOps = {}
+
+export class ReleaseMapImpl implements ReleaseMap {
+  constructor(readonly ref: Ref<State>) {}
+}
+
+/**
+ * @ets static ets/ReleaseMapOps __call
+ */
+export function releaseMapApply(ref: Ref<State>): ReleaseMap {
+  return new ReleaseMapImpl(ref)
 }

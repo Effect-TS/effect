@@ -1,11 +1,12 @@
 import * as Cause from "../../Cause/definition"
-import type { Managed } from "../definition"
-import { failCause } from "./failCause"
+import { Managed } from "../definition"
 
 /**
  * Returns an effect that models failure with the specified error. The moral
  * equivalent of `throw` for pure code.
+ *
+ * @ets static ets/ManagedOps failNow
  */
-export function failNow<E>(error: E, __trace?: string): Managed<unknown, E, never> {
-  return failCause(Cause.fail(error), __trace)
+export function failNow<E>(error: E, __etsTrace?: string): Managed<unknown, E, never> {
+  return Managed.failCauseNow(Cause.fail(error))
 }

@@ -1,17 +1,18 @@
-import type { Managed } from "../definition"
-import { failNow } from "./failNow"
-import { orElse_ } from "./orElse"
+import type { LazyArg } from "../../../data/Function"
+import { Managed } from "../definition"
 
 /**
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise fails with the specified error.
+ *
+ * @ets fluent ets/Managed orElseFail
  */
 export function orElseFail_<R, E, A, E2>(
   self: Managed<R, E, A>,
-  e: E2,
-  __trace?: string
+  e: LazyArg<E2>,
+  __etsTrace?: string
 ) {
-  return orElse_(self, () => failNow(e), __trace)
+  return self | Managed.fail(e)
 }
 
 /**
@@ -20,6 +21,6 @@ export function orElseFail_<R, E, A, E2>(
  *
  * @ets_data_first orElseFail_
  */
-export function orElseFail<E2>(e: E2, __trace?: string) {
-  return <R, E, A>(self: Managed<R, E, A>) => orElseFail_(self, e, __trace)
+export function orElseFail<E2>(e: LazyArg<E2>, __etsTrace?: string) {
+  return <R, E, A>(self: Managed<R, E, A>) => orElseFail_(self, e)
 }

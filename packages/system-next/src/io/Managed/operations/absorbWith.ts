@@ -1,25 +1,20 @@
 import { squashWith_ } from "../../Cause"
-import type { Managed } from "../definition"
-import { failNow } from "./failNow"
-import { foldManaged_ } from "./foldManaged"
-import { sandbox } from "./sandbox"
-import { succeedNow } from "./succeedNow"
+import { Managed } from "../definition"
 
 /**
  * Attempts to convert defects into a failure, throwing away all information
  * about the cause of the failure.
+ *
+ * @ets fluent ets/Managed absorbWith
  */
 export function absorbWith_<R, E, A>(
   self: Managed<R, E, A>,
   f: (e: E) => unknown,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R, unknown, A> {
-  return foldManaged_(
-    sandbox(self),
-    (cause) => failNow(squashWith_(cause, f)),
-    succeedNow,
-    __trace
-  )
+  return self
+    .sandbox()
+    .foldManaged((cause) => Managed.failNow(squashWith_(cause, f)), Managed.succeedNow)
 }
 
 /**
@@ -28,7 +23,6 @@ export function absorbWith_<R, E, A>(
  *
  * @ets_data_first absorbWith_
  */
-export function absorbWith<E>(f: (e: E) => unknown, __trace?: string) {
-  return <R, A>(self: Managed<R, E, A>): Managed<R, unknown, A> =>
-    absorbWith_(self, f, __trace)
+export function absorbWith<E>(f: (e: E) => unknown, __etsTrace?: string) {
+  return <R, A>(self: Managed<R, E, A>): Managed<R, unknown, A> => absorbWith_(self, f)
 }

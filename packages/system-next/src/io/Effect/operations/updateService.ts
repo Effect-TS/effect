@@ -1,8 +1,5 @@
 import type { Has, Tag } from "../../../data/Has"
-import type { Effect } from "../definition"
-import { provideServiceEffect } from "./provideServiceEffect"
-import { serviceWithEffect } from "./serviceWithEffect"
-import { succeed } from "./succeed"
+import { Effect } from "../definition"
 
 /**
  * Updates the service with the required service entry.
@@ -10,23 +7,25 @@ import { succeed } from "./succeed"
  * @ets fluent ets/Effect updateService
  */
 export function updateService_<R, E, A, T>(
-  effect: Effect<R & Has<T>, E, A>,
+  self: Effect<R & Has<T>, E, A>,
   _: Tag<T>,
   f: (_: T) => T,
   __etsTrace?: string
 ): Effect<R & Has<T>, E, A> {
-  return serviceWithEffect(_)((t) =>
-    provideServiceEffect(_)(
-      succeed(() => f(t)),
-      __etsTrace
-    )(effect)
+  return Effect.serviceWithEffect(_)((t) =>
+    self.provideServiceEffect(
+      _,
+      Effect.succeed(() => f(t))
+    )
   )
 }
 
 /**
  * Updates the service with the required service entry.
+ *
+ * @ets_data_first updateService_
  */
 export function updateService<T>(_: Tag<T>, f: (_: T) => T, __etsTrace?: string) {
-  return <R, E, A>(effect: Effect<R & Has<T>, E, A>): Effect<R & Has<T>, E, A> =>
-    updateService_(effect, _, f, __etsTrace)
+  return <R, E, A>(self: Effect<R & Has<T>, E, A>): Effect<R & Has<T>, E, A> =>
+    updateService_(self, _, f)
 }

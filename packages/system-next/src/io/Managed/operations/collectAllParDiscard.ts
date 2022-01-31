@@ -1,14 +1,16 @@
+import type { LazyArg } from "../../../data/Function"
 import { identity } from "../../../data/Function"
-import type { Managed } from "../definition"
-import { forEachParDiscard_ } from "./forEachParDiscard"
+import { Managed } from "../definition"
 
 /**
  * Evaluate each effect in the structure in parallel, and discard the results.
  * For a sequential version, see `collectAllDiscard`.
+ *
+ * @ets static ets/ManagedOps collectAllParDiscard
  */
 export function collectAllParDiscard<R, E, A>(
-  as: Iterable<Managed<R, E, A>>,
-  __trace?: string
+  as: LazyArg<Iterable<Managed<R, E, A>>>,
+  __etsTrace?: string
 ) {
-  return forEachParDiscard_(as, identity, __trace)
+  return Managed.forEachParDiscard(as, identity)
 }

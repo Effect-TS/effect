@@ -1,5 +1,5 @@
 import * as HS from "../../../collection/immutable/HashSet"
-import * as C from "../../Cause"
+import { Cause } from "../../Cause"
 import type { UIO } from "../../Effect"
 import type * as Exit from "../../Exit"
 import type { FiberId } from "../../FiberId"
@@ -16,7 +16,7 @@ export class Executing<E, A> {
   constructor(
     readonly status: Status.Status,
     readonly observers: Array<Callback<never, Exit.Exit<E, A>>>,
-    readonly suppressed: C.Cause<never>,
+    readonly suppressed: Cause<never>,
     readonly interruptors: HS.HashSet<FiberId>,
     readonly asyncCanceler: CancelerState.CancelerState,
     readonly mailbox: UIO<any> | undefined
@@ -26,7 +26,7 @@ export class Executing<E, A> {
 export class Done<E, A> {
   readonly _tag = "Done"
 
-  readonly suppressed = C.empty
+  readonly suppressed = Cause.empty
   readonly status: Status.Status = new Status.Done()
   readonly interruptors: HS.HashSet<FiberId> = HS.make()
 
@@ -37,7 +37,7 @@ export function initial<E, A>(): FiberState<E, A> {
   return new Executing(
     new Status.Running(false),
     [],
-    C.empty,
+    Cause.empty,
     HS.make(),
     CancelerState.Empty,
     undefined
@@ -47,8 +47,8 @@ export function isInterrupting<E, A>(state: FiberState<E, A>): boolean {
   return Status.isInterrupting(state.status)
 }
 
-export function interruptorsCause<E, A>(state: FiberState<E, A>): C.Cause<never> {
-  return HS.reduce_(state.interruptors, C.empty, (acc, interruptor) =>
-    C.then(acc, C.interrupt(interruptor))
+export function interruptorsCause<E, A>(state: FiberState<E, A>): Cause<never> {
+  return HS.reduce_(state.interruptors, Cause.empty, (acc, interruptor) =>
+    Cause.then(acc, Cause.interrupt(interruptor))
   )
 }

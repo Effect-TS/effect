@@ -174,7 +174,7 @@ export class IInterruptStatus<R, E, A> extends Base<R, E, A> {
 
   constructor(
     readonly effect: Effect<R, E, A>,
-    readonly flag: InterruptStatus,
+    readonly flag: Lazy<InterruptStatus>,
     readonly trace?: string
   ) {
     super()
@@ -378,7 +378,7 @@ export class ILogged<A> extends Base<unknown, never, void> {
 export class ISetRuntimeConfig extends Base<unknown, never, void> {
   readonly _tag = "SetRuntimeConfig"
 
-  constructor(readonly runtimeConfig: RuntimeConfig, readonly trace?: string) {
+  constructor(readonly runtimeConfig: Lazy<RuntimeConfig>, readonly trace?: string) {
     super()
   }
 }

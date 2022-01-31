@@ -1,7 +1,7 @@
 import * as Trace from "../../../io/Trace"
 import * as Cause from "../../Cause"
 import type { UIO } from "../definition"
-import { failCause } from "./failCause"
+import { Effect } from "../definition"
 
 // TODO(Mike/Max): fix name
 
@@ -13,5 +13,5 @@ import { failCause } from "./failCause"
  * @ets static ets/EffectOps dieNow
  */
 export function die(defect: unknown, __etsTrace?: string): UIO<never> {
-  return failCause(Cause.die(defect, Trace.none), __etsTrace)
+  return Effect.failCauseNow(Cause.die(defect, Trace.none))
 }

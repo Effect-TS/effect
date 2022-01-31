@@ -1,8 +1,5 @@
 import type { Option } from "../../../data/Option"
-import type { Effect } from "../definition"
-import { catchAll_ } from "./catchAll"
-import { failNow } from "./failNow"
-import { unrefineWith_ } from "./unrefineWith"
+import { Effect } from "../definition"
 
 /**
  * Recovers from some or all of the defects with provided partial function.
@@ -16,14 +13,12 @@ import { unrefineWith_ } from "./unrefineWith"
  */
 export function catchSomeDefect_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
-  f: (_: unknown) => Option<Effect<R2, E2, A2>>,
+  pf: (_: unknown) => Option<Effect<R2, E2, A2>>,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, A | A2> {
-  return catchAll_(
-    unrefineWith_(self, f, failNow),
-    (s): Effect<R2, E | E2, A2> => s,
-    __etsTrace
-  )
+  return self
+    .unrefineWith(pf, Effect.failNow)
+    .catchAll((s): Effect<R2, E | E2, A2> => s)
 }
 
 /**
@@ -37,9 +32,9 @@ export function catchSomeDefect_<R, E, A, R2, E2, A2>(
  * @dataFist catchSomeDefect_
  */
 export function catchSomeDefect<R2, E2, A2>(
-  f: (_: unknown) => Option<Effect<R2, E2, A2>>,
+  pf: (_: unknown) => Option<Effect<R2, E2, A2>>,
   __etsTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> =>
-    catchSomeDefect_(self, f, __etsTrace)
+    catchSomeDefect_(self, pf)
 }

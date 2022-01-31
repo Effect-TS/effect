@@ -1,16 +1,17 @@
-import type { IO } from "../../Effect/definition/base"
-import { failCause } from "../../Effect/operations/failCause"
-import { succeedNow } from "../../Effect/operations/succeedNow"
+import { Effect } from "../../Effect"
 import type { Exit } from "../definition"
 
 /**
  * Converts the `Exit` to an `Effect`.
  */
-export function toEffect<E, A>(self: Exit<E, A>): IO<E, A> {
+export function toEffect<E, A>(
+  self: Exit<E, A>,
+  __etsTrace?: string
+): Effect<unknown, E, A> {
   switch (self._tag) {
     case "Failure":
-      return failCause(self.cause)
+      return Effect.failCause(() => self.cause)
     case "Success":
-      return succeedNow(self.value)
+      return Effect.succeed(self.value)
   }
 }

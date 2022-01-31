@@ -1,5 +1,4 @@
-import type { Managed } from "../../Managed/definition"
-import { acquireReleaseWith_ } from "../../Managed/operations/acquireReleaseWith"
+import { Managed } from "../../Managed/definition"
 import type { Effect } from "../definition"
 
 /**
@@ -12,7 +11,7 @@ export function toManagedWith_<R, R1, E, A>(
   self: Effect<R, E, A>,
   release: (a: A) => Effect<R1, never, any>
 ): Managed<R & R1, E, A> {
-  return acquireReleaseWith_(self, release)
+  return Managed.acquireReleaseWith(self, release)
 }
 
 /**

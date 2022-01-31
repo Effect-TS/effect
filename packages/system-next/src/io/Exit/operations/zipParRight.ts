@@ -1,4 +1,4 @@
-import { both } from "../../Cause"
+import { Cause } from "../../Cause"
 import type { Exit } from "../definition"
 import { zipWith_ } from "./zipWith"
 
@@ -10,7 +10,7 @@ export function zipParRight_<E, E1, A, B>(
   self: Exit<E, A>,
   that: Exit<E1, B>
 ): Exit<E | E1, B> {
-  return zipWith_(self, that, (_, b) => b, both)
+  return zipWith_(self, that, (_, b) => b, Cause.both)
 }
 
 /**

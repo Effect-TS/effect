@@ -1,4 +1,3 @@
-import * as C from "../../Cause"
 import type { Exit } from "../definition"
 
 /**
@@ -7,7 +6,7 @@ import type { Exit } from "../definition"
 export function isInterrupted<E, A>(self: Exit<E, A>): boolean {
   switch (self._tag) {
     case "Failure":
-      return C.isInterrupted(self.cause)
+      return self.cause.isInterrupted()
     case "Success":
       return false
   }

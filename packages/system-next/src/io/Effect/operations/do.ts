@@ -1,8 +1,5 @@
 import type { MergeRecord } from "../../../data/Utils/types"
-import type { Effect } from "../definition"
-import { chain_ } from "./chain"
-import { map_ } from "./map"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
 
 /**
  * Binds an effectful value in a `do` scope
@@ -25,7 +22,7 @@ export function bind<R, E, A, K, N extends string>(
         [k in N]: A
       }
     >
-  > => bind_(mk, tag, f, __etsTrace)
+  > => bind_(mk, tag, f)
 }
 
 /**
@@ -48,21 +45,17 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
     }
   >
 > {
-  return chain_(
-    mk,
-    (k) =>
-      map_(
-        f(k),
-        (
-          a
-        ): MergeRecord<
-          K,
-          {
-            [k in N]: A
-          }
-        > => ({ ...k, [tag]: a } as any)
-      ),
-    __etsTrace
+  return mk.flatMap((k) =>
+    f(k).map(
+      (
+        a
+      ): MergeRecord<
+        K,
+        {
+          [k in N]: A
+        }
+      > => ({ ...k, [tag]: a } as any)
+    )
   )
 }
 
@@ -92,6 +85,8 @@ export function bindValue<A, K, N extends string>(
 
 /**
  * Like bind for values
+ *
+ * @ets fluent ets/Effect bindValue
  */
 export function bindValue_<R2, E2, A, K, N extends string>(
   mk: Effect<R2, E2, K>,
@@ -108,8 +103,7 @@ export function bindValue_<R2, E2, A, K, N extends string>(
     }
   >
 > {
-  return map_(
-    mk,
+  return mk.map(
     (
       k
     ): MergeRecord<
@@ -117,8 +111,7 @@ export function bindValue_<R2, E2, A, K, N extends string>(
       {
         [k in N]: A
       }
-    > => ({ ...k, [tag]: f(k) } as any),
-    __etsTrace
+    > => ({ ...k, [tag]: f(k) } as any)
   )
 }
 
@@ -126,5 +119,5 @@ export function bindValue_<R2, E2, A, K, N extends string>(
  * @ets static ets/EffectOps Do
  */
 export function Do() {
-  return succeedNow({})
+  return Effect.succeedNow({})
 }

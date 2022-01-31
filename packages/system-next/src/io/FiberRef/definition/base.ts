@@ -3,10 +3,11 @@ import type { Effect, IO } from "../../Effect"
 import type { Managed } from "../../Managed/definition"
 import { _A, _B, _EA, _EB } from "./commons"
 
-export const FiberRefSym: unique symbol = Symbol.for("@effect-ts/core/FiberRef")
+export const FiberRefSym: unique symbol = Symbol.for("@effect-ts/system/io/FiberRef")
 export type FiberRefSym = typeof FiberRefSym
+
 export const FiberRefRuntimeSym: unique symbol = Symbol.for(
-  "@effect-ts/core/FiberRefRuntime"
+  "@effect-ts/system/io/FiberRef.Runtime"
 )
 export type FiberRefRuntimeSym = typeof FiberRefRuntimeSym
 

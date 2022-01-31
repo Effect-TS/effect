@@ -1,11 +1,9 @@
-import { insert_ } from "../../../collection/immutable/Map"
-import * as Tp from "../../../collection/immutable/Tuple"
-import * as O from "../../../data/Option"
-import type { Effect, UIO } from "../../Effect/definition/base"
-import { flatten } from "../../Effect/operations/flatten"
-import { map_ } from "../../Effect/operations/map"
-import { succeed } from "../../Effect/operations/succeed"
-import * as Ref from "../operations/_internal/ref"
+import { insert_ as mapInsert_ } from "../../../collection/immutable/Map"
+import { Tuple } from "../../../collection/immutable/Tuple"
+import { Option } from "../../../data/Option"
+import type { UIO } from "../../Effect"
+import { Effect } from "../../Effect"
+import { modify_ as refModify_ } from "../../Ref/operations/modify"
 import type { ReleaseMap } from "./definition"
 import type { Finalizer } from "./finalizer"
 import { next } from "./next"
@@ -17,35 +15,34 @@ import { Exited, Running } from "./state"
  * be used to activate this finalizer and remove it from the map. If the scope
  * has been closed, the finalizer will be executed immediately (with the `Exit`
  * value with which the scope has ended) and no key will be returned.
+ *
+ * @ets fluent ets/ReleaseMap addIfOpen
  */
 export function addIfOpen_(
   self: ReleaseMap,
   finalizer: Finalizer,
-  __trace?: string
-): UIO<O.Option<number>> {
-  return flatten(
-    Ref.modify_(self.ref, (s) => {
-      switch (s._tag) {
-        case "Exited": {
-          return Tp.tuple(
-            map_(finalizer(s.exit), () => O.none),
-            new Exited(next(s.nextKey), s.exit, s.update)
-          )
-        }
-        case "Running": {
-          return Tp.tuple(
-            succeed(() => O.some(s.nextKey)),
-            new Running(
-              next(s.nextKey),
-              insert_(s.finalizers(), s.nextKey, finalizer),
-              s.update
-            )
-          )
-        }
+  __etsTrace?: string
+): UIO<Option<number>> {
+  return refModify_(self.ref, (s) => {
+    switch (s._tag) {
+      case "Exited": {
+        return Tuple(
+          finalizer(s.exit).map(() => Option.none),
+          new Exited(next(s.nextKey), s.exit, s.update)
+        )
       }
-    }),
-    __trace
-  )
+      case "Running": {
+        return Tuple(
+          Effect.succeed(() => Option.some(s.nextKey)),
+          new Running(
+            next(s.nextKey),
+            mapInsert_(s.finalizers(), s.nextKey, finalizer),
+            s.update
+          )
+        )
+      }
+    }
+  }).flatten()
 }
 
 /**
@@ -57,7 +54,7 @@ export function addIfOpen_(
  *
  * @ets_data_first addIfOpen_
  */
-export function addIfOpen(finalizer: Finalizer, __trace?: string) {
-  return (self: ReleaseMap): Effect<unknown, never, O.Option<number>> =>
-    addIfOpen_(self, finalizer, __trace)
+export function addIfOpen(finalizer: Finalizer, __etsTrace?: string) {
+  return (self: ReleaseMap): Effect<unknown, never, Option<number>> =>
+    addIfOpen_(self, finalizer)
 }

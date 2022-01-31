@@ -1,19 +1,20 @@
+import type { LazyArg } from "../../../data/Function"
 import type { Option } from "../../../data/Option"
-import type { Managed } from "../definition"
-import { asSome } from "./asSome"
-import { chain_ } from "./chain"
-import { none } from "./none"
-import { suspend } from "./suspend"
+import { Managed } from "../definition"
 
 /**
  * The moral equivalent of `if (!p) exp` when `p` has side-effects.
+ *
+ * @ets fluent ets/Managed unlessManaged
  */
 export function unlessManaged_<R, E, A, R2, E2>(
   self: Managed<R, E, A>,
-  b: () => Managed<R2, E2, boolean>,
-  __trace?: string
+  b: LazyArg<Managed<R2, E2, boolean>>,
+  __etsTrace?: string
 ): Managed<R & R2, E | E2, Option<A>> {
-  return suspend(() => chain_(b(), (result) => (result ? none : asSome(self))), __trace)
+  return Managed.suspend(
+    b().flatMap((result) => (result ? Managed.none : self.asSome()))
+  )
 }
 
 /**
@@ -22,9 +23,9 @@ export function unlessManaged_<R, E, A, R2, E2>(
  * @ets_data_first unlessManaged_
  */
 export function unlessManaged<R2, E2>(
-  b: () => Managed<R2, E2, boolean>,
-  __trace?: string
+  b: LazyArg<Managed<R2, E2, boolean>>,
+  __etsTrace?: string
 ) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<R & R2, E | E2, Option<A>> =>
-    unlessManaged_(self, b, __trace)
+    unlessManaged_(self, b)
 }

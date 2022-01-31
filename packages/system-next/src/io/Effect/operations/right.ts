@@ -1,6 +1,6 @@
 import * as E from "../../../data/Either"
 import type { UIO } from "../definition"
-import { succeed } from "./succeed"
+import { Effect } from "../definition"
 
 /**
  * Returns an effect with the value on the right part.
@@ -8,5 +8,5 @@ import { succeed } from "./succeed"
  * @ets static ets/EffectOps right
  */
 export function right<A>(value: A, __etsTrace?: string): UIO<E.Either<never, A>> {
-  return succeed(() => E.right(value))
+  return Effect.succeed(() => E.right(value))
 }

@@ -1,6 +1,6 @@
-import * as E from "../../../data/Either"
+import { Either } from "../../../data/Either"
 import { identity } from "../../../data/Function"
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { XFiberRef } from "../definition"
 import { concreteUnified } from "../definition"
 
@@ -11,10 +11,12 @@ import { concreteUnified } from "../definition"
  */
 export function collect_<EA, EB, A, B, C>(
   self: XFiberRef<EA, EB, A, B>,
-  pf: (b: B) => O.Option<C>
-): XFiberRef<EA, O.Option<EB>, A, C> {
+  pf: (b: B) => Option<C>
+): XFiberRef<EA, Option<EB>, A, C> {
   concreteUnified(self)
-  return self.fold(identity, O.some, E.right, (b) => E.fromOption_(pf(b), () => O.none))
+  return self.fold(identity, Option.some, Either.right, (b) =>
+    Either.fromOption(pf(b), () => Option.none)
+  )
 }
 
 /**
@@ -24,8 +26,7 @@ export function collect_<EA, EB, A, B, C>(
  *
  * @ets_data_first collect_
  */
-export function collect<B, C>(pf: (b: B) => O.Option<C>) {
-  return <EA, EB, A>(
-    self: XFiberRef<EA, EB, A, B>
-  ): XFiberRef<EA, O.Option<EB>, A, C> => collect_(self, pf)
+export function collect<B, C>(pf: (b: B) => Option<C>) {
+  return <EA, EB, A>(self: XFiberRef<EA, EB, A, B>): XFiberRef<EA, Option<EB>, A, C> =>
+    collect_(self, pf)
 }
