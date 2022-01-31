@@ -2,10 +2,10 @@
 
 import * as O from "@effect-ts/system/Option"
 
-import * as Tp from "../../Collections/Immutable/Tuple"
-import { pipe } from "../../Function"
-import type { OptionURI } from "../../Modules"
-import * as P from "../../Prelude"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import { pipe } from "../../Function/index.js"
+import type { OptionURI } from "../../Modules/index.js"
+import * as P from "../../Prelude/index.js"
 
 export const separateF = P.implementSeparateF<[P.URI<OptionURI>]>()(
   (_) => (F) => (f) => (fa) => {

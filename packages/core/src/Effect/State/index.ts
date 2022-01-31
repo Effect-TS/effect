@@ -1,9 +1,9 @@
-import type * as Tp from "../../Collections/Immutable/Tuple"
-import type { Has, Tag } from "../../Has"
-import { tag } from "../../Has"
-import * as T from ".."
-import * as L from "../Layer"
-import * as Ref from "../Ref"
+import type * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import type { Has, Tag } from "../../Has/index.js"
+import { tag } from "../../Has/index.js"
+import * as T from "../index.js"
+import * as L from "../Layer/index.js"
+import * as Ref from "../Ref/index.js"
 
 export interface State<S> {
   //readonly serviceId: `@effect-ts/core/Effect/State<${TypeTag<S>}>`

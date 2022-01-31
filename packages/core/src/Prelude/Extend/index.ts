@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as HKT from "../HKT"
+import type * as HKT from "../HKT/index.js"
 
 export interface Extend<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
   readonly _Extend: "Extend"

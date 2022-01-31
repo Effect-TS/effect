@@ -3,9 +3,9 @@
 import * as T from "@effect-ts/system/Effect"
 import * as L from "@effect-ts/system/Layer"
 
-import type { LayerURI } from "../../Modules"
-import type { URI } from "../../Prelude"
-import * as P from "../../Prelude"
+import type { LayerURI } from "../../Modules/index.js"
+import type { URI } from "../../Prelude/index.js"
+import * as P from "../../Prelude/index.js"
 
 export type V = P.V<"R", "-"> & P.V<"E", "+">
 

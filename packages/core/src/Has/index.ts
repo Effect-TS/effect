@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
 import * as T from "@effect-ts/system/Effect"
 import type { Has, Tag } from "@effect-ts/system/Has"

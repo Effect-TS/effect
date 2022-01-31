@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
-import { pipe } from "../Function"
-import * as O from "../Option"
-import type { Applicative, Covariant, Monad } from "../Prelude"
-import { succeedF } from "../Prelude/DSL"
-import type { Access, Provide } from "../Prelude/FX"
-import * as HKT from "../Prelude/HKT"
+import { pipe } from "../Function/index.js"
+import * as O from "../Option/index.js"
+import { succeedF } from "../Prelude/DSL/index.js"
+import type { Access, Provide } from "../Prelude/FX/index.js"
+import * as HKT from "../Prelude/HKT/index.js"
+import type { Applicative, Covariant, Monad } from "../Prelude/index.js"
 
 export function monad<F extends HKT.URIS, C>(
   M: Monad<F, C>

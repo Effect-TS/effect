@@ -1,7 +1,7 @@
 import { makeAssociative } from "../../src/Associative"
-import * as E from "../../src/Either"
-import * as DSL from "../../src/Prelude/DSL"
-import * as X from "../../src/XPure"
+import * as E from "../../src/Either/index.js"
+import * as DSL from "../../src/Prelude/DSL/index.js"
+import * as X from "../../src/XPure/index.js"
 
 test("07", () => {
   const A = E.struct({

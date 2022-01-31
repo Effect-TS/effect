@@ -3,8 +3,8 @@
 import type { Either } from "@effect-ts/system/Either"
 import * as E from "@effect-ts/system/Either"
 
-import type { Associative } from "../../Associative"
-import { makeAssociative } from "../../Associative"
+import type { Associative } from "../../Associative/index.js"
+import { makeAssociative } from "../../Associative/index.js"
 
 /**
  * Get `Associative` for `Either` given `Associative` of `A`

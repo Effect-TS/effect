@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as P from "../../Prelude"
+import * as P from "../../Prelude/index.js"
 import { Applicative, Covariant, Fail, Monad, Run } from "./instances"
 
 export const tuple = P.tupleF(Applicative)

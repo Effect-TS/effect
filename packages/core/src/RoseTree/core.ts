@@ -10,19 +10,19 @@
  * ```
  */
 
-import * as A from "../Collections/Immutable/Array"
-import type { Equal } from "../Equal"
-import { makeEqual } from "../Equal"
-import { pipe } from "../Function"
-import type { Identity } from "../Identity"
-import * as IO from "../IO"
-import type { TreeURI } from "../Modules"
-import type { URI } from "../Prelude"
-import * as P from "../Prelude"
-import { sequenceF } from "../Prelude"
-import * as DSL from "../Prelude/DSL"
-import { getApplicativeF } from "../Prelude/DSL"
-import type { Show } from "../Show"
+import * as A from "../Collections/Immutable/Array/index.js"
+import type { Equal } from "../Equal/index.js"
+import { makeEqual } from "../Equal/index.js"
+import { pipe } from "../Function/index.js"
+import type { Identity } from "../Identity/index.js"
+import * as IO from "../IO/index.js"
+import type { TreeURI } from "../Modules/index.js"
+import * as DSL from "../Prelude/DSL/index.js"
+import { getApplicativeF } from "../Prelude/DSL/index.js"
+import type { URI } from "../Prelude/index.js"
+import * as P from "../Prelude/index.js"
+import { sequenceF } from "../Prelude/index.js"
+import type { Show } from "../Show/index.js"
 
 export declare type Forest<A> = ReadonlyArray<Tree<A>>
 

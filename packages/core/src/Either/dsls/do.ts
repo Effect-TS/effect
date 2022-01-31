@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as DSL from "../../Prelude/DSL"
+import * as DSL from "../../Prelude/DSL/index.js"
 import { Monad } from "../instances"
 
 const do_ = DSL.doF(Monad)

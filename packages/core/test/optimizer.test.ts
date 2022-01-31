@@ -1,5 +1,5 @@
 import * as C from "../src/Const"
-import { pipe } from "../src/Function"
+import { pipe } from "../src/Function/index.js"
 
 describe("Optimizer", () => {
   it("should not break Const", () => {

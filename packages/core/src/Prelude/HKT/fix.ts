@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Auto } from "./base"
-import type { V } from "./variance"
+import type { Auto } from "./base.js"
+import type { V } from "./variance.js"
 
 export type Param = "K" | "Q" | "W" | "I" | "X" | "S" | "R" | "E"
 

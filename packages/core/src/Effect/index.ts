@@ -1,2 +1,2 @@
-export * from "./instances"
-export * from "./operations"
+export * from "./instances.js"
+export * from "./operations.js"

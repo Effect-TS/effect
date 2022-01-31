@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as P from "../Prelude"
+import * as P from "../Prelude/index.js"
 import { Applicative, Covariant, Monad } from "./instances"
 
 /**

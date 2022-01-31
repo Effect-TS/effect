@@ -1,4 +1,4 @@
-import * as String from "../src/String"
+import * as String from "../src/String/index.js"
 
 describe("String", () => {
   it("should strip a leading prefix from each line", () => {

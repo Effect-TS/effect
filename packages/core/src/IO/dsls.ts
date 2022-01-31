@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as A from "../Collections/Immutable/Array"
-import * as DSL from "../Prelude/DSL"
+import * as A from "../Collections/Immutable/Array/index.js"
+import * as DSL from "../Prelude/DSL/index.js"
 import { Applicative, Covariant, Monad } from "./instances"
 
 /**

@@ -1,7 +1,7 @@
 import * as T from "../src/Async"
-import * as A from "../src/Collections/Immutable/Array"
-import { pipe } from "../src/Function"
-import * as O from "../src/Option"
+import * as A from "../src/Collections/Immutable/Array/index.js"
+import { pipe } from "../src/Function/index.js"
+import * as O from "../src/Option/index.js"
 
 type A = {
   a: number

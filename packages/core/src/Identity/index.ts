@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
-export * from "./definition"
-export { IdentityURI } from "../Modules"
-export * from "./operations"
-export * from "./makeIdentity"
-export * from "./common"
+export * from "./definition.js"
+export { IdentityURI } from "../Modules/index.js"
+export * from "./operations.js"
+export * from "./makeIdentity.js"
+export * from "./common.js"

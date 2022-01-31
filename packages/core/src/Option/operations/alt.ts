@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as P from "../../Prelude"
-import { AssociativeEither } from "../instances/AssociativeEither"
-import { Covariant } from "../instances/Covariant"
+import * as P from "../../Prelude/index.js"
+import { AssociativeEither } from "../instances/AssociativeEither.js"
+import { Covariant } from "../instances/Covariant.js"
 
 export const alt = P.orElseF({ ...Covariant, ...AssociativeEither })

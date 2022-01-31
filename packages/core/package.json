@@ -7,7 +7,7 @@
   "scripts": {
     "clean": "yarn ets:rimraf build tsbuildinfo dist",
     "build-cjs": "yarn ets:tsc -p tsconfig.build.cjs.json",
-    "build-esm": "yarn ets:tsc -p tsconfig.build.esm.json && babel build/esm/ -d build/esm/ -s --plugins annotate-pure-calls",
+    "build-esm": "yarn ets:tsc -p tsconfig.build.esm.json && yarn ets:babel build/esm/ -d build/esm/ -s --plugins annotate-pure-calls",
     "build-post": "yarn ets:ts-node ../../scripts/pack.ts",
     "build": "yarn ets:concurrently \"yarn build-cjs\" \"yarn build-esm\" && yarn build-post",
     "lint": "yarn ets:eslint . --ext .ts,.tsx",

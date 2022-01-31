@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-export { ShowURI } from "../Modules"
+export { ShowURI } from "../Modules/index.js"
 
 /**
  * `Show[A]` provides implicit evidence that values of type `A` have a total
