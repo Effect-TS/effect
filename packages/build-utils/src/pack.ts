@@ -119,7 +119,17 @@ pipe(
   ),
   TE.tap(() =>
     TE.when(() => fs.existsSync(`./build/esm`))(
-      exec(`mkdir -p ./dist/_esm && cp -r ./build/esm/* ./dist/_esm`)
+      pipe(
+        exec(`mkdir -p ./dist/_esm && cp -r ./build/esm/* ./dist/_esm`),
+        TE.tap(() =>
+          writeFile(
+            "./dist/_esm/package.json",
+            JSON.stringify({
+              type: "module"
+            })
+          )
+        )
+      )
     )
   ),
   TE.tap(() =>
