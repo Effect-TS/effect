@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type { Predicate, Refinement } from "../Function/index.js"
 import * as core from "./core.js"
 import type { IO } from "./effect.js"
