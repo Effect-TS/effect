@@ -65,7 +65,9 @@ export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
  *
  * @tsplus static ets/EffectOps interrupt
  */
-export const interrupt = Effect.fiberId.flatMap(interruptAs)
+export const interrupt = Effect.fiberId.flatMap((fiberId) =>
+  Effect.interruptAs(fiberId)
+)
 
 /**
  * Switches the interrupt status for this effect. If `true` is used, then the
