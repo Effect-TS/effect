@@ -9,10 +9,10 @@ import "../Operator"
  */
 
 // codegen:start {preset: barrel, include: ./*.ts}
-export * from "./cause"
-export * from "./core"
-export * from "./do"
-export * from "./errors"
+export * from "./cause.js"
+export * from "./core.js"
+export * from "./do.js"
+export * from "./errors.js"
 // codegen:end
 
 export { Renderer, pretty, defaultRenderer } from "./Pretty"

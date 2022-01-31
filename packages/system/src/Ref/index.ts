@@ -8,7 +8,7 @@ import "../Operator"
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
 // codegen:start {preset: barrel, include: ./*.ts, exclude: ./+(managed|effect|atomic).ts}
-export * from "./api"
-export * from "./makeManagedRef"
-export * from "./XRef"
+export * from "./api.js"
+export * from "./makeManagedRef.js"
+export * from "./XRef.js"
 // codegen:end

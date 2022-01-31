@@ -9,8 +9,8 @@ import "../Operator"
  */
 
 // codegen:start {preset: barrel, include: ./*.ts}
-export * from "./api"
-export * from "./core"
-export * from "./do"
-export * from "./exit"
+export * from "./api.js"
+export * from "./core.js"
+export * from "./do.js"
+export * from "./exit.js"
 // codegen:end

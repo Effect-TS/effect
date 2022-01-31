@@ -9,8 +9,8 @@ import "../Operator"
  */
 
 // codegen:start {preset: barrel, include: ./*.ts, exclude: ./+(promise|effect|effect-api).ts}
-export * from "./api"
-export * from "./core"
-export * from "./unsafe"
-export * from "./xqueue"
+export * from "./api.js"
+export * from "./core.js"
+export * from "./unsafe.js"
+export * from "./xqueue.js"
 // codegen:end

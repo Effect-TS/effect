@@ -3,6 +3,6 @@
 import "../Operator"
 
 // codegen:start {preset: barrel, include: ./*.ts}
-export * from "./common"
-export * from "./newtype"
+export * from "./common.js"
+export * from "./newtype.js"
 // codegen:end

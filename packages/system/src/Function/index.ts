@@ -3,7 +3,7 @@
 import "../Operator"
 
 // codegen:start {preset: barrel, include: ./*.ts}
-export * from "./core"
-export * from "./flow"
-export * from "./pipe"
+export * from "./core.js"
+export * from "./flow.js"
+export * from "./pipe.js"
 // codegen:end

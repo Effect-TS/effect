@@ -3,5 +3,5 @@
 import "../../../Operator"
 
 // codegen:start {preset: barrel, include: ./*.ts, exclude: ./deps.ts}
-export * from "./core"
+export * from "./core.js"
 // codegen:end
