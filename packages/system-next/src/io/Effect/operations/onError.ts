@@ -6,7 +6,7 @@ import { Effect } from "../definition"
  * Runs the specified effect if this effect fails, providing the error to the
  * effect if it exists. The provided effect will not be interrupted.
  *
- * @ets fluent ets/Effect onError
+ * @tsplus fluent ets/Effect onError
  */
 export function onError_<R, E, A, R2, X>(
   self: Effect<R, E, A>,

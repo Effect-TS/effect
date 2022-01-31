@@ -5,7 +5,7 @@ import { Managed } from "../definition"
 /**
  * Recovers from some or all of the error causes.
  *
- * @ets fluent ets/Managed catchSomeCause
+ * @tsplus fluent ets/Managed catchSomeCause
  */
 export function catchSomeCause_<R, E, A, R1, E1, A1>(
   self: Managed<R, E, A>,

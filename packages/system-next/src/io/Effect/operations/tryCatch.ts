@@ -6,7 +6,7 @@ import { Effect } from "../definition"
  * Imports a synchronous side-effect into a pure value, translating any
  * thrown exceptions into typed failed effects.
  *
- * @ets static ets/EffectOps tryCatch
+ * @tsplus static ets/EffectOps tryCatch
  */
 export function tryCatch<E, A>(
   attempt: LazyArg<A>,

@@ -5,7 +5,7 @@ import type { List } from "../definition"
  * empty the empty list is returned.
  *
  * @complexity `O(1)`
- * @ets fluent ets/List pop
+ * @tsplus fluent ets/List pop
  */
 export function pop<A>(self: List<A>): List<A> {
   return self.slice(0, -1)

@@ -9,7 +9,7 @@ import { findIndexCb, foldlCb } from "./_internal/callbacks"
  * `-1`.
  *
  * @complexity O(n)
- * @ets fluent ets/List findIndex
+ * @tsplus fluent ets/List findIndex
  */
 export function findIndex_<A>(self: List<A>, f: Predicate<A>): number {
   const { found, index } = foldlCb<A, FindIndexState>(

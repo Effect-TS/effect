@@ -13,7 +13,7 @@ import { Effect } from "../definition"
  * addition, returns an effect that can be used to invalidate the current
  * cached value before the `timeToLive` duration expires.
  *
- * @ets fluent ets/Effect cachedInvalidate
+ * @tsplus fluent ets/Effect cachedInvalidate
  */
 export function cachedInvalidate_<R, E, A>(
   self: Effect<R, E, A>,

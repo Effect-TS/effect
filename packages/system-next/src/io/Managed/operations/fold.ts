@@ -5,7 +5,7 @@ import { Managed } from "../definition"
  * does not fail, but succeeds with the value returned by the left or right
  * function passed to `fold`.
  *
- * @ets fluent ets/Managed fold
+ * @tsplus fluent ets/Managed fold
  */
 export function fold_<R, E, A, A2, A3>(
   self: Managed<R, E, A>,

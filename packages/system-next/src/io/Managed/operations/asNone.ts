@@ -4,7 +4,7 @@ import { Managed } from "../definition"
 /**
  * Requires the option produced by this value to be `None`.
  *
- * @ets fluent ets/Managed asNone
+ * @tsplus fluent ets/Managed asNone
  */
 export function asNone<R, E, A>(
   self: Managed<R, E, Option<A>>,

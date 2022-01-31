@@ -5,7 +5,7 @@ import { Effect } from "../definition"
 /**
  * Returns an effect with the optional value.
  *
- * @ets static ets/EffectOps some
+ * @tsplus static ets/EffectOps some
  */
 export function some<A>(a: A, __etsTrace?: string): UIO<O.Option<A>> {
   return Effect.succeed(() => O.some(a))

@@ -5,7 +5,7 @@ import { Managed } from "../definition"
 /**
  * Lifts an `Either` into a `Managed` value.
  *
- * @ets static ets/ManagedOps fromEither
+ * @tsplus static ets/ManagedOps fromEither
  */
 export function fromEither<E, A>(
   f: LazyArg<Either<E, A>>,

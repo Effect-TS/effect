@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * Applies the function `f` if the argument is non-empty and returns the
  * results in a new `Option<A2>`.
  *
- * @ets static ets/ManagedOps forEachOption
+ * @tsplus static ets/ManagedOps forEachOption
  */
 export function forEachOption_<R, E, A, A2>(
   option: LazyArg<Option<A>>,

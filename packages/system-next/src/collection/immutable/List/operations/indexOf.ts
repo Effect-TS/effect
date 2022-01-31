@@ -6,7 +6,7 @@ import { foldlCb, indexOfCb } from "./_internal/callbacks"
  * to the given element. If no such element is found `-1` is returned.
  *
  * @complexity O(n)
- * @ets fluent ets/List indexOf
+ * @tsplus fluent ets/List indexOf
  */
 export function indexOf_<A>(self: List<A>, element: A): number {
   const state = { element, found: false, index: -1 }

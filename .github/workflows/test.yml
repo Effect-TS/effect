@@ -1,10 +1,9 @@
 name: Node CI
 
 on:
-  pull_request:
+  push:
     branches:
-      - master
-      - feat/system-next
+      - feat/*
 
 jobs:
   build:

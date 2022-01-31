@@ -8,7 +8,7 @@ import { to_ } from "./to"
  * layer, resulting in a new layer with the inputs of this layer, and the
  * outputs of both layers.
  *
- * @ets operator ets/Layer >
+ * @tsplus operator ets/Layer >
  */
 export function andTo_<
   RIn,

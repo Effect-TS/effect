@@ -5,7 +5,7 @@ import { Effect } from "../definition"
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise succeeds with the specified value.
  *
- * @ets fluent ets/Effect orElseSucceed
+ * @tsplus fluent ets/Effect orElseSucceed
  */
 export function orElseSucceed_<R, E, A, A2>(
   self: Effect<R, E, A>,

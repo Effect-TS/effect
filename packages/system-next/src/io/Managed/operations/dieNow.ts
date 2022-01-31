@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * be used for terminating a fiber because a defect has been detected in the
  * code.
  *
- * @ets static ets/ManagedOps dieNow
+ * @tsplus static ets/ManagedOps dieNow
  */
 export function dieNow(
   defect: unknown,

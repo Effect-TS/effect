@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * Creates an effect that only executes the provided function as its
  * release action.
  *
- * @ets static ets/ManagedOps finalizerExit
+ * @tsplus static ets/ManagedOps finalizerExit
  */
 export function finalizerExit<R, X>(
   f: (exit: Exit<any, any>) => Effect<R, never, X>,

@@ -4,7 +4,7 @@ import { Managed } from "../definition"
 /**
  * The inverse operation to `sandbox`. Submerges the full cause of failure.
  *
- * @ets fluent ets/Managed unsandbox
+ * @tsplus fluent ets/Managed unsandbox
  */
 export function unsandbox<R, E, A>(
   self: Managed<R, Cause<E>, A>,

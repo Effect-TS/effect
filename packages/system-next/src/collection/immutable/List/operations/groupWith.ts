@@ -10,7 +10,7 @@ import { unsafeLast } from "./unsafeLast"
  * equal elements should be grouped together the list should be sorted
  * before grouping.
  *
- * @ets fluent ets/List groupWith
+ * @tsplus fluent ets/List groupWith
  */
 export function groupWith_<A>(
   self: List<A>,

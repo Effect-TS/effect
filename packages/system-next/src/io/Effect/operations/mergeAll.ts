@@ -5,7 +5,7 @@ import { Effect } from "../definition"
  * Merges an `Iterable<Effect<R, E, A>>` to a single `Effect<R, E, B>`, working
  * sequentially.
  *
- * @ets static ets/EffectOps mergeAll
+ * @tsplus static ets/EffectOps mergeAll
  */
 export function mergeAll_<R, E, A, B>(
   as: Iterable<Effect<R, E, A>>,

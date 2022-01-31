@@ -8,7 +8,7 @@ import type { Managed } from "../definition"
  *
  * This method can be used to "flatten" nested effects.
  *
- * @ets fluent ets/Managed flattenEffect
+ * @tsplus fluent ets/Managed flattenEffect
  */
 export function flattenEffect<R2, E2, R, E, A>(
   self: Managed<R2, E2, Effect<R, E, A>>,

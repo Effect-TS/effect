@@ -4,7 +4,7 @@ import type { List } from "../definition"
  * Maps a function over a list and concatenates all the resulting
  * lists together.
  *
- * @ets fluent ets/List flatMap
+ * @tsplus fluent ets/List flatMap
  */
 export function chain_<A, B>(self: List<A>, f: (a: A) => List<B>): List<B> {
   return self.map(f).flatten()

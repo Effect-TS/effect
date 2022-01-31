@@ -5,7 +5,7 @@ import { Managed } from "../definition"
 /**
  * Accesses the specified services in the environment of the effect.
  *
- * @ets static ets/ManagedOps services
+ * @tsplus static ets/ManagedOps services
  */
 export function services<Ts extends readonly Tag<any>[]>(...s: Ts) {
   return Managed.environmentWith(

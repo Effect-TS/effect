@@ -5,7 +5,7 @@ import { TupleInternal } from "./_internal/TupleInternal"
 /**
  * Replaces the element in position `I`.
  *
- * @ets fluent ets/Tuple update
+ * @tsplus fluent ets/Tuple update
  */
 export function update_<Ks extends readonly unknown[], I extends keyof Ks & number, J>(
   self: Tuple<Ks>,

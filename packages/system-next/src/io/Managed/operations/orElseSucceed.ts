@@ -5,7 +5,7 @@ import { Managed } from "../definition"
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise succeeds with the specified value.
  *
- * @ets fluent ets/Managed orElseSucceed
+ * @tsplus fluent ets/Managed orElseSucceed
  */
 export function orElseSucceed_<R, E, A, A2>(
   self: Managed<R, E, A>,

@@ -6,7 +6,7 @@ import { ISupervise } from "../definition"
  * Returns an effect with the behavior of this one, but where all child fibers
  * forked in the effect are reported to the specified supervisor.
  *
- * @ets fluent ets/Effect supervised
+ * @tsplus fluent ets/Effect supervised
  */
 export function supervised_<R, E, A>(
   self: Effect<R, E, A>,

@@ -8,7 +8,7 @@ import { Effect } from "../definition"
  * Runs the specified effect if this effect is terminated, either because of a
  * defect or because of interruption.
  *
- * @ets fluent ets/Effect onTermination
+ * @tsplus fluent ets/Effect onTermination
  */
 export function onTermination_<R, E, A, R2, X>(
   self: Effect<R, E, A>,

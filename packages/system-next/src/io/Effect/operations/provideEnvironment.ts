@@ -6,7 +6,7 @@ import type { Effect, IO } from "../definition"
  * Provides the effect with its required environment, which eliminates its
  * dependency on `R`.
  *
- * @ets fluent ets/Effect provideEnvironment
+ * @tsplus fluent ets/Effect provideEnvironment
  */
 export function provideEnvironment_<R, E, A>(
   self: Effect<R, E, A>,

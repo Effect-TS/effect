@@ -12,7 +12,7 @@ import { Effect } from "../definition"
  * The error parameter of the returned `Effect` is `never`, since it is
  * guaranteed the effect does not model failure.
  *
- * @ets fluent ets/Effect either
+ * @tsplus fluent ets/Effect either
  */
 export function either<R, E, A>(
   self: Effect<R, E, A>,

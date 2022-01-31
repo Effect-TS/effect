@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * Collects the first element of the `Iterable<A>` for which the effectual
  * function `f` returns `Some`.
  *
- * @ets static ets/ManagedOps collectFirst
+ * @tsplus static ets/ManagedOps collectFirst
  */
 export function collectFirst<R, E, A, B>(
   as: LazyArg<Iterable<A>>,

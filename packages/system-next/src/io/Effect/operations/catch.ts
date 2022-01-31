@@ -27,7 +27,7 @@ export { _catch as catch }
 /**
  * Recovers from specified error.
  *
- * @ets fluent ets/Effect catch
+ * @tsplus fluent ets/Effect catch
  */
 export function catch_<N extends keyof E, K extends E[N] & string, E, R, A, R1, E1, A1>(
   self: Effect<R, E, A>,

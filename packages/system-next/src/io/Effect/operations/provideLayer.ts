@@ -6,7 +6,7 @@ import type { Effect } from "../definition"
 /**
  * Provides a layer to the effect, which translates it to another level.
  *
- * @ets fluent ets/Effect provideLayer
+ * @tsplus fluent ets/Effect provideLayer
  */
 export function provideLayer_<R, E, A, E1, A1>(
   self: Effect<A, E1, A1>,

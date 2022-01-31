@@ -4,7 +4,7 @@ import { MutableList } from "../definition"
 /**
  * Builder
  *
- * @ets static ets/ListOps builder
+ * @tsplus static ets/ListOps builder
  */
 export function builder<A>(): ListBuilder<A> {
   return new ListBuilder(MutableList.emptyPushable())

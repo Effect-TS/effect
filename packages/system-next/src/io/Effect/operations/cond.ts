@@ -7,7 +7,7 @@ import { Effect } from "../definition"
  *
  * For effectful conditionals, see `ifEffect`.
  *
- * @ets static ets/EffectOps cond
+ * @tsplus static ets/EffectOps cond
  */
 export function cond_<E, A>(
   predicate: () => boolean,

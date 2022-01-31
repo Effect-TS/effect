@@ -6,7 +6,7 @@ import { Effect } from "../definition"
 /**
  * Exposes all parallel errors in a single call.
  *
- * @ets fluent ets/Effect parallelErrors
+ * @tsplus fluent ets/Effect parallelErrors
  */
 export function parallelErrors<R, E, A>(
   self: Effect<R, E, A>,

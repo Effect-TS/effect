@@ -5,7 +5,7 @@ import { Effect } from "../definition"
 /**
  * Returns an effect that effectually "peeks" at the defect of this effect.
  *
- * @ets fluent ets/Effect tapDefect
+ * @tsplus fluent ets/Effect tapDefect
  */
 export function tapDefect_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,

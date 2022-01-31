@@ -6,7 +6,7 @@ import { containsCb, containsState, foldlCb } from "./_internal/callbacks"
  * Otherwise it returns `false`.
  *
  * @complexity O(n)
- * @ets fluent ets/List contains
+ * @tsplus fluent ets/List contains
  */
 export function contains_<A>(self: List<A>, element: A): boolean {
   containsState.element = element

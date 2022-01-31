@@ -5,7 +5,7 @@ import { Managed } from "../definition"
  * Attempts to convert defects into a failure, throwing away all information
  * about the cause of the failure.
  *
- * @ets fluent ets/Managed absorbWith
+ * @tsplus fluent ets/Managed absorbWith
  */
 export function absorbWith_<R, E, A>(
   self: Managed<R, E, A>,

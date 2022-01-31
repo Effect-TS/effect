@@ -3,7 +3,7 @@ import { Effect } from "../definition"
 /**
  * Recovers from specified error.
  *
- * @ets fluent ets/Effect catchTag
+ * @tsplus fluent ets/Effect catchTag
  */
 export function catchTag_<
   K extends E["_tag"] & string,

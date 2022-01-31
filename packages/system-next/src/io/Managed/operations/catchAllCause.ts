@@ -7,7 +7,7 @@ import { Managed } from "../definition"
  * See `absorb`, `sandbox`, `mapErrorCause` for other functions that can
  * recover from defects.
  *
- * @ets fluent ets/Managed catchAllCause
+ * @tsplus fluent ets/Managed catchAllCause
  */
 export function catchAllCause_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,

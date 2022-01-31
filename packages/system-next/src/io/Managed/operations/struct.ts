@@ -3,7 +3,7 @@ import type { _E, _R, EnforceNonEmptyRecord } from "../../../data/Utils"
 import { Managed } from "../definition"
 
 /**
- * @ets static ets/ManagedOps struct
+ * @tsplus static ets/ManagedOps struct
  */
 export function struct<NER extends Record<string, Managed<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
@@ -28,7 +28,7 @@ export function struct<NER extends Record<string, Managed<any, any, any>>>(
 }
 
 /**
- * @ets static ets/ManagedOps structPar
+ * @tsplus static ets/ManagedOps structPar
  */
 export function structPar<NER extends Record<string, Managed<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
@@ -53,7 +53,7 @@ export function structPar<NER extends Record<string, Managed<any, any, any>>>(
 }
 
 /**
- * @ets fluent ets/Managed bindAll
+ * @tsplus fluent ets/Managed bindAll
  */
 export function bindAll_<
   K,
@@ -112,7 +112,7 @@ export function bindAll<
 }
 
 /**
- * @ets fluent ets/Managed bindAllPar
+ * @tsplus fluent ets/Managed bindAllPar
  */
 export function bindAllPar_<
   K,

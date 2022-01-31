@@ -5,7 +5,7 @@ import { Effect } from "../definition"
 /**
  * Returns an effect that effectfully "peeks" at the result of this effect.
  *
- * @ets fluent ets/Effect tapEither
+ * @tsplus fluent ets/Effect tapEither
  */
 export function tapEither_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,

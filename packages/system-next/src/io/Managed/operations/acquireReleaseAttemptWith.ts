@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * Lifts a synchronous effect into `Managed<unknown, unknown, A>` with a release
  * action. The acquire and release actions will be performed uninterruptibly.
  *
- * @ets static ets/ManagedOps acquireReleaseAttemptWith
+ * @tsplus static ets/ManagedOps acquireReleaseAttemptWith
  */
 export function acquireReleaseAttemptWith<A, X>(
   acquire: LazyArg<A>,

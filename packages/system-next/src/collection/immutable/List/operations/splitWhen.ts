@@ -7,7 +7,7 @@ import { List } from "../definition"
  * predicate returns `true`.
  *
  * @complexity `O(n)`
- * @ets fluent ets/List splitWhen
+ * @tsplus fluent ets/List splitWhen
  */
 export function splitWhen_<A>(
   self: List<A>,

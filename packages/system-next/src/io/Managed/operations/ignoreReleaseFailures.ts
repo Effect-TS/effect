@@ -6,7 +6,7 @@ import { Managed } from "../definition"
 /**
  * Returns a new managed effect that ignores defects in finalizers.
  *
- * @ets fluent ets/Managed ignoreReleaseFailures
+ * @tsplus fluent ets/Managed ignoreReleaseFailures
  */
 export function ignoreReleaseFailures<R, E, A>(
   self: Managed<R, E, A>,

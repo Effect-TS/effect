@@ -5,7 +5,7 @@ import { Managed } from "../definition"
 /**
  * Extracts the optional value, or executes the effect 'orElse'.
  *
- * @ets fluent ets/Managed someOrElseManaged
+ * @tsplus fluent ets/Managed someOrElseManaged
  */
 export function someOrElseManaged_<R, E, A, R1, E1, B>(
   self: Managed<R, E, Option<A>>,

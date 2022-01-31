@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * Evaluate each effect in the structure from left to right, and collect the
  * results. For a parallel version, see `collectAllPar`.
  *
- * @ets static ets/ManagedOps collectAll
+ * @tsplus static ets/ManagedOps collectAll
  */
 export function collectAll<R, E, A>(
   as: LazyArg<Iterable<Managed<R, E, A>>>,

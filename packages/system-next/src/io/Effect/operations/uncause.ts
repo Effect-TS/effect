@@ -9,7 +9,7 @@ import { Effect } from "../definition"
  *
  * This operation is the opposite of `cause`.
  *
- * @ets fluent ets/Effect uncause
+ * @tsplus fluent ets/Effect uncause
  */
 export function uncause<R, E>(
   self: RIO<R, Cause.Cause<E>>,

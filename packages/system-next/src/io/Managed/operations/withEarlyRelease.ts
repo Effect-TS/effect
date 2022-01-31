@@ -9,7 +9,7 @@ import { Managed } from "../definition"
  * uninterruptibly with an exit value indicating that the effect was
  * interrupted, and if completed will cause the regular finalizer to not run.
  *
- * @ets fluent ets/Managed withEarlyRelease
+ * @tsplus fluent ets/Managed withEarlyRelease
  */
 export function withEarlyRelease<R, E, A>(
   self: Managed<R, E, A>,

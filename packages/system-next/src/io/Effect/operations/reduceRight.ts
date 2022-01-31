@@ -4,7 +4,7 @@ import { Effect } from "../definition"
 /**
  * Folds an `Iterable<A>` using an effectual function f, working sequentially from left to right.
  *
- * @ets static ets/EffectOps reduceRight
+ * @tsplus static ets/EffectOps reduceRight
  */
 export function reduceRight_<A, Z, R, E>(
   i: Iterable<A>,

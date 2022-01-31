@@ -4,7 +4,7 @@ import type { List } from "../definition"
  * Inserts the given element at the given index in the list.
  *
  * @complexity O(log(n))
- * @ets fluent ets/List insert
+ * @tsplus fluent ets/List insert
  */
 export function insert_<A>(self: List<A>, index: number, element: A): List<A> {
   return self.slice(0, index).append(element) + self.slice(index, self.length)

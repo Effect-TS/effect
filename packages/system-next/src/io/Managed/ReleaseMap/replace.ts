@@ -16,7 +16,7 @@ import { Exited, Running } from "./state"
  * finalizers associated with this scope have already been run this
  * finalizer will be run immediately.
  *
- * @ets fluent ets/ReleaseMap replace
+ * @tsplus fluent ets/ReleaseMap replace
  */
 export function replace_(
   self: ReleaseMap,

@@ -5,7 +5,7 @@ import type { Managed } from "../definition"
  * Run an effect while acquiring the resource before and releasing it after.
  * This does not provide the resource to the function.
  *
- * @ets fluent ets/Managed useDiscard
+ * @tsplus fluent ets/Managed useDiscard
  */
 export function useDiscard_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,

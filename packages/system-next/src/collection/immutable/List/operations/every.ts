@@ -8,7 +8,7 @@ import { everyCb, foldlCb } from "./_internal/callbacks"
  * for all elements in the given list.
  *
  * @complexity O(n)
- * @ets fluent ets/List every
+ * @tsplus fluent ets/List every
  */
 export function every_<A>(self: List<A>, f: Predicate<A>): boolean {
   return foldlCb<A, PredState>(everyCb, { predicate: f, result: true }, self).result

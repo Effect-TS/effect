@@ -3,7 +3,7 @@ import type { Effect } from "../definition"
 /**
  * Returns an effect that effectfully "peeks" at the success of this effect.
  *
- * @ets fluent ets/Effect tap
+ * @tsplus fluent ets/Effect tap
  */
 export function tap_<R2, E2, A, R, E, X>(
   self: Effect<R2, E2, A>,

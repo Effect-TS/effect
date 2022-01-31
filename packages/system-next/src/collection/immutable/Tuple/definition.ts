@@ -8,7 +8,7 @@ export type TupleSym = typeof TupleSym
 /**
  * A `Tuple` represents an immutable, finite ordered sequence of elements.
  *
- * @ets type ets/Tuple
+ * @tsplus type ets/Tuple
  */
 export interface Tuple<T extends ReadonlyArray<unknown>> extends Iterable<T[number]> {
   readonly [TupleSym]: TupleSym
@@ -25,13 +25,13 @@ export interface Tuple<T extends ReadonlyArray<unknown>> extends Iterable<T[numb
 }
 
 /**
- * @ets type ets/TupleOps
+ * @tsplus type ets/TupleOps
  */
 export interface TupleOps {}
 export const Tuple: TupleOps = {}
 
 /**
- * @ets unify ets/Tuple
+ * @tsplus unify ets/Tuple
  */
 export function unifyTuple<X extends Tuple<any>>(
   self: X

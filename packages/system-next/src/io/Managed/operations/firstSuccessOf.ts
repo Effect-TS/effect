@@ -8,7 +8,7 @@ import { Managed } from "../definition"
  * resources in order until one of them is successfully acquired, ensuring
  * that the acquired resource is properly released after being used.
  *
- * @ets static ets/ManagedOps firstSuccessOf
+ * @tsplus static ets/ManagedOps firstSuccessOf
  */
 export function firstSuccessOf<R, E, A>(
   first: LazyArg<Managed<R, E, A>>,

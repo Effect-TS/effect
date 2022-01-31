@@ -5,7 +5,7 @@ import { List, MutableList } from "../definition"
  * `n` times.
  *
  * @complexity O(n)
- * @ets static ets/ListOps times
+ * @tsplus static ets/ListOps times
  */
 export function times_<A>(f: (index: number) => A, times: number): List<A> {
   const mutableList = MutableList.emptyPushable<A>()

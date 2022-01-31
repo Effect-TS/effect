@@ -4,7 +4,7 @@ import type { Managed } from "../definition"
 /**
  * Return unit while running the effect.
  *
- * @ets fluent ets/Managed asUnit
+ * @tsplus fluent ets/Managed asUnit
  */
 export function asUnit<R, E, A>(
   self: Managed<R, E, A>,

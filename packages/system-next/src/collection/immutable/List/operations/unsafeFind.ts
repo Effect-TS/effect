@@ -6,7 +6,7 @@ import type { List } from "../definition"
  * If no such element is found the function returns `undefined`.
  *
  * @complexity O(n)
- * @ets fluent ets/List unsafeFind
+ * @tsplus fluent ets/List unsafeFind
  */
 export function unsafeFind_<A>(self: List<A>, f: Predicate<A>): A | undefined {
   return self.find(f).value

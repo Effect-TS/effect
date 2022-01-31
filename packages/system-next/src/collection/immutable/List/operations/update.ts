@@ -10,7 +10,7 @@ import { updateNode } from "./_internal/node"
  * If the index is out of bounds the given list is returned unchanged.
  *
  * @complexity O(log(n))
- * @ets fluent ets/List update
+ * @tsplus fluent ets/List update
  */
 export function update_<A>(self: List<A>, index: number, a: A): List<A> {
   if (index < 0 || self.length <= index) {

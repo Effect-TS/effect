@@ -10,7 +10,7 @@ import type { Finalizer } from "../ReleaseMap/finalizer"
  * is yielded as the result of the effect, allowing for control flows that
  * require mutating finalizers.
  *
- * @ets static ets/ManagedOps finalizerRef
+ * @tsplus static ets/ManagedOps finalizerRef
  */
 export function finalizerRef<R>(
   initial: LazyArg<Finalizer>,

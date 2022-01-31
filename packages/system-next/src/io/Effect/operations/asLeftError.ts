@@ -5,7 +5,7 @@ import type { Effect } from "../definition"
 /**
  * Maps the error value of this effect to a left value.
  *
- * @ets fluent ets/Effect asLeftError
+ * @tsplus fluent ets/Effect asLeftError
  */
 export function asLeftError<R, E, A>(
   self: Effect<R, E, A>,

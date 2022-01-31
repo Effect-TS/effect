@@ -5,7 +5,7 @@ import { Effect } from "../definition"
 /**
  * Recovers from some or all of the error cases with provided cause.
  *
- * @ets fluent ets/Effect catchSomeCause
+ * @tsplus fluent ets/Effect catchSomeCause
  */
 export function catchSomeCause_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,

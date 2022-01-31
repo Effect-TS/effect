@@ -4,7 +4,7 @@ import { Managed } from "../definition"
 /**
  * Updates a service at the specified key in the environment of this effect.
  *
- * @ets fluent ets/Managed updateService
+ * @tsplus fluent ets/Managed updateService
  */
 export function updateService_<R, E, A, T>(
   self: Managed<R & Has<T>, E, A>,

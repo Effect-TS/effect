@@ -27,7 +27,7 @@ function adapter(_: any, __?: any) {
 }
 
 /**
- * @ets static ets/EitherOps gen
+ * @tsplus static ets/EitherOps gen
  */
 export function gen<Eff extends GenEither<any, any>, AEff>(
   f: (i: {

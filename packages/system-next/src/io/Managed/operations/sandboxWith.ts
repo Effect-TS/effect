@@ -5,7 +5,7 @@ import type { Managed } from "../definition"
  * Companion helper to `sandbox`. Allows recovery, and partial recovery, from
  * errors and defects alike.
  *
- * @ets fluent ets/Managed sandboxWith
+ * @tsplus fluent ets/Managed sandboxWith
  */
 export function sandboxWith_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,

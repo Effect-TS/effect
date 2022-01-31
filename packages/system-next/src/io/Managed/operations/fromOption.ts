@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * Lifts an `Option` into a `Managed` but preserves the error as an option in
  * the error channel, making it easier to compose in some scenarios.
  *
- * @ets static ets/ManagedOps fromOption
+ * @tsplus static ets/ManagedOps fromOption
  */
 export function fromOption<A>(
   option: LazyArg<Option<A>>,

@@ -5,7 +5,7 @@ import { Managed } from "../definition"
  * Evaluate the predicate, return the given `A` as success if predicate returns
  * true, and the given `E` as error otherwise.
  *
- * @ets static ets/ManagedOps cond
+ * @tsplus static ets/ManagedOps cond
  */
 export function cond<E, A>(
   pred: LazyArg<boolean>,

@@ -13,7 +13,7 @@ import { ReleaseMap } from "../ReleaseMap"
  * Ensures that a cleanup function runs when this `Managed` is finalized, after
  * the existing finalizers.
  *
- * @ets fluent ets/Managed onExit
+ * @tsplus fluent ets/Managed onExit
  */
 export function onExit_<R, E, A, R1, X>(
   self: Managed<R, E, A>,

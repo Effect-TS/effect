@@ -7,7 +7,7 @@ import { realCause } from "../definition"
 /**
  * Grabs a list of execution traces from the cause.
  *
- * @ets fluent ets/Cause traces
+ * @tsplus fluent ets/Cause traces
  */
 export function traces<E>(self: Cause<E>): List<Trace> {
   return self

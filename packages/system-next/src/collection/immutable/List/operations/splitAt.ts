@@ -8,7 +8,7 @@ import type { List } from "../definition"
  * index and all elements after it.
  *
  * @complexity `O(log(n))`
- * @ets fluent ets/List splitAt
+ * @tsplus fluent ets/List splitAt
  */
 export function splitAt_<A>(self: List<A>, index: number): Tuple<[List<A>, List<A>]> {
   return Tuple(self.slice(0, index), self.slice(index, self.length))

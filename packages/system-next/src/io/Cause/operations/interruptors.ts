@@ -7,7 +7,7 @@ import type { Cause } from "../definition"
  * Returns a set of interruptors, fibers that interrupted the fiber described
  * by this `Cause`.
  *
- * @ets fluent ets/Cause interruptors
+ * @tsplus fluent ets/Cause interruptors
  */
 export function interruptors<E>(self: Cause<E>): HS.HashSet<FiberId> {
   return self.foldLeft(HS.make<FiberId>(), (acc, curr) =>

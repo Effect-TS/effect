@@ -5,7 +5,7 @@ import type { Cause } from "../definition"
 /**
  * Determines if this cause contains or is equal to the specified cause.
  *
- * @ets fluent ets/Cause contains
+ * @tsplus fluent ets/Cause contains
  */
 export function contains_<E, E1>(self: Cause<E>, that: Cause<E1>): boolean {
   if ((self as Cause<E | E1>) === that) {

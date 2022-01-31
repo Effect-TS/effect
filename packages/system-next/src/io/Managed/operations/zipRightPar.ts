@@ -4,7 +4,7 @@ import type { Managed } from "../definition"
  * Parallelly zips this effect with the specified effect
  * returning the right side.
  *
- * @ets fluent ets/Managed zipRightPar
+ * @tsplus fluent ets/Managed zipRightPar
  */
 export function zipRightPar_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,

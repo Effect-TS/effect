@@ -8,7 +8,7 @@ import { Managed } from "../definition"
  * managed effect requires more than one service use `provideEnvironment`
  * instead.
  *
- * @ets fluent ets/Managed provideServiceManaged
+ * @tsplus fluent ets/Managed provideServiceManaged
  */
 export function provideServiceManaged_<R, E, A, T>(
   self: Managed<R & Has<T>, E, A>,

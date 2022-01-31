@@ -7,7 +7,7 @@ import { fromEffect } from "./fromEffect"
  * Lifts a synchronous side-effect into a `Managed[R, E, A]`,
  * translating any thrown exceptions into typed failed effects using onThrow.
  *
- * @ets static ets/ManagedOps tryCatch
+ * @tsplus static ets/ManagedOps tryCatch
  */
 export function tryCatch<E, A>(
   f: LazyArg<A>,

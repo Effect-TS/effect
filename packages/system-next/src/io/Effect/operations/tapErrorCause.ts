@@ -5,7 +5,7 @@ import { Effect } from "../definition"
  * Returns an effect that effectually "peeks" at the cause of the failure of
  * this effect.
  *
- * @ets fluent ets/Effect tapErrorCause
+ * @tsplus fluent ets/Effect tapErrorCause
  */
 export function tapErrorCause_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,

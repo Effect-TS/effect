@@ -7,7 +7,7 @@ import type { Exit } from "../Exit"
  *
  * See `Managed.reserve` and `Effect.reserve` for details of usage.
  *
- * @ets type ets/Reservation
+ * @tsplus type ets/Reservation
  */
 export interface Reservation<R, E, A> {
   readonly acquire: Effect<R, E, A>
@@ -22,7 +22,7 @@ export class ReservationImpl<R, E, A> implements Reservation<R, E, A> {
 }
 
 /**
- * @ets type ets/ReservationOps
+ * @tsplus type ets/ReservationOps
  */
 export interface ReservationOps {}
 export const Reservation: ReservationOps = {}
@@ -33,7 +33,7 @@ export const Reservation: ReservationOps = {}
  *
  * See `Managed.reserve` and `Effect.reserve` for details of usage.
  *
- * @ets static ets/ReservationOps __call
+ * @tsplus static ets/ReservationOps __call
  */
 export function reservationApply<R, E, A>(
   acquire: Effect<R, E, A>,

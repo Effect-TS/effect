@@ -7,7 +7,7 @@ import { Effect } from "../definition"
  * Especially useful for creating "accessor" methods on services' companion
  * objects.
  *
- * @ets static ets/EffectOps serviceWith
+ * @tsplus static ets/EffectOps serviceWith
  */
 export function serviceWith<T>(_: Tag<T>) {
   return <A>(f: (a: T) => A, __etsTrace?: string): Effect<Has<T>, never, A> =>

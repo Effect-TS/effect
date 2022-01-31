@@ -4,8 +4,8 @@ import { TupleInternal } from "./_internal/TupleInternal"
 /**
  * Concatenates two tuples.
  *
- * @ets operator ets/Tuple +
- * @ets fluent ets/Tuple concat
+ * @tsplus operator ets/Tuple +
+ * @tsplus fluent ets/Tuple concat
  */
 export function concat_<Ks extends unknown[], Hs extends unknown[]>(
   self: Tuple<Ks>,

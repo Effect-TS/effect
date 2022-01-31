@@ -7,7 +7,7 @@ import { Effect } from "../definition"
  * Evaluate each effect in the structure in parallel, collecting the
  * the successful values and discarding the empty cases.
  *
- * @ets static ets/EffectOps collectPar
+ * @tsplus static ets/EffectOps collectPar
  */
 export function collectPar_<A, R, E, B>(
   self: Iterable<A>,

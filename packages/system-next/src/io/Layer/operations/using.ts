@@ -9,7 +9,7 @@ import { and_ } from "./and"
  * builder, resulting in a new builder with the inputs of this builder as
  * well as any leftover inputs, and the outputs of the specified builder.
  *
- * @ets operator ets/Layer <<
+ * @tsplus operator ets/Layer <<
  */
 export function using_<
   RIn,

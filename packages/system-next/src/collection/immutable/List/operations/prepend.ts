@@ -8,7 +8,7 @@ import { prependNodeToTree } from "./_internal/node"
  * Prepends an element to the front of a list and returns the new list.
  *
  * @complexity O(1)
- * @ets fluent ets/List prepend
+ * @tsplus fluent ets/List prepend
  */
 export function prepend_<A>(self: List<A>, value: A): List<A> {
   const prefixSize = getPrefixSize(self)

@@ -9,7 +9,7 @@ import { ReleaseMap } from "../ReleaseMap"
  * in parallel, combining their results with the specified `f` function. If
  * either side fails, then the other side will be interrupted.
  *
- * @ets fluent ets/Managed zipWithPar
+ * @tsplus fluent ets/Managed zipWithPar
  */
 export function zipWithPar_<R, E, A, R2, E2, A2, B>(
   self: Managed<R, E, A>,

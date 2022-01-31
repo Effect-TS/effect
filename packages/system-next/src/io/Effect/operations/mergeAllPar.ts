@@ -15,7 +15,7 @@ import { Effect } from "../definition"
  * It's unsafe to execute side effects inside `f`, as `f` may be executed
  * more than once for some of `in` elements during effect execution.
  *
- * @ets static ets/EffectOps mergeAllPar
+ * @tsplus static ets/EffectOps mergeAllPar
  */
 export function mergeAllPar_<R, E, A, B>(
   as: LazyArg<Iterable<Effect<R, E, A>>>,

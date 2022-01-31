@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * Returns an effect that models failure with the specified error. The moral
  * equivalent of `throw` for pure code.
  *
- * @ets static ets/ManagedOps fail
+ * @tsplus static ets/ManagedOps fail
  */
 export function fail<E>(
   f: LazyArg<E>,

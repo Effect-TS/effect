@@ -15,7 +15,7 @@ import { Effect } from "../definition"
  * resume until the loser has been cleanly terminated. If early return is
  * desired
  *
- * @ets fluent ets/Effect race
+ * @tsplus fluent ets/Effect race
  */
 export function race_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
@@ -69,7 +69,7 @@ export function race<R2, E2, A2>(that: Effect<R2, E2, A2>, __etsTrace?: string) 
  * WARNING: The raced effect will safely interrupt the "loser", but will not
  * resume until the loser has been cleanly terminated.
  *
- * @ets fluent ets/Effect raceEither
+ * @tsplus fluent ets/Effect raceEither
  */
 export function raceEither_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
@@ -106,7 +106,7 @@ export function raceEither<R2, E2, A2>(that: Effect<R2, E2, A2>, __etsTrace?: st
  * interrupt signal, allowing a fast return, with interruption performed
  * in the background.
  *
- * @ets fluent ets/Effect raceFirst
+ * @tsplus fluent ets/Effect raceFirst
  */
 export function raceFirst_<R, R2, E, E2, A, A2>(
   self: Effect<R, E, A>,

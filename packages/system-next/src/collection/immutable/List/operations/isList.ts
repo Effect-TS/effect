@@ -5,7 +5,7 @@ import type { List } from "../definition"
  * otherwise.
  *
  * @complexity O(1)
- * @ets static ets/ListOps isList
+ * @tsplus static ets/ListOps isList
  */
 export function isList<A>(l: any): l is List<A> {
   return typeof l === "object" && Array.isArray(l.suffix)

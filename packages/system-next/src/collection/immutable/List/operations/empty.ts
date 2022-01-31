@@ -6,7 +6,7 @@ import { ListInternal } from "./_internal/ListInternal"
  * Creates an empty list.
  *
  * @complexity O(1)
- * @ets static ets/ListOps empty
+ * @tsplus static ets/ListOps empty
  */
 export function empty<A = any>(): List<A> {
   return new ListInternal(0, 0, 0, emptyAffix, undefined, emptyAffix)

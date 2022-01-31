@@ -6,7 +6,7 @@ import { realCause } from "../definition"
 /**
  * Finds something and extracts some details from it.
  *
- * @ets fluent ets/Cause find
+ * @tsplus fluent ets/Cause find
  */
 export function find_<E, Z>(
   self: Cause<E>,

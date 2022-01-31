@@ -7,7 +7,7 @@ import { unsafeLast } from "./unsafeLast"
  * function to determine when elements are equal.
  *
  * @complexity `O(n)`
- * @ets fluent ets/List dropRepeatsWith
+ * @tsplus fluent ets/List dropRepeatsWith
  */
 export function dropRepeatsWith_<A>(
   self: List<A>,

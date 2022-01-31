@@ -1,65 +1,65 @@
 /**
- * @ets type ets/Int
+ * @tsplus type ets/Int
  */
 export interface Int {
   readonly Int: unique symbol
 }
 
 /**
- * @ets type ets/IntOps
+ * @tsplus type ets/IntOps
  */
 export interface IntOps {}
 export const Int: IntOps = {}
 
 /**
- * @ets operator ets/Int +
- * @ets inline +
+ * @tsplus operator ets/Int +
+ * @tsplus inline +
  */
 export function add(self: Int, that: Int): Int {
   return Int.unsafeFromNumber(self.asNumber() + that.asNumber())
 }
 
 /**
- * @ets operator ets/Int *
- * @ets inline *
+ * @tsplus operator ets/Int *
+ * @tsplus inline *
  */
 export function multiply(self: Int, that: Int): Int {
   return Int.unsafeFromNumber(self.asNumber() * that.asNumber())
 }
 
 /**
- * @ets operator ets/Int /
+ * @tsplus operator ets/Int /
  */
 export function divide(self: Int, that: Int): Int {
   return Int.unsafeFromNumber((self.asNumber() / that.asNumber()) >> 0)
 }
 
 /**
- * @ets operator ets/Int %
- * @ets inline identity
+ * @tsplus operator ets/Int %
+ * @tsplus inline identity
  */
 export function divisionRest(self: Int, that: Int): Int {
   return Int.unsafeFromNumber(self.asNumber() % that.asNumber())
 }
 
 /**
- * @ets operator ets/Int -
- * @ets inline -
+ * @tsplus operator ets/Int -
+ * @tsplus inline -
  */
 export function subtract(self: Int, that: Int): Int {
   return Int.unsafeFromNumber(self.asNumber() - that.asNumber())
 }
 
 /**
- * @ets static ets/IntOps of
- * @ets inline identity
+ * @tsplus static ets/IntOps of
+ * @tsplus inline identity
  */
 export function int<A extends number>(n: `${A}` extends `${bigint}` ? A : never): Int {
   return n as unknown as Int
 }
 
 /**
- * @ets static ets/IntOps unsafeFromNumber
+ * @tsplus static ets/IntOps unsafeFromNumber
  */
 export function unsafeFromNumber(n: number): Int {
   if (!Number.isInteger(n)) {
@@ -69,8 +69,8 @@ export function unsafeFromNumber(n: number): Int {
 }
 
 /**
- * @ets fluent ets/Int asNumber
- * @ets inline identity
+ * @tsplus fluent ets/Int asNumber
+ * @tsplus inline identity
  */
 export function asNumber(self: Int): number {
   return self as unknown as number

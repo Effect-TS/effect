@@ -4,7 +4,7 @@ import { TupleInternal } from "./_internal/TupleInternal"
 /**
  * Prepends a value to a tuple.
  *
- * @ets fluent ets/Tuple prepend
+ * @tsplus fluent ets/Tuple prepend
  */
 export function prepend_<Ks extends unknown[], K>(
   self: Tuple<Ks>,

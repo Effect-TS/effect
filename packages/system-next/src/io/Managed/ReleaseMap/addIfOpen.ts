@@ -16,7 +16,7 @@ import { Exited, Running } from "./state"
  * has been closed, the finalizer will be executed immediately (with the `Exit`
  * value with which the scope has ended) and no key will be returned.
  *
- * @ets fluent ets/ReleaseMap addIfOpen
+ * @tsplus fluent ets/ReleaseMap addIfOpen
  */
 export function addIfOpen_(
   self: ReleaseMap,

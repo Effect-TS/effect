@@ -6,7 +6,7 @@ import { Effect } from "../definition"
  * Create an `Effect` that when executed will construct `promise` and wait for
  * its result, errors will be handled using `onReject`.
  *
- * @ets static ets/EffectOps tryCatchPromise
+ * @tsplus static ets/EffectOps tryCatchPromise
  */
 export function tryCatchPromise<E, A>(
   promise: LazyArg<Promise<A>>,
@@ -24,7 +24,7 @@ export function tryCatchPromise<E, A>(
  * Create an `Effect` that when executed will construct `promise` and wait for
  * its result, errors will produce failure as `unknown`.
  *
- * @ets static ets/EffectOps tryPromise
+ * @tsplus static ets/EffectOps tryPromise
  */
 export function tryPromise<A>(
   effect: LazyArg<Promise<A>>,
@@ -40,7 +40,7 @@ export function tryPromise<A>(
 /**
  * Like `tryPromise` but produces a defect in case of errors.
  *
- * @ets static ets/EffectOps promise
+ * @tsplus static ets/EffectOps promise
  */
 export function promise<A>(effect: LazyArg<Promise<A>>, __etsTrace?: string): UIO<A> {
   return Effect.async((resolve) => {

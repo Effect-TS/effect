@@ -13,7 +13,7 @@ import { ReleaseMap } from "../ReleaseMap"
  *
  * For a sequential version of this method, see `forEach_`.
  *
- * @ets static ets/ManagedOps forEachPar
+ * @tsplus static ets/ManagedOps forEachPar
  */
 export function forEachPar<R, E, A, B>(
   as: LazyArg<Iterable<A>>,

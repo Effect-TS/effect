@@ -216,7 +216,7 @@ export function scope<R, E, A>(
 /**
  * Returns whether this layer is a fresh version that will not be shared.
  *
- * @ets fluent ets/Layer isFresh
+ * @tsplus fluent ets/Layer isFresh
  */
 export function isFresh<R, E, A>(self: Layer<R, E, A>): boolean {
   return instruction(self)._tag === "LayerFresh"

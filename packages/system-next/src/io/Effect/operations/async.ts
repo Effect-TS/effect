@@ -11,7 +11,7 @@ import type { Cb } from "./Cb"
  *
  * The callback function `Effect<R, E, A] => Any` must be called at most once.
  *
- * @ets static ets/EffectOps async
+ * @tsplus static ets/EffectOps async
  */
 export function _async<R, E, A>(
   register: (callback: Cb<Effect<R, E, A>>) => void,
@@ -32,7 +32,7 @@ export { _async as async }
  * The list of fibers, that may complete the async callback, is used to
  * provide better diagnostics.
  *
- * @ets static ets/EffectOps asyncBlockingOn
+ * @tsplus static ets/EffectOps asyncBlockingOn
  */
 export function asyncBlockingOn<R, E, A>(
   register: (callback: Cb<Effect<R, E, A>>) => void,

@@ -5,7 +5,7 @@ import type { Managed } from "../definition"
  * Like `Managed.tap`, but uses a function that returns an `Effect` value rather
  * than a `Managed` value.
  *
- * @ets fluent ets/Managed tapEffect
+ * @tsplus fluent ets/Managed tapEffect
  */
 export function tapEffect_<R, E, A, R1, E1, X>(
   self: Managed<R, E, A>,

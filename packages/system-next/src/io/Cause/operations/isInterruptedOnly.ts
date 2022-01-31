@@ -6,7 +6,7 @@ import type { Cause } from "../definition"
  * Determines if the `Cause` contains only interruptions and not any `Die` or
  * `Fail` causes.
  *
- * @ets fluent ets/Cause isInterruptedOnly
+ * @tsplus fluent ets/Cause isInterruptedOnly
  */
 export function isInterruptedOnly<E>(self: Cause<E>): boolean {
   return self

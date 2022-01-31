@@ -5,7 +5,7 @@ import type { Managed } from "../definition"
 /**
  * Keeps some of the errors, and terminates the fiber with the rest.
  *
- * @ets fluent ets/Managed refineOrDie
+ * @tsplus fluent ets/Managed refineOrDie
  */
 export function refineOrDie_<R, A, E, E1>(
   self: Managed<R, E, A>,

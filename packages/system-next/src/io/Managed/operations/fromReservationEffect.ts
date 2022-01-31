@@ -17,7 +17,7 @@ import type { Reservation } from "../reservation"
  * This two-phase acquisition allows for resource acquisition flows that can
  * be safely interrupted and released.
  *
- * @ets static ets/ManagedOps fromReservationEffect
+ * @tsplus static ets/ManagedOps fromReservationEffect
  */
 export function fromReservationEffect<R, E, A>(
   reservation: LazyArg<Effect<R, E, Reservation<R, E, A>>>,

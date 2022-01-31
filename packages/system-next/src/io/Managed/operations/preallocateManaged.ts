@@ -7,7 +7,7 @@ import { Managed } from "../definition"
  * Preallocates the managed resource inside an outer managed, resulting in a
  * `Managed` that reserves and acquires immediately and cannot fail.
  *
- * @ets fluent ets/Managed preallocateManaged
+ * @tsplus fluent ets/Managed preallocateManaged
  */
 export function preallocateManaged<R, E, A>(
   self: Managed<R, E, A>,

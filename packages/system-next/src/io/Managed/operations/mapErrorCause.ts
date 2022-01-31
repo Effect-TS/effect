@@ -5,7 +5,7 @@ import { Managed } from "../definition"
  * Returns an effect whose full failure is mapped by the specified `f`
  * function.
  *
- * @ets fluent ets/Managed mapErrorCause
+ * @tsplus fluent ets/Managed mapErrorCause
  */
 export function mapErrorCause_<R, E, A, E1>(
   self: Managed<R, E, A>,

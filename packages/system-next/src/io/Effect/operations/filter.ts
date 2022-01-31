@@ -4,7 +4,7 @@ import { Effect } from "../definition"
 /**
  * Filters the collection using the specified effectual predicate.
  *
- * @ets static ets/EffectOps filter
+ * @tsplus static ets/EffectOps filter
  */
 export function filter_<A, R, E>(
   as: Iterable<A>,

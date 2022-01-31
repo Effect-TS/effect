@@ -6,7 +6,7 @@ import { Effect } from "../definition"
  * Submerges the error case of an `Either` into the `Effect`. The inverse
  * operation of `either`.
  *
- * @ets fluent ets/Effect absolve
+ * @tsplus fluent ets/Effect absolve
  */
 export function absolveNow<R, E, A>(
   self: Effect<R, E, Either<E, A>>,
@@ -19,7 +19,7 @@ export function absolveNow<R, E, A>(
  * Submerges the error case of an `Either` into the `Effect`. The inverse
  * operation of `either`.
  *
- * @ets static ets/EffectOps absolve
+ * @tsplus static ets/EffectOps absolve
  */
 export function absolve<R, E, A>(
   self: LazyArg<Effect<R, E, Either<E, A>>>,

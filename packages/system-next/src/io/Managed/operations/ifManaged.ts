@@ -4,7 +4,7 @@ import { Managed } from "../definition"
 /**
  * Runs `onTrue` if the result of `b` is `true` and `onFalse` otherwise.
  *
- * @ets static ets/ManagedOps ifManaged
+ * @tsplus static ets/ManagedOps ifManaged
  */
 export function ifManaged<R, E, R1, E1, A1, R2, E2, A2>(
   b: LazyArg<Managed<R, E, boolean>>,

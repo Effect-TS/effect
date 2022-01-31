@@ -7,7 +7,7 @@ import type { Managed } from "../definition"
  * Splits the environment into two parts, providing one part using the
  * specified layer and leaving the remainder `R0`.
  *
- * @ets fluent ets/Managed provideSomeLayer
+ * @tsplus fluent ets/Managed provideSomeLayer
  */
 export function provideSomeLayer_<R1, E1, A1, R, E, A>(
   self: Managed<R1 & A, E1, A1>,

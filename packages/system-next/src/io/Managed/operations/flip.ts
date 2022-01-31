@@ -3,7 +3,7 @@ import { Managed } from "../definition"
 /**
  * Flip the error and result.
  *
- * @ets fluent ets/Managed flip
+ * @tsplus fluent ets/Managed flip
  */
 export function flip<R, E, A>(
   self: Managed<R, E, A>,

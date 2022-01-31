@@ -5,7 +5,7 @@ import { Managed } from "../definition"
  * Lifts an `Option` into a `Managed` but preserves the error as an option in
  * the error channel, making it easier to compose in some scenarios.
  *
- * @ets static ets/ManagedOps fromOptionNow
+ * @tsplus static ets/ManagedOps fromOptionNow
  */
 export function fromOptionNow<A>(
   option: Option<A>,

@@ -6,7 +6,7 @@ import { Effect } from "../definition"
  * then combining the values to produce a summary, together with the result of
  * execution.
  *
- * @ets fluent ets/Effect summarized
+ * @tsplus fluent ets/Effect summarized
  */
 export function summarized_<R, E, A, R2, E2, B, C>(
   self: Effect<R, E, A>,

@@ -22,7 +22,7 @@ import type { Effect } from "../definition"
  * `use` effect succeeds. If this fail-fast behavior is not desired, errors
  * produced by the `release` effect can be caught and ignored.
  *
- * @ets fluent ets/Effect acquireReleaseWith
+ * @tsplus fluent ets/Effect acquireReleaseWith
  */
 export function acquireReleaseWith_<R, E, A, R1, E1, A1, R2, E2, A2>(
   acquire: Effect<R, E, A>,

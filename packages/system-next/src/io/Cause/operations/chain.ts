@@ -4,7 +4,7 @@ import { Both, Cause, Die, Interrupt, Stackless, Then } from "../definition"
  * Transforms each error value in this cause to a new cause with the specified
  * function and then flattens the nested causes into a single cause.
  *
- * @ets fluent ets/Cause flatMap
+ * @tsplus fluent ets/Cause flatMap
  */
 export function chain_<E, E1>(self: Cause<E>, f: (e: E) => Cause<E1>): Cause<E1> {
   return self.fold(

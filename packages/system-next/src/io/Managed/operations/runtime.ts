@@ -7,7 +7,7 @@ import { Managed } from "../definition"
  * (unsafely) execute tasks. This is useful for integration with legacy code
  * that must call back into Effect-TS code.
  *
- * @ets static ets/ManagedOps runtime
+ * @tsplus static ets/ManagedOps runtime
  */
 export function runtime<R>(__etsTrace?: string): Managed<R, never, Runtime<R>> {
   return Managed.fromEffect(Effect.runtime<R>())

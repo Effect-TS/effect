@@ -8,7 +8,7 @@ import { findNotIndexCb, foldlCb } from "./_internal/callbacks"
  *
  * @complexity `O(k + log(n))` where `k` is the number of elements satisfying
  * the predicate.
- * @ets fluent ets/List takeWhile
+ * @tsplus fluent ets/List takeWhile
  */
 export function takeWhile_<A>(self: List<A>, f: Predicate<A>): List<A> {
   const { index } = foldlCb(findNotIndexCb, { predicate: f, index: 0 }, self)

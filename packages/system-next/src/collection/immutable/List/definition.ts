@@ -24,7 +24,7 @@ export type ListTypeId = typeof ListTypeId
  * 2. If a tree or sub-tree does not have a size-table then all leaf
  *    nodes in the tree are of size 32.
  *
- * @ets type ets/List
+ * @tsplus type ets/List
  */
 export interface List<A> {
   readonly [ListTypeId]: ListTypeId
@@ -45,13 +45,13 @@ export interface List<A> {
 }
 
 /**
- * @ets type ets/ListOps
+ * @tsplus type ets/ListOps
  */
 export interface ListOps {}
 export const List: ListOps = {}
 
 /**
- * @ets unify ets/List
+ * @tsplus unify ets/List
  */
 export function unifyList<X extends List<any>>(
   self: X
@@ -66,7 +66,7 @@ export class Node {
 }
 
 /**
- * @ets type ets/MutableList
+ * @tsplus type ets/MutableList
  */
 export type MutableList<A> = { -readonly [K in keyof List<A>]: List<A>[K] } & {
   [Symbol.iterator]: () => Iterator<A>
@@ -76,7 +76,7 @@ export type MutableList<A> = { -readonly [K in keyof List<A>]: List<A>[K] } & {
 }
 
 /**
- * @ets type ets/MutableListOps
+ * @tsplus type ets/MutableListOps
  */
 export interface MutableListOps {}
 export const MutableList: MutableListOps = {}

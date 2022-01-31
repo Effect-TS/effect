@@ -16,7 +16,7 @@ import type { Finalizer } from "../ReleaseMap/finalizer"
  *   - Returning the `Finalizer` returned from `ReleaseMap.add`. This is important
  *     to prevent double-finalization.
  *
- * @ets static ets/ManagedOps create
+ * @tsplus static ets/ManagedOps create
  */
 export function create<R, E, A>(
   effect: Effect<R, E, Tuple<[Finalizer, A]>>,

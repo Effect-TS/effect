@@ -4,7 +4,7 @@ import type { Managed } from "../definition"
 /**
  * Zips this managed effect and that managed effect in parallel.
  *
- * @ets fluent ets/Managed zipPar
+ * @tsplus fluent ets/Managed zipPar
  */
 export function zipPar_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,

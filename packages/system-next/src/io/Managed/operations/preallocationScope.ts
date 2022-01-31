@@ -13,7 +13,7 @@ export interface PreallocationScope {
 /**
  * Creates a scope in which resources can be safely preallocated.
  *
- * @ets static ets/ManagedOps preallocationScope
+ * @tsplus static ets/ManagedOps preallocationScope
  */
 export const preallocationScope: Managed<unknown, never, PreallocationScope> =
   Managed.scope.map(

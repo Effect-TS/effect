@@ -3,7 +3,7 @@ import { Managed } from "../definition"
 /**
  * Create a managed that accesses the environment.
  *
- * @ets static ets/ManagedOps environmentWith
+ * @tsplus static ets/ManagedOps environmentWith
  */
 export function environmentWith<R0, A>(
   f: (_: R0) => A,

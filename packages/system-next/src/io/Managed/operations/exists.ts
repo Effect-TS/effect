@@ -5,7 +5,7 @@ import { Managed } from "../definition"
  * Determines whether any element of the `Iterable<A>` satisfies the effectual
  * predicate `f`.
  *
- * @ets static ets/ManagedOps exists
+ * @tsplus static ets/ManagedOps exists
  */
 export function exists<R, E, A>(
   as: LazyArg<Iterable<A>>,

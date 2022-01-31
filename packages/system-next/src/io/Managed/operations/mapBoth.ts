@@ -4,7 +4,7 @@ import type { Managed } from "../definition"
  * Returns an effect whose failure and success channels have been mapped by
  * the specified pair of functions, `f` and `g`.
  *
- * @ets fluent ets/Managed mapBoth
+ * @tsplus fluent ets/Managed mapBoth
  */
 export function mapBoth_<R, E, A, E2, B>(
   self: Managed<R, E, A>,

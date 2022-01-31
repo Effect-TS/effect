@@ -5,7 +5,7 @@ import { pop } from "./pop"
 /**
  * Inserts a separator between each element in a list.
  *
- * @ets fluent ets/List intersperse
+ * @tsplus fluent ets/List intersperse
  */
 export function intersperse_<A>(self: List<A>, separator: A): List<A> {
   return pop(
