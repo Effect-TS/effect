@@ -1,7 +1,5 @@
 import type { Erase, Spreadable } from "../../../data/Utils"
 import type { Layer } from "../definition"
-import { and_ } from "./and"
-import { to_ } from "./to"
 
 /**
  * Feeds the output services of this layer into the input of the specified
@@ -9,6 +7,7 @@ import { to_ } from "./to"
  * outputs of both layers.
  *
  * @tsplus operator ets/Layer >
+ * @tsplus fluent ets/Layer andTo
  */
 export function andTo_<
   RIn,
@@ -21,7 +20,7 @@ export function andTo_<
   self: Layer<RIn, E, ROut>,
   that: Layer<RIn2, E2, ROut2>
 ): Layer<RIn & Erase<ROut & RIn2, ROut>, E2 | E, ROut & ROut2> {
-  return and_(self, to_(self, that))
+  return self + (self > that)
 }
 
 /**
@@ -36,6 +35,5 @@ export function andTo<RIn2 extends Spreadable, E2, ROut2 extends Spreadable>(
 ) {
   return <RIn, E, ROut extends Spreadable>(
     self: Layer<RIn, E, ROut>
-  ): Layer<RIn & Erase<ROut & RIn2, ROut>, E | E2, ROut & ROut2> =>
-    andTo_<RIn, E, ROut, RIn2, E2, ROut2>(self, that)
+  ): Layer<RIn & Erase<ROut & RIn2, ROut>, E | E2, ROut & ROut2> => self > that
 }

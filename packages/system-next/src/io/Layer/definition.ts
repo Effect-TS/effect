@@ -35,6 +35,12 @@ export interface Layer<RIn, E, ROut> {
   setKey(hash: PropertyKey): this
 }
 
+/**
+ * @tsplus type ets/LayerOps
+ */
+export interface LayerOps {}
+export const Layer: LayerOps = {}
+
 export abstract class LayerAbstract<RIn, E, ROut> implements Layer<RIn, E, ROut> {
   readonly [LayerHashSym] = new AtomicReference<PropertyKey>(Symbol());
 

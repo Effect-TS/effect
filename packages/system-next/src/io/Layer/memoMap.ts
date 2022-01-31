@@ -161,10 +161,12 @@ export function makeMemoMap(): UIO<MemoMap> {
 
 /**
  * Builds a layer into a managed value.
+ *
+ * @tsplus fluent ets/Layer build
  */
 export function build<R, E, A>(
   self: Layer<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R, E, A> {
   return Managed.Do()
     .bind("memoMap", () => Managed.fromEffect(makeMemoMap()))
@@ -172,9 +174,12 @@ export function build<R, E, A>(
     .flatMap(({ memoMap, run }) => run(memoMap))
 }
 
+/**
+ * @tsplus fluent ets/Layer scope
+ */
 export function scope<R, E, A>(
   self: Layer<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<unknown, never, (_: MemoMap) => Managed<R, E, A>> {
   return matchTag_(instruction(self), {
     LayerFold: (_) =>

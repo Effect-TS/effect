@@ -1,25 +1,19 @@
+import type { LazyArg } from "../../../data/Function"
 import type { Has, Tag } from "../../../data/Has"
-import { succeedNow } from "../../Effect/operations/succeedNow"
-import { chain_ } from "../../Managed/operations/chain"
-import { fromEffect } from "../../Managed/operations/fromEffect"
+import { Effect } from "../../Effect"
+import { Managed } from "../../Managed"
 import type { Layer } from "../definition"
 import { ILayerManaged } from "../definition"
 import { environmentFor } from "./_internal/environmentFor"
 
 /**
- * Constructs a layer from the specified value.
- */
-export function fromValue_<T>(resource: T, has: Tag<T>): Layer<{}, never, Has<T>> {
-  return new ILayerManaged(
-    chain_(fromEffect(succeedNow(resource)), (a) => environmentFor(has, a))
-  ).setKey(has.key)
-}
-
-/**
  * Construct a service layer from a value
  *
- * @ets_data_first fromValue_
+ * @tsplus static ets/LayerOps fromValue
  */
-export function fromValue<T>(has: Tag<T>) {
-  return (resource: T): Layer<{}, never, Has<T>> => fromValue_(resource, has)
+export function fromValue<T>(_: Tag<T>) {
+  return (resource: LazyArg<T>): Layer<{}, never, Has<T>> =>
+    new ILayerManaged(
+      Managed.fromEffect(Effect.succeed(resource)).flatMap((a) => environmentFor(_, a))
+    ).setKey(_.key)
 }
