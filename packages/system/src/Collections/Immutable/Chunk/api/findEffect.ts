@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as T from "../../../../Effect/index.js"
 import * as O from "../../../../Option/index.js"
 import type * as Chunk from "../core.js"

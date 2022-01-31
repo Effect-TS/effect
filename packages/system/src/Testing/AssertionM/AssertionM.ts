@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type { Lazy } from "../../Function/index.js"
 import * as ST from "../../Structural/index.js"
 import { LazyGetter } from "../../Utils/index.js"

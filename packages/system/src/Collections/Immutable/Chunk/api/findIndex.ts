@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as O from "../../../../Option/index.js"
 import type * as Chunk from "../core.js"
 import { concreteId } from "../definition.js"

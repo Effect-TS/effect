@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions.js"
 import { drain } from "./drain.js"

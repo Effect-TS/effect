@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as T from "../../Effect/index.js"
 import type * as AM from "../AssertionM/AssertionM.js"
 import type * as AR from "../AssertionResult/index.js"

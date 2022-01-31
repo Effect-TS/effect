@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as Cause from "../../Cause/index.js"
 import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import type { ExecutionStrategy, UIO } from "../../Effect/index.js"

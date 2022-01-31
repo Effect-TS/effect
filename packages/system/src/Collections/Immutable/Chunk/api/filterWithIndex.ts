@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type {
   PredicateWithIndex,
   RefinementWithIndex

@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type * as A from "../Assertion/index.js"
 import type * as AR from "../AssertionResult/index.js"
 import * as makeAssertionValue from "../AssertionValue/makeAssertionValue.js"

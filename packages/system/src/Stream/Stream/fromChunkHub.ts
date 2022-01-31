@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type * as A from "../../Collections/Immutable/Chunk/index.js"
 import * as H from "../../Hub/index.js"
 import { chain_ } from "./chain.js"

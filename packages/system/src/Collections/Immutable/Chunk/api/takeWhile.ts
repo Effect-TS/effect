@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as Chunk from "../core.js"
 import { ArrTypeId, concrete } from "../definition.js"
 

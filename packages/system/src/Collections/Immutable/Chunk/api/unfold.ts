@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as O from "../../../../Option/index.js"
 import type * as Tp from "../../Tuple/index.js"
 import type { Chunk } from "../core.js"

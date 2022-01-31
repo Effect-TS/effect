@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type { Effect } from "../../../../Effect/effect.js"
 import * as forEach from "../../../../Effect/excl-forEach.js"
 import type * as Chunk from "../core.js"

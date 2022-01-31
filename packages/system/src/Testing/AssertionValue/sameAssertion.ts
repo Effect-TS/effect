@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as ST from "../../Structural/index.js"
 import type { AssertionValue } from "./AssertionValue.js"
 

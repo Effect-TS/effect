@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as E from "../Either/index.js"
 import type * as O from "../Option/index.js"
 import { fromEither } from "./fromEither.js"

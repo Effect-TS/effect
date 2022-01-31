@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import { _A } from "../../../Effect/commons.js"
 import { ArrayIndexOutOfBoundsException } from "../../../GlobalExceptions/index.js"
 import * as St from "../../../Structural/index.js"

@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as core from "../../../../Effect/core.js"
 import type { Effect } from "../../../../Effect/effect.js"
 import * as O from "../../../../Option/index.js"

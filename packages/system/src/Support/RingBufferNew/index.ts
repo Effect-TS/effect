@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as Chunk from "../../Collections/Immutable/Chunk/index.js"
 import * as O from "../../Option/index.js"
 

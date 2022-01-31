@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type { Either } from "../../../Either/core.js"
 import type { Predicate, Refinement } from "../../../Function/core.js"
 import type { Option } from "../../../Option/index.js"

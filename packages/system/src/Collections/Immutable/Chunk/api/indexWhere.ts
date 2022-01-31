@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type * as Chunk from "../core.js"
 import { indexWhereFrom_ } from "./indexWhereFrom.js"
 

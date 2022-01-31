@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 // forked from https://github.com/frptools
 
 import { PCGRandom } from "../../Random/PCG/index.js"

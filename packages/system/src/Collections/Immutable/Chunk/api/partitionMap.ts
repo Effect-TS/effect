@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type * as E from "../../../../Either/index.js"
 import * as Tp from "../../Tuple/index.js"
 import * as Chunk from "../core.js"

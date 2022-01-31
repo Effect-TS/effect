@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as List from "../../Collections/Immutable/List/index.js"
 import * as T from "../../Effect/index.js"
 import { SourceLocation } from "../../Fiber/index.js"

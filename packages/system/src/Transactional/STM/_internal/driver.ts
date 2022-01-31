@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type { FiberID } from "../../../Fiber/index.js"
 import { Stack } from "../../../Stack/index.js"
 import type { Journal } from "../Journal/index.js"

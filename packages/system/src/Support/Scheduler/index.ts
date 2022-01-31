@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type { Lazy } from "../../Function/index.js"
 import { DoublyLinkedList } from "../DoublyLinkedList/index.js"
 

@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type { Refinement } from "../../../../Function/index.js"
 import * as Chunk from "../core.js"
 import { ArrTypeId, concrete } from "../definition.js"

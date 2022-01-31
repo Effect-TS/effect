@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as H from "../../Hub/index.js"
 import type * as M from "../_internal/managed.js"
 import type * as Take from "../Take/index.js"

@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type * as L from "../../Collections/Immutable/List/index.js"
 import * as AssertionM from "../AssertionM/AssertionM.js"
 import * as R from "./definition.js"

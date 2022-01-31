@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as HashMap from "../../Collections/Immutable/HashMap/index.js"
 import * as L from "../../Collections/Immutable/List/index.js"
 import type { Endomorphism } from "../../Function/index.js"

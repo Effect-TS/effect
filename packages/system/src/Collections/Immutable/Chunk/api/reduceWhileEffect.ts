@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as core from "../../../../Effect/core.js"
 import type { Effect } from "../../../../Effect/effect.js"
 import type * as Chunk from "../core.js"

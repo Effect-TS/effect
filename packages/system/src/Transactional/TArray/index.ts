@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import { ArrayIndexOutOfBoundsException } from "../../GlobalExceptions/index.js"
 import * as O from "../../Option/index.js"
 import * as STM from "../STM/index.js"

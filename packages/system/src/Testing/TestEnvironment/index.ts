@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as T from "../../Effect/index.js"
 import * as L from "../../Layer/index.js"
 import * as Random from "../../Random/index.js"

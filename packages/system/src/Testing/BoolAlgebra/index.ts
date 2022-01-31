@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as A from "../../Collections/Immutable/Array/index.js"
 import * as NEA from "../../Collections/Immutable/NonEmptyArray/index.js"
 import * as T from "../../Effect/index.js"

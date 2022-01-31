@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type * as Tp from "../../Tuple/index.js"
 import type { Chunk } from "../definition.js"
 import { zipWithIndexOffset_ } from "./zipWithIndexOffset.js"

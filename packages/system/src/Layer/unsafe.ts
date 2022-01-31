@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import * as Ex from "../Exit/index.js"
 import * as F from "../Fiber/index.js"

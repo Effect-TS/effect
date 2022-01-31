@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import { map_ } from "../core.js"
 import * as T from "../deps-core.js"
 import { makeExit_ } from "../makeExit.js"

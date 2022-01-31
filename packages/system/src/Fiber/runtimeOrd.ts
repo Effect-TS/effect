@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as Ord from "../Ord/index.js"
 import * as Ordering from "../Ordering/index.js"
 import type * as Fiber from "./core.js"

@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as A from "../../../Collections/Immutable/Chunk/index.js"
 import * as Tp from "../../../Collections/Immutable/Tuple/index.js"
 import * as T from "../../../Effect/index.js"

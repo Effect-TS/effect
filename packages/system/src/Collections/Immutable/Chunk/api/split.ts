@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as Chunk from "../core.js"
 import { concreteId } from "../definition.js"
 import { forEach_ } from "./forEach.js"

@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as Chunk from "../../Collections/Immutable/Chunk/index.js"
 import * as List from "../../Collections/Immutable/List/index.js"
 import type * as SS from "../../Collections/Immutable/SortedSet/index.js"

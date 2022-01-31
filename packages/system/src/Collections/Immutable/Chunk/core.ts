@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import { identity } from "../../../Function/index.js"
 import { ArrayIndexOutOfBoundsException } from "../../../GlobalExceptions/index.js"
 import * as O from "../../../Option/index.js"

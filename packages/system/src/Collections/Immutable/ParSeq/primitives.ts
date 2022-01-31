@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import { _A } from "../../../Effect/commons.js"
 import { tuple } from "../../../Function/index.js"
 import * as IO from "../../../IO/index.js"

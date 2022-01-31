@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import * as T from "../deps.js"
 import type { Managed } from "../managed.js"

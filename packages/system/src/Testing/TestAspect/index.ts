@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type { ZSpec } from "../Spec/index.js"
 
 export const TestAspectTypeId = Symbol.for("@effect-ts/system/Testing/TestAspect")

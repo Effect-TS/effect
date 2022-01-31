@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type { Chunk } from "../definition.js"
 import { reduce_ } from "./reduce.js"
 

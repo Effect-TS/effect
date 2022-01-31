@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import { Tagged, TaggedADT } from "../../Case/index.js"
 import * as ClockId from "../../Clock/id.js"
 import * as Clock from "../../Clock/index.js"

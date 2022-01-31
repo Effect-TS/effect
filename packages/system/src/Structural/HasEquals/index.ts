@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 // forked from https://github.com/planttheidea/fast-equals
 
 import type { HasHash } from "../HasHash/index.js"

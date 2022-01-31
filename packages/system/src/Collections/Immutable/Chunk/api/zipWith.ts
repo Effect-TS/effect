@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import { append_, empty } from "../core.js"
 import type { Chunk } from "../definition.js"
 import { concreteId } from "../definition.js"

@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type { Effect } from "../Effect/index.js"
 import type { Sync } from "../Sync/index.js"
 import type { UnifiableIndexed } from "./index.js"

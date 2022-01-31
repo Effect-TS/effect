@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as core from "../core.js"
 import * as forEach from "./forEach.js"
 

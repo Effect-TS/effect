@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type { Refinement } from "../../../../Function/index.js"
 import * as O from "../../../../Option/index.js"
 import type * as Chunk from "../core.js"

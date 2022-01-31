@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as R from "../../Effect/runtime.js"
 import { fromEffect } from "../fromEffect.js"
 import type { Managed } from "../managed.js"

@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import type { RIO } from "../managed.js"
 import { access } from "./api.js"

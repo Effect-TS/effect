@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as T from "../../Effect/index.js"
 import { flow } from "../../Function/index.js"
 import * as BA from "../BoolAlgebra/index.js"

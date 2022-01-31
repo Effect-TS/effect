@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as L from "../../Collections/Immutable/List/index.js"
 import * as T from "../../Effect/index.js"
 import type { Lazy } from "../../Function/index.js"

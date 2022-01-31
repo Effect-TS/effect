@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as Cause from "../../../Cause/core.js"
 import * as E from "../../../Either/index.js"
 import { identity } from "../../../Function/index.js"

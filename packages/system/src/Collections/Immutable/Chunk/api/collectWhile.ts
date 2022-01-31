@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as O from "../../../../Option/index.js"
 import * as Chunk from "../core.js"
 import * as ChunkDef from "../definition.js"

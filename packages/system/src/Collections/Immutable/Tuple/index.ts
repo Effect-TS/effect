@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as Tp from "../../../Structural/index.js"
 import type { ForcedArray } from "../../../Utils/index.js"
 

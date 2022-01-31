@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type { Chunk } from "../core.js"
 import { append_, empty } from "../core.js"
 

@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type * as T from "../../Effect/index.js"
 import type { Has } from "../../Has/index.js"
 import type { ExecutedSpec } from "../ExecutedSpec/index.js"

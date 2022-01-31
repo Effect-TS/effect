@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type * as E from "../../../../Either/index.js"
 import { identity } from "../../../../Function/index.js"
 import type * as Tp from "../../Tuple/index.js"

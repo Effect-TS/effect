@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as Clock from "../../Clock/index.js"
 import * as T from "../../Effect/index.js"
 import type { Platform } from "../../Fiber/index.js"

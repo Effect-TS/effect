@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as C from "../../../Cause/index.js"
 import * as A from "../../../Collections/Immutable/Chunk/index.js"
 import { _A, _E } from "../../../Effect/commons.js"

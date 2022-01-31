@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as Tp from "../../Tuple/index.js"
 import { append_, empty } from "../core.js"
 import type { Chunk } from "../definition.js"

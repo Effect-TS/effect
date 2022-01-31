@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as E from "../Either/index.js"
 import { chain_, fail, succeed, succeedWith } from "./core.js"
 

@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type { Cause } from "../../Cause/index.js"
 import * as Chunk from "../../Collections/Immutable/Chunk/index.js"
 import * as Tuple from "../../Collections/Immutable/Tuple/index.js"

@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as T from "../../../Effect/index.js"
 import * as E from "../../../Either/index.js"
 import type { FiberID } from "../../../Fiber/index.js"
