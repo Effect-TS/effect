@@ -1,5 +1,4 @@
-import type { Effect } from "../../../../io/Effect/definition"
-import { forEachDiscard_ } from "../../../../io/Effect/operations/excl-forEach"
+import { Effect } from "../../../../io/Effect/definition"
 import type * as Chunk from "../core"
 
 /**
@@ -7,9 +6,10 @@ import type * as Chunk from "../core"
  */
 export function mapEffectUnit_<A, R, E, B>(
   self: Chunk.Chunk<A>,
-  f: (a: A) => Effect<R, E, B>
+  f: (a: A) => Effect<R, E, B>,
+  __etsTrace?: string
 ): Effect<R, E, void> {
-  return forEachDiscard_(self, f)
+  return Effect.forEachDiscard(self, f)
 }
 
 /**
@@ -18,7 +18,8 @@ export function mapEffectUnit_<A, R, E, B>(
  * @ets_data_first mapEffectUnit_
  */
 export function mapEffectUnit<A, R, E, B>(
-  f: (a: A) => Effect<R, E, B>
+  f: (a: A) => Effect<R, E, B>,
+  __etsTrace?: string
 ): (self: Chunk.Chunk<A>) => Effect<R, E, void> {
   return (self) => mapEffectUnit_(self, f)
 }

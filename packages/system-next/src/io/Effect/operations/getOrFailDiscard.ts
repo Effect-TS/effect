@@ -1,7 +1,7 @@
 import { constVoid } from "../../../data/Function"
 import type * as O from "../../../data/Option"
 import type { IO } from "../definition"
-import { getOrFailWith_ } from "./getOrFailWith"
+import { Effect } from "../definition"
 
 // TODO(Mike/Max): fix name
 
@@ -12,5 +12,5 @@ import { getOrFailWith_ } from "./getOrFailWith"
  * @ets static ets/EffectOps getOrFailDiscard
  */
 export function getOrFailUnit<A>(v: O.Option<A>, __etsTrace?: string): IO<void, A> {
-  return getOrFailWith_(v, constVoid, __etsTrace)
+  return Effect.getOrFailWith(v, constVoid)
 }

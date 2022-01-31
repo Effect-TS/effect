@@ -1,8 +1,6 @@
 import * as Cause from "../../Cause"
-import type { Effect, RIO } from "../definition"
-import { chain_ } from "./chain"
-import { failCause } from "./failCause"
-import { unit } from "./unit"
+import type { RIO } from "../definition"
+import { Effect } from "../definition"
 
 /**
  * When this effect succeeds with a cause, then this method returns a new
@@ -17,5 +15,5 @@ export function uncause<R, E>(
   self: RIO<R, Cause.Cause<E>>,
   __etsTrace?: string
 ): Effect<R, E, void> {
-  return chain_(self, (c) => (Cause.isEmpty(c) ? unit : failCause(c)), __etsTrace)
+  return self.flatMap((c) => (Cause.isEmpty(c) ? Effect.unit : Effect.failCauseNow(c)))
 }

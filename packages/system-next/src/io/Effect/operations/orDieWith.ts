@@ -1,7 +1,5 @@
-import type { Effect, RIO } from "../definition"
-import { die } from "./die"
-import { foldEffect_ } from "./foldEffect"
-import { succeedNow } from "./succeedNow"
+import type { RIO } from "../definition"
+import { Effect } from "../definition"
 
 /**
  * Keeps none of the errors, and terminates the fiber with them, using the
@@ -14,7 +12,7 @@ export function orDieWith_<R, E, A>(
   f: (e: E) => unknown,
   __etsTrace?: string
 ): RIO<R, A> {
-  return foldEffect_(self, (e) => die(f(e)), succeedNow)
+  return self.foldEffect((e) => Effect.dieNow(f(e)), Effect.succeedNow)
 }
 
 /**
@@ -24,5 +22,5 @@ export function orDieWith_<R, E, A>(
  * @ets_data_first orDieWith_
  */
 export function orDieWith<E>(f: (e: E) => unknown, __etsTrace?: string) {
-  return <R, A>(self: Effect<R, E, A>): RIO<R, A> => orDieWith_(self, f, __etsTrace)
+  return <R, A>(self: Effect<R, E, A>): RIO<R, A> => orDieWith_(self, f)
 }

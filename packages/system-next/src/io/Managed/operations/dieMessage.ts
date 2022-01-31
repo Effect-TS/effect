@@ -1,15 +1,17 @@
+import type { LazyArg } from "../../../data/Function"
 import { RuntimeError } from "../../Cause/errors"
-import type { Managed } from "../definition"
-import { die } from "./die"
+import { Managed } from "../definition"
 
 /**
  * Returns an effect that dies with a `RuntimeError` having the specified text
  * message. This method can be used for terminating a fiber because a defect
  * has been detected in the code.
+ *
+ * @ets static ets/ManagedOps dieMessage
  */
 export function dieMessage(
-  message: string,
-  __trace?: string
+  message: LazyArg<string>,
+  __etsTrace?: string
 ): Managed<unknown, never, never> {
-  return die(new RuntimeError(message), __trace)
+  return Managed.die(new RuntimeError(message()))
 }

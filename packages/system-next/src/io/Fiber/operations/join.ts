@@ -1,7 +1,5 @@
 import type { IO } from "../../Effect"
-import { chain_ } from "../../Effect/operations/chain"
-import { done } from "../../Effect/operations/done"
-import { zipLeft_ } from "../../Effect/operations/zipLeft"
+import { Effect } from "../../Effect"
 import type { Fiber } from "../definition"
 
 /**
@@ -11,6 +9,6 @@ import type { Fiber } from "../definition"
  * "inner interruption" of this fiber, unlike interruption triggered by
  * another fiber, "inner interruption" can be caught and recovered.
  */
-export function join<E, A>(self: Fiber<E, A>, __trace?: string): IO<E, A> {
-  return zipLeft_(chain_(self.await, done), self.inheritRefs)
+export function join<E, A>(self: Fiber<E, A>, __etsTrace?: string): IO<E, A> {
+  return self.await.flatMap(Effect.done).zipLeft(self.inheritRefs)
 }

@@ -1,8 +1,5 @@
 import * as O from "../../../data/Option"
-import type { Effect } from "../definition"
-import { chain, chain_ } from "./chain"
-import { failNow } from "./failNow"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
 
 /**
  * Continue with the returned computation if the `PartialFunction` matches,
@@ -16,10 +13,12 @@ export function rejectEffect_<R, E, A, R1, E1>(
   pf: (a: A) => O.Option<Effect<R1, E1, E1>>,
   __etsTrace?: string
 ) {
-  return chain_(
-    self,
-    (a) => O.fold_(pf(a), () => succeedNow(a), chain(failNow)),
-    __etsTrace
+  return self.flatMap((a) =>
+    O.fold_(
+      pf(a),
+      () => Effect.succeedNow(a),
+      (_) => _.flatMap(Effect.failNow)
+    )
   )
 }
 
@@ -35,5 +34,5 @@ export function rejectEffect<A, R1, E1>(
   __etsTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R1, E | E1, A> =>
-    rejectEffect_(self, pf, __etsTrace)
+    rejectEffect_(self, pf)
 }

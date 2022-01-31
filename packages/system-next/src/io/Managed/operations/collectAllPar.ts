@@ -1,14 +1,16 @@
+import type { LazyArg } from "../../../data/Function"
 import { identity } from "../../../data/Function"
-import type { Managed } from "../definition"
-import { forEachPar_ } from "./forEachPar"
+import { Managed } from "../definition"
 
 /**
  * Evaluate each effect in the structure from left to right, and collect the
  * results. For a parallel version, see `collectAllPar`.
+ *
+ * @ets static ets/ManagedOps collectAllPar
  */
 export function collectAllPar<R, E, A>(
-  as: Iterable<Managed<R, E, A>>,
-  __trace?: string
+  as: LazyArg<Iterable<Managed<R, E, A>>>,
+  __etsTrace?: string
 ) {
-  return forEachPar_(as, identity, __trace)
+  return Managed.forEachPar(as, identity)
 }

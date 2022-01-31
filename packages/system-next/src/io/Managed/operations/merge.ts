@@ -1,11 +1,14 @@
-import type { Managed } from "../definition"
-import { foldManaged_ } from "./foldManaged"
-import { succeedNow } from "./succeedNow"
+import { Managed } from "../definition"
 
 /**
  * Returns a new effect where the error channel has been merged into the
  * success channel to their common combined type.
+ *
+ * @ets fluent ets/Managed merge
  */
-export function merge<R, E, A>(self: Managed<R, E, A>, __trace?: string) {
-  return foldManaged_(self, succeedNow, succeedNow, __trace)
+export function merge<R, E, A>(
+  self: Managed<R, E, A>,
+  __etsTrace?: string
+): Managed<R, never, E | A> {
+  return self.foldManaged(Managed.succeedNow, Managed.succeedNow)
 }

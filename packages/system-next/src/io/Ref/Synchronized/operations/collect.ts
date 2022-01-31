@@ -1,6 +1,6 @@
-import * as O from "../../../../data/Option"
+import type { Option } from "../../../../data/Option"
+import { Effect } from "../../../Effect"
 import type { XSynchronized } from "../definition"
-import * as T from "./_internal/effect"
 import { collectEffect_ } from "./collectEffect"
 
 /**
@@ -11,9 +11,9 @@ import { collectEffect_ } from "./collectEffect"
  */
 export function collect_<RA, RB, EA, EB, A, B, C>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
-  pf: (b: B) => O.Option<C>
-): XSynchronized<RA, RB, EA, O.Option<EB>, A, C> {
-  return collectEffect_(self, (b) => O.map_(pf(b), T.succeedNow))
+  pf: (b: B) => Option<C>
+): XSynchronized<RA, RB, EA, Option<EB>, A, C> {
+  return collectEffect_(self, (b) => pf(b).map(Effect.succeedNow))
 }
 
 /**
@@ -24,8 +24,8 @@ export function collect_<RA, RB, EA, EB, A, B, C>(
  *
  * @ets_data_first collect_
  */
-export function collect<B, C>(pf: (b: B) => O.Option<C>) {
+export function collect<B, C>(pf: (b: B) => Option<C>) {
   return <RA, RB, EA, EB, A>(
     self: XSynchronized<RA, RB, EA, EB, A, B>
-  ): XSynchronized<RA, RB, EA, O.Option<EB>, A, C> => collect_(self, pf)
+  ): XSynchronized<RA, RB, EA, Option<EB>, A, C> => collect_(self, pf)
 }

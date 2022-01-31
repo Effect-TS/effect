@@ -1,4 +1,4 @@
-import type * as Tp from "../../collection/immutable/Tuple"
+import type { Tuple } from "../../collection/immutable/Tuple"
 import type { Either } from "../../data/Either/core"
 import { pipe } from "../../data/Function"
 import type { _A, _E, _R } from "../../data/Utils"
@@ -292,7 +292,7 @@ export const zipWith_: <R, E, A, R1, E1, B, C>(
  */
 export const zip: <R1, E1, B>(
   that: Sync<R1, E1, B>
-) => <R, E, A>(self: Sync<R, E, A>) => Sync<R & R1, E1 | E, Tp.Tuple<[A, B]>> = X.zip
+) => <R, E, A>(self: Sync<R, E, A>) => Sync<R & R1, E1 | E, Tuple<[A, B]>> = X.zip
 
 /**
  * Combines this computation with the specified computation, passing the
@@ -302,7 +302,7 @@ export const zip: <R1, E1, B>(
 export const zip_: <R, E, A, R1, E1, B>(
   self: Sync<R, E, A>,
   that: Sync<R1, E1, B>
-) => Sync<R & R1, E | E1, Tp.Tuple<[A, B]>> = X.zip_
+) => Sync<R & R1, E | E1, Tuple<[A, B]>> = X.zip_
 
 /**
  * Suspend a computation, useful in recursion

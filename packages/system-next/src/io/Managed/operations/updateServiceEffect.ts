@@ -1,22 +1,21 @@
 import type { Has, Tag } from "../../../data/Has"
-import type { Managed } from "../definition"
-import type { Effect } from "./_internal/effect-api"
-import { fromEffect } from "./fromEffect"
-import { provideServiceManaged } from "./provideServiceManaged"
-import { serviceWithManaged } from "./serviceWithManaged"
+import type { Effect } from "../../Effect"
+import { Managed } from "../definition"
 
 /**
  * Updates a service at the specified key in the environment of this effect.
+ *
+ * @ets fluent ets/Managed updateServiceEffect
  */
 export function updateServiceEffect_<R, E, A, R1, E1, T>(
   self: Managed<R & Has<T>, E, A>,
   _: Tag<T>,
   f: (_: T) => Effect<R1, E1, T>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R & R1 & Has<T>, E | E1, A> {
-  return serviceWithManaged(_)(
-    (s) => provideServiceManaged(_)(fromEffect(f(s)))(self),
-    __trace
+  // @ts-expect-error
+  return Managed.serviceWithManaged(_)((s) =>
+    self.provideServiceManaged(_)(Managed.fromEffect(f(s)) as any)
   )
 }
 
@@ -28,9 +27,9 @@ export function updateServiceEffect_<R, E, A, R1, E1, T>(
 export function updateServiceEffect<R1, E1, T>(
   _: Tag<T>,
   f: (_: T) => Effect<R1, E1, T>,
-  __trace?: string
+  __etsTrace?: string
 ) {
   return <R, E, A>(
     self: Managed<R & Has<T>, E, A>
-  ): Managed<R & R1 & Has<T>, E | E1, A> => updateServiceEffect_(self, _, f, __trace)
+  ): Managed<R & R1 & Has<T>, E | E1, A> => updateServiceEffect_(self, _, f)
 }

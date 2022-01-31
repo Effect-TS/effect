@@ -1,5 +1,5 @@
 import { _A } from "../../support/Symbols"
-import type { UIO } from "./_internal/effect"
+import type { UIO } from "../Effect"
 
 /**
  * A `Gauge` is a metric representing a single numerical value that may be set

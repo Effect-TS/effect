@@ -1,6 +1,5 @@
 import { identity } from "../../../data/Function"
 import type { Effect } from "../definition"
-import { absorbWith_ } from "./absorbWith"
 
 /**
  * Attempts to convert defects into a failure, throwing away all information
@@ -9,5 +8,5 @@ import { absorbWith_ } from "./absorbWith"
  * @ets fluent ets/Effect absorb
  */
 export function absorb<R, E, A>(self: Effect<R, E, A>, __etsTrace?: string) {
-  return absorbWith_(self, identity, __etsTrace)
+  return self.absorbWith(identity)
 }

@@ -1,4 +1,4 @@
-import type { Exit } from "../operations/_internal/exit"
+import type { Exit } from "../../Exit"
 import type { Finalizer } from "./finalizer"
 
 export type State = Exited | Running

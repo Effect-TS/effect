@@ -1,7 +1,6 @@
 import type { Either } from "../../../data/Either"
 import { left } from "../../../data/Either"
 import type { Effect } from "../definition"
-import { mapError_ } from "./mapError"
 
 /**
  * Maps the error value of this effect to a left value.
@@ -9,7 +8,8 @@ import { mapError_ } from "./mapError"
  * @ets fluent ets/Effect asLeftError
  */
 export function asLeftError<R, E, A>(
-  self: Effect<R, E, A>
+  self: Effect<R, E, A>,
+  __etsTrace?: string
 ): Effect<R, Either<E, never>, A> {
-  return mapError_(self, left)
+  return self.mapError(left)
 }

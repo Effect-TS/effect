@@ -1,16 +1,18 @@
-import type * as O from "../../../data/Option/core"
-import * as IO from "../../../io-light/IO/core"
+import type { Option } from "../../../data/Option/core"
+import { IO } from "../../../io-light/IO/core"
 import type { Cause } from "../definition"
 import { realCause } from "../definition"
 
 /**
  * Finds something and extracts some details from it.
+ *
+ * @ets fluent ets/Cause find
  */
 export function find_<E, Z>(
   self: Cause<E>,
-  f: (cause: Cause<E>) => O.Option<Z>
-): O.Option<Z> {
-  return IO.run(findSafe(self, f))
+  f: (cause: Cause<E>) => Option<Z>
+): Option<Z> {
+  return findSafe(self, f).run()
 }
 
 /**
@@ -18,14 +20,14 @@ export function find_<E, Z>(
  *
  * @ets_data_first find_
  */
-export function find<E, Z>(f: (cause: Cause<E>) => O.Option<Z>) {
-  return (self: Cause<E>): O.Option<Z> => find_(self, f)
+export function find<E, Z>(f: (cause: Cause<E>) => Option<Z>) {
+  return (self: Cause<E>): Option<Z> => self.find(f)
 }
 
 function findSafe<E, Z>(
   self: Cause<E>,
-  f: (cause: Cause<E>) => O.Option<Z>
-): IO.IO<O.Option<Z>> {
+  f: (cause: Cause<E>) => Option<Z>
+): IO<Option<Z>> {
   const result = f(self)
 
   if (result._tag === "Some") {
@@ -34,30 +36,24 @@ function findSafe<E, Z>(
   realCause(self)
   switch (self._tag) {
     case "Then":
-      return IO.chain_(
-        IO.suspend(() => findSafe(self.left, f)),
-        (leftResult) => {
-          if (leftResult._tag === "Some") {
-            return IO.succeed(leftResult)
-          } else {
-            return findSafe(self.right, f)
-          }
+      return IO.suspend(findSafe(self.left, f)).flatMap((leftResult) => {
+        if (leftResult._tag === "Some") {
+          return IO.succeedNow(leftResult)
+        } else {
+          return findSafe(self.right, f)
         }
-      )
+      })
     case "Both": {
-      return IO.chain_(
-        IO.suspend(() => findSafe(self.left, f)),
-        (leftResult) => {
-          if (leftResult._tag === "Some") {
-            return IO.succeed(leftResult)
-          } else {
-            return findSafe(self.right, f)
-          }
+      return IO.suspend(findSafe(self.left, f)).flatMap((leftResult) => {
+        if (leftResult._tag === "Some") {
+          return IO.succeedNow(leftResult)
+        } else {
+          return findSafe(self.right, f)
         }
-      )
+      })
     }
     case "Stackless": {
-      return IO.suspend(() => findSafe(self.cause, f))
+      return IO.suspend(findSafe(self.cause, f))
     }
     default:
       return IO.succeed(result)

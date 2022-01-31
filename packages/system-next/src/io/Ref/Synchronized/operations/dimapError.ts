@@ -1,4 +1,4 @@
-import * as E from "../../../../data/Either"
+import { Either } from "../../../../data/Either"
 import type { XSynchronized } from "../definition"
 
 /**
@@ -10,7 +10,7 @@ export function dimapError_<RA, RB, EA, EB, EC, ED, A, B>(
   f: (ea: EA) => EC,
   g: (eb: EB) => ED
 ): XSynchronized<RA, RB, EC, ED, A, B> {
-  return self.fold(f, g, E.right, E.right)
+  return self.fold(f, g, Either.right, Either.right)
 }
 
 /**

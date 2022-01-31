@@ -1,9 +1,8 @@
-import { fail } from "../../Exit"
+import { fail as exitFail } from "../../Exit"
 import type { FiberId } from "../../FiberId"
 import type { RuntimeConfig } from "../../RuntimeConfig"
 import type { RIO } from "../definition"
-import { EffectError } from "../definition"
-import { suspendSucceedWith } from "./suspendSucceedWith"
+import { Effect, EffectError } from "../definition"
 
 /**
  * Returns a lazily constructed effect, whose construction may itself require
@@ -16,14 +15,14 @@ export function suspendWith<R, A>(
   f: (runtimeConfig: RuntimeConfig, fiberId: FiberId) => RIO<R, A>,
   __etsTrace?: string
 ): RIO<R, A> {
-  return suspendSucceedWith((runtimeConfig, fiberId) => {
+  return Effect.suspendSucceedWith((runtimeConfig, fiberId) => {
     try {
       return f(runtimeConfig, fiberId)
     } catch (error) {
       if (!runtimeConfig.value.fatal(error)) {
-        throw new EffectError(fail(error), __etsTrace)
+        throw new EffectError(exitFail(error), __etsTrace)
       }
       throw error
     }
-  }, __etsTrace)
+  })
 }

@@ -1,14 +1,15 @@
 import type { Option } from "../../../data/Option"
-import { suspendSucceed } from "../../Effect/operations/suspendSucceed"
+import { Effect } from "../../Effect"
 import { currentParallelism } from "../../FiberRef/definition/data"
-import { get } from "../../FiberRef/operations/get"
-import type { Managed } from "../definition"
-import { fromEffect } from "./fromEffect"
+import { get as fiberRefGet } from "../../FiberRef/operations/get"
+import { Managed } from "../definition"
 
 /**
  * Retrieves the maximum number of fibers for parallel operators or `None` if
  * it is unbounded.
+ *
+ * @ets static ets/ManagedOps parallelism
  */
-export const parallelism: Managed<unknown, never, Option<number>> = fromEffect(
-  suspendSucceed(() => get(currentParallelism.value))
+export const parallelism: Managed<unknown, never, Option<number>> = Managed.fromEffect(
+  Effect.suspendSucceed(fiberRefGet(currentParallelism.value))
 )

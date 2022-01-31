@@ -20,8 +20,7 @@ export function foldTraceEffect_<R, E, A, R2, E2, A2, R3, E3, A3>(
   return foldCauseEffect_(
     self,
     (c) => fold_(failureTraceOrCause(c), failure, failCause),
-    success,
-    __etsTrace
+    success
   )
 }
 
@@ -36,5 +35,5 @@ export function foldTraceEffect<E, R2, E2, A2, A, R3, E3, A3>(
   __etsTrace?: string
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R & R2 & R3, E2 | E3, A2 | A3> =>
-    foldTraceEffect_(self, failure, success, __etsTrace)
+    foldTraceEffect_(self, failure, success)
 }

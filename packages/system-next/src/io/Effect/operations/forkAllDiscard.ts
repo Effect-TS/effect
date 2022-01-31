@@ -13,5 +13,5 @@ export function forkAllDiscard<R, E, A>(
   effects: Iterable<Effect<R, E, A>>,
   __etsTrace?: string
 ): Effect<R, never, void> {
-  return forEachDiscard_(effects, fork, __etsTrace)
+  return forEachDiscard_(effects, fork)
 }

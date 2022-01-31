@@ -1,6 +1,5 @@
 import type { RIO } from "../definition"
-import { environment } from "./environment"
-import { map_ } from "./map"
+import { Effect } from "../definition"
 
 /**
  * Accesses the environment of the effect.
@@ -11,5 +10,5 @@ export function environmentWith<R, A>(
   f: (env: R) => A,
   __etsTrace?: string
 ): RIO<R, A> {
-  return map_(environment<R>(), f, __etsTrace)
+  return Effect.environment<R>().map(f)
 }

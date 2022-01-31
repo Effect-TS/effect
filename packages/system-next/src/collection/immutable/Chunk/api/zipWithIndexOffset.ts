@@ -1,4 +1,4 @@
-import * as Tp from "../../Tuple"
+import { Tuple } from "../../Tuple"
 import type { Chunk } from "../_definition"
 import { concreteId } from "../_definition"
 import { append_, empty } from "../core"
@@ -10,18 +10,18 @@ import { append_, empty } from "../core"
 export function zipWithIndexOffset_<A>(
   self: Chunk<A>,
   offset: number
-): Chunk<Tp.Tuple<[A, number]>> {
+): Chunk<Tuple<[A, number]>> {
   const iterator = concreteId(self).arrayLikeIterator()
   let next
   let i = offset
-  let builder = empty<Tp.Tuple<[A, number]>>()
+  let builder = empty<Tuple<[A, number]>>()
   while ((next = iterator.next()) && !next.done) {
     const array = next.value
     const len = array.length
     let j = 0
     while (j < len) {
       const a = array[j]!
-      builder = append_(builder, Tp.tuple(a, i))
+      builder = append_(builder, Tuple(a, i))
       j++
       i++
     }
@@ -38,6 +38,6 @@ export function zipWithIndexOffset_<A>(
  */
 export function zipWithIndexOffset(
   offset: number
-): <A>(self: Chunk<A>) => Chunk<Tp.Tuple<[A, number]>> {
+): <A>(self: Chunk<A>) => Chunk<Tuple<[A, number]>> {
   return (self) => zipWithIndexOffset_(self, offset)
 }

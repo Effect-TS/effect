@@ -1,8 +1,12 @@
-import { insert, lookup } from "../../../collection/immutable/Map"
-import * as Tp from "../../../collection/immutable/Tuple"
-import * as O from "../../../data/Option"
-import * as T from "../operations/_internal/effect"
-import * as R from "../operations/_internal/ref"
+import {
+  insert as mapInsert,
+  lookup as mapLookup
+} from "../../../collection/immutable/Map"
+import { Tuple } from "../../../collection/immutable/Tuple"
+import { Option } from "../../../data/Option"
+import type { UIO } from "../../Effect"
+import { Effect } from "../../Effect"
+import { modify_ as refModify_ } from "../../Ref/operations/modify"
 import type { ReleaseMap } from "./definition"
 import type { Finalizer } from "./finalizer"
 import { Exited, Running } from "./state"
@@ -11,30 +15,29 @@ import { Exited, Running } from "./state"
  * Replaces the finalizer associated with this key and returns it. If the
  * finalizers associated with this scope have already been run this
  * finalizer will be run immediately.
+ *
+ * @ets fluent ets/ReleaseMap replace
  */
 export function replace_(
   self: ReleaseMap,
   key: number,
   finalizer: Finalizer,
-  __trace?: string
-): T.UIO<O.Option<Finalizer>> {
-  return T.flatten(
-    R.modify_(self.ref, (s) => {
-      switch (s._tag) {
-        case "Exited":
-          return Tp.tuple(
-            T.map_(finalizer(s.exit), () => O.none),
-            new Exited(s.nextKey, s.exit, s.update)
-          )
-        case "Running":
-          return Tp.tuple(
-            T.succeed(() => lookup(key)(s.finalizers())),
-            new Running(s.nextKey, insert(key, finalizer)(s.finalizers()), s.update)
-          )
-      }
-    }),
-    __trace
-  )
+  __etsTrace?: string
+): UIO<Option<Finalizer>> {
+  return refModify_(self.ref, (s) => {
+    switch (s._tag) {
+      case "Exited":
+        return Tuple(
+          finalizer(s.exit).map(() => Option.none),
+          new Exited(s.nextKey, s.exit, s.update)
+        )
+      case "Running":
+        return Tuple(
+          Effect.succeed(mapLookup(key)(s.finalizers())),
+          new Running(s.nextKey, mapInsert(key, finalizer)(s.finalizers()), s.update)
+        )
+    }
+  }).flatten()
 }
 
 /**
@@ -44,7 +47,7 @@ export function replace_(
  *
  * @ets_data_first replace_
  */
-export function replace(key: number, finalizer: Finalizer, __trace?: string) {
-  return (self: ReleaseMap): T.Effect<unknown, never, O.Option<Finalizer>> =>
-    replace_(self, key, finalizer, __trace)
+export function replace(key: number, finalizer: Finalizer, __etsTrace?: string) {
+  return (self: ReleaseMap): Effect<unknown, never, Option<Finalizer>> =>
+    replace_(self, key, finalizer)
 }

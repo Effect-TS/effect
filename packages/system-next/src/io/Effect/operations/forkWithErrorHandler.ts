@@ -17,8 +17,7 @@ export function forkWithErrorHandler_<R, E, A, X>(
   __etsTrace?: string
 ): RIO<R, Fiber.Runtime<E, A>> {
   return fork(
-    onError_(self, (cause) => E.fold_(failureOrCause(cause), handler, failCause)),
-    __etsTrace
+    onError_(self, (cause) => E.fold_(failureOrCause(cause), handler, failCause))
   )
 }
 
@@ -32,5 +31,5 @@ export function forkWithErrorHandler<E, X>(
   __etsTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): RIO<R, Fiber.Runtime<E, A>> =>
-    forkWithErrorHandler_(self, handler, __etsTrace)
+    forkWithErrorHandler_(self, handler)
 }

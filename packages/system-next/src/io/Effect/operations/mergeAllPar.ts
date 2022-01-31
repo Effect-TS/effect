@@ -1,7 +1,8 @@
-import type { Effect } from "../definition"
-import { chain, chain_ } from "./chain"
-import * as Ref from "./excl-deps-ref"
-import { forEachParDiscard_ } from "./excl-forEach"
+import type { LazyArg } from "../../../data/Function"
+import { get } from "../../Ref/operations/get"
+import { make } from "../../Ref/operations/make"
+import { update_ } from "../../Ref/operations/update"
+import { Effect } from "../definition"
 
 /**
  * Merges an `Iterable<Effect<R, E, A>>` to a single `Effect<R, E, A>`, working
@@ -17,22 +18,15 @@ import { forEachParDiscard_ } from "./excl-forEach"
  * @ets static ets/EffectOps mergeAllPar
  */
 export function mergeAllPar_<R, E, A, B>(
-  as: Iterable<Effect<R, E, A>>,
-  zero: B,
+  as: LazyArg<Iterable<Effect<R, E, A>>>,
+  zero: LazyArg<B>,
   f: (b: B, a: A) => B,
   __etsTrace?: string
 ) {
-  return chain_(
-    Ref.make(zero),
-    (acc) =>
-      chain_(
-        forEachParDiscard_(
-          as,
-          chain((a) => Ref.update_(acc, (b) => f(b, a)))
-        ),
-        () => Ref.get(acc)
-      ),
-    __etsTrace
+  return make(zero).flatMap((acc) =>
+    Effect.forEachParDiscard(as, (_) =>
+      _.flatMap((a) => update_(acc, (b) => f(b, a)))
+    ).flatMap(() => get(acc))
   )
 }
 

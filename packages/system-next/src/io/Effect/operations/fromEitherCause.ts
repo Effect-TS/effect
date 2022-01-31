@@ -2,10 +2,7 @@ import type { Either } from "../../../data/Either"
 import { fold } from "../../../data/Either"
 import type { Cause } from "../../Cause"
 import type { IO } from "../definition"
-import { chain_ } from "./chain"
-import { failCause } from "./failCause"
-import { succeed } from "./succeed"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
 
 // TODO(Mike/Max): make lazy
 
@@ -18,9 +15,7 @@ export function fromEitherCause<E, A>(
   either: Either<Cause<E>, A>,
   __etsTrace?: string
 ): IO<E, A> {
-  return chain_(
-    succeed(() => either),
-    fold(failCause, succeedNow),
-    __etsTrace
+  return Effect.succeed(() => either).flatMap(
+    fold(Effect.failCauseNow, Effect.succeedNow)
   )
 }

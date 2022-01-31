@@ -1,8 +1,8 @@
 import { identity } from "../../../../data/Function"
-import * as O from "../../../../data/Option"
+import { Option } from "../../../../data/Option"
+import { Effect } from "../../../Effect"
 import type { XSynchronized } from "../definition"
 import { foldEffect_ } from "../definition"
-import * as T from "./_internal/effect"
 
 /**
  * Filters the `set` value of the `XRef.Synchronized` with the specified
@@ -11,19 +11,17 @@ import * as T from "./_internal/effect"
  */
 export function filterInputEffect_<RA, RB, RC, EA, EB, EC, A, A1 extends A, B>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
-  f: (a: A1) => T.Effect<RC, EC, boolean>
-): XSynchronized<RA & RC, RB, O.Option<EA | EC>, EB, A1, B> {
+  f: (a: A1) => Effect<RC, EC, boolean>
+): XSynchronized<RA & RC, RB, Option<EA | EC>, EB, A1, B> {
   return foldEffect_(
     self,
-    O.some,
+    Option.some,
     identity,
     (a1) =>
-      T.ifEffect_(
-        T.asSomeError(f(a1)),
-        () => T.succeedNow(a1),
-        () => T.failNow(O.emptyOf())
-      ),
-    T.succeedNow
+      f(a1)
+        .asSomeError()
+        .ifEffect(Effect.succeedNow(a1), Effect.failNow(Option.emptyOf())),
+    Effect.succeedNow
   )
 }
 
@@ -35,10 +33,10 @@ export function filterInputEffect_<RA, RB, RC, EA, EB, EC, A, A1 extends A, B>(
  * @ets_data_first filterInputEffect_
  */
 export function filterInputEffect<RC, EC, A, A1 extends A>(
-  f: (a: A1) => T.Effect<RC, EC, boolean>
+  f: (a: A1) => Effect<RC, EC, boolean>
 ) {
   return <RA, RB, EA, EB, B>(
     self: XSynchronized<RA, RB, EA, EB, A, B>
-  ): XSynchronized<RA & RC, RB, O.Option<EA | EC>, EB, A1, B> =>
+  ): XSynchronized<RA & RC, RB, Option<EA | EC>, EB, A1, B> =>
     filterInputEffect_(self, f)
 }

@@ -1,8 +1,6 @@
 import type { Either } from "../../../data/Either"
 import * as E from "../../../data/Either"
-import type { Effect } from "../definition"
-import { environmentWithEffect } from "./environmentWithEffect"
-import { provideEnvironment_ } from "./provideEnvironment"
+import { Effect } from "../definition"
 
 /**
  * Depending on provided environment returns either this one or the other effect.
@@ -14,14 +12,13 @@ export function join_<R, E, A, R1, E1, A1>(
   that: Effect<R1, E1, A1>,
   __etsTrace?: string
 ): Effect<Either<R, R1>, E | E1, A | A1> {
-  return environmentWithEffect(
+  return Effect.environmentWithEffect(
     (_: Either<R, R1>): Effect<unknown, E | E1, A | A1> =>
       E.fold_(
         _,
-        (r) => provideEnvironment_(self, r),
-        (r1) => provideEnvironment_(that, r1)
-      ),
-    __etsTrace
+        (r) => self.provideEnvironment(r),
+        (r1) => that.provideEnvironment(r1)
+      )
   )
 }
 
@@ -32,6 +29,6 @@ export function join_<R, E, A, R1, E1, A1>(
  */
 export function join<R1, E1, A1>(that: Effect<R1, E1, A1>, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<Either<R, R1>, E | E1, A | A1> => {
-    return join_(self, that, __etsTrace)
+    return join_(self, that)
   }
 }

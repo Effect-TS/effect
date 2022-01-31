@@ -1,7 +1,7 @@
-import * as Tp from "../../../../collection/immutable/Tuple"
-import * as O from "../../../../data/Option"
+import { Tuple } from "../../../../collection/immutable/Tuple"
+import type { Option } from "../../../../data/Option"
+import { Effect } from "../../../Effect"
 import type { XSynchronized } from "../definition"
-import * as T from "./_internal/effect"
 import { modifyEffect_ } from "./modifyEffect"
 
 /**
@@ -13,11 +13,10 @@ import { modifyEffect_ } from "./modifyEffect"
 export function modifySomeEffect_<RA, RB, RC, EA, EB, EC, A, B>(
   self: XSynchronized<RA, RB, EA, EB, A, A>,
   def: B,
-  pf: (a: A) => O.Option<T.Effect<RC, EC, Tp.Tuple<[B, A]>>>
-): T.Effect<RA & RB & RC, EA | EB | EC, B> {
-  return modifyEffect_(self, (v) =>
-    O.getOrElse_(pf(v), () => T.succeedNow(Tp.tuple(def, v)))
-  )
+  pf: (a: A) => Option<Effect<RC, EC, Tuple<[B, A]>>>,
+  __etsTrace?: string
+): Effect<RA & RB & RC, EA | EB | EC, B> {
+  return modifyEffect_(self, (v) => pf(v).getOrElse(Effect.succeedNow(Tuple(def, v))))
 }
 
 /**
@@ -30,9 +29,10 @@ export function modifySomeEffect_<RA, RB, RC, EA, EB, EC, A, B>(
  */
 export function modifySomeEffect<RC, EC, A, B>(
   def: B,
-  pf: (a: A) => O.Option<T.Effect<RC, EC, Tp.Tuple<[B, A]>>>
+  pf: (a: A) => Option<Effect<RC, EC, Tuple<[B, A]>>>,
+  __etsTrace?: string
 ) {
   return <RA, RB, EA, EB>(
     self: XSynchronized<RA, RB, EA, EB, A, A>
-  ): T.Effect<RA & RB & RC, EA | EB | EC, B> => modifySomeEffect_(self, def, pf)
+  ): Effect<RA & RB & RC, EA | EB | EC, B> => modifySomeEffect_(self, def, pf)
 }

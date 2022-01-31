@@ -1,6 +1,5 @@
+import type { Effect } from "../../Effect"
 import type { Managed } from "../definition"
-import type { Effect } from "./_internal/effect"
-import { onExitFirst_ } from "./onExitFirst"
 
 /**
  * Ensures that `f` is executed when this `Managed` is finalized, before the
@@ -8,13 +7,15 @@ import { onExitFirst_ } from "./onExitFirst"
  *
  * For usecases that need access to the `Managed`'s result, see
  * `Managed#onExitFirst`.
+ *
+ * @ets fluent ets/Managed ensuringFirst
  */
 export function ensuringFirst_<R, E, A, R2, X>(
   self: Managed<R, E, A>,
   f: Effect<R2, never, X>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R & R2, E, A> {
-  return onExitFirst_(self, () => f, __trace)
+  return self.onExitFirst(() => f)
 }
 
 /**
@@ -26,7 +27,7 @@ export function ensuringFirst_<R, E, A, R2, X>(
  *
  * @ets_data_first ensuringFirst_
  */
-export function ensuringFirst<R2, X>(f: Effect<R2, never, X>, __trace?: string) {
+export function ensuringFirst<R2, X>(f: Effect<R2, never, X>, __etsTrace?: string) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<R & R2, E, A> =>
-    ensuringFirst_(self, f, __trace)
+    ensuringFirst_(self, f)
 }

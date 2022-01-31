@@ -1,6 +1,5 @@
 import * as O from "../../../data/Option"
 import type { Effect } from "../definition"
-import { map_ } from "./map"
 
 /**
  * Extracts the optional value, or returns the given 'orElse'.
@@ -12,7 +11,7 @@ export function someOrElse_<R, E, A, B>(
   orElse: () => B,
   __etsTrace?: string
 ): Effect<R, E, A | B> {
-  return map_(self, O.getOrElse(orElse), __etsTrace)
+  return self.map(O.getOrElse(orElse))
 }
 
 /**
@@ -21,6 +20,5 @@ export function someOrElse_<R, E, A, B>(
  * @ets_data_first someOrElse_
  */
 export function someOrElse<B>(orElse: () => B, __etsTrace?: string) {
-  return <R, E, A>(self: Effect<R, E, O.Option<A>>) =>
-    someOrElse_(self, orElse, __etsTrace)
+  return <R, E, A>(self: Effect<R, E, O.Option<A>>) => someOrElse_(self, orElse)
 }

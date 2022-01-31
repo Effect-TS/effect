@@ -1,10 +1,6 @@
 import { fold_ } from "../../../data/Either"
 import { failureOrCause } from "../../Cause"
-import type { Effect } from "../definition"
-import { failCause } from "./failCause"
-import { failNow } from "./failNow"
-import { foldCauseEffect_ } from "./foldCauseEffect"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
 
 /**
  * Returns an effect with its error channel mapped using the specified
@@ -17,11 +13,9 @@ export function mapError_<R, E, A, E2>(
   f: (e: E) => E2,
   __etsTrace?: string
 ): Effect<R, E2, A> {
-  return foldCauseEffect_(
-    self,
-    (c) => fold_(failureOrCause(c), (e) => failNow(f(e)), failCause),
-    succeedNow,
-    __etsTrace
+  return self.foldCauseEffect(
+    (c) => fold_(failureOrCause(c), (e) => Effect.failNow(f(e)), Effect.failCauseNow),
+    Effect.succeedNow
   )
 }
 
@@ -32,6 +26,5 @@ export function mapError_<R, E, A, E2>(
  * @ets_data_first mapError_
  */
 export function mapError<E, E2>(f: (e: E) => E2, __etsTrace?: string) {
-  return <R, A>(self: Effect<R, E, A>): Effect<R, E2, A> =>
-    mapError_(self, f, __etsTrace)
+  return <R, A>(self: Effect<R, E, A>): Effect<R, E2, A> => mapError_(self, f)
 }

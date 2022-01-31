@@ -1,18 +1,4 @@
 import type { Effect } from "../definition"
-import { chain_ } from "./chain"
-import { map_ } from "./map"
-
-/**
- * Returns an effect that effectfully "peeks" at the success of this effect.
- *
- * @ets_data_first tap_
- */
-export function tap<R, E, A, X>(
-  f: (_: A) => Effect<R, E, X>,
-  __etsTrace?: string
-): <R2, E2>(_: Effect<R2, E2, A>) => Effect<R & R2, E | E2, A> {
-  return (fa) => tap_(fa, f, __etsTrace)
-}
 
 /**
  * Returns an effect that effectfully "peeks" at the success of this effect.
@@ -20,9 +6,18 @@ export function tap<R, E, A, X>(
  * @ets fluent ets/Effect tap
  */
 export function tap_<R2, E2, A, R, E, X>(
-  _: Effect<R2, E2, A>,
+  self: Effect<R2, E2, A>,
   f: (_: A) => Effect<R, E, X>,
   __etsTrace?: string
 ) {
-  return chain_(_, (a: A) => map_(f(a), () => a), __etsTrace)
+  return self.flatMap((a: A) => f(a).map(() => a))
+}
+
+/**
+ * Returns an effect that effectfully "peeks" at the success of this effect.
+ *
+ * @ets_data_first tap_
+ */
+export function tap<R, E, A, X>(f: (_: A) => Effect<R, E, X>, __etsTrace?: string) {
+  return <R2, E2>(self: Effect<R2, E2, A>): Effect<R & R2, E | E2, A> => tap_(self, f)
 }

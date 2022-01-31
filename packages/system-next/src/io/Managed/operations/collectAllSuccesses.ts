@@ -1,20 +1,20 @@
 import * as Iter from "../../../collection/immutable/Iterable"
-import * as O from "../../../data/Option"
-import type { Managed } from "../definition"
-import { collectAllWith_ } from "./collectAllWith"
-import { exit } from "./exit"
+import type { LazyArg } from "../../../data/Function"
+import { Option } from "../../../data/Option"
+import { Managed } from "../definition"
 
 /**
  * Evaluate and run each effect in the structure and collect discarding failed
  * ones.
+ *
+ * @ets static ets/ManagedOps collectAllSuccesses
  */
 export function collectAllSuccesses<R, E, A>(
-  as: Iterable<Managed<R, E, A>>,
-  __trace?: string
+  as: LazyArg<Iterable<Managed<R, E, A>>>,
+  __etsTrace?: string
 ) {
-  return collectAllWith_(
-    Iter.map_(as, (x) => exit(x)),
-    (e) => (e._tag === "Success" ? O.some(e.value) : O.none),
-    __trace
+  return Managed.collectAllWith(
+    Iter.map_(as(), (_) => _.exit()),
+    (e) => (e._tag === "Success" ? Option.some(e.value) : Option.none)
   )
 }

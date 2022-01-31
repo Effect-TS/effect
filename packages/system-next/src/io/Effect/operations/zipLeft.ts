@@ -1,6 +1,4 @@
 import type { Effect } from "../definition"
-import { as_ } from "./as"
-import { chain_ } from "./chain"
 
 /**
  * Sequences the specified effect after this effect, but ignores the value
@@ -14,7 +12,7 @@ export function zipLeft_<R, E, A, R2, E2, A2>(
   that: Effect<R2, E2, A2>,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, A> {
-  return chain_(self, (a) => as_(that, a))
+  return self.flatMap((a) => that.as(a))
 }
 
 /**

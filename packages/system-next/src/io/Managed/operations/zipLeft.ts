@@ -1,25 +1,27 @@
 import type { Managed } from "../definition"
-import { zipWith_ } from "./zipWith"
 
 /**
  * Sequentially zips this effect with the specified effect
- * returning the left side
+ * returning the left side.
+ *
+ * @ets fluent ets/Managed zipLeft
+ * @ets operator ets/Managed <
  */
 export function zipLeft_<R, E, A, R2, E2, A2>(
-  a: Managed<R, E, A>,
-  b: Managed<R2, E2, A2>,
-  __trace?: string
+  self: Managed<R, E, A>,
+  that: Managed<R2, E2, A2>,
+  __etsTrace?: string
 ): Managed<R & R2, E | E2, A> {
-  return zipWith_(a, b, (a) => a, __trace)
+  return self.zipWith(that, (a) => a)
 }
 
 /**
  * Sequentially zips this effect with the specified effect
- * returning the left side
+ * returning the left side.
  *
  * @ets_data_first zipLeft_
  */
-export function zipLeft<R2, E2, A2>(b: Managed<R2, E2, A2>, __trace?: string) {
-  return <R, E, A>(a: Managed<R, E, A>): Managed<R & R2, E | E2, A> =>
-    zipLeft_(a, b, __trace)
+export function zipLeft<R2, E2, A2>(that: Managed<R2, E2, A2>, __etsTrace?: string) {
+  return <R, E, A>(self: Managed<R, E, A>): Managed<R & R2, E | E2, A> =>
+    zipLeft_(self, that)
 }

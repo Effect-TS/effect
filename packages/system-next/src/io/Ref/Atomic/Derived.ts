@@ -1,10 +1,9 @@
-import * as E from "../../../data/Either"
-import { pipe } from "../../../data/Function"
+import { Either } from "../../../data/Either"
+import { Effect } from "../../Effect"
 import type { XRef } from "../definition"
 import { XRefInternal } from "../definition"
 import type { Atomic } from "./Atomic"
 import { DerivedAll } from "./DerivedAll"
-import * as T from "./operations/_internal/effect"
 
 export class Derived<EA, EB, A, B> extends XRefInternal<
   unknown,
@@ -20,44 +19,41 @@ export class Derived<EA, EB, A, B> extends XRefInternal<
     readonly use: <X>(
       f: <S>(
         value: Atomic<S>,
-        getEither: (s: S) => E.Either<EB, B>,
-        setEither: (a: A) => E.Either<EA, S>
+        getEither: (s: S) => Either<EB, B>,
+        setEither: (a: A) => Either<EA, S>
       ) => X
     ) => X
   ) {
     super()
   }
 
-  get get(): T.Effect<unknown, EB, B> {
+  get get(): Effect<unknown, EB, B> {
     return this.use((value, getEither) =>
-      pipe(
-        value.get,
-        T.chain((s) => E.fold_(getEither(s), T.failNow, T.succeedNow))
-      )
+      value.get.flatMap((s) => getEither(s).fold(Effect.failNow, Effect.succeedNow))
     )
   }
 
-  set(a: A): T.Effect<unknown, EA, void> {
+  set(a: A, __etsTrace?: string): Effect<unknown, EA, void> {
     return this.use((value, _, setEither) =>
-      E.fold_(setEither(a), T.failNow, value.set)
+      setEither(a).fold(Effect.failNow, value.set)
     )
   }
 
   fold<EC, ED, C, D>(
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
-    ca: (_: C) => E.Either<EC, A>,
-    bd: (_: B) => E.Either<ED, D>
+    ca: (_: C) => Either<EC, A>,
+    bd: (_: B) => Either<ED, D>
   ): XRef<unknown, unknown, EC, ED, C, D> {
     return this.use(
       (value, getEither, setEither) =>
         new Derived((f) =>
           f(
             value,
-            (s) => E.fold_(getEither(s), (e) => E.left(eb(e)), bd),
+            (s) => getEither(s).fold((e) => Either.left(eb(e)), bd),
             (c) =>
-              E.chain_(ca(c), (a) =>
-                E.fold_(setEither(a), (e) => E.left(ea(e)), E.right)
+              ca(c).flatMap((a) =>
+                setEither(a).fold((e) => Either.left(ea(e)), Either.right)
               )
           )
         )
@@ -68,8 +64,8 @@ export class Derived<EA, EB, A, B> extends XRefInternal<
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
     ec: (_: EB) => EC,
-    ca: (_: C) => (_: B) => E.Either<EC, A>,
-    _bd: (_: B) => E.Either<ED, D>
+    ca: (_: C) => (_: B) => Either<EC, A>,
+    _bd: (_: B) => Either<ED, D>
   ): XRef<unknown, unknown, EC, ED, C, D> {
     return this.use(
       (value, getEither, setEither) =>
@@ -77,18 +73,16 @@ export class Derived<EA, EB, A, B> extends XRefInternal<
           f(
             value,
             (s) =>
-              E.fold_(getEither(s), (e) => E.left(eb(e)), E.right) as E.Either<ED, D>,
+              getEither(s).fold((e) => Either.left(eb(e)), Either.right) as Either<
+                ED,
+                D
+              >,
             (c) => (s) =>
-              pipe(
-                getEither(s),
-                E.fold((e) => E.widenA<A>()(E.left(ec(e))), ca(c)),
-                E.chain((a) =>
-                  pipe(
-                    setEither(a),
-                    E.fold((e) => E.left(ea(e)), E.right)
-                  )
+              getEither(s)
+                .fold((e) => Either.leftW(ec(e)), ca(c))
+                .flatMap((a) =>
+                  setEither(a).fold((e) => Either.left(ea(e)), Either.right)
                 )
-              )
           )
         )
     )

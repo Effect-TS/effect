@@ -3,10 +3,7 @@ import * as O from "../../../data/Option"
 import type { FiberRef, Runtime } from "../../FiberRef"
 import { set_ as fiberRefSet_ } from "../../FiberRef/operations/set"
 import type { UIO } from "../definition"
-import { IFiberRefGetAll } from "../definition"
-import { forEachDiscard_ } from "./excl-forEach"
-import { succeedNow } from "./succeedNow"
-import { suspendSucceed } from "./suspendSucceed"
+import { Effect, IFiberRefGetAll } from "../definition"
 
 /**
  * `FiberRefs` is a data type that represents a collection of `FiberRef` values.
@@ -32,7 +29,7 @@ export class FiberRefs {
    * value in this collection of `FiberRef` values.
    */
   get setAll(): UIO<void> {
-    return forEachDiscard_(this.fiberRefs, (fiberRef) =>
+    return Effect.forEachDiscard(this.fiberRefs, (fiberRef) =>
       fiberRefSet_(fiberRef, this.getOrDefault(fiberRef))
     )
   }
@@ -61,7 +58,7 @@ export class FiberRefs {
  * @ets static ets/EffectOps getFiberRefs
  */
 export const getFiberRefs: UIO<FiberRefs> = new IFiberRefGetAll((fiberRefLocals) =>
-  succeedNow(new FiberRefs(fiberRefLocals))
+  Effect.succeedNow(new FiberRefs(fiberRefLocals))
 )
 
 /**
@@ -71,5 +68,5 @@ export const getFiberRefs: UIO<FiberRefs> = new IFiberRefGetAll((fiberRefLocals)
  * @ets static ets/EffectOps setFiberRefs
  */
 export function setFiberRefs(fiberRefs: FiberRefs, __etsTrace?: string): UIO<void> {
-  return suspendSucceed(() => fiberRefs.setAll)
+  return Effect.suspendSucceed(() => fiberRefs.setAll)
 }

@@ -4,9 +4,7 @@ import { fold as optionFold, none as optionNone } from "../../../data/Option/cor
 import { isDieType as causeIsDieType } from "../../Cause/definition"
 import { find as causeFind } from "../../Cause/operations/find"
 import { map_ as causeMap_ } from "../../Cause/operations/map"
-import type { Effect } from "../definition"
-import { catchAllCause_ } from "./catchAllCause"
-import { failCause } from "./failCause"
+import { Effect } from "../definition"
 
 /**
  * Takes some fiber failures and converts them into errors, using the
@@ -15,20 +13,18 @@ import { failCause } from "./failCause"
  * @ets fluent ets/Effect unrefineWith
  */
 export function unrefineWith_<R, E, E1, E2, A>(
-  fa: Effect<R, E, A>,
+  self: Effect<R, E, A>,
   pf: (u: unknown) => Option<E1>,
   f: (e: E) => E2,
   __etsTrace?: string
 ) {
-  return catchAllCause_(
-    fa,
+  return self.catchAllCause(
     (cause): Effect<R, E1 | E2, A> =>
       pipe(
         cause,
         causeFind((c) => (causeIsDieType(c) ? pf(c.value) : optionNone)),
-        optionFold(() => failCause(causeMap_(cause, f)), fail)
-      ),
-    __etsTrace
+        optionFold(() => Effect.failCauseNow(causeMap_(cause, f)), Effect.failNow)
+      )
   )
 }
 
@@ -43,5 +39,5 @@ export function unrefineWith<E1, E, E2>(
   f: (e: E) => E2,
   __etsTrace?: string
 ) {
-  return <R, A>(fa: Effect<R, E, A>) => unrefineWith_(fa, pf, f, __etsTrace)
+  return <R, A>(self: Effect<R, E, A>) => unrefineWith_(self, pf, f)
 }

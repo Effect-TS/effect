@@ -1,8 +1,4 @@
-import type { Effect } from "../../../../io/Effect/definition"
-import { chain_ } from "../../../../io/Effect/operations/chain"
-import { map_ } from "../../../../io/Effect/operations/map"
-import { succeedNow } from "../../../../io/Effect/operations/succeedNow"
-import { suspendSucceed } from "../../../../io/Effect/operations/suspendSucceed"
+import { Effect } from "../../../../io/Effect/definition"
 import { concreteId } from "../_definition"
 import * as Chunk from "../core"
 
@@ -11,12 +7,13 @@ import * as Chunk from "../core"
  */
 export function dropWhileEffect_<R, E, A>(
   self: Chunk.Chunk<A>,
-  f: (a: A) => Effect<R, E, boolean>
+  f: (a: A) => Effect<R, E, boolean>,
+  __etsTrace?: string
 ): Effect<R, E, Chunk.Chunk<A>> {
-  return suspendSucceed(() => {
+  return Effect.suspendSucceed(() => {
     const iterator = concreteId(self).arrayLikeIterator()
     let next
-    let dropping: Effect<R, E, boolean> = succeedNow(true)
+    let dropping: Effect<R, E, boolean> = Effect.succeedNow(true)
     let builder = Chunk.empty<A>()
 
     while ((next = iterator.next()) && !next.done) {
@@ -25,8 +22,8 @@ export function dropWhileEffect_<R, E, A>(
       let i = 0
       while (i < len) {
         const a = array[i]!
-        dropping = chain_(dropping, (d) =>
-          map_(d ? f(a) : succeedNow(false), (b) => {
+        dropping = dropping.flatMap((d) =>
+          (d ? f(a) : Effect.succeedNow(false)).map((b) => {
             if (!b) {
               builder = Chunk.append_(builder, a)
             }
@@ -36,7 +33,7 @@ export function dropWhileEffect_<R, E, A>(
         i++
       }
     }
-    return map_(dropping, () => builder)
+    return dropping.map(() => builder)
   })
 }
 
@@ -46,7 +43,8 @@ export function dropWhileEffect_<R, E, A>(
  * @ets_data_first dropWhileEffect_
  */
 export function dropWhileEffect<R, E, A>(
-  f: (a: A) => Effect<R, E, boolean>
+  f: (a: A) => Effect<R, E, boolean>,
+  __etsTrace?: string
 ): (self: Chunk.Chunk<A>) => Effect<R, E, Chunk.Chunk<A>> {
   return (self) => dropWhileEffect_(self, f)
 }

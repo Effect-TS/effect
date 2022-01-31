@@ -20,8 +20,7 @@ export function foldCause_<R, E, A, A2, A3>(
   return foldCauseEffect_(
     self,
     (c) => succeedNow(failure(c)),
-    (a) => succeedNow(success(a)),
-    __etsTrace
+    (a) => succeedNow(success(a))
   )
 }
 
@@ -37,5 +36,5 @@ export function foldCause<E, A, A2, A3>(
   __etsTrace?: string
 ) {
   return <R>(self: Effect<R, E, A>): RIO<R, A2 | A3> =>
-    foldCause_(self, failure, success, __etsTrace)
+    foldCause_(self, failure, success)
 }

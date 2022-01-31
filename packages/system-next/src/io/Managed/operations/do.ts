@@ -1,37 +1,15 @@
-import type { Managed } from "../definition"
-import { chain_ } from "./chain"
-import { map_ } from "./map"
-import { succeedNow } from "./succeedNow"
+import { Managed } from "../definition"
 
 /**
- * Binds an effectful value in a `do` scope
+ * Binds an effectful value in a `do` scope.
  *
- * @ets_data_first bind_
- */
-export function bind<R, E, A, K, N extends string>(
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => Managed<R, E, A>,
-  __trace?: string
-) {
-  return <R2, E2>(
-    mk: Managed<R2, E2, K>
-  ): Managed<
-    R & R2,
-    E | E2,
-    K & {
-      [k in N]: A
-    }
-  > => bind_(mk, tag, f, __trace)
-}
-
-/**
- * Binds an effectful value in a `do` scope
+ * @ets fluent ets/Managed bind
  */
 export function bind_<R2, E2, R, E, A, K, N extends string>(
-  mk: Managed<R2, E2, K>,
+  self: Managed<R2, E2, K>,
   tag: Exclude<N, keyof K>,
   f: (_: K) => Managed<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<
   R & R2,
   E | E2,
@@ -39,56 +17,48 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
     [k in N]: A
   }
 > {
-  return chain_(mk, (k) =>
-    map_(
-      f(k),
+  return self.flatMap((k) =>
+    f(k).map(
       (
         a
       ): K & {
         [k in N]: A
-      } => ({ ...k, [tag]: a } as any),
-      __trace
+      } => ({ ...k, [tag]: a } as any)
     )
   )
 }
 
 /**
- * Binds a value in a `do` scope
+ * Binds an effectful value in a `do` scope.
  *
- * @ets_data_first let_
+ * @ets_data_first bind_
  */
-export function bindValue<A, K, N extends string>(
+export function bind<R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
-  f: (_: K) => A,
-  __trace?: string
+  f: (_: K) => Managed<R, E, A>,
+  __etsTrace?: string
 ) {
   return <R2, E2>(
-    mk: Managed<R2, E2, K>
+    self: Managed<R2, E2, K>
   ): Managed<
-    R2,
-    E2,
+    R & R2,
+    E | E2,
     K & {
       [k in N]: A
     }
-  > =>
-    map_(
-      mk,
-      (
-        k
-      ): K & {
-        [k in N]: A
-      } => ({ ...k, [tag]: f(k) } as any),
-      __trace
-    )
+  > => bind_(self, tag, f)
 }
 
 /**
- * Binds a value in a `do` scope
+ * Binds a value in a `do` scope.
+ *
+ * @ets fluent ets/Managed bindValue
  */
 export function bindValue_<R2, E2, A, K, N extends string>(
-  mk: Managed<R2, E2, K>,
+  self: Managed<R2, E2, K>,
   tag: Exclude<N, keyof K>,
-  f: (_: K) => A
+  f: (_: K) => A,
+  __etsTrace?: string
 ): Managed<
   R2,
   E2,
@@ -96,8 +66,7 @@ export function bindValue_<R2, E2, A, K, N extends string>(
     [k in N]: A
   }
 > {
-  return map_(
-    mk,
+  return self.map(
     (
       k
     ): K & {
@@ -107,8 +76,31 @@ export function bindValue_<R2, E2, A, K, N extends string>(
 }
 
 /**
- * Begin a `do` scope
+ * Binds a value in a `do` scope.
+ *
+ * @ets_data_first bindValue_
  */
-export function Do() {
-  return succeedNow({})
+export function bindValue<A, K, N extends string>(
+  tag: Exclude<N, keyof K>,
+  f: (_: K) => A,
+  __etsTrace?: string
+) {
+  return <R2, E2>(
+    self: Managed<R2, E2, K>
+  ): Managed<
+    R2,
+    E2,
+    K & {
+      [k in N]: A
+    }
+  > => bindValue_(self, tag, f)
+}
+
+/**
+ * Begin a `do` scope.
+ *
+ * @ets static ets/ManagedOps Do
+ */
+export function Do(__etsTrace?: string) {
+  return Managed.succeedNow({})
 }

@@ -1,4 +1,4 @@
-import * as O from "../../../../data/Option"
+import type { Option } from "../../../../data/Option"
 import * as ChunkDef from "../_definition"
 import * as Chunk from "../core"
 
@@ -7,7 +7,7 @@ import * as Chunk from "../core"
  */
 export function collect_<A, B>(
   self: Chunk.Chunk<A>,
-  f: (a: A) => O.Option<B>
+  f: (a: A) => Option<B>
 ): Chunk.Chunk<B> {
   ChunkDef.concrete(self)
 
@@ -17,7 +17,7 @@ export function collect_<A, B>(
       let dest = Chunk.empty<B>()
       for (let i = 0; i < array.length; i++) {
         const rhs = f(array[i]!)
-        if (O.isSome(rhs)) {
+        if (rhs.isSome()) {
           dest = Chunk.append_(dest, rhs.value)
         }
       }
@@ -35,7 +35,7 @@ export function collect_<A, B>(
  * @ets_data_first collect_
  */
 export function collect<A, B>(
-  f: (a: A) => O.Option<B>
+  f: (a: A) => Option<B>
 ): (self: Chunk.Chunk<A>) => Chunk.Chunk<B> {
   return (self) => collect_(self, f)
 }

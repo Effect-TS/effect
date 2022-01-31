@@ -1,9 +1,6 @@
 import * as O from "../../../data/Option"
 import type { Cause } from "../../Cause"
-import type { Effect } from "../definition"
-import { failCause } from "./failCause"
-import { foldCauseEffect_ } from "./foldCauseEffect"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
 
 /**
  * Recovers from some or all of the error cases with provided cause.
@@ -15,16 +12,14 @@ export function catchSomeCause_<R, E, A, R2, E2, A2>(
   f: (_: Cause<E>) => O.Option<Effect<R2, E2, A2>>,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, A | A2> {
-  return foldCauseEffect_(
-    self,
+  return self.foldCauseEffect(
     (c): Effect<R2, E | E2, A2> =>
       O.fold_(
         f(c),
-        () => failCause(c),
+        () => Effect.failCauseNow(c),
         (a) => a
       ),
-    succeedNow,
-    __etsTrace
+    Effect.succeedNow
   )
 }
 
@@ -38,5 +33,5 @@ export function catchSomeCause<R2, E, E2, A2>(
   __etsTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> =>
-    catchSomeCause_(self, f, __etsTrace)
+    catchSomeCause_(self, f)
 }

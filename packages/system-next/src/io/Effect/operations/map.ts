@@ -1,6 +1,4 @@
-import type { Effect } from "../definition"
-import { chain_ } from "./chain"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
 
 /**
  * Returns an effect whose success is mapped by the specified `f` function.
@@ -12,7 +10,7 @@ export function map_<R, E, A, B>(
   f: (a: A) => B,
   __etsTrace?: string
 ): Effect<R, E, B> {
-  return chain_(self, (a) => succeedNow(f(a)), __etsTrace)
+  return self.flatMap((a) => Effect.succeedNow(f(a)))
 }
 
 /**
@@ -21,5 +19,5 @@ export function map_<R, E, A, B>(
  * @ets_data_first map_
  */
 export function map<A, B>(f: (a: A) => B, __etsTrace?: string) {
-  return <R, E>(self: Effect<R, E, A>): Effect<R, E, B> => map_(self, f, __etsTrace)
+  return <R, E>(self: Effect<R, E, A>): Effect<R, E, B> => map_(self, f)
 }

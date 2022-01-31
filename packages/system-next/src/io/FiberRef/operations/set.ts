@@ -8,10 +8,10 @@ import { concreteUnified } from "../definition"
 export function set_<EA, EB, A, B>(
   self: XFiberRef<EA, EB, A, B>,
   value: A,
-  __trace?: string
+  __etsTrace?: string
 ): IO<EA, void> {
   concreteUnified(self)
-  return self.set(value, __trace)
+  return self.set(value)
 }
 
 /**
@@ -19,7 +19,6 @@ export function set_<EA, EB, A, B>(
  *
  * @ets_data_first set_
  */
-export function set<A>(value: A, __trace?: string) {
-  return <EA, EB, B>(self: XFiberRef<EA, EB, A, B>): IO<EA, void> =>
-    set_(self, value, __trace)
+export function set<A>(value: A, __etsTrace?: string) {
+  return <EA, EB, B>(self: XFiberRef<EA, EB, A, B>): IO<EA, void> => set_(self, value)
 }

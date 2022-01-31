@@ -1,31 +1,17 @@
-import type * as O from "../../../data/Option"
-import type { Managed } from "../definition"
-import { chain_ } from "./chain"
-import { suspend } from "./suspend"
-import { whenCase } from "./whenCase"
-
-/**
- * Runs an effect when the supplied `PartialFunction` matches for the given
- * effectful value, otherwise does nothing.
- */
-export function whenCaseManaged_<R, E, A, B>(
-  managed: Managed<R, E, A>,
-  pf: (a: A) => O.Option<Managed<R, E, B>>,
-  __trace?: string
-): Managed<R, E, O.Option<B>> {
-  return suspend(() => chain_(managed, whenCase(pf)), __trace)
-}
+import type { LazyArg } from "../../../data/Function"
+import type { Option } from "../../../data/Option"
+import { Managed } from "../definition"
 
 /**
  * Runs an effect when the supplied `PartialFunction` matches for the given
  * effectful value, otherwise does nothing.
  *
- * @ets_data_first whenCaseManaged_
+ * @ets static ets/Managed whenCaseManaged
  */
 export function whenCaseManaged<R, E, A, B>(
-  pf: (a: A) => O.Option<Managed<R, E, B>>,
-  __trace?: string
-) {
-  return (managed: Managed<R, E, A>): Managed<R, E, O.Option<B>> =>
-    whenCaseManaged_(managed, pf, __trace)
+  managed: LazyArg<Managed<R, E, A>>,
+  pf: (a: A) => Option<Managed<R, E, B>>,
+  __etsTrace?: string
+): Managed<R, E, Option<B>> {
+  return Managed.suspend(managed().flatMap((a) => Managed.whenCase(a, pf)))
 }

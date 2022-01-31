@@ -1,8 +1,6 @@
 import * as O from "../../../data/Option"
 import { keepDefects } from "../../Cause"
-import type { Effect } from "../definition"
-import { IFold } from "../definition"
-import { failCause } from "./failCause"
+import { Effect, IFold } from "../definition"
 
 /**
  * Executed `that` in case `self` fails with a `Cause` that doesn't contain
@@ -18,7 +16,7 @@ export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
 ): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
   return new IFold(
     self,
-    (cause) => O.fold_(keepDefects(cause), that, failCause),
+    (cause) => O.fold_(keepDefects(cause), that, Effect.failCauseNow),
     success,
     __etsTrace
   )
@@ -36,5 +34,5 @@ export function tryOrElse<R2, E2, A2, B, A, R3, E3, A3>(
   __etsTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R2 & R3, E2 | E3, A2 | A3> =>
-    tryOrElse_(self, that, success, __etsTrace)
+    tryOrElse_(self, that, success)
 }

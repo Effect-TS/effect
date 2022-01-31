@@ -1,20 +1,20 @@
-import * as O from "../../../data/Option/core"
+import { Option } from "../../../data/Option/core"
 import * as Trace from "../../../io/Trace/operations/none"
 import type { Cause } from "../definition"
-import { isDieType, isFailType, isInterruptType } from "../definition"
-import { find_ } from "./find"
 
 /**
  * Determines if the `Cause` is traced.
+ *
+ * @ets fluent ets/Cause isTraced
  */
 export function isTraced<E>(self: Cause<E>): boolean {
-  return O.isSome(
-    find_(self, (cause) =>
-      (isDieType(cause) && cause.trace !== Trace.none) ||
-      (isFailType(cause) && cause.trace !== Trace.none) ||
-      (isInterruptType(cause) && cause.trace !== Trace.none)
-        ? O.some(undefined)
-        : O.none
+  return self
+    .find((cause) =>
+      (cause.isDieType() && cause.trace !== Trace.none) ||
+      (cause.isFailType() && cause.trace !== Trace.none) ||
+      (cause.isInterruptType() && cause.trace !== Trace.none)
+        ? Option.some(undefined)
+        : Option.none
     )
-  )
+    .isSome()
 }

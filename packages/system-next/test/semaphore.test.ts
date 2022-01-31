@@ -1,4 +1,4 @@
-import * as Tp from "../src/collection/immutable/Tuple"
+import { Tuple } from "../src/collection/immutable/Tuple"
 import { pipe } from "../src/data/Function"
 import * as T from "../src/io/Effect"
 import * as Ex from "../src/io/Exit"
@@ -80,7 +80,7 @@ describe("TSemaphore", () => {
         sem: TSemaphore.TSemaphore,
         acquire: (n: number) => STM.STM<unknown, never, void>,
         release: (n: number) => STM.STM<unknown, never, void>
-      ): STM.STM<unknown, never, Tp.Tuple<[number, number]>> {
+      ): STM.STM<unknown, never, Tuple<[number, number]>> {
         return STM.gen(function* (_) {
           yield* _(acquire(50))
 
@@ -90,7 +90,7 @@ describe("TSemaphore", () => {
 
           const freeCapacity = yield* _(TSemaphore.available(sem))
 
-          return Tp.tuple(usedCapacity, freeCapacity)
+          return Tuple(usedCapacity, freeCapacity)
         })
       }
 

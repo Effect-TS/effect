@@ -1,6 +1,5 @@
 import { constFalse, constTrue } from "../../../data/Function"
 import type { Effect, RIO } from "../definition"
-import { fold_ } from "./fold"
 
 /**
  * Returns whether this effect is a failure.
@@ -11,5 +10,5 @@ export function isFailure<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
 ): RIO<R, boolean> {
-  return fold_(self, constTrue, constFalse, __etsTrace)
+  return self.fold(constTrue, constFalse)
 }

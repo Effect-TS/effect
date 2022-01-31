@@ -1,21 +1,22 @@
-import * as Tp from "../../../collection/immutable/Tuple"
-import type { Effect } from "../../Effect/definition"
-import {
-  uninterruptible,
-  uninterruptibleMask
-} from "../../Effect/operations/interruption"
-import { map_ } from "../../Effect/operations/map"
-import { managedApply } from "../definition"
+import { Tuple } from "../../../collection/immutable/Tuple"
+import type { LazyArg } from "../../../data/Function"
+import { Effect } from "../../Effect"
+import { Managed } from "../definition"
 import * as Finalizer from "../ReleaseMap/finalizer"
 
 /**
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with no release action.
  * The effect will be performed interruptibly.
+ *
+ * @ets static ets/ManagedOps fromEffect
  */
-export function fromEffect<R, E, A>(effect: Effect<R, E, A>, __trace?: string) {
-  return managedApply<R, E, A>(
-    uninterruptibleMask((status) =>
-      map_(status.restore(effect, __trace), (a) => Tp.tuple(Finalizer.noopFinalizer, a))
+export function fromEffect<R, E, A>(
+  effect: LazyArg<Effect<R, E, A>>,
+  __etsTrace?: string
+) {
+  return Managed<R, E, A>(
+    Effect.uninterruptibleMask(({ restore }) =>
+      restore(effect).map((a) => Tuple(Finalizer.noopFinalizer, a))
     )
   )
 }
@@ -24,10 +25,12 @@ export function fromEffect<R, E, A>(effect: Effect<R, E, A>, __trace?: string) {
  * Lifts a `Effect<R, E, A>` into `Managed<R, E, A>` with no release action. The
  * effect will be performed uninterruptibly. You usually want the `fromEffect`
  * variant.
+ *
+ * @ets static ets/ManagedOps fromEffectUninterruptible
  */
 export function fromEffectUninterruptible<R, E, A>(
-  effect: Effect<R, E, A>,
-  __trace?: string
+  effect: LazyArg<Effect<R, E, A>>,
+  __etsTrace?: string
 ) {
-  return fromEffect(uninterruptible(effect), __trace)
+  return fromEffect(Effect.suspendSucceed(effect).uninterruptible())
 }

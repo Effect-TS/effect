@@ -1,19 +1,9 @@
 import * as E from "../../../data/Either"
-import { pipe } from "../../../data/Function"
 import * as Cause from "../../Cause/definition"
 import type { Exit } from "../../Exit"
 import * as Ex from "../../Exit/operations/foldEffect"
 import { join } from "../../Fiber/operations/join"
-import type { Effect } from "../definition"
-import { as_ } from "./as"
-import { chain } from "./chain"
-import { descriptorWith } from "./descriptorWith"
-import { done } from "./done"
-import { exit } from "./exit"
-import { uninterruptibleMask } from "./interruption"
-import { map_ } from "./map"
-import { mapErrorCause_ } from "./mapErrorCause"
-import { raceWith_ } from "./raceWith"
+import { Effect } from "../definition"
 
 /**
  * Returns an effect that races this effect with the specified effect,
@@ -32,27 +22,25 @@ export function race_<R, E, A, R2, E2, A2>(
   that: Effect<R2, E2, A2>,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, A | A2> {
-  return descriptorWith((descriptor) => {
+  return Effect.descriptorWith((descriptor) => {
     const parentFiberId = descriptor.id
     const maybeDisconnect = <R, E, A>(io: Effect<R, E, A>) =>
-      uninterruptibleMask((interruptible) => interruptible.force(io))
+      Effect.uninterruptibleMask(({ force }) => force(io))
 
-    return raceWith_(
-      maybeDisconnect(self),
+    return maybeDisconnect(self).raceWith(
       maybeDisconnect(that),
       (exit, right) =>
         Ex.foldEffect_(
           exit,
-          (cause) => mapErrorCause_(join(right), (_) => Cause.both(cause, _)),
-          (a) => as_(right.interruptAs(parentFiberId), a)
+          (cause) => join(right).mapErrorCause((_) => Cause.both(cause, _)),
+          (a) => right.interruptAs(parentFiberId).as(a)
         ),
       (exit, left) =>
         Ex.foldEffect_(
           exit,
-          (cause) => mapErrorCause_(join(left), (_) => Cause.both(_, cause)),
-          (a) => as_(left.interruptAs(parentFiberId), a)
-        ),
-      __etsTrace
+          (cause) => join(left).mapErrorCause((_) => Cause.both(_, cause)),
+          (a) => left.interruptAs(parentFiberId).as(a)
+        )
     )
   })
 }
@@ -88,7 +76,7 @@ export function raceEither_<R, E, A, R2, E2, A2>(
   that: Effect<R2, E2, A2>,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, E.Either<A, A2>> {
-  return race_(map_(self, E.left), map_(that, E.right), __etsTrace)
+  return race_(self.map(E.left), that.map(E.right))
 }
 
 /**
@@ -125,9 +113,8 @@ export function raceFirst_<R, R2, E, E2, A, A2>(
   that: Effect<R2, E2, A2>,
   __etsTrace?: string
 ): Effect<R & R2, E2 | E, A2 | A> {
-  return pipe(
-    race_(exit(self), exit(that), __etsTrace),
-    chain((a) => done(a as Exit<E | E2, A | A2>))
+  return race_(self.exit(), that.exit()).flatMap((a) =>
+    Effect.done(a as Exit<E | E2, A | A2>)
   )
 }
 

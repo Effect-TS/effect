@@ -9,5 +9,5 @@ import type { RIO } from "../definition"
  * @ets static ets/EffectOps sleep
  */
 export function sleep(milliseconds: number, __etsTrace?: string): RIO<HasClock, void> {
-  return clockSleep(milliseconds, __etsTrace)
+  return clockSleep(milliseconds)
 }

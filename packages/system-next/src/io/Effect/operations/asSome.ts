@@ -1,7 +1,6 @@
 import type { Option } from "../../../data/Option"
 import { some } from "../../../data/Option"
 import type { Effect } from "../definition"
-import { map_ } from "./map"
 
 /**
  * Maps the success value of this effect to an optional value.
@@ -12,5 +11,5 @@ export function asSome<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
 ): Effect<R, E, Option<A>> {
-  return map_(self, some, __etsTrace)
+  return self.map(some)
 }

@@ -1,10 +1,6 @@
 import * as E from "../../../data/Either"
 import { failureOrCause } from "../../Cause"
-import type { Effect } from "../definition"
-import { as_ } from "./as"
-import { failCause } from "./failCause"
-import { foldCauseEffect_ } from "./foldCauseEffect"
-import { zipRight_ } from "./zipRight"
+import { Effect } from "../definition"
 
 /**
  * Returns an effect that effectfully "peeks" at the result of this effect.
@@ -16,16 +12,14 @@ export function tapEither_<R, E, A, R2, E2, X>(
   f: (either: E.Either<E, A>) => Effect<R2, E2, X>,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, A> {
-  return foldCauseEffect_(
-    self,
+  return self.foldCauseEffect(
     (cause) =>
       E.fold_(
         failureOrCause(cause),
-        (e) => zipRight_(f(E.left(e)), failCause(cause)),
-        () => failCause(cause)
+        (e) => f(E.left(e)).zipRight(Effect.failCauseNow(cause)),
+        () => Effect.failCauseNow(cause)
       ),
-    (a) => as_(f(E.right(a)), a),
-    __etsTrace
+    (a) => f(E.right(a)).as(a)
   )
 }
 
@@ -38,6 +32,5 @@ export function tapEither<E, A, R2, E2, X>(
   f: (either: E.Either<E, A>) => Effect<R2, E2, X>,
   __etsTrace?: string
 ) {
-  return <R>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> =>
-    tapEither_(self, f, __etsTrace)
+  return <R>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> => tapEither_(self, f)
 }

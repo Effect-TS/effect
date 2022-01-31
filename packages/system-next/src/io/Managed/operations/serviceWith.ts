@@ -1,12 +1,13 @@
 import type { Has, Tag } from "../../../data/Has"
-import * as T from "../../Effect/operations/serviceWith"
-import type { Managed } from "../definition"
-import { fromEffect } from "./fromEffect"
+import { Effect } from "../../Effect"
+import { Managed } from "../definition"
 
 /**
  * Accesses the specified service in the environment of the effect.
+ *
+ * @ets static ets/ManagedOps serviceWith
  */
 export function serviceWith<T>(_: Tag<T>) {
-  return <A>(f: (service: T) => A, __trace?: string): Managed<Has<T>, never, A> =>
-    fromEffect(T.serviceWith(_)(f), __trace)
+  return <A>(f: (service: T) => A, __etsTrace?: string): Managed<Has<T>, never, A> =>
+    Managed.fromEffect(Effect.serviceWith(_)(f))
 }

@@ -1,9 +1,5 @@
-import type { Effect } from "../../../../io/Effect/definition"
-import { chain_ } from "../../../../io/Effect/operations/chain"
-import { map_ } from "../../../../io/Effect/operations/map"
-import { succeedNow } from "../../../../io/Effect/operations/succeedNow"
-import { suspendSucceed } from "../../../../io/Effect/operations/suspendSucceed"
-import * as Tp from "../../Tuple"
+import { Effect } from "../../../../io/Effect/definition"
+import { Tuple } from "../../Tuple"
 import { concreteId } from "../_definition"
 import * as Chunk from "../core"
 
@@ -14,11 +10,11 @@ import * as Chunk from "../core"
 export function mapAccumEffect_<A, B, R, E, S>(
   self: Chunk.Chunk<A>,
   s: S,
-  f: (s: S, a: A) => Effect<R, E, Tp.Tuple<[S, B]>>
-): Effect<R, E, Tp.Tuple<[S, Chunk.Chunk<B>]>> {
-  return suspendSucceed(() => {
+  f: (s: S, a: A) => Effect<R, E, Tuple<[S, B]>>
+): Effect<R, E, Tuple<[S, Chunk.Chunk<B>]>> {
+  return Effect.suspendSucceed(() => {
     const iterator = concreteId(self).arrayLikeIterator()
-    let dest: Effect<R, E, S> = succeedNow(s)
+    let dest: Effect<R, E, S> = Effect.succeedNow(s)
     let builder = Chunk.empty<B>()
     let next
     while ((next = iterator.next()) && !next.done) {
@@ -27,8 +23,8 @@ export function mapAccumEffect_<A, B, R, E, S>(
       let i = 0
       while (i < length) {
         const a = array[i]!
-        dest = chain_(dest, (state) =>
-          map_(f(state, a), ({ tuple: [s, b] }) => {
+        dest = dest.flatMap((state) =>
+          f(state, a).map(({ tuple: [s, b] }) => {
             builder = Chunk.append_(builder, b)
             return s
           })
@@ -36,7 +32,7 @@ export function mapAccumEffect_<A, B, R, E, S>(
         i++
       }
     }
-    return map_(dest, (s) => Tp.tuple(s, builder))
+    return dest.map((s) => Tuple(s, builder))
   })
 }
 
@@ -48,7 +44,7 @@ export function mapAccumEffect_<A, B, R, E, S>(
  */
 export function mapAccumEffect<A, B, R, E, S>(
   s: S,
-  f: (s: S, a: A) => Effect<R, E, Tp.Tuple<[S, B]>>
-): (self: Chunk.Chunk<A>) => Effect<R, E, Tp.Tuple<[S, Chunk.Chunk<B>]>> {
+  f: (s: S, a: A) => Effect<R, E, Tuple<[S, B]>>
+): (self: Chunk.Chunk<A>) => Effect<R, E, Tuple<[S, Chunk.Chunk<B>]>> {
   return (self) => mapAccumEffect_(self, s, f)
 }

@@ -1,21 +1,18 @@
-import * as O from "../../../data/Option"
-import type { Managed } from "../definition"
-import { chain_ } from "./chain"
-import { succeedNow } from "./succeedNow"
+import type { LazyArg } from "../../../data/Function"
+import type { Option } from "../../../data/Option"
+import { Managed } from "../definition"
 
 /**
  * Extracts the optional value, or executes the effect 'orElse'.
+ *
+ * @ets fluent ets/Managed someOrElseManaged
  */
 export function someOrElseManaged_<R, E, A, R1, E1, B>(
-  self: Managed<R, E, O.Option<A>>,
-  orElse: Managed<R1, E1, B>,
-  __trace?: string
+  self: Managed<R, E, Option<A>>,
+  orElse: LazyArg<Managed<R1, E1, B>>,
+  __etsTrace?: string
 ) {
-  return chain_(
-    self,
-    O.fold((): Managed<R1, E1, A | B> => orElse, succeedNow),
-    __trace
-  )
+  return self.flatMap((_) => _.fold(orElse, Managed.succeedNow))
 }
 
 /**
@@ -24,9 +21,8 @@ export function someOrElseManaged_<R, E, A, R1, E1, B>(
  * @ets_data_first someOrElseManaged_
  */
 export function someOrElseManaged<R1, E1, B>(
-  orElse: Managed<R1, E1, B>,
-  __trace?: string
+  orElse: LazyArg<Managed<R1, E1, B>>,
+  __etsTrace?: string
 ) {
-  return <R, E, A>(self: Managed<R, E, O.Option<A>>) =>
-    someOrElseManaged_(self, orElse, __trace)
+  return <R, E, A>(self: Managed<R, E, Option<A>>) => someOrElseManaged_(self, orElse)
 }

@@ -1,14 +1,14 @@
-import type { Managed } from "../definition"
-import { managedApply } from "../definition"
-import * as T from "./_internal/effect"
+import { Managed } from "../definition"
 
 /**
  * Returns a `Managed` that ignores errors raised by the acquire effect and
  * runs it repeatedly until it eventually succeeds.
+ *
+ * @ets fluent ets/Managed eventually
  */
 export function eventually<R, E, A>(
   self: Managed<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R, never, A> {
-  return managedApply(T.eventually(self.effect, __trace))
+  return Managed(self.effect.eventually())
 }

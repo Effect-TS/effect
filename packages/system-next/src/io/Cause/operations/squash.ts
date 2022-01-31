@@ -1,10 +1,11 @@
 import type { Cause } from "../definition"
-import { squashWith_ } from "./squashWith"
 
 /**
  * Squashes a `Cause` down to a single `Error`, chosen to be the "most
  * important" `Error`.
+ *
+ * @ets fluent ets/Cause squash
  */
-export function squash_<E>(cause: Cause<E>): Error {
-  return squashWith_(cause, (e) => e instanceof Error) as Error
+export function squash<E>(self: Cause<E>): Error {
+  return self.squashWith((e) => e instanceof Error) as Error
 }

@@ -32,6 +32,5 @@ export function raceWith<E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   rightWins: (exit: Exit<E1, A1>, fiber: Fiber<E, A>) => Effect<R3, E3, A3>,
   __etsTrace?: string
 ) {
-  return <R>(left: Effect<R, E, A>) =>
-    raceWith_(left, right, leftWins, rightWins, __etsTrace)
+  return <R>(left: Effect<R, E, A>) => raceWith_(left, right, leftWins, rightWins)
 }

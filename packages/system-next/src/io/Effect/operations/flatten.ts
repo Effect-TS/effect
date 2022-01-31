@@ -1,6 +1,5 @@
 import { identity } from "../../../data/Function"
 import type { Effect } from "../definition"
-import { chain_ } from "./chain"
 
 /**
  * Returns an effect that performs the outer effect first, followed by the
@@ -14,5 +13,5 @@ export function flatten<R, E, R1, E1, A>(
   self: Effect<R, E, Effect<R1, E1, A>>,
   __etsTrace?: string
 ): Effect<R & R1, E | E1, A> {
-  return chain_(self, identity)
+  return self.flatMap(identity)
 }

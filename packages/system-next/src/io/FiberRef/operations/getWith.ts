@@ -1,5 +1,4 @@
 import type { Effect } from "../../Effect"
-import { chain_ } from "../../Effect/operations/chain"
 import type { XFiberRef } from "../definition"
 import { concreteUnified } from "../definition"
 
@@ -10,10 +9,10 @@ import { concreteUnified } from "../definition"
 export function getWith_<EA, EB, A, B, R, EC, C>(
   self: XFiberRef<EA, EB, A, B>,
   f: (b: B) => Effect<R, EC, C>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, EB | EC, C> {
   concreteUnified(self)
-  return chain_(self.get, f, __trace)
+  return self.get.flatMap(f)
 }
 
 /**
@@ -22,7 +21,10 @@ export function getWith_<EA, EB, A, B, R, EC, C>(
  *
  * @ets_data_first getWith_
  */
-export function getWith<B, R, EC, C>(f: (b: B) => Effect<R, EC, C>, __trace?: string) {
+export function getWith<B, R, EC, C>(
+  f: (b: B) => Effect<R, EC, C>,
+  __etsTrace?: string
+) {
   return <EA, EB, A>(self: XFiberRef<EA, EB, A, B>): Effect<R, EB | EC, C> =>
-    getWith_(self, f, __trace)
+    getWith_(self, f)
 }

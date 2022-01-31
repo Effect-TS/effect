@@ -1,5 +1,5 @@
+import { Effect } from "../../../Effect"
 import type { XSynchronized } from "../definition"
-import * as T from "./_internal/effect"
 import { mapEffect_ } from "./mapEffect"
 
 /**
@@ -10,7 +10,7 @@ export function map_<RA, RB, EA, EB, A, B, C>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
   f: (b: B) => C
 ): XSynchronized<RA, RB, EA, EB, A, C> {
-  return mapEffect_(self, (b) => T.succeedNow(f(b)))
+  return mapEffect_(self, (b) => Effect.succeedNow(f(b)))
 }
 
 /**

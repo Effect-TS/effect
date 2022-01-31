@@ -1,4 +1,4 @@
-import * as E from "../../../data/Either"
+import { Either } from "../../../data/Either"
 import type { XFiberRef } from "../definition"
 import { concreteUnified } from "../definition"
 
@@ -12,7 +12,7 @@ export function dimapError_<EA, EB, A, B, EC, ED>(
   g: (eb: EB) => ED
 ): XFiberRef<EC, ED, A, B> {
   concreteUnified(self)
-  return self.fold(f, g, E.right, E.right)
+  return self.fold(f, g, Either.right, Either.right)
 }
 
 /**

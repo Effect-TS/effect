@@ -1,16 +1,18 @@
-import * as O from "../../../data/Option"
+import type { LazyArg } from "../../../data/Function"
+import type { Option } from "../../../data/Option"
 import type { Managed } from "../definition"
-import { map_ } from "./map"
 
 /**
  * Extracts the optional value, or returns the given 'orElse'.
+ *
+ * @ets fluent ets/Managed someOrElse
  */
 export function someOrElse_<R, E, A, B>(
-  self: Managed<R, E, O.Option<A>>,
-  orElse: () => B,
-  __trace?: string
+  self: Managed<R, E, Option<A>>,
+  orElse: LazyArg<B>,
+  __etsTrace?: string
 ) {
-  return map_(self, O.getOrElse(orElse))
+  return self.map((_) => _.getOrElse(orElse))
 }
 
 /**
@@ -18,7 +20,7 @@ export function someOrElse_<R, E, A, B>(
  *
  * @ets_data_first someOrElse_
  */
-export function someOrElse<B>(orElse: () => B, __trace?: string) {
-  return <R, E, A>(self: Managed<R, E, O.Option<A>>): Managed<R, E, A | B> =>
-    someOrElse_(self, orElse, __trace)
+export function someOrElse<B>(orElse: LazyArg<B>, __etsTrace?: string) {
+  return <R, E, A>(self: Managed<R, E, Option<A>>): Managed<R, E, A | B> =>
+    someOrElse_(self, orElse)
 }

@@ -1,6 +1,5 @@
 import type { Has, Tag } from "../../../data/Has"
-import type { Effect } from "../definition"
-import { serviceWithEffect } from "./serviceWithEffect"
+import { Effect } from "../definition"
 import { succeedNow } from "./succeedNow"
 
 /**
@@ -12,5 +11,5 @@ import { succeedNow } from "./succeedNow"
  * @ets static ets/EffectOps service
  */
 export function service<T>(_: Tag<T>, __etsTrace?: string): Effect<Has<T>, never, T> {
-  return serviceWithEffect(_)(succeedNow, __etsTrace)
+  return Effect.serviceWithEffect(_)(succeedNow)
 }

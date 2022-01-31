@@ -1,5 +1,5 @@
+import { Effect } from "../../../Effect"
 import type { XSynchronized } from "../definition"
-import * as T from "./_internal/effect"
 import { contramapEffect_ } from "./contramapEffect"
 
 /**
@@ -10,7 +10,7 @@ export function contramap_<RA, RB, EA, EB, A, B, C>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
   f: (c: C) => A
 ): XSynchronized<RA, RB, EA, EB, C, B> {
-  return contramapEffect_(self, (c) => T.succeedNow(f(c)))
+  return contramapEffect_(self, (c) => Effect.succeedNow(f(c)))
 }
 
 export function contramap<C, A>(f: (c: C) => A) {

@@ -1,18 +1,18 @@
 import type { Cause } from "../../Cause"
-import type { Managed } from "../definition"
-import { managedApply } from "../definition"
-import * as T from "./_internal/effect"
+import { Managed } from "../definition"
 
 /**
  * Returns an effect whose full failure is mapped by the specified `f`
  * function.
+ *
+ * @ets fluent ets/Managed mapErrorCause
  */
 export function mapErrorCause_<R, E, A, E1>(
   self: Managed<R, E, A>,
   f: (cause: Cause<E>) => Cause<E1>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R, E1, A> {
-  return managedApply(T.mapErrorCause_(self.effect, f))
+  return Managed(self.effect.mapErrorCause(f))
 }
 
 /**
@@ -23,8 +23,7 @@ export function mapErrorCause_<R, E, A, E1>(
  */
 export function mapErrorCause<E, E1>(
   f: (cause: Cause<E>) => Cause<E1>,
-  __trace?: string
+  __etsTrace?: string
 ) {
-  return <R, A>(self: Managed<R, E, A>): Managed<R, E1, A> =>
-    mapErrorCause_(self, f, __trace)
+  return <R, A>(self: Managed<R, E, A>): Managed<R, E1, A> => mapErrorCause_(self, f)
 }

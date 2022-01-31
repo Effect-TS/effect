@@ -1,7 +1,7 @@
 /**
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
-import * as Tp from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
 import type { Either } from "../../../data/Either"
 import type { NoSuchElementException } from "../../../data/GlobalExceptions"
 import type { Has, Tag } from "../../../data/Has"
@@ -13,19 +13,8 @@ import { ManagedImpl } from "../../Managed/definition"
 import type { ReleaseMap } from "../../Managed/ReleaseMap"
 import { make as makeReleaseMap } from "../../Managed/ReleaseMap/make"
 import { releaseAll } from "../../Managed/ReleaseMap/releaseAll"
-import type { Effect } from "../definition"
-import { acquireReleaseExitWith_ } from "./acquireReleaseExitWith"
-import { chain_ } from "./chain"
+import { Effect } from "../definition"
 import { sequential } from "./ExecutionStrategy"
-import { fail } from "./fail"
-import { fromEither } from "./fromEither"
-import { getOrFail } from "./getOrFail"
-import { map_ } from "./map"
-import { provideSomeEnvironment_ } from "./provideSomeEnvironment"
-import { service } from "./service"
-import { succeed } from "./succeed"
-import { suspendSucceed } from "./suspendSucceed"
-import { unit } from "./unit"
 
 export class GenEffect<R, E, A> {
   readonly [_R]!: (_R: R) => void;
@@ -45,18 +34,21 @@ export class GenEffect<R, E, A> {
 function adapter(_: any, __?: any, ___?: any) {
   if (Utils.isEither(_)) {
     return new GenEffect(
-      fromEither(() => _),
+      Effect.fromEither(() => _),
       __
     )
   }
   if (Utils.isOption(_)) {
     if (__ && typeof __ === "function") {
-      return new GenEffect(_._tag === "None" ? fail(__()) : succeed(() => _.value), ___)
+      return new GenEffect(
+        _._tag === "None" ? Effect.fail(() => __()) : Effect.succeed(() => _.value),
+        ___
+      )
     }
-    return new GenEffect(getOrFail(_), __)
+    return new GenEffect(Effect.getOrFail(_), __)
   }
   if (Utils.isTag(_)) {
-    return new GenEffect(service(_), __)
+    return new GenEffect(Effect.service(_), __)
   }
   return new GenEffect(_, __)
 }
@@ -80,7 +72,7 @@ export function genM<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: AdapterWithManaged) => Generator<Eff, AEff, any>,
   __etsTrace?: string
 ): Effect<Utils._R<Eff>, Utils._E<Eff>, AEff> {
-  return suspendSucceed(() => {
+  return Effect.suspendSucceed(() => {
     const iterator = f(adapter as any)
     const state = iterator.next()
 
@@ -89,45 +81,35 @@ export function genM<Eff extends GenEffect<any, any, any>, AEff>(
       state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
     ): Effect<any, any, AEff> {
       if (state.done) {
-        return succeed(() => state.value)
+        return Effect.succeed(() => state.value)
       }
-      return chain_(
-        suspendSucceed(
-          () =>
-            state.value.trace
-              ? state.value["effect"] instanceof ManagedImpl
-                ? map_(
-                    provideSomeEnvironment_(state.value["effect"]["effect"], (r0) =>
-                      Tp.tuple(r0, rm)
-                    ),
-                    (_) => _.get(1)
-                  )
-                : (state.value["effect"] as Effect<any, any, any>)
-              : state.value["effect"] instanceof ManagedImpl
-              ? map_(
-                  provideSomeEnvironment_(state.value["effect"]["effect"], (r0) =>
-                    Tp.tuple(r0, rm)
-                  ),
-                  (_) => _.get(1)
-                )
-              : (state.value["effect"] as Effect<any, any, any>),
+      return Effect.suspendSucceed(
+        () =>
           state.value.trace
-        ),
-        (val) => {
-          const next = iterator.next(val)
-          return run(rm, next)
-        }
-      )
+            ? state.value["effect"] instanceof ManagedImpl
+              ? state.value["effect"]["effect"]
+                  .provideSomeEnvironment((r0) => Tuple(r0, rm))
+                  .map((_) => _.get(1))
+              : (state.value["effect"] as Effect<any, any, any>)
+            : state.value["effect"] instanceof ManagedImpl
+            ? state.value["effect"]["effect"]
+                .provideSomeEnvironment((r0) => Tuple(r0, rm))
+                .map((_) => _.get(1))
+            : (state.value["effect"] as Effect<any, any, any>),
+        state.value.trace
+      ).flatMap((val) => {
+        const next = iterator.next(val)
+        return run(rm, next)
+      })
     }
 
-    return chain_(makeReleaseMap, (rm) =>
-      acquireReleaseExitWith_(
-        unit,
+    return makeReleaseMap.flatMap((rm) =>
+      Effect.unit.acquireReleaseExitWith(
         () => run(rm, state),
         (_, e) => releaseAll(e, sequential)(rm)
       )
     )
-  }, __etsTrace)
+  })
 }
 
 /**
@@ -137,7 +119,7 @@ export function gen<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: Adapter) => Generator<Eff, AEff, any>,
   __etsTrace?: string
 ): Effect<Utils._R<Eff>, Utils._E<Eff>, AEff> {
-  return suspendSucceed(() => {
+  return Effect.suspendSucceed(() => {
     const iterator = f(adapter as any)
     const state = iterator.next()
 
@@ -145,17 +127,14 @@ export function gen<Eff extends GenEffect<any, any, any>, AEff>(
       state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
     ): Effect<any, any, AEff> {
       if (state.done) {
-        return succeed(() => state.value)
+        return Effect.succeed(() => state.value)
       }
-      return chain_(
-        suspendSucceed(
-          () => state.value["effect"] as Effect<any, any, any>,
-          state.value.trace
-        ),
-        (val: any) => run(iterator.next(val))
-      )
+      return Effect.suspendSucceed(
+        () => state.value["effect"] as Effect<any, any, any>,
+        state.value.trace
+      ).flatMap((val: any) => run(iterator.next(val)))
     }
 
     return run(state)
-  }, __etsTrace)
+  })
 }

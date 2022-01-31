@@ -1,14 +1,15 @@
-import type { Managed } from "../definition"
-import type * as T from "./_internal/effect"
-import { flatten } from "./flatten"
-import { fromEffect } from "./fromEffect"
+import type { LazyArg } from "../../../data/Function"
+import type { Effect } from "../../Effect"
+import { Managed } from "../definition"
 
 /**
- * Unwraps a `Managed` that is inside a `ZIO`.
+ * Unwraps a `Managed` that is inside an `Effect`.
+ *
+ * @ets static ets/ManagedOps unwrap
  */
 export function unwrap<R, E, A>(
-  effect: T.Effect<R, E, Managed<R, E, A>>,
-  __trace?: string
+  effect: LazyArg<Effect<R, E, Managed<R, E, A>>>,
+  __etsTrace?: string
 ): Managed<R, E, A> {
-  return flatten(fromEffect(effect))
+  return Managed.fromEffect(effect).flatten()
 }

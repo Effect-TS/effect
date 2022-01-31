@@ -1,10 +1,10 @@
 import type { Refinement } from "../../../data/Function"
 import { constant, identity, tuple } from "../../../data/Function"
 import { NoSuchElementException } from "../../../data/GlobalExceptions"
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import * as St from "../../../prelude/Structural"
 import * as I from "../Iterable"
-import * as Tp from "../Tuple"
+import { Tuple } from "../Tuple"
 import { fromBitmap, hashFragment, toBitmap } from "./_internal/Bitwise"
 import { SIZE } from "./_internal/Config"
 import type { Node, UpdateFn } from "./_internal/Nodes"
@@ -25,8 +25,8 @@ export class HashMap<K, V> implements Iterable<readonly [K, V]> {
     return new HashMapIterator(this, identity)
   }
 
-  readonly tupleIterator: Iterable<Tp.Tuple<[K, V]>> = {
-    [Symbol.iterator]: () => new HashMapIterator(this, ([k, v]) => Tp.tuple(k, v))
+  readonly tupleIterator: Iterable<Tuple<[K, V]>> = {
+    [Symbol.iterator]: () => new HashMapIterator(this, ([k, v]) => Tuple(k, v))
   }
 
   get [St.hashSym](): number {
@@ -50,7 +50,7 @@ export class HashMapIterator<K, V, T> implements IterableIterator<T> {
   constructor(readonly map: HashMap<K, V>, readonly f: TraversalFn<K, V, T>) {}
 
   next(): IteratorResult<T> {
-    if (O.isNone(this.v)) {
+    if (this.v.isNone()) {
       return { done: true, value: undefined }
     }
     const v0 = this.v.value
@@ -91,11 +91,7 @@ export function setTree_<K, V>(
 /**
  * Lookup the value for `key` in `map` using custom hash.
  */
-export function tryGetHash_<K, V>(
-  map: HashMap<K, V>,
-  key: K,
-  hash: number
-): O.Option<V> {
+export function tryGetHash_<K, V>(map: HashMap<K, V>, key: K, hash: number): Option<V> {
   let node = map.root
   let shift = 0
 
@@ -103,7 +99,7 @@ export function tryGetHash_<K, V>(
   while (true)
     switch (node._tag) {
       case "LeafNode": {
-        return St.equals(key, node.key) ? node.value : O.none
+        return St.equals(key, node.key) ? node.value : Option.none
       }
       case "CollisionNode": {
         if (hash === node.hash) {
@@ -113,7 +109,7 @@ export function tryGetHash_<K, V>(
             if ("key" in child && St.equals(key, child.key)) return child.value
           }
         }
-        return O.none
+        return Option.none
       }
       case "IndexedNode": {
         const frag = hashFragment(shift, hash)
@@ -123,7 +119,7 @@ export function tryGetHash_<K, V>(
           shift += SIZE
           break
         }
-        return O.none
+        return Option.none
       }
       case "ArrayNode": {
         node = node.children[hashFragment(shift, hash)]!
@@ -131,17 +127,17 @@ export function tryGetHash_<K, V>(
           shift += SIZE
           break
         }
-        return O.none
+        return Option.none
       }
       default:
-        return O.none
+        return Option.none
     }
 }
 
 /**
  * Lookup the value for `key` in `map` using custom hash.
  */
-export function getHash_<K, V>(map: HashMap<K, V>, key: K, hash: number): O.Option<V> {
+export function getHash_<K, V>(map: HashMap<K, V>, key: K, hash: number): Option<V> {
   return tryGetHash_(map, key, hash)
 }
 
@@ -150,7 +146,7 @@ export function getHash_<K, V>(map: HashMap<K, V>, key: K, hash: number): O.Opti
  */
 export function unsafeGet_<K, V>(map: HashMap<K, V>, key: K): V {
   const element = tryGetHash_(map, key, St.hash(key))
-  if (O.isNone(element)) {
+  if (element.isNone()) {
     throw new NoSuchElementException()
   }
   return element.value
@@ -168,7 +164,7 @@ export function unsafeGet<K>(key: K) {
 /**
  * Lookup the value for `key` in `map` using internal hash function.
  */
-export function get_<K, V>(map: HashMap<K, V>, key: K): O.Option<V> {
+export function get_<K, V>(map: HashMap<K, V>, key: K): Option<V> {
   return tryGetHash_(map, key, St.hash(key))
 }
 
@@ -185,14 +181,14 @@ export function get<K>(key: K) {
  * Does an entry exist for `key` in `map`? Uses custom `hash`.
  */
 export function hasHash_<K, V>(map: HashMap<K, V>, key: K, hash: number): boolean {
-  return O.isSome(tryGetHash_(map, key, hash))
+  return tryGetHash_(map, key, hash).isSome()
 }
 
 /**
  * Does an entry exist for `key` in `map`? Uses internal hash function.
  */
 export function has_<K, V>(map: HashMap<K, V>, key: K): boolean {
-  return O.isSome(tryGetHash_(map, key, St.hash(key)))
+  return tryGetHash_(map, key, St.hash(key)).isSome()
 }
 
 /**
@@ -263,7 +259,7 @@ export function modify<K, V>(key: K, f: UpdateFn<V>) {
  * Store `value` for `key` in `map` using internal hash function.
  */
 export function set_<K, V>(map: HashMap<K, V>, key: K, value: V) {
-  return modify_(map, key, constant(O.some(value)))
+  return modify_(map, key, constant(Option.some(value)))
 }
 
 /**
@@ -279,7 +275,7 @@ export function set<K, V>(key: K, value: V) {
  * Remove the entry for `key` in `map` using internal hash.
  */
 export function remove_<K, V>(map: HashMap<K, V>, key: K) {
-  return modify_(map, key, constant(O.none))
+  return modify_(map, key, constant(Option.none))
 }
 
 /**
@@ -335,7 +331,9 @@ export type Cont<K, V, A> =
   | undefined
 
 export function applyCont<K, V, A>(cont: Cont<K, V, A>) {
-  return cont ? visitLazyChildren(cont[0], cont[1], cont[2], cont[3], cont[4]) : O.none
+  return cont
+    ? visitLazyChildren(cont[0], cont[1], cont[2], cont[3], cont[4])
+    : Option.none
 }
 
 export function visitLazyChildren<K, V, A>(
@@ -344,7 +342,7 @@ export function visitLazyChildren<K, V, A>(
   i: number,
   f: TraversalFn<K, V, A>,
   cont: Cont<K, V, A>
-): O.Option<VisitResult<K, V, A>> {
+): Option<VisitResult<K, V, A>> {
   while (i < len) {
     const child = children[i++]
     if (child && !isEmptyNode(child)) {
@@ -368,11 +366,11 @@ export function visitLazy<K, V, A>(
   node: Node<K, V>,
   f: TraversalFn<K, V, A>,
   cont: Cont<K, V, A> = undefined
-): O.Option<VisitResult<K, V, A>> {
+): Option<VisitResult<K, V, A>> {
   switch (node._tag) {
     case "LeafNode": {
-      return O.isSome(node.value)
-        ? O.some({
+      return node.value.isSome()
+        ? Option.some({
             value: f(tuple(node.key, node.value.value)),
             cont
           })
@@ -408,7 +406,7 @@ export function values<K, V>(map: HashMap<K, V>): IterableIterator<V> {
  * Update a value if exists
  */
 export function update_<K, V>(map: HashMap<K, V>, key: K, f: (v: V) => V) {
-  return modify_(map, key, O.map(f))
+  return modify_(map, key, (_) => _.map(f))
 }
 
 /**
@@ -430,7 +428,7 @@ export function reduceWithIndex_<K, V, Z>(
 ): Z {
   const root = map.root
   if (root._tag === "LeafNode")
-    return O.isSome(root.value) ? f(z, root.key, root.value.value) : z
+    return root.value.isSome() ? f(z, root.key, root.value.value) : z
   if (root._tag === "Empty") {
     return z
   }
@@ -441,7 +439,7 @@ export function reduceWithIndex_<K, V, Z>(
       const child = children[i++]
       if (child && !isEmptyNode(child)) {
         if (child._tag === "LeafNode") {
-          if (O.isSome(child.value)) {
+          if (child.value.isSome()) {
             z = f(z, child.key, child.value.value)
           }
         } else toVisit.push(child.children)
@@ -590,7 +588,7 @@ export function chainWithIndex<K, V, A>(f: (k: K, v: V) => HashMap<K, A>) {
 /**
  * Removes None values
  */
-export function compact<K, A>(fa: HashMap<K, O.Option<A>>): HashMap<K, A> {
+export function compact<K, A>(fa: HashMap<K, Option<A>>): HashMap<K, A> {
   return filterMapWithIndex_(fa, (_, a) => a)
 }
 
@@ -599,14 +597,14 @@ export function compact<K, A>(fa: HashMap<K, O.Option<A>>): HashMap<K, A> {
  */
 export function filterMapWithIndex_<K, A, B>(
   fa: HashMap<K, A>,
-  f: (k: K, a: A) => O.Option<B>
+  f: (k: K, a: A) => Option<B>
 ): HashMap<K, B> {
   const m = make<K, B>()
 
   return mutate_(m, (m) => {
     for (const [k, a] of fa) {
       const o = f(k, a)
-      if (O.isSome(o)) {
+      if (o.isSome()) {
         set_(m, k, o.value)
       }
     }
@@ -618,7 +616,7 @@ export function filterMapWithIndex_<K, A, B>(
  *
  * @ets_data_first filterMapWithIndex_
  */
-export function filterMapWithIndex<K, A, B>(f: (k: K, a: A) => O.Option<B>) {
+export function filterMapWithIndex<K, A, B>(f: (k: K, a: A) => Option<B>) {
   return (fa: HashMap<K, A>) => filterMapWithIndex_(fa, f)
 }
 
@@ -627,7 +625,7 @@ export function filterMapWithIndex<K, A, B>(f: (k: K, a: A) => O.Option<B>) {
  */
 export function filterMap_<E, A, B>(
   fa: HashMap<E, A>,
-  f: (a: A) => O.Option<B>
+  f: (a: A) => Option<B>
 ): HashMap<E, B> {
   return filterMapWithIndex_(fa, (_, a) => f(a))
 }
@@ -637,7 +635,7 @@ export function filterMap_<E, A, B>(
  *
  * @ets_data_first filterMap_
  */
-export function filterMap<A, B>(f: (a: A) => O.Option<B>) {
+export function filterMap<A, B>(f: (a: A) => Option<B>) {
   return <E>(fa: HashMap<E, A>) => filterMap_(fa, f)
 }
 

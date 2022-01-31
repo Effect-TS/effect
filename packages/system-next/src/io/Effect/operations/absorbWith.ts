@@ -1,9 +1,5 @@
 import { squashWith_ } from "../../Cause/operations/squashWith"
-import type { Effect } from "../definition"
-import { failNow } from "./failNow"
-import { foldEffect_ } from "./foldEffect"
-import { sandbox } from "./sandbox"
-import { succeedNow } from "./succeedNow"
+import { Effect } from "../definition"
 
 /**
  * Attempts to convert defects into a failure, throwing away all information
@@ -16,12 +12,9 @@ export function absorbWith_<R, A, E>(
   f: (e: E) => unknown,
   __etsTrace?: string
 ) {
-  return foldEffect_(
-    sandbox(self),
-    (x) => failNow(squashWith_(x, f)),
-    succeedNow,
-    __etsTrace
-  )
+  return self
+    .sandbox()
+    .foldEffect((_) => Effect.failNow(squashWith_(_, f)), Effect.succeedNow)
 }
 
 /**
@@ -31,6 +24,5 @@ export function absorbWith_<R, A, E>(
  * @ets_data_first absorbWith_
  */
 export function absorbWith<E>(f: (e: E) => unknown, __etsTrace?: string) {
-  return <R, A>(self: Effect<R, E, A>): Effect<R, unknown, A> =>
-    absorbWith_(self, f, __etsTrace)
+  return <R, A>(self: Effect<R, E, A>): Effect<R, unknown, A> => absorbWith_(self, f)
 }

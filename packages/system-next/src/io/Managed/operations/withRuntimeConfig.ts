@@ -1,26 +1,35 @@
+import type { LazyArg } from "../../../data/Function"
 import type { RuntimeConfig } from "../../RuntimeConfig"
-import type { Managed } from "../definition"
-import * as T from "./_internal/effect"
-import { acquireRelease_ } from "./acquireRelease"
-import { chain_ } from "./chain"
-import { fromEffect } from "./fromEffect"
+import { Managed } from "../definition"
 
 /**
- * Returns a managed effect that describes setting the runtime configuration
- * to the specified value as the `acquire` action and setting it back to the
- * original runtime configuration as the `release` action.
+ * Runs this managed effect on the specified runtime configuration,
+ * guaranteeing that this managed effect as well as managed effects that are
+ * composed sequentially after it will be run on the specified runtime
+ * configuration.
+ *
+ * @ets fluent ets/Managed withRuntimeConfig
+ */
+export function withRuntimeConfig_<R, E, A>(
+  self: Managed<R, E, A>,
+  runtimeConfig: LazyArg<RuntimeConfig>,
+  __etsTrace?: string
+): Managed<R, E, A> {
+  return Managed.fromRuntimeConfig(runtimeConfig).zipRight(self)
+}
+
+/**
+ * Runs this managed effect on the specified runtime configuration,
+ * guaranteeing that this managed effect as well as managed effects that are
+ * composed sequentially after it will be run on the specified runtime
+ * configuration.
+ *
+ * @ets_data_first withRuntimeConfig_
  */
 export function withRuntimeConfig(
-  runtimeConfig: RuntimeConfig,
-  __trace?: string
-): Managed<unknown, never, void> {
-  return chain_(
-    fromEffect(T.runtimeConfig),
-    (currentRuntimeConfig) =>
-      acquireRelease_(
-        T.setRuntimeConfig(runtimeConfig),
-        T.setRuntimeConfig(currentRuntimeConfig)
-      ),
-    __trace
-  )
+  runtimeConfig: LazyArg<RuntimeConfig>,
+  __etsTrace?: string
+) {
+  return <R, E, A>(self: Managed<R, E, A>): Managed<R, E, A> =>
+    withRuntimeConfig_(self, runtimeConfig)
 }

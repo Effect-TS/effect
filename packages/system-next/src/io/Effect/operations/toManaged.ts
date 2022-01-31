@@ -1,5 +1,4 @@
-import type { Managed } from "../../Managed/definition"
-import { fromEffect } from "../../Managed/operations/fromEffect"
+import { Managed } from "../../Managed/definition"
 import type { Effect } from "../definition"
 
 /**
@@ -9,5 +8,5 @@ import type { Effect } from "../definition"
  * @ets fluent ets/Effect toManaged
  */
 export function toManaged<A, R1, E1>(self: Effect<R1, E1, A>): Managed<R1, E1, A> {
-  return fromEffect(self)
+  return Managed.fromEffect(self)
 }

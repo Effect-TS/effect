@@ -4,10 +4,11 @@ import type { Cause } from "./definition"
 // Fiber Failure
 // -----------------------------------------------------------------------------
 
+// TODO(Mike/Max): implementation
 // import { pretty } from "./Pretty"
 
 export const FiberFailureSymbol: unique symbol = Symbol.for(
-  "@matechs/core/symbols/errors/FiberFailure"
+  "@effect-ts/system/Cause/errors/FiberFailure"
 )
 
 export class FiberFailure<E> extends Error {
@@ -31,7 +32,7 @@ export const isFiberFailure = (u: unknown): u is FiberFailure<unknown> =>
 // -----------------------------------------------------------------------------
 
 export const UntracedSymbol: unique symbol = Symbol.for(
-  "@matechs/core/symbols/errors/Untraced"
+  "@effect-ts/system/Cause/errors/Untraced"
 )
 
 export class Untraced extends Error {
@@ -52,7 +53,7 @@ export const isUntraced = (u: unknown): u is Untraced =>
 // -----------------------------------------------------------------------------
 
 export const RuntimeSymbol: unique symbol = Symbol.for(
-  "@matechs/core/symbols/errors/Runtime"
+  "@effect-ts/system/Cause/errors/Runtime"
 )
 
 export class RuntimeError {
@@ -69,7 +70,7 @@ export const isRuntime = (u: unknown): u is RuntimeError =>
 // -----------------------------------------------------------------------------
 
 export const InterruptedSymbol: unique symbol = Symbol.for(
-  "@matechs/core/symbols/errors/Interrupted"
+  "@effect-ts/system/Cause/errors/Interrupted"
 )
 
 export class InterruptedException extends Error {
@@ -89,7 +90,7 @@ export const isInterruptedException = (u: unknown): u is InterruptedException =>
 // -----------------------------------------------------------------------------
 
 export const IllegalStateSymbol: unique symbol = Symbol.for(
-  "@matechs/core/symbols/errors/IllegalState"
+  "@effect-ts/system/Cause/errors/IllegalState"
 )
 
 export class IllegalStateException extends Error {
@@ -109,7 +110,7 @@ export const isIllegalStateException = (u: unknown): u is IllegalStateException 
 // -----------------------------------------------------------------------------
 
 export const IllegalArgumentSymbol: unique symbol = Symbol.for(
-  "@matechs/core/symbols/errors/IllegalArgument"
+  "@effect-ts/system/Cause/errors/IllegalArgument"
 )
 export class IllegalArgumentException extends Error {
   readonly [IllegalArgumentSymbol] = "IllegalArgumentException"

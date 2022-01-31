@@ -1,8 +1,6 @@
 import * as O from "../../../data/Option"
 import type { IO } from "../definition"
-import { fail } from "./fail"
-import { succeedNow } from "./succeedNow"
-import { suspendSucceed } from "./suspendSucceed"
+import { Effect } from "../definition"
 
 /**
  * Lifts an `Option` into an `Effect`. If the option is not defined, fail with
@@ -15,7 +13,9 @@ export function getOrFailWith_<E, A>(
   e: () => E,
   __etsTrace?: string
 ): IO<E, A> {
-  return suspendSucceed(() => O.fold_(v, () => fail(e), succeedNow), __etsTrace)
+  return Effect.suspendSucceed(() =>
+    O.fold_(v, () => Effect.fail(e), Effect.succeedNow)
+  )
 }
 
 /**
@@ -25,5 +25,5 @@ export function getOrFailWith_<E, A>(
  * @ets_data_first getOrFailWith_
  */
 export function getOrFailWith<E>(e: () => E, __etsTrace?: string) {
-  return <A>(v: O.Option<A>): IO<E, A> => getOrFailWith_(v, e, __etsTrace)
+  return <A>(v: O.Option<A>): IO<E, A> => getOrFailWith_(v, e)
 }

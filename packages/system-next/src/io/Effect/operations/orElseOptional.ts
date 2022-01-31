@@ -1,8 +1,6 @@
 import type { LazyArg } from "../../../data/Function"
 import * as O from "../../../data/Option"
-import type { Effect } from "../definition"
-import { catchAll_ } from "./catchAll"
-import { failNow } from "./failNow"
+import { Effect } from "../definition"
 
 /**
  * Returns an effect that will produce the value of this effect, unless it
@@ -16,11 +14,7 @@ export function orElseOptional_<R, E, A, R2, E2, A2>(
   that: LazyArg<Effect<R2, O.Option<E2>, A2>>,
   __etsTrace?: string
 ): Effect<R & R2, O.Option<E | E2>, A | A2> {
-  return catchAll_(
-    self,
-    O.fold(that, (e) => failNow(O.some<E | E2>(e))),
-    __etsTrace
-  )
+  return self.catchAll(O.fold(that, (e) => Effect.failNow(O.some<E | E2>(e))))
 }
 
 /**
@@ -34,6 +28,5 @@ export function orElseOptional<R2, E2, A2>(
   that: LazyArg<Effect<R2, O.Option<E2>, A2>>,
   __etsTrace?: string
 ) {
-  return <R, E, A>(self: Effect<R, O.Option<E>, A>) =>
-    orElseOptional_(self, that, __etsTrace)
+  return <R, E, A>(self: Effect<R, O.Option<E>, A>) => orElseOptional_(self, that)
 }

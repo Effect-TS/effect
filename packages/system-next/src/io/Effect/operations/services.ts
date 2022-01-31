@@ -1,6 +1,6 @@
 import type { Has, Tag } from "../../../data/Has"
 import type { UnionToIntersection } from "../../../data/Utils"
-import { environmentWith } from "./environmentWith"
+import { Effect } from "../definition"
 
 /**
  * Access a the specified services in the environment of the effect.
@@ -8,7 +8,7 @@ import { environmentWith } from "./environmentWith"
  * @ets static ets/EffectOps services
  */
 export function services<Ts extends readonly Tag<any>[]>(...s: Ts) {
-  return environmentWith(
+  return Effect.environmentWith(
     (
       r: UnionToIntersection<
         { [k in keyof Ts]: [Ts[k]] extends [Tag<infer T>] ? Has<T> : never }[number]

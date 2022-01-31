@@ -1,7 +1,5 @@
 import * as Iter from "../../../collection/immutable/Iterable"
-import type { Effect } from "../definition"
-import { suspendSucceed } from "./suspendSucceed"
-import { zipWith_ } from "./zipWith"
+import { Effect } from "../definition"
 
 /**
  * Reduces an `Iterable<Effect<R, E, A>>` to a single `Effect<R, E, A>`, working
@@ -15,10 +13,7 @@ export function reduceAll_<R, E, A>(
   f: (acc: A, a: A) => A,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return suspendSucceed(
-    () => Iter.reduce_(as, a, (acc, a) => zipWith_(acc, a, f)),
-    __etsTrace
-  )
+  return Effect.suspendSucceed(() => Iter.reduce_(as, a, (acc, a) => acc.zipWith(a, f)))
 }
 
 /**
@@ -32,5 +27,5 @@ export function reduceAll<R, E, A>(
   f: (acc: A, a: A) => A,
   __etsTrace?: string
 ) {
-  return (as: Iterable<Effect<R, E, A>>) => reduceAll_(as, a, f, __etsTrace)
+  return (as: Iterable<Effect<R, E, A>>) => reduceAll_(as, a, f)
 }

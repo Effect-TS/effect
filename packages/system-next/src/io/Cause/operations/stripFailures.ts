@@ -1,15 +1,14 @@
-import type { Cause } from "../definition"
-import { Both, Die, empty, Interrupt, Stackless, Then } from "../definition"
-import { fold_ } from "./fold"
+import { Both, Cause, Die, Interrupt, Stackless, Then } from "../definition"
 
 /**
  * Discards all typed failures kept on this `Cause`.
+ *
+ * @ets fluent ets/Cause stripFailures
  */
 export function stripFailures<E>(self: Cause<E>): Cause<never> {
-  return fold_(
-    self,
-    () => empty,
-    () => empty,
+  return self.fold(
+    Cause.empty,
+    () => Cause.empty,
     (defect, trace) => new Die(defect, trace),
     (fiberId, trace) => new Interrupt(fiberId, trace),
     (left, right) => new Then(left, right),

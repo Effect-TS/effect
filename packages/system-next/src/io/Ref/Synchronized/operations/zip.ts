@@ -1,6 +1,5 @@
-import type * as Tp from "../../../../collection/immutable/Tuple"
+import type { Tuple } from "../../../../collection/immutable/Tuple"
 import { XSynchronized } from "../definition"
-import * as T from "./_internal/effect"
 
 /**
  * Combines this `Synchronized` with the specified `Synchronized` to create a
@@ -16,13 +15,13 @@ export function zip_<RA1, RB1, EA1, EB1, A1, B1, RA2, RB2, EA2, EB2, A2, B2>(
   RB1 & RB2,
   EA1 | EA2,
   EB1 | EB2,
-  Tp.Tuple<[A1, A2]>,
-  Tp.Tuple<[B1, B2]>
+  Tuple<[A1, A2]>,
+  Tuple<[B1, B2]>
 > {
   return new XSynchronized(
     new Set([...self.semaphores, ...that.semaphores]),
-    T.zip_(self.get, that.get),
-    ({ tuple: [a, a2] }) => T.chain_(self.unsafeSet(a), () => that.unsafeSet(a2))
+    self.get.zip(that.get),
+    ({ tuple: [a, a2] }) => self.unsafeSet(a).flatMap(() => that.unsafeSet(a2))
   )
 }
 
@@ -44,7 +43,7 @@ export function zip<RA2, RB2, EA2, EB2, A2, B2>(
     RB1 & RB2,
     EA1 | EA2,
     EB1 | EB2,
-    Tp.Tuple<[A1, A2]>,
-    Tp.Tuple<[B1, B2]>
+    Tuple<[A1, A2]>,
+    Tuple<[B1, B2]>
   > => zip_(self, that)
 }

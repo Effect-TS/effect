@@ -1,8 +1,8 @@
 import { identity } from "../../../../data/Function"
-import * as O from "../../../../data/Option"
+import { Option } from "../../../../data/Option"
+import { Effect } from "../../../Effect"
 import type { XSynchronized } from "../definition"
 import { foldEffect_ } from "../definition"
-import * as T from "./_internal/effect"
 
 /**
  * Maps and filters the `get` value of the `XRef.Synchronized` with the
@@ -12,10 +12,10 @@ import * as T from "./_internal/effect"
  */
 export function collectEffect_<RA, RB, RC, EA, EB, EC, A, B, C>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
-  pf: (b: B) => O.Option<T.Effect<RC, EC, C>>
-): XSynchronized<RA, RB & RC, EA, O.Option<EB | EC>, A, C> {
-  return foldEffect_(self, identity, O.some, T.succeedNow, (b) =>
-    O.fold_(pf(b), () => T.failNow(O.emptyOf<EB | EC>()), T.asSomeError)
+  pf: (b: B) => Option<Effect<RC, EC, C>>
+): XSynchronized<RA, RB & RC, EA, Option<EB | EC>, A, C> {
+  return foldEffect_(self, identity, Option.some, Effect.succeedNow, (b) =>
+    pf(b).fold(Effect.failNow(Option.emptyOf<EB | EC>()), (_) => _.asSomeError())
   )
 }
 
@@ -27,10 +27,8 @@ export function collectEffect_<RA, RB, RC, EA, EB, EC, A, B, C>(
  *
  * @ets_data_first collectEffect_
  */
-export function collectEffect<RC, EC, B, C>(
-  pf: (b: B) => O.Option<T.Effect<RC, EC, C>>
-) {
+export function collectEffect<RC, EC, B, C>(pf: (b: B) => Option<Effect<RC, EC, C>>) {
   ;<RA, RB, EA, EB, A>(
     self: XSynchronized<RA, RB, EA, EB, A, B>
-  ): XSynchronized<RA, RB & RC, EA, O.Option<EB | EC>, A, C> => collectEffect_(self, pf)
+  ): XSynchronized<RA, RB & RC, EA, Option<EB | EC>, A, C> => collectEffect_(self, pf)
 }
