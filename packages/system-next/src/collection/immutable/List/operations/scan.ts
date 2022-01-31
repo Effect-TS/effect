@@ -6,7 +6,7 @@ import { unsafeLast } from "./unsafeLast"
  * Folds a function over a list from left to right while collecting
  * all the intermediate steps in a resulting list.
  *
- * @ets fluent ets/List scan
+ * @tsplus fluent ets/List scan
  */
 export function scan_<A, B>(
   self: List<A>,

@@ -5,7 +5,7 @@ import { Effect } from "../definition"
 /**
  * Extracts the optional value, or fails with the given error 'e'.
  *
- * @ets fluent ets/Effect someOrFail
+ * @tsplus fluent ets/Effect someOrFail
  */
 export function someOrFail_<R, E, A, E2>(
   self: Effect<R, E, O.Option<A>>,

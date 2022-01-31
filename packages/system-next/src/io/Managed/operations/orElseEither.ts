@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise executes the specified effect.
  *
- * @ets fluent ets/Managed orElseEither
+ * @tsplus fluent ets/Managed orElseEither
  */
 export function orElseEither_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,

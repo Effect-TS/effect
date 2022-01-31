@@ -8,7 +8,7 @@ import { fromReservationEffect } from "./fromReservationEffect"
  * Lifts a pure `Reservation<R, E, A>` into `Managed<R, E, A>`. The
  * acquisition step is performed interruptibly.
  *
- * @ets static ets/ManagedOps fromReservation
+ * @tsplus static ets/ManagedOps fromReservation
  */
 export function fromReservation<R, E, A>(
   reservation: LazyArg<Reservation<R, E, A>>,

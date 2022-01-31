@@ -3,7 +3,7 @@ import { Both, Cause, Die, Interrupt, Stackless, Then } from "../definition"
 /**
  * Discards all typed failures kept on this `Cause`.
  *
- * @ets fluent ets/Cause stripFailures
+ * @tsplus fluent ets/Cause stripFailures
  */
 export function stripFailures<E>(self: Cause<E>): Cause<never> {
   return self.fold(

@@ -31,7 +31,7 @@ export type IterableArrayLike<A> = ArrayLike<A> & Iterable<A>
  *
  * http://aleksandar-prokopec.com/resources/docs/lcpc-conc-trees.pdf
  *
- * @ets type ets/Chunk
+ * @tsplus type ets/Chunk
  */
 export interface Chunk<A> {
   readonly [ChunkTypeId]: ChunkTypeId
@@ -42,7 +42,7 @@ export interface Chunk<A> {
 }
 
 /**
- * @ets type ets/ChunkOps
+ * @tsplus type ets/ChunkOps
  */
 export interface ChunkOps {}
 export const Chunk: ChunkOps = {}

@@ -7,7 +7,7 @@ import { Managed } from "../definition"
  * Evaluate and run each effect in the structure and collect discarding failed
  * ones.
  *
- * @ets static ets/ManagedOps collectAllSuccessesPar
+ * @tsplus static ets/ManagedOps collectAllSuccessesPar
  */
 export function collectAllSuccessesPar<R, E, A>(
   as: LazyArg<Iterable<Managed<R, E, A>>>,

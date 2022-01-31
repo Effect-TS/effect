@@ -9,7 +9,7 @@ import { Managed } from "../definition"
  * the successful values and discarding the empty cases. For a parallel version,
  * see `collectPar`.
  *
- * @ets static ets/ManagedOps collect
+ * @tsplus static ets/ManagedOps collect
  */
 export function collect<A, R, E, B>(
   as: LazyArg<Iterable<A>>,

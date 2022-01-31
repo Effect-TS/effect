@@ -7,7 +7,7 @@ import { fromEffect } from "./fromEffect"
  * Returns an effect that is interrupted as if by the fiber calling this
  * method.
  *
- * @ets static ets/ManagedOps interrupt
+ * @tsplus static ets/ManagedOps interrupt
  */
 export const interrupt: Managed<unknown, never, never> = fromEffect(
   Effect.descriptor.flatMap((d) => Effect.failCauseNow(Cause.interrupt(d.id)))

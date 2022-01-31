@@ -8,7 +8,7 @@ import type { List } from "../definition"
  * returned unchanged.
  *
  * @complexity `O(log(n))`
- * @ets fluent ets/List adjust
+ * @tsplus fluent ets/List adjust
  */
 export function adjust_<A>(self: List<A>, index: number, f: (a: A) => A): List<A> {
   if (index < 0 || self.length <= index) {

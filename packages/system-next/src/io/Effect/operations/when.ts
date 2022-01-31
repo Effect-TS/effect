@@ -6,7 +6,7 @@ import { Effect } from "../definition"
 /**
  * The moral equivalent of `if (p) exp`
  *
- * @ets fluent ets/Effect when
+ * @tsplus fluent ets/Effect when
  */
 export function when_<R1, E1, A>(
   self: Effect<R1, E1, A>,

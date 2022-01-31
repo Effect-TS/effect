@@ -4,8 +4,8 @@ import type { Effect } from "../definition"
  * Sequences the specified effect after this effect, but ignores the value
  * produced by the effect.
  *
- * @ets fluent ets/Effect zipLeft
- * @ets operator ets/Effect <
+ * @tsplus fluent ets/Effect zipLeft
+ * @tsplus operator ets/Effect <
  */
 export function zipLeft_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,

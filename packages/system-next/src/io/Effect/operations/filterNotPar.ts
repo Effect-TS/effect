@@ -6,7 +6,7 @@ import { map_ } from "./map"
  * Filters the collection in parallel using the specified effectual predicate.
  * See `filterNot` for a sequential version of it.
  *
- * @ets static ets/EffectOps filterNotPar
+ * @tsplus static ets/EffectOps filterNotPar
  */
 export function filterNotPar_<A, R, E>(
   as: Iterable<A>,

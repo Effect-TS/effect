@@ -4,7 +4,7 @@ import { Managed } from "../definition"
 /**
  * Recovers from some or all of the error cases.
  *
- * @ets fluent ets/Managed catchSome
+ * @tsplus fluent ets/Managed catchSome
  */
 export function catchSome_<R, E, A, R1, E1, A1>(
   self: Managed<R, E, A>,

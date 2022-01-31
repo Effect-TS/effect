@@ -5,7 +5,7 @@ import type { Cause } from "../definition"
 /**
  * Extracts a list of non-recoverable errors from the `Cause`.
  *
- * @ets fluent ets/Cause defects
+ * @tsplus fluent ets/Cause defects
  */
 export function defects<E>(self: Cause<E>): List<unknown> {
   return self

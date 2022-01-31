@@ -9,7 +9,7 @@ import { ISuspend } from "../definition"
  * `flatten(succeed(effect))`. If you wonder if the effect throws
  * exceptions, do not use this method, use `suspend`.
  *
- * @ets static ets/EffectOps suspendSucceed
+ * @tsplus static ets/EffectOps suspendSucceed
  */
 export function suspendSucceed<R, E, A>(
   f: LazyArg<Effect<R, E, A>>,

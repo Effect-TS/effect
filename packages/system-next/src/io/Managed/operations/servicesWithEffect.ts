@@ -10,7 +10,7 @@ import { Managed } from "../definition"
 /**
  * Access a tuple of services with the required service entries monadically.
  *
- * @ets static ets/ManagedOps servicesWithEffectT
+ * @tsplus static ets/ManagedOps servicesWithEffectT
  */
 export function servicesWithEffectT<SS extends Tag<any>[]>(...s: SS) {
   return <R = unknown, E = never, B = unknown>(
@@ -35,7 +35,7 @@ export function servicesWithEffectT<SS extends Tag<any>[]>(...s: SS) {
 /**
  * Access a record of services with the required service entries monadically.
  *
- * @ets static ets/ManagedOps servicesWithEffectS
+ * @tsplus static ets/ManagedOps servicesWithEffectS
  */
 export function servicesWithEffectS<SS extends Record<string, Tag<any>>>(s: SS) {
   return <R = unknown, E = never, B = unknown>(

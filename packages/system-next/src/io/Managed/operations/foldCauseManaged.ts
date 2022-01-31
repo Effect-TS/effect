@@ -5,7 +5,7 @@ import { Managed } from "../definition"
  * A more powerful version of `foldManaged` that allows recovering from any
  * kind of failure except interruptions.
  *
- * @ets fluent ets/Managed foldCauseManaged
+ * @tsplus fluent ets/Managed foldCauseManaged
  */
 export function foldCauseManaged_<R, E, A, R1, E1, A1, R2, E2, A2>(
   self: Managed<R, E, A>,

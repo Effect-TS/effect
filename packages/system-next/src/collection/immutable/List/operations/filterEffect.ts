@@ -5,7 +5,7 @@ import { List } from "../definition"
  * Filters this list by the specified effectful predicate, retaining all elements for
  * which the predicate evaluates to true.
  *
- * @ets fluent ets/List filterEffect
+ * @tsplus fluent ets/List filterEffect
  */
 export function filterEffect_<R, E, A>(
   self: List<A>,

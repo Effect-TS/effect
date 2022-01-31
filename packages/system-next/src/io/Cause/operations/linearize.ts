@@ -5,7 +5,7 @@ import { Cause, Stackless } from "../definition"
  * Linearizes this cause to a set of parallel causes where each parallel cause
  * contains a linear sequence of failures.
  *
- * @ets fluent ets/Cause linearize
+ * @tsplus fluent ets/Cause linearize
  */
 export function linearize<E>(self: Cause<E>): HS.HashSet<Cause<E>> {
   return self.fold(

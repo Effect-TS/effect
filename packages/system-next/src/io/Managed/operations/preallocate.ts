@@ -15,7 +15,7 @@ import { ReleaseMap } from "../ReleaseMap"
  * not interrupted between running preallocate and actually acquiring the
  * resource as you might leak otherwise.
  *
- * @ets fluent ets/Managed preallocate
+ * @tsplus fluent ets/Managed preallocate
  */
 export function preallocate<R, E, A>(
   self: Managed<R, E, A>,

@@ -4,7 +4,7 @@ import { Effect } from "../definition"
 /**
  * Updates the service with the required service entry.
  *
- * @ets fluent ets/Effect updateServiceEffect
+ * @tsplus fluent ets/Effect updateServiceEffect
  */
 export function updateServiceEffect_<R1, E1, A, R, E, T>(
   self: Effect<R1 & Has<T>, E1, A>,

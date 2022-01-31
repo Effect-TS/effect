@@ -7,7 +7,7 @@ import { MutableList } from "../definition"
  * list for which the f returns `Some`.
  *
  * @complexity O(n)
- * @ets fluent ets/List collect
+ * @tsplus fluent ets/List collect
  */
 export function collect_<A, B>(self: List<A>, f: (a: A) => Option<B>): List<B> {
   return self.reduce(MutableList.emptyPushable(), (acc, a) => {

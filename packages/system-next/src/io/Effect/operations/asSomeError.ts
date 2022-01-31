@@ -5,7 +5,7 @@ import type { Effect } from "../definition"
 /**
  * Maps the error value of this effect to an optional value.
  *
- * @ets fluent ets/Effect asSomeError
+ * @tsplus fluent ets/Effect asSomeError
  */
 export function asSomeError<R, E, A>(
   self: Effect<R, E, A>,

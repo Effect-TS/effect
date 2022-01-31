@@ -5,7 +5,7 @@ import type { Managed } from "../definition"
 /**
  * Extracts the optional value, or fails with a `NoSuchElementException`
  *
- * @ets fluent ets/Managed someOrFailException
+ * @tsplus fluent ets/Managed someOrFailException
  */
 export function someOrFailException<R, E, A>(
   self: Managed<R, E, Option<A>>,

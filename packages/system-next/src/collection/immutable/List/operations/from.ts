@@ -5,7 +5,7 @@ import { MutableList } from "../definition"
  * Converts an array, an array-like, or an iterable into a list.
  *
  * @complexity O(n)
- * @ets static ets/ListOps from
+ * @tsplus static ets/ListOps from
  */
 export function from<A>(sequence: A[] | ArrayLike<A> | Iterable<A>): List<A>
 export function from<A>(sequence: any): List<A> {

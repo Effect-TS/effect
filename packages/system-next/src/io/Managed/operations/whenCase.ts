@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * Runs an effect when the supplied `PartialFunction` matches for the given
  * value, otherwise does nothing.
  *
- * @ets static ets/ManagedOps whenCase
+ * @tsplus static ets/ManagedOps whenCase
  */
 export function whenCase<R, E, A, B>(
   a: LazyArg<A>,

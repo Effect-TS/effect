@@ -19,7 +19,7 @@ import { ReleaseMap } from "../ReleaseMap"
  * This constructor can be used to create an expressive control flow that uses
  * several instances of a managed resource.
  *
- * @ets static ets/ManagedOps switchable
+ * @tsplus static ets/ManagedOps switchable
  */
 export function switchable<R, E, A>(
   __etsTrace?: string

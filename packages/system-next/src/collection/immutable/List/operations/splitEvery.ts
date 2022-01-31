@@ -4,7 +4,7 @@ import { MutableList } from "../definition"
 /**
  * Splits the list into chunks of the given size.
  *
- * @ets fluent ets/List splitEvery
+ * @tsplus fluent ets/List splitEvery
  */
 export function splitEvery_<A>(self: List<A>, size: number): List<List<A>> {
   const { buffer, l2 } = self.reduce(

@@ -21,7 +21,7 @@ import { ReleaseMap } from "../ReleaseMap"
  * action will be run on a new fiber. `Some` will be returned if acquisition
  * and reservation complete in time.
  *
- * @ets fluent ets/Managed timeout
+ * @tsplus fluent ets/Managed timeout
  */
 export function timeout_<R, E, A>(
   self: Managed<R, E, A>,

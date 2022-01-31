@@ -7,7 +7,7 @@ import { ReleaseMap } from "./definition"
  * will be released with the in parallel as the release action for the
  * resulting `Managed`.
  *
- * @ets static ets/ReleaseMapOps makeManagedPar
+ * @tsplus static ets/ReleaseMapOps makeManagedPar
  */
 export const makeManagedPar: Managed<unknown, never, ReleaseMap> =
   Managed.parallelism.flatMap((p) =>

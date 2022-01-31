@@ -7,7 +7,7 @@ import { Effect } from "../definition"
  * See `absorb`, `sandbox`, `mapErrorCause` for other functions that can
  * recover from defects.
  *
- * @ets fluent ets/Effect catchAllCause
+ * @tsplus fluent ets/Effect catchAllCause
  */
 export function catchAllCause_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,

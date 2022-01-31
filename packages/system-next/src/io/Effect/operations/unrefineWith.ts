@@ -10,7 +10,7 @@ import { Effect } from "../definition"
  * Takes some fiber failures and converts them into errors, using the
  * specified function to convert the `E` into an `E1 | E2`.
  *
- * @ets fluent ets/Effect unrefineWith
+ * @tsplus fluent ets/Effect unrefineWith
  */
 export function unrefineWith_<R, E, E1, E2, A>(
   self: Effect<R, E, A>,

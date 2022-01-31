@@ -3,7 +3,7 @@ import { Managed } from "../definition"
 /**
  * Returns an effect whose failure is mapped by the specified `f` function.
  *
- * @ets fluent ets/Managed mapError
+ * @tsplus fluent ets/Managed mapError
  */
 export function mapError_<R, E, A, E1>(
   self: Managed<R, E, A>,

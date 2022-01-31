@@ -8,7 +8,7 @@ import { Managed } from "../definition"
  *
  * This method can be used to "flatten" nested effects.
  *
- * @ets fluent ets/Managed flatten
+ * @tsplus fluent ets/Managed flatten
  */
 export function flattenNow<R, E, R1, E1, A>(
   self: Managed<R, E, Managed<R1, E1, A>>,
@@ -23,7 +23,7 @@ export function flattenNow<R, E, R1, E1, A>(
  *
  * This method can be used to "flatten" nested effects.
  *
- * @ets static ets/ManagedOps flatten
+ * @tsplus static ets/ManagedOps flatten
  */
 export function flatten<R2, E2, R, E, A>(
   self: LazyArg<Managed<R2, E2, Managed<R, E, A>>>,

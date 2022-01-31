@@ -4,7 +4,7 @@ import type { List } from "../definition"
  * Returns a new list without the first `n` elements.
  *
  * @complexity `O(log(n))`
- * @ets fluent ets/List drop
+ * @tsplus fluent ets/List drop
  */
 export function drop_<A>(self: List<A>, n: number): List<A> {
   return self.slice(n, self.length)

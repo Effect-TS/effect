@@ -7,7 +7,7 @@ import { foldrNode } from "./_internal/node"
  * Folds a function over a list. Right-associative.
  *
  * @complexity O(n)
- * @ets fluent ets/List reduceRight
+ * @tsplus fluent ets/List reduceRight
  */
 export function reduceRight_<A, B>(
   self: List<A>,

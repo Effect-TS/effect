@@ -7,7 +7,7 @@ import { MutableList } from "../definition"
  * list for which the predicate returns `true`.
  *
  * @complexity O(n)
- * @ets fluent ets/List filter
+ * @tsplus fluent ets/List filter
  */
 export function filter_<A, B extends A>(self: List<A>, f: Refinement<A, B>): List<B>
 export function filter_<A>(self: List<A>, f: Predicate<A>): List<A>

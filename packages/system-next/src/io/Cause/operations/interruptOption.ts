@@ -6,7 +6,7 @@ import type { Cause } from "../definition"
  * Returns the `FiberId` associated with the first `Interrupt` in this `Cause`
  * if one exists.
  *
- * @ets fluent ets/Cause interruptOption
+ * @tsplus fluent ets/Cause interruptOption
  */
 export function interruptOption<E>(self: Cause<E>): Option<FiberId> {
   return self.find((cause) =>

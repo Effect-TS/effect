@@ -10,7 +10,7 @@ export type TupleA<T extends NonEmptyArray<Managed<any, any, any>>> = {
 /**
  * Like `forEach` + `identity` with a tuple type.
  *
- * @ets static ets/ManagedOps tuple
+ * @tsplus static ets/ManagedOps tuple
  */
 export function tuple<T extends NonEmptyArray<Managed<any, any, any>>>(
   ...t: T & {
@@ -23,7 +23,7 @@ export function tuple<T extends NonEmptyArray<Managed<any, any, any>>>(
 /**
  * Like tuple but parallel, same as `forEachPar` + `identity` with a tuple type.
  *
- * @ets static ets/ManagedOps tuplePar
+ * @tsplus static ets/ManagedOps tuplePar
  */
 export function tuplePar<T extends NonEmptyArray<Managed<any, any, any>>>(
   ...t: T & {

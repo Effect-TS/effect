@@ -13,7 +13,7 @@ import type { Cb } from "./Cb"
  * function `ZIO[R, E, A] => Any` must not be called. Otherwise the callback
  * function must be called at most once.
  *
- * @ets static ets/EffectOps asyncMaybe
+ * @tsplus static ets/EffectOps asyncMaybe
  */
 export function asyncMaybe<R, E, A>(
   register: (callback: Cb<Effect<R, E, A>>) => O.Option<Effect<R, E, A>>,
@@ -33,7 +33,7 @@ export function asyncMaybe<R, E, A>(
  * The list of fibers, that may complete the async callback, is used to
  * provide better diagnostics.
  *
- * @ets static ets/EffectOps asyncMaybeBlockingOn
+ * @tsplus static ets/EffectOps asyncMaybeBlockingOn
  */
 export function asyncMaybeBlockingOn<R, E, A>(
   register: (callback: Cb<Effect<R, E, A>>) => O.Option<Effect<R, E, A>>,

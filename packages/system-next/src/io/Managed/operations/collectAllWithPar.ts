@@ -8,7 +8,7 @@ import { Managed } from "../definition"
  * Evaluate each effect in the structure with `collectAll`, and collect
  * the results with given partial function.
  *
- * @ets static ets/ManagedOps collectAllWithPar
+ * @tsplus static ets/ManagedOps collectAllWithPar
  */
 export function collectAllWithPar<R, E, A, B>(
   as: LazyArg<Iterable<Managed<R, E, A>>>,

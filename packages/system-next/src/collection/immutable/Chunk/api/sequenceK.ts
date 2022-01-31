@@ -12,7 +12,7 @@ export type Sequenced<G, A> = [A] extends [Kind<G, infer R, infer E, infer B>]
   : never
 
 /**
- * @ets getter ets/Chunk sequenceK
+ * @tsplus getter ets/Chunk sequenceK
  */
 export function sequenceK<A>(self: Chunk<A>) {
   return <G>(G: CompatibleApplicative<G, A>): Sequenced<G, A> => {

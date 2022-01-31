@@ -16,7 +16,7 @@ import { createPath } from "./_internal/node"
 /**
  * Appends the value to the list by _mutating_ the list and its content.
  *
- * @ets fluent ets/MutableList push
+ * @tsplus fluent ets/MutableList push
  */
 export function push_<A>(self: MutableList<A>, value: A): MutableList<A> {
   const suffixSize = getSuffixSize(self)

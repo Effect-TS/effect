@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * Returns an effect that effectually "peeks" at the defect of the acquired
  * resource.
  *
- * @ets fluent ets/Managed tapDefect
+ * @tsplus fluent ets/Managed tapDefect
  */
 export function tapDefect_<R, E, A, R1, E1, X>(
   self: Managed<R, E, A>,

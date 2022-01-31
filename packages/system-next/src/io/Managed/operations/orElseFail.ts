@@ -5,7 +5,7 @@ import { Managed } from "../definition"
  * Executes this effect and returns its value, if it succeeds, but
  * otherwise fails with the specified error.
  *
- * @ets fluent ets/Managed orElseFail
+ * @tsplus fluent ets/Managed orElseFail
  */
 export function orElseFail_<R, E, A, E2>(
   self: Managed<R, E, A>,

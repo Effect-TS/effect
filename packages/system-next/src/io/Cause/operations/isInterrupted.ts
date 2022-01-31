@@ -4,7 +4,7 @@ import type { Cause } from "../definition"
 /**
  * Determines if the `Cause` contains an interruption.
  *
- * @ets fluent ets/Cause isInterrupted
+ * @tsplus fluent ets/Cause isInterrupted
  */
 export function isInterrupted<E>(self: Cause<E>): boolean {
   return self

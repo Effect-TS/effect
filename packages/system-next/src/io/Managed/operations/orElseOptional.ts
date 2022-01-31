@@ -7,7 +7,7 @@ import { Managed } from "../definition"
  * fails with the `None` value, in which case it will produce the value of
  * the specified effect.
  *
- * @ets fluent ets/Managed orElseOptional
+ * @tsplus fluent ets/Managed orElseOptional
  */
 export function orElseOptional_<R, E, A, R2, E2, A2>(
   self: Managed<R, Option<E>, A>,

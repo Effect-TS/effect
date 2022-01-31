@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise
  * continue with the returned value.
  *
- * @ets fluent ets/Managed continueOrFailManaged
+ * @tsplus fluent ets/Managed continueOrFailManaged
  */
 export function continueOrFailManaged_<R, E, A, E1, R2, E2, A2>(
   self: Managed<R, E, A>,

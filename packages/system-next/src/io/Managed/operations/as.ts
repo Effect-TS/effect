@@ -4,7 +4,7 @@ import type { Managed } from "../definition"
  * Maps this `Managed` to the specified constant while preserving the effects of
  * this `Managed`.
  *
- * @ets fluent ets/Managed as
+ * @tsplus fluent ets/Managed as
  */
 export function as_<R, E, A, B>(
   self: Managed<R, E, A>,

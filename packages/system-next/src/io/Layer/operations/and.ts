@@ -6,7 +6,7 @@ import { ILayerZipWithPar } from "../definition"
  * Combines this layer with the specified layer, producing a new layer that
  * has the inputs and outputs of both.
  *
- * @ets operator ets/Layer +
+ * @tsplus operator ets/Layer +
  */
 export function and_<
   RIn,

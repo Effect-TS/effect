@@ -6,7 +6,7 @@ import { Managed } from "../definition"
 /**
  * Returns an effect that is interrupted as if by the specified fiber.
  *
- * @ets static ets/ManagedOps interruptAs
+ * @tsplus static ets/ManagedOps interruptAs
  */
 export function interruptAs(
   fiberId: LazyArg<FiberId>,

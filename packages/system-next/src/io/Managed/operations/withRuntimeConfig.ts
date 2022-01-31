@@ -8,7 +8,7 @@ import { Managed } from "../definition"
  * composed sequentially after it will be run on the specified runtime
  * configuration.
  *
- * @ets fluent ets/Managed withRuntimeConfig
+ * @tsplus fluent ets/Managed withRuntimeConfig
  */
 export function withRuntimeConfig_<R, E, A>(
   self: Managed<R, E, A>,

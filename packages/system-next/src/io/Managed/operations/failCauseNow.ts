@@ -5,7 +5,7 @@ import { Managed } from "../definition"
 /**
  * Returns an effect that models failure with the specified `Cause`.
  *
- * @ets static ets/ManagedOps failCauseNow
+ * @tsplus static ets/ManagedOps failCauseNow
  */
 export function failCauseNow<E>(
   cause: Cause<E>,

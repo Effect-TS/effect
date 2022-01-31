@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * Runs an effect when the supplied `PartialFunction` matches for the given
  * effectful value, otherwise does nothing.
  *
- * @ets static ets/Managed whenCaseManaged
+ * @tsplus static ets/Managed whenCaseManaged
  */
 export function whenCaseManaged<R, E, A, B>(
   managed: LazyArg<Managed<R, E, A>>,

@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * that this is only safe if the result of this managed effect is valid
  * outside its scope.
  *
- * @ets fluent ets/Managed release
+ * @tsplus fluent ets/Managed release
  */
 export function release<R, E, A>(
   self: Managed<R, E, A>,

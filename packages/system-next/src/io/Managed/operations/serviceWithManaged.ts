@@ -8,7 +8,7 @@ import { Managed } from "../definition"
  * Especially useful for creating "accessor" methods on services' which access
  * managed resources.
  *
- * @ets static ets/ManagedOps serviceWithManaged
+ * @tsplus static ets/ManagedOps serviceWithManaged
  */
 export function serviceWithManaged<T>(_: Tag<T>) {
   return <R, E, A>(

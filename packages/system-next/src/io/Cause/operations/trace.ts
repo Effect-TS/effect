@@ -9,7 +9,7 @@ import type { Cause } from "../definition"
  * Note: This linearization may be misleading in the presence of parallel
  * errors.
  *
- * @ets fluent ets/Cause trace
+ * @tsplus fluent ets/Cause trace
  */
 export function trace<E>(self: Cause<E>): Trace {
   return self.traces().reduce(none, combine_)

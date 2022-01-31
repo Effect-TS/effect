@@ -6,6 +6,6 @@ import { Effect } from "../definition"
  * Returns the `FiberId` of the fiber executing the effect that calls this
  * method.
  *
- * @ets static ets/EffectOps fiberId
+ * @tsplus static ets/EffectOps fiberId
  */
 export const fiberId: UIO<FiberId> = Effect.descriptor.map((_) => _.id)

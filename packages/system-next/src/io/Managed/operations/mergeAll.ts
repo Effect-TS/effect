@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * Merges an `Iterable<Managed<R, E, A>` to a single `Managed<R, E, B>`,
  * working sequentially.
  *
- * @ets static ets/ManagedOps mergeAll
+ * @tsplus static ets/ManagedOps mergeAll
  */
 export function mergeAll<R, E, A, B>(
   as: LazyArg<Iterable<Managed<R, E, A>>>,

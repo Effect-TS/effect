@@ -5,7 +5,7 @@ import type { Effect } from "../definition"
 /**
  * Takes some fiber failures and converts them into errors.
  *
- * @ets fluent ets/Effect unrefine
+ * @tsplus fluent ets/Effect unrefine
  */
 export function unrefine_<R, E, A, E1>(
   self: Effect<R, E, A>,

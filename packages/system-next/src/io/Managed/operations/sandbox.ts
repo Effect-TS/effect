@@ -4,7 +4,7 @@ import { Managed } from "../definition"
 /**
  * Exposes the full cause of failure of this effect.
  *
- * @ets fluent ets/Managed sandbox
+ * @tsplus fluent ets/Managed sandbox
  */
 export function sandbox<R, E, A>(
   self: Managed<R, E, A>,

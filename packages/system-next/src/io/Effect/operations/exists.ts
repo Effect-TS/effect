@@ -4,7 +4,7 @@ import { Effect } from "../definition"
  * Determines whether any element of the `Iterable<A>` satisfies the effectual
  * predicate `f`.
  *
- * @ets static ets/EffectOps exists
+ * @tsplus static ets/EffectOps exists
  */
 export function exists_<R, E, A>(
   as: Iterable<A>,

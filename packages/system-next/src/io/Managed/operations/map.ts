@@ -4,7 +4,7 @@ import { Managed } from "../definition"
 /**
  * Returns a managed whose success is mapped by the specified `f` function.
  *
- * @ets fluent ets/Managed map
+ * @tsplus fluent ets/Managed map
  */
 export function map_<R, E, A, B>(
   self: Managed<R, E, A>,

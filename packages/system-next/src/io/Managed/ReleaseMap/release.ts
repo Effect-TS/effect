@@ -14,7 +14,7 @@ import { Running } from "./state"
  * Runs the specified finalizer and removes it from the finalizers associated
  * with this scope.
  *
- * @ets fluent ets/ReleaseMap release
+ * @tsplus fluent ets/ReleaseMap release
  */
 export function release_(
   self: ReleaseMap,

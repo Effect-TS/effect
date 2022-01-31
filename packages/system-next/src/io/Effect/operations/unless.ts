@@ -5,7 +5,7 @@ import { Effect } from "../definition"
 /**
  * The moral equivalent of `if (!p) exp`
  *
- * @ets fluent ets/Effect unless
+ * @tsplus fluent ets/Effect unless
  */
 export function unless_<R, E, A>(
   self: Effect<R, E, A>,

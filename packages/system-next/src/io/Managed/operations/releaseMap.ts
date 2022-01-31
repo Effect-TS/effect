@@ -8,7 +8,7 @@ import * as Finalizer from "../ReleaseMap/finalizer"
 /**
  * Provides access to the entire map of resources allocated by this `Managed`.
  *
- * @ets static ets/ManagedOps releaseMap
+ * @tsplus static ets/ManagedOps releaseMap
  */
 export const releaseMap: Managed<unknown, never, ReleaseMap> = Managed(
   fiberRefGet(currentReleaseMap.value).map((_) => Tuple(Finalizer.noopFinalizer, _))

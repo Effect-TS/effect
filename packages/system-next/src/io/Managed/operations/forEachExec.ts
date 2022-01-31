@@ -8,7 +8,7 @@ import { Managed } from "../definition"
  *
  * For a sequential version of this method, see `forEach`.
  *
- * @ets static ets/ManagedOps forEachExec
+ * @tsplus static ets/ManagedOps forEachExec
  */
 export function forEachExec<R, E, A, B>(
   as: LazyArg<Iterable<A>>,

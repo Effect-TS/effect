@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * Reduces an `Iterable<Managed<R, E ,A>>` to a single `Managed<R, E, A>`,
  * working sequentially.
  *
- * @ets static ets/ManagedOps reduceAll
+ * @tsplus static ets/ManagedOps reduceAll
  */
 export function reduceAll<R, E, A>(
   init: LazyArg<Managed<R, E, A>>,

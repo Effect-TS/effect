@@ -8,7 +8,7 @@ import { Managed } from "../definition"
  * Evaluate each effect in the structure in parallel, collecting the
  * the successful values and discarding the empty cases.
  *
- * @ets static ets/ManagedOps collectPar
+ * @tsplus static ets/ManagedOps collectPar
  */
 export function collectPar<A, R, E, B>(
   self: LazyArg<Iterable<A>>,

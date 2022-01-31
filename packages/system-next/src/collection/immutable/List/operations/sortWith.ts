@@ -10,7 +10,7 @@ import { MutableList } from "../definition"
  * second.
  *
  * @complexity O(n * log(n))
- * @ets fluent ets/List sortWith
+ * @tsplus fluent ets/List sortWith
  */
 export function sortWith_<A>(self: List<A>, ord: Ord<A>): List<A> {
   const arr: { idx: number; elm: A }[] = []

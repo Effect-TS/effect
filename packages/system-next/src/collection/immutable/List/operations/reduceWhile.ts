@@ -6,7 +6,7 @@ import { foldlCb, foldlWhileCb } from "./_internal/callbacks"
  * Perform the specified reduction function on a `List` while the specified
  * predicate holds true.
  *
- * @ets fluent ets/List reduceWhile
+ * @tsplus fluent ets/List reduceWhile
  */
 export function reduceWhile_<A, B>(
   self: List<A>,

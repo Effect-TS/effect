@@ -9,7 +9,7 @@ import { Managed } from "../definition"
 /**
  * Access a tuple of services with the required Service Entries.
  *
- * @ets static ets/ManagedOps servicesWithT
+ * @tsplus static ets/ManagedOps servicesWithT
  */
 export function servicesWithT<SS extends Tag<any>[]>(...s: SS) {
   return <B = unknown>(
@@ -34,7 +34,7 @@ export function servicesWithT<SS extends Tag<any>[]>(...s: SS) {
 /**
  * Access a record of services with the required service entries.
  *
- * @ets static ets/ManagedOps servicesWithS
+ * @tsplus static ets/ManagedOps servicesWithS
  */
 export function servicesWithS<SS extends Record<string, Tag<any>>>(s: SS) {
   return <B>(

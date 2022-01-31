@@ -7,7 +7,7 @@ import { ISucceedWith } from "../definition"
  * The same as `succeed`, but also provides access to the underlying
  * `RuntimeConfig` and `FiberId`.
  *
- * @ets static ets/EffectOps succeedWith
+ * @tsplus static ets/EffectOps succeedWith
  */
 export function succeedWith<A>(
   f: (runtimeConfig: RuntimeConfig, fiberId: FiberId) => A,

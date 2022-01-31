@@ -4,7 +4,7 @@ import type { List } from "../definition"
  * Inserts the given list of elements at the given index in the list.
  *
  * @complexity `O(log(n))`
- * @ets fluent ets/List insertAll
+ * @tsplus fluent ets/List insertAll
  */
 export function insertAll_<A>(
   self: List<A>,

@@ -9,7 +9,7 @@ import { findCb, foldlCb } from "./_internal/callbacks"
  * If no such element is found the function returns `undefined`.
  *
  * @complexity O(n)
- * @ets fluent ets/List find
+ * @tsplus fluent ets/List find
  */
 export function find_<A>(self: List<A>, f: Predicate<A>): Option<A> {
   return foldlCb<A, PredState>(findCb, { predicate: f, result: Option.none }, self)

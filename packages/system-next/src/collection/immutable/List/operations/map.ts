@@ -9,7 +9,7 @@ import { mapNode } from "./_internal/node"
  * new list of the values that the function return.
  *
  * @complexity O(n)
- * @ets fluent ets/List map
+ * @tsplus fluent ets/List map
  */
 export function map_<A, B>(self: List<A>, f: (a: A) => B): List<B> {
   return new ListInternal(

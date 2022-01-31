@@ -5,7 +5,7 @@ import { Effect } from "../definition"
 /**
  * Returns an effect from a `Exit` value.
  *
- * @ets static ets/EffectOps done
+ * @tsplus static ets/EffectOps done
  */
 export function done<E, A>(exit: Exit<E, A>, __etsTrace?: string): IO<E, A> {
   return Effect.suspendSucceed(() =>

@@ -4,7 +4,7 @@ import type { List } from "../definition"
  * Takes the first `n` elements from a list and returns them in a new list.
  *
  * @complexity `O(log(n))`
- * @ets fluent ets/List take
+ * @tsplus fluent ets/List take
  */
 export function take_<A>(self: List<A>, n: number): List<A> {
   return self.slice(0, n)

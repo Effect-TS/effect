@@ -38,18 +38,18 @@ export class Right<A> {
 }
 
 /**
- * @ets type ets/Either
+ * @tsplus type ets/Either
  */
 export type Either<E, A> = Left<E> | Right<A>
 
 /**
- * @ets type ets/EitherOps
+ * @tsplus type ets/EitherOps
  */
 export interface EitherOps {}
 export const Either: EitherOps = {}
 
 /**
- * @ets unify ets/Either
+ * @tsplus unify ets/Either
  */
 export function unify<X extends Either<any, any>>(
   self: X
@@ -64,7 +64,7 @@ export function unify<X extends Either<any, any>>(
  * Constructs a new `Either` holding a `Right` value. This usually represents a successful value due to the right bias
  * of this structure
  *
- * @ets static ets/EitherOps right
+ * @tsplus static ets/EitherOps right
  */
 export function right<A>(a: A): Either<never, A> {
   return new Right(a)
@@ -74,7 +74,7 @@ export function right<A>(a: A): Either<never, A> {
  * Constructs a new `Either` holding a `Right` value. This usually represents a successful value due to the right bias
  * of this structure
  *
- * @ets static ets/EitherOps __call
+ * @tsplus static ets/EitherOps __call
  */
 export function apply<A>(a: A): Either<never, A> {
   return new Right(a)
@@ -84,7 +84,7 @@ export function apply<A>(a: A): Either<never, A> {
  * Constructs a new `Either` holding a `Right` value. This usually represents a successful value due to the right bias
  * of this structure
  *
- * @ets static ets/EitherOps rightW
+ * @tsplus static ets/EitherOps rightW
  */
 export function rightW<A, E = never>(a: A): Either<E, A> {
   return new Right(a)
@@ -94,7 +94,7 @@ export function rightW<A, E = never>(a: A): Either<E, A> {
  * Constructs a new `Either` holding a `Left` value. This usually represents a failure, due to the right-bias of this
  * structure
  *
- * @ets static ets/EitherOps left
+ * @tsplus static ets/EitherOps left
  */
 export function left<E>(e: E): Either<E, never> {
   return new Left(e)
@@ -104,7 +104,7 @@ export function left<E>(e: E): Either<E, never> {
  * Constructs a new `Either` holding a `Left` value. This usually represents a failure, due to the right-bias of this
  * structure
  *
- * @ets static ets/EitherOps leftW
+ * @tsplus static ets/EitherOps leftW
  */
 export function leftW<E, A = never>(e: E): Either<E, A> {
   return new Left(e)
@@ -113,7 +113,7 @@ export function leftW<E, A = never>(e: E): Either<E, A> {
 /**
  * Widen left side `Either[E, A] => Either[E | E1, A]`
  *
- * @ets fluent ets/Either widenE
+ * @tsplus fluent ets/Either widenE
  */
 export function widenE_<E, A, E1>(self: Either<E, A>): Either<E | E1, A> {
   return self
@@ -134,7 +134,7 @@ export function widenE<E1>() {
 /**
  * Widen left side `Either[E, A] => Either[E | E1, A]`
  *
- * @ets fluent ets/Either widenA
+ * @tsplus fluent ets/Either widenA
  */
 export function widenA_<E, A, A1>(self: Either<E, A>): Either<E, A | A1> {
   return self
@@ -155,7 +155,7 @@ export function widenA<A1>() {
 /**
  * Classic Applicative
  *
- * @ets fluent ets/Either ap
+ * @tsplus fluent ets/Either ap
  */
 export function ap_<E, A, B, E2>(
   fab: Either<E, (a: A) => B>,
@@ -176,8 +176,8 @@ export function ap<E, A>(fa: Either<E, A>) {
 /**
  * Apply both and return both
  *
- * @ets operator ets/Either +
- * @ets fluent ets/Either zip
+ * @tsplus operator ets/Either +
+ * @tsplus fluent ets/Either zip
  */
 export function zip_<E2, A, E, B>(
   fa: Either<E2, A>,
@@ -207,8 +207,8 @@ export function zipFirst<E, B>(fb: Either<E, B>) {
 /**
  * Apply both and return first
  *
- * @ets operator ets/Either <
- * @ets fluent ets/Either zipLeft
+ * @tsplus operator ets/Either <
+ * @tsplus fluent ets/Either zipLeft
  */
 export function zipFirst_<E2, A, E, B>(
   fa: Either<E2, A>,
@@ -232,8 +232,8 @@ export function zipSecond<E, B>(fb: Either<E, B>) {
 /**
  * Apply both and return second
  *
- * @ets operator ets/Either >
- * @ets fluent ets/Either zipRight
+ * @tsplus operator ets/Either >
+ * @tsplus fluent ets/Either zipRight
  */
 export function zipSecond_<E2, A, E, B>(
   fa: Either<E2, A>,
@@ -248,7 +248,7 @@ export function zipSecond_<E2, A, E, B>(
 /**
  * Maps both left and right
  *
- * @ets fluent ets/Either mapBoth
+ * @tsplus fluent ets/Either mapBoth
  */
 export function bimap_<E, A, G, B>(
   fea: Either<E, A>,
@@ -272,7 +272,7 @@ export function bimap<E, G, A, B>(f: (e: E) => G, g: (a: A) => B) {
  * result of this computation by running the first computation, using its
  * result to generate a second computation, and running that computation.
  *
- * @ets fluent ets/Either flatMap
+ * @tsplus fluent ets/Either flatMap
  */
 export function chain_<E, A, B, E2>(
   fa: Either<E, A>,
@@ -305,7 +305,7 @@ export function tap<E, A, B>(f: (a: A) => Either<E, B>) {
 /**
  * Like chain but ignores the constructed outout
  *
- * @ets fluent ets/Either tap
+ * @tsplus fluent ets/Either tap
  */
 export function tap_<E2, E, A, B>(
   ma: Either<E2, A>,
@@ -317,7 +317,7 @@ export function tap_<E2, E, A, B>(
 /**
  * Self embed `Either[E, A]` into `Either[E, Either[E, A]]`
  *
- * @ets fluent ets/Either duplicate
+ * @tsplus fluent ets/Either duplicate
  */
 export function duplicate<E, A>(ma: Either<E, A>): Either<E, Either<E, A>> {
   return extend_(ma, (x) => x)
@@ -335,7 +335,7 @@ export function exists<A>(predicate: Predicate<A>): <E>(ma: Either<E, A>) => boo
 /**
  * Returns `false` if `Left` or returns the result of the application of the given predicate to the `Right` value.
  *
- * @ets fluent ets/Either exists
+ * @tsplus fluent ets/Either exists
  */
 export function exists_<E, A>(ma: Either<E, A>, predicate: Predicate<A>): boolean {
   return isLeft(ma) ? false : predicate(ma.right)
@@ -344,7 +344,7 @@ export function exists_<E, A>(ma: Either<E, A>, predicate: Predicate<A>): boolea
 /**
  * Apply `Either[E, A] => B` in case self is right returning `Either[E, B]`
  *
- * @ets fluent ets/Either extend
+ * @tsplus fluent ets/Either extend
  */
 export function extend_<E, A, B>(
   wa: Either<E, A>,
@@ -383,7 +383,7 @@ export function filterOrElse<E, A>(predicate: Predicate<A>, onFalse: (a: A) => E
 /**
  * Apply predicate to A and construct E in case the predicate is false
  *
- * @ets fluent ets/Either filterOrElse
+ * @tsplus fluent ets/Either filterOrElse
  */
 export function filterOrElse_<E, E2, A, B extends A>(
   ma: Either<E2, A>,
@@ -406,7 +406,7 @@ export function filterOrElse_<E, A>(
 /**
  * Flatten nested `Either[E, Either[E1, A]]` into `Either[E | E1, A]`
  *
- * @ets fluent ets/Either flatten
+ * @tsplus fluent ets/Either flatten
  */
 export function flatten<E, E2, A>(mma: Either<E, Either<E2, A>>): Either<E | E2, A> {
   return chain_(mma, (x) => x)
@@ -429,7 +429,7 @@ export function fold<E, A, B, C>(
  * Takes two functions and an `Either` value, if the value is a `Left` the inner value is applied to the first function,
  * if the value is a `Right` the inner value is applied to the second function.
  *
- * @ets fluent ets/Either fold
+ * @tsplus fluent ets/Either fold
  */
 export function fold_<E, A, B, C>(
   ma: Either<E, A>,
@@ -453,7 +453,7 @@ export function fromNullable<E>(e: Lazy<E>): <A>(a: A) => Either<E, NonNullable<
  * Takes a default and a nullable value, if the value is not nully, turn it into a `Right`, if the value is nully use
  * the provided default as a `Left`
  *
- * @ets static ets/EitherOps fromNullable
+ * @tsplus static ets/EitherOps fromNullable
  */
 export function fromNullable_<A, E>(a: A, e: Lazy<E>): Either<E, NonNullable<A>> {
   return a == null ? left(e()) : right(a as NonNullable<A>)
@@ -472,7 +472,7 @@ export function fromOption<E>(onNone: () => E) {
 /**
  * Construct `Either[E, A]` from `Option[A]` constructing `E` with `onNone`
  *
- * @ets static ets/EitherOps fromOption
+ * @tsplus static ets/EitherOps fromOption
  */
 export function fromOption_<A, E>(ma: Option<A>, onNone: () => E): Either<E, A> {
   return isNone(ma) ? left(onNone()) : right(ma.value)
@@ -500,7 +500,7 @@ export function fromPredicate<E, A>(predicate: Predicate<A>, onFalse: (a: A) => 
  * Construct `Either[E, A]` by applying a predicate to `A` and constructing
  * `E` if the predicate is false
  *
- * @ets static ets/EitherOps fromPredicate
+ * @tsplus static ets/EitherOps fromPredicate
  */
 export function fromPredicate_<E, A, B extends A>(
   a: A,
@@ -532,7 +532,7 @@ export function getOrElse<E, A>(onLeft: (e: E) => A): <B>(self: Either<E, B>) =>
 /**
  * Get `A` or in case self is left return `onLeft` result
  *
- * @ets fluent ets/Either getOrElse
+ * @tsplus fluent ets/Either getOrElse
  */
 export function getOrElse_<E, A, B>(self: Either<E, B>, onLeft: (e: E) => A): A | B {
   return isLeft(self) ? onLeft(self.left) : self.right
@@ -541,7 +541,7 @@ export function getOrElse_<E, A, B>(self: Either<E, B>, onLeft: (e: E) => A): A 
 /**
  * Returns `true` if the either is an instance of `Left`, `false` otherwise
  *
- * @ets fluent ets/Either isLeft
+ * @tsplus fluent ets/Either isLeft
  */
 export function isLeft<E, A>(ma: Either<E, A>): ma is Left<E> {
   switch (ma._tag) {
@@ -555,7 +555,7 @@ export function isLeft<E, A>(ma: Either<E, A>): ma is Left<E> {
 /**
  * Returns `true` if the either is an instance of `Right`, `false` otherwise
  *
- * @ets fluent ets/Either isRight
+ * @tsplus fluent ets/Either isRight
  */
 export function isRight<E, A>(ma: Either<E, A>): ma is Right<A> {
   return ma._tag === "Right" ? true : false
@@ -564,7 +564,7 @@ export function isRight<E, A>(ma: Either<E, A>): ma is Right<A> {
 /**
  * Use `A => B` to transform `Either[E, A]` to `Either[E, B]`
  *
- * @ets fluent ets/Either map
+ * @tsplus fluent ets/Either map
  */
 export function map_<E, A, B>(fa: Either<E, A>, f: (a: A) => B): Either<E, B> {
   return isLeft(fa) ? fa : right(f(fa.right))
@@ -582,7 +582,7 @@ export function map<A, B>(f: (a: A) => B) {
 /**
  * Use `E => E1` to transform `Either[E, A]` to `Either[E1, A]`
  *
- * @ets fluent ets/Either mapLeft
+ * @tsplus fluent ets/Either mapLeft
  */
 export function mapLeft_<E, A, G>(fea: Either<E, A>, f: (e: E) => G): Either<G, A> {
   return isLeft(fea) ? left(f(fea.left)) : fea
@@ -600,7 +600,7 @@ export function mapLeft<E, G>(f: (e: E) => G) {
 /**
  * Merges Left<E> | Right<B> into A | B
  *
- * @ets fluent ets/Either merge
+ * @tsplus fluent ets/Either merge
  */
 export function merge<E, A>(self: Either<E, A>): E | A {
   return fold_(
@@ -624,7 +624,7 @@ export function catchAll<E, A, M>(
 /**
  * Alternatively run onLeft
  *
- * @ets fluent ets/Either catchAll
+ * @tsplus fluent ets/Either catchAll
  */
 export function catchAll_<E, A, B, M>(
   ma: Either<E, A>,
@@ -647,8 +647,8 @@ export function orElse<A, M>(
 /**
  * Alternatively run onLeft
  *
- * @ets operator ets/Either |
- * @ets fluent ets/Either orElse
+ * @tsplus operator ets/Either |
+ * @tsplus fluent ets/Either orElse
  */
 export function orElse_<E, A, B, M>(
   ma: Either<E, A>,
@@ -669,7 +669,7 @@ export function orElseEither<B, M>(onLeft: LazyArg<Either<M, B>>) {
 /**
  * Alternatively run onLeft returning
  *
- * @ets fluent ets/Either orElseEither
+ * @tsplus fluent ets/Either orElseEither
  */
 export function orElseEither_<E, A, B, M>(
   ma: Either<E, A>,
@@ -681,7 +681,7 @@ export function orElseEither_<E, A, B, M>(
 /**
  * Converts a JavaScript Object Notation (JSON) string into an object.
  *
- * @ets static ets/EitherOps parseJSON
+ * @tsplus static ets/EitherOps parseJSON
  */
 export function parseJSON_<E>(
   s: string,
@@ -704,7 +704,7 @@ export function parseJSON<E>(
 /**
  * Converts a JavaScript value to a JavaScript Object Notation (JSON) string.
  *
- * @ets static ets/EitherOps stringifyJSON
+ * @tsplus static ets/EitherOps stringifyJSON
  */
 export function stringifyJSON_<E>(
   u: unknown,
@@ -727,7 +727,7 @@ export function stringifyJSON<E>(
 /**
  * Inverts `Either[E, A]` into `Either[A, E]`
  *
- * @ets fluent ets/Either swap
+ * @tsplus fluent ets/Either swap
  */
 export function swap<E, A>(ma: Either<E, A>): Either<A, E> {
   return isLeft(ma) ? right(ma.left) : left(ma.right)
@@ -736,7 +736,7 @@ export function swap<E, A>(ma: Either<E, A>): Either<A, E> {
 /**
  * Default value for the `onError` argument of `tryCatch`
  *
- * @ets static ets/EitherOps toError
+ * @tsplus static ets/EitherOps toError
  */
 export function toError(e: unknown): Error {
   return e instanceof Error ? e : new Error(String(e))
@@ -745,7 +745,7 @@ export function toError(e: unknown): Error {
 /**
  * Constructs a new `Either` from a function that might throw
  *
- * @ets static ets/EitherOps tryCatch
+ * @tsplus static ets/EitherOps tryCatch
  */
 export function tryCatch<E, A>(
   f: LazyArg<A>,
@@ -772,7 +772,7 @@ export function compact<E extends Either<any, any>>(
 /**
  * Reduce a value `b` through an `Either`
  *
- * @ets fluent ets/Either reduce
+ * @tsplus fluent ets/Either reduce
  */
 export function reduce_<E, A, B>(fa: Either<E, A>, b: B, f: (b: B, a: A) => B): B {
   return isLeft(fa) ? b : f(b, fa.right)
@@ -799,21 +799,21 @@ export function reduceRight<A, B>(b: B, f: (a: A, b: B) => B) {
 /**
  * Reduce a value `b` through an `Either` in inverted order
  *
- * @ets fluent ets/Either reduceRight
+ * @tsplus fluent ets/Either reduceRight
  */
 export function reduceRight_<E, A, B>(fa: Either<E, A>, b: B, f: (a: A, b: B) => B): B {
   return isLeft(fa) ? b : f(fa.right, b)
 }
 
 /**
- * @ets getter ets/Either left
+ * @tsplus getter ets/Either left
  */
 export function getLeft<E, A>(self: Either<E, A>): Option<E> {
   return self._tag === "Left" ? some(self.left) : none
 }
 
 /**
- * @ets getter ets/Either right
+ * @tsplus getter ets/Either right
  */
 export function getRight<E, A>(self: Either<E, A>): Option<A> {
   return self._tag === "Right" ? some(self.right) : none

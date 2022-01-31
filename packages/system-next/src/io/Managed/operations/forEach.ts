@@ -11,7 +11,7 @@ import { Managed } from "../definition"
  * For a parallel version of this method, see `forEachPar_`.
  * If you do not need the results, see `forEachUnit_` for a more efficient implementation.
  *
- * @ets static ets/ManagedOps forEach
+ * @tsplus static ets/ManagedOps forEach
  */
 export function forEach<R, E, A, B>(
   as: LazyArg<Iterable<A>>,

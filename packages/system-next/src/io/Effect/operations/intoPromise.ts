@@ -8,7 +8,7 @@ import { Effect } from "../definition"
  * this effect. Synchronizes interruption, so if this effect is interrupted,
  * the specified promise will be interrupted, too.
  *
- * @ets fluent ets/Effect intoPromise
+ * @tsplus fluent ets/Effect intoPromise
  */
 export function intoPromise_<R, E, A>(
   self: Effect<R, E, A>,

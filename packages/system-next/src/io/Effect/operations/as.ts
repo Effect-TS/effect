@@ -3,7 +3,7 @@ import type { Effect } from "../definition"
 /**
  * Maps the success value of this effect to the specified constant value.
  *
- * @ets fluent ets/Effect as
+ * @tsplus fluent ets/Effect as
  */
 export function as_<R, E, A, B>(
   self: Effect<R, E, A>,

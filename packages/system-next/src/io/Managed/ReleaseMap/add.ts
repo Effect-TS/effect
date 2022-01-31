@@ -12,7 +12,7 @@ import { release_ } from "./release"
  * The finalizer returned from this method will remove the original
  * finalizer from the map and run it.
  *
- * @ets fluent ets/ReleaseMap add
+ * @tsplus fluent ets/ReleaseMap add
  */
 export function add_(
   self: ReleaseMap,

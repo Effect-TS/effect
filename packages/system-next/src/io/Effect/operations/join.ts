@@ -5,7 +5,7 @@ import { Effect } from "../definition"
 /**
  * Depending on provided environment returns either this one or the other effect.
  *
- * @ets fluent ets/Effect join
+ * @tsplus fluent ets/Effect join
  */
 export function join_<R, E, A, R1, E1, A1>(
   self: Effect<R, E, A>,

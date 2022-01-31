@@ -11,7 +11,7 @@ import { Managed } from "../definition"
  * handles `Exit`. The acquire and release actions will be performed
  * uninterruptibly.
  *
- * @ets static ets/ManagedOps acquireReleaseExitWith
+ * @tsplus static ets/ManagedOps acquireReleaseExitWith
  */
 export function acquireReleaseExitWith<R, R1, E, A>(
   acquire: LazyArg<Effect<R, E, A>>,

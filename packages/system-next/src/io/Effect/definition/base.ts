@@ -27,7 +27,7 @@ export type EffectURI = typeof EffectURI
  * To run an effect, you need a `Runtime`, which is capable of executing
  * effects.
  *
- * @ets type ets/Effect
+ * @tsplus type ets/Effect
  */
 export interface Effect<R, E, A> {
   readonly [_U]: EffectURI
@@ -41,7 +41,7 @@ export interface Effect<R, E, A> {
 }
 
 /**
- * @ets unify ets/Effect
+ * @tsplus unify ets/Effect
  */
 export function unify<X extends Effect<any, any, any>>(
   self: X
@@ -50,7 +50,7 @@ export function unify<X extends Effect<any, any, any>>(
 }
 
 /**
- * @ets type ets/EffectOps
+ * @tsplus type ets/EffectOps
  */
 export interface EffectOps {}
 export const Effect: EffectOps = {}

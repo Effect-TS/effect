@@ -22,8 +22,8 @@ import {
  * Concatenates two lists.
  *
  * @complexity O(log(n))
- * @ets operator ets/List +
- * @ets fluent ets/List concat
+ * @tsplus operator ets/List +
+ * @tsplus fluent ets/List concat
  */
 export function concat_<A>(self: List<A>, that: List<A>): List<A> {
   if (self.length === 0) {

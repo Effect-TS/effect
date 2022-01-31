@@ -3,7 +3,7 @@ import { Managed } from "../definition"
 /**
  * Returns an effect that effectfully peeks at the failure of the acquired resource.
  *
- * @ets fluent ets/Managed tapError
+ * @tsplus fluent ets/Managed tapError
  */
 export function tapError_<R, E, A, R1, E1, X>(
   self: Managed<R, E, A>,

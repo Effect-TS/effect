@@ -13,7 +13,7 @@ import type { Finalizer } from "../ReleaseMap/finalizer"
  * Equivalent to `forEach(as)(f).unit`, but without the cost of building
  * the list of results.
  *
- * @ets static ets/ManagedOps forEachDiscard
+ * @tsplus static ets/ManagedOps forEachDiscard
  */
 export function forEachDiscard<R, E, A, B>(
   as: LazyArg<Iterable<A>>,

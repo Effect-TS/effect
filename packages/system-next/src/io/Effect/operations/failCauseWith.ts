@@ -7,7 +7,7 @@ import { IFail } from "../definition"
 /**
  * Returns an effect that models failure with the specified `Cause`.
  *
- * @ets static ets/EffectOps failCause
+ * @tsplus static ets/EffectOps failCause
  */
 export function failCauseWith<E>(f: () => Cause<E>, __etsTrace?: string): IO<E, never> {
   return new IFail(f, __etsTrace)

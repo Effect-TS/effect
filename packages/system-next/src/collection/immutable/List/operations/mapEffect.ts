@@ -5,7 +5,7 @@ import { MutableList } from "../definition"
 /**
  * Effectfully maps the elements of this list.
  *
- * @ets fluent ets/List mapEffect
+ * @tsplus fluent ets/List mapEffect
  */
 export function mapEffect_<A, R, E, B>(
   self: List<A>,

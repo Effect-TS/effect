@@ -4,7 +4,7 @@ import { Both, Cause, Die, Fail, Interrupt, Stackless, Then } from "../definitio
 /**
  * Transforms the traces in this cause with the specified function.
  *
- * @ets fluent ets/Cause mapTrace
+ * @tsplus fluent ets/Cause mapTrace
  */
 export function mapTrace_<E>(self: Cause<E>, f: (trace: Trace) => Trace): Cause<E> {
   return self.fold<E, Cause<E>>(

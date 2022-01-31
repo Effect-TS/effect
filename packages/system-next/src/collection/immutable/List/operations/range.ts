@@ -4,7 +4,7 @@ import { List, MutableList } from "../definition"
  * Returns a list of numbers between an inclusive lower bound and an exclusive upper bound.
  *
  * @complexity O(n)
- * @ets static ets/ListOps range
+ * @tsplus static ets/ListOps range
  */
 export function range_(start: number, end: number): List<number> {
   const mutableList = MutableList.emptyPushable<number>()

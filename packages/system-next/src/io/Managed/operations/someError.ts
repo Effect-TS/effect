@@ -4,7 +4,7 @@ import { Managed } from "../definition"
 /**
  * Converts an option on values into an option on errors.
  *
- * @ets fluent ets/Managed someError
+ * @tsplus fluent ets/Managed someError
  */
 export function someError<R, E, A>(
   self: Managed<R, E, Option<A>>,

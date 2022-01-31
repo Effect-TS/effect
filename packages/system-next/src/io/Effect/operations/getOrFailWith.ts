@@ -6,7 +6,7 @@ import { Effect } from "../definition"
  * Lifts an `Option` into an `Effect`. If the option is not defined, fail with
  * the specified `e` value.
  *
- * @ets static ets/EffectOps getOrFailWith
+ * @tsplus static ets/EffectOps getOrFailWith
  */
 export function getOrFailWith_<E, A>(
   v: O.Option<A>,

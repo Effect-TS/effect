@@ -6,7 +6,7 @@ import { Both, Die, Stackless, Then } from "../definition"
  * Remove all `Fail` and `Interrupt` nodes from this `Cause`, return only
  * `Die` cause/finalizer defects.
  *
- * @ets fluent ets/Cause keepDefects
+ * @tsplus fluent ets/Cause keepDefects
  */
 export function keepDefects<E>(self: Cause<E>): Option<Cause<never>> {
   return self.fold<E, Option<Cause<never>>>(

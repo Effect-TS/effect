@@ -5,7 +5,7 @@ import type { List } from "../definition"
  * list.
  *
  * @complexity `O(log(n))`
- * @ets fluent ets/List takeLast
+ * @tsplus fluent ets/List takeLast
  */
 export function takeLast_<A>(self: List<A>, n: number): List<A> {
   return self.slice(self.length - n, self.length)

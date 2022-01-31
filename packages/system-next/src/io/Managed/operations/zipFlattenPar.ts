@@ -5,8 +5,8 @@ import type { Managed } from "../definition"
  * Zips this managed resource with the specified managed resource in
  * parallel.
  *
- * @ets fluent ets/Managed zipFlattenPar
- * @ets operator ets/Managed &
+ * @tsplus fluent ets/Managed zipFlattenPar
+ * @tsplus operator ets/Managed &
  */
 export function zipFlattenPar_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,

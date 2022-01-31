@@ -4,7 +4,7 @@ import { Effect } from "../definition"
  * Repeats this effect until its value satisfies the specified effectful
  * predicate or until the first failure.
  *
- * @ets fluent ets/Effect repeatUntilEffect
+ * @tsplus fluent ets/Effect repeatUntilEffect
  */
 export function repeatUntilEffect_<R, E, A, R1>(
   self: Effect<R, E, A>,

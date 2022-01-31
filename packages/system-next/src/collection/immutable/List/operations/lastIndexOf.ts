@@ -6,7 +6,7 @@ import { foldrCb, indexOfCb } from "./_internal/callbacks"
  * to the given element. If no such element is found `-1` is returned.
  *
  * @complexity O(n)
- * @ets fluent ets/List lastIndexOf
+ * @tsplus fluent ets/List lastIndexOf
  */
 export function lastIndexOf_<A>(self: List<A>, element: A): number {
   const state = { element, found: false, index: 0 }

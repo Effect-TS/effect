@@ -12,7 +12,7 @@ import { IEnsuring } from "../definition"
  * should generally not be used for releasing resources. For higher-level
  * logic built on `ensuring`, see `acquireReleaseWith`.
  *
- * @ets fluent ets/Effect ensuring
+ * @tsplus fluent ets/Effect ensuring
  */
 export function ensuring_<R, E, A, R1, X>(
   self: Effect<R, E, A>,

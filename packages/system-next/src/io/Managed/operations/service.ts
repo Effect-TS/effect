@@ -7,7 +7,7 @@ import { Managed } from "../definition"
  * Especially useful for creating "accessor" methods on services' companion
  * objects.
  *
- * @ets static ets/ManagedOps service
+ * @tsplus static ets/ManagedOps service
  */
 export function service<T>(_: Tag<T>, __etsTrace?: string): Managed<Has<T>, never, T> {
   return Managed.serviceWithManaged(_)(Managed.succeedNow)

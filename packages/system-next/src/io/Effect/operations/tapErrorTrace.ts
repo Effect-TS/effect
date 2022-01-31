@@ -6,7 +6,7 @@ import { Effect } from "../definition"
 /**
  * A version of `tapError` that gives you the trace of the error.
  *
- * @ets fluent ets/Effect tapErrorTrace
+ * @tsplus fluent ets/Effect tapErrorTrace
  */
 export function tapErrorTrace_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,

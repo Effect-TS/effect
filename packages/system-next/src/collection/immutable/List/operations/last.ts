@@ -7,7 +7,7 @@ import { getSuffixSize } from "./_internal/bits"
  * function returns `undefined`.
  *
  * @complexity O(1)
- * @ets getter ets/List last
+ * @tsplus getter ets/List last
  */
 export function last<A>(self: List<A>): Option<A> {
   const suffixSize = getSuffixSize(self)

@@ -7,7 +7,7 @@ import { InterruptedException } from "../errors"
  * Squashes a `Cause` down to a single defect, chosen to be the "most
  * important" defect.
  *
- * @ets fluent ets/Cause squashWith
+ * @tsplus fluent ets/Cause squashWith
  */
 export function squashWith_<E>(self: Cause<E>, f: (e: E) => unknown): unknown {
   return self

@@ -5,7 +5,7 @@ import type { List } from "../definition"
  * function returns undefined.
  *
  * @complexity O(1)
- * @ets fluent ets/List unsafeFirst
+ * @tsplus fluent ets/List unsafeFirst
  */
 export function unsafeFirst<A>(self: List<A>): A | undefined {
   return self.first.value

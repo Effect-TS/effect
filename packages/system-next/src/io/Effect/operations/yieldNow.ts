@@ -6,6 +6,6 @@ import { IYield } from "../definition"
  * stack. Manual use of this method can improve fairness, at the cost of
  * overhead.
  *
- * @ets static ets/EffectOps yieldNow
+ * @tsplus static ets/EffectOps yieldNow
  */
 export const yieldNow: UIO<void> = new IYield()

@@ -6,7 +6,7 @@ import { Managed } from "../definition"
  * translating the successful match into a failure, otherwise continue with
  * our held value.
  *
- * @ets fluent ets/Managed rejectManaged
+ * @tsplus fluent ets/Managed rejectManaged
  */
 export function rejectManaged_<R, E, A, R1, E1>(
   self: Managed<R, E, A>,

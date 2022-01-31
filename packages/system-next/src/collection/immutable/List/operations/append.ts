@@ -8,7 +8,7 @@ import { appendNodeToTree } from "./_internal/node"
  * Appends an element to the end of a list and returns the new list.
  *
  * @complexity O(n)
- * @ets fluent ets/List append
+ * @tsplus fluent ets/List append
  */
 export function append_<A>(self: List<A>, value: A): List<A> {
   const suffixSize = getSuffixSize(self)

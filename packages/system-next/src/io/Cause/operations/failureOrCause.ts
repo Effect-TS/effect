@@ -6,7 +6,7 @@ import type { Cause } from "../definition"
  * no checked errors return the rest of the `Cause` that is known to contain
  * only `Die` or `Interrupt` causes.
  *
- * @ets fluent ets/Cause failureOrCause
+ * @tsplus fluent ets/Cause failureOrCause
  */
 export function failureOrCause<E>(self: Cause<E>): Either<E, Cause<never>> {
   return self.failureOption().fold(

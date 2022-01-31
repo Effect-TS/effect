@@ -10,7 +10,7 @@ import { map_ } from "./map"
  *
  * @complexity `O(log(n))` where `n` is the length of the smallest
  * list.
- * @ets fluent ets/List zipWith
+ * @tsplus fluent ets/List zipWith
  */
 export function zipWith_<A, B, C>(
   self: List<A>,

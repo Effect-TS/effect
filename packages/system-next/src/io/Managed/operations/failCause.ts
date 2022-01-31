@@ -6,7 +6,7 @@ import { Managed } from "../definition"
 /**
  * Returns an effect that models failure with the specified `Cause`.
  *
- * @ets static ets/ManagedOps failCause
+ * @tsplus static ets/ManagedOps failCause
  */
 export function failCause<E>(
   f: LazyArg<Cause<E>>,

@@ -4,7 +4,7 @@ import { Effect } from "../definition"
 /**
  * The moral equivalent of `if (p) exp` when `p` has side-effects.
  *
- * @ets fluent ets/Effect whenEffect
+ * @tsplus fluent ets/Effect whenEffect
  */
 export function whenEffect_<R1, E1, A, R, E>(
   self: Effect<R1, E1, A>,

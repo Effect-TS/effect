@@ -4,7 +4,7 @@ import { Managed } from "../definition"
  * Keeps none of the errors, and terminates the fiber with them, using the
  * specified function to convert the `E` into a `Throwable`.
  *
- * @ets fluent ets/Managed orDieWith
+ * @tsplus fluent ets/Managed orDieWith
  */
 export function orDieWith_<R, E, A>(
   self: Managed<R, E, A>,

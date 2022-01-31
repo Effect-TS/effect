@@ -8,7 +8,7 @@ import type { Effect, RIO } from "../definition"
  * guaranteeing the specified callback will be invoked, whether or not this
  * effect succeeds.
  *
- * @ets fluent ets/Effect ensuringChild
+ * @tsplus fluent ets/Effect ensuringChild
  */
 export function ensuringChild_<R, E, A, R2, X>(
   self: Effect<R, E, A>,

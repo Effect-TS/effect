@@ -19,7 +19,7 @@ export type ManagedURI = typeof ManagedURI
  * some checked error, as per the type of the functions provided by the
  * resource.
  *
- * @ets type ets/Managed
+ * @tsplus type ets/Managed
  */
 export interface Managed<R, E, A> {
   readonly [_U]: ManagedURI
@@ -31,7 +31,7 @@ export interface Managed<R, E, A> {
 }
 
 /**
- * @ets unify ets/Managed
+ * @tsplus unify ets/Managed
  */
 export function unify<X extends Managed<any, any, any>>(
   self: X
@@ -40,7 +40,7 @@ export function unify<X extends Managed<any, any, any>>(
 }
 
 /**
- * @ets type ets/ManagedOps
+ * @tsplus type ets/ManagedOps
  */
 export interface ManagedOps {}
 export const Managed: ManagedOps = {}
@@ -71,7 +71,7 @@ export class ManagedImpl<R, E, A> implements Managed<R, E, A> {
  *   - Returning the `Finalizer` returned from `ReleaseMap.add`. This is
  *     important to prevent double-finalization.
  *
- * @ets static ets/ManagedOps __call
+ * @tsplus static ets/ManagedOps __call
  */
 export function managedApply<R, E, A>(
   effect: Effect<R, E, Tp.Tuple<[Finalizer, A]>>

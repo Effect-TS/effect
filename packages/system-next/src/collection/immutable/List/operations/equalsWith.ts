@@ -7,7 +7,7 @@ import { equalsCb, foldlCb } from "./_internal/callbacks"
  * pair of elements with the given comparison function.
  *
  * @complexity O(n)
- * @ets fluent ets/List equalsWith
+ * @tsplus fluent ets/List equalsWith
  */
 export function equalsWith_<A>(
   self: List<A>,

@@ -7,7 +7,7 @@ import { Managed } from "../definition"
  * that does not need access to the resource. The acquire and release actions will
  * be performed uninterruptibly.
  *
- * @ets static ets/ManagedOps acquireRelease
+ * @tsplus static ets/ManagedOps acquireRelease
  */
 export function acquireRelease<R, R1, E, A, X>(
   acquire: LazyArg<Effect<R, E, A>>,

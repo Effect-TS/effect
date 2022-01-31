@@ -5,7 +5,7 @@ import { Managed } from "../definition"
  * Determines whether all elements of the `Iterable<A>` satisfy the effectual
  * predicate `f`.
  *
- * @ets static ets/ManagedOps forall
+ * @tsplus static ets/ManagedOps forall
  */
 export function forall<R, E, A>(
   as: LazyArg<Iterable<A>>,

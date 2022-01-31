@@ -7,7 +7,7 @@ import { ReleaseMap } from "./definition"
  * will be released with the in parallel as the release action for the
  * resulting `Managed`.
  *
- * @ets static ets/ReleaseMapOps makeManaged
+ * @tsplus static ets/ReleaseMapOps makeManaged
  */
 export function makeManaged(
   executionStrategy: ExecutionStrategy,

@@ -8,14 +8,14 @@ import { Running } from "./state"
 /**
  * Creates a new `ReleaseMap`.
  *
- * @ets static ets/ReleaseMapOps make
+ * @tsplus static ets/ReleaseMapOps make
  */
 export const make = Effect.succeed(unsafeMake)
 
 /**
  * Unsafely creates a new `ReleaseMap`.
  *
- * @ets static ets/ReleaseMapOps unsafeMake
+ * @tsplus static ets/ReleaseMapOps unsafeMake
  */
 export function unsafeMake(): ReleaseMap {
   return ReleaseMap(unsafeMakeRef<State>(new Running(0, new Map(), identity)))

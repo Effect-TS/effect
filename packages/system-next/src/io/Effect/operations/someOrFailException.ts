@@ -5,7 +5,7 @@ import type { Effect } from "../definition"
 /**
  * Extracts the optional value, or fails with a `NoSuchElementException`
  *
- * @ets fluent ets/Effect someOrFailException
+ * @tsplus fluent ets/Effect someOrFailException
  */
 export function someOrFailException<R, E, A>(
   self: Effect<R, E, Option<A>>,

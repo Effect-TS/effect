@@ -8,7 +8,7 @@ import { Managed } from "../definition"
  * to the specified value as the `acquire` action and setting it back to the
  * original runtime configuration as the `release` action.
  *
- * @ets static ets/ManagedOps fromRuntimeConfig
+ * @tsplus static ets/ManagedOps fromRuntimeConfig
  */
 export function fromRuntimeConfig(
   runtimeConfig: LazyArg<RuntimeConfig>,
