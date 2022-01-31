@@ -5,7 +5,7 @@ import { pipe } from "../Function/index.js"
 import { succeed } from "./core.js"
 import { die } from "./die.js"
 import type { IO, UIO } from "./effect.js"
-import { effectAsync } from "./effectAsync"
+import { effectAsync } from "./effectAsync.js"
 import { fail } from "./fail.js"
 
 /**

@@ -3,7 +3,7 @@
 import "../../../Operator/index.js"
 
 import type { Atomic } from "../../TRef/index.js"
-import { Versioned } from "../Versioned"
+import { Versioned } from "../Versioned/index.js"
 
 export const EntryTypeId = Symbol()
 export type EntryTypeId = typeof EntryTypeId

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as CS from "../../../../Cause"
+import * as CS from "../../../../Cause/index.js"
 import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
 import * as T from "../../../../Effect/index.js"
 import { pipe } from "../../../../Function/index.js"

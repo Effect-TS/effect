@@ -2,10 +2,10 @@
 
 import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import { pipe } from "../Function/index.js"
-import * as T from "./deps-core"
+import * as T from "./deps-core.js"
 import { managedApply } from "./managed.js"
-import type { ReleaseMap } from "./ReleaseMap"
 import * as add from "./ReleaseMap/add.js"
+import type { ReleaseMap } from "./ReleaseMap/index.js"
 
 /**
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with a release action

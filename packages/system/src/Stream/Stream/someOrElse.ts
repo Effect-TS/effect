@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as O from "../../Option/index.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { map_ } from "./map.js"
 
 /**

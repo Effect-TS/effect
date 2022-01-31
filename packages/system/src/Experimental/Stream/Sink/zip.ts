@@ -3,7 +3,7 @@
 import * as A from "../../../Collections/Immutable/Array/index.js"
 import * as Tp from "../../../Collections/Immutable/Tuple/index.js"
 import type * as C from "./core.js"
-import type * as U from "./utils"
+import type * as U from "./utils.js"
 import * as ZipWith from "./zipWith.js"
 
 export function zip_<SN extends readonly C.Sink<any, any, any, any, any, any>[]>(

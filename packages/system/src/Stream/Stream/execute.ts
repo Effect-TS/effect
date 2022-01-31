@@ -1,5 +1,5 @@
 import type * as T from "../_internal/effect.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { drain } from "./drain.js"
 import { fromEffect } from "./fromEffect.js"
 

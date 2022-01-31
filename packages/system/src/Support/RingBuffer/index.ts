@@ -2,9 +2,9 @@
 
 import "../../Operator/index.js"
 
-import * as L from "../../Collections/Immutable/List"
+import * as L from "../../Collections/Immutable/List/index.js"
 import type { Predicate } from "../../Function/index.js"
-import { DoublyLinkedList } from "../DoublyLinkedList"
+import { DoublyLinkedList } from "../DoublyLinkedList/index.js"
 
 export class RingBuffer<T> {
   private values = new DoublyLinkedList<T>()

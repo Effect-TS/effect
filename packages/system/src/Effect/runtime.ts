@@ -21,12 +21,12 @@ import { none } from "../Option/index.js"
 import { defaultRandom, HasRandom } from "../Random/index.js"
 import * as Scope from "../Scope/index.js"
 // supervisor
-import * as Supervisor from "../Supervisor"
+import * as Supervisor from "../Supervisor/index.js"
 import { isTracingEnabled } from "../Tracing/index.js"
 import * as core from "./core.js"
 import type { Effect, UIO } from "./effect.js"
-import type { FailureReporter } from "./primitives"
-import { instruction, IPlatform } from "./primitives"
+import type { FailureReporter } from "./primitives.js"
+import { instruction, IPlatform } from "./primitives.js"
 
 // empty function
 const empty = () => {

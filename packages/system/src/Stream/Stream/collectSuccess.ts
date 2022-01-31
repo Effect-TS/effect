@@ -3,7 +3,7 @@
 import * as Ex from "../../Exit/index.js"
 import * as O from "../../Option/index.js"
 import { collect_ } from "./collect.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 
 /**
  * Filters any `Exit.Failure` values.

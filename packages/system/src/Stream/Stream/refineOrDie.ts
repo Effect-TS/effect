@@ -2,7 +2,7 @@
 
 import { identity } from "../../Function/index.js"
 import type * as O from "../../Option/index.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { refineOrDieWith } from "./refineOrDieWith.js"
 
 /**

@@ -2,8 +2,8 @@
 
 import * as A from "../../Collections/Immutable/Chunk/index.js"
 import * as M from "../_internal/managed.js"
-import { broadcastedQueues_ } from "./broadcastedQueues"
-import type { Stream } from "./definitions"
+import { broadcastedQueues_ } from "./broadcastedQueues.js"
+import type { Stream } from "./definitions.js"
 import { flattenTake } from "./flattenTake.js"
 import { fromQueueWithShutdown } from "./fromQueueWithShutdown.js"
 

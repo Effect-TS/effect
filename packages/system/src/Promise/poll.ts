@@ -2,7 +2,7 @@
 
 import { succeedWith } from "../Effect/core.js"
 import * as O from "../Option/index.js"
-import type { Promise } from "./promise"
+import type { Promise } from "./promise.js"
 
 /**
  * Checks for completion of this Promise. Returns the result effect if this

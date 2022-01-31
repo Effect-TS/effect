@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
-import * as HM from "../../../../Collections/Immutable/HashMap"
-import * as L from "../../../../Collections/Immutable/List"
+import * as HM from "../../../../Collections/Immutable/HashMap/index.js"
+import * as L from "../../../../Collections/Immutable/List/index.js"
 import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
 import * as T from "../../../../Effect/index.js"
 import type * as Ex from "../../../../Exit/index.js"
@@ -10,10 +10,10 @@ import type { Predicate } from "../../../../Function/index.js"
 import { pipe } from "../../../../Function/index.js"
 import * as M from "../../../../Managed/index.js"
 import type * as O from "../../../../Option/index.js"
-import * as P from "../../../../Promise"
+import * as P from "../../../../Promise/index.js"
 import type * as Q from "../../../../Queue/index.js"
 import type * as C from "../core.js"
-import * as DistributedWithDynamic from "./distributedWithDynamic"
+import * as DistributedWithDynamic from "./distributedWithDynamic.js"
 
 /**
  * More powerful version of `Stream#broadcast`. Allows to provide a function that determines what

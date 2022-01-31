@@ -2,7 +2,7 @@
 
 import * as EQ from "../../../../Equal/index.js"
 import type * as C from "../core.js"
-import * as ChangesWith from "./changesWith"
+import * as ChangesWith from "./changesWith.js"
 
 /**
  * Returns a new stream that only emits elements that are not equal to the

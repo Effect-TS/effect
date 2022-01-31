@@ -4,7 +4,7 @@ import * as A from "../Collections/Immutable/Array/index.js"
 import * as NEA from "../Collections/Immutable/NonEmptyArray/index.js"
 import { suspend } from "./core.js"
 import type { Effect } from "./effect.js"
-import { orElse_ } from "./orElse"
+import { orElse_ } from "./orElse.js"
 
 /**
  * Returns an effect that yields the value of the first

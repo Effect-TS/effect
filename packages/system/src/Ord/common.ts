@@ -2,7 +2,7 @@
 
 import type { Ordering } from "../Ordering/index.js"
 import type { Ord } from "./definition.js"
-import { contramap_, makeOrd } from "./operations"
+import { contramap_, makeOrd } from "./operations.js"
 
 const compare = (x: any, y: any): Ordering => {
   return x < y ? -1 : x > y ? 1 : 0

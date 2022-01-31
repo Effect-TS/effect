@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import { done } from "../Promise/done.js"
-import type { Promise } from "../Promise/promise"
+import type { Promise } from "../Promise/promise.js"
 import { chain_, result } from "./core.js"
 import type { Effect } from "./effect.js"
 import { uninterruptibleMask } from "./interruption.js"

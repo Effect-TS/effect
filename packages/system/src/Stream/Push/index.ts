@@ -2,7 +2,7 @@
 
 import "../../Operator/index.js"
 
-import type { Cause } from "../../Cause"
+import type { Cause } from "../../Cause/index.js"
 import * as A from "../../Collections/Immutable/Chunk/index.js"
 import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import * as E from "../../Either/index.js"

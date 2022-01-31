@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as R from "../Collections/Immutable/Dictionary/index.js"
-import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
+import type { _E, _R, EnforceNonEmptyRecord } from "../Utils/index.js"
 import { chain_, map_ } from "./core.js"
 import { forEach_, forEachPar_, forEachParN_ } from "./forEach.js"
 import type { Managed } from "./managed.js"

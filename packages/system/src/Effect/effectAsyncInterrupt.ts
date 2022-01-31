@@ -5,7 +5,7 @@ import type { FiberID } from "../Fiber/id.js"
 import type { Canceler } from "./Canceler.js"
 import type { Cb } from "./Cb.js"
 import type { Effect } from "./effect.js"
-import { effectMaybeAsyncInterruptBlockingOn } from "./effectMaybeAsyncInterrupt"
+import { effectMaybeAsyncInterruptBlockingOn } from "./effectMaybeAsyncInterrupt.js"
 
 /**
  * Imports an asynchronous side-effect into an effect. The effect also

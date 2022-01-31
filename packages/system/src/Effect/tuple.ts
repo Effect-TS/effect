@@ -3,7 +3,7 @@
 import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray/index.js"
 import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import { accessCallTrace } from "../Tracing/index.js"
-import type { _E, _R, ForcedTuple } from "../Utils"
+import type { _E, _R, ForcedTuple } from "../Utils/index.js"
 import type { Effect } from "./effect.js"
 import { collectAll, collectAllPar, collectAllParN_ } from "./excl-forEach.js"
 import { map_ } from "./map.js"

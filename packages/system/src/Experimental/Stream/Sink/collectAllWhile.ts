@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as CK from "../../../Collections/Immutable/Chunk/index.js"
-import * as L from "../../../Collections/Immutable/List"
+import * as L from "../../../Collections/Immutable/List/index.js"
 import * as Tp from "../../../Collections/Immutable/Tuple/index.js"
 import type { Predicate } from "../../../Function/index.js"
 import { pipe } from "../../../Function/index.js"

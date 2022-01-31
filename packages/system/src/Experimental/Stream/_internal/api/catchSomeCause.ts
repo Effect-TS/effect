@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as CS from "../../../../Cause"
+import type * as CS from "../../../../Cause/index.js"
 import * as O from "../../../../Option/index.js"
 import type * as C from "../core.js"
-import * as CatchAllCause from "./catchAllCause"
-import * as FailCause from "./failCause"
+import * as CatchAllCause from "./catchAllCause.js"
+import * as FailCause from "./failCause.js"
 
 /**
  * Switches over to the stream produced by the provided function in case this one

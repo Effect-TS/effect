@@ -5,9 +5,9 @@ import type * as A from "../../Collections/Immutable/Chunk/index.js"
 import * as E from "../../Either/index.js"
 import * as O from "../../Option/index.js"
 import type * as SC from "../../Schedule/index.js"
-import type * as TR from "../Transducer"
-import { aggregateAsyncWithinEither_ } from "./aggregateAsyncWithinEither"
-import type { Stream } from "./definitions"
+import type * as TR from "../Transducer/index.js"
+import { aggregateAsyncWithinEither_ } from "./aggregateAsyncWithinEither.js"
+import type { Stream } from "./definitions.js"
 import { filterMap_ } from "./filterMap.js"
 
 /**

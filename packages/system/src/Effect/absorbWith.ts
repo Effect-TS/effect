@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { squash } from "../Cause"
+import { squash } from "../Cause/index.js"
 import { identity, pipe } from "../Function/index.js"
 import { succeed } from "./core.js"
 import type { Effect } from "./effect.js"

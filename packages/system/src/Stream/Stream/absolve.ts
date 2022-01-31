@@ -2,7 +2,7 @@
 
 import * as E from "../../Either/index.js"
 import { chain_ } from "./chain.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { fail } from "./fail.js"
 import { succeed } from "./succeed.js"
 

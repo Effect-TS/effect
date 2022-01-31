@@ -5,8 +5,8 @@ import type * as Ex from "../../Exit/index.js"
 import * as O from "../../Option/index.js"
 import type * as T from "../_internal/effect.js"
 import type * as F from "../_internal/fiber.js"
-import type { Stream } from "./definitions"
-import { effectAsyncMaybe } from "./effectAsyncMaybe"
+import type { Stream } from "./definitions.js"
+import { effectAsyncMaybe } from "./effectAsyncMaybe.js"
 
 /**
  * Creates a stream from an asynchronous callback that can be called multiple times.

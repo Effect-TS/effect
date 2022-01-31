@@ -3,7 +3,7 @@
 import type * as A from "../Collections/Immutable/Array/index.js"
 import type * as Tp from "../Collections/Immutable/Tuple/index.js"
 import type * as E from "../Either/index.js"
-import type { ForcedTuple } from "../Utils"
+import type { ForcedTuple } from "../Utils/index.js"
 import type { Equal } from "./definition.js"
 
 /**

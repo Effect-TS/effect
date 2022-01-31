@@ -1,4 +1,4 @@
-import type { AssertionValue } from "./AssertionValue"
+import type { AssertionValue } from "../AssertionValue/index.js"
 
 export function printAssertion(as: AssertionValue): string {
   return as.assertion.toString()

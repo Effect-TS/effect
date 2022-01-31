@@ -3,7 +3,7 @@
 import * as H from "../../../../Hub/index.js"
 import * as M from "../../../../Managed/index.js"
 import * as C from "../core.js"
-import * as Ensuring from "./ensuring"
+import * as Ensuring from "./ensuring.js"
 import * as FromHubManaged from "./fromHubManaged.js"
 
 /**

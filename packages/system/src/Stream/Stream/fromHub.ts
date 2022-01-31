@@ -2,7 +2,7 @@
 
 import * as H from "../../Hub/index.js"
 import { chain_ } from "./chain.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { fromQueue } from "./fromQueue.js"
 import { managed } from "./managed.js"
 

@@ -2,7 +2,7 @@
 
 import type * as T from "../_internal/effect.js"
 import type * as M from "../_internal/managed.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { foldWhileManagedM } from "./foldWhileManagedM.js"
 
 /**

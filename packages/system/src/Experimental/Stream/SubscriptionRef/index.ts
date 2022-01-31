@@ -5,7 +5,7 @@ import { pipe } from "../../../Function/index.js"
 import * as H from "../../../Hub/index.js"
 import * as M from "../../../Managed/index.js"
 import * as RefM from "../../../RefM/index.js"
-import * as S from ".."
+import * as S from "../index.js"
 
 /**
  * A `SubscriptionRef<A>` contains a `RefM` with a value of type

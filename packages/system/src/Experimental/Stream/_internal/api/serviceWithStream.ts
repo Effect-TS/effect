@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as HS from "../../../../Has"
+import type * as HS from "../../../../Has/index.js"
 import type * as C from "../core.js"
 import * as Chain from "./chain.js"
 import * as Service from "./service.js"

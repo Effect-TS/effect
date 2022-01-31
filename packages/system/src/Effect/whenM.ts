@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { asUnit } from "./asUnit"
+import { asUnit } from "./asUnit.js"
 import { chain_, unit } from "./core.js"
 import type { Effect } from "./effect.js"
 

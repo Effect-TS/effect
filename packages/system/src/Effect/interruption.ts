@@ -18,7 +18,7 @@ import {
   interruptStatus_,
   succeed
 } from "./core.js"
-import { forkDaemon } from "./core-scope"
+import { forkDaemon } from "./core-scope.js"
 import type { Effect } from "./effect.js"
 import { fiberId } from "./fiberId.js"
 

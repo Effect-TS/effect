@@ -4,7 +4,7 @@ import * as L from "../../Layer/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import { chain_ } from "./chain.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { managed } from "./managed.js"
 import { repeatEffectChunkOption } from "./repeatEffectChunkOption.js"
 

@@ -2,7 +2,7 @@
 
 import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
 import type * as C from "../core.js"
-import * as MapChunks from "./mapChunks"
+import * as MapChunks from "./mapChunks.js"
 
 /**
  * Maps each element to a chunk, and flattens the chunks into the output of

@@ -5,7 +5,7 @@ import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
 import * as SC from "../../../../Schedule/index.js"
 import * as SK from "../../Sink/index.js"
 import type * as C from "../core.js"
-import * as AggregateAsyncWithin from "./aggregateAsyncWithin"
+import * as AggregateAsyncWithin from "./aggregateAsyncWithin.js"
 
 /**
  * Partitions the stream with the specified chunkSize or until the specified

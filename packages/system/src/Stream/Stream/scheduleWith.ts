@@ -3,12 +3,12 @@
 import type * as CL from "../../Clock/index.js"
 import * as A from "../../Collections/Immutable/Chunk/index.js"
 import { pipe } from "../../Function/index.js"
-import type * as H from "../../Has"
+import type * as H from "../../Has/index.js"
 import * as SC from "../../Schedule/index.js"
 import * as BP from "../../Stream/BufferedPull/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 /**
  * Schedules the output of the stream using the provided `schedule` and emits its output at

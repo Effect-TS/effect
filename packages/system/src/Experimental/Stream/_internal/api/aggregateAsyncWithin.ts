@@ -6,7 +6,7 @@ import * as O from "../../../../Option/index.js"
 import type * as SC from "../../../../Schedule/index.js"
 import type * as SK from "../../Sink/index.js"
 import type * as C from "../core.js"
-import * as AggregateAsyncWithinEither from "./aggregateAsyncWithinEither"
+import * as AggregateAsyncWithinEither from "./aggregateAsyncWithinEither.js"
 import * as Collect from "./collect.js"
 
 /**

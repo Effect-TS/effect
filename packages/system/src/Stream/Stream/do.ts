@@ -3,7 +3,7 @@
 import { pipe } from "../../Function/index.js"
 import * as T from "../_internal/effect.js"
 import { chain } from "./chain.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { fromEffect } from "./fromEffect.js"
 import { map } from "./map.js"
 

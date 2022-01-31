@@ -2,7 +2,7 @@
 
 import type { Option } from "../Option/index.js"
 import type { FiberID } from "./id.js"
-import type { Status } from "./status"
+import type { Status } from "./status.js"
 
 export interface FiberDump {
   _tag: "FiberDump"

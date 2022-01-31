@@ -3,7 +3,7 @@
 import type * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import type * as O from "../../Option/index.js"
 import * as T from "../_internal/effect.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { paginateM } from "./paginateM.js"
 
 /**

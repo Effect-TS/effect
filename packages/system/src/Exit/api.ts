@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as C from "./_internal/cause"
+import type * as C from "./_internal/cause.js"
 import * as T from "./_internal/effect.js"
 import * as Exit from "./core.js"
 

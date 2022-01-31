@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as P from "../../Promise"
+import * as P from "../../Promise/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as chain from "./chain.js"
-import * as crossRight from "./crossRight"
-import type { Stream } from "./definitions"
+import * as crossRight from "./crossRight.js"
+import type { Stream } from "./definitions.js"
 import * as forEach from "./forEach.js"
 import * as fromEffect from "./fromEffect.js"
 import * as interruptWhenP from "./interruptWhenP.js"

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { IO } from "../Effect/effect.js"
-import type { Promise } from "./promise"
+import type { Promise } from "./promise.js"
 import { Done } from "./state.js"
 
 /**

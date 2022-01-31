@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type * as C from "../core.js"
-import * as OrElse from "./orElse"
+import * as OrElse from "./orElse.js"
 import * as Succeed from "./succeed.js"
 
 /**

@@ -3,7 +3,7 @@
 import type * as A from "../../Collections/Immutable/Chunk/index.js"
 import { identity, pipe } from "../../Function/index.js"
 import type * as T from "../_internal/effect.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { mapConcatChunk } from "./mapConcatChunk.js"
 import { mapM } from "./mapM.js"
 

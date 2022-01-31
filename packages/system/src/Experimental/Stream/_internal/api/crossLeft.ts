@@ -2,7 +2,7 @@
 
 import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
 import type * as C from "../core.js"
-import * as Cross from "./cross"
+import * as Cross from "./cross.js"
 import * as Map from "./map.js"
 
 /**

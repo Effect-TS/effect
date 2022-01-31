@@ -3,10 +3,10 @@
 import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import { pipe } from "../../Function/index.js"
 import * as O from "../../Option/index.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { map } from "./map.js"
 import { zipWithNext } from "./zipWithNext.js"
-import { zipWithPrevious } from "./zipWithPrevious"
+import { zipWithPrevious } from "./zipWithPrevious.js"
 
 /**
  * Zips each element with both the previous and next element.

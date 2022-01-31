@@ -3,7 +3,7 @@
 import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
 import * as SK from "../../Sink/index.js"
 import type * as C from "../core.js"
-import * as Transduce from "./transduce"
+import * as Transduce from "./transduce.js"
 
 /**
  * Partitions the stream with specified chunkSize

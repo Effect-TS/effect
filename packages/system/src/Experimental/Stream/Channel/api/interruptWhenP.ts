@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as P from "../../../../Promise"
+import * as P from "../../../../Promise/index.js"
 import type * as C from "../core.js"
 import * as InterruptWhen from "./interruptWhen.js"
 

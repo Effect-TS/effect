@@ -2,7 +2,7 @@
 
 import * as Q from "../../../../Queue/index.js"
 import * as C from "../core.js"
-import * as Ensuring from "./ensuring"
+import * as Ensuring from "./ensuring.js"
 import * as FromQueue from "./fromQueue.js"
 
 /**

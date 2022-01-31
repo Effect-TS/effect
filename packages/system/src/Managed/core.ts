@@ -1,24 +1,24 @@
 // ets_tracing: off
 
-import type { Cause } from "../Cause/cause"
+import type { Cause } from "../Cause/cause.js"
 import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import type { ExecutionStrategy } from "../Effect/ExecutionStrategy.js"
 import { parallel, sequential } from "../Effect/ExecutionStrategy.js"
 import { pipe } from "../Function/index.js"
 import { makeRef } from "../Ref/index.js"
-import * as T from "./deps-core"
+import * as T from "./deps-core.js"
 import { fromEffect } from "./fromEffect.js"
 import { makeExit_ } from "./makeExit.js"
 import type { Managed } from "./managed.js"
 import { managedApply } from "./managed.js"
-import type { ReleaseMap } from "./ReleaseMap"
 import * as add from "./ReleaseMap/add.js"
 import * as addIfOpen from "./ReleaseMap/addIfOpen.js"
 import type { Finalizer } from "./ReleaseMap/finalizer.js"
-import * as makeReleaseMap from "./ReleaseMap/makeReleaseMap"
-import * as release from "./ReleaseMap/release"
-import * as releaseAll from "./ReleaseMap/releaseAll"
-import { use_ } from "./use"
+import type { ReleaseMap } from "./ReleaseMap/index.js"
+import * as makeReleaseMap from "./ReleaseMap/makeReleaseMap.js"
+import * as release from "./ReleaseMap/release.js"
+import * as releaseAll from "./ReleaseMap/releaseAll.js"
+import { use_ } from "./use.js"
 
 /**
  * Returns a managed that models the execution of this managed, followed by

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as CS from "../../../../Cause"
+import * as CS from "../../../../Cause/index.js"
 import type * as CL from "../../../../Clock/index.js"
 import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
 import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
@@ -16,9 +16,9 @@ import * as CH from "../../Channel/index.js"
 import type * as SK from "../../Sink/index.js"
 import * as C from "../core.js"
 import * as HO from "../Handoff.js"
-import * as SER from "../SinkEndReason"
+import * as SER from "../SinkEndReason.js"
 import * as Chain from "./chain.js"
-import * as CrossRight from "./crossRight"
+import * as CrossRight from "./crossRight.js"
 import * as FromEffect from "./fromEffect.js"
 import * as Managed from "./managed.js"
 

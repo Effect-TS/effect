@@ -8,7 +8,7 @@ import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
 import * as Pull from "../Pull/index.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 /**
  * Creates a stream from an effect producing a value of type `A` or an empty Stream

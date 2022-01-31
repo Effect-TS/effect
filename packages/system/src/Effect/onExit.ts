@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Cause } from "../Cause/cause"
+import type { Cause } from "../Cause/cause.js"
 import type { Exit } from "../Exit/exit.js"
 import { bracketExit_ } from "./bracketExit.js"
 import { unit } from "./core.js"

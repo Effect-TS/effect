@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as Async from "../Async"
+import * as Async from "../Async/index.js"
 import * as IO from "../IO/index.js"
 import { accessM, succeed, succeedWith } from "./core.js"
 import type { Effect } from "./effect.js"
-import { effectAsyncInterrupt } from "./effectAsyncInterrupt"
+import { effectAsyncInterrupt } from "./effectAsyncInterrupt.js"
 import { fail } from "./fail.js"
 import { interrupt } from "./interruption.js"
 

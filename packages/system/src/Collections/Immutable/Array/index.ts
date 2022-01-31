@@ -1,2 +1,2 @@
 export * from "./core.js"
-export * from "./classic"
+export * from "./classic.js"

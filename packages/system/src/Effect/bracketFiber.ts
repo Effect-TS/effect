@@ -3,7 +3,7 @@
 import type { Runtime } from "../Fiber/core.js"
 import { bracket_ } from "./bracket.js"
 import { chain_ } from "./core.js"
-import { forkDaemon } from "./core-scope"
+import { forkDaemon } from "./core-scope.js"
 import type { Effect } from "./effect.js"
 import { fiberId } from "./fiberId.js"
 

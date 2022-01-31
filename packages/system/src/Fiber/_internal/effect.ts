@@ -1,14 +1,14 @@
 // ets_tracing: off
 
-export * from "../../Effect/asUnit"
+export * from "../../Effect/asUnit.js"
 export * from "../../Effect/bracket.js"
 export * from "../../Effect/core.js"
-export * from "../../Effect/core-scope"
+export * from "../../Effect/core-scope.js"
 export * from "../../Effect/die.js"
 export * from "../../Effect/done.js"
 export { Effect, IO, RIO, UIO } from "../../Effect/effect.js"
-export * from "../../Effect/effectAsync"
-export * from "../../Effect/effectMaybeAsyncInterrupt"
+export * from "../../Effect/effectAsync.js"
+export * from "../../Effect/effectMaybeAsyncInterrupt.js"
 export * from "../../Effect/fail.js"
 export * from "../../Effect/fiberId.js"
 export * from "../../Effect/interruption.js"

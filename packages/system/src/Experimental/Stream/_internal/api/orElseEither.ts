@@ -3,7 +3,7 @@
 import * as E from "../../../../Either/index.js"
 import type * as C from "../core.js"
 import * as Map from "./map.js"
-import * as OrElse from "./orElse"
+import * as OrElse from "./orElse.js"
 
 /**
  * Switches to the provided stream in case this one fails with a typed error.

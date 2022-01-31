@@ -7,7 +7,7 @@ import { prettyTrace } from "../../Fiber/tracing.js"
 import { pipe } from "../../Function/index.js"
 import * as S from "../../IO/index.js"
 import * as O from "../../Option/index.js"
-import type { Cause } from "../cause"
+import type { Cause } from "../cause.js"
 
 //
 // @category PrettyPrint

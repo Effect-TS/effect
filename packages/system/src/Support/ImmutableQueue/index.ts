@@ -2,7 +2,7 @@
 
 import "../../Operator/index.js"
 
-import * as L from "../../Collections/Immutable/List"
+import * as L from "../../Collections/Immutable/List/index.js"
 import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import * as O from "../../Option/index.js"
 

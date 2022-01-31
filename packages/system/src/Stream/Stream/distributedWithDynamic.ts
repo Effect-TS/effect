@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as C from "../../Cause"
+import * as C from "../../Cause/index.js"
 import * as A from "../../Collections/Immutable/Chunk/index.js"
 import * as Map from "../../Collections/Immutable/Map/index.js"
 import * as Tp from "../../Collections/Immutable/Tuple/index.js"
@@ -12,7 +12,7 @@ import * as SM from "../../Semaphore/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as R from "../_internal/ref.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import * as forEach from "./forEach.js"
 
 /**

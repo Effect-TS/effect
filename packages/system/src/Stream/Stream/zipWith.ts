@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as C from "../../Cause"
+import * as C from "../../Cause/index.js"
 import * as A from "../../Collections/Immutable/Chunk/index.js"
 import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import * as E from "../../Either/index.js"
@@ -8,9 +8,9 @@ import * as Ex from "../../Exit/api.js"
 import { pipe, tuple } from "../../Function/index.js"
 import * as O from "../../Option/index.js"
 import * as T from "../_internal/effect.js"
-import { zipChunks_ } from "../_internal/utils"
-import { combineChunks_ } from "./combineChunks"
-import type { Stream } from "./definitions"
+import { zipChunks_ } from "../_internal/utils.js"
+import { combineChunks_ } from "./combineChunks.js"
+import type { Stream } from "./definitions.js"
 
 /**
  * Zips this stream with another point-wise and applies the function to the paired elements.

@@ -2,8 +2,8 @@
 
 import { succeed } from "../_internal/managed.js"
 import * as Pull from "../Pull/index.js"
-import type { UIO } from "./definitions"
-import { Stream } from "./definitions"
+import type { UIO } from "./definitions.js"
+import { Stream } from "./definitions.js"
 
 /**
  * The empty stream

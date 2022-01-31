@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { failureOrCause } from "../Cause"
+import { failureOrCause } from "../Cause/index.js"
 import { fold } from "../Either/index.js"
 import { pipe } from "../Function/index.js"
 import { fork, halt } from "./core.js"

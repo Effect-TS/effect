@@ -2,7 +2,7 @@
 
 import type * as C from "../core.js"
 import * as Fail from "./fail.js"
-import * as OrElse from "./orElse"
+import * as OrElse from "./orElse.js"
 
 /**
  * Fails with given error in case this one fails with a typed error.

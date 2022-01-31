@@ -1,5 +1,5 @@
 import * as CatchAll from "./catchAll.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import * as Fail from "./fail.js"
 
 /**

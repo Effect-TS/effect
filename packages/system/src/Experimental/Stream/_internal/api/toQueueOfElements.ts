@@ -7,7 +7,7 @@ import * as M from "../../../../Managed/index.js"
 import type * as O from "../../../../Option/index.js"
 import * as Q from "../../../../Queue/index.js"
 import type * as C from "../core.js"
-import * as RunIntoElementsManaged from "./runIntoElementsManaged"
+import * as RunIntoElementsManaged from "./runIntoElementsManaged.js"
 
 /**
  * Converts the stream to a managed queue of elements. After the managed queue is used,

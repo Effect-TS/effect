@@ -4,11 +4,11 @@ import * as T from "../../Effect/index.js"
 import * as E from "../../Either/index.js"
 import { runtimeOrd } from "../../Fiber/index.js"
 import { pipe } from "../../Function/index.js"
-import * as Supervisor from "../../Supervisor"
+import * as Supervisor from "../../Supervisor/index.js"
 import { AtomicReference } from "../../Support/AtomicReference/index.js"
-import * as Annotations from "../Annotations"
+import * as Annotations from "../Annotations/index.js"
 import { Int } from "../Int/index.js"
-import { fibers } from "../TestAnnotation"
+import { fibers } from "../TestAnnotation/index.js"
 
 export function fibersPerTest<R, E, A>(self: T.Effect<R, E, A>) {
   const acquire = pipe(

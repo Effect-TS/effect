@@ -2,14 +2,14 @@
 
 import "../../Operator/index.js"
 
-import type * as C from "../../Cause"
+import type * as C from "../../Cause/index.js"
 import * as Chunk from "../../Collections/Immutable/Chunk/index.js"
 import * as Map from "../../Collections/Immutable/Map/index.js"
 import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import * as Ex from "../../Exit/index.js"
 import type { Predicate, Refinement } from "../../Function/index.js"
 import { not, pipe, tuple } from "../../Function/index.js"
-import type { Finalizer } from "../../Managed/ReleaseMap"
+import type { Finalizer } from "../../Managed/ReleaseMap/index.js"
 import * as O from "../../Option/index.js"
 import * as RM from "../../RefM/index.js"
 import * as T from "../_internal/effect.js"

@@ -2,7 +2,7 @@
 
 import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
 import type * as C from "../core.js"
-import * as FlattenChunks from "./flattenChunks"
+import * as FlattenChunks from "./flattenChunks.js"
 import * as Map from "./map.js"
 
 /**

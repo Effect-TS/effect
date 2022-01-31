@@ -7,7 +7,7 @@ import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
 import * as BP from "../BufferedPull/index.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 /**
  * Statefully and effectfully maps over the elements of this stream to produce all

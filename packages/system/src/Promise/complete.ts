@@ -2,7 +2,7 @@
 
 import type { IO } from "../Effect/effect.js"
 import { to } from "../Effect/to.js"
-import type { Promise } from "./promise"
+import type { Promise } from "./promise.js"
 
 /**
  * Completes the promise with the result of the specified effect. If the

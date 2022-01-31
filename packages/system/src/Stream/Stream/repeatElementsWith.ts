@@ -9,7 +9,7 @@ import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
 import * as BP from "../BufferedPull/index.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 /**
  * Repeats each element of the stream using the provided schedule. When the schedule is finished,

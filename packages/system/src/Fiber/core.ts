@@ -9,7 +9,7 @@ import type * as FR from "../FiberRef/fiberRef.js"
 import type * as O from "../Option/index.js"
 import type { Scope } from "../Scope/index.js"
 import type { FiberID } from "./id.js"
-import type { Status } from "./status"
+import type { Status } from "./status.js"
 
 export { equalsFiberID, FiberID, newFiberId, None } from "./id.js"
 

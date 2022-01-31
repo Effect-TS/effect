@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as C from "../Cause"
+import * as C from "../Cause/index.js"
 import type * as Exit from "../Exit/index.js"
-import type { Status } from "./status"
-import { Done, Running } from "./status"
+import type { Status } from "./status.js"
+import { Done, Running } from "./status.js"
 
 export type FiberState<E, A> = FiberStateExecuting<E, A> | FiberStateDone<E, A>
 

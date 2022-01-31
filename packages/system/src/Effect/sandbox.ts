@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Cause } from "../Cause"
+import type { Cause } from "../Cause/index.js"
 import { foldCauseM_, succeed } from "./core.js"
 import type { Effect } from "./effect.js"
 import { fail } from "./fail.js"

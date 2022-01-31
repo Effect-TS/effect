@@ -1,10 +1,10 @@
 // ets_tracing: off
 
 import type * as Tp from "../Collections/Immutable/Tuple/index.js"
-import type { HasUnify } from "../Utils"
-import { unifyIndex } from "../Utils"
-import * as T from "./deps-core"
-import type { Finalizer, ReleaseMap } from "./ReleaseMap"
+import type { HasUnify } from "../Utils/index.js"
+import { unifyIndex } from "../Utils/index.js"
+import * as T from "./deps-core.js"
+import type { Finalizer, ReleaseMap } from "./ReleaseMap/index.js"
 
 export const ManagedURI = ".matechs/core/Eff/ManagedURI/index.js"
 export type ManagedURI = typeof ManagedURI

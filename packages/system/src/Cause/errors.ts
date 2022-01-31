@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Cause } from "./cause"
+import type { Cause } from "./cause.js"
 import { pretty } from "./Pretty/index.js"
 
 //

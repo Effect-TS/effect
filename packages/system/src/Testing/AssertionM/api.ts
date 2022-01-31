@@ -1,17 +1,17 @@
-import * as L from "../../Collections/Immutable/List"
+import * as L from "../../Collections/Immutable/List/index.js"
 import * as T from "../../Effect/index.js"
 import type { Lazy } from "../../Function/index.js"
 import { pipe } from "../../Function/index.js"
 import * as O from "../../Option/index.js"
-import * as AMD from "../AssertionMData"
-import type * as AR from "../AssertionResult"
-import type * as ARM from "../AssertionResultM"
-import * as makeAssertionValue from "../AssertionValue/makeAssertionValue"
+import * as AMD from "../AssertionMData/index.js"
+import type * as AR from "../AssertionResult/index.js"
+import type * as ARM from "../AssertionResultM/index.js"
+import * as makeAssertionValue from "../AssertionValue/makeAssertionValue.js"
 import * as BA from "../BoolAlgebra/index.js"
 import * as BAM from "../BoolAlgebraM/index.js"
 import * as R from "../Render/index.js"
 import { apply } from "./apply.js"
-import { AssertionM } from "./AssertionM"
+import { AssertionM } from "./AssertionM.js"
 
 /**
  * Returns a new assertion that succeeds only if both assertions succeed.

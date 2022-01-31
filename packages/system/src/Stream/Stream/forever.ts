@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as C from "../../Cause"
+import * as C from "../../Cause/index.js"
 import type * as A from "../../Collections/Immutable/Chunk/index.js"
 import { pipe } from "../../Function/index.js"
 import * as O from "../../Option/index.js"
@@ -8,7 +8,7 @@ import * as Pull from "../../Stream/Pull/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 export function forever<R, E, O>(self: Stream<R, E, O>): Stream<R, E, O> {
   return new Stream(

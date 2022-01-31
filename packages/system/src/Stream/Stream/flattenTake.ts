@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import type * as TK from "../Take/index.js"
-import type { Stream } from "./definitions"
-import { flattenChunks } from "./flattenChunks"
+import type { Stream } from "./definitions.js"
+import { flattenChunks } from "./flattenChunks.js"
 import { flattenExitOption } from "./flattenExitOption.js"
 
 /**

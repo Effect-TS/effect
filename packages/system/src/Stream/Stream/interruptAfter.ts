@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as CL from "../../Clock/index.js"
-import type * as H from "../../Has"
-import type { Stream } from "./definitions"
+import type * as H from "../../Has/index.js"
+import type { Stream } from "./definitions.js"
 import { interruptWhen_ } from "./interruptWhen.js"
 
 /**

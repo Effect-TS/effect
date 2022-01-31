@@ -2,8 +2,8 @@
 
 import type * as A from "../../Collections/Immutable/Chunk/index.js"
 import * as Q from "../../Queue/index.js"
-import type { Stream } from "./definitions"
-import { ensuringFirst_ } from "./ensuringFirst"
+import type { Stream } from "./definitions.js"
+import { ensuringFirst_ } from "./ensuringFirst.js"
 import { fromChunkQueue } from "./fromChunkQueue.js"
 
 /**

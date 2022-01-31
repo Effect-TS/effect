@@ -5,7 +5,7 @@ import * as O from "../../../../Option/index.js"
 import type * as C from "../core.js"
 import * as Map from "./map.js"
 import * as ZipWithNext from "./zipWithNext.js"
-import * as ZipWithPrevious from "./zipWithPrevious"
+import * as ZipWithPrevious from "./zipWithPrevious.js"
 
 /**
  * Zips each element with both the previous and next element.

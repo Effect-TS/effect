@@ -2,7 +2,7 @@
 
 import * as T from "../../../../Effect/index.js"
 import type * as C from "../core.js"
-import * as LoopOnPartialChunksElements from "./loopOnPartialChunksElements"
+import * as LoopOnPartialChunksElements from "./loopOnPartialChunksElements.js"
 
 /**
  * Effectfully filters the elements emitted by this stream.

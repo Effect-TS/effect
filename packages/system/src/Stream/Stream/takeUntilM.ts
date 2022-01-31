@@ -7,7 +7,7 @@ import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
 import * as Pull from "../Pull/index.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 /**
  * Takes all elements of the stream until the specified effectual predicate

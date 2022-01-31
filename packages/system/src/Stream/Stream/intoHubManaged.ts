@@ -1,7 +1,7 @@
 import * as H from "../../Hub/index.js"
 import type * as M from "../_internal/managed.js"
 import type * as Take from "../Take/index.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { intoManaged_ } from "./intoManaged.js"
 
 /**

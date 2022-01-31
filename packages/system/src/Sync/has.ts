@@ -5,9 +5,9 @@
  */
 import * as A from "../Collections/Immutable/Array/index.js"
 import * as R from "../Collections/Immutable/Dictionary/index.js"
-import type { Has, Tag } from "../Has"
-import { mergeEnvironments } from "../Has"
-import type { UnionToIntersection } from "../Utils"
+import type { Has, Tag } from "../Has/index.js"
+import { mergeEnvironments } from "../Has/index.js"
+import type { UnionToIntersection } from "../Utils/index.js"
 import * as X from "./core.js"
 
 /**

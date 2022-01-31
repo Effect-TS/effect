@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as L from "../Collections/Immutable/List"
+import * as L from "../Collections/Immutable/List/index.js"
 import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import * as E from "../Either/index.js"
 import { identity } from "../Function/index.js"
@@ -9,7 +9,7 @@ import * as R from "../Ref/index.js"
 import { ImmutableQueue } from "../Support/ImmutableQueue/index.js"
 import * as T from "./effect.js"
 import * as M from "./managed.js"
-import * as P from "./promise"
+import * as P from "./promise.js"
 import type { State } from "./state.js"
 import { Acquisition, assertNonNegative } from "./state.js"
 

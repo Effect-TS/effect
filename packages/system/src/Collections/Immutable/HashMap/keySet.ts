@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as S from "../HashSet"
+import * as S from "../HashSet/index.js"
 import type { HashMap } from "./index.js"
 
 /**

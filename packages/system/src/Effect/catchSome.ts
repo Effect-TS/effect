@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as C from "../Cause"
+import * as C from "../Cause/index.js"
 import * as E from "../Either/core.js"
 import { pipe } from "../Function/index.js"
 import * as O from "../Option/core.js"

@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type { Cause } from "../Cause"
+import type { Cause } from "../Cause/index.js"
 import type { Effect } from "./effect.js"
 import { sandbox } from "./sandbox.js"
-import { unsandbox } from "./unsandbox"
+import { unsandbox } from "./unsandbox.js"
 
 /**
  * Companion helper to `sandbox`. Allows recovery, and partial recovery, from

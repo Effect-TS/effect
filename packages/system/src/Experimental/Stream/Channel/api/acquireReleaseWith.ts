@@ -2,7 +2,7 @@
 
 import type * as T from "../../../../Effect/index.js"
 import type * as C from "../core.js"
-import * as AcquireReleaseExitWith from "./acquireReleaseExitWith"
+import * as AcquireReleaseExitWith from "./acquireReleaseExitWith.js"
 
 export function acquireReleaseWith_<
   Env,

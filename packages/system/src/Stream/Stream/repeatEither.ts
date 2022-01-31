@@ -4,7 +4,7 @@ import type * as CL from "../../Clock/index.js"
 import * as E from "../../Either/index.js"
 import { pipe } from "../../Function/index.js"
 import type * as SC from "../../Schedule/index.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { repeatWith } from "./repeatWith.js"
 
 /**

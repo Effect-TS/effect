@@ -1,4 +1,4 @@
-import type { EqualityComparator } from "./utils"
+import type { EqualityComparator } from "./utils.js"
 import {
   areArraysEqual,
   areMapsEqual,

@@ -3,7 +3,7 @@
 import * as T from "../../../../Effect/index.js"
 import * as O from "../../../../Option/index.js"
 import type * as C from "../core.js"
-import * as LoopOnPartialChunksElements from "./loopOnPartialChunksElements"
+import * as LoopOnPartialChunksElements from "./loopOnPartialChunksElements.js"
 
 /**
  * Performs an effectful filter and map in a single step.

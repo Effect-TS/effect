@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as C from "../../Cause"
+import * as C from "../../Cause/index.js"
 import * as CL from "../../Clock/index.js"
 import * as A from "../../Collections/Immutable/Chunk/index.js"
 import * as Ex from "../../Exit/index.js"
@@ -12,7 +12,7 @@ import * as F from "../_internal/fiber.js"
 import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
 import * as Pull from "../Pull/index.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 export function debounce_<R, E, O>(
   self: Stream<R, E, O>,

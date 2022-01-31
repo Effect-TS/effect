@@ -4,7 +4,7 @@ import type * as CL from "../../Clock/index.js"
 import { constVoid, pipe } from "../../Function/index.js"
 import * as SC from "../../Schedule/index.js"
 import * as T from "../_internal/effect.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { repeatEffectOption } from "./repeatEffectOption.js"
 import { unwrap } from "./unwrap.js"
 

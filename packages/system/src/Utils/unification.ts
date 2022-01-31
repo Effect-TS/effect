@@ -4,7 +4,7 @@ import type { Unify } from "./union.js"
 
 export interface HasUnify {
   /**
-   * @ets_rewrite_method _ from "smart:identity"
+   * @ets_rewrite_method _ from "smart:identity.js"
    */
   unify<Self>(this: Self): Unify<Self>
 }
@@ -13,7 +13,7 @@ declare global {
   interface Object extends HasUnify {}
   interface Function extends HasUnify {
     /**
-     * @ets_rewrite_method _ from "smart:identity"
+     * @ets_rewrite_method _ from "smart:identity.js"
      */
     unify<Self extends any[], Ret>(
       this: (...args: Self) => Ret

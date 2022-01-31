@@ -1,6 +1,6 @@
 import * as AM from "../AssertionM/api.js"
-import type { AssertionValue } from "./AssertionValue"
-import { makeAssertionValue } from "./makeAssertionValue"
+import type { AssertionValue } from "../AssertionValue/index.js"
+import { makeAssertionValue } from "./makeAssertionValue.js"
 
 export function label_(self: AssertionValue, l: string): AssertionValue {
   return makeAssertionValue(

@@ -8,7 +8,7 @@ import * as P from "../../Stream/Pull/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 export function flattenExitOption<R, E, E1, O1>(
   self: Stream<R, E, Ex.Exit<O.Option<E1>, O1>>

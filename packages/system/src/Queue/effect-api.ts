@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-export * from "../Effect/asUnit"
+export * from "../Effect/asUnit.js"
 export * from "../Effect/core.js"
 export * from "../Effect/do.js"
 export * from "../Effect/effect.js"

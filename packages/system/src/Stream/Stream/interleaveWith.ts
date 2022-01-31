@@ -1,5 +1,5 @@
 // ets_tracing: off
-import * as C from "../../Cause"
+import * as C from "../../Cause/index.js"
 import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import * as Ex from "../../Exit/index.js"
 import { pipe } from "../../Function/index.js"
@@ -8,7 +8,7 @@ import * as BP from "../../Stream/BufferedPull/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import { combine_ } from "./combine.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 function loop<R1, E1, O, O1, R, E>(
   leftDone: boolean,

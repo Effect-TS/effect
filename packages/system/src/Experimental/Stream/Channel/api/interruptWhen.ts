@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as T from "../../../../Effect/index.js"
-import * as MH from "../_internal/mergeHelpers"
+import * as MH from "../_internal/mergeHelpers.js"
 import * as C from "../core.js"
 import * as MergeWith from "./mergeWith.js"
 

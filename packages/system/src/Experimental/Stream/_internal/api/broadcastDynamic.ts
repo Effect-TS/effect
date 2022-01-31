@@ -3,7 +3,7 @@
 import { pipe } from "../../../../Function/index.js"
 import * as M from "../../../../Managed/index.js"
 import type * as C from "../core.js"
-import * as BroadcastedQueuesDynamic from "./broadcastedQueuesDynamic"
+import * as BroadcastedQueuesDynamic from "./broadcastedQueuesDynamic.js"
 import * as Chain from "./chain.js"
 import * as FlattenTake from "./flattenTake.js"
 import * as FromQueue from "./fromQueue.js"

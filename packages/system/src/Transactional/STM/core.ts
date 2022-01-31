@@ -2,15 +2,15 @@
 
 import "../../Operator/index.js"
 
-import { RuntimeError } from "../../Cause"
+import { RuntimeError } from "../../Cause/index.js"
 import * as T from "../../Effect/index.js"
 import * as E from "../../Either/index.js"
 import type { Predicate, Refinement } from "../../Function/index.js"
 import { constVoid, identity } from "../../Function/index.js"
-import { NoSuchElementException } from "../../GlobalExceptions"
+import { NoSuchElementException } from "../../GlobalExceptions/index.js"
 import * as O from "../../Option/index.js"
 import { AtomicBoolean } from "../../Support/AtomicBoolean/index.js"
-import * as P from "./_internal/primitives"
+import * as P from "./_internal/primitives.js"
 import { tryCommit, tryCommitAsync } from "./Journal/index.js"
 import { DoneTypeId, SuspendTypeId } from "./TryCommit/index.js"
 import { makeTxnId } from "./TxnId/index.js"

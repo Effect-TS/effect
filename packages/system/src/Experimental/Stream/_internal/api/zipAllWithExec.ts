@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as CS from "../../../../Cause"
+import * as CS from "../../../../Cause/index.js"
 import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
 import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
 import type { ExecutionStrategy } from "../../../../Effect/index.js"
@@ -10,8 +10,8 @@ import * as Ex from "../../../../Exit/index.js"
 import { pipe } from "../../../../Function/index.js"
 import * as O from "../../../../Option/index.js"
 import type * as C from "../core.js"
-import * as ZipChunks from "./_internal/zipChunks"
-import * as CombineChunks from "./combineChunks"
+import * as ZipChunks from "./_internal/zipChunks.js"
+import * as CombineChunks from "./combineChunks.js"
 
 const StatusTypeId = Symbol()
 

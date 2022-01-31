@@ -1,5 +1,5 @@
 import * as Chunk from "../../Collections/Immutable/Chunk/index.js"
-import * as List from "../../Collections/Immutable/List"
+import * as List from "../../Collections/Immutable/List/index.js"
 import type * as SS from "../../Collections/Immutable/SortedSet/index.js"
 import * as E from "../../Either/index.js"
 import type * as Fiber from "../../Fiber/index.js"

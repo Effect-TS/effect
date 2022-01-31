@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as CS from "../../../Cause"
+import * as CS from "../../../Cause/index.js"
 import type * as C from "./core.js"
-import * as FailCause from "./failCause"
+import * as FailCause from "./failCause.js"
 
 /**
  * Creates a sink halting with the specified `Throwable`.

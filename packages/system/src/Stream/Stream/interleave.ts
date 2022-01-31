@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as A from "../../Collections/Immutable/Chunk/index.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { forever } from "./forever.js"
 import { fromChunk } from "./fromChunk.js"
 import { interleaveWith_ } from "./interleaveWith.js"

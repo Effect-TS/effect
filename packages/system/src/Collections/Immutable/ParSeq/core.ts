@@ -4,8 +4,8 @@ import { identity } from "../../../Function/index.js"
 import * as O from "../../../Option/index.js"
 import * as L from "../List/core.js"
 import * as Tp from "../Tuple/index.js"
-import type { ParSeq } from "./primitives"
-import * as P from "./primitives"
+import type { ParSeq } from "./primitives.js"
+import * as P from "./primitives.js"
 
 /**
  * Returns the first event in this collection of events. If multiple events

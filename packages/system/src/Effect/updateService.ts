@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Has, Tag } from "../Has"
+import type { Has, Tag } from "../Has/index.js"
 import type { Effect } from "./effect.js"
 import { provideSome_ } from "./provideSome.js"
 

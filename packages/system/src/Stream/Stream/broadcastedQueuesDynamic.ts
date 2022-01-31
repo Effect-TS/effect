@@ -4,7 +4,7 @@ import * as H from "../../Hub/index.js"
 import type * as Q from "../../Queue/index.js"
 import * as M from "../_internal/managed.js"
 import type * as Take from "../Take/index.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { toHub_ } from "./toHub.js"
 
 /**

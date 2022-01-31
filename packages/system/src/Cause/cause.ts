@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as HS from "../Collections/Immutable/HashSet"
+import * as HS from "../Collections/Immutable/HashSet/index.js"
 import * as L from "../Collections/Immutable/List/core.js"
 import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import type { FiberID } from "../Fiber/id.js"
@@ -11,7 +11,7 @@ import * as IO from "../IO/index.js"
 import * as O from "../Option/index.js"
 import { Stack } from "../Stack/index.js"
 import * as St from "../Structural/index.js"
-import type { HasUnify } from "../Utils"
+import type { HasUnify } from "../Utils/index.js"
 
 /**
  * Cause is a Free Semiring structure that allows tracking of multiple error causes.

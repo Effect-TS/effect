@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Cause } from "../Cause/cause"
-import { empty } from "../Cause/cause"
+import type { Cause } from "../Cause/cause.js"
+import { empty } from "../Cause/cause.js"
 import { foldCauseM_, succeed } from "./core.js"
 import type { Effect, RIO } from "./effect.js"
 

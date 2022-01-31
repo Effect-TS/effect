@@ -2,7 +2,7 @@
 
 import type * as T from "../../Effect/index.js"
 import * as M from "../_internal/managed.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { managed } from "./managed.js"
 
 /**

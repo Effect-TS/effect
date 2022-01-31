@@ -7,7 +7,7 @@ import type * as XQ from "../../Queue/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import type * as Take from "../Take/index.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { intoHubManaged_ } from "./intoHubManaged.js"
 
 /**

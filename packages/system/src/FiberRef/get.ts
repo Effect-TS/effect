@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { IO } from "../Effect/primitives"
+import type { IO } from "../Effect/primitives.js"
 import type { XFiberRef } from "./fiberRef.js"
 
 /**

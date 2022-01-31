@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as C from "../Cause/cause"
+import * as C from "../Cause/cause.js"
 import { haltWith } from "./core.js"
 
 /**

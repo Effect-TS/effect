@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { Effect } from "../_internal/effect.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { flatten } from "./flatten.js"
 import { fromEffect } from "./fromEffect.js"
 

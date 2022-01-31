@@ -12,7 +12,7 @@ import * as Ref from "../_internal/ref.js"
 import * as Pull from "../Pull/index.js"
 import * as Take from "../Take/index.js"
 import { chain } from "./chain.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { managed } from "./managed.js"
 import { repeatEffectChunkOption } from "./repeatEffectChunkOption.js"
 

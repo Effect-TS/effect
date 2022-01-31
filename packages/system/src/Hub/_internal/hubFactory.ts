@@ -5,7 +5,7 @@ import "../../Operator/index.js"
 import { BoundedHubArb } from "./BoundedHubArb.js"
 import { BoundedHubPow2 } from "./BoundedHubPow2.js"
 import { BoundedHubSingle } from "./BoundedHubSingle.js"
-import { ensureCapacity } from "./errors"
+import { ensureCapacity } from "./errors.js"
 import type { Hub } from "./Hub.js"
 import { UnboundedHub } from "./UnboundedHub.js"
 

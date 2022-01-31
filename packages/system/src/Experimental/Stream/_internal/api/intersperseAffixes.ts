@@ -4,7 +4,7 @@ import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
 import type * as C from "../core.js"
 import * as Concat from "./concat.js"
 import * as FromChunk from "./fromChunk.js"
-import * as Intersperse from "./intersperse"
+import * as Intersperse from "./intersperse.js"
 
 /**
  * Intersperse and also add a prefix and a suffix

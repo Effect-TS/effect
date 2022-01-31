@@ -2,7 +2,7 @@
 
 import { succeedWith } from "../Effect/core.js"
 import type { IO, UIO } from "../Effect/effect.js"
-import type { Promise } from "./promise"
+import type { Promise } from "./promise.js"
 import { Done } from "./state.js"
 
 /**

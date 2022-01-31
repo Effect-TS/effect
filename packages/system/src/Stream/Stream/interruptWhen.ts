@@ -5,7 +5,7 @@ import * as O from "../../Option/index.js"
 import * as T from "../_internal/effect.js"
 import * as F from "../_internal/fiber.js"
 import * as M from "../_internal/managed.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 /**
  * Interrupts the evaluation of this stream when the provided IO completes. The given

@@ -1,17 +1,17 @@
 // ets_tracing: off
 
-import type { Cause } from "../Cause"
+import type { Cause } from "../Cause/index.js"
 import { pipe } from "../Function/index.js"
-import * as catchAllCause from "./catchAllCause"
+import * as catchAllCause from "./catchAllCause.js"
 import { fork } from "./core.js"
 import * as Do from "./do.js"
 import type { Effect } from "./effect.js"
-import * as P from "./excl-forEach-promise"
+import * as P from "./excl-forEach-promise.js"
 import { uninterruptibleMask } from "./interruption.js"
 import * as map from "./map.js"
 import { runtime } from "./runtime.js"
 import * as to from "./to.js"
-import * as zips from "./zips"
+import * as zips from "./zips.js"
 
 /**
  * Imports an asynchronous effect into a pure `Effect` value. This formulation is

@@ -6,7 +6,7 @@ import * as BP from "../../Stream/BufferedPull/index.js"
 import type * as Pull from "../../Stream/Pull/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 /**
  * Effectfully filters the elements emitted by this stream.

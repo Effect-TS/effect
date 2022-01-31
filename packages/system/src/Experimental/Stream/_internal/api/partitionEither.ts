@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as L from "../../../../Collections/Immutable/List"
+import * as L from "../../../../Collections/Immutable/List/index.js"
 import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
 import * as T from "../../../../Effect/index.js"
 import * as E from "../../../../Either/index.js"
@@ -9,7 +9,7 @@ import * as M from "../../../../Managed/index.js"
 import type * as C from "../core.js"
 import * as CollectLeft from "./collectLeft.js"
 import * as CollectRight from "./collectRight.js"
-import * as DistributedWith from "./distributedWith"
+import * as DistributedWith from "./distributedWith.js"
 import * as FlattenExitOption from "./flattenExitOption.js"
 import * as FromQueueWithShutdown from "./fromQueueWithShutdown.js"
 import * as MapEffect from "./mapEffect.js"

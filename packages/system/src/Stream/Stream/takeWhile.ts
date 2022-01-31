@@ -8,7 +8,7 @@ import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
 import * as Pull from "../Pull/index.js"
 import { chunk } from "../Take/index.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 /**
  * Takes all elements of the stream for as long as the specified predicate

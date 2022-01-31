@@ -8,7 +8,7 @@ import * as Pull from "../../Stream/Pull/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 /**
  * Effectfully transforms all elements of the stream for as long as the specified partial function is defined.

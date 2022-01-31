@@ -1,4 +1,4 @@
-import { ArrayIndexOutOfBoundsException } from "../../GlobalExceptions"
+import { ArrayIndexOutOfBoundsException } from "../../GlobalExceptions/index.js"
 import * as O from "../../Option/index.js"
 import * as STM from "../STM/index.js"
 import * as TRef from "../TRef/index.js"

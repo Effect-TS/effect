@@ -4,7 +4,7 @@ import type * as CL from "../../../../Clock/index.js"
 import * as SC from "../../../../Schedule/index.js"
 import type * as SK from "../../Sink/index.js"
 import type * as C from "../core.js"
-import * as AggregateAsyncWithin from "./aggregateAsyncWithin"
+import * as AggregateAsyncWithin from "./aggregateAsyncWithin.js"
 
 /**
  * Aggregates elements of this stream using the provided sink for as long

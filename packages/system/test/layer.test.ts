@@ -1,9 +1,9 @@
-import * as T from "../src/Effect"
-import { pipe } from "../src/Function"
-import * as L from "../src/Layer"
-import * as M from "../src/Managed"
-import * as Ref from "../src/Ref"
-import * as SC from "../src/Schedule"
+import * as T from "../src/Effect/index.js"
+import { pipe } from "../src/Function/index.js"
+import * as L from "../src/Layer/index.js"
+import * as M from "../src/Managed/index.js"
+import * as Ref from "../src/Ref/index.js"
+import * as SC from "../src/Schedule/index.js"
 
 describe("Layer", () => {
   describe("retry", () => {

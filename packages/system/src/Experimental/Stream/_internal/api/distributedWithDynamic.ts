@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as CS from "../../../../Cause"
-import * as HM from "../../../../Collections/Immutable/HashMap"
-import * as L from "../../../../Collections/Immutable/List"
+import * as CS from "../../../../Cause/index.js"
+import * as HM from "../../../../Collections/Immutable/HashMap/index.js"
+import * as L from "../../../../Collections/Immutable/List/index.js"
 import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
 import * as T from "../../../../Effect/index.js"
 import * as Ex from "../../../../Exit/index.js"

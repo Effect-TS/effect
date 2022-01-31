@@ -2,8 +2,8 @@
 
 import * as A from "../../Collections/Immutable/Chunk/index.js"
 import type { Predicate, Refinement } from "../../Function/index.js"
-import type { Stream } from "./definitions"
-import { mapChunks_ } from "./mapChunks"
+import type { Stream } from "./definitions.js"
+import { mapChunks_ } from "./mapChunks.js"
 
 /**
  * Applies the predicate to each element and allows passing elements

@@ -7,8 +7,8 @@ import * as Ex from "../../../Exit/index.js"
 import { pipe } from "../../../Function/index.js"
 import * as H from "../../../Hub/index.js"
 import * as M from "../../../Managed/index.js"
+import * as MH from "../Channel/_internal/mergeHelpers.js"
 import * as CH from "../Channel/index.js"
-import * as MH from "../Channel/_internal/mergeHelpers"
 import * as C from "./core.js"
 
 /**

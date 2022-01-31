@@ -2,7 +2,7 @@
 
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 /**
  * Provides some of the environment required to run this effect,

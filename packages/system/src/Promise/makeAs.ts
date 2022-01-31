@@ -2,7 +2,7 @@
 
 import { succeedWith } from "../Effect/core.js"
 import type { FiberID } from "../Fiber/id.js"
-import { unsafeMake } from "./unsafeMake"
+import { unsafeMake } from "./unsafeMake.js"
 
 /**
  * Makes a new promise to be completed by the fiber with the specified id.

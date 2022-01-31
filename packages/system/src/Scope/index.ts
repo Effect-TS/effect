@@ -2,19 +2,19 @@
 
 import "../Operator/index.js"
 
-import type { Cause } from "../Cause/cause"
-import { empty, then } from "../Cause/cause"
+import type { Cause } from "../Cause/cause.js"
+import { empty, then } from "../Cause/cause.js"
 /**
  * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/Scope.scala
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
 import * as A from "../Collections/Immutable/Array/index.js"
-import { cause } from "../Effect/cause"
+import { cause } from "../Effect/cause.js"
 import { succeed, succeedWith, suspend } from "../Effect/core.js"
 import type { UIO } from "../Effect/effect.js"
 import { map_ } from "../Effect/map.js"
-import { uncause } from "../Effect/uncause"
+import { uncause } from "../Effect/uncause.js"
 import { zipWith_ } from "../Effect/zipWith.js"
 import * as E from "../Either/index.js"
 import { AtomicNumber } from "../Support/AtomicNumber/index.js"

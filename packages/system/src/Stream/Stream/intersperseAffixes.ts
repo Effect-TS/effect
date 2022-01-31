@@ -3,9 +3,9 @@
 import * as A from "../../Collections/Immutable/Chunk/index.js"
 import { pipe } from "../../Function/index.js"
 import { concat } from "./concat.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { fromChunk } from "./fromChunk.js"
-import { intersperse_ } from "./intersperse"
+import { intersperse_ } from "./intersperse.js"
 /**
  * Intersperse and also add a prefix and a suffix
  */

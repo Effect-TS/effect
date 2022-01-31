@@ -2,9 +2,9 @@
 
 import * as SS from "../Collections/Immutable/SortedSet/index.js"
 import type { Runtime } from "../Fiber/index.js"
-import { track } from "../Supervisor"
+import { track } from "../Supervisor/index.js"
 import { chain_, supervised } from "./core.js"
-import { descriptor } from "./descriptor"
+import { descriptor } from "./descriptor.js"
 import type { Effect, UIO } from "./effect.js"
 import { map_ } from "./map.js"
 

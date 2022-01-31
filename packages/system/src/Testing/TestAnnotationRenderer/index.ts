@@ -1,6 +1,6 @@
-import * as List from "../../Collections/Immutable/List"
+import * as List from "../../Collections/Immutable/List/index.js"
 import { pipe } from "../../Function/index.js"
-import type { TestAnnotationMap } from "../TestAnnotationMap"
+import type { TestAnnotationMap } from "../TestAnnotationMap/index.js"
 
 export interface TestAnnotationRenderer {
   readonly run: (

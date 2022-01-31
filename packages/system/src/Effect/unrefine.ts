@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as C from "../Cause"
+import * as C from "../Cause/index.js"
 import { identity, pipe } from "../Function/index.js"
 import * as O from "../Option/core.js"
-import { catchAllCause_ } from "./catchAllCause"
+import { catchAllCause_ } from "./catchAllCause.js"
 import { halt } from "./core.js"
 import type { Effect } from "./effect.js"
 import { fail } from "./fail.js"

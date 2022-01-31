@@ -1,7 +1,7 @@
 import type * as A from "../../Collections/Immutable/Chunk/index.js"
 import * as H from "../../Hub/index.js"
-import type { Stream } from "./definitions"
-import { ensuringFirst_ } from "./ensuringFirst"
+import type { Stream } from "./definitions.js"
+import { ensuringFirst_ } from "./ensuringFirst.js"
 import { fromChunkHub } from "./fromChunkHub.js"
 
 /**

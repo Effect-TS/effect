@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as E from "../Either/index.js"
-import { NoSuchElementException } from "../GlobalExceptions"
+import { NoSuchElementException } from "../GlobalExceptions/index.js"
 import * as O from "../Option/index.js"
 import { chain_, succeed } from "./core.js"
 import type { Effect } from "./effect.js"

@@ -4,7 +4,7 @@ import type * as A from "../../Collections/Immutable/Chunk/index.js"
 import type * as O from "../../Option/index.js"
 import type * as T from "../_internal/effect.js"
 import type * as M from "../_internal/managed.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 /**
  * Creates a new {@link Stream} from a managed effect that yields chunks.

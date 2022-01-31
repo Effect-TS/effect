@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as Tp from "../../Collections/Immutable/Tuple/index.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { zipWith_ } from "./zipWith.js"
 
 /**

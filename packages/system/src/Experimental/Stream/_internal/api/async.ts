@@ -3,7 +3,7 @@
 import * as O from "../../../../Option/index.js"
 import type * as C from "../core.js"
 import type { Emit } from "./_internal/Emit.js"
-import * as AsyncMaybe from "./asyncMaybe"
+import * as AsyncMaybe from "./asyncMaybe.js"
 
 /**
  * Creates a stream from an asynchronous callback that can be called multiple times.

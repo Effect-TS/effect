@@ -4,9 +4,9 @@ import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
 import * as T from "../../../../Effect/index.js"
 import { pipe } from "../../../../Function/index.js"
 import type * as M from "../../../../Managed/index.js"
-import * as RM from "../../../../Managed/ReleaseMap"
+import * as RM from "../../../../Managed/ReleaseMap/index.js"
 import * as C from "../core.js"
-import * as AcquireReleaseExitWith from "./acquireReleaseExitWith"
+import * as AcquireReleaseExitWith from "./acquireReleaseExitWith.js"
 
 export function managed_<
   Env,

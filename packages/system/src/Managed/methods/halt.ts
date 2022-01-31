@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { Cause } from "../../Cause"
+import type { Cause } from "../../Cause/index.js"
 import type { Trace } from "../../Fiber/tracing.js"
-import * as T from "../deps"
+import * as T from "../deps.js"
 import { fromEffect } from "../fromEffect.js"
 
 /**

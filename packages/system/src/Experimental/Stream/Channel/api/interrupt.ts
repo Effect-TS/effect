@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as CS from "../../../../Cause"
+import * as CS from "../../../../Cause/index.js"
 import type * as F from "../../../../Fiber/index.js"
 import * as C from "../core.js"
 

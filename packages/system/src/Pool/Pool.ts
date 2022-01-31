@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as CS from "../Cause"
+import * as CS from "../Cause/index.js"
 import type * as CL from "../Clock/index.js"
-import * as HS from "../Collections/Immutable/HashSet"
+import * as HS from "../Collections/Immutable/HashSet/index.js"
 import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import * as T from "../Effect/index.js"
 import * as Ex from "../Exit/index.js"

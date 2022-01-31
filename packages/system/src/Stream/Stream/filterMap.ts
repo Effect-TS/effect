@@ -2,8 +2,8 @@
 
 import * as A from "../../Collections/Immutable/Chunk/index.js"
 import * as O from "../../Option/index.js"
-import type { Stream } from "./definitions"
-import { mapChunks_ } from "./mapChunks"
+import type { Stream } from "./definitions.js"
+import { mapChunks_ } from "./mapChunks.js"
 
 /**
  * Performs a filter and map in a single step.

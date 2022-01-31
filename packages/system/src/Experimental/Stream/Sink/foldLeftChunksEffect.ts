@@ -4,7 +4,7 @@ import type * as CK from "../../../Collections/Immutable/Chunk/index.js"
 import type * as T from "../../../Effect/index.js"
 import type * as C from "./core.js"
 import * as DropLeftover from "./dropLeftover.js"
-import * as FoldChunksEffect from "./foldChunksEffect"
+import * as FoldChunksEffect from "./foldChunksEffect.js"
 
 /**
  * A sink that effectfully folds its input chunks with the provided function and initial state.

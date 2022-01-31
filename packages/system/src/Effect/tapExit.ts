@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { failureOrCause } from "../Cause"
+import { failureOrCause } from "../Cause/index.js"
 import * as E from "../Either/index.js"
 import * as Ex from "../Exit/index.js"
 import { chain_, foldCauseM_, halt, succeed } from "./core.js"

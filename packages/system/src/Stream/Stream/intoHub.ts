@@ -1,7 +1,7 @@
 import * as H from "../../Hub/index.js"
 import type * as T from "../_internal/effect.js"
 import type * as Take from "../Take/index.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { into_ } from "./into.js"
 
 /**

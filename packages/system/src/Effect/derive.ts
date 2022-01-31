@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { Has, Tag } from "../Has"
+import type { Has, Tag } from "../Has/index.js"
 import type { Effect } from "./effect.js"
-import * as has from "./has"
+import * as has from "./has.js"
 
 export type ShapeFn<T> = Pick<
   T,

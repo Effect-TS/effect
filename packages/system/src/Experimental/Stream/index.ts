@@ -2,4 +2,4 @@
 
 import "../../Operator/index.js"
 
-export * from "./_internal"
+export * from "./_internal/index.js"

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as E from "../../Either/index.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import type { TerminationStrategy } from "./mergeWith.js"
 import { mergeWith_ } from "./mergeWith.js"
 

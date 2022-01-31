@@ -4,7 +4,7 @@ import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
 import * as T from "../../../../Effect/index.js"
 import * as CH from "../../Channel/index.js"
 import type * as C from "../core.js"
-import * as LoopOnChunks from "./loopOnChunks"
+import * as LoopOnChunks from "./loopOnChunks.js"
 
 /**
  * Loops on chunks emitting partially

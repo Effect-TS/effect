@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as C from "../Cause"
+import type * as C from "../Cause/index.js"
 import * as St from "../Structural/index.js"
 
 export type Exit<E, A> = Success<A> | Failure<E>

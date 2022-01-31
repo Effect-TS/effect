@@ -4,9 +4,9 @@ import { lookup, remove } from "../../Collections/Immutable/Map/core.js"
 import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import { pipe } from "../../Function/index.js"
 import * as O from "../../Option/index.js"
-import * as T from "../deps-core"
-import * as R from "./deps-ref"
-import type { ReleaseMap } from "./ReleaseMap"
+import * as T from "../deps-core.js"
+import * as R from "./deps-ref.js"
+import type { ReleaseMap } from "./ReleaseMap.js"
 import { Running } from "./Running.js"
 
 export function release(key: number, exit: T.Exit<any, any>) {

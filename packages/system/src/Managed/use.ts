@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import { managedUse_ as use_ } from "../Effect/excl-forEach.js"
-import type * as T from "./deps"
+import type * as T from "./deps.js"
 import type { Managed } from "./managed.js"
 
 /**

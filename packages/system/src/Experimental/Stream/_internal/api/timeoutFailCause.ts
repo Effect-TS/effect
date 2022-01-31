@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as CS from "../../../../Cause"
+import * as CS from "../../../../Cause/index.js"
 import type * as CL from "../../../../Clock/index.js"
 import * as T from "../../../../Effect/index.js"
 import * as M from "../../../../Managed/index.js"

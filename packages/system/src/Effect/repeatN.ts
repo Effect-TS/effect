@@ -2,7 +2,7 @@
 
 import { chain_, succeed, yieldNow } from "./core.js"
 import type { Effect } from "./effect.js"
-import { zipRight_ } from "./zips"
+import { zipRight_ } from "./zips.js"
 
 /**
  * Repeats this effect the specified number of times.

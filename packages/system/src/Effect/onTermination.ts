@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Cause } from "../Cause"
-import { failureOrCause } from "../Cause"
+import type { Cause } from "../Cause/index.js"
+import { failureOrCause } from "../Cause/index.js"
 import * as E from "../Either/index.js"
 import { pipe } from "../Function/index.js"
 import { bracketExit_ } from "./bracketExit.js"

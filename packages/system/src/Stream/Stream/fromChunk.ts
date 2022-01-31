@@ -7,8 +7,8 @@ import type * as O from "../../Option/index.js"
 import * as T from "../_internal/effect.js"
 import * as Ref from "../_internal/ref.js"
 import * as Pull from "../Pull/index.js"
-import type { UIO } from "./definitions"
-import { Stream } from "./definitions"
+import type { UIO } from "./definitions.js"
+import { Stream } from "./definitions.js"
 
 /**
  * Creates a stream from an array of values

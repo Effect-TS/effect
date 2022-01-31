@@ -3,11 +3,11 @@
 // cause
 import * as Cause from "../Cause/core.js"
 // effect
-import { RuntimeError } from "../Cause/errors"
+import { RuntimeError } from "../Cause/errors.js"
 import * as A from "../Collections/Immutable/Array/index.js"
-import * as L from "../Collections/Immutable/List"
+import * as L from "../Collections/Immutable/List/index.js"
 import { forEachUnit_ } from "../Effect/excl-forEach.js"
-import { IFail, instruction, ISucceed } from "../Effect/primitives"
+import { IFail, instruction, ISucceed } from "../Effect/primitives.js"
 // either
 import * as E from "../Either/index.js"
 // exit
@@ -21,7 +21,7 @@ import * as O from "../Option/index.js"
 // supervisor / scope
 import * as Scope from "../Scope/index.js"
 import * as St from "../Structural/index.js"
-import * as Sup from "../Supervisor"
+import * as Sup from "../Supervisor/index.js"
 // support
 import { AtomicReference } from "../Support/AtomicReference/index.js"
 import { RingBuffer } from "../Support/RingBuffer/index.js"
@@ -33,9 +33,14 @@ import * as Fiber from "./core.js"
 import type { Platform } from "./platform.js"
 import type { Callback } from "./state.js"
 import { FiberStateDone, FiberStateExecuting, initial, interrupting } from "./state.js"
-import * as Status from "./status"
+import * as Status from "./status.js"
 import type { TraceElement } from "./tracing.js"
-import { SourceLocation, Trace, traceLocation, truncatedParentTrace } from "./tracing.js"
+import {
+  SourceLocation,
+  Trace,
+  traceLocation,
+  truncatedParentTrace
+} from "./tracing.js"
 
 export type FiberRefLocals = Map<FR.Runtime<any>, any>
 

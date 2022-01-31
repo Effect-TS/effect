@@ -5,7 +5,7 @@ import { chain_, map } from "../core.js"
 import type { Managed } from "../managed.js"
 import { succeed } from "../succeed.js"
 import { unit } from "./api.js"
-import { suspend } from "./suspend"
+import { suspend } from "./suspend.js"
 
 /**
  * Loops with the specified effectual function, collecting the results into a

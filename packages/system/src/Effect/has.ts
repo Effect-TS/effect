@@ -8,10 +8,10 @@ import * as A from "../Collections/Immutable/Array/index.js"
 import * as R from "../Collections/Immutable/Dictionary/index.js"
 import * as core from "../Effect/core.js"
 import type { Effect } from "../Effect/effect.js"
-import type { Has, Tag } from "../Has"
-import { mergeEnvironments } from "../Has"
+import type { Has, Tag } from "../Has/index.js"
+import { mergeEnvironments } from "../Has/index.js"
 import { accessCallTrace } from "../Tracing/index.js"
-import type { UnionToIntersection } from "../Utils"
+import type { UnionToIntersection } from "../Utils/index.js"
 
 /**
  * Access a record of services with the required Service Entries

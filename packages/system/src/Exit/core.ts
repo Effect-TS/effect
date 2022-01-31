@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as C from "../Cause/core.js"
-import { FiberFailure } from "../Cause/errors"
+import { FiberFailure } from "../Cause/errors.js"
 import * as A from "../Collections/Immutable/Array/index.js"
 import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import * as E from "../Either/index.js"

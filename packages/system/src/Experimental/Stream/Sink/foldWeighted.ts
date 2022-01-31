@@ -2,7 +2,7 @@
 
 import * as CK from "../../../Collections/Immutable/Chunk/index.js"
 import type * as C from "./core.js"
-import * as FoldWeightedDecompose from "./foldWeightedDecompose"
+import * as FoldWeightedDecompose from "./foldWeightedDecompose.js"
 
 /**
  * Creates a sink that folds elements of type `In` into a structure

@@ -6,7 +6,7 @@ import type { Either } from "../../../Either/index.js"
 import type { Predicate, Refinement } from "../../../Function/index.js"
 import * as O from "../../../Option/index.js"
 import type { MutableRecord } from "../../../Support/Mutable/index.js"
-import type { PredicateWithIndex, RefinementWithIndex } from "../../../Utils"
+import type { PredicateWithIndex, RefinementWithIndex } from "../../../Utils/index.js"
 import * as A from "../Array/index.js"
 import * as Tp from "../Tuple/index.js"
 

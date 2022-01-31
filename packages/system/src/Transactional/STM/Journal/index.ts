@@ -2,14 +2,14 @@
 
 import "../../../Operator/index.js"
 
-import * as HM from "../../../Collections/Immutable/HashMap"
+import * as HM from "../../../Collections/Immutable/HashMap/index.js"
 import * as T from "../../../Effect/index.js"
 import type { FiberID } from "../../../Fiber/index.js"
 import type { AtomicBoolean } from "../../../Support/AtomicBoolean/index.js"
 import { defaultScheduler } from "../../../Support/Scheduler/index.js"
 import type { Atomic } from "../../TRef/index.js"
 import { STMDriver } from "../_internal/driver.js"
-import type { STM } from "../_internal/primitives"
+import type { STM } from "../_internal/primitives.js"
 import type { Entry } from "../Entry/index.js"
 import { DieTypeId, FailTypeId, RetryTypeId, SucceedTypeId } from "../TExit/index.js"
 import type { TryCommit } from "../TryCommit/index.js"

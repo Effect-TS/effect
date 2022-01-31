@@ -6,7 +6,7 @@ import * as O from "../../Option/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
-import { DefaultChunkSize, Stream } from "./definitions"
+import { DefaultChunkSize, Stream } from "./definitions.js"
 
 /**
  * Constructs a stream from a range of integers (lower bound included, upper bound not included)

@@ -5,7 +5,7 @@ import * as O from "../../../../Option/index.js"
 import { Stack } from "../../../../Stack/index.js"
 import * as St from "../../../../Structural/index.js"
 import { arraySpliceIn, arraySpliceOut, arrayUpdate } from "../Array/index.js"
-import { fromBitmap, hashFragment, toBitmap } from "../Bitwise"
+import { fromBitmap, hashFragment, toBitmap } from "../Bitwise/index.js"
 import { MAX_INDEX_NODE, MIN_ARRAY_NODE, SIZE } from "../Config/index.js"
 
 export type Node<K, V> =

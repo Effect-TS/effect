@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as Tp from "../../Collections/Immutable/Tuple/index.js"
-import { crossWith_ } from "./crossWith"
-import type { Stream } from "./definitions"
+import { crossWith_ } from "./crossWith.js"
+import type { Stream } from "./definitions.js"
 
 /**
  * Composes this stream with the specified stream to create a cartesian product of elements.

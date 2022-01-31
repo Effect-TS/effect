@@ -3,7 +3,7 @@
 import type * as Chunk from "../../Collections/Immutable/Chunk/index.js"
 import * as M from "../_internal/managed.js"
 import * as BP from "../BufferedPull/index.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 /**
  * Submerges the chunks carried by this stream into the stream's structure, while

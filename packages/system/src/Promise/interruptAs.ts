@@ -3,7 +3,7 @@
 import { interruptAs as effectInterruptAs } from "../Effect/interruption.js"
 import type { FiberID } from "../Fiber/id.js"
 import { completeWith } from "./completeWith.js"
-import type { Promise } from "./promise"
+import type { Promise } from "./promise.js"
 
 /**
  * Completes the promise with interruption. This will interrupt all fibers

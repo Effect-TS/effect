@@ -9,10 +9,10 @@ import "../Operator/index.js"
 
 import { succeedWith, unit } from "../Effect/core.js"
 import type { Effect, UIO } from "../Effect/effect.js"
-import { effectAsyncInterrupt } from "../Effect/effectAsyncInterrupt"
-import { accessService, accessServiceM, provideServiceM } from "../Effect/has"
-import type { Has, Tag } from "../Has"
-import { tag } from "../Has"
+import { effectAsyncInterrupt } from "../Effect/effectAsyncInterrupt.js"
+import { accessService, accessServiceM, provideServiceM } from "../Effect/has.js"
+import type { Has, Tag } from "../Has/index.js"
+import { tag } from "../Has/index.js"
 import { ClockId } from "./id.js"
 
 export { ClockId }

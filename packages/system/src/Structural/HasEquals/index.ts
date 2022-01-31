@@ -1,9 +1,9 @@
 // forked from https://github.com/planttheidea/fast-equals
 
-import type { HasHash } from "../HasHash"
-import { hash, hasHash } from "../HasHash"
+import type { HasHash } from "../HasHash/index.js"
+import { hash, hasHash } from "../HasHash/index.js"
 import { createComparator } from "./comparator.js"
-import { createCircularEqualCreator, sameValueZeroEqual } from "./utils"
+import { createCircularEqualCreator, sameValueZeroEqual } from "./utils.js"
 
 export const equalsSym = Symbol()
 

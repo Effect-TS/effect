@@ -3,17 +3,17 @@
 /**
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
-import { _A, _E, _R } from "../Effect/commons"
+import { _A, _E, _R } from "../Effect/commons.js"
 import type { Either } from "../Either/index.js"
 import { identity } from "../Function/index.js"
-import { NoSuchElementException } from "../GlobalExceptions"
-import type { Has, Tag } from "../Has"
+import { NoSuchElementException } from "../GlobalExceptions/index.js"
+import type { Has, Tag } from "../Has/index.js"
 import type { Option } from "../Option/index.js"
-import type * as Utils from "../Utils"
-import { isEither, isOption, isTag } from "../Utils"
+import type * as Utils from "../Utils/index.js"
+import { isEither, isOption, isTag } from "../Utils/index.js"
 import type { Sync } from "./core.js"
 import { chain_, fail, succeed, suspend } from "./core.js"
-import { accessService } from "./has"
+import { accessService } from "./has.js"
 
 export class GenSync<R, E, A> {
   readonly [_R]!: (_R: R) => void;

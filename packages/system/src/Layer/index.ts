@@ -59,4 +59,4 @@ export {
   zip_
 } from "./core.js"
 
-export * from "./unsafe"
+export * from "./unsafe.js"

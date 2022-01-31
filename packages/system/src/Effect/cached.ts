@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { Clock } from "../Clock/index.js"
-import type { Has } from "../Has"
+import type { Has } from "../Has/index.js"
 import { cachedInvalidate_ } from "./cachedInvalidate.js"
 import type { Effect, IO, RIO } from "./effect.js"
 import { map_ } from "./map.js"

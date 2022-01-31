@@ -4,7 +4,7 @@ import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
 import { pipe } from "../../../../Function/index.js"
 import type * as C from "../core.js"
 import * as Map from "./map.js"
-import * as MapChunks from "./mapChunks"
+import * as MapChunks from "./mapChunks.js"
 import * as SplitOnChunk from "./splitOnChunk.js"
 
 /**

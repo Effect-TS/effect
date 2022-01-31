@@ -3,7 +3,7 @@
 import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import * as E from "../Either/index.js"
 import { pipe } from "../Function/index.js"
-import { matchTag } from "../Utils"
+import { matchTag } from "../Utils/index.js"
 import * as T from "./excl-effect.js"
 import type { XFiberRef } from "./fiberRef.js"
 import { concrete } from "./fiberRef.js"

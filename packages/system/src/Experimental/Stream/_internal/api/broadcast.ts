@@ -3,7 +3,7 @@
 import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
 import * as M from "../../../../Managed/index.js"
 import type * as C from "../core.js"
-import * as BroadcastedQueues from "./broadcastedQueues"
+import * as BroadcastedQueues from "./broadcastedQueues.js"
 import * as FlattenTake from "./flattenTake.js"
 import * as FromQueueWithShutdown from "./fromQueueWithShutdown.js"
 

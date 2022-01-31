@@ -1,5 +1,5 @@
 import { identity } from "../../../Function/index.js"
-import { ArrayIndexOutOfBoundsException } from "../../../GlobalExceptions"
+import { ArrayIndexOutOfBoundsException } from "../../../GlobalExceptions/index.js"
 import * as O from "../../../Option/index.js"
 import * as St from "../../../Structural/index.js"
 import * as A from "../Array/index.js"

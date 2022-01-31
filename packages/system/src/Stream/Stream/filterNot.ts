@@ -2,7 +2,7 @@
 
 import type { Predicate } from "../../Function/index.js"
 import { not } from "../../Function/index.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { filter_ } from "./filter.js"
 
 /**

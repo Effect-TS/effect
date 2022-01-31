@@ -1,5 +1,5 @@
-import type * as L from "../../Collections/Immutable/List"
-import * as AssertionM from "../AssertionM/AssertionM"
+import type * as L from "../../Collections/Immutable/List/index.js"
+import * as AssertionM from "../AssertionM/AssertionM.js"
 import * as R from "./definition.js"
 
 /**

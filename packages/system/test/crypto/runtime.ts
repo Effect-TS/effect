@@ -1,13 +1,13 @@
-import * as C from "../../src/Cause"
-import * as Tp from "../../src/Collections/Immutable/Tuple"
-import * as T from "../../src/Effect"
-import * as Ex from "../../src/Exit"
-import { pipe } from "../../src/Function"
-import * as L from "../../src/Layer"
-import type * as M from "../../src/Managed/ReleaseMap"
-import * as makeReleaseMap from "../../src/Managed/ReleaseMap/makeReleaseMap"
-import * as releaseAll from "../../src/Managed/ReleaseMap/releaseAll"
-import { AtomicReference } from "../../src/Support/AtomicReference"
+import * as C from "../../src/Cause/index.js"
+import * as Tp from "../../src/Collections/Immutable/Tuple/index.js"
+import * as T from "../../src/Effect/index.js"
+import * as Ex from "../../src/Exit/index.js"
+import { pipe } from "../../src/Function/index.js"
+import * as L from "../../src/Layer/index.js"
+import type * as M from "../../src/Managed/ReleaseMap/index.js"
+import * as makeReleaseMap from "../../src/Managed/ReleaseMap/makeReleaseMap.js"
+import * as releaseAll from "../../src/Managed/ReleaseMap/releaseAll.js"
+import { AtomicReference } from "../../src/Support/AtomicReference/index.js"
 
 export interface TestRuntime<R> {
   runPromise: <E, A>(self: T.Effect<R & T.DefaultEnv, E, A>) => Promise<A>

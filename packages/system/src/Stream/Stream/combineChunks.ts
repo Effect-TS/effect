@@ -7,7 +7,7 @@ import { pipe } from "../../Function/index.js"
 import type * as Option from "../../Option/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 import { unfoldChunkM } from "./unfoldChunkM.js"
 
 /**

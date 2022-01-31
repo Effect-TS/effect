@@ -1,5 +1,5 @@
 import * as NEA from "../../Collections/Immutable/NonEmptyArray/index.js"
-import type * as AV from "../AssertionValue/AssertionValue"
+import type * as AV from "../AssertionValue/AssertionValue.js"
 import * as l from "../AssertionValue/label.js"
 
 export const failureDetailsTypeId = Symbol()

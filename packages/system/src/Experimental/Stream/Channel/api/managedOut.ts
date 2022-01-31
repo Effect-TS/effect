@@ -3,7 +3,7 @@
 import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
 import * as T from "../../../../Effect/index.js"
 import type * as M from "../../../../Managed/index.js"
-import * as ReleaseMap from "../../../../Managed/ReleaseMap"
+import * as ReleaseMap from "../../../../Managed/ReleaseMap/index.js"
 import * as C from "../core.js"
 import * as MapOut from "./mapOut.js"
 

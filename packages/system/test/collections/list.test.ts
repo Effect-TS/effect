@@ -1,6 +1,6 @@
-import * as L from "../../src/Collections/Immutable/List"
-import { pipe } from "../../src/Function"
-import * as O from "../../src/Option"
+import * as L from "../../src/Collections/Immutable/List/index.js"
+import { pipe } from "../../src/Function/index.js"
+import * as O from "../../src/Option/index.js"
 
 describe("List", () => {
   it("find", () => {

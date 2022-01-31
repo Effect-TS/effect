@@ -10,7 +10,7 @@ import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
 import * as Pull from "./../Pull/index.js"
 import { concat_ } from "./concat.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 import { fromEffect } from "./fromEffect.js"
 import { map_ } from "./map.js"
 

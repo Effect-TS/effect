@@ -9,9 +9,9 @@ import "../Operator/index.js"
 
 import { chain_, succeedWith } from "../Effect/core.js"
 import type { UIO } from "../Effect/effect.js"
-import { accessServiceM, replaceService } from "../Effect/has"
-import type { Has } from "../Has"
-import { tag } from "../Has"
+import { accessServiceM, replaceService } from "../Effect/has.js"
+import type { Has } from "../Has/index.js"
+import { tag } from "../Has/index.js"
 import { PCGRandom } from "./PCG/index.js"
 
 export const RandomId: unique symbol = Symbol.for("@effect-ts/system/Random")

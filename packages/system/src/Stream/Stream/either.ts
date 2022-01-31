@@ -2,7 +2,7 @@
 
 import * as E from "../../Either/index.js"
 import { catchAll_ } from "./catchAll.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { map_ } from "./map.js"
 import { succeed } from "./succeed.js"
 

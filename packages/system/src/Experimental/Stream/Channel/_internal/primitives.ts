@@ -2,7 +2,7 @@
 
 import "../../../../Operator/index.js"
 
-import type * as Cause from "../../../../Cause"
+import type * as Cause from "../../../../Cause/index.js"
 import type * as T from "../../../../Effect/index.js"
 import type * as Exit from "../../../../Exit/index.js"
 import type { AsyncInputProducer } from "./producer.js"

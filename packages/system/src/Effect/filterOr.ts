@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { RuntimeError } from "../Cause"
+import { RuntimeError } from "../Cause/index.js"
 import type { Predicate, Refinement } from "../Function/index.js"
 import { pipe } from "../Function/index.js"
 import { chain_, succeed, suspend } from "./core.js"

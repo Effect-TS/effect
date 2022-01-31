@@ -2,9 +2,9 @@
 
 import * as E from "../../Either/index.js"
 import { pipe } from "../../Function/index.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { map_ } from "./map.js"
-import { orElse } from "./orElse"
+import { orElse } from "./orElse.js"
 
 /**
  * Switches to the provided stream in case this one fails with a typed error.

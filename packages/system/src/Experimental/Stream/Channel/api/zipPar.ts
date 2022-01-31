@@ -3,7 +3,7 @@
 import type * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
 import * as T from "../../../../Effect/index.js"
 import * as Ex from "../../../../Exit/index.js"
-import * as MH from "../_internal/mergeHelpers"
+import * as MH from "../_internal/mergeHelpers.js"
 import type * as C from "../core.js"
 import * as MergeWith from "./mergeWith.js"
 

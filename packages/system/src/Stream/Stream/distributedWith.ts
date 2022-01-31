@@ -5,12 +5,12 @@ import * as Map from "../../Collections/Immutable/Map/index.js"
 import type * as Ex from "../../Exit/index.js"
 import { identity, pipe } from "../../Function/index.js"
 import * as O from "../../Option/index.js"
-import * as P from "../../Promise"
+import * as P from "../../Promise/index.js"
 import type * as Q from "../../Queue/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
-import type { Stream } from "./definitions"
-import { distributedWithDynamic_ } from "./distributedWithDynamic"
+import type { Stream } from "./definitions.js"
+import { distributedWithDynamic_ } from "./distributedWithDynamic.js"
 
 /**
  * More powerful version of `broadcast`. Allows to provide a function that determines what

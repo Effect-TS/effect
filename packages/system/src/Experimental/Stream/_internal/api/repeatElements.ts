@@ -6,7 +6,7 @@ import * as O from "../../../../Option/index.js"
 import type * as SC from "../../../../Schedule/index.js"
 import type * as C from "../core.js"
 import * as Collect from "./collect.js"
-import * as RepeatElementsEither from "./repeatElementsEither"
+import * as RepeatElementsEither from "./repeatElementsEither.js"
 
 /**
  * Repeats each element of the stream using the provided schedule. Repetitions are done in

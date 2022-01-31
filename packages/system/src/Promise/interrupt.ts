@@ -4,7 +4,7 @@ import { chain_ } from "../Effect/core.js"
 import { fiberId } from "../Effect/fiberId.js"
 import { interruptAs as effectInterruptAs } from "../Effect/interruption.js"
 import { completeWith } from "./completeWith.js"
-import type { Promise } from "./promise"
+import type { Promise } from "./promise.js"
 
 /**
  * Completes the promise with interruption. This will interrupt all fibers

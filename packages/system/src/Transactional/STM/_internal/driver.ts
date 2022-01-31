@@ -2,8 +2,8 @@ import type { FiberID } from "../../../Fiber/index.js"
 import { Stack } from "../../../Stack/index.js"
 import type { Journal } from "../Journal/index.js"
 import * as TExit from "../TExit/index.js"
-import type { STMOnFailure, STMOnRetry } from "./primitives"
-import * as STM from "./primitives"
+import type { STMOnFailure, STMOnRetry } from "./primitives.js"
+import * as STM from "./primitives.js"
 
 type Erased = STM.STM<unknown, unknown, unknown>
 type Cont =

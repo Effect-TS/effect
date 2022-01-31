@@ -1,5 +1,5 @@
 import * as T from "../../Effect/index.js"
-import { tag } from "../../Has"
+import { tag } from "../../Has/index.js"
 import * as L from "../../Layer/index.js"
 
 export const LiveId = Symbol.for("@effect-ts/system/Test/LiveId")

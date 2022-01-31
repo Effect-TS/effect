@@ -2,7 +2,7 @@
 
 import * as Chunk from "../Collections/Immutable/Chunk/core.js"
 import * as E from "../Either/index.js"
-import { absolve } from "./absolve"
+import { absolve } from "./absolve.js"
 import type { Effect } from "./effect.js"
 import { either } from "./either.js"
 import { forEach_, forEachExec_, forEachPar_, forEachParN_ } from "./excl-forEach.js"

@@ -1,14 +1,14 @@
 // ets_tracing: off
 
-import type { Cause } from "../Cause/cause"
+import type { Cause } from "../Cause/cause.js"
 import { keepDefects } from "../Cause/core.js"
 import * as Exit from "../Exit/core.js"
 import type * as Fiber from "../Fiber/index.js"
 import { identity } from "../Function/index.js"
 import * as O from "../Option/index.js"
-import type { Supervisor } from "../Supervisor"
+import type { Supervisor } from "../Supervisor/index.js"
 import type { Effect, IO, RIO, UIO } from "./effect.js"
-import type { FailureReporter } from "./primitives"
+import type { FailureReporter } from "./primitives.js"
 import {
   ICheckInterrupt,
   ICheckTracingStatus,

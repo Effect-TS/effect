@@ -6,7 +6,7 @@ import * as T from "../../../Effect/index.js"
 import * as Ex from "../../../Exit/index.js"
 import * as O from "../../../Option/index.js"
 import type * as OD from "../../../Ord/index.js"
-import * as CombineChunks from "../_internal/api/combineChunks"
+import * as CombineChunks from "../_internal/api/combineChunks.js"
 import type * as S from "../_internal/core.js"
 import type * as C from "./core.js"
 

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Stream } from "./definitions"
-import { orElse_ } from "./orElse"
+import type { Stream } from "./definitions.js"
+import { orElse_ } from "./orElse.js"
 import { succeed } from "./succeed.js"
 
 /**

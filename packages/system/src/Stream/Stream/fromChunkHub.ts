@@ -1,7 +1,7 @@
 import type * as A from "../../Collections/Immutable/Chunk/index.js"
 import * as H from "../../Hub/index.js"
 import { chain_ } from "./chain.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { fromChunkQueue } from "./fromChunkQueue.js"
 import { managed } from "./managed.js"
 

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as CS from "../../../../Cause"
+import type * as CS from "../../../../Cause/index.js"
 import * as E from "../../../../Either/index.js"
 import * as Ex from "../../../../Exit/index.js"
 import * as Q from "../../../../Queue/index.js"

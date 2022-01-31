@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { then } from "../Cause/cause"
+import { then } from "../Cause/cause.js"
 import { foldCauseM_, halt, succeed } from "./core.js"
 import type { Effect } from "./effect.js"
 import { uninterruptibleMask } from "./interruption.js"

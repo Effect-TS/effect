@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { Clock } from "../Clock/index.js"
-import type { Has } from "../Has"
+import type { Has } from "../Has/index.js"
 import { succeed, suspend } from "./core.js"
 import type { Effect } from "./effect.js"
 import { fail } from "./fail.js"

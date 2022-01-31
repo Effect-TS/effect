@@ -1,7 +1,7 @@
 import type { Lazy } from "../../Function/index.js"
 import type * as O from "../../Option/index.js"
-import type * as AM from "../AssertionM/AssertionM"
-import type * as AR from "../AssertionResult"
+import type * as AM from "../AssertionM/AssertionM.js"
+import type * as AR from "../AssertionResult/index.js"
 
 /**
  * An `AssertionValue` keeps track of a assertion and a value, existentially

@@ -3,7 +3,7 @@
 import * as T from "../../../../Effect/index.js"
 import type * as O from "../../../../Option/index.js"
 import type * as C from "../core.js"
-import * as WhenCaseEffect from "./whenCaseEffect"
+import * as WhenCaseEffect from "./whenCaseEffect.js"
 
 /**
  * Returns the resulting stream when the given `PartialFunction` is defined for the given value, otherwise returns an empty stream.

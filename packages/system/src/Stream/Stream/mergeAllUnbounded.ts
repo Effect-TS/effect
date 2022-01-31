@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { mergeAll } from "./mergeAll.js"
 
 /**

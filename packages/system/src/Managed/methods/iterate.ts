@@ -3,7 +3,7 @@
 import { chain_ } from "../core.js"
 import type { Managed } from "../managed.js"
 import { succeed } from "../succeed.js"
-import { suspend } from "./suspend"
+import { suspend } from "./suspend.js"
 
 /**
  * Iterates with the specified effectual function. The moral equivalent of:

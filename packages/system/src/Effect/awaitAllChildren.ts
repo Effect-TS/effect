@@ -2,7 +2,7 @@
 
 import * as Fiber from "../Fiber/index.js"
 import type { Effect } from "./effect.js"
-import { ensuringChildren_ } from "./ensuringChildren"
+import { ensuringChildren_ } from "./ensuringChildren.js"
 
 /**
  * Returns a new effect that will not succeed with its value before first

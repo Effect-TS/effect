@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as CS from "../../../../Cause"
+import * as CS from "../../../../Cause/index.js"
 import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
 import * as Ex from "../../../../Exit/index.js"
 import * as O from "../../../../Option/index.js"

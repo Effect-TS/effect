@@ -2,7 +2,7 @@
 
 import type { Effect } from "./effect.js"
 import { fail } from "./fail.js"
-import { orElse_ } from "./orElse"
+import { orElse_ } from "./orElse.js"
 
 /**
  * Executes this effect and returns its value, if it succeeds, but

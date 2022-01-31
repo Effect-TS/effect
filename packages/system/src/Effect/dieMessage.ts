@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { RuntimeError } from "../Cause"
+import { RuntimeError } from "../Cause/index.js"
 import { dieWith } from "./die.js"
 import type { UIO } from "./effect.js"
 

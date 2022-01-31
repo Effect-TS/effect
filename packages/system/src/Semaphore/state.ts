@@ -4,7 +4,7 @@ import type * as Tp from "../Collections/Immutable/Tuple/index.js"
 import type * as E from "../Either/index.js"
 import type { ImmutableQueue } from "../Support/ImmutableQueue/index.js"
 import * as T from "./effect.js"
-import type * as P from "./promise"
+import type * as P from "./promise.js"
 
 export type Entry = Tp.Tuple<[P.Promise<never, void>, number]>
 export type State = E.Either<ImmutableQueue<Entry>, number>

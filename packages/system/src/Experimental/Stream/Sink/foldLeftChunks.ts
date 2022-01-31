@@ -2,7 +2,7 @@
 
 import type * as CK from "../../../Collections/Immutable/Chunk/index.js"
 import type * as C from "./core.js"
-import * as FoldChunks from "./foldChunks"
+import * as FoldChunks from "./foldChunks.js"
 
 /**
  * A sink that folds its input chunks with the provided function and initial state.

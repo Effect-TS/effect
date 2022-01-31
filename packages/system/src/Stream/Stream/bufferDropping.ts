@@ -2,13 +2,13 @@
 
 import type * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import { pipe } from "../../Function/index.js"
-import type * as P from "../../Promise"
+import type * as P from "../../Promise/index.js"
 import * as Q from "../../Queue/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import type * as Take from "../Take/index.js"
 import { bufferSignal } from "./_internal/bufferSignal.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 /**
  * Allows a faster producer to progress independently of a slower consumer by buffering

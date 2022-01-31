@@ -3,7 +3,7 @@
 import type * as Tp from "../Collections/Immutable/Tuple/index.js"
 import type { Either } from "../Either/core.js"
 import { pipe } from "../Function/index.js"
-import type { _A, _E, _R, HasUnify } from "../Utils"
+import type { _A, _E, _R, HasUnify } from "../Utils/index.js"
 import * as X from "../XPure/index.js"
 
 export interface Sync<R, E, A>

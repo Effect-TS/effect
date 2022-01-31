@@ -7,7 +7,7 @@ import { Bounded, Unbounded } from "../Support/MutableQueue/index.js"
 import { BackPressureStrategy, unsafeCreate } from "./api.js"
 import type { Strategy } from "./core.js"
 import { DroppingStrategy, SlidingStrategy } from "./core.js"
-import * as P from "./promise"
+import * as P from "./promise.js"
 import type { Queue } from "./xqueue.js"
 
 /**

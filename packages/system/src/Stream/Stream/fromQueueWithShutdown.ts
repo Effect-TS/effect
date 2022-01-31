@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as Q from "../../Queue/index.js"
-import type { Stream } from "./definitions"
-import { ensuringFirst_ } from "./ensuringFirst"
+import type { Stream } from "./definitions.js"
+import { ensuringFirst_ } from "./ensuringFirst.js"
 import { fromQueue } from "./fromQueue.js"
 
 /**

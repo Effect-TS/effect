@@ -2,9 +2,9 @@
 
 import { pipe } from "../../Function/index.js"
 import * as M from "../_internal/managed.js"
-import { broadcastedQueuesDynamic_ } from "./broadcastedQueuesDynamic"
+import { broadcastedQueuesDynamic_ } from "./broadcastedQueuesDynamic.js"
 import { chain_ } from "./chain.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { flattenTake } from "./flattenTake.js"
 import { fromQueue } from "./fromQueue.js"
 import { managed } from "./managed.js"

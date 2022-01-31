@@ -3,7 +3,7 @@
 import { pipe } from "../../../../Function/index.js"
 import type * as TK from "../../Take/index.js"
 import type * as C from "../core.js"
-import * as FlattenChunks from "./flattenChunks"
+import * as FlattenChunks from "./flattenChunks.js"
 import * as FlattenExitOption from "./flattenExitOption.js"
 import * as Map from "./map.js"
 

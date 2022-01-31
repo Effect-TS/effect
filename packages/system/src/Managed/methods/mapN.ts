@@ -2,7 +2,7 @@
 
 import type { NonEmptyArray } from "../../Collections/Immutable/NonEmptyArray/index.js"
 import type { Tuple } from "../../Collections/Immutable/Tuple/index.js"
-import type { _A, _E, _R, ForcedArray } from "../../Utils"
+import type { _A, _E, _R, ForcedArray } from "../../Utils/index.js"
 import { map_ } from "../core.js"
 import type { Managed } from "../managed.js"
 import { tuple, tuplePar, tupleParN } from "../tuple.js"

@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { effectMaybeAsyncInterruptBlockingOn } from "../Effect/effectMaybeAsyncInterrupt"
+import { effectMaybeAsyncInterruptBlockingOn } from "../Effect/effectMaybeAsyncInterrupt.js"
 import * as E from "../Either/index.js"
 import { interruptJoiner } from "./interruptJoiner.js"
-import type { Promise } from "./promise"
+import type { Promise } from "./promise.js"
 import { Pending } from "./state.js"
 
 /**

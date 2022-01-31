@@ -1,13 +1,13 @@
 import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import * as Ex from "../Exit/index.js"
 import * as F from "../Fiber/index.js"
-import type { State } from "../Managed/ReleaseMap"
-import { releaseAll, ReleaseMap, Running } from "../Managed/ReleaseMap"
-import * as P from "../Promise"
+import type { State } from "../Managed/ReleaseMap/index.js"
+import { releaseAll, ReleaseMap, Running } from "../Managed/ReleaseMap/index.js"
+import * as P from "../Promise/index.js"
 import * as Ref from "../Ref/index.js"
 import * as L from "./core.js"
-import type { Layer } from "./definitions"
-import * as T from "./deps-effect"
+import type { Layer } from "./definitions.js"
+import * as T from "./deps-effect.js"
 
 export class MainProvider<R1, E, R> {
   constructor(

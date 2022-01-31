@@ -1,8 +1,8 @@
-import { _A } from "../../../Effect/commons"
+import { _A } from "../../../Effect/commons.js"
 import { tuple } from "../../../Function/index.js"
 import * as IO from "../../../IO/index.js"
 import * as St from "../../../Structural/index.js"
-import * as HS from "../HashSet"
+import * as HS from "../HashSet/index.js"
 import * as L from "../List/core.js"
 import * as Tp from "../Tuple/index.js"
 

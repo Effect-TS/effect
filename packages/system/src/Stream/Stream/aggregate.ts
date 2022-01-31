@@ -6,8 +6,8 @@ import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
 import * as Pull from "../Pull/index.js"
-import type * as TR from "../Transducer"
-import { Stream } from "./definitions"
+import type * as TR from "../Transducer/index.js"
+import { Stream } from "./definitions.js"
 
 /**
  * Applies an aggregator to the stream, which converts one or more elements

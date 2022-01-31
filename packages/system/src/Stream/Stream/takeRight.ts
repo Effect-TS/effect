@@ -9,7 +9,7 @@ import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
 import * as BP from "../BufferedPull/index.js"
 import * as Pull from "../Pull/index.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 import { empty } from "./empty.js"
 
 /**

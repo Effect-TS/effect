@@ -2,7 +2,7 @@
 
 import { identity } from "../../Function/index.js"
 import type * as T from "../_internal/effect.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { fromEffect } from "./fromEffect.js"
 import { mapConcat_ } from "./mapConcat.js"
 

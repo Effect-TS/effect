@@ -3,11 +3,11 @@
 /* eslint-disable prefer-const */
 import * as Chunk from "../Collections/Immutable/Chunk/core.js"
 import * as Tp from "../Collections/Immutable/Tuple/index.js"
-import { _A, _E, _R, _S1, _S2, _U, _W } from "../Effect/commons"
+import { _A, _E, _R, _S1, _S2, _U, _W } from "../Effect/commons.js"
 import type { EffectURI } from "../Effect/effect.js"
 import * as E from "../Either/core.js"
 import { Stack } from "../Stack/index.js"
-import type { HasUnify } from "../Utils"
+import type { HasUnify } from "../Utils/index.js"
 
 /**
  * `XPure[W, S1, S2, R, E, A]` is a purely functional description of a

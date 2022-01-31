@@ -2,12 +2,12 @@
 
 import "../../../../Operator/index.js"
 
-import * as Cause from "../../../../Cause"
+import * as Cause from "../../../../Cause/index.js"
 import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
 import * as T from "../../../../Effect/index.js"
 import * as E from "../../../../Either/index.js"
 import * as Exit from "../../../../Exit/index.js"
-import * as P from "../../../../Promise"
+import * as P from "../../../../Promise/index.js"
 import * as Ref from "../../../../Ref/index.js"
 import * as IQ from "../../../../Support/ImmutableQueue/index.js"
 

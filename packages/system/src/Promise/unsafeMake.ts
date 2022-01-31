@@ -2,7 +2,7 @@
 
 import type { FiberID } from "../Fiber/id.js"
 import { AtomicReference } from "../Support/AtomicReference/index.js"
-import { Promise } from "./promise"
+import { Promise } from "./promise.js"
 import { Pending } from "./state.js"
 
 export function unsafeMake<E, A>(fiberId: FiberID) {

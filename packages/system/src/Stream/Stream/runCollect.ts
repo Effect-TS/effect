@@ -1,11 +1,11 @@
 // ets_tracing: off
 
 import * as A from "../../Collections/Immutable/Chunk/index.js"
-import type * as L from "../../Collections/Immutable/List"
+import type * as L from "../../Collections/Immutable/List/index.js"
 import { pipe } from "../../Function/index.js"
 import * as T from "../_internal/effect.js"
 import * as SK from "../Sink/index.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { run } from "./run.js"
 
 /**

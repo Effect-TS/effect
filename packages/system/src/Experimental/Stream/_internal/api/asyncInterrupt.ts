@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as CS from "../../../../Cause"
+import * as CS from "../../../../Cause/index.js"
 import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
 import * as T from "../../../../Effect/index.js"
 import * as E from "../../../../Either/index.js"
@@ -13,7 +13,7 @@ import * as TK from "../../Take/index.js"
 import * as C from "../core.js"
 import type { Canceler, Emit } from "./_internal/Emit.js"
 import { toEmit } from "./_internal/Emit.js"
-import * as Ensuring from "./ensuring"
+import * as Ensuring from "./ensuring.js"
 import * as Unwrap from "./unwrap.js"
 import * as UnwrapManaged from "./unwrapManaged.js"
 

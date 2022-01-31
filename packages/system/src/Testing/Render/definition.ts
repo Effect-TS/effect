@@ -1,5 +1,5 @@
-import * as L from "../../Collections/Immutable/List"
-import type * as AM from "../AssertionM/AssertionM"
+import * as L from "../../Collections/Immutable/List/index.js"
+import type * as AM from "../AssertionM/AssertionM.js"
 
 export const AssertionMTypeId = Symbol()
 

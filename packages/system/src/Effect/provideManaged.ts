@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type { Has, Tag } from "../Has"
+import type { Has, Tag } from "../Has/index.js"
 import type { Managed } from "../Managed/managed.js"
-import { use_ } from "../Managed/use"
+import { use_ } from "../Managed/use.js"
 import type { Effect } from "./effect.js"
-import * as has from "./has"
+import * as has from "./has.js"
 import * as provide from "./provide.js"
 
 /**

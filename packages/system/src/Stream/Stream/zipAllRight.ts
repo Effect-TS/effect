@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import { identity } from "../../Function/index.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { zipAllWith_ } from "./zipAllWith.js"
 
 /**

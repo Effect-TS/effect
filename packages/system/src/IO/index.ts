@@ -4,10 +4,10 @@
 import "../Operator/index.js"
 
 import * as Tp from "../Collections/Immutable/Tuple/index.js"
-import { _A, _U } from "../Effect/commons"
+import { _A, _U } from "../Effect/commons.js"
 import { Stack } from "../Stack/index.js"
-import type { HasUnify } from "../Utils"
-import { unifyIndex } from "../Utils"
+import type { HasUnify } from "../Utils/index.js"
+import { unifyIndex } from "../Utils/index.js"
 
 /**
  * `IO[A]` is a purely functional description of a computation.

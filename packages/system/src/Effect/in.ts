@@ -6,7 +6,7 @@ import { pipe } from "../Function/index.js"
 import * as O from "../Option/index.js"
 import type { Scope } from "../Scope/index.js"
 import * as core from "./core.js"
-import { forkDaemon } from "./core-scope"
+import { forkDaemon } from "./core-scope.js"
 import type { Effect } from "./effect.js"
 import * as interruption from "./interruption.js"
 

@@ -2,11 +2,11 @@
 
 import "../../Operator/index.js"
 
-import * as C from "../../Cause"
+import * as C from "../../Cause/index.js"
 import type { HasClock } from "../../Clock/index.js"
 import { currentTime } from "../../Clock/index.js"
 import * as A from "../../Collections/Immutable/Chunk/index.js"
-import * as List from "../../Collections/Immutable/List"
+import * as List from "../../Collections/Immutable/List/index.js"
 import type * as MP from "../../Collections/Immutable/Map/index.js"
 import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import * as E from "../../Either/index.js"
@@ -16,14 +16,14 @@ import * as H from "../../Hub/index.js"
 import * as L from "../../Layer/index.js"
 import * as O from "../../Option/index.js"
 import * as Q from "../../Queue/index.js"
-import { matchTag } from "../../Utils"
+import { matchTag } from "../../Utils/index.js"
 import * as T from "../_internal/effect.js"
 import * as F from "../_internal/fiber.js"
 import * as M from "../_internal/managed.js"
 import * as R from "../_internal/ref.js"
-import * as Push from "../Push"
-import type { Transducer } from "../Transducer"
-import { transducer } from "../Transducer"
+import * as Push from "../Push/index.js"
+import type { Transducer } from "../Transducer/index.js"
+import { transducer } from "../Transducer/index.js"
 
 // Important notes while writing sinks and combinators:
 // - What return values for sinks mean:

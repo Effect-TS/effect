@@ -2,7 +2,7 @@
 
 import { succeed } from "./core.js"
 import type { IO } from "./effect.js"
-import { effectAsync } from "./effectAsync"
+import { effectAsync } from "./effectAsync.js"
 import { fail } from "./fail.js"
 
 export function fromNodeCb<L, R>(

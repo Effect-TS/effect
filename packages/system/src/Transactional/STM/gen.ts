@@ -3,8 +3,8 @@
 /**
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
-import { _A, _E, _R } from "../../Effect/commons"
-import type * as Utils from "../../Utils"
+import { _A, _E, _R } from "../../Effect/commons.js"
+import type * as Utils from "../../Utils/index.js"
 import type { STM } from "./core.js"
 import { chain_, succeed, suspend } from "./core.js"
 

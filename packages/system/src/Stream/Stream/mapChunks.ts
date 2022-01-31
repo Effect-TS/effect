@@ -2,8 +2,8 @@
 
 import type * as A from "../../Collections/Immutable/Chunk/index.js"
 import * as T from "../_internal/effect.js"
-import type { Stream } from "./definitions"
-import { mapChunksM_ } from "./mapChunksM"
+import type { Stream } from "./definitions.js"
+import { mapChunksM_ } from "./mapChunksM.js"
 
 /**
  * Transforms the chunks emitted by this stream.

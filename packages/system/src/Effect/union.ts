@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { _A, _E, _R } from "../Utils"
+import type { _A, _E, _R } from "../Utils/index.js"
 import type { Effect } from "./effect.js"
 
 /**

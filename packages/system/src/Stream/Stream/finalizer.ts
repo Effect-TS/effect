@@ -2,7 +2,7 @@
 
 import * as T from "../_internal/effect.js"
 import { bracket_ } from "./bracket.js"
-import type { RIO } from "./definitions"
+import type { RIO } from "./definitions.js"
 
 /**
  * Creates a one-element stream that never fails and executes the finalizer when it ends.

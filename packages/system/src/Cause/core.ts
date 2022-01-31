@@ -3,15 +3,15 @@
 /* eslint-disable prefer-const */
 import * as A from "../Collections/Immutable/Array/index.js"
 import * as E from "../Either/index.js"
-import type { Trace } from "../Fiber/index.js"
 import type { FiberID } from "../Fiber/id.js"
+import type { Trace } from "../Fiber/index.js"
 import { identity, pipe } from "../Function/index.js"
 import * as S from "../IO/index.js"
 import * as O from "../Option/index.js"
 import { Stack } from "../Stack/index.js"
-import type { Both, Cause, Then, Traced } from "./cause"
-import { both, die, empty, fail, interrupt, then, traced } from "./cause"
-import { InterruptedException } from "./errors"
+import type { Both, Cause, Then, Traced } from "./cause.js"
+import { both, die, empty, fail, interrupt, then, traced } from "./cause.js"
+import { InterruptedException } from "./errors.js"
 
 export {
   both,
@@ -23,7 +23,7 @@ export {
   then,
   traced,
   isEmpty
-} from "./cause"
+} from "./cause.js"
 
 /**
  * Applicative's ap

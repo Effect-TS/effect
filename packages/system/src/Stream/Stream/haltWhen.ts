@@ -6,7 +6,7 @@ import * as O from "../../Option/index.js"
 import * as Pull from "../../Stream/Pull/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 /**
  * Halts the evaluation of this stream when the provided IO completes. The given IO

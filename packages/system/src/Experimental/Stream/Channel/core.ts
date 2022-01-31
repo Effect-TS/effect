@@ -2,11 +2,11 @@
 
 import "../../../Operator/index.js"
 
-import * as Cause from "../../../Cause"
+import * as Cause from "../../../Cause/index.js"
 import type * as T from "../../../Effect/index.js"
 import type * as Exit from "../../../Exit/index.js"
 import { identity } from "../../../Function/index.js"
-import * as P from "./_internal/primitives"
+import * as P from "./_internal/primitives.js"
 import type * as PR from "./_internal/producer.js"
 
 export type {

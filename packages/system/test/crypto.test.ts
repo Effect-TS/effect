@@ -1,5 +1,5 @@
-import * as Ex from "../src/Exit"
-import { pipe } from "../src/Function"
+import * as Ex from "../src/Exit/index.js"
+import { pipe } from "../src/Function/index.js"
 import {
   CryptoLive,
   hashPassword,

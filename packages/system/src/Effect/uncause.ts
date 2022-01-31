@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Cause } from "../Cause/cause"
-import { isEmpty } from "../Cause/cause"
+import type { Cause } from "../Cause/cause.js"
+import { isEmpty } from "../Cause/cause.js"
 import { chain_, halt, unit } from "./core.js"
 import type { Effect, RIO } from "./effect.js"
 

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as HM from "../../../Collections/Immutable/HashMap"
+import * as HM from "../../../Collections/Immutable/HashMap/index.js"
 import type * as C from "./core.js"
 import * as FoldWeighted from "./foldWeighted.js"
 

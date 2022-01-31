@@ -2,7 +2,7 @@
 
 import * as O from "../../Option/index.js"
 import { catchAll_ } from "./catchAll.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 import { die } from "./die.js"
 import { fail } from "./fail.js"
 

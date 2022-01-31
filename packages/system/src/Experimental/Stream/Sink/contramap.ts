@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as CK from "../../../Collections/Immutable/Chunk/index.js"
-import * as ContramapChunks from "./contramapChunks"
+import * as ContramapChunks from "./contramapChunks.js"
 import type * as C from "./core.js"
 
 /**

@@ -2,7 +2,7 @@
 
 import type * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
 import * as T from "../../../../Effect/index.js"
-import type * as P from "../../../../Promise"
+import type * as P from "../../../../Promise/index.js"
 import * as Q from "../../../../Queue/index.js"
 import type * as TK from "../../Take/index.js"
 import * as C from "../core.js"

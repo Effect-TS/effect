@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { map_ as mapCause } from "../Cause"
+import { map_ as mapCause } from "../Cause/index.js"
 import * as O from "../Option/index.js"
 import { foldCauseM_, halt, succeed } from "./core.js"
 import type { Effect } from "./effect.js"

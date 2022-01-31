@@ -6,7 +6,7 @@ import { pipe } from "../../Function/index.js"
 import * as T from "../_internal/effect.js"
 import * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 /**
  * Intersperse stream with provided element similar to <code>List.mkString</code>.

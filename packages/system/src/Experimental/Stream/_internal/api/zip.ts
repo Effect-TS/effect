@@ -2,7 +2,7 @@
 
 import * as A from "../../../../Collections/Immutable/Array/index.js"
 import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
-import type { _A, _E, _R } from "../../../../Utils"
+import type { _A, _E, _R } from "../../../../Utils/index.js"
 import type * as C from "../core.js"
 import * as ZipWith from "./zipWith.js"
 

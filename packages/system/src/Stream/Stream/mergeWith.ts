@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as C from "../../Cause"
+import * as C from "../../Cause/index.js"
 import * as A from "../../Collections/Immutable/Chunk/index.js"
 import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import * as E from "../../Either/index.js"
@@ -14,7 +14,7 @@ import * as M from "../_internal/managed.js"
 import * as H from "../Handoff/index.js"
 import type * as Pull from "../Pull/index.js"
 import * as TK from "../Take/index.js"
-import { Stream } from "./definitions"
+import { Stream } from "./definitions.js"
 
 export type TerminationStrategy = "Left" | "Right" | "Both" | "Either"
 

@@ -1,6 +1,6 @@
 import type * as O from "../../Option/index.js"
-import type { AssertionValue } from "./AssertionValue"
-import { makeAssertionValue } from "./makeAssertionValue"
+import type { AssertionValue } from "../AssertionValue/index.js"
+import { makeAssertionValue } from "./makeAssertionValue.js"
 
 export function withContext_(
   self: AssertionValue,

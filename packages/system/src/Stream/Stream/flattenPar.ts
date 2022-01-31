@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import { chainPar } from "./chainPar.js"
-import type { Stream } from "./definitions"
+import type { Stream } from "./definitions.js"
 
 /**
  * Flattens a stream of streams into a stream by executing a non-deterministic

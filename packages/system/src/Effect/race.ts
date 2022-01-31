@@ -7,12 +7,12 @@ import * as Fiber from "../Fiber/core.js"
 import { pipe } from "../Function/index.js"
 import { as_ } from "./as"
 import * as core from "./core.js"
-import { raceWith_ } from "./core-scope"
+import { raceWith_ } from "./core-scope.js"
 import { done } from "./done.js"
 import type { Effect } from "./effect.js"
 import { uninterruptibleMask } from "./interruption.js"
 import { map_ } from "./map.js"
-import { mapErrorCause_ } from "./mapErrorCause"
+import { mapErrorCause_ } from "./mapErrorCause.js"
 
 /**
  * Returns an effect that races this effect with the specified effect,

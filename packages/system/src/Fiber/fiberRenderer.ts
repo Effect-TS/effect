@@ -4,13 +4,13 @@ import type { Chunk } from "../Collections/Immutable/Chunk/index.js"
 import { constant, tuple } from "../Function/index.js"
 import * as IT from "../Iterable/index.js"
 import { fold_ } from "../Option/index.js"
-import { parseMs } from "../Utils/parse-ms"
+import { parseMs } from "../Utils/parse-ms.js"
 import type { UIO } from "./_internal/effect.js"
 import * as T from "./_internal/effect-api.js"
 import type { Runtime } from "./core.js"
 import { FiberDump } from "./dump.js"
 import { fiberName } from "./fiberName.js"
-import type { Status } from "./status"
+import type { Status } from "./status.js"
 
 export function dump<E, A>(fiber: Runtime<E, A>): T.UIO<FiberDump> {
   return T.map_(

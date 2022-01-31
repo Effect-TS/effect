@@ -1,5 +1,5 @@
 import { make_ } from "../core.js"
-import { succeedWith } from "../deps-core"
+import { succeedWith } from "../deps-core.js"
 import type { Managed } from "../managed.js"
 
 /**

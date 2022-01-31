@@ -5,7 +5,7 @@ import * as Chunk from "../Collections/Immutable/Chunk/core.js"
 import type { AtomicBoolean } from "../Support/AtomicBoolean/index.js"
 import type { MutableQueue } from "../Support/MutableQueue/index.js"
 import * as T from "./effect.js"
-import * as P from "./promise"
+import * as P from "./promise.js"
 import type { XQueue } from "./xqueue.js"
 import { concreteQueue } from "./xqueue.js"
 
