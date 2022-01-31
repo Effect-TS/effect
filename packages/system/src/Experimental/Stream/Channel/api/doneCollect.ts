@@ -2,9 +2,9 @@
 
 import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as Tp from "../../../../Collections/Immutable/Tuple"
-import * as C from "../core"
-import * as ReadWith from "./readWith"
-import * as ZipRight from "./zipRight"
+import * as C from "../core.js"
+import * as ReadWith from "./readWith.js"
+import * as ZipRight from "./zipRight.js"
 
 function doneCollectReader<Env, OutErr, OutElem, OutDone>(
   builder: CK.ChunkBuilder<OutElem>

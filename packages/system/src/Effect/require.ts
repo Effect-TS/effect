@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import * as O from "../Option"
-import { chain_, succeed, succeedWith } from "./core"
-import type { Effect } from "./effect"
-import { fail } from "./fail"
+import { chain_, succeed, succeedWith } from "./core.js"
+import type { Effect } from "./effect.js"
+import { fail } from "./fail.js"
 
 /**
  * Requires that the given `Effect<R, E, Option<A>>` contain a value. If there is no

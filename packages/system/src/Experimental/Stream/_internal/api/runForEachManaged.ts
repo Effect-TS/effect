@@ -3,8 +3,8 @@
 import type * as T from "../../../../Effect"
 import type * as M from "../../../../Managed"
 import * as SK from "../../Sink"
-import type * as C from "../core"
-import * as RunManaged from "./runManaged"
+import type * as C from "../core.js"
+import * as RunManaged from "./runManaged.js"
 
 /**
  * Like `Stream#forEach`, but returns a `Managed` so the finalization order

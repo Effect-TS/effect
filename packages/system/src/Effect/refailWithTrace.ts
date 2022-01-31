@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import { traced } from "../Cause"
-import { foldCauseM_, haltWith, succeed } from "./core"
-import type { Effect } from "./effect"
+import { foldCauseM_, haltWith, succeed } from "./core.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Attach a wrapping trace pointing to this location in case of error.

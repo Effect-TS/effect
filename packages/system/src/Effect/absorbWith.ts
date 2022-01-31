@@ -2,11 +2,11 @@
 
 import { squash } from "../Cause"
 import { identity, pipe } from "../Function"
-import { succeed } from "./core"
-import type { Effect } from "./effect"
-import { fail } from "./fail"
-import { foldM_ } from "./foldM"
-import { sandbox } from "./sandbox"
+import { succeed } from "./core.js"
+import type { Effect } from "./effect.js"
+import { fail } from "./fail.js"
+import { foldM_ } from "./foldM.js"
+import { sandbox } from "./sandbox.js"
 
 /**
  * Attempts to convert defects into a failure, throwing away all information

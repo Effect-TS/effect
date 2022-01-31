@@ -3,7 +3,7 @@
 import type * as T from "../../../../Effect"
 import * as CH from "../../Channel"
 import type * as SK from "../../Sink"
-import type * as C from "../core"
+import type * as C from "../core.js"
 
 /**
  * Runs the sink on the stream to produce either the sink's result or an error.

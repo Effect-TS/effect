@@ -6,7 +6,7 @@ import * as AB from "../../../../Support/AtomicBoolean"
 import * as AR from "../../../../Support/AtomicReference"
 import * as CH from "../../Channel"
 import type * as SK from "../../Sink"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Applies the transducer to the stream and emits its outputs.

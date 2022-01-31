@@ -3,7 +3,7 @@
 import type * as CL from "../../../../Clock"
 import * as SC from "../../../../Schedule"
 import type * as SK from "../../Sink"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as AggregateAsyncWithin from "./aggregateAsyncWithin"
 
 /**

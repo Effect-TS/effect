@@ -5,7 +5,7 @@ import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as T from "../../../../Effect"
 import * as SC from "../../../../Schedule"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Schedules the output of the stream using the provided `schedule` and emits its output at

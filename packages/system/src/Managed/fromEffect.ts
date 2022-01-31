@@ -2,8 +2,8 @@
 
 import * as Tp from "../Collections/Immutable/Tuple"
 import * as T from "./deps-core"
-import { managedApply } from "./managed"
-import * as Finalizer from "./ReleaseMap/finalizer"
+import { managedApply } from "./managed.js"
+import * as Finalizer from "./ReleaseMap/finalizer.js"
 
 /**
  * Lifts a `Effect< R, E, A>` into `Managed< R, E, A>` with no release action. The

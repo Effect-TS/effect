@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as CL from "../../../../Clock"
-import type * as C from "../core"
-import * as HaltWhen from "./haltWhen"
+import type * as C from "../core.js"
+import * as HaltWhen from "./haltWhen.js"
 
 /**
  * Specialized version of haltWhen which halts the evaluation of this stream

@@ -3,9 +3,9 @@
 import { map_ as mapCause } from "../Cause"
 import type { Option } from "../Option"
 import * as O from "../Option"
-import { foldCauseM_, halt, succeed } from "./core"
-import type { Effect } from "./effect"
-import { fail } from "./fail"
+import { foldCauseM_, halt, succeed } from "./core.js"
+import type { Effect } from "./effect.js"
+import { fail } from "./fail.js"
 
 /**
  * Unwraps the optional success of this effect, but can fail with an None value.

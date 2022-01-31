@@ -3,7 +3,7 @@
 import * as CS from "../../../../Cause"
 import * as O from "../../../../Option"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Keeps some of the errors, and terminates the fiber with the rest, using

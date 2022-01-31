@@ -2,7 +2,7 @@
 
 import type * as T from "../../../../Effect"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Interrupts the evaluation of this stream when the provided IO completes. The given

@@ -3,7 +3,7 @@
 import type * as CL from "../../../../Clock"
 import * as E from "../../../../Either"
 import type * as SC from "../../../../Schedule"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as RepeatElementsWith from "./repeatElementsWith"
 
 /**

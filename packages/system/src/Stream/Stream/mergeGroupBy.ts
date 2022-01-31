@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { GroupBy } from "../GroupBy/index"
+import type { GroupBy } from "../GroupBy/index.js"
 import type { Stream } from "./definitions"
 
 /**

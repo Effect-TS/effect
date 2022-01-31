@@ -3,7 +3,7 @@
 import type * as CS from "../../../../Cause"
 import type * as CK from "../../../../Collections/Immutable/Chunk"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Switches over to the stream produced by the provided function in case this one

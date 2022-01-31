@@ -2,9 +2,9 @@
 
 import { pipe } from "../../Function"
 import * as O from "../../Option"
-import * as T from "../_internal/effect"
+import * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
-import { fromEffectOption } from "./fromEffectOption"
+import { fromEffectOption } from "./fromEffectOption.js"
 
 /**
  * Creates a stream from an effect producing a value of type `A`

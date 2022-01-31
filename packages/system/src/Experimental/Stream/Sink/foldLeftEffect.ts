@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import type * as T from "../../../Effect"
-import type * as C from "./core"
-import * as FoldEffect from "./foldEffect"
+import type * as C from "./core.js"
+import * as FoldEffect from "./foldEffect.js"
 
 /**
  * A sink that effectfully folds its inputs with the provided function and initial state.

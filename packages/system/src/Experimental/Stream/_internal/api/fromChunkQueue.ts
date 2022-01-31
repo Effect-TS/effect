@@ -6,8 +6,8 @@ import * as T from "../../../../Effect"
 import { pipe } from "../../../../Function"
 import * as Q from "../../../../Queue"
 import * as Pull from "../../Pull"
-import type * as C from "../core"
-import * as RepeatEffectChunkOption from "./repeatEffectChunkOption"
+import type * as C from "../core.js"
+import * as RepeatEffectChunkOption from "./repeatEffectChunkOption.js"
 
 /**
  * Creates a stream from a queue of values

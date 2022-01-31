@@ -4,12 +4,12 @@ import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as Q from "../../Queue"
 import * as Ref from "../../Ref"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
 import * as Pull from "../Pull"
 import * as Take from "../Take"
 import { Stream } from "./definitions"
-import { toQueue_ } from "./toQueue"
+import { toQueue_ } from "./toQueue.js"
 
 /**
  * Allows a faster producer to progress independently of a slower consumer by buffering

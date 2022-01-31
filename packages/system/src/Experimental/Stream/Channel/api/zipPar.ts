@@ -4,8 +4,8 @@ import type * as Tp from "../../../../Collections/Immutable/Tuple"
 import * as T from "../../../../Effect"
 import * as Ex from "../../../../Exit"
 import * as MH from "../_internal/mergeHelpers"
-import type * as C from "../core"
-import * as MergeWith from "./mergeWith"
+import type * as C from "../core.js"
+import * as MergeWith from "./mergeWith.js"
 
 export function zipPar_<
   Env,

@@ -3,8 +3,8 @@
 import type * as CK from "../../../../Collections/Immutable/Chunk"
 import type * as T from "../../../../Effect"
 import * as SK from "../../Sink"
-import type * as C from "../core"
-import * as Run from "./run"
+import type * as C from "../core.js"
+import * as Run from "./run.js"
 
 /**
  * Consumes all elements of the stream, passing them to the specified callback.

@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as T from "../_internal/effect"
-import type * as M from "../_internal/managed"
+import type * as T from "../_internal/effect.js"
+import type * as M from "../_internal/managed.js"
 import type { Stream } from "./definitions"
-import { foldWhileManagedM } from "./foldWhileManagedM"
+import { foldWhileManagedM } from "./foldWhileManagedM.js"
 
 /**
  * Executes an effectful fold over the stream of values.

@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import * as O from "../../Option"
-import * as T from "../_internal/effect"
+import * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
-import { mapM_ } from "./mapM"
+import { mapM_ } from "./mapM.js"
 
 /**
  * Extracts the optional value, or fails with the given error 'e'.

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as Tp from "../../../../Collections/Immutable/Tuple"
-import * as C from "../core"
-import * as Map from "./map"
+import * as C from "../core.js"
+import * as Map from "./map.js"
 
 /**
  * Returns a new channel that is the sequential composition of this channel and the specified

@@ -3,8 +3,8 @@
 import * as E from "../../Either"
 import * as O from "../../Option"
 import type { Stream } from "./definitions"
-import { mapError_ } from "./mapError"
-import { rightOrFail_ } from "./rightOrFail"
+import { mapError_ } from "./mapError.js"
+import { rightOrFail_ } from "./rightOrFail.js"
 
 /**
  * Fails with the error `None` if value is `Left`.

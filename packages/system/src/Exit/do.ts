@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import { pipe } from "../Function"
-import type { Exit } from "./core"
-import { chain, map, succeed } from "./core"
+import type { Exit } from "./core.js"
+import { chain, map, succeed } from "./core.js"
 
 function bind<E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,

@@ -3,8 +3,8 @@
 import type * as T from "../../../../Effect"
 import * as H from "../../../../Hub"
 import type * as TK from "../../Take"
-import type * as C from "../core"
-import * as RunInto from "./runInto"
+import type * as C from "../core.js"
+import * as RunInto from "./runInto.js"
 
 /**
  * Publishes elements of this stream to a hub. Stream failure and ending will

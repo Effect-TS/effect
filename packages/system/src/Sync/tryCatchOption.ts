@@ -1,6 +1,6 @@
 import * as E from "../Either"
 import type * as O from "../Option"
-import { fromEither } from "./fromEither"
+import { fromEither } from "./fromEither.js"
 
 /**
  * Get the A from an option

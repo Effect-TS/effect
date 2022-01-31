@@ -3,8 +3,8 @@
 import type * as T from "../../../../Effect"
 import type * as O from "../../../../Option"
 import * as SK from "../../Sink"
-import type * as C from "../core"
-import * as Run from "./run"
+import type * as C from "../core.js"
+import * as Run from "./run.js"
 
 /**
  * Runs the stream to collect the first value emitted by it without running

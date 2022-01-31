@@ -1,9 +1,9 @@
-import * as core from "../../../../Effect/core"
-import type { Effect } from "../../../../Effect/effect"
+import * as core from "../../../../Effect/core.js"
+import type { Effect } from "../../../../Effect/effect.js"
 import * as O from "../../../../Option"
 import type * as Tp from "../../Tuple"
-import type { Chunk } from "../core"
-import { append_, empty } from "../core"
+import type { Chunk } from "../core.js"
+import { append_, empty } from "../core.js"
 
 function loop<A, R, E, S>(
   s: S,

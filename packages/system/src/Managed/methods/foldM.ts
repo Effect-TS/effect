@@ -3,9 +3,9 @@
 import { failureOrCause } from "../../Cause"
 import * as E from "../../Either"
 import { pipe } from "../../Function"
-import { foldCauseM_ } from "../core"
-import type { Managed } from "../managed"
-import { halt } from "./halt"
+import { foldCauseM_ } from "../core.js"
+import type { Managed } from "../managed.js"
+import { halt } from "./halt.js"
 
 /**
  * Recovers from errors by accepting one effect to execute for the case of an

@@ -3,9 +3,9 @@
 import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as RB from "../../../../Support/RingBufferNew"
 import * as CH from "../../Channel"
-import * as C from "../core"
-import * as Chain from "./chain"
-import * as SucceedWith from "./succeedWith"
+import * as C from "../core.js"
+import * as Chain from "./chain.js"
+import * as SucceedWith from "./succeedWith.js"
 
 /**
  * Drops the last specified number of elements from this stream.

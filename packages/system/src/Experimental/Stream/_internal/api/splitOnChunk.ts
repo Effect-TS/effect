@@ -4,7 +4,7 @@ import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as Tp from "../../../../Collections/Immutable/Tuple"
 import * as O from "../../../../Option"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Performs a filter and map in a single step.

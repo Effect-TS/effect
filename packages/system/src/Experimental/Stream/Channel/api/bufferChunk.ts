@@ -2,8 +2,8 @@
 
 import * as CK from "../../../../Collections/Immutable/Chunk"
 import type * as Ref from "../../../../Ref"
-import type * as C from "../core"
-import * as Buffer from "./buffer"
+import type * as C from "../core.js"
+import * as Buffer from "./buffer.js"
 
 export function bufferChunk<InElem, InErr, InDone>(
   ref: Ref.Ref<CK.Chunk<InElem>>

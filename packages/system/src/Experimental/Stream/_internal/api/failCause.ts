@@ -2,8 +2,8 @@
 
 import type * as CS from "../../../../Cause"
 import * as T from "../../../../Effect"
-import type * as C from "../core"
-import * as FromEffect from "./fromEffect"
+import type * as C from "../core.js"
+import * as FromEffect from "./fromEffect.js"
 
 /**
  * The stream that always fails with `cause`.

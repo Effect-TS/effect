@@ -4,7 +4,7 @@ import { pipe } from "../../../../Function"
 import type * as M from "../../../../Managed"
 import * as CH from "../../Channel"
 import type * as SK from "../../Sink"
-import type * as C from "../core"
+import type * as C from "../core.js"
 
 export function runManaged_<R, R1, E, A, E2, B, L>(
   self: C.Stream<R, E, A>,

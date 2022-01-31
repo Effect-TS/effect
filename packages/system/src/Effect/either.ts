@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import * as E from "../Either"
-import { succeed } from "./core"
-import type { Effect, RIO } from "./effect"
-import { foldM_ } from "./foldM"
+import { succeed } from "./core.js"
+import type { Effect, RIO } from "./effect.js"
+import { foldM_ } from "./foldM.js"
 
 /**
  * Returns an effect whose failure and success have been lifted into an

@@ -1,7 +1,7 @@
 import * as T from "../../../Effect"
 import * as E from "../../../Either"
 import type { FiberID } from "../../../Fiber"
-import type { Journal } from "../Journal/index"
+import type { Journal } from "../Journal/index.js"
 
 export const STMTypeId = Symbol()
 export type STMTypeId = typeof STMTypeId

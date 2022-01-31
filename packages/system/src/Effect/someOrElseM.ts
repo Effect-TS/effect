@@ -2,8 +2,8 @@
 
 import { constant, pipe } from "../Function"
 import * as O from "../Option"
-import { chain_, succeed } from "./core"
-import type { Effect } from "./effect"
+import { chain_, succeed } from "./core.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Extracts the optional value, or executes the effect 'orElse'.

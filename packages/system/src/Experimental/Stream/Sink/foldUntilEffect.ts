@@ -3,9 +3,9 @@
 import * as Tp from "../../../Collections/Immutable/Tuple"
 import * as T from "../../../Effect"
 import { pipe } from "../../../Function"
-import type * as C from "./core"
-import * as FoldEffect from "./foldEffect"
-import * as Map from "./map"
+import type * as C from "./core.js"
+import * as FoldEffect from "./foldEffect.js"
+import * as Map from "./map.js"
 
 /**
  * Creates a sink that effectfully folds elements of type `In` into a structure

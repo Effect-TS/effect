@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import type * as T from "../../Effect"
-import * as M from "../_internal/managed"
+import * as M from "../_internal/managed.js"
 import type { Stream } from "./definitions"
-import { managed } from "./managed"
+import { managed } from "./managed.js"
 
 /**
  * Creates a stream from a single value that will get cleaned up after the

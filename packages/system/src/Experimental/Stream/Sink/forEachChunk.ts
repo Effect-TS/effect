@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as CK from "../../../Collections/Immutable/Chunk/core"
+import type * as CK from "../../../Collections/Immutable/Chunk/core.js"
 import type * as T from "../../../Effect"
 import * as CH from "../Channel"
-import * as SK from "../Sink/core"
-import type * as C from "./core"
+import * as SK from "../Sink/core.js"
+import type * as C from "./core.js"
 
 /**
  * A sink that executes the provided effectful function for every chunk fed to it.

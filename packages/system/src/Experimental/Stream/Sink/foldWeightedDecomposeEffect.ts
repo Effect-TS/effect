@@ -5,7 +5,7 @@ import * as Tp from "../../../Collections/Immutable/Tuple"
 import * as T from "../../../Effect"
 import { pipe } from "../../../Function"
 import * as CH from "../Channel"
-import * as C from "./core"
+import * as C from "./core.js"
 
 /**
  * Creates a sink that effectfully folds elements of type `In` into a structure

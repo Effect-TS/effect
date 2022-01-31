@@ -1,14 +1,14 @@
 // ets_tracing: off
 
-import { insert } from "../../Collections/Immutable/Map/core"
+import { insert } from "../../Collections/Immutable/Map/core.js"
 import * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as T from "../deps-core"
 import * as R from "./deps-ref"
 import { Exited } from "./Exited"
-import type { Finalizer } from "./finalizer"
-import { next } from "./next"
+import type { Finalizer } from "./finalizer.js"
+import { next } from "./next.js"
 import type { ReleaseMap } from "./ReleaseMap"
 import { Running } from "./Running"
 import type { State } from "./State"

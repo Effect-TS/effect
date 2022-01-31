@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import type * as M from "../../../../Managed"
-import type * as C from "../core"
-import * as RunReduceWhileManaged from "./runReduceWhileManaged"
+import type * as C from "../core.js"
+import * as RunReduceWhileManaged from "./runReduceWhileManaged.js"
 
 /**
  * Executes a pure fold over the stream of values.

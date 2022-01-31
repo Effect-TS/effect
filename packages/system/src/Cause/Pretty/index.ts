@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import * as A from "../../Collections/Immutable/Array"
-import type { FiberID } from "../../Fiber/id"
-import type { Trace } from "../../Fiber/tracing"
-import { prettyTrace } from "../../Fiber/tracing"
+import type { FiberID } from "../../Fiber/id.js"
+import type { Trace } from "../../Fiber/tracing.js"
+import { prettyTrace } from "../../Fiber/tracing.js"
 import { pipe } from "../../Function"
 import * as S from "../../IO"
 import * as O from "../../Option"

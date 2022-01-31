@@ -2,7 +2,7 @@
 
 import * as O from "../../Option"
 import type { Stream } from "./definitions"
-import { map_ } from "./map"
+import { map_ } from "./map.js"
 
 /**
  * Extracts the optional value, or returns the given 'default'.

@@ -3,8 +3,8 @@
 import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
 import * as BP from "../BufferedPull"
 import { Stream } from "./definitions"
 

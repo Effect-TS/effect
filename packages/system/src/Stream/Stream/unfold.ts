@@ -2,8 +2,8 @@
 
 import type * as Tp from "../../Collections/Immutable/Tuple"
 import type * as O from "../../Option"
-import * as T from "../_internal/effect"
-import { unfoldM } from "./unfoldM"
+import * as T from "../_internal/effect.js"
+import { unfoldM } from "./unfoldM.js"
 
 /**
  * Creates a stream by peeling off the "layers" of a value of type `S`

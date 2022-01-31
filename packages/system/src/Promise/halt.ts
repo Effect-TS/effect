@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import type { Cause } from "../Cause/cause"
-import { halt as effectHalt } from "../Effect/core"
-import { completeWith } from "./completeWith"
+import { halt as effectHalt } from "../Effect/core.js"
+import { completeWith } from "./completeWith.js"
 import type { Promise } from "./promise"
 
 /**

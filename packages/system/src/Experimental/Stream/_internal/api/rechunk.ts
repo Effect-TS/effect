@@ -4,8 +4,8 @@ import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as L from "../../../../Collections/Immutable/List"
 import * as T from "../../../../Effect"
 import * as CH from "../../Channel"
-import * as C from "../core"
-import * as Unwrap from "./unwrap"
+import * as C from "../core.js"
+import * as Unwrap from "./unwrap.js"
 
 class Rechunker<A> {
   private builder = CK.builder<A>()

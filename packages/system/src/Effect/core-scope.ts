@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import type { Exit } from "../Exit/exit"
+import type { Exit } from "../Exit/exit.js"
 import type * as Fiber from "../Fiber"
-import type { Runtime } from "../Fiber/core"
+import type { Runtime } from "../Fiber/core.js"
 import * as O from "../Option"
 import type { Scope } from "../Scope"
 import { globalScope } from "../Scope"
-import { succeed } from "./core"
-import type { Effect, RIO, UIO } from "./effect"
+import { succeed } from "./core.js"
+import type { Effect, RIO, UIO } from "./effect.js"
 import type { FailureReporter } from "./primitives"
 import { IFork, IGetForkScope, IOverrideForkScope, IRaceWith } from "./primitives"
 

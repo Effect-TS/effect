@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type { UIO } from "../Effect/effect"
+import type { UIO } from "../Effect/effect.js"
 import { IFiberRefNew } from "../Effect/primitives"
 import { identity } from "../Function"
-import { Runtime } from "./fiberRef"
+import { Runtime } from "./fiberRef.js"
 
 /**
  * Creates a new `FiberRef` with given initial value.

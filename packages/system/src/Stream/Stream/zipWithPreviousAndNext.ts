@@ -4,8 +4,8 @@ import * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import type { Stream } from "./definitions"
-import { map } from "./map"
-import { zipWithNext } from "./zipWithNext"
+import { map } from "./map.js"
+import { zipWithNext } from "./zipWithNext.js"
 import { zipWithPrevious } from "./zipWithPrevious"
 
 /**

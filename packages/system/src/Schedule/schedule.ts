@@ -13,7 +13,7 @@ import * as Random from "../Random"
 import * as R from "../Ref"
 import * as Decision from "./Decision"
 import * as Driver from "./Driver"
-import * as T from "./effect"
+import * as T from "./effect.js"
 
 /**
  * A `Schedule< Env, In, Out>` defines a recurring schedule, which consumes values of type `In`, and

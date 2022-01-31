@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { succeedWith, suspend } from "./core"
+import { succeedWith, suspend } from "./core.js"
 import { effectAsyncInterrupt } from "./effectAsyncInterrupt"
 
 /**

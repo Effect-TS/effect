@@ -8,8 +8,8 @@ import type { Option } from "../../Option"
 import { none, some } from "../../Option"
 import * as P from "../../Promise"
 import { matchTag } from "../../Utils"
-import * as T from "../_internal/effect"
-import * as R from "../_internal/ref"
+import * as T from "../_internal/effect.js"
+import * as R from "../_internal/ref.js"
 
 type State<A> = Empty | Full<A>
 

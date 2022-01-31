@@ -1,6 +1,6 @@
-import * as CatchAll from "./catchAll"
+import * as CatchAll from "./catchAll.js"
 import type { Stream } from "./definitions"
-import * as Fail from "./fail"
+import * as Fail from "./fail.js"
 
 /**
  * Recovers from specified error.

@@ -2,8 +2,8 @@
 
 import * as H from "../../../../Hub"
 import * as M from "../../../../Managed"
-import * as C from "../core"
-import * as FromQueueWithShutdown from "./fromQueueWithShutdown"
+import * as C from "../core.js"
+import * as FromQueueWithShutdown from "./fromQueueWithShutdown.js"
 
 /**
  * Creates a stream from a subscription to a hub in the context of a managed

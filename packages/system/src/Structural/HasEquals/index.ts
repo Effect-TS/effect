@@ -2,7 +2,7 @@
 
 import type { HasHash } from "../HasHash"
 import { hash, hasHash } from "../HasHash"
-import { createComparator } from "./comparator"
+import { createComparator } from "./comparator.js"
 import { createCircularEqualCreator, sameValueZeroEqual } from "./utils"
 
 export const equalsSym = Symbol()

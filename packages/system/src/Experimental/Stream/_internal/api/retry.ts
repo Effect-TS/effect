@@ -4,10 +4,10 @@ import type * as CL from "../../../../Clock"
 import * as T from "../../../../Effect"
 import { pipe } from "../../../../Function"
 import * as SC from "../../../../Schedule"
-import type * as C from "../core"
-import * as CatchAll from "./catchAll"
-import * as Tap from "./tap"
-import * as Unwrap from "./unwrap"
+import type * as C from "../core.js"
+import * as CatchAll from "./catchAll.js"
+import * as Tap from "./tap.js"
+import * as Unwrap from "./unwrap.js"
 
 /**
  * When the stream fails, retry it according to the given schedule

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as P from "../../../../Promise"
-import type * as C from "../core"
-import * as InterruptWhen from "./interruptWhen"
+import type * as C from "../core.js"
+import * as InterruptWhen from "./interruptWhen.js"
 
 /**
  * Returns a new channel, which is the same as this one, except it will be interrupted when the

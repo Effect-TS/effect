@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { lookup, remove } from "../../Collections/Immutable/Map/core"
+import { lookup, remove } from "../../Collections/Immutable/Map/core.js"
 import * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
 import * as O from "../../Option"

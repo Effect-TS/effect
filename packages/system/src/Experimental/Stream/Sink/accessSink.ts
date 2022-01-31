@@ -2,7 +2,7 @@
 
 import * as T from "../../../Effect"
 import * as CH from "../Channel"
-import * as C from "./core"
+import * as C from "./core.js"
 
 export function accessSink<R, R1, InErr, In, OutErr, L, Z>(
   f: (r: R) => C.Sink<R1, InErr, In, OutErr, L, Z>

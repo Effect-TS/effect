@@ -3,10 +3,10 @@
 import * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
 import { environment, map } from "../deps"
-import type { Managed } from "../managed"
-import { managedApply } from "../managed"
+import type { Managed } from "../managed.js"
+import { managedApply } from "../managed.js"
 import type { ReleaseMap } from "../ReleaseMap"
-import { noopFinalizer } from "../ReleaseMap/finalizer"
+import { noopFinalizer } from "../ReleaseMap/finalizer.js"
 
 /**
  * Provides access to the entire map of resources allocated by this {@link Managed}.

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import type * as Tp from "../Collections/Immutable/Tuple"
-import { succeedWith } from "../Effect/core"
-import type { UIO } from "../Effect/effect"
+import { succeedWith } from "../Effect/core.js"
+import type { UIO } from "../Effect/effect.js"
 import type * as O from "../Option"
 import type { Atomic } from "./XRef"
 

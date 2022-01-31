@@ -3,8 +3,8 @@
 import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as Tp from "../../../../Collections/Immutable/Tuple"
 import * as O from "../../../../Option"
-import type * as C from "../core"
-import * as UnfoldChunk from "./unfoldChunk"
+import type * as C from "../core.js"
+import * as UnfoldChunk from "./unfoldChunk.js"
 
 /**
  * Creates a stream by peeling off the "layers" of a value of type `S`

@@ -2,7 +2,7 @@
 
 import type * as T from "../../../Effect"
 import * as CH from "../Channel"
-import * as C from "./core"
+import * as C from "./core.js"
 
 /**
  * Creates a single-value sink produced from an effect

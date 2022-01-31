@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as Tp from "../Collections/Immutable/Tuple"
-import { access } from "./core"
+import { access } from "./core.js"
 
 /**
  * Returns an effectful function that merely swaps the elements in a `Tuple2`.

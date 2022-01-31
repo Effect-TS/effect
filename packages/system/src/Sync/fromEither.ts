@@ -1,5 +1,5 @@
 import * as E from "../Either"
-import { chain_, fail, succeed, succeedWith } from "./core"
+import { chain_, fail, succeed, succeedWith } from "./core.js"
 
 /**
  * Lifts an `Either` into a `Sync` value.

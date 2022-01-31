@@ -6,11 +6,11 @@ import * as O from "../../Option"
 import * as P from "../../Promise"
 import * as Q from "../../Queue"
 import * as SM from "../../Semaphore"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
 import * as Pull from "../Pull"
 import { Stream } from "./definitions"
-import { forEachManaged } from "./forEach"
+import { forEachManaged } from "./forEach.js"
 /**
  * Maps over elements of the stream with the specified effectful function,
  * executing up to `n` invocations of `f` concurrently. Transformed elements

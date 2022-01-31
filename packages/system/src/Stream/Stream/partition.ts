@@ -2,10 +2,10 @@
 
 import type * as Tp from "../../Collections/Immutable/Tuple"
 import * as E from "../../Either"
-import * as T from "../_internal/effect"
-import type * as M from "../_internal/managed"
+import * as T from "../_internal/effect.js"
+import type * as M from "../_internal/managed.js"
 import type { Stream } from "./definitions"
-import { partitionEither_ } from "./partitionEither"
+import { partitionEither_ } from "./partitionEither.js"
 
 /**
  * Partition a stream using a predicate. The first stream will contain all element evaluated to true

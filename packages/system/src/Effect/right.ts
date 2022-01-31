@@ -2,10 +2,10 @@
 
 import * as E from "../Either"
 import * as O from "../Option"
-import { succeed } from "./core"
-import type { Effect } from "./effect"
-import { fail } from "./fail"
-import { foldM_ } from "./foldM"
+import { succeed } from "./core.js"
+import type { Effect } from "./effect.js"
+import { fail } from "./fail.js"
+import { foldM_ } from "./foldM.js"
 
 /**
  * Returns a successful effect if the value is `Right`, or fails with the error `None`.

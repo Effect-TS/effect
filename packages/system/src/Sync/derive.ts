@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { Has, Tag } from "../Has"
-import type { Sync } from "./core"
+import type { Sync } from "./core.js"
 import * as has from "./has"
 
 export type ShapeFn<T> = Pick<

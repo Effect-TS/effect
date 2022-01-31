@@ -2,9 +2,9 @@
 
 import type * as CS from "../../../../Cause"
 import * as T from "../../../../Effect"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as CatchAllCause from "./catchAllCause"
-import * as FromEffect from "./fromEffect"
+import * as FromEffect from "./fromEffect.js"
 
 /**
  * Runs the specified effect if this stream fails, providing the error to the effect if it exists.

@@ -2,9 +2,9 @@
 
 import * as R from "../Collections/Immutable/Dictionary"
 import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
-import { chain_, map_ } from "./core"
-import { forEach_, forEachPar_, forEachParN_ } from "./forEach"
-import type { Managed } from "./managed"
+import { chain_, map_ } from "./core.js"
+import { forEach_, forEachPar_, forEachParN_ } from "./forEach.js"
+import type { Managed } from "./managed.js"
 
 export function struct<NER extends Record<string, Managed<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,

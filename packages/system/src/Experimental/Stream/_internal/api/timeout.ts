@@ -4,9 +4,9 @@ import type * as CL from "../../../../Clock"
 import * as T from "../../../../Effect"
 import * as M from "../../../../Managed"
 import * as O from "../../../../Option"
-import type * as C from "../core"
-import * as FromPull from "./fromPull"
-import * as ToPull from "./toPull"
+import type * as C from "../core.js"
+import * as FromPull from "./fromPull.js"
+import * as ToPull from "./toPull.js"
 
 /**
  * Ends the stream if it does not produce a value after d duration.

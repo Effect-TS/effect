@@ -3,7 +3,7 @@
 import { identity } from "../../Function"
 import type * as O from "../../Option"
 import type { Stream } from "./definitions"
-import { refineOrDieWith } from "./refineOrDieWith"
+import { refineOrDieWith } from "./refineOrDieWith.js"
 
 /**
  * Keeps some of the errors, and terminates the fiber with the rest

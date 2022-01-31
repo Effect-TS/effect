@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import type { Cause } from "../Cause"
-import type { Effect } from "./effect"
-import { sandbox } from "./sandbox"
+import type { Effect } from "./effect.js"
+import { sandbox } from "./sandbox.js"
 import { unsandbox } from "./unsandbox"
 
 /**

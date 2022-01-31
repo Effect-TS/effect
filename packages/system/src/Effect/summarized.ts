@@ -2,10 +2,10 @@
 
 import * as Tp from "../Collections/Immutable/Tuple"
 import { pipe } from "../Function"
-import { suspend } from "./core"
-import * as D from "./do"
-import type { Effect } from "./effect"
-import * as map from "./map"
+import { suspend } from "./core.js"
+import * as D from "./do.js"
+import type { Effect } from "./effect.js"
+import * as map from "./map.js"
 
 /**
  * Summarizes a effect by computing some value before and after execution, and

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as C from "../core"
-import * as FlattenPar from "./flattenPar"
-import * as FromIterable from "./fromIterable"
+import type * as C from "../core.js"
+import * as FlattenPar from "./flattenPar.js"
+import * as FromIterable from "./fromIterable.js"
 
 /**
  * Merges a variable list of streams in a non-deterministic fashion.

@@ -1,10 +1,10 @@
 // ets_tracing: off
 
 import { identity } from "../../Function"
-import type * as T from "../_internal/effect"
+import type * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
-import { fromEffect } from "./fromEffect"
-import { mapConcat_ } from "./mapConcat"
+import { fromEffect } from "./fromEffect.js"
+import { mapConcat_ } from "./mapConcat.js"
 
 /**
  * Creates a stream from an iterable collection of values

@@ -3,8 +3,8 @@
 import type * as E from "../../../../Either"
 import type * as Ex from "../../../../Exit"
 import * as H from "../../../../Hub"
-import type * as C from "../core"
-import * as ToQueue from "./toQueue"
+import type * as C from "../core.js"
+import * as ToQueue from "./toQueue.js"
 
 export function toHub<Err, Done, Elem>(
   hub: H.Hub<E.Either<Ex.Exit<Err, Done>, Elem>>

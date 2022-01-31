@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as T from "../_internal/effect"
-import { bracket_ } from "./bracket"
+import * as T from "../_internal/effect.js"
+import { bracket_ } from "./bracket.js"
 import type { RIO } from "./definitions"
 
 /**

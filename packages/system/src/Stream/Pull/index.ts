@@ -2,11 +2,11 @@
 
 import "../../Operator"
 
-import type { Cause } from "../../Cause/core"
+import type { Cause } from "../../Cause/core.js"
 import * as A from "../../Collections/Immutable/Chunk"
 import * as O from "../../Option"
 import * as Q from "../../Queue"
-import * as T from "../_internal/effect"
+import * as T from "../_internal/effect.js"
 import type { Take } from "../Take"
 
 export type Pull<R, E, O> = T.Effect<R, O.Option<E>, A.Chunk<O>>

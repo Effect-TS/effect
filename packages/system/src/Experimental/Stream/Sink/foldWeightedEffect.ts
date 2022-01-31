@@ -2,7 +2,7 @@
 
 import * as CK from "../../../Collections/Immutable/Chunk"
 import * as T from "../../../Effect"
-import type * as C from "./core"
+import type * as C from "./core.js"
 import * as FoldWeightedDecomposeEffect from "./foldWeightedDecomposeEffect"
 
 /**

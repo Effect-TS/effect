@@ -2,9 +2,9 @@
 
 import * as A from "../../Collections/Immutable/Chunk"
 import type { Stream } from "./definitions"
-import { forever } from "./forever"
-import { fromChunk } from "./fromChunk"
-import { interleaveWith_ } from "./interleaveWith"
+import { forever } from "./forever.js"
+import { fromChunk } from "./fromChunk.js"
+import { interleaveWith_ } from "./interleaveWith.js"
 
 /**
  * Interleaves this stream and the specified stream deterministically by

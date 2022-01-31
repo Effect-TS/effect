@@ -1,8 +1,8 @@
-import { map_ } from "../core"
+import { map_ } from "../core.js"
 import * as T from "../deps-core"
-import { makeExit_ } from "../makeExit"
-import type { Managed } from "../managed"
-import { scope } from "./api"
+import { makeExit_ } from "../makeExit.js"
+import type { Managed } from "../managed.js"
+import { scope } from "./api.js"
 
 /**
  * A scope in which resources can be safely preallocated. Passing a `Managed`

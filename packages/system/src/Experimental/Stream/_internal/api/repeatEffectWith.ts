@@ -5,12 +5,12 @@ import * as Tp from "../../../../Collections/Immutable/Tuple"
 import * as T from "../../../../Effect"
 import * as O from "../../../../Option"
 import * as SC from "../../../../Schedule"
-import type * as C from "../core"
-import * as Chain from "./chain"
-import * as Concat from "./concat"
-import * as FromEffect from "./fromEffect"
-import * as Succeed from "./succeed"
-import * as UnfoldEffect from "./unfoldEffect"
+import type * as C from "../core.js"
+import * as Chain from "./chain.js"
+import * as Concat from "./concat.js"
+import * as FromEffect from "./fromEffect.js"
+import * as Succeed from "./succeed.js"
+import * as UnfoldEffect from "./unfoldEffect.js"
 
 /**
  * Creates a stream from an effect producing a value of type `A`, which is repeated using the

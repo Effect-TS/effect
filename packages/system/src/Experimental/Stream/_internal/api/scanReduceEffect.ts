@@ -3,8 +3,8 @@
 import * as Tp from "../../../../Collections/Immutable/Tuple"
 import * as T from "../../../../Effect"
 import * as O from "../../../../Option"
-import type * as C from "../core"
-import * as MapAccumEffect from "./mapAccumEffect"
+import type * as C from "../core.js"
+import * as MapAccumEffect from "./mapAccumEffect.js"
 
 /**
  * Statefully and effectfully maps over the elements of this stream to produce all

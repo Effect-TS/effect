@@ -3,8 +3,8 @@
 import * as H from "../../../../Hub"
 import * as M from "../../../../Managed"
 import type * as TK from "../../Take"
-import type * as C from "../core"
-import * as ToHub from "./toHub"
+import type * as C from "../core.js"
+import * as ToHub from "./toHub.js"
 
 /**
  * Converts the stream to a managed dynamic amount of queues. Every chunk will be replicated to every queue with the

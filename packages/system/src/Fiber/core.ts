@@ -1,17 +1,17 @@
 // ets_tracing: off
 
-import { chain_ } from "../Effect/core"
-import { done } from "../Effect/done"
-import type { IO, UIO } from "../Effect/effect"
-import { tap_ } from "../Effect/tap"
-import type * as Exit from "../Exit/core"
-import type * as FR from "../FiberRef/fiberRef"
+import { chain_ } from "../Effect/core.js"
+import { done } from "../Effect/done.js"
+import type { IO, UIO } from "../Effect/effect.js"
+import { tap_ } from "../Effect/tap.js"
+import type * as Exit from "../Exit/core.js"
+import type * as FR from "../FiberRef/fiberRef.js"
 import type * as O from "../Option"
 import type { Scope } from "../Scope"
-import type { FiberID } from "./id"
+import type { FiberID } from "./id.js"
 import type { Status } from "./status"
 
-export { equalsFiberID, FiberID, newFiberId, None } from "./id"
+export { equalsFiberID, FiberID, newFiberId, None } from "./id.js"
 
 /**
  * A record containing information about a `Fiber`.

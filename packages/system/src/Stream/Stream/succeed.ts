@@ -2,7 +2,7 @@
 
 import * as A from "../../Collections/Immutable/Chunk"
 import type { UIO } from "./definitions"
-import { fromChunk } from "./fromChunk"
+import { fromChunk } from "./fromChunk.js"
 
 /**
  * Creates a single-valued pure stream

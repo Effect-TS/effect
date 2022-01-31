@@ -1,11 +1,11 @@
 // ets_tracing: off
 
 /* eslint-disable prefer-const */
-import * as Chunk from "../Collections/Immutable/Chunk/core"
+import * as Chunk from "../Collections/Immutable/Chunk/core.js"
 import * as Tp from "../Collections/Immutable/Tuple"
 import { _A, _E, _R, _S1, _S2, _U, _W } from "../Effect/commons"
-import type { EffectURI } from "../Effect/effect"
-import * as E from "../Either/core"
+import type { EffectURI } from "../Effect/effect.js"
+import * as E from "../Either/core.js"
 import { Stack } from "../Stack"
 import type { HasUnify } from "../Utils"
 

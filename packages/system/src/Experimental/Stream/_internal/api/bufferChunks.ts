@@ -4,8 +4,8 @@ import type * as CK from "../../../../Collections/Immutable/Chunk"
 import * as Q from "../../../../Queue"
 import * as CH from "../../Channel"
 import * as TK from "../../Take"
-import * as C from "../core"
-import * as ToQueue from "./toQueue"
+import * as C from "../core.js"
+import * as ToQueue from "./toQueue.js"
 
 /**
  * Allows a faster producer to progress independently of a slower consumer by buffering

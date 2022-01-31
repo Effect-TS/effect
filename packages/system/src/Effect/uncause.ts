@@ -2,8 +2,8 @@
 
 import type { Cause } from "../Cause/cause"
 import { isEmpty } from "../Cause/cause"
-import { chain_, halt, unit } from "./core"
-import type { Effect, RIO } from "./effect"
+import { chain_, halt, unit } from "./core.js"
+import type { Effect, RIO } from "./effect.js"
 
 /**
  * When this effect succeeds with a cause, then this method returns a new

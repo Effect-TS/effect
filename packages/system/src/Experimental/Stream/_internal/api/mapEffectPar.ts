@@ -4,7 +4,7 @@ import * as CK from "../../../../Collections/Immutable/Chunk"
 import type * as T from "../../../../Effect"
 import { pipe } from "../../../../Function"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Maps over elements of the stream with the specified effectful function,

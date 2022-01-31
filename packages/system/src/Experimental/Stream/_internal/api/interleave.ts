@@ -1,10 +1,10 @@
 // ets_tracing: off
 
 import * as CK from "../../../../Collections/Immutable/Chunk"
-import type * as C from "../core"
-import * as Forever from "./forever"
-import * as FromChunk from "./fromChunk"
-import * as InterleaveWith from "./interleaveWith"
+import type * as C from "../core.js"
+import * as Forever from "./forever.js"
+import * as FromChunk from "./fromChunk.js"
+import * as InterleaveWith from "./interleaveWith.js"
 
 /**
  * Interleaves this stream and the specified stream deterministically by

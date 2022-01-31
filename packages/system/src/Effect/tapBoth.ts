@@ -2,9 +2,9 @@
 
 import { failureOrCause } from "../Cause"
 import * as E from "../Either"
-import { chain_, foldCauseM_, halt } from "./core"
-import type { Effect } from "./effect"
-import { map_ } from "./map"
+import { chain_, foldCauseM_, halt } from "./core.js"
+import type { Effect } from "./effect.js"
+import { map_ } from "./map.js"
 
 /**
  * Returns an effect that effectfully "peeks" at the failure or success of

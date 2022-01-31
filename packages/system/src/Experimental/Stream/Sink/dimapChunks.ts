@@ -2,8 +2,8 @@
 
 import type * as CK from "../../../Collections/Immutable/Chunk"
 import * as ContramapChunks from "./contramapChunks"
-import type * as C from "./core"
-import * as Map from "./map"
+import type * as C from "./core.js"
+import * as Map from "./map.js"
 
 /**
  * Transforms both input chunks and result of this sink using the provided functions.

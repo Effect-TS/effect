@@ -7,12 +7,12 @@ import * as F from "../../../../Fiber"
 import { pipe } from "../../../../Function"
 import * as M from "../../../../Managed"
 import * as MH from "../_internal/mergeHelpers"
-import * as C from "../core"
-import * as FromInput from "./fromInput"
-import * as ToPull from "./toPull"
-import * as Unwrap from "./unwrap"
-import * as UnwrapManaged from "./unwrapManaged"
-import * as ZipRight from "./zipRight"
+import * as C from "../core.js"
+import * as FromInput from "./fromInput.js"
+import * as ToPull from "./toPull.js"
+import * as Unwrap from "./unwrap.js"
+import * as UnwrapManaged from "./unwrapManaged.js"
+import * as ZipRight from "./zipRight.js"
 
 /**
  * Returns a new channel, which is the merge of this channel and the specified channel, where

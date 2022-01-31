@@ -9,9 +9,9 @@ import * as M from "../../../../Managed"
 import * as P from "../../../../Promise"
 import * as CH from "../../Channel"
 import * as SK from "../../Sink"
-import * as C from "../core"
+import * as C from "../core.js"
 import * as HO from "../Handoff"
-import * as RunManaged from "./runManaged"
+import * as RunManaged from "./runManaged.js"
 
 const SignalTypeId = Symbol()
 

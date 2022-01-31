@@ -5,8 +5,8 @@ import { pipe } from "../../../../Function"
 import * as H from "../../../../Hub"
 import * as M from "../../../../Managed"
 import type * as TK from "../../Take"
-import type * as C from "../core"
-import * as RunIntoHubManaged from "./runIntoHubManaged"
+import type * as C from "../core.js"
+import * as RunIntoHubManaged from "./runIntoHubManaged.js"
 
 /**
  * Converts the stream to a managed hub of chunks. After the managed hub is used,

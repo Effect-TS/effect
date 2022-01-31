@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { die as effectDie } from "../Effect/die"
-import { completeWith } from "./completeWith"
+import { die as effectDie } from "../Effect/die.js"
+import { completeWith } from "./completeWith.js"
 import type { Promise } from "./promise"
 
 /**

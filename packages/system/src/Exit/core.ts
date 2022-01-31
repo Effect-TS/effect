@@ -1,17 +1,17 @@
 // ets_tracing: off
 
-import * as C from "../Cause/core"
+import * as C from "../Cause/core.js"
 import { FiberFailure } from "../Cause/errors"
 import * as A from "../Collections/Immutable/Array"
 import * as Tp from "../Collections/Immutable/Tuple"
 import * as E from "../Either"
-import type { FiberID } from "../Fiber/id"
+import type { FiberID } from "../Fiber/id.js"
 import { identity, pipe } from "../Function"
 import * as O from "../Option"
-import type { Exit } from "./exit"
-import { Failure, Success } from "./exit"
+import type { Exit } from "./exit.js"
+import { Failure, Success } from "./exit.js"
 
-export { Exit, Failure, Success } from "./exit"
+export { Exit, Failure, Success } from "./exit.js"
 
 /**
  * Applicative's ap

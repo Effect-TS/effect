@@ -3,9 +3,9 @@
 import * as T from "../../../Effect"
 import * as M from "../../../Managed"
 import * as Q from "../../../Queue"
-import type * as C from "./core"
-import * as FromQueue from "./fromQueue"
-import * as UnwrapManaged from "./unwrapManaged"
+import type * as C from "./core.js"
+import * as FromQueue from "./fromQueue.js"
+import * as UnwrapManaged from "./unwrapManaged.js"
 
 /**
  * Create a sink which enqueues each element into the specified queue.

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as O from "../Option"
-import { catchSomeDefect_ } from "./catchSomeDefect"
-import type { Effect } from "./effect"
+import { catchSomeDefect_ } from "./catchSomeDefect.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Recovers from all defects with provided function.

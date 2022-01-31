@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type { FiberID } from "../Fiber/id"
+import type { FiberID } from "../Fiber/id.js"
 import * as O from "../Option"
 import type { Cb } from "./Cb"
-import { effectAsyncOptionBlockingOn } from "./core"
-import type { Effect } from "./effect"
+import { effectAsyncOptionBlockingOn } from "./core.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Imports an asynchronous side-effect into a pure `Effect` value. See

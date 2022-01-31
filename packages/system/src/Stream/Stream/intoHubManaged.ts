@@ -1,8 +1,8 @@
 import * as H from "../../Hub"
-import type * as M from "../_internal/managed"
+import type * as M from "../_internal/managed.js"
 import type * as Take from "../Take"
 import type { Stream } from "./definitions"
-import { intoManaged_ } from "./intoManaged"
+import { intoManaged_ } from "./intoManaged.js"
 
 /**
  * Like `Stream#intoHub`, but provides the result as a `Managed` to allow for scope

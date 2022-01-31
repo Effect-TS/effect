@@ -3,7 +3,7 @@
 import type { Predicate } from "../../Function"
 import { not } from "../../Function"
 import type { Stream } from "./definitions"
-import { filter_ } from "./filter"
+import { filter_ } from "./filter.js"
 
 /**
  * Filters this stream by the specified predicate, removing all elements for

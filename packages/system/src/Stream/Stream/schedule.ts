@@ -5,9 +5,9 @@ import * as E from "../../Either"
 import type * as H from "../../Has"
 import * as O from "../../Option"
 import type * as SC from "../../Schedule"
-import { collect_ } from "./collect"
+import { collect_ } from "./collect.js"
 import type { Stream } from "./definitions"
-import { scheduleEither_ } from "./scheduleEither"
+import { scheduleEither_ } from "./scheduleEither.js"
 
 /**
  * Schedules the output of the stream using the provided `schedule`.

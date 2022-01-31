@@ -2,7 +2,7 @@
 
 import type * as CK from "../../../../Collections/Immutable/Chunk"
 import * as SK from "../../Sink"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as Transduce from "./transduce"
 
 /**

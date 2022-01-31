@@ -1,8 +1,8 @@
 import * as H from "../../Hub"
-import type * as T from "../_internal/effect"
+import type * as T from "../_internal/effect.js"
 import type * as Take from "../Take"
 import type { Stream } from "./definitions"
-import { into_ } from "./into"
+import { into_ } from "./into.js"
 
 /**
  * Publishes elements of this stream to a hub. Stream failure and ending will also be

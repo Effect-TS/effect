@@ -3,7 +3,7 @@
 import type { Equal } from "../Equal"
 import { makeEqual } from "../Equal"
 import type { Ordering } from "../Ordering"
-import type { Ord } from "./definition"
+import type { Ord } from "./definition.js"
 
 /**
  * Creates Ord[A] from a compare function

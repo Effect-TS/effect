@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import { identity } from "../../../../Function"
-import type * as C from "../core"
-import * as Chain from "./chain"
+import type * as C from "../core.js"
+import * as Chain from "./chain.js"
 
 /**
  * Flattens this stream-of-streams into a stream made of the concatenation in

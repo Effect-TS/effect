@@ -1,13 +1,13 @@
 // ets_tracing: off
 
 import { pipe } from "../../Function"
-import * as M from "../_internal/managed"
+import * as M from "../_internal/managed.js"
 import { broadcastedQueuesDynamic_ } from "./broadcastedQueuesDynamic"
-import { chain_ } from "./chain"
+import { chain_ } from "./chain.js"
 import type { Stream } from "./definitions"
-import { flattenTake } from "./flattenTake"
-import { fromQueue } from "./fromQueue"
-import { managed } from "./managed"
+import { flattenTake } from "./flattenTake.js"
+import { fromQueue } from "./fromQueue.js"
+import { managed } from "./managed.js"
 
 /**
  * Fan out the stream, producing a dynamic number of streams that have the same elements as this stream.

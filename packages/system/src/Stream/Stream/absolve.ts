@@ -1,10 +1,10 @@
 // ets_tracing: off
 
 import * as E from "../../Either"
-import { chain_ } from "./chain"
+import { chain_ } from "./chain.js"
 import type { Stream } from "./definitions"
-import { fail } from "./fail"
-import { succeed } from "./succeed"
+import { fail } from "./fail.js"
+import { succeed } from "./succeed.js"
 
 /**
  * Submerges the error case of an `Either` into the `Stream`.

@@ -7,8 +7,8 @@ import * as Ex from "../../../Exit"
 import * as O from "../../../Option"
 import type * as OD from "../../../Ord"
 import * as CombineChunks from "../_internal/api/combineChunks"
-import type * as S from "../_internal/core"
-import type * as C from "./core"
+import type * as S from "../_internal/core.js"
+import type * as C from "./core.js"
 
 class DrainLeft {
   readonly _tag = "DrainLeft"

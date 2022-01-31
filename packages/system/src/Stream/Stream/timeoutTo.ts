@@ -4,7 +4,7 @@ import * as C from "../../Cause"
 import type * as CL from "../../Clock"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
-import { catchSome } from "./catchSome"
+import { catchSome } from "./catchSome.js"
 import type { Stream } from "./definitions"
 import { timeoutErrorCause } from "./timeoutErrorCause"
 

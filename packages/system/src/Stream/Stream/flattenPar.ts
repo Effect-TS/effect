@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { chainPar } from "./chainPar"
+import { chainPar } from "./chainPar.js"
 import type { Stream } from "./definitions"
 
 /**

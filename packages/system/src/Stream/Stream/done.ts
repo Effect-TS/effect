@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import type * as Ex from "../../Exit"
-import * as T from "../_internal/effect"
+import * as T from "../_internal/effect.js"
 import type { IO } from "./definitions"
-import { fromEffect } from "./fromEffect"
+import { fromEffect } from "./fromEffect.js"
 
 /**
  * The stream that ends with the `Exit` value `exit`.

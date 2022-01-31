@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import { identity } from "../../../../Function"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Returns a new channel, which flattens the terminal value of this channel. This function may

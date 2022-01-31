@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as CK from "../../../Collections/Immutable/Chunk"
-import * as CollectAllWhileWith from "./collectAllWhileWith"
-import type * as C from "./core"
+import * as CollectAllWhileWith from "./collectAllWhileWith.js"
+import type * as C from "./core.js"
 
 export function repeat<R, InErr, In, OutErr, L extends In, Z>(
   self: C.Sink<R, InErr, In, OutErr, L, Z>

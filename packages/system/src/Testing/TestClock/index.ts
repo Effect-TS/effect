@@ -1,6 +1,6 @@
 import { Tagged, TaggedADT } from "../../Case"
 import * as Clock from "../../Clock"
-import * as ClockId from "../../Clock/id"
+import * as ClockId from "../../Clock/id.js"
 import * as Chunk from "../../Collections/Immutable/Chunk"
 import * as HashMap from "../../Collections/Immutable/HashMap"
 import * as List from "../../Collections/Immutable/List"

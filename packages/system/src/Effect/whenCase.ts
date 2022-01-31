@@ -2,8 +2,8 @@
 
 import type * as O from "../Option"
 import { asUnit } from "./asUnit"
-import { suspend, unit } from "./core"
-import type { Effect } from "./effect"
+import { suspend, unit } from "./core.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Runs an effect when the supplied `PartialFunction` matches for the given value, otherwise does nothing.

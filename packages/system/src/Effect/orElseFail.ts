@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Effect } from "./effect"
-import { fail } from "./fail"
+import type { Effect } from "./effect.js"
+import { fail } from "./fail.js"
 import { orElse_ } from "./orElse"
 
 /**

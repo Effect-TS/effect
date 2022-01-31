@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import * as E from "../Either"
-import { chain_ } from "./core"
-import type { Effect } from "./effect"
-import { fromEither } from "./fromEither"
+import { chain_ } from "./core.js"
+import type { Effect } from "./effect.js"
+import { fromEither } from "./fromEither.js"
 
 /**
  * Returns an effect that submerges the error case of an `Either` into the

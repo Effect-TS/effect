@@ -5,8 +5,8 @@ import type { SortedSet } from "../Collections/Immutable/SortedSet"
 import * as Fiber from "../Fiber"
 import { pipe } from "../Function"
 import { track } from "../Supervisor"
-import * as core from "./core"
-import type { Effect, RIO } from "./effect"
+import * as core from "./core.js"
+import type { Effect, RIO } from "./effect.js"
 import * as ensuring from "./ensuring"
 
 /**

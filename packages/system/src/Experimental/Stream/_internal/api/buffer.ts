@@ -6,7 +6,7 @@ import * as Ex from "../../../../Exit"
 import * as O from "../../../../Option"
 import * as Q from "../../../../Queue"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 import * as ToQueueOfElements from "./toQueueOfElements"
 
 /**

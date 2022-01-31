@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as C from "../core"
-import * as ReadWith from "./readWith"
+import * as C from "../core.js"
+import * as ReadWith from "./readWith.js"
 
 /**
  * Maps the output of this channel using f

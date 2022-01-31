@@ -2,7 +2,7 @@
 
 import "../../Operator"
 
-import * as Chunk from "../../Collections/Immutable/Chunk/core"
+import * as Chunk from "../../Collections/Immutable/Chunk/core.js"
 import { DoublyLinkedList } from "../DoublyLinkedList"
 
 export interface MutableQueue<A> {

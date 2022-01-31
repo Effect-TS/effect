@@ -3,7 +3,7 @@
 import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as M from "../../../../Managed"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Creates a single-valued stream from a managed resource

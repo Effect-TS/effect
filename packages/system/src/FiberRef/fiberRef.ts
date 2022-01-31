@@ -2,7 +2,7 @@
 import * as Tp from "../Collections/Immutable/Tuple"
 import * as E from "../Either"
 import { identity, pipe } from "../Function"
-import * as T from "./excl-effect"
+import * as T from "./excl-effect.js"
 
 export const TypeId = Symbol()
 export type TypeId = typeof TypeId

@@ -3,7 +3,7 @@
 import * as A from "../../../../Collections/Immutable/Array"
 import * as Tp from "../../../../Collections/Immutable/Tuple"
 import type { _A, _E, _R } from "../../../../Utils"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as CrossWith from "./crossWith"
 
 /**

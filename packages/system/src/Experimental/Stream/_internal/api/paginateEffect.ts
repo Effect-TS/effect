@@ -4,8 +4,8 @@ import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as Tp from "../../../../Collections/Immutable/Tuple"
 import * as T from "../../../../Effect"
 import type * as O from "../../../../Option"
-import type * as C from "../core"
-import * as PaginateChunkEffect from "./paginateChunkEffect"
+import type * as C from "../core.js"
+import * as PaginateChunkEffect from "./paginateChunkEffect.js"
 
 /**
  * Like `unfoldEff`, but allows the emission of values to end one step further than

@@ -2,7 +2,7 @@
 
 import type * as CK from "../../../Collections/Immutable/Chunk"
 import * as CH from "../Channel"
-import * as C from "./core"
+import * as C from "./core.js"
 
 /**
  * A sink that ignores all of its inputs.

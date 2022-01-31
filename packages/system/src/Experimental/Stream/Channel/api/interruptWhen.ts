@@ -2,8 +2,8 @@
 
 import * as T from "../../../../Effect"
 import * as MH from "../_internal/mergeHelpers"
-import * as C from "../core"
-import * as MergeWith from "./mergeWith"
+import * as C from "../core.js"
+import * as MergeWith from "./mergeWith.js"
 
 /**
  * Returns a new channel, which is the same as this one, except it will be interrupted when the

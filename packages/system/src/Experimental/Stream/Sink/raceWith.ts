@@ -9,8 +9,8 @@ import * as H from "../../../Hub"
 import * as M from "../../../Managed"
 import * as CH from "../Channel"
 import * as MH from "../Channel/_internal/mergeHelpers"
-import * as C from "./core"
-import * as UnwrapManaged from "./unwrapManaged"
+import * as C from "./core.js"
+import * as UnwrapManaged from "./unwrapManaged.js"
 
 /**
  * Runs both sinks in parallel on the input, using the specified merge

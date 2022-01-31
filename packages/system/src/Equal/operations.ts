@@ -4,7 +4,7 @@ import type * as A from "../Collections/Immutable/Array"
 import type * as Tp from "../Collections/Immutable/Tuple"
 import type * as E from "../Either"
 import type { ForcedTuple } from "../Utils"
-import type { Equal } from "./definition"
+import type { Equal } from "./definition.js"
 
 /**
  * Constructs an `Equal[A]` from a function. The instance will be optimized

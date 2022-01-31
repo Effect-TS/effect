@@ -3,7 +3,7 @@
 import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as T from "../../../../Effect"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Creates a stream from an effect producing a value of type `A`

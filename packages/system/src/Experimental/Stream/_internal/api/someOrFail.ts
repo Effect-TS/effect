@@ -2,8 +2,8 @@
 
 import * as T from "../../../../Effect"
 import * as O from "../../../../Option"
-import type * as C from "../core"
-import * as MapEffect from "./mapEffect"
+import type * as C from "../core.js"
+import * as MapEffect from "./mapEffect.js"
 
 /**
  * Extracts the optional value, or fails with the given error 'e'.

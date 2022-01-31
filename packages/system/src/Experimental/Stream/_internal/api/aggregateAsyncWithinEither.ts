@@ -14,13 +14,13 @@ import * as Ref from "../../../../Ref"
 import * as SC from "../../../../Schedule"
 import * as CH from "../../Channel"
 import type * as SK from "../../Sink"
-import * as C from "../core"
+import * as C from "../core.js"
 import * as HO from "../Handoff"
 import * as SER from "../SinkEndReason"
-import * as Chain from "./chain"
+import * as Chain from "./chain.js"
 import * as CrossRight from "./crossRight"
-import * as FromEffect from "./fromEffect"
-import * as Managed from "./managed"
+import * as FromEffect from "./fromEffect.js"
+import * as Managed from "./managed.js"
 
 /**
  * Aggregates elements using the provided sink until it completes, or until the

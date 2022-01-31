@@ -2,7 +2,7 @@
 
 import type { Cause } from "../Cause"
 import { flatten } from "../Cause"
-import type { Effect } from "./effect"
+import type { Effect } from "./effect.js"
 import { mapErrorCause_ } from "./mapErrorCause"
 
 /**

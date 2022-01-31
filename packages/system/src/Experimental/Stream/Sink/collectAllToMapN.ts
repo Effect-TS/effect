@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as HM from "../../../Collections/Immutable/HashMap"
-import type * as C from "./core"
-import * as FoldWeighted from "./foldWeighted"
+import type * as C from "./core.js"
+import * as FoldWeighted from "./foldWeighted.js"
 
 /**
  * A sink that collects first `n` keys into a map. The keys are calculated

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import type { Cause } from "../Cause/cause"
-import { chain_, foldCauseM_, halt, succeed } from "./core"
-import type { Effect } from "./effect"
+import { chain_, foldCauseM_, halt, succeed } from "./core.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Returns an effect that effectually "peeks" at the cause of the failure of

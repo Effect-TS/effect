@@ -8,7 +8,7 @@ import * as R from "../Collections/Immutable/Dictionary"
 import type { Has, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
 import type { UnionToIntersection } from "../Utils"
-import * as As from "./core"
+import * as As from "./core.js"
 
 /**
  * Access a record of services with the required Service Entries

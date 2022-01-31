@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 /* eslint-disable prefer-const */
-import * as Tp from "../Collections/Immutable/Tuple"
-import { _A, _E, _R, _U } from "../Effect/commons"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import { _A, _E, _R, _U } from "../Effect/commons.js"
 import * as E from "../Either"
 import { pipe } from "../Function"
 import type { Option } from "../Option"

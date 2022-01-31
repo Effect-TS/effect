@@ -3,8 +3,8 @@
 import type * as A from "../../Collections/Immutable/Chunk"
 import type * as Ex from "../../Exit"
 import * as O from "../../Option"
-import type * as T from "../_internal/effect"
-import type * as F from "../_internal/fiber"
+import type * as T from "../_internal/effect.js"
+import type * as F from "../_internal/fiber.js"
 import type { Stream } from "./definitions"
 import { effectAsyncMaybe } from "./effectAsyncMaybe"
 

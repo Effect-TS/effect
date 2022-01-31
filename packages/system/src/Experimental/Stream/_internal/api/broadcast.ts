@@ -2,10 +2,10 @@
 
 import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as M from "../../../../Managed"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as BroadcastedQueues from "./broadcastedQueues"
-import * as FlattenTake from "./flattenTake"
-import * as FromQueueWithShutdown from "./fromQueueWithShutdown"
+import * as FlattenTake from "./flattenTake.js"
+import * as FromQueueWithShutdown from "./fromQueueWithShutdown.js"
 
 /**
  * Fan out the stream, producing a list of streams that have the same

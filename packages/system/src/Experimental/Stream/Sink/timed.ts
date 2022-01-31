@@ -2,8 +2,8 @@
 
 import * as CL from "../../../Clock"
 import type * as Tp from "../../../Collections/Immutable/Tuple"
-import type * as C from "./core"
-import * as Summarized from "./summarized"
+import type * as C from "./core.js"
+import * as Summarized from "./summarized.js"
 
 /**
  * Returns the sink that executes this one and times its execution.

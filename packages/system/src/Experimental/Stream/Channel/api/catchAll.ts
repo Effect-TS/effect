@@ -1,6 +1,6 @@
 import * as CS from "../../../../Cause"
 import * as E from "../../../../Either"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Returns a new channel that is the same as this one, except if this channel errors for any

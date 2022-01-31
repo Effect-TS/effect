@@ -2,12 +2,12 @@
 
 import { pipe } from "../../../../Function"
 import * as M from "../../../../Managed"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as BroadcastedQueuesDynamic from "./broadcastedQueuesDynamic"
-import * as Chain from "./chain"
-import * as FlattenTake from "./flattenTake"
-import * as FromQueue from "./fromQueue"
-import * as Managed from "./managed"
+import * as Chain from "./chain.js"
+import * as FlattenTake from "./flattenTake.js"
+import * as FromQueue from "./fromQueue.js"
+import * as Managed from "./managed.js"
 
 /**
  * Fan out the stream, producing a dynamic number of streams that have the same elements as this stream.

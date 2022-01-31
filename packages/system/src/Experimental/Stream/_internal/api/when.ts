@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as T from "../../../../Effect"
-import type * as C from "../core"
-import * as WhenEffect from "./whenEffect"
+import type * as C from "../core.js"
+import * as WhenEffect from "./whenEffect.js"
 
 /**
  * Returns this stream if the specified condition is satisfied, otherwise returns an empty stream.

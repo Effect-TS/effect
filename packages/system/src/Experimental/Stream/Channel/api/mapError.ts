@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as CS from "../../../../Cause"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as MapErrorCause from "./mapErrorCause"
 
 /**

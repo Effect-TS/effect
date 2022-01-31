@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as O from "../../../../Option"
-import * as C from "../core"
-import * as Succeed from "./succeed"
+import * as C from "../core.js"
+import * as Succeed from "./succeed.js"
 
 export function fromOption<A>(
   option: O.Option<A>

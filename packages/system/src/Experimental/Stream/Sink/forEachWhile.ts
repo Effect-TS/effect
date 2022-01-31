@@ -4,7 +4,7 @@ import * as CK from "../../../Collections/Immutable/Chunk"
 import type * as T from "../../../Effect"
 import { pipe } from "../../../Function"
 import * as CH from "../Channel"
-import * as C from "./core"
+import * as C from "./core.js"
 
 /**
  * A sink that executes the provided effectful function for every element fed to it

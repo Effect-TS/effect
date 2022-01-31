@@ -3,9 +3,9 @@
 import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import type * as O from "../../Option"
-import * as T from "../_internal/effect"
+import * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
-import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
+import { repeatEffectChunkOption } from "./repeatEffectChunkOption.js"
 
 /**
  * Creates a stream from an effect producing values of type `A` until it fails with None.

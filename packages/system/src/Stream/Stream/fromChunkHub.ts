@@ -1,9 +1,9 @@
 import type * as A from "../../Collections/Immutable/Chunk"
 import * as H from "../../Hub"
-import { chain_ } from "./chain"
+import { chain_ } from "./chain.js"
 import type { Stream } from "./definitions"
-import { fromChunkQueue } from "./fromChunkQueue"
-import { managed } from "./managed"
+import { fromChunkQueue } from "./fromChunkQueue.js"
+import { managed } from "./managed.js"
 
 /**
  * Creates a stream from a `Hub`. The hub will be shutdown once the stream is closed.

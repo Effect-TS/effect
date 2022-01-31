@@ -3,7 +3,7 @@
 import * as Q from "../../Queue"
 import type { Stream } from "./definitions"
 import { ensuringFirst_ } from "./ensuringFirst"
-import { fromQueue } from "./fromQueue"
+import { fromQueue } from "./fromQueue.js"
 
 /**
  * Creates a stream from a {@link XQueue} of values. The queue will be shutdown once the stream is closed.

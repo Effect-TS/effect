@@ -2,7 +2,7 @@
 
 import * as E from "../../Either"
 import * as O from "../../Option"
-import { collectWhileMap_ } from "./collectWhileMap"
+import { collectWhileMap_ } from "./collectWhileMap.js"
 import type { Stream } from "./definitions"
 
 /**

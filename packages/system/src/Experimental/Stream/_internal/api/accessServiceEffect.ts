@@ -2,7 +2,7 @@
 
 import type * as T from "../../../../Effect"
 import type * as HS from "../../../../Has"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as AccessEffect from "./accessEffect"
 
 export function accessServiceEffect<A>(

@@ -2,7 +2,7 @@
 
 import * as CK from "../../../Collections/Immutable/Chunk"
 import * as HS from "../../../Collections/Immutable/HashSet"
-import type * as C from "./core"
+import type * as C from "./core.js"
 import * as FoldLeftChunks from "./foldLeftChunks"
 
 /**

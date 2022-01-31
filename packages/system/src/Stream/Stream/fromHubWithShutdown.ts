@@ -3,7 +3,7 @@
 import * as H from "../../Hub"
 import type { Stream } from "./definitions"
 import { ensuringFirst_ } from "./ensuringFirst"
-import { fromHub } from "./fromHub"
+import { fromHub } from "./fromHub.js"
 
 /**
  * Creates a stream from a subscription to a hub.

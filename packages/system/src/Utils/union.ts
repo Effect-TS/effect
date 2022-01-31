@@ -1,6 +1,6 @@
 import type { Effect } from "../Effect"
 import type { Sync } from "../Sync"
-import type { UnifiableIndexed } from "./index"
+import type { UnifiableIndexed } from "./index.js"
 
 export const unifyIndex = Symbol()
 export type unifyIndex = typeof unifyIndex

@@ -1,6 +1,6 @@
 import * as O from "../../../../Option"
-import * as Chunk from "../core"
-import * as ChunkDef from "../definition"
+import * as Chunk from "../core.js"
+import * as ChunkDef from "../definition.js"
 
 /**
  * Transforms all elements of the chunk for as long as the specified partial function is defined.

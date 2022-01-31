@@ -5,9 +5,9 @@ import * as Ex from "../../Exit"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as BP from "../../Stream/BufferedPull"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import { combine_ } from "./combine"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import { combine_ } from "./combine.js"
 import { Stream } from "./definitions"
 
 function loop<R1, E1, O, O1, R, E>(

@@ -2,8 +2,8 @@
 
 import { identity } from "../Function"
 import { some } from "../Option"
-import type { Effect } from "./effect"
-import { unrefineWith_ } from "./unrefine"
+import type { Effect } from "./effect.js"
+import { unrefineWith_ } from "./unrefine.js"
 
 /**
  * Unearth the unchecked failure of the effect. (opposite of `orDie`)

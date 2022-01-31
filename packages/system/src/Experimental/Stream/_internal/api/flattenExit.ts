@@ -2,8 +2,8 @@
 
 import * as T from "../../../../Effect"
 import type * as Ex from "../../../../Exit"
-import type * as C from "../core"
-import * as MapEffect from "./mapEffect"
+import type * as C from "../core.js"
+import * as MapEffect from "./mapEffect.js"
 
 /**
  * Flattens `Exit` values. `Exit.Failure` values translate to stream failures

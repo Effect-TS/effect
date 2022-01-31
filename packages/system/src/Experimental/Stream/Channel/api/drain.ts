@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Returns a new channel which reads all the elements from upstream's output channel

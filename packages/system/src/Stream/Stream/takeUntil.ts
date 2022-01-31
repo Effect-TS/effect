@@ -3,9 +3,9 @@
 import * as A from "../../Collections/Immutable/Chunk"
 import type { Predicate } from "../../Function"
 import { not, pipe } from "../../Function"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import * as Ref from "../_internal/ref"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import * as Ref from "../_internal/ref.js"
 import * as Pull from "../Pull"
 import { Stream } from "./definitions"
 

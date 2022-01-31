@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { succeedWith } from "../Effect/core"
+import { succeedWith } from "../Effect/core.js"
 import * as O from "../Option"
 import type { Promise } from "./promise"
 

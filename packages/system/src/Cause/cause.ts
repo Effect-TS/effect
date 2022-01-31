@@ -1,11 +1,11 @@
 // ets_tracing: off
 
 import * as HS from "../Collections/Immutable/HashSet"
-import * as L from "../Collections/Immutable/List/core"
+import * as L from "../Collections/Immutable/List/core.js"
 import * as Tp from "../Collections/Immutable/Tuple"
-import type { FiberID } from "../Fiber/id"
-import { equalsFiberID } from "../Fiber/id"
-import type { Trace } from "../Fiber/tracing"
+import type { FiberID } from "../Fiber/id.js"
+import { equalsFiberID } from "../Fiber/id.js"
+import type { Trace } from "../Fiber/tracing.js"
 import { tuple } from "../Function"
 import * as IO from "../IO"
 import * as O from "../Option"

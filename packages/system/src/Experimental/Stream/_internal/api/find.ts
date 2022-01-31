@@ -4,7 +4,7 @@ import * as CK from "../../../../Collections/Immutable/Chunk"
 import type { Predicate, Refinement } from "../../../../Function"
 import * as O from "../../../../Option"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Finds the first element emitted by this stream that satisfies the provided predicate.

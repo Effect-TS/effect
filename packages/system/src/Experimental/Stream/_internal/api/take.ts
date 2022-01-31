@@ -3,9 +3,9 @@
 import * as CS from "../../../../Cause"
 import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as CH from "../../Channel"
-import * as C from "../core"
-import * as Die from "./die"
-import * as Empty from "./empty"
+import * as C from "../core.js"
+import * as Die from "./die.js"
+import * as Empty from "./empty.js"
 
 function takeLoop<E, A>(
   n: number

@@ -4,8 +4,8 @@ import * as Tp from "../Collections/Immutable/Tuple"
 import * as E from "../Either"
 import { pipe } from "../Function"
 import type { AtomicReference } from "../Support/AtomicReference"
-import * as atomic from "./atomic"
-import * as T from "./effect"
+import * as atomic from "./atomic.js"
+import * as T from "./effect.js"
 
 export const TypeId = Symbol()
 export type TypeId = typeof TypeId

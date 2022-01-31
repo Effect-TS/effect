@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import { pipe } from "../../Function"
-import * as T from "../_internal/effect"
+import * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
-import { scanM } from "./scanM"
+import { scanM } from "./scanM.js"
 
 /**
  * Statefully maps over the elements of this stream to produce all intermediate results

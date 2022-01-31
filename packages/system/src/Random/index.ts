@@ -7,8 +7,8 @@
  */
 import "../Operator"
 
-import { chain_, succeedWith } from "../Effect/core"
-import type { UIO } from "../Effect/effect"
+import { chain_, succeedWith } from "../Effect/core.js"
+import type { UIO } from "../Effect/effect.js"
 import { accessServiceM, replaceService } from "../Effect/has"
 import type { Has } from "../Has"
 import { tag } from "../Has"

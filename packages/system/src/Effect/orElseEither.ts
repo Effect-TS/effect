@@ -2,9 +2,9 @@
 
 import * as E from "../Either"
 import { pipe } from "../Function"
-import { succeed, tryOrElse_ } from "./core"
-import type { Effect } from "./effect"
-import { map_ } from "./map"
+import { succeed, tryOrElse_ } from "./core.js"
+import type { Effect } from "./effect.js"
+import { map_ } from "./map.js"
 
 /**
  * Returns an effect that will produce the value of this effect, unless it

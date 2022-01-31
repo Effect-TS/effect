@@ -1,11 +1,11 @@
 // ets_tracing: off
 
 import { pipe } from "../../Function"
-import type * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
+import type * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
 import type * as SK from "../Sink"
 import type { Stream } from "./definitions"
-import { runManaged } from "./runManaged"
+import { runManaged } from "./runManaged.js"
 
 /**
  * Runs the sink on the stream to produce either the sink's result or an error.

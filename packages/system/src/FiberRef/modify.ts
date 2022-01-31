@@ -4,9 +4,9 @@ import * as Tp from "../Collections/Immutable/Tuple"
 import * as E from "../Either"
 import { pipe } from "../Function"
 import { matchTag } from "../Utils"
-import * as T from "./excl-effect"
-import type { XFiberRef } from "./fiberRef"
-import { concrete } from "./fiberRef"
+import * as T from "./excl-effect.js"
+import type { XFiberRef } from "./fiberRef.js"
+import { concrete } from "./fiberRef.js"
 
 /**
  * Atomically modifies the `FiberRef` with the specified function, which computes

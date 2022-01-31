@@ -5,9 +5,9 @@ import * as E from "../../../../Either"
 import * as O from "../../../../Option"
 import type * as SC from "../../../../Schedule"
 import type * as SK from "../../Sink"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as AggregateAsyncWithinEither from "./aggregateAsyncWithinEither"
-import * as Collect from "./collect"
+import * as Collect from "./collect.js"
 
 /**
  * Like `aggregateAsyncWithinEither`, but only returns the `Right` results.

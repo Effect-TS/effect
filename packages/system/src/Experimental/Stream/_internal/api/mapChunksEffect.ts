@@ -3,7 +3,7 @@
 import type * as CK from "../../../../Collections/Immutable/Chunk"
 import type * as T from "../../../../Effect"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 /**
  * Effectfully transforms the chunks emitted by this stream.
  */

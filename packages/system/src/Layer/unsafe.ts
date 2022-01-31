@@ -5,7 +5,7 @@ import type { State } from "../Managed/ReleaseMap"
 import { releaseAll, ReleaseMap, Running } from "../Managed/ReleaseMap"
 import * as P from "../Promise"
 import * as Ref from "../Ref"
-import * as L from "./core"
+import * as L from "./core.js"
 import type { Layer } from "./definitions"
 import * as T from "./deps-effect"
 

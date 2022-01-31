@@ -2,7 +2,7 @@
 
 import { identity } from "../../Function"
 import type { Stream } from "./definitions"
-import { zipAllWith_ } from "./zipAllWith"
+import { zipAllWith_ } from "./zipAllWith.js"
 
 /**
  * Zips this stream with another point-wise, and keeps only elements from this stream.

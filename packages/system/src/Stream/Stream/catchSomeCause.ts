@@ -4,7 +4,7 @@ import type * as C from "../../Cause"
 import * as O from "../../Option"
 import { catchAllCause_ } from "./catchAllCause"
 import type { Stream } from "./definitions"
-import { halt } from "./halt"
+import { halt } from "./halt.js"
 
 /**
  * Switches over to the stream produced by the provided function in case this one

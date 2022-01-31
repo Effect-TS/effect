@@ -7,7 +7,7 @@ import type * as F from "../../../../Fiber"
 import * as M from "../../../../Managed"
 import * as O from "../../../../Option"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Halts the evaluation of this stream when the provided IO completes. The given IO

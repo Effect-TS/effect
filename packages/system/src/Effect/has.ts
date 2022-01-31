@@ -6,8 +6,8 @@
 
 import * as A from "../Collections/Immutable/Array"
 import * as R from "../Collections/Immutable/Dictionary"
-import * as core from "../Effect/core"
-import type { Effect } from "../Effect/effect"
+import * as core from "../Effect/core.js"
+import type { Effect } from "../Effect/effect.js"
 import type { Has, Tag } from "../Has"
 import { mergeEnvironments } from "../Has"
 import { accessCallTrace } from "../Tracing"

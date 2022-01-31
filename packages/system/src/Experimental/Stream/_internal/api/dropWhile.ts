@@ -2,8 +2,8 @@
 
 import type { Predicate } from "../../../../Function"
 import * as SK from "../../Sink"
-import type * as C from "../core"
-import * as PipeThrough from "./pipeThrough"
+import type * as C from "../core.js"
+import * as PipeThrough from "./pipeThrough.js"
 
 /**
  * Drops all elements of the stream for as long as the specified predicate

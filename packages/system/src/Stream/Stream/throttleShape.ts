@@ -2,9 +2,9 @@
 
 import type { HasClock } from "../../Clock"
 import type * as A from "../../Collections/Immutable/Chunk"
-import * as T from "../_internal/effect"
+import * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
-import { throttleShapeM_ } from "./throttleShapeM"
+import { throttleShapeM_ } from "./throttleShapeM.js"
 
 /**
  * Delays the chunks of this stream according to the given bandwidth parameters using the token bucket

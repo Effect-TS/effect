@@ -3,8 +3,8 @@
 import type * as CL from "../../../../Clock"
 import type * as CK from "../../../../Collections/Immutable/Chunk"
 import * as T from "../../../../Effect"
-import type * as C from "../core"
-import * as ThrottleEnforceEffect from "./throttleEnforceEffect"
+import type * as C from "../core.js"
+import * as ThrottleEnforceEffect from "./throttleEnforceEffect.js"
 
 /**
  * Throttles the chunks of this stream according to the given bandwidth parameters using the token bucket

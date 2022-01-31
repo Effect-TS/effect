@@ -3,11 +3,11 @@
 import * as CK from "../../../Collections/Immutable/Chunk"
 import * as T from "../../../Effect"
 import { pipe } from "../../../Function"
-import * as Chain from "./chain"
-import type * as C from "./core"
-import * as FoldUntil from "./foldUntil"
-import * as FromEffect from "./fromEffect"
-import * as Map from "./map"
+import * as Chain from "./chain.js"
+import type * as C from "./core.js"
+import * as FoldUntil from "./foldUntil.js"
+import * as FromEffect from "./fromEffect.js"
+import * as Map from "./map.js"
 
 /**
  * A sink that collects first `n` elements into a chunk. Note that the chunk

@@ -9,12 +9,12 @@ import { pipe } from "../../../../Function"
 import * as M from "../../../../Managed"
 import * as O from "../../../../Option"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 import * as HO from "../Handoff"
 import * as SER from "../SinkEndReason"
 import * as CrossRight from "./crossRight"
-import * as Managed from "./managed"
-import * as Unwrap from "./unwrap"
+import * as Managed from "./managed.js"
+import * as Unwrap from "./unwrap.js"
 
 const NotStartedTypeId = Symbol()
 class NotStarted {

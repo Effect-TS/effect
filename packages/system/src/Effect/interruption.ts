@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import * as Cause from "../Cause/core"
-import type { InterruptStatus } from "../Fiber/core"
-import * as Fiber from "../Fiber/core"
+import * as Cause from "../Cause/core.js"
+import type { InterruptStatus } from "../Fiber/core.js"
+import * as Fiber from "../Fiber/core.js"
 import {
   interruptible as statusInterruptible,
   uninterruptible as statusUninterruptible
-} from "../Fiber/core"
-import type { FiberID } from "../Fiber/id"
+} from "../Fiber/core.js"
+import type { FiberID } from "../Fiber/id.js"
 import {
   chain_,
   checkInterruptible,
@@ -17,10 +17,10 @@ import {
   interruptStatus,
   interruptStatus_,
   succeed
-} from "./core"
+} from "./core.js"
 import { forkDaemon } from "./core-scope"
-import type { Effect } from "./effect"
-import { fiberId } from "./fiberId"
+import type { Effect } from "./effect.js"
+import { fiberId } from "./fiberId.js"
 
 /**
  * Performs this effect uninterruptibly. This will prevent the effect from

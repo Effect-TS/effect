@@ -3,7 +3,7 @@
 import * as T from "../../../../Effect"
 import * as E from "../../../../Either"
 import type * as O from "../../../../Option"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import type { Emit } from "./_internal/Emit"
 import * as AsyncInterrupt from "./asyncInterrupt"
 

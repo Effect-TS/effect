@@ -8,11 +8,11 @@ import * as M from "../../../../Managed"
 import * as P from "../../../../Promise"
 import * as Q from "../../../../Queue"
 import * as SM from "../../../../Semaphore"
-import * as C from "../core"
-import * as Managed from "./managed"
-import * as ToPull from "./toPull"
-import * as Unwrap from "./unwrap"
-import * as ZipRight from "./zipRight"
+import * as C from "../core.js"
+import * as Managed from "./managed.js"
+import * as ToPull from "./toPull.js"
+import * as Unwrap from "./unwrap.js"
+import * as ZipRight from "./zipRight.js"
 
 export function mapOutEffectPar_<
   Env,

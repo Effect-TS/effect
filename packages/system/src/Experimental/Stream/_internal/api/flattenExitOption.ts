@@ -5,7 +5,7 @@ import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as Ex from "../../../../Exit"
 import * as O from "../../../../Option"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Unwraps `Exit` values that also signify end-of-stream by failing with `None`.

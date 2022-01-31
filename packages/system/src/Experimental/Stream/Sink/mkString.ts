@@ -2,9 +2,9 @@
 
 import * as CK from "../../../Collections/Immutable/Chunk"
 import { pipe } from "../../../Function"
-import type * as C from "./core"
+import type * as C from "./core.js"
 import * as FoldLeftChunks from "./foldLeftChunks"
-import * as Map from "./map"
+import * as Map from "./map.js"
 import * as Suspend from "./suspend"
 
 export function mkString<Err>(): C.Sink<unknown, Err, unknown, Err, unknown, string> {

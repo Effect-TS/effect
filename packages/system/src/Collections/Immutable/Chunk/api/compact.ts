@@ -1,6 +1,6 @@
 import type { Option } from "../../../../Option"
-import type * as Chunk from "../core"
-import { collect_ } from "./collect"
+import type * as Chunk from "../core.js"
+import { collect_ } from "./collect.js"
 
 /**
  * Filter out optional values

@@ -5,8 +5,8 @@ import { pipe } from "../../Function"
 import type { _A, _E, _R } from "../../Utils"
 import { flattenTuples } from "./_internal/flattenTuples"
 import type { Stream } from "./definitions"
-import { map } from "./map"
-import { zip_ } from "./zip"
+import { map } from "./map.js"
+import { zip_ } from "./zip.js"
 
 /**
  * Zips the specified streams together with the specified function.

@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import { compact } from "../Collections/Immutable/Chunk/api/compact"
-import type { Chunk } from "../Collections/Immutable/Chunk/core"
+import { compact } from "../Collections/Immutable/Chunk/api/compact.js"
+import type { Chunk } from "../Collections/Immutable/Chunk/core.js"
 import type { Option } from "../Option"
-import type { Sync } from "./core"
-import { map_ } from "./core"
-import { forEach_ } from "./excl-forEach"
-import { optional } from "./optional"
+import type { Sync } from "./core.js"
+import { map_ } from "./core.js"
+import { forEach_ } from "./excl-forEach.js"
+import { optional } from "./optional.js"
 
 /**
  * Evaluate each sync in the structure from left to right, collecting the

@@ -1,7 +1,7 @@
 import * as O from "../../../../Option"
 import * as Tp from "../../Tuple"
-import type { Chunk } from "../definition"
-import { zipAllWith_ } from "./zipAllWith"
+import type { Chunk } from "../definition.js"
+import { zipAllWith_ } from "./zipAllWith.js"
 
 /**
  * Zips this chunk with the specified chunk to produce a new chunk with

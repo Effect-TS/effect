@@ -3,8 +3,8 @@
 import * as Tp from "../../../../Collections/Immutable/Tuple"
 import * as T from "../../../../Effect"
 import type * as GB from "../../GroupBy"
-import type * as C from "../core"
-import * as GroupBy from "./groupBy"
+import type * as C from "../core.js"
+import * as GroupBy from "./groupBy.js"
 
 /**
  * Partition a stream using a function and process each stream individually.

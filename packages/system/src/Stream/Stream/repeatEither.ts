@@ -5,7 +5,7 @@ import * as E from "../../Either"
 import { pipe } from "../../Function"
 import type * as SC from "../../Schedule"
 import type { Stream } from "./definitions"
-import { repeatWith } from "./repeatWith"
+import { repeatWith } from "./repeatWith.js"
 
 /**
  * Repeats the entire stream using the specified schedule. The stream will execute normally,

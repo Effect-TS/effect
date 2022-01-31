@@ -2,9 +2,9 @@
 
 import { NoSuchElementException } from "../GlobalExceptions"
 import * as O from "../Option"
-import { succeed } from "./core"
-import type { IO } from "./effect"
-import { fail } from "./fail"
+import { succeed } from "./core.js"
+import type { IO } from "./effect.js"
+import { fail } from "./fail.js"
 
 /**
  * Lifts an Option into an Effect, if the option is not defined it fails with NoSuchElementException.

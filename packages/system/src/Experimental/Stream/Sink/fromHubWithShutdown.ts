@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as H from "../../../Hub"
-import type * as C from "./core"
-import * as FromQueueWithShutdown from "./fromQueueWithShutdown"
+import type * as C from "./core.js"
+import * as FromQueueWithShutdown from "./fromQueueWithShutdown.js"
 
 /**
  * Create a sink which enqueues each element into the specified queue.

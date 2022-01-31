@@ -2,9 +2,9 @@
 
 import * as A from "../../../Collections/Immutable/Array"
 import * as Tp from "../../../Collections/Immutable/Tuple"
-import type * as C from "./core"
+import type * as C from "./core.js"
 import type * as U from "./utils"
-import * as ZipWith from "./zipWith"
+import * as ZipWith from "./zipWith.js"
 
 export function zip_<SN extends readonly C.Sink<any, any, any, any, any, any>[]>(
   ...[s1, s2, ...sinks]: SN & {

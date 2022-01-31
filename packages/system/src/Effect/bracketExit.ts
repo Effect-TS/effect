@@ -1,12 +1,12 @@
 // ets_tracing: off
 
 import { then } from "../Cause/cause"
-import { fold_ } from "../Exit/api"
-import type { Exit } from "../Exit/exit"
-import { chain_, foldCauseM_, halt, result, suspend } from "./core"
-import { done } from "./done"
-import type { Effect } from "./effect"
-import { uninterruptibleMask } from "./interruption"
+import { fold_ } from "../Exit/api.js"
+import type { Exit } from "../Exit/exit.js"
+import { chain_, foldCauseM_, halt, result, suspend } from "./core.js"
+import { done } from "./done.js"
+import type { Effect } from "./effect.js"
+import { uninterruptibleMask } from "./interruption.js"
 
 /**
  * Acquires a resource, uses the resource, and then releases the resource.

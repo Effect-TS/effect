@@ -3,7 +3,7 @@
 import * as CS from "../../../../Cause"
 import type * as CL from "../../../../Clock"
 import * as O from "../../../../Option"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as CatchSomeCause from "./catchSomeCause"
 import * as TimeoutFailCause from "./timeoutFailCause"
 

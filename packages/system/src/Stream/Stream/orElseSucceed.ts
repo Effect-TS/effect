@@ -2,7 +2,7 @@
 
 import type { Stream } from "./definitions"
 import { orElse_ } from "./orElse"
-import { succeed } from "./succeed"
+import { succeed } from "./succeed.js"
 
 /**
  * Succeeds with the specified value if this one fails with a typed error.

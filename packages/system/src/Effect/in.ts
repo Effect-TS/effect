@@ -5,10 +5,10 @@ import * as Fiber from "../Fiber"
 import { pipe } from "../Function"
 import * as O from "../Option"
 import type { Scope } from "../Scope"
-import * as core from "./core"
+import * as core from "./core.js"
 import { forkDaemon } from "./core-scope"
-import type { Effect } from "./effect"
-import * as interruption from "./interruption"
+import type { Effect } from "./effect.js"
+import * as interruption from "./interruption.js"
 
 /**
  * Returns a new effect whose scope will be extended by the specified scope.

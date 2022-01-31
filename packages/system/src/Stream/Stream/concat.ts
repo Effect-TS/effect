@@ -6,8 +6,8 @@ import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as Ref from "../../Ref"
 import * as Pull from "../../Stream/Pull"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
 import { Stream } from "./definitions"
 
 /**

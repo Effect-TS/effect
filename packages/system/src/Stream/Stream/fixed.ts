@@ -4,7 +4,7 @@ import type * as CL from "../../Clock"
 import type * as H from "../../Has"
 import * as SC from "../../Schedule"
 import type { Stream } from "./definitions"
-import { schedule_ } from "./schedule"
+import { schedule_ } from "./schedule.js"
 
 /**
  * Emits elements of this stream with a fixed delay in between, regardless of how long it

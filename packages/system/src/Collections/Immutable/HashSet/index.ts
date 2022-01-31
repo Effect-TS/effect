@@ -7,7 +7,7 @@ import type { Predicate, Refinement } from "../../../Function"
 import { not } from "../../../Function"
 import * as I from "../../../Iterable"
 import * as St from "../../../Structural"
-import * as HM from "../HashMap/core"
+import * as HM from "../HashMap/core.js"
 import type { Next } from "../Map"
 import * as Tp from "../Tuple"
 

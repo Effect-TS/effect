@@ -2,7 +2,7 @@
 
 import * as CK from "../../../../Collections/Immutable/Chunk"
 import type * as O from "../../../../Option"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as MapChunks from "./mapChunks"
 
 /**

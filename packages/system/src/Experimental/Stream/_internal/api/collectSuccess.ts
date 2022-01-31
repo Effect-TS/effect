@@ -2,8 +2,8 @@
 
 import * as Ex from "../../../../Exit"
 import * as O from "../../../../Option"
-import type * as C from "../core"
-import * as Collect from "./collect"
+import type * as C from "../core.js"
+import * as Collect from "./collect.js"
 
 /**
  * Filters any `Exit.Failure` values.

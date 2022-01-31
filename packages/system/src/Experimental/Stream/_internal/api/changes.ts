@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as EQ from "../../../../Equal"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as ChangesWith from "./changesWith"
 
 /**

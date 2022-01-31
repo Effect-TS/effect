@@ -2,8 +2,8 @@
 
 import * as A from "../Collections/Immutable/Array"
 import * as NEA from "../Collections/Immutable/NonEmptyArray"
-import { suspend } from "./core"
-import type { Effect } from "./effect"
+import { suspend } from "./core.js"
+import type { Effect } from "./effect.js"
 import { orElse_ } from "./orElse"
 
 /**

@@ -2,8 +2,8 @@
 
 import type * as T from "../../../../Effect"
 import * as M from "../../../../Managed"
-import type * as C from "../core"
-import * as RunManaged from "./runManaged"
+import type * as C from "../core.js"
+import * as RunManaged from "./runManaged.js"
 /**
  * Runs a channel until the end is received
  */

@@ -1,10 +1,10 @@
 // ets_tracing: off
 
 import { pipe } from "../Function"
-import * as O from "../Option/core"
-import { chain_, succeed } from "./core"
-import type { Effect } from "./effect"
-import { failWith } from "./fail"
+import * as O from "../Option/core.js"
+import { chain_, succeed } from "./core.js"
+import type { Effect } from "./effect.js"
+import { failWith } from "./fail.js"
 
 /**
  * Fail with `e` if the supplied `PartialFunction` does not match, otherwise

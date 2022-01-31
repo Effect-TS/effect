@@ -5,10 +5,10 @@ import type * as Ex from "../../Exit"
 import { pipe } from "../../Function"
 import type * as O from "../../Option"
 import * as BP from "../../Stream/BufferedPull"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
 import { Stream } from "./definitions"
-import { unfoldM } from "./unfoldM"
+import { unfoldM } from "./unfoldM.js"
 
 /**
  * Combines the elements from this stream and the specified stream by repeatedly applying the

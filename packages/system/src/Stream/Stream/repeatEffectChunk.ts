@@ -2,9 +2,9 @@
 
 import * as A from "../../Collections/Immutable/Chunk"
 import type * as O from "../../Option"
-import * as T from "../_internal/effect"
+import * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
-import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
+import { repeatEffectChunkOption } from "./repeatEffectChunkOption.js"
 
 /**
  * Creates a stream from an effect producing chunks of `A` values which repeats forever.

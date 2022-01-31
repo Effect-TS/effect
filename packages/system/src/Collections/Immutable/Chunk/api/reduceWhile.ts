@@ -1,5 +1,5 @@
-import type * as Chunk from "../core"
-import { concreteId } from "../definition"
+import type * as Chunk from "../core.js"
+import { concreteId } from "../definition.js"
 
 /**
  * Folds over the elements in this chunk from the left.

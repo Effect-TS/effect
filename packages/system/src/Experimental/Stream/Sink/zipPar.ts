@@ -2,9 +2,9 @@
 
 import * as A from "../../../Collections/Immutable/Array"
 import * as Tp from "../../../Collections/Immutable/Tuple"
-import type * as C from "./core"
+import type * as C from "./core.js"
 import type * as U from "./utils"
-import * as ZipWithPar from "./zipWithPar"
+import * as ZipWithPar from "./zipWithPar.js"
 
 /**
  * Runs both sinks in parallel on the input and combines the results in a tuple.

@@ -2,8 +2,8 @@
 
 import type { Exit } from "../Exit"
 import type { Scope } from "../Scope"
-import { descriptorWith } from "./core"
-import type { Effect } from "./effect"
+import { descriptorWith } from "./core.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Passes the fiber's scope to the specified function, which creates an effect

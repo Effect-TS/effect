@@ -2,7 +2,7 @@
 
 import { identity } from "../../Function"
 import type * as O from "../../Option"
-import { collect_ } from "./collect"
+import { collect_ } from "./collect.js"
 import type { Stream } from "./definitions"
 
 /**

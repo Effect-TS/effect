@@ -2,7 +2,7 @@
 
 import * as Tp from "../../Collections/Immutable/Tuple"
 import type { Stream } from "./definitions"
-import { mapAccum_ } from "./mapAccum"
+import { mapAccum_ } from "./mapAccum.js"
 
 /**
  * Zips this stream together with the index of elements.

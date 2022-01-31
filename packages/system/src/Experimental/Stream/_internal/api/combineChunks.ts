@@ -9,9 +9,9 @@ import * as M from "../../../../Managed"
 import type * as O from "../../../../Option"
 import * as CH from "../../Channel"
 import * as TK from "../../Take"
-import * as C from "../core"
+import * as C from "../core.js"
 import * as HO from "../Handoff"
-import * as UnfoldChunkEffect from "./unfoldChunkEffect"
+import * as UnfoldChunkEffect from "./unfoldChunkEffect.js"
 
 /**
  * Combines the chunks from this stream and the specified stream by repeatedly applying the

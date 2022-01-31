@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as O from "../Option"
-import type { Effect } from "./effect"
-import { mapError_ } from "./mapError"
+import type { Effect } from "./effect.js"
+import { mapError_ } from "./mapError.js"
 
 /**
  * Maps the error value of this effect to an optional value.

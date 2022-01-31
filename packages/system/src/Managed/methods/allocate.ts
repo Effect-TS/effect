@@ -1,6 +1,6 @@
 import * as Tp from "../../Collections/Immutable/Tuple"
 import * as T from "../deps"
-import type { Managed } from "../managed"
+import type { Managed } from "../managed.js"
 import { makeReleaseMap, releaseAll } from "../ReleaseMap"
 
 export class Allocation<A> {

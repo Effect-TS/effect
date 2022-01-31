@@ -3,9 +3,9 @@
 import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray"
 import type * as Tp from "../Collections/Immutable/Tuple"
 import type { _A, _E, _R, ForcedArray } from "../Utils"
-import type { Effect } from "./effect"
-import { map_ } from "./map"
-import { tuple, tuplePar, tupleParN } from "./tuple"
+import type { Effect } from "./effect.js"
+import { map_ } from "./map.js"
+import { tuple, tuplePar, tupleParN } from "./tuple.js"
 
 /**
  * Sequentially zips the specified effects using the specified combiner

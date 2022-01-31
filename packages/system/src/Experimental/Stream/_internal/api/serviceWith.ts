@@ -2,7 +2,7 @@
 
 import * as T from "../../../../Effect"
 import type * as HS from "../../../../Has"
-import * as FromEffect from "./fromEffect"
+import * as FromEffect from "./fromEffect.js"
 
 /**
  * Accesses the specified service in the environment of the stream in the

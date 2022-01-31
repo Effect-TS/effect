@@ -12,9 +12,9 @@ import { not, pipe, tuple } from "../../Function"
 import type { Finalizer } from "../../Managed/ReleaseMap"
 import * as O from "../../Option"
 import * as RM from "../../RefM"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import * as R from "../_internal/ref"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import * as R from "../_internal/ref.js"
 
 // Contract notes for transducers:
 // - When a None is received, the transducer must flush all of its internal state

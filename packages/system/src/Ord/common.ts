@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { Ordering } from "../Ordering"
-import type { Ord } from "./definition"
+import type { Ord } from "./definition.js"
 import { contramap_, makeOrd } from "./operations"
 
 const compare = (x: any, y: any): Ordering => {

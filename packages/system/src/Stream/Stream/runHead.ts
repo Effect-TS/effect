@@ -2,7 +2,7 @@
 
 import * as SK from "../Sink"
 import type { Stream } from "./definitions"
-import { run_ } from "./run"
+import { run_ } from "./run.js"
 
 /**
  * Runs the stream to completion and yields the first value emitted by it,

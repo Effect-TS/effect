@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import * as O from "../../Option"
-import { catchAll_ } from "./catchAll"
+import { catchAll_ } from "./catchAll.js"
 import type { Stream } from "./definitions"
-import { fail } from "./fail"
+import { fail } from "./fail.js"
 
 /**
  * Switches over to the stream produced by the provided function in case this one

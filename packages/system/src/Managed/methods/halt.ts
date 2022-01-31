@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import type { Cause } from "../../Cause"
-import type { Trace } from "../../Fiber/tracing"
+import type { Trace } from "../../Fiber/tracing.js"
 import * as T from "../deps"
-import { fromEffect } from "../fromEffect"
+import { fromEffect } from "../fromEffect.js"
 
 /**
  * Returns an effect that models failure with the specified `Cause`.

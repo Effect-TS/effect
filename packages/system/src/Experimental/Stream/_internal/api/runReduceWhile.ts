@@ -3,8 +3,8 @@
 import * as T from "../../../../Effect"
 import type { Predicate } from "../../../../Function"
 import * as M from "../../../../Managed"
-import type * as C from "../core"
-import * as RunReduceWhileManaged from "./runReduceWhileManaged"
+import type * as C from "../core.js"
+import * as RunReduceWhileManaged from "./runReduceWhileManaged.js"
 
 /**
  * Reduces the elements in the stream to a value of type `S`.

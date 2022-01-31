@@ -3,7 +3,7 @@
 import type * as CL from "../../Clock"
 import * as SC from "../../Schedule"
 import type { Stream } from "./definitions"
-import { repeatValueWith } from "./repeatValueWith"
+import { repeatValueWith } from "./repeatValueWith.js"
 
 /**
  * A stream that emits Unit values spaced by the specified duration.

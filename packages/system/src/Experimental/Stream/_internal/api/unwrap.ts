@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import type * as T from "../../../../Effect"
-import type * as C from "../core"
-import * as Effect from "./effect"
-import * as Flatten from "./flatten"
+import type * as C from "../core.js"
+import * as Effect from "./effect.js"
+import * as Flatten from "./flatten.js"
 
 /**
  * Creates a stream produced from an effect

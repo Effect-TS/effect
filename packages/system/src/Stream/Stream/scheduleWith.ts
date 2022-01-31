@@ -6,8 +6,8 @@ import { pipe } from "../../Function"
 import type * as H from "../../Has"
 import * as SC from "../../Schedule"
 import * as BP from "../../Stream/BufferedPull"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
 import { Stream } from "./definitions"
 
 /**

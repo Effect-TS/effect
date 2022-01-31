@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import type * as Tp from "../../Collections/Immutable/Tuple"
-import * as T from "../_internal/effect"
+import * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
-import { mapAccumM_ } from "./mapAccumM"
+import { mapAccumM_ } from "./mapAccumM.js"
 
 /**
  * Statefully maps over the elements of this stream to produce new elements.

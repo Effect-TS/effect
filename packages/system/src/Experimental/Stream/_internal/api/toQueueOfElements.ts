@@ -6,7 +6,7 @@ import { pipe } from "../../../../Function"
 import * as M from "../../../../Managed"
 import type * as O from "../../../../Option"
 import * as Q from "../../../../Queue"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as RunIntoElementsManaged from "./runIntoElementsManaged"
 
 /**

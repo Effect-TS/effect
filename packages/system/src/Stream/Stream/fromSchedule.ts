@@ -3,10 +3,10 @@
 import type * as CL from "../../Clock"
 import { constVoid, pipe } from "../../Function"
 import * as SC from "../../Schedule"
-import * as T from "../_internal/effect"
+import * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
-import { repeatEffectOption } from "./repeatEffectOption"
-import { unwrap } from "./unwrap"
+import { repeatEffectOption } from "./repeatEffectOption.js"
+import { unwrap } from "./unwrap.js"
 
 /**
  * Creates a stream from a `Schedule` that does not require any further

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as CH from "../Channel"
-import * as C from "./core"
+import * as C from "./core.js"
 
 export function dropLeftover<R, InErr, In, OutErr, L, Z>(
   self: C.Sink<R, InErr, In, OutErr, L, Z>

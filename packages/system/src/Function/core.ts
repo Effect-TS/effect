@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import type { _A, _E, _R } from "../Effect"
-import { flow } from "./flow"
-import { pipe } from "./pipe"
+import { flow } from "./flow.js"
+import { pipe } from "./pipe.js"
 
 export { flow, pipe }
 

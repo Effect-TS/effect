@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type { FiberID } from "../Fiber/id"
+import type { FiberID } from "../Fiber/id.js"
 import { AtomicReference } from "../Support/AtomicReference"
 import { Promise } from "./promise"
-import { Pending } from "./state"
+import { Pending } from "./state.js"
 
 export function unsafeMake<E, A>(fiberId: FiberID) {
   return new Promise<E, A>(new AtomicReference(new Pending([])), [fiberId])

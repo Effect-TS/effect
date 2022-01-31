@@ -4,10 +4,10 @@ import type * as Tp from "../../Collections/Immutable/Tuple"
 import { pipe } from "../../Function"
 import type * as P from "../../Promise"
 import * as Q from "../../Queue"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
 import type * as Take from "../Take"
-import { bufferSignal } from "./_internal/bufferSignal"
+import { bufferSignal } from "./_internal/bufferSignal.js"
 import { Stream } from "./definitions"
 
 /**

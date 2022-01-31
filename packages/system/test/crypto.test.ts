@@ -7,8 +7,8 @@ import {
   PBKDF2ConfigLive,
   PBKDF2ConfigTest,
   verifyPassword
-} from "./crypto"
-import { testRuntime } from "./crypto/runtime"
+} from "./crypto/index.js"
+import { testRuntime } from "./crypto/runtime.js"
 
 describe("Crypto Suite", () => {
   describe("Live", () => {

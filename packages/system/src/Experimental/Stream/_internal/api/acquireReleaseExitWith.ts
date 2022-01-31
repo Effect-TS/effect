@@ -3,8 +3,8 @@
 import type * as T from "../../../../Effect"
 import type * as Ex from "../../../../Exit"
 import * as M from "../../../../Managed"
-import type * as C from "../core"
-import * as Managed from "./managed"
+import type * as C from "../core.js"
+import * as Managed from "./managed.js"
 
 /**
  * Creates a stream from a single value that will get cleaned up after the

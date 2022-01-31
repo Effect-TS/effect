@@ -2,9 +2,9 @@
 
 import type { Cause } from "../Cause"
 import { failures } from "../Cause"
-import { foldCauseM_, halt, succeed } from "./core"
-import type { Effect } from "./effect"
-import { fail } from "./fail"
+import { foldCauseM_, halt, succeed } from "./core.js"
+import type { Effect } from "./effect.js"
+import { fail } from "./fail.js"
 
 /**
  * Exposes all parallel errors in a single call

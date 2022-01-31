@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import * as Tp from "../../../../Collections/Immutable/Tuple"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as Cross from "./cross"
-import * as Map from "./map"
+import * as Map from "./map.js"
 
 /**
  * Composes this stream with the specified stream to create a cartesian product of elements,

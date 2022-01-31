@@ -5,8 +5,8 @@ import * as T from "../../../../Effect"
 import type * as P from "../../../../Promise"
 import * as Q from "../../../../Queue"
 import type * as TK from "../../Take"
-import * as C from "../core"
-import * as BufferSignal from "./_internal/bufferSignal"
+import * as C from "../core.js"
+import * as BufferSignal from "./_internal/bufferSignal.js"
 
 /**
  * Allows a faster producer to progress independently of a slower consumer by buffering

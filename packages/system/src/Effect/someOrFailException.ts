@@ -2,8 +2,8 @@
 
 import { NoSuchElementException } from "../GlobalExceptions"
 import type * as O from "../Option"
-import type { Effect } from "./effect"
-import { someOrFail_ } from "./someOrFail"
+import type { Effect } from "./effect.js"
+import { someOrFail_ } from "./someOrFail.js"
 
 /**
  * Extracts the optional value, or fails with a `NoSuchElementException`

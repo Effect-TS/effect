@@ -6,7 +6,7 @@ import type { Predicate } from "../../../Function"
 import { pipe } from "../../../Function"
 import * as Ref from "../../../Ref"
 import * as CH from "../Channel"
-import * as C from "./core"
+import * as C from "./core.js"
 
 /**
  * Repeatedly runs the sink for as long as its results satisfy

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import type { Stream } from "./definitions"
-import { map_ } from "./map"
-import { mapError_ } from "./mapError"
+import { map_ } from "./map.js"
+import { mapError_ } from "./mapError.js"
 
 /**
  * Returns a stream whose failure and success channels have been mapped by

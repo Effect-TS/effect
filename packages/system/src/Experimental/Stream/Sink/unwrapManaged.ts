@@ -2,7 +2,7 @@
 
 import * as M from "../../../Managed"
 import * as CH from "../Channel"
-import * as C from "./core"
+import * as C from "./core.js"
 
 /**
  * Creates a sink produced from a managed effect.

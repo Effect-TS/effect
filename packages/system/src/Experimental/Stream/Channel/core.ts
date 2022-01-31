@@ -7,15 +7,15 @@ import type * as T from "../../../Effect"
 import type * as Exit from "../../../Exit"
 import { identity } from "../../../Function"
 import * as P from "./_internal/primitives"
-import type * as PR from "./_internal/producer"
+import type * as PR from "./_internal/producer.js"
 
 export type {
   SingleProducerAsyncInput,
   AsyncInputProducer,
   AsyncInputConsumer
-} from "./_internal/producer"
+} from "./_internal/producer.js"
 
-export { makeSingleProducerAsyncInput } from "./_internal/producer"
+export { makeSingleProducerAsyncInput } from "./_internal/producer.js"
 
 export * from "./_internal/primitives"
 

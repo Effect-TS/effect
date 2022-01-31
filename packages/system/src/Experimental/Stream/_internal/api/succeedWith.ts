@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as CK from "../../../../Collections/Immutable/Chunk"
-import type * as C from "../core"
-import * as FromChunkWith from "./fromChunkWith"
+import type * as C from "../core.js"
+import * as FromChunkWith from "./fromChunkWith.js"
 
 /**
  * Creates a single-valued pure stream

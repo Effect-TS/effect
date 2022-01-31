@@ -3,7 +3,7 @@ import { tuple } from "../../../Function"
 import * as IO from "../../../IO"
 import * as St from "../../../Structural"
 import * as HS from "../HashSet"
-import * as L from "../List/core"
+import * as L from "../List/core.js"
 import * as Tp from "../Tuple"
 
 export const _ParSeqBrand = Symbol()

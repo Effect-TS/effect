@@ -2,8 +2,8 @@
 
 import * as T from "../../../Effect"
 import { pipe } from "../../../Function"
-import * as Api from "./api"
-import * as Core from "./core"
+import * as Api from "./api/index.js"
+import * as Core from "./core.js"
 
 function bind<
   Env,

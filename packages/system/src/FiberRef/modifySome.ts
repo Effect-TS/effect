@@ -3,7 +3,7 @@
 import * as Tp from "../Collections/Immutable/Tuple"
 import type { Option } from "../Option"
 import { getOrElse_ } from "../Option"
-import { modify } from "./modify"
+import { modify } from "./modify.js"
 
 /**
  * Atomically modifies the `FiberRef` with the specified partial function, which computes

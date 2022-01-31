@@ -7,13 +7,13 @@
  */
 import "../Operator"
 
-import { succeedWith, unit } from "../Effect/core"
-import type { Effect, UIO } from "../Effect/effect"
+import { succeedWith, unit } from "../Effect/core.js"
+import type { Effect, UIO } from "../Effect/effect.js"
 import { effectAsyncInterrupt } from "../Effect/effectAsyncInterrupt"
 import { accessService, accessServiceM, provideServiceM } from "../Effect/has"
 import type { Has, Tag } from "../Has"
 import { tag } from "../Has"
-import { ClockId } from "./id"
+import { ClockId } from "./id.js"
 
 export { ClockId }
 

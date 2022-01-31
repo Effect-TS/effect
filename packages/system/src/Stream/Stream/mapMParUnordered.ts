@@ -1,10 +1,10 @@
 // ets_tracing: off
 
 import { pipe } from "../../Function"
-import type * as T from "../_internal/effect"
-import { chainPar } from "./chainPar"
+import type * as T from "../_internal/effect.js"
+import { chainPar } from "./chainPar.js"
 import type { Stream } from "./definitions"
-import { fromEffect } from "./fromEffect"
+import { fromEffect } from "./fromEffect.js"
 
 /**
  * Maps over elements of the stream with the specified effectful function,

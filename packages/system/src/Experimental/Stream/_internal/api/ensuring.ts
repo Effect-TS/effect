@@ -2,7 +2,7 @@
 
 import type * as T from "../../../../Effect"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Executes the provided finalizer after this stream's finalizers run.

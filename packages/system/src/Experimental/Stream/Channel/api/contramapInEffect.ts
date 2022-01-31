@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import type * as T from "../../../../Effect"
-import * as C from "../core"
-import * as ReadWith from "./readWith"
-import * as ZipRight from "./zipRight"
+import * as C from "../core.js"
+import * as ReadWith from "./readWith.js"
+import * as ZipRight from "./zipRight.js"
 
 function contramapInMReader<Env1, InErr, InElem0, InElem, InDone>(
   f: (a: InElem0) => T.Effect<Env1, InErr, InElem>

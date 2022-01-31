@@ -14,8 +14,8 @@ import * as Q from "../../../../Queue"
 import * as Ref from "../../../../Ref"
 import * as SM from "../../../../Semaphore"
 import * as AR from "../../../../Support/AtomicNumber"
-import type * as C from "../core"
-import * as RunForEachManaged from "./runForEachManaged"
+import type * as C from "../core.js"
+import * as RunForEachManaged from "./runForEachManaged.js"
 
 const distributedWithDynamicId = new AR.AtomicNumber(0)
 

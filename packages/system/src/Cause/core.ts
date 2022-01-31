@@ -4,7 +4,7 @@
 import * as A from "../Collections/Immutable/Array"
 import * as E from "../Either"
 import type { Trace } from "../Fiber"
-import type { FiberID } from "../Fiber/id"
+import type { FiberID } from "../Fiber/id.js"
 import { identity, pipe } from "../Function"
 import * as S from "../IO"
 import * as O from "../Option"

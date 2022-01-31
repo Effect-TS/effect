@@ -6,7 +6,7 @@ import * as T from "../../../Effect"
 import type { Predicate } from "../../../Function"
 import * as O from "../../../Option"
 import * as CH from "../Channel"
-import * as C from "./core"
+import * as C from "./core.js"
 
 /**
  * A sink that effectfully folds its inputs with the provided function, termination predicate and initial state.

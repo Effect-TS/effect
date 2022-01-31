@@ -2,7 +2,7 @@
 
 import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Submerges the chunks carried by this stream into the stream's structure, while

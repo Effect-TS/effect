@@ -2,10 +2,10 @@
 
 import type * as T from "../../../../Effect"
 import * as O from "../../../../Option"
-import type * as C from "../core"
-import * as Chain from "./chain"
-import * as Empty from "./empty"
-import * as FromEffect from "./fromEffect"
+import type * as C from "../core.js"
+import * as Chain from "./chain.js"
+import * as Empty from "./empty.js"
+import * as FromEffect from "./fromEffect.js"
 
 /**
  * Returns the resulting stream when the given `PartialFunction` is defined for the given effectful value, otherwise returns an empty stream.

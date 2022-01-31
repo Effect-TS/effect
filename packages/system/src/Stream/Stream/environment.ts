@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as T from "../_internal/effect"
+import * as T from "../_internal/effect.js"
 import type { RIO } from "./definitions"
-import { fromEffect } from "./fromEffect"
+import { fromEffect } from "./fromEffect.js"
 
 /**
  * Accesses the whole environment of the stream.

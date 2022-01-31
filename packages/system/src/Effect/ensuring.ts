@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import { then } from "../Cause/cause"
-import { foldCauseM_, halt, succeed } from "./core"
-import type { Effect } from "./effect"
-import { uninterruptibleMask } from "./interruption"
+import { foldCauseM_, halt, succeed } from "./core.js"
+import type { Effect } from "./effect.js"
+import { uninterruptibleMask } from "./interruption.js"
 
 /**
  * Returns an effect that, if this effect _starts_ execution, then the

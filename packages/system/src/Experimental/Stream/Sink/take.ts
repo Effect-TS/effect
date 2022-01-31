@@ -3,8 +3,8 @@
 import * as CK from "../../../Collections/Immutable/Chunk"
 import { pipe } from "../../../Function"
 import * as CH from "../Channel"
-import * as Chain from "./chain"
-import * as C from "./core"
+import * as Chain from "./chain.js"
+import * as C from "./core.js"
 import * as FoldChunks from "./foldChunks"
 
 /*

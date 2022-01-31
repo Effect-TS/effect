@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as Tp from "../../../../Collections/Immutable/Tuple"
-import type * as C from "../core"
-import * as MapAccum from "./mapAccum"
+import type * as C from "../core.js"
+import * as MapAccum from "./mapAccum.js"
 
 /**
  * Zips this stream together with the index of elements.

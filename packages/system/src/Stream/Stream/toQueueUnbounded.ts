@@ -2,11 +2,11 @@
 
 import { pipe } from "../../Function"
 import * as Q from "../../Queue"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
 import type * as TK from "../Take"
 import type { Stream } from "./definitions"
-import { intoManaged_ } from "./intoManaged"
+import { intoManaged_ } from "./intoManaged.js"
 
 export function toQueueUnbounded<R, E, A>(
   stream: Stream<R, E, A>

@@ -8,7 +8,7 @@ import type * as SC from "../../Schedule"
 import type * as TR from "../Transducer"
 import { aggregateAsyncWithinEither_ } from "./aggregateAsyncWithinEither"
 import type { Stream } from "./definitions"
-import { filterMap_ } from "./filterMap"
+import { filterMap_ } from "./filterMap.js"
 
 /**
  * Uses `aggregateAsyncWithinEither` but only returns the `Right` results.

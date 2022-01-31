@@ -2,8 +2,8 @@
 
 import * as O from "../../Option"
 import * as T from "../deps-core"
-import { addIfOpen } from "./addIfOpen"
-import type { Finalizer } from "./finalizer"
+import { addIfOpen } from "./addIfOpen.js"
+import type { Finalizer } from "./finalizer.js"
 import { release } from "./release"
 import type { ReleaseMap } from "./ReleaseMap"
 

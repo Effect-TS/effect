@@ -3,8 +3,8 @@
 import * as A from "../../Collections/Immutable/Chunk"
 import type * as Tp from "../../Collections/Immutable/Tuple"
 import type * as O from "../../Option"
-import * as T from "../_internal/effect"
-import { paginateChunkM } from "./paginateChunkM"
+import * as T from "../_internal/effect.js"
+import { paginateChunkM } from "./paginateChunkM.js"
 
 /**
  * Like `unfoldChunk`, but allows the emission of values to end one step further than

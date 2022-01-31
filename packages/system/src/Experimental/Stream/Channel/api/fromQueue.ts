@@ -3,8 +3,8 @@
 import * as E from "../../../../Either"
 import * as Ex from "../../../../Exit"
 import * as Q from "../../../../Queue"
-import * as C from "../core"
-import * as ZipRight from "./zipRight"
+import * as C from "../core.js"
+import * as ZipRight from "./zipRight.js"
 
 export function fromQueue<Err, Elem, Done>(
   queue: Q.Dequeue<E.Either<Ex.Exit<Err, Done>, Elem>>

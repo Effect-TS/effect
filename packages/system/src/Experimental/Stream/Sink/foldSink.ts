@@ -3,7 +3,7 @@
 import * as CK from "../../../Collections/Immutable/Chunk"
 import * as AR from "../../../Support/AtomicReference"
 import * as CH from "../Channel"
-import * as C from "./core"
+import * as C from "./core.js"
 
 export function foldSink_<
   R,

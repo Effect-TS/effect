@@ -3,8 +3,8 @@
 import * as H from "../../../../Hub"
 import type * as M from "../../../../Managed"
 import type * as TK from "../../Take"
-import type * as C from "../core"
-import * as RunIntoManaged from "./runIntoManaged"
+import type * as C from "../core.js"
+import * as RunIntoManaged from "./runIntoManaged.js"
 
 /**
  * Like `Stream#runIntoHub`, but provides the result as a `Managed` to allow for scope

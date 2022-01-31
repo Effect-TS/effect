@@ -6,7 +6,7 @@ import type { _A, _E, _R } from "../../Utils"
 import { flattenTuples } from "./_internal/flattenTuples"
 import { cross_ } from "./cross"
 import type { Stream } from "./definitions"
-import { map } from "./map"
+import { map } from "./map.js"
 
 /**
  * Composes the specified streams to create a cartesian product of elements

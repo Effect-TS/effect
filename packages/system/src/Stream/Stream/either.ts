@@ -1,10 +1,10 @@
 // ets_tracing: off
 
 import * as E from "../../Either"
-import { catchAll_ } from "./catchAll"
+import { catchAll_ } from "./catchAll.js"
 import type { Stream } from "./definitions"
-import { map_ } from "./map"
-import { succeed } from "./succeed"
+import { map_ } from "./map.js"
+import { succeed } from "./succeed.js"
 
 /**
  * Returns a stream whose failures and successes have been lifted into an

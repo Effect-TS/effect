@@ -6,8 +6,8 @@ import { pipe } from "../../../../Function"
 import * as H from "../../../../Hub"
 import * as M from "../../../../Managed"
 import type * as TK from "../../Take"
-import type * as C from "../core"
-import * as RunIntoHubManaged from "./runIntoHubManaged"
+import type * as C from "../core.js"
+import * as RunIntoHubManaged from "./runIntoHubManaged.js"
 
 /**
  * Converts the stream to a managed list of queues. Every value will be replicated to every queue with the

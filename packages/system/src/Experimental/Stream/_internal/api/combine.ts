@@ -8,9 +8,9 @@ import { pipe } from "../../../../Function"
 import * as M from "../../../../Managed"
 import * as O from "../../../../Option"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 import * as HO from "../Handoff"
-import * as UnfoldEffect from "./unfoldEffect"
+import * as UnfoldEffect from "./unfoldEffect.js"
 
 /**
  * Combines the elements from this stream and the specified stream by repeatedly applying the

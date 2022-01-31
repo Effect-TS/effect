@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { succeedWith } from "../Effect/core"
-import type { FiberID } from "../Fiber/id"
+import { succeedWith } from "../Effect/core.js"
+import type { FiberID } from "../Fiber/id.js"
 import { unsafeMake } from "./unsafeMake"
 
 /**

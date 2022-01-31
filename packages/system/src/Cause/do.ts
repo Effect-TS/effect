@@ -3,7 +3,7 @@
 import { pipe } from "../Function"
 import type { Cause } from "./cause"
 import { fail } from "./cause"
-import { chain, map } from "./core"
+import { chain, map } from "./core.js"
 
 const bind =
   <A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => Cause<A>) =>

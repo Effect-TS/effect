@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import { identity } from "../../Function"
-import { chain } from "./chain"
+import { chain } from "./chain.js"
 import type { Stream } from "./definitions"
 
 /**

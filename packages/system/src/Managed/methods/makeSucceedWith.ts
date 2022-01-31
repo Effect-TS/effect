@@ -1,6 +1,6 @@
-import { make_ } from "../core"
+import { make_ } from "../core.js"
 import { succeedWith } from "../deps-core"
-import type { Managed } from "../managed"
+import type { Managed } from "../managed.js"
 
 /**
  * Lifts a synchronous effect that does not throw exceptions into a

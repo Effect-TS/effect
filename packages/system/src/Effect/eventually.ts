@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { yieldNow } from "./core"
-import type { Effect } from "./effect"
+import { yieldNow } from "./core.js"
+import type { Effect } from "./effect.js"
 import { orElse_ } from "./orElse"
 import { zipRight_ } from "./zips"
 

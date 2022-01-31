@@ -2,11 +2,11 @@
 
 import type { Lazy } from "../Function"
 import { pipe } from "../Function"
-import { succeed } from "./core"
-import { die } from "./die"
-import type { IO, UIO } from "./effect"
+import { succeed } from "./core.js"
+import { die } from "./die.js"
+import type { IO, UIO } from "./effect.js"
 import { effectAsync } from "./effectAsync"
-import { fail } from "./fail"
+import { fail } from "./fail.js"
 
 /**
  * Create an Effect that when executed will construct `promise` and wait for its result,

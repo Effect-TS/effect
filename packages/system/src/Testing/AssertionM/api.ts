@@ -10,7 +10,7 @@ import * as makeAssertionValue from "../AssertionValue/makeAssertionValue"
 import * as BA from "../BoolAlgebra"
 import * as BAM from "../BoolAlgebraM"
 import * as R from "../Render"
-import { apply } from "./apply"
+import { apply } from "./apply.js"
 import { AssertionM } from "./AssertionM"
 
 /**

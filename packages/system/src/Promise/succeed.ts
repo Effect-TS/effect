@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { succeed as effectSucceed } from "../Effect/core"
-import { completeWith } from "./completeWith"
+import { succeed as effectSucceed } from "../Effect/core.js"
+import { completeWith } from "./completeWith.js"
 import type { Promise } from "./promise"
 
 /**

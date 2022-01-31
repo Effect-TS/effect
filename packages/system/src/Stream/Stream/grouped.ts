@@ -2,7 +2,7 @@
 
 import type * as A from "../../Collections/Immutable/Chunk"
 import * as TR from "../Transducer"
-import { aggregate_ } from "./aggregate"
+import { aggregate_ } from "./aggregate.js"
 import type { Stream } from "./definitions"
 
 /**

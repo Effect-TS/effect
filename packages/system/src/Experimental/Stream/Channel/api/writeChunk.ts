@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import * as CK from "../../../../Collections/Immutable/Chunk"
-import * as C from "../core"
-import * as Unit from "./unit"
-import * as ZipRight from "./zipRight"
+import * as C from "../core.js"
+import * as Unit from "./unit.js"
+import * as ZipRight from "./zipRight.js"
 
 export function writeChunk<Out>(
   outs: CK.Chunk<Out>

@@ -2,9 +2,9 @@
 
 import type * as CK from "../../../../Collections/Immutable/Chunk"
 import * as Q from "../../../../Queue"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as Ensuring from "./ensuring"
-import * as FromChunkQueue from "./fromChunkQueue"
+import * as FromChunkQueue from "./fromChunkQueue.js"
 
 /**
  * Creates a stream from a queue of values. The queue will be shutdown once the stream is closed.

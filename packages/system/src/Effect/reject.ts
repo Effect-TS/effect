@@ -2,9 +2,9 @@
 
 import { pipe } from "../Function"
 import * as O from "../Option"
-import { chain_, succeed } from "./core"
-import type { Effect } from "./effect"
-import { fail } from "./fail"
+import { chain_, succeed } from "./core.js"
+import type { Effect } from "./effect.js"
+import { fail } from "./fail.js"
 
 /**
  * Continue with the returned computation if the `PartialFunction` matches,

@@ -2,7 +2,7 @@
 
 import * as A from "../../Collections/Immutable/Chunk"
 import type { Stream } from "./definitions"
-import { fromChunk } from "./fromChunk"
+import { fromChunk } from "./fromChunk.js"
 
 /**
  * Creates a stream from an iterable collection of values

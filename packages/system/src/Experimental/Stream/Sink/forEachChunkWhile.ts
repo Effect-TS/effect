@@ -3,7 +3,7 @@
 import type * as CK from "../../../Collections/Immutable/Chunk"
 import type * as T from "../../../Effect"
 import * as CH from "../Channel"
-import * as C from "./core"
+import * as C from "./core.js"
 
 /**
  * A sink that executes the provided effectful function for every chunk fed to it

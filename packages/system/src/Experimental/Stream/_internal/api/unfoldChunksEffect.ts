@@ -5,7 +5,7 @@ import type * as Tp from "../../../../Collections/Immutable/Tuple"
 import * as T from "../../../../Effect"
 import * as O from "../../../../Option"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 function unfoldChunksLoop<S, R, E, A>(
   s: S,

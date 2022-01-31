@@ -6,9 +6,9 @@ import * as T from "../../../../Effect"
 import { pipe } from "../../../../Function"
 import * as SC from "../../../../Schedule"
 import * as CH from "../../Channel"
-import * as C from "../core"
-import * as Map from "./map"
-import * as Unwrap from "./unwrap"
+import * as C from "../core.js"
+import * as Map from "./map.js"
+import * as Unwrap from "./unwrap.js"
 
 /**
  * Repeats the entire stream using the specified schedule. The stream will execute normally,

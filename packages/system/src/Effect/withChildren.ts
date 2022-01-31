@@ -3,10 +3,10 @@
 import * as SS from "../Collections/Immutable/SortedSet"
 import type { Runtime } from "../Fiber"
 import { track } from "../Supervisor"
-import { chain_, supervised } from "./core"
+import { chain_, supervised } from "./core.js"
 import { descriptor } from "./descriptor"
-import type { Effect, UIO } from "./effect"
-import { map_ } from "./map"
+import type { Effect, UIO } from "./effect.js"
+import { map_ } from "./map.js"
 
 /**
  * Locally installs a supervisor and an effect that succeeds with all the

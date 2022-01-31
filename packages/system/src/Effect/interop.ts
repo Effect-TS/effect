@@ -2,11 +2,11 @@
 
 import * as Async from "../Async"
 import * as IO from "../IO"
-import { accessM, succeed, succeedWith } from "./core"
-import type { Effect } from "./effect"
+import { accessM, succeed, succeedWith } from "./core.js"
+import type { Effect } from "./effect.js"
 import { effectAsyncInterrupt } from "./effectAsyncInterrupt"
-import { fail } from "./fail"
-import { interrupt } from "./interruption"
+import { fail } from "./fail.js"
+import { interrupt } from "./interruption.js"
 
 /**
  * Lift Async into Effect

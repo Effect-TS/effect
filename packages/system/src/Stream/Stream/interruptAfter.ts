@@ -3,7 +3,7 @@
 import * as CL from "../../Clock"
 import type * as H from "../../Has"
 import type { Stream } from "./definitions"
-import { interruptWhen_ } from "./interruptWhen"
+import { interruptWhen_ } from "./interruptWhen.js"
 
 /**
  * Specialized version of interruptWhen which interrupts the evaluation of this stream

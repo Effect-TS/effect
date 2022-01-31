@@ -2,7 +2,7 @@ import type * as A from "../../Collections/Immutable/Chunk"
 import * as H from "../../Hub"
 import type { Stream } from "./definitions"
 import { ensuringFirst_ } from "./ensuringFirst"
-import { fromChunkHub } from "./fromChunkHub"
+import { fromChunkHub } from "./fromChunkHub.js"
 
 /**
  * Creates a stream from a `Hub` of values. The hub will be shutdown once the stream is closed.

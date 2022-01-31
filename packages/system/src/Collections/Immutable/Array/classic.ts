@@ -1,12 +1,12 @@
-import type { Either } from "../../../Either/core"
-import type { Predicate, Refinement } from "../../../Function/core"
+import type { Either } from "../../../Either/core.js"
+import type { Predicate, Refinement } from "../../../Function/core.js"
 import type { Option } from "../../../Option"
 import { isSome, none, some } from "../../../Option"
 import type { MutableArray, MutableRecord } from "../../../Support/Mutable"
 import type { Dictionary } from "../Dictionary"
 import type { NonEmptyArray } from "../NonEmptyArray"
 import * as Tp from "../Tuple"
-import * as C from "./core"
+import * as C from "./core.js"
 
 /**
  * Classic Applicative's ap

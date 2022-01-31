@@ -4,7 +4,7 @@ import "../Operator"
 
 import type { Tuple } from "../Collections/Immutable/Tuple"
 import type { _A, _E, _R } from "../Effect"
-import type { Either } from "../Either/core"
+import type { Either } from "../Either/core.js"
 import type { Tag } from "../Has"
 import type { Option } from "../Option"
 import { none, some } from "../Option"
@@ -153,7 +153,7 @@ export type _R<T> = [T] extends [{ [k in typeof _R]: (_: infer R) => void }] ? R
 
 export type _E<T> = [T] extends [{ [k in typeof _E]: () => infer E }] ? E : never
 
-export * from "./tool"
+export * from "./tool.js"
 
 export function isEither(u: unknown): u is Either<unknown, unknown> {
   return (
@@ -228,7 +228,7 @@ export type ForcedArray<A> = A extends readonly any[] ? A : []
 
 export interface UnifiableIndexed<X> {}
 
-export * from "./lazy"
-export * from "./union"
-export * from "./equal"
-export * from "./unification"
+export * from "./lazy.js"
+export * from "./union.js"
+export * from "./equal.js"
+export * from "./unification.js"

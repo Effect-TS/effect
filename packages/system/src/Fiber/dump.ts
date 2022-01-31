@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { Option } from "../Option"
-import type { FiberID } from "./id"
+import type { FiberID } from "./id.js"
 import type { Status } from "./status"
 
 export interface FiberDump {

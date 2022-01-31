@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as M from "../_internal/managed"
+import * as M from "../_internal/managed.js"
 import { Stream } from "./definitions"
 
 export function suspend<R, E, A>(f: () => Stream<R, E, A>): Stream<R, E, A> {

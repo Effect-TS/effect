@@ -3,8 +3,8 @@
 import type * as CK from "../../../Collections/Immutable/Chunk"
 import type * as T from "../../../Effect"
 import * as ContramapChunksEffect from "./contramapChunksEffect"
-import type * as C from "./core"
-import * as MapEffect from "./mapEffect"
+import type * as C from "./core.js"
+import * as MapEffect from "./mapEffect.js"
 
 /**
  * Effectfully transforms both input chunks and result of this sink using the provided functions.

@@ -2,10 +2,10 @@
 
 import * as T from "../../../Effect"
 import { pipe } from "../../../Function"
-import { fromEffect } from "./api"
-import * as Chain from "./api/chain"
-import * as Map from "./api/map"
-import type * as C from "./core"
+import * as Chain from "./api/chain.js"
+import { fromEffect } from "./api/fromEffect.js"
+import * as Map from "./api/map.js"
+import type * as C from "./core.js"
 
 function bind<R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,

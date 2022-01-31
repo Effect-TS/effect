@@ -1,12 +1,12 @@
 // ets_tracing: off
 
 import * as L from "../../Layer"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import { chain_ } from "./chain"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import { chain_ } from "./chain.js"
 import type { Stream } from "./definitions"
-import { managed } from "./managed"
-import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
+import { managed } from "./managed.js"
+import { repeatEffectChunkOption } from "./repeatEffectChunkOption.js"
 
 /**
  * Provides a layer to the given effect

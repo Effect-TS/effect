@@ -3,8 +3,8 @@
 import type * as CL from "../../../../Clock"
 import * as E from "../../../../Either"
 import type * as SC from "../../../../Schedule"
-import type * as C from "../core"
-import * as ScheduleWith from "./scheduleWith"
+import type * as C from "../core.js"
+import * as ScheduleWith from "./scheduleWith.js"
 
 /**
  * Schedules the output of the stream using the provided `schedule` and emits its output at

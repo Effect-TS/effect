@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import type * as T from "../../../../Effect"
-import type * as C from "../core"
-import * as ChainPar from "./chainPar"
-import * as FromEffect from "./fromEffect"
+import type * as C from "../core.js"
+import * as ChainPar from "./chainPar.js"
+import * as FromEffect from "./fromEffect.js"
 
 /**
  * Maps over elements of the stream with the specified effectful function,

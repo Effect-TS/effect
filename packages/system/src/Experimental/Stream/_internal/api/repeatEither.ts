@@ -3,8 +3,8 @@
 import type * as CL from "../../../../Clock"
 import * as E from "../../../../Either"
 import type * as SC from "../../../../Schedule"
-import type * as C from "../core"
-import * as RepeatWith from "./repeatWith"
+import type * as C from "../core.js"
+import * as RepeatWith from "./repeatWith.js"
 
 /**
  * Repeats the entire stream using the specified schedule. The stream will execute normally,

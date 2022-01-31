@@ -3,7 +3,7 @@
 import * as CK from "../../../Collections/Immutable/Chunk"
 import * as T from "../../../Effect"
 import * as CH from "../Channel"
-import * as C from "./core"
+import * as C from "./core.js"
 
 export function dropWhileEffect<R, InErr, In>(
   p: (in_: In) => T.Effect<R, InErr, boolean>

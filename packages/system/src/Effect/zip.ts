@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import * as Tp from "../Collections/Immutable/Tuple"
-import { chain_ } from "./core"
-import type { Effect } from "./effect"
-import { map_ } from "./map"
+import { chain_ } from "./core.js"
+import type { Effect } from "./effect.js"
+import { map_ } from "./map.js"
 /**
  * Sequentially zips this effect with the specified effect
  *

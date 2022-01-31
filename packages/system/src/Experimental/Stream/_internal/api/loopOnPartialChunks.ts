@@ -3,7 +3,7 @@
 import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as T from "../../../../Effect"
 import * as CH from "../../Channel"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as LoopOnChunks from "./loopOnChunks"
 
 /**

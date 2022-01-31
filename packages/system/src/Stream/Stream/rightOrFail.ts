@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import * as E from "../../Either"
-import * as T from "../_internal/effect"
+import * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
-import { mapM_ } from "./mapM"
+import { mapM_ } from "./mapM.js"
 
 /**
  * Fails with given error 'e' if value is `Left`.

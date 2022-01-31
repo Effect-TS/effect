@@ -2,10 +2,10 @@
 
 import * as Tp from "../../../../Collections/Immutable/Tuple"
 import * as T from "../../../../Effect"
-import type * as C from "../core"
-import * as Concat from "./concat"
-import * as MapAccumEffect from "./mapAccumEffect"
-import * as Succeed from "./succeed"
+import type * as C from "../core.js"
+import * as Concat from "./concat.js"
+import * as MapAccumEffect from "./mapAccumEffect.js"
+import * as Succeed from "./succeed.js"
 
 /**
  * Statefully and effectfully maps over the elements of this stream to produce all

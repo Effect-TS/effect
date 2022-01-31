@@ -2,8 +2,8 @@
 
 import * as T from "../../../../Effect"
 import * as O from "../../../../Option"
-import type * as C from "../core"
-import * as FromEffectOption from "./fromEffectOption"
+import type * as C from "../core.js"
+import * as FromEffectOption from "./fromEffectOption.js"
 
 /**
  * Creates a stream from an effect producing a value of type `A`

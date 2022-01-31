@@ -2,7 +2,7 @@
 
 import type { Ref } from "../Ref/XRef"
 import * as semaphore from "../Semaphore"
-import * as T from "./effect"
+import * as T from "./effect.js"
 
 /**
  * A `XRefM[RA, RB, EA, EB, A, B]` is a polymorphic, purely functional

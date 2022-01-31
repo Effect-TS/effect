@@ -5,8 +5,8 @@
  */
 import { _A, _E, _R } from "../../Effect/commons"
 import type * as Utils from "../../Utils"
-import type { STM } from "./core"
-import { chain_, succeed, suspend } from "./core"
+import type { STM } from "./core.js"
+import { chain_, succeed, suspend } from "./core.js"
 
 export class GenSTM<R, E, A> {
   readonly [_R]!: (_R: R) => void;

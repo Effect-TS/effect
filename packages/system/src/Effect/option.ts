@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import * as O from "../Option"
-import { succeed } from "./core"
-import type { Effect, RIO } from "./effect"
-import { foldM_ } from "./foldM"
+import { succeed } from "./core.js"
+import type { Effect, RIO } from "./effect.js"
+import { foldM_ } from "./foldM.js"
 
 /**
  * Converts an option on errors into an option on values.

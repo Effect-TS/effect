@@ -1,6 +1,6 @@
 import type { PredicateWithIndex, RefinementWithIndex } from "../../../../Utils"
-import * as Chunk from "../core"
-import { ArrTypeId, concrete } from "../definition"
+import * as Chunk from "../core.js"
+import { ArrTypeId, concrete } from "../definition.js"
 
 /**
  * Returns a filtered subset of this chunk.

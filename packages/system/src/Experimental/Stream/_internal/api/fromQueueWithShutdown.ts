@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import * as Q from "../../../../Queue"
-import * as C from "../core"
+import * as C from "../core.js"
 import * as Ensuring from "./ensuring"
-import * as FromQueue from "./fromQueue"
+import * as FromQueue from "./fromQueue.js"
 
 /**
  * Creates a stream from a queue of values. The queue will be shutdown once the stream is closed.

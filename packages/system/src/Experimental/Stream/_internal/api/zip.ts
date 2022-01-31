@@ -3,8 +3,8 @@
 import * as A from "../../../../Collections/Immutable/Array"
 import * as Tp from "../../../../Collections/Immutable/Tuple"
 import type { _A, _E, _R } from "../../../../Utils"
-import type * as C from "../core"
-import * as ZipWith from "./zipWith"
+import type * as C from "../core.js"
+import * as ZipWith from "./zipWith.js"
 
 /**
  * Zips this stream with another point-wise and emits tuples of elements from both streams.

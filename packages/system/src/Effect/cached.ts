@@ -2,9 +2,9 @@
 
 import type { Clock } from "../Clock"
 import type { Has } from "../Has"
-import { cachedInvalidate_ } from "./cachedInvalidate"
-import type { Effect, IO, RIO } from "./effect"
-import { map_ } from "./map"
+import { cachedInvalidate_ } from "./cachedInvalidate.js"
+import type { Effect, IO, RIO } from "./effect.js"
+import { map_ } from "./map.js"
 
 /**
  * Returns an effect that, if evaluated, will return the cached result of

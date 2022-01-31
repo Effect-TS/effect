@@ -1,6 +1,6 @@
-import { append_, empty } from "../core"
-import type { Chunk } from "../definition"
-import { concreteId } from "../definition"
+import { append_, empty } from "../core.js"
+import type { Chunk } from "../definition.js"
+import { concreteId } from "../definition.js"
 
 /**
  * Zips this chunk with the specified chunk using the specified combiner.

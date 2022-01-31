@@ -2,9 +2,9 @@
 
 import type * as T from "../../../../Effect"
 import { identity } from "../../../../Function"
-import type * as C from "../core"
-import * as FromEffect from "./fromEffect"
-import * as MapConcat from "./mapConcat"
+import type * as C from "../core.js"
+import * as FromEffect from "./fromEffect.js"
+import * as MapConcat from "./mapConcat.js"
 
 /**
  * Creates a stream from an effect producing a value of type `Iterable[A]`

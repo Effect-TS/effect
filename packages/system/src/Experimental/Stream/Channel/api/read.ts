@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as O from "../../../../Option"
-import * as C from "../core"
+import * as C from "../core.js"
 
 export function read<In>(): C.Channel<
   unknown,

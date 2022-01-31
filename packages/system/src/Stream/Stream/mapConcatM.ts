@@ -2,9 +2,9 @@
 
 import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
-import * as T from "../_internal/effect"
+import * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
-import { mapConcatChunkM_ } from "./mapConcatChunkM"
+import { mapConcatChunkM_ } from "./mapConcatChunkM.js"
 
 /**
  * Effectfully maps each element to an iterable, and flattens the iterables into

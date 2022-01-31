@@ -4,8 +4,8 @@ import * as T from "../../../../Effect"
 import * as Ex from "../../../../Exit"
 import * as CH from "../../Channel"
 import * as MH from "../../Channel/_internal/mergeHelpers"
-import * as C from "../core"
-import * as Map from "./map"
+import * as C from "../core.js"
+import * as Map from "./map.js"
 
 export type TerminationStrategy = "Left" | "Right" | "Both" | "Either"
 

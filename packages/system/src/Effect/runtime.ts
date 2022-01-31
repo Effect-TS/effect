@@ -2,19 +2,19 @@
 
 // option
 // cause
-import * as Cause from "../Cause/core"
+import * as Cause from "../Cause/core.js"
 import type { Renderer } from "../Cause/Pretty"
 import { defaultRenderer, pretty } from "../Cause/Pretty"
 // exit
 import { HasClock, LiveClock } from "../Clock"
-import { flatten as exitFlatten } from "../Exit/core"
-import type { Exit } from "../Exit/exit"
+import { flatten as exitFlatten } from "../Exit/core.js"
+import type { Exit } from "../Exit/exit.js"
 // fiber
-import { FiberContext } from "../Fiber/context"
-import { interruptible } from "../Fiber/core"
-import { newFiberId } from "../Fiber/id"
-import { Platform } from "../Fiber/platform"
-import type { Callback } from "../Fiber/state"
+import { FiberContext } from "../Fiber/context.js"
+import { interruptible } from "../Fiber/core.js"
+import { newFiberId } from "../Fiber/id.js"
+import { Platform } from "../Fiber/platform.js"
+import type { Callback } from "../Fiber/state.js"
 import { constVoid, identity } from "../Function"
 import * as O from "../Option"
 import { none } from "../Option"
@@ -23,8 +23,8 @@ import * as Scope from "../Scope"
 // supervisor
 import * as Supervisor from "../Supervisor"
 import { isTracingEnabled } from "../Tracing"
-import * as core from "./core"
-import type { Effect, UIO } from "./effect"
+import * as core from "./core.js"
+import type { Effect, UIO } from "./effect.js"
 import type { FailureReporter } from "./primitives"
 import { instruction, IPlatform } from "./primitives"
 

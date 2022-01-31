@@ -6,7 +6,7 @@ import { pipe } from "../../../Function"
 import * as O from "../../../Option"
 import * as Ref from "../../../Ref"
 import * as CH from "../Channel"
-import * as C from "./core"
+import * as C from "./core.js"
 
 /**
  * Creates a sink that produces values until one verifies

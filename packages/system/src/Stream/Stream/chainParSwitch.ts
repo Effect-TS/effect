@@ -8,11 +8,11 @@ import * as P from "../../Promise"
 import * as Q from "../../Queue"
 import * as SM from "../../Semaphore"
 import * as Pull from "../../Stream/Pull"
-import * as T from "../_internal/effect"
-import * as F from "../_internal/fiber"
-import * as M from "../_internal/managed"
+import * as T from "../_internal/effect.js"
+import * as F from "../_internal/fiber.js"
+import * as M from "../_internal/managed.js"
 import { Stream } from "./definitions"
-import * as forEach from "./forEach"
+import * as forEach from "./forEach.js"
 
 /**
  * Maps each element of this stream to another stream and returns the non-deterministic merge

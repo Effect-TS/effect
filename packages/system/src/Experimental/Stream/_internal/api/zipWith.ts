@@ -7,7 +7,7 @@ import * as T from "../../../../Effect"
 import * as E from "../../../../Either"
 import * as Ex from "../../../../Exit"
 import * as O from "../../../../Option"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as ZipChunks from "./_internal/zipChunks"
 import * as CombineChunks from "./combineChunks"
 

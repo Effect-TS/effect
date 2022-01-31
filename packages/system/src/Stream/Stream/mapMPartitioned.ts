@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as T from "../_internal/effect"
+import type * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
-import { groupByKey_ } from "./groupByKey"
-import { mapM_ } from "./mapM"
+import { groupByKey_ } from "./groupByKey.js"
+import { mapM_ } from "./mapM.js"
 
 /**
  * Maps over elements of the stream with the specified effectful function,

@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import * as Tp from "../../../../Collections/Immutable/Tuple"
-import type * as C from "../core"
-import * as Map from "./map"
-import * as ZipPar from "./zipPar"
+import type * as C from "../core.js"
+import * as Map from "./map.js"
+import * as ZipPar from "./zipPar.js"
 
 export function zipParLeft_<
   Env,

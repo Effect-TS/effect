@@ -10,7 +10,7 @@ import * as O from "../../../../Option"
 import * as Q from "../../../../Queue"
 import * as CH from "../../Channel"
 import * as TK from "../../Take"
-import * as C from "../core"
+import * as C from "../core.js"
 import type { Emit } from "./_internal/Emit"
 import { toEmit } from "./_internal/Emit"
 

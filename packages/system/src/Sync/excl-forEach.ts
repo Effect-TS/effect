@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as ChunkCollect from "../Collections/Immutable/Chunk/api/collect"
-import * as Chunk from "../Collections/Immutable/Chunk/core"
+import * as ChunkCollect from "../Collections/Immutable/Chunk/api/collect.js"
+import * as Chunk from "../Collections/Immutable/Chunk/core.js"
 import { identity } from "../Function"
 import type * as O from "../Option"
-import type { Sync } from "./core"
-import * as core from "./core"
+import type { Sync } from "./core.js"
+import * as core from "./core.js"
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and

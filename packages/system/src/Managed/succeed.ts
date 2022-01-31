@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as T from "./deps"
-import { fromEffect } from "./fromEffect"
+import { fromEffect } from "./fromEffect.js"
 
 /**
  * Lift a pure value into an effect

@@ -3,7 +3,7 @@
 import * as CK from "../../../Collections/Immutable/Chunk"
 import * as Tp from "../../../Collections/Immutable/Tuple"
 import * as CH from "../Channel"
-import * as C from "./core"
+import * as C from "./core.js"
 
 export function exposeLeftover<R, InErr, In, OutErr, L, Z>(
   self: C.Sink<R, InErr, In, OutErr, L, Z>

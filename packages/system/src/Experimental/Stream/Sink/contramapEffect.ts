@@ -3,7 +3,7 @@
 import * as CK from "../../../Collections/Immutable/Chunk"
 import type * as T from "../../../Effect"
 import * as ContramapChunksEffect from "./contramapChunksEffect"
-import type * as C from "./core"
+import type * as C from "./core.js"
 
 /**
  * Effectfully transforms this sink's input elements.

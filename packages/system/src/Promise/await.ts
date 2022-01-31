@@ -2,9 +2,9 @@
 
 import { effectMaybeAsyncInterruptBlockingOn } from "../Effect/effectMaybeAsyncInterrupt"
 import * as E from "../Either"
-import { interruptJoiner } from "./interruptJoiner"
+import { interruptJoiner } from "./interruptJoiner.js"
 import type { Promise } from "./promise"
-import { Pending } from "./state"
+import { Pending } from "./state.js"
 
 /**
  * Retrieves the value of the promise, suspending the fiber running the action

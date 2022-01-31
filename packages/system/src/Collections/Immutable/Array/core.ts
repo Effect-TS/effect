@@ -5,8 +5,8 @@
  */
 import "../../../Operator"
 
-import type { Predicate, Refinement } from "../../../Function/core"
-import { identity } from "../../../Function/core"
+import type { Predicate, Refinement } from "../../../Function/core.js"
+import { identity } from "../../../Function/core.js"
 import type { Option } from "../../../Option"
 import { isSome, none, some } from "../../../Option"
 import type { MutableArray } from "../../../Support/Mutable"

@@ -10,12 +10,12 @@ import * as O from "../../../../Option"
 import * as Q from "../../../../Queue"
 import * as CH from "../../Channel"
 import * as TK from "../../Take"
-import * as C from "../core"
+import * as C from "../core.js"
 import type { Canceler, Emit } from "./_internal/Emit"
 import { toEmit } from "./_internal/Emit"
 import * as Ensuring from "./ensuring"
-import * as Unwrap from "./unwrap"
-import * as UnwrapManaged from "./unwrapManaged"
+import * as Unwrap from "./unwrap.js"
+import * as UnwrapManaged from "./unwrapManaged.js"
 
 /**
  * Creates a stream from an asynchronous callback that can be called multiple times.

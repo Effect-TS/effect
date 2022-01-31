@@ -4,12 +4,12 @@ import * as C from "../../Cause"
 import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import * as Ref from "../_internal/ref"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import * as Ref from "../_internal/ref.js"
 import * as Pull from "../Pull"
 import { Stream } from "./definitions"
-import { halt } from "./halt"
+import { halt } from "./halt.js"
 
 class State<X> {
   constructor(public buffer: A.Chunk<X>, public done: boolean) {}

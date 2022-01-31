@@ -2,8 +2,8 @@
 
 import { identity } from "../../../../Function"
 import type * as M from "../../../../Managed"
-import * as C from "../core"
-import * as ManagedOut from "./managedOut"
+import * as C from "../core.js"
+import * as ManagedOut from "./managedOut.js"
 
 /**
  * Makes a channel from a managed that returns a channel in case of success

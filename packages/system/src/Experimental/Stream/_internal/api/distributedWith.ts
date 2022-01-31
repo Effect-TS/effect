@@ -12,7 +12,7 @@ import * as M from "../../../../Managed"
 import type * as O from "../../../../Option"
 import * as P from "../../../../Promise"
 import type * as Q from "../../../../Queue"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as DistributedWithDynamic from "./distributedWithDynamic"
 
 /**

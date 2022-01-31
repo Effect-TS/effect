@@ -2,7 +2,7 @@
 
 import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Intersperse stream with provided element.

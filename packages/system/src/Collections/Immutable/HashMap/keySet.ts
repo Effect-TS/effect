@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as S from "../HashSet"
-import type { HashMap } from "./index"
+import type { HashMap } from "./index.js"
 
 /**
  * Get the set of keys

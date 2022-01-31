@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import { interruptAll } from "../Fiber"
-import type { Effect } from "./effect"
+import type { Effect } from "./effect.js"
 import { ensuringChildren_ } from "./ensuringChildren"
 
 /**

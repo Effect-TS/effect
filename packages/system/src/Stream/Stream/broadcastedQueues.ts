@@ -4,11 +4,11 @@ import * as A from "../../Collections/Immutable/Chunk"
 import { pipe } from "../../Function"
 import * as H from "../../Hub"
 import type * as XQ from "../../Queue"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
 import type * as Take from "../Take"
 import type { Stream } from "./definitions"
-import { intoHubManaged_ } from "./intoHubManaged"
+import { intoHubManaged_ } from "./intoHubManaged.js"
 
 /**
  * Converts the stream to a managed list of queues. Every value will be replicated to every queue with the

@@ -2,8 +2,8 @@
 
 import type { Cause } from "../Cause/cause"
 import { empty } from "../Cause/cause"
-import { foldCauseM_, succeed } from "./core"
-import type { Effect, RIO } from "./effect"
+import { foldCauseM_, succeed } from "./core.js"
+import type { Effect, RIO } from "./effect.js"
 
 /**
  * Returns an effect that succeeds with the cause of failure of this effect,

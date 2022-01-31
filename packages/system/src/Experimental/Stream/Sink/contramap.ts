@@ -2,7 +2,7 @@
 
 import * as CK from "../../../Collections/Immutable/Chunk"
 import * as ContramapChunks from "./contramapChunks"
-import type * as C from "./core"
+import type * as C from "./core.js"
 
 /**
  * Transforms this sink's input elements.

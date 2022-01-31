@@ -5,8 +5,8 @@ import * as T from "../../../../Effect"
 import { pipe } from "../../../../Function"
 import * as RB from "../../../../Support/RingBufferNew"
 import * as CH from "../../Channel"
-import * as C from "../core"
-import * as Empty from "./empty"
+import * as C from "../core.js"
+import * as Empty from "./empty.js"
 
 /**
  * Takes the last specified number of elements from this stream.

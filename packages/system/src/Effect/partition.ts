@@ -3,10 +3,10 @@
 import type * as Tp from "../Collections/Immutable/Tuple"
 import { identity } from "../Function"
 import * as I from "../Iterable"
-import type { Effect, RIO } from "./effect"
-import { either } from "./either"
-import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach"
-import { map_ } from "./map"
+import type { Effect, RIO } from "./effect.js"
+import { either } from "./either.js"
+import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach.js"
+import { map_ } from "./map.js"
 
 /**
  * Feeds elements of type `A` to a function `f` that returns an effect.

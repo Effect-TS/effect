@@ -4,7 +4,7 @@ import * as T from "../../../../Effect"
 import type * as Ex from "../../../../Exit"
 import { pipe } from "../../../../Function"
 import * as Ref from "../../../../Ref"
-import * as C from "../core"
+import * as C from "../core.js"
 
 export function acquireReleaseExitWith_<
   Env,

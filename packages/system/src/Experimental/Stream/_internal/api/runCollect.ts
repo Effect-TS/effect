@@ -3,8 +3,8 @@
 import type * as CK from "../../../../Collections/Immutable/Chunk"
 import type * as T from "../../../../Effect"
 import * as SK from "../../Sink"
-import type * as C from "../core"
-import * as Run from "./run"
+import type * as C from "../core.js"
+import * as Run from "./run.js"
 
 /**
  * Runs the stream and collects all of its elements to a chunk.

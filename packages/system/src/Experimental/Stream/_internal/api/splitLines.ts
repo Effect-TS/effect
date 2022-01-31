@@ -5,7 +5,7 @@ import * as Tp from "../../../../Collections/Immutable/Tuple"
 import { pipe } from "../../../../Function"
 import * as O from "../../../../Option"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Splits strings on newlines. Handles both Windows newlines (`\r\n`) and UNIX newlines (`\n`).

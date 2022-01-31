@@ -3,7 +3,7 @@
 import * as E from "../../Either"
 import { pipe } from "../../Function"
 import type { Stream } from "./definitions"
-import { map_ } from "./map"
+import { map_ } from "./map.js"
 import { orElse } from "./orElse"
 
 /**

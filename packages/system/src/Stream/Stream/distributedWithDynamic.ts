@@ -9,11 +9,11 @@ import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as Q from "../../Queue"
 import * as SM from "../../Semaphore"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import * as R from "../_internal/ref"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import * as R from "../_internal/ref.js"
 import type { Stream } from "./definitions"
-import * as forEach from "./forEach"
+import * as forEach from "./forEach.js"
 
 /**
  * More powerful version of `distributedWith`. This returns a function that will produce

@@ -2,7 +2,7 @@
 
 import * as CS from "../../../../Cause"
 import * as E from "../../../../Either"
-import * as C from "../core"
+import * as C from "../core.js"
 
 export function foldChannel_<
   Env,

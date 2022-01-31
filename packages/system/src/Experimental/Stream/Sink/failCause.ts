@@ -2,7 +2,7 @@
 
 import type * as CS from "../../../Cause"
 import * as CH from "../Channel"
-import * as C from "./core"
+import * as C from "./core.js"
 
 /**
  * Creates a sink halting with a specified cause.

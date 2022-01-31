@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as T from "../_internal/effect"
+import type * as T from "../_internal/effect.js"
 import * as SK from "../Sink"
 import type { Stream } from "./definitions"
-import { run_ } from "./run"
+import { run_ } from "./run.js"
 
 /**
  * Runs the stream and emits the number of elements processed

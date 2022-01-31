@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as CH from "../Channel"
-import * as C from "./core"
+import * as C from "./core.js"
 
 /**
  * A sink that immediately ends with the specified value.

@@ -2,7 +2,7 @@
 
 import * as CS from "../../../../Cause"
 import * as E from "../../../../Either"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Reads an input and continue exposing both error and completion

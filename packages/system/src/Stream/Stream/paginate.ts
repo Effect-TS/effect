@@ -2,9 +2,9 @@
 
 import type * as Tp from "../../Collections/Immutable/Tuple"
 import type * as O from "../../Option"
-import * as T from "../_internal/effect"
+import * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
-import { paginateM } from "./paginateM"
+import { paginateM } from "./paginateM.js"
 
 /**
  * Like `unfoldM`, but allows the emission of values to end one step further than

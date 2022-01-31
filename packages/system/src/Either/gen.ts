@@ -4,8 +4,8 @@ import { _A, _E } from "../Effect/commons"
 import { NoSuchElementException } from "../GlobalExceptions"
 import type { Option } from "../Option"
 import * as Utils from "../Utils"
-import type { Either } from "./core"
-import { chain_, left, right } from "./core"
+import type { Either } from "./core.js"
+import { chain_, left, right } from "./core.js"
 
 export class GenEither<E, A> {
   readonly [_E]!: () => E;

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Switches to the provided stream in case this one fails with a typed error.

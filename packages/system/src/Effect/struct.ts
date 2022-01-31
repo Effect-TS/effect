@@ -2,9 +2,9 @@
 
 import * as R from "../Collections/Immutable/Dictionary"
 import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
-import type { Effect } from "./effect"
-import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach"
-import { map_ } from "./map"
+import type { Effect } from "./effect.js"
+import { forEach_, forEachPar_, forEachParN_ } from "./excl-forEach.js"
+import { map_ } from "./map.js"
 
 /**
  * Applicative structure

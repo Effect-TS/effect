@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type * as CK from "../../../Collections/Immutable/Chunk"
-import type * as C from "./core"
+import type * as C from "./core.js"
 import * as FoldChunks from "./foldChunks"
 
 /**

@@ -3,7 +3,7 @@
 import * as CL from "../../Clock"
 import type * as H from "../../Has"
 import type { Stream } from "./definitions"
-import { haltWhen_ } from "./haltWhen"
+import { haltWhen_ } from "./haltWhen.js"
 
 /**
  * Specialized version of haltWhen which halts the evaluation of this stream

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as T from "../../../../Effect"
-import type * as C from "../core"
-import * as MapEffect from "./mapEffect"
+import type * as C from "../core.js"
+import * as MapEffect from "./mapEffect.js"
 
 /**
  * Adds an effect to consumption of every element of the stream.

@@ -2,10 +2,10 @@
 
 import type * as A from "../../Collections/Immutable/Chunk"
 import { identity, pipe } from "../../Function"
-import type * as T from "../_internal/effect"
+import type * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
-import { mapConcatChunk } from "./mapConcatChunk"
-import { mapM } from "./mapM"
+import { mapConcatChunk } from "./mapConcatChunk.js"
+import { mapM } from "./mapM.js"
 
 /**
  * Effectfully maps each element to a chunk, and flattens the chunks into

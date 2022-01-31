@@ -3,9 +3,9 @@
 import type { Either } from "../Either"
 import { left, right } from "../Either"
 import * as E from "../Either"
-import { accessM, provideAll_ } from "./core"
-import type { Effect } from "./effect"
-import { map_ } from "./map"
+import { accessM, provideAll_ } from "./core.js"
+import type { Effect } from "./effect.js"
+import { map_ } from "./map.js"
 
 /**
  * Depending on provided environment returns either this one or the other effect.

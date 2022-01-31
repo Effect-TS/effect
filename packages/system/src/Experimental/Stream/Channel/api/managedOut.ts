@@ -4,8 +4,8 @@ import * as Tp from "../../../../Collections/Immutable/Tuple"
 import * as T from "../../../../Effect"
 import type * as M from "../../../../Managed"
 import * as ReleaseMap from "../../../../Managed/ReleaseMap"
-import * as C from "../core"
-import * as MapOut from "./mapOut"
+import * as C from "../core.js"
+import * as MapOut from "./mapOut.js"
 
 /**
  * Use a managed to emit an output element

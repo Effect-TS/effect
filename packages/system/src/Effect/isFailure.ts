@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Effect } from "./effect"
-import { fold_ } from "./fold"
+import type { Effect } from "./effect.js"
+import { fold_ } from "./fold.js"
 
 /**
  * Returns whether this effect is a failure.

@@ -4,8 +4,8 @@ import type * as CL from "../../../../Clock"
 import * as E from "../../../../Either"
 import * as O from "../../../../Option"
 import type * as SC from "../../../../Schedule"
-import type * as C from "../core"
-import * as Collect from "./collect"
+import type * as C from "../core.js"
+import * as Collect from "./collect.js"
 import * as RepeatElementsEither from "./repeatElementsEither"
 
 /**

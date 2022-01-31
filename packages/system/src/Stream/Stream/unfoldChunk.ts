@@ -3,9 +3,9 @@
 import type * as A from "../../Collections/Immutable/Chunk"
 import type * as Tp from "../../Collections/Immutable/Tuple"
 import type * as O from "../../Option"
-import * as T from "../_internal/effect"
+import * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
-import { unfoldChunkM } from "./unfoldChunkM"
+import { unfoldChunkM } from "./unfoldChunkM.js"
 
 /**
  * Creates a stream by peeling off the "layers" of a value of type `S`.

@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import * as O from "../../../../Option"
-import type * as C from "../core"
-import * as MapError from "./mapError"
-import * as SomeOrFail from "./someOrFail"
+import type * as C from "../core.js"
+import * as MapError from "./mapError.js"
+import * as SomeOrFail from "./someOrFail.js"
 
 /**
  * Converts an option on values into an option on errors.

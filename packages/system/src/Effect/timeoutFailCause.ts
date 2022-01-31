@@ -2,10 +2,10 @@
 
 import type * as CS from "../Cause"
 import type * as CL from "../Clock"
-import { halt, succeed, suspend } from "./core"
-import type { Effect } from "./effect"
-import { flatten } from "./flatten"
-import { timeoutTo_ } from "./timeoutTo"
+import { halt, succeed, suspend } from "./core.js"
+import type { Effect } from "./effect.js"
+import { flatten } from "./flatten.js"
+import { timeoutTo_ } from "./timeoutTo.js"
 
 /**
  * The same as `timeout`, but instead of producing a `None` in the event

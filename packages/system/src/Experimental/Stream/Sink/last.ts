@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as O from "../../../Option"
-import type * as C from "./core"
-import * as FoldLeft from "./foldLeft"
+import type * as C from "./core.js"
+import * as FoldLeft from "./foldLeft.js"
 
 /**
  * Creates a sink containing the last value.

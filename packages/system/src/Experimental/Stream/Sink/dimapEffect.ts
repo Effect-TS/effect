@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import type * as T from "../../../Effect"
-import * as ContramapEffect from "./contramapEffect"
-import type * as C from "./core"
-import * as MapEffect from "./mapEffect"
+import * as ContramapEffect from "./contramapEffect.js"
+import type * as C from "./core.js"
+import * as MapEffect from "./mapEffect.js"
 
 /**
  * Effectfully transforms both inputs and result of this sink using the provided functions.

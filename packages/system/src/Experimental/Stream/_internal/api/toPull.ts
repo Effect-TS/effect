@@ -6,7 +6,7 @@ import * as E from "../../../../Either"
 import * as M from "../../../../Managed"
 import * as O from "../../../../Option"
 import * as CH from "../../Channel"
-import type * as C from "../core"
+import type * as C from "../core.js"
 
 /**
  * Interpret the stream as a managed pull

@@ -2,11 +2,11 @@
 
 import { pipe } from "../../Function"
 import * as H from "../../Hub"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
 import type * as Take from "../Take"
 import type { Stream } from "./definitions"
-import { intoHubManaged_ } from "./intoHubManaged"
+import { intoHubManaged_ } from "./intoHubManaged.js"
 
 /**
  * Converts the stream to a managed hub of chunks. After the managed hub is used,

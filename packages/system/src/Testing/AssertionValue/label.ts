@@ -1,4 +1,4 @@
-import * as AM from "../AssertionM/api"
+import * as AM from "../AssertionM/api.js"
 import type { AssertionValue } from "./AssertionValue"
 import { makeAssertionValue } from "./makeAssertionValue"
 

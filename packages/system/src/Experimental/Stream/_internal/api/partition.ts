@@ -5,8 +5,8 @@ import * as T from "../../../../Effect"
 import * as E from "../../../../Either"
 import type { Predicate } from "../../../../Function"
 import type * as M from "../../../../Managed"
-import type * as C from "../core"
-import * as PartitionEither from "./partitionEither"
+import type * as C from "../core.js"
+import * as PartitionEither from "./partitionEither.js"
 
 /**
  * Partition a stream using a predicate. The first stream will contain all element evaluated to true

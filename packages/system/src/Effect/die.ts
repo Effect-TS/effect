@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as C from "../Cause/cause"
-import { haltWith } from "./core"
+import { haltWith } from "./core.js"
 
 /**
  * Returns an effect that dies with the specified `unknown`.

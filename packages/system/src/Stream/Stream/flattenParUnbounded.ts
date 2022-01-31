@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { Stream } from "./definitions"
-import { flattenPar_ } from "./flattenPar"
+import { flattenPar_ } from "./flattenPar.js"
 
 /**
  * Like `flattenPar`, but executes all streams concurrently.

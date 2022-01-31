@@ -2,7 +2,7 @@
 
 import type * as M from "../../../Managed"
 import * as CH from "../Channel"
-import * as C from "./core"
+import * as C from "./core.js"
 
 export function managed_<R, InErr, In, OutErr, A, L, Z>(
   resource: M.Managed<R, OutErr, A>,

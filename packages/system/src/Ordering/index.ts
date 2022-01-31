@@ -2,5 +2,5 @@
 
 import "../Operator"
 
-export * from "./definition"
+export * from "./definition.js"
 export * from "./operations"

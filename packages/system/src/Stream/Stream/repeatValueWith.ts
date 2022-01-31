@@ -2,9 +2,9 @@
 
 import type * as CL from "../../Clock"
 import type * as SC from "../../Schedule"
-import * as T from "../_internal/effect"
+import * as T from "../_internal/effect.js"
 import type { Stream } from "./definitions"
-import { repeatEffectWith } from "./repeatEffectWith"
+import { repeatEffectWith } from "./repeatEffectWith.js"
 
 /**
  * Repeats the value using the provided schedule.

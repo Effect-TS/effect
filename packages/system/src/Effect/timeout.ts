@@ -2,8 +2,8 @@
 
 import type * as CL from "../Clock"
 import * as O from "../Option"
-import type { Effect } from "./effect"
-import { timeoutTo_ } from "./timeoutTo"
+import type { Effect } from "./effect.js"
+import { timeoutTo_ } from "./timeoutTo.js"
 
 /**
  * Returns an effect that will timeout this effect, returning `None` if the

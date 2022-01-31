@@ -5,9 +5,9 @@ import { pipe } from "../../Function"
 import * as O from "../../Option"
 import * as P from "../../Promise"
 import * as Pull from "../../Stream/Pull"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import * as Ref from "../_internal/ref"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import * as Ref from "../_internal/ref.js"
 import { Stream } from "./definitions"
 
 /**

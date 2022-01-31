@@ -3,9 +3,9 @@
 import type * as CL from "../../Clock"
 import * as O from "../../Option"
 import type * as SC from "../../Schedule"
-import { collect_ } from "./collect"
+import { collect_ } from "./collect.js"
 import type { Stream } from "./definitions"
-import { repeatEither_ } from "./repeatEither"
+import { repeatEither_ } from "./repeatEither.js"
 
 /**
  * Repeats the entire stream using the specified schedule. The stream will execute normally,

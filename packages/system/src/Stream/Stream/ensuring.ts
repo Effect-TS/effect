@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
+import type * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
 import { Stream } from "./definitions"
 
 /**

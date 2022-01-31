@@ -2,8 +2,8 @@
 
 import * as T from "../../../../Effect"
 import type * as Ex from "../../../../Exit"
-import type * as C from "../core"
-import * as FromEffect from "./fromEffect"
+import type * as C from "../core.js"
+import * as FromEffect from "./fromEffect.js"
 
 /**
  * The stream that ends with the `Exit` value `exit`.

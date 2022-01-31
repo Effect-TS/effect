@@ -2,7 +2,7 @@
 
 import * as CS from "../../../../Cause"
 import * as E from "../../../../Either"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as CatchAllCause from "./catchAllCause"
 import * as FailCause from "./failCause"
 

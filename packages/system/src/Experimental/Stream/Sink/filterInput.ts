@@ -3,7 +3,7 @@
 import * as CK from "../../../Collections/Immutable/Chunk"
 import type { Predicate, Refinement } from "../../../Function"
 import * as ContramapChunks from "./contramapChunks"
-import type * as C from "./core"
+import type * as C from "./core.js"
 
 export function filterInput_<
   R,

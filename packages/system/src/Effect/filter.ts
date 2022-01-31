@@ -1,14 +1,14 @@
 // ets_tracing: off
 
-import { compact } from "../Collections/Immutable/Chunk/api/compact"
+import { compact } from "../Collections/Immutable/Chunk/api/compact.js"
 import { pipe } from "../Function"
 import * as I from "../Iterable"
 import * as O from "../Option"
-import * as core from "./core"
-import type { Effect } from "./effect"
-import * as forEach from "./excl-forEach"
-import * as map from "./map"
-import * as zipWith from "./zipWith"
+import * as core from "./core.js"
+import type { Effect } from "./effect.js"
+import * as forEach from "./excl-forEach.js"
+import * as map from "./map.js"
+import * as zipWith from "./zipWith.js"
 
 /**
  * Filters the collection using the specified effectual predicate.

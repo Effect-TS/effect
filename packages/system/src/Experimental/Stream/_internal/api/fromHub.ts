@@ -1,10 +1,10 @@
 // ets_tracing: off
 
 import * as H from "../../../../Hub"
-import * as C from "../core"
-import * as Chain from "./chain"
-import * as FromQueue from "./fromQueue"
-import * as Managed from "./managed"
+import * as C from "../core.js"
+import * as Chain from "./chain.js"
+import * as FromQueue from "./fromQueue.js"
+import * as Managed from "./managed.js"
 
 /**
  * Creates a stream from a subscription to a hub.

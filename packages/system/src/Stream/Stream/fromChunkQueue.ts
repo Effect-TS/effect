@@ -3,10 +3,10 @@
 import * as C from "../../Cause"
 import type * as A from "../../Collections/Immutable/Chunk"
 import * as Q from "../../Queue"
-import * as T from "../_internal/effect"
+import * as T from "../_internal/effect.js"
 import * as Pull from "../Pull"
 import type { Stream } from "./definitions"
-import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
+import { repeatEffectChunkOption } from "./repeatEffectChunkOption.js"
 
 /**
  * Creates a stream from a {@link XQueue} of values

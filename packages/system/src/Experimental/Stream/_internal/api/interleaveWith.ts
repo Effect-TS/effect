@@ -7,7 +7,7 @@ import { pipe } from "../../../../Function"
 import * as M from "../../../../Managed"
 import * as CH from "../../Channel"
 import * as TK from "../../Take"
-import * as C from "../core"
+import * as C from "../core.js"
 import * as HO from "../Handoff"
 
 /**

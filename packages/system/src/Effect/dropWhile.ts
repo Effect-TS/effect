@@ -2,9 +2,9 @@
 
 import type { Array } from "../Collections/Immutable/Array"
 import type { MutableArray } from "../Support/Mutable"
-import { chain_, succeed, suspend } from "./core"
-import type { Effect } from "./effect"
-import { map_ } from "./map"
+import { chain_, succeed, suspend } from "./core.js"
+import type { Effect } from "./effect.js"
+import { map_ } from "./map.js"
 
 /**
  * Drops all elements so long as the effectful predicate returns true.

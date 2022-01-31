@@ -11,8 +11,8 @@ import type { Has, Tag } from "../Has"
 import type { Option } from "../Option"
 import type * as Utils from "../Utils"
 import { isEither, isOption, isTag } from "../Utils"
-import type { Sync } from "./core"
-import { chain_, fail, succeed, suspend } from "./core"
+import type { Sync } from "./core.js"
+import { chain_, fail, succeed, suspend } from "./core.js"
 import { accessService } from "./has"
 
 export class GenSync<R, E, A> {

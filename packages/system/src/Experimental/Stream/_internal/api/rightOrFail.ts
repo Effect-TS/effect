@@ -2,8 +2,8 @@
 
 import * as T from "../../../../Effect"
 import * as E from "../../../../Either"
-import type * as C from "../core"
-import * as MapEffect from "./mapEffect"
+import type * as C from "../core.js"
+import * as MapEffect from "./mapEffect.js"
 
 /**
  * Fails with given error 'e' if value is `Left`.

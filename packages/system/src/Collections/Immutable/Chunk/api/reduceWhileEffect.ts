@@ -1,7 +1,7 @@
-import * as core from "../../../../Effect/core"
-import type { Effect } from "../../../../Effect/effect"
-import type * as Chunk from "../core"
-import { concreteId } from "../definition"
+import * as core from "../../../../Effect/core.js"
+import type { Effect } from "../../../../Effect/effect.js"
+import type * as Chunk from "../core.js"
+import { concreteId } from "../definition.js"
 
 function loop<A, R, E, S>(
   s: S,

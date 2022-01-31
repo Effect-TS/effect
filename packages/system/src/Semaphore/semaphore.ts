@@ -7,11 +7,11 @@ import { identity } from "../Function"
 import * as O from "../Option"
 import * as R from "../Ref"
 import { ImmutableQueue } from "../Support/ImmutableQueue"
-import * as T from "./effect"
-import * as M from "./managed"
+import * as T from "./effect.js"
+import * as M from "./managed.js"
 import * as P from "./promise"
-import type { State } from "./state"
-import { Acquisition, assertNonNegative } from "./state"
+import type { State } from "./state.js"
+import { Acquisition, assertNonNegative } from "./state.js"
 
 /**
  * An asynchronous semaphore, which is a generalization of a mutex. Semaphores

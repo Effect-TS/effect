@@ -1,12 +1,12 @@
 // ets_tracing: off
 
 import type * as A from "../../Collections/Immutable/Chunk"
-import type * as T from "../_internal/effect"
-import type * as M from "../_internal/managed"
+import type * as T from "../_internal/effect.js"
+import type * as M from "../_internal/managed.js"
 import * as SK from "../Sink"
 import type { Stream } from "./definitions"
-import { run_ } from "./run"
-import { runManaged_ } from "./runManaged"
+import { run_ } from "./run.js"
+import { runManaged_ } from "./runManaged.js"
 
 /**
  * Consumes all elements of the stream, passing them to the specified callback.

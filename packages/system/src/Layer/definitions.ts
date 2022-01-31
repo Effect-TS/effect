@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type * as C from "../Cause"
-import { reduce as chunkReduce } from "../Collections/Immutable/Chunk/api/reduce"
+import { reduce as chunkReduce } from "../Collections/Immutable/Chunk/api/reduce.js"
 import { insert } from "../Collections/Immutable/Map"
 import * as Tp from "../Collections/Immutable/Tuple"
 import { _E, _RIn, _ROut } from "../Effect/commons"
@@ -18,26 +18,26 @@ import {
   provideSome_ as managedProvideSome_,
   zipWith_ as managedZipWith_,
   zipWithPar_ as managedZipWithPar_
-} from "../Managed/core"
-import { bind as managedBind, do as managedDo } from "../Managed/do"
+} from "../Managed/core.js"
+import { bind as managedBind, do as managedDo } from "../Managed/do.js"
 import {
   forEach_ as managedForEach_,
   forEachPar_ as managedForEachPar_
-} from "../Managed/forEach"
-import { fromEffect as managedFromEffect } from "../Managed/fromEffect"
-import { managedApply } from "../Managed/managed"
-import { environment as managedEnvironment } from "../Managed/methods/environment"
+} from "../Managed/forEach.js"
+import { fromEffect as managedFromEffect } from "../Managed/fromEffect.js"
+import { managedApply } from "../Managed/managed.js"
+import { environment as managedEnvironment } from "../Managed/methods/environment.js"
 import type { ReleaseMap } from "../Managed/ReleaseMap"
-import * as add from "../Managed/ReleaseMap/add"
-import * as Finalizer from "../Managed/ReleaseMap/finalizer"
+import * as add from "../Managed/ReleaseMap/add.js"
+import * as Finalizer from "../Managed/ReleaseMap/finalizer.js"
 import * as makeReleaseMap from "../Managed/ReleaseMap/makeReleaseMap"
 import * as releaseAll from "../Managed/ReleaseMap/releaseAll"
-import { succeed as succeed_1 } from "../Managed/succeed"
+import { succeed as succeed_1 } from "../Managed/succeed.js"
 import { use_ } from "../Managed/use"
-import { await as promiseAwait } from "../Promise/await"
-import { halt } from "../Promise/halt"
-import { make } from "../Promise/make"
-import { succeed } from "../Promise/succeed"
+import { await as promiseAwait } from "../Promise/await.js"
+import { halt } from "../Promise/halt.js"
+import { make } from "../Promise/make.js"
+import { succeed } from "../Promise/succeed.js"
 import * as R from "../Ref"
 import * as RM from "../RefM"
 import { AtomicReference } from "../Support/AtomicReference"

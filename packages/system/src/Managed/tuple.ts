@@ -4,9 +4,9 @@ import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray"
 import * as Tp from "../Collections/Immutable/Tuple"
 import { accessCallTrace } from "../Tracing"
 import type { _E, _R, ForcedTuple } from "../Utils"
-import { map_ } from "./core"
-import type { Managed } from "./managed"
-import { collectAll, collectAllPar, collectAllParN_ } from "./methods/api"
+import { map_ } from "./core.js"
+import type { Managed } from "./managed.js"
+import { collectAll, collectAllPar, collectAllParN_ } from "./methods/api.js"
 
 export type TupleA<T extends NonEmptyArray<Managed<any, any, any>>> = {
   [K in keyof T]: [T[K]] extends [Managed<any, any, infer A>] ? A : never

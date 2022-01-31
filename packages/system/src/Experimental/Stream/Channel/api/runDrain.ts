@@ -1,9 +1,9 @@
 // ets_tracing: off
 
 import type * as T from "../../../../Effect"
-import type * as C from "../core"
-import * as Drain from "./drain"
-import * as Run from "./run"
+import type * as C from "../core.js"
+import * as Drain from "./drain.js"
+import * as Run from "./run.js"
 
 /**
  * Runs a channel until the end is received

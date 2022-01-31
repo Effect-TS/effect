@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { chain_ } from "./core"
-import type { Effect } from "./effect"
-import { map_ } from "./map"
+import { chain_ } from "./core.js"
+import type { Effect } from "./effect.js"
+import { map_ } from "./map.js"
 
 /**
  * Returns an effect that effectfully "peeks" at the success of this effect.

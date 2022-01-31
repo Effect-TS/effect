@@ -4,9 +4,9 @@ import * as Fiber from "../Fiber"
 import * as FR from "../FiberRef"
 import { pipe } from "../Function"
 import * as O from "../Option"
-import { fork } from "./core"
-import type { Effect, RIO } from "./effect"
-import { uninterruptibleMask } from "./interruption"
+import { fork } from "./core.js"
+import type { Effect, RIO } from "./effect.js"
+import { uninterruptibleMask } from "./interruption.js"
 import * as zips from "./zips"
 
 /**

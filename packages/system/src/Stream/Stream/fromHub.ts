@@ -1,10 +1,10 @@
 // ets_tracing: off
 
 import * as H from "../../Hub"
-import { chain_ } from "./chain"
+import { chain_ } from "./chain.js"
 import type { Stream } from "./definitions"
-import { fromQueue } from "./fromQueue"
-import { managed } from "./managed"
+import { fromQueue } from "./fromQueue.js"
+import { managed } from "./managed.js"
 
 /**
  * Creates a stream from a subscription to a hub.

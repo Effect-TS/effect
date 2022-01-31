@@ -2,9 +2,9 @@
 
 import * as L from "../Collections/Immutable/List"
 import { pipe } from "../Function"
-import * as core from "./core"
-import type { Effect } from "./effect"
-import * as map from "./map"
+import * as core from "./core.js"
+import type { Effect } from "./effect.js"
+import * as map from "./map.js"
 
 /**
  * Loops with the specified effectual function, collecting the results into a

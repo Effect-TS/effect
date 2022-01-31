@@ -7,7 +7,7 @@ import { pipe } from "../../../../Function"
 import * as O from "../../../../Option"
 import * as SC from "../../../../Schedule"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Repeats each element of the stream using the provided schedule. When the schedule is finished,

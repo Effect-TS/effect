@@ -2,10 +2,10 @@
 
 import type * as Q from "../../Queue"
 import type * as Take from "../../Stream/Take"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
 import type { Stream } from "./definitions"
-import { intoManaged_ } from "./intoManaged"
+import { intoManaged_ } from "./intoManaged.js"
 
 /**
  * Enqueues elements of this stream into a queue. Stream failure and ending will also be

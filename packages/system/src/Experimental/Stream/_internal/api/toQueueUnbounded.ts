@@ -5,8 +5,8 @@ import { pipe } from "../../../../Function"
 import * as M from "../../../../Managed"
 import * as Q from "../../../../Queue"
 import type * as TK from "../../Take"
-import type * as C from "../core"
-import * as RunIntoManaged from "./runIntoManaged"
+import type * as C from "../core.js"
+import * as RunIntoManaged from "./runIntoManaged.js"
 
 /**
  * Converts the stream into an unbounded managed queue. After the managed queue

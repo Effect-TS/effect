@@ -5,7 +5,7 @@ import * as T from "../../../../Effect"
 import * as O from "../../../../Option"
 import * as P from "../../../../Promise"
 import * as CH from "../../Channel"
-import * as C from "../core"
+import * as C from "../core.js"
 
 /**
  * Halts the evaluation of this stream when the provided promise resolves.

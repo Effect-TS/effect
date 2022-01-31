@@ -3,8 +3,8 @@
 import * as CK from "../../../../Collections/Immutable/Chunk"
 import * as T from "../../../../Effect"
 import type * as O from "../../../../Option"
-import type * as C from "../core"
-import * as RepeatEffectChunkOption from "./repeatEffectChunkOption"
+import type * as C from "../core.js"
+import * as RepeatEffectChunkOption from "./repeatEffectChunkOption.js"
 
 /**
  * Creates a stream from an effect producing values of type `A` until it fails with None.

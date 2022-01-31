@@ -2,10 +2,10 @@
 
 import { identity, pipe } from "../Function"
 import * as O from "../Option"
-import { catchAll_ } from "./catchAll"
-import { die } from "./die"
-import type { Effect } from "./effect"
-import { fail } from "./fail"
+import { catchAll_ } from "./catchAll.js"
+import { die } from "./die.js"
+import type { Effect } from "./effect.js"
+import { fail } from "./fail.js"
 
 /**
  * Keeps some of the errors, and terminates the fiber with the rest, using

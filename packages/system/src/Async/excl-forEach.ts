@@ -1,11 +1,11 @@
 // ets_tracing: off
-import * as Collect from "../Collections/Immutable/Chunk/api/collect"
-import * as Chunk from "../Collections/Immutable/Chunk/core"
+import * as Collect from "../Collections/Immutable/Chunk/api/collect.js"
+import * as Chunk from "../Collections/Immutable/Chunk/core.js"
 import { identity, pipe } from "../Function"
 import * as I from "../Iterable"
 import type * as O from "../Option"
-import type { Async } from "./core"
-import * as core from "./core"
+import type { Async } from "./core.js"
+import * as core from "./core.js"
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and

@@ -2,8 +2,8 @@
 
 import type * as CK from "../../../../Collections/Immutable/Chunk"
 import type * as Tp from "../../../../Collections/Immutable/Tuple"
-import * as C from "../core"
-import * as DoneCollect from "./doneCollect"
+import * as C from "../core.js"
+import * as DoneCollect from "./doneCollect.js"
 
 /**
  * Returns a new channel that collects the output and terminal value of this channel, which it

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import type { Tag } from "../Has"
-import type { Effect } from "./effect"
-import { map_ } from "./map"
+import type { Effect } from "./effect.js"
+import { map_ } from "./map.js"
 
 /**
  * Maps the success value of this effect to a service.

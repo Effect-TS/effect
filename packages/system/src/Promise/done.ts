@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { done as effectDone } from "../Effect/done"
-import type { Exit } from "../Exit/exit"
-import { completeWith } from "./completeWith"
+import { done as effectDone } from "../Effect/done.js"
+import type { Exit } from "../Exit/exit.js"
+import { completeWith } from "./completeWith.js"
 import type { Promise } from "./promise"
 
 /**

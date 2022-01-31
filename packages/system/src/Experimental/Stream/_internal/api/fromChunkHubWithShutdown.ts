@@ -2,9 +2,9 @@
 
 import type * as CK from "../../../../Collections/Immutable/Chunk"
 import * as H from "../../../../Hub"
-import type * as C from "../core"
+import type * as C from "../core.js"
 import * as Ensuring from "./ensuring"
-import * as FromChunkHub from "./fromChunkHub"
+import * as FromChunkHub from "./fromChunkHub.js"
 
 /**
  * Creates a stream from a subscription to a hub.

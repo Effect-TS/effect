@@ -2,10 +2,10 @@
 
 import * as CK from "../../../../Collections/Immutable/Chunk"
 import { pipe } from "../../../../Function"
-import type * as C from "../core"
-import * as Map from "./map"
+import type * as C from "../core.js"
+import * as Map from "./map.js"
 import * as MapChunks from "./mapChunks"
-import * as SplitOnChunk from "./splitOnChunk"
+import * as SplitOnChunk from "./splitOnChunk.js"
 
 /**
  * Splits strings on a delimiter.

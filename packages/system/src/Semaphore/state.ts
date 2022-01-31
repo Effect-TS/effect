@@ -3,7 +3,7 @@
 import type * as Tp from "../Collections/Immutable/Tuple"
 import type * as E from "../Either"
 import type { ImmutableQueue } from "../Support/ImmutableQueue"
-import * as T from "./effect"
+import * as T from "./effect.js"
 import type * as P from "./promise"
 
 export type Entry = Tp.Tuple<[P.Promise<never, void>, number]>

@@ -5,9 +5,9 @@ import * as L from "../../../Collections/Immutable/List"
 import * as Tp from "../../../Collections/Immutable/Tuple"
 import * as T from "../../../Effect"
 import { pipe } from "../../../Function"
-import type * as C from "./core"
-import * as FoldEffect from "./foldEffect"
-import * as Map from "./map"
+import type * as C from "./core.js"
+import * as FoldEffect from "./foldEffect.js"
+import * as Map from "./map.js"
 
 /**
  * Accumulates incoming elements into a chunk as long as they verify effectful predicate `p`.

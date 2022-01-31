@@ -2,9 +2,9 @@
 
 import { map_ as mapCause } from "../Cause"
 import * as O from "../Option"
-import { foldCauseM_, halt, succeed } from "./core"
-import type { Effect } from "./effect"
-import { fail } from "./fail"
+import { foldCauseM_, halt, succeed } from "./core.js"
+import type { Effect } from "./effect.js"
+import { fail } from "./fail.js"
 
 /**
  * Returns a successful effect with the head of the list if the list is

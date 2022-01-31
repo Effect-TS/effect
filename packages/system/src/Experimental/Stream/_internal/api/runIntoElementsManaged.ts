@@ -7,7 +7,7 @@ import * as M from "../../../../Managed"
 import * as O from "../../../../Option"
 import * as Q from "../../../../Queue"
 import * as CH from "../../Channel"
-import type * as C from "../core"
+import type * as C from "../core.js"
 
 /*
  * Like `Stream#into`, but provides the result as a `Managed` to allow for scope

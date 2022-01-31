@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import { identity } from "../../../../Function"
-import type * as C from "../core"
-import * as ChainPar from "./chainPar"
+import type * as C from "../core.js"
+import * as ChainPar from "./chainPar.js"
 
 /**
  * Flattens a stream of streams into a stream by executing a non-deterministic

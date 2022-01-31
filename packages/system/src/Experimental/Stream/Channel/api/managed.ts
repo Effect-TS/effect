@@ -5,7 +5,7 @@ import * as T from "../../../../Effect"
 import { pipe } from "../../../../Function"
 import type * as M from "../../../../Managed"
 import * as RM from "../../../../Managed/ReleaseMap"
-import * as C from "../core"
+import * as C from "../core.js"
 import * as AcquireReleaseExitWith from "./acquireReleaseExitWith"
 
 export function managed_<

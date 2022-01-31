@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import * as O from "../Option"
-import type { Sync as Effect } from "./core"
-import { fail, foldM_, succeed } from "./core"
+import type { Sync as Effect } from "./core.js"
+import { fail, foldM_, succeed } from "./core.js"
 
 /**
  * Converts an option on errors into an option on values.

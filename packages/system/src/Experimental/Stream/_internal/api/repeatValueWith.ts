@@ -3,8 +3,8 @@
 import type * as CL from "../../../../Clock"
 import * as T from "../../../../Effect"
 import type * as SC from "../../../../Schedule"
-import type * as C from "../core"
-import * as RepeatEffectWith from "./repeatEffectWith"
+import type * as C from "../core.js"
+import * as RepeatEffectWith from "./repeatEffectWith.js"
 
 /**
  * Repeats the value using the provided schedule.

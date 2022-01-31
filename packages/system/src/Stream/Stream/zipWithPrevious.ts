@@ -3,7 +3,7 @@
 import * as Tp from "../../Collections/Immutable/Tuple"
 import * as O from "../../Option"
 import type { Stream } from "./definitions"
-import { mapAccum_ } from "./mapAccum"
+import { mapAccum_ } from "./mapAccum.js"
 
 /**
  * Zips each element with the previous element. Initially accompanied by `None`.

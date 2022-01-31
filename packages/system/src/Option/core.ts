@@ -3,9 +3,9 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
 import * as Tp from "../Collections/Immutable/Tuple"
-import type { Either } from "../Either/core"
-import type { Lazy, Predicate, Refinement } from "../Function/core"
-import { identity } from "../Function/core"
+import type { Either } from "../Either/core.js"
+import type { Lazy, Predicate, Refinement } from "../Function/core.js"
+import { identity } from "../Function/core.js"
 import * as St from "../Structural"
 import type { HasUnify } from "../Utils"
 
