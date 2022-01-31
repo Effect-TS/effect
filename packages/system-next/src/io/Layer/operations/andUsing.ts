@@ -20,7 +20,7 @@ export function andUsing_<
   that: Layer<RIn2, E2, ROut2>,
   self: Layer<RIn, E, ROut>
 ): Layer<RIn & Erase<ROut & RIn2, ROut>, E2 | E, ROut & ROut2> {
-  return self + (self > that)
+  return self + (self >> that)
 }
 
 /**

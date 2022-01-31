@@ -1,19 +1,21 @@
+import type { LazyArg } from "../../../data/Function"
 import type { UIO } from "../../Effect"
-import { interruptAs as effectInterruptAs } from "../../Effect/operations/interruption"
+import { Effect } from "../../Effect"
 import type { FiberId } from "../../FiberId"
 import type { Promise } from "../definition"
-import { completeWith_ } from "./completeWith"
 
 /**
  * Completes the promise with interruption. This will interrupt all fibers
  * waiting on the value of the promise as by the fiber calling this method.
+ *
+ * @tsplus fluent ets/Promise interruptAs
  */
 export function interruptAs_<E, A>(
   self: Promise<E, A>,
-  fiberId: FiberId,
-  __trace?: string
+  fiberId: LazyArg<FiberId>,
+  __etsTrace?: string
 ): UIO<boolean> {
-  return completeWith_(self, effectInterruptAs(fiberId), __trace)
+  return self.completeWith(Effect.interruptAs(fiberId))
 }
 
 /**
@@ -22,7 +24,6 @@ export function interruptAs_<E, A>(
  *
  * @ets_data_first interruptAs_
  */
-export function interruptAs(fiberId: FiberId, __trace?: string) {
-  return <E, A>(self: Promise<E, A>): UIO<boolean> =>
-    interruptAs_(self, fiberId, __trace)
+export function interruptAs(fiberId: LazyArg<FiberId>, __etsTrace?: string) {
+  return <E, A>(self: Promise<E, A>): UIO<boolean> => self.interruptAs(fiberId)
 }

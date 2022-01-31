@@ -6,7 +6,7 @@ import { Exit } from "../src/io/Exit"
 import * as Fiber from "../src/io/Fiber"
 import * as FiberId from "../src/io/FiberId"
 import * as FiberRef from "../src/io/FiberRef"
-import * as Promise from "../src/io/Promise"
+import { Promise } from "../src/io/Promise"
 import * as Queue from "../src/io/Queue"
 import * as Ref from "../src/io/Ref"
 import { withLatch } from "./test-utils/Latch"
@@ -61,18 +61,12 @@ describe("Fiber", () => {
         .bind("latch1", () => Promise.make<never, void>())
         .bind("latch2", () => Promise.make<never, void>())
         .bind("child1", ({ fiberRef, latch1 }) =>
-          FiberRef.set_(fiberRef, "child1")
-            .zipRight(Promise.succeed_(latch1, undefined))
-            .fork()
+          FiberRef.set_(fiberRef, "child1").zipRight(latch1.succeed(undefined)).fork()
         )
         .bind("child2", ({ fiberRef, latch2 }) =>
-          FiberRef.set_(fiberRef, "child2")
-            .zipRight(Promise.succeed_(latch2, undefined))
-            .fork()
+          FiberRef.set_(fiberRef, "child2").zipRight(latch2.succeed(undefined)).fork()
         )
-        .tap(({ latch1, latch2 }) =>
-          Promise.await(latch1).zipRight(Promise.await(latch2))
-        )
+        .tap(({ latch1, latch2 }) => latch1.await().zipRight(latch2.await()))
         .tap(({ child1, child2 }) => Fiber.orElse_(child1, child2).inheritRefs)
         .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
@@ -87,18 +81,12 @@ describe("Fiber", () => {
         .bind("latch1", () => Promise.make<never, void>())
         .bind("latch2", () => Promise.make<never, void>())
         .bind("child1", ({ fiberRef, latch1 }) =>
-          FiberRef.set_(fiberRef, "child1")
-            .zipRight(Promise.succeed_(latch1, undefined))
-            .fork()
+          FiberRef.set_(fiberRef, "child1").zipRight(latch1.succeed(undefined)).fork()
         )
         .bind("child2", ({ fiberRef, latch2 }) =>
-          FiberRef.set_(fiberRef, "child2")
-            .zipRight(Promise.succeed_(latch2, undefined))
-            .fork()
+          FiberRef.set_(fiberRef, "child2").zipRight(latch2.succeed(undefined)).fork()
         )
-        .tap(({ latch1, latch2 }) =>
-          Promise.await(latch1).zipRight(Promise.await(latch2))
-        )
+        .tap(({ latch1, latch2 }) => latch1.await().zipRight(latch2.await()))
         .tap(({ child1, child2 }) => Fiber.zip_(child1, child2).inheritRefs)
         .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
@@ -205,21 +193,20 @@ describe("Fiber", () => {
         .bind("latch2", () => Promise.make<never, void>())
         .bindValue("c", ({ latch2 }) =>
           pipe(
-            Effect.never
-              .interruptible()
-              .onInterrupt(() => Promise.succeed_(latch2, undefined))
+            Effect.never.interruptible().onInterrupt(() => latch2.succeed(undefined))
           )
         )
         .bindValue("a", ({ c, latch1 }) =>
-          Promise.succeed_(latch1, undefined)
+          latch1
+            .succeed(undefined)
             .zipRight(c.fork().fork())
             .uninterruptible()
             .zipRight(Effect.never)
         )
         .bind("fiber", ({ a }) => a.fork())
-        .tap(({ latch1 }) => Promise.await(latch1))
+        .tap(({ latch1 }) => latch1.await())
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .tap(({ latch2 }) => Promise.await(latch2))
+        .tap(({ latch2 }) => latch2.await())
         .exit()
 
       const result = await program.unsafeRunPromise()

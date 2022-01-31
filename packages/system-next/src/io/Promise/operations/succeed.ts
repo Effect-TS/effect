@@ -1,17 +1,19 @@
+import type { LazyArg } from "../../../data/Function"
 import type { UIO } from "../../Effect"
-import { succeedNow } from "../../Effect/operations/succeedNow"
+import { Effect } from "../../Effect"
 import type { Promise } from "../definition"
-import { completeWith_ } from "./completeWith"
 
 /**
  * Completes the promise with the specified value.
+ *
+ * @tsplus fluent ets/Promise succeed
  */
 export function succeed_<E, A>(
   self: Promise<E, A>,
-  value: A,
-  __trace?: string
+  value: LazyArg<A>,
+  __etsTrace?: string
 ): UIO<boolean> {
-  return completeWith_(self, succeedNow(value), __trace)
+  return self.completeWith(Effect.succeed(value))
 }
 
 /**
@@ -19,6 +21,6 @@ export function succeed_<E, A>(
  *
  * @ets_data_first succeed_
  */
-export function succeed<A>(value: A, __trace?: string) {
-  return <E>(self: Promise<E, A>): UIO<boolean> => succeed_(self, value, __trace)
+export function succeed<A>(value: LazyArg<A>, __etsTrace?: string) {
+  return <E>(self: Promise<E, A>): UIO<boolean> => self.succeed(value)
 }

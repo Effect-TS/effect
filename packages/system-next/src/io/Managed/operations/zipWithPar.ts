@@ -58,5 +58,5 @@ export function zipWithPar<R2, E2, A, A2, B>(
   __etsTrace?: string
 ) {
   return <R, E>(self: Managed<R, E, A>): Managed<R & R2, E | E2, B> =>
-    zipWithPar_(self, that, f)
+    self.zipWithPar(that, f)
 }

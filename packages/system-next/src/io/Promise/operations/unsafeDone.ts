@@ -1,20 +1,20 @@
 import type { IO } from "../../Effect"
-import { Done } from "../_internal/state"
+import { PromiseState } from "../_internal/state"
 import type { Promise } from "../definition"
 
 /**
  * Unsafe version of `done`.
+ *
+ * @tsplus fluent ets/Promise unsafeDone
  */
-export function unsafeDone_<E, A>(self: Promise<E, A>, io: IO<E, A>): void {
+export function unsafeDone_<E, A>(self: Promise<E, A>, effect: IO<E, A>): void {
   const state = self.state.get
-
   if (state._tag === "Pending") {
-    self.state.set(new Done(io))
-
+    self.state.set(PromiseState.done(effect))
     Array.from(state.joiners)
       .reverse()
       .forEach((f) => {
-        f(io)
+        f(effect)
       })
   }
 }
@@ -24,6 +24,6 @@ export function unsafeDone_<E, A>(self: Promise<E, A>, io: IO<E, A>): void {
  *
  * @ets_data_first unsafeDone_
  */
-export function unsafeDone<E, A>(io: IO<E, A>) {
-  return (self: Promise<E, A>) => unsafeDone_(self, io)
+export function unsafeDone<E, A>(effect: IO<E, A>) {
+  return (self: Promise<E, A>): void => unsafeDone_(self, effect)
 }

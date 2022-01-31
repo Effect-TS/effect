@@ -10,8 +10,8 @@ import { environmentFor } from "./_internal/environmentFor"
  *
  * @tsplus static ets/LayerOps fromEffect
  */
-export function fromEffect<R, E, T>(_: Tag<T>) {
-  return (resource: Effect<R, E, T>): Layer<R, E, Has<T>> => {
+export function fromEffect<T>(_: Tag<T>) {
+  return <R, E>(resource: Effect<R, E, T>): Layer<R, E, Has<T>> => {
     return new ILayerManaged(
       Managed.fromEffect(resource).flatMap((a) => environmentFor(_, a))
     ).setKey(_.key)

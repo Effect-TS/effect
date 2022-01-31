@@ -7,7 +7,7 @@ import { Effect } from "../src/io/Effect"
 import * as Fiber from "../src/io/Fiber"
 import { Layer } from "../src/io/Layer"
 import { Managed } from "../src/io/Managed"
-import * as Promise from "../src/io/Promise"
+import { Promise } from "../src/io/Promise"
 import * as Ref from "../src/io/Ref"
 
 // -----------------------------------------------------------------------------
@@ -381,15 +381,12 @@ describe("Layer", () => {
       .bindValue("layer1", () => Layer.fromRawManaged(Managed.never))
       .bindValue("layer2", ({ promise }) =>
         Layer.fromRawManaged(
-          Managed.acquireReleaseWith(
-            Promise.succeed_(promise, undefined),
-            () => Effect.unit
-          )
+          Managed.acquireReleaseWith(promise.succeed(undefined), () => Effect.unit)
         ).map((a) => ({ a }))
       )
       .bindValue("env", ({ layer1, layer2 }) => (layer1 + layer2).build())
       .bind("fiber", ({ env }) => env.useDiscard(Effect.unit).forkDaemon())
-      .tap(({ promise }) => Promise.await(promise))
+      .tap(({ promise }) => promise.await())
       .tap(({ fiber }) => Fiber.interrupt(fiber))
       .map(constTrue)
 

@@ -1,6 +1,5 @@
 import type { Has, Tag } from "../../../data/Has"
-import type { Layer } from "../../Layer/definition"
-import { fromManaged_ } from "../../Layer/operations/fromManaged"
+import { Layer } from "../../Layer/definition"
 import type { Managed } from "../definition"
 
 /**
@@ -13,7 +12,7 @@ export function toLayer_<R, E, A>(
   tag: Tag<A>,
   __etsTrace?: string
 ): Layer<R, E, Has<A>> {
-  return fromManaged_(self, tag)
+  return Layer.fromManaged(tag)(self)
 }
 
 /**
@@ -22,5 +21,5 @@ export function toLayer_<R, E, A>(
  * @ets_data_first toLayer_
  */
 export function toLayer<A>(tag: Tag<A>, __etsTrace?: string) {
-  return <R, E>(self: Managed<R, E, A>): Layer<R, E, Has<A>> => toLayer_(self, tag)
+  return <R, E>(self: Managed<R, E, A>): Layer<R, E, Has<A>> => self.toLayer(tag)
 }

@@ -746,7 +746,7 @@ export function fiberJoinAll<E, A>(
   __etsTrace?: string
 ): Effect<unknown, E, Chunk.Chunk<A>> {
   return fiberWaitAll(as)
-    .flatMap(Effect.done)
+    .flatMap((exit) => Effect.done(exit))
     .tap(() => forEach_(as, (f) => f.inheritRefs))
 }
 
@@ -757,7 +757,7 @@ export function fiberWaitAll<E, A>(
   as: Iterable<Fiber<E, A>>,
   __etsTrace?: string
 ): RIO<unknown, Exit<E, Chunk.Chunk<A>>> {
-  return forEachPar_(as, (f) => f.await.flatMap(Effect.done)).exit()
+  return forEachPar_(as, (f) => f.await.flatMap((exit) => Effect.done(exit))).exit()
 }
 
 // -----------------------------------------------------------------------------
@@ -786,7 +786,7 @@ export function releaseMapReleaseAll_(
                 s.update(f)(ex).exit()
               ).flatMap((results) =>
                 // @ts-expect-error
-                Effect.done(exitCollectAll(results).getOrElse(exitUnit))
+                Effect.done(Exit.collectAll(results).getOrElse(Exit.unit))
               ),
               new Exited(s.nextKey, ex, s.update)
             )
@@ -797,7 +797,7 @@ export function releaseMapReleaseAll_(
                 s.update(f)(ex).exit()
               ).flatMap((results) =>
                 // @ts-expect-error
-                Effect.done(exitCollectAllPar(results).getOrElse(exitUnit))
+                Effect.done(Exit.collectAllPar(results).getOrElse(Exit.unit))
               ),
               new Exited(s.nextKey, ex, s.update)
             )
@@ -809,7 +809,7 @@ export function releaseMapReleaseAll_(
               )
                 .flatMap((results) =>
                   // @ts-expect-error
-                  Effect.done(exitCollectAllPar(results).getOrElse(exitUnit))
+                  Effect.done(Exit.collectAllPar(results).getOrElse(Exit.unit))
                 )
                 .withParallelism(execStrategy.n) as UIO<any>,
               new Exited(s.nextKey, ex, s.update)

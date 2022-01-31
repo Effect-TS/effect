@@ -9,5 +9,5 @@ import { Layer } from "../../Layer"
  */
 export function fromFunction<B>(_: Tag<B>) {
   return <A>(f: (a: A) => B): Layer<A, never, Has<B>> =>
-    Layer.fromEffect<A, never, B>(_)(Effect.environmentWith<A, B>(f))
+    Layer.fromEffect(_)(Effect.environmentWith<A, B>(f))
 }

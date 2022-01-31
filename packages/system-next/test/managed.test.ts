@@ -17,7 +17,7 @@ import type { FiberId } from "../src/io/FiberId"
 import * as InterruptStatus from "../src/io/InterruptStatus"
 import { Managed, Reservation } from "../src/io/Managed"
 import { ReleaseMap } from "../src/io/Managed/ReleaseMap"
-import * as Promise from "../src/io/Promise"
+import { Promise } from "../src/io/Promise"
 import * as Ref from "../src/io/Ref"
 
 const ExampleError = new Error("Oh noes!")
@@ -54,13 +54,11 @@ function doInterrupt(
     .bind("never", () => Promise.make<never, void>())
     .bind("reachedAcquisition", () => Promise.make<never, void>())
     .bind("managedFiber", ({ never, reachedAcquisition }) =>
-      managed(
-        Promise.succeed_(reachedAcquisition, undefined).zipRight(Promise.await(never))
-      )
+      managed(reachedAcquisition.succeed(undefined).zipRight(never.await()))
         .useDiscard(Effect.unit)
         .forkDaemon()
     )
-    .tap(({ reachedAcquisition }) => Promise.await(reachedAcquisition))
+    .tap(({ reachedAcquisition }) => reachedAcquisition.await())
     .bind("interruption", ({ fiberId, managedFiber }) =>
       managedFiber
         .interruptAs(fiberId)
@@ -110,14 +108,14 @@ function parallelReservations<R, E, A>(
       Managed.acquireReleaseWith(
         Ref.update_(effects, (n) => n + 1)
           .zipRight(countDown)
-          .zipRight(Promise.await(reserveLatch)),
+          .zipRight(reserveLatch.await()),
         () => Effect.unit
       )
     )
     .bindValue("res", ({ baseRes }) => f(baseRes))
     .tap(({ countDown, res }) => res.useDiscard(Effect.unit).fork().zipRight(countDown))
     .bind("count", ({ effects }) => Ref.get(effects))
-    .tap(({ reserveLatch }) => Promise.succeed_(reserveLatch, undefined))
+    .tap(({ reserveLatch }) => reserveLatch.succeed(undefined))
     .map(({ count }) => count)
 }
 
@@ -134,7 +132,7 @@ function parallelAcquisitions<R, E, A>(
         Reservation(
           Ref.update_(effects, (n) => n + 1)
             .zipRight(countDown)
-            .zipRight(Promise.await(reserveLatch)),
+            .zipRight(reserveLatch.await()),
           () => Effect.unit
         )
       )
@@ -142,7 +140,7 @@ function parallelAcquisitions<R, E, A>(
     .bindValue("res", ({ baseRes }) => f(baseRes))
     .tap(({ countDown, res }) => res.useDiscard(Effect.unit).fork().zipRight(countDown))
     .bind("count", ({ effects }) => Ref.get(effects))
-    .tap(({ reserveLatch }) => Promise.succeed_(reserveLatch, undefined))
+    .tap(({ reserveLatch }) => reserveLatch.succeed(undefined))
     .map(({ count }) => count)
 }
 
@@ -999,12 +997,12 @@ describe("Managed", () => {
         .bind("latch", () => Promise.make<never, void>())
         .tap(({ finalized, latch }) =>
           Managed.fromReservation(
-            Reservation(Promise.succeed_(latch, undefined).zipRight(Effect.never), () =>
+            Reservation(latch.succeed(undefined).zipRight(Effect.never), () =>
               Ref.set_(finalized, true)
             )
           )
             .fork()
-            .useDiscard(Promise.await(latch))
+            .useDiscard(latch.await())
         )
         .flatMap(({ finalized }) => Ref.get(finalized))
 
@@ -1027,17 +1025,16 @@ describe("Managed", () => {
         .bind("useLatch", () => Promise.make<never, void>())
         .bind("fiber", ({ acquireLatch, finalized, useLatch }) =>
           Managed.fromReservation(
-            Reservation(
-              Promise.succeed_(acquireLatch, undefined).zipRight(Effect.never),
-              () => Ref.set_(finalized, true)
+            Reservation(acquireLatch.succeed(undefined).zipRight(Effect.never), () =>
+              Ref.set_(finalized, true)
             )
           )
             .fork()
-            .useDiscard(Promise.succeed_(useLatch, undefined).zipRight(Effect.never))
+            .useDiscard(useLatch.succeed(undefined).zipRight(Effect.never))
             .fork()
         )
-        .tap(({ acquireLatch }) => Promise.await(acquireLatch))
-        .tap(({ useLatch }) => Promise.await(useLatch))
+        .tap(({ acquireLatch }) => acquireLatch.await())
+        .tap(({ useLatch }) => useLatch.await())
         .tap(({ fiber }) => Fiber.interrupt(fiber))
         .flatMap(({ finalized }) => Ref.get(finalized))
 
@@ -2395,10 +2392,10 @@ describe("Managed", () => {
       const program = Effect.Do()
         .bind("latch", () => Promise.make<never, void>())
         .bindValue("managed", ({ latch }) =>
-          Managed.acquireReleaseWith(Promise.await(latch), () => Effect.unit)
+          Managed.acquireReleaseWith(latch.await(), () => Effect.unit)
         )
         .bind("result", ({ managed }) => managed.timeout(0).use(Effect.succeedNow))
-        .tap(({ latch }) => Promise.succeed_(latch, undefined))
+        .tap(({ latch }) => latch.succeed(undefined))
 
       const { result } = await program.unsafeRunPromise()
 
@@ -2409,10 +2406,10 @@ describe("Managed", () => {
       const program = Effect.Do()
         .bind("latch", () => Promise.make<never, void>())
         .bindValue("managed", ({ latch }) =>
-          Managed.fromReservation(Reservation(Promise.await(latch), () => Effect.unit))
+          Managed.fromReservation(Reservation(latch.await(), () => Effect.unit))
         )
         .bind("result", ({ managed }) => managed.timeout(0).use(Effect.succeedNow))
-        .tap(({ latch }) => Promise.succeed_(latch, undefined))
+        .tap(({ latch }) => latch.succeed(undefined))
 
       const { result } = await program.unsafeRunPromise()
 
@@ -2425,14 +2422,12 @@ describe("Managed", () => {
         .bind("releaseLatch", () => Promise.make<never, void>())
         .bindValue("managed", ({ releaseLatch, reserveLatch }) =>
           Managed.fromReservation(
-            Reservation(Promise.await(reserveLatch), () =>
-              Promise.succeed_(releaseLatch, undefined)
-            )
+            Reservation(reserveLatch.await(), () => releaseLatch.succeed(undefined))
           )
         )
         .bind("result", ({ managed }) => managed.timeout(0).use(Effect.succeedNow))
-        .tap(({ reserveLatch }) => Promise.succeed_(reserveLatch, undefined))
-        .tap(({ releaseLatch }) => Promise.await(releaseLatch))
+        .tap(({ reserveLatch }) => reserveLatch.succeed(undefined))
+        .tap(({ releaseLatch }) => releaseLatch.await())
 
       const { result } = await program.unsafeRunPromise()
 
@@ -2445,18 +2440,18 @@ describe("Managed", () => {
         .bind("releaseLatch", () => Promise.make<never, void>())
         .bindValue("managed", ({ acquireLatch, releaseLatch }) =>
           Managed.fromReservationEffect(
-            Promise.await(acquireLatch).zipRight(
-              Effect.succeed(
-                Reservation(Effect.unit, () =>
-                  Promise.succeed_(releaseLatch, undefined)
+            acquireLatch
+              .await()
+              .zipRight(
+                Effect.succeed(
+                  Reservation(Effect.unit, () => releaseLatch.succeed(undefined))
                 )
               )
-            )
           )
         )
         .bind("result", ({ managed }) => managed.timeout(0).use(Effect.succeedNow))
-        .tap(({ acquireLatch }) => Promise.succeed_(acquireLatch, undefined))
-        .tap(({ releaseLatch }) => Promise.await(releaseLatch))
+        .tap(({ acquireLatch }) => acquireLatch.succeed(undefined))
+        .tap(({ releaseLatch }) => releaseLatch.await())
 
       const { result } = await program.unsafeRunPromise()
 
@@ -2511,7 +2506,7 @@ describe("Managed", () => {
     //     .bind("latch", () => Promise.make<never, void>())
     //     .bindValue("managed", ({ latch, ref }) =>
     //       Managed.acquireReleaseWith(Effect.unit, () =>
-    //         Promise.succeed_(latch, undefined).zipRight(
+    //         latch.succeed(undefined).zipRight(
     //           Effect.never.whenEffect(Ref.get(ref))
     //         )
     //       ).withEarlyRelease()
@@ -2520,7 +2515,7 @@ describe("Managed", () => {
     //       managed.use(({ tuple: [canceler, _] }) =>
     //         Effect.Do()
     //           .bind("fiber", () => canceler.forkDaemon())
-    //           .tap(() => Promise.await(latch))
+    //           .tap(() => latch.await())
     //           .bind("interruption", ({ fiber }) => Fiber.interrupt(fiber).timeout(1000))
     //           .tap(() => Ref.set_(ref, false))
     //       )
@@ -2547,9 +2542,9 @@ describe("Managed", () => {
           ).withEarlyRelease()
         )
         .tap(({ latch, managed }) =>
-          managed.use((_) => _.get(0).ensuring(Promise.succeed_(latch, undefined)))
+          managed.use((_) => _.get(0).ensuring(latch.succeed(undefined)))
         )
-        .tap(({ latch }) => Promise.await(latch))
+        .tap(({ latch }) => latch.await())
         .flatMap(({ ref }) => Ref.get(ref))
 
       const result = await program.unsafeRunPromise()
@@ -2652,12 +2647,10 @@ describe("Managed", () => {
       const program = Effect.Do()
         .bind("latch", () => Promise.make<never, void>())
         .bindValue("first", ({ latch }) =>
-          Managed.fromEffect(
-            Promise.succeed_(latch, undefined).zipRight(Effect.sleep(100000))
-          )
+          Managed.fromEffect(latch.succeed(undefined).zipRight(Effect.sleep(100000)))
         )
         .bindValue("second", ({ latch }) =>
-          Managed.fromEffect(Promise.await(latch).zipRight(Effect.fail(undefined)))
+          Managed.fromEffect(latch.await().zipRight(Effect.fail(undefined)))
         )
         .tap(({ first, second }) => first.zipPar(second).useDiscard(Effect.unit))
         .map(constVoid)
@@ -2697,14 +2690,12 @@ describe("Managed", () => {
         .bind("selfId", () => Effect.fiberId)
         .bind("latch", () => Promise.make<never, void>())
         .bindValue("first", ({ latch }) =>
-          Managed.fromEffect(
-            Promise.succeed_(latch, undefined).zipRight(Effect.sleep(100000))
-          )
+          Managed.fromEffect(latch.succeed(undefined).zipRight(Effect.sleep(100000)))
         )
         .bindValue("second", ({ latch }) =>
           Managed.fromReservation(
             Reservation(
-              Promise.await(latch).zipRight(Effect.fail(undefined)),
+              latch.await().zipRight(Effect.fail(undefined)),
               () => Effect.unit
             )
           )
@@ -2726,15 +2717,13 @@ describe("Managed", () => {
         .bind("releases", () => Ref.make(0))
         .bindValue("first", ({ releases, reserveLatch }) =>
           Managed.fromReservation(
-            Reservation(Promise.succeed_(reserveLatch, undefined), () =>
+            Reservation(reserveLatch.succeed(undefined), () =>
               Ref.update_(releases, (n) => n + 1)
             )
           )
         )
         .bindValue("second", ({ reserveLatch }) =>
-          Managed.fromEffect(
-            Promise.await(reserveLatch).zipRight(Effect.fail(undefined))
-          )
+          Managed.fromEffect(reserveLatch.await().zipRight(Effect.fail(undefined)))
         )
         .tap(({ first, second }) =>
           first.zipPar(second).useDiscard(Effect.unit).orElse(Effect.unit)
@@ -2811,12 +2800,12 @@ describe("Managed", () => {
                 _switch(
                   Managed.finalizer(Ref.update_(effects, (_) => _.prepend("Second")))
                 ) >
-                Promise.succeed_(latch, undefined) >
+                latch.succeed(undefined) >
                 Effect.never
             )
             .fork()
         )
-        .tap(({ latch }) => Promise.await(latch))
+        .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => Fiber.interrupt(fiber))
         .flatMap(({ effects }) => Ref.get(effects))
 
@@ -2966,7 +2955,7 @@ describe("Managed", () => {
         .bindValue("darn", () => "darn")
         .bindValue("managed", ({ latch, released }) =>
           Managed.acquireReleaseWith(Effect.unit, () =>
-            Ref.set_(released, true).zipRight(Promise.succeed_(latch, undefined))
+            Ref.set_(released, true).zipRight(latch.succeed(undefined))
           )
         )
         .bind("v1", ({ darn, managed }) =>
@@ -2991,9 +2980,7 @@ describe("Managed", () => {
         .bind("resource", () => Ref.make(0))
         .bindValue("acquire", ({ resource }) => Ref.update_(resource, (n) => n + 1))
         .bindValue("release", ({ latch3, resource }) =>
-          Ref.update_(resource, (n) => n - 1).zipRight(
-            Promise.succeed_(latch3, undefined)
-          )
+          Ref.update_(resource, (n) => n - 1).zipRight(latch3.succeed(undefined))
         )
         .bindValue("managed", ({ acquire, release }) =>
           Managed.acquireReleaseWith(acquire, () => release)
@@ -3002,18 +2989,16 @@ describe("Managed", () => {
           managed
             .memoize()
             .use((memoized) =>
-              memoized.useDiscard(
-                Promise.succeed_(latch1, undefined).zipRight(Promise.await(latch2))
-              )
+              memoized.useDiscard(latch1.succeed(undefined).zipRight(latch2.await()))
             )
             .fork()
         )
-        .tap(({ latch1 }) => Promise.await(latch1))
+        .tap(({ latch1 }) => latch1.await())
         .bind("res1", ({ resource }) => Ref.get(resource))
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .tap(({ latch3 }) => Promise.await(latch3))
+        .tap(({ latch3 }) => latch3.await())
         .bind("res2", ({ resource }) => Ref.get(resource))
-        .bind("res3", ({ latch2 }) => Promise.isDone(latch2))
+        .bind("res3", ({ latch2 }) => latch2.isDone())
 
       const { res1, res2, res3 } = await program.unsafeRunPromise()
 

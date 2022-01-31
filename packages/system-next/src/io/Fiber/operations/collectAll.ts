@@ -21,7 +21,7 @@ export function collectAll<E, A>(
       FiberId.combine_(id, fiber.id)
     ),
     await: Effect.forEachPar(fibers, (fiber) =>
-      fiber.await.flatMap(Effect.done)
+      fiber.await.flatMap((_) => Effect.done(_))
     ).exit(),
     children: Effect.forEachPar(fibers, (fiber) => fiber.children).map(Chunk.flatten),
     inheritRefs: Effect.forEachDiscard(fibers, (fiber) => fiber.inheritRefs),

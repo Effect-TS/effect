@@ -17,8 +17,11 @@ export function zipWith_<E, E1, A, B, C>(
   return makeSynthetic({
     id: FiberId.getOrElse_(self.id, () => that.id),
     await: self.await
-      .flatMap(Effect.done)
-      .zipWithPar(that.await.flatMap(Effect.done), f)
+      .flatMap((_) => Effect.done(_))
+      .zipWithPar(
+        that.await.flatMap((_) => Effect.done(_)),
+        f
+      )
       .exit(),
     children: self.children,
     getRef: (ref) => self.getRef(ref).zipWith(that.getRef(ref), ref.join),

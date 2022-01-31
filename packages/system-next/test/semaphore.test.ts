@@ -2,7 +2,7 @@ import { Tuple } from "../src/collection/immutable/Tuple"
 import { pipe } from "../src/data/Function"
 import { Effect } from "../src/io/Effect"
 import * as Fiber from "../src/io/Fiber"
-import * as Promise from "../src/io/Promise"
+import { Promise } from "../src/io/Promise"
 import * as STM from "../src/stm/STM"
 import * as TRef from "../src/stm/TRef"
 import * as TSemaphore from "../src/stm/TSemaphore"
@@ -128,13 +128,12 @@ describe("TSemaphore", () => {
         .bind("promise", () => Promise.make<never, void>())
         .bind("semaphore", () => STM.commit(TSemaphore.make(1)))
         .bindValue("effect", ({ promise, semaphore }) =>
-          TSemaphore.withPermit_(
-            Promise.succeed_(promise, undefined),
-            semaphore
-          ).flatMap(() => Effect.never)
+          TSemaphore.withPermit_(promise.succeed(undefined), semaphore).flatMap(
+            () => Effect.never
+          )
         )
         .bind("fiber", ({ effect }) => effect.fork())
-        .tap(({ promise }) => Promise.await(promise))
+        .tap(({ promise }) => promise.await())
         .tap(({ fiber }) => Fiber.interrupt(fiber))
         .flatMap(({ semaphore }) => STM.commit(TRef.get(semaphore.permits)))
 

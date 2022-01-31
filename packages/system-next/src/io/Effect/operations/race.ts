@@ -110,9 +110,10 @@ export function raceFirst_<R, R2, E, E2, A, A2>(
   that: Effect<R2, E2, A2>,
   __etsTrace?: string
 ): Effect<R & R2, E2 | E, A2 | A> {
-  return race_(self.exit(), that.exit()).flatMap((a) =>
-    Effect.done(a as Exit<E | E2, A | A2>)
-  )
+  return self
+    .exit()
+    .race(that.exit())
+    .flatMap((a) => Effect.done(a as Exit<E | E2, A | A2>))
 }
 
 /**

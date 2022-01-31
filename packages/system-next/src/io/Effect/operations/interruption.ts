@@ -296,6 +296,6 @@ export function onInterruptExtended<R2, E2, X>(
  *
  * @tsplus static ets/EffectOps interruptAs
  */
-export function interruptAs(fiberId: FiberId.FiberId, __etsTrace?: string) {
-  return Effect.failCause(() => causeInterrupt(fiberId))
+export function interruptAs(fiberId: LazyArg<FiberId.FiberId>, __etsTrace?: string) {
+  return Effect.failCause(() => causeInterrupt(fiberId()))
 }

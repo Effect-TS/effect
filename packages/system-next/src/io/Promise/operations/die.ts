@@ -1,18 +1,20 @@
+import type { LazyArg } from "../../../data/Function"
 import type { UIO } from "../../Effect"
-import { die as effectDie } from "../../Effect/operations/die"
+import { Effect } from "../../Effect"
 import type { Promise } from "../definition"
-import { completeWith_ } from "./completeWith"
 
 /**
  * Kills the promise with the specified error, which will be propagated to all
  * fibers waiting on the value of the promise.
+ *
+ * @tsplus fluent ets/Promise die
  */
 export function die_<E, A>(
   self: Promise<E, A>,
-  e: unknown,
-  __trace?: string
+  defect: LazyArg<unknown>,
+  __etsTrace?: string
 ): UIO<boolean> {
-  return completeWith_(self, effectDie(e), __trace)
+  return self.completeWith(Effect.die(defect))
 }
 
 /**
@@ -21,6 +23,6 @@ export function die_<E, A>(
  *
  * @ets_data_first die_
  */
-export function die(e: unknown, __trace?: string) {
-  return <E, A>(self: Promise<E, A>): UIO<boolean> => die_(self, e, __trace)
+export function die(defect: LazyArg<unknown>, __etsTrace?: string) {
+  return <E, A>(self: Promise<E, A>): UIO<boolean> => self.die(defect)
 }
