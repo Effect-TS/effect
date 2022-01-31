@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as O from "../Option/index.js"
 import { succeed } from "./core.js"
 import type { Effect } from "./effect.js"
