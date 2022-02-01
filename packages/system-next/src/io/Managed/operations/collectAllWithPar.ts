@@ -1,5 +1,4 @@
-import { collect as chunkCollect } from "../../../collection/immutable/Chunk/api/collect"
-import type { Chunk } from "../../../collection/immutable/Chunk/core"
+import type { Chunk } from "../../../collection/immutable/Chunk"
 import type { LazyArg } from "../../../data/Function"
 import type { Option } from "../../../data/Option"
 import { Managed } from "../definition"
@@ -15,5 +14,5 @@ export function collectAllWithPar<R, E, A, B>(
   pf: (a: A) => Option<B>,
   __etsTrace?: string
 ): Managed<R, E, Chunk<B>> {
-  return Managed.collectAllPar(as).map(chunkCollect(pf))
+  return Managed.collectAllPar(as).map((_) => _.collect(pf))
 }

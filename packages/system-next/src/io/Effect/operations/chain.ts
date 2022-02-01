@@ -27,5 +27,5 @@ export function chain<A, R1, E1, B>(
   f: (a: A) => Effect<R1, E1, B>,
   __etsTrace?: string
 ) {
-  return <R, E>(self: Effect<R, E, A>): Effect<R & R1, E | E1, B> => chain_(self, f)
+  return <R, E>(self: Effect<R, E, A>): Effect<R & R1, E | E1, B> => self.flatMap(f)
 }

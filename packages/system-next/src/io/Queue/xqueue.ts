@@ -1,4 +1,4 @@
-import type * as Chunk from "../../collection/immutable/Chunk/core"
+import type { Chunk } from "../../collection/immutable/Chunk"
 import type { Effect, UIO } from "../Effect/definition/base"
 
 export const _RA = Symbol()
@@ -113,12 +113,12 @@ export abstract class XQueueInternal<RA, RB, EA, EB, A, B>
    * Removes all the values in the queue and returns the list of the values. If the queue
    * is empty returns empty list.
    */
-  abstract readonly takeAll: Effect<RB, EB, Chunk.Chunk<B>>
+  abstract readonly takeAll: Effect<RB, EB, Chunk<B>>
 
   /**
    * Takes up to max number of values in the queue.
    */
-  abstract takeUpTo(n: number): Effect<RB, EB, Chunk.Chunk<B>>
+  abstract takeUpTo(n: number): Effect<RB, EB, Chunk<B>>
 }
 
 /**

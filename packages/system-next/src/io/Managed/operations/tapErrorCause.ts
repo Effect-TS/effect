@@ -26,5 +26,5 @@ export function tapErrorCause<E, R1, E1, X>(
   __etsTrace?: string
 ) {
   return <R, A>(self: Managed<R, E, A>): Managed<R & R1, E | E1, A> =>
-    tapErrorCause_(self, f)
+    self.tapErrorCause(f)
 }

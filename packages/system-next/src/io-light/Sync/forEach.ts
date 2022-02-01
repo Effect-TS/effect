@@ -1,5 +1,4 @@
-import * as ChunkCollect from "../../collection/immutable/Chunk/api/collect"
-import * as Chunk from "../../collection/immutable/Chunk/core"
+import { Chunk } from "../../collection/immutable/Chunk"
 import { identity } from "../../data/Function"
 import type { Option } from "../../data/Option"
 import type { Sync } from "./core"
@@ -15,7 +14,7 @@ import * as core from "./core"
 export function forEach_<A, R, E, B>(
   as: Iterable<A>,
   f: (a: A) => Sync<R, E, B>
-): Sync<R, E, Chunk.Chunk<B>> {
+): Sync<R, E, Chunk<B>> {
   return core.suspend(() => {
     const acc: B[] = []
 
@@ -108,8 +107,8 @@ export function collectAllWith_<R, E, A, B>(
   as: Iterable<Sync<R, E, A>>,
   pf: (a: A) => Option<B>,
   __trace?: string
-): Sync<R, E, Chunk.Chunk<B>> {
-  return core.map_(collectAll(as), ChunkCollect.collect(pf))
+): Sync<R, E, Chunk<B>> {
+  return core.map_(collectAll(as), (chunk) => chunk.collect(pf))
 }
 
 /**

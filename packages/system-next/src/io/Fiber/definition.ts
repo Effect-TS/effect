@@ -1,4 +1,4 @@
-import type { Chunk } from "../../collection/immutable/Chunk/core"
+import type { Chunk } from "../../collection/immutable/Chunk"
 import type { Option } from "../../data/Option"
 import type { Trace } from "../../io/Trace"
 import type { TraceElement } from "../../io/TraceElement"

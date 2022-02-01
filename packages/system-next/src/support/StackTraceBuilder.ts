@@ -1,11 +1,12 @@
-import * as C from "../collection/immutable/Chunk/core"
+import type { ChunkBuilder } from "../collection/immutable/Chunk"
+import { Chunk } from "../collection/immutable/Chunk"
 import type { TraceElement } from "../io/TraceElement"
 import * as TE from "../io/TraceElement"
 
 export class StackTraceBuilder {
   private last: TraceElement | undefined = undefined
 
-  private builder: C.ChunkBuilder<TraceElement> = C.builder()
+  private builder: ChunkBuilder<TraceElement> = Chunk.builder()
 
   append(trace: TraceElement | undefined): void {
     if (trace != null && trace !== this.last && trace !== TE.NoLocation) {
@@ -14,7 +15,7 @@ export class StackTraceBuilder {
     }
   }
 
-  build(): C.Chunk<TraceElement> {
+  build(): Chunk<TraceElement> {
     return this.builder.build()
   }
 }

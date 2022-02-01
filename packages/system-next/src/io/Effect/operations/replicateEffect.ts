@@ -1,4 +1,4 @@
-import type { Chunk } from "../../../collection/immutable/Chunk/core"
+import type { Chunk } from "../../../collection/immutable/Chunk"
 import { Effect } from "../definition"
 
 /**

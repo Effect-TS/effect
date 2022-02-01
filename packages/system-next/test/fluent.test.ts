@@ -51,6 +51,7 @@ describe("Effect Fluent API", () => {
     expect(b).toEqual(2)
     expect(c).toEqual(3)
   })
+
   it("should access and provide", async () => {
     const program = Effect.Do()
       .bind("envA", () => Effect.service(EnvA))

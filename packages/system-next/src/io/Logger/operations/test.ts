@@ -1,6 +1,6 @@
-import * as Chunk from "../../../collection/immutable/Chunk/core"
+import { Chunk } from "../../../collection/immutable/Chunk"
 import * as TraceElement from "../../../io/TraceElement"
-import * as FiberId from "../../FiberId"
+import { FiberId } from "../../FiberId"
 import * as LogLevel from "../../LogLevel"
 import type { Logger } from "../definition"
 

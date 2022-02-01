@@ -1,4 +1,4 @@
-import * as C from "../../../collection/immutable/Chunk/core"
+import { Chunk } from "../../../collection/immutable/Chunk"
 import type { Cause } from "../../Cause"
 import { failures } from "../../Cause"
 import { Effect } from "../definition"
@@ -11,7 +11,7 @@ import { Effect } from "../definition"
 export function parallelErrors<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
-): Effect<R, C.Chunk<E>, A> {
+): Effect<R, Chunk<E>, A> {
   return self
     .foldCauseEffect((cause) => {
       const f = failures(cause)
@@ -21,5 +21,5 @@ export function parallelErrors<R, E, A>(
         return Effect.failNow(f)
       }
     }, Effect.succeedNow)
-    .mapError(C.from)
+    .mapError(Chunk.from)
 }

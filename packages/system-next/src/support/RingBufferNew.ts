@@ -1,5 +1,5 @@
-import * as Chunk from "../collection/immutable/Chunk/core"
-import * as O from "../data/Option"
+import { Chunk } from "../collection/immutable/Chunk"
+import { Option } from "../data/Option"
 
 export class RingBufferNew<A> {
   private array: Array<A | null>
@@ -10,8 +10,8 @@ export class RingBufferNew<A> {
     this.array = Array.from({ length: capacity }, (_) => null)
   }
 
-  head(): O.Option<A> {
-    return O.fromNullable(this.array[this.current])
+  head(): Option<A> {
+    return Option(this.array[this.current])
   }
 
   lastorNull(): A | null {
@@ -36,7 +36,7 @@ export class RingBufferNew<A> {
     }
   }
 
-  toChunk(): Chunk.Chunk<A> {
+  toChunk(): Chunk<A> {
     const begin = this.current - this.size
     const newArray =
       begin < 0
@@ -45,7 +45,7 @@ export class RingBufferNew<A> {
             .concat(this.array.slice(0, this.current))
         : this.array.slice(begin, this.current)
 
-    return Chunk.from(newArray) as Chunk.Chunk<A>
+    return Chunk.from(newArray) as Chunk<A>
   }
 
   private increment(): void {

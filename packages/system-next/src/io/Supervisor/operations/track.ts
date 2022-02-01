@@ -1,4 +1,4 @@
-import * as C from "../../../collection/immutable/Chunk/core"
+import { Chunk } from "../../../collection/immutable/Chunk"
 import { AtomicReference } from "../../../support/AtomicReference"
 import { succeed } from "../../Effect/operations/succeed"
 import type * as Fiber from "../../Fiber"
@@ -6,11 +6,11 @@ import { Supervisor } from "../definition"
 
 export const mainFibers: Set<Fiber.Runtime<any, any>> = new Set()
 
-export function unsafeTrack(): Supervisor<C.Chunk<Fiber.Runtime<any, any>>> {
+export function unsafeTrack(): Supervisor<Chunk<Fiber.Runtime<any, any>>> {
   const interval = new AtomicReference<NodeJS.Timeout | undefined>(undefined)
 
   return new Supervisor(
-    succeed(() => C.from(mainFibers)),
+    succeed(() => Chunk.from(mainFibers)),
     (_, __, ___, fiber) => {
       if (mainFibers.has(fiber)) {
         if (typeof interval.get === "undefined") {

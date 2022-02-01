@@ -24,5 +24,5 @@ export function filterNot<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
   __etsTrace?: string
 ) {
-  return (as: Iterable<A>) => filterNot_(as, f)
+  return (as: Iterable<A>) => Effect.filterNot(as, f)
 }

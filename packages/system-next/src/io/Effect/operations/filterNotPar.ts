@@ -1,6 +1,4 @@
-import type { Effect } from "../definition"
-import { filterPar_ } from "./filterPar"
-import { map_ } from "./map"
+import { Effect } from "../definition"
 
 /**
  * Filters the collection in parallel using the specified effectual predicate.
@@ -13,7 +11,7 @@ export function filterNotPar_<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
   __etsTrace?: string
 ) {
-  return filterPar_(as, (x) => map_(f(x), (b) => !b))
+  return Effect.filterPar(as, (x) => f(x).map((b) => !b))
 }
 
 /**
@@ -26,5 +24,5 @@ export function filterNotPar<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
   __etsTrace?: string
 ) {
-  return (as: Iterable<A>) => filterNotPar_(as, f)
+  return (as: Iterable<A>) => Effect.filterNotPar(as, f)
 }

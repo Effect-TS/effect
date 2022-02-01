@@ -1,6 +1,4 @@
-import { join } from "../../../collection/immutable/Chunk/api/join"
-import * as C from "../../../collection/immutable/Chunk/core"
-import { pipe } from "../../../data/Function"
+import { Chunk } from "../../../collection/immutable/Chunk"
 import type { FiberId } from "../definition"
 
 /**
@@ -10,10 +8,8 @@ import type { FiberId } from "../definition"
  * @tsplus fluent ets/FiberId threadName
  */
 export function threadName(self: FiberId): string {
-  const identifiers = pipe(
-    C.from(self.ids),
-    C.map((n) => `${n}`),
-    join(",")
-  )
+  const identifiers = Chunk.from(self.ids)
+    .map((n) => `${n}`)
+    .join(",")
   return `effect-ts-fiber-${identifiers}`
 }

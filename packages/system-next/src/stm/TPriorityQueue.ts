@@ -1,11 +1,9 @@
-import { filter } from "../collection/immutable/Chunk/api/filter"
-import { splitAt } from "../collection/immutable/Chunk/api/splitAt"
-import * as Ch from "../collection/immutable/Chunk/core"
+import { Chunk } from "../collection/immutable/Chunk"
 import * as It from "../collection/immutable/Iterable"
 import * as SortedMap from "../collection/immutable/SortedMap"
 import type { Predicate } from "../data/Function"
 import { not, pipe } from "../data/Function"
-import * as O from "../data/Option"
+import { Option } from "../data/Option"
 import type * as Ord from "../prelude/Ord"
 import * as STM from "./STM"
 import * as TRef from "./TRef"
@@ -15,7 +13,7 @@ export type TPriorityQueueTypeId = typeof TPriorityQueueTypeId
 
 export class TPriorityQueue<A> {
   readonly _typeId: TPriorityQueueTypeId = TPriorityQueueTypeId
-  constructor(readonly map: TRef.TRef<SortedMap.SortedMap<A, Ch.Chunk<A>>>) {}
+  constructor(readonly map: TRef.TRef<SortedMap.SortedMap<A, Chunk<A>>>) {}
 }
 
 /**
@@ -45,8 +43,8 @@ export function fromIterable_<A>(
   data: Iterable<A>
 ): STM.USTM<TPriorityQueue<A>> {
   return pipe(
-    It.reduce_(data, SortedMap.empty<A, Ch.Chunk<A>>(ord), (map, a) =>
-      SortedMap.set_(map, a, Ch.single(a))
+    It.reduce_(data, SortedMap.empty<A, Chunk<A>>(ord), (map, a) =>
+      SortedMap.set_(map, a, Chunk.single(a))
     ),
     TRef.make,
     STM.map((as) => new TPriorityQueue(as))
@@ -67,7 +65,7 @@ export function fromIterable<A>(data: Iterable<A>) {
  */
 export function empty<A>(ord: Ord.Ord<A>): STM.USTM<TPriorityQueue<A>> {
   return STM.map_(
-    TRef.make(SortedMap.empty<A, Ch.Chunk<A>>(ord)),
+    TRef.make(SortedMap.empty<A, Chunk<A>>(ord)),
     (as) => new TPriorityQueue(as)
   )
 }
@@ -91,7 +89,7 @@ export function nonEmpty<A>(self: TPriorityQueue<A>): STM.USTM<boolean> {
  */
 export function offer_<A>(self: TPriorityQueue<A>, a: A): STM.USTM<void> {
   return STM.map_(
-    TRef.getAndUpdate_(self.map, SortedMap.set(a, Ch.single(a))),
+    TRef.getAndUpdate_(self.map, SortedMap.set(a, Chunk.single(a))),
     () => STM.unit
   )
 }
@@ -114,10 +112,8 @@ export function offerAll_<A>(
 ): STM.USTM<void> {
   return STM.map_(
     TRef.getAndUpdate_(self.map, (sa) =>
-      It.reduce_(
-        values,
-        SortedMap.empty<A, Ch.Chunk<A>>(SortedMap.getOrd(sa)),
-        (map, a) => SortedMap.set_(map, a, Ch.single(a))
+      It.reduce_(values, SortedMap.empty<A, Chunk<A>>(SortedMap.getOrd(sa)), (map, a) =>
+        SortedMap.set_(map, a, Chunk.single(a))
       )
     ),
     () => STM.unit
@@ -138,39 +134,31 @@ export function offerAll<A>(a: Iterable<A>) {
  * value is in the queue.
  */
 export function peek<A>(self: TPriorityQueue<A>): STM.USTM<A> {
-  return new STM.STMEffect((journal) =>
-    pipe(
-      self.map,
-      TRef.unsafeGet(journal),
-      SortedMap.headOption,
-      O.map((_) => _.get(1)),
-      O.chain(Ch.head),
-      (o) => {
-        if (o._tag === "None") {
-          throw new STM.STMRetryException()
-        }
+  return new STM.STMEffect((journal) => {
+    const result = pipe(self.map, TRef.unsafeGet(journal), SortedMap.headOption)
+      .map((_) => _.get(1))
+      .flatMap((c) => c.head)
 
-        return o.value
-      }
-    )
-  )
+    if (result._tag === "None") {
+      throw new STM.STMRetryException()
+    }
+
+    return result.value
+  })
 }
 
 /**
  * Peeks at the first value in the queue without removing it, returning `None`
  * if there is not a value in the queue.
  */
-export function peekOption<A>(self: TPriorityQueue<A>): STM.USTM<O.Option<A>> {
+export function peekOption<A>(self: TPriorityQueue<A>): STM.USTM<Option<A>> {
   return TRef.modify_(
     self.map,
     (map) =>
       [
-        pipe(
-          map,
-          SortedMap.headOption,
-          O.map((_) => _.get(1)),
-          O.chain(Ch.head)
-        ),
+        pipe(map, SortedMap.headOption)
+          .map((_) => _.get(1))
+          .flatMap((_) => _.head),
         map
       ] as const
   )
@@ -180,7 +168,10 @@ export function peekOption<A>(self: TPriorityQueue<A>): STM.USTM<O.Option<A>> {
  * Retains only elements from the queue matching the specified predicate.
  */
 export function retainIf_<A>(self: TPriorityQueue<A>, p: Predicate<A>): STM.USTM<void> {
-  return TRef.update_(self.map, SortedMap.map(filter(p)))
+  return TRef.update_(
+    self.map,
+    SortedMap.map((c) => c.filter(p))
+  )
 }
 
 /**
@@ -222,31 +213,26 @@ export function take<A>(self: TPriorityQueue<A>): STM.USTM<A> {
   return new STM.STMEffect((journal) => {
     const map = TRef.unsafeGet_(self.map, journal)
 
-    return pipe(
-      map,
-      SortedMap.headOption,
-      O.chain((tp) => {
-        const a = pipe(tp.get(1), Ch.tail, O.chain(O.fromPredicate(Ch.isNonEmpty)))
-        const k = tp.get(0)
+    const result = SortedMap.headOption(map).flatMap((tp) => {
+      const a = tp
+        .get(1)
+        .tail.flatMap((c) => Option.fromPredicate(c, (_) => _.isNonEmpty()))
+      const k = tp.get(0)
 
-        TRef.unsafeSet_(
-          self.map,
-          a._tag === "None"
-            ? SortedMap.remove_(map, k)
-            : SortedMap.set_(map, k, a.value),
-          journal
-        )
+      TRef.unsafeSet_(
+        self.map,
+        a._tag === "None" ? SortedMap.remove_(map, k) : SortedMap.set_(map, k, a.value),
+        journal
+      )
 
-        return Ch.head(tp.get(1))
-      }),
-      (o) => {
-        if (o._tag === "None") {
-          throw new STM.STMRetryException()
-        }
+      return tp.get(1).head
+    })
 
-        return o.value
-      }
-    )
+    if (result._tag === "None") {
+      throw new STM.STMRetryException()
+    }
+
+    return result.value
   })
 }
 
@@ -254,71 +240,67 @@ export function take<A>(self: TPriorityQueue<A>): STM.USTM<A> {
  * Takes a value from the queue, returning `None` if there is not a value in
  * the queue.
  */
-export function takeOption<A>(self: TPriorityQueue<A>): STM.USTM<O.Option<A>> {
+export function takeOption<A>(self: TPriorityQueue<A>): STM.USTM<Option<A>> {
   return new STM.STMEffect((journal) => {
     const map = TRef.unsafeGet_(self.map, journal)
 
-    return pipe(
-      map,
-      SortedMap.headOption,
-      O.chain((tp) => {
-        const a = pipe(tp.get(1), Ch.tail, O.chain(O.fromPredicate(Ch.isNonEmpty)))
-        const k = tp.get(0)
+    return SortedMap.headOption(map).flatMap((tp) => {
+      const a = tp
+        .get(1)
+        .tail.flatMap((c) => Option.fromPredicate(c, (_) => _.isNonEmpty()))
+      const k = tp.get(0)
 
-        TRef.unsafeSet_(
-          self.map,
-          a._tag === "None"
-            ? SortedMap.remove_(map, k)
-            : SortedMap.set_(map, k, a.value),
-          journal
-        )
+      TRef.unsafeSet_(
+        self.map,
+        a._tag === "None" ? SortedMap.remove_(map, k) : SortedMap.set_(map, k, a.value),
+        journal
+      )
 
-        return Ch.head(tp.get(1))
-      })
-    )
+      return tp.get(1).head
+    })
   })
 }
 
 /**
  * Takes all values from the queue.
  */
-export function takeAll<A>(self: TPriorityQueue<A>): STM.USTM<Ch.Chunk<A>> {
+export function takeAll<A>(self: TPriorityQueue<A>): STM.USTM<Chunk<A>> {
   return TRef.modify_(
     self.map,
-    (map) => [SortedMap.reduce_(map, Ch.empty<A>(), Ch.concat_), map] as const
+    (map) =>
+      [SortedMap.reduce_(map, Chunk.empty<A>(), (acc, a) => acc + a), map] as const
   )
 }
 
 /**
  * Takes up to the specified maximum number of elements from the queue.
  */
-export function takeUpTo_<A>(
-  self: TPriorityQueue<A>,
-  n: number
-): STM.USTM<Ch.Chunk<A>> {
+export function takeUpTo_<A>(self: TPriorityQueue<A>, n: number): STM.USTM<Chunk<A>> {
   return TRef.modify_(self.map, (map) => {
     const entries = SortedMap.entries(map)
-    const builder = Ch.builder<Ch.Chunk<A>>()
+    const builder = Chunk.builder<Chunk<A>>()
     let updated = map
-    let e: SortedMap.Next<readonly [A, Ch.Chunk<A>]>
+    let e: SortedMap.Next<readonly [A, Chunk<A>]>
     let i = 0
 
     while (!(e = entries.next()).done) {
       const [a, as] = e.value
-      const [l, r] = pipe(as, splitAt(n - i), (tp) => [tp.get(0), tp.get(1)] as const)
+      const {
+        tuple: [l, r]
+      } = as.splitAt(n - i)
 
       builder.append(l)
 
-      if (Ch.isEmpty(r)) {
+      if (r.isEmpty()) {
         updated = SortedMap.remove_(updated, a)
       } else {
         updated = SortedMap.set_(updated, a, r)
       }
 
-      i += Ch.size(l)
+      i += l.size
     }
 
-    return [Ch.flatten(builder.build()), updated] as const
+    return [builder.build().flatten(), updated] as const
   })
 }
 
@@ -334,18 +316,17 @@ export function takeUpTo(n: number) {
 /**
  * Collects all values into a chunk.
  */
-export function toChunk<A>(self: TPriorityQueue<A>): STM.USTM<Ch.Chunk<A>> {
+export function toChunk<A>(self: TPriorityQueue<A>): STM.USTM<Chunk<A>> {
   return TRef.modify_(self.map, (map) => {
     const entries = SortedMap.entries(map)
-    const builder = Ch.builder<Ch.Chunk<A>>()
-    let e: SortedMap.Next<readonly [A, Ch.Chunk<A>]>
+    const builder = Chunk.builder<Chunk<A>>()
+    let e: SortedMap.Next<readonly [A, Chunk<A>]>
 
     while (!(e = entries.next()).done) {
       const [, as] = e.value
-
       builder.append(as)
     }
 
-    return [Ch.flatten(builder.build()), map] as const
+    return [builder.build().flatten(), map] as const
   })
 }

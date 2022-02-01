@@ -1,4 +1,4 @@
-import * as Chunk from "../src/collection/immutable/Chunk"
+import { Chunk } from "../src/collection/immutable/Chunk"
 import { List } from "../src/collection/immutable/List"
 import * as Map from "../src/collection/immutable/Map"
 import { Tuple } from "../src/collection/immutable/Tuple"
@@ -148,7 +148,7 @@ function parallelNestedFinalizerOrdering(
   listLength: number,
   f: (
     _: List<Managed<unknown, never, Ref.Ref<List<number>>>>
-  ) => Managed<unknown, never, Chunk.Chunk<Ref.Ref<List<number>>>>
+  ) => Managed<unknown, never, Chunk<Ref.Ref<List<number>>>>
 ): Effect<unknown, never, List<List<number>>> {
   const inner = Ref.make(List.empty<number>())
     .toManaged()
@@ -718,7 +718,7 @@ describe("Managed", () => {
       }
 
       const program = Managed.forEach(List(1, 2, 3, 4), res).use((res) =>
-        Effect.succeedNow(Chunk.toArray(res))
+        Effect.succeedNow(res.toArray())
       )
 
       const result = await program.unsafeRunPromise()
@@ -802,7 +802,7 @@ describe("Managed", () => {
       }
 
       const program = Managed.forEachPar(List(1, 2, 3, 4), res).use((res) =>
-        Effect.succeed(Chunk.toArray(res))
+        Effect.succeed(res.toArray())
       )
 
       const result = await program.unsafeRunPromise()
@@ -862,7 +862,7 @@ describe("Managed", () => {
 
       const program = Managed.forEachPar(List(1, 2, 3, 4), res)
         .withParallelism(2)
-        .use((res) => Effect.succeed(Chunk.toArray(res)))
+        .use((res) => Effect.succeed(res.toArray()))
 
       const result = await program.unsafeRunPromise()
 
@@ -1898,20 +1898,20 @@ describe("Managed", () => {
         .bind("ref", () => Ref.make(Chunk.empty<string>()))
         .bindValue("a", ({ ref }) =>
           Managed.acquireReleaseWith(
-            Ref.update_(ref, Chunk.append("acquiring a")),
-            () => Ref.update_(ref, Chunk.append("releasing a"))
+            Ref.update_(ref, (_) => _.append("acquiring a")),
+            () => Ref.update_(ref, (_) => _.append("releasing a"))
           )
         )
         .bindValue("b", ({ ref }) =>
           Managed.acquireReleaseWith(
-            Ref.update_(ref, Chunk.append("acquiring b")),
-            () => Ref.update_(ref, Chunk.append("releasing b"))
+            Ref.update_(ref, (_) => _.append("acquiring b")),
+            () => Ref.update_(ref, (_) => _.append("releasing b"))
           )
         )
         .bindValue("c", ({ ref }) =>
           Managed.acquireReleaseWith(
-            Ref.update_(ref, Chunk.append("acquiring c")),
-            () => Ref.update_(ref, Chunk.append("releasing c"))
+            Ref.update_(ref, (_) => _.append("acquiring c")),
+            () => Ref.update_(ref, (_) => _.append("releasing c"))
           )
         )
         .bindValue("managed", ({ a, b, c }) => a > b.release() > c)
@@ -1928,7 +1928,7 @@ describe("Managed", () => {
         "releasing c",
         "releasing a"
       ]
-      expect(Chunk.toArray(result)).toEqual(expected)
+      expect(result.toArray()).toEqual(expected)
     })
   })
 

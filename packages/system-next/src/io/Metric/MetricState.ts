@@ -1,5 +1,4 @@
-import { join_ } from "../../collection/immutable/Chunk/api/join"
-import * as C from "../../collection/immutable/Chunk/core"
+import type { Chunk } from "../../collection/immutable/Chunk"
 import type { Tuple } from "../../collection/immutable/Tuple"
 import type { Option } from "../../data/Option"
 import type * as MetricKey from "./MetricKey"
@@ -14,7 +13,7 @@ export class MetricState {
   constructor(
     readonly name: string,
     readonly help: string,
-    readonly labels: C.Chunk<MetricLabel>,
+    readonly labels: Chunk<MetricLabel>,
     readonly details: MetricType.MetricType
   ) {}
 
@@ -22,10 +21,7 @@ export class MetricState {
     const labels =
       this.labels.length === 0
         ? ""
-        : `{${join_(
-            C.map_(this.labels, (l) => `${l.key}->${l.value}`),
-            ","
-          )}}`
+        : `{${this.labels.map((l) => `${l.key}->${l.value}`).join(",")}}`
     return `MetricState(${this.name}${labels}, ${this.details})`
   }
 }
@@ -58,7 +54,7 @@ export function gauge(
 export function histogram(
   key: MetricKey.Histogram,
   help: string,
-  buckets: C.Chunk<Tuple<[number, number]>>,
+  buckets: Chunk<Tuple<[number, number]>>,
   count: number,
   sum: number
 ): MetricState {
@@ -76,7 +72,7 @@ export function histogram(
 export function summary(
   key: MetricKey.Summary,
   help: string,
-  quantiles: C.Chunk<Tuple<[number, Option<number>]>>,
+  quantiles: Chunk<Tuple<[number, Option<number>]>>,
   count: number,
   sum: number
 ): MetricState {
@@ -94,7 +90,7 @@ export function summary(
 export function setCount(
   key: MetricKey.SetCount,
   help: string,
-  values: C.Chunk<Tuple<[string, number]>>
+  values: Chunk<Tuple<[string, number]>>
 ): MetricState {
   return new MetricState(
     key.name,

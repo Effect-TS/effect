@@ -1,4 +1,4 @@
-import type { Chunk } from "../../../collection/immutable/Chunk/core"
+import type { Chunk } from "../../../collection/immutable/Chunk"
 import { track } from "../../../io/Supervisor/operations/track"
 import type * as Fiber from "../../Fiber/definition"
 import type { Effect, RIO } from "../definition"
@@ -30,5 +30,5 @@ export function ensuringChildren<R1, X>(
   __etsTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R1, E, A> =>
-    ensuringChildren_(self, children)
+    self.ensuringChildren(children)
 }

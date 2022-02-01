@@ -1,5 +1,4 @@
-import type { Chunk } from "../../../collection/immutable/Chunk/core"
-import { empty as emptyChunk } from "../../../collection/immutable/Chunk/core"
+import { Chunk } from "../../../collection/immutable/Chunk"
 import { Tuple } from "../../../collection/immutable/Tuple"
 import { Either } from "../../../data/Either"
 import { identity } from "../../../data/Function"
@@ -361,7 +360,7 @@ export const currentLogLevel: LazyValue<FiberRef.Runtime<LogLevel>> = LazyValue.
  * A `FiberRef` containing a reference to the current list of `LogSpan`s.
  */
 export const currentLogSpan: LazyValue<FiberRef.Runtime<Chunk<LogSpan>>> =
-  LazyValue.make(() => unsafeMake(emptyChunk()))
+  LazyValue.make(() => unsafeMake(Chunk.empty()))
 
 /**
  * A `FiberRef` containing a reference to the current operation parallelism.

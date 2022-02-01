@@ -1,10 +1,6 @@
-import { collect_ as chunkCollect_ } from "../../collection/immutable/Chunk/api/collect"
-import { filterEffect_ as chunkFilterEffect_ } from "../../collection/immutable/Chunk/api/filterEffect"
-import { mapEffect_ as chunkMapEffect_ } from "../../collection/immutable/Chunk/api/mapEffect"
-import { zip_ as chunkZip_ } from "../../collection/immutable/Chunk/api/zip"
-import * as Chunk from "../../collection/immutable/Chunk/core"
+import { Chunk } from "../../collection/immutable/Chunk"
 import { identity, pipe, tuple } from "../../data/Function"
-import * as O from "../../data/Option"
+import { Option } from "../../data/Option"
 import { Bounded, Unbounded } from "../../support/MutableQueue"
 import {
   BackPressureStrategy,
@@ -53,13 +49,13 @@ export function makeDropping<A>(capacity: number): T.UIO<Queue<A>> {
 function takeRemainderLoop<RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,
   n: number
-): T.Effect<RB, EB, Chunk.Chunk<B>> {
+): T.Effect<RB, EB, Chunk<B>> {
   concreteQueue(self)
   if (n <= 0) {
     return T.succeedNow(Chunk.empty())
   } else {
     return T.chain_(self.take, (a) =>
-      T.map_(takeRemainderLoop(self, n - 1), (_) => Chunk.append_(_, a))
+      T.map_(takeRemainderLoop(self, n - 1), (_) => _.append(a))
     )
   }
 }
@@ -74,7 +70,7 @@ function takeRemainderLoop<RA, RB, EA, EB, A, B>(
 export function takeBetween(min: number, max: number) {
   return <RA, RB, EA, EB, A, B>(
     self: XQueue<RA, RB, EA, EB, A, B>
-  ): T.Effect<RB, EB, Chunk.Chunk<B>> => takeBetween_(self, min, max)
+  ): T.Effect<RB, EB, Chunk<B>> => takeBetween_(self, min, max)
 }
 
 /**
@@ -86,7 +82,7 @@ export function takeBetween_<RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,
   min: number,
   max: number
-): T.Effect<RB, EB, Chunk.Chunk<B>> {
+): T.Effect<RB, EB, Chunk<B>> {
   concreteQueue(self)
   if (max < min) {
     return T.succeedNow(Chunk.empty())
@@ -94,14 +90,12 @@ export function takeBetween_<RA, RB, EA, EB, A, B>(
     return pipe(
       self.takeUpTo(max),
       T.chain((bs) => {
-        const remaining = min - Chunk.size(bs)
+        const remaining = min - bs.size
 
         if (remaining === 1) {
-          return T.map_(self.take, (b) => Chunk.append_(bs, b))
+          return self.take.map((b) => bs.append(b))
         } else if (remaining > 1) {
-          return T.map_(takeRemainderLoop(self, remaining), (list) =>
-            Chunk.concat_(bs, list)
-          )
+          return takeRemainderLoop(self, remaining).map((list) => bs + list)
         } else {
           return T.succeedNow(bs)
         }
@@ -227,17 +221,15 @@ class BothWithEffect<
     ({ tuple: [b, c] }) => this.f(b, c)
   )
 
-  takeAll: T.Effect<RB & RB1 & R3, E3 | EB | EB1, Chunk.Chunk<D>> = T.chain_(
+  takeAll: T.Effect<RB & RB1 & R3, E3 | EB | EB1, Chunk<D>> = T.chain_(
     T.zipPar_(this.self.takeAll, this.that.takeAll),
-    ({ tuple: [bs, cs] }) =>
-      chunkMapEffect_(chunkZip_(bs, cs), ({ tuple: [b, c] }) => this.f(b, c))
+    ({ tuple: [bs, cs] }) => bs.zip(cs).mapEffect(({ tuple: [b, c] }) => this.f(b, c))
   )
 
-  takeUpTo(max: number): T.Effect<RB & RB1 & R3, E3 | EB | EB1, Chunk.Chunk<D>> {
+  takeUpTo(max: number): T.Effect<RB & RB1 & R3, E3 | EB | EB1, Chunk<D>> {
     return T.chain_(
       T.zipPar_(this.self.takeUpTo(max), this.that.takeUpTo(max)),
-      ({ tuple: [bs, cs] }) =>
-        chunkMapEffect_(chunkZip_(bs, cs), ({ tuple: [b, c] }) => this.f(b, c))
+      ({ tuple: [bs, cs] }) => bs.zip(cs).mapEffect(({ tuple: [b, c] }) => this.f(b, c))
     )
   }
 }
@@ -384,13 +376,12 @@ class DimapEffect<RA, RB, EA, EB, A, B, C, RC, EC, RD, ED, D> extends XQueueInte
 
   take: T.Effect<RD & RB, ED | EB, D> = T.chain_(this.self.take, this.g)
 
-  takeAll: T.Effect<RD & RB, ED | EB, Chunk.Chunk<D>> = T.chain_(
-    this.self.takeAll,
-    (a) => chunkMapEffect_(a, this.g)
+  takeAll: T.Effect<RD & RB, ED | EB, Chunk<D>> = T.chain_(this.self.takeAll, (a) =>
+    a.mapEffect(this.g)
   )
 
-  takeUpTo(n: number): T.Effect<RD & RB, ED | EB, Chunk.Chunk<D>> {
-    return T.chain_(this.self.takeUpTo(n), (bs) => chunkMapEffect_(bs, this.g))
+  takeUpTo(n: number): T.Effect<RD & RB, ED | EB, Chunk<D>> {
+    return T.chain_(this.self.takeUpTo(n), (bs) => bs.mapEffect(this.g))
   }
 }
 
@@ -490,21 +481,22 @@ class FilterInputEffect<
 
   offerAll(as: Iterable<A1>): T.Effect<RA & R2, EA | E2, boolean> {
     return pipe(
-      exclForEach.forEach_(as, (a) =>
-        pipe(
-          this.f(a),
-          T.map((b) => (b ? O.some(a) : O.none))
+      exclForEach
+        .forEach_(as, (a) =>
+          pipe(
+            this.f(a),
+            T.map((b) => (b ? Option.some(a) : Option.none))
+          )
         )
-      ),
-      T.chain((maybeAs) => {
-        const filtered = chunkCollect_(maybeAs, identity)
+        .flatMap((maybeAs) => {
+          const filtered = maybeAs.collect(identity)
 
-        if (Chunk.isEmpty(filtered)) {
-          return T.succeedNow(false)
-        } else {
-          return this.self.offerAll(filtered)
-        }
-      })
+          if (filtered.isEmpty()) {
+            return T.succeedNow(false)
+          } else {
+            return this.self.offerAll(filtered)
+          }
+        })
     )
   }
 
@@ -514,9 +506,9 @@ class FilterInputEffect<
 
   take: T.Effect<RB, EB, B> = this.self.take
 
-  takeAll: T.Effect<RB, EB, Chunk.Chunk<B>> = this.self.takeAll
+  takeAll: T.Effect<RB, EB, Chunk<B>> = this.self.takeAll
 
-  takeUpTo(n: number): T.Effect<RB, EB, Chunk.Chunk<B>> {
+  takeUpTo(n: number): T.Effect<RB, EB, Chunk<B>> {
     return this.self.takeUpTo(n)
   }
 }
@@ -572,30 +564,29 @@ class FilterOutputEffect<RA, RB, RB1, EB1, EA, EB, A, B> extends XQueueInternal<
     })
   })
 
-  takeAll: T.Effect<RB & RB1, EB | EB1, Chunk.Chunk<B>> = T.chain_(
-    this.self.takeAll,
-    (bs) => chunkFilterEffect_(bs, this.f)
+  takeAll: T.Effect<RB & RB1, EB | EB1, Chunk<B>> = T.chain_(this.self.takeAll, (bs) =>
+    bs.filterEffect(this.f)
   )
 
-  loop(max: number, acc: Chunk.Chunk<B>): T.Effect<RB & RB1, EB | EB1, Chunk.Chunk<B>> {
+  loop(max: number, acc: Chunk<B>): T.Effect<RB & RB1, EB | EB1, Chunk<B>> {
     return T.chain_(this.self.takeUpTo(max), (bs) => {
-      if (Chunk.isEmpty(bs)) {
+      if (bs.isEmpty()) {
         return T.succeedNow(acc)
       }
 
-      return T.chain_(chunkFilterEffect_(bs, this.f), (filtered) => {
-        const length = Chunk.size(filtered)
+      return T.chain_(bs.filterEffect(this.f), (filtered) => {
+        const length = filtered.size
 
         if (length === max) {
-          return T.succeedNow(Chunk.concat_(acc, filtered))
+          return T.succeedNow(acc + filtered)
         } else {
-          return this.loop(max - length, Chunk.concat_(acc, filtered))
+          return this.loop(max - length, acc + filtered)
         }
       })
     })
   }
 
-  takeUpTo(n: number): T.Effect<RB & RB1, EB | EB1, Chunk.Chunk<B>> {
+  takeUpTo(n: number): T.Effect<RB & RB1, EB | EB1, Chunk<B>> {
     return T.suspendSucceed(() => {
       return this.loop(n, Chunk.empty())
     })
@@ -706,7 +697,7 @@ export function mapEffect_<RA, RB, EA, EB, A, B, R2, E2, C>(
  */
 export function poll<RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>
-): T.Effect<RB, EB, O.Option<B>> {
+): T.Effect<RB, EB, Option<B>> {
   concreteQueue(self)
-  return T.map_(self.takeUpTo(1), Chunk.head)
+  return T.map_(self.takeUpTo(1), (_) => _.head)
 }

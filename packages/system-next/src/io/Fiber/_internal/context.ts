@@ -1,4 +1,4 @@
-import * as Chunk from "../../../collection/immutable/Chunk/core"
+import { Chunk } from "../../../collection/immutable/Chunk"
 import * as HS from "../../../collection/immutable/HashSet"
 import type { Next } from "../../../collection/immutable/Map"
 import { Either } from "../../../data/Either"
@@ -490,7 +490,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }, this.id)
   }
 
-  get children(): Effect<unknown, never, Chunk.Chunk<Fiber.Runtime<any, any>>> {
+  get children(): Effect<unknown, never, Chunk<Fiber.Runtime<any, any>>> {
     return this.evalOnEffect(
       Effect.succeed(() => {
         const chunkBuilder = Chunk.builder<Fiber.Runtime<any, any>>()
