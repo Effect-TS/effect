@@ -494,7 +494,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@effect-ts/build-utils@workspace:packages/build-utils"
   dependencies:
-    "@effect-ts/core": ^0.54.8
+    "@effect-ts/core": ^0.54.9
   peerDependencies:
     "@effect-ts/core": ">= 0.28.9"
     chalk: ">= 4.1.0"
@@ -504,7 +504,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@effect-ts/core@^0.54.8, @effect-ts/core@workspace:packages/core":
+"@effect-ts/core@^0.54.9, @effect-ts/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@effect-ts/core@workspace:packages/core"
   dependencies:
