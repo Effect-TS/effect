@@ -148,7 +148,7 @@ export type ListURI = typeof ListURI
 export const ChunkURI = "Chunk"
 export type ChunkURI = typeof ChunkURI
 
-declare module "../Prelude/HKT" {
+declare module "../Prelude/HKT/hkt.js" {
   interface URItoKind<FC, TC, K, Q, W, X, I, S, R, E, A> {
     [ArrayURI]: Array<A>
     [BoundedURI]: Bounded<A>

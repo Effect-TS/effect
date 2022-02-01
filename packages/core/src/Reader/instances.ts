@@ -3,7 +3,7 @@
 import type { ReaderURI } from "../Modules/index.js"
 import type { URI } from "../Prelude/index.js"
 import * as P from "../Prelude/index.js"
-import { access, map, zip } from "./operations"
+import { access, map, zip } from "./operations.js"
 
 export type V = P.V<"R", "-">
 

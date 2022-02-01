@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as P from "../../Prelude/index.js"
-import { Applicative, Covariant, Monad } from "./instances"
+import { Applicative, Covariant, Monad } from "./instances.js"
 
 /**
  * Struct based applicative for IO[+_]

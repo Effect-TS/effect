@@ -3,7 +3,7 @@
 import type { IterableURI } from "../Modules/index.js"
 import type { URI } from "../Prelude/index.js"
 import * as P from "../Prelude/index.js"
-import * as It from "./operations"
+import * as It from "./operations.js"
 
 export const Any = P.instance<P.Any<[URI<IterableURI>]>>({
   any: () => It.of(undefined)

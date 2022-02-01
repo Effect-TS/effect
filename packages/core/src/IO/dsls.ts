@@ -2,7 +2,7 @@
 
 import * as A from "../Collections/Immutable/Array/index.js"
 import * as DSL from "../Prelude/DSL/index.js"
-import { Applicative, Covariant, Monad } from "./instances"
+import { Applicative, Covariant, Monad } from "./instances.js"
 
 /**
  * Struct based applicative for IO[+_]

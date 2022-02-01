@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as P from "../../../Prelude/index.js"
-import { ForEach } from "./instances"
+import { ForEach } from "./instances.js"
 
 /**
  * Like traverse(identity)

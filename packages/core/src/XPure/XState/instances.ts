@@ -7,7 +7,7 @@ import type { XStateURI } from "../../Modules/index.js"
 import type { URI } from "../../Prelude/index.js"
 import * as P from "../../Prelude/index.js"
 import type { V } from "./definition.js"
-import { map, zip } from "./operations"
+import { map, zip } from "./operations.js"
 
 /**
  * The `Any` instance for `Reader[-_, +_]`.

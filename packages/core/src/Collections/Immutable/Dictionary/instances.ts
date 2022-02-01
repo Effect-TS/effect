@@ -20,7 +20,7 @@ import {
   separate,
   separateF,
   separateWithIndexF
-} from "./operations"
+} from "./operations.js"
 
 export const Covariant = P.instance<P.Covariant<[URI<DictionaryURI>]>>({
   map

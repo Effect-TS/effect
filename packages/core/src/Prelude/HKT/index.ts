@@ -24,4 +24,4 @@ export {
   URItoIndex,
   URItoKind,
   UHKTCategory
-} from "./hkt"
+} from "./hkts.js"

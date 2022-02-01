@@ -7,7 +7,7 @@ import type { URI } from "../../../Prelude/index.js"
 import { getApplicativeF } from "../../../Prelude/index.js"
 import * as P from "../../../Prelude/index.js"
 import type { PredicateWithIndex } from "../../../Utils/index.js"
-import * as Chunk from "./operations"
+import * as Chunk from "./operations.js"
 
 export const Collection = P.instance<P.Collection<[P.URI<ChunkURI>]>>({
   builder: Chunk.builder

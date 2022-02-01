@@ -6,7 +6,7 @@ import type { ArrayURI } from "../../../Modules/index.js"
 import type { URI } from "../../../Prelude/index.js"
 import { getApplicativeF } from "../../../Prelude/index.js"
 import * as P from "../../../Prelude/index.js"
-import * as A from "./operations"
+import * as A from "./operations.js"
 
 export const Any = P.instance<P.Any<[URI<ArrayURI>]>>({
   any: () => [{}]

@@ -3,7 +3,7 @@
 import type { ListURI } from "../../../Modules/index.js"
 import type { URI } from "../../../Prelude/index.js"
 import * as P from "../../../Prelude/index.js"
-import * as L from "./operations"
+import * as L from "./operations.js"
 
 export const Any = P.instance<P.Any<[URI<ListURI>]>>({
   any: () => L.of({})

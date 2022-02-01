@@ -5,7 +5,7 @@ import * as F from "@effect-ts/system/XPure"
 import type { XReaderURI } from "../../Modules/index.js"
 import type { URI } from "../../Prelude/index.js"
 import * as P from "../../Prelude/index.js"
-import { map, zip } from "./operations"
+import { map, zip } from "./operations.js"
 
 /**
  * The `Access` instance for `Reader[-_, +_]`.
