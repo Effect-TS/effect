@@ -1,13 +1,13 @@
-import * as Chunk from "../src/collection/immutable/Chunk"
+import { Chunk } from "../src/collection/immutable/Chunk"
 import { constTrue, identity, pipe } from "../src/data/Function"
 import { Option } from "../src/data/Option"
 import { Effect } from "../src/io/Effect"
 import { Exit } from "../src/io/Exit"
 import * as Fiber from "../src/io/Fiber"
-import * as FiberId from "../src/io/FiberId"
+import { FiberId } from "../src/io/FiberId"
 import * as FiberRef from "../src/io/FiberRef"
 import { Promise } from "../src/io/Promise"
-import * as Queue from "../src/io/Queue"
+import { Queue } from "../src/io/Queue"
 import * as Ref from "../src/io/Ref"
 import { withLatch } from "./test-utils/Latch"
 
@@ -98,7 +98,7 @@ describe("Fiber", () => {
 
   describe("`Fiber.join` on interrupted Fiber", () => {
     it("is inner interruption", async () => {
-      const fiberId = FiberId.make(0, 123)
+      const fiberId = FiberId(0, 123)
       const program = pipe(Fiber.interruptAs(fiberId), Fiber.join).exit()
 
       const result = await program.unsafeRunPromise()
@@ -130,10 +130,7 @@ describe("Fiber", () => {
 
     it("`awaitAll`", async () => {
       const program = Fiber.awaitAll(
-        Chunk.prepend_(
-          Chunk.fill(100, () => Fiber.never),
-          Fiber.fail("fail")
-        )
+        Chunk.fill(100, () => Fiber.never).prepend(Fiber.fail("fail"))
       ).exit()
 
       const result = await program.unsafeRunPromise()
@@ -143,10 +140,7 @@ describe("Fiber", () => {
 
     it("`joinAll`", async () => {
       const program = Fiber.joinAll(
-        Chunk.prepend_(
-          Chunk.fill(100, () => Fiber.never),
-          Fiber.fail("fail")
-        )
+        Chunk.fill(100, () => Fiber.never).prepend(Fiber.fail("fail"))
       ).exit()
 
       const result = await program.unsafeRunPromise()
@@ -156,11 +150,12 @@ describe("Fiber", () => {
 
     it("shard example", async () => {
       function shard<R, E, A>(
-        queue: Queue.Queue<A>,
+        queue: Queue<A>,
         n: number,
         worker: (a: A) => Effect<R, E, void>
       ): Effect<R, E, void> {
-        const worker1 = Queue.take(queue)
+        const worker1 = queue
+          .take()
           .flatMap((a) => worker(a).uninterruptible())
           .forever()
 
@@ -170,16 +165,16 @@ describe("Fiber", () => {
       }
 
       const program = Effect.Do()
-        .bind("queue", () => Queue.makeUnbounded<number>())
-        .tap(({ queue }) => Queue.offerAll_(queue, Chunk.range(1, 100)))
+        .bind("queue", () => Queue.unbounded<number>())
+        .tap(({ queue }) => queue.offerAll(Chunk.range(1, 100)))
         .bindValue(
           "worker",
           ({ queue }) =>
             (n: number) =>
-              n === 100 ? Effect.failNow("fail") : Queue.offer_(queue, n).asUnit()
+              n === 100 ? Effect.failNow("fail") : queue.offer(n).asUnit()
         )
         .bind("exit", ({ queue, worker }) => shard(queue, 4, worker).exit())
-        .tap(({ queue }) => Queue.shutdown(queue))
+        .tap(({ queue }) => queue.shutdown())
         .map(({ exit }) => exit)
 
       const result = await program.unsafeRunPromise()
@@ -218,9 +213,9 @@ describe("Fiber", () => {
   describe("roots", () => {
     test("dual roots", async () => {
       function rootContains(
-        f: Fiber.Runtime<any, any>
+        fiber: Fiber.Runtime<any, any>
       ): Effect<unknown, never, boolean> {
-        return Fiber.roots.map((chunk) => Chunk.find_(chunk, (_) => _ === f).isSome())
+        return Fiber.roots.map((chunk) => chunk.find((f) => f === fiber).isSome())
       }
 
       const rootsTest = Effect.Do()

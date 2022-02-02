@@ -1,6 +1,6 @@
-import * as C from "../src/collection/immutable/Chunk"
+import { Chunk } from "../src/collection/immutable/Chunk"
 import { Tuple } from "../src/collection/immutable/Tuple"
-import { constFalse, constTrue, identity, pipe } from "../src/data/Function"
+import { constFalse, constTrue, identity } from "../src/data/Function"
 import type { Has } from "../src/data/Has"
 import { tag } from "../src/data/Has"
 import { Effect } from "../src/io/Effect"
@@ -59,8 +59,8 @@ const Service3 = tag<Service3Impl>(Service3Id)
 // Ref
 // -----------------------------------------------------------------------------
 
-function makeRef(): Effect<unknown, never, Ref.Ref<C.Chunk<string>>> {
-  return Ref.make(C.empty())
+function makeRef(): Effect<unknown, never, Ref.Ref<Chunk<string>>> {
+  return Ref.make(Chunk.empty())
 }
 
 // -----------------------------------------------------------------------------
@@ -75,34 +75,34 @@ const release2 = "Releasing Module 2"
 const release3 = "Releasing Module 3"
 
 function makeLayer1(
-  ref: Ref.Ref<C.Chunk<string>>
+  ref: Ref.Ref<Chunk<string>>
 ): Layer<unknown, never, Has<Service1Impl>> {
   return Layer.fromManaged(Service1)(
     Managed.acquireReleaseWith(
-      Ref.update_(ref, C.append(acquire1)).map(() => new Service1Impl()),
-      () => Ref.update_(ref, C.append(release1))
+      Ref.update_(ref, (_) => _.append(acquire1)).map(() => new Service1Impl()),
+      () => Ref.update_(ref, (_) => _.append(release1))
     )
   )
 }
 
 function makeLayer2(
-  ref: Ref.Ref<C.Chunk<string>>
+  ref: Ref.Ref<Chunk<string>>
 ): Layer<unknown, never, Has<Service2Impl>> {
   return Layer.fromManaged(Service2)(
     Managed.acquireReleaseWith(
-      Ref.update_(ref, C.append(acquire2)).map(() => new Service2Impl()),
-      () => Ref.update_(ref, C.append(release2))
+      Ref.update_(ref, (_) => _.append(acquire2)).map(() => new Service2Impl()),
+      () => Ref.update_(ref, (_) => _.append(release2))
     )
   )
 }
 
 function makeLayer3(
-  ref: Ref.Ref<C.Chunk<string>>
+  ref: Ref.Ref<Chunk<string>>
 ): Layer<unknown, never, Has<Service3Impl>> {
   return Layer.fromManaged(Service3)(
     Managed.acquireReleaseWith(
-      Ref.update_(ref, C.append(acquire3)).map(() => new Service3Impl()),
-      () => Ref.update_(ref, C.append(release3))
+      Ref.update_(ref, (_) => _.append(acquire3)).map(() => new Service3Impl()),
+      () => Ref.update_(ref, (_) => _.append(release3))
     )
   )
 }
@@ -120,7 +120,7 @@ describe("Layer", () => {
 
     const { actual } = await program.unsafeRunPromise()
 
-    expect(C.toArray(actual)).toEqual(expected)
+    expect(actual.toArray()).toEqual(expected)
   })
 
   it("sharing itself with and", async () => {
@@ -147,7 +147,7 @@ describe("Layer", () => {
 
     const { actual } = await program.unsafeRunPromise()
 
-    expect(C.toArray(actual)).toEqual(expected)
+    expect(actual.toArray()).toEqual(expected)
   })
 
   it("sharing with multiple layers", async () => {
@@ -160,18 +160,16 @@ describe("Layer", () => {
         ((layer1 >> layer2) + (layer1 >> layer3)).build()
       )
       .tap(({ env }) => env.useDiscard(Effect.unit))
-      .bind("actual", ({ ref }) => Ref.get(ref))
+      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
-    const actual = C.toArray(result.actual)
-
-    expect(actual[0]).toBe(acquire1)
-    expect(actual.slice(1, 3)).toContain(acquire2)
-    expect(actual.slice(1, 3)).toContain(acquire3)
-    expect(actual.slice(3, 5)).toContain(release2)
-    expect(actual.slice(3, 5)).toContain(release3)
-    expect(actual[5]).toBe(release1)
+    expect(result[0]).toBe(acquire1)
+    expect(result.slice(1, 3)).toContain(acquire2)
+    expect(result.slice(1, 3)).toContain(acquire3)
+    expect(result.slice(3, 5)).toContain(release2)
+    expect(result.slice(3, 5)).toContain(release3)
+    expect(result[5]).toBe(release1)
   })
 
   it("finalizers with ++", async () => {
@@ -181,16 +179,14 @@ describe("Layer", () => {
       .bindValue("layer2", ({ ref }) => makeLayer2(ref))
       .bindValue("env", ({ layer1, layer2 }) => (layer1 + layer2).build())
       .tap(({ env }) => env.useDiscard(Effect.unit))
-      .bind("actual", ({ ref }) => Ref.get(ref))
+      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
-    const actual = C.toArray(result.actual)
-
-    expect(actual.slice(0, 2)).toContain(acquire1)
-    expect(actual.slice(0, 2)).toContain(acquire2)
-    expect(actual.slice(2, 4)).toContain(release1)
-    expect(actual.slice(2, 4)).toContain(release2)
+    expect(result.slice(0, 2)).toContain(acquire1)
+    expect(result.slice(0, 2)).toContain(acquire2)
+    expect(result.slice(2, 4)).toContain(release1)
+    expect(result.slice(2, 4)).toContain(release2)
   })
 
   it("finalizers with to", async () => {
@@ -200,11 +196,11 @@ describe("Layer", () => {
       .bindValue("layer2", ({ ref }) => makeLayer2(ref))
       .bindValue("env", ({ layer1, layer2 }) => (layer1 >> layer2).build())
       .tap(({ env }) => env.useDiscard(Effect.unit))
-      .bind("actual", ({ ref }) => Ref.get(ref))
+      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
 
-    const { actual } = await program.unsafeRunPromise()
+    const result = await program.unsafeRunPromise()
 
-    expect(C.toArray(actual)).toEqual([acquire1, acquire2, release2, release1])
+    expect(result).toEqual([acquire1, acquire2, release2, release1])
   })
 
   it("finalizers with multiple layers", async () => {
@@ -217,18 +213,11 @@ describe("Layer", () => {
         ((layer1 >> layer2) >> layer3).build()
       )
       .tap(({ env }) => env.useDiscard(Effect.unit))
-      .bind("actual", ({ ref }) => Ref.get(ref))
+      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
 
-    const { actual } = await program.unsafeRunPromise()
+    const result = await program.unsafeRunPromise()
 
-    expect(C.toArray(actual)).toEqual([
-      acquire1,
-      acquire2,
-      acquire3,
-      release3,
-      release2,
-      release1
-    ])
+    expect(result).toEqual([acquire1, acquire2, acquire3, release3, release2, release1])
   })
 
   it("map does not interfere with sharing", async () => {
@@ -241,18 +230,16 @@ describe("Layer", () => {
         ((layer1.map(identity) >> layer2) + (layer1 >> layer3)).build()
       )
       .tap(({ env }) => env.useDiscard(Effect.unit))
-      .bind("actual", ({ ref }) => Ref.get(ref))
+      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
-    const actual = C.toArray(result.actual)
-
-    expect(actual[0]).toBe(acquire1)
-    expect(actual.slice(1, 3)).toContain(acquire2)
-    expect(actual.slice(1, 3)).toContain(acquire3)
-    expect(actual.slice(3, 5)).toContain(release2)
-    expect(actual.slice(3, 5)).toContain(release3)
-    expect(actual[5]).toBe(release1)
+    expect(result[0]).toBe(acquire1)
+    expect(result.slice(1, 3)).toContain(acquire2)
+    expect(result.slice(1, 3)).toContain(acquire3)
+    expect(result.slice(3, 5)).toContain(release2)
+    expect(result.slice(3, 5)).toContain(release3)
+    expect(result[5]).toBe(release1)
   })
 
   it("mapError does not interfere with sharing", async () => {
@@ -265,18 +252,16 @@ describe("Layer", () => {
         ((layer1.mapError(identity) >> layer2) >> (layer1 >> layer3)).build()
       )
       .tap(({ env }) => env.useDiscard(Effect.unit))
-      .bind("actual", ({ ref }) => Ref.get(ref))
+      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
-    const actual = C.toArray(result.actual)
-
-    expect(actual[0]).toBe(acquire1)
-    expect(actual.slice(1, 3)).toContain(acquire2)
-    expect(actual.slice(1, 3)).toContain(acquire3)
-    expect(actual.slice(3, 5)).toContain(release2)
-    expect(actual.slice(3, 5)).toContain(release3)
-    expect(actual[5]).toBe(release1)
+    expect(result[0]).toBe(acquire1)
+    expect(result.slice(1, 3)).toContain(acquire2)
+    expect(result.slice(1, 3)).toContain(acquire3)
+    expect(result.slice(3, 5)).toContain(release2)
+    expect(result.slice(3, 5)).toContain(release3)
+    expect(result[5]).toBe(release1)
   })
 
   it("orDie does not interfere with sharing", async () => {
@@ -289,18 +274,16 @@ describe("Layer", () => {
         ((layer1.orDie() >> layer2) >> (layer1 >> layer3)).build()
       )
       .tap(({ env }) => env.useDiscard(Effect.unit))
-      .bind("actual", ({ ref }) => Ref.get(ref))
+      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
-    const actual = C.toArray(result.actual)
-
-    expect(actual[0]).toBe(acquire1)
-    expect(actual.slice(1, 3)).toContain(acquire2)
-    expect(actual.slice(1, 3)).toContain(acquire3)
-    expect(actual.slice(3, 5)).toContain(release2)
-    expect(actual.slice(3, 5)).toContain(release3)
-    expect(actual[5]).toBe(release1)
+    expect(result[0]).toBe(acquire1)
+    expect(result.slice(1, 3)).toContain(acquire2)
+    expect(result.slice(1, 3)).toContain(acquire3)
+    expect(result.slice(3, 5)).toContain(release2)
+    expect(result.slice(3, 5)).toContain(release3)
+    expect(result[5]).toBe(release1)
   })
 
   it("interruption with and", async () => {
@@ -311,17 +294,15 @@ describe("Layer", () => {
       .bindValue("env", ({ layer1, layer2 }) => (layer1 + layer2).build())
       .bind("fiber", ({ env }) => env.useDiscard(Effect.unit).fork())
       .tap(({ fiber }) => Fiber.interrupt(fiber))
-      .bind("actual", ({ ref }) => Ref.get(ref))
+      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
-    const actual = C.toArray(result.actual)
-
-    if (actual.includes(acquire1)) {
-      expect(actual).toContain(release1)
+    if (result.includes(acquire1)) {
+      expect(result).toContain(release1)
     }
-    if (actual.includes(acquire2)) {
-      expect(actual).toContain(release2)
+    if (result.includes(acquire2)) {
+      expect(result).toContain(release2)
     }
   })
 
@@ -333,17 +314,15 @@ describe("Layer", () => {
       .bindValue("env", ({ layer1, layer2 }) => (layer1 >> layer2).build())
       .bind("fiber", ({ env }) => env.useDiscard(Effect.unit).fork())
       .tap(({ fiber }) => Fiber.interrupt(fiber))
-      .bind("actual", ({ ref }) => Ref.get(ref))
+      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
-    const actual = C.toArray(result.actual)
-
-    if (actual.includes(acquire1)) {
-      expect(actual).toContain(release1)
+    if (result.includes(acquire1)) {
+      expect(result).toContain(release1)
     }
-    if (actual.includes(acquire2)) {
-      expect(actual).toContain(release2)
+    if (result.includes(acquire2)) {
+      expect(result).toContain(release2)
     }
   })
 
@@ -358,20 +337,18 @@ describe("Layer", () => {
       )
       .bind("fiber", ({ env }) => env.useDiscard(Effect.unit).fork())
       .tap(({ fiber }) => Fiber.interrupt(fiber))
-      .bind("actual", ({ ref }) => Ref.get(ref))
+      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
-    const actual = C.toArray(result.actual)
-
-    if (actual.includes(acquire1)) {
-      expect(actual).toContain(release1)
+    if (result.includes(acquire1)) {
+      expect(result).toContain(release1)
     }
-    if (actual.includes(acquire2)) {
-      expect(actual).toContain(release2)
+    if (result.includes(acquire2)) {
+      expect(result).toContain(release2)
     }
-    if (actual.includes(acquire3)) {
-      expect(actual).toContain(release3)
+    if (result.includes(acquire3)) {
+      expect(result).toContain(release3)
     }
   })
 
@@ -444,11 +421,11 @@ describe("Layer", () => {
             .flatMap(() => Effect.environment<Has<Service1Impl>>().provideLayer(layer))
         )
       )
-      .bind("actual", ({ ref }) => Ref.get(ref))
+      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
 
-    const { actual } = await program.unsafeRunPromise()
+    const result = await program.unsafeRunPromise()
 
-    expect(C.toArray(actual)).toEqual([acquire1, release1])
+    expect(result).toEqual([acquire1, release1])
   })
 
   it("orElse", async () => {
@@ -460,13 +437,11 @@ describe("Layer", () => {
         ((layer1 >> Layer.fail("failed!")) | layer2).build()
       )
       .bind("fiber", ({ env }) => env.useDiscard(Effect.unit))
-      .bind("actual", ({ ref }) => Ref.get(ref))
+      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
-    const actual = C.toArray(result.actual)
-
-    expect(actual).toEqual([acquire1, release1, acquire2, release2])
+    expect(result).toEqual([acquire1, release1, acquire2, release2])
   })
 
   it("passthrough", async () => {
@@ -505,11 +480,11 @@ describe("Layer", () => {
       .bindValue("layer", ({ ref }) => makeLayer1(ref))
       .bindValue("env", ({ layer }) => (layer + layer.fresh()).build())
       .tap(({ env }) => env.useNow())
-      .bind("actual", ({ ref }) => Ref.get(ref))
+      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
 
-    const { actual } = await program.unsafeRunPromise()
+    const result = await program.unsafeRunPromise()
 
-    expect(C.toArray(actual)).toEqual([acquire1, acquire1, release1, release1])
+    expect(result).toEqual([acquire1, acquire1, release1, release1])
   })
 
   it("fresh with to", async () => {
@@ -518,11 +493,11 @@ describe("Layer", () => {
       .bindValue("layer", ({ ref }) => makeLayer1(ref))
       .bindValue("env", ({ layer }) => (layer >> layer.fresh()).build())
       .tap(({ env }) => env.useNow())
-      .bind("actual", ({ ref }) => Ref.get(ref))
+      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
 
-    const { actual } = await program.unsafeRunPromise()
+    const result = await program.unsafeRunPromise()
 
-    expect(C.toArray(actual)).toEqual([acquire1, acquire1, release1, release1])
+    expect(result).toEqual([acquire1, acquire1, release1, release1])
   })
 
   it("fresh with multiple layers", async () => {
@@ -533,11 +508,11 @@ describe("Layer", () => {
         (layer + layer + (layer + layer).fresh()).build()
       )
       .tap(({ env }) => env.useNow())
-      .bind("actual", ({ ref }) => Ref.get(ref))
+      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
 
-    const { actual } = await program.unsafeRunPromise()
+    const result = await program.unsafeRunPromise()
 
-    expect(C.toArray(actual)).toEqual([acquire1, acquire1, release1, release1])
+    expect(result).toEqual([acquire1, acquire1, release1, release1])
   })
 
   it("fresh with identical fresh layers", async () => {
@@ -550,37 +525,36 @@ describe("Layer", () => {
         (layer1.fresh() >> (layer2 + (layer1 >> layer3).fresh())).build()
       )
       .tap(({ env }) => env.useNow())
-      .bind("actual", ({ ref }) => Ref.get(ref))
+      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
 
-    const { actual } = await program.unsafeRunPromise()
+    const result = await program.unsafeRunPromise()
 
-    expect(C.toArray(actual)).toHaveLength(8)
+    expect(result).toHaveLength(8)
   })
 
   it("preserves identity of acquired resources", async () => {
     const ChunkServiceId = Symbol()
-    const ChunkService = tag<Ref.Ref<C.Chunk<string>>>(ChunkServiceId)
+    const ChunkService = tag<Ref.Ref<Chunk<string>>>(ChunkServiceId)
 
     const program = Effect.Do()
-      .bind("testRef", () => Ref.make<C.Chunk<string>>(C.empty()))
+      .bind("testRef", () => Ref.make(Chunk.empty<string>()))
       .bindValue("layer", ({ testRef }) =>
-        pipe(
-          Ref.make<C.Chunk<string>>(C.empty())
+        Layer.fromManaged(ChunkService)(
+          Ref.make(Chunk.empty<string>())
             .toManagedWith((ref) => Ref.get(ref).flatMap((_) => Ref.set_(testRef, _)))
-            .tap(() => Managed.unit),
-          Layer.fromManaged(ChunkService)
+            .tap(() => Managed.unit)
         )
       )
       .tap(({ layer }) =>
         layer
           .build()
-          .use((_) => pipe(ChunkService.read(_), Ref.update(C.append("test"))))
+          .use((_) => Ref.update_(ChunkService.read(_), (_) => _.append("test")))
       )
-      .bind("actual", ({ testRef }) => Ref.get(testRef))
+      .flatMap(({ testRef }) => Ref.get(testRef).map((chunk) => chunk.toArray()))
 
-    const { actual } = await program.unsafeRunPromise()
+    const result = await program.unsafeRunPromise()
 
-    expect(C.toArray(actual)).toEqual(["test"])
+    expect(result).toEqual(["test"])
   })
 
   // TODO: implement after Schedule

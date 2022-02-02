@@ -1,4 +1,4 @@
-import * as Chunk from "../src/collection/immutable/Chunk"
+import { Chunk } from "../src/collection/immutable/Chunk"
 import { Tuple } from "../src/collection/immutable/Tuple"
 import { Effect } from "../src/io/Effect"
 import { Exit } from "../src/io/Exit"
@@ -64,9 +64,7 @@ describe("Promise", () => {
       .bind("r", () => Ref.make(Chunk.from(["first error", "second error"])))
       .bind("s", ({ p, r }) =>
         p.complete(
-          Ref.modify_(r, (as) =>
-            Tuple(Chunk.unsafeHead(as), Chunk.unsafeTail(as))
-          ).flip()
+          Ref.modify_(r, (as) => Tuple(as.unsafeHead(), as.unsafeTail())).flip()
         )
       )
       .bind("v1", ({ p }) => p.await().exit())
@@ -85,9 +83,7 @@ describe("Promise", () => {
       .bind("r", () => Ref.make(Chunk.from(["first error", "second error"])))
       .bind("s", ({ p, r }) =>
         p.completeWith(
-          Ref.modify_(r, (as) =>
-            Tuple(Chunk.unsafeHead(as), Chunk.unsafeTail(as))
-          ).flip()
+          Ref.modify_(r, (as) => Tuple(as.unsafeHead(), as.unsafeTail())).flip()
         )
       )
       .bind("v1", ({ p }) => p.await().exit())

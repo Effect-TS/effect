@@ -1,4 +1,4 @@
-import * as Ch from "../src/collection/immutable/Chunk"
+import { Chunk } from "../src/collection/immutable/Chunk"
 import { flow, pipe } from "../src/data/Function"
 import * as Eq from "../src/prelude/Equal"
 import * as Ord from "../src/prelude/Ord"
@@ -13,7 +13,7 @@ interface Event {
 describe("TPriorityQueue", () => {
   const a = { time: -1, description: "aah" }
   const b = { time: 0, description: "test" }
-  const as = Ch.make<Event[]>(a, b)
+  const as = Chunk<Event[]>(a, b)
   const eventOrd = Ord.contramap_(Ord.number, ({ time }: Event) => time)
   const eventEq = Eq.struct({
     time: Eq.number,
@@ -31,7 +31,7 @@ describe("TPriorityQueue", () => {
 
     const result = await program.unsafeRunPromise()
 
-    expect(result).toBe(Ch.isEmpty(as))
+    expect(result).toBe(as.isEmpty())
   })
 
   it("nonEmpty", async () => {
@@ -44,7 +44,7 @@ describe("TPriorityQueue", () => {
 
     const result = await program.unsafeRunPromise()
 
-    expect(result).toBe(Ch.isNonEmpty(as))
+    expect(result).toBe(as.isNonEmpty())
   })
 
   it("offerAll and takeAll", async () => {
@@ -57,7 +57,7 @@ describe("TPriorityQueue", () => {
 
     const result = await program.unsafeRunPromise()
 
-    expect(Ch.corresponds_(result, as, eventEq.equals)).toBe(true)
+    expect(result.corresponds(as, eventEq.equals)).toBe(true)
   })
 
   it("removeIf", async () => {
@@ -70,7 +70,7 @@ describe("TPriorityQueue", () => {
 
     const result = await program.unsafeRunPromise()
 
-    expect(Ch.corresponds_(result, Ch.single(a), eventEq.equals)).toBe(true)
+    expect(result.corresponds(Chunk.single(a), eventEq.equals)).toBe(true)
   })
 
   it("retainIf", async () => {
@@ -83,19 +83,19 @@ describe("TPriorityQueue", () => {
 
     const result = await program.unsafeRunPromise()
 
-    expect(Ch.corresponds_(result, Ch.single(b), eventEq.equals)).toBe(true)
+    expect(result.corresponds(Chunk.single(b), eventEq.equals)).toBe(true)
   })
 
   it("take", async () => {
     const program = pipe(
       TPriorityQueue.fromIterable_(eventOrd, as),
-      STM.chain(flow(TPriorityQueue.take, STM.replicate(Ch.size(as)), STM.collectAll)),
+      STM.chain(flow(TPriorityQueue.take, STM.replicate(as.size), STM.collectAll)),
       STM.commit
     )
 
     const result = await program.unsafeRunPromise()
 
-    expect(Ch.corresponds_(result, as, eventEq.equals)).toBe(true)
+    expect(result.corresponds(as, eventEq.equals)).toBe(true)
   })
 
   it("takeUpTo", async () => {
@@ -114,8 +114,8 @@ describe("TPriorityQueue", () => {
 
     const { left, right } = await program.unsafeRunPromise()
 
-    expect(Ch.corresponds_(left, Ch.single(a), eventEq.equals)).toBe(true)
-    expect(Ch.corresponds_(right, Ch.single(b), eventEq.equals)).toBe(true)
+    expect(left.corresponds(Chunk.single(a), eventEq.equals)).toBe(true)
+    expect(right.corresponds(Chunk.single(b), eventEq.equals)).toBe(true)
   })
 
   it("toChunk", async () => {
@@ -127,6 +127,6 @@ describe("TPriorityQueue", () => {
 
     const result = await program.unsafeRunPromise()
 
-    expect(Ch.corresponds_(result, as, eventEq.equals)).toBe(true)
+    expect(result.corresponds(as, eventEq.equals)).toBe(true)
   })
 })

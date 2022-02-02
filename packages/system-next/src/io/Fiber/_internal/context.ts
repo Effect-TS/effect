@@ -80,7 +80,7 @@ export class Finalizer {
     readonly trace?: string
   ) {}
 
-  apply(a: any): Effect<any, any, any> {
+  apply<X>(a: X): Effect<any, any, any> {
     this.handleInterrupts()
     return this.finalizer.map(() => a, instruction(this.finalizer).trace)
   }
@@ -89,7 +89,7 @@ export class Finalizer {
 export class ApplyFrame {
   readonly _tag = "ApplyFrame"
   constructor(
-    readonly apply: (a: any) => Effect<any, any, any>,
+    readonly apply: <X>(a: Cause<X>) => Effect<any, any, any>,
     readonly trace?: string
   ) {}
 }
