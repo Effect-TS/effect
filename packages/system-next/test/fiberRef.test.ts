@@ -1,7 +1,7 @@
-import * as Chunk from "../src/collection/immutable/Chunk"
+import { Chunk } from "../src/collection/immutable/Chunk"
 import { Tuple } from "../src/collection/immutable/Tuple"
 import { Either } from "../src/data/Either"
-import { identity, pipe } from "../src/data/Function"
+import { identity } from "../src/data/Function"
 import { Option } from "../src/data/Option"
 import { Effect } from "../src/io/Effect"
 import * as Fiber from "../src/io/Fiber"
@@ -98,7 +98,7 @@ describe("FiberRef", () => {
       const program = Effect.Do()
         .bind("fiberRef", () => FiberRef.make(initial))
         .bind("local", ({ fiberRef }) =>
-          pipe(fiberRef, FiberRef.locally(update))(FiberRef.get(fiberRef))
+          FiberRef.locally_(fiberRef, update)(FiberRef.get(fiberRef))
         )
         .bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
 
@@ -112,7 +112,7 @@ describe("FiberRef", () => {
       const program = Effect.Do()
         .bind("fiberRef", () => FiberRef.make(initial))
         .bind("child", ({ fiberRef }) =>
-          pipe(FiberRef.get(fiberRef), FiberRef.locally_(fiberRef, update)).fork()
+          FiberRef.locally_(fiberRef, update)(FiberRef.get(fiberRef)).fork()
         )
         .bind("local", ({ child }) => Fiber.join(child))
         .bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
@@ -131,7 +131,7 @@ describe("FiberRef", () => {
           Fiber.await(child).flatMap((_) => Effect.done(_))
         )
         .bind("localValue", ({ fiberRef }) =>
-          pipe(fiberRef, FiberRef.locally(update))(FiberRef.get(fiberRef))
+          FiberRef.locally_(fiberRef, update)(FiberRef.get(fiberRef))
         )
         .bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
 

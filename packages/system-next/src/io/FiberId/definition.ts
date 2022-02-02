@@ -17,7 +17,7 @@ export interface FiberId {
 }
 
 /**
- * @tsplus type ets/FiberId
+ * @tsplus type ets/FiberIdOps
  */
 export interface FiberIdOps {}
 export const FiberId: FiberIdOps = {}
