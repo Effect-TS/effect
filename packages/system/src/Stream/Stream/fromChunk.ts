@@ -1,14 +1,14 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
-import * as Tp from "../../Collections/Immutable/Tuple"
-import { pipe } from "../../Function"
-import type * as O from "../../Option"
-import * as T from "../_internal/effect"
-import * as Ref from "../_internal/ref"
-import * as Pull from "../Pull"
-import type { UIO } from "./definitions"
-import { Stream } from "./definitions"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import { pipe } from "../../Function/index.js"
+import type * as O from "../../Option/index.js"
+import * as T from "../_internal/effect.js"
+import * as Ref from "../_internal/ref.js"
+import * as Pull from "../Pull/index.js"
+import type { UIO } from "./definitions.js"
+import { Stream } from "./definitions.js"
 
 /**
  * Creates a stream from an array of values

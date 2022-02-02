@@ -2,7 +2,7 @@
 
 import "../../Operator"
 
-import { AtomicReference } from "../AtomicReference"
+import { AtomicReference } from "../AtomicReference/index.js"
 
 export class AtomicNumber extends AtomicReference<number> {
   constructor(n: number) {

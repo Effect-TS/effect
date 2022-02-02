@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 // forked from https://github.com/Alorel/typescript-lazy-get-decorator
 
 type DecoratorReturn = PropertyDescriptor | NewDescriptor

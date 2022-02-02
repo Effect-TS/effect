@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as Tp from "../../Collections/Immutable/Tuple"
-import type { Stream } from "./definitions"
-import { zipWith_ } from "./zipWith"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import type { Stream } from "./definitions.js"
+import { zipWith_ } from "./zipWith.js"
 
 /**
  * Zips this stream with another point-wise and emits tuples of elements from both streams.

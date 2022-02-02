@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as CK from "../../../Collections/Immutable/Chunk"
-import type * as T from "../../../Effect"
-import * as ContramapChunksEffect from "./contramapChunksEffect"
-import type * as C from "./core"
+import * as CK from "../../../Collections/Immutable/Chunk/index.js"
+import type * as T from "../../../Effect/index.js"
+import * as ContramapChunksEffect from "./contramapChunksEffect.js"
+import type * as C from "./core.js"
 
 export function filterInputEffect_<
   R,

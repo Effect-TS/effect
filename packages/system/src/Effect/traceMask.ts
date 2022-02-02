@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { checkTraced, traced, untraced } from "./core"
-import type { Effect } from "./effect"
+import { checkTraced, traced, untraced } from "./core.js"
+import type { Effect } from "./effect.js"
 
 function restore(
   b: boolean

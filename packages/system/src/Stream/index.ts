@@ -7,4 +7,4 @@ import "../Operator"
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-export * from "./Stream"
+export * from "./Stream/index.js"

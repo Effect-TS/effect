@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as M from "../../../Managed"
-import * as CH from "../Channel"
-import * as C from "./core"
+import * as M from "../../../Managed/index.js"
+import * as CH from "../Channel/index.js"
+import * as C from "./core.js"
 
 /**
  * Creates a sink produced from a managed effect.

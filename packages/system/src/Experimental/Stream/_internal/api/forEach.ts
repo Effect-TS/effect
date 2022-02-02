@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as T from "../../../../Effect"
-import type * as C from "../core"
-import * as RunForEach from "./runForEach"
+import type * as T from "../../../../Effect/index.js"
+import type * as C from "../core.js"
+import * as RunForEach from "./runForEach.js"
 
 /**
  * Consumes all elements of the stream, passing them to the specified callback.

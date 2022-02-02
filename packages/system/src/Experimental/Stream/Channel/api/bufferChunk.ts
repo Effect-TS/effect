@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
-import type * as Ref from "../../../../Ref"
-import type * as C from "../core"
-import * as Buffer from "./buffer"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import type * as Ref from "../../../../Ref/index.js"
+import type * as C from "../core.js"
+import * as Buffer from "./buffer.js"
 
 export function bufferChunk<InElem, InErr, InDone>(
   ref: Ref.Ref<CK.Chunk<InElem>>

@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function"
-import * as H from "../../Hub"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import type * as Take from "../Take"
-import type { Stream } from "./definitions"
-import { intoHubManaged_ } from "./intoHubManaged"
+import { pipe } from "../../Function/index.js"
+import * as H from "../../Hub/index.js"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import type * as Take from "../Take/index.js"
+import type { Stream } from "./definitions.js"
+import { intoHubManaged_ } from "./intoHubManaged.js"
 
 /**
  * Converts the stream to a managed hub of chunks. After the managed hub is used,

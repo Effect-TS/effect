@@ -3,11 +3,11 @@
 /* eslint-disable prefer-const */
 import "../Operator"
 
-import * as Tp from "../Collections/Immutable/Tuple"
-import { _A, _U } from "../Effect/commons"
-import { Stack } from "../Stack"
-import type { HasUnify } from "../Utils"
-import { unifyIndex } from "../Utils"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import { _A, _U } from "../Effect/commons.js"
+import { Stack } from "../Stack/index.js"
+import type { HasUnify } from "../Utils/index.js"
+import { unifyIndex } from "../Utils/index.js"
 
 /**
  * `IO[A]` is a purely functional description of a computation.

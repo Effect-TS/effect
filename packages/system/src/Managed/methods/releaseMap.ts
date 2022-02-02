@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import * as Tp from "../../Collections/Immutable/Tuple"
-import { pipe } from "../../Function"
-import { environment, map } from "../deps"
-import type { Managed } from "../managed"
-import { managedApply } from "../managed"
-import type { ReleaseMap } from "../ReleaseMap"
-import { noopFinalizer } from "../ReleaseMap/finalizer"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import { pipe } from "../../Function/index.js"
+import { environment, map } from "../deps.js"
+import type { Managed } from "../managed.js"
+import { managedApply } from "../managed.js"
+import type { ReleaseMap } from "../ReleaseMap/index.js"
+import { noopFinalizer } from "../ReleaseMap/finalizer.js"
 
 /**
  * Provides access to the entire map of resources allocated by this {@link Managed}.

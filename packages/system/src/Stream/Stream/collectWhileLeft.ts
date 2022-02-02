@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as E from "../../Either"
-import * as O from "../../Option"
-import { collectWhileMap_ } from "./collectWhileMap"
-import type { Stream } from "./definitions"
+import * as E from "../../Either/index.js"
+import * as O from "../../Option/index.js"
+import { collectWhileMap_ } from "./collectWhileMap.js"
+import type { Stream } from "./definitions.js"
 
 /**
  * Terminates the stream when encountering the first `Right`.

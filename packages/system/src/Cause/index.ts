@@ -15,4 +15,4 @@ export * from "./do.js"
 export * from "./errors.js"
 // codegen:end
 
-export { Renderer, pretty, defaultRenderer } from "./Pretty"
+export { Renderer, pretty, defaultRenderer } from "./Pretty/index.js"

@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import * as Q from "../../../../Queue"
-import type * as C from "../core"
-import * as Ensuring from "./ensuring"
-import * as FromChunkQueue from "./fromChunkQueue"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as Q from "../../../../Queue/index.js"
+import type * as C from "../core.js"
+import * as Ensuring from "./ensuring.js"
+import * as FromChunkQueue from "./fromChunkQueue.js"
 
 /**
  * Creates a stream from a queue of values. The queue will be shutdown once the stream is closed.

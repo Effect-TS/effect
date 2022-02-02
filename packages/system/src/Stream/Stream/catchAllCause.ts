@@ -1,19 +1,19 @@
 // ets_tracing: off
 
-import * as C from "../../Cause"
-import * as Tp from "../../Collections/Immutable/Tuple"
-import * as Ex from "../../Exit"
-import { pipe } from "../../Function"
-import type * as RM from "../../Managed/ReleaseMap"
-import * as Finalizer from "../../Managed/ReleaseMap/finalizer"
-import * as makeReleaseMap from "../../Managed/ReleaseMap/makeReleaseMap"
-import * as releaseAll from "../../Managed/ReleaseMap/releaseAll"
-import * as Option from "../../Option"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import * as Ref from "../_internal/ref"
-import type * as Pull from "../Pull"
-import { Stream } from "./definitions"
+import * as C from "../../Cause/index.js"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import * as Ex from "../../Exit/index.js"
+import { pipe } from "../../Function/index.js"
+import type * as RM from "../../Managed/ReleaseMap/index.js"
+import * as Finalizer from "../../Managed/ReleaseMap/finalizer.js"
+import * as makeReleaseMap from "../../Managed/ReleaseMap/makeReleaseMap.js"
+import * as releaseAll from "../../Managed/ReleaseMap/releaseAll.js"
+import * as Option from "../../Option/index.js"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import * as Ref from "../_internal/ref.js"
+import type * as Pull from "../Pull/index.js"
+import { Stream } from "./definitions.js"
 
 /**
  * Switches over to the stream produced by the provided function in case this one

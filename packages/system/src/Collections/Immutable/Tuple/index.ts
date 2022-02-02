@@ -1,5 +1,7 @@
-import * as Tp from "../../../Structural"
-import type { ForcedArray } from "../../../Utils"
+// ets_tracing: off
+
+import * as Tp from "../../../Structural/index.js"
+import type { ForcedArray } from "../../../Utils/index.js"
 
 export const TupleSym: unique symbol = Symbol.for(
   "@effect-ts/system/Collections/Immutable/Tuple"

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
-import * as E from "../../Either"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import * as E from "../../Either/index.js"
 
 export function zipChunks_<A, B, C>(
   fa: A.Chunk<A>,

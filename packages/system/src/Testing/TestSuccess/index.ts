@@ -1,4 +1,6 @@
-import type * as BA from "../BoolAlgebra"
+// ets_tracing: off
+
+import type * as BA from "../BoolAlgebra/index.js"
 
 export const SucceededTypeId = Symbol()
 

@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { identity } from "../../../../Function"
-import type * as O from "../../../../Option"
-import type * as C from "../core"
-import * as RefineOrDieWith from "./refineOrDieWith"
+import { identity } from "../../../../Function/index.js"
+import type * as O from "../../../../Option/index.js"
+import type * as C from "../core.js"
+import * as RefineOrDieWith from "./refineOrDieWith.js"
 
 /**
  * Keeps some of the errors, and terminates the fiber with the rest

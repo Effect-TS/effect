@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { fromEffect } from "../Managed/fromEffect"
-import { makeExit_ } from "../Managed/makeExit"
-import type { Managed } from "../Managed/managed"
-import type { Effect } from "./effect"
+import { fromEffect } from "../Managed/fromEffect.js"
+import { makeExit_ } from "../Managed/makeExit.js"
+import type { Managed } from "../Managed/managed.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Converts this Effect to a Managed. This Effect and the provided release action

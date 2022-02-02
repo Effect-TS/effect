@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as C from "./core"
-import * as DropLeftover from "./dropLeftover"
-import * as Fold from "./fold"
+import type * as C from "./core.js"
+import * as DropLeftover from "./dropLeftover.js"
+import * as Fold from "./fold.js"
 
 /**
  * A sink that folds its inputs with the provided function and initial state.

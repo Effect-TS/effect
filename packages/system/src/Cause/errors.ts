@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Cause } from "./cause"
-import { pretty } from "./Pretty"
+import type { Cause } from "./cause.js"
+import { pretty } from "./Pretty/index.js"
 
 //
 // @category FiberFailure

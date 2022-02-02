@@ -1,7 +1,9 @@
-import * as O from "../../../../Option"
-import type * as Tp from "../../Tuple"
-import type { Chunk } from "../core"
-import { append_, empty } from "../core"
+// ets_tracing: off
+
+import * as O from "../../../../Option/index.js"
+import type * as Tp from "../../Tuple/index.js"
+import type { Chunk } from "../core.js"
+import { append_, empty } from "../core.js"
 
 /**
  * Constructs a `Chunk` by repeatedly applying the function `f` as long as it

@@ -1,4 +1,6 @@
-export * from "./core"
+// ets_tracing: off
+
+export * from "./core.js"
 
 // codegen:start { preset: barrel, include: ./api/*.ts }
 export * from "./api/collect.js"

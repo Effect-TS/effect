@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
-import type { Stream } from "./definitions"
-import { fromChunk } from "./fromChunk"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import type { Stream } from "./definitions.js"
+import { fromChunk } from "./fromChunk.js"
 
 /**
  * Creates a stream from an iterable collection of values

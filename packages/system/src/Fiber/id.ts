@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { AtomicNumber } from "../Support/AtomicNumber"
+import { AtomicNumber } from "../Support/AtomicNumber/index.js"
 
 /**
  * The identity of a Fiber, described by the time it began life, and a

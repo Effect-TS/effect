@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as Tp from "../Collections/Immutable/Tuple"
-import type { Option } from "../Option"
-import { getOrElse_ } from "../Option"
-import { modify } from "./modify"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import type { Option } from "../Option/index.js"
+import { getOrElse_ } from "../Option/index.js"
+import { modify } from "./modify.js"
 
 /**
  * Atomically modifies the `FiberRef` with the specified partial function.

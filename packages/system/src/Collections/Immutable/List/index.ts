@@ -2,6 +2,6 @@
 
 import "../../../Operator"
 
-export * from "./api/filterM"
-export * from "./api/mapM"
-export * from "./core"
+export * from "./api/filterM.js"
+export * from "./api/mapM.js"
+export * from "./core.js"

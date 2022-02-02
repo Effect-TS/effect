@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type { Cause } from "../Cause/cause"
-import type { Exit } from "../Exit/exit"
-import { bracketExit_ } from "./bracketExit"
-import { unit } from "./core"
-import type { Effect } from "./effect"
+import type { Cause } from "../Cause/cause.js"
+import type { Exit } from "../Exit/exit.js"
+import { bracketExit_ } from "./bracketExit.js"
+import { unit } from "./core.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Execute a cleanup function when the effect completes

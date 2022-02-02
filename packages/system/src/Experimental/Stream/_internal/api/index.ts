@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 // codegen:start {preset: barrel, include: ./*.ts, exclude: ./excl-*.ts}
 export * from "./absolve.js"
 export * from "./access.js"

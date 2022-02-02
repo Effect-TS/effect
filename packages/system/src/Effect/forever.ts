@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { chain_, yieldNow } from "./core"
-import type { Effect } from "./effect"
-import { zipRight_ } from "./zips"
+import { chain_, yieldNow } from "./core.js"
+import type { Effect } from "./effect.js"
+import { zipRight_ } from "./zips.js"
 
 /**
  * Repeats this effect forever (until the first error).

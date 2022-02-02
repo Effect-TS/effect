@@ -1,5 +1,7 @@
-import type * as Chunk from "../core"
-import { concreteId } from "../definition"
+// ets_tracing: off
+
+import type * as Chunk from "../core.js"
+import { concreteId } from "../definition.js"
 
 /**
  * Determines whether a predicate is satisfied for at least one element of this chunk.

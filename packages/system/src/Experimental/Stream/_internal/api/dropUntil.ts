@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type { Predicate } from "../../../../Function"
-import type * as C from "../core"
-import * as Drop from "./drop"
-import * as DropWhile from "./dropWhile"
+import type { Predicate } from "../../../../Function/index.js"
+import type * as C from "../core.js"
+import * as Drop from "./drop.js"
+import * as DropWhile from "./dropWhile.js"
 
 /**
  * Drops all elements of the stream until the specified predicate evaluates

@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import type * as Tp from "../../../../Collections/Immutable/Tuple"
-import * as T from "../../../../Effect"
-import * as Ex from "../../../../Exit"
-import * as MH from "../_internal/mergeHelpers"
-import type * as C from "../core"
-import * as MergeWith from "./mergeWith"
+import type * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
+import * as T from "../../../../Effect/index.js"
+import * as Ex from "../../../../Exit/index.js"
+import * as MH from "../_internal/mergeHelpers.js"
+import type * as C from "../core.js"
+import * as MergeWith from "./mergeWith.js"
 
 export function zipPar_<
   Env,

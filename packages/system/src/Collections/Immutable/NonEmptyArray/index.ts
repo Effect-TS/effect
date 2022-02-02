@@ -6,11 +6,11 @@
  */
 import "../../../Operator"
 
-import type { Predicate, Refinement } from "../../../Function"
-import type { Option } from "../../../Option"
-import { none, some } from "../../../Option"
-import * as A from "../Array"
-import type * as Tp from "../Tuple"
+import type { Predicate, Refinement } from "../../../Function/index.js"
+import type { Option } from "../../../Option/index.js"
+import { none, some } from "../../../Option/index.js"
+import * as A from "../Array/index.js"
+import type * as Tp from "../Tuple/index.js"
 
 export type NonEmptyArray<A> = A.Array<A> & {
   readonly 0: A

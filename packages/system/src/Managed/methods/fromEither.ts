@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as fe from "../../Effect/fromEither"
-import * as E from "../../Either"
-import { fromEffect } from "../fromEffect"
+import * as fe from "../../Effect/fromEither.js"
+import * as E from "../../Either/index.js"
+import { fromEffect } from "../fromEffect.js"
 
 /**
  * Lifts an `Either` into a `Managed` value.

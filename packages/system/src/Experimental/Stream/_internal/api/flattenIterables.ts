@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
-import type * as C from "../core"
-import * as FlattenChunks from "./flattenChunks"
-import * as Map from "./map"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import type * as C from "../core.js"
+import * as FlattenChunks from "./flattenChunks.js"
+import * as Map from "./map.js"
 
 /**
  * Submerges the iterables carried by this stream into the stream's structure, while

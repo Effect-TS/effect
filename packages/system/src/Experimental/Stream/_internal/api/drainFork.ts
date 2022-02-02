@@ -1,16 +1,16 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect"
-import { pipe } from "../../../../Function"
-import * as M from "../../../../Managed"
-import * as P from "../../../../Promise"
-import type * as C from "../core"
-import * as Chain from "./chain"
-import * as CrossRight from "./crossRight"
-import * as FromEffect from "./fromEffect"
-import * as InterruptWhenP from "./interruptWhenP"
-import * as Managed from "./managed"
-import * as RunForEachManaged from "./runForEachManaged"
+import * as T from "../../../../Effect/index.js"
+import { pipe } from "../../../../Function/index.js"
+import * as M from "../../../../Managed/index.js"
+import * as P from "../../../../Promise/index.js"
+import type * as C from "../core.js"
+import * as Chain from "./chain.js"
+import * as CrossRight from "./crossRight.js"
+import * as FromEffect from "./fromEffect.js"
+import * as InterruptWhenP from "./interruptWhenP.js"
+import * as Managed from "./managed.js"
+import * as RunForEachManaged from "./runForEachManaged.js"
 
 /**
  * Drains the provided stream in the background for as long as this stream is running.

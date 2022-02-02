@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-export * from "./effect"
+export * from "./effect.js"
 export {
   forEach,
   forEachPar,

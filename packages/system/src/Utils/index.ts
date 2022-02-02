@@ -2,13 +2,13 @@
 
 import "../Operator"
 
-import type { Tuple } from "../Collections/Immutable/Tuple"
-import type { _A, _E, _R } from "../Effect"
-import type { Either } from "../Either/core"
-import type { Tag } from "../Has"
-import type { Option } from "../Option"
-import { none, some } from "../Option"
-import type { Sync } from "../Sync"
+import type { Tuple } from "../Collections/Immutable/Tuple/index.js"
+import type { _A, _E, _R } from "../Effect/index.js"
+import type { Either } from "../Either/core.js"
+import type { Tag } from "../Has/index.js"
+import type { Option } from "../Option/index.js"
+import { none, some } from "../Option/index.js"
+import type { Sync } from "../Sync/index.js"
 
 export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
   k: infer I
@@ -153,7 +153,7 @@ export type _R<T> = [T] extends [{ [k in typeof _R]: (_: infer R) => void }] ? R
 
 export type _E<T> = [T] extends [{ [k in typeof _E]: () => infer E }] ? E : never
 
-export * from "./tool"
+export * from "./tool.js"
 
 export function isEither(u: unknown): u is Either<unknown, unknown> {
   return (
@@ -228,7 +228,7 @@ export type ForcedArray<A> = A extends readonly any[] ? A : []
 
 export interface UnifiableIndexed<X> {}
 
-export * from "./lazy"
-export * from "./union"
-export * from "./equal"
-export * from "./unification"
+export * from "./lazy.js"
+export * from "./union.js"
+export * from "./equal.js"
+export * from "./unification.js"

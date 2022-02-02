@@ -2,14 +2,14 @@
 
 import "../../../../Operator"
 
-import type * as Cause from "../../../../Cause"
-import * as L from "../../../../Collections/Immutable/List"
-import * as T from "../../../../Effect"
-import * as Either from "../../../../Either"
-import * as Exit from "../../../../Exit"
-import * as F from "../../../../Fiber"
-import * as O from "../../../../Option"
-import * as P from "./primitives"
+import type * as Cause from "../../../../Cause/index.js"
+import * as L from "../../../../Collections/Immutable/List/index.js"
+import * as T from "../../../../Effect/index.js"
+import * as Either from "../../../../Either/index.js"
+import * as Exit from "../../../../Exit/index.js"
+import * as F from "../../../../Fiber/index.js"
+import * as O from "../../../../Option/index.js"
+import * as P from "./primitives.js"
 
 type ErasedExecutor<Env> = ChannelExecutor<
   Env,

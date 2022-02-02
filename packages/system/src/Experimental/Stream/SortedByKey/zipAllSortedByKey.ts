@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as Tp from "../../../Collections/Immutable/Tuple"
-import type * as OD from "../../../Ord"
-import type * as S from "../_internal/core"
-import type * as C from "./core"
-import * as ZipAllSortedByKeyWith from "./zipAllSortedByKeyWith"
+import * as Tp from "../../../Collections/Immutable/Tuple/index.js"
+import type * as OD from "../../../Ord/index.js"
+import type * as S from "../_internal/core.js"
+import type * as C from "./core.js"
+import * as ZipAllSortedByKeyWith from "./zipAllSortedByKeyWith.js"
 
 /**
  * Zips this stream that is sorted by distinct keys and the specified

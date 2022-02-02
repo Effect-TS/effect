@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
-import type { Predicate } from "../../../../Function"
-import * as CH from "../../Channel"
-import * as C from "../core"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import type { Predicate } from "../../../../Function/index.js"
+import * as CH from "../../Channel/index.js"
+import * as C from "../core.js"
 
 /**
  * Takes all elements of the stream until the specified predicate evaluates

@@ -4,14 +4,14 @@
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
 
-import * as A from "../Collections/Immutable/Array"
-import * as R from "../Collections/Immutable/Dictionary"
-import * as core from "../Effect/core"
-import type { Effect } from "../Effect/effect"
-import type { Has, Tag } from "../Has"
-import { mergeEnvironments } from "../Has"
-import { accessCallTrace } from "../Tracing"
-import type { UnionToIntersection } from "../Utils"
+import * as A from "../Collections/Immutable/Array/index.js"
+import * as R from "../Collections/Immutable/Dictionary/index.js"
+import * as core from "../Effect/core.js"
+import type { Effect } from "../Effect/effect.js"
+import type { Has, Tag } from "../Has/index.js"
+import { mergeEnvironments } from "../Has/index.js"
+import { accessCallTrace } from "../Tracing/index.js"
+import type { UnionToIntersection } from "../Utils/index.js"
 
 /**
  * Access a record of services with the required Service Entries

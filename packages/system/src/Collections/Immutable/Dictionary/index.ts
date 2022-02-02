@@ -2,13 +2,13 @@
 
 import "../../../Operator"
 
-import type { Either } from "../../../Either"
-import type { Predicate, Refinement } from "../../../Function"
-import * as O from "../../../Option"
-import type { MutableRecord } from "../../../Support/Mutable"
-import type { PredicateWithIndex, RefinementWithIndex } from "../../../Utils"
-import * as A from "../Array"
-import * as Tp from "../Tuple"
+import type { Either } from "../../../Either/index.js"
+import type { Predicate, Refinement } from "../../../Function/index.js"
+import * as O from "../../../Option/index.js"
+import type { MutableRecord } from "../../../Support/Mutable/index.js"
+import type { PredicateWithIndex, RefinementWithIndex } from "../../../Utils/index.js"
+import * as A from "../Array/index.js"
+import * as Tp from "../Tuple/index.js"
 
 /* adapted from https://github.com/gcanti/fp-ts */
 

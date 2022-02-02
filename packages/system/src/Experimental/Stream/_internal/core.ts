@@ -2,9 +2,9 @@
 
 import "../../../Operator"
 
-import type * as CK from "../../../Collections/Immutable/Chunk"
-import * as T from "../../../Effect"
-import type * as C from "../Channel"
+import type * as CK from "../../../Collections/Immutable/Chunk/index.js"
+import * as T from "../../../Effect/index.js"
+import type * as C from "../Channel/index.js"
 
 export const StreamTypeId = Symbol()
 export type StreamTypeId = typeof StreamTypeId

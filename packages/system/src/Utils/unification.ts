@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Unify } from "./union"
+import type { Unify } from "./union.js"
 
 export interface HasUnify {
   /**

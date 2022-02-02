@@ -7,8 +7,8 @@ import "../Operator"
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-import type { Option } from "../Option"
-import { fromNullable, none } from "../Option"
+import type { Option } from "../Option/index.js"
+import { fromNullable, none } from "../Option/index.js"
 
 export type Flat<A> = { readonly [k in keyof A]: A[k] } extends infer X ? X : never
 

@@ -2,15 +2,15 @@
 
 import "../../../Operator"
 
-import { tuple } from "../../../Function"
-import * as I from "../../../Iterable"
-import * as O from "../../../Option"
-import type * as Ord from "../../../Ord"
-import type { Ordering } from "../../../Ordering"
-import { Stack } from "../../../Stack"
-import * as St from "../../../Structural"
-import * as A from "../Array"
-import * as Tp from "../Tuple"
+import { tuple } from "../../../Function/index.js"
+import * as I from "../../../Iterable/index.js"
+import * as O from "../../../Option/index.js"
+import type * as Ord from "../../../Ord/index.js"
+import type { Ordering } from "../../../Ordering/index.js"
+import { Stack } from "../../../Stack/index.js"
+import * as St from "../../../Structural/index.js"
+import * as A from "../Array/index.js"
+import * as Tp from "../Tuple/index.js"
 
 type Color = "Red" | "Black"
 

@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as E from "../../Either"
-import type { Stream } from "./definitions"
-import type { TerminationStrategy } from "./mergeWith"
-import { mergeWith_ } from "./mergeWith"
+import * as E from "../../Either/index.js"
+import type { Stream } from "./definitions.js"
+import type { TerminationStrategy } from "./mergeWith.js"
+import { mergeWith_ } from "./mergeWith.js"
 
 /**
  * Merges this stream and the specified stream together.

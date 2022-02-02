@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { _A, _E, _R } from "../Utils"
-import type { Effect } from "./effect"
+import type { _A, _E, _R } from "../Utils/index.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Compact the union produced by the result of f

@@ -2,9 +2,9 @@
 
 import "../../../Operator"
 
-import type * as CK from "../../../Collections/Immutable/Chunk"
-import type * as C from "../Channel"
-import * as U from "./utils"
+import type * as CK from "../../../Collections/Immutable/Chunk/index.js"
+import type * as C from "../Channel/index.js"
+import * as U from "./utils.js"
 
 /**
  * Sink is a data type that represent a channel that reads elements

@@ -1,7 +1,9 @@
-import * as T from "../../../../Effect"
-import * as O from "../../../../Option"
-import type * as Chunk from "../core"
-import { concreteId } from "../definition"
+// ets_tracing: off
+
+import * as T from "../../../../Effect/index.js"
+import * as O from "../../../../Option/index.js"
+import type * as Chunk from "../core.js"
+import { concreteId } from "../definition.js"
 
 /**
  * Returns the first element that satisfies the effectful predicate.

@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
-import * as O from "../../Option"
-import * as BP from "../../Stream/BufferedPull"
-import type * as Pull from "../../Stream/Pull"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import { Stream } from "./definitions"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import * as O from "../../Option/index.js"
+import * as BP from "../../Stream/BufferedPull/index.js"
+import type * as Pull from "../../Stream/Pull/index.js"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import { Stream } from "./definitions.js"
 
 /**
  * Effectfully filters the elements emitted by this stream.

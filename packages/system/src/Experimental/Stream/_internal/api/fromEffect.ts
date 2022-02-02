@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect"
-import * as O from "../../../../Option"
-import type * as C from "../core"
-import * as FromEffectOption from "./fromEffectOption"
+import * as T from "../../../../Effect/index.js"
+import * as O from "../../../../Option/index.js"
+import type * as C from "../core.js"
+import * as FromEffectOption from "./fromEffectOption.js"
 
 /**
  * Creates a stream from an effect producing a value of type `A`

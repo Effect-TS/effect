@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { IO } from "../Effect/effect"
-import type { Promise } from "./promise"
-import { Done } from "./state"
+import type { IO } from "../Effect/effect.js"
+import type { Promise } from "./promise.js"
+import { Done } from "./state.js"
 
 /**
  * Unsafe version of done

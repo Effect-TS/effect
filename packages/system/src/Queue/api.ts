@@ -1,25 +1,25 @@
 // ets_tracing: off
 
-import { collect_ } from "../Collections/Immutable/Chunk/api/collect"
-import { filterEffect_ } from "../Collections/Immutable/Chunk/api/filterEffect"
-import { mapEffect_ } from "../Collections/Immutable/Chunk/api/mapEffect"
-import { zip_ } from "../Collections/Immutable/Chunk/api/zip"
-import * as Chunk from "../Collections/Immutable/Chunk/core"
-import { succeed } from "../Effect/core"
-import * as exclForEach from "../Effect/excl-forEach"
+import { collect_ } from "../Collections/Immutable/Chunk/api/collect.js"
+import { filterEffect_ } from "../Collections/Immutable/Chunk/api/filterEffect.js"
+import { mapEffect_ } from "../Collections/Immutable/Chunk/api/mapEffect.js"
+import { zip_ } from "../Collections/Immutable/Chunk/api/zip.js"
+import * as Chunk from "../Collections/Immutable/Chunk/core.js"
+import { succeed } from "../Effect/core.js"
+import * as exclForEach from "../Effect/excl-forEach.js"
 import {
   BackPressureStrategy,
   createQueue,
   makeBoundedQueue as makeBounded,
   unsafeCreateQueue as unsafeCreate
 } from "../Effect/excl-forEach"
-import { identity, pipe, tuple } from "../Function"
-import * as O from "../Option"
-import { Bounded, Unbounded } from "../Support/MutableQueue"
-import { DroppingStrategy, SlidingStrategy } from "./core"
-import * as T from "./effect-api"
-import type { Queue, XQueue } from "./xqueue"
-import { concreteQueue, XQueueInternal } from "./xqueue"
+import { identity, pipe, tuple } from "../Function/index.js"
+import * as O from "../Option/index.js"
+import { Bounded, Unbounded } from "../Support/MutableQueue/index.js"
+import { DroppingStrategy, SlidingStrategy } from "./core.js"
+import * as T from "./effect-api.js"
+import type { Queue, XQueue } from "./xqueue.js"
+import { concreteQueue, XQueueInternal } from "./xqueue.js"
 
 export { createQueue, makeBounded, unsafeCreate, BackPressureStrategy }
 

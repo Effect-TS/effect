@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as H from "../../../../Hub"
-import * as M from "../../../../Managed"
-import * as C from "../core"
-import * as Ensuring from "./ensuring"
-import * as FromHubManaged from "./fromHubManaged"
+import * as H from "../../../../Hub/index.js"
+import * as M from "../../../../Managed/index.js"
+import * as C from "../core.js"
+import * as Ensuring from "./ensuring.js"
+import * as FromHubManaged from "./fromHubManaged.js"
 
 /**
  * Creates a stream from a subscription to a hub in the context of a managed

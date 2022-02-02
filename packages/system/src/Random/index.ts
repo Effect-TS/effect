@@ -7,12 +7,12 @@
  */
 import "../Operator"
 
-import { chain_, succeedWith } from "../Effect/core"
-import type { UIO } from "../Effect/effect"
-import { accessServiceM, replaceService } from "../Effect/has"
-import type { Has } from "../Has"
-import { tag } from "../Has"
-import { PCGRandom } from "./PCG"
+import { chain_, succeedWith } from "../Effect/core.js"
+import type { UIO } from "../Effect/effect.js"
+import { accessServiceM, replaceService } from "../Effect/has.js"
+import type { Has } from "../Has/index.js"
+import { tag } from "../Has/index.js"
+import { PCGRandom } from "./PCG/index.js"
 
 export const RandomId: unique symbol = Symbol.for("@effect-ts/system/Random")
 export type RandomId = typeof RandomId

@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
-import * as Tp from "../../Collections/Immutable/Tuple"
-import type * as O from "../../Option"
-import * as T from "../_internal/effect"
-import type { Stream } from "./definitions"
-import { paginateChunkM } from "./paginateChunkM"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import type * as O from "../../Option/index.js"
+import * as T from "../_internal/effect.js"
+import type { Stream } from "./definitions.js"
+import { paginateChunkM } from "./paginateChunkM.js"
 
 /**
  * Like `unfoldM`, but allows the emission of values to end one step further than

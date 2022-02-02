@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as CK from "../../../Collections/Immutable/Chunk"
-import * as T from "../../../Effect"
-import type * as C from "./core"
-import * as FoldWeightedDecomposeEffect from "./foldWeightedDecomposeEffect"
+import * as CK from "../../../Collections/Immutable/Chunk/index.js"
+import * as T from "../../../Effect/index.js"
+import type * as C from "./core.js"
+import * as FoldWeightedDecomposeEffect from "./foldWeightedDecomposeEffect.js"
 
 /**
  * Creates a sink that effectfully folds elements of type `In` into a structure

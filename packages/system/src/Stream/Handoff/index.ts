@@ -2,14 +2,14 @@
 
 import "../../Operator"
 
-import * as Tp from "../../Collections/Immutable/Tuple"
-import { constVoid, pipe } from "../../Function"
-import type { Option } from "../../Option"
-import { none, some } from "../../Option"
-import * as P from "../../Promise"
-import { matchTag } from "../../Utils"
-import * as T from "../_internal/effect"
-import * as R from "../_internal/ref"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import { constVoid, pipe } from "../../Function/index.js"
+import type { Option } from "../../Option/index.js"
+import { none, some } from "../../Option/index.js"
+import * as P from "../../Promise/index.js"
+import { matchTag } from "../../Utils/index.js"
+import * as T from "../_internal/effect.js"
+import * as R from "../_internal/ref.js"
 
 type State<A> = Empty | Full<A>
 

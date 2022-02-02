@@ -7,5 +7,5 @@ import "../Operator"
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-export * from "./Driver"
-export * from "./schedule"
+export * from "./Driver/index.js"
+export * from "./schedule.js"

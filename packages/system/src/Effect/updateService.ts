@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { Has, Tag } from "../Has"
-import type { Effect } from "./effect"
-import { provideSome_ } from "./provideSome"
+import type { Has, Tag } from "../Has/index.js"
+import type { Effect } from "./effect.js"
+import { provideSome_ } from "./provideSome.js"
 
 /**
  * Updates a service in the environment of this effect.

@@ -1,17 +1,17 @@
 // ets_tracing: off
 
-import type { HasClock } from "../Clock"
-import * as E from "../Either"
-import { identity, pipe } from "../Function"
-import type { Driver, Schedule } from "../Schedule"
-import * as schedule from "../Schedule"
-import * as catchAll from "./catchAll"
-import * as core from "./core"
-import type { Effect } from "./effect"
-import * as fail from "./fail"
-import * as foldM from "./foldM"
-import * as map from "./map"
-import * as orDie from "./orDie"
+import type { HasClock } from "../Clock/index.js"
+import * as E from "../Either/index.js"
+import { identity, pipe } from "../Function/index.js"
+import type { Driver, Schedule } from "../Schedule/index.js"
+import * as schedule from "../Schedule/index.js"
+import * as catchAll from "./catchAll.js"
+import * as core from "./core.js"
+import type { Effect } from "./effect.js"
+import * as fail from "./fail.js"
+import * as foldM from "./foldM.js"
+import * as map from "./map.js"
+import * as orDie from "./orDie.js"
 
 function loop<R, E, A, R1, O, R2, E2, A2>(
   self: Effect<R, E, A>,

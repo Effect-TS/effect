@@ -2,5 +2,5 @@
 
 import "../Operator"
 
-export * from "./core"
-export * from "./Strategy"
+export * from "./core.js"
+export * from "./Strategy.js"

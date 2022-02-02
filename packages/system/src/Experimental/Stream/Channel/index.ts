@@ -2,6 +2,6 @@
 
 import "../../../Operator"
 
-export * from "./core"
-export * from "./api"
-export * from "./do"
+export * from "./core.js"
+export * from "./api/index.js"
+export * from "./do.js"

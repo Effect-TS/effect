@@ -2,8 +2,8 @@
 
 import "../../Operator"
 
-import * as Chunk from "../../Collections/Immutable/Chunk"
-import { Hub, Subscription } from "./Hub"
+import * as Chunk from "../../Collections/Immutable/Chunk/index.js"
+import { Hub, Subscription } from "./Hub.js"
 
 export class BoundedHubSingle<A> extends Hub<A> {
   publisherIndex = 0

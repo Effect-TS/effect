@@ -2,14 +2,14 @@
 
 import "../../../Operator"
 
-import type { Equal } from "../../../Equal"
-import type { Predicate, Refinement } from "../../../Function"
-import { not } from "../../../Function"
-import type { Ord } from "../../../Ord"
-import * as St from "../../../Structural"
-import type { Next } from "../Map"
-import * as RB from "../RedBlackTree"
-import * as Tp from "../Tuple"
+import type { Equal } from "../../../Equal/index.js"
+import type { Predicate, Refinement } from "../../../Function/index.js"
+import { not } from "../../../Function/index.js"
+import type { Ord } from "../../../Ord/index.js"
+import * as St from "../../../Structural/index.js"
+import type { Next } from "../Map/index.js"
+import * as RB from "../RedBlackTree/index.js"
+import * as Tp from "../Tuple/index.js"
 
 export class SortedSet<V> implements Iterable<V> {
   constructor(readonly keyTree: RB.RedBlackTree<V, any>) {}

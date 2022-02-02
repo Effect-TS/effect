@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import * as T from "../../../../Effect"
-import * as O from "../../../../Option"
-import type * as C from "../core"
-import * as RepeatEffectChunkOption from "./repeatEffectChunkOption"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as T from "../../../../Effect/index.js"
+import * as O from "../../../../Option/index.js"
+import type * as C from "../core.js"
+import * as RepeatEffectChunkOption from "./repeatEffectChunkOption.js"
 
 /**
  * Creates a stream from an effect producing chunks of `A` values which repeats forever.

@@ -1,5 +1,7 @@
-import * as core from "../core"
-import * as forEach from "./forEach"
+// ets_tracing: off
+
+import * as core from "../core.js"
+import * as forEach from "./forEach.js"
 
 /**
  * Groups elements in chunks of up to n elements

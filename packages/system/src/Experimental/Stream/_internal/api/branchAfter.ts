@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
-import * as CH from "../../Channel"
-import * as C from "../core"
-import * as Empty from "./empty"
-import * as FromChunk from "./fromChunk"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as CH from "../../Channel/index.js"
+import * as C from "../core.js"
+import * as Empty from "./empty.js"
+import * as FromChunk from "./fromChunk.js"
 
 interface Pipeline<R, R1, E, E1, A, B> {
   (stream: C.Stream<R, E, A>): C.Stream<R1, E1, B>

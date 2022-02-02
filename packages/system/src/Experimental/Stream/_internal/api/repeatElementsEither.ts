@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as CL from "../../../../Clock"
-import * as E from "../../../../Either"
-import type * as SC from "../../../../Schedule"
-import type * as C from "../core"
-import * as RepeatElementsWith from "./repeatElementsWith"
+import type * as CL from "../../../../Clock/index.js"
+import * as E from "../../../../Either/index.js"
+import type * as SC from "../../../../Schedule/index.js"
+import type * as C from "../core.js"
+import * as RepeatElementsWith from "./repeatElementsWith.js"
 
 /**
  * Repeats each element of the stream using the provided schedule. When the schedule is finished,

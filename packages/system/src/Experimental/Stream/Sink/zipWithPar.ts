@@ -1,15 +1,15 @@
 // ets_tracing: off
 
-import type * as CK from "../../../Collections/Immutable/Chunk"
-import * as T from "../../../Effect"
-import type * as E from "../../../Either"
-import * as Ex from "../../../Exit"
-import { pipe } from "../../../Function"
-import * as H from "../../../Hub"
-import * as M from "../../../Managed"
-import * as CH from "../Channel"
-import * as MH from "../Channel/_internal/mergeHelpers"
-import * as C from "./core"
+import type * as CK from "../../../Collections/Immutable/Chunk/index.js"
+import * as T from "../../../Effect/index.js"
+import type * as E from "../../../Either/index.js"
+import * as Ex from "../../../Exit/index.js"
+import { pipe } from "../../../Function/index.js"
+import * as H from "../../../Hub/index.js"
+import * as M from "../../../Managed/index.js"
+import * as CH from "../Channel/index.js"
+import * as MH from "../Channel/_internal/mergeHelpers.js"
+import * as C from "./core.js"
 
 /**
  * Runs both sinks in parallel on the input and combines the results

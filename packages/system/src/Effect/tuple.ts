@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray"
-import * as Tp from "../Collections/Immutable/Tuple"
-import { accessCallTrace } from "../Tracing"
-import type { _E, _R, ForcedTuple } from "../Utils"
-import type { Effect } from "./effect"
-import { collectAll, collectAllPar, collectAllParN_ } from "./excl-forEach"
-import { map_ } from "./map"
+import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray/index.js"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import { accessCallTrace } from "../Tracing/index.js"
+import type { _E, _R, ForcedTuple } from "../Utils/index.js"
+import type { Effect } from "./effect.js"
+import { collectAll, collectAllPar, collectAllParN_ } from "./excl-forEach.js"
+import { map_ } from "./map.js"
 
 export type TupleA<T extends NonEmptyArray<Effect<any, any, any>>> = {
   [K in keyof T]: [T[K]] extends [Effect<any, any, infer A>] ? A : never

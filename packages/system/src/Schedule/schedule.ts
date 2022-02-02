@@ -1,19 +1,19 @@
 // ets_tracing: off
 
-import * as Clock from "../Clock"
-import * as A from "../Collections/Immutable/Array"
-import * as L from "../Collections/Immutable/List"
-import * as NA from "../Collections/Immutable/NonEmptyArray"
-import * as Tp from "../Collections/Immutable/Tuple"
-import * as E from "../Either"
-import { pipe, tuple } from "../Function"
-import * as NoSuchElementException from "../GlobalExceptions"
-import * as O from "../Option"
-import * as Random from "../Random"
-import * as R from "../Ref"
-import * as Decision from "./Decision"
-import * as Driver from "./Driver"
-import * as T from "./effect"
+import * as Clock from "../Clock/index.js"
+import * as A from "../Collections/Immutable/Array/index.js"
+import * as L from "../Collections/Immutable/List/index.js"
+import * as NA from "../Collections/Immutable/NonEmptyArray/index.js"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import * as E from "../Either/index.js"
+import { pipe, tuple } from "../Function/index.js"
+import * as NoSuchElementException from "../GlobalExceptions/index.js"
+import * as O from "../Option/index.js"
+import * as Random from "../Random/index.js"
+import * as R from "../Ref/index.js"
+import * as Decision from "./Decision/index.js"
+import * as Driver from "./Driver/index.js"
+import * as T from "./effect.js"
 
 /**
  * A `Schedule< Env, In, Out>` defines a recurring schedule, which consumes values of type `In`, and

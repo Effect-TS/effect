@@ -2,9 +2,9 @@
 
 import "../../Operator"
 
-import * as L from "../../Collections/Immutable/List"
-import * as Tp from "../../Collections/Immutable/Tuple"
-import * as O from "../../Option"
+import * as L from "../../Collections/Immutable/List/index.js"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import * as O from "../../Option/index.js"
 
 export class ImmutableQueue<A> {
   constructor(private readonly backing: L.List<A>) {}

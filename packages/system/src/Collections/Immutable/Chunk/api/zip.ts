@@ -1,6 +1,8 @@
-import * as Tp from "../../Tuple"
-import type { Chunk } from "../definition"
-import { zipWith_ } from "./zipWith"
+// ets_tracing: off
+
+import * as Tp from "../../Tuple/index.js"
+import type { Chunk } from "../definition.js"
+import { zipWith_ } from "./zipWith.js"
 
 /**
  * Zips this chunk with the specified chunk using the specified combiner.

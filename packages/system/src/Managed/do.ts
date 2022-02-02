@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { chain_, map_ } from "./core"
-import type { Managed } from "./managed"
-import { succeed } from "./succeed"
+import { chain_, map_ } from "./core.js"
+import type { Managed } from "./managed.js"
+import { succeed } from "./succeed.js"
 
 /**
  * Binds an effectful value in a `do` scope

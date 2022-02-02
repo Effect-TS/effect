@@ -2,7 +2,7 @@
 
 import "../../Operator"
 
-import type * as Chunk from "../../Collections/Immutable/Chunk"
+import type * as Chunk from "../../Collections/Immutable/Chunk/index.js"
 
 export abstract class Subscription<A> {
   abstract isEmpty(): boolean

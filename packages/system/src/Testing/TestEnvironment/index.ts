@@ -1,9 +1,11 @@
-import * as T from "../../Effect"
-import * as L from "../../Layer"
-import * as Random from "../../Random"
-import * as Annotations from "../Annotations"
-import * as Live from "../Live"
-import * as TestClock from "../TestClock"
+// ets_tracing: off
+
+import * as T from "../../Effect/index.js"
+import * as L from "../../Layer/index.js"
+import * as Random from "../../Random/index.js"
+import * as Annotations from "../Annotations/index.js"
+import * as Live from "../Live/index.js"
+import * as TestClock from "../TestClock/index.js"
 
 const defaultEnv = L.succeed(T.defaultEnv)
 

@@ -1,41 +1,41 @@
 // ets_tracing: off
 
 // cause
-import * as Cause from "../Cause/core"
+import * as Cause from "../Cause/core.js"
 // effect
-import { RuntimeError } from "../Cause/errors"
-import * as A from "../Collections/Immutable/Array"
-import * as L from "../Collections/Immutable/List"
-import { forEachUnit_ } from "../Effect/excl-forEach"
-import { IFail, instruction, ISucceed } from "../Effect/primitives"
+import { RuntimeError } from "../Cause/errors.js"
+import * as A from "../Collections/Immutable/Array/index.js"
+import * as L from "../Collections/Immutable/List/index.js"
+import { forEachUnit_ } from "../Effect/excl-forEach.js"
+import { IFail, instruction, ISucceed } from "../Effect/primitives.js"
 // either
-import * as E from "../Either"
+import * as E from "../Either/index.js"
 // exit
-import * as Exit from "../Exit/api"
+import * as Exit from "../Exit/api.js"
 // fiberRef
-import * as FR from "../FiberRef/fiberRef"
-import * as update from "../FiberRef/update"
-import { constVoid } from "../Function"
+import * as FR from "../FiberRef/fiberRef.js"
+import * as update from "../FiberRef/update.js"
+import { constVoid } from "../Function/index.js"
 // option
-import * as O from "../Option"
+import * as O from "../Option/index.js"
 // supervisor / scope
-import * as Scope from "../Scope"
-import * as St from "../Structural"
-import * as Sup from "../Supervisor"
+import * as Scope from "../Scope/index.js"
+import * as St from "../Structural/index.js"
+import * as Sup from "../Supervisor/index.js"
 // support
-import { AtomicReference } from "../Support/AtomicReference"
-import { RingBuffer } from "../Support/RingBuffer"
-import { defaultScheduler } from "../Support/Scheduler"
-import * as X from "../XPure"
-import * as T from "./_internal/effect"
+import { AtomicReference } from "../Support/AtomicReference/index.js"
+import { RingBuffer } from "../Support/RingBuffer/index.js"
+import { defaultScheduler } from "../Support/Scheduler/index.js"
+import * as X from "../XPure/index.js"
+import * as T from "./_internal/effect.js"
 // fiber
-import * as Fiber from "./core"
-import type { Platform } from "./platform"
-import type { Callback } from "./state"
-import { FiberStateDone, FiberStateExecuting, initial, interrupting } from "./state"
-import * as Status from "./status"
-import type { TraceElement } from "./tracing"
-import { SourceLocation, Trace, traceLocation, truncatedParentTrace } from "./tracing"
+import * as Fiber from "./core.js"
+import type { Platform } from "./platform.js"
+import type { Callback } from "./state.js"
+import { FiberStateDone, FiberStateExecuting, initial, interrupting } from "./state.js"
+import * as Status from "./status.js"
+import type { TraceElement } from "./tracing.js"
+import { SourceLocation, Trace, traceLocation, truncatedParentTrace } from "./tracing.js"
 
 export type FiberRefLocals = Map<FR.Runtime<any>, any>
 

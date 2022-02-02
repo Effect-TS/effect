@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect"
-import type * as Ex from "../../../../Exit"
-import { pipe } from "../../../../Function"
-import * as M from "../../../../Managed"
-import type * as O from "../../../../Option"
-import * as Q from "../../../../Queue"
-import type * as C from "../core"
-import * as RunIntoElementsManaged from "./runIntoElementsManaged"
+import * as T from "../../../../Effect/index.js"
+import type * as Ex from "../../../../Exit/index.js"
+import { pipe } from "../../../../Function/index.js"
+import * as M from "../../../../Managed/index.js"
+import type * as O from "../../../../Option/index.js"
+import * as Q from "../../../../Queue/index.js"
+import type * as C from "../core.js"
+import * as RunIntoElementsManaged from "./runIntoElementsManaged.js"
 
 /**
  * Converts the stream to a managed queue of elements. After the managed queue is used,

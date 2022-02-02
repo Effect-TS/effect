@@ -1,15 +1,15 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function"
-import * as O from "../../Option"
-import * as Q from "../../Queue"
-import * as Ref from "../../Ref"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import * as Pull from "../Pull"
-import * as Take from "../Take"
-import { Stream } from "./definitions"
-import { toQueue_ } from "./toQueue"
+import { pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
+import * as Q from "../../Queue/index.js"
+import * as Ref from "../../Ref/index.js"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import * as Pull from "../Pull/index.js"
+import * as Take from "../Take/index.js"
+import { Stream } from "./definitions.js"
+import { toQueue_ } from "./toQueue.js"
 
 /**
  * Allows a faster producer to progress independently of a slower consumer by buffering

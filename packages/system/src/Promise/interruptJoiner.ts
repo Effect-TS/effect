@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type { Canceler } from "../Effect/Canceler"
-import { succeedWith } from "../Effect/core"
-import type { IO } from "../Effect/effect"
-import type { Promise } from "./promise"
-import { Pending } from "./state"
+import type { Canceler } from "../Effect/Canceler.js"
+import { succeedWith } from "../Effect/core.js"
+import type { IO } from "../Effect/effect.js"
+import type { Promise } from "./promise.js"
+import { Pending } from "./state.js"
 
 export function interruptJoiner<E, A>(joiner: (a: IO<E, A>) => void) {
   return (promise: Promise<E, A>): Canceler<unknown> =>

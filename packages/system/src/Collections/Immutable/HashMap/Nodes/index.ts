@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import type { Equal } from "../../../../Equal"
-import * as O from "../../../../Option"
-import { Stack } from "../../../../Stack"
-import * as St from "../../../../Structural"
-import { arraySpliceIn, arraySpliceOut, arrayUpdate } from "../Array"
-import { fromBitmap, hashFragment, toBitmap } from "../Bitwise"
-import { MAX_INDEX_NODE, MIN_ARRAY_NODE, SIZE } from "../Config"
+import type { Equal } from "../../../../Equal/index.js"
+import * as O from "../../../../Option/index.js"
+import { Stack } from "../../../../Stack/index.js"
+import * as St from "../../../../Structural/index.js"
+import { arraySpliceIn, arraySpliceOut, arrayUpdate } from "../Array/index.js"
+import { fromBitmap, hashFragment, toBitmap } from "../Bitwise/index.js"
+import { MAX_INDEX_NODE, MIN_ARRAY_NODE, SIZE } from "../Config/index.js"
 
 export type Node<K, V> =
   | LeafNode<K, V>

@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import type * as C from "../core"
-import * as Chain from "./chain"
-import * as FromChunk from "./fromChunk"
-import * as FromIterable from "./fromIterable"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import type * as C from "../core.js"
+import * as Chain from "./chain.js"
+import * as FromChunk from "./fromChunk.js"
+import * as FromIterable from "./fromIterable.js"
 
 /**
  * Creates a stream from an arbitrary number of chunks.

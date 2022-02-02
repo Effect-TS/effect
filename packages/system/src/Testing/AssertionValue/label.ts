@@ -1,6 +1,8 @@
-import * as AM from "../AssertionM/api"
-import type { AssertionValue } from "./AssertionValue"
-import { makeAssertionValue } from "./makeAssertionValue"
+// ets_tracing: off
+
+import * as AM from "../AssertionM/api.js"
+import type { AssertionValue } from "./AssertionValue.js"
+import { makeAssertionValue } from "./makeAssertionValue.js"
 
 export function label_(self: AssertionValue, l: string): AssertionValue {
   return makeAssertionValue(

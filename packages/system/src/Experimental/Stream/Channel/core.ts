@@ -2,12 +2,12 @@
 
 import "../../../Operator"
 
-import * as Cause from "../../../Cause"
-import type * as T from "../../../Effect"
-import type * as Exit from "../../../Exit"
-import { identity } from "../../../Function"
-import * as P from "./_internal/primitives"
-import type * as PR from "./_internal/producer"
+import * as Cause from "../../../Cause/index.js"
+import type * as T from "../../../Effect/index.js"
+import type * as Exit from "../../../Exit/index.js"
+import { identity } from "../../../Function/index.js"
+import * as P from "./_internal/primitives.js"
+import type * as PR from "./_internal/producer.js"
 
 export type {
   SingleProducerAsyncInput,
@@ -15,9 +15,9 @@ export type {
   AsyncInputConsumer
 } from "./_internal/producer"
 
-export { makeSingleProducerAsyncInput } from "./_internal/producer"
+export { makeSingleProducerAsyncInput } from "./_internal/producer.js"
 
-export * from "./_internal/primitives"
+export * from "./_internal/primitives.js"
 
 /**
  * Pipe the output of a channel into the input of another

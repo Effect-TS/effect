@@ -1,10 +1,12 @@
-import * as C from "../../../Cause"
-import * as A from "../../../Collections/Immutable/Chunk"
-import * as T from "../../../Effect"
-import { _A, _E } from "../../../Effect/commons"
-import * as Ex from "../../../Exit"
-import * as O from "../../../Option"
-import type { Pull } from "../Pull"
+// ets_tracing: off
+
+import * as C from "../../../Cause/index.js"
+import * as A from "../../../Collections/Immutable/Chunk/index.js"
+import * as T from "../../../Effect/index.js"
+import { _A, _E } from "../../../Effect/commons.js"
+import * as Ex from "../../../Exit/index.js"
+import * as O from "../../../Option/index.js"
+import type { Pull } from "../Pull/index.js"
 
 /**
  * A `Take<E, A>` represents a single `take` from a queue modeling a stream of

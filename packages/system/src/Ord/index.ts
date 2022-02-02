@@ -2,6 +2,6 @@
 
 import "../Operator"
 
-export * from "./definition"
-export * from "./operations"
-export * from "./common"
+export * from "./definition.js"
+export * from "./operations.js"
+export * from "./common.js"

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as Tp from "../Collections/Immutable/Tuple"
-import { access } from "./core"
+import type * as Tp from "../Collections/Immutable/Tuple/index.js"
+import { access } from "./core.js"
 
 /**
  * Returns an effectful function that extracts out the first element of a

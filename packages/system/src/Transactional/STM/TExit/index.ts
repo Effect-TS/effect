@@ -2,7 +2,7 @@
 
 import "../../../Operator"
 
-import * as St from "../../../Structural"
+import * as St from "../../../Structural/index.js"
 
 export type TExit<A, B> = Fail<A> | Succeed<B> | Retry | Die
 

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as C from "../core"
-import * as FlattenPar from "./flattenPar"
+import type * as C from "../core.js"
+import * as FlattenPar from "./flattenPar.js"
 
 /**
  * Like `flattenPar`, but executes all streams concurrently.
