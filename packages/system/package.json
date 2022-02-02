@@ -6,7 +6,7 @@
   "homepage": "https://www.matechs.com",
   "scripts": {
     "clean": "yarn ets:rimraf build tsbuildinfo dist",
-    "build-cjs": "yarn ets:esbuild ./build/esm/**/*.js --format=cjs --outdir=./build/cjs",
+    "build-cjs": "./build-cjs.sh",
     "build-esm": "yarn ets:tsc -p tsconfig.build.esm.json && yarn ets:babel build/esm/ -d build/esm/ -s --plugins annotate-pure-calls",
     "build-post": "yarn ets:ts-node ../../scripts/pack.ts",
     "build": "yarn build-esm && yarn build-cjs && yarn build-post",
