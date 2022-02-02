@@ -23,5 +23,5 @@ export function cached_<R, E, A>(
  */
 export function cached(timeToLive: number, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & HasClock, never, IO<E, A>> =>
-    cached_(self, timeToLive)
+    self.cached(timeToLive)
 }

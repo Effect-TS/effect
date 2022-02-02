@@ -1,9 +1,8 @@
+import type { LazyArg } from "../../../data/Function"
 import { constVoid } from "../../../data/Function"
-import type * as O from "../../../data/Option"
+import type { Option } from "../../../data/Option"
 import type { IO } from "../definition"
 import { Effect } from "../definition"
-
-// TODO(Mike/Max): fix name
 
 /**
  * Lifts an `Option` into a `IO`, if the option is not defined it fails with
@@ -11,6 +10,9 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps getOrFailDiscard
  */
-export function getOrFailUnit<A>(v: O.Option<A>, __etsTrace?: string): IO<void, A> {
-  return Effect.getOrFailWith(v, constVoid)
+export function getOrFailDiscard<A>(
+  option: LazyArg<Option<A>>,
+  __etsTrace?: string
+): IO<void, A> {
+  return Effect.getOrFailWith(option, constVoid)
 }

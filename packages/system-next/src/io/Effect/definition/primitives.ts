@@ -17,11 +17,6 @@ import type { Trace } from "../../Trace"
 import type { Effect, RIO } from "./base"
 import { Base } from "./base"
 
-// TODO: look into the following
-// - ExecutionTracingCutoff
-// - IShift
-// - IFiberRefNew
-
 export type Canceler<R> = RIO<R, void>
 
 export class EffectError<E, A> extends Error {
@@ -47,9 +42,7 @@ export type Instruction =
   | ICheckInterrupt<any, any, any>
   | IFork<any, any, any>
   | IDescriptor<any, any, any>
-  // | IShift
   | IYield
-  // | IFiberRefNew
   | IFiberRefModify<any, any>
   | ITrace
   | IRaceWith<any, any, any, any, any, any, any, any, any, any, any, any>
@@ -128,7 +121,7 @@ export class IAsync<R, E, A> extends Base<R, E, A> {
     readonly register: (
       cb: (_: Effect<R, E, A>) => void
     ) => Either<Canceler<R>, Effect<R, E, A>>,
-    readonly blockingOn: FiberId,
+    readonly blockingOn: Lazy<FiberId>,
     readonly trace?: string
   ) {
     super()
@@ -157,7 +150,7 @@ export class IFork<R, E, A> extends Base<R, never, Fiber.Runtime<E, A>> {
 
   constructor(
     readonly effect: Effect<R, E, A>,
-    readonly scope: Option<Scope>,
+    readonly scope: Lazy<Option<Scope>>,
     readonly trace?: string
   ) {
     super()
@@ -205,14 +198,6 @@ export class IDescriptor<R, E, A> extends Base<R, E, A> {
     super()
   }
 }
-
-// export class IShift extends Base<unknown, never, void> {
-//   readonly _tag = "Shift"
-
-//   constructor(readonly executor: Lazy<Executor>, readonly trace?: string) {
-//     super()
-//   }
-// }
 
 export class IYield extends Base<unknown, never, void> {
   readonly _tag = "Yield"
@@ -294,8 +279,8 @@ export class IRaceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3> extends Base
   readonly _tag = "RaceWith"
 
   constructor(
-    readonly left: Effect<R, E, A>,
-    readonly right: Effect<R1, E1, A1>,
+    readonly left: Lazy<Effect<R, E, A>>,
+    readonly right: Lazy<Effect<R1, E1, A1>>,
     readonly leftWins: (
       exit: Exit<E, A>,
       fiber: Fiber.Fiber<E1, A1>
@@ -304,7 +289,7 @@ export class IRaceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3> extends Base
       exit: Exit<E1, A1>,
       fiber: Fiber.Fiber<E, A>
     ) => Effect<R3, E3, A3>,
-    readonly scope: Option<Scope>,
+    readonly scope: Lazy<Option<Scope>>,
     readonly trace?: string
   ) {
     super()
@@ -316,7 +301,7 @@ export class ISupervise<R, E, A> extends Base<R, E, A> {
 
   constructor(
     readonly effect: Effect<R, E, A>,
-    readonly supervisor: Supervisor<any>,
+    readonly supervisor: Lazy<Supervisor<any>>,
     readonly trace?: string
   ) {
     super()
@@ -335,8 +320,8 @@ export class IOverrideForkScope<R, E, A> extends Base<R, E, A> {
   readonly _tag = "OverrideForkScope"
 
   constructor(
-    readonly effect: Effect<R, E, A>,
-    readonly forkScope: Option<Scope>,
+    readonly effect: Lazy<Effect<R, E, A>>,
+    readonly forkScope: Lazy<Option<Scope>>,
     readonly trace?: string
   ) {
     super()
@@ -348,7 +333,7 @@ export class IEnsuring<R, R1, E, A> extends Base<R, E, A> {
 
   constructor(
     readonly effect: Effect<R, E, A>,
-    readonly finalizer: Effect<R1, never, any>,
+    readonly finalizer: Lazy<Effect<R1, never, any>>,
     readonly trace?: string
   ) {
     super()

@@ -13,6 +13,8 @@
     "lint": "yarn ets:eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
     "prettier": "yarn ets:prettier --write \"./{src,test,demo}/**/*.ts\"",
+    "tc": "yarn ets:tsc --noEmit",
+    "tc:watch": "yarn ets:tsc --noEmit --watch",
     "demo": "yarn ets:ts-node -O '{\"module\":\"commonjs\"}' --project tsconfig.build.json",
     "pack-dev": "yarn ets:rimraf artifacts && mkdir artifacts && yarn pack --out ./artifacts/%s-%v.tgz",
     "circular": "yarn ets:madge --circular --no-color --no-spinner --warning build/esm"

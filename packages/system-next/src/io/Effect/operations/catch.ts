@@ -36,10 +36,5 @@ export function catch_<N extends keyof E, K extends E[N] & string, E, R, A, R1, 
   f: (e: Extract<E, { [n in N]: K }>) => Effect<R1, E1, A1>,
   __etsTrace?: string
 ): Effect<R & R1, Exclude<E, { [n in N]: K }> | E1, A | A1> {
-  return self.catchAll((e) => {
-    if (tag in e && e[tag] === k) {
-      return f(e as any)
-    }
-    return Effect.failNow(e as any)
-  })
+  return self.catch(tag, k, f)
 }

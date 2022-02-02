@@ -45,5 +45,5 @@ export function timeoutTo<A, B, B1>(
   __etsTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & HasClock, E, B | B1> =>
-    timeoutTo_(self, def, f, milliseconds)
+    self.timeoutTo(def, f, milliseconds)
 }

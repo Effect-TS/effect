@@ -1,5 +1,4 @@
-import type { Either } from "../../../data/Either"
-import { right } from "../../../data/Either"
+import { Either } from "../../../data/Either"
 import type { Effect } from "../definition"
 
 /**
@@ -11,5 +10,5 @@ export function asRight<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
 ): Effect<R, E, Either<never, A>> {
-  return self.map(right)
+  return self.map(Either.right)
 }

@@ -27,5 +27,5 @@ export function mapTryCatch<E, A, B>(
   __etsTrace?: string
 ) {
   return <R, E1>(self: Effect<R, E1, A>): Effect<R, E | E1, B> =>
-    mapTryCatch_(self, f, onThrow)
+    self.mapTryCatch(f, onThrow)
 }

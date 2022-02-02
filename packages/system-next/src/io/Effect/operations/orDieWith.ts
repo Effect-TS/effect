@@ -22,5 +22,5 @@ export function orDieWith_<R, E, A>(
  * @ets_data_first orDieWith_
  */
 export function orDieWith<E>(f: (e: E) => unknown, __etsTrace?: string) {
-  return <R, A>(self: Effect<R, E, A>): RIO<R, A> => orDieWith_(self, f)
+  return <R, A>(self: Effect<R, E, A>): RIO<R, A> => self.orDieWith(f)
 }

@@ -4,34 +4,10 @@ import { Effect } from "../definition"
 /**
  * Binds an effectful value in a `do` scope
  *
- * @ets_data_first bind_
- */
-export function bind<R, E, A, K, N extends string>(
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => Effect<R, E, A>,
-  __etsTrace?: string
-) {
-  return <R2, E2>(
-    mk: Effect<R2, E2, K>
-  ): Effect<
-    R & R2,
-    E | E2,
-    MergeRecord<
-      K,
-      {
-        [k in N]: A
-      }
-    >
-  > => bind_(mk, tag, f)
-}
-
-/**
- * Binds an effectful value in a `do` scope
- *
  * @tsplus fluent ets/Effect bind
  */
 export function bind_<R2, E2, R, E, A, K, N extends string>(
-  mk: Effect<R2, E2, K>,
+  self: Effect<R2, E2, K>,
   tag: Exclude<N, keyof K>,
   f: (_: K) => Effect<R, E, A>,
   __etsTrace?: string
@@ -45,7 +21,7 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
     }
   >
 > {
-  return mk.flatMap((k) =>
+  return self.flatMap((k) =>
     f(k).map(
       (
         a
@@ -60,27 +36,27 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
 }
 
 /**
- * Like bind for values
+ * Binds an effectful value in a `do` scope
  *
- * @ets_data_first let_
+ * @ets_data_first bind_
  */
-export function bindValue<A, K, N extends string>(
+export function bind<R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
-  f: (_: K) => A,
+  f: (_: K) => Effect<R, E, A>,
   __etsTrace?: string
 ) {
   return <R2, E2>(
-    mk: Effect<R2, E2, K>
+    self: Effect<R2, E2, K>
   ): Effect<
-    R2,
-    E2,
+    R & R2,
+    E | E2,
     MergeRecord<
       K,
       {
         [k in N]: A
       }
     >
-  > => bindValue_(mk, tag, f)
+  > => self.bind(tag, f)
 }
 
 /**
@@ -89,7 +65,7 @@ export function bindValue<A, K, N extends string>(
  * @tsplus fluent ets/Effect bindValue
  */
 export function bindValue_<R2, E2, A, K, N extends string>(
-  mk: Effect<R2, E2, K>,
+  self: Effect<R2, E2, K>,
   tag: Exclude<N, keyof K>,
   f: (_: K) => A,
   __etsTrace?: string
@@ -103,7 +79,7 @@ export function bindValue_<R2, E2, A, K, N extends string>(
     }
   >
 > {
-  return mk.map(
+  return self.map(
     (
       k
     ): MergeRecord<
@@ -116,8 +92,32 @@ export function bindValue_<R2, E2, A, K, N extends string>(
 }
 
 /**
+ * Like bind for values
+ *
+ * @ets_data_first bindValue_
+ */
+export function bindValue<A, K, N extends string>(
+  tag: Exclude<N, keyof K>,
+  f: (_: K) => A,
+  __etsTrace?: string
+) {
+  return <R2, E2>(
+    self: Effect<R2, E2, K>
+  ): Effect<
+    R2,
+    E2,
+    MergeRecord<
+      K,
+      {
+        [k in N]: A
+      }
+    >
+  > => self.bindValue(tag, f)
+}
+
+/**
  * @tsplus static ets/EffectOps Do
  */
-export function Do() {
+export function Do(): Effect<unknown, never, {}> {
   return Effect.succeedNow({})
 }

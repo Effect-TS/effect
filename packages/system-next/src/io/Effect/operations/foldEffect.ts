@@ -1,8 +1,4 @@
-import { fold_ } from "../../../data/Either"
-import { failureOrCause } from "../../Cause"
-import type { Effect } from "../definition"
-import { failCause } from "./failCause"
-import { foldCauseEffect_ } from "./foldCauseEffect"
+import { Effect } from "../definition"
 
 /**
  * Recovers from errors by accepting one effect to execute for the case of an
@@ -23,9 +19,8 @@ export function foldEffect_<R, E, A, R2, E2, A2, R3, E3, A3>(
   success: (a: A) => Effect<R3, E3, A3>,
   __etsTrace?: string
 ): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
-  return foldCauseEffect_(
-    self,
-    (cause) => fold_(failureOrCause<E>(cause), failure, failCause),
+  return self.foldCauseEffect(
+    (cause) => cause.failureOrCause<E>().fold(failure, Effect.failCauseNow),
     success
   )
 }
@@ -49,5 +44,5 @@ export function foldEffect<E, R2, E2, A2, A, R3, E3, A3>(
   __etsTrace?: string
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R & R2 & R3, E2 | E3, A2 | A3> =>
-    foldEffect_(self, failure, success)
+    self.foldEffect(failure, success)
 }

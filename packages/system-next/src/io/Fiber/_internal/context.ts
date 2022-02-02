@@ -1,6 +1,5 @@
 import { Chunk } from "../../../collection/immutable/Chunk"
 import * as HS from "../../../collection/immutable/HashSet"
-import type { Next } from "../../../collection/immutable/Map"
 import { Either } from "../../../data/Either"
 import { constVoid, pipe } from "../../../data/Function"
 import type { Tag } from "../../../data/Has"
@@ -405,10 +404,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
         this.state.set(newState)
 
-        const interrupt = Effect.failCauseNow(interruptedCause)
+        const interrupt = Effect.failCause(interruptedCause)
         const asyncCanceler = oldState.asyncCanceler.asyncCanceler
         const effect =
-          asyncCanceler === Effect.unit ? interrupt : asyncCanceler.zipRight(interrupt)
+          asyncCanceler === Effect.unit ? interrupt : asyncCanceler > interrupt
 
         this.unsafeRunLater(instruction(effect))
       } else if (oldState._tag === "Executing") {
@@ -494,12 +493,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return this.evalOnEffect(
       Effect.succeed(() => {
         const chunkBuilder = Chunk.builder<Fiber.Runtime<any, any>>()
-
-        const iterator = this._children[Symbol.iterator]()
-
-        let next: Next<Fiber.Runtime<any, any>>
-        while (!(next = iterator.next()).done) {
-          chunkBuilder.append(next.value)
+        for (const child of this._children) {
+          chunkBuilder.append(child)
         }
         return chunkBuilder.build()
       }),
@@ -899,7 +894,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
           this.unsafeSetInterrupting(true)
 
-          return instruction(oldState.mailbox.zipRight(Effect.done(exit)))
+          return instruction(oldState.mailbox > Effect.done(exit))
         } else if (this._children.size === 0) {
           // The mailbox is empty and the _children are shut down
           const interruptorsCause = FiberState.interruptorsCause(oldState)
@@ -968,20 +963,14 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           // Not done because there are _children left to close
           this.unsafeSetInterrupting(true)
 
-          const iterator = this._children[Symbol.iterator]()
-
           let interruptChildren = Effect.unit
-          let next: Next<FiberContext<any, any>>
-          while (!(next = iterator.next()).done) {
-            interruptChildren = interruptChildren.zipRight(
-              next.value.interruptAs(this.id)
-            )
-            next = iterator.next()
+          for (const child of this._children) {
+            interruptChildren = interruptChildren > child.interruptAs(this.id)
           }
 
           this._children = new Set()
 
-          return instruction(interruptChildren.zipRight(Effect.done(exit)))
+          return instruction(interruptChildren > Effect.done(exit))
         }
       }
       case "Done": {
@@ -1108,8 +1097,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     const raceIndicator = new AtomicReference(true)
 
     const scope = race.scope
-    const left = this.unsafeFork(instruction(race.left), trace, scope)
-    const right = this.unsafeFork(instruction(race.right), trace, scope)
+    const left = this.unsafeFork(instruction(race.left()), trace, scope())
+    const right = this.unsafeFork(instruction(race.right()), trace, scope())
 
     return Effect.asyncBlockingOn((cb) => {
       const leftRegister = left.unsafeAddObserverMaybe((exit) => {
@@ -1367,7 +1356,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     // Enter suspended state
                     this.unsafeEnterAsync(
                       epoch,
-                      effect.blockingOn,
+                      effect.blockingOn(),
                       TE.parse(effect.trace)
                     )
 
@@ -1383,9 +1372,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                           if (this.unsafeExitAsync(epoch)) {
                             this.unsafeSetInterrupting(true)
                             current = instruction(
-                              canceler.zipRight(
-                                Effect.failCauseNow(this.unsafeClearSuppressed())
-                              )
+                              canceler > Effect.failCause(this.unsafeClearSuppressed())
                             )
                           } else {
                             current = undefined
@@ -1411,7 +1398,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                       this.unsafeFork(
                         instruction(current.effect),
                         TE.parse(current.trace),
-                        current.scope
+                        current.scope()
                       )
                     )
                     break
@@ -1495,7 +1482,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     const effect = current
                     const oldSupervisor = this.runtimeConfig.value.supervisor
                     const newSupervisor = Supervisor.and_(
-                      effect.supervisor,
+                      effect.supervisor(),
                       oldSupervisor
                     )
 
@@ -1532,7 +1519,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                       forkScopeOverride.value
                     )
 
-                    this.unsafeSetRef(forkScopeOverride.value, current.forkScope)
+                    this.unsafeSetRef(forkScopeOverride.value, current.forkScope())
 
                     this.unsafeAddFinalizer(
                       Effect.succeed(() =>
@@ -1540,13 +1527,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                       )
                     )
 
-                    current = instruction(current.effect)
+                    current = instruction(current.effect())
 
                     break
                   }
 
                   case "Ensuring": {
-                    this.unsafeAddFinalizer(current.finalizer)
+                    this.unsafeAddFinalizer(current.finalizer())
                     current = instruction(current.effect)
                     break
                   }

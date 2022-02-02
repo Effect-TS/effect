@@ -29,5 +29,5 @@ export function repeatUntilEffect<A, R1>(
   __etsTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R1, E, A> =>
-    repeatUntilEffect_(self, f)
+    self.repeatUntilEffect(f)
 }

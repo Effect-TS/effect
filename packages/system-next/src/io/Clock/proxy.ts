@@ -1,10 +1,10 @@
-import type { UIO } from "../Effect/definition"
+import type { UIO } from "../Effect"
 import { Clock } from "./definition"
 
 export class ProxyClock extends Clock {
   constructor(
     readonly currentTime: UIO<number>,
-    readonly sleep: (ms: number, __trace?: string) => UIO<void>
+    readonly sleep: (ms: number, __etsTrace?: string) => UIO<void>
   ) {
     super()
   }

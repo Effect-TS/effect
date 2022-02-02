@@ -14,7 +14,11 @@ export function filterOutputEffect_<RA, RB, RC, EA, EB, EC, A, B>(
   f: (b: B) => Effect<RC, EC, boolean>
 ): XSynchronized<RA, RB & RC, EA, Option<EB | EC>, A, B> {
   return foldEffect_(self, identity, Option.some, Effect.succeedNow, (b) =>
-    f(b).asSomeError().ifEffect(Effect.succeedNow(b), Effect.failNow(Option.emptyOf()))
+    Effect.ifEffect(
+      f(b).asSomeError(),
+      Effect.succeedNow(b),
+      Effect.failNow(Option.emptyOf())
+    )
   )
 }
 

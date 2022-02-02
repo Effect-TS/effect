@@ -1,6 +1,5 @@
-import { pipe } from "../../../data/Function"
 import type { Cause } from "../../Cause"
-import * as Promise from "../../Promise"
+import { Promise } from "../../Promise"
 import { Effect } from "../definition"
 import type { Cb } from "./Cb"
 import { runtime } from "./runtime"
@@ -15,22 +14,18 @@ export function asyncEffect<R2, E2, R, E, A, X>(
   register: (callback: Cb<Effect<R2, E2, A>>) => Effect<R, E, X>,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, A> {
-  return pipe(
-    Effect.Do()
-      .bind("promise", () => Promise.make<E | E2, A>())
-      .bind("runtime", () => runtime<R & R2>())
-      .flatMap(({ promise, runtime }) =>
-        Effect.uninterruptibleMask(({ restore }) =>
-          restore(
-            register((k) =>
-              runtime.unsafeRunAsync(k.intoPromise(promise))
-            ).catchAllCause((cause) =>
-              Promise.failCause_(promise, cause as Cause<E | E2>)
-            )
+  return Effect.Do()
+    .bind("promise", () => Promise.make<E | E2, A>())
+    .bind("runtime", () => runtime<R & R2>())
+    .flatMap(({ promise, runtime }) =>
+      Effect.uninterruptibleMask(({ restore }) =>
+        restore(
+          register((k) => runtime.unsafeRunAsync(k.intoPromise(promise))).catchAllCause(
+            (cause) => promise.failCause(cause as Cause<E | E2>)
           )
-            .fork()
-            .zipRight(restore(Promise.await(promise)))
         )
+          .fork()
+          .zipRight(restore(promise.await()))
       )
-  )
+    )
 }

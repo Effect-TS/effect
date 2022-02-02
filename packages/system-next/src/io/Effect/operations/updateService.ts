@@ -8,16 +8,12 @@ import { Effect } from "../definition"
  */
 export function updateService_<R, E, A, T>(
   self: Effect<R & Has<T>, E, A>,
-  _: Tag<T>,
-  f: (_: T) => T,
-  __etsTrace?: string
-): Effect<R & Has<T>, E, A> {
-  return Effect.serviceWithEffect(_)((t) =>
-    self.provideServiceEffect(
-      _,
-      Effect.succeed(() => f(t))
-    )
-  )
+  tag: Tag<T>
+) {
+  return (f: (_: T) => T, __etsTrace?: string): Effect<R & Has<T>, E, A> =>
+    Effect.serviceWithEffect(tag)((t) =>
+      self.provideServiceEffect(tag)(Effect.succeed(f(t)))
+    ) as Effect<R & Has<T>, E, A>
 }
 
 /**
@@ -25,7 +21,7 @@ export function updateService_<R, E, A, T>(
  *
  * @ets_data_first updateService_
  */
-export function updateService<T>(_: Tag<T>, f: (_: T) => T, __etsTrace?: string) {
+export function updateService<T>(tag: Tag<T>, f: (_: T) => T, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R & Has<T>, E, A>): Effect<R & Has<T>, E, A> =>
-    updateService_(self, _, f)
+    self.updateService(tag)(f)
 }

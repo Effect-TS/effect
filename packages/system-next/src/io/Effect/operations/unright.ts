@@ -1,4 +1,4 @@
-import * as E from "../../../data/Either"
+import { Either } from "../../../data/Either"
 import { Effect } from "../definition"
 
 /**
@@ -8,11 +8,11 @@ import { Effect } from "../definition"
  * @tsplus fluent ets/Effect unright
  */
 export function unright<R, B, E, A>(
-  self: Effect<R, E.Either<B, E>, A>,
+  self: Effect<R, Either<B, E>, A>,
   __etsTrace?: string
-): Effect<R, E, E.Either<B, A>> {
+): Effect<R, E, Either<B, A>> {
   return self.foldEffect(
-    (e) => E.fold_(e, (b) => Effect.succeedNow(E.left(b)), Effect.failNow),
-    (a) => Effect.succeedNow(E.right(a))
+    (either) => either.fold((b) => Effect.succeedNow(Either.left(b)), Effect.failNow),
+    (a) => Effect.succeedNow(Either.right(a))
   )
 }

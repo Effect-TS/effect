@@ -1,4 +1,5 @@
 import * as Iter from "../../../collection/immutable/Iterable"
+import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../definition"
 
 /**
@@ -6,28 +7,15 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps reduce
  */
-export function reduce_<A, Z, R, E>(
-  i: Iterable<A>,
-  zero: Z,
+export function reduce<A, Z, R, E>(
+  as: LazyArg<Iterable<A>>,
+  z: LazyArg<Z>,
   f: (z: Z, a: A) => Effect<R, E, Z>,
   __etsTrace?: string
 ): Effect<R, E, Z> {
-  return Effect.suspendSucceed(() =>
-    Iter.reduce_(i, Effect.succeedNow(zero) as Effect<R, E, Z>, (acc, el) =>
+  return Effect.suspendSucceed(
+    Iter.reduce_(as(), Effect.succeed(z) as Effect<R, E, Z>, (acc, el) =>
       acc.flatMap((a) => f(a, el))
     )
   )
-}
-
-/**
- * Folds an `Iterable<A>` using an effectual function f, working sequentially from left to right.
- *
- * @ets_data_first reduce_
- */
-export function reduce<Z, R, E, A>(
-  zero: Z,
-  f: (z: Z, a: A) => Effect<R, E, Z>,
-  __etsTrace?: string
-) {
-  return (i: Iterable<A>) => reduce_(i, zero, f)
 }

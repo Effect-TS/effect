@@ -6,5 +6,5 @@ import { Effect } from "../definition"
  * @tsplus fluent ets/Effect asUnit
  */
 export function asUnit<R, E, X>(self: Effect<R, E, X>, __etsTrace?: string) {
-  return self.flatMap(() => Effect.unit)
+  return self > Effect.unit
 }

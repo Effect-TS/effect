@@ -12,7 +12,7 @@ export function replicateEffect_<R, E, A>(
   n: number,
   __etsTrace?: string
 ): Effect<R, E, Chunk<A>> {
-  return Effect.suspendSucceed(() => Effect.collectAll(self.replicate(n)))
+  return Effect.suspendSucceed(Effect.collectAll(self.replicate(n)))
 }
 
 /**
@@ -23,5 +23,5 @@ export function replicateEffect_<R, E, A>(
  */
 export function replicateEffect(n: number, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, Chunk<A>> =>
-    replicateEffect_(self, n)
+    self.replicateEffect(n)
 }

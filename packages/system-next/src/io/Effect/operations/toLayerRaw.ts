@@ -1,5 +1,4 @@
-import type { Layer } from "../../Layer"
-import { fromRawEffect } from "../../Layer/operations/fromRawEffect"
+import { Layer } from "../../Layer"
 import type { Effect } from "../definition"
 
 /**
@@ -7,6 +6,6 @@ import type { Effect } from "../definition"
  *
  * @tsplus fluent ets/Effect toLayerRaw
  */
-export function toLayerRaw<R, E, A>(effect: Effect<R, E, A>): Layer<R, E, A> {
-  return fromRawEffect(effect)
+export function toLayerRaw<R, E, A>(self: Effect<R, E, A>): Layer<R, E, A> {
+  return Layer.fromRawEffect(self)
 }

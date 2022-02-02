@@ -1,5 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { HasClock } from "../../Clock"
 import type { Effect } from "../definition"
 
@@ -25,8 +25,8 @@ export function timeout_<R, E, E1, A>(
   self: Effect<R, E, A>,
   milliseconds: number,
   __etsTrace?: string
-): Effect<R & HasClock, E, O.Option<A>> {
-  return self.timeoutTo(O.none, O.some, milliseconds)
+): Effect<R & HasClock, E, Option<A>> {
+  return self.timeoutTo(Option.none, Option.some, milliseconds)
 }
 
 /**
@@ -52,6 +52,6 @@ export function timeout<E1>(
   milliseconds: number,
   __etsTrace?: string
 ) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R & HasClock, E, O.Option<A>> =>
-    timeout_(self, milliseconds)
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R & HasClock, E, Option<A>> =>
+    self.timeout(milliseconds)
 }

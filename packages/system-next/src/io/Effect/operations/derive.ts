@@ -1,7 +1,5 @@
 import type { Has, Tag } from "../../../data/Has"
-import type { Effect } from "../definition"
-import { serviceWith } from "./serviceWith"
-import { serviceWithEffect } from "./serviceWithEffect"
+import { Effect } from "../definition"
 
 export type ShapeFn<T> = Pick<
   T,
@@ -58,15 +56,16 @@ export function deriveLifted<T>(
     const ret = {} as any
 
     for (const k of functions) {
-      ret[k] = (...args: any[]) => serviceWithEffect(H)((h) => (h[k] as any)(...args))
+      ret[k] = (...args: any[]) =>
+        Effect.serviceWithEffect(H)((h) => (h[k] as any)(...args))
     }
 
     for (const k of constants) {
-      ret[k] = serviceWithEffect(H)((h) => h[k] as any)
+      ret[k] = Effect.serviceWithEffect(H)((h) => h[k] as any)
     }
 
     for (const k of values) {
-      ret[k] = serviceWith(H)((h) => h[k])
+      ret[k] = Effect.serviceWith(H)((h) => h[k])
     }
 
     return ret as any
@@ -90,7 +89,8 @@ export function deriveAccessEffect<T>(
     const ret = {} as any
 
     for (const k of generics) {
-      ret[k] = (f: any, trace?: string) => serviceWithEffect(H)((h) => f(h[k]), trace)
+      ret[k] = (f: any, trace?: string) =>
+        Effect.serviceWithEffect(H)((h) => f(h[k]), trace)
     }
 
     return ret as any
@@ -114,7 +114,7 @@ export function deriveAccess<T>(
     const ret = {} as any
 
     for (const k of generics) {
-      ret[k] = (f: any, trace?: string) => serviceWith(H)((h) => f(h[k]), trace)
+      ret[k] = (f: any, trace?: string) => Effect.serviceWith(H)((h) => f(h[k]), trace)
     }
 
     return ret as any

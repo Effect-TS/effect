@@ -1,6 +1,4 @@
-import * as E from "../../../data/Either"
 import type { Cause } from "../../Cause"
-import { failureOrCause } from "../../Cause"
 import type { RIO } from "../definition"
 import { Effect } from "../definition"
 
@@ -19,7 +17,7 @@ export function onTermination_<R, E, A, R2, X>(
     () => self,
     (_, exit): RIO<R2, X | void> =>
       exit._tag === "Failure"
-        ? E.fold_(failureOrCause(exit.cause), () => Effect.unit, cleanup)
+        ? exit.cause.failureOrCause().fold(() => Effect.unit, cleanup)
         : Effect.unit
   )
 }
@@ -35,5 +33,5 @@ export function onTermination<R2, X>(
   __etsTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E, A> =>
-    onTermination_(self, cleanup)
+    self.onTermination(cleanup)
 }

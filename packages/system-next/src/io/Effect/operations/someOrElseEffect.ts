@@ -1,5 +1,5 @@
-import { pipe } from "../../../data/Function"
-import * as O from "../../../data/Option"
+import type { LazyArg } from "../../../data/Function"
+import type { Option } from "../../../data/Option"
 import { Effect } from "../definition"
 
 /**
@@ -8,15 +8,12 @@ import { Effect } from "../definition"
  * @tsplus fluent ets/Effect someOrElseEffect
  */
 export function someOrElseEffect_<R, E, A, R2, E2, B>(
-  self: Effect<R, E, O.Option<A>>,
-  orElse: Effect<R2, E2, B>,
+  self: Effect<R, E, Option<A>>,
+  orElse: LazyArg<Effect<R2, E2, B>>,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, A | B> {
-  return (self as Effect<R, E, O.Option<A | B>>).flatMap((_) =>
-    pipe(
-      O.map_(_, Effect.succeedNow),
-      O.getOrElse(() => orElse)
-    )
+  return (self as Effect<R, E, Option<A | B>>).flatMap((option) =>
+    option.map(Effect.succeedNow).getOrElse(orElse)
   )
 }
 
@@ -29,5 +26,6 @@ export function someOrElseEffect<R2, E2, B>(
   orElse: Effect<R2, E2, B>,
   __etsTrace?: string
 ) {
-  return <R, E, A>(self: Effect<R, E, O.Option<A>>) => someOrElseEffect_(self, orElse)
+  return <R, E, A>(self: Effect<R, E, Option<A>>): Effect<R & R2, E | E2, A | B> =>
+    self.someOrElseEffect(orElse)
 }

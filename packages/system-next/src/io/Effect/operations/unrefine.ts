@@ -21,5 +21,5 @@ export function unrefine_<R, E, A, E1>(
  * @ets_data_first unrefine_
  */
 export function unrefine<E1>(pf: (u: unknown) => Option<E1>, __etsTrace?: string) {
-  return <R, E, A>(self: Effect<R, E, A>) => unrefine_(self, pf)
+  return <R, E, A>(self: Effect<R, E, A>) => self.unrefine(pf)
 }

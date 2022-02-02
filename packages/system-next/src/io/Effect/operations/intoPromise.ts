@@ -1,5 +1,5 @@
+import type { LazyArg } from "../../../data/Function"
 import type { Promise } from "../../Promise"
-import { done_ as promiseDone_ } from "../../Promise/operations/done"
 import type { RIO } from "../definition"
 import { Effect } from "../definition"
 
@@ -12,13 +12,13 @@ import { Effect } from "../definition"
  */
 export function intoPromise_<R, E, A>(
   self: Effect<R, E, A>,
-  promise: Promise<E, A>,
+  promise: LazyArg<Promise<E, A>>,
   __etsTrace?: string
 ): RIO<R, boolean> {
   return Effect.uninterruptibleMask(({ restore }) =>
     restore(self)
       .exit()
-      .flatMap((_) => promiseDone_(promise, _))
+      .flatMap((exit) => promise().done(exit))
   )
 }
 
@@ -29,6 +29,9 @@ export function intoPromise_<R, E, A>(
  *
  * @ets_data_first intoPromise_
  */
-export function intoPromise<E, A>(promise: Promise<E, A>, __etsTrace?: string) {
-  return <R>(self: Effect<R, E, A>): RIO<R, boolean> => intoPromise_(self, promise)
+export function intoPromise<E, A>(
+  promise: LazyArg<Promise<E, A>>,
+  __etsTrace?: string
+) {
+  return <R>(self: Effect<R, E, A>): RIO<R, boolean> => self.intoPromise(promise)
 }

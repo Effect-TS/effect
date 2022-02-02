@@ -23,6 +23,5 @@ export function provideEnvironment_<R, E, A>(
  * @ets_data_first provideEnvironment_
  */
 export function provideEnvironment<R>(environment: R, __etsTrace?: string) {
-  return <E, A>(self: Effect<R, E, A>): IO<E, A> =>
-    provideEnvironment_(self, environment)
+  return <E, A>(self: Effect<R, E, A>): IO<E, A> => self.provideEnvironment(environment)
 }

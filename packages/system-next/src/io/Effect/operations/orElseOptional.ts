@@ -1,5 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import { Effect } from "../definition"
 
 /**
@@ -10,11 +10,13 @@ import { Effect } from "../definition"
  * @tsplus fluent ets/Effect orElseOptional
  */
 export function orElseOptional_<R, E, A, R2, E2, A2>(
-  self: Effect<R, O.Option<E>, A>,
-  that: LazyArg<Effect<R2, O.Option<E2>, A2>>,
+  self: Effect<R, Option<E>, A>,
+  that: LazyArg<Effect<R2, Option<E2>, A2>>,
   __etsTrace?: string
-): Effect<R & R2, O.Option<E | E2>, A | A2> {
-  return self.catchAll(O.fold(that, (e) => Effect.failNow(O.some<E | E2>(e))))
+): Effect<R & R2, Option<E | E2>, A | A2> {
+  return self.catchAll((option) =>
+    option.fold(that, (e) => Effect.failNow(Option.some<E | E2>(e)))
+  )
 }
 
 /**
@@ -25,8 +27,8 @@ export function orElseOptional_<R, E, A, R2, E2, A2>(
  * @ets_data_first orElseOptional_
  */
 export function orElseOptional<R2, E2, A2>(
-  that: LazyArg<Effect<R2, O.Option<E2>, A2>>,
+  that: LazyArg<Effect<R2, Option<E2>, A2>>,
   __etsTrace?: string
 ) {
-  return <R, E, A>(self: Effect<R, O.Option<E>, A>) => orElseOptional_(self, that)
+  return <R, E, A>(self: Effect<R, Option<E>, A>) => self.orElseOptional(that)
 }

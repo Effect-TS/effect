@@ -1,8 +1,9 @@
-import * as O from "../../../data/Option"
+import type { LazyArg } from "../../../data/Function"
+import { Option } from "../../../data/Option"
 import { Effect, IOverrideForkScope } from "../definition"
 
 export type Grafter = <R, E, A>(
-  effect: Effect<R, E, A>,
+  effect: LazyArg<Effect<R, E, A>>,
   __etsTrace?: string
 ) => Effect<R, E, A>
 
@@ -14,6 +15,9 @@ export function transplant<R, E, A>(
   __etsTrace?: string
 ): Effect<R, E, A> {
   return Effect.forkScopeWith((scope) =>
-    f((eff, __etsTrace) => new IOverrideForkScope(eff, O.some(scope), __etsTrace))
+    f(
+      (effect, __etsTrace) =>
+        new IOverrideForkScope(effect, () => Option.some(scope), __etsTrace)
+    )
   )
 }

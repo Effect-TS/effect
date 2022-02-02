@@ -34,5 +34,5 @@ export function catchAllDefect<R2, E2, A2>(
   __etsTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> =>
-    catchAllDefect_(self, f)
+    self.catchAllDefect(f)
 }

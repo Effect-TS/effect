@@ -68,7 +68,7 @@ export interface AdapterWithManaged extends Adapter {
 /**
  * @tsplus static ets/EffectOps genWithManaged
  */
-export function genM<Eff extends GenEffect<any, any, any>, AEff>(
+export function genWithManaged<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: AdapterWithManaged) => Generator<Eff, AEff, any>,
   __etsTrace?: string
 ): Effect<Utils._R<Eff>, Utils._E<Eff>, AEff> {
@@ -81,7 +81,7 @@ export function genM<Eff extends GenEffect<any, any, any>, AEff>(
       state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
     ): Effect<any, any, AEff> {
       if (state.done) {
-        return Effect.succeed(() => state.value)
+        return Effect.succeed(state.value)
       }
       return Effect.suspendSucceed(
         () =>
@@ -127,7 +127,7 @@ export function gen<Eff extends GenEffect<any, any, any>, AEff>(
       state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
     ): Effect<any, any, AEff> {
       if (state.done) {
-        return Effect.succeed(() => state.value)
+        return Effect.succeed(state.value)
       }
       return Effect.suspendSucceed(
         () => state.value["effect"] as Effect<any, any, any>,

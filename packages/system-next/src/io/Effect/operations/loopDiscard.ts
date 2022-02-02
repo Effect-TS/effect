@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../definition"
 
 /**
@@ -15,14 +16,19 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps loopDiscard
  */
-export function loopDiscard<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
+export function loopDiscard<Z>(
+  initial: LazyArg<Z>,
+  cont: (z: Z) => boolean,
+  inc: (z: Z) => Z
+) {
   return <R, E, X>(
     body: (z: Z) => Effect<R, E, X>,
     __etsTrace?: string
   ): Effect<R, E, void> => {
     return Effect.suspendSucceed(() => {
-      if (cont(initial)) {
-        return body(initial).flatMap(() => loopDiscard(inc(initial), cont, inc)(body))
+      const initial0 = initial()
+      if (cont(initial0)) {
+        return body(initial0).flatMap(() => loopDiscard(inc(initial0), cont, inc)(body))
       }
       return Effect.unit
     })

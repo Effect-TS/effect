@@ -1,5 +1,3 @@
-import * as E from "../../../data/Either"
-import { failureOrCause } from "../../Cause"
 import { Effect } from "../definition"
 
 /**
@@ -14,8 +12,7 @@ export function tapError_<R, E, A, R2, E2, X>(
 ): Effect<R & R2, E | E2, A> {
   return self.foldCauseEffect(
     (cause) =>
-      E.fold_(
-        failureOrCause(cause),
+      cause.failureOrCause().fold(
         (e) => f(e).zipRight(Effect.failCauseNow(cause)),
         () => Effect.failCauseNow(cause)
       ),
@@ -32,5 +29,5 @@ export function tapError<E, R2, E2, X>(
   f: (e: E) => Effect<R2, E2, X>,
   __etsTrace?: string
 ) {
-  return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> => tapError_(self, f)
+  return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> => self.tapError(f)
 }

@@ -1,4 +1,6 @@
-import * as Tp from "../../../collection/immutable/Tuple"
+import type { MergeTuple } from "../../../collection/immutable/Tuple"
+import { Tuple } from "../../../collection/immutable/Tuple"
+import type { LazyArg } from "../../../data/Function"
 import type { Effect } from "../definition"
 
 /**
@@ -9,10 +11,10 @@ import type { Effect } from "../definition"
  */
 export function zipFlattenPar_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
-  that: Effect<R2, E2, A2>,
+  that: LazyArg<Effect<R2, E2, A2>>,
   __etsTrace?: string
-): Effect<R & R2, E | E2, Tp.MergeTuple<A, A2>> {
-  return self.zipWithPar(that, Tp.mergeTuple)
+): Effect<R & R2, E | E2, MergeTuple<A, A2>> {
+  return self.zipWithPar(that, Tuple.mergeTuple)
 }
 
 /**
@@ -21,10 +23,9 @@ export function zipFlattenPar_<R, E, A, R2, E2, A2>(
  * @ets_data_first zipFlattenPar_
  */
 export function zipFlattenPar<R2, E2, A2>(
-  that: Effect<R2, E2, A2>,
+  that: LazyArg<Effect<R2, E2, A2>>,
   __etsTrace?: string
 ) {
-  return <R, E, A>(
-    self: Effect<R, E, A>
-  ): Effect<R & R2, E | E2, Tp.MergeTuple<A, A2>> => zipFlattenPar_(self, that)
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, MergeTuple<A, A2>> =>
+    self.zipFlattenPar(that)
 }

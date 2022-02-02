@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import { Cause } from "../../Cause"
 import type { Exit } from "../../Exit/definition"
 import type { Fiber } from "../../Fiber/definition"
@@ -13,7 +14,7 @@ import { Effect } from "../definition"
  */
 export function zipWithPar_<R, E, A, R2, E2, A2, B>(
   self: Effect<R, E, A>,
-  that: Effect<R2, E2, A2>,
+  that: LazyArg<Effect<R2, E2, A2>>,
   f: (a: A, b: A2) => B,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, B> {
@@ -36,7 +37,7 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
  * @ets_data_first zipWithPar_
  */
 export function zipWithPar<A, R2, E2, A2, B>(
-  that: Effect<R2, E2, A2>,
+  that: LazyArg<Effect<R2, E2, A2>>,
   f: (a: A, b: A2) => B,
   __etsTrace?: string
 ) {

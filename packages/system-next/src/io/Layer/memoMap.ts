@@ -81,14 +81,14 @@ export class MemoMap {
                         .flatMap((exit) => {
                           switch (exit._tag) {
                             case "Failure": {
-                              return Promise.failCause_(promise, exit.cause)
-                                .flatMap(() =>
+                              return (
+                                Promise.failCause_(promise, exit.cause).flatMap(() =>
                                   innerReleaseMap.releaseAll(
                                     exit,
                                     ExecutionStrategy.sequential
                                   )
-                                )
-                                .flatMap(() => Effect.failCause(() => exit.cause))
+                                ) > Effect.failCause(exit.cause)
+                              )
                             }
                             case "Success": {
                               return Effect.Do()

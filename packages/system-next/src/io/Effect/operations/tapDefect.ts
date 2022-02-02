@@ -1,5 +1,4 @@
 import type { Cause } from "../../Cause"
-import { stripFailures } from "../../Cause"
 import { Effect } from "../definition"
 
 /**
@@ -13,7 +12,7 @@ export function tapDefect_<R, E, A, R2, E2, X>(
   __etsTrace?: string
 ): Effect<R & R2, E | E2, A> {
   return self.foldCauseEffect(
-    (cause) => f(stripFailures(cause)).zipRight(Effect.failCauseNow(cause)),
+    (cause) => f(cause.stripFailures()).zipRight(Effect.failCauseNow(cause)),
     Effect.succeedNow
   )
 }
@@ -28,5 +27,5 @@ export function tapDefect<R2, E2, X>(
   __etsTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> =>
-    tapDefect_(self, f)
+    self.tapDefect(f)
 }

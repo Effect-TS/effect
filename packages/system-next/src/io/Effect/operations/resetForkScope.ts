@@ -1,4 +1,4 @@
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { Effect } from "../definition"
 import { IOverrideForkScope } from "../definition"
 
@@ -12,5 +12,9 @@ export function resetForkScope<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return new IOverrideForkScope(self, O.none, __etsTrace)
+  return new IOverrideForkScope(
+    () => self,
+    () => Option.none,
+    __etsTrace
+  )
 }

@@ -1,14 +1,13 @@
+import type { LazyArg } from "../../../data/Function"
 import type { Cause } from "../../Cause"
 import type { IO } from "../definition"
 import { IFail } from "../definition"
 
-// TODO(Mike/Max): fix name
-
 /**
  * Returns an effect that models failure with the specified `Cause`.
  *
- * @tsplus static ets/EffectOps failCauseNow
+ * @tsplus static ets/EffectOps failCause
  */
-export function failCause<E>(cause: Cause<E>, __etsTrace?: string): IO<E, never> {
-  return new IFail(() => cause, __etsTrace)
+export function failCause<E>(f: LazyArg<Cause<E>>, __etsTrace?: string): IO<E, never> {
+  return new IFail(f, __etsTrace)
 }

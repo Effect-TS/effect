@@ -667,16 +667,17 @@ describe("Layer", () => {
     const StringProviderId = Symbol()
     const StringProvider = tag<string>(StringProviderId)
 
-    const needsNumberAndString = Effect.environment<Has<number> & Has<string>>()
+    const needsNumberAndString = Effect.tuple(
+      Effect.service(NumberProvider),
+      Effect.service(StringProvider)
+    )
 
     const providesNumber = Layer.fromValue(NumberProvider)(10)
     const providesString = Layer.fromValue(StringProvider)("hi")
 
     const needsString = needsNumberAndString.provideSomeLayer(providesNumber)
 
-    const program = needsString
-      .provideLayer(providesString)
-      .map((result) => Tuple(NumberProvider.read(result), StringProvider.read(result)))
+    const program = needsString.provideLayer(providesString)
 
     const result = await program.unsafeRunPromise()
 

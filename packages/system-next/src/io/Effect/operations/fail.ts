@@ -1,6 +1,6 @@
 import type { LazyArg } from "../../../data/Function"
 import { none } from "../../../io/Trace"
-import { Fail } from "../../Cause"
+import { Cause } from "../../Cause"
 import type { IO } from "../definition"
 import { Effect } from "../definition"
 
@@ -11,5 +11,5 @@ import { Effect } from "../definition"
  * @tsplus static ets/EffectOps fail
  */
 export function fail<E>(f: LazyArg<E>, __etsTrace?: string): IO<E, never> {
-  return Effect.failCause(() => new Fail(f(), none))
+  return Effect.failCause(Cause.fail(f(), none))
 }

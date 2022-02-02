@@ -15,11 +15,9 @@ export function parallelErrors<R, E, A>(
   return self
     .foldCauseEffect((cause) => {
       const f = failures(cause)
-      if (f.length === 0) {
-        return Effect.failCauseNow(<Cause<never>>cause)
-      } else {
-        return Effect.failNow(f)
-      }
+      return f.length === 0
+        ? Effect.failCauseNow(<Cause<never>>cause)
+        : Effect.failNow(f)
     }, Effect.succeedNow)
     .mapError(Chunk.from)
 }

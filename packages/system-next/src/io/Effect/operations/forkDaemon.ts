@@ -1,4 +1,4 @@
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type * as Fiber from "../../Fiber"
 import { globalScope } from "../../Scope"
 import type { Effect, RIO } from "../definition"
@@ -15,5 +15,5 @@ export function forkDaemon<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
 ): RIO<R, Fiber.Runtime<E, A>> {
-  return new IFork(self, O.some(globalScope), __etsTrace)
+  return new IFork(self, () => Option.some(globalScope), __etsTrace)
 }

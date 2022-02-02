@@ -1,4 +1,4 @@
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import { Effect } from "../definition"
 
 /**
@@ -7,11 +7,11 @@ import { Effect } from "../definition"
  * @tsplus fluent ets/Effect unsome
  */
 export function unsome<R, E, A>(
-  self: Effect<R, O.Option<E>, A>,
+  self: Effect<R, Option<E>, A>,
   __etsTrace?: string
-): Effect<R, E, O.Option<A>> {
+): Effect<R, E, Option<A>> {
   return self.foldEffect(
-    (e) => O.fold_(e, () => Effect.succeedNow(O.none), Effect.failNow),
-    (a) => Effect.succeedNow(O.some(a))
+    (option) => option.fold(Effect.succeedNow(Option.none), Effect.failNow),
+    (a) => Effect.succeedNow(Option.some(a))
   )
 }

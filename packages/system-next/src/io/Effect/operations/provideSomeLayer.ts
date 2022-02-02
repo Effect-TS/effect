@@ -10,11 +10,11 @@ import type { Effect } from "../definition"
  *
  * @tsplus fluent ets/Effect provideSomeLayer
  */
-export function provideSomeLayer_<R1, E1, A1, R, E, A>(
-  self: Effect<R1, E1, A1>,
-  layer: Layer<R, E, A>,
+export function provideSomeLayer_<R, E, A, R1, E1, A1>(
+  self: Effect<R, E, A>,
+  layer: Layer<R1, E1, A1>,
   __etsTrace?: string
-): Effect<R & Erase<R1, A>, E | E1, A1> {
+): Effect<R1 & Erase<R, A1>, E | E1, A> {
   // @ts-expect-error
   return self.provideLayer(andLayer_(environmentLayer<R1>(), layer))
 }
@@ -25,8 +25,11 @@ export function provideSomeLayer_<R1, E1, A1, R, E, A>(
  *
  * @ets_data_first provideSomeLayer_
  */
-export function provideSomeLayer<R, E, A>(layer: Layer<R, E, A>, __etsTrace?: string) {
-  return <R1, E1, A1>(self: Effect<R1 & A, E1, A1>): Effect<R & R1, E | E1, A1> =>
+export function provideSomeLayer<R1, E1, A1>(
+  layer: Layer<R1, E1, A1>,
+  __etsTrace?: string
+) {
+  return <R, E, A>(self: Effect<R & A1, E, A>): Effect<R1 & Erase<R, A1>, E | E1, A> =>
     // @ts-expect-error
-    provideSomeLayer_<R1, E1, A1, R, E, A>(self, layer)
+    self.provideSomeLayer(layer)
 }

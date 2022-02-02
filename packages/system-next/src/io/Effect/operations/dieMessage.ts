@@ -1,4 +1,5 @@
-import * as Cause from "../../Cause"
+import type { LazyArg } from "../../../data/Function"
+import { Cause, RuntimeError } from "../../Cause"
 import type { UIO } from "../definition"
 import { Effect } from "../definition"
 
@@ -9,8 +10,6 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps dieMessage
  */
-export function dieMessage(message: string, __etsTrace?: string): UIO<never> {
-  return Effect.failCauseNow(
-    Cause.stackless(Cause.die(new Cause.RuntimeError(message)))
-  )
+export function dieMessage(message: LazyArg<string>, __etsTrace?: string): UIO<never> {
+  return Effect.failCause(Cause.stackless(Cause.die(new RuntimeError(message()))))
 }

@@ -14,13 +14,7 @@ export function timeoutFail_<R, E, E1, A>(
   milliseconds: number,
   __etsTrace?: string
 ): Effect<R & HasClock, E | E1, A> {
-  return self
-    .timeoutTo(
-      Effect.fail(() => e()),
-      Effect.succeedNow,
-      milliseconds
-    )
-    .flatten()
+  return self.timeoutTo(Effect.fail(e), Effect.succeedNow, milliseconds).flatten()
 }
 
 /**
@@ -35,5 +29,5 @@ export function timeoutFail<E1>(
   __etsTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & HasClock, E | E1, A> =>
-    timeoutFail_(self, cause, milliseconds)
+    self.timeoutFail(cause, milliseconds)
 }

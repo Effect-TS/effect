@@ -12,7 +12,7 @@ import { Cause } from "../../Cause"
 import { Exit } from "../../Exit"
 import type { Fiber } from "../../Fiber/definition"
 import { interrupt as interruptFiber } from "../../Fiber/operations/interrupt"
-import * as FiberIdNone from "../../FiberId/operations/none"
+import { FiberId } from "../../FiberId"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { get as fiberRefGet } from "../../FiberRef/operations/get"
 import { locally_ } from "../../FiberRef/operations/locally"
@@ -20,22 +20,14 @@ import { Managed } from "../../Managed/definition"
 import { ReleaseMap } from "../../Managed/ReleaseMap/definition"
 import type { State } from "../../Managed/ReleaseMap/state"
 import { Exited } from "../../Managed/ReleaseMap/state"
-import type { Promise } from "../../Promise/definition"
-import { await as promiseAwait } from "../../Promise/operations/await"
-import { fail_ as promiseFail_ } from "../../Promise/operations/fail"
-import { interruptAs } from "../../Promise/operations/interruptAs"
-import { make as promiseMake } from "../../Promise/operations/make"
-import { succeed as promiseSucceed } from "../../Promise/operations/succeed"
-import { unsafeDone_ as promiseUnsafeDone_ } from "../../Promise/operations/unsafeDone"
-import { unsafeMake as promiseUnsafeMake } from "../../Promise/operations/unsafeMake"
+import { Promise } from "../../Promise/definition"
 import type { Queue, Strategy } from "../../Queue/core"
 import * as QCore from "../../Queue/core"
 import { concreteQueue, XQueueInternal } from "../../Queue/xqueue"
 import * as RefModify from "../../Ref/operations/modify"
 import type { RIO, UIO } from "../definition"
 import { Effect } from "../definition"
-import type { ExecutionStrategy } from "./ExecutionStrategy"
-import { sequential } from "./ExecutionStrategy"
+import { ExecutionStrategy } from "./ExecutionStrategy"
 
 // -----------------------------------------------------------------------------
 // forEach
@@ -233,7 +225,7 @@ function forEachParUnbounded<R, E, A, B>(
 
 function forEachParN<R, E, A, B>(
   as: LazyArg<Iterable<A>>,
-  n: number, 
+  n: number,
   f: (a: A) => Effect<R, E, B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk<B>> {
@@ -391,18 +383,17 @@ function forEachParUnboundedDiscard<R, E, A, X>(
     }
 
     return Effect.uninterruptibleMask(({ restore }) => {
-      const promise = promiseUnsafeMake<void, void>(FiberIdNone.none)
+      const promise = Promise.unsafeMake<void, void>(FiberId.none)
       const ref = new AtomicNumber(0)
 
       return Effect.transplant((graft) =>
         forEach_(as, (a) =>
           graft(
             restore(Effect.suspendSucceed(() => f(a))).foldCauseEffect(
-              (cause) =>
-                promiseFail_(promise, undefined).zipRight(Effect.failCauseNow(cause)),
+              (cause) => promise.fail(undefined).zipRight(Effect.failCauseNow(cause)),
               () => {
                 if (ref.incrementAndGet() === size) {
-                  promiseUnsafeDone_(promise, Effect.unit)
+                  promise.unsafeDone(Effect.unit)
                   return Effect.unit
                 } else {
                   return Effect.unit
@@ -412,7 +403,7 @@ function forEachParUnboundedDiscard<R, E, A, X>(
           ).forkDaemon()
         )
       ).flatMap((fibers) =>
-        restore(promiseAwait(promise)).foldCauseEffect(
+        restore(promise.await()).foldCauseEffect(
           (cause) =>
             forEachParUnbounded(fibers, interruptFiber).flatMap((exits) => {
               const collected = Exit.collectAllPar(exits)
@@ -842,7 +833,7 @@ export function managedFork<R, E, A>(
         .bind("releaseMapEntry", ({ fiber, innerReleaseMap, outerReleaseMap }) =>
           outerReleaseMap.add((e) =>
             interruptFiber(fiber).flatMap(() =>
-              releaseMapReleaseAll_(innerReleaseMap, e, sequential)
+              releaseMapReleaseAll_(innerReleaseMap, e, ExecutionStrategy.Sequential)
             )
           )
         )
@@ -866,7 +857,7 @@ export function managedUse_<R, E, A, R2, E2, B>(
     )(
       fiberRefGet(currentReleaseMap.value).acquireReleaseExitWith(
         () => self.effect.flatMap((_) => f(_.get(1))),
-        (relMap, ex) => releaseMapReleaseAll_(relMap, ex, sequential)
+        (relMap, ex) => releaseMapReleaseAll_(relMap, ex, ExecutionStrategy.Sequential)
       )
     )
   )
@@ -886,29 +877,29 @@ export class BackPressureStrategy<A> implements Strategy<A> {
     isShutdown: AtomicBoolean
   ): UIO<boolean> {
     return Effect.suspendSucceedWith((_, fiberId) => {
-      const p = promiseUnsafeMake<never, boolean>(fiberId)
+      const promise = Promise.unsafeMake<never, boolean>(fiberId)
 
       return Effect.suspendSucceed(() => {
-        this.unsafeOffer(as, p)
+        this.unsafeOffer(as, promise)
         this.unsafeOnQueueEmptySpace(queue, takers)
         QCore.unsafeCompleteTakers(this, queue, takers)
         if (isShutdown.get) {
           return Effect.interrupt
         } else {
-          return promiseAwait(p)
+          return promise.await()
         }
-      }).onInterrupt(() => Effect.succeed(() => this.unsafeRemove(p)))
+      }).onInterrupt(() => Effect.succeed(() => this.unsafeRemove(promise)))
     })
   }
 
-  unsafeRemove(p: Promise<never, boolean>) {
+  unsafeRemove(promise: Promise<never, boolean>) {
     QCore.unsafeOfferAll(
       this.putters,
-      QCore.unsafePollAll(this.putters).filter(([_, __]) => __ !== p)
+      QCore.unsafePollAll(this.putters).filter(([_, __]) => __ !== promise)
     )
   }
 
-  unsafeOffer(as: Chunk<A>, p: Promise<never, boolean>) {
+  unsafeOffer(as: Chunk<A>, promise: Promise<never, boolean>) {
     let bs = as
 
     while (bs.size > 0) {
@@ -917,10 +908,10 @@ export class BackPressureStrategy<A> implements Strategy<A> {
       bs = bs.drop(1)
 
       if (bs.size === 0) {
-        this.putters.offer(Tuple(head, p, true))
+        this.putters.offer(Tuple(head, promise, true))
         return
       } else {
-        this.putters.offer(Tuple(head, p, false))
+        this.putters.offer(Tuple(head, promise, false))
       }
     }
   }
@@ -956,9 +947,9 @@ export class BackPressureStrategy<A> implements Strategy<A> {
     return Effect.Do()
       .bind("fiberId", () => Effect.fiberId)
       .bind("putters", () => Effect.succeed(() => QCore.unsafePollAll(this.putters)))
-      .tap((s) =>
-        forEachPar_(s.putters, ({ tuple: [_, p, lastItem] }) =>
-          lastItem ? interruptAs(s.fiberId)(p) : Effect.unit
+      .tap(({ fiberId, putters }) =>
+        forEachPar_(putters, ({ tuple: [_, promise, lastItem] }) =>
+          lastItem ? promise.interruptAs(fiberId) : Effect.unit
         )
       )
       .asUnit()
@@ -1005,7 +996,7 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
     super()
   }
 
-  awaitShutdown: UIO<void> = promiseAwait(this.shutdownHook)
+  awaitShutdown: UIO<void> = this.shutdownHook.await()
 
   capacity: number = this.queue.capacity
 
@@ -1093,9 +1084,11 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
 
   shutdown: UIO<void> = Effect.suspendSucceedWith((_, fiberId) => {
     this.shutdownFlag.set(true)
-    return forEachPar_(QCore.unsafePollAll(this.takers), interruptAs(fiberId))
+    return Effect.forEachPar(QCore.unsafePollAll(this.takers), (promise) =>
+      promise.interruptAs(fiberId)
+    )
       .flatMap(() => this.strategy.shutdown)
-      .whenEffect(promiseSucceed<void>(undefined)(this.shutdownHook))
+      .whenEffect(this.shutdownHook.succeed(undefined))
   }).uninterruptible()
 
   size: UIO<number> = Effect.suspendSucceed(() => {
@@ -1119,17 +1112,19 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
       this.strategy.unsafeOnQueueEmptySpace(this.queue, this.takers)
       return Effect.succeedNow(item)
     } else {
-      const p = promiseUnsafeMake<never, A>(fiberId)
+      const promise = Promise.unsafeMake<never, A>(fiberId)
 
       return Effect.suspendSucceed(() => {
-        this.takers.offer(p)
+        this.takers.offer(promise)
         QCore.unsafeCompleteTakers(this.strategy, this.queue, this.takers)
         if (this.shutdownFlag.get) {
           return Effect.interrupt
         } else {
-          return promiseAwait(p)
+          return promise.await()
         }
-      }).onInterrupt(() => Effect.succeed(() => QCore.unsafeRemove(this.takers, p)))
+      }).onInterrupt(() =>
+        Effect.succeed(() => QCore.unsafeRemove(this.takers, promise))
+      )
     }
   })
 
@@ -1168,8 +1163,14 @@ export function createQueue_<A>(
   strategy: Strategy<A>,
   __etsTrace?: string
 ) {
-  return promiseMake<never, void>().map((p) =>
-    unsafeCreateQueue(queue, new Unbounded(), p, new AtomicBoolean(false), strategy)
+  return Promise.make<never, void>().map((promise) =>
+    unsafeCreateQueue(
+      queue,
+      new Unbounded(),
+      promise,
+      new AtomicBoolean(false),
+      strategy
+    )
   )
 }
 
