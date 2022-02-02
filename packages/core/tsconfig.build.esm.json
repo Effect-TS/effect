@@ -8,7 +8,7 @@
     "moduleResolution": "Node",
     "incremental": true,
     "tsBuildInfoFile": "tsbuildinfo/esm.tsbuildinfo",
-    "declaration": false,
+    "declaration": true,
     "declarationMap": false,
     "removeComments": false,
     "plugins": [
