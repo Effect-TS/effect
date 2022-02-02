@@ -9,6 +9,6 @@ import "../Operator"
  */
 
 // codegen:start {preset: barrel, include: ./*.ts, exclude: ./+(managed|effect).ts}
-export * from "./api"
-export * from "./XRefM"
+export * from "./api.js"
+export * from "./XRefM.js"
 // codegen:end

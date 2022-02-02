@@ -4317,7 +4317,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-codegen@npm:^0.16.1":
+"eslint-plugin-codegen@npm:0.16.1":
   version: 0.16.1
   resolution: "eslint-plugin-codegen@npm:0.16.1"
   dependencies:
@@ -4335,6 +4335,27 @@ __metadata:
     read-pkg-up: ^7.0.1
     string.prototype.matchall: ^4.0.2
   checksum: 3ce1395c90a10a7a7ceca3e5cb074b042730370a587021d43f87f055108410e6e367add5e1c214201ea44f1ac7e89073a08e9288f1734d2654d48d60145297e1
+  languageName: node
+  linkType: hard
+
+"eslint-plugin-codegen@patch:eslint-plugin-codegen@0.16.1#.yarn/patches/eslint-plugin-codegen.patch::locator=effect-ts%40workspace%3A.":
+  version: 0.16.1
+  resolution: "eslint-plugin-codegen@patch:eslint-plugin-codegen@npm%3A0.16.1#.yarn/patches/eslint-plugin-codegen.patch::version=0.16.1&hash=958be8&locator=effect-ts%40workspace%3A."
+  dependencies:
+    "@babel/core": ^7.11.6
+    "@babel/generator": ~7.12.0
+    "@babel/parser": ^7.11.5
+    "@babel/traverse": ^7.11.5
+    expect: ^26.0.0
+    fp-ts: ^2.1.0
+    glob: ^7.1.4
+    io-ts: ^2.2.4
+    io-ts-extra: 0.11.6
+    js-yaml: ^3.14.0
+    lodash: ^4.17.15
+    read-pkg-up: ^7.0.1
+    string.prototype.matchall: ^4.0.2
+  checksum: 67739741354c88226b6482f3243aefd1084822e5a34cca7826fae0aa04113f5b337ec21549f0fac3d7f20188805e41957ac3aae86adaadc01623aa50fd66af7a
   languageName: node
   linkType: hard
 

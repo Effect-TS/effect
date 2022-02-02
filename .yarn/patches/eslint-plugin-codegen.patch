@@ -1,0 +1,13 @@
+diff --git a/dist/presets/barrel.js b/dist/presets/barrel.js
+index 713ce15ee45a50f8dc0ba40457526dfaf597afca..1dde9eed565ee4dfe00aa371fc38a2e6e950cce5 100644
+--- a/dist/presets/barrel.js
++++ b/dist/presets/barrel.js
+@@ -62,7 +62,7 @@ const barrel = ({ meta, options: opts }) => {
+         .filter(f => path.resolve(cwd, f) !== path.resolve(meta.filename))
+         .map(f => `./${f}`.replace(/(\.\/)+\./g, '.'))
+         .filter(file => ['.js', '.mjs', '.ts', '.tsx'].includes(path.extname(file)))
+-        .map(f => f.replace(/\.\w+$/, ''));
++        .map(f => f.replace(/\.\w+$/, '') + ".js");
+     const expectedContent = io_ts_extra_1.match(opts.import)
+         .case(undefined, () => {
+         return relativeFiles.map(f => `export * from '${f}'`).join('\n');
