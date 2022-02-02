@@ -4,6 +4,8 @@ import { Failure } from "../definition"
 
 /**
  * Maps over the cause type.
+ *
+ * @tsplus fluent ets/Exit mapErrorCause
  */
 export function mapErrorCause_<E, A, E1>(
   self: Exit<E, A>,
@@ -23,5 +25,5 @@ export function mapErrorCause_<E, A, E1>(
  * @ets_data_first mapErrorCause_
  */
 export function mapErrorCause<E, E1>(f: (cause: Cause<E>) => Cause<E1>) {
-  return <A>(self: Exit<E, A>): Exit<E1, A> => mapErrorCause_(self, f)
+  return <A>(self: Exit<E, A>): Exit<E1, A> => self.mapErrorCause(f)
 }

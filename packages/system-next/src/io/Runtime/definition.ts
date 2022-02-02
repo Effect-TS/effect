@@ -6,7 +6,6 @@ import { OneShot } from "../../support/OneShot"
 import * as Cause from "../Cause"
 import type { Effect } from "../Effect"
 import type { Exit } from "../Exit"
-import * as Ex from "../Exit"
 import { FiberContext } from "../Fiber/_internal/context"
 import * as FiberId from "../FiberId"
 import * as FiberRef from "../FiberRef"
@@ -28,7 +27,7 @@ export class Runtime<R> {
   unsafeRunWith<E, A>(
     effect: Effect<R, E, A>,
     k: (exit: Exit<E, A>) => void,
-    __trace?: string
+    __etsTrace?: string
   ): (fiberId: FiberId.FiberId) => (_: (exit: Exit<E, A>) => void) => void {
     const fiberId = FiberId.unsafeMake()
 
@@ -43,7 +42,7 @@ export class Runtime<R> {
     const context: FiberContext<E, A> = new FiberContext(
       fiberId,
       fiberRefLocals,
-      TraceElement.parse(__trace),
+      TraceElement.parse(__etsTrace),
       children,
       this.runtimeConfig,
       new Stack(InterruptStatus.Interruptible.toBoolean)
@@ -54,21 +53,17 @@ export class Runtime<R> {
     if (supervisor !== Supervisor.none) {
       supervisor.unsafeOnStart(this.environment, effect, O.none, context)
 
-      context.unsafeOnDone((exit) => supervisor.unsafeOnEnd(Ex.flatten(exit), context))
+      context.unsafeOnDone((exit) => supervisor.unsafeOnEnd(exit.flatten(), context))
     }
 
     context.nextEffect = effect
     context.run()
     context.unsafeOnDone((exit) => {
-      k(Ex.flatten(exit))
+      k(exit.flatten())
     })
 
     return (id) => (k) =>
-      this.unsafeRunAsyncWith(
-        context.interruptAs(id),
-        (exit) => k(Ex.flatten(exit)),
-        __trace
-      )
+      this.unsafeRunAsyncWith(context.interruptAs(id), (exit) => k(exit.flatten()))
   }
 
   /**
@@ -77,8 +72,8 @@ export class Runtime<R> {
    * This method is effectful and should only be invoked at the edges of your
    * program.
    */
-  unsafeRunAsync<E, A>(effect: Effect<R, E, A>, __trace?: string): void {
-    return this.unsafeRunAsyncWith(effect, constVoid, __trace)
+  unsafeRunAsync<E, A>(effect: Effect<R, E, A>, __etsTrace?: string): void {
+    return this.unsafeRunAsyncWith(effect, constVoid)
   }
 
   /**
@@ -91,9 +86,9 @@ export class Runtime<R> {
   unsafeRunAsyncWith<E, A>(
     effect: Effect<R, E, A>,
     k: (exit: Exit<E, A>) => void,
-    __trace?: string
+    __etsTrace?: string
   ): void {
-    this.unsafeRunAsyncCancelable(effect, k, __trace)
+    this.unsafeRunAsyncCancelable(effect, k)
   }
 
   /**
@@ -107,10 +102,10 @@ export class Runtime<R> {
   unsafeRunAsyncCancelable<E, A>(
     effect: Effect<R, E, A>,
     k: (exit: Exit<E, A>) => void,
-    __trace?: string
+    __etsTrace?: string
   ): (fiberId: FiberId.FiberId) => Exit<E, A> {
     const current = effect
-    const canceler = this.unsafeRunWith(current, k, __trace)
+    const canceler = this.unsafeRunWith(current, k)
     return (fiberId) => {
       const result = new OneShot<Exit<E, A>>()
       canceler(fiberId)(result.set)
@@ -126,7 +121,7 @@ export class Runtime<R> {
    * This method is effectful and should only be used at the edges of your
    * program.
    */
-  unsafeRunPromise<E, A>(effect: Effect<R, E, A>, __trace?: string): Promise<A> {
+  unsafeRunPromise<E, A>(effect: Effect<R, E, A>, __etsTrace?: string): Promise<A> {
     return new Promise((resolve, reject) => {
       this.unsafeRunAsyncWith(effect, (exit) => {
         switch (exit._tag) {
@@ -152,7 +147,7 @@ export class Runtime<R> {
    */
   unsafeRunPromiseExit<E, A>(
     effect: Effect<R, E, A>,
-    __trace?: string
+    __etsTrace?: string
   ): Promise<Exit<E, A>> {
     return new Promise((resolve) => {
       this.unsafeRunAsyncWith(effect, (exit) => {

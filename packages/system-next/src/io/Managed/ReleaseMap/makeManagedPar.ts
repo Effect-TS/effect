@@ -1,4 +1,4 @@
-import { parallel, parallelN } from "../../Effect/operations/ExecutionStrategy"
+import { ExecutionStrategy } from "../../ExecutionStrategy"
 import { Managed } from "../definition"
 import { ReleaseMap } from "./definition"
 
@@ -10,8 +10,8 @@ import { ReleaseMap } from "./definition"
  * @tsplus static ets/ReleaseMapOps makeManagedPar
  */
 export const makeManagedPar: Managed<unknown, never, ReleaseMap> =
-  Managed.parallelism.flatMap((p) =>
-    p._tag === "None"
-      ? ReleaseMap.makeManaged(parallel)
-      : ReleaseMap.makeManaged(parallelN(p.value))
+  Managed.parallelism.flatMap((parallelism) =>
+    parallelism._tag === "None"
+      ? ReleaseMap.makeManaged(ExecutionStrategy.Parallel)
+      : ReleaseMap.makeManaged(ExecutionStrategy.ParallelN(parallelism.value))
   )

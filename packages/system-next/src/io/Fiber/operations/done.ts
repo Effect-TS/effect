@@ -1,8 +1,8 @@
-import * as Chunk from "../../../collection/immutable/Chunk/core"
+import { Chunk } from "../../../collection/immutable/Chunk"
 import { Option } from "../../../data/Option"
 import { Effect } from "../../Effect"
 import type { Exit } from "../../Exit"
-import * as FiberId from "../../FiberId"
+import { FiberId } from "../../FiberId"
 import type { Fiber } from "../definition"
 import { makeSynthetic } from "./makeSynthetic"
 

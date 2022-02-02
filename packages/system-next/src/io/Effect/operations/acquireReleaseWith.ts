@@ -63,5 +63,5 @@ export function acquireReleaseWith<A, E1, R1, A1, R2, E2, A2>(
   __etsTrace?: string
 ) {
   return <R, E>(acquire: Effect<R, E, A>): Effect<R & R1 & R2, E | E1 | E2, A1> =>
-    acquireReleaseWith_(acquire, use, release)
+    acquire.acquireReleaseWith(use, release)
 }

@@ -1,5 +1,5 @@
 /* eslint-disable prefer-const */
-import * as Chunk from "../../collection/immutable/Chunk/core"
+import { Chunk } from "../../collection/immutable/Chunk"
 import { Tuple } from "../../collection/immutable/Tuple"
 import { Either } from "../../data/Either/core"
 import { Stack } from "../../data/Stack"
@@ -633,7 +633,7 @@ class Runtime {
   runAll<W, S1, S2, E, A>(
     self: XPure<W, S1, S2, unknown, E, A>,
     s: S1
-  ): Tuple<[Chunk.Chunk<W>, Either<E, Tuple<[S2, A]>>]> {
+  ): Tuple<[Chunk<W>, Either<E, Tuple<[S2, A]>>]> {
     let s0 = s as any
     let a: any = undefined
     let environments: Stack<any> | undefined = undefined
@@ -674,7 +674,7 @@ class Runtime {
           break
         }
         case "Log": {
-          logs = Chunk.append_(logs, xp.w)
+          logs = logs.append(xp.w)
           a = undefined
           const nextInstr = this.pop()
           curXPure = nextInstr?.apply(a)
@@ -770,7 +770,7 @@ class Runtime {
 export function runAll_<W, S1, S2, E, A>(
   self: XPure<W, S1, S2, unknown, E, A>,
   s: S1
-): Tuple<[Chunk.Chunk<W>, Either<E, Tuple<[S2, A]>>]> {
+): Tuple<[Chunk<W>, Either<E, Tuple<[S2, A]>>]> {
   return new Runtime().runAll(self, s)
 }
 
@@ -782,7 +782,7 @@ export function runAll<S1>(
   s: S1
 ): <W, S2, E, A>(
   self: XPure<W, S1, S2, unknown, E, A>
-) => Tuple<[Chunk.Chunk<W>, Either<E, Tuple<[S2, A]>>]> {
+) => Tuple<[Chunk<W>, Either<E, Tuple<[S2, A]>>]> {
   return (self) => runAll_(self, s)
 }
 
@@ -838,7 +838,7 @@ export function runEither<W, S2, E, A>(
  */
 export function runLog<W, S2, E, A>(
   self: XPure<W, unknown, S2, unknown, E, A>
-): Tuple<[Chunk.Chunk<W>, A]> {
+): Tuple<[Chunk<W>, A]> {
   const result = new Runtime().runAll(self, undefined)
   const e = result.get(1)
   if (e._tag === "Left") {

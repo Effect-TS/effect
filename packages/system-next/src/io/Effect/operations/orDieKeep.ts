@@ -1,4 +1,4 @@
-import * as Cause from "../../Cause"
+import { Cause } from "../../Cause"
 import { Effect } from "../definition"
 
 /**
@@ -8,8 +8,7 @@ import { Effect } from "../definition"
  */
 export function orDieKeep<R, E, A>(effect: Effect<R, E, A>, __etsTrace?: string) {
   return effect.foldCauseEffect(
-    (ce) => Effect.failCauseNow(Cause.chain_(ce, Cause.die)),
-    Effect.succeedNow,
-    __etsTrace
+    (cause) => Effect.failCauseNow(cause.flatMap(Cause.die)),
+    Effect.succeedNow
   )
 }

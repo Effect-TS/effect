@@ -1,5 +1,5 @@
 import { constVoid } from "../../data/Function"
-import type * as O from "../../data/Option"
+import type { Option } from "../../data/Option"
 import type { Effect, UIO } from "../Effect"
 import type { Exit } from "../Exit"
 import type * as Fiber from "../Fiber"
@@ -23,7 +23,7 @@ export class Supervisor<A> {
     readonly unsafeOnStart: <R, E, A>(
       environment: R,
       effect: Effect<R, E, A>,
-      parent: O.Option<Fiber.Runtime<any, any>>,
+      parent: Option<Fiber.Runtime<any, any>>,
       fiber: Fiber.Runtime<E, A>
     ) => void,
     readonly unsafeOnEnd: <E, A>(exit: Exit<E, A>, fiber: Fiber.Runtime<E, A>) => void,

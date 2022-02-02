@@ -1,4 +1,4 @@
-import { left } from "../../../data/Either"
+import { Either } from "../../../data/Either"
 import type { UIO } from "../definition"
 import { Effect } from "../definition"
 
@@ -13,7 +13,7 @@ export const never: UIO<never> = Effect.suspendSucceed(() =>
     const interval = setInterval(() => {
       //
     }, 60000)
-    return left(
+    return Either.left(
       Effect.succeed(() => {
         clearInterval(interval)
       })

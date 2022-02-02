@@ -12,7 +12,7 @@ export function unless_<R, E, A>(
   predicate: LazyArg<boolean>,
   __etsTrace?: string
 ): Effect<R, E, Option<A>> {
-  return Effect.suspendSucceed(() => (predicate() ? Effect.none : self.asSome()))
+  return Effect.suspendSucceed(predicate() ? Effect.none : self.asSome())
 }
 
 /**
@@ -22,5 +22,5 @@ export function unless_<R, E, A>(
  */
 export function unless(predicate: LazyArg<boolean>, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, Option<A>> =>
-    unless_(self, predicate)
+    self.unless(predicate)
 }

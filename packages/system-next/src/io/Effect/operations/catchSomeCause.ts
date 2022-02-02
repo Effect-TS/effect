@@ -1,4 +1,4 @@
-import * as O from "../../../data/Option"
+import type { Option } from "../../../data/Option"
 import type { Cause } from "../../Cause"
 import { Effect } from "../definition"
 
@@ -9,13 +9,12 @@ import { Effect } from "../definition"
  */
 export function catchSomeCause_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
-  f: (_: Cause<E>) => O.Option<Effect<R2, E2, A2>>,
+  f: (_: Cause<E>) => Option<Effect<R2, E2, A2>>,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, A | A2> {
   return self.foldCauseEffect(
     (c): Effect<R2, E | E2, A2> =>
-      O.fold_(
-        f(c),
+      f(c).fold(
         () => Effect.failCauseNow(c),
         (a) => a
       ),
@@ -29,9 +28,9 @@ export function catchSomeCause_<R, E, A, R2, E2, A2>(
  * @ets_data_first catchSomeCause_
  */
 export function catchSomeCause<R2, E, E2, A2>(
-  f: (_: Cause<E>) => O.Option<Effect<R2, E2, A2>>,
+  f: (_: Cause<E>) => Option<Effect<R2, E2, A2>>,
   __etsTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> =>
-    catchSomeCause_(self, f)
+    self.catchSomeCause(f)
 }

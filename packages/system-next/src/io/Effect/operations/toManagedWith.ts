@@ -23,5 +23,5 @@ export function toManagedWith_<R, R1, E, A>(
 export function toManagedWith<R1, A>(
   release: (a: A) => Effect<R1, never, any>
 ): <R, E>(self: Effect<R, E, A>) => Managed<R & R1, E, A> {
-  return (self) => toManagedWith_(self, release)
+  return (self) => self.toManagedWith(release)
 }

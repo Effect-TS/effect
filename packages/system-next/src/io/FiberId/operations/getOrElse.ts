@@ -1,16 +1,20 @@
+import type { LazyArg } from "../../../data/Function"
 import type { FiberId } from "../definition"
-import { isNone } from "./isNone"
 
 /**
  * Returns this `FiberId` if it is not `None`, otherwise returns that `FiberId`.
+ *
+ * @tsplus fluent ets/FiberId getOrElse
  */
-export function getOrElse_(self: FiberId, that: () => FiberId): FiberId {
-  return isNone(self) ? that() : self
+export function getOrElse_(self: FiberId, that: LazyArg<FiberId>): FiberId {
+  return self.isNone() ? that() : self
 }
 
 /**
  * Returns this `FiberId` if it is not `None`, otherwise returns that `FiberId`.
+ *
+ * @ets_data_first getOrElse_
  */
-export function getOrElse(that: () => FiberId) {
-  return (self: FiberId): FiberId => getOrElse_(self, that)
+export function getOrElse(that: LazyArg<FiberId>) {
+  return (self: FiberId): FiberId => self.getOrElse(that)
 }

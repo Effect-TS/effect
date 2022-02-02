@@ -1,5 +1,4 @@
-import { join_ } from "../../collection/immutable/Chunk/api/join"
-import * as C from "../../collection/immutable/Chunk/core"
+import type { Chunk } from "../../collection/immutable/Chunk"
 import type { Tuple } from "../../collection/immutable/Tuple"
 import type { Option } from "../../data/Option"
 
@@ -34,16 +33,15 @@ export class Histogram {
   readonly _tag = "Histogram"
 
   constructor(
-    readonly buckets: C.Chunk<Tuple<[number, number]>>,
+    readonly buckets: Chunk<Tuple<[number, number]>>,
     readonly count: number,
     readonly sum: number
   ) {}
 
   toString(): string {
-    const buckets = join_(
-      C.map_(this.buckets, ({ tuple: [start, end] }) => `[${start},${end}]`),
-      ","
-    )
+    const buckets = this.buckets
+      .map(({ tuple: [start, end] }) => `[${start},${end}]`)
+      .join(",")
     return `Histogram(${buckets}, ${this.count}, ${this.sum})`
   }
 }
@@ -53,19 +51,15 @@ export class Summary {
 
   constructor(
     readonly error: number,
-    readonly quantiles: C.Chunk<Tuple<[number, Option<number>]>>,
+    readonly quantiles: Chunk<Tuple<[number, Option<number>]>>,
     readonly count: number,
     readonly sum: number
   ) {}
 
   toString(): string {
-    const quantiles = join_(
-      C.map_(
-        this.quantiles,
-        ({ tuple: [start, end] }) => `[${start},${end.getOrElse("")}]`
-      ),
-      ","
-    )
+    const quantiles = this.quantiles
+      .map(({ tuple: [start, end] }) => `[${start},${end.getOrElse("")}]`)
+      .join(",")
     return `Summary(${this.error}, ${quantiles}, ${this.count}, ${this.sum})`
   }
 }
@@ -75,14 +69,13 @@ export class SetCount {
 
   constructor(
     readonly setTag: string,
-    readonly occurrences: C.Chunk<Tuple<[string, number]>>
+    readonly occurrences: Chunk<Tuple<[string, number]>>
   ) {}
 
   toString(): string {
-    const occurrences = join_(
-      C.map_(this.occurrences, ({ tuple: [name, count] }) => `{${name}:${count}}`),
-      ","
-    )
+    const occurrences = this.occurrences
+      .map(({ tuple: [name, count] }) => `{${name}:${count}}`)
+      .join(",")
     return `SetCount(${this.setTag}, ${occurrences})`
   }
 }

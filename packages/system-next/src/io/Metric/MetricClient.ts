@@ -16,7 +16,7 @@
  * users.
  */
 
-import * as C from "../../collection/immutable/Chunk/core"
+import { Chunk } from "../../collection/immutable/Chunk"
 import type { HashMap } from "../../collection/immutable/HashMap"
 import type { Option } from "../../data/Option"
 import type { Boundaries } from "./Boundaries"
@@ -66,14 +66,14 @@ export function unsafeMakeCounter<A>(
   name: string,
   ...tags: Array<MetricLabel>
 ): Counter<A> {
-  return metricState.getCounter(new MK.Counter(name, C.from(tags)))
+  return metricState.getCounter(new MK.Counter(name, Chunk.from(tags)))
 }
 
 export function unsafeMakeGauge<A>(
   name: string,
   ...tags: Array<MetricLabel>
 ): Gauge<A> {
-  return metricState.getGauge(new MK.Gauge(name, C.from(tags)))
+  return metricState.getGauge(new MK.Gauge(name, Chunk.from(tags)))
 }
 
 export function unsafeMakeHistogram<A>(
@@ -81,7 +81,7 @@ export function unsafeMakeHistogram<A>(
   boundaries: Boundaries,
   ...tags: Array<MetricLabel>
 ): Histogram<A> {
-  return metricState.getHistogram(new MK.Histogram(name, boundaries, C.from(tags)))
+  return metricState.getHistogram(new MK.Histogram(name, boundaries, Chunk.from(tags)))
 }
 
 export function unsafeMakeSummary<A>(
@@ -89,11 +89,11 @@ export function unsafeMakeSummary<A>(
   maxAge: Date,
   maxSize: number,
   error: number,
-  quantiles: C.Chunk<number>,
+  quantiles: Chunk<number>,
   ...tags: Array<MetricLabel>
 ): Summary<A> {
   return metricState.getSummary(
-    new MK.Summary(name, maxAge, maxSize, error, quantiles, C.from(tags))
+    new MK.Summary(name, maxAge, maxSize, error, quantiles, Chunk.from(tags))
   )
 }
 
@@ -102,5 +102,5 @@ export function unsafeMakeSetCount<A>(
   setTag: string,
   ...tags: Array<MetricLabel>
 ): SetCount<A> {
-  return metricState.getSetCount(new MK.SetCount(name, setTag, C.from(tags)))
+  return metricState.getSetCount(new MK.SetCount(name, setTag, Chunk.from(tags)))
 }

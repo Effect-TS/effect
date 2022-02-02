@@ -1,8 +1,10 @@
 import { Cause } from "../../Cause"
 import type { FiberId } from "../../FiberId"
-import type { Exit } from "../definition"
-import { failCause } from "./failCause"
+import { Exit } from "../definition"
 
+/**
+ * @tsplus static ets/ExitOps interrupt
+ */
 export function interrupt(fiberId: FiberId): Exit<never, never> {
-  return failCause(Cause.interrupt(fiberId))
+  return Exit.failCause(Cause.interrupt(fiberId))
 }

@@ -1,6 +1,5 @@
-import * as Cause from "../../Cause"
+import { Cause } from "../../Cause"
 import type { Exit } from "../../Exit"
-import { fold_ } from "../../Exit/operations/fold"
 import { Effect } from "../definition"
 
 /**
@@ -26,8 +25,7 @@ export function acquireReleaseExitWith_<R, E, A, R1, E1, A1, R2, E2, X>(
           Effect.suspendSucceed(() => release(a, exit)).foldCauseEffect(
             (cause2) =>
               Effect.failCauseNow(
-                fold_(
-                  exit,
+                exit.fold(
                   (cause1) => Cause.then(cause1, cause2),
                   () => cause2
                 )
@@ -54,5 +52,5 @@ export function acquireReleaseExitWith<A, R1, E1, A1, R2, E2, X>(
   __etsTrace?: string
 ) {
   return <R, E>(acquire: Effect<R, E, A>): Effect<R & R1 & R2, E | E1 | E2, A1> =>
-    acquireReleaseExitWith_(acquire, use, release)
+    acquire.acquireReleaseExitWith(use, release)
 }

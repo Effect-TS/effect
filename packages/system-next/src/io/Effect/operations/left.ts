@@ -1,4 +1,4 @@
-import * as E from "../../../data/Either"
+import { Either } from "../../../data/Either"
 import type { UIO } from "../definition"
 import { Effect } from "../definition"
 
@@ -7,6 +7,6 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps left
  */
-export function left<A>(value: A, __etsTrace?: string): UIO<E.Either<A, never>> {
-  return Effect.succeed(() => E.left(value))
+export function left<A>(value: A, __etsTrace?: string): UIO<Either<A, never>> {
+  return Effect.succeed(Either.left(value))
 }

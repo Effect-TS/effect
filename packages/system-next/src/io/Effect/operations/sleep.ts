@@ -1,6 +1,6 @@
-import type { HasClock } from "../../Clock"
-import { sleep as clockSleep } from "../../Clock"
+import { HasClock } from "../../Clock"
 import type { RIO } from "../definition"
+import { Effect } from "../definition"
 
 /**
  * Returns an effect that suspends for the specified duration. This method is
@@ -9,5 +9,5 @@ import type { RIO } from "../definition"
  * @tsplus static ets/EffectOps sleep
  */
 export function sleep(milliseconds: number, __etsTrace?: string): RIO<HasClock, void> {
-  return clockSleep(milliseconds)
+  return Effect.serviceWithEffect(HasClock)((_) => _.sleep(milliseconds))
 }

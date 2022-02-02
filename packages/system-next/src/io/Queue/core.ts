@@ -1,5 +1,4 @@
-import * as ChunkFilter from "../../collection/immutable/Chunk/api/filter"
-import * as Chunk from "../../collection/immutable/Chunk/core"
+import { Chunk } from "../../collection/immutable/Chunk"
 import type { AtomicBoolean } from "../../support/AtomicBoolean"
 import type { MutableQueue } from "../../support/MutableQueue"
 import * as T from "./effect"
@@ -11,7 +10,7 @@ export { Dequeue, Queue, XQueue } from "./xqueue"
 
 export interface Strategy<A> {
   readonly handleSurplus: (
-    as: Chunk.Chunk<A>,
+    as: Chunk<A>,
     queue: MutableQueue<A>,
     takers: MutableQueue<P.Promise<never, A>>,
     isShutdown: AtomicBoolean
@@ -29,7 +28,7 @@ export interface Strategy<A> {
 
 export class DroppingStrategy<A> implements Strategy<A> {
   handleSurplus(
-    _as: Chunk.Chunk<A>,
+    _as: Chunk<A>,
     _queue: MutableQueue<A>,
     _takers: MutableQueue<P.Promise<never, A>>,
     _isShutdown: AtomicBoolean
@@ -52,7 +51,7 @@ export class DroppingStrategy<A> implements Strategy<A> {
 
 export class SlidingStrategy<A> implements Strategy<A> {
   handleSurplus(
-    as: Chunk.Chunk<A>,
+    as: Chunk<A>,
     queue: MutableQueue<A>,
     takers: MutableQueue<P.Promise<never, A>>,
     _isShutdown: AtomicBoolean
@@ -76,10 +75,10 @@ export class SlidingStrategy<A> implements Strategy<A> {
     return 0
   }
 
-  private unsafeSlidingOffer(queue: MutableQueue<A>, as: Chunk.Chunk<A>) {
+  private unsafeSlidingOffer(queue: MutableQueue<A>, as: Chunk<A>) {
     let bs = as
 
-    while (Chunk.size(bs) > 0) {
+    while (bs.size > 0) {
       if (queue.capacity === 0) {
         return
       }
@@ -87,8 +86,8 @@ export class SlidingStrategy<A> implements Strategy<A> {
       // poll 1 and retry
       queue.poll(undefined)
 
-      if (queue.offer(Chunk.unsafeGet_(bs, 0))) {
-        bs = Chunk.drop_(bs, 1)
+      if (queue.offer(bs.unsafeGet(0))) {
+        bs = bs.drop(1)
       }
     }
   }
@@ -115,7 +114,7 @@ export function unsafeCompleteTakers<A>(
         unsafeCompletePromise(taker, element)
         strategy.unsafeOnQueueEmptySpace(queue, takers)
       } else {
-        unsafeOfferAll(takers, Chunk.prepend_(unsafePollAll(takers), taker))
+        unsafeOfferAll(takers, unsafePollAll(takers).prepend(taker))
       }
 
       keepPolling = true
@@ -126,25 +125,22 @@ export function unsafeCompleteTakers<A>(
 }
 
 export function unsafeRemove<A>(q: MutableQueue<A>, a: A) {
-  ChunkFilter.filter_(unsafeOfferAll(q, unsafePollAll(q)), (b) => a !== b)
+  unsafeOfferAll(q, unsafePollAll(q)).filter((b) => a !== b)
 }
 
-export function unsafePollN<A>(q: MutableQueue<A>, max: number): Chunk.Chunk<A> {
+export function unsafePollN<A>(q: MutableQueue<A>, max: number): Chunk<A> {
   return q.pollUpTo(max)
 }
 
-export function unsafeOfferAll<A>(
-  q: MutableQueue<A>,
-  as: Chunk.Chunk<A>
-): Chunk.Chunk<A> {
+export function unsafeOfferAll<A>(q: MutableQueue<A>, as: Chunk<A>): Chunk<A> {
   return q.offerAll(as)
 }
 
-export function unsafePollAll<A>(q: MutableQueue<A>): Chunk.Chunk<A> {
+export function unsafePollAll<A>(q: MutableQueue<A>): Chunk<A> {
   let as = Chunk.empty<A>()
 
   while (!q.isEmpty) {
-    as = Chunk.append_(as, q.poll(undefined)!)
+    as = as.append(q.poll(undefined)!)
   }
 
   return as

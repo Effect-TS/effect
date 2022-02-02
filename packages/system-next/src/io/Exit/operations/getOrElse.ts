@@ -3,6 +3,8 @@ import type { Exit } from "../definition"
 
 /**
  * Retrieves the `A` if succeeded, or else returns the specified default `A`.
+ *
+ * @tsplus fluent ets/Exit getOrElse
  */
 export function getOrElse_<E, A>(self: Exit<E, A>, orElse: (cause: Cause<E>) => A): A {
   switch (self._tag) {
@@ -19,5 +21,5 @@ export function getOrElse_<E, A>(self: Exit<E, A>, orElse: (cause: Cause<E>) => 
  * @ets_data_first getOrElse_
  */
 export function getOrElse<E, A>(orElse: (cause: Cause<E>) => A) {
-  return (self: Exit<E, A>): A => getOrElse_(self, orElse)
+  return (self: Exit<E, A>): A => self.getOrElse(orElse)
 }

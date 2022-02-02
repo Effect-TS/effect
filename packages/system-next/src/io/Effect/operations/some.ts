@@ -1,4 +1,4 @@
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { UIO } from "../definition"
 import { Effect } from "../definition"
 
@@ -7,6 +7,6 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps some
  */
-export function some<A>(a: A, __etsTrace?: string): UIO<O.Option<A>> {
-  return Effect.succeed(() => O.some(a))
+export function some<A>(a: A, __etsTrace?: string): UIO<Option<A>> {
+  return Effect.succeed(Option.some(a))
 }

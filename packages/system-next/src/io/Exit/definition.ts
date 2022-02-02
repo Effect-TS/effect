@@ -5,7 +5,16 @@ import type { Cause } from "../Cause"
 // Model
 // -----------------------------------------------------------------------------
 
+/**
+ * @tsplus type ets/Exit
+ */
 export type Exit<E, A> = Success<A> | Failure<E>
+
+/**
+ * @tsplus type ets/ExitOps
+ */
+export interface ExitOps {}
+export const Exit: ExitOps = {}
 
 export class Success<A> implements St.HasEquals {
   readonly _tag = "Success"

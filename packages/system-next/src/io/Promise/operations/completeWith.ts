@@ -1,6 +1,6 @@
 import type { IO, UIO } from "../../Effect"
-import { succeed } from "../../Effect/operations/succeed"
-import { Done } from "../_internal/state"
+import { Effect } from "../../Effect"
+import { PromiseState } from "../_internal/state"
 import type { Promise } from "../definition"
 
 /**
@@ -14,28 +14,29 @@ import type { Promise } from "../definition"
  * case te meaning of the "exactly once" guarantee of `Promise` is that the
  * promise can be completed with exactly one effect. For a version that
  * completes the promise with the result of an effect see `Promise.complete`.
+ *
+ * @tsplus fluent ets/Promise completeWith
  */
 export function completeWith_<E, A>(
   self: Promise<E, A>,
-  io: IO<E, A>,
-  __trace?: string
+  effect: IO<E, A>,
+  __etsTrace?: string
 ): UIO<boolean> {
-  return succeed(() => {
+  return Effect.succeed(() => {
     const state = self.state.get
-
     switch (state._tag) {
       case "Done": {
         return false
       }
       case "Pending": {
-        self.state.set(new Done(io))
+        self.state.set(PromiseState.done(effect))
         state.joiners.forEach((f) => {
-          f(io)
+          f(effect)
         })
         return true
       }
     }
-  }, __trace)
+  })
 }
 
 /**
@@ -53,6 +54,6 @@ export function completeWith_<E, A>(
  *
  * @ets_data_first completeWith_
  */
-export function completeWith<E, A>(io: IO<E, A>, __trace?: string) {
-  return (self: Promise<E, A>): UIO<boolean> => completeWith_(self, io, __trace)
+export function completeWith<E, A>(effect: IO<E, A>, __etsTrace?: string) {
+  return (self: Promise<E, A>): UIO<boolean> => self.completeWith(effect)
 }

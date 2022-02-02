@@ -12,12 +12,12 @@ import { Managed } from "../definition"
  */
 export function provideServiceManaged_<R, E, A, T>(
   self: Managed<R & Has<T>, E, A>,
-  tag: Tag<T>,
-  __etsTrace?: string
+  tag: Tag<T>
 ) {
   return <R1, E1>(
-    managed: Managed<R1, E1, T>
-  ): Managed<R1 & Erase<R & Has<T>, Has<T>>, E | E1, A> => {
+    managed: Managed<R1, E1, T>,
+    __etsTrace?: string
+  ): Managed<R1 & Erase<R, Has<T>>, E | E1, A> => {
     // @ts-expect-error
     return Managed.environmentWithManaged((r: R & R1) =>
       managed.flatMap((t) => self.provideEnvironment(mergeEnvironments(tag, r, t)))
@@ -32,11 +32,11 @@ export function provideServiceManaged_<R, E, A, T>(
  *
  * @ets_data_first provideServiceManaged_
  */
-export function provideServiceManaged<T>(tag: Tag<T>, __etsTrace?: string) {
-  return <R1, E1>(managed: Managed<R1, E1, T>) =>
+export function provideServiceManaged<T>(tag: Tag<T>) {
+  return <R1, E1>(managed: Managed<R1, E1, T>, __etsTrace?: string) =>
     <R, E, A>(
       self: Managed<R & Has<T>, E, A>
-    ): Managed<R1 & Erase<R & Has<T>, Has<T>>, E | E1, A> => {
-      return provideServiceManaged_(self, tag)(managed)
-    }
+    ): Managed<R1 & Erase<R, Has<T>>, E | E1, A> =>
+      // @ts-expect-error
+      self.provideServiceManaged(tag)(managed)
 }

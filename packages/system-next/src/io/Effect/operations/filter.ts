@@ -12,16 +12,13 @@ export function filter_<A, R, E>(
   __etsTrace?: string
 ): Effect<R, E, readonly A[]> {
   return Effect.suspendSucceed(() =>
-    Iter.reduce_(as, <Effect<R, E, A[]>>Effect.succeed(() => []), (io, a) =>
-      io.zipWith(
-        Effect.suspendSucceed(() => f(a)),
-        (as_, p) => {
-          if (p) {
-            as_.push(a)
-          }
-          return as_
+    Iter.reduce_(as, <Effect<R, E, A[]>>Effect.succeed([]), (io, a) =>
+      io.zipWith(Effect.suspendSucceed(f(a)), (as_, p) => {
+        if (p) {
+          as_.push(a)
         }
-      )
+        return as_
+      })
     )
   )
 }
@@ -35,5 +32,5 @@ export function filter<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
   __etsTrace?: string
 ) {
-  return (as: Iterable<A>) => filter_(as, f)
+  return (as: Iterable<A>) => Effect.filter(as, f)
 }

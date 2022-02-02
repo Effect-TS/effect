@@ -1,4 +1,4 @@
-import * as C from "../../collection/immutable/Chunk/core"
+import { Chunk } from "../../collection/immutable/Chunk"
 import * as St from "../../prelude/Structural"
 import type { Boundaries } from "./Boundaries"
 import { MetricLabel } from "./MetricLabel"
@@ -21,7 +21,10 @@ export class Counter implements St.HasHash, St.HasEquals {
 
   readonly [MetricKeySym] = MetricKeySym
 
-  constructor(readonly name: string, readonly tags: C.Chunk<MetricLabel> = C.empty()) {}
+  constructor(
+    readonly name: string,
+    readonly tags: Chunk<MetricLabel> = Chunk.empty()
+  ) {}
 
   get [St.hashSym](): number {
     return St.combineHash(
@@ -40,7 +43,10 @@ export class Gauge implements St.HasHash, St.HasEquals {
 
   readonly [MetricKeySym] = MetricKeySym
 
-  constructor(readonly name: string, readonly tags: C.Chunk<MetricLabel> = C.empty()) {}
+  constructor(
+    readonly name: string,
+    readonly tags: Chunk<MetricLabel> = Chunk.empty()
+  ) {}
 
   get [St.hashSym](): number {
     return St.combineHash(
@@ -62,7 +68,7 @@ export class Histogram implements St.HasHash, St.HasEquals {
   constructor(
     readonly name: string,
     readonly boundaries: Boundaries,
-    readonly tags: C.Chunk<MetricLabel> = C.empty()
+    readonly tags: Chunk<MetricLabel> = Chunk.empty()
   ) {}
 
   get [St.hashSym](): number {
@@ -87,8 +93,8 @@ export class Summary implements St.HasHash, St.HasEquals {
     readonly maxAge: Date,
     readonly maxSize: number,
     readonly error: number,
-    readonly quantiles: C.Chunk<number>,
-    readonly tags: C.Chunk<MetricLabel> = C.empty()
+    readonly quantiles: Chunk<number>,
+    readonly tags: Chunk<MetricLabel> = Chunk.empty()
   ) {}
 
   get [St.hashSym](): number {
@@ -123,14 +129,11 @@ export class SetCount implements St.HasHash, St.HasEquals {
   constructor(
     readonly name: string,
     readonly setTag: string,
-    readonly tags: C.Chunk<MetricLabel> = C.empty()
+    readonly tags: Chunk<MetricLabel> = Chunk.empty()
   ) {}
 
   counterKey(word: string): Counter {
-    return new Counter(
-      this.name,
-      C.prepend_(this.tags, new MetricLabel(this.setTag, word))
-    )
+    return new Counter(this.name, this.tags.prepend(new MetricLabel(this.setTag, word)))
   }
 
   get [St.hashSym](): number {

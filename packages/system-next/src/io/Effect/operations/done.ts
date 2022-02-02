@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import type { Exit } from "../../Exit"
 import type { IO } from "../definition"
 import { Effect } from "../definition"
@@ -7,10 +8,11 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps done
  */
-export function done<E, A>(exit: Exit<E, A>, __etsTrace?: string): IO<E, A> {
-  return Effect.suspendSucceed(() =>
-    exit._tag === "Success"
-      ? Effect.succeedNow(exit.value)
-      : Effect.failCauseNow(exit.cause)
-  )
+export function done<E, A>(exit: LazyArg<Exit<E, A>>, __etsTrace?: string): IO<E, A> {
+  return Effect.suspendSucceed(() => {
+    const exit0 = exit()
+    return exit0._tag === "Success"
+      ? Effect.succeedNow(exit0.value)
+      : Effect.failCauseNow(exit0.cause)
+  })
 }

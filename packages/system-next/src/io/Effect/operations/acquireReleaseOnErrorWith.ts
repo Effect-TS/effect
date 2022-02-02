@@ -30,5 +30,5 @@ export function acquireReleaseOnErrorWith<E, A, E1, R1, A1, R2, E2, X>(
   __etsTrace?: string
 ) {
   return <R>(acquire: Effect<R, E, A>) =>
-    acquireReleaseOnErrorWith_(acquire, use, release)
+    acquire.acquireReleaseOnErrorWith(use, release)
 }

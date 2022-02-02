@@ -1,6 +1,4 @@
-import type { Exit } from "../../Exit/definition"
-import { failCause } from "../../Exit/operations/failCause"
-import { succeed } from "../../Exit/operations/succeed"
+import { Exit } from "../../Exit/definition"
 import type { RIO } from "../definition"
 import { Effect, IFold } from "../definition"
 
@@ -16,8 +14,8 @@ export function exit<R, E, A>(
 ): RIO<R, Exit<E, A>> {
   return new IFold(
     self,
-    (cause) => Effect.succeedNow(failCause(cause)),
-    (success) => Effect.succeedNow(succeed(success)),
+    (cause) => Effect.succeedNow(Exit.failCause(cause)),
+    (success) => Effect.succeedNow(Exit.succeed(success)),
     __etsTrace
   )
 }

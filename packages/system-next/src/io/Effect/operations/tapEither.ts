@@ -1,5 +1,4 @@
-import * as E from "../../../data/Either"
-import { failureOrCause } from "../../Cause"
+import { Either } from "../../../data/Either"
 import { Effect } from "../definition"
 
 /**
@@ -9,17 +8,16 @@ import { Effect } from "../definition"
  */
 export function tapEither_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,
-  f: (either: E.Either<E, A>) => Effect<R2, E2, X>,
+  f: (either: Either<E, A>) => Effect<R2, E2, X>,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, A> {
   return self.foldCauseEffect(
     (cause) =>
-      E.fold_(
-        failureOrCause(cause),
-        (e) => f(E.left(e)).zipRight(Effect.failCauseNow(cause)),
+      cause.failureOrCause().fold(
+        (e) => f(Either.left(e)).zipRight(Effect.failCauseNow(cause)),
         () => Effect.failCauseNow(cause)
       ),
-    (a) => f(E.right(a)).as(a)
+    (a) => f(Either.right(a)).as(a)
   )
 }
 
@@ -29,7 +27,7 @@ export function tapEither_<R, E, A, R2, E2, X>(
  * @ets_data_first tapEither_
  */
 export function tapEither<E, A, R2, E2, X>(
-  f: (either: E.Either<E, A>) => Effect<R2, E2, X>,
+  f: (either: Either<E, A>) => Effect<R2, E2, X>,
   __etsTrace?: string
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> => tapEither_(self, f)

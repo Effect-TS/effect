@@ -1,6 +1,5 @@
 import { Cause } from "../../Cause"
 import { Effect } from "../../Effect"
-import * as Exit from "../../Exit"
 import * as FiberId from "../../FiberId"
 import type { Fiber } from "../definition"
 import { makeSynthetic } from "./makeSynthetic"
@@ -18,8 +17,11 @@ export function zipWith_<E, E1, A, B, C>(
   return makeSynthetic({
     id: FiberId.getOrElse_(self.id, () => that.id),
     await: self.await
-      .flatMap(Effect.done)
-      .zipWithPar(that.await.flatMap(Effect.done), f)
+      .flatMap((_) => Effect.done(_))
+      .zipWithPar(
+        that.await.flatMap((_) => Effect.done(_)),
+        f
+      )
       .exit(),
     children: self.children,
     getRef: (ref) => self.getRef(ref).zipWith(that.getRef(ref), ref.join),
@@ -27,11 +29,9 @@ export function zipWith_<E, E1, A, B, C>(
     interruptAs: (id) =>
       self
         .interruptAs(id)
-        .zipWith(that.interruptAs(id), (ea, eb) =>
-          Exit.zipWith_(ea, eb, f, Cause.both)
-        ),
+        .zipWith(that.interruptAs(id), (ea, eb) => ea.zipWith(eb, f, Cause.both)),
     poll: self.poll.zipWith(that.poll, (oa, ob) =>
-      oa.flatMap((ea) => ob.map((eb) => Exit.zipWith_(ea, eb, f, Cause.both)))
+      oa.flatMap((ea) => ob.map((eb) => ea.zipWith(eb, f, Cause.both)))
     )
   })
 }

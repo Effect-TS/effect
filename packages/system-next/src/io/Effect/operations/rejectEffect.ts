@@ -1,4 +1,4 @@
-import * as O from "../../../data/Option"
+import type { Option } from "../../../data/Option"
 import { Effect } from "../definition"
 
 /**
@@ -10,14 +10,13 @@ import { Effect } from "../definition"
  */
 export function rejectEffect_<R, E, A, R1, E1>(
   self: Effect<R, E, A>,
-  pf: (a: A) => O.Option<Effect<R1, E1, E1>>,
+  pf: (a: A) => Option<Effect<R1, E1, E1>>,
   __etsTrace?: string
 ) {
   return self.flatMap((a) =>
-    O.fold_(
-      pf(a),
+    pf(a).fold(
       () => Effect.succeedNow(a),
-      (_) => _.flatMap(Effect.failNow)
+      (effect) => effect.flatMap(Effect.failNow)
     )
   )
 }
@@ -30,9 +29,9 @@ export function rejectEffect_<R, E, A, R1, E1>(
  * @ets_data_first rejectEffect_
  */
 export function rejectEffect<A, R1, E1>(
-  pf: (a: A) => O.Option<Effect<R1, E1, E1>>,
+  pf: (a: A) => Option<Effect<R1, E1, E1>>,
   __etsTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R1, E | E1, A> =>
-    rejectEffect_(self, pf)
+    self.rejectEffect(pf)
 }

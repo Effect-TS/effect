@@ -1,4 +1,4 @@
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import { currentParallelism } from "../../FiberRef/definition/data"
 import { get } from "../../FiberRef/operations/get"
 import { getWith_ } from "../../FiberRef/operations/getWith"
@@ -12,7 +12,7 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps parallelism
  */
-export function parallelism(__etsTrace?: string): UIO<O.Option<number>> {
+export function parallelism(__etsTrace?: string): UIO<Option<number>> {
   return get(currentParallelism.value)
 }
 
@@ -23,7 +23,7 @@ export function parallelism(__etsTrace?: string): UIO<O.Option<number>> {
  * @tsplus static ets/EffectOps parallelismWith
  */
 export function parallelismWith<R, E, A>(
-  f: (parallelism: O.Option<number>) => Effect<R, E, A>,
+  f: (parallelism: Option<number>) => Effect<R, E, A>,
   __etsTrace?: string
 ): Effect<R, E, A> {
   return getWith_(currentParallelism.value, f)
@@ -40,9 +40,7 @@ export function withParallelism_<R, E, A>(
   n: number,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return Effect.suspendSucceed(() =>
-    locally_(currentParallelism.value, O.some(n))(self)
-  )
+  return Effect.suspendSucceed(locally_(currentParallelism.value, Option.some(n))(self))
 }
 
 /**
@@ -52,7 +50,7 @@ export function withParallelism_<R, E, A>(
  * @ets_data_first withParallelism_
  */
 export function withParellelism(n: number, __etsTrace?: string) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> => withParallelism_(self, n)
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> => self.withParallelism(n)
 }
 
 /**
@@ -65,5 +63,5 @@ export function withParallelismUnbounded<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return Effect.suspendSucceed(() => locally_(currentParallelism.value, O.none)(self))
+  return Effect.suspendSucceed(locally_(currentParallelism.value, Option.none)(self))
 }

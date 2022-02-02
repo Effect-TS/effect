@@ -1,29 +1,19 @@
 import type { Has, Tag } from "../../../data/Has"
 import type { Effect } from "../../Effect"
-import { chain_ as chainManaged_ } from "../../Managed/operations/chain"
-import { fromEffect as fromEffectManaged } from "../../Managed/operations/fromEffect"
+import { Managed } from "../../Managed"
 import type { Layer } from "../definition"
 import { ILayerManaged } from "../definition"
 import { environmentFor } from "./_internal/environmentFor"
 
 /**
  * Constructs a layer from the specified effect.
- */
-export function fromEffect_<R, E, T>(
-  resource: Effect<R, E, T>,
-  has: Tag<T>
-): Layer<R, E, Has<T>> {
-  return new ILayerManaged(
-    chainManaged_(fromEffectManaged(resource), (a) => environmentFor(has, a))
-  ).setKey(has.key)
-}
-
-/**
- * Constructs a layer from the specified effect.
  *
- * @ets_data_first fromEffect_
+ * @tsplus static ets/LayerOps fromEffect
  */
-export function fromEffect<T>(has: Tag<T>) {
-  return <R, E>(resource: Effect<R, E, T>): Layer<R, E, Has<T>> =>
-    fromEffect_(resource, has)
+export function fromEffect<T>(_: Tag<T>) {
+  return <R, E>(resource: Effect<R, E, T>): Layer<R, E, Has<T>> => {
+    return new ILayerManaged(
+      Managed.fromEffect(resource).flatMap((a) => environmentFor(_, a))
+    ).setKey(_.key)
+  }
 }

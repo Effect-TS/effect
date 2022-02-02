@@ -1,4 +1,4 @@
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { UIO } from "../definition"
 import { Effect } from "../definition"
 
@@ -7,4 +7,4 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps none
  */
-export const none: UIO<O.Option<never>> = Effect.succeed(() => O.none)
+export const none: UIO<Option<never>> = Effect.succeed(() => Option.none)

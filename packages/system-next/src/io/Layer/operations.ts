@@ -1,7 +1,7 @@
 // codegen:start {preset: barrel, include: ./operations/*.ts}
 export * from "./operations/and"
-export * from "./operations/andFrom"
 export * from "./operations/andTo"
+export * from "./operations/andUsing"
 export * from "./operations/catchAll"
 export * from "./operations/chain"
 export * from "./operations/die"

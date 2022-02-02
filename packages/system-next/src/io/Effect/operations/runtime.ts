@@ -62,22 +62,27 @@ export const defaultRuntime = new Runtime(defaultEnv, defaultRuntimeConfig)
  * @tsplus fluent ets/Effect unsafeRunPromise
  */
 export const unsafeRunPromise = defaultRuntime.unsafeRunPromise
+
 /**
  * @tsplus fluent ets/Effect unsafeRunAsync
  */
 export const unsafeRunAsync = defaultRuntime.unsafeRunAsync
+
 /**
  * @tsplus fluent ets/Effect unsafeRunAsyncCancelable
  */
 export const unsafeRunAsyncCancelable = defaultRuntime.unsafeRunAsyncCancelable
+
 /**
  * @tsplus fluent ets/Effect unsafeRunAsyncWith
  */
 export const unsafeRunAsyncWith = defaultRuntime.unsafeRunAsyncWith
+
 /**
  * @tsplus fluent ets/Effect unsafeRunPromiseExit
  */
 export const unsafeRunPromiseExit = defaultRuntime.unsafeRunPromiseExit
+
 /**
  * @tsplus fluent ets/Effect unsafeRunWith
  */

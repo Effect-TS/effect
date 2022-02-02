@@ -1,9 +1,8 @@
 import { Tuple } from "../src/collection/immutable/Tuple"
 import { pipe } from "../src/data/Function"
-import * as T from "../src/io/Effect"
-import * as Ex from "../src/io/Exit"
+import { Effect } from "../src/io/Effect"
 import * as Fiber from "../src/io/Fiber"
-import * as Promise from "../src/io/Promise"
+import { Promise } from "../src/io/Promise"
 import * as STM from "../src/stm/STM"
 import * as TRef from "../src/stm/TRef"
 import * as TSemaphore from "../src/stm/TSemaphore"
@@ -21,12 +20,13 @@ function repeat<E, A>(self: STM.STM<unknown, E, A>, n: number): STM.STM<unknown,
 describe("TSemaphore", () => {
   describe("factories", () => {
     it("make", async () => {
-      const result = await pipe(
+      const program = pipe(
         TSemaphore.make(10),
         STM.chain(TSemaphore.available),
-        STM.commit,
-        T.unsafeRunPromise
+        STM.commit
       )
+
+      const result = await program.unsafeRunPromise()
 
       expect(result).toBe(10)
     })
@@ -34,7 +34,7 @@ describe("TSemaphore", () => {
 
   describe("acquire and release", () => {
     it("acquiring and releasing a permit should not change the availability", async () => {
-      const result = await pipe(
+      const program = pipe(
         TSemaphore.make(10),
         STM.chain((semaphore) =>
           pipe(
@@ -43,9 +43,10 @@ describe("TSemaphore", () => {
             STM.chain(() => TSemaphore.available(semaphore))
           )
         ),
-        STM.commit,
-        T.unsafeRunPromise
+        STM.commit
       )
+
+      const result = await program.unsafeRunPromise()
 
       expect(result).toBe(10)
     })
@@ -55,7 +56,7 @@ describe("TSemaphore", () => {
       const acquire = 7
       const release = 4
 
-      const result = await pipe(
+      const program = pipe(
         TSemaphore.make(capacity),
         STM.chain((sem) =>
           pipe(
@@ -64,9 +65,10 @@ describe("TSemaphore", () => {
             STM.chain(() => TSemaphore.available(sem))
           )
         ),
-        STM.commit,
-        T.unsafeRunPromise
+        STM.commit
       )
+
+      const result = await program.unsafeRunPromise()
 
       const usedCapacity = acquire - release
 
@@ -111,7 +113,9 @@ describe("TSemaphore", () => {
         return { resN, resRep }
       })
 
-      const { resN, resRep } = await pipe(STM.commit(stm), T.unsafeRunPromise)
+      const program = STM.commit(stm)
+
+      const { resN, resRep } = await program.unsafeRunPromise()
 
       expect(resN.get(0)).toBe(resRep.get(0))
       expect(resN.get(1)).toBe(resRep.get(1))
@@ -120,46 +124,41 @@ describe("TSemaphore", () => {
     })
 
     it("withPermit automatically releases the permit if the effect is interrupted", async () => {
-      const { permits } = await pipe(
-        T.Do(),
-        T.bind("promise", () => Promise.make<never, void>()),
-        T.bind("semaphore", () => STM.commit(TSemaphore.make(1))),
-        T.bindValue("effect", ({ promise, semaphore }) =>
-          T.chain_(
-            TSemaphore.withPermit_(Promise.succeed_(promise, undefined), semaphore),
-            () => T.never
+      const program = Effect.Do()
+        .bind("promise", () => Promise.make<never, void>())
+        .bind("semaphore", () => STM.commit(TSemaphore.make(1)))
+        .bindValue("effect", ({ promise, semaphore }) =>
+          TSemaphore.withPermit_(promise.succeed(undefined), semaphore).flatMap(
+            () => Effect.never
           )
-        ),
-        T.bind("fiber", ({ effect }) => T.fork(effect)),
-        T.tap(({ promise }) => Promise.await(promise)),
-        T.tap(({ fiber }) => Fiber.interrupt(fiber)),
-        T.bind("permits", ({ semaphore }) =>
-          pipe(TRef.get(semaphore.permits), STM.commit)
-        ),
-        T.unsafeRunPromise
-      )
+        )
+        .bind("fiber", ({ effect }) => effect.fork())
+        .tap(({ promise }) => promise.await())
+        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .flatMap(({ semaphore }) => STM.commit(TRef.get(semaphore.permits)))
 
-      expect(permits).toBe(1)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(1)
     })
 
     it("withPermit acquire is interruptible", async () => {
       const f = jest.fn()
-      const res = await pipe(
-        T.Do(),
-        T.bind("semaphore", () => STM.commit(TSemaphore.make(0))),
-        T.bindValue("effect", ({ semaphore }) =>
+      const program = Effect.Do()
+        .bind("semaphore", () => STM.commit(TSemaphore.make(0)))
+        .bindValue("effect", ({ semaphore }) =>
           TSemaphore.withPermit_(
-            T.succeed(() => f()),
+            Effect.succeed(() => f()),
             semaphore
           )
-        ),
-        T.bind("fiber", ({ effect }) => T.fork(effect)),
-        T.tap(({ fiber }) => Fiber.interrupt(fiber)),
-        T.chain(({ fiber }) => Fiber.join(fiber)),
-        T.unsafeRunPromiseExit
-      )
+        )
+        .bind("fiber", ({ effect }) => effect.fork())
+        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .flatMap(({ fiber }) => Fiber.join(fiber))
 
-      expect(Ex.isInterrupted(res)).toBe(true)
+      const result = await program.unsafeRunPromiseExit()
+
+      expect(result.isInterrupted()).toBe(true)
       expect(f).toHaveBeenCalledTimes(0)
     })
   })

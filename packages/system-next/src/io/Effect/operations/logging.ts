@@ -1,5 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { Cause } from "../../Cause"
 import { CauseLogger } from "../../Logger/operations/defaultCause"
 import { StringLogger } from "../../Logger/operations/defaultString"
@@ -7,11 +7,11 @@ import * as LogLevel from "../../LogLevel"
 import type { UIO } from "../definition"
 import { ILogged } from "../definition"
 
-const someFatal = O.some(LogLevel.Fatal)
-const someError = O.some(LogLevel.Error)
-const someWarning = O.some(LogLevel.Warning)
-const someInfo = O.some(LogLevel.Info)
-const someDebug = O.some(LogLevel.Debug)
+const someFatal = Option.some(LogLevel.Fatal)
+const someError = Option.some(LogLevel.Error)
+const someWarning = Option.some(LogLevel.Warning)
+const someInfo = Option.some(LogLevel.Info)
+const someDebug = Option.some(LogLevel.Debug)
 
 /**
  * Logs the specified message at the current log level.
@@ -19,7 +19,7 @@ const someDebug = O.some(LogLevel.Debug)
  * @tsplus static ets/EffectOps log
  */
 export function log(message: LazyArg<string>, __etsTrace?: string): UIO<void> {
-  return new ILogged(StringLogger, message, O.none, null, null, __etsTrace)
+  return new ILogged(StringLogger, message, Option.none, null, null, __etsTrace)
 }
 
 /**

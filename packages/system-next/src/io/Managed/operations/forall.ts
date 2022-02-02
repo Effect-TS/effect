@@ -12,7 +12,7 @@ export function forall<R, E, A>(
   f: (a: A) => Managed<R, E, boolean>,
   __etsTrace?: string
 ): Managed<R, E, boolean> {
-  return Managed.succeed(as[Symbol.iterator]()).flatMap((iterator) => loop(iterator, f))
+  return Managed.succeed(as).flatMap((iterable) => loop(iterable[Symbol.iterator](), f))
 }
 
 function loop<R, E, A>(

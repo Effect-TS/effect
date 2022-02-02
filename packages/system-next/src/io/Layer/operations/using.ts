@@ -1,5 +1,5 @@
 import type { Erase, Spreadable } from "../../../data/Utils"
-import { environment } from "../../Managed/operations/environment"
+import { Managed } from "../../Managed"
 import type { Layer } from "../definition"
 import { ILayerManaged, ILayerTo } from "../definition"
 import { and_ } from "./and"
@@ -10,6 +10,7 @@ import { and_ } from "./and"
  * well as any leftover inputs, and the outputs of the specified builder.
  *
  * @tsplus operator ets/Layer <<
+ * @tsplus fluent ets/Layer using
  */
 export function using_<
   RIn,
@@ -33,7 +34,7 @@ export function using_<
   that: Layer<RIn2 & ROut, E2, ROut2>,
   self: Layer<RIn, E, ROut>
 ): Layer<RIn & RIn2, E | E2, ROut2> {
-  return new ILayerTo(and_(new ILayerManaged(environment<RIn2>()), self), that)
+  return new ILayerTo(and_(new ILayerManaged(Managed.environment<RIn2>()), self), that)
 }
 
 /**
@@ -53,5 +54,5 @@ export function using<ROut extends Spreadable, RIn extends Spreadable, E>(
 ) {
   return <RIn2, E2, ROut2 extends Spreadable>(
     that: Layer<RIn2 & ROut, E2, ROut2>
-  ): Layer<RIn & RIn2, E | E2, ROut2> => using_(self, that) as any
+  ): Layer<RIn & RIn2, E | E2, ROut2> => self.using(that) as any
 }

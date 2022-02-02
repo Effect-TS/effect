@@ -1,4 +1,4 @@
-import * as Exit from "../../Exit/operations/succeed"
+import { Exit } from "../../Exit"
 import type { Fiber } from "../definition"
 import { done } from "./done"
 

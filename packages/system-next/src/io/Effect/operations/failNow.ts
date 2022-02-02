@@ -1,5 +1,5 @@
 import { none } from "../../../io/Trace"
-import { Fail } from "../../Cause"
+import { Cause } from "../../Cause"
 import type { IO } from "../definition"
 import { Effect } from "../definition"
 
@@ -10,5 +10,5 @@ import { Effect } from "../definition"
  * @tsplus static ets/EffectOps failNow
  */
 export function failNow<E>(e: E, __etsTrace?: string): IO<E, never> {
-  return Effect.failCauseNow(new Fail(e, none))
+  return Effect.failCauseNow(Cause.fail(e, none))
 }

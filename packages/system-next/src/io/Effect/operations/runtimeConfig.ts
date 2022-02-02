@@ -21,5 +21,5 @@ export function setRuntimeConfig(
   runtimeConfig: LazyArg<RuntimeConfig>,
   __etsTrace?: string
 ): UIO<void> {
-  return new ISetRuntimeConfig(() => runtimeConfig(), __etsTrace)
+  return new ISetRuntimeConfig(runtimeConfig, __etsTrace)
 }

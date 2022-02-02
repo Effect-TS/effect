@@ -29,5 +29,5 @@ export function withEarlyReleaseExit_<R, E, A>(
  */
 export function withEarlyReleaseExit(exit: Exit<any, any>, __etsTrace?: string) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<R, E, Tuple<[UIO<any>, A]>> =>
-    withEarlyReleaseExit_(self, exit)
+    self.withEarlyReleaseExit(exit)
 }

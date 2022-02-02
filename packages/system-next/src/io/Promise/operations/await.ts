@@ -1,28 +1,30 @@
-import * as E from "../../../data/Either"
+import { Either } from "../../../data/Either"
 import type { IO } from "../../Effect"
-import { asyncInterruptBlockingOn } from "../../Effect/operations/asyncInterrupt"
-import type { Promise } from ".."
-import { Pending } from "../_internal/state"
-import { interruptJoiner_ } from "./interruptJoiner"
+import { Effect } from "../../Effect"
+import { PromiseState } from "../_internal/state"
+import type { Promise } from "../definition"
+import { interruptJoiner } from "./_internal/interruptJoiner"
 
-function wait<E, A>(self: Promise<E, A>, __trace?: string): IO<E, A> {
-  return asyncInterruptBlockingOn(
-    (k) => {
-      const state = self.state.get
+/**
+ * Retrieves the value of the promise, suspending the fiber running the action
+ * until the result is available.
+ *
+ * @tsplus fluent ets/Promise await
+ */
+export function _await<E, A>(self: Promise<E, A>, __etsTrace?: string): IO<E, A> {
+  return Effect.asyncInterruptBlockingOn((k) => {
+    const state = self.state.get
 
-      switch (state._tag) {
-        case "Done": {
-          return E.right(state.value)
-        }
-        case "Pending": {
-          self.state.set(new Pending([k, ...state.joiners]))
-          return E.left(interruptJoiner_(self, k))
-        }
+    switch (state._tag) {
+      case "Done": {
+        return Either.right(state.value)
       }
-    },
-    self.blockingOn,
-    __trace
-  )
+      case "Pending": {
+        self.state.set(PromiseState.pending([k, ...state.joiners]))
+        return Either.left(interruptJoiner(self, k))
+      }
+    }
+  }, self.blockingOn)
 }
 
-export { wait as await }
+export { _await as await }

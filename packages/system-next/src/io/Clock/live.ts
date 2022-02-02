@@ -1,23 +1,21 @@
-import { left } from "../../data/Either"
-import type { UIO } from "../Effect/definition"
-import { asyncInterrupt } from "../Effect/operations/asyncInterrupt"
-import { succeed } from "../Effect/operations/succeed"
-import { unit } from "../Effect/operations/unit"
+import { Either } from "../../data/Either"
+import type { UIO } from "../Effect"
+import { Effect } from "../Effect"
 import { Clock } from "./definition"
 
 export class LiveClock extends Clock {
-  currentTime: UIO<number> = succeed(() => new Date().getTime())
+  currentTime: UIO<number> = Effect.succeed(new Date().getTime())
 
-  sleep: (ms: number, __trace?: string) => UIO<void> = (ms, trace) =>
-    asyncInterrupt((cb) => {
+  sleep = (ms: number, __etsTrace?: string): UIO<void> =>
+    Effect.asyncInterrupt((cb) => {
       const timeout = setTimeout(() => {
-        cb(unit)
+        cb(Effect.unit)
       }, ms)
 
-      return left(
-        succeed(() => {
+      return Either.left(
+        Effect.succeed(() => {
           clearTimeout(timeout)
         })
       )
-    }, trace)
+    })
 }

@@ -1,5 +1,5 @@
 import * as A from "../../collection/immutable/Array"
-import * as C from "../../collection/immutable/Chunk/core"
+import { Chunk } from "../../collection/immutable/Chunk"
 import * as St from "../../prelude/Structural"
 
 export const BoundariesSym = Symbol.for("@effect-ts/core/Metric/Boundaries")
@@ -7,7 +7,7 @@ export const BoundariesSym = Symbol.for("@effect-ts/core/Metric/Boundaries")
 export type BoundariesSym = typeof BoundariesSym
 
 export class Boundaries implements St.HasHash, St.HasEquals {
-  constructor(readonly chunk: C.Chunk<number>) {}
+  constructor(readonly chunk: Chunk<number>) {}
 
   get [St.hashSym](): number {
     return this.chunk[St.hashSym]
@@ -18,9 +18,9 @@ export class Boundaries implements St.HasHash, St.HasEquals {
   }
 }
 
-export function fromChunk(chunk: C.Chunk<number>): Boundaries {
+export function fromChunk(chunk: Chunk<number>): Boundaries {
   return new Boundaries(
-    C.from(new Set([...C.toArray(C.append_(chunk, Number.MAX_VALUE))]))
+    Chunk.from(new Set([...chunk.append(Number.MAX_SAFE_INTEGER).toArray()]))
   )
 }
 
@@ -29,7 +29,7 @@ export function fromChunk(chunk: C.Chunk<number>): Boundaries {
  * with linear increasing values
  */
 export function linear(start: number, width: number, count: number): Boundaries {
-  return fromChunk(C.from(A.range(0, count - 1).map((i) => start + i * width)))
+  return fromChunk(Chunk.from(A.range(0, count - 1).map((i) => start + i * width)))
 }
 
 /**
@@ -38,7 +38,7 @@ export function linear(start: number, width: number, count: number): Boundaries 
  */
 export function exponential(start: number, factor: number, count: number): Boundaries {
   return fromChunk(
-    C.from(A.range(0, count - 1).map((i) => start * Math.pow(factor, i)))
+    Chunk.from(A.range(0, count - 1).map((i) => start * Math.pow(factor, i)))
   )
 }
 

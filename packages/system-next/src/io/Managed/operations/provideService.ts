@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import type { Has, Tag } from "../../../data/Has"
 import type { Erase } from "../../../data/Utils"
 import { Managed } from "../definition"
@@ -11,11 +12,11 @@ import { Managed } from "../definition"
  */
 export function provideService_<R, E, A, T>(
   self: Managed<R & Has<T>, E, A>,
-  tag: Tag<T>,
-  __etsTrace?: string
+  tag: Tag<T>
 ) {
-  return (service: T): Managed<Erase<R & Has<T>, Has<T>>, E, A> =>
-    self.provideServiceManaged(tag)(Managed.succeedNow(service))
+  return (service: LazyArg<T>, __etsTrace?: string): Managed<Erase<R, Has<T>>, E, A> =>
+    // @ts-expect-error
+    self.provideServiceManaged(tag)(Managed.succeed(service))
 }
 
 /**
@@ -26,9 +27,8 @@ export function provideService_<R, E, A, T>(
  * @ets_data_first provideService_
  */
 export function provideService<T>(tag: Tag<T>) {
-  return (service: T) =>
-    <R, E, A>(
-      self: Managed<R & Has<T>, E, A>
-    ): Managed<Erase<R & Has<T>, Has<T>>, E, A> =>
-      provideService_(self, tag)(service)
+  return (service: LazyArg<T>, __etsTrace?: string) =>
+    <R, E, A>(self: Managed<R & Has<T>, E, A>): Managed<Erase<R, Has<T>>, E, A> =>
+      // @ts-expect-error
+      self.provideService(tag)(service)
 }

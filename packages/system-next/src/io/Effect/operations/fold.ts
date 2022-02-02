@@ -1,6 +1,5 @@
-import type { Effect, RIO } from "../definition"
-import { foldEffect_ } from "./foldEffect"
-import { succeedNow } from "./succeedNow"
+import type { RIO } from "../definition"
+import { Effect } from "../definition"
 
 /**
  * Folds over the failure value or the success value to yield an effect that
@@ -15,10 +14,9 @@ export function fold_<R, E, A, A2, A3>(
   success: (a: A) => A3,
   __etsTrace?: string
 ): RIO<R, A2 | A3> {
-  return foldEffect_(
-    self,
-    (e) => succeedNow(failure(e)),
-    (a) => succeedNow(success(a))
+  return self.foldEffect(
+    (e) => Effect.succeedNow(failure(e)),
+    (a) => Effect.succeedNow(success(a))
   )
 }
 
@@ -34,5 +32,5 @@ export function fold<E, A, A2, A3>(
   success: (a: A) => A3,
   __etsTrace?: string
 ) {
-  return <R>(self: Effect<R, E, A>): RIO<R, A2 | A3> => fold_(self, failure, success)
+  return <R>(self: Effect<R, E, A>): RIO<R, A2 | A3> => self.fold(failure, success)
 }

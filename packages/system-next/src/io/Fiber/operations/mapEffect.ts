@@ -1,7 +1,6 @@
 import { Option } from "../../../data/Option"
 import type { IO } from "../../Effect"
 import { Effect } from "../../Effect"
-import { forEach, forEach_ } from "../../Exit/operations/forEach"
 import type { Fiber } from "../definition"
 import { makeSynthetic } from "./makeSynthetic"
 
@@ -15,17 +14,17 @@ export function mapEffect_<E, E1, A, B>(
 ): Fiber<E | E1, B> {
   return makeSynthetic({
     id: self.id,
-    await: self.await.flatMap(forEach(f)),
+    await: self.await.flatMap((_) => _.forEach(f)),
     children: self.children,
     inheritRefs: self.inheritRefs,
     poll: self.poll.flatMap((_) =>
       _.fold(
         () => Effect.succeedNow(Option.none),
-        (exit) => forEach_(exit, f).map(Option.some)
+        (exit) => exit.forEach(f).map(Option.some)
       )
     ),
     getRef: (ref) => self.getRef(ref),
-    interruptAs: (id) => self.interruptAs(id).flatMap(forEach(f))
+    interruptAs: (id) => self.interruptAs(id).flatMap((_) => _.forEach(f))
   })
 }
 

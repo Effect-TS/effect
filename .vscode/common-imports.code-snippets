@@ -9,25 +9,25 @@
   "etsEitherFluent": {
     "prefix": "etsEitherFluent",
     "body": [
-      "@ets fluent ets/Either $0"
+      "@tsplus fluent ets/Either $0"
     ],
   },
   "etsEitherStatic": {
     "prefix": "etsEitherStatic",
     "body": [
-      "@ets static ets/EitherOps $0"
+      "@tsplus static ets/EitherOps $0"
     ],
   },
   "etsEffectFluent": {
     "prefix": "etsEffectFluent",
     "body": [
-      "@ets fluent ets/Effect $0"
+      "@tsplus fluent ets/Effect $0"
     ],
   },
   "etsEffectStatic": {
     "prefix": "etsEffectStatic",
     "body": [
-      "@ets static ets/EffectOps $0"
+      "@tsplus static ets/EffectOps $0"
     ],
   },
   "Effect": {

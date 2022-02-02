@@ -1,11 +1,11 @@
 import type { Cause } from "../../Cause"
-import type { Exit } from "../definition"
-import { failCause } from "./failCause"
-import { succeed } from "./succeed"
+import { Exit } from "../definition"
 
 /**
  * Zips this together with the specified result using the combination
  * functions.
+ *
+ * @tsplus fluent ets/Exit zipWith
  */
 export function zipWith_<E, E1, A, B, C>(
   self: Exit<E, A>,
@@ -20,15 +20,14 @@ export function zipWith_<E, E1, A, B, C>(
           return self
         }
         case "Failure": {
-          return failCause(g(self.cause, that.cause))
+          return Exit.failCause(g(self.cause, that.cause))
         }
       }
     }
-    // eslint-disable-next-line no-fallthrough
     case "Success": {
       switch (that._tag) {
         case "Success": {
-          return succeed(f(self.value, that.value))
+          return Exit.succeed(f(self.value, that.value))
         }
         case "Failure": {
           return that
@@ -49,5 +48,5 @@ export function zipWith<E1, B, A, C, E>(
   f: (a: A, b: B) => C,
   g: (e: Cause<E>, e1: Cause<E1>) => Cause<E | E1>
 ) {
-  return (self: Exit<E, A>): Exit<E | E1, C> => zipWith_(self, that, f, g)
+  return (self: Exit<E, A>): Exit<E | E1, C> => self.zipWith(that, f, g)
 }

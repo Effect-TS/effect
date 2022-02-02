@@ -1,8 +1,6 @@
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { Scope } from "../../Scope"
-import type { Effect } from "../definition"
-import { IOverrideForkScope } from "../definition"
-import { forkScopeWith } from "./forkScopeWith"
+import { Effect, IOverrideForkScope } from "../definition"
 
 export class ForkScopeRestore {
   constructor(private scope: Scope) {}
@@ -10,7 +8,12 @@ export class ForkScopeRestore {
   readonly restore = <R, E, A>(
     fa: Effect<R, E, A>,
     __etsTrace?: string
-  ): Effect<R, E, A> => new IOverrideForkScope(fa, O.some(this.scope), __etsTrace)
+  ): Effect<R, E, A> =>
+    new IOverrideForkScope(
+      () => fa,
+      () => Option.some(this.scope),
+      __etsTrace
+    )
 }
 
 /**
@@ -25,11 +28,11 @@ export function forkScopeMask_<R, E, A>(
   f: (restore: ForkScopeRestore) => Effect<R, E, A>,
   __etsTrace?: string
 ) {
-  return forkScopeWith(
+  return Effect.forkScopeWith(
     (scope) =>
       new IOverrideForkScope(
-        f(new ForkScopeRestore(scope)),
-        O.some(newScope),
+        () => f(new ForkScopeRestore(scope)),
+        () => Option.some(newScope),
         __etsTrace
       )
   )

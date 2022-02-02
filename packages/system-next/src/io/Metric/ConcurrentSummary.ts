@@ -1,6 +1,4 @@
-import { reduce_ } from "../../collection/immutable/Chunk/api/reduce"
-import { splitWhere_ } from "../../collection/immutable/Chunk/api/splitWhere"
-import * as C from "../../collection/immutable/Chunk/core"
+import { Chunk } from "../../collection/immutable/Chunk"
 import { Tuple } from "../../collection/immutable/Tuple"
 import { Option } from "../../data/Option"
 import { IO } from "../../io-light/IO"
@@ -26,7 +24,7 @@ export interface ConcurrentSummary {
    * Create a snapshot.
    * - Chunk of (tuple of (quantile boundary, satisfying value if found))
    */
-  readonly snapshot: (now: Date) => C.Chunk<Tuple<[number, Option<number>]>>
+  readonly snapshot: (now: Date) => Chunk<Tuple<[number, Option<number>]>>
 }
 
 class ConcurrentSummaryImpl implements ConcurrentSummary {
@@ -38,15 +36,15 @@ class ConcurrentSummaryImpl implements ConcurrentSummary {
 
   private sum = new AtomicNumber(0)
 
-  private sortedQuantiles: C.Chunk<number>
+  private sortedQuantiles: Chunk<number>
 
   constructor(
     readonly maxSize: number,
     readonly maxAge: Date,
     readonly error: number,
-    readonly quantiles: C.Chunk<number>
+    readonly quantiles: Chunk<number>
   ) {
-    this.sortedQuantiles = C.from((C.toArray(quantiles) as Array<number>).sort())
+    this.sortedQuantiles = Chunk.from((quantiles.toArray() as Array<number>).sort())
   }
 
   getCount(): number {
@@ -58,8 +56,8 @@ class ConcurrentSummaryImpl implements ConcurrentSummary {
   }
 
   // Just before the snapshot we filter out all values older than maxAge
-  snapshot(now: Date): C.Chunk<Tuple<[number, Option<number>]>> {
-    const builder = C.builder<number>()
+  snapshot(now: Date): Chunk<Tuple<[number, Option<number>]>> {
+    const builder = Chunk.builder<number>()
 
     // If the buffer is not full yet it contains valid items at the 0..last indices
     // and null values at the rest of the positions.
@@ -85,7 +83,7 @@ class ConcurrentSummaryImpl implements ConcurrentSummary {
     }
 
     return calculateQuantiles(
-      C.from((C.toArray(builder.build()) as Array<number>).sort()),
+      Chunk.from((builder.build().toArray() as Array<number>).sort()),
       this.error,
       this.sortedQuantiles
     )
@@ -106,7 +104,7 @@ export function manual(
   maxSize: number,
   maxAge: Date,
   error: number,
-  quantiles: C.Chunk<number>
+  quantiles: Chunk<number>
 ): ConcurrentSummary {
   return new ConcurrentSummaryImpl(maxSize, maxAge, error, quantiles)
 }
@@ -128,64 +126,64 @@ class ResolvedQuantile {
     /**
      * The rest of the samples after the quantile has been resolved.
      */
-    readonly rest: C.Chunk<number>
+    readonly rest: Chunk<number>
   ) {}
 }
 
 function calculateQuantiles(
-  sortedSamples: C.Chunk<number>,
+  sortedSamples: Chunk<number>,
   error: number,
-  sortedQuantiles: C.Chunk<number>
-): C.Chunk<Tuple<[number, Option<number>]>> {
+  sortedQuantiles: Chunk<number>
+): Chunk<Tuple<[number, Option<number>]>> {
   // The number of the samples examined
   const sampleCount = sortedSamples.length
 
-  if (C.isEmpty(sortedQuantiles)) {
-    return C.empty()
+  if (sortedQuantiles.isEmpty()) {
+    return Chunk.empty()
   }
 
-  const resolved = reduce_(
-    C.unsafeTail(sortedQuantiles),
-    C.single(
-      resolveQuantiles(
-        Option.none,
-        0,
-        C.unsafeHead(sortedQuantiles),
-        sortedSamples,
-        error,
-        sampleCount
-      ).run()
-    ),
-    (curr, q) => {
-      const head = C.unsafeHead(curr)
-      return C.prepend_(
-        curr,
+  const resolved = sortedQuantiles
+    .unsafeTail()
+    .reduce(
+      Chunk.single(
         resolveQuantiles(
-          head.value,
-          head.consumed,
-          q,
-          head.rest,
+          Option.none,
+          0,
+          sortedQuantiles.unsafeHead(),
+          sortedSamples,
           error,
           sampleCount
         ).run()
-      )
-    }
-  )
+      ),
+      (curr, q) => {
+        const head = curr.unsafeHead()
+        return curr.prepend(
+          resolveQuantiles(
+            head.value,
+            head.consumed,
+            q,
+            head.rest,
+            error,
+            sampleCount
+          ).run()
+        )
+      }
+    )
 
-  return C.map_(resolved, (rq) => Tuple(rq.quantile, rq.value))
+  return resolved.map((rq) => Tuple(rq.quantile, rq.value))
 }
 
 function resolveQuantiles(
   current: Option<number>,
   consumed: number,
   q: number,
-  c: C.Chunk<number>,
+  c: Chunk<number>,
   error: number,
   sampleCount: number
 ): IO<ResolvedQuantile> {
   // If the remaining list of samples is empty there is nothing more to resolve
-  if (C.isEmpty(c)) {
-    return IO.succeed(new ResolvedQuantile(q, Option.none, consumed, C.empty()))
+  if (c.isEmpty()) {
+    return IO.succeed(new ResolvedQuantile(q, Option.none, consumed, Chunk.empty()))
   }
   // If the quantile is the 100% Quantile, we can take the max of all remaining
   // values as the result
@@ -193,16 +191,16 @@ function resolveQuantiles(
     return IO.succeed(
       new ResolvedQuantile(
         q,
-        Option.some(C.unsafeLast(c)),
+        Option.some(c.unsafeLast()),
         consumed + c.length,
-        C.empty()
+        Chunk.empty()
       )
     )
   }
 
   // Split in 2 chunks, the first chunk contains all elements of the same value
   // as the chunk head
-  const sameHead = splitWhere_(c, (_) => _ > C.unsafeHead(c))
+  const sameHead = c.splitWhere((_) => _ > c.unsafeHead())
   // How many elements do we want to accept for this quantile
   const desired = q * sampleCount
   // The error margin
@@ -216,7 +214,7 @@ function resolveQuantiles(
   if (candConsumed < desired - allowedError) {
     // If we haven't got enough elements yet, recurse
     return IO.suspend(
-      resolveQuantiles(C.head(c), candConsumed, q, sameHead.get(1), error, sampleCount)
+      resolveQuantiles(c.head, candConsumed, q, sameHead.get(1), error, sampleCount)
     )
   } else if (candConsumed > desired + allowedError) {
     // If we have too many elements, select the previous value and hand back
@@ -229,28 +227,14 @@ function resolveQuantiles(
   return current.fold(
     () =>
       IO.suspend(
-        resolveQuantiles(
-          C.head(c),
-          candConsumed,
-          q,
-          sameHead.get(1),
-          error,
-          sampleCount
-        )
+        resolveQuantiles(c.head, candConsumed, q, sameHead.get(1), error, sampleCount)
       ),
     (curr) => {
       const prevError = Math.abs(desired - curr)
 
       if (candError < prevError) {
         return IO.suspend(
-          resolveQuantiles(
-            C.head(c),
-            candConsumed,
-            q,
-            sameHead.get(1),
-            error,
-            sampleCount
-          )
+          resolveQuantiles(c.head, candConsumed, q, sameHead.get(1), error, sampleCount)
         )
       }
 

@@ -1,4 +1,4 @@
-import type { Chunk } from "../../collection/immutable/Chunk/core"
+import type { Chunk } from "../../collection/immutable/Chunk"
 import * as HM from "../../collection/immutable/HashMap"
 import type { Next } from "../../collection/immutable/Map"
 import type { Tuple } from "../../collection/immutable/Tuple"

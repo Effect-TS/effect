@@ -1,4 +1,5 @@
-import * as O from "../../../data/Option"
+import type { LazyArg } from "../../../data/Function"
+import type { Option } from "../../../data/Option"
 import type { Effect } from "../definition"
 
 /**
@@ -7,11 +8,11 @@ import type { Effect } from "../definition"
  * @tsplus fluent ets/Effect someOrElse
  */
 export function someOrElse_<R, E, A, B>(
-  self: Effect<R, E, O.Option<A>>,
-  orElse: () => B,
+  self: Effect<R, E, Option<A>>,
+  orElse: LazyArg<B>,
   __etsTrace?: string
 ): Effect<R, E, A | B> {
-  return self.map(O.getOrElse(orElse))
+  return self.map((option) => option.getOrElse(orElse))
 }
 
 /**
@@ -19,6 +20,7 @@ export function someOrElse_<R, E, A, B>(
  *
  * @ets_data_first someOrElse_
  */
-export function someOrElse<B>(orElse: () => B, __etsTrace?: string) {
-  return <R, E, A>(self: Effect<R, E, O.Option<A>>) => someOrElse_(self, orElse)
+export function someOrElse<B>(orElse: LazyArg<B>, __etsTrace?: string) {
+  return <R, E, A>(self: Effect<R, E, Option<A>>): Effect<R, E, A | B> =>
+    self.someOrElse(orElse)
 }

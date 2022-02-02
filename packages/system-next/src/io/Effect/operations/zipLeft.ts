@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import type { Effect } from "../definition"
 
 /**
@@ -9,10 +10,10 @@ import type { Effect } from "../definition"
  */
 export function zipLeft_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
-  that: Effect<R2, E2, A2>,
+  that: LazyArg<Effect<R2, E2, A2>>,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, A> {
-  return self.flatMap((a) => that.as(a))
+  return self.flatMap((a) => that().as(a))
 }
 
 /**
@@ -21,7 +22,7 @@ export function zipLeft_<R, E, A, R2, E2, A2>(
  *
  * @ets_data_first zipLeft_
  */
-export function zipLeft<R2, E2, A2>(that: Effect<R2, E2, A2>) {
+export function zipLeft<R2, E2, A2>(that: LazyArg<Effect<R2, E2, A2>>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> =>
-    zipLeft_(self, that)
+    self.zipLeft(that)
 }

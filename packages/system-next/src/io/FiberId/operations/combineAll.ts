@@ -5,6 +5,8 @@ import { combine_ } from "./combine"
 
 /**
  * Combines a set of `FiberId`s into a single `FiberId`.
+ *
+ * @tsplus static ets/FiberIdOps combineAll
  */
 export function combineAll(fiberIds: HS.HashSet<FiberId>): FiberId {
   return HS.reduce_(fiberIds, new None(), combine_)

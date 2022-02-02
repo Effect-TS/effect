@@ -1,5 +1,4 @@
-import type { Option } from "../../../data/Option"
-import { some } from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { Effect } from "../definition"
 
 /**
@@ -11,5 +10,5 @@ export function asSome<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
 ): Effect<R, E, Option<A>> {
-  return self.map(some)
+  return self.map(Option.some)
 }

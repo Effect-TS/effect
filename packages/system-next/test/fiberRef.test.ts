@@ -6,7 +6,7 @@ import { Option } from "../src/data/Option"
 import { Effect } from "../src/io/Effect"
 import * as Fiber from "../src/io/Fiber"
 import * as FiberRef from "../src/io/FiberRef"
-import * as Promise from "../src/io/Promise"
+import { Promise } from "../src/io/Promise"
 
 const initial = "initial"
 const update = "update"
@@ -127,7 +127,9 @@ describe("FiberRef", () => {
       const program = Effect.Do()
         .bind("child", () => FiberRef.make(initial).fork())
         // Don't use join as it inherits values from child
-        .bind("fiberRef", ({ child }) => Fiber.await(child).flatMap(Effect.done))
+        .bind("fiberRef", ({ child }) =>
+          Fiber.await(child).flatMap((_) => Effect.done(_))
+        )
         .bind("localValue", ({ fiberRef }) =>
           pipe(fiberRef, FiberRef.locally(update))(FiberRef.get(fiberRef))
         )
@@ -182,11 +184,9 @@ describe("FiberRef", () => {
         .bind("fiberRef", () => FiberRef.make(initial))
         .bind("promise", () => Promise.make<never, void>())
         .tap(({ fiberRef, promise }) =>
-          FiberRef.set_(fiberRef, update)
-            .zipRight(Promise.succeed_(promise, undefined))
-            .fork()
+          FiberRef.set_(fiberRef, update).zipRight(promise.succeed(undefined)).fork()
         )
-        .tap(({ promise }) => Promise.await(promise))
+        .tap(({ promise }) => promise.await())
         .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
       const result = await program.unsafeRunPromise()
@@ -251,7 +251,9 @@ describe("FiberRef", () => {
     it("initial value is always available", async () => {
       const program = Effect.Do()
         .bind("child", () => FiberRef.make(initial).fork())
-        .bind("fiberRef", ({ child }) => Fiber.await(child).flatMap(Effect.done))
+        .bind("fiberRef", ({ child }) =>
+          Fiber.await(child).flatMap((_) => Effect.done(_))
+        )
         .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
       const result = await program.unsafeRunPromise()

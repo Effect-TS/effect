@@ -61,7 +61,7 @@ export function unifyOption<X extends Option<any>>(
  *
  * @tsplus static ets/OptionOps __call
  */
-export function apply<A>(a: A): Option<A> {
+export function apply<A>(a: A): Option<NonNullable<A>> {
   return Option.fromNullable(a)
 }
 

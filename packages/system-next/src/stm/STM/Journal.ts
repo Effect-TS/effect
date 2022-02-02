@@ -1,8 +1,6 @@
 import * as HM from "../../collection/immutable/HashMap"
-import type { Effect, IO } from "../../io/Effect"
-import { die } from "../../io/Effect/operations/die"
-import { failNow } from "../../io/Effect/operations/failNow"
-import { succeed } from "../../io/Effect/operations/succeed"
+import type { IO } from "../../io/Effect"
+import { Effect } from "../../io/Effect"
 import type { FiberId } from "../../io/FiberId"
 import type { AtomicBoolean } from "../../support/AtomicBoolean"
 import { defaultScheduler } from "../../support/Scheduler"
@@ -169,16 +167,13 @@ export function tryCommit<R, E, A>(
       return new Suspend(journal)
     }
     case SucceedTypeId: {
-      return completeTodos(
-        succeed(() => value.value),
-        journal
-      )
+      return completeTodos(Effect.succeed(value.value), journal)
     }
     case FailTypeId: {
-      return completeTodos(failNow(value.value), journal)
+      return completeTodos(Effect.fail(value.value), journal)
     }
     case DieTypeId: {
-      return completeTodos(die(value.value), journal)
+      return completeTodos(Effect.die(value.value), journal)
     }
   }
 }

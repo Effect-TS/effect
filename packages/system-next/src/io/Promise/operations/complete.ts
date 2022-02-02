@@ -1,5 +1,4 @@
 import type { IO, UIO } from "../../Effect"
-import { intoPromise_ } from "../../Effect/operations/intoPromise"
 import type { Promise } from "../definition"
 
 /**
@@ -8,13 +7,15 @@ import type { Promise } from "../definition"
  *
  * Note that `Promise.completeWith` will be much faster, so consider using
  * that if you do not need to memoize the result of the specified effect.
+ *
+ * @tsplus fluent ets/Promise complete
  */
 export function complete_<E, A>(
   self: Promise<E, A>,
-  io: IO<E, A>,
-  __trace?: string
+  effect: IO<E, A>,
+  __etsTrace?: string
 ): UIO<boolean> {
-  return intoPromise_(io, self, __trace)
+  return effect.intoPromise(self)
 }
 
 /**
@@ -26,6 +27,6 @@ export function complete_<E, A>(
  *
  * @ets_data_first complete_
  */
-export function complete<E, A>(io: IO<E, A>, __trace?: string) {
-  return (self: Promise<E, A>): UIO<boolean> => complete_(self, io, __trace)
+export function complete<E, A>(effect: IO<E, A>, __etsTrace?: string) {
+  return (self: Promise<E, A>): UIO<boolean> => self.complete(effect)
 }

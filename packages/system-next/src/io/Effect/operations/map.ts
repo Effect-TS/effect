@@ -19,5 +19,5 @@ export function map_<R, E, A, B>(
  * @ets_data_first map_
  */
 export function map<A, B>(f: (a: A) => B, __etsTrace?: string) {
-  return <R, E>(self: Effect<R, E, A>): Effect<R, E, B> => map_(self, f)
+  return <R, E>(self: Effect<R, E, A>): Effect<R, E, B> => self.map(f)
 }

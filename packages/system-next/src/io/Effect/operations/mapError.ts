@@ -1,4 +1,3 @@
-import { fold_ } from "../../../data/Either"
 import { failureOrCause } from "../../Cause"
 import { Effect } from "../definition"
 
@@ -14,7 +13,7 @@ export function mapError_<R, E, A, E2>(
   __etsTrace?: string
 ): Effect<R, E2, A> {
   return self.foldCauseEffect(
-    (c) => fold_(failureOrCause(c), (e) => Effect.failNow(f(e)), Effect.failCauseNow),
+    (c) => failureOrCause(c).fold((e) => Effect.failNow(f(e)), Effect.failCauseNow),
     Effect.succeedNow
   )
 }
@@ -26,5 +25,5 @@ export function mapError_<R, E, A, E2>(
  * @ets_data_first mapError_
  */
 export function mapError<E, E2>(f: (e: E) => E2, __etsTrace?: string) {
-  return <R, A>(self: Effect<R, E, A>): Effect<R, E2, A> => mapError_(self, f)
+  return <R, A>(self: Effect<R, E, A>): Effect<R, E2, A> => self.mapError(f)
 }

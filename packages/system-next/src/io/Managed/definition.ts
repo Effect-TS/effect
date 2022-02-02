@@ -1,4 +1,4 @@
-import type * as Tp from "../../collection/immutable/Tuple"
+import type { Tuple } from "../../collection/immutable/Tuple"
 import type * as UT from "../../data/Utils/types"
 import { _A, _E, _R, _U } from "../../support/Symbols"
 import type { Effect } from "../Effect"
@@ -27,7 +27,7 @@ export interface Managed<R, E, A> {
   readonly [_A]: () => A
   readonly [_R]: (_: R) => void
 
-  readonly effect: Effect<R, E, Tp.Tuple<[Finalizer, A]>>
+  readonly effect: Effect<R, E, Tuple<[Finalizer, A]>>
 }
 
 /**
@@ -55,7 +55,7 @@ export class ManagedImpl<R, E, A> implements Managed<R, E, A> {
   readonly [_A]: () => A;
   readonly [_R]: (_: R) => void
 
-  constructor(readonly effect: Effect<R, E, Tp.Tuple<[Finalizer, A]>>) {}
+  constructor(readonly effect: Effect<R, E, Tuple<[Finalizer, A]>>) {}
 }
 
 /**
@@ -74,7 +74,7 @@ export class ManagedImpl<R, E, A> implements Managed<R, E, A> {
  * @tsplus static ets/ManagedOps __call
  */
 export function managedApply<R, E, A>(
-  effect: Effect<R, E, Tp.Tuple<[Finalizer, A]>>
+  effect: Effect<R, E, Tuple<[Finalizer, A]>>
 ): Managed<R, E, A> {
   return new ManagedImpl(effect)
 }

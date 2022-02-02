@@ -1,4 +1,4 @@
-import { fail as exitFail } from "../../Exit"
+import { Exit } from "../../Exit"
 import type { FiberId } from "../../FiberId"
 import type { RuntimeConfig } from "../../RuntimeConfig"
 import type { RIO } from "../definition"
@@ -20,7 +20,7 @@ export function suspendWith<R, A>(
       return f(runtimeConfig, fiberId)
     } catch (error) {
       if (!runtimeConfig.value.fatal(error)) {
-        throw new EffectError(exitFail(error), __etsTrace)
+        throw new EffectError(Exit.fail(error), __etsTrace)
       }
       throw error
     }

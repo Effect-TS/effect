@@ -1,8 +1,5 @@
-import type { Effect } from "../definition"
-import { chain_ } from "./chain"
-import { succeed } from "./succeed"
-import { succeedNow } from "./succeedNow"
-import { suspendSucceed } from "./suspendSucceed"
+import type { LazyArg } from "../../../data/Function"
+import { Effect } from "../definition"
 
 /**
  * Determines whether any element of the `Iterable<A>` satisfies the effectual
@@ -11,24 +8,11 @@ import { suspendSucceed } from "./suspendSucceed"
  * @tsplus static ets/EffectOps forall
  */
 export function forall_<R, E, A>(
-  as: Iterable<A>,
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, boolean>,
   __etsTrace?: string
 ): Effect<R, E, boolean> {
-  return chain_(succeed(as[Symbol.iterator]), (iterator) => loop(iterator, f))
-}
-
-/**
- * Determines whether any element of the `Iterable<A>` satisfies the effectual
- * predicate `f`.
- *
- * @ets_data_first forall_
- */
-export function forall<R, E, A>(
-  f: (a: A) => Effect<R, E, boolean>,
-  __etsTrace?: string
-) {
-  return (as: Iterable<A>): Effect<R, E, boolean> => forall_(as, f, __etsTrace)
+  return Effect.succeed(as).flatMap((iterable) => loop(iterable[Symbol.iterator](), f))
 }
 
 function loop<R, E, A>(
@@ -38,9 +22,9 @@ function loop<R, E, A>(
 ): Effect<R, E, boolean> {
   const next = iterator.next()
   if (next.done) {
-    return succeedNow(false)
+    return Effect.succeedNow(false)
   }
-  return chain_(f(next.value), (b) =>
-    b ? suspendSucceed(() => loop(iterator, f)) : succeedNow(b)
+  return f(next.value).flatMap((b) =>
+    b ? Effect.suspendSucceed(loop(iterator, f)) : Effect.succeedNow(b)
   )
 }

@@ -1,13 +1,12 @@
 import * as Chunk from "../src/collection/immutable/Chunk"
-import { flow, identity, pipe } from "../src/data/Function"
-import * as O from "../src/data/Option"
-import * as T from "../src/io/Effect"
-import * as Exit from "../src/io/Exit"
+import { constTrue, identity, pipe } from "../src/data/Function"
+import { Option } from "../src/data/Option"
+import { Effect } from "../src/io/Effect"
+import { Exit } from "../src/io/Exit"
 import * as Fiber from "../src/io/Fiber"
 import * as FiberId from "../src/io/FiberId"
 import * as FiberRef from "../src/io/FiberRef"
-import * as M from "../src/io/Managed"
-import * as Promise from "../src/io/Promise"
+import { Promise } from "../src/io/Promise"
 import * as Queue from "../src/io/Queue"
 import * as Ref from "../src/io/Ref"
 import { withLatch } from "./test-utils/Latch"
@@ -19,307 +18,256 @@ const fibers = Chunk.fill(100000, () => Fiber.unit)
 describe("Fiber", () => {
   describe("Create a new Fiber and:", () => {
     it("lift it into Managed", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("ref", () => Ref.make<boolean>(false)),
-          T.bind("fiber", ({ ref }) =>
-            withLatch((release) =>
-              pipe(
-                T.zipRight_(release, T.unit),
-                T.acquireRelease(T.never, Ref.set_(ref, true)),
-                T.fork
-              )
-            )
-          ),
-          T.tap(({ fiber }) =>
-            pipe(
-              fiber,
-              Fiber.toManaged,
-              M.use(() => T.unit)
-            )
-          ),
-          T.tap(({ fiber }) => Fiber.await(fiber)),
-          T.bind("value", ({ ref }) => Ref.get(ref))
+      const program = Effect.Do()
+        .bind("ref", () => Ref.make<boolean>(false))
+        .bind("fiber", ({ ref }) =>
+          withLatch((release) =>
+            release
+              .zipRight(Effect.unit)
+              .acquireRelease(Effect.never, Ref.set_(ref, true))
+              .fork()
+          )
         )
-      )
+        .tap(({ fiber }) => Fiber.toManaged(fiber).use(() => Effect.unit))
+        .tap(({ fiber }) => Fiber.await(fiber))
+        .flatMap(({ ref }) => Ref.get(ref))
 
-      expect(value).toBe(true)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(true)
     })
   })
 
   describe("`inheritLocals` works for Fiber created using:", () => {
     it("`map`", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bind("child", ({ fiberRef }) =>
-            withLatch((release) =>
-              pipe(FiberRef.set_(fiberRef, update), T.zipRight(release), T.fork)
-            )
-          ),
-          T.tap(({ child }) => Fiber.map_(child, () => undefined).inheritRefs),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bind("child", ({ fiberRef }) =>
+          withLatch((release) =>
+            FiberRef.set_(fiberRef, update).zipRight(release).fork()
+          )
         )
-      )
+        .tap(({ child }) => Fiber.map_(child, () => undefined).inheritRefs)
+        .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
-      expect(value).toBe(update)
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(update)
     })
 
     it("`orElse`", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bind("latch1", () => Promise.make<never, void>()),
-          T.bind("latch2", () => Promise.make<never, void>()),
-          T.bind("child1", ({ fiberRef, latch1 }) =>
-            pipe(
-              FiberRef.set_(fiberRef, "child1"),
-              T.zipRight(Promise.succeed_(latch1, undefined)),
-              T.fork
-            )
-          ),
-          T.bind("child2", ({ fiberRef, latch2 }) =>
-            pipe(
-              FiberRef.set_(fiberRef, "child2"),
-              T.zipRight(Promise.succeed_(latch2, undefined)),
-              T.fork
-            )
-          ),
-          T.tap(({ latch1, latch2 }) =>
-            T.zipRight_(Promise.await(latch1), Promise.await(latch2))
-          ),
-          T.tap(({ child1, child2 }) => Fiber.orElse_(child1, child2).inheritRefs),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bind("latch1", () => Promise.make<never, void>())
+        .bind("latch2", () => Promise.make<never, void>())
+        .bind("child1", ({ fiberRef, latch1 }) =>
+          FiberRef.set_(fiberRef, "child1").zipRight(latch1.succeed(undefined)).fork()
         )
-      )
+        .bind("child2", ({ fiberRef, latch2 }) =>
+          FiberRef.set_(fiberRef, "child2").zipRight(latch2.succeed(undefined)).fork()
+        )
+        .tap(({ latch1, latch2 }) => latch1.await().zipRight(latch2.await()))
+        .tap(({ child1, child2 }) => Fiber.orElse_(child1, child2).inheritRefs)
+        .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
-      expect(value).toBe("child1")
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe("child1")
     })
 
     it("`zip`", async () => {
-      const { value } = await T.unsafeRunPromise(
-        pipe(
-          T.Do(),
-          T.bind("fiberRef", () => FiberRef.make(initial)),
-          T.bind("latch1", () => Promise.make<never, void>()),
-          T.bind("latch2", () => Promise.make<never, void>()),
-          T.bind("child1", ({ fiberRef, latch1 }) =>
-            pipe(
-              FiberRef.set_(fiberRef, "child1"),
-              T.zipRight(Promise.succeed_(latch1, undefined)),
-              T.fork
-            )
-          ),
-          T.bind("child2", ({ fiberRef, latch2 }) =>
-            pipe(
-              FiberRef.set_(fiberRef, "child2"),
-              T.zipRight(Promise.succeed_(latch2, undefined)),
-              T.fork
-            )
-          ),
-          T.tap(({ latch1, latch2 }) =>
-            T.zipRight_(Promise.await(latch1), Promise.await(latch2))
-          ),
-          T.tap(({ child1, child2 }) => Fiber.zip_(child1, child2).inheritRefs),
-          T.bind("value", ({ fiberRef }) => FiberRef.get(fiberRef))
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bind("latch1", () => Promise.make<never, void>())
+        .bind("latch2", () => Promise.make<never, void>())
+        .bind("child1", ({ fiberRef, latch1 }) =>
+          FiberRef.set_(fiberRef, "child1").zipRight(latch1.succeed(undefined)).fork()
         )
-      )
+        .bind("child2", ({ fiberRef, latch2 }) =>
+          FiberRef.set_(fiberRef, "child2").zipRight(latch2.succeed(undefined)).fork()
+        )
+        .tap(({ latch1, latch2 }) => latch1.await().zipRight(latch2.await()))
+        .tap(({ child1, child2 }) => Fiber.zip_(child1, child2).inheritRefs)
+        .flatMap(({ fiberRef }) => FiberRef.get(fiberRef))
 
-      expect(value).toBe("child1")
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe("child1")
     })
   })
 
   describe("`Fiber.join` on interrupted Fiber", () => {
     it("is inner interruption", async () => {
       const fiberId = FiberId.make(0, 123)
+      const program = pipe(Fiber.interruptAs(fiberId), Fiber.join).exit()
 
-      const exit = await T.unsafeRunPromise(
-        pipe(Fiber.interruptAs(fiberId), Fiber.join, T.exit)
-      )
+      const result = await program.unsafeRunPromise()
 
-      expect(exit).toHaveProperty("cause.fiberId", fiberId)
+      expect(result).toHaveProperty("cause.fiberId", fiberId)
     })
   })
 
   describe("if one composed fiber fails then all must fail", () => {
     it("`await`", async () => {
-      const exit = await pipe(
-        Fiber.fail("fail"),
-        Fiber.zip(Fiber.never),
-        Fiber.await,
-        T.unsafeRunPromise
-      )
+      const program = pipe(Fiber.fail("fail"), Fiber.zip(Fiber.never), Fiber.await)
 
-      expect(exit).toHaveProperty("cause.left.value", "fail")
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toHaveProperty("cause.left.value", "fail")
     })
 
     it("`join`", async () => {
-      const exit = await pipe(
+      const program = pipe(
         Fiber.fail("fail"),
         Fiber.zip(Fiber.never),
-        Fiber.join,
-        T.exit,
-        T.unsafeRunPromise
-      )
+        Fiber.join
+      ).exit()
 
-      expect(exit).toHaveProperty("cause.left.value", "fail")
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toHaveProperty("cause.left.value", "fail")
     })
 
     it("`awaitAll`", async () => {
-      const exit = await pipe(
-        Fiber.awaitAll(
-          Chunk.prepend_(
-            Chunk.fill(100, () => Fiber.never),
-            Fiber.fail("fail")
-          )
-        ),
-        T.exit,
-        T.unsafeRunPromise
-      )
+      const program = Fiber.awaitAll(
+        Chunk.prepend_(
+          Chunk.fill(100, () => Fiber.never),
+          Fiber.fail("fail")
+        )
+      ).exit()
 
-      expect(exit).toEqual(Exit.succeed(undefined))
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual(Exit.succeed(undefined))
     })
 
     it("`joinAll`", async () => {
-      const exit = await pipe(
-        Fiber.joinAll(
-          Chunk.prepend_(
-            Chunk.fill(100, () => Fiber.never),
-            Fiber.fail("fail")
-          )
-        ),
-        T.exit,
-        T.unsafeRunPromise
-      )
+      const program = Fiber.joinAll(
+        Chunk.prepend_(
+          Chunk.fill(100, () => Fiber.never),
+          Fiber.fail("fail")
+        )
+      ).exit()
 
-      expect(Exit.isFailure(exit)).toBeTruthy()
+      const result = await program.unsafeRunPromise()
+
+      expect(result.isFailure()).toBe(true)
     })
 
     it("shard example", async () => {
       function shard<R, E, A>(
         queue: Queue.Queue<A>,
         n: number,
-        worker: (a: A) => T.Effect<R, E, void>
-      ): T.Effect<R, E, void> {
-        const worker1 = pipe(
-          Queue.take(queue),
-          T.chain((a) => T.uninterruptible(worker(a))),
-          T.forever
-        )
-        return pipe(
-          T.forkAll(Chunk.fill(n, () => worker1)),
-          T.chain(Fiber.join),
-          T.zipRight(T.never)
-        )
+        worker: (a: A) => Effect<R, E, void>
+      ): Effect<R, E, void> {
+        const worker1 = Queue.take(queue)
+          .flatMap((a) => worker(a).uninterruptible())
+          .forever()
+
+        return Effect.forkAll(Chunk.fill(n, () => worker1))
+          .flatMap(Fiber.join)
+          .zipRight(Effect.never)
       }
 
-      const { exit } = await pipe(
-        T.Do(),
-        T.bind("queue", () => Queue.makeUnbounded<number>()),
-        T.tap(({ queue }) => Queue.offerAll_(queue, Chunk.range(1, 100))),
-        T.bindValue(
+      const program = Effect.Do()
+        .bind("queue", () => Queue.makeUnbounded<number>())
+        .tap(({ queue }) => Queue.offerAll_(queue, Chunk.range(1, 100)))
+        .bindValue(
           "worker",
           ({ queue }) =>
             (n: number) =>
-              n === 100 ? T.failNow("fail") : T.asUnit(Queue.offer_(queue, n))
-        ),
-        T.bind("exit", ({ queue, worker }) => T.exit(shard(queue, 4, worker))),
-        T.tap(({ queue }) => Queue.shutdown(queue)),
-        T.unsafeRunPromise
-      )
+              n === 100 ? Effect.failNow("fail") : Queue.offer_(queue, n).asUnit()
+        )
+        .bind("exit", ({ queue, worker }) => shard(queue, 4, worker).exit())
+        .tap(({ queue }) => Queue.shutdown(queue))
+        .map(({ exit }) => exit)
 
-      expect(Exit.isFailure(exit)).toBeTruthy()
+      const result = await program.unsafeRunPromise()
+
+      expect(result.isFailure()).toBe(true)
     })
 
     it("grandparent interruption is propagated to grandchild despite parent termination", async () => {
-      const exit = await pipe(
-        T.Do(),
-        T.bind("latch1", () => Promise.make<never, void>()),
-        T.bind("latch2", () => Promise.make<never, void>()),
-        T.bindValue("c", ({ latch2 }) =>
+      const program = Effect.Do()
+        .bind("latch1", () => Promise.make<never, void>())
+        .bind("latch2", () => Promise.make<never, void>())
+        .bindValue("c", ({ latch2 }) =>
           pipe(
-            T.never,
-            T.interruptible,
-            T.onInterrupt(() => Promise.succeed_(latch2, undefined))
+            Effect.never.interruptible().onInterrupt(() => latch2.succeed(undefined))
           )
-        ),
-        T.bindValue("a", ({ c, latch1 }) =>
-          pipe(
-            Promise.succeed_(latch1, undefined),
-            T.zipRight(T.fork(T.fork(c))),
-            T.uninterruptible,
-            T.zipRight(T.never)
-          )
-        ),
-        T.bind("fiber", ({ a }) => T.fork(a)),
-        T.tap(({ latch1 }) => Promise.await(latch1)),
-        T.tap(({ fiber }) => Fiber.interrupt(fiber)),
-        T.tap(({ latch2 }) => Promise.await(latch2)),
-        T.exit,
-        T.unsafeRunPromise
-      )
+        )
+        .bindValue("a", ({ c, latch1 }) =>
+          latch1
+            .succeed(undefined)
+            .zipRight(c.fork().fork())
+            .uninterruptible()
+            .zipRight(Effect.never)
+        )
+        .bind("fiber", ({ a }) => a.fork())
+        .tap(({ latch1 }) => latch1.await())
+        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ latch2 }) => latch2.await())
+        .exit()
 
-      expect(Exit.isSuccess(exit)).toBeTruthy()
+      const result = await program.unsafeRunPromise()
+
+      expect(result.isSuccess()).toBe(true)
     })
   })
 
   describe("roots", () => {
     test("dual roots", async () => {
-      const rootContains = (f: Fiber.Runtime<any, any>): T.UIO<boolean> =>
-        pipe(
-          Fiber.roots,
-          T.map(
-            flow(
-              Chunk.find((fr) => f === fr),
-              O.isSome
-            )
-          )
-        )
+      function rootContains(
+        f: Fiber.Runtime<any, any>
+      ): Effect<unknown, never, boolean> {
+        return Fiber.roots.map((chunk) => Chunk.find_(chunk, (_) => _ === f).isSome())
+      }
 
-      const rootsTest = T.gen(function* (_) {
-        const fiber1 = yield* _(pipe(T.never, T.forkDaemon))
-        const fiber2 = yield* _(pipe(T.never, T.forkDaemon))
-        yield* _(
-          pipe(
-            rootContains(fiber1),
-            T.zipWith(rootContains(fiber2), (b1, b2) => b1 && b2),
-            T.repeatUntil(identity)
-          )
+      const rootsTest = Effect.Do()
+        .bind("fiber1", () => Effect.never.forkDaemon())
+        .bind("fiber2", () => Effect.never.forkDaemon())
+        .tap(({ fiber1, fiber2 }) =>
+          rootContains(fiber1)
+            .zipWith(rootContains(fiber2), (b1, b2) => b1 && b2)
+            .repeatUntil(identity)
         )
-        yield* _(pipe(Fiber.interrupt(fiber1), T.zipRight(Fiber.interrupt(fiber2))))
-        return true
-      })
+        .tap(({ fiber1, fiber2 }) =>
+          Fiber.interrupt(fiber1).zipRight(Fiber.interrupt(fiber2))
+        )
+        .map(constTrue)
 
       // Since `rootsTest` has a potentially infinite loop (T.never + T.repeatUntil),
       // race the real test against a 10 second timer and fail the test if it didn't complete.
       // This delay time may be increased if it turns out this test is flaky.
-      const test = await pipe(
-        T.sleep(10000),
-        T.zipRight(T.succeedNow(false)),
-        T.race(rootsTest),
-        T.unsafeRunPromise
-      )
+      const program = Effect.sleep(10000)
+        .zipRight(Effect.succeedNow(false))
+        .race(rootsTest)
 
-      expect(test).toBeTruthy()
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(true)
     })
   })
 
   describe("stack safety", () => {
     it("awaitAll", async () => {
-      await pipe(Fiber.awaitAll(fibers), T.unsafeRunPromise)
+      const program = Fiber.awaitAll(fibers)
+
+      await program.unsafeRunPromise()
 
       expect.anything()
     })
     it("joinAll", async () => {
-      await pipe(Fiber.joinAll(fibers), T.unsafeRunPromise)
+      const program = Fiber.joinAll(fibers)
+
+      await program.unsafeRunPromise()
 
       expect.anything()
     })
     it("collectAll", async () => {
-      await pipe(Fiber.collectAll(fibers), Fiber.join, T.unsafeRunPromise)
+      const program = pipe(Fiber.collectAll(fibers), Fiber.join)
+
+      await program.unsafeRunPromise()
 
       expect.anything()
     })
@@ -327,23 +275,22 @@ describe("Fiber", () => {
 
   describe("track blockingOn", () => {
     it("in await", async () => {
-      const { blockingOn, f1 } = await pipe(
-        T.Do(),
-        T.bind("f1", () => T.fork(T.never)),
-        T.bind("f2", ({ f1 }) => T.fork(Fiber.await(f1))),
-        T.bind("blockingOn", ({ f2 }) =>
-          pipe(
-            f2.status,
-            T.continueOrFail(
+      const program = Effect.Do()
+        .bind("f1", () => Effect.never.fork())
+        .bind("f2", ({ f1 }) => Fiber.await(f1).fork())
+        .bind("blockingOn", ({ f2 }) =>
+          f2.status
+            .continueOrFail(
               () => undefined,
               (status) =>
-                status._tag === "Suspended" ? O.some(status.blockingOn) : O.none
-            ),
-            T.eventually
-          )
-        ),
-        T.unsafeRunPromise
-      )
+                status._tag === "Suspended"
+                  ? Option.some(status.blockingOn)
+                  : Option.none
+            )
+            .eventually()
+        )
+
+      const { blockingOn, f1 } = await program.unsafeRunPromise()
 
       expect(blockingOn).toStrictEqual(f1.id)
     })

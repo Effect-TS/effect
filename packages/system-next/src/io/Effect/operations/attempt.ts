@@ -1,5 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import { fail as exitFail } from "../../Exit"
+import { Exit } from "../../Exit"
 import { Effect, EffectError } from "../definition"
 
 /**
@@ -17,7 +17,7 @@ export function attempt<A>(
       return f()
     } catch (error) {
       if (!runtimeConfig.value.fatal(error)) {
-        throw new EffectError(exitFail(error), __etsTrace)
+        throw new EffectError(Exit.fail(error), __etsTrace)
       }
       throw error
     }

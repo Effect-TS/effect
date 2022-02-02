@@ -5,6 +5,8 @@ import type { Exit } from "../definition"
 /**
  * Sequentially zips the this result with the specified result or else returns
  * the failed `Cause<E>`.
+ *
+ * @tsplus fluent ets/Exit foldEffect
  */
 export function foldEffect_<E, A, R1, E1, A1, R2, E2, A2>(
   self: Exit<E, A>,
@@ -32,5 +34,5 @@ export function foldEffect<A, E, R1, E1, A1, R2, E2, A2>(
   __etsTrace?: string
 ) {
   return (self: Exit<E, A>): Effect<R1 & R2, E1 | E2, A1 | A2> =>
-    foldEffect_(self, failed, completed)
+    self.foldEffect(failed, completed)
 }
