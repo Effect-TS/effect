@@ -1,4 +1,4 @@
-import * as L from "../src/Collections/Immutable/List"
+import * as L from "../src/Collections/Immutable/List/index.js"
 import { pipe } from "../src/Function/index.js"
 import * as S from "../src/Sync/index.js"
 

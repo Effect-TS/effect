@@ -8,7 +8,7 @@ import * as CatchSomeCause from "./catchSomeCause.js"
 import * as TimeoutFailCause from "./timeoutFailCause.js"
 
 export const StreamTimeoutSymbol: unique symbol = Symbol.for(
-  ".matechs/core/symbols/errors/StreamTimeout/index.js"
+  "@matechs/core/symbols/errors/StreamTimeout"
 )
 
 export class StreamTimeoutError {

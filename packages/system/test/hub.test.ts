@@ -1,4 +1,4 @@
-import { pipe } from "@effect-ts/system/Function/index.js"
+import { pipe } from "@effect-ts/system/Function"
 
 import * as AR from "../src/Collections/Immutable/Array/index.js"
 import * as Chunk from "../src/Collections/Immutable/Chunk/index.js"

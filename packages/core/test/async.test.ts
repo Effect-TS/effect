@@ -1,4 +1,4 @@
-import * as As from "../src/Async"
+import * as As from "../src/Async/index.js"
 import { range } from "../src/Collections/Immutable/Array/index.js"
 import * as Chunk from "../src/Collections/Immutable/Chunk/index.js"
 import * as Tp from "../src/Collections/Immutable/Tuple/index.js"

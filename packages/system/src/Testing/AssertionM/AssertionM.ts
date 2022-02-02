@@ -2,7 +2,6 @@
 
 import type { Lazy } from "../../Function/index.js"
 import * as ST from "../../Structural/index.js"
-import { LazyGetter } from "../../Utils/index.js"
 import type * as ARM from "../AssertionResultM/index.js"
 import * as PR from "../Primitives/index.js"
 import type * as R from "../Render/index.js"
@@ -20,7 +19,6 @@ export abstract class AssertionM<A> implements ST.HasEquals {
     readonly runM: (a: Lazy<A>) => ARM.AssertResultM
   ) {}
 
-  @LazyGetter()
   get stringify(): string {
     return this.render().toString()
   }
@@ -37,7 +35,6 @@ export abstract class AssertionM<A> implements ST.HasEquals {
     return false
   }
 
-  @LazyGetter()
   get [ST.hashSym](): number {
     return ST.hashString(this.stringify)
   }

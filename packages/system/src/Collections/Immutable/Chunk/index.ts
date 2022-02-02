@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 export * from "./core.js"
 
 // codegen:start { preset: barrel, include: ./api/*.ts }

@@ -1,6 +1,6 @@
 import "../src/Tracing/Enable/index.js"
 
-import { defaultRuntime, QIO } from "@qio/core/index.js"
+import { defaultRuntime, QIO } from "@qio/core"
 
 import * as T from "../src/Effect/index.js"
 import * as F from "../src/Fiber/index.js"

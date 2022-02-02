@@ -1,4 +1,4 @@
-import { Tagged } from "../src/Case"
+import { Tagged } from "../src/Case/index.js"
 import { FiberState } from "../src/Effect/FiberState/index.js"
 import * as T from "../src/Effect/index.js"
 import { State } from "../src/Effect/State/index.js"

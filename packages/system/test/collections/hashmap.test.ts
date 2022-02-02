@@ -1,4 +1,4 @@
-import { hash } from "@effect-ts/system/Structural/index.js"
+import { hash } from "@effect-ts/system/Structural"
 
 import * as HM from "../../src/Collections/Immutable/HashMap/index.js"
 import { pipe } from "../../src/Function/index.js"

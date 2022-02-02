@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as T from "@effect-ts/system/Effect"
 import * as S from "@effect-ts/system/Sync"
 

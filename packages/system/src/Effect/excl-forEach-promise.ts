@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 export { make } from "../Promise/make.js"
 export { fail } from "../Promise/fail.js"
 export { succeed } from "../Promise/succeed.js"

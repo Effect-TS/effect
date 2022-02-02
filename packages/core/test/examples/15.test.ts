@@ -2,7 +2,7 @@
 import { pipe, tuple } from "@effect-ts/system/Function"
 
 import * as DSL from "../../src/Prelude/DSL/index.js"
-import * as StateT from "../../src/StateT/Classic"
+import * as StateT from "../../src/StateT/Classic/index.js"
 import * as IO from "../../src/XPure/XIO/index.js"
 
 namespace StateIO {

@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import type { Has, Tag } from "../../Has/index.js"
 import { tag } from "../../Has/index.js"

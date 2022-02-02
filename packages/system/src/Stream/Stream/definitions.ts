@@ -15,7 +15,7 @@ import type * as M from "../_internal/managed.js"
 import * as Ref from "../_internal/ref.js"
 import * as Pull from "../Pull/index.js"
 
-export const StreamURI = ".matechs/core/Eff/StreamURI/index.js"
+export const StreamURI = "@matechs/core/Eff/StreamURI"
 export type StreamURI = typeof StreamURI
 
 /**

@@ -1,5 +1,5 @@
 import * as Eq from "../src/Equal/index.js"
-import * as Tree from "../src/RoseTree"
+import * as Tree from "../src/RoseTree/index.js"
 
 const a = Tree.make("root", [Tree.make("leaf1"), Tree.make("leaf2")])
 const b = Tree.make("root", [Tree.make("leaf1"), Tree.make("leaf2")])

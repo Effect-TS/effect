@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type * as O from "../../Option/index.js"
-import type { AssertionValue } from "../AssertionValue/index.js"
+import type { AssertionValue } from "./AssertionValue.js"
 import { makeAssertionValue } from "./makeAssertionValue.js"
 
 export function withContext_(

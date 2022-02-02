@@ -1,4 +1,4 @@
-import * as A from "../src/Associative"
+import * as A from "../src/Associative/index.js"
 import { pipe } from "../src/Function/index.js"
 import * as I from "../src/Identity/index.js"
 import * as O from "../src/Option/index.js"

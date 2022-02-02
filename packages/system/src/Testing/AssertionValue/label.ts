@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as AM from "../AssertionM/api.js"
-import type { AssertionValue } from "../AssertionValue/index.js"
+import type { AssertionValue } from "./AssertionValue.js"
 import { makeAssertionValue } from "./makeAssertionValue.js"
 
 export function label_(self: AssertionValue, l: string): AssertionValue {

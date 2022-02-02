@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 // forked from https://github.com/frptools
 
 // Copyright 2014 Thom Chiovoloni, released under the MIT license.

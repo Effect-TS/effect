@@ -6,7 +6,7 @@ import { pipe } from "@effect-ts/system/Function"
 import { NoSuchElementException } from "@effect-ts/system/GlobalExceptions"
 import { isEither, isOption } from "@effect-ts/system/Utils"
 
-import { makeAssociative } from "../../src/Associative"
+import { makeAssociative } from "../../src/Associative/index.js"
 import * as Either from "../../src/Either/index.js"
 import * as EitherT from "../../src/EitherT/index.js"
 import * as Option from "../../src/Option/index.js"

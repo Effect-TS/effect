@@ -1,4 +1,4 @@
-import * as T from "../src/Async"
+import * as T from "../src/Async/index.js"
 import * as A from "../src/Collections/Immutable/Array/index.js"
 import { pipe } from "../src/Function/index.js"
 import * as O from "../src/Option/index.js"

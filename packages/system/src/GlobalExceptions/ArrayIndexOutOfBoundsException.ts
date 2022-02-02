@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 export const ArrayIndexOutOfBoundsExceptionTypeId = Symbol()
 export type ArrayIndexOutOfBoundsExceptionTypeId =
   typeof ArrayIndexOutOfBoundsExceptionTypeId

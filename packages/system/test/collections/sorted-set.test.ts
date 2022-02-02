@@ -1,4 +1,4 @@
-import { Case } from "@effect-ts/system/Case/index.js"
+import { Case } from "@effect-ts/system/Case"
 
 import * as SS from "../../src/Collections/Immutable/SortedSet/index.js"
 import { pipe } from "../../src/Function/index.js"

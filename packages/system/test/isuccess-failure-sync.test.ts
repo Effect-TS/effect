@@ -1,4 +1,4 @@
-import { pipe } from "@effect-ts/system/Function/index.js"
+import { pipe } from "@effect-ts/system/Function"
 
 import * as Sy from "../src/Sync/index.js"
 

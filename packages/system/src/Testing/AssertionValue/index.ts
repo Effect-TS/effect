@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 // codegen:start {preset: barrel, include: ./*.ts}
 export * from "./AssertionValue.js"
 export * from "./label.js"

@@ -3,7 +3,7 @@ import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import * as T from "../../src/Effect/index.js"
 import * as Ref from "../../src/Effect/Ref/index.js"
 import { pipe } from "../../src/Function/index.js"
-import { tag } from "../../src/Has"
+import { tag } from "../../src/Has/index.js"
 
 const ConsoleServiceId = Symbol()
 

@@ -9,7 +9,7 @@ import type { Stream } from "./definitions.js"
 import { timeoutErrorCause } from "./timeoutErrorCause.js"
 
 export const StreamTimeoutSymbol: unique symbol = Symbol.for(
-  ".matechs/core/Stream/Stream/timeoutTo/StreamTimeout/index.js"
+  "@matechs/core/Stream/Stream/timeoutTo/StreamTimeout"
 )
 
 export class StreamTimeoutError extends Error {

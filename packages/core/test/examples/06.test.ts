@@ -1,6 +1,6 @@
 import { pipe } from "@effect-ts/system/Function"
 
-import { makeAssociative } from "../../src/Associative"
+import { makeAssociative } from "../../src/Associative/index.js"
 import * as R from "../../src/Collections/Immutable/Dictionary/index.js"
 import * as E from "../../src/Either/index.js"
 

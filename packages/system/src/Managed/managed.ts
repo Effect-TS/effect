@@ -6,7 +6,7 @@ import { unifyIndex } from "../Utils/index.js"
 import * as T from "./deps-core.js"
 import type { Finalizer, ReleaseMap } from "./ReleaseMap/index.js"
 
-export const ManagedURI = ".matechs/core/Eff/ManagedURI/index.js"
+export const ManagedURI = "@matechs/core/Eff/ManagedURI"
 export type ManagedURI = typeof ManagedURI
 
 export interface Managed<R, E, A> extends HasUnify {
