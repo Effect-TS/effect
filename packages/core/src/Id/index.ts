@@ -8,9 +8,9 @@ import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import type { Equal } from "../Equal/index.js"
 import type { Identity } from "../Identity/index.js"
 import type { IdURI } from "../Modules/index.js"
+import { structF, tupleF } from "../Prelude/DSL/index.js"
 import type { URI } from "../Prelude/index.js"
 import * as P from "../Prelude/index.js"
-import { structF, tupleF } from "../Prelude/DSL/index.js"
 import type { Show } from "../Show/index.js"
 
 export type Id<A> = A

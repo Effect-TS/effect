@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import { Tagged, TaggedADT } from "../../Case/index.js"
-import * as Clock from "../../Clock/index.js"
 import * as ClockId from "../../Clock/id.js"
+import * as Clock from "../../Clock/index.js"
 import * as Chunk from "../../Collections/Immutable/Chunk/index.js"
 import * as HashMap from "../../Collections/Immutable/HashMap/index.js"
 import * as List from "../../Collections/Immutable/List/index.js"

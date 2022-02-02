@@ -17,11 +17,11 @@ import { pipe } from "../Function/index.js"
 import type { Identity } from "../Identity/index.js"
 import * as IO from "../IO/index.js"
 import type { TreeURI } from "../Modules/index.js"
+import * as DSL from "../Prelude/DSL/index.js"
+import { getApplicativeF } from "../Prelude/DSL/index.js"
 import type { URI } from "../Prelude/index.js"
 import * as P from "../Prelude/index.js"
 import { sequenceF } from "../Prelude/index.js"
-import * as DSL from "../Prelude/DSL/index.js"
-import { getApplicativeF } from "../Prelude/DSL/index.js"
 import type { Show } from "../Show/index.js"
 
 export declare type Forest<A> = ReadonlyArray<Tree<A>>

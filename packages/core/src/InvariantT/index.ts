@@ -2,8 +2,8 @@
 
 import "../Operator/index.js"
 
-import * as P from "../Prelude/index.js"
 import type * as HKT from "../Prelude/HKT/index.js"
+import * as P from "../Prelude/index.js"
 
 export function monad<P extends HKT.Param>(
   _: P

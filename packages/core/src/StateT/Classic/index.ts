@@ -2,9 +2,9 @@
 
 import { pipe, tuple } from "../../Function/index.js"
 import type { StateInURI, StateOutURI } from "../../Modules/index.js"
-import type { Auto, Monad } from "../../Prelude/index.js"
 import { chainF } from "../../Prelude/DSL/index.js"
 import * as HKT from "../../Prelude/HKT/index.js"
+import type { Auto, Monad } from "../../Prelude/index.js"
 
 /**
  * Take over ownership of "S" making it invariant

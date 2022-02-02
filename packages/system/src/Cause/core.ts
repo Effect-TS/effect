@@ -3,8 +3,8 @@
 /* eslint-disable prefer-const */
 import * as A from "../Collections/Immutable/Array/index.js"
 import * as E from "../Either/index.js"
-import type { Trace } from "../Fiber/index.js"
 import type { FiberID } from "../Fiber/id.js"
+import type { Trace } from "../Fiber/index.js"
 import { identity, pipe } from "../Function/index.js"
 import * as S from "../IO/index.js"
 import * as O from "../Option/index.js"

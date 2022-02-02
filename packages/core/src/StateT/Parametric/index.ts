@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import type { StateInURI, StateOutURI } from "../../Modules/index.js"
-import type { Monad } from "../../Prelude/index.js"
 import * as HKT from "../../Prelude/HKT/index.js"
+import type { Monad } from "../../Prelude/index.js"
 import * as StateT from "../Classic/index.js"
 
 /**

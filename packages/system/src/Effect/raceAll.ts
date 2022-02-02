@@ -1,15 +1,15 @@
 // ets_tracing: off
 
-import type { Chunk as Chunk_1 } from "../Collections/Immutable/Chunk/index.js"
 import { reduce, reduce_ } from "../Collections/Immutable/Chunk/api/reduce.js"
+import type { Chunk as Chunk_1 } from "../Collections/Immutable/Chunk/index.js"
 import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray/index.js"
 import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import * as Exit from "../Exit/index.js"
 import * as Fiber from "../Fiber/index.js"
 import { pipe } from "../Function/index.js"
-import type { Promise } from "../Promise/index.js"
 import { await as promiseAwait } from "../Promise/await.js"
 import { halt } from "../Promise/halt.js"
+import type { Promise } from "../Promise/index.js"
 import { make } from "../Promise/make.js"
 import { succeed } from "../Promise/succeed.js"
 import * as Ref from "../Ref/index.js"

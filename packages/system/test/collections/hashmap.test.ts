@@ -1,7 +1,7 @@
 import { hash } from "@effect-ts/system/Structural"
 
-import * as HM from "../../src/Collections/Immutable/HashMap"
-import { pipe } from "../../src/Function"
+import * as HM from "../../src/Collections/Immutable/HashMap/index.js"
+import { pipe } from "../../src/Function/index.js"
 
 describe("HashMap", () => {
   it("hasHash_", () => {

@@ -1,7 +1,7 @@
 import { flow, pipe } from "@effect-ts/system/Function"
 
-import { indexedF } from "../../src/IndexedT"
-import * as IO from "../../src/XPure/XIO"
+import { indexedF } from "../../src/IndexedT/index.js"
+import * as IO from "../../src/XPure/XIO/index.js"
 
 export type DoorState = "DoorOpened" | "DoorClosed"
 

@@ -35,7 +35,12 @@ import type { Callback } from "./state.js"
 import { FiberStateDone, FiberStateExecuting, initial, interrupting } from "./state.js"
 import * as Status from "./status.js"
 import type { TraceElement } from "./tracing.js"
-import { SourceLocation, Trace, traceLocation, truncatedParentTrace } from "./tracing.js"
+import {
+  SourceLocation,
+  Trace,
+  traceLocation,
+  truncatedParentTrace
+} from "./tracing.js"
 
 export type FiberRefLocals = Map<FR.Runtime<any>, any>
 

@@ -6,9 +6,9 @@ import * as T from "@effect-ts/system/Effect"
 
 import * as I from "../Identity/index.js"
 import type { EffectCategoryURI, EffectURI } from "../Modules/index.js"
+import * as DSL from "../Prelude/DSL/index.js"
 import type { URI } from "../Prelude/index.js"
 import * as P from "../Prelude/index.js"
-import * as DSL from "../Prelude/DSL/index.js"
 
 export * from "@effect-ts/system/Effect"
 export { EffectURI } from "../Modules/index.js"

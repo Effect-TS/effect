@@ -5,8 +5,8 @@ import { pipe } from "../../Function/index.js"
 import { environment, map } from "../deps.js"
 import type { Managed } from "../managed.js"
 import { managedApply } from "../managed.js"
-import type { ReleaseMap } from "../ReleaseMap/index.js"
 import { noopFinalizer } from "../ReleaseMap/finalizer.js"
+import type { ReleaseMap } from "../ReleaseMap/index.js"
 
 /**
  * Provides access to the entire map of resources allocated by this {@link Managed}.

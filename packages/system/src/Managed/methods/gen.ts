@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { _A, _E, _R, accessService } from "../../Effect/index.js"
 import type { Effect } from "../../Effect/effect.js"
 import { fromEither } from "../../Effect/fromEither.js"
 import { getOrFail } from "../../Effect/getOrFail.js"
+import { _A, _E, _R, accessService } from "../../Effect/index.js"
 import type { Either } from "../../Either/index.js"
 import { identity } from "../../Function/index.js"
 import type { NoSuchElementException } from "../../GlobalExceptions/index.js"

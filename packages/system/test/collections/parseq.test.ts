@@ -1,5 +1,5 @@
-import * as PS from "../../src/Collections/Immutable/ParSeq"
-import * as St from "../../src/Structural"
+import * as PS from "../../src/Collections/Immutable/ParSeq/index.js"
+import * as St from "../../src/Structural/index.js"
 
 describe("Cause", () => {
   it("equals", () => {

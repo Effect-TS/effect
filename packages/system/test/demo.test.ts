@@ -1,9 +1,9 @@
-import "../src/Tracing/Enable"
+import "../src/Tracing/Enable/index.js"
 
-import { pretty } from "../src/Cause"
-import * as T from "../src/Effect"
-import { assertsFailure } from "../src/Exit"
-import { flow, pipe } from "../src/Function"
+import { pretty } from "../src/Cause/index.js"
+import * as T from "../src/Effect/index.js"
+import { assertsFailure } from "../src/Exit/index.js"
+import { flow, pipe } from "../src/Function/index.js"
 
 const addOne = (n: number) => T.succeedWith(() => n + 1)
 

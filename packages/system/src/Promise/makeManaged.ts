@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { toManaged } from "../Effect/index.js"
 import { chain_ } from "../Effect/core.js"
 import { fiberId } from "../Effect/fiberId.js"
+import { toManaged } from "../Effect/index.js"
 import { makeAs } from "./makeAs.js"
 
 /**

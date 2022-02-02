@@ -2,8 +2,8 @@
 
 import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import { pipe } from "../Function/index.js"
-import type { Promise } from "../Promise/index.js"
 import { await as promiseAwait } from "../Promise/await.js"
+import type { Promise } from "../Promise/index.js"
 import { make as promiseMake } from "../Promise/make.js"
 import * as RefM from "../RefM/index.js"
 import { fork, succeed } from "./core.js"

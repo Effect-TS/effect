@@ -1,6 +1,6 @@
-import * as T from "../src/Effect"
-import { pipe } from "../src/Function"
-import { tag } from "../src/Has"
+import * as T from "../src/Effect/index.js"
+import { pipe } from "../src/Function/index.js"
+import { tag } from "../src/Has/index.js"
 
 describe("Has", () => {
   it("use services", async () => {

@@ -2,8 +2,8 @@
 
 import * as T from "../../../Effect/index.js"
 import { pipe } from "../../../Function/index.js"
-import { fromEffect } from "./api/index.js"
 import * as Chain from "./api/chain.js"
+import { fromEffect } from "./api/index.js"
 import * as Map from "./api/map.js"
 import type * as C from "./core.js"
 

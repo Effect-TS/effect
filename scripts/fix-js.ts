@@ -25,7 +25,7 @@ const fixup = (file: string) => {
 
   if (content) {
     const fixed = lines.map((line) => {
-      const res = line.match(/(import|export|from).*"(.*)"/)
+      const res = line.match(/(import|export|from|declare module).*"(.*)"/)
       if (res) {
         const [, , relative] = res
         if (relative?.startsWith(".")) {

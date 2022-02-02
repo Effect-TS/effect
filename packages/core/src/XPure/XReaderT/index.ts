@@ -5,10 +5,10 @@ import "../../Operator/index.js"
 import type * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 
 import { pipe } from "../../Function/index.js"
-import type { Applicative, Monad } from "../../Prelude/index.js"
 import { succeedF } from "../../Prelude/DSL/index.js"
 import type { Access, Fail, Provide, Run } from "../../Prelude/FX/index.js"
 import * as HKT from "../../Prelude/HKT/index.js"
+import type { Applicative, Monad } from "../../Prelude/index.js"
 import * as R from "../XReader/index.js"
 
 export function monad<F extends HKT.URIS, C>(

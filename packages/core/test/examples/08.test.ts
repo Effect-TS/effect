@@ -1,8 +1,8 @@
 import { pipe } from "@effect-ts/system/Function"
 
-import { makeAssociative } from "../../src/Associative"
-import * as T from "../../src/Effect"
-import * as DSL from "../../src/Prelude/DSL"
+import { makeAssociative } from "../../src/Associative/index.js"
+import * as T from "../../src/Effect/index.js"
+import * as DSL from "../../src/Prelude/DSL/index.js"
 
 test("08", async () => {
   const ValidationApplicative = T.getValidationApplicative(

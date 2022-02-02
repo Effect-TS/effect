@@ -3,10 +3,10 @@
 import "../Operator/index.js"
 
 import { pipe } from "../Function/index.js"
-import type { Applicative, AssociativeEither, Monad } from "../Prelude/index.js"
 import { succeedF } from "../Prelude/DSL/index.js"
 import type { Access, Fail, Provide, Run } from "../Prelude/FX/index.js"
 import * as HKT from "../Prelude/HKT/index.js"
+import type { Applicative, AssociativeEither, Monad } from "../Prelude/index.js"
 import * as R from "../Reader/index.js"
 
 export type V<C> = HKT.CleanParam<C, "R"> & HKT.V<"R", "-">
