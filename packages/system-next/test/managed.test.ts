@@ -10,7 +10,7 @@ import { RuntimeError } from "../src/io/Cause"
 import type { HasClock } from "../src/io/Clock"
 import type { UIO } from "../src/io/Effect"
 import { Effect } from "../src/io/Effect"
-import * as ExecutionStrategy from "../src/io/Effect/operations/ExecutionStrategy"
+import { ExecutionStrategy } from "../src/io/ExecutionStrategy"
 import { Exit } from "../src/io/Exit"
 import * as Fiber from "../src/io/Fiber"
 import type { FiberId } from "../src/io/FiberId"
@@ -3200,7 +3200,7 @@ describe("Managed", () => {
   describe("ReleaseMap", () => {
     test("sequential release works when empty", async () => {
       const program = ReleaseMap.make
-        .flatMap((_) => _.releaseAll(Exit.unit, ExecutionStrategy.sequential))
+        .flatMap((_) => _.releaseAll(Exit.unit, ExecutionStrategy.Sequential))
         .map(constTrue)
 
       const result = await program.unsafeRunPromise()
@@ -3216,7 +3216,7 @@ describe("Managed", () => {
               releaseMap.add((_) => Ref.update_(ref, (_) => _.prepend(1))) >
               releaseMap.add((_) => Effect.dieMessage("boom")) >
               releaseMap.add((_) => Ref.update_(ref, (_) => _.prepend(3))) >
-              releaseMap.releaseAll(Exit.unit, ExecutionStrategy.sequential)
+              releaseMap.releaseAll(Exit.unit, ExecutionStrategy.Sequential)
           )
           .exit()
           .zipRight(Ref.get(ref))

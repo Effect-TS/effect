@@ -1,6 +1,6 @@
 import { Tuple } from "../../../collection/immutable/Tuple"
 import { Effect } from "../../Effect"
-import { sequential } from "../../Effect/operations/ExecutionStrategy"
+import { ExecutionStrategy } from "../../ExecutionStrategy"
 import type { Exit } from "../../Exit"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { get } from "../../FiberRef/operations/get"
@@ -34,7 +34,7 @@ export function onExit_<R, E, A, R1, X>(
         .bind("releaseMapEntry", ({ exitEA, innerReleaseMap, outerReleaseMap, r1 }) =>
           outerReleaseMap.add((ex) =>
             innerReleaseMap
-              .releaseAll(ex, sequential)
+              .releaseAll(ex, ExecutionStrategy.Sequential)
               .exit()
               .zipWith(cleanup(exitEA).provideEnvironment(r1).exit(), (l, r) =>
                 Effect.done(l.zipRight(r))

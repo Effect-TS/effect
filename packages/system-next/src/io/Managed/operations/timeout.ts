@@ -3,7 +3,7 @@ import { Either } from "../../../data/Either"
 import { Option } from "../../../data/Option"
 import type { HasClock } from "../../Clock"
 import { Effect } from "../../Effect"
-import { sequential } from "../../Effect/operations/ExecutionStrategy"
+import { ExecutionStrategy } from "../../ExecutionStrategy"
 import { Exit } from "../../Exit"
 import * as Fiber from "../../Fiber"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
@@ -33,7 +33,9 @@ export function timeout_<R, E, A>(
         .bind("outerReleaseMap", () => fiberRefGet(currentReleaseMap.value))
         .bind("innerReleaseMap", () => ReleaseMap.make)
         .bind("earlyRelease", ({ innerReleaseMap, outerReleaseMap }) =>
-          outerReleaseMap.add((exit) => innerReleaseMap.releaseAll(exit, sequential))
+          outerReleaseMap.add((exit) =>
+            innerReleaseMap.releaseAll(exit, ExecutionStrategy.Sequential)
+          )
         )
         .bind("raceResult", ({ innerReleaseMap }) =>
           restore<R & HasClock, E, Either<Fiber.Fiber<E, Tuple<[Finalizer, A]>>, A>>(
@@ -57,7 +59,10 @@ export function timeout_<R, E, A>(
                 .flatMap((id) =>
                   Fiber.interrupt(fiber)
                     .ensuring(
-                      innerReleaseMap.releaseAll(Exit.interrupt(id), sequential)
+                      innerReleaseMap.releaseAll(
+                        Exit.interrupt(id),
+                        ExecutionStrategy.Sequential
+                      )
                     )
                     .forkDaemon()
                 )

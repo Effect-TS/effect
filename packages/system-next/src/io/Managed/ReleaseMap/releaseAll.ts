@@ -1,6 +1,6 @@
 import type { UIO } from "../../Effect/definition"
 import { releaseMapReleaseAll_ } from "../../Effect/operations/excl-forEach"
-import type { ExecutionStrategy } from "../../Effect/operations/ExecutionStrategy"
+import type { ExecutionStrategy } from "../../ExecutionStrategy"
 import type { Exit } from "../../Exit"
 import type { ReleaseMap } from "./definition"
 

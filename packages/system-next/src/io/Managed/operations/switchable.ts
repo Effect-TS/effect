@@ -1,5 +1,5 @@
 import { Effect } from "../../Effect"
-import { sequential } from "../../Effect/operations/ExecutionStrategy"
+import { ExecutionStrategy } from "../../ExecutionStrategy"
 import { Exit } from "../../Exit"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { locally_ } from "../../FiberRef/operations/locally"
@@ -52,7 +52,9 @@ export function switchable<R, E, A>(
                 restore(locally_(currentReleaseMap.value, inner)(newResource.effect))
               )
               .tap(({ inner }) =>
-                releaseMap.replace(key, (exit) => inner.releaseAll(exit, sequential))
+                releaseMap.replace(key, (exit) =>
+                  inner.releaseAll(exit, ExecutionStrategy.Sequential)
+                )
               )
               .map(({ a }) => a.get(1))
           )

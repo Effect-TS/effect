@@ -1,6 +1,6 @@
 import { Tuple } from "../../../collection/immutable/Tuple"
 import { Effect } from "../../Effect"
-import { sequential } from "../../Effect/operations/ExecutionStrategy"
+import { ExecutionStrategy } from "../../ExecutionStrategy"
 import { Exit } from "../../Exit"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { get as fiberRefGet } from "../../FiberRef/operations/get"
@@ -30,7 +30,7 @@ export function preallocate<R, E, A>(
         tp.foldEffect(
           (cause) =>
             releaseMap
-              .releaseAll(Exit.fail(cause), sequential)
+              .releaseAll(Exit.fail(cause), ExecutionStrategy.Sequential)
               .flatMap(() => Effect.failCauseNow(cause)),
           ({ tuple: [release, a] }) =>
             Effect.succeed(

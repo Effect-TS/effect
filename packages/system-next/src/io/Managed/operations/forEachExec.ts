@@ -1,5 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import type { ExecutionStrategy } from "../../Effect/operations/ExecutionStrategy"
+import type { ExecutionStrategy } from "../../ExecutionStrategy"
 import { Managed } from "../definition"
 
 /**

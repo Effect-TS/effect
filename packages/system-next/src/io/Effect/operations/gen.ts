@@ -8,13 +8,13 @@ import type { Has, Tag } from "../../../data/Has"
 import type { Option } from "../../../data/Option"
 import * as Utils from "../../../data/Utils"
 import { _A, _E, _R } from "../../../support/Symbols"
+import { ExecutionStrategy } from "../../ExecutionStrategy"
 import type { Managed } from "../../Managed/definition"
 import { ManagedImpl } from "../../Managed/definition"
 import type { ReleaseMap } from "../../Managed/ReleaseMap"
 import { make as makeReleaseMap } from "../../Managed/ReleaseMap/make"
 import { releaseAll } from "../../Managed/ReleaseMap/releaseAll"
 import { Effect } from "../definition"
-import { sequential } from "./ExecutionStrategy"
 
 export class GenEffect<R, E, A> {
   readonly [_R]!: (_R: R) => void;
@@ -106,7 +106,7 @@ export function genWithManaged<Eff extends GenEffect<any, any, any>, AEff>(
     return makeReleaseMap.flatMap((rm) =>
       Effect.unit.acquireReleaseExitWith(
         () => run(rm, state),
-        (_, e) => releaseAll(e, sequential)(rm)
+        (_, e) => releaseAll(e, ExecutionStrategy.Sequential)(rm)
       )
     )
   })

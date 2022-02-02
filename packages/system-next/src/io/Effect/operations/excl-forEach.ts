@@ -9,6 +9,7 @@ import { AtomicNumber } from "../../../support/AtomicNumber"
 import type { MutableQueue } from "../../../support/MutableQueue"
 import { Bounded, Unbounded } from "../../../support/MutableQueue"
 import { Cause } from "../../Cause"
+import { ExecutionStrategy } from "../../ExecutionStrategy"
 import { Exit } from "../../Exit"
 import type { Fiber } from "../../Fiber/definition"
 import { interrupt as interruptFiber } from "../../Fiber/operations/interrupt"
@@ -27,7 +28,6 @@ import { concreteQueue, XQueueInternal } from "../../Queue/xqueue"
 import * as RefModify from "../../Ref/operations/modify"
 import type { RIO, UIO } from "../definition"
 import { Effect } from "../definition"
-import { ExecutionStrategy } from "./ExecutionStrategy"
 
 // -----------------------------------------------------------------------------
 // forEach

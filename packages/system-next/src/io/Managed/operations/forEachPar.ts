@@ -1,7 +1,7 @@
 import type { Chunk } from "../../../collection/immutable/Chunk"
 import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
-import { sequential } from "../../Effect/operations/ExecutionStrategy"
+import { ExecutionStrategy } from "../../ExecutionStrategy"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { locally_ } from "../../FiberRef/operations/locally"
 import type { Managed } from "../definition"
@@ -24,7 +24,7 @@ export function forEachPar<R, E, A, B>(
     const makeInnerMap = locally_(
       currentReleaseMap.value,
       parallelReleaseMap
-    )(ReleaseMap.makeManaged(sequential).effect.map((_) => _.get(1)))
+    )(ReleaseMap.makeManaged(ExecutionStrategy.Sequential).effect.map((_) => _.get(1)))
     return Effect.forEachPar(as, (a) =>
       makeInnerMap.flatMap((innerMap) =>
         locally_(currentReleaseMap.value, innerMap)(f(a).effect.map((_) => _.get(1)))

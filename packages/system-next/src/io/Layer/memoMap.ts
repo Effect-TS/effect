@@ -4,7 +4,7 @@ import { matchTag_ } from "../../data/Utils"
 import * as Ref from "../../io/Ref/Synchronized"
 import { Effect } from "../Effect"
 import type { IO, UIO } from "../Effect/definition/base"
-import * as ExecutionStrategy from "../Effect/operations/ExecutionStrategy"
+import { ExecutionStrategy } from "../ExecutionStrategy"
 import type { Exit } from "../Exit"
 import { currentReleaseMap } from "../FiberRef/definition/data"
 import { get } from "../FiberRef/operations/get"
@@ -13,7 +13,7 @@ import { Managed } from "../Managed/definition"
 import { ReleaseMap } from "../Managed/ReleaseMap"
 import type { Finalizer } from "../Managed/ReleaseMap/finalizer"
 import { noopFinalizer } from "../Managed/ReleaseMap/finalizer"
-import * as Promise from "../Promise"
+import { Promise } from "../Promise"
 import type { Layer } from "./definition"
 import { instruction, LayerHashSym } from "./definition"
 
@@ -82,12 +82,14 @@ export class MemoMap {
                           switch (exit._tag) {
                             case "Failure": {
                               return (
-                                Promise.failCause_(promise, exit.cause).flatMap(() =>
-                                  innerReleaseMap.releaseAll(
-                                    exit,
-                                    ExecutionStrategy.sequential
-                                  )
-                                ) > Effect.failCause(exit.cause)
+                                promise
+                                  .failCause(exit.cause)
+                                  .flatMap(() =>
+                                    innerReleaseMap.releaseAll(
+                                      exit,
+                                      ExecutionStrategy.Sequential
+                                    )
+                                  ) > Effect.failCause(exit.cause)
                               )
                             }
                             case "Success": {
@@ -95,7 +97,7 @@ export class MemoMap {
                                 .tap(() =>
                                   Ref.set_(finalizerRef, (exit) =>
                                     innerReleaseMap
-                                      .releaseAll(exit, ExecutionStrategy.sequential)
+                                      .releaseAll(exit, ExecutionStrategy.Sequential)
                                       .whenEffect(
                                         Ref.modify_(observers, (n) =>
                                           Tuple(n === 1, n - 1)
@@ -109,7 +111,7 @@ export class MemoMap {
                                     Ref.get(finalizerRef).flatMap((_) => _(e))
                                   )
                                 )
-                                .tap(() => Promise.succeed_(promise, exit.value.get(1)))
+                                .tap(() => promise.succeed(exit.value.get(1)))
                                 .map(({ outerFinalizer }) =>
                                   Tuple(outerFinalizer, exit.value.get(1))
                                 )
@@ -122,7 +124,7 @@ export class MemoMap {
               )
               .bindValue("memoized", ({ finalizerRef, observers, promise }) =>
                 Tuple(
-                  (Promise.await(promise) as IO<E, A>).onExit((exit) => {
+                  (promise.await() as IO<E, A>).onExit((exit) => {
                     switch (exit._tag) {
                       case "Failure": {
                         return Effect.unit

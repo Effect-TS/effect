@@ -1,4 +1,4 @@
-import type { ExecutionStrategy } from "../../Effect"
+import type { ExecutionStrategy } from "../../ExecutionStrategy"
 import { Managed } from "../definition"
 import { ReleaseMap } from "./definition"
 
