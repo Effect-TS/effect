@@ -2,6 +2,8 @@ import type { Exit } from "../definition"
 
 /**
  * Determines if the `Exit` result is interrupted.
+ *
+ * @tsplus fluent ets/Exit isInterrupted
  */
 export function isInterrupted<E, A>(self: Exit<E, A>): boolean {
   switch (self._tag) {

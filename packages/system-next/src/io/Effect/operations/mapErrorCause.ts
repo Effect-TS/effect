@@ -33,5 +33,5 @@ export function mapErrorCause<E, E2>(
   f: (cause: Cause<E>) => Cause<E2>,
   __etsTrace?: string
 ) {
-  return <R, A>(self: Effect<R, E, A>): Effect<R, E2, A> => mapErrorCause_(self, f)
+  return <R, A>(self: Effect<R, E, A>): Effect<R, E2, A> => self.mapErrorCause(f)
 }

@@ -28,5 +28,5 @@ export function onExit<E, A, R2, E2, X>(
   cleanup: (exit: Exit<E, A>) => Effect<R2, E2, X>,
   __etsTrace?: string
 ) {
-  ;<R>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> => onExit_(self, cleanup)
+  ;<R>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> => self.onExit(cleanup)
 }

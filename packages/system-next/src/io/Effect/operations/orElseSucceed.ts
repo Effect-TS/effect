@@ -12,7 +12,7 @@ export function orElseSucceed_<R, E, A, A2>(
   a: LazyArg<A2>,
   __etsTrace?: string
 ): Effect<R, E, A | A2> {
-  return self.orElse(Effect.succeed(a))
+  return self | Effect.succeed(a)
 }
 
 /**
@@ -22,5 +22,5 @@ export function orElseSucceed_<R, E, A, A2>(
  * @ets_data_first orElseSucceed_
  */
 export function orElseSucceed<A2>(a: LazyArg<A2>, __etsTrace?: string) {
-  return <R, E, A>(self: Effect<R, E, A>) => orElseSucceed_(self, a)
+  return <R, E, A>(self: Effect<R, E, A>) => self.orElseSucceed(a)
 }

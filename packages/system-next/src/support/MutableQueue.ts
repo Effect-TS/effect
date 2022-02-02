@@ -1,4 +1,4 @@
-import * as Chunk from "../collection/immutable/Chunk/core"
+import { Chunk } from "../collection/immutable/Chunk"
 import { DoublyLinkedList } from "./DoublyLinkedList"
 
 export interface MutableQueue<A> {
@@ -22,7 +22,7 @@ export interface MutableQueue<A> {
    *
    * @return elements that were not enqueued
    */
-  readonly offerAll: (a: Iterable<A>) => Chunk.Chunk<A>
+  readonly offerAll: (a: Iterable<A>) => Chunk<A>
 
   /**
    * A non-blocking dequeue.
@@ -41,7 +41,7 @@ export interface MutableQueue<A> {
    *
    * @return an array of up to `n` elements
    */
-  readonly pollUpTo: (n: number) => Chunk.Chunk<A>
+  readonly pollUpTo: (n: number) => Chunk<A>
 
   /**
    * @return the '''current''' number of elements inside the queue.
@@ -86,7 +86,7 @@ export class Unbounded<A> implements MutableQueue<A> {
     return true
   }
 
-  offerAll(as: Iterable<A>): Chunk.Chunk<A> {
+  offerAll(as: Iterable<A>): Chunk<A> {
     for (const a of as) {
       this.offer(a)
     }
@@ -101,7 +101,7 @@ export class Unbounded<A> implements MutableQueue<A> {
     return this.queue.shift()
   }
 
-  pollUpTo(n: number): Chunk.Chunk<A> {
+  pollUpTo(n: number): Chunk<A> {
     let result = Chunk.empty<A>()
     let count = 0
 
@@ -112,7 +112,7 @@ export class Unbounded<A> implements MutableQueue<A> {
         break
       }
 
-      result = Chunk.append_(result, elem)
+      result = result.append(elem)
       count += 1
     }
 
@@ -152,7 +152,7 @@ export class Bounded<A> implements MutableQueue<A> {
     return true
   }
 
-  offerAll(as: Iterable<A>): Chunk.Chunk<A> {
+  offerAll(as: Iterable<A>): Chunk<A> {
     const it = as[Symbol.iterator]()
     let next
     let rem = Chunk.empty<A>()
@@ -163,7 +163,7 @@ export class Bounded<A> implements MutableQueue<A> {
     }
 
     while (next && !next.done) {
-      rem = Chunk.append_(rem, next.value)
+      rem = rem.append(next.value)
       next = it.next()
     }
 
@@ -177,7 +177,7 @@ export class Bounded<A> implements MutableQueue<A> {
     return this.queue.shift()
   }
 
-  pollUpTo(n: number): Chunk.Chunk<A> {
+  pollUpTo(n: number): Chunk<A> {
     let result = Chunk.empty<A>()
     let count = 0
 
@@ -188,7 +188,7 @@ export class Bounded<A> implements MutableQueue<A> {
         break
       }
 
-      result = Chunk.append_(result, elem)
+      result = result.append(elem)
       count += 1
     }
 

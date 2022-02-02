@@ -9,9 +9,9 @@ import { Managed } from "../definition"
  *
  * @tsplus static ets/ManagedOps acquireReleaseSucceedWith
  */
-export function acquireReleaseSucceedWith<A>(
+export function acquireReleaseSucceedWith<A, X>(
   acquire: LazyArg<A>,
-  release: (a: A) => any,
+  release: (a: A) => X,
   __etsTrace?: string
 ): Managed<unknown, never, A> {
   return Managed.acquireReleaseWith(Effect.succeed(acquire), (a) =>

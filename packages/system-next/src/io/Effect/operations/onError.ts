@@ -29,5 +29,5 @@ export function onError<E, R2, X>(
   cleanup: (cause: Cause<E>) => RIO<R2, X>,
   __etsTrace?: string
 ) {
-  return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E, A> => onError_(self, cleanup)
+  return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E, A> => self.onError(cleanup)
 }

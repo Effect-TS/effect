@@ -1,7 +1,9 @@
 import { Cause } from "../../Cause"
-import type { Exit } from "../definition"
-import { failCause } from "./failCause"
+import { Exit } from "../definition"
 
+/**
+ * @tsplus static ets/ExitOps fail
+ */
 export function fail<E>(error: E): Exit<E, never> {
-  return failCause(Cause.fail(error))
+  return Exit.failCause(Cause.fail(error))
 }

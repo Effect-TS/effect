@@ -13,5 +13,5 @@ export function die(
   defect: LazyArg<unknown>,
   __etsTrace?: string
 ): Managed<unknown, never, never> {
-  return Managed.failCause(Cause.die(defect))
+  return Managed.failCause(Cause.die(defect()))
 }

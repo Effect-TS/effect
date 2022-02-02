@@ -1,4 +1,3 @@
-import { squashWith_ } from "../../Cause/operations/squashWith"
 import { Effect } from "../definition"
 
 /**
@@ -14,7 +13,7 @@ export function absorbWith_<R, A, E>(
 ) {
   return self
     .sandbox()
-    .foldEffect((_) => Effect.failNow(squashWith_(_, f)), Effect.succeedNow)
+    .foldEffect((cause) => Effect.failNow(cause.squashWith(f)), Effect.succeedNow)
 }
 
 /**
@@ -24,5 +23,5 @@ export function absorbWith_<R, A, E>(
  * @ets_data_first absorbWith_
  */
 export function absorbWith<E>(f: (e: E) => unknown, __etsTrace?: string) {
-  return <R, A>(self: Effect<R, E, A>): Effect<R, unknown, A> => absorbWith_(self, f)
+  return <R, A>(self: Effect<R, E, A>): Effect<R, unknown, A> => self.absorbWith(f)
 }

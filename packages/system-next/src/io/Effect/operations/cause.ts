@@ -1,6 +1,5 @@
 import { identity } from "../../../data/Function"
-import type { Cause } from "../../Cause"
-import { empty } from "../../Cause"
+import { Cause } from "../../Cause"
 import type { Effect, RIO } from "../definition"
 
 /**
@@ -13,5 +12,5 @@ export function cause<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
 ): RIO<R, Cause<E>> {
-  return self.foldCause(identity, () => empty)
+  return self.foldCause(identity, () => Cause.empty)
 }

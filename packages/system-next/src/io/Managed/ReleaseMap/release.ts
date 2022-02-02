@@ -47,5 +47,5 @@ export function release_(
  * @ets_data_first release_
  */
 export function release(key: number, exit: Exit<any, any>, __etsTrace?: string) {
-  return (self: ReleaseMap) => release_(self, key, exit)
+  return (self: ReleaseMap) => self.release(key, exit)
 }

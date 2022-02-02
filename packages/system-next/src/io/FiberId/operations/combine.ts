@@ -1,16 +1,21 @@
 import * as HS from "../../../collection/immutable/HashSet"
 import type { FiberId } from "../definition"
-import { Composite } from "../definition"
+import { Composite, realFiberId } from "../definition"
 
 /**
  * Combine two `FiberId`s.
+ *
+ * @tsplus operator ets/FiberId +
+ * @tsplus fluent ets/FiberId combine
  */
 export function combine_(self: FiberId, that: FiberId): FiberId {
+  realFiberId(self)
   switch (self._tag) {
     case "None": {
       return that
     }
     case "Runtime": {
+      realFiberId(that)
       switch (that._tag) {
         case "None": {
           return self
@@ -29,6 +34,7 @@ export function combine_(self: FiberId, that: FiberId): FiberId {
       }
     }
     case "Composite": {
+      realFiberId(that)
       switch (that._tag) {
         case "None": {
           return self
@@ -50,5 +56,5 @@ export function combine_(self: FiberId, that: FiberId): FiberId {
  * @ets_data_first combine_
  */
 export function combine(that: FiberId) {
-  return (self: FiberId): FiberId => combine_(self, that)
+  return (self: FiberId): FiberId => self + that
 }

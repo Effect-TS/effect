@@ -1,4 +1,4 @@
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { RIO } from "../definition"
 import { Effect } from "../definition"
 
@@ -11,10 +11,9 @@ import { Effect } from "../definition"
 export function option<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
-): RIO<R, O.Option<A>> {
+): RIO<R, Option<A>> {
   return self.foldEffect(
-    () => Effect.succeedNow(O.none),
-    (a) => Effect.succeedNow(O.some(a)),
-    __etsTrace
+    () => Effect.succeedNow(Option.none),
+    (a) => Effect.succeedNow(Option.some(a))
   )
 }

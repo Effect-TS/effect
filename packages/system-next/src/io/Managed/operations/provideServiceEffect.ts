@@ -11,18 +11,20 @@ import { Managed } from "../definition"
  *
  * @tsplus fluent ets/Managed provideServiceEffect
  */
-export function provideServiceEffect_<R, E, A, R1, E1, T>(
+export function provideServiceEffect_<R, E, A, T>(
   self: Managed<R & Has<T>, E, A>,
-  tag: Tag<T>,
-  effect: Effect<R1, E1, T>,
-  __etsTrace?: string
-): Managed<R1 & Erase<R & Has<T>, Has<T>>, E | E1, A> {
-  // @ts-expect-error
-  return Managed.environmentWithManaged((r: R & R1) =>
-    Managed.fromEffect(effect).flatMap((t) =>
-      self.provideEnvironment(mergeEnvironments(tag, r, t))
+  tag: Tag<T>
+) {
+  return <R1, E1>(
+    effect: Effect<R1, E1, T>,
+    __etsTrace?: string
+  ): Managed<R1 & Erase<R, Has<T>>, E | E1, A> =>
+    // @ts-expect-error
+    Managed.environmentWithManaged((r: R & R1) =>
+      Managed.fromEffect(effect).flatMap((t) =>
+        self.provideEnvironment(mergeEnvironments(tag, r, t))
+      )
     )
-  )
 }
 
 /**
@@ -32,10 +34,12 @@ export function provideServiceEffect_<R, E, A, R1, E1, T>(
  *
  * @ets_data_first provideServiceEffect_
  */
-export function provideServiceEffect<T>(tag: Tag<T>, __etsTrace?: string) {
+export function provideServiceEffect<T>(tag: Tag<T>) {
   return <R1, E1>(effect: Effect<R1, E1, T>) =>
     <R, E, A>(
-      self: Managed<R & Has<T>, E, A>
-    ): Managed<R1 & Erase<R & Has<T>, Has<T>>, E | E1, A> =>
-      provideServiceEffect_<R, E, A, R1, E1, T>(self, tag, effect)
+      self: Managed<R & Has<T>, E, A>,
+      __etsTrace?: string
+    ): Managed<R1 & Erase<R, Has<T>>, E | E1, A> =>
+      // @ts-expect-error
+      self.provideServiceEffect(tag)(effect)
 }

@@ -1,19 +1,11 @@
-import type { Chunk } from "../../collection/immutable/Chunk/_definition"
-import { fill as chunkFill } from "../../collection/immutable/Chunk/api/fill"
-import { from as chunkFrom } from "../../collection/immutable/Chunk/core"
-import * as E from "../../data/Either"
+import { Chunk } from "../../collection/immutable/Chunk"
+import { Either } from "../../data/Either"
 import type { LazyArg, Predicate, Refinement } from "../../data/Function"
 import { constVoid, identity } from "../../data/Function"
 import { NoSuchElementException } from "../../data/GlobalExceptions"
-import * as O from "../../data/Option"
+import { Option } from "../../data/Option"
 import { RuntimeError } from "../../io/Cause"
-import type { Effect } from "../../io/Effect"
-import { absolveNow as absolve_1 } from "../../io/Effect/operations/absolve"
-import { async as effectAsync } from "../../io/Effect/operations/async"
-import { ensuring_ } from "../../io/Effect/operations/ensuring"
-import { environmentWithEffect } from "../../io/Effect/operations/environmentWithEffect"
-import { succeedWith } from "../../io/Effect/operations/succeedWith"
-import { suspendSucceedWith } from "../../io/Effect/operations/suspendSucceedWith"
+import { Effect } from "../../io/Effect"
 import { AtomicBoolean } from "../../support/AtomicBoolean"
 import * as P from "./_internal/primitives"
 import { tryCommit, tryCommitAsync } from "./Journal"
@@ -70,9 +62,9 @@ export function accessM<R0, R, E, A>(f: (r: R0) => P.STM<R, E, A>) {
  * operation of `STM.either`.
  */
 export function absolve<R, E, E1, A>(
-  z: P.STM<R, E, E.Either<E1, A>>
+  z: P.STM<R, E, Either<E1, A>>
 ): P.STM<R, E | E1, A> {
-  return P.chain_(z, E.fold(P.failNow, P.succeedNow))
+  return P.chain_(z, (_) => _.fold(P.failNow, P.succeedNow))
 }
 
 /**
@@ -115,15 +107,15 @@ export function as<A, B>(b: B): <R, E>(self: P.STM<R, E, A>) => P.STM<R, E, B> {
 /**
  * Maps the success value of this effect to an optional value.
  */
-export function asSome<R, E, A>(self: P.STM<R, E, A>): P.STM<R, E, O.Option<A>> {
-  return P.map_(self, O.some)
+export function asSome<R, E, A>(self: P.STM<R, E, A>): P.STM<R, E, Option<A>> {
+  return P.map_(self, Option.some)
 }
 
 /**
  * Maps the error value of this effect to an optional value.
  */
-export function asSomeError<R, E, A>(self: P.STM<R, E, A>): P.STM<R, O.Option<E>, A> {
-  return mapError_(self, O.some)
+export function asSomeError<R, E, A>(self: P.STM<R, E, A>): P.STM<R, Option<E>, A> {
+  return mapError_(self, Option.some)
 }
 
 /**
@@ -173,7 +165,7 @@ function _catch<N extends keyof E, K extends E[N] & string, E, R1, E1, A1>(
       if (tag in e && e[tag] === k) {
         return f(e as any)
       }
-      return P.fail(e as any)
+      return P.fail<any>(e)
     })
 }
 
@@ -190,7 +182,7 @@ export function catch_<N extends keyof E, K extends E[N] & string, E, R, A, R1, 
     if (tag in e && e[tag] === k) {
       return f(e as any)
     }
-    return P.fail(e as any)
+    return P.fail<any>(e)
   })
 }
 
@@ -231,7 +223,7 @@ export function catchTag_<
     if ("_tag" in e && e["_tag"] === k) {
       return f(e as any)
     }
-    return P.fail(e as any)
+    return P.fail<any>(e)
   })
 }
 
@@ -240,11 +232,11 @@ export function catchTag_<
  */
 export function catchSome_<R, E, A, R1, E1, B>(
   self: P.STM<R, E, A>,
-  f: (e: E) => O.Option<P.STM<R1, E1, B>>
+  f: (e: E) => Option<P.STM<R1, E1, B>>
 ): P.STM<R1 & R, E | E1, A | B> {
   return P.catchAll_(
     self,
-    (e): P.STM<R1, E | E1, A | B> => O.fold_(f(e), () => P.failNow(e), identity)
+    (e): P.STM<R1, E | E1, A | B> => f(e).fold(P.failNow(e), identity)
   )
 }
 
@@ -254,7 +246,7 @@ export function catchSome_<R, E, A, R1, E1, B>(
  * @ets_data_first catchSome_
  */
 export function catchSome<E, R1, E1, B>(
-  f: (e: E) => O.Option<P.STM<R1, E1, B>>
+  f: (e: E) => Option<P.STM<R1, E1, B>>
 ): <R, A>(self: P.STM<R, E, A>) => P.STM<R1 & R, E | E1, A | B> {
   return (self) => catchSome_(self, f)
 }
@@ -265,9 +257,9 @@ export function catchSome<E, R1, E1, B>(
  */
 export function continueOrRetryM_<R, E, A, R2, E2, A2>(
   fa: P.STM<R, E, A>,
-  pf: (a: A) => O.Option<P.STM<R2, E2, A2>>
+  pf: (a: A) => Option<P.STM<R2, E2, A2>>
 ): P.STM<R2 & R, E | E2, A2> {
-  return P.chain_(fa, (a): P.STM<R2, E2, A2> => O.getOrElse_(pf(a), () => P.retry))
+  return P.chain_(fa, (a): P.STM<R2, E2, A2> => pf(a).getOrElse(P.retry))
 }
 
 /**
@@ -277,7 +269,7 @@ export function continueOrRetryM_<R, E, A, R2, E2, A2>(
  * @ets_data_first continueOrRetryM_
  */
 export function continueOrRetryM<A, R2, E2, A2>(
-  pf: (a: A) => O.Option<P.STM<R2, E2, A2>>
+  pf: (a: A) => Option<P.STM<R2, E2, A2>>
 ): <R, E>(fa: P.STM<R, E, A>) => P.STM<R2 & R, E | E2, A2> {
   return (fa) => continueOrRetryM_(fa, pf)
 }
@@ -288,9 +280,9 @@ export function continueOrRetryM<A, R2, E2, A2>(
  */
 export function continueOrRetry_<R, E, A, A2>(
   fa: P.STM<R, E, A>,
-  pf: (a: A) => O.Option<A2>
+  pf: (a: A) => Option<A2>
 ) {
-  return continueOrRetryM_(fa, (x) => O.map_(pf(x), P.succeedNow))
+  return continueOrRetryM_(fa, (x) => pf(x).map(P.succeedNow))
 }
 
 /**
@@ -299,7 +291,7 @@ export function continueOrRetry_<R, E, A, A2>(
  *
  * @ets_data_first continueOrRetry_
  */
-export function continueOrRetry<A, A2>(pf: (a: A) => O.Option<A2>) {
+export function continueOrRetry<A, A2>(pf: (a: A) => Option<A2>) {
   return <R, E>(fa: P.STM<R, E, A>) => continueOrRetry_(fa, pf)
 }
 
@@ -310,12 +302,9 @@ export function continueOrRetry<A, A2>(pf: (a: A) => O.Option<A2>) {
 export function continueOrFailM_<R, E, E1, A, R2, E2, A2>(
   fa: P.STM<R, E, A>,
   e: E1,
-  pf: (a: A) => O.Option<P.STM<R2, E2, A2>>
+  pf: (a: A) => Option<P.STM<R2, E2, A2>>
 ) {
-  return P.chain_(
-    fa,
-    (a): P.STM<R2, E1 | E2, A2> => O.getOrElse_(pf(a), () => P.failNow(e))
-  )
+  return P.chain_(fa, (a): P.STM<R2, E1 | E2, A2> => pf(a).getOrElse(P.failNow(e)))
 }
 
 /**
@@ -326,7 +315,7 @@ export function continueOrFailM_<R, E, E1, A, R2, E2, A2>(
  */
 export function continueOrFailM<E1, A, R2, E2, A2>(
   e: E1,
-  pf: (a: A) => O.Option<P.STM<R2, E2, A2>>
+  pf: (a: A) => Option<P.STM<R2, E2, A2>>
 ) {
   return <R, E>(fa: P.STM<R, E, A>) => continueOrFailM_(fa, e, pf)
 }
@@ -338,9 +327,9 @@ export function continueOrFailM<E1, A, R2, E2, A2>(
 export function continueOrFail_<R, E, E1, A, A2>(
   fa: P.STM<R, E, A>,
   e: E1,
-  pf: (a: A) => O.Option<A2>
+  pf: (a: A) => Option<A2>
 ) {
-  return continueOrFailM_(fa, e, (x) => O.map_(pf(x), P.succeedNow))
+  return continueOrFailM_(fa, e, (x) => pf(x).map(P.succeedNow))
 }
 
 /**
@@ -349,7 +338,7 @@ export function continueOrFail_<R, E, E1, A, A2>(
  *
  * @ets_data_first continueOrFail_
  */
-export function continueOrFail<E1, A, A2>(e: E1, pf: (a: A) => O.Option<A2>) {
+export function continueOrFail<E1, A, A2>(e: E1, pf: (a: A) => Option<A2>) {
   return <R, E>(fa: P.STM<R, E, A>) => continueOrFail_(fa, e, pf)
 }
 
@@ -360,12 +349,9 @@ export function continueOrFail<E1, A, A2>(e: E1, pf: (a: A) => O.Option<A2>) {
 export function continueOrFailWithSTM_<R, E, E1, A, R2, E2, A2>(
   fa: P.STM<R, E, A>,
   e: () => E1,
-  pf: (a: A) => O.Option<P.STM<R2, E2, A2>>
+  pf: (a: A) => Option<P.STM<R2, E2, A2>>
 ) {
-  return P.chain_(
-    fa,
-    (a): P.STM<R2, E1 | E2, A2> => O.getOrElse_(pf(a), () => P.fail(e))
-  )
+  return P.chain_(fa, (a): P.STM<R2, E1 | E2, A2> => pf(a).getOrElse(P.fail(e)))
 }
 
 /**
@@ -376,7 +362,7 @@ export function continueOrFailWithSTM_<R, E, E1, A, R2, E2, A2>(
  */
 export function continueOrFailWithSTM<E1, A, R2, E2, A2>(
   e: () => E1,
-  pf: (a: A) => O.Option<P.STM<R2, E2, A2>>
+  pf: (a: A) => Option<P.STM<R2, E2, A2>>
 ) {
   return <R, E>(fa: P.STM<R, E, A>) => continueOrFailWithSTM_(fa, e, pf)
 }
@@ -388,9 +374,9 @@ export function continueOrFailWithSTM<E1, A, R2, E2, A2>(
 export function continueOrFailWith_<R, E, E1, A, A2>(
   fa: P.STM<R, E, A>,
   e: () => E1,
-  pf: (a: A) => O.Option<A2>
+  pf: (a: A) => Option<A2>
 ) {
-  return continueOrFailWithSTM_(fa, e, (x) => O.map_(pf(x), P.succeedNow))
+  return continueOrFailWithSTM_(fa, e, (x) => pf(x).map(P.succeedNow))
 }
 
 /**
@@ -399,7 +385,7 @@ export function continueOrFailWith_<R, E, E1, A, A2>(
  *
  * @ets_data_first continueOrFailWith_
  */
-export function continueOrFailWith<E1, A, A2>(e: () => E1, pf: (a: A) => O.Option<A2>) {
+export function continueOrFailWith<E1, A, A2>(e: () => E1, pf: (a: A) => Option<A2>) {
   return <R, E>(fa: P.STM<R, E, A>) => continueOrFailWith_(fa, e, pf)
 }
 
@@ -461,8 +447,8 @@ export function compose<R, R1, E1>(that: P.STM<R1, E1, R>) {
  * Commits this transaction atomically.
  */
 export function commit<R, E, A>(self: P.STM<R, E, A>) {
-  return environmentWithEffect((r: R) =>
-    suspendSucceedWith((_, fiberId) => {
+  return Effect.environmentWithEffect((r: R) =>
+    Effect.suspendSucceedWith((_, fiberId) => {
       const v = tryCommit(fiberId, self, r)
 
       switch (v._typeId) {
@@ -472,11 +458,11 @@ export function commit<R, E, A>(self: P.STM<R, E, A>) {
         case SuspendTypeId: {
           const txnId = makeTxnId()
           const done = new AtomicBoolean(false)
-          const interrupt = succeedWith(() => done.set(true))
-          const io = effectAsync(
+          const interrupt = Effect.succeedWith(() => done.set(true))
+          const io = Effect.async(
             tryCommitAsync(v.journal, fiberId, self, txnId, done, r)
           )
-          return ensuring_(io, interrupt)
+          return io.ensuring(interrupt)
         }
       }
     })
@@ -488,7 +474,7 @@ export function commit<R, E, A>(self: P.STM<R, E, A>) {
  * is a success or a failure.
  */
 export function commitEither<R, E, A>(self: P.STM<R, E, A>): Effect<R, E, A> {
-  return absolve_1(commit(either(self)))
+  return commit(either(self)).absolve()
 }
 
 /**
@@ -512,12 +498,8 @@ export function dieMessageWith(message: () => string): P.STM<unknown, never, nev
 /**
  * Converts the failure channel into an `Either`.
  */
-export function either<R, E, A>(self: P.STM<R, E, A>): P.STM<R, never, E.Either<E, A>> {
-  return fold_(
-    self,
-    (x) => E.left(x),
-    (x) => E.right(x)
-  )
+export function either<R, E, A>(self: P.STM<R, E, A>): P.STM<R, never, Either<E, A>> {
+  return fold_(self, Either.left, Either.right)
 }
 
 /**
@@ -769,7 +751,7 @@ export function flatten<R, E, R1, E1, B>(
  * @ets_data_first flattenErrorOptionWith_
  */
 export function flattenErrorOptionWith<E2>(def: () => E2) {
-  return <R, E, A>(self: P.STM<R, O.Option<E>, A>): P.STM<R, E | E2, A> =>
+  return <R, E, A>(self: P.STM<R, Option<E>, A>): P.STM<R, E | E2, A> =>
     flattenErrorOptionWith_(self, def)
 }
 
@@ -777,10 +759,10 @@ export function flattenErrorOptionWith<E2>(def: () => E2) {
  * Unwraps the optional error, defaulting to the provided value.
  */
 export function flattenErrorOptionWith_<R, E, A, E2>(
-  self: P.STM<R, O.Option<E>, A>,
+  self: P.STM<R, Option<E>, A>,
   def: () => E2
 ): P.STM<R, E | E2, A> {
-  return mapError_(self, O.fold(def, identity))
+  return mapError_(self, (_) => _.fold(def, identity))
 }
 
 /**
@@ -789,7 +771,7 @@ export function flattenErrorOptionWith_<R, E, A, E2>(
  * @ets_data_first flattenErrorOption_
  */
 export function flattenErrorOption<E2>(def: E2) {
-  return <R, E, A>(self: P.STM<R, O.Option<E>, A>): P.STM<R, E | E2, A> =>
+  return <R, E, A>(self: P.STM<R, Option<E>, A>): P.STM<R, E | E2, A> =>
     flattenErrorOption_(self, def)
 }
 
@@ -797,13 +779,10 @@ export function flattenErrorOption<E2>(def: E2) {
  * Unwraps the optional error, defaulting to the provided value.
  */
 export function flattenErrorOption_<R, E, A, E2>(
-  self: P.STM<R, O.Option<E>, A>,
+  self: P.STM<R, Option<E>, A>,
   def: E2
 ): P.STM<R, E | E2, A> {
-  return mapError_(
-    self,
-    O.fold(() => def, identity)
-  )
+  return mapError_(self, (_) => _.fold(() => def, identity))
 }
 
 /**
@@ -843,20 +822,20 @@ export function forEach<A, R, E, B>(
 /**
  * Lifts an `Either` into a `STM`.
  */
-export function fromEither<E, A>(e: LazyArg<E.Either<E, A>>): P.STM<unknown, E, A> {
+export function fromEither<E, A>(e: LazyArg<Either<E, A>>): P.STM<unknown, E, A> {
   return suspend(() => {
-    return E.fold_(e(), P.failNow, P.succeedNow)
+    return e().fold(P.failNow, P.succeedNow)
   })
 }
 
 /**
  * Unwraps the optional success of this effect, but can fail with an None value.
  */
-export function get<R, E, A>(self: P.STM<R, E, O.Option<A>>): P.STM<R, O.Option<E>, A> {
+export function get<R, E, A>(self: P.STM<R, E, Option<A>>): P.STM<R, Option<E>, A> {
   return P.foldSTM_(
     self,
-    (x) => P.failNow(O.some(x)),
-    O.fold(() => P.failNow(O.none), P.succeedNow)
+    (x) => P.failNow(Option.some(x)),
+    (_) => _.fold(() => P.failNow(Option.none), P.succeedNow)
   )
 }
 
@@ -864,16 +843,14 @@ export function get<R, E, A>(self: P.STM<R, E, O.Option<A>>): P.STM<R, O.Option<
  * Returns a successful effect with the head of the list if the list is
  * non-empty or fails with the error `None` if the list is empty.
  */
-export function head<R, E, A>(
-  self: P.STM<R, E, Iterable<A>>
-): P.STM<R, O.Option<E>, A> {
+export function head<R, E, A>(self: P.STM<R, E, Iterable<A>>): P.STM<R, Option<E>, A> {
   return P.foldSTM_(
     self,
-    (x) => P.failNow(O.some(x)),
+    (x) => P.failNow(Option.some(x)),
     (x) => {
       const it = x[Symbol.iterator]()
       const next = it.next()
-      return next.done ? P.failNow(O.none) : P.succeedNow(next.value)
+      return next.done ? P.failNow(Option.none) : P.succeedNow(next.value)
     }
   )
 }
@@ -911,12 +888,12 @@ export function isSuccess<R, E, A>(self: P.STM<R, E, A>) {
  * Returns a successful effect if the value is `Left`, or fails with the error `None`.
  */
 export function left<R, E, B, C>(
-  self: P.STM<R, E, E.Either<B, C>>
-): P.STM<R, O.Option<E>, B> {
+  self: P.STM<R, E, Either<B, C>>
+): P.STM<R, Option<E>, B> {
   return P.foldSTM_(
     self,
-    (e) => P.failNow(O.some(e)),
-    E.fold(P.succeedNow, () => P.failNow(O.none))
+    (e) => P.failNow(Option.some(e)),
+    (_) => _.fold(P.succeedNow, () => P.failNow(Option.none))
   )
 }
 
@@ -924,13 +901,10 @@ export function left<R, E, B, C>(
  * Returns a successful effect if the value is `Left`, or fails with the error e.
  */
 export function leftOrFail_<R, E, B, C, E1>(
-  self: P.STM<R, E, E.Either<B, C>>,
+  self: P.STM<R, E, Either<B, C>>,
   orFail: (c: C) => E1
 ) {
-  return P.chain_(
-    self,
-    E.fold(P.succeedNow, (x) => P.fail(() => orFail(x)))
-  )
+  return P.chain_(self, (_) => _.fold(P.succeedNow, (x) => P.fail(orFail(x))))
 }
 
 /**
@@ -939,13 +913,13 @@ export function leftOrFail_<R, E, B, C, E1>(
  * @ets_data_first leftOrFail_
  */
 export function leftOrFail<C, E1>(orFail: (c: C) => E1) {
-  return <R, E, B>(self: P.STM<R, E, E.Either<B, C>>) => leftOrFail_(self, orFail)
+  return <R, E, B>(self: P.STM<R, E, Either<B, C>>) => leftOrFail_(self, orFail)
 }
 
 /**
  * Returns a successful effect if the value is `Left`, or fails with a `NoSuchElementException`.
  */
-export function leftOrFailException<R, E, B, C>(self: P.STM<R, E, E.Either<B, C>>) {
+export function leftOrFailException<R, E, B, C>(self: P.STM<R, E, Either<B, C>>) {
   return leftOrFail_(self, () => new NoSuchElementException())
 }
 
@@ -955,7 +929,7 @@ export function leftOrFailException<R, E, B, C>(self: P.STM<R, E, E.Either<B, C>
  * @ets_data_first join_
  */
 export function join<R1, E1, A1>(that: P.STM<R1, E1, A1>) {
-  return <R, E, A>(self: P.STM<R, E, A>): P.STM<E.Either<R, R1>, E | E1, A | A1> => {
+  return <R, E, A>(self: P.STM<R, E, A>): P.STM<Either<R, R1>, E | E1, A | A1> => {
     return join_(self, that)
   }
 }
@@ -966,11 +940,10 @@ export function join<R1, E1, A1>(that: P.STM<R1, E1, A1>) {
 export function join_<R, E, A, R1, E1, A1>(
   self: P.STM<R, E, A>,
   that: P.STM<R1, E1, A1>
-): P.STM<E.Either<R, R1>, E | E1, A | A1> {
+): P.STM<Either<R, R1>, E | E1, A | A1> {
   return accessM(
-    (_: E.Either<R, R1>): P.STM<unknown, E | E1, A | A1> =>
-      E.fold_(
-        _,
+    (_: Either<R, R1>): P.STM<unknown, E | E1, A | A1> =>
+      _.fold(
         (r) => provideEnvironment_(self, r),
         (r1) => provideEnvironment_(that, r1)
       )
@@ -983,13 +956,12 @@ export function join_<R, E, A, R1, E1, A1>(
 export function joinEither_<R, E, A, R1, E1, A1>(
   self: P.STM<R, E, A>,
   that: P.STM<R1, E1, A1>
-): P.STM<E.Either<R, R1>, E | E1, E.Either<A, A1>> {
+): P.STM<Either<R, R1>, E | E1, Either<A, A1>> {
   return accessM(
-    (_: E.Either<R, R1>): P.STM<unknown, E | E1, E.Either<A, A1>> =>
-      E.fold_(
-        _,
-        (r) => P.map_(provideEnvironment_(self, r), E.left),
-        (r1) => P.map_(provideEnvironment_(that, r1), E.right)
+    (_: Either<R, R1>): P.STM<unknown, E | E1, Either<A, A1>> =>
+      _.fold(
+        (r) => P.map_(provideEnvironment_(self, r), Either.left),
+        (r1) => P.map_(provideEnvironment_(that, r1), Either.right)
       )
   )
 }
@@ -999,7 +971,7 @@ export function joinEither_<R, E, A, R1, E1, A1>(
  */
 export function joinEither<R, E, A, R1, E1, A1>(
   that: P.STM<R1, E1, A1>
-): (self: P.STM<R, E, A>) => P.STM<E.Either<R, R1>, E | E1, E.Either<A, A1>> {
+): (self: P.STM<R, E, A>) => P.STM<Either<R, R1>, E | E1, Either<A, A1>> {
   return (self) => joinEither_(self, that)
 }
 
@@ -1156,8 +1128,8 @@ export function tap<A, R1, E1, B>(
 /**
  * Returns an effect with the value on the left part.
  */
-export function toLeft<A>(a: LazyArg<A>): P.STM<unknown, never, E.Either<A, never>> {
-  return P.chain_(P.succeed(a), (x) => P.succeedNow(E.left(x)))
+export function toLeft<A>(a: LazyArg<A>): P.STM<unknown, never, Either<A, never>> {
+  return P.chain_(P.succeed(a), (x) => P.succeedNow(Either.left(x)))
 }
 
 /**
@@ -1193,7 +1165,7 @@ export function replicate_<R, E, A>(
   that: P.STM<R, E, A>,
   n: number
 ): Chunk<P.STM<R, E, A>> {
-  return chunkFill(n, () => that)
+  return Chunk.fill(n, () => that)
 }
 
 /**
@@ -1213,21 +1185,21 @@ export function replicate(n: number) {
 export function collectAll<R, E, A>(
   input: Iterable<P.STM<R, E, A>>
 ): P.STM<R, E, Chunk<A>> {
-  return P.map_(forEach_(input, identity), chunkFrom)
+  return P.map_(forEach_(input, identity), Chunk.from)
 }
 
 /**
  * Lifts an `Option` into a `STM` but preserves the error as an option in the error channel, making it easier to compose
  * in some scenarios.
  */
-export function fromOption<A>(o: O.Option<A>): P.STM<unknown, O.Option<never>, A> {
-  return o._tag === "None" ? P.fail(() => O.none) : P.succeed(() => o.value)
+export function fromOption<A>(o: Option<A>): P.STM<unknown, Option<never>, A> {
+  return o._tag === "None" ? P.fail(() => Option.none) : P.succeed(() => o.value)
 }
 
 /**
  * Lifts a nullable value into a `STM` but preserves the error as an option in the error channel, making it easier to compose
  * in some scenarios.
  */
-export function fromNullable<A>(o: A): P.STM<unknown, O.Option<never>, NonNullable<A>> {
-  return fromOption(O.fromNullable(o))
+export function fromNullable<A>(o: A): P.STM<unknown, Option<never>, NonNullable<A>> {
+  return fromOption(Option(o))
 }

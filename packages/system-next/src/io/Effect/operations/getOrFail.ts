@@ -1,5 +1,6 @@
+import type { LazyArg } from "../../../data/Function"
 import { NoSuchElementException } from "../../../data/GlobalExceptions"
-import type * as O from "../../../data/Option"
+import type { Option } from "../../../data/Option"
 import type { IO } from "../definition"
 import { Effect } from "../definition"
 
@@ -10,8 +11,8 @@ import { Effect } from "../definition"
  * @tsplus static ets/EffectOps getOrFail
  */
 export function getOrFail<A>(
-  v: O.Option<A>,
+  option: LazyArg<Option<A>>,
   __etsTrace?: string
 ): IO<NoSuchElementException, A> {
-  return Effect.getOrFailWith(v, () => new NoSuchElementException())
+  return Effect.getOrFailWith(option, new NoSuchElementException())
 }

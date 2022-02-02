@@ -1,10 +1,7 @@
 import type { Has, Tag } from "../../data/Has"
 import { tag } from "../../data/Has"
-import type { Effect, UIO } from "../Effect/definition"
-import { provideServiceEffect } from "../Effect/operations/provideServiceEffect"
-import { serviceWith } from "../Effect/operations/serviceWith"
-import { succeed } from "../Effect/operations/succeed"
-import { unit } from "../Effect/operations/unit"
+import type { UIO } from "../Effect"
+import { Effect } from "../Effect"
 import { Clock, ClockId } from "./definition"
 
 export const HasTestClock: Tag<TestClock> = tag<TestClock>(ClockId)
@@ -12,24 +9,27 @@ export const HasTestClock: Tag<TestClock> = tag<TestClock>(ClockId)
 export class TestClock extends Clock {
   private time = new Date().getTime()
 
-  readonly currentTime: UIO<number> = succeed(() => this.time)
+  readonly currentTime: UIO<number> = Effect.succeed(this.time)
 
-  readonly sleep: (ms: number) => UIO<void> = () => unit
+  readonly sleep = (ms: number, __etsTrace?: string): UIO<void> => Effect.unit
 
-  readonly advance = (ms: number) =>
-    succeed(() => {
+  readonly advance = (ms: number, __etsTrace?: string): UIO<void> =>
+    Effect.succeed(() => {
       this.time = this.time + ms
     })
 
-  static advance = (ms: number) => serviceWith(HasTestClock)((_) => _.advance(ms))
+  static advance = (
+    ms: number,
+    __etsTrace?: string
+  ): Effect<Has<TestClock>, never, UIO<void>> =>
+    Effect.serviceWith(HasTestClock)((_) => _.advance(ms))
 }
 
 export function provideTestClock<R, E, A>(
   self: Effect<R & Has<TestClock>, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Effect<R, E, A> {
-  return provideServiceEffect(HasTestClock)(
-    succeed(() => new TestClock()),
-    __trace
-  )(self)
+  return self.provideServiceEffect(HasTestClock)(
+    Effect.succeed(new TestClock())
+  ) as Effect<R, E, A>
 }

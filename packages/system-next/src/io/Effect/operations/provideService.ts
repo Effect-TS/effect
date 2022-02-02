@@ -1,30 +1,32 @@
+import type { LazyArg } from "../../../data/Function"
 import type { Has, Tag } from "../../../data/Has"
+import type { Erase } from "../../../data/Utils"
 import { Effect } from "../definition"
 
 /**
- * Provides the service with the required service entry.
+ * Provides the effect with the single service it requires. If the effect
+ * requires more than one service use `provideEnvironment` instead.
  *
  * @tsplus fluent ets/Effect provideService
  */
 export function provideService_<R, E, A, T>(
   self: Effect<R & Has<T>, E, A>,
-  _: Tag<T>,
-  service: T,
-  __etsTrace?: string
-): Effect<R, E, A> {
-  return self.provideServiceEffect(
-    _,
-    Effect.succeed(() => service)
-  ) as Effect<R, E, A>
+  tag: Tag<T>
+) {
+  return (service: LazyArg<T>, __etsTrace?: string): Effect<Erase<R, Has<T>>, E, A> =>
+    // @ts-expect-error
+    self.provideServiceEffect(tag)(Effect.succeed(service))
 }
 
 /**
- * Provides the service with the required service entry.
+ * Provides the effect with the single service it requires. If the effect
+ * requires more than one service use `provideEnvironment` instead.
  *
  * @ets_data_first provideService
  */
-export function provideService<T>(_: Tag<T>) {
-  return (service: T, __etsTrace?: string) =>
-    <R, E, A>(self: Effect<R & Has<T>, E, A>): Effect<R, E, A> =>
-      provideService_<R, E, A, T>(self, _, service)
+export function provideService<T>(tag: Tag<T>) {
+  return (service: LazyArg<T>, __etsTrace?: string) =>
+    <R, E, A>(self: Effect<R & Has<T>, E, A>): Effect<Erase<R, Has<T>>, E, A> =>
+      // @ts-expect-error
+      self.provideService(tag)(service)
 }

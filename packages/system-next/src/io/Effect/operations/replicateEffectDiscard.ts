@@ -21,5 +21,5 @@ export function replicateEffectDiscard_<R, E, A>(
  * @ets_data_first replicateEffectDiscard_
  */
 export function replicateEffectDiscard(n: number, __etsTrace?: string) {
-  return <R, E, A>(self: Effect<R, E, A>) => replicateEffectDiscard_(self, n)
+  return <R, E, A>(self: Effect<R, E, A>) => self.replicateEffectDiscard(n)
 }

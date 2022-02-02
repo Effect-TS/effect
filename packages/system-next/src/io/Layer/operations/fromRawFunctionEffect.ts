@@ -1,7 +1,5 @@
-import type { Effect } from "../../Effect/definition/base"
-import { environmentWithEffect } from "../../Effect/operations/environmentWithEffect"
-import type { Layer } from "../definition"
-import { fromRawEffect } from "./fromRawEffect"
+import { Effect } from "../../Effect/definition/base"
+import { Layer } from "../definition"
 
 /**
  * Creates a layer from an effectful function
@@ -9,5 +7,5 @@ import { fromRawEffect } from "./fromRawEffect"
 export function fromRawFunctionEffect<A, R, E, B>(
   f: (a: A) => Effect<R, E, B>
 ): Layer<R & A, E, B> {
-  return fromRawEffect(environmentWithEffect(f))
+  return Layer.fromRawEffect(Effect.environmentWithEffect(f))
 }

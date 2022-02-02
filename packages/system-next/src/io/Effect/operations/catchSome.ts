@@ -1,6 +1,4 @@
-import * as E from "../../../data/Either"
-import * as O from "../../../data/Option"
-import * as Cause from "../../Cause"
+import type { Option } from "../../../data/Option"
 import { Effect } from "../definition"
 
 /**
@@ -10,16 +8,14 @@ import { Effect } from "../definition"
  */
 export function catchSome_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
-  f: (e: E) => O.Option<Effect<R2, E2, A2>>,
+  f: (e: E) => Option<Effect<R2, E2, A2>>,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, A | A2> {
   return self.foldCauseEffect(
     (cause): Effect<R2, E | E2, A2> =>
-      E.fold_(
-        Cause.failureOrCause(cause),
-        (x) => O.getOrElse_(f(x), () => Effect.failCauseNow(cause)),
-        Effect.failCauseNow
-      ),
+      cause
+        .failureOrCause()
+        .fold((x) => f(x).getOrElse(Effect.failCauseNow(cause)), Effect.failCauseNow),
     Effect.succeedNow
   )
 }
@@ -30,8 +26,8 @@ export function catchSome_<R, E, A, R2, E2, A2>(
  * @ets_data_first catchSome_
  */
 export function catchSome<R, E, A, R2, E2, A2>(
-  f: (e: E) => O.Option<Effect<R2, E2, A2>>,
+  f: (e: E) => Option<Effect<R2, E2, A2>>,
   __etsTrace?: string
 ) {
-  return (self: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> => catchSome_(self, f)
+  return (self: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> => self.catchSome(f)
 }

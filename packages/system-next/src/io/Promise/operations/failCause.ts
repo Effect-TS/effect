@@ -1,19 +1,21 @@
+import type { LazyArg } from "../../../data/Function"
 import type { Cause } from "../../Cause"
 import type { UIO } from "../../Effect"
-import { failCause as effectFailCause } from "../../Effect/operations/failCause"
+import { Effect } from "../../Effect"
 import type { Promise } from "../definition"
-import { completeWith_ } from "./completeWith"
 
 /**
  * Fails the promise with the specified cause, which will be propagated to all
  * fibers waiting on the value of the promise.
+ *
+ * @tsplus fluent ets/Promise failCause
  */
 export function failCause_<E, A>(
   self: Promise<E, A>,
-  cause: Cause<E>,
-  __trace?: string
+  cause: LazyArg<Cause<E>>,
+  __etsTrace?: string
 ): UIO<boolean> {
-  return completeWith_(self, effectFailCause(cause), __trace)
+  return self.completeWith(Effect.failCause(cause))
 }
 
 /**
@@ -22,6 +24,6 @@ export function failCause_<E, A>(
  *
  * @ets_data_first failCause_
  */
-export function failCause<E>(cause: Cause<E>, __trace?: string) {
-  return <A>(self: Promise<E, A>): UIO<boolean> => failCause_(self, cause, __trace)
+export function failCause<E>(cause: LazyArg<Cause<E>>, __etsTrace?: string) {
+  return <A>(self: Promise<E, A>): UIO<boolean> => self.failCause(cause)
 }

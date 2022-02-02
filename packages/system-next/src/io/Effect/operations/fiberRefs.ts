@@ -1,5 +1,5 @@
 import * as M from "../../../collection/immutable/Map"
-import * as O from "../../../data/Option"
+import type { Option } from "../../../data/Option"
 import type { FiberRef, Runtime } from "../../FiberRef"
 import { set_ as fiberRefSet_ } from "../../FiberRef/operations/set"
 import type { UIO } from "../definition"
@@ -38,7 +38,7 @@ export class FiberRefs {
    * Gets the value of the specified `FiberRef` in this collection of `FiberRef`
    * values if it exists or `None` otherwise.
    */
-  get<A>(fiberRef: FiberRef.Runtime<A>): O.Option<A> {
+  get<A>(fiberRef: FiberRef.Runtime<A>): Option<A> {
     return M.lookup_(this.#fiberRefLocals, fiberRef)
   }
 
@@ -47,7 +47,7 @@ export class FiberRefs {
    * values if it exists or the `initial` value of the `FiberRef` otherwise.
    */
   getOrDefault<A>(fiberRef: FiberRef.Runtime<A>): A {
-    return O.getOrElse_(this.get(fiberRef), () => (fiberRef as Runtime<A>).initial)
+    return this.get(fiberRef).getOrElse((fiberRef as Runtime<A>).initial)
   }
 }
 
@@ -68,5 +68,5 @@ export const getFiberRefs: UIO<FiberRefs> = new IFiberRefGetAll((fiberRefLocals)
  * @tsplus static ets/EffectOps setFiberRefs
  */
 export function setFiberRefs(fiberRefs: FiberRefs, __etsTrace?: string): UIO<void> {
-  return Effect.suspendSucceed(() => fiberRefs.setAll)
+  return Effect.suspendSucceed(fiberRefs.setAll)
 }

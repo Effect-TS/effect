@@ -33,5 +33,5 @@ export function foldCauseManaged<E, A, R1, E1, A1, R2, E2, A2>(
   __etsTrace?: string
 ) {
   return <R>(self: Managed<R, E, A>): Managed<R & R1 & R2, E1 | E2, A1 | A2> =>
-    foldCauseManaged_(self, failure, success)
+    self.foldCauseManaged(failure, success)
 }

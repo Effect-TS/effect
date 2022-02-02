@@ -13,7 +13,7 @@ export function collectFirst<R, E, A, B>(
   f: (a: A) => Managed<R, E, Option<B>>,
   __etsTrace?: string
 ): Managed<R, E, Option<B>> {
-  return Managed.succeed(as[Symbol.iterator]()).flatMap((iterator) => loop(iterator, f))
+  return Managed.succeed(as).flatMap((iterable) => loop(iterable[Symbol.iterator](), f))
 }
 
 function loop<R, E, A, B>(

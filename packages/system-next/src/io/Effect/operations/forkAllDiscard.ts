@@ -1,6 +1,4 @@
-import type { Effect } from "../definition"
-import { forEachDiscard_ } from "./excl-forEach"
-import { fork } from "./fork"
+import { Effect } from "../definition"
 
 /**
  * Returns an effect that forks all of the specified values, and returns a
@@ -13,5 +11,5 @@ export function forkAllDiscard<R, E, A>(
   effects: Iterable<Effect<R, E, A>>,
   __etsTrace?: string
 ): Effect<R, never, void> {
-  return forEachDiscard_(effects, fork)
+  return Effect.forEachDiscard(effects, (effect) => effect.fork())
 }

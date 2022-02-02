@@ -1,6 +1,5 @@
 import { Tuple } from "../../../collection/immutable/Tuple"
 import { Effect } from "../../Effect"
-import { zipRight_ as exitZipRight_ } from "../../Exit/operations/zipRight"
 import { Managed } from "../definition"
 
 /**
@@ -25,7 +24,7 @@ export function chain_<R, E, A, R2, E2, A2>(
               .flatMap((e1) =>
                 releaseSelf(e)
                   .exit()
-                  .flatMap((e2) => Effect.done(exitZipRight_(e1, e2)))
+                  .flatMap((e2) => Effect.done(e1.zipRight(e2)))
               ),
           b
         )

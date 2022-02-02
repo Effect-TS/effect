@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../definition"
 
 /**
@@ -6,25 +7,12 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps exists
  */
-export function exists_<R, E, A>(
-  as: Iterable<A>,
+export function exists<R, E, A>(
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, boolean>,
   __etsTrace?: string
 ): Effect<R, E, boolean> {
-  return Effect.succeed(as[Symbol.iterator]).flatMap((iterator) => loop(iterator, f))
-}
-
-/**
- * Determines whether any element of the `Iterable<A>` satisfies the effectual
- * predicate `f`.
- *
- * @ets_data_first exists_
- */
-export function exists<R, E, A>(
-  f: (a: A) => Effect<R, E, boolean>,
-  __etsTrace?: string
-) {
-  return (as: Iterable<A>): Effect<R, E, boolean> => exists_(as, f)
+  return Effect.succeed(as).flatMap((iterable) => loop(iterable[Symbol.iterator](), f))
 }
 
 function loop<R, E, A>(
@@ -37,6 +25,6 @@ function loop<R, E, A>(
     return Effect.succeedNow(false)
   }
   return f(next.value).flatMap((b) =>
-    b ? Effect.succeedNow(b) : Effect.suspendSucceed(() => loop(iterator, f))
+    b ? Effect.succeedNow(b) : Effect.suspendSucceed(loop(iterator, f))
   )
 }

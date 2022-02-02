@@ -1,4 +1,4 @@
-import type { Chunk } from "../../collection/immutable/Chunk/core"
+import type { Chunk } from "../../collection/immutable/Chunk"
 import type { Tuple } from "../../collection/immutable/Tuple"
 import { _A } from "../../support/Symbols"
 import type { UIO } from "../Effect"

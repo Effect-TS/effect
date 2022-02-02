@@ -18,9 +18,11 @@ export function filterInputEffect_<RA, RB, RC, EA, EB, EC, A, A1 extends A, B>(
     Option.some,
     identity,
     (a1) =>
-      f(a1)
-        .asSomeError()
-        .ifEffect(Effect.succeedNow(a1), Effect.failNow(Option.emptyOf())),
+      Effect.ifEffect(
+        f(a1).asSomeError(),
+        Effect.succeedNow(a1),
+        Effect.failNow(Option.emptyOf())
+      ),
     Effect.succeedNow
   )
 }

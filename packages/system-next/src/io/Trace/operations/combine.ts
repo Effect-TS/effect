@@ -1,15 +1,10 @@
-import * as Chunk from "../../../collection/immutable/Chunk/core"
-import * as FiberId from "../../FiberId/operations/combine"
 import { Trace } from "../definition"
 
 /**
  * Combine two `Trace`s.
  */
 export function combine_(self: Trace, that: Trace): Trace {
-  return new Trace(
-    FiberId.combine_(self.fiberId, that.fiberId),
-    Chunk.concat_(self.stackTrace, that.stackTrace)
-  )
+  return new Trace(self.fiberId + that.fiberId, self.stackTrace + that.stackTrace)
 }
 
 /**

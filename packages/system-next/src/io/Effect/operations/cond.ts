@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import type { IO } from "../definition"
 import { Effect } from "../definition"
 
@@ -10,9 +11,9 @@ import { Effect } from "../definition"
  * @tsplus static ets/EffectOps cond
  */
 export function cond_<E, A>(
-  predicate: () => boolean,
-  result: () => A,
-  error: () => E,
+  predicate: LazyArg<boolean>,
+  result: LazyArg<A>,
+  error: LazyArg<E>,
   __etsTrace?: string
 ): IO<E, A> {
   return Effect.suspendSucceed(() =>
@@ -28,6 +29,7 @@ export function cond_<E, A>(
  *
  * @ets_data_first cond_
  */
-export function cond<E, A>(result: () => A, error: () => E, __etsTrace?: string) {
-  return (predicate: () => boolean): IO<E, A> => cond_(predicate, result, error)
+export function cond<E, A>(result: LazyArg<A>, error: LazyArg<E>, __etsTrace?: string) {
+  return (predicate: LazyArg<boolean>): IO<E, A> =>
+    Effect.cond(predicate, result, error)
 }

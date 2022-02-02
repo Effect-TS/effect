@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import type { Supervisor } from "../../../io/Supervisor/definition"
 import type { Effect } from "../definition"
 import { ISupervise } from "../definition"
@@ -8,9 +9,9 @@ import { ISupervise } from "../definition"
  *
  * @tsplus fluent ets/Effect supervised
  */
-export function supervised_<R, E, A>(
+export function supervised_<R, E, A, X>(
   self: Effect<R, E, A>,
-  supervisor: Supervisor<any>,
+  supervisor: LazyArg<Supervisor<X>>,
   __etsTrace?: string
 ): Effect<R, E, A> {
   return new ISupervise(self, supervisor, __etsTrace)
@@ -22,7 +23,7 @@ export function supervised_<R, E, A>(
  *
  * @ets_data_first supervised_
  */
-export function supervised(supervisor: Supervisor<any>, __etsTrace?: string) {
+export function supervised<X>(supervisor: LazyArg<Supervisor<X>>, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
-    supervised_(self, supervisor)
+    self.supervised(supervisor)
 }

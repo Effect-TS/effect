@@ -8,5 +8,5 @@ import { Effect } from "../definition"
  * @tsplus fluent ets/Effect onFirst
  */
 export function onFirst<R, E, A>(self: Effect<R, E, A>, __etsTrace?: string) {
-  return self.zip(Effect.environment<R>(), __etsTrace)
+  return self.zip(Effect.environment<R>())
 }

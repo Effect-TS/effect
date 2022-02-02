@@ -22,5 +22,5 @@ export function orElseFail_<R, E, A, E2>(
  * @ets_data_first orElseFail_
  */
 export function orElseFail<E2>(e: LazyArg<E2>, __etsTrace?: string) {
-  return <R, E, A>(self: Managed<R, E, A>) => orElseFail_(self, e)
+  return <R, E, A>(self: Managed<R, E, A>) => self.orElseFail(e)
 }

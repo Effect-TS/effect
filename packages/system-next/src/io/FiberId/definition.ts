@@ -1,34 +1,60 @@
 import type { HashSet } from "../../collection/immutable/HashSet"
-import { equal } from "../../collection/immutable/HashSet"
+import * as HS from "../../collection/immutable/HashSet"
 import * as St from "../../prelude/Structural"
 
 // -----------------------------------------------------------------------------
 // Model
 // -----------------------------------------------------------------------------
 
-export const FiberIdSym = Symbol.for("@effect-ts/core/Fiber/FiberId")
+export const FiberIdSym = Symbol.for("@effect-ts/system/io/FiberId")
 export type FiberIdSym = typeof FiberIdSym
 
-export type FiberId = None | Runtime | Composite
+/**
+ * @tsplus type ets/FiberId
+ */
+export interface FiberId {
+  readonly [FiberIdSym]: FiberIdSym
+}
 
+/**
+ * @tsplus type ets/FiberId
+ */
+export interface FiberIdOps {}
+export const FiberId: FiberIdOps = {}
+
+export type RealFiberId = None | Runtime | Composite
+
+/**
+ * @ets_optimize remove
+ */
+export function realFiberId(fiberId: FiberId): asserts fiberId is RealFiberId {
+  //
+}
+
+export interface None extends FiberId {}
 export class None implements St.HasHash, St.HasEquals {
   readonly _tag = "None";
 
-  readonly [FiberIdSym] = FiberIdSym
+  readonly [FiberIdSym]: FiberIdSym = FiberIdSym
 
   get [St.hashSym](): number {
     return St.hashString(this._tag)
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return isFiberId(that) && that._tag === "None"
+    if (isFiberId(that)) {
+      realFiberId(that)
+      return that._tag === "None"
+    }
+    return false
   }
 }
 
+export interface Runtime extends FiberId {}
 export class Runtime implements St.HasHash, St.HasEquals {
   readonly _tag = "Runtime";
 
-  readonly [FiberIdSym] = FiberIdSym
+  readonly [FiberIdSym]: FiberIdSym = FiberIdSym
 
   constructor(readonly id: number, readonly startTimeSeconds: number) {}
 
@@ -40,18 +66,15 @@ export class Runtime implements St.HasHash, St.HasEquals {
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return (
-      isFiberId(that) &&
-      that._tag === "Runtime" &&
-      this[St.hashSym] === that[St.hashSym]
-    )
+    return isFiberId(that) && this[St.hashSym] === that[St.hashSym]
   }
 }
 
-export class Composite {
+export interface Composite extends FiberId {}
+export class Composite implements St.HasHash, St.HasEquals {
   readonly _tag = "Composite";
 
-  readonly [FiberIdSym] = FiberIdSym
+  readonly [FiberIdSym]: FiberIdSym = FiberIdSym
 
   constructor(readonly fiberIds: HashSet<Runtime>) {}
 
@@ -60,11 +83,14 @@ export class Composite {
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return (
-      isFiberId(that) &&
-      that._tag === "Composite" &&
-      equal<FiberId>().equals(this.fiberIds, that.fiberIds)
-    )
+    if (isFiberId(that)) {
+      realFiberId(that)
+      return (
+        that._tag === "Composite" &&
+        HS.equal<FiberId>().equals(this.fiberIds, that.fiberIds)
+      )
+    }
+    return false
   }
 }
 

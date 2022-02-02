@@ -41,5 +41,5 @@ export function catchTag<
 >(k: K, f: (e: Extract<E, { _tag: K }>) => Effect<R1, E1, A1>, __etsTrace?: string) {
   return <R, A>(
     self: Effect<R, E, A>
-  ): Effect<R & R1, Exclude<E, { _tag: K }> | E1, A | A1> => catchTag_(self, k, f)
+  ): Effect<R & R1, Exclude<E, { _tag: K }> | E1, A | A1> => self.catchTag(k, f)
 }

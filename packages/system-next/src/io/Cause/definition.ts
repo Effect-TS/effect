@@ -20,13 +20,14 @@ import type { FiberId } from "../FiberId/definition"
 // -----------------------------------------------------------------------------
 
 export const CauseSym = Symbol.for("@effect-ts/system/io/Cause")
+export type CauseSym = typeof CauseSym
 
 /**
  * @tsplus type ets/Cause
  */
 export interface Cause<E> {
-  readonly [CauseSym]: typeof CauseSym
-  readonly _E: () => E
+  readonly [CauseSym]: CauseSym
+  readonly _E: (_: never) => E
 }
 
 /**
@@ -53,8 +54,6 @@ export type RealCause<E> =
   | Then<E>
   | Both<E>
 
-// TODO(Mike/Max): ets_optimize (?)
-// TODO(Mike/Max): expose (?)
 /**
  * @ets_optimize remove
  */
@@ -122,7 +121,7 @@ export interface Empty extends Cause<never> {}
 export class Empty implements St.HasEquals, St.HasHash {
   readonly _tag = "Empty";
 
-  readonly [CauseSym]: typeof CauseSym = CauseSym
+  readonly [CauseSym]: CauseSym = CauseSym
 
   get [St.hashSym](): number {
     return _emptyHash
@@ -161,7 +160,7 @@ export interface Fail<E> extends Cause<E> {}
 export class Fail<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Fail";
 
-  readonly [CauseSym]: typeof CauseSym = CauseSym
+  readonly [CauseSym]: CauseSym = CauseSym
 
   constructor(readonly value: E, readonly trace: Trace) {}
 
@@ -200,7 +199,7 @@ export interface Die extends Cause<never> {}
 export class Die implements St.HasEquals, St.HasHash {
   readonly _tag = "Die";
 
-  readonly [CauseSym]: typeof CauseSym = CauseSym
+  readonly [CauseSym]: CauseSym = CauseSym
 
   constructor(readonly value: unknown, readonly trace: Trace) {}
 
@@ -239,7 +238,7 @@ export interface Interrupt extends Cause<never> {}
 export class Interrupt implements St.HasEquals, St.HasHash {
   readonly _tag = "Interrupt";
 
-  readonly [CauseSym]: typeof CauseSym = CauseSym
+  readonly [CauseSym]: CauseSym = CauseSym
 
   constructor(readonly fiberId: FiberId, readonly trace: Trace) {}
 
@@ -278,7 +277,7 @@ export interface Stackless<E> extends Cause<E> {}
 export class Stackless<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Stackless";
 
-  readonly [CauseSym]: typeof CauseSym = CauseSym
+  readonly [CauseSym]: CauseSym = CauseSym
 
   constructor(readonly cause: Cause<E>, readonly stackless: boolean) {}
 
@@ -304,7 +303,7 @@ export interface Then<E> extends Cause<E> {}
 export class Then<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Then";
 
-  readonly [CauseSym]: typeof CauseSym = CauseSym
+  readonly [CauseSym]: CauseSym = CauseSym
 
   constructor(readonly left: Cause<E>, readonly right: Cause<E>) {}
 
@@ -353,7 +352,7 @@ export interface Both<E> extends Cause<E> {}
 export class Both<E> implements St.HasEquals, St.HasHash {
   readonly _tag = "Both";
 
-  readonly [CauseSym]: typeof CauseSym = CauseSym
+  readonly [CauseSym]: CauseSym = CauseSym
 
   constructor(readonly left: Cause<E>, readonly right: Cause<E>) {}
 

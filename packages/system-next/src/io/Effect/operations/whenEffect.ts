@@ -11,7 +11,9 @@ export function whenEffect_<R1, E1, A, R, E>(
   predicate: LazyArg<Effect<R, E, boolean>>,
   __etsTrace?: string
 ) {
-  return predicate().flatMap((a) => (a ? self.asUnit() : Effect.unit))
+  return Effect.suspendSucceed(predicate).flatMap((a) =>
+    a ? self.asUnit() : Effect.unit
+  )
 }
 
 /**
@@ -23,5 +25,5 @@ export function whenEffect<R, E>(
   predicate: LazyArg<Effect<R, E, boolean>>,
   __etsTrace?: string
 ) {
-  return <R1, E1, A>(self: Effect<R1, E1, A>) => whenEffect_(self, predicate)
+  return <R1, E1, A>(self: Effect<R1, E1, A>) => self.whenEffect(predicate)
 }

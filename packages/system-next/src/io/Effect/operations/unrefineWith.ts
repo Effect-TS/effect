@@ -1,9 +1,4 @@
-import { pipe } from "../../../data/Function"
-import type { Option } from "../../../data/Option"
-import { fold as optionFold, none as optionNone } from "../../../data/Option/core"
-import { isDieType as causeIsDieType } from "../../Cause/definition"
-import { find as causeFind } from "../../Cause/operations/find"
-import { map_ as causeMap_ } from "../../Cause/operations/map"
+import { Option } from "../../../data/Option"
 import { Effect } from "../definition"
 
 /**
@@ -20,11 +15,9 @@ export function unrefineWith_<R, E, E1, E2, A>(
 ) {
   return self.catchAllCause(
     (cause): Effect<R, E1 | E2, A> =>
-      pipe(
-        cause,
-        causeFind((c) => (causeIsDieType(c) ? pf(c.value) : optionNone)),
-        optionFold(() => Effect.failCauseNow(causeMap_(cause, f)), Effect.failNow)
-      )
+      cause
+        .find((c) => (c.isDieType() ? pf(c.value) : Option.none))
+        .fold(Effect.failCauseNow(cause.map(f)), Effect.failNow)
   )
 }
 
@@ -39,5 +32,5 @@ export function unrefineWith<E1, E, E2>(
   f: (e: E) => E2,
   __etsTrace?: string
 ) {
-  return <R, A>(self: Effect<R, E, A>) => unrefineWith_(self, pf, f)
+  return <R, A>(self: Effect<R, E, A>) => self.unrefineWith(pf, f)
 }

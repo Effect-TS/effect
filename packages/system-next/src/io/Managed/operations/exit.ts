@@ -1,6 +1,4 @@
-import type { Exit } from "../../Exit"
-import { failCause as exitFailCause } from "../../Exit/operations/failCause"
-import { succeed as exitSucceed } from "../../Exit/operations/succeed"
+import { Exit } from "../../Exit"
 import { Managed } from "../definition"
 
 /**
@@ -11,10 +9,10 @@ import { Managed } from "../definition"
  */
 export function exit<R, E, A>(
   self: Managed<R, E, A>,
-  __trace?: string
+  __etsTrace?: string
 ): Managed<R, never, Exit<E, A>> {
   return self.foldCauseManaged(
-    (cause) => Managed.succeedNow(exitFailCause(cause)),
-    (a) => Managed.succeedNow(exitSucceed(a))
+    (cause) => Managed.succeedNow(Exit.failCause(cause)),
+    (a) => Managed.succeedNow(Exit.succeed(a))
   )
 }

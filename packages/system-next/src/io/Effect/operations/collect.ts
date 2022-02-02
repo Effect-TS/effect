@@ -1,5 +1,4 @@
-import { compact } from "../../../collection/immutable/Chunk/api/compact"
-import type { Chunk } from "../../../collection/immutable/Chunk/core"
+import type { Chunk } from "../../../collection/immutable/Chunk"
 import type { Option } from "../../../data/Option"
 import { Effect } from "../definition"
 
@@ -10,11 +9,11 @@ import { Effect } from "../definition"
  * @tsplus static ets/EffectOps collect
  */
 export function collect_<A, R, E, B>(
-  self: Iterable<A>,
+  as: Iterable<A>,
   f: (a: A) => Effect<R, Option<E>, B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk<B>> {
-  return Effect.forEach(self, (a) => f(a).unsome()).map(compact)
+  return Effect.forEach(as, (a) => f(a).unsome()).map((chunk) => chunk.compact())
 }
 
 /**
@@ -27,5 +26,5 @@ export function collect<A, R, E, B>(
   f: (a: A) => Effect<R, Option<E>, B>,
   __etsTrace?: string
 ) {
-  return (self: Iterable<A>): Effect<R, E, Chunk<B>> => collect_(self, f)
+  return (as: Iterable<A>): Effect<R, E, Chunk<B>> => Effect.collect(as, f)
 }

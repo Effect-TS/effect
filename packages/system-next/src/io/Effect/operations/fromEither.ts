@@ -9,10 +9,10 @@ import { Effect } from "../definition"
  * @tsplus static ets/EffectOps fromEitherNow
  */
 export function fromEitherNow<E, A>(
-  self: Either<E, A>,
+  either: Either<E, A>,
   __etsTrace?: string
 ): Effect<unknown, E, A> {
-  return Effect.fromEither(() => self)
+  return Effect.fromEither(() => either)
 }
 
 /**
@@ -21,8 +21,8 @@ export function fromEitherNow<E, A>(
  * @tsplus static ets/EffectOps fromEither
  */
 export function fromEither<E, A>(
-  f: LazyArg<Either<E, A>>,
+  either: LazyArg<Either<E, A>>,
   __etsTrace?: string
 ): Effect<unknown, E, A> {
-  return Effect.succeed(f).flatMap(fold(Effect.failNow, Effect.succeedNow))
+  return Effect.succeed(either).flatMap(fold(Effect.failNow, Effect.succeedNow))
 }

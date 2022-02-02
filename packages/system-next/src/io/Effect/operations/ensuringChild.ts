@@ -1,4 +1,4 @@
-import type { Chunk } from "../../../collection/immutable/Chunk/core"
+import type { Chunk } from "../../../collection/immutable/Chunk"
 import type { Fiber } from "../../Fiber/definition"
 import { collectAll } from "../../Fiber/operations/collectAll"
 import type { Effect, RIO } from "../definition"
@@ -14,7 +14,7 @@ export function ensuringChild_<R, E, A, R2, X>(
   self: Effect<R, E, A>,
   f: (_: Fiber<any, Chunk<unknown>>) => RIO<R2, X>,
   __etsTrace?: string
-) {
+): Effect<R & R2, E, A> {
   return self.ensuringChildren((children) => f(collectAll(children)))
 }
 
@@ -29,5 +29,5 @@ export function ensuringChild<R, E, A, R2, X>(
   f: (_: Fiber<any, Chunk<unknown>>) => RIO<R2, X>,
   __etsTrace?: string
 ) {
-  return (self: Effect<R, E, A>) => ensuringChild_(self, f)
+  return (self: Effect<R, E, A>): Effect<R & R2, E, A> => self.ensuringChild(f)
 }

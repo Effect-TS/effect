@@ -11,5 +11,5 @@ export function someOrFailException<R, E, A>(
   self: Effect<R, E, Option<A>>,
   __etsTrace?: string
 ): Effect<R, E | NoSuchElementException, A> {
-  return self.someOrFail(() => new NoSuchElementException())
+  return self.someOrFail(new NoSuchElementException())
 }

@@ -1,7 +1,6 @@
-import * as E from "../../../data/Either"
-import * as Cause from "../../Cause/definition"
+import { Either } from "../../../data/Either"
+import { Cause } from "../../Cause/definition"
 import type { Exit } from "../../Exit"
-import * as Ex from "../../Exit/operations/foldEffect"
 import { join } from "../../Fiber/operations/join"
 import { Effect } from "../definition"
 
@@ -30,14 +29,12 @@ export function race_<R, E, A, R2, E2, A2>(
     return maybeDisconnect(self).raceWith(
       maybeDisconnect(that),
       (exit, right) =>
-        Ex.foldEffect_(
-          exit,
+        exit.foldEffect(
           (cause) => join(right).mapErrorCause((_) => Cause.both(cause, _)),
           (a) => right.interruptAs(parentFiberId).as(a)
         ),
       (exit, left) =>
-        Ex.foldEffect_(
-          exit,
+        exit.foldEffect(
           (cause) => join(left).mapErrorCause((_) => Cause.both(_, cause)),
           (a) => left.interruptAs(parentFiberId).as(a)
         )
@@ -58,7 +55,7 @@ export function race_<R, E, A, R2, E2, A2>(
  */
 export function race<R2, E2, A2>(that: Effect<R2, E2, A2>, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> =>
-    race_(self, that, __etsTrace)
+    self.race(that)
 }
 
 /**
@@ -75,8 +72,8 @@ export function raceEither_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   that: Effect<R2, E2, A2>,
   __etsTrace?: string
-): Effect<R & R2, E | E2, E.Either<A, A2>> {
-  return race_(self.map(E.left), that.map(E.right))
+): Effect<R & R2, E | E2, Either<A, A2>> {
+  return self.map(Either.left).race(that.map(Either.right))
 }
 
 /**
@@ -90,8 +87,8 @@ export function raceEither_<R, E, A, R2, E2, A2>(
  * @ets_data_first raceEither_
  */
 export function raceEither<R2, E2, A2>(that: Effect<R2, E2, A2>, __etsTrace?: string) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, E.Either<A, A2>> =>
-    raceEither_(self, that, __etsTrace)
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, Either<A, A2>> =>
+    self.raceEither(that)
 }
 
 /**
@@ -113,9 +110,10 @@ export function raceFirst_<R, R2, E, E2, A, A2>(
   that: Effect<R2, E2, A2>,
   __etsTrace?: string
 ): Effect<R & R2, E2 | E, A2 | A> {
-  return race_(self.exit(), that.exit()).flatMap((a) =>
-    Effect.done(a as Exit<E | E2, A | A2>)
-  )
+  return self
+    .exit()
+    .race(that.exit())
+    .flatMap((a) => Effect.done(a as Exit<E | E2, A | A2>))
 }
 
 /**
@@ -133,5 +131,5 @@ export function raceFirst_<R, R2, E, E2, A, A2>(
  * @ets_data_first raceFirst_
  */
 export function raceFirst<R2, E2, A2>(that: Effect<R2, E2, A2>, __etsTrace?: string) {
-  return <R, E, A>(self: Effect<R, E, A>) => raceFirst_(self, that, __etsTrace)
+  return <R, E, A>(self: Effect<R, E, A>) => self.raceFirst(that)
 }

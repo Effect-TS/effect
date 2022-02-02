@@ -1,4 +1,5 @@
 import * as L from "../../../collection/immutable/List"
+import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../definition"
 
 /**
@@ -19,7 +20,11 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps loop
  */
-export function loop<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
+export function loop<Z>(
+  initial: LazyArg<Z>,
+  cont: (z: Z) => boolean,
+  inc: (z: Z) => Z
+) {
   return <R, E, A>(
     body: (z: Z) => Effect<R, E, A>,
     __etsTrace?: string
@@ -29,21 +34,22 @@ export function loop<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
 }
 
 function loopInternal_<Z, R, E, A>(
-  initial: Z,
+  initial: LazyArg<Z>,
   cont: (z: Z) => boolean,
   inc: (z: Z) => Z,
   body: (z: Z) => Effect<R, E, A>,
   __etsTrace?: string
 ): Effect<R, E, L.MutableList<A>> {
   return Effect.suspendSucceed(() => {
-    if (cont(initial)) {
-      return body(initial).flatMap((a) =>
-        loopInternal_(inc(initial), cont, inc, body).map((as) => {
+    const initial0 = initial()
+    if (cont(initial0)) {
+      return body(initial0).flatMap((a) =>
+        loopInternal_(inc(initial0), cont, inc, body).map((as) => {
           L.push_(as, a)
           return as
         })
       )
     }
-    return Effect.succeed(() => L.emptyPushable())
-  }, __etsTrace)
+    return Effect.succeed(L.emptyPushable())
+  })
 }

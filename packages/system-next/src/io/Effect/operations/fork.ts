@@ -1,4 +1,4 @@
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type * as Fiber from "../../Fiber"
 import type { Effect, RIO } from "../definition"
 import { IFork } from "../definition"
@@ -30,5 +30,5 @@ export function fork<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
 ): RIO<R, Fiber.Runtime<E, A>> {
-  return new IFork(self, O.none, __etsTrace)
+  return new IFork(self, () => Option.none, __etsTrace)
 }

@@ -1,4 +1,5 @@
-import { both as causeBoth } from "../../Cause/definition"
+import type { LazyArg } from "../../../data/Function"
+import { Cause } from "../../Cause"
 import type { Exit } from "../../Exit/definition"
 import type { Fiber } from "../../Fiber/definition"
 import { join as fiberJoin } from "../../Fiber/operations/join"
@@ -13,7 +14,7 @@ import { Effect } from "../definition"
  */
 export function zipWithPar_<R, E, A, R2, E2, A2, B>(
   self: Effect<R, E, A>,
-  that: Effect<R2, E2, A2>,
+  that: LazyArg<Effect<R2, E2, A2>>,
   f: (a: A, b: A2) => B,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, B> {
@@ -36,12 +37,12 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
  * @ets_data_first zipWithPar_
  */
 export function zipWithPar<A, R2, E2, A2, B>(
-  that: Effect<R2, E2, A2>,
+  that: LazyArg<Effect<R2, E2, A2>>,
   f: (a: A, b: A2) => B,
   __etsTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R2, E | E2, B> =>
-    zipWithPar_(self, that, f)
+    self.zipWithPar(that, f)
 }
 
 function coordinateZipPar<E, B, X, Y>(
@@ -65,8 +66,8 @@ function coordinateZipPar<E, B, X, Y>(
           }
           case "Failure": {
             return leftWinner
-              ? Effect.failCauseNow(causeBoth(winner.cause, e.cause))
-              : Effect.failCauseNow(causeBoth(e.cause, winner.cause))
+              ? Effect.failCauseNow(Cause.both(winner.cause, e.cause))
+              : Effect.failCauseNow(Cause.both(e.cause, winner.cause))
           }
         }
       })

@@ -1,11 +1,9 @@
-import { reduce_ } from "../../../collection/immutable/Chunk/api/reduce"
-import * as Chunk from "../../../collection/immutable/Chunk/core"
+import { Chunk } from "../../../collection/immutable/Chunk"
 import { Tuple } from "../../../collection/immutable/Tuple"
 import * as Ref from "../../../io/Ref"
-import * as Exit from "../../Exit"
+import type { Exit } from "../../Exit"
 import * as Fiber from "../../Fiber"
-import * as P from "../../Promise"
-import type { UIO } from "../definition"
+import { Promise } from "../../Promise"
 import { Effect } from "../definition"
 
 /**
@@ -22,28 +20,28 @@ export function raceAll_<R, E, A>(
 ): Effect<R, E, A> {
   const ios = Chunk.from(effects)
   return Effect.Do()
-    .bind("done", () => P.make<E, Tuple<[A, Fiber.Fiber<E, A>]>>())
-    .bind("fails", () => Ref.make(Chunk.size(ios)))
+    .bind("done", () => Promise.make<E, Tuple<[A, Fiber.Fiber<E, A>]>>())
+    .bind("fails", () => Ref.make(ios.size))
     .flatMap(({ done, fails }) =>
       Effect.uninterruptibleMask(({ restore }) =>
         Effect.Do()
           .bind("head", () => self.uninterruptible().fork())
           .bind("tail", () => Effect.forEach(ios, (io) => io.interruptible().fork()))
-          .bindValue("fs", ({ head, tail }) => Chunk.prepend_(tail, head))
+          .bindValue("fs", ({ head, tail }) => tail.prepend(head))
           .tap(({ fs }) =>
-            reduce_(fs, Effect.unit, (io, f) =>
+            fs.reduce(Effect.unit, (io, f) =>
               io.flatMap(() => Fiber.await(f).flatMap(arbiter(fs, f, done, fails)))
             )
           )
           .bindValue(
             "inheritRefs",
             () =>
-              (res: Tuple<[A, Fiber.Fiber<E, A>]>): UIO<A> =>
+              (res: Tuple<[A, Fiber.Fiber<E, A>]>): Effect<unknown, never, A> =>
                 res.get(1).inheritRefs.map(() => res.get(0))
           )
           .flatMap(({ fs, inheritRefs }) =>
-            restore(P.await(done).flatMap(inheritRefs)).onInterrupt(() =>
-              reduce_(fs, Effect.unit, (io, f) => io.zipLeft(Fiber.interrupt(f)))
+            restore(done.await().flatMap(inheritRefs)).onInterrupt(() =>
+              fs.reduce(Effect.unit, (io, f) => io.zipLeft(Fiber.interrupt(f)))
             )
           )
       )
@@ -58,30 +56,31 @@ export function raceAll_<R, E, A>(
  * @ets_data_first raceAll_
  */
 export function raceAll<R, E, A>(as: Iterable<Effect<R, E, A>>, __etsTrace?: string) {
-  return (self: Effect<R, E, A>): Effect<R, E, A> => raceAll_(self, as, __etsTrace)
+  return (self: Effect<R, E, A>): Effect<R, E, A> => self.raceAll(as)
 }
 
 function arbiter<E, A>(
-  fibers: Chunk.Chunk<Fiber.Fiber<E, A>>,
+  fibers: Chunk<Fiber.Fiber<E, A>>,
   winner: Fiber.Fiber<E, A>,
-  promise: P.Promise<E, Tuple<[A, Fiber.Fiber<E, A>]>>,
+  promise: Promise<E, Tuple<[A, Fiber.Fiber<E, A>]>>,
   fails: Ref.Ref<number>
 ) {
-  return (exit: Exit.Exit<E, A>): UIO<void> => {
-    return Exit.foldEffect_(
-      exit,
+  return (exit: Exit<E, A>): Effect<unknown, never, void> => {
+    return exit.foldEffect(
       (e) =>
         Ref.modify_(fails, (c) =>
-          Tuple(c === 0 ? P.failCause_(promise, e).asUnit() : Effect.unit, c - 1)
+          Tuple(c === 0 ? promise.failCause(e).asUnit() : Effect.unit, c - 1)
         ).flatten(),
       (a) =>
-        P.succeed_(promise, Tuple(a, winner)).flatMap((set) =>
-          set
-            ? reduce_(fibers, Effect.unit, (io, f) =>
-                f === winner ? io : io.zipLeft(Fiber.interrupt(f))
-              )
-            : Effect.unit
-        )
+        promise
+          .succeed(Tuple(a, winner))
+          .flatMap((set) =>
+            set
+              ? fibers.reduce(Effect.unit, (io, f) =>
+                  f === winner ? io : io.zipLeft(Fiber.interrupt(f))
+                )
+              : Effect.unit
+          )
     )
   }
 }

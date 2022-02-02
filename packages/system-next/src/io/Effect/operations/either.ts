@@ -1,4 +1,4 @@
-import * as E from "../../../data/Either"
+import { Either } from "../../../data/Either"
 import type { RIO } from "../definition"
 import { Effect } from "../definition"
 
@@ -17,9 +17,9 @@ import { Effect } from "../definition"
 export function either<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
-): RIO<R, E.Either<E, A>> {
+): RIO<R, Either<E, A>> {
   return self.foldEffect(
-    (e) => Effect.succeedNow(E.left(e)),
-    (a) => Effect.succeedNow(E.right(a))
+    (e) => Effect.succeedNow(Either.left(e)),
+    (a) => Effect.succeedNow(Either.right(a))
   )
 }

@@ -3,6 +3,8 @@ import type { Exit } from "../definition"
 
 /**
  * Folds over the value or cause.
+ *
+ * @tsplus fluent ets/Exit fold
  */
 export function fold_<E, A, Z>(
   self: Exit<E, A>,
@@ -23,5 +25,5 @@ export function fold_<E, A, Z>(
  * @ets_data_first fold_
  */
 export function fold<E, Z, A>(failed: (cause: Cause<E>) => Z, completed: (a: A) => Z) {
-  return (self: Exit<E, A>): Z => fold_(self, failed, completed)
+  return (self: Exit<E, A>): Z => self.fold(failed, completed)
 }

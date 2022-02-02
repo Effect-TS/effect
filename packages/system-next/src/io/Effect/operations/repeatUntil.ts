@@ -12,7 +12,7 @@ export function repeatUntil_<R, E, A>(
   p: Predicate<A>,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return self.repeatUntilEffect((a) => Effect.succeed(() => p(a)))
+  return self.repeatUntilEffect((a) => Effect.succeed(p(a)))
 }
 
 /**
@@ -22,5 +22,5 @@ export function repeatUntil_<R, E, A>(
  * @ets_data_first repeatUntil_
  */
 export function repeatUntil<A>(p: Predicate<A>, __etsTrace?: string) {
-  return <R, E>(self: Effect<R, E, A>): Effect<R, E, A> => repeatUntil_(self, p)
+  return <R, E>(self: Effect<R, E, A>): Effect<R, E, A> => self.repeatUntil(p)
 }

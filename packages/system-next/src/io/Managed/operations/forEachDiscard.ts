@@ -1,5 +1,3 @@
-import { unzip } from "../../../collection/immutable/Chunk/api/unzip"
-import * as C from "../../../collection/immutable/Chunk/core"
 import { Tuple } from "../../../collection/immutable/Tuple"
 import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
@@ -24,9 +22,9 @@ export function forEachDiscard<R, E, A, B>(
     Effect.forEach(as, (a) => f(a).effect).map((result) => {
       const {
         tuple: [fins]
-      } = unzip(result)
+      } = result.unzip()
       return Tuple<[Finalizer, void]>(
-        (e) => Effect.forEach(C.reverse(fins), (f) => f(e)),
+        (e) => Effect.forEach(fins.reverse(), (f) => f(e)),
         undefined
       )
     })

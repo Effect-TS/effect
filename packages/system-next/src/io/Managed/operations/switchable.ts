@@ -1,6 +1,6 @@
 import { Effect } from "../../Effect"
-import { sequential } from "../../Effect/operations/ExecutionStrategy"
-import { unit as exitUnit } from "../../Exit/operations/unit"
+import { ExecutionStrategy } from "../../ExecutionStrategy"
+import { Exit } from "../../Exit"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { locally_ } from "../../FiberRef/operations/locally"
 import { Managed } from "../definition"
@@ -42,7 +42,7 @@ export function switchable<R, E, A>(
               .flatMap((_) =>
                 _.fold(
                   () => Effect.unit,
-                  (fin) => fin(exitUnit)
+                  (fin) => fin(Exit.unit)
                 )
               )
               .zipRight(Effect.Do())
@@ -52,7 +52,9 @@ export function switchable<R, E, A>(
                 restore(locally_(currentReleaseMap.value, inner)(newResource.effect))
               )
               .tap(({ inner }) =>
-                releaseMap.replace(key, (exit) => inner.releaseAll(exit, sequential))
+                releaseMap.replace(key, (exit) =>
+                  inner.releaseAll(exit, ExecutionStrategy.Sequential)
+                )
               )
               .map(({ a }) => a.get(1))
           )

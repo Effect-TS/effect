@@ -1,4 +1,4 @@
-import * as Cause from "../../Cause"
+import type { Cause } from "../../Cause"
 import type { RIO } from "../definition"
 import { Effect } from "../definition"
 
@@ -12,8 +12,10 @@ import { Effect } from "../definition"
  * @tsplus fluent ets/Effect uncause
  */
 export function uncause<R, E>(
-  self: RIO<R, Cause.Cause<E>>,
+  self: RIO<R, Cause<E>>,
   __etsTrace?: string
 ): Effect<R, E, void> {
-  return self.flatMap((c) => (Cause.isEmpty(c) ? Effect.unit : Effect.failCauseNow(c)))
+  return self.flatMap((cause) =>
+    cause.isEmpty() ? Effect.unit : Effect.failCauseNow(cause)
+  )
 }

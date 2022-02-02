@@ -1,7 +1,8 @@
-import { pipe } from "../../../data/Function"
-import type { Exit } from "../definition"
-import { chain, map, succeed } from "../operations"
+import { Exit } from "../definition"
 
+/**
+ * @tsplus fluent ets/Exit bind
+ */
 export function bind<E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
   f: (_: K) => Exit<E, A>
@@ -14,23 +15,20 @@ export function bind<E, A, K, N extends string>(
       [k in N]: A
     }
   > =>
-    pipe(
-      mk,
-      chain((k) =>
-        pipe(
-          f(k),
-          map(
-            (
-              a
-            ): K & {
-              [k in N]: A
-            } => ({ ...k, [tag]: a } as any)
-          )
-        )
+    mk.flatMap((k) =>
+      f(k).map(
+        (
+          a
+        ): K & {
+          [k in N]: A
+        } => ({ ...k, [tag]: a } as any)
       )
     )
 }
 
+/**
+ * @tsplus fluent ets/Exit bindValue
+ */
 export function bindValue<A, K, N extends string>(
   tag: Exclude<N, keyof K>,
   f: (_: K) => A
@@ -43,18 +41,18 @@ export function bindValue<A, K, N extends string>(
       [k in N]: A
     }
   > =>
-    pipe(
-      mk,
-      map(
-        (
-          k
-        ): K & {
-          [k in N]: A
-        } => ({ ...k, [tag]: f(k) } as any)
-      )
+    mk.map(
+      (
+        k
+      ): K & {
+        [k in N]: A
+      } => ({ ...k, [tag]: f(k) } as any)
     )
 }
 
+/**
+ * @tsplus static ets/ExitOps Do
+ */
 export function Do() {
-  return succeed({})
+  return Exit.succeed({})
 }

@@ -1,7 +1,6 @@
-import * as E from "../../../data/Either"
-import type * as O from "../../../data/Option"
-import type { FiberId } from "../../FiberId"
-import { none } from "../../FiberId/operations/none"
+import { Either } from "../../../data/Either"
+import type { Option } from "../../../data/Option"
+import { FiberId } from "../../FiberId"
 import { Effect } from "../definition"
 import type { Cb } from "./Cb"
 
@@ -16,10 +15,10 @@ import type { Cb } from "./Cb"
  * @tsplus static ets/EffectOps asyncMaybe
  */
 export function asyncMaybe<R, E, A>(
-  register: (callback: Cb<Effect<R, E, A>>) => O.Option<Effect<R, E, A>>,
+  register: (callback: Cb<Effect<R, E, A>>) => Option<Effect<R, E, A>>,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return asyncMaybeBlockingOn(register, none)
+  return asyncMaybeBlockingOn(register, FiberId.none)
 }
 
 /**
@@ -36,7 +35,7 @@ export function asyncMaybe<R, E, A>(
  * @tsplus static ets/EffectOps asyncMaybeBlockingOn
  */
 export function asyncMaybeBlockingOn<R, E, A>(
-  register: (callback: Cb<Effect<R, E, A>>) => O.Option<Effect<R, E, A>>,
+  register: (callback: Cb<Effect<R, E, A>>) => Option<Effect<R, E, A>>,
   blockingOn: FiberId,
   __etsTrace?: string
 ): Effect<R, E, A> {
@@ -44,9 +43,9 @@ export function asyncMaybeBlockingOn<R, E, A>(
     const result = register(cb)
     switch (result._tag) {
       case "None":
-        return E.left(Effect.unit)
+        return Either.left(Effect.unit)
       case "Some":
-        return E.right(result.value)
+        return Either.right(result.value)
     }
   }, blockingOn)
 }

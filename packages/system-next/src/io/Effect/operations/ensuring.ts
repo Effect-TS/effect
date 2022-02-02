@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import type { Effect } from "../definition"
 import { IEnsuring } from "../definition"
 
@@ -16,7 +17,7 @@ import { IEnsuring } from "../definition"
  */
 export function ensuring_<R, E, A, R1, X>(
   self: Effect<R, E, A>,
-  finalizer: Effect<R1, never, X>,
+  finalizer: LazyArg<Effect<R1, never, X>>,
   __etsTrace?: string
 ): Effect<R & R1, E, A> {
   return new IEnsuring(self, finalizer, __etsTrace)
@@ -35,7 +36,10 @@ export function ensuring_<R, E, A, R1, X>(
  *
  * @ets_data_first ensuring_
  */
-export function ensuring<R1, X>(finalizer: Effect<R1, never, X>, __etsTrace?: string) {
+export function ensuring<R1, X>(
+  finalizer: LazyArg<Effect<R1, never, X>>,
+  __etsTrace?: string
+) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R1, E, A> =>
-    ensuring_(self, finalizer)
+    self.ensuring(finalizer)
 }

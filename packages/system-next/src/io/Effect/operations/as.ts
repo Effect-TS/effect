@@ -19,5 +19,5 @@ export function as_<R, E, A, B>(
  * @ets_data_first as_
  */
 export function as<B>(value: B, __etsTrace?: string) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, B> => as_(self, value)
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, B> => self.as(value)
 }

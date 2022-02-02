@@ -1,6 +1,5 @@
-import * as O from "../../../data/Option"
-import type { FiberId } from "../../FiberId"
-import { none } from "../../FiberId/operations/none"
+import { Option } from "../../../data/Option"
+import { FiberId } from "../../FiberId"
 import { Effect } from "../definition"
 import type { Cb } from "./Cb"
 
@@ -17,7 +16,7 @@ export function _async<R, E, A>(
   register: (callback: Cb<Effect<R, E, A>>) => void,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return asyncBlockingOn(register, none)
+  return asyncBlockingOn(register, FiberId.none)
 }
 
 export { _async as async }
@@ -41,6 +40,6 @@ export function asyncBlockingOn<R, E, A>(
 ): Effect<R, E, A> {
   return Effect.asyncMaybeBlockingOn((cb) => {
     register(cb)
-    return O.none
+    return Option.none
   }, blockingOn)
 }

@@ -1,4 +1,6 @@
-import type { Exit } from "../definition"
-import { succeed } from "./succeed"
+import { Exit } from "../definition"
 
-export const unit: Exit<never, void> = succeed(undefined)
+/**
+ * @tsplus static ets/ExitOps unit
+ */
+export const unit: Exit<never, void> = Exit.succeed(undefined)

@@ -22,5 +22,5 @@ export function provideSomeEnvironment_<R0, R, E, A>(
  */
 export function provideSomeEnvironment<R0, R>(f: (r0: R0) => R, __etsTrace?: string) {
   return <E, A>(self: Effect<R, E, A>): Effect<R0, E, A> =>
-    provideSomeEnvironment_(self, f)
+    self.provideSomeEnvironment(f)
 }

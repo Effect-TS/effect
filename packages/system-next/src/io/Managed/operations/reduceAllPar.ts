@@ -24,8 +24,8 @@ export function reduceAllPar_<R, E, A>(
       parallelReleaseMap
     )(
       Effect.reduceAllPar(
-        Iter.map_(as(), (managed) => managed.effect.map((_) => _.get(1))),
         a().effect.map((_) => _.get(1)),
+        Iter.map_(as(), (managed) => managed.effect.map((_) => _.get(1))),
         f
       )
     )

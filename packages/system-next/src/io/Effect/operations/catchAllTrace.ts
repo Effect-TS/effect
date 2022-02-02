@@ -25,5 +25,5 @@ export function catchAllTrace<E, R2, E2, A2>(
   __etsTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E2, A | A2> =>
-    catchAllTrace_(self, h)
+    self.catchAllTrace(h)
 }

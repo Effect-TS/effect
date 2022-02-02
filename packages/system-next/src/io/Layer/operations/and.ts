@@ -7,6 +7,7 @@ import { ILayerZipWithPar } from "../definition"
  * has the inputs and outputs of both.
  *
  * @tsplus operator ets/Layer +
+ * @tsplus fluent ets/Layer and
  */
 export function and_<
   RIn,
@@ -31,5 +32,5 @@ export function and_<
 export function and<RIn2, E2, ROut2 extends Spreadable>(that: Layer<RIn2, E2, ROut2>) {
   return <RIn, E, ROut extends Spreadable>(
     self: Layer<RIn, E, ROut>
-  ): Layer<RIn & RIn2, E | E2, ROut & ROut2> => and_(self, that)
+  ): Layer<RIn & RIn2, E | E2, ROut & ROut2> => self + that
 }

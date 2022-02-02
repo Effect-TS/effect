@@ -1,4 +1,4 @@
-import * as C from "../../../collection/immutable/Chunk/core"
+import type { Chunk } from "../../../collection/immutable/Chunk"
 import { Tuple } from "../../../collection/immutable/Tuple"
 import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
@@ -17,12 +17,12 @@ export function forEach<R, E, A, B>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Managed<R, E, B>,
   __etsTrace?: string
-): Managed<R, E, C.Chunk<B>> {
+): Managed<R, E, Chunk<B>> {
   return Managed(
     Effect.forEach(as, (a) => f(a).effect).map((res) => {
-      const fins = C.map_(res, (k) => k.get(0))
-      const as = C.map_(res, (k) => k.get(1))
-      return Tuple((e) => Effect.forEach(C.reverse(fins), (fin) => fin(e)), as)
+      const fins = res.map((k) => k.get(0))
+      const as = res.map((k) => k.get(1))
+      return Tuple((e) => Effect.forEach(fins.reverse(), (fin) => fin(e)), as)
     })
   )
 }
