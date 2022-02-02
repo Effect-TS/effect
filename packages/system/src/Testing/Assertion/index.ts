@@ -5,7 +5,6 @@ import * as T from "../../Effect/index.js"
 import type { Lazy } from "../../Function/index.js"
 import * as O from "../../Option/index.js"
 import * as ST from "../../Structural/index.js"
-import { LazyGetter } from "../../Utils/index.js"
 import * as AD from "../AssertionData/index.js"
 import type * as AssertionM from "../AssertionM/AssertionM.js"
 import type * as AR from "../AssertionResult/index.js"
@@ -31,7 +30,6 @@ export class Assertion<A> implements AssertionM.AssertionM<A> {
     return new BAM.BoolAlgebraM(T.succeed(this.run(a)))
   }
 
-  @LazyGetter()
   get stringify(): string {
     return this.render().toString()
   }
@@ -48,7 +46,6 @@ export class Assertion<A> implements AssertionM.AssertionM<A> {
     return false
   }
 
-  @LazyGetter()
   get [ST.hashSym](): number {
     return ST.hashString(this.stringify)
   }

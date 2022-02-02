@@ -7,7 +7,6 @@ import * as E from "../../Either/index.js"
 import { flow, identity, pipe } from "../../Function/index.js"
 import * as O from "../../Option/index.js"
 import * as ST from "../../Structural/index.js"
-import { LazyGetter } from "../../Utils/index.js"
 import * as PR from "../Primitives/index.js"
 
 export const BoolAlgebraTypeId = Symbol()
@@ -31,7 +30,6 @@ export abstract class BoolAlgebra<A> implements ST.HasEquals {
 
   abstract [ST.equalsSym](that: unknown): boolean
 
-  @LazyGetter()
   get [ST.hashSym](): number {
     return fold_(
       this,
