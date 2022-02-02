@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../Operator/index.js"
+import "../Operator"
 
 import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import { constant, identity } from "@effect-ts/system/Function"
@@ -10,9 +10,9 @@ import type {
   XPureReaderCategoryURI,
   XPureStateCategoryURI,
   XPureURI
-} from "../Modules/index.js"
-import type { URI } from "../Prelude/index.js"
-import * as P from "../Prelude/index.js"
+} from "../Modules"
+import type { URI } from "../Prelude"
+import * as P from "../Prelude"
 
 export type V = P.V<"S", "_"> & P.V<"R", "-"> & P.V<"E", "+"> & P.V<"X", "+">
 

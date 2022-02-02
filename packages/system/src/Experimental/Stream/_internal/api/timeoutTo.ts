@@ -1,14 +1,14 @@
 // ets_tracing: off
 
-import * as CS from "../../../../Cause/index.js"
-import type * as CL from "../../../../Clock/index.js"
-import * as O from "../../../../Option/index.js"
-import type * as C from "../core.js"
-import * as CatchSomeCause from "./catchSomeCause.js"
-import * as TimeoutFailCause from "./timeoutFailCause.js"
+import * as CS from "../../../../Cause"
+import type * as CL from "../../../../Clock"
+import * as O from "../../../../Option"
+import type * as C from "../core"
+import * as CatchSomeCause from "./catchSomeCause"
+import * as TimeoutFailCause from "./timeoutFailCause"
 
 export const StreamTimeoutSymbol: unique symbol = Symbol.for(
-  ".matechs/core/symbols/errors/StreamTimeout/index.js"
+  "@matechs/core/symbols/errors/StreamTimeout"
 )
 
 export class StreamTimeoutError {

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as C from "../core.js"
-import * as CatchAll from "./catchAll.js"
+import type * as C from "../core"
+import * as CatchAll from "./catchAll"
 
 /**
  * Returns a new channel that will perform the operations of this one, until failure, and then

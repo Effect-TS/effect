@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk/index.js"
-import * as Tp from "../../Collections/Immutable/Tuple/index.js"
-import { pipe } from "../../Function/index.js"
-import * as T from "../_internal/effect.js"
-import * as M from "../_internal/managed.js"
-import * as Ref from "../_internal/ref.js"
-import { Stream } from "./definitions.js"
+import * as A from "../../Collections/Immutable/Chunk"
+import * as Tp from "../../Collections/Immutable/Tuple"
+import { pipe } from "../../Function"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import * as Ref from "../_internal/ref"
+import { Stream } from "./definitions"
 
 /**
  * Intersperse stream with provided element similar to <code>List.mkString</code>.

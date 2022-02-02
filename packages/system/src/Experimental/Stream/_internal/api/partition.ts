@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import type * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
-import * as T from "../../../../Effect/index.js"
-import * as E from "../../../../Either/index.js"
-import type { Predicate } from "../../../../Function/index.js"
-import type * as M from "../../../../Managed/index.js"
-import type * as C from "../core.js"
-import * as PartitionEither from "./partitionEither.js"
+import type * as Tp from "../../../../Collections/Immutable/Tuple"
+import * as T from "../../../../Effect"
+import * as E from "../../../../Either"
+import type { Predicate } from "../../../../Function"
+import type * as M from "../../../../Managed"
+import type * as C from "../core"
+import * as PartitionEither from "./partitionEither"
 
 /**
  * Partition a stream using a predicate. The first stream will contain all element evaluated to true

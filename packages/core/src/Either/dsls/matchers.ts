@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as DSL from "../../Prelude/DSL/index.js"
-import { Covariant } from "../instances.js"
+import * as DSL from "../../Prelude/DSL"
+import { Covariant } from "../instances"
 
 /**
  * Matchers

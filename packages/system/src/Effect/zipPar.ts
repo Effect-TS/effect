@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as Tp from "../Collections/Immutable/Tuple/index.js"
-import type { Effect } from "./effect.js"
-import { zipWithPar_ } from "./zipWithPar.js"
+import * as Tp from "../Collections/Immutable/Tuple"
+import type { Effect } from "./effect"
+import { zipWithPar_ } from "./zipWithPar"
 
 /**
  * Parallely zips this effects

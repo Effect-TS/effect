@@ -1,15 +1,15 @@
 // ets_tracing: off
 
-import "../../Operator/index.js"
+import "../../Operator"
 
 import type * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 
-import { pipe } from "../../Function/index.js"
-import { succeedF } from "../../Prelude/DSL/index.js"
-import type { Access, Fail, Provide, Run } from "../../Prelude/FX/index.js"
-import * as HKT from "../../Prelude/HKT/index.js"
-import type { Applicative, Monad } from "../../Prelude/index.js"
-import * as R from "../XReader/index.js"
+import { pipe } from "../../Function"
+import type { Applicative, Monad } from "../../Prelude"
+import { succeedF } from "../../Prelude/DSL"
+import type { Access, Fail, Provide, Run } from "../../Prelude/FX"
+import * as HKT from "../../Prelude/HKT"
+import * as R from "../XReader"
 
 export function monad<F extends HKT.URIS, C>(
   M: Monad<F, C>

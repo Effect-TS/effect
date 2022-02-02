@@ -1,14 +1,14 @@
 // ets_tracing: off
 
-import "../../Operator/index.js"
+import "../../Operator"
 
-import * as C from "../../Cause/core.js"
-import * as A from "../../Collections/Immutable/Chunk/index.js"
-import * as E from "../../Exit/api.js"
-import { pipe } from "../../Function/index.js"
-import * as O from "../../Option/index.js"
-import * as T from "../_internal/effect.js"
-import type { Pull } from "../Pull/index.js"
+import * as C from "../../Cause/core"
+import * as A from "../../Collections/Immutable/Chunk"
+import * as E from "../../Exit/api"
+import { pipe } from "../../Function"
+import * as O from "../../Option"
+import * as T from "../_internal/effect"
+import type { Pull } from "../Pull"
 
 export type Take<E, A> = E.Exit<O.Option<E>, A.Chunk<A>>
 

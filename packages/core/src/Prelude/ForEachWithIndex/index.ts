@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { Covariant } from "../Covariant/index.js"
-import type * as HKT from "../HKT/index.js"
-import type { IdentityBoth } from "../IdentityBoth/index.js"
+import type { Covariant } from "../Covariant"
+import type * as HKT from "../HKT"
+import type { IdentityBoth } from "../IdentityBoth"
 
 export interface ForEachWithIndexFn<F extends HKT.URIS, C = HKT.Auto> {
   <G extends HKT.URIS, GC = HKT.Auto>(G: IdentityBoth<G, GC> & Covariant<G, GC>): <

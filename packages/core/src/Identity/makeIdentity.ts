@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { instance } from "../Prelude/index.js"
-import type { Identity } from "./definition.js"
+import { instance } from "../Prelude"
+import type { Identity } from "./definition"
 
 /**
  * Creates a new `Identity`
@@ -13,4 +13,4 @@ export function makeIdentity<A>(identity: A, op: (x: A, y: A) => A): Identity<A>
   })
 }
 
-export * from "./definition.js"
+export * from "./definition"

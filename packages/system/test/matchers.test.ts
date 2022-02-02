@@ -1,9 +1,9 @@
-import * as T from "../src/Effect/index.js"
-import { pipe } from "../src/Function/index.js"
-import * as IO from "../src/IO/index.js"
-import * as M from "../src/Managed/index.js"
-import * as S from "../src/Sync/index.js"
-import { matchTag, matchTagFor } from "../src/Utils/index.js"
+import * as T from "../src/Effect"
+import { pipe } from "../src/Function"
+import * as IO from "../src/IO"
+import * as M from "../src/Managed"
+import * as S from "../src/Sync"
+import { matchTag, matchTagFor } from "../src/Utils"
 
 interface A {
   _tag: "A"

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { Predicate, Refinement } from "../../../../Function/index.js"
-import type * as C from "../core.js"
-import * as Filter from "./filter.js"
+import type { Predicate, Refinement } from "../../../../Function"
+import type * as C from "../core"
+import * as Filter from "./filter"
 
 /**
  * Filters this stream by the specified predicate, removing all elements for

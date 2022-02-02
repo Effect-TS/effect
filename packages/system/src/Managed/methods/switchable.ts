@@ -1,18 +1,18 @@
 // ets_tracing: off
 
-import * as Tp from "../../Collections/Immutable/Tuple/index.js"
-import { sequential } from "../../Effect/ExecutionStrategy.js"
-import { pipe } from "../../Function/index.js"
-import { fold } from "../../Option/index.js"
-import { map } from "../core.js"
-import * as T from "../deps.js"
-import * as Do from "../do.js"
-import type { Managed } from "../managed.js"
-import * as addIfOpen from "../ReleaseMap/addIfOpen.js"
-import * as makeReleaseMap from "../ReleaseMap/makeReleaseMap.js"
-import * as releaseAll from "../ReleaseMap/releaseAll.js"
-import * as replace from "../ReleaseMap/replace.js"
-import { releaseMap } from "./releaseMap.js"
+import * as Tp from "../../Collections/Immutable/Tuple"
+import { sequential } from "../../Effect/ExecutionStrategy"
+import { pipe } from "../../Function"
+import { fold } from "../../Option"
+import { map } from "../core"
+import * as T from "../deps"
+import * as Do from "../do"
+import type { Managed } from "../managed"
+import * as addIfOpen from "../ReleaseMap/addIfOpen"
+import * as makeReleaseMap from "../ReleaseMap/makeReleaseMap"
+import * as releaseAll from "../ReleaseMap/releaseAll"
+import * as replace from "../ReleaseMap/replace"
+import { releaseMap } from "./releaseMap"
 
 /**
  * Returns a `Managed` value that represents a managed resource that can

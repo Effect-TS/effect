@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Stream } from "./definitions.js"
-import { zipWith_ } from "./zipWith.js"
+import type { Stream } from "./definitions"
+import { zipWith_ } from "./zipWith"
 
 /**
  * Zips this stream with another point-wise, but keeps only the outputs of this stream.

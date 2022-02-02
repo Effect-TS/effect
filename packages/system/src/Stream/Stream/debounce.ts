@@ -1,18 +1,18 @@
 // ets_tracing: off
 
-import * as C from "../../Cause/index.js"
-import * as CL from "../../Clock/index.js"
-import * as A from "../../Collections/Immutable/Chunk/index.js"
-import * as Ex from "../../Exit/index.js"
-import { pipe } from "../../Function/index.js"
-import * as O from "../../Option/index.js"
-import * as Scope from "../../Scope/index.js"
-import * as T from "../_internal/effect.js"
-import * as F from "../_internal/fiber.js"
-import * as M from "../_internal/managed.js"
-import * as Ref from "../_internal/ref.js"
-import * as Pull from "../Pull/index.js"
-import { Stream } from "./definitions.js"
+import * as C from "../../Cause"
+import * as CL from "../../Clock"
+import * as A from "../../Collections/Immutable/Chunk"
+import * as Ex from "../../Exit"
+import { pipe } from "../../Function"
+import * as O from "../../Option"
+import * as Scope from "../../Scope"
+import * as T from "../_internal/effect"
+import * as F from "../_internal/fiber"
+import * as M from "../_internal/managed"
+import * as Ref from "../_internal/ref"
+import * as Pull from "../Pull"
+import { Stream } from "./definitions"
 
 export function debounce_<R, E, O>(
   self: Stream<R, E, O>,

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as T from "../../../../Effect/index.js"
-import type * as C from "../core.js"
-import * as AcquireReleaseExitWith from "./acquireReleaseExitWith.js"
+import type * as T from "../../../../Effect"
+import type * as C from "../core"
+import * as AcquireReleaseExitWith from "./acquireReleaseExitWith"
 
 export function acquireReleaseWith_<
   Env,

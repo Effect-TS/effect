@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import "../../../Operator/index.js"
+import "../../../Operator"
 
-export { DictionaryURI } from "../../../Modules/index.js"
-export * from "./dsl.js"
-export * from "./instances.js"
-export * from "./operations.js"
+export { DictionaryURI } from "../../../Modules"
+export * from "./dsl"
+export * from "./instances"
+export * from "./operations"

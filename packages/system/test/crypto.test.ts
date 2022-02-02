@@ -1,5 +1,5 @@
-import * as Ex from "../src/Exit/index.js"
-import { pipe } from "../src/Function/index.js"
+import * as Ex from "../src/Exit"
+import { pipe } from "../src/Function"
 import {
   CryptoLive,
   hashPassword,
@@ -7,8 +7,8 @@ import {
   PBKDF2ConfigLive,
   PBKDF2ConfigTest,
   verifyPassword
-} from "./crypto/index.js"
-import { testRuntime } from "./crypto/runtime.js"
+} from "./crypto"
+import { testRuntime } from "./crypto/runtime"
 
 describe("Crypto Suite", () => {
   describe("Live", () => {

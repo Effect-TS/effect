@@ -1,8 +1,6 @@
-// ets_tracing: off
-
-import * as Tp from "../../Collections/Immutable/Tuple/index.js"
-import type { RIO } from "../managed.js"
-import { access } from "./api.js"
+import * as Tp from "../../Collections/Immutable/Tuple"
+import type { RIO } from "../managed"
+import { access } from "./api"
 
 /**
  * Returns an effectful function that merely swaps the elements in a `Tuple`.

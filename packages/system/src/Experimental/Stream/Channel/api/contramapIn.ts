@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as C from "../core.js"
-import * as ReadWith from "./readWith.js"
-import * as ZipRight from "./zipRight.js"
+import * as C from "../core"
+import * as ReadWith from "./readWith"
+import * as ZipRight from "./zipRight"
 
 function contramapInReader<InErr, InElem0, InElem, InDone>(
   f: (a: InElem0) => InElem

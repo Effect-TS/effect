@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import { _A, _E } from "../Effect/commons.js"
-import { NoSuchElementException } from "../GlobalExceptions/index.js"
-import type { Option } from "../Option/index.js"
-import * as Utils from "../Utils/index.js"
-import type { Either } from "./core.js"
-import { chain_, left, right } from "./core.js"
+import { _A, _E } from "../Effect/commons"
+import { NoSuchElementException } from "../GlobalExceptions"
+import type { Option } from "../Option"
+import * as Utils from "../Utils"
+import type { Either } from "./core"
+import { chain_, left, right } from "./core"
 
 export class GenEither<E, A> {
   readonly [_E]!: () => E;

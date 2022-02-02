@@ -1,7 +1,5 @@
-// ets_tracing: off
-
-import * as Tp from "../../Tuple/index.js"
-import * as Chunk from "../core.js"
+import * as Tp from "../../Tuple"
+import * as Chunk from "../core"
 
 /**
  * Returns two splits of this chunk at the specified index.

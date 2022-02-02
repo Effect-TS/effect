@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as O from "../../../../Option/index.js"
-import type * as C from "../core.js"
-import * as CatchAll from "./catchAll.js"
+import * as O from "../../../../Option"
+import type * as C from "../core"
+import * as CatchAll from "./catchAll"
 
 /**
  * Switches over to the stream produced by the provided function in case this one

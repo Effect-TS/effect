@@ -1,11 +1,11 @@
 // ets_tracing: off
-import * as C from "../../Cause/index.js"
-import { pipe } from "../../Function/index.js"
-import * as Q from "../../Queue/index.js"
-import * as T from "../_internal/effect.js"
-import * as Pull from "../Pull/index.js"
-import type { Stream } from "./definitions.js"
-import { repeatEffectChunkOption } from "./repeatEffectChunkOption.js"
+import * as C from "../../Cause"
+import { pipe } from "../../Function"
+import * as Q from "../../Queue"
+import * as T from "../_internal/effect"
+import * as Pull from "../Pull"
+import type { Stream } from "./definitions"
+import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
 
 /**
  * Creates a stream from a {@link XQueue} of values

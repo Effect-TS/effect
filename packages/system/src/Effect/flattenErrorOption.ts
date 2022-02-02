@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import { identity } from "../Function/index.js"
-import type { Option } from "../Option/index.js"
-import { fold } from "../Option/index.js"
-import type { Effect } from "./effect.js"
-import { mapError_ } from "./mapError.js"
+import { identity } from "../Function"
+import type { Option } from "../Option"
+import { fold } from "../Option"
+import type { Effect } from "./effect"
+import { mapError_ } from "./mapError"
 
 /**
  * Unwraps the optional error, defaulting to the provided value.

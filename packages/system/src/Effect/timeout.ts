@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as CL from "../Clock/index.js"
-import * as O from "../Option/index.js"
-import type { Effect } from "./effect.js"
-import { timeoutTo_ } from "./timeoutTo.js"
+import type * as CL from "../Clock"
+import * as O from "../Option"
+import type { Effect } from "./effect"
+import { timeoutTo_ } from "./timeoutTo"
 
 /**
  * Returns an effect that will timeout this effect, returning `None` if the

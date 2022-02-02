@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk/index.js"
-import type { Predicate } from "../../Function/index.js"
-import { pipe } from "../../Function/index.js"
-import * as O from "../../Option/index.js"
-import * as T from "../_internal/effect.js"
-import * as M from "../_internal/managed.js"
-import * as Ref from "../_internal/ref.js"
-import { Stream } from "./definitions.js"
+import * as A from "../../Collections/Immutable/Chunk"
+import type { Predicate } from "../../Function"
+import { pipe } from "../../Function"
+import * as O from "../../Option"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import * as Ref from "../_internal/ref"
+import { Stream } from "./definitions"
 
 /**
  * Drops all elements of the stream for as long as the specified predicate

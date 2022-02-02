@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as C from "./core.js"
-import * as FoldLeft from "./foldLeft.js"
+import type * as C from "./core"
+import * as FoldLeft from "./foldLeft"
 
 /**
  * A sink that sums incoming numeric values.

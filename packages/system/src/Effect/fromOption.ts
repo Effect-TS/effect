@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as O from "../Option/index.js"
-import { succeed } from "./core.js"
-import type { IO } from "./effect.js"
-import { fail } from "./fail.js"
+import * as O from "../Option"
+import { succeed } from "./core"
+import type { IO } from "./effect"
+import { fail } from "./fail"
 
 /**
  * Lifts an `Option` into a `Effect` but preserves the error as an option in the error channel, making it easier to compose

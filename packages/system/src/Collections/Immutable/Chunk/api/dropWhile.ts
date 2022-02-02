@@ -1,7 +1,5 @@
-// ets_tracing: off
-
-import * as Chunk from "../core.js"
-import { ArrTypeId, concrete } from "../definition.js"
+import * as Chunk from "../core"
+import { ArrTypeId, concrete } from "../definition"
 
 /**
  * Drops all elements so long as the predicate returns true.

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as Chain from "./chain.js"
-import type * as C from "./core.js"
-import * as Map from "./map.js"
+import * as Chain from "./chain"
+import type * as C from "./core"
+import * as Map from "./map"
 
 /**
  * Feeds inputs to this sink until it yields a result, then switches over to the

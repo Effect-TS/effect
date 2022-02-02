@@ -1,16 +1,16 @@
 // ets_tracing: off
 
-import type { HasClock } from "../Clock/index.js"
-import * as E from "../Either/index.js"
-import { pipe } from "../Function/index.js"
-import * as O from "../Option/index.js"
-import * as S from "../Schedule/index.js"
-import { chain } from "./core.js"
-import type { Effect } from "./effect.js"
-import { fail } from "./fail.js"
-import { foldM } from "./foldM.js"
-import * as map from "./map.js"
-import { orDie } from "./orDie.js"
+import type { HasClock } from "../Clock"
+import * as E from "../Either"
+import { pipe } from "../Function"
+import * as O from "../Option"
+import * as S from "../Schedule"
+import { chain } from "./core"
+import type { Effect } from "./effect"
+import { fail } from "./fail"
+import { foldM } from "./foldM"
+import * as map from "./map"
+import { orDie } from "./orDie"
 
 /**
  * Returns a new effect that repeats this effect according to the specified

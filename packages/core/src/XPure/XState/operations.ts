@@ -3,7 +3,7 @@
 import type * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import * as F from "@effect-ts/system/XPure"
 
-import type { XState } from "./definition.js"
+import type { XState } from "./definition"
 
 /**
  * Combines this computation with the specified computation.

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Associative } from "./makeAssociative.js"
-import { makeAssociative } from "./makeAssociative.js"
+import type { Associative } from "./makeAssociative"
+import { makeAssociative } from "./makeAssociative"
 
 /**
  * Boolean `Associative`  under conjunction
@@ -33,5 +33,5 @@ export const string: Associative<string> = makeAssociative((x, y) => x + y)
  */
 const void_: Associative<void> = makeAssociative(() => undefined as void)
 
-export * from "./definition.js"
+export * from "./definition"
 export { void_ as void }

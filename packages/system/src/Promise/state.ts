@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { IO } from "../Effect/effect.js"
+import type { IO } from "../Effect/effect"
 
 export type State<E, A> = Done<E, A> | Pending<E, A>
 

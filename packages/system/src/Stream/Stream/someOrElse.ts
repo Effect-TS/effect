@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as O from "../../Option/index.js"
-import type { Stream } from "./definitions.js"
-import { map_ } from "./map.js"
+import * as O from "../../Option"
+import type { Stream } from "./definitions"
+import { map_ } from "./map"
 
 /**
  * Extracts the optional value, or returns the given 'default'.

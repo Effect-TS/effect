@@ -3,7 +3,7 @@
 import type { Either } from "@effect-ts/system/Either"
 import * as E from "@effect-ts/system/Either"
 
-import type { Equal } from "../../Equal/index.js"
+import type { Equal } from "../../Equal"
 
 export function getEqual<E, A>(EL: Equal<E>, EA: Equal<A>): Equal<Either<E, A>> {
   return {

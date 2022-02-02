@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as CK from "../../../Collections/Immutable/Chunk/index.js"
-import * as Tp from "../../../Collections/Immutable/Tuple/index.js"
-import type { Predicate } from "../../../Function/index.js"
-import * as CH from "../Channel/index.js"
-import * as C from "./core.js"
+import * as CK from "../../../Collections/Immutable/Chunk"
+import * as Tp from "../../../Collections/Immutable/Tuple"
+import type { Predicate } from "../../../Function"
+import * as CH from "../Channel"
+import * as C from "./core"
 
 /**
  * A sink that folds its inputs with the provided function, termination predicate and initial state.

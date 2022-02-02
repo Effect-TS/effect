@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Effect } from "./effect.js"
-import { provideSome_ } from "./provideSome.js"
+import type { Effect } from "./effect"
+import { provideSome_ } from "./provideSome"
 
 /**
  * Provides some of the environment required to run this effect,

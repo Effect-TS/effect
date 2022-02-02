@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import "../../Operator/index.js"
+import "../../Operator"
 
-import type * as Chunk from "../../Collections/Immutable/Chunk/index.js"
+import type * as Chunk from "../../Collections/Immutable/Chunk"
 
 export abstract class Subscription<A> {
   abstract isEmpty(): boolean

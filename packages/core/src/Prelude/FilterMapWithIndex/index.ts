@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Option } from "../../Option/index.js"
-import type * as HKT from "../HKT/index.js"
+import type { Option } from "../../Option"
+import type * as HKT from "../HKT"
 
 export interface FilterMapWithIndex<F extends HKT.URIS, C = HKT.Auto>
   extends HKT.Base<F, C> {

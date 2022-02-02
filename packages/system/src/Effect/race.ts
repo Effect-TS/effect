@@ -1,18 +1,18 @@
 // ets_tracing: off
 
-import * as Cause from "../Cause/core.js"
-import * as E from "../Either/index.js"
-import * as Exit from "../Exit/api.js"
-import * as Fiber from "../Fiber/core.js"
-import { pipe } from "../Function/index.js"
-import { as_ } from "./as.js"
-import * as core from "./core.js"
-import { raceWith_ } from "./core-scope.js"
-import { done } from "./done.js"
-import type { Effect } from "./effect.js"
-import { uninterruptibleMask } from "./interruption.js"
-import { map_ } from "./map.js"
-import { mapErrorCause_ } from "./mapErrorCause.js"
+import * as Cause from "../Cause/core"
+import * as E from "../Either"
+import * as Exit from "../Exit/api"
+import * as Fiber from "../Fiber/core"
+import { pipe } from "../Function"
+import { as_ } from "./as"
+import * as core from "./core"
+import { raceWith_ } from "./core-scope"
+import { done } from "./done"
+import type { Effect } from "./effect"
+import { uninterruptibleMask } from "./interruption"
+import { map_ } from "./map"
+import { mapErrorCause_ } from "./mapErrorCause"
 
 /**
  * Returns an effect that races this effect with the specified effect,

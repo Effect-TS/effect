@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type { Exit } from "../Exit/index.js"
-import type { Scope } from "../Scope/index.js"
-import { descriptorWith } from "./core.js"
-import type { Effect } from "./effect.js"
+import type { Exit } from "../Exit"
+import type { Scope } from "../Scope"
+import { descriptorWith } from "./core"
+import type { Effect } from "./effect"
 
 /**
  * Passes the fiber's scope to the specified function, which creates an effect

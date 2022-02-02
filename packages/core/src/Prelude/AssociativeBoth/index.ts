@@ -2,7 +2,7 @@
 
 import type * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 
-import type * as HKT from "../HKT/index.js"
+import type * as HKT from "../HKT"
 
 export interface AssociativeBoth<F extends HKT.URIS, C = HKT.Auto>
   extends HKT.Base<F, C> {

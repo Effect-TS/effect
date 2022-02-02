@@ -82,9 +82,5 @@
     "typescript-transform-paths": "3.3.1",
     "ultra-runner": "^3.10.5"
   },
-  "resolutions": {
-    "typescript": "4.5.4",
-    "eslint-plugin-codegen": "patch:eslint-plugin-codegen@0.16.1#.yarn/patches/eslint-plugin-codegen.patch"
-  },
   "packageManager": "yarn@3.1.0"
 }

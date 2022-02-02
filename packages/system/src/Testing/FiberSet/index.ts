@@ -1,6 +1,4 @@
-// ets_tracing: off
-
-import * as SortedSet from "../../Collections/Immutable/SortedSet/index.js"
-import { runtimeOrd } from "../../Fiber/runtimeOrd.js"
+import * as SortedSet from "../../Collections/Immutable/SortedSet"
+import { runtimeOrd } from "../../Fiber/runtimeOrd"
 
 export const fiberSet = SortedSet.make(runtimeOrd())

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { identity } from "../../Function/index.js"
-import type { Stream } from "./definitions.js"
-import { zipAllWith_ } from "./zipAllWith.js"
+import { identity } from "../../Function"
+import type { Stream } from "./definitions"
+import { zipAllWith_ } from "./zipAllWith"
 
 /**
  * Zips this stream with another point-wise, and keeps only elements from this stream.

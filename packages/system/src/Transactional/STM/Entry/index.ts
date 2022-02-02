@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import "../../../Operator/index.js"
+import "../../../Operator"
 
-import type { Atomic } from "../../TRef/index.js"
-import { Versioned } from "../Versioned/index.js"
+import type { Atomic } from "../../TRef"
+import { Versioned } from "../Versioned"
 
 export const EntryTypeId = Symbol()
 export type EntryTypeId = typeof EntryTypeId

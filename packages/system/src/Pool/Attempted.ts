@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as T from "../Effect/index.js"
-import * as Ex from "../Exit/index.js"
-import type * as M from "../Managed/index.js"
+import * as T from "../Effect"
+import * as Ex from "../Exit"
+import type * as M from "../Managed"
 
 export class Attempted<E, A> {
   readonly [T._E]: () => E;

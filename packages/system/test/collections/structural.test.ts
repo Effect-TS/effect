@@ -1,5 +1,5 @@
-import * as L from "../../src/Collections/Immutable/List/index.js"
-import * as St from "../../src/Structural/index.js"
+import * as L from "../../src/Collections/Immutable/List"
+import * as St from "../../src/Structural"
 
 describe("Structural", () => {
   it("Map eq/hash", () => {

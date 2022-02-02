@@ -1,9 +1,7 @@
-// ets_tracing: off
-
-import type * as T from "../_internal/effect.js"
-import type { Stream } from "./definitions.js"
-import { drain } from "./drain.js"
-import { fromEffect } from "./fromEffect.js"
+import type * as T from "../_internal/effect"
+import type { Stream } from "./definitions"
+import { drain } from "./drain"
+import { fromEffect } from "./fromEffect"
 
 /**
  * Creates a stream that executes the specified effect but emits no elements.

@@ -2,9 +2,9 @@
 
 import type { Either } from "@effect-ts/system/Either"
 
-import type * as Tp from "../../Collections/Immutable/Tuple/index.js"
-import type { Applicative } from "../Applicative/index.js"
-import type * as HKT from "../HKT/index.js"
+import type * as Tp from "../../Collections/Immutable/Tuple"
+import type { Applicative } from "../Applicative"
+import type * as HKT from "../HKT"
 
 export interface Wilt<F extends HKT.URIS, C = HKT.Auto> {
   <G extends HKT.URIS, GC = HKT.Auto>(F: Applicative<G, GC>): <

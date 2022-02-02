@@ -1,8 +1,8 @@
 import { pipe } from "@effect-ts/system/Function"
 import { tag } from "@effect-ts/system/Has"
 
-import * as DSL from "../../src/Prelude/DSL/index.js"
-import * as X from "../../src/XPure/index.js"
+import * as DSL from "../../src/Prelude/DSL"
+import * as X from "../../src/XPure"
 
 test("09", () => {
   const MyServiceId = Symbol()

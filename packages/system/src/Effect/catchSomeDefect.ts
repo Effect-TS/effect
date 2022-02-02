@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as O from "../Option/index.js"
-import { catchAll_ } from "./catchAll.js"
-import type { Effect } from "./effect.js"
-import { fail } from "./fail.js"
-import { unrefineWith_ } from "./unrefine.js"
+import type * as O from "../Option"
+import { catchAll_ } from "./catchAll"
+import type { Effect } from "./effect"
+import { fail } from "./fail"
+import { unrefineWith_ } from "./unrefine"
 
 /**
  * Recovers from some or all of the defects with provided partial function.

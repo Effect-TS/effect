@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as CH from "../../Channel/index.js"
-import * as C from "../core.js"
+import * as CH from "../../Channel"
+import * as C from "../core"
 
 /**
  * Maps each element of this stream to another stream and returns the non-deterministic merge

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { Effect } from "./effect.js"
-import { environment } from "./environment.js"
-import { joinEither_ } from "./join.js"
+import type { Effect } from "./effect"
+import { environment } from "./environment"
+import { joinEither_ } from "./join"
 
 /**
  * Returns this effect if environment is on the left, otherwise returns

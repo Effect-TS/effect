@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as P from "../../Prelude/index.js"
-import { Monad } from "../instances/Monad.js"
+import * as P from "../../Prelude"
+import { Monad } from "../instances/Monad"
 
 export const do_ = P.doF(Monad)
 export const let_ = P.letF(Monad)

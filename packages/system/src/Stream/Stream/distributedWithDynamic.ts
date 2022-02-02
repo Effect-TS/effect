@@ -1,19 +1,19 @@
 // ets_tracing: off
 
-import * as C from "../../Cause/index.js"
-import * as A from "../../Collections/Immutable/Chunk/index.js"
-import * as Map from "../../Collections/Immutable/Map/index.js"
-import * as Tp from "../../Collections/Immutable/Tuple/index.js"
-import * as Ex from "../../Exit/index.js"
-import { pipe } from "../../Function/index.js"
-import * as O from "../../Option/index.js"
-import * as Q from "../../Queue/index.js"
-import * as SM from "../../Semaphore/index.js"
-import * as T from "../_internal/effect.js"
-import * as M from "../_internal/managed.js"
-import * as R from "../_internal/ref.js"
-import type { Stream } from "./definitions.js"
-import * as forEach from "./forEach.js"
+import * as C from "../../Cause"
+import * as A from "../../Collections/Immutable/Chunk"
+import * as Map from "../../Collections/Immutable/Map"
+import * as Tp from "../../Collections/Immutable/Tuple"
+import * as Ex from "../../Exit"
+import { pipe } from "../../Function"
+import * as O from "../../Option"
+import * as Q from "../../Queue"
+import * as SM from "../../Semaphore"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import * as R from "../_internal/ref"
+import type { Stream } from "./definitions"
+import * as forEach from "./forEach"
 
 /**
  * More powerful version of `distributedWith`. This returns a function that will produce

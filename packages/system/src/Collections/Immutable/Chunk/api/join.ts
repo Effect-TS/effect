@@ -1,7 +1,5 @@
-// ets_tracing: off
-
-import type { Chunk } from "../definition.js"
-import { reduce_ } from "./reduce.js"
+import type { Chunk } from "../definition"
+import { reduce_ } from "./reduce"
 
 /**
  * joins the elements together with "sep" in the middle

@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk/index.js"
-import * as M from "../_internal/managed.js"
-import { broadcastedQueues_ } from "./broadcastedQueues.js"
-import type { Stream } from "./definitions.js"
-import { flattenTake } from "./flattenTake.js"
-import { fromQueueWithShutdown } from "./fromQueueWithShutdown.js"
+import * as A from "../../Collections/Immutable/Chunk"
+import * as M from "../_internal/managed"
+import { broadcastedQueues_ } from "./broadcastedQueues"
+import type { Stream } from "./definitions"
+import { flattenTake } from "./flattenTake"
+import { fromQueueWithShutdown } from "./fromQueueWithShutdown"
 
 /**
  * Fan out the stream, producing a list of streams that have the same elements as this stream.

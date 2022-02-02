@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import * as Fiber from "../Fiber/index.js"
-import * as FR from "../FiberRef/index.js"
-import { pipe } from "../Function/index.js"
-import * as O from "../Option/index.js"
-import { fork } from "./core.js"
-import type { Effect, RIO } from "./effect.js"
-import { uninterruptibleMask } from "./interruption.js"
-import * as zips from "./zips.js"
+import * as Fiber from "../Fiber"
+import * as FR from "../FiberRef"
+import { pipe } from "../Function"
+import * as O from "../Option"
+import { fork } from "./core"
+import type { Effect, RIO } from "./effect"
+import { uninterruptibleMask } from "./interruption"
+import * as zips from "./zips"
 
 /**
  * Forks the effect into a new independent fiber, with the specified name.

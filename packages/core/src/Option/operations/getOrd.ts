@@ -2,8 +2,8 @@
 
 import * as O from "@effect-ts/system/Option"
 
-import type { Ord } from "../../Ord/index.js"
-import { makeOrd } from "../../Ord/index.js"
+import type { Ord } from "../../Ord"
+import { makeOrd } from "../../Ord"
 
 /**
  * The `Ord` instance allows `Option` values to be compared with

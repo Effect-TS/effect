@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as Tp from "../../../Collections/Immutable/Tuple/index.js"
-import type * as C from "./core.js"
-import * as Fold from "./fold.js"
-import * as Map from "./map.js"
+import * as Tp from "../../../Collections/Immutable/Tuple"
+import type * as C from "./core"
+import * as Fold from "./fold"
+import * as Map from "./map"
 
 /**
  * Creates a sink that folds elements of type `In` into a structure

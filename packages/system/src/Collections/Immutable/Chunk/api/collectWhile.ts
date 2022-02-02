@@ -1,8 +1,6 @@
-// ets_tracing: off
-
-import * as O from "../../../../Option/index.js"
-import * as Chunk from "../core.js"
-import * as ChunkDef from "../definition.js"
+import * as O from "../../../../Option"
+import * as Chunk from "../core"
+import * as ChunkDef from "../definition"
 
 /**
  * Transforms all elements of the chunk for as long as the specified partial function is defined.

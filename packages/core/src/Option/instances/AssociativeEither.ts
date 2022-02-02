@@ -4,8 +4,8 @@ import type { Either } from "@effect-ts/system/Either"
 import { left, right } from "@effect-ts/system/Either"
 import * as O from "@effect-ts/system/Option"
 
-import type { OptionURI } from "../../Modules/index.js"
-import * as P from "../../Prelude/index.js"
+import type { OptionURI } from "../../Modules"
+import * as P from "../../Prelude"
 
 export const AssociativeEither = P.instance<P.AssociativeEither<[P.URI<OptionURI>]>>({
   orElseEither:

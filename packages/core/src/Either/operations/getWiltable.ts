@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type { Identity } from "../../Identity/index.js"
-import type { EitherURI } from "../../Modules/index.js"
-import * as P from "../../Prelude/index.js"
-import { getSeparateF } from "./separate.js"
+import type { Identity } from "../../Identity"
+import type { EitherURI } from "../../Modules"
+import * as P from "../../Prelude"
+import { getSeparateF } from "./separate"
 
 /**
  * Get `Wiltable` instance given `Identity<E>`

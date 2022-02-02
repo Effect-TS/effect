@@ -1,9 +1,7 @@
-// ets_tracing: off
-
-import * as Tp from "../../Collections/Immutable/Tuple/index.js"
-import * as T from "../deps.js"
-import type { Managed } from "../managed.js"
-import { makeReleaseMap, releaseAll } from "../ReleaseMap/index.js"
+import * as Tp from "../../Collections/Immutable/Tuple"
+import * as T from "../deps"
+import type { Managed } from "../managed"
+import { makeReleaseMap, releaseAll } from "../ReleaseMap"
 
 export class Allocation<A> {
   constructor(readonly value: A, readonly release: T.UIO<void>) {}

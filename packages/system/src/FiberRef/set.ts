@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { IO } from "../Effect/effect.js"
-import type { XFiberRef } from "./fiberRef.js"
+import type { IO } from "../Effect/effect"
+import type { XFiberRef } from "./fiberRef"
 
 /**
  * Sets the value associated with the current fiber.

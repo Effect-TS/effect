@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect/index.js"
-import * as M from "../../../../Managed/index.js"
-import type * as Q from "../../../../Queue/index.js"
-import type * as TK from "../../Take/index.js"
-import type * as C from "../core.js"
-import * as RunIntoManaged from "./runIntoManaged.js"
+import * as T from "../../../../Effect"
+import * as M from "../../../../Managed"
+import type * as Q from "../../../../Queue"
+import type * as TK from "../../Take"
+import type * as C from "../core"
+import * as RunIntoManaged from "./runIntoManaged"
 
 /**
  * Enqueues elements of this stream into a queue. Stream failure and ending will also be

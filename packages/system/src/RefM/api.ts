@@ -1,17 +1,17 @@
 // ets_tracing: off
 
-import * as Tp from "../Collections/Immutable/Tuple/index.js"
-import * as E from "../Either/index.js"
-import { identity, pipe } from "../Function/index.js"
-import type * as M from "../Managed/managed.js"
-import * as O from "../Option/index.js"
-import * as Q from "../Queue/index.js"
-import * as R from "../Ref/index.js"
-import * as S from "../Semaphore/index.js"
-import { matchTag } from "../Utils/index.js"
-import * as T from "./effect.js"
-import type { RefM, XRefM } from "./XRefM.js"
-import { AtomicM, concrete } from "./XRefM.js"
+import * as Tp from "../Collections/Immutable/Tuple"
+import * as E from "../Either"
+import { identity, pipe } from "../Function"
+import type * as M from "../Managed/managed"
+import * as O from "../Option"
+import * as Q from "../Queue"
+import * as R from "../Ref"
+import * as S from "../Semaphore"
+import { matchTag } from "../Utils"
+import * as T from "./effect"
+import type { RefM, XRefM } from "./XRefM"
+import { AtomicM, concrete } from "./XRefM"
 
 /**
  * Creates a new `XRefM` with the specified value.

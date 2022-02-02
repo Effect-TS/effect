@@ -1,14 +1,14 @@
 // ets_tracing: off
 
-import type * as CL from "../../../../Clock/index.js"
-import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
-import * as T from "../../../../Effect/index.js"
-import { pipe } from "../../../../Function/index.js"
-import * as SC from "../../../../Schedule/index.js"
-import * as CH from "../../Channel/index.js"
-import * as C from "../core.js"
-import * as Map from "./map.js"
-import * as Unwrap from "./unwrap.js"
+import type * as CL from "../../../../Clock"
+import * as CK from "../../../../Collections/Immutable/Chunk"
+import * as T from "../../../../Effect"
+import { pipe } from "../../../../Function"
+import * as SC from "../../../../Schedule"
+import * as CH from "../../Channel"
+import * as C from "../core"
+import * as Map from "./map"
+import * as Unwrap from "./unwrap"
 
 /**
  * Repeats the entire stream using the specified schedule. The stream will execute normally,

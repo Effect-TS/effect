@@ -1,9 +1,9 @@
 // ets_tracing: off
-import * as R from "../Collections/Immutable/Dictionary/index.js"
-import type { _E, _R, EnforceNonEmptyRecord } from "../Utils/index.js"
-import type { Async } from "./core.js"
-import { chain_, map_ } from "./core.js"
-import { forEach_, forEachPar_ } from "./excl-forEach.js"
+import * as R from "../Collections/Immutable/Dictionary"
+import type { _E, _R, EnforceNonEmptyRecord } from "../Utils"
+import type { Async } from "./core"
+import { chain_, map_ } from "./core"
+import { forEach_, forEachPar_ } from "./excl-forEach"
 
 /**
  * Bind a record of effects in a do

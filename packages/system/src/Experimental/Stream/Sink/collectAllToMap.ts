@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as CK from "../../../Collections/Immutable/Chunk/index.js"
-import * as HM from "../../../Collections/Immutable/HashMap/index.js"
-import type * as C from "./core.js"
-import * as FoldLeftChunks from "./foldLeftChunks.js"
+import * as CK from "../../../Collections/Immutable/Chunk"
+import * as HM from "../../../Collections/Immutable/HashMap"
+import type * as C from "./core"
+import * as FoldLeftChunks from "./foldLeftChunks"
 
 /**
  * A sink that collects all of its inputs into a map. The keys are extracted from inputs

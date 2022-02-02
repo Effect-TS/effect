@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../Operator/index.js"
+import "../Operator"
 
 export const _brand: unique symbol = Symbol()
 

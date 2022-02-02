@@ -1,5 +1,5 @@
 // codegen:start {preset: barrel, include: ./*.ts}
-export * from "./api.js"
-export * from "./apply.js"
-export * from "./AssertionM.js"
+export * from "./api"
+export * from "./apply"
+export * from "./AssertionM"
 // codegen:end

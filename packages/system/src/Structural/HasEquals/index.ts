@@ -1,11 +1,9 @@
-// ets_tracing: off
-
 // forked from https://github.com/planttheidea/fast-equals
 
-import type { HasHash } from "../HasHash/index.js"
-import { hash, hasHash } from "../HasHash/index.js"
-import { createComparator } from "./comparator.js"
-import { createCircularEqualCreator, sameValueZeroEqual } from "./utils.js"
+import type { HasHash } from "../HasHash"
+import { hash, hasHash } from "../HasHash"
+import { createComparator } from "./comparator"
+import { createCircularEqualCreator, sameValueZeroEqual } from "./utils"
 
 export const equalsSym = Symbol()
 

@@ -1,16 +1,16 @@
 // ets_tracing: off
 
-import type * as CL from "../../Clock/index.js"
-import * as Tp from "../../Collections/Immutable/Tuple/index.js"
-import * as O from "../../Option/index.js"
-import * as SC from "../../Schedule/index.js"
-import * as T from "../_internal/effect.js"
-import { chain_ } from "./chain.js"
-import { concat_ } from "./concat.js"
-import type { Stream } from "./definitions.js"
-import { fromEffect } from "./fromEffect.js"
-import { succeed } from "./succeed.js"
-import { unfoldM } from "./unfoldM.js"
+import type * as CL from "../../Clock"
+import * as Tp from "../../Collections/Immutable/Tuple"
+import * as O from "../../Option"
+import * as SC from "../../Schedule"
+import * as T from "../_internal/effect"
+import { chain_ } from "./chain"
+import { concat_ } from "./concat"
+import type { Stream } from "./definitions"
+import { fromEffect } from "./fromEffect"
+import { succeed } from "./succeed"
+import { unfoldM } from "./unfoldM"
 
 /**
  * Creates a stream from an effect producing a value of type `A`, which is repeated using the

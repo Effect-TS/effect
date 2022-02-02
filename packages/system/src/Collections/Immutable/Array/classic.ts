@@ -1,14 +1,12 @@
-// ets_tracing: off
-
-import type { Either } from "../../../Either/core.js"
-import type { Predicate, Refinement } from "../../../Function/core.js"
-import type { Option } from "../../../Option/index.js"
-import { isSome, none, some } from "../../../Option/index.js"
-import type { MutableArray, MutableRecord } from "../../../Support/Mutable/index.js"
-import type { Dictionary } from "../Dictionary/index.js"
-import type { NonEmptyArray } from "../NonEmptyArray/index.js"
-import * as Tp from "../Tuple/index.js"
-import * as C from "./core.js"
+import type { Either } from "../../../Either/core"
+import type { Predicate, Refinement } from "../../../Function/core"
+import type { Option } from "../../../Option"
+import { isSome, none, some } from "../../../Option"
+import type { MutableArray, MutableRecord } from "../../../Support/Mutable"
+import type { Dictionary } from "../Dictionary"
+import type { NonEmptyArray } from "../NonEmptyArray"
+import * as Tp from "../Tuple"
+import * as C from "./core"
 
 /**
  * Classic Applicative's ap

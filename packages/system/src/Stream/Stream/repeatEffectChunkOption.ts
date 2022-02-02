@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import type * as A from "../../Collections/Immutable/Chunk/index.js"
-import { pipe } from "../../Function/index.js"
-import * as O from "../../Option/index.js"
-import * as T from "../_internal/effect.js"
-import * as M from "../_internal/managed.js"
-import * as Ref from "../_internal/ref.js"
-import * as Pull from "../Pull/index.js"
-import { Stream } from "./definitions.js"
+import type * as A from "../../Collections/Immutable/Chunk"
+import { pipe } from "../../Function"
+import * as O from "../../Option"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import * as Ref from "../_internal/ref"
+import * as Pull from "../Pull"
+import { Stream } from "./definitions"
 
 /**
  * Creates a stream from an effect producing chunks of `A` values until it fails with None.

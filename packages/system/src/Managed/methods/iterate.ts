@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { chain_ } from "../core.js"
-import type { Managed } from "../managed.js"
-import { succeed } from "../succeed.js"
-import { suspend } from "./suspend.js"
+import { chain_ } from "../core"
+import type { Managed } from "../managed"
+import { succeed } from "../succeed"
+import { suspend } from "./suspend"
 
 /**
  * Iterates with the specified effectual function. The moral equivalent of:

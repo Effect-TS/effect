@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as Fiber from "../Fiber/index.js"
-import { chain_, succeedWith } from "./core.js"
-import type { Effect, IO } from "./effect.js"
+import * as Fiber from "../Fiber"
+import { chain_, succeedWith } from "./core"
+import type { Effect, IO } from "./effect"
 
 /**
  * Creates a `Effect` value that represents the exit value of the specified

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as Contramap from "./contramap.js"
-import type * as C from "./core.js"
-import * as Map from "./map.js"
+import * as Contramap from "./contramap"
+import type * as C from "./core"
+import * as Map from "./map"
 
 /**
  * Transforms both inputs and result of this sink using the provided functions.

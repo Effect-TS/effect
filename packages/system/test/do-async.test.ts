@@ -1,5 +1,5 @@
-import * as As from "../src/Async/index.js"
-import { pipe } from "../src/Function/index.js"
+import * as As from "../src/Async"
+import { pipe } from "../src/Function"
 
 describe("Async Do", () => {
   it("bind", async () => {

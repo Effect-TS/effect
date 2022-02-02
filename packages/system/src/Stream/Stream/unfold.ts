@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as Tp from "../../Collections/Immutable/Tuple/index.js"
-import type * as O from "../../Option/index.js"
-import * as T from "../_internal/effect.js"
-import { unfoldM } from "./unfoldM.js"
+import type * as Tp from "../../Collections/Immutable/Tuple"
+import type * as O from "../../Option"
+import * as T from "../_internal/effect"
+import { unfoldM } from "./unfoldM"
 
 /**
  * Creates a stream by peeling off the "layers" of a value of type `S`

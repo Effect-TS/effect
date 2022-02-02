@@ -1,15 +1,15 @@
 // ets_tracing: off
 
-import "../../Operator/index.js"
+import "../../Operator"
 
 import { _A, _E, _R } from "@effect-ts/system/Effect"
 import { AtomicReference } from "@effect-ts/system/Support/AtomicReference"
 
-import * as A from "../../Collections/Immutable/Array/index.js"
-import { pipe } from "../../Function/index.js"
-import type { Has, Tag } from "../../Has/index.js"
-import type { Erase, UnionToIntersection } from "../../Utils/index.js"
-import * as Sy from "../_internal/index.js"
+import * as A from "../../Collections/Immutable/Array"
+import { pipe } from "../../Function"
+import type { Has, Tag } from "../../Has"
+import type { Erase, UnionToIntersection } from "../../Utils"
+import * as Sy from "../_internal"
 
 export abstract class SyncLayer<R, E, A> {
   readonly hash = new AtomicReference<PropertyKey>(Symbol());

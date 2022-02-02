@@ -1,7 +1,5 @@
-// ets_tracing: off
-
-import * as E from "../Either/index.js"
-import { chain_, fail, succeed, succeedWith } from "./core.js"
+import * as E from "../Either"
+import { chain_, fail, succeed, succeedWith } from "./core"
 
 /**
  * Lifts an `Either` into a `Sync` value.

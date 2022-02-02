@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { Effect } from "./effect.js"
-import { environment } from "./environment.js"
-import { zip_ } from "./zip.js"
+import type { Effect } from "./effect"
+import { environment } from "./environment"
+import { zip_ } from "./zip"
 
 /**
  * Propagates the success value to the second element of a tuple, but

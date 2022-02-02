@@ -1,5 +1,5 @@
 // ets_tracing: off
 
-import "../../Operator/index.js"
+import "../../Operator"
 
-export * from "./_internal/index.js"
+export * from "./_internal"

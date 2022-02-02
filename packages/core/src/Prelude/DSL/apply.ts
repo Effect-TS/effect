@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { pipe, tuple } from "../../Function/index.js"
-import type { EnforceNonEmptyRecord } from "../../Utils/index.js"
-import type { Apply } from "../Apply/index.js"
-import type * as HKT from "../HKT/index.js"
+import { pipe, tuple } from "../../Function"
+import type { EnforceNonEmptyRecord } from "../../Utils"
+import type { Apply } from "../Apply"
+import type * as HKT from "../HKT"
 
 export function apF<F extends HKT.URIS, C>(
   F: Apply<F, C>

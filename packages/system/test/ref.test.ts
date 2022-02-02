@@ -1,6 +1,6 @@
-import * as T from "../src/Effect/index.js"
-import { pipe } from "../src/Function/index.js"
-import * as RefM from "../src/RefM/index.js"
+import * as T from "../src/Effect"
+import { pipe } from "../src/Function"
+import * as RefM from "../src/RefM"
 
 describe("RefM", () => {
   it("get/set", async () => {

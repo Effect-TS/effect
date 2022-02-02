@@ -2,8 +2,8 @@
 
 import type { Ordering } from "@effect-ts/system/Ordering"
 
-import * as A from "../Associative/makeAssociative.js"
-import * as I from "../Identity/makeIdentity.js"
+import * as A from "../Associative/makeAssociative"
+import * as I from "../Identity/makeIdentity"
 
 /**
  * `Associative` instance for `Ordering`

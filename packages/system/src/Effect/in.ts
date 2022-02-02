@@ -1,14 +1,14 @@
 // ets_tracing: off
 
-import { head } from "../Collections/Immutable/Array/index.js"
-import * as Fiber from "../Fiber/index.js"
-import { pipe } from "../Function/index.js"
-import * as O from "../Option/index.js"
-import type { Scope } from "../Scope/index.js"
-import * as core from "./core.js"
-import { forkDaemon } from "./core-scope.js"
-import type { Effect } from "./effect.js"
-import * as interruption from "./interruption.js"
+import { head } from "../Collections/Immutable/Array"
+import * as Fiber from "../Fiber"
+import { pipe } from "../Function"
+import * as O from "../Option"
+import type { Scope } from "../Scope"
+import * as core from "./core"
+import { forkDaemon } from "./core-scope"
+import type { Effect } from "./effect"
+import * as interruption from "./interruption"
 
 /**
  * Returns a new effect whose scope will be extended by the specified scope.

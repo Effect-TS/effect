@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import type * as CL from "../../Clock/index.js"
-import * as E from "../../Either/index.js"
-import { pipe } from "../../Function/index.js"
-import type * as SC from "../../Schedule/index.js"
-import type { Stream } from "./definitions.js"
-import { repeatWith } from "./repeatWith.js"
+import type * as CL from "../../Clock"
+import * as E from "../../Either"
+import { pipe } from "../../Function"
+import type * as SC from "../../Schedule"
+import type { Stream } from "./definitions"
+import { repeatWith } from "./repeatWith"
 
 /**
  * Repeats the entire stream using the specified schedule. The stream will execute normally,

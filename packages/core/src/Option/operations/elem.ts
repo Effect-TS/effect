@@ -2,7 +2,7 @@
 
 import * as O from "@effect-ts/system/Option"
 
-import type { Equal } from "../../Equal/index.js"
+import type { Equal } from "../../Equal"
 
 /**
  * Returns `true` if `ma` contains `a`

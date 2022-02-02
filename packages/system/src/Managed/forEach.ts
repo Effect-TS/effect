@@ -1,15 +1,15 @@
 // ets_tracing: off
 
-import { unzip } from "../Collections/Immutable/Chunk/api/unzip.js"
-import * as Chunk from "../Collections/Immutable/Chunk/core.js"
-import * as Tp from "../Collections/Immutable/Tuple/index.js"
-import type { ExecutionStrategy } from "../Effect/ExecutionStrategy.js"
-import { sequential } from "../Effect/ExecutionStrategy.js"
-import { makeManagedReleaseMap, mapM_ } from "./core.js"
-import * as T from "./deps.js"
-import type { Managed } from "./managed.js"
-import { managedApply } from "./managed.js"
-import type { Finalizer } from "./ReleaseMap/finalizer.js"
+import { unzip } from "../Collections/Immutable/Chunk/api/unzip"
+import * as Chunk from "../Collections/Immutable/Chunk/core"
+import * as Tp from "../Collections/Immutable/Tuple"
+import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"
+import { sequential } from "../Effect/ExecutionStrategy"
+import { makeManagedReleaseMap, mapM_ } from "./core"
+import * as T from "./deps"
+import type { Managed } from "./managed"
+import { managedApply } from "./managed"
+import type { Finalizer } from "./ReleaseMap/finalizer"
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and
  * returns the results in a new `B[]`.

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { succeedWith, suspend } from "./core.js"
-import { effectAsyncInterrupt } from "./effectAsyncInterrupt.js"
+import { succeedWith, suspend } from "./core"
+import { effectAsyncInterrupt } from "./effectAsyncInterrupt"
 
 /**
  * Returns a effect that will never produce anything. The moral equivalent of

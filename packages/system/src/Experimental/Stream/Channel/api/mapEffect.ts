@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as T from "../../../../Effect/index.js"
-import * as C from "../core.js"
+import type * as T from "../../../../Effect"
+import * as C from "../core"
 
 /**
  * Returns a new channel, which is the same as this one, except the terminal value of the

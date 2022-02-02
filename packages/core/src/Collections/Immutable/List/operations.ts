@@ -2,17 +2,17 @@
 
 import * as List from "@effect-ts/system/Collections/Immutable/List"
 
-import type { Equal } from "../../../Equal/index.js"
-import { makeEqual } from "../../../Equal/index.js"
-import { pipe } from "../../../Function/index.js"
-import type { Identity } from "../../../Identity/index.js"
-import { makeIdentity } from "../../../Identity/index.js"
-import type { ListURI } from "../../../Modules/index.js"
-import type { Ord } from "../../../Ord/index.js"
-import type { URI } from "../../../Prelude/index.js"
-import * as P from "../../../Prelude/index.js"
-import type { Show } from "../../../Show/index.js"
-import * as A from "../Array/index.js"
+import type { Equal } from "../../../Equal"
+import { makeEqual } from "../../../Equal"
+import { pipe } from "../../../Function"
+import type { Identity } from "../../../Identity"
+import { makeIdentity } from "../../../Identity"
+import type { ListURI } from "../../../Modules"
+import type { Ord } from "../../../Ord"
+import type { URI } from "../../../Prelude"
+import * as P from "../../../Prelude"
+import type { Show } from "../../../Show"
+import * as A from "../Array"
 
 export * from "@effect-ts/system/Collections/Immutable/List"
 

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Stream } from "./definitions.js"
+import type { Stream } from "./definitions"
 
 /**
  * Threads the stream through the transformation function `f`.

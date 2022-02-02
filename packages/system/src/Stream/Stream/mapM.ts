@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk/index.js"
-import { pipe } from "../../Function/index.js"
-import * as O from "../../Option/index.js"
-import * as T from "../_internal/effect.js"
-import * as M from "../_internal/managed.js"
-import * as BP from "../BufferedPull/index.js"
-import { Stream } from "./definitions.js"
+import * as A from "../../Collections/Immutable/Chunk"
+import { pipe } from "../../Function"
+import * as O from "../../Option"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import * as BP from "../BufferedPull"
+import { Stream } from "./definitions"
 /**
  * Maps over elements of the stream with the specified effectful function.
  */

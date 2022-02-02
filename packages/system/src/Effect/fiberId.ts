@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { descriptorWith, succeed } from "./core.js"
+import { descriptorWith, succeed } from "./core"
 
 /**
  * Returns the `FiberID` of the fiber executing the effect that calls this method.

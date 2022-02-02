@@ -1,17 +1,17 @@
 // ets_tracing: off
 
-import * as Tp from "../Collections/Immutable/Tuple/index.js"
-import { pipe } from "../Function/index.js"
-import { await as promiseAwait } from "../Promise/await.js"
-import type { Promise } from "../Promise/index.js"
-import { make as promiseMake } from "../Promise/make.js"
-import * as RefM from "../RefM/index.js"
-import { fork, succeed } from "./core.js"
-import * as Do from "./do.js"
-import type { Effect, UIO } from "./effect.js"
-import * as map from "./map.js"
-import * as tap from "./tap.js"
-import * as to from "./to.js"
+import * as Tp from "../Collections/Immutable/Tuple"
+import { pipe } from "../Function"
+import type { Promise } from "../Promise"
+import { await as promiseAwait } from "../Promise/await"
+import { make as promiseMake } from "../Promise/make"
+import * as RefM from "../RefM"
+import { fork, succeed } from "./core"
+import * as Do from "./do"
+import type { Effect, UIO } from "./effect"
+import * as map from "./map"
+import * as tap from "./tap"
+import * as to from "./to"
 
 /**
  * Returns a memoized version of the specified effectual function.

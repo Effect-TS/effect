@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as C from "../Cause/index.js"
-import * as E from "../Either/core.js"
-import { pipe } from "../Function/index.js"
-import * as O from "../Option/core.js"
-import { foldCauseM_, halt, succeed } from "./core.js"
-import type { Effect } from "./effect.js"
+import * as C from "../Cause"
+import * as E from "../Either/core"
+import { pipe } from "../Function"
+import * as O from "../Option/core"
+import { foldCauseM_, halt, succeed } from "./core"
+import type { Effect } from "./effect"
 
 /**
  * Recovers from some or all of the error cases.

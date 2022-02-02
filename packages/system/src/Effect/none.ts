@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as O from "../Option/index.js"
-import { succeed } from "./core.js"
-import type { UIO } from "./effect.js"
+import * as O from "../Option"
+import { succeed } from "./core"
+import type { UIO } from "./effect"
 
 /**
  * Returns an effect with the empty value.

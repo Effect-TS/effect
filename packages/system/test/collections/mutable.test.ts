@@ -1,7 +1,7 @@
-import * as HM from "../../src/Collections/Mutable/HashMap/index.js"
-import { pipe } from "../../src/Function/index.js"
-import * as O from "../../src/Option/index.js"
-import * as St from "../../src/Structural/index.js"
+import * as HM from "../../src/Collections/Mutable/HashMap"
+import { pipe } from "../../src/Function"
+import * as O from "../../src/Option"
+import * as St from "../../src/Structural"
 
 describe("Mutable HashMap", () => {
   it("use hash-map", () => {

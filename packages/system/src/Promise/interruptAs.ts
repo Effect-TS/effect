@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { interruptAs as effectInterruptAs } from "../Effect/interruption.js"
-import type { FiberID } from "../Fiber/id.js"
-import { completeWith } from "./completeWith.js"
-import type { Promise } from "./promise.js"
+import { interruptAs as effectInterruptAs } from "../Effect/interruption"
+import type { FiberID } from "../Fiber/id"
+import { completeWith } from "./completeWith"
+import type { Promise } from "./promise"
 
 /**
  * Completes the promise with interruption. This will interrupt all fibers

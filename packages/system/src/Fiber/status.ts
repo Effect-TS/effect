@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as St from "../Structural/index.js"
-import * as S from "../Sync/index.js"
-import type { FiberID } from "./id.js"
+import * as St from "../Structural"
+import * as S from "../Sync"
+import type { FiberID } from "./id"
 
 export type Status = Done | Finishing | Running | Suspended
 

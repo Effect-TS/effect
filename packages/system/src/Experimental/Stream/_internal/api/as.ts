@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as C from "../core.js"
-import * as Map from "./map.js"
+import type * as C from "../core"
+import * as Map from "./map"
 
 /**
  * Maps the success values of this stream to the specified constant value.

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { succeed } from "./core.js"
-import type { Effect } from "./effect.js"
-import { foldM_ } from "./foldM.js"
+import { succeed } from "./core"
+import type { Effect } from "./effect"
+import { foldM_ } from "./foldM"
 
 /**
  * Returns a new effect where the error channel has been merged into the

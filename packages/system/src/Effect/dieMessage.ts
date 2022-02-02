@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { RuntimeError } from "../Cause/index.js"
-import { dieWith } from "./die.js"
-import type { UIO } from "./effect.js"
+import { RuntimeError } from "../Cause"
+import { dieWith } from "./die"
+import type { UIO } from "./effect"
 
 /**
  * Returns an effect that dies with a {@link RuntimeError} having the

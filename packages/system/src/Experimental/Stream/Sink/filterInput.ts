@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as CK from "../../../Collections/Immutable/Chunk/index.js"
-import type { Predicate, Refinement } from "../../../Function/index.js"
-import * as ContramapChunks from "./contramapChunks.js"
-import type * as C from "./core.js"
+import * as CK from "../../../Collections/Immutable/Chunk"
+import type { Predicate, Refinement } from "../../../Function"
+import * as ContramapChunks from "./contramapChunks"
+import type * as C from "./core"
 
 export function filterInput_<
   R,

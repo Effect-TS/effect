@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { currentTime } from "../Clock/index.js"
-import type { Effect } from "./effect.js"
-import { summarized_ } from "./summarized.js"
+import { currentTime } from "../Clock"
+import type { Effect } from "./effect"
+import { summarized_ } from "./summarized"
 
 /**
  * A more powerful variation of `timed` that allows specifying the clock.

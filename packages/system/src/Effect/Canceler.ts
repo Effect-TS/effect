@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { RIO } from "./effect.js"
+import type { RIO } from "./effect"
 
 /**
  * Canceler Definition

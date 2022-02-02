@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type { ReaderURI } from "../Modules/index.js"
-import type { URI } from "../Prelude/index.js"
-import * as P from "../Prelude/index.js"
-import { access, map, zip } from "./operations.js"
+import type { ReaderURI } from "../Modules"
+import type { URI } from "../Prelude"
+import * as P from "../Prelude"
+import { access, map, zip } from "./operations"
 
 export type V = P.V<"R", "-">
 

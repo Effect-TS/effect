@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import type { Runtime } from "../Fiber/core.js"
-import { bracket_ } from "./bracket.js"
-import { chain_ } from "./core.js"
-import { forkDaemon } from "./core-scope.js"
-import type { Effect } from "./effect.js"
-import { fiberId } from "./fiberId.js"
+import type { Runtime } from "../Fiber/core"
+import { bracket_ } from "./bracket"
+import { chain_ } from "./core"
+import { forkDaemon } from "./core-scope"
+import type { Effect } from "./effect"
+import { fiberId } from "./fiberId"
 
 /**
  * Fork the effect into a separate fiber wrapping it in a bracket and returining the

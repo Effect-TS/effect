@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as T from "../../../../Effect/index.js"
-import type * as M from "../../../../Managed/index.js"
-import * as SK from "../../Sink/index.js"
-import type * as C from "../core.js"
-import * as RunManaged from "./runManaged.js"
+import type * as T from "../../../../Effect"
+import type * as M from "../../../../Managed"
+import * as SK from "../../Sink"
+import type * as C from "../core"
+import * as RunManaged from "./runManaged"
 
 /**
  * Like `Stream#forEach`, but returns a `Managed` so the finalization order

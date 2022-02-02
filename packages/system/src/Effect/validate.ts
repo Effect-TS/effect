@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import * as Chunk from "../Collections/Immutable/Chunk/core.js"
-import * as E from "../Either/index.js"
-import { absolve } from "./absolve.js"
-import type { Effect } from "./effect.js"
-import { either } from "./either.js"
-import { forEach_, forEachExec_, forEachPar_, forEachParN_ } from "./excl-forEach.js"
-import type { ExecutionStrategy } from "./ExecutionStrategy.js"
-import { map_ } from "./map.js"
+import * as Chunk from "../Collections/Immutable/Chunk/core"
+import * as E from "../Either"
+import { absolve } from "./absolve"
+import type { Effect } from "./effect"
+import { either } from "./either"
+import { forEach_, forEachExec_, forEachPar_, forEachParN_ } from "./excl-forEach"
+import type { ExecutionStrategy } from "./ExecutionStrategy"
+import { map_ } from "./map"
 
 /**
  * Feeds elements of type `A` to `f` and accumulates all errors in error

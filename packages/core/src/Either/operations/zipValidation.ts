@@ -2,8 +2,8 @@
 
 import * as E from "@effect-ts/system/Either"
 
-import type { Associative } from "../../Associative/index.js"
-import { tuple } from "../../Function/index.js"
+import type { Associative } from "../../Associative"
+import { tuple } from "../../Function"
 
 /**
  * Zip combining errors in case of multiple failures

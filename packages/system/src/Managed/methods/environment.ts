@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as T from "../../Effect/environment.js"
-import { fromEffect } from "../fromEffect.js"
+import * as T from "../../Effect/environment"
+import { fromEffect } from "../fromEffect"
 
 /**
  * Accesses the whole environment of the effect.

@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as L from "../Collections/Immutable/List/index.js"
-import { pipe } from "../Function/index.js"
-import * as core from "./core.js"
-import type { Effect } from "./effect.js"
-import * as map from "./map.js"
+import * as L from "../Collections/Immutable/List"
+import { pipe } from "../Function"
+import * as core from "./core"
+import type { Effect } from "./effect"
+import * as map from "./map"
 
 /**
  * Loops with the specified effectual function, collecting the results into a

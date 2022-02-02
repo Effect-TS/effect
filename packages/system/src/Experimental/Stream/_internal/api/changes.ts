@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as EQ from "../../../../Equal/index.js"
-import type * as C from "../core.js"
-import * as ChangesWith from "./changesWith.js"
+import * as EQ from "../../../../Equal"
+import type * as C from "../core"
+import * as ChangesWith from "./changesWith"
 
 /**
  * Returns a new stream that only emits elements that are not equal to the

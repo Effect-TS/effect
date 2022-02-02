@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as C from "../core.js"
+import * as C from "../core"
 
 /**
  * Returns a new channel whose outputs are fed to the specified factory function, which creates

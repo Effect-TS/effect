@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Identity } from "../../Identity/index.js"
-import type * as HKT from "../HKT/index.js"
+import type { Identity } from "../../Identity"
+import type * as HKT from "../HKT"
 
 export interface FoldMap<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
   readonly _FoldMap: "FoldMap"

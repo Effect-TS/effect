@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as O from "../Option/index.js"
-import { asUnit } from "./asUnit.js"
-import { suspend, unit } from "./core.js"
-import type { Effect } from "./effect.js"
+import type * as O from "../Option"
+import { asUnit } from "./asUnit"
+import { suspend, unit } from "./core"
+import type { Effect } from "./effect"
 
 /**
  * Runs an effect when the supplied `PartialFunction` matches for the given value, otherwise does nothing.

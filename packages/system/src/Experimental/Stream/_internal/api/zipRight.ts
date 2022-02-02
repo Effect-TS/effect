@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as C from "../core.js"
-import * as ZipWith from "./zipWith.js"
+import type * as C from "../core"
+import * as ZipWith from "./zipWith"
 
 /**
  * Zips this stream with another point-wise, but keeps only the outputs of the other stream.

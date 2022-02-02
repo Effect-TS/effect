@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import type { Either } from "../Either/index.js"
-import { pipe } from "../Function/index.js"
-import * as core from "./core.js"
-import type { Effect } from "./effect.js"
-import { either } from "./either.js"
-import { fromEither } from "./fromEither.js"
+import type { Either } from "../Either"
+import { pipe } from "../Function"
+import * as core from "./core"
+import type { Effect } from "./effect"
+import { either } from "./either"
+import { fromEither } from "./fromEither"
 
 /**
  * Returns an effect that effectfully "peeks" at the result of this effect as an `Either`.

@@ -1,6 +1,6 @@
-import "../src/Tracing/Enable/index.js"
+import "../src/Tracing/Enable"
 
-import { accessCallTrace, traceCall } from "../src/Tracing/index.js"
+import { accessCallTrace, traceCall } from "../src/Tracing"
 
 describe("Tracing Utils", () => {
   it("should access call trace", () => {

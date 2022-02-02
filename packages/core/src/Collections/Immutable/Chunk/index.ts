@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../../Operator/index.js"
+import "../../../Operator"
 
-export * from "./instances.js"
-export * from "./operations.js"
+export * from "./instances"
+export * from "./operations"

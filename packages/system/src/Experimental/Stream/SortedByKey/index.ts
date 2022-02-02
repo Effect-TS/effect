@@ -1,8 +1,8 @@
 // codegen:start {preset: barrel, include: ./*.ts, exclude: ./excl-*.ts}
-export * from "./core.js"
-export * from "./zipAllSortedByKey.js"
-export * from "./zipAllSortedByKeyLeft.js"
-export * from "./zipAllSortedByKeyRight.js"
-export * from "./zipAllSortedByKeyWith.js"
-export * from "./zipAllSortedByKeyWithExec.js"
+export * from "./core"
+export * from "./zipAllSortedByKey"
+export * from "./zipAllSortedByKeyLeft"
+export * from "./zipAllSortedByKeyRight"
+export * from "./zipAllSortedByKeyWith"
+export * from "./zipAllSortedByKeyWithExec"
 // codegen:end

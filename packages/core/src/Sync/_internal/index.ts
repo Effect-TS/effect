@@ -1,5 +1,5 @@
 // ets_tracing: off
 
-export * from "./core.js"
-export * from "./dsl.js"
-export * from "./instances.js"
+export * from "./core"
+export * from "./dsl"
+export * from "./instances"

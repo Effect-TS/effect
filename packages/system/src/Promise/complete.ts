@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { IO } from "../Effect/effect.js"
-import { to } from "../Effect/to.js"
-import type { Promise } from "./promise.js"
+import type { IO } from "../Effect/effect"
+import { to } from "../Effect/to"
+import type { Promise } from "./promise"
 
 /**
  * Completes the promise with the result of the specified effect. If the

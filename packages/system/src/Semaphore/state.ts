@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as Tp from "../Collections/Immutable/Tuple/index.js"
-import type * as E from "../Either/index.js"
-import type { ImmutableQueue } from "../Support/ImmutableQueue/index.js"
-import * as T from "./effect.js"
-import type * as P from "./promise.js"
+import type * as Tp from "../Collections/Immutable/Tuple"
+import type * as E from "../Either"
+import type { ImmutableQueue } from "../Support/ImmutableQueue"
+import * as T from "./effect"
+import type * as P from "./promise"
 
 export type Entry = Tp.Tuple<[P.Promise<never, void>, number]>
 export type State = E.Either<ImmutableQueue<Entry>, number>

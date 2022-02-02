@@ -1,23 +1,23 @@
 // ets_tracing: off
 
-import "../../../Operator/index.js"
+import "../../../Operator"
 
-import * as Cause from "../../../Cause/index.js"
-import type * as T from "../../../Effect/index.js"
-import type * as Exit from "../../../Exit/index.js"
-import { identity } from "../../../Function/index.js"
-import * as P from "./_internal/primitives.js"
-import type * as PR from "./_internal/producer.js"
+import * as Cause from "../../../Cause"
+import type * as T from "../../../Effect"
+import type * as Exit from "../../../Exit"
+import { identity } from "../../../Function"
+import * as P from "./_internal/primitives"
+import type * as PR from "./_internal/producer"
 
 export type {
   SingleProducerAsyncInput,
   AsyncInputProducer,
   AsyncInputConsumer
-} from "./_internal/producer.js"
+} from "./_internal/producer"
 
-export { makeSingleProducerAsyncInput } from "./_internal/producer.js"
+export { makeSingleProducerAsyncInput } from "./_internal/producer"
 
-export * from "./_internal/primitives.js"
+export * from "./_internal/primitives"
 
 /**
  * Pipe the output of a channel into the input of another

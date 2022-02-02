@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function/index.js"
-import type { Any } from "../Any/index.js"
-import type { Covariant } from "../Covariant/index.js"
-import type * as HKT from "../HKT/index.js"
-import type { Monad } from "../Monad/index.js"
-import { chainF } from "./chain.js"
-import { succeedF } from "./succeed.js"
+import { pipe } from "../../Function"
+import type { Any } from "../Any"
+import type { Covariant } from "../Covariant"
+import type * as HKT from "../HKT"
+import type { Monad } from "../Monad"
+import { chainF } from "./chain"
+import { succeedF } from "./succeed"
 
 export function doF<F extends HKT.URIS, C = HKT.Auto>(
   F: Any<F, C> & Covariant<F, C>

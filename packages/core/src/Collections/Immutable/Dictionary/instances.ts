@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { DictionaryURI } from "../../../Modules/index.js"
-import type { URI } from "../../../Prelude/index.js"
-import * as P from "../../../Prelude/index.js"
+import type { DictionaryURI } from "../../../Modules"
+import type { URI } from "../../../Prelude"
+import * as P from "../../../Prelude"
 import {
   compact,
   compactF,
@@ -20,7 +20,7 @@ import {
   separate,
   separateF,
   separateWithIndexF
-} from "./operations.js"
+} from "./operations"
 
 export const Covariant = P.instance<P.Covariant<[URI<DictionaryURI>]>>({
   map

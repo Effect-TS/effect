@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as C from "./core.js"
-import * as FoldSink from "./foldSink.js"
+import type * as C from "./core"
+import * as FoldSink from "./foldSink"
 
 /**
  * Runs this sink until it yields a result, then uses that result to create another

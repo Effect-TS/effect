@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { IO } from "../Effect/primitives.js"
-import type { XFiberRef } from "./fiberRef.js"
+import type { IO } from "../Effect/primitives"
+import type { XFiberRef } from "./fiberRef"
 
 /**
  * Reads the value associated with the current fiber. Returns initial value if

@@ -3,15 +3,15 @@
 /**
  * adapted from https://github.com/gcanti/fp-ts
  */
-import "../../../Operator/index.js"
+import "../../../Operator"
 
-import type { Predicate, Refinement } from "../../../Function/core.js"
-import { identity } from "../../../Function/core.js"
-import type { Option } from "../../../Option/index.js"
-import { isSome, none, some } from "../../../Option/index.js"
-import type { MutableArray } from "../../../Support/Mutable/index.js"
-import type { NonEmptyArray } from "../NonEmptyArray/index.js"
-import * as Tp from "../Tuple/index.js"
+import type { Predicate, Refinement } from "../../../Function/core"
+import { identity } from "../../../Function/core"
+import type { Option } from "../../../Option"
+import { isSome, none, some } from "../../../Option"
+import type { MutableArray } from "../../../Support/Mutable"
+import type { NonEmptyArray } from "../NonEmptyArray"
+import * as Tp from "../Tuple"
 
 export type Array<A> = ReadonlyArray<A>
 

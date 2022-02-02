@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { crossWith_ } from "./crossWith.js"
-import type { Stream } from "./definitions.js"
+import { crossWith_ } from "./crossWith"
+import type { Stream } from "./definitions"
 
 /**
  * Composes this stream with the specified stream to create a cartesian product of elements,

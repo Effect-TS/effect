@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type { Cause } from "../Cause/index.js"
-import { flatten } from "../Cause/index.js"
-import type { Effect } from "./effect.js"
-import { mapErrorCause_ } from "./mapErrorCause.js"
+import type { Cause } from "../Cause"
+import { flatten } from "../Cause"
+import type { Effect } from "./effect"
+import { mapErrorCause_ } from "./mapErrorCause"
 
 /**
  * The inverse operation `sandbox(effect)`

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Stream } from "./definitions.js"
-import { succeed } from "./succeed.js"
+import type { Stream } from "./definitions"
+import { succeed } from "./succeed"
 
 /**
  * A stream that contains a single `Unit` value.

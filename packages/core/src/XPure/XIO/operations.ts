@@ -3,7 +3,7 @@
 import type * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import * as F from "@effect-ts/system/XPure"
 
-import type { XIO } from "./definition.js"
+import type { XIO } from "./definition"
 
 /**
  * Lift a sync (non failable) computation

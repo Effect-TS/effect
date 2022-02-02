@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as P from "../Prelude/index.js"
-import { Applicative, Covariant, Monad } from "./instances.js"
+import * as P from "../Prelude"
+import { Applicative, Covariant, Monad } from "./instances"
 
 /**
  * Struct based applicative for Reader[-_, +_]

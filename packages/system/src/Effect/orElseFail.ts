@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { Effect } from "./effect.js"
-import { fail } from "./fail.js"
-import { orElse_ } from "./orElse.js"
+import type { Effect } from "./effect"
+import { fail } from "./fail"
+import { orElse_ } from "./orElse"
 
 /**
  * Executes this effect and returns its value, if it succeeds, but

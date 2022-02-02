@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { OrFix } from "./fix.js"
-import type { ConcreteURIS, URItoIndex, URItoKind } from "./hkt.js"
+import type { OrFix } from "./fix"
+import type { ConcreteURIS, URItoIndex, URItoKind } from "./hkt"
 
 export type URIS = [URI<ConcreteURIS, any>, ...URI<ConcreteURIS, any>[]]
 

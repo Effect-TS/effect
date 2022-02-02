@@ -1,9 +1,7 @@
-// ets_tracing: off
-
-import { ArrayIndexOutOfBoundsException } from "../../GlobalExceptions/index.js"
-import * as O from "../../Option/index.js"
-import * as STM from "../STM/index.js"
-import * as TRef from "../TRef/index.js"
+import { ArrayIndexOutOfBoundsException } from "../../GlobalExceptions"
+import * as O from "../../Option"
+import * as STM from "../STM"
+import * as TRef from "../TRef"
 
 export const TArrayTypeId = Symbol()
 export type TArrayTypeId = typeof TArrayTypeId

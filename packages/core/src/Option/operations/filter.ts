@@ -2,7 +2,7 @@
 
 import * as O from "@effect-ts/system/Option"
 
-import type { Predicate, Refinement } from "../../Function/index.js"
+import type { Predicate, Refinement } from "../../Function"
 
 /**
  * Filter using refinement

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../../../Operator/index.js"
+import "../../../../Operator"
 
 export const _ChannelTypeId = Symbol()
 export type _ChannelTypeId = typeof _ChannelTypeId

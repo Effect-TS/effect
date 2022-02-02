@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import { effectMaybeAsyncInterruptBlockingOn } from "../Effect/effectMaybeAsyncInterrupt.js"
-import * as E from "../Either/index.js"
-import { interruptJoiner } from "./interruptJoiner.js"
-import type { Promise } from "./promise.js"
-import { Pending } from "./state.js"
+import { effectMaybeAsyncInterruptBlockingOn } from "../Effect/effectMaybeAsyncInterrupt"
+import * as E from "../Either"
+import { interruptJoiner } from "./interruptJoiner"
+import type { Promise } from "./promise"
+import { Pending } from "./state"
 
 /**
  * Retrieves the value of the promise, suspending the fiber running the action

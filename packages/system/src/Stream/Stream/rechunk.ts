@@ -1,15 +1,15 @@
 // ets_tracing: off
 
-import * as C from "../../Cause/index.js"
-import * as A from "../../Collections/Immutable/Chunk/index.js"
-import { pipe } from "../../Function/index.js"
-import * as O from "../../Option/index.js"
-import * as T from "../_internal/effect.js"
-import * as M from "../_internal/managed.js"
-import * as Ref from "../_internal/ref.js"
-import * as Pull from "../Pull/index.js"
-import { Stream } from "./definitions.js"
-import { halt } from "./halt.js"
+import * as C from "../../Cause"
+import * as A from "../../Collections/Immutable/Chunk"
+import { pipe } from "../../Function"
+import * as O from "../../Option"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import * as Ref from "../_internal/ref"
+import * as Pull from "../Pull"
+import { Stream } from "./definitions"
+import { halt } from "./halt"
 
 class State<X> {
   constructor(public buffer: A.Chunk<X>, public done: boolean) {}

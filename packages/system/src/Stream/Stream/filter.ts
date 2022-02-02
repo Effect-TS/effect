@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk/index.js"
-import type { Predicate, Refinement } from "../../Function/index.js"
-import type { Stream } from "./definitions.js"
-import { mapChunks_ } from "./mapChunks.js"
+import * as A from "../../Collections/Immutable/Chunk"
+import type { Predicate, Refinement } from "../../Function"
+import type { Stream } from "./definitions"
+import { mapChunks_ } from "./mapChunks"
 
 /**
  * Applies the predicate to each element and allows passing elements

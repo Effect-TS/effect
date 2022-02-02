@@ -1,16 +1,16 @@
 // ets_tracing: off
 
 // codegen:start {preset: barrel, include: ./*.ts, exclude: ./deps*.ts}
-export * from "./add.js"
-export * from "./addIfOpen.js"
-export * from "./Exited.js"
-export * from "./finalizer.js"
-export * from "./makeReleaseMap.js"
-export * from "./next.js"
-export * from "./release.js"
-export * from "./releaseAll.js"
-export * from "./ReleaseMap.js"
-export * from "./replace.js"
-export * from "./Running.js"
-export * from "./State.js"
+export * from "./add"
+export * from "./addIfOpen"
+export * from "./Exited"
+export * from "./finalizer"
+export * from "./makeReleaseMap"
+export * from "./next"
+export * from "./release"
+export * from "./releaseAll"
+export * from "./ReleaseMap"
+export * from "./replace"
+export * from "./Running"
+export * from "./State"
 // codegen:end

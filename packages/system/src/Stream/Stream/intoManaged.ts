@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import * as C from "../../Cause/index.js"
-import * as O from "../../Option/index.js"
-import * as Q from "../../Queue/core.js"
-import * as T from "../_internal/effect.js"
-import * as M from "../_internal/managed.js"
-import * as TK from "../Take/index.js"
-import type { Stream } from "./definitions.js"
+import * as C from "../../Cause"
+import * as O from "../../Option"
+import * as Q from "../../Queue/core"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import * as TK from "../Take"
+import type { Stream } from "./definitions"
 
 /**
  * Like `into`, but provides the result as a `Managed` to allow for scope

@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect/index.js"
-import type * as HS from "../../../../Has/index.js"
-import type * as C from "../core.js"
-import * as AccessServiceEffect from "./accessServiceEffect.js"
+import * as T from "../../../../Effect"
+import type * as HS from "../../../../Has"
+import type * as C from "../core"
+import * as AccessServiceEffect from "./accessServiceEffect"
 
 /**
  * Accesses the specified service in the environment of the effect.

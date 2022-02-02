@@ -1,18 +1,18 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect/index.js"
-import * as E from "../../../../Either/index.js"
-import * as F from "../../../../Fiber/index.js"
-import { pipe } from "../../../../Function/index.js"
-import * as M from "../../../../Managed/index.js"
-import * as P from "../../../../Promise/index.js"
-import * as Q from "../../../../Queue/index.js"
-import * as SM from "../../../../Semaphore/index.js"
-import * as C from "../core.js"
-import * as Managed from "./managed.js"
-import * as ToPull from "./toPull.js"
-import * as Unwrap from "./unwrap.js"
-import * as ZipRight from "./zipRight.js"
+import * as T from "../../../../Effect"
+import * as E from "../../../../Either"
+import * as F from "../../../../Fiber"
+import { pipe } from "../../../../Function"
+import * as M from "../../../../Managed"
+import * as P from "../../../../Promise"
+import * as Q from "../../../../Queue"
+import * as SM from "../../../../Semaphore"
+import * as C from "../core"
+import * as Managed from "./managed"
+import * as ToPull from "./toPull"
+import * as Unwrap from "./unwrap"
+import * as ZipRight from "./zipRight"
 
 export function mapOutEffectPar_<
   Env,

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as C from "../core.js"
+import type * as C from "../core"
 
 /**
  * Threads the stream through the transformation function `f`.

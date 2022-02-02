@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Base, Infer, Kind, URIS } from "../HKT/index.js"
+import type { Base, Infer, Kind, URIS } from "../HKT"
 
 type KindFromObj<URI extends URIS, C, __> = Kind<
   URI,

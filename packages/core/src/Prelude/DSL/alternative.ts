@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function/index.js"
-import type { AssociativeEither } from "../AssociativeEither/index.js"
-import type { Covariant } from "../Covariant/index.js"
-import type { HKT, Intro, Kind, Mix, UHKT, URIS } from "../HKT/index.js"
+import { pipe } from "../../Function"
+import type { AssociativeEither } from "../AssociativeEither"
+import type { Covariant } from "../Covariant"
+import type { HKT, Intro, Kind, Mix, UHKT, URIS } from "../HKT"
 
 export function orElseF<F extends URIS, C>(
   F: AssociativeEither<F, C> & Covariant<F, C>

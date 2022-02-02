@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
-import * as L from "../../../../Collections/Immutable/List/index.js"
-import * as T from "../../../../Effect/index.js"
-import * as CH from "../../Channel/index.js"
-import * as C from "../core.js"
-import * as Unwrap from "./unwrap.js"
+import * as CK from "../../../../Collections/Immutable/Chunk"
+import * as L from "../../../../Collections/Immutable/List"
+import * as T from "../../../../Effect"
+import * as CH from "../../Channel"
+import * as C from "../core"
+import * as Unwrap from "./unwrap"
 
 class Rechunker<A> {
   private builder = CK.builder<A>()

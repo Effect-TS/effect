@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk/index.js"
-import type * as L from "../../Collections/Immutable/List/index.js"
-import { pipe } from "../../Function/index.js"
-import * as T from "../_internal/effect.js"
-import * as SK from "../Sink/index.js"
-import type { Stream } from "./definitions.js"
-import { run } from "./run.js"
+import * as A from "../../Collections/Immutable/Chunk"
+import type * as L from "../../Collections/Immutable/List"
+import { pipe } from "../../Function"
+import * as T from "../_internal/effect"
+import * as SK from "../Sink"
+import type { Stream } from "./definitions"
+import { run } from "./run"
 
 /**
  * Runs the stream and collects all of its elements to an array.

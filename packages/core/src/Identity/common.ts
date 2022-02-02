@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as A from "../Associative/common.js"
-import type { Identity } from "./definition.js"
-import { makeIdentity } from "./makeIdentity.js"
+import * as A from "../Associative/common"
+import type { Identity } from "./definition"
+import { makeIdentity } from "./makeIdentity"
 
 /**
  * Derive `Identity` from `Associative` and `identity`

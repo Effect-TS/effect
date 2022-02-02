@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { bracketExit_ } from "./bracketExit.js"
-import type { Effect } from "./effect.js"
+import { bracketExit_ } from "./bracketExit"
+import type { Effect } from "./effect"
 
 /**
  * When this effect represents acquisition of a resource (for example,

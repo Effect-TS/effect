@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type { HasClock } from "../../Clock/index.js"
-import type * as A from "../../Collections/Immutable/Chunk/index.js"
-import * as T from "../_internal/effect.js"
-import type { Stream } from "./definitions.js"
-import { throttleEnforceM_ } from "./throttleEnforceM.js"
+import type { HasClock } from "../../Clock"
+import type * as A from "../../Collections/Immutable/Chunk"
+import * as T from "../_internal/effect"
+import type { Stream } from "./definitions"
+import { throttleEnforceM_ } from "./throttleEnforceM"
 
 /**
  * Throttles the chunks of this stream according to the given bandwidth parameters using the token bucket

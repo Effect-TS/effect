@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import "../Operator/index.js"
+import "../Operator"
 
-export * from "./definition.js"
-export { EitherURI } from "../Modules/index.js"
-export * from "./operations/index.js"
-export * from "./instances.js"
-export * from "./dsls/index.js"
+export * from "./definition"
+export { EitherURI } from "../Modules"
+export * from "./operations"
+export * from "./instances"
+export * from "./dsls"

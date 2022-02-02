@@ -1,7 +1,5 @@
-// ets_tracing: off
-
-import type * as Chunk from "../core.js"
-import { concreteId } from "../definition.js"
+import type * as Chunk from "../core"
+import { concreteId } from "../definition"
 
 /**
  * Folds over the elements in this chunk from the left.

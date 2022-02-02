@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { chain_, unit } from "./core.js"
-import type { Effect } from "./effect.js"
+import { chain_, unit } from "./core"
+import type { Effect } from "./effect"
 
 /**
  * Ignores the result of the effect replacing it with a void

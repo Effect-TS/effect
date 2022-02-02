@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as CK from "../../../Collections/Immutable/Chunk/index.js"
-import type * as T from "../../../Effect/index.js"
-import * as ContramapChunksEffect from "./contramapChunksEffect.js"
-import type * as C from "./core.js"
-import * as MapEffect from "./mapEffect.js"
+import type * as CK from "../../../Collections/Immutable/Chunk"
+import type * as T from "../../../Effect"
+import * as ContramapChunksEffect from "./contramapChunksEffect"
+import type * as C from "./core"
+import * as MapEffect from "./mapEffect"
 
 /**
  * Effectfully transforms both input chunks and result of this sink using the provided functions.

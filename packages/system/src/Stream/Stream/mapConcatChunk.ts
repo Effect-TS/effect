@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk/index.js"
-import type { Stream } from "./definitions.js"
-import { mapChunks_ } from "./mapChunks.js"
+import * as A from "../../Collections/Immutable/Chunk"
+import type { Stream } from "./definitions"
+import { mapChunks_ } from "./mapChunks"
 
 /**
  * Maps each element to a chunk, and flattens the chunks into the output of

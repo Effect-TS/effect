@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk/index.js"
-import type { UIO } from "./definitions.js"
-import { fromChunk } from "./fromChunk.js"
+import * as A from "../../Collections/Immutable/Chunk"
+import type { UIO } from "./definitions"
+import { fromChunk } from "./fromChunk"
 
 /**
  * Creates a single-valued pure stream

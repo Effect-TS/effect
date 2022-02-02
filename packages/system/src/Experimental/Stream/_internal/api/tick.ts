@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as CL from "../../../../Clock/index.js"
-import * as SC from "../../../../Schedule/index.js"
-import type * as C from "../core.js"
-import * as RepeatValueWith from "./repeatValueWith.js"
+import type * as CL from "../../../../Clock"
+import * as SC from "../../../../Schedule"
+import type * as C from "../core"
+import * as RepeatValueWith from "./repeatValueWith"
 
 /**
  * A stream that emits Unit values spaced by the specified duration.

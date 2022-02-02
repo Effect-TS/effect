@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as C from "../Cause/cause.js"
-import { haltWith } from "./core.js"
+import * as C from "../Cause/cause"
+import { haltWith } from "./core"
 
 /**
  * Returns an effect that models failure with the specified error.

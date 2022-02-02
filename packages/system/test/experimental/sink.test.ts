@@ -1,10 +1,10 @@
-import * as CK from "../../src/Collections/Immutable/Chunk/index.js"
-import * as Tp from "../../src/Collections/Immutable/Tuple/index.js"
-import * as T from "../../src/Effect/index.js"
-import * as S from "../../src/Experimental/Stream/index.js"
-import * as SK from "../../src/Experimental/Stream/Sink/index.js"
-import { pipe } from "../../src/Function/index.js"
-import * as O from "../../src/Option/index.js"
+import * as CK from "../../src/Collections/Immutable/Chunk"
+import * as Tp from "../../src/Collections/Immutable/Tuple"
+import * as T from "../../src/Effect"
+import * as S from "../../src/Experimental/Stream"
+import * as SK from "../../src/Experimental/Stream/Sink"
+import { pipe } from "../../src/Function"
+import * as O from "../../src/Option"
 
 describe("Sink", () => {
   it("untilOutputEffect", async () => {

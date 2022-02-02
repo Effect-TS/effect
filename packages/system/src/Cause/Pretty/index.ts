@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Array/index.js"
-import type { FiberID } from "../../Fiber/id.js"
-import type { Trace } from "../../Fiber/tracing.js"
-import { prettyTrace } from "../../Fiber/tracing.js"
-import { pipe } from "../../Function/index.js"
-import * as S from "../../IO/index.js"
-import * as O from "../../Option/index.js"
-import type { Cause } from "../cause.js"
+import * as A from "../../Collections/Immutable/Array"
+import type { FiberID } from "../../Fiber/id"
+import type { Trace } from "../../Fiber/tracing"
+import { prettyTrace } from "../../Fiber/tracing"
+import { pipe } from "../../Function"
+import * as S from "../../IO"
+import * as O from "../../Option"
+import type { Cause } from "../cause"
 
 //
 // @category PrettyPrint

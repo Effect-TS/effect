@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import "../../Operator/index.js"
+import "../../Operator"
 
-import * as Chunk from "../../Collections/Immutable/Chunk/core.js"
-import { DoublyLinkedList } from "../DoublyLinkedList/index.js"
+import * as Chunk from "../../Collections/Immutable/Chunk/core"
+import { DoublyLinkedList } from "../DoublyLinkedList"
 
 export interface MutableQueue<A> {
   /**

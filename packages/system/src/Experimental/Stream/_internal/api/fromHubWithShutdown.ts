@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as H from "../../../../Hub/index.js"
-import * as C from "../core.js"
-import * as Ensuring from "./ensuring.js"
-import * as FromHub from "./fromHub.js"
+import * as H from "../../../../Hub"
+import * as C from "../core"
+import * as Ensuring from "./ensuring"
+import * as FromHub from "./fromHub"
 
 /**
  * Creates a stream from a subscription to a hub.

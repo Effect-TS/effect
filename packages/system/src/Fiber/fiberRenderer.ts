@@ -1,16 +1,16 @@
 // ets_tracing: off
 
-import type { Chunk } from "../Collections/Immutable/Chunk/index.js"
-import { constant, tuple } from "../Function/index.js"
-import * as IT from "../Iterable/index.js"
-import { fold_ } from "../Option/index.js"
-import { parseMs } from "../Utils/parse-ms.js"
-import type { UIO } from "./_internal/effect.js"
-import * as T from "./_internal/effect-api.js"
-import type { Runtime } from "./core.js"
-import { FiberDump } from "./dump.js"
-import { fiberName } from "./fiberName.js"
-import type { Status } from "./status.js"
+import type { Chunk } from "../Collections/Immutable/Chunk"
+import { constant, tuple } from "../Function"
+import * as IT from "../Iterable"
+import { fold_ } from "../Option"
+import { parseMs } from "../Utils/parse-ms"
+import type { UIO } from "./_internal/effect"
+import * as T from "./_internal/effect-api"
+import type { Runtime } from "./core"
+import { FiberDump } from "./dump"
+import { fiberName } from "./fiberName"
+import type { Status } from "./status"
 
 export function dump<E, A>(fiber: Runtime<E, A>): T.UIO<FiberDump> {
   return T.map_(

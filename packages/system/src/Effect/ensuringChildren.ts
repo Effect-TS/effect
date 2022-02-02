@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import type * as Chunk from "../Collections/Immutable/Chunk/index.js"
-import type { SortedSet } from "../Collections/Immutable/SortedSet/index.js"
-import * as Fiber from "../Fiber/index.js"
-import { pipe } from "../Function/index.js"
-import { track } from "../Supervisor/index.js"
-import * as core from "./core.js"
-import type { Effect, RIO } from "./effect.js"
-import * as ensuring from "./ensuring.js"
+import type * as Chunk from "../Collections/Immutable/Chunk"
+import type { SortedSet } from "../Collections/Immutable/SortedSet"
+import * as Fiber from "../Fiber"
+import { pipe } from "../Function"
+import { track } from "../Supervisor"
+import * as core from "./core"
+import type { Effect, RIO } from "./effect"
+import * as ensuring from "./ensuring"
 
 /**
  * Acts on the children of this fiber, guaranteeing the specified callback

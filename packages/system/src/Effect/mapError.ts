@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { map_ } from "../Cause/core.js"
-import { foldCauseM_, halt, succeed } from "./core.js"
-import type { Effect } from "./effect.js"
+import { map_ } from "../Cause/core"
+import { foldCauseM_, halt, succeed } from "./core"
+import type { Effect } from "./effect"
 
 /**
  * Returns an effect with its error channel mapped using the specified

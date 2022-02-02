@@ -1,24 +1,24 @@
 // ets_tracing: off
 
-import "../Operator/index.js"
+import "../Operator"
 
-import type { Cause } from "../Cause/cause.js"
-import { empty, then } from "../Cause/cause.js"
+import type { Cause } from "../Cause/cause"
+import { empty, then } from "../Cause/cause"
 /**
  * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/Scope.scala
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-import * as A from "../Collections/Immutable/Array/index.js"
-import { cause } from "../Effect/cause.js"
-import { succeed, succeedWith, suspend } from "../Effect/core.js"
-import type { UIO } from "../Effect/effect.js"
-import { map_ } from "../Effect/map.js"
-import { uncause } from "../Effect/uncause.js"
-import { zipWith_ } from "../Effect/zipWith.js"
-import * as E from "../Either/index.js"
-import { AtomicNumber } from "../Support/AtomicNumber/index.js"
-import { AtomicReference } from "../Support/AtomicReference/index.js"
+import * as A from "../Collections/Immutable/Array"
+import { cause } from "../Effect/cause"
+import { succeed, succeedWith, suspend } from "../Effect/core"
+import type { UIO } from "../Effect/effect"
+import { map_ } from "../Effect/map"
+import { uncause } from "../Effect/uncause"
+import { zipWith_ } from "../Effect/zipWith"
+import * as E from "../Either"
+import { AtomicNumber } from "../Support/AtomicNumber"
+import { AtomicReference } from "../Support/AtomicReference"
 
 /**
  * Represent Common Ops between Global | Local<A>

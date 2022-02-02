@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as T from "../../../../Effect/index.js"
-import type * as C from "../core.js"
-import * as GroupByKey from "./groupByKey.js"
-import * as MapEffect from "./mapEffect.js"
-import * as MergeGroupBy from "./mergeGroupBy.js"
+import type * as T from "../../../../Effect"
+import type * as C from "../core"
+import * as GroupByKey from "./groupByKey"
+import * as MapEffect from "./mapEffect"
+import * as MergeGroupBy from "./mergeGroupBy"
 
 /**
  * Maps over elements of the stream with the specified effectful function,

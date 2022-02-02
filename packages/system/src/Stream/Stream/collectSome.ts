@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { identity } from "../../Function/index.js"
-import type * as O from "../../Option/index.js"
-import { collect_ } from "./collect.js"
-import type { Stream } from "./definitions.js"
+import { identity } from "../../Function"
+import type * as O from "../../Option"
+import { collect_ } from "./collect"
+import type { Stream } from "./definitions"
 
 /**
  * Filters any 'None' values.

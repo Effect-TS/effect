@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as core from "./core.js"
-import type { Effect } from "./effect.js"
+import * as core from "./core"
+import type { Effect } from "./effect"
 
 /**
  * Provides some of the environment required to run this effect,

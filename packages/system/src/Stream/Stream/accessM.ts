@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as T from "../_internal/effect.js"
-import type { Stream } from "./definitions.js"
-import { environment } from "./environment.js"
-import { mapM_ } from "./mapM.js"
+import type * as T from "../_internal/effect"
+import type { Stream } from "./definitions"
+import { environment } from "./environment"
+import { mapM_ } from "./mapM"
 
 /**
  * Accesses the environment of the stream in the context of an effect.

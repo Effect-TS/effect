@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import type * as CL from "../../Clock/index.js"
-import * as E from "../../Either/index.js"
-import type * as H from "../../Has/index.js"
-import type * as SC from "../../Schedule/index.js"
-import type { Stream } from "./definitions.js"
-import { scheduleWith } from "./scheduleWith.js"
+import type * as CL from "../../Clock"
+import * as E from "../../Either"
+import type * as H from "../../Has"
+import type * as SC from "../../Schedule"
+import type { Stream } from "./definitions"
+import { scheduleWith } from "./scheduleWith"
 
 /**
  * Schedules the output of the stream using the provided `schedule` and emits its output at

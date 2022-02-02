@@ -3,9 +3,9 @@
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/Sync"
 
-import type { SyncURI } from "../../Modules/index.js"
-import type { URI } from "../../Prelude/index.js"
-import * as P from "../../Prelude/index.js"
+import type { SyncURI } from "../../Modules"
+import type { URI } from "../../Prelude"
+import * as P from "../../Prelude"
 
 export type V = P.V<"R", "-"> & P.V<"E", "+">
 

@@ -1,8 +1,8 @@
 import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 
-import * as T from "../../src/Effect/index.js"
-import * as Ref from "../../src/Effect/Ref/index.js"
-import { pipe } from "../../src/Function/index.js"
+import * as T from "../../src/Effect"
+import * as Ref from "../../src/Effect/Ref"
+import { pipe } from "../../src/Function"
 import { tag } from "../../src/Has"
 
 const ConsoleServiceId = Symbol()

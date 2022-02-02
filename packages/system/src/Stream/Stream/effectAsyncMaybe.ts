@@ -1,17 +1,17 @@
 // ets_tracing: off
 
-import type * as A from "../../Collections/Immutable/Chunk/index.js"
-import type * as Ex from "../../Exit/index.js"
-import { pipe } from "../../Function/index.js"
-import * as O from "../../Option/index.js"
-import * as Q from "../../Queue/index.js"
-import * as T from "../_internal/effect.js"
-import type * as F from "../_internal/fiber.js"
-import * as M from "../_internal/managed.js"
-import * as Ref from "../_internal/ref.js"
-import * as Pull from "../Pull/index.js"
-import * as Take from "../Take/index.js"
-import { Stream } from "./definitions.js"
+import type * as A from "../../Collections/Immutable/Chunk"
+import type * as Ex from "../../Exit"
+import { pipe } from "../../Function"
+import * as O from "../../Option"
+import * as Q from "../../Queue"
+import * as T from "../_internal/effect"
+import type * as F from "../_internal/fiber"
+import * as M from "../_internal/managed"
+import * as Ref from "../_internal/ref"
+import * as Pull from "../Pull"
+import * as Take from "../Take"
+import { Stream } from "./definitions"
 
 /**
  * Creates a stream from an asynchronous callback that can be called multiple times.

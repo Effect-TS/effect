@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import type * as Q from "../../Queue/index.js"
-import type * as Take from "../../Stream/Take/index.js"
-import * as T from "../_internal/effect.js"
-import * as M from "../_internal/managed.js"
-import type { Stream } from "./definitions.js"
-import { intoManaged_ } from "./intoManaged.js"
+import type * as Q from "../../Queue"
+import type * as Take from "../../Stream/Take"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import type { Stream } from "./definitions"
+import { intoManaged_ } from "./intoManaged"
 
 /**
  * Enqueues elements of this stream into a queue. Stream failure and ending will also be

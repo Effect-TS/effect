@@ -2,8 +2,8 @@
 
 import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 
-import { identity } from "../Function/index.js"
-import type { Reader } from "./definition.js"
+import { identity } from "../Function"
+import type { Reader } from "./definition"
 
 /**
  * Lift a sync (non failable) computation

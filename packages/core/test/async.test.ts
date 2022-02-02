@@ -1,8 +1,8 @@
 import * as As from "../src/Async"
-import { range } from "../src/Collections/Immutable/Array/index.js"
-import * as Chunk from "../src/Collections/Immutable/Chunk/index.js"
-import * as Tp from "../src/Collections/Immutable/Tuple/index.js"
-import { identity, pipe } from "../src/Function/index.js"
+import { range } from "../src/Collections/Immutable/Array"
+import * as Chunk from "../src/Collections/Immutable/Chunk"
+import * as Tp from "../src/Collections/Immutable/Tuple"
+import { identity, pipe } from "../src/Function"
 
 describe("Async", () => {
   it("should use async", async () => {

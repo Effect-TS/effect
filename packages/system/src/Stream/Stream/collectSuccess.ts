@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as Ex from "../../Exit/index.js"
-import * as O from "../../Option/index.js"
-import { collect_ } from "./collect.js"
-import type { Stream } from "./definitions.js"
+import * as Ex from "../../Exit"
+import * as O from "../../Option"
+import { collect_ } from "./collect"
+import type { Stream } from "./definitions"
 
 /**
  * Filters any `Exit.Failure` values.

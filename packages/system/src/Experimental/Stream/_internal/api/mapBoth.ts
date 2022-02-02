@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as C from "../core.js"
-import * as Map from "./map.js"
-import * as MapError from "./mapError.js"
+import type * as C from "../core"
+import * as Map from "./map"
+import * as MapError from "./mapError"
 
 /**
  * Returns a stream whose failure and success channels have been mapped by

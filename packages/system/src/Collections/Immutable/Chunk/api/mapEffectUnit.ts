@@ -1,8 +1,6 @@
-// ets_tracing: off
-
-import type { Effect } from "../../../../Effect/effect.js"
-import * as forEach from "../../../../Effect/excl-forEach.js"
-import type * as Chunk from "../core.js"
+import type { Effect } from "../../../../Effect/effect"
+import * as forEach from "../../../../Effect/excl-forEach"
+import type * as Chunk from "../core"
 
 /**
  * Effectfully maps the elements of this chunk purely for the effects.

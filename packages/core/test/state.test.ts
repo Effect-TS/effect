@@ -1,9 +1,9 @@
 import { Tagged } from "../src/Case"
-import { FiberState } from "../src/Effect/FiberState/index.js"
-import * as T from "../src/Effect/index.js"
-import { State } from "../src/Effect/State/index.js"
-import * as E from "../src/Either/index.js"
-import { pipe } from "../src/Function/index.js"
+import * as T from "../src/Effect"
+import { FiberState } from "../src/Effect/FiberState"
+import { State } from "../src/Effect/State"
+import * as E from "../src/Either"
+import { pipe } from "../src/Function"
 
 describe("State", () => {
   it("should use fiber state", async () => {

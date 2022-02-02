@@ -1,18 +1,16 @@
-// ets_tracing: off
-
-import * as Chunk from "../../Collections/Immutable/Chunk/index.js"
-import * as SortedSet from "../../Collections/Immutable/SortedSet/index.js"
-import * as Tuple from "../../Collections/Immutable/Tuple/index.js"
-import * as T from "../../Effect/index.js"
-import type * as Fiber from "../../Fiber/index.js"
-import * as FiberRef from "../../FiberRef/index.js"
-import { pipe } from "../../Function/index.js"
-import { tag } from "../../Has/index.js"
-import * as L from "../../Layer/index.js"
-import * as St from "../../Structural/index.js"
-import { fiberSet } from "../FiberSet/index.js"
-import * as TestAnnotation from "../TestAnnotation/index.js"
-import * as TAM from "../TestAnnotationMap/index.js"
+import * as Chunk from "../../Collections/Immutable/Chunk"
+import * as SortedSet from "../../Collections/Immutable/SortedSet"
+import * as Tuple from "../../Collections/Immutable/Tuple"
+import * as T from "../../Effect"
+import type * as Fiber from "../../Fiber"
+import * as FiberRef from "../../FiberRef"
+import { pipe } from "../../Function"
+import { tag } from "../../Has"
+import * as L from "../../Layer"
+import * as St from "../../Structural"
+import { fiberSet } from "../FiberSet"
+import * as TestAnnotation from "../TestAnnotation"
+import * as TAM from "../TestAnnotationMap"
 
 /**
  * An `Annotated[A]` contains a value of type `A` along with zero or more

@@ -2,7 +2,7 @@
 
 import type { Either } from "@effect-ts/system/Either"
 
-import type * as HKT from "../../HKT/index.js"
+import type * as HKT from "../../HKT"
 
 export interface Run<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
   readonly _Run: "Run"

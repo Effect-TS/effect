@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as E from "../../Either/index.js"
-import { chain_ } from "../core.js"
-import type { Managed } from "../managed.js"
-import { fromEither } from "./fromEither.js"
+import * as E from "../../Either"
+import { chain_ } from "../core"
+import type { Managed } from "../managed"
+import { fromEither } from "./fromEither"
 
 /**
  * Submerges the error case of an `Either` into the `Managed`. The inverse

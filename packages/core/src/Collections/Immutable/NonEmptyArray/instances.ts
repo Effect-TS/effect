@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type { NonEmptyArrayURI } from "../../../Modules/index.js"
-import type { URI } from "../../../Prelude/index.js"
-import * as P from "../../../Prelude/index.js"
-import * as A from "./operations.js"
+import type { NonEmptyArrayURI } from "../../../Modules"
+import type { URI } from "../../../Prelude"
+import * as P from "../../../Prelude"
+import * as A from "./operations"
 
 export const Any = P.instance<P.Any<[URI<NonEmptyArrayURI>]>>({
   any: () => [{}]

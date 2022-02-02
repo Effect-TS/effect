@@ -1,8 +1,8 @@
 import { tag } from "@effect-ts/system/Has"
 
-import { pipe } from "../src/Function/index.js"
-import * as Sy from "../src/Sync/index.js"
-import * as L from "../src/Sync/Layer/index.js"
+import { pipe } from "../src/Function"
+import * as Sy from "../src/Sync"
+import * as L from "../src/Sync/Layer"
 
 const FooId = Symbol()
 

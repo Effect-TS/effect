@@ -1,9 +1,7 @@
-// ets_tracing: off
-
-import * as Tp from "../../Tuple/index.js"
-import { append_, empty } from "../core.js"
-import type { Chunk } from "../definition.js"
-import { forEach_ } from "./forEach.js"
+import * as Tp from "../../Tuple"
+import { append_, empty } from "../core"
+import type { Chunk } from "../definition"
+import { forEach_ } from "./forEach"
 
 /**
  * The function is reverse of `zip`. Takes an array of pairs and return two corresponding arrays

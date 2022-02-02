@@ -1,15 +1,15 @@
 // ets_tracing: off
 
 // ets_tracing: off
-import { both } from "../Cause/cause.js"
-import type { Exit } from "../Exit/exit.js"
-import type { Fiber } from "../Fiber/core.js"
-import { join } from "../Fiber/core.js"
-import type { FiberID } from "../Fiber/id.js"
-import { chain_, descriptorWith, halt } from "./core.js"
-import { raceWith_, transplant } from "./core-scope.js"
-import type { Effect } from "./effect.js"
-import { map_ } from "./map.js"
+import { both } from "../Cause/cause"
+import type { Exit } from "../Exit/exit"
+import type { Fiber } from "../Fiber/core"
+import { join } from "../Fiber/core"
+import type { FiberID } from "../Fiber/id"
+import { chain_, descriptorWith, halt } from "./core"
+import { raceWith_, transplant } from "./core-scope"
+import type { Effect } from "./effect"
+import { map_ } from "./map"
 
 /**
  * Sequentially zips this effect with the specified effect using the

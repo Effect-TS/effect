@@ -3,11 +3,11 @@
 import * as L from "@effect-ts/system/Collections/Immutable/List"
 import { PrematureGeneratorExit } from "@effect-ts/system/GlobalExceptions"
 
-import { pipe } from "../../Function/index.js"
-import type * as HKT from "../HKT/index.js"
-import type { Monad } from "../Monad/index.js"
-import { chainF } from "./chain.js"
-import { succeedF } from "./succeed.js"
+import { pipe } from "../../Function"
+import type * as HKT from "../HKT"
+import type { Monad } from "../Monad"
+import { chainF } from "./chain"
+import { succeedF } from "./succeed"
 
 export class GenHKT<T, A> {
   constructor(readonly effect: T) {}

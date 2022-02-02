@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as P from "../../Prelude/index.js"
-import { Covariant } from "../instances/Covariant.js"
+import * as P from "../../Prelude"
+import { Covariant } from "../instances/Covariant"
 
 /**
  * Conditionals

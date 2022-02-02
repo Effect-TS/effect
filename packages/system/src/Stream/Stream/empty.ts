@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { succeed } from "../_internal/managed.js"
-import * as Pull from "../Pull/index.js"
-import type { UIO } from "./definitions.js"
-import { Stream } from "./definitions.js"
+import { succeed } from "../_internal/managed"
+import * as Pull from "../Pull"
+import type { UIO } from "./definitions"
+import { Stream } from "./definitions"
 
 /**
  * The empty stream

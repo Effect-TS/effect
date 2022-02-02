@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
-import * as FromChunk from "./fromChunk.js"
+import * as CK from "../../../../Collections/Immutable/Chunk"
+import * as FromChunk from "./fromChunk"
 
 /**
  * Empty stream

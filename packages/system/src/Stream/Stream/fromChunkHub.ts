@@ -1,11 +1,9 @@
-// ets_tracing: off
-
-import type * as A from "../../Collections/Immutable/Chunk/index.js"
-import * as H from "../../Hub/index.js"
-import { chain_ } from "./chain.js"
-import type { Stream } from "./definitions.js"
-import { fromChunkQueue } from "./fromChunkQueue.js"
-import { managed } from "./managed.js"
+import type * as A from "../../Collections/Immutable/Chunk"
+import * as H from "../../Hub"
+import { chain_ } from "./chain"
+import type { Stream } from "./definitions"
+import { fromChunkQueue } from "./fromChunkQueue"
+import { managed } from "./managed"
 
 /**
  * Creates a stream from a `Hub`. The hub will be shutdown once the stream is closed.

@@ -1,14 +1,14 @@
 // ets_tracing: off
 
-import "../Operator/index.js"
+import "../Operator"
 
 /**
  * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/Has.scala
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-import type { Option } from "../Option/index.js"
-import { fromNullable, none } from "../Option/index.js"
+import type { Option } from "../Option"
+import { fromNullable, none } from "../Option"
 
 export type Flat<A> = { readonly [k in keyof A]: A[k] } extends infer X ? X : never
 

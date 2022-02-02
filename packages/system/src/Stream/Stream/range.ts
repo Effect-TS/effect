@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk/index.js"
-import { pipe } from "../../Function/index.js"
-import * as O from "../../Option/index.js"
-import * as T from "../_internal/effect.js"
-import * as M from "../_internal/managed.js"
-import * as Ref from "../_internal/ref.js"
-import { DefaultChunkSize, Stream } from "./definitions.js"
+import * as A from "../../Collections/Immutable/Chunk"
+import { pipe } from "../../Function"
+import * as O from "../../Option"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import * as Ref from "../_internal/ref"
+import { DefaultChunkSize, Stream } from "./definitions"
 
 /**
  * Constructs a stream from a range of integers (lower bound included, upper bound not included)

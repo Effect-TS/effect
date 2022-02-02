@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as CH from "../../Channel/index.js"
-import * as C from "../core.js"
+import * as CH from "../../Channel"
+import * as C from "../core"
 
 /**
  * Transforms the errors emitted by this stream using `f`.

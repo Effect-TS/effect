@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { succeedWith } from "../Effect/core.js"
-import type { Promise } from "./promise.js"
+import { succeedWith } from "../Effect/core"
+import type { Promise } from "./promise"
 
 /**
  * Checks for completion of this Promise. Produces true if this promise has

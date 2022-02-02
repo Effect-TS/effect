@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as T from "../../../../Effect/index.js"
-import type * as E from "../../../../Either/index.js"
-import type * as Ex from "../../../../Exit/index.js"
-import type * as F from "../../../../Fiber/index.js"
+import type * as T from "../../../../Effect"
+import type * as E from "../../../../Either"
+import type * as Ex from "../../../../Exit"
+import type * as F from "../../../../Fiber"
 
 export const BothRunningTypeId = Symbol()
 export class BothRunning<_Env, Err, Err1, _Err2, Elem, Done, Done1, _Done2> {

@@ -1,16 +1,16 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk/index.js"
-import { pipe } from "../../Function/index.js"
-import * as O from "../../Option/index.js"
-import * as P from "../../Promise/index.js"
-import * as Q from "../../Queue/index.js"
-import * as SM from "../../Semaphore/index.js"
-import * as T from "../_internal/effect.js"
-import * as M from "../_internal/managed.js"
-import * as Pull from "../Pull/index.js"
-import { Stream } from "./definitions.js"
-import { forEachManaged } from "./forEach.js"
+import * as A from "../../Collections/Immutable/Chunk"
+import { pipe } from "../../Function"
+import * as O from "../../Option"
+import * as P from "../../Promise"
+import * as Q from "../../Queue"
+import * as SM from "../../Semaphore"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import * as Pull from "../Pull"
+import { Stream } from "./definitions"
+import { forEachManaged } from "./forEach"
 /**
  * Maps over elements of the stream with the specified effectful function,
  * executing up to `n` invocations of `f` concurrently. Transformed elements

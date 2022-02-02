@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as I from "../Iterable/index.js"
-import { chain_, succeed, suspend } from "./core.js"
-import type { Effect } from "./effect.js"
+import * as I from "../Iterable"
+import { chain_, succeed, suspend } from "./core"
+import type { Effect } from "./effect"
 
 /**
  * Folds an Iterable[A] using an effectual function f, working sequentially from left to right.

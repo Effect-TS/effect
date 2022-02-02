@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as A from "../../Collections/Immutable/Chunk/index.js"
-import * as TR from "../Transducer/index.js"
-import { aggregate_ } from "./aggregate.js"
-import type { Stream } from "./definitions.js"
+import type * as A from "../../Collections/Immutable/Chunk"
+import * as TR from "../Transducer"
+import { aggregate_ } from "./aggregate"
+import type { Stream } from "./definitions"
 
 /**
  * Partitions the stream with specified chunkSize

@@ -1,13 +1,13 @@
-import { pipe } from "@effect-ts/system/Function/index.js"
+import { pipe } from "@effect-ts/system/Function"
 
-import * as AR from "../src/Collections/Immutable/Array/index.js"
-import * as Chunk from "../src/Collections/Immutable/Chunk/index.js"
-import * as T from "../src/Effect/index.js"
-import * as F from "../src/Fiber/index.js"
-import * as H from "../src/Hub/index.js"
-import * as M from "../src/Managed/index.js"
-import * as P from "../src/Promise/index.js"
-import * as Q from "../src/Queue/index.js"
+import * as AR from "../src/Collections/Immutable/Array"
+import * as Chunk from "../src/Collections/Immutable/Chunk"
+import * as T from "../src/Effect"
+import * as F from "../src/Fiber"
+import * as H from "../src/Hub"
+import * as M from "../src/Managed"
+import * as P from "../src/Promise"
+import * as Q from "../src/Queue"
 
 describe("Hub", () => {
   it("do one to many", async () => {

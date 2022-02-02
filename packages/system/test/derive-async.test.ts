@@ -1,6 +1,6 @@
-import * as As from "../src/Async/index.js"
-import { pipe } from "../src/Function/index.js"
-import { service, tag } from "../src/Has/index.js"
+import * as As from "../src/Async"
+import { pipe } from "../src/Function"
+import { service, tag } from "../src/Has"
 
 // module definition
 export const CalculatorId = Symbol()

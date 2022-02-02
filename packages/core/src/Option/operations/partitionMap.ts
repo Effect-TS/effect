@@ -2,9 +2,9 @@
 
 import * as O from "@effect-ts/system/Option"
 
-import type * as Tp from "../../Collections/Immutable/Tuple/index.js"
-import type { Either } from "../../Either/index.js"
-import { separate } from "./separate.js"
+import type * as Tp from "../../Collections/Immutable/Tuple"
+import type { Either } from "../../Either"
+import { separate } from "./separate"
 
 /**
  * Partition + Map

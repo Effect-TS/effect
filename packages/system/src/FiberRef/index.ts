@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../Operator/index.js"
+import "../Operator"
 
 /**
  * Ported from https://github.com/zio/zio/blob/series/2.x/core/shared/src/main/scala/zio/ZFiberRef.scala
@@ -9,18 +9,18 @@ import "../Operator/index.js"
  */
 
 // codegen:start {preset: barrel, include: ./*.ts, exclude: ./excl-*.ts}
-export * from "./fiberRef.js"
-export * from "./get.js"
-export * from "./getAndSet.js"
-export * from "./getAndUpdate.js"
-export * from "./getAndUpdateSome.js"
-export * from "./locally.js"
-export * from "./make.js"
-export * from "./modify.js"
-export * from "./modifySome.js"
-export * from "./set.js"
-export * from "./update.js"
-export * from "./updateAndGet.js"
-export * from "./updateSome.js"
-export * from "./updateSomeAndGet.js"
+export * from "./fiberRef"
+export * from "./get"
+export * from "./getAndSet"
+export * from "./getAndUpdate"
+export * from "./getAndUpdateSome"
+export * from "./locally"
+export * from "./make"
+export * from "./modify"
+export * from "./modifySome"
+export * from "./set"
+export * from "./update"
+export * from "./updateAndGet"
+export * from "./updateSome"
+export * from "./updateSomeAndGet"
 // codegen:end

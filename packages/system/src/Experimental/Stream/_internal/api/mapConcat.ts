@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
-import type * as C from "../core.js"
-import * as MapConcatChunk from "./mapConcatChunk.js"
+import * as CK from "../../../../Collections/Immutable/Chunk"
+import type * as C from "../core"
+import * as MapConcatChunk from "./mapConcatChunk"
 
 /**
  * Maps each element to an iterable, and flattens the iterables into the

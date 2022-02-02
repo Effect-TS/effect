@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Effect } from "./effect.js"
-import { map_ } from "./map.js"
+import type { Effect } from "./effect"
+import { map_ } from "./map"
 
 /**
  * Maps the success value of this effect to the specified constant value.

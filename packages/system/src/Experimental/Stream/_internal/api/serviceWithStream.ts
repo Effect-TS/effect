@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as HS from "../../../../Has/index.js"
-import type * as C from "../core.js"
-import * as Chain from "./chain.js"
-import * as Service from "./service.js"
+import type * as HS from "../../../../Has"
+import type * as C from "../core"
+import * as Chain from "./chain"
+import * as Service from "./service"
 
 /**
  * Accesses the specified service in the environment of the stream in the

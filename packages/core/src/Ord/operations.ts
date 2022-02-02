@@ -3,9 +3,9 @@
 import type { Ord } from "@effect-ts/system/Ord"
 import { makeOrd } from "@effect-ts/system/Ord"
 
-import * as A from "../Associative/index.js"
-import * as I from "../Identity/index.js"
-import { Associative as OrderingAssociative } from "../Ordering/index.js"
+import * as A from "../Associative"
+import * as I from "../Identity"
+import { Associative as OrderingAssociative } from "../Ordering"
 
 /**
  * Returns a `Associative` such that:

@@ -1,8 +1,8 @@
 import { pipe } from "@effect-ts/system/Function"
 
-import * as E from "../../src/Either/index.js"
-import * as Selective from "../../src/Prelude/Selective/index.js"
-import * as IO from "../../src/XPure/XIO/index.js"
+import * as E from "../../src/Either"
+import * as Selective from "../../src/Prelude/Selective"
+import * as IO from "../../src/XPure/XIO"
 
 const SelectiveIO = Selective.monad(IO.Monad)
 const branch = Selective.branchF(SelectiveIO)

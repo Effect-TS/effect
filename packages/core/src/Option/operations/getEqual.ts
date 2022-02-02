@@ -2,7 +2,7 @@
 
 import * as O from "@effect-ts/system/Option"
 
-import type { Equal } from "../../Equal/index.js"
+import type { Equal } from "../../Equal"
 
 export function getEqual<A>(E: Equal<A>): Equal<O.Option<A>> {
   return {

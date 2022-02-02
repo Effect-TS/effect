@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { sleep as clockSleep } from "../Clock/index.js"
+import { sleep as clockSleep } from "../Clock"
 
 /**
  * Sleeps for `ms` milliseconds

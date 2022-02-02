@@ -1,10 +1,8 @@
-// ets_tracing: off
-
-import * as core from "../../../../Effect/core.js"
-import type { Effect } from "../../../../Effect/effect.js"
-import * as forEach from "../../../../Effect/excl-forEach.js"
-import * as coreMap from "../../../../Effect/map.js"
-import * as List from "../core.js"
+import * as core from "../../../../Effect/core"
+import type { Effect } from "../../../../Effect/effect"
+import * as forEach from "../../../../Effect/excl-forEach"
+import * as coreMap from "../../../../Effect/map"
+import * as List from "../core"
 
 /**
  * Effectfully maps the elements of this list.

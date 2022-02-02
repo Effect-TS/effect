@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { UnionToIntersection } from "../../Utils/index.js"
-import type { Param } from "./fix.js"
-import type { OrNever } from "./or-never.js"
+import type { UnionToIntersection } from "../../Utils"
+import type { Param } from "./fix"
+import type { OrNever } from "./or-never"
 
 export type Variance = "+" | "-" | "_"
 

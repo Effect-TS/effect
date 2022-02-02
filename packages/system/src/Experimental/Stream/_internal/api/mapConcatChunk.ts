@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
-import type * as C from "../core.js"
-import * as MapChunks from "./mapChunks.js"
+import * as CK from "../../../../Collections/Immutable/Chunk"
+import type * as C from "../core"
+import * as MapChunks from "./mapChunks"
 
 /**
  * Maps each element to a chunk, and flattens the chunks into the output of

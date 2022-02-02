@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import "../../Operator/index.js"
+import "../../Operator"
 
-import { AtomicReference } from "../AtomicReference/index.js"
+import { AtomicReference } from "../AtomicReference"
 
 export class AtomicNumber extends AtomicReference<number> {
   constructor(n: number) {

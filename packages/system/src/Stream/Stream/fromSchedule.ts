@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import type * as CL from "../../Clock/index.js"
-import { constVoid, pipe } from "../../Function/index.js"
-import * as SC from "../../Schedule/index.js"
-import * as T from "../_internal/effect.js"
-import type { Stream } from "./definitions.js"
-import { repeatEffectOption } from "./repeatEffectOption.js"
-import { unwrap } from "./unwrap.js"
+import type * as CL from "../../Clock"
+import { constVoid, pipe } from "../../Function"
+import * as SC from "../../Schedule"
+import * as T from "../_internal/effect"
+import type { Stream } from "./definitions"
+import { repeatEffectOption } from "./repeatEffectOption"
+import { unwrap } from "./unwrap"
 
 /**
  * Creates a stream from a `Schedule` that does not require any further

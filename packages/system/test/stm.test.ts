@@ -1,10 +1,10 @@
-import * as T from "../src/Effect/index.js"
-import * as Ex from "../src/Exit/index.js"
-import { ArrayIndexOutOfBoundsException } from "../src/GlobalExceptions/index.js"
-import * as O from "../src/Option/index.js"
-import * as STM from "../src/Transactional/STM/index.js"
-import * as TArray from "../src/Transactional/TArray/index.js"
-import * as TRef from "../src/Transactional/TRef/index.js"
+import * as T from "../src/Effect"
+import * as Ex from "../src/Exit"
+import { ArrayIndexOutOfBoundsException } from "../src/GlobalExceptions"
+import * as O from "../src/Option"
+import * as STM from "../src/Transactional/STM"
+import * as TArray from "../src/Transactional/TArray"
+import * as TRef from "../src/Transactional/TRef"
 
 describe("TRef", () => {
   it("use TRef", async () => {

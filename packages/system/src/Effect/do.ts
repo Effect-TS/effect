@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { chain_, succeed } from "./core.js"
-import type { Effect } from "./effect.js"
-import { map_ } from "./map.js"
+import { chain_, succeed } from "./core"
+import type { Effect } from "./effect"
+import { map_ } from "./map"
 
 /**
  * Binds an effectful value in a `do` scope

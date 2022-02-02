@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Effect } from "./effect.js"
-import { flip } from "./flip.js"
+import type { Effect } from "./effect"
+import { flip } from "./flip"
 
 /**
  * Swaps the error/value parameters, applies the function `f` and flips the parameters back

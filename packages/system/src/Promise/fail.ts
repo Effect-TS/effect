@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { fail as effectFail } from "../Effect/fail.js"
-import { completeWith } from "./completeWith.js"
-import type { Promise } from "./promise.js"
+import { fail as effectFail } from "../Effect/fail"
+import { completeWith } from "./completeWith"
+import type { Promise } from "./promise"
 
 /**
  * Fails the promise with the specified error, which will be propagated to all

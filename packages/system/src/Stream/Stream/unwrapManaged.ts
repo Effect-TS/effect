@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as M from "../_internal/managed.js"
-import type { Stream } from "./definitions.js"
-import { flatten } from "./flatten.js"
-import { managed } from "./managed.js"
+import type * as M from "../_internal/managed"
+import type { Stream } from "./definitions"
+import { flatten } from "./flatten"
+import { managed } from "./managed"
 
 /**
  * Creates a stream produced from a [[ZManaged]]

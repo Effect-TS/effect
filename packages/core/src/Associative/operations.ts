@@ -2,8 +2,8 @@
 
 import * as Ord from "@effect-ts/system/Ord"
 
-import type { Associative } from "./definition.js"
-import { makeAssociative } from "./makeAssociative.js"
+import type { Associative } from "./definition"
+import { makeAssociative } from "./makeAssociative"
 
 /**
  * Fold `Associative` through an `Array`
@@ -94,4 +94,4 @@ export function intercalate<A>(a: A): (S: Associative<A>) => Associative<A> {
   return (S) => makeAssociative((x, y) => S.combine(x, S.combine(a, y)))
 }
 
-export * from "./definition.js"
+export * from "./definition"

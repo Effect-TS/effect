@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Effect } from "../Effect/effect.js"
-import type { XFiberRef } from "./fiberRef.js"
+import type { Effect } from "../Effect/effect"
+import type { XFiberRef } from "./fiberRef"
 
 /**
  * Returns an `Effect` that runs with `value` bound to the current fiber.

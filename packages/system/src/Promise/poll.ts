@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { succeedWith } from "../Effect/core.js"
-import * as O from "../Option/index.js"
-import type { Promise } from "./promise.js"
+import { succeedWith } from "../Effect/core"
+import * as O from "../Option"
+import type { Promise } from "./promise"
 
 /**
  * Checks for completion of this Promise. Returns the result effect if this

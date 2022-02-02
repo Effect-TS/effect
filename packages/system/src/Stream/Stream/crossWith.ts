@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { chain_ } from "./chain.js"
-import type { Stream } from "./definitions.js"
-import { map_ } from "./map.js"
+import { chain_ } from "./chain"
+import type { Stream } from "./definitions"
+import { map_ } from "./map"
 
 /**
  * Composes this stream with the specified stream to create a cartesian product of elements

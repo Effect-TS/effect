@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
-import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
-import * as T from "../../../../Effect/index.js"
-import * as O from "../../../../Option/index.js"
-import type * as C from "../core.js"
-import * as UnfoldChunkEffect from "./unfoldChunkEffect.js"
+import * as CK from "../../../../Collections/Immutable/Chunk"
+import * as Tp from "../../../../Collections/Immutable/Tuple"
+import * as T from "../../../../Effect"
+import * as O from "../../../../Option"
+import type * as C from "../core"
+import * as UnfoldChunkEffect from "./unfoldChunkEffect"
 
 /**
  * Creates a stream by effectfully peeling off the "layers" of a value of type `S`

@@ -1,4 +1,4 @@
-import * as Eq from "../src/Equal/index.js"
+import * as Eq from "../src/Equal"
 import * as Tree from "../src/RoseTree"
 
 const a = Tree.make("root", [Tree.make("leaf1"), Tree.make("leaf2")])

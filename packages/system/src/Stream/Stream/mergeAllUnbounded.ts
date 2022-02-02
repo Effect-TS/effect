@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Stream } from "./definitions.js"
-import { mergeAll } from "./mergeAll.js"
+import type { Stream } from "./definitions"
+import { mergeAll } from "./mergeAll"
 
 /**
  * Like `mergeAll`, but runs all streams concurrently.

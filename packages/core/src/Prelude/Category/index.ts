@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { AssociativeCompose } from "../AssociativeCompose/index.js"
-import type * as HKT from "../HKT/index.js"
+import type { AssociativeCompose } from "../AssociativeCompose"
+import type * as HKT from "../HKT"
 
 export interface Category<F extends HKT.URIS, C = HKT.Auto>
   extends AssociativeCompose<F, C> {

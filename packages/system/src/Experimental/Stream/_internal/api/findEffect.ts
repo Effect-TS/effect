@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
-import * as T from "../../../../Effect/index.js"
-import * as O from "../../../../Option/index.js"
-import * as CH from "../../Channel/index.js"
-import * as C from "../core.js"
+import * as CK from "../../../../Collections/Immutable/Chunk"
+import * as T from "../../../../Effect"
+import * as O from "../../../../Option"
+import * as CH from "../../Channel"
+import * as C from "../core"
 
 /**
  * Finds the first element emitted by this stream that satisfies the provided effectful predicate.

@@ -4,12 +4,12 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-var */
 
-import type { Either } from "../../../Either/index.js"
-import { identity } from "../../../Function/index.js"
-import * as O from "../../../Option/index.js"
-import type { Ord } from "../../../Ord/index.js"
-import * as St from "../../../Structural/index.js"
-import * as Tp from "../Tuple/index.js"
+import type { Either } from "../../../Either"
+import { identity } from "../../../Function"
+import * as O from "../../../Option"
+import type { Ord } from "../../../Ord"
+import * as St from "../../../Structural"
+import * as Tp from "../Tuple"
 
 /**
  * Forked from https://github.com/funkia/list/blob/master/src/index.ts

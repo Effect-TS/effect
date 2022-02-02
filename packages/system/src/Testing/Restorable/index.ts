@@ -1,6 +1,4 @@
-// ets_tracing: off
-
-import type * as T from "../../Effect/index.js"
+import type * as T from "../../Effect"
 
 export interface Restorable {
   readonly save: T.UIO<T.UIO<void>>

@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as T from "../../../../Effect/index.js"
-import * as H from "../../../../Hub/index.js"
-import type * as TK from "../../Take/index.js"
-import type * as C from "../core.js"
-import * as RunInto from "./runInto.js"
+import type * as T from "../../../../Effect"
+import * as H from "../../../../Hub"
+import type * as TK from "../../Take"
+import type * as C from "../core"
+import * as RunInto from "./runInto"
 
 /**
  * Publishes elements of this stream to a hub. Stream failure and ending will

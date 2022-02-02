@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as O from "../../Option/index.js"
-import type { Stream } from "./definitions.js"
-import { mapError_ } from "./mapError.js"
-import { someOrFail_ } from "./someOrFail.js"
+import * as O from "../../Option"
+import type { Stream } from "./definitions"
+import { mapError_ } from "./mapError"
+import { someOrFail_ } from "./someOrFail"
 
 /**
  * Converts an option on values into an option on errors.

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as E from "../../../../Either/index.js"
-import * as C from "../core.js"
-import * as Succeed from "./succeed.js"
+import * as E from "../../../../Either"
+import * as C from "../core"
+import * as Succeed from "./succeed"
 
 export function fromEither<E, A>(
   either: E.Either<E, A>

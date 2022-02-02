@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import "../Operator/index.js"
+import "../Operator"
 
-export * from "./instances/index.js"
-export * from "./operations/index.js"
-export * from "./dsl/index.js"
-export { OptionURI } from "../Modules/index.js"
+export * from "./instances"
+export * from "./operations"
+export * from "./dsl"
+export { OptionURI } from "../Modules"

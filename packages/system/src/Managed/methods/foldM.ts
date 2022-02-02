@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import { failureOrCause } from "../../Cause/index.js"
-import * as E from "../../Either/index.js"
-import { pipe } from "../../Function/index.js"
-import { foldCauseM_ } from "../core.js"
-import type { Managed } from "../managed.js"
-import { halt } from "./halt.js"
+import { failureOrCause } from "../../Cause"
+import * as E from "../../Either"
+import { pipe } from "../../Function"
+import { foldCauseM_ } from "../core"
+import type { Managed } from "../managed"
+import { halt } from "./halt"
 
 /**
  * Recovers from errors by accepting one effect to execute for the case of an

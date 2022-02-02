@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { identity } from "../Function/index.js"
-import { some } from "../Option/index.js"
-import type { Effect } from "./effect.js"
-import { unrefineWith_ } from "./unrefine.js"
+import { identity } from "../Function"
+import { some } from "../Option"
+import type { Effect } from "./effect"
+import { unrefineWith_ } from "./unrefine"
 
 /**
  * Unearth the unchecked failure of the effect. (opposite of `orDie`)

@@ -1,8 +1,6 @@
-// ets_tracing: off
-
-import * as T from "../../Effect/index.js"
-import { flow } from "../../Function/index.js"
-import * as BA from "../BoolAlgebra/index.js"
+import * as T from "../../Effect"
+import { flow } from "../../Function"
+import * as BA from "../BoolAlgebra"
 
 export class BoolAlgebraM<R, E, A> {
   readonly [T._R]: (_: R) => void;

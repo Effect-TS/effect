@@ -1,8 +1,6 @@
-// ets_tracing: off
-
-import * as St from "../../../../Structural/index.js"
-import * as Chunk from "../core.js"
-import * as forEach from "./forEach.js"
+import * as St from "../../../../Structural"
+import * as Chunk from "../core"
+import * as forEach from "./forEach"
 
 /**
  * Deduplicates adjacent elements that are identical.

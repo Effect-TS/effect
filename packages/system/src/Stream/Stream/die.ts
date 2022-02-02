@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as T from "../_internal/effect.js"
-import type { UIO } from "./definitions.js"
-import { fromEffect } from "./fromEffect.js"
+import * as T from "../_internal/effect"
+import type { UIO } from "./definitions"
+import { fromEffect } from "./fromEffect"
 
 /**
  * The stream that dies with the error.

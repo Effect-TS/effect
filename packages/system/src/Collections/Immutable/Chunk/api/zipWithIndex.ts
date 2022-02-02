@@ -1,8 +1,6 @@
-// ets_tracing: off
-
-import type * as Tp from "../../Tuple/index.js"
-import type { Chunk } from "../definition.js"
-import { zipWithIndexOffset_ } from "./zipWithIndexOffset.js"
+import type * as Tp from "../../Tuple"
+import type { Chunk } from "../definition"
+import { zipWithIndexOffset_ } from "./zipWithIndexOffset"
 
 /**
  * Zips this chunk with the index of every element, starting from the initial

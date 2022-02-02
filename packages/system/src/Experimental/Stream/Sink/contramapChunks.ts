@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as CK from "../../../Collections/Immutable/Chunk/index.js"
-import * as CH from "../Channel/index.js"
-import * as C from "./core.js"
+import type * as CK from "../../../Collections/Immutable/Chunk"
+import * as CH from "../Channel"
+import * as C from "./core"
 
 /**
  * Transforms this sink's input chunks.

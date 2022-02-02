@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as C from "../core.js"
-import * as Merge from "./merge.js"
+import type * as C from "../core"
+import * as Merge from "./merge"
 
 /**
  * Merges this stream and the specified stream together. New produced stream will

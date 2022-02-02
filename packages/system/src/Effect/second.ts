@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { access } from "./core.js"
+import { access } from "./core"
 
 /**
  * Returns an effectful function that extracts out the second element of a

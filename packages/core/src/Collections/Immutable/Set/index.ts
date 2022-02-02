@@ -1,22 +1,22 @@
 // ets_tracing: off
 
-import "../../../Operator/index.js"
+import "../../../Operator"
 
 import type { Option } from "@effect-ts/system/Option"
 import type { MutableSet } from "@effect-ts/system/Support/Mutable"
 
-import type { Associative } from "../../../Associative/index.js"
-import { makeAssociative } from "../../../Associative/index.js"
-import type { Either } from "../../../Either/index.js"
-import type { Equal } from "../../../Equal/index.js"
-import { makeEqual } from "../../../Equal/index.js"
-import type { Predicate, Refinement } from "../../../Function/index.js"
-import { identity, not } from "../../../Function/index.js"
-import type { Identity } from "../../../Identity/index.js"
-import { makeIdentity } from "../../../Identity/index.js"
-import type { Ord } from "../../../Ord/index.js"
-import type { Show } from "../../../Show/index.js"
-import * as Tp from "../Tuple/index.js"
+import type { Associative } from "../../../Associative"
+import { makeAssociative } from "../../../Associative"
+import type { Either } from "../../../Either"
+import type { Equal } from "../../../Equal"
+import { makeEqual } from "../../../Equal"
+import type { Predicate, Refinement } from "../../../Function"
+import { identity, not } from "../../../Function"
+import type { Identity } from "../../../Identity"
+import { makeIdentity } from "../../../Identity"
+import type { Ord } from "../../../Ord"
+import type { Show } from "../../../Show"
+import * as Tp from "../Tuple"
 
 export type Set<A> = ReadonlySet<A>
 

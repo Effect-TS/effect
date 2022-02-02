@@ -2,8 +2,8 @@
 
 import * as FA from "@effect-ts/system/FreeAssociative"
 
-import { makeAssociative } from "../Associative/index.js"
-import { makeIdentity } from "../Identity/index.js"
+import { makeAssociative } from "../Associative"
+import { makeIdentity } from "../Identity"
 
 export function getAssociative<A>() {
   return makeAssociative<FA.FreeAssociative<A>>(FA.concat_)

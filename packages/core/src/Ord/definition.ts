@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Equal } from "../Equal/index.js"
-import type { Ordering } from "../Ordering/index.js"
+import type { Equal } from "../Equal"
+import type { Ordering } from "../Ordering"
 
 /**
  * `Ord[A]` provides implicit evidence that values of type `A` have a total

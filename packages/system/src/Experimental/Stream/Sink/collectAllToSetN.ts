@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as HS from "../../../Collections/Immutable/HashSet/index.js"
-import type * as C from "./core.js"
-import * as FoldWeighted from "./foldWeighted.js"
+import * as HS from "../../../Collections/Immutable/HashSet"
+import type * as C from "./core"
+import * as FoldWeighted from "./foldWeighted"
 
 /**
  * A sink that collects first `n` distinct inputs into a set.

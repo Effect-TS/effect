@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as A from "../../Collections/Immutable/Chunk/index.js"
-import { chain_ } from "./chain.js"
-import type { UIO } from "./definitions.js"
-import { fromChunk } from "./fromChunk.js"
-import { fromIterable } from "./fromIterable.js"
+import type * as A from "../../Collections/Immutable/Chunk"
+import { chain_ } from "./chain"
+import type { UIO } from "./definitions"
+import { fromChunk } from "./fromChunk"
+import { fromIterable } from "./fromIterable"
 
 /**
  * Creates a stream from an array of values

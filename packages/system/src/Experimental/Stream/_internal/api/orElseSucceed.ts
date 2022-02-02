@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as C from "../core.js"
-import * as OrElse from "./orElse.js"
-import * as Succeed from "./succeed.js"
+import type * as C from "../core"
+import * as OrElse from "./orElse"
+import * as Succeed from "./succeed"
 
 /**
  * Succeeds with the specified value if this one fails with a typed error.

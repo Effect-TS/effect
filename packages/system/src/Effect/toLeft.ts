@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as E from "../Either/core.js"
-import { chain_, succeed, succeedWith } from "./core.js"
-import type { UIO } from "./effect.js"
+import * as E from "../Either/core"
+import { chain_, succeed, succeedWith } from "./core"
+import type { UIO } from "./effect"
 
 /**
  * Returns an effect with the value on the left part.

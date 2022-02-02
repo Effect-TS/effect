@@ -1,8 +1,6 @@
-// ets_tracing: off
-
-import * as T from "../../Effect/index.js"
-import { tag } from "../../Has/index.js"
-import * as L from "../../Layer/index.js"
+import * as T from "../../Effect"
+import { tag } from "../../Has"
+import * as L from "../../Layer"
 
 export const LiveId = Symbol.for("@effect-ts/system/Test/LiveId")
 

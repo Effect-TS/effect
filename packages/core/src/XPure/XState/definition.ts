@@ -2,7 +2,7 @@
 
 import type { XPure } from "@effect-ts/system/XPure"
 
-import type * as P from "../../Prelude/index.js"
+import type * as P from "../../Prelude"
 
 export type V = P.V<"S", "_">
 

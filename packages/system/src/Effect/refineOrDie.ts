@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import { identity, pipe } from "../Function/index.js"
-import * as O from "../Option/index.js"
-import { catchAll_ } from "./catchAll.js"
-import { die } from "./die.js"
-import type { Effect } from "./effect.js"
-import { fail } from "./fail.js"
+import { identity, pipe } from "../Function"
+import * as O from "../Option"
+import { catchAll_ } from "./catchAll"
+import { die } from "./die"
+import type { Effect } from "./effect"
+import { fail } from "./fail"
 
 /**
  * Keeps some of the errors, and terminates the fiber with the rest, using

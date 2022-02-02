@@ -1,1 +1,1 @@
-export * from "../Managed/core.js"
+export * from "../Managed/core"

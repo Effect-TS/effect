@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import type * as CL from "../../../../Clock/index.js"
-import * as E from "../../../../Either/index.js"
-import * as O from "../../../../Option/index.js"
-import type * as SC from "../../../../Schedule/index.js"
-import type * as SK from "../../Sink/index.js"
-import type * as C from "../core.js"
-import * as AggregateAsyncWithinEither from "./aggregateAsyncWithinEither.js"
-import * as Collect from "./collect.js"
+import type * as CL from "../../../../Clock"
+import * as E from "../../../../Either"
+import * as O from "../../../../Option"
+import type * as SC from "../../../../Schedule"
+import type * as SK from "../../Sink"
+import type * as C from "../core"
+import * as AggregateAsyncWithinEither from "./aggregateAsyncWithinEither"
+import * as Collect from "./collect"
 
 /**
  * Like `aggregateAsyncWithinEither`, but only returns the `Right` results.

@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as E from "../../Either/index.js"
-import * as O from "../../Option/index.js"
-import type { Stream } from "./definitions.js"
-import { mapError_ } from "./mapError.js"
-import { rightOrFail_ } from "./rightOrFail.js"
+import * as E from "../../Either"
+import * as O from "../../Option"
+import type { Stream } from "./definitions"
+import { mapError_ } from "./mapError"
+import { rightOrFail_ } from "./rightOrFail"
 
 /**
  * Fails with the error `None` if value is `Left`.

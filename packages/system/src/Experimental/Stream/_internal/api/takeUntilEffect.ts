@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
-import * as T from "../../../../Effect/index.js"
-import { pipe } from "../../../../Function/index.js"
-import type * as C from "../core.js"
-import * as LoopOnPartialChunks from "./loopOnPartialChunks.js"
+import * as CK from "../../../../Collections/Immutable/Chunk"
+import * as T from "../../../../Effect"
+import { pipe } from "../../../../Function"
+import type * as C from "../core"
+import * as LoopOnPartialChunks from "./loopOnPartialChunks"
 
 /**
  * Takes all elements of the stream until the specified effectual predicate

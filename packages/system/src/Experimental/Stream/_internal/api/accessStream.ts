@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as C from "../core.js"
-import * as Chain from "./chain.js"
-import * as Environment from "./environment.js"
+import type * as C from "../core"
+import * as Chain from "./chain"
+import * as Environment from "./environment"
 
 /**
  * Accesses the environment of the stream in the context of a stream.

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as SK from "../Sink/index.js"
-import type { Stream } from "./definitions.js"
-import { run_ } from "./run.js"
+import * as SK from "../Sink"
+import type { Stream } from "./definitions"
+import { run_ } from "./run"
 
 /**
  * Runs the stream to completion and yields the first value emitted by it,

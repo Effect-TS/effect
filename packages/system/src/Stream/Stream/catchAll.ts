@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as C from "../../Cause/index.js"
-import * as E from "../../Either/index.js"
-import { catchAllCause_ } from "./catchAllCause.js"
-import type { Stream } from "./definitions.js"
-import { halt } from "./halt.js"
+import * as C from "../../Cause"
+import * as E from "../../Either"
+import { catchAllCause_ } from "./catchAllCause"
+import type { Stream } from "./definitions"
+import { halt } from "./halt"
 
 /**
  * Switches over to the stream produced by the provided function in case this one

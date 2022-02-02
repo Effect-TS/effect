@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { Has, Tag } from "../Has/index.js"
-import * as L from "../Layer/core.js"
-import type { Effect } from "./effect.js"
+import type { Has, Tag } from "../Has"
+import * as L from "../Layer/core"
+import type { Effect } from "./effect"
 
 /**
  * Constructs a layer from this effect.

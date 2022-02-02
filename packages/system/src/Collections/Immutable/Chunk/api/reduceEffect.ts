@@ -1,10 +1,8 @@
-// ets_tracing: off
-
-import * as core from "../../../../Effect/core.js"
-import type { Effect } from "../../../../Effect/effect.js"
-import type * as Chunk from "../core.js"
-import { concrete, SingletonTypeId } from "../definition.js"
-import { reduce_ } from "./reduce.js"
+import * as core from "../../../../Effect/core"
+import type { Effect } from "../../../../Effect/effect"
+import type * as Chunk from "../core"
+import { concrete, SingletonTypeId } from "../definition"
+import { reduce_ } from "./reduce"
 
 /**
  * Folds over the elements in this chunk from the left.

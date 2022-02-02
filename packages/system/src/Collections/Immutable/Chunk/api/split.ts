@@ -1,8 +1,6 @@
-// ets_tracing: off
-
-import * as Chunk from "../core.js"
-import { concreteId } from "../definition.js"
-import { forEach_ } from "./forEach.js"
+import * as Chunk from "../core"
+import { concreteId } from "../definition"
+import { forEach_ } from "./forEach"
 
 /**
  * Splits this chunk into `n` equally sized chunks.

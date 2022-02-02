@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../Operator/index.js"
+import "../Operator"
 
 /**
  * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/ZQueue.scala
@@ -9,8 +9,8 @@ import "../Operator/index.js"
  */
 
 // codegen:start {preset: barrel, include: ./*.ts, exclude: ./+(promise|effect|effect-api).ts}
-export * from "./api.js"
-export * from "./core.js"
-export * from "./unsafe.js"
-export * from "./xqueue.js"
+export * from "./api"
+export * from "./core"
+export * from "./unsafe"
+export * from "./xqueue"
 // codegen:end

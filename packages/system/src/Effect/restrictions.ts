@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Effect, RIO } from "./effect.js"
-import type { DefaultEnv } from "./runtime.js"
+import type { Effect, RIO } from "./effect"
+import type { DefaultEnv } from "./runtime"
 
 /**
  * Forces `self` to be non failable

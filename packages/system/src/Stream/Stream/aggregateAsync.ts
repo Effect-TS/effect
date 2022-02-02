@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as CL from "../../Clock/index.js"
-import * as SC from "../../Schedule/index.js"
-import type * as TR from "../Transducer/index.js"
-import { aggregateAsyncWithin_ } from "./aggregateAsyncWithin.js"
-import type { Stream } from "./definitions.js"
+import type * as CL from "../../Clock"
+import * as SC from "../../Schedule"
+import type * as TR from "../Transducer"
+import { aggregateAsyncWithin_ } from "./aggregateAsyncWithin"
+import type { Stream } from "./definitions"
 
 /**
  * Aggregates elements of this stream using the provided sink for as long

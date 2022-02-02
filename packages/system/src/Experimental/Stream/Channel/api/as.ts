@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as C from "../core.js"
-import * as Map from "./map.js"
+import type * as C from "../core"
+import * as Map from "./map"
 
 /**
  * Returns a new channel that is the same as this one, except the terminal value of the channel

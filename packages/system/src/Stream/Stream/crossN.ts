@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Array/index.js"
-import { pipe } from "../../Function/index.js"
-import type { _A, _E, _R } from "../../Utils/index.js"
-import { flattenTuples } from "./_internal/flattenTuples.js"
-import { cross_ } from "./cross.js"
-import type { Stream } from "./definitions.js"
-import { map } from "./map.js"
+import * as A from "../../Collections/Immutable/Array"
+import { pipe } from "../../Function"
+import type { _A, _E, _R } from "../../Utils"
+import { flattenTuples } from "./_internal/flattenTuples"
+import { cross_ } from "./cross"
+import type { Stream } from "./definitions"
+import { map } from "./map"
 
 /**
  * Composes the specified streams to create a cartesian product of elements

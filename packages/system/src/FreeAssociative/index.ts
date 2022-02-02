@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import "../Operator/index.js"
+import "../Operator"
 
-import { Stack } from "../Stack/index.js"
-import * as St from "../Structural/index.js"
+import { Stack } from "../Stack"
+import * as St from "../Structural"
 
 const _brand = Symbol()
 

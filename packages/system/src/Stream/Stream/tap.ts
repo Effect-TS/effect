@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as T from "../_internal/effect.js"
-import type { Stream } from "./definitions.js"
-import { mapM_ } from "./mapM.js"
+import * as T from "../_internal/effect"
+import type { Stream } from "./definitions"
+import { mapM_ } from "./mapM"
 
 /**
  * Adds an effect to consumption of every element of the stream.

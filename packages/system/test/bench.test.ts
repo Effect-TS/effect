@@ -1,12 +1,12 @@
-import "../src/Tracing/Enable/index.js"
+import "../src/Tracing/Enable"
 
-import { defaultRuntime, QIO } from "@qio/core/index.js"
+import { defaultRuntime, QIO } from "@qio/core"
 
-import * as T from "../src/Effect/index.js"
-import * as F from "../src/Fiber/index.js"
-import * as IO from "../src/IO/index.js"
-import * as Supervisor from "../src/Supervisor/index.js"
-import * as Sync from "../src/Sync/index.js"
+import * as T from "../src/Effect"
+import * as F from "../src/Fiber"
+import * as IO from "../src/IO"
+import * as Supervisor from "../src/Supervisor"
+import * as Sync from "../src/Sync"
 
 function fibIO(n: number): IO.IO<number> {
   if (n < 2) {

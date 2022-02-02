@@ -1,8 +1,6 @@
-// ets_tracing: off
-
 // forked from https://github.com/frptools
 
-import { PCGRandom } from "../../Random/PCG/index.js"
+import { PCGRandom } from "../../Random/PCG"
 
 export const hashSym = Symbol()
 

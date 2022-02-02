@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { FiberID } from "../Fiber/id.js"
-import type { AtomicReference } from "../Support/AtomicReference/index.js"
-import type { State } from "./state.js"
+import type { FiberID } from "../Fiber/id"
+import type { AtomicReference } from "../Support/AtomicReference"
+import type { State } from "./state"
 
 export class Promise<E, A> {
   constructor(

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../Operator/index.js"
+import "../../Operator"
 
 export class OneShot<A> {
   private internal: A | undefined = undefined

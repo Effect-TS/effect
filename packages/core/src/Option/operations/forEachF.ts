@@ -2,10 +2,10 @@
 
 import * as O from "@effect-ts/system/Option"
 
-import { pipe } from "../../Function/index.js"
-import type { OptionURI } from "../../Modules/index.js"
-import type { URI } from "../../Prelude/index.js"
-import * as P from "../../Prelude/index.js"
+import { pipe } from "../../Function"
+import type { OptionURI } from "../../Modules"
+import type { URI } from "../../Prelude"
+import * as P from "../../Prelude"
 
 export const forEachF = P.implementForEachF<[URI<OptionURI>]>()(
   () => (G) => (f) => (fa) =>

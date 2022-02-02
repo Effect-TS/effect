@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { Stream } from "./definitions.js"
-import { flattenPar_ } from "./flattenPar.js"
-import { fromIterable } from "./fromIterable.js"
+import type { Stream } from "./definitions"
+import { flattenPar_ } from "./flattenPar"
+import { fromIterable } from "./fromIterable"
 
 /**
  * Merges a variable list of streams in a non-deterministic fashion.

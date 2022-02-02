@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { chain_, provideAll_ } from "./core.js"
-import type { Effect } from "./effect.js"
+import { chain_, provideAll_ } from "./core"
+import type { Effect } from "./effect"
 
 /**
  * Propagates the given environment to self.

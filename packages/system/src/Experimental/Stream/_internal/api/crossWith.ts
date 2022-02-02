@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as C from "../core.js"
-import * as Chain from "./chain.js"
-import * as Map from "./map.js"
+import type * as C from "../core"
+import * as Chain from "./chain"
+import * as Map from "./map"
 
 /**
  * Composes this stream with the specified stream to create a cartesian product of elements

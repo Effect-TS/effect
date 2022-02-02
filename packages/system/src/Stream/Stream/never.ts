@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as T from "../_internal/effect.js"
-import * as M from "../_internal/managed.js"
-import { Stream } from "./definitions.js"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import { Stream } from "./definitions"
 
 /**
  * The stream that never produces any value or fails with any error.

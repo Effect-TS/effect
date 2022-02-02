@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect/index.js"
-import type * as C from "../core.js"
-import * as ZipAllWithExec from "./zipAllWithExec.js"
+import * as T from "../../../../Effect"
+import type * as C from "../core"
+import * as ZipAllWithExec from "./zipAllWithExec"
 
 /**
  * Zips this stream with another point-wise. The provided functions will be used to create elements

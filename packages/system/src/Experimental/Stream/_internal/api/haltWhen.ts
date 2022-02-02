@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
-import * as T from "../../../../Effect/index.js"
-import * as Ex from "../../../../Exit/index.js"
-import type * as F from "../../../../Fiber/index.js"
-import * as M from "../../../../Managed/index.js"
-import * as O from "../../../../Option/index.js"
-import * as CH from "../../Channel/index.js"
-import * as C from "../core.js"
+import type * as CK from "../../../../Collections/Immutable/Chunk"
+import * as T from "../../../../Effect"
+import * as Ex from "../../../../Exit"
+import type * as F from "../../../../Fiber"
+import * as M from "../../../../Managed"
+import * as O from "../../../../Option"
+import * as CH from "../../Channel"
+import * as C from "../core"
 
 /**
  * Halts the evaluation of this stream when the provided IO completes. The given IO

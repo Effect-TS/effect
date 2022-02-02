@@ -1,11 +1,6 @@
-// ets_tracing: off
-
-import type {
-  PredicateWithIndex,
-  RefinementWithIndex
-} from "../../../../Utils/index.js"
-import * as Chunk from "../core.js"
-import { ArrTypeId, concrete } from "../definition.js"
+import type { PredicateWithIndex, RefinementWithIndex } from "../../../../Utils"
+import * as Chunk from "../core"
+import { ArrTypeId, concrete } from "../definition"
 
 /**
  * Returns a filtered subset of this chunk.

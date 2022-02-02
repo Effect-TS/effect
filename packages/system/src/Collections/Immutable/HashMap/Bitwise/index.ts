@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { MASK } from "../Config/index.js"
+import { MASK } from "../Config"
 
 // Bit Ops
 

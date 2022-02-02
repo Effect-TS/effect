@@ -1,8 +1,6 @@
-// ets_tracing: off
-
-import * as C from "../../Cause/index.js"
-import * as T from "../../Effect/index.js"
-import type * as TR from "../TestResult/index.js"
+import * as C from "../../Cause"
+import * as T from "../../Effect"
+import type * as TR from "../TestResult"
 
 export const AssertionTypeId = Symbol()
 

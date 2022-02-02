@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as M from "../../../../Managed/index.js"
-import type * as C from "../core.js"
-import * as Flatten from "./flatten.js"
-import * as Managed from "./managed.js"
+import type * as M from "../../../../Managed"
+import type * as C from "../core"
+import * as Flatten from "./flatten"
+import * as Managed from "./managed"
 
 /**
  * Creates a stream produced from a managed

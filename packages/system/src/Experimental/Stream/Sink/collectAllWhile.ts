@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import * as CK from "../../../Collections/Immutable/Chunk/index.js"
-import * as L from "../../../Collections/Immutable/List/index.js"
-import * as Tp from "../../../Collections/Immutable/Tuple/index.js"
-import type { Predicate } from "../../../Function/index.js"
-import { pipe } from "../../../Function/index.js"
-import type * as C from "./core.js"
-import * as Fold from "./fold.js"
-import * as Map from "./map.js"
+import * as CK from "../../../Collections/Immutable/Chunk"
+import * as L from "../../../Collections/Immutable/List"
+import * as Tp from "../../../Collections/Immutable/Tuple"
+import type { Predicate } from "../../../Function"
+import { pipe } from "../../../Function"
+import type * as C from "./core"
+import * as Fold from "./fold"
+import * as Map from "./map"
 
 /**
  * Accumulates incoming elements into a chunk as long as they verify predicate `p`.

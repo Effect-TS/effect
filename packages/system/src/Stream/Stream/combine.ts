@@ -1,14 +1,14 @@
 // ets_tracing: off
 
-import type * as Tp from "../../Collections/Immutable/Tuple/index.js"
-import type * as Ex from "../../Exit/index.js"
-import { pipe } from "../../Function/index.js"
-import type * as O from "../../Option/index.js"
-import * as BP from "../../Stream/BufferedPull/index.js"
-import * as T from "../_internal/effect.js"
-import * as M from "../_internal/managed.js"
-import { Stream } from "./definitions.js"
-import { unfoldM } from "./unfoldM.js"
+import type * as Tp from "../../Collections/Immutable/Tuple"
+import type * as Ex from "../../Exit"
+import { pipe } from "../../Function"
+import type * as O from "../../Option"
+import * as BP from "../../Stream/BufferedPull"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import { Stream } from "./definitions"
+import { unfoldM } from "./unfoldM"
 
 /**
  * Combines the elements from this stream and the specified stream by repeatedly applying the

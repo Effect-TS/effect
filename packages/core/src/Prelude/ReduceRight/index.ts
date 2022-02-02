@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as HKT from "../HKT/index.js"
+import type * as HKT from "../HKT"
 
 export interface ReduceRight<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
   readonly _ReduceRight: "ReduceRight"

@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function/index.js"
-import { chain_, map } from "../core.js"
-import type { Managed } from "../managed.js"
-import { succeed } from "../succeed.js"
-import { unit } from "./api.js"
-import { suspend } from "./suspend.js"
+import { pipe } from "../../Function"
+import { chain_, map } from "../core"
+import type { Managed } from "../managed"
+import { succeed } from "../succeed"
+import { unit } from "./api"
+import { suspend } from "./suspend"
 
 /**
  * Loops with the specified effectual function, collecting the results into a

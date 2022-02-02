@@ -5,4 +5,4 @@ export {
   provideLayer_,
   provideSomeLayer,
   provideSomeLayer_
-} from "../Layer/definitions.js"
+} from "../Layer/definitions"

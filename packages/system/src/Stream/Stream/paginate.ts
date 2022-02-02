@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as Tp from "../../Collections/Immutable/Tuple/index.js"
-import type * as O from "../../Option/index.js"
-import * as T from "../_internal/effect.js"
-import type { Stream } from "./definitions.js"
-import { paginateM } from "./paginateM.js"
+import type * as Tp from "../../Collections/Immutable/Tuple"
+import type * as O from "../../Option"
+import * as T from "../_internal/effect"
+import type { Stream } from "./definitions"
+import { paginateM } from "./paginateM"
 
 /**
  * Like `unfoldM`, but allows the emission of values to end one step further than

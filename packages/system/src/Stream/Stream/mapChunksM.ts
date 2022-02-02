@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import type * as Chunk from "../../Collections/Immutable/Chunk/index.js"
-import { pipe } from "../../Function/index.js"
-import * as O from "../../Option/index.js"
-import * as T from "../_internal/effect.js"
-import * as M from "../_internal/managed.js"
-import { Stream } from "./definitions.js"
+import type * as Chunk from "../../Collections/Immutable/Chunk"
+import { pipe } from "../../Function"
+import * as O from "../../Option"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import { Stream } from "./definitions"
 
 /**
  * Effectfully transforms the chunks emitted by this stream.

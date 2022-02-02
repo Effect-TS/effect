@@ -1,8 +1,6 @@
-// ets_tracing: off
-
-import * as List from "../../Collections/Immutable/List/index.js"
-import { pipe } from "../../Function/index.js"
-import type { TestAnnotationMap } from "../TestAnnotationMap/index.js"
+import * as List from "../../Collections/Immutable/List"
+import { pipe } from "../../Function"
+import type { TestAnnotationMap } from "../TestAnnotationMap"
 
 export interface TestAnnotationRenderer {
   readonly run: (

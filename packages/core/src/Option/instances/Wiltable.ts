@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { OptionURI } from "../../Modules/index.js"
-import * as P from "../../Prelude/index.js"
-import { separateF } from "../operations/separateF.js"
+import type { OptionURI } from "../../Modules"
+import * as P from "../../Prelude"
+import { separateF } from "../operations/separateF"
 
 export const Wiltable = P.instance<P.Wiltable<[P.URI<OptionURI>]>>({
   separateF

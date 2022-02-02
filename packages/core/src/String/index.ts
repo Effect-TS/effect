@@ -1,20 +1,20 @@
 // ets_tracing: off
 
-import "../Operator/index.js"
+import "../Operator"
 
-import * as C from "../Closure/index.js"
+import * as C from "../Closure"
 /**
  * Partially Ported from https://github.com/samhh/fp-ts-std
  * Partially Ported from https://github.com/0x706b/principia
  */
-import * as A from "../Collections/Immutable/Array/index.js"
-import * as NA from "../Collections/Immutable/NonEmptyArray/index.js"
-import * as Eq from "../Equal/index.js"
-import { pipe } from "../Function/index.js"
-import * as I from "../Identity/index.js"
-import type { Sum } from "../Newtype/index.js"
-import { StringSum } from "../Newtype/index.js"
-import * as O from "../Option/index.js"
+import * as A from "../Collections/Immutable/Array"
+import * as NA from "../Collections/Immutable/NonEmptyArray"
+import * as Eq from "../Equal"
+import { pipe } from "../Function"
+import * as I from "../Identity"
+import type { Sum } from "../Newtype"
+import { StringSum } from "../Newtype"
+import * as O from "../Option"
 
 export const SumClosure = C.makeClosure<Sum<string>>((l, r) =>
   StringSum.wrap(`${StringSum.unwrap(l)}${StringSum.unwrap(r)}`)

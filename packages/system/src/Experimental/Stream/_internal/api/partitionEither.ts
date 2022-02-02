@@ -1,18 +1,18 @@
 // ets_tracing: off
 
-import * as L from "../../../../Collections/Immutable/List/index.js"
-import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
-import * as T from "../../../../Effect/index.js"
-import * as E from "../../../../Either/index.js"
-import { pipe } from "../../../../Function/index.js"
-import * as M from "../../../../Managed/index.js"
-import type * as C from "../core.js"
-import * as CollectLeft from "./collectLeft.js"
-import * as CollectRight from "./collectRight.js"
-import * as DistributedWith from "./distributedWith.js"
-import * as FlattenExitOption from "./flattenExitOption.js"
-import * as FromQueueWithShutdown from "./fromQueueWithShutdown.js"
-import * as MapEffect from "./mapEffect.js"
+import * as L from "../../../../Collections/Immutable/List"
+import * as Tp from "../../../../Collections/Immutable/Tuple"
+import * as T from "../../../../Effect"
+import * as E from "../../../../Either"
+import { pipe } from "../../../../Function"
+import * as M from "../../../../Managed"
+import type * as C from "../core"
+import * as CollectLeft from "./collectLeft"
+import * as CollectRight from "./collectRight"
+import * as DistributedWith from "./distributedWith"
+import * as FlattenExitOption from "./flattenExitOption"
+import * as FromQueueWithShutdown from "./fromQueueWithShutdown"
+import * as MapEffect from "./mapEffect"
 
 /**
  * Split a stream by a predicate. The faster stream may advance by up to buffer elements further than the slower one.

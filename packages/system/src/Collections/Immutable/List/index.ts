@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import "../../../Operator/index.js"
+import "../../../Operator"
 
-export * from "./api/filterM.js"
-export * from "./api/mapM.js"
-export * from "./core.js"
+export * from "./api/filterM"
+export * from "./api/mapM"
+export * from "./core"

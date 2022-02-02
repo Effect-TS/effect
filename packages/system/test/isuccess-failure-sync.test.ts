@@ -1,6 +1,6 @@
-import { pipe } from "@effect-ts/system/Function/index.js"
+import { pipe } from "@effect-ts/system/Function"
 
-import * as Sy from "../src/Sync/index.js"
+import * as Sy from "../src/Sync"
 
 describe("Checking success in Sync", () => {
   it("should be true in case of success", () => {

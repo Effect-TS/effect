@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 import { pipe } from "@effect-ts/system/Function"
 
-import * as E from "../../src/Either/index.js"
-import * as DSL from "../../src/Prelude/DSL/index.js"
-import * as StateT from "../../src/StateT/Parametric/index.js"
+import * as E from "../../src/Either"
+import * as DSL from "../../src/Prelude/DSL"
+import * as StateT from "../../src/StateT/Parametric"
 
 namespace StateStateEither {
   /**

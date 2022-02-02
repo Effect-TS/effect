@@ -1,8 +1,6 @@
-// ets_tracing: off
-
-import { append_, empty } from "../core.js"
-import type { Chunk } from "../definition.js"
-import { concreteId } from "../definition.js"
+import { append_, empty } from "../core"
+import type { Chunk } from "../definition"
+import { concreteId } from "../definition"
 
 /**
  * Zips with chunk with the specified chunk to produce a new chunk with

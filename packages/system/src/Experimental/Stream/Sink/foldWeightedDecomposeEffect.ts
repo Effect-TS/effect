@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as CK from "../../../Collections/Immutable/Chunk/index.js"
-import * as Tp from "../../../Collections/Immutable/Tuple/index.js"
-import * as T from "../../../Effect/index.js"
-import { pipe } from "../../../Function/index.js"
-import * as CH from "../Channel/index.js"
-import * as C from "./core.js"
+import * as CK from "../../../Collections/Immutable/Chunk"
+import * as Tp from "../../../Collections/Immutable/Tuple"
+import * as T from "../../../Effect"
+import { pipe } from "../../../Function"
+import * as CH from "../Channel"
+import * as C from "./core"
 
 /**
  * Creates a sink that effectfully folds elements of type `In` into a structure

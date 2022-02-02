@@ -2,12 +2,12 @@
 
 /* adapted from https://github.com/gcanti/fp-ts */
 
-import * as Tp from "../Collections/Immutable/Tuple/index.js"
-import type { Either } from "../Either/core.js"
-import type { Lazy, Predicate, Refinement } from "../Function/core.js"
-import { identity } from "../Function/core.js"
-import * as St from "../Structural/index.js"
-import type { HasUnify } from "../Utils/index.js"
+import * as Tp from "../Collections/Immutable/Tuple"
+import type { Either } from "../Either/core"
+import type { Lazy, Predicate, Refinement } from "../Function/core"
+import { identity } from "../Function/core"
+import * as St from "../Structural"
+import type { HasUnify } from "../Utils"
 
 const _noneHash = St.hashString("@effect-ts/system/Option/None")
 const _someHash = St.hashString("@effect-ts/system/Option/Some")

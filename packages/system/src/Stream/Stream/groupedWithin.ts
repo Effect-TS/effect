@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import type * as CL from "../../Clock/index.js"
-import type * as A from "../../Collections/Immutable/Chunk/index.js"
-import type * as H from "../../Has/index.js"
-import * as SC from "../../Schedule/index.js"
-import * as TR from "../Transducer/index.js"
-import { aggregateAsyncWithin_ } from "./aggregateAsyncWithin.js"
-import type { Stream } from "./definitions.js"
+import type * as CL from "../../Clock"
+import type * as A from "../../Collections/Immutable/Chunk"
+import type * as H from "../../Has"
+import * as SC from "../../Schedule"
+import * as TR from "../Transducer"
+import { aggregateAsyncWithin_ } from "./aggregateAsyncWithin"
+import type { Stream } from "./definitions"
 
 /**
  * Partitions the stream with the specified chunkSize or until the specified

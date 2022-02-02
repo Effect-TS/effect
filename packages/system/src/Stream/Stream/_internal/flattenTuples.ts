@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as Chunk from "../../../Collections/Immutable/Chunk/index.js"
-import * as Tp from "../../../Collections/Immutable/Tuple/index.js"
+import * as Chunk from "../../../Collections/Immutable/Chunk"
+import * as Tp from "../../../Collections/Immutable/Tuple"
 
 type RecursiveTuples<T> = Tp.Tuple<[T | RecursiveTuples<T>, T]>
 

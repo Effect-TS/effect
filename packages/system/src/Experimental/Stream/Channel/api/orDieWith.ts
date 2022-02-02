@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as C from "../core.js"
-import * as CatchAll from "./catchAll.js"
+import * as C from "../core"
+import * as CatchAll from "./catchAll"
 
 export function orDieWith_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, E>(
   self: C.Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,

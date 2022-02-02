@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { GroupBy } from "../GroupBy/index.js"
-import type { Stream } from "./definitions.js"
+import type { GroupBy } from "../GroupBy/index"
+import type { Stream } from "./definitions"
 
 /**
  * Merges groups in parallel and the results in arbitrary order.

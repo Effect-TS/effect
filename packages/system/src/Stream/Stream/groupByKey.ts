@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as Tp from "../../Collections/Immutable/Tuple/index.js"
-import * as T from "../_internal/effect.js"
-import type { Stream } from "./definitions.js"
-import { groupBy_ } from "./groupBy.js"
+import * as Tp from "../../Collections/Immutable/Tuple"
+import * as T from "../_internal/effect"
+import type { Stream } from "./definitions"
+import { groupBy_ } from "./groupBy"
 
 /**
  * Partition a stream using a function and process each stream individually.

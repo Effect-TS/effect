@@ -1,9 +1,7 @@
-// ets_tracing: off
-
-import * as T from "../../../Effect/index.js"
-import * as E from "../../../Either/index.js"
-import type { FiberID } from "../../../Fiber/index.js"
-import type { Journal } from "../Journal/index.js"
+import * as T from "../../../Effect"
+import * as E from "../../../Either"
+import type { FiberID } from "../../../Fiber"
+import type { Journal } from "../Journal/index"
 
 export const STMTypeId = Symbol()
 export type STMTypeId = typeof STMTypeId

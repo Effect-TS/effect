@@ -2,9 +2,9 @@
 
 import type * as O from "@effect-ts/system/Option"
 
-import { fold } from "../../Identity/index.js"
-import type { AOfOptions } from "../definitions.js"
-import { getFirstIdentity } from "./getFirstIdentity.js"
+import { fold } from "../../Identity"
+import type { AOfOptions } from "../definitions"
+import { getFirstIdentity } from "./getFirstIdentity"
 
 export function getFirst<Ts extends O.Option<any>[]>(
   ...items: Ts

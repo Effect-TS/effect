@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Base, Infer, Kind, URIS } from "../HKT/index.js"
+import type { Base, Infer, Kind, URIS } from "../HKT"
 
 export function conditionalF<URI extends URIS, C>(_: Base<URI, C>) {
   return <

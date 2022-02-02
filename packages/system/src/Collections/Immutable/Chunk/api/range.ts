@@ -1,7 +1,5 @@
-// ets_tracing: off
-
-import type { Chunk } from "../core.js"
-import { append_, empty } from "../core.js"
+import type { Chunk } from "../core"
+import { append_, empty } from "../core"
 
 /**
  * Build a chunk with an integer range with both min/max included

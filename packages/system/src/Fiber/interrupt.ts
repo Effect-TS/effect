@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as T from "./_internal/effect.js"
-import type * as Fiber from "./core.js"
+import * as T from "./_internal/effect"
+import type * as Fiber from "./core"
 
 /**
  * Interrupts the fiber from whichever fiber is calling this method. If the

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import "../Operator/index.js"
+import "../Operator"
 
-export * from "./definition.js"
-export * from "./operations.js"
-export * from "./makeAssociative.js"
-export * from "./common.js"
+export * from "./definition"
+export * from "./operations"
+export * from "./makeAssociative"
+export * from "./common"

@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import "../../Operator/index.js"
+import "../../Operator"
 
-import * as L from "../../Collections/Immutable/List/index.js"
-import type { Predicate } from "../../Function/index.js"
-import { DoublyLinkedList } from "../DoublyLinkedList/index.js"
+import * as L from "../../Collections/Immutable/List"
+import type { Predicate } from "../../Function"
+import { DoublyLinkedList } from "../DoublyLinkedList"
 
 export class RingBuffer<T> {
   private values = new DoublyLinkedList<T>()

@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import "../Operator/index.js"
+import "../Operator"
 
-import { pipe } from "../Function/index.js"
-import type { IxURI } from "../Modules/index.js"
-import { chainF, succeedF } from "../Prelude/DSL/index.js"
-import * as HKT from "../Prelude/HKT/index.js"
-import type { Monad } from "../Prelude/Monad/index.js"
+import { pipe } from "../Function"
+import type { IxURI } from "../Modules"
+import { chainF, succeedF } from "../Prelude/DSL"
+import * as HKT from "../Prelude/HKT"
+import type { Monad } from "../Prelude/Monad"
 
 export interface IxC<I, O> {
   Ix: {

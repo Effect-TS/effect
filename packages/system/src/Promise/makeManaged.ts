@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { chain_ } from "../Effect/core.js"
-import { fiberId } from "../Effect/fiberId.js"
-import { toManaged } from "../Effect/index.js"
-import { makeAs } from "./makeAs.js"
+import { toManaged } from "../Effect"
+import { chain_ } from "../Effect/core"
+import { fiberId } from "../Effect/fiberId"
+import { makeAs } from "./makeAs"
 
 /**
  * Makes a new managed promise to be completed by the fiber creating the promise.

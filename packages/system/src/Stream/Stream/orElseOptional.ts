@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as O from "../../Option/index.js"
-import { catchAll_ } from "./catchAll.js"
-import type { Stream } from "./definitions.js"
-import { fail } from "./fail.js"
+import * as O from "../../Option"
+import { catchAll_ } from "./catchAll"
+import type { Stream } from "./definitions"
+import { fail } from "./fail"
 
 /**
  * Switches to the provided stream in case this one fails with the `None` value.

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as CK from "../../../Collections/Immutable/Chunk/index.js"
-import type * as C from "./core.js"
-import * as FoldChunks from "./foldChunks.js"
+import type * as CK from "../../../Collections/Immutable/Chunk"
+import type * as C from "./core"
+import * as FoldChunks from "./foldChunks"
 
 /**
  * A sink that folds its input chunks with the provided function and initial state.

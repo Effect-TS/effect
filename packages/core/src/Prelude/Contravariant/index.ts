@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { CovariantComposition } from "../Covariant/index.js"
-import * as HKT from "../HKT/index.js"
+import type { CovariantComposition } from "../Covariant"
+import * as HKT from "../HKT"
 
 export interface Contravariant<F extends HKT.URIS, C = HKT.Auto>
   extends HKT.Base<F, C> {

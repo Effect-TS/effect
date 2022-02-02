@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import "../../Operator/index.js"
+import "../../Operator"
 
-import type { Cause } from "../../Cause/core.js"
-import * as A from "../../Collections/Immutable/Chunk/index.js"
-import * as O from "../../Option/index.js"
-import * as Q from "../../Queue/index.js"
-import * as T from "../_internal/effect.js"
-import type { Take } from "../Take/index.js"
+import type { Cause } from "../../Cause/core"
+import * as A from "../../Collections/Immutable/Chunk"
+import * as O from "../../Option"
+import * as Q from "../../Queue"
+import * as T from "../_internal/effect"
+import type { Take } from "../Take"
 
 export type Pull<R, E, O> = T.Effect<R, O.Option<E>, A.Chunk<O>>
 

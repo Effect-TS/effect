@@ -1,8 +1,6 @@
-// ets_tracing: off
-
-import * as O from "../../../../Option/index.js"
-import * as Chunk from "../core.js"
-import * as ChunkDef from "../definition.js"
+import * as O from "../../../../Option"
+import * as Chunk from "../core"
+import * as ChunkDef from "../definition"
 
 /**
  * Returns a filtered, mapped subset of the elements of this chunk.

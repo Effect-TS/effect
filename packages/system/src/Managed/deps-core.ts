@@ -2,40 +2,40 @@
 
 // minimize circularity by importing only a subset
 
-export * from "../Effect/zips.js"
-export * from "../Effect/bracketExit.js"
-export * from "../Effect/core.js"
-export * from "../Effect/core-scope.js"
-export * from "../Effect/do.js"
-export * from "../Effect/done.js"
-export * from "../Effect/effect.js"
-export * from "../Effect/commons.js"
-export * from "../Effect/environment.js"
-export * from "../Effect/ExecutionStrategy.js"
-export * from "../Effect/fail.js"
-export * from "../Effect/flatten.js"
-export * from "../Effect/interruption.js"
-export * from "../Effect/map.js"
-export * from "../Effect/mapError.js"
-export * from "../Effect/mapErrorCause.js"
-export * from "../Effect/never.js"
-export * from "../Effect/provideSome.js"
-export * from "../Effect/sandbox.js"
-export * from "../Effect/tap.js"
-export * from "../Effect/zipWith.js"
-export * from "../Effect/zipWithPar.js"
-export * from "../Effect/zip.js"
-export * from "../Effect/zips.js"
+export * from "../Effect/zips"
+export * from "../Effect/bracketExit"
+export * from "../Effect/core"
+export * from "../Effect/core-scope"
+export * from "../Effect/do"
+export * from "../Effect/done"
+export * from "../Effect/effect"
+export * from "../Effect/commons"
+export * from "../Effect/environment"
+export * from "../Effect/ExecutionStrategy"
+export * from "../Effect/fail"
+export * from "../Effect/flatten"
+export * from "../Effect/interruption"
+export * from "../Effect/map"
+export * from "../Effect/mapError"
+export * from "../Effect/mapErrorCause"
+export * from "../Effect/never"
+export * from "../Effect/provideSome"
+export * from "../Effect/sandbox"
+export * from "../Effect/tap"
+export * from "../Effect/zipWith"
+export * from "../Effect/zipWithPar"
+export * from "../Effect/zip"
+export * from "../Effect/zips"
 export {
   forEach as exitForeach,
   halt as exitHalt,
   interrupt as exitInterrupt
-} from "../Exit/api.js"
+} from "../Exit/api"
 export {
   collectAll as exitCollectAll,
   collectAllPar as exitCollectAllPar,
   succeed as exitSucceed,
   unit as exitUnit,
   zipRight_ as exitZipRight_
-} from "../Exit/core.js"
-export { Exit } from "../Exit/exit.js"
+} from "../Exit/core"
+export { Exit } from "../Exit/exit"

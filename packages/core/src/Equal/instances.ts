@@ -2,9 +2,9 @@
 
 import * as Equal from "@effect-ts/system/Equal"
 
-import type { EqualURI } from "../Modules/index.js"
-import type { URI } from "../Prelude/index.js"
-import * as P from "../Prelude/index.js"
+import type { EqualURI } from "../Modules"
+import type { URI } from "../Prelude"
+import * as P from "../Prelude"
 
 /**
  * The `AssociativeBoth` instance for `Equal`.

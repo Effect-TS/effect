@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect/index.js"
-import type * as C from "../core.js"
-import * as ScanReduceEffect from "./scanReduceEffect.js"
+import * as T from "../../../../Effect"
+import type * as C from "../core"
+import * as ScanReduceEffect from "./scanReduceEffect"
 
 /**
  * Statefully maps over the elements of this stream to produce all intermediate results.

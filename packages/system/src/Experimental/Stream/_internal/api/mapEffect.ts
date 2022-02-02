@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect/index.js"
-import type * as C from "../core.js"
-import * as LoopOnPartialChunksElements from "./loopOnPartialChunksElements.js"
+import * as T from "../../../../Effect"
+import type * as C from "../core"
+import * as LoopOnPartialChunksElements from "./loopOnPartialChunksElements"
 
 /**
  * Maps over elements of the stream with the specified effectful function.

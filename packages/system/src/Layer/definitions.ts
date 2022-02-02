@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import type * as C from "../Cause/index.js"
-import { reduce as chunkReduce } from "../Collections/Immutable/Chunk/api/reduce.js"
-import { insert } from "../Collections/Immutable/Map/index.js"
-import * as Tp from "../Collections/Immutable/Tuple/index.js"
-import { _E, _RIn, _ROut } from "../Effect/commons.js"
-import { sequential } from "../Effect/ExecutionStrategy.js"
-import type { Exit } from "../Exit/index.js"
-import { pipe } from "../Function/index.js"
+import type * as C from "../Cause"
+import { reduce as chunkReduce } from "../Collections/Immutable/Chunk/api/reduce"
+import { insert } from "../Collections/Immutable/Map"
+import * as Tp from "../Collections/Immutable/Tuple"
+import { _E, _RIn, _ROut } from "../Effect/commons"
+import { sequential } from "../Effect/ExecutionStrategy"
+import type { Exit } from "../Exit"
+import { pipe } from "../Function"
 import {
   chain as managedChain,
   chain_ as managedChain_,
@@ -18,32 +18,32 @@ import {
   provideSome_ as managedProvideSome_,
   zipWith_ as managedZipWith_,
   zipWithPar_ as managedZipWithPar_
-} from "../Managed/core.js"
-import { bind as managedBind, do as managedDo } from "../Managed/do.js"
+} from "../Managed/core"
+import { bind as managedBind, do as managedDo } from "../Managed/do"
 import {
   forEach_ as managedForEach_,
   forEachPar_ as managedForEachPar_
-} from "../Managed/forEach.js"
-import { fromEffect as managedFromEffect } from "../Managed/fromEffect.js"
-import { managedApply } from "../Managed/managed.js"
-import { environment as managedEnvironment } from "../Managed/methods/environment.js"
-import * as add from "../Managed/ReleaseMap/add.js"
-import * as Finalizer from "../Managed/ReleaseMap/finalizer.js"
-import type { ReleaseMap } from "../Managed/ReleaseMap/index.js"
-import * as makeReleaseMap from "../Managed/ReleaseMap/makeReleaseMap.js"
-import * as releaseAll from "../Managed/ReleaseMap/releaseAll.js"
-import { succeed as succeed_1 } from "../Managed/succeed.js"
-import { use_ } from "../Managed/use.js"
-import { await as promiseAwait } from "../Promise/await.js"
-import { halt } from "../Promise/halt.js"
-import { make } from "../Promise/make.js"
-import { succeed } from "../Promise/succeed.js"
-import * as R from "../Ref/index.js"
-import * as RM from "../RefM/index.js"
-import { AtomicReference } from "../Support/AtomicReference/index.js"
-import type { Erase, UnionToIntersection } from "../Utils/index.js"
-import * as T from "./deps-effect.js"
-import type { Managed } from "./deps-managed.js"
+} from "../Managed/forEach"
+import { fromEffect as managedFromEffect } from "../Managed/fromEffect"
+import { managedApply } from "../Managed/managed"
+import { environment as managedEnvironment } from "../Managed/methods/environment"
+import type { ReleaseMap } from "../Managed/ReleaseMap"
+import * as add from "../Managed/ReleaseMap/add"
+import * as Finalizer from "../Managed/ReleaseMap/finalizer"
+import * as makeReleaseMap from "../Managed/ReleaseMap/makeReleaseMap"
+import * as releaseAll from "../Managed/ReleaseMap/releaseAll"
+import { succeed as succeed_1 } from "../Managed/succeed"
+import { use_ } from "../Managed/use"
+import { await as promiseAwait } from "../Promise/await"
+import { halt } from "../Promise/halt"
+import { make } from "../Promise/make"
+import { succeed } from "../Promise/succeed"
+import * as R from "../Ref"
+import * as RM from "../RefM"
+import { AtomicReference } from "../Support/AtomicReference"
+import type { Erase, UnionToIntersection } from "../Utils"
+import * as T from "./deps-effect"
+import type { Managed } from "./deps-managed"
 
 /**
  * Creates a layer from an effect

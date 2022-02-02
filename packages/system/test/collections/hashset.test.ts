@@ -1,5 +1,5 @@
-import * as HS from "../../src/Collections/Immutable/HashSet/index.js"
-import { pipe } from "../../src/Function/index.js"
+import * as HS from "../../src/Collections/Immutable/HashSet"
+import { pipe } from "../../src/Function"
 
 describe("HashSet", () => {
   it("maps", () => {

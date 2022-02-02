@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as C from "../core.js"
-import * as Environment from "./environment.js"
-import * as Map from "./map.js"
+import type * as C from "../core"
+import * as Environment from "./environment"
+import * as Map from "./map"
 
 /**
  * Accesses the environment of the stream.

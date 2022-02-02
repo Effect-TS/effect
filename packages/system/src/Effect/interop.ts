@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import * as Async from "../Async/index.js"
-import * as IO from "../IO/index.js"
-import { accessM, succeed, succeedWith } from "./core.js"
-import type { Effect } from "./effect.js"
-import { effectAsyncInterrupt } from "./effectAsyncInterrupt.js"
-import { fail } from "./fail.js"
-import { interrupt } from "./interruption.js"
+import * as Async from "../Async"
+import * as IO from "../IO"
+import { accessM, succeed, succeedWith } from "./core"
+import type { Effect } from "./effect"
+import { effectAsyncInterrupt } from "./effectAsyncInterrupt"
+import { fail } from "./fail"
+import { interrupt } from "./interruption"
 
 /**
  * Lift Async into Effect

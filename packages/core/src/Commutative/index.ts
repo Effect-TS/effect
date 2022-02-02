@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import "../Operator/index.js"
+import "../Operator"
 
-export * from "./definition.js"
-export { CommutativeURI } from "../Modules/index.js"
-export * from "./operations.js"
+export * from "./definition"
+export { CommutativeURI } from "../Modules"
+export * from "./operations"

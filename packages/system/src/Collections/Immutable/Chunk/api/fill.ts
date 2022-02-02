@@ -1,7 +1,5 @@
-// ets_tracing: off
-
-import type { Chunk } from "../core.js"
-import { append_, empty } from "../core.js"
+import type { Chunk } from "../core"
+import { append_, empty } from "../core"
 
 /**
  * Fills a chunk with the result of applying `f` `n` times

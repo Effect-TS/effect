@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk/index.js"
-import { pipe } from "../../Function/index.js"
-import { concat } from "./concat.js"
-import type { Stream } from "./definitions.js"
-import { fromChunk } from "./fromChunk.js"
-import { intersperse_ } from "./intersperse.js"
+import * as A from "../../Collections/Immutable/Chunk"
+import { pipe } from "../../Function"
+import { concat } from "./concat"
+import type { Stream } from "./definitions"
+import { fromChunk } from "./fromChunk"
+import { intersperse_ } from "./intersperse"
 /**
  * Intersperse and also add a prefix and a suffix
  */

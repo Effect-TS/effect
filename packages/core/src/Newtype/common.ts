@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Generic, TypeOf } from "./newtype.js"
-import { genericDef, newtype, typeDef } from "./newtype.js"
+import type { Generic, TypeOf } from "./newtype"
+import { genericDef, newtype, typeDef } from "./newtype"
 
 /**
  * A newtype representing addition.

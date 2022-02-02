@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as Q from "../../Queue/index.js"
-import type { Stream } from "./definitions.js"
-import { ensuringFirst_ } from "./ensuringFirst.js"
-import { fromQueue } from "./fromQueue.js"
+import * as Q from "../../Queue"
+import type { Stream } from "./definitions"
+import { ensuringFirst_ } from "./ensuringFirst"
+import { fromQueue } from "./fromQueue"
 
 /**
  * Creates a stream from a {@link XQueue} of values. The queue will be shutdown once the stream is closed.

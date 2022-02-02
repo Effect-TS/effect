@@ -1,6 +1,4 @@
-// ets_tracing: off
-
-import type { EqualityComparator } from "./utils.js"
+import type { EqualityComparator } from "./utils"
 import {
   areArraysEqual,
   areMapsEqual,
@@ -10,7 +8,7 @@ import {
   isPlainObject,
   isPromiseLike,
   sameValueZeroEqual
-} from "./utils.js"
+} from "./utils"
 
 const { isArray } = Array
 

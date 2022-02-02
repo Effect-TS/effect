@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { NoSuchElementException } from "../GlobalExceptions/index.js"
-import type * as O from "../Option/index.js"
-import type { Effect } from "./effect.js"
-import { someOrFail_ } from "./someOrFail.js"
+import { NoSuchElementException } from "../GlobalExceptions"
+import type * as O from "../Option"
+import type { Effect } from "./effect"
+import { someOrFail_ } from "./someOrFail"
 
 /**
  * Extracts the optional value, or fails with a `NoSuchElementException`

@@ -1,2 +1,2 @@
-export * from "./primitives.js"
-export * from "./core.js"
+export * from "./primitives"
+export * from "./core"

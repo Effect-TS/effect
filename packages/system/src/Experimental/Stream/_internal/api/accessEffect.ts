@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as T from "../../../../Effect/index.js"
-import type * as C from "../core.js"
-import * as Environment from "./environment.js"
-import * as MapEffect from "./mapEffect.js"
+import type * as T from "../../../../Effect"
+import type * as C from "../core"
+import * as Environment from "./environment"
+import * as MapEffect from "./mapEffect"
 
 /**
  * Accesses the environment of the stream in the context of an effect.

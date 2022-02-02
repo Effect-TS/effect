@@ -1,8 +1,6 @@
-// ets_tracing: off
-
-import * as I from "../../../Iterable/index.js"
-import * as O from "../../../Option/index.js"
-import * as MHM from "../HashMap/index.js"
+import * as I from "../../../Iterable"
+import * as O from "../../../Option"
+import * as MHM from "../HashMap"
 
 export class HashSet<A> {
   private hashMap: MHM.HashMap<A, boolean>

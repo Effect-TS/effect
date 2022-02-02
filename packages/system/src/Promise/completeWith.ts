@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { succeedWith } from "../Effect/core.js"
-import type { IO, UIO } from "../Effect/effect.js"
-import type { Promise } from "./promise.js"
-import { Done } from "./state.js"
+import { succeedWith } from "../Effect/core"
+import type { IO, UIO } from "../Effect/effect"
+import type { Promise } from "./promise"
+import { Done } from "./state"
 
 /**
  * Completes the promise with the specified effect. If the promise has

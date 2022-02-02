@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as E from "../../Either/index.js"
-import { pipe } from "../../Function/index.js"
-import type { Stream } from "./definitions.js"
-import { map_ } from "./map.js"
-import { orElse } from "./orElse.js"
+import * as E from "../../Either"
+import { pipe } from "../../Function"
+import type { Stream } from "./definitions"
+import { map_ } from "./map"
+import { orElse } from "./orElse"
 
 /**
  * Switches to the provided stream in case this one fails with a typed error.

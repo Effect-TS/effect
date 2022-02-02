@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Effect } from "./effect.js"
-import { orDieWith_ } from "./orDieWith.js"
+import type { Effect } from "./effect"
+import { orDieWith_ } from "./orDieWith"
 
 /**
  * Keeps none of the errors, and terminates the fiber with them, using

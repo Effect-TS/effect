@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as O from "../../../../Option/index.js"
-import type * as C from "../core.js"
-import * as Map from "./map.js"
+import * as O from "../../../../Option"
+import type * as C from "../core"
+import * as Map from "./map"
 
 /**
  * Extracts the optional value, or returns the given 'default'.

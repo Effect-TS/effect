@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as C from "../../Cause/index.js"
-import { pipe } from "../../Function/index.js"
-import * as T from "../_internal/effect.js"
-import type { IO } from "./definitions.js"
-import { fromEffect } from "./fromEffect.js"
+import type * as C from "../../Cause"
+import { pipe } from "../../Function"
+import * as T from "../_internal/effect"
+import type { IO } from "./definitions"
+import { fromEffect } from "./fromEffect"
 
 /**
  * The stream that always halts with `cause`.

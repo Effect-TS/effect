@@ -1,10 +1,8 @@
-// ets_tracing: off
-
-import { _A } from "../../../Effect/commons.js"
-import { ArrayIndexOutOfBoundsException } from "../../../GlobalExceptions/index.js"
-import * as St from "../../../Structural/index.js"
-import { AtomicNumber } from "../../../Support/AtomicNumber/index.js"
-import * as A from "../Array/index.js"
+import { _A } from "../../../Effect/commons"
+import { ArrayIndexOutOfBoundsException } from "../../../GlobalExceptions"
+import * as St from "../../../Structural"
+import { AtomicNumber } from "../../../Support/AtomicNumber"
+import * as A from "../Array"
 
 export const BufferSize = 64
 

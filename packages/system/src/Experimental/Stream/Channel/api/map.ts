@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as C from "../core.js"
-import * as Succeed from "./succeed.js"
+import * as C from "../core"
+import * as Succeed from "./succeed"
 
 /**
  * Returns a new channel, which is the same as this one, except the terminal value of the

@@ -1,20 +1,20 @@
 // ets_tracing: off
 
-import type * as Cause from "../Cause/core.js"
-import type { Tuple } from "../Collections/Immutable/Tuple/index.js"
-import type * as Exit from "../Exit/exit.js"
-import type { FiberContext } from "../Fiber/context.js"
-import type * as Fiber from "../Fiber/core.js"
-import type { FiberID } from "../Fiber/id.js"
-import type { Platform } from "../Fiber/index.js"
-import type { Trace } from "../Fiber/tracing.js"
-import type { Runtime } from "../FiberRef/fiberRef.js"
-import type * as O from "../Option/index.js"
-import type { Scope } from "../Scope/index.js"
-import type { Supervisor } from "../Supervisor/index.js"
-import type { XPureBase } from "../XPure/core.js"
-import type { Effect } from "./effect.js"
-import { Base } from "./effect.js"
+import type * as Cause from "../Cause/core"
+import type { Tuple } from "../Collections/Immutable/Tuple"
+import type * as Exit from "../Exit/exit"
+import type { Platform } from "../Fiber"
+import type { FiberContext } from "../Fiber/context"
+import type * as Fiber from "../Fiber/core"
+import type { FiberID } from "../Fiber/id"
+import type { Trace } from "../Fiber/tracing"
+import type { Runtime } from "../FiberRef/fiberRef"
+import type * as O from "../Option"
+import type { Scope } from "../Scope"
+import type { Supervisor } from "../Supervisor"
+import type { XPureBase } from "../XPure/core"
+import type { Effect } from "./effect"
+import { Base } from "./effect"
 
 //
 // @category Primitives
@@ -355,4 +355,4 @@ export class IOverrideForkScope<R, E, A> extends Base<R, E, A> {
   }
 }
 
-export * from "./effect.js"
+export * from "./effect"

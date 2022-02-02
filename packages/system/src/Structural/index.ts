@@ -1,2 +1,2 @@
-export * from "./HasEquals/index.js"
-export * from "./HasHash/index.js"
+export * from "./HasEquals"
+export * from "./HasHash"

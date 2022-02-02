@@ -1,5 +1,5 @@
-import * as Cause from "../src/Cause/index.js"
-import * as St from "../src/Structural/index.js"
+import * as Cause from "../src/Cause"
+import * as St from "../src/Structural"
 
 describe("Cause", () => {
   it("equals", () => {

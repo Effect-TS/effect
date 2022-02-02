@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import * as CK from "../../../Collections/Immutable/Chunk/index.js"
-import * as T from "../../../Effect/index.js"
-import { pipe } from "../../../Function/index.js"
-import * as O from "../../../Option/index.js"
-import * as Ref from "../../../Ref/index.js"
-import * as CH from "../Channel/index.js"
-import * as C from "./core.js"
+import * as CK from "../../../Collections/Immutable/Chunk"
+import * as T from "../../../Effect"
+import { pipe } from "../../../Function"
+import * as O from "../../../Option"
+import * as Ref from "../../../Ref"
+import * as CH from "../Channel"
+import * as C from "./core"
 
 /**
  * Creates a sink that produces values until one verifies

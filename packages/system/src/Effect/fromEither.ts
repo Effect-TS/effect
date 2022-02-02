@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as E from "../Either/index.js"
-import { chain_, succeed, succeedWith } from "./core.js"
-import { fail } from "./fail.js"
+import * as E from "../Either"
+import { chain_, succeed, succeedWith } from "./core"
+import { fail } from "./fail"
 
 /**
  * Lifts an `Either` into a `Effect` value.

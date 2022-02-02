@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import * as A from "../Collections/Immutable/Array/index.js"
-import * as NA from "../Collections/Immutable/NonEmptyArray/index.js"
-import * as O from "../Option/index.js"
-import { suspend } from "./core.js"
-import type { Effect } from "./effect.js"
-import { map_ } from "./map.js"
-import { mergeAllPar_, mergeAllParN_ } from "./mergeAll.js"
-import { zipWith_ } from "./zipWith.js"
+import * as A from "../Collections/Immutable/Array"
+import * as NA from "../Collections/Immutable/NonEmptyArray"
+import * as O from "../Option"
+import { suspend } from "./core"
+import type { Effect } from "./effect"
+import { map_ } from "./map"
+import { mergeAllPar_, mergeAllParN_ } from "./mergeAll"
+import { zipWith_ } from "./zipWith"
 
 /**
  * Reduces an `Iterable[IO]` to a single `IO`, working sequentially.

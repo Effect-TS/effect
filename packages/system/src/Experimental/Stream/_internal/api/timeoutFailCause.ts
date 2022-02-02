@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import * as CS from "../../../../Cause/index.js"
-import type * as CL from "../../../../Clock/index.js"
-import * as T from "../../../../Effect/index.js"
-import * as M from "../../../../Managed/index.js"
-import * as O from "../../../../Option/index.js"
-import type * as C from "../core.js"
-import * as FromPull from "./fromPull.js"
-import * as ToPull from "./toPull.js"
+import * as CS from "../../../../Cause"
+import type * as CL from "../../../../Clock"
+import * as T from "../../../../Effect"
+import * as M from "../../../../Managed"
+import * as O from "../../../../Option"
+import type * as C from "../core"
+import * as FromPull from "./fromPull"
+import * as ToPull from "./toPull"
 
 /**
  * Fails the stream with given cause if it does not produce a value after d duration.

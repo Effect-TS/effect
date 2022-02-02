@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../Operator/index.js"
+import "../Operator"
 
 export {
   all,
@@ -57,6 +57,6 @@ export {
   zipWithPar,
   zipWithPar_,
   zip_
-} from "./core.js"
+} from "./core"
 
-export * from "./unsafe.js"
+export * from "./unsafe"

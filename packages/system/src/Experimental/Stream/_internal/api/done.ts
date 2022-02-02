@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect/index.js"
-import type * as Ex from "../../../../Exit/index.js"
-import type * as C from "../core.js"
-import * as FromEffect from "./fromEffect.js"
+import * as T from "../../../../Effect"
+import type * as Ex from "../../../../Exit"
+import type * as C from "../core"
+import * as FromEffect from "./fromEffect"
 
 /**
  * The stream that ends with the `Exit` value `exit`.

@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { succeed } from "./core.js"
-import type { Effect } from "./effect.js"
-import { fail } from "./fail.js"
-import { foldM_ } from "./foldM.js"
+import { succeed } from "./core"
+import type { Effect } from "./effect"
+import { fail } from "./fail"
+import { foldM_ } from "./foldM"
 
 /**
  * Returns an effect that swaps the error/success cases. This allows you to

@@ -1,15 +1,15 @@
 // ets_tracing: off
 
-import * as Tp from "../../Collections/Immutable/Tuple/index.js"
-import { pipe } from "../../Function/index.js"
-import * as T from "../_internal/effect.js"
-import * as M from "../_internal/managed.js"
-import * as SK from "../Sink/index.js"
-import { concat_ } from "./concat.js"
-import type { Stream } from "./definitions.js"
-import { fromChunk } from "./fromChunk.js"
-import { repeatEffectChunkOption } from "./repeatEffectChunkOption.js"
-import { run } from "./run.js"
+import * as Tp from "../../Collections/Immutable/Tuple"
+import { pipe } from "../../Function"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import * as SK from "../Sink"
+import { concat_ } from "./concat"
+import type { Stream } from "./definitions"
+import { fromChunk } from "./fromChunk"
+import { repeatEffectChunkOption } from "./repeatEffectChunkOption"
+import { run } from "./run"
 
 /**
  * Peels off enough material from the stream to construct a `Z` using the

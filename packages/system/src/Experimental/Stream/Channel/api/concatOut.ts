@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as C from "../core.js"
-import * as ConcatAll from "./concatAll.js"
-import * as MapOut from "./mapOut.js"
+import type * as C from "../core"
+import * as ConcatAll from "./concatAll"
+import * as MapOut from "./mapOut"
 
 /**
  * Returns a new channel, which is the concatenation of all the channels that are written out by

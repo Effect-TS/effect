@@ -1,17 +1,17 @@
 // ets_tracing: off
 
-import "../Operator/index.js"
+import "../Operator"
 
 import * as T from "@effect-ts/system/Effect"
 
-import * as I from "../Identity/index.js"
-import type { EffectCategoryURI, EffectURI } from "../Modules/index.js"
-import * as DSL from "../Prelude/DSL/index.js"
-import type { URI } from "../Prelude/index.js"
-import * as P from "../Prelude/index.js"
+import * as I from "../Identity"
+import type { EffectCategoryURI, EffectURI } from "../Modules"
+import type { URI } from "../Prelude"
+import * as P from "../Prelude"
+import * as DSL from "../Prelude/DSL"
 
 export * from "@effect-ts/system/Effect"
-export { EffectURI } from "../Modules/index.js"
+export { EffectURI } from "../Modules"
 
 export type V = P.V<"R", "-"> & P.V<"E", "+">
 

@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import "../../Operator/index.js"
+import "../../Operator"
 
-import * as Chunk from "../../Collections/Immutable/Chunk/index.js"
-import { Hub, Subscription } from "./Hub.js"
+import * as Chunk from "../../Collections/Immutable/Chunk"
+import { Hub, Subscription } from "./Hub"
 
 export class BoundedHubSingle<A> extends Hub<A> {
   publisherIndex = 0

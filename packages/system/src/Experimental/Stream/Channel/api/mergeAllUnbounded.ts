@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as C from "../core.js"
-import * as MergeAll from "./mergeAll.js"
+import type * as C from "../core"
+import * as MergeAll from "./mergeAll"
 
 export function mergeAllUnbounded<Env, InErr, InElem, InDone, OutErr, OutElem>(
   channels: C.Channel<

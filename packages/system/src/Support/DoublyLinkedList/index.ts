@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../Operator/index.js"
+import "../../Operator"
 
 export class LinkedListNode<T> {
   public removed = false

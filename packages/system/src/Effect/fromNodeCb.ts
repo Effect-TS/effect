@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { succeed } from "./core.js"
-import type { IO } from "./effect.js"
-import { effectAsync } from "./effectAsync.js"
-import { fail } from "./fail.js"
+import { succeed } from "./core"
+import type { IO } from "./effect"
+import { effectAsync } from "./effectAsync"
+import { fail } from "./fail"
 
 export function fromNodeCb<L, R>(
   f: (this: unknown, cb: (e: L | null | undefined, r?: R) => void) => void,

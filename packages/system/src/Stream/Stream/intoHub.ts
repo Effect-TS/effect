@@ -1,10 +1,8 @@
-// ets_tracing: off
-
-import * as H from "../../Hub/index.js"
-import type * as T from "../_internal/effect.js"
-import type * as Take from "../Take/index.js"
-import type { Stream } from "./definitions.js"
-import { into_ } from "./into.js"
+import * as H from "../../Hub"
+import type * as T from "../_internal/effect"
+import type * as Take from "../Take"
+import type { Stream } from "./definitions"
+import { into_ } from "./into"
 
 /**
  * Publishes elements of this stream to a hub. Stream failure and ending will also be

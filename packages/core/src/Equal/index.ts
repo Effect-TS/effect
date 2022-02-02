@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import "../Operator/index.js"
+import "../Operator"
 
 export * from "@effect-ts/system/Equal"
-export { EqualURI } from "../Modules/index.js"
-export * from "./instances.js"
+export { EqualURI } from "../Modules"
+export * from "./instances"

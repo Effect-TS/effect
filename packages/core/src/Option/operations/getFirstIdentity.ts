@@ -2,9 +2,9 @@
 
 import * as O from "@effect-ts/system/Option"
 
-import type { Identity } from "../../Identity/index.js"
-import { fromAssociative } from "../../Identity/index.js"
-import { getFirstAssociative } from "./getFirstAssociative.js"
+import type { Identity } from "../../Identity"
+import { fromAssociative } from "../../Identity"
+import { getFirstAssociative } from "./getFirstAssociative"
 
 /**
  * `Identity` returning the left-most non-`None` value

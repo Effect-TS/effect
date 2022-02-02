@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import { pipe, tuple } from "../../Function/index.js"
-import type { StateInURI, StateOutURI } from "../../Modules/index.js"
-import { chainF } from "../../Prelude/DSL/index.js"
-import * as HKT from "../../Prelude/HKT/index.js"
-import type { Auto, Monad } from "../../Prelude/index.js"
+import { pipe, tuple } from "../../Function"
+import type { StateInURI, StateOutURI } from "../../Modules"
+import type { Auto, Monad } from "../../Prelude"
+import { chainF } from "../../Prelude/DSL"
+import * as HKT from "../../Prelude/HKT"
 
 /**
  * Take over ownership of "S" making it invariant

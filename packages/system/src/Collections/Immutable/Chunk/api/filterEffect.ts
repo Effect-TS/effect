@@ -1,10 +1,8 @@
-// ets_tracing: off
-
-import * as core from "../../../../Effect/core.js"
-import type { Effect } from "../../../../Effect/effect.js"
-import * as coreZip from "../../../../Effect/zipWith.js"
-import * as Chunk from "../core.js"
-import { concreteId } from "../definition.js"
+import * as core from "../../../../Effect/core"
+import type { Effect } from "../../../../Effect/effect"
+import * as coreZip from "../../../../Effect/zipWith"
+import * as Chunk from "../core"
+import { concreteId } from "../definition"
 
 /**
  * Filters this chunk by the specified effectful predicate, retaining all elements for

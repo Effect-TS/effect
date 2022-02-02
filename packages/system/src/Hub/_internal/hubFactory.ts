@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import "../../Operator/index.js"
+import "../../Operator"
 
-import { BoundedHubArb } from "./BoundedHubArb.js"
-import { BoundedHubPow2 } from "./BoundedHubPow2.js"
-import { BoundedHubSingle } from "./BoundedHubSingle.js"
-import { ensureCapacity } from "./errors.js"
-import type { Hub } from "./Hub.js"
-import { UnboundedHub } from "./UnboundedHub.js"
+import { BoundedHubArb } from "./BoundedHubArb"
+import { BoundedHubPow2 } from "./BoundedHubPow2"
+import { BoundedHubSingle } from "./BoundedHubSingle"
+import { ensureCapacity } from "./errors"
+import type { Hub } from "./Hub"
+import { UnboundedHub } from "./UnboundedHub"
 
 function nextPow2(n: number): number {
   const nextPow = Math.ceil(Math.log(n) / Math.log(2.0))
@@ -31,4 +31,4 @@ export function makeUnbounded<A>(): Hub<A> {
   return new UnboundedHub()
 }
 
-export * from "./Hub.js"
+export * from "./Hub"

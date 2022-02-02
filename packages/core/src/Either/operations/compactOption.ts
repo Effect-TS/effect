@@ -3,12 +3,12 @@
 import type { Either } from "@effect-ts/system/Either"
 import * as E from "@effect-ts/system/Either"
 
-import { pipe } from "../../Function/index.js"
-import type { Identity } from "../../Identity/index.js"
-import type { EitherURI } from "../../Modules/index.js"
-import type { Option } from "../../Option/index.js"
-import * as P from "../../Prelude/index.js"
-import { forEachF } from "./forEachF.js"
+import { pipe } from "../../Function"
+import type { Identity } from "../../Identity"
+import type { EitherURI } from "../../Modules"
+import type { Option } from "../../Option"
+import * as P from "../../Prelude"
+import { forEachF } from "./forEachF"
 
 /**
  * Compact `Either<E, Option<A>>` given `Identity<E>`

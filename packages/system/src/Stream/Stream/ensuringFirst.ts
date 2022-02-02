@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as T from "../_internal/effect.js"
-import * as M from "../_internal/managed.js"
-import { Stream } from "./definitions.js"
+import type * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import { Stream } from "./definitions"
 
 /**
  * Executes the provided finalizer before this stream's finalizers run.

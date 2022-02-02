@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Ordering } from "./definition.js"
+import type { Ordering } from "./definition"
 
 /**
  * `number` => `Ordering`

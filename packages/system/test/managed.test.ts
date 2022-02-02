@@ -1,8 +1,8 @@
-import * as T from "../src/Effect/index.js"
-import * as E from "../src/Either/index.js"
-import * as Ex from "../src/Exit/index.js"
-import { pipe } from "../src/Function/index.js"
-import * as M from "../src/Managed/index.js"
+import * as T from "../src/Effect"
+import * as E from "../src/Either"
+import * as Ex from "../src/Exit"
+import { pipe } from "../src/Function"
+import * as M from "../src/Managed"
 
 describe("Managed", () => {
   it("absolve", async () => {

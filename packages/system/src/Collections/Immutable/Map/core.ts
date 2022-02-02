@@ -3,10 +3,10 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import * as Op from "../../../Option/index.js"
-import { fromNullable } from "../../../Option/index.js"
-import type { MutableMap } from "../../../Support/Mutable/index.js"
-import * as Tp from "../Tuple/index.js"
+import * as Op from "../../../Option"
+import { fromNullable } from "../../../Option"
+import type { MutableMap } from "../../../Support/Mutable"
+import * as Tp from "../Tuple"
 
 /**
  * Map type

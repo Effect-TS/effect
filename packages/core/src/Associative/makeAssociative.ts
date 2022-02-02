@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { instance } from "../Prelude/index.js"
-import type { Associative } from "./definition.js"
+import { instance } from "../Prelude"
+import type { Associative } from "./definition"
 
 export function makeAssociative<A>(f: (x: A, y: A) => A): Associative<A> {
   return instance({
@@ -9,4 +9,4 @@ export function makeAssociative<A>(f: (x: A, y: A) => A): Associative<A> {
   })
 }
 
-export * from "./definition.js"
+export * from "./definition"

@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import { identity, pipe } from "../../Function/index.js"
-import type { Covariant, CovariantComposition } from "../Covariant/index.js"
-import { getCovariantComposition } from "../Covariant/index.js"
-import * as HKT from "../HKT/index.js"
-import type { IdentityBoth } from "../IdentityBoth/index.js"
+import { identity, pipe } from "../../Function"
+import type { Covariant, CovariantComposition } from "../Covariant"
+import { getCovariantComposition } from "../Covariant"
+import * as HKT from "../HKT"
+import type { IdentityBoth } from "../IdentityBoth"
 
 export interface ForeachFn<F extends HKT.URIS, C = HKT.Auto> {
   <G extends HKT.URIS, GC = HKT.Auto>(G: IdentityBoth<G, GC> & Covariant<G, GC>): <

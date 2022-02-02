@@ -1,12 +1,12 @@
-import * as Chunk from "../src/Collections/Immutable/Chunk/index.js"
-import * as Tp from "../src/Collections/Immutable/Tuple/index.js"
-import * as T from "../src/Effect/index.js"
-import * as Ex from "../src/Exit/index.js"
-import { pipe } from "../src/Function/index.js"
-import * as M from "../src/Managed/index.js"
-import * as Pool from "../src/Pool/index.js"
-import * as P from "../src/Promise/index.js"
-import * as Ref from "../src/Ref/index.js"
+import * as Chunk from "../src/Collections/Immutable/Chunk"
+import * as Tp from "../src/Collections/Immutable/Tuple"
+import * as T from "../src/Effect"
+import * as Ex from "../src/Exit"
+import { pipe } from "../src/Function"
+import * as M from "../src/Managed"
+import * as Pool from "../src/Pool"
+import * as P from "../src/Promise"
+import * as Ref from "../src/Ref"
 
 describe("Pool", () => {
   it("preallocates pool items", async () => {

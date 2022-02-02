@@ -3,7 +3,7 @@
 import type { Either } from "@effect-ts/system/Either"
 import * as E from "@effect-ts/system/Either"
 
-import type { Show } from "../../Show/index.js"
+import type { Show } from "../../Show"
 
 /**
  * Get `Show` for `Either` given `Show` of `E` & `A`

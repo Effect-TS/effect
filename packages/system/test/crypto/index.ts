@@ -1,10 +1,10 @@
 import * as crypto from "crypto"
 
-import type { _A } from "../../src//Utils/index.js"
-import * as T from "../../src/Effect/index.js"
-import { pipe } from "../../src/Function/index.js"
-import { service, tag } from "../../src/Has/index.js"
-import * as L from "../../src/Layer/index.js"
+import type { _A } from "../../src//Utils"
+import * as T from "../../src/Effect"
+import { pipe } from "../../src/Function"
+import { service, tag } from "../../src/Has"
+import * as L from "../../src/Layer"
 
 // larger numbers mean better security, less
 const defaultConfig = {

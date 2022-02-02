@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { descriptorWith, succeed } from "./core.js"
+import { descriptorWith, succeed } from "./core"
 
 /**
  * Returns information about the current fiber, such as its identity.

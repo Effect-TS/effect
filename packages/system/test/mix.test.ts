@@ -1,9 +1,9 @@
-import * as A from "../src/Async/index.js"
-import * as T from "../src/Effect/index.js"
-import * as Ex from "../src/Exit/index.js"
-import { pipe } from "../src/Function/index.js"
-import * as IO from "../src/IO/index.js"
-import * as S from "../src/Sync/index.js"
+import * as A from "../src/Async"
+import * as T from "../src/Effect"
+import * as Ex from "../src/Exit"
+import { pipe } from "../src/Function"
+import * as IO from "../src/IO"
+import * as S from "../src/Sync"
 
 describe("Effect", () => {
   it("mix", async () => {

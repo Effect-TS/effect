@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../Operator/index.js"
+import "../Operator"
 
 /**
  * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/Cause.scala
@@ -9,10 +9,10 @@ import "../Operator/index.js"
  */
 
 // codegen:start {preset: barrel, include: ./*.ts}
-export * from "./cause.js"
-export * from "./core.js"
-export * from "./do.js"
-export * from "./errors.js"
+export * from "./cause"
+export * from "./core"
+export * from "./do"
+export * from "./errors"
 // codegen:end
 
-export { Renderer, pretty, defaultRenderer } from "./Pretty/index.js"
+export { Renderer, pretty, defaultRenderer } from "./Pretty"

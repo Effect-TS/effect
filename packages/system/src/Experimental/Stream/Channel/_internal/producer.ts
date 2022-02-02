@@ -1,15 +1,15 @@
 // ets_tracing: off
 
-import "../../../../Operator/index.js"
+import "../../../../Operator"
 
-import * as Cause from "../../../../Cause/index.js"
-import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
-import * as T from "../../../../Effect/index.js"
-import * as E from "../../../../Either/index.js"
-import * as Exit from "../../../../Exit/index.js"
-import * as P from "../../../../Promise/index.js"
-import * as Ref from "../../../../Ref/index.js"
-import * as IQ from "../../../../Support/ImmutableQueue/index.js"
+import * as Cause from "../../../../Cause"
+import * as Tp from "../../../../Collections/Immutable/Tuple"
+import * as T from "../../../../Effect"
+import * as E from "../../../../Either"
+import * as Exit from "../../../../Exit"
+import * as P from "../../../../Promise"
+import * as Ref from "../../../../Ref"
+import * as IQ from "../../../../Support/ImmutableQueue"
 
 /**
  * Producer-side view of `SingleProducerAsyncInput` for variance purposes.

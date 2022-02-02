@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import "../../../Operator/index.js"
+import "../../../Operator"
 
-import type * as T from "../../../Effect/index.js"
-import type { Journal } from "../Journal/index.js"
+import type * as T from "../../../Effect"
+import type { Journal } from "../Journal"
 
 export type TryCommit<E, A> = Done<E, A> | Suspend
 

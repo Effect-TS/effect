@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as C from "../../Cause/index.js"
-import { timeoutErrorCause } from "./timeoutErrorCause.js"
+import * as C from "../../Cause"
+import { timeoutErrorCause } from "./timeoutErrorCause"
 
 /**
  * Fails the stream with given error if it does not produce a value after d duration.

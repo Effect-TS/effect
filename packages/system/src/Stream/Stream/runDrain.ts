@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function/index.js"
-import * as T from "../_internal/effect.js"
-import type { Stream } from "./definitions.js"
-import { forEach } from "./forEach.js"
+import { pipe } from "../../Function"
+import * as T from "../_internal/effect"
+import type { Stream } from "./definitions"
+import { forEach } from "./forEach"
 
 /**
  * Runs the stream and collects all of its elements to an array.

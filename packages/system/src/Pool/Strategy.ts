@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as CL from "../Clock/index.js"
-import * as Tp from "../Collections/Immutable/Tuple/index.js"
-import * as T from "../Effect/index.js"
-import type * as Ex from "../Exit/index.js"
-import { pipe } from "../Function/index.js"
-import * as Ref from "../Ref/index.js"
+import * as CL from "../Clock"
+import * as Tp from "../Collections/Immutable/Tuple"
+import * as T from "../Effect"
+import type * as Ex from "../Exit"
+import { pipe } from "../Function"
+import * as Ref from "../Ref"
 
 export abstract class StrategyBase<State, Environment, Error, Item> {
   readonly _State!: State;

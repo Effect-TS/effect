@@ -1,11 +1,11 @@
 import { pipe } from "@effect-ts/system/Function"
 import { intersect } from "@effect-ts/system/Utils"
 
-import * as Ex from "../../src/Effect/Exit/index.js"
-import * as T from "../../src/Effect/index.js"
-import * as O from "../../src/Option/index.js"
-import * as OptionT from "../../src/OptionT/index.js"
-import * as P from "../../src/Prelude/index.js"
+import * as T from "../../src/Effect"
+import * as Ex from "../../src/Effect/Exit"
+import * as O from "../../src/Option"
+import * as OptionT from "../../src/OptionT"
+import * as P from "../../src/Prelude"
 
 export namespace EO {
   export const EffectOption = intersect(

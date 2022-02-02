@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Show } from "./definitions.js"
+import type { Show } from "./definitions"
 
 export function struct<O extends Record<string, any>>(shows: {
   [K in keyof O]: Show<O[K]>

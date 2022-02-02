@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { AccessCustom, CustomType } from "./custom.js"
-import type { URI } from "./kind.js"
+import type { AccessCustom, CustomType } from "./custom"
+import type { URI } from "./kind"
 
 export interface HKT<F, A> {
   F: F

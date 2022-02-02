@@ -1,8 +1,8 @@
 import { pipe } from "@effect-ts/system/Function"
 
-import * as R from "../../src/Collections/Immutable/Dictionary/index.js"
-import * as E from "../../src/Either/index.js"
-import * as X from "../../src/XPure/index.js"
+import * as R from "../../src/Collections/Immutable/Dictionary"
+import * as E from "../../src/Either"
+import * as X from "../../src/XPure"
 
 test("05", () => {
   pipe(

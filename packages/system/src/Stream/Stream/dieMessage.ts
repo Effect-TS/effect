@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as T from "../_internal/effect.js"
-import { fromEffect } from "./fromEffect.js"
+import * as T from "../_internal/effect"
+import { fromEffect } from "./fromEffect"
 
 /**
  * The stream that dies with an exception described by `msg`.

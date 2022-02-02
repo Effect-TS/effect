@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function/index.js"
-import * as O from "../../Option/index.js"
-import * as T from "../_internal/effect.js"
-import * as F from "../_internal/fiber.js"
-import * as M from "../_internal/managed.js"
-import { Stream } from "./definitions.js"
+import { pipe } from "../../Function"
+import * as O from "../../Option"
+import * as T from "../_internal/effect"
+import * as F from "../_internal/fiber"
+import * as M from "../_internal/managed"
+import { Stream } from "./definitions"
 
 /**
  * Interrupts the evaluation of this stream when the provided IO completes. The given

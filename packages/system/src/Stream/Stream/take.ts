@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk/index.js"
-import { pipe } from "../../Function/index.js"
-import * as T from "../_internal/effect.js"
-import * as M from "../_internal/managed.js"
-import * as Ref from "../_internal/ref.js"
-import * as Pull from "../Pull/index.js"
-import { Stream } from "./definitions.js"
-import { empty } from "./empty.js"
+import * as A from "../../Collections/Immutable/Chunk"
+import { pipe } from "../../Function"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
+import * as Ref from "../_internal/ref"
+import * as Pull from "../Pull"
+import { Stream } from "./definitions"
+import { empty } from "./empty"
 
 /**
  * Takes the specified number of elements from this stream.

@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import type { Lazy } from "../Function/index.js"
-import { pipe } from "../Function/index.js"
-import { succeed } from "./core.js"
-import { die } from "./die.js"
-import type { IO, UIO } from "./effect.js"
-import { effectAsync } from "./effectAsync.js"
-import { fail } from "./fail.js"
+import type { Lazy } from "../Function"
+import { pipe } from "../Function"
+import { succeed } from "./core"
+import { die } from "./die"
+import type { IO, UIO } from "./effect"
+import { effectAsync } from "./effectAsync"
+import { fail } from "./fail"
 
 /**
  * Create an Effect that when executed will construct `promise` and wait for its result,

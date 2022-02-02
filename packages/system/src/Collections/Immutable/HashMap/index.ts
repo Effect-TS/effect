@@ -1,4 +1,4 @@
 // ets_tracing: off
 
-export * from "./core.js"
-export * from "./keySet.js"
+export * from "./core"
+export * from "./keySet"

@@ -4317,7 +4317,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-codegen@npm:0.16.1":
+"eslint-plugin-codegen@npm:^0.16.1":
   version: 0.16.1
   resolution: "eslint-plugin-codegen@npm:0.16.1"
   dependencies:
@@ -4335,27 +4335,6 @@ __metadata:
     read-pkg-up: ^7.0.1
     string.prototype.matchall: ^4.0.2
   checksum: 3ce1395c90a10a7a7ceca3e5cb074b042730370a587021d43f87f055108410e6e367add5e1c214201ea44f1ac7e89073a08e9288f1734d2654d48d60145297e1
-  languageName: node
-  linkType: hard
-
-"eslint-plugin-codegen@patch:eslint-plugin-codegen@0.16.1#.yarn/patches/eslint-plugin-codegen.patch::locator=effect-ts%40workspace%3A.":
-  version: 0.16.1
-  resolution: "eslint-plugin-codegen@patch:eslint-plugin-codegen@npm%3A0.16.1#.yarn/patches/eslint-plugin-codegen.patch::version=0.16.1&hash=d4982a&locator=effect-ts%40workspace%3A."
-  dependencies:
-    "@babel/core": ^7.11.6
-    "@babel/generator": ~7.12.0
-    "@babel/parser": ^7.11.5
-    "@babel/traverse": ^7.11.5
-    expect: ^26.0.0
-    fp-ts: ^2.1.0
-    glob: ^7.1.4
-    io-ts: ^2.2.4
-    io-ts-extra: 0.11.6
-    js-yaml: ^3.14.0
-    lodash: ^4.17.15
-    read-pkg-up: ^7.0.1
-    string.prototype.matchall: ^4.0.2
-  checksum: 67739741354c88226b6482f3243aefd1084822e5a34cca7826fae0aa04113f5b337ec21549f0fac3d7f20188805e41957ac3aae86adaadc01623aa50fd66af7a
   languageName: node
   linkType: hard
 
@@ -10744,23 +10723,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:4.5.4":
-  version: 4.5.4
-  resolution: "typescript@npm:4.5.4"
+"typescript@npm:^4.4.3, typescript@npm:^4.5.5":
+  version: 4.5.5
+  resolution: "typescript@npm:4.5.5"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: 59f3243f9cd6fe3161e6150ff6bf795fc843b4234a655dbd938a310515e0d61afd1ac942799e7415e4334255e41c2c49b7dd5d9fd38a17acd25a6779ca7e0961
+  checksum: 506f4c919dc8aeaafa92068c997f1d213b9df4d9756d0fae1a1e7ab66b585ab3498050e236113a1c9e57ee08c21ec6814ca7a7f61378c058d79af50a4b1f5a5e
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@npm%3A4.5.4#~builtin<compat/typescript>":
-  version: 4.5.4
-  resolution: "typescript@patch:typescript@npm%3A4.5.4#~builtin<compat/typescript>::version=4.5.4&hash=ddd1e8"
+"typescript@patch:typescript@^4.4.3#~builtin<compat/typescript>, typescript@patch:typescript@^4.5.5#~builtin<compat/typescript>":
+  version: 4.5.5
+  resolution: "typescript@patch:typescript@npm%3A4.5.5#~builtin<compat/typescript>::version=4.5.5&hash=ddd1e8"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: 270255355c3236076dbbd0900ff0b7b159fac7e6a95f9ed8c59f57361c7dace9f1fbffd3b5eb21377c7f636027382ad89eb64b2acfbcd9e08574f04cfc75ca3d
+  checksum: 9cdde4aae20b2904431f3f2ca8acaf3b0cc52faddf68aa88b288c9d0520221817da43783a756fce7ab9360033ada0371c3ff93dfc4bdb4b13f6e9bac64e1658d
   languageName: node
   linkType: hard
 
