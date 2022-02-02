@@ -1,6 +1,9 @@
 import { Chunk } from "../collection/immutable/Chunk"
 import { DoublyLinkedList } from "./DoublyLinkedList"
 
+/**
+ * @tsplus type ets/MutableQueue
+ */
 export interface MutableQueue<A> {
   /**
    * The '''maximum''' number of elements that a queue can hold.
@@ -61,6 +64,12 @@ export interface MutableQueue<A> {
    */
   readonly isFull: boolean
 }
+
+/**
+ * @tsplus type ets/MutableQueueOps
+ */
+export interface MutableQueueOps {}
+export const MutableQueue: MutableQueueOps = {}
 
 export class Unbounded<A> implements MutableQueue<A> {
   private queue = new DoublyLinkedList<A>()
@@ -194,4 +203,22 @@ export class Bounded<A> implements MutableQueue<A> {
 
     return result
   }
+}
+
+/**
+ * Creates a new unbounded `MutableQueue`.
+ *
+ * @tsplus static ets/MutableQueueOps Unbounded
+ */
+export function unbounded<A>(): MutableQueue<A> {
+  return new Unbounded()
+}
+
+/**
+ * Creates a new bounded `MutableQueue`.
+ *
+ * @tsplus static ets/MutableQueueOps Bounded
+ */
+export function bounded<A>(n: number): MutableQueue<A> {
+  return new Bounded(n)
 }
