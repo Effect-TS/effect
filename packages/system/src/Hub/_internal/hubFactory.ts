@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../Operator"
+import "../../Operator/index.js"
 
 import { BoundedHubArb } from "./BoundedHubArb.js"
 import { BoundedHubPow2 } from "./BoundedHubPow2.js"

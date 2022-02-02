@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../Operator"
+import "../../Operator/index.js"
 
 import type { Cause } from "../../Cause/core.js"
 import * as A from "../../Collections/Immutable/Chunk/index.js"

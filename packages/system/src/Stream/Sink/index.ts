@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../Operator"
+import "../../Operator/index.js"
 
 import * as C from "../../Cause/index.js"
 import type { HasClock } from "../../Clock/index.js"

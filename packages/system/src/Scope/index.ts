@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
 import type { Cause } from "../Cause/cause.js"
 import { empty, then } from "../Cause/cause.js"

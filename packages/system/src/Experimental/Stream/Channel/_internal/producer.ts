@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../../../Operator"
+import "../../../../Operator/index.js"
 
 import * as Cause from "../../../../Cause/index.js"
 import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 /* eslint-disable prefer-const */
-import "../Operator"
+import "../Operator/index.js"
 
 import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import { _A, _U } from "../Effect/commons.js"

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../../Operator"
+import "../../../Operator/index.js"
 
 import * as St from "../../../Structural/index.js"
 

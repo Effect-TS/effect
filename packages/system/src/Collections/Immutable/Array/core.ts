@@ -3,7 +3,7 @@
 /**
  * adapted from https://github.com/gcanti/fp-ts
  */
-import "../../../Operator"
+import "../../../Operator/index.js"
 
 import type { Predicate, Refinement } from "../../../Function/core.js"
 import { identity } from "../../../Function/core.js"

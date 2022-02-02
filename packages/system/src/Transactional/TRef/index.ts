@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../Operator"
+import "../../Operator/index.js"
 
 import type { HashMap } from "../../Collections/Immutable/HashMap/index.js"
 import type * as T from "../../Effect/index.js"

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../../Operator"
+import "../../../Operator/index.js"
 
 import * as HM from "../../../Collections/Immutable/HashMap/index.js"
 import * as T from "../../../Effect/index.js"

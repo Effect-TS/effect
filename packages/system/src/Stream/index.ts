@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
 /**
  * Ported from https://github.com/zio/zio/blob/master/streams/shared/src/main/scala/zio/stream/ZStream.scala

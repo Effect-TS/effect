@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../../Operator"
+import "../../../Operator/index.js"
 
 import type { Equal } from "../../../Equal/index.js"
 import type { Predicate, Refinement } from "../../../Function/index.js"

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../../Operator"
+import "../../../Operator/index.js"
 
 import { tuple } from "../../../Function/index.js"
 import * as I from "../../../Iterable/index.js"

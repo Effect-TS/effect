@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../Operator"
+import "../../Operator/index.js"
 
 import { RuntimeError } from "../../Cause/index.js"
 import * as T from "../../Effect/index.js"

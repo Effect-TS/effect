@@ -5,7 +5,7 @@
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-import "../Operator"
+import "../Operator/index.js"
 
 import { chain_, succeedWith } from "../Effect/core.js"
 import type { UIO } from "../Effect/effect.js"

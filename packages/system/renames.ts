@@ -25,22 +25,21 @@ const fixup = (file: string) => {
 
   if (content) {
     const fixed = lines.map((line) => {
-      if (line.match(/import.*from/) != null || line.match(/export.*from/) != null) {
-        const res = line.match(/"(.*)"$/)
-        if (res) {
-          const [, relative] = res
-          if (relative?.startsWith(".")) {
-            const indexPath = path.join(file, "..", relative) + "/index.ts"
-            const filePath = path.join(file, "..", relative) + ".ts"
-            if (fs.existsSync(filePath)) {
-              return line.replace(relative, relative + ".js")
-            }
-            if (fs.existsSync(indexPath)) {
-              return line.replace(relative, relative + "/index.js")
-            }
+      const res = line.match(/(import|export).*"(.*)"/)
+      if (res) {
+        const [, , relative] = res
+        if (relative?.startsWith(".")) {
+          const indexPath = path.join(file, "..", relative) + "/index.ts"
+          const filePath = path.join(file, "..", relative) + ".ts"
+          if (fs.existsSync(filePath)) {
+            return line.replace(relative, relative + ".js")
+          }
+          if (fs.existsSync(indexPath)) {
+            return line.replace(relative, relative + "/index.js")
           }
         }
       }
+
       return line
     })
 

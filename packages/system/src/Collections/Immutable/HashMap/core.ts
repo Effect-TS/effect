@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../../Operator"
+import "../../../Operator/index.js"
 
 import type { Refinement } from "../../../Function/index.js"
 import { constant, identity, tuple } from "../../../Function/index.js"

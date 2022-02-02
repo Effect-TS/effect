@@ -5,7 +5,7 @@
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-import "../Operator"
+import "../Operator/index.js"
 
 import * as SS from "../Collections/Immutable/SortedSet/index.js"
 import type * as Tp from "../Collections/Immutable/Tuple/index.js"

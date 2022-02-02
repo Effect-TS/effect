@@ -4,7 +4,7 @@
 /**
  * Data structure which represents non-empty arrays
  */
-import "../../../Operator"
+import "../../../Operator/index.js"
 
 import type { Predicate, Refinement } from "../../../Function/index.js"
 import type { Option } from "../../../Option/index.js"

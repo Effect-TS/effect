@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../Operator"
+import "../../Operator/index.js"
 
 import type * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import type * as Ex from "../../Exit/index.js"

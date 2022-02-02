@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
 import type { Tuple } from "../Collections/Immutable/Tuple/index.js"
 import type { _A, _E, _R } from "../Effect/index.js"

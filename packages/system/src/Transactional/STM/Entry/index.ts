@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../../Operator"
+import "../../../Operator/index.js"
 
 import type { Atomic } from "../../TRef/index.js"
 import { Versioned } from "../Versioned/index.js"
