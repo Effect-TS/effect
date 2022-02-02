@@ -196,7 +196,9 @@ pipe(
     fs.existsSync(`./build/dts`) ? exec(`cp -r ./build/dts/* ./dist`) : TE.right(void 0)
   ),
   TE.chainFirst(() => writePackageJsonContent),
-  TE.chainFirst(() => writePackageJsonContentInESM),
+  TE.chainFirst(() =>
+    fs.existsSync("./dist/_esm") ? writePackageJsonContentInESM : TE.of(void 0)
+  ),
   TE.chainFirst(() => copyReadme),
   TE.fold(onLeft, onRight("pack succeeded!")),
   runMain
