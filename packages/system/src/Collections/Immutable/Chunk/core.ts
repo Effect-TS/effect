@@ -16,7 +16,7 @@ import {
   SingletonTypeId,
   Slice,
   SliceTypeId
-} from "./definition"
+} from "./definition.js"
 
 export * from "./definition.js"
 

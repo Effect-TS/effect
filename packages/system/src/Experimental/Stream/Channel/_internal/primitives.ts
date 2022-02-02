@@ -16,7 +16,7 @@ import {
   _OutElem,
   _OutErr,
   _OutErr2
-} from "./symbols"
+} from "./symbols.js"
 
 /**
  * A `Channel` is a nexus of I/O operations, which supports both reading and writing.

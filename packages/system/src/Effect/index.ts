@@ -245,4 +245,4 @@ export {
   forEach_,
   forEachWithIndex_,
   forkManaged
-} from "./excl-forEach"
+} from "./excl-forEach.js"

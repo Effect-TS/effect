@@ -100,4 +100,4 @@ export {
   zipRight,
   zipRight_,
   zipWith_
-} from "./core"
+} from "./core.js"

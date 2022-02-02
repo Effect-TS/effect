@@ -7,4 +7,4 @@ export {
   forEachPar_,
   forEachUnit_,
   forEach_
-} from "../../Effect/excl-forEach"
+} from "../../Effect/excl-forEach.js"

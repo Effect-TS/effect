@@ -12,7 +12,7 @@ import {
   createQueue,
   makeBoundedQueue as makeBounded,
   unsafeCreateQueue as unsafeCreate
-} from "../Effect/excl-forEach"
+} from "../Effect/excl-forEach.js"
 import { identity, pipe, tuple } from "../Function/index.js"
 import * as O from "../Option/index.js"
 import { Bounded, Unbounded } from "../Support/MutableQueue/index.js"

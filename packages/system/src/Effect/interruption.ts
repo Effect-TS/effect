@@ -6,7 +6,7 @@ import * as Fiber from "../Fiber/core.js"
 import {
   interruptible as statusInterruptible,
   uninterruptible as statusUninterruptible
-} from "../Fiber/core"
+} from "../Fiber/core.js"
 import type { FiberID } from "../Fiber/id.js"
 import {
   chain_,
@@ -17,7 +17,7 @@ import {
   interruptStatus,
   interruptStatus_,
   succeed
-} from "./core"
+} from "./core.js"
 import { forkDaemon } from "./core-scope.js"
 import type { Effect } from "./effect.js"
 import { fiberId } from "./fiberId.js"

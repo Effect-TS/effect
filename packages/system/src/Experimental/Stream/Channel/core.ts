@@ -13,7 +13,7 @@ export type {
   SingleProducerAsyncInput,
   AsyncInputProducer,
   AsyncInputConsumer
-} from "./_internal/producer"
+} from "./_internal/producer.js"
 
 export { makeSingleProducerAsyncInput } from "./_internal/producer.js"
 

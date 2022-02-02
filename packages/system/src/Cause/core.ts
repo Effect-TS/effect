@@ -23,7 +23,7 @@ export {
   then,
   traced,
   isEmpty
-} from "./cause"
+} from "./cause.js"
 
 /**
  * Applicative's ap

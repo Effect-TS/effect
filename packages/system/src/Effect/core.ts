@@ -31,7 +31,7 @@ import {
   ITrace,
   ITracingStatus,
   IYield
-} from "./primitives"
+} from "./primitives.js"
 
 /**
  * Effectfully accesses the environment of the effect.

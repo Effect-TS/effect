@@ -30,12 +30,12 @@ export {
   forEach as exitForeach,
   halt as exitHalt,
   interrupt as exitInterrupt
-} from "../Exit/api"
+} from "../Exit/api.js"
 export {
   collectAll as exitCollectAll,
   collectAllPar as exitCollectAllPar,
   succeed as exitSucceed,
   unit as exitUnit,
   zipRight_ as exitZipRight_
-} from "../Exit/core"
+} from "../Exit/core.js"
 export { Exit } from "../Exit/exit.js"

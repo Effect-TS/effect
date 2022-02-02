@@ -51,6 +51,8 @@ const writePackageJsonContent = pipe(
     carry("gitHead", content, packageJson)
     carry("bin", content, packageJson)
 
+    packageJson["type"] = "module"
+
     const exports = {}
     const mainExports = {}
 

@@ -29,7 +29,7 @@ import {
   LayerSuspend,
   LayerZipWithPar,
   LayerZipWithSeq
-} from "./definitions"
+} from "./definitions.js"
 import * as T from "./deps-effect.js"
 import * as M from "./deps-managed.js"
 

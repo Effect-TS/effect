@@ -10,7 +10,7 @@ import {
   isPlainObject,
   isPromiseLike,
   sameValueZeroEqual
-} from "./utils"
+} from "./utils.js"
 
 const { isArray } = Array
 

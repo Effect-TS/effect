@@ -18,12 +18,12 @@ import {
   provideSome_ as managedProvideSome_,
   zipWith_ as managedZipWith_,
   zipWithPar_ as managedZipWithPar_
-} from "../Managed/core"
+} from "../Managed/core.js"
 import { bind as managedBind, do as managedDo } from "../Managed/do.js"
 import {
   forEach_ as managedForEach_,
   forEachPar_ as managedForEachPar_
-} from "../Managed/forEach"
+} from "../Managed/forEach.js"
 import { fromEffect as managedFromEffect } from "../Managed/fromEffect.js"
 import { managedApply } from "../Managed/managed.js"
 import { environment as managedEnvironment } from "../Managed/methods/environment.js"
