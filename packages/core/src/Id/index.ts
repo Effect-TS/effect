@@ -1,17 +1,17 @@
 // ets_tracing: off
 
 /* adapted from https://github.com/gcanti/fp-ts */
-import "../Operator"
+import "../Operator/index.js"
 
 import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 
-import type { Equal } from "../Equal"
-import type { Identity } from "../Identity"
-import type { IdURI } from "../Modules"
-import type { URI } from "../Prelude"
-import * as P from "../Prelude"
-import { structF, tupleF } from "../Prelude/DSL"
-import type { Show } from "../Show"
+import type { Equal } from "../Equal/index.js"
+import type { Identity } from "../Identity/index.js"
+import type { IdURI } from "../Modules/index.js"
+import type { URI } from "../Prelude/index.js"
+import * as P from "../Prelude/index.js"
+import { structF, tupleF } from "../Prelude/DSL/index.js"
+import type { Show } from "../Show/index.js"
 
 export type Id<A> = A
 

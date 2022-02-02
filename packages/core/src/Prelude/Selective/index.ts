@@ -2,13 +2,13 @@
 
 import * as E from "@effect-ts/system/Either"
 
-import { constant, identity, pipe } from "../../Function"
-import * as HKT from "../../Prelude/HKT"
-import type { Any } from "../Any"
-import type { Applicative } from "../Applicative"
-import type { Covariant } from "../Covariant"
-import { chainF, succeedF } from "../DSL"
-import type { Monad } from "../Monad"
+import { constant, identity, pipe } from "../../Function/index.js"
+import * as HKT from "../../Prelude/HKT/index.js"
+import type { Any } from "../Any/index.js"
+import type { Applicative } from "../Applicative/index.js"
+import type { Covariant } from "../Covariant/index.js"
+import { chainF, succeedF } from "../DSL/index.js"
+import type { Monad } from "../Monad/index.js"
 
 export interface Select<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
   readonly _Select: "Select"

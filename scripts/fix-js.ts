@@ -43,11 +43,7 @@ const fixup = (file: string) => {
       return line
     })
 
-    let fixedContent = fixed.join("\n")
-
-    if (!fixedContent.match("// ets_tracing: off")) {
-      fixedContent = "// ets_tracing: off\n\n" + fixedContent
-    }
+    const fixedContent = fixed.join("\n")
 
     if (fixedContent !== content) {
       fs.writeFileSync(file, fixedContent)

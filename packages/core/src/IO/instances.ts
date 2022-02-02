@@ -2,9 +2,9 @@
 
 import * as F from "@effect-ts/system/IO"
 
-import type { IOURI } from "../Modules"
-import type { URI } from "../Prelude"
-import * as P from "../Prelude"
+import type { IOURI } from "../Modules/index.js"
+import type { URI } from "../Prelude/index.js"
+import * as P from "../Prelude/index.js"
 
 /**
  * The `Any` instance for `IO[+_]`.

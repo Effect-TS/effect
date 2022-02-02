@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
 export * from "@effect-ts/system/Ordering"
-export * from "./operations"
+export * from "./operations.js"

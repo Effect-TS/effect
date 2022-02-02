@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
 export * from "@effect-ts/system/Ord"
-export { OrdURI } from "../Modules"
-export * from "./operations"
+export { OrdURI } from "../Modules/index.js"
+export * from "./operations.js"

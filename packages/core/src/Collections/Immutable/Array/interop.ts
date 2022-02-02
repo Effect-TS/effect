@@ -1,7 +1,9 @@
+// ets_tracing: off
+
 import * as T from "@effect-ts/system/Effect"
 import * as S from "@effect-ts/system/Sync"
 
-import * as A from "./operations"
+import * as A from "./operations.js"
 
 /**
  * Applies the function f to each element of the Array<A> and returns the results in a new B[]

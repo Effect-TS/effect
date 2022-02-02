@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
-import * as E from "../Either"
-import { pipe } from "../Function"
-import type { Any, Applicative, Covariant, Monad, URI } from "../Prelude"
-import { succeedF } from "../Prelude/DSL"
-import type { Access, Fail, Provide, Run } from "../Prelude/FX"
-import * as HKT from "../Prelude/HKT"
+import * as E from "../Either/index.js"
+import { pipe } from "../Function/index.js"
+import type { Any, Applicative, Covariant, Monad, URI } from "../Prelude/index.js"
+import { succeedF } from "../Prelude/DSL/index.js"
+import type { Access, Fail, Provide, Run } from "../Prelude/FX/index.js"
+import * as HKT from "../Prelude/HKT/index.js"
 
 export type V<C> = HKT.CleanParam<C, "E"> & HKT.V<"E", "+">
 

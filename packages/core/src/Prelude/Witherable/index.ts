@@ -2,8 +2,8 @@
 
 import type { Option } from "@effect-ts/system/Option"
 
-import type { Applicative } from "../Applicative"
-import type * as HKT from "../HKT"
+import type { Applicative } from "../Applicative/index.js"
+import type * as HKT from "../HKT/index.js"
 
 export interface Wither<F extends HKT.URIS, C = HKT.Auto> {
   <G extends HKT.URIS, GC = HKT.Auto>(F: Applicative<G, GC>): <

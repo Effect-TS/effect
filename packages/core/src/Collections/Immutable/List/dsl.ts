@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as P from "../../../Prelude"
-import { Applicative, ApplyZip, Covariant, ForEach, Monad } from "./instances"
+import * as P from "../../../Prelude/index.js"
+import { Applicative, ApplyZip, Covariant, ForEach, Monad } from "./instances.js"
 
 /**
  * `ForEach`'s `sequenceF` derivation

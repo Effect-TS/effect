@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import "../../../Operator"
+import "../../../Operator/index.js"
 
-export * from "./dsl"
-export * from "./instances"
-export * from "./operations"
+export * from "./dsl.js"
+export * from "./instances.js"
+export * from "./operations.js"

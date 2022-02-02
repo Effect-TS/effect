@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
 /* adapted from https://github.com/gcanti/fp-ts */
 /**
@@ -10,17 +10,17 @@ import "../Operator"
  * `Const` has some useful instances. For example, the `Applicative` instance allows us to collect results using a `Monoid`
  * while ignoring return values.
  */
-import type * as As from "../Associative"
-import type { Bounded } from "../Bounded"
-import type { Equal } from "../Equal"
-import { unsafeCoerce } from "../Function"
-import type * as Id from "../Identity"
-import type { ConstURI } from "../Modules"
-import type { Ord } from "../Ord"
-import type { URI } from "../Prelude"
-import * as P from "../Prelude"
-import type { Show } from "../Show"
-import { makeShow } from "../Show"
+import type * as As from "../Associative/index.js"
+import type { Bounded } from "../Bounded/index.js"
+import type { Equal } from "../Equal/index.js"
+import { unsafeCoerce } from "../Function/index.js"
+import type * as Id from "../Identity/index.js"
+import type { ConstURI } from "../Modules/index.js"
+import type { Ord } from "../Ord/index.js"
+import type { URI } from "../Prelude/index.js"
+import * as P from "../Prelude/index.js"
+import type { Show } from "../Show/index.js"
+import { makeShow } from "../Show/index.js"
 
 /**
  * The `Const` type constructor, which wraps its first type argument and ignores its second.

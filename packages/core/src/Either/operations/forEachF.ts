@@ -2,11 +2,11 @@
 
 import * as E from "@effect-ts/system/Either"
 
-import { pipe } from "../../Function"
-import type { EitherURI } from "../../Modules"
-import * as P from "../../Prelude"
-import * as DSL from "../../Prelude/DSL"
-import type { V } from "../definition"
+import { pipe } from "../../Function/index.js"
+import type { EitherURI } from "../../Modules/index.js"
+import * as P from "../../Prelude/index.js"
+import * as DSL from "../../Prelude/DSL/index.js"
+import type { V } from "../definition.js"
 
 /**
  * `ForEach`'s `forEachF` function

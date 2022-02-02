@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as O from "../../../Option"
-import * as P from "../../../Prelude"
-import { isOption } from "../../../Utils"
-import { Applicative, Covariant, ForEach, Monad } from "./instances"
-import type * as A from "./operations"
+import type * as O from "../../../Option/index.js"
+import * as P from "../../../Prelude/index.js"
+import { isOption } from "../../../Utils/index.js"
+import { Applicative, Covariant, ForEach, Monad } from "./instances.js"
+import type * as A from "./operations.js"
 
 export const sequence = P.sequenceF(ForEach)
 
