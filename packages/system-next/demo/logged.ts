@@ -1,4 +1,5 @@
 import { Chunk } from "../src/collection/immutable/Chunk"
+import { HashMap } from "../src/collection/immutable/HashMap"
 import { Either } from "../src/data/Either"
 import { Effect } from "../src/io/Effect"
 import * as LogLevel from "../src/io/LogLevel"
@@ -54,6 +55,15 @@ export const x4 = Chunk(0, 1, 2).mapK(Effect.Applicative)((n) =>
   n > 0 ? Effect.fail("error") : Effect.succeed(`${n + 1}`)
 )
 
-export const x5 = Chunk(Effect(0), Effect(1)).sequenceK(Effect.Applicative)
+export const x5 = Chunk(Effect(0), Effect(1))
+  .sequenceK(Effect.Applicative)
+  .map((chunk) => chunk[0])
+  .map((opt) => opt.value)
 
 x5.unsafeRunPromise()
+
+export const useHashMap =
+  HashMap(["foo", "map-foo"], ["bar", "map-bar"]) +
+  HashMap(["baz", "map-baz"], ["tap", "map-tap"])
+
+export const accessHashMap = useHashMap["foo"].value

@@ -10,7 +10,24 @@ import { SIZE } from "./_internal/Config"
 import type { Node, UpdateFn } from "./_internal/Nodes"
 import { Empty, isEmptyNode } from "./_internal/Nodes"
 
-export class HashMap<K, V> implements Iterable<readonly [K, V]> {
+/**
+ * @tsplus type ets/HashMap
+ */
+export interface HashMap<K, V> {
+  readonly _K: () => K
+  readonly _V: () => V
+
+  editable: boolean
+  edit: number
+  root: Node<K, V>
+  size: number
+
+  [Symbol.iterator](): Iterator<readonly [K, V]>
+
+  readonly tupleIterator: Iterable<Tuple<[K, V]>>
+}
+
+export class HashMapImpl<K, V> implements Iterable<readonly [K, V]> {
   readonly _K!: () => K
   readonly _V!: () => V
 
@@ -37,12 +54,18 @@ export class HashMap<K, V> implements Iterable<readonly [K, V]> {
 
   [St.equalsSym](that: unknown): boolean {
     return (
-      that instanceof HashMap &&
+      that instanceof HashMapImpl &&
       that.size === this.size &&
       I.corresponds(this.tupleIterator, that.tupleIterator, St.equals)
     )
   }
 }
+
+/**
+ * @tsplus type ets/HashMapOps
+ */
+export interface HashMapOps {}
+export const HashMap: HashMapOps = {}
 
 export class HashMapIterator<K, V, T> implements IterableIterator<T> {
   v = visitLazy(this.map.root, this.f, undefined)
@@ -65,9 +88,24 @@ export class HashMapIterator<K, V, T> implements IterableIterator<T> {
 
 /**
  * Creates a new map
+ *
+ * @tsplus static ets/HashMapOps empty
  */
-export function make<K, V>() {
-  return new HashMap<K, V>(false, 0, new Empty(), 0)
+export function make<K, V>(): HashMap<K, V> {
+  return new HashMapImpl<K, V>(false, 0, new Empty(), 0)
+}
+
+/**
+ * @tsplus static ets/HashMapOps __call
+ */
+export function fromEntries<Entries extends [any, any][]>(
+  ...entries: Entries
+): HashMap<Entries[number][0], Entries[number][1]> {
+  const map = beginMutation(make<Entries[number][0], Entries[number][1]>())
+  for (const entry of entries) {
+    set_(map, entry[0], entry[1])
+  }
+  return endMutation(map)
 }
 
 /**
@@ -85,7 +123,7 @@ export function setTree_<K, V>(
   }
   return newRoot === map.root
     ? map
-    : new HashMap(map.editable, map.edit, newRoot, newSize)
+    : new HashMapImpl(map.editable, map.edit, newRoot, newSize)
 }
 
 /**
@@ -163,6 +201,8 @@ export function unsafeGet<K>(key: K) {
 
 /**
  * Lookup the value for `key` in `map` using internal hash function.
+ *
+ * @tsplus index ets/HashMap
  */
 export function get_<K, V>(map: HashMap<K, V>, key: K): Option<V> {
   return tryGetHash_(map, key, St.hash(key))
@@ -291,7 +331,7 @@ export function remove<K>(key: K) {
  * Mark `map` as mutable.
  */
 export function beginMutation<K, V>(map: HashMap<K, V>) {
-  return new HashMap(true, map.edit + 1, map.root, map.size)
+  return new HashMapImpl(true, map.edit + 1, map.root, map.size)
 }
 
 /**
@@ -717,4 +757,17 @@ export function removeMany_<K, V>(self: HashMap<K, V>, ks: Iterable<K>): HashMap
  */
 export function removeMany<K>(ks: Iterable<K>) {
   return <V>(self: HashMap<K, V>) => removeMany_(self, ks)
+}
+
+/**
+ * @tsplus operator ets/HashMap +
+ */
+export function union<K0, V0, K1, V1>(self: HashMap<K0, V0>, that: HashMap<K1, V1>) {
+  const result: HashMap<K0 | K1, V0 | V1> = beginMutation(self)
+
+  forEachWithIndex_(that, (k, v) => {
+    set_(result, k, v)
+  })
+
+  return endMutation(result)
 }
