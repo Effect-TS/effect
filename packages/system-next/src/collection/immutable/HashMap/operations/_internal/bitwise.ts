@@ -1,4 +1,4 @@
-import { MASK } from "./Config"
+import { MASK } from "./config"
 
 // Bit Ops
 
