@@ -522,7 +522,7 @@ export class PlainArr<A> extends Arr<A> {
     if (n >= this.length || n < 0) {
       throw new ArrayIndexOutOfBoundsException(n)
     }
-    return this._array[n]!
+    return this.array[n]!
   }
 
   _arrayLike() {
