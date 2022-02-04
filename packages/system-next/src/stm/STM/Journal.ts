@@ -62,7 +62,7 @@ export function analyzeJournal(journal: Journal): "I" | "RW" | "RO" {
   return val
 }
 
-export const emptyTodoMap = HM.make<TxnId, Todo>()
+export const emptyTodoMap = HM.empty<TxnId, Todo>()
 
 /**
  * Atomically collects and clears all the todos from any `TRef` that
