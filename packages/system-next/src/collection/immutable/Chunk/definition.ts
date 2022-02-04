@@ -33,7 +33,7 @@ export type IterableArrayLike<A> = ArrayLike<A> & Iterable<A>
  *
  * @tsplus type ets/Chunk
  */
-export interface Chunk<A> {
+export interface Chunk<A> extends Iterable<A> {
   readonly [ChunkTypeId]: ChunkTypeId
   readonly [_A]: () => A
   readonly length: number
@@ -48,11 +48,18 @@ export interface ChunkOps {}
 export const Chunk: ChunkOps = {}
 
 /**
+ * @tsplus unify ets/Chunk
+ */
+export function unifyChunk<X extends Chunk<any>>(
+  self: X
+): Chunk<[X] extends [Chunk<infer A>] ? A : never> {
+  return self
+}
+
+/**
  * Internal base class
  */
-export abstract class ChunkInternal<A>
-  implements Iterable<A>, Chunk<A>, St.HasEquals, St.HasHash
-{
+export abstract class ChunkInternal<A> implements Chunk<A>, St.HasEquals, St.HasHash {
   readonly [ChunkTypeId]: ChunkTypeId = ChunkTypeId;
   readonly [_A]!: () => A
 

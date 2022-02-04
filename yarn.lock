@@ -476,7 +476,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect-ts/system-next@workspace:packages/system-next":
+"@effect-ts/system-next@workspace:^, @effect-ts/system-next@workspace:packages/system-next":
   version: 0.0.0-use.local
   resolution: "@effect-ts/system-next@workspace:packages/system-next"
   languageName: unknown
@@ -1855,9 +1855,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsplus/installer@npm:0.0.15":
-  version: 0.0.15
-  resolution: "@tsplus/installer@npm:0.0.15"
+"@tsplus/installer@npm:0.0.19":
+  version: 0.0.19
+  resolution: "@tsplus/installer@npm:0.0.19"
   dependencies:
     mkdirp: ^1.0.4
     rimraf: ^3.0.2
@@ -1866,7 +1866,7 @@ __metadata:
     zlib: ^1.0.5
   bin:
     tsplus-install: bin/tsplus-install
-  checksum: 9a48e45db076f89b1489dcc9541c65bca28d01cc13a52b17e983984067ec9aa69794427bd97c444a6273aff55d7e8113bdcd850d9f566b2c4c5fa65fb483ef2a
+  checksum: 06eda6ca8f109b0ae2fe130777e775da92c11db0134a6639166fb604afa3c65c85961658c5582b8b2fd9a0c54193684845d17d959214428d9fab7f0c26dc5baa
   languageName: node
   linkType: hard
 
@@ -3925,7 +3925,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "effect-ts@workspace:."
   dependencies:
-    "@tsplus/installer": 0.0.15
+    "@effect-ts/system-next": "workspace:^"
+    "@tsplus/installer": 0.0.19
     "@types/glob": ^7.2.0
     "@types/jest": ^27.4.0
     "@types/node": ^17.0.13

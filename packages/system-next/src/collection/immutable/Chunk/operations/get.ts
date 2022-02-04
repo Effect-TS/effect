@@ -6,6 +6,7 @@ import { concreteId } from "../definition"
  * Safely retrieve a value from a `Chunk`.
  *
  * @tsplus fluent ets/Chunk get
+ * @tsplus index ets/Chunk
  */
 export function get_<A>(self: Chunk<A>, n: number): Option<A> {
   return !Number.isInteger(n) || n < 0 || n >= concreteId(self).length

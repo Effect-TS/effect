@@ -1,5 +1,5 @@
 import type { Chunk } from "../../collection/immutable/Chunk"
-import * as HM from "../../collection/immutable/HashMap"
+import { HashMap } from "../../collection/immutable/HashMap"
 import type { Next } from "../../collection/immutable/Map"
 import type { Tuple } from "../../collection/immutable/Tuple"
 import type { Option } from "../../data/Option"
@@ -22,7 +22,7 @@ import { SetCount } from "./SetCount"
 import { Summary } from "./Summary"
 
 export class ConcurrentState {
-  map: HM.HashMap<MK.MetricKey, ConcurrentMetricState> = HM.make()
+  map: HashMap<MK.MetricKey, ConcurrentMetricState> = HashMap.empty()
 
   readonly listeners = new Set<MetricListener>()
 
@@ -64,20 +64,16 @@ export class ConcurrentState {
     }
   }
 
-  get states(): HM.HashMap<MK.MetricKey, MetricState> {
-    const iterator = this.map.tupleIterator[Symbol.iterator]()
-
-    let next: Next<Tuple<[MK.MetricKey, ConcurrentMetricState]>>
-
-    return HM.mutate_(HM.make<MK.MetricKey, MetricState>(), (map) => {
-      while (!(next = iterator.next()).done) {
-        HM.set_(map, next.value.get(0), toMetricState(next.value.get(1)))
+  get states(): HashMap<MK.MetricKey, MetricState> {
+    return HashMap.empty<MK.MetricKey, MetricState>().mutate((map) => {
+      for (const [key, value] of this.map) {
+        map.set(key, toMetricState(value))
       }
     })
   }
 
   state(key: MK.MetricKey): Option<MetricState> {
-    return HM.get_(this.map, key).map(toMetricState)
+    return this.map[key].map(toMetricState)
   }
 
   installListener(listener: MetricListener): void {
@@ -92,10 +88,10 @@ export class ConcurrentState {
    * Increase a named counter by some value.
    */
   getCounter<A>(key: MK.Counter): Counter<A> {
-    let value = HM.get_(this.map, key).value
+    let value = this.map[key].value
     if (value == null) {
       value = new CMS.Counter(key, "", ConcurrentCounter.manual())
-      this.map = HM.set_(this.map, key, value)
+      this.map = this.map.set(key, value)
     }
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -122,10 +118,10 @@ export class ConcurrentState {
   }
 
   getGauge<A>(key: MK.Gauge): Gauge<A> {
-    let value = HM.get_(this.map, key).value
+    let value = this.map[key].value
     if (value == null) {
       value = new CMS.Gauge(key, "", ConcurrentGauge.manual(0))
-      this.map = HM.set_(this.map, key, value)
+      this.map = this.map.set(key, value)
     }
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -155,14 +151,14 @@ export class ConcurrentState {
    * Observe a value and feed it into a histogram.
    */
   getHistogram<A>(key: MK.Histogram): Histogram<A> {
-    let value = HM.get_(this.map, key).value
+    let value = this.map[key].value
     if (value == null) {
       value = new CMS.Histogram(
         key,
         "",
         ConcurrentHistogram.manual(key.boundaries.chunk)
       )
-      this.map = HM.set_(this.map, key, value)
+      this.map = this.map.set(key, value)
     }
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -184,14 +180,14 @@ export class ConcurrentState {
   }
 
   getSummary<A>(key: MK.Summary): Summary<A> {
-    let value = HM.get_(this.map, key).value
+    let value = this.map[key].value
     if (value == null) {
       value = new CMS.Summary(
         key,
         "",
         ConcurrentSummary.manual(key.maxSize, key.maxAge, key.error, key.quantiles)
       )
-      this.map = HM.set_(this.map, key, value)
+      this.map = this.map.set(key, value)
     }
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -211,10 +207,10 @@ export class ConcurrentState {
   }
 
   getSetCount<A>(key: MK.SetCount): SetCount<A> {
-    let value = HM.get_(this.map, key).value
+    let value = this.map[key].value
     if (value == null) {
       value = new CMS.SetCount(key, "", ConcurrentSetCount.manual())
-      this.map = HM.set_(this.map, key, value)
+      this.map = this.map.set(key, value)
     }
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias
