@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as CS from "../../../../Cause"
-import * as C from "../core"
+import type * as CS from "../../../../Cause/index.js"
+import * as C from "../core.js"
 
 /**
  * A more powerful version of `mapError` which also surfaces the `Cause` of the channel failure

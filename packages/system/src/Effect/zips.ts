@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { as_ } from "./as"
-import { chain_ } from "./core"
-import type { Effect } from "./effect"
-import { zipWithPar_ } from "./zipWithPar"
+import { as_ } from "./as.js"
+import { chain_ } from "./core.js"
+import type { Effect } from "./effect.js"
+import { zipWithPar_ } from "./zipWithPar.js"
 
 /**
  * Sequentially zips this effect with the specified effect

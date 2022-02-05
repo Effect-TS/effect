@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect"
-import type * as Ex from "../../../../Exit"
-import { pipe } from "../../../../Function"
-import * as Ref from "../../../../Ref"
-import * as C from "../core"
+import * as T from "../../../../Effect/index.js"
+import type * as Ex from "../../../../Exit/index.js"
+import { pipe } from "../../../../Function/index.js"
+import * as Ref from "../../../../Ref/index.js"
+import * as C from "../core.js"
 
 export function acquireReleaseExitWith_<
   Env,

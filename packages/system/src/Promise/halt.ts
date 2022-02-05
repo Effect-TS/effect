@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type { Cause } from "../Cause/cause"
-import { halt as effectHalt } from "../Effect/core"
-import { completeWith } from "./completeWith"
-import type { Promise } from "./promise"
+import type { Cause } from "../Cause/cause.js"
+import { halt as effectHalt } from "../Effect/core.js"
+import { completeWith } from "./completeWith.js"
+import type { Promise } from "./promise.js"
 
 /**
  * Halts the promise with the specified cause, which will be propagated to all

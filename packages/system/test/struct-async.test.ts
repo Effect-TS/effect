@@ -1,4 +1,4 @@
-import * as As from "../src/Async"
+import * as As from "../src/Async/index.js"
 
 describe("Async", () => {
   it("struct", async () => {

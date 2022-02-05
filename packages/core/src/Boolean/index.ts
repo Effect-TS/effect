@@ -1,18 +1,18 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
-import * as C from "../Closure"
+import * as C from "../Closure/index.js"
 /**
  * Partially Ported from https://github.com/samhh/fp-ts-std
  * Partially Ported from https://github.com/0x706b/principia
  */
-import * as A from "../Collections/Immutable/Array"
-import * as Eq from "../Equal"
-import type { Predicate } from "../Function"
-import * as I from "../Identity"
-import type { Prod, Sum } from "../Newtype"
-import { And, BooleanProd, BooleanSum, Or } from "../Newtype"
+import * as A from "../Collections/Immutable/Array/index.js"
+import * as Eq from "../Equal/index.js"
+import type { Predicate } from "../Function/index.js"
+import * as I from "../Identity/index.js"
+import type { Prod, Sum } from "../Newtype/index.js"
+import { And, BooleanProd, BooleanSum, Or } from "../Newtype/index.js"
 
 export const ConjunctionClosure = C.makeClosure<And>((l, r) =>
   And.wrap(And.unwrap(l) && And.unwrap(r))

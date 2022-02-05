@@ -2,8 +2,8 @@
 
 import * as O from "@effect-ts/system/Option"
 
-import type { Associative } from "../../Associative"
-import { makeAssociative } from "../../Associative"
+import type { Associative } from "../../Associative/index.js"
+import { makeAssociative } from "../../Associative/index.js"
 
 /**
  * `Apply` Associative

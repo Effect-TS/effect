@@ -1,18 +1,18 @@
 // ets_tracing: off
 
-import type * as C from "../../Cause"
-import type * as A from "../../Collections/Immutable/Chunk"
-import { pipe } from "../../Function"
-import * as O from "../../Option"
-import * as P from "../../Promise"
-import * as Q from "../../Queue"
-import * as SM from "../../Semaphore"
-import * as Pull from "../../Stream/Pull"
-import * as T from "../_internal/effect"
-import * as F from "../_internal/fiber"
-import * as M from "../_internal/managed"
-import { Stream } from "./definitions"
-import * as forEach from "./forEach"
+import type * as C from "../../Cause/index.js"
+import type * as A from "../../Collections/Immutable/Chunk/index.js"
+import { pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
+import * as P from "../../Promise/index.js"
+import * as Q from "../../Queue/index.js"
+import * as SM from "../../Semaphore/index.js"
+import * as Pull from "../../Stream/Pull/index.js"
+import * as T from "../_internal/effect.js"
+import * as F from "../_internal/fiber.js"
+import * as M from "../_internal/managed.js"
+import { Stream } from "./definitions.js"
+import * as forEach from "./forEach.js"
 
 /**
  * Maps each element of this stream to another stream and returns the non-deterministic merge

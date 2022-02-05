@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import "../../Operator"
+import "../../Operator/index.js"
 
-import * as Chunk from "../../Collections/Immutable/Chunk"
-import type { MutableArray } from "../../Support/Mutable"
-import { Hub, Subscription } from "./Hub"
+import * as Chunk from "../../Collections/Immutable/Chunk/index.js"
+import type { MutableArray } from "../../Support/Mutable/index.js"
+import { Hub, Subscription } from "./Hub.js"
 
 export class BoundedHubArb<A> extends Hub<A> {
   array: MutableArray<A>

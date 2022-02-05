@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { succeed } from "./core"
-import type { Effect, RIO } from "./effect"
-import { foldM_ } from "./foldM"
+import { succeed } from "./core.js"
+import type { Effect, RIO } from "./effect.js"
+import { foldM_ } from "./foldM.js"
 
 /**
  * Folds over the failure value or the success value to yield an effect that

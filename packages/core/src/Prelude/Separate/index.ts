@@ -2,8 +2,8 @@
 
 import type { Either } from "@effect-ts/system/Either"
 
-import type * as Tp from "../../Collections/Immutable/Tuple"
-import type * as HKT from "../HKT"
+import type * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import type * as HKT from "../HKT/index.js"
 
 export interface Separate<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
   readonly _Separate: "Separate"

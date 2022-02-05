@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
 /**
  * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/ZRefM.scala
@@ -9,6 +9,6 @@ import "../Operator"
  */
 
 // codegen:start {preset: barrel, include: ./*.ts, exclude: ./+(managed|effect).ts}
-export * from "./api"
-export * from "./XRefM"
+export * from "./api.js"
+export * from "./XRefM.js"
 // codegen:end

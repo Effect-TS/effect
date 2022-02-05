@@ -1,7 +1,9 @@
-import type * as A from "../Assertion"
-import type * as AR from "../AssertionResult"
-import * as makeAssertionValue from "../AssertionValue/makeAssertionValue"
-import * as BA from "../BoolAlgebra"
+// ets_tracing: off
+
+import type * as A from "../Assertion/index.js"
+import type * as AR from "../AssertionResult/index.js"
+import * as makeAssertionValue from "../AssertionValue/makeAssertionValue.js"
+import * as BA from "../BoolAlgebra/index.js"
 
 export interface AssertionData {
   assertion: A.Assertion<any>

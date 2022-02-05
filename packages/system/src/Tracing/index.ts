@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { isTracingEnabled } from "./Global"
+import { isTracingEnabled } from "./Global/index.js"
 
 export const tracingSymbol = "$trace"
 
@@ -35,4 +35,4 @@ export function accessCallTrace(): string | undefined {
   return callTrace
 }
 
-export * from "./Global"
+export * from "./Global/index.js"

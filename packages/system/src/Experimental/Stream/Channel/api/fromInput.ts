@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as C from "../core"
-import * as Unwrap from "./unwrap"
-import * as ZipRight from "./zipRight"
+import * as C from "../core.js"
+import * as Unwrap from "./unwrap.js"
+import * as ZipRight from "./zipRight.js"
 
 export function fromInput<Err, Elem, Done>(
   input: C.AsyncInputConsumer<Err, Elem, Done>

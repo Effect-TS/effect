@@ -2,14 +2,14 @@ import * as M from "@effect-ts/system/Collections/Immutable/Map"
 import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import { flow, identity, pipe } from "@effect-ts/system/Function"
 
-import * as E from "../../src/Either"
-import * as EitherT from "../../src/EitherT"
-import * as P from "../../src/Prelude"
-import * as DSL from "../../src/Prelude/DSL"
-import type * as H from "../../src/Prelude/HKT"
-import * as T from "../../src/XPure"
-import * as R from "../../src/XPure/XReader"
-import * as ReaderT from "../../src/XPure/XReaderT"
+import * as E from "../../src/Either/index.js"
+import * as EitherT from "../../src/EitherT/index.js"
+import * as DSL from "../../src/Prelude/DSL/index.js"
+import type * as H from "../../src/Prelude/HKT/index.js"
+import * as P from "../../src/Prelude/index.js"
+import * as T from "../../src/XPure/index.js"
+import * as R from "../../src/XPure/XReader/index.js"
+import * as ReaderT from "../../src/XPure/XReaderT/index.js"
 
 type State<K, V> = M.Map<K, V>
 

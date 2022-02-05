@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../Operator"
+import "../../Operator/index.js"
 
 export class LinkedListNode<T> {
   constructor(public value: T | null, public next: LinkedListNode<T> | null = null) {}

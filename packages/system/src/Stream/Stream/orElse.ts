@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { catchAll_ } from "./catchAll"
-import type { Stream } from "./definitions"
+import { catchAll_ } from "./catchAll.js"
+import type { Stream } from "./definitions.js"
 
 /**
  * Switches to the provided stream in case this one fails with a typed error.

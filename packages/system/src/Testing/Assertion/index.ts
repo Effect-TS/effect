@@ -1,18 +1,19 @@
-import * as L from "../../Collections/Immutable/List"
-import * as T from "../../Effect"
-import type { Lazy } from "../../Function"
-import * as O from "../../Option"
-import * as ST from "../../Structural"
-import { LazyGetter } from "../../Utils"
-import * as AD from "../AssertionData"
-import type * as AssertionM from "../AssertionM/AssertionM"
-import type * as AR from "../AssertionResult"
-import type * as ARM from "../AssertionResultM"
-import * as makeAssertionValue from "../AssertionValue/makeAssertionValue"
-import * as BA from "../BoolAlgebra"
-import * as BAM from "../BoolAlgebraM"
-import * as PR from "../Primitives"
-import * as R from "../Render"
+// ets_tracing: off
+
+import * as L from "../../Collections/Immutable/List/index.js"
+import * as T from "../../Effect/index.js"
+import type { Lazy } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
+import * as ST from "../../Structural/index.js"
+import * as AD from "../AssertionData/index.js"
+import type * as AssertionM from "../AssertionM/AssertionM.js"
+import type * as AR from "../AssertionResult/index.js"
+import type * as ARM from "../AssertionResultM/index.js"
+import * as makeAssertionValue from "../AssertionValue/makeAssertionValue.js"
+import * as BA from "../BoolAlgebra/index.js"
+import * as BAM from "../BoolAlgebraM/index.js"
+import * as PR from "../Primitives/index.js"
+import * as R from "../Render/index.js"
 
 export class Assertion<A> implements AssertionM.AssertionM<A> {
   readonly [PR._A]: (_: A) => void
@@ -29,7 +30,6 @@ export class Assertion<A> implements AssertionM.AssertionM<A> {
     return new BAM.BoolAlgebraM(T.succeed(this.run(a)))
   }
 
-  @LazyGetter()
   get stringify(): string {
     return this.render().toString()
   }
@@ -46,7 +46,6 @@ export class Assertion<A> implements AssertionM.AssertionM<A> {
     return false
   }
 
-  @LazyGetter()
   get [ST.hashSym](): number {
     return ST.hashString(this.stringify)
   }

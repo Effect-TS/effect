@@ -1,20 +1,23 @@
 // ets_tracing: off
 
-import * as L from "../../Collections/Immutable/List"
-import type * as E from "../../Either"
-import { NoSuchElementException, PrematureGeneratorExit } from "../../GlobalExceptions"
-import type * as H from "../../Has"
-import type * as O from "../../Option"
-import type * as Utils from "../../Utils"
-import { isEither, isOption, isTag } from "../../Utils"
-import * as T from "../_internal/effect"
-import { _A, _E, _R } from "../_internal/effect"
-import { chain_ } from "./chain"
-import { Stream } from "./definitions"
-import { fail } from "./fail"
-import { fromEffect } from "./fromEffect"
-import { succeed } from "./succeed"
-import { suspend } from "./suspend"
+import * as L from "../../Collections/Immutable/List/index.js"
+import type * as E from "../../Either/index.js"
+import {
+  NoSuchElementException,
+  PrematureGeneratorExit
+} from "../../GlobalExceptions/index.js"
+import type * as H from "../../Has/index.js"
+import type * as O from "../../Option/index.js"
+import type * as Utils from "../../Utils/index.js"
+import { isEither, isOption, isTag } from "../../Utils/index.js"
+import * as T from "../_internal/effect.js"
+import { _A, _E, _R } from "../_internal/effect.js"
+import { chain_ } from "./chain.js"
+import { Stream } from "./definitions.js"
+import { fail } from "./fail.js"
+import { fromEffect } from "./fromEffect.js"
+import { succeed } from "./succeed.js"
+import { suspend } from "./suspend.js"
 
 export class GenStream<R, E, A> {
   readonly [_R]!: (_R: R) => void;

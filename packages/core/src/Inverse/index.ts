@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
-export * from "./definition"
-export { InverseURI } from "../Modules"
-export * from "./operations"
+export * from "./definition.js"
+export { InverseURI } from "../Modules/index.js"
+export * from "./operations.js"

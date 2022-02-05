@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { done as effectDone } from "../Effect/done"
-import type { Exit } from "../Exit/exit"
-import { completeWith } from "./completeWith"
-import type { Promise } from "./promise"
+import { done as effectDone } from "../Effect/done.js"
+import type { Exit } from "../Exit/exit.js"
+import { completeWith } from "./completeWith.js"
+import type { Promise } from "./promise.js"
 
 /**
  * Exits the promise with the specified exit, which will be propagated to all

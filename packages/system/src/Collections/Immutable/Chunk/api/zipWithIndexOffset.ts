@@ -1,7 +1,9 @@
-import * as Tp from "../../Tuple"
-import { append_, empty } from "../core"
-import type { Chunk } from "../definition"
-import { concreteId } from "../definition"
+// ets_tracing: off
+
+import * as Tp from "../../Tuple/index.js"
+import { append_, empty } from "../core.js"
+import type { Chunk } from "../definition.js"
+import { concreteId } from "../definition.js"
 
 /**
  * Zips this chunk with the index of every element, starting from the initial

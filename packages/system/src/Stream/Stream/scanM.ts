@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as Tp from "../../Collections/Immutable/Tuple"
-import * as T from "../_internal/effect"
-import { concat_ } from "./concat"
-import type { Stream } from "./definitions"
-import { fromIterable } from "./fromIterable"
-import { mapAccumM_ } from "./mapAccumM"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import * as T from "../_internal/effect.js"
+import { concat_ } from "./concat.js"
+import type { Stream } from "./definitions.js"
+import { fromIterable } from "./fromIterable.js"
+import { mapAccumM_ } from "./mapAccumM.js"
 
 /**
  * Statefully and effectfully maps over the elements of this stream to produce all

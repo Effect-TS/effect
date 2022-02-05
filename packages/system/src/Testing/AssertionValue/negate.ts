@@ -1,7 +1,9 @@
-import * as AM from "../AssertionM/api"
-import * as BA from "../BoolAlgebra"
-import type { AssertionValue } from "./AssertionValue"
-import { makeAssertionValue } from "./makeAssertionValue"
+// ets_tracing: off
+
+import * as AM from "../AssertionM/api.js"
+import * as BA from "../BoolAlgebra/index.js"
+import type { AssertionValue } from "./AssertionValue.js"
+import { makeAssertionValue } from "./makeAssertionValue.js"
 
 export function negate(self: AssertionValue): AssertionValue {
   return makeAssertionValue(

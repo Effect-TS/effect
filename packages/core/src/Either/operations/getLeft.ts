@@ -2,7 +2,7 @@
 
 import type { Either } from "@effect-ts/system/Either"
 
-import * as O from "../../Option"
+import * as O from "../../Option/index.js"
 
 /**
  * Gets Left

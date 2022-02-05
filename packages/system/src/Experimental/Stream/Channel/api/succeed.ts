@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as C from "../core"
+import * as C from "../core.js"
 
 export function succeed<Z>(
   z: Z

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as C from "../core"
-import * as CatchAll from "./catchAll"
-import * as Fail from "./fail"
+import type * as C from "../core.js"
+import * as CatchAll from "./catchAll.js"
+import * as Fail from "./fail.js"
 
 /**
  * Recovers from specified error.

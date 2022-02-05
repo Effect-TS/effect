@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
-import { pipe } from "../../Function"
-import * as T from "../_internal/effect"
-import type { Stream } from "./definitions"
-import { mapConcatChunkM_ } from "./mapConcatChunkM"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import { pipe } from "../../Function/index.js"
+import * as T from "../_internal/effect.js"
+import type { Stream } from "./definitions.js"
+import { mapConcatChunkM_ } from "./mapConcatChunkM.js"
 
 /**
  * Effectfully maps each element to an iterable, and flattens the iterables into

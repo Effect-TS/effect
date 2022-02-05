@@ -2,31 +2,31 @@
 
 // option
 // cause
-import * as Cause from "../Cause/core"
-import type { Renderer } from "../Cause/Pretty"
-import { defaultRenderer, pretty } from "../Cause/Pretty"
+import * as Cause from "../Cause/core.js"
+import type { Renderer } from "../Cause/Pretty/index.js"
+import { defaultRenderer, pretty } from "../Cause/Pretty/index.js"
 // exit
-import { HasClock, LiveClock } from "../Clock"
-import { flatten as exitFlatten } from "../Exit/core"
-import type { Exit } from "../Exit/exit"
+import { HasClock, LiveClock } from "../Clock/index.js"
+import { flatten as exitFlatten } from "../Exit/core.js"
+import type { Exit } from "../Exit/exit.js"
 // fiber
-import { FiberContext } from "../Fiber/context"
-import { interruptible } from "../Fiber/core"
-import { newFiberId } from "../Fiber/id"
-import { Platform } from "../Fiber/platform"
-import type { Callback } from "../Fiber/state"
-import { constVoid, identity } from "../Function"
-import * as O from "../Option"
-import { none } from "../Option"
-import { defaultRandom, HasRandom } from "../Random"
-import * as Scope from "../Scope"
+import { FiberContext } from "../Fiber/context.js"
+import { interruptible } from "../Fiber/core.js"
+import { newFiberId } from "../Fiber/id.js"
+import { Platform } from "../Fiber/platform.js"
+import type { Callback } from "../Fiber/state.js"
+import { constVoid, identity } from "../Function/index.js"
+import * as O from "../Option/index.js"
+import { none } from "../Option/index.js"
+import { defaultRandom, HasRandom } from "../Random/index.js"
+import * as Scope from "../Scope/index.js"
 // supervisor
-import * as Supervisor from "../Supervisor"
-import { isTracingEnabled } from "../Tracing"
-import * as core from "./core"
-import type { Effect, UIO } from "./effect"
-import type { FailureReporter } from "./primitives"
-import { instruction, IPlatform } from "./primitives"
+import * as Supervisor from "../Supervisor/index.js"
+import { isTracingEnabled } from "../Tracing/index.js"
+import * as core from "./core.js"
+import type { Effect, UIO } from "./effect.js"
+import type { FailureReporter } from "./primitives.js"
+import { instruction, IPlatform } from "./primitives.js"
 
 // empty function
 const empty = () => {

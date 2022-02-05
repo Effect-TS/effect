@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as O from "../../../../Option"
-import type * as C from "../core"
-import * as Collect from "./collect"
+import type * as O from "../../../../Option/index.js"
+import type * as C from "../core.js"
+import * as Collect from "./collect.js"
 
 /**
  * Filters any `None` values.

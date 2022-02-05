@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as E from "../../../../Either"
-import * as O from "../../../../Option"
-import type * as C from "../core"
-import * as MapError from "./mapError"
-import * as RightOrFail from "./rightOrFail"
+import * as E from "../../../../Either/index.js"
+import * as O from "../../../../Option/index.js"
+import type * as C from "../core.js"
+import * as MapError from "./mapError.js"
+import * as RightOrFail from "./rightOrFail.js"
 
 /**
  * Fails with the error `None` if value is `Left`.

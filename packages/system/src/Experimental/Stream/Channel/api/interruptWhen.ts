@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect"
-import * as MH from "../_internal/mergeHelpers"
-import * as C from "../core"
-import * as MergeWith from "./mergeWith"
+import * as T from "../../../../Effect/index.js"
+import * as MH from "../_internal/mergeHelpers.js"
+import * as C from "../core.js"
+import * as MergeWith from "./mergeWith.js"
 
 /**
  * Returns a new channel, which is the same as this one, except it will be interrupted when the

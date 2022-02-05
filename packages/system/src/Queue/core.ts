@@ -1,15 +1,15 @@
 // ets_tracing: off
 
-import * as ChunkFilter from "../Collections/Immutable/Chunk/api/filter"
-import * as Chunk from "../Collections/Immutable/Chunk/core"
-import type { AtomicBoolean } from "../Support/AtomicBoolean"
-import type { MutableQueue } from "../Support/MutableQueue"
-import * as T from "./effect"
-import * as P from "./promise"
-import type { XQueue } from "./xqueue"
-import { concreteQueue } from "./xqueue"
+import * as ChunkFilter from "../Collections/Immutable/Chunk/api/filter.js"
+import * as Chunk from "../Collections/Immutable/Chunk/core.js"
+import type { AtomicBoolean } from "../Support/AtomicBoolean/index.js"
+import type { MutableQueue } from "../Support/MutableQueue/index.js"
+import * as T from "./effect.js"
+import * as P from "./promise.js"
+import type { XQueue } from "./xqueue.js"
+import { concreteQueue } from "./xqueue.js"
 
-export { Dequeue, Queue, XQueue } from "./xqueue"
+export { Dequeue, Queue, XQueue } from "./xqueue.js"
 
 export interface Strategy<A> {
   readonly handleSurplus: (

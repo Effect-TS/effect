@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { identity } from "../Function"
-import { chain_ } from "./core"
-import type { Effect } from "./effect"
+import { identity } from "../Function/index.js"
+import { chain_ } from "./core.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Returns an effect that first executes the outer effect, and then executes

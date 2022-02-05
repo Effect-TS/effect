@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as HKT from "../HKT"
+import type * as HKT from "../HKT/index.js"
 
 export interface AssociativeCompose<F extends HKT.URIS, TC = HKT.Auto>
   extends HKT.Base<F, TC> {

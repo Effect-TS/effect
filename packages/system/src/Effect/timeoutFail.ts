@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import type { Clock } from "../Clock"
-import type { Has } from "../Has"
-import { succeed, suspend } from "./core"
-import type { Effect } from "./effect"
-import { fail } from "./fail"
-import { flatten } from "./flatten"
-import { timeoutTo_ } from "./timeoutTo"
+import type { Clock } from "../Clock/index.js"
+import type { Has } from "../Has/index.js"
+import { succeed, suspend } from "./core.js"
+import type { Effect } from "./effect.js"
+import { fail } from "./fail.js"
+import { flatten } from "./flatten.js"
+import { timeoutTo_ } from "./timeoutTo.js"
 
 /**
  * The same as `timeout`, but instead of producing a `None` in the event

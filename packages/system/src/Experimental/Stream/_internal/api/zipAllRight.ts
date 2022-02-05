@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { identity } from "../../../../Function"
-import type * as C from "../core"
-import * as ZipAllWith from "./zipAllWith"
+import { identity } from "../../../../Function/index.js"
+import type * as C from "../core.js"
+import * as ZipAllWith from "./zipAllWith.js"
 
 /**
  * Zips this stream with another point-wise, and keeps only elements from the other stream.

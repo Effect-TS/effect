@@ -1,5 +1,6 @@
 {
   "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.preferences.importModuleSpecifierEnding": "js",
   "editor.formatOnSave": true,
   "eslint.format.enable": true,
   "[javascript]": {
@@ -20,7 +21,11 @@
     "typescript",
     "typescriptreact"
   ],
-  "eslint.validate": ["markdown", "javascript", "typescript"],
+  "eslint.validate": [
+    "markdown",
+    "javascript",
+    "typescript"
+  ],
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": true
   },

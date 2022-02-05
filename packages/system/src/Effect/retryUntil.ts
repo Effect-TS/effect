@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import { pipe } from "../Function"
-import * as catchAll from "./catchAll"
-import * as core from "./core"
-import type { Effect } from "./effect"
-import * as fail from "./fail"
-import { zipRight_ } from "./zips"
+import { pipe } from "../Function/index.js"
+import * as catchAll from "./catchAll.js"
+import * as core from "./core.js"
+import type { Effect } from "./effect.js"
+import * as fail from "./fail.js"
+import { zipRight_ } from "./zips.js"
 
 /**
  * Retries this effect until its error satisfies the specified effectful predicate.

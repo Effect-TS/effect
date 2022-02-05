@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { Exit } from "../Exit/exit"
-import { halt, succeed } from "./core"
-import type { Effect } from "./effect"
+import type { Exit } from "../Exit/exit.js"
+import { halt, succeed } from "./core.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Returns an effect from a `Exit` value.

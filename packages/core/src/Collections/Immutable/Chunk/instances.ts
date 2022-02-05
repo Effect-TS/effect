@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import type { Either } from "../../../Either"
-import type { ChunkURI } from "../../../Modules"
-import * as O from "../../../Option"
-import type { URI } from "../../../Prelude"
-import { getApplicativeF } from "../../../Prelude"
-import * as P from "../../../Prelude"
-import type { PredicateWithIndex } from "../../../Utils"
-import * as Chunk from "./operations"
+import type { Either } from "../../../Either/index.js"
+import type { ChunkURI } from "../../../Modules/index.js"
+import * as O from "../../../Option/index.js"
+import type { URI } from "../../../Prelude/index.js"
+import { getApplicativeF } from "../../../Prelude/index.js"
+import * as P from "../../../Prelude/index.js"
+import type { PredicateWithIndex } from "../../../Utils/index.js"
+import * as Chunk from "./operations.js"
 
 export const Collection = P.instance<P.Collection<[P.URI<ChunkURI>]>>({
   builder: Chunk.builder

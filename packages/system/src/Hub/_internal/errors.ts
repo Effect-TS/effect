@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../Operator"
+import "../../Operator/index.js"
 
 export const InvalidCapacityErrorSymbol: unique symbol = Symbol.for(
   "@effect-ts/core/symbols/errors/InvalidCapacity"

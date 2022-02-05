@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as Tp from "../../../Collections/Immutable/Tuple"
-import type * as T from "../../../Effect"
-import { pipe } from "../../../Function"
-import * as CH from "../Channel"
-import * as C from "./core"
+import * as Tp from "../../../Collections/Immutable/Tuple/index.js"
+import type * as T from "../../../Effect/index.js"
+import { pipe } from "../../../Function/index.js"
+import * as CH from "../Channel/index.js"
+import * as C from "./core.js"
 
 /**
  * Summarize a sink by running an effect when the sink starts and again when it completes

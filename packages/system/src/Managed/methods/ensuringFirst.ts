@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { Effect } from "../../Effect"
-import { onExitFirst, onExitFirst_ } from "../core"
-import type { Managed } from "../managed"
+import type { Effect } from "../../Effect/index.js"
+import { onExitFirst, onExitFirst_ } from "../core.js"
+import type { Managed } from "../managed.js"
 
 /**
  * Ensures that `f` is executed when this `Managed` is finalized, before

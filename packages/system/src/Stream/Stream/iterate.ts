@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
-import { pipe } from "../../Function"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import * as Ref from "../_internal/ref"
-import type { UIO } from "./definitions"
-import { Stream } from "./definitions"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import { pipe } from "../../Function/index.js"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import * as Ref from "../_internal/ref.js"
+import type { UIO } from "./definitions.js"
+import { Stream } from "./definitions.js"
 
 /**
  * The infinite stream of iterative function application: a, f(a), f(f(a)), f(f(f(a))), ...

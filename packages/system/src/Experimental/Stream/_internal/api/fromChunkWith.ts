@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import * as T from "../../../../Effect"
-import * as CH from "../../Channel"
-import * as C from "../core"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as T from "../../../../Effect/index.js"
+import * as CH from "../../Channel/index.js"
+import * as C from "../core.js"
 
 /**
  * Creates a stream from a `Chunk` of values

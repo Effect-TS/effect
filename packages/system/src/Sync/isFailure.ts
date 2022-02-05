@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Sync } from "./core"
-import { fold_ } from "./core"
+import type { Sync } from "./core.js"
+import { fold_ } from "./core.js"
 
 /**
  * Returns whether this effect is a failure.

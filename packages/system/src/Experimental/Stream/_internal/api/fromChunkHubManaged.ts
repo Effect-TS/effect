@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import * as H from "../../../../Hub"
-import * as M from "../../../../Managed"
-import type * as C from "../core"
-import * as FromChunkQueue from "./fromChunkQueue"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as H from "../../../../Hub/index.js"
+import * as M from "../../../../Managed/index.js"
+import type * as C from "../core.js"
+import * as FromChunkQueue from "./fromChunkQueue.js"
 
 /**
  * Creates a stream from a subscription to a hub in the context of a managed

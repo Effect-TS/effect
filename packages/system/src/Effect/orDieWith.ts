@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { succeed } from "./core"
-import { die } from "./die"
-import type { Effect } from "./effect"
-import { foldM_ } from "./foldM"
+import { succeed } from "./core.js"
+import { die } from "./die.js"
+import type { Effect } from "./effect.js"
+import { foldM_ } from "./foldM.js"
 
 /**
  * Keeps none of the errors, and terminates the fiber with them, using

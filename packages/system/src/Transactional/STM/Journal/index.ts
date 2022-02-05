@@ -1,20 +1,20 @@
 // ets_tracing: off
 
-import "../../../Operator"
+import "../../../Operator/index.js"
 
-import * as HM from "../../../Collections/Immutable/HashMap"
-import * as T from "../../../Effect"
-import type { FiberID } from "../../../Fiber"
-import type { AtomicBoolean } from "../../../Support/AtomicBoolean"
-import { defaultScheduler } from "../../../Support/Scheduler"
-import type { Atomic } from "../../TRef"
-import { STMDriver } from "../_internal/driver"
-import type { STM } from "../_internal/primitives"
-import type { Entry } from "../Entry"
-import { DieTypeId, FailTypeId, RetryTypeId, SucceedTypeId } from "../TExit"
-import type { TryCommit } from "../TryCommit"
-import { Done, DoneTypeId, Suspend, SuspendTypeId } from "../TryCommit"
-import type { TxnId } from "../TxnId"
+import * as HM from "../../../Collections/Immutable/HashMap/index.js"
+import * as T from "../../../Effect/index.js"
+import type { FiberID } from "../../../Fiber/index.js"
+import type { AtomicBoolean } from "../../../Support/AtomicBoolean/index.js"
+import { defaultScheduler } from "../../../Support/Scheduler/index.js"
+import type { Atomic } from "../../TRef/index.js"
+import { STMDriver } from "../_internal/driver.js"
+import type { STM } from "../_internal/primitives.js"
+import type { Entry } from "../Entry/index.js"
+import { DieTypeId, FailTypeId, RetryTypeId, SucceedTypeId } from "../TExit/index.js"
+import type { TryCommit } from "../TryCommit/index.js"
+import { Done, DoneTypeId, Suspend, SuspendTypeId } from "../TryCommit/index.js"
+import type { TxnId } from "../TxnId/index.js"
 
 export type Journal = Map<Atomic<any>, Entry>
 

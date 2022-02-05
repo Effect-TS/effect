@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as O from "../../../../Option"
-import * as C from "../core"
-import * as ReadWith from "./readWith"
-import * as ZipRight from "./zipRight"
+import * as O from "../../../../Option/index.js"
+import * as C from "../core.js"
+import * as ReadWith from "./readWith.js"
+import * as ZipRight from "./zipRight.js"
 
 /**
  * Returns a new channel, which is the same as this one, except its outputs are filtered and

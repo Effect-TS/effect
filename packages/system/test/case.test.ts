@@ -1,6 +1,6 @@
-import * as Case from "../src/Case"
-import * as S from "../src/Structural"
-import { LazyGetter } from "../src/Utils"
+import * as Case from "../src/Case/index.js"
+import * as S from "../src/Structural/index.js"
+import { LazyGetter } from "../src/Utils/index.js"
 
 describe("Case Class", () => {
   it("should work with equal and hash", () => {

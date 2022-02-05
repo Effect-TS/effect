@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type { Effect } from "../_internal/effect"
-import type { Stream } from "./definitions"
-import { flatten } from "./flatten"
-import { fromEffect } from "./fromEffect"
+import type { Effect } from "../_internal/effect.js"
+import type { Stream } from "./definitions.js"
+import { flatten } from "./flatten.js"
+import { fromEffect } from "./fromEffect.js"
 
 /**
  * Creates a stream produced from an effect

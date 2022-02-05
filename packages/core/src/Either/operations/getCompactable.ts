@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import type { Identity } from "../../Identity"
-import type { EitherURI } from "../../Modules"
-import * as P from "../../Prelude"
-import { getCompact } from "./compactOption"
-import { getSeparate } from "./separate"
+import type { Identity } from "../../Identity/index.js"
+import type { EitherURI } from "../../Modules/index.js"
+import * as P from "../../Prelude/index.js"
+import { getCompact } from "./compactOption.js"
+import { getSeparate } from "./separate.js"
 
 /**
  * Get `Compactable` instance given `Identity<E>`

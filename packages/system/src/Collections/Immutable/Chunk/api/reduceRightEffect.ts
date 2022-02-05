@@ -1,8 +1,10 @@
-import * as core from "../../../../Effect/core"
-import type { Effect } from "../../../../Effect/effect"
-import type * as Chunk from "../core"
-import { concrete, SingletonTypeId } from "../definition"
-import { reduceRight_ } from "./reduceRight"
+// ets_tracing: off
+
+import * as core from "../../../../Effect/core.js"
+import type { Effect } from "../../../../Effect/effect.js"
+import type * as Chunk from "../core.js"
+import { concrete, SingletonTypeId } from "../definition.js"
+import { reduceRight_ } from "./reduceRight.js"
 
 /**
  * Folds over the elements in this chunk from the right.

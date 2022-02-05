@@ -1,7 +1,7 @@
-import * as A from "../src/Collections/Immutable/Chunk"
-import * as T from "../src/Effect"
-import { pipe } from "../src/Function"
-import * as Q from "../src/Queue"
+import * as A from "../src/Collections/Immutable/Chunk/index.js"
+import * as T from "../src/Effect/index.js"
+import { pipe } from "../src/Function/index.js"
+import * as Q from "../src/Queue/index.js"
 
 describe("Queue", () => {
   it("maps", async () => {

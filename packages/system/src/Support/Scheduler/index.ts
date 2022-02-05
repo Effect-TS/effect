@@ -1,5 +1,7 @@
-import type { Lazy } from "../../Function"
-import { DoublyLinkedList } from "../DoublyLinkedList"
+// ets_tracing: off
+
+import type { Lazy } from "../../Function/index.js"
+import { DoublyLinkedList } from "../DoublyLinkedList/index.js"
 
 let isRunning = false
 const tasks = new DoublyLinkedList<Lazy<void>>()

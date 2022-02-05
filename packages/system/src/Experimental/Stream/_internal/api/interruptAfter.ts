@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as CL from "../../../../Clock"
-import type * as C from "../core"
-import * as InterruptWhen from "./interruptWhen"
+import * as CL from "../../../../Clock/index.js"
+import type * as C from "../core.js"
+import * as InterruptWhen from "./interruptWhen.js"
 
 /**
  * Specialized version of interruptWhen which interrupts the evaluation of this stream

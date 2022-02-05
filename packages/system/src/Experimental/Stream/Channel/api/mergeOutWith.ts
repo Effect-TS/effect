@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as C from "../core"
-import * as MapOut from "./mapOut"
-import * as MergeAllWith from "./mergeAllWith"
+import type * as C from "../core.js"
+import * as MapOut from "./mapOut.js"
+import * as MergeAllWith from "./mergeAllWith.js"
 
 export function mergeOutWith_<
   Env,

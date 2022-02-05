@@ -1,7 +1,9 @@
-import * as O from "../../../../Option"
-import * as Tp from "../../Tuple"
-import type { Chunk } from "../definition"
-import { zipAllWith_ } from "./zipAllWith"
+// ets_tracing: off
+
+import * as O from "../../../../Option/index.js"
+import * as Tp from "../../Tuple/index.js"
+import type { Chunk } from "../definition.js"
+import { zipAllWith_ } from "./zipAllWith.js"
 
 /**
  * Zips this chunk with the specified chunk to produce a new chunk with

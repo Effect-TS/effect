@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function"
-import type { Has, Tag } from "../../Has"
-import type { AssociativeFlatten } from "../AssociativeFlatten"
-import type { Access, Provide } from "../FX"
-import type * as HKT from "../HKT"
-import type { Monad } from "../Monad"
+import { pipe } from "../../Function/index.js"
+import type { Has, Tag } from "../../Has/index.js"
+import type { AssociativeFlatten } from "../AssociativeFlatten/index.js"
+import type { Access, Provide } from "../FX/index.js"
+import type * as HKT from "../HKT/index.js"
+import type { Monad } from "../Monad/index.js"
 
 export function accessMF<F extends HKT.URIS, C = HKT.Auto>(
   F: Access<F, C> & AssociativeFlatten<F, C>

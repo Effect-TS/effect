@@ -1,8 +1,8 @@
-import * as A from "../src/Collections/Immutable/Array"
-import * as T from "../src/Effect"
-import * as Ex from "../src/Effect/Exit"
-import * as E from "../src/Either"
-import { pipe } from "../src/Function"
+import * as A from "../src/Collections/Immutable/Array/index.js"
+import * as Ex from "../src/Effect/Exit/index.js"
+import * as T from "../src/Effect/index.js"
+import * as E from "../src/Either/index.js"
+import { pipe } from "../src/Function/index.js"
 
 export type ADT =
   | { _tag: "A"; a: string }

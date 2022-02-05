@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import type * as C from "../../Cause"
-import { pipe } from "../../Function"
-import * as T from "../_internal/effect"
-import { catchAllCause_ } from "./catchAllCause"
-import type { Stream } from "./definitions"
-import { fromEffect } from "./fromEffect"
+import type * as C from "../../Cause/index.js"
+import { pipe } from "../../Function/index.js"
+import * as T from "../_internal/effect.js"
+import { catchAllCause_ } from "./catchAllCause.js"
+import type { Stream } from "./definitions.js"
+import { fromEffect } from "./fromEffect.js"
 
 /**
  * Runs the specified effect if this stream fails, providing the error to the effect if it exists.

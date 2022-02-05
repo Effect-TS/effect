@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
-import type * as O from "../../../../Option"
-import * as CH from "../../Channel"
-import * as C from "../core"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import type * as O from "../../../../Option/index.js"
+import * as CH from "../../Channel/index.js"
+import * as C from "../core.js"
 
 /**
  * Transforms all elements of the stream for as long as the specified partial function is defined.

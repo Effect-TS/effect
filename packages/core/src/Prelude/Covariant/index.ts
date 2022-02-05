@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as HKT from "../HKT"
+import * as HKT from "../HKT/index.js"
 
 export interface Covariant<F extends HKT.URIS, C = HKT.Auto> extends HKT.Base<F, C> {
   readonly _Covariant: "Covariant"

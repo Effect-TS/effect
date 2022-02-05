@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as E from "../Either"
-import type { FiberID } from "../Fiber/id"
-import type { Canceler } from "./Canceler"
-import type { Cb } from "./Cb"
-import type { Effect } from "./effect"
-import { effectMaybeAsyncInterruptBlockingOn } from "./effectMaybeAsyncInterrupt"
+import * as E from "../Either/index.js"
+import type { FiberID } from "../Fiber/id.js"
+import type { Canceler } from "./Canceler.js"
+import type { Cb } from "./Cb.js"
+import type { Effect } from "./effect.js"
+import { effectMaybeAsyncInterruptBlockingOn } from "./effectMaybeAsyncInterrupt.js"
 
 /**
  * Imports an asynchronous side-effect into an effect. The effect also

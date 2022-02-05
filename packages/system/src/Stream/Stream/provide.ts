@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { Stream } from "./definitions"
-import { provideSome_ } from "./provideSome"
+import type { Stream } from "./definitions.js"
+import { provideSome_ } from "./provideSome.js"
 
 /**
  * Provides some of the environment required to run this effect,

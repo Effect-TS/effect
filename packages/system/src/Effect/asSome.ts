@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as O from "../Option/core"
-import type { Effect } from "./effect"
-import { map_ } from "./map"
+import * as O from "../Option/core.js"
+import type { Effect } from "./effect.js"
+import { map_ } from "./map.js"
 
 /**
  * Maps the success value of this effect to an optional value.

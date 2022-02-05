@@ -1,16 +1,16 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
-import { pipe } from "../../Function"
-import * as O from "../../Option"
-import * as Q from "../../Queue"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import * as Ref from "../_internal/ref"
-import * as BP from "../BufferedPull"
-import * as Pull from "../Pull"
-import { Stream } from "./definitions"
-import { empty } from "./empty"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import { pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
+import * as Q from "../../Queue/index.js"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import * as Ref from "../_internal/ref.js"
+import * as BP from "../BufferedPull/index.js"
+import * as Pull from "../Pull/index.js"
+import { Stream } from "./definitions.js"
+import { empty } from "./empty.js"
 
 /**
  * Takes the last specified number of elements from this stream.

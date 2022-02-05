@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
-import type { Predicate, Refinement } from "../../../../Function"
-import type * as C from "../core"
-import * as MapChunks from "./mapChunks"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import type { Predicate, Refinement } from "../../../../Function/index.js"
+import type * as C from "../core.js"
+import * as MapChunks from "./mapChunks.js"
 
 /**
  * Filters the elements emitted by this stream using the provided function.

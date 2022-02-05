@@ -1,4 +1,4 @@
-import * as T from "../src/Effect"
+import * as T from "../src/Effect/index.js"
 
 describe("Operators", () => {
   it("fake-pipe", async () => {

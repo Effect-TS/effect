@@ -1,18 +1,18 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect"
-import * as E from "../../../../Either"
-import * as Ex from "../../../../Exit"
-import * as F from "../../../../Fiber"
-import { pipe } from "../../../../Function"
-import * as M from "../../../../Managed"
-import * as MH from "../_internal/mergeHelpers"
-import * as C from "../core"
-import * as FromInput from "./fromInput"
-import * as ToPull from "./toPull"
-import * as Unwrap from "./unwrap"
-import * as UnwrapManaged from "./unwrapManaged"
-import * as ZipRight from "./zipRight"
+import * as T from "../../../../Effect/index.js"
+import * as E from "../../../../Either/index.js"
+import * as Ex from "../../../../Exit/index.js"
+import * as F from "../../../../Fiber/index.js"
+import { pipe } from "../../../../Function/index.js"
+import * as M from "../../../../Managed/index.js"
+import * as MH from "../_internal/mergeHelpers.js"
+import * as C from "../core.js"
+import * as FromInput from "./fromInput.js"
+import * as ToPull from "./toPull.js"
+import * as Unwrap from "./unwrap.js"
+import * as UnwrapManaged from "./unwrapManaged.js"
+import * as ZipRight from "./zipRight.js"
 
 /**
  * Returns a new channel, which is the merge of this channel and the specified channel, where

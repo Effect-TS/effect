@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { managedUse_ as use_ } from "../Effect/excl-forEach"
-import type * as T from "./deps"
-import type { Managed } from "./managed"
+import { managedUse_ as use_ } from "../Effect/excl-forEach.js"
+import type * as T from "./deps.js"
+import type { Managed } from "./managed.js"
 
 /**
  * Run an effect while acquiring the resource before and releasing it after

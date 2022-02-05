@@ -1,12 +1,12 @@
-import * as HM from "../../src/Collections/Immutable/HashMap"
-import * as HS from "../../src/Collections/Immutable/HashSet"
-import * as RB from "../../src/Collections/Immutable/RedBlackTree"
-import * as SS from "../../src/Collections/Immutable/SortedSet"
-import * as Tp from "../../src/Collections/Immutable/Tuple"
-import { pipe, tuple } from "../../src/Function"
-import * as O from "../../src/Option"
-import * as Ord from "../../src/Ord"
-import * as St from "../../src/Structural"
+import * as HM from "../../src/Collections/Immutable/HashMap/index.js"
+import * as HS from "../../src/Collections/Immutable/HashSet/index.js"
+import * as RB from "../../src/Collections/Immutable/RedBlackTree/index.js"
+import * as SS from "../../src/Collections/Immutable/SortedSet/index.js"
+import * as Tp from "../../src/Collections/Immutable/Tuple/index.js"
+import { pipe, tuple } from "../../src/Function/index.js"
+import * as O from "../../src/Option/index.js"
+import * as Ord from "../../src/Ord/index.js"
+import * as St from "../../src/Structural/index.js"
 
 describe("HashMap", () => {
   it("use hash-map 4", () => {

@@ -1,14 +1,14 @@
 // ets_tracing: off
 
 // codegen:start { preset: barrel, include: ./*.ts, exclude: ./hkt.ts }
-export * from "./base"
-export * from "./custom"
-export * from "./fix"
-export * from "./infer"
-export * from "./instance"
-export * from "./kind"
-export * from "./or-never"
-export * from "./variance"
+export * from "./base.js"
+export * from "./custom.js"
+export * from "./fix.js"
+export * from "./infer.js"
+export * from "./instance.js"
+export * from "./kind.js"
+export * from "./or-never.js"
+export * from "./variance.js"
 // codegen:end
 
 export {
@@ -24,4 +24,4 @@ export {
   URItoIndex,
   URItoKind,
   UHKTCategory
-} from "./hkt"
+} from "./hkt.js"

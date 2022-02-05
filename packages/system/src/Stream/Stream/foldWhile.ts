@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import type { Stream } from "./definitions"
-import { foldWhileManagedM } from "./foldWhileManagedM"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import type { Stream } from "./definitions.js"
+import { foldWhileManagedM } from "./foldWhileManagedM.js"
 
 /**
  * Reduces the elements in the stream to a value of type `S`.

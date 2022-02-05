@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as CS from "../../../../Cause"
-import * as CK from "../../../../Collections/Immutable/Chunk"
-import * as Ex from "../../../../Exit"
-import * as O from "../../../../Option"
-import * as CH from "../../Channel"
-import * as C from "../core"
+import * as CS from "../../../../Cause/index.js"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as Ex from "../../../../Exit/index.js"
+import * as O from "../../../../Option/index.js"
+import * as CH from "../../Channel/index.js"
+import * as C from "../core.js"
 
 /**
  * Unwraps `Exit` values that also signify end-of-stream by failing with `None`.

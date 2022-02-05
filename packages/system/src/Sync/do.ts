@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as X from "./core"
+import * as X from "./core.js"
 
 function bind<R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,

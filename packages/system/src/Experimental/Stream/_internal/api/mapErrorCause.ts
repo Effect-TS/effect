@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as CS from "../../../../Cause"
-import * as CH from "../../Channel"
-import * as C from "../core"
+import type * as CS from "../../../../Cause/index.js"
+import * as CH from "../../Channel/index.js"
+import * as C from "../core.js"
 
 /**
  * Transforms the full causes of failures emitted by this stream.

@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { yieldNow } from "./core"
-import type { Effect } from "./effect"
-import { orElse_ } from "./orElse"
-import { zipRight_ } from "./zips"
+import { yieldNow } from "./core.js"
+import type { Effect } from "./effect.js"
+import { orElse_ } from "./orElse.js"
+import { zipRight_ } from "./zips.js"
 
 /**
  * Returns an effect that ignores errors and runs repeatedly until it eventually succeeds.

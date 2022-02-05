@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
 /**
  * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/Exit.scala
@@ -9,8 +9,8 @@ import "../Operator"
  */
 
 // codegen:start {preset: barrel, include: ./*.ts}
-export * from "./api"
-export * from "./core"
-export * from "./do"
-export * from "./exit"
+export * from "./api.js"
+export * from "./core.js"
+export * from "./do.js"
+export * from "./exit.js"
 // codegen:end

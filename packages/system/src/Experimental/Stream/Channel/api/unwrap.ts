@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as T from "../../../../Effect"
-import * as C from "../core"
-import * as Flatten from "./flatten"
+import type * as T from "../../../../Effect/index.js"
+import * as C from "../core.js"
+import * as Flatten from "./flatten.js"
 
 /**
  * Makes a channel from an effect that returns a channel in case of success

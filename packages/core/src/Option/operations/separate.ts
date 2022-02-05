@@ -2,8 +2,8 @@
 
 import * as O from "@effect-ts/system/Option"
 
-import * as Tp from "../../Collections/Immutable/Tuple"
-import type { Either } from "../../Either"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import type { Either } from "../../Either/index.js"
 
 const defaultSeparate = Tp.tuple(O.none, O.none)
 

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Finalizer } from "./finalizer"
+import type { Finalizer } from "./finalizer.js"
 
 export class Running {
   readonly _tag = "Running"

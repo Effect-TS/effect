@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as SK from "../../Sink"
-import * as C from "../core"
+import type * as SK from "../../Sink/index.js"
+import * as C from "../core.js"
 
 /**
  * Pipes all of the values from this stream through the provided sink.

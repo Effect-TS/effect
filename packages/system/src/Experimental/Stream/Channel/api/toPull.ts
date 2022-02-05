@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect"
-import * as E from "../../../../Either"
-import { identity } from "../../../../Function"
-import * as M from "../../../../Managed"
-import * as Executor from "../_internal/executor"
-import type * as C from "../core"
+import * as T from "../../../../Effect/index.js"
+import * as E from "../../../../Either/index.js"
+import { identity } from "../../../../Function/index.js"
+import * as M from "../../../../Managed/index.js"
+import * as Executor from "../_internal/executor.js"
+import type * as C from "../core.js"
 
 function toPullInterpret<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   channelState: Executor.ChannelState<Env, OutErr>,

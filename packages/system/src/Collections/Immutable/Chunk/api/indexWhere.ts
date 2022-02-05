@@ -1,5 +1,7 @@
-import type * as Chunk from "../core"
-import { indexWhereFrom_ } from "./indexWhereFrom"
+// ets_tracing: off
+
+import type * as Chunk from "../core.js"
+import { indexWhereFrom_ } from "./indexWhereFrom.js"
 
 /**
  * Returns the first index for which the given predicate is satisfied.
