@@ -151,14 +151,35 @@ export function findFirstMap<A, B>(
  * Find the first element returned by an option based selector function
  */
 export function findFirstMap_<A, B>(as: C.Array<A>, f: (a: A) => Option<B>): Option<B> {
+  return findFirstMapWithIndex_(as, (_, a) => f(a))
+}
+
+/**
+ * Find the first element returned by an option based selector function
+ */
+export function findFirstMapWithIndex_<A, B>(
+  as: C.Array<A>,
+  f: (i: number, a: A) => Option<B>
+): Option<B> {
   const len = as.length
   for (let i = 0; i < len; i++) {
-    const v = f(as[i]!)
+    const v = f(i, as[i]!)
     if (isSome(v)) {
       return v
     }
   }
   return none
+}
+
+/**
+ * Find the first element returned by an option based selector function
+ *
+ * @ets_data_first findFirstMapWithIndex_
+ */
+export function findFirstMapWithIndex<A, B>(
+  f: (i: number, a: A) => Option<B>
+): (as: C.Array<A>) => Option<B> {
+  return (as) => findFirstMapWithIndex_(as, f)
 }
 
 /**
