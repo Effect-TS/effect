@@ -1,32 +1,55 @@
 // ets_tracing: off
 
-import type * as C from "../Cause"
-import * as Chunk from "../Collections/Immutable/Chunk"
-import { insert } from "../Collections/Immutable/Map"
-import * as Tp from "../Collections/Immutable/Tuple"
-import { _E, _RIn, _ROut } from "../Effect/commons"
-import { sequential } from "../Effect/ExecutionStrategy"
-import type { Exit } from "../Exit"
-import { pipe } from "../Function"
-import { environment } from "../Managed/methods/environment"
-import type { ReleaseMap } from "../Managed/ReleaseMap"
-import * as add from "../Managed/ReleaseMap/add"
-import * as Finalizer from "../Managed/ReleaseMap/finalizer"
-import * as makeReleaseMap from "../Managed/ReleaseMap/makeReleaseMap"
-import * as releaseAll from "../Managed/ReleaseMap/releaseAll"
-import * as P from "../Promise"
-import * as R from "../Ref"
-import * as RM from "../RefM"
-import { AtomicReference } from "../Support/AtomicReference"
-import type { Erase, UnionToIntersection } from "../Utils"
-import * as T from "./deps-effect"
-import * as M from "./deps-managed"
+import type * as C from "../Cause/index.js"
+import { reduce as chunkReduce } from "../Collections/Immutable/Chunk/api/reduce.js"
+import { insert } from "../Collections/Immutable/Map/index.js"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import { _E, _RIn, _ROut } from "../Effect/commons.js"
+import { sequential } from "../Effect/ExecutionStrategy.js"
+import type { Exit } from "../Exit/index.js"
+import { pipe } from "../Function/index.js"
+import {
+  chain as managedChain,
+  chain_ as managedChain_,
+  foldCauseM_ as managedFoldCauseM_,
+  map as managedMap,
+  map_ as managedMap_,
+  provideAll_ as managedProvideAll_,
+  provideSome_ as managedProvideSome_,
+  zipWith_ as managedZipWith_,
+  zipWithPar_ as managedZipWithPar_
+} from "../Managed/core.js"
+import { bind as managedBind, do as managedDo } from "../Managed/do.js"
+import {
+  forEach_ as managedForEach_,
+  forEachPar_ as managedForEachPar_
+} from "../Managed/forEach.js"
+import { fromEffect as managedFromEffect } from "../Managed/fromEffect.js"
+import { managedApply } from "../Managed/managed.js"
+import { environment as managedEnvironment } from "../Managed/methods/environment.js"
+import * as add from "../Managed/ReleaseMap/add.js"
+import * as Finalizer from "../Managed/ReleaseMap/finalizer.js"
+import type { ReleaseMap } from "../Managed/ReleaseMap/index.js"
+import * as makeReleaseMap from "../Managed/ReleaseMap/makeReleaseMap.js"
+import * as releaseAll from "../Managed/ReleaseMap/releaseAll.js"
+import { succeed as succeed_1 } from "../Managed/succeed.js"
+import { use_ } from "../Managed/use.js"
+import { await as promiseAwait } from "../Promise/await.js"
+import { halt } from "../Promise/halt.js"
+import { make } from "../Promise/make.js"
+import { succeed } from "../Promise/succeed.js"
+import * as R from "../Ref/index.js"
+import * as RM from "../RefM/index.js"
+import { AtomicReference } from "../Support/AtomicReference/index.js"
+import type { Erase, UnionToIntersection } from "../Utils/index.js"
+import * as T from "./deps-effect.js"
+import type { Managed } from "./deps-managed.js"
 
 /**
  * Creates a layer from an effect
  */
 export function fromRawEffect<R, E, A>(resource: T.Effect<R, E, A>): Layer<R, E, A> {
-  return new LayerManaged(M.fromEffect(resource))
+  return new LayerManaged(managedFromEffect(resource))
 }
 
 /**
@@ -46,7 +69,7 @@ export function fromRawFunctionM<A, R, E, B>(f: (a: A) => T.Effect<R, E, B>) {
 /**
  * Creates a layer from a managed environment
  */
-export function fromRawManaged<R, E, A>(resource: M.Managed<R, E, A>): Layer<R, E, A> {
+export function fromRawManaged<R, E, A>(resource: Managed<R, E, A>): Layer<R, E, A> {
   return new LayerManaged(resource)
 }
 
@@ -55,7 +78,7 @@ export function fromRawManaged<R, E, A>(resource: M.Managed<R, E, A>): Layer<R, 
  * output.
  */
 export function identity<R>() {
-  return fromRawManaged(environment<R>())
+  return fromRawManaged(managedEnvironment<R>())
 }
 
 /**
@@ -255,7 +278,7 @@ export function provideLayer_<R, E, A, E1, A1>(
   self: T.Effect<A, E1, A1>,
   layer: Layer<R, E, A>
 ): T.Effect<R, E | E1, A1> {
-  return M.use_(build(layer), (p) => T.provideAll_(self, p))
+  return use_(build(layer), (p) => T.provideAll_(self, p))
 }
 
 /**
@@ -327,7 +350,7 @@ export class LayerFresh<RIn, E, ROut> extends Layer<RIn, E, ROut> {
 export class LayerManaged<RIn, E, ROut> extends Layer<RIn, E, ROut> {
   readonly _tag = "LayerManaged"
 
-  constructor(readonly self: M.Managed<RIn, E, ROut>) {
+  constructor(readonly self: Managed<RIn, E, ROut>) {
     super()
   }
 }
@@ -422,65 +445,77 @@ export class LayerZipWithSeq<RIn, E, ROut, RIn1, E1, ROut2, ROut3> extends Layer
 
 export function scope<R, E, A>(
   _: Layer<R, E, A>
-): M.Managed<unknown, never, (_: MemoMap) => M.Managed<R, E, A>> {
+): Managed<unknown, never, (_: MemoMap) => Managed<R, E, A>> {
   const I = _._I()
 
   switch (I._tag) {
     case "LayerFresh": {
-      return M.succeed(() => build(I.self))
+      return succeed_1(() => build(I.self))
     }
     case "LayerManaged": {
-      return M.succeed(() => I.self)
+      return succeed_1(() => I.self)
     }
     case "LayerSuspend": {
-      return M.succeed((memo) => memo.getOrElseMemoize(I.self()))
+      return succeed_1((memo) => memo.getOrElseMemoize(I.self()))
     }
     case "LayerMap": {
-      return M.succeed((memo) => M.map_(memo.getOrElseMemoize(I.self), I.f))
+      return succeed_1((memo) => managedMap_(memo.getOrElseMemoize(I.self), I.f))
     }
     case "LayerChain": {
-      return M.succeed((memo) =>
-        M.chain_(memo.getOrElseMemoize(I.self), (a) => memo.getOrElseMemoize(I.f(a)))
+      return succeed_1((memo) =>
+        managedChain_(memo.getOrElseMemoize(I.self), (a) =>
+          memo.getOrElseMemoize(I.f(a))
+        )
       )
     }
     case "LayerZipWithPar": {
-      return M.succeed((memo) =>
-        M.zipWithPar_(memo.getOrElseMemoize(I.self), memo.getOrElseMemoize(I.that), I.f)
+      return succeed_1((memo) =>
+        managedZipWithPar_(
+          memo.getOrElseMemoize(I.self),
+          memo.getOrElseMemoize(I.that),
+          I.f
+        )
       )
     }
     case "LayerZipWithSeq": {
-      return M.succeed((memo) =>
-        M.zipWith_(memo.getOrElseMemoize(I.self), memo.getOrElseMemoize(I.that), I.f)
+      return succeed_1((memo) =>
+        managedZipWith_(
+          memo.getOrElseMemoize(I.self),
+          memo.getOrElseMemoize(I.that),
+          I.f
+        )
       )
     }
     case "LayerAllPar": {
-      return M.succeed((memo) => {
+      return succeed_1((memo) => {
         return pipe(
-          M.forEachPar_(I.layers as Layer<any, any, any>[], memo.getOrElseMemoize),
-          M.map(Chunk.reduce({} as any, (b, a) => ({ ...b, ...a })))
+          managedForEachPar_(I.layers as Layer<any, any, any>[], memo.getOrElseMemoize),
+          managedMap(chunkReduce({} as any, (b, a) => ({ ...b, ...a })))
         )
       })
     }
     case "LayerAllSeq": {
-      return M.succeed((memo) => {
+      return succeed_1((memo) => {
         return pipe(
-          M.forEach_(I.layers as Layer<any, any, any>[], memo.getOrElseMemoize),
-          M.map(Chunk.reduce({} as any, (b, a) => ({ ...b, ...a })))
+          managedForEach_(I.layers as Layer<any, any, any>[], memo.getOrElseMemoize),
+          managedMap(chunkReduce({} as any, (b, a) => ({ ...b, ...a })))
         )
       })
     }
     case "LayerFold": {
-      return M.succeed((memo) =>
-        M.foldCauseM_(
+      return succeed_1((memo) =>
+        managedFoldCauseM_(
           memo.getOrElseMemoize(I.self),
           (e) =>
             pipe(
-              M.fromEffect(T.environment<any>()),
-              M.chain((r) =>
-                M.provideSome_(memo.getOrElseMemoize(I.failure), () => Tp.tuple(r, e))
+              managedFromEffect(T.environment<any>()),
+              managedChain((r) =>
+                managedProvideSome_(memo.getOrElseMemoize(I.failure), () =>
+                  Tp.tuple(r, e)
+                )
               )
             ),
-          (r) => M.provideAll_(memo.getOrElseMemoize(I.success), r)
+          (r) => managedProvideAll_(memo.getOrElseMemoize(I.success), r)
         )
       )
     }
@@ -490,13 +525,13 @@ export function scope<R, E, A>(
 /**
  * Builds a layer into a managed value.
  */
-export function build<R, E, A>(_: Layer<R, E, A>): M.Managed<R, E, A> {
+export function build<R, E, A>(_: Layer<R, E, A>): Managed<R, E, A> {
   return pipe(
-    M.do,
-    M.bind("memoMap", () => M.fromEffect(makeMemoMap())),
-    M.bind("run", () => scope(_)),
-    M.bind("value", ({ memoMap, run }) => run(memoMap)),
-    M.map(({ value }) => value)
+    managedDo,
+    managedBind("memoMap", () => managedFromEffect(makeMemoMap())),
+    managedBind("run", () => scope(_)),
+    managedBind("value", ({ memoMap, run }) => run(memoMap)),
+    managedMap(({ value }) => value)
   )
 }
 
@@ -528,7 +563,7 @@ export class MemoMap {
    * and adds a finalizer to the outer `Managed`.
    */
   getOrElseMemoize = <R, E, A>(layer: Layer<R, E, A>) => {
-    return M.managedApply<R, E, A>(
+    return managedApply<R, E, A>(
       pipe(
         this.ref,
         RM.modify((m) => {
@@ -561,7 +596,7 @@ export class MemoMap {
             return pipe(
               T.do,
               T.bind("observers", () => R.makeRef(0)),
-              T.bind("promise", () => P.make<E, A>()),
+              T.bind("promise", () => make<E, A>()),
               T.bind("finalizerRef", () =>
                 R.makeRef<Finalizer.Finalizer>(Finalizer.noopFinalizer)
               ),
@@ -593,7 +628,7 @@ export class MemoMap {
                           T.provideAll_(
                             pipe(
                               scope(layer),
-                              M.chain((_) => _(this))
+                              managedChain((_) => _(this))
                             ).effect,
                             Tp.tuple(a, innerReleaseMap)
                           ),
@@ -603,7 +638,7 @@ export class MemoMap {
                               case "Failure": {
                                 return pipe(
                                   promise,
-                                  P.halt(e.cause),
+                                  halt(e.cause),
                                   T.chain(
                                     () =>
                                       releaseAll.releaseAll(
@@ -643,7 +678,7 @@ export class MemoMap {
                                       T.chain_(finalizerRef.get, (f) => f(e))
                                     )(outerReleaseMap)
                                   ),
-                                  T.tap(() => pipe(promise, P.succeed(e.value.get(1)))),
+                                  T.tap(() => pipe(promise, succeed(e.value.get(1)))),
                                   T.map(({ outerFinalizer }) =>
                                     Tp.tuple(outerFinalizer, e.value.get(1))
                                   )
@@ -662,7 +697,7 @@ export class MemoMap {
                 Tp.tuple(
                   pipe(
                     promise,
-                    P.await,
+                    promiseAwait,
                     T.onExit((e) => {
                       switch (e._tag) {
                         case "Failure": {

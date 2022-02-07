@@ -3,6 +3,102 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.52.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.52.1...@effect-ts/system@0.52.2) (2022-02-07)
+
+**Note:** Version bump only for package @effect-ts/system
+
+
+
+
+
+## [0.52.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.52.0...@effect-ts/system@0.52.1) (2022-02-02)
+
+**Note:** Version bump only for package @effect-ts/system
+
+
+
+
+
+# [0.52.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.51.6...@effect-ts/system@0.52.0) (2022-02-02)
+
+**Note:** Version bump only for package @effect-ts/system
+
+
+
+
+
+## [0.51.6](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.51.5...@effect-ts/system@0.51.6) (2022-01-31)
+
+**Note:** Version bump only for package @effect-ts/system
+
+
+
+
+
+## [0.51.5](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.51.4...@effect-ts/system@0.51.5) (2022-01-31)
+
+**Note:** Version bump only for package @effect-ts/system
+
+
+
+
+
+## [0.51.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.51.3...@effect-ts/system@0.51.4) (2022-01-31)
+
+**Note:** Version bump only for package @effect-ts/system
+
+
+
+
+
+## [0.51.3](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.51.2...@effect-ts/system@0.51.3) (2022-01-31)
+
+**Note:** Version bump only for package @effect-ts/system
+
+
+
+
+
+## [0.51.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.51.1...@effect-ts/system@0.51.2) (2022-01-31)
+
+**Note:** Version bump only for package @effect-ts/system
+
+
+
+
+
+## [0.51.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.51.0...@effect-ts/system@0.51.1) (2022-01-31)
+
+**Note:** Version bump only for package @effect-ts/system
+
+
+
+
+
+# [0.51.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.50.0...@effect-ts/system@0.51.0) (2022-01-31)
+
+**Note:** Version bump only for package @effect-ts/system
+
+
+
+
+
+# [0.50.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.49.1...@effect-ts/system@0.50.0) (2022-01-30)
+
+**Note:** Version bump only for package @effect-ts/system
+
+
+
+
+
+## [0.49.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.49.0...@effect-ts/system@0.49.1) (2022-01-20)
+
+**Note:** Version bump only for package @effect-ts/system
+
+
+
+
+
 # [0.49.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.48.2...@effect-ts/system@0.49.0) (2022-01-16)
 
 

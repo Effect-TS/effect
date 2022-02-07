@@ -1,9 +1,11 @@
-import * as core from "../../../../Effect/core"
-import type { Effect } from "../../../../Effect/effect"
-import * as coreMap from "../../../../Effect/map"
-import * as Tp from "../../Tuple"
-import * as Chunk from "../core"
-import { concreteId } from "../definition"
+// ets_tracing: off
+
+import * as core from "../../../../Effect/core.js"
+import type { Effect } from "../../../../Effect/effect.js"
+import * as coreMap from "../../../../Effect/map.js"
+import * as Tp from "../../Tuple/index.js"
+import * as Chunk from "../core.js"
+import { concreteId } from "../definition.js"
 
 /**
  * Statefully and effectfully maps over the elements of this chunk to produce

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as T from "../../../../Effect"
-import type * as C from "../core"
-import * as LoopOnPartialChunksElements from "./loopOnPartialChunksElements"
+import * as T from "../../../../Effect/index.js"
+import type * as C from "../core.js"
+import * as LoopOnPartialChunksElements from "./loopOnPartialChunksElements.js"
 
 /**
  * Effectfully filters the elements emitted by this stream.

@@ -1,11 +1,13 @@
-import * as A from "../../../Collections/Immutable/Chunk"
-import * as Tp from "../../../Collections/Immutable/Tuple"
-import * as T from "../../../Effect"
-import { pipe } from "../../../Function"
-import * as H from "../../../Hub"
-import * as M from "../../../Managed"
-import * as RefM from "../../../RefM"
-import * as S from ".."
+// ets_tracing: off
+
+import * as A from "../../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../../Collections/Immutable/Tuple/index.js"
+import * as T from "../../../Effect/index.js"
+import { pipe } from "../../../Function/index.js"
+import * as H from "../../../Hub/index.js"
+import * as M from "../../../Managed/index.js"
+import * as RefM from "../../../RefM/index.js"
+import * as S from "../index.js"
 
 /**
  * A `SubscriptionRef<A>` contains a `RefM` with a value of type

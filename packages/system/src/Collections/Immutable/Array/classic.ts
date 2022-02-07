@@ -1,12 +1,14 @@
-import type { Either } from "../../../Either/core"
-import type { Predicate, Refinement } from "../../../Function/core"
-import type { Option } from "../../../Option"
-import { isSome, none, some } from "../../../Option"
-import type { MutableArray, MutableRecord } from "../../../Support/Mutable"
-import type { Dictionary } from "../Dictionary"
-import type { NonEmptyArray } from "../NonEmptyArray"
-import * as Tp from "../Tuple"
-import * as C from "./core"
+// ets_tracing: off
+
+import type { Either } from "../../../Either/core.js"
+import type { Predicate, Refinement } from "../../../Function/core.js"
+import type { Option } from "../../../Option/index.js"
+import { isSome, none, some } from "../../../Option/index.js"
+import type { MutableArray, MutableRecord } from "../../../Support/Mutable/index.js"
+import type { Dictionary } from "../Dictionary/index.js"
+import type { NonEmptyArray } from "../NonEmptyArray/index.js"
+import * as Tp from "../Tuple/index.js"
+import * as C from "./core.js"
 
 /**
  * Classic Applicative's ap
@@ -149,14 +151,35 @@ export function findFirstMap<A, B>(
  * Find the first element returned by an option based selector function
  */
 export function findFirstMap_<A, B>(as: C.Array<A>, f: (a: A) => Option<B>): Option<B> {
+  return findFirstMapWithIndex_(as, (_, a) => f(a))
+}
+
+/**
+ * Find the first element returned by an option based selector function
+ */
+export function findFirstMapWithIndex_<A, B>(
+  as: C.Array<A>,
+  f: (i: number, a: A) => Option<B>
+): Option<B> {
   const len = as.length
   for (let i = 0; i < len; i++) {
-    const v = f(as[i]!)
+    const v = f(i, as[i]!)
     if (isSome(v)) {
       return v
     }
   }
   return none
+}
+
+/**
+ * Find the first element returned by an option based selector function
+ *
+ * @ets_data_first findFirstMapWithIndex_
+ */
+export function findFirstMapWithIndex<A, B>(
+  f: (i: number, a: A) => Option<B>
+): (as: C.Array<A>) => Option<B> {
+  return (as) => findFirstMapWithIndex_(as, f)
 }
 
 /**

@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as Tp from "../Collections/Immutable/Tuple"
-import * as E from "../Either"
-import { pipe } from "../Function"
-import type { AtomicReference } from "../Support/AtomicReference"
-import * as atomic from "./atomic"
-import * as T from "./effect"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import * as E from "../Either/index.js"
+import { pipe } from "../Function/index.js"
+import type { AtomicReference } from "../Support/AtomicReference/index.js"
+import * as atomic from "./atomic.js"
+import * as T from "./effect.js"
 
 export const TypeId = Symbol()
 export type TypeId = typeof TypeId

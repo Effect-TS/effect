@@ -1,13 +1,13 @@
 // ets_tracing: off
 
 /* eslint-disable prefer-const */
-import * as Tp from "../Collections/Immutable/Tuple"
-import { _A, _E, _R, _U } from "../Effect/commons"
-import * as E from "../Either"
-import { pipe } from "../Function"
-import type { Option } from "../Option"
-import { Stack } from "../Stack"
-import type * as U from "../Utils"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import { _A, _E, _R, _U } from "../Effect/commons.js"
+import * as E from "../Either/index.js"
+import { pipe } from "../Function/index.js"
+import type { Option } from "../Option/index.js"
+import { Stack } from "../Stack/index.js"
+import type * as U from "../Utils/index.js"
 
 /**
  * `Async[R, E, A]` is a purely functional description of an async computation

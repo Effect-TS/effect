@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
-import type { Predicate } from "../../Function"
-import { not, pipe } from "../../Function"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import * as Ref from "../_internal/ref"
-import * as Pull from "../Pull"
-import { Stream } from "./definitions"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import type { Predicate } from "../../Function/index.js"
+import { not, pipe } from "../../Function/index.js"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import * as Ref from "../_internal/ref.js"
+import * as Pull from "../Pull/index.js"
+import { Stream } from "./definitions.js"
 
 /**
  * Takes all elements of the stream until the specified predicate evaluates

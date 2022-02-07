@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { identity } from "../../Function"
-import { chain } from "./chain"
-import type { Stream } from "./definitions"
+import { identity } from "../../Function/index.js"
+import { chain } from "./chain.js"
+import type { Stream } from "./definitions.js"
 
 /**
  * Flattens this stream-of-streams into a stream made of the concatenation in

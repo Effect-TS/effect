@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import "../../Operator"
+import "../../Operator/index.js"
 
-import * as Chunk from "../../Collections/Immutable/Chunk"
-import { Hub, Subscription } from "./Hub"
+import * as Chunk from "../../Collections/Immutable/Chunk/index.js"
+import { Hub, Subscription } from "./Hub.js"
 
 class Node<A> {
   constructor(

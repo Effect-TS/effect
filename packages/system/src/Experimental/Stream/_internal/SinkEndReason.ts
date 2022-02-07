@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 export const SinkEndReasonTypeId = Symbol()
 
 export const SinkEndTypeId = Symbol()

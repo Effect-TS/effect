@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
-import * as P from "../Prelude"
-import type * as HKT from "../Prelude/HKT"
+import type * as HKT from "../Prelude/HKT/index.js"
+import * as P from "../Prelude/index.js"
 
 export function monad<P extends HKT.Param>(
   _: P

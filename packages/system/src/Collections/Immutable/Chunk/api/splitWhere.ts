@@ -1,7 +1,9 @@
-import type * as Tp from "../../Tuple"
-import type * as Chunk from "../core"
-import { concreteId } from "../definition"
-import { splitAt_ } from "./splitAt"
+// ets_tracing: off
+
+import type * as Tp from "../../Tuple/index.js"
+import type * as Chunk from "../core.js"
+import { concreteId } from "../definition.js"
+import { splitAt_ } from "./splitAt.js"
 /**
  * Splits this chunk on the first element that matches this predicate.
  */

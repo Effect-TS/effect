@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as T from "../../../../Effect"
-import * as C from "../core"
+import type * as T from "../../../../Effect/index.js"
+import * as C from "../core.js"
 
 export function ensuring_<
   Env,

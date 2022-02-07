@@ -3,15 +3,15 @@
 /**
  * adapted from https://github.com/gcanti/fp-ts
  */
-import "../../../Operator"
+import "../../../Operator/index.js"
 
-import type { Predicate, Refinement } from "../../../Function/core"
-import { identity } from "../../../Function/core"
-import type { Option } from "../../../Option"
-import { isSome, none, some } from "../../../Option"
-import type { MutableArray } from "../../../Support/Mutable"
-import type { NonEmptyArray } from "../NonEmptyArray"
-import * as Tp from "../Tuple"
+import type { Predicate, Refinement } from "../../../Function/core.js"
+import { identity } from "../../../Function/core.js"
+import type { Option } from "../../../Option/index.js"
+import { isSome, none, some } from "../../../Option/index.js"
+import type { MutableArray } from "../../../Support/Mutable/index.js"
+import type { NonEmptyArray } from "../NonEmptyArray/index.js"
+import * as Tp from "../Tuple/index.js"
 
 export type Array<A> = ReadonlyArray<A>
 
@@ -371,13 +371,48 @@ export function find_<A, B extends A>(
 ): Option<B>
 export function find_<A>(as: Array<A>, predicate: Predicate<A>): Option<A>
 export function find_<A>(as: Array<A>, predicate: Predicate<A>): Option<A> {
+  return findWithIndex_(as, (_, a) => predicate(a))
+}
+
+/**
+ * Find the first element which satisfies a predicate (or a refinement) function
+ */
+export function findWithIndex_<A, B extends A>(
+  as: Array<A>,
+  refinement: (i: number, a: A) => a is B
+): Option<B>
+export function findWithIndex_<A>(
+  as: Array<A>,
+  predicate: (i: number, a: A) => boolean
+): Option<A>
+export function findWithIndex_<A>(
+  as: Array<A>,
+  predicate: (i: number, a: A) => boolean
+): Option<A> {
   const len = as.length
   for (let i = 0; i < len; i++) {
-    if (predicate(as[i]!)) {
+    if (predicate(i, as[i]!)) {
       return some(as[i]!)
     }
   }
   return none
+}
+
+/**
+ * Find the first element which satisfies a predicate (or a refinement) function
+ *
+ *  @ets_data_first findWithIndex_
+ */
+export function findWithIndex<A, B extends A>(
+  refinement: (i: number, a: A) => a is B
+): (as: Array<A>) => Option<B>
+export function findWithIndex<A>(
+  predicate: (i: number, a: A) => boolean
+): (as: Array<A>) => Option<A>
+export function findWithIndex<A>(
+  predicate: (i: number, a: A) => boolean
+): (as: Array<A>) => Option<A> {
+  return (as) => findWithIndex_(as, predicate)
 }
 
 /**

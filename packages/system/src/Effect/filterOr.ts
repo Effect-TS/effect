@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import { RuntimeError } from "../Cause"
-import type { Predicate, Refinement } from "../Function"
-import { pipe } from "../Function"
-import { chain_, succeed, suspend } from "./core"
-import { die } from "./die"
-import type { Effect } from "./effect"
-import { fail } from "./fail"
+import { RuntimeError } from "../Cause/index.js"
+import type { Predicate, Refinement } from "../Function/index.js"
+import { pipe } from "../Function/index.js"
+import { chain_, succeed, suspend } from "./core.js"
+import { die } from "./die.js"
+import type { Effect } from "./effect.js"
+import { fail } from "./fail.js"
 
 /**
  * Dies with specified `unknown` if the predicate fails.

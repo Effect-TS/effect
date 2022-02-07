@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as St from "../Structural"
-import type { IsEqualTo } from "../Utils"
+import * as St from "../Structural/index.js"
+import type { IsEqualTo } from "../Utils/index.js"
 
 export const CaseBrand = Symbol()
 
@@ -28,6 +28,9 @@ export interface CaseConstructor {
   new <T>(args: IsEqualTo<T, {}> extends true ? void : T): T & Copy<T>
 }
 
+export const caseArgs = Symbol()
+export const caseKeys = Symbol()
+
 // @ts-expect-error
 export const Case: CaseConstructor = class<T>
   implements CaseBrand, St.HasHash, St.HasEquals
@@ -36,10 +39,10 @@ export const Case: CaseConstructor = class<T>
     return new this(args)
   }
 
-  #args: T
-  #keys: string[]
+  private [caseArgs]: T
+  private [caseKeys]: string[]
   constructor(args: T) {
-    this.#args = args
+    this[caseArgs] = args
 
     if (typeof args === "object" && args != null) {
       const keys = Object.keys(args)
@@ -48,21 +51,21 @@ export const Case: CaseConstructor = class<T>
         this[keys[i]!] = args[keys[i]!]
       }
     }
-    this.#keys = Object.keys(this).sort()
+    this[caseKeys] = Object.keys(this).sort()
   }
 
   copy(args: Partial<T>): this {
     // @ts-expect-error
-    return new this.constructor({ ...this.#args, ...args })
+    return new this.constructor({ ...this[caseArgs], ...args })
   }
 
   get [CaseBrand](): string[] {
-    return this.#keys
+    return this[caseKeys]
   }
 
   get [St.hashSym](): number {
     let h = h0
-    for (const k of this.#keys) {
+    for (const k of this[caseKeys]) {
       h = St.combineHash(h, St.hash(this[k]))
     }
     return h
@@ -76,7 +79,7 @@ export const Case: CaseConstructor = class<T>
       const kthat = that[CaseBrand]
       const len = kthat.length
 
-      if (len !== this.#keys.length) {
+      if (len !== this[caseKeys].length) {
         return false
       }
 
@@ -85,8 +88,8 @@ export const Case: CaseConstructor = class<T>
 
       while (eq && i < len) {
         eq =
-          this.#keys[i] === kthat[i] &&
-          St.equals(this[this.#keys[i]!]!, that[kthat[i]!]!)
+          this[caseKeys][i] === kthat[i] &&
+          St.equals(this[this[caseKeys][i]!]!, that[kthat[i]!]!)
         i++
       }
 

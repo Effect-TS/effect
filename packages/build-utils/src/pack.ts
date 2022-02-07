@@ -55,7 +55,7 @@ const writePackageJsonContent = pipe(
     const mainExports = {}
 
     if (fs.existsSync(`./build/esm/index.js`)) {
-      mainExports["module"] = `./_esm/index.js`
+      mainExports["import"] = `./_esm/index.js`
     }
     if (fs.existsSync(`./build/cjs/index.js`)) {
       mainExports["require"] = `./index.js`
@@ -63,36 +63,21 @@ const writePackageJsonContent = pipe(
 
     if (mainExports["require"]) {
       packageJson["main"] = mainExports["require"]
-    } else if (mainExports["module"]) {
-      packageJson["main"] = mainExports["module"]
+    } else if (mainExports["import"]) {
+      packageJson["main"] = mainExports["import"]
     }
 
     if (Object.keys(mainExports).length > 0) {
       exports["."] = mainExports
-
-      if (exports["."]["require"]) {
-        exports["."]["default"] = exports["."]["require"]
-        delete exports["."]["require"]
-      } else if (exports["."]["module"]) {
-        exports["."]["default"] = exports["."]["module"]
-        delete exports["."]["module"]
-      }
     }
 
     modules.forEach((m) => {
       exports[`./${m}`] = {}
       if (fs.existsSync(`./build/esm/${m}/index.js`)) {
-        exports[`./${m}`]["module"] = `./_esm/${m}/index.js`
+        exports[`./${m}`]["import"] = `./_esm/${m}/index.js`
       }
       if (fs.existsSync(`./build/cjs/${m}/index.js`)) {
         exports[`./${m}`]["require"] = `./${m}/index.js`
-      }
-      if (exports[`./${m}`]["require"]) {
-        exports[`./${m}`]["default"] = exports[`./${m}`]["require"]
-        delete exports[`./${m}`]["require"]
-      } else if (exports[`./${m}`]["module"]) {
-        exports[`./${m}`]["default"] = exports[`./${m}`]["module"]
-        delete exports[`./${m}`]["module"]
       }
       if (Object.keys(exports[`./${m}`]).length === 0) {
         delete exports[`./${m}`]
@@ -124,6 +109,73 @@ const writePackageJsonContent = pipe(
   TE.chain((str) => writeFile("./dist/package.json", str))
 )
 
+const writePackageJsonContentInESM = pipe(
+  TE.do,
+  TE.bind("content", () => loadPackageJson),
+  TE.bind("modules", ({ content }) => getModules(content)),
+  TE.bind("side", ({ content }) => getSide(content)),
+  TE.map(({ content, modules, side }) => {
+    const packageJson = {}
+
+    carry("name", content, packageJson)
+    carry("version", content, packageJson)
+    carry("private", content, packageJson)
+    carry("license", content, packageJson)
+    carry("repository", content, packageJson)
+    carry("dependencies", content, packageJson)
+    carry("peerDependencies", content, packageJson)
+    carry("gitHead", content, packageJson)
+    carry("bin", content, packageJson)
+
+    packageJson["type"] = "module"
+
+    const exports = {}
+    const mainExports = {}
+
+    if (fs.existsSync(`./build/esm/index.js`)) {
+      mainExports["import"] = `./index.js`
+    }
+
+    if (mainExports["import"]) {
+      packageJson["main"] = mainExports["import"]
+    }
+
+    if (Object.keys(mainExports).length > 0) {
+      exports["."] = mainExports
+    }
+
+    modules.forEach((m) => {
+      exports[`./${m}`] = {}
+      if (fs.existsSync(`./build/esm/${m}/index.js`)) {
+        exports[`./${m}`]["import"] = `./${m}/index.js`
+      }
+      if (Object.keys(exports[`./${m}`]).length === 0) {
+        delete exports[`./${m}`]
+      }
+    })
+
+    return JSON.stringify(
+      {
+        ...packageJson,
+        publishConfig: {
+          access: "public"
+        },
+        sideEffects: side.flatMap((m) => {
+          const map = []
+          if (fs.existsSync(`./build/esm/${m}/index.js`)) {
+            map.push(`./${m}/index.js`)
+          }
+          return map
+        }),
+        exports
+      },
+      null,
+      2
+    )
+  }),
+  TE.chain((str) => writeFile("./dist/_esm/package.json", str))
+)
+
 pipe(
   exec("rm -rf build/dist"),
   TE.tap(() => exec("mkdir -p dist")),
@@ -144,6 +196,7 @@ pipe(
     TE.when(() => fs.existsSync(`./build/dts`))(exec(`cp -r ./build/dts/* ./dist`))
   ),
   TE.tap(() => writePackageJsonContent),
+  TE.tap(() => (fs.existsSync("./dist/_esm") ? writePackageJsonContentInESM : TE.unit)),
   TE.tap(() => copyReadme),
   TE.fold(onLeft, onRight("pack succeeded!")),
   runMain

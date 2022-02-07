@@ -1,8 +1,8 @@
-import * as A from "../src/Collections/Immutable/Chunk"
-import * as T from "../src/Effect"
-import { pipe } from "../src/Function"
-import * as S from "../src/Stream"
-import * as SK from "../src/Stream/Sink"
+import * as A from "../src/Collections/Immutable/Chunk/index.js"
+import * as T from "../src/Effect/index.js"
+import { pipe } from "../src/Function/index.js"
+import * as S from "../src/Stream/index.js"
+import * as SK from "../src/Stream/Sink/index.js"
 
 describe("Sink", () => {
   describe("collectAllToMap", () => {

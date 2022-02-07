@@ -1,15 +1,15 @@
 // ets_tracing: off
 
-import "../../../Operator"
+import "../../../Operator/index.js"
 
-import type { Equal } from "../../../Equal"
-import type { Predicate, Refinement } from "../../../Function"
-import { not } from "../../../Function"
-import * as I from "../../../Iterable"
-import * as St from "../../../Structural"
-import * as HM from "../HashMap/core"
-import type { Next } from "../Map"
-import * as Tp from "../Tuple"
+import type { Equal } from "../../../Equal/index.js"
+import type { Predicate, Refinement } from "../../../Function/index.js"
+import { not } from "../../../Function/index.js"
+import * as I from "../../../Iterable/index.js"
+import * as St from "../../../Structural/index.js"
+import * as HM from "../HashMap/core.js"
+import type { Next } from "../Map/index.js"
+import * as Tp from "../Tuple/index.js"
 
 export class HashSet<V> implements Iterable<V>, St.HasHash, St.HasEquals {
   constructor(readonly keyMap: HM.HashMap<V, unknown>) {}

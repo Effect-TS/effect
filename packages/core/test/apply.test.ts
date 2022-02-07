@@ -1,7 +1,7 @@
 import * as FP_APP from "fp-ts/Apply"
 import * as FP_A from "fp-ts/Array"
 
-import * as A from "../src/Collections/Immutable/Array"
+import * as A from "../src/Collections/Immutable/Array/index.js"
 
 describe("Apply", () => {
   it("monadic apply should match fp-ts", () => {

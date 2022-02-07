@@ -1,6 +1,6 @@
 {
   "name": "@effect-ts/tracing-plugin",
-  "version": "0.15.2",
+  "version": "0.18.0",
   "license": "MIT",
   "repository": "https://github.com/Effect-TS/core.git",
   "homepage": "https://www.matechs.com",
@@ -12,8 +12,7 @@
     "lint": "yarn ets:eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
     "prettier": "yarn ets:prettier --write \"./{src,test,demo}/**/*.ts\"",
-    "tc": "yarn ets:tsc --noEmit",
-    "circular": "yarn ets:madge --circular --ts-config ./tsconfig.json --extensions ts ./src"
+    "tc": "yarn ets:tsc --noEmit"
   },
   "publishConfig": {
     "access": "public",

@@ -3,12 +3,12 @@
 import type { Either } from "@effect-ts/system/Either"
 import * as E from "@effect-ts/system/Either"
 
-import * as Tp from "../../Collections/Immutable/Tuple"
-import { pipe } from "../../Function"
-import type { Identity } from "../../Identity"
-import type { EitherURI } from "../../Modules"
-import * as P from "../../Prelude"
-import { forEachF } from "./forEachF"
+import * as Tp from "../../Collections/Immutable/Tuple/index.js"
+import { pipe } from "../../Function/index.js"
+import type { Identity } from "../../Identity/index.js"
+import type { EitherURI } from "../../Modules/index.js"
+import * as P from "../../Prelude/index.js"
+import { forEachF } from "./forEachF.js"
 
 /**
  * Separate `Either<E, Either<A, B>>` given `Identity<E>`

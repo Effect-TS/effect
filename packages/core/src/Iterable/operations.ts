@@ -3,10 +3,10 @@
 import { pipe } from "@effect-ts/system/Function"
 import * as I from "@effect-ts/system/Iterable"
 
-import type { IterableURI } from "../Modules"
-import type { URI } from "../Prelude"
-import * as P from "../Prelude"
-import { succeedF } from "../Prelude/DSL"
+import type { IterableURI } from "../Modules/index.js"
+import { succeedF } from "../Prelude/DSL/index.js"
+import type { URI } from "../Prelude/index.js"
+import * as P from "../Prelude/index.js"
 
 export * from "@effect-ts/system/Iterable"
 

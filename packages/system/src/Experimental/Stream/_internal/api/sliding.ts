@@ -1,15 +1,15 @@
 // ets_tracing: off
 
-import * as CS from "../../../../Cause"
-import * as CK from "../../../../Collections/Immutable/Chunk"
-import { pipe } from "../../../../Function"
-import * as O from "../../../../Option"
-import { RingBufferNew } from "../../../../Support/RingBufferNew"
-import * as CH from "../../Channel"
-import * as C from "../core"
-import * as Chain from "./chain"
-import * as Die from "./die"
-import * as SucceedWith from "./succeedWith"
+import * as CS from "../../../../Cause/index.js"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import { pipe } from "../../../../Function/index.js"
+import * as O from "../../../../Option/index.js"
+import { RingBufferNew } from "../../../../Support/RingBufferNew/index.js"
+import * as CH from "../../Channel/index.js"
+import * as C from "../core.js"
+import * as Chain from "./chain.js"
+import * as Die from "./die.js"
+import * as SucceedWith from "./succeedWith.js"
 
 /**
  * Emits a sliding window of n elements.

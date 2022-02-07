@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Chunk"
-import type { Stream } from "./definitions"
-import { mapChunks_ } from "./mapChunks"
+import * as A from "../../Collections/Immutable/Chunk/index.js"
+import type { Stream } from "./definitions.js"
+import { mapChunks_ } from "./mapChunks.js"
 
 /**
  * Converts this stream to a stream that executes its effects but emits no

@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type * as C from "./core"
-import * as ZipWithPar from "./zipWithPar"
+import type * as C from "./core.js"
+import * as ZipWithPar from "./zipWithPar.js"
 
 /**
  * Like `zipPar`, but keeps only the result from `that` sink.

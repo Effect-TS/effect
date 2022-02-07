@@ -1,8 +1,10 @@
-import * as HashMap from "../../Collections/Immutable/HashMap"
-import * as L from "../../Collections/Immutable/List"
-import type { Endomorphism } from "../../Function"
-import * as O from "../../Option"
-import type * as TestAnnotation from "../TestAnnotation"
+// ets_tracing: off
+
+import * as HashMap from "../../Collections/Immutable/HashMap/index.js"
+import * as L from "../../Collections/Immutable/List/index.js"
+import type { Endomorphism } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
+import type * as TestAnnotation from "../TestAnnotation/index.js"
 
 export class TestAnnotationMap {
   static empty = new TestAnnotationMap(HashMap.make())

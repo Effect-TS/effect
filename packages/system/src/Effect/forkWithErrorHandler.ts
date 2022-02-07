@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import { failureOrCause } from "../Cause"
-import { fold } from "../Either"
-import { pipe } from "../Function"
-import { fork, halt } from "./core"
-import type { Effect, RIO } from "./effect"
-import { onError_ } from "./onExit"
+import { failureOrCause } from "../Cause/index.js"
+import { fold } from "../Either/index.js"
+import { pipe } from "../Function/index.js"
+import { fork, halt } from "./core.js"
+import type { Effect, RIO } from "./effect.js"
+import { onError_ } from "./onExit.js"
 
 /**
  * Like fork but handles an error with the provided handler.

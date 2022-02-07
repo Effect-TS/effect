@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../../Operator"
+import "../../Operator/index.js"
 
 export class AtomicReference<A> {
   private current: A

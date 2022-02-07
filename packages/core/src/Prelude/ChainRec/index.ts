@@ -2,7 +2,7 @@
 
 import type { Either } from "@effect-ts/system/Either"
 
-import type * as HKT from "../HKT"
+import type * as HKT from "../HKT/index.js"
 
 export interface ChainRec<F extends HKT.URIS, C = HKT.Auto> {
   readonly chainRec: <A, B, K, Q, W, X, I, S, R, E>(

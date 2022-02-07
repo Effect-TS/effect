@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as T from "../../../Effect"
-import { pipe } from "../../../Function"
-import * as Api from "./api"
-import * as Core from "./core"
+import * as T from "../../../Effect/index.js"
+import { pipe } from "../../../Function/index.js"
+import * as Api from "./api/index.js"
+import * as Core from "./core.js"
 
 function bind<
   Env,

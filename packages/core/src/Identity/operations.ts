@@ -1,15 +1,15 @@
 // ets_tracing: off
 
-import type { Associative } from "../Associative"
-import * as A from "../Associative"
-import type { Bounded } from "../Bounded"
-import type { Endomorphism } from "../Function"
-import { identity } from "../Function"
-import type { IdentityURI } from "../Modules"
-import type { Derive } from "../Prelude/Derive"
-import type { URI, URIS } from "../Prelude/HKT"
-import type { Identity } from "./definition"
-import { makeIdentity } from "./makeIdentity"
+import type { Associative } from "../Associative/index.js"
+import * as A from "../Associative/index.js"
+import type { Bounded } from "../Bounded/index.js"
+import type { Endomorphism } from "../Function/index.js"
+import { identity } from "../Function/index.js"
+import type { IdentityURI } from "../Modules/index.js"
+import type { Derive } from "../Prelude/Derive/index.js"
+import type { URI, URIS } from "../Prelude/HKT/index.js"
+import type { Identity } from "./definition.js"
+import { makeIdentity } from "./makeIdentity.js"
 
 /**
  * Derive `Identity`

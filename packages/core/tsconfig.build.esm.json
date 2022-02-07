@@ -2,12 +2,13 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "build/esm",
+    "declarationDir": "build/dts",
     "target": "ES2018",
     "module": "ES6",
     "moduleResolution": "Node",
     "incremental": true,
     "tsBuildInfoFile": "tsbuildinfo/esm.tsbuildinfo",
-    "declaration": false,
+    "declaration": true,
     "declarationMap": false,
     "removeComments": false,
     "plugins": [
@@ -20,5 +21,7 @@
       }
     ]
   },
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src/**/*.ts"
+  ]
 }

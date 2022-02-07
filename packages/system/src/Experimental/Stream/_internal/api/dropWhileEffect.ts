@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as T from "../../../../Effect"
-import * as SK from "../../Sink"
-import type * as C from "../core"
-import * as PipeThrough from "./pipeThrough"
+import type * as T from "../../../../Effect/index.js"
+import * as SK from "../../Sink/index.js"
+import type * as C from "../core.js"
+import * as PipeThrough from "./pipeThrough.js"
 
 /**
  * Drops all elements of the stream for as long as the specified predicate

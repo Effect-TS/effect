@@ -1,28 +1,33 @@
 // ets_tracing: off
 
-import * as Chunk from "../Collections/Immutable/Chunk"
-import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray"
-import * as Tp from "../Collections/Immutable/Tuple"
-import * as Exit from "../Exit"
-import * as Fiber from "../Fiber"
-import { pipe } from "../Function"
-import * as P from "../Promise"
-import * as Ref from "../Ref"
-import * as as from "./as"
-import * as asUnit from "./asUnit"
-import * as core from "./core"
-import * as Do from "./do"
-import type { Effect, UIO } from "./effect"
-import { forEach_ } from "./excl-forEach"
-import { flatten } from "./flatten"
-import * as interruption from "./interruption"
-import * as map from "./map"
-import * as tap from "./tap"
+import { reduce, reduce_ } from "../Collections/Immutable/Chunk/api/reduce.js"
+import type { Chunk as Chunk_1 } from "../Collections/Immutable/Chunk/index.js"
+import type { NonEmptyArray } from "../Collections/Immutable/NonEmptyArray/index.js"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import * as Exit from "../Exit/index.js"
+import * as Fiber from "../Fiber/index.js"
+import { pipe } from "../Function/index.js"
+import { await as promiseAwait } from "../Promise/await.js"
+import { halt } from "../Promise/halt.js"
+import type { Promise } from "../Promise/index.js"
+import { make } from "../Promise/make.js"
+import { succeed } from "../Promise/succeed.js"
+import * as Ref from "../Ref/index.js"
+import * as as from "./as.js"
+import * as asUnit from "./asUnit.js"
+import * as core from "./core.js"
+import * as Do from "./do.js"
+import type { Effect, UIO } from "./effect.js"
+import { forEach_ } from "./excl-forEach.js"
+import { flatten } from "./flatten.js"
+import * as interruption from "./interruption.js"
+import * as map from "./map.js"
+import * as tap from "./tap.js"
 
 function arbiter<E, A>(
-  fibers: Chunk.Chunk<Fiber.Fiber<E, A>>,
+  fibers: Chunk_1<Fiber.Fiber<E, A>>,
   winner: Fiber.Fiber<E, A>,
-  promise: P.Promise<E, Tp.Tuple<[A, Fiber.Fiber<E, A>]>>,
+  promise: Promise<E, Tp.Tuple<[A, Fiber.Fiber<E, A>]>>,
   fails: Ref.Ref<number>
 ) {
   return (res: Exit.Exit<E, A>): UIO<void> =>
@@ -35,7 +40,7 @@ function arbiter<E, A>(
               fails,
               Ref.modify((c) =>
                 Tp.tuple(
-                  c === 0 ? pipe(promise, P.halt(e), asUnit.asUnit) : core.unit,
+                  c === 0 ? pipe(promise, halt(e), asUnit.asUnit) : core.unit,
                   c - 1
                 )
               )
@@ -44,12 +49,12 @@ function arbiter<E, A>(
         (a) =>
           pipe(
             promise,
-            P.succeed(Tp.tuple(a, winner)),
+            succeed(Tp.tuple(a, winner)),
             core.chain((set) =>
               set
                 ? pipe(
                     fibers,
-                    Chunk.reduce(core.unit as UIO<void>, (io, f) =>
+                    reduce(core.unit as UIO<void>, (io, f) =>
                       f === winner ? io : tap.tap_(io, () => Fiber.interrupt(f))
                     )
                   )
@@ -74,7 +79,7 @@ export function raceAllWithStrategy<R, E, A>(
 ): Effect<R, E, A> {
   return pipe(
     Do.do,
-    Do.bind("done", () => P.make<E, Tp.Tuple<[A, Fiber.Fiber<E, A>]>>()),
+    Do.bind("done", () => make<E, Tp.Tuple<[A, Fiber.Fiber<E, A>]>>()),
     Do.bind("fails", () => Ref.makeRef(ios.length)),
     Do.bind("c", ({ done, fails }) =>
       interruption.uninterruptibleMask(
@@ -85,7 +90,7 @@ export function raceAllWithStrategy<R, E, A>(
               forEach_(ios, (x) => pipe(x, interruption.interruptible, core.fork))
             ),
             tap.tap(({ fs }) =>
-              Chunk.reduce_(fs, core.unit as UIO<void>, (io, f) =>
+              reduce_(fs, core.unit as UIO<void>, (io, f) =>
                 pipe(
                   io,
                   core.chain(() =>
@@ -101,9 +106,9 @@ export function raceAllWithStrategy<R, E, A>(
             ),
             Do.bind("c", ({ fs, inheritRefs }) =>
               pipe(
-                restore(pipe(done, P.await, core.chain(inheritRefs))),
+                restore(pipe(done, promiseAwait, core.chain(inheritRefs))),
                 interruption.onInterrupt(() =>
-                  Chunk.reduce_(fs, core.unit as UIO<void>, (io, f) =>
+                  reduce_(fs, core.unit as UIO<void>, (io, f) =>
                     tap.tap_(io, () => Fiber.interrupt(f))
                   )
                 )

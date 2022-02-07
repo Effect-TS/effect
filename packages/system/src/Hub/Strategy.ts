@@ -1,17 +1,17 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
-import * as Chunk from "../Collections/Immutable/Chunk"
-import * as Tp from "../Collections/Immutable/Tuple"
-import type * as HS from "../Collections/Mutable/HashSet"
-import * as T from "../Effect"
-import { pipe } from "../Function"
-import * as P from "../Promise"
-import type { AtomicBoolean } from "../Support/AtomicBoolean"
-import * as MQ from "../Support/MutableQueue"
-import type * as InternalHub from "./_internal/Hub"
-import * as U from "./_internal/unsafe"
+import * as Chunk from "../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import type * as HS from "../Collections/Mutable/HashSet/index.js"
+import * as T from "../Effect/index.js"
+import { pipe } from "../Function/index.js"
+import * as P from "../Promise/index.js"
+import type { AtomicBoolean } from "../Support/AtomicBoolean/index.js"
+import * as MQ from "../Support/MutableQueue/index.js"
+import type * as InternalHub from "./_internal/Hub.js"
+import * as U from "./_internal/unsafe.js"
 
 /**
  * A `Strategy<A>` describes the protocol for how publishers and subscribers

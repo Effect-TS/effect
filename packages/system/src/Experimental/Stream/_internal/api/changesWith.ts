@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
-import * as Tp from "../../../../Collections/Immutable/Tuple"
-import type * as EQ from "../../../../Equal"
-import * as O from "../../../../Option"
-import * as CH from "../../Channel"
-import * as C from "../core"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
+import type * as EQ from "../../../../Equal/index.js"
+import * as O from "../../../../Option/index.js"
+import * as CH from "../../Channel/index.js"
+import * as C from "../core.js"
 
 /**
  * Returns a new stream that only emits elements that are not equal to the

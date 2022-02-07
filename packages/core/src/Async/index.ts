@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
 /**
  * Async is a lightweight Effect data type that support as parameters:
@@ -16,13 +16,13 @@ import { NoSuchElementException } from "@effect-ts/system/GlobalExceptions"
 import type { Has, Tag } from "@effect-ts/system/Has"
 import type * as O from "@effect-ts/system/Option"
 
-import { identity, pipe } from "../Function"
-import type { AsyncURI } from "../Modules"
-import type { URI } from "../Prelude"
-import * as P from "../Prelude"
-import type { Sync } from "../Sync"
-import { runEitherEnv } from "../Sync"
-import { isEither, isOption, isTag } from "../Utils"
+import { identity, pipe } from "../Function/index.js"
+import type { AsyncURI } from "../Modules/index.js"
+import type { URI } from "../Prelude/index.js"
+import * as P from "../Prelude/index.js"
+import type { Sync } from "../Sync/index.js"
+import { runEitherEnv } from "../Sync/index.js"
+import { isEither, isOption, isTag } from "../Utils/index.js"
 
 export * from "@effect-ts/system/Async"
 export { branch as if, branch_ as if_ }

@@ -1,11 +1,11 @@
-import * as T from "../../src/Effect"
-import * as Ex from "../../src/Exit"
-import * as F from "../../src/Fiber"
-import { pipe } from "../../src/Function"
-import * as Rand from "../../src/Random"
-import * as FPT from "../../src/Testing/FibersPerTest"
-import { TestClock } from "../../src/Testing/TestClock"
-import { TestEnvironment } from "../../src/Testing/TestEnvironment"
+import * as T from "../../src/Effect/index.js"
+import * as Ex from "../../src/Exit/index.js"
+import * as F from "../../src/Fiber/index.js"
+import { pipe } from "../../src/Function/index.js"
+import * as Rand from "../../src/Random/index.js"
+import * as FPT from "../../src/Testing/FibersPerTest/index.js"
+import { TestClock } from "../../src/Testing/TestClock/index.js"
+import { TestEnvironment } from "../../src/Testing/TestEnvironment/index.js"
 
 it("test env", async () => {
   const res = await pipe(

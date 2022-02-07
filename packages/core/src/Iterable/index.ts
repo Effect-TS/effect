@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
-export { IterableURI } from "../Modules"
-export * from "./operations"
-export * from "./instances"
+export { IterableURI } from "../Modules/index.js"
+export * from "./operations.js"
+export * from "./instances.js"

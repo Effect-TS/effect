@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { range } from "../Collections/Immutable/Array"
-import type { Effect } from "./effect"
-import { collectAllUnit } from "./excl-forEach"
+import { range } from "../Collections/Immutable/Array/index.js"
+import type { Effect } from "./effect.js"
+import { collectAllUnit } from "./excl-forEach.js"
 
 /**
  * Replicates the given effect `n` times.

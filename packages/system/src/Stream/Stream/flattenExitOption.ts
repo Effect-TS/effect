@@ -1,14 +1,14 @@
 // ets_tracing: off
 
-import type * as Ex from "../../Exit"
-import { pipe } from "../../Function"
-import * as O from "../../Option"
-import * as BP from "../../Stream/BufferedPull"
-import * as P from "../../Stream/Pull"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import * as Ref from "../_internal/ref"
-import { Stream } from "./definitions"
+import type * as Ex from "../../Exit/index.js"
+import { pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
+import * as BP from "../../Stream/BufferedPull/index.js"
+import * as P from "../../Stream/Pull/index.js"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import * as Ref from "../_internal/ref.js"
+import { Stream } from "./definitions.js"
 
 export function flattenExitOption<R, E, E1, O1>(
   self: Stream<R, E, Ex.Exit<O.Option<E1>, O1>>

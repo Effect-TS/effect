@@ -1,6 +1,8 @@
-import type { Refinement } from "../../../../Function"
-import * as Chunk from "../core"
-import { ArrTypeId, concrete } from "../definition"
+// ets_tracing: off
+
+import type { Refinement } from "../../../../Function/index.js"
+import * as Chunk from "../core.js"
+import { ArrTypeId, concrete } from "../definition.js"
 
 /**
  * Returns a filtered subset of this chunk.

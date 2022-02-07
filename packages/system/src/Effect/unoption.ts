@@ -1,8 +1,10 @@
-import * as O from "../Option"
-import { succeed } from "./core"
-import type { Effect } from "./effect"
-import { fail } from "./fail"
-import * as FM from "./foldM"
+// ets_tracing: off
+
+import * as O from "../Option/index.js"
+import { succeed } from "./core.js"
+import type { Effect } from "./effect.js"
+import { fail } from "./fail.js"
+import * as FM from "./foldM.js"
 
 /**
  * Converts an option on errors into an option on values.

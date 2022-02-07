@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import { failureOrCause } from "../Cause"
-import * as E from "../Either"
-import { chain_, foldCauseM_, halt, succeed } from "./core"
-import type { Effect } from "./effect"
+import { failureOrCause } from "../Cause/index.js"
+import * as E from "../Either/index.js"
+import { chain_, foldCauseM_, halt, succeed } from "./core.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Returns an effect that effectfully "peeks" at the failure of this effect.

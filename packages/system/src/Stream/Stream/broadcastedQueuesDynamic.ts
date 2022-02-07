@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import * as H from "../../Hub"
-import type * as Q from "../../Queue"
-import * as M from "../_internal/managed"
-import type * as Take from "../Take"
-import type { Stream } from "./definitions"
-import { toHub_ } from "./toHub"
+import * as H from "../../Hub/index.js"
+import type * as Q from "../../Queue/index.js"
+import * as M from "../_internal/managed.js"
+import type * as Take from "../Take/index.js"
+import type { Stream } from "./definitions.js"
+import { toHub_ } from "./toHub.js"
 
 /**
  * Converts the stream to a managed dynamic amount of queues. Every chunk will be replicated to every queue with the

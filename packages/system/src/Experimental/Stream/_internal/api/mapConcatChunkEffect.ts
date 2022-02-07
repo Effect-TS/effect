@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import type * as T from "../../../../Effect"
-import { identity } from "../../../../Function"
-import type * as C from "../core"
-import * as MapConcatChunk from "./mapConcatChunk"
-import * as MapEffect from "./mapEffect"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import type * as T from "../../../../Effect/index.js"
+import { identity } from "../../../../Function/index.js"
+import type * as C from "../core.js"
+import * as MapConcatChunk from "./mapConcatChunk.js"
+import * as MapEffect from "./mapEffect.js"
 
 /**
  * Effectfully maps each element to a chunk, and flattens the chunks into

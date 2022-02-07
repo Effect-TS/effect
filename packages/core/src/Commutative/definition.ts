@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { Associative } from "../Associative"
+import type { Associative } from "../Associative/index.js"
 
 /**
  * The `Commutative[A]` type class describes a commutative binary operator

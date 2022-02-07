@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { chain_, succeed, yieldNow } from "./core"
-import type { Effect } from "./effect"
-import { zipRight_ } from "./zips"
+import { chain_, succeed, yieldNow } from "./core.js"
+import type { Effect } from "./effect.js"
+import { zipRight_ } from "./zips.js"
 
 /**
  * Repeats this effect until its error satisfies the specified effectful predicate.

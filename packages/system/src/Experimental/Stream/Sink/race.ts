@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as E from "../../../Either"
-import { identity } from "../../../Function"
-import type * as C from "./core"
-import * as Map from "./map"
-import * as RaceBoth from "./raceBoth"
+import * as E from "../../../Either/index.js"
+import { identity } from "../../../Function/index.js"
+import type * as C from "./core.js"
+import * as Map from "./map.js"
+import * as RaceBoth from "./raceBoth.js"
 
 /**
  * Runs both sinks in parallel on the input, returning the result or the error from the

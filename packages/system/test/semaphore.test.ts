@@ -1,7 +1,7 @@
-import * as A from "../src/Collections/Immutable/Array"
-import * as T from "../src/Effect"
-import * as F from "../src/Fiber"
-import * as SM from "../src/Semaphore"
+import * as A from "../src/Collections/Immutable/Array/index.js"
+import * as T from "../src/Effect/index.js"
+import * as F from "../src/Fiber/index.js"
+import * as SM from "../src/Semaphore/index.js"
 
 describe("Semaphores", () => {
   it("interrupts properly (Blocking IO First)", async () => {

@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import type * as CK from "../../../../Collections/Immutable/Chunk"
-import { pipe } from "../../../../Function"
-import * as M from "../../../../Managed"
-import * as Q from "../../../../Queue"
-import * as CH from "../../Channel"
-import * as TK from "../../Take"
-import type * as C from "../core"
+import type * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import { pipe } from "../../../../Function/index.js"
+import * as M from "../../../../Managed/index.js"
+import * as Q from "../../../../Queue/index.js"
+import * as CH from "../../Channel/index.js"
+import * as TK from "../../Take/index.js"
+import type * as C from "../core.js"
 
 /**
  * Like `Stream#into`, but provides the result as a `Managed` to allow for scope

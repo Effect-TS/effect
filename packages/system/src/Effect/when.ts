@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import * as O from "../Option"
-import { succeed } from "./core"
-import type { Effect } from "./effect"
-import { map_ } from "./map"
+import * as O from "../Option/index.js"
+import { succeed } from "./core.js"
+import type { Effect } from "./effect.js"
+import { map_ } from "./map.js"
 
 /**
  * The moral equivalent of `if (p) exp`

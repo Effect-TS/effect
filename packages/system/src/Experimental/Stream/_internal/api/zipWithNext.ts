@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as CK from "../../../../Collections/Immutable/Chunk"
-import * as Tp from "../../../../Collections/Immutable/Tuple"
-import * as O from "../../../../Option"
-import * as CH from "../../Channel"
-import * as C from "../core"
+import * as CK from "../../../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
+import * as O from "../../../../Option/index.js"
+import * as CH from "../../Channel/index.js"
+import * as C from "../core.js"
 
 /**
  * Zips each element with the next element if present.

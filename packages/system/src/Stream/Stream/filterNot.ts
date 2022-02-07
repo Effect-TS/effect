@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type { Predicate } from "../../Function"
-import { not } from "../../Function"
-import type { Stream } from "./definitions"
-import { filter_ } from "./filter"
+import type { Predicate } from "../../Function/index.js"
+import { not } from "../../Function/index.js"
+import type { Stream } from "./definitions.js"
+import { filter_ } from "./filter.js"
 
 /**
  * Filters this stream by the specified predicate, removing all elements for

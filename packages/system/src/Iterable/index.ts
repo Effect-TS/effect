@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
-import * as A from "../Collections/Immutable/Array"
-import * as Tp from "../Collections/Immutable/Tuple"
-import type { Either } from "../Either"
-import { identity } from "../Function"
+import * as A from "../Collections/Immutable/Array/index.js"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import type { Either } from "../Either/index.js"
+import { identity } from "../Function/index.js"
 
 function* genOf<A>(a: A) {
   yield a

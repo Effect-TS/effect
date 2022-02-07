@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import type { _A, _E, _R } from "../../Utils"
-import type { Managed } from "../managed"
+import type { _A, _E, _R } from "../../Utils/index.js"
+import type { Managed } from "../managed.js"
 
 /**
  * Compact the union produced by the result of f

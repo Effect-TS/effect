@@ -1,11 +1,19 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "lib": ["ES2020"],
+    "lib": [
+      "ES2020"
+    ],
     "target": "ES2018",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "plugins": []
   },
-  "include": ["src/**/*", "scripts/**/*", "bench/**/*", "test/**/*", "demo/**/*"]
+  "include": [
+    "src/**/*",
+    "scripts/**/*",
+    "bench/**/*",
+    "test/**/*",
+    "demo/**/*"
+  ]
 }

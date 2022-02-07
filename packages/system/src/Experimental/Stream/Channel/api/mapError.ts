@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as CS from "../../../../Cause"
-import type * as C from "../core"
-import * as MapErrorCause from "./mapErrorCause"
+import * as CS from "../../../../Cause/index.js"
+import type * as C from "../core.js"
+import * as MapErrorCause from "./mapErrorCause.js"
 
 /**
  * Returns a new channel, which is the same as this one, except the failure value of the returned

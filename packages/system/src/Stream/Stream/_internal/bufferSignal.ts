@@ -1,18 +1,18 @@
 // ets_tracing: off
 
-import type * as A from "../../../Collections/Immutable/Chunk"
-import * as Tp from "../../../Collections/Immutable/Tuple"
-import * as Ex from "../../../Exit"
-import { pipe } from "../../../Function"
-import * as O from "../../../Option"
-import * as P from "../../../Promise"
-import * as Q from "../../../Queue"
-import * as T from "../../_internal/effect"
-import * as M from "../../_internal/managed"
-import * as Ref from "../../_internal/ref"
-import * as Pull from "../../Pull"
-import * as Take from "../../Take"
-import type { Stream } from "../definitions"
+import type * as A from "../../../Collections/Immutable/Chunk/index.js"
+import * as Tp from "../../../Collections/Immutable/Tuple/index.js"
+import * as Ex from "../../../Exit/index.js"
+import { pipe } from "../../../Function/index.js"
+import * as O from "../../../Option/index.js"
+import * as P from "../../../Promise/index.js"
+import * as Q from "../../../Queue/index.js"
+import * as T from "../../_internal/effect.js"
+import * as M from "../../_internal/managed.js"
+import * as Ref from "../../_internal/ref.js"
+import * as Pull from "../../Pull/index.js"
+import * as Take from "../../Take/index.js"
+import type { Stream } from "../definitions.js"
 
 /**
  * Allows a faster producer to progress independently of a slower consumer by buffering

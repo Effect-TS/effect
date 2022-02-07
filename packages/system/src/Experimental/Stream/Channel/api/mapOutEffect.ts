@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type * as T from "../../../../Effect"
-import * as C from "../core"
-import * as ReadWith from "./readWith"
-import * as ZipRight from "./zipRight"
+import type * as T from "../../../../Effect/index.js"
+import * as C from "../core.js"
+import * as ReadWith from "./readWith.js"
+import * as ZipRight from "./zipRight.js"
 
 const mapOutMReader = <Env, Env1, OutErr, OutErr1, OutElem, OutElem1, OutDone>(
   f: (o: OutElem) => T.Effect<Env1, OutErr1, OutElem1>

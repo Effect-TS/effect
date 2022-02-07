@@ -1,21 +1,25 @@
 // ets_tracing: off
 
-import * as Chunk from "../Collections/Immutable/Chunk"
-import { succeed } from "../Effect/core"
-import * as exclForEach from "../Effect/excl-forEach"
+import { collect_ } from "../Collections/Immutable/Chunk/api/collect.js"
+import { filterEffect_ } from "../Collections/Immutable/Chunk/api/filterEffect.js"
+import { mapEffect_ } from "../Collections/Immutable/Chunk/api/mapEffect.js"
+import { zip_ } from "../Collections/Immutable/Chunk/api/zip.js"
+import * as Chunk from "../Collections/Immutable/Chunk/core.js"
+import { succeed } from "../Effect/core.js"
+import * as exclForEach from "../Effect/excl-forEach.js"
 import {
   BackPressureStrategy,
   createQueue,
   makeBoundedQueue as makeBounded,
   unsafeCreateQueue as unsafeCreate
-} from "../Effect/excl-forEach"
-import { identity, pipe, tuple } from "../Function"
-import * as O from "../Option"
-import { Bounded, Unbounded } from "../Support/MutableQueue"
-import { DroppingStrategy, SlidingStrategy } from "./core"
-import * as T from "./effect-api"
-import type { Queue, XQueue } from "./xqueue"
-import { concreteQueue, XQueueInternal } from "./xqueue"
+} from "../Effect/excl-forEach.js"
+import { identity, pipe, tuple } from "../Function/index.js"
+import * as O from "../Option/index.js"
+import { Bounded, Unbounded } from "../Support/MutableQueue/index.js"
+import { DroppingStrategy, SlidingStrategy } from "./core.js"
+import * as T from "./effect-api.js"
+import type { Queue, XQueue } from "./xqueue.js"
+import { concreteQueue, XQueueInternal } from "./xqueue.js"
 
 export { createQueue, makeBounded, unsafeCreate, BackPressureStrategy }
 
@@ -227,14 +231,14 @@ class BothWithM<
   takeAll: T.Effect<RB & RB1 & R3, E3 | EB | EB1, Chunk.Chunk<D>> = T.chain_(
     T.zipPar_(this.self.takeAll, this.that.takeAll),
     ({ tuple: [bs, cs] }) =>
-      Chunk.mapEffect_(Chunk.zip_(bs, cs), ({ tuple: [b, c] }) => this.f(b, c))
+      mapEffect_(zip_(bs, cs), ({ tuple: [b, c] }) => this.f(b, c))
   )
 
   takeUpTo(max: number): T.Effect<RB & RB1 & R3, E3 | EB | EB1, Chunk.Chunk<D>> {
     return T.chain_(
       T.zipPar_(this.self.takeUpTo(max), this.that.takeUpTo(max)),
       ({ tuple: [bs, cs] }) =>
-        Chunk.mapEffect_(Chunk.zip_(bs, cs), ({ tuple: [b, c] }) => this.f(b, c))
+        mapEffect_(zip_(bs, cs), ({ tuple: [b, c] }) => this.f(b, c))
     )
   }
 }
@@ -377,11 +381,11 @@ class DimapM<RA, RB, EA, EB, A, B, C, RC, EC, RD, ED, D> extends XQueueInternal<
 
   takeAll: T.Effect<RD & RB, ED | EB, Chunk.Chunk<D>> = T.chain_(
     this.self.takeAll,
-    (a) => Chunk.mapEffect_(a, this.g)
+    (a) => mapEffect_(a, this.g)
   )
 
   takeUpTo(n: number): T.Effect<RD & RB, ED | EB, Chunk.Chunk<D>> {
-    return T.chain_(this.self.takeUpTo(n), (bs) => Chunk.mapEffect_(bs, this.g))
+    return T.chain_(this.self.takeUpTo(n), (bs) => mapEffect_(bs, this.g))
   }
 }
 
@@ -482,7 +486,7 @@ class FilterInputM<RA, RB, EA, EB, B, A, A1 extends A, R2, E2> extends XQueueInt
         )
       ),
       T.chain((maybeAs) => {
-        const filtered = Chunk.collect_(maybeAs, identity)
+        const filtered = collect_(maybeAs, identity)
 
         if (Chunk.isEmpty(filtered)) {
           return T.succeed(false)
@@ -559,7 +563,7 @@ class FilterOutputM<RA, RB, RB1, EB1, EA, EB, A, B> extends XQueueInternal<
 
   takeAll: T.Effect<RB & RB1, EB | EB1, Chunk.Chunk<B>> = T.chain_(
     this.self.takeAll,
-    (bs) => Chunk.filterEffect_(bs, this.f)
+    (bs) => filterEffect_(bs, this.f)
   )
 
   loop(max: number, acc: Chunk.Chunk<B>): T.Effect<RB & RB1, EB | EB1, Chunk.Chunk<B>> {
@@ -568,7 +572,7 @@ class FilterOutputM<RA, RB, RB1, EB1, EA, EB, A, B> extends XQueueInternal<
         return T.succeed(acc)
       }
 
-      return T.chain_(Chunk.filterEffect_(bs, this.f), (filtered) => {
+      return T.chain_(filterEffect_(bs, this.f), (filtered) => {
         const length = Chunk.size(filtered)
 
         if (length === max) {

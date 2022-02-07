@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import "../../../../Operator"
+import "../../../../Operator/index.js"
 
-import type * as Cause from "../../../../Cause"
-import type * as T from "../../../../Effect"
-import type * as Exit from "../../../../Exit"
-import type { AsyncInputProducer } from "./producer"
+import type * as Cause from "../../../../Cause/index.js"
+import type * as T from "../../../../Effect/index.js"
+import type * as Exit from "../../../../Exit/index.js"
+import type { AsyncInputProducer } from "./producer.js"
 import {
   _Env,
   _InDone,
@@ -16,7 +16,7 @@ import {
   _OutElem,
   _OutErr,
   _OutErr2
-} from "./symbols"
+} from "./symbols.js"
 
 /**
  * A `Channel` is a nexus of I/O operations, which supports both reading and writing.

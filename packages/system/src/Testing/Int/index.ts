@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 export interface IntBrand {
   readonly IntBrand: unique symbol
 }

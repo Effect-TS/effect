@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import * as E from "../Either"
-import { NoSuchElementException } from "../GlobalExceptions"
-import * as O from "../Option"
-import { chain_, succeed } from "./core"
-import type { Effect } from "./effect"
-import { fail, failWith } from "./fail"
-import { foldM_ } from "./foldM"
+import * as E from "../Either/index.js"
+import { NoSuchElementException } from "../GlobalExceptions/index.js"
+import * as O from "../Option/index.js"
+import { chain_, succeed } from "./core.js"
+import type { Effect } from "./effect.js"
+import { fail, failWith } from "./fail.js"
+import { foldM_ } from "./foldM.js"
 
 /**
  * Returns a successful effect if the value is `Left`, or fails with the error e.

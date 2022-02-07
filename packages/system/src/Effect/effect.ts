@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { HasUnify } from "../Utils"
-import { _A, _E, _R, _S1, _S2, _U, _W } from "./commons"
-import type { Instruction } from "./primitives"
+import type { HasUnify } from "../Utils/index.js"
+import { _A, _E, _R, _S1, _S2, _U, _W } from "./commons.js"
+import type { Instruction } from "./primitives.js"
 
 export const EffectURI = "Effect"
 export type EffectURI = typeof EffectURI

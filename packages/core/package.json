@@ -1,27 +1,26 @@
 {
   "name": "@effect-ts/core",
-  "version": "0.52.0",
+  "version": "0.55.2",
   "license": "MIT",
   "repository": "https://github.com/Effect-TS/core.git",
   "homepage": "https://www.matechs.com",
   "scripts": {
     "clean": "yarn ets:rimraf build tsbuildinfo dist",
-    "build-cjs": "yarn ets:tsc -p tsconfig.build.cjs.json",
-    "build-esm": "yarn ets:tsc -p tsconfig.build.esm.json && babel build/esm/ -d build/esm/ -s --plugins annotate-pure-calls",
+    "build-cjs": "./build-cjs.sh",
+    "build-esm": "yarn ets:tsc -p tsconfig.build.esm.json && yarn ets:babel build/esm/ -d build/esm/ -s --plugins annotate-pure-calls",
     "build-post": "yarn ets:ts-node ../../scripts/pack.ts",
-    "build": "yarn ets:concurrently \"yarn build-cjs\" \"yarn build-esm\" && yarn build-post",
+    "build": "yarn build-esm && yarn build-cjs && yarn build-post",
     "lint": "yarn ets:eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
     "prettier": "yarn ets:prettier --write \"./{src,test,demo}/**/*.ts\"",
-    "tc": "yarn ets:tsc --noEmit",
-    "circular": "yarn ets:madge --circular --ts-config ./tsconfig.json --extensions ts ./src"
+    "tc": "yarn ets:tsc --noEmit"
   },
   "publishConfig": {
     "access": "public",
     "directory": "dist"
   },
   "dependencies": {
-    "@effect-ts/system": "^0.49.0"
+    "@effect-ts/system": "^0.52.2"
   },
   "config": {
     "side": [

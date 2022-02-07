@@ -1,5 +1,7 @@
-import type * as AV from "../AssertionValue/AssertionValue"
-import type * as BAM from "../BoolAlgebraM"
+// ets_tracing: off
+
+import type * as AV from "../AssertionValue/AssertionValue.js"
+import type * as BAM from "../BoolAlgebraM/index.js"
 
 export interface AssertResultM
   extends BAM.BoolAlgebraM<unknown, never, AV.AssertionValue> {}

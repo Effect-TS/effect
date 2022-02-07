@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as T from "../deps"
+import type * as T from "../deps.js"
 
 export class Exited {
   readonly _tag = "Exited"

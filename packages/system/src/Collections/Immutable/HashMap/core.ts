@@ -1,18 +1,18 @@
 // ets_tracing: off
 
-import "../../../Operator"
+import "../../../Operator/index.js"
 
-import type { Refinement } from "../../../Function"
-import { constant, identity, tuple } from "../../../Function"
-import { NoSuchElementException } from "../../../GlobalExceptions"
-import * as I from "../../../Iterable"
-import * as O from "../../../Option"
-import * as St from "../../../Structural"
-import * as Tp from "../Tuple"
-import { fromBitmap, hashFragment, toBitmap } from "./Bitwise"
-import { SIZE } from "./Config"
-import type { Node, UpdateFn } from "./Nodes"
-import { Empty, isEmptyNode } from "./Nodes"
+import type { Refinement } from "../../../Function/index.js"
+import { constant, identity, tuple } from "../../../Function/index.js"
+import { NoSuchElementException } from "../../../GlobalExceptions/index.js"
+import * as I from "../../../Iterable/index.js"
+import * as O from "../../../Option/index.js"
+import * as St from "../../../Structural/index.js"
+import * as Tp from "../Tuple/index.js"
+import { fromBitmap, hashFragment, toBitmap } from "./Bitwise/index.js"
+import { SIZE } from "./Config/index.js"
+import type { Node, UpdateFn } from "./Nodes/index.js"
+import { Empty, isEmptyNode } from "./Nodes/index.js"
 
 export class HashMap<K, V> implements Iterable<readonly [K, V]> {
   readonly _K!: () => K

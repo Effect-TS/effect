@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
 // codegen:start {preset: barrel, include: ./*.ts}
-export * from "./core"
-export * from "./gen"
+export * from "./core.js"
+export * from "./gen.js"
 // codegen:end

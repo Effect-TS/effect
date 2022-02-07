@@ -1,17 +1,17 @@
 // ets_tracing: off
 
-import * as L from "../Collections/Immutable/List"
-import * as Tp from "../Collections/Immutable/Tuple"
-import * as E from "../Either"
-import { identity } from "../Function"
-import * as O from "../Option"
-import * as R from "../Ref"
-import { ImmutableQueue } from "../Support/ImmutableQueue"
-import * as T from "./effect"
-import * as M from "./managed"
-import * as P from "./promise"
-import type { State } from "./state"
-import { Acquisition, assertNonNegative } from "./state"
+import * as L from "../Collections/Immutable/List/index.js"
+import * as Tp from "../Collections/Immutable/Tuple/index.js"
+import * as E from "../Either/index.js"
+import { identity } from "../Function/index.js"
+import * as O from "../Option/index.js"
+import * as R from "../Ref/index.js"
+import { ImmutableQueue } from "../Support/ImmutableQueue/index.js"
+import * as T from "./effect.js"
+import * as M from "./managed.js"
+import * as P from "./promise.js"
+import type { State } from "./state.js"
+import { Acquisition, assertNonNegative } from "./state.js"
 
 /**
  * An asynchronous semaphore, which is a generalization of a mutex. Semaphores

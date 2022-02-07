@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { access } from "./core"
+import { access } from "./core.js"
 
 /**
  * Access environment

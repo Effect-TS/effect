@@ -1,8 +1,8 @@
-import * as A from "../src/Collections/Immutable/Array"
-import * as R from "../src/Collections/Immutable/Dictionary"
-import * as T from "../src/Effect"
-import { pipe } from "../src/Function"
-import * as S from "../src/Sync"
+import * as A from "../src/Collections/Immutable/Array/index.js"
+import * as R from "../src/Collections/Immutable/Dictionary/index.js"
+import * as T from "../src/Effect/index.js"
+import { pipe } from "../src/Function/index.js"
+import * as S from "../src/Sync/index.js"
 
 const x: <A>(a: A.Array<A>) => S.UIO<A.Array<A>> = A.forEachF(S.Applicative)(S.succeed)
 

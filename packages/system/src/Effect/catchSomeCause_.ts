@@ -1,9 +1,9 @@
 // ets_tracing: off
 
-import type { Cause } from "../Cause/cause"
-import * as O from "../Option"
-import { foldCauseM_, halt, succeed } from "./core"
-import type { Effect } from "./effect"
+import type { Cause } from "../Cause/cause.js"
+import * as O from "../Option/index.js"
+import { foldCauseM_, halt, succeed } from "./core.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Recovers from some or all of the error cases with provided cause.

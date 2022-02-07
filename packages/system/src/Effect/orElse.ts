@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import { succeed, tryOrElse_ } from "./core"
-import type { Effect } from "./effect"
+import { succeed, tryOrElse_ } from "./core.js"
+import type { Effect } from "./effect.js"
 
 /**
  * Executes this effect and returns its value, if it succeeds, but

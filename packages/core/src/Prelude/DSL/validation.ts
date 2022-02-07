@@ -4,13 +4,13 @@ import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import * as E from "@effect-ts/system/Either"
 import { pipe } from "@effect-ts/system/Function"
 
-import type { Associative } from "../../Associative"
-import type { Applicative } from "../Applicative"
-import type { Fail } from "../FX/Fail"
-import type { Run } from "../FX/Run"
-import * as HKT from "../HKT"
-import type { Monad } from "../Monad"
-import { succeedF } from "./succeed"
+import type { Associative } from "../../Associative/index.js"
+import type { Applicative } from "../Applicative/index.js"
+import type { Fail } from "../FX/Fail/index.js"
+import type { Run } from "../FX/Run/index.js"
+import * as HKT from "../HKT/index.js"
+import type { Monad } from "../Monad/index.js"
+import { succeedF } from "./succeed.js"
 
 export function getValidationF<F extends HKT.URIS, C = HKT.Auto>(
   F: Monad<F, C> & Run<F, C> & Fail<F, C> & Applicative<F, C>

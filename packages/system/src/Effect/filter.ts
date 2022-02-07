@@ -1,14 +1,14 @@
 // ets_tracing: off
 
-import * as Chunk from "../Collections/Immutable/Chunk"
-import { pipe } from "../Function"
-import * as I from "../Iterable"
-import * as O from "../Option"
-import * as core from "./core"
-import type { Effect } from "./effect"
-import * as forEach from "./excl-forEach"
-import * as map from "./map"
-import * as zipWith from "./zipWith"
+import { compact } from "../Collections/Immutable/Chunk/api/compact.js"
+import { pipe } from "../Function/index.js"
+import * as I from "../Iterable/index.js"
+import * as O from "../Option/index.js"
+import * as core from "./core.js"
+import type { Effect } from "./effect.js"
+import * as forEach from "./excl-forEach.js"
+import * as map from "./map.js"
+import * as zipWith from "./zipWith.js"
 
 /**
  * Filters the collection using the specified effectual predicate.
@@ -57,7 +57,7 @@ export function filterPar_<A, R, E>(
   return pipe(
     as,
     forEach.forEachPar((a) => map.map_(f(a), (b) => (b ? O.some(a) : O.none)), __trace),
-    map.map(Chunk.compact)
+    map.map(compact)
   )
 }
 
@@ -93,7 +93,7 @@ export function filterParN_<A, R, E>(
       (a) => map.map_(f(a), (b) => (b ? O.some(a) : O.none)),
       __trace
     ),
-    map.map(Chunk.compact)
+    map.map(compact)
   )
 }
 

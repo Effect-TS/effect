@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import * as A from "../../Collections/Immutable/Array"
-import { pipe } from "../../Function"
-import type { _A, _E, _R } from "../../Utils"
-import { flattenTuples } from "./_internal/flattenTuples"
-import type { Stream } from "./definitions"
-import { map } from "./map"
-import { zip_ } from "./zip"
+import * as A from "../../Collections/Immutable/Array/index.js"
+import { pipe } from "../../Function/index.js"
+import type { _A, _E, _R } from "../../Utils/index.js"
+import { flattenTuples } from "./_internal/flattenTuples.js"
+import type { Stream } from "./definitions.js"
+import { map } from "./map.js"
+import { zip_ } from "./zip.js"
 
 /**
  * Zips the specified streams together with the specified function.

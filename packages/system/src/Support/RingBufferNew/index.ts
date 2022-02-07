@@ -1,5 +1,7 @@
-import * as Chunk from "../../Collections/Immutable/Chunk"
-import * as O from "../../Option"
+// ets_tracing: off
+
+import * as Chunk from "../../Collections/Immutable/Chunk/index.js"
+import * as O from "../../Option/index.js"
 
 export class RingBufferNew<A> {
   private array: Array<A | null>

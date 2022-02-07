@@ -2,8 +2,8 @@
 
 import * as O from "@effect-ts/system/Option"
 
-import type { Associative } from "../../Associative"
-import { makeIdentity } from "../../Identity"
+import type { Associative } from "../../Associative/index.js"
+import { makeIdentity } from "../../Identity/index.js"
 
 export function getIdentity<A>(A: Associative<A>) {
   return makeIdentity<O.Option<A>>(O.none, (x, y) =>

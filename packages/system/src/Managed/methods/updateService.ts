@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { Has, Tag } from "../../Has"
-import { provideSome_ } from "../core"
-import type { Managed } from "../managed"
+import type { Has, Tag } from "../../Has/index.js"
+import { provideSome_ } from "../core.js"
+import type { Managed } from "../managed.js"
 
 /**
  * Updates a service in the environment of this effect.

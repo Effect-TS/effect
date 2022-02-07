@@ -3,6 +3,126 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.55.2](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.55.1...@effect-ts/core@0.55.2) (2022-02-07)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
+## [0.55.1](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.55.0...@effect-ts/core@0.55.1) (2022-02-02)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
+# [0.55.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.54.9...@effect-ts/core@0.55.0) (2022-02-02)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
+## [0.54.9](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.54.8...@effect-ts/core@0.54.9) (2022-02-01)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
+## [0.54.8](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.54.7...@effect-ts/core@0.54.8) (2022-02-01)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
+## [0.54.7](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.54.6...@effect-ts/core@0.54.7) (2022-01-31)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
+## [0.54.6](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.54.5...@effect-ts/core@0.54.6) (2022-01-31)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
+## [0.54.5](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.54.4...@effect-ts/core@0.54.5) (2022-01-31)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
+## [0.54.4](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.54.3...@effect-ts/core@0.54.4) (2022-01-31)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
+## [0.54.3](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.54.2...@effect-ts/core@0.54.3) (2022-01-31)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
+## [0.54.2](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.54.1...@effect-ts/core@0.54.2) (2022-01-31)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
+## [0.54.1](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.54.0...@effect-ts/core@0.54.1) (2022-01-31)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
+# [0.54.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.53.0...@effect-ts/core@0.54.0) (2022-01-31)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
+# [0.53.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.52.1...@effect-ts/core@0.53.0) (2022-01-30)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
+## [0.52.1](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.52.0...@effect-ts/core@0.52.1) (2022-01-20)
+
+**Note:** Version bump only for package @effect-ts/core
+
+
+
+
+
 # [0.52.0](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.51.2...@effect-ts/core@0.52.0) (2022-01-16)
 
 **Note:** Version bump only for package @effect-ts/core

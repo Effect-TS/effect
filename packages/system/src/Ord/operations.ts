@@ -1,9 +1,10 @@
 // ets_tracing: off
 
-import type { Equal } from "../Equal"
-import { makeEqual } from "../Equal"
-import type { Ordering } from "../Ordering"
-import type { Ord } from "./definition"
+import type { Equal } from "../Equal/index.js"
+import { makeEqual } from "../Equal/index.js"
+import type { Ordering } from "../Ordering/index.js"
+import type { ForcedTuple } from "../Utils/index.js"
+import type { Ord } from "./definition.js"
 
 /**
  * Creates Ord[A] from a compare function
@@ -93,4 +94,26 @@ export function inverted<A>(O: Ord<A>) {
  */
 export function getEqual<A>(O: Ord<A>): Equal<A> {
   return makeEqual((x, y) => O.compare(x, y) === 0)
+}
+
+/**
+ * Given a tuple of `Ord`s returns an `Ord` for the tuple
+ */
+export function tuple<T extends ReadonlyArray<Ord<any>>>(
+  ...ords: T
+): Ord<
+  ForcedTuple<{
+    [K in keyof T]: T[K] extends Ord<infer A> ? A : never
+  }>
+> {
+  return makeOrd((x, y) => {
+    let i = 0
+    for (; i < ords.length - 1; i++) {
+      const r = ords[i]!.compare(x.get(i), y.get(i))
+      if (r !== 0) {
+        return r
+      }
+    }
+    return ords[i]!.compare(x.get(i), y.get(i))
+  })
 }

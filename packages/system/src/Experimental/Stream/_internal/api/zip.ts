@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as A from "../../../../Collections/Immutable/Array"
-import * as Tp from "../../../../Collections/Immutable/Tuple"
-import type { _A, _E, _R } from "../../../../Utils"
-import type * as C from "../core"
-import * as ZipWith from "./zipWith"
+import * as A from "../../../../Collections/Immutable/Array/index.js"
+import * as Tp from "../../../../Collections/Immutable/Tuple/index.js"
+import type { _A, _E, _R } from "../../../../Utils/index.js"
+import type * as C from "../core.js"
+import * as ZipWith from "./zipWith.js"
 
 /**
  * Zips this stream with another point-wise and emits tuples of elements from both streams.

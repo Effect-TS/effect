@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { RIO } from "./definitions"
-import { environment } from "./environment"
-import { map_ } from "./map"
+import type { RIO } from "./definitions.js"
+import { environment } from "./environment.js"
+import { map_ } from "./map.js"
 
 /**
  * Accesses the environment of the stream.

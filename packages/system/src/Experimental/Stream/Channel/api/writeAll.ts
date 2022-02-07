@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as A from "../../../../Collections/Immutable/Array"
-import * as C from "../core"
-import * as ZipRight from "./zipRight"
+import * as A from "../../../../Collections/Immutable/Array/index.js"
+import * as C from "../core.js"
+import * as ZipRight from "./zipRight.js"
 
 export function writeAll<Out>(
   ...outs: A.Array<Out>

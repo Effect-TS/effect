@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import { pipe } from "../Function"
-import * as I from "../Iterable"
-import * as Ref from "../Ref"
-import * as core from "./core"
-import type { Effect } from "./effect"
-import * as forEach from "./excl-forEach"
-import { zipWith_ } from "./zipWith"
-import { zipWithPar_ } from "./zipWithPar"
+import { pipe } from "../Function/index.js"
+import * as I from "../Iterable/index.js"
+import * as Ref from "../Ref/index.js"
+import * as core from "./core.js"
+import type { Effect } from "./effect.js"
+import * as forEach from "./excl-forEach.js"
+import { zipWith_ } from "./zipWith.js"
+import { zipWithPar_ } from "./zipWithPar.js"
 
 /**
  * Merges an `Iterable[IO]` to a single IO, working sequentially.

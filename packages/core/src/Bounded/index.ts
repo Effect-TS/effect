@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import "../Operator"
+import "../Operator/index.js"
 
-export * from "./definition"
-export { BoundedURI } from "../Modules"
-export * from "./operations"
+export * from "./definition.js"
+export { BoundedURI } from "../Modules/index.js"
+export * from "./operations.js"

@@ -1,8 +1,10 @@
-import * as H from "../../Hub"
-import type * as M from "../_internal/managed"
-import type * as Take from "../Take"
-import type { Stream } from "./definitions"
-import { intoManaged_ } from "./intoManaged"
+// ets_tracing: off
+
+import * as H from "../../Hub/index.js"
+import type * as M from "../_internal/managed.js"
+import type * as Take from "../Take/index.js"
+import type { Stream } from "./definitions.js"
+import { intoManaged_ } from "./intoManaged.js"
 
 /**
  * Like `Stream#intoHub`, but provides the result as a `Managed` to allow for scope

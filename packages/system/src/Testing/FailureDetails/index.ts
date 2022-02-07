@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import type * as NEA from "../../Collections/Immutable/NonEmptyArray"
 import type * as AV from "../AssertionValue/AssertionValue"
 import * as l from "../AssertionValue/label"

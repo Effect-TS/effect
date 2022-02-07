@@ -1,9 +1,9 @@
-import * as T from "../../src/Effect"
-import { pipe } from "../../src/Function"
-import { assert, suite, test, testM } from "../../src/Testing"
-import * as As from "../../src/Testing/Assertion"
-import * as Ba from "../../src/Testing/BoolAlgebra"
-import * as Tr from "../../src/Testing/TestRunner"
+import * as T from "../../src/Effect/index.js"
+import { pipe } from "../../src/Function/index.js"
+import * as As from "../../src/Testing/Assertion/index.js"
+import * as Ba from "../../src/Testing/BoolAlgebra/index.js"
+import { assert, suite, test, testM } from "../../src/Testing/index.js"
+import * as Tr from "../../src/Testing/TestRunner/index.js"
 
 export const emptyString = test("empty string")(() =>
   pipe(

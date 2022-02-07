@@ -1,13 +1,13 @@
 // ets_tracing: off
 
-import * as C from "../../Cause"
-import * as E from "../../Either"
-import { pipe } from "../../Function"
-import * as O from "../../Option"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
-import type * as SK from "../Sink"
-import type { Stream } from "./definitions"
+import * as C from "../../Cause/index.js"
+import * as E from "../../Either/index.js"
+import { pipe } from "../../Function/index.js"
+import * as O from "../../Option/index.js"
+import * as T from "../_internal/effect.js"
+import * as M from "../_internal/managed.js"
+import type * as SK from "../Sink/index.js"
+import type { Stream } from "./definitions.js"
 
 /**
  * Runs the sink on the stream to produce either the sink's result or an error.

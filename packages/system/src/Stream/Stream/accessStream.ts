@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import { chain_ } from "./chain"
-import type { Stream } from "./definitions"
-import { environment } from "./environment"
+import { chain_ } from "./chain.js"
+import type { Stream } from "./definitions.js"
+import { environment } from "./environment.js"
 
 /**
  * Accesses the environment of the stream in the context of a stream.
