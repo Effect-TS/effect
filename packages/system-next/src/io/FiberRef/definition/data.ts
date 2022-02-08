@@ -73,9 +73,7 @@ export class Runtime<A> extends XFiberRefInternal<never, never, A, A> {
       Effect.Do()
         .bind("r", () => Effect.environment<unknown>())
         .bind("releaseMap", () => fiberRefGet(currentReleaseMap.value))
-        .bind("a", ({ releaseMap }) =>
-          this.get.flatMap((old) => this.set(value).as(old))
-        )
+        .bind("a", () => this.get.flatMap((old) => this.set(value).as(old)))
         .bind("releaseMapEntry", ({ a, r, releaseMap }) =>
           releaseMap.add(() => locally_(currentEnvironment.value, r)(this.set(a)))
         )

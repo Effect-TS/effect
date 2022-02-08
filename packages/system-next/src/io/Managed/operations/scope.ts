@@ -1,6 +1,5 @@
-import type { LazyArg } from "packages/system-next/src/data/Function"
-
 import type * as Tp from "../../../collection/immutable/Tuple"
+import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
 import { locally_ } from "../../FiberRef/operations/locally"

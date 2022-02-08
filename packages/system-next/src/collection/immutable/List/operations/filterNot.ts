@@ -1,5 +1,4 @@
-import type { Predicate } from "packages/system-next/src/data/Function"
-
+import type { Predicate } from "../../../../data/Function"
 import type { List } from "../definition"
 import { MutableList } from "../definition"
 
