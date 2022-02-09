@@ -1,5 +1,4 @@
-import type { Predicate } from "packages/system-next/src/data/Function"
-
+import type { Predicate } from "../../../../data/Function"
 import type { Chunk } from "../definition"
 import { concreteId } from "../definition"
 
