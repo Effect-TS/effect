@@ -1,13 +1,13 @@
 import { Either } from "../../data/Either"
 import type { UIO } from "../Effect"
 import { Effect } from "../Effect"
-import { Clock } from "./definition"
+import { AbstractClock } from "./definition"
 
-export class LiveClock extends Clock {
+export class LiveClock extends AbstractClock {
   currentTime: UIO<number> = Effect.succeed(new Date().getTime())
 
-  sleep = (ms: number, __etsTrace?: string): UIO<void> =>
-    Effect.asyncInterrupt((cb) => {
+  sleep(ms: number, __etsTrace?: string): UIO<void> {
+    return Effect.asyncInterrupt((cb) => {
       const timeout = setTimeout(() => {
         cb(Effect.unit)
       }, ms)
@@ -18,4 +18,5 @@ export class LiveClock extends Clock {
         })
       )
     })
+  }
 }
