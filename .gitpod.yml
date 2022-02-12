@@ -1,5 +1,6 @@
 tasks:
-  - init: yarn && yarn build
+  - name: init
+    command: yarn install
 github:
   prebuilds:
     addCheck: true

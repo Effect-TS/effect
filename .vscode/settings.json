@@ -6,14 +6,16 @@
   "files.exclude": {
     "**/.yarn*": true,
     "**/.*.js": true,
+    "**/.*.json": true,
+    "**/.*.yml": true,
     "**/.*config": true,
-    //"**/.git*": true,
+    "**/.git*": true,
     "**/.npmignore*": true,
     "**/.husky": true,
-    //"**/node_modules": true,
+    "**/node_modules": true,
     "**/LICENSE.*": true,
     "**/lerna.json": true,
-    "**/jest.config.js": true,
+    //"**/jest.config.js": true,
   },
   "[javascript]": {
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"

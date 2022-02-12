@@ -1,5 +1,6 @@
-// eslint-disable-next-line
-module.exports = {
+import { JestKonfik } from "@konfik-plugin/jest"
+
+export const jest = JestKonfik({
   preset: "ts-jest",
   testEnvironment: "node",
   rootDir: "./",
@@ -17,4 +18,4 @@ module.exports = {
       tsconfig: "<rootDir>/tsconfig.jest.json"
     }
   }
-}
+})

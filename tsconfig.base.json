@@ -8,11 +8,9 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "preserveSymlinks": true,
-    "moduleResolution": "node",
+    "moduleResolution": "Node",
     "noEmit": false,
-    "lib": [
-      "es2020"
-    ],
+    "lib": ["ES2020"],
     "sourceMap": true,
     "declarationMap": true,
     "strict": true,
@@ -33,13 +31,7 @@
     "strictNullChecks": true,
     "baseUrl": ".",
     "target": "ES2018",
-    "typeRoots": [
-      "./node_modules/@types"
-    ]
+    "typeRoots": ["./node_modules/@types"]
   },
-  "exclude": [
-    "node_modules",
-    "build",
-    "dist"
-  ]
+  "exclude": ["node_modules", "build", "dist"]
 }
