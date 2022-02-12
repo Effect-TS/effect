@@ -201,7 +201,6 @@ export abstract class AbstractClock implements Clock {
 
       const driver = Driver(next, last, reset, state)
 
-      console.log(driver)
       return driver
     })
   }

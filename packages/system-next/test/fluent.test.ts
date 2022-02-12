@@ -40,7 +40,7 @@ describe("Effect Fluent API", () => {
   //     T.bind("envA", () => T.service(EnvA)) >=
   //     T.bind("envB", () => T.service(EnvB)) >=
   //     T.bind("envC", () => T.service(EnvC)) >=
-  //     T.orElse(() => T.dieWith("hello")) >=
+  //     T.orElse(() => T.die("hello")) >=
   //     T.provideSomeLayer(LiveEnvA + LiveEnvB > LiveEnvC)
 
   //   const {

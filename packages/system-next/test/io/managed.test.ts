@@ -19,6 +19,7 @@ import { Managed, Reservation } from "../../src/io/Managed"
 import { ReleaseMap } from "../../src/io/Managed/ReleaseMap"
 import { Promise } from "../../src/io/Promise"
 import * as Ref from "../../src/io/Ref"
+import { Schedule } from "../../src/io/Schedule"
 
 const ExampleError = new Error("Oh noes!")
 
@@ -1932,34 +1933,57 @@ describe("Managed", () => {
     })
   })
 
-  // TODO(Mike/Max): after implementation of Schedule
-  // suite("retry")(
-  //   it("Should retry the reservation") {
-  //     for {
-  //       retries <- Ref.make(0)
-  //       program =
-  //         ZManaged
-  //           .acquireReleaseWith(retries.updateAndGet(_ + 1).flatMap(r => if (r == 3) ZIO.unit else ZIO.fail(())))(_ =>
-  //             ZIO.unit
-  //           )
-  //       _ <- program.retry(Schedule.recurs(3)).use(_ => ZIO.unit).ignore
-  //       r <- retries.get
-  //     } yield assert(r)(equalTo(3))
-  //   },
-  //   it("Should retry the acquisition") {
-  //     for {
-  //       retries <- Ref.make(0)
-  //       program = Managed.fromReservation(
-  //                   Reservation(
-  //                     retries.updateAndGet(_ + 1).flatMap(r => if (r == 3) ZIO.unit else ZIO.fail(())),
-  //                     _ => ZIO.unit
-  //                   )
-  //                 )
-  //       _ <- program.retry(Schedule.recurs(3)).use(_ => ZIO.unit).ignore
-  //       r <- retries.get
-  //     } yield assert(r)(equalTo(3))
-  //   }
-  // ) @@ zioTag(errors)
+  describe("retry", () => {
+    it("should retry the reservation", async () => {
+      const program = Effect.Do()
+        .bind("retries", () => Ref.make(0))
+        .bindValue("program", ({ retries }) =>
+          Managed.acquireReleaseWith(
+            Ref.updateAndGet_(retries, (n) => n + 1).flatMap((r) =>
+              r === 3 ? Effect.unit : Effect.fail(undefined)
+            ),
+            () => Effect.unit
+          )
+        )
+        .tap(({ program }) =>
+          program
+            .retry(Schedule.recurs(3))
+            .use(() => Effect.unit)
+            .ignore()
+        )
+        .flatMap(({ retries }) => Ref.get(retries))
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(3)
+    })
+
+    it("should retry the acquisition", async () => {
+      const program = Effect.Do()
+        .bind("retries", () => Ref.make(0))
+        .bindValue("program", ({ retries }) =>
+          Managed.fromReservation(
+            Reservation(
+              Ref.updateAndGet_(retries, (n) => n + 1).flatMap((r) =>
+                r === 3 ? Effect.unit : Effect.fail(undefined)
+              ),
+              () => Effect.unit
+            )
+          )
+        )
+        .tap(({ program }) =>
+          program
+            .retry(Schedule.recurs(3))
+            .use(() => Effect.unit)
+            .ignore()
+        )
+        .flatMap(({ retries }) => Ref.get(retries))
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(3)
+    })
+  })
 
   describe("preallocationScope", () => {
     it("runs finalizer on interruption", async () => {
@@ -2501,35 +2525,28 @@ describe("Managed", () => {
 
     // TODO(Mike/Max): test results in an open handle due to `Effect.never`
     // it("the canceler should run uninterruptibly", async () => {
-    //   const interruptionTest = Effect.Do()
+    //   const program = Effect.Do()
     //     .bind("ref", () => Ref.make(true))
     //     .bind("latch", () => Promise.make<never, void>())
     //     .bindValue("managed", ({ latch, ref }) =>
-    //       Managed.acquireReleaseWith(Effect.unit, () =>
-    //         latch.succeed(undefined).zipRight(
-    //           Effect.never.whenEffect(Ref.get(ref))
-    //         )
+    //       Managed.acquireReleaseWith(
+    //         Effect.unit,
+    //         () => latch.succeed(undefined) > Effect.never.whenEffect(Ref.get(ref))
     //       ).withEarlyRelease()
     //     )
     //     .flatMap(({ latch, managed, ref }) =>
     //       managed.use(({ tuple: [canceler, _] }) =>
-    //         Effect.Do()
-    //           .bind("fiber", () => canceler.forkDaemon())
+    //         canceler
+    //           .forkDaemon()
     //           .tap(() => latch.await())
-    //           .bind("interruption", ({ fiber }) => Fiber.interrupt(fiber).timeout(1000))
+    //           .flatMap((fiber) => Fiber.interrupt(fiber).timeout(100))
     //           .tap(() => Ref.set_(ref, false))
     //       )
     //     )
 
-    //   // Since `interruptionTest` uses Effect.never race the real test against a
-    //   // 10 second timer and fail the test if it didn't complete. This
-    //   // delay time may be increased if it turns out this test is flaky.
-    //   const { interruption } = await Effect.sleep(10000)
-    //     .zipRight(Effect.succeedNow({ interruption: O.some(1) }))
-    //     .race(interruptionTest)
-    //     .unsafeRunPromise()
+    //   const result = await program.unsafeRunPromise()
 
-    //   expect(interruption).toEqual(O.none)
+    //   expect(result).toEqual(Option.none)
     // })
 
     it("if completed, the canceler should cause the regular finalizer to not run", async () => {
