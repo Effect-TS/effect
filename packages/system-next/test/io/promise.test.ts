@@ -1,9 +1,9 @@
-import { Chunk } from "../src/collection/immutable/Chunk"
-import { Tuple } from "../src/collection/immutable/Tuple"
-import { Effect } from "../src/io/Effect"
-import { Exit } from "../src/io/Exit"
-import { Promise } from "../src/io/Promise"
-import * as Ref from "../src/io/Ref"
+import { Chunk } from "../../src/collection/immutable/Chunk"
+import { Tuple } from "../../src/collection/immutable/Tuple"
+import { Effect } from "../../src/io/Effect"
+import { Exit } from "../../src/io/Exit"
+import { Promise } from "../../src/io/Promise"
+import * as Ref from "../../src/io/Ref"
 
 describe("Promise", () => {
   it("complete a promise using succeed", async () => {

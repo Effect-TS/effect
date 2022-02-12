@@ -1,9 +1,11 @@
 import { Chunk } from "../../../collection/immutable/Chunk"
 import { Tuple } from "../../../collection/immutable/Tuple"
+import type { LazyArg } from "../../../data/Function"
 import * as Ref from "../../../io/Ref"
 import type { Exit } from "../../Exit"
 import * as Fiber from "../../Fiber"
 import { Promise } from "../../Promise"
+import type { RIO } from "../definition"
 import { Effect } from "../definition"
 
 /**
@@ -13,30 +15,39 @@ import { Effect } from "../definition"
  *
  * @tsplus fluent ets/Effect raceAll
  */
-export function raceAll_<R, E, A>(
+export function raceAll_<R, E, A, R1, E1, A1>(
   self: Effect<R, E, A>,
-  effects: Iterable<Effect<R, E, A>>,
+  effects: LazyArg<Iterable<Effect<R1, E1, A1>>>,
   __etsTrace?: string
-): Effect<R, E, A> {
-  const ios = Chunk.from(effects)
+): Effect<R & R1, E | E1, A | A1> {
   return Effect.Do()
-    .bind("done", () => Promise.make<E, Tuple<[A, Fiber.Fiber<E, A>]>>())
-    .bind("fails", () => Ref.make(ios.size))
-    .flatMap(({ done, fails }) =>
+    .bind("ios", () => Effect.succeed(Chunk.from(effects())))
+    .bind("done", () =>
+      Promise.make<E | E1, Tuple<[A | A1, Fiber.Fiber<E | E1, A | A1>]>>()
+    )
+    .bind("fails", ({ ios }) => Ref.make(ios.size))
+    .flatMap(({ done, fails, ios }) =>
       Effect.uninterruptibleMask(({ restore }) =>
         Effect.Do()
           .bind("head", () => self.uninterruptible().fork())
           .bind("tail", () => Effect.forEach(ios, (io) => io.interruptible().fork()))
-          .bindValue("fs", ({ head, tail }) => tail.prepend(head))
+          .bindValue(
+            "fs",
+            ({ head, tail }) =>
+              tail.prepend(head) as Chunk<Fiber.Runtime<E | E1, A | A1>>
+          )
           .tap(({ fs }) =>
-            fs.reduce(Effect.unit, (io, f) =>
-              io.flatMap(() => Fiber.await(f).flatMap(arbiter(fs, f, done, fails)))
+            fs.reduce(
+              Effect.unit,
+              (io, f) => io > Fiber.await(f).flatMap(arbiter(fs, f, done, fails))
             )
           )
           .bindValue(
             "inheritRefs",
             () =>
-              (res: Tuple<[A, Fiber.Fiber<E, A>]>): Effect<unknown, never, A> =>
+              (
+                res: Tuple<[A | A1, Fiber.Fiber<E | E1, A | A1>]>
+              ): Effect<unknown, never, A | A1> =>
                 res.get(1).inheritRefs.map(() => res.get(0))
           )
           .flatMap(({ fs, inheritRefs }) =>
@@ -55,17 +66,21 @@ export function raceAll_<R, E, A>(
  *
  * @ets_data_first raceAll_
  */
-export function raceAll<R, E, A>(as: Iterable<Effect<R, E, A>>, __etsTrace?: string) {
-  return (self: Effect<R, E, A>): Effect<R, E, A> => self.raceAll(as)
+export function raceAll<R1, E1, A1>(
+  as: Iterable<Effect<R1, E1, A1>>,
+  __etsTrace?: string
+) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R1, E | E1, A | A1> =>
+    self.raceAll(as)
 }
 
-function arbiter<E, A>(
-  fibers: Chunk<Fiber.Fiber<E, A>>,
-  winner: Fiber.Fiber<E, A>,
-  promise: Promise<E, Tuple<[A, Fiber.Fiber<E, A>]>>,
+function arbiter<R, R1, E, E1, A, A1>(
+  fibers: Chunk<Fiber.Fiber<E | E1, A | A1>>,
+  winner: Fiber.Fiber<E | E1, A | A1>,
+  promise: Promise<E | E1, Tuple<[A | A1, Fiber.Fiber<E | E1, A | A1>]>>,
   fails: Ref.Ref<number>
 ) {
-  return (exit: Exit<E, A>): Effect<unknown, never, void> => {
+  return (exit: Exit<E, A | A1>): RIO<R & R1, void> => {
     return exit.foldEffect(
       (e) =>
         Ref.modify_(fails, (c) =>

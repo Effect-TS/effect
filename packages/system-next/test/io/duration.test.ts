@@ -1,5 +1,5 @@
-import { List } from "../src/collection/immutable/List"
-import { Duration } from "../src/data/Duration"
+import { List } from "../../src/collection/immutable/List"
+import { Duration } from "../../src/data/Duration"
 
 describe("Duration", () => {
   describe("make a Duration from positive millis and check that:", () => {

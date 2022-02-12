@@ -1,8 +1,8 @@
-import type { FiberRefs } from "../src/io/Effect"
-import { Effect } from "../src/io/Effect"
-import * as Fiber from "../src/io/Fiber"
-import * as FiberRef from "../src/io/FiberRef"
-import { Queue } from "../src/io/Queue"
+import type { FiberRefs } from "../../src/io/Effect"
+import { Effect } from "../../src/io/Effect"
+import * as Fiber from "../../src/io/Fiber"
+import * as FiberRef from "../../src/io/FiberRef"
+import { Queue } from "../../src/io/Queue"
 
 describe("FiberRefs", () => {
   it("propagate FiberRef values across fiber boundaries", async () => {

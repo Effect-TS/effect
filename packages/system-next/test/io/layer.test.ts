@@ -1,14 +1,15 @@
-import { Chunk } from "../src/collection/immutable/Chunk"
-import { Tuple } from "../src/collection/immutable/Tuple"
-import { constFalse, constTrue, identity } from "../src/data/Function"
-import type { Has } from "../src/data/Has"
-import { tag } from "../src/data/Has"
-import { Effect } from "../src/io/Effect"
-import * as Fiber from "../src/io/Fiber"
-import { Layer } from "../src/io/Layer"
-import { Managed } from "../src/io/Managed"
-import { Promise } from "../src/io/Promise"
-import * as Ref from "../src/io/Ref"
+import { Chunk } from "../../src/collection/immutable/Chunk"
+import { Tuple } from "../../src/collection/immutable/Tuple"
+import { constFalse, constTrue, identity } from "../../src/data/Function"
+import type { Has } from "../../src/data/Has"
+import { tag } from "../../src/data/Has"
+import { Effect } from "../../src/io/Effect"
+import * as Fiber from "../../src/io/Fiber"
+import { Layer } from "../../src/io/Layer"
+import { Managed } from "../../src/io/Managed"
+import { Promise } from "../../src/io/Promise"
+import * as Ref from "../../src/io/Ref"
+import { Schedule } from "../../src/io/Schedule"
 
 // -----------------------------------------------------------------------------
 // Service 1
@@ -557,16 +558,23 @@ describe("Layer", () => {
     expect(result).toEqual(["test"])
   })
 
-  // TODO: implement after Schedule
-  // test("retry") {
-  //   for {
-  //     ref    <- Ref.make(0)
-  //     effect  = ref.update(_ + 1) *> ZIO.fail("fail")
-  //     layer   = ZLayer.fromZIOEnvironment(effect).retry(Schedule.recurs(3))
-  //     _      <- layer.build.useNow.ignore
-  //     result <- ref.get
-  //   } yield assert(result)(equalTo(4))
-  // },
+  it("retry", async () => {
+    const program = Effect.Do()
+      .bind("ref", () => Ref.make(0))
+      .bindValue(
+        "effect",
+        ({ ref }) => Ref.update_(ref, (n) => n + 1) > Effect.fail("fail")
+      )
+      .bindValue("layer", ({ effect }) =>
+        Layer.fromRawEffect(effect).retry(Schedule.recurs(3))
+      )
+      .tap(({ layer }) => layer.build().useNow().ignore())
+      .flatMap(({ ref }) => Ref.get(ref))
+
+    const result = await program.unsafeRunPromise()
+
+    expect(result).toBe(4)
+  })
 
   it("error handling", async () => {
     const sleep = Effect.sleep(100)

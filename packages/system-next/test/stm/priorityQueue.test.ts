@@ -1,9 +1,9 @@
-import { Chunk } from "../src/collection/immutable/Chunk"
-import { flow, pipe } from "../src/data/Function"
-import * as Eq from "../src/prelude/Equal"
-import * as Ord from "../src/prelude/Ord"
-import * as STM from "../src/stm/STM"
-import * as TPriorityQueue from "../src/stm/TPriorityQueue"
+import { Chunk } from "../../src/collection/immutable/Chunk"
+import { flow, pipe } from "../../src/data/Function"
+import * as Eq from "../../src/prelude/Equal"
+import * as Ord from "../../src/prelude/Ord"
+import * as STM from "../../src/stm/STM"
+import * as TPriorityQueue from "../../src/stm/TPriorityQueue"
 
 interface Event {
   time: number

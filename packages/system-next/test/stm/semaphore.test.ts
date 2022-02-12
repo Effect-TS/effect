@@ -1,11 +1,11 @@
-import { Tuple } from "../src/collection/immutable/Tuple"
-import { pipe } from "../src/data/Function"
-import { Effect } from "../src/io/Effect"
-import * as Fiber from "../src/io/Fiber"
-import { Promise } from "../src/io/Promise"
-import * as STM from "../src/stm/STM"
-import * as TRef from "../src/stm/TRef"
-import * as TSemaphore from "../src/stm/TSemaphore"
+import { Tuple } from "../../src/collection/immutable/Tuple"
+import { pipe } from "../../src/data/Function"
+import { Effect } from "../../src/io/Effect"
+import * as Fiber from "../../src/io/Fiber"
+import { Promise } from "../../src/io/Promise"
+import * as STM from "../../src/stm/STM"
+import * as TRef from "../../src/stm/TRef"
+import * as TSemaphore from "../../src/stm/TSemaphore"
 
 function repeat<E, A>(self: STM.STM<unknown, E, A>, n: number): STM.STM<unknown, E, A> {
   if (n < 1) {
