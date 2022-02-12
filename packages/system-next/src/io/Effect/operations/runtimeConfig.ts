@@ -23,3 +23,22 @@ export function setRuntimeConfig(
 ): UIO<void> {
   return new ISetRuntimeConfig(runtimeConfig, __etsTrace)
 }
+
+/**
+ * Runs the specified effect on the specified runtime configuration, restoring
+ * the old runtime configuration when it completes execution.
+ *
+ * @tsplus static ets/EffectOps withRuntimeConfig
+ */
+export function withRuntimeConfig<R, E, A>(
+  runtimeConfig: LazyArg<RuntimeConfig>,
+  effect: LazyArg<Effect<R, E, A>>,
+  __etsTrace?: string
+): Effect<R, E, A> {
+  return Effect.runtimeConfig.flatMap((currentRuntimeConfig) =>
+    (Effect.setRuntimeConfig(runtimeConfig) > Effect.yieldNow).acquireRelease(
+      effect(),
+      Effect.setRuntimeConfig(currentRuntimeConfig)
+    )
+  )
+}

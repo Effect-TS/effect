@@ -32,58 +32,119 @@ export interface Clock {
     __etsTrace?: string
   ) => UIO<Driver<State, Env, In, Out>>
 
-  readonly repeat: <R, E, A, R1, B>(
-    effect0: LazyArg<Effect<R, E, A>>,
-    schedule0: LazyArg<Schedule<R1, A, B>>,
-    __etsTrace?: string
-  ) => Effect<R & R1, E, B>
+  readonly repeat: {
+    <R, E, A, S, R1, A1>(
+      effect0: LazyArg<Effect<R, E, A>>,
+      schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
+      __etsTrace?: string
+    ): Effect<R & R1, E, A1>
+    <R, E, A, R1, A1>(
+      effect0: LazyArg<Effect<R, E, A>>,
+      schedule0: LazyArg<Schedule<R1, A, A1>>,
+      __etsTrace?: string
+    ): Effect<R & R1, E, A1>
+  }
 
-  readonly repeatOrElse: <R, E, A, R1, B, R2, E2>(
-    effect0: LazyArg<Effect<R, E, A>>,
-    schedule0: LazyArg<Schedule<R1, A, B>>,
-    orElse: (e: E, option: Option<B>) => Effect<R2, E2, B>,
-    __etsTrace?: string
-  ) => Effect<R & R1 & R2, E2, B>
+  readonly repeatOrElse: {
+    <R, E, A, S, R1, A1, R2, E2, A2>(
+      effect0: LazyArg<Effect<R, E, A>>,
+      schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
+      orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
+      __etsTrace?: string
+    ): Effect<R & R1 & R2, E2, A1 | A2>
+    <R, E, A, R1, A1, R2, E2, A2>(
+      effect0: LazyArg<Effect<R, E, A>>,
+      schedule0: LazyArg<Schedule<R1, A, A1>>,
+      orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
+      __etsTrace?: string
+    ): Effect<R & R1 & R2, E2, A1 | A2>
+  }
 
-  readonly repeatOrElseEither: <R, E, A, R1, B, R2, E2, C>(
-    effect0: LazyArg<Effect<R, E, A>>,
-    schedule0: LazyArg<Schedule<R1, A, B>>,
-    orElse: (e: E, option: Option<B>) => Effect<R2, E2, C>,
-    __etsTrace?: string
-  ) => Effect<R & R1 & R2, E2, Either<C, B>>
+  readonly repeatOrElseEither: {
+    <R, E, A, S, R1, A1, R2, E2, A2>(
+      effect0: LazyArg<Effect<R, E, A>>,
+      schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
+      orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
+      __etsTrace?: string
+    ): Effect<R & R1 & R2, E2, Either<A2, A1>>
+    <R, E, A, R1, A1, R2, E2, A2>(
+      effect0: LazyArg<Effect<R, E, A>>,
+      schedule0: LazyArg<Schedule<R1, A, A1>>,
+      orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
+      __etsTrace?: string
+    ): Effect<R & R1 & R2, E2, Either<A2, A1>>
+  }
 
-  readonly retry: <R, E, A, R1, Out>(
-    effect0: LazyArg<Effect<R, E, A>>,
-    schedule0: LazyArg<Schedule<R1, E, Out>>,
-    __etsTrace?: string
-  ) => Effect<R & R1, E, A>
+  readonly retry: {
+    <R, E, A, S, R1, Out>(
+      effect0: LazyArg<Effect<R, E, A>>,
+      schedule0: LazyArg<Schedule.WithState<S, R1, E, Out>>,
+      __etsTrace?: string
+    ): Effect<R & R1, E, A>
+    <R, E, A, R1, Out>(
+      effect0: LazyArg<Effect<R, E, A>>,
+      schedule0: LazyArg<Schedule<R1, E, Out>>,
+      __etsTrace?: string
+    ): Effect<R & R1, E, A>
+  }
 
-  readonly retryOrElse: <R, E, A, R1, Out, R2, E2, A1>(
-    effect0: LazyArg<Effect<R, E, A>>,
-    schedule0: LazyArg<Schedule<R1, E, Out>>,
-    orElse: (e: E, out: Out) => Effect<R2, E2, A1>,
-    __etsTrace?: string
-  ) => Effect<R & R1 & R2, E2, A | A1>
+  readonly retryOrElse: {
+    <R, E, A, S, R1, A1, R2, E2, A2>(
+      effect0: LazyArg<Effect<R, E, A>>,
+      schedule0: LazyArg<Schedule.WithState<S, R1, E, A1>>,
+      orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
+      __etsTrace?: string
+    ): Effect<R & R1 & R2, E2, A | A2>
+    <R, E, A, R1, A1, R2, E2, A2>(
+      effect0: LazyArg<Effect<R, E, A>>,
+      schedule0: LazyArg<Schedule<R1, E, A1>>,
+      orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
+      __etsTrace?: string
+    ): Effect<R & R1 & R2, E2, A | A2>
+  }
 
-  readonly retryOrElseEither: <R, E, A, R1, Out, R2, E2, B>(
-    effect0: LazyArg<Effect<R, E, A>>,
-    schedule0: LazyArg<Schedule<R1, E, Out>>,
-    orElse: (e: E, out: Out) => Effect<R2, E2, B>,
-    __etsTrace?: string
-  ) => Effect<R & R1 & R2, E2, Either<B, A>>
+  readonly retryOrElseEither: {
+    <R, E, A, S, R1, A1, R2, E2, A2>(
+      effect0: LazyArg<Effect<R, E, A>>,
+      schedule0: LazyArg<Schedule.WithState<S, R1, E, A1>>,
+      orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
+      __etsTrace?: string
+    ): Effect<R & R1 & R2, E2, Either<A2, A>>
+    <R, E, A, R1, A1, R2, E2, A2>(
+      effect0: LazyArg<Effect<R, E, A>>,
+      schedule0: LazyArg<Schedule<R1, E, A1>>,
+      orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
+      __etsTrace?: string
+    ): Effect<R & R1 & R2, E2, Either<A2, A>>
+  }
 
-  readonly schedule: <R, E, A, R1, B>(
-    effect0: LazyArg<Effect<R, E, A>>,
-    schedule0: LazyArg<Schedule<R1, unknown, B>>,
-    __etsTrace?: string
-  ) => Effect<R & R1, E, B>
+  readonly schedule: {
+    <R, E, A, S, R1, A1>(
+      effect0: LazyArg<Effect<R, E, A>>,
+      schedule0: LazyArg<Schedule.WithState<S, R1, unknown, A1>>,
+      __etsTrace?: string
+    ): Effect<R & R1, E, A1>
+    <R, E, A, R1, A1>(
+      effect0: LazyArg<Effect<R, E, A>>,
+      schedule0: LazyArg<Schedule<R1, unknown, A1>>,
+      __etsTrace?: string
+    ): Effect<R & R1, E, A1>
+  }
 
-  readonly scheduleFrom: <R, E, A, R1, B>(
-    effect0: LazyArg<Effect<R, E, A>>,
-    a0: LazyArg<A>,
-    schedule0: LazyArg<Schedule<R1, A, B>>,
-    __etsTrace?: string
-  ) => Effect<R & R1, E, B>
+  readonly scheduleFrom: {
+    <R, E, A, S, R1, A1>(
+      effect0: LazyArg<Effect<R, E, A>>,
+      a0: LazyArg<A>,
+      schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
+      __etsTrace?: string
+    ): Effect<R & R1, E, A1>
+    <R, E, A, R1, A1>(
+      effect0: LazyArg<Effect<R, E, A>>,
+      a0: LazyArg<A>,
+      schedule0: LazyArg<Schedule<R1, A, A1>>,
+      __etsTrace?: string
+    ): Effect<R & R1, E, A1>
+  }
 }
 
 /**
@@ -145,37 +206,54 @@ export abstract class AbstractClock implements Clock {
     })
   }
 
-  repeat<R, E, A, R1, B>(
+  repeat<R, E, A, S, R1, A1>(
     effect0: LazyArg<Effect<R, E, A>>,
-    schedule0: LazyArg<Schedule<R1, A, B>>,
+    schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
     __etsTrace?: string
-  ): Effect<R & R1, E, B> {
+  ): Effect<R & R1, E, A1>
+  repeat<R, E, A, R1, A1>(
+    effect0: LazyArg<Effect<R, E, A>>,
+    schedule0: LazyArg<Schedule<R1, A, A1>>,
+    __etsTrace?: string
+  ): Effect<R & R1, E, A1> {
     return this.repeatOrElse(effect0, schedule0, (e, _) => Effect.fail(e))
   }
 
-  repeatOrElse<R, E, A, R1, B, R2, E2>(
+  repeatOrElse<R, E, A, S, R1, A1, R2, E2, A2>(
     effect0: LazyArg<Effect<R, E, A>>,
-    schedule0: LazyArg<Schedule<R1, A, B>>,
-    orElse: (e: E, option: Option<B>) => Effect<R2, E2, B>,
+    schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
+    orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
     __etsTrace?: string
-  ): Effect<R & R1 & R2, E2, B> {
+  ): Effect<R & R1 & R2, E2, A1 | A2>
+  repeatOrElse<R, E, A, R1, A1, R2, E2, A2>(
+    effect0: LazyArg<Effect<R, E, A>>,
+    schedule0: LazyArg<Schedule<R1, A, A1>>,
+    orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
+    __etsTrace?: string
+  ): Effect<R & R1 & R2, E2, A1 | A2> {
     return this.repeatOrElseEither(effect0, schedule0, orElse).map((either) =>
       either.merge()
     )
   }
 
-  repeatOrElseEither<R, E, A, R1, B, R2, E2, C>(
+  repeatOrElseEither<R, E, A, S, R1, A1, R2, E2, A2>(
     effect0: LazyArg<Effect<R, E, A>>,
-    schedule0: LazyArg<Schedule<R1, A, B>>,
-    orElse: (e: E, option: Option<B>) => Effect<R2, E2, C>,
+    schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
+    orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
     __etsTrace?: string
-  ): Effect<R & R1 & R2, E2, Either<C, B>> {
+  ): Effect<R & R1 & R2, E2, Either<A2, A1>>
+  repeatOrElseEither<R, E, A, R1, A1, R2, E2, A2>(
+    effect0: LazyArg<Effect<R, E, A>>,
+    schedule0: LazyArg<Schedule<R1, A, A1>>,
+    orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
+    __etsTrace?: string
+  ): Effect<R & R1 & R2, E2, Either<A2, A1>> {
     return Effect.suspendSucceed(() => {
       const effect = effect0()
       const schedule = schedule0()
 
       return this.driver(schedule).flatMap((driver) => {
-        function loop(a: A): Effect<R & R1 & R2, E2, Either<C, B>> {
+        function loop(a: A): Effect<R & R1 & R2, E2, Either<A2, A1>> {
           return driver.next(a).foldEffect(
             () => driver.last.orDie().map((b) => Either.right(b)),
             (b) =>
@@ -194,38 +272,55 @@ export abstract class AbstractClock implements Clock {
     })
   }
 
-  retry<R, E, A, R1, Out>(
+  retry<R, E, A, S, R1, A1>(
     effect0: LazyArg<Effect<R, E, A>>,
-    schedule0: LazyArg<Schedule<R1, E, Out>>,
+    schedule0: LazyArg<Schedule.WithState<S, R1, E, A1>>,
+    __etsTrace?: string
+  ): Effect<R & R1, E, A>
+  retry<R, E, A, R1, A1>(
+    effect0: LazyArg<Effect<R, E, A>>,
+    schedule0: LazyArg<Schedule<R1, E, A1>>,
     __etsTrace?: string
   ): Effect<R & R1, E, A> {
     return this.retryOrElse(effect0, schedule0, (e, _) => Effect.fail(e))
   }
 
-  retryOrElse<R, E, A, R1, Out, R2, E2, A1>(
+  retryOrElse<R, E, A, S, R1, A1, R2, E2, A2>(
     effect0: LazyArg<Effect<R, E, A>>,
-    schedule0: LazyArg<Schedule<R1, E, Out>>,
-    orElse: (e: E, out: Out) => Effect<R2, E2, A1>,
+    schedule0: LazyArg<Schedule.WithState<S, R1, E, A1>>,
+    orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
     __etsTrace?: string
-  ): Effect<R & R1 & R2, E2, A | A1> {
+  ): Effect<R & R1 & R2, E2, A | A2>
+  retryOrElse<R, E, A, R1, A1, R2, E2, A2>(
+    effect0: LazyArg<Effect<R, E, A>>,
+    schedule0: LazyArg<Schedule<R1, E, A1>>,
+    orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
+    __etsTrace?: string
+  ): Effect<R & R1 & R2, E2, A | A2> {
     return this.retryOrElseEither(effect0, schedule0, orElse).map((either) =>
       either.merge()
     )
   }
 
-  retryOrElseEither<R, E, A, R1, Out, R2, E2, B>(
+  retryOrElseEither<R, E, A, S, R1, A1, R2, E2, A2>(
     effect0: LazyArg<Effect<R, E, A>>,
-    schedule0: LazyArg<Schedule<R1, E, Out>>,
-    orElse: (e: E, out: Out) => Effect<R2, E2, B>,
+    schedule0: LazyArg<Schedule.WithState<S, R1, E, A1>>,
+    orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
     __etsTrace?: string
-  ): Effect<R & R1 & R2, E2, Either<B, A>> {
+  ): Effect<R & R1 & R2, E2, Either<A2, A>>
+  retryOrElseEither<R, E, A, R1, A1, R2, E2, A2>(
+    effect0: LazyArg<Effect<R, E, A>>,
+    schedule0: LazyArg<Schedule<R1, E, A1>>,
+    orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
+    __etsTrace?: string
+  ): Effect<R & R1 & R2, E2, Either<A2, A>> {
     return Effect.suspendSucceed(() => {
       const effect = effect0()
       const schedule = schedule0()
 
       function loop(
-        driver: Driver<unknown, R1, E, Out>
-      ): Effect<R & R1 & R2, E2, Either<B, A>> {
+        driver: Driver<unknown, R1, E, A1>
+      ): Effect<R & R1 & R2, E2, Either<A2, A>> {
         return effect
           .map((a) => Either.right(a))
           .catchAll((e) =>
@@ -233,7 +328,7 @@ export abstract class AbstractClock implements Clock {
               () =>
                 driver.last
                   .orDie()
-                  .flatMap((out) => orElse(e, out).map((b) => Either.left(b))),
+                  .flatMap((a2) => orElse(e, a2).map((b) => Either.left(b))),
               () => loop(driver)
             )
           )
@@ -243,27 +338,38 @@ export abstract class AbstractClock implements Clock {
     })
   }
 
-  schedule<R, E, A, R1, B>(
+  schedule<R, E, A, S, R1, E1, A1>(
     effect0: LazyArg<Effect<R, E, A>>,
-    schedule0: LazyArg<Schedule<R1, unknown, B>>,
+    schedule0: LazyArg<Schedule.WithState<S, R1, any, A1>>,
     __etsTrace?: string
-  ): Effect<R & R1, E, B> {
+  ): Effect<R & R1, E, A1>
+  schedule<R, E, A, R1, A1>(
+    effect0: LazyArg<Effect<R, E, A>>,
+    schedule0: LazyArg<Schedule<R1, any, A1>>,
+    __etsTrace?: string
+  ): Effect<R & R1, E, A1> {
     return this.scheduleFrom(effect0, undefined, schedule0)
   }
 
-  scheduleFrom<R, E, A, R1, B>(
+  scheduleFrom<R, E, A, S, R1, A1>(
     effect0: LazyArg<Effect<R, E, A>>,
     a0: LazyArg<A>,
-    schedule0: LazyArg<Schedule<R1, A, B>>,
+    schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
     __etsTrace?: string
-  ): Effect<R & R1, E, B> {
+  ): Effect<R & R1, E, A1>
+  scheduleFrom<R, E, A, R1, A1>(
+    effect0: LazyArg<Effect<R, E, A>>,
+    a0: LazyArg<A>,
+    schedule0: LazyArg<Schedule<R1, A, A1>>,
+    __etsTrace?: string
+  ): Effect<R & R1, E, A1> {
     return Effect.suspendSucceed(() => {
       const effect = effect0()
       const a = a0()
       const schedule = schedule0()
 
       return this.driver(schedule).flatMap((driver) => {
-        function loop(a: A): Effect<R & R1, E, B> {
+        function loop(a: A): Effect<R & R1, E, A1> {
           return driver.next(a).foldEffect(
             () => driver.last.orDie(),
             () => effect.flatMap(loop)
@@ -332,6 +438,11 @@ export function driver<State, Env, In, Out>(
  *
  * @tsplus static ets/ClockOps repeat
  */
+export function repeat<R, E, A, S, R1, B>(
+  effect0: LazyArg<Effect<R, E, A>>,
+  schedule0: LazyArg<Schedule.WithState<S, R1, A, B>>,
+  __etsTrace?: string
+): Effect<HasClock & R & R1, E, B>
 export function repeat<R, E, A, R1, B>(
   effect0: LazyArg<Effect<R, E, A>>,
   schedule0: LazyArg<Schedule<R1, A, B>>,
@@ -351,12 +462,18 @@ export function repeat<R, E, A, R1, B>(
  *
  * @tsplus static ets/ClockOps repeatOrElse
  */
-export function repeatOrElse<R, E, A, R1, B, R2, E2>(
+export function repeatOrElse<R, E, A, S, R1, A1, R2, E2, A2>(
   effect0: LazyArg<Effect<R, E, A>>,
-  schedule0: LazyArg<Schedule<R1, A, B>>,
-  orElse: (e: E, option: Option<B>) => Effect<R2, E2, B>,
+  schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
+  orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
   __etsTrace?: string
-): Effect<HasClock & R & R1 & R2, E2, B> {
+): Effect<R & R1 & R2, E2, A1 | A2>
+export function repeatOrElse<R, E, A, R1, A1, R2, E2, A2>(
+  effect0: LazyArg<Effect<R, E, A>>,
+  schedule0: LazyArg<Schedule<R1, A, A1>>,
+  orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
+  __etsTrace?: string
+): Effect<HasClock & R & R1 & R2, E2, A1 | A2> {
   return Effect.serviceWithEffect(HasClock)((clock) =>
     clock.repeatOrElse(effect0, schedule0, orElse)
   )
@@ -373,12 +490,18 @@ export function repeatOrElse<R, E, A, R1, B, R2, E2>(
  *
  * @tsplus static ets/ClockOps repeatOrElseEither
  */
-export function repeatOrElseEither<R, E, A, R1, B, R2, E2, C>(
+export function repeatOrElseEither<R, E, A, S, R1, A1, R2, E2, A2>(
   effect0: LazyArg<Effect<R, E, A>>,
-  schedule0: LazyArg<Schedule<R1, A, B>>,
-  orElse: (e: E, option: Option<B>) => Effect<R2, E2, C>,
+  schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
+  orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
   __etsTrace?: string
-): Effect<HasClock & R & R1 & R2, E2, Either<C, B>> {
+): Effect<HasClock & R & R1 & R2, E2, Either<A2, A1>>
+export function repeatOrElseEither<R, E, A, R1, A1, R2, E2, A2>(
+  effect0: LazyArg<Effect<R, E, A>>,
+  schedule0: LazyArg<Schedule<R1, A, A1>>,
+  orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
+  __etsTrace?: string
+): Effect<HasClock & R & R1 & R2, E2, Either<A2, A1>> {
   return Effect.serviceWithEffect(HasClock)((clock) =>
     clock.repeatOrElseEither(effect0, schedule0, orElse)
   )
@@ -392,9 +515,14 @@ export function repeatOrElseEither<R, E, A, R1, B, R2, E2, C>(
  *
  * @tsplus static ets/ClockOps retry
  */
-export function retry<R, E, A, R1, Out>(
+export function retry<R, E, A, S, R1, A1>(
   effect0: LazyArg<Effect<R, E, A>>,
-  schedule0: LazyArg<Schedule<R1, E, Out>>,
+  schedule0: LazyArg<Schedule.WithState<S, R1, E, A1>>,
+  __etsTrace?: string
+): Effect<HasClock & R & R1, E, A>
+export function retry<R, E, A, R1, A1>(
+  effect0: LazyArg<Effect<R, E, A>>,
+  schedule0: LazyArg<Schedule<R1, E, A1>>,
   __etsTrace?: string
 ): Effect<HasClock & R & R1, E, A> {
   return Effect.serviceWithEffect(HasClock)((clock) => clock.retry(effect0, schedule0))
@@ -407,12 +535,18 @@ export function retry<R, E, A, R1, Out>(
  *
  * @tsplus static ets/ClockOps retryOrElse
  */
-export function retryOrElse<R, E, A, R1, Out, R2, E2, A1>(
+export function retryOrElse<R, E, A, S, R1, A1, R2, E2, A2>(
   effect0: LazyArg<Effect<R, E, A>>,
-  schedule0: LazyArg<Schedule<R1, E, Out>>,
-  orElse: (e: E, out: Out) => Effect<R2, E2, A1>,
+  schedule0: LazyArg<Schedule.WithState<S, R1, E, A1>>,
+  orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
   __etsTrace?: string
-): Effect<HasClock & R & R1 & R2, E2, A | A1> {
+): Effect<HasClock & R & R1 & R2, E2, A | A2>
+export function retryOrElse<R, E, A, R1, A1, R2, E2, A2>(
+  effect0: LazyArg<Effect<R, E, A>>,
+  schedule0: LazyArg<Schedule<R1, E, A1>>,
+  orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
+  __etsTrace?: string
+): Effect<HasClock & R & R1 & R2, E2, A | A2> {
   return Effect.serviceWithEffect(HasClock)((clock) =>
     clock.retryOrElse(effect0, schedule0, orElse)
   )
@@ -426,12 +560,18 @@ export function retryOrElse<R, E, A, R1, Out, R2, E2, A1>(
  *
  * @tsplus static ets/ClockOps retryOrElseEither
  */
-export function retryOrElseEither<R, E, A, R1, Out, R2, E2, B>(
+export function retryOrElseEither<R, E, A, S, R1, A1, R2, E2, A2>(
   effect0: LazyArg<Effect<R, E, A>>,
-  schedule0: LazyArg<Schedule<R1, E, Out>>,
-  orElse: (e: E, out: Out) => Effect<R2, E2, B>,
+  schedule0: LazyArg<Schedule.WithState<S, R1, E, A1>>,
+  orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
   __etsTrace?: string
-): Effect<HasClock & R & R1 & R2, E2, Either<B, A>> {
+): Effect<HasClock & R & R1 & R2, E2, Either<A2, A>>
+export function retryOrElseEither<R, E, A, R1, A1, R2, E2, A2>(
+  effect0: LazyArg<Effect<R, E, A>>,
+  schedule0: LazyArg<Schedule<R1, E, A1>>,
+  orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
+  __etsTrace?: string
+): Effect<HasClock & R & R1 & R2, E2, Either<A2, A>> {
   return Effect.serviceWithEffect(HasClock)((clock) =>
     clock.retryOrElseEither(effect0, schedule0, orElse)
   )
@@ -445,11 +585,16 @@ export function retryOrElseEither<R, E, A, R1, Out, R2, E2, B>(
  *
  * @tsplus static ets/ClockOps schedule
  */
-export function schedule<R, E, A, R1, B>(
+export function schedule<R, E, A, S, R1, A1>(
   effect0: LazyArg<Effect<R, E, A>>,
-  schedule0: LazyArg<Schedule<R1, unknown, B>>,
+  schedule0: LazyArg<Schedule.WithState<S, R1, any, A1>>,
   __etsTrace?: string
-): Effect<HasClock & R & R1, E, B> {
+): Effect<HasClock & R & R1, E, A1>
+export function schedule<R, E, A, R1, A1>(
+  effect0: LazyArg<Effect<R, E, A>>,
+  schedule0: LazyArg<Schedule<R1, any, A1>>,
+  __etsTrace?: string
+): Effect<HasClock & R & R1, E, A1> {
   return Effect.serviceWithEffect(HasClock)((clock) =>
     clock.schedule(effect0, schedule0)
   )
@@ -458,13 +603,21 @@ export function schedule<R, E, A, R1, B>(
 /**
  * Runs this effect according to the specified schedule starting from the
  * specified input value.
+ *
+ * @tsplus static ets/ClockOps scheduleFrom
  */
-export function scheduleFrom<R, E, A, R1, B>(
+export function scheduleFrom<R, E, A, S, R1, A1>(
   effect0: LazyArg<Effect<R, E, A>>,
   a0: LazyArg<A>,
-  schedule0: LazyArg<Schedule<R1, A, B>>,
+  schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
   __etsTrace?: string
-): Effect<HasClock & R & R1, E, B> {
+): Effect<HasClock & R & R1, E, A1>
+export function scheduleFrom<R, E, A, R1, A1>(
+  effect0: LazyArg<Effect<R, E, A>>,
+  a0: LazyArg<A>,
+  schedule0: LazyArg<Schedule<R1, A, A1>>,
+  __etsTrace?: string
+): Effect<HasClock & R & R1, E, A1> {
   return Effect.serviceWithEffect(HasClock)((clock) =>
     clock.scheduleFrom(effect0, a0, schedule0)
   )

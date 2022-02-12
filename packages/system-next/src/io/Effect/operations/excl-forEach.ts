@@ -10,7 +10,7 @@ import { MutableQueue } from "../../../support/MutableQueue"
 import { Cause } from "../../Cause"
 import { ExecutionStrategy } from "../../ExecutionStrategy"
 import { Exit } from "../../Exit"
-import type { Fiber } from "../../Fiber/definition"
+import type * as Fiber from "../../Fiber/definition"
 import { interrupt as interruptFiber } from "../../Fiber/operations/interrupt"
 import { FiberId } from "../../FiberId"
 import { currentReleaseMap } from "../../FiberRef/definition/data"
@@ -734,7 +734,7 @@ export function collectAllSuccessesPar<R, E, A>(
  * a catchable error, _if_ that error does not result from interruption.
  */
 export function fiberJoinAll<E, A>(
-  as: Iterable<Fiber<E, A>>,
+  as: Iterable<Fiber.Fiber<E, A>>,
   __etsTrace?: string
 ): Effect<unknown, E, Chunk<A>> {
   return fiberWaitAll(as)
@@ -746,7 +746,7 @@ export function fiberJoinAll<E, A>(
  * Awaits on all fibers to be completed, successfully or not.
  */
 export function fiberWaitAll<E, A>(
-  as: Iterable<Fiber<E, A>>,
+  as: Iterable<Fiber.Fiber<E, A>>,
   __etsTrace?: string
 ): RIO<unknown, Exit<E, Chunk<A>>> {
   return forEachPar_(as, (f) => f.await.flatMap((exit) => Effect.done(exit))).exit()
@@ -821,7 +821,7 @@ export function releaseMapReleaseAll_(
 export function managedFork<R, E, A>(
   self: Managed<R, E, A>,
   __etsTrace?: string
-): Managed<R, never, Fiber<E, A>> {
+): Managed<R, never, Fiber.Runtime<E, A>> {
   return Managed(
     Effect.uninterruptibleMask(({ restore }) =>
       Effect.Do()
@@ -834,7 +834,7 @@ export function managedFork<R, E, A>(
           )(
             restore(self.effect.map((_) => _.get(1))).forkDaemon() as RIO<
               R,
-              Fiber<E, A>
+              Fiber.Runtime<E, A>
             >
           )
         )

@@ -11,13 +11,3 @@ import { ISucceed } from "../definition"
 export function succeed<A>(f: LazyArg<A>, __etsTrace?: string): UIO<A> {
   return new ISucceed(f, __etsTrace)
 }
-
-/**
- * Returns an effect that models success with the specified synchronous
- * side-effect.
- *
- * @tsplus static ets/EffectOps __call
- */
-export function apply<A>(f: LazyArg<A>, __etsTrace?: string): UIO<A> {
-  return new ISucceed(f, __etsTrace)
-}

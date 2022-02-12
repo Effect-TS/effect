@@ -1,5 +1,5 @@
 import { managedFork } from "../../Effect/operations/excl-forEach"
-import type { Fiber } from "../../Fiber"
+import type * as Fiber from "../../Fiber"
 import type { Managed } from "../definition"
 
 /**
@@ -12,6 +12,6 @@ import type { Managed } from "../definition"
 export function fork<R, E, A>(
   self: Managed<R, E, A>,
   __etsTrace?: string
-): Managed<R, never, Fiber<E, A>> {
+): Managed<R, never, Fiber.Runtime<E, A>> {
   return managedFork(self)
 }

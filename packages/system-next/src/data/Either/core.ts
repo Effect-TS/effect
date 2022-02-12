@@ -464,7 +464,7 @@ export function fromNullable_<A, E>(a: A, e: Lazy<E>): Either<E, NonNullable<A>>
  *
  * @ets_data_first fromOption_
  */
-export function fromOption<E>(onNone: () => E) {
+export function fromOption<E>(onNone: LazyArg<E>) {
   return <A>(ma: Option<A>): Either<E, A> =>
     isNone(ma) ? left(onNone()) : right(ma.value)
 }
@@ -474,7 +474,7 @@ export function fromOption<E>(onNone: () => E) {
  *
  * @tsplus static ets/EitherOps fromOption
  */
-export function fromOption_<A, E>(ma: Option<A>, onNone: () => E): Either<E, A> {
+export function fromOption_<A, E>(ma: Option<A>, onNone: LazyArg<E>): Either<E, A> {
   return isNone(ma) ? left(onNone()) : right(ma.value)
 }
 
