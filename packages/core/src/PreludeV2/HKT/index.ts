@@ -7,18 +7,16 @@ export interface Typeclass<F extends HKT> {
 export interface HKT {
   readonly X?: unknown
   readonly I?: unknown
-  readonly S?: unknown
   readonly R?: unknown
   readonly E?: unknown
   readonly A?: unknown
   readonly type?: unknown
 }
 
-export type Kind<F extends HKT, X, I, S, R, E, A> = F extends { readonly type: unknown }
+export type Kind<F extends HKT, X, I, R, E, A> = F extends { readonly type: unknown }
   ? (F & {
       readonly X: X
       readonly I: I
-      readonly S: S
       readonly R: R
       readonly E: E
       readonly A: A
@@ -27,7 +25,6 @@ export type Kind<F extends HKT, X, I, S, R, E, A> = F extends { readonly type: u
       readonly _F: F
       readonly X: X
       readonly I: I
-      readonly S: S
       readonly _R: (_: R) => void
       readonly _E: () => E
       readonly _A: () => A
@@ -38,9 +35,8 @@ export interface ComposeF<F extends HKT, G extends HKT> extends HKT {
     F,
     this["X"],
     this["I"],
-    this["S"],
     this["R"],
     this["E"],
-    Kind<G, this["X"], this["I"], this["S"], this["R"], this["E"], this["A"]>
+    Kind<G, this["X"], this["I"], this["R"], this["E"], this["A"]>
   >
 }
