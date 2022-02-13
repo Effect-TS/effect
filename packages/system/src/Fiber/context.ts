@@ -1132,7 +1132,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     ) {
                       this.addTrace(current.trace)
                     }
-                    current = instruction(current.f(this.environments?.value || {}))
+                    current = instruction(
+                      current.f(this.environments ? this.environments.value : {})
+                    )
                     break
                   }
 

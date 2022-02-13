@@ -9,12 +9,17 @@ import * as Ex from "../src/Exit/index.js"
 import * as Fiber from "../src/Fiber/index.js"
 import { dump, prettyPrintM } from "../src/Fiber/index.js"
 import * as FiberRef from "../src/FiberRef/index.js"
-import { absurd, flow, pipe } from "../src/Function/index.js"
+import { absurd, flow, identity, pipe } from "../src/Function/index.js"
 import * as O from "../src/Option/index.js"
 import * as Ref from "../src/Ref/index.js"
 import { runTest } from "./utils/runTest.js"
 
 describe("Effect", () => {
+  it("should provide empty string", async () => {
+    const test = pipe(T.access<string, string>(identity), T.provideAll(""))
+    const res = await T.runPromise(test)
+    expect(res).toEqual("")
+  })
   it("catch", async () => {
     class ErrorA {
       readonly _tag = "ErrorA"
