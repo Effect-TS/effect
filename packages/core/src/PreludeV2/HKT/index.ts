@@ -40,3 +40,10 @@ export interface ComposeF<F extends HKT, G extends HKT> extends HKT {
     Kind<G, this["X"], this["I"], this["R"], this["E"], this["A"]>
   >
 }
+
+/**
+ * @ets_optimize identity
+ */
+export function instance<T>(_: T): T {
+  return _ as any
+}
