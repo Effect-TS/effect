@@ -14,7 +14,7 @@
     "autofix": "ultra -r autofix",
     "lint": "ultra -r lint",
     "tc": "ultra -r tc",
-    "postinstall": "husky install && tsplus-install && konfik build",
+    "postinstall": "husky install && tsplus-install",
     "konfik": "konfik",
     "version:alpha": "lerna version prerelease --conventional-commits --preid=alpha",
     "version:preminor": "lerna version preminor --conventional-commits",
