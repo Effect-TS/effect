@@ -1,5 +1,4 @@
-import type { Duration } from "packages/system-next/src/data/Duration"
-
+import type { Duration } from "../../../data/Duration"
 import type { Schedule } from "../definition"
 
 /**

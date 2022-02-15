@@ -1,6 +1,5 @@
-import { Tuple } from "packages/system-next/src/collection/immutable/Tuple"
-import { Duration } from "packages/system-next/src/data/Duration"
-
+import { Tuple } from "../../../collection/immutable/Tuple"
+import { Duration } from "../../../data/Duration"
 import { Effect } from "../../Effect"
 import { Decision } from "../Decision"
 import type { Schedule } from "../definition"

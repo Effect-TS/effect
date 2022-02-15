@@ -11,9 +11,7 @@
     "declarationDir": "build/dts",
     "declarationMap": false,
     "removeComments": false,
-    "tsPlusTracingPackageName": "@effect-ts/system-next"
+    "tsPlusTracingPackageName": "@effect-ts/system"
   },
-  "include": [
-    "src/**/*.ts"
-  ]
+  "include": ["src/**/*.ts"]
 }
