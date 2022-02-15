@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Array } from "@effect-ts/core/Collections/Immutable/Array"
 import * as A from "@effect-ts/core/Collections/Immutable/Array"
@@ -6,9 +6,9 @@ import { constant } from "@effect-ts/core/Function"
 import * as Show from "@effect-ts/core/Show"
 import { matchTag } from "@effect-ts/core/Utils"
 
-import type { Color } from "../Color"
-import { colorToCode } from "../Color"
-import type { Layer } from "../Layer"
+import type { Color } from "../Color/index.js"
+import { colorToCode } from "../Color/index.js"
+import type { Layer } from "../Layer/index.js"
 
 // -------------------------------------------------------------------------------------
 // definition

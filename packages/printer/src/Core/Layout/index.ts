@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Array } from "@effect-ts/core/Collections/Immutable/Array"
 import * as A from "@effect-ts/core/Collections/Immutable/Array"
@@ -8,11 +8,11 @@ import type { Option } from "@effect-ts/core/Option"
 import * as O from "@effect-ts/core/Option"
 import { matchTag } from "@effect-ts/core/Utils"
 
-import type { Doc } from "../Doc"
-import type { DocStream } from "../DocStream"
-import * as DS from "../DocStream"
-import type { PageWidth } from "../PageWidth"
-import * as PW from "../PageWidth"
+import type { Doc } from "../Doc/index.js"
+import type { DocStream } from "../DocStream/index.js"
+import * as DS from "../DocStream/index.js"
+import type { PageWidth } from "../PageWidth/index.js"
+import * as PW from "../PageWidth/index.js"
 
 // -------------------------------------------------------------------------------------
 // definition

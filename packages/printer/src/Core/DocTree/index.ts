@@ -1,1 +1,3 @@
-export * from "./DocTree/index"
+// ets_tracing: off
+
+export * from "./DocTree/index.js"

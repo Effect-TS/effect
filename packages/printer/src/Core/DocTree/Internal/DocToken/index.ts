@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { identity } from "@effect-ts/core/Function"
 

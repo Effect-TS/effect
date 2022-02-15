@@ -1,16 +1,16 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Array } from "@effect-ts/core/Collections/Immutable/Array"
 import * as A from "@effect-ts/core/Collections/Immutable/Array"
 import { tuple } from "@effect-ts/core/Function"
 import * as IO from "@effect-ts/core/IO"
 
-import type { Doc } from "../../Core/Doc"
-import type { DocStream } from "../../Core/DocStream"
-import * as Layout from "../../Core/Layout"
-import * as PageWidth from "../../Core/PageWidth"
-import type { Style } from "../Style"
-import * as S from "../Style"
+import type { Doc } from "../../Core/Doc/index.js"
+import type { DocStream } from "../../Core/DocStream/index.js"
+import * as Layout from "../../Core/Layout/index.js"
+import * as PageWidth from "../../Core/PageWidth/index.js"
+import type { Style } from "../Style/index.js"
+import * as S from "../Style/index.js"
 
 // -----------------------------------------------------------------------------
 // definition

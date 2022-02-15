@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Associative from "@effect-ts/core/Associative"
 import type { Array } from "@effect-ts/core/Collections/Immutable/Array"
@@ -13,9 +13,9 @@ import * as P from "@effect-ts/core/Prelude"
 import * as DSL from "@effect-ts/core/Prelude/DSL"
 import { constant, identity, pipe } from "@effect-ts/system/Function"
 
-import type { DocStream } from "../../DocStream"
-import * as DocToken from "../Internal/DocToken"
-import * as Parser from "../Internal/Parser"
+import type { DocStream } from "../../DocStream/index.js"
+import * as DocToken from "../Internal/DocToken/index.js"
+import * as Parser from "../Internal/Parser/index.js"
 
 // -----------------------------------------------------------------------------
 // definition

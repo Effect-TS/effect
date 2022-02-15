@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Array } from "@effect-ts/core/Collections/Immutable/Array"
 import * as A from "@effect-ts/core/Collections/Immutable/Array"

@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { URI } from "@effect-ts/core/Prelude"
 import * as P from "@effect-ts/core/Prelude"

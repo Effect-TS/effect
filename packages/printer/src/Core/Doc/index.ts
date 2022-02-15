@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import type { Associative } from "@effect-ts/core/Associative"
 import * as Assoc from "@effect-ts/core/Associative"
@@ -12,9 +12,9 @@ import type { URI } from "@effect-ts/core/Prelude"
 import * as P from "@effect-ts/core/Prelude"
 import type { _A } from "@effect-ts/system/Utils"
 
-import type { Flatten } from "../Flatten"
-import * as F from "../Flatten"
-import type { PageWidth } from "../PageWidth"
+import type { Flatten } from "../Flatten/index.js"
+import * as F from "../Flatten/index.js"
+import type { PageWidth } from "../PageWidth/index.js"
 
 // -------------------------------------------------------------------------------------
 // definition
@@ -938,7 +938,7 @@ export const comma: Doc<never> = char(",")
 /**
  * A document containing a single `.` character.
  */
-export const dot: Doc<never> = char(".")
+export const dot: Doc<never> = char("./index.js")
 
 /**
  * A document containing a single `/` character.

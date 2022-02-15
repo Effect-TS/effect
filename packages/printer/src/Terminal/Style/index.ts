@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import * as Assoc from "@effect-ts/core/Associative"
 import * as A from "@effect-ts/core/Collections/Immutable/Array"
@@ -6,9 +6,9 @@ import * as Ident from "@effect-ts/core/Identity"
 import * as O from "@effect-ts/core/Option"
 import * as S from "@effect-ts/core/Show"
 
-import type { Color } from "../Color"
-import * as Layer from "../Layer"
-import * as SGR from "../SGR"
+import type { Color } from "../Color/index.js"
+import * as Layer from "../Layer/index.js"
+import * as SGR from "../SGR/index.js"
 
 // -------------------------------------------------------------------------------------
 // definition

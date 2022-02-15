@@ -1,11 +1,11 @@
-// tracing: off
+// ets_tracing: off
 
 import * as IO from "@effect-ts/core/IO"
 
-import type { Doc } from "../Doc"
-import type { DocStream } from "../DocStream"
-import * as Layout from "../Layout"
-import * as PageWidth from "../PageWidth"
+import type { Doc } from "../Doc/index.js"
+import type { DocStream } from "../DocStream/index.js"
+import * as Layout from "../Layout/index.js"
+import * as PageWidth from "../PageWidth/index.js"
 
 function renderRec<A>(x: DocStream<A>): IO.IO<string> {
   return IO.gen(function* (_) {

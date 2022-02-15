@@ -1,4 +1,4 @@
-// tracing: off
+// ets_tracing: off
 
 import { constant } from "@effect-ts/core/Function"
 import { matchTag } from "@effect-ts/core/Utils"
