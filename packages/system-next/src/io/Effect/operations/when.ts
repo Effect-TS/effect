@@ -5,24 +5,14 @@ import { Effect } from "../definition"
 /**
  * The moral equivalent of `if (p) exp`.
  *
- * @tsplus fluent ets/Effect when
+ * @tsplus static ets/EffectOps when
  */
-export function when_<R1, E1, A>(
-  self: Effect<R1, E1, A>,
+export function when<R, E, A>(
+  self: Effect<R, E, A>,
   predicate: LazyArg<boolean>,
   __etsTrace?: string
-): Effect<R1, E1, Option<A>> {
-  return Effect.suspendSucceed(() =>
+): Effect<R, E, Option<A>> {
+  return Effect.suspendSucceed(
     predicate() ? self.map(Option.some) : Effect.succeedNow(Option.none)
   )
-}
-
-/**
- * The moral equivalent of `if (p) exp`.
- *
- * @ets_data_first when_
- */
-export function when(predicate: LazyArg<boolean>, __etsTrace?: string) {
-  return <R1, E1, A>(self: Effect<R1, E1, A>): Effect<R1, E1, Option<A>> =>
-    self.when(predicate)
 }

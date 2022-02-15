@@ -1,5 +1,5 @@
 import type { UIO } from "../../Effect/definition"
-import { releaseMapReleaseAll_ } from "../../Effect/operations/excl-forEach"
+import { releaseMapReleaseAll } from "../../Effect/operations/excl-forEach"
 import type { ExecutionStrategy } from "../../ExecutionStrategy"
 import type { Exit } from "../../Exit"
 import type { ReleaseMap } from "./definition"
@@ -17,7 +17,7 @@ export function releaseAll_(
   executionStrategy: ExecutionStrategy,
   __etsTrace?: string
 ): UIO<any> {
-  return releaseMapReleaseAll_(self, exit, executionStrategy)
+  return releaseMapReleaseAll(self, exit, executionStrategy)
 }
 
 /**

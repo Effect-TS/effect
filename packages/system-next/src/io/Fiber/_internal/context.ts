@@ -1506,11 +1506,14 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "GetForkScope": {
+                    const effect = current
+
                     current = instruction(
-                      current.f(
+                      effect.f(
                         this.unsafeGetRef(forkScopeOverride.value).getOrElse(this.scope)
                       )
                     )
+
                     break
                   }
 
@@ -1522,7 +1525,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     this.unsafeSetRef(forkScopeOverride.value, current.forkScope())
 
                     this.unsafeAddFinalizer(
-                      Effect.succeed(() =>
+                      Effect.succeed(
                         this.unsafeSetRef(forkScopeOverride.value, oldforkScopeOverride)
                       )
                     )

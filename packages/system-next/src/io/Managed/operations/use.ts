@@ -1,5 +1,5 @@
 import type { Effect } from "../../Effect"
-import { managedUse_ } from "../../Effect/operations/excl-forEach"
+import { managedUse } from "../../Effect/operations/excl-forEach"
 import type { Managed } from "../definition"
 
 /**
@@ -12,7 +12,7 @@ export function use_<R, E, A, R2, E2, B>(
   f: (a: A) => Effect<R2, E2, B>,
   __etsTrace?: string
 ): Effect<R & R2, E | E2, B> {
-  return managedUse_(self, f)
+  return managedUse(self, f)
 }
 
 /**

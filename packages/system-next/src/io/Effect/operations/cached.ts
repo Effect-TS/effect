@@ -1,3 +1,4 @@
+import type { Duration } from "../../../data/Duration"
 import type { HasClock } from "../../Clock"
 import type { Effect, IO } from "../definition"
 
@@ -9,7 +10,7 @@ import type { Effect, IO } from "../definition"
  */
 export function cached_<R, E, A>(
   self: Effect<R, E, A>,
-  timeToLive: number,
+  timeToLive: Duration,
   __etsTrace?: string
 ): Effect<R & HasClock, never, IO<E, A>> {
   return self.cachedInvalidate(timeToLive).map((_) => _.get(0))
@@ -21,7 +22,7 @@ export function cached_<R, E, A>(
  *
  * @ets_data_first cached_
  */
-export function cached(timeToLive: number, __etsTrace?: string) {
+export function cached(timeToLive: Duration, __etsTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & HasClock, never, IO<E, A>> =>
     self.cached(timeToLive)
 }

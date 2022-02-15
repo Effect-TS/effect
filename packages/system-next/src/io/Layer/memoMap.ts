@@ -96,13 +96,15 @@ export class MemoMap {
                               return Effect.Do()
                                 .tap(() =>
                                   Ref.set_(finalizerRef, (exit) =>
-                                    innerReleaseMap
-                                      .releaseAll(exit, ExecutionStrategy.Sequential)
-                                      .whenEffect(
-                                        Ref.modify_(observers, (n) =>
-                                          Tuple(n === 1, n - 1)
-                                        )
+                                    Effect.whenEffect(
+                                      Ref.modify_(observers, (n) =>
+                                        Tuple(n === 1, n - 1)
+                                      ),
+                                      innerReleaseMap.releaseAll(
+                                        exit,
+                                        ExecutionStrategy.Sequential
                                       )
+                                    )
                                   )
                                 )
                                 .tap(() => Ref.update_(observers, (n) => n + 1))

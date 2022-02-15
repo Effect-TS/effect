@@ -39,6 +39,7 @@ export * from "./operations/cause"
 export * from "./operations/Cb"
 export * from "./operations/chain"
 export * from "./operations/collect"
+export * from "./operations/collectFirst"
 export * from "./operations/collectPar"
 export * from "./operations/cond"
 export * from "./operations/continueOrFail"
@@ -296,21 +297,12 @@ export {
   collectAllDiscard,
   collectAllParDiscard,
   collectAllWith,
-  collectAllWith_,
   collectAllWithPar,
-  collectAllWithPar_,
   forEach,
-  forEach_,
   forEachWithIndex,
-  forEachWithIndex_,
   forEachExec,
-  forEachExec_,
   forEachPar,
   forEachParWithIndex,
-  forEachPar_,
-  forEachParWithIndex_,
   forEachDiscard,
-  forEachDiscard_,
-  forEachParDiscard,
-  forEachParDiscard_
+  forEachParDiscard
 } from "./operations/excl-forEach"

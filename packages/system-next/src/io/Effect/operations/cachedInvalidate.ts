@@ -1,4 +1,5 @@
 import { Tuple } from "../../../collection/immutable/Tuple"
+import type { Duration } from "../../../data/Duration"
 import { Option } from "../../../data/Option"
 import * as Ref from "../../../io/Ref/Synchronized"
 import type { HasClock } from "../../Clock"
@@ -17,7 +18,7 @@ import { Effect } from "../definition"
  */
 export function cachedInvalidate_<R, E, A>(
   self: Effect<R, E, A>,
-  timeToLive: number,
+  timeToLive: Duration,
   __etsTrace?: string
 ): RIO<R & HasClock, Tuple<[IO<E, A>, UIO<void>]>> {
   return Effect.Do()
@@ -36,7 +37,7 @@ export function cachedInvalidate_<R, E, A>(
  *
  * @ets_data_first cachedInvalidate_
  */
-export function cachedInvalidate(timeToLive: number, __etsTrace?: string) {
+export function cachedInvalidate(timeToLive: Duration, __etsTrace?: string) {
   return <R, E, A>(
     self: Effect<R, E, A>
   ): RIO<R & HasClock, Tuple<[IO<E, A>, UIO<void>]>> =>
@@ -45,18 +46,18 @@ export function cachedInvalidate(timeToLive: number, __etsTrace?: string) {
 
 function compute<R, E, A>(
   self: Effect<R, E, A>,
-  timeToLive: number,
+  timeToLive: Duration,
   start: number
 ): Effect<R & HasClock, never, Option<Tuple<[number, Promise<E, A>]>>> {
   return Effect.Do()
     .bind("p", () => Promise.make<E, A>())
     .tap(({ p }) => self.intoPromise(p))
-    .map(({ p }) => Option.some(Tuple(start + timeToLive, p)))
+    .map(({ p }) => Option.some(Tuple(start + timeToLive.milliseconds, p)))
 }
 
 function get<R, E, A>(
   self: Effect<R, E, A>,
-  timeToLive: number,
+  timeToLive: Duration,
   cache: Ref.Synchronized<Option<Tuple<[number, Promise<E, A>]>>>
 ): Effect<R & HasClock, E, A> {
   return Effect.uninterruptibleMask(({ restore }) =>

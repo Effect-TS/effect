@@ -35,7 +35,7 @@
       "import": "./build/esm/*.js"
     }
   },
-  "ets": {
+  "tsplus": {
     "typeDir": "./build/dts"
   }
 }

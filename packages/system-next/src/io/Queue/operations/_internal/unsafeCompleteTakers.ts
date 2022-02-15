@@ -10,6 +10,7 @@ export function unsafeCompleteTakers<A>(
   queue: MutableQueue<A>,
   takers: MutableQueue<Promise<never, A>>
 ): void {
+  // Check both a taker and an item are in the queue, starting with the taker
   let keepPolling = true
 
   while (keepPolling && !queue.isEmpty) {

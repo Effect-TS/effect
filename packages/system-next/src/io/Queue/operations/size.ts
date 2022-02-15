@@ -7,12 +7,12 @@ import { concreteQueue } from "../definition"
  * in the queue. This may be negative if fibers are suspended waiting for
  * elements to be added to the queue.
  *
- * @tsplus fluent ets/Queue size
- * @tsplus fluent ets/XQueue size
- * @tsplus fluent ets/Dequeue size
- * @tsplus fluent ets/XDequeue size
- * @tsplus fluent ets/Enqueue size
- * @tsplus fluent ets/XEnqueue size
+ * @tsplus getter ets/Queue size
+ * @tsplus getter ets/XQueue size
+ * @tsplus getter ets/Dequeue size
+ * @tsplus getter ets/XDequeue size
+ * @tsplus getter ets/Enqueue size
+ * @tsplus getter ets/XEnqueue size
  */
 export function size<RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,

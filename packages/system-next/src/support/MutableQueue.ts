@@ -165,10 +165,10 @@ export class Bounded<A> implements MutableQueue<A> {
     const it = as[Symbol.iterator]()
     let next
     let rem = Chunk.empty<A>()
-    let offerig = true
+    let offering = true
 
-    while (offerig && (next = it.next()) && !next.done) {
-      offerig = this.offer(next.value)
+    while (offering && (next = it.next()) && !next.done) {
+      offering = this.offer(next.value)
     }
 
     while (next && !next.done) {

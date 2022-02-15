@@ -6,5 +6,8 @@ import { unsafePollAll } from "./unsafePollAll"
  * Remove an item from the queue.
  */
 export function unsafeRemove<A>(queue: MutableQueue<A>, a: A): void {
-  unsafeOfferAll(queue, unsafePollAll(queue)).filter((b) => a !== b)
+  unsafeOfferAll(
+    queue,
+    unsafePollAll(queue).filter((b) => a !== b)
+  )
 }

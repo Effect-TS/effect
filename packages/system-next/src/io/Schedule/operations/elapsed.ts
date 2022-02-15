@@ -23,16 +23,12 @@ export const elapsed: Schedule.WithState<
     state.fold(
       () =>
         Tuple(Option.some(now), Duration.Zero, Decision.Continue(Interval.after(now))),
-      (start) => {
-        console.log({
-          elapsed: now - start
-        })
-        return Tuple(
+      (start) =>
+        Tuple(
           Option.some(start),
           Duration(now - start),
           Decision.Continue(Interval.after(now))
         )
-      }
     )
   )
 )

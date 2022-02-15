@@ -219,16 +219,14 @@ export function onInterrupt_<R, E, A, R2, X>(
   cleanup: (interruptors: HashSet.HashSet<FiberId>) => Effect<R2, never, X>,
   __etsTrace?: string
 ): Effect<R & R2, E, A> {
-  return Effect.uninterruptibleMask((status) =>
-    status
-      .restore(self)
-      .foldCauseEffect(
-        (cause) =>
-          cause.isInterrupted()
-            ? cleanup(cause.interruptors()).flatMap(() => Effect.failCauseNow(cause))
-            : Effect.failCauseNow(cause),
-        Effect.succeedNow
-      )
+  return Effect.uninterruptibleMask(({ restore }) =>
+    restore(self).foldCauseEffect(
+      (cause) =>
+        cause.isInterrupted()
+          ? cleanup(cause.interruptors()) > Effect.failCauseNow(cause)
+          : Effect.failCauseNow(cause),
+      Effect.succeedNow
+    )
   )
 }
 

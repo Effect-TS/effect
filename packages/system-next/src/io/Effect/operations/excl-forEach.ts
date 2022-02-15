@@ -46,14 +46,14 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps forEach
  */
-export function forEach_<A, R, E, B>(
+export function forEach<A, R, E, B>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk<B>> {
   return Effect.suspendSucceed(() => {
     const acc: B[] = []
-    return forEachDiscard_(as, (a) =>
+    return Effect.forEachDiscard(as, (a) =>
       f(a).map((b) => {
         acc.push(b)
       })
@@ -61,59 +61,32 @@ export function forEach_<A, R, E, B>(
   })
 }
 
-/**
- * Applies the function `f` to each element of the `Iterable<A>` and
- * returns the results in a new `Chunk<B>`.
- *
- * For a parallel version of this method, see `forEachPar`. If you do not need
- * the results, see `forEachUnit` for a more efficient implementation.
- *
- * @ets_data_first forEach_
- */
-export function forEach<A, R, E, B>(f: (a: A) => Effect<R, E, B>, __etsTrace?: string) {
-  return (as: Iterable<A>) => forEach_(as, f)
-}
-
 // -----------------------------------------------------------------------------
 // forEachWithIndex
 // -----------------------------------------------------------------------------
-
-/**
- * Same as `forEach_`, except that the function `f` is supplied
- * a second argument that corresponds to the index (starting from 0)
- * of the current element being iterated over.
- *
- * @tsplus static ets/EffectOps forEachWithIndex
- */
-export function forEachWithIndex_<A, R, E, B>(
-  as: Iterable<A>,
-  f: (a: A, i: number) => Effect<R, E, B>,
-  __etsTrace?: string
-): Effect<R, E, Chunk<B>> {
-  return Effect.suspendSucceed(() => {
-    let index = 0
-    const acc: B[] = []
-    return forEachDiscard_(as, (a) =>
-      f(a, index).map((b) => {
-        acc.push(b)
-        index++
-      })
-    ).map(() => Chunk.from(acc))
-  })
-}
 
 /**
  * Same as `forEach`, except that the function `f` is supplied
  * a second argument that corresponds to the index (starting from 0)
  * of the current element being iterated over.
  *
- * @ets_data_first forEachWithIndex_
+ * @tsplus static ets/EffectOps forEachWithIndex
  */
 export function forEachWithIndex<A, R, E, B>(
+  as: LazyArg<Iterable<A>>,
   f: (a: A, i: number) => Effect<R, E, B>,
   __etsTrace?: string
-) {
-  return (as: Iterable<A>) => forEachWithIndex_(as, f)
+): Effect<R, E, Chunk<B>> {
+  return Effect.suspendSucceed(() => {
+    let index = 0
+    const acc: B[] = []
+    return Effect.forEachDiscard(as, (a) =>
+      f(a, index).map((b) => {
+        acc.push(b)
+        index++
+      })
+    ).map(() => Chunk.from(acc))
+  })
 }
 
 // -----------------------------------------------------------------------------
@@ -129,7 +102,7 @@ export function forEachWithIndex<A, R, E, B>(
  *
  * @tsplus static ets/EffectOps forEachDiscard
  */
-export function forEachDiscard_<R, E, A, X>(
+export function forEachDiscard<R, E, A, X>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, X>,
   __etsTrace?: string
@@ -139,30 +112,12 @@ export function forEachDiscard_<R, E, A, X>(
   )
 }
 
-/**
- * Applies the function `f` to each element of the `Iterable<A>` and runs
- * produced effects sequentially.
- *
- * Equivalent to `asUnit(forEach(as, f))`, but without the cost of building
- * the list of results.
- *
- * @ets_data_first forEachDiscard_
- */
-export function forEachDiscard<R, E, A, X>(
-  f: (a: A) => Effect<R, E, X>,
-  __etsTrace?: string
-): (as: Iterable<A>) => Effect<R, E, void> {
-  return (as) => forEachDiscard_(as, f)
-}
-
 function forEachDiscardLoop<R, E, A, X>(
   iterator: Iterator<A, any, undefined>,
   f: (a: A) => Effect<R, E, X>
 ): Effect<R, E, void> {
   const next = iterator.next()
-  return next.done
-    ? Effect.unit
-    : f(next.value).flatMap(() => forEachDiscardLoop(iterator, f))
+  return next.done ? Effect.unit : f(next.value) > forEachDiscardLoop(iterator, f)
 }
 
 // -----------------------------------------------------------------------------
@@ -177,32 +132,17 @@ function forEachDiscardLoop<R, E, A, X>(
  *
  * @tsplus static ets/EffectOps forEachPar
  */
-export function forEachPar_<R, E, A, B>(
+export function forEachPar<R, E, A, B>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk<B>> {
-  return Effect.parallelismWith((_) =>
-    _.fold(
+  return Effect.parallelismWith((option) =>
+    option.fold(
       () => forEachParUnbounded(as, f),
       (n) => forEachParN(as, n, f)
     )
   )
-}
-
-/**
- * Applies the function `f` to each element of the `Iterable<A>` in parallel,
- * and returns the results in a new `Chunk<B>`.
- *
- * For a sequential version of this method, see `forEach`.
- *
- * @ets_data_first forEachPar_
- */
-export function forEachPar<R, E, A, B>(
-  f: (a: A) => Effect<R, E, B>,
-  __etsTrace?: string
-) {
-  return (as: Iterable<A>): Effect<R, E, Chunk<B>> => forEachPar_(as, f)
 }
 
 /**
@@ -214,12 +154,12 @@ function forEachParUnbounded<R, E, A, B>(
   f: (a: A) => Effect<R, E, B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk<B>> {
-  return Effect.suspendSucceed(() =>
+  return Effect.suspendSucceed(
     Effect.succeed<B[]>([]).flatMap((array) =>
       forEachParUnboundedDiscard(
         Iter.map_(as(), (a, n) => [a, n] as [A, number]),
         ([a, n]) =>
-          Effect.suspendSucceed(() => f(a)).flatMap((b) =>
+          Effect.suspendSucceed(f(a)).flatMap((b) =>
             Effect.succeed(() => {
               array[n] = b
             })
@@ -277,8 +217,8 @@ function forEachParN<R, E, A, B>(
         queue
           .offerAll(as0.zipWithIndex())
           .flatMap(() =>
-            collectAllParUnboundedDiscard(worker(queue, array).replicate(n)).map(() =>
-              Chunk.from(array)
+            forEachParUnboundedDiscard(worker(queue, array).replicate(n), identity).map(
+              () => Chunk.from(array)
             )
           )
       )
@@ -297,17 +237,17 @@ function forEachParN<R, E, A, B>(
  *
  * @tsplus static ets/EffectOps forEachParWithIndex
  */
-export function forEachParWithIndex_<R, E, A, B>(
-  as: Iterable<A>,
+export function forEachParWithIndex<R, E, A, B>(
+  as: LazyArg<Iterable<A>>,
   f: (a: A, i: number) => Effect<R, E, B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk<B>> {
-  return Effect.suspendSucceed(() =>
-    Effect.succeed<B[]>(() => []).flatMap((array) =>
-      forEachParDiscard_(
-        Iter.map_(as, (a, n) => [a, n] as [A, number]),
+  return Effect.suspendSucceed(
+    Effect.succeed<B[]>([]).flatMap((array) =>
+      Effect.forEachParDiscard(
+        Iter.map_(as(), (a, n) => [a, n] as [A, number]),
         ([a, n]) =>
-          Effect.suspendSucceed(() => f(a, n)).flatMap((b) =>
+          Effect.suspendSucceed(f(a, n)).flatMap((b) =>
             Effect.succeed(() => {
               array[n] = b
             })
@@ -315,18 +255,6 @@ export function forEachParWithIndex_<R, E, A, B>(
       ).map(() => Chunk.from(array))
     )
   )
-}
-
-/**
- * Same as `forEachPar`, except that the function `f` is supplied
- * a second argument that corresponds to the index (starting from 0)
- * of the current element being iterated over.
- */
-export function forEachParWithIndex<R, E, A, B>(
-  f: (a: A, i: number) => Effect<R, E, B>,
-  __etsTrace?: string
-) {
-  return (as: Iterable<A>): Effect<R, E, Chunk<B>> => forEachParWithIndex_(as, f)
 }
 
 // -----------------------------------------------------------------------------
@@ -345,36 +273,17 @@ export function forEachParWithIndex<R, E, A, B>(
  *
  * @tsplus static ets/EffectOps forEachParDiscard
  */
-export function forEachParDiscard_<R, E, A, X>(
+export function forEachParDiscard<R, E, A, X>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, X>,
   __etsTrace?: string
 ): Effect<R, E, void> {
-  return Effect.parallelismWith((_) =>
-    _.fold(
+  return Effect.parallelismWith((option) =>
+    option.fold(
       () => forEachParUnboundedDiscard(as, f),
       (n) => forEachParNDiscard(as, n, f)
     )
   )
-}
-
-/**
- * Applies the function `f` to each element of the `Iterable<A>` and runs
- * produced effects in parallel, discarding the results.
- *
- * For a sequential version of this method, see `forEachDiscard`.
- *
- * Optimized to avoid keeping full tree of effects, so that method could be
- * able to handle large input sequences. Additionally, interrupts all effects
- * on any failure.
- *
- * @ets_data_first forEachParDiscard_
- */
-export function forEachParDiscard<R, E, A, X>(
-  f: (a: A) => Effect<R, E, X>,
-  __etsTrace?: string
-) {
-  return (as: Iterable<A>): Effect<R, E, void> => forEachParDiscard_(as, f)
 }
 
 function forEachParUnboundedDiscard<R, E, A, X>(
@@ -395,10 +304,10 @@ function forEachParUnboundedDiscard<R, E, A, X>(
       const ref = new AtomicNumber(0)
 
       return Effect.transplant((graft) =>
-        forEach_(as, (a) =>
+        Effect.forEach(bs, (a) =>
           graft(
-            restore(Effect.suspendSucceed(() => f(a))).foldCauseEffect(
-              (cause) => promise.fail(undefined).zipRight(Effect.failCauseNow(cause)),
+            restore(Effect.suspendSucceed(f(a))).foldCauseEffect(
+              (cause) => promise.fail(undefined) > Effect.failCauseNow(cause),
               () => {
                 if (ref.incrementAndGet() === size) {
                   promise.unsafeDone(Effect.unit)
@@ -416,13 +325,13 @@ function forEachParUnboundedDiscard<R, E, A, X>(
             forEachParUnbounded(fibers, interruptFiber).flatMap((exits) => {
               const collected = Exit.collectAllPar(exits)
               if (collected._tag === "Some" && collected.value._tag === "Failure") {
-                return Effect.failCauseNow(
+                return Effect.failCause(
                   Cause.both(cause.stripFailures(), collected.value.cause)
                 )
               }
-              return Effect.failCauseNow(cause.stripFailures())
+              return Effect.failCause(cause.stripFailures())
             }),
-          (_) => forEachDiscard_(fibers, (_) => _.inheritRefs)
+          (_) => Effect.forEachDiscard(fibers, (_) => _.inheritRefs)
         )
       )
     })
@@ -448,9 +357,9 @@ function forEachParNDiscard<R, E, A, X>(
       concreteQueue(queue)
       return queue
         ._takeUpTo(1)
-        .map((_) => _.head)
-        .flatMap((_) =>
-          _.fold(
+        .map((chunk) => chunk.head)
+        .flatMap((option) =>
+          option.fold(
             () => Effect.unit,
             (a) => f(a).flatMap(() => worker(queue))
           )
@@ -460,7 +369,7 @@ function forEachParNDiscard<R, E, A, X>(
     return makeBoundedQueue<A>(size).flatMap((queue) =>
       queue
         .offerAll(as0)
-        .flatMap(() => collectAllParUnboundedDiscard(worker(queue).replicate(n)))
+        .flatMap(() => forEachParUnboundedDiscard(worker(queue).replicate(n), identity))
     )
   })
 }
@@ -475,8 +384,8 @@ function forEachParNDiscard<R, E, A, X>(
  *
  * @tsplus static ets/EffectOps forEachExec
  */
-export function forEachExec_<R, E, A, B>(
-  as: Iterable<A>,
+export function forEachExec<R, E, A, B>(
+  as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, B>,
   strategy: ExecutionStrategy,
   __etsTrace?: string
@@ -484,30 +393,16 @@ export function forEachExec_<R, E, A, B>(
   return Effect.suspendSucceed(() => {
     switch (strategy._tag) {
       case "Parallel": {
-        return forEachPar_(as, f).withParallelismUnbounded()
+        return Effect.forEachPar(as, f).withParallelismUnbounded()
       }
       case "ParallelN": {
-        return forEachPar_(as, f).withParallelism(strategy.n)
+        return Effect.forEachPar(as, f).withParallelism(strategy.n)
       }
       case "Sequential": {
-        return forEach_(as, f)
+        return Effect.forEach(as, f)
       }
     }
   })
-}
-
-/**
- * Applies the function `f` to each element of the `Iterable<A>` and returns
- * the result in a new `Chunk<B>` using the specified execution strategy.
- *
- * @ets_data_first forEachExec_
- */
-export function forEachExec<R, E, A, B>(
-  f: (a: A) => Effect<R, E, B>,
-  strategy: ExecutionStrategy,
-  __etsTrace?: string
-) {
-  return (as: Iterable<A>): Effect<R, E, Chunk<B>> => forEachExec_(as, f, strategy)
 }
 
 // -----------------------------------------------------------------------------
@@ -521,10 +416,10 @@ export function forEachExec<R, E, A, B>(
  * @tsplus static ets/EffectOps collectAll
  */
 export function collectAll<R, E, A>(
-  as: Iterable<Effect<R, E, A>>,
+  as: LazyArg<Iterable<Effect<R, E, A>>>,
   __etsTrace?: string
 ) {
-  return forEach_(as, identity)
+  return Effect.forEach(as, identity)
 }
 
 // -----------------------------------------------------------------------------
@@ -538,10 +433,10 @@ export function collectAll<R, E, A>(
  * @tsplus static ets/EffectOps collectAllPar
  */
 export function collectAllPar<R, E, A>(
-  as: Iterable<Effect<R, E, A>>,
+  as: LazyArg<Iterable<Effect<R, E, A>>>,
   __etsTrace?: string
 ): Effect<R, E, Chunk<A>> {
-  return forEachPar_(as, identity)
+  return Effect.forEachPar(as, identity)
 }
 
 // -----------------------------------------------------------------------------
@@ -555,10 +450,10 @@ export function collectAllPar<R, E, A>(
  * @tsplus static ets/EffectOps collectAllDiscard
  */
 export function collectAllDiscard<R, E, A>(
-  as: Iterable<Effect<R, E, A>>,
+  as: LazyArg<Iterable<Effect<R, E, A>>>,
   __etsTrace?: string
 ): Effect<R, E, void> {
-  return forEachDiscard_(as, identity)
+  return Effect.forEachDiscard(as, identity)
 }
 
 // -----------------------------------------------------------------------------
@@ -572,60 +467,10 @@ export function collectAllDiscard<R, E, A>(
  * @tsplus static ets/EffectOps collectAllParDiscard
  */
 export function collectAllParDiscard<R, E, A>(
-  as: Iterable<Effect<R, E, A>>,
+  as: LazyArg<Iterable<Effect<R, E, A>>>,
   __etsTrace?: string
 ): Effect<R, E, void> {
-  return forEachParDiscard_(as, identity)
-}
-
-// -----------------------------------------------------------------------------
-// collectAllParUnboundedDiscard
-// -----------------------------------------------------------------------------
-
-/**
- * Evaluate each effect in the structure in parallel, and discard the
- * results. For a sequential version, see `collectAllDiscard`.
- *
- * @tsplus static ets/EffectOps collectAllParUnboundedDiscard
- */
-export function collectAllParUnboundedDiscard<R, E, A>(
-  as: Iterable<Effect<R, E, A>>,
-  __etsTrace?: string
-): Effect<R, E, void> {
-  return forEachParUnboundedDiscard(as, identity)
-}
-
-// -----------------------------------------------------------------------------
-// collectAllParNDiscard
-// -----------------------------------------------------------------------------
-
-/**
- * Evaluate each effect in the structure in parallel, and discard the
- * results. For a sequential version, see `collectAllDiscard`.
- *
- * Unlike `collectAllParDiscard`, this method will use at most `n` fibers.
- *
- * @tsplus static ets/EffectOps collectAllParNDiscard
- */
-export function collectAllParNDiscard_<R, E, A>(
-  as: Iterable<Effect<R, E, A>>,
-  n: number,
-  __etsTrace?: string
-): Effect<R, E, void> {
-  return forEachParNDiscard(as, n, identity)
-}
-
-/**
- * Evaluate each effect in the structure in parallel, and discard the
- * results. For a sequential version, see `collectAllDiscard`.
- *
- * Unlike `collectAllParDiscard`, this method will use at most `n` fibers.
- *
- * @ets_data_first collectAllParNDiscard_
- */
-export function collectAllParNDiscard(n: number, __etsTrace?: string) {
-  return <R, E, A>(as: Iterable<Effect<R, E, A>>): Effect<R, E, void> =>
-    collectAllParNDiscard_(as, n)
+  return Effect.forEachParDiscard(as, identity)
 }
 
 // -----------------------------------------------------------------------------
@@ -638,23 +483,12 @@ export function collectAllParNDiscard(n: number, __etsTrace?: string) {
  *
  * @tsplus static ets/EffectOps collectAllWith
  */
-export function collectAllWith_<R, E, A, B>(
-  as: Iterable<Effect<R, E, A>>,
+export function collectAllWith<R, E, A, B>(
+  as: LazyArg<Iterable<Effect<R, E, A>>>,
   pf: (a: A) => Option<B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk<B>> {
-  return collectAll(as).map((_) => _.collect(pf))
-}
-
-/**
- * Evaluate each effect in the structure with `collectAll`, and collect
- * the results with given partial function.
- *
- * @ets_data_first collectAllWith_
- */
-export function collectAllWith<A, B>(pf: (a: A) => Option<B>, __etsTrace?: string) {
-  return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, Chunk<B>> =>
-    collectAllWith_(as, pf)
+  return Effect.collectAll(as).map((chunk) => chunk.collect(pf))
 }
 
 // -----------------------------------------------------------------------------
@@ -667,23 +501,12 @@ export function collectAllWith<A, B>(pf: (a: A) => Option<B>, __etsTrace?: strin
  *
  * @tsplus static ets/EffectOps collectAllWithPar
  */
-export function collectAllWithPar_<R, E, A, B>(
-  as: Iterable<Effect<R, E, A>>,
+export function collectAllWithPar<R, E, A, B>(
+  as: LazyArg<Iterable<Effect<R, E, A>>>,
   pf: (a: A) => Option<B>,
   __etsTrace?: string
 ): Effect<R, E, Chunk<B>> {
-  return collectAllPar(as).map((_) => _.collect(pf))
-}
-
-/**
- * Evaluate each effect in the structure with `collectAll`, and collect
- * the results with given partial function.
- *
- * @ets_data_first collectAllWithPar_
- */
-export function collectAllWithPar<A, B>(pf: (a: A) => Option<B>, __etsTrace?: string) {
-  return <R, E>(as: Iterable<Effect<R, E, A>>): Effect<R, E, Chunk<B>> =>
-    collectAllWithPar_(as, pf)
+  return Effect.collectAllPar(as).map((chunk) => chunk.collect(pf))
 }
 
 // -----------------------------------------------------------------------------
@@ -696,12 +519,12 @@ export function collectAllWithPar<A, B>(pf: (a: A) => Option<B>, __etsTrace?: st
  * @tsplus static ets/EffectOps collectAllSuccesses
  */
 export function collectAllSuccesses<R, E, A>(
-  as: Iterable<Effect<R, E, A>>,
+  as: LazyArg<Iterable<Effect<R, E, A>>>,
   __etsTrace?: string
 ): Effect<R, never, Chunk<A>> {
-  return collectAllWith_(
-    Iter.map_(as, (_) => _.exit()),
-    (e) => (e._tag === "Success" ? Option.some(e.value) : Option.none)
+  return Effect.collectAllWith(
+    Iter.map_(as(), (effect) => effect.exit()),
+    (exit) => (exit._tag === "Success" ? Option.some(exit.value) : Option.none)
   )
 }
 
@@ -715,12 +538,12 @@ export function collectAllSuccesses<R, E, A>(
  * @tsplus static ets/EffectOps collectAllSuccessesPar
  */
 export function collectAllSuccessesPar<R, E, A>(
-  as: Iterable<Effect<R, E, A>>,
+  as: LazyArg<Iterable<Effect<R, E, A>>>,
   __etsTrace?: string
 ): Effect<R, never, Chunk<A>> {
-  return collectAllWithPar_(
-    Iter.map_(as, (_) => _.exit()),
-    (e) => (e._tag === "Success" ? Option.some(e.value) : Option.none)
+  return Effect.collectAllWithPar(
+    Iter.map_(as(), (effect) => effect.exit()),
+    (exit) => (exit._tag === "Success" ? Option.some(exit.value) : Option.none)
   )
 }
 
@@ -734,22 +557,24 @@ export function collectAllSuccessesPar<R, E, A>(
  * a catchable error, _if_ that error does not result from interruption.
  */
 export function fiberJoinAll<E, A>(
-  as: Iterable<Fiber.Fiber<E, A>>,
+  as: LazyArg<Iterable<Fiber.Fiber<E, A>>>,
   __etsTrace?: string
 ): Effect<unknown, E, Chunk<A>> {
   return fiberWaitAll(as)
     .flatMap((exit) => Effect.done(exit))
-    .tap(() => forEach_(as, (f) => f.inheritRefs))
+    .tap(() => Effect.forEach(as, (fiber) => fiber.inheritRefs))
 }
 
 /**
  * Awaits on all fibers to be completed, successfully or not.
  */
 export function fiberWaitAll<E, A>(
-  as: Iterable<Fiber.Fiber<E, A>>,
+  as: LazyArg<Iterable<Fiber.Fiber<E, A>>>,
   __etsTrace?: string
 ): RIO<unknown, Exit<E, Chunk<A>>> {
-  return forEachPar_(as, (f) => f.await.flatMap((exit) => Effect.done(exit))).exit()
+  return Effect.forEachPar(as, (fiber) =>
+    fiber.await.flatMap((exit) => Effect.done(exit))
+  ).exit()
 }
 
 // -----------------------------------------------------------------------------
@@ -759,7 +584,7 @@ export function fiberWaitAll<E, A>(
 /**
  * Releases all the finalizers in the releaseMap according to the ExecutionStrategy.
  */
-export function releaseMapReleaseAll_(
+export function releaseMapReleaseAll(
   self: ReleaseMap,
   ex: Exit<any, any>,
   execStrategy: ExecutionStrategy,
@@ -774,7 +599,7 @@ export function releaseMapReleaseAll_(
         switch (execStrategy._tag) {
           case "Sequential": {
             return Tuple(
-              forEach_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
+              Effect.forEach(Array.from(s.finalizers()).reverse(), ([_, f]) =>
                 s.update(f)(ex).exit()
               ).flatMap((results) =>
                 // @ts-expect-error
@@ -785,7 +610,7 @@ export function releaseMapReleaseAll_(
           }
           case "Parallel": {
             return Tuple(
-              forEachPar_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
+              Effect.forEachPar(Array.from(s.finalizers()).reverse(), ([_, f]) =>
                 s.update(f)(ex).exit()
               ).flatMap((results) =>
                 // @ts-expect-error
@@ -796,7 +621,7 @@ export function releaseMapReleaseAll_(
           }
           case "ParallelN": {
             return Tuple(
-              forEachPar_(Array.from(s.finalizers()).reverse(), ([_, f]) =>
+              Effect.forEachPar(Array.from(s.finalizers()).reverse(), ([_, f]) =>
                 s.update(f)(ex).exit()
               )
                 .flatMap((results) =>
@@ -841,7 +666,7 @@ export function managedFork<R, E, A>(
         .bind("releaseMapEntry", ({ fiber, innerReleaseMap, outerReleaseMap }) =>
           outerReleaseMap.add((e) =>
             interruptFiber(fiber).flatMap(() =>
-              releaseMapReleaseAll_(innerReleaseMap, e, ExecutionStrategy.Sequential)
+              releaseMapReleaseAll(innerReleaseMap, e, ExecutionStrategy.Sequential)
             )
           )
         )
@@ -853,7 +678,7 @@ export function managedFork<R, E, A>(
 /**
  * Run an effect while acquiring the resource before and releasing it after
  */
-export function managedUse_<R, E, A, R2, E2, B>(
+export function managedUse<R, E, A, R2, E2, B>(
   self: Managed<R, E, A>,
   f: (a: A) => Effect<R2, E2, B>,
   __etsTrace?: string
@@ -865,7 +690,7 @@ export function managedUse_<R, E, A, R2, E2, B>(
     )(
       fiberRefGet(currentReleaseMap.value).acquireReleaseExitWith(
         () => self.effect.flatMap((_) => f(_.get(1))),
-        (relMap, ex) => releaseMapReleaseAll_(relMap, ex, ExecutionStrategy.Sequential)
+        (relMap, ex) => releaseMapReleaseAll(relMap, ex, ExecutionStrategy.Sequential)
       )
     )
   )
@@ -884,11 +709,6 @@ export function makeBoundedQueue<A>(
   )
 }
 
-// /**
-//  * Creates a new `Queue` using the provided `Strategy`.
-//  *
-//  * @tsplus static ets/QueueOps create
-//  */
 export function createQueue<A>(
   queue: MutableQueue<A>,
   strategy: Strategy<A>,
@@ -945,11 +765,11 @@ export class UnsafeCreate<A> extends XQueueInternal<
       if (this.queue.isEmpty) {
         const taker = this.takers.poll(undefined)
 
-        if (!taker) {
-          noRemaining = false
-        } else {
+        if (taker != null) {
           unsafeCompletePromise(taker, a)
           noRemaining = true
+        } else {
+          noRemaining = false
         }
       } else {
         noRemaining = false
@@ -964,26 +784,24 @@ export class UnsafeCreate<A> extends XQueueInternal<
 
       unsafeCompleteTakers(this.strategy, this.queue, this.takers)
 
-      if (succeeded) {
-        return Effect.succeedNow(true)
-      } else {
-        return this.strategy.handleSurplus(
-          Chunk.single(a),
-          this.queue,
-          this.takers,
-          this.shutdownFlag
-        )
-      }
+      return succeeded
+        ? Effect.succeedNow(true)
+        : this.strategy.handleSurplus(
+            Chunk.single(a),
+            this.queue,
+            this.takers,
+            this.shutdownFlag
+          )
     })
   }
 
   _offerAll(as: Iterable<A>, __etsTrace?: string): Effect<unknown, never, boolean> {
     return Effect.suspendSucceed(() => {
-      const as0 = Chunk.from(as)
-
       if (this.shutdownFlag.get) {
         return Effect.interrupt
       }
+
+      const as0 = Chunk.from(as)
 
       const pTakers = this.queue.isEmpty
         ? unsafePollN(this.takers, as0.size)
@@ -996,47 +814,45 @@ export class UnsafeCreate<A> extends XQueueInternal<
         unsafeCompletePromise(taker, item)
       })
 
-      if (remaining.size === 0) {
+      if (remaining.isEmpty()) {
         return Effect.succeedNow(true)
       }
 
+      // Not enough takers, offer to the queue
       const surplus = unsafeOfferAll(this.queue, remaining)
 
       unsafeCompleteTakers(this.strategy, this.queue, this.takers)
 
-      if (surplus.size === 0) {
-        return Effect.succeedNow(true)
-      } else {
-        return this.strategy.handleSurplus(
-          surplus,
-          this.queue,
-          this.takers,
-          this.shutdownFlag
-        )
-      }
+      return surplus.isEmpty()
+        ? Effect.succeedNow(true)
+        : this.strategy.handleSurplus(
+            surplus,
+            this.queue,
+            this.takers,
+            this.shutdownFlag
+          )
     })
   }
 
   _awaitShutdown: UIO<void> = this.shutdownHook.await()
 
-  _size: UIO<number> = Effect.suspendSucceed(() => {
-    if (this.shutdownFlag.get) {
-      return Effect.interrupt
-    } else {
-      return Effect.succeedNow(
-        this.queue.size - this.takers.size + this.strategy.surplusSize
-      )
-    }
-  })
+  _size: UIO<number> = Effect.suspendSucceed(
+    this.shutdownFlag.get
+      ? Effect.interrupt
+      : Effect.succeedNow(
+          this.queue.size - this.takers.size + this.strategy.surplusSize
+        )
+  )
 
   _shutdown: UIO<void> = Effect.suspendSucceedWith((_, fiberId) => {
     this.shutdownFlag.set(true)
 
-    return Effect.forEachPar(unsafePollAll(this.takers), (promise) =>
-      promise.interruptAs(fiberId)
-    )
-      .zipRight(this.strategy.shutdown)
-      .whenEffect(this.shutdownHook.succeed(undefined))
+    return Effect.whenEffect(
+      this.shutdownHook.succeed(undefined),
+      Effect.forEachParDiscard(unsafePollAll(this.takers), (promise) =>
+        promise.interruptAs(fiberId)
+      ) > this.strategy.shutdown
+    ).asUnit()
   }).uninterruptible()
 
   _isShutdown: UIO<boolean> = Effect.succeed(this.shutdownFlag.get)
@@ -1048,7 +864,7 @@ export class UnsafeCreate<A> extends XQueueInternal<
 
     const item = this.queue.poll(undefined)
 
-    if (item) {
+    if (item != null) {
       this.strategy.unsafeOnQueueEmptySpace(this.queue, this.takers)
       return Effect.succeedNow(item)
     } else {
@@ -1062,21 +878,21 @@ export class UnsafeCreate<A> extends XQueueInternal<
         this.takers.offer(promise)
         unsafeCompleteTakers(this.strategy, this.queue, this.takers)
         return this.shutdownFlag.get ? Effect.interrupt : promise.await()
-      }).onInterrupt(() => Effect.succeed(unsafeRemove(this.takers, promise)))
-    }
-  })
-
-  _takeAll: Effect<unknown, never, Chunk<A>> = Effect.suspendSucceed(() => {
-    if (this.shutdownFlag.get) {
-      return Effect.interrupt
-    } else {
-      return Effect.succeed(() => {
-        const as = unsafePollAll(this.queue)
-        this.strategy.unsafeOnQueueEmptySpace(this.queue, this.takers)
-        return as
+      }).onInterrupt(() => {
+        return Effect.succeed(unsafeRemove(this.takers, promise))
       })
     }
   })
+
+  _takeAll: Effect<unknown, never, Chunk<A>> = Effect.suspendSucceed(() =>
+    this.shutdownFlag.get
+      ? Effect.interrupt
+      : Effect.succeed(() => {
+          const as = unsafePollAll(this.queue)
+          this.strategy.unsafeOnQueueEmptySpace(this.queue, this.takers)
+          return as
+        })
+  )
 
   _takeUpTo(n: number, __etsTrace?: string): Effect<unknown, never, Chunk<A>> {
     return Effect.suspendSucceed(() =>
@@ -1096,6 +912,12 @@ export function makeBackPressureStrategy<A>() {
 }
 
 export class BackPressureStrategy<A> implements Strategy<A> {
+  /**
+   * - `A` is an item to add
+   * - `Promise<never, boolean>` is the promise completing the whole `offerAll`
+   * - `boolean` indicates if it's the last item to offer (promise should be
+   *    completed once this item is added)
+   */
   private putters =
     MutableQueue.Unbounded<Tuple<[A, Promise<never, boolean>, boolean]>>()
 
@@ -1113,11 +935,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
         this.unsafeOffer(as, promise)
         this.unsafeOnQueueEmptySpace(queue, takers)
         unsafeCompleteTakers(this, queue, takers)
-        if (isShutdown.get) {
-          return Effect.interrupt
-        } else {
-          return promise.await()
-        }
+        return isShutdown.get ? Effect.interrupt : promise.await()
       }).onInterrupt(() => Effect.succeed(this.unsafeRemove(promise)))
     })
   }
@@ -1139,7 +957,6 @@ export class BackPressureStrategy<A> implements Strategy<A> {
 
       if (bs.size === 0) {
         this.putters.offer(Tuple(head, promise, true))
-        return
       } else {
         this.putters.offer(Tuple(head, promise, false))
       }

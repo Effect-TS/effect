@@ -19,21 +19,7 @@ export function takeBetween_<RA, RB, EA, EB, A, B>(
   min: number,
   max: number
 ): Effect<RB, EB, Chunk<B>> {
-  if (max < min) {
-    return Effect.succeedNow(Chunk.empty())
-  }
-
-  return self.takeUpTo(max).flatMap((bs) => {
-    const remaining = min - bs.size
-
-    if (remaining === 1) {
-      return self.take().map((b) => bs.append(b))
-    } else if (remaining > 1) {
-      return takeRemainderLoop(self, remaining).map((list) => bs + list)
-    } else {
-      return Effect.succeedNow(bs)
-    }
-  })
+  return Effect.suspendSucceed(takeRemainderLoop(self, min, max, Chunk.empty()))
 }
 
 /**
@@ -51,12 +37,34 @@ export function takeBetween(min: number, max: number, __etsTrace?: string) {
 
 function takeRemainderLoop<RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,
-  n: number,
+  min: number,
+  max: number,
+  acc: Chunk<B>,
   __etsTrace?: string
 ): Effect<RB, EB, Chunk<B>> {
-  return n <= 0
-    ? Effect.succeedNow(Chunk.empty())
-    : self
+  if (max < min) {
+    return Effect.succeedNow(acc)
+  }
+  return self.takeUpTo(max).flatMap((bs) => {
+    const remaining = min - bs.length
+
+    if (remaining === 1) {
+      return self.take().map((b) => (acc + bs).append(b))
+    }
+
+    if (remaining > 1) {
+      return self
         .take()
-        .flatMap((a) => takeRemainderLoop(self, n - 1).map((chunk) => chunk.append(a)))
+        .flatMap((b) =>
+          takeRemainderLoop(
+            self,
+            remaining - 1,
+            max - bs.length - 1,
+            (acc + bs).append(b)
+          )
+        )
+    }
+
+    return Effect.succeedNow(acc + bs)
+  })
 }
