@@ -1,20 +1,20 @@
 // ets_tracing: off
 
-import type { UIO } from "../Effect"
-import { commit } from "../Transactional/STM/core"
-import type { TSemaphore } from "../Transactional/TSemaphore"
-import { make as makeTSemaphore } from "../Transactional/TSemaphore/operations/make"
+import type { UIO } from "../Effect/index.js"
+import { commit } from "../Transactional/STM/core.js"
+import type { TSemaphore } from "../Transactional/TSemaphore/index.js"
+import { make as makeTSemaphore } from "../Transactional/TSemaphore/operations/make.js"
 
-export * from "../Transactional/TSemaphore/operations/acquire"
-export * from "../Transactional/TSemaphore/operations/acquireN"
-export * from "../Transactional/TSemaphore/operations/available"
-export * from "../Transactional/TSemaphore/operations/makeCommit"
-export * from "../Transactional/TSemaphore/operations/release"
-export * from "../Transactional/TSemaphore/operations/releaseN"
-export * from "../Transactional/TSemaphore/operations/withPermit"
-export * from "../Transactional/TSemaphore/operations/withPermitManaged"
-export * from "../Transactional/TSemaphore/operations/withPermits"
-export * from "../Transactional/TSemaphore/operations/withPermitsManaged"
+export * from "../Transactional/TSemaphore/operations/acquire.js"
+export * from "../Transactional/TSemaphore/operations/acquireN.js"
+export * from "../Transactional/TSemaphore/operations/available.js"
+export * from "../Transactional/TSemaphore/operations/makeCommit.js"
+export * from "../Transactional/TSemaphore/operations/release.js"
+export * from "../Transactional/TSemaphore/operations/releaseN.js"
+export * from "../Transactional/TSemaphore/operations/withPermit.js"
+export * from "../Transactional/TSemaphore/operations/withPermitManaged.js"
+export * from "../Transactional/TSemaphore/operations/withPermits.js"
+export * from "../Transactional/TSemaphore/operations/withPermitsManaged.js"
 
 export type Semaphore = TSemaphore
 

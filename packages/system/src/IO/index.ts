@@ -23,7 +23,7 @@ export type IO<A> = Succeed<A> | FlatMap<any, A> | Suspend<A>
 export const IoURI = Symbol()
 export type IoURI = typeof IoURI
 
-declare module "../Utils" {
+declare module "../Utils/index.js" {
   export interface UnifiableIndexed<X> {
     [IoURI]: [X] extends [IO<infer A>] ? IO<A> : never
   }

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import * as STM from "../../STM"
-import * as TRef from "../../TRef"
-import { TSemaphore } from "../definition"
+import * as STM from "../../STM/index.js"
+import * as TRef from "../../TRef/index.js"
+import { TSemaphore } from "../definition.js"
 
 /**
  * Constructs a new `TSemaphore` with the specified number of permits.

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { STM } from "../../STM"
-import type { TSemaphore } from "../definition"
-import { releaseN_ } from "./releaseN"
+import type { STM } from "../../STM/index.js"
+import type { TSemaphore } from "../definition.js"
+import { releaseN_ } from "./releaseN.js"
 
 /**
  * Releases a single permit in a transactional context.

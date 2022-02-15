@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { Effect } from "../../../Effect"
-import type { TSemaphore } from "../definition"
-import { withPermits_ } from "./withPermits"
+import type { Effect } from "../../../Effect/index.js"
+import type { TSemaphore } from "../definition.js"
+import { withPermits_ } from "./withPermits.js"
 
 /**
  * Executes the specified effect, acquiring a permit immediately before the

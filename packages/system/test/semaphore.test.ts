@@ -47,7 +47,7 @@ describe("Semaphores", () => {
 
     const [blocking, unblocking] = await T.runPromise(program)
 
-    expect(blocking).toEqual(10)
+    expect(blocking).toEqual(2)
     expect(unblocking).toEqual(2)
   })
 

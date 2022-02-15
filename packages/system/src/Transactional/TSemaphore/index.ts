@@ -1,4 +1,4 @@
 // ets_tracing: off
 
-export * from "./definition"
-export * from "./operations"
+export * from "./definition.js"
+export * from "./operations/index.js"

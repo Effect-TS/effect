@@ -1,15 +1,15 @@
 // ets_tracing: off
 
 // codegen:start {preset: barrel, include: ./*.ts}
-export * from "./acquire"
-export * from "./acquireN"
-export * from "./available"
-export * from "./make"
-export * from "./makeCommit"
-export * from "./release"
-export * from "./releaseN"
-export * from "./withPermit"
-export * from "./withPermitManaged"
-export * from "./withPermits"
-export * from "./withPermitsManaged"
+export * from "./acquire.js"
+export * from "./acquireN.js"
+export * from "./available.js"
+export * from "./make.js"
+export * from "./makeCommit.js"
+export * from "./release.js"
+export * from "./releaseN.js"
+export * from "./withPermit.js"
+export * from "./withPermitManaged.js"
+export * from "./withPermits.js"
+export * from "./withPermitsManaged.js"
 // codegen:end

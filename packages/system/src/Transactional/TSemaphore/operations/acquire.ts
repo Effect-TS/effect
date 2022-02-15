@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { STM } from "../../STM"
-import type { TSemaphore } from "../definition"
-import { acquireN_ } from "./acquireN"
+import type { STM } from "../../STM/index.js"
+import type { TSemaphore } from "../definition.js"
+import { acquireN_ } from "./acquireN.js"
 
 /**
  * Acquires a single permit in transactional context.

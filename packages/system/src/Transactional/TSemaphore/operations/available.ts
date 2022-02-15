@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { STM } from "../../STM"
-import * as TRef from "../../TRef"
-import type { TSemaphore } from "../definition"
+import type { STM } from "../../STM/index.js"
+import * as TRef from "../../TRef/index.js"
+import type { TSemaphore } from "../definition.js"
 
 /**
  * Returns the number of available permits in a transactional context.

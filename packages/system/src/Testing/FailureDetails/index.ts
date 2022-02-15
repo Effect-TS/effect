@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as NEA from "../../Collections/Immutable/NonEmptyArray"
-import type * as AV from "../AssertionValue/AssertionValue"
-import * as l from "../AssertionValue/label"
+import type * as NEA from "../../Collections/Immutable/NonEmptyArray/index.js"
+import type * as AV from "../AssertionValue/AssertionValue.js"
+import * as l from "../AssertionValue/label.js"
 
 export const failureDetailsTypeId = Symbol()
 

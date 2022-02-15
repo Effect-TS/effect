@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as M from "../../../Managed"
-import * as STM from "../../STM"
-import type { TSemaphore } from "../definition"
-import { acquireN_ } from "./acquireN"
-import { releaseN_ } from "./releaseN"
+import * as M from "../../../Managed/index.js"
+import * as STM from "../../STM/index.js"
+import type { TSemaphore } from "../definition.js"
+import { acquireN_ } from "./acquireN.js"
+import { releaseN_ } from "./releaseN.js"
 
 /**
  * Returns a managed effect that describes acquiring the specified number of

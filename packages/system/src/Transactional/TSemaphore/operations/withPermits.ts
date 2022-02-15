@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import * as T from "../../../Effect"
-import * as STM from "../../STM"
-import type { TSemaphore } from "../definition"
-import { acquireN_ } from "./acquireN"
-import { releaseN_ } from "./releaseN"
+import * as T from "../../../Effect/index.js"
+import * as STM from "../../STM/index.js"
+import type { TSemaphore } from "../definition.js"
+import { acquireN_ } from "./acquireN.js"
+import { releaseN_ } from "./releaseN.js"
 
 /**
  * Executes the specified effect, acquiring the specified number of permits

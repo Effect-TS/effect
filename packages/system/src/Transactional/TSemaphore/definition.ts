@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { TRef } from "../TRef"
+import type { TRef } from "../TRef/index.js"
 
 /**
  * A `TSemaphore` is a semaphore that can be composed transactionally. Because

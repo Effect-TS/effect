@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type { Managed } from "../../../Managed"
-import type { TSemaphore } from "../definition"
-import { withPermitsManaged_ } from "./withPermitsManaged"
+import type { Managed } from "../../../Managed/index.js"
+import type { TSemaphore } from "../definition.js"
+import { withPermitsManaged_ } from "./withPermitsManaged.js"
 
 /**
  * Returns a managed effect that describes acquiring a permit as the `acquire`

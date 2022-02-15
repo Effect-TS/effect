@@ -41,7 +41,7 @@ export type UIO<A> = Managed<unknown, never, A>
 export type RIO<R, A> = Managed<R, never, A>
 export type IO<E, A> = Managed<unknown, E, A>
 
-declare module "../Utils" {
+declare module "../Utils/index.js" {
   export interface UnifiableIndexed<X> {
     [ManagedURI]: [X] extends [Managed<infer R, infer E, infer A>]
       ? Managed<R, E, A>

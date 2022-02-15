@@ -1,10 +1,10 @@
 // ets_tracing: off
 
-import { IllegalArgumentException } from "../../../Cause/errors"
-import type { STM } from "../../STM"
-import { STMEffect } from "../../STM"
-import * as TRef from "../../TRef"
-import type { TSemaphore } from "../definition"
+import { IllegalArgumentException } from "../../../Cause/errors.js"
+import type { STM } from "../../STM/index.js"
+import { STMEffect } from "../../STM/index.js"
+import * as TRef from "../../TRef/index.js"
+import type { TSemaphore } from "../definition.js"
 
 /**
  * Releases the specified number of permits in a transactional context
