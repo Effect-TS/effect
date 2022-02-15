@@ -49,7 +49,7 @@ module.exports = {
     "@typescript-eslint/no-namespace": "off",
     "@typescript-eslint/no-non-null-assertion": "off",
     "import/first": "error",
-    "import/no-cycle": "error",
+    "import/no-cycle": "off",
     "import/newline-after-import": "error",
     "import/no-duplicates": "error",
     "import/no-unresolved": "error",
