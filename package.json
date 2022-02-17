@@ -14,7 +14,7 @@
     "autofix": "ultra -r autofix",
     "lint": "ultra -r lint",
     "tc": "ultra -r tc",
-    "postinstall": "husky install",
+    "postinstall": "husky install && tsplus-install",
     "tsplus:install": "tsplus-install",
     "version:alpha": "lerna version prerelease --conventional-commits --preid=alpha",
     "version:preminor": "lerna version preminor --conventional-commits",
@@ -39,8 +39,7 @@
     }
   },
   "devDependencies": {
-    "@effect-ts/system": "workspace:^",
-    "@tsplus/installer": "0.0.26",
+    "@tsplus/installer": "0.0.27",
     "@types/glob": "^7.2.0",
     "@types/jest": "^27.4.0",
     "@types/node": "^17.0.18",

@@ -486,7 +486,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect-ts/system@workspace:^, @effect-ts/system@workspace:packages/system":
+"@effect-ts/system@workspace:packages/system":
   version: 0.0.0-use.local
   resolution: "@effect-ts/system@workspace:packages/system"
   languageName: unknown
@@ -1889,9 +1889,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsplus/installer@npm:0.0.26":
-  version: 0.0.26
-  resolution: "@tsplus/installer@npm:0.0.26"
+"@tsplus/installer@npm:0.0.27":
+  version: 0.0.27
+  resolution: "@tsplus/installer@npm:0.0.27"
   dependencies:
     mkdirp: ^1.0.4
     rimraf: ^3.0.2
@@ -1900,7 +1900,7 @@ __metadata:
     zlib: ^1.0.5
   bin:
     tsplus-install: bin/tsplus-install
-  checksum: e1176ad882ee35e2451fa4be89fa223afd7d34297a81139a09dd83a5737ea1e4a8f616d22f4bc4732bb90e9a0012ab185ac96ef1698179af31eb6d3923bfe959
+  checksum: b4ffbc607421c2b1db49e2a3dd1fd47f5ed9c8f10bbf7fb5b2a4440810e773faec7413d8f0db8559a7db6daf6126e5c0d148bc212adcf6bfef03045e5e080899
   languageName: node
   linkType: hard
 
@@ -3978,8 +3978,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "effect-ts@workspace:."
   dependencies:
-    "@effect-ts/system": "workspace:^"
-    "@tsplus/installer": 0.0.26
+    "@tsplus/installer": 0.0.27
     "@types/glob": ^7.2.0
     "@types/jest": ^27.4.0
     "@types/node": ^17.0.18
