@@ -24,7 +24,6 @@ import type { Sync } from "../Sync/index.js"
 import { runEitherEnv } from "../Sync/index.js"
 import { isEither, isOption, isTag } from "../Utils/index.js"
 
-export * from "@effect-ts/system/Async"
 export { branch as if, branch_ as if_ }
 
 export type V = P.V<"R", "-"> & P.V<"E", "+">
@@ -146,3 +145,5 @@ export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
  */
 const branch = P.conditionalF(Covariant)
 const branch_ = P.conditionalF_(Covariant)
+
+export * from "@effect-ts/system/Async"
