@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.55.4](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.55.3...@effect-ts/core@0.55.4) (2022-02-17)
+
+
+### Bug Fixes
+
+* **Async:** CommonJS output fails to run because of export order. ([#1098](https://github.com/Effect-TS/core/issues/1098)) ([42afaac](https://github.com/Effect-TS/core/commit/42afaac8291e72f65a8f0400e4fc20172843e33b))
+
+
+
+
+
 ## [0.55.3](https://github.com/Effect-TS/core/compare/@effect-ts/core@0.55.2...@effect-ts/core@0.55.3) (2022-02-15)
 
 **Note:** Version bump only for package @effect-ts/core
