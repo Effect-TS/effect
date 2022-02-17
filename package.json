@@ -41,8 +41,8 @@
     }
   },
   "devDependencies": {
-    "@babel/cli": "^7.17.0",
-    "@babel/core": "^7.17.2",
+    "@babel/cli": "^7.17.3",
+    "@babel/core": "^7.17.4",
     "@qio/core": "^31.1.1",
     "@types/cpx": "^1.5.2",
     "@types/glob": "^7.2.0",
@@ -62,7 +62,7 @@
     "eslint-import-resolver-typescript": "^2.5.0",
     "eslint-plugin-codegen": "^0.16.1",
     "eslint-plugin-import": "^2.25.4",
-    "eslint-plugin-jest": "^26.1.0",
+    "eslint-plugin-jest": "^26.1.1",
     "eslint-plugin-prettier": "^4.0.0",
     "eslint-plugin-simple-import-sort": "^7.0.0",
     "eslint-plugin-sort-destructure-keys": "^1.4.0",
