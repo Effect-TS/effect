@@ -1,17 +1,19 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "build/esm",
+    "outDir": "build/out",
     "target": "ES2018",
     "module": "ES6",
     "moduleResolution": "Node",
     "incremental": true,
-    "tsBuildInfoFile": "tsbuildinfo/esm.tsbuildinfo",
+    "tsBuildInfoFile": "build/tsbuildinfo",
     "declaration": true,
     "declarationDir": "build/dts",
     "declarationMap": false,
     "removeComments": false,
     "tsPlusTracingPackageName": "@effect-ts/system"
   },
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src/**/*.ts"
+  ]
 }

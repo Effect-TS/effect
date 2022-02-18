@@ -1,0 +1,11 @@
+{
+    "sourceMaps": "inline",
+    "plugins": [
+        [
+            "add-import-extension",
+            {
+                "extension": "mjs"
+            }
+        ]
+    ]
+}

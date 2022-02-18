@@ -8,7 +8,7 @@
     "**/.*.js": true,
     "**/.*config": true,
     //"**/.git*": true,
-    "**/.npmignore*": true,
+    //"**/.npmignore*": true,
     "**/.husky": true,
     //"**/node_modules": true,
     "**/LICENSE.*": true,

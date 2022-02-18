@@ -1,0 +1,12 @@
+{
+    "sourceMaps": "inline",
+    "plugins": [
+        "@babel/plugin-transform-modules-commonjs",
+        [
+            "add-import-extension",
+            {
+                "extension": "cjs"
+            }
+        ]
+    ]
+}

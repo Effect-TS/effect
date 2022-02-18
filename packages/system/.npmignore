@@ -1,7 +1,11 @@
 demo
-build-cjs.sh
+build-out.sh
 tsconfig.json
+tsconfig.build.json
 .gitignore
 tsbuildinfo
 test
 artifacts
+.babel
+build/out
+build/.tsbuildinfo
