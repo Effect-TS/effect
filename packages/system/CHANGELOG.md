@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.52.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.52.3...@effect-ts/system@0.52.4) (2022-02-17)
+
+**Note:** Version bump only for package @effect-ts/system
+
+
+
+
+
+## [0.52.3](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.52.2...@effect-ts/system@0.52.3) (2022-02-15)
+
+
+### Features
+
+* **Array:** add findWithIndex and findFirstMapWithIndex ([2d7eaba](https://github.com/Effect-TS/core/commit/2d7eaba3eaa20150cf6ada16cf0d7a4e2e45cc79))
+* **Ord:** add tuple ([adaa481](https://github.com/Effect-TS/core/commit/adaa481314cfddf109048ff82a836cefaba3fe31))
+
+
+
+
+
 ## [0.52.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.52.1...@effect-ts/system@0.52.2) (2022-02-07)
 
 **Note:** Version bump only for package @effect-ts/system

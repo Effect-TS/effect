@@ -210,19 +210,16 @@ describe("Pool", () => {
   })
 
   // Timing issue? Revisit later
-  it.skip("max pool size", async () => {
+  it("max pool size", async () => {
     const result = await pipe(
-      T.gen(function* (_) {
+      M.gen(function* (_) {
         const promise = yield* _(P.make<never, void>())
         const count = yield* _(Ref.makeRef(0))
         const get = M.make_(
           Ref.updateAndGet_(count, (_) => _ + 1),
           (_) => Ref.update_(count, (_) => _ - 1)
         )
-        const reserve = yield* _(
-          M.managedReserve(Pool.make(get, Tp.tuple(10, 15), 1000))
-        )
-        const pool = yield* _(reserve.acquire)
+        const pool = yield* _(Pool.make(get, Tp.tuple(10, 15), 1000))
 
         yield* _(
           T.repeatN_(T.fork(M.use_(Pool.get(pool), (_) => P.await(promise))), 14)
@@ -238,6 +235,7 @@ describe("Pool", () => {
 
         return { min, max }
       }),
+      M.useNow,
       T.runPromise
     )
 

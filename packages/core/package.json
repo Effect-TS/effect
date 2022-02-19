@@ -1,6 +1,6 @@
 {
   "name": "@effect-ts/core",
-  "version": "0.55.2",
+  "version": "0.55.4",
   "license": "MIT",
   "repository": "https://github.com/Effect-TS/core.git",
   "homepage": "https://www.matechs.com",
@@ -13,14 +13,15 @@
     "lint": "yarn ets:eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
     "prettier": "yarn ets:prettier --write \"./{src,test,demo}/**/*.ts\"",
-    "tc": "yarn ets:tsc --noEmit"
+    "tc": "yarn ets:tsc --noEmit",
+    "circular": "yarn ets:madge --circular --no-color --no-spinner build/esm"
   },
   "publishConfig": {
     "access": "public",
     "directory": "dist"
   },
   "dependencies": {
-    "@effect-ts/system": "^0.52.2"
+    "@effect-ts/system": "^0.52.4"
   },
   "config": {
     "side": [

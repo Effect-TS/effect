@@ -128,7 +128,10 @@ export function unsafeCompleteTakers<A>(
 }
 
 export function unsafeRemove<A>(q: MutableQueue<A>, a: A) {
-  ChunkFilter.filter_(unsafeOfferAll(q, unsafePollAll(q)), (b) => a !== b)
+  unsafeOfferAll(
+    q,
+    ChunkFilter.filter_(unsafePollAll(q), (b) => a !== b)
+  )
 }
 
 export function unsafePollN<A>(q: MutableQueue<A>, max: number): Chunk.Chunk<A> {

@@ -1,0 +1,29 @@
+{
+    "jsc": {
+        "parser": {
+            "syntax": "ecmascript",
+            "jsx": false,
+            "dynamicImport": false,
+            "privateMethod": false,
+            "functionBind": false,
+            "exportDefaultFrom": false,
+            "exportNamespaceFrom": false,
+            "decorators": false,
+            "decoratorsBeforeExport": false,
+            "topLevelAwait": false,
+            "importMeta": false
+        },
+        "transform": null,
+        "target": "es2020",
+        "loose": false,
+        "externalHelpers": false,
+        "keepClassNames": true
+    },
+    "module": {
+        "type": "commonjs",
+        "strict": true,
+        "strictMode": true,
+        "lazy": false,
+        "noInterop": false
+    }
+}
