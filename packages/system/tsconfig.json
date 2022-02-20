@@ -1,11 +1,24 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "lib": ["DOM", "ES2020"],
+    "lib": [
+      "DOM",
+      "ES2020"
+    ],
     "target": "ES2017",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "noErrorTruncation": true
+    "noErrorTruncation": true,
+    "types": [
+      "jest",
+      "node"
+    ]
   },
-  "include": ["src/**/*", "scripts/**/*", "bench/**/*", "test/**/*", "demo/**/*"]
+  "include": [
+    "src/**/*",
+    "scripts/**/*",
+    "bench/**/*",
+    "test/**/*",
+    "demo/**/*"
+  ]
 }

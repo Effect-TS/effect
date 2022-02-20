@@ -7,7 +7,7 @@ import { Supervisor } from "../definition"
 export const mainFibers: Set<Fiber.Runtime<any, any>> = new Set()
 
 export function unsafeTrack(): Supervisor<Chunk<Fiber.Runtime<any, any>>> {
-  const interval = new AtomicReference<NodeJS.Timeout | undefined>(undefined)
+  const interval = new AtomicReference<number | undefined>(undefined)
 
   return new Supervisor(
     succeed(() => Chunk.from(mainFibers)),
@@ -15,6 +15,7 @@ export function unsafeTrack(): Supervisor<Chunk<Fiber.Runtime<any, any>>> {
       if (mainFibers.has(fiber)) {
         if (typeof interval.get === "undefined") {
           interval.set(
+            // @ts-ignore
             setInterval(() => {
               // keep process alive
             }, 60000)

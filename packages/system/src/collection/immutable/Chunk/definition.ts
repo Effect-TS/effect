@@ -10,7 +10,8 @@ export const BufferSize = 64
 export const ChunkTypeId = Symbol.for("@effect-ts/system/collection/immutable/Chunk")
 export type ChunkTypeId = typeof ChunkTypeId
 
-export const alloc =
+export const alloc: (n: number) => Uint8Array =
+  // @ts-ignore
   typeof Buffer !== "undefined" ? Buffer.alloc : (n: number) => new Uint8Array(n)
 
 export function isByte(u: unknown) {

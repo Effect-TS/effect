@@ -591,7 +591,7 @@ export function filterOrFail_<R, E, E1, A>(
   p: Predicate<A>,
   failWith: unknown
 ) {
-  return filterOrElse_(fa, p, (x) => fail((failWith as (a: A) => E1)(x)))
+  return filterOrElse_(fa, p, (x) => P.fail((failWith as (a: A) => E1)(x)))
 }
 
 /**
