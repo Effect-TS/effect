@@ -486,9 +486,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect-ts/system@workspace:^, @effect-ts/system@workspace:packages/system":
+"@effect-ts/core@workspace:packages/core":
   version: 0.0.0-use.local
-  resolution: "@effect-ts/system@workspace:packages/system"
+  resolution: "@effect-ts/core@workspace:packages/core"
   languageName: unknown
   linkType: soft
 
@@ -3978,7 +3978,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "effect-ts@workspace:."
   dependencies:
-    "@effect-ts/system": "workspace:^"
     "@tsplus/installer": 0.0.26
     "@types/glob": ^7.2.0
     "@types/jest": ^27.4.0

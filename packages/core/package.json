@@ -1,0 +1,41 @@
+{
+  "name": "@effect-ts/core",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "repository": "https://github.com/Effect-TS/core.git",
+  "homepage": "https://www.matechs.com",
+  "scripts": {
+    "clean": "yarn ets:rimraf build tsbuildinfo dist",
+    "build-esm": "yarn ets:tsc -b ./tsconfig.build.json",
+    "build-cjs": "sh build-cjs.sh",
+    "build": "yarn build-esm && yarn build-cjs && yarn circular",
+    "lint": "yarn ets:eslint . --ext .ts,.tsx",
+    "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
+    "prettier": "yarn ets:prettier --write \"./{src,test,demo}/**/*.ts\"",
+    "tc": "yarn ets:tsc --noEmit",
+    "tc:watch": "yarn ets:tsc --noEmit --watch",
+    "demo": "yarn ets:ts-node -O '{\"module\":\"commonjs\"}' --project tsconfig.build.json",
+    "pack-dev": "yarn ets:rimraf artifacts && mkdir artifacts && yarn pack --out ./artifacts/%s-%v.tgz",
+    "circular": "yarn ets:madge --circular --no-color --no-spinner --warning build/esm"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./build/dts/*"
+      ]
+    }
+  },
+  "exports": {
+    "./*": {
+      "require": "./build/cjs/*.js",
+      "import": "./build/esm/*.js"
+    }
+  },
+  "tsplus": {
+    "typeDir": "./build/dts"
+  }
+}
