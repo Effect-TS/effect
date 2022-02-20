@@ -3506,13 +3506,7 @@ describe("Effect", () => {
     // TODO(Mike/Max): infinite loop - may be fixed with `timeout` from ZIO test
     // instead of `timeout` from the lib
     // it("timeout repetition of uninterruptible effect", async () => {
-    //   const testProgram = Effect.unit.uninterruptible().forever().timeout(10)
-
-    //   // Race the test program against a timer since it's possible that the
-    //   // test may never complete
-    //   const program = Effect.sleep(1000)
-    //     .zipRight(Effect.succeed(Option.some("failed")))
-    //     .race(testProgram)
+    //   const program = Effect.unit.uninterruptible().forever().timeout(10)
 
     //   const result = await program.unsafeRunPromise()
 
@@ -3909,73 +3903,71 @@ describe("Effect", () => {
       expect(result).toBeUndefined()
     })
 
-    // TODO(Mike/Max): fix failing test
-    // it("async should not resume fiber twice after interruption", async () => {
-    //   const program = Effect.Do()
-    //     .bind("step", () => Promise.make<never, void>())
-    //     .bind("unexpectedPlace", () => Ref.make(List.empty<number>()))
-    //     .bind("runtime", () => Effect.runtime())
-    //     .bind("fork", ({ runtime, step, unexpectedPlace }) =>
-    //       Effect.async<unknown, never, void>((cb) =>
-    //         runtime.unsafeRunAsync(
-    //           step.await() >
-    //             Effect.succeed(
-    //               cb(Ref.update_(unexpectedPlace, (list) => list.prepend(1)))
-    //             )
-    //         )
-    //       )
-    //         .ensuring(
-    //           Effect.async<unknown, never, void>(() => {
-    //             // The callback is never called so this never completes
-    //             runtime.unsafeRunAsync(step.succeed(undefined))
-    //           })
-    //         )
-    //         .ensuring(Ref.update_(unexpectedPlace, (list) => list.prepend(2)))
-    //         .forkDaemon()
-    //     )
-    //     .bind("result", ({ fork }) => Fiber.interrupt(fork).timeout(5000))
-    //     .bind("unexpected", ({ unexpectedPlace }) => Ref.get(unexpectedPlace))
-    //
-    //   const { result, unexpected } = await program.unsafeRunPromise()
-    //
-    //   expect(unexpected).toEqual(List.empty())
-    //   expect(result).toEqual(Option.none) // the timeout should happen
-    // })
+    it("async should not resume fiber twice after interruption", async () => {
+      const program = Effect.Do()
+        .bind("step", () => Promise.make<never, void>())
+        .bind("unexpectedPlace", () => Ref.make(List.empty<number>()))
+        .bind("runtime", () => Effect.runtime())
+        .bind("fork", ({ runtime, step, unexpectedPlace }) =>
+          Effect.async<unknown, never, void>((cb) =>
+            runtime.unsafeRunAsync(
+              step.await() >
+                Effect.succeed(
+                  cb(Ref.update_(unexpectedPlace, (list) => list.prepend(1)))
+                )
+            )
+          )
+            .ensuring(
+              Effect.async<unknown, never, void>(() => {
+                // The callback is never called so this never completes
+                runtime.unsafeRunAsync(step.succeed(undefined))
+              })
+            )
+            .ensuring(Ref.update_(unexpectedPlace, (list) => list.prepend(2)))
+            .forkDaemon()
+        )
+        .bind("result", ({ fork }) => Fiber.interrupt(fork).timeout(1000))
+        .bind("unexpected", ({ unexpectedPlace }) => Ref.get(unexpectedPlace))
 
-    // TODO(Mike/Max): fix failing test
-    // it("asyncMaybe should not resume fiber twice after synchronous result", async () => {
-    //   const program = Effect.Do()
-    //     .bind("step", () => Promise.make<never, void>())
-    //     .bind("unexpectedPlace", () => Ref.make(List.empty<number>()))
-    //     .bind("runtime", () => Effect.runtime())
-    //     .bind("fork", ({ runtime, step, unexpectedPlace }) =>
-    //       Effect.asyncMaybe<unknown, never, void>((cb) => {
-    //         runtime.unsafeRunAsync(
-    //           step.await() >
-    //             Effect.succeed(
-    //               cb(Ref.update_(unexpectedPlace, (list) => list.prepend(1)))
-    //             )
-    //         )
-    //         return Option.some(Effect.unit)
-    //       })
-    //         .flatMap(() =>
-    //           Effect.async<unknown, never, void>(() => {
-    //             // The callback is never called so this never completes
-    //             runtime.unsafeRunAsync(step.succeed(undefined))
-    //           })
-    //         )
-    //         .ensuring(Ref.update_(unexpectedPlace, (list) => list.prepend(2)))
-    //         .uninterruptible()
-    //         .forkDaemon()
-    //     )
-    //     .bind("result", ({ fork }) => Fiber.interrupt(fork).timeout(5000))
-    //  //     .bind("unexpected", ({ unexpectedPlace }) => Ref.get(unexpectedPlace))
+      const { result, unexpected } = await program.unsafeRunPromise()
 
-    //   const { result, unexpected } = await program.unsafeRunPromise()
-    //
-    //   expect(unexpected).toEqual(List.empty)
-    //   expect(result).toEqual(Option.none) // timeout should happen
-    // })
+      expect(unexpected).toEqual(List.empty())
+      expect(result).toEqual(Option.none) // the timeout should happen
+    })
+
+    it("asyncMaybe should not resume fiber twice after synchronous result", async () => {
+      const program = Effect.Do()
+        .bind("step", () => Promise.make<never, void>())
+        .bind("unexpectedPlace", () => Ref.make(List.empty<number>()))
+        .bind("runtime", () => Effect.runtime())
+        .bind("fork", ({ runtime, step, unexpectedPlace }) =>
+          Effect.asyncMaybe<unknown, never, void>((cb) => {
+            runtime.unsafeRunAsync(
+              step.await() >
+                Effect.succeed(
+                  cb(Ref.update_(unexpectedPlace, (list) => list.prepend(1)))
+                )
+            )
+            return Option.some(Effect.unit)
+          })
+            .flatMap(() =>
+              Effect.async<unknown, never, void>(() => {
+                // The callback is never called so this never completes
+                runtime.unsafeRunAsync(step.succeed(undefined))
+              })
+            )
+            .ensuring(Ref.update_(unexpectedPlace, (list) => list.prepend(2)))
+            .uninterruptible()
+            .forkDaemon()
+        )
+        .bind("result", ({ fork }) => Fiber.interrupt(fork).timeout(1000))
+        .bind("unexpected", ({ unexpectedPlace }) => Ref.get(unexpectedPlace))
+
+      const { result, unexpected } = await program.unsafeRunPromise()
+
+      expect(unexpected).toEqual(List.empty())
+      expect(result).toEqual(Option.none) // timeout should happen
+    })
 
     it("sleep 0 must return", async () => {
       const program = Effect.sleep(0)
@@ -4147,7 +4139,8 @@ describe("Effect", () => {
     //   expect(res2).toBeUndefined()
     // })
 
-    // TODO(Mike/Max): fix failing test
+    // TODO(Mike/Max): fix failing test, although ZIO marks this as flaky and
+    // specifically notes thta this test fails sometimes
     // it("supervise fibers", async () => {
     //   function makeChild(n: number): RIO<HasClock, Fiber.Fiber<never, void>> {
     //     return (Effect.sleep(20 * n) > Effect.infinity).fork()
@@ -6139,26 +6132,4 @@ describe("Effect", () => {
       expect(result).toBe("controlling unit side-effect")
     })
   })
-
-  // TODO(Mike/Max): fix infinite looping
-  // describe("withRuntimeConfig", () => {
-  //   it("accesses the current runtime configuration", async () => {
-  //     const program = Effect.Do()
-  //       .bind("original", () => Effect.runtimeConfig)
-  //       .bind("modified", ({ original }) =>
-  //         Effect.withRuntimeConfig(
-  //           new RuntimeConfig({
-  //             ...original.value,
-  //             flags: new RuntimeConfigFlags(HashSet<RuntimeConfigFlag>())
-  //           }),
-  //           Effect.runtimeConfig
-  //         )
-  //       )
-
-  //     const { modified, original } = await program.unsafeRunPromise()
-
-  //     expect(original.value.flags.flags.size).toBeGreaterThan(0)
-  //     expect(modified.value.flags.flags.size).toBe(0)
-  //   })
-  // })
 })

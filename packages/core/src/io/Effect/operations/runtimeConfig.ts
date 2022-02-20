@@ -8,9 +8,9 @@ import { Effect, ISetRuntimeConfig } from "../definition"
  *
  * @tsplus static ets/EffectOps runtimeConfig
  */
-export const runtimeConfig: UIO<RuntimeConfig> = Effect.suspendSucceedWith(
-  (runtimeConfig) => Effect.succeedNow(runtimeConfig)
-)
+export function runtimeConfig(): UIO<RuntimeConfig> {
+  return Effect.suspendSucceedWith((runtimeConfig) => Effect.succeedNow(runtimeConfig))
+}
 
 /**
  * Sets the runtime configuration to the specified value.
@@ -35,9 +35,10 @@ export function withRuntimeConfig<R, E, A>(
   effect: LazyArg<Effect<R, E, A>>,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return Effect.runtimeConfig.flatMap((currentRuntimeConfig) =>
-    (Effect.setRuntimeConfig(runtimeConfig) > Effect.yieldNow).acquireRelease(
-      effect(),
+  return Effect.runtimeConfig().flatMap((currentRuntimeConfig) =>
+    Effect.acquireRelease(
+      Effect.setRuntimeConfig(runtimeConfig) > Effect.yieldNow,
+      effect,
       Effect.setRuntimeConfig(currentRuntimeConfig)
     )
   )

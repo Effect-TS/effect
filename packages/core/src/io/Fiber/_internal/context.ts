@@ -153,7 +153,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   get status(): Effect<unknown, never, FiberStatus.Status> {
-    return Effect.succeed(() => this.state.get.status)
+    return Effect.succeed(this.state.get.status)
   }
 
   unsafeGetDescriptor(): Descriptor {
@@ -482,7 +482,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       const result = this.unsafeAddObserverMaybe(cb)
 
       if (result) {
-        return Either.right(Effect.succeedNow(result))
+        return Either.right(Effect.succeed(result))
       } else {
         return Either.left(Effect.succeed(this.unsafeRemoveObserver(cb)))
       }
@@ -503,7 +503,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   get poll(): Effect<unknown, never, Option<Exit<E, A>>> {
-    return Effect.succeed(this.unsafePoll)
+    return Effect.succeed(this.unsafePoll())
   }
 
   // -----------------------------------------------------------------------------
@@ -655,7 +655,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         if (oldState.suppressed.contains(interruptorsCause)) {
           return oldState.suppressed
         } else {
-          return Cause.then(oldState.suppressed, interruptorsCause)
+          return oldState.suppressed + interruptorsCause
         }
       }
       case "Done": {
@@ -665,7 +665,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   unsafeAddChild(child: FiberContext<any, any>): boolean {
-    return this.unsafeEvalOn(Effect.succeed(() => this._children.add(child)))
+    return this.unsafeEvalOn(Effect.succeed(this._children.add(child)))
   }
 
   unsafePoll(): Option<Exit<E, A>> {
@@ -678,7 +678,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   // -----------------------------------------------------------------------------
 
   get trace(): Effect<unknown, never, Trace> {
-    return Effect.succeed(() => this.unsafeCaptureTrace([]))
+    return Effect.succeed(this.unsafeCaptureTrace([]))
   }
 
   unsafeCaptureTrace(prefix: Array<TE.TraceElement>): Trace {
@@ -1270,7 +1270,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     const suppressed = this.unsafeClearSuppressed()
                     const fullCause = strippedCause.contains(suppressed)
                       ? strippedCause
-                      : Cause.then(strippedCause, suppressed)
+                      : strippedCause + suppressed
 
                     if (this.isStackEmpty) {
                       // Error not caught, stack is empty
@@ -1368,6 +1368,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                         } else {
                           current = instruction(either.right)
                         }
+                        break
                       }
                     }
                     break
@@ -1430,7 +1431,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     current = instruction(
                       effect.effect.ensuring(
-                        Effect.succeed(() => this.unsafeSetRef(fiberRef, oldValue))
+                        Effect.succeed(this.unsafeSetRef(fiberRef, oldValue))
                       )
                     )
 
@@ -1549,7 +1550,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
               // Fiber was interrupted
               const trace = current.trace
 
-              current = instruction(Effect.failCause(this.unsafeClearSuppressed, trace))
+              current = instruction(
+                Effect.failCause(this.unsafeClearSuppressed(), trace)
+              )
 
               // Prevent interruption of interruption
               this.unsafeSetInterrupting(true)

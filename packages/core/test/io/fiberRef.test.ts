@@ -425,42 +425,41 @@ describe("FiberRef", () => {
       expect(result).toBe(update)
     })
 
-    // TODO(Mike/Max): fix failing test
-    // it("the value of the winner is inherited when racing two effects with raceAll", async () => {
-    //   const program = Effect.Do()
-    //     .bind("fiberRef", () => FiberRef.make(initial))
-    //     .bind("latch", () => Promise.make<never, void>())
-    //     .bindValue(
-    //       "winner1",
-    //       ({ fiberRef, latch }) =>
-    //         FiberRef.set_(fiberRef, update1) > latch.succeed(undefined)
-    //     )
-    //     .bindValue(
-    //       "loser1",
-    //       ({ fiberRef, latch }) =>
-    //         latch.await() > FiberRef.set_(fiberRef, update2) > loseTimeAndCpu
-    //     )
-    //     .tap(({ loser1, winner1 }) => loser1.raceAll([winner1]))
-    //     .bind(
-    //       "value1",
-    //       ({ fiberRef }) => FiberRef.get(fiberRef) < FiberRef.set_(fiberRef, initial)
-    //     )
-    //     .bindValue("winner2", ({ fiberRef }) => FiberRef.set_(fiberRef, update1))
-    //     .bindValue(
-    //       "loser2",
-    //       ({ fiberRef }) => FiberRef.set_(fiberRef, update2) > Effect.fail(":-O")
-    //     )
-    //     .tap(({ loser2, winner2 }) => loser2.raceAll([winner2]))
-    //     .bind(
-    //       "value2",
-    //       ({ fiberRef }) => FiberRef.get(fiberRef) < FiberRef.set_(fiberRef, initial)
-    //     )
+    it("the value of the winner is inherited when racing two effects with raceAll", async () => {
+      const program = Effect.Do()
+        .bind("fiberRef", () => FiberRef.make(initial))
+        .bind("latch", () => Promise.make<never, void>())
+        .bindValue(
+          "winner1",
+          ({ fiberRef, latch }) =>
+            FiberRef.set_(fiberRef, update1) > latch.succeed(undefined)
+        )
+        .bindValue(
+          "loser1",
+          ({ fiberRef, latch }) =>
+            latch.await() > FiberRef.set_(fiberRef, update2) > loseTimeAndCpu
+        )
+        .tap(({ loser1, winner1 }) => loser1.raceAll([winner1]))
+        .bind(
+          "value1",
+          ({ fiberRef }) => FiberRef.get(fiberRef) < FiberRef.set_(fiberRef, initial)
+        )
+        .bindValue("winner2", ({ fiberRef }) => FiberRef.set_(fiberRef, update1))
+        .bindValue(
+          "loser2",
+          ({ fiberRef }) => FiberRef.set_(fiberRef, update2) > Effect.fail(":-O")
+        )
+        .tap(({ loser2, winner2 }) => loser2.raceAll([winner2]))
+        .bind(
+          "value2",
+          ({ fiberRef }) => FiberRef.get(fiberRef) < FiberRef.set_(fiberRef, initial)
+        )
 
-    //   const { value1, value2 } = await program.unsafeRunPromise()
+      const { value1, value2 } = await program.unsafeRunPromise()
 
-    //   expect(value1).toBe(update1) <== TODO(Mike/Max): test is still failing here
-    //   expect(value2).toBe(update1)
-    // })
+      expect(value1).toBe(update1) // <== TODO(Mike/Max): test is still failing here
+      expect(value2).toBe(update1)
+    })
 
     it("the value of the winner is inherited when racing many effects with raceAll", async () => {
       const program = Effect.Do()

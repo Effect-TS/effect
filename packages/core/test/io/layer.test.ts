@@ -713,7 +713,7 @@ describe("Layer", () => {
     expect(result.get(1)).toBe("hi")
   })
 
-  it(">+> provides a partial environment to another layer", async () => {
+  it("andTo provides a partial environment to another layer", async () => {
     const StringProviderId = Symbol()
 
     const StringProvider = tag<string>(StringProviderId)

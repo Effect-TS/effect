@@ -55,23 +55,15 @@ function doInterrupt(
     .bind("never", () => Promise.make<never, void>())
     .bind("reachedAcquisition", () => Promise.make<never, void>())
     .bind("managedFiber", ({ never, reachedAcquisition }) =>
-      managed(reachedAcquisition.succeed(undefined).zipRight(never.await()))
+      managed(reachedAcquisition.succeed(undefined) > never.await())
         .useDiscard(Effect.unit)
         .forkDaemon()
     )
     .tap(({ reachedAcquisition }) => reachedAcquisition.await())
     .bind("interruption", ({ fiberId, managedFiber }) =>
-      managedFiber
-        .interruptAs(fiberId)
-        .map((_) => _.untraced())
-        .timeout(1000)
+      managedFiber.interruptAs(fiberId).timeout(1000)
     )
-    .map(({ fiberId, interruption }) =>
-      Tuple(
-        fiberId,
-        interruption.map((_) => _.untraced())
-      )
-    )
+    .map(({ fiberId, interruption }) => Tuple(fiberId, interruption))
 }
 
 function makeTestManaged(ref: Ref.Ref<number>): Managed<unknown, never, void> {
@@ -2523,31 +2515,31 @@ describe("Managed", () => {
       expect(result).toBe(true)
     })
 
-    // TODO(Mike/Max): test results in an open handle due to `Effect.never`
-    // it("the canceler should run uninterruptibly", async () => {
-    //   const program = Effect.Do()
-    //     .bind("ref", () => Ref.make(true))
-    //     .bind("latch", () => Promise.make<never, void>())
-    //     .bindValue("managed", ({ latch, ref }) =>
-    //       Managed.acquireReleaseWith(
-    //         Effect.unit,
-    //         () => latch.succeed(undefined) > Effect.never.whenEffect(Ref.get(ref))
-    //       ).withEarlyRelease()
-    //     )
-    //     .flatMap(({ latch, managed, ref }) =>
-    //       managed.use(({ tuple: [canceler, _] }) =>
-    //         canceler
-    //           .forkDaemon()
-    //           .tap(() => latch.await())
-    //           .flatMap((fiber) => Fiber.interrupt(fiber).timeout(100))
-    //           .tap(() => Ref.set_(ref, false))
-    //       )
-    //     )
+    it("the canceler should run uninterruptibly", async () => {
+      const program = Effect.Do()
+        .bind("ref", () => Ref.make(true))
+        .bind("latch", () => Promise.make<never, void>())
+        .bindValue("managed", ({ latch, ref }) =>
+          Managed.acquireReleaseWith(
+            Effect.unit,
+            () =>
+              latch.succeed(undefined) > Effect.whenEffect(Ref.get(ref), Effect.never)
+          ).withEarlyRelease()
+        )
+        .flatMap(({ latch, managed, ref }) =>
+          managed.use(({ tuple: [canceler, _] }) =>
+            canceler
+              .forkDaemon()
+              .tap(() => latch.await())
+              .flatMap((fiber) => Fiber.interrupt(fiber).timeout(100))
+              .tap(() => Ref.set_(ref, false))
+          )
+        )
 
-    //   const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise()
 
-    //   expect(result).toEqual(Option.none)
-    // })
+      expect(result).toEqual(Option.none)
+    })
 
     it("if completed, the canceler should cause the regular finalizer to not run", async () => {
       const program = Effect.Do()
@@ -2633,20 +2625,20 @@ describe("Managed", () => {
       const global = Effect.defaultRuntimeConfig
 
       const program = Effect.Do()
-        .bind("def", () => runtimeConfig)
+        .bind("def", () => runtimeConfig())
         .bind("ref1", ({ def }) => Ref.make(def))
         .bind("ref2", ({ def }) => Ref.make(def))
         .bindValue("managed", ({ ref1, ref2 }) =>
           Managed.acquireRelease(
-            runtimeConfig.flatMap((_) => Ref.set_(ref1, _)),
-            runtimeConfig.flatMap((_) => Ref.set_(ref2, _))
+            runtimeConfig().flatMap((_) => Ref.set_(ref1, _)),
+            runtimeConfig().flatMap((_) => Ref.set_(ref2, _))
           ).withRuntimeConfig(global)
         )
-        .bind("before", () => runtimeConfig)
-        .bind("use", ({ managed }) => managed.useDiscard(runtimeConfig))
+        .bind("before", () => runtimeConfig())
+        .bind("use", ({ managed }) => managed.useDiscard(runtimeConfig()))
         .bind("acquire", ({ ref1 }) => Ref.get(ref1))
         .bind("release", ({ ref2 }) => Ref.get(ref2))
-        .bind("after", () => runtimeConfig)
+        .bind("after", () => runtimeConfig())
 
       const { acquire, after, before, def, release, use } =
         await program.unsafeRunPromise()

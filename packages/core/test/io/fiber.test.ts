@@ -22,8 +22,7 @@ describe("Fiber", () => {
         .bind("ref", () => Ref.make<boolean>(false))
         .bind("fiber", ({ ref }) =>
           withLatch((release) =>
-            release
-              .zipRight(Effect.unit)
+            (release > Effect.unit)
               .acquireRelease(Effect.never, Ref.set_(ref, true))
               .fork()
           )

@@ -1,4 +1,4 @@
-import { Either } from "../../../data/Either"
+import { constVoid } from "../../../data/Function"
 import type { UIO } from "../definition"
 import { Effect } from "../definition"
 
@@ -8,15 +8,4 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps never
  */
-export const never: UIO<never> = Effect.suspendSucceed(() =>
-  Effect.asyncInterrupt<unknown, never, never>(() => {
-    const interval = setInterval(() => {
-      //
-    }, 60000)
-    return Either.left(
-      Effect.succeed(() => {
-        clearInterval(interval)
-      })
-    )
-  })
-)
+export const never: UIO<never> = Effect.async(constVoid)
