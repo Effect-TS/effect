@@ -13,11 +13,13 @@ export function tryCatchPromise<E, A>(
   onReject: (reason: unknown) => E,
   __etsTrace?: string
 ): IO<E, A> {
-  return Effect.async((resolve) => {
-    promise()
-      .then((a) => resolve(Effect.succeedNow(a)))
-      .catch((e) => resolve(Effect.failNow(onReject(e))))
-  })
+  return Effect.succeed(promise).flatMap((promise) =>
+    Effect.async<unknown, E, A>((resolve) => {
+      promise
+        .then((a) => resolve(Effect.succeedNow(a)))
+        .catch((e) => resolve(Effect.failNow(onReject(e))))
+    })
+  )
 }
 
 /**
@@ -27,14 +29,16 @@ export function tryCatchPromise<E, A>(
  * @tsplus static ets/EffectOps tryPromise
  */
 export function tryPromise<A>(
-  effect: LazyArg<Promise<A>>,
+  promise: LazyArg<Promise<A>>,
   __etsTrace?: string
 ): IO<unknown, A> {
-  return Effect.async((resolve) => {
-    effect()
-      .then((a) => resolve(Effect.succeedNow(a)))
-      .catch((e) => resolve(Effect.failNow(e)))
-  })
+  return Effect.succeed(promise).flatMap((promise) =>
+    Effect.async<unknown, unknown, A>((resolve) => {
+      promise
+        .then((a) => resolve(Effect.succeedNow(a)))
+        .catch((e) => resolve(Effect.failNow(e)))
+    })
+  )
 }
 
 /**
@@ -42,10 +46,12 @@ export function tryPromise<A>(
  *
  * @tsplus static ets/EffectOps promise
  */
-export function promise<A>(effect: LazyArg<Promise<A>>, __etsTrace?: string): UIO<A> {
-  return Effect.async((resolve) => {
-    effect()
-      .then((a) => resolve(Effect.succeedNow(a)))
-      .catch((e) => resolve(Effect.dieNow(e)))
-  })
+export function promise<A>(promise: LazyArg<Promise<A>>, __etsTrace?: string): UIO<A> {
+  return Effect.succeed(promise).flatMap((promise) =>
+    Effect.async<unknown, never, A>((resolve) => {
+      promise
+        .then((a) => resolve(Effect.succeedNow(a)))
+        .catch((e) => resolve(Effect.dieNow(e)))
+    })
+  )
 }

@@ -29,7 +29,7 @@ export function raceAll_<R, E, A, R1, E1, A1>(
     .flatMap(({ done, fails, ios }) =>
       Effect.uninterruptibleMask(({ restore }) =>
         Effect.Do()
-          .bind("head", () => self.uninterruptible().fork())
+          .bind("head", () => self.interruptible().fork())
           .bind("tail", () => Effect.forEach(ios, (io) => io.interruptible().fork()))
           .bindValue(
             "fs",
@@ -39,7 +39,7 @@ export function raceAll_<R, E, A, R1, E1, A1>(
           .tap(({ fs }) =>
             fs.reduce(
               Effect.unit,
-              (io, f) => io > Fiber.await(f).flatMap(arbiter(fs, f, done, fails))
+              (io, f) => io > Fiber.await(f).flatMap(arbiter(fs, f, done, fails)).fork()
             )
           )
           .bindValue(
@@ -48,11 +48,11 @@ export function raceAll_<R, E, A, R1, E1, A1>(
               (
                 res: Tuple<[A | A1, Fiber.Fiber<E | E1, A | A1>]>
               ): Effect<unknown, never, A | A1> =>
-                res.get(1).inheritRefs.map(() => res.get(0))
+                res.get(1).inheritRefs.as(res.get(0))
           )
           .flatMap(({ fs, inheritRefs }) =>
             restore(done.await().flatMap(inheritRefs)).onInterrupt(() =>
-              fs.reduce(Effect.unit, (io, f) => io.zipLeft(Fiber.interrupt(f)))
+              fs.reduce(Effect.unit, (io, f) => io < Fiber.interrupt(f))
             )
           )
       )

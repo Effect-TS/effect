@@ -1,3 +1,4 @@
+import type { Chunk } from "../../../collection/immutable/Chunk"
 import { Effect } from "../definition"
 
 /**
@@ -10,7 +11,7 @@ export function filterNot_<A, R, E>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, boolean>,
   __etsTrace?: string
-) {
+): Effect<R, E, Chunk<A>> {
   return Effect.filter(as, (x) => f(x).map((b) => !b))
 }
 
@@ -24,5 +25,5 @@ export function filterNot<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
   __etsTrace?: string
 ) {
-  return (as: Iterable<A>) => Effect.filterNot(as, f)
+  return (as: Iterable<A>): Effect<R, E, Chunk<A>> => Effect.filterNot(as, f)
 }

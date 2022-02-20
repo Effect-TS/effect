@@ -1,5 +1,4 @@
 import { Either } from "../../../data/Either"
-import { Cause } from "../../Cause/definition"
 import type { Exit } from "../../Exit"
 import { join } from "../../Fiber/operations/join"
 import { Effect } from "../definition"
@@ -30,12 +29,12 @@ export function race_<R, E, A, R2, E2, A2>(
       maybeDisconnect(that),
       (exit, right) =>
         exit.foldEffect(
-          (cause) => join(right).mapErrorCause((_) => Cause.both(cause, _)),
+          (cause) => join(right).mapErrorCause((_) => cause & _),
           (a) => right.interruptAs(parentFiberId).as(a)
         ),
       (exit, left) =>
         exit.foldEffect(
-          (cause) => join(left).mapErrorCause((_) => Cause.both(_, cause)),
+          (cause) => join(left).mapErrorCause((_) => _ & cause),
           (a) => left.interruptAs(parentFiberId).as(a)
         )
     )

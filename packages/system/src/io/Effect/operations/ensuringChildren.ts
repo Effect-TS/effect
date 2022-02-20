@@ -14,7 +14,7 @@ export function ensuringChildren_<R, E, A, R1, X>(
   children: (_: Chunk<Fiber.Runtime<any, any>>) => RIO<R1, X>,
   __etsTrace?: string
 ): Effect<R & R1, E, A> {
-  return track.flatMap((supervisor) =>
+  return track().flatMap((supervisor) =>
     self.supervised(supervisor).ensuring(supervisor.value.flatMap(children))
   )
 }

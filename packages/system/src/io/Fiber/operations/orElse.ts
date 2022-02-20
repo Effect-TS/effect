@@ -19,19 +19,16 @@ export function orElse_<E, E1, A, A1>(
     ),
     children: self.children,
     getRef: (ref) =>
-      self.getRef(ref).zipWith(that.getRef(ref), (a, b) => (a === ref.initial ? b : a)),
-    inheritRefs: that.inheritRefs.flatMap(() => self.inheritRefs),
-    interruptAs: (id) => self.interruptAs(id).flatMap(() => that.interruptAs(id)),
-    poll: self.poll.zipWith(that.poll, (e1, e2) => {
-      switch (e1._tag) {
-        case "Some": {
-          return e1.value._tag === "Success" ? e1 : e2
-        }
-        case "None": {
-          return Option.none
-        }
-      }
-    })
+      self
+        .getRef(ref)
+        .zipWith(that.getRef(ref), (first, second) =>
+          first === ref.initial ? second : first
+        ),
+    inheritRefs: that.inheritRefs > self.inheritRefs,
+    interruptAs: (id) => self.interruptAs(id) > that.interruptAs(id),
+    poll: self.poll.zipWith(that.poll, (o1, o2) =>
+      o1.fold(Option.none, (_) => (_._tag === "Success" ? o1 : o2))
+    )
   })
 }
 

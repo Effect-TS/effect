@@ -39,13 +39,8 @@ export function asyncMaybeBlockingOn<R, E, A>(
   blockingOn: FiberId,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return Effect.asyncInterruptBlockingOn((cb) => {
-    const result = register(cb)
-    switch (result._tag) {
-      case "None":
-        return Either.left(Effect.unit)
-      case "Some":
-        return Either.right(result.value)
-    }
-  }, blockingOn)
+  return Effect.asyncInterruptBlockingOn(
+    (cb) => register(cb).fold(Either.left(Effect.unit), Either.right),
+    blockingOn
+  )
 }

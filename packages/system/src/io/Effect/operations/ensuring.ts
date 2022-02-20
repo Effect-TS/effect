@@ -1,6 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import type { Effect } from "../definition"
-import { IEnsuring } from "../definition"
+import { Effect, IEnsuring } from "../definition"
 
 /**
  * Returns an effect that, if this effect _starts_ execution, then the
@@ -20,7 +19,7 @@ export function ensuring_<R, E, A, R1, X>(
   finalizer: LazyArg<Effect<R1, never, X>>,
   __etsTrace?: string
 ): Effect<R & R1, E, A> {
-  return new IEnsuring(self, finalizer, __etsTrace)
+  return Effect.suspendSucceed(new IEnsuring(self, finalizer, __etsTrace))
 }
 
 /**

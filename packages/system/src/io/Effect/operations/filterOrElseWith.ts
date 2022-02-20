@@ -12,7 +12,7 @@ export function filterOrElseWith_<R, E, A, R1, E1, A1>(
   f: (a: A) => Effect<R1, E1, A1>,
   __etsTrace?: string
 ): Effect<R & R1, E | E1, A | A1> {
-  return self.flatMap((a) => (predicate(a) ? f(a) : Effect.succeedNow(a)))
+  return self.flatMap((a) => (predicate(a) ? Effect.succeedNow(a) : f(a)))
 }
 
 /**

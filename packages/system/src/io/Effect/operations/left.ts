@@ -1,12 +1,19 @@
-import { Either } from "../../../data/Either"
-import type { UIO } from "../definition"
+import { Either } from "packages/system/src/data/Either"
+
 import { Effect } from "../definition"
 
 /**
- * Returns an effect with the value on the left part.
+ * "Zooms in" on the value in the `Left` side of an `Either`, moving the
+ * possibility that the value is a `Right` to the error channel.
  *
- * @tsplus static ets/EffectOps left
+ * @tsplus getter ets/Effect left
  */
-export function left<A>(value: A, __etsTrace?: string): UIO<Either<A, never>> {
-  return Effect.succeed(Either.left(value))
+export function left<R, E, A, B>(
+  self: Effect<R, E, Either<A, B>>,
+  __etsTrace?: string
+): Effect<R, Either<E, B>, A> {
+  return self.foldEffect(
+    (e) => Effect.fail(Either.left(e)),
+    (either) => either.fold(Effect.succeedNow, (b) => Effect.fail(Either.right(b)))
+  )
 }

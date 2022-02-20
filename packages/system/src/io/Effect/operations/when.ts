@@ -8,11 +8,11 @@ import { Effect } from "../definition"
  * @tsplus static ets/EffectOps when
  */
 export function when<R, E, A>(
-  self: Effect<R, E, A>,
   predicate: LazyArg<boolean>,
+  effect: Effect<R, E, A>,
   __etsTrace?: string
 ): Effect<R, E, Option<A>> {
   return Effect.suspendSucceed(
-    predicate() ? self.map(Option.some) : Effect.succeedNow(Option.none)
+    predicate() ? effect.map(Option.some) : Effect.succeedNow(Option.none)
   )
 }

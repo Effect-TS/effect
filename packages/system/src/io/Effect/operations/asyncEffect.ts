@@ -18,14 +18,13 @@ export function asyncEffect<R2, E2, R, E, A, X>(
     .bind("promise", () => Promise.make<E | E2, A>())
     .bind("runtime", () => runtime<R & R2>())
     .flatMap(({ promise, runtime }) =>
-      Effect.uninterruptibleMask(({ restore }) =>
-        restore(
-          register((k) => runtime.unsafeRunAsync(k.intoPromise(promise))).catchAllCause(
-            (cause) => promise.failCause(cause as Cause<E | E2>)
-          )
-        )
-          .fork()
-          .zipRight(restore(promise.await()))
+      Effect.uninterruptibleMask(
+        ({ restore }) =>
+          restore(
+            register((k) =>
+              runtime.unsafeRunAsync(k.intoPromise(promise))
+            ).catchAllCause((cause) => promise.failCause(cause as Cause<E | E2>))
+          ).fork() > restore(promise.await())
       )
     )
 }

@@ -44,12 +44,11 @@ export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
     effect: LazyArg<Effect<R, E, A>>,
     __etsTrace?: string
   ): Effect<R, E, A> => {
-    return Effect.suspendSucceed(() => {
-      if (this.flag.isUninterruptible) {
-        return effect().uninterruptible().disconnect().interruptible()
-      }
-      return effect().interruptStatus(this.flag)
-    })
+    return Effect.suspendSucceed(
+      this.flag.isUninterruptible
+        ? effect().uninterruptible().disconnect().interruptible()
+        : effect().interruptStatus(this.flag)
+    )
   }
 }
 
@@ -156,7 +155,7 @@ export function interruptibleMask<R, E, A>(
   __etsTrace?: string
 ): Effect<R, E, A> {
   return checkInterruptible((flag) =>
-    interruptible(f(new InterruptStatusRestoreImpl(flag)))
+    f(new InterruptStatusRestoreImpl(flag)).interruptible()
   )
 }
 
@@ -172,7 +171,7 @@ export function uninterruptibleMask<R, E, A>(
   __etsTrace?: string
 ): Effect<R, E, A> {
   return checkInterruptible((flag) =>
-    uninterruptible(f(new InterruptStatusRestoreImpl(flag)))
+    f(new InterruptStatusRestoreImpl(flag)).uninterruptible()
   )
 }
 

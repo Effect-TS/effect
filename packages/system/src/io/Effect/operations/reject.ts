@@ -11,7 +11,7 @@ export function reject_<R, E, A, E1>(
   self: Effect<R, E, A>,
   pf: (a: A) => Option<E1>,
   __etsTrace?: string
-) {
+): Effect<R, E | E1, A> {
   return self.rejectEffect((a) => pf(a).map(Effect.failNow))
 }
 
@@ -22,5 +22,5 @@ export function reject_<R, E, A, E1>(
  * @ets_data_first reject_
  */
 export function reject<A, E1>(pf: (a: A) => Option<E1>, __etsTrace?: string) {
-  return <R, E>(self: Effect<R, E, A>) => self.reject(pf)
+  return <R, E>(self: Effect<R, E, A>): Effect<R, E | E1, A> => self.reject(pf)
 }

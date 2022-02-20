@@ -1,7 +1,6 @@
 import type { LazyArg } from "../../../data/Function"
 import type { Supervisor } from "../../../io/Supervisor/definition"
-import type { Effect } from "../definition"
-import { ISupervise } from "../definition"
+import { Effect, ISupervise } from "../definition"
 
 /**
  * Returns an effect with the behavior of this one, but where all child fibers
@@ -14,7 +13,7 @@ export function supervised_<R, E, A, X>(
   supervisor: LazyArg<Supervisor<X>>,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return new ISupervise(self, supervisor, __etsTrace)
+  return Effect.suspendSucceed(new ISupervise(self, supervisor, __etsTrace))
 }
 
 /**

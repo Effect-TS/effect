@@ -442,6 +442,7 @@ export function stackless<E>(cause: Cause<E>): Cause<E> {
 }
 
 /**
+ * @tsplus operator ets/Cause +
  * @tsplus static ets/CauseOps then
  */
 export function then<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
@@ -449,6 +450,7 @@ export function then<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> 
 }
 
 /**
+ * @tsplus operator ets/Cause &
  * @tsplus static ets/CauseOps both
  */
 export function both<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {

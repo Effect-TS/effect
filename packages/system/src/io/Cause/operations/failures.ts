@@ -8,7 +8,9 @@ import type { Cause } from "../definition"
  * @tsplus fluent ets/Cause failures
  */
 export function failures<E>(self: Cause<E>): List<E> {
-  return self.foldLeft(List.empty<E>(), (acc, curr) =>
-    curr.isFailType() ? Option.some(acc.prepend(curr.value)) : Option.some(acc)
-  )
+  return self
+    .foldLeft(List.empty<E>(), (acc, curr) =>
+      curr.isFailType() ? Option.some(acc.prepend(curr.value)) : Option.some(acc)
+    )
+    .reverse()
 }

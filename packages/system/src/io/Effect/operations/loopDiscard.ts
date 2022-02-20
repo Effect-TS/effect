@@ -27,10 +27,9 @@ export function loopDiscard<Z>(
   ): Effect<R, E, void> => {
     return Effect.suspendSucceed(() => {
       const initial0 = initial()
-      if (cont(initial0)) {
-        return body(initial0).flatMap(() => loopDiscard(inc(initial0), cont, inc)(body))
-      }
-      return Effect.unit
+      return cont(initial0)
+        ? body(initial0) > loopDiscard(inc(initial0), cont, inc)(body)
+        : Effect.unit
     })
   }
 }

@@ -15,7 +15,7 @@ export function withChildren<R, E, A>(
   get: (children: UIO<Chunk<Fiber.Runtime<any, any>>>) => Effect<R, E, A>,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return Supervisor.track.flatMap((supervisor) =>
+  return Supervisor.track().flatMap((supervisor) =>
     get(
       supervisor.value.flatMap((children) =>
         Effect.descriptor.map((descriptor) =>

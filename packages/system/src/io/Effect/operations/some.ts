@@ -1,12 +1,17 @@
 import { Option } from "../../../data/Option"
-import type { UIO } from "../definition"
 import { Effect } from "../definition"
 
 /**
- * Returns an effect with the optional value.
+ * Converts an option on values into an option on errors.
  *
- * @tsplus static ets/EffectOps some
+ * @tsplus getter ets/Effect some
  */
-export function some<A>(a: A, __etsTrace?: string): UIO<Option<A>> {
-  return Effect.succeed(Option.some(a))
+export function some<R, E, A>(
+  self: Effect<R, E, Option<A>>,
+  __etsTrace?: string
+): Effect<R, Option<E>, A> {
+  return self.foldEffect(
+    (e) => Effect.fail(Option.some(e)),
+    (option) => option.fold(Effect.fail(Option.none), Effect.succeedNow)
+  )
 }

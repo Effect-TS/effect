@@ -1,4 +1,6 @@
-import * as L from "../../../collection/immutable/List"
+import { Chunk } from "../../../collection/immutable/Chunk"
+import type { List } from "../../../collection/immutable/List"
+import { MutableList } from "../../../collection/immutable/List"
 import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../definition"
 
@@ -28,28 +30,29 @@ export function loop<Z>(
   return <R, E, A>(
     body: (z: Z) => Effect<R, E, A>,
     __etsTrace?: string
-  ): Effect<R, E, readonly A[]> => {
-    return loopInternal_(initial, cont, inc, body).map((x) => Array.from(L.reverse(x)))
+  ): Effect<R, E, Chunk<A>> => {
+    return loopInternal(initial, cont, inc, body).map((list: List<A>) =>
+      Chunk.from(list.reverse())
+    )
   }
 }
 
-function loopInternal_<Z, R, E, A>(
+function loopInternal<Z, R, E, A>(
   initial: LazyArg<Z>,
   cont: (z: Z) => boolean,
   inc: (z: Z) => Z,
   body: (z: Z) => Effect<R, E, A>,
   __etsTrace?: string
-): Effect<R, E, L.MutableList<A>> {
+): Effect<R, E, MutableList<A>> {
   return Effect.suspendSucceed(() => {
     const initial0 = initial()
-    if (cont(initial0)) {
-      return body(initial0).flatMap((a) =>
-        loopInternal_(inc(initial0), cont, inc, body).map((as) => {
-          L.push_(as, a)
-          return as
-        })
-      )
-    }
-    return Effect.succeed(L.emptyPushable())
+    return cont(initial0)
+      ? body(initial0).flatMap((a) =>
+          loopInternal(inc(initial0), cont, inc, body).map((as) => {
+            as.push(a)
+            return as
+          })
+        )
+      : Effect.succeed(MutableList.emptyPushable())
   })
 }

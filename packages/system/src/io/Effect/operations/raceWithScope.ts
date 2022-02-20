@@ -3,7 +3,7 @@ import { Option } from "../../../data/Option"
 import type { Exit } from "../../Exit/definition"
 import type { Fiber } from "../../Fiber/definition"
 import type { Scope } from "../../Scope"
-import type { Effect } from "../definition"
+import { Effect } from "../definition"
 import { IRaceWith } from "../definition/primitives"
 
 /**
@@ -20,13 +20,15 @@ export function raceWithScope_<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   scope: LazyArg<Scope>,
   __etsTrace?: string
 ): Effect<R & R1 & R2 & R3, E2 | E3, A2 | A3> {
-  return new IRaceWith(
-    () => self,
-    that,
-    leftWins,
-    rightWins,
-    () => Option.some(scope()),
-    __etsTrace
+  return Effect.suspendSucceed(
+    new IRaceWith(
+      () => self,
+      that,
+      leftWins,
+      rightWins,
+      () => Option.some(scope()),
+      __etsTrace
+    )
   )
 }
 

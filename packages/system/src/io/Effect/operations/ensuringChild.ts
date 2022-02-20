@@ -1,5 +1,5 @@
 import type { Chunk } from "../../../collection/immutable/Chunk"
-import type { Fiber } from "../../Fiber/definition"
+import type { Fiber } from "../../Fiber"
 import { collectAll } from "../../Fiber/operations/collectAll"
 import type { Effect, RIO } from "../definition"
 

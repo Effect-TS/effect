@@ -1,10 +1,18 @@
 import { Option } from "../../../data/Option"
-import type { UIO } from "../definition"
 import { Effect } from "../definition"
 
 /**
- * Returns an effect with the empty value.
+ * Requires the option produced by this value to be `None`.
  *
- * @tsplus static ets/EffectOps none
+ * @tsplus getter ets/Effect none
  */
-export const none: UIO<Option<never>> = Effect.succeed(() => Option.none)
+export function none<R, E, A>(
+  self: Effect<R, E, Option<A>>,
+  __etsTrace?: string
+): Effect<R, Option<E>, void> {
+  return self.foldEffect(
+    (e) => Effect.fail(Option.some(e)),
+    (option) =>
+      option.fold(Effect.succeedNow(undefined), () => Effect.fail(Option.none))
+  )
+}

@@ -1,8 +1,8 @@
 import type { Either } from "../../../data/Either"
 import type { LazyArg } from "../../../data/Function"
 import { FiberId } from "../../FiberId"
-import type { Canceler, Effect } from "../definition"
-import { IAsync } from "../definition"
+import type { Canceler } from "../definition"
+import { Effect, IAsync } from "../definition"
 import type { Cb } from "./Cb"
 
 /**
@@ -23,7 +23,7 @@ export function asyncInterrupt<R, E, A>(
   register: (callback: Cb<Effect<R, E, A>>) => Either<Canceler<R>, Effect<R, E, A>>,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return new IAsync(register, () => FiberId.none, __etsTrace)
+  return Effect.suspendSucceed(new IAsync(register, () => FiberId.none, __etsTrace))
 }
 
 /**
@@ -48,5 +48,5 @@ export function asyncInterruptBlockingOn<R, E, A>(
   blockingOn: LazyArg<FiberId>,
   __etsTrace?: string
 ): Effect<R, E, A> {
-  return new IAsync(register, blockingOn, __etsTrace)
+  return Effect.suspendSucceed(new IAsync(register, blockingOn, __etsTrace))
 }
