@@ -1,0 +1,18 @@
+{
+    "plugins": [
+        [
+            "replace-import-extension",
+            {
+                "extMapping": {
+                    ".js": ".cjs"
+                }
+            }
+        ],
+        [
+            "@babel/transform-modules-commonjs"
+        ],
+        [
+            "annotate-pure-calls"
+        ]
+    ]
+}
