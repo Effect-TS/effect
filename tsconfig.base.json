@@ -8,10 +8,11 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "preserveSymlinks": true,
-    "moduleResolution": "node",
+    "moduleResolution": "Node",
     "noEmit": false,
     "lib": [
-      "es2020"
+      "ES2020",
+      "DOM"
     ],
     "sourceMap": true,
     "declarationMap": true,

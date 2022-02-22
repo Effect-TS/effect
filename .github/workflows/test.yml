@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/*
+      - fix/*
 
 jobs:
   build:
