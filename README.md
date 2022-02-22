@@ -42,7 +42,7 @@ Within the ecosystem of packages you will find:
 We recommend the usage of `yarn` and if you have multiple packages the usage of `yarn workspaces` that handles by default hoisting of dependencies:
 
 ```sh
-yarn add @effect-ts/core @effect-ts/system
+yarn add @effect-ts/core
 ```
 
 ## tsconfig
