@@ -3,7 +3,7 @@
 import "../Operator/index.js"
 
 import type { Cause } from "../Cause/cause.js"
-import { empty, then } from "../Cause/cause.js"
+import { combineSeq, empty } from "../Cause/cause.js"
 /**
  * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/Scope.scala
  *
@@ -325,7 +325,9 @@ export class Local<A> implements CommonScope<A> {
 
       return uncause(
         A.reduce_(sorted, noCauseEffect, (acc, o) =>
-          o != null ? zipWith_(acc, cause(o.finalizer(a)), (a, b) => then(a, b)) : acc
+          o != null
+            ? zipWith_(acc, cause(o.finalizer(a)), (a, b) => combineSeq(a, b))
+            : acc
         )
       )
     } else {

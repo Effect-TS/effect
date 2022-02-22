@@ -243,7 +243,7 @@ export function forEachUnitPar_<R, E, A, X>(
                       tapCause.tapCause((c) =>
                         pipe(
                           causes,
-                          Ref.update((_) => cause.both(_, c)),
+                          Ref.update((_) => cause.combinePar(_, c)),
                           zips.zipRight(startFailure)
                         )
                       ),
@@ -271,7 +271,7 @@ export function forEachUnitPar_<R, E, A, X>(
                   () =>
                     pipe(
                       causes,
-                      Ref.update((_) => cause.both(_, cause.interrupt(parentId)))
+                      Ref.update((_) => cause.combinePar(_, cause.interrupt(parentId)))
                     )
                 ),
                 interruption.uninterruptible

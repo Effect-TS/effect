@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { then } from "../Cause/cause.js"
+import { combineSeq } from "../Cause/cause.js"
 import { foldCauseM_, halt, succeed } from "./core.js"
 import type { Effect } from "./effect.js"
 import { uninterruptibleMask } from "./interruption.js"
@@ -44,7 +44,7 @@ export function ensuring_<R, E, A, R1, X>(
       (cause1) =>
         foldCauseM_(
           finalizer,
-          (cause2) => halt(then(cause1, cause2)),
+          (cause2) => halt(combineSeq(cause1, cause2)),
           (_) => halt(cause1)
         ),
       (value) =>

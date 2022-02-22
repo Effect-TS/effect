@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import { then } from "../Cause/cause.js"
+import { combineSeq } from "../Cause/cause.js"
 import { fold_ } from "../Exit/api.js"
 import type { Exit } from "../Exit/exit.js"
 import { chain_, foldCauseM_, halt, result, suspend } from "./core.js"
@@ -50,7 +50,7 @@ export function bracketExit_<R, E, A, E1, R1, A1, R2, E2, X>(
               halt(
                 fold_(
                   e,
-                  (_) => then(_, cause2),
+                  (_) => combineSeq(_, cause2),
                   (_) => cause2
                 )
               ),

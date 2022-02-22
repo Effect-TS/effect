@@ -1,3 +1,11 @@
 // ets_tracing: off
 
-export { both, Cause, die, empty, fail, interrupt, then } from "../../Cause/cause.js"
+export {
+  combinePar as both,
+  Cause,
+  die,
+  empty,
+  fail,
+  interrupt,
+  combineSeq as then
+} from "../../Cause/cause.js"

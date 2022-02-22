@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 // ets_tracing: off
-import { both } from "../Cause/cause.js"
+import { combinePar } from "../Cause/cause.js"
 import type { Exit } from "../Exit/exit.js"
 import type { Fiber } from "../Fiber/core.js"
 import { join } from "../Fiber/core.js"
@@ -55,8 +55,8 @@ function coordinateZipPar<E, B, X, Y>(
           }
           case "Failure": {
             return leftWinner
-              ? halt(both(winner.cause, e.cause))
-              : halt(both(e.cause, winner.cause))
+              ? halt(combinePar(winner.cause, e.cause))
+              : halt(combinePar(e.cause, winner.cause))
           }
         }
       })

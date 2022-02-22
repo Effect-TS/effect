@@ -325,11 +325,11 @@ export function interrupt(fiberId: FiberID): Cause<never> {
   return new Interrupt(fiberId)
 }
 
-export function then<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
+export function combineSeq<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
   return isEmpty(left) ? right : isEmpty(right) ? left : new Then<E1 | E2>(left, right)
 }
 
-export function both<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
+export function combinePar<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
   return isEmpty(left) ? right : isEmpty(right) ? left : new Both<E1 | E2>(left, right)
 }
 
@@ -612,7 +612,7 @@ function stepLoop<A>(
         const right = cause.right
         switch (left._tag) {
           case "Traced": {
-            cause = then(left.cause, right)
+            cause = combineSeq(left.cause, right)
             break
           }
           case "Empty": {
@@ -620,11 +620,14 @@ function stepLoop<A>(
             break
           }
           case "Then": {
-            cause = then(left.left, then(left.right, right))
+            cause = combineSeq(left.left, combineSeq(left.right, right))
             break
           }
           case "Both": {
-            cause = both(then(left.left, right), then(left.right, right))
+            cause = combinePar(
+              combineSeq(left.left, right),
+              combineSeq(left.right, right)
+            )
             break
           }
           default: {

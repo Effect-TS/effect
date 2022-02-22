@@ -51,7 +51,7 @@ export const transducer = <R, E, I, O, R1>(
 /**
  * Compose this transducer with another transducer, resulting in a composite transducer.
  */
-export const then =
+export const andThen =
   <R1, E1, O, O1>(that: Transducer<R1, E1, O, O1>) =>
   <R, E, I>(self: Transducer<R, E, I, O>): Transducer<R & R1, E1 | E, I, O1> =>
     transducer(
