@@ -8,11 +8,11 @@ export const defaultScheduler: (thunk: Lazy<void>) => void = (thunk) => {
   tasks.add(thunk)
   if (!isRunning) {
     isRunning = true
-    Promise.resolve().then(() => {
+    setTimeout(() => {
       while (tasks.length > 0) {
         tasks.shift()!()
       }
       isRunning = false
-    })
+    }, 0)
   }
 }

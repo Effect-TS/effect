@@ -362,85 +362,77 @@ describe("Effect", () => {
   })
 
   // TODO: enable after porting TestClock
-  // describe("cached", () => {
-  // it("returns new instances after duration", async () => {
-  //   function incrementAndGet(ref: Ref.Ref<number>): UIO<number> {
-  //     return Ref.updateAndGet_(ref, (n) => n + 1)
-  //   }
-  //
-  //   const program = Effect.Do()
-  //     .bind("ref", () => Ref.make(0))
-  //     .bind("cache", ({ ref }) =>
-  //       incrementAndGet(ref).cached(Duration.fromMinutes(60))
-  //     )
-  //     .bind("a", ({ cache }) => cache)
-  //     .tap(() => TestClock.adjust(Duration.fromMinutes(59)))
-  //     .bind("b", ({ cache }) => cache)
-  //     .tap(() => TestClock.adjust(Duration.fromMinutes(1)))
-  //     .bind("c", ({ cache }) => cache)
-  //     .tap(() => TestClock.adjust(Duration.fromMinutes(59)))
-  //     .bind("d", ({ cache }) => cache)
-  //
-  //   const { a, b, c, d } = await program.unsafeRunPromise()
-  //
-  //   expect(a).toStrictEqual(b)
-  //   expect(b).not.toStrictEqual(c)
-  //   expect(c).toStrictEqual(d)
-  // })
-  //
-  //   it("correctly handles an infinite duration time to live", async () => {
-  //     const program = Effect.Do()
-  //       .bind("ref", () => Ref.make(0))
-  //       .bindValue("getAndIncrement", ({ ref }) =>
-  //         Ref.modify_(ref, (n) => Tuple(n, n + 1))
-  //       )
-  //       .bind("cached", ({ getAndIncrement }) =>
-  //         getAndIncrement.cached(Duration.Infinity)
-  //       )
-  //       .bind("a", ({ cached }) => cached)
-  //       .bind("b", ({ cached }) => cached)
-  //       .bind("c", ({ cached }) => cached)
-  //
-  //     const { a, b, c } = await program.unsafeRunPromise()
-  //
-  //     expect(a).toBe(0)
-  //     expect(b).toBe(0)
-  //     expect(c).toBe(0)
-  //   })
-  // })
+  describe("cached", () => {
+    it.skip("returns new instances after duration", async () => {
+      // function incrementAndGet(ref: Ref.Ref<number>): UIO<number> {
+      //   return Ref.updateAndGet_(ref, (n) => n + 1)
+      // }
+      // const program = Effect.Do()
+      //   .bind("ref", () => Ref.make(0))
+      //   .bind("cache", ({ ref }) =>
+      //     incrementAndGet(ref).cached(Duration.fromMinutes(60))
+      //   )
+      //   .bind("a", ({ cache }) => cache)
+      //   .tap(() => TestClock.adjust(Duration.fromMinutes(59)))
+      //   .bind("b", ({ cache }) => cache)
+      //   .tap(() => TestClock.adjust(Duration.fromMinutes(1)))
+      //   .bind("c", ({ cache }) => cache)
+      //   .tap(() => TestClock.adjust(Duration.fromMinutes(59)))
+      //   .bind("d", ({ cache }) => cache)
+      // const { a, b, c, d } = await program.unsafeRunPromise()
+      // expect(a).toStrictEqual(b)
+      // expect(b).not.toStrictEqual(c)
+      // expect(c).toStrictEqual(d)
+    })
+
+    it.skip("correctly handles an infinite duration time to live", async () => {
+      // const program = Effect.Do()
+      //   .bind("ref", () => Ref.make(0))
+      //   .bindValue("getAndIncrement", ({ ref }) =>
+      //     Ref.modify_(ref, (n) => Tuple(n, n + 1))
+      //   )
+      //   .bind("cached", ({ getAndIncrement }) =>
+      //     getAndIncrement.cached(Duration.Infinity)
+      //   )
+      //   .bind("a", ({ cached }) => cached)
+      //   .bind("b", ({ cached }) => cached)
+      //   .bind("c", ({ cached }) => cached)
+      // const { a, b, c } = await program.unsafeRunPromise()
+      // expect(a).toBe(0)
+      // expect(b).toBe(0)
+      // expect(c).toBe(0)
+    })
+  })
 
   // TODO: enable after porting TestClock
-  // describe("cachedInvalidate", () => {
-  //   it("returns new instances after duration", async () => {
-  //     function incrementAndGet(ref: Ref.Ref<number>): UIO<number> {
-  //       return Ref.updateAndGet_(ref, (n) => n + 1)
-  //     }
-  //
-  //     const program = Effect.Do()
-  //       .bind("ref", () => Ref.make(0))
-  //       .bind("tuple", ({ ref }) =>
-  //         incrementAndGet(ref).cachedInvalidate(Duration.fromMinutes(60))
-  //       )
-  //       .bindValue("cached", ({ tuple }) => tuple.get(0))
-  //       .bindValue("invalidate", ({ tuple }) => tuple.get(1))
-  //       .bind("a", ({ cached }) => cached)
-  //       .tap(() => TestClock.adjust(Duration.fromMinutes(59)))
-  //       .bind("b", ({ cached }) => cached)
-  //       .tap(({ invalidate }) => invalidate)
-  //       .bind("c", ({ cached }) => cached)
-  //       .tap(() => TestClock.adjust(Duration.fromMinutes(1)))
-  //       .bind("d", ({ cached }) => cached)
-  //       .tap(() => TestClock.adjust(Duration.fromMinutes(59)))
-  //       .bind("e", ({ cached }) => cached)
-  //
-  //     const { a, b, c, d } = await program.unsafeRunPromise()
-  //
-  //     expect(a).toStrictEqual(b)
-  //     expect(b).not.toStrictEqual(c)
-  //     expect(c).toStrictEqual(d)
-  //     expect(d).not.toStrictEqual(e)
-  //   })
-  // })
+  describe("cachedInvalidate", () => {
+    it.skip("returns new instances after duration", async () => {
+      // function incrementAndGet(ref: Ref.Ref<number>): UIO<number> {
+      //   return Ref.updateAndGet_(ref, (n) => n + 1)
+      // }
+      // const program = Effect.Do()
+      //   .bind("ref", () => Ref.make(0))
+      //   .bind("tuple", ({ ref }) =>
+      //     incrementAndGet(ref).cachedInvalidate(Duration.fromMinutes(60))
+      //   )
+      //   .bindValue("cached", ({ tuple }) => tuple.get(0))
+      //   .bindValue("invalidate", ({ tuple }) => tuple.get(1))
+      //   .bind("a", ({ cached }) => cached)
+      //   .tap(() => TestClock.adjust(Duration.fromMinutes(59)))
+      //   .bind("b", ({ cached }) => cached)
+      //   .tap(({ invalidate }) => invalidate)
+      //   .bind("c", ({ cached }) => cached)
+      //   .tap(() => TestClock.adjust(Duration.fromMinutes(1)))
+      //   .bind("d", ({ cached }) => cached)
+      //   .tap(() => TestClock.adjust(Duration.fromMinutes(59)))
+      //   .bind("e", ({ cached }) => cached)
+      // const { a, b, c, d } = await program.unsafeRunPromise()
+      // expect(a).toStrictEqual(b)
+      // expect(b).not.toStrictEqual(c)
+      // expect(c).toStrictEqual(d)
+      // expect(d).not.toStrictEqual(e)
+    })
+  })
 
   describe("catchNonFatalOrDie", () => {
     it("recovers from non-fatal", async () => {
@@ -3506,13 +3498,13 @@ describe("Effect", () => {
     })
 
     // TODO(Mike/Max): infinite loop (?)
-    // it("timeout repetition of uninterruptible effect", async () => {
-    //   const program = Effect.unit.uninterruptible().forever().timeout(10)
+    it.skip("timeout repetition of uninterruptible effect", async () => {
+      const program = Effect.unit.uninterruptible().forever().timeout(10)
 
-    //   const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise()
 
-    //   expect(result).toEqual(Option.none)
-    // })
+      expect(result).toEqual(Option.none)
+    })
 
     it("timeout in uninterruptible region", async () => {
       const program = Effect.unit.timeout(20000).uninterruptible()
@@ -4194,13 +4186,13 @@ describe("Effect", () => {
     })
 
     // TODO(Mike/Max): test passes, but handle is left open from Effect.never
-    // it("race in uninterruptible region", async () => {
-    //   const program = Effect.unit.race(Effect.never).uninterruptible()
+    it.skip("race in uninterruptible region", async () => {
+      const program = Effect.unit.race(Effect.never).uninterruptible()
 
-    //   const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise()
 
-    //   expect(result).toBeUndefined()
-    // })
+      expect(result).toBeUndefined()
+    })
 
     it("race of two forks does not interrupt winner", async () => {
       const program = Effect.Do()
@@ -4451,46 +4443,46 @@ describe("Effect", () => {
     })
 
     // TODO(Mike/Max): test passes, but handle is left open from Effect.never
-    // it("acquireReleaseWith is uninterruptible", async () => {
-    //   const program = Effect.Do()
-    //     .bind("promise", () => Promise.make<never, void>())
-    //     .bind("fiber", ({ promise }) =>
-    //       Effect.acquireReleaseWith(
-    //         promise.succeed(undefined) < Effect.never,
-    //         () => Effect.unit,
-    //         () => Effect.unit
-    //       ).forkDaemon()
-    //     )
-    //     .flatMap(
-    //       ({ fiber, promise }) =>
-    //         promise.await() > Fiber.interrupt(fiber).timeoutTo(42, () => 0, 1000)
-    //     )
+    it.skip("acquireReleaseWith is uninterruptible", async () => {
+      const program = Effect.Do()
+        .bind("promise", () => Promise.make<never, void>())
+        .bind("fiber", ({ promise }) =>
+          Effect.acquireReleaseWith(
+            promise.succeed(undefined) < Effect.never,
+            () => Effect.unit,
+            () => Effect.unit
+          ).forkDaemon()
+        )
+        .flatMap(
+          ({ fiber, promise }) =>
+            promise.await() > Fiber.interrupt(fiber).timeoutTo(42, () => 0, 1000)
+        )
 
-    //   const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise()
 
-    //   expect(result).toBe(42)
-    // })
+      expect(result).toBe(42)
+    })
 
     // TODO(Mike/Max): test passes, but handle is left open from Effect.never
-    // it("acquireReleaseExitWith is uninterruptible", async () => {
-    //   const program = Effect.Do()
-    //     .bind("promise", () => Promise.make<never, void>())
-    //     .bind("fiber", ({ promise }) =>
-    //       Effect.acquireReleaseWith(
-    //         promise.succeed(undefined) > Effect.never > Effect.succeed(1),
-    //         () => Effect.unit,
-    //         () => Effect.unit
-    //       ).forkDaemon()
-    //     )
-    //     .flatMap(
-    //       ({ fiber, promise }) =>
-    //         promise.await() > Fiber.interrupt(fiber).timeoutTo(42, () => 0, 1000)
-    //     )
+    it.skip("acquireReleaseExitWith is uninterruptible", async () => {
+      const program = Effect.Do()
+        .bind("promise", () => Promise.make<never, void>())
+        .bind("fiber", ({ promise }) =>
+          Effect.acquireReleaseWith(
+            promise.succeed(undefined) > Effect.never > Effect.succeed(1),
+            () => Effect.unit,
+            () => Effect.unit
+          ).forkDaemon()
+        )
+        .flatMap(
+          ({ fiber, promise }) =>
+            promise.await() > Fiber.interrupt(fiber).timeoutTo(42, () => 0, 1000)
+        )
 
-    //   const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise()
 
-    //   expect(result).toBe(42)
-    // })
+      expect(result).toBe(42)
+    })
 
     it("acquireReleaseWith use is interruptible", async () => {
       const program = Effect.unit
@@ -4949,22 +4941,22 @@ describe("Effect", () => {
     })
 
     // TODO(Mike/Max): test passes, but handle is left open from Effect.never
-    // it("disconnect returns immediately on interrupt", async () => {
-    //   const program = Effect.Do()
-    //     .bind("promise", () => Promise.make<never, void>())
-    //     .bind("fiber", ({ promise }) =>
-    //       (promise.succeed(undefined) > Effect.never)
-    //         .ensuring(Effect.never)
-    //         .disconnect()
-    //         .fork()
-    //     )
-    //     .tap(({ promise }) => promise.await())
-    //     .flatMap(({ fiber }) => Fiber.interrupt(fiber))
+    it.skip("disconnect returns immediately on interrupt", async () => {
+      const program = Effect.Do()
+        .bind("promise", () => Promise.make<never, void>())
+        .bind("fiber", ({ promise }) =>
+          (promise.succeed(undefined) > Effect.never)
+            .ensuring(Effect.never)
+            .disconnect()
+            .fork()
+        )
+        .tap(({ promise }) => promise.await())
+        .flatMap(({ fiber }) => Fiber.interrupt(fiber))
 
-    //   const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise()
 
-    //   expect(result.isInterrupted()).toBe(true)
-    // })
+      expect(result.isInterrupted()).toBe(true)
+    })
 
     it("disconnected effect that is then interrupted eventually performs interruption", async () => {
       const program = Effect.Do()
@@ -5408,49 +5400,49 @@ describe("Effect", () => {
     })
 
     // TODO(Mike/Max): test passes, but handle is left open from Effect.never
-    // it("returns `None` otherwise", async () => {
-    //   const program = Effect.never
-    //     .uninterruptible()
-    //     .disconnect()
-    //     .timeout(10)
-    //     .fork()
-    //     .tap(() => Effect.sleep(100))
-    //     .flatMap(Fiber.join)
+    it.skip("returns `None` otherwise", async () => {
+      const program = Effect.never
+        .uninterruptible()
+        .disconnect()
+        .timeout(10)
+        .fork()
+        .tap(() => Effect.sleep(100))
+        .flatMap(Fiber.join)
 
-    //   const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise()
 
-    //   expect(result).toEqual(Option.none)
-    // })
+      expect(result).toEqual(Option.none)
+    })
   })
 
   // TODO(Mike/Max): fix failing test due to Jest timeout
-  // describe("transplant", () => {
-  //   it("preserves supervision relationship of nested fibers", async () => {
-  //     const program = Effect.Do()
-  //       .bind("latch1", () => Promise.make<never, void>())
-  //       .bind("latch2", () => Promise.make<never, void>())
-  //       .bind("fiber", ({ latch1, latch2 }) =>
-  //         Effect.transplant((grafter) =>
-  //           grafter(
-  //             (latch1.succeed(undefined) > Effect.never)
-  //               .onInterrupt(() => latch2.succeed(undefined))
-  //               .fork()
-  //               .flatMap(() => Effect.never)
-  //               .map(constVoid)
-  //               .fork()
-  //           )
-  //         )
-  //       )
-  //       .tap(({ latch1 }) => latch1.await())
-  //       .tap(({ fiber }) => Fiber.interrupt(fiber))
-  //       .tap(({ latch2 }) => latch2.await())
-  //       .map(constTrue)
+  describe("transplant", () => {
+    it.skip("preserves supervision relationship of nested fibers", async () => {
+      const program = Effect.Do()
+        .bind("latch1", () => Promise.make<never, void>())
+        .bind("latch2", () => Promise.make<never, void>())
+        .bind("fiber", ({ latch1, latch2 }) =>
+          Effect.transplant((grafter) =>
+            grafter(
+              (latch1.succeed(undefined) > Effect.never)
+                .onInterrupt(() => latch2.succeed(undefined))
+                .fork()
+                .flatMap(() => Effect.never)
+                .map(constVoid)
+                .fork()
+            )
+          )
+        )
+        .tap(({ latch1 }) => latch1.await())
+        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ latch2 }) => latch2.await())
+        .map(constTrue)
 
-  //     const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise()
 
-  //     expect(result).toBe(true)
-  //   })
-  // })
+      expect(result).toBe(true)
+    })
+  })
 
   describe("unleft", () => {
     it("should handle successes with right", async () => {
