@@ -10,7 +10,7 @@ const MAX_SET_INTERVAL_VALUE = 2 ** 31 - 1
 
 export function unsafeTrack(): Supervisor<Chunk<Fiber.Runtime<any, any>>> {
   const set = new Set<Fiber.Runtime<any, any>>()
-  const interval = new AtomicReference<NodeJS.Timeout | undefined>(undefined)
+  const interval = new AtomicReference<number | undefined>(undefined)
 
   return new Supervisor(
     Effect.succeed(Chunk.from(set)),
@@ -18,6 +18,7 @@ export function unsafeTrack(): Supervisor<Chunk<Fiber.Runtime<any, any>>> {
       if (set.has(fiber)) {
         if (interval.get == null) {
           interval.set(
+            // @ts-ignore
             setInterval(() => {
               // keep process alive
             }, MAX_SET_INTERVAL_VALUE)

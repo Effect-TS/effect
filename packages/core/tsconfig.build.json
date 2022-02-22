@@ -11,7 +11,8 @@
     "declarationDir": "build/dts",
     "declarationMap": false,
     "removeComments": false,
-    "tsPlusTracingPackageName": "@effect-ts/core"
+    "tsPlusTracingPackageName": "@effect-ts/core",
+    "types": []
   },
   "include": ["src/**/*.ts"]
 }

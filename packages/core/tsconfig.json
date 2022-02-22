@@ -5,7 +5,8 @@
     "target": "ES2017",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "noErrorTruncation": true
+    "noErrorTruncation": true,
+    "types": ["jest", "node"]
   },
   "include": ["src/**/*", "scripts/**/*", "bench/**/*", "test/**/*", "demo/**/*"]
 }
