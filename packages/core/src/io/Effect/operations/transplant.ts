@@ -21,9 +21,10 @@ export function transplant<R, E, A>(
   __etsTrace?: string
 ): Effect<R, E, A> {
   return Effect.forkScopeWith((scope) =>
-    f(
-      (effect, __etsTrace) =>
+    f((effect, __etsTrace) =>
+      Effect.suspendSucceed(
         new IOverrideForkScope(effect, () => Option.some(scope), __etsTrace)
+      )
     )
   )
 }

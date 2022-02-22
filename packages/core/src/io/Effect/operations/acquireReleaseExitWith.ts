@@ -1,5 +1,4 @@
 import type { LazyArg } from "../../../data/Function"
-import { Cause } from "../../Cause"
 import type { Exit } from "../../Exit"
 import { Effect } from "../definition"
 
@@ -27,7 +26,7 @@ export function acquireReleaseExitWith<R, E, A, R1, E1, A1, R2, E2, X>(
             (cause2) =>
               Effect.failCauseNow(
                 exit.fold(
-                  (cause1) => Cause.then(cause1, cause2),
+                  (cause1) => cause1 + cause2,
                   () => cause2
                 )
               ),

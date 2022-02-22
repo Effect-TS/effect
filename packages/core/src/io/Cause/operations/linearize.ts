@@ -1,5 +1,6 @@
-import * as HS from "../../../collection/immutable/HashSet"
-import { Cause, Stackless } from "../definition"
+import { HashSet } from "../../../collection/immutable/HashSet"
+import type { Cause } from "../definition"
+import { Die, Fail, Interrupt, Stackless } from "../definition"
 
 /**
  * Linearizes this cause to a set of parallel causes where each parallel cause
@@ -7,19 +8,14 @@ import { Cause, Stackless } from "../definition"
  *
  * @tsplus fluent ets/Cause linearize
  */
-export function linearize<E>(self: Cause<E>): HS.HashSet<Cause<E>> {
+export function linearize<E>(self: Cause<E>): HashSet<Cause<E>> {
   return self.fold(
-    () => HS.make<Cause<E>>(),
-    (e, trace) => HS.mutate_(HS.make<Cause<E>>(), HS.add(Cause.fail(e, trace))),
-    (d, trace) =>
-      HS.mutate_(HS.make<Cause<E>>(), HS.add<Cause<E>>(Cause.die(d, trace))),
-    (fiberId, trace) =>
-      HS.mutate_(
-        HS.make<Cause<E>>(),
-        HS.add<Cause<E>>(Cause.interrupt(fiberId, trace))
-      ),
-    (left, right) => HS.chain_(left, (l) => HS.map_(right, (r) => Cause.then(l, r))),
-    (left, right) => HS.union_(left, right),
-    (cause, stackless) => HS.map_(cause, (c) => new Stackless(c, stackless))
+    () => HashSet<Cause<E>>(),
+    (e, trace) => HashSet<Cause<E>>().add(new Fail(e, trace)),
+    (d, trace) => HashSet<Cause<E>>().add(new Die(d, trace)),
+    (fiberId, trace) => HashSet<Cause<E>>().add(new Interrupt(fiberId, trace)),
+    (left, right) => left.flatMap((l) => right.map((r) => l + r)),
+    (left, right) => left | right,
+    (cause, stackless) => cause.map((c) => new Stackless(c, stackless))
   )
 }

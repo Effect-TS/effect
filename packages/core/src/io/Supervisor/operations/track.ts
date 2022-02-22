@@ -5,27 +5,31 @@ import { Effect } from "../../Effect"
 import type * as Fiber from "../../Fiber"
 import { Supervisor } from "../definition"
 
-export const mainFibers: Set<Fiber.Runtime<any, any>> = new Set()
+// `setInterval` is limited to take delays which are 32-bit values
+const MAX_SET_INTERVAL_VALUE = 2 ** 31 - 1
 
 export function unsafeTrack(): Supervisor<Chunk<Fiber.Runtime<any, any>>> {
+  const set = new Set<Fiber.Runtime<any, any>>()
   const interval = new AtomicReference<NodeJS.Timeout | undefined>(undefined)
 
   return new Supervisor(
-    Effect.succeed(() => Chunk.from(mainFibers)),
+    Effect.succeed(Chunk.from(set)),
     (_, __, ___, fiber) => {
-      if (mainFibers.has(fiber)) {
-        if (typeof interval.get === "undefined") {
+      if (set.has(fiber)) {
+        if (interval.get == null) {
           interval.set(
             setInterval(() => {
               // keep process alive
-            }, 60000)
+            }, MAX_SET_INTERVAL_VALUE)
           )
         }
+      } else {
+        set.add(fiber)
       }
     },
     (_, fiber) => {
-      mainFibers.delete(fiber)
-      if (mainFibers.size === 0) {
+      set.delete(fiber)
+      if (set.size === 0) {
         const ci = interval.get
 
         if (ci) {

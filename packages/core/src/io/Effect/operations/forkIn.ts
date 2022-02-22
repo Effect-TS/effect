@@ -2,8 +2,8 @@ import type { LazyArg } from "../../../data/Function"
 import { Option } from "../../../data/Option"
 import type * as Fiber from "../../Fiber"
 import type { Scope } from "../../Scope"
-import type { Effect, RIO } from "../definition"
-import { IFork } from "../definition"
+import type { RIO } from "../definition"
+import { Effect, IFork } from "../definition"
 
 /**
  * @tsplus fluent ets/Effect forkIn
@@ -13,7 +13,7 @@ export function forkIn_<R, E, A>(
   scope: LazyArg<Scope>,
   __etsTrace?: string
 ): RIO<R, Fiber.Runtime<E, A>> {
-  return new IFork(self, () => Option.some(scope()), __etsTrace)
+  return Effect.suspendSucceed(new IFork(self, () => Option.some(scope()), __etsTrace))
 }
 
 /**

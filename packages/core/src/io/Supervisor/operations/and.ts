@@ -1,5 +1,4 @@
 import type { Tuple } from "../../../collection/immutable/Tuple"
-import { zip_ } from "../../Effect/operations/zip"
 import { Supervisor } from "../definition"
 
 /**
@@ -12,7 +11,7 @@ export function and_<A, B>(
   that: Supervisor<B>
 ): Supervisor<Tuple<[A, B]>> {
   return new Supervisor(
-    zip_(self.value, that.value),
+    self.value.zip(that.value),
     (environment, effect, parent, fiber) => {
       try {
         self.unsafeOnStart(environment, effect, parent, fiber)

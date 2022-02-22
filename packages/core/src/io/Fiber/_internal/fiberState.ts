@@ -48,7 +48,8 @@ export function isInterrupting<E, A>(state: FiberState<E, A>): boolean {
 }
 
 export function interruptorsCause<E, A>(state: FiberState<E, A>): Cause<never> {
-  return HS.reduce_(state.interruptors, Cause.empty, (acc, interruptor) =>
-    Cause.then(acc, Cause.interrupt(interruptor))
+  return state.interruptors.reduce(
+    Cause.empty,
+    (acc, interruptor) => acc + Cause.interrupt(interruptor)
   )
 }

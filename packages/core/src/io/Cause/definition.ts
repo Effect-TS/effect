@@ -165,10 +165,7 @@ export class Fail<E> implements St.HasEquals, St.HasHash {
   constructor(readonly value: E, readonly trace: Trace) {}
 
   get [St.hashSym](): number {
-    return St.combineHash(
-      St.hashString(this._tag),
-      St.combineHash(St.hash(this.value), St.hashObject(this.trace))
-    )
+    return St.combineHash(St.hashString(this._tag), St.hash(this.value))
   }
 
   [St.equalsSym](that: unknown): boolean {
@@ -204,10 +201,7 @@ export class Die implements St.HasEquals, St.HasHash {
   constructor(readonly value: unknown, readonly trace: Trace) {}
 
   get [St.hashSym](): number {
-    return St.combineHash(
-      St.hashString(this._tag),
-      St.combineHash(St.hash(this.value), St.hashObject(this.trace))
-    )
+    return St.combineHash(St.hashString(this._tag), St.hash(this.value))
   }
 
   [St.equalsSym](that: unknown): boolean {
@@ -243,10 +237,7 @@ export class Interrupt implements St.HasEquals, St.HasHash {
   constructor(readonly fiberId: FiberId, readonly trace: Trace) {}
 
   get [St.hashSym](): number {
-    return St.combineHash(
-      St.hashString(this._tag),
-      St.combineHash(St.hash(this.fiberId), St.hashObject(this.trace))
-    )
+    return St.combineHash(St.hashString(this._tag), St.hash(this.fiberId))
   }
 
   [St.equalsSym](that: unknown): boolean {

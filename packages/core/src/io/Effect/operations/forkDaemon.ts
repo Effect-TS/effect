@@ -1,8 +1,8 @@
 import { Option } from "../../../data/Option"
 import type * as Fiber from "../../Fiber"
-import { globalScope } from "../../Scope"
-import type { Effect, RIO } from "../definition"
-import { IFork } from "../definition"
+import * as Scope from "../../Scope"
+import type { RIO } from "../definition"
+import { Effect, IFork } from "../definition"
 
 /**
  * Forks the effect into a new fiber attached to the global scope. Because the
@@ -15,5 +15,7 @@ export function forkDaemon<R, E, A>(
   self: Effect<R, E, A>,
   __etsTrace?: string
 ): RIO<R, Fiber.Runtime<E, A>> {
-  return new IFork(self, () => Option.some(globalScope), __etsTrace)
+  return Effect.suspendSucceed(
+    new IFork(self, () => Option.some(Scope.globalScope.value), __etsTrace)
+  )
 }

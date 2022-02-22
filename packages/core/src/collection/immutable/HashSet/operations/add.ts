@@ -5,6 +5,7 @@ import { HashSetInternal, realHashSet } from "./_internal/hashSet"
 /**
  * Adds a value to the `HashSet`.
  *
+ * @tsplus operator ets/HashSet +
  * @tsplus fluent ets/HashSet add
  */
 export function add_<A>(self: HashSet<A>, value: A): HashSet<A> {

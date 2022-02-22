@@ -16,9 +16,7 @@ export function squashWith_<E>(self: Cause<E>, f: (e: E) => unknown): unknown {
     .getOrElse(() => {
       if (self.isInterrupted()) {
         const fibers = HS.reduce_(
-          HS.chain_(self.interruptors(), (fiberId) =>
-            HS.map_(ids(fiberId), (n) => `#${n}`)
-          ),
+          self.interruptors().flatMap((fiberId) => ids(fiberId).map((n) => `#${n}`)),
           "",
           (acc, id) => `${acc}, ${id}`
         )

@@ -6,7 +6,6 @@ import type { Tag } from "../../../data/Has"
 import { Option } from "../../../data/Option"
 import { Stack } from "../../../data/Stack"
 import * as Supervisor from "../../../io/Supervisor"
-import { equalsSym } from "../../../prelude/Structural"
 import { AtomicBoolean } from "../../../support/AtomicBoolean"
 import { AtomicReference } from "../../../support/AtomicReference"
 import { defaultScheduler } from "../../../support/Scheduler"
@@ -131,13 +130,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     readonly location: TE.TraceElement,
     _children: Set<FiberContext<any, any>>,
     runtimeConfig: RuntimeConfig,
-    interruptStatus0?: Stack<boolean>
+    interruptStatus?: Stack<boolean>
   ) {
     this._children = _children
     this.runtimeConfig = runtimeConfig
-    if (interruptStatus0) {
-      this.interruptStatus = interruptStatus0
-    }
+    this.interruptStatus = interruptStatus
     if (this.trackMetrics) {
       fibersStarted.unsafeIncrement()
       fiberForkLocations.unsafeObserve(TE.stringify(location))
@@ -238,11 +235,6 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       )
     )
   }
-
-  //   unsafeForEachLogger(tag) { logger =>
-  //     logger(trace, fiberId, logLevel, message, contextMap, spans, location)
-  //   }
-  // }
 
   unsafeForEachLogger(typeTag: Tag<any>, f: (logger: Logger<any, any>) => void): void {
     const loggers = this.runtimeConfig.value.loggers.getAll(typeTag)
@@ -394,7 +386,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         oldState.asyncCanceler._tag === "Registered"
       ) {
         const newState = new FiberState.Executing(
-          FiberStatus.withInterrupting(true)(oldState.status),
+          FiberStatus.withInterrupting(true)(oldState.status.previous),
           oldState.observers,
           oldState.suppressed,
           oldState.interruptors.add(fiberId),
@@ -481,11 +473,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       const cb: Callback<never, Exit<E, A>> = (x) => k(Effect.done(x))
       const result = this.unsafeAddObserverMaybe(cb)
 
-      if (result) {
-        return Either.right(Effect.succeed(result))
-      } else {
-        return Either.left(Effect.succeed(this.unsafeRemoveObserver(cb)))
-      }
+      return result == null
+        ? Either.left(Effect.succeed(this.unsafeRemoveObserver(cb)))
+        : Either.right(Effect.succeedNow(result))
     }, this.id)
   }
 
@@ -623,7 +613,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         const newState = new FiberState.Executing(
           oldState.status,
           oldState.observers,
-          Cause.then(oldState.suppressed, cause),
+          oldState.suppressed + cause,
           oldState.interruptors,
           oldState.asyncCanceler,
           oldState.mailbox
@@ -652,11 +642,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
         const interruptorsCause = FiberState.interruptorsCause(oldState)
 
-        if (oldState.suppressed.contains(interruptorsCause)) {
-          return oldState.suppressed
-        } else {
-          return oldState.suppressed + interruptorsCause
-        }
+        return oldState.suppressed.contains(interruptorsCause)
+          ? oldState.suppressed
+          : oldState.suppressed + interruptorsCause
       }
       case "Done": {
         return FiberState.interruptorsCause(oldState)
@@ -823,13 +811,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     effect: Effect<unknown, never, any>,
     orElse: Effect<unknown, never, any>
   ): Effect<unknown, never, any> {
-    return Effect.suspendSucceed(() => {
-      if (this.unsafeEvalOn(effect)) {
-        return Effect.unit
-      } else {
-        return orElse.asUnit()
-      }
-    })
+    return Effect.suspendSucceed(
+      this.unsafeEvalOn(effect) ? Effect.unit : orElse.asUnit()
+    )
   }
 
   evalOnEffect<R, E2, A2>(
@@ -837,11 +821,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     orElse: Effect<R, E2, A2>
   ): Effect<R, E2, A2> {
     return Effect.environment<R>().flatMap((environment) =>
-      Promise.make<E2, A2>().flatMap((promise) =>
-        this.evalOn(
-          effect.provideEnvironment(environment).intoPromise(promise),
-          orElse.provideEnvironment(environment).intoPromise(promise)
-        ).flatMap(() => Promise.await(promise))
+      Promise.make<E2, A2>().flatMap(
+        (promise) =>
+          this.evalOn(
+            effect.provideEnvironment(environment).intoPromise(promise),
+            orElse.provideEnvironment(environment).intoPromise(promise)
+          ) > Promise.await(promise)
       )
     )
   }
@@ -851,8 +836,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
     switch (oldState._tag) {
       case "Executing": {
-        const newMailbox =
-          oldState.mailbox == null ? effect : oldState.mailbox.flatMap(() => effect)
+        const newMailbox = oldState.mailbox == null ? effect : oldState.mailbox > effect
 
         this.state.set(
           new FiberState.Executing(
@@ -898,13 +882,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           // The mailbox is empty and the _children are shut down
           const interruptorsCause = FiberState.interruptorsCause(oldState)
 
-          const newExit = interruptorsCause[equalsSym](Cause.empty)
-            ? exit
-            : exit.mapErrorCause((cause) =>
-                cause.contains(interruptorsCause)
-                  ? cause
-                  : Cause.then(cause, interruptorsCause)
-              )
+          const newExit =
+            interruptorsCause === Cause.empty
+              ? exit
+              : exit.mapErrorCause((cause) =>
+                  cause.contains(interruptorsCause) ? cause : cause + interruptorsCause
+                )
 
           //  We are truly "unsafeTryDone" because the scope has been closed
           this.state.set(new FiberState.Done(newExit))
@@ -1018,18 +1001,17 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     trace: TE.TraceElement,
     forkScope: Option<Scope.Scope> = Option.none
   ): FiberContext<any, any> {
-    const childFiberRefLocals: FiberRefLocals = new Map()
+    const childFiberRefLocals: FiberRefLocals = new Map<Runtime<any>, any>()
 
-    this.fiberRefLocals.forEach((v, k) => {
+    for (const [k, v] of this.fiberRefLocals) {
       childFiberRefLocals.set(k, (k as Runtime<A>).fork(v))
-    })
+    }
 
     const parentScope: Scope.Scope = (
       forkScope._tag === "Some" ? forkScope : this.unsafeGetRef(forkScopeOverride.value)
     ).getOrElse(this.scope)
 
     const childId = FiberId.unsafeMake()
-    // TODO: WeakSet?
     const grandChildren = new Set<FiberContext<any, any>>()
 
     const childContext = new FiberContext(
@@ -1038,7 +1020,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       trace,
       grandChildren,
       this.runtimeConfig,
-      this.interruptStatus || new Stack(true)
+      new Stack(this.interruptStatus ? this.interruptStatus.value : true)
     )
 
     if (this.runtimeConfig.value.supervisor !== Supervisor.none) {
@@ -1054,9 +1036,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       )
     }
 
-    const childEffect = parentScope.unsafeAdd(this.runtimeConfig, childContext)
-      ? effect
-      : Effect.interruptAs(parentScope.fiberId)
+    const childEffect = !parentScope.unsafeAdd(this.runtimeConfig, childContext)
+      ? Effect.interruptAs(parentScope.fiberId)
+      : effect
 
     childContext.nextEffect = childEffect
 
@@ -1258,14 +1240,14 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                         )
 
                     const discardedFolds = this.unsafeUnwindStack()
-                    // We threw away some error handlers while unwinding the
-                    // stack because we got interrupted during this instruction.
-                    // So it's not safe to return typed failures from cause0,
-                    // because they might not be typed correctly. Instead, we
-                    // strip the typed failures, and return the remainders and
-                    // the interruption.
                     const strippedCause = discardedFolds
-                      ? tracedCause.stripFailures()
+                      ? // We threw away some error handlers while unwinding the
+                        // stack because we got interrupted during this instruction.
+                        // So it's not safe to return typed failures from cause0,
+                        // because they might not be typed correctly. Instead, we
+                        // strip the typed failures, and return the remainders and
+                        // the interruption.
+                        tracedCause.stripFailures()
                       : tracedCause
                     const suppressed = this.unsafeClearSuppressed()
                     const fullCause = strippedCause.contains(suppressed)
@@ -1499,15 +1481,17 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "OverrideForkScope": {
-                    const oldforkScopeOverride = this.unsafeGetRef(
+                    const oldForkScopeOverride = this.unsafeGetRef(
                       forkScopeOverride.value
                     )
 
-                    this.unsafeSetRef(forkScopeOverride.value, current.forkScope())
+                    const forkedScope = current.forkScope()
+
+                    this.unsafeSetRef(forkScopeOverride.value, forkedScope)
 
                     this.unsafeAddFinalizer(
                       Effect.succeed(
-                        this.unsafeSetRef(forkScopeOverride.value, oldforkScopeOverride)
+                        this.unsafeSetRef(forkScopeOverride.value, oldForkScopeOverride)
                       )
                     )
 

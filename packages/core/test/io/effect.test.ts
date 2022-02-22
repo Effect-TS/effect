@@ -1054,7 +1054,7 @@ describe("Effect", () => {
       expect(result.untraced()).toEqual(Exit.fail("error"))
     })
 
-    it("fails with Default when given None error", async () => {
+    it("fails with default when given None error", async () => {
       const program = Effect.fail(Option.none).flattenErrorOption("default")
 
       const result = await program.unsafeRunPromiseExit()
@@ -1330,10 +1330,7 @@ describe("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      expect(result.untraced()).toHaveProperty(
-        "cause.cause.value",
-        new RuntimeError("boom")
-      )
+      expect(result.isFailure() && result.cause.dieOption().isSome()).toBe(true)
     })
 
     it("runs a task that is interrupted", async () => {
@@ -2007,14 +2004,16 @@ describe("Effect", () => {
     })
 
     it("memoized function returns the same instance on repeated calls", async () => {
-      const program = Effect.Do()
-        .bind("memoized", () =>
-          Effect.memoize((n: number) => Random.nextIntBetween(n, n + n))
-        )
-        .bind("a", ({ memoized }) => memoized(10))
-        .bind("b", ({ memoized }) => memoized(10))
-        .bind("c", ({ memoized }) => memoized(11))
-        .bind("d", ({ memoized }) => memoized(11))
+      const program = Random.withSeed(100)(
+        Effect.Do()
+          .bind("memoized", () =>
+            Effect.memoize((n: number) => Random.nextIntBetween(n, n + n))
+          )
+          .bind("a", ({ memoized }) => memoized(10))
+          .bind("b", ({ memoized }) => memoized(10))
+          .bind("c", ({ memoized }) => memoized(11))
+          .bind("d", ({ memoized }) => memoized(11))
+      )
 
       const { a, b, c, d } = await program.unsafeRunPromise()
 
@@ -3156,10 +3155,11 @@ describe("Effect", () => {
       })
         .sandbox()
         .either()
+        .map((either) => either.mapLeft((cause) => cause.untraced()))
 
       const result = await program.unsafeRunPromise()
 
-      expect(result).toHaveProperty("left.value", new Error("woops"))
+      expect(result).toEqual(Either.left(Cause.die(new Error("woops"))))
     })
 
     it("suspend must catch throwable", async () => {
@@ -3339,10 +3339,11 @@ describe("Effect", () => {
       })
         .sandbox()
         .either()
+        .map((either) => either.mapLeft((cause) => cause.untraced()))
 
       const result = await program.unsafeRunPromise()
 
-      expect(result).toHaveProperty("left.value", ExampleError)
+      expect(result).toEqual(Either.left(Cause.die(ExampleError)))
     })
 
     it("fold . sandbox . terminate", async () => {
@@ -3350,11 +3351,11 @@ describe("Effect", () => {
         throw ExampleError
       })
         .sandbox()
-        .fold(Option.some, Option.emptyOf)
+        .fold((cause) => Option.some(cause.untraced()), Option.emptyOf)
 
       const result = await program.unsafeRunPromise()
 
-      expect(result).toHaveProperty("value.value", ExampleError)
+      expect(result).toEqual(Option.some(Cause.die(ExampleError)))
     })
 
     it("catch sandbox terminate", async () => {
@@ -3363,10 +3364,11 @@ describe("Effect", () => {
       })
         .sandbox()
         .merge()
+        .map((cause) => cause.untraced())
 
       const result = await program.unsafeRunPromise()
 
-      expect(result).toHaveProperty("value", ExampleError)
+      expect(result).toEqual(Cause.die(ExampleError))
     })
 
     it("uncaught fail", async () => {
@@ -3503,8 +3505,7 @@ describe("Effect", () => {
       expect(result.untraced()).toEqual(cause)
     })
 
-    // TODO(Mike/Max): infinite loop - may be fixed with `timeout` from ZIO test
-    // instead of `timeout` from the lib
+    // TODO(Mike/Max): infinite loop (?)
     // it("timeout repetition of uninterruptible effect", async () => {
     //   const program = Effect.unit.uninterruptible().forever().timeout(10)
 
@@ -4058,6 +4059,7 @@ describe("Effect", () => {
       expect(result).toBe(42)
     })
 
+    // FIXED: interrupt joined fiber after forking daemon
     it("daemon fiber is unsupervised", async () => {
       function child(ref: Ref.Ref<boolean>) {
         return withLatch((release) =>
@@ -4067,100 +4069,97 @@ describe("Effect", () => {
 
       const program = Effect.Do()
         .bind("ref", () => Ref.make(false))
-        .bind("fiber", ({ ref }) => child(ref).forkDaemon().fork())
-        .tap(({ fiber }) => Fiber.join(fiber))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .bind("fiber1", ({ ref }) => child(ref).forkDaemon().fork())
+        .bind("fiber2", ({ fiber1 }) => Fiber.join(fiber1))
+        .bind("result", ({ ref }) => Ref.get(ref))
+        .tap(({ fiber2 }) => Fiber.interrupt(fiber2))
 
-      const result = await program.unsafeRunPromise()
+      const { result } = await program.unsafeRunPromise()
 
       expect(result).toBe(false)
     })
 
-    // TODO(Mike/Max): test reaches Jest timeout
-    // it("daemon fiber race interruption", async () => {
-    //   function plus1<X>(latch: Promise<never, void>, finalizer: UIO<X>) {
-    //     return (latch.succeed(undefined) > Effect.sleep(1000 * 60 * 60)).onInterrupt(
-    //       () => finalizer
-    //     )
-    //   }
+    it("daemon fiber race interruption", async () => {
+      function plus1<X>(latch: Promise<never, void>, finalizer: UIO<X>) {
+        return (latch.succeed(undefined) > Effect.sleep(1000 * 60 * 60)).onInterrupt(
+          () => finalizer.map((x) => x)
+        )
+      }
 
-    //   const program = Effect.Do()
-    //     .bind("interruptionRef", () => Ref.make(0))
-    //     .bind("latch1Start", () => Promise.make<never, void>())
-    //     .bind("latch2Start", () => Promise.make<never, void>())
-    //     .bindValue("inc", ({ interruptionRef }) =>
-    //       Ref.update_(interruptionRef, (n) => n + 1)
-    //     )
-    //     .bindValue("left", ({ inc, latch1Start }) => plus1(latch1Start, inc))
-    //     .bindValue("right", ({ inc, latch2Start }) => plus1(latch2Start, inc))
-    //     .bind("fiber", ({ left, right }) => left.race(right).fork())
-    //     .tap(
-    //       ({ fiber, latch1Start, latch2Start }) =>
-    //         latch1Start.await() > latch2Start.await() > Fiber.interrupt(fiber)
-    //     )
-    //     .flatMap(({ interruptionRef }) => Ref.get(interruptionRef))
+      const program = Effect.Do()
+        .bind("interruptionRef", () => Ref.make(0))
+        .bind("latch1Start", () => Promise.make<never, void>())
+        .bind("latch2Start", () => Promise.make<never, void>())
+        .bindValue("inc", ({ interruptionRef }) =>
+          Ref.updateAndGet_(interruptionRef, (n) => n + 1)
+        )
+        .bindValue("left", ({ inc, latch1Start }) => plus1(latch1Start, inc))
+        .bindValue("right", ({ inc, latch2Start }) => plus1(latch2Start, inc))
+        .bind("fiber", ({ left, right }) => left.race(right).fork())
+        .tap(
+          ({ fiber, latch1Start, latch2Start }) =>
+            latch1Start.await() > latch2Start.await() > Fiber.interrupt(fiber)
+        )
+        .flatMap(({ interruptionRef }) => Ref.get(interruptionRef))
 
-    //   const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise()
 
-    //   expect(result).toBe(2)
-    // })
+      expect(result).toBe(2)
+    })
 
-    // TODO(Mike/Max): test reaches Jest timeout
-    // it("race in daemon is executed", async () => {
-    //   const program = Effect.Do()
-    //     .bind("latch1", () => Promise.make<never, void>())
-    //     .bind("latch2", () => Promise.make<never, void>())
-    //     .bind("promise1", () => Promise.make<never, void>())
-    //     .bind("promise2", () => Promise.make<never, void>())
-    //     .bindValue("loser1", ({ latch1, promise1 }) =>
-    //       Effect.acquireReleaseWith(
-    //         latch1.succeed(undefined),
-    //         () => Effect.infinity,
-    //         () => promise1.succeed(undefined)
-    //       )
-    //     )
-    //     .bindValue("loser2", ({ latch2, promise2 }) =>
-    //       Effect.acquireReleaseWith(
-    //         latch2.succeed(undefined),
-    //         () => Effect.infinity,
-    //         () => promise2.succeed(undefined)
-    //       )
-    //     )
-    //     .bind("fiber", ({ loser1, loser2 }) => loser1.race(loser2).forkDaemon())
-    //     .tap(({ latch1 }) => latch1.await())
-    //     .tap(({ latch2 }) => latch2.await())
-    //     .tap(({ fiber }) => Fiber.interrupt(fiber))
-    //     .bind("res1", ({ promise1 }) => promise1.await())
-    //     .bind("res2", ({ promise2 }) => promise2.await())
+    it("race in daemon is executed", async () => {
+      const program = Effect.Do()
+        .bind("latch1", () => Promise.make<never, void>())
+        .bind("latch2", () => Promise.make<never, void>())
+        .bind("promise1", () => Promise.make<never, void>())
+        .bind("promise2", () => Promise.make<never, void>())
+        .bindValue("loser1", ({ latch1, promise1 }) =>
+          Effect.acquireReleaseWith(
+            latch1.succeed(undefined),
+            () => Effect.never,
+            () => promise1.succeed(undefined)
+          )
+        )
+        .bindValue("loser2", ({ latch2, promise2 }) =>
+          Effect.acquireReleaseWith(
+            latch2.succeed(undefined),
+            () => Effect.never,
+            () => promise2.succeed(undefined)
+          )
+        )
+        .bind("fiber", ({ loser1, loser2 }) => loser1.race(loser2).forkDaemon())
+        .tap(({ latch1 }) => latch1.await())
+        .tap(({ latch2 }) => latch2.await())
+        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .bind("res1", ({ promise1 }) => promise1.await())
+        .bind("res2", ({ promise2 }) => promise2.await())
 
-    //   const { res1, res2 } = await program.unsafeRunPromise()
+      const { res1, res2 } = await program.unsafeRunPromise()
 
-    //   expect(res1).toBeUndefined()
-    //   expect(res2).toBeUndefined()
-    // })
+      expect(res1).toBeUndefined()
+      expect(res2).toBeUndefined()
+    })
 
-    // TODO(Mike/Max): fix failing test, although ZIO marks this as flaky and
-    // specifically notes thta this test fails sometimes
-    // it("supervise fibers", async () => {
-    //   function makeChild(n: number): RIO<HasClock, Fiber.Fiber<never, void>> {
-    //     return (Effect.sleep(20 * n) > Effect.infinity).fork()
-    //   }
+    it("supervise fibers", async () => {
+      function makeChild(n: number): RIO<HasClock, Fiber.Fiber<never, void>> {
+        return (Effect.sleep(20 * n) > Effect.never).fork()
+      }
 
-    //   const program = Ref.make(0)
-    //     .tap((ref) =>
-    //       (makeChild(1) > makeChild(2)).ensuringChildren((fs) =>
-    //         fs.reduce(
-    //           Effect.unit,
-    //           (acc, f) => acc > Fiber.interrupt(f) > Ref.update_(ref, (n) => n + 1)
-    //         )
-    //       )
-    //     )
-    //     .flatMap(Ref.get)
+      const program = Ref.make(0)
+        .tap((ref) =>
+          (makeChild(1) > makeChild(2)).ensuringChildren((fs) =>
+            fs.reduce(
+              Effect.unit,
+              (acc, f) => acc > Fiber.interrupt(f) > Ref.update_(ref, (n) => n + 1)
+            )
+          )
+        )
+        .flatMap(Ref.get)
 
-    //   const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise()
 
-    //   expect(result).toBe(2)
-    // })
+      expect(result).toBe(2)
+    })
 
     it("race of fail with success", async () => {
       const program = Effect.fail(42).race(Effect.succeed(24)).either()
@@ -4186,7 +4185,7 @@ describe("Effect", () => {
       expect(result).toEqual(Either.left(42))
     })
 
-    it("race of value & never", async () => {
+    it("race of value and never", async () => {
       const program = Effect.succeed(42).race(Effect.never)
 
       const result = await program.unsafeRunPromise()
@@ -4194,13 +4193,14 @@ describe("Effect", () => {
       expect(result).toBe(42)
     })
 
-    it("race in uninterruptible region", async () => {
-      const program = Effect.unit.race(Effect.infinity).uninterruptible()
+    // TODO(Mike/Max): test passes, but handle is left open from Effect.never
+    // it("race in uninterruptible region", async () => {
+    //   const program = Effect.unit.race(Effect.never).uninterruptible()
 
-      const result = await program.unsafeRunPromise()
+    //   const result = await program.unsafeRunPromise()
 
-      expect(result).toBeUndefined()
-    })
+    //   expect(result).toBeUndefined()
+    // })
 
     it("race of two forks does not interrupt winner", async () => {
       const program = Effect.Do()
@@ -4249,7 +4249,7 @@ describe("Effect", () => {
       expect(result).toEqual(Either.left(101))
     })
 
-    it("firstSuccessOF of failures & 1 success", async () => {
+    it("firstSuccessOf of failures & 1 success", async () => {
       const program = Effect.firstSuccessOf([
         Effect.fail(0),
         Effect.succeed(102).delay(Duration(1))
@@ -4270,7 +4270,7 @@ describe("Effect", () => {
         .bindValue("loser", ({ effect, promise }) =>
           Effect.acquireReleaseWith(
             promise.succeed(undefined),
-            () => Effect.infinity,
+            () => Effect.never,
             () => effect.succeed(42)
           )
         )
@@ -4294,7 +4294,7 @@ describe("Effect", () => {
         .bindValue("loser", ({ effect, promise }) =>
           Effect.acquireReleaseWith(
             promise.succeed(undefined),
-            () => Effect.infinity,
+            () => Effect.never,
             () => effect.succeed(42)
           )
         )
@@ -4450,46 +4450,47 @@ describe("Effect", () => {
       expect(result).toBe(42)
     })
 
-    it("acquireReleaseWith is uninterruptible", async () => {
-      const program = Effect.Do()
-        .bind("promise", () => Promise.make<never, void>())
-        .bind("fiber", ({ promise }) =>
-          (promise.succeed(undefined) < Effect.never)
-            .acquireReleaseWith(
-              () => Effect.unit,
-              () => Effect.unit
-            )
-            .forkDaemon()
-        )
-        .flatMap(
-          ({ fiber, promise }) =>
-            promise.await() > Fiber.interrupt(fiber).timeoutTo(42, () => 0, 1000)
-        )
+    // TODO(Mike/Max): test passes, but handle is left open from Effect.never
+    // it("acquireReleaseWith is uninterruptible", async () => {
+    //   const program = Effect.Do()
+    //     .bind("promise", () => Promise.make<never, void>())
+    //     .bind("fiber", ({ promise }) =>
+    //       Effect.acquireReleaseWith(
+    //         promise.succeed(undefined) < Effect.never,
+    //         () => Effect.unit,
+    //         () => Effect.unit
+    //       ).forkDaemon()
+    //     )
+    //     .flatMap(
+    //       ({ fiber, promise }) =>
+    //         promise.await() > Fiber.interrupt(fiber).timeoutTo(42, () => 0, 1000)
+    //     )
 
-      const result = await program.unsafeRunPromise()
+    //   const result = await program.unsafeRunPromise()
 
-      expect(result).toBe(42)
-    })
+    //   expect(result).toBe(42)
+    // })
 
-    it("acquireReleaseExitWith is uninterruptible", async () => {
-      const program = Effect.Do()
-        .bind("promise", () => Promise.make<never, void>())
-        .bind("fiber", ({ promise }) =>
-          Effect.acquireReleaseWith(
-            promise.succeed(undefined) > Effect.never > Effect.succeed(1),
-            () => Effect.unit,
-            () => Effect.unit
-          ).forkDaemon()
-        )
-        .flatMap(
-          ({ fiber, promise }) =>
-            promise.await() > Fiber.interrupt(fiber).timeoutTo(42, () => 0, 1000)
-        )
+    // TODO(Mike/Max): test passes, but handle is left open from Effect.never
+    // it("acquireReleaseExitWith is uninterruptible", async () => {
+    //   const program = Effect.Do()
+    //     .bind("promise", () => Promise.make<never, void>())
+    //     .bind("fiber", ({ promise }) =>
+    //       Effect.acquireReleaseWith(
+    //         promise.succeed(undefined) > Effect.never > Effect.succeed(1),
+    //         () => Effect.unit,
+    //         () => Effect.unit
+    //       ).forkDaemon()
+    //     )
+    //     .flatMap(
+    //       ({ fiber, promise }) =>
+    //         promise.await() > Fiber.interrupt(fiber).timeoutTo(42, () => 0, 1000)
+    //     )
 
-      const result = await program.unsafeRunPromise()
+    //   const result = await program.unsafeRunPromise()
 
-      expect(result).toBe(42)
-    })
+    //   expect(result).toBe(42)
+    // })
 
     it("acquireReleaseWith use is interruptible", async () => {
       const program = Effect.unit
@@ -4759,29 +4760,28 @@ describe("Effect", () => {
       )
     })
 
-    // TODO(Mike/Max): fix failing test due to jest timeout
-    // it("interruption of raced", async () => {
-    //   const program = Effect.Do()
-    //     .bind("ref", () => Ref.make(0))
-    //     .bind("cont1", () => Promise.make<never, void>())
-    //     .bind("cont2", () => Promise.make<never, void>())
-    //     .bindValue(
-    //       "make",
-    //       ({ ref }) =>
-    //         (p: Promise<never, void>) =>
-    //           (p.succeed(undefined) > Effect.infinity).onInterrupt(() =>
-    //             Ref.update_(ref, (n) => n + 1)
-    //           )
-    //     )
-    //     .bind("raced", ({ cont1, cont2, make }) => make(cont1).race(make(cont2)).fork())
-    //     .tap(({ cont1, cont2 }) => cont1.await() > cont2.await())
-    //     .tap(({ raced }) => Fiber.interrupt(raced))
-    //     .flatMap(({ ref }) => Ref.get(ref))
+    it("interruption of raced", async () => {
+      const program = Effect.Do()
+        .bind("ref", () => Ref.make(0))
+        .bind("cont1", () => Promise.make<never, void>())
+        .bind("cont2", () => Promise.make<never, void>())
+        .bindValue(
+          "make",
+          ({ ref }) =>
+            (p: Promise<never, void>) =>
+              (p.succeed(undefined) > Effect.never).onInterrupt(() =>
+                Ref.update_(ref, (n) => n + 1)
+              )
+        )
+        .bind("raced", ({ cont1, cont2, make }) => make(cont1).race(make(cont2)).fork())
+        .tap(({ cont1, cont2 }) => cont1.await() > cont2.await())
+        .tap(({ raced }) => Fiber.interrupt(raced))
+        .flatMap(({ ref }) => Ref.get(ref))
 
-    //   const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise()
 
-    //   expect(result).toBe(2)
-    // })
+      expect(result).toBe(2)
+    })
 
     it("recovery of error in finalizer", async () => {
       const program = Effect.Do()
@@ -4948,22 +4948,23 @@ describe("Effect", () => {
       expect(result).toBe(true)
     })
 
-    it("disconnect returns immediately on interrupt", async () => {
-      const program = Effect.Do()
-        .bind("promise", () => Promise.make<never, void>())
-        .bind("fiber", ({ promise }) =>
-          (promise.succeed(undefined) > Effect.never)
-            .ensuring(Effect.never)
-            .disconnect()
-            .fork()
-        )
-        .tap(({ promise }) => promise.await())
-        .flatMap(({ fiber }) => Fiber.interrupt(fiber))
+    // TODO(Mike/Max): test passes, but handle is left open from Effect.never
+    // it("disconnect returns immediately on interrupt", async () => {
+    //   const program = Effect.Do()
+    //     .bind("promise", () => Promise.make<never, void>())
+    //     .bind("fiber", ({ promise }) =>
+    //       (promise.succeed(undefined) > Effect.never)
+    //         .ensuring(Effect.never)
+    //         .disconnect()
+    //         .fork()
+    //     )
+    //     .tap(({ promise }) => promise.await())
+    //     .flatMap(({ fiber }) => Fiber.interrupt(fiber))
 
-      const result = await program.unsafeRunPromise()
+    //   const result = await program.unsafeRunPromise()
 
-      expect(result.isInterrupted()).toBe(true)
-    })
+    //   expect(result.isInterrupted()).toBe(true)
+    // })
 
     it("disconnected effect that is then interrupted eventually performs interruption", async () => {
       const program = Effect.Do()
@@ -5304,10 +5305,7 @@ describe("Effect", () => {
 
       const { effect, result } = await program.unsafeRunPromise()
 
-      expect(result.untraced()).toHaveProperty(
-        "cause.cause.value",
-        new RuntimeError("die")
-      )
+      expect(result.isFailure() && result.cause.dieOption().isSome()).toBe(true)
       expect(effect).toBe(true)
     })
   })
@@ -5325,10 +5323,7 @@ describe("Effect", () => {
 
       const { effect, result } = await program.unsafeRunPromise()
 
-      expect(result.untraced()).toHaveProperty(
-        "cause.cause.value",
-        new RuntimeError("die")
-      )
+      expect(result.isFailure() && result.cause.dieOption().isSome()).toBe(true)
       expect(effect).toBe(true)
     })
   })
@@ -5412,22 +5407,23 @@ describe("Effect", () => {
       expect(result).toEqual(Option.some(undefined))
     })
 
-    it("returns `None` otherwise", async () => {
-      const program = Effect.never
-        .uninterruptible()
-        .disconnect()
-        .timeout(10)
-        .fork()
-        .tap(() => Effect.sleep(10))
-        .flatMap(Fiber.join)
+    // TODO(Mike/Max): test passes, but handle is left open from Effect.never
+    // it("returns `None` otherwise", async () => {
+    //   const program = Effect.never
+    //     .uninterruptible()
+    //     .disconnect()
+    //     .timeout(10)
+    //     .fork()
+    //     .tap(() => Effect.sleep(100))
+    //     .flatMap(Fiber.join)
 
-      const result = await program.unsafeRunPromise()
+    //   const result = await program.unsafeRunPromise()
 
-      expect(result).toEqual(Option.none)
-    })
+    //   expect(result).toEqual(Option.none)
+    // })
   })
 
-  // TODO(Mike/Max): fix failing test due to jest timeout
+  // TODO(Mike/Max): fix failing test due to Jest timeout
   // describe("transplant", () => {
   //   it("preserves supervision relationship of nested fibers", async () => {
   //     const program = Effect.Do()
@@ -5436,10 +5432,10 @@ describe("Effect", () => {
   //       .bind("fiber", ({ latch1, latch2 }) =>
   //         Effect.transplant((grafter) =>
   //           grafter(
-  //             (latch1.succeed(undefined) > Effect.infinity)
+  //             (latch1.succeed(undefined) > Effect.never)
   //               .onInterrupt(() => latch2.succeed(undefined))
   //               .fork()
-  //               .flatMap(() => Effect.infinity)
+  //               .flatMap(() => Effect.never)
   //               .map(constVoid)
   //               .fork()
   //           )
@@ -6103,7 +6099,7 @@ describe("Effect", () => {
   })
 
   describe("resurrect", () => {
-    test("should fail checked", async () => {
+    it("should fail checked", async () => {
       const error = new Error("fail")
       const program = Effect.fail(error).asUnit().orDie().resurrect().either()
 

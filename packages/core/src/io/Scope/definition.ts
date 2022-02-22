@@ -1,7 +1,6 @@
 import { LazyValue } from "../../data/LazyValue/definition"
 import type { FiberContext } from "../Fiber/_internal/context"
-import type { FiberId } from "../FiberId/definition"
-import { none } from "../FiberId/operations/none"
+import { FiberId } from "../FiberId/definition"
 import type { RuntimeConfig } from "../RuntimeConfig"
 import * as RuntimeConfigFlag from "../RuntimeConfig/Flag"
 import * as RuntimeConfigFlags from "../RuntimeConfig/Flags"
@@ -23,7 +22,7 @@ export interface CommonScope {
 }
 
 export class Global implements CommonScope {
-  readonly fiberId = none
+  readonly fiberId = FiberId.none
 
   unsafeAdd(
     runtimeConfig: RuntimeConfig,
@@ -49,7 +48,7 @@ export class Global implements CommonScope {
 export class Local implements CommonScope {
   constructor(readonly fiberId: FiberId, readonly parent: FiberContext<any, any>) {}
   unsafeAdd(
-    runtimeConfig: RuntimeConfig,
+    _runtimeConfig: RuntimeConfig,
     child: FiberContext<any, any>,
     __trace?: string | undefined
   ): boolean {
@@ -67,7 +66,7 @@ export class Local implements CommonScope {
  * and will only terminate on its own accord (never from interruption of a
  * parent fiber, because there is no parent fiber).
  */
-export const globalScope = new Global()
+export const globalScope = LazyValue.make(() => new Global())
 
 export function unsafeMake(fiber: FiberContext<any, any>): Scope {
   return new Local(fiber.fiberId, fiber)

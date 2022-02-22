@@ -1,8 +1,8 @@
-import { unit } from "../../Effect/operations/unit"
+import { Effect } from "../../Effect"
 import type { Supervisor } from "../definition"
 import { ConstSupervisor } from "./_internal"
 
 /**
  * A supervisor that doesn't do anything in response to supervision events.
  */
-export const none: Supervisor<void> = new ConstSupervisor(unit)
+export const none: Supervisor<void> = new ConstSupervisor(Effect.unit)

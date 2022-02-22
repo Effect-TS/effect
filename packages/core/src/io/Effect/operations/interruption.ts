@@ -37,7 +37,7 @@ export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
     effect: LazyArg<Effect<R, E, A>>,
     __etsTrace?: string
   ): Effect<R, E, A> => {
-    return Effect.suspendSucceed(effect).interruptStatus(this.flag)
+    return Effect.suspendSucceed(effect().interruptStatus(this.flag))
   }
 
   force = <R, E, A>(
@@ -195,15 +195,12 @@ export function disconnect<R, E, A>(
   __etsTrace?: string
 ): Effect<R, E, A> {
   return uninterruptibleMask(({ restore }) =>
-    Effect.fiberId.flatMap((id) =>
-      restore(effect)
-        .forkDaemon()
-        .flatMap((fiber) =>
-          restore(fiberJoin(fiber)).onInterrupt(() =>
-            fiber.interruptAs(id).forkDaemon()
-          )
-        )
-    )
+    Effect.Do()
+      .bind("id", () => Effect.fiberId)
+      .bind("fiber", () => restore(effect).forkDaemon())
+      .flatMap(({ fiber, id }) =>
+        restore(fiberJoin(fiber)).onInterrupt(() => fiber.interruptAs(id).forkDaemon())
+      )
   )
 }
 
