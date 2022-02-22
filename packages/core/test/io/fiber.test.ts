@@ -112,7 +112,9 @@ describe("Fiber", () => {
 
       const result = await program.unsafeRunPromise()
 
-      expect(result).toHaveProperty("cause.left.value", "fail")
+      expect(result.isFailure() && result.cause.failures().first).toEqual(
+        Option.some("fail")
+      )
     })
 
     it("`join`", async () => {
@@ -124,7 +126,9 @@ describe("Fiber", () => {
 
       const result = await program.unsafeRunPromise()
 
-      expect(result).toHaveProperty("cause.left.value", "fail")
+      expect(result.isFailure() && result.cause.failures().first).toEqual(
+        Option.some("fail")
+      )
     })
 
     it("`awaitAll`", async () => {

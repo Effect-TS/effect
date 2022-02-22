@@ -1,4 +1,4 @@
-import * as HS from "../../collection/immutable/HashSet"
+import { HashSet } from "../../collection/immutable/HashSet"
 import { List } from "../../collection/immutable/List"
 import { Tuple } from "../../collection/immutable/Tuple"
 import { Stack } from "../../data/Stack"
@@ -436,7 +436,7 @@ export function stackless<E>(cause: Cause<E>): Cause<E> {
  * @tsplus operator ets/Cause +
  * @tsplus static ets/CauseOps then
  */
-export function then<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
+export function combineSeq<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
   return isEmpty(left) ? right : isEmpty(right) ? left : new Then<E1 | E2>(left, right)
 }
 
@@ -444,7 +444,8 @@ export function then<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> 
  * @tsplus operator ets/Cause &
  * @tsplus static ets/CauseOps both
  */
-export function both<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
+export function combinePar<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
+  // TODO(Mike/Max): discuss this, because ZIO does not flatten empty causes here
   return isEmpty(left) ? right : isEmpty(right) ? left : new Both<E1 | E2>(left, right)
 }
 
@@ -516,9 +517,9 @@ const _emptyHash = St.opt(St.randomInt())
 function stepLoop<A>(
   cause: Cause<A>,
   stack: List<Cause<A>>,
-  parallel: HS.HashSet<Cause<A>>,
+  parallel: HashSet<Cause<A>>,
   sequential: List<Cause<A>>
-): Tuple<[HS.HashSet<Cause<A>>, List<Cause<A>>]> {
+): Tuple<[HashSet<Cause<A>>, List<Cause<A>>]> {
   while (1) {
     realCause(cause)
     switch (cause._tag) {
@@ -541,15 +542,15 @@ function stepLoop<A>(
             break
           }
           case "Then": {
-            cause = then(left.left, then(left.right, right))
+            cause = new Then(left.left, new Then(left.right, right))
             break
           }
           case "Both": {
-            cause = both(then(left.left, right), then(left.right, right))
+            cause = new Both(new Then(left.left, right), new Then(left.right, right))
             break
           }
           case "Stackless": {
-            cause = then(left.cause, right)
+            cause = new Then(left.cause, right)
             break
           }
           default: {
@@ -570,9 +571,9 @@ function stepLoop<A>(
       }
       default: {
         if (stack.isEmpty()) {
-          return Tuple(HS.add_(parallel, cause), sequential)
+          return Tuple(parallel.add(cause), sequential)
         } else {
-          parallel = HS.add_(parallel, cause)
+          parallel = parallel.add(cause)
           cause = stack.unsafeFirst()!
           stack = stack.tail()
           break
@@ -587,27 +588,27 @@ function stepLoop<A>(
  * Takes one step in evaluating a cause, returning a set of causes that fail
  * in parallel and a list of causes that fail sequentially after those causes.
  */
-function step<A>(self: Cause<A>): Tuple<[HS.HashSet<Cause<A>>, List<Cause<A>>]> {
-  return stepLoop(self, List.empty(), HS.make(), List.empty())
+function step<A>(self: Cause<A>): Tuple<[HashSet<Cause<A>>, List<Cause<A>>]> {
+  return stepLoop(self, List.empty(), HashSet(), List.empty())
 }
 
 function flattenCauseLoop<A>(
   causes: List<Cause<A>>,
-  flattened: List<HS.HashSet<Cause<A>>>
-): List<HS.HashSet<Cause<A>>> {
+  flattened: List<HashSet<Cause<A>>>
+): List<HashSet<Cause<A>>> {
   while (1) {
     const {
       tuple: [parallel, sequential]
     } = causes.reduce(
-      Tuple(HS.make<Cause<A>>(), List.empty<Cause<A>>()),
+      Tuple(HashSet<Cause<A>>(), List.empty<Cause<A>>()),
       ({ tuple: [parallel, sequential] }, cause) => {
         const {
           tuple: [set, seq]
         } = step(cause)
-        return Tuple(HS.union_(parallel, set), sequential + seq)
+        return Tuple(parallel | set, sequential + seq)
       }
     )
-    const updated = HS.size(parallel) > 0 ? flattened.prepend(parallel) : flattened
+    const updated = parallel.size > 0 ? flattened.prepend(parallel) : flattened
     if (sequential.isEmpty()) {
       return updated.reverse()
     } else {
@@ -623,7 +624,7 @@ function flattenCauseLoop<A>(
  * causes that fail in parallel and sequential sets represent causes that fail
  * after each other.
  */
-function flattenCause<E>(self: Cause<E>): List<HS.HashSet<Cause<E>>> {
+function flattenCause<E>(self: Cause<E>): List<HashSet<Cause<E>>> {
   return flattenCauseLoop(List.single(self), List.empty())
 }
 
@@ -633,10 +634,10 @@ function hashCode<E>(self: Cause<E>): number {
   let head
   if (size === 0) {
     return _emptyHash
-  } else if (size === 1 && (head = flat.unsafeFirst()!) && HS.size(head) === 1) {
+  } else if (size === 1 && (head = flat.unsafeFirst()!) && head.size === 1) {
     return List.from(head).unsafeFirst()![St.hashSym]
   } else {
-    return St.hashIterator(flat[Symbol.iterator]())
+    return flat[St.hashSym]
   }
 }
 

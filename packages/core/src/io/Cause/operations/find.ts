@@ -29,28 +29,19 @@ function findSafe<E, Z>(
   f: (cause: Cause<E>) => Option<Z>
 ): IO<Option<Z>> {
   const result = f(self)
-
   if (result._tag === "Some") {
     return IO.succeed(result)
   }
   realCause(self)
   switch (self._tag) {
     case "Then":
-      return IO.suspend(findSafe(self.left, f)).flatMap((leftResult) => {
-        if (leftResult._tag === "Some") {
-          return IO.succeedNow(leftResult)
-        } else {
-          return findSafe(self.right, f)
-        }
-      })
+      return IO.suspend(findSafe(self.left, f)).flatMap((leftResult) =>
+        leftResult._tag === "Some" ? IO.succeedNow(leftResult) : findSafe(self.right, f)
+      )
     case "Both": {
-      return IO.suspend(findSafe(self.left, f)).flatMap((leftResult) => {
-        if (leftResult._tag === "Some") {
-          return IO.succeedNow(leftResult)
-        } else {
-          return findSafe(self.right, f)
-        }
-      })
+      return IO.suspend(findSafe(self.left, f)).flatMap((leftResult) =>
+        leftResult._tag === "Some" ? IO.succeedNow(leftResult) : findSafe(self.right, f)
+      )
     }
     case "Stackless": {
       return IO.suspend(findSafe(self.cause, f))

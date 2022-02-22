@@ -4,10 +4,10 @@ import type { Trace } from "../../io/Trace"
 import type { TraceElement } from "../../io/TraceElement"
 import type { Effect, UIO } from "../Effect"
 import type { Exit } from "../Exit"
-import type * as FiberId from "../FiberId"
+import type { FiberId, Runtime as RuntimeFiberId } from "../FiberId"
 import type * as FiberRef from "../FiberRef"
 import type { Scope } from "../Scope"
-import type { Status } from "./status"
+import type { FiberStatus } from "./status"
 
 // -----------------------------------------------------------------------------
 // Model
@@ -19,7 +19,7 @@ export interface CommonFiber<E, A> {
   /**
    * The identity of the fiber.
    */
-  readonly id: FiberId.FiberId
+  readonly id: FiberId
   /**
    * Awaits the fiber, which suspends the awaiting fiber until the result of the
    * fiber has been determined.
@@ -49,7 +49,7 @@ export interface CommonFiber<E, A> {
    * fiber has already exited, the returned effect will resume immediately.
    * Otherwise, the effect will resume when the fiber exits.
    */
-  readonly interruptAs: (fiberId: FiberId.FiberId) => UIO<Exit<E, A>>
+  readonly interruptAs: (fiberId: FiberId) => UIO<Exit<E, A>>
 }
 
 /**
@@ -62,13 +62,13 @@ export class Synthetic<E, A> implements CommonFiber<E, A> {
   readonly await: UIO<Exit<E, A>>
 
   constructor(
-    readonly id: FiberId.FiberId,
+    readonly id: FiberId,
     _await: UIO<Exit<E, A>>,
     readonly children: UIO<Chunk<Runtime<any, any>>>,
     readonly inheritRefs: UIO<void>,
     readonly poll: UIO<Option<Exit<E, A>>>,
     readonly getRef: <K>(ref: FiberRef.Runtime<K>) => UIO<K>,
-    readonly interruptAs: (fiberId: FiberId.FiberId) => UIO<Exit<E, A>>
+    readonly interruptAs: (fiberId: FiberId) => UIO<Exit<E, A>>
   ) {
     this.await = _await
   }
@@ -83,7 +83,7 @@ export interface Runtime<E, A> extends CommonFiber<E, A> {
   /**
    * The identity of the fiber.
    */
-  readonly id: FiberId.Runtime
+  readonly id: RuntimeFiberId
   /**
    * The location the fiber was forked from.
    */
@@ -95,7 +95,7 @@ export interface Runtime<E, A> extends CommonFiber<E, A> {
   /**
    * The status of the fiber.
    */
-  readonly status: UIO<Status>
+  readonly status: UIO<FiberStatus>
   /**
    * The trace of the fiber.
    */

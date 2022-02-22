@@ -1,4 +1,4 @@
-import * as HS from "../../../collection/immutable/HashSet"
+import { HashSet } from "../../../collection/immutable/HashSet"
 import type { FiberId } from "../definition"
 import { Composite, realFiberId } from "../definition"
 
@@ -21,15 +21,10 @@ export function combine_(self: FiberId, that: FiberId): FiberId {
           return self
         }
         case "Runtime": {
-          return new Composite(
-            HS.mutate_(HS.make(), (ids) => {
-              HS.add_(ids, self)
-              HS.add_(ids, that)
-            })
-          )
+          return new Composite(HashSet.from([self, that]))
         }
         case "Composite": {
-          return new Composite(HS.add_(that.fiberIds, self))
+          return new Composite(that.fiberIds.add(self))
         }
       }
     }
@@ -40,10 +35,10 @@ export function combine_(self: FiberId, that: FiberId): FiberId {
           return self
         }
         case "Runtime": {
-          return new Composite(HS.add_(self.fiberIds, that))
+          return new Composite(self.fiberIds.add(that))
         }
         case "Composite": {
-          return new Composite(HS.union_(self.fiberIds, that.fiberIds))
+          return new Composite(self.fiberIds | that.fiberIds)
         }
       }
     }

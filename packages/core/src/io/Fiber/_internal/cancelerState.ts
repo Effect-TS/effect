@@ -1,6 +1,15 @@
 import type { Effect } from "../../Effect"
 
+/**
+ * @tsplus type ets/CancelerState
+ */
 export type CancelerState = Empty | Pending | Registered
+
+/**
+ * @tsplus type ets/CancelerStateOps
+ */
+export interface CancelerStateOps {}
+export const CancelerState: CancelerStateOps = {}
 
 export interface Empty {
   readonly _tag: "Empty"
@@ -10,16 +19,31 @@ export interface Pending {
   readonly _tag: "Pending"
 }
 
-export class Registered {
-  readonly _tag = "Registered"
-
-  constructor(readonly asyncCanceler: Effect<any, any, any>) {}
+export interface Registered {
+  readonly _tag: "Registered"
+  readonly asyncCanceler: Effect<any, any, any>
 }
 
-export const Empty: CancelerState = {
+/**
+ * @tsplus static ets/CancelerStateOps Empty
+ */
+export const empty: CancelerState = {
   _tag: "Empty"
 }
 
-export const Pending: CancelerState = {
+/**
+ * @tsplus static ets/CancelerStateOps Pending
+ */
+export const pending: CancelerState = {
   _tag: "Pending"
+}
+
+/**
+ * @tsplus static ets/CancelerStateOps Registered
+ */
+export function registered(asyncCanceler: Effect<any, any, any>): CancelerState {
+  return {
+    _tag: "Registered",
+    asyncCanceler
+  }
 }

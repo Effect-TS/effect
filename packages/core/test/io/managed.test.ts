@@ -2699,26 +2699,28 @@ describe("Managed", () => {
 
     // TODO(Mike/Max): fix failing test
     it.skip("does not swallow acquisition if one acquisition fails", async () => {
-      const program = Effect.Do()
-        .bind("selfId", () => Effect.fiberId)
-        .bind("latch", () => Promise.make<never, void>())
-        .bindValue("first", ({ latch }) =>
-          Managed.fromEffect(latch.succeed(undefined) > Effect.sleep(100000))
-        )
-        .bindValue("second", ({ latch }) =>
-          Managed.fromReservation(
-            Reservation(latch.await() > Effect.fail(undefined), () => Effect.unit)
+      const program = Effect.fiberId.flatMap((selfId) =>
+        Effect.Do()
+          .bind("selfId", () => Effect.fiberId)
+          .bind("latch", () => Promise.make<never, void>())
+          .bindValue("first", ({ latch }) =>
+            Managed.fromEffect(latch.succeed(undefined) > Effect.never)
           )
-        )
-        .bind("result", ({ first, second }) =>
-          first.zipPar(second).useDiscard(Effect.unit).exit()
-        )
-
-      const { result, selfId } = await program.unsafeRunPromise()
-
-      expect(result.untraced()).toEqual(
-        Exit.fail(Cause.fail(undefined) & Cause.interrupt(selfId))
+          .bindValue("second", ({ latch }) =>
+            Managed.fromReservation(
+              Reservation(latch.await() > Effect.fail(undefined), () => Effect.unit)
+            )
+          )
+          .flatMap(({ first, second }) => first.zipPar(second).useDiscard(Effect.unit))
+          .exit()
+          .zip(Effect.succeed(selfId))
       )
+
+      const {
+        tuple: [result, selfId]
+      } = await program.unsafeRunPromise()
+
+      expect(result).toEqual(Exit.fail(Cause.fail(undefined) & Cause.interrupt(selfId)))
     })
 
     it("run finalizers if one reservation fails", async () => {
