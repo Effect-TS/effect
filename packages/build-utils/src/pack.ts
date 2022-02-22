@@ -166,6 +166,11 @@ const writePackageJsonContentInmjs = pipe(
       }
     })
 
+    exports["./*"] = {
+      import: "./_mjs/*.mjs",
+      require: "./*.cjs"
+    }
+
     return JSON.stringify(
       {
         ...packageJson,
