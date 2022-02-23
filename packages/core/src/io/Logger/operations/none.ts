@@ -3,5 +3,7 @@ import type { Logger } from "../definition"
 
 /**
  * A logger that does nothing in response to logging events.
+ *
+ * @tsplus static ets/LoggerOps none
  */
-export const none: Logger<any, void> = constVoid
+export const none: Logger<any, void> = { apply: constVoid }

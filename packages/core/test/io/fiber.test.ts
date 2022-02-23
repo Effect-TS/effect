@@ -9,6 +9,7 @@ import * as FiberRef from "../../src/io/FiberRef"
 import { Promise } from "../../src/io/Promise"
 import { Queue } from "../../src/io/Queue"
 import * as Ref from "../../src/io/Ref"
+import { TraceElement } from "../../src/io/TraceElement"
 import { withLatch } from "../test-utils/Latch"
 
 const initial = "initial"
@@ -97,7 +98,7 @@ describe("Fiber", () => {
 
   describe("`Fiber.join` on interrupted Fiber", () => {
     it("is inner interruption", async () => {
-      const fiberId = FiberId(0, 123)
+      const fiberId = FiberId(0, 123, TraceElement.empty)
       const program = pipe(Fiber.interruptAs(fiberId), Fiber.join).exit()
 
       const result = await program.unsafeRunPromise()

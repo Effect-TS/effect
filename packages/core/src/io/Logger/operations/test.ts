@@ -1,21 +1,27 @@
-import { Chunk } from "../../../collection/immutable/Chunk"
-import * as TraceElement from "../../../io/TraceElement"
+import { List } from "../../../collection/immutable/List"
+import * as Map from "../../../collection/immutable/Map"
+import { TraceElement } from "../../../io/TraceElement"
+import { Cause } from "../../Cause"
 import { FiberId } from "../../FiberId"
-import * as LogLevel from "../../LogLevel"
+import { LogLevel } from "../../LogLevel"
 import type { Logger } from "../definition"
 
+/**
+ * @tsplus fluent ets/Logger test
+ */
 export function test_<Message, Output>(
   self: Logger<Message, Output>,
   input: Message
 ): Output {
-  return self(
-    TraceElement.NoLocation,
+  return self.apply(
+    TraceElement.empty,
     FiberId.none,
     LogLevel.Info,
     () => input,
-    new Map(),
-    Chunk.empty(),
-    TraceElement.NoLocation
+    () => Cause.empty,
+    Map.empty,
+    List.empty(),
+    Map.empty
   )
 }
 
@@ -23,5 +29,5 @@ export function test_<Message, Output>(
  * @ets_data_first test_
  */
 export function test<Message>(input: Message) {
-  return <Output>(self: Logger<Message, Output>): Output => test_(self, input)
+  return <Output>(self: Logger<Message, Output>): Output => self.test(input)
 }

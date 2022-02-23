@@ -1,19 +1,34 @@
-import * as O from "../../../data/Option"
+import { Option } from "../../../data/Option"
 import type { LogLevel } from "../../LogLevel"
 import type { Logger } from "../definition"
 
 /**
  * Returns a version of this logger that only logs messages when the log level
  * satisfies the specified predicate.
+ *
+ * @tsplus fluent ets/Logger filterLogLevel
  */
 export function filterLogLevel_<Message, Output>(
   self: Logger<Message, Output>,
   f: (logLevel: LogLevel) => boolean
-): Logger<Message, O.Option<Output>> {
-  return (trace, fiberId, logLevel, message, context, spans, location) => {
-    return f(logLevel)
-      ? O.some(self(trace, fiberId, logLevel, message, context, spans, location))
-      : O.none
+): Logger<Message, Option<Output>> {
+  return {
+    apply: (trace, fiberId, logLevel, message, cause, context, spans, annotations) => {
+      return f(logLevel)
+        ? Option.some(
+            self.apply(
+              trace,
+              fiberId,
+              logLevel,
+              message,
+              cause,
+              context,
+              spans,
+              annotations
+            )
+          )
+        : Option.none
+    }
   }
 }
 
@@ -26,5 +41,5 @@ export function filterLogLevel_<Message, Output>(
 export function filterLogLevel(f: (logLevel: LogLevel) => boolean) {
   return <Message, Output>(
     self: Logger<Message, Output>
-  ): Logger<Message, O.Option<Output>> => filterLogLevel_(self, f)
+  ): Logger<Message, Option<Output>> => self.filterLogLevel(f)
 }

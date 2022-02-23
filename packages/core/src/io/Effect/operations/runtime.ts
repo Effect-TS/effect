@@ -1,8 +1,8 @@
-import { constFalse, pipe } from "../../../data/Function"
+import { constFalse } from "../../../data/Function"
 import { unsafeTrack } from "../../../io/Supervisor"
 import { HasClock, LiveClock } from "../../Clock"
-import * as LoggerSet from "../../Logger/Set"
-import * as LogLevel from "../../LogLevel"
+import { Logger } from "../../Logger"
+import { LogLevel } from "../../LogLevel"
 import { defaultRandom, HasRandom } from "../../Random"
 import { Runtime } from "../../Runtime"
 import { RuntimeConfig } from "../../RuntimeConfig"
@@ -44,11 +44,9 @@ export const defaultRuntimeConfig: RuntimeConfig = new RuntimeConfig({
     throw defect
   },
   supervisor: unsafeTrack(),
-  loggers: pipe(
-    LoggerSet.defaultSet.value,
-    LoggerSet.map((b) => console.log(b)),
-    LoggerSet.filterLogLevel((level) => LogLevel.geq_(level, LogLevel.Info))
-  ),
+  logger: Logger.default
+    .map((output) => console.log(output))
+    .filterLogLevel((level) => level >= LogLevel.Info),
   flags: RuntimeConfigFlags.add_(
     RuntimeConfigFlags.empty,
     RuntimeConfigFlag.enableFiberRoots

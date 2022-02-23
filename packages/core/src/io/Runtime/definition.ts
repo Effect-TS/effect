@@ -11,7 +11,7 @@ import * as FiberRef from "../FiberRef"
 import { InterruptStatus } from "../InterruptStatus"
 import type { RuntimeConfig } from "../RuntimeConfig"
 import * as Scope from "../Scope"
-import * as TraceElement from "../TraceElement"
+import { TraceElement } from "../TraceElement"
 
 export class Runtime<R> {
   constructor(readonly environment: R, readonly runtimeConfig: RuntimeConfig) {}
@@ -21,7 +21,7 @@ export class Runtime<R> {
     k: (exit: Exit<E, A>) => void,
     __etsTrace?: string
   ): ((fiberId: FiberId) => (_: (exit: Exit<E, A>) => void) => void) => {
-    const fiberId = FiberId.unsafeMake()
+    const fiberId = FiberId.unsafeMake(TraceElement.parse(__etsTrace))
 
     const children = new Set<FiberContext<any, any>>()
 
@@ -34,7 +34,6 @@ export class Runtime<R> {
     const context: FiberContext<E, A> = new FiberContext(
       fiberId,
       fiberRefLocals,
-      TraceElement.parse(__etsTrace),
       children,
       this.runtimeConfig,
       new Stack(InterruptStatus.Interruptible.toBoolean)

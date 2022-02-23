@@ -1,7 +1,6 @@
 import type { Tuple } from "../../../collection/immutable/Tuple"
 import type { Either } from "../../../data/Either"
 import type { Lazy } from "../../../data/Function"
-import type { Tag } from "../../../data/Has"
 import { Option } from "../../../data/Option"
 import type { Supervisor } from "../../../io/Supervisor"
 import type { Cause } from "../../Cause"
@@ -344,8 +343,8 @@ export class ILogged<A> extends Base<unknown, never, void> {
   readonly _tag = "Logged"
 
   constructor(
-    readonly typeTag: Tag<A>,
     readonly message: Lazy<A>,
+    readonly cause: Lazy<Cause<any>>,
     readonly overrideLogLevel: Option<LogLevel> = Option.none,
     readonly overrideRef1: FiberRef.Runtime<any> | null = null,
     readonly overrideValue1: any = null,
