@@ -197,8 +197,11 @@ const MAP_GLOB_PATTERN = "dist/**/*.map"
 
 const replaceString: (path: string) => Endomorphism<string> = (path) => {
   const dir = posix.dirname(path)
+  const patch: (x: string) => string = path.startsWith("dist/_mjs/")
+    ? (x) => x.replace(/(.*)\.\.\/src(.*)/gm, "$1_src$2")
+    : (x) => x.replace(/(.*)\.\.\/\.\.\/src(.*)/gm, "$1_src$2")
   return flow(
-    (x) => x.replace(/(.*)\.\.\/\.\.\/src(.*)/gm, "$1_src$2"),
+    patch,
     (x) => posix.relative(dir, posix.join(dir, x)),
     (x) => (x.startsWith(".") ? x : "./" + x)
   )

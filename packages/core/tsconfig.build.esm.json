@@ -9,7 +9,7 @@
     "incremental": true,
     "tsBuildInfoFile": "tsbuildinfo/esm.tsbuildinfo",
     "declaration": true,
-    "declarationMap": false,
+    "declarationMap": true,
     "removeComments": false,
     "plugins": [
       {
