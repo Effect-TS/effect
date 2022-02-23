@@ -23,6 +23,7 @@
     "version:prepatch": "lerna version prepatch --conventional-commits",
     "version:patch": "lerna version patch --conventional-commits",
     "version:graduate": "lerna version --conventional-commits --conventional-graduate",
+    "version": "yarn install && git stage yarn.lock",
     "commit": "cz",
     "ets:rimraf": "cd $INIT_CWD && rimraf",
     "ets:tsc": "cd $INIT_CWD && tsc",
