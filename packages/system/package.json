@@ -6,7 +6,7 @@
   "homepage": "https://www.matechs.com",
   "scripts": {
     "clean": "yarn ets:rimraf build tsbuildinfo dist",
-    "build-cjs": "yarn ets:babel build/esm --config-file ./.babel.cjs.json --out-dir build/cjs --out-file-extension .cjs --source-maps",
+    "build-cjs": "yarn ets:babel build/esm --config-file ./.babel.cjs.json --out-dir build/cjs --out-file-extension .js --source-maps",
     "build-mjs": "yarn ets:babel build/esm --config-file ./.babel.mjs.json --out-dir build/mjs --out-file-extension .mjs --source-maps",
     "build-ts": "yarn ets:tsc -p tsconfig.build.esm.json",
     "build-post": "yarn ets:ts-node ../../scripts/pack.ts",

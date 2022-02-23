@@ -69,8 +69,8 @@ const writePackageJsonContent = pipe(
     if (fs.existsSync(`./build/mjs/index.mjs`)) {
       mainExports["import"] = `./_mjs/index.mjs`
     }
-    if (fs.existsSync(`./build/cjs/index.cjs`)) {
-      mainExports["require"] = `./index.cjs`
+    if (fs.existsSync(`./build/cjs/index.js`)) {
+      mainExports["require"] = `./index.js`
     }
 
     if (mainExports["require"]) {
@@ -88,8 +88,8 @@ const writePackageJsonContent = pipe(
       if (fs.existsSync(`./build/mjs/${m}/index.mjs`)) {
         exports[`./${m}`]["import"] = `./_mjs/${m}/index.mjs`
       }
-      if (fs.existsSync(`./build/cjs/${m}/index.cjs`)) {
-        exports[`./${m}`]["require"] = `./${m}/index.cjs`
+      if (fs.existsSync(`./build/cjs/${m}/index.js`)) {
+        exports[`./${m}`]["require"] = `./${m}/index.js`
       }
       if (Object.keys(exports[`./${m}`]).length === 0) {
         delete exports[`./${m}`]
@@ -98,7 +98,7 @@ const writePackageJsonContent = pipe(
 
     exports["./*"] = {
       import: "./_mjs/*.mjs",
-      require: "./*.cjs"
+      require: "./*.js"
     }
 
     return JSON.stringify(
