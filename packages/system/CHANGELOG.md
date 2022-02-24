@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.55.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.54.4...@effect-ts/system@0.55.0) (2022-02-24)
+
+
+### Bug Fixes
+
+* remove the missing `then` from Cause and ParSeq ([93afdb8](https://github.com/Effect-TS/core/commit/93afdb8b8bfaa1b0e19c64ad3ea002d2f2b414f6))
+
+
+
+
+
 ## [0.54.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.54.3...@effect-ts/system@0.54.4) (2022-02-23)
 
 **Note:** Version bump only for package @effect-ts/system
