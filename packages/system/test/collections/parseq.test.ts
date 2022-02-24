@@ -5,34 +5,50 @@ describe("Cause", () => {
   it("equals", () => {
     expect(PS.empty).equals(PS.empty)
 
-    expect(PS.then_(PS.empty, PS.empty)).equals(PS.empty)
+    expect(PS.combineSeq_(PS.empty, PS.empty)).equals(PS.empty)
 
-    expect(PS.then_(PS.empty, PS.both_(PS.empty, PS.empty))).equals(PS.empty)
+    expect(PS.combineSeq_(PS.empty, PS.combinePar_(PS.empty, PS.empty))).equals(
+      PS.empty
+    )
 
-    expect(PS.then_(PS.single("ok"), PS.both_(PS.empty, PS.empty))).equals(
+    expect(PS.combineSeq_(PS.single("ok"), PS.combinePar_(PS.empty, PS.empty))).equals(
       PS.single("ok")
     )
 
-    expect(St.hash(PS.then_(PS.single("ok"), PS.both_(PS.empty, PS.empty)))).equals(
-      St.hash(PS.single("ok"))
-    )
-
-    expect(PS.then_(PS.single("ok"), PS.both_(PS.empty, PS.single("ok")))).equals(
-      PS.then_(PS.single("ok"), PS.single("ok"))
-    )
+    expect(
+      St.hash(PS.combineSeq_(PS.single("ok"), PS.combinePar_(PS.empty, PS.empty)))
+    ).equals(St.hash(PS.single("ok")))
 
     expect(
-      St.hash(PS.then_(PS.single("ok"), PS.both_(PS.empty, PS.single("ok"))))
-    ).equals(St.hash(PS.then_(PS.single("ok"), PS.single("ok"))))
+      PS.combineSeq_(PS.single("ok"), PS.combinePar_(PS.empty, PS.single("ok")))
+    ).equals(PS.combineSeq_(PS.single("ok"), PS.single("ok")))
 
     expect(
-      PS.then_(PS.single("ok"), PS.both_(PS.single("ok"), PS.single("ok")))
-    ).equals(PS.then_(PS.single("ok"), PS.both_(PS.single("ok"), PS.single("ok"))))
+      St.hash(
+        PS.combineSeq_(PS.single("ok"), PS.combinePar_(PS.empty, PS.single("ok")))
+      )
+    ).equals(St.hash(PS.combineSeq_(PS.single("ok"), PS.single("ok"))))
 
     expect(
-      St.hash(PS.then_(PS.single("ok"), PS.both_(PS.single("ok"), PS.single("ok"))))
+      PS.combineSeq_(PS.single("ok"), PS.combinePar_(PS.single("ok"), PS.single("ok")))
     ).equals(
-      St.hash(PS.then_(PS.single("ok"), PS.both_(PS.single("ok"), PS.single("ok"))))
+      PS.combineSeq_(PS.single("ok"), PS.combinePar_(PS.single("ok"), PS.single("ok")))
+    )
+
+    expect(
+      St.hash(
+        PS.combineSeq_(
+          PS.single("ok"),
+          PS.combinePar_(PS.single("ok"), PS.single("ok"))
+        )
+      )
+    ).equals(
+      St.hash(
+        PS.combineSeq_(
+          PS.single("ok"),
+          PS.combinePar_(PS.single("ok"), PS.single("ok"))
+        )
+      )
     )
   })
 })

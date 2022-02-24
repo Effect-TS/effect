@@ -14,13 +14,13 @@ import { combinePar, combineSeq, die, empty, fail, interrupt, traced } from "./c
 import { InterruptedException } from "./errors.js"
 
 export {
-  combinePar as both,
+  combinePar,
   Cause,
   die,
   empty,
   fail,
   interrupt,
-  combineSeq as then,
+  combineSeq,
   traced,
   isEmpty
 } from "./cause.js"

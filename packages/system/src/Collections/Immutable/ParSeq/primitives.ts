@@ -332,7 +332,7 @@ function symmetric<A>(f: (a: ParSeq<A>, b: ParSeq<A>) => IO.IO<boolean>) {
  * return a new collection of events that represents this collection of
  * events in parallel with that collection of events.
  */
-export function both_<A, A1>(left: ParSeq<A>, right: ParSeq<A1>): ParSeq<A | A1> {
+export function combinePar_<A, A1>(left: ParSeq<A>, right: ParSeq<A1>): ParSeq<A | A1> {
   return isEmpty(left) ? right : isEmpty(right) ? left : new Both<A | A1>(left, right)
 }
 
@@ -341,10 +341,12 @@ export function both_<A, A1>(left: ParSeq<A>, right: ParSeq<A1>): ParSeq<A | A1>
  * return a new collection of events that represents this collection of
  * events in parallel with that collection of events.
  *
- * @ets_data_first both_
+ * @ets_data_first combinePar_
  */
-export function both<A1>(right: ParSeq<A1>): <A>(left: ParSeq<A>) => ParSeq<A | A1> {
-  return (left) => both_(left, right)
+export function combinePar<A1>(
+  right: ParSeq<A1>
+): <A>(left: ParSeq<A>) => ParSeq<A | A1> {
+  return (left) => combinePar_(left, right)
 }
 
 /**
@@ -352,7 +354,7 @@ export function both<A1>(right: ParSeq<A1>): <A>(left: ParSeq<A>) => ParSeq<A | 
  * return a new collection of events that represents this collection of
  * events followed by that collection of events.
  */
-export function then_<A, A1>(left: ParSeq<A>, right: ParSeq<A1>): ParSeq<A | A1> {
+export function combineSeq_<A, A1>(left: ParSeq<A>, right: ParSeq<A1>): ParSeq<A | A1> {
   return isEmpty(left) ? right : isEmpty(right) ? left : new Then<A | A1>(left, right)
 }
 
@@ -361,10 +363,12 @@ export function then_<A, A1>(left: ParSeq<A>, right: ParSeq<A1>): ParSeq<A | A1>
  * return a new collection of events that represents this collection of
  * events followed by that collection of events.
  *
- * @ets_data_first then_
+ * @ets_data_first combineSeq_
  */
-export function then<A1>(right: ParSeq<A1>): <A>(left: ParSeq<A>) => ParSeq<A | A1> {
-  return (left) => then_(left, right)
+export function combineSeq<A1>(
+  right: ParSeq<A1>
+): <A>(left: ParSeq<A>) => ParSeq<A | A1> {
+  return (left) => combineSeq_(left, right)
 }
 
 /**
@@ -443,11 +447,14 @@ function stepLoop<A>(
             break
           }
           case "Then": {
-            cause = then_(left.left, then_(left.right, right))
+            cause = combineSeq_(left.left, combineSeq_(left.right, right))
             break
           }
           case "Both": {
-            cause = both_(then_(left.left, right), then_(left.right, right))
+            cause = combinePar_(
+              combineSeq_(left.left, right),
+              combineSeq_(left.right, right)
+            )
             break
           }
           default: {
