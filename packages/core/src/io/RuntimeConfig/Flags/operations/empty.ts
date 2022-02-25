@@ -1,4 +1,7 @@
-import * as HS from "../../../../collection/immutable/HashSet"
+import { HashSet } from "../../../../collection/immutable/HashSet"
 import { RuntimeConfigFlags } from "../definition"
 
-export const empty: RuntimeConfigFlags = new RuntimeConfigFlags(HS.make())
+/**
+ * @tsplus static ets/RuntimeConfigFlagsOps empty
+ */
+export const empty: RuntimeConfigFlags = RuntimeConfigFlags(HashSet())

@@ -2,8 +2,7 @@ import { LazyValue } from "../../data/LazyValue/definition"
 import type { FiberContext } from "../Fiber/_internal/context"
 import { FiberId } from "../FiberId/definition"
 import type { RuntimeConfig } from "../RuntimeConfig"
-import * as RuntimeConfigFlag from "../RuntimeConfig/Flag"
-import * as RuntimeConfigFlags from "../RuntimeConfig/Flags"
+import { RuntimeConfigFlag } from "../RuntimeConfig/Flag"
 
 /**
  * A `Scope` represents the scope of a fiber lifetime. The scope of a fiber can
@@ -29,12 +28,7 @@ export class Global implements CommonScope {
     child: FiberContext<any, any>,
     __trace?: string | undefined
   ): boolean {
-    if (
-      RuntimeConfigFlags.isEnabled_(
-        runtimeConfig.value.flags,
-        RuntimeConfigFlag.enableFiberRoots
-      )
-    ) {
+    if (runtimeConfig.value.flags.isEnabled(RuntimeConfigFlag.EnableFiberRoots)) {
       _roots.value.add(child)
 
       child.unsafeOnDone(() => {

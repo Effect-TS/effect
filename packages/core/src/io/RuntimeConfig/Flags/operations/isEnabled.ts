@@ -1,14 +1,16 @@
-import * as HS from "../../../../collection/immutable/HashSet"
 import type { RuntimeConfigFlag } from "../../Flag"
 import type { RuntimeConfigFlags } from "../definition"
 
+/**
+ * @tsplus fluent ets/RuntimeConfigFlags isEnabled
+ */
 export function isEnabled_(self: RuntimeConfigFlags, flag: RuntimeConfigFlag): boolean {
-  return HS.has_(self.flags, flag)
+  return self.flags.has(flag)
 }
 
 /**
  * @ets_data_first isEnabled_
  */
 export function isEnabled(flag: RuntimeConfigFlag) {
-  return (self: RuntimeConfigFlags): boolean => isEnabled_(self, flag)
+  return (self: RuntimeConfigFlags): boolean => self.isEnabled(flag)
 }
