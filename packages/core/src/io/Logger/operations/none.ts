@@ -6,4 +6,6 @@ import type { Logger } from "../definition"
  *
  * @tsplus static ets/LoggerOps none
  */
-export const none: Logger<any, void> = { apply: constVoid }
+export const none: Logger<any, void> = {
+  apply: constVoid
+}

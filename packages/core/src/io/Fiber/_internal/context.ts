@@ -13,7 +13,12 @@ import { defaultScheduler } from "../../../support/Scheduler"
 import * as StackTraceBuilder from "../../../support/StackTraceBuilder"
 import { Cause, InterruptedException } from "../../Cause"
 import { Effect } from "../../Effect"
-import type { IFold, Instruction, IRaceWith } from "../../Effect/definition/primitives"
+import type {
+  IAsync,
+  IFold,
+  Instruction,
+  IRaceWith
+} from "../../Effect/definition/primitives"
 import { EffectError, instruction } from "../../Effect/definition/primitives"
 import { Exit } from "../../Exit"
 import type { Runtime as RuntimeFiberId } from "../../FiberId"
@@ -261,8 +266,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   unsafeNextEffect(previousSuccess: any): Instruction | undefined {
-    const frame = this.popContinuation()
-    if (frame) {
+    if (!this.isStackEmpty) {
+      const frame = this.popContinuation()!
       return instruction(
         frame._tag === "Fold"
           ? frame.success(previousSuccess)
@@ -395,7 +400,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         const interrupt = Effect.failCause(interruptedCause)
         const asyncCanceler = oldState.asyncCanceler.asyncCanceler
         const effect =
-          asyncCanceler === Effect.unit ? interrupt : asyncCanceler > interrupt
+          asyncCanceler === Effect.unit ? interrupt : asyncCanceler.zipRight(interrupt)
 
         this.unsafeRunLater(instruction(effect))
       } else if (oldState._tag === "Executing") {
@@ -813,12 +818,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     orElse: Effect<R, E2, A2>
   ): Effect<R, E2, A2> {
     return Effect.environment<R>().flatMap((environment) =>
-      Promise.make<E2, A2>().flatMap(
-        (promise) =>
-          this.evalOn(
-            effect.provideEnvironment(environment).intoPromise(promise),
-            orElse.provideEnvironment(environment).intoPromise(promise)
-          ) > promise.await()
+      Promise.make<E2, A2>().flatMap((promise) =>
+        this.evalOn(
+          effect.provideEnvironment(environment).intoPromise(promise),
+          orElse.provideEnvironment(environment).intoPromise(promise)
+        ).zipRight(promise.await())
       )
     )
   }
@@ -828,7 +832,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
     switch (oldState._tag) {
       case "Executing": {
-        const newMailbox = oldState.mailbox == null ? effect : oldState.mailbox > effect
+        const newMailbox =
+          oldState.mailbox == null ? effect : oldState.mailbox.zipRight(effect)
 
         this.state.set(
           FiberState.Executing(
@@ -869,7 +874,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
           this.unsafeSetInterrupting(true)
 
-          return instruction(oldState.mailbox > Effect.done(exit))
+          return instruction(oldState.mailbox.zipRight(Effect.done(exit)))
         } else if (this._children.size === 0) {
           // The mailbox is empty and the _children are shut down
           const interruptorsCause = oldState.interruptorsCause()
@@ -939,12 +944,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
           let interruptChildren = Effect.unit
           for (const child of this._children) {
-            interruptChildren = interruptChildren > child.interruptAs(this.id)
+            interruptChildren = interruptChildren.zipRight(child.interruptAs(this.id))
           }
 
           this._children.clear()
 
-          return instruction(interruptChildren > Effect.done(exit))
+          return instruction(interruptChildren.zipRight(Effect.done(exit)))
         }
       }
       case "Done": {
@@ -1049,7 +1054,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     if (ab.compareAndSet(true, false)) {
       winnerExit.fold(
         () => cb(cont(winnerExit, loser)),
-        () => cb(winner.inheritRefs > cont(winnerExit, loser))
+        () => cb(winner.inheritRefs.zipRight(cont(winnerExit, loser)))
       )
     }
   }
@@ -1309,7 +1314,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Async": {
-                    const effect = current
+                    const effect: IAsync<any, any, any> = current
                     const epoch = this.asyncEpoch
                     this.asyncEpoch = epoch + 1
 
@@ -1332,7 +1337,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                           if (this.unsafeExitAsync(epoch)) {
                             this.unsafeSetInterrupting(true)
                             current = instruction(
-                              canceler > Effect.failCause(this.unsafeClearSuppressed())
+                              canceler.zipRight(
+                                Effect.failCause(this.unsafeClearSuppressed())
+                              )
                             )
                           } else {
                             current = undefined
@@ -1447,14 +1454,14 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                       oldSupervisor
                     )
 
-                    this.runtimeConfig = new RuntimeConfig({
+                    this.runtimeConfig = RuntimeConfig({
                       ...this.runtimeConfig.value,
                       supervisor: newSupervisor
                     })
 
                     this.unsafeAddFinalizer(
                       Effect.succeed(() => {
-                        this.runtimeConfig = new RuntimeConfig({
+                        this.runtimeConfig = RuntimeConfig({
                           ...this.runtimeConfig.value,
                           supervisor: oldSupervisor
                         })

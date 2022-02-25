@@ -36,22 +36,11 @@ export const defaultLogger: Logger<string, string> = {
       }
     }
 
-    // TODO(Mike/Max): render TraceElement
-    // trace match {
-    //   case ZTraceElement(location, file, line) =>
-    //     sb.append(" location=")
-
-    //     appendQuoted(location, sb)
-
-    //     sb.append(" file=")
-
-    //     appendQuoted(file, sb)
-
-    //     sb.append(" line=")
-    //       .append(line)
-
-    //   case _ =>
-    // }
+    if (trace._tag === "SourceLocation") {
+      const location = `${trace.fileName}:${trace.lineNumber}:${trace.columnNumber}`
+      output = output + " location="
+      output = appendQuoted(location, output)
+    }
 
     if (annotations.size > 0) {
       output = output + " "

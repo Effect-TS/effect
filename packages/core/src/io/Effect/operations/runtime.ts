@@ -20,7 +20,7 @@ import { Effect } from "../definition"
  */
 export function runtime<R>(__etsTrace?: string): RIO<R, Runtime<R>> {
   return Effect.environment<R>().flatMap(
-    (env) => Effect.runtimeConfig().map((config) => new Runtime(env, config)),
+    (env) => Effect.runtimeConfig.map((config) => new Runtime(env, config)),
     __etsTrace
   )
 }
@@ -38,7 +38,7 @@ export const defaultEnv: DefaultEnv = {
 /**
  * @tsplus static ets/EffectOps defaultRuntimeConfig
  */
-export const defaultRuntimeConfig: RuntimeConfig = new RuntimeConfig({
+export const defaultRuntimeConfig: RuntimeConfig = RuntimeConfig({
   fatal: constFalse,
   reportFatal: (defect) => {
     throw defect
