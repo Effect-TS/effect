@@ -5,7 +5,7 @@ import type { Atomic } from "../Atomic"
 export function updateSome_<A>(
   self: Atomic<A>,
   f: (a: A) => Option<A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<unknown, never, void> {
   return Effect.succeed(() => {
     const o = f(self.value.get)
@@ -18,6 +18,6 @@ export function updateSome_<A>(
 /**
  * @ets_data_first updateSome_
  */
-export function updateSome<A>(f: (a: A) => Option<A>, __etsTrace?: string) {
+export function updateSome<A>(f: (a: A) => Option<A>, __tsplusTrace?: string) {
   return (self: Atomic<A>): Effect<unknown, never, void> => updateSome_(self, f)
 }

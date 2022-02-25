@@ -17,7 +17,7 @@ export function modifySome_<RA, RB, EA, EB, A, B>(
   self: XRef<RA, RB, EA, EB, A, A>,
   def: B,
   pf: (a: A) => Option<Tuple<[B, A]>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<RA & RB, EA | EB, B> {
   return matchTag_(
     concrete(self),
@@ -39,7 +39,7 @@ export function modifySome_<RA, RB, EA, EB, A, B>(
 export function modifySome<A, B>(
   def: B,
   pf: (a: A) => Option<Tuple<[B, A]>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <RA, RB, EA, EB>(
     self: XRef<RA, RB, EA, EB, A, A>

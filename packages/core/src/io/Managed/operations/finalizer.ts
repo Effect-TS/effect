@@ -10,7 +10,7 @@ import { Managed } from "../definition"
  */
 export function finalizer<R, X>(
   f: LazyArg<Effect<R, never, X>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, never, void> {
   return Managed.finalizerExit(() => f())
 }

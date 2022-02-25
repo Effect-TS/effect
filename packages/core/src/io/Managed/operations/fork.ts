@@ -11,7 +11,7 @@ import type { Managed } from "../definition"
  */
 export function fork<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, never, Fiber.Runtime<E, A>> {
   return managedFork(self)
 }

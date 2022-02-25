@@ -22,7 +22,7 @@ import { ReleaseMap } from "../ReleaseMap"
  * @tsplus static ets/ManagedOps switchable
  */
 export function switchable<R, E, A>(
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, never, (x: Managed<R, E, A>) => Effect<R, E, A>> {
   return Managed.Do()
     .bind("releaseMap", () => Managed.releaseMap)

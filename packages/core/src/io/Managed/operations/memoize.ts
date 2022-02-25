@@ -12,7 +12,7 @@ import { Managed } from "../definition"
  */
 export function memoize<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, never, Managed<R, E, A>> {
   return Managed.releaseMap.mapEffect((finalizers) =>
     Effect.Do()

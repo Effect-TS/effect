@@ -11,7 +11,7 @@ import { interruptJoiner } from "./_internal/interruptJoiner"
  *
  * @tsplus fluent ets/Promise await
  */
-export function _await<E, A>(self: Promise<E, A>, __etsTrace?: string): IO<E, A> {
+export function _await<E, A>(self: Promise<E, A>, __tsplusTrace?: string): IO<E, A> {
   return Effect.asyncInterruptBlockingOn((k) => {
     const state = self.state.get
 

@@ -11,7 +11,7 @@ import { concreteQueue } from "../definition"
 export function offer_<RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,
   a: A,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<RA, EA, boolean> {
   concreteQueue(self)
   return self._offer(a)
@@ -22,7 +22,7 @@ export function offer_<RA, RB, EA, EB, A, B>(
  *
  * @ets_data_first offer_
  */
-export function offer<A>(a: A, __etsTrace?: string) {
+export function offer<A>(a: A, __tsplusTrace?: string) {
   return <RA, RB, EA, EB, B>(
     self: XQueue<RA, RB, EA, EB, A, B>
   ): Effect<RA, EA, boolean> => self.offer(a)

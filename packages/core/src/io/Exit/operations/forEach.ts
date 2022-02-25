@@ -10,7 +10,7 @@ import { Exit } from "../definition"
 export function forEach_<E, A, R, E1, B>(
   self: Exit<E, A>,
   f: (a: A) => Effect<R, E1, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, never, Exit<E | E1, B>> {
   switch (self._tag) {
     case "Failure":
@@ -28,7 +28,7 @@ export function forEach_<E, A, R, E1, B>(
  */
 export function forEach<A, R, E1, B>(
   f: (a: A) => Effect<R, E1, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <E>(self: Exit<E, A>): Effect<R, never, Exit<E | E1, B>> => self.forEach(f)
 }

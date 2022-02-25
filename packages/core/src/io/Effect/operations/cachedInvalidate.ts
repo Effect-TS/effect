@@ -19,7 +19,7 @@ import { Effect } from "../definition"
 export function cachedInvalidate_<R, E, A>(
   self: Effect<R, E, A>,
   timeToLive: Duration,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): RIO<R & HasClock, Tuple<[IO<E, A>, UIO<void>]>> {
   return Effect.Do()
     .bind("r", () => Effect.environment<R & HasClock>())
@@ -37,7 +37,7 @@ export function cachedInvalidate_<R, E, A>(
  *
  * @ets_data_first cachedInvalidate_
  */
-export function cachedInvalidate(timeToLive: Duration, __etsTrace?: string) {
+export function cachedInvalidate(timeToLive: Duration, __tsplusTrace?: string) {
   return <R, E, A>(
     self: Effect<R, E, A>
   ): RIO<R & HasClock, Tuple<[IO<E, A>, UIO<void>]>> =>

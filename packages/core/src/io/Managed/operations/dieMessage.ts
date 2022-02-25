@@ -11,7 +11,7 @@ import { Managed } from "../definition"
  */
 export function dieMessage(
   message: LazyArg<string>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, never, never> {
   return Managed.die(new RuntimeError(message()))
 }

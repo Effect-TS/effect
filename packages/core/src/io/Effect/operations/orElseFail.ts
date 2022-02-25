@@ -10,7 +10,7 @@ import { Effect } from "../definition"
 export function orElseFail_<R, E, A, E2>(
   self: Effect<R, E, A>,
   e: LazyArg<E2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E2, A> {
   return self.orElse(Effect.fail(e))
 }
@@ -21,6 +21,6 @@ export function orElseFail_<R, E, A, E2>(
  *
  * @ets_data_first orElseFail_
  */
-export function orElseFail<E2>(e: LazyArg<E2>, __etsTrace?: string) {
+export function orElseFail<E2>(e: LazyArg<E2>, __tsplusTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E2, A> => self.orElseFail(e)
 }

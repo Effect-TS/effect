@@ -20,7 +20,7 @@ import { Managed } from "../definition"
  */
 export function memoizeF<R, E, A, B>(
   f: (a: A) => Managed<R, E, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, never, (a: A) => Effect<R, E, B>> {
   return Managed.Do()
     .bind("fiberId", () => Managed.fiberId)

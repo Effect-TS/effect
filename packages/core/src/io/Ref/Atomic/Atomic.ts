@@ -17,7 +17,7 @@ export class Atomic<A> extends XRefInternal<unknown, unknown, never, never, A, A
     return Effect.succeed(this.value.get)
   }
 
-  set(a: A, __etsTrace?: string): Effect<unknown, never, void> {
+  set(a: A, __tsplusTrace?: string): Effect<unknown, never, void> {
     return Effect.succeed(this.value.set(a))
   }
 

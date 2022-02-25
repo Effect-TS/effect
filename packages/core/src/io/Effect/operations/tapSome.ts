@@ -11,7 +11,7 @@ import { Effect } from "../definition"
 export function tapSome_<R, E, A, R1, E1, X>(
   self: Effect<R, E, A>,
   pf: (a: A) => Option<Effect<R1, E1, X>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1, E | E1, A> {
   return self.tap((a) => pf(a).getOrElse(Effect.unit))
 }
@@ -25,7 +25,7 @@ export function tapSome_<R, E, A, R1, E1, X>(
  */
 export function tapSome<A, R1, E1, X>(
   pf: (a: A) => Option<Effect<R1, E1, X>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R1, E | E1, A> => self.tapSome(pf)
 }

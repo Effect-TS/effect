@@ -11,7 +11,7 @@ export function mapEffectParDiscard_<A, R, E, B>(
   self: Chunk<A>,
   n: number,
   f: (a: A) => Effect<R, E, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, void> {
   return Effect.forEachParDiscard(self, f).withParallelism(n)
 }
@@ -24,7 +24,7 @@ export function mapEffectParDiscard_<A, R, E, B>(
 export function mapEffectParDiscard<A, R, E, B>(
   n: number,
   f: (a: A) => Effect<R, E, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return (self: Chunk<A>): Effect<R, E, void> => self.mapEffectParDiscard(n, f)
 }

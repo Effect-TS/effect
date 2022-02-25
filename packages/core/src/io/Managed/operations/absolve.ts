@@ -10,7 +10,7 @@ import { Managed } from "../definition"
  */
 export function absolveNow<R, E, E2, A>(
   self: Managed<R, E, Either<E2, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E | E2, A> {
   return Managed.absolve(self)
 }
@@ -23,7 +23,7 @@ export function absolveNow<R, E, E2, A>(
  */
 export function absolve<R, E, E2, A>(
   self: LazyArg<Managed<R, E, Either<E2, A>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E | E2, A> {
   return Managed.suspend(self).flatMap(Managed.fromEitherNow)
 }

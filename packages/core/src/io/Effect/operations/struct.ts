@@ -10,7 +10,7 @@ import { Effect } from "../definition"
  */
 export function struct<NER extends Record<string, Effect<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<
   UT._R<NER[keyof NER]>,
   UT._E<NER[keyof NER]>,
@@ -37,7 +37,7 @@ export function struct<NER extends Record<string, Effect<any, any, any>>>(
  */
 export function structPar<NER extends Record<string, Effect<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<
   UT._R<NER[keyof NER]>,
   UT._E<NER[keyof NER]>,

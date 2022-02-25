@@ -29,7 +29,7 @@ export function loop<Z>(
 ) {
   return <R, E, A>(
     body: (z: Z) => Effect<R, E, A>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R, E, Chunk<A>> => {
     return loopInternal(initial, cont, inc, body).map((list: List<A>) =>
       Chunk.from(list.reverse())
@@ -42,7 +42,7 @@ function loopInternal<Z, R, E, A>(
   cont: (z: Z) => boolean,
   inc: (z: Z) => Z,
   body: (z: Z) => Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, MutableList<A>> {
   return Effect.suspendSucceed(() => {
     const initial0 = initial()

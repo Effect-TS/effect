@@ -10,7 +10,7 @@ import type { Effect } from "../definition"
 export function unrefine_<R, E, A, E1>(
   self: Effect<R, E, A>,
   pf: (u: unknown) => Option<E1>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return self.unrefineWith(pf, identity)
 }
@@ -20,6 +20,6 @@ export function unrefine_<R, E, A, E1>(
  *
  * @ets_data_first unrefine_
  */
-export function unrefine<E1>(pf: (u: unknown) => Option<E1>, __etsTrace?: string) {
+export function unrefine<E1>(pf: (u: unknown) => Option<E1>, __tsplusTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>) => self.unrefine(pf)
 }

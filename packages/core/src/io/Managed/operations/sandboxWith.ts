@@ -10,7 +10,7 @@ import type { Managed } from "../definition"
 export function sandboxWith_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
   f: (_: Managed<R, Cause<E>, A>) => Managed<R2, Cause<E2>, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R2, E2, A2> {
   return f(self.sandbox()).unsandbox()
 }
@@ -23,7 +23,7 @@ export function sandboxWith_<R, E, A, R2, E2, A2>(
  */
 export function sandboxWith<R, E, A, R2, E2, A2>(
   f: (_: Managed<R, Cause<E>, A>) => Managed<R2, Cause<E2>, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return (self: Managed<R, E, A>): Managed<R2, E2, A2> => sandboxWith_(self, f)
 }

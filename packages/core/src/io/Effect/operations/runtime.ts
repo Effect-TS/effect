@@ -18,10 +18,10 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps runtime
  */
-export function runtime<R>(__etsTrace?: string): RIO<R, Runtime<R>> {
+export function runtime<R>(__tsplusTrace?: string): RIO<R, Runtime<R>> {
   return Effect.environment<R>().flatMap(
     (env) => Effect.runtimeConfig.map((config) => new Runtime(env, config)),
-    __etsTrace
+    __tsplusTrace
   )
 }
 

@@ -8,7 +8,7 @@ import { Managed } from "../definition"
  */
 export function suspend<R, E, A>(
   managed: LazyArg<Managed<R, E, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, A> {
   return Managed.unit.flatMap(managed)
 }

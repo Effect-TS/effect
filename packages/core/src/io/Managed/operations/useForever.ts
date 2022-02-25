@@ -8,6 +8,6 @@ import type { Managed } from "../definition"
  *
  * @tsplus fluent ets/Managed useForever
  */
-export function useForever<R, E, A>(self: Managed<R, E, A>, __etsTrace?: string) {
+export function useForever<R, E, A>(self: Managed<R, E, A>, __tsplusTrace?: string) {
   return self.use(() => Effect.never)
 }

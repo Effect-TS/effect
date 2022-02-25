@@ -10,7 +10,7 @@ import type { XSynchronized } from "../definition"
 export function modifyEffect_<RA, RB, RC, EA, EB, EC, A, B>(
   self: XSynchronized<RA, RB, EA, EB, A, A>,
   f: (a: A) => Effect<RC, EC, Tuple<[B, A]>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<RA & RB & RC, EA | EB | EC, B> {
   return self.withPermit(
     self.unsafeGet.flatMap((a) =>
@@ -28,7 +28,7 @@ export function modifyEffect_<RA, RB, RC, EA, EB, EC, A, B>(
  */
 export function modifyEffect<RC, EC, A, B>(
   f: (a: A) => Effect<RC, EC, Tuple<[B, A]>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <RA, RB, EA, EB>(
     self: XSynchronized<RA, RB, EA, EB, A, A>

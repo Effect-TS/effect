@@ -10,7 +10,7 @@ import { Effect } from "../definition"
 export function filter_<A, R, E>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Chunk<A>> {
   return Effect.suspendSucceed(() =>
     Iter.reduce_(
@@ -29,7 +29,7 @@ export function filter_<A, R, E>(
  */
 export function filter<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return (as: Iterable<A>): Effect<R, E, Chunk<A>> => Effect.filter(as, f)
 }

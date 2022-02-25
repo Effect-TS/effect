@@ -9,7 +9,7 @@ import { Managed } from "../definition"
  */
 export function some<A>(
   value: LazyArg<A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, never, Option<A>> {
   return Managed.succeed(Option.some(value()))
 }

@@ -8,6 +8,6 @@ import type { Managed } from "../definition"
  *
  * @tsplus fluent ets/Managed useNow
  */
-export function useNow<R, E, A>(self: Managed<R, E, A>, __etsTrace?: string) {
+export function useNow<R, E, A>(self: Managed<R, E, A>, __tsplusTrace?: string) {
   return self.use(Effect.succeedNow)
 }

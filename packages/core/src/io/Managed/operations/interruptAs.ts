@@ -10,7 +10,7 @@ import { Managed } from "../definition"
  */
 export function interruptAs(
   fiberId: LazyArg<FiberId>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, never, never> {
   return Managed.failCause(Cause.interrupt(fiberId()))
 }

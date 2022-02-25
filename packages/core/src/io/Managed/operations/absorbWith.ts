@@ -10,7 +10,7 @@ import { Managed } from "../definition"
 export function absorbWith_<R, E, A>(
   self: Managed<R, E, A>,
   f: (e: E) => unknown,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, unknown, A> {
   return self
     .sandbox()
@@ -23,6 +23,6 @@ export function absorbWith_<R, E, A>(
  *
  * @ets_data_first absorbWith_
  */
-export function absorbWith<E>(f: (e: E) => unknown, __etsTrace?: string) {
+export function absorbWith<E>(f: (e: E) => unknown, __tsplusTrace?: string) {
   return <R, A>(self: Managed<R, E, A>): Managed<R, unknown, A> => absorbWith_(self, f)
 }

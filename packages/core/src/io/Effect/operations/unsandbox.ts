@@ -9,6 +9,9 @@ import type { Effect } from "../definition"
  *
  * @tsplus fluent ets/Effect unsandbox
  */
-export function unsandbox<R, E, A>(self: Effect<R, Cause<E>, A>, __etsTrace?: string) {
+export function unsandbox<R, E, A>(
+  self: Effect<R, Cause<E>, A>,
+  __tsplusTrace?: string
+) {
   return self.mapErrorCause((cause) => cause.flatten())
 }

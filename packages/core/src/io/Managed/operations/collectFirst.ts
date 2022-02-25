@@ -11,7 +11,7 @@ import { Managed } from "../definition"
 export function collectFirst<R, E, A, B>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Managed<R, E, Option<B>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, Option<B>> {
   return Managed.succeed(as).flatMap((iterable) => loop(iterable[Symbol.iterator](), f))
 }
@@ -19,7 +19,7 @@ export function collectFirst<R, E, A, B>(
 function loop<R, E, A, B>(
   iterator: Iterator<A>,
   f: (a: A) => Managed<R, E, Option<B>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, Option<B>> {
   const next = iterator.next()
   if (next.done) {

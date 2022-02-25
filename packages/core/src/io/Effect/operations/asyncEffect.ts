@@ -12,7 +12,7 @@ import { runtime } from "./runtime"
  */
 export function asyncEffect<R2, E2, R, E, A, X>(
   register: (callback: Cb<Effect<R2, E2, A>>) => Effect<R, E, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E | E2, A> {
   return Effect.Do()
     .bind("promise", () => Promise.make<E | E2, A>())

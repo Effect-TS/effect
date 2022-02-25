@@ -170,7 +170,7 @@ export function makeMemoMap(): UIO<MemoMap> {
  */
 export function build<R, E, A>(
   self: Layer<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, A> {
   return Managed.Do()
     .bind("memoMap", () => Managed.fromEffect(makeMemoMap()))
@@ -183,7 +183,7 @@ export function build<R, E, A>(
  */
 export function scope<R, E, A>(
   self: Layer<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, never, (_: MemoMap) => Managed<R, E, A>> {
   return matchTag_(instruction(self), {
     LayerFold: (_) =>

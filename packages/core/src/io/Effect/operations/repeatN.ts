@@ -11,7 +11,7 @@ import { Effect } from "../definition"
 export function repeatN_<R, E, A>(
   self: Effect<R, E, A>,
   n: number,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(() => {
     function loop(n: number): Effect<R, E, A> {
@@ -31,6 +31,6 @@ export function repeatN_<R, E, A>(
  *
  * @ets_data_first repeatN_
  */
-export function repeatN(n: number, __etsTrace?: string) {
+export function repeatN(n: number, __tsplusTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> => self.repeatN(n)
 }

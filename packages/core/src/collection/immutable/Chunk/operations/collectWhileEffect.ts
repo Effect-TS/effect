@@ -48,7 +48,7 @@ export function collectWhileEffect_<A, R, E, B>(
  */
 export function collectWhileEffect<A, R, E, B>(
   f: (a: A) => Option<Effect<R, E, B>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return (self: Chunk<A>): Effect<R, E, Chunk<B>> => self.collectWhileEffect(f)
 }

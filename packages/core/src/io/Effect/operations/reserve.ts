@@ -17,7 +17,7 @@ import type { Effect } from "../definition"
 export function reserve<R, E, A, R2, E2, A2>(
   reservation: LazyArg<Effect<R, E, Reservation<R, E, A>>>,
   use: (a: A) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E | E2, A2> {
   return Managed.fromReservationEffect(reservation).use(use)
 }

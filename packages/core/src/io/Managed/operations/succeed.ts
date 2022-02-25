@@ -11,7 +11,7 @@ import * as Finalizer from "../ReleaseMap/finalizer"
  */
 export function succeed<A>(
   f: LazyArg<A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, never, A> {
   return Managed(Effect.succeed(Tuple(Finalizer.noopFinalizer, f())))
 }

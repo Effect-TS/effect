@@ -9,7 +9,7 @@ import { Effect } from "../definition"
 export function retryWhile_<R, E, A>(
   self: Effect<R, E, A>,
   f: Predicate<E>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return self.retryWhileEffect((e) => Effect.succeed(f(e)))
 }
@@ -19,6 +19,6 @@ export function retryWhile_<R, E, A>(
  *
  * @ets_data_first retryWhile_
  */
-export function retryWhile<E>(f: Predicate<E>, __etsTrace?: string) {
+export function retryWhile<E>(f: Predicate<E>, __tsplusTrace?: string) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, E, A> => self.retryWhile(f)
 }

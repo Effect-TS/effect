@@ -29,7 +29,7 @@ export function acquireReleaseWith<R, E, A, R1, E1, A1, R2, E2, A2>(
   acquire: LazyArg<Effect<R, E, A>>,
   use: (a: A) => Effect<R1, E1, A1>,
   release: (a: A) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1 & R2, E | E1 | E2, A1> {
   return Effect.acquireReleaseExitWith(acquire, use, (a, _) => release(a))
 }
@@ -62,7 +62,7 @@ export function acquireReleaseWithNow_<R, E, A, R1, E1, A1, R2, E2, A2>(
   self: Effect<R, E, A>,
   use: (a: A) => Effect<R1, E1, A1>,
   release: (a: A) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1 & R2, E | E1 | E2, A1> {
   return Effect.acquireReleaseWith(self, use, release)
 }
@@ -94,7 +94,7 @@ export function acquireReleaseWithNow_<R, E, A, R1, E1, A1, R2, E2, A2>(
 export function acquireReleaseWithNow<A, E1, R1, A1, R2, E2, A2>(
   use: (a: A) => Effect<R1, E1, A1>,
   release: (a: A) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R1 & R2, E | E1 | E2, A1> =>
     self.acquireReleaseWith(use, release)

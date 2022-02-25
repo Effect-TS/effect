@@ -7,6 +7,9 @@ import { Managed } from "../definition"
  *
  * @tsplus static ets/ManagedOps failNow
  */
-export function failNow<E>(error: E, __etsTrace?: string): Managed<unknown, E, never> {
+export function failNow<E>(
+  error: E,
+  __tsplusTrace?: string
+): Managed<unknown, E, never> {
   return Managed.failCauseNow(Cause.fail(error))
 }

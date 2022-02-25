@@ -8,7 +8,7 @@ import type { Exit } from "../definition"
  */
 export function toEffect<E, A>(
   self: Exit<E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<unknown, E, A> {
   switch (self._tag) {
     case "Failure":

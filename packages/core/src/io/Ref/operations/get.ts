@@ -7,7 +7,7 @@ import { concrete } from "../definition"
  */
 export function get<RA, RB, EA, EB, A>(
   self: XRef<RA, RB, EA, EB, A, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<RB, EB, A> {
   return concrete(self).get
 }

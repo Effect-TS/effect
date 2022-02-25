@@ -9,7 +9,7 @@ import type { Chunk } from "../definition"
 export function mapEffectPar_<A, R, E, B>(
   self: Chunk<A>,
   f: (a: A) => Effect<R, E, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
   return Effect.forEachPar(self, f)
 }
@@ -21,7 +21,7 @@ export function mapEffectPar_<A, R, E, B>(
  */
 export function mapEffectPar<A, R, E, B>(
   f: (a: A) => Effect<R, E, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return (self: Chunk<A>): Effect<R, E, Chunk<B>> => self.mapEffectPar(f)
 }

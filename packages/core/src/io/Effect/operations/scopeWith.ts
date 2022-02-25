@@ -9,7 +9,7 @@ import { Effect } from "../definition"
  */
 export function scopeWith<R, E, A>(
   f: (scope: Scope) => Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return Effect.descriptorWith((descriptor) => f(descriptor.scope))
 }

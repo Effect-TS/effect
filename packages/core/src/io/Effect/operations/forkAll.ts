@@ -11,7 +11,7 @@ import { Effect } from "../definition"
  */
 export function forkAll<R, E, A>(
   effects: Iterable<Effect<R, E, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): RIO<R, Fiber.Fiber<E, Chunk<A>>> {
   return Effect.forEach(effects, (_) => _.fork()).map(Fiber.collectAll)
 }

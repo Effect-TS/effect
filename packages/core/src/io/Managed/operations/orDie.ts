@@ -9,7 +9,7 @@ import type { Managed } from "../definition"
  */
 export function orDie<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, never, A> {
   return self.orDieWith(identity)
 }

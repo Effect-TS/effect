@@ -93,7 +93,7 @@ function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
   out2: Out2,
   rInterval: Interval,
   f: (x: Interval, y: Interval) => Interval,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<
   Env & Env1,
   never,

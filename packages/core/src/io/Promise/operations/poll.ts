@@ -11,7 +11,7 @@ import type { Promise } from "../definition"
  */
 export function poll<E, A>(
   self: Promise<E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<Option<IO<E, A>>> {
   return Effect.succeed(() => {
     const state = self.state.get

@@ -12,7 +12,7 @@ import { Effect } from "../definition"
 export function catchAllCause_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   f: (cause: Cause<E>) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E2, A | A2> {
   return self.foldCauseEffect(f, Effect.succeedNow)
 }
@@ -27,7 +27,7 @@ export function catchAllCause_<R, E, A, R2, E2, A2>(
  */
 export function catchAllCause<E, R2, E2, A2>(
   f: (cause: Cause<E>) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E2, A | A2> =>
     self.catchAllCause(f)

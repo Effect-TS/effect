@@ -11,7 +11,7 @@ import { Managed } from "../definition"
 export function acquireReleaseAttemptWith<A, X>(
   acquire: LazyArg<A>,
   release: (a: A) => X,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, unknown, A> {
   return Managed.acquireReleaseWith(Effect.attempt(acquire), (a) =>
     Effect.attempt(release(a)).orDie()

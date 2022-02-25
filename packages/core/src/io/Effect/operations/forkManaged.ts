@@ -11,7 +11,7 @@ import type { Effect } from "../definition"
  */
 export function forkManaged<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, never, Fiber.Runtime<E, A>> {
   return self.toManaged().fork()
 }

@@ -10,7 +10,7 @@ import { Effect } from "../definition"
  */
 export function firstSuccessOf<R, E, A>(
   effects: NA.NonEmptyArray<Effect<R, E, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(() => {
     const head = NA.head(effects)

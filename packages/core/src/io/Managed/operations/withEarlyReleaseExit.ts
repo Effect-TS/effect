@@ -12,7 +12,7 @@ import { Managed } from "../definition"
 export function withEarlyReleaseExit_<R, E, A>(
   self: Managed<R, E, A>,
   exit: Exit<any, any>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, Tuple<[UIO<any>, A]>> {
   return Managed(
     self.effect.map(({ tuple: [finalizer, a] }) =>
@@ -27,7 +27,7 @@ export function withEarlyReleaseExit_<R, E, A>(
  *
  * @ets_data_first withEarlyReleaseExit_
  */
-export function withEarlyReleaseExit(exit: Exit<any, any>, __etsTrace?: string) {
+export function withEarlyReleaseExit(exit: Exit<any, any>, __tsplusTrace?: string) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<R, E, Tuple<[UIO<any>, A]>> =>
     self.withEarlyReleaseExit(exit)
 }

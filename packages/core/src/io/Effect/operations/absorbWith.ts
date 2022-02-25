@@ -9,7 +9,7 @@ import { Effect } from "../definition"
 export function absorbWith_<R, A, E>(
   self: Effect<R, E, A>,
   f: (e: E) => unknown,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return self
     .sandbox()
@@ -22,6 +22,6 @@ export function absorbWith_<R, A, E>(
  *
  * @ets_data_first absorbWith_
  */
-export function absorbWith<E>(f: (e: E) => unknown, __etsTrace?: string) {
+export function absorbWith<E>(f: (e: E) => unknown, __tsplusTrace?: string) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, unknown, A> => self.absorbWith(f)
 }

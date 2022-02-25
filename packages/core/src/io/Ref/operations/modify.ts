@@ -15,7 +15,7 @@ import * as S from "../Synchronized/operations/modifyEffect"
 export function modify_<RA, RB, EA, EB, A, B>(
   self: XRef<RA, RB, EA, EB, A, A>,
   f: (a: A) => Tuple<[B, A]>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<RA & RB, EA | EB, B> {
   return matchTag_(concrete(self), {
     Atomic: (_) => A.modify_(_, f),
@@ -64,7 +64,7 @@ export function modify_<RA, RB, EA, EB, A, B>(
  *
  * @ets_data_first modify_
  */
-export function modify<A, B>(f: (a: A) => Tuple<[B, A]>, __etsTrace?: string) {
+export function modify<A, B>(f: (a: A) => Tuple<[B, A]>, __tsplusTrace?: string) {
   return <RA, RB, EA, EB>(
     self: XRef<RA, RB, EA, EB, A, A>
   ): Effect<RA & RB, EA | EB, B> => modify_(self, f)

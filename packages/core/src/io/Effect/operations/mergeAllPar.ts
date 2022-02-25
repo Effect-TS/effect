@@ -21,7 +21,7 @@ export function mergeAllPar<R, E, A, B>(
   as: LazyArg<Iterable<Effect<R, E, A>>>,
   zero: LazyArg<B>,
   f: (b: B, a: A) => B,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, B> {
   return make(zero).flatMap((acc) =>
     Effect.forEachParDiscard(as, (effect) =>

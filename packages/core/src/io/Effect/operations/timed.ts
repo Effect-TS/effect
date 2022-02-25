@@ -6,6 +6,6 @@ import type { Effect } from "../definition"
  *
  * @tsplus fluent ets/Effect timed
  */
-export function timed<R, E, A>(self: Effect<R, E, A>, __etsTrace?: string) {
+export function timed<R, E, A>(self: Effect<R, E, A>, __tsplusTrace?: string) {
   return self.timedWith(currentTime)
 }

@@ -101,13 +101,13 @@ class BothWithEffect<
 
   _isShutdown: UIO<boolean> = this.self._isShutdown
 
-  _offer(a: A1, __etsTrace?: string): Effect<RA & RA1, EA1 | EA, boolean> {
+  _offer(a: A1, __tsplusTrace?: string): Effect<RA & RA1, EA1 | EA, boolean> {
     return this.self._offer(a).zipWithPar(this.that._offer(a), (x, y) => x && y)
   }
 
   _offerAll(
     as: Iterable<A1>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<RA & RA1, EA1 | EA, boolean> {
     return this.self._offerAll(as).zipWithPar(this.that._offerAll(as), (x, y) => x && y)
   }
@@ -130,7 +130,7 @@ class BothWithEffect<
 
   _takeUpTo(
     max: number,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<RB & RB1 & R3, E3 | EB | EB1, Chunk<D>> {
     return this.self
       ._takeUpTo(max)

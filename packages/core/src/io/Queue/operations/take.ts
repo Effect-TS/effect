@@ -15,7 +15,7 @@ import { concreteQueue } from "../definition"
  */
 export function take<RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<RB, EB, B> {
   concreteQueue(self)
   return self._take

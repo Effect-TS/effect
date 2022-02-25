@@ -8,7 +8,7 @@ import type { Managed } from "../definition"
 export function tap_<A, R, R2, E, E2, X>(
   self: Managed<R, E, A>,
   f: (a: A) => Managed<R2, E2, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return self.flatMap((a) => f(a).map(() => a))
 }
@@ -20,7 +20,7 @@ export function tap_<A, R, R2, E, E2, X>(
  */
 export function tap<A, R2, E2, X>(
   f: (a: A) => Managed<R2, E2, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Managed<R, E, A>) => tap_(self, f)
 }

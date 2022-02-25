@@ -13,14 +13,14 @@ import { Effect, EffectError } from "../definition"
  */
 export function suspendWith<R, A>(
   f: (runtimeConfig: RuntimeConfig, fiberId: FiberId) => RIO<R, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): RIO<R, A> {
   return Effect.suspendSucceedWith((runtimeConfig, fiberId) => {
     try {
       return f(runtimeConfig, fiberId)
     } catch (error) {
       if (!runtimeConfig.value.fatal(error)) {
-        throw new EffectError(Exit.fail(error), __etsTrace)
+        throw new EffectError(Exit.fail(error), __tsplusTrace)
       }
       throw error
     }

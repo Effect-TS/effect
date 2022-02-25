@@ -7,7 +7,7 @@ import { Managed } from "../definition"
  */
 export function flip<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, A, E> {
   return self.foldManaged(Managed.succeedNow, Managed.failNow)
 }

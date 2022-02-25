@@ -12,7 +12,7 @@ import { Managed } from "../definition"
  */
 export function withRuntimeConfig(
   runtimeConfig: LazyArg<RuntimeConfig>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, never, void> {
   return Managed.fromEffect(Effect.runtimeConfig).flatMap((currentRuntimeConfig) =>
     Managed.acquireRelease(
@@ -33,7 +33,7 @@ export function withRuntimeConfig(
 export function withRuntimeConfigNow_<R, E, A>(
   self: Managed<R, E, A>,
   runtimeConfig: LazyArg<RuntimeConfig>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, A> {
   return Managed.fromRuntimeConfig(runtimeConfig).zipRight(self)
 }
@@ -48,7 +48,7 @@ export function withRuntimeConfigNow_<R, E, A>(
  */
 export function withRuntimeConfigNow(
   runtimeConfig: LazyArg<RuntimeConfig>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<R, E, A> =>
     self.withRuntimeConfig(runtimeConfig)

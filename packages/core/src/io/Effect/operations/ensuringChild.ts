@@ -13,7 +13,7 @@ import type { Effect, RIO } from "../definition"
 export function ensuringChild_<R, E, A, R2, X>(
   self: Effect<R, E, A>,
   f: (_: Fiber<any, Chunk<unknown>>) => RIO<R2, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E, A> {
   return self.ensuringChildren((children) => f(collectAll(children)))
 }
@@ -27,7 +27,7 @@ export function ensuringChild_<R, E, A, R2, X>(
  */
 export function ensuringChild<R, E, A, R2, X>(
   f: (_: Fiber<any, Chunk<unknown>>) => RIO<R2, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return (self: Effect<R, E, A>): Effect<R & R2, E, A> => self.ensuringChild(f)
 }

@@ -11,7 +11,7 @@ import { Managed } from "../definition"
 export function orElse_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
   that: LazyArg<Managed<R2, E2, A2>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return self.foldManaged(that, Managed.succeedNow)
 }
@@ -24,7 +24,7 @@ export function orElse_<R, E, A, R2, E2, A2>(
  */
 export function orElse<R2, E2, A2>(
   that: LazyArg<Managed<R2, E2, A2>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Managed<R, E, A>) => self | that
 }

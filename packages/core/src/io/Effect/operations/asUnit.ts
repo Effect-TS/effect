@@ -5,6 +5,6 @@ import { Effect } from "../definition"
  *
  * @tsplus fluent ets/Effect asUnit
  */
-export function asUnit<R, E, X>(self: Effect<R, E, X>, __etsTrace?: string) {
+export function asUnit<R, E, X>(self: Effect<R, E, X>, __tsplusTrace?: string) {
   return self > Effect.unit
 }

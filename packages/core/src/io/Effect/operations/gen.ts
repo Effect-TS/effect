@@ -54,15 +54,15 @@ function adapter(_: any, __?: any, ___?: any) {
 }
 
 export interface Adapter {
-  <A>(_: Tag<A>, __etsTrace?: string): GenEffect<Has<A>, never, A>
-  <E, A>(_: Option<A>, onNone: () => E, __etsTrace?: string): GenEffect<unknown, E, A>
-  <A>(_: Option<A>, __etsTrace?: string): GenEffect<unknown, NoSuchElementException, A>
-  <E, A>(_: Either<E, A>, __etsTrace?: string): GenEffect<unknown, E, A>
-  <R, E, A>(_: Effect<R, E, A>, __etsTrace?: string): GenEffect<R, E, A>
+  <A>(_: Tag<A>, __tsplusTrace?: string): GenEffect<Has<A>, never, A>
+  <E, A>(_: Option<A>, onNone: () => E, __tsplusTrace?: string): GenEffect<unknown, E, A>
+  <A>(_: Option<A>, __tsplusTrace?: string): GenEffect<unknown, NoSuchElementException, A>
+  <E, A>(_: Either<E, A>, __tsplusTrace?: string): GenEffect<unknown, E, A>
+  <R, E, A>(_: Effect<R, E, A>, __tsplusTrace?: string): GenEffect<R, E, A>
 }
 
 export interface AdapterWithManaged extends Adapter {
-  <R, E, A>(_: Managed<R, E, A>, __etsTrace?: string): GenEffect<R, E, A>
+  <R, E, A>(_: Managed<R, E, A>, __tsplusTrace?: string): GenEffect<R, E, A>
 }
 
 /**
@@ -70,7 +70,7 @@ export interface AdapterWithManaged extends Adapter {
  */
 export function genWithManaged<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: AdapterWithManaged) => Generator<Eff, AEff, any>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<Utils._R<Eff>, Utils._E<Eff>, AEff> {
   return Effect.suspendSucceed(() => {
     const iterator = f(adapter as any)
@@ -117,7 +117,7 @@ export function genWithManaged<Eff extends GenEffect<any, any, any>, AEff>(
  */
 export function gen<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: Adapter) => Generator<Eff, AEff, any>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<Utils._R<Eff>, Utils._E<Eff>, AEff> {
   return Effect.suspendSucceed(() => {
     const iterator = f(adapter as any)

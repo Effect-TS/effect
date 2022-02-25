@@ -12,7 +12,7 @@ import { Effect } from "../definition"
  */
 export function fromFiber<E, A>(
   fiber: LazyArg<Fiber<E, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): IO<E, A> {
   return Effect.succeed(fiber).flatMap(join)
 }

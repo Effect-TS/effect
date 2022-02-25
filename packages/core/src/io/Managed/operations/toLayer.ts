@@ -10,7 +10,7 @@ import type { Managed } from "../definition"
 export function toLayer_<R, E, A>(
   self: Managed<R, E, A>,
   tag: Tag<A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Layer<R, E, Has<A>> {
   return Layer.fromManaged(tag)(self)
 }
@@ -20,6 +20,6 @@ export function toLayer_<R, E, A>(
  *
  * @ets_data_first toLayer_
  */
-export function toLayer<A>(tag: Tag<A>, __etsTrace?: string) {
+export function toLayer<A>(tag: Tag<A>, __tsplusTrace?: string) {
   return <R, E>(self: Managed<R, E, A>): Layer<R, E, Has<A>> => self.toLayer(tag)
 }

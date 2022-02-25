@@ -8,6 +8,9 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps sleep
  */
-export function sleep(milliseconds: number, __etsTrace?: string): RIO<HasClock, void> {
+export function sleep(
+  milliseconds: number,
+  __tsplusTrace?: string
+): RIO<HasClock, void> {
   return Effect.serviceWithEffect(HasClock)((_) => _.sleep(milliseconds))
 }

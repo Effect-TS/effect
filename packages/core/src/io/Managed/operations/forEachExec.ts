@@ -14,7 +14,7 @@ export function forEachExec<R, E, A, B>(
   as: LazyArg<Iterable<A>>,
   executionStrategy: ExecutionStrategy,
   f: (a: A) => Managed<R, E, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return Managed.suspend(() => {
     switch (executionStrategy._tag) {

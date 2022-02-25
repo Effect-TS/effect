@@ -9,7 +9,7 @@ import { modifyEffect_ } from "./modifyEffect"
 export function updateEffect_<RA, RB, RC, EA, EB, EC, A>(
   self: XSynchronized<RA, RB, EA, EB, A, A>,
   f: (a: A) => Effect<RC, EC, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<RA & RB & RC, EA | EB | EC, void> {
   return modifyEffect_(self, (v) => f(v).map((result) => Tuple(undefined, result)))
 }
@@ -21,7 +21,7 @@ export function updateEffect_<RA, RB, RC, EA, EB, EC, A>(
  */
 export function updateEffect<RC, EC, A>(
   f: (a: A) => Effect<RC, EC, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <RA, RB, EA, EB>(
     self: XSynchronized<RA, RB, EA, EB, A, A>

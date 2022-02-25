@@ -16,7 +16,7 @@ import { Managed } from "../definition"
 export function acquireReleaseExitWith<R, R1, E, A>(
   acquire: LazyArg<Effect<R, E, A>>,
   release: (a: A, exit: Exit<any, any>) => Effect<R1, never, any>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & R1, E, A> {
   return Managed(
     Effect.Do()

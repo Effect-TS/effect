@@ -7,7 +7,7 @@ import { Effect } from "../definition"
  */
 export function forever<R, E, A>(
   effect: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, never> {
   return effect > Effect.yieldNow > forever(effect)
 }

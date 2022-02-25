@@ -13,9 +13,9 @@ import { Effect, IFork } from "../definition"
  */
 export function forkDaemon<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): RIO<R, Fiber.Runtime<E, A>> {
   return Effect.suspendSucceed(
-    new IFork(self, () => Option.some(Scope.globalScope.value), __etsTrace)
+    new IFork(self, () => Option.some(Scope.globalScope.value), __tsplusTrace)
   )
 }

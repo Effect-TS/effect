@@ -14,7 +14,7 @@ import { Effect } from "../definition"
 export function validateParNow_<R, E, A, R1, E1, B>(
   self: Effect<R, E, A>,
   that: LazyArg<Effect<R1, E1, B>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1, E | E1, Tuple<[A, B]>> {
   return self.validateWithPar(that, (a, b) => Tuple(a, b))
 }
@@ -27,7 +27,7 @@ export function validateParNow_<R, E, A, R1, E1, B>(
  */
 export function validateParNow<R1, E1, B>(
   that: LazyArg<Effect<R1, E1, B>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R1, E | E1, Tuple<[A, B]>> =>
     self.validatePar(that)
@@ -45,7 +45,7 @@ export function validateParNow<R1, E1, B>(
 export function validatePar<R, E, A, B>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, NonEmptyArray<E>, Chunk<B>> {
   return Effect.partitionPar(as, f).flatMap(({ tuple: [es, bs] }) =>
     es.isEmpty()

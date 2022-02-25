@@ -15,7 +15,7 @@ import { partitionMap } from "./_internal/partitionMap"
 export function partitionPar<R, E, A, B>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, never, Tuple<[List<E>, List<B>]>> {
   return Effect.suspendSucceed(Effect.forEachPar(as, (a) => f(a).either())).map(
     (chunk) => partitionMap(chunk, identity)

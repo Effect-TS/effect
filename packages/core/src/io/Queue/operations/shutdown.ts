@@ -15,7 +15,7 @@ import { concreteQueue } from "../definition"
  */
 export function shutdown<RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<void> {
   concreteQueue(self)
   return self._shutdown

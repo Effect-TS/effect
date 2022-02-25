@@ -11,14 +11,14 @@ import { Effect, EffectError } from "../definition"
  */
 export function suspend<R, E, A>(
   f: LazyArg<Effect<R, E, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, unknown, A> {
   return Effect.suspendSucceedWith((runtimeConfig) => {
     try {
       return f()
     } catch (error) {
       if (!runtimeConfig.value.fatal(error)) {
-        throw new EffectError(Exit.fail(error), __etsTrace)
+        throw new EffectError(Exit.fail(error), __tsplusTrace)
       }
       throw error
     }

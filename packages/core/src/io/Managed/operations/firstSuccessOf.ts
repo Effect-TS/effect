@@ -13,7 +13,7 @@ import { Managed } from "../definition"
 export function firstSuccessOf<R, E, A>(
   first: LazyArg<Managed<R, E, A>>,
   rest: LazyArg<Iterable<Managed<R, E, A>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, A> {
   return Managed.suspend(Iter.reduce_(rest(), first(), (b, a) => b | a))
 }

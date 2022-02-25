@@ -13,7 +13,7 @@ export function validateWithPar_<R, E, A, R1, E1, B, C>(
   self: Effect<R, E, A>,
   that: LazyArg<Effect<R1, E1, B>>,
   f: (a: A, b: B) => C,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1, E | E1, C> {
   return self
     .exit()
@@ -33,7 +33,7 @@ export function validateWithPar_<R, E, A, R1, E1, B, C>(
 export function validateWithPar<R1, E1, A, B, C>(
   that: LazyArg<Effect<R1, E1, B>>,
   f: (a: A, b: B) => C,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R1, E | E1, C> =>
     self.validateWithPar(that, f)

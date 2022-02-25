@@ -14,7 +14,7 @@ import type { Cb } from "./Cb"
  */
 export function _async<R, E, A>(
   register: (callback: Cb<Effect<R, E, A>>) => void,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return asyncBlockingOn(register, FiberId.none)
 }
@@ -36,7 +36,7 @@ export { _async as async }
 export function asyncBlockingOn<R, E, A>(
   register: (callback: Cb<Effect<R, E, A>>) => void,
   blockingOn: FiberId,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return Effect.asyncMaybeBlockingOn((cb) => {
     register(cb)

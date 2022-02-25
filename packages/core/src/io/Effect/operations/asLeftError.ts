@@ -8,7 +8,7 @@ import type { Effect } from "../definition"
  */
 export function asLeftError<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, Either<E, never>, A> {
   return self.mapError(Either.left)
 }

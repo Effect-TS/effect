@@ -9,7 +9,7 @@ import type { Managed } from "../definition"
 export function as_<R, E, A, B>(
   self: Managed<R, E, A>,
   value: B,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, B> {
   return self.map(() => value)
 }
@@ -20,6 +20,6 @@ export function as_<R, E, A, B>(
  *
  * @ets_data_first as_
  */
-export function as<B>(value: B, __etsTrace?: string) {
+export function as<B>(value: B, __tsplusTrace?: string) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<R, E, B> => as_(self, value)
 }

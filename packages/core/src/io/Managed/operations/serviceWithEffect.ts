@@ -11,6 +11,6 @@ import { Managed } from "../definition"
 export function serviceWithEffect<T>(_: Tag<T>) {
   return <R, E, A>(
     f: (service: T) => Effect<R, E, A>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Managed<R & Has<T>, E, A> => Managed.fromEffect(Effect.serviceWithEffect(_)(f))
 }

@@ -12,7 +12,7 @@ import { fromEffect } from "./fromEffect"
 export function tryCatch<E, A>(
   f: LazyArg<A>,
   onThrow: (u: unknown) => E,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, E, A> {
   return fromEffect(Effect.tryCatch(f, onThrow))
 }

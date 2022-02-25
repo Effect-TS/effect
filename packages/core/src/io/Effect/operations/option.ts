@@ -10,7 +10,7 @@ import { Effect } from "../definition"
  */
 export function option<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): RIO<R, Option<A>> {
   return self.foldEffect(
     () => Effect.succeedNow(Option.none),

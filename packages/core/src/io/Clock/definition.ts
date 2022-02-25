@@ -25,23 +25,23 @@ export interface Clock {
 
   readonly currentTime: UIO<number>
 
-  readonly sleep: (ms: number, __etsTrace?: string) => UIO<void>
+  readonly sleep: (ms: number, __tsplusTrace?: string) => UIO<void>
 
   readonly driver: <State, Env, In, Out>(
     schedule: Schedule.WithState<State, Env, In, Out>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ) => UIO<Driver<State, Env, In, Out>>
 
   readonly repeat: {
     <R, E, A, S, R1, A1>(
       effect0: LazyArg<Effect<R, E, A>>,
       schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
-      __etsTrace?: string
+      __tsplusTrace?: string
     ): Effect<R & R1, E, A1>
     <R, E, A, R1, A1>(
       effect0: LazyArg<Effect<R, E, A>>,
       schedule0: LazyArg<Schedule<R1, A, A1>>,
-      __etsTrace?: string
+      __tsplusTrace?: string
     ): Effect<R & R1, E, A1>
   }
 
@@ -50,13 +50,13 @@ export interface Clock {
       effect0: LazyArg<Effect<R, E, A>>,
       schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
       orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
-      __etsTrace?: string
+      __tsplusTrace?: string
     ): Effect<R & R1 & R2, E2, A1 | A2>
     <R, E, A, R1, A1, R2, E2, A2>(
       effect0: LazyArg<Effect<R, E, A>>,
       schedule0: LazyArg<Schedule<R1, A, A1>>,
       orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
-      __etsTrace?: string
+      __tsplusTrace?: string
     ): Effect<R & R1 & R2, E2, A1 | A2>
   }
 
@@ -65,13 +65,13 @@ export interface Clock {
       effect0: LazyArg<Effect<R, E, A>>,
       schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
       orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
-      __etsTrace?: string
+      __tsplusTrace?: string
     ): Effect<R & R1 & R2, E2, Either<A2, A1>>
     <R, E, A, R1, A1, R2, E2, A2>(
       effect0: LazyArg<Effect<R, E, A>>,
       schedule0: LazyArg<Schedule<R1, A, A1>>,
       orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
-      __etsTrace?: string
+      __tsplusTrace?: string
     ): Effect<R & R1 & R2, E2, Either<A2, A1>>
   }
 
@@ -79,12 +79,12 @@ export interface Clock {
     <R, E, A, S, R1, Out>(
       effect0: LazyArg<Effect<R, E, A>>,
       schedule0: LazyArg<Schedule.WithState<S, R1, E, Out>>,
-      __etsTrace?: string
+      __tsplusTrace?: string
     ): Effect<R & R1, E, A>
     <R, E, A, R1, Out>(
       effect0: LazyArg<Effect<R, E, A>>,
       schedule0: LazyArg<Schedule<R1, E, Out>>,
-      __etsTrace?: string
+      __tsplusTrace?: string
     ): Effect<R & R1, E, A>
   }
 
@@ -93,13 +93,13 @@ export interface Clock {
       effect0: LazyArg<Effect<R, E, A>>,
       schedule0: LazyArg<Schedule.WithState<S, R1, E, A1>>,
       orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
-      __etsTrace?: string
+      __tsplusTrace?: string
     ): Effect<R & R1 & R2, E2, A | A2>
     <R, E, A, R1, A1, R2, E2, A2>(
       effect0: LazyArg<Effect<R, E, A>>,
       schedule0: LazyArg<Schedule<R1, E, A1>>,
       orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
-      __etsTrace?: string
+      __tsplusTrace?: string
     ): Effect<R & R1 & R2, E2, A | A2>
   }
 
@@ -108,13 +108,13 @@ export interface Clock {
       effect0: LazyArg<Effect<R, E, A>>,
       schedule0: LazyArg<Schedule.WithState<S, R1, E, A1>>,
       orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
-      __etsTrace?: string
+      __tsplusTrace?: string
     ): Effect<R & R1 & R2, E2, Either<A2, A>>
     <R, E, A, R1, A1, R2, E2, A2>(
       effect0: LazyArg<Effect<R, E, A>>,
       schedule0: LazyArg<Schedule<R1, E, A1>>,
       orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
-      __etsTrace?: string
+      __tsplusTrace?: string
     ): Effect<R & R1 & R2, E2, Either<A2, A>>
   }
 
@@ -122,12 +122,12 @@ export interface Clock {
     <R, E, A, S, R1, A1>(
       effect0: LazyArg<Effect<R, E, A>>,
       schedule0: LazyArg<Schedule.WithState<S, R1, unknown, A1>>,
-      __etsTrace?: string
+      __tsplusTrace?: string
     ): Effect<R & R1, E, A1>
     <R, E, A, R1, A1>(
       effect0: LazyArg<Effect<R, E, A>>,
       schedule0: LazyArg<Schedule<R1, unknown, A1>>,
-      __etsTrace?: string
+      __tsplusTrace?: string
     ): Effect<R & R1, E, A1>
   }
 
@@ -136,13 +136,13 @@ export interface Clock {
       effect0: LazyArg<Effect<R, E, A>>,
       a0: LazyArg<A>,
       schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
-      __etsTrace?: string
+      __tsplusTrace?: string
     ): Effect<R & R1, E, A1>
     <R, E, A, R1, A1>(
       effect0: LazyArg<Effect<R, E, A>>,
       a0: LazyArg<A>,
       schedule0: LazyArg<Schedule<R1, A, A1>>,
-      __etsTrace?: string
+      __tsplusTrace?: string
     ): Effect<R & R1, E, A1>
   }
 }
@@ -164,11 +164,11 @@ export abstract class AbstractClock implements Clock {
   /**
    * Sleeps for the provided number of milliseconds.
    */
-  abstract sleep(ms: number, __etsTrace?: string | undefined): UIO<void>
+  abstract sleep(ms: number, __tsplusTrace?: string | undefined): UIO<void>
 
   driver<State, Env, In, Out>(
     schedule: Schedule.WithState<State, Env, In, Out>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): UIO<Driver<State, Env, In, Out>> {
     return Ref.make<Tuple<[Option<Out>, State]>>(
       Tuple(Option.none, schedule._initial)
@@ -208,12 +208,12 @@ export abstract class AbstractClock implements Clock {
   repeat<R, E, A, S, R1, A1>(
     effect0: LazyArg<Effect<R, E, A>>,
     schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R & R1, E, A1>
   repeat<R, E, A, R1, A1>(
     effect0: LazyArg<Effect<R, E, A>>,
     schedule0: LazyArg<Schedule<R1, A, A1>>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R & R1, E, A1> {
     return this.repeatOrElse(effect0, schedule0, (e, _) => Effect.fail(e))
   }
@@ -222,13 +222,13 @@ export abstract class AbstractClock implements Clock {
     effect0: LazyArg<Effect<R, E, A>>,
     schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
     orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R & R1 & R2, E2, A1 | A2>
   repeatOrElse<R, E, A, R1, A1, R2, E2, A2>(
     effect0: LazyArg<Effect<R, E, A>>,
     schedule0: LazyArg<Schedule<R1, A, A1>>,
     orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R & R1 & R2, E2, A1 | A2> {
     return this.repeatOrElseEither(effect0, schedule0, orElse).map((either) =>
       either.merge()
@@ -239,13 +239,13 @@ export abstract class AbstractClock implements Clock {
     effect0: LazyArg<Effect<R, E, A>>,
     schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
     orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R & R1 & R2, E2, Either<A2, A1>>
   repeatOrElseEither<R, E, A, R1, A1, R2, E2, A2>(
     effect0: LazyArg<Effect<R, E, A>>,
     schedule0: LazyArg<Schedule<R1, A, A1>>,
     orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R & R1 & R2, E2, Either<A2, A1>> {
     return Effect.suspendSucceed(() => {
       const effect = effect0()
@@ -274,12 +274,12 @@ export abstract class AbstractClock implements Clock {
   retry<R, E, A, S, R1, A1>(
     effect0: LazyArg<Effect<R, E, A>>,
     schedule0: LazyArg<Schedule.WithState<S, R1, E, A1>>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R & R1, E, A>
   retry<R, E, A, R1, A1>(
     effect0: LazyArg<Effect<R, E, A>>,
     schedule0: LazyArg<Schedule<R1, E, A1>>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R & R1, E, A> {
     return this.retryOrElse(effect0, schedule0, (e, _) => Effect.fail(e))
   }
@@ -288,13 +288,13 @@ export abstract class AbstractClock implements Clock {
     effect0: LazyArg<Effect<R, E, A>>,
     schedule0: LazyArg<Schedule.WithState<S, R1, E, A1>>,
     orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R & R1 & R2, E2, A | A2>
   retryOrElse<R, E, A, R1, A1, R2, E2, A2>(
     effect0: LazyArg<Effect<R, E, A>>,
     schedule0: LazyArg<Schedule<R1, E, A1>>,
     orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R & R1 & R2, E2, A | A2> {
     return this.retryOrElseEither(effect0, schedule0, orElse).map((either) =>
       either.merge()
@@ -305,13 +305,13 @@ export abstract class AbstractClock implements Clock {
     effect0: LazyArg<Effect<R, E, A>>,
     schedule0: LazyArg<Schedule.WithState<S, R1, E, A1>>,
     orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R & R1 & R2, E2, Either<A2, A>>
   retryOrElseEither<R, E, A, R1, A1, R2, E2, A2>(
     effect0: LazyArg<Effect<R, E, A>>,
     schedule0: LazyArg<Schedule<R1, E, A1>>,
     orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R & R1 & R2, E2, Either<A2, A>> {
     return Effect.suspendSucceed(() => {
       const effect = effect0()
@@ -340,12 +340,12 @@ export abstract class AbstractClock implements Clock {
   schedule<R, E, A, S, R1, E1, A1>(
     effect0: LazyArg<Effect<R, E, A>>,
     schedule0: LazyArg<Schedule.WithState<S, R1, any, A1>>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R & R1, E, A1>
   schedule<R, E, A, R1, A1>(
     effect0: LazyArg<Effect<R, E, A>>,
     schedule0: LazyArg<Schedule<R1, any, A1>>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R & R1, E, A1> {
     return this.scheduleFrom(effect0, undefined, schedule0)
   }
@@ -354,13 +354,13 @@ export abstract class AbstractClock implements Clock {
     effect0: LazyArg<Effect<R, E, A>>,
     a0: LazyArg<A>,
     schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R & R1, E, A1>
   scheduleFrom<R, E, A, R1, A1>(
     effect0: LazyArg<Effect<R, E, A>>,
     a0: LazyArg<A>,
     schedule0: LazyArg<Schedule<R1, A, A1>>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R & R1, E, A1> {
     return Effect.suspendSucceed(() => {
       const effect = effect0()
@@ -410,7 +410,7 @@ export const currentTime = Effect.serviceWithEffect(HasClock)(
  */
 export function sleep(
   milliseconds: number,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock, never, void> {
   return Effect.serviceWithEffect(HasClock)((clock) => clock.sleep(milliseconds))
 }
@@ -423,7 +423,7 @@ export function sleep(
  */
 export function driver<State, Env, In, Out>(
   schedule: Schedule.WithState<State, Env, In, Out>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock, never, Driver<State, Env, In, Out>> {
   return Effect.serviceWithEffect(HasClock)((clock) => clock.driver(schedule))
 }
@@ -440,12 +440,12 @@ export function driver<State, Env, In, Out>(
 export function repeat<R, E, A, S, R1, B>(
   effect0: LazyArg<Effect<R, E, A>>,
   schedule0: LazyArg<Schedule.WithState<S, R1, A, B>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock & R & R1, E, B>
 export function repeat<R, E, A, R1, B>(
   effect0: LazyArg<Effect<R, E, A>>,
   schedule0: LazyArg<Schedule<R1, A, B>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock & R & R1, E, B> {
   return Effect.serviceWithEffect(HasClock)((clock) => clock.repeat(effect0, schedule0))
 }
@@ -465,13 +465,13 @@ export function repeatOrElse<R, E, A, S, R1, A1, R2, E2, A2>(
   effect0: LazyArg<Effect<R, E, A>>,
   schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
   orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1 & R2, E2, A1 | A2>
 export function repeatOrElse<R, E, A, R1, A1, R2, E2, A2>(
   effect0: LazyArg<Effect<R, E, A>>,
   schedule0: LazyArg<Schedule<R1, A, A1>>,
   orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock & R & R1 & R2, E2, A1 | A2> {
   return Effect.serviceWithEffect(HasClock)((clock) =>
     clock.repeatOrElse(effect0, schedule0, orElse)
@@ -493,13 +493,13 @@ export function repeatOrElseEither<R, E, A, S, R1, A1, R2, E2, A2>(
   effect0: LazyArg<Effect<R, E, A>>,
   schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
   orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock & R & R1 & R2, E2, Either<A2, A1>>
 export function repeatOrElseEither<R, E, A, R1, A1, R2, E2, A2>(
   effect0: LazyArg<Effect<R, E, A>>,
   schedule0: LazyArg<Schedule<R1, A, A1>>,
   orElse: (e: E, option: Option<A1>) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock & R & R1 & R2, E2, Either<A2, A1>> {
   return Effect.serviceWithEffect(HasClock)((clock) =>
     clock.repeatOrElseEither(effect0, schedule0, orElse)
@@ -517,12 +517,12 @@ export function repeatOrElseEither<R, E, A, R1, A1, R2, E2, A2>(
 export function retry<R, E, A, S, R1, A1>(
   effect0: LazyArg<Effect<R, E, A>>,
   schedule0: LazyArg<Schedule.WithState<S, R1, E, A1>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock & R & R1, E, A>
 export function retry<R, E, A, R1, A1>(
   effect0: LazyArg<Effect<R, E, A>>,
   schedule0: LazyArg<Schedule<R1, E, A1>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock & R & R1, E, A> {
   return Effect.serviceWithEffect(HasClock)((clock) => clock.retry(effect0, schedule0))
 }
@@ -538,13 +538,13 @@ export function retryOrElse<R, E, A, S, R1, A1, R2, E2, A2>(
   effect0: LazyArg<Effect<R, E, A>>,
   schedule0: LazyArg<Schedule.WithState<S, R1, E, A1>>,
   orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock & R & R1 & R2, E2, A | A2>
 export function retryOrElse<R, E, A, R1, A1, R2, E2, A2>(
   effect0: LazyArg<Effect<R, E, A>>,
   schedule0: LazyArg<Schedule<R1, E, A1>>,
   orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock & R & R1 & R2, E2, A | A2> {
   return Effect.serviceWithEffect(HasClock)((clock) =>
     clock.retryOrElse(effect0, schedule0, orElse)
@@ -563,13 +563,13 @@ export function retryOrElseEither<R, E, A, S, R1, A1, R2, E2, A2>(
   effect0: LazyArg<Effect<R, E, A>>,
   schedule0: LazyArg<Schedule.WithState<S, R1, E, A1>>,
   orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock & R & R1 & R2, E2, Either<A2, A>>
 export function retryOrElseEither<R, E, A, R1, A1, R2, E2, A2>(
   effect0: LazyArg<Effect<R, E, A>>,
   schedule0: LazyArg<Schedule<R1, E, A1>>,
   orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock & R & R1 & R2, E2, Either<A2, A>> {
   return Effect.serviceWithEffect(HasClock)((clock) =>
     clock.retryOrElseEither(effect0, schedule0, orElse)
@@ -587,12 +587,12 @@ export function retryOrElseEither<R, E, A, R1, A1, R2, E2, A2>(
 export function schedule<R, E, A, S, R1, A1>(
   effect0: LazyArg<Effect<R, E, A>>,
   schedule0: LazyArg<Schedule.WithState<S, R1, any, A1>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock & R & R1, E, A1>
 export function schedule<R, E, A, R1, A1>(
   effect0: LazyArg<Effect<R, E, A>>,
   schedule0: LazyArg<Schedule<R1, any, A1>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock & R & R1, E, A1> {
   return Effect.serviceWithEffect(HasClock)((clock) =>
     clock.schedule(effect0, schedule0)
@@ -609,13 +609,13 @@ export function scheduleFrom<R, E, A, S, R1, A1>(
   effect0: LazyArg<Effect<R, E, A>>,
   a0: LazyArg<A>,
   schedule0: LazyArg<Schedule.WithState<S, R1, A, A1>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock & R & R1, E, A1>
 export function scheduleFrom<R, E, A, R1, A1>(
   effect0: LazyArg<Effect<R, E, A>>,
   a0: LazyArg<A>,
   schedule0: LazyArg<Schedule<R1, A, A1>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock & R & R1, E, A1> {
   return Effect.serviceWithEffect(HasClock)((clock) =>
     clock.scheduleFrom(effect0, a0, schedule0)

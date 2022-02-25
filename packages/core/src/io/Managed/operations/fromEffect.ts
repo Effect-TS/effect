@@ -12,7 +12,7 @@ import * as Finalizer from "../ReleaseMap/finalizer"
  */
 export function fromEffect<R, E, A>(
   effect: LazyArg<Effect<R, E, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return Managed<R, E, A>(
     Effect.uninterruptibleMask(({ restore }) =>
@@ -30,7 +30,7 @@ export function fromEffect<R, E, A>(
  */
 export function fromEffectUninterruptible<R, E, A>(
   effect: LazyArg<Effect<R, E, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return fromEffect(Effect.suspendSucceed(effect).uninterruptible())
 }

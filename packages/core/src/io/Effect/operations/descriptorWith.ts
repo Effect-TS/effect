@@ -10,7 +10,7 @@ import { IDescriptor } from "../definition"
  */
 export function descriptorWith<R, E, A>(
   f: (descriptor: Fiber.Descriptor) => Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return new IDescriptor(f, __etsTrace)
+  return new IDescriptor(f, __tsplusTrace)
 }

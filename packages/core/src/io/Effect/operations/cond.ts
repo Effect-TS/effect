@@ -14,7 +14,7 @@ export function cond_<E, A>(
   predicate: LazyArg<boolean>,
   result: LazyArg<A>,
   error: LazyArg<E>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): IO<E, A> {
   return Effect.suspendSucceed(() =>
     predicate() ? Effect.succeed(result) : Effect.fail(error)
@@ -29,7 +29,7 @@ export function cond_<E, A>(
  *
  * @ets_data_first cond_
  */
-export function cond<E, A>(result: LazyArg<A>, error: LazyArg<E>, __etsTrace?: string) {
+export function cond<E, A>(result: LazyArg<A>, error: LazyArg<E>, __tsplusTrace?: string) {
   return (predicate: LazyArg<boolean>): IO<E, A> =>
     Effect.cond(predicate, result, error)
 }

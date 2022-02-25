@@ -9,7 +9,7 @@ import { Managed } from "../definition"
 export function map_<R, E, A, B>(
   self: Managed<R, E, A>,
   f: (a: A) => B,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, B> {
   return Managed(self.effect.map(({ tuple: [fin, a] }) => Tuple(fin, f(a))))
 }
@@ -19,6 +19,6 @@ export function map_<R, E, A, B>(
  *
  * @ets_data_first map_
  */
-export function map<A, B>(f: (a: A) => B, __etsTrace?: string) {
+export function map<A, B>(f: (a: A) => B, __tsplusTrace?: string) {
   return <R, E>(self: Managed<R, E, A>) => map_(self, f)
 }

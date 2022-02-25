@@ -9,7 +9,7 @@ import { Effect } from "../definition"
  */
 export function eventually<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): RIO<R, A> {
   return self | (Effect.yieldNow > self.eventually())
 }

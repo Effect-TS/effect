@@ -15,53 +15,53 @@ export interface TestConsole {
   /**
    * Writes the specified string to the output buffer.
    */
-  readonly print: (line: any, __etsTrace?: string) => IO<TestConsoleError, void>
+  readonly print: (line: any, __tsplusTrace?: string) => IO<TestConsoleError, void>
   /**
    * Writes the specified string to the error buffer.
    */
-  readonly printError: (line: any, __etsTrace?: string) => IO<TestConsoleError, void>
+  readonly printError: (line: any, __tsplusTrace?: string) => IO<TestConsoleError, void>
   /**
    * Writes the specified string to the output buffer followed by a newline
    * character.
    */
-  readonly printLine: (line: any, __etsTrace?: string) => IO<TestConsoleError, void>
+  readonly printLine: (line: any, __tsplusTrace?: string) => IO<TestConsoleError, void>
   /**
    * Writes the specified string to the error buffer followed by a newline
    * character.
    */
   readonly printLineError: (
     line: any,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ) => IO<TestConsoleError, void>
   /**
    * Takes the first value from the input buffer, if one exists, or else fails
    * with an `EOFException`.
    */
-  readonly readLine: (__etsTrace?: string) => IO<TestConsoleError, void>
+  readonly readLine: (__tsplusTrace?: string) => IO<TestConsoleError, void>
   /**
    * Writes the specified sequence of strings to the input buffer. The first
    * string in the sequence will be the first to be taken. These strings will
    * be taken before any strings that were previously in the input buffer.
    */
-  readonly feedLines: (lines: Array<string>, __etsTrace?: string) => UIO<void>
+  readonly feedLines: (lines: Array<string>, __tsplusTrace?: string) => UIO<void>
   /**
    * Takes the first value from the input buffer, if one exists, or else fails
    * with an `EOFException`.
    */
-  readonly output: (__etsTrace?: string) => UIO<Array<string>>
+  readonly output: (__tsplusTrace?: string) => UIO<Array<string>>
   /**
    * Returns the contents of the error output buffer. The first value written
    * to the error output buffer will be the first in the sequence.
    */
-  readonly outputError: (__etsTrace?: string) => UIO<void>
+  readonly outputError: (__tsplusTrace?: string) => UIO<void>
   /**
    * Clears the contents of the input buffer.
    */
-  readonly clearInput: (__etsTrace?: string) => UIO<void>
+  readonly clearInput: (__tsplusTrace?: string) => UIO<void>
   /**
    * Clears the contents of the output buffer.
    */
-  readonly clearOutput: (__etsTrace?: string) => UIO<void>
+  readonly clearOutput: (__tsplusTrace?: string) => UIO<void>
   // /**
   //  * Runs the specified effect with the `TestConsole` set to silent mode, so
   //  * that console output is only written to the output buffer and not rendered
@@ -69,7 +69,7 @@ export interface TestConsole {
   //  */
   // readonly silent: <R, E, A>(
   //   effect: Effect<R, E, A>,
-  //   __etsTrace?: string
+  //   __tsplusTrace?: string
   // ) => Effect<R, E, A>
   // /**
   //  * Runs the specified effect with the `TestConsole` set to debug mode, so
@@ -78,13 +78,13 @@ export interface TestConsole {
   //  */
   // readonly debug: <R, E, A>(
   //   effect: Effect<R, E, A>,
-  //   __etsTrace?: string
+  //   __tsplusTrace?: string
   // ) => Effect<R, E, A>
   /**
    * Saves the `TestConsole`'s current state in an effect which, when run,
    * will restore the `TestConsole` state to the saved state.
    */
-  readonly save: (__etsTrace?: string) => UIO<UIO<void>>
+  readonly save: (__tsplusTrace?: string) => UIO<UIO<void>>
 }
 
 export const TestConsole = tag<TestConsole>(TestConsoleId)
@@ -155,7 +155,7 @@ export function makeTestConsole(
  */
 export function print(
   line: any,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasTestConsole, TestConsoleError, void> {
   return Effect.serviceWithEffect(TestConsole)((_) => _.print(line))
 }
@@ -165,7 +165,7 @@ export function print(
  */
 export function printError(
   line: any,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasTestConsole, TestConsoleError, void> {
   return Effect.serviceWithEffect(TestConsole)((_) => _.printError(line))
 }
@@ -176,7 +176,7 @@ export function printError(
  */
 export function printLine(
   line: any,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasTestConsole, TestConsoleError, void> {
   return Effect.serviceWithEffect(TestConsole)((_) => _.printLine(line))
 }
@@ -187,7 +187,7 @@ export function printLine(
  */
 export function printLineError(
   line: any,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasTestConsole, TestConsoleError, void> {
   return Effect.serviceWithEffect(TestConsole)((_) => _.printLineError(line))
 }
@@ -197,7 +197,7 @@ export function printLineError(
  * with an `EOFException`.
  */
 export function readLine(
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasTestConsole, TestConsoleError, void> {
   return Effect.serviceWithEffect(TestConsole)((_) => _.readLine())
 }
@@ -209,7 +209,7 @@ export function readLine(
  */
 export function feedLines(
   lines: Array<string>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): RIO<HasTestConsole, void> {
   return Effect.serviceWithEffect(TestConsole)((_) => _.feedLines(lines))
 }
@@ -218,7 +218,7 @@ export function feedLines(
  * Takes the first value from the input buffer, if one exists, or else fails
  * with an `EOFException`.
  */
-export function output(__etsTrace?: string): RIO<HasTestConsole, Array<string>> {
+export function output(__tsplusTrace?: string): RIO<HasTestConsole, Array<string>> {
   return Effect.serviceWithEffect(TestConsole)((_) => _.output())
 }
 
@@ -226,20 +226,20 @@ export function output(__etsTrace?: string): RIO<HasTestConsole, Array<string>> 
  * Returns the contents of the error output buffer. The first value written
  * to the error output buffer will be the first in the sequence.
  */
-export function outputError(__etsTrace?: string): RIO<HasTestConsole, void> {
+export function outputError(__tsplusTrace?: string): RIO<HasTestConsole, void> {
   return Effect.serviceWithEffect(TestConsole)((_) => _.outputError())
 }
 
 /**
  * Clears the contents of the input buffer.
  */
-export function clearInput(__etsTrace?: string): RIO<HasTestConsole, void> {
+export function clearInput(__tsplusTrace?: string): RIO<HasTestConsole, void> {
   return Effect.serviceWithEffect(TestConsole)((_) => _.clearInput())
 }
 
 /**
  * Clears the contents of the output buffer.
  */
-export function clearOutput(__etsTrace?: string): RIO<HasTestConsole, void> {
+export function clearOutput(__tsplusTrace?: string): RIO<HasTestConsole, void> {
   return Effect.serviceWithEffect(TestConsole)((_) => _.clearOutput())
 }

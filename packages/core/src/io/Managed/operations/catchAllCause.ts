@@ -12,7 +12,7 @@ import { Managed } from "../definition"
 export function catchAllCause_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
   f: (cause: Cause<E>) => Managed<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & R2, E2, A | A2> {
   return self.foldCauseManaged(f, Managed.succeedNow)
 }
@@ -27,7 +27,7 @@ export function catchAllCause_<R, E, A, R2, E2, A2>(
  */
 export function catchAllCause<E, R2, E2, A2>(
   f: (cause: Cause<E>) => Managed<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, A>(self: Managed<R, E, A>): Managed<R & R2, E2, A | A2> =>
     self.catchAllCause(f)

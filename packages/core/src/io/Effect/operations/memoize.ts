@@ -10,7 +10,7 @@ import { Effect } from "../definition"
  */
 export function memoize<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<Effect<R, E, A>> {
   return Effect.Do()
     .bind("promise", () => Promise.make<E, A>())

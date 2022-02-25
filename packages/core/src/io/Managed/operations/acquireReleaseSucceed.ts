@@ -12,7 +12,7 @@ import { Managed } from "../definition"
 export function acquireReleaseSucceed<A, X>(
   acquire: LazyArg<A>,
   release: LazyArg<X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, never, A> {
   return Managed.acquireReleaseSucceedWith(acquire, release)
 }

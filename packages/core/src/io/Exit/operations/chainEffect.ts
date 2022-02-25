@@ -9,7 +9,7 @@ import type { Exit } from "../definition"
 export function chainEffect_<E, A, R, E1, A1>(
   self: Exit<E, A>,
   f: (a: A) => Effect<R, E1, Exit<E, A1>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E1, Exit<E, A1>> {
   switch (self._tag) {
     case "Failure":
@@ -26,7 +26,7 @@ export function chainEffect_<E, A, R, E1, A1>(
  */
 export function chainEffect<A, R, E1, E, A1>(
   f: (a: A) => Effect<R, E1, Exit<E, A1>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return (self: Exit<E, A>): Effect<R, E1, Exit<E, A1>> => self.flatMapEffect(f)
 }

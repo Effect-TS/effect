@@ -61,11 +61,11 @@ class DimapEffect<RA, RB, EA, EB, A, B, C, RC, EC, RD, ED, D> extends XQueueInte
 
   _isShutdown: UIO<boolean> = this.self._isShutdown
 
-  _offer(a: C, __etsTrace?: string): Effect<RC & RA, EA | EC, boolean> {
+  _offer(a: C, __tsplusTrace?: string): Effect<RC & RA, EA | EC, boolean> {
     return this.f(a).flatMap((a) => this.self._offer(a))
   }
 
-  _offerAll(as: Iterable<C>, __etsTrace?: string): Effect<RC & RA, EC | EA, boolean> {
+  _offerAll(as: Iterable<C>, __tsplusTrace?: string): Effect<RC & RA, EC | EA, boolean> {
     return Effect.forEach(as, this.f).flatMap((as) => this.self._offerAll(as))
   }
 
@@ -79,7 +79,7 @@ class DimapEffect<RA, RB, EA, EB, A, B, C, RC, EC, RD, ED, D> extends XQueueInte
     a.mapEffect(this.g)
   )
 
-  _takeUpTo(n: number, __etsTrace?: string): Effect<RD & RB, ED | EB, Chunk<D>> {
+  _takeUpTo(n: number, __tsplusTrace?: string): Effect<RD & RB, ED | EB, Chunk<D>> {
     return this.self._takeUpTo(n).flatMap((bs) => bs.mapEffect(this.g))
   }
 }

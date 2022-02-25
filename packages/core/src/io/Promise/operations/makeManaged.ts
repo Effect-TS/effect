@@ -9,7 +9,7 @@ import { Promise } from "../definition"
  * @tsplus static ets/PromiseOps makeManaged
  */
 export function makeManaged<E, A>(
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, never, Promise<E, A>> {
   return Effect.fiberId.flatMap((id) => Promise.makeAs<E, A>(id)).toManaged()
 }

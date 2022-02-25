@@ -13,7 +13,7 @@ import { concrete } from "../definition/concrete"
 export function modify_<EA, EB, B, A>(
   self: XFiberRef<EA, EB, A, A>,
   f: (a: A) => Tuple<[B, A]>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): IO<EA | EB, B> {
   return matchTag_(concrete(self), {
     Runtime: (_) => _.modify(f),
@@ -65,6 +65,6 @@ export function modify_<EA, EB, B, A>(
  *
  * @ets_data_first modify_
  */
-export function modify<B, A>(f: (a: A) => Tuple<[B, A]>, __etsTrace?: string) {
+export function modify<B, A>(f: (a: A) => Tuple<[B, A]>, __tsplusTrace?: string) {
   return <EA, EB>(self: XFiberRef<EA, EB, A, A>): IO<EA | EB, B> => modify_(self, f)
 }

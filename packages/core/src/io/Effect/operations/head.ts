@@ -10,7 +10,7 @@ import { Effect } from "../definition"
  */
 export function head<R, E, A>(
   self: Effect<R, E, List<A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, Option<E>, A> {
   return self.foldEffect(
     (e) => Effect.fail(Option.some(e)),

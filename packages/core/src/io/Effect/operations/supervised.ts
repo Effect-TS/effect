@@ -11,9 +11,9 @@ import { Effect, ISupervise } from "../definition"
 export function supervised_<R, E, A, X>(
   self: Effect<R, E, A>,
   supervisor: LazyArg<Supervisor<X>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return Effect.suspendSucceed(new ISupervise(self, supervisor, __etsTrace))
+  return Effect.suspendSucceed(new ISupervise(self, supervisor, __tsplusTrace))
 }
 
 /**
@@ -22,7 +22,7 @@ export function supervised_<R, E, A, X>(
  *
  * @ets_data_first supervised_
  */
-export function supervised<X>(supervisor: LazyArg<Supervisor<X>>, __etsTrace?: string) {
+export function supervised<X>(supervisor: LazyArg<Supervisor<X>>, __tsplusTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
     self.supervised(supervisor)
 }

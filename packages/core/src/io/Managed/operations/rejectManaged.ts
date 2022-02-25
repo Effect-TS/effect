@@ -11,7 +11,7 @@ import { Managed } from "../definition"
 export function rejectManaged_<R, E, A, R1, E1>(
   self: Managed<R, E, A>,
   pf: (a: A) => Option<Managed<R1, E1, E1>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return self.flatMap((a) =>
     pf(a).fold(
@@ -30,7 +30,7 @@ export function rejectManaged_<R, E, A, R1, E1>(
  */
 export function rejectManaged<A, R1, E1>(
   pf: (a: A) => Option<Managed<R1, E1, E1>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Managed<R, E, A>): Managed<R & R1, E | E1, A> =>
     rejectManaged_(self, pf)

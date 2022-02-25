@@ -11,7 +11,7 @@ import { Effect } from "../definition"
 export function whenCase<R, E, A, B>(
   a: LazyArg<A>,
   pf: (a: A) => Option<Effect<R, E, B>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Option<B>> {
   return Effect.suspendSucceed(
     pf(a())

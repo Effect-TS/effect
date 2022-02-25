@@ -7,6 +7,6 @@ import type { Effect } from "../definition"
  *
  * @tsplus fluent ets/Effect absorb
  */
-export function absorb<R, E, A>(self: Effect<R, E, A>, __etsTrace?: string) {
+export function absorb<R, E, A>(self: Effect<R, E, A>, __tsplusTrace?: string) {
   return self.absorbWith(identity)
 }

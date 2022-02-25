@@ -10,7 +10,7 @@ import { Effect } from "../definition"
  */
 export function succeedLeft<A>(
   value: LazyArg<A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<Either<A, never>> {
   return Effect.succeed(Either.left(value()))
 }

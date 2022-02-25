@@ -10,7 +10,7 @@ import { Managed } from "../definition"
  */
 export function fromOption<A>(
   option: LazyArg<Option<A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, Option<never>, A> {
   return Managed.succeed(option).flatMap((_) =>
     _.fold(() => Managed.failNow(Option.none), Managed.succeedNow)

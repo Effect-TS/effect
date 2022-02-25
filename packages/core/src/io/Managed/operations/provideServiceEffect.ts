@@ -17,7 +17,7 @@ export function provideServiceEffect_<R, E, A, T>(
 ) {
   return <R1, E1>(
     effect: Effect<R1, E1, T>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Managed<R1 & Erase<R, Has<T>>, E | E1, A> =>
     // @ts-expect-error
     Managed.environmentWithManaged((r: R & R1) =>
@@ -38,7 +38,7 @@ export function provideServiceEffect<T>(tag: Tag<T>) {
   return <R1, E1>(effect: Effect<R1, E1, T>) =>
     <R, E, A>(
       self: Managed<R & Has<T>, E, A>,
-      __etsTrace?: string
+      __tsplusTrace?: string
     ): Managed<R1 & Erase<R, Has<T>>, E | E1, A> =>
       // @ts-expect-error
       self.provideServiceEffect(tag)(effect)

@@ -10,7 +10,7 @@ import { Effect } from "../definition"
 export function someOrElseEffect_<R, E, A, R2, E2, B>(
   self: Effect<R, E, Option<A>>,
   orElse: LazyArg<Effect<R2, E2, B>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E | E2, A | B> {
   return (self as Effect<R, E, Option<A | B>>).flatMap((option) =>
     option.map(Effect.succeedNow).getOrElse(orElse)
@@ -24,7 +24,7 @@ export function someOrElseEffect_<R, E, A, R2, E2, B>(
  */
 export function someOrElseEffect<R2, E2, B>(
   orElse: Effect<R2, E2, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, Option<A>>): Effect<R & R2, E | E2, A | B> =>
     self.someOrElseEffect(orElse)

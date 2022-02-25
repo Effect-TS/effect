@@ -8,7 +8,7 @@ import type { Effect, RIO } from "../definition"
  */
 export function isSuccess<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): RIO<R, boolean> {
   return self.fold(constFalse, constTrue)
 }

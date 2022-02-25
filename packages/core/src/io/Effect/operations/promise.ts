@@ -11,7 +11,7 @@ import { Effect } from "../definition"
 export function tryCatchPromise<E, A>(
   promise: LazyArg<Promise<A>>,
   onReject: (reason: unknown) => E,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): IO<E, A> {
   return Effect.succeed(promise).flatMap((promise) =>
     Effect.async<unknown, E, A>((resolve) => {
@@ -30,7 +30,7 @@ export function tryCatchPromise<E, A>(
  */
 export function tryPromise<A>(
   promise: LazyArg<Promise<A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): IO<unknown, A> {
   return Effect.succeed(promise).flatMap((promise) =>
     Effect.async<unknown, unknown, A>((resolve) => {
@@ -46,7 +46,7 @@ export function tryPromise<A>(
  *
  * @tsplus static ets/EffectOps promise
  */
-export function promise<A>(promise: LazyArg<Promise<A>>, __etsTrace?: string): UIO<A> {
+export function promise<A>(promise: LazyArg<Promise<A>>, __tsplusTrace?: string): UIO<A> {
   return Effect.succeed(promise).flatMap((promise) =>
     Effect.async<unknown, never, A>((resolve) => {
       promise

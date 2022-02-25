@@ -12,7 +12,7 @@ import type { Effect, RIO } from "../definition"
 export function ensuringChildren_<R, E, A, R1, X>(
   self: Effect<R, E, A>,
   children: (_: Chunk<Fiber.Runtime<any, any>>) => RIO<R1, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1, E, A> {
   return track().flatMap((supervisor) =>
     self.supervised(supervisor).ensuring(supervisor.value.flatMap(children))
@@ -27,7 +27,7 @@ export function ensuringChildren_<R, E, A, R1, X>(
  */
 export function ensuringChildren<R1, X>(
   children: (_: Chunk<Fiber.Runtime<any, any>>) => RIO<R1, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R1, E, A> =>
     self.ensuringChildren(children)

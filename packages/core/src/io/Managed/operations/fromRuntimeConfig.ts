@@ -12,7 +12,7 @@ import { Managed } from "../definition"
  */
 export function fromRuntimeConfig(
   runtimeConfig: LazyArg<RuntimeConfig>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, never, void> {
   return Managed.fromEffect(Effect.runtimeConfig).flatMap((currentRuntimeConfig) =>
     Managed.acquireRelease(

@@ -7,6 +7,9 @@ import { interrupt } from "./interrupt"
  * interruption will happen in a separate daemon fiber, and the returned
  * effect will always resume immediately without waiting.
  */
-export function interruptFork<E, A>(self: Fiber<E, A>, __etsTrace?: string): UIO<void> {
+export function interruptFork<E, A>(
+  self: Fiber<E, A>,
+  __tsplusTrace?: string
+): UIO<void> {
   return interrupt(self).forkDaemon().asUnit()
 }

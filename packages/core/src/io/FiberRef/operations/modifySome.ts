@@ -14,7 +14,7 @@ export function modifySome_<EA, EB, A, B>(
   self: XFiberRef<EA, EB, A, A>,
   def: B,
   f: (a: A) => Option<Tuple<[B, A]>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): IO<EA | EB, B> {
   return modify_(self, (v) => f(v).getOrElse(Tuple(def, v)))
 }
@@ -30,7 +30,7 @@ export function modifySome_<EA, EB, A, B>(
 export function modifySome<B, A>(
   def: B,
   f: (a: A) => Option<Tuple<[B, A]>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <EA, EB>(self: XFiberRef<EA, EB, A, A>): IO<EA | EB, B> =>
     modifySome_(self, def, f)

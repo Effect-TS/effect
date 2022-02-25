@@ -13,7 +13,7 @@ import type { Effect } from "../definition"
 export function provideSomeLayer_<R, E, A, R1, E1, A1>(
   self: Effect<R, E, A>,
   layer: Layer<R1, E1, A1>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R1 & Erase<R, A1>, E | E1, A> {
   // @ts-expect-error
   return self.provideLayer(andLayer_(environmentLayer<R1>(), layer))
@@ -27,7 +27,7 @@ export function provideSomeLayer_<R, E, A, R1, E1, A1>(
  */
 export function provideSomeLayer<R1, E1, A1>(
   layer: Layer<R1, E1, A1>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Effect<R & A1, E, A>): Effect<R1 & Erase<R, A1>, E | E1, A> =>
     // @ts-expect-error

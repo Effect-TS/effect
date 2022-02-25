@@ -9,7 +9,7 @@ import type { LogLevel } from "../definition"
  */
 export function locally<R, E, A>(
   self: LogLevel,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): (use: Effect<R, E, A>) => Effect<R, E, A> {
   return fiberRefLocally_(currentLogLevel.value, self)
 }
