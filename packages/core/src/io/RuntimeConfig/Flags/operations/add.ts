@@ -1,17 +1,20 @@
-import * as HS from "../../../../collection/immutable/HashSet"
 import type { RuntimeConfigFlag } from "../../Flag"
 import { RuntimeConfigFlags } from "../definition"
 
+/**
+ * @tsplus operator ets/RuntimeConfigFlags +
+ * @tsplus fluent ets/RuntimeConfigFlags add
+ */
 export function add_(
   self: RuntimeConfigFlags,
   flag: RuntimeConfigFlag
 ): RuntimeConfigFlags {
-  return new RuntimeConfigFlags(HS.add_(self.flags, flag))
+  return RuntimeConfigFlags(self.flags + flag)
 }
 
 /**
  * @ets_data_first add_
  */
 export function add(flag: RuntimeConfigFlag) {
-  return (self: RuntimeConfigFlags): RuntimeConfigFlags => add_(self, flag)
+  return (self: RuntimeConfigFlags): RuntimeConfigFlags => self + flag
 }
