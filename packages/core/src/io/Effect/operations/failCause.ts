@@ -8,6 +8,9 @@ import { IFail } from "../definition"
  *
  * @tsplus static ets/EffectOps failCause
  */
-export function failCause<E>(f: LazyArg<Cause<E>>, __tsplusTrace?: string): IO<E, never> {
+export function failCause<E>(
+  f: LazyArg<Cause<E>>,
+  __tsplusTrace?: string
+): IO<E, never> {
   return new IFail(f, __tsplusTrace)
 }

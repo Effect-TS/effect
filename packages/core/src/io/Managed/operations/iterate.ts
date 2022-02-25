@@ -18,7 +18,10 @@ import { Managed } from "../definition"
  */
 export function iterate<Z>(initial: LazyArg<Z>) {
   return (cont: (z: Z) => boolean) =>
-    <R, E>(body: (z: Z) => Managed<R, E, Z>, __tsplusTrace?: string): Managed<R, E, Z> =>
+    <R, E>(
+      body: (z: Z) => Managed<R, E, Z>,
+      __tsplusTrace?: string
+    ): Managed<R, E, Z> =>
       Managed.suspend(() => {
         const initial0 = initial()
         if (cont(initial0)) {

@@ -33,6 +33,9 @@ export function updateAll_(
  *
  * @ets_data_first updateAll_
  */
-export function updateAll(f: (finalizer: Finalizer) => Finalizer, __tsplusTrace?: string) {
+export function updateAll(
+  f: (finalizer: Finalizer) => Finalizer,
+  __tsplusTrace?: string
+) {
   return (self: ReleaseMap): UIO<void> => updateAll_(self, f)
 }

@@ -14,7 +14,10 @@ export function provideService_<R, E, A, T>(
   self: Managed<R & Has<T>, E, A>,
   tag: Tag<T>
 ) {
-  return (service: LazyArg<T>, __tsplusTrace?: string): Managed<Erase<R, Has<T>>, E, A> =>
+  return (
+    service: LazyArg<T>,
+    __tsplusTrace?: string
+  ): Managed<Erase<R, Has<T>>, E, A> =>
     // @ts-expect-error
     self.provideServiceManaged(tag)(Managed.succeed(service))
 }
