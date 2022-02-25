@@ -11,7 +11,7 @@ import { Effect } from "../definition"
 export function onTermination_<R, E, A, R2, X>(
   self: Effect<R, E, A>,
   cleanup: (cause: Cause<never>) => RIO<R2, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E, A> {
   return Effect.unit.acquireReleaseExitWith(
     () => self,
@@ -30,7 +30,7 @@ export function onTermination_<R, E, A, R2, X>(
  */
 export function onTermination<R2, X>(
   cleanup: (cause: Cause<never>) => RIO<R2, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E, A> =>
     self.onTermination(cleanup)

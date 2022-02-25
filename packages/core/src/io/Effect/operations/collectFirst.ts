@@ -11,7 +11,7 @@ import { Effect } from "../definition"
 export function collectFirst<R, E, A, B>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, Option<B>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Option<B>> {
   return Effect.succeed(as).flatMap((iterable) => loop(iterable[Symbol.iterator](), f))
 }
@@ -19,7 +19,7 @@ export function collectFirst<R, E, A, B>(
 function loop<R, E, A, B>(
   iterator: Iterator<A, any, undefined>,
   f: (a: A) => Effect<R, E, Option<B>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Option<B>> {
   const next = iterator.next()
   return next.done

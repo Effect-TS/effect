@@ -10,7 +10,7 @@ import { Managed } from "../definition"
 export function unless_<R, E, A>(
   self: Managed<R, E, A>,
   b: LazyArg<boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, Option<A>> {
   return Managed.suspend(b() ? Managed.none : self.asSome())
 }
@@ -20,6 +20,6 @@ export function unless_<R, E, A>(
  *
  * @ets_data_first unless_
  */
-export function unless(b: LazyArg<boolean>, __etsTrace?: string) {
+export function unless(b: LazyArg<boolean>, __tsplusTrace?: string) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<R, E, Option<A>> => unless_(self, b)
 }

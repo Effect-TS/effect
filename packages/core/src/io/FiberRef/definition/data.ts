@@ -39,7 +39,7 @@ export class Runtime<A> extends XFiberRefInternal<never, never, A, A> {
     return this.modify((v) => Tuple(v, v))
   }
 
-  set(value: A, __etsTrace?: string): IO<never, void> {
+  set(value: A, __tsplusTrace?: string): IO<never, void> {
     return this.modify(() => Tuple(undefined, value))
   }
 
@@ -83,8 +83,8 @@ export class Runtime<A> extends XFiberRefInternal<never, never, A, A> {
     ).asUnit()
   }
 
-  modify<B>(f: (a: A) => Tuple<[B, A]>, __etsTrace?: string): UIO<B> {
-    return new IFiberRefModify(this, f, __etsTrace)
+  modify<B>(f: (a: A) => Tuple<[B, A]>, __tsplusTrace?: string): UIO<B> {
+    return new IFiberRefModify(this, f, __tsplusTrace)
   }
 }
 
@@ -113,7 +113,7 @@ export class Derived<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
     )
   }
 
-  set(a: A, __etsTrace?: string): IO<EA, void> {
+  set(a: A, __tsplusTrace?: string): IO<EA, void> {
     return this.use((value, _, setEither) =>
       setEither(a).fold(
         (e) => Effect.failNow(e),
@@ -168,7 +168,7 @@ export class Derived<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
     )
   }
 
-  locally(a: A, __etsTrace?: string) {
+  locally(a: A, __tsplusTrace?: string) {
     return <R, EC, C>(use: Effect<R, EC, C>): Effect<R, EA | EC, C> =>
       this.use((value, _, setEither) =>
         value.get.flatMap((old) =>
@@ -180,7 +180,7 @@ export class Derived<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
       )
   }
 
-  locallyManaged(a: A, __etsTrace?: string): Managed<unknown, EA, void> {
+  locallyManaged(a: A, __tsplusTrace?: string): Managed<unknown, EA, void> {
     return this.use((value, _, setEither) =>
       Managed(
         Effect.Do()
@@ -227,7 +227,7 @@ export class DerivedAll<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
     )
   }
 
-  set(a: A, __etsTrace?: string): IO<EA, void> {
+  set(a: A, __tsplusTrace?: string): IO<EA, void> {
     return this.use((value, _, __, setEither) =>
       value.modify((s) =>
         setEither(a)(s).fold(
@@ -285,7 +285,7 @@ export class DerivedAll<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
     )
   }
 
-  locally(a: A, __etsTrace?: string) {
+  locally(a: A, __tsplusTrace?: string) {
     return <R, EC, C>(use: Effect<R, EC, C>): Effect<R, EA | EC, C> =>
       this.use((value, _, __, setEither) =>
         value.get.flatMap((old) =>
@@ -297,7 +297,7 @@ export class DerivedAll<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
       )
   }
 
-  locallyManaged(a: A, __etsTrace?: string): Managed<unknown, EA, void> {
+  locallyManaged(a: A, __tsplusTrace?: string): Managed<unknown, EA, void> {
     return this.use((value, _, __, setEither) =>
       Managed(
         Effect.Do()
@@ -325,7 +325,7 @@ export function make<A>(
   initial: A,
   fork: (a: A) => A = identity,
   join: (x: A, y: A) => A = (_, a) => a,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<FiberRef.Runtime<A>> {
   return Effect.suspendSucceed(() => {
     const ref = unsafeMake(initial, fork, join)
@@ -391,6 +391,6 @@ export const forkScopeOverride: LazyValue<FiberRef.Runtime<Option<Scope>>> =
  *
  * @tsplus static ets/EffectOps environment
  */
-export function effectEnvironment<R>(__etsTrace?: string): RIO<R, R> {
+export function effectEnvironment<R>(__tsplusTrace?: string): RIO<R, R> {
   return Effect.suspendSucceed(() => fiberRefGet(currentEnvironment.value))
 }

@@ -9,6 +9,6 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps failNow
  */
-export function failNow<E>(e: E, __etsTrace?: string): IO<E, never> {
+export function failNow<E>(e: E, __tsplusTrace?: string): IO<E, never> {
   return Effect.failCauseNow(Cause.fail(e, none))
 }

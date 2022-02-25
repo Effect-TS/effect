@@ -12,7 +12,7 @@ import { interrupt } from "./interrupt"
  */
 export function toManaged<E, A>(
   self: Fiber<E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, never, Fiber<E, A>> {
   return Managed(
     Effect.environment<unknown>()

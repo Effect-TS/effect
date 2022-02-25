@@ -10,7 +10,7 @@ import type { Effect } from "../definition"
 export function someOrElse_<R, E, A, B>(
   self: Effect<R, E, Option<A>>,
   orElse: LazyArg<B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A | B> {
   return self.map((option) => option.getOrElse(orElse))
 }
@@ -20,7 +20,7 @@ export function someOrElse_<R, E, A, B>(
  *
  * @ets_data_first someOrElse_
  */
-export function someOrElse<B>(orElse: LazyArg<B>, __etsTrace?: string) {
+export function someOrElse<B>(orElse: LazyArg<B>, __tsplusTrace?: string) {
   return <R, E, A>(self: Effect<R, E, Option<A>>): Effect<R, E, A | B> =>
     self.someOrElse(orElse)
 }

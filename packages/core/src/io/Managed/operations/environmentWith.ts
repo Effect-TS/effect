@@ -7,7 +7,7 @@ import { Managed } from "../definition"
  */
 export function environmentWith<R0, A>(
   f: (_: R0) => A,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R0, never, A> {
   return Managed.environment<R0>().map(f)
 }

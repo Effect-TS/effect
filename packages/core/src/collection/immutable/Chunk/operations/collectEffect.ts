@@ -11,7 +11,7 @@ import { ArrTypeId, Chunk, concrete, SingletonTypeId } from "../definition"
 export function collectEffect_<A, R, E, B>(
   self: Chunk<A>,
   f: (a: A) => Option<Effect<R, E, B>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
   concrete(self)
 
@@ -47,7 +47,7 @@ export function collectEffect_<A, R, E, B>(
  */
 export function collectEffect<A, R, E, B>(
   f: (a: A) => Option<Effect<R, E, B>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return (self: Chunk<A>): Effect<R, E, Chunk<B>> => self.collectEffect(f)
 }

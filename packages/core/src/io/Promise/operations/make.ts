@@ -7,6 +7,6 @@ import { Promise } from "../definition"
  *
  * @tsplus static ets/PromiseOps make
  */
-export function make<E, A>(__etsTrace?: string): UIO<Promise<E, A>> {
+export function make<E, A>(__tsplusTrace?: string): UIO<Promise<E, A>> {
   return Effect.fiberId.flatMap((id) => Promise.makeAs(id))
 }

@@ -13,7 +13,7 @@ export function reduceAllPar<R, E, A>(
   a: LazyArg<Effect<R, E, A>>,
   as: LazyArg<Iterable<Effect<R, E, A>>>,
   f: (acc: A, a: A) => A,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(
     Effect.mergeAllPar<R, E, A, Option<A>>(

@@ -10,7 +10,7 @@ import { Effect } from "../definition"
 export function forEachEffect_<R, E, A, R1, E1, B>(
   self: Effect<R, E, A>,
   f: (a: A) => Effect<R1, E1, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1, E | E1, Option<B>> {
   return self.foldCauseEffect(
     () => Effect.none,
@@ -26,7 +26,7 @@ export function forEachEffect_<R, E, A, R1, E1, B>(
  */
 export function forEachEffect<A, R1, E1, B>(
   f: (a: A) => Effect<R1, E1, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R1, E | E1, Option<B>> =>
     self.forEachEffect(f)

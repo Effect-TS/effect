@@ -9,7 +9,7 @@ import { Strategy } from "./strategy"
  *
  * @tsplus static ets/QueueOps unbounded
  */
-export function unbounded<A>(__etsTrace?: string): UIO<Queue<A>> {
+export function unbounded<A>(__tsplusTrace?: string): UIO<Queue<A>> {
   return Effect.succeed(MutableQueue.Unbounded<A>()).flatMap((queue) =>
     Queue.create(queue, Strategy.Dropping())
   )

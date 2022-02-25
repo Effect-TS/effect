@@ -10,7 +10,7 @@ import { Managed } from "../definition"
 export function forall<R, E, A>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Managed<R, E, boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, boolean> {
   return Managed.succeed(as).flatMap((iterable) => loop(iterable[Symbol.iterator](), f))
 }
@@ -18,7 +18,7 @@ export function forall<R, E, A>(
 function loop<R, E, A>(
   iterator: Iterator<A>,
   f: (a: A) => Managed<R, E, boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, boolean> {
   const next = iterator.next()
   if (next.done) {

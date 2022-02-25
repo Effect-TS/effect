@@ -12,7 +12,7 @@ import { Effect } from "../definition"
 export function getOrFailWith<E, A>(
   option: LazyArg<Option<A>>,
   e: LazyArg<E>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): IO<E, A> {
   return Effect.suspendSucceed(option().fold(Effect.fail(e), Effect.succeedNow))
 }

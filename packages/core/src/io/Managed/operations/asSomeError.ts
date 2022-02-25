@@ -6,7 +6,7 @@ import type { Managed } from "../definition"
  */
 export function asSomeError<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, Option<E>, A> {
   return self.mapError(Option.some)
 }

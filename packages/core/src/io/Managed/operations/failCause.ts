@@ -10,7 +10,7 @@ import { Managed } from "../definition"
  */
 export function failCause<E>(
   f: LazyArg<Cause<E>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, E, never> {
   return Managed.fromEffect(Effect.failCause(f))
 }

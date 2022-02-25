@@ -11,7 +11,7 @@ import type { Managed } from "../definition"
 export function zipFlattenPar_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
   that: Managed<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & R2, E | E2, Tp.MergeTuple<A, A2>> {
   return self.zipWithPar(that, Tp.mergeTuple)
 }
@@ -24,7 +24,7 @@ export function zipFlattenPar_<R, E, A, R2, E2, A2>(
  */
 export function zipFlattenPar<R2, E2, A2>(
   that: Managed<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(
     self: Managed<R, E, A>

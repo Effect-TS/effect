@@ -16,7 +16,7 @@ import { Managed } from "../definition"
 export function forEach<R, E, A, B>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Managed<R, E, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, Chunk<B>> {
   return Managed(
     Effect.forEach(as, (a) => f(a).effect).map((res) => {

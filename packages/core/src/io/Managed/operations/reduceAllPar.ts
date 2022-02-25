@@ -16,7 +16,7 @@ export function reduceAllPar_<R, E, A>(
   a: LazyArg<Managed<R, E, A>>,
   as: LazyArg<Iterable<Managed<R, E, A>>>,
   f: (acc: A, a: A) => A,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, A> {
   return ReleaseMap.makeManagedPar.mapEffect((parallelReleaseMap) =>
     locally_(

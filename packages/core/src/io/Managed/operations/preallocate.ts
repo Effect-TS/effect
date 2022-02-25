@@ -18,7 +18,7 @@ import { ReleaseMap } from "../ReleaseMap"
  */
 export function preallocate<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Managed<unknown, never, A>> {
   return Effect.uninterruptibleMask(({ restore }) =>
     Effect.Do()

@@ -9,7 +9,7 @@ import { Effect } from "../definition"
  * @tsplus fluent ets/Effect repeatWhileEquals
  */
 export function repeatWhileEquals_<R, E, A>(self: Effect<R, E, A>, equal: Equal<A>) {
-  return (a: LazyArg<A>, __etsTrace?: string): Effect<R, E, A> =>
+  return (a: LazyArg<A>, __tsplusTrace?: string): Effect<R, E, A> =>
     Effect.succeed(a).flatMap((a) => self.repeatWhile((_) => equal.equals(_, a)))
 }
 
@@ -20,7 +20,7 @@ export function repeatWhileEquals_<R, E, A>(self: Effect<R, E, A>, equal: Equal<
  * @ets_data_first repeatWhileEquals_
  */
 export function repeatWhileEquals<A>(equal: Equal<A>) {
-  return (a: LazyArg<A>, __etsTrace?: string) =>
+  return (a: LazyArg<A>, __tsplusTrace?: string) =>
     <R, E>(self: Effect<R, E, A>): Effect<R, E, A> =>
       self.repeatWhileEquals(equal)(a)
 }

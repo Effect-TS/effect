@@ -10,7 +10,7 @@ import { Effect } from "../definition"
 export function someOrFail_<R, E, A, E2>(
   self: Effect<R, E, Option<A>>,
   orFail: LazyArg<E2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E | E2, A> {
   return self.flatMap((option) =>
     option.fold(Effect.succeed(orFail).flatMap(Effect.failNow), Effect.succeedNow)
@@ -22,7 +22,7 @@ export function someOrFail_<R, E, A, E2>(
  *
  * @ets_data_first someOrFail_
  */
-export function someOrFail<E2>(orFail: LazyArg<E2>, __etsTrace?: string) {
+export function someOrFail<E2>(orFail: LazyArg<E2>, __tsplusTrace?: string) {
   return <R, E, A>(self: Effect<R, E, Option<A>>): Effect<R, E | E2, A> =>
     self.someOrFail(orFail)
 }

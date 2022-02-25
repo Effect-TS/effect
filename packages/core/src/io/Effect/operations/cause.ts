@@ -10,7 +10,7 @@ import type { Effect, RIO } from "../definition"
  */
 export function cause<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): RIO<R, Cause<E>> {
   return self.foldCause(identity, () => Cause.empty)
 }

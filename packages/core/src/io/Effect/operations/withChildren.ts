@@ -13,7 +13,7 @@ import { Effect } from "../definition"
  */
 export function withChildren<R, E, A>(
   get: (children: UIO<Chunk<Fiber.Runtime<any, any>>>) => Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return Supervisor.track().flatMap((supervisor) =>
     get(

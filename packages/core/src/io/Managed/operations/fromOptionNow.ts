@@ -9,7 +9,7 @@ import { Managed } from "../definition"
  */
 export function fromOptionNow<A>(
   option: Option<A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, Option<never>, A> {
   return Managed.succeedNow(option).flatMap((_) =>
     _.fold(() => Managed.failNow(Option.none), Managed.succeedNow)

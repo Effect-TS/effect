@@ -14,7 +14,7 @@ import type { Effect } from "../definition"
 export function catchAllDefect_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   f: (defect: unknown) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E | E2, A | A2> {
   return self.catchSomeDefect((d) => O.some(f(d)))
 }
@@ -31,7 +31,7 @@ export function catchAllDefect_<R, E, A, R2, E2, A2>(
  */
 export function catchAllDefect<R2, E2, A2>(
   f: (defect: unknown) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> =>
     self.catchAllDefect(f)

@@ -11,7 +11,7 @@ import { Effect } from "../definition"
  */
 export function fromFiberEffect<R, E, A>(
   fiber: LazyArg<Effect<R, E, Fiber<E, A>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(fiber().flatMap(join))
 }

@@ -10,7 +10,7 @@ import { Effect } from "../definition"
 export function orDieWith_<R, E, A>(
   self: Effect<R, E, A>,
   f: (e: E) => unknown,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): RIO<R, A> {
   return self.foldEffect((e) => Effect.dieNow(f(e)), Effect.succeedNow)
 }
@@ -21,6 +21,6 @@ export function orDieWith_<R, E, A>(
  *
  * @ets_data_first orDieWith_
  */
-export function orDieWith<E>(f: (e: E) => unknown, __etsTrace?: string) {
+export function orDieWith<E>(f: (e: E) => unknown, __tsplusTrace?: string) {
   return <R, A>(self: Effect<R, E, A>): RIO<R, A> => self.orDieWith(f)
 }

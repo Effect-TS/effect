@@ -10,7 +10,7 @@ import { Managed } from "../definition"
 export function mapErrorCause_<R, E, A, E1>(
   self: Managed<R, E, A>,
   f: (cause: Cause<E>) => Cause<E1>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E1, A> {
   return Managed(self.effect.mapErrorCause(f))
 }
@@ -23,7 +23,7 @@ export function mapErrorCause_<R, E, A, E1>(
  */
 export function mapErrorCause<E, E1>(
   f: (cause: Cause<E>) => Cause<E1>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, A>(self: Managed<R, E, A>): Managed<R, E1, A> => mapErrorCause_(self, f)
 }

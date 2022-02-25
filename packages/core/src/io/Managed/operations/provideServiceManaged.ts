@@ -16,7 +16,7 @@ export function provideServiceManaged_<R, E, A, T>(
 ) {
   return <R1, E1>(
     managed: Managed<R1, E1, T>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Managed<R1 & Erase<R, Has<T>>, E | E1, A> => {
     // @ts-expect-error
     return Managed.environmentWithManaged((r: R & R1) =>
@@ -33,7 +33,7 @@ export function provideServiceManaged_<R, E, A, T>(
  * @ets_data_first provideServiceManaged_
  */
 export function provideServiceManaged<T>(tag: Tag<T>) {
-  return <R1, E1>(managed: Managed<R1, E1, T>, __etsTrace?: string) =>
+  return <R1, E1>(managed: Managed<R1, E1, T>, __tsplusTrace?: string) =>
     <R, E, A>(
       self: Managed<R & Has<T>, E, A>
     ): Managed<R1 & Erase<R, Has<T>>, E | E1, A> =>

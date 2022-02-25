@@ -6,6 +6,6 @@ import type { Managed } from "../definition"
  *
  * @tsplus fluent ets/Managed isSuccess
  */
-export function isSuccess<R, E, A>(self: Managed<R, E, A>, __etsTrace?: string) {
+export function isSuccess<R, E, A>(self: Managed<R, E, A>, __tsplusTrace?: string) {
   return self.fold(constFalse, constTrue)
 }

@@ -9,7 +9,7 @@ import { Effect } from "../definition"
  * @tsplus fluent ets/Effect retryWhileEquals
  */
 export function retryWhileEquals_<R, E, A>(self: Effect<R, E, A>, equal: Equal<E>) {
-  return (e: LazyArg<E>, __etsTrace?: string): Effect<R, E, A> =>
+  return (e: LazyArg<E>, __tsplusTrace?: string): Effect<R, E, A> =>
     Effect.succeed(e).flatMap((_) => self.retryWhile((e) => equal.equals(_, e)))
 }
 
@@ -20,7 +20,7 @@ export function retryWhileEquals_<R, E, A>(self: Effect<R, E, A>, equal: Equal<E
  * @ets_data_first retryWhileEquals_
  */
 export function retryWhileEquals<E>(equal: Equal<E>) {
-  return (e: LazyArg<E>, __etsTrace?: string) =>
+  return (e: LazyArg<E>, __tsplusTrace?: string) =>
     <R, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
       self.retryWhileEquals(equal)(e)
 }

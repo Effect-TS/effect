@@ -23,7 +23,7 @@ export function loopDiscard<Z>(
 ) {
   return <R, E, X>(
     body: (z: Z) => Effect<R, E, X>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R, E, void> => {
     return Effect.suspendSucceed(() => {
       const initial0 = initial()

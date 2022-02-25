@@ -9,7 +9,7 @@ import { Effect } from "../definition"
  */
 export function unleft<R, E, B, A>(
   self: Effect<R, Either<E, B>, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Either<A, B>> {
   return self.foldEffect(
     (either) => either.fold(Effect.failNow, (b) => Effect.succeedNow(Either.right(b))),

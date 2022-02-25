@@ -14,7 +14,7 @@ import type { Finalizer } from "../ReleaseMap/finalizer"
  */
 export function finalizerRef<R>(
   initial: LazyArg<Finalizer>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, never, Ref<Finalizer>> {
   return Managed.acquireReleaseExitWith(refMake<Finalizer>(initial()), (ref, exit) =>
     refGet(ref).flatMap((fin) => fin(exit))

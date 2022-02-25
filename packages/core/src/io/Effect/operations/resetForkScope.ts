@@ -10,11 +10,11 @@ import { IOverrideForkScope } from "../definition"
  */
 export function resetForkScope<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return new IOverrideForkScope(
     () => self,
     () => Option.none,
-    __etsTrace
+    __tsplusTrace
   )
 }

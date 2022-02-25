@@ -29,7 +29,7 @@ export function takeBetween_<RA, RB, EA, EB, A, B>(
  *
  * @ets_data_first takeBetween_
  */
-export function takeBetween(min: number, max: number, __etsTrace?: string) {
+export function takeBetween(min: number, max: number, __tsplusTrace?: string) {
   return <RA, RB, EA, EB, A, B>(
     self: XQueue<RA, RB, EA, EB, A, B>
   ): Effect<RB, EB, Chunk<B>> => self.takeBetween(min, max)
@@ -40,7 +40,7 @@ function takeRemainderLoop<RA, RB, EA, EB, A, B>(
   min: number,
   max: number,
   acc: Chunk<B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<RB, EB, Chunk<B>> {
   if (max < min) {
     return Effect.succeedNow(acc)

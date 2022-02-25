@@ -16,7 +16,7 @@ import { concreteQueue } from "../definition"
 export function takeUpTo_<RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,
   n: number,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<RB, EB, Chunk<B>> {
   concreteQueue(self)
   return self._takeUpTo(n)
@@ -27,7 +27,7 @@ export function takeUpTo_<RA, RB, EA, EB, A, B>(
  *
  * @ets_data_first takeUpTo_
  */
-export function takeUpTo(n: number, __etsTrace?: string) {
+export function takeUpTo(n: number, __tsplusTrace?: string) {
   return <RA, RB, EA, EB, A, B>(
     self: XQueue<RA, RB, EA, EB, A, B>
   ): Effect<RB, EB, Chunk<B>> => self.takeUpTo(n)

@@ -6,6 +6,6 @@ import { fromEffect } from "./fromEffect"
  *
  * @tsplus static ets/ManagedOps environment
  */
-export function environment<R>(__etsTrace?: string) {
+export function environment<R>(__tsplusTrace?: string) {
   return fromEffect(Effect.environment<R>())
 }

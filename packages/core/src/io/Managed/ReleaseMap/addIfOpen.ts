@@ -21,7 +21,7 @@ import { Exited, Running } from "./state"
 export function addIfOpen_(
   self: ReleaseMap,
   finalizer: Finalizer,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<Option<number>> {
   return refModify_(self.ref, (s) => {
     switch (s._tag) {
@@ -54,7 +54,7 @@ export function addIfOpen_(
  *
  * @ets_data_first addIfOpen_
  */
-export function addIfOpen(finalizer: Finalizer, __etsTrace?: string) {
+export function addIfOpen(finalizer: Finalizer, __tsplusTrace?: string) {
   return (self: ReleaseMap): Effect<unknown, never, Option<number>> =>
     addIfOpen_(self, finalizer)
 }

@@ -8,7 +8,7 @@ import type { Managed } from "../definition"
  */
 export function asSome<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, Option<A>> {
   return self.map(Option.some)
 }

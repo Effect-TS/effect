@@ -9,6 +9,6 @@ import { Managed } from "../definition"
  *
  * @tsplus static ets/ManagedOps runtime
  */
-export function runtime<R>(__etsTrace?: string): Managed<R, never, Runtime<R>> {
+export function runtime<R>(__tsplusTrace?: string): Managed<R, never, Runtime<R>> {
   return Managed.fromEffect(Effect.runtime<R>())
 }

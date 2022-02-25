@@ -13,7 +13,7 @@ import type { Managed } from "../definition"
 export function ensuring_<R, E, A, R2, X>(
   self: Managed<R, E, A>,
   f: Effect<R2, never, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & R2, E, A> {
   return self.onExit(() => f)
 }
@@ -27,6 +27,6 @@ export function ensuring_<R, E, A, R2, X>(
  *
  * @ets_data_first ensuring_
  */
-export function ensuring<R2, X>(f: Effect<R2, never, X>, __etsTrace?: string) {
+export function ensuring<R2, X>(f: Effect<R2, never, X>, __tsplusTrace?: string) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<R & R2, E, A> => ensuring_(self, f)
 }

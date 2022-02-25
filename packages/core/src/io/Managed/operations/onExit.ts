@@ -17,7 +17,7 @@ import { ReleaseMap } from "../ReleaseMap"
 export function onExit_<R, E, A, R1, X>(
   self: Managed<R, E, A>,
   cleanup: (exit: Exit<E, A>) => Effect<R1, never, X>,
-  __etsTrace?: string | undefined
+  __tsplusTrace?: string | undefined
 ): Managed<R & R1, E, A> {
   return Managed(
     Effect.uninterruptibleMask(({ restore }) =>
@@ -56,7 +56,7 @@ export function onExit_<R, E, A, R1, X>(
  */
 export function onExit<E, A, R1, X>(
   cleanup: (exit: Exit<E, A>) => Effect<R1, never, X>,
-  __etsTrace?: string | undefined
+  __tsplusTrace?: string | undefined
 ) {
   return <R>(self: Managed<R, E, A>): Managed<R & R1, E, A> => self.onExit(cleanup)
 }

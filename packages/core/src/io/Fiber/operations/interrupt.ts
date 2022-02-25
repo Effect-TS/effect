@@ -10,7 +10,7 @@ import type { Fiber } from "../definition"
  */
 export function interrupt<E, A>(
   self: Fiber<E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<Exit<E, A>> {
   return Effect.fiberId.flatMap((fiberId) => self.interruptAs(fiberId))
 }

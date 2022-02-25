@@ -11,7 +11,7 @@ import { Effect } from "../definition"
  */
 export function once<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<Effect<R, E, void>> {
   return make(true).map((ref) =>
     Effect.whenEffect(getAndSet_(ref, false), self).asUnit()

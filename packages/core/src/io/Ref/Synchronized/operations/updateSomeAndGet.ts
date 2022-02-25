@@ -12,7 +12,7 @@ import { modifyEffect_ } from "./modifyEffect"
 export function updateSomeAndGetEffect_<RA, RB, RC, EA, EB, EC, A>(
   self: XSynchronized<RA, RB, EA, EB, A, A>,
   pf: (a: A) => Option<Effect<RC, EC, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<RA & RB & RC, EA | EB | EC, A> {
   return modifyEffect_(self, (v) =>
     pf(v)
@@ -30,7 +30,7 @@ export function updateSomeAndGetEffect_<RA, RB, RC, EA, EB, EC, A>(
  */
 export function updateSomeAndGetEffect<RC, EC, A>(
   pf: (a: A) => Option<Effect<RC, EC, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <RA, RB, EA, EB>(
     self: XSynchronized<RA, RB, EA, EB, A, A>

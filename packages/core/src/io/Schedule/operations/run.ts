@@ -14,7 +14,7 @@ export function run_<State, Env, In, Out>(
   self: Schedule.WithState<State, Env, In, Out>,
   now: number,
   input: Iterable<In>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): RIO<Env, Chunk<Out>> {
   return runLoop(self, now, List.from(input), self._initial, Chunk.empty<Out>())
 }
@@ -24,7 +24,7 @@ export function run_<State, Env, In, Out>(
  *
  * @ets_data_first run_
  */
-export function run<In>(now: number, input: Iterable<In>, __etsTrace?: string) {
+export function run<In>(now: number, input: Iterable<In>, __tsplusTrace?: string) {
   return <Env, Out>(self: Schedule<Env, In, Out>): RIO<Env, Chunk<Out>> =>
     self.run(now, input)
 }

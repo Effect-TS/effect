@@ -10,7 +10,7 @@ import { Managed } from "../definition"
 export function someOrElseManaged_<R, E, A, R1, E1, B>(
   self: Managed<R, E, Option<A>>,
   orElse: LazyArg<Managed<R1, E1, B>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return self.flatMap((_) => _.fold(orElse, Managed.succeedNow))
 }
@@ -22,7 +22,7 @@ export function someOrElseManaged_<R, E, A, R1, E1, B>(
  */
 export function someOrElseManaged<R1, E1, B>(
   orElse: LazyArg<Managed<R1, E1, B>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Managed<R, E, Option<A>>) => someOrElseManaged_(self, orElse)
 }

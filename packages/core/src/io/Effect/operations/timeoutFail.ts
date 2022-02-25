@@ -12,7 +12,7 @@ export function timeoutFail_<R, E, E1, A>(
   self: Effect<R, E, A>,
   e: LazyArg<E1>,
   milliseconds: number,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & HasClock, E | E1, A> {
   return self.timeoutTo(Effect.fail(e), Effect.succeedNow, milliseconds).flatten()
 }
@@ -26,7 +26,7 @@ export function timeoutFail_<R, E, E1, A>(
 export function timeoutFail<E1>(
   cause: LazyArg<E1>,
   milliseconds: number,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & HasClock, E | E1, A> =>
     self.timeoutFail(cause, milliseconds)

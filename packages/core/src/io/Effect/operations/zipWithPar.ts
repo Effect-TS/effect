@@ -15,7 +15,7 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
   self: Effect<R, E, A>,
   that: LazyArg<Effect<R2, E2, A2>>,
   f: (a: A, b: A2) => B,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E | E2, B> {
   const g = (b: A2, a: A) => f(a, b)
   return Effect.transplant((graft) =>
@@ -38,7 +38,7 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
 export function zipWithPar<A, R2, E2, A2, B>(
   that: LazyArg<Effect<R2, E2, A2>>,
   f: (a: A, b: A2) => B,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R2, E | E2, B> =>
     self.zipWithPar(that, f)

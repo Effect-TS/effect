@@ -14,7 +14,7 @@ import { Effect } from "../definition"
 export function mapErrorCause_<R, E, A, E2>(
   self: Effect<R, E, A>,
   f: (cause: Cause<E>) => Cause<E2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E2, A> {
   return self.foldCauseEffect((c) => Effect.failCauseNow(f(c)), Effect.succeedNow)
 }
@@ -31,7 +31,7 @@ export function mapErrorCause_<R, E, A, E2>(
  */
 export function mapErrorCause<E, E2>(
   f: (cause: Cause<E>) => Cause<E2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, E2, A> => self.mapErrorCause(f)
 }

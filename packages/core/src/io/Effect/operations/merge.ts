@@ -9,7 +9,7 @@ import { Effect } from "../definition"
  */
 export function merge<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): RIO<R, E | A> {
   return self.foldEffect((e) => Effect.succeedNow(e), Effect.succeedNow)
 }

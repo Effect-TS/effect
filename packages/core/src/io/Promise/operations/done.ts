@@ -12,7 +12,7 @@ import type { Promise } from "../definition"
 export function done_<E, A>(
   self: Promise<E, A>,
   exit: LazyArg<Exit<E, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<unknown, never, boolean> {
   return self.completeWith(Effect.done(exit))
 }
@@ -23,6 +23,6 @@ export function done_<E, A>(
  *
  * @ets_data_first die_
  */
-export function done<E, A>(exit: LazyArg<Exit<E, A>>, __etsTrace?: string) {
+export function done<E, A>(exit: LazyArg<Exit<E, A>>, __tsplusTrace?: string) {
   return (self: Promise<E, A>): Effect<unknown, never, boolean> => self.done(exit)
 }

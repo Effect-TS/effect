@@ -6,7 +6,7 @@ import type { XSynchronized } from "../definition"
  */
 export function get<RA, RB, EA, EB, A, B>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<RB, EB, B> {
   return self.get
 }

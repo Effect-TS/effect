@@ -14,7 +14,7 @@ export function provideService_<R, E, A, T>(
   self: Managed<R & Has<T>, E, A>,
   tag: Tag<T>
 ) {
-  return (service: LazyArg<T>, __etsTrace?: string): Managed<Erase<R, Has<T>>, E, A> =>
+  return (service: LazyArg<T>, __tsplusTrace?: string): Managed<Erase<R, Has<T>>, E, A> =>
     // @ts-expect-error
     self.provideServiceManaged(tag)(Managed.succeed(service))
 }
@@ -27,7 +27,7 @@ export function provideService_<R, E, A, T>(
  * @ets_data_first provideService_
  */
 export function provideService<T>(tag: Tag<T>) {
-  return (service: LazyArg<T>, __etsTrace?: string) =>
+  return (service: LazyArg<T>, __tsplusTrace?: string) =>
     <R, E, A>(self: Managed<R & Has<T>, E, A>): Managed<Erase<R, Has<T>>, E, A> =>
       // @ts-expect-error
       self.provideService(tag)(service)

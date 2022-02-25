@@ -11,7 +11,7 @@ import { Effect } from "../definition"
  */
 export function fromEitherCauseNow<E, A>(
   either: Either<Cause<E>, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): IO<E, A> {
   return Effect.succeed(() => either).flatMap((either) =>
     either.fold(Effect.failCauseNow, Effect.succeedNow)
@@ -25,7 +25,7 @@ export function fromEitherCauseNow<E, A>(
  */
 export function fromEitherCause<E, A>(
   either: LazyArg<Either<Cause<E>, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): IO<E, A> {
   return Effect.succeed(either).flatMap((either) =>
     either.fold(Effect.failCauseNow, Effect.succeedNow)

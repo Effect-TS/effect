@@ -12,7 +12,7 @@ export function reduceEffect_<A, R, E, S>(
   self: Chunk<A>,
   s: S,
   f: (s: S, a: A) => Effect<R, E, S>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, S> {
   concrete(self)
   if (self._typeId === SingletonTypeId) {
@@ -31,7 +31,7 @@ export function reduceEffect_<A, R, E, S>(
 export function reduceEffect<A, R, E, S>(
   s: S,
   f: (s: S, a: A) => Effect<R, E, S>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return (self: Chunk<A>): Effect<R, E, S> => self.reduceEffect(s, f)
 }

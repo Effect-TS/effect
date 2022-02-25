@@ -10,7 +10,7 @@ import { Effect } from "../definition"
 export function unlessEffect_<R, E, A, R2, E2>(
   self: Effect<R, E, A>,
   predicate: LazyArg<Effect<R2, E2, boolean>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E | E2, Option<A>> {
   return Effect.suspendSucceed(
     predicate().flatMap((b) => (b ? Effect.none : self.asSome()))
@@ -24,7 +24,7 @@ export function unlessEffect_<R, E, A, R2, E2>(
  */
 export function unlessEffect<R2, E2>(
   predicate: LazyArg<Effect<R2, E2, boolean>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, Option<A>> =>
     self.unlessEffect(predicate)

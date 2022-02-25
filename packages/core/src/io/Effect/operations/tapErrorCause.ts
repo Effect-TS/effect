@@ -10,7 +10,7 @@ import { Effect } from "../definition"
 export function tapErrorCause_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,
   f: (cause: Cause<E>) => Effect<R2, E2, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E | E2, A> {
   return self.foldCauseEffect(
     (cause) => f(cause).zipRight(Effect.failCauseNow(cause)),
@@ -26,7 +26,7 @@ export function tapErrorCause_<R, E, A, R2, E2, X>(
  */
 export function tapErrorCause<E, R2, E2, X>(
   f: (cause: Cause<E>) => Effect<R2, E2, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> =>
     self.tapErrorCause(f)

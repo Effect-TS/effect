@@ -9,7 +9,7 @@ import type { Managed } from "../definition"
  */
 export function option<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, never, Option<A>> {
   return self.fold(() => Option.none, Option.some)
 }

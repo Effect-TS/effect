@@ -9,6 +9,6 @@ import type { Fiber } from "../definition"
  * "inner interruption" of this fiber, unlike interruption triggered by
  * another fiber, "inner interruption" can be caught and recovered.
  */
-export function join<E, A>(self: Fiber<E, A>, __etsTrace?: string): IO<E, A> {
+export function join<E, A>(self: Fiber<E, A>, __tsplusTrace?: string): IO<E, A> {
   return self.await.flatMap((_) => Effect.done(_)) < self.inheritRefs
 }

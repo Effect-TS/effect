@@ -10,7 +10,7 @@ import { makeSynthetic } from "./makeSynthetic"
 export function mapEffect_<E, E1, A, B>(
   self: Fiber<E, A>,
   f: (a: A) => IO<E1, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Fiber<E | E1, B> {
   return makeSynthetic({
     id: self.id,
@@ -33,6 +33,6 @@ export function mapEffect_<E, E1, A, B>(
  *
  * @ets_data_first mapEffect_
  */
-export function mapEffect<E1, A, B>(f: (a: A) => IO<E1, B>, __etsTrace?: string) {
+export function mapEffect<E1, A, B>(f: (a: A) => IO<E1, B>, __tsplusTrace?: string) {
   return <E>(self: Fiber<E, A>): Fiber<E | E1, B> => mapEffect_(self, f)
 }

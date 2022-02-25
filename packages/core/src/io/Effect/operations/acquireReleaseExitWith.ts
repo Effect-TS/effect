@@ -15,7 +15,7 @@ export function acquireReleaseExitWith<R, E, A, R1, E1, A1, R2, E2, X>(
   acquire: LazyArg<Effect<R, E, A>>,
   use: (a: A) => Effect<R1, E1, A1>,
   release: (a: A, e: Exit<E1, A1>) => Effect<R2, E2, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1 & R2, E | E1 | E2, A1> {
   return Effect.uninterruptibleMask(({ restore }) =>
     acquire().flatMap((a) =>
@@ -50,7 +50,7 @@ export function acquireReleaseExitWithNow_<R, E, A, R1, E1, A1, R2, E2, X>(
   self: Effect<R, E, A>,
   use: (a: A) => Effect<R1, E1, A1>,
   release: (a: A, e: Exit<E1, A1>) => Effect<R2, E2, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1 & R2, E | E1 | E2, A1> {
   return Effect.acquireReleaseExitWith(self, use, release)
 }
@@ -67,7 +67,7 @@ export function acquireReleaseExitWithNow_<R, E, A, R1, E1, A1, R2, E2, X>(
 export function acquireReleaseExitWithNow<A, R1, E1, A1, R2, E2, X>(
   use: (a: A) => Effect<R1, E1, A1>,
   release: (a: A, e: Exit<E1, A1>) => Effect<R2, E2, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R1 & R2, E | E1 | E2, A1> =>
     self.acquireReleaseExitWith(use, release)

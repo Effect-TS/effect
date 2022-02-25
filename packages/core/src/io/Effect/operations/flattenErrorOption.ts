@@ -10,7 +10,7 @@ import type { Effect } from "../definition"
 export function flattenErrorOption_<R, E, E1, A>(
   self: Effect<R, Option<E>, A>,
   def: LazyArg<E1>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E | E1, A> {
   return self.mapError((e) => e.getOrElse(def))
 }
@@ -20,7 +20,7 @@ export function flattenErrorOption_<R, E, E1, A>(
  *
  * @ets_data_first flattenErrorOption_
  */
-export function flattenErrorOption<E1>(def: LazyArg<E1>, __etsTrace?: string) {
+export function flattenErrorOption<E1>(def: LazyArg<E1>, __tsplusTrace?: string) {
   return <R, E, A>(self: Effect<R, Option<E>, A>): Effect<R, E | E1, A> =>
     self.flattenErrorOption(def)
 }

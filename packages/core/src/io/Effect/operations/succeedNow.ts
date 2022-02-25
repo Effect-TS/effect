@@ -6,6 +6,6 @@ import { ISucceedNow } from "../definition"
  *
  * @tsplus static ets/EffectOps succeedNow
  */
-export function succeedNow<A>(a: A, __etsTrace?: string): Effect<unknown, never, A> {
-  return new ISucceedNow(a, __etsTrace)
+export function succeedNow<A>(a: A, __tsplusTrace?: string): Effect<unknown, never, A> {
+  return new ISucceedNow(a, __tsplusTrace)
 }

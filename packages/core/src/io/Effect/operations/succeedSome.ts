@@ -7,6 +7,6 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps some
  */
-export function succeedSome<A>(a: A, __etsTrace?: string): UIO<Option<A>> {
+export function succeedSome<A>(a: A, __tsplusTrace?: string): UIO<Option<A>> {
   return Effect.succeed(Option.some(a))
 }

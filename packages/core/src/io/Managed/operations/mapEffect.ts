@@ -11,7 +11,7 @@ import { Managed } from "../definition"
 export function mapEffect_<R, E, A, R2, E2, B>(
   self: Managed<R, E, A>,
   f: (a: A) => Effect<R2, E2, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & R2, E | E2, B> {
   return Managed(
     self.effect.flatMap(({ tuple: [fin, a] }) => f(a).map((_) => Tuple(fin, _)))
@@ -25,7 +25,7 @@ export function mapEffect_<R, E, A, R2, E2, B>(
  */
 export function mapEffect<A, R2, E2, B>(
   f: (a: A) => Effect<R2, E2, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Managed<R, E, A>) => mapEffect_(self, f)
 }

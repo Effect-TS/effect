@@ -8,7 +8,7 @@ import type { Effect } from "../definition"
  */
 export function asRight<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Either<never, A>> {
   return self.map(Either.right)
 }

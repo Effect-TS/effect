@@ -10,7 +10,7 @@ import { Effect } from "../definition"
  */
 export function parallelErrors<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, Chunk<E>, A> {
   return self
     .foldCauseEffect((cause) => {

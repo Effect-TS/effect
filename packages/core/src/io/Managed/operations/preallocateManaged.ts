@@ -11,7 +11,7 @@ import { Managed } from "../definition"
  */
 export function preallocateManaged<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, Managed<unknown, never, A>> {
   return Managed(
     self.effect.map(({ tuple: [release, a] }) =>

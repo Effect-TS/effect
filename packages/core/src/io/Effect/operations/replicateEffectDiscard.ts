@@ -9,7 +9,7 @@ import { Effect } from "../definition"
 export function replicateEffectDiscard_<R, E, A>(
   self: Effect<R, E, A>,
   n: number,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, void> {
   return Effect.collectAllDiscard(self.replicate(n))
 }
@@ -20,6 +20,6 @@ export function replicateEffectDiscard_<R, E, A>(
  *
  * @ets_data_first replicateEffectDiscard_
  */
-export function replicateEffectDiscard(n: number, __etsTrace?: string) {
+export function replicateEffectDiscard(n: number, __tsplusTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>) => self.replicateEffectDiscard(n)
 }

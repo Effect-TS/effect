@@ -8,7 +8,7 @@ import { Effect } from "../definition"
  */
 export function none<R, E, A>(
   self: Effect<R, E, Option<A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, Option<E>, void> {
   return self.foldEffect(
     (e) => Effect.fail(Option.some(e)),

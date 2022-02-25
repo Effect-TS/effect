@@ -11,7 +11,7 @@ import { modify_ } from "./modify"
 export function updateSome_<EA, EB, A>(
   self: XFiberRef<EA, EB, A, A>,
   f: (a: A) => Option<A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): IO<EA | EB, void> {
   return modify_(self, (v) => {
     const result = f(v)
@@ -25,7 +25,7 @@ export function updateSome_<EA, EB, A>(
  *
  * @ets_data_first updateSome_
  */
-export function updateSome<A>(f: (a: A) => Option<A>, __etsTrace?: string) {
+export function updateSome<A>(f: (a: A) => Option<A>, __tsplusTrace?: string) {
   return <EA, EB>(self: XFiberRef<EA, EB, A, A>): IO<EA | EB, void> =>
     updateSome_(self, f)
 }

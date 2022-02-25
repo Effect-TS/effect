@@ -12,13 +12,13 @@ export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
   self: Effect<R, E, A>,
   that: LazyArg<Effect<R2, E2, A2>>,
   success: (a: A) => Effect<R3, E3, A3>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
   return new IFold(
     self,
     (cause) => keepDefects(cause).fold(that, Effect.failCauseNow),
     success,
-    __etsTrace
+    __tsplusTrace
   )
 }
 
@@ -31,7 +31,7 @@ export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
 export function tryOrElse<R2, E2, A2, B, A, R3, E3, A3>(
   that: LazyArg<Effect<R2, E2, A2>>,
   success: (a: A) => Effect<R3, E3, A3>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R2 & R3, E2 | E3, A2 | A3> =>
     self.tryOrElse(that, success)

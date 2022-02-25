@@ -8,7 +8,7 @@ import { Managed } from "../definition"
  */
 export function fromEitherNow<E, A>(
   either: Either<E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, E, A> {
   return Managed.succeedNow(either).flatMap((e) =>
     e.fold(Managed.failNow, Managed.succeedNow)

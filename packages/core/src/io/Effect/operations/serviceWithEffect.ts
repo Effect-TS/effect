@@ -15,7 +15,7 @@ import { Effect } from "../definition"
 export function serviceWithEffect<T>(tag: Tag<T>) {
   return <R, E, A>(
     f: (a: T) => Effect<R, E, A>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R & Has<T>, E, A> =>
     Effect.suspendSucceed(
       fiberRefGet(currentEnvironment.value).flatMap((environment: Has<T>) =>

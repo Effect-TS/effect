@@ -16,7 +16,7 @@ import { Effect, ICheckInterrupt, IInterruptStatus } from "../definition"
 export interface InterruptStatusRestore {
   readonly restore: <R, E, A>(
     effect: LazyArg<Effect<R, E, A>>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ) => Effect<R, E, A>
   /**
    * Returns a new effect that, if the parent region is uninterruptible, can
@@ -26,7 +26,7 @@ export interface InterruptStatusRestore {
    */
   readonly force: <R, E, A>(
     effect: LazyArg<Effect<R, E, A>>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ) => Effect<R, E, A>
 }
 
@@ -35,14 +35,14 @@ export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
 
   restore = <R, E, A>(
     effect: LazyArg<Effect<R, E, A>>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R, E, A> => {
     return Effect.suspendSucceed(effect().interruptStatus(this.flag))
   }
 
   force = <R, E, A>(
     effect: LazyArg<Effect<R, E, A>>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R, E, A> => {
     return Effect.suspendSucceed(
       this.flag.isUninterruptible
@@ -76,9 +76,9 @@ export const interrupt = Effect.fiberId.flatMap((fiberId) =>
 export function interruptStatus_<R, E, A>(
   self: Effect<R, E, A>,
   flag: LazyArg<InterruptStatus>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return new IInterruptStatus(self, flag, __etsTrace)
+  return new IInterruptStatus(self, flag, __tsplusTrace)
 }
 
 /**
@@ -89,7 +89,7 @@ export function interruptStatus_<R, E, A>(
  *
  * @ets_data_first interruptStatus_
  */
-export function interruptStatus(flag: LazyArg<InterruptStatus>, __etsTrace?: string) {
+export function interruptStatus(flag: LazyArg<InterruptStatus>, __tsplusTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> => self.interruptStatus(flag)
 }
 
@@ -108,7 +108,7 @@ export function interruptStatus(flag: LazyArg<InterruptStatus>, __etsTrace?: str
  */
 export function interruptible<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return self.interruptStatus(InterruptStatus.Interruptible)
 }
@@ -125,7 +125,7 @@ export function interruptible<R, E, A>(
  */
 export function uninterruptible<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return self.interruptStatus(InterruptStatus.Uninterruptible)
 }
@@ -138,9 +138,9 @@ export function uninterruptible<R, E, A>(
  */
 export function checkInterruptible<R, E, A>(
   f: (interruptStatus: InterruptStatus) => Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return new ICheckInterrupt(f, __etsTrace)
+  return new ICheckInterrupt(f, __tsplusTrace)
 }
 
 /**
@@ -152,7 +152,7 @@ export function checkInterruptible<R, E, A>(
  */
 export function interruptibleMask<R, E, A>(
   f: (statusRestore: InterruptStatusRestore) => Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return checkInterruptible((flag) =>
     f(new InterruptStatusRestoreImpl(flag)).interruptible()
@@ -168,7 +168,7 @@ export function interruptibleMask<R, E, A>(
  */
 export function uninterruptibleMask<R, E, A>(
   f: (statusRestore: InterruptStatusRestore) => Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return checkInterruptible((flag) =>
     f(new InterruptStatusRestoreImpl(flag)).uninterruptible()
@@ -192,7 +192,7 @@ export function uninterruptibleMask<R, E, A>(
  */
 export function disconnect<R, E, A>(
   effect: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return uninterruptibleMask(({ restore }) =>
     Effect.Do()
@@ -213,7 +213,7 @@ export function disconnect<R, E, A>(
 export function onInterrupt_<R, E, A, R2, X>(
   self: Effect<R, E, A>,
   cleanup: (interruptors: HashSet.HashSet<FiberId>) => Effect<R2, never, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E, A> {
   return Effect.uninterruptibleMask(({ restore }) =>
     restore(self).foldCauseEffect(
@@ -234,7 +234,7 @@ export function onInterrupt_<R, E, A, R2, X>(
  */
 export function onInterrupt<R2, X>(
   cleanup: (interruptors: HashSet.HashSet<FiberId>) => Effect<R2, never, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E, A> =>
     self.onInterrupt(cleanup)
@@ -249,7 +249,7 @@ export function onInterrupt<R2, X>(
 export function onInterruptPolymorphic_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,
   cleanup: (interruptors: HashSet.HashSet<FiberId>) => Effect<R2, E2, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E | E2, A> {
   return Effect.uninterruptibleMask(({ restore }) =>
     restore(self).foldCauseEffect(
@@ -273,7 +273,7 @@ export function onInterruptPolymorphic_<R, E, A, R2, E2, X>(
  */
 export function onInterruptPolymorphic<R2, E2, X>(
   cleanup: (interruptors: HashSet.HashSet<FiberId>) => Effect<R2, E2, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> =>
     self.onInterruptPolymorphic(cleanup)
@@ -284,6 +284,6 @@ export function onInterruptPolymorphic<R2, E2, X>(
  *
  * @tsplus static ets/EffectOps interruptAs
  */
-export function interruptAs(fiberId: LazyArg<FiberId>, __etsTrace?: string) {
+export function interruptAs(fiberId: LazyArg<FiberId>, __tsplusTrace?: string) {
   return Effect.failCause(Cause.interrupt(fiberId()))
 }

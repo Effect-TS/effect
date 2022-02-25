@@ -11,7 +11,7 @@ import type { Effect } from "../definition"
  */
 export function flatten<R, E, R1, E1, A>(
   effect: Effect<R, E, Effect<R1, E1, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1, E | E1, A> {
   return effect.flatMap(identity)
 }
@@ -26,7 +26,7 @@ export function flatten<R, E, R1, E1, A>(
  */
 export function flattenNow<R, E, R1, E1, A>(
   self: Effect<R, E, Effect<R1, E1, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1, E | E1, A> {
   return self.flatMap(identity)
 }

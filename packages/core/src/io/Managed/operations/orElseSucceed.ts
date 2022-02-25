@@ -10,7 +10,7 @@ import { Managed } from "../definition"
 export function orElseSucceed_<R, E, A, A2>(
   self: Managed<R, E, A>,
   a: LazyArg<A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, never, A | A2> {
   return self | Managed.succeed(a)
 }
@@ -21,6 +21,6 @@ export function orElseSucceed_<R, E, A, A2>(
  *
  * @ets_data_first orElseSucceed_
  */
-export function orElseSucceed<R, E, A, A2>(a: LazyArg<A2>, __etsTrace?: string) {
+export function orElseSucceed<R, E, A, A2>(a: LazyArg<A2>, __tsplusTrace?: string) {
   return (self: Managed<R, E, A>): Managed<R, never, A | A2> => self.orElseSucceed(a)
 }

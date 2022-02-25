@@ -20,7 +20,7 @@ import type { Finalizer } from "../ReleaseMap/finalizer"
  */
 export function create<R, E, A>(
   effect: Effect<R, E, Tuple<[Finalizer, A]>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return Managed(effect)
 }

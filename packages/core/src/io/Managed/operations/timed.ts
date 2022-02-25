@@ -10,7 +10,7 @@ import { Managed } from "../definition"
  */
 export function timed<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & HasClock, E, Tuple<[number, A]>> {
   return Managed(
     self.effect.timed().map(

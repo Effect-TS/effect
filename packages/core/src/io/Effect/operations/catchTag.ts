@@ -17,7 +17,7 @@ export function catchTag_<
   self: Effect<R, E, A>,
   k: K,
   f: (e: Extract<E, { _tag: K }>) => Effect<R1, E1, A1>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1, Exclude<E, { _tag: K }> | E1, A | A1> {
   return self.catchAll((e) => {
     if ("_tag" in e && e["_tag"] === k) {
@@ -38,7 +38,7 @@ export function catchTag<
   R1,
   E1,
   A1
->(k: K, f: (e: Extract<E, { _tag: K }>) => Effect<R1, E1, A1>, __etsTrace?: string) {
+>(k: K, f: (e: Extract<E, { _tag: K }>) => Effect<R1, E1, A1>, __tsplusTrace?: string) {
   return <R, A>(
     self: Effect<R, E, A>
   ): Effect<R & R1, Exclude<E, { _tag: K }> | E1, A | A1> => self.catchTag(k, f)

@@ -10,7 +10,7 @@ import { Effect } from "../definition"
 export function retryUntilEffect_<R, R1, E, A>(
   self: Effect<R, E, A>,
   f: (e: E) => RIO<R1, boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1, E, A> {
   return self.catchAll((e) =>
     f(e).flatMap((b) =>
@@ -27,7 +27,7 @@ export function retryUntilEffect_<R, R1, E, A>(
  */
 export function retryUntilEffect<R1, E>(
   f: (e: E) => RIO<R1, boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R & R1, E, A> => self.retryUntilEffect(f)
 }

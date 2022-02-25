@@ -7,7 +7,7 @@ export function modifySome_<A, B>(
   self: Atomic<A>,
   def: B,
   f: (a: A) => Option<Tuple<[B, A]>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<unknown, never, B> {
   return Effect.succeed(() => {
     const v = self.value.get
@@ -28,7 +28,7 @@ export function modifySome_<A, B>(
 export function modifySome<A, B>(
   def: B,
   f: (a: A) => Option<Tuple<[B, A]>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return (self: Atomic<A>): Effect<unknown, never, B> => modifySome_(self, def, f)
 }

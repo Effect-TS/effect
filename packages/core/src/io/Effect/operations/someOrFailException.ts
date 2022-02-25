@@ -9,7 +9,7 @@ import type { Effect } from "../definition"
  */
 export function someOrFailException<R, E, A>(
   self: Effect<R, E, Option<A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E | NoSuchElementException, A> {
   return self.someOrFail(new NoSuchElementException())
 }

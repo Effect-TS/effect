@@ -9,7 +9,7 @@ import type { Managed } from "../definition"
  */
 export function someOrFailException<R, E, A>(
   self: Managed<R, E, Option<A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E | NoSuchElementException, A> {
   return self.someOrFail(new NoSuchElementException())
 }

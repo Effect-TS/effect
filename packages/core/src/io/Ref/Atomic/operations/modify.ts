@@ -5,7 +5,7 @@ import type { Atomic } from "../Atomic"
 export function modify_<A, B>(
   self: Atomic<A>,
   f: (a: A) => Tuple<[B, A]>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<unknown, never, B> {
   return Effect.succeed(() => {
     const v = self.value.get
@@ -18,6 +18,6 @@ export function modify_<A, B>(
 /**
  * @ets_data_first modify_
  */
-export function modify<A, B>(f: (a: A) => Tuple<[B, A]>, __etsTrace?: string) {
+export function modify<A, B>(f: (a: A) => Tuple<[B, A]>, __tsplusTrace?: string) {
   return (self: Atomic<A>): Effect<unknown, never, B> => modify_(self, f)
 }

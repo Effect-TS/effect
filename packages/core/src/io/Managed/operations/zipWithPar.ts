@@ -15,7 +15,7 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
   self: Managed<R, E, A>,
   that: Managed<R2, E2, A2>,
   f: (a: A, a2: A2) => B,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & R2, E | E2, B> {
   return ReleaseMap.makeManaged(ExecutionStrategy.Parallel).mapEffect(
     (parallelReleaseMap) => {
@@ -57,7 +57,7 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
 export function zipWithPar<R2, E2, A, A2, B>(
   that: Managed<R2, E2, A2>,
   f: (a: A, a2: A2) => B,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Managed<R, E, A>): Managed<R & R2, E | E2, B> =>
     self.zipWithPar(that, f)

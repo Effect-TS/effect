@@ -12,9 +12,9 @@ import type { Promise } from "../definition"
 export function fail_<E, A>(
   self: Promise<E, A>,
   e: LazyArg<E>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<boolean> {
-  return self.completeWith(Effect.fail(e), __etsTrace)
+  return self.completeWith(Effect.fail(e), __tsplusTrace)
 }
 
 /**
@@ -23,6 +23,6 @@ export function fail_<E, A>(
  *
  * @ets_data_first fail_
  */
-export function fail<E>(e: LazyArg<E>, __etsTrace?: string) {
+export function fail<E>(e: LazyArg<E>, __tsplusTrace?: string) {
   return <A>(self: Promise<E, A>): UIO<boolean> => self.fail(e)
 }

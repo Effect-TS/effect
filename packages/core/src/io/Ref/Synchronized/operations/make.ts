@@ -11,7 +11,7 @@ import { XSynchronized } from "../definition"
  */
 export function make<A>(
   value: A,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<unknown, never, Synchronized<A>> {
   return Effect.Do()
     .bind("ref", () => refMake<A>(value))

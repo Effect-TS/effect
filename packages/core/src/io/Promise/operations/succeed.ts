@@ -11,7 +11,7 @@ import type { Promise } from "../definition"
 export function succeed_<E, A>(
   self: Promise<E, A>,
   value: LazyArg<A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<boolean> {
   return self.completeWith(Effect.succeed(value))
 }
@@ -21,6 +21,6 @@ export function succeed_<E, A>(
  *
  * @ets_data_first succeed_
  */
-export function succeed<A>(value: LazyArg<A>, __etsTrace?: string) {
+export function succeed<A>(value: LazyArg<A>, __tsplusTrace?: string) {
   return <E>(self: Promise<E, A>): UIO<boolean> => self.succeed(value)
 }

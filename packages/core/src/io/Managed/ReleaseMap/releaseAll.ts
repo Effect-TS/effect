@@ -15,7 +15,7 @@ export function releaseAll_(
   self: ReleaseMap,
   exit: Exit<any, any>,
   executionStrategy: ExecutionStrategy,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<any> {
   return releaseMapReleaseAll(self, exit, executionStrategy)
 }
@@ -30,7 +30,7 @@ export function releaseAll_(
 export function releaseAll(
   exit: Exit<any, any>,
   executionStrategy: ExecutionStrategy,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return (self: ReleaseMap): UIO<any> => self.releaseAll(exit, executionStrategy)
 }

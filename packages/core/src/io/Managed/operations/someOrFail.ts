@@ -10,7 +10,7 @@ import { Managed } from "../definition"
 export function someOrFail_<R, E, A, E1>(
   self: Managed<R, E, Option<A>>,
   e: LazyArg<E1>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return self.flatMap((_) => _.fold(() => Managed.fail(e), Managed.succeedNow))
 }
@@ -20,7 +20,7 @@ export function someOrFail_<R, E, A, E1>(
  *
  * @ets_data_first someOrFail_
  */
-export function someOrFail<E1>(e: LazyArg<E1>, __etsTrace?: string) {
+export function someOrFail<E1>(e: LazyArg<E1>, __tsplusTrace?: string) {
   return <R, E, A>(self: Managed<R, E, Option<A>>): Managed<R, E1 | E, A> =>
     someOrFail_(self, e)
 }

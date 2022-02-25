@@ -11,7 +11,7 @@ import { ReleaseMap } from "./definition"
  */
 export function makeManaged(
   executionStrategy: ExecutionStrategy,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, never, ReleaseMap> {
   return Managed.acquireReleaseExitWith(ReleaseMap.make, (map, exit) =>
     map.releaseAll(exit, executionStrategy)

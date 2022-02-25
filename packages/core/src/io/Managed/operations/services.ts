@@ -13,7 +13,7 @@ export function services<Ts extends readonly Tag<any>[]>(...s: Ts) {
       r: UnionToIntersection<
         { [k in keyof Ts]: [Ts[k]] extends [Tag<infer T>] ? Has<T> : never }[number]
       >,
-      __etsTrace?: string
+      __tsplusTrace?: string
     ): Readonly<{ [k in keyof Ts]: [Ts[k]] extends [Tag<infer T>] ? T : never }> =>
       s.map((tag) => tag.read(r as any)) as any
   )

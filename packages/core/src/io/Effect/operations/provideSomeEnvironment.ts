@@ -9,7 +9,7 @@ import { Effect } from "../definition"
 export function provideSomeEnvironment_<R0, R, E, A>(
   self: Effect<R, E, A>,
   f: (r0: R0) => R,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R0, E, A> {
   return Effect.environmentWithEffect((r0: R0) => self.provideEnvironment(f(r0)))
 }
@@ -20,7 +20,7 @@ export function provideSomeEnvironment_<R0, R, E, A>(
  *
  * @ets_data_first provideSomeEnvironment_
  */
-export function provideSomeEnvironment<R0, R>(f: (r0: R0) => R, __etsTrace?: string) {
+export function provideSomeEnvironment<R0, R>(f: (r0: R0) => R, __tsplusTrace?: string) {
   return <E, A>(self: Effect<R, E, A>): Effect<R0, E, A> =>
     self.provideSomeEnvironment(f)
 }

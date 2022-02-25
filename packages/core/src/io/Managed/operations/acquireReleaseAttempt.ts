@@ -12,7 +12,7 @@ import { Managed } from "../definition"
 export function acquireReleaseAttempt<A, X>(
   acquire: LazyArg<A>,
   release: LazyArg<X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, unknown, A> {
   return Managed.acquireReleaseWith(Effect.attempt(acquire), () =>
     Effect.attempt(release).orDie()

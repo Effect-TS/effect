@@ -9,7 +9,7 @@ import { Chunk, concreteId } from "../definition"
 export function dropWhileEffect_<R, E, A>(
   self: Chunk<A>,
   f: (a: A) => Effect<R, E, boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Chunk<A>> {
   return Effect.suspendSucceed(() => {
     const iterator = concreteId(self)._arrayLikeIterator()
@@ -45,7 +45,7 @@ export function dropWhileEffect_<R, E, A>(
  */
 export function dropWhileEffect<R, E, A>(
   f: (a: A) => Effect<R, E, boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return (self: Chunk<A>): Effect<R, E, Chunk<A>> => self.dropWhileEffect(f)
 }

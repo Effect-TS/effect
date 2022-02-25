@@ -8,7 +8,7 @@ import { Managed } from "../definition"
  */
 export function sandbox<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, Cause<E>, A> {
   return Managed(self.effect.sandbox())
 }

@@ -6,7 +6,7 @@ import type { Promise } from "../../definition"
 export function interruptJoiner<E, A>(
   self: Promise<E, A>,
   joiner: (a: IO<E, A>) => void,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Canceler<unknown> {
   return Effect.succeed(() => {
     const state = self.state.get

@@ -10,6 +10,6 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps dieNow
  */
-export function dieNow(defect: unknown, __etsTrace?: string): UIO<never> {
+export function dieNow(defect: unknown, __tsplusTrace?: string): UIO<never> {
   return Effect.failCause(Cause.die(defect, Trace.none))
 }

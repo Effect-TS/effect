@@ -7,6 +7,6 @@ import { IFail } from "../definition"
  *
  * @tsplus static ets/EffectOps failCauseNow
  */
-export function failCauseNow<E>(cause: Cause<E>, __etsTrace?: string): IO<E, never> {
-  return new IFail(() => cause, __etsTrace)
+export function failCauseNow<E>(cause: Cause<E>, __tsplusTrace?: string): IO<E, never> {
+  return new IFail(() => cause, __tsplusTrace)
 }

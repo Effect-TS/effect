@@ -12,7 +12,7 @@ export function continueOrFail_<R, E, E1, A, A2>(
   self: Effect<R, E, A>,
   e: LazyArg<E1>,
   pf: (a: A) => Option<A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E | E1, A2> {
   return self.continueOrFailEffect(e, (a) => pf(a).map(Effect.succeedNow))
 }
@@ -26,7 +26,7 @@ export function continueOrFail_<R, E, E1, A, A2>(
 export function continueOrFail<E1, A, A2>(
   e: LazyArg<E1>,
   pf: (a: A) => Option<A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R, E | E1, A2> =>
     self.continueOrFail(e, pf)

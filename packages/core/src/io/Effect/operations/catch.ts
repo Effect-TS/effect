@@ -9,7 +9,7 @@ function _catch<N extends keyof E, K extends E[N] & string, E, R1, E1, A1>(
   tag: N,
   k: K,
   f: (e: Extract<E, { [n in N]: K }>) => Effect<R1, E1, A1>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, A>(
     self: Effect<R, E, A>
@@ -34,7 +34,7 @@ export function catch_<N extends keyof E, K extends E[N] & string, E, R, A, R1, 
   tag: N,
   k: K,
   f: (e: Extract<E, { [n in N]: K }>) => Effect<R1, E1, A1>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1, Exclude<E, { [n in N]: K }> | E1, A | A1> {
   return self.catch(tag, k, f)
 }

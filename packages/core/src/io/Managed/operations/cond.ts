@@ -11,7 +11,7 @@ export function cond<E, A>(
   pred: LazyArg<boolean>,
   result: LazyArg<A>,
   error: LazyArg<E>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, E, A> {
   return Managed.suspend(pred() ? Managed.succeed(result) : Managed.fail(error))
 }

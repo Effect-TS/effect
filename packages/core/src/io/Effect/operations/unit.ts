@@ -13,6 +13,6 @@ export const unit: UIO<void> = Effect.succeedNow(undefined)
  *
  * @tsplus static ets/EffectOps unitTraced
  */
-export function unitTraced(__etsTrace?: string): UIO<void> {
+export function unitTraced(__tsplusTrace?: string): UIO<void> {
   return Effect.succeedNow(undefined)
 }

@@ -10,7 +10,7 @@ import { Managed } from "../definition"
 export function unlessManaged_<R, E, A, R2, E2>(
   self: Managed<R, E, A>,
   b: LazyArg<Managed<R2, E2, boolean>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & R2, E | E2, Option<A>> {
   return Managed.suspend(
     b().flatMap((result) => (result ? Managed.none : self.asSome()))
@@ -24,7 +24,7 @@ export function unlessManaged_<R, E, A, R2, E2>(
  */
 export function unlessManaged<R2, E2>(
   b: LazyArg<Managed<R2, E2, boolean>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<R & R2, E | E2, Option<A>> =>
     unlessManaged_(self, b)

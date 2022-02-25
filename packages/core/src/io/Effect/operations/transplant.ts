@@ -3,7 +3,7 @@ import { Option } from "../../../data/Option"
 import { Effect, IOverrideForkScope } from "../definition"
 
 export interface Grafter {
-  <R, E, A>(effect: LazyArg<Effect<R, E, A>>, __etsTrace?: string): Effect<R, E, A>
+  <R, E, A>(effect: LazyArg<Effect<R, E, A>>, __tsplusTrace?: string): Effect<R, E, A>
 }
 
 /**
@@ -18,12 +18,12 @@ export interface Grafter {
  */
 export function transplant<R, E, A>(
   f: (grafter: Grafter) => Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return Effect.forkScopeWith((scope) =>
-    f((effect, __etsTrace) =>
+    f((effect, __tsplusTrace) =>
       Effect.suspendSucceed(
-        new IOverrideForkScope(effect, () => Option.some(scope), __etsTrace)
+        new IOverrideForkScope(effect, () => Option.some(scope), __tsplusTrace)
       )
     )
   )

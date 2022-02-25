@@ -8,7 +8,7 @@ import { Managed } from "../definition"
 export function mapError_<R, E, A, E1>(
   self: Managed<R, E, A>,
   f: (e: E) => E1,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E1, A> {
   return Managed(self.effect.mapError(f))
 }
@@ -18,6 +18,6 @@ export function mapError_<R, E, A, E1>(
  *
  * @ets_data_first mapError_
  */
-export function mapError<E, E1>(f: (e: E) => E1, __etsTrace?: string) {
+export function mapError<E, E1>(f: (e: E) => E1, __tsplusTrace?: string) {
   ;<R, A>(self: Managed<R, E, A>): Managed<R, E1, A> => mapError_(self, f)
 }

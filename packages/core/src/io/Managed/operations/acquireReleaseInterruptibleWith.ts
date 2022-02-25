@@ -12,7 +12,7 @@ import { Managed } from "../definition"
 export function acquireReleaseInterruptibleWith<R, R1, E, A>(
   acquire: LazyArg<Effect<R, E, A>>,
   release: (a: A) => Effect<R1, never, any>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & R1, E, A> {
   return Managed.fromEffect(acquire).onExitFirst((_) => _.forEach(release))
 }

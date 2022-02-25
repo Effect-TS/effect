@@ -10,7 +10,7 @@ export function tapBoth_<R, E, A, R2, E2, X, R3, E3, X1>(
   self: Effect<R, E, A>,
   f: (e: E) => Effect<R2, E2, X>,
   g: (a: A) => Effect<R3, E3, X1>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2 & R3, E | E2 | E3, A> {
   return self.foldCauseEffect(
     (cause) =>
@@ -31,7 +31,7 @@ export function tapBoth_<R, E, A, R2, E2, X, R3, E3, X1>(
 export function tapBoth<E, R2, E2, X, A, R3, E3, X1>(
   f: (e: E) => Effect<R2, E2, X>,
   g: (a: A) => Effect<R3, E3, X1>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R & R2 & R3, E | E2 | E3, A> =>
     self.tapBoth(f, g)

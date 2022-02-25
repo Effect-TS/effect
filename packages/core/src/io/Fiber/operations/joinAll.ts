@@ -10,7 +10,7 @@ import { join } from "./join"
  */
 export function joinAll<E>(
   fs: Iterable<Fiber<E, any>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): IO<E, void> {
   return join(collectAll(fs)).asUnit()
 }

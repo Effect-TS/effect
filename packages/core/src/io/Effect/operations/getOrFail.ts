@@ -12,7 +12,7 @@ import { Effect } from "../definition"
  */
 export function getOrFail<A>(
   option: LazyArg<Option<A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): IO<NoSuchElementException, A> {
   return Effect.getOrFailWith(option, new NoSuchElementException())
 }

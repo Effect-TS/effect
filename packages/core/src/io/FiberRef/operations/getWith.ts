@@ -9,7 +9,7 @@ import { concreteUnified } from "../definition"
 export function getWith_<EA, EB, A, B, R, EC, C>(
   self: XFiberRef<EA, EB, A, B>,
   f: (b: B) => Effect<R, EC, C>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, EB | EC, C> {
   concreteUnified(self)
   return self.get.flatMap(f)
@@ -23,7 +23,7 @@ export function getWith_<EA, EB, A, B, R, EC, C>(
  */
 export function getWith<B, R, EC, C>(
   f: (b: B) => Effect<R, EC, C>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <EA, EB, A>(self: XFiberRef<EA, EB, A, B>): Effect<R, EB | EC, C> =>
     getWith_(self, f)

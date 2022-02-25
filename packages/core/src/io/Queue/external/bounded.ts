@@ -15,5 +15,5 @@ import type { Queue } from "../definition"
  */
 export const bounded: <A>(
   requestedCapacity: number,
-  __etsTrace?: string | undefined
+  __tsplusTrace?: string | undefined
 ) => UIO<Queue<A>> = makeBoundedQueue

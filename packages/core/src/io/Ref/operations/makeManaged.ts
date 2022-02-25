@@ -8,7 +8,7 @@ import { make } from "./make"
  */
 export function makeManaged<A>(
   value: A,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, never, Ref<A>> {
   return fromEffect(make(value))
 }

@@ -10,6 +10,6 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps fail
  */
-export function fail<E>(f: LazyArg<E>, __etsTrace?: string): IO<E, never> {
+export function fail<E>(f: LazyArg<E>, __tsplusTrace?: string): IO<E, never> {
   return Effect.failCause(Cause.fail(f(), none))
 }

@@ -7,12 +7,12 @@ export class ForkScopeRestore {
 
   readonly restore = <R, E, A>(
     fa: Effect<R, E, A>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R, E, A> =>
     new IOverrideForkScope(
       () => fa,
       () => Option.some(this.scope),
-      __etsTrace
+      __tsplusTrace
     )
 }
 
@@ -26,14 +26,14 @@ export class ForkScopeRestore {
 export function forkScopeMask_<R, E, A>(
   newScope: Scope,
   f: (restore: ForkScopeRestore) => Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return Effect.forkScopeWith(
     (scope) =>
       new IOverrideForkScope(
         () => f(new ForkScopeRestore(scope)),
         () => Option.some(newScope),
-        __etsTrace
+        __tsplusTrace
       )
   )
 }
@@ -47,7 +47,7 @@ export function forkScopeMask_<R, E, A>(
  */
 export function forkScopeMask<R, E, A>(
   f: (restore: ForkScopeRestore) => Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return (newScope: Scope) => forkScopeMask_(newScope, f)
 }

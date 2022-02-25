@@ -13,7 +13,7 @@ import { Managed } from "../definition"
  */
 export function withEarlyRelease<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, Tuple<[UIO<any>, A]>> {
   return Managed.fiberId.flatMap((id) => self.withEarlyReleaseExit(Exit.interrupt(id)))
 }

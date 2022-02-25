@@ -11,7 +11,7 @@ import { Managed } from "../definition"
  */
 export function collectAllSuccesses<R, E, A>(
   as: LazyArg<Iterable<Managed<R, E, A>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return Managed.collectAllWith(
     Iter.map_(as(), (_) => _.exit()),

@@ -17,9 +17,9 @@ import { Effect, IEnsuring } from "../definition"
 export function ensuring_<R, E, A, R1, X>(
   self: Effect<R, E, A>,
   finalizer: LazyArg<Effect<R1, never, X>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1, E, A> {
-  return Effect.suspendSucceed(new IEnsuring(self, finalizer, __etsTrace))
+  return Effect.suspendSucceed(new IEnsuring(self, finalizer, __tsplusTrace))
 }
 
 /**
@@ -37,7 +37,7 @@ export function ensuring_<R, E, A, R1, X>(
  */
 export function ensuring<R1, X>(
   finalizer: LazyArg<Effect<R1, never, X>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R1, E, A> =>
     self.ensuring(finalizer)

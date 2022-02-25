@@ -11,7 +11,7 @@ import { Effect } from "../definition"
  */
 export function noneOrFail<E>(
   option: LazyArg<Option<E>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): IO<E, void> {
   return Effect.getOrFailDiscard(option).flip()
 }

@@ -10,7 +10,7 @@ import type { Promise } from "../definition"
  */
 export function interrupt<E, A>(
   self: Promise<E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<boolean> {
   return Effect.fiberId.flatMap((id) => self.completeWith(Effect.interruptAs(id)))
 }

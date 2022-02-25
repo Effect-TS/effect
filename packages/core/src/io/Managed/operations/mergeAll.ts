@@ -12,7 +12,7 @@ export function mergeAll<R, E, A, B>(
   as: LazyArg<Iterable<Managed<R, E, A>>>,
   zero: LazyArg<B>,
   f: (b: B, a: A) => B,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, B> {
   return Managed.suspend(
     Iter.reduce_(as(), Managed.succeed(zero) as Managed<R, E, B>, (b, a) =>

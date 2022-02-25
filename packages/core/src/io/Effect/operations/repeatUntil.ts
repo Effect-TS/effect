@@ -10,7 +10,7 @@ import { Effect } from "../definition"
 export function repeatUntil_<R, E, A>(
   self: Effect<R, E, A>,
   p: Predicate<A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return self.repeatUntilEffect((a) => Effect.succeed(p(a)))
 }
@@ -21,6 +21,6 @@ export function repeatUntil_<R, E, A>(
  *
  * @ets_data_first repeatUntil_
  */
-export function repeatUntil<A>(p: Predicate<A>, __etsTrace?: string) {
+export function repeatUntil<A>(p: Predicate<A>, __tsplusTrace?: string) {
   return <R, E>(self: Effect<R, E, A>): Effect<R, E, A> => self.repeatUntil(p)
 }

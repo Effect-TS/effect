@@ -20,7 +20,7 @@ export function release_(
   self: ReleaseMap,
   key: number,
   exit: Exit<any, any>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<any> {
   return refModify_(self.ref, (s) => {
     switch (s._tag) {
@@ -46,6 +46,6 @@ export function release_(
  *
  * @ets_data_first release_
  */
-export function release(key: number, exit: Exit<any, any>, __etsTrace?: string) {
+export function release(key: number, exit: Exit<any, any>, __tsplusTrace?: string) {
   return (self: ReleaseMap) => self.release(key, exit)
 }

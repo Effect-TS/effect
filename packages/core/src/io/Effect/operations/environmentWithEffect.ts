@@ -7,7 +7,7 @@ import { Effect } from "../definition"
  */
 export function environmentWithEffect<R, R0, E, A>(
   f: (env: R0) => Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R0, E, A> {
   return Effect.environment<R0>().flatMap(f)
 }

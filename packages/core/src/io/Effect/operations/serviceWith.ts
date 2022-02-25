@@ -10,6 +10,6 @@ import { Effect } from "../definition"
  * @tsplus static ets/EffectOps serviceWith
  */
 export function serviceWith<T>(tag: Tag<T>) {
-  return <A>(f: (a: T) => A, __etsTrace?: string): Effect<Has<T>, never, A> =>
+  return <A>(f: (a: T) => A, __tsplusTrace?: string): Effect<Has<T>, never, A> =>
     Effect.serviceWithEffect(tag)((a) => Effect.succeedNow(f(a)))
 }

@@ -8,7 +8,7 @@ import { Managed } from "../definition"
  */
 export function asNone<R, E, A>(
   self: Managed<R, E, Option<A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, Option<E>, void> {
   return self.foldManaged(
     (e) => Managed.failNow(Option.some(e)),

@@ -10,7 +10,7 @@ export function mapTryCatch_<R, E, E2, A, B>(
   self: Managed<R, E, A>,
   onThrow: (u: unknown) => E2,
   f: (a: A) => B,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E | E2, B> {
   return self.foldManaged(
     (e) => Managed.failNow(e),
@@ -27,7 +27,7 @@ export function mapTryCatch_<R, E, E2, A, B>(
 export function mapTryCatch<E2, A, B>(
   onThrow: (u: unknown) => E2,
   f: (a: A) => B,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Managed<R, E, A>): Managed<R, E | E2, B> =>
     mapTryCatch_(self, onThrow, f)

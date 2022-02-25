@@ -10,7 +10,7 @@ import { Effect } from "../definition"
 export function forEachOption<R, E, A, B>(
   option: Option<A>,
   f: (a: A) => Effect<R, E, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Option<B>> {
   return option.fold(Effect.none, (a) => f(a).map(Option.some))
 }

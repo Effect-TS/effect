@@ -10,7 +10,7 @@ export function mapBoth_<R, E, A, E2, B>(
   self: Effect<R, E, A>,
   f: (e: E) => E2,
   g: (a: A) => B,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E2, B> {
   return self.foldEffect(
     (e) => Effect.failNow(f(e)),
@@ -27,7 +27,7 @@ export function mapBoth_<R, E, A, E2, B>(
 export function mapBoth<E, E2, A, B>(
   f: (e: E) => E2,
   g: (a: A) => B,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R, E2, B> => self.mapBoth(f, g)
 }

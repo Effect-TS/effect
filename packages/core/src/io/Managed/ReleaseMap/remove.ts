@@ -18,7 +18,7 @@ import { Exited, Running } from "./state"
 export function remove_(
   self: ReleaseMap,
   key: number,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<Option<Finalizer>> {
   return refModify_(self.ref, (s) => {
     switch (s._tag) {
@@ -40,6 +40,6 @@ export function remove_(
  *
  * @ets_data_first remove_
  */
-export function remove(key: number, __etsTrace?: string) {
+export function remove(key: number, __tsplusTrace?: string) {
   return (self: ReleaseMap): UIO<Option<Finalizer>> => remove_(self, key)
 }

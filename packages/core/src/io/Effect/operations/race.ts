@@ -18,7 +18,7 @@ import { Effect } from "../definition"
 export function race_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   that: Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E | E2, A | A2> {
   return Effect.descriptorWith((descriptor) => {
     const parentFiberId = descriptor.id
@@ -52,7 +52,7 @@ export function race_<R, E, A, R2, E2, A2>(
  *
  * @ets_data_first race_
  */
-export function race<R2, E2, A2>(that: Effect<R2, E2, A2>, __etsTrace?: string) {
+export function race<R2, E2, A2>(that: Effect<R2, E2, A2>, __tsplusTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> =>
     self.race(that)
 }
@@ -70,7 +70,7 @@ export function race<R2, E2, A2>(that: Effect<R2, E2, A2>, __etsTrace?: string) 
 export function raceEither_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   that: Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E | E2, Either<A, A2>> {
   return self.map(Either.left).race(that.map(Either.right))
 }
@@ -85,7 +85,7 @@ export function raceEither_<R, E, A, R2, E2, A2>(
  *
  * @ets_data_first raceEither_
  */
-export function raceEither<R2, E2, A2>(that: Effect<R2, E2, A2>, __etsTrace?: string) {
+export function raceEither<R2, E2, A2>(that: Effect<R2, E2, A2>, __tsplusTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, Either<A, A2>> =>
     self.raceEither(that)
 }
@@ -107,7 +107,7 @@ export function raceEither<R2, E2, A2>(that: Effect<R2, E2, A2>, __etsTrace?: st
 export function raceFirst_<R, R2, E, E2, A, A2>(
   self: Effect<R, E, A>,
   that: Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E2 | E, A2 | A> {
   return self
     .exit()
@@ -129,6 +129,6 @@ export function raceFirst_<R, R2, E, E2, A, A2>(
  *
  * @ets_data_first raceFirst_
  */
-export function raceFirst<R2, E2, A2>(that: Effect<R2, E2, A2>, __etsTrace?: string) {
+export function raceFirst<R2, E2, A2>(that: Effect<R2, E2, A2>, __tsplusTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>) => self.raceFirst(that)
 }

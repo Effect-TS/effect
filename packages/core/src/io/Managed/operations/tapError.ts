@@ -8,7 +8,7 @@ import { Managed } from "../definition"
 export function tapError_<R, E, A, R1, E1, X>(
   self: Managed<R, E, A>,
   f: (e: E) => Managed<R1, E1, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & R1, E | E1, A> {
   return self.tapBoth(f, Managed.succeedNow)
 }
@@ -20,7 +20,7 @@ export function tapError_<R, E, A, R1, E1, X>(
  */
 export function tapError<E, R1, E1, X>(
   f: (e: E) => Managed<R1, E1, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, A>(self: Managed<R, E, A>) => tapError_(self, f)
 }

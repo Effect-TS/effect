@@ -8,6 +8,9 @@ import type { Promise } from "../definition"
  *
  * @tsplus fluent ets/Promise isDone
  */
-export function isDone<E, A>(self: Promise<E, A>, __etsTrace?: string): UIO<boolean> {
+export function isDone<E, A>(
+  self: Promise<E, A>,
+  __tsplusTrace?: string
+): UIO<boolean> {
   return Effect.succeed(self.state.get._tag === "Done")
 }

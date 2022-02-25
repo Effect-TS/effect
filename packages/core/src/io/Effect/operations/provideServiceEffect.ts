@@ -15,7 +15,7 @@ export function provideServiceEffect_<R, E, A, T>(
 ) {
   return <R1, E1>(
     effect: Effect<R1, E1, T>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R1 & Erase<R, Has<T>>, E | E1, A> =>
     // @ts-expect-error
     Effect.environmentWithEffect((r: R & R1) =>
@@ -30,7 +30,7 @@ export function provideServiceEffect_<R, E, A, T>(
  * @ets_data_first provideServiceEffect_
  */
 export function provideServiceEffect<T>(tag: Tag<T>) {
-  return <R1, E1>(effect: Effect<R1, E1, T>, __etsTrace?: string) =>
+  return <R1, E1>(effect: Effect<R1, E1, T>, __tsplusTrace?: string) =>
     <R, E, A>(
       self: Effect<R & Has<T>, E1, A>
     ): Effect<R1 & Erase<R, Has<T>>, E | E1, A> =>

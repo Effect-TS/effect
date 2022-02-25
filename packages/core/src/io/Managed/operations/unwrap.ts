@@ -9,7 +9,7 @@ import { Managed } from "../definition"
  */
 export function unwrap<R, E, A>(
   effect: LazyArg<Effect<R, E, Managed<R, E, A>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, A> {
   return Managed.fromEffect(effect).flatten()
 }

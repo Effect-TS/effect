@@ -11,6 +11,6 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps die
  */
-export function die<A>(f: LazyArg<A>, __etsTrace?: string): UIO<never> {
+export function die<A>(f: LazyArg<A>, __tsplusTrace?: string): UIO<never> {
   return Effect.failCause(Cause.die(f(), Trace.none))
 }
