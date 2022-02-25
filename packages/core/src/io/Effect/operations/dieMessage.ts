@@ -10,6 +10,9 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps dieMessage
  */
-export function dieMessage(message: LazyArg<string>, __tsplusTrace?: string): UIO<never> {
+export function dieMessage(
+  message: LazyArg<string>,
+  __tsplusTrace?: string
+): UIO<never> {
   return Effect.failCause(Cause.stackless(Cause.die(new RuntimeError(message()))))
 }

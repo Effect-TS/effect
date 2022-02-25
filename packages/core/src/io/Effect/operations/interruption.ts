@@ -89,7 +89,10 @@ export function interruptStatus_<R, E, A>(
  *
  * @ets_data_first interruptStatus_
  */
-export function interruptStatus(flag: LazyArg<InterruptStatus>, __tsplusTrace?: string) {
+export function interruptStatus(
+  flag: LazyArg<InterruptStatus>,
+  __tsplusTrace?: string
+) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> => self.interruptStatus(flag)
 }
 

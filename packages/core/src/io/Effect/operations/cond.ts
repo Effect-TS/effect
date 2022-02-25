@@ -29,7 +29,11 @@ export function cond_<E, A>(
  *
  * @ets_data_first cond_
  */
-export function cond<E, A>(result: LazyArg<A>, error: LazyArg<E>, __tsplusTrace?: string) {
+export function cond<E, A>(
+  result: LazyArg<A>,
+  error: LazyArg<E>,
+  __tsplusTrace?: string
+) {
   return (predicate: LazyArg<boolean>): IO<E, A> =>
     Effect.cond(predicate, result, error)
 }

@@ -65,7 +65,10 @@ class DimapEffect<RA, RB, EA, EB, A, B, C, RC, EC, RD, ED, D> extends XQueueInte
     return this.f(a).flatMap((a) => this.self._offer(a))
   }
 
-  _offerAll(as: Iterable<C>, __tsplusTrace?: string): Effect<RC & RA, EC | EA, boolean> {
+  _offerAll(
+    as: Iterable<C>,
+    __tsplusTrace?: string
+  ): Effect<RC & RA, EC | EA, boolean> {
     return Effect.forEach(as, this.f).flatMap((as) => this.self._offerAll(as))
   }
 

@@ -20,6 +20,9 @@ export function use_<R, E, A, R2, E2, B>(
  *
  * @ets_data_first use_
  */
-export function use<A, R2, E2, B>(f: (a: A) => Effect<R2, E2, B>, __tsplusTrace?: string) {
+export function use<A, R2, E2, B>(
+  f: (a: A) => Effect<R2, E2, B>,
+  __tsplusTrace?: string
+) {
   return <R, E>(self: Managed<R, E, A>): Effect<R & R2, E | E2, B> => use_(self, f)
 }

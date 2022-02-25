@@ -18,6 +18,9 @@ export function timedWith_<R, E, A, R2, E2>(
  *
  * @ets_data_first timedWith_
  */
-export function timedWith<R2, E2>(msTime: Effect<R2, E2, number>, __tsplusTrace?: string) {
+export function timedWith<R2, E2>(
+  msTime: Effect<R2, E2, number>,
+  __tsplusTrace?: string
+) {
   return <R, E, A>(self: Effect<R, E, A>) => self.timedWith(msTime)
 }

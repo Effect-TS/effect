@@ -22,7 +22,10 @@ export function supervised_<R, E, A, X>(
  *
  * @ets_data_first supervised_
  */
-export function supervised<X>(supervisor: LazyArg<Supervisor<X>>, __tsplusTrace?: string) {
+export function supervised<X>(
+  supervisor: LazyArg<Supervisor<X>>,
+  __tsplusTrace?: string
+) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
     self.supervised(supervisor)
 }

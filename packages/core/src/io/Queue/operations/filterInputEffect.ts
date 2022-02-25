@@ -67,7 +67,10 @@ class FilterInputEffect<
     )
   }
 
-  _offerAll(as: Iterable<A1>, __tsplusTrace?: string): Effect<RA & R2, EA | E2, boolean> {
+  _offerAll(
+    as: Iterable<A1>,
+    __tsplusTrace?: string
+  ): Effect<RA & R2, EA | E2, boolean> {
     return pipe(
       Effect.forEach(as, (a) =>
         this.f(a).map((b) => (b ? Option.some(a) : Option.none))
