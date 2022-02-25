@@ -85,7 +85,10 @@ export function raceEither_<R, E, A, R2, E2, A2>(
  *
  * @ets_data_first raceEither_
  */
-export function raceEither<R2, E2, A2>(that: Effect<R2, E2, A2>, __tsplusTrace?: string) {
+export function raceEither<R2, E2, A2>(
+  that: Effect<R2, E2, A2>,
+  __tsplusTrace?: string
+) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, Either<A, A2>> =>
     self.raceEither(that)
 }
@@ -129,6 +132,9 @@ export function raceFirst_<R, R2, E, E2, A, A2>(
  *
  * @ets_data_first raceFirst_
  */
-export function raceFirst<R2, E2, A2>(that: Effect<R2, E2, A2>, __tsplusTrace?: string) {
+export function raceFirst<R2, E2, A2>(
+  that: Effect<R2, E2, A2>,
+  __tsplusTrace?: string
+) {
   return <R, E, A>(self: Effect<R, E, A>) => self.raceFirst(that)
 }

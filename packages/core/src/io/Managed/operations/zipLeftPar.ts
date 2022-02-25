@@ -20,6 +20,9 @@ export function zipLeftPar_<R, E, A, R2, E2, A2>(
  *
  * @ets_data_first zipLeftPar_
  */
-export function zipLeftPar<R2, E2, A2>(that: Managed<R2, E2, A2>, __tsplusTrace?: string) {
+export function zipLeftPar<R2, E2, A2>(
+  that: Managed<R2, E2, A2>,
+  __tsplusTrace?: string
+) {
   return <R, E, A>(self: Managed<R, E, A>) => zipLeftPar_(self, that)
 }

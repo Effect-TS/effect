@@ -24,7 +24,10 @@ export function provideSomeLayer_<R1, E1, A1, R, E, A>(
  *
  * @ets_data_first provideSomeLayer_
  */
-export function provideSomeLayer<R, E, A>(layer: Layer<R, E, A>, __tsplusTrace?: string) {
+export function provideSomeLayer<R, E, A>(
+  layer: Layer<R, E, A>,
+  __tsplusTrace?: string
+) {
   return <R1, E1, A1>(
     self: Managed<R1 & A, E1, A1>
   ): Managed<R & Erase<R1, A>, E | E1, A1> =>

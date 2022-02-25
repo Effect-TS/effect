@@ -13,7 +13,9 @@ export function forkIn_<R, E, A>(
   scope: LazyArg<Scope>,
   __tsplusTrace?: string
 ): RIO<R, Fiber.Runtime<E, A>> {
-  return Effect.suspendSucceed(new IFork(self, () => Option.some(scope()), __tsplusTrace))
+  return Effect.suspendSucceed(
+    new IFork(self, () => Option.some(scope()), __tsplusTrace)
+  )
 }
 
 /**

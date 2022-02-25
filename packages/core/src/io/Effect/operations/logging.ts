@@ -168,7 +168,10 @@ export function logInfoCauseMessage(
  *
  * @tsplus static ets/EffectOps logWarning
  */
-export function logWarning(message: LazyArg<string>, __tsplusTrace?: string): UIO<void> {
+export function logWarning(
+  message: LazyArg<string>,
+  __tsplusTrace?: string
+): UIO<void> {
   return new ILogged(message, () => Cause.empty, someWarning, null, null, __tsplusTrace)
 }
 

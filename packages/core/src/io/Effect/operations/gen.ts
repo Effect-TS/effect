@@ -55,8 +55,16 @@ function adapter(_: any, __?: any, ___?: any) {
 
 export interface Adapter {
   <A>(_: Tag<A>, __tsplusTrace?: string): GenEffect<Has<A>, never, A>
-  <E, A>(_: Option<A>, onNone: () => E, __tsplusTrace?: string): GenEffect<unknown, E, A>
-  <A>(_: Option<A>, __tsplusTrace?: string): GenEffect<unknown, NoSuchElementException, A>
+  <E, A>(_: Option<A>, onNone: () => E, __tsplusTrace?: string): GenEffect<
+    unknown,
+    E,
+    A
+  >
+  <A>(_: Option<A>, __tsplusTrace?: string): GenEffect<
+    unknown,
+    NoSuchElementException,
+    A
+  >
   <E, A>(_: Either<E, A>, __tsplusTrace?: string): GenEffect<unknown, E, A>
   <R, E, A>(_: Effect<R, E, A>, __tsplusTrace?: string): GenEffect<R, E, A>
 }

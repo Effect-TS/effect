@@ -46,7 +46,10 @@ export function tryPromise<A>(
  *
  * @tsplus static ets/EffectOps promise
  */
-export function promise<A>(promise: LazyArg<Promise<A>>, __tsplusTrace?: string): UIO<A> {
+export function promise<A>(
+  promise: LazyArg<Promise<A>>,
+  __tsplusTrace?: string
+): UIO<A> {
   return Effect.succeed(promise).flatMap((promise) =>
     Effect.async<unknown, never, A>((resolve) => {
       promise
