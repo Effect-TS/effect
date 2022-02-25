@@ -1,6 +1,9 @@
-import type { Logger } from "../definition"
-import { simple } from "./simple"
+import type { LazyArg } from "../../../data/Function"
+import { Logger } from "../definition"
 
-export function succeed<A>(a: A): Logger<any, A> {
-  return simple(() => a)
+/**
+ * @tsplus static ets/LoggerOps succeed
+ */
+export function succeed<A>(a: LazyArg<A>): Logger<any, A> {
+  return Logger.simple(a)
 }

@@ -2624,26 +2624,24 @@ describe("Managed", () => {
 
   describe("withRuntimeConfig", () => {
     it("runs acquire, use, and release actions on the specified runtime configuration", async () => {
-      const runtimeConfig = Effect.runtimeConfig
-      const global = Effect.defaultRuntimeConfig
-
       const program = Effect.Do()
-        .bind("def", () => runtimeConfig())
+        .bind("def", () => Effect.runtimeConfig)
         .bind("ref1", ({ def }) => Ref.make(def))
         .bind("ref2", ({ def }) => Ref.make(def))
-        .bindValue("managed", ({ ref1, ref2 }) =>
+        .bindValue("global", () => Effect.defaultRuntimeConfig)
+        .bindValue("managed", ({ global, ref1, ref2 }) =>
           Managed.acquireRelease(
-            runtimeConfig().flatMap((_) => Ref.set_(ref1, _)),
-            runtimeConfig().flatMap((_) => Ref.set_(ref2, _))
+            Effect.runtimeConfig.flatMap((_) => Ref.set_(ref1, _)),
+            Effect.runtimeConfig.flatMap((_) => Ref.set_(ref2, _))
           ).withRuntimeConfig(global)
         )
-        .bind("before", () => runtimeConfig())
-        .bind("use", ({ managed }) => managed.useDiscard(runtimeConfig()))
+        .bind("before", () => Effect.runtimeConfig)
+        .bind("use", ({ managed }) => managed.useDiscard(Effect.runtimeConfig))
         .bind("acquire", ({ ref1 }) => Ref.get(ref1))
         .bind("release", ({ ref2 }) => Ref.get(ref2))
-        .bind("after", () => runtimeConfig())
+        .bind("after", () => Effect.runtimeConfig)
 
-      const { acquire, after, before, def, release, use } =
+      const { acquire, after, before, def, global, release, use } =
         await program.unsafeRunPromise()
 
       expect(before).toEqual(def)

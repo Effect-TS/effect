@@ -1,6 +1,6 @@
-import type { HashSet } from "../../collection/immutable/HashSet"
-import * as HS from "../../collection/immutable/HashSet"
+import { HashSet } from "../../collection/immutable/HashSet"
 import * as St from "../../prelude/Structural"
+import type { TraceElement } from "../TraceElement"
 
 // -----------------------------------------------------------------------------
 // Model
@@ -56,12 +56,19 @@ export class Runtime implements St.HasHash, St.HasEquals {
 
   readonly [FiberIdSym]: FiberIdSym = FiberIdSym
 
-  constructor(readonly id: number, readonly startTimeSeconds: number) {}
+  constructor(
+    readonly id: number,
+    readonly startTimeSeconds: number,
+    readonly location: TraceElement
+  ) {}
 
   get [St.hashSym](): number {
     return St.combineHash(
       St.hashString(this._tag),
-      St.combineHash(St.hashNumber(this.id), St.hashNumber(this.startTimeSeconds))
+      St.combineHash(
+        St.hashNumber(this.id),
+        St.combineHash(St.hashNumber(this.startTimeSeconds), St.hash(this.location))
+      )
     )
   }
 
@@ -79,7 +86,7 @@ export class Composite implements St.HasHash, St.HasEquals {
   constructor(readonly fiberIds: HashSet<Runtime>) {}
 
   get [St.hashSym](): number {
-    return St.combineHash(St.hashString(this._tag), this.fiberIds[St.hashSym])
+    return St.combineHash(St.hashString(this._tag), St.hash(this.fiberIds))
   }
 
   [St.equalsSym](that: unknown): boolean {
@@ -87,7 +94,7 @@ export class Composite implements St.HasHash, St.HasEquals {
       realFiberId(that)
       return (
         that._tag === "Composite" &&
-        HS.equal<FiberId>().equals(this.fiberIds, that.fiberIds)
+        HashSet.equal<FiberId>().equals(this.fiberIds, that.fiberIds)
       )
     }
     return false
