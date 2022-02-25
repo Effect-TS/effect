@@ -7,7 +7,7 @@ import { done } from "./done"
  */
 export function fromEffect<E, A>(
   effect: IO<E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<Fiber<E, A>> {
   return effect.exit().map(done)
 }

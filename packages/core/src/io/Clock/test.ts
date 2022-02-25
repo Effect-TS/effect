@@ -16,7 +16,7 @@ export class TestClock extends AbstractClock {
 
   readonly currentTime: UIO<number> = Effect.succeed(this.time)
 
-  sleep(ms: number, __etsTrace?: string): UIO<void> {
+  sleep(ms: number, __tsplusTrace?: string): UIO<void> {
     return Effect.unit
   }
 

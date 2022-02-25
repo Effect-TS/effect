@@ -10,7 +10,7 @@ export function filterOrElse_<R, E, A, R1, E1, A1>(
   self: Effect<R, E, A>,
   predicate: Predicate<A>,
   effect: LazyArg<Effect<R1, E1, A1>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1, E | E1, A | A1> {
   return self.filterOrElseWith(predicate, effect)
 }
@@ -23,7 +23,7 @@ export function filterOrElse_<R, E, A, R1, E1, A1>(
 export function filterOrElse<A, R1, E1, A1>(
   predicate: Predicate<A>,
   effect: LazyArg<Effect<R1, E1, A1>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R1, E | E1, A | A1> =>
     self.filterOrElse(predicate, effect)

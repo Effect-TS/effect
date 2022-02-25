@@ -9,7 +9,7 @@ import { Managed } from "../definition"
 export function provideSomeEnvironment_<R0, R, E, A>(
   self: Managed<R, E, A>,
   f: (r0: R0) => R,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R0, E, A> {
   return Managed(self.effect.provideSomeEnvironment(f))
 }
@@ -20,7 +20,7 @@ export function provideSomeEnvironment_<R0, R, E, A>(
  *
  * @ets_data_first provideSomeEnvironment_
  */
-export function provideSomeEnvironment<R0, R>(f: (r0: R0) => R, __etsTrace?: string) {
+export function provideSomeEnvironment<R0, R>(f: (r0: R0) => R, __tsplusTrace?: string) {
   return <E, A>(self: Managed<R, E, A>): Managed<R0, E, A> =>
     provideSomeEnvironment_(self, f)
 }

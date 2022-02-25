@@ -18,7 +18,7 @@ import { ReleaseMap } from "../ReleaseMap"
 export function forEachPar<R, E, A, B>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Managed<R, E, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, Chunk<B>> {
   return ReleaseMap.makeManagedPar.mapEffect((parallelReleaseMap) => {
     const makeInnerMap = locally_(

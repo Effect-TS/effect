@@ -11,7 +11,7 @@ import { Managed } from "../definition"
 export function forEachOption_<R, E, A, A2>(
   option: LazyArg<Option<A>>,
   f: (a: A) => Managed<R, E, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, Option<A2>> {
   return Managed.suspend(
     option().fold(
@@ -29,7 +29,7 @@ export function forEachOption_<R, E, A, A2>(
  */
 export function forEachOption<R, E, A, A2>(
   f: (a: A) => Managed<R, E, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return (option: Option<A>): Managed<R, E, Option<A2>> => forEachOption_(option, f)
 }

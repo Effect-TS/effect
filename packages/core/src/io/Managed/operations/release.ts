@@ -10,7 +10,7 @@ import { Managed } from "../definition"
  */
 export function release<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, A> {
   return Managed.fromEffect(self.useNow())
 }

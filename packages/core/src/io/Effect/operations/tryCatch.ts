@@ -11,7 +11,7 @@ import { Effect } from "../definition"
 export function tryCatch<E, A>(
   attempt: LazyArg<A>,
   onThrow: (u: unknown) => E,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): IO<E, A> {
   return Effect.suspendSucceed(() => {
     try {

@@ -14,7 +14,7 @@ import { ISuspendWith } from "../definition"
  */
 export function suspendSucceedWith<R, E, A>(
   f: (runtimeConfig: RuntimeConfig, fiberId: FiberId) => Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return new ISuspendWith(f, __etsTrace)
+  return new ISuspendWith(f, __tsplusTrace)
 }

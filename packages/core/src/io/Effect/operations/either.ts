@@ -16,7 +16,7 @@ import { Effect } from "../definition"
  */
 export function either<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): RIO<R, Either<E, A>> {
   return self.foldEffect(
     (e) => Effect.succeedNow(Either.left(e)),

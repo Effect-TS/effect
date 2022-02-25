@@ -10,7 +10,7 @@ import { Managed } from "../definition"
  */
 export function dieNow(
   defect: unknown,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, never, never> {
   return Managed.failCauseNow(Cause.die(defect))
 }

@@ -6,7 +6,7 @@ import { AbstractClock } from "./definition"
 export class LiveClock extends AbstractClock {
   currentTime: UIO<number> = Effect.succeed(new Date().getTime())
 
-  sleep(ms: number, __etsTrace?: string): UIO<void> {
+  sleep(ms: number, __tsplusTrace?: string): UIO<void> {
     return Effect.asyncInterrupt((cb) => {
       const timeout = setTimeout(() => {
         cb(Effect.unit)

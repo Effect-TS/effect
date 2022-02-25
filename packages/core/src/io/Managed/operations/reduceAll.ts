@@ -12,7 +12,7 @@ export function reduceAll<R, E, A>(
   init: LazyArg<Managed<R, E, A>>,
   as: LazyArg<Iterable<Managed<R, E, A>>>,
   f: (acc: A, a: A) => A,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, A> {
   return Managed.suspend(Iter.reduce_(as(), init(), (acc, a) => acc.zipWith(a, f)))
 }

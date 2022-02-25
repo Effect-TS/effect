@@ -26,7 +26,7 @@ export function loop<Z>(
 ) {
   return <R, E, A>(
     body: (z: Z) => Managed<R, E, A>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Managed<R, E, readonly A[]> =>
     Managed.suspend(() => {
       const initial0 = initial()

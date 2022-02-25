@@ -8,6 +8,6 @@ import { Managed } from "../definition"
  * @tsplus static ets/ManagedOps serviceWith
  */
 export function serviceWith<T>(_: Tag<T>) {
-  return <A>(f: (service: T) => A, __etsTrace?: string): Managed<Has<T>, never, A> =>
+  return <A>(f: (service: T) => A, __tsplusTrace?: string): Managed<Has<T>, never, A> =>
     Managed.fromEffect(Effect.serviceWith(_)(f))
 }

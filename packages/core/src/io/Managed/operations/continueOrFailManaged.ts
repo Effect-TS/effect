@@ -12,7 +12,7 @@ export function continueOrFailManaged_<R, E, A, E1, R2, E2, A2>(
   self: Managed<R, E, A>,
   e: LazyArg<E1>,
   pf: (a: A) => Option<Managed<R2, E2, A2>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & R2, E | E1 | E2, A2> {
   return self.flatMap((a): Managed<R2, E1 | E2, A2> => pf(a).getOrElse(Managed.fail(e)))
 }
@@ -26,7 +26,7 @@ export function continueOrFailManaged_<R, E, A, E1, R2, E2, A2>(
 export function continueOrFailManaged<R1, E1, A1, A>(
   e: LazyArg<E1>,
   pf: (a: A) => Option<Managed<R1, E1, A1>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Managed<R, E, A>): Managed<R & R1, E | E1, A1> =>
     continueOrFailManaged_(self, e, pf)

@@ -11,7 +11,7 @@ export function unrefineWith_<R, E, E1, E2, A>(
   self: Effect<R, E, A>,
   pf: (u: unknown) => Option<E1>,
   f: (e: E) => E2,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return self.catchAllCause(
     (cause): Effect<R, E1 | E2, A> =>
@@ -30,7 +30,7 @@ export function unrefineWith_<R, E, E1, E2, A>(
 export function unrefineWith<E1, E, E2>(
   pf: (u: unknown) => Option<E1>,
   f: (e: E) => E2,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>) => self.unrefineWith(pf, f)
 }

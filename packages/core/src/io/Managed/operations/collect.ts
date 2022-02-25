@@ -13,7 +13,7 @@ import { Managed } from "../definition"
 export function collect<A, R, E, B>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Managed<R, Option<E>, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, Chunk<B>> {
   return Managed.forEach(as, (a) => f(a).unsome()).map((_) => _.compact())
 }

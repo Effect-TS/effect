@@ -9,7 +9,7 @@ import { Managed } from "../definition"
  */
 export function fromEither<E, A>(
   f: LazyArg<Either<E, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, E, A> {
   return Managed.succeed(f).flatMap((e) => e.fold(Managed.failNow, Managed.succeedNow))
 }

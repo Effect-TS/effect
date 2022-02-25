@@ -9,7 +9,7 @@ import type { Managed } from "../definition"
  */
 export function either<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, never, Either<E, A>> {
   return self.fold(Either.left, Either.right)
 }

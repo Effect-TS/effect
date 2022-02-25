@@ -9,7 +9,7 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
   self: Managed<R2, E2, K>,
   tag: Exclude<N, keyof K>,
   f: (_: K) => Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<
   R & R2,
   E | E2,
@@ -36,7 +36,7 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
 export function bind<R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
   f: (_: K) => Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R2, E2>(
     self: Managed<R2, E2, K>
@@ -58,7 +58,7 @@ export function bindValue_<R2, E2, A, K, N extends string>(
   self: Managed<R2, E2, K>,
   tag: Exclude<N, keyof K>,
   f: (_: K) => A,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<
   R2,
   E2,
@@ -83,7 +83,7 @@ export function bindValue_<R2, E2, A, K, N extends string>(
 export function bindValue<A, K, N extends string>(
   tag: Exclude<N, keyof K>,
   f: (_: K) => A,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R2, E2>(
     self: Managed<R2, E2, K>
@@ -101,6 +101,6 @@ export function bindValue<A, K, N extends string>(
  *
  * @tsplus static ets/ManagedOps Do
  */
-export function Do(__etsTrace?: string) {
+export function Do(__tsplusTrace?: string) {
   return Managed.succeedNow({})
 }

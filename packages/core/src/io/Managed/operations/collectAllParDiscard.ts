@@ -10,7 +10,7 @@ import { Managed } from "../definition"
  */
 export function collectAllParDiscard<R, E, A>(
   as: LazyArg<Iterable<Managed<R, E, A>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return Managed.forEachParDiscard(as, identity)
 }

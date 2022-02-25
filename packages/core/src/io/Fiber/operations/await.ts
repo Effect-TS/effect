@@ -6,7 +6,7 @@ import type { Fiber } from "../definition"
  * Awaits the fiber, which suspends the awaiting fiber until the result of the
  * fiber has been determined.
  */
-function _await<E, A>(self: Fiber<E, A>, __etsTrace?: string): UIO<Exit<E, A>> {
+function _await<E, A>(self: Fiber<E, A>, __tsplusTrace?: string): UIO<Exit<E, A>> {
   return self.await
 }
 

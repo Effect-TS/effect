@@ -12,7 +12,7 @@ import type { Effect } from "../definition"
 export function delay_<R, E, A>(
   self: Effect<R, E, A>,
   duration: Duration,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & HasClock, E, A> {
   return Clock.sleep(duration.milliseconds) > self
 }
@@ -23,7 +23,7 @@ export function delay_<R, E, A>(
  *
  * @ets_data_first delay_
  */
-export function delay(duration: Duration, __etsTrace?: string) {
+export function delay(duration: Duration, __tsplusTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & HasClock, E, A> =>
     self.delay(duration)
 }

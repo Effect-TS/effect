@@ -10,7 +10,7 @@ import type { Managed } from "../definition"
 export function someOrElse_<R, E, A, B>(
   self: Managed<R, E, Option<A>>,
   orElse: LazyArg<B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return self.map((_) => _.getOrElse(orElse))
 }
@@ -20,7 +20,7 @@ export function someOrElse_<R, E, A, B>(
  *
  * @ets_data_first someOrElse_
  */
-export function someOrElse<B>(orElse: LazyArg<B>, __etsTrace?: string) {
+export function someOrElse<B>(orElse: LazyArg<B>, __tsplusTrace?: string) {
   return <R, E, A>(self: Managed<R, E, Option<A>>): Managed<R, E, A | B> =>
     someOrElse_(self, orElse)
 }

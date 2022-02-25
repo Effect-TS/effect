@@ -9,7 +9,7 @@ import { Effect } from "../definition"
  */
 export function forkAllDiscard<R, E, A>(
   effects: Iterable<Effect<R, E, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, never, void> {
   return Effect.forEachDiscard(effects, (effect) => effect.fork())
 }

@@ -10,7 +10,7 @@ import { Managed } from "../definition"
 export function tapErrorCause_<R, E, A, R1, E1, X>(
   self: Managed<R, E, A>,
   f: (c: Cause<E>) => Managed<R1, E1, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & R1, E | E1, A> {
   return self.catchAllCause((c) => f(c).flatMap(() => Managed.failCauseNow(c)))
 }
@@ -23,7 +23,7 @@ export function tapErrorCause_<R, E, A, R1, E1, X>(
  */
 export function tapErrorCause<E, R1, E1, X>(
   f: (c: Cause<E>) => Managed<R1, E1, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, A>(self: Managed<R, E, A>): Managed<R & R1, E | E1, A> =>
     self.tapErrorCause(f)

@@ -11,7 +11,7 @@ import { Managed } from "../definition"
 export function whenCase<R, E, A, B>(
   a: LazyArg<A>,
   pf: (a: A) => Option<Managed<R, E, B>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, Option<B>> {
   return Managed.suspend(
     pf(a()).fold(

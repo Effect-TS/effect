@@ -10,7 +10,7 @@ import { Managed } from "../definition"
 export function reject_<R, E, A, E1>(
   self: Managed<R, E, A>,
   pf: (a: A) => Option<E1>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return self.rejectManaged((a) => pf(a).map(Managed.failNow))
 }
@@ -21,6 +21,6 @@ export function reject_<R, E, A, E1>(
  *
  * @ets_data_first reject_
  */
-export function reject<A, E1>(pf: (a: A) => Option<E1>, __etsTrace?: string) {
+export function reject<A, E1>(pf: (a: A) => Option<E1>, __tsplusTrace?: string) {
   return <R, E>(self: Managed<R, E, A>) => reject_(self, pf)
 }

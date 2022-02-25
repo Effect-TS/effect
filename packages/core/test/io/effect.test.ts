@@ -5454,7 +5454,7 @@ describe("Effect", () => {
 
       const { actual, expected } = await program.unsafeRunPromise()
 
-      expect(actual).toEqual(expected)
+      expect(actual.untraced()).toEqual(expected.untraced())
     })
 
     it("should handle successes with left", async () => {
@@ -5465,7 +5465,7 @@ describe("Effect", () => {
 
       const { actual, expected } = await program.unsafeRunPromise()
 
-      expect(actual).toEqual(expected)
+      expect(actual.untraced()).toEqual(expected.untraced())
     })
 
     it("should handle failures", async () => {
@@ -5476,7 +5476,7 @@ describe("Effect", () => {
 
       const { actual, expected } = await program.unsafeRunPromise()
 
-      expect(actual).toEqual(expected)
+      expect(actual.untraced()).toEqual(expected.untraced())
     })
   })
 
@@ -5616,7 +5616,7 @@ describe("Effect", () => {
 
       const { actual, expected } = await program.unsafeRunPromise()
 
-      expect(actual).toEqual(expected)
+      expect(actual.untraced()).toEqual(expected.untraced())
     })
 
     it("should handle successes with left", async () => {
@@ -5627,7 +5627,7 @@ describe("Effect", () => {
 
       const { actual, expected } = await program.unsafeRunPromise()
 
-      expect(actual).toEqual(expected)
+      expect(actual.untraced()).toEqual(expected.untraced())
     })
 
     it("should handle failures", async () => {
@@ -5638,7 +5638,7 @@ describe("Effect", () => {
 
       const { actual, expected } = await program.unsafeRunPromise()
 
-      expect(actual).toEqual(expected)
+      expect(actual.untraced()).toEqual(expected.untraced())
     })
   })
 

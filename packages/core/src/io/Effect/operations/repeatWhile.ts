@@ -10,7 +10,7 @@ import { Effect } from "../definition"
 export function repeatWhile_<R, E, A>(
   self: Effect<R, E, A>,
   f: Predicate<A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return self.repeatWhileEffect((a) => Effect.succeed(f(a)))
 }
@@ -21,6 +21,6 @@ export function repeatWhile_<R, E, A>(
  *
  * @ets_data_first repeatWhile_
  */
-export function repeatWhile<A>(f: Predicate<A>, __etsTrace?: string) {
+export function repeatWhile<A>(f: Predicate<A>, __tsplusTrace?: string) {
   return <R, E>(self: Effect<R, E, A>): Effect<R, E, A> => self.repeatWhile(f)
 }

@@ -11,7 +11,7 @@ export function fold_<R, E, A, A2, A3>(
   self: Managed<R, E, A>,
   onFail: (e: E) => A2,
   onSuccess: (a: A) => A3,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, never, A2 | A3> {
   return self.foldManaged(
     (e) => Managed.succeedNow(onFail(e)),
@@ -29,7 +29,7 @@ export function fold_<R, E, A, A2, A3>(
 export function fold<E, A, A2, A3>(
   onFail: (e: E) => A2,
   onSuccess: (a: A) => A3,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R>(self: Managed<R, E, A>): Managed<R, never, A2 | A3> =>
     fold_(self, onFail, onSuccess)

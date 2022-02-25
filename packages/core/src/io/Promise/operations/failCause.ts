@@ -13,7 +13,7 @@ import type { Promise } from "../definition"
 export function failCause_<E, A>(
   self: Promise<E, A>,
   cause: LazyArg<Cause<E>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<boolean> {
   return self.completeWith(Effect.failCause(cause))
 }
@@ -24,6 +24,6 @@ export function failCause_<E, A>(
  *
  * @ets_data_first failCause_
  */
-export function failCause<E>(cause: LazyArg<Cause<E>>, __etsTrace?: string) {
+export function failCause<E>(cause: LazyArg<Cause<E>>, __tsplusTrace?: string) {
   return <A>(self: Promise<E, A>): UIO<boolean> => self.failCause(cause)
 }

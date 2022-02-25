@@ -12,7 +12,7 @@ export function mergeAll<R, E, A, B>(
   as: LazyArg<Iterable<Effect<R, E, A>>>,
   zero: LazyArg<B>,
   f: (b: B, a: A) => B,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, B> {
   return Effect.suspendSucceed(() =>
     Iter.reduce_(as(), Effect.succeed(zero) as Effect<R, E, B>, (acc, a) =>

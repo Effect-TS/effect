@@ -11,7 +11,7 @@ import { Effect } from "../definition"
 export function filterPar_<A, R, E>(
   as: Iterable<A>,
   f: (a: A) => Effect<R, E, boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Chunk<A>> {
   return Effect.forEachPar(as, (a) =>
     f(a).map((b) => (b ? Option.some(a) : Option.none))
@@ -26,7 +26,7 @@ export function filterPar_<A, R, E>(
  */
 export function filterPar<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return (as: Iterable<A>): Effect<R, E, Chunk<A>> => Effect.filterPar(as, f)
 }

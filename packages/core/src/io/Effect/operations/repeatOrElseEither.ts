@@ -21,13 +21,13 @@ export function repeatOrElseEither_<S, R, E, A, R1, B, R2, E2, C>(
   self: Effect<R, E, A>,
   schedule: LazyArg<Schedule.WithState<S, R1, A, B>>,
   orElse: (e: E, option: Option<B>) => Effect<R2, E2, C>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock & R & R1 & R2, E2, Either<C, B>>
 export function repeatOrElseEither_<R, E, A, R1, B, R2, E2, C>(
   self: Effect<R, E, A>,
   schedule: LazyArg<Schedule<R1, A, B>>,
   orElse: (e: E, option: Option<B>) => Effect<R2, E2, C>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<HasClock & R & R1 & R2, E2, Either<C, B>> {
   return Clock.repeatOrElseEither(self, schedule, orElse)
 }
@@ -46,12 +46,12 @@ export function repeatOrElseEither_<R, E, A, R1, B, R2, E2, C>(
 export function repeatOrElseEither<S, R1, A, B, E, R2, E2, C>(
   schedule: LazyArg<Schedule.WithState<S, R1, A, B>>,
   orElse: (e: E, option: Option<B>) => Effect<R2, E2, C>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): <R>(self: Effect<R, E, A>) => Effect<HasClock & R & R1 & R2, E2, Either<C, B>>
 export function repeatOrElseEither<R1, A, B, E, R2, E2, C>(
   schedule: LazyArg<Schedule<R1, A, B>>,
   orElse: (e: E, option: Option<B>) => Effect<R2, E2, C>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R>(self: Effect<R, E, A>): Effect<HasClock & R & R1 & R2, E2, Either<C, B>> =>
     self.repeatOrElseEither(schedule, orElse)

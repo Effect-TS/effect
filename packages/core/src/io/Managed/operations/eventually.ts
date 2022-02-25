@@ -8,7 +8,7 @@ import { Managed } from "../definition"
  */
 export function eventually<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, never, A> {
   return Managed(self.effect.eventually())
 }

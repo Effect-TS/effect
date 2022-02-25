@@ -12,7 +12,7 @@ import type { Managed } from "../definition"
  */
 export function flattenEffect<R2, E2, R, E, A>(
   self: Managed<R2, E2, Effect<R, E, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return self.mapEffect(identity)
 }

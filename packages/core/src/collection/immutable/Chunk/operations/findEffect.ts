@@ -11,7 +11,7 @@ import { concreteId } from "../definition"
 export function findEffect_<R, E, A>(
   self: Chunk<A>,
   f: (a: A) => Effect<R, E, boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Option<A>> {
   return Effect.suspendSucceed(() => {
     const iterator = concreteId(self)._arrayLikeIterator()
@@ -52,7 +52,7 @@ export function findEffect_<R, E, A>(
  */
 export function findEffect<R, E, A>(
   f: (a: A) => Effect<R, E, boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return (self: Chunk<A>): Effect<R, E, Option<A>> => self.findEffect(f)
 }

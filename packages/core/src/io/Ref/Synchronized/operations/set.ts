@@ -8,7 +8,7 @@ import type { XSynchronized } from "../definition"
 export function set_<RA, RB, EA, EB, A, B>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
   value: A,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<RA, EA, void> {
   return self.set(value)
 }
@@ -19,7 +19,7 @@ export function set_<RA, RB, EA, EB, A, B>(
  *
  * @ets_data_first set_
  */
-export function set<A>(value: A, __etsTrace?: string) {
+export function set<A>(value: A, __tsplusTrace?: string) {
   return <RA, RB, EA, EB, B>(
     self: XSynchronized<RA, RB, EA, EB, A, B>
   ): Effect<RA, EA, void> => set_(self, value)

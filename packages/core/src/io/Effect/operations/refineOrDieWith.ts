@@ -11,7 +11,7 @@ export function refineOrDieWith_<R, A, E, E1>(
   self: Effect<R, E, A>,
   pf: (e: E) => Option<E1>,
   f: (e: E) => unknown,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return self.catchAll((e) =>
     pf(e).fold(
@@ -30,7 +30,7 @@ export function refineOrDieWith_<R, A, E, E1>(
 export function refineOrDieWith<E, E1>(
   pf: (e: E) => Option<E1>,
   f: (e: E) => unknown,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>) => self.refineOrDieWith(pf, f)
 }

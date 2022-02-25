@@ -9,7 +9,7 @@ import type { Effect, RIO } from "../definition"
 export function retryWhileEffect_<R, R1, E, A>(
   self: Effect<R, E, A>,
   f: (e: E) => RIO<R1, boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1, E, A> {
   return self.retryUntilEffect((e) => f(e).negate())
 }
@@ -22,7 +22,7 @@ export function retryWhileEffect_<R, R1, E, A>(
  */
 export function retryWhileEffect<R1, E>(
   f: (e: E) => RIO<R1, boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R & R1, E, A> => self.retryWhileEffect(f)
 }

@@ -12,7 +12,7 @@ import { Managed } from "../definition"
  */
 export function flattenNow<R, E, R1, E1, A>(
   self: Managed<R, E, Managed<R1, E1, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & R1, E | E1, A> {
   return Managed.flatten(self)
 }
@@ -27,7 +27,7 @@ export function flattenNow<R, E, R1, E1, A>(
  */
 export function flatten<R2, E2, R, E, A>(
   self: LazyArg<Managed<R2, E2, Managed<R, E, A>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return Managed.suspend(self).flatMap(identity)
 }

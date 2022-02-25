@@ -16,7 +16,7 @@ export function raceWith_<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   that: LazyArg<Effect<R1, E1, A1>>,
   leftWins: (exit: Exit<E, A>, fiber: Fiber<E1, A1>) => Effect<R2, E2, A2>,
   rightWins: (exit: Exit<E1, A1>, fiber: Fiber<E, A>) => Effect<R3, E3, A3>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1 & R2 & R3, E2 | E3, A2 | A3> {
   return Effect.suspendSucceed(
     new IRaceWith(
@@ -25,7 +25,7 @@ export function raceWith_<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
       leftWins,
       rightWins,
       () => Option.none,
-      __etsTrace
+      __tsplusTrace
     )
   )
 }
@@ -40,7 +40,7 @@ export function raceWith<E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   that: LazyArg<Effect<R1, E1, A1>>,
   leftWins: (exit: Exit<E, A>, fiber: Fiber<E1, A1>) => Effect<R2, E2, A2>,
   rightWins: (exit: Exit<E1, A1>, fiber: Fiber<E, A>) => Effect<R3, E3, A3>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R>(self: Effect<R, E, A>) => self.raceWith(that, leftWins, rightWins)
 }

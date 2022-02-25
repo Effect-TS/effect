@@ -10,7 +10,7 @@ import { ISetRuntimeConfig } from "../definition"
  */
 export function setRuntimeConfig(
   runtimeConfig: LazyArg<RuntimeConfig>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<void> {
-  return new ISetRuntimeConfig(runtimeConfig, __etsTrace)
+  return new ISetRuntimeConfig(runtimeConfig, __tsplusTrace)
 }

@@ -12,7 +12,7 @@ import { Managed } from "../definition"
 export function chain_<R, E, A, R2, E2, A2>(
   self: Managed<R, E, A>,
   f: (a: A) => Managed<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & R2, E | E2, A2> {
   return Managed<R & R2, E | E2, A2>(
     self.effect.flatMap(({ tuple: [releaseSelf, a] }) =>
@@ -42,7 +42,7 @@ export function chain_<R, E, A, R2, E2, A2>(
  */
 export function chain<A, R2, E2, A2>(
   f: (a: A) => Managed<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Managed<R, E, A>): Managed<R & R2, E | E2, A2> => chain_(self, f)
 }

@@ -8,7 +8,7 @@ import type { Managed } from "../definition"
  */
 export function ignore<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, never, void> {
   return self.fold(constVoid, constVoid)
 }

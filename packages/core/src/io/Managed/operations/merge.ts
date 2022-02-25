@@ -8,7 +8,7 @@ import { Managed } from "../definition"
  */
 export function merge<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, never, E | A> {
   return self.foldManaged(Managed.succeedNow, Managed.succeedNow)
 }

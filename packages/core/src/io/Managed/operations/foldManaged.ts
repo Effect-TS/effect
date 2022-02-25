@@ -11,7 +11,7 @@ export function foldManaged_<R, E, A, R1, E1, A1, R2, E2, A2>(
   self: Managed<R, E, A>,
   failure: (e: E) => Managed<R1, E1, A1>,
   success: (a: A) => Managed<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & R1 & R2, E1 | E2, A1 | A2> {
   return self.foldCauseManaged(
     (cause) => failureOrCause(cause).fold(failure, Managed.failCauseNow),
@@ -28,7 +28,7 @@ export function foldManaged_<R, E, A, R1, E1, A1, R2, E2, A2>(
 export function foldManaged<E, A, R1, E1, A1, R2, E2, A2>(
   failure: (e: E) => Managed<R1, E1, A1>,
   success: (a: A) => Managed<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R>(self: Managed<R, E, A>): Managed<R & R1 & R2, E1 | E2, A1 | A2> =>
     self.foldManaged(failure, success)

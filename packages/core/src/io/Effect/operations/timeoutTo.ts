@@ -18,7 +18,7 @@ export function timeoutTo_<R, E, A, B, B1>(
   def: LazyArg<B1>,
   f: (a: A) => B,
   milliseconds: number,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & HasClock, E, B | B1> {
   return self.map(f).raceFirst(
     Effect.sleep(milliseconds)
@@ -42,7 +42,7 @@ export function timeoutTo<A, B, B1>(
   def: LazyArg<B1>,
   f: (a: A) => B,
   milliseconds: number,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & HasClock, E, B | B1> =>
     self.timeoutTo(def, f, milliseconds)

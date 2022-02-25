@@ -22,7 +22,7 @@ export function replace_(
   self: ReleaseMap,
   key: number,
   finalizer: Finalizer,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<Option<Finalizer>> {
   return refModify_(self.ref, (s) => {
     switch (s._tag) {
@@ -47,7 +47,7 @@ export function replace_(
  *
  * @ets_data_first replace_
  */
-export function replace(key: number, finalizer: Finalizer, __etsTrace?: string) {
+export function replace(key: number, finalizer: Finalizer, __tsplusTrace?: string) {
   return (self: ReleaseMap): Effect<unknown, never, Option<Finalizer>> =>
     replace_(self, key, finalizer)
 }

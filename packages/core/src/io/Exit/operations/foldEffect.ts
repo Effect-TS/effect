@@ -12,7 +12,7 @@ export function foldEffect_<E, A, R1, E1, A1, R2, E2, A2>(
   self: Exit<E, A>,
   failed: (cause: Cause<E>) => Effect<R1, E1, A1>,
   completed: (a: A) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R1 & R2, E1 | E2, A1 | A2> {
   switch (self._tag) {
     case "Failure":
@@ -31,7 +31,7 @@ export function foldEffect_<E, A, R1, E1, A1, R2, E2, A2>(
 export function foldEffect<A, E, R1, E1, A1, R2, E2, A2>(
   failed: (cause: Cause<E>) => Effect<R1, E1, A1>,
   completed: (a: A) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return (self: Exit<E, A>): Effect<R1 & R2, E1 | E2, A1 | A2> =>
     self.foldEffect(failed, completed)

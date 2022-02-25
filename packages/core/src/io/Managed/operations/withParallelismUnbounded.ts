@@ -12,7 +12,7 @@ import type { Managed } from "../definition"
  */
 export function withParallelismUnbounded<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, A> {
   return locallyManaged_(currentParallelism.value, Option.none).zipRight(self)
 }

@@ -18,7 +18,7 @@ export function servicesWithT<SS extends Tag<any>[]>(...s: SS) {
         [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? T : unknown
       }
     ) => B,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ) =>
     Managed.environmentWith(
       (
@@ -41,7 +41,7 @@ export function servicesWithS<SS extends Record<string, Tag<any>>>(s: SS) {
     f: (a: {
       [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? T : unknown
     }) => B,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ) =>
     Managed.environmentWith(
       (

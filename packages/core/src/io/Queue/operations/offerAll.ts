@@ -27,7 +27,7 @@ import { concreteQueue } from "../definition"
 export function offerAll_<RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,
   as: Iterable<A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<RA, EA, boolean> {
   concreteQueue(self)
   return self._offerAll(as)
@@ -50,7 +50,7 @@ export function offerAll_<RA, RB, EA, EB, A, B>(
  *
  * @ets_data_first offerAll_
  */
-export function offerAll<A>(as: Iterable<A>, __etsTrace?: string) {
+export function offerAll<A>(as: Iterable<A>, __tsplusTrace?: string) {
   return <RA, RB, EA, EB, B>(
     self: XQueue<RA, RB, EA, EB, A, B>
   ): Effect<RA, EA, boolean> => self.offerAll(as)

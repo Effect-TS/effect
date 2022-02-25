@@ -15,7 +15,7 @@ export interface Strategy<A> {
     queue: MutableQueue<A>,
     takers: MutableQueue<Promise<never, A>>,
     isShutdown: AtomicBoolean,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ) => UIO<boolean>
 
   readonly unsafeOnQueueEmptySpace: (
@@ -41,7 +41,7 @@ export class DroppingStrategy<A> implements Strategy<A> {
     _queue: MutableQueue<A>,
     _takers: MutableQueue<Promise<never, A>>,
     _isShutdown: AtomicBoolean,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): UIO<boolean> {
     return Effect.succeedNow(false)
   }
@@ -65,7 +65,7 @@ export class SlidingStrategy<A> implements Strategy<A> {
     queue: MutableQueue<A>,
     takers: MutableQueue<Promise<never, A>>,
     _isShutdown: AtomicBoolean,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): UIO<boolean> {
     return Effect.succeed(() => {
       this.unsafeSlidingOffer(queue, as)

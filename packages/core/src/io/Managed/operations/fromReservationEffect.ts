@@ -21,7 +21,7 @@ import type { Reservation } from "../reservation"
  */
 export function fromReservationEffect<R, E, A>(
   reservation: LazyArg<Effect<R, E, Reservation<R, E, A>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, A> {
   return Managed(
     Effect.uninterruptibleMask(({ restore }) =>

@@ -14,5 +14,5 @@ export { createQueue } from "../../Effect/operations/excl-forEach"
 export const create: <A>(
   queue: MutableQueue<A>,
   strategy: Strategy<A>,
-  __etsTrace?: string | undefined
+  __tsplusTrace?: string | undefined
 ) => UIO<Queue<A>> = createQueue

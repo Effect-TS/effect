@@ -13,7 +13,7 @@ export function provideService_<R, E, A, T>(
   self: Effect<R & Has<T>, E, A>,
   tag: Tag<T>
 ) {
-  return (service: LazyArg<T>, __etsTrace?: string): Effect<Erase<R, Has<T>>, E, A> =>
+  return (service: LazyArg<T>, __tsplusTrace?: string): Effect<Erase<R, Has<T>>, E, A> =>
     // @ts-expect-error
     self.provideServiceEffect(tag)(Effect.succeed(service))
 }
@@ -25,7 +25,7 @@ export function provideService_<R, E, A, T>(
  * @ets_data_first provideService
  */
 export function provideService<T>(tag: Tag<T>) {
-  return (service: LazyArg<T>, __etsTrace?: string) =>
+  return (service: LazyArg<T>, __tsplusTrace?: string) =>
     <R, E, A>(self: Effect<R & Has<T>, E, A>): Effect<Erase<R, Has<T>>, E, A> =>
       // @ts-expect-error
       self.provideService(tag)(service)

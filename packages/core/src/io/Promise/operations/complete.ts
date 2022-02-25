@@ -13,7 +13,7 @@ import type { Promise } from "../definition"
 export function complete_<E, A>(
   self: Promise<E, A>,
   effect: IO<E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<boolean> {
   return effect.intoPromise(self)
 }
@@ -27,6 +27,6 @@ export function complete_<E, A>(
  *
  * @ets_data_first complete_
  */
-export function complete<E, A>(effect: IO<E, A>, __etsTrace?: string) {
+export function complete<E, A>(effect: IO<E, A>, __tsplusTrace?: string) {
   return (self: Promise<E, A>): UIO<boolean> => self.complete(effect)
 }

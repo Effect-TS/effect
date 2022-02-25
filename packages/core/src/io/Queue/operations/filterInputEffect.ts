@@ -61,13 +61,13 @@ class FilterInputEffect<
 
   _isShutdown: UIO<boolean> = this.self._isShutdown
 
-  _offer(a: A1, __etsTrace?: string): Effect<RA & R2, EA | E2, boolean> {
+  _offer(a: A1, __tsplusTrace?: string): Effect<RA & R2, EA | E2, boolean> {
     return this.f(a).flatMap((b) =>
       b ? this.self._offer(a) : Effect.succeedNow(false)
     )
   }
 
-  _offerAll(as: Iterable<A1>, __etsTrace?: string): Effect<RA & R2, EA | E2, boolean> {
+  _offerAll(as: Iterable<A1>, __tsplusTrace?: string): Effect<RA & R2, EA | E2, boolean> {
     return pipe(
       Effect.forEach(as, (a) =>
         this.f(a).map((b) => (b ? Option.some(a) : Option.none))
@@ -89,7 +89,7 @@ class FilterInputEffect<
 
   _takeAll: Effect<RB, EB, Chunk<B>> = this.self._takeAll
 
-  _takeUpTo(n: number, __etsTrace?: string): Effect<RB, EB, Chunk<B>> {
+  _takeUpTo(n: number, __tsplusTrace?: string): Effect<RB, EB, Chunk<B>> {
     return this.self._takeUpTo(n)
   }
 }

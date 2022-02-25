@@ -11,7 +11,7 @@ export function acquireReleaseOnErrorWith<R, E, A, E1, R1, A1, R2, E2, X>(
   acquire: LazyArg<Effect<R, E, A>>,
   use: (a: A) => Effect<R1, E1, A1>,
   release: (a: A, e: Exit<E1, A1>) => Effect<R2, E2, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1 & R2, E | E1 | E2, A1> {
   return Effect.acquireReleaseExitWith(
     acquire,
@@ -30,7 +30,7 @@ export function acquireReleaseOnErrorWithNow_<R, E, A, E1, R1, A1, R2, E2, X>(
   self: Effect<R, E, A>,
   use: (a: A) => Effect<R1, E1, A1>,
   release: (a: A, e: Exit<E1, A1>) => Effect<R2, E2, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1 & R2, E | E1 | E2, A1> {
   return Effect.acquireReleaseOnErrorWith(self, use, release)
 }
@@ -43,7 +43,7 @@ export function acquireReleaseOnErrorWithNow_<R, E, A, E1, R1, A1, R2, E2, X>(
 export function acquireReleaseOnErrorWithNow<E, A, E1, R1, A1, R2, E2, X>(
   use: (a: A) => Effect<R1, E1, A1>,
   release: (a: A, e: Exit<E1, A1>) => Effect<R2, E2, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R>(self: Effect<R, E, A>) => self.acquireReleaseOnErrorWith(use, release)
 }

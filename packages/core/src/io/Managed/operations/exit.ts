@@ -9,7 +9,7 @@ import { Managed } from "../definition"
  */
 export function exit<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, never, Exit<E, A>> {
   return self.foldCauseManaged(
     (cause) => Managed.succeedNow(Exit.failCause(cause)),

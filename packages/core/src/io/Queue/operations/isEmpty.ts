@@ -14,7 +14,7 @@ import { concreteQueue } from "../definition"
  */
 export function isEmpty<RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<boolean> {
   concreteQueue(self)
   return self._size.map((size) => size === 0)

@@ -17,7 +17,7 @@ import { release_ } from "./release"
 export function add_(
   self: ReleaseMap,
   finalizer: Finalizer,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<Finalizer> {
   return self.addIfOpen(finalizer).map((_) =>
     _.fold(
@@ -39,6 +39,6 @@ export function add_(
  *
  * @ets_data_first add_
  */
-export function add(finalizer: Finalizer, __etsTrace?: string) {
+export function add(finalizer: Finalizer, __tsplusTrace?: string) {
   return (self: ReleaseMap) => add_(self, finalizer)
 }

@@ -10,12 +10,12 @@ import { Effect, IFold } from "../definition"
  */
 export function exit<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): RIO<R, Exit<E, A>> {
   return new IFold(
     self,
     (cause) => Effect.succeedNow(Exit.failCause(cause)),
     (success) => Effect.succeedNow(Exit.succeed(success)),
-    __etsTrace
+    __tsplusTrace
   )
 }

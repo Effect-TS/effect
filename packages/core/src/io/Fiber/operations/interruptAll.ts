@@ -8,7 +8,7 @@ import { interruptAllAs_ } from "./interruptAllAs"
  */
 export function interruptAll(
   fibers: Iterable<Fiber<any, any>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<void> {
   return Effect.fiberId.flatMap((fiberId) => interruptAllAs_(fibers, fiberId))
 }

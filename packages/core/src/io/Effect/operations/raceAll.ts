@@ -18,7 +18,7 @@ import { Effect } from "../definition"
 export function raceAll_<R, E, A, R1, E1, A1>(
   self: Effect<R, E, A>,
   effects: LazyArg<Iterable<Effect<R1, E1, A1>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1, E | E1, A | A1> {
   return Effect.Do()
     .bind("ios", () => Effect.succeed(Chunk.from(effects())))
@@ -68,7 +68,7 @@ export function raceAll_<R, E, A, R1, E1, A1>(
  */
 export function raceAll<R1, E1, A1>(
   as: Iterable<Effect<R1, E1, A1>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R1, E | E1, A | A1> =>
     self.raceAll(as)

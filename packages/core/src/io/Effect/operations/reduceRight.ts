@@ -11,7 +11,7 @@ export function reduceRight_<A, Z, R, E>(
   as: LazyArg<Iterable<A>>,
   z: LazyArg<Z>,
   f: (a: A, z: Z) => Effect<R, E, Z>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Z> {
   return Effect.suspendSucceed(
     Iter.reduceRight_(as(), Effect.succeed(z) as Effect<R, E, Z>, (el, acc) =>

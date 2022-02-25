@@ -10,7 +10,7 @@ import { Effect } from "../definition"
 export function catchAllTrace_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   h: (tuple: Tuple<[E, Trace]>) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E2, A | A2> {
   return self.foldTraceEffect(h, Effect.succeedNow)
 }
@@ -22,7 +22,7 @@ export function catchAllTrace_<R, E, A, R2, E2, A2>(
  */
 export function catchAllTrace<E, R2, E2, A2>(
   h: (tuple: Tuple<[E, Trace]>) => Effect<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R & R2, E2, A | A2> =>
     self.catchAllTrace(h)

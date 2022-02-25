@@ -11,15 +11,15 @@ import { Effect, IFork } from "../definition"
 export function forkIn_<R, E, A>(
   self: Effect<R, E, A>,
   scope: LazyArg<Scope>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): RIO<R, Fiber.Runtime<E, A>> {
-  return Effect.suspendSucceed(new IFork(self, () => Option.some(scope()), __etsTrace))
+  return Effect.suspendSucceed(new IFork(self, () => Option.some(scope()), __tsplusTrace))
 }
 
 /**
  * @ets_data_first forkIn_
  */
-export function forkIn(scope: LazyArg<Scope>, __etsTrace?: string) {
+export function forkIn(scope: LazyArg<Scope>, __tsplusTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): RIO<R, Fiber.Runtime<E, A>> =>
     self.forkIn(scope)
 }

@@ -11,7 +11,7 @@ import { Managed } from "../definition"
  */
 export function die(
   defect: LazyArg<unknown>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, never, never> {
   return Managed.failCause(Cause.die(defect()))
 }

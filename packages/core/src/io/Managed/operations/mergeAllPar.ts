@@ -20,7 +20,7 @@ export function mergeAllPar<R, E, A, B>(
   as: LazyArg<Iterable<Managed<R, E, A>>>,
   zero: LazyArg<B>,
   f: (b: B, a: A) => B,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, B> {
   return ReleaseMap.makeManagedPar.mapEffect((parallelReleaseMap) =>
     locally_(

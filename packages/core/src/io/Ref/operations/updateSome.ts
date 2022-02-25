@@ -14,7 +14,7 @@ import { modify_ } from "./modify"
 export function updateSome_<RA, RB, EA, EB, A>(
   self: XRef<RA, RB, EA, EB, A, A>,
   pf: (a: A) => Option<A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<RA & RB, EA | EB, void> {
   return matchTag_(
     concrete(self),
@@ -31,7 +31,7 @@ export function updateSome_<RA, RB, EA, EB, A>(
  *
  * @ets_data_first updateSome_
  */
-export function updateSome<A>(pf: (a: A) => Option<A>, __etsTrace?: string) {
+export function updateSome<A>(pf: (a: A) => Option<A>, __tsplusTrace?: string) {
   return <RA, RB, EA, EB>(
     self: XRef<RA, RB, EA, EB, A, A>
   ): Effect<RA & RB, EA | EB, void> => updateSome_(self, pf)

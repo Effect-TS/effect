@@ -12,7 +12,7 @@ import { Effect } from "../definition"
  */
 export function memoizeF<R, E, A, B>(
   f: (a: A) => Effect<R, E, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<(a: A) => Effect<R, E, B>> {
   return Ref.make(Map.make<A, Promise<E, B>>([])).map(
     (ref) => (a: A) =>

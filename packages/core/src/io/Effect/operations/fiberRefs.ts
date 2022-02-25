@@ -67,6 +67,6 @@ export const getFiberRefs: UIO<FiberRefs> = new IFiberRefGetAll((fiberRefLocals)
  *
  * @tsplus static ets/EffectOps setFiberRefs
  */
-export function setFiberRefs(fiberRefs: FiberRefs, __etsTrace?: string): UIO<void> {
+export function setFiberRefs(fiberRefs: FiberRefs, __tsplusTrace?: string): UIO<void> {
   return Effect.suspendSucceed(fiberRefs.setAll)
 }

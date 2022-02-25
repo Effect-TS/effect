@@ -13,7 +13,7 @@ import { Effect } from "../definition"
  */
 export function uncause<R, E>(
   self: RIO<R, Cause<E>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, void> {
   return self.flatMap((cause) =>
     cause.isEmpty() ? Effect.unit : Effect.failCauseNow(cause)

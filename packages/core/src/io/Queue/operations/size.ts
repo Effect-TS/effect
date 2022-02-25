@@ -16,7 +16,7 @@ import { concreteQueue } from "../definition"
  */
 export function size<RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<number> {
   concreteQueue(self)
   return self._size

@@ -10,7 +10,7 @@ export function updateService_<R, E, A, T>(
   self: Managed<R & Has<T>, E, A>,
   _: Tag<T>,
   f: (_: T) => T,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & Has<T>, E, A> {
   // @ts-expect-error
   return Managed.serviceWithManaged(_)((s) =>
@@ -23,7 +23,7 @@ export function updateService_<R, E, A, T>(
  *
  * @ets_data_first updateService_
  */
-export function updateService<T>(_: Tag<T>, f: (_: T) => T, __etsTrace?: string) {
+export function updateService<T>(_: Tag<T>, f: (_: T) => T, __tsplusTrace?: string) {
   return <R, E, A>(self: Managed<R & Has<T>, E, A>): Managed<R & Has<T>, E, A> =>
     updateService_(self, _, f)
 }

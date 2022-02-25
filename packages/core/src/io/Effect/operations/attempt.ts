@@ -11,14 +11,14 @@ import { Effect, EffectError } from "../definition"
  */
 export function attempt<A>(
   f: LazyArg<A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<unknown, unknown, A> {
   return Effect.succeedWith((runtimeConfig) => {
     try {
       return f()
     } catch (error) {
       if (!runtimeConfig.value.fatal(error)) {
-        throw new EffectError(Exit.fail(error), __etsTrace)
+        throw new EffectError(Exit.fail(error), __tsplusTrace)
       }
       throw error
     }

@@ -12,7 +12,7 @@ export function summarized_<R, E, A, R2, E2, B, C>(
   self: Effect<R, E, A>,
   summary: Effect<R2, E2, B>,
   f: (start: B, end: B) => C,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E | E2, Tuple<[C, A]>> {
   return Effect.suspendSucceed(
     Effect.Do()
@@ -33,7 +33,7 @@ export function summarized_<R, E, A, R2, E2, B, C>(
 export function summarized<R2, E2, B, C>(
   summary: Effect<R2, E2, B>,
   f: (start: B, end: B) => C,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, Tuple<[C, A]>> =>
     self.summarized(summary, f)

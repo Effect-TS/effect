@@ -45,7 +45,7 @@ export function unsafeTrack(): Supervisor<Chunk<Fiber.Runtime<any, any>>> {
  * Creates a new supervisor that tracks children in a set.
  */
 export function track(
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<Supervisor<Chunk<Fiber.Runtime<any, any>>>> {
   return Effect.succeed(unsafeTrack)
 }

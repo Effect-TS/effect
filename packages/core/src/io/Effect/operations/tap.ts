@@ -8,7 +8,7 @@ import type { Effect } from "../definition"
 export function tap_<R2, E2, A, R, E, X>(
   self: Effect<R2, E2, A>,
   f: (a: A) => Effect<R, E, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return self.flatMap((a: A) => f(a).map(() => a))
 }
@@ -18,6 +18,6 @@ export function tap_<R2, E2, A, R, E, X>(
  *
  * @ets_data_first tap_
  */
-export function tap<R, E, A, X>(f: (a: A) => Effect<R, E, X>, __etsTrace?: string) {
+export function tap<R, E, A, X>(f: (a: A) => Effect<R, E, X>, __tsplusTrace?: string) {
   return <R2, E2>(self: Effect<R2, E2, A>): Effect<R & R2, E | E2, A> => self.tap(f)
 }

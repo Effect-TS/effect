@@ -4,7 +4,7 @@ import type { Atomic } from "../Atomic"
 export function getAndSet_<A>(
   self: Atomic<A>,
   value: A,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<unknown, never, A> {
   return Effect.succeed(() => {
     const v = self.value.get
@@ -16,6 +16,6 @@ export function getAndSet_<A>(
 /**
  * @ets_data_first getAndSet_
  */
-export function getAndSet<A>(value: A, __etsTrace?: string) {
+export function getAndSet<A>(value: A, __tsplusTrace?: string) {
   return (self: Atomic<A>): Effect<unknown, never, A> => getAndSet_(self, value)
 }

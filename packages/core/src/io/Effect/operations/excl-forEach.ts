@@ -49,7 +49,7 @@ import { Effect } from "../definition"
 export function forEach<A, R, E, B>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
   return Effect.suspendSucceed(() => {
     const acc: B[] = []
@@ -75,7 +75,7 @@ export function forEach<A, R, E, B>(
 export function forEachWithIndex<A, R, E, B>(
   as: LazyArg<Iterable<A>>,
   f: (a: A, i: number) => Effect<R, E, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
   return Effect.suspendSucceed(() => {
     let index = 0
@@ -105,7 +105,7 @@ export function forEachWithIndex<A, R, E, B>(
 export function forEachDiscard<R, E, A, X>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, void> {
   return Effect.succeed(as).flatMap((iterable) =>
     forEachDiscardLoop(iterable[Symbol.iterator](), f)
@@ -135,7 +135,7 @@ function forEachDiscardLoop<R, E, A, X>(
 export function forEachPar<R, E, A, B>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
   return Effect.parallelismWith((option) =>
     option.fold(
@@ -152,7 +152,7 @@ export function forEachPar<R, E, A, B>(
 function forEachParUnbounded<R, E, A, B>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
   return Effect.suspendSucceed(
     Effect.succeed<B[]>([]).flatMap((array) =>
@@ -173,7 +173,7 @@ function forEachParN<R, E, A, B>(
   as: LazyArg<Iterable<A>>,
   n: number,
   f: (a: A) => Effect<R, E, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
   return Effect.suspendSucceed<R, E, Chunk<B>>(() => {
     if (n < 1) {
@@ -240,7 +240,7 @@ function forEachParN<R, E, A, B>(
 export function forEachParWithIndex<R, E, A, B>(
   as: LazyArg<Iterable<A>>,
   f: (a: A, i: number) => Effect<R, E, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
   return Effect.suspendSucceed(
     Effect.succeed<B[]>([]).flatMap((array) =>
@@ -276,7 +276,7 @@ export function forEachParWithIndex<R, E, A, B>(
 export function forEachParDiscard<R, E, A, X>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, void> {
   return Effect.parallelismWith((option) =>
     option.fold(
@@ -289,7 +289,7 @@ export function forEachParDiscard<R, E, A, X>(
 function forEachParUnboundedDiscard<R, E, A, X>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, void> {
   return Effect.suspendSucceed<R, E, void>(() => {
     const bs = Chunk.from(as())
@@ -342,7 +342,7 @@ function forEachParNDiscard<R, E, A, X>(
   as: LazyArg<Iterable<A>>,
   n: number,
   f: (a: A) => Effect<R, E, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, void> {
   return Effect.suspendSucceed(() => {
     const as0 = as()
@@ -388,7 +388,7 @@ export function forEachExec<R, E, A, B>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, B>,
   strategy: ExecutionStrategy,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
   return Effect.suspendSucceed(() => {
     switch (strategy._tag) {
@@ -417,7 +417,7 @@ export function forEachExec<R, E, A, B>(
  */
 export function collectAll<R, E, A>(
   as: LazyArg<Iterable<Effect<R, E, A>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return Effect.forEach(as, identity)
 }
@@ -434,7 +434,7 @@ export function collectAll<R, E, A>(
  */
 export function collectAllPar<R, E, A>(
   as: LazyArg<Iterable<Effect<R, E, A>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Chunk<A>> {
   return Effect.forEachPar(as, identity)
 }
@@ -451,7 +451,7 @@ export function collectAllPar<R, E, A>(
  */
 export function collectAllDiscard<R, E, A>(
   as: LazyArg<Iterable<Effect<R, E, A>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, void> {
   return Effect.forEachDiscard(as, identity)
 }
@@ -468,7 +468,7 @@ export function collectAllDiscard<R, E, A>(
  */
 export function collectAllParDiscard<R, E, A>(
   as: LazyArg<Iterable<Effect<R, E, A>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, void> {
   return Effect.forEachParDiscard(as, identity)
 }
@@ -486,7 +486,7 @@ export function collectAllParDiscard<R, E, A>(
 export function collectAllWith<R, E, A, B>(
   as: LazyArg<Iterable<Effect<R, E, A>>>,
   pf: (a: A) => Option<B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
   return Effect.collectAll(as).map((chunk) => chunk.collect(pf))
 }
@@ -504,7 +504,7 @@ export function collectAllWith<R, E, A, B>(
 export function collectAllWithPar<R, E, A, B>(
   as: LazyArg<Iterable<Effect<R, E, A>>>,
   pf: (a: A) => Option<B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
   return Effect.collectAllPar(as).map((chunk) => chunk.collect(pf))
 }
@@ -520,7 +520,7 @@ export function collectAllWithPar<R, E, A, B>(
  */
 export function collectAllSuccesses<R, E, A>(
   as: LazyArg<Iterable<Effect<R, E, A>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, never, Chunk<A>> {
   return Effect.collectAllWith(
     Iter.map_(as(), (effect) => effect.exit()),
@@ -539,7 +539,7 @@ export function collectAllSuccesses<R, E, A>(
  */
 export function collectAllSuccessesPar<R, E, A>(
   as: LazyArg<Iterable<Effect<R, E, A>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, never, Chunk<A>> {
   return Effect.collectAllWithPar(
     Iter.map_(as(), (effect) => effect.exit()),
@@ -558,7 +558,7 @@ export function collectAllSuccessesPar<R, E, A>(
  */
 export function fiberJoinAll<E, A>(
   as: LazyArg<Iterable<Fiber.Fiber<E, A>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<unknown, E, Chunk<A>> {
   return fiberWaitAll(as)
     .flatMap((exit) => Effect.done(exit))
@@ -570,7 +570,7 @@ export function fiberJoinAll<E, A>(
  */
 export function fiberWaitAll<E, A>(
   as: LazyArg<Iterable<Fiber.Fiber<E, A>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): RIO<unknown, Exit<E, Chunk<A>>> {
   return Effect.forEachPar(as, (fiber) =>
     fiber.await.flatMap((exit) => Effect.done(exit))
@@ -588,7 +588,7 @@ export function releaseMapReleaseAll(
   self: ReleaseMap,
   ex: Exit<any, any>,
   execStrategy: ExecutionStrategy,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<any> {
   return RefModify.modify_(self.ref, (s): Tuple<[UIO<any>, State]> => {
     switch (s._tag) {
@@ -645,7 +645,7 @@ export function releaseMapReleaseAll(
  */
 export function managedFork<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, never, Fiber.Runtime<E, A>> {
   return Managed(
     Effect.uninterruptibleMask(({ restore }) =>
@@ -681,7 +681,7 @@ export function managedFork<R, E, A>(
 export function managedUse<R, E, A, R2, E2, B>(
   self: Managed<R, E, A>,
   f: (a: A) => Effect<R2, E2, B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E | E2, B> {
   return ReleaseMap.make.flatMap((releaseMap) =>
     locally_(
@@ -702,7 +702,7 @@ export function managedUse<R, E, A, R2, E2, B>(
 
 export function makeBoundedQueue<A>(
   requestedCapacity: number,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<Queue<A>> {
   return Effect.succeed(MutableQueue.Bounded<A>(requestedCapacity)).flatMap((queue) =>
     createQueue(queue, new BackPressureStrategy())
@@ -712,7 +712,7 @@ export function makeBoundedQueue<A>(
 export function createQueue<A>(
   queue: MutableQueue<A>,
   strategy: Strategy<A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<Queue<A>> {
   return Promise.make<never, void>().map((promise) =>
     unsafeCreateQueue(
@@ -755,7 +755,7 @@ export class UnsafeCreate<A> extends XQueueInternal<
 
   _capacity: number = this.queue.capacity
 
-  _offer(a: A, __etsTrace?: string): Effect<unknown, never, boolean> {
+  _offer(a: A, __tsplusTrace?: string): Effect<unknown, never, boolean> {
     return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
         return Effect.interrupt
@@ -795,7 +795,7 @@ export class UnsafeCreate<A> extends XQueueInternal<
     })
   }
 
-  _offerAll(as: Iterable<A>, __etsTrace?: string): Effect<unknown, never, boolean> {
+  _offerAll(as: Iterable<A>, __tsplusTrace?: string): Effect<unknown, never, boolean> {
     return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
         return Effect.interrupt
@@ -894,7 +894,7 @@ export class UnsafeCreate<A> extends XQueueInternal<
         })
   )
 
-  _takeUpTo(n: number, __etsTrace?: string): Effect<unknown, never, Chunk<A>> {
+  _takeUpTo(n: number, __tsplusTrace?: string): Effect<unknown, never, Chunk<A>> {
     return Effect.suspendSucceed(() =>
       this.shutdownFlag.get
         ? Effect.interrupt
@@ -926,7 +926,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
     queue: MutableQueue<A>,
     takers: MutableQueue<Promise<never, A>>,
     isShutdown: AtomicBoolean,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): UIO<boolean> {
     return Effect.suspendSucceedWith((_, fiberId) => {
       const promise = Promise.unsafeMake<never, boolean>(fiberId)

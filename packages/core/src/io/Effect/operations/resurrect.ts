@@ -9,7 +9,7 @@ import type { Effect } from "../definition"
  */
 export function resurrect<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, unknown, A> {
   return self.unrefineWith(some, identity)
 }

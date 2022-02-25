@@ -9,7 +9,7 @@ import { Managed } from "../definition"
  */
 export function failCauseNow<E>(
   cause: Cause<E>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<unknown, E, never> {
   return Managed.fromEffect(Effect.failCauseNow(cause))
 }

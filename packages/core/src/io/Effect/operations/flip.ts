@@ -8,7 +8,7 @@ import { Effect } from "../definition"
  */
 export function flip<R, E, A>(
   self: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, A, E> {
   return self.foldEffect(Effect.succeedNow, Effect.failNow)
 }

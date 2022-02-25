@@ -10,7 +10,7 @@ import { Managed } from "../definition"
 export function when_<R, E, A>(
   self: Managed<R, E, A>,
   b: LazyArg<boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, Option<A>> {
   return Managed.suspend(b() ? self.asSome() : Managed.none)
 }
@@ -20,6 +20,6 @@ export function when_<R, E, A>(
  *
  * @ets_data_first when_
  */
-export function when(b: LazyArg<boolean>, __etsTrace?: string) {
+export function when(b: LazyArg<boolean>, __tsplusTrace?: string) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<R, E, Option<A>> => when_(self, b)
 }

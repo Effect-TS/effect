@@ -9,7 +9,7 @@ import { Effect } from "../definition"
 export function repeatUntilEffect_<R, E, A, R1>(
   self: Effect<R, E, A>,
   f: (a: A) => Effect<R1, never, boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R1, E, A> {
   return self.flatMap((a) =>
     f(a).flatMap((b) =>
@@ -26,7 +26,7 @@ export function repeatUntilEffect_<R, E, A, R1>(
  */
 export function repeatUntilEffect<A, R1>(
   f: (a: A) => Effect<R1, never, boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R & R1, E, A> =>
     self.repeatUntilEffect(f)

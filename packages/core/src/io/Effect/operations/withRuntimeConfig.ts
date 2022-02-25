@@ -11,7 +11,7 @@ import { Effect } from "../definition"
 export function withRuntimeConfig<R, E, A>(
   runtimeConfig: LazyArg<RuntimeConfig>,
   effect: LazyArg<Effect<R, E, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return Effect.runtimeConfig.flatMap((currentRuntimeConfig) =>
     Effect.acquireRelease(
@@ -31,7 +31,7 @@ export function withRuntimeConfig<R, E, A>(
 export function withRuntimeConfigNow_<R, E, A>(
   self: Effect<R, E, A>,
   runtimeConfig: LazyArg<RuntimeConfig>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return withRuntimeConfig(runtimeConfig, self)
 }
@@ -44,7 +44,7 @@ export function withRuntimeConfigNow_<R, E, A>(
  */
 export function withRuntimeConfigNow(
   runtimeConfig: LazyArg<RuntimeConfig>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
     self.withRuntimeConfig(runtimeConfig)

@@ -12,7 +12,7 @@ import { Effect } from "../definition"
  */
 export function getOrFailDiscard<A>(
   option: LazyArg<Option<A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): IO<void, A> {
   return Effect.getOrFailWith(option, constVoid)
 }

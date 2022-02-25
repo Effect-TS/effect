@@ -10,7 +10,7 @@ import { Effect } from "../definition"
  */
 export function absolveNow<R, E, A>(
   self: Effect<R, E, Either<E, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return Effect.absolve(self)
 }
@@ -23,7 +23,7 @@ export function absolveNow<R, E, A>(
  */
 export function absolve<R, E, A>(
   self: LazyArg<Effect<R, E, Either<E, A>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(self).flatMap(Effect.fromEitherNow)
 }

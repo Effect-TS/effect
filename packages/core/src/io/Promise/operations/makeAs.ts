@@ -11,7 +11,7 @@ import { Promise } from "../definition"
  */
 export function makeAs<E, A>(
   fiberId: LazyArg<FiberId>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<Promise<E, A>> {
   return Effect.succeed(Promise.unsafeMake(fiberId()))
 }

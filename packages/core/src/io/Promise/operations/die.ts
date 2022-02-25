@@ -12,7 +12,7 @@ import type { Promise } from "../definition"
 export function die_<E, A>(
   self: Promise<E, A>,
   defect: LazyArg<unknown>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<boolean> {
   return self.completeWith(Effect.die(defect))
 }
@@ -23,6 +23,6 @@ export function die_<E, A>(
  *
  * @ets_data_first die_
  */
-export function die(defect: LazyArg<unknown>, __etsTrace?: string) {
+export function die(defect: LazyArg<unknown>, __tsplusTrace?: string) {
   return <E, A>(self: Promise<E, A>): UIO<boolean> => self.die(defect)
 }

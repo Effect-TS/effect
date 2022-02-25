@@ -10,7 +10,7 @@ import { modify_ } from "./modify"
 export function updateAndGet_<EA, EB, A>(
   self: XFiberRef<EA, EB, A, A>,
   f: (a: A) => A,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): IO<EA | EB, A> {
   return modify_(self, (v) => {
     const result = f(v)
@@ -24,7 +24,7 @@ export function updateAndGet_<EA, EB, A>(
  *
  * @ets_data_first updateAndGet_
  */
-export function updateAndGet<A>(f: (a: A) => A, __etsTrace?: string) {
+export function updateAndGet<A>(f: (a: A) => A, __tsplusTrace?: string) {
   return <EA, EB>(self: XFiberRef<EA, EB, A, A>): IO<EA | EB, A> =>
     updateAndGet_(self, f)
 }

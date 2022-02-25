@@ -10,7 +10,7 @@ import { Effect } from "../definition"
  */
 export function fromEitherNow<E, A>(
   either: Either<E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<unknown, E, A> {
   return Effect.fromEither(() => either)
 }
@@ -22,7 +22,7 @@ export function fromEitherNow<E, A>(
  */
 export function fromEither<E, A>(
   either: LazyArg<Either<E, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<unknown, E, A> {
   return Effect.succeed(either).flatMap(fold(Effect.failNow, Effect.succeedNow))
 }

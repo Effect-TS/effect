@@ -25,7 +25,7 @@ import { ReleaseMap } from "../ReleaseMap"
 export function timeout_<R, E, A>(
   self: Managed<R, E, A>,
   duration: number,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & HasClock, E, Option<A>> {
   return Managed(
     Effect.uninterruptibleMask(({ restore }) =>
@@ -82,7 +82,7 @@ export function timeout_<R, E, A>(
  * action will be run on a new fiber. `Some` will be returned if acquisition
  * and reservation complete in time
  */
-export function timeout(duration: number, __etsTrace?: string) {
+export function timeout(duration: number, __tsplusTrace?: string) {
   return <R, E, A>(self: Managed<R, E, A>): Managed<R & HasClock, E, Option<A>> =>
     self.timeout(duration)
 }

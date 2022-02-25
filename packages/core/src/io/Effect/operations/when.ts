@@ -10,7 +10,7 @@ import { Effect } from "../definition"
 export function when<R, E, A>(
   predicate: LazyArg<boolean>,
   effect: Effect<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, Option<A>> {
   return Effect.suspendSucceed(
     predicate() ? effect.map(Option.some) : Effect.succeedNow(Option.none)

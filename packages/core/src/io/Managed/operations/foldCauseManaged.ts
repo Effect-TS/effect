@@ -11,7 +11,7 @@ export function foldCauseManaged_<R, E, A, R1, E1, A1, R2, E2, A2>(
   self: Managed<R, E, A>,
   failure: (cause: Cause<E>) => Managed<R1, E1, A1>,
   success: (a: A) => Managed<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & R1 & R2, E1 | E2, A1 | A2> {
   return Managed<R & R1 & R2, E1 | E2, A1 | A2>(
     self.effect.foldCauseEffect(
@@ -30,7 +30,7 @@ export function foldCauseManaged_<R, E, A, R1, E1, A1, R2, E2, A2>(
 export function foldCauseManaged<E, A, R1, E1, A1, R2, E2, A2>(
   failure: (cause: Cause<E>) => Managed<R1, E1, A1>,
   success: (a: A) => Managed<R2, E2, A2>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R>(self: Managed<R, E, A>): Managed<R & R1 & R2, E1 | E2, A1 | A2> =>
     self.foldCauseManaged(failure, success)

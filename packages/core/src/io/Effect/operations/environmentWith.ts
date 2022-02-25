@@ -8,7 +8,7 @@ import { Effect } from "../definition"
  */
 export function environmentWith<R, A>(
   f: (env: R) => A,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): RIO<R, A> {
   return Effect.environment<R>().map(f)
 }

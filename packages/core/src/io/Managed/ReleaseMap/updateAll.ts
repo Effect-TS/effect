@@ -13,7 +13,7 @@ import { Exited, Running } from "./state"
 export function updateAll_(
   self: ReleaseMap,
   f: (finalizer: Finalizer) => Finalizer,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<void> {
   return refUpdate_(self.ref, (state) => {
     switch (state._tag) {
@@ -33,6 +33,6 @@ export function updateAll_(
  *
  * @ets_data_first updateAll_
  */
-export function updateAll(f: (finalizer: Finalizer) => Finalizer, __etsTrace?: string) {
+export function updateAll(f: (finalizer: Finalizer) => Finalizer, __tsplusTrace?: string) {
   return (self: ReleaseMap): UIO<void> => updateAll_(self, f)
 }

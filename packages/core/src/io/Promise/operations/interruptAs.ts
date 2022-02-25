@@ -13,7 +13,7 @@ import type { Promise } from "../definition"
 export function interruptAs_<E, A>(
   self: Promise<E, A>,
   fiberId: LazyArg<FiberId>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<boolean> {
   return self.completeWith(Effect.interruptAs(fiberId))
 }
@@ -24,6 +24,6 @@ export function interruptAs_<E, A>(
  *
  * @ets_data_first interruptAs_
  */
-export function interruptAs(fiberId: LazyArg<FiberId>, __etsTrace?: string) {
+export function interruptAs(fiberId: LazyArg<FiberId>, __tsplusTrace?: string) {
   return <E, A>(self: Promise<E, A>): UIO<boolean> => self.interruptAs(fiberId)
 }

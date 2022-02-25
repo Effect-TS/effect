@@ -13,7 +13,7 @@ import { Effect } from "../definition"
 export function intoPromise_<R, E, A>(
   self: Effect<R, E, A>,
   promise: LazyArg<Promise<E, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): RIO<R, boolean> {
   return Effect.uninterruptibleMask(({ restore }) =>
     restore(self)
@@ -31,7 +31,7 @@ export function intoPromise_<R, E, A>(
  */
 export function intoPromise<E, A>(
   promise: LazyArg<Promise<E, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R>(self: Effect<R, E, A>): RIO<R, boolean> => self.intoPromise(promise)
 }

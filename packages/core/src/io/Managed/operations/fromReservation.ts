@@ -12,7 +12,7 @@ import { fromReservationEffect } from "./fromReservationEffect"
  */
 export function fromReservation<R, E, A>(
   reservation: LazyArg<Reservation<R, E, A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, A> {
   return fromReservationEffect(Effect.succeed(reservation))
 }

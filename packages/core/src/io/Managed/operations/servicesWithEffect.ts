@@ -19,7 +19,7 @@ export function servicesWithEffectT<SS extends Tag<any>[]>(...s: SS) {
         [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? T : unknown
       }
     ) => Effect<R, E, B>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ) =>
     Managed.environmentWithEffect(
       (
@@ -42,7 +42,7 @@ export function servicesWithEffectS<SS extends Record<string, Tag<any>>>(s: SS) 
     f: (a: {
       [k in keyof SS]: [SS[k]] extends [Tag<infer T>] ? T : unknown
     }) => Effect<R, E, B>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ) =>
     Managed.environmentWithEffect(
       (

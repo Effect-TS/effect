@@ -10,7 +10,7 @@ import type { Managed } from "../definition"
 export function tapEffect_<R, E, A, R1, E1, X>(
   self: Managed<R, E, A>,
   f: (a: A) => Effect<R1, E1, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & R1, E | E1, A> {
   return self.mapEffect((a) => f(a).map(() => a))
 }
@@ -23,7 +23,7 @@ export function tapEffect_<R, E, A, R1, E1, X>(
  */
 export function tapEffect<R1, E1, A, X>(
   f: (a: A) => Effect<R1, E1, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E>(self: Managed<R, E, A>): Managed<R & R1, E | E1, A> =>
     tapEffect_(self, f)

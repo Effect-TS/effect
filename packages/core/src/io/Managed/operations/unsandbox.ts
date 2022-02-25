@@ -8,7 +8,7 @@ import { Managed } from "../definition"
  */
 export function unsandbox<R, E, A>(
   self: Managed<R, Cause<E>, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, A> {
   return Managed.suspend(self.catchAll(Managed.failCauseNow))
 }

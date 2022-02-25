@@ -10,7 +10,7 @@ import { Managed } from "../definition"
 export function catchSomeCause_<R, E, A, R1, E1, A1>(
   self: Managed<R, E, A>,
   pf: (cause: Cause<E>) => Option<Managed<R1, E1, A1>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & R1, E | E1, A | A1> {
   return self.catchAllCause((e) => pf(e).getOrElse(Managed.failCause<E | E1>(e)))
 }
@@ -22,7 +22,7 @@ export function catchSomeCause_<R, E, A, R1, E1, A1>(
  */
 export function catchSomeCause<E, R1, E1, A1>(
   pf: (cause: Cause<E>) => Option<Managed<R1, E1, A1>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, A>(self: Managed<R, E, A>): Managed<R & R1, E | E1, A | A1> =>
     catchSomeCause_(self, pf)

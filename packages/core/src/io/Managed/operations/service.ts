@@ -9,6 +9,9 @@ import { Managed } from "../definition"
  *
  * @tsplus static ets/ManagedOps service
  */
-export function service<T>(_: Tag<T>, __etsTrace?: string): Managed<Has<T>, never, T> {
+export function service<T>(
+  _: Tag<T>,
+  __tsplusTrace?: string
+): Managed<Has<T>, never, T> {
   return Managed.serviceWithManaged(_)(Managed.succeedNow)
 }

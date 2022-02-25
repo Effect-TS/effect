@@ -11,7 +11,7 @@ import { Effect } from "../definition"
  */
 export function fromOption<A>(
   option: LazyArg<Option<A>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): IO<Option<never>, A> {
   return Effect.succeed(option).flatMap((option) =>
     option.fold(Effect.fail(Option.none), Effect.succeedNow)

@@ -17,7 +17,7 @@ import { Strategy } from "./strategy"
  */
 export function sliding<A>(
   requestedCapacity: number,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<Queue<A>> {
   return Effect.succeed(MutableQueue.Bounded<A>(requestedCapacity)).flatMap((queue) =>
     Queue.create(queue, Strategy.Sliding())

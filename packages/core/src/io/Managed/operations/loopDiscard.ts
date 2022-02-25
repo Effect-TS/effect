@@ -16,7 +16,7 @@ import { Managed } from "../definition"
 export function loopDiscard<Z>(initial: Z, cont: (z: Z) => boolean, inc: (z: Z) => Z) {
   return <R, E, X>(
     body: (z: Z) => Managed<R, E, X>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Managed<R, E, void> =>
     Managed.suspend(() => {
       if (cont(initial)) {

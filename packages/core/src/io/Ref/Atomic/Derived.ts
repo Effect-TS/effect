@@ -33,7 +33,7 @@ export class Derived<EA, EB, A, B> extends XRefInternal<
     )
   }
 
-  set(a: A, __etsTrace?: string): Effect<unknown, EA, void> {
+  set(a: A, __tsplusTrace?: string): Effect<unknown, EA, void> {
     return this.use((value, _, setEither) =>
       setEither(a).fold(Effect.failNow, value.set)
     )

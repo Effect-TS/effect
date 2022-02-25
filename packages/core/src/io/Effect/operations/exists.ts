@@ -10,7 +10,7 @@ import { Effect } from "../definition"
 export function exists<R, E, A>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, boolean> {
   return Effect.succeed(as).flatMap((iterable) => loop(iterable[Symbol.iterator](), f))
 }
@@ -18,7 +18,7 @@ export function exists<R, E, A>(
 function loop<R, E, A>(
   iterator: Iterator<A>,
   f: (a: A) => Effect<R, E, boolean>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, E, boolean> {
   const next = iterator.next()
   if (next.done) {

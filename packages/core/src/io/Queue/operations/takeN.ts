@@ -17,7 +17,7 @@ import type { XQueue } from "../definition"
 export function takeN_<RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,
   n: number,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<RB, EB, Chunk<B>> {
   return self.takeBetween(n, n)
 }
@@ -29,7 +29,7 @@ export function takeN_<RA, RB, EA, EB, A, B>(
  *
  * @ets_data_first takeN_
  */
-export function takeN(n: number, __etsTrace?: string) {
+export function takeN(n: number, __tsplusTrace?: string) {
   return <RA, RB, EA, EB, A, B>(
     self: XQueue<RA, RB, EA, EB, A, B>
   ): Effect<RB, EB, Chunk<B>> => self.takeN(n)

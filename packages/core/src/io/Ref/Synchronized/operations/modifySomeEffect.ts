@@ -14,7 +14,7 @@ export function modifySomeEffect_<RA, RB, RC, EA, EB, EC, A, B>(
   self: XSynchronized<RA, RB, EA, EB, A, A>,
   def: B,
   pf: (a: A) => Option<Effect<RC, EC, Tuple<[B, A]>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<RA & RB & RC, EA | EB | EC, B> {
   return modifyEffect_(self, (v) => pf(v).getOrElse(Effect.succeedNow(Tuple(def, v))))
 }
@@ -30,7 +30,7 @@ export function modifySomeEffect_<RA, RB, RC, EA, EB, EC, A, B>(
 export function modifySomeEffect<RC, EC, A, B>(
   def: B,
   pf: (a: A) => Option<Effect<RC, EC, Tuple<[B, A]>>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <RA, RB, EA, EB>(
     self: XSynchronized<RA, RB, EA, EB, A, A>

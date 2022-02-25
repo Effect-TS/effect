@@ -7,7 +7,7 @@ import { Managed } from "../definition"
  */
 export function struct<NER extends Record<string, Managed<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<
   _R<NER[keyof NER]>,
   _E<NER[keyof NER]>,
@@ -32,7 +32,7 @@ export function struct<NER extends Record<string, Managed<any, any, any>>>(
  */
 export function structPar<NER extends Record<string, Managed<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<
   _R<NER[keyof NER]>,
   _E<NER[keyof NER]>,
@@ -65,7 +65,7 @@ export function bindAll_<
 >(
   s: Managed<R, E, K>,
   r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
@@ -97,7 +97,7 @@ export function bindAll<
   }
 >(
   r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): <R, E>(
   s: Managed<R, E, K>
 ) => Managed<
@@ -124,7 +124,7 @@ export function bindAllPar_<
 >(
   s: Managed<R, E, K>,
   r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<
   R & _R<NER[keyof NER]>,
   E | _E<NER[keyof NER]>,
@@ -156,7 +156,7 @@ export function bindAllPar<
   }
 >(
   r: (k: K) => EnforceNonEmptyRecord<NER> & Record<string, Managed<any, any, any>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): <R, E>(
   s: Managed<R, E, K>
 ) => Managed<

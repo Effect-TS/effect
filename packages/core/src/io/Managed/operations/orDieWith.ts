@@ -9,7 +9,7 @@ import { Managed } from "../definition"
 export function orDieWith_<R, E, A>(
   self: Managed<R, E, A>,
   f: (e: E) => unknown,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, never, A> {
   return self.mapError(f).catchAll(Managed.dieNow)
 }
@@ -20,6 +20,6 @@ export function orDieWith_<R, E, A>(
  *
  * @ets_data_first orDieWith_
  */
-export function orDieWith<E>(f: (e: E) => unknown, __etsTrace?: string) {
+export function orDieWith<E>(f: (e: E) => unknown, __tsplusTrace?: string) {
   return <R, A>(self: Managed<R, E, A>): Managed<R, never, A> => orDieWith_(self, f)
 }

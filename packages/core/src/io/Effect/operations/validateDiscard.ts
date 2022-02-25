@@ -12,7 +12,7 @@ import { Effect } from "../definition"
 export function validateDiscard<R, E, A, X>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R, NonEmptyArray<E>, void> {
   return Effect.partition(as, f).flatMap(({ tuple: [es, bs] }) =>
     es.isEmpty()

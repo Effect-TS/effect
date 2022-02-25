@@ -12,7 +12,7 @@ import { Managed } from "../definition"
 export function orElseOptional_<R, E, A, R2, E2, A2>(
   self: Managed<R, Option<E>, A>,
   that: LazyArg<Managed<R2, Option<E2>, A2>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R & R2, Option<E | E2>, A | A2> {
   return self.catchAll((_) =>
     _.fold(that, (e) => Managed.failNow(Option.some<E | E2>(e)))
@@ -28,7 +28,7 @@ export function orElseOptional_<R, E, A, R2, E2, A2>(
  */
 export function orElseOptional<R2, E2, A2>(
   that: LazyArg<Managed<R2, Option<E2>, A2>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Managed<R, Option<E>, A>) => orElseOptional_(self, that)
 }

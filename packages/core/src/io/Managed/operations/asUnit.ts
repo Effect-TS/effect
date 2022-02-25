@@ -8,7 +8,7 @@ import type { Managed } from "../definition"
  */
 export function asUnit<R, E, A>(
   self: Managed<R, E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, void> {
   return self.map(constVoid)
 }

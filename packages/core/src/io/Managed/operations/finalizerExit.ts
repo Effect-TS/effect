@@ -10,7 +10,7 @@ import { Managed } from "../definition"
  */
 export function finalizerExit<R, X>(
   f: (exit: Exit<any, any>) => Effect<R, never, X>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, never, void> {
   return Managed.acquireReleaseExitWith(Effect.unit, (_, e) => f(e))
 }

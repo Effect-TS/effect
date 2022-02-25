@@ -11,7 +11,7 @@ import type { Effect } from "../definition"
 export function zipLeft_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   that: LazyArg<Effect<R2, E2, A2>>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Effect<R & R2, E | E2, A> {
   return self.flatMap((a) => that().as(a))
 }

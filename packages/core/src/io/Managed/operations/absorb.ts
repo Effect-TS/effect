@@ -9,7 +9,7 @@ import type { Managed } from "../definition"
 export function absorb<R, E, A>(
   self: Managed<R, E, A>,
   f: (e: E) => unknown,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, unknown, A> {
   return self.absorbWith(f)
 }

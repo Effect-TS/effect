@@ -13,7 +13,7 @@ import { Managed } from "../definition"
 export function serviceWithManaged<T>(_: Tag<T>) {
   return <R, E, A>(
     f: (service: T) => Managed<R, E, A>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Managed<R & Has<T>, E, A> =>
     Managed.environmentWithManaged((r: Has<T>) => f(r[_.key]))
 }

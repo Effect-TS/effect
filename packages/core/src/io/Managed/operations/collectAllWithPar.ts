@@ -12,7 +12,7 @@ import { Managed } from "../definition"
 export function collectAllWithPar<R, E, A, B>(
   as: LazyArg<Iterable<Managed<R, E, A>>>,
   pf: (a: A) => Option<B>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): Managed<R, E, Chunk<B>> {
   return Managed.collectAllPar(as).map((_) => _.collect(pf))
 }

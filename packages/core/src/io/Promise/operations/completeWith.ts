@@ -20,7 +20,7 @@ import type { Promise } from "../definition"
 export function completeWith_<E, A>(
   self: Promise<E, A>,
   effect: IO<E, A>,
-  __etsTrace?: string
+  __tsplusTrace?: string
 ): UIO<boolean> {
   return Effect.succeed(() => {
     const state = self.state.get
@@ -54,6 +54,6 @@ export function completeWith_<E, A>(
  *
  * @ets_data_first completeWith_
  */
-export function completeWith<E, A>(effect: IO<E, A>, __etsTrace?: string) {
+export function completeWith<E, A>(effect: IO<E, A>, __tsplusTrace?: string) {
   return (self: Promise<E, A>): UIO<boolean> => self.completeWith(effect)
 }

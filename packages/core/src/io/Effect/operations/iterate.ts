@@ -19,7 +19,7 @@ import { Effect } from "../definition"
 export function iterate<Z>(initial: LazyArg<Z>, cont: (z: Z) => boolean) {
   return <R, E>(
     body: (z: Z) => Effect<R, E, Z>,
-    __etsTrace?: string
+    __tsplusTrace?: string
   ): Effect<R, E, Z> => {
     return Effect.suspendSucceed(() => {
       const initial0 = initial()
