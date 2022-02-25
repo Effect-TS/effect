@@ -9,5 +9,5 @@ import * as Finalizer from "../ReleaseMap/finalizer"
  * @tsplus static ets/ManagedOps succeedNow
  */
 export function succeedNow<A>(a: A, __etsTrace?: string): Managed<unknown, never, A> {
-  return Managed(Effect.succeedNow(Tuple(Finalizer.noopFinalizer, a)))
+  return Managed(Effect.succeed(Tuple(Finalizer.noopFinalizer, a)))
 }

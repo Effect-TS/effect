@@ -1,7 +1,6 @@
 // codegen:start {preset: barrel, include: ./operations/*.ts}
 export * from "./operations/contramap"
-export * from "./operations/defaultCause"
-export * from "./operations/defaultString"
+export * from "./operations/default"
 export * from "./operations/filterLogLevel"
 export * from "./operations/map"
 export * from "./operations/none"

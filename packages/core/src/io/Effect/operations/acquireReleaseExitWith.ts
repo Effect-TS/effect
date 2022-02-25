@@ -24,7 +24,7 @@ export function acquireReleaseExitWith<R, E, A, R1, E1, A1, R2, E2, X>(
         .flatMap((exit) =>
           Effect.suspendSucceed(release(a, exit)).foldCauseEffect(
             (cause2) =>
-              Effect.failCauseNow(
+              Effect.failCause(
                 exit.fold(
                   (cause1) => cause1 + cause2,
                   () => cause2

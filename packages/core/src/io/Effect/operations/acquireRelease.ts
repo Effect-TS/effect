@@ -13,11 +13,7 @@ export function acquireRelease<R, E, A, E1, R1, A1, R2, E2, A2>(
   release: LazyArg<Effect<R2, E2, A2>>,
   __etsTrace?: string
 ): Effect<R & R1 & R2, E | E1 | E2, A1> {
-  return Effect.acquireReleaseWith(
-    acquire,
-    () => use(),
-    () => release()
-  )
+  return Effect.acquireReleaseWith(acquire, use, release)
 }
 
 /**
@@ -32,7 +28,7 @@ export function acquireReleaseNow_<R, E, A, E1, R1, A1, R2, E2, A2>(
   release: LazyArg<Effect<R2, E2, A2>>,
   __etsTrace?: string
 ): Effect<R & R1 & R2, E | E1 | E2, A1> {
-  return Effect.acquireRelease(self, use, release)
+  return acquireRelease(self, use, release)
 }
 
 /**

@@ -2,7 +2,7 @@ import { Chunk } from "../src/collection/immutable/Chunk"
 import { HashMap } from "../src/collection/immutable/HashMap"
 import { Either } from "../src/data/Either"
 import { Effect } from "../src/io/Effect"
-import * as LogLevel from "../src/io/LogLevel"
+import { LogLevel } from "../src/io/LogLevel"
 
 export const numbers = Effect(0) + Effect(1) + Effect(2)
 export const numbersPar = Effect(0) & Effect(1) & Effect(2)
@@ -49,7 +49,7 @@ export const program = (numbers + numbersPar).flatMap(
 
 export const executeOrDie = Effect.fail("error") | program
 
-program.apply(LogLevel.locally(LogLevel.Error)).unsafeRunPromise()
+program.apply(LogLevel(LogLevel.Error)).unsafeRunPromise()
 
 export const x4 = Chunk(0, 1, 2).mapK(Effect.Applicative)((n) =>
   n > 0 ? Effect.fail("error") : Effect.succeed(`${n + 1}`)

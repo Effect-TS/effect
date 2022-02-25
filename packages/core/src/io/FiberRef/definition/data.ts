@@ -1,4 +1,5 @@
-import { Chunk } from "../../../collection/immutable/Chunk"
+import { List } from "../../../collection/immutable/List"
+import * as Map from "../../../collection/immutable/Map"
 import { Tuple } from "../../../collection/immutable/Tuple"
 import { Either } from "../../../data/Either"
 import { identity } from "../../../data/Function"
@@ -357,8 +358,15 @@ export const currentLogLevel: LazyValue<FiberRef.Runtime<LogLevel>> = LazyValue.
 /**
  * A `FiberRef` containing a reference to the current list of `LogSpan`s.
  */
-export const currentLogSpan: LazyValue<FiberRef.Runtime<Chunk<LogSpan>>> =
-  LazyValue.make(() => unsafeMake(Chunk.empty()))
+export const currentLogSpan: LazyValue<FiberRef.Runtime<List<LogSpan>>> =
+  LazyValue.make(() => unsafeMake(List.empty()))
+
+/**
+ * A `FiberRef` containing a reference to the current map of log annotations.
+ */
+export const currentLogAnnotations: LazyValue<
+  FiberRef.Runtime<Map.Map<string, string>>
+> = LazyValue.make(() => unsafeMake<Map.Map<string, string>>(Map.empty))
 
 /**
  * A `FiberRef` containing a reference to the current operation parallelism.

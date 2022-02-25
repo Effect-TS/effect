@@ -25,6 +25,7 @@ import type { HasRandom } from "../../src/io/Random"
 import * as Random from "../../src/io/Random"
 import * as Ref from "../../src/io/Ref"
 import { Schedule } from "../../src/io/Schedule"
+import { TraceElement } from "../../src/io/TraceElement"
 import * as Equal from "../../src/prelude/Equal"
 import { AtomicNumber } from "../../src/support/AtomicNumber"
 import { withLatch, withLatchAwait } from "../test-utils/Latch"
@@ -670,7 +671,7 @@ describe("Effect", () => {
 
   describe("done", () => {
     it("check that done lifts exit result into IO", async () => {
-      const fiberId = FiberId(0, 213)
+      const fiberId = FiberId(0, 123, TraceElement.empty)
       const error = ExampleError
       const program = Effect.Do()
         .bind("completed", () => Effect.done(Exit.succeed(1)))
@@ -2348,7 +2349,7 @@ describe("Effect", () => {
   describe("orElse", () => {
     it("does not recover from defects", async () => {
       const error = new Error("died")
-      const fiberId = FiberId(0, 123)
+      const fiberId = FiberId(0, 123, TraceElement.empty)
       const program = Effect.Do()
         .bind("plain", () => (Effect.die(error) | Effect.unit).exit())
         .bind("both", () =>
