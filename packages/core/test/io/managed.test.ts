@@ -2628,11 +2628,12 @@ describe("Managed", () => {
         .bind("def", () => Effect.runtimeConfig)
         .bind("ref1", ({ def }) => Ref.make(def))
         .bind("ref2", ({ def }) => Ref.make(def))
-        .bindValue("managed", ({ ref1, ref2 }) =>
+        .bindValue("global", () => Effect.defaultRuntimeConfig)
+        .bindValue("managed", ({ global, ref1, ref2 }) =>
           Managed.acquireRelease(
             Effect.runtimeConfig.flatMap((_) => Ref.set_(ref1, _)),
             Effect.runtimeConfig.flatMap((_) => Ref.set_(ref2, _))
-          ).withRuntimeConfig(Effect.defaultRuntimeConfig)
+          ).withRuntimeConfig(global)
         )
         .bind("before", () => Effect.runtimeConfig)
         .bind("use", ({ managed }) => managed.useDiscard(Effect.runtimeConfig))
@@ -2640,7 +2641,7 @@ describe("Managed", () => {
         .bind("release", ({ ref2 }) => Ref.get(ref2))
         .bind("after", () => Effect.runtimeConfig)
 
-      const { acquire, after, before, def, release, use } =
+      const { acquire, after, before, def, global, release, use } =
         await program.unsafeRunPromise()
 
       expect(before).toEqual(def)
