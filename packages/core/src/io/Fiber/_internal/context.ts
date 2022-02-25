@@ -38,8 +38,7 @@ import * as HistogramBoundaries from "../../Metric/Boundaries"
 import * as MetricClient from "../../Metric/MetricClient"
 import { Promise } from "../../Promise"
 import { RuntimeConfig } from "../../RuntimeConfig"
-import * as RuntimeConfigFlag from "../../RuntimeConfig/Flag"
-import * as RuntimeConfigFlags from "../../RuntimeConfig/Flags"
+import { RuntimeConfigFlag } from "../../RuntimeConfig/Flag"
 import * as Scope from "../../Scope"
 import { Trace } from "../../Trace"
 import { TraceElement } from "../../TraceElement"
@@ -175,9 +174,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   // -----------------------------------------------------------------------------
 
   get trackMetrics(): boolean {
-    return RuntimeConfigFlags.isEnabled_(
-      this.runtimeConfig.value.flags,
-      RuntimeConfigFlag.trackRuntimeMetrics
+    return this.runtimeConfig.value.flags.isEnabled(
+      RuntimeConfigFlag.TrackRuntimeMetrics
     )
   }
 
@@ -1108,10 +1106,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
    */
   runUntil(maxOpCount: number): void {
     try {
-      const logRuntime = RuntimeConfigFlags.isEnabled_(
-        this.runtimeConfig.value.flags,
-        RuntimeConfigFlag.logRuntime
-      )
+      const flags = this.runtimeConfig.value.flags
+      const logRuntime = flags.isEnabled(RuntimeConfigFlag.LogRuntime)
 
       let current: Instruction | undefined = this.nextEffect as Instruction | undefined
 
@@ -1124,12 +1120,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       // failure
       let extraTrace: TraceElement = emptyTraceElement
 
-      const flags = this.runtimeConfig.value.flags
       const superviseOps =
-        RuntimeConfigFlags.isEnabled_(flags, RuntimeConfigFlag.superviseOperations) &&
+        flags.isEnabled(RuntimeConfigFlag.SuperviseOperations) &&
         this.runtimeConfig.value.supervisor !== Supervisor.none
 
-      if (RuntimeConfigFlags.isEnabled_(flags, RuntimeConfigFlag.enableCurrentFiber)) {
+      if (flags.isEnabled(RuntimeConfigFlag.EnableCurrentFiber)) {
         currentFiber.set(this)
       }
       if (this.runtimeConfig.value.supervisor !== Supervisor.none) {
@@ -1584,10 +1579,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       }
     } finally {
       if (
-        RuntimeConfigFlags.isEnabled_(
-          this.runtimeConfig.value.flags,
-          RuntimeConfigFlag.enableCurrentFiber
-        )
+        this.runtimeConfig.value.flags.isEnabled(RuntimeConfigFlag.EnableCurrentFiber)
       ) {
         currentFiber.set(null)
       }

@@ -6,8 +6,8 @@ import { LogLevel } from "../../LogLevel"
 import { defaultRandom, HasRandom } from "../../Random"
 import { Runtime } from "../../Runtime"
 import { RuntimeConfig } from "../../RuntimeConfig"
-import * as RuntimeConfigFlag from "../../RuntimeConfig/Flag"
-import * as RuntimeConfigFlags from "../../RuntimeConfig/Flags"
+import { RuntimeConfigFlag } from "../../RuntimeConfig/Flag"
+import { RuntimeConfigFlags } from "../../RuntimeConfig/Flags"
 import type { RIO } from "../definition"
 import { Effect } from "../definition"
 
@@ -47,10 +47,7 @@ export const defaultRuntimeConfig: RuntimeConfig = RuntimeConfig({
   logger: Logger.default
     .map((output) => console.log(output))
     .filterLogLevel((level) => level >= LogLevel.Info),
-  flags: RuntimeConfigFlags.add_(
-    RuntimeConfigFlags.empty,
-    RuntimeConfigFlag.enableFiberRoots
-  ),
+  flags: RuntimeConfigFlags.empty + RuntimeConfigFlag.EnableFiberRoots,
   maxOp: 2048
 })
 
