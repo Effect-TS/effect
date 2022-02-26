@@ -14,11 +14,11 @@ import { ExecutionStrategy } from "../../src/io/ExecutionStrategy"
 import { Exit } from "../../src/io/Exit"
 import * as Fiber from "../../src/io/Fiber"
 import type { FiberId } from "../../src/io/FiberId"
-import * as InterruptStatus from "../../src/io/InterruptStatus"
+import { InterruptStatus } from "../../src/io/InterruptStatus"
 import { Managed, Reservation } from "../../src/io/Managed"
 import { ReleaseMap } from "../../src/io/Managed/ReleaseMap"
 import { Promise } from "../../src/io/Promise"
-import * as Ref from "../../src/io/Ref"
+import { Ref } from "../../src/io/Ref"
 import { Schedule } from "../../src/io/Schedule"
 
 const ExampleError = new Error("Oh noes!")
@@ -35,16 +35,16 @@ interface EnvA {
 const EnvA = tag<EnvA>(Symbol.for("effect-ts/system/test/managed/env-a"))
 const LiveEnvA = Managed.succeed(EnvA.has({ a: 1 })).toLayerRaw()
 
-function wait(counter: Ref.Ref<number>): Effect<HasClock, never, void> {
-  return Ref.get(counter).flatMap((n) =>
-    n <= 0 ? Effect.unit : Effect.sleep(10).flatMap(() => wait(counter))
-  )
+function wait(counter: Ref<number>): Effect<HasClock, never, void> {
+  return counter
+    .get()
+    .flatMap((n) =>
+      n <= 0 ? Effect.unit : Effect.sleep(10).flatMap(() => wait(counter))
+    )
 }
 
 function countDownLatch(n: number): UIO<Effect<HasClock, never, void>> {
-  return Ref.make(n).map((counter) =>
-    Ref.update_(counter, (n) => n - 1).zipRight(wait(counter))
-  )
+  return Ref.make(n).map((counter) => counter.update((n) => n - 1) > wait(counter))
 }
 
 function doInterrupt(
@@ -66,10 +66,10 @@ function doInterrupt(
     .map(({ fiberId, interruption }) => Tuple(fiberId, interruption))
 }
 
-function makeTestManaged(ref: Ref.Ref<number>): Managed<unknown, never, void> {
-  const reserve = Ref.update_(ref, (n) => n + 1)
-  const acquire = Ref.update_(ref, (n) => n + 1)
-  const release = Ref.update_(ref, (n) => (n > 0 ? 0 : -1))
+function makeTestManaged(ref: Ref<number>): Managed<unknown, never, void> {
+  const reserve = ref.update((n) => n + 1)
+  const acquire = ref.update((n) => n + 1)
+  const release = ref.update((n) => (n > 0 ? 0 : -1))
   return Managed.fromReservationEffect(reserve.as(Reservation(acquire, () => release)))
 }
 
@@ -81,12 +81,12 @@ function parallelFinalizers<R, E, A>(
     .bind("releases", () => Ref.make(0))
     .bindValue("baseRes", ({ releases }) =>
       Managed.acquireReleaseWith(Effect.succeed(constVoid), () =>
-        Ref.update_(releases, (n) => n + 1)
+        releases.update((n) => n + 1)
       )
     )
     .bindValue("res", ({ baseRes }) => f(baseRes))
     .tap(({ res }) => res.useDiscard(Effect.unit))
-    .flatMap(({ releases }) => Ref.get(releases))
+    .flatMap(({ releases }) => releases.get())
 }
 
 function parallelReservations<R, E, A>(
@@ -99,15 +99,13 @@ function parallelReservations<R, E, A>(
     .bind("reserveLatch", () => Promise.make<never, void>())
     .bindValue("baseRes", ({ countDown, effects, reserveLatch }) =>
       Managed.acquireReleaseWith(
-        Ref.update_(effects, (n) => n + 1)
-          .zipRight(countDown)
-          .zipRight(reserveLatch.await()),
+        effects.update((n) => n + 1) > countDown > reserveLatch.await(),
         () => Effect.unit
       )
     )
     .bindValue("res", ({ baseRes }) => f(baseRes))
     .tap(({ countDown, res }) => res.useDiscard(Effect.unit).fork().zipRight(countDown))
-    .bind("count", ({ effects }) => Ref.get(effects))
+    .bind("count", ({ effects }) => effects.get())
     .tap(({ reserveLatch }) => reserveLatch.succeed(undefined))
     .map(({ count }) => count)
 }
@@ -123,16 +121,14 @@ function parallelAcquisitions<R, E, A>(
     .bindValue("baseRes", ({ countDown, effects, reserveLatch }) =>
       Managed.fromReservation(
         Reservation(
-          Ref.update_(effects, (n) => n + 1)
-            .zipRight(countDown)
-            .zipRight(reserveLatch.await()),
+          effects.update((n) => n + 1) > countDown > reserveLatch.await(),
           () => Effect.unit
         )
       )
     )
     .bindValue("res", ({ baseRes }) => f(baseRes))
     .tap(({ countDown, res }) => res.useDiscard(Effect.unit).fork().zipRight(countDown))
-    .bind("count", ({ effects }) => Ref.get(effects))
+    .bind("count", ({ effects }) => effects.get())
     .tap(({ reserveLatch }) => reserveLatch.succeed(undefined))
     .map(({ count }) => count)
 }
@@ -140,21 +136,21 @@ function parallelAcquisitions<R, E, A>(
 function parallelNestedFinalizerOrdering(
   listLength: number,
   f: (
-    _: List<Managed<unknown, never, Ref.Ref<List<number>>>>
-  ) => Managed<unknown, never, Chunk<Ref.Ref<List<number>>>>
+    _: List<Managed<unknown, never, Ref<List<number>>>>
+  ) => Managed<unknown, never, Chunk<Ref<List<number>>>>
 ): Effect<unknown, never, List<List<number>>> {
   const inner = Ref.make(List.empty<number>())
     .toManaged()
     .flatMap(
       (ref) =>
-        Managed.finalizer(Ref.update_(ref, (_) => _.prepend(1))) >
-        Managed.finalizer(Ref.update_(ref, (_) => _.prepend(2))) >
-        Managed.finalizer(Ref.update_(ref, (_) => _.prepend(3))).as(ref)
+        Managed.finalizer(ref.update((_) => _.prepend(1))) >
+        Managed.finalizer(ref.update((_) => _.prepend(2))) >
+        Managed.finalizer(ref.update((_) => _.prepend(3))).as(ref)
     )
 
   return f(List.from(Array.from({ length: listLength }, () => inner)))
     .useNow()
-    .flatMap((refs) => Effect.forEach(refs, Ref.get))
+    .flatMap((refs) => Effect.forEach(refs, (ref) => ref.get()))
     .map((results) => List.from(results))
 }
 
@@ -198,13 +194,13 @@ describe("Managed", () => {
           ({ effects }) =>
             (n: number) =>
               Managed.acquireReleaseWith(
-                Ref.update_(effects, (_) => _.prepend(n)),
-                () => Ref.update_(effects, (_) => _.prepend(n))
+                effects.update((_) => _.prepend(n)),
+                () => effects.update((_) => _.prepend(n))
               )
         )
         .bindValue("program", ({ res }) => res(1).zipRight(res(2)).zipRight(res(3)))
         .flatMap(({ effects, program }) =>
-          program.useDiscard(Effect.unit).zipRight(Ref.get(effects))
+          program.useDiscard(Effect.unit).zipRight(effects.get())
         )
 
       const result = await program.unsafeRunPromise()
@@ -264,19 +260,20 @@ describe("Managed", () => {
     it("invokes with the failure of the use", async () => {
       const exception = new RuntimeError("Use died")
 
-      function res(exits: Ref.Ref<List<Exit<any, any>>>) {
-        return Managed.acquireReleaseExitWith(Effect.unit, (_, e) =>
-          Ref.update_(exits, (_) => _.prepend(e))
-        ).zipRight(
+      function res(exits: Ref<List<Exit<any, any>>>) {
+        return (
           Managed.acquireReleaseExitWith(Effect.unit, (_, e) =>
-            Ref.update_(exits, (_) => _.prepend(e))
+            exits.update((_) => _.prepend(e))
+          ) >
+          Managed.acquireReleaseExitWith(Effect.unit, (_, e) =>
+            exits.update((_) => _.prepend(e))
           )
         )
       }
 
       const program = Ref.make(List.empty<Exit<any, any>>())
         .tap((exits) => res(exits).useDiscard(Effect.die(exception)).exit())
-        .flatMap((exits) => Ref.get(exits))
+        .flatMap((exits) => exits.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -288,19 +285,20 @@ describe("Managed", () => {
       const useException = new RuntimeError("Use died")
       const acquireException = new RuntimeError("Acquire died")
 
-      function res(exits: Ref.Ref<List<Exit<any, any>>>) {
-        return Managed.acquireReleaseExitWith(Effect.unit, (_, e) =>
-          Ref.update_(exits, (_) => _.prepend(e))
-        ).zipRight(
+      function res(exits: Ref<List<Exit<any, any>>>) {
+        return (
+          Managed.acquireReleaseExitWith(Effect.unit, (_, e) =>
+            exits.update((_) => _.prepend(e))
+          ) >
           Managed.acquireReleaseExitWith(Effect.die(acquireException), (_, e) =>
-            Ref.update_(exits, (_) => _.prepend(e))
+            exits.update((_) => _.prepend(e))
           )
         )
       }
 
       const program = Ref.make(List.empty<Exit<any, any>>())
         .tap((exits) => res(exits).useDiscard(Effect.die(useException)).exit())
-        .flatMap((exits) => Ref.get(exits))
+        .flatMap((exits) => exits.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -315,18 +313,18 @@ describe("Managed", () => {
         .bind("log", () => Ref.make(List.empty<string>()))
         .bindValue("a", ({ log }) =>
           Managed.acquireReleaseWith(Effect.succeed("A"), () =>
-            Ref.update_(log, (_) => _.prepend("A"))
+            log.update((_) => _.prepend("A"))
           )
         )
         .bindValue("b", ({ log }) =>
           Managed.acquireReleaseWith(Effect.succeed("B"), () =>
-            Ref.update_(log, (_) => _.prepend("B"))
+            log.update((_) => _.prepend("B"))
           )
         )
         .bind("result", ({ a, b }) =>
           a.zipWithPar(b, (s1, s2) => s1 + s2).use(Effect.succeedNow)
         )
-        .bind("cleanups", ({ log }) => Ref.get(log).map((_) => _.toArray()))
+        .bind("cleanups", ({ log }) => log.get().map((_) => _.toArray()))
 
       const { cleanups, result } = await program.unsafeRunPromise()
 
@@ -343,15 +341,15 @@ describe("Managed", () => {
         .toManaged()
         .flatMap(
           (ref) =>
-            Managed.finalizer(Ref.update_(ref, (_) => _.prepend(1))) >
-            Managed.finalizer(Ref.update_(ref, (_) => _.prepend(2))) >
-            Managed.finalizer(Ref.update_(ref, (_) => _.prepend(3))).as(ref)
+            Managed.finalizer(ref.update((_) => _.prepend(1))) >
+            Managed.finalizer(ref.update((_) => _.prepend(2))) >
+            Managed.finalizer(ref.update((_) => _.prepend(3))).as(ref)
         )
 
       const program = inner
         .zipPar(inner)
         .useNow()
-        .flatMap(({ tuple: [l, r] }) => Ref.get(l).zip(Ref.get(r)))
+        .flatMap(({ tuple: [l, r] }) => l.get().zip(r.get()))
 
       const result = await program.unsafeRunPromise()
 
@@ -388,11 +386,11 @@ describe("Managed", () => {
     it("runs on successes", async () => {
       const program = Ref.make(List.empty<string>())
         .tap((effects) =>
-          Managed.finalizer(Ref.update_(effects, (_) => _.prepend("First")))
-            .ensuring(Ref.update_(effects, (_) => _.prepend("Second")))
+          Managed.finalizer(effects.update((_) => _.prepend("First")))
+            .ensuring(effects.update((_) => _.prepend("Second")))
             .useDiscard(Effect.unit)
         )
-        .flatMap((effects) => Ref.get(effects))
+        .flatMap((effects) => effects.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -403,11 +401,11 @@ describe("Managed", () => {
       const program = Ref.make(List.empty<string>())
         .tap((effects) =>
           Managed.fromEffect(Effect.fail(undefined))
-            .ensuring(Ref.update_(effects, (_) => _.prepend("Ensured")))
+            .ensuring(effects.update((_) => _.prepend("Ensured")))
             .useDiscard(Effect.unit)
             .either()
         )
-        .flatMap((effects) => Ref.get(effects))
+        .flatMap((effects) => effects.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -418,11 +416,11 @@ describe("Managed", () => {
       const program = Ref.make(List.empty<string>())
         .tap((effects) =>
           Managed.finalizer(Effect.dieMessage("Boom"))
-            .ensuring(Ref.update_(effects, (_) => _.prepend("Ensured")))
+            .ensuring(effects.update((_) => _.prepend("Ensured")))
             .useDiscard(Effect.unit)
             .exit()
         )
-        .flatMap((effects) => Ref.get(effects))
+        .flatMap((effects) => effects.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -434,11 +432,11 @@ describe("Managed", () => {
     it("runs on successes", async () => {
       const program = Ref.make(List.empty<string>())
         .tap((effects) =>
-          Managed.finalizer(Ref.update_(effects, (_) => _.prepend("First")))
-            .ensuringFirst(Ref.update_(effects, (_) => _.prepend("Second")))
+          Managed.finalizer(effects.update((_) => _.prepend("First")))
+            .ensuringFirst(effects.update((_) => _.prepend("Second")))
             .useDiscard(Effect.unit)
         )
-        .flatMap((effects) => Ref.get(effects))
+        .flatMap((effects) => effects.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -449,11 +447,11 @@ describe("Managed", () => {
       const program = Ref.make(List.empty<string>())
         .tap((effects) =>
           Managed.fromEffect(Effect.fail(undefined))
-            .ensuringFirst(Ref.update_(effects, (_) => _.prepend("Ensured")))
+            .ensuringFirst(effects.update((_) => _.prepend("Ensured")))
             .useDiscard(Effect.unit)
             .either()
         )
-        .flatMap((effects) => Ref.get(effects))
+        .flatMap((effects) => effects.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -464,11 +462,11 @@ describe("Managed", () => {
       const program = Ref.make(List.empty<string>())
         .tap((effects) =>
           Managed.finalizer(Effect.dieMessage("Boom"))
-            .ensuringFirst(Ref.update_(effects, (_) => _.prepend("Ensured")))
+            .ensuringFirst(effects.update((_) => _.prepend("Ensured")))
             .useDiscard(Effect.unit)
             .exit()
         )
-        .flatMap((effects) => Ref.get(effects))
+        .flatMap((effects) => effects.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -478,12 +476,12 @@ describe("Managed", () => {
 
   describe("eventually", () => {
     it("should ignore errors raised by acquire", async () => {
-      function acquire(ref: Ref.Ref<number>) {
+      function acquire(ref: Ref<number>) {
         return Effect.Do()
-          .bind("value", () => Ref.get(ref))
+          .bind("value", () => ref.get())
           .bind("result", ({ value }) =>
             value < 10
-              ? Ref.update_(ref, (n) => n + 1).zipRight(Effect.fail("Ouch"))
+              ? ref.update((n) => n + 1).zipRight(Effect.fail("Ouch"))
               : Effect.succeed(value)
           )
       }
@@ -494,7 +492,7 @@ describe("Managed", () => {
             .eventually()
             .use(() => Effect.unit)
         )
-        .flatMap((ref) => Ref.get(ref))
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -509,20 +507,20 @@ describe("Managed", () => {
           Managed.Do()
             .bind("e1", () => Managed.finalizer(Effect.dieMessage("Boom")))
             .bind("a1", () =>
-              Managed.finalizer(Ref.update_(effects, (_) => _.prepend("First")))
+              Managed.finalizer(effects.update((_) => _.prepend("First")))
             )
             .bind("e2", () => Managed.finalizer(Effect.dieMessage("Boom")))
             .bind("a2", () =>
-              Managed.finalizer(Ref.update_(effects, (_) => _.prepend("Second")))
+              Managed.finalizer(effects.update((_) => _.prepend("Second")))
             )
             .bind("e3", () => Managed.finalizer(Effect.dieMessage("Boom")))
             .bind("a3", () =>
-              Managed.finalizer(Ref.update_(effects, (_) => _.prepend("Third")))
+              Managed.finalizer(effects.update((_) => _.prepend("Third")))
             )
             .useDiscard(Effect.unit)
             .exit()
         )
-        .flatMap((effects) => Ref.get(effects))
+        .flatMap((effects) => effects.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -539,8 +537,8 @@ describe("Managed", () => {
           ({ effects }) =>
             (n: number) =>
               Managed.acquireReleaseWith(
-                Ref.update_(effects, (_) => _.prepend(n)),
-                () => Ref.update_(effects, (_) => _.prepend(n))
+                effects.update((_) => _.prepend(n)),
+                () => effects.update((_) => _.prepend(n))
               )
         )
         .bindValue("program", ({ res }) =>
@@ -550,7 +548,7 @@ describe("Managed", () => {
           )
         )
         .flatMap(({ effects, program }) =>
-          program.useDiscard(Effect.unit).ignore().zipRight(Ref.get(effects))
+          program.useDiscard(Effect.unit).ignore().zipRight(effects.get())
         )
 
       const result = await program.unsafeRunPromise()
@@ -566,8 +564,8 @@ describe("Managed", () => {
           ({ effects }) =>
             (n: number) =>
               Managed.acquireReleaseWith(
-                Ref.update_(effects, (_) => _.prepend(n)),
-                () => Ref.update_(effects, (_) => _.prepend(n))
+                effects.update((_) => _.prepend(n)),
+                () => effects.update((_) => _.prepend(n))
               )
         )
         .bindValue("program", ({ res }) =>
@@ -577,7 +575,7 @@ describe("Managed", () => {
           )
         )
         .flatMap(({ effects, program }) =>
-          program.useDiscard(Effect.unit).ignore().zipRight(Ref.get(effects))
+          program.useDiscard(Effect.unit).ignore().zipRight(effects.get())
         )
 
       const result = await program.unsafeRunPromise()
@@ -593,8 +591,8 @@ describe("Managed", () => {
           ({ effects }) =>
             (n: number) =>
               Managed.acquireReleaseWith(
-                Ref.update_(effects, (_) => _.prepend(n)),
-                () => Ref.update_(effects, (_) => _.prepend(n))
+                effects.update((_) => _.prepend(n)),
+                () => effects.update((_) => _.prepend(n))
               )
         )
         .bindValue("program", ({ res }) =>
@@ -606,7 +604,7 @@ describe("Managed", () => {
             )
         )
         .flatMap(({ effects, program }) =>
-          program.useDiscard(Effect.unit).ignore().zipRight(Ref.get(effects))
+          program.useDiscard(Effect.unit).ignore().zipRight(effects.get())
         )
 
       const result = await program.unsafeRunPromise()
@@ -622,8 +620,8 @@ describe("Managed", () => {
           ({ effects }) =>
             (n: number) =>
               Managed.acquireReleaseWith(
-                Ref.update_(effects, (_) => _.prepend(n)),
-                () => Ref.update_(effects, (_) => _.prepend(n))
+                effects.update((_) => _.prepend(n)),
+                () => effects.update((_) => _.prepend(n))
               )
         )
         .bindValue("program", ({ res }) =>
@@ -635,7 +633,7 @@ describe("Managed", () => {
             )
         )
         .flatMap(({ effects, program }) =>
-          program.useDiscard(Effect.unit).sandbox().ignore().zipRight(Ref.get(effects))
+          program.useDiscard(Effect.unit).sandbox().ignore().zipRight(effects.get())
         )
 
       const result = await program.unsafeRunPromise()
@@ -651,8 +649,8 @@ describe("Managed", () => {
           ({ effects }) =>
             (n: number) =>
               Managed.acquireReleaseWith(
-                Ref.update_(effects, (_) => _.prepend(n)),
-                () => Ref.update_(effects, (_) => _.prepend(n))
+                effects.update((_) => _.prepend(n)),
+                () => effects.update((_) => _.prepend(n))
               )
         )
         .bindValue("program", ({ res }) =>
@@ -668,7 +666,7 @@ describe("Managed", () => {
             .useDiscard(Effect.interrupt)
             .sandbox()
             .ignore()
-            .zipRight(Ref.get(effects))
+            .zipRight(effects.get())
         )
 
       const result = await program.unsafeRunPromise()
@@ -684,8 +682,8 @@ describe("Managed", () => {
           ({ effects }) =>
             (n: number) =>
               Managed.acquireReleaseWith(
-                Ref.update_(effects, (_) => _.prepend(n)),
-                () => Ref.update_(effects, (_) => _.prepend(n))
+                effects.update((_) => _.prepend(n)),
+                () => effects.update((_) => _.prepend(n))
               )
         )
         .bindValue("program", ({ res }) =>
@@ -697,7 +695,7 @@ describe("Managed", () => {
             )
         )
         .flatMap(({ effects, program }) =>
-          program.useDiscard(Effect.unit).sandbox().ignore().zipRight(Ref.get(effects))
+          program.useDiscard(Effect.unit).sandbox().ignore().zipRight(effects.get())
         )
 
       const result = await program.unsafeRunPromise()
@@ -739,13 +737,13 @@ describe("Managed", () => {
           ({ effects }) =>
             (n: number) =>
               Managed.acquireReleaseWith(
-                Ref.update_(effects, (_) => _.prepend(n)),
-                () => Ref.update_(effects, (_) => _.prepend(n))
+                effects.update((_) => _.prepend(n)),
+                () => effects.update((_) => _.prepend(n))
               )
         )
         .bindValue("program", ({ res }) => Managed.forEach(List(1, 2, 3), res))
         .flatMap(({ effects, program }) =>
-          program.useDiscard(Effect.unit).zipRight(Ref.get(effects))
+          program.useDiscard(Effect.unit).zipRight(effects.get())
         )
 
       const result = await program.unsafeRunPromise()
@@ -993,13 +991,13 @@ describe("Managed", () => {
         .tap(({ finalized, latch }) =>
           Managed.fromReservation(
             Reservation(latch.succeed(undefined).zipRight(Effect.never), () =>
-              Ref.set_(finalized, true)
+              finalized.set(true)
             )
           )
             .fork()
             .useDiscard(latch.await())
         )
-        .flatMap(({ finalized }) => Ref.get(finalized))
+        .flatMap(({ finalized }) => finalized.get())
 
       // Since `forkTest` uses Effect.never race the real test against a
       // 10 second timer and fail the test if it didn't complete. This
@@ -1021,7 +1019,7 @@ describe("Managed", () => {
         .bind("fiber", ({ acquireLatch, finalized, useLatch }) =>
           Managed.fromReservation(
             Reservation(acquireLatch.succeed(undefined).zipRight(Effect.never), () =>
-              Ref.set_(finalized, true)
+              finalized.set(true)
             )
           )
             .fork()
@@ -1031,7 +1029,7 @@ describe("Managed", () => {
         .tap(({ acquireLatch }) => acquireLatch.await())
         .tap(({ useLatch }) => useLatch.await())
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .flatMap(({ finalized }) => Ref.get(finalized))
+        .flatMap(({ finalized }) => finalized.get())
 
       // Since `forkTest` uses Effect.never race the real test against a
       // 10 second timer and fail the test if it didn't complete. This
@@ -1237,11 +1235,11 @@ describe("Managed", () => {
           Managed.mergeAllPar(
             List.from([
               Managed.finalizer(Effect.dieMessage("Boom")),
-              Managed.finalizer(Ref.update_(releases, (n) => n + 1)),
+              Managed.finalizer(releases.update((n) => n + 1)),
               Managed.finalizer(Effect.dieMessage("Boom")),
-              Managed.finalizer(Ref.update_(releases, (n) => n + 1)),
+              Managed.finalizer(releases.update((n) => n + 1)),
               Managed.finalizer(Effect.dieMessage("Boom")),
-              Managed.finalizer(Ref.update_(releases, (n) => n + 1))
+              Managed.finalizer(releases.update((n) => n + 1))
             ]),
             constVoid(),
             (_, b) => b
@@ -1250,7 +1248,7 @@ describe("Managed", () => {
             .exit()
             .withParallelism(2)
         )
-        .flatMap((releases) => Ref.get(releases))
+        .flatMap((releases) => releases.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -1265,17 +1263,17 @@ describe("Managed", () => {
         .bind("resultRef", () => Ref.make(Option.emptyOf<Exit<never, string>>()))
         .tap(({ finalizersRef, resultRef }) =>
           Managed.acquireReleaseWith(Effect.succeed("42"), () =>
-            Ref.update_(finalizersRef, (_) => _.prepend("First"))
+            finalizersRef.update((_) => _.prepend("First"))
           )
-            .onExit((e) =>
-              Ref.update_(finalizersRef, (_) => _.prepend("Second")).zipRight(
-                Ref.set_(resultRef, Option.some(e))
-              )
+            .onExit(
+              (e) =>
+                finalizersRef.update((_) => _.prepend("Second")) >
+                resultRef.set(Option.some(e))
             )
             .useDiscard(Effect.unit)
         )
-        .bind("finalizers", ({ finalizersRef }) => Ref.get(finalizersRef))
-        .bind("result", ({ resultRef }) => Ref.get(resultRef))
+        .bind("finalizers", ({ finalizersRef }) => finalizersRef.get())
+        .bind("result", ({ resultRef }) => resultRef.get())
 
       const { finalizers, result } = await program.unsafeRunPromise()
 
@@ -1357,17 +1355,17 @@ describe("Managed", () => {
         .bind("resultRef", () => Ref.make(Option.emptyOf<Exit<never, string>>()))
         .tap(({ finalizersRef, resultRef }) =>
           Managed.acquireReleaseWith(Effect.succeed("42"), () =>
-            Ref.update_(finalizersRef, (_) => _.prepend("First"))
+            finalizersRef.update((_) => _.prepend("First"))
           )
-            .onExitFirst((e) =>
-              Ref.update_(finalizersRef, (_) => _.prepend("Second")).zipRight(
-                Ref.set_(resultRef, Option.some(e))
-              )
+            .onExitFirst(
+              (e) =>
+                finalizersRef.update((_) => _.prepend("Second")) >
+                resultRef.set(Option.some(e))
             )
             .useDiscard(Effect.unit)
         )
-        .bind("finalizers", ({ finalizersRef }) => Ref.get(finalizersRef))
-        .bind("result", ({ resultRef }) => Ref.get(resultRef))
+        .bind("finalizers", ({ finalizersRef }) => finalizersRef.get())
+        .bind("result", ({ resultRef }) => resultRef.get())
 
       const { finalizers, result } = await program.unsafeRunPromise()
 
@@ -1418,11 +1416,11 @@ describe("Managed", () => {
         .bind("ref", () => Ref.make(0))
         .bindValue("res", ({ ref }) =>
           Managed.fromReservation(
-            Reservation(Effect.interrupt, () => Ref.update_(ref, (n) => n + 1))
+            Reservation(Effect.interrupt, () => ref.update((n) => n + 1))
           )
         )
         .tap(({ res }) => res.preallocate().exit().ignore())
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -1434,11 +1432,11 @@ describe("Managed", () => {
         .bind("ref", () => Ref.make(0))
         .bindValue("res", ({ ref }) =>
           Managed.fromReservation(
-            Reservation(Effect.unit, () => Ref.update_(ref, (n) => n + 1))
+            Reservation(Effect.unit, () => ref.update((n) => n + 1))
           )
         )
         .tap(({ res }) => res.preallocate().flatMap((_) => _.useDiscard(Effect.unit)))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -1468,12 +1466,12 @@ describe("Managed", () => {
     it("run release on interrupt while entering inner scope", async () => {
       const program = Ref.make(0).flatMap((ref) =>
         Managed.fromReservation(
-          Reservation(Effect.interrupt, () => Ref.update_(ref, (n) => n + 1))
+          Reservation(Effect.interrupt, () => ref.update((n) => n + 1))
         )
           .preallocateManaged()
           .useDiscard(Effect.unit)
           .exit()
-          .zipRight(Ref.get(ref))
+          .zipRight(ref.get())
       )
 
       const result = await program.unsafeRunPromise()
@@ -1485,12 +1483,12 @@ describe("Managed", () => {
       const program = Ref.make(0).flatMap((ref) =>
         Managed.fromReservation(
           Reservation(
-            Ref.update_(ref, (n) => n + 1),
+            ref.update((n) => n + 1),
             () => Effect.unit
           )
         )
           .preallocateManaged()
-          .use((r) => Ref.get(ref).zip(r.useDiscard(Ref.get(ref))))
+          .use((r) => ref.get().zip(r.useDiscard(ref.get())))
       )
 
       const result = await program.unsafeRunPromise()
@@ -1501,11 +1499,11 @@ describe("Managed", () => {
     it("run release on scope exit", async () => {
       const program = Ref.make(0).flatMap((ref) =>
         Managed.fromReservation(
-          Reservation(Effect.unit, () => Ref.update_(ref, (n) => n + 1))
+          Reservation(Effect.unit, () => ref.update((n) => n + 1))
         )
           .preallocateManaged()
           .useDiscard(Effect.unit)
-          .zipRight(Ref.get(ref))
+          .zipRight(ref.get())
       )
 
       const result = await program.unsafeRunPromise()
@@ -1516,11 +1514,11 @@ describe("Managed", () => {
     it("don't run release twice", async () => {
       const program = Ref.make(0).flatMap((ref) =>
         Managed.fromReservation(
-          Reservation(Effect.unit, () => Ref.update_(ref, (n) => n + 1))
+          Reservation(Effect.unit, () => ref.update((n) => n + 1))
         )
           .preallocateManaged()
           .use((_) => _.useDiscard(Effect.unit))
-          .zipRight(Ref.get(ref))
+          .zipRight(ref.get())
       )
 
       const result = await program.unsafeRunPromise()
@@ -1692,11 +1690,11 @@ describe("Managed", () => {
           Managed.reduceAllPar(
             Managed.finalizer(Effect.dieMessage("Boom")),
             List.from([
-              Managed.finalizer(Ref.update_(releases, (n) => n + 1)),
+              Managed.finalizer(releases.update((n) => n + 1)),
               Managed.finalizer(Effect.dieMessage("Boom")),
-              Managed.finalizer(Ref.update_(releases, (n) => n + 1)),
+              Managed.finalizer(releases.update((n) => n + 1)),
               Managed.finalizer(Effect.dieMessage("Boom")),
-              Managed.finalizer(Ref.update_(releases, (n) => n + 1))
+              Managed.finalizer(releases.update((n) => n + 1))
             ]),
             constVoid
           )
@@ -1704,7 +1702,7 @@ describe("Managed", () => {
             .exit()
             .withParallelism(2)
         )
-        .flatMap((releases) => Ref.get(releases))
+        .flatMap((releases) => releases.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -1893,25 +1891,25 @@ describe("Managed", () => {
         .bind("ref", () => Ref.make(Chunk.empty<string>()))
         .bindValue("a", ({ ref }) =>
           Managed.acquireReleaseWith(
-            Ref.update_(ref, (_) => _.append("acquiring a")),
-            () => Ref.update_(ref, (_) => _.append("releasing a"))
+            ref.update((_) => _.append("acquiring a")),
+            () => ref.update((_) => _.append("releasing a"))
           )
         )
         .bindValue("b", ({ ref }) =>
           Managed.acquireReleaseWith(
-            Ref.update_(ref, (_) => _.append("acquiring b")),
-            () => Ref.update_(ref, (_) => _.append("releasing b"))
+            ref.update((_) => _.append("acquiring b")),
+            () => ref.update((_) => _.append("releasing b"))
           )
         )
         .bindValue("c", ({ ref }) =>
           Managed.acquireReleaseWith(
-            Ref.update_(ref, (_) => _.append("acquiring c")),
-            () => Ref.update_(ref, (_) => _.append("releasing c"))
+            ref.update((_) => _.append("acquiring c")),
+            () => ref.update((_) => _.append("releasing c"))
           )
         )
         .bindValue("managed", ({ a, b, c }) => a > b.release() > c)
         .tap(({ managed }) => managed.useNow())
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -1933,9 +1931,9 @@ describe("Managed", () => {
         .bind("retries", () => Ref.make(0))
         .bindValue("program", ({ retries }) =>
           Managed.acquireReleaseWith(
-            Ref.updateAndGet_(retries, (n) => n + 1).flatMap((r) =>
-              r === 3 ? Effect.unit : Effect.fail(undefined)
-            ),
+            retries
+              .updateAndGet((n) => n + 1)
+              .flatMap((r) => (r === 3 ? Effect.unit : Effect.fail(undefined))),
             () => Effect.unit
           )
         )
@@ -1945,7 +1943,7 @@ describe("Managed", () => {
             .use(() => Effect.unit)
             .ignore()
         )
-        .flatMap(({ retries }) => Ref.get(retries))
+        .flatMap(({ retries }) => retries.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -1958,9 +1956,9 @@ describe("Managed", () => {
         .bindValue("program", ({ retries }) =>
           Managed.fromReservation(
             Reservation(
-              Ref.updateAndGet_(retries, (n) => n + 1).flatMap((r) =>
-                r === 3 ? Effect.unit : Effect.fail(undefined)
-              ),
+              retries
+                .updateAndGet((n) => n + 1)
+                .flatMap((r) => (r === 3 ? Effect.unit : Effect.fail(undefined))),
               () => Effect.unit
             )
           )
@@ -1971,7 +1969,7 @@ describe("Managed", () => {
             .use(() => Effect.unit)
             .ignore()
         )
-        .flatMap(({ retries }) => Ref.get(retries))
+        .flatMap(({ retries }) => retries.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -1986,13 +1984,13 @@ describe("Managed", () => {
           .use((preallocate) =>
             preallocate(
               Managed.fromReservation(
-                Reservation(Effect.interrupt, () => Ref.update_(ref, (n) => n + 1))
+                Reservation(Effect.interrupt, () => ref.update((n) => n + 1))
               )
             )
               .exit()
               .ignore()
           )
-          .zipRight(Ref.get(ref))
+          .zipRight(ref.get())
       )
 
       const result = await program.unsafeRunPromise()
@@ -2006,11 +2004,11 @@ describe("Managed", () => {
           .bind("ref", () => Ref.make(0))
           .bindValue("res", ({ ref }) =>
             Managed.fromReservation(
-              Reservation(Effect.unit, () => Ref.update_(ref, (n) => n + 1))
+              Reservation(Effect.unit, () => ref.update((n) => n + 1))
             )
           )
           .tap(({ res }) => preallocate(res).flatMap((_) => _.useDiscard(Effect.unit)))
-          .flatMap(({ ref }) => Ref.get(ref))
+          .flatMap(({ ref }) => ref.get())
       )
 
       const result = await program.unsafeRunPromise()
@@ -2048,15 +2046,15 @@ describe("Managed", () => {
             preallocate(
               Managed.fromReservation(
                 Reservation(
-                  Ref.update_(ref, (n) => n + 1),
+                  ref.update((n) => n + 1),
                   () => Effect.unit
                 )
               )
             )
           )
-          .bind("r1", ({ ref }) => Ref.get(ref))
+          .bind("r1", ({ ref }) => ref.get())
           .tap(({ res }) => res.useDiscard(Effect.unit))
-          .bind("r2", ({ ref }) => Ref.get(ref))
+          .bind("r2", ({ ref }) => ref.get())
       )
 
       const { r1, r2 } = await program.unsafeRunPromise()
@@ -2071,11 +2069,11 @@ describe("Managed", () => {
           .use((preallocate) =>
             preallocate(
               Managed.fromReservation(
-                Reservation(Effect.unit, () => Ref.update_(ref, (n) => n + 1))
+                Reservation(Effect.unit, () => ref.update((n) => n + 1))
               )
             )
           )
-          .zipRight(Ref.get(ref))
+          .zipRight(ref.get())
       )
 
       const result = await program.unsafeRunPromise()
@@ -2089,11 +2087,11 @@ describe("Managed", () => {
           .use((preallocate) =>
             preallocate(
               Managed.fromReservation(
-                Reservation(Effect.unit, () => Ref.update_(ref, (n) => n + 1))
+                Reservation(Effect.unit, () => ref.update((n) => n + 1))
               )
             ).flatMap((_) => _.useDiscard(Effect.unit))
           )
-          .zipRight(Ref.get(ref))
+          .zipRight(ref.get())
       )
 
       const result = await program.unsafeRunPromise()
@@ -2106,11 +2104,11 @@ describe("Managed", () => {
         Managed.preallocationScope
           .use((preallocate) => {
             const res = Managed.fromReservation(
-              Reservation(Effect.unit, () => Ref.update_(ref, (n) => n + 1))
+              Reservation(Effect.unit, () => ref.update((n) => n + 1))
             )
             return preallocate(res).zipRight(preallocate(res))
           })
-          .zipRight(Ref.get(ref))
+          .zipRight(ref.get())
       )
 
       const result = await program.unsafeRunPromise()
@@ -2129,7 +2127,7 @@ describe("Managed", () => {
         )
         .bind("fiber", ({ effect }) => effect.fork())
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2142,15 +2140,15 @@ describe("Managed", () => {
           .bind("ref", () => Ref.make(0))
           .bindValue("res", ({ ref }) =>
             Managed.fromReservation(
-              Reservation(Effect.unit, () => Ref.update_(ref, (n) => n + 1))
+              Reservation(Effect.unit, () => ref.update((n) => n + 1))
             )
           )
           .flatMap(({ ref, res }) =>
             scope(res).flatMap(({ tuple: [close, _] }) =>
               Effect.Do()
-                .bind("res1", () => Ref.get(ref))
+                .bind("res1", () => ref.get())
                 .tap(() => close(Exit.unit))
-                .bind("res2", () => Ref.get(ref))
+                .bind("res2", () => ref.get())
             )
           )
       )
@@ -2189,11 +2187,11 @@ describe("Managed", () => {
           .use((scope) =>
             scope(
               Managed.fromReservation(
-                Reservation(Effect.unit, () => Ref.update_(ref, (n) => n + 1))
+                Reservation(Effect.unit, () => ref.update((n) => n + 1))
               )
             )
           )
-          .zipRight(Ref.get(ref))
+          .zipRight(ref.get())
       )
 
       const result = await program.unsafeRunPromise()
@@ -2207,11 +2205,11 @@ describe("Managed", () => {
           .use((scope) =>
             scope(
               Managed.fromReservation(
-                Reservation(Effect.unit, () => Ref.update_(ref, (n) => n + 1))
+                Reservation(Effect.unit, () => ref.update((n) => n + 1))
               )
             ).flatMap((_) => _.get(0)(Exit.unit))
           )
-          .zipRight(Ref.get(ref))
+          .zipRight(ref.get())
       )
 
       const result = await program.unsafeRunPromise()
@@ -2224,11 +2222,11 @@ describe("Managed", () => {
         Managed.scope
           .use((scope) => {
             const res = Managed.fromReservation(
-              Reservation(Effect.unit, () => Ref.update_(ref, (n) => n + 1))
+              Reservation(Effect.unit, () => ref.update((n) => n + 1))
             )
             return scope(res).zipRight(scope(res))
           })
-          .zipRight(Ref.get(ref))
+          .zipRight(ref.get())
       )
 
       const result = await program.unsafeRunPromise()
@@ -2251,8 +2249,8 @@ describe("Managed", () => {
     test("runs given effect", async () => {
       const program = Ref.make(0)
         .toManaged()
-        .tap((ref) => Ref.update_(ref, (n) => n + 1).toManaged())
-        .mapEffect(Ref.get)
+        .tap((ref) => ref.update((n) => n + 1).toManaged())
+        .mapEffect((ref) => ref.get())
         .useNow()
 
       const result = await program.unsafeRunPromise()
@@ -2280,11 +2278,11 @@ describe("Managed", () => {
         .bind("ref", () => Ref.make(0).toManaged())
         .tap(({ ref }) =>
           Managed.fromEither(Either.left(1)).tapBoth(
-            (e) => Ref.update_(ref, (n) => n + e).toManaged(),
+            (e) => ref.update((n) => n + e).toManaged(),
             () => Managed.unit
           )
         )
-        .flatMap(({ ref }) => Ref.get(ref).toManaged())
+        .flatMap(({ ref }) => ref.get().toManaged())
         .fold(identity, identity)
         .useNow()
 
@@ -2299,10 +2297,10 @@ describe("Managed", () => {
         .tap(({ ref }) =>
           Managed.fromEither(Either.right(2)).tapBoth(
             () => Managed.unit,
-            (n) => Ref.update_(ref, (_) => _ + n).toManaged()
+            (n) => ref.update((_) => _ + n).toManaged()
           )
         )
-        .flatMap(({ ref }) => Ref.get(ref).toManaged())
+        .flatMap(({ ref }) => ref.get().toManaged())
         .useNow()
 
       const result = await program.unsafeRunPromise()
@@ -2327,10 +2325,10 @@ describe("Managed", () => {
         .bind("ref", () => Ref.make(0).toManaged())
         .tap(({ ref }) =>
           Managed.fromEither(Either.left(1)).tapError((e) =>
-            Ref.update_(ref, (_) => _ + e).toManaged()
+            ref.update((_) => _ + e).toManaged()
           )
         )
-        .flatMap(({ ref }) => Ref.get(ref).toManaged())
+        .flatMap(({ ref }) => ref.get().toManaged())
         .fold(identity, identity)
         .useNow()
 
@@ -2344,10 +2342,10 @@ describe("Managed", () => {
         .bind("ref", () => Ref.make(1).toManaged())
         .tap(({ ref }) =>
           Managed.fromEither(Either.rightW<number, number>(2)).tapError((n) =>
-            Ref.update_(ref, (_) => _ + n).toManaged()
+            ref.update((_) => _ + n).toManaged()
           )
         )
-        .flatMap(({ ref }) => Ref.get(ref).toManaged())
+        .flatMap(({ ref }) => ref.get().toManaged())
         .useNow()
 
       const result = await program.unsafeRunPromise()
@@ -2362,10 +2360,10 @@ describe("Managed", () => {
         .bind("ref", () => Ref.make(false).toManaged())
         .bind("result", ({ ref }) =>
           Managed.dieMessage("die")
-            .tapErrorCause(() => Ref.set_(ref, true).toManaged())
+            .tapErrorCause(() => ref.set(true).toManaged())
             .exit()
         )
-        .bind("effect", ({ ref }) => Ref.get(ref).toManaged())
+        .bind("effect", ({ ref }) => ref.get().toManaged())
         .useNow()
 
       const { effect, result } = await program.unsafeRunPromise()
@@ -2505,11 +2503,11 @@ describe("Managed", () => {
         .bind("ref", () => Ref.make(false))
         .bindValue("managed", ({ ref }) =>
           Managed.acquireReleaseWith(Effect.unit, () =>
-            Ref.set_(ref, true)
+            ref.set(true)
           ).withEarlyRelease()
         )
         .flatMap(({ managed, ref }) =>
-          managed.use(({ tuple: [canceler, _] }) => canceler.zipRight(Ref.get(ref)))
+          managed.use(({ tuple: [canceler, _] }) => canceler.zipRight(ref.get()))
         )
 
       const result = await program.unsafeRunPromise()
@@ -2525,8 +2523,7 @@ describe("Managed", () => {
         .bindValue("managed", ({ latch, ref }) =>
           Managed.acquireReleaseWith(
             Effect.unit,
-            () =>
-              latch.succeed(undefined) > Effect.whenEffect(Ref.get(ref), Effect.never)
+            () => latch.succeed(undefined) > Effect.whenEffect(ref.get(), Effect.never)
           ).withEarlyRelease()
         )
         .flatMap(({ latch, managed, ref }) =>
@@ -2535,7 +2532,7 @@ describe("Managed", () => {
               .forkDaemon()
               .tap(() => latch.await())
               .flatMap((fiber) => Fiber.interrupt(fiber).timeout(100))
-              .tap(() => Ref.set_(ref, false))
+              .tap(() => ref.set(false))
           )
         )
 
@@ -2550,14 +2547,14 @@ describe("Managed", () => {
         .bind("ref", () => Ref.make(0))
         .bindValue("managed", ({ ref }) =>
           Managed.acquireReleaseWith(Effect.unit, () =>
-            Ref.update_(ref, (n) => n + 1)
+            ref.update((n) => n + 1)
           ).withEarlyRelease()
         )
         .tap(({ latch, managed }) =>
           managed.use((_) => _.get(0).ensuring(latch.succeed(undefined)))
         )
         .tap(({ latch }) => latch.await())
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2569,11 +2566,11 @@ describe("Managed", () => {
         .bind("ref", () => Ref.make(false))
         .bindValue("managed", ({ ref }) =>
           Managed.acquireReleaseExitWith(Effect.unit, (_, e) =>
-            Ref.set_(ref, e.isInterrupted())
+            ref.set(e.isInterrupted())
           )
         )
         .tap(({ managed }) => managed.withEarlyRelease().use((_) => _.get(0)))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2587,13 +2584,13 @@ describe("Managed", () => {
           "managed",
           ({ ref }) =>
             (label: string) =>
-              Managed.finalizer(Ref.update_(ref, (_) => _.prepend(label)))
+              Managed.finalizer(ref.update((_) => _.prepend(label)))
         )
         .bindValue("composite", ({ managed }) =>
           managed("1").zipRight(managed("2")).zipRight(managed("3")).withEarlyRelease()
         )
         .flatMap(({ composite, ref }) =>
-          composite.use(({ tuple: [release, _] }) => release.zipRight(Ref.get(ref)))
+          composite.use(({ tuple: [release, _] }) => release.zipRight(ref.get()))
         )
 
       const result = await program.unsafeRunPromise()
@@ -2607,14 +2604,12 @@ describe("Managed", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(false))
         .bindValue("managed", ({ ref }) =>
-          Managed.acquireReleaseExitWith(Effect.unit, (_, e) =>
-            Ref.set_(ref, e.isSuccess())
-          )
+          Managed.acquireReleaseExitWith(Effect.unit, (_, e) => ref.set(e.isSuccess()))
         )
         .tap(({ managed }) =>
           managed.withEarlyReleaseExit(Exit.unit).use((_) => _.get(0))
         )
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2631,14 +2626,14 @@ describe("Managed", () => {
         .bindValue("global", () => Effect.defaultRuntimeConfig)
         .bindValue("managed", ({ global, ref1, ref2 }) =>
           Managed.acquireRelease(
-            Effect.runtimeConfig.flatMap((_) => Ref.set_(ref1, _)),
-            Effect.runtimeConfig.flatMap((_) => Ref.set_(ref2, _))
+            Effect.runtimeConfig.flatMap((_) => ref1.set(_)),
+            Effect.runtimeConfig.flatMap((_) => ref2.set(_))
           ).withRuntimeConfig(global)
         )
         .bind("before", () => Effect.runtimeConfig)
         .bind("use", ({ managed }) => managed.useDiscard(Effect.runtimeConfig))
-        .bind("acquire", ({ ref1 }) => Ref.get(ref1))
-        .bind("release", ({ ref2 }) => Ref.get(ref2))
+        .bind("acquire", ({ ref1 }) => ref1.get())
+        .bind("release", ({ ref2 }) => ref2.get())
         .bind("after", () => Effect.runtimeConfig)
 
       const { acquire, after, before, def, global, release, use } =
@@ -2677,9 +2672,7 @@ describe("Managed", () => {
         .bindValue("first", () => Managed.unit)
         .bindValue("second", ({ releases }) =>
           Managed.fromReservation(
-            Reservation(Effect.fail(undefined), () =>
-              Ref.update_(releases, (n) => n + 1)
-            )
+            Reservation(Effect.fail(undefined), () => releases.update((n) => n + 1))
           )
         )
         .tap(({ first, second }) =>
@@ -2688,7 +2681,7 @@ describe("Managed", () => {
             .use(() => Effect.unit)
             .ignore()
         )
-        .flatMap(({ releases }) => Ref.get(releases))
+        .flatMap(({ releases }) => releases.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2728,17 +2721,17 @@ describe("Managed", () => {
         .bindValue("first", ({ releases, reserveLatch }) =>
           Managed.fromReservation(
             Reservation(reserveLatch.succeed(undefined), () =>
-              Ref.update_(releases, (n) => n + 1)
+              releases.update((n) => n + 1)
             )
           )
         )
         .bindValue("second", ({ reserveLatch }) =>
-          Managed.fromEffect(reserveLatch.await().zipRight(Effect.fail(undefined)))
+          Managed.fromEffect(reserveLatch.await() > Effect.fail(undefined))
         )
         .tap(({ first, second }) =>
           first.zipPar(second).useDiscard(Effect.unit).orElse(Effect.unit)
         )
-        .flatMap(({ releases }) => Ref.get(releases))
+        .flatMap(({ releases }) => releases.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2754,8 +2747,8 @@ describe("Managed", () => {
         .bindValue("managed3", ({ managed1, managed2 }) => managed1.zipPar(managed2))
         .bind("fiber", ({ managed3 }) => managed3.useDiscard(Effect.unit).fork())
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .bind("result1", ({ ref1 }) => Ref.get(ref1))
-        .bind("result2", ({ ref2 }) => Ref.get(ref2))
+        .bind("result1", ({ ref1 }) => ref1.get())
+        .bind("result2", ({ ref2 }) => ref2.get())
 
       const { result1, result2 } = await program.unsafeRunPromise()
 
@@ -2804,12 +2797,8 @@ describe("Managed", () => {
           Managed.switchable()
             .use(
               (_switch) =>
-                _switch(
-                  Managed.finalizer(Ref.update_(effects, (_) => _.prepend("First")))
-                ) >
-                _switch(
-                  Managed.finalizer(Ref.update_(effects, (_) => _.prepend("Second")))
-                ) >
+                _switch(Managed.finalizer(effects.update((_) => _.prepend("First")))) >
+                _switch(Managed.finalizer(effects.update((_) => _.prepend("Second")))) >
                 latch.succeed(undefined) >
                 Effect.never
             )
@@ -2817,7 +2806,7 @@ describe("Managed", () => {
         )
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .flatMap(({ effects }) => Ref.get(effects))
+        .flatMap(({ effects }) => effects.get())
 
       // Since `switchableTest` uses Effect.never race the real test against a
       // 10 second timer and fail the test if it didn't complete. This
@@ -2841,8 +2830,8 @@ describe("Managed", () => {
           ({ effects }) =>
             (n: number) =>
               Managed.acquireReleaseWith(
-                Ref.update_(effects, (_) => _.prepend(n)),
-                () => Ref.update_(effects, (_) => _.prepend(n))
+                effects.update((_) => _.prepend(n)),
+                () => effects.update((_) => _.prepend(n))
               )
         )
         .bindValue("program", ({ res }) => res(1) > res(2) > res(3))
@@ -2853,7 +2842,7 @@ describe("Managed", () => {
             return use > use > use
           })
         )
-        .flatMap(({ effects }) => Ref.get(effects))
+        .flatMap(({ effects }) => effects.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2865,12 +2854,10 @@ describe("Managed", () => {
         .bind("acquired", () => Ref.make(false))
         .bind("released", () => Ref.make(false))
         .bindValue("managed", ({ acquired, released }) =>
-          Managed.acquireReleaseWith(Ref.set_(acquired, true), () =>
-            Ref.set_(released, true)
-          )
+          Managed.acquireReleaseWith(acquired.set(true), () => released.set(true))
         )
         .tap(({ managed }) => managed.memoize().useDiscard(Effect.unit))
-        .flatMap(({ acquired, released }) => Ref.get(acquired).zip(Ref.get(released)))
+        .flatMap(({ acquired, released }) => acquired.get().zip(released.get()))
 
       const result = await program.unsafeRunPromise()
 
@@ -2880,15 +2867,15 @@ describe("Managed", () => {
     it("behaves like an ordinary Managed if flattened", async () => {
       const program = Effect.Do()
         .bind("resource", () => Ref.make(0))
-        .bindValue("acquire", ({ resource }) => Ref.update_(resource, (n) => n + 1))
-        .bindValue("release", ({ resource }) => Ref.update_(resource, (n) => n - 1))
+        .bindValue("acquire", ({ resource }) => resource.update((n) => n + 1))
+        .bindValue("release", ({ resource }) => resource.update((n) => n - 1))
         .bindValue("managed", ({ acquire, release }) =>
           Managed.acquireReleaseWith(acquire, () => release)
             .memoize()
             .flatten()
         )
-        .bind("res1", ({ managed, resource }) => managed.useDiscard(Ref.get(resource)))
-        .bind("res2", ({ resource }) => Ref.get(resource))
+        .bind("res1", ({ managed, resource }) => managed.useDiscard(resource.get()))
+        .bind("res2", ({ resource }) => resource.get())
 
       const { res1, res2 } = await program.unsafeRunPromise()
 
@@ -2901,7 +2888,7 @@ describe("Managed", () => {
         .bind("released", () => Ref.make(false))
         .bindValue("error", () => ":-o")
         .bindValue("managed", ({ error, released }) =>
-          Managed.acquireReleaseWith(Effect.fail(error), () => Ref.set_(released, true))
+          Managed.acquireReleaseWith(Effect.fail(error), () => released.set(true))
         )
         .bind("res1", ({ managed }) =>
           managed.memoize().use((memoized) =>
@@ -2910,7 +2897,7 @@ describe("Managed", () => {
               .bind("v2", () => memoized.useDiscard(Effect.unit).either())
           )
         )
-        .bind("res2", ({ released }) => Ref.get(released))
+        .bind("res2", ({ released }) => released.get())
 
       const {
         error,
@@ -2929,13 +2916,13 @@ describe("Managed", () => {
         .bindValue("ohNoes", () => ";-0")
         .bindValue("managed", ({ ohNoes, released }) =>
           Managed.acquireReleaseWith(Effect.dieMessage(ohNoes), () =>
-            Ref.set_(released, true)
+            released.set(true)
           )
         )
         .bind("res1", ({ managed }) =>
           managed.memoize().use((memoized) => memoized.useDiscard(Effect.unit).exit())
         )
-        .bind("res2", ({ released }) => Ref.get(released))
+        .bind("res2", ({ released }) => released.get())
 
       const { ohNoes, res1, res2 } = await program.unsafeRunPromise()
 
@@ -2964,8 +2951,9 @@ describe("Managed", () => {
         .bind("released", () => Ref.make(false))
         .bindValue("darn", () => "darn")
         .bindValue("managed", ({ latch, released }) =>
-          Managed.acquireReleaseWith(Effect.unit, () =>
-            Ref.set_(released, true).zipRight(latch.succeed(undefined))
+          Managed.acquireReleaseWith(
+            Effect.unit,
+            () => released.set(true) > latch.succeed(undefined)
           )
         )
         .bind("v1", ({ darn, managed }) =>
@@ -2974,7 +2962,7 @@ describe("Managed", () => {
             .use((memoized) => memoized.useDiscard(Effect.dieMessage(darn)))
             .exit()
         )
-        .bind("v2", ({ released }) => Ref.get(released))
+        .bind("v2", ({ released }) => released.get())
 
       const { darn, v1, v2 } = await program.unsafeRunPromise()
 
@@ -2988,9 +2976,11 @@ describe("Managed", () => {
         .bind("latch2", () => Promise.make<never, void>())
         .bind("latch3", () => Promise.make<never, void>())
         .bind("resource", () => Ref.make(0))
-        .bindValue("acquire", ({ resource }) => Ref.update_(resource, (n) => n + 1))
-        .bindValue("release", ({ latch3, resource }) =>
-          Ref.update_(resource, (n) => n - 1).zipRight(latch3.succeed(undefined))
+        .bindValue("acquire", ({ resource }) => resource.update((n) => n + 1))
+        .bindValue(
+          "release",
+          ({ latch3, resource }) =>
+            resource.update((n) => n - 1) > latch3.succeed(undefined)
         )
         .bindValue("managed", ({ acquire, release }) =>
           Managed.acquireReleaseWith(acquire, () => release)
@@ -2999,15 +2989,15 @@ describe("Managed", () => {
           managed
             .memoize()
             .use((memoized) =>
-              memoized.useDiscard(latch1.succeed(undefined).zipRight(latch2.await()))
+              memoized.useDiscard(latch1.succeed(undefined) > latch2.await())
             )
             .fork()
         )
         .tap(({ latch1 }) => latch1.await())
-        .bind("res1", ({ resource }) => Ref.get(resource))
+        .bind("res1", ({ resource }) => resource.get())
         .tap(({ fiber }) => Fiber.interrupt(fiber))
         .tap(({ latch3 }) => latch3.await())
-        .bind("res2", ({ resource }) => Ref.get(resource))
+        .bind("res2", ({ resource }) => resource.get())
         .bind("res3", ({ latch2 }) => latch2.isDone())
 
       const { res1, res2, res3 } = await program.unsafeRunPromise()
@@ -3026,7 +3016,7 @@ describe("Managed", () => {
           "acquire",
           ({ ref }) =>
             (n: number) =>
-              Ref.update_(ref, (map) => {
+              ref.update((map) => {
                 const {
                   tuple: [acquired, released]
                 } = Map.lookup_(map, n).getOrElse(Tuple(0, 0))
@@ -3037,7 +3027,7 @@ describe("Managed", () => {
           "release",
           ({ ref }) =>
             (n: number) =>
-              Ref.update_(ref, (map) => {
+              ref.update((map) => {
                 const {
                   tuple: [acquired, released]
                 } = Map.lookup_(map, n).getOrElse(Tuple(0, 0))
@@ -3055,7 +3045,7 @@ describe("Managed", () => {
             Effect.forEachParDiscard(Chunk.range(0, 100), (n) => memoized(n % 8))
           )
         )
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -3074,7 +3064,7 @@ describe("Managed", () => {
           "acquire",
           ({ ref }) =>
             (n: number) =>
-              Ref.update_(ref, (map) => {
+              ref.update((map) => {
                 const {
                   tuple: [acquired, released]
                 } = Map.lookup_(map, n).getOrElse(Tuple(0, 0))
@@ -3085,7 +3075,7 @@ describe("Managed", () => {
           "release",
           ({ ref }) =>
             (n: number) =>
-              Ref.update_(ref, (map) => {
+              ref.update((map) => {
                 const {
                   tuple: [acquired, released]
                 } = Map.lookup_(map, n).getOrElse(Tuple(0, 0))
@@ -3108,7 +3098,7 @@ describe("Managed", () => {
             .fork()
         )
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       // Since `memoizeTest` uses Effect.never race the real test against a
       // 10 second timer and fail the test if it didn't complete. This
@@ -3223,13 +3213,13 @@ describe("Managed", () => {
         ReleaseMap.make
           .flatMap(
             (releaseMap) =>
-              releaseMap.add((_) => Ref.update_(ref, (_) => _.prepend(1))) >
+              releaseMap.add((_) => ref.update((_) => _.prepend(1))) >
               releaseMap.add((_) => Effect.dieMessage("boom")) >
-              releaseMap.add((_) => Ref.update_(ref, (_) => _.prepend(3))) >
+              releaseMap.add((_) => ref.update((_) => _.prepend(3))) >
               releaseMap.releaseAll(Exit.unit, ExecutionStrategy.Sequential)
           )
           .exit()
-          .zipRight(Ref.get(ref))
+          .zipRight(ref.get())
       )
 
       const result = await program.unsafeRunPromise()
