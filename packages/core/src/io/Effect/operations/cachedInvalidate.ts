@@ -1,7 +1,7 @@
 import { Tuple } from "../../../collection/immutable/Tuple"
 import type { Duration } from "../../../data/Duration"
 import { Option } from "../../../data/Option"
-import * as Ref from "../../../io/Ref/Synchronized"
+import { Synchronized } from "../../../io/Ref/Synchronized"
 import type { HasClock } from "../../Clock"
 import { currentTime } from "../../Clock"
 import { Promise } from "../../Promise"
@@ -23,7 +23,9 @@ export function cachedInvalidate_<R, E, A>(
 ): RIO<R & HasClock, Tuple<[IO<E, A>, UIO<void>]>> {
   return Effect.Do()
     .bind("r", () => Effect.environment<R & HasClock>())
-    .bind("cache", () => Ref.make<Option<Tuple<[number, Promise<E, A>]>>>(Option.none))
+    .bind("cache", () =>
+      Synchronized.make<Option<Tuple<[number, Promise<E, A>]>>>(Option.none)
+    )
     .map(({ cache, r }) =>
       Tuple(get(self, timeToLive, cache).provideEnvironment(r), invalidate(cache))
     )
@@ -58,25 +60,29 @@ function compute<R, E, A>(
 function get<R, E, A>(
   self: Effect<R, E, A>,
   timeToLive: Duration,
-  cache: Ref.Synchronized<Option<Tuple<[number, Promise<E, A>]>>>
+  cache: Synchronized<Option<Tuple<[number, Promise<E, A>]>>>
 ): Effect<R & HasClock, E, A> {
   return Effect.uninterruptibleMask(({ restore }) =>
     currentTime.flatMap((time) =>
-      Ref.updateSomeAndGetEffect_(cache, (_) =>
-        _.fold(
-          () => Option.some(compute(self, timeToLive, time)),
-          ({ tuple: [end] }) =>
-            end - time <= 0 ? Option.some(compute(self, timeToLive, time)) : Option.none
+      cache
+        .updateSomeAndGetEffect((_) =>
+          _.fold(
+            () => Option.some(compute(self, timeToLive, time)),
+            ({ tuple: [end] }) =>
+              end - time <= 0
+                ? Option.some(compute(self, timeToLive, time))
+                : Option.none
+          )
         )
-      ).flatMap((a) =>
-        a._tag === "None" ? Effect.die("Bug") : restore(a.value.get(1).await())
-      )
+        .flatMap((a) =>
+          a._tag === "None" ? Effect.die("Bug") : restore(a.value.get(1).await())
+        )
     )
   )
 }
 
 function invalidate<E, A>(
-  cache: Ref.Synchronized<Option<Tuple<[number, Promise<E, A>]>>>
+  cache: Synchronized<Option<Tuple<[number, Promise<E, A>]>>>
 ): UIO<void> {
-  return Ref.set_(cache, Option.none)
+  return cache.set(Option.none)
 }

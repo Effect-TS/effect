@@ -29,7 +29,6 @@ import { unsafeOfferAll } from "../../Queue/operations/_internal/unsafeOfferAll"
 import { unsafePollAll } from "../../Queue/operations/_internal/unsafePollAll"
 import { unsafePollN } from "../../Queue/operations/_internal/unsafePollN"
 import { unsafeRemove } from "../../Queue/operations/_internal/unsafeRemove"
-import * as RefModify from "../../Ref/operations/modify"
 import type { RIO, UIO } from "../definition"
 import { Effect } from "../definition"
 
@@ -590,52 +589,54 @@ export function releaseMapReleaseAll(
   execStrategy: ExecutionStrategy,
   __tsplusTrace?: string
 ): UIO<any> {
-  return RefModify.modify_(self.ref, (s): Tuple<[UIO<any>, State]> => {
-    switch (s._tag) {
-      case "Exited": {
-        return Tuple(Effect.unit, s)
-      }
-      case "Running": {
-        switch (execStrategy._tag) {
-          case "Sequential": {
-            return Tuple(
-              Effect.forEach(Array.from(s.finalizers()).reverse(), ([_, f]) =>
-                s.update(f)(ex).exit()
-              ).flatMap((results) =>
-                // @ts-expect-error
-                Effect.done(Exit.collectAll(results).getOrElse(Exit.unit))
-              ),
-              new Exited(s.nextKey, ex, s.update)
-            )
-          }
-          case "Parallel": {
-            return Tuple(
-              Effect.forEachPar(Array.from(s.finalizers()).reverse(), ([_, f]) =>
-                s.update(f)(ex).exit()
-              ).flatMap((results) =>
-                // @ts-expect-error
-                Effect.done(Exit.collectAllPar(results).getOrElse(Exit.unit))
-              ),
-              new Exited(s.nextKey, ex, s.update)
-            )
-          }
-          case "ParallelN": {
-            return Tuple(
-              Effect.forEachPar(Array.from(s.finalizers()).reverse(), ([_, f]) =>
-                s.update(f)(ex).exit()
+  return self.ref
+    .modify((s): Tuple<[UIO<any>, State]> => {
+      switch (s._tag) {
+        case "Exited": {
+          return Tuple(Effect.unit, s)
+        }
+        case "Running": {
+          switch (execStrategy._tag) {
+            case "Sequential": {
+              return Tuple(
+                Effect.forEach(Array.from(s.finalizers()).reverse(), ([_, f]) =>
+                  s.update(f)(ex).exit()
+                ).flatMap((results) =>
+                  // @ts-expect-error
+                  Effect.done(Exit.collectAll(results).getOrElse(Exit.unit))
+                ),
+                new Exited(s.nextKey, ex, s.update)
               )
-                .flatMap((results) =>
+            }
+            case "Parallel": {
+              return Tuple(
+                Effect.forEachPar(Array.from(s.finalizers()).reverse(), ([_, f]) =>
+                  s.update(f)(ex).exit()
+                ).flatMap((results) =>
                   // @ts-expect-error
                   Effect.done(Exit.collectAllPar(results).getOrElse(Exit.unit))
+                ),
+                new Exited(s.nextKey, ex, s.update)
+              )
+            }
+            case "ParallelN": {
+              return Tuple(
+                Effect.forEachPar(Array.from(s.finalizers()).reverse(), ([_, f]) =>
+                  s.update(f)(ex).exit()
                 )
-                .withParallelism(execStrategy.n) as UIO<any>,
-              new Exited(s.nextKey, ex, s.update)
-            )
+                  .flatMap((results) =>
+                    // @ts-expect-error
+                    Effect.done(Exit.collectAllPar(results).getOrElse(Exit.unit))
+                  )
+                  .withParallelism(execStrategy.n) as UIO<any>,
+                new Exited(s.nextKey, ex, s.update)
+              )
+            }
           }
         }
       }
-    }
-  }).flatten()
+    })
+    .flatten()
 }
 
 /**
