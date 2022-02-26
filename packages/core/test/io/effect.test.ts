@@ -23,7 +23,7 @@ import { Promise } from "../../src/io/Promise"
 import { Queue } from "../../src/io/Queue"
 import type { HasRandom } from "../../src/io/Random"
 import * as Random from "../../src/io/Random"
-import * as Ref from "../../src/io/Ref"
+import { Ref } from "../../src/io/Ref"
 import { Schedule } from "../../src/io/Schedule"
 import { TraceElement } from "../../src/io/TraceElement"
 import * as Equal from "../../src/prelude/Equal"
@@ -58,8 +58,8 @@ function exactlyOnce<R, A, A1>(
 ): Effect<R, string, A1> {
   return Ref.make(0).flatMap((ref) =>
     Effect.Do()
-      .bind("res", () => f(Ref.update_(ref, (n) => n + 1) > Effect.succeed(value)))
-      .bind("count", () => Ref.get(ref))
+      .bind("res", () => f(ref.update((n) => n + 1) > Effect.succeed(value)))
+      .bind("count", () => ref.get())
       .tap(({ count }) =>
         count !== 1 ? Effect.fail("Accessed more than once") : Effect.unit
       )
@@ -181,10 +181,10 @@ describe("Effect", () => {
           Effect.acquireRelease(
             Effect.succeed(42),
             Effect.succeed(0),
-            Ref.set_(release, true)
+            release.set(true)
           )
         )
-        .bind("released", ({ release }) => Ref.get(release))
+        .bind("released", ({ release }) => release.get())
 
       const { released, result } = await program.unsafeRunPromise()
 
@@ -199,10 +199,10 @@ describe("Effect", () => {
           Effect.acquireReleaseWith(
             Effect.succeed(42),
             (n) => Effect.succeed(n + 1),
-            () => Ref.set_(release, true)
+            () => release.set(true)
           )
         )
-        .bind("released", ({ release }) => Ref.get(release))
+        .bind("released", ({ release }) => release.get())
 
       const { released, result } = await program.unsafeRunPromise()
 
@@ -217,10 +217,10 @@ describe("Effect", () => {
           Effect.acquireReleaseExitWith(
             Effect.succeed(42),
             () => Effect.succeed(0),
-            () => Ref.set_(release, true)
+            () => release.set(true)
           )
         )
-        .bind("released", ({ release }) => Ref.get(release))
+        .bind("released", ({ release }) => release.get())
 
       const { released, result } = await program.unsafeRunPromise()
 
@@ -260,10 +260,10 @@ describe("Effect", () => {
           Effect.acquireRelease(
             Effect.succeed(42),
             Effect.succeed(0),
-            Ref.set_(release, true)
+            release.set(true)
           ).disconnect()
         )
-        .bind("released", ({ release }) => Ref.get(release))
+        .bind("released", ({ release }) => release.get())
 
       const { released, result } = await program.unsafeRunPromise()
 
@@ -278,10 +278,10 @@ describe("Effect", () => {
           Effect.acquireReleaseWith(
             Effect.succeed(42),
             (n) => Effect.succeed(n + 1),
-            () => Ref.set_(release, true)
+            () => release.set(true)
           ).disconnect()
         )
-        .bind("released", ({ release }) => Ref.get(release))
+        .bind("released", ({ release }) => release.get())
 
       const { released, result } = await program.unsafeRunPromise()
 
@@ -296,10 +296,10 @@ describe("Effect", () => {
           Effect.acquireReleaseExitWith(
             Effect.succeed(42),
             () => Effect.succeed(0),
-            () => Ref.set_(release, true)
+            () => release.set(true)
           ).disconnect()
         )
-        .bind("released", ({ release }) => Ref.get(release))
+        .bind("released", ({ release }) => release.get())
 
       const { released, result } = await program.unsafeRunPromise()
 
@@ -342,7 +342,7 @@ describe("Effect", () => {
             () => {
               throw releaseDied
             },
-            () => Ref.set_(release, true)
+            () => release.set(true)
           )
             .disconnect()
             .exit()
@@ -353,7 +353,7 @@ describe("Effect", () => {
             () => Effect.fail("effect should have failed")
           )
         )
-        .bind("released", ({ release }) => Ref.get(release))
+        .bind("released", ({ release }) => release.get())
 
       const { cause, released } = await program.unsafeRunPromise()
 
@@ -620,7 +620,7 @@ describe("Effect", () => {
     it("is referentially transparent", async () => {
       const program = Effect.Do()
         .bind("counter", () => Ref.make(0))
-        .bindValue("op", ({ counter }) => Ref.getAndUpdate_(counter, (n) => n + 1))
+        .bindValue("op", ({ counter }) => counter.getAndUpdate((n) => n + 1))
         .bindValue("ops3", ({ op }) =>
           Effect.collectAllPar(List(op, op, op)).map((chunk) => chunk.toArray())
         )
@@ -709,11 +709,11 @@ describe("Effect", () => {
         .bind("input", () => Ref.make(10))
         .bind("output", () => Ref.make(0))
         .tap(({ input, output }) =>
-          (
-            Ref.updateAndGet_(input, (n) => n - 1) < Ref.update_(output, (n) => n + 1)
-          ).repeatUntil((n) => n === 0)
+          (input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)).repeatUntil(
+            (n) => n === 0
+          )
         )
-        .flatMap(({ output }) => Ref.get(output))
+        .flatMap(({ output }) => output.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -722,8 +722,8 @@ describe("Effect", () => {
 
     it("repeatUntil always evaluates effect at least once", async () => {
       const program = Ref.make(0)
-        .tap((ref) => Ref.update_(ref, (n) => n + 1).repeatUntil(constTrue))
-        .flatMap(Ref.get)
+        .tap((ref) => ref.update((n) => n + 1).repeatUntil(constTrue))
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -738,11 +738,9 @@ describe("Effect", () => {
         .tap(({ queue }) => queue.offerAll(List(1, 2, 3, 4, 5, 6)))
         .bind("acc", () => Ref.make(0))
         .tap(({ acc, queue }) =>
-          (queue.take() < Ref.update_(acc, (n) => n + 1)).repeatUntilEquals(
-            Equal.number
-          )(5)
+          (queue.take() < acc.update((n) => n + 1)).repeatUntilEquals(Equal.number)(5)
         )
-        .flatMap(({ acc }) => Ref.get(acc))
+        .flatMap(({ acc }) => acc.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -757,10 +755,10 @@ describe("Effect", () => {
         .bind("output", () => Ref.make(0))
         .tap(({ input, output }) =>
           (
-            Ref.updateAndGet_(input, (n) => n - 1) < Ref.update_(output, (n) => n + 1)
+            input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)
           ).repeatUntilEffect((n) => Effect.succeed(n === 0))
         )
-        .flatMap(({ output }) => Ref.get(output))
+        .flatMap(({ output }) => output.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -770,9 +768,9 @@ describe("Effect", () => {
     it("always evaluates the effect at least once", async () => {
       const program = Ref.make(0)
         .tap((ref) =>
-          Ref.update_(ref, (n) => n + 1).repeatUntilEffect(() => Effect.succeed(true))
+          ref.update((n) => n + 1).repeatUntilEffect(() => Effect.succeed(true))
         )
-        .flatMap(Ref.get)
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -786,11 +784,11 @@ describe("Effect", () => {
         .bind("input", () => Ref.make(10))
         .bind("output", () => Ref.make(0))
         .tap(({ input, output }) =>
-          (
-            Ref.updateAndGet_(input, (n) => n - 1) < Ref.update_(output, (n) => n + 1)
-          ).repeatWhile((n) => n >= 0)
+          (input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)).repeatWhile(
+            (n) => n >= 0
+          )
         )
-        .flatMap(({ output }) => Ref.get(output))
+        .flatMap(({ output }) => output.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -799,8 +797,8 @@ describe("Effect", () => {
 
     it("always evaluates the effect at least once", async () => {
       const program = Ref.make(0)
-        .tap((ref) => Ref.update_(ref, (n) => n + 1).repeatWhile(constFalse))
-        .flatMap(Ref.get)
+        .tap((ref) => ref.update((n) => n + 1).repeatWhile(constFalse))
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -815,11 +813,9 @@ describe("Effect", () => {
         .tap(({ queue }) => queue.offerAll(List(0, 0, 0, 0, 1, 2)))
         .bind("acc", () => Ref.make(0))
         .tap(({ acc, queue }) =>
-          (queue.take() < Ref.update_(acc, (n) => n + 1)).repeatWhileEquals(
-            Equal.number
-          )(0)
+          (queue.take() < acc.update((n) => n + 1)).repeatWhileEquals(Equal.number)(0)
         )
-        .flatMap(({ acc }) => Ref.get(acc))
+        .flatMap(({ acc }) => acc.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -834,10 +830,10 @@ describe("Effect", () => {
         .bind("output", () => Ref.make(0))
         .tap(({ input, output }) =>
           (
-            Ref.updateAndGet_(input, (n) => n - 1) < Ref.update_(output, (n) => n + 1)
+            input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)
           ).repeatWhileEffect((v) => Effect.succeed(v >= 0))
         )
-        .flatMap(({ output }) => Ref.get(output))
+        .flatMap(({ output }) => output.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -847,9 +843,9 @@ describe("Effect", () => {
     it("always evaluates effect at least once", async () => {
       const program = Ref.make(0)
         .tap((ref) =>
-          Ref.update_(ref, (n) => n + 1).repeatWhileEffect(() => Effect.succeed(false))
+          ref.update((n) => n + 1).repeatWhileEffect(() => Effect.succeed(false))
         )
-        .flatMap(Ref.get)
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -859,12 +855,12 @@ describe("Effect", () => {
 
   describe("eventually", () => {
     it("succeeds eventually", async () => {
-      function effect(ref: Ref.Ref<number>) {
-        return Ref.get(ref).flatMap((n) =>
-          n < 10
-            ? Ref.update_(ref, (n) => n + 1) > Effect.fail("Ouch")
-            : Effect.succeed(n)
-        )
+      function effect(ref: Ref<number>) {
+        return ref
+          .get()
+          .flatMap((n) =>
+            n < 10 ? ref.update((n) => n + 1) > Effect.fail("Ouch") : Effect.succeed(n)
+          )
       }
 
       const program = Ref.make(0).flatMap((ref) => effect(ref).eventually())
@@ -897,12 +893,10 @@ describe("Effect", () => {
         .bind("ref", () => Ref.make(List.empty<number>()))
         .bind("results", ({ ref }) =>
           Effect.filter(list, (n) =>
-            Ref.update_(ref, (list) => list.prepend(n)).as(n % 2 === 0)
+            ref.update((list) => list.prepend(n)).as(n % 2 === 0)
           ).map((chunk) => chunk.toArray())
         )
-        .bind("effects", ({ ref }) =>
-          Ref.get(ref).map((list) => list.reverse().toArray())
-        )
+        .bind("effects", ({ ref }) => ref.get().map((list) => list.reverse().toArray()))
 
       const { effects, results } = await program.unsafeRunPromise()
 
@@ -918,12 +912,10 @@ describe("Effect", () => {
         .bind("ref", () => Ref.make(List.empty<number>()))
         .bind("results", ({ ref }) =>
           Effect.filterNot(list, (n) =>
-            Ref.update_(ref, (list) => list.prepend(n)).as(n % 2 === 0)
+            ref.update((list) => list.prepend(n)).as(n % 2 === 0)
           ).map((chunk) => chunk.toArray())
         )
-        .bind("effects", ({ ref }) =>
-          Ref.get(ref).map((list) => list.reverse().toArray())
-        )
+        .bind("effects", ({ ref }) => ref.get().map((list) => list.reverse().toArray()))
 
       const { effects, results } = await program.unsafeRunPromise()
 
@@ -1161,11 +1153,10 @@ describe("Effect", () => {
           Effect.forEach(
             list,
             (s) =>
-              Ref.update_(ref, (list) => list.append(s)) >
-              Effect.succeed(Number.parseInt(s))
+              ref.update((list) => list.append(s)) > Effect.succeed(Number.parseInt(s))
           ).map((chunk) => chunk.toArray())
         )
-        .bind("effects", ({ ref }) => Ref.get(ref))
+        .bind("effects", ({ ref }) => ref.get())
 
       const { effects, result } = await program.unsafeRunPromise()
 
@@ -1196,9 +1187,9 @@ describe("Effect", () => {
       const list = List(1, 2, 3, 4, 5)
       const program = Ref.make(List.empty<number>())
         .tap((ref) =>
-          Effect.forEachDiscard(list, (n) => Ref.update_(ref, (list) => list.append(n)))
+          Effect.forEachDiscard(list, (n) => ref.update((list) => list.append(n)))
         )
-        .flatMap(Ref.get)
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -1210,11 +1201,11 @@ describe("Effect", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
         .bindValue("effect", ({ ref }) =>
-          Effect.forEachDiscard(list, (n) => Ref.update_(ref, (_) => _ + n))
+          Effect.forEachDiscard(list, (n) => ref.update((_) => _ + n))
         )
         .tap(({ effect }) => effect)
         .tap(({ effect }) => effect)
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -1420,11 +1411,11 @@ describe("Effect", () => {
             Effect.never,
             Effect.succeed(1),
             Effect.fail("C"),
-            (promise.await() > Ref.set_(ref, true)).as(1)
+            (promise.await() > ref.set(true)).as(1)
           )
         )
         .bind("e", ({ actions }) => Effect.forEachPar(actions, identity).flip())
-        .bind("v", ({ ref }) => Ref.get(ref))
+        .bind("v", ({ ref }) => ref.get())
 
       const { e, v } = await program.unsafeRunPromise()
 
@@ -1436,12 +1427,10 @@ describe("Effect", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
         .bind("fibers", ({ ref }) =>
-          Effect.forEachPar(List.range(1, 101), (n) =>
-            Ref.update_(ref, (_) => _ + 1).fork()
-          )
+          Effect.forEachPar(List.range(1, 101), (n) => ref.update((_) => _ + 1).fork())
         )
         .tap(({ fibers }) => Effect.forEach(fibers, Fiber.await))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -1518,16 +1507,18 @@ describe("Effect", () => {
   describe("forEachParDiscard", () => {
     it("accumulates errors", async () => {
       function task(
-        started: Ref.Ref<number>,
+        started: Ref<number>,
         trigger: Promise<never, void>,
         n: number
       ): IO<number, void> {
-        return Ref.updateAndGet_(started, (n) => n + 1).flatMap(
-          (count) =>
-            Effect.when(count === 3, trigger.succeed(undefined)) >
-            trigger.await() >
-            Effect.fail(n)
-        )
+        return started
+          .updateAndGet((n) => n + 1)
+          .flatMap(
+            (count) =>
+              Effect.when(count === 3, trigger.succeed(undefined)) >
+              trigger.await() >
+              Effect.fail(n)
+          )
       }
 
       const program = Effect.Do()
@@ -1551,11 +1542,9 @@ describe("Effect", () => {
       const list = List(1, 2, 3, 4, 5)
       const program = Ref.make(List.empty<number>())
         .tap((ref) =>
-          Effect.forEachParDiscard(list, (n) =>
-            Ref.update_(ref, (list) => list.append(n))
-          )
+          Effect.forEachParDiscard(list, (n) => ref.update((list) => list.append(n)))
         )
-        .flatMap(Ref.get)
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -1566,11 +1555,9 @@ describe("Effect", () => {
       const list = Chunk(1, 2, 3, 4, 5)
       const program = Ref.make(List.empty<number>())
         .tap((ref) =>
-          Effect.forEachParDiscard(list, (n) =>
-            Ref.update_(ref, (list) => list.append(n))
-          )
+          Effect.forEachParDiscard(list, (n) => ref.update((list) => list.append(n)))
         )
-        .flatMap(Ref.get)
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -1594,10 +1581,10 @@ describe("Effect", () => {
       const program = Ref.make(List.empty<number>())
         .tap((ref) =>
           Effect.forEachParDiscard(list, (n) =>
-            Ref.update_(ref, (list) => list.append(n))
+            ref.update((list) => list.append(n))
           ).withParallelism(2)
         )
-        .flatMap(Ref.get)
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -1689,7 +1676,7 @@ describe("Effect", () => {
         .bindValue("workers", ({ worker }) => List.repeat(worker, 4))
         .bind("fiber", ({ workers }) => Effect.forkAll(workers))
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -1703,7 +1690,7 @@ describe("Effect", () => {
         .bindValue("workers", ({ worker }) => List.repeat(worker, 4))
         .bind("fiber", ({ workers }) => Effect.forkAll(workers))
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -1887,9 +1874,9 @@ describe("Effect", () => {
             0,
             (n) => n < 5,
             (n) => n + 1
-          )((n) => Ref.update_(ref, (list) => list.append(n)))
+          )((n) => ref.update((list) => list.append(n)))
         )
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -1917,9 +1904,9 @@ describe("Effect", () => {
             0,
             (n) => n < 5,
             (n) => n + 1
-          )((n) => Ref.update_(ref, (list) => list.append(n)))
+          )((n) => ref.update((list) => list.append(n)))
         )
-        .flatMap(Ref.get)
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2215,9 +2202,9 @@ describe("Effect", () => {
     it("returns an effect that will only be executed once", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
-        .bind("effect", ({ ref }) => Ref.update_(ref, (n) => n + 1).once())
+        .bind("effect", ({ ref }) => ref.update((n) => n + 1).once())
         .tap(({ effect }) => Effect.collectAllPar(effect.replicate(100)))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2232,11 +2219,11 @@ describe("Effect", () => {
           Effect.unit.onExit((exit) =>
             exit.fold(
               () => Effect.unit,
-              () => Ref.set_(ref, true)
+              () => ref.set(true)
             )
           )
         )
-        .flatMap(Ref.get)
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2249,13 +2236,13 @@ describe("Effect", () => {
           Effect.die(new RuntimeError())
             .onExit((exit) =>
               exit._tag === "Failure" && exit.cause.isDie()
-                ? Ref.set_(ref, true)
+                ? ref.set(true)
                 : Effect.unit
             )
             .sandbox()
             .ignore()
         )
-        .flatMap(Ref.get)
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2563,9 +2550,9 @@ describe("Effect", () => {
       const list = List(2, 4, 6, 3, 5, 6)
       const program = Ref.make(List.empty<number>())
         .tap((ref) =>
-          Effect.partition(list, (n) => Ref.update_(ref, (list) => list.append(n)))
+          Effect.partition(list, (n) => ref.update((list) => list.append(n)))
         )
-        .flatMap(Ref.get)
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2791,11 +2778,11 @@ describe("Effect", () => {
         .bind("input", () => Ref.make(10))
         .bind("output", () => Ref.make(0))
         .tap(({ input, output }) =>
-          (
-            Ref.updateAndGet_(input, (n) => n - 1) < Ref.update_(output, (n) => n + 1)
-          ).flipWith((effect) => effect.retryUntil((n) => n === 0))
+          (input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)).flipWith(
+            (effect) => effect.retryUntil((n) => n === 0)
+          )
         )
-        .flatMap(({ output }) => Ref.get(output))
+        .flatMap(({ output }) => output.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2805,11 +2792,9 @@ describe("Effect", () => {
     it("runs at least once", async () => {
       const program = Ref.make(0)
         .tap((ref) =>
-          Ref.update_(ref, (n) => n + 1).flipWith((effect) =>
-            effect.retryUntil(constTrue)
-          )
+          ref.update((n) => n + 1).flipWith((effect) => effect.retryUntil(constTrue))
         )
-        .flatMap(Ref.get)
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2824,11 +2809,11 @@ describe("Effect", () => {
         .tap(({ queue }) => queue.offerAll(List(1, 2, 3, 4, 5, 6)))
         .bind("acc", () => Ref.make(0))
         .tap(({ acc, queue }) =>
-          (queue.take() < Ref.update_(acc, (n) => n + 1)).flipWith((effect) =>
+          (queue.take() < acc.update((n) => n + 1)).flipWith((effect) =>
             effect.retryUntilEquals(Equal.number)(5)
           )
         )
-        .flatMap(({ acc }) => Ref.get(acc))
+        .flatMap(({ acc }) => acc.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2842,13 +2827,11 @@ describe("Effect", () => {
         .bind("input", () => Ref.make(10))
         .bind("output", () => Ref.make(0))
         .tap(({ input, output }) =>
-          (
-            Ref.updateAndGet_(input, (n) => n - 1) < Ref.update_(output, (n) => n + 1)
-          ).flipWith((effect) =>
-            effect.retryUntilEffect((n) => Effect.succeed(n === 0))
+          (input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)).flipWith(
+            (effect) => effect.retryUntilEffect((n) => Effect.succeed(n === 0))
           )
         )
-        .flatMap(({ output }) => Ref.get(output))
+        .flatMap(({ output }) => output.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2858,11 +2841,11 @@ describe("Effect", () => {
     it("runs at least once", async () => {
       const program = Ref.make(0)
         .tap((ref) =>
-          Ref.update_(ref, (n) => n + 1).flipWith((effect) =>
-            effect.retryUntilEffect(() => Effect.succeed(true))
-          )
+          ref
+            .update((n) => n + 1)
+            .flipWith((effect) => effect.retryUntilEffect(() => Effect.succeed(true)))
         )
-        .flatMap(Ref.get)
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2876,11 +2859,11 @@ describe("Effect", () => {
         .bind("input", () => Ref.make(10))
         .bind("output", () => Ref.make(0))
         .tap(({ input, output }) =>
-          (
-            Ref.updateAndGet_(input, (n) => n - 1) < Ref.update_(output, (n) => n + 1)
-          ).flipWith((effect) => effect.retryWhile((n) => n >= 0))
+          (input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)).flipWith(
+            (effect) => effect.retryWhile((n) => n >= 0)
+          )
         )
-        .flatMap(({ output }) => Ref.get(output))
+        .flatMap(({ output }) => output.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2890,11 +2873,9 @@ describe("Effect", () => {
     it("runs at least once", async () => {
       const program = Ref.make(0)
         .tap((ref) =>
-          Ref.update_(ref, (n) => n + 1).flipWith((effect) =>
-            effect.retryWhile(constFalse)
-          )
+          ref.update((n) => n + 1).flipWith((effect) => effect.retryWhile(constFalse))
         )
-        .flatMap(Ref.get)
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2909,11 +2890,11 @@ describe("Effect", () => {
         .tap(({ queue }) => queue.offerAll(List(0, 0, 0, 0, 1, 2)))
         .bind("acc", () => Ref.make(0))
         .tap(({ acc, queue }) =>
-          (queue.take() < Ref.update_(acc, (n) => n + 1)).flipWith((effect) =>
+          (queue.take() < acc.update((n) => n + 1)).flipWith((effect) =>
             effect.retryWhileEquals(Equal.number)(0)
           )
         )
-        .flatMap(({ acc }) => Ref.get(acc))
+        .flatMap(({ acc }) => acc.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2927,11 +2908,11 @@ describe("Effect", () => {
         .bind("input", () => Ref.make(10))
         .bind("output", () => Ref.make(0))
         .tap(({ input, output }) =>
-          (
-            Ref.updateAndGet_(input, (n) => n - 1) < Ref.update_(output, (n) => n + 1)
-          ).flipWith((effect) => effect.retryWhileEffect((n) => Effect.succeed(n >= 0)))
+          (input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)).flipWith(
+            (effect) => effect.retryWhileEffect((n) => Effect.succeed(n >= 0))
+          )
         )
-        .flatMap(({ output }) => Ref.get(output))
+        .flatMap(({ output }) => output.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -2941,11 +2922,11 @@ describe("Effect", () => {
     it("runs at least once", async () => {
       const program = Ref.make(0)
         .tap((ref) =>
-          Ref.update_(ref, (n) => n + 1).flipWith((effect) =>
-            effect.retryWhileEffect(() => Effect.succeed(false))
-          )
+          ref
+            .update((n) => n + 1)
+            .flipWith((effect) => effect.retryWhileEffect(() => Effect.succeed(false)))
         )
-        .flatMap(Ref.get)
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -3232,18 +3213,18 @@ describe("Effect", () => {
     })
 
     it("deep effects", async () => {
-      function incLeft(n: number, ref: Ref.Ref<number>): UIO<number> {
+      function incLeft(n: number, ref: Ref<number>): UIO<number> {
         if (n <= 0) {
-          return Ref.get(ref)
+          return ref.get()
         }
-        return incLeft(n - 1, ref) < Ref.update_(ref, (n) => n + 1)
+        return incLeft(n - 1, ref) < ref.update((n) => n + 1)
       }
 
-      function incRight(n: number, ref: Ref.Ref<number>): UIO<number> {
+      function incRight(n: number, ref: Ref<number>): UIO<number> {
         if (n <= 0) {
-          return Ref.get(ref)
+          return ref.get()
         }
-        return Ref.update_(ref, (n) => n + 1) > incRight(n - 1, ref)
+        return ref.update((n) => n + 1) > incRight(n - 1, ref)
       }
 
       const left = Ref.make(0)
@@ -3711,9 +3692,8 @@ describe("Effect", () => {
     })
 
     it("acquireReleaseWith regression 1", async () => {
-      function makeLogger(ref: Ref.Ref<List<string>>) {
-        return (line: string): UIO<void> =>
-          Ref.update_(ref, (list) => list + List(line))
+      function makeLogger(ref: Ref<List<string>>) {
+        return (line: string): UIO<void> => ref.update((list) => list + List(line))
       }
 
       const program = Effect.Do()
@@ -3731,17 +3711,15 @@ describe("Effect", () => {
           ).fork()
         )
         .tap(({ ref }) =>
-          (Ref.get(ref) < Effect.sleep(1)).repeatUntil((list) =>
-            list.contains("start 1")
-          )
+          (ref.get() < Effect.sleep(1)).repeatUntil((list) => list.contains("start 1"))
         )
         .tap(({ fiber }) => Fiber.interrupt(fiber))
         .tap(({ ref }) =>
-          (Ref.get(ref) < Effect.sleep(1)).repeatUntil((list) =>
+          (ref.get() < Effect.sleep(1)).repeatUntil((list) =>
             list.contains("release 2")
           )
         )
-        .flatMap(({ ref }) => Ref.get(ref).map((list) => list.toArray()))
+        .flatMap(({ ref }) => ref.get().map((list) => list.toArray()))
 
       const result = await program.unsafeRunPromise()
 
@@ -3758,12 +3736,12 @@ describe("Effect", () => {
         .bind("promise2", () => Promise.make<never, number>())
         .bind("fiber", ({ promise1, promise2, ref }) =>
           (promise1.succeed(undefined) > promise2.await())
-            .ensuring(Ref.set_(ref, true) > Effect.sleep(10))
+            .ensuring(ref.set(true) > Effect.sleep(10))
             .fork()
         )
         .tap(({ promise1 }) => promise1.await())
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -3906,9 +3884,7 @@ describe("Effect", () => {
           Effect.async<unknown, never, void>((cb) =>
             runtime.unsafeRunAsync(
               step.await() >
-                Effect.succeed(
-                  cb(Ref.update_(unexpectedPlace, (list) => list.prepend(1)))
-                )
+                Effect.succeed(cb(unexpectedPlace.update((list) => list.prepend(1))))
             )
           )
             .ensuring(
@@ -3917,11 +3893,11 @@ describe("Effect", () => {
                 runtime.unsafeRunAsync(step.succeed(undefined))
               })
             )
-            .ensuring(Ref.update_(unexpectedPlace, (list) => list.prepend(2)))
+            .ensuring(unexpectedPlace.update((list) => list.prepend(2)))
             .forkDaemon()
         )
         .bind("result", ({ fork }) => Fiber.interrupt(fork).timeout(1000))
-        .bind("unexpected", ({ unexpectedPlace }) => Ref.get(unexpectedPlace))
+        .bind("unexpected", ({ unexpectedPlace }) => unexpectedPlace.get())
 
       const { result, unexpected } = await program.unsafeRunPromise()
 
@@ -3938,9 +3914,7 @@ describe("Effect", () => {
           Effect.asyncMaybe<unknown, never, void>((cb) => {
             runtime.unsafeRunAsync(
               step.await() >
-                Effect.succeed(
-                  cb(Ref.update_(unexpectedPlace, (list) => list.prepend(1)))
-                )
+                Effect.succeed(cb(unexpectedPlace.update((list) => list.prepend(1))))
             )
             return Option.some(Effect.unit)
           })
@@ -3950,12 +3924,12 @@ describe("Effect", () => {
                 runtime.unsafeRunAsync(step.succeed(undefined))
               })
             )
-            .ensuring(Ref.update_(unexpectedPlace, (list) => list.prepend(2)))
+            .ensuring(unexpectedPlace.update((list) => list.prepend(2)))
             .uninterruptible()
             .forkDaemon()
         )
         .bind("result", ({ fork }) => Fiber.interrupt(fork).timeout(1000))
-        .bind("unexpected", ({ unexpectedPlace }) => Ref.get(unexpectedPlace))
+        .bind("unexpected", ({ unexpectedPlace }) => unexpectedPlace.get())
 
       const { result, unexpected } = await program.unsafeRunPromise()
 
@@ -4054,17 +4028,15 @@ describe("Effect", () => {
 
     // FIXED: interrupt joined fiber after forking daemon
     it("daemon fiber is unsupervised", async () => {
-      function child(ref: Ref.Ref<boolean>) {
-        return withLatch((release) =>
-          (release > Effect.never).ensuring(Ref.set_(ref, true))
-        )
+      function child(ref: Ref<boolean>) {
+        return withLatch((release) => (release > Effect.never).ensuring(ref.set(true)))
       }
 
       const program = Effect.Do()
         .bind("ref", () => Ref.make(false))
         .bind("fiber1", ({ ref }) => child(ref).forkDaemon().fork())
         .bind("fiber2", ({ fiber1 }) => Fiber.join(fiber1))
-        .bind("result", ({ ref }) => Ref.get(ref))
+        .bind("result", ({ ref }) => ref.get())
         .tap(({ fiber2 }) => Fiber.interrupt(fiber2))
 
       const { result } = await program.unsafeRunPromise()
@@ -4084,7 +4056,7 @@ describe("Effect", () => {
         .bind("latch1Start", () => Promise.make<never, void>())
         .bind("latch2Start", () => Promise.make<never, void>())
         .bindValue("inc", ({ interruptionRef }) =>
-          Ref.updateAndGet_(interruptionRef, (n) => n + 1)
+          interruptionRef.updateAndGet((n) => n + 1)
         )
         .bindValue("left", ({ inc, latch1Start }) => plus1(latch1Start, inc))
         .bindValue("right", ({ inc, latch2Start }) => plus1(latch2Start, inc))
@@ -4093,7 +4065,7 @@ describe("Effect", () => {
           ({ fiber, latch1Start, latch2Start }) =>
             latch1Start.await() > latch2Start.await() > Fiber.interrupt(fiber)
         )
-        .flatMap(({ interruptionRef }) => Ref.get(interruptionRef))
+        .flatMap(({ interruptionRef }) => interruptionRef.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -4143,11 +4115,11 @@ describe("Effect", () => {
           (makeChild(1) > makeChild(2)).ensuringChildren((fs) =>
             fs.reduce(
               Effect.unit,
-              (acc, f) => acc > Fiber.interrupt(f) > Ref.update_(ref, (n) => n + 1)
+              (acc, f) => acc > Fiber.interrupt(f) > ref.update((n) => n + 1)
             )
           )
         )
-        .flatMap(Ref.get)
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -4203,16 +4175,15 @@ describe("Effect", () => {
         .bind("scope", () => Effect.descriptor.map((_) => _.scope))
         .bindValue("effect", ({ fibers, latch, ref, scope }) =>
           Effect.uninterruptibleMask(({ restore }) =>
-            restore(latch.await().onInterrupt(() => Ref.update_(ref, (n) => n + 1)))
+            restore(latch.await().onInterrupt(() => ref.update((n) => n + 1)))
               .forkIn(scope)
-              .tap((fiber) => Ref.update_(fibers, (set) => set.add(fiber)))
+              .tap((fiber) => fibers.update((set) => set.add(fiber)))
           )
         )
-        .bindValue("awaitAll", ({ fibers }) => Ref.get(fibers).flatMap(Fiber.awaitAll))
+        .bindValue("awaitAll", ({ fibers }) => fibers.get().flatMap(Fiber.awaitAll))
         .tap(({ effect }) => effect.race(effect))
         .flatMap(
-          ({ awaitAll, latch, ref }) =>
-            latch.succeed(undefined) > awaitAll > Ref.get(ref)
+          ({ awaitAll, latch, ref }) => latch.succeed(undefined) > awaitAll > ref.get()
         )
 
       const result = await program.unsafeRunPromise()
@@ -4730,17 +4701,17 @@ describe("Effect", () => {
             restore(
               Effect.uninterruptibleMask(({ restore }) =>
                 restore(latch1.succeed(undefined) > latch2.await()).onExit((exit) =>
-                  Ref.update_(exits, (list) => list.prepend(exit))
+                  exits.update((list) => list.prepend(exit))
                 )
               ) > Effect.unit
             )
               .exit()
-              .flatMap((exit) => Ref.update_(exits, (list) => list.prepend(exit)))
+              .flatMap((exit) => exits.update((list) => list.prepend(exit)))
               .fork()
           )
         )
         .tap(({ fiber, latch1 }) => latch1.await() > Fiber.interrupt(fiber))
-        .flatMap(({ exits }) => Ref.get(exits).map(process))
+        .flatMap(({ exits }) => exits.get().map(process))
 
       const result = await program.unsafeRunPromise()
 
@@ -4763,13 +4734,13 @@ describe("Effect", () => {
           ({ ref }) =>
             (p: Promise<never, void>) =>
               (p.succeed(undefined) > Effect.never).onInterrupt(() =>
-                Ref.update_(ref, (n) => n + 1)
+                ref.update((n) => n + 1)
               )
         )
         .bind("raced", ({ cont1, cont2, make }) => make(cont1).race(make(cont2)).fork())
         .tap(({ cont1, cont2 }) => cont1.await() > cont2.await())
         .tap(({ raced }) => Fiber.interrupt(raced))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -4783,15 +4754,13 @@ describe("Effect", () => {
           withLatch((release) =>
             (release > Effect.never)
               .ensuring(
-                (Effect.unit > Effect.fail("uh oh")).catchAll(() =>
-                  Ref.set_(recovered, true)
-                )
+                (Effect.unit > Effect.fail("uh oh")).catchAll(() => recovered.set(true))
               )
               .fork()
           )
         )
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .flatMap(({ recovered }) => Ref.get(recovered))
+        .flatMap(({ recovered }) => recovered.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -4805,15 +4774,15 @@ describe("Effect", () => {
           withLatch((release) =>
             (release > Effect.never.interruptible())
               .foldCauseEffect(
-                (cause) => Ref.set_(recovered, cause.isInterrupted()),
-                () => Ref.set_(recovered, false)
+                (cause) => recovered.set(cause.isInterrupted()),
+                () => recovered.set(false)
               )
               .uninterruptible()
               .fork()
           )
         )
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .flatMap(({ recovered }) => Ref.get(recovered))
+        .flatMap(({ recovered }) => recovered.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -4829,8 +4798,7 @@ describe("Effect", () => {
               .sandbox()
               .either()
               .flatMap((either) =>
-                Ref.set_(
-                  recovered,
+                recovered.set(
                   Option.some(either.mapLeft((cause) => cause.isInterrupted()))
                 )
               )
@@ -4839,7 +4807,7 @@ describe("Effect", () => {
           )
         )
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .flatMap(({ recovered }) => Ref.get(recovered))
+        .flatMap(({ recovered }) => recovered.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -4853,13 +4821,13 @@ describe("Effect", () => {
           withLatch((release) =>
             (release > Effect.never.interruptible())
               .exit()
-              .flatMap((exit) => Ref.set_(recovered, Option.some(exit.isInterrupted())))
+              .flatMap((exit) => recovered.set(Option.some(exit.isInterrupted())))
               .uninterruptible()
               .fork()
           )
         )
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .flatMap(({ recovered }) => Ref.get(recovered))
+        .flatMap(({ recovered }) => recovered.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -4875,18 +4843,18 @@ describe("Effect", () => {
               (
                 release >
                 Effect.never.interruptible().exit() >
-                Ref.update_(counter, (n) => n + 1)
+                counter.update((n) => n + 1)
               )
                 .uninterruptible()
                 .interruptible()
-                .exit() > Ref.update_(counter, (n) => n + 1)
+                .exit() > counter.update((n) => n + 1)
             )
               .uninterruptible()
               .fork()
           )
         )
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .flatMap(({ counter }) => Ref.get(counter))
+        .flatMap(({ counter }) => counter.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -4905,12 +4873,12 @@ describe("Effect", () => {
               release >
               Effect.never
             )
-              .ensuring(Ref.set_(ref, true))
+              .ensuring(ref.set(true))
               .fork()
           )
         )
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -4929,12 +4897,12 @@ describe("Effect", () => {
               release >
               Effect.unit.forever()
             )
-              .ensuring(Ref.set_(ref, true))
+              .ensuring(ref.set(true))
               .fork()
           )
         )
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -4966,16 +4934,14 @@ describe("Effect", () => {
         .bind("promise2", () => Promise.make<never, void>())
         .bind("fiber", ({ promise1, promise2, ref }) =>
           (promise1.succeed(undefined) > Effect.never)
-            .ensuring(
-              Ref.set_(ref, true) > Effect.sleep(10) > promise2.succeed(undefined)
-            )
+            .ensuring(ref.set(true) > Effect.sleep(10) > promise2.succeed(undefined))
             .disconnect()
             .fork()
         )
         .tap(({ promise1 }) => promise1.await())
         .tap(({ fiber }) => Fiber.interrupt(fiber))
         .tap(({ promise2 }) => promise2.await())
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -5006,7 +4972,7 @@ describe("Effect", () => {
               withLatch((release1) =>
                 release1
                   .acquireRelease(
-                    await2 > Effect.sleep(10) > Ref.set_(ref, true),
+                    await2 > Effect.sleep(10) > ref.set(true),
                     Effect.unit
                   )
                   .uninterruptible()
@@ -5015,7 +4981,7 @@ describe("Effect", () => {
           )
         )
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -5031,7 +4997,7 @@ describe("Effect", () => {
           latch1
             .succeed(undefined)
             .acquireReleaseWith(
-              () => latch2.await() > Effect.sleep(10) > Ref.set_(ref, true).asUnit(),
+              () => latch2.await() > Effect.sleep(10) > ref.set(true).asUnit(),
               () => Effect.unit
             )
             .uninterruptible()
@@ -5040,7 +5006,7 @@ describe("Effect", () => {
         .tap(({ latch1 }) => latch1.await())
         .tap(({ latch2 }) => latch2.succeed(undefined))
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -5052,13 +5018,13 @@ describe("Effect", () => {
         .bind("ref", () => Ref.make(false))
         .bind("fiber", ({ ref }) =>
           withLatch((release) =>
-            (release > Effect.sleep(10) > Ref.set_(ref, true).asUnit())
+            (release > Effect.sleep(10) > ref.set(true).asUnit())
               .uninterruptible()
               .fork()
           )
         )
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -5072,7 +5038,7 @@ describe("Effect", () => {
         .bindValue(
           "child",
           ({ promise, ref }) =>
-            promise.succeed(undefined) > Effect.sleep(10) > Ref.set_(ref, true)
+            promise.succeed(undefined) > Effect.sleep(10) > ref.set(true)
         )
         .bindValue(
           "parent",
@@ -5081,7 +5047,7 @@ describe("Effect", () => {
         .bind("fiber", ({ parent }) => parent.fork())
         .tap(({ promise }) => promise.await())
         .tap(({ fiber }) => Fiber.interrupt(fiber))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -5142,12 +5108,11 @@ describe("Effect", () => {
         .tap(({ latch, ref }) =>
           (
             Effect.checkInterruptible(
-              (interruptStatus) =>
-                Ref.set_(ref, interruptStatus) > latch.succeed(undefined)
+              (interruptStatus) => ref.set(interruptStatus) > latch.succeed(undefined)
             ).fork() > latch.await()
           ).uninterruptible()
         )
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -5172,14 +5137,14 @@ describe("Effect", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(List.empty<number>()))
         .bindValue("effect", ({ ref }) =>
-          Clock.currentTime.flatMap((n) => Ref.update_(ref, (list) => list.prepend(n)))
+          Clock.currentTime.flatMap((n) => ref.update((list) => list.prepend(n)))
         )
         .bindValue(
           "schedule",
           () => Schedule.spaced(Duration(10)) && Schedule.recurs(5)
         )
         .tap(({ effect, schedule }) => effect.schedule(schedule))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -5263,9 +5228,7 @@ describe("Effect", () => {
     it("returns summary and value", async () => {
       const program = Effect.Do()
         .bind("counter", () => Ref.make(0))
-        .bindValue("increment", ({ counter }) =>
-          Ref.updateAndGet_(counter, (n) => n + 1)
-        )
+        .bindValue("increment", ({ counter }) => counter.updateAndGet((n) => n + 1))
         .flatMap(({ increment }) =>
           increment.summarized(increment, (start, end) => Tuple(start, end))
         )
@@ -5291,10 +5254,10 @@ describe("Effect", () => {
         .bind("ref", () => Ref.make(false))
         .bind("result", ({ ref }) =>
           Effect.dieMessage("die")
-            .tapErrorCause(() => Ref.set_(ref, true))
+            .tapErrorCause(() => ref.set(true))
             .exit()
         )
-        .bind("effect", ({ ref }) => Ref.get(ref))
+        .bind("effect", ({ ref }) => ref.get())
 
       const { effect, result } = await program.unsafeRunPromise()
 
@@ -5309,10 +5272,10 @@ describe("Effect", () => {
         .bind("ref", () => Ref.make(false))
         .bind("result", ({ ref }) =>
           Effect.dieMessage("die")
-            .tapDefect(() => Ref.set_(ref, true))
+            .tapDefect(() => ref.set(true))
             .exit()
         )
-        .bind("effect", ({ ref }) => Ref.get(ref))
+        .bind("effect", ({ ref }) => ref.get())
 
       const { effect, result } = await program.unsafeRunPromise()
 
@@ -5328,13 +5291,13 @@ describe("Effect", () => {
           Effect.fail(42)
             .tapEither((either) =>
               either.fold(
-                (n) => Ref.set_(ref, n),
-                () => Ref.set_(ref, -1)
+                (n) => ref.set(n),
+                () => ref.set(-1)
               )
             )
             .exit()
         )
-        .flatMap(Ref.get)
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -5347,13 +5310,13 @@ describe("Effect", () => {
           Effect.succeed(42)
             .tapEither((either) =>
               either.fold(
-                () => Ref.set_(ref, -1),
-                (n) => Ref.set_(ref, n)
+                () => ref.set(-1),
+                (n) => ref.set(n)
               )
             )
             .exit()
         )
-        .flatMap(Ref.get)
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -5365,8 +5328,8 @@ describe("Effect", () => {
     it("is identity if the function doesn't match", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(false))
-        .bind("result", ({ ref }) => Ref.set_(ref, true).as(42).tapSome(Option.emptyOf))
-        .bind("effect", ({ ref }) => Ref.get(ref))
+        .bind("result", ({ ref }) => ref.set(true).as(42).tapSome(Option.emptyOf))
+        .bind("effect", ({ ref }) => ref.get())
 
       const { effect, result } = await program.unsafeRunPromise()
 
@@ -5378,11 +5341,12 @@ describe("Effect", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
         .bind("result", ({ ref }) =>
-          Ref.set_(ref, 10)
+          ref
+            .set(10)
             .as(42)
-            .tapSome((n) => Option.some(Ref.set_(ref, n)))
+            .tapSome((n) => Option.some(ref.set(n)))
         )
-        .bind("effect", ({ ref }) => Ref.get(ref))
+        .bind("effect", ({ ref }) => ref.get())
 
       const { effect, result } = await program.unsafeRunPromise()
 
@@ -5484,10 +5448,10 @@ describe("Effect", () => {
     it("executes correct branch only", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
-        .tap(({ ref }) => Ref.set_(ref, 1).unless(true))
-        .bind("v1", ({ ref }) => Ref.get(ref))
-        .tap(({ ref }) => Ref.set_(ref, 2).unless(false))
-        .bind("v2", ({ ref }) => Ref.get(ref))
+        .tap(({ ref }) => ref.set(1).unless(true))
+        .bind("v1", ({ ref }) => ref.get())
+        .tap(({ ref }) => ref.set(2).unless(false))
+        .bind("v2", ({ ref }) => ref.get())
         .bindValue("failure", () => new Error("expected"))
         .tap(({ failure }) => Effect.fail(failure).unless(true))
         .bind("failed", ({ failure }) => Effect.fail(failure).unless(false).either())
@@ -5506,21 +5470,21 @@ describe("Effect", () => {
         .bind("effectRef", () => Ref.make(0))
         .bind("conditionRef", () => Ref.make(0))
         .bindValue("conditionTrue", ({ conditionRef }) =>
-          Ref.update_(conditionRef, (n) => n + 1).as(true)
+          conditionRef.update((n) => n + 1).as(true)
         )
         .bindValue("conditionFalse", ({ conditionRef }) =>
-          Ref.update_(conditionRef, (n) => n + 1).as(false)
+          conditionRef.update((n) => n + 1).as(false)
         )
         .tap(({ conditionTrue, effectRef }) =>
-          Ref.set_(effectRef, 1).unlessEffect(conditionTrue)
+          effectRef.set(1).unlessEffect(conditionTrue)
         )
-        .bind("v1", ({ effectRef }) => Ref.get(effectRef))
-        .bind("c1", ({ conditionRef }) => Ref.get(conditionRef))
+        .bind("v1", ({ effectRef }) => effectRef.get())
+        .bind("c1", ({ conditionRef }) => conditionRef.get())
         .tap(({ conditionFalse, effectRef }) =>
-          Ref.set_(effectRef, 2).unlessEffect(conditionFalse)
+          effectRef.set(2).unlessEffect(conditionFalse)
         )
-        .bind("v2", ({ effectRef }) => Ref.get(effectRef))
-        .bind("c2", ({ conditionRef }) => Ref.get(conditionRef))
+        .bind("v2", ({ effectRef }) => effectRef.get())
+        .bind("c2", ({ conditionRef }) => conditionRef.get())
         .bindValue("failure", () => new Error("expected"))
         .tap(({ conditionTrue, failure }) =>
           Effect.fail(failure).unlessEffect(conditionTrue)
@@ -5826,9 +5790,9 @@ describe("Effect", () => {
       const program = Effect.Do()
         .bind("counter", () => Ref.make(0))
         .bind("result", ({ counter }) =>
-          Effect.validateFirst(list, (n) => Ref.update_(counter, (n) => n + 1) > f(n))
+          Effect.validateFirst(list, (n) => counter.update((n) => n + 1) > f(n))
         )
-        .bind("count", ({ counter }) => Ref.get(counter))
+        .bind("count", ({ counter }) => counter.get())
 
       const { count, result } = await program.unsafeRunPromise()
 
@@ -5888,10 +5852,10 @@ describe("Effect", () => {
     it("executes correct branch only", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
-        .tap(({ ref }) => Effect.when(false, Ref.set_(ref, 1)))
-        .bind("v1", ({ ref }) => Ref.get(ref))
-        .tap(({ ref }) => Effect.when(true, Ref.set_(ref, 2)))
-        .bind("v2", ({ ref }) => Ref.get(ref))
+        .tap(({ ref }) => Effect.when(false, ref.set(1)))
+        .bind("v1", ({ ref }) => ref.get())
+        .tap(({ ref }) => Effect.when(true, ref.set(2)))
+        .bind("v2", ({ ref }) => ref.get())
         .bindValue("failure", () => new Error("expected"))
         .tap(({ failure }) => Effect.when(false, Effect.fail(failure)))
         .bind("failed", ({ failure }) =>
@@ -5914,16 +5878,16 @@ describe("Effect", () => {
         .bind("ref", () => Ref.make(false))
         .tap(({ ref }) =>
           Effect.whenCase(v1, (option) =>
-            option._tag === "Some" ? Option.some(Ref.set_(ref, true)) : Option.none
+            option._tag === "Some" ? Option.some(ref.set(true)) : Option.none
           )
         )
-        .bind("res1", ({ ref }) => Ref.get(ref))
+        .bind("res1", ({ ref }) => ref.get())
         .tap(({ ref }) =>
           Effect.whenCase(v2, (option) =>
-            option._tag === "Some" ? Option.some(Ref.set_(ref, true)) : Option.none
+            option._tag === "Some" ? Option.some(ref.set(true)) : Option.none
           )
         )
-        .bind("res2", ({ ref }) => Ref.get(ref))
+        .bind("res2", ({ ref }) => ref.get())
 
       const { res1, res2 } = await program.unsafeRunPromise()
 
@@ -5940,16 +5904,16 @@ describe("Effect", () => {
         .bind("ref", () => Ref.make(false))
         .tap(({ ref }) =>
           Effect.whenCaseEffect(Effect.succeed(v1), (option) =>
-            option._tag === "Some" ? Option.some(Ref.set_(ref, true)) : Option.none
+            option._tag === "Some" ? Option.some(ref.set(true)) : Option.none
           )
         )
-        .bind("res1", ({ ref }) => Ref.get(ref))
+        .bind("res1", ({ ref }) => ref.get())
         .tap(({ ref }) =>
           Effect.whenCaseEffect(Effect.succeed(v2), (option) =>
-            option._tag === "Some" ? Option.some(Ref.set_(ref, true)) : Option.none
+            option._tag === "Some" ? Option.some(ref.set(true)) : Option.none
           )
         )
-        .bind("res2", ({ ref }) => Ref.get(ref))
+        .bind("res2", ({ ref }) => ref.get())
 
       const { res1, res2 } = await program.unsafeRunPromise()
 
@@ -5964,21 +5928,21 @@ describe("Effect", () => {
         .bind("effectRef", () => Ref.make(0))
         .bind("conditionRef", () => Ref.make(0))
         .bindValue("conditionTrue", ({ conditionRef }) =>
-          Ref.update_(conditionRef, (n) => n + 1).as(true)
+          conditionRef.update((n) => n + 1).as(true)
         )
         .bindValue("conditionFalse", ({ conditionRef }) =>
-          Ref.update_(conditionRef, (n) => n + 1).as(false)
+          conditionRef.update((n) => n + 1).as(false)
         )
         .tap(({ conditionFalse, effectRef }) =>
-          Effect.whenEffect(conditionFalse, Ref.set_(effectRef, 1))
+          Effect.whenEffect(conditionFalse, effectRef.set(1))
         )
-        .bind("v1", ({ effectRef }) => Ref.get(effectRef))
-        .bind("c1", ({ conditionRef }) => Ref.get(conditionRef))
+        .bind("v1", ({ effectRef }) => effectRef.get())
+        .bind("c1", ({ conditionRef }) => conditionRef.get())
         .tap(({ conditionTrue, effectRef }) =>
-          Effect.whenEffect(conditionTrue, Ref.set_(effectRef, 2))
+          Effect.whenEffect(conditionTrue, effectRef.set(2))
         )
-        .bind("v2", ({ effectRef }) => Ref.get(effectRef))
-        .bind("c2", ({ conditionRef }) => Ref.get(conditionRef))
+        .bind("v2", ({ effectRef }) => effectRef.get())
+        .bind("c2", ({ conditionRef }) => conditionRef.get())
         .bindValue("failure", () => new Error("expected"))
         .tap(({ conditionFalse, failure }) =>
           Effect.whenEffect(conditionFalse, Effect.fail(failure))
@@ -6069,7 +6033,7 @@ describe("Effect", () => {
             ({ restore }) =>
               latch2.succeed(undefined) >
               restore(latch1.await() > Effect.succeed("foo")).onInterrupt(() =>
-                Ref.set_(ref, true)
+                ref.set(true)
               )
           )
         )
@@ -6081,7 +6045,7 @@ describe("Effect", () => {
         .bindValue("leftInnerFiber", ({ result }) => result.get(0))
         .bindValue("rightResult", ({ result }) => result.get(1))
         .bind("leftResult", ({ leftInnerFiber }) => Fiber.await(leftInnerFiber))
-        .bind("interrupted", ({ ref }) => Ref.get(ref))
+        .bind("interrupted", ({ ref }) => ref.get())
 
       const { interrupted, leftResult, rightResult } = await program.unsafeRunPromise()
 
