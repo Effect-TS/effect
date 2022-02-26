@@ -83,7 +83,7 @@ export class HashMapIterator<K, V, T> implements IterableIterator<T> {
 }
 
 /**
- * @ets_optimize remove
+ * @tsplus macro remove
  */
 export function realHashMap<K, V>(
   _: HashMap<K, V>

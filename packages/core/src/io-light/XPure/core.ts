@@ -42,7 +42,7 @@ export abstract class XPureBase<W, S1, S2, R, E, A>
 }
 
 /**
- * @ets_optimize remove
+ * @tsplus macro remove
  */
 function concrete<W, S1, S2, R, E, A>(
   _: XPure<W, S1, S2, R, E, A>

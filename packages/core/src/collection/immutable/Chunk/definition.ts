@@ -327,7 +327,7 @@ export class Empty<A> extends ChunkInternal<A> {
 export const _Empty: ChunkInternal<never> = new Empty()
 
 /**
- * @ets_optimize remove
+ * @tsplus macro remove
  */
 export function concrete<A>(
   _: Chunk<A>
@@ -343,7 +343,7 @@ export function concrete<A>(
 }
 
 /**
- * @ets_optimize identity
+ * @tsplus macro identity
  */
 export function concreteId<A>(
   _: Chunk<A>
