@@ -83,11 +83,6 @@ const writePackageJsonContent = pipe(
       exports["."] = mainExports
     }
 
-    exports["./*"] = {
-      import: "./_mjs/*.mjs",
-      require: "./*.js"
-    }
-
     modules.forEach((m) => {
       exports[`./${m}`] = {}
       if (fs.existsSync(`./build/mjs/${m}/index.mjs`)) {
@@ -100,6 +95,11 @@ const writePackageJsonContent = pipe(
         delete exports[`./${m}`]
       }
     })
+
+    exports["./*"] = {
+      import: "./_mjs/*.mjs",
+      require: "./*.js"
+    }
 
     return JSON.stringify(
       {
