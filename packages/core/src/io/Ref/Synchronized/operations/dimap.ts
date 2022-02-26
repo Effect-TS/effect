@@ -1,18 +1,18 @@
 import { Effect } from "../../../Effect"
 import type { XSynchronized } from "../definition"
-import { dimapEffect_ } from "./dimapEffect"
 
 /**
  * Transforms both the `set` and `get` values of the `ZRef.Synchronized`
  * with the specified functions.
+ *
+ * @tsplus fluent ets/XSynchronized dimap
  */
 export function dimap_<RA, RB, EA, EB, A, B, C, D>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
   f: (c: C) => A,
   g: (b: B) => D
 ): XSynchronized<RA, RB, EA, EB, C, D> {
-  return dimapEffect_(
-    self,
+  return self.dimapEffect(
     (c) => Effect.succeedNow(f(c)),
     (b) => Effect.succeedNow(g(b))
   )
@@ -27,5 +27,5 @@ export function dimap_<RA, RB, EA, EB, A, B, C, D>(
 export function dimap<A, B, C, D>(f: (c: C) => A, g: (b: B) => D) {
   return <RA, RB, EA, EB>(
     self: XSynchronized<RA, RB, EA, EB, A, B>
-  ): XSynchronized<RA, RB, EA, EB, C, D> => dimap_(self, f, g)
+  ): XSynchronized<RA, RB, EA, EB, C, D> => self.dimap(f, g)
 }

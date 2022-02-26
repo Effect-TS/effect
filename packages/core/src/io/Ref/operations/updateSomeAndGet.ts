@@ -2,15 +2,15 @@ import { Tuple } from "../../../collection/immutable/Tuple"
 import type { Option } from "../../../data/Option"
 import { matchTag_ } from "../../../data/Utils"
 import type { Effect } from "../../Effect"
-import * as A from "../Atomic/operations/updateSomeAndGet"
 import type { XRef } from "../definition"
 import { concrete } from "../definition"
-import { modify_ } from "./modify"
 
 /**
  * Atomically modifies the `XRef` with the specified partial function. If
  * the function is undefined on the current value it returns the old value
  * without changing it.
+ *
+ * @tsplus fluent ets/XRef updateSomeAndGet
  */
 export function updateSomeAndGet_<RA, RB, EA, EB, A>(
   self: XRef<RA, RB, EA, EB, A, A>,
@@ -20,10 +20,10 @@ export function updateSomeAndGet_<RA, RB, EA, EB, A>(
   return matchTag_(
     concrete(self),
     {
-      Atomic: (_) => A.updateSomeAndGet_(_, pf)
+      Atomic: (atomic) => atomic.updateSomeAndGet(pf)
     },
     (_) =>
-      modify_(_, (v) => {
+      (_ as XRef<RA, RB, EA, EB, A, A>).modify((v) => {
         const result = pf(v).getOrElse(v)
         return Tuple(result, result)
       })
@@ -40,5 +40,5 @@ export function updateSomeAndGet_<RA, RB, EA, EB, A>(
 export function updateSomeAndGet<A>(pf: (a: A) => Option<A>, __tsplusTrace?: string) {
   return <RA, RB, EA, EB>(
     self: XRef<RA, RB, EA, EB, A, A>
-  ): Effect<RA & RB, EA | EB, A> => updateSomeAndGet_(self, pf)
+  ): Effect<RA & RB, EA | EB, A> => self.updateSomeAndGet(pf)
 }

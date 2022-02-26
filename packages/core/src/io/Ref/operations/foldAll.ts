@@ -6,6 +6,8 @@ import { concrete } from "../definition"
  * Folds over the error and value types of the `XRef`, allowing access to
  * the state in transforming the `set` value. This is a more powerful version
  * of `fold` but requires unifying the error types.
+ *
+ * @tsplus fluent ets/XRef foldAll
  */
 export function foldAll_<RA, RB, EA, EB, A, B, EC, ED, C = A, D = B>(
   self: XRef<RA, RB, EA, EB, A, B>,
@@ -15,7 +17,7 @@ export function foldAll_<RA, RB, EA, EB, A, B, EC, ED, C = A, D = B>(
   ca: (_: C) => (_: B) => Either<EC, A>,
   bd: (_: B) => Either<ED, D>
 ): XRef<RA, RB, EC, ED, C, D> {
-  return concrete(self).foldAll(ea, eb, ec, ca as any, bd as any) as XRef<
+  return concrete(self)._foldAll(ea, eb, ec, ca as any, bd as any) as XRef<
     RA,
     RB,
     EC,
@@ -40,5 +42,5 @@ export function foldAll<RA, RB, EA, EB, A, B, EC, ED, C = A, D = B>(
   bd: (_: B) => Either<ED, D>
 ) {
   return (self: XRef<RA, RB, EA, EB, A, B>): XRef<RA, RB, EC, ED, C, D> =>
-    foldAll_(self, ea, eb, ec, ca, bd)
+    self.foldAll(ea, eb, ec, ca, bd)
 }

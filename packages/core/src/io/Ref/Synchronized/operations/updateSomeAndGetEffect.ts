@@ -5,35 +5,35 @@ import type { XSynchronized } from "../definition"
 
 /**
  * Atomically modifies the `XRef.Synchronized` with the specified partial
- * function. If the function is undefined on the current value it doesn't
- * change it.
+ * function. If the function is undefined on the current value it returns
+ * the old value without changing it.
  *
- * @tsplus fluent ets/XSynchronized updateSomeEffect
+ * @tsplus fluent ets/XSynchronized updateSomeAndGetEffect
  */
-export function updateSomeEffect_<RA, RB, RC, EA, EB, EC, A>(
+export function updateSomeAndGetEffect_<RA, RB, RC, EA, EB, EC, A>(
   self: XSynchronized<RA, RB, EA, EB, A, A>,
   pf: (a: A) => Option<Effect<RC, EC, A>>,
   __tsplusTrace?: string
-): Effect<RA & RB & RC, EA | EB | EC, void> {
+): Effect<RA & RB & RC, EA | EB | EC, A> {
   return self.modifyEffect((v) =>
     pf(v)
       .getOrElse(Effect.succeedNow(v))
-      .map((result) => Tuple(undefined, result))
+      .map((result) => Tuple(result, result))
   )
 }
 
 /**
  * Atomically modifies the `XRef.Synchronized` with the specified partial
- * function. If the function is undefined on the current value it doesn't
- * change it.
+ * function. If the function is undefined on the current value it returns
+ * the old value without changing it.
  *
- * @ets_data_first updateSomeEffect_
+ * @ets_data_first updateSomeAndGetEffect_
  */
-export function updateSomeEffect<RC, EC, A>(
+export function updateSomeAndGetEffect<RC, EC, A>(
   pf: (a: A) => Option<Effect<RC, EC, A>>,
   __tsplusTrace?: string
 ) {
-  ;<RA, RB, EA, EB>(
+  return <RA, RB, EA, EB>(
     self: XSynchronized<RA, RB, EA, EB, A, A>
-  ): Effect<RA & RB & RC, EA | EB | EC, void> => self.updateSomeEffect(pf)
+  ): Effect<RA & RB & RC, EA | EB | EC, A> => self.updateSomeAndGetEffect(pf)
 }

@@ -8,6 +8,8 @@ import type { XSynchronized } from "../definition"
  * the more specific combinators implemented in terms of `fold` will be more
  * ergonomic but this method is extremely useful for implementing new
  * combinators.
+ *
+ * @tsplus fluent ets/XSynchronized fold
  */
 export function fold_<RA, RB, EA, EB, EC, ED, A, B, C, D>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
@@ -16,7 +18,7 @@ export function fold_<RA, RB, EA, EB, EC, ED, A, B, C, D>(
   ca: (_: C) => Either<EC, A>,
   bd: (_: B) => Either<ED, D>
 ): XSynchronized<RA, RB, EC, ED, C, D> {
-  return self.fold(ea, eb, ca, bd)
+  return self._fold(ea, eb, ca, bd)
 }
 
 /**
@@ -37,5 +39,5 @@ export function fold<EA, EB, EC, ED, A, B, C, D>(
 ) {
   return <RA, RB>(
     self: XSynchronized<RA, RB, EA, EB, A, B>
-  ): XSynchronized<RA, RB, EC, ED, C, D> => fold_(self, ea, eb, ca, bd)
+  ): XSynchronized<RA, RB, EC, ED, C, D> => self.fold(ea, eb, ca, bd)
 }

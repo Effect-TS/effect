@@ -5,6 +5,8 @@ import type { XSynchronized } from "../definition"
  * Folds over the error and value types of the `XRef.Synchronized`, allowing
  * access to the state in transforming the `set` value. This is a more powerful
  * version of `fold` but requires unifying the error types.
+ *
+ * @tsplus fluent ets/XSynchronized foldAll
  */
 export function foldAll_<RA, RB, EA, EB, EC, ED, A, B, C, D>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
@@ -14,7 +16,7 @@ export function foldAll_<RA, RB, EA, EB, EC, ED, A, B, C, D>(
   ca: (_: C) => (_: B) => Either<EC, A>,
   bd: (_: B) => Either<ED, D>
 ): XSynchronized<RA & RB, RB, EC, ED, C, D> {
-  return self.foldAll(ea, eb, ec, ca, bd)
+  return self._foldAll(ea, eb, ec, ca, bd)
 }
 
 /**
@@ -33,5 +35,5 @@ export function foldAll<EA, EB, EC, ED, A, B, C, D>(
 ) {
   return <RA, RB>(
     self: XSynchronized<RA, RB, EA, EB, A, B>
-  ): XSynchronized<RA & RB, RB, EC, ED, C, D> => foldAll_(self, ea, eb, ec, ca, bd)
+  ): XSynchronized<RA & RB, RB, EC, ED, C, D> => self.foldAll(ea, eb, ec, ca, bd)
 }
