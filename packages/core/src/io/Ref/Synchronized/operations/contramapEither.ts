@@ -1,16 +1,17 @@
 import { Either } from "../../../../data/Either"
 import type { XSynchronized } from "../definition"
-import { dimapEither_ } from "./dimapEither"
 
 /**
  * Transforms the `set` value of the `XRef` with the specified fallible
  * function.
+ *
+ * @tsplus fluent ets/XSynchronized contramapEither
  */
 export function contramapEither_<RA, RB, EA, EB, EC, A, B, C>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
   f: (c: C) => Either<EC, A>
 ): XSynchronized<RA, RB, EA | EC, EB, C, B> {
-  return dimapEither_(self, f, Either.right)
+  return self.dimapEither(f, Either.right)
 }
 
 /**
@@ -22,5 +23,5 @@ export function contramapEither_<RA, RB, EA, EB, EC, A, B, C>(
 export function contramapEither<EC, A, C>(f: (c: C) => Either<EC, A>) {
   return <RA, RB, EA, EB, B>(
     self: XSynchronized<RA, RB, EA, EB, A, B>
-  ): XSynchronized<RA, RB, EA | EC, EB, C, B> => contramapEither_(self, f)
+  ): XSynchronized<RA, RB, EA | EC, EB, C, B> => self.contramapEither(f)
 }

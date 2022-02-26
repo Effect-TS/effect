@@ -3,6 +3,9 @@ import type { Option } from "../../../../data/Option"
 import { Effect } from "../../../Effect"
 import type { Atomic } from "../Atomic"
 
+/**
+ * @tsplus fluent ets/AtomicRef modifySome
+ */
 export function modifySome_<A, B>(
   self: Atomic<A>,
   def: B,
@@ -30,5 +33,5 @@ export function modifySome<A, B>(
   f: (a: A) => Option<Tuple<[B, A]>>,
   __tsplusTrace?: string
 ) {
-  return (self: Atomic<A>): Effect<unknown, never, B> => modifySome_(self, def, f)
+  return (self: Atomic<A>): Effect<unknown, never, B> => self.modifySome(def, f)
 }

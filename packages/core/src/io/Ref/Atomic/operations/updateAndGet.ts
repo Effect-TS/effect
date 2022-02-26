@@ -1,6 +1,9 @@
 import { Effect } from "../../../Effect"
 import type { Atomic } from "../Atomic"
 
+/**
+ * @tsplus fluent ets/AtomicRef updateAndGet
+ */
 export function updateAndGet_<A>(
   self: Atomic<A>,
   f: (a: A) => A,
@@ -16,5 +19,5 @@ export function updateAndGet_<A>(
  * @ets_data_first updateAndGet_
  */
 export function updateAndGet<A>(f: (a: A) => A, __tsplusTrace?: string) {
-  return (self: Atomic<A>): Effect<unknown, never, A> => updateAndGet_(self, f)
+  return (self: Atomic<A>): Effect<unknown, never, A> => self.updateAndGet(f)
 }

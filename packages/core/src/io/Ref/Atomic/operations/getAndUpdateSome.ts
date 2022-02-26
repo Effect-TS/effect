@@ -2,6 +2,9 @@ import type { Option } from "../../../../data/Option"
 import { Effect } from "../../../Effect"
 import type { Atomic } from "../Atomic"
 
+/**
+ * @tsplus fluent ets/AtomicRef getAndUpdateSome
+ */
 export function getAndUpdateSome_<A>(
   self: Atomic<A>,
   f: (a: A) => Option<A>,
@@ -21,5 +24,5 @@ export function getAndUpdateSome_<A>(
  * @ets_data_first getAndUpdateSome_
  */
 export function getAndUpdateSome<A>(f: (a: A) => Option<A>, __tsplusTrace?: string) {
-  return (self: Atomic<A>): Effect<unknown, never, A> => getAndUpdateSome_(self, f)
+  return (self: Atomic<A>): Effect<unknown, never, A> => self.getAndUpdateSome(f)
 }

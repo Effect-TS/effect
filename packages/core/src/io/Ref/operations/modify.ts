@@ -2,15 +2,17 @@ import { Tuple } from "../../../collection/immutable/Tuple"
 import { Either } from "../../../data/Either"
 import { matchTag_ } from "../../../data/Utils"
 import { Effect } from "../../Effect"
-import * as A from "../Atomic/operations/modify"
+import * as Atomic from "../Atomic/operations/modify"
 import type { XRef } from "../definition"
 import { concrete } from "../definition"
-import * as S from "../Synchronized/operations/modifyEffect"
+import * as Synchronized from "../Synchronized/operations/modifyEffect"
 
 /**
  * Atomically modifies the `XRef` with the specified function, which
  * computes a return value for the modification. This is a more powerful
  * version of `update`.
+ *
+ * @tsplus fluent ets/XRef modify
  */
 export function modify_<RA, RB, EA, EB, A, B>(
   self: XRef<RA, RB, EA, EB, A, A>,
@@ -18,10 +20,10 @@ export function modify_<RA, RB, EA, EB, A, B>(
   __tsplusTrace?: string
 ): Effect<RA & RB, EA | EB, B> {
   return matchTag_(concrete(self), {
-    Atomic: (_) => A.modify_(_, f),
+    Atomic: (_) => Atomic.modify_(_, f),
     Derived: (_) =>
       _.use((value, getEither, setEither) =>
-        A.modify_(value, (s) =>
+        Atomic.modify_(value, (s) =>
           getEither(s).fold(
             (e) => Tuple(Either.left(e), s),
             (a1) => {
@@ -38,7 +40,7 @@ export function modify_<RA, RB, EA, EB, A, B>(
       ),
     DerivedAll: (_) =>
       _.use((value, getEither, setEither) =>
-        A.modify_(value, (s) =>
+        Atomic.modify_(value, (s) =>
           getEither(s).fold(
             (e) => Tuple(Either.left(e), s),
             (a1) => {
@@ -53,7 +55,7 @@ export function modify_<RA, RB, EA, EB, A, B>(
           )
         ).absolve()
       ),
-    Synchronized: (_) => S.modifyEffect_(_, (a) => Effect.succeed(f(a)))
+    Synchronized: (_) => Synchronized.modifyEffect_(_, (a) => Effect.succeed(f(a)))
   })
 }
 
@@ -67,5 +69,5 @@ export function modify_<RA, RB, EA, EB, A, B>(
 export function modify<A, B>(f: (a: A) => Tuple<[B, A]>, __tsplusTrace?: string) {
   return <RA, RB, EA, EB>(
     self: XRef<RA, RB, EA, EB, A, A>
-  ): Effect<RA & RB, EA | EB, B> => modify_(self, f)
+  ): Effect<RA & RB, EA | EB, B> => self.modify(f)
 }

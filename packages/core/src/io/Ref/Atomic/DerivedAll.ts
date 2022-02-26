@@ -28,13 +28,13 @@ export class DerivedAll<EA, EB, A, B> extends XRefInternal<
     super()
   }
 
-  get get(): Effect<unknown, EB, B> {
+  get _get(): Effect<unknown, EB, B> {
     return this.use((value, getEither) =>
-      value.get.flatMap((s) => getEither(s).fold(Effect.failNow, Effect.succeedNow))
+      value._get.flatMap((s) => getEither(s).fold(Effect.failNow, Effect.succeedNow))
     )
   }
 
-  set(a: A): Effect<unknown, EA, void> {
+  _set(a: A): Effect<unknown, EA, void> {
     return this.use((value, _, setEither) =>
       modify_(value, (s) =>
         setEither(a)(s).fold(
@@ -45,7 +45,7 @@ export class DerivedAll<EA, EB, A, B> extends XRefInternal<
     )
   }
 
-  fold<EC, ED, C, D>(
+  _fold<EC, ED, C, D>(
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
     ca: (_: C) => Either<EC, A>,
@@ -65,7 +65,8 @@ export class DerivedAll<EA, EB, A, B> extends XRefInternal<
         )
     )
   }
-  foldAll<EC, ED, C, D>(
+
+  _foldAll<EC, ED, C, D>(
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
     ec: (_: EB) => EC,

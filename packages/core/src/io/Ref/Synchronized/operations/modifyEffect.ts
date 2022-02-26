@@ -6,15 +6,17 @@ import type { XSynchronized } from "../definition"
  * Atomically modifies the `XRef.Synchronized` with the specified function,
  * which computes a return value for the modification. This is a more
  * powerful version of `update`.
+ *
+ * @tsplus fluent ets/XSynchronized modifyEffect
  */
 export function modifyEffect_<RA, RB, RC, EA, EB, EC, A, B>(
   self: XSynchronized<RA, RB, EA, EB, A, A>,
   f: (a: A) => Effect<RC, EC, Tuple<[B, A]>>,
   __tsplusTrace?: string
 ): Effect<RA & RB & RC, EA | EB | EC, B> {
-  return self.withPermit(
+  return self._withPermit(
     self.unsafeGet.flatMap((a) =>
-      f(a).flatMap(({ tuple: [b, a] }) => self.unsafeSet(a).map(() => b))
+      f(a).flatMap(({ tuple: [b, a] }) => self.unsafeSet(a).as(b))
     )
   )
 }
@@ -32,5 +34,5 @@ export function modifyEffect<RC, EC, A, B>(
 ) {
   return <RA, RB, EA, EB>(
     self: XSynchronized<RA, RB, EA, EB, A, A>
-  ): Effect<RA & RB & RC, EA | EB | EC, B> => modifyEffect_(self, f)
+  ): Effect<RA & RB & RC, EA | EB | EC, B> => self.modifyEffect(f)
 }
