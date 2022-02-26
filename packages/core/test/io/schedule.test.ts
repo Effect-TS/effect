@@ -9,7 +9,7 @@ import { HasTestClock } from "../../src/io/Clock"
 import { Effect } from "../../src/io/Effect"
 import * as Fiber from "../../src/io/Fiber"
 import { Promise } from "../../src/io/Promise"
-import * as Ref from "../../src/io/Ref"
+import { Ref } from "../../src/io/Ref"
 import { Schedule } from "../../src/io/Schedule"
 import * as Equal from "../../src/prelude/Equal"
 
@@ -17,8 +17,8 @@ import * as Equal from "../../src/prelude/Equal"
  * A function that increments ref each time it is called. It always fails,
  * with the incremented value in error.
  */
-function alwaysFail(ref: Ref.Ref<number>): Effect<unknown, string, number> {
-  return Ref.updateAndGet_(ref, (n) => n + 1).flatMap((n) => Effect.fail(`Error: ${n}`))
+function alwaysFail(ref: Ref<number>): Effect<unknown, string, number> {
+  return ref.updateAndGet((n) => n + 1).flatMap((n) => Effect.fail(`Error: ${n}`))
 }
 
 // function checkDelays<State, Env>(
@@ -46,9 +46,7 @@ function alwaysFail(ref: Ref.Ref<number>): Effect<unknown, string, number> {
 function repeat<State, B>(
   schedule: Schedule.WithState<State, unknown, number, B>
 ): Effect<HasClock, never, B> {
-  return Ref.make(0).flatMap((ref) =>
-    Ref.updateAndGet_(ref, (n) => n + 1).repeat(schedule)
-  )
+  return Ref.make(0).flatMap((ref) => ref.updateAndGet((n) => n + 1).repeat(schedule))
 }
 
 function run<R, E, A>(effect: Effect<R, E, A>): Effect<Has<TestClock> & R, E, A> {
@@ -123,8 +121,8 @@ describe("Schedule", () => {
 
     it("for 'once' will repeat 1 additional time", async () => {
       const program = Ref.make(0)
-        .tap((ref) => Ref.update_(ref, (n) => n + 1).repeat(Schedule.once))
-        .flatMap(Ref.get)
+        .tap((ref) => ref.update((n) => n + 1).repeat(Schedule.once))
+        .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -249,10 +247,10 @@ describe("Schedule", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
         .bindValue("io", ({ ref }) =>
-          Ref.update_(ref, (n) => n + 1).repeat(Schedule.recurs(n))
+          ref.update((n) => n + 1).repeat(Schedule.recurs(n))
         )
         .tap(({ io }) => io.repeat(Schedule.recurs(1)))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -266,11 +264,12 @@ describe("Schedule", () => {
         .bind("promise", () => Promise.make<never, void>())
         .bind("ref", () => Ref.make(0))
         .tap(({ promise, ref }) =>
-          Ref.update_(ref, (n) => n + 2)
+          ref
+            .update((n) => n + 2)
             .repeat(Schedule.recurs(2))
             .ensuring(promise.succeed(undefined))
         )
-        .bind("value", ({ ref }) => Ref.get(ref))
+        .bind("value", ({ ref }) => ref.get())
         .bind("finalizerValue", ({ promise }) => promise.poll())
 
       const { finalizerValue, value } = await program.unsafeRunPromise()
