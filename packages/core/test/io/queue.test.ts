@@ -12,7 +12,7 @@ import * as Fiber from "../../src/io/Fiber"
 import { Promise } from "../../src/io/Promise"
 import type { XQueue } from "../../src/io/Queue"
 import { Queue } from "../../src/io/Queue"
-import * as Ref from "../../src/io/Ref"
+import { Ref } from "../../src/io/Ref"
 
 function waitForValue<A>(ref: UIO<A>, value: A): RIO<HasClock, A> {
   return (ref < Clock.sleep(10)).repeatUntil((a) => value === a)
@@ -88,10 +88,10 @@ describe("Queue", () => {
       .tap(({ output, queue }) =>
         queue
           .take()
-          .flatMap((i) => Ref.update_(output, (list) => list.append(i)))
+          .flatMap((i) => output.update((list) => list.append(i)))
           .repeatN(9)
       )
-      .bind("list", ({ output }) => Ref.get(output))
+      .bind("list", ({ output }) => output.get())
       .tap(({ fiber }) => Fiber.join(fiber))
 
     const { list, values } = await program.unsafeRunPromise()
@@ -105,10 +105,10 @@ describe("Queue", () => {
       .tap(({ queue }) => queue.offer(1).repeatN(9))
       .bind("refSuspended", () => Ref.make(true))
       .bind("fiber", ({ queue, refSuspended }) =>
-        (queue.offer(2) > Ref.set_(refSuspended, false)).fork()
+        (queue.offer(2) > refSuspended.set(false)).fork()
       )
       .tap(({ queue }) => waitForSize(queue, 11))
-      .bind("isSuspended", ({ refSuspended }) => Ref.get(refSuspended))
+      .bind("isSuspended", ({ refSuspended }) => refSuspended.get())
       .tap(({ fiber }) => Fiber.interrupt(fiber))
 
     const { isSuspended } = await program.unsafeRunPromise()
@@ -128,10 +128,10 @@ describe("Queue", () => {
       .tap(({ output, queue }) =>
         queue
           .take()
-          .flatMap((i) => Ref.update_(output, (list) => list.append(i)))
+          .flatMap((i) => output.update((list) => list.append(i)))
           .repeatN(9)
       )
-      .bind("list", ({ output }) => Ref.get(output))
+      .bind("list", ({ output }) => output.get())
       .tap(({ fiber }) => Fiber.join(fiber))
 
     const { list, values } = await program.unsafeRunPromise()
