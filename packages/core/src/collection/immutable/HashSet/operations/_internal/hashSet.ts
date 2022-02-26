@@ -31,7 +31,7 @@ export class HashSetInternal<A> implements HashSet<A>, St.HasHash, St.HasEquals 
 }
 
 /**
- * @ets_optimize remove
+ * @tsplus macro remove
  */
 export function realHashSet<A>(_: HashSet<A>): asserts _ is HashSetInternal<A> {
   //

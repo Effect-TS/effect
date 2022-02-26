@@ -20,7 +20,7 @@ export function getAndSet_<RA, RB, EA, EB, A>(
     {
       Atomic: (atomic) => atomic.getAndSet(value)
     },
-    (_) => (_ as XRef<RA, RB, EA, EB, A, A>).modify((a) => Tuple(value, a))
+    (_) => (_ as XRef<RA, RB, EA, EB, A, A>).modify((a) => Tuple(a, value))
   )
 }
 

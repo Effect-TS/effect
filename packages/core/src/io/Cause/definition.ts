@@ -55,7 +55,7 @@ export type RealCause<E> =
   | Both<E>
 
 /**
- * @ets_optimize remove
+ * @tsplus macro remove
  */
 export function realCause<E>(cause: Cause<E>): asserts cause is RealCause<E> {
   //

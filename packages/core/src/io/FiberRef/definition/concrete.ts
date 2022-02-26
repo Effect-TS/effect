@@ -2,7 +2,7 @@ import type { XFiberRef, XFiberRefInternal } from "./base"
 import type { Derived, DerivedAll, Runtime } from "./data"
 
 /**
- * @ets_optimize identity
+ * @tsplus macro identity
  */
 
 export function concrete<EA, EB, A, B>(
@@ -12,7 +12,7 @@ export function concrete<EA, EB, A, B>(
 }
 
 /**
- * @ets_optimize remove
+ * @tsplus macro remove
  */
 export function concreteUnified<EA, EB, A, B>(
   self: XFiberRef<EA, EB, A, B>

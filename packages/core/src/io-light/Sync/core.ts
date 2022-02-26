@@ -341,7 +341,7 @@ export const run: <A>(self: Sync<unknown, never, A>) => A = X.run
 /**
  * Compact the union produced by the result of f
  *
- * @ets_optimize identity
+ * @tsplus macro identity
  */
 export function unionFn<ARGS extends any[], Ret extends Sync<any, any, any>>(
   _: (...args: ARGS) => Ret
@@ -352,7 +352,7 @@ export function unionFn<ARGS extends any[], Ret extends Sync<any, any, any>>(
 /**
  * Compact the union
  *
- * @ets_optimize identity
+ * @tsplus macro identity
  */
 export function union<Ret extends Sync<any, any, any>>(
   _: Ret

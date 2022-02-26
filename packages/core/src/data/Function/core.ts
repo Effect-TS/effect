@@ -113,7 +113,7 @@ export function flip<A, B, C>(f: (a: A, b: B) => C): (b: B, a: A) => C {
 /**
  * Identity function
  *
- * @ets_optimize identity
+ * @tsplus macro identity
  */
 export function identity<A>(a: A): A {
   return a
@@ -122,7 +122,7 @@ export function identity<A>(a: A): A {
 /**
  * Force string to be literal
  *
- * @ets_optimize identity
+ * @tsplus macro identity
  */
 export function literal<K extends string>(k: K): K {
   return k
@@ -168,7 +168,7 @@ export function untupled<A extends ReadonlyArray<unknown>, B>(
 /**
  * Performs unsafe coercion of types
  *
- * @ets_optimize identity
+ * @tsplus macro identity
  */
 export function unsafeCoerce<A, B>(a: A): B {
   return a as any
@@ -187,7 +187,7 @@ export function hole<T>(): T {
 export function enforceOutput<A>() {
   return (
     /**
-     * @ets_optimize identity
+     * @tsplus macro identity
      */
     <T extends { [k in typeof _A]: () => A }>(_: T): T => _
   )
@@ -199,7 +199,7 @@ export function enforceOutput<A>() {
 export function enforceError<E>() {
   return (
     /**
-     * @ets_optimize identity
+     * @tsplus macro identity
      */
     <T extends { [k in typeof _E]: () => E }>(_: T): T => _
   )
@@ -211,7 +211,7 @@ export function enforceError<E>() {
 export function enforceContext<R>() {
   return (
     /**
-     * @ets_optimize identity
+     * @tsplus macro identity
      */
     <T extends { [k in typeof _R]: (_: R) => void }>(_: T): T => _
   )

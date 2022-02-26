@@ -164,7 +164,7 @@ export class ILayerZipWithPar<
 }
 
 /**
- * @ets_optimize identity
+ * @tsplus macro identity
  */
 export function instruction<R, E, A>(self: Layer<R, E, A>): Instruction {
   // @ts-expect-error
