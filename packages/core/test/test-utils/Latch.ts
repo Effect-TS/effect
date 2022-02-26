@@ -1,7 +1,7 @@
 import type { UIO } from "../../src/io/Effect"
 import { Effect } from "../../src/io/Effect"
 import { Promise } from "../../src/io/Promise"
-import * as Ref from "../../src/io/Ref"
+import { Ref } from "../../src/io/Ref"
 
 export function withLatch<R, E, A>(
   f: (release: UIO<void>) => Effect<R, E, A>
@@ -21,10 +21,10 @@ export function withLatchAwait<R, E, A>(
       f(
         latch.succeed(undefined).asUnit(),
         Effect.uninterruptibleMask(
-          ({ restore }) => Ref.set_(ref, false) > restore(latch.await())
+          ({ restore }) => ref.set(false) > restore(latch.await())
         )
       )
     )
-    .tap(({ latch, ref }) => Effect.whenEffect(Ref.get(ref), latch.await()))
+    .tap(({ latch, ref }) => Effect.whenEffect(ref.get(), latch.await()))
     .map(({ result }) => result)
 }

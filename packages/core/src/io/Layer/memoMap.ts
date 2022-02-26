@@ -1,7 +1,7 @@
 import * as Map from "../../collection/immutable/Map"
 import { Tuple } from "../../collection/immutable/Tuple"
 import { matchTag_ } from "../../data/Utils"
-import * as Ref from "../../io/Ref/Synchronized"
+import { Synchronized } from "../../io/Ref/Synchronized"
 import { Effect } from "../Effect"
 import type { IO, UIO } from "../Effect/definition/base"
 import { ExecutionStrategy } from "../ExecutionStrategy"
@@ -22,9 +22,7 @@ import { instruction, LayerHashSym } from "./definition"
  */
 export class MemoMap {
   constructor(
-    readonly ref: Ref.Synchronized<
-      Map.Map<PropertyKey, Tuple<[IO<any, any>, Finalizer]>>
-    >
+    readonly ref: Synchronized<Map.Map<PropertyKey, Tuple<[IO<any, any>, Finalizer]>>>
   ) {}
 
   /**
@@ -34,122 +32,124 @@ export class MemoMap {
    */
   getOrElseMemoize<R, E, A>(layer: Layer<R, E, A>): Managed<R, E, A> {
     return Managed(
-      Ref.modifyEffect_(this.ref, (m) => {
-        const inMap = Map.lookup_(m, layer[LayerHashSym].get)
+      this.ref
+        .modifyEffect((m) => {
+          const inMap = Map.lookup_(m, layer[LayerHashSym].get)
 
-        switch (inMap._tag) {
-          case "Some": {
-            const {
-              tuple: [acquire, release]
-            } = inMap.value
+          switch (inMap._tag) {
+            case "Some": {
+              const {
+                tuple: [acquire, release]
+              } = inMap.value
 
-            const cached = get(currentReleaseMap.value).flatMap((releaseMap) =>
-              (acquire as IO<E, A>)
-                .onExit((exit) => {
-                  switch (exit._tag) {
-                    case "Success": {
-                      return releaseMap.add(release)
+              const cached = get(currentReleaseMap.value).flatMap((releaseMap) =>
+                (acquire as IO<E, A>)
+                  .onExit((exit) => {
+                    switch (exit._tag) {
+                      case "Success": {
+                        return releaseMap.add(release)
+                      }
+                      case "Failure": {
+                        return Effect.unit
+                      }
                     }
-                    case "Failure": {
-                      return Effect.unit
-                    }
-                  }
-                })
-                .map((x) => Tuple(release, x))
-            )
+                  })
+                  .map((x) => Tuple(release, x))
+              )
 
-            return Effect.succeedNow(Tuple(cached, m))
-          }
-          case "None": {
-            return Effect.Do()
-              .bind("observers", () => Ref.make(0))
-              .bind("promise", () => Promise.make<E, A>())
-              .bind("finalizerRef", () => Ref.make<Finalizer>(() => noopFinalizer))
-              .bindValue("resource", ({ finalizerRef, observers, promise }) =>
-                Effect.uninterruptibleMask(({ restore }) =>
-                  Effect.Do()
-                    .bind("outerReleaseMap", () => get(currentReleaseMap.value))
-                    .bind("innerReleaseMap", () => ReleaseMap.make)
-                    .bind("tp", ({ innerReleaseMap, outerReleaseMap }) =>
-                      restore(
-                        locally_(
-                          currentReleaseMap.value,
-                          innerReleaseMap
-                        )(scope(layer).flatMap((_) => _(this)).effect)
-                      )
-                        .exit()
-                        .flatMap((exit) => {
-                          switch (exit._tag) {
-                            case "Failure": {
-                              return (
-                                promise
-                                  .failCause(exit.cause)
-                                  .flatMap(() =>
-                                    innerReleaseMap.releaseAll(
-                                      exit,
-                                      ExecutionStrategy.Sequential
-                                    )
-                                  ) > Effect.failCause(exit.cause)
-                              )
-                            }
-                            case "Success": {
-                              return Effect.Do()
-                                .tap(() =>
-                                  Ref.set_(finalizerRef, (exit) =>
-                                    Effect.whenEffect(
-                                      Ref.modify_(observers, (n) =>
-                                        Tuple(n === 1, n - 1)
-                                      ),
+              return Effect.succeedNow(Tuple(cached, m))
+            }
+            case "None": {
+              return Effect.Do()
+                .bind("observers", () => Synchronized.make(0))
+                .bind("promise", () => Promise.make<E, A>())
+                .bind("finalizerRef", () =>
+                  Synchronized.make<Finalizer>(() => noopFinalizer)
+                )
+                .bindValue("resource", ({ finalizerRef, observers, promise }) =>
+                  Effect.uninterruptibleMask(({ restore }) =>
+                    Effect.Do()
+                      .bind("outerReleaseMap", () => get(currentReleaseMap.value))
+                      .bind("innerReleaseMap", () => ReleaseMap.make)
+                      .bind("tp", ({ innerReleaseMap, outerReleaseMap }) =>
+                        restore(
+                          locally_(
+                            currentReleaseMap.value,
+                            innerReleaseMap
+                          )(scope(layer).flatMap((_) => _(this)).effect)
+                        )
+                          .exit()
+                          .flatMap((exit) => {
+                            switch (exit._tag) {
+                              case "Failure": {
+                                return (
+                                  promise
+                                    .failCause(exit.cause)
+                                    .flatMap(() =>
                                       innerReleaseMap.releaseAll(
                                         exit,
                                         ExecutionStrategy.Sequential
                                       )
+                                    ) > Effect.failCause(exit.cause)
+                                )
+                              }
+                              case "Success": {
+                                return Effect.Do()
+                                  .tap(() =>
+                                    finalizerRef.set((exit) =>
+                                      Effect.whenEffect(
+                                        observers.modify((n) => Tuple(n === 1, n - 1)),
+                                        innerReleaseMap.releaseAll(
+                                          exit,
+                                          ExecutionStrategy.Sequential
+                                        )
+                                      )
                                     )
                                   )
-                                )
-                                .tap(() => Ref.update_(observers, (n) => n + 1))
-                                .bind("outerFinalizer", () =>
-                                  outerReleaseMap.add((e) =>
-                                    Ref.get(finalizerRef).flatMap((_) => _(e))
+                                  .tap(() => observers.update((n) => n + 1))
+                                  .bind("outerFinalizer", () =>
+                                    outerReleaseMap.add((e) =>
+                                      finalizerRef.get().flatMap((_) => _(e))
+                                    )
                                   )
-                                )
-                                .tap(() => promise.succeed(exit.value.get(1)))
-                                .map(({ outerFinalizer }) =>
-                                  Tuple(outerFinalizer, exit.value.get(1))
-                                )
+                                  .tap(() => promise.succeed(exit.value.get(1)))
+                                  .map(({ outerFinalizer }) =>
+                                    Tuple(outerFinalizer, exit.value.get(1))
+                                  )
+                              }
                             }
-                          }
-                        })
-                    )
-                    .map(({ tp }) => tp)
+                          })
+                      )
+                      .map(({ tp }) => tp)
+                  )
                 )
-              )
-              .bindValue("memoized", ({ finalizerRef, observers, promise }) =>
-                Tuple(
-                  (promise.await() as IO<E, A>).onExit((exit) => {
-                    switch (exit._tag) {
-                      case "Failure": {
-                        return Effect.unit
+                .bindValue("memoized", ({ finalizerRef, observers, promise }) =>
+                  Tuple(
+                    (promise.await() as IO<E, A>).onExit((exit) => {
+                      switch (exit._tag) {
+                        case "Failure": {
+                          return Effect.unit
+                        }
+                        case "Success": {
+                          return observers.update((n) => n + 1)
+                        }
                       }
-                      case "Success": {
-                        return Ref.update_(observers, (n) => n + 1)
-                      }
-                    }
-                  }),
-                  (e: Exit<any, any>) => Ref.get(finalizerRef).flatMap((_) => _(e))
+                    }),
+                    (e: Exit<any, any>) => finalizerRef.get().flatMap((_) => _(e))
+                  )
                 )
-              )
-              .map(({ memoized, resource }) =>
-                Tuple(
-                  resource,
-                  layer.isFresh()
-                    ? m
-                    : Map.insert_(m, layer[LayerHashSym].get, memoized)
+                .map(({ memoized, resource }) =>
+                  Tuple(
+                    resource,
+                    layer.isFresh()
+                      ? m
+                      : Map.insert_(m, layer[LayerHashSym].get, memoized)
+                  )
                 )
-              )
+            }
           }
-        }
-      }).flatten()
+        })
+        .flatten()
     )
   }
 }
@@ -158,7 +158,7 @@ export class MemoMap {
  * Creates an empty `MemoMap`.
  */
 export function makeMemoMap(): UIO<MemoMap> {
-  return Ref.make<ReadonlyMap<PropertyKey, Tuple<[IO<any, any>, Finalizer]>>>(
+  return Synchronized.make<ReadonlyMap<PropertyKey, Tuple<[IO<any, any>, Finalizer]>>>(
     Map.empty
   ).flatMap((r) => Effect.succeed(new MemoMap(r)))
 }

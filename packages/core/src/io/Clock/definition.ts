@@ -7,7 +7,7 @@ import { tag } from "../../data/Has"
 import { Option } from "../../data/Option"
 import type { UIO } from "../Effect"
 import { Effect } from "../Effect"
-import * as Ref from "../Ref"
+import { Ref } from "../Ref"
 import type { Schedule } from "../Schedule"
 import { Driver } from "../Schedule/Driver"
 
@@ -175,29 +175,28 @@ export abstract class AbstractClock implements Clock {
     ).map((ref) => {
       const next = (input: In): Effect<Env, Option<never>, Out> =>
         Effect.Do()
-          .bind("state", () => Ref.get(ref).map((_) => _.get(1)))
+          .bind("state", () => ref.get().map((_) => _.get(1)))
           .bind("now", () => this.currentTime)
           .flatMap(({ now, state }) =>
             schedule
               ._step(now, input, state)
               .flatMap(({ tuple: [state, out, decision] }) =>
                 decision._tag === "Done"
-                  ? Ref.set_(ref, Tuple(Option.some(out), state)) >
-                    Effect.fail(Option.none)
-                  : Ref.set_(ref, Tuple(Option.some(out), state)) >
+                  ? ref.set(Tuple(Option.some(out), state)) > Effect.fail(Option.none)
+                  : ref.set(Tuple(Option.some(out), state)) >
                     this.sleep(decision.interval.startMilliseconds - now).as(out)
               )
           )
 
-      const last = Ref.get(ref).flatMap(({ tuple: [option] }) =>
+      const last = ref.get().flatMap(({ tuple: [option] }) =>
         option.fold(
           () => Effect.fail(new NoSuchElementException()),
           (b) => Effect.succeed(b)
         )
       )
-      const reset = Ref.set_(ref, Tuple(Option.none, schedule._initial))
+      const reset = ref.set(Tuple(Option.none, schedule._initial))
 
-      const state = Ref.get(ref).map((_) => _.get(1))
+      const state = ref.get().map((_) => _.get(1))
 
       const driver = Driver(next, last, reset, state)
 

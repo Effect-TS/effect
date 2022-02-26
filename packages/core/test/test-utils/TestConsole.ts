@@ -5,7 +5,7 @@ import type { Has } from "../../src/data/Has"
 import { tag } from "../../src/data/Has"
 import type { IO, RIO, UIO } from "../../src/io/Effect"
 import { Effect } from "../../src/io/Effect"
-import * as Ref from "../../src/io/Ref"
+import type { Ref } from "../../src/io/Ref"
 
 // TODO(Mike/Max): move this to `@effect-ts/test`
 export const TestConsoleId = Symbol.for("@effect-ts/core/test/TestConsole")
@@ -105,48 +105,50 @@ export interface TestConsoleState {
 }
 
 export function makeTestConsole(
-  consoleState: Ref.Ref<TestConsoleState>,
+  consoleState: Ref<TestConsoleState>,
   debugState: boolean
 ): TestConsole {
   return {
     print: (line) =>
-      Ref.update_(consoleState, (state) => ({
+      consoleState.update((state) => ({
         ...state,
         output: A.append_(state.output, String(line))
       })),
     printError: (line) =>
-      Ref.update_(consoleState, (state) => ({
+      consoleState.update((state) => ({
         ...state,
         outputError: A.append_(state.outputError, String(line))
       })),
     printLine: (line) =>
-      Ref.update_(consoleState, (state) => ({
+      consoleState.update((state) => ({
         ...state,
         output: A.append_(state.output, String(line) + "\n")
       })),
     printLineError: (line) =>
-      Ref.update_(consoleState, (state) => ({
+      consoleState.update((state) => ({
         ...state,
         outputError: A.append_(state.outputError, String(line) + "\n")
       })),
     readLine: () =>
-      Ref.get(consoleState).flatMap((state) =>
-        Effect.fromOption(state.input.first).orElseFail(
-          new TestConsoleError("There is no more input left to read")
-        )
-      ),
+      consoleState
+        .get()
+        .flatMap((state) =>
+          Effect.fromOption(state.input.first).orElseFail(
+            new TestConsoleError("There is no more input left to read")
+          )
+        ),
     feedLines: (lines) =>
-      Ref.update_(consoleState, (state) => ({
+      consoleState.update((state) => ({
         ...state,
         input: List.from(lines) + state.input
       })),
-    output: () => Ref.get(consoleState).map((state) => state.output),
-    outputError: () => Ref.get(consoleState).map((state) => state.outputError),
+    output: () => consoleState.get().map((state) => state.output),
+    outputError: () => consoleState.get().map((state) => state.outputError),
     clearInput: () =>
-      Ref.update_(consoleState, (state) => ({ ...state, input: List.empty<string>() })),
+      consoleState.update((state) => ({ ...state, input: List.empty<string>() })),
     clearOutput: () =>
-      Ref.update_(consoleState, (state) => ({ ...state, output: A.empty<string>() })),
-    save: () => Ref.get(consoleState).map((state) => Ref.set_(consoleState, state))
+      consoleState.update((state) => ({ ...state, output: A.empty<string>() })),
+    save: () => consoleState.get().map((state) => consoleState.set(state))
   }
 }
 

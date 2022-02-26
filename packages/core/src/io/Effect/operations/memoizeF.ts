@@ -1,7 +1,7 @@
 import * as Map from "../../../collection/immutable/Map"
 import { Tuple } from "../../../collection/immutable/Tuple"
 import { Promise } from "../../Promise"
-import * as Ref from "../../Ref/Synchronized"
+import { Synchronized } from "../../Ref/Synchronized"
 import type { UIO } from "../definition"
 import { Effect } from "../definition"
 
@@ -14,15 +14,17 @@ export function memoizeF<R, E, A, B>(
   f: (a: A) => Effect<R, E, B>,
   __tsplusTrace?: string
 ): UIO<(a: A) => Effect<R, E, B>> {
-  return Ref.make(Map.make<A, Promise<E, B>>([])).map(
+  return Synchronized.make(Map.make<A, Promise<E, B>>([])).map(
     (ref) => (a: A) =>
-      Ref.modifyEffect_(ref, (map) =>
-        Map.lookup_(map, a).fold(
-          Promise.make<E, B>()
-            .tap((promise) => f(a).intoPromise(promise).fork())
-            .map((promise) => Tuple(promise, Map.insert_(map, a, promise))),
-          (promise) => Effect.succeedNow(Tuple(promise, map))
+      ref
+        .modifyEffect((map) =>
+          Map.lookup_(map, a).fold(
+            Promise.make<E, B>()
+              .tap((promise) => f(a).intoPromise(promise).fork())
+              .map((promise) => Tuple(promise, Map.insert_(map, a, promise))),
+            (promise) => Effect.succeedNow(Tuple(promise, map))
+          )
         )
-      ).flatMap((promise) => promise.await())
+        .flatMap((promise) => promise.await())
   )
 }
