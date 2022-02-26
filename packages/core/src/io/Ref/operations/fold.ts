@@ -8,6 +8,8 @@ import { concrete } from "../definition"
  * and value types of the `XRef`. For most use cases one of the more specific
  * combinators implemented in terms of `fold` will be more ergonomic but this
  * method is extremely useful for implementing new combinators.
+ *
+ * @tsplus fluent ets/XRef fold
  */
 export function fold_<RA, RB, EA, EB, EC, ED, A, B, C = A, D = B>(
   self: XRef<RA, RB, EA, EB, A, B>,
@@ -16,7 +18,7 @@ export function fold_<RA, RB, EA, EB, EC, ED, A, B, C = A, D = B>(
   ca: (_: C) => Either<EC, A>,
   bd: (_: B) => Either<ED, D>
 ): XRef<RA, RB, EC, ED, C, D> {
-  return concrete(self).fold(ea, eb, ca, bd as any)
+  return concrete(self)._fold(ea, eb, ca, bd as any)
 }
 
 /**
@@ -35,5 +37,5 @@ export function fold<EA, EB, EC, ED, A, B, C = A, D = B>(
   bd: (_: B) => Either<ED, D>
 ) {
   return <RA, RB>(self: XRef<RA, RB, EA, EB, A, B>): XRef<RA, RB, EC, ED, C, D> =>
-    fold_(self, ea, eb, ca, bd)
+    self.fold(ea, eb, ca, bd)
 }

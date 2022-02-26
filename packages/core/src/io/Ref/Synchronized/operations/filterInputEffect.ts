@@ -2,19 +2,19 @@ import { identity } from "../../../../data/Function"
 import { Option } from "../../../../data/Option"
 import { Effect } from "../../../Effect"
 import type { XSynchronized } from "../definition"
-import { foldEffect_ } from "../definition"
 
 /**
  * Filters the `set` value of the `XRef.Synchronized` with the specified
  * effectual predicate, returning a `XRef.Synchronized` with a `set` value
  * that succeeds if the predicate is satisfied or else fails with `None`.
+ *
+ * @tsplus fluent ets/XSynchronized filterInputEffect
  */
 export function filterInputEffect_<RA, RB, RC, EA, EB, EC, A, A1 extends A, B>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
   f: (a: A1) => Effect<RC, EC, boolean>
 ): XSynchronized<RA & RC, RB, Option<EA | EC>, EB, A1, B> {
-  return foldEffect_(
-    self,
+  return self.foldEffect(
     Option.some,
     identity,
     (a1) =>
@@ -39,6 +39,5 @@ export function filterInputEffect<RC, EC, A, A1 extends A>(
 ) {
   return <RA, RB, EA, EB, B>(
     self: XSynchronized<RA, RB, EA, EB, A, B>
-  ): XSynchronized<RA & RC, RB, Option<EA | EC>, EB, A1, B> =>
-    filterInputEffect_(self, f)
+  ): XSynchronized<RA & RC, RB, Option<EA | EC>, EB, A1, B> => self.filterInputEffect(f)
 }

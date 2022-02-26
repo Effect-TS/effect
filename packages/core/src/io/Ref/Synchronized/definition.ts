@@ -2,6 +2,7 @@ import type { Either } from "../../../data/Either"
 import * as STM from "../../../stm/STM/core"
 import { Effect } from "../../Effect"
 import * as S from "../../Semaphore"
+import type { _A, _B, _EA, _EB, _RA, _RB } from "../definition"
 import { XRefInternal } from "../definition"
 
 export type Synchronized<A> = XSynchronized<unknown, unknown, never, never, A, A>
@@ -29,6 +30,8 @@ export type Synchronized<A> = XSynchronized<unknown, unknown, never, never, A, A
  * values together to form a single `XRef.Synchronized` value that can be
  * atomically updated using the `zip` operator. In this case reads and writes
  * will semantically block other readers and writers.
+ *
+ * @tsplus type ets/XSynchronized
  */
 export class XSynchronized<RA, RB, EA, EB, A, B> extends XRefInternal<
   RA,
@@ -48,19 +51,19 @@ export class XSynchronized<RA, RB, EA, EB, A, B> extends XRefInternal<
     super()
   }
 
-  get get(): Effect<RB, EB, B> {
+  get _get(): Effect<RB, EB, B> {
     if (this.semaphores.size === 1) {
       return this.unsafeGet
     } else {
-      return this.withPermit(this.unsafeGet)
+      return this._withPermit(this.unsafeGet)
     }
   }
 
-  set(a: A): Effect<RA, EA, void> {
-    return this.withPermit(this.unsafeSet(a))
+  _set(a: A): Effect<RA, EA, void> {
+    return this._withPermit(this.unsafeSet(a))
   }
 
-  fold<EC, ED, C, D>(
+  _fold<EC, ED, C, D>(
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
     ca: (_: C) => Either<EC, A>,
@@ -75,7 +78,7 @@ export class XSynchronized<RA, RB, EA, EB, A, B> extends XRefInternal<
     )
   }
 
-  foldAll<EC, ED, C, D>(
+  _foldAll<EC, ED, C, D>(
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
     ec: (_: EB) => EC,
@@ -92,7 +95,7 @@ export class XSynchronized<RA, RB, EA, EB, A, B> extends XRefInternal<
     )
   }
 
-  withPermit<R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> {
+  _withPermit<R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> {
     return Effect.uninterruptibleMask(({ restore }) =>
       restore(STM.commit(STM.forEach_(this.semaphores, S.acquire))).flatMap(() =>
         restore(effect).ensuring(STM.commit(STM.forEach_(this.semaphores, S.release)))
@@ -102,12 +105,38 @@ export class XSynchronized<RA, RB, EA, EB, A, B> extends XRefInternal<
 }
 
 /**
+ * @tsplus type ets/XSynchronizedOps
+ */
+export interface XSynchronizedOps {}
+export const Synchronized: XSynchronizedOps = {}
+
+/**
+ * @tsplus unify ets/XSynchronized
+ */
+export function unifyXSynchronized<
+  X extends XSynchronized<any, any, any, any, any, any>
+>(
+  self: X
+): XSynchronized<
+  [X] extends [{ [k in typeof _RA]: (_: infer RA) => void }] ? RA : never,
+  [X] extends [{ [k in typeof _RB]: (_: infer RB) => void }] ? RB : never,
+  [X] extends [{ [k in typeof _EA]: () => infer EA }] ? EA : never,
+  [X] extends [{ [k in typeof _EB]: () => infer EB }] ? EB : never,
+  [X] extends [{ [k in typeof _A]: (_: infer A) => void }] ? A : never,
+  [X] extends [{ [k in typeof _B]: () => infer B }] ? B : never
+> {
+  return self
+}
+
+/**
  * Folds over the error and value types of the `XRef.Synchronized`. This is
  * a highly polymorphic method that is capable of arbitrarily transforming
  * the error and value types of the `XRef.Synchronized`. For most use cases
  * one of the more specific combinators implemented in terms of `foldEffect`
  * will be more ergonomic but this method is extremely useful for
  * implementing new combinators.
+ *
+ * @tsplus fluent ets/XSynchronized foldEffect
  */
 export function foldEffect_<RA, RB, RC, RD, EA, EB, EC, ED, A, B, C, D>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
@@ -141,7 +170,7 @@ export function foldEffect<RC, RD, EA, EB, EC, ED, A, B, C, D>(
 ) {
   return <RA, RB>(
     self: XSynchronized<RA, RB, EA, EB, A, B>
-  ): XSynchronized<RA & RC, RB & RD, EC, ED, C, D> => foldEffect_(self, ea, eb, ca, bd)
+  ): XSynchronized<RA & RC, RB & RD, EC, ED, C, D> => self.foldEffect(ea, eb, ca, bd)
 }
 
 /**
@@ -149,6 +178,8 @@ export function foldEffect<RC, RD, EA, EB, EC, ED, A, B, C, D>(
  * access to the state in transforming the `set` value. This is a more
  * powerful version of `foldEffect` but requires unifying the environment and
  * error types.
+ *
+ * @tsplus fluent ets/XSynchronized foldAllEffect
  */
 export function foldAllEffect_<RA, RB, RC, RD, EA, EB, EC, ED, A, B, C, D>(
   self: XSynchronized<RA, RB, EA, EB, A, B>,
@@ -160,9 +191,9 @@ export function foldAllEffect_<RA, RB, RC, RD, EA, EB, EC, ED, A, B, C, D>(
 ): XSynchronized<RA & RB & RC, RB & RD, EC, ED, C, D> {
   return new XSynchronized(
     self.semaphores,
-    self.get.foldEffect((e) => Effect.failNow(eb(e)), bd),
+    self._get.foldEffect((e) => Effect.failNow(eb(e)), bd),
     (c) =>
-      self.get.foldEffect(
+      self._get.foldEffect(
         (e) => Effect.failNow(ec(e)),
         (b) => ca(c)(b).flatMap((a) => self.unsafeSet(a).mapError(ea))
       )
@@ -187,5 +218,5 @@ export function foldAllEffect<RC, RD, EA, EB, EC, ED, A, B, C, D>(
   return <RA, RB>(
     self: XSynchronized<RA, RB, EA, EB, A, B>
   ): XSynchronized<RA & RB & RC, RB & RD, EC, ED, C, D> =>
-    foldAllEffect_(self, ea, eb, ec, ca, bd)
+    self.foldAllEffect(ea, eb, ec, ca, bd)
 }

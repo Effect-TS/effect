@@ -60,20 +60,16 @@ export type _B = typeof _B
  * swap operations are not safe for mutable values that do not support
  * concurrent access. If you do need to use a mutable value `XRef.Synchronized`
  * will guarantee that access to the value is properly synchronized.
+ *
+ * @tsplus type ets/XRef
  */
 export interface XRef<RA, RB, EA, EB, A, B> {
   readonly [XRefId]: XRefId
-
   readonly [_RA]: (_: RA) => void
-
   readonly [_RB]: (_: RB) => void
-
   readonly [_EA]: () => EA
-
   readonly [_EB]: () => EB
-
   readonly [_A]: (_: A) => void
-
   readonly [_B]: () => B
 }
 
@@ -81,29 +77,23 @@ export abstract class XRefInternal<RA, RB, EA, EB, A, B>
   implements XRef<RA, RB, EA, EB, A, B>
 {
   readonly [XRefId]: XRefId;
-
   readonly [_RA]: (_: RA) => void;
-
   readonly [_RB]: (_: RB) => void;
-
   readonly [_EA]: () => EA;
-
   readonly [_EB]: () => EB;
-
   readonly [_A]: (_: A) => void;
-
   readonly [_B]: () => B
 
   /**
    * Reads the value from the `XRef`.
    */
-  abstract get get(): Effect<RB, EB, B>
+  abstract get _get(): Effect<RB, EB, B>
 
   /**
    * Writes a new value to the `XRef`, with a guarantee of immediate
    * consistency (at some cost to performance).
    */
-  abstract set(a: A): Effect<RA, EA, void>
+  abstract _set(a: A): Effect<RA, EA, void>
 
   /**
    * Folds over the error and value types of the `XRef`. This is a highly
@@ -112,7 +102,7 @@ export abstract class XRefInternal<RA, RB, EA, EB, A, B>
    * combinators implemented in terms of `fold` will be more ergonomic but this
    * method is extremely useful for implementing new combinators.
    */
-  abstract fold<EC, ED, C, D>(
+  abstract _fold<EC, ED, C, D>(
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
     ca: (_: C) => Either<EC, A>,
@@ -124,13 +114,35 @@ export abstract class XRefInternal<RA, RB, EA, EB, A, B>
    * the state in transforming the `set` value. This is a more powerful version
    * of `fold` but requires unifying the error types.
    */
-  abstract foldAll<EC, ED, C, D>(
+  abstract _foldAll<EC, ED, C, D>(
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
     ec: (_: EB) => EC,
     ca: (_: C) => (_: B) => Either<EC, A>,
     bd: (_: B) => Either<ED, D>
   ): XRef<RA & RB, RB, EC, ED, C, D>
+}
+
+/**
+ * @tsplus type ets/XRefOps
+ */
+export interface XRefOps {}
+export const Ref: XRefOps = {}
+
+/**
+ * @tsplus unify ets/XRef
+ */
+export function unifyXRef<X extends XRef<any, any, any, any, any, any>>(
+  self: X
+): XRef<
+  [X] extends [{ [k in typeof _RA]: (_: infer RA) => void }] ? RA : never,
+  [X] extends [{ [k in typeof _RB]: (_: infer RB) => void }] ? RB : never,
+  [X] extends [{ [k in typeof _EA]: () => infer EA }] ? EA : never,
+  [X] extends [{ [k in typeof _EB]: () => infer EB }] ? EB : never,
+  [X] extends [{ [k in typeof _A]: (_: infer A) => void }] ? A : never,
+  [X] extends [{ [k in typeof _B]: () => infer B }] ? B : never
+> {
+  return self
 }
 
 /**

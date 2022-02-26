@@ -64,7 +64,7 @@ export class MemoMap {
             return Effect.Do()
               .bind("observers", () => Ref.make(0))
               .bind("promise", () => Promise.make<E, A>())
-              .bind("finalizerRef", () => Ref.make(noopFinalizer))
+              .bind("finalizerRef", () => Ref.make<Finalizer>(() => noopFinalizer))
               .bindValue("resource", ({ finalizerRef, observers, promise }) =>
                 Effect.uninterruptibleMask(({ restore }) =>
                   Effect.Do()

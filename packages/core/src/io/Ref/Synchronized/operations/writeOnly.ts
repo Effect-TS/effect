@@ -4,6 +4,8 @@ import type { XSynchronized } from "../definition"
 
 /**
  * Returns a write only view of the `XRef.Synchronized`.
+ *
+ * @tsplus fluent ets/XSynchronized writeOnly
  */
 export function writeOnly<RA, RB, EA, EB, A, B>(
   self: XSynchronized<RA, RB, EA, EB, A, B>

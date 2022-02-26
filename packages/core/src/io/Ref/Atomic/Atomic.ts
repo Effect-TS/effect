@@ -6,6 +6,9 @@ import { XRefInternal } from "../definition"
 import { Derived } from "./Derived"
 import { DerivedAll } from "./DerivedAll"
 
+/**
+ * @tsplus type ets/AtomicRef
+ */
 export class Atomic<A> extends XRefInternal<unknown, unknown, never, never, A, A> {
   readonly _tag = "Atomic"
 
@@ -13,15 +16,15 @@ export class Atomic<A> extends XRefInternal<unknown, unknown, never, never, A, A
     super()
   }
 
-  get get(): Effect<unknown, never, A> {
+  get _get(): Effect<unknown, never, A> {
     return Effect.succeed(this.value.get)
   }
 
-  set(a: A, __tsplusTrace?: string): Effect<unknown, never, void> {
+  _set(a: A, __tsplusTrace?: string): Effect<unknown, never, void> {
     return Effect.succeed(this.value.set(a))
   }
 
-  fold<EC, ED, C, D>(
+  _fold<EC, ED, C, D>(
     ea: (_: never) => EC,
     eb: (_: never) => ED,
     ca: (_: C) => Either<EC, A>,
@@ -36,7 +39,7 @@ export class Atomic<A> extends XRefInternal<unknown, unknown, never, never, A, A
     )
   }
 
-  foldAll<EC, ED, C, D>(
+  _foldAll<EC, ED, C, D>(
     _ea: (_: never) => EC,
     _eb: (_: never) => ED,
     _ec: (_: never) => EC,
@@ -51,4 +54,13 @@ export class Atomic<A> extends XRefInternal<unknown, unknown, never, never, A, A
       )
     )
   }
+}
+
+/**
+ * @tsplus unify ets/AtomicRef
+ */
+export function unify<X extends Atomic<any>>(
+  self: X
+): Atomic<[X] extends [Atomic<infer A>] ? A : never> {
+  return self
 }
