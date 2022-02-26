@@ -1,4 +1,4 @@
-import type { Tuple } from "../../../../collection/immutable/Tuple"
+import type { MergeTuple } from "../../../../collection/immutable/Tuple"
 import { XSynchronized } from "../definition"
 
 /**
@@ -17,13 +17,13 @@ export function zip_<RA1, RB1, EA1, EB1, A1, B1, RA2, RB2, EA2, EB2, A2, B2>(
   RB1 & RB2,
   EA1 | EA2,
   EB1 | EB2,
-  Tuple<[A1, A2]>,
-  Tuple<[B1, B2]>
+  MergeTuple<A1, A2>,
+  MergeTuple<B1, B2>
 > {
   return new XSynchronized(
     new Set([...self.semaphores, ...that.semaphores]),
-    self._get.zip(that._get),
-    ({ tuple: [a, a2] }) => self.unsafeSet(a) > that.unsafeSet(a2)
+    self._get.zipFlatten(that._get),
+    ({ tuple: [a, a2] }) => self.unsafeSet(a as A1) > that.unsafeSet(a2 as A2)
   )
 }
 
@@ -45,7 +45,7 @@ export function zip<RA2, RB2, EA2, EB2, A2, B2>(
     RB1 & RB2,
     EA1 | EA2,
     EB1 | EB2,
-    Tuple<[A1, A2]>,
-    Tuple<[B1, B2]>
+    MergeTuple<A1, A2>,
+    MergeTuple<B1, B2>
   > => self.zip(that)
 }
