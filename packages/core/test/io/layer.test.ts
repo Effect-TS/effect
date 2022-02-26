@@ -8,7 +8,7 @@ import * as Fiber from "../../src/io/Fiber"
 import { Layer } from "../../src/io/Layer"
 import { Managed } from "../../src/io/Managed"
 import { Promise } from "../../src/io/Promise"
-import * as Ref from "../../src/io/Ref"
+import { Ref } from "../../src/io/Ref"
 import { Schedule } from "../../src/io/Schedule"
 
 // -----------------------------------------------------------------------------
@@ -60,7 +60,7 @@ const Service3 = tag<Service3Impl>(Service3Id)
 // Ref
 // -----------------------------------------------------------------------------
 
-function makeRef(): Effect<unknown, never, Ref.Ref<Chunk<string>>> {
+function makeRef(): Effect<unknown, never, Ref<Chunk<string>>> {
   return Ref.make(Chunk.empty())
 }
 
@@ -75,35 +75,29 @@ const release1 = "Releasing Module 1"
 const release2 = "Releasing Module 2"
 const release3 = "Releasing Module 3"
 
-function makeLayer1(
-  ref: Ref.Ref<Chunk<string>>
-): Layer<unknown, never, Has<Service1Impl>> {
+function makeLayer1(ref: Ref<Chunk<string>>): Layer<unknown, never, Has<Service1Impl>> {
   return Layer.fromManaged(Service1)(
     Managed.acquireReleaseWith(
-      Ref.update_(ref, (_) => _.append(acquire1)).map(() => new Service1Impl()),
-      () => Ref.update_(ref, (_) => _.append(release1))
+      ref.update((_) => _.append(acquire1)).map(() => new Service1Impl()),
+      () => ref.update((_) => _.append(release1))
     )
   )
 }
 
-function makeLayer2(
-  ref: Ref.Ref<Chunk<string>>
-): Layer<unknown, never, Has<Service2Impl>> {
+function makeLayer2(ref: Ref<Chunk<string>>): Layer<unknown, never, Has<Service2Impl>> {
   return Layer.fromManaged(Service2)(
     Managed.acquireReleaseWith(
-      Ref.update_(ref, (_) => _.append(acquire2)).map(() => new Service2Impl()),
-      () => Ref.update_(ref, (_) => _.append(release2))
+      ref.update((_) => _.append(acquire2)).map(() => new Service2Impl()),
+      () => ref.update((_) => _.append(release2))
     )
   )
 }
 
-function makeLayer3(
-  ref: Ref.Ref<Chunk<string>>
-): Layer<unknown, never, Has<Service3Impl>> {
+function makeLayer3(ref: Ref<Chunk<string>>): Layer<unknown, never, Has<Service3Impl>> {
   return Layer.fromManaged(Service3)(
     Managed.acquireReleaseWith(
-      Ref.update_(ref, (_) => _.append(acquire3)).map(() => new Service3Impl()),
-      () => Ref.update_(ref, (_) => _.append(release3))
+      ref.update((_) => _.append(acquire3)).map(() => new Service3Impl()),
+      () => ref.update((_) => _.append(release3))
     )
   )
 }
@@ -117,7 +111,7 @@ describe("Layer", () => {
       .bindValue("layer", ({ ref }) => makeLayer1(ref))
       .bindValue("env", ({ layer }) => (layer + layer).build())
       .tap(({ env }) => env.useDiscard(Effect.unit))
-      .bind("actual", ({ ref }) => Ref.get(ref))
+      .bind("actual", ({ ref }) => ref.get())
 
     const { actual } = await program.unsafeRunPromise()
 
@@ -144,7 +138,7 @@ describe("Layer", () => {
       .bindValue("layer", ({ ref }) => makeLayer1(ref))
       .bindValue("env", ({ layer }) => (layer >> layer).build())
       .tap(({ env }) => env.useDiscard(Effect.unit))
-      .bind("actual", ({ ref }) => Ref.get(ref))
+      .bind("actual", ({ ref }) => ref.get())
 
     const { actual } = await program.unsafeRunPromise()
 
@@ -161,7 +155,7 @@ describe("Layer", () => {
         ((layer1 >> layer2) + (layer1 >> layer3)).build()
       )
       .tap(({ env }) => env.useDiscard(Effect.unit))
-      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
+      .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
@@ -180,7 +174,7 @@ describe("Layer", () => {
       .bindValue("layer2", ({ ref }) => makeLayer2(ref))
       .bindValue("env", ({ layer1, layer2 }) => (layer1 + layer2).build())
       .tap(({ env }) => env.useDiscard(Effect.unit))
-      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
+      .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
@@ -197,7 +191,7 @@ describe("Layer", () => {
       .bindValue("layer2", ({ ref }) => makeLayer2(ref))
       .bindValue("env", ({ layer1, layer2 }) => (layer1 >> layer2).build())
       .tap(({ env }) => env.useDiscard(Effect.unit))
-      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
+      .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
@@ -214,7 +208,7 @@ describe("Layer", () => {
         ((layer1 >> layer2) >> layer3).build()
       )
       .tap(({ env }) => env.useDiscard(Effect.unit))
-      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
+      .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
@@ -231,7 +225,7 @@ describe("Layer", () => {
         ((layer1.map(identity) >> layer2) + (layer1 >> layer3)).build()
       )
       .tap(({ env }) => env.useDiscard(Effect.unit))
-      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
+      .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
@@ -253,7 +247,7 @@ describe("Layer", () => {
         ((layer1.mapError(identity) >> layer2) >> (layer1 >> layer3)).build()
       )
       .tap(({ env }) => env.useDiscard(Effect.unit))
-      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
+      .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
@@ -275,7 +269,7 @@ describe("Layer", () => {
         ((layer1.orDie() >> layer2) >> (layer1 >> layer3)).build()
       )
       .tap(({ env }) => env.useDiscard(Effect.unit))
-      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
+      .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
@@ -295,7 +289,7 @@ describe("Layer", () => {
       .bindValue("env", ({ layer1, layer2 }) => (layer1 + layer2).build())
       .bind("fiber", ({ env }) => env.useDiscard(Effect.unit).fork())
       .tap(({ fiber }) => Fiber.interrupt(fiber))
-      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
+      .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
@@ -315,7 +309,7 @@ describe("Layer", () => {
       .bindValue("env", ({ layer1, layer2 }) => (layer1 >> layer2).build())
       .bind("fiber", ({ env }) => env.useDiscard(Effect.unit).fork())
       .tap(({ fiber }) => Fiber.interrupt(fiber))
-      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
+      .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
@@ -338,7 +332,7 @@ describe("Layer", () => {
       )
       .bind("fiber", ({ env }) => env.useDiscard(Effect.unit).fork())
       .tap(({ fiber }) => Fiber.interrupt(fiber))
-      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
+      .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
@@ -422,7 +416,7 @@ describe("Layer", () => {
             .flatMap(() => Effect.environment<Has<Service1Impl>>().provideLayer(layer))
         )
       )
-      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
+      .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
@@ -438,7 +432,7 @@ describe("Layer", () => {
         ((layer1 >> Layer.fail("failed!")) | layer2).build()
       )
       .bind("fiber", ({ env }) => env.useDiscard(Effect.unit))
-      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
+      .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
@@ -481,7 +475,7 @@ describe("Layer", () => {
       .bindValue("layer", ({ ref }) => makeLayer1(ref))
       .bindValue("env", ({ layer }) => (layer + layer.fresh()).build())
       .tap(({ env }) => env.useNow())
-      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
+      .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
@@ -494,7 +488,7 @@ describe("Layer", () => {
       .bindValue("layer", ({ ref }) => makeLayer1(ref))
       .bindValue("env", ({ layer }) => (layer >> layer.fresh()).build())
       .tap(({ env }) => env.useNow())
-      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
+      .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
@@ -509,7 +503,7 @@ describe("Layer", () => {
         (layer + layer + (layer + layer).fresh()).build()
       )
       .tap(({ env }) => env.useNow())
-      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
+      .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
@@ -526,7 +520,7 @@ describe("Layer", () => {
         (layer1.fresh() >> (layer2 + (layer1 >> layer3).fresh())).build()
       )
       .tap(({ env }) => env.useNow())
-      .flatMap(({ ref }) => Ref.get(ref).map((chunk) => chunk.toArray()))
+      .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
@@ -535,23 +529,21 @@ describe("Layer", () => {
 
   it("preserves identity of acquired resources", async () => {
     const ChunkServiceId = Symbol()
-    const ChunkService = tag<Ref.Ref<Chunk<string>>>(ChunkServiceId)
+    const ChunkService = tag<Ref<Chunk<string>>>(ChunkServiceId)
 
     const program = Effect.Do()
       .bind("testRef", () => Ref.make(Chunk.empty<string>()))
       .bindValue("layer", ({ testRef }) =>
         Layer.fromManaged(ChunkService)(
           Ref.make(Chunk.empty<string>())
-            .toManagedWith((ref) => Ref.get(ref).flatMap((_) => Ref.set_(testRef, _)))
+            .toManagedWith((ref) => ref.get().flatMap((_) => testRef.set(_)))
             .tap(() => Managed.unit)
         )
       )
       .tap(({ layer }) =>
-        layer
-          .build()
-          .use((_) => Ref.update_(ChunkService.read(_), (_) => _.append("test")))
+        layer.build().use((_) => ChunkService.read(_).update((_) => _.append("test")))
       )
-      .flatMap(({ testRef }) => Ref.get(testRef).map((chunk) => chunk.toArray()))
+      .flatMap(({ testRef }) => testRef.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
 
@@ -561,15 +553,12 @@ describe("Layer", () => {
   it("retry", async () => {
     const program = Effect.Do()
       .bind("ref", () => Ref.make(0))
-      .bindValue(
-        "effect",
-        ({ ref }) => Ref.update_(ref, (n) => n + 1) > Effect.fail("fail")
-      )
+      .bindValue("effect", ({ ref }) => ref.update((n) => n + 1) > Effect.fail("fail"))
       .bindValue("layer", ({ effect }) =>
         Layer.fromRawEffect(effect).retry(Schedule.recurs(3))
       )
       .tap(({ layer }) => layer.build().useNow().ignore())
-      .flatMap(({ ref }) => Ref.get(ref))
+      .flatMap(({ ref }) => ref.get())
 
     const result = await program.unsafeRunPromise()
 
@@ -631,11 +620,11 @@ describe("Layer", () => {
       .bind("ref", () => Ref.make("foo"))
       .bindValue("layer", ({ ref }) =>
         Layer.fromValue(BarService)({ bar: "bar" }).tap((r) =>
-          Ref.set_(ref, BarService.read(r).bar)
+          ref.set(BarService.read(r).bar)
         )
       )
       .tap(({ layer }) => layer.build().useNow())
-      .bind("value", ({ ref }) => Ref.get(ref))
+      .bind("value", ({ ref }) => ref.get())
 
     const { value } = await program.unsafeRunPromise()
 
@@ -674,29 +663,27 @@ describe("Layer", () => {
 
     const NumberRefProviderId = Symbol()
 
-    const NumberRefProvider = tag<Ref.Ref<number>>(NumberRefProviderId)
+    const NumberRefProvider = tag<Ref<number>>(NumberRefProviderId)
 
     const FooServiceId = Symbol()
 
     interface FooService {
-      readonly ref: Ref.Ref<number>
+      readonly ref: Ref<number>
       readonly string: string
       readonly get: Effect<unknown, never, Tuple<[number, string]>>
     }
 
     const FooService = tag<FooService>(FooServiceId)
 
-    const fooBuilder = Layer.environment<Has<string> & Has<Ref.Ref<number>>>().map(
-      (_) => {
-        const s = StringProvider.read(_)
-        const ref = NumberRefProvider.read(_)
-        return FooService.has({
-          ref,
-          string: s,
-          get: Ref.get(ref).map((i) => Tuple(i, s))
-        })
-      }
-    )
+    const fooBuilder = Layer.environment<Has<string> & Has<Ref<number>>>().map((_) => {
+      const s = StringProvider.read(_)
+      const ref = NumberRefProvider.read(_)
+      return FooService.has({
+        ref,
+        string: s,
+        get: ref.get().map((i) => Tuple(i, s))
+      })
+    })
 
     const provideNumberRef = Layer.fromEffect(NumberRefProvider)(Ref.make(10))
     const provideString = Layer.fromValue(StringProvider)("hi")
@@ -720,29 +707,27 @@ describe("Layer", () => {
 
     const NumberRefProviderId = Symbol()
 
-    const NumberRefProvider = tag<Ref.Ref<number>>(NumberRefProviderId)
+    const NumberRefProvider = tag<Ref<number>>(NumberRefProviderId)
 
     const FooServiceId = Symbol()
 
     interface FooService {
-      readonly ref: Ref.Ref<number>
+      readonly ref: Ref<number>
       readonly string: string
       readonly get: Effect<unknown, never, Tuple<[number, string]>>
     }
 
     const FooService = tag<FooService>(FooServiceId)
 
-    const fooBuilder = Layer.environment<Has<string> & Has<Ref.Ref<number>>>().map(
-      (_) => {
-        const s = StringProvider.read(_)
-        const ref = NumberRefProvider.read(_)
-        return FooService.has({
-          ref,
-          string: s,
-          get: Ref.get(ref).map((i) => Tuple(i, s))
-        })
-      }
-    )
+    const fooBuilder = Layer.environment<Has<string> & Has<Ref<number>>>().map((_) => {
+      const s = StringProvider.read(_)
+      const ref = NumberRefProvider.read(_)
+      return FooService.has({
+        ref,
+        string: s,
+        get: ref.get().map((i) => Tuple(i, s))
+      })
+    })
 
     const provideNumberRef = Layer.fromEffect(NumberRefProvider)(Ref.make(10))
     const provideString = Layer.fromValue(StringProvider)("hi")
@@ -751,7 +736,7 @@ describe("Layer", () => {
 
     const program = Effect.serviceWithEffect(FooService)((_) => _.get)
       .flatMap(({ tuple: [i1, s] }) =>
-        Effect.serviceWithEffect(NumberRefProvider)((_) => Ref.get(_)).map((i2) =>
+        Effect.serviceWithEffect(NumberRefProvider)((ref) => ref.get()).map((i2) =>
           Tuple(i1, i2, s)
         )
       )
