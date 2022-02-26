@@ -38,7 +38,7 @@
     }
   },
   "devDependencies": {
-    "@tsplus/installer": "0.0.27",
+    "@tsplus/installer": "0.0.29",
     "@types/glob": "^7.2.0",
     "@types/jest": "^27.4.1",
     "@types/node": "^17.0.21",
