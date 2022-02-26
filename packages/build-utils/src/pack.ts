@@ -83,6 +83,11 @@ const writePackageJsonContent = pipe(
       exports["."] = mainExports
     }
 
+    exports["./*"] = {
+      import: "./_mjs/*.mjs",
+      require: "./*.js"
+    }
+
     modules.forEach((m) => {
       exports[`./${m}`] = {}
       if (fs.existsSync(`./build/mjs/${m}/index.mjs`)) {
@@ -119,78 +124,6 @@ const writePackageJsonContent = pipe(
     )
   }),
   TE.chain((str) => writeFile("./dist/package.json", str))
-)
-
-const writePackageJsonContentInmjs = pipe(
-  TE.do,
-  TE.bind("content", () => loadPackageJson),
-  TE.bind("modules", ({ content }) => getModules(content)),
-  TE.bind("side", ({ content }) => getSide(content)),
-  TE.map(({ content, modules, side }) => {
-    const packageJson = {}
-
-    carry("name", content, packageJson)
-    carry("version", content, packageJson)
-    carry("private", content, packageJson)
-    carry("license", content, packageJson)
-    carry("repository", content, packageJson)
-    carry("dependencies", content, packageJson)
-    carry("peerDependencies", content, packageJson)
-    carry("gitHead", content, packageJson)
-    carry("bin", content, packageJson)
-
-    packageJson["type"] = "module"
-
-    const exports = {}
-    const mainExports = {}
-
-    if (fs.existsSync(`./build/mjs/index.mjs`)) {
-      mainExports["import"] = `./index.mjs`
-    }
-
-    if (mainExports["import"]) {
-      packageJson["main"] = mainExports["import"]
-    }
-
-    if (Object.keys(mainExports).length > 0) {
-      exports["."] = mainExports
-    }
-
-    modules.forEach((m) => {
-      exports[`./${m}`] = {}
-      if (fs.existsSync(`./build/mjs/${m}/index.mjs`)) {
-        exports[`./${m}`]["import"] = `./${m}/index.mjs`
-      }
-      if (Object.keys(exports[`./${m}`]).length === 0) {
-        delete exports[`./${m}`]
-      }
-    })
-
-    exports["./*"] = {
-      import: "./_mjs/*.mjs",
-      require: "./*.js"
-    }
-
-    return JSON.stringify(
-      {
-        ...packageJson,
-        publishConfig: {
-          access: "public"
-        },
-        sideEffects: side.flatMap((m) => {
-          const map = []
-          if (fs.existsSync(`./build/mjs/${m}/index.mjs`)) {
-            map.push(`./${m}/index.mjs`)
-          }
-          return map
-        }),
-        exports
-      },
-      null,
-      2
-    )
-  }),
-  TE.chain((str) => writeFile("./dist/_mjs/package.json", str))
 )
 
 const MAP_GLOB_PATTERN = "dist/**/*.map"
@@ -240,7 +173,6 @@ pipe(
     TE.when(() => fs.existsSync(`./build/dts`))(exec(`cp -r ./build/dts/* ./dist`))
   ),
   TE.tap(() => writePackageJsonContent),
-  TE.tap(() => (fs.existsSync("./dist/_mjs") ? writePackageJsonContentInmjs : TE.unit)),
   TE.tap(() => copyReadme),
   TE.tap(() => modifyGlob(replace)(MAP_GLOB_PATTERN)),
   TE.fold(onLeft, onRight("pack succeeded!")),
