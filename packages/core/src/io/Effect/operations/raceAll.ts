@@ -1,7 +1,7 @@
 import { Chunk } from "../../../collection/immutable/Chunk"
 import { Tuple } from "../../../collection/immutable/Tuple"
 import type { LazyArg } from "../../../data/Function"
-import * as Ref from "../../../io/Ref"
+import { Ref } from "../../../io/Ref"
 import type { Exit } from "../../Exit"
 import * as Fiber from "../../Fiber"
 import { Promise } from "../../Promise"
@@ -78,14 +78,16 @@ function arbiter<R, R1, E, E1, A, A1>(
   fibers: Chunk<Fiber.Fiber<E | E1, A | A1>>,
   winner: Fiber.Fiber<E | E1, A | A1>,
   promise: Promise<E | E1, Tuple<[A | A1, Fiber.Fiber<E | E1, A | A1>]>>,
-  fails: Ref.Ref<number>
+  fails: Ref<number>
 ) {
   return (exit: Exit<E, A | A1>): RIO<R & R1, void> => {
     return exit.foldEffect(
       (e) =>
-        Ref.modify_(fails, (c) =>
-          Tuple(c === 0 ? promise.failCause(e).asUnit() : Effect.unit, c - 1)
-        ).flatten(),
+        fails
+          .modify((c) =>
+            Tuple(c === 0 ? promise.failCause(e).asUnit() : Effect.unit, c - 1)
+          )
+          .flatten(),
       (a) =>
         promise
           .succeed(Tuple(a, winner))
