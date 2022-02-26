@@ -8,7 +8,7 @@ import { FiberId } from "../../src/io/FiberId"
 import * as FiberRef from "../../src/io/FiberRef"
 import { Promise } from "../../src/io/Promise"
 import { Queue } from "../../src/io/Queue"
-import * as Ref from "../../src/io/Ref"
+import { Ref } from "../../src/io/Ref"
 import { TraceElement } from "../../src/io/TraceElement"
 import { withLatch } from "../test-utils/Latch"
 
@@ -23,14 +23,12 @@ describe("Fiber", () => {
         .bind("ref", () => Ref.make<boolean>(false))
         .bind("fiber", ({ ref }) =>
           withLatch((release) =>
-            (release > Effect.unit)
-              .acquireRelease(Effect.never, Ref.set_(ref, true))
-              .fork()
+            (release > Effect.unit).acquireRelease(Effect.never, ref.set(true)).fork()
           )
         )
         .tap(({ fiber }) => Fiber.toManaged(fiber).use(() => Effect.unit))
         .tap(({ fiber }) => Fiber.await(fiber))
-        .flatMap(({ ref }) => Ref.get(ref))
+        .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
