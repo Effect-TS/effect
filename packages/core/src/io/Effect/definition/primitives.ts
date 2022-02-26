@@ -363,7 +363,7 @@ export class ISetRuntimeConfig extends Base<unknown, never, void> {
 }
 
 /**
- * @ets_optimize identity
+ * @tsplus macro identity
  */
 export function instruction<R, E, A>(self: Effect<R, E, A>): Instruction {
   // @ts-expect-error

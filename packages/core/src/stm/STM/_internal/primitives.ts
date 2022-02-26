@@ -131,7 +131,7 @@ export class STMSucceed<R, E, A> extends STM<R, E, A> {
 }
 
 /**
- * @ets_optimize remove
+ * @tsplus macro remove
  */
 
 export function concreteSTM<R, E, A>(

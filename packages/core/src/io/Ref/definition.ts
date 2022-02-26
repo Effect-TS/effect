@@ -148,7 +148,7 @@ export function unifyXRef<X extends XRef<any, any, any, any, any, any>>(
 /**
  * Cast to a sealed union in case of ERef (where it make sense)
  *
- * @ets_optimize identity
+ * @tsplus macro identity
  */
 export function concrete<RA, RB, EA, EB, A, B>(self: XRef<RA, RB, EA, EB, A, B>) {
   return self as

@@ -125,7 +125,7 @@ export function widenE_<E, A, E1>(self: Either<E, A>): Either<E | E1, A> {
 export function widenE<E1>() {
   return (
     /**
-     * @ets_optimize identity
+     * @tsplus macro identity
      */
     <E, A>(self: Either<E, A>): Either<E | E1, A> => self
   )
@@ -146,7 +146,7 @@ export function widenA_<E, A, A1>(self: Either<E, A>): Either<E, A | A1> {
 export function widenA<A1>() {
   return (
     /**
-     * @ets_optimize identity
+     * @tsplus macro identity
      */
     <E, A>(self: Either<E, A>): Either<E, A | A1> => self
   )
@@ -761,7 +761,7 @@ export function tryCatch<E, A>(
 /**
  * Compact types Either<E, A> | Either<E2, B> = Either<E | E2, A | B>
  *
- * @ets_optimize identity
+ * @tsplus macro identity
  */
 export function compact<E extends Either<any, any>>(
   _: E

@@ -2,7 +2,7 @@ import type { Fiber } from "../definition"
 import { Synthetic } from "../definition"
 
 /**
- * @ets_optimize identity
+ * @tsplus macro identity
  */
 export function makeSynthetic<E, A>(
   _: Omit<Synthetic<E, A>, "_tag" | symbol>

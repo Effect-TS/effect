@@ -25,7 +25,7 @@ export const FiberId: FiberIdOps = {}
 export type RealFiberId = None | Runtime | Composite
 
 /**
- * @ets_optimize remove
+ * @tsplus macro remove
  */
 export function realFiberId(fiberId: FiberId): asserts fiberId is RealFiberId {
   //

@@ -140,7 +140,7 @@ export interface XQueueOps {}
 export const XQueue: XQueueOps = {}
 
 /**
- * @ets_optimize remove
+ * @tsplus macro remove
  */
 export function concreteQueue<RA, RB, EA, EB, A, B>(
   _: XQueue<RA, RB, EA, EB, A, B>

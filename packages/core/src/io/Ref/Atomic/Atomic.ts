@@ -25,8 +25,8 @@ export class Atomic<A> extends XRefInternal<unknown, unknown, never, never, A, A
   }
 
   _fold<EC, ED, C, D>(
-    ea: (_: never) => EC,
-    eb: (_: never) => ED,
+    _ea: (_: never) => EC,
+    _eb: (_: never) => ED,
     ca: (_: C) => Either<EC, A>,
     bd: (_: A) => Either<ED, D>
   ): XRef<unknown, unknown, EC, ED, C, D> {

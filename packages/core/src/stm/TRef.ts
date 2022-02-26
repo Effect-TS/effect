@@ -631,7 +631,7 @@ export function updateAndGet<A>(
 }
 
 /**
- * @ets_optimize remove
+ * @tsplus macro remove
  */
 export function concrete<EA, EB, A, B>(
   _: XTRef<EA, EB, A, B>
