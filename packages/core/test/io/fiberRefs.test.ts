@@ -1,6 +1,5 @@
 import type { FiberRefs } from "../../src/io/Effect"
 import { Effect } from "../../src/io/Effect"
-import * as Fiber from "../../src/io/Fiber"
 import { FiberRef } from "../../src/io/FiberRef"
 import { Queue } from "../../src/io/Queue"
 
@@ -18,8 +17,8 @@ describe("FiberRefs", () => {
       .bind("consumer", ({ fiberRef, queue }) =>
         queue.take().flatMap(Effect.setFiberRefs).zipRight(fiberRef.get()).fork()
       )
-      .tap(({ producer }) => Fiber.join(producer))
-      .flatMap(({ consumer }) => Fiber.join(consumer))
+      .tap(({ producer }) => producer.join())
+      .flatMap(({ consumer }) => consumer.join())
 
     const result = await program.unsafeRunPromise()
 

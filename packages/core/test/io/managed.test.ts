@@ -12,7 +12,6 @@ import type { UIO } from "../../src/io/Effect"
 import { Effect } from "../../src/io/Effect"
 import { ExecutionStrategy } from "../../src/io/ExecutionStrategy"
 import { Exit } from "../../src/io/Exit"
-import * as Fiber from "../../src/io/Fiber"
 import type { FiberId } from "../../src/io/FiberId"
 import { InterruptStatus } from "../../src/io/InterruptStatus"
 import { Managed, Reservation } from "../../src/io/Managed"
@@ -1028,7 +1027,7 @@ describe("Managed", () => {
         )
         .tap(({ acquireLatch }) => acquireLatch.await())
         .tap(({ useLatch }) => useLatch.await())
-        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ fiber }) => fiber.interrupt())
         .flatMap(({ finalized }) => finalized.get())
 
       // Since `forkTest` uses Effect.never race the real test against a
@@ -2123,10 +2122,14 @@ describe("Managed", () => {
         .bind("ref", () => Ref.make(0))
         .bindValue("managed", ({ ref }) => makeTestManaged(ref))
         .bindValue("effect", ({ managed }) =>
-          Managed.scope.use((scope) => scope(managed).fork().flatMap(Fiber.join))
+          Managed.scope.use((scope) =>
+            scope(managed)
+              .fork()
+              .flatMap((fiber) => fiber.join())
+          )
         )
         .bind("fiber", ({ effect }) => effect.fork())
-        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ fiber }) => fiber.interrupt())
         .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
@@ -2385,7 +2388,7 @@ describe("Managed", () => {
         .timed()
         .use(({ tuple: [duration, _] }) => Effect.succeed(duration))
         .fork()
-        .flatMap(Fiber.join)
+        .flatMap((fiber) => fiber.join())
 
       const result = await program.unsafeRunPromise()
 
@@ -2531,7 +2534,7 @@ describe("Managed", () => {
             canceler
               .forkDaemon()
               .tap(() => latch.await())
-              .flatMap((fiber) => Fiber.interrupt(fiber).timeout(100))
+              .flatMap((fiber) => fiber.interrupt().timeout(100))
               .tap(() => ref.set(false))
           )
         )
@@ -2746,7 +2749,7 @@ describe("Managed", () => {
         .bindValue("managed2", ({ ref2 }) => makeTestManaged(ref2))
         .bindValue("managed3", ({ managed1, managed2 }) => managed1.zipPar(managed2))
         .bind("fiber", ({ managed3 }) => managed3.useDiscard(Effect.unit).fork())
-        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ fiber }) => fiber.interrupt())
         .bind("result1", ({ ref1 }) => ref1.get())
         .bind("result2", ({ ref2 }) => ref2.get())
 
@@ -2805,7 +2808,7 @@ describe("Managed", () => {
             .fork()
         )
         .tap(({ latch }) => latch.await())
-        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ fiber }) => fiber.interrupt())
         .flatMap(({ effects }) => effects.get())
 
       // Since `switchableTest` uses Effect.never race the real test against a
@@ -2995,7 +2998,7 @@ describe("Managed", () => {
         )
         .tap(({ latch1 }) => latch1.await())
         .bind("res1", ({ resource }) => resource.get())
-        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ fiber }) => fiber.interrupt())
         .tap(({ latch3 }) => latch3.await())
         .bind("res2", ({ resource }) => resource.get())
         .bind("res3", ({ latch2 }) => latch2.isDone())
@@ -3097,7 +3100,7 @@ describe("Managed", () => {
             )
             .fork()
         )
-        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ fiber }) => fiber.interrupt())
         .flatMap(({ ref }) => ref.get())
 
       // Since `memoizeTest` uses Effect.never race the real test against a

@@ -3,7 +3,7 @@ import { Tuple } from "../../../collection/immutable/Tuple"
 import type { LazyArg } from "../../../data/Function"
 import { Ref } from "../../../io/Ref"
 import type { Exit } from "../../Exit"
-import * as Fiber from "../../Fiber"
+import type { Fiber } from "../../Fiber"
 import { Promise } from "../../Promise"
 import type { RIO } from "../definition"
 import { Effect } from "../definition"
@@ -22,9 +22,7 @@ export function raceAll_<R, E, A, R1, E1, A1>(
 ): Effect<R & R1, E | E1, A | A1> {
   return Effect.Do()
     .bind("ios", () => Effect.succeed(Chunk.from(effects())))
-    .bind("done", () =>
-      Promise.make<E | E1, Tuple<[A | A1, Fiber.Fiber<E | E1, A | A1>]>>()
-    )
+    .bind("done", () => Promise.make<E | E1, Tuple<[A | A1, Fiber<E | E1, A | A1>]>>())
     .bind("fails", ({ ios }) => Ref.make(ios.size))
     .flatMap(({ done, fails, ios }) =>
       Effect.uninterruptibleMask(({ restore }) =>
@@ -39,20 +37,21 @@ export function raceAll_<R, E, A, R1, E1, A1>(
           .tap(({ fs }) =>
             fs.reduce(
               Effect.unit,
-              (io, f) => io > Fiber.await(f).flatMap(arbiter(fs, f, done, fails)).fork()
+              (io, fiber) =>
+                io > fiber.await().flatMap(arbiter(fs, fiber, done, fails)).fork()
             )
           )
           .bindValue(
             "inheritRefs",
             () =>
               (
-                res: Tuple<[A | A1, Fiber.Fiber<E | E1, A | A1>]>
+                res: Tuple<[A | A1, Fiber<E | E1, A | A1>]>
               ): Effect<unknown, never, A | A1> =>
-                res.get(1).inheritRefs.as(res.get(0))
+                res.get(1).inheritRefs().as(res.get(0))
           )
           .flatMap(({ fs, inheritRefs }) =>
             restore(done.await().flatMap(inheritRefs)).onInterrupt(() =>
-              fs.reduce(Effect.unit, (io, f) => io < Fiber.interrupt(f))
+              fs.reduce(Effect.unit, (io, fiber) => io < fiber.interrupt())
             )
           )
       )
@@ -75,9 +74,9 @@ export function raceAll<R1, E1, A1>(
 }
 
 function arbiter<R, R1, E, E1, A, A1>(
-  fibers: Chunk<Fiber.Fiber<E | E1, A | A1>>,
-  winner: Fiber.Fiber<E | E1, A | A1>,
-  promise: Promise<E | E1, Tuple<[A | A1, Fiber.Fiber<E | E1, A | A1>]>>,
+  fibers: Chunk<Fiber<E | E1, A | A1>>,
+  winner: Fiber<E | E1, A | A1>,
+  promise: Promise<E | E1, Tuple<[A | A1, Fiber<E | E1, A | A1>]>>,
   fails: Ref<number>
 ) {
   return (exit: Exit<E, A | A1>): RIO<R & R1, void> => {
@@ -93,8 +92,8 @@ function arbiter<R, R1, E, E1, A, A1>(
           .succeed(Tuple(a, winner))
           .flatMap((set) =>
             set
-              ? fibers.reduce(Effect.unit, (io, f) =>
-                  f === winner ? io : io.zipLeft(Fiber.interrupt(f))
+              ? fibers.reduce(Effect.unit, (io, fiber) =>
+                  fiber === winner ? io : io.zipLeft(fiber.interrupt())
                 )
               : Effect.unit
           )

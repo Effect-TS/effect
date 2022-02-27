@@ -1,6 +1,6 @@
 import type { Chunk } from "../../../collection/immutable/Chunk"
 import * as St from "../../../prelude/Structural"
-import type * as Fiber from "../../Fiber"
+import type { Fiber } from "../../Fiber"
 import * as Supervisor from "../../Supervisor"
 import type { UIO } from "../definition"
 import { Effect } from "../definition"

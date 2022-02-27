@@ -1,14 +1,15 @@
 import type { UIO } from "../../Effect"
 import { Effect } from "../../Effect"
-import type { Fiber } from "../definition"
-import { interruptAllAs_ } from "./interruptAllAs"
+import { Fiber } from "../definition"
 
 /**
  * Interrupts all fibers, awaiting their interruption.
+ *
+ * @tsplus static ets/FiberOps interruptAll
  */
 export function interruptAll(
   fibers: Iterable<Fiber<any, any>>,
   __tsplusTrace?: string
 ): UIO<void> {
-  return Effect.fiberId.flatMap((fiberId) => interruptAllAs_(fibers, fiberId))
+  return Effect.fiberId.flatMap((fiberId) => Fiber.interruptAllAs(fibers, fiberId))
 }

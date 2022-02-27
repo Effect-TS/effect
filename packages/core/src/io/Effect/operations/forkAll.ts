@@ -1,5 +1,5 @@
 import type { Chunk } from "../../../collection/immutable/Chunk"
-import * as Fiber from "../../Fiber"
+import { Fiber } from "../../Fiber"
 import type { RIO } from "../definition"
 import { Effect } from "../definition"
 
@@ -12,6 +12,8 @@ import { Effect } from "../definition"
 export function forkAll<R, E, A>(
   effects: Iterable<Effect<R, E, A>>,
   __tsplusTrace?: string
-): RIO<R, Fiber.Fiber<E, Chunk<A>>> {
-  return Effect.forEach(effects, (_) => _.fork()).map(Fiber.collectAll)
+): RIO<R, Fiber<E, Chunk<A>>> {
+  return Effect.forEach(effects, (effect) => effect.fork()).map((chunk) =>
+    Fiber.collectAll(chunk)
+  )
 }

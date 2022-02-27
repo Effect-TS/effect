@@ -1,4 +1,4 @@
-import type * as Fiber from "../../Fiber"
+import type { Fiber } from "../../Fiber"
 import type { RIO, UIO } from "../definition"
 import { Effect } from "../definition"
 

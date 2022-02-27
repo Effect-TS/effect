@@ -5,10 +5,12 @@ import type { Exit } from "../../Exit"
 import { FiberId } from "../../FiberId"
 import type { Runtime } from "../../FiberRef"
 import type { Fiber } from "../definition"
-import { makeSynthetic } from "./makeSynthetic"
+import { makeSynthetic } from "../definition"
 
 /**
  * A fiber that is done with the specified `Exit` value.
+ *
+ * @tsplus static ets/FiberOps done
  */
 export function done<E, A>(exit: Exit<E, A>): Fiber<E, A> {
   return makeSynthetic({

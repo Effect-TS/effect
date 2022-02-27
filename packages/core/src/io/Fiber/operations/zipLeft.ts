@@ -1,14 +1,18 @@
 import type { Fiber } from "../definition"
-import { zipWith_ } from "./zipWith"
 
 /**
  * Same as `zip` but discards the output of the right hand side.
+ *
+ * @tsplus operator ets/Fiber <
+ * @tsplus operator ets/RuntimeFiber <
+ * @tsplus fluent ets/Fiber zipLeft
+ * @tsplus fluent ets/RuntimeFiber zipLeft
  */
 export function zipLeft_<E, E1, A, A1>(
   self: Fiber<E, A>,
   that: Fiber<E1, A1>
 ): Fiber<E | E1, A> {
-  return zipWith_(self, that, (a, _) => a)
+  return self.zipWith(that, (a, _) => a)
 }
 
 /**
@@ -17,5 +21,5 @@ export function zipLeft_<E, E1, A, A1>(
  * @ets_data_first zipLeft_
  */
 export function zipLeft<E1, A1>(that: Fiber<E1, A1>) {
-  return <E, A>(self: Fiber<E, A>): Fiber<E | E1, A> => zipLeft_(self, that)
+  return <E, A>(self: Fiber<E, A>): Fiber<E | E1, A> => self.zipLeft(that)
 }

@@ -2,7 +2,7 @@ import * as SS from "../../../collection/immutable/SortedSet"
 import type { AtomicReference } from "../../../support/AtomicReference"
 import type { UIO } from "../../Effect/definition/base"
 import { succeed } from "../../Effect/operations/succeed"
-import type * as Fiber from "../../Fiber"
+import type { Fiber } from "../../Fiber"
 import { Supervisor } from "../definition"
 
 /**

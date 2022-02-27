@@ -8,7 +8,6 @@ import { Clock } from "../../src/io/Clock"
 import type { IO, RIO, UIO } from "../../src/io/Effect"
 import { Effect } from "../../src/io/Effect"
 import { Exit } from "../../src/io/Exit"
-import * as Fiber from "../../src/io/Fiber"
 import { Promise } from "../../src/io/Promise"
 import type { XQueue } from "../../src/io/Queue"
 import { Queue } from "../../src/io/Queue"
@@ -52,7 +51,7 @@ describe("Queue", () => {
           .fork()
       )
       .tap(({ queue }) => queue.offer("don't ") > queue.offer("give up :D"))
-      .flatMap(({ fiber }) => Fiber.join(fiber))
+      .flatMap(({ fiber }) => fiber.join())
 
     const result = await program.unsafeRunPromise()
 
@@ -69,7 +68,7 @@ describe("Queue", () => {
           .map((n) => queue.offer(n))
           .reduce(Effect.succeed(false), (acc, curr) => acc > curr)
       )
-      .bind("v", ({ fiber }) => Fiber.join(fiber))
+      .bind("v", ({ fiber }) => fiber.join())
 
     const { v, values } = await program.unsafeRunPromise()
 
@@ -92,7 +91,7 @@ describe("Queue", () => {
           .repeatN(9)
       )
       .bind("list", ({ output }) => output.get())
-      .tap(({ fiber }) => Fiber.join(fiber))
+      .tap(({ fiber }) => fiber.join())
 
     const { list, values } = await program.unsafeRunPromise()
 
@@ -109,7 +108,7 @@ describe("Queue", () => {
       )
       .tap(({ queue }) => waitForSize(queue, 11))
       .bind("isSuspended", ({ refSuspended }) => refSuspended.get())
-      .tap(({ fiber }) => Fiber.interrupt(fiber))
+      .tap(({ fiber }) => fiber.interrupt())
 
     const { isSuspended } = await program.unsafeRunPromise()
 
@@ -132,7 +131,7 @@ describe("Queue", () => {
           .repeatN(9)
       )
       .bind("list", ({ output }) => output.get())
-      .tap(({ fiber }) => Fiber.join(fiber))
+      .tap(({ fiber }) => fiber.join())
 
     const { list, values } = await program.unsafeRunPromise()
 
@@ -144,7 +143,7 @@ describe("Queue", () => {
       .bind("queue", () => Queue.bounded<number>(100))
       .bind("fiber", ({ queue }) => queue.take().fork())
       .tap(({ queue }) => waitForSize(queue, -1))
-      .tap(({ fiber }) => Fiber.interrupt(fiber))
+      .tap(({ fiber }) => fiber.interrupt())
       .flatMap(({ queue }) => queue.size)
 
     const result = await program.unsafeRunPromise()
@@ -159,7 +158,7 @@ describe("Queue", () => {
       .tap(({ queue }) => queue.offer(1))
       .bind("fiber", ({ queue }) => queue.offer(1).fork())
       .tap(({ queue }) => waitForSize(queue, 3))
-      .tap(({ fiber }) => Fiber.interrupt(fiber))
+      .tap(({ fiber }) => fiber.interrupt())
       .flatMap(({ queue }) => queue.size)
 
     const result = await program.unsafeRunPromise()
@@ -377,7 +376,7 @@ describe("Queue", () => {
         .bind("result", ({ queue }) =>
           queue.takeUpTo(5).map((chunk) => chunk.toArray())
         )
-        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ fiber }) => fiber.interrupt())
 
       const { result } = await program.unsafeRunPromise()
 
@@ -445,7 +444,7 @@ describe("Queue", () => {
         .bind("bs", ({ queue }) =>
           queue.takeBetween(as.length, as.length).map((chunk) => chunk.toArray())
         )
-        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ fiber }) => fiber.interrupt())
 
       const { bs } = await program.unsafeRunPromise()
 
@@ -515,7 +514,7 @@ describe("Queue", () => {
         .bind("fiber", ({ orders, queue }) => queue.offerAll(orders).fork())
         .bind("size", ({ queue }) => waitForSize(queue, 3))
         .bind("result", ({ queue }) => queue.takeAll().map((chunk) => chunk.toArray()))
-        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ fiber }) => fiber.interrupt())
 
       const { result, size } = await program.unsafeRunPromise()
 
@@ -531,7 +530,7 @@ describe("Queue", () => {
         .tap(({ orders1, queue }) => queue.offerAll(orders1))
         .bind("fiber", ({ orders2, queue }) => queue.offerAll(orders2).fork())
         .tap(({ queue }) => waitForSize(queue, 4))
-        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ fiber }) => fiber.interrupt())
         .bind("v1", ({ queue }) => queue.takeAll().map((chunk) => chunk.toArray()))
         .bind("v2", ({ queue }) => queue.takeAll().map((chunk) => chunk.toArray()))
 
@@ -548,7 +547,7 @@ describe("Queue", () => {
         .bind("fiber", ({ orders, queue }) => queue.offerAll(orders).fork())
         .tap(({ queue }) => waitForSize(queue, 128))
         .bind("result", ({ queue }) => queue.takeAll().map((chunk) => chunk.toArray()))
-        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ fiber }) => fiber.interrupt())
 
       const { result } = await program.unsafeRunPromise()
 
@@ -564,9 +563,7 @@ describe("Queue", () => {
         )
         .tap(({ queue }) => waitForSize(queue, -100))
         .tap(({ orders, queue }) => queue.offerAll(orders))
-        .bind("result", ({ takers }) =>
-          Fiber.join(takers).map((chunk) => chunk.toArray())
-        )
+        .bind("result", ({ takers }) => takers.join().map((chunk) => chunk.toArray()))
         .bind("size", ({ queue }) => queue.size)
 
       const { orders, result, size } = await program.unsafeRunPromise()
@@ -582,9 +579,7 @@ describe("Queue", () => {
         .bind("takers", ({ queue }) => Effect.forkAll(List.repeat(queue.take(), 64)))
         .tap(({ queue }) => waitForSize(queue, -64))
         .tap(({ orders, queue }) => queue.offerAll(orders))
-        .bind("result", ({ takers }) =>
-          Fiber.join(takers).map((chunk) => chunk.toArray())
-        )
+        .bind("result", ({ takers }) => takers.join().map((chunk) => chunk.toArray()))
         .bind("size", ({ queue }) => queue.size)
         .bindValue("values", ({ orders }) => orders.take(64).toArray())
 
@@ -603,11 +598,9 @@ describe("Queue", () => {
         .bind("fiber", ({ queue }) => Effect.forkAll(List.repeat(queue.take(), 100)))
         .tap(({ queue }) => waitForSize(queue, -200))
         .tap(({ queue, values }) => queue.offerAll(values))
-        .bind("result", ({ takers }) =>
-          Fiber.join(takers).map((chunk) => chunk.toArray())
-        )
+        .bind("result", ({ takers }) => takers.join().map((chunk) => chunk.toArray()))
         .bind("size", ({ queue }) => queue.size)
-        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ fiber }) => fiber.interrupt())
 
       const { result, size, values } = await program.unsafeRunPromise()
 
@@ -700,7 +693,7 @@ describe("Queue", () => {
         .bind("fiber", ({ queue }) => queue.take().fork())
         .tap(({ queue }) => waitForSize(queue, -1))
         .tap(({ queue }) => queue.shutdown())
-        .bind("result", ({ fiber }) => Fiber.join(fiber).sandbox().either())
+        .bind("result", ({ fiber }) => fiber.join().sandbox().either())
 
       const { result, selfId } = await program.unsafeRunPromise()
 
@@ -718,7 +711,7 @@ describe("Queue", () => {
         .bind("fiber", ({ queue }) => queue.offer(1).fork())
         .tap(({ queue }) => waitForSize(queue, 3))
         .tap(({ queue }) => queue.shutdown())
-        .bind("result", ({ fiber }) => Fiber.join(fiber).sandbox().either())
+        .bind("result", ({ fiber }) => fiber.join().sandbox().either())
 
       const { result, selfId } = await program.unsafeRunPromise()
 
@@ -802,7 +795,7 @@ describe("Queue", () => {
         .bind("queue", () => Queue.bounded<number>(2))
         .bind("fiber", ({ queue }) => queue.offer(1).forever().fork())
         .tap(({ queue }) => queue.shutdown())
-        .tap(({ fiber }) => Fiber.await(fiber))
+        .tap(({ fiber }) => fiber.await())
 
       const result = await program.unsafeRunPromise()
 
@@ -816,7 +809,7 @@ describe("Queue", () => {
         .tap(({ queue }) => queue.offer(1))
         .bind("fiber", ({ queue }) => queue.take().forever().fork())
         .tap(({ queue }) => queue.shutdown())
-        .tap(({ fiber }) => Fiber.await(fiber))
+        .tap(({ fiber }) => fiber.await())
 
       const result = await program.unsafeRunPromise()
 
@@ -1101,7 +1094,7 @@ describe("Queue", () => {
         .tap(({ queue }) => waitForSize(queue, 3))
         .bind("v1", ({ queue }) => queue.take())
         .bind("v2", ({ queue }) => queue.take())
-        .tap(({ fiber }) => Fiber.join(fiber))
+        .tap(({ fiber }) => fiber.join())
 
       const { v1, v2 } = await program.unsafeRunPromise()
 
@@ -1116,7 +1109,7 @@ describe("Queue", () => {
         .bind("fiber", ({ queue }) => queue.offer(3).fork())
         .tap(({ queue }) => waitForSize(queue, 3))
         .bind("v1", ({ queue }) => queue.takeAll().map((chunk) => chunk.toArray()))
-        .tap(({ fiber }) => Fiber.join(fiber))
+        .tap(({ fiber }) => fiber.join())
 
       const { v1 } = await program.unsafeRunPromise()
 
@@ -1130,7 +1123,7 @@ describe("Queue", () => {
         .bind("fiber", ({ queue }) => queue.offer(3).fork())
         .tap(({ queue }) => waitForSize(queue, 3))
         .bind("v1", ({ queue }) => queue.takeUpTo(2).map((chunk) => chunk.toArray()))
-        .tap(({ fiber }) => Fiber.join(fiber))
+        .tap(({ fiber }) => fiber.join())
 
       const { v1 } = await program.unsafeRunPromise()
 
@@ -1146,7 +1139,7 @@ describe("Queue", () => {
         .bind("v1", ({ queue }) => queue.takeAll().map((chunk) => chunk.toArray()))
         .bind("v2", ({ queue }) => queue.takeAll().map((chunk) => chunk.toArray()))
         .bind("v3", ({ queue }) => queue.takeAll().map((chunk) => chunk.toArray()))
-        .tap(({ fiber }) => Fiber.join(fiber))
+        .tap(({ fiber }) => fiber.join())
 
       const { v1, v2, v3 } = await program.unsafeRunPromise()
 
@@ -1279,7 +1272,7 @@ describe("Queue", () => {
         .bind("fiber", ({ queue }) => queue.take().fork())
         .tap(({ queue }) => waitForSize(queue, -1))
         .bind("oa", ({ iter, queue }) => queue.offerAll(iter))
-        .bind("j", ({ fiber }) => Fiber.join(fiber))
+        .bind("j", ({ fiber }) => fiber.join())
 
       const { j, oa } = await program.unsafeRunPromise()
 

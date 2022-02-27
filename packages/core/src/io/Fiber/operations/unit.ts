@@ -1,7 +1,8 @@
-import type { Fiber } from "../definition"
-import { succeed } from "./succeed"
+import { Fiber } from "../definition"
 
 /**
  * A fiber that has already succeeded with unit.
+ *
+ * @tsplus static ets/FiberOps unit
  */
-export const unit: Fiber<never, void> = succeed(undefined)
+export const unit: Fiber<never, void> = Fiber.succeed(undefined)

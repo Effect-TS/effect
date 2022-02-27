@@ -11,6 +11,7 @@ import { AtomicBoolean } from "../../../support/AtomicBoolean"
 import { AtomicReference } from "../../../support/AtomicReference"
 import { defaultScheduler } from "../../../support/Scheduler"
 import * as StackTraceBuilder from "../../../support/StackTraceBuilder"
+import { _A, _E } from "../../../support/Symbols"
 import { Cause, InterruptedException } from "../../Cause"
 import { Effect } from "../../Effect"
 import type {
@@ -35,8 +36,8 @@ import { RuntimeConfigFlag } from "../../RuntimeConfig/Flag"
 import * as Scope from "../../Scope"
 import { Trace } from "../../Trace"
 import { TraceElement } from "../../TraceElement"
-import type * as Fiber from "../definition"
-import { Descriptor } from "../descriptor"
+import type { Fiber } from "../definition"
+import { FiberSym } from "../definition"
 import { FiberStatus } from "../status"
 import { CancelerState } from "./cancelerState"
 import type { Callback } from "./fiberState"
@@ -104,7 +105,11 @@ export const catastrophicFailure = new AtomicBoolean(false)
 export const currentFiber = new AtomicReference<FiberContext<any, any> | null>(null)
 
 export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
-  readonly _tag = "Runtime"
+  readonly _tag = "RuntimeFiber";
+
+  readonly [FiberSym]: FiberSym = FiberSym;
+  readonly [_E]: () => E;
+  readonly [_A]: () => A
 
   readonly state = new AtomicReference(FiberState.initial<E, A>())
 
@@ -112,59 +117,137 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   stack: Stack<Frame> | undefined = undefined
 
-  interruptStatus?: Stack<boolean> | undefined = undefined
-
-  scope: Scope.Scope = Scope.unsafeMake(this)
-
-  location: TraceElement = this.id.location
-
   nextEffect: Effect<any, any, any> | undefined = undefined
-
-  _children: Set<FiberContext<any, any>>
 
   runtimeConfig: RuntimeConfig
 
+  interruptStatus?: Stack<boolean> | undefined
+
   constructor(
-    readonly id: RuntimeFiberId,
+    readonly _id: RuntimeFiberId,
     readonly fiberRefLocals: FiberRefLocals,
-    _children: Set<FiberContext<any, any>>,
+    readonly childFibers: Set<FiberContext<any, any>>,
     runtimeConfig: RuntimeConfig,
     interruptStatus?: Stack<boolean>
   ) {
-    this._children = _children
     this.runtimeConfig = runtimeConfig
     this.interruptStatus = interruptStatus
     if (this.trackMetrics) {
       fibersStarted.unsafeIncrement()
-      fiberForkLocations.unsafeObserve(this.location.stringify())
+      fiberForkLocations.unsafeObserve(this._location.stringify())
     }
   }
 
-  // -----------------------------------------------------------------------------
-  // Fiber
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Base Fiber
+  // ---------------------------------------------------------------------------
 
   get fiberId(): FiberId {
-    return this.id
+    return this._id
   }
 
-  get status(): Effect<unknown, never, FiberStatus> {
-    return Effect.succeed(this.state.get.status)
+  get _await(): Effect<unknown, never, Exit<E, A>> {
+    return Effect.asyncInterruptBlockingOn<unknown, never, Exit<E, A>>((k) => {
+      const cb: Callback<never, Exit<E, A>> = (x) => k(Effect.done(x))
+      const result = this.unsafeAddObserverMaybe(cb)
+
+      return result == null
+        ? Either.left(Effect.succeed(this.unsafeRemoveObserver(cb)))
+        : Either.right(Effect.succeedNow(result))
+    }, this.fiberId)
   }
 
-  unsafeGetDescriptor(): Descriptor {
-    return new Descriptor(
-      this.fiberId,
-      this.state.get.status,
-      this.state.get.interruptors,
-      InterruptStatus.fromBoolean(this.unsafeIsInterruptible),
-      this.scope
+  get _children(): Effect<unknown, never, Chunk<Fiber.Runtime<any, any>>> {
+    return this._evalOnEffect(
+      Effect.succeed(() => {
+        const chunkBuilder = Chunk.builder<Fiber.Runtime<any, any>>()
+        for (const child of this.childFibers) {
+          chunkBuilder.append(child)
+        }
+        return chunkBuilder.build()
+      }),
+      Effect.succeed(Chunk.empty())
     )
   }
 
-  // -----------------------------------------------------------------------------
+  get _inheritRefs(): Effect<unknown, never, void> {
+    return Effect.suspendSucceed(
+      this.fiberRefLocals.size === 0
+        ? Effect.unit
+        : Effect.forEachDiscard(this.fiberRefLocals, ([ref, value]) =>
+            ref.update((old) => (ref as RuntimeFiberRef<A>).join(old, value))
+          )
+    )
+  }
+
+  get _poll(): Effect<unknown, never, Option<Exit<E, A>>> {
+    return Effect.succeed(this.unsafePoll())
+  }
+
+  _getRef<K>(ref: FiberRef.Runtime<K>): Effect<unknown, never, K> {
+    return Effect.succeed(this.unsafeGetRef(ref))
+  }
+
+  _interruptAs(fiberId: FiberId): Effect<unknown, never, Exit<E, A>> {
+    return this.unsafeInterruptAs(fiberId)
+  }
+
+  // ---------------------------------------------------------------------------
+  // Runtime Fiber
+  // ---------------------------------------------------------------------------
+
+  _location: TraceElement = this._id.location
+
+  _scope: Scope.Scope = Scope.unsafeMake(this)
+
+  get _status(): Effect<unknown, never, FiberStatus> {
+    return Effect.succeed(this.state.get.status)
+  }
+
+  get _trace(): Effect<unknown, never, Trace> {
+    return Effect.succeed(this.unsafeCaptureTrace([]))
+  }
+
+  _evalOn(
+    effect: Effect<unknown, never, any>,
+    orElse: Effect<unknown, never, any>
+  ): Effect<unknown, never, any> {
+    return Effect.suspendSucceed(
+      this.unsafeEvalOn(effect) ? Effect.unit : orElse.asUnit()
+    )
+  }
+
+  _evalOnEffect<R, E2, A2>(
+    effect: Effect<R, E2, A2>,
+    orElse: Effect<R, E2, A2>
+  ): Effect<R, E2, A2> {
+    return Effect.environment<R>().flatMap((environment) =>
+      Promise.make<E2, A2>().flatMap((promise) =>
+        this._evalOn(
+          effect.provideEnvironment(environment).intoPromise(promise),
+          orElse.provideEnvironment(environment).intoPromise(promise)
+        ).zipRight(promise.await())
+      )
+    )
+  }
+
+  // ---------------------------------------------------------------------------
+  // Descriptor
+  // ---------------------------------------------------------------------------
+
+  unsafeGetDescriptor(): Fiber.Descriptor {
+    return {
+      id: this.fiberId,
+      status: this.state.get.status,
+      interrupters: this.state.get.interruptors,
+      interruptStatus: InterruptStatus.fromBoolean(this.unsafeIsInterruptible),
+      scope: this._scope
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Metrics
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
   get trackMetrics(): boolean {
     return this.runtimeConfig.value.flags.isEnabled(
@@ -178,9 +261,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   }
 
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Logging
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
   unsafeLog(message: () => string, trace?: string): void {
     const logLevel = this.unsafeGetRef(FiberRef.currentLogLevel.value)
@@ -235,9 +318,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     )
   }
 
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Frame
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
   get isStackEmpty(): boolean {
     return !this.stack
@@ -330,9 +413,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return discardedFolds
   }
 
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Interruption
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
   interruptExit: InterruptExit = new InterruptExit((v: any) => {
     if (this.unsafeIsInterruptible) {
@@ -347,10 +430,6 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       )
     }
   })
-
-  interruptAs(fiberId: FiberId): Effect<unknown, never, Exit<E, A>> {
-    return this.unsafeInterruptAs(fiberId)
-  }
 
   pushInterruptStatus(flag: boolean): void {
     this.interruptStatus = new Stack(flag, this.interruptStatus)
@@ -408,7 +487,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         this.state.set(newState)
       }
 
-      return this.await
+      return this._await
     })
   }
 
@@ -460,51 +539,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     )
   }
 
-  get await(): Effect<unknown, never, Exit<E, A>> {
-    return Effect.asyncInterruptBlockingOn<unknown, never, Exit<E, A>>((k) => {
-      const cb: Callback<never, Exit<E, A>> = (x) => k(Effect.done(x))
-      const result = this.unsafeAddObserverMaybe(cb)
-
-      return result == null
-        ? Either.left(Effect.succeed(this.unsafeRemoveObserver(cb)))
-        : Either.right(Effect.succeedNow(result))
-    }, this.id)
-  }
-
-  get children(): Effect<unknown, never, Chunk<Fiber.Runtime<any, any>>> {
-    return this.evalOnEffect(
-      Effect.succeed(() => {
-        const chunkBuilder = Chunk.builder<Fiber.Runtime<any, any>>()
-        for (const child of this._children) {
-          chunkBuilder.append(child)
-        }
-        return chunkBuilder.build()
-      }),
-      Effect.succeed(Chunk.empty())
-    )
-  }
-
-  get poll(): Effect<unknown, never, Option<Exit<E, A>>> {
-    return Effect.succeed(this.unsafePoll())
-  }
-
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // FiberRefs
-  // -----------------------------------------------------------------------------
-
-  get inheritRefs(): Effect<unknown, never, void> {
-    return Effect.suspendSucceed(
-      this.fiberRefLocals.size === 0
-        ? Effect.unit
-        : Effect.forEachDiscard(this.fiberRefLocals, ([ref, value]) =>
-            ref.update((old) => (ref as RuntimeFiberRef<A>).join(old, value))
-          )
-    )
-  }
-
-  getRef<K>(ref: FiberRef.Runtime<K>): Effect<unknown, never, K> {
-    return Effect.succeed(this.unsafeGetRef(ref))
-  }
+  // ---------------------------------------------------------------------------
 
   unsafeGetRef<A>(fiberRef: FiberRef.Runtime<A>): A {
     return this.fiberRefLocals.get(fiberRef) || (fiberRef as RuntimeFiberRef<A>).initial
@@ -518,9 +555,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     this.fiberRefLocals.delete(fiberRef)
   }
 
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Observers
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
   unsafeAddObserverMaybe(k: Callback<never, Exit<E, A>>): Exit<E, A> | undefined {
     const oldState = this.state.get
@@ -645,7 +682,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   unsafeAddChild(child: FiberContext<any, any>): boolean {
-    return this.unsafeEvalOn(Effect.succeed(this._children.add(child)))
+    return this.unsafeEvalOn(Effect.succeed(this.childFibers.add(child)))
   }
 
   unsafePoll(): Option<Exit<E, A>> {
@@ -653,13 +690,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return state._tag === "Done" ? Option.some(state.value) : Option.none
   }
 
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Tracing
-  // -----------------------------------------------------------------------------
-
-  get trace(): Effect<unknown, never, Trace> {
-    return Effect.succeed(this.unsafeCaptureTrace([]))
-  }
+  // ---------------------------------------------------------------------------
 
   unsafeCaptureTrace(prefix: Array<TraceElement>): Trace {
     const builder = StackTraceBuilder.unsafeMake()
@@ -682,9 +715,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return new Trace(this.fiberId, builder.build())
   }
 
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Async
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
   unsafeEnterAsync(epoch: number, blockingOn: FiberId, trace: TraceElement): void {
     const oldState = this.state.get
@@ -778,9 +811,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   }
 
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Finalizer
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
   unsafeAddFinalizer(finalizer: Effect<unknown, never, any>): void {
     this.pushContinuation(
@@ -791,32 +824,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     )
   }
 
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Execution
-  // -----------------------------------------------------------------------------
-
-  evalOn(
-    effect: Effect<unknown, never, any>,
-    orElse: Effect<unknown, never, any>
-  ): Effect<unknown, never, any> {
-    return Effect.suspendSucceed(
-      this.unsafeEvalOn(effect) ? Effect.unit : orElse.asUnit()
-    )
-  }
-
-  evalOnEffect<R, E2, A2>(
-    effect: Effect<R, E2, A2>,
-    orElse: Effect<R, E2, A2>
-  ): Effect<R, E2, A2> {
-    return Effect.environment<R>().flatMap((environment) =>
-      Promise.make<E2, A2>().flatMap((promise) =>
-        this.evalOn(
-          effect.provideEnvironment(environment).intoPromise(promise),
-          orElse.provideEnvironment(environment).intoPromise(promise)
-        ).zipRight(promise.await())
-      )
-    )
-  }
+  // ---------------------------------------------------------------------------
 
   unsafeEvalOn(effect: Effect<unknown, never, any>): boolean {
     const oldState = this.state.get
@@ -866,7 +876,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           this.unsafeSetInterrupting(true)
 
           return instruction(oldState.mailbox.zipRight(Effect.done(exit)))
-        } else if (this._children.size === 0) {
+        } else if (this.childFibers.size === 0) {
           // The mailbox is empty and the _children are shut down
           const interruptorsCause = oldState.interruptorsCause()
 
@@ -883,7 +893,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           this.unsafeReportUnhandled(newExit)
           this.unsafeNotifyObservers(newExit, oldState.observers)
 
-          const startTimeSeconds = this.id.startTimeSeconds
+          const startTimeSeconds = this._id.startTimeSeconds
           const endTimeSeconds = new Date().getTime() / 1000
           const lifetime = endTimeSeconds - startTimeSeconds
 
@@ -934,11 +944,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           this.unsafeSetInterrupting(true)
 
           let interruptChildren = Effect.unit
-          for (const child of this._children) {
-            interruptChildren = interruptChildren.zipRight(child.interruptAs(this.id))
+          for (const child of this.childFibers) {
+            interruptChildren = interruptChildren.zipRight(child._interruptAs(this._id))
           }
 
-          this._children.clear()
+          this.childFibers.clear()
 
           return instruction(interruptChildren.zipRight(Effect.done(exit)))
         }
@@ -999,7 +1009,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       forkScope._tag === "Some"
         ? forkScope
         : this.unsafeGetRef(FiberRef.forkScopeOverride.value)
-    ).getOrElse(this.scope)
+    ).getOrElse(this._scope)
 
     const childId = FiberId.unsafeMake(trace)
     const grandChildren = new Set<FiberContext<any, any>>()
@@ -1037,9 +1047,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   complete<R, R1, R2, E2, A2, R3, E3, A3>(
-    winner: Fiber.Fiber<any, any>,
-    loser: Fiber.Fiber<any, any>,
-    cont: (exit: Exit<any, any>, fiber: Fiber.Fiber<any, any>) => Effect<any, any, any>,
+    winner: Fiber<any, any>,
+    loser: Fiber<any, any>,
+    cont: (exit: Exit<any, any>, fiber: Fiber<any, any>) => Effect<any, any, any>,
     winnerExit: Exit<any, any>,
     ab: AtomicReference<boolean>,
     cb: (_: Effect<R & R1 & R2 & R3, E2 | E3, A2 | A3>) => void
@@ -1047,7 +1057,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     if (ab.compareAndSet(true, false)) {
       winnerExit.fold(
         () => cb(cont(winnerExit, loser)),
-        () => cb(winner.inheritRefs.zipRight(cont(winnerExit, loser)))
+        () => cb(winner.inheritRefs().zipRight(cont(winnerExit, loser)))
       )
     }
   }
@@ -1212,7 +1222,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                   case "SucceedWith": {
                     current = this.unsafeNextEffect(
-                      current.effect(this.runtimeConfig, this.id)
+                      current.effect(this.runtimeConfig, this._id)
                     )
                     break
                   }
@@ -1275,7 +1285,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "SuspendWith": {
-                    current = instruction(current.make(this.runtimeConfig, this.id))
+                    current = instruction(current.make(this.runtimeConfig, this._id))
                     break
                   }
 
@@ -1469,7 +1479,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     current = instruction(
                       effect.f(
                         this.unsafeGetRef(FiberRef.forkScopeOverride.value).getOrElse(
-                          this.scope
+                          this._scope
                         )
                       )
                     )
