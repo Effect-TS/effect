@@ -2,7 +2,7 @@ import { constVoid } from "../../data/Function"
 import type { Option } from "../../data/Option"
 import type { Effect, UIO } from "../Effect"
 import type { Exit } from "../Exit"
-import type * as Fiber from "../Fiber"
+import type { Fiber } from "../Fiber"
 
 // -----------------------------------------------------------------------------
 // Model

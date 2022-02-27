@@ -1,5 +1,5 @@
 import { managedFork } from "../../Effect/operations/excl-forEach"
-import type * as Fiber from "../../Fiber"
+import type { Fiber } from "../../Fiber"
 import type { Managed } from "../definition"
 
 /**

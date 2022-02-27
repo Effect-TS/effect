@@ -5,7 +5,7 @@ import type { HasClock } from "../../Clock"
 import { Effect } from "../../Effect"
 import { ExecutionStrategy } from "../../ExecutionStrategy"
 import { Exit } from "../../Exit"
-import * as Fiber from "../../Fiber"
+import type { Fiber } from "../../Fiber"
 import { FiberRef } from "../../FiberRef"
 import { Managed } from "../definition"
 import type { Finalizer } from "../ReleaseMap"
@@ -36,15 +36,15 @@ export function timeout_<R, E, A>(
           )
         )
         .bind("raceResult", ({ innerReleaseMap }) =>
-          restore<R & HasClock, E, Either<Fiber.Fiber<E, Tuple<[Finalizer, A]>>, A>>(
+          restore<R & HasClock, E, Either<Fiber<E, Tuple<[Finalizer, A]>>, A>>(
             self.effect
               .apply(FiberRef.currentReleaseMap.value.locally(innerReleaseMap))
               .raceWith(
                 Effect.sleep(duration).map(() => Option.none),
                 (result, sleeper) =>
-                  Fiber.interrupt(sleeper).zipRight(
-                    Effect.done(result.map((_) => Either.right(_.get(1))))
-                  ),
+                  sleeper
+                    .interrupt()
+                    .zipRight(Effect.done(result.map((_) => Either.right(_.get(1))))),
                 (_, resultFiber) => Effect.succeed(Either.left(resultFiber))
               )
           )
@@ -54,7 +54,8 @@ export function timeout_<R, E, A>(
             (fiber) =>
               Effect.fiberId
                 .flatMap((id) =>
-                  Fiber.interrupt(fiber)
+                  fiber
+                    .interrupt()
                     .ensuring(
                       innerReleaseMap.releaseAll(
                         Exit.interrupt(id),

@@ -54,7 +54,7 @@ export class Runtime<R> {
     })
 
     return (id) => (k) =>
-      this.unsafeRunAsyncWith(context.interruptAs(id), (exit) => k(exit.flatten()))
+      this.unsafeRunAsyncWith(context._interruptAs(id), (exit) => k(exit.flatten()))
   }
 
   /**

@@ -4,7 +4,6 @@ import { constFalse, constTrue, identity } from "../../src/data/Function"
 import type { Has } from "../../src/data/Has"
 import { tag } from "../../src/data/Has"
 import { Effect } from "../../src/io/Effect"
-import * as Fiber from "../../src/io/Fiber"
 import { Layer } from "../../src/io/Layer"
 import { Managed } from "../../src/io/Managed"
 import { Promise } from "../../src/io/Promise"
@@ -288,7 +287,7 @@ describe("Layer", () => {
       .bindValue("layer2", ({ ref }) => makeLayer2(ref))
       .bindValue("env", ({ layer1, layer2 }) => (layer1 + layer2).build())
       .bind("fiber", ({ env }) => env.useDiscard(Effect.unit).fork())
-      .tap(({ fiber }) => Fiber.interrupt(fiber))
+      .tap(({ fiber }) => fiber.interrupt())
       .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
@@ -308,7 +307,7 @@ describe("Layer", () => {
       .bindValue("layer2", ({ ref }) => makeLayer2(ref))
       .bindValue("env", ({ layer1, layer2 }) => (layer1 >> layer2).build())
       .bind("fiber", ({ env }) => env.useDiscard(Effect.unit).fork())
-      .tap(({ fiber }) => Fiber.interrupt(fiber))
+      .tap(({ fiber }) => fiber.interrupt())
       .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
@@ -331,7 +330,7 @@ describe("Layer", () => {
         (layer1 >> (layer2 + (layer1 >> layer3))).build()
       )
       .bind("fiber", ({ env }) => env.useDiscard(Effect.unit).fork())
-      .tap(({ fiber }) => Fiber.interrupt(fiber))
+      .tap(({ fiber }) => fiber.interrupt())
       .flatMap(({ ref }) => ref.get().map((chunk) => chunk.toArray()))
 
     const result = await program.unsafeRunPromise()
@@ -359,7 +358,7 @@ describe("Layer", () => {
       .bindValue("env", ({ layer1, layer2 }) => (layer1 + layer2).build())
       .bind("fiber", ({ env }) => env.useDiscard(Effect.unit).forkDaemon())
       .tap(({ promise }) => promise.await())
-      .tap(({ fiber }) => Fiber.interrupt(fiber))
+      .tap(({ fiber }) => fiber.interrupt())
       .map(constTrue)
 
     // Given the use of `Managed.never`, race the test against a 10 second

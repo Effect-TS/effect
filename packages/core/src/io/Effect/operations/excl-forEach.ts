@@ -10,8 +10,7 @@ import { MutableQueue } from "../../../support/MutableQueue"
 import { Cause } from "../../Cause"
 import { ExecutionStrategy } from "../../ExecutionStrategy"
 import { Exit } from "../../Exit"
-import type * as Fiber from "../../Fiber/definition"
-import { interrupt as interruptFiber } from "../../Fiber/operations/interrupt"
+import type { Fiber } from "../../Fiber/definition"
 import { FiberId } from "../../FiberId"
 import { FiberRef } from "../../FiberRef"
 import { Managed } from "../../Managed/definition"
@@ -319,16 +318,18 @@ function forEachParUnboundedDiscard<R, E, A, X>(
       ).flatMap((fibers) =>
         restore(promise.await()).foldCauseEffect(
           (cause) =>
-            forEachParUnbounded(fibers, interruptFiber).flatMap((exits) => {
-              const collected = Exit.collectAllPar(exits)
-              if (collected._tag === "Some" && collected.value._tag === "Failure") {
-                return Effect.failCause(
-                  Cause.both(cause.stripFailures(), collected.value.cause)
-                )
+            forEachParUnbounded(fibers, (fiber) => fiber.interrupt()).flatMap(
+              (exits) => {
+                const collected = Exit.collectAllPar(exits)
+                if (collected._tag === "Some" && collected.value._tag === "Failure") {
+                  return Effect.failCause(
+                    Cause.both(cause.stripFailures(), collected.value.cause)
+                  )
+                }
+                return Effect.failCause(cause.stripFailures())
               }
-              return Effect.failCause(cause.stripFailures())
-            }),
-          (_) => Effect.forEachDiscard(fibers, (_) => _.inheritRefs)
+            ),
+          (_) => Effect.forEachDiscard(fibers, (fiber) => fiber.inheritRefs())
         )
       )
     })
@@ -554,23 +555,23 @@ export function collectAllSuccessesPar<R, E, A>(
  * a catchable error, _if_ that error does not result from interruption.
  */
 export function fiberJoinAll<E, A>(
-  as: LazyArg<Iterable<Fiber.Fiber<E, A>>>,
+  as: LazyArg<Iterable<Fiber<E, A>>>,
   __tsplusTrace?: string
 ): Effect<unknown, E, Chunk<A>> {
   return fiberWaitAll(as)
     .flatMap((exit) => Effect.done(exit))
-    .tap(() => Effect.forEach(as, (fiber) => fiber.inheritRefs))
+    .tap(() => Effect.forEach(as, (fiber) => fiber.inheritRefs()))
 }
 
 /**
  * Awaits on all fibers to be completed, successfully or not.
  */
 export function fiberWaitAll<E, A>(
-  as: LazyArg<Iterable<Fiber.Fiber<E, A>>>,
+  as: LazyArg<Iterable<Fiber<E, A>>>,
   __tsplusTrace?: string
 ): RIO<unknown, Exit<E, Chunk<A>>> {
   return Effect.forEachPar(as, (fiber) =>
-    fiber.await.flatMap((exit) => Effect.done(exit))
+    fiber.await().flatMap((exit) => Effect.done(exit))
   ).exit()
 }
 
@@ -661,9 +662,11 @@ export function managedFork<R, E, A>(
         )
         .bind("releaseMapEntry", ({ fiber, innerReleaseMap, outerReleaseMap }) =>
           outerReleaseMap.add((e) =>
-            interruptFiber(fiber).flatMap(() =>
-              releaseMapReleaseAll(innerReleaseMap, e, ExecutionStrategy.Sequential)
-            )
+            fiber
+              .interrupt()
+              .flatMap(() =>
+                releaseMapReleaseAll(innerReleaseMap, e, ExecutionStrategy.Sequential)
+              )
           )
         )
         .map(({ fiber, releaseMapEntry }) => Tuple(releaseMapEntry, fiber))

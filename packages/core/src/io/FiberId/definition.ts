@@ -16,6 +16,10 @@ export interface FiberId {
   readonly [FiberIdSym]: FiberIdSym
 }
 
+export declare namespace FiberId {
+  export interface Runtime extends FiberId {}
+}
+
 /**
  * @tsplus type ets/FiberIdOps
  */
@@ -31,8 +35,7 @@ export function realFiberId(fiberId: FiberId): asserts fiberId is RealFiberId {
   //
 }
 
-export interface None extends FiberId {}
-export class None implements St.HasHash, St.HasEquals {
+export class None implements FiberId, St.HasHash, St.HasEquals {
   readonly _tag = "None";
 
   readonly [FiberIdSym]: FiberIdSym = FiberIdSym
@@ -50,8 +53,7 @@ export class None implements St.HasHash, St.HasEquals {
   }
 }
 
-export interface Runtime extends FiberId {}
-export class Runtime implements St.HasHash, St.HasEquals {
+export class Runtime implements FiberId.Runtime, St.HasHash, St.HasEquals {
   readonly _tag = "Runtime";
 
   readonly [FiberIdSym]: FiberIdSym = FiberIdSym

@@ -1,4 +1,4 @@
-import type * as Fiber from "../../Fiber"
+import type { Fiber } from "../../Fiber"
 import type { Effect } from "../definition"
 import { IDescriptor } from "../definition"
 
