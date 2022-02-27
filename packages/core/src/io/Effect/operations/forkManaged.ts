@@ -1,4 +1,4 @@
-import type * as Fiber from "../../Fiber"
+import type { Fiber } from "../../Fiber"
 import type { Managed } from "../../Managed"
 import type { Effect } from "../definition"
 

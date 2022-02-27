@@ -1,4 +1,4 @@
-import * as Fiber from "../../Fiber/operations/interruptAll"
+import { Fiber } from "../../Fiber"
 import type { Effect } from "../definition"
 
 /**
@@ -11,5 +11,5 @@ export function interruptAllChildren<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return self.ensuringChildren(Fiber.interruptAll)
+  return self.ensuringChildren((chunk) => Fiber.interruptAll(chunk))
 }

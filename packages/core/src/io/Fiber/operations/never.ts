@@ -4,10 +4,12 @@ import { Effect } from "../../Effect"
 import { FiberId } from "../../FiberId"
 import type { Runtime } from "../../FiberRef"
 import type { Fiber } from "../definition"
-import { makeSynthetic } from "./makeSynthetic"
+import { makeSynthetic } from "../definition"
 
 /**
  * A fiber that never fails or succeeds.
+ *
+ * @tsplus static ets/FiberOps never
  */
 export const never: Fiber<never, never> = makeSynthetic({
   id: FiberId.none,

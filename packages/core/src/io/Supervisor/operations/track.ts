@@ -2,7 +2,7 @@ import { Chunk } from "../../../collection/immutable/Chunk"
 import { AtomicReference } from "../../../support/AtomicReference"
 import type { UIO } from "../../Effect"
 import { Effect } from "../../Effect"
-import type * as Fiber from "../../Fiber"
+import type { Fiber } from "../../Fiber"
 import { Supervisor } from "../definition"
 
 // `setInterval` is limited to take delays which are 32-bit values

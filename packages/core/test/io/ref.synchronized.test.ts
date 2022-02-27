@@ -4,7 +4,6 @@ import { Option } from "../../src/data/Option"
 import type { UIO } from "../../src/io/Effect"
 import { Effect } from "../../src/io/Effect"
 import { Exit } from "../../src/io/Exit"
-import * as Fiber from "../../src/io/Fiber"
 import { Promise } from "../../src/io/Promise"
 import { Synchronized } from "../../src/io/Ref/Synchronized"
 
@@ -190,7 +189,7 @@ describe("Ref.Synchronized", () => {
         )
         .bind("fiber", ({ makeAndWait }) => makeAndWait.fork())
         .bind("ref", ({ promise }) => promise.await())
-        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ fiber }) => fiber.interrupt())
         .flatMap(({ ref }) => ref.updateAndGetEffect(() => Effect.succeed(Closed)))
 
       const result = await program.unsafeRunPromise()
@@ -504,7 +503,7 @@ describe("Ref.Synchronized", () => {
         )
         .bind("fiber", ({ makeAndWait }) => makeAndWait.fork())
         .bind("ref", ({ promise }) => promise.await())
-        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ fiber }) => fiber.interrupt())
         .flatMap(({ ref }) => ref.updateAndGetEffect(() => Effect.succeed(Closed)))
 
       const result = await program.unsafeRunPromise()
@@ -818,7 +817,7 @@ describe("Ref.Synchronized", () => {
         )
         .bind("fiber", ({ makeAndWait }) => makeAndWait.fork())
         .bind("ref", ({ promise }) => promise.await())
-        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ fiber }) => fiber.interrupt())
         .flatMap(({ ref }) => ref.updateAndGetEffect(() => Effect.succeed(Closed)))
 
       const result = await program.unsafeRunPromise()

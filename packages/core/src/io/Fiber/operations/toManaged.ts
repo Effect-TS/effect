@@ -3,10 +3,12 @@ import { Effect } from "../../Effect"
 import { FiberRef } from "../../FiberRef"
 import { Managed } from "../../Managed/definition"
 import type { Fiber } from "../definition"
-import { interrupt } from "./interrupt"
 
 /**
  * Converts this fiber into a `Managed`. The fiber is interrupted on release.
+ *
+ * @tsplus fluent ets/Fiber toManaged
+ * @tsplus fluent ets/RuntimeFiber toManaged
  */
 export function toManaged<E, A>(
   self: Fiber<E, A>,
@@ -18,12 +20,12 @@ export function toManaged<E, A>(
         FiberRef.currentReleaseMap.value
           .get()
           .flatMap((releaseMap) =>
-            Effect.succeedNow(self).flatMap((a) =>
+            Effect.succeedNow(self).flatMap((fiber) =>
               releaseMap
                 .add(() =>
-                  interrupt(a).apply(FiberRef.currentEnvironment.value.locally(r))
+                  fiber.interrupt().apply(FiberRef.currentEnvironment.value.locally(r))
                 )
-                .map((releaseMapEntry) => Tuple(releaseMapEntry, a))
+                .map((releaseMapEntry) => Tuple(releaseMapEntry, fiber))
             )
           )
       )

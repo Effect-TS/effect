@@ -1,6 +1,6 @@
 import type { Chunk } from "../../../collection/immutable/Chunk"
 import { track } from "../../../io/Supervisor/operations/track"
-import type * as Fiber from "../../Fiber/definition"
+import type { Fiber } from "../../Fiber/definition"
 import type { Effect, RIO } from "../definition"
 
 /**

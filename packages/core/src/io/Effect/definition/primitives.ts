@@ -5,7 +5,7 @@ import { Option } from "../../../data/Option"
 import type { Supervisor } from "../../../io/Supervisor"
 import type { Cause } from "../../Cause"
 import type { Exit } from "../../Exit"
-import type * as Fiber from "../../Fiber"
+import type { Fiber } from "../../Fiber"
 import type { FiberId } from "../../FiberId"
 import type { FiberRef } from "../../FiberRef"
 import type { InterruptStatus } from "../../InterruptStatus"
@@ -280,14 +280,8 @@ export class IRaceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3> extends Base
   constructor(
     readonly left: Lazy<Effect<R, E, A>>,
     readonly right: Lazy<Effect<R1, E1, A1>>,
-    readonly leftWins: (
-      exit: Exit<E, A>,
-      fiber: Fiber.Fiber<E1, A1>
-    ) => Effect<R2, E2, A2>,
-    readonly rightWins: (
-      exit: Exit<E1, A1>,
-      fiber: Fiber.Fiber<E, A>
-    ) => Effect<R3, E3, A3>,
+    readonly leftWins: (exit: Exit<E, A>, fiber: Fiber<E1, A1>) => Effect<R2, E2, A2>,
+    readonly rightWins: (exit: Exit<E1, A1>, fiber: Fiber<E, A>) => Effect<R3, E3, A3>,
     readonly scope: Lazy<Option<Scope>>,
     readonly trace?: string
   ) {

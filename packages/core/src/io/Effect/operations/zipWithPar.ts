@@ -1,7 +1,6 @@
 import type { LazyArg } from "../../../data/Function"
 import type { Exit } from "../../Exit/definition"
 import type { Fiber } from "../../Fiber/definition"
-import { join as fiberJoin } from "../../Fiber/operations/join"
 import type { FiberId } from "../../FiberId/definition"
 import { Effect } from "../definition"
 
@@ -62,6 +61,6 @@ function coordinate<E, B, X, Y>(
           () => Effect.failCause(cause)
         )
       ),
-    (a) => loser.inheritRefs > fiberJoin(loser).map((_) => f(a, _))
+    (a) => loser.inheritRefs() > loser.join().map((_) => f(a, _))
   )
 }

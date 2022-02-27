@@ -7,7 +7,6 @@ import type { HasClock, TestClock } from "../../src/io/Clock"
 import { HasTestClock } from "../../src/io/Clock"
 // import type { RIO } from "../../src/io/Effect"
 import { Effect } from "../../src/io/Effect"
-import * as Fiber from "../../src/io/Fiber"
 import { Promise } from "../../src/io/Promise"
 import { Ref } from "../../src/io/Ref"
 import { Schedule } from "../../src/io/Schedule"
@@ -57,7 +56,7 @@ function run<R, E, A>(effect: Effect<R, E, A>): Effect<Has<TestClock> & R, E, A>
         testClock.adjust(Duration.Infinity)
       )
     )
-    .flatMap(Fiber.join)
+    .flatMap((fiber) => fiber.join())
 }
 
 /**

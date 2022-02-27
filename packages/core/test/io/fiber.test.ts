@@ -1,9 +1,9 @@
 import { Chunk } from "../../src/collection/immutable/Chunk"
-import { constTrue, identity, pipe } from "../../src/data/Function"
+import { constTrue, constVoid, identity, pipe } from "../../src/data/Function"
 import { Option } from "../../src/data/Option"
 import { Effect } from "../../src/io/Effect"
 import { Exit } from "../../src/io/Exit"
-import * as Fiber from "../../src/io/Fiber"
+import { Fiber } from "../../src/io/Fiber"
 import { FiberId } from "../../src/io/FiberId"
 import { FiberRef } from "../../src/io/FiberRef"
 import { Promise } from "../../src/io/Promise"
@@ -26,8 +26,8 @@ describe("Fiber", () => {
             (release > Effect.unit).acquireRelease(Effect.never, ref.set(true)).fork()
           )
         )
-        .tap(({ fiber }) => Fiber.toManaged(fiber).use(() => Effect.unit))
-        .tap(({ fiber }) => Fiber.await(fiber))
+        .tap(({ fiber }) => fiber.toManaged().use(() => Effect.unit))
+        .tap(({ fiber }) => fiber.await())
         .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
@@ -43,7 +43,7 @@ describe("Fiber", () => {
         .bind("child", ({ fiberRef }) =>
           withLatch((release) => fiberRef.set(update).zipRight(release).fork())
         )
-        .tap(({ child }) => Fiber.map_(child, () => undefined).inheritRefs)
+        .tap(({ child }) => child.map(constVoid).inheritRefs())
         .flatMap(({ fiberRef }) => fiberRef.get())
 
       const result = await program.unsafeRunPromise()
@@ -63,7 +63,7 @@ describe("Fiber", () => {
           fiberRef.set("child2").zipRight(latch2.succeed(undefined)).fork()
         )
         .tap(({ latch1, latch2 }) => latch1.await().zipRight(latch2.await()))
-        .tap(({ child1, child2 }) => Fiber.orElse_(child1, child2).inheritRefs)
+        .tap(({ child1, child2 }) => (child1 | child2).inheritRefs())
         .flatMap(({ fiberRef }) => fiberRef.get())
 
       const result = await program.unsafeRunPromise()
@@ -83,7 +83,7 @@ describe("Fiber", () => {
           fiberRef.set("child2").zipRight(latch2.succeed(undefined)).fork()
         )
         .tap(({ latch1, latch2 }) => latch1.await().zipRight(latch2.await()))
-        .tap(({ child1, child2 }) => Fiber.zip_(child1, child2).inheritRefs)
+        .tap(({ child1, child2 }) => child1.zip(child2).inheritRefs())
         .flatMap(({ fiberRef }) => fiberRef.get())
 
       const result = await program.unsafeRunPromise()
@@ -95,9 +95,9 @@ describe("Fiber", () => {
   describe("`Fiber.join` on interrupted Fiber", () => {
     it("is inner interruption", async () => {
       const fiberId = FiberId(0, 123, TraceElement.empty)
-      const program = pipe(Fiber.interruptAs(fiberId), Fiber.join).exit()
+      const program = Fiber.interruptAs(fiberId).join()
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromiseExit()
 
       expect(result).toHaveProperty("cause.fiberId", fiberId)
     })
@@ -105,7 +105,7 @@ describe("Fiber", () => {
 
   describe("if one composed fiber fails then all must fail", () => {
     it("`await`", async () => {
-      const program = pipe(Fiber.fail("fail"), Fiber.zip(Fiber.never), Fiber.await)
+      const program = Fiber.fail("fail").zip(Fiber.never).await()
 
       const result = await program.unsafeRunPromise()
 
@@ -115,13 +115,9 @@ describe("Fiber", () => {
     })
 
     it("`join`", async () => {
-      const program = pipe(
-        Fiber.fail("fail"),
-        Fiber.zip(Fiber.never),
-        Fiber.join
-      ).exit()
+      const program = Fiber.fail("fail").zip(Fiber.never).join()
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromiseExit()
 
       expect(result.isFailure() && result.cause.failures().first).toEqual(
         Option.some("fail")
@@ -131,9 +127,9 @@ describe("Fiber", () => {
     it("`awaitAll`", async () => {
       const program = Fiber.awaitAll(
         Chunk.fill(100, () => Fiber.never).prepend(Fiber.fail("fail"))
-      ).exit()
+      )
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromiseExit()
 
       expect(result).toEqual(Exit.succeed(undefined))
     })
@@ -160,7 +156,7 @@ describe("Fiber", () => {
           .forever()
 
         return Effect.forkAll(Chunk.fill(n, () => worker1))
-          .flatMap(Fiber.join)
+          .flatMap((fiber) => fiber.join())
           .zipRight(Effect.never)
       }
 
@@ -200,7 +196,7 @@ describe("Fiber", () => {
         )
         .bind("fiber", ({ a }) => a.fork())
         .tap(({ latch1 }) => latch1.await())
-        .tap(({ fiber }) => Fiber.interrupt(fiber))
+        .tap(({ fiber }) => fiber.interrupt())
         .tap(({ latch2 }) => latch2.await())
         .exit()
 
@@ -226,9 +222,7 @@ describe("Fiber", () => {
             .zipWith(rootContains(fiber2), (b1, b2) => b1 && b2)
             .repeatUntil(identity)
         )
-        .tap(({ fiber1, fiber2 }) =>
-          Fiber.interrupt(fiber1).zipRight(Fiber.interrupt(fiber2))
-        )
+        .tap(({ fiber1, fiber2 }) => fiber1.interrupt().zipRight(fiber2.interrupt()))
         .map(constTrue)
 
       // Since `rootsTest` has a potentially infinite loop (T.never + T.repeatUntil),
@@ -260,11 +254,11 @@ describe("Fiber", () => {
       expect.anything()
     })
     it("collectAll", async () => {
-      const program = pipe(Fiber.collectAll(fibers), Fiber.join)
+      const program = Fiber.collectAll(fibers).join().map(constTrue)
 
-      await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise()
 
-      expect.anything()
+      expect(result).toBe(true)
     })
   })
 
@@ -272,9 +266,9 @@ describe("Fiber", () => {
     it("in await", async () => {
       const program = Effect.Do()
         .bind("f1", () => Effect.never.fork())
-        .bind("f2", ({ f1 }) => Fiber.await(f1).fork())
+        .bind("f2", ({ f1 }) => f1.await().fork())
         .bind("blockingOn", ({ f2 }) =>
-          f2.status
+          f2._status
             .continueOrFail(
               () => undefined,
               (status) =>

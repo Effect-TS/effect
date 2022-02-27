@@ -1,5 +1,5 @@
 import { Option } from "../../../data/Option"
-import type * as Fiber from "../../Fiber"
+import type { Fiber } from "../../Fiber"
 import * as Scope from "../../Scope"
 import type { RIO } from "../definition"
 import { Effect, IFork } from "../definition"

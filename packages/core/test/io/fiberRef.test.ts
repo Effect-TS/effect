@@ -7,7 +7,6 @@ import type { HasClock } from "../../src/io/Clock"
 import { Clock } from "../../src/io/Clock"
 import type { UIO } from "../../src/io/Effect"
 import { Effect } from "../../src/io/Effect"
-import * as Fiber from "../../src/io/Fiber"
 import { FiberRef } from "../../src/io/FiberRef"
 import { Promise } from "../../src/io/Promise"
 
@@ -45,7 +44,7 @@ describe("FiberRef", () => {
     it("`get` returns the correct value for a child", async () => {
       const program = FiberRef.make(initial)
         .flatMap((fiberRef) => fiberRef.get().fork())
-        .flatMap(Fiber.join)
+        .flatMap((fiber) => fiber.join())
 
       const result = await program.unsafeRunPromise()
 
@@ -108,7 +107,7 @@ describe("FiberRef", () => {
         .bind("child", ({ fiberRef }) =>
           fiberRef.get().apply(fiberRef.locally(update)).fork()
         )
-        .bind("local", ({ child }) => Fiber.join(child))
+        .bind("local", ({ child }) => child.join())
         .bind("value", ({ fiberRef }) => fiberRef.get())
 
       const { local, value } = await program.unsafeRunPromise()
@@ -121,9 +120,7 @@ describe("FiberRef", () => {
       const program = Effect.Do()
         .bind("child", () => FiberRef.make(initial).fork())
         // Don't use join as it inherits values from child
-        .bind("fiberRef", ({ child }) =>
-          Fiber.await(child).flatMap((_) => Effect.done(_))
-        )
+        .bind("fiberRef", ({ child }) => child.await().flatMap((_) => Effect.done(_)))
         .bind("localValue", ({ fiberRef }) =>
           fiberRef.get().apply(fiberRef.locally(update))
         )
@@ -226,7 +223,7 @@ describe("FiberRef", () => {
       const program = Effect.Do()
         .bind("fiberRef", () => FiberRef.make(initial))
         .bind("child", ({ fiberRef }) => fiberRef.set(update).fork())
-        .tap(({ child }) => Fiber.join(child))
+        .tap(({ child }) => child.join())
         .flatMap(({ fiberRef }) => fiberRef.get())
 
       const result = await program.unsafeRunPromise()
@@ -237,9 +234,7 @@ describe("FiberRef", () => {
     it("initial value is always available", async () => {
       const program = Effect.Do()
         .bind("child", () => FiberRef.make(initial).fork())
-        .bind("fiberRef", ({ child }) =>
-          Fiber.await(child).flatMap((_) => Effect.done(_))
-        )
+        .bind("fiberRef", ({ child }) => child.await().flatMap((_) => Effect.done(_)))
         .flatMap(({ fiberRef }) => fiberRef.get())
 
       const result = await program.unsafeRunPromise()
@@ -344,7 +339,7 @@ describe("FiberRef", () => {
       const program = Effect.Do()
         .bind("fiberRef", () => FiberRef.make(0, increment))
         .bind("child", () => Effect.unit.fork())
-        .tap(({ child }) => Fiber.join(child))
+        .tap(({ child }) => child.join())
         .flatMap(({ fiberRef }) => fiberRef.get())
 
       const result = await program.unsafeRunPromise()
@@ -359,8 +354,13 @@ describe("FiberRef", () => {
 
       const program = Effect.Do()
         .bind("fiberRef", () => FiberRef.make(0, increment))
-        .bind("child", () => Effect.unit.fork().flatMap(Fiber.join).fork())
-        .tap(({ child }) => Fiber.join(child))
+        .bind("child", () =>
+          Effect.unit
+            .fork()
+            .flatMap((fiber) => fiber.join())
+            .fork()
+        )
+        .tap(({ child }) => child.join())
         .flatMap(({ fiberRef }) => fiberRef.get())
 
       const result = await program.unsafeRunPromise()
@@ -372,7 +372,7 @@ describe("FiberRef", () => {
       const program = Effect.Do()
         .bind("fiberRef", () => FiberRef.make(0, identity, Math.max))
         .bind("child", ({ fiberRef }) => fiberRef.update((_) => _ + 1).fork())
-        .tap(({ child }) => Fiber.join(child))
+        .tap(({ child }) => child.join())
         .flatMap(({ fiberRef }) => fiberRef.get())
 
       const result = await program.unsafeRunPromise()
@@ -385,7 +385,7 @@ describe("FiberRef", () => {
         .bind("fiberRef", () => FiberRef.make(0, identity, Math.max))
         .bind("child", ({ fiberRef }) => fiberRef.update((_) => _ + 1).fork())
         .tap(({ fiberRef }) => fiberRef.update((_) => _ + 2))
-        .tap(({ child }) => Fiber.join(child))
+        .tap(({ child }) => child.join())
         .flatMap(({ fiberRef }) => fiberRef.get())
 
       const result = await program.unsafeRunPromise()
@@ -510,7 +510,7 @@ describe("FiberRef", () => {
           personRef.foldAll(identity, identity, identity, setAge, getAge)
         )
         .bind("fiber", ({ ageRef }) => ageRef.update((n) => n + 1).fork())
-        .tap(({ fiber }) => Fiber.join(fiber))
+        .tap(({ fiber }) => fiber.join())
         .flatMap(({ personRef }) => personRef.get())
 
       const result = await program.unsafeRunPromise()

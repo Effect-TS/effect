@@ -1,6 +1,6 @@
 import type { LazyArg } from "../../../data/Function"
 import { Option } from "../../../data/Option"
-import type * as Fiber from "../../Fiber"
+import type { Fiber } from "../../Fiber"
 import type { Scope } from "../../Scope"
 import type { RIO } from "../definition"
 import { Effect, IFork } from "../definition"
