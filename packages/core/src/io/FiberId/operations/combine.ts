@@ -1,6 +1,6 @@
 import { HashSet } from "../../../collection/immutable/HashSet"
 import type { FiberId } from "../definition"
-import { Composite, realFiberId } from "../definition"
+import { CompositeFiberId, realFiberId } from "../definition"
 
 /**
  * Combine two `FiberId`s.
@@ -21,10 +21,10 @@ export function combine_(self: FiberId, that: FiberId): FiberId {
           return self
         }
         case "Runtime": {
-          return new Composite(HashSet.from([self, that]))
+          return new CompositeFiberId(HashSet.from([self, that]))
         }
         case "Composite": {
-          return new Composite(that.fiberIds.add(self))
+          return new CompositeFiberId(that.fiberIds.add(self))
         }
       }
     }
@@ -35,10 +35,10 @@ export function combine_(self: FiberId, that: FiberId): FiberId {
           return self
         }
         case "Runtime": {
-          return new Composite(self.fiberIds.add(that))
+          return new CompositeFiberId(self.fiberIds.add(that))
         }
         case "Composite": {
-          return new Composite(self.fiberIds | that.fiberIds)
+          return new CompositeFiberId(self.fiberIds | that.fiberIds)
         }
       }
     }
