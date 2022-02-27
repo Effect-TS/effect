@@ -22,7 +22,7 @@ import { Layer } from "../../src/io/Layer"
 import { Promise } from "../../src/io/Promise"
 import { Queue } from "../../src/io/Queue"
 import type { HasRandom } from "../../src/io/Random"
-import * as Random from "../../src/io/Random"
+import { Random } from "../../src/io/Random"
 import { Ref } from "../../src/io/Ref"
 import { Schedule } from "../../src/io/Schedule"
 import { TraceElement } from "../../src/io/TraceElement"
@@ -1982,16 +1982,15 @@ describe("Effect", () => {
     })
 
     it("memoized function returns the same instance on repeated calls", async () => {
-      const program = Random.withSeed(100)(
-        Effect.Do()
-          .bind("memoized", () =>
-            Effect.memoize((n: number) => Random.nextIntBetween(n, n + n))
-          )
-          .bind("a", ({ memoized }) => memoized(10))
-          .bind("b", ({ memoized }) => memoized(10))
-          .bind("c", ({ memoized }) => memoized(11))
-          .bind("d", ({ memoized }) => memoized(11))
-      )
+      const program = Effect.Do()
+        .bind("memoized", () =>
+          Effect.memoize((n: number) => Random.nextIntBetween(n, n + n))
+        )
+        .bind("a", ({ memoized }) => memoized(10))
+        .bind("b", ({ memoized }) => memoized(10))
+        .bind("c", ({ memoized }) => memoized(11))
+        .bind("d", ({ memoized }) => memoized(11))
+        .apply(Random.withSeed(100))
 
       const { a, b, c, d } = await program.unsafeRunPromise()
 
