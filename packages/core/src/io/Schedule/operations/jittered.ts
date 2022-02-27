@@ -1,6 +1,6 @@
 import { Duration } from "../../../data/Duration"
 import type { HasRandom } from "../../Random"
-import { next } from "../../Random"
+import { Random } from "../../Random"
 import type { Schedule } from "../definition"
 
 /**
@@ -19,7 +19,7 @@ export function jittered_<State, Env, In, Out>(
   max: number
 ): Schedule.WithState<State, Env & HasRandom, In, Out> {
   return self.delayedEffect((duration) =>
-    next.map((random) => {
+    Random.next.map((random) => {
       const d = duration.milliseconds
       const jittered = d * min * (1 - random) + d * max * random
       return Duration(jittered)
