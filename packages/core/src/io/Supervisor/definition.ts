@@ -11,6 +11,9 @@ import type { Fiber } from "../Fiber"
 /**
  * A `Supervisor<A>` is allowed to supervise the launching and termination of
  * fibers, producing some visible value of type `A` from the supervision.
+ *
+ * @tsplus type ets/Supervisor
+ * @tsplus companion ets/SupervisorOps
  */
 export class Supervisor<A> {
   constructor(

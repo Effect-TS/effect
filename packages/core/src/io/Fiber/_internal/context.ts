@@ -6,7 +6,7 @@ import type { Lazy } from "../../../data/Function"
 import { constVoid } from "../../../data/Function"
 import { Option } from "../../../data/Option"
 import { Stack } from "../../../data/Stack"
-import * as Supervisor from "../../../io/Supervisor"
+import { Supervisor } from "../../../io/Supervisor"
 import { AtomicBoolean } from "../../../support/AtomicBoolean"
 import { AtomicReference } from "../../../support/AtomicReference"
 import { defaultScheduler } from "../../../support/Scheduler"
@@ -22,7 +22,6 @@ import type {
 } from "../../Effect/definition/primitives"
 import { EffectError, instruction } from "../../Effect/definition/primitives"
 import { Exit } from "../../Exit"
-import type { Runtime as RuntimeFiberId } from "../../FiberId"
 import { FiberId } from "../../FiberId"
 import type { Runtime as RuntimeFiberRef } from "../../FiberRef"
 import { FiberRef } from "../../FiberRef"
@@ -33,7 +32,7 @@ import * as MetricClient from "../../Metric/MetricClient"
 import { Promise } from "../../Promise"
 import { RuntimeConfig } from "../../RuntimeConfig"
 import { RuntimeConfigFlag } from "../../RuntimeConfig/Flag"
-import * as Scope from "../../Scope"
+import { Scope } from "../../Scope"
 import { Trace } from "../../Trace"
 import { TraceElement } from "../../TraceElement"
 import type { Fiber } from "../definition"
@@ -124,7 +123,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   interruptStatus?: Stack<boolean> | undefined
 
   constructor(
-    readonly _id: RuntimeFiberId,
+    readonly _id: FiberId.Runtime,
     readonly fiberRefLocals: FiberRefLocals,
     readonly childFibers: Set<FiberContext<any, any>>,
     runtimeConfig: RuntimeConfig,
@@ -198,7 +197,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   _location: TraceElement = this._id.location
 
-  _scope: Scope.Scope = Scope.unsafeMake(this)
+  _scope: Scope = Scope.unsafeMake(this)
 
   get _status(): Effect<unknown, never, FiberStatus> {
     return Effect.succeed(this.state.get.status)
@@ -997,7 +996,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   unsafeFork(
     effect: Instruction,
     trace: TraceElement,
-    forkScope: Option<Scope.Scope> = Option.none
+    forkScope: Option<Scope> = Option.none
   ): FiberContext<any, any> {
     const childFiberRefLocals: FiberRefLocals = new Map<RuntimeFiberRef<any>, any>()
 
@@ -1005,7 +1004,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       childFiberRefLocals.set(k, (k as RuntimeFiberRef<A>).fork(v))
     }
 
-    const parentScope: Scope.Scope = (
+    const parentScope: Scope = (
       forkScope._tag === "Some"
         ? forkScope
         : this.unsafeGetRef(FiberRef.forkScopeOverride.value)
@@ -1449,10 +1448,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   case "Supervise": {
                     const effect = current
                     const oldSupervisor = this.runtimeConfig.value.supervisor
-                    const newSupervisor = Supervisor.and_(
-                      effect.supervisor(),
-                      oldSupervisor
-                    )
+                    const newSupervisor = effect.supervisor() + oldSupervisor
 
                     this.runtimeConfig = RuntimeConfig({
                       ...this.runtimeConfig.value,
