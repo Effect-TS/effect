@@ -2,9 +2,12 @@ import { Trace } from "../definition"
 
 /**
  * Combine two `Trace`s.
+ *
+ * @tsplus operator ets/Trace +
+ * @tsplus fluent ets/Trace combine
  */
 export function combine_(self: Trace, that: Trace): Trace {
-  return new Trace(self.fiberId + that.fiberId, self.stackTrace + that.stackTrace)
+  return Trace(self.fiberId + that.fiberId, self.stackTrace + that.stackTrace)
 }
 
 /**

@@ -1,5 +1,5 @@
-import { Option } from "../../../data/Option/core"
-import * as Trace from "../../../io/Trace/operations/none"
+import { Option } from "../../../data/Option"
+import { Trace } from "../../../io/Trace"
 import type { Cause } from "../definition"
 
 /**
