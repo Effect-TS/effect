@@ -14,14 +14,16 @@ import type { LogSpan } from "../../LogSpan"
 import { Managed } from "../../Managed/definition"
 import { ReleaseMap } from "../../Managed/ReleaseMap"
 import type { Scope } from "../../Scope"
-import { get as fiberRefGet } from "../operations/get"
-import { locally_ } from "../operations/locally"
-import { update_ } from "../operations/update"
-import type { FiberRef, XFiberRef } from "./base"
-import { XFiberRefInternal } from "./base"
+import type { FiberRef, XFiberRef, XFiberRefRuntime } from "./base"
+import { FiberRefRuntimeSym, XFiberRefInternal } from "./base"
 
-export class Runtime<A> extends XFiberRefInternal<never, never, A, A> {
-  readonly _tag = "Runtime"
+export class Runtime<A>
+  extends XFiberRefInternal<never, never, A, A>
+  implements XFiberRefRuntime<never, never, A, A>
+{
+  readonly _tag = "Runtime";
+
+  readonly [FiberRefRuntimeSym]: FiberRefRuntimeSym = FiberRefRuntimeSym
 
   constructor(
     readonly initial: A,
@@ -31,19 +33,19 @@ export class Runtime<A> extends XFiberRefInternal<never, never, A, A> {
     super()
   }
 
-  get initialValue(): Either<never, A> {
+  get _initialValue(): Either<never, A> {
     return Either.right(this.initial)
   }
 
-  get get(): IO<never, A> {
-    return this.modify((v) => Tuple(v, v))
+  get _get(): IO<never, A> {
+    return this._modify((v) => Tuple(v, v))
   }
 
-  set(value: A, __tsplusTrace?: string): IO<never, void> {
-    return this.modify(() => Tuple(undefined, value))
+  _set(value: A, __tsplusTrace?: string): IO<never, void> {
+    return this._modify(() => Tuple(undefined, value))
   }
 
-  fold<EC, ED, C, D>(
+  _fold<EC, ED, C, D>(
     _ea: (_: never) => EC,
     _eb: (_: never) => ED,
     ca: (c: C) => Either<EC, A>,
@@ -52,38 +54,38 @@ export class Runtime<A> extends XFiberRefInternal<never, never, A, A> {
     return new Derived((f) => f(this, bd, ca))
   }
 
-  foldAll<EC, ED, C, D>(
+  _foldAll<EC, ED, C, D>(
     _ea: (_: never) => EC,
     _eb: (_: never) => ED,
     _ec: (_: never) => EC,
     ca: (c: C) => (b: A) => Either<EC, A>,
     bd: (b: A) => Either<ED, D>
   ): XFiberRef<EC, ED, C, D> {
-    return new DerivedAll((f) => f(this, this.initialValue.flatMap(bd), bd, ca))
+    return new DerivedAll((f) => f(this, this._initialValue.flatMap(bd), bd, ca))
   }
 
-  locally(
+  _locally(
     value: A,
     __trace?: string
   ): <R, EC, C>(use: Effect<R, EC, C>) => Effect<R, EC, C> {
     return (use) => new IFiberRefLocally(value, this, use, __trace)
   }
 
-  locallyManaged(value: A, __trace?: string): Managed<unknown, never, void> {
+  _locallyManaged(value: A, __trace?: string): Managed<unknown, never, void> {
     return Managed(
       Effect.Do()
-        .bind("r", () => Effect.environment<unknown>())
-        .bind("releaseMap", () => fiberRefGet(currentReleaseMap.value))
-        .bind("a", () => this.get.flatMap((old) => this.set(value).as(old)))
+        .bind("r", () => effectEnvironment<unknown>())
+        .bind("releaseMap", () => currentReleaseMap.value.get())
+        .bind("a", () => this._get.flatMap((old) => this._set(value).as(old)))
         .bind("releaseMapEntry", ({ a, r, releaseMap }) =>
-          releaseMap.add(() => locally_(currentEnvironment.value, r)(this.set(a)))
+          releaseMap.add(() => this._set(a).apply(currentEnvironment.value.locally(r)))
         )
         .map(({ a, releaseMapEntry }) => Tuple(releaseMapEntry, a))
         .uninterruptible()
     ).asUnit()
   }
 
-  modify<B>(f: (a: A) => Tuple<[B, A]>, __tsplusTrace?: string): UIO<B> {
+  _modify<B>(f: (a: A) => Tuple<[B, A]>, __tsplusTrace?: string): UIO<B> {
     return new IFiberRefModify(this, f, __tsplusTrace)
   }
 }
@@ -103,26 +105,26 @@ export class Derived<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
     super()
   }
 
-  get initialValue(): Either<EB, B> {
-    return this.use((value, getEither) => value.initialValue.flatMap(getEither))
+  get _initialValue(): Either<EB, B> {
+    return this.use((value, getEither) => value._initialValue.flatMap(getEither))
   }
 
-  get get(): IO<EB, B> {
+  get _get(): IO<EB, B> {
     return this.use((value, getEither) =>
-      value.get.flatMap((s) => getEither(s).fold(Effect.failNow, Effect.succeedNow))
+      value._get.flatMap((s) => getEither(s).fold(Effect.failNow, Effect.succeedNow))
     )
   }
 
-  set(a: A, __tsplusTrace?: string): IO<EA, void> {
+  _set(a: A, __tsplusTrace?: string): IO<EA, void> {
     return this.use((value, _, setEither) =>
       setEither(a).fold(
         (e) => Effect.failNow(e),
-        (s) => value.set(s)
+        (s) => value._set(s)
       )
     )
   }
 
-  fold<EC, ED, C, D>(
+  _fold<EC, ED, C, D>(
     ea: (ea: EA) => EC,
     eb: (eb: EB) => ED,
     ca: (c: C) => Either<EC, A>,
@@ -143,7 +145,7 @@ export class Derived<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
     )
   }
 
-  foldAll<EC, ED, C, D>(
+  _foldAll<EC, ED, C, D>(
     ea: (ea: EA) => EC,
     eb: (eb: EB) => ED,
     ec: (eb: EB) => EC,
@@ -155,7 +157,7 @@ export class Derived<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
         new DerivedAll((f) =>
           f(
             value,
-            this.initialValue.mapLeft(eb).flatMap(bd),
+            this._initialValue.mapLeft(eb).flatMap(bd),
             (s) => getEither(s).fold((e) => Either.left(eb(e)), bd),
             (c) => (s) =>
               getEither(s)
@@ -168,31 +170,33 @@ export class Derived<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
     )
   }
 
-  locally(a: A, __tsplusTrace?: string) {
+  _locally(a: A, __tsplusTrace?: string) {
     return <R, EC, C>(use: Effect<R, EC, C>): Effect<R, EA | EC, C> =>
       this.use((value, _, setEither) =>
-        value.get.flatMap((old) =>
+        value._get.flatMap((old) =>
           setEither(a).fold(
             (e) => Effect.failNow<EA | EC>(e),
-            (s) => value.set(s).acquireRelease(use, value.set(old))
+            (s) => value._set(s).acquireRelease(use, value._set(old))
           )
         )
       )
   }
 
-  locallyManaged(a: A, __tsplusTrace?: string): Managed<unknown, EA, void> {
+  _locallyManaged(a: A, __tsplusTrace?: string): Managed<unknown, EA, void> {
     return this.use((value, _, setEither) =>
       Managed(
         Effect.Do()
-          .bind("r", () => Effect.environment<unknown>())
-          .bind("releaseMap", () => fiberRefGet(currentReleaseMap.value))
+          .bind("r", () => effectEnvironment<unknown>())
+          .bind("releaseMap", () => currentReleaseMap.value.get())
           .bind("a", () =>
-            value.get.flatMap((old) =>
-              setEither(a).fold(Effect.failNow, (s) => value.set(s).as(old))
+            value._get.flatMap((old) =>
+              setEither(a).fold(Effect.failNow, (s) => value._set(s).as(old))
             )
           )
           .bind("releaseMapEntry", ({ a, r, releaseMap }) =>
-            releaseMap.add(() => locally_(currentEnvironment.value, r)(value.set(a)))
+            releaseMap.add(() =>
+              value._set(a).apply(currentEnvironment.value.locally(r))
+            )
           )
           .map(({ a, releaseMapEntry }) => Tuple(releaseMapEntry, a))
           .uninterruptible()
@@ -217,19 +221,19 @@ export class DerivedAll<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
     super()
   }
 
-  get initialValue(): Either<EB, B> {
+  get _initialValue(): Either<EB, B> {
     return this.use((_, initialValue) => initialValue)
   }
 
-  get get(): IO<EB, B> {
+  get _get(): IO<EB, B> {
     return this.use((value, _, getEither) =>
-      value.get.flatMap((s) => getEither(s).fold(Effect.failNow, Effect.succeedNow))
+      value._get.flatMap((s) => getEither(s).fold(Effect.failNow, Effect.succeedNow))
     )
   }
 
-  set(a: A, __tsplusTrace?: string): IO<EA, void> {
+  _set(a: A, __tsplusTrace?: string): IO<EA, void> {
     return this.use((value, _, __, setEither) =>
-      value.modify((s) =>
+      value._modify((s) =>
         setEither(a)(s).fold(
           (e) => Tuple(Either.leftW<EA, void>(e), s),
           (s) => Tuple(Either.rightW<void, EA>(undefined), s)
@@ -238,7 +242,7 @@ export class DerivedAll<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
     )
   }
 
-  fold<EC, ED, C, D>(
+  _fold<EC, ED, C, D>(
     ea: (ea: EA) => EC,
     eb: (eb: EB) => ED,
     ca: (c: C) => Either<EC, A>,
@@ -260,7 +264,7 @@ export class DerivedAll<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
     )
   }
 
-  foldAll<EC, ED, C, D>(
+  _foldAll<EC, ED, C, D>(
     ea: (ea: EA) => EC,
     eb: (eb: EB) => ED,
     ec: (eb: EB) => EC,
@@ -285,31 +289,33 @@ export class DerivedAll<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
     )
   }
 
-  locally(a: A, __tsplusTrace?: string) {
+  _locally(a: A, __tsplusTrace?: string) {
     return <R, EC, C>(use: Effect<R, EC, C>): Effect<R, EA | EC, C> =>
       this.use((value, _, __, setEither) =>
-        value.get.flatMap((old) =>
+        value._get.flatMap((old) =>
           setEither(a)(old).fold(
             (e) => Effect.failNow<EA | EC>(e),
-            (s) => value.set(s).acquireRelease(use, value.set(old))
+            (s) => value._set(s).acquireRelease(use, value._set(old))
           )
         )
       )
   }
 
-  locallyManaged(a: A, __tsplusTrace?: string): Managed<unknown, EA, void> {
+  _locallyManaged(a: A, __tsplusTrace?: string): Managed<unknown, EA, void> {
     return this.use((value, _, __, setEither) =>
       Managed(
         Effect.Do()
-          .bind("r", () => Effect.environment<unknown>())
-          .bind("releaseMap", () => fiberRefGet(currentReleaseMap.value))
+          .bind("r", () => effectEnvironment<unknown>())
+          .bind("releaseMap", () => currentReleaseMap.value.get())
           .bind("a", () =>
-            value.get.flatMap((old) =>
-              setEither(a)(old).fold(Effect.failNow, (s) => value.set(s).as(old))
+            value._get.flatMap((old) =>
+              setEither(a)(old).fold(Effect.failNow, (s) => value._set(s).as(old))
             )
           )
           .bind("releaseMapEntry", ({ a, r, releaseMap }) =>
-            releaseMap.add(() => locally_(currentEnvironment.value, r)(value.set(a)))
+            releaseMap.add(() =>
+              value._set(a).apply(currentEnvironment.value.locally(r))
+            )
           )
           .map(({ a, releaseMapEntry }) => Tuple(releaseMapEntry, a))
           .uninterruptible()
@@ -320,6 +326,8 @@ export class DerivedAll<EA, EB, A, B> extends XFiberRefInternal<EA, EB, A, B> {
 
 /**
  * Creates a new `FiberRef` with given initial value.
+ *
+ * @tsplus static ets/XFiberRefOps make
  */
 export function make<A>(
   initial: A,
@@ -329,10 +337,13 @@ export function make<A>(
 ): UIO<FiberRef.Runtime<A>> {
   return Effect.suspendSucceed(() => {
     const ref = unsafeMake(initial, fork, join)
-    return update_(ref, identity).map(() => ref)
+    return ref.update(identity).as(ref)
   })
 }
 
+/**
+ * @tsplus static ets/XFiberRefOps unsafeMake
+ */
 export function unsafeMake<A>(
   initial: A,
   fork: (a: A) => A = identity,
@@ -343,6 +354,8 @@ export function unsafeMake<A>(
 
 /**
  * A `FiberRef` containing a reference to the current environment.
+ *
+ * @tsplus static ets/XFiberRefOps currentEnvironment
  */
 export const currentEnvironment: LazyValue<FiberRef.Runtime<any>> = LazyValue.make(() =>
   unsafeMake({} as any, identity, (a, _) => a)
@@ -350,6 +363,8 @@ export const currentEnvironment: LazyValue<FiberRef.Runtime<any>> = LazyValue.ma
 
 /**
  * A `FiberRef` containing a reference to the current `LogLevel`.
+ *
+ * @tsplus static ets/XFiberRefOps currentLogLevel
  */
 export const currentLogLevel: LazyValue<FiberRef.Runtime<LogLevel>> = LazyValue.make(
   () => unsafeMake(Info)
@@ -357,12 +372,16 @@ export const currentLogLevel: LazyValue<FiberRef.Runtime<LogLevel>> = LazyValue.
 
 /**
  * A `FiberRef` containing a reference to the current list of `LogSpan`s.
+ *
+ * @tsplus static ets/XFiberRefOps currentLogSpan
  */
 export const currentLogSpan: LazyValue<FiberRef.Runtime<List<LogSpan>>> =
   LazyValue.make(() => unsafeMake(List.empty()))
 
 /**
  * A `FiberRef` containing a reference to the current map of log annotations.
+ *
+ * @tsplus static ets/XFiberRefOps currentLogAnnotations
  */
 export const currentLogAnnotations: LazyValue<
   FiberRef.Runtime<Map.Map<string, string>>
@@ -370,27 +389,28 @@ export const currentLogAnnotations: LazyValue<
 
 /**
  * A `FiberRef` containing a reference to the current operation parallelism.
+ *
+ * @tsplus static ets/XFiberRefOps currentParallelism
  */
 export const currentParallelism: LazyValue<FiberRef.Runtime<Option<number>>> =
   LazyValue.make(() => unsafeMake(Option.emptyOf<number>()))
 
 /**
  * A `FiberRef` containing a reference to the current `ReleaseMap`.
+ *
+ * @tsplus static ets/XFiberRefOps currentReleaseMap
  */
 export const currentReleaseMap: LazyValue<FiberRef.Runtime<ReleaseMap>> =
   LazyValue.make(() => unsafeMake(ReleaseMap.unsafeMake()))
 
 /**
  * A `FiberRef` containing a reference to the current fiber `Scope`.
+ *
+ * @tsplus static ets/XFiberRefOps forkScopeOverride
  */
 export const forkScopeOverride: LazyValue<FiberRef.Runtime<Option<Scope>>> =
   LazyValue.make(() => unsafeMake<Option<Scope>>(Option.none, identity, (a, _) => a))
 
-/**
- * Accesses the whole environment of the effect.
- *
- * @tsplus static ets/EffectOps environment
- */
 export function effectEnvironment<R>(__tsplusTrace?: string): RIO<R, R> {
-  return Effect.suspendSucceed(() => fiberRefGet(currentEnvironment.value))
+  return Effect.suspendSucceed(currentEnvironment.value.get())
 }

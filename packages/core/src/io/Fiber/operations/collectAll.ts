@@ -5,6 +5,7 @@ import { Cause } from "../../Cause/definition"
 import { Effect } from "../../Effect"
 import { Exit } from "../../Exit"
 import { FiberId } from "../../FiberId"
+import type { Runtime } from "../../FiberRef"
 import type { Fiber } from "../definition"
 import { makeSynthetic } from "./makeSynthetic"
 
@@ -38,8 +39,10 @@ export function collectAll<E, A>(fibers: Iterable<Fiber<E, A>>): Fiber<E, Chunk<
       )
     ),
     getRef: (ref) =>
-      Effect.reduce(fibers, ref.initial, (a, fiber) =>
-        fiber.getRef(ref).map((a2) => ref.join(a, a2))
+      Effect.reduce(
+        fibers,
+        () => (ref as Runtime<any>).initial,
+        (a, fiber) => fiber.getRef(ref).map((a2) => (ref as Runtime<any>).join(a, a2))
       ),
     interruptAs: (fiberId) =>
       Effect.forEach(fibers, (f) => f.interruptAs(fiberId)).map((_) =>

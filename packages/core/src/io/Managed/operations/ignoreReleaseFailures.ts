@@ -1,6 +1,5 @@
 import { Effect } from "../../Effect"
-import { currentReleaseMap } from "../../FiberRef/definition/data"
-import { get as fiberRefGet } from "../../FiberRef/operations/get"
+import { FiberRef } from "../../FiberRef"
 import { Managed } from "../definition"
 
 /**
@@ -13,7 +12,8 @@ export function ignoreReleaseFailures<R, E, A>(
   __trace?: string
 ): Managed<R, E, A> {
   return Managed(
-    fiberRefGet(currentReleaseMap.value)
+    FiberRef.currentReleaseMap.value
+      .get()
       .tap((releaseMap) =>
         releaseMap.updateAll(
           (finalizer) => (exit) => finalizer(exit).catchAllCause(() => Effect.unit)

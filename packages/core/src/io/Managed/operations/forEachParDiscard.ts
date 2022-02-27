@@ -1,8 +1,7 @@
 import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
 import { ExecutionStrategy } from "../../ExecutionStrategy"
-import { currentReleaseMap } from "../../FiberRef/definition/data"
-import { locally_ } from "../../FiberRef/operations/locally"
+import { FiberRef } from "../../FiberRef"
 import type { Managed } from "../definition"
 import { ReleaseMap } from "../ReleaseMap"
 
@@ -20,13 +19,14 @@ export function forEachParDiscard<R, E, A, X>(
   __tsplusTrace?: string
 ): Managed<R, E, void> {
   return ReleaseMap.makeManagedPar.mapEffect((parallelReleaseMap) => {
-    const makeInnerMap = locally_(
-      currentReleaseMap.value,
-      parallelReleaseMap
-    )(ReleaseMap.makeManaged(ExecutionStrategy.Sequential).effect.map((_) => _.get(1)))
+    const makeInnerMap = ReleaseMap.makeManaged(ExecutionStrategy.Sequential)
+      .effect.map((_) => _.get(1))
+      .apply(FiberRef.currentReleaseMap.value.locally(parallelReleaseMap))
     return Effect.forEachParDiscard(as, (a) =>
       makeInnerMap.flatMap((innerMap) =>
-        locally_(currentReleaseMap.value, innerMap)(f(a).effect.map((_) => _.get(1)))
+        f(a)
+          .effect.map((_) => _.get(1))
+          .apply(FiberRef.currentReleaseMap.value.locally(innerMap))
       )
     )
   })

@@ -1,6 +1,5 @@
 import { Option } from "../../../data/Option"
-import { currentParallelism } from "../../FiberRef/definition/data"
-import { locallyManaged_ } from "../../FiberRef/operations/locallyManaged"
+import { FiberRef } from "../../FiberRef"
 import type { Managed } from "../definition"
 
 /**
@@ -15,7 +14,7 @@ export function withParallelism_<R, E, A>(
   n: number,
   __tsplusTrace?: string
 ): Managed<R, E, A> {
-  return locallyManaged_(currentParallelism.value, Option.some(n)).zipRight(self)
+  return FiberRef.currentParallelism.value.locallyManaged(Option.some(n)).zipRight(self)
 }
 
 /**
@@ -25,7 +24,6 @@ export function withParallelism_<R, E, A>(
  *
  * @ets_data_first withParallelism_
  */
-export function withParallelism(n: number, __trace?: string) {
-  return <R, E, A>(self: Managed<R, E, A>): Managed<R, E, A> =>
-    withParallelism_(self, n, __trace)
+export function withParallelism(n: number, __tsplusTrace?: string) {
+  return <R, E, A>(self: Managed<R, E, A>): Managed<R, E, A> => self.withParallelism(n)
 }

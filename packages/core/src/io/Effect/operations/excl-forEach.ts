@@ -13,9 +13,7 @@ import { Exit } from "../../Exit"
 import type * as Fiber from "../../Fiber/definition"
 import { interrupt as interruptFiber } from "../../Fiber/operations/interrupt"
 import { FiberId } from "../../FiberId"
-import { currentReleaseMap } from "../../FiberRef/definition/data"
-import { get as fiberRefGet } from "../../FiberRef/operations/get"
-import { locally_ } from "../../FiberRef/operations/locally"
+import { FiberRef } from "../../FiberRef"
 import { Managed } from "../../Managed/definition"
 import { ReleaseMap } from "../../Managed/ReleaseMap/definition"
 import type { State } from "../../Managed/ReleaseMap/state"
@@ -651,18 +649,15 @@ export function managedFork<R, E, A>(
   return Managed(
     Effect.uninterruptibleMask(({ restore }) =>
       Effect.Do()
-        .bind("outerReleaseMap", () => fiberRefGet(currentReleaseMap.value))
+        .bind("outerReleaseMap", () => FiberRef.currentReleaseMap.value.get())
         .bind("innerReleaseMap", () => ReleaseMap.make)
         .bind("fiber", ({ innerReleaseMap }) =>
-          locally_(
-            currentReleaseMap.value,
-            innerReleaseMap
-          )(
+          (
             restore(self.effect.map((_) => _.get(1))).forkDaemon() as RIO<
               R,
               Fiber.Runtime<E, A>
             >
-          )
+          ).apply(FiberRef.currentReleaseMap.value.locally(innerReleaseMap))
         )
         .bind("releaseMapEntry", ({ fiber, innerReleaseMap, outerReleaseMap }) =>
           outerReleaseMap.add((e) =>
@@ -685,15 +680,13 @@ export function managedUse<R, E, A, R2, E2, B>(
   __tsplusTrace?: string
 ): Effect<R & R2, E | E2, B> {
   return ReleaseMap.make.flatMap((releaseMap) =>
-    locally_(
-      currentReleaseMap.value,
-      releaseMap
-    )(
-      fiberRefGet(currentReleaseMap.value).acquireReleaseExitWith(
+    FiberRef.currentReleaseMap.value
+      .get()
+      .acquireReleaseExitWith(
         () => self.effect.flatMap((_) => f(_.get(1))),
         (relMap, ex) => releaseMapReleaseAll(relMap, ex, ExecutionStrategy.Sequential)
       )
-    )
+      .apply(FiberRef.currentReleaseMap.value.locally(releaseMap))
   )
 }
 

@@ -1,5 +1,4 @@
-import { currentEnvironment } from "../../FiberRef/definition/data"
-import { locally_ } from "../../FiberRef/operations/locally"
+import { FiberRef } from "../../FiberRef"
 import type { Effect, IO } from "../definition"
 
 /**
@@ -13,7 +12,9 @@ export function provideEnvironment_<R, E, A>(
   environment: R,
   __tsplusTrace?: string
 ): IO<E, A> {
-  return locally_(currentEnvironment.value, environment)(self as IO<E, A>)
+  return (self as IO<E, A>).apply(
+    FiberRef.currentEnvironment.value.locally(environment)
+  )
 }
 
 /**

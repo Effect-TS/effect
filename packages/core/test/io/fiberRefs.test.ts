@@ -1,7 +1,7 @@
 import type { FiberRefs } from "../../src/io/Effect"
 import { Effect } from "../../src/io/Effect"
 import * as Fiber from "../../src/io/Fiber"
-import * as FiberRef from "../../src/io/FiberRef"
+import { FiberRef } from "../../src/io/FiberRef"
 import { Queue } from "../../src/io/Queue"
 
 describe("FiberRefs", () => {
@@ -10,16 +10,13 @@ describe("FiberRefs", () => {
       .bind("fiberRef", () => FiberRef.make(false))
       .bind("queue", () => Queue.unbounded<FiberRefs>())
       .bind("producer", ({ fiberRef, queue }) =>
-        FiberRef.set_(fiberRef, true)
+        fiberRef
+          .set(true)
           .zipRight(Effect.getFiberRefs.flatMap((a) => queue.offer(a)))
           .fork()
       )
       .bind("consumer", ({ fiberRef, queue }) =>
-        queue
-          .take()
-          .flatMap(Effect.setFiberRefs)
-          .zipRight(FiberRef.get(fiberRef))
-          .fork()
+        queue.take().flatMap(Effect.setFiberRefs).zipRight(fiberRef.get()).fork()
       )
       .tap(({ producer }) => Fiber.join(producer))
       .flatMap(({ consumer }) => Fiber.join(consumer))

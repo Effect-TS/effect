@@ -23,15 +23,8 @@ import { EffectError, instruction } from "../../Effect/definition/primitives"
 import { Exit } from "../../Exit"
 import type { Runtime as RuntimeFiberId } from "../../FiberId"
 import { FiberId } from "../../FiberId"
-import type { FiberRef, Runtime as RuntimeFiberRef } from "../../FiberRef"
-import {
-  currentEnvironment,
-  currentLogAnnotations,
-  currentLogLevel,
-  currentLogSpan,
-  forkScopeOverride,
-  update_
-} from "../../FiberRef"
+import type { Runtime as RuntimeFiberRef } from "../../FiberRef"
+import { FiberRef } from "../../FiberRef"
 import { InterruptStatus } from "../../InterruptStatus"
 import { LogLevel } from "../../LogLevel"
 import * as HistogramBoundaries from "../../Metric/Boundaries"
@@ -190,9 +183,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   // -----------------------------------------------------------------------------
 
   unsafeLog(message: () => string, trace?: string): void {
-    const logLevel = this.unsafeGetRef(currentLogLevel.value)
-    const spans = this.unsafeGetRef(currentLogSpan.value)
-    const annotations = this.unsafeGetRef(currentLogAnnotations.value)
+    const logLevel = this.unsafeGetRef(FiberRef.currentLogLevel.value)
+    const spans = this.unsafeGetRef(FiberRef.currentLogSpan.value)
+    const annotations = this.unsafeGetRef(FiberRef.currentLogAnnotations.value)
 
     this.runtimeConfig.value.logger.apply(
       TraceElement.parse(trace),
@@ -215,11 +208,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     trace?: string
   ): void {
     const logLevel = overrideLogLevel.getOrElse(
-      this.unsafeGetRef(currentLogLevel.value)
+      this.unsafeGetRef(FiberRef.currentLogLevel.value)
     )
 
-    const spans = this.unsafeGetRef(currentLogSpan.value)
-    const annotations = this.unsafeGetRef(currentLogAnnotations.value)
+    const spans = this.unsafeGetRef(FiberRef.currentLogSpan.value)
+    const annotations = this.unsafeGetRef(FiberRef.currentLogAnnotations.value)
 
     const contextMap = new Map(this.fiberRefLocals.entries())
     if (overrideRef1 != null) {
@@ -504,7 +497,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       this.fiberRefLocals.size === 0
         ? Effect.unit
         : Effect.forEachDiscard(this.fiberRefLocals, ([ref, value]) =>
-            update_(ref, (old) => (ref as RuntimeFiberRef<A>).join(old, value))
+            ref.update((old) => (ref as RuntimeFiberRef<A>).join(old, value))
           )
     )
   }
@@ -1003,7 +996,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
 
     const parentScope: Scope.Scope = (
-      forkScope._tag === "Some" ? forkScope : this.unsafeGetRef(forkScopeOverride.value)
+      forkScope._tag === "Some"
+        ? forkScope
+        : this.unsafeGetRef(FiberRef.forkScopeOverride.value)
     ).getOrElse(this.scope)
 
     const childId = FiberId.unsafeMake(trace)
@@ -1019,7 +1014,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
     if (this.runtimeConfig.value.supervisor !== Supervisor.none) {
       this.runtimeConfig.value.supervisor.unsafeOnStart(
-        this.unsafeGetRef(currentEnvironment.value),
+        this.unsafeGetRef(FiberRef.currentEnvironment.value),
         effect,
         Option.some(this),
         childContext
@@ -1473,7 +1468,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     current = instruction(
                       effect.f(
-                        this.unsafeGetRef(forkScopeOverride.value).getOrElse(this.scope)
+                        this.unsafeGetRef(FiberRef.forkScopeOverride.value).getOrElse(
+                          this.scope
+                        )
                       )
                     )
 
@@ -1482,16 +1479,19 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                   case "OverrideForkScope": {
                     const oldForkScopeOverride = this.unsafeGetRef(
-                      forkScopeOverride.value
+                      FiberRef.forkScopeOverride.value
                     )
 
                     const forkedScope = current.forkScope()
 
-                    this.unsafeSetRef(forkScopeOverride.value, forkedScope)
+                    this.unsafeSetRef(FiberRef.forkScopeOverride.value, forkedScope)
 
                     this.unsafeAddFinalizer(
                       Effect.succeed(
-                        this.unsafeSetRef(forkScopeOverride.value, oldForkScopeOverride)
+                        this.unsafeSetRef(
+                          FiberRef.forkScopeOverride.value,
+                          oldForkScopeOverride
+                        )
                       )
                     )
 
