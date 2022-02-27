@@ -1,6 +1,5 @@
 import { Tuple } from "../../../collection/immutable/Tuple"
-import { currentReleaseMap } from "../../FiberRef/definition/data"
-import { get as fiberRefGet } from "../../FiberRef/operations/get"
+import { FiberRef } from "../../FiberRef"
 import { Managed } from "../definition"
 
 /**
@@ -18,9 +17,9 @@ export function preallocateManaged<R, E, A>(
       Tuple(
         release,
         Managed(
-          fiberRefGet(currentReleaseMap.value).flatMap((releaseMap) =>
-            releaseMap.add(release).map((_) => Tuple(_, a))
-          )
+          FiberRef.currentReleaseMap.value
+            .get()
+            .flatMap((releaseMap) => releaseMap.add(release).map((_) => Tuple(_, a)))
         )
       )
     )

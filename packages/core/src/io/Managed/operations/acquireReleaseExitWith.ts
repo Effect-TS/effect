@@ -2,8 +2,7 @@ import { Tuple } from "../../../collection/immutable/Tuple"
 import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
 import type { Exit } from "../../Exit/definition"
-import { currentReleaseMap } from "../../FiberRef/definition/data"
-import { get as fiberRefGet } from "../../FiberRef/operations/get"
+import { FiberRef } from "../../FiberRef"
 import { Managed } from "../definition"
 
 /**
@@ -21,7 +20,7 @@ export function acquireReleaseExitWith<R, R1, E, A>(
   return Managed(
     Effect.Do()
       .bind("r", () => Effect.environment<R1>())
-      .bind("releaseMap", () => fiberRefGet(currentReleaseMap.value))
+      .bind("releaseMap", () => FiberRef.currentReleaseMap.value.get())
       .bind("a", () => acquire())
       .bind("releaseMapEntry", ({ a, r, releaseMap }) =>
         releaseMap.add((ex) => release(a, ex).provideEnvironment(r))

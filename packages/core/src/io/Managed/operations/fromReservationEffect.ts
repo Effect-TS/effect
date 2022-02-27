@@ -1,8 +1,7 @@
 import { Tuple } from "../../../collection/immutable/Tuple"
 import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
-import { currentReleaseMap } from "../../FiberRef/definition/data"
-import { get as fiberRefGet } from "../../FiberRef/operations/get"
+import { FiberRef } from "../../FiberRef"
 import { Managed } from "../definition"
 import type { Finalizer } from "../ReleaseMap/finalizer"
 import type { Reservation } from "../reservation"
@@ -27,7 +26,7 @@ export function fromReservationEffect<R, E, A>(
     Effect.uninterruptibleMask(({ restore }) =>
       Effect.Do()
         .bind("r", () => Effect.environment<R>())
-        .bind("releaseMap", () => fiberRefGet(currentReleaseMap.value))
+        .bind("releaseMap", () => FiberRef.currentReleaseMap.value.get())
         .bind("reserved", () => reservation())
         .bind("releaseKey", ({ r, releaseMap, reserved }) =>
           releaseMap.addIfOpen((exit) => reserved.release(exit).provideEnvironment(r))

@@ -1,5 +1,6 @@
 import { Option } from "../../../data/Option"
 import * as FiberId from "../../FiberId"
+import type { Runtime } from "../../FiberRef"
 import type { Fiber } from "../definition"
 import { makeSynthetic } from "./makeSynthetic"
 
@@ -22,7 +23,7 @@ export function orElse_<E, E1, A, A1>(
       self
         .getRef(ref)
         .zipWith(that.getRef(ref), (first, second) =>
-          first === ref.initial ? second : first
+          first === (ref as Runtime<any>).initial ? second : first
         ),
     inheritRefs: that.inheritRefs > self.inheritRefs,
     interruptAs: (id) => self.interruptAs(id) > that.interruptAs(id),

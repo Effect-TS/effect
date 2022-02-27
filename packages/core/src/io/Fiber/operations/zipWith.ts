@@ -1,6 +1,7 @@
 import { Cause } from "../../Cause"
 import { Effect } from "../../Effect"
 import * as FiberId from "../../FiberId"
+import type { Runtime } from "../../FiberRef"
 import type { Fiber } from "../definition"
 import { makeSynthetic } from "./makeSynthetic"
 
@@ -24,7 +25,8 @@ export function zipWith_<E, E1, A, B, C>(
       )
       .exit(),
     children: self.children,
-    getRef: (ref) => self.getRef(ref).zipWith(that.getRef(ref), ref.join),
+    getRef: (ref) =>
+      self.getRef(ref).zipWith(that.getRef(ref), (ref as Runtime<any>).join),
     inheritRefs: that.inheritRefs.flatMap(() => self.inheritRefs),
     interruptAs: (id) =>
       self

@@ -1,8 +1,7 @@
-import type * as Tp from "../../../collection/immutable/Tuple"
+import type { Tuple } from "../../../collection/immutable/Tuple"
 import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
-import { currentReleaseMap } from "../../FiberRef/definition/data"
-import { locally_ } from "../../FiberRef/operations/locally"
+import { FiberRef } from "../../FiberRef"
 import { Managed } from "../definition"
 import type { Finalizer } from "../ReleaseMap/finalizer"
 
@@ -12,7 +11,7 @@ import type { Finalizer } from "../ReleaseMap/finalizer"
  * resource and returns it with an early-release handle.
  */
 export interface Scope {
-  <R, E, A>(managed: LazyArg<Managed<R, E, A>>): Effect<R, E, Tp.Tuple<[Finalizer, A]>>
+  <R, E, A>(managed: LazyArg<Managed<R, E, A>>): Effect<R, E, Tuple<[Finalizer, A]>>
 }
 
 /**
@@ -25,8 +24,8 @@ export const scope: Managed<unknown, never, Scope> = Managed.releaseMap.map(
   (finalizers) =>
     <R, E, A>(
       managed: LazyArg<Managed<R, E, A>>
-    ): Effect<R, E, Tp.Tuple<[Finalizer, A]>> =>
-      Effect.environment<R>().flatMap((r) =>
-        locally_(currentReleaseMap.value, finalizers)(managed().effect)
+    ): Effect<R, E, Tuple<[Finalizer, A]>> =>
+      Effect.succeed(managed).flatMap((_) =>
+        _.effect.apply(FiberRef.currentReleaseMap.value.locally(finalizers))
       )
 )

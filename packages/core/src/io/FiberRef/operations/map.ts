@@ -1,15 +1,17 @@
 import { Either } from "../../../data/Either"
 import type { XFiberRef } from "../definition"
-import { mapEither_ } from "./mapEither"
 
 /**
  * Transforms the `get` value of the `XFiberRef` with the specified function.
+ *
+ * @tsplus fluent ets/XFiberRef map
+ * @tsplus fluent ets/XFiberRefRuntime map
  */
 export function map_<EA, EB, A, B, C>(
   self: XFiberRef<EA, EB, A, B>,
   f: (b: B) => C
 ): XFiberRef<EA, EB, A, C> {
-  return mapEither_(self, (b) => Either.right(f(b)))
+  return self.mapEither((b) => Either.right(f(b)))
 }
 
 /**
@@ -19,5 +21,5 @@ export function map_<EA, EB, A, B, C>(
  */
 export function map<B, C>(f: (b: B) => C) {
   return <EA, EB, A>(self: XFiberRef<EA, EB, A, B>): XFiberRef<EA, EB, A, C> =>
-    map_(self, f)
+    self.map(f)
 }

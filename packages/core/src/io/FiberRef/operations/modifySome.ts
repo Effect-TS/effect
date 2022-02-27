@@ -2,13 +2,15 @@ import { Tuple } from "../../../collection/immutable/Tuple"
 import type { Option } from "../../../data/Option"
 import type { IO } from "../../Effect"
 import type { XFiberRef } from "../definition"
-import { modify_ } from "./modify"
 
 /**
  * Atomically modifies the `XFiberRef` with the specified partial function,
  * which computes a return value for the modification if the function is
  * defined in the current value otherwise it returns a default value. This
  * is a more powerful version of `updateSome`.
+ *
+ * @tsplus fluent ets/XFiberRef modifySome
+ * @tsplus fluent ets/XFiberRefRuntime modifySome
  */
 export function modifySome_<EA, EB, A, B>(
   self: XFiberRef<EA, EB, A, A>,
@@ -16,7 +18,7 @@ export function modifySome_<EA, EB, A, B>(
   f: (a: A) => Option<Tuple<[B, A]>>,
   __tsplusTrace?: string
 ): IO<EA | EB, B> {
-  return modify_(self, (v) => f(v).getOrElse(Tuple(def, v)))
+  return self.modify((v) => f(v).getOrElse(Tuple(def, v)))
 }
 
 /**
@@ -33,5 +35,5 @@ export function modifySome<B, A>(
   __tsplusTrace?: string
 ) {
   return <EA, EB>(self: XFiberRef<EA, EB, A, A>): IO<EA | EB, B> =>
-    modifySome_(self, def, f)
+    self.modifySome(def, f)
 }

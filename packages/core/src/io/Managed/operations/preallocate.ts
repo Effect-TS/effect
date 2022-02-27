@@ -2,9 +2,7 @@ import { Tuple } from "../../../collection/immutable/Tuple"
 import { Effect } from "../../Effect"
 import { ExecutionStrategy } from "../../ExecutionStrategy"
 import { Exit } from "../../Exit"
-import { currentReleaseMap } from "../../FiberRef/definition/data"
-import { get as fiberRefGet } from "../../FiberRef/operations/get"
-import { locally_ } from "../../FiberRef/operations/locally"
+import { FiberRef } from "../../FiberRef"
 import { Managed } from "../definition"
 import { ReleaseMap } from "../ReleaseMap"
 
@@ -24,7 +22,9 @@ export function preallocate<R, E, A>(
     Effect.Do()
       .bind("releaseMap", () => ReleaseMap.make)
       .bind("tp", ({ releaseMap }) =>
-        restore(locally_(currentReleaseMap.value, releaseMap)(self.effect)).exit()
+        restore(
+          self.effect.apply(FiberRef.currentReleaseMap.value.locally(releaseMap))
+        ).exit()
       )
       .flatMap(({ releaseMap, tp }) =>
         tp.foldEffect(
@@ -35,9 +35,11 @@ export function preallocate<R, E, A>(
           ({ tuple: [release, a] }) =>
             Effect.succeed(
               Managed<unknown, never, A>(
-                fiberRefGet(currentReleaseMap.value).flatMap((releaseMap) =>
-                  releaseMap.add(release).map((_) => Tuple(_, a))
-                )
+                FiberRef.currentReleaseMap.value
+                  .get()
+                  .flatMap((releaseMap) =>
+                    releaseMap.add(release).map((_) => Tuple(_, a))
+                  )
               )
             )
         )

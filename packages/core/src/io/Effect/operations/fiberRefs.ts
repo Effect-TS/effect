@@ -1,7 +1,6 @@
 import * as M from "../../../collection/immutable/Map"
 import type { Option } from "../../../data/Option"
 import type { FiberRef, Runtime } from "../../FiberRef"
-import { set_ as fiberRefSet_ } from "../../FiberRef/operations/set"
 import type { UIO } from "../definition"
 import { Effect, IFiberRefGetAll } from "../definition"
 
@@ -30,7 +29,7 @@ export class FiberRefs {
    */
   get setAll(): UIO<void> {
     return Effect.forEachDiscard(this.fiberRefs, (fiberRef) =>
-      fiberRefSet_(fiberRef, this.getOrDefault(fiberRef))
+      fiberRef.set(this.getOrDefault(fiberRef))
     )
   }
 

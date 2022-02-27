@@ -1,8 +1,6 @@
 import { Effect } from "../../Effect"
-import { currentReleaseMap } from "../../FiberRef/definition/data"
-import { locally_ } from "../../FiberRef/operations/locally"
-import { await as promiseAwait } from "../../Promise/operations/await"
-import { make as promiseMake } from "../../Promise/operations/make"
+import { FiberRef } from "../../FiberRef"
+import { Promise } from "../../Promise"
 import { Managed } from "../definition"
 
 /**
@@ -16,18 +14,16 @@ export function memoize<R, E, A>(
 ): Managed<unknown, never, Managed<R, E, A>> {
   return Managed.releaseMap.mapEffect((finalizers) =>
     Effect.Do()
-      .bind("promise", () => promiseMake<E, A>())
+      .bind("promise", () => Promise.make<E, A>())
       .bind("complete", ({ promise }) =>
-        locally_(
-          currentReleaseMap.value,
-          finalizers
-        )(self.effect)
+        self.effect
+          .apply(FiberRef.currentReleaseMap.value.locally(finalizers))
           .map((_) => _.get(1))
           .intoPromise(promise)
           .once()
       )
       .map(({ complete, promise }) =>
-        Managed.fromEffect(complete.flatMap(() => promiseAwait(promise)))
+        Managed.fromEffect(complete.flatMap(() => promise.await()))
       )
   )
 }

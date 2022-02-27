@@ -1,6 +1,5 @@
 import type { Effect } from "../../Effect"
-import { currentLogLevel } from "../../FiberRef/definition/data"
-import { locally_ as fiberRefLocally_ } from "../../FiberRef/operations/locally"
+import { FiberRef } from "../../FiberRef"
 import type { LogLevel } from "../definition"
 
 /**
@@ -11,5 +10,5 @@ export function locally<R, E, A>(
   self: LogLevel,
   __tsplusTrace?: string
 ): (use: Effect<R, E, A>) => Effect<R, E, A> {
-  return fiberRefLocally_(currentLogLevel.value, self)
+  return FiberRef.currentLogLevel.value.locally(self)
 }

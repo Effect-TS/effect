@@ -5,7 +5,7 @@ import type { TraceElement } from "../../io/TraceElement"
 import type { Effect, UIO } from "../Effect"
 import type { Exit } from "../Exit"
 import type { FiberId, Runtime as RuntimeFiberId } from "../FiberId"
-import type * as FiberRef from "../FiberRef"
+import type { FiberRef } from "../FiberRef"
 import type { Scope } from "../Scope"
 import type { FiberStatus } from "./status"
 

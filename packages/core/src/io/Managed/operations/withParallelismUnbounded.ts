@@ -1,6 +1,5 @@
 import { Option } from "../../../data/Option"
-import { currentParallelism } from "../../FiberRef/definition/data"
-import { locallyManaged_ } from "../../FiberRef/operations/locallyManaged"
+import { FiberRef } from "../../FiberRef"
 import type { Managed } from "../definition"
 
 /**
@@ -14,5 +13,5 @@ export function withParallelismUnbounded<R, E, A>(
   self: Managed<R, E, A>,
   __tsplusTrace?: string
 ): Managed<R, E, A> {
-  return locallyManaged_(currentParallelism.value, Option.none).zipRight(self)
+  return FiberRef.currentParallelism.value.locallyManaged(Option.none).zipRight(self)
 }
