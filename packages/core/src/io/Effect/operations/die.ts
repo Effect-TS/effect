@@ -1,5 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import * as Trace from "../../../io/Trace"
+import { Trace } from "../../../io/Trace"
 import { Cause } from "../../Cause"
 import type { UIO } from "../definition"
 import { Effect } from "../definition"
