@@ -1,7 +1,7 @@
 import { constVoid, identity } from "../../data/Function"
 import { Option } from "../../data/Option"
 import { Stack } from "../../data/Stack"
-import * as Supervisor from "../../io/Supervisor"
+import { Supervisor } from "../../io/Supervisor"
 import { OneShot } from "../../support/OneShot"
 import type { Effect } from "../Effect"
 import type { Exit } from "../Exit"
@@ -10,7 +10,7 @@ import { FiberId } from "../FiberId"
 import { FiberRef } from "../FiberRef"
 import { InterruptStatus } from "../InterruptStatus"
 import type { RuntimeConfig } from "../RuntimeConfig"
-import * as Scope from "../Scope"
+import { Scope } from "../Scope"
 import { TraceElement } from "../TraceElement"
 
 export class Runtime<R> {
@@ -39,7 +39,7 @@ export class Runtime<R> {
       new Stack(InterruptStatus.Interruptible.toBoolean)
     )
 
-    Scope.globalScope.value.unsafeAdd(this.runtimeConfig, context)
+    Scope.global.value.unsafeAdd(this.runtimeConfig, context)
 
     if (supervisor !== Supervisor.none) {
       supervisor.unsafeOnStart(this.environment, effect, Option.none, context)

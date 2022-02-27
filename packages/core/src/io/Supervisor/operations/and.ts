@@ -5,6 +5,9 @@ import { Supervisor } from "../definition"
  * Returns a new supervisor that performs the function of this supervisor, and
  * the function of the specified supervisor, producing a tuple of the outputs
  * produced by both supervisors.
+ *
+ * @tsplus operator ets/Supervisor +
+ * @tsplus fluent ets/Supervisor and
  */
 export function and_<A, B>(
   self: Supervisor<A>,
@@ -46,5 +49,5 @@ export function and_<A, B>(
  * @ets_data_first and_
  */
 export function and<B>(that: Supervisor<B>) {
-  return <A>(self: Supervisor<A>): Supervisor<Tuple<[A, B]>> => and_(self, that)
+  return <A>(self: Supervisor<A>): Supervisor<Tuple<[A, B]>> => self + that
 }

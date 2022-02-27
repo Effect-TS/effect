@@ -17,7 +17,7 @@ export interface FiberId {
 }
 
 export declare namespace FiberId {
-  export interface Runtime extends FiberId {}
+  type Runtime = RuntimeFiberId
 }
 
 /**
@@ -26,12 +26,12 @@ export declare namespace FiberId {
 export interface FiberIdOps {}
 export const FiberId: FiberIdOps = {}
 
-export type RealFiberId = None | Runtime | Composite
+export type RealFiberId = None | RuntimeFiberId | CompositeFiberId
 
 /**
  * @tsplus macro remove
  */
-export function realFiberId(fiberId: FiberId): asserts fiberId is RealFiberId {
+export function realFiberId(_: FiberId): asserts _ is RealFiberId {
   //
 }
 
@@ -53,7 +53,7 @@ export class None implements FiberId, St.HasHash, St.HasEquals {
   }
 }
 
-export class Runtime implements FiberId.Runtime, St.HasHash, St.HasEquals {
+export class RuntimeFiberId implements FiberId.Runtime, St.HasHash, St.HasEquals {
   readonly _tag = "Runtime";
 
   readonly [FiberIdSym]: FiberIdSym = FiberIdSym
@@ -79,13 +79,12 @@ export class Runtime implements FiberId.Runtime, St.HasHash, St.HasEquals {
   }
 }
 
-export interface Composite extends FiberId {}
-export class Composite implements St.HasHash, St.HasEquals {
+export class CompositeFiberId implements FiberId, St.HasHash, St.HasEquals {
   readonly _tag = "Composite";
 
   readonly [FiberIdSym]: FiberIdSym = FiberIdSym
 
-  constructor(readonly fiberIds: HashSet<Runtime>) {}
+  constructor(readonly fiberIds: HashSet<FiberId.Runtime>) {}
 
   get [St.hashSym](): number {
     return St.combineHash(St.hashString(this._tag), St.hash(this.fiberIds))

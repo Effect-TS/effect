@@ -1,6 +1,6 @@
 import { Option } from "../../../data/Option"
 import type { Fiber } from "../../Fiber"
-import * as Scope from "../../Scope"
+import { Scope } from "../../Scope"
 import type { RIO } from "../definition"
 import { Effect, IFork } from "../definition"
 
@@ -16,6 +16,6 @@ export function forkDaemon<R, E, A>(
   __tsplusTrace?: string
 ): RIO<R, Fiber.Runtime<E, A>> {
   return Effect.suspendSucceed(
-    new IFork(self, () => Option.some(Scope.globalScope.value), __tsplusTrace)
+    new IFork(self, () => Option.some(Scope.global.value), __tsplusTrace)
   )
 }
