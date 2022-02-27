@@ -3,7 +3,7 @@ import { unsafeTrack } from "../../../io/Supervisor"
 import { HasClock, LiveClock } from "../../Clock"
 import { Logger } from "../../Logger"
 import { LogLevel } from "../../LogLevel"
-import { defaultRandom, HasRandom } from "../../Random"
+import { HasRandom, Random } from "../../Random"
 import { Runtime } from "../../Runtime"
 import { RuntimeConfig } from "../../RuntimeConfig"
 import { RuntimeConfigFlag } from "../../RuntimeConfig/Flag"
@@ -32,7 +32,7 @@ export type DefaultEnv = HasClock & HasRandom
  */
 export const defaultEnv: DefaultEnv = {
   [HasClock.key]: new LiveClock(),
-  [HasRandom.key]: defaultRandom
+  [HasRandom.key]: Random.default
 } as any
 
 /**
