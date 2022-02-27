@@ -1,4 +1,4 @@
-import * as Trace from "../../../io/Trace/operations/none"
+import { Trace } from "../../../io/Trace"
 import type { Cause } from "../definition"
 import { Fail } from "../definition"
 
