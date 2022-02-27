@@ -1,6 +1,5 @@
 import { ExecutionStrategy } from "../../ExecutionStrategy"
-import { currentReleaseMap } from "../../FiberRef/definition/data"
-import { locally_ } from "../../FiberRef/operations/locally"
+import { FiberRef } from "../../FiberRef"
 import type { Managed } from "../definition"
 import { ReleaseMap } from "../ReleaseMap"
 
@@ -19,11 +18,9 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
 ): Managed<R & R2, E | E2, B> {
   return ReleaseMap.makeManaged(ExecutionStrategy.Parallel).mapEffect(
     (parallelReleaseMap) => {
-      const innerMap = locally_(
-        currentReleaseMap.value,
-        parallelReleaseMap
-      )(ReleaseMap.makeManaged(ExecutionStrategy.Sequential).effect)
-
+      const innerMap = ReleaseMap.makeManaged(
+        ExecutionStrategy.Sequential
+      ).effect.apply(FiberRef.currentReleaseMap.value.locally(parallelReleaseMap))
       return innerMap.zip(innerMap).flatMap(
         ({
           tuple: [
@@ -35,8 +32,8 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
             }
           ]
         }) => {
-          const left = locally_(currentReleaseMap.value, l)(self.effect)
-          const right = locally_(currentReleaseMap.value, r)(that.effect)
+          const left = self.effect.apply(FiberRef.currentReleaseMap.value.locally(l))
+          const right = that.effect.apply(FiberRef.currentReleaseMap.value.locally(r))
           // We can safely discard the finalizers here because the resulting
           // Managed's early release will trigger the ReleaseMap, which would
           // release both finalizers in parallel

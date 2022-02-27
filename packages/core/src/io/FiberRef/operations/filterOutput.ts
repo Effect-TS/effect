@@ -9,6 +9,9 @@ import { concreteUnified } from "../definition"
  * Filters the `get` value of the `XFiberRef` with the specified predicate,
  * returning a `XFiberRef` with a `get` value that succeeds if the predicate
  * is satisfied or else fails with `None`.
+ *
+ * @tsplus fluent ets/XFiberRef filterOutput
+ * @tsplus fluent ets/XFiberRefRuntime filterOutput
  */
 export function filterOutput_<EA, EB, A, B, C extends B>(
   self: XFiberRef<EA, EB, A, B>,
@@ -23,7 +26,7 @@ export function filterOutput_<EA, EB, A, B>(
   f: Predicate<B>
 ): XFiberRef<EA, Option<EB>, A, B> {
   concreteUnified(self)
-  return self.fold(identity, Option.some, Either.right, (b) =>
+  return self._fold(identity, Option.some, Either.right, (b) =>
     f(b) ? Either.right(b) : Either.left(Option.none)
   )
 }
@@ -43,5 +46,5 @@ export function filterOutput<B>(
 ): <EA, EB, A>(self: XFiberRef<EA, EB, A, B>) => XFiberRef<EA, Option<EB>, A, B>
 export function filterOutput<B>(f: Predicate<B>) {
   return <EA, EB, A>(self: XFiberRef<EA, EB, A, B>): XFiberRef<EA, Option<EB>, A, B> =>
-    filterOutput_(self, f)
+    self.filterOutput(f)
 }

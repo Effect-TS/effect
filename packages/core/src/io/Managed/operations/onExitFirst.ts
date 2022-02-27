@@ -2,9 +2,7 @@ import { Tuple } from "../../../collection/immutable/Tuple"
 import { Effect } from "../../Effect"
 import { ExecutionStrategy } from "../../ExecutionStrategy"
 import type { Exit } from "../../Exit"
-import { currentReleaseMap } from "../../FiberRef/definition/data"
-import { get } from "../../FiberRef/operations/get"
-import { locally_ } from "../../FiberRef/operations/locally"
+import { FiberRef } from "../../FiberRef"
 import { Managed } from "../definition"
 import { ReleaseMap } from "../ReleaseMap"
 
@@ -23,17 +21,13 @@ export function onExitFirst_<R, E, A, R1, X>(
     Effect.uninterruptibleMask(({ restore }) =>
       Effect.Do()
         .bind("r1", () => Effect.environment<R1>())
-        .bind("outerReleaseMap", () => get(currentReleaseMap.value))
+        .bind("outerReleaseMap", () => FiberRef.currentReleaseMap.value.get())
         .bind("innerReleaseMap", () => ReleaseMap.make)
         .bind("exitEA", ({ innerReleaseMap }) =>
-          locally_(
-            currentReleaseMap.value,
-            innerReleaseMap
-          )(
-            restore(self.effect)
-              .exit()
-              .map((e) => e.map((_) => _.get(1)))
-          )
+          restore(self.effect)
+            .exit()
+            .map((e) => e.map((_) => _.get(1)))
+            .apply(FiberRef.currentReleaseMap.value.locally(innerReleaseMap))
         )
         .bind("releaseMapEntry", ({ exitEA, innerReleaseMap, outerReleaseMap, r1 }) =>
           outerReleaseMap.add((e) =>

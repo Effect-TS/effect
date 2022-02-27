@@ -7,7 +7,7 @@ export const FiberRefSym: unique symbol = Symbol.for("@effect-ts/core/io/FiberRe
 export type FiberRefSym = typeof FiberRefSym
 
 export const FiberRefRuntimeSym: unique symbol = Symbol.for(
-  "@effect-ts/core/io/FiberRef.Runtime"
+  "@effect-ts/core/io/FiberRef/Runtime"
 )
 export type FiberRefRuntimeSym = typeof FiberRefRuntimeSym
 
@@ -26,17 +26,42 @@ export declare namespace FiberRef {
   type Runtime<A> = XFiberRefRuntime<never, never, A, A>
 }
 
+/**
+ * @tsplus type ets/XFiberRef
+ */
 export interface XFiberRef<EA, EB, A, B> {
   readonly [FiberRefSym]: FiberRefSym
-
   readonly [_EA]: (_: never) => EA
   readonly [_EB]: (_: never) => EB
   readonly [_A]: (_: A) => void
   readonly [_B]: (_: never) => B
 }
 
+/**
+ * @tsplus type ets/XFiberRefRuntime
+ */
 export interface XFiberRefRuntime<EA, EB, A, B> extends XFiberRef<EA, EB, A, B> {
   readonly [FiberRefRuntimeSym]: FiberRefRuntimeSym
+}
+
+/**
+ * @tsplus type ets/XFiberRefOps
+ */
+export interface XFiberRefOps {}
+export const FiberRef: XFiberRefOps = {}
+
+/**
+ * @tsplus unify ets/XFiberRef
+ */
+export function unifyXFiberRef<X extends XFiberRef<any, any, any, any>>(
+  self: X
+): XFiberRef<
+  [X] extends [{ [k in typeof _EA]: () => infer EA }] ? EA : never,
+  [X] extends [{ [k in typeof _EB]: () => infer EB }] ? EB : never,
+  [X] extends [{ [k in typeof _A]: (_: infer A) => void }] ? A : never,
+  [X] extends [{ [k in typeof _B]: () => infer B }] ? B : never
+> {
+  return self
 }
 
 export abstract class XFiberRefInternal<EA, EB, A, B>
@@ -53,18 +78,18 @@ export abstract class XFiberRefInternal<EA, EB, A, B>
   /**
    * Returns the initial value or error.
    */
-  abstract get initialValue(): Either<EB, B>
+  abstract get _initialValue(): Either<EB, B>
 
   /**
    * Reads the value associated with the current fiber. Returns initial value if
    * no value was `set` or inherited from parent.
    */
-  abstract get: IO<EB, B>
+  abstract _get: IO<EB, B>
 
   /**
    * Sets the value associated with the current fiber.
    */
-  abstract set(value: A, __trace?: string): IO<EA, void>
+  abstract _set(value: A, __tsplusTrace?: string): IO<EA, void>
 
   /**
    * Folds over the error and value types of the `FiberRef`. This is a highly
@@ -73,7 +98,7 @@ export abstract class XFiberRefInternal<EA, EB, A, B>
    * specific combinators implemented in terms of `fold` will be more ergonomic
    * but this method is extremely useful for implementing new combinators.
    */
-  abstract fold<EC, ED, C, D>(
+  abstract _fold<EC, ED, C, D>(
     ea: (ea: EA) => EC,
     eb: (eb: EB) => ED,
     ca: (c: C) => Either<EC, A>,
@@ -85,7 +110,7 @@ export abstract class XFiberRefInternal<EA, EB, A, B>
    * the state in transforming the `set` value. This is a more powerful version
    * of `fold` but requires unifying the error types.
    */
-  abstract foldAll<EC, ED, C, D>(
+  abstract _foldAll<EC, ED, C, D>(
     ea: (ea: EA) => EC,
     eb: (eb: EB) => ED,
     ec: (eb: EB) => EC,
@@ -98,9 +123,9 @@ export abstract class XFiberRefInternal<EA, EB, A, B>
    *
    * Guarantees that fiber data is properly restored via `acquireRelease`.
    */
-  abstract locally(
+  abstract _locally(
     value: A,
-    __trace?: string
+    __tsplusTrace?: string
   ): <R, EC, C>(use: Effect<R, EC, C>) => Effect<R, EA | EC, C>
 
   /**
@@ -108,5 +133,5 @@ export abstract class XFiberRefInternal<EA, EB, A, B>
    * fiber to the specified value as its `acquire` action and restores it to its
    * original value as its `release` action.
    */
-  abstract locallyManaged(value: A, __trace?: string): Managed<unknown, EA, void>
+  abstract _locallyManaged(value: A, __tsplusTrace?: string): Managed<unknown, EA, void>
 }

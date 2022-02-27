@@ -1,6 +1,5 @@
 import type { Has, Tag } from "../../../data/Has"
-import { currentEnvironment } from "../../FiberRef/definition/data"
-import { get as fiberRefGet } from "../../FiberRef/operations/get"
+import { FiberRef } from "../../FiberRef"
 import { Effect } from "../definition"
 
 /**
@@ -18,8 +17,8 @@ export function serviceWithEffect<T>(tag: Tag<T>) {
     __tsplusTrace?: string
   ): Effect<R & Has<T>, E, A> =>
     Effect.suspendSucceed(
-      fiberRefGet(currentEnvironment.value).flatMap((environment: Has<T>) =>
-        f(environment[tag.key])
-      )
+      FiberRef.currentEnvironment.value
+        .get()
+        .flatMap((environment: Has<T>) => f(environment[tag.key]))
     )
 }

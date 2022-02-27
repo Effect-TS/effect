@@ -1,7 +1,7 @@
 import { Int } from "../../src/data/Int"
 
 describe("Int", () => {
-  it("should perform basic integer aritmetic", () => {
+  it("should perform basic integer arithmetic", () => {
     const one = Int.of(1)
     const two = Int.of(2)
     const five = Int.of(5)

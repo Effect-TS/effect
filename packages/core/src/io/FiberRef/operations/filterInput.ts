@@ -9,6 +9,9 @@ import { concreteUnified } from "../definition"
  * Filters the `set` value of the `XFiberRef` with the specified predicate,
  * returning a `XFiberRef` with a `set` value that succeeds if the predicate
  * is satisfied or else fails with `None`.
+ *
+ * @tsplus fluent ets/XFiberRef filterInput
+ * @tsplus fluent ets/XFiberRefRuntime filterInput
  */
 export function filterInput_<EA, EB, A, B, C extends A>(
   self: XFiberRef<EA, EB, A, B>,
@@ -23,7 +26,7 @@ export function filterInput_<EA, EB, A, B>(
   f: Predicate<A>
 ): XFiberRef<Option<EA>, EB, A, B> {
   concreteUnified(self)
-  return self.fold(
+  return self._fold(
     Option.some,
     identity,
     (a) => (f(a) ? Either.right(a) : Either.left(Option.none)),
@@ -46,5 +49,5 @@ export function filterInput<A>(
 ): <EA, EB, B>(self: XFiberRef<EA, EB, A, B>) => XFiberRef<Option<EA>, EB, A, B>
 export function filterInput<A>(f: Predicate<A>) {
   return <EA, EB, B>(self: XFiberRef<EA, EB, A, B>): XFiberRef<Option<EA>, EB, A, B> =>
-    filterInput_(self, f)
+    self.filterInput(f)
 }

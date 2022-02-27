@@ -6,9 +6,7 @@ import { Effect } from "../Effect"
 import type { IO, UIO } from "../Effect/definition/base"
 import { ExecutionStrategy } from "../ExecutionStrategy"
 import type { Exit } from "../Exit"
-import { currentReleaseMap } from "../FiberRef/definition/data"
-import { get } from "../FiberRef/operations/get"
-import { locally_ } from "../FiberRef/operations/locally"
+import { FiberRef } from "../FiberRef"
 import { Managed } from "../Managed/definition"
 import { ReleaseMap } from "../Managed/ReleaseMap"
 import type { Finalizer } from "../Managed/ReleaseMap/finalizer"
@@ -42,20 +40,22 @@ export class MemoMap {
                 tuple: [acquire, release]
               } = inMap.value
 
-              const cached = get(currentReleaseMap.value).flatMap((releaseMap) =>
-                (acquire as IO<E, A>)
-                  .onExit((exit) => {
-                    switch (exit._tag) {
-                      case "Success": {
-                        return releaseMap.add(release)
+              const cached = FiberRef.currentReleaseMap.value
+                .get()
+                .flatMap((releaseMap) =>
+                  (acquire as IO<E, A>)
+                    .onExit((exit) => {
+                      switch (exit._tag) {
+                        case "Success": {
+                          return releaseMap.add(release)
+                        }
+                        case "Failure": {
+                          return Effect.unit
+                        }
                       }
-                      case "Failure": {
-                        return Effect.unit
-                      }
-                    }
-                  })
-                  .map((x) => Tuple(release, x))
-              )
+                    })
+                    .map((x) => Tuple(release, x))
+                )
 
               return Effect.succeedNow(Tuple(cached, m))
             }
@@ -69,14 +69,17 @@ export class MemoMap {
                 .bindValue("resource", ({ finalizerRef, observers, promise }) =>
                   Effect.uninterruptibleMask(({ restore }) =>
                     Effect.Do()
-                      .bind("outerReleaseMap", () => get(currentReleaseMap.value))
+                      .bind("outerReleaseMap", () =>
+                        FiberRef.currentReleaseMap.value.get()
+                      )
                       .bind("innerReleaseMap", () => ReleaseMap.make)
                       .bind("tp", ({ innerReleaseMap, outerReleaseMap }) =>
                         restore(
-                          locally_(
-                            currentReleaseMap.value,
-                            innerReleaseMap
-                          )(scope(layer).flatMap((_) => _(this)).effect)
+                          scope(layer)
+                            .flatMap((_) => _(this))
+                            .effect.apply(
+                              FiberRef.currentReleaseMap.value.locally(innerReleaseMap)
+                            )
                         )
                           .exit()
                           .flatMap((exit) => {

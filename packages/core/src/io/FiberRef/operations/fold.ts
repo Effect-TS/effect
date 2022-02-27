@@ -8,6 +8,9 @@ import { concreteUnified } from "../definition"
  * and value types of the `XFiberRef`. For most use cases one of the more
  * specific combinators implemented in terms of `fold` will be more ergonomic
  * but this method is extremely useful for implementing new combinators.
+ *
+ * @tsplus fluent ets/XFiberRef fold
+ * @tsplus fluent ets/XFiberRefRuntime fold
  */
 export function fold_<EA, EB, A, B, EC, ED, C = A, D = B>(
   self: XFiberRef<EA, EB, A, B>,
@@ -17,7 +20,7 @@ export function fold_<EA, EB, A, B, EC, ED, C = A, D = B>(
   bd: (_: B) => Either<ED, D>
 ): XFiberRef<EC, ED, C, D> {
   concreteUnified(self)
-  return self.fold(ea, eb, ca, bd)
+  return self._fold(ea, eb, ca, bd)
 }
 
 /**
@@ -36,5 +39,5 @@ export function fold<EA, EB, A, B, EC, ED, C = A, D = B>(
   bd: (_: B) => Either<ED, D>
 ) {
   return (self: XFiberRef<EA, EB, A, B>): XFiberRef<EC, ED, C, D> =>
-    fold_(self, ea, eb, ca, bd)
+    self.fold(ea, eb, ca, bd)
 }

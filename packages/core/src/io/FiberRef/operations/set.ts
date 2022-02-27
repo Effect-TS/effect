@@ -4,6 +4,9 @@ import { concreteUnified } from "../definition"
 
 /**
  * Sets the value associated with the current fiber.
+ *
+ * @tsplus fluent ets/XFiberRef set
+ * @tsplus fluent ets/XFiberRefRuntime set
  */
 export function set_<EA, EB, A, B>(
   self: XFiberRef<EA, EB, A, B>,
@@ -11,7 +14,7 @@ export function set_<EA, EB, A, B>(
   __tsplusTrace?: string
 ): IO<EA, void> {
   concreteUnified(self)
-  return self.set(value)
+  return self._set(value)
 }
 
 /**
@@ -20,5 +23,5 @@ export function set_<EA, EB, A, B>(
  * @ets_data_first set_
  */
 export function set<A>(value: A, __tsplusTrace?: string) {
-  return <EA, EB, B>(self: XFiberRef<EA, EB, A, B>): IO<EA, void> => set_(self, value)
+  return <EA, EB, B>(self: XFiberRef<EA, EB, A, B>): IO<EA, void> => self.set(value)
 }

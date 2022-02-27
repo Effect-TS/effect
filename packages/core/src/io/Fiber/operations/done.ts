@@ -3,6 +3,7 @@ import { Option } from "../../../data/Option"
 import { Effect } from "../../Effect"
 import type { Exit } from "../../Exit"
 import { FiberId } from "../../FiberId"
+import type { Runtime } from "../../FiberRef"
 import type { Fiber } from "../definition"
 import { makeSynthetic } from "./makeSynthetic"
 
@@ -16,7 +17,7 @@ export function done<E, A>(exit: Exit<E, A>): Fiber<E, A> {
     children: Effect.succeedNow(Chunk.empty()),
     inheritRefs: Effect.unit,
     poll: Effect.succeedNow(Option.some(exit)),
-    getRef: (ref) => Effect.succeed(() => ref.initial),
+    getRef: (ref) => Effect.succeed(() => (ref as Runtime<any>).initial),
     interruptAs: () => Effect.succeedNow(exit)
   })
 }

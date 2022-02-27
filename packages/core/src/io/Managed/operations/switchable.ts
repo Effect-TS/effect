@@ -1,8 +1,7 @@
 import { Effect } from "../../Effect"
 import { ExecutionStrategy } from "../../ExecutionStrategy"
 import { Exit } from "../../Exit"
-import { currentReleaseMap } from "../../FiberRef/definition/data"
-import { locally_ } from "../../FiberRef/operations/locally"
+import { FiberRef } from "../../FiberRef"
 import { Managed } from "../definition"
 import { ReleaseMap } from "../ReleaseMap"
 
@@ -46,10 +45,13 @@ export function switchable<R, E, A>(
                 )
               )
               .zipRight(Effect.Do())
-              .bind("r", () => Effect.environment<R>())
               .bind("inner", () => ReleaseMap.make)
-              .bind("a", ({ inner, r }) =>
-                restore(locally_(currentReleaseMap.value, inner)(newResource.effect))
+              .bind("a", ({ inner }) =>
+                restore(
+                  newResource.effect.apply(
+                    FiberRef.currentReleaseMap.value.locally(inner)
+                  )
+                )
               )
               .tap(({ inner }) =>
                 releaseMap.replace(key, (exit) =>

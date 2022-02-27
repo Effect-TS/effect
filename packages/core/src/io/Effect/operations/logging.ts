@@ -2,9 +2,7 @@ import * as Map from "../../../collection/immutable/Map"
 import type { LazyArg } from "../../../data/Function"
 import { Option } from "../../../data/Option"
 import { Cause } from "../../Cause"
-import { currentLogAnnotations, currentLogSpan } from "../../FiberRef/definition/data"
-import { get as fiberRefGet } from "../../FiberRef/operations/get"
-import { locally_ as fiberRefLocally_ } from "../../FiberRef/operations/locally"
+import { FiberRef } from "../../FiberRef"
 import { Logger } from "../../Logger"
 import { LogLevel } from "../../LogLevel"
 import { LogSpan } from "../../LogSpan"
@@ -207,11 +205,13 @@ export function logWarningCauseMessage(
  */
 export function logSpan(label: LazyArg<string>) {
   return <R, E, A>(effect: Effect<R, E, A>, __tsplusTrace?: string): Effect<R, E, A> =>
-    fiberRefGet(currentLogSpan.value).flatMap((stack) =>
+    FiberRef.currentLogSpan.value.get().flatMap((stack) =>
       Effect.suspendSucceed(() => {
         const now = Date.now()
         const logSpan = LogSpan(label(), now)
-        return fiberRefLocally_(currentLogSpan.value, stack.prepend(logSpan))(effect)
+        return effect.apply(
+          FiberRef.currentLogSpan.value.locally(stack.prepend(logSpan))
+        )
       })
     )
 }
@@ -223,14 +223,17 @@ export function logSpan(label: LazyArg<string>) {
  */
 export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
   return <R, E, A>(effect: Effect<R, E, A>, __tsplusTrace?: string): Effect<R, E, A> =>
-    fiberRefGet(currentLogAnnotations.value).flatMap((annotations) =>
-      Effect.suspendSucceed(() =>
-        fiberRefLocally_(
-          currentLogAnnotations.value,
-          Map.insert_(annotations, key(), value())
-        )(effect)
+    FiberRef.currentLogAnnotations.value
+      .get()
+      .flatMap((annotations) =>
+        Effect.suspendSucceed(() =>
+          effect.apply(
+            FiberRef.currentLogAnnotations.value.locally(
+              Map.insert_(annotations, key(), value())
+            )
+          )
+        )
       )
-    )
 }
 
 /**
@@ -239,7 +242,7 @@ export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
  * @tsplus static ets/EffectOps logAnnotations
  */
 export function logAnnotations(__tsplusTrace?: string): UIO<Map.Map<string, string>> {
-  return fiberRefGet(currentLogAnnotations.value)
+  return FiberRef.currentLogAnnotations.value.get()
 }
 
 /**

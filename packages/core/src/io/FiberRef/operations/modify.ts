@@ -9,6 +9,9 @@ import { concrete } from "../definition/concrete"
  * Atomically modifies the `XFiberRef` with the specified function, which
  * computes a return value for the modification. This is a more powerful
  * version of `update`.
+ *
+ * @tsplus fluent ets/XFiberRef modify
+ * @tsplus fluent ets/XFiberRefRuntime modify
  */
 export function modify_<EA, EB, B, A>(
   self: XFiberRef<EA, EB, A, A>,
@@ -16,11 +19,11 @@ export function modify_<EA, EB, B, A>(
   __tsplusTrace?: string
 ): IO<EA | EB, B> {
   return matchTag_(concrete(self), {
-    Runtime: (_) => _.modify(f),
+    Runtime: (_) => _._modify(f),
     Derived: (_) =>
       _.use((value, getEither, setEither) =>
         value
-          .modify((s) =>
+          ._modify((s) =>
             getEither(s).fold(
               (e) => Tuple(Either.left(e), s),
               (a1) => {
@@ -39,7 +42,7 @@ export function modify_<EA, EB, B, A>(
     DerivedAll: (_) =>
       _.use((value, _, getEither, setEither) =>
         value
-          .modify((s) =>
+          ._modify((s) =>
             getEither(s).fold(
               (e) => Tuple(Either.left(e), s),
               (a1) => {
@@ -66,5 +69,5 @@ export function modify_<EA, EB, B, A>(
  * @ets_data_first modify_
  */
 export function modify<B, A>(f: (a: A) => Tuple<[B, A]>, __tsplusTrace?: string) {
-  return <EA, EB>(self: XFiberRef<EA, EB, A, A>): IO<EA | EB, B> => modify_(self, f)
+  return <EA, EB>(self: XFiberRef<EA, EB, A, A>): IO<EA | EB, B> => self.modify(f)
 }

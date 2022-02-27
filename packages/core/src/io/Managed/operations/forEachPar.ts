@@ -2,8 +2,7 @@ import type { Chunk } from "../../../collection/immutable/Chunk"
 import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../Effect"
 import { ExecutionStrategy } from "../../ExecutionStrategy"
-import { currentReleaseMap } from "../../FiberRef/definition/data"
-import { locally_ } from "../../FiberRef/operations/locally"
+import { FiberRef } from "../../FiberRef"
 import type { Managed } from "../definition"
 import { ReleaseMap } from "../ReleaseMap"
 
@@ -21,13 +20,14 @@ export function forEachPar<R, E, A, B>(
   __tsplusTrace?: string
 ): Managed<R, E, Chunk<B>> {
   return ReleaseMap.makeManagedPar.mapEffect((parallelReleaseMap) => {
-    const makeInnerMap = locally_(
-      currentReleaseMap.value,
-      parallelReleaseMap
-    )(ReleaseMap.makeManaged(ExecutionStrategy.Sequential).effect.map((_) => _.get(1)))
+    const makeInnerMap = ReleaseMap.makeManaged(ExecutionStrategy.Sequential)
+      .effect.map((_) => _.get(1))
+      .apply(FiberRef.currentReleaseMap.value.locally(parallelReleaseMap))
     return Effect.forEachPar(as, (a) =>
       makeInnerMap.flatMap((innerMap) =>
-        locally_(currentReleaseMap.value, innerMap)(f(a).effect.map((_) => _.get(1)))
+        f(a)
+          .effect.map((_) => _.get(1))
+          .apply(FiberRef.currentReleaseMap.value.locally(innerMap))
       )
     )
   })
