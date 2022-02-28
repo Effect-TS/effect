@@ -7,6 +7,7 @@ import { constVoid } from "../../../data/Function"
 import { Option } from "../../../data/Option"
 import { Stack } from "../../../data/Stack"
 import { Supervisor } from "../../../io/Supervisor"
+import type { XPure } from "../../../io-light/XPure"
 import { AtomicBoolean } from "../../../support/AtomicBoolean"
 import { AtomicReference } from "../../../support/AtomicReference"
 import { defaultScheduler } from "../../../support/Scheduler"
@@ -1533,6 +1534,23 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     this.runtimeConfig = current.runtimeConfig()
                     current = instruction(Effect.unit)
                     break
+                  }
+
+                  case "XPure": {
+                    const effect: XPure<any, any, any, any, any, any> = current
+                    const environment = this.unsafeGetRef(
+                      FiberRef.currentEnvironment.value
+                    )
+                    const result = effect
+                      .provideEnvironment(() => environment)
+                      .runEither()
+
+                    current = instruction(
+                      result.fold(
+                        (e) => Effect.failCauseNow(Cause.fail(e)),
+                        (a) => Effect.succeedNow(a)
+                      )
+                    )
                   }
                 }
               }

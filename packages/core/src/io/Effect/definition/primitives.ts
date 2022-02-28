@@ -3,6 +3,7 @@ import type { Either } from "../../../data/Either"
 import type { Lazy } from "../../../data/Function"
 import { Option } from "../../../data/Option"
 import type { Supervisor } from "../../../io/Supervisor"
+import type { XPureInstruction } from "../../../io-light/XPure"
 import type { Cause } from "../../Cause"
 import type { Exit } from "../../Exit"
 import type { Fiber } from "../../Fiber"
@@ -54,6 +55,7 @@ export type Instruction =
   | IFiberRefDelete
   | IFiberRefWith<any, any, any, any>
   | ISetRuntimeConfig
+  | XPureInstruction
 
 export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R & R1, E | E1, A1> {
   readonly _tag = "FlatMap"

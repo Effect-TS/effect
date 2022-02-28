@@ -1889,9 +1889,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsplus/installer@npm:0.0.29":
-  version: 0.0.29
-  resolution: "@tsplus/installer@npm:0.0.29"
+"@tsplus/installer@npm:0.0.30":
+  version: 0.0.30
+  resolution: "@tsplus/installer@npm:0.0.30"
   dependencies:
     mkdirp: ^1.0.4
     rimraf: ^3.0.2
@@ -1900,7 +1900,7 @@ __metadata:
     zlib: ^1.0.5
   bin:
     tsplus-install: bin/tsplus-install
-  checksum: 485d55cdb1acfccc47590beab68e4db6b8a6104e8316150836414742f358dc5702440e6a1818200b84771aeda1f0a4df960f3674c54a33bf43b7a8bbf44323fb
+  checksum: 446d57b009835cc89df3eca3351b217bb0a346779fc7bdeb2bd16a94e7509fc34ec748aa391e88ba85c4054df1d3f9b3cee51728a8bf008bdfac4e1961f77d74
   languageName: node
   linkType: hard
 
@@ -3978,7 +3978,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "effect-ts@workspace:."
   dependencies:
-    "@tsplus/installer": 0.0.29
+    "@tsplus/installer": 0.0.30
     "@types/glob": ^7.2.0
     "@types/jest": ^27.4.1
     "@types/node": ^17.0.21

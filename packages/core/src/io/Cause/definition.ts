@@ -4,7 +4,7 @@ import { Tuple } from "../../collection/immutable/Tuple"
 import { Stack } from "../../data/Stack"
 import type { Trace } from "../../io/Trace/definition"
 import { none } from "../../io/Trace/operations/none"
-import { IO } from "../../io-light/IO/core"
+import { IO } from "../../io-light/IO"
 import * as St from "../../prelude/Structural"
 import type { FiberId } from "../FiberId/definition"
 
