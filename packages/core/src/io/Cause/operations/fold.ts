@@ -1,7 +1,7 @@
 import type { LazyArg } from "../../../data/Function"
-import type { Trace } from "../../../io/Trace/definition"
-import { IO } from "../../../io-light/IO/core"
-import type { FiberId } from "../../FiberId/definition"
+import type { Trace } from "../../../io/Trace"
+import { IO } from "../../../io-light/IO"
+import type { FiberId } from "../../FiberId"
 import type { Cause } from "../definition"
 import { realCause } from "../definition"
 

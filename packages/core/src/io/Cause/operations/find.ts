@@ -1,5 +1,5 @@
-import type { Option } from "../../../data/Option/core"
-import { IO } from "../../../io-light/IO/core"
+import type { Option } from "../../../data/Option"
+import { IO } from "../../../io-light/IO"
 import type { Cause } from "../definition"
 import { realCause } from "../definition"
 
