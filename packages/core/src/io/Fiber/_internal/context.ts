@@ -28,8 +28,8 @@ import type { Runtime as RuntimeFiberRef } from "../../FiberRef"
 import { FiberRef } from "../../FiberRef"
 import { InterruptStatus } from "../../InterruptStatus"
 import { LogLevel } from "../../LogLevel"
-import * as HistogramBoundaries from "../../Metric/Boundaries"
-import * as MetricClient from "../../Metric/MetricClient"
+// import * as HistogramBoundaries from "../../Metric/Boundaries"
+// import * as MetricClient from "../../Metric/MetricClient"
 import { Promise } from "../../Promise"
 import { RuntimeConfig } from "../../RuntimeConfig"
 import { RuntimeConfigFlag } from "../../RuntimeConfig/Flag"
@@ -43,24 +43,24 @@ import { CancelerState } from "./cancelerState"
 import type { Callback } from "./fiberState"
 import { FiberState } from "./fiberState"
 
-const fiberFailureCauses = MetricClient.unsafeMakeSetCount(
-  "effect_fiber_failure_causes",
-  "class"
-)
-const fiberForkLocations = MetricClient.unsafeMakeSetCount(
-  "effect_fiber_fork",
-  "location"
-)
+// const fiberFailureCauses = MetricClient.unsafeMakeSetCount(
+//   "effect_fiber_failure_causes",
+//   "class"
+// )
+// const fiberForkLocations = MetricClient.unsafeMakeSetCount(
+//   "effect_fiber_fork",
+//   "location"
+// )
 
-const fibersStarted = MetricClient.unsafeMakeCounter("effect_fiber_started")
-const fiberSuccesses = MetricClient.unsafeMakeCounter("effect_fiber_successes")
-const fiberFailures = MetricClient.unsafeMakeCounter("effect_fiber_failures")
+// const fibersStarted = MetricClient.unsafeMakeCounter("effect_fiber_started")
+// const fiberSuccesses = MetricClient.unsafeMakeCounter("effect_fiber_successes")
+// const fiberFailures = MetricClient.unsafeMakeCounter("effect_fiber_failures")
 
-const fiberLifetimeBoundaries = HistogramBoundaries.exponential(1.0, 2.0, 100)
-const fiberLifetimes = MetricClient.unsafeMakeHistogram(
-  "effect_fiber_lifetimes",
-  fiberLifetimeBoundaries
-)
+// const fiberLifetimeBoundaries = HistogramBoundaries.exponential(1.0, 2.0, 100)
+// const fiberLifetimes = MetricClient.unsafeMakeHistogram(
+//   "effect_fiber_lifetimes",
+//   fiberLifetimeBoundaries
+// )
 
 export class InterruptExit {
   readonly _tag = "InterruptExit"
@@ -133,8 +133,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     this.runtimeConfig = runtimeConfig
     this.interruptStatus = interruptStatus
     if (this.trackMetrics) {
-      fibersStarted.unsafeIncrement()
-      fiberForkLocations.unsafeObserve(this._location.stringify())
+      // fibersStarted.unsafeIncrement()
+      // fiberForkLocations.unsafeObserve(this._location.stringify())
     }
   }
 
@@ -257,7 +257,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   observeFailure(failure: string): void {
     if (this.trackMetrics) {
-      fiberFailureCauses.unsafeObserve(failure)
+      // fiberFailureCauses.unsafeObserve(failure)
     }
   }
 
@@ -893,22 +893,23 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           this.unsafeReportUnhandled(newExit)
           this.unsafeNotifyObservers(newExit, oldState.observers)
 
-          const startTimeSeconds = this._id.startTimeSeconds
-          const endTimeSeconds = new Date().getTime() / 1000
-          const lifetime = endTimeSeconds - startTimeSeconds
+          // const startTimeSeconds = this._id.startTimeSeconds
+          // const endTimeSeconds = new Date().getTime() / 1000
+          // const lifetime = endTimeSeconds - startTimeSeconds
 
           if (this.trackMetrics) {
-            fiberLifetimes.unsafeObserve(lifetime)
+            // fiberLifetimes.unsafeObserve(lifetime)
           }
 
           newExit.fold(
             (cause) => {
               if (this.trackMetrics) {
-                fiberFailures.unsafeIncrement()
+                // fiberFailures.unsafeIncrement()
               }
 
               return cause.fold<E, void>(
-                () => fiberFailureCauses.unsafeObserve("<empty>"),
+                () => undefined,
+                // fiberFailureCauses.unsafeObserve("<empty>"),
                 (failure, _) => {
                   this.observeFailure(
                     typeof failure === "object"
@@ -933,7 +934,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
             },
             () => {
               if (this.trackMetrics) {
-                fiberSuccesses.unsafeIncrement()
+                // fiberSuccesses.unsafeIncrement()
               }
             }
           )
