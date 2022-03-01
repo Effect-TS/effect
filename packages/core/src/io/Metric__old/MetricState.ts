@@ -1,9 +1,9 @@
 import type { Chunk } from "../../collection/immutable/Chunk"
 import type { Tuple } from "../../collection/immutable/Tuple"
 import type { Option } from "../../data/Option"
-import type * as MetricKey from "./MetricKey"
+import type { MetricKey } from "./MetricKey"
 import type { MetricLabel } from "./MetricLabel"
-import * as MetricType from "./MetricType"
+import { MetricType } from "./MetricType"
 
 /**
  * `MetricState` represents a snapshot of the current state of a metric as of a
@@ -14,7 +14,7 @@ export class MetricState {
     readonly name: string,
     readonly help: string,
     readonly labels: Chunk<MetricLabel>,
-    readonly details: MetricType.MetricType
+    readonly details: MetricType
   ) {}
 
   toString(): string {
@@ -34,7 +34,7 @@ export function counter(
   help: string,
   value: number
 ): MetricState {
-  return new MetricState(key.name, help, key.tags, new MetricType.Counter(value))
+  return new MetricState(key.name, help, key.tags, MetricType.Counter(value))
 }
 
 /**
@@ -45,7 +45,7 @@ export function gauge(
   help: string,
   startAt: number
 ): MetricState {
-  return new MetricState(key.name, help, key.tags, new MetricType.Gauge(startAt))
+  return new MetricState(key.name, help, key.tags, MetricType.Gauge(startAt))
 }
 
 /**
@@ -62,7 +62,7 @@ export function histogram(
     key.name,
     help,
     key.tags,
-    new MetricType.Histogram(buckets, count, sum)
+    MetricType.Histogram(buckets, count, sum)
   )
 }
 
@@ -80,7 +80,7 @@ export function summary(
     key.name,
     help,
     key.tags,
-    new MetricType.Summary(key.error, quantiles, count, sum)
+    MetricType.Summary(key.error, quantiles, count, sum)
   )
 }
 
@@ -96,6 +96,6 @@ export function setCount(
     key.name,
     help,
     key.tags,
-    new MetricType.SetCount(key.setTag, values)
+    MetricType.SetCount(key.setTag, values)
   )
 }
