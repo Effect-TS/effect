@@ -20,25 +20,25 @@ export class InternalCounter<A>
   counterRef: FiberRef<AtomicCounter> | undefined
 
   constructor(
-    readonly name: string,
-    readonly tags: Chunk<MetricLabel>,
-    readonly aspect: (
+    readonly _name: string,
+    readonly _tags: Chunk<MetricLabel>,
+    readonly _aspect: (
       self: Counter<A>
-    ) => <R, E, A1 extends A>(effect: Effect<R, E, A>) => Effect<R, E, A1>
+    ) => <R, E, A1 extends A>(effect: Effect<R, E, A1>) => Effect<R, E, A1>
   ) {
     super()
     this.counter = MetricClient.client.value.getCounter(
-      MetricKey.Counter(this.name, this.tags)
+      MetricKey.Counter(this._name, this._tags)
     )
     this.counterRef = undefined
   }
 
-  _track<R, E, A1 extends A>(effect: Effect<R, E, A>): Effect<R, E, A1> {
-    return this.aspect(this)(effect)
+  _track<R, E, A1 extends A>(effect: Effect<R, E, A1>): Effect<R, E, A1> {
+    return this._aspect(this)(effect)
   }
 
   get [St.hashSym](): number {
-    return St.combineHash(St.hashString(this.name), St.hash(this.tags))
+    return St.combineHash(St.hashString(this._name), St.hash(this._tags))
   }
 
   [St.equalsSym](that: unknown): boolean {

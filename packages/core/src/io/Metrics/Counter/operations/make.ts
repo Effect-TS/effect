@@ -14,7 +14,7 @@ export function make<A>(
   tags: Chunk<MetricLabel>,
   aspect: (
     self: Counter<A>
-  ) => <R, E, A1 extends A>(effect: Effect<R, E, A>) => Effect<R, E, A1>
+  ) => <R, E, A1 extends A>(effect: Effect<R, E, A1>) => Effect<R, E, A1>
 ): Counter<A> {
   return new InternalCounter(name, tags, aspect)
 }

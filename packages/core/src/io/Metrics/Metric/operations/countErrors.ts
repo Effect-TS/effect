@@ -4,14 +4,14 @@ import type { MetricLabel } from "../../MetricLabel"
 
 /**
  * A metric aspect that increments the specified counter each time the effect
- * it is applied to succeeds.
+ * it is applied to fails.
  *
- * @tsplus static ets/MetricOps count
+ * @tsplus static ets/MetricOps countErrors
  */
-export function count(name: string, ...tags: Array<MetricLabel>): Counter<any> {
+export function countErrors(name: string, ...tags: Array<MetricLabel>): Counter<any> {
   return Counter(
     name,
     Chunk.from(tags),
-    (metric) => (effect) => effect.tap(() => metric.increment())
+    (metric) => (effect) => effect.tapError(() => metric.increment())
   )
 }

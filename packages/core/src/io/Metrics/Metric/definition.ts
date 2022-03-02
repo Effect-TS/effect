@@ -33,9 +33,10 @@ export function unifyMetric<X extends Metric<any>>(
   return self
 }
 
-export class BaseMetric<A> implements Metric<A> {
+export abstract class BaseMetric<A> implements Metric<A> {
   readonly [MetricSym]: MetricSym = MetricSym;
   readonly [_A]: (_: A) => void
+  abstract _track<R, E, A1 extends A>(effect: Effect<R, E, A1>): Effect<R, E, A1>
 }
 
 export class InternalMetric<A> extends BaseMetric<A> {
@@ -58,7 +59,7 @@ export function make<A>(
 /**
  * @tsplus macro remove
  */
-export function concreteMetric<A>(_: Metric<A>): asserts _ is InternalMetric<A> {
+export function concreteMetric<A>(_: Metric<A>): asserts _ is BaseMetric<A> {
   //
 }
 

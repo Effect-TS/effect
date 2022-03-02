@@ -27,14 +27,14 @@ export function taggedWith_<A>(
     concreteCounter(cloned)
     return cloned.counterRef!.update((counter) => {
       const extraTags = f(value)
-      const allTags = cloned.tags + extraTags
+      const allTags = cloned._tags + extraTags
       return counter.metricKey.tags !== allTags
-        ? MetricClient.client.value.getCounter(MetricKey.Counter(cloned.name, allTags))
+        ? MetricClient.client.value.getCounter(MetricKey.Counter(cloned._name, allTags))
         : counter
     })
   }
 
-  return Metric<A>((effect) => cloned.aspect(cloned)(effect.tap(changeCounter)))
+  return Metric<A>((effect) => cloned._aspect(cloned)(effect.tap(changeCounter)))
 }
 
 /**
