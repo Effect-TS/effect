@@ -14,9 +14,9 @@ export function copy_<A>(
 ): Counter<A> {
   concreteCounter(self)
   return new InternalCounter(
-    (params && params.name) || self.name,
-    (params && params.tags) || self.tags,
-    self.aspect
+    (params && params.name) || self._name,
+    (params && params.tags) || self._tags,
+    self._aspect
   )
 }
 
