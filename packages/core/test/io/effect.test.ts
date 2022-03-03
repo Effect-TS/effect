@@ -3480,8 +3480,8 @@ describe("Effect", () => {
       expect(result.untraced()).toEqual(cause)
     })
 
-    // TODO(Mike/Max): infinite loop (?)
-    it.skip("timeout repetition of uninterruptible effect", async () => {
+    // FIXED: replaced Promise.resolve with setTimeout in Scheduler
+    it("timeout repetition of uninterruptible effect", async () => {
       const program = Effect.unit.uninterruptible().forever().timeout(10)
 
       const result = await program.unsafeRunPromise()
