@@ -1,29 +1,39 @@
+import * as St from "../prelude/Structural"
+
 export const DurationSym = Symbol.for("@effect-ts/core/data/Duration")
 export type DurationSym = typeof DurationSym
 
 /**
  * @tsplus type ets/Duration
+ * @tsplus companion ets/DurationOps
  */
-export interface Duration {
+export class Duration implements St.HasHash, St.HasEquals {
   readonly [DurationSym]: DurationSym
-  readonly milliseconds: number
+
+  constructor(readonly milliseconds: number) {}
+
+  get [St.hashSym](): number {
+    return St.combineHash(St.hash(this[DurationSym]), St.hashNumber(this.milliseconds))
+  }
+
+  [St.equalsSym](that: unknown): boolean {
+    return isDuration(that) && St.hash(this) == St.hash(that)
+  }
 }
 
 /**
- * @tsplus type ets/DurationOps
+ * @tsplus static ets/DurationOps isDuration
  */
-export interface DurationOps {}
-export const Duration: DurationOps = {}
+export function isDuration(u: unknown): u is Duration {
+  return typeof u === "object" && u != null && DurationSym in u
+}
 
 /**
  * @tsplus static ets/DurationOps __call
  */
 export function fromMilliseconds(milliseconds: number): Duration {
   if (milliseconds < 0) return zero
-  return {
-    [DurationSym]: DurationSym,
-    milliseconds
-  }
+  return new Duration(milliseconds)
 }
 
 /**

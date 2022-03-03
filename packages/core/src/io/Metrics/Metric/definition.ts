@@ -1,7 +1,6 @@
+import type { Chunk } from "../../../collection/immutable/Chunk"
 import type { Effect } from "../../Effect"
-
-export const MetricSym = Symbol.for("@effect-ts/core/io/Metric")
-export type MetricSym = typeof MetricSym
+import type { MetricLabel } from "../MetricLabel"
 
 export const _A = Symbol.for("@effect-ts/core/io/Metric/_A")
 export type _A = typeof _A
@@ -14,8 +13,12 @@ export type _A = typeof _A
  * @tsplus type ets/Metric
  */
 export interface Metric<A> {
-  readonly [MetricSym]: MetricSym
   readonly [_A]: (_: A) => void
+  readonly name: string
+  readonly tags: Chunk<MetricLabel>
+  readonly appliedAspect: <R, E, A1 extends A>(
+    effect: Effect<R, E, A1>
+  ) => Effect<R, E, A1>
 }
 
 /**
@@ -33,39 +36,25 @@ export function unifyMetric<X extends Metric<any>>(
   return self
 }
 
-export abstract class BaseMetric<A> implements Metric<A> {
-  readonly [MetricSym]: MetricSym = MetricSym;
+class ConcreteMetric<A> implements Metric<A> {
   readonly [_A]: (_: A) => void
-  abstract _track<R, E, A1 extends A>(effect: Effect<R, E, A1>): Effect<R, E, A1>
-}
 
-export class InternalMetric<A> extends BaseMetric<A> {
   constructor(
-    readonly _track: <R, E, A1 extends A>(effect: Effect<R, E, A1>) => Effect<R, E, A1>
-  ) {
-    super()
-  }
+    readonly name: string,
+    readonly tags: Chunk<MetricLabel>,
+    readonly appliedAspect: <R, E, A1 extends A>(
+      effect: Effect<R, E, A1>
+    ) => Effect<R, E, A1>
+  ) {}
 }
 
 /**
  * @tsplus static ets/MetricOps __call
  */
 export function make<A>(
-  track: <R, E, A1 extends A>(effect: Effect<R, E, A1>) => Effect<R, E, A1>
+  name: string,
+  tags: Chunk<MetricLabel>,
+  appliedAspect: <R, E, A1 extends A>(effect: Effect<R, E, A1>) => Effect<R, E, A1>
 ): Metric<A> {
-  return new InternalMetric(track)
-}
-
-/**
- * @tsplus macro remove
- */
-export function concreteMetric<A>(_: Metric<A>): asserts _ is BaseMetric<A> {
-  //
-}
-
-/**
- * @tsplus static ets/MetricOps isMetric
- */
-export function isMetric(u: unknown): u is Metric<any> {
-  return typeof u === "object" && u != null && MetricSym in u
+  return new ConcreteMetric(name, tags, appliedAspect)
 }

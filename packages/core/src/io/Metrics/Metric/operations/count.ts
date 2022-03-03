@@ -8,7 +8,7 @@ import type { MetricLabel } from "../../MetricLabel"
  *
  * @tsplus static ets/MetricOps count
  */
-export function count(name: string, ...tags: Array<MetricLabel>): Counter<any> {
+export function count(name: string, ...tags: Array<MetricLabel>): Counter<unknown> {
   return Counter(
     name,
     Chunk.from(tags),
