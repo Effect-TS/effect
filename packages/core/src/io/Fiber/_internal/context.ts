@@ -4,6 +4,7 @@ import type { List } from "../../../collection/immutable/List"
 import { Either } from "../../../data/Either"
 import type { Lazy } from "../../../data/Function"
 import { constVoid } from "../../../data/Function"
+import { LazyValue } from "../../../data/LazyValue"
 import { Option } from "../../../data/Option"
 import { Stack } from "../../../data/Stack"
 import { Supervisor } from "../../../io/Supervisor"
@@ -28,8 +29,11 @@ import type { Runtime as RuntimeFiberRef } from "../../FiberRef"
 import { FiberRef } from "../../FiberRef"
 import { InterruptStatus } from "../../InterruptStatus"
 import { LogLevel } from "../../LogLevel"
-// import * as HistogramBoundaries from "../../Metric/Boundaries"
-// import * as MetricClient from "../../Metric/MetricClient"
+import { Metric } from "../../Metrics"
+import { concreteCounter } from "../../Metrics/Counter/operations/_internal/InternalCounter"
+import { Boundaries } from "../../Metrics/Histogram"
+import { concreteHistogram } from "../../Metrics/Histogram/operations/_internal/InternalHistogram"
+import { concreteSetCount } from "../../Metrics/SetCount/operations/_internal/InternalSetCount"
 import { Promise } from "../../Promise"
 import { RuntimeConfig } from "../../RuntimeConfig"
 import { RuntimeConfigFlag } from "../../RuntimeConfig/Flag"
@@ -43,24 +47,42 @@ import { CancelerState } from "./cancelerState"
 import type { Callback } from "./fiberState"
 import { FiberState } from "./fiberState"
 
-// const fiberFailureCauses = MetricClient.unsafeMakeSetCount(
-//   "effect_fiber_failure_causes",
-//   "class"
-// )
-// const fiberForkLocations = MetricClient.unsafeMakeSetCount(
-//   "effect_fiber_fork",
-//   "location"
-// )
+const fiberFailureCauses = new LazyValue(() => {
+  const metric = Metric.occurrences("effect_fiber_failure_causes", "class")
+  concreteSetCount(metric)
+  return metric.setCount!
+})
+const fiberForkLocations = new LazyValue(() => {
+  const metric = Metric.occurrences("effect_fiber_fork", "location")
+  concreteSetCount(metric)
+  return metric.setCount!
+})
 
-// const fibersStarted = MetricClient.unsafeMakeCounter("effect_fiber_started")
-// const fiberSuccesses = MetricClient.unsafeMakeCounter("effect_fiber_successes")
-// const fiberFailures = MetricClient.unsafeMakeCounter("effect_fiber_failures")
+const fibersStarted = new LazyValue(() => {
+  const metric = Metric.count("effect_fiber_started")
+  concreteCounter(metric)
+  return metric.counter!
+})
+const fiberSuccesses = new LazyValue(() => {
+  const metric = Metric.count("effect_fiber_successes")
+  concreteCounter(metric)
+  return metric.counter!
+})
+const fiberFailures = new LazyValue(() => {
+  const metric = Metric.count("effect_fiber_failures")
+  concreteCounter(metric)
+  return metric.counter!
+})
 
-// const fiberLifetimeBoundaries = HistogramBoundaries.exponential(1.0, 2.0, 100)
-// const fiberLifetimes = MetricClient.unsafeMakeHistogram(
-//   "effect_fiber_lifetimes",
-//   fiberLifetimeBoundaries
-// )
+const fiberLifetimes = new LazyValue(() => {
+  const fiberLifetimeBoundaries = Boundaries.exponential(1, 2, 100)
+  const metric = Metric.observeHistogram(
+    "effect_fiber_lifetimes",
+    fiberLifetimeBoundaries
+  )
+  concreteHistogram(metric)
+  return metric.histogram!
+})
 
 export class InterruptExit {
   readonly _tag = "InterruptExit"
@@ -133,8 +155,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     this.runtimeConfig = runtimeConfig
     this.interruptStatus = interruptStatus
     if (this.trackMetrics) {
-      // fibersStarted.unsafeIncrement()
-      // fiberForkLocations.unsafeObserve(this._location.stringify())
+      fibersStarted.value.unsafeIncrement()
+      fiberForkLocations.value.unsafeObserve(this._location.stringify())
     }
   }
 
@@ -893,23 +915,22 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           this.unsafeReportUnhandled(newExit)
           this.unsafeNotifyObservers(newExit, oldState.observers)
 
-          // const startTimeSeconds = this._id.startTimeSeconds
-          // const endTimeSeconds = new Date().getTime() / 1000
-          // const lifetime = endTimeSeconds - startTimeSeconds
+          const startTimeSeconds = this._id.startTimeSeconds
+          const endTimeSeconds = new Date().getTime() / 1000
+          const lifetime = endTimeSeconds - startTimeSeconds
 
           if (this.trackMetrics) {
-            // fiberLifetimes.unsafeObserve(lifetime)
+            fiberLifetimes.value.unsafeObserve(lifetime)
           }
 
           newExit.fold(
             (cause) => {
               if (this.trackMetrics) {
-                // fiberFailures.unsafeIncrement()
+                fiberFailures.value.unsafeIncrement()
               }
 
               return cause.fold<E, void>(
-                () => undefined,
-                // fiberFailureCauses.unsafeObserve("<empty>"),
+                () => fiberFailureCauses.value.unsafeObserve("<empty>"),
                 (failure, _) => {
                   this.observeFailure(
                     typeof failure === "object"
@@ -934,7 +955,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
             },
             () => {
               if (this.trackMetrics) {
-                // fiberSuccesses.unsafeIncrement()
+                fiberSuccesses.value.unsafeIncrement()
               }
             }
           )
@@ -1119,13 +1140,6 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
       this.nextEffect = undefined
 
-      const emptyTraceElement: TraceElement = TraceElement.empty
-
-      // Store the trace of the immediate future flatMap during evaluation
-      // of a 1-hop left bind, to show a stack trace closer to the point of
-      // failure
-      let extraTrace: TraceElement = emptyTraceElement
-
       const superviseOps =
         flags.isEnabled(RuntimeConfigFlag.SuperviseOperations) &&
         this.runtimeConfig.value.supervisor !== Supervisor.none
@@ -1169,45 +1183,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                 // the next instruction in the program:
                 switch (current._tag) {
                   case "FlatMap": {
-                    const nested: Instruction = instruction(current.effect)
-                    const k: (a: any) => Effect<any, any, any> = current.k
-
-                    // A mini interpreter for the left side of FlatMap that evaluates
-                    // anything that is 1-hop away. This eliminates heap usage for the
-                    // happy path.
-                    switch (nested._tag) {
-                      case "SucceedNow": {
-                        current = instruction(k(nested.value))
-                        break
-                      }
-                      case "Succeed": {
-                        extraTrace = TraceElement.parse(current.trace)
-                        const value = nested.effect()
-                        extraTrace = emptyTraceElement
-                        current = instruction(k(value))
-                        break
-                      }
-                      case "SucceedWith": {
-                        extraTrace = TraceElement.parse(current.trace)
-                        const value = nested.effect(this.runtimeConfig, this.fiberId)
-                        extraTrace = emptyTraceElement
-                        current = instruction(k(value))
-                        break
-                      }
-                      case "Yield": {
-                        extraTrace = TraceElement.parse(current.trace)
-                        this.unsafeRunLater(instruction(k(undefined)))
-                        extraTrace = emptyTraceElement
-                        current = undefined
-                        break
-                      }
-                      default: {
-                        // Fallback case. We couldn't evaluate the left-hand
-                        // side, so we have to use the stack
-                        this.pushContinuation(new ApplyFrame(current.k, current.trace))
-                        current = nested
-                      }
-                    }
+                    this.pushContinuation(new ApplyFrame(current.k, current.trace))
+                    current = instruction(current.effect)
                     break
                   }
 
@@ -1229,18 +1206,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Fail": {
-                    const fastPathTrace =
-                      extraTrace === emptyTraceElement ? [] : [extraTrace]
-                    extraTrace = emptyTraceElement
-
                     const cause = current.cause()
                     const tracedCause = cause.isTraced()
                       ? cause
                       : cause.traced(
-                          this.unsafeCaptureTrace([
-                            TraceElement.parse(current.trace),
-                            ...fastPathTrace
-                          ])
+                          this.unsafeCaptureTrace([TraceElement.parse(current.trace)])
                         )
 
                     const discardedFolds = this.unsafeUnwindStack()
