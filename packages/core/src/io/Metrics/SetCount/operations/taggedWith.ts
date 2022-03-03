@@ -27,7 +27,17 @@ export function taggedWith_<A>(
   )
 }
 
-export const taggedWith = Pipeable(taggedWith_)
+// export const taggedWith = Pipeable(taggedWith_)
+
+/**
+ * Converts this set count metric to one where the tags depend on the
+ * measured effect's result value.
+ *
+ * @ets_data_first taggedWith_
+ */
+export function taggedWith<A>(f: (a: A) => Chunk<MetricLabel>) {
+  return (self: SetCount<A>): Metric<A> => self.taggedWith(f)
+}
 
 function changeSetCount<A>(
   self: SetCount<A>,
