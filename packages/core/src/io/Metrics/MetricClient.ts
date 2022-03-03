@@ -1,13 +1,25 @@
+import type { Chunk } from "../../collection/immutable/Chunk"
 import { HashMap } from "../../collection/immutable/HashMap"
+import type { Tuple } from "../../collection/immutable/Tuple"
 import { LazyValue } from "../../data/LazyValue"
 import type { Option } from "../../data/Option"
 import type { UIO } from "../Effect"
 import { Effect } from "../Effect"
 import type { AtomicCounter } from "./atomic/AtomicCounter"
+import type { AtomicGauge } from "./atomic/AtomicGauge"
+import type { AtomicHistogram } from "./atomic/AtomicHistogram"
+import type { AtomicSetCount } from "./atomic/AtomicSetCount"
+import type { AtomicSummary } from "./atomic/AtomicSummary"
 import type { MetricKey } from "./MetricKey"
 import type { MetricListener } from "./MetricListener"
 import type { MetricSnapshot } from "./MetricSnapshot"
-import type { CounterState } from "./MetricState"
+import type {
+  CounterState,
+  GaugeState,
+  HistogramState,
+  SetCountState,
+  SummaryState
+} from "./MetricState"
 import { MetricState } from "./MetricState"
 
 /**
@@ -77,6 +89,9 @@ export class MetricClient {
     this.#listeners.delete(listener)
   }
 
+  /**
+   * Increase a named counter by some value.
+   */
   getCounter(key: MetricKey.Counter): AtomicCounter {
     let value = this.#map.get(key).value
     if (value == null) {
@@ -94,10 +109,10 @@ export class MetricClient {
       } = counter.increment(value)
       this.#listener.unsafeCounterObserved(key, v, d)
     }
-    const count = (__tsplusTrace?: string): UIO<number> => {
+    const count = (): UIO<number> => {
       return Effect.succeed(unsafeCount())
     }
-    const increment = (value = 1, __tsplusTrace?: string): UIO<void> => {
+    const increment = (value = 1): UIO<void> => {
       return Effect.succeed(unsafeIncrement(value))
     }
 
@@ -107,6 +122,113 @@ export class MetricClient {
       increment,
       unsafeCount,
       unsafeIncrement
+    }
+  }
+
+  getGauge(key: MetricKey.Gauge): AtomicGauge {
+    let value = this.#map.get(key).value
+    if (value == null) {
+      value = MetricState.Gauge(key, "", 0)
+      this.#map = this.#map.set(key, value)
+    }
+
+    const gauge = value as GaugeState
+
+    return {
+      metricKey: key,
+      value: (__tsplusTrace) => Effect.succeed(() => gauge.get),
+      set: (value) =>
+        Effect.succeed(() => {
+          const {
+            tuple: [v, d]
+          } = gauge.set(value)
+          this.#listener.unsafeGaugeObserved(key, v, d)
+        }),
+      adjust: (value) =>
+        Effect.succeed(() => {
+          const {
+            tuple: [v, d]
+          } = gauge.adjust(value)
+          this.#listener.unsafeGaugeObserved(key, v, d)
+        })
+    }
+  }
+
+  /**
+   * Observe a value and feed it into a histogram
+   */
+  getHistogram(key: MetricKey.Histogram): AtomicHistogram {
+    let value = this.#map.get(key).value
+    if (value == null) {
+      value = MetricState.Histogram(key, "")
+      this.#map = this.#map.set(key, value)
+    }
+
+    const histogram = value as HistogramState
+
+    const unsafeObserve = (value: number): void => {
+      histogram.observe(value)
+      this.#listener.unsafeHistogramObserved(key, value)
+    }
+
+    return {
+      metricKey: key,
+      count: () => Effect.succeed(histogram.getCount()),
+      buckets: () => Effect.succeed(histogram.snapshot()),
+      observe: (value) => Effect.succeed(unsafeObserve(value)),
+      sum: () => Effect.succeed(histogram.getSum()),
+      unsafeObserve
+    }
+  }
+
+  getSummary(key: MetricKey.Summary): AtomicSummary {
+    let value = this.#map.get(key).value
+    if (value == null) {
+      value = MetricState.Summary(key, "")
+      this.#map = this.#map.set(key, value)
+    }
+
+    const summary = value as SummaryState
+
+    return {
+      metricKey: key,
+      count: () => Effect.succeed(summary.getCount()),
+      sum: () => Effect.succeed(summary.getSum()),
+      observe: (value) =>
+        Effect.succeed(() => {
+          summary.observe(value, Date.now())
+          this.#listener.unsafeSummaryObserved(key, value)
+        }),
+      quantileValues: () => Effect.succeed(summary.snapshot(Date.now()))
+    }
+  }
+
+  getSetCount(key: MetricKey.SetCount): AtomicSetCount {
+    let value = this.#map.get(key).value
+    if (value == null) {
+      value = MetricState.SetCount(key, "")
+      this.#map = this.#map.set(key, value)
+    }
+
+    const setCount = value as SetCountState
+
+    const unsafeObserve = (word: string): void => {
+      setCount.observe(word)
+      this.#listener.unsafeSetObserved(key, word)
+    }
+
+    const unsafeOccurrences = (): Chunk<Tuple<[string, number]>> => setCount.snapshot()
+
+    const unsafeOccurrencesFor = (word: string): number => setCount.getCountFor(word)
+
+    return {
+      metricKey: key,
+      observe: (word) => Effect.succeed(unsafeObserve(word)),
+      occurrences: () => Effect.succeed(unsafeOccurrences()),
+      occurrencesFor: (word) => Effect.succeed(unsafeOccurrencesFor(word)),
+      unsafeObserve,
+      unsafeOccurrences,
+      unsafeOccurrencesFor
     }
   }
 }

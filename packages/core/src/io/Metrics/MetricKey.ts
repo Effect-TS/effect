@@ -1,6 +1,7 @@
 import { Chunk } from "../../collection/immutable/Chunk"
+import type { Duration } from "../../data/Duration"
 import * as St from "../../prelude/Structural"
-import type { Boundaries } from "./Boundaries"
+import type { Boundaries } from "./Histogram"
 import { MetricLabel } from "./MetricLabel"
 
 export const MetricKeySym = Symbol.for("@effect-ts/core/io/Metrics/MetricKey")
@@ -109,8 +110,8 @@ export class SummaryKey implements St.HasHash, St.HasEquals {
 
   constructor(
     readonly name: string,
-    readonly maxAge: Date,
     readonly maxSize: number,
+    readonly maxAge: Duration,
     readonly error: number,
     readonly quantiles: Chunk<number>,
     readonly tags: Chunk<MetricLabel> = Chunk.empty()
@@ -122,9 +123,9 @@ export class SummaryKey implements St.HasHash, St.HasEquals {
       St.combineHash(
         St.hashString(this.name),
         St.combineHash(
-          St.hashObject(this.maxAge),
+          St.hashNumber(this.maxSize),
           St.combineHash(
-            St.hashNumber(this.maxSize),
+            St.hash(this.maxAge),
             St.combineHash(
               St.hashNumber(this.error),
               St.combineHash(St.hash(this.quantiles), St.hash(this.tags))
@@ -137,9 +138,7 @@ export class SummaryKey implements St.HasHash, St.HasEquals {
 
   [St.equalsSym](that: unknown): boolean {
     return (
-      isMetricKey(that) &&
-      that._tag === "HistogramKey" &&
-      St.hash(this) === St.hash(that)
+      isMetricKey(that) && that._tag === "SummaryKey" && St.hash(this) === St.hash(that)
     )
   }
 }
@@ -216,13 +215,13 @@ export function histogram(
  */
 export function summary(
   name: string,
-  maxAge: Date,
   maxSize: number,
+  maxAge: Duration,
   error: number,
   quantiles: Chunk<number>,
   tags: Chunk<MetricLabel> = Chunk.empty()
 ): MetricKey.Summary {
-  return new SummaryKey(name, maxAge, maxSize, error, quantiles, tags)
+  return new SummaryKey(name, maxSize, maxAge, error, quantiles, tags)
 }
 
 /**

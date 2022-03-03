@@ -8,7 +8,10 @@ import type { MetricLabel } from "../../MetricLabel"
  *
  * @tsplus static ets/MetricOps countErrors
  */
-export function countErrors(name: string, ...tags: Array<MetricLabel>): Counter<any> {
+export function countErrors(
+  name: string,
+  ...tags: Array<MetricLabel>
+): Counter<unknown> {
   return Counter(
     name,
     Chunk.from(tags),

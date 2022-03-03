@@ -1,3 +1,5 @@
+import type { Tuple } from "../../../collection/immutable/Tuple"
+import { Duration } from "../../../data/Duration"
 import type { Effect } from "../definition"
 
 /**
@@ -5,12 +7,12 @@ import type { Effect } from "../definition"
  *
  * @tsplus fluent ets/Effect timedWith
  */
-export function timedWith_<R, E, A, R2, E2>(
+export function timedWith_<R, E, A, R1, E1>(
   self: Effect<R, E, A>,
-  msTime: Effect<R2, E2, number>,
+  msTime: Effect<R1, E1, number>,
   __tsplusTrace?: string
-) {
-  return self.summarized(msTime, (start, end) => end - start)
+): Effect<R & R1, E | E1, Tuple<[Duration, A]>> {
+  return self.summarized(msTime, (start, end) => Duration(end - start))
 }
 
 /**
@@ -18,9 +20,11 @@ export function timedWith_<R, E, A, R2, E2>(
  *
  * @ets_data_first timedWith_
  */
-export function timedWith<R2, E2>(
-  msTime: Effect<R2, E2, number>,
+export function timedWith<R1, E1>(
+  msTime: Effect<R1, E1, number>,
   __tsplusTrace?: string
 ) {
-  return <R, E, A>(self: Effect<R, E, A>) => self.timedWith(msTime)
+  return <R, E, A>(
+    self: Effect<R, E, A>
+  ): Effect<R & R1, E | E1, Tuple<[Duration, A]>> => self.timedWith(msTime)
 }

@@ -10,7 +10,7 @@ export interface AtomicCounter {
   /**
    * Increments the counter by the specified amount.
    */
-  readonly increment: (value?: number, __tsplusTrace?: string) => UIO<any>
+  readonly increment: (value?: number, __tsplusTrace?: string) => UIO<unknown>
 
   readonly unsafeCount: () => number
   readonly unsafeIncrement: (value?: number) => void

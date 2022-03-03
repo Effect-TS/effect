@@ -22,19 +22,9 @@ export function taggedWith_<A>(
   concreteCounter(cloned)
   cloned.counterRef = FiberRef.unsafeMake(cloned.counter!)
   cloned.counter = undefined
-
-  function changeCounter(value: A, __tsplusTrace?: string): UIO<void> {
-    concreteCounter(cloned)
-    return cloned.counterRef!.update((counter) => {
-      const extraTags = f(value)
-      const allTags = cloned._tags + extraTags
-      return counter.metricKey.tags !== allTags
-        ? MetricClient.client.value.getCounter(MetricKey.Counter(cloned._name, allTags))
-        : counter
-    })
-  }
-
-  return Metric<A>((effect) => cloned._aspect(cloned)(effect.tap(changeCounter)))
+  return Metric<A>(cloned.name, cloned.tags, (effect) =>
+    cloned.appliedAspect(effect.tap(changeCounter(cloned, f)))
+  )
 }
 
 /**
@@ -45,4 +35,21 @@ export function taggedWith_<A>(
  */
 export function taggedWith<A>(f: (a: A) => Chunk<MetricLabel>) {
   return (self: Counter<A>): Metric<A> => self.taggedWith(f)
+}
+
+function changeCounter<A>(
+  self: Counter<A>,
+  f: (a: A) => Chunk<MetricLabel>,
+  __tsplusTrace?: string
+) {
+  return (value: A): UIO<void> => {
+    concreteCounter(self)
+    return self.counterRef!.update((counter) => {
+      const extraTags = f(value)
+      const allTags = self.tags + extraTags
+      return counter.metricKey.tags !== allTags
+        ? MetricClient.client.value.getCounter(MetricKey.Counter(self.name, allTags))
+        : counter
+    })
+  }
 }
