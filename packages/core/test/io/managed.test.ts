@@ -2392,7 +2392,7 @@ describe("Managed", () => {
 
       const result = await program.unsafeRunPromise()
 
-      expect(result).toBeGreaterThanOrEqual(20)
+      expect(result.milliseconds).toBeGreaterThanOrEqual(20)
     })
   })
 
