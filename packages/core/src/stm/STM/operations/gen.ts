@@ -1,17 +1,16 @@
 /**
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
-import type * as Utils from "../../data/Utils"
-import { _A, _E, _R } from "../../support/Symbols"
-import type { STM } from "./core"
-import { chain_, succeedNow, suspend } from "./core"
+import type * as UT from "../../../data/Utils"
+import { _A, _E, _R } from "../../../support/Symbols"
+import { STM } from "../definition"
 
 export class GenSTM<R, E, A> {
-  readonly [_R]!: (_R: R) => void;
-  readonly [_E]!: () => E;
-  readonly [_A]!: () => A
+  readonly [_R]: (_R: R) => void;
+  readonly [_E]: () => E;
+  readonly [_A]: () => A
 
-  constructor(readonly effect: STM<R, E, A>) {}
+  constructor(readonly stm: STM<R, E, A>) {}
 
   *[Symbol.iterator](): Generator<GenSTM<R, E, A>, A, any> {
     return yield this
@@ -24,11 +23,13 @@ const adapter = (_: any, __?: any) => {
 
 /**
  * Do simulation using Generators
+ *
+ * @tsplus static ets/STMOps gen
  */
 export function gen<Eff extends GenSTM<any, any, any>, AEff>(
   f: (i: { <R, E, A>(_: STM<R, E, A>): GenSTM<R, E, A> }) => Generator<Eff, AEff, any>
-): STM<Utils._R<Eff>, Utils._E<Eff>, AEff> {
-  return suspend(() => {
+): STM<UT._R<Eff>, UT._E<Eff>, AEff> {
+  return STM.suspend(() => {
     const iterator = f(adapter as any)
     const state = iterator.next()
 
@@ -36,9 +37,9 @@ export function gen<Eff extends GenSTM<any, any, any>, AEff>(
       state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
     ): STM<any, any, AEff> {
       if (state.done) {
-        return succeedNow(state.value)
+        return STM.succeedNow(state.value)
       }
-      return chain_(state.value["effect"], (val) => {
+      return state.value["stm"].flatMap((val) => {
         const next = iterator.next(val)
         return run(next)
       })
