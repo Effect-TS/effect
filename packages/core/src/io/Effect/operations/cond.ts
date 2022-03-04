@@ -10,7 +10,7 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps cond
  */
-export function cond_<E, A>(
+export function cond<E, A>(
   predicate: LazyArg<boolean>,
   result: LazyArg<A>,
   error: LazyArg<E>,
@@ -19,21 +19,4 @@ export function cond_<E, A>(
   return Effect.suspendSucceed(() =>
     predicate() ? Effect.succeed(result) : Effect.fail(error)
   )
-}
-
-/**
- * Evaluate the predicate, return the given `A` as success if predicate returns
- * true, and the given `E` as error otherwise
- *
- * For effectful conditionals, see `ifEffect`.
- *
- * @ets_data_first cond_
- */
-export function cond<E, A>(
-  result: LazyArg<A>,
-  error: LazyArg<E>,
-  __tsplusTrace?: string
-) {
-  return (predicate: LazyArg<boolean>): IO<E, A> =>
-    Effect.cond(predicate, result, error)
 }

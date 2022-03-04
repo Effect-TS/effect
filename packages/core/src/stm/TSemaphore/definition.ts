@@ -1,5 +1,8 @@
 import type { TRef } from "../TRef"
 
+export const TSemaphoreSym = Symbol.for("@effect-ts/stm/TSemaphore")
+export type TSemaphoreSym = typeof TSemaphoreSym
+
 /**
  * A `TSemaphore` is a semaphore that can be composed transactionally. Because
  * of the extremely high performance of Effect's implementation of software
@@ -26,7 +29,11 @@ import type { TRef } from "../TRef"
  * larger STM transactions, for example acquiring permits from two different
  * semaphores transactionally and later releasing them transactionally to safely
  * synchronize on access to two different mutable variables.
+ *
+ * @tsplus type ets/TSemaphore
+ * @tsplus companion ets/TSemaphoreOps
  */
 export class TSemaphore {
+  readonly [TSemaphoreSym]: TSemaphoreSym = TSemaphoreSym
   constructor(readonly permits: TRef<number>) {}
 }

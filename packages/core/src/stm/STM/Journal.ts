@@ -1,26 +1,35 @@
-import * as HM from "../../collection/immutable/HashMap"
-import type { IO } from "../../io/Effect"
+import { HashMap } from "../../collection/immutable/HashMap"
+import type { Lazy } from "../../data/Function"
 import { Effect } from "../../io/Effect"
+import { Exit } from "../../io/Exit"
 import type { FiberId } from "../../io/FiberId"
-import type { AtomicBoolean } from "../../support/AtomicBoolean"
+import type { AtomicReference } from "../../support/AtomicReference"
 import { defaultScheduler } from "../../support/Scheduler"
 import type { Atomic } from "../TRef"
 import { STMDriver } from "./_internal/driver"
-import type { STM } from "./_internal/primitives"
+import type { STM } from "./definition"
 import type { Entry } from "./Entry"
-import { DieTypeId, FailTypeId, RetryTypeId, SucceedTypeId } from "./TExit"
-import type { TryCommit } from "./TryCommit"
-import { Done, DoneTypeId, Suspend, SuspendTypeId } from "./TryCommit"
+import { State } from "./State"
+import {
+  DieTypeId,
+  FailTypeId,
+  InterruptTypeId,
+  RetryTypeId,
+  SucceedTypeId
+} from "./TExit"
+import { DoneTypeId, SuspendTypeId, TryCommit } from "./TryCommit"
 import type { TxnId } from "./TxnId"
 
 export type Journal = Map<Atomic<any>, Entry>
 
-export type Todo = () => unknown
+export type JournalAnalysis = "I" | "RW" | "RO"
+
+export type Todo = Lazy<unknown>
 
 /**
  * Creates a function that can reset the journal.
  */
-export function prepareResetJournal(journal: Journal): () => unknown {
+export function prepareResetJournal(journal: Journal): Lazy<unknown> {
   const saved: Journal = new Map()
   for (const entry of journal) {
     saved.set(
@@ -51,8 +60,8 @@ export function commitJournal(journal: Journal) {
  * journal is read only will only be accurate if the journal is valid, due
  * to short-circuiting that occurs on an invalid journal.
  */
-export function analyzeJournal(journal: Journal): "I" | "RW" | "RO" {
-  let val: "I" | "RW" | "RO" = "RO"
+export function analyzeJournal(journal: Journal): JournalAnalysis {
+  let val: JournalAnalysis = "RO"
   for (const entry of journal) {
     val = entry[1].use((_) => (_.isInvalid() ? "I" : _.isChanged() ? "RW" : val))
     if (val === "I") {
@@ -62,7 +71,7 @@ export function analyzeJournal(journal: Journal): "I" | "RW" | "RO" {
   return val
 }
 
-export const emptyTodoMap = HM.empty<TxnId, Todo>()
+export const emptyTodoMap = HashMap.empty<TxnId, Todo>()
 
 /**
  * Atomically collects and clears all the todos from any `TRef` that
@@ -94,13 +103,18 @@ export function execTodos(todos: Map<TxnId, Todo>) {
 
 /**
  * Runs all the todos.
+ *
+ * @tsplus fluent ets/Journal completeTodos
  */
-export function completeTodos<E, A>(io: IO<E, A>, journal: Journal): Done<E, A> {
+export function completeTodos<E, A>(
+  exit: Exit<E, A>,
+  journal: Journal
+): TryCommit<E, A> {
   const todos = collectTodos(journal)
   if (todos.size > 0) {
     defaultScheduler(() => execTodos(todos))
   }
-  return new Done(io)
+  return TryCommit.Done(exit)
 }
 
 /**
@@ -113,8 +127,8 @@ export function addTodo(txnId: TxnId, journal: Journal, todoEffect: Todo): boole
   for (const entry of journal) {
     const tref = entry[1].use((_) => _.tref as Atomic<unknown>)
     const oldTodo = tref.todo.get
-    if (!HM.has_(oldTodo, txnId)) {
-      const newTodo = HM.set_(oldTodo, txnId, todoEffect)
+    if (!oldTodo.has(txnId)) {
+      const newTodo = oldTodo.set(txnId, todoEffect)
       tref.todo.set(newTodo)
       added = true
     }
@@ -124,7 +138,8 @@ export function addTodo(txnId: TxnId, journal: Journal, todoEffect: Todo): boole
 }
 
 /**
- * Finds all the new todo targets that are not already tracked in the `oldJournal`.
+ * Finds all the new todo targets that are not already tracked in the
+ * `oldJournal`.
  */
 export function untrackedTodoTargets(
   oldJournal: Journal,
@@ -152,45 +167,85 @@ export function untrackedTodoTargets(
 export function tryCommit<R, E, A>(
   fiberId: FiberId,
   stm: STM<R, E, A>,
+  state: AtomicReference<State<E, A>>,
   r: R
 ): TryCommit<E, A> {
   const journal: Journal = new Map()
   const value = new STMDriver(stm, journal, fiberId, r).run()
   const analysis = analyzeJournal(journal)
+
+  if (analysis === "RW") {
+    state.compareAndSet(State.Running, State.Done(value))
+    commitJournal(journal)
+  } else if (analysis === "I") {
+    throw new Error("Bug: invalid journal")
+  }
+
+  switch (value._typeId) {
+    case SucceedTypeId: {
+      return completeTodos(Exit.succeed(value.value), journal)
+    }
+    case FailTypeId: {
+      return completeTodos(Exit.fail(value.value), journal)
+    }
+    case DieTypeId: {
+      return completeTodos(Exit.die(value.value), journal)
+    }
+    case InterruptTypeId: {
+      return completeTodos(Exit.interrupt(fiberId), journal)
+    }
+    case RetryTypeId: {
+      return TryCommit.Suspend(journal)
+    }
+  }
+}
+
+export function tryCommitSync<R, E, A>(
+  fiberId: FiberId,
+  stm: STM<R, E, A>,
+  r: R
+): TryCommit<E, A> {
+  const journal: Journal = new Map()
+  const value = new STMDriver(stm, journal, fiberId, r).run()
+  const analysis = analyzeJournal(journal)
+
   if (analysis === "RW") {
     commitJournal(journal)
   } else if (analysis === "I") {
     throw new Error("Bug: invalid journal")
   }
+
   switch (value._typeId) {
-    case RetryTypeId: {
-      return new Suspend(journal)
-    }
     case SucceedTypeId: {
-      return completeTodos(Effect.succeed(value.value), journal)
+      return completeTodos(Exit.succeed(value.value), journal)
     }
     case FailTypeId: {
-      return completeTodos(Effect.fail(value.value), journal)
+      return completeTodos(Exit.fail(value.value), journal)
     }
     case DieTypeId: {
-      return completeTodos(Effect.die(value.value), journal)
+      return completeTodos(Exit.die(value.value), journal)
+    }
+    case InterruptTypeId: {
+      return completeTodos(Exit.interrupt(fiberId), journal)
+    }
+    case RetryTypeId: {
+      return TryCommit.Suspend(journal)
     }
   }
 }
 
 function completeTryCommit<R, E, A>(
-  io: IO<E, A>,
-  k: (_: Effect<R, E, A>) => unknown,
-  done: AtomicBoolean
+  exit: Exit<E, A>,
+  k: (_: Effect<R, E, A>) => unknown
 ) {
-  done.set(true)
-  k(io)
+  k(Effect.done(exit))
 }
+
 function suspendTryCommit<R, E, A>(
   fiberId: FiberId,
   stm: STM<R, E, A>,
   txnId: TxnId,
-  done: AtomicBoolean,
+  state: AtomicReference<State<E, A>>,
   r: R,
   k: (_: Effect<R, E, A>) => unknown,
   accum: Journal,
@@ -199,25 +254,23 @@ function suspendTryCommit<R, E, A>(
   // eslint-disable-next-line no-constant-condition
   while (1) {
     addTodo(txnId, journal, () =>
-      tryCommitAsync(undefined, fiberId, stm, txnId, done, r)(k)
+      tryCommitAsync(undefined, fiberId, stm, txnId, state, r)(k)
     )
     if (isInvalid(journal)) {
-      const v = tryCommit(fiberId, stm, r)
+      const v = tryCommit(fiberId, stm, state, r)
       switch (v._typeId) {
         case DoneTypeId: {
-          completeTryCommit(v.io, k, done)
+          completeTryCommit(v.exit, k)
           return
         }
         case SuspendTypeId: {
           const untracked = untrackedTodoTargets(accum, v.journal)
-
           if (untracked.size > 0) {
             for (const entry of untracked) {
               accum.set(entry[0], entry[1])
             }
             journal = untracked
           }
-
           break
         }
       }
@@ -232,25 +285,25 @@ export function tryCommitAsync<R, E, A>(
   fiberId: FiberId,
   stm: STM<R, E, A>,
   txnId: TxnId,
-  done: AtomicBoolean,
+  state: AtomicReference<State<E, A>>,
   r: R
 ) {
   return (k: (_: Effect<R, E, A>) => unknown) => {
-    if (!done.get) {
+    if (!state.get.isRunning()) {
       if (journal == null) {
-        const v = tryCommit(fiberId, stm, r)
+        const v = tryCommit(fiberId, stm, state, r)
         switch (v._typeId) {
           case DoneTypeId: {
-            completeTryCommit(v.io, k, done)
+            completeTryCommit(v.exit, k)
             break
           }
           case SuspendTypeId: {
-            suspendTryCommit(fiberId, stm, txnId, done, r, k, v.journal, v.journal)
+            suspendTryCommit(fiberId, stm, txnId, state, r, k, v.journal, v.journal)
             break
           }
         }
       } else {
-        suspendTryCommit(fiberId, stm, txnId, done, r, k, journal, journal)
+        suspendTryCommit(fiberId, stm, txnId, state, r, k, journal, journal)
       }
     }
   }
