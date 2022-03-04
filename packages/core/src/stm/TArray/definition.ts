@@ -1,3 +1,5 @@
+import type { _A } from "../../support/Symbols"
+
 export const TArraySym = Symbol.for("@effect-ts/core/stm/TArray")
 export type TArraySym = typeof TArraySym
 
@@ -6,6 +8,7 @@ export type TArraySym = typeof TArraySym
  */
 export interface TArray<A> {
   readonly [TArraySym]: TArraySym
+  readonly [_A]: () => A
 }
 
 /**
