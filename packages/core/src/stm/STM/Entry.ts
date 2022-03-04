@@ -4,12 +4,19 @@ import { Versioned } from "./Versioned"
 export const EntryTypeId = Symbol.for("@effect-ts/core/STM/Entry")
 export type EntryTypeId = typeof EntryTypeId
 
+/**
+ * @tsplus type ets/Entry
+ * @tsplus companion ets/EntryOps
+ */
 export class Entry {
   readonly _typeId: EntryTypeId = EntryTypeId
 
   constructor(readonly use: <X>(f: <S>(entry: EntryOps<S>) => X) => X) {}
 }
 
+/**
+ * @tsplus static ets/EntryOps __call
+ */
 export function makeEntry<A0>(tref0: Atomic<A0>, isNew0: boolean): Entry {
   const versioned = tref0.versioned
   const ops = new EntryOps<A0>(tref0, versioned, versioned.value, isNew0, false)
@@ -52,7 +59,7 @@ export class EntryOps<S> {
   }
 
   commit() {
-    this.tref.versioned = new Versioned(this.newValue)
+    this.tref.versioned = Versioned(this.newValue)
   }
 
   copy(): Entry {

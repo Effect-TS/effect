@@ -1,6 +1,5 @@
 import type { Has, Tag } from "../../../data/Has"
 import { Effect } from "../definition"
-import { succeedNow } from "./succeedNow"
 
 /**
  * Accesses the specified service in the environment of the effect.
@@ -14,5 +13,5 @@ export function service<T>(
   tag: Tag<T>,
   __tsplusTrace?: string
 ): Effect<Has<T>, never, T> {
-  return Effect.serviceWithEffect(tag)(succeedNow)
+  return Effect.serviceWithEffect(tag)(Effect.succeedNow)
 }

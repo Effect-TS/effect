@@ -2,12 +2,12 @@ import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../definition"
 
 /**
- * Determines whether any element of the `Iterable<A>` satisfies the effectual
+ * Determines whether all elements of the `Iterable<A>` satisfies the effectual
  * predicate `f`.
  *
  * @tsplus static ets/EffectOps forAll
  */
-export function forAll_<R, E, A>(
+export function forAll<R, E, A>(
   as: LazyArg<Iterable<A>>,
   f: (a: A) => Effect<R, E, boolean>,
   __tsplusTrace?: string
