@@ -6,7 +6,7 @@ import { STM } from "../definition"
  * operation of `STM.either`.
  *
  * @tsplus static ets/STMOps absolve
- * @tsplus fluent ets/STMOps absolve
+ * @tsplus fluent ets/STM absolve
  */
 export function absolve<R, E, E1, A>(
   self: STM<R, E, Either<E1, A>>
