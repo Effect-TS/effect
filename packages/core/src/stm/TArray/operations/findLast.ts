@@ -1,5 +1,4 @@
-import type { Predicate } from "packages/core/src/data/Function"
-
+import type { Predicate } from "../../../data/Function"
 import { Option } from "../../../data/Option"
 import { STM } from "../../STM"
 import type { TArray } from "../definition"
@@ -12,18 +11,18 @@ import { concrete } from "./_internal/InternalTArray"
  */
 export function findLast_<A>(
   self: TArray<A>,
-  p: Predicate<A>
+  f: Predicate<A>
 ): STM<unknown, never, Option<A>> {
   return STM.Effect((journal) => {
-    let i = 0
-    let res = Option.emptyOf<A>()
     concrete(self)
-    while (i < self.chunk.length) {
+    let i = self.chunk.length
+    let res = Option.emptyOf<A>()
+    while (res.isNone() && i >= 0) {
       const a = self.chunk.unsafeGet(i)!.unsafeGet(journal)
-      if (p(a)) {
+      if (f(a)) {
         res = Option.some(a)
       }
-      i++
+      i = i - 1
     }
     return res
   })
@@ -32,8 +31,8 @@ export function findLast_<A>(
 /**
  * Find the last element in the array matching a predicate.
  *
- * @ets_data_first find_
+ * @ets_data_first findLast_
  */
-export function findLast<A>(p: Predicate<A>) {
-  return (self: TArray<A>): STM<unknown, never, Option<A>> => self.findLast(p)
+export function findLast<A>(f: Predicate<A>) {
+  return (self: TArray<A>): STM<unknown, never, Option<A>> => self.findLast(f)
 }
