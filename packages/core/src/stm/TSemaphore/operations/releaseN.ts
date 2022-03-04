@@ -1,23 +1,21 @@
 import { IllegalArgumentException } from "../../../io/Cause/errors"
-import type { STM } from "../../STM"
-import { STMEffect } from "../../STM/core"
-import * as TRef from "../../TRef"
+import { STM } from "../../STM"
 import type { TSemaphore } from "../definition"
 
 /**
  * Releases the specified number of permits in a transactional context
+ *
+ * @tsplus fluent ets/TSemaphore releaseN
  */
 export function releaseN_(self: TSemaphore, n: number): STM<unknown, never, void> {
-  return new STMEffect((journal) => {
+  return STM.Effect((journal) => {
     if (n < 0) {
       throw new IllegalArgumentException(
         `Unexpected negative value ${n} passed to releaseN`
       )
     }
-
-    const current = TRef.unsafeGet_(self.permits, journal)
-
-    return TRef.unsafeSet_(self.permits, current + n, journal)
+    const current = self.permits.unsafeGet(journal)
+    return self.permits.unsafeSet(current + n, journal)
   })
 }
 
@@ -27,5 +25,5 @@ export function releaseN_(self: TSemaphore, n: number): STM<unknown, never, void
  * @ets_data_first releaseN_
  */
 export function releaseN(n: number) {
-  return (self: TSemaphore): STM<unknown, never, void> => releaseN_(self, n)
+  return (self: TSemaphore): STM<unknown, never, void> => self.releaseN(n)
 }
