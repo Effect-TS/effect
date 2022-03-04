@@ -1,10 +1,11 @@
 import type { STM } from "../../STM"
 import type { TSemaphore } from "../definition"
-import { releaseN_ } from "./releaseN"
 
 /**
  * Releases a single permit in a transactional context.
+ *
+ * @tsplus fluent ets/TSemaphore release
  */
 export function release(self: TSemaphore): STM<unknown, never, void> {
-  return releaseN_(self, 1)
+  return self.releaseN(1)
 }

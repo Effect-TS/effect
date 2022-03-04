@@ -5,10 +5,10 @@ import { Exit } from "../../io/Exit"
 import type { FiberId } from "../../io/FiberId"
 import type { AtomicReference } from "../../support/AtomicReference"
 import { defaultScheduler } from "../../support/Scheduler"
-import type { Atomic } from "../TRef"
-import { STMDriver } from "./_internal/driver"
+import type { Atomic } from "../TRef/Atomic"
 import type { STM } from "./definition"
 import type { Entry } from "./Entry"
+import { STMDriver } from "./operations/_internal/STMDriver"
 import { State } from "./State"
 import {
   DieTypeId,

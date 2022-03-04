@@ -1,9 +1,7 @@
 import type * as UT from "../../../data/Utils/types"
 import { _A, _E, _R } from "../../../support/Symbols"
 
-// -----------------------------------------------------------------------------
-// Model
-// -----------------------------------------------------------------------------
+export type USTM<A> = STM<unknown, never, A>
 
 export const STMTypeId = Symbol.for("@effect-ts/core/STM")
 export type STMTypeId = typeof STMTypeId
@@ -65,8 +63,6 @@ export function unifySTM<X extends STM<any, any, any>>(
 ): STM<UT._R<X>, UT._E<X>, UT._A<X>> {
   return self
 }
-
-export type USTM<A> = STM<unknown, never, A>
 
 export class STMBase<R, E, A> implements STM<R, E, A> {
   readonly [STMTypeId]: STMTypeId = STMTypeId;

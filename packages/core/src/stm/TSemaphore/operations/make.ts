@@ -1,5 +1,5 @@
 import type { STM } from "../../STM"
-import * as TRef from "../../TRef"
+import { TRef } from "../../TRef"
 import { TSemaphore } from "../definition"
 
 /**
@@ -7,9 +7,6 @@ import { TSemaphore } from "../definition"
  *
  * @tsplus static ets/TSemaphoreOps make
  */
-export function make(
-  permits: number,
-  __trace?: string
-): STM<unknown, never, TSemaphore> {
+export function make(permits: number): STM<unknown, never, TSemaphore> {
   return TRef.make(permits).map((v) => new TSemaphore(v))
 }

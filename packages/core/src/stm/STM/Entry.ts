@@ -1,4 +1,4 @@
-import type { Atomic } from "../TRef"
+import type { Atomic } from "../TRef/Atomic"
 import { Versioned } from "./Versioned"
 
 export const EntryTypeId = Symbol.for("@effect-ts/core/STM/Entry")

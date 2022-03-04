@@ -1,12 +1,12 @@
 import type { UIO } from "../../../io/Effect/definition"
-import * as STM from "../../STM"
-import type { TSemaphore } from "../definition"
-import { make } from "./make"
+import { TSemaphore } from "../definition"
 
 /**
  * Constructs a new `TSemaphore` with the specified number of permits,
  * immediately committing the transaction.
+ *
+ * @tsplus static ets/TSemaphoreOps makeCommit
  */
-export function makeCommit(permits: number, __trace?: string): UIO<TSemaphore> {
-  return STM.commit(make(permits))
+export function makeCommit(permits: number, __tsplusTrace?: string): UIO<TSemaphore> {
+  return TSemaphore.make(permits).commit()
 }
