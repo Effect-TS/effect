@@ -1,16 +1,17 @@
-import type { Either } from "../../../data/Either"
-import { Option } from "../../../data/Option"
+import { Either } from "../../../data/Either"
 import { STM } from "../definition"
 
 /**
- * Returns a successful effect if the value is `Left`, or fails with the error
- * `None`.
+ * "Zooms in" on the value in the `Left` side of an `Either`, moving the
+ * possibility that the value is a `Right` to the error channel.
  *
  * @tsplus getter ets/STM left
  */
-export function left<R, E, B, C>(self: STM<R, E, Either<B, C>>): STM<R, Option<E>, B> {
+export function left<R, E, A, B>(
+  self: STM<R, E, Either<A, B>>
+): STM<R, Either<E, B>, A> {
   return self.foldSTM(
-    (e) => STM.fail(Option.some(e)),
-    (_) => _.fold(STM.succeedNow, () => STM.fail(Option.none))
+    (e) => STM.fail(Either.left(e)),
+    (either) => either.fold(STM.succeedNow, (b) => STM.fail(Either.right(b)))
   )
 }
