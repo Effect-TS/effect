@@ -59,6 +59,7 @@ describe("Logger", () => {
 
     const result = await program.unsafeRunPromise()
 
+    // TODO: figure out what to test
     console.log(result[0]?.call(Logger.default))
   })
 

@@ -1,6 +1,6 @@
 import type { LazyArg } from "../../../../data/Function"
 import { Effect } from "../../../Effect"
-import * as Semaphore from "../../../Semaphore"
+import { Semaphore } from "../../../Semaphore"
 import { Ref } from "../../definition"
 import type { Synchronized } from "../definition"
 import { XSynchronized } from "../definition"

@@ -1,7 +1,7 @@
 import type { Either } from "../../../data/Either"
-import * as STM from "../../../stm/STM/core"
+import { STM } from "../../../stm/STM"
 import { Effect } from "../../Effect"
-import * as S from "../../Semaphore"
+import type { Semaphore } from "../../Semaphore"
 import type { _A, _B, _EA, _EB, _RA, _RB } from "../definition"
 import { XRefInternal } from "../definition"
 
@@ -44,7 +44,7 @@ export class XSynchronized<RA, RB, EA, EB, A, B> extends XRefInternal<
   readonly _tag = "Synchronized"
 
   constructor(
-    readonly semaphores: Set<S.Semaphore>,
+    readonly semaphores: Set<Semaphore>,
     readonly unsafeGet: Effect<RB, EB, B>,
     readonly unsafeSet: (a: A) => Effect<RA, EA, void> // readonly unsafeSetAsync: (a: A) => T.Effect<RA, EA, void>
   ) {
@@ -97,8 +97,12 @@ export class XSynchronized<RA, RB, EA, EB, A, B> extends XRefInternal<
 
   _withPermit<R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> {
     return Effect.uninterruptibleMask(({ restore }) =>
-      restore(STM.commit(STM.forEach_(this.semaphores, S.acquire))).flatMap(() =>
-        restore(effect).ensuring(STM.commit(STM.forEach_(this.semaphores, S.release)))
+      restore(
+        STM.forEach(this.semaphores, (semaphore) => semaphore.acquire()).commit()
+      ).flatMap(() =>
+        restore(effect).ensuring(
+          STM.forEach(this.semaphores, (semaphore) => semaphore.release()).commit()
+        )
       )
     )
   }
