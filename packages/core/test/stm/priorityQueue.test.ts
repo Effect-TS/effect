@@ -1,46 +1,41 @@
 import { Chunk } from "../../src/collection/immutable/Chunk"
-import { flow, pipe } from "../../src/data/Function"
 import * as Eq from "../../src/prelude/Equal"
 import * as Ord from "../../src/prelude/Ord"
-import * as STM from "../../src/stm/STM"
-import * as TPriorityQueue from "../../src/stm/TPriorityQueue"
+import { STM } from "../../src/stm/STM"
+import { TPriorityQueue } from "../../src/stm/TPriorityQueue"
 
 interface Event {
   time: number
   description: string
 }
 
-describe("TPriorityQueue", () => {
-  const a = { time: -1, description: "aah" }
-  const b = { time: 0, description: "test" }
-  const as = Chunk<Event[]>(a, b)
-  const eventOrd = Ord.contramap_(Ord.number, ({ time }: Event) => time)
-  const eventEq = Eq.struct({
-    time: Eq.number,
-    description: Eq.string
-  })
-  const eventPredicate = ({ description }: Event) => description === "test"
+const a = { time: -1, description: "aah" }
+const b = { time: 0, description: "test" }
+const as = Chunk<Event[]>(a, b)
+const eventOrd = Ord.contramap_(Ord.number, ({ time }: Event) => time)
+const eventEq = Eq.struct({
+  time: Eq.number,
+  description: Eq.string
+})
+const eventPredicate = ({ description }: Event) => description === "test"
 
+describe("TPriorityQueue", () => {
   it("isEmpty", async () => {
-    const program = pipe(
-      TPriorityQueue.empty<Event>(eventOrd),
-      STM.tap(TPriorityQueue.offerAll(as)),
-      STM.chain(TPriorityQueue.isEmpty),
-      STM.commit
-    )
+    const program = TPriorityQueue.empty<Event>(eventOrd)
+      .tap((queue) => queue.offerAll(as))
+      .flatMap((queue) => queue.isEmpty())
+      .commit()
 
     const result = await program.unsafeRunPromise()
 
     expect(result).toBe(as.isEmpty())
   })
 
-  it("nonEmpty", async () => {
-    const program = pipe(
-      TPriorityQueue.empty<Event>(eventOrd),
-      STM.tap(TPriorityQueue.offerAll(as)),
-      STM.chain(TPriorityQueue.nonEmpty),
-      STM.commit
-    )
+  it("isNonEmpty", async () => {
+    const program = TPriorityQueue.empty<Event>(eventOrd)
+      .tap((queue) => queue.offerAll(as))
+      .flatMap((queue) => queue.isNonEmpty())
+      .commit()
 
     const result = await program.unsafeRunPromise()
 
@@ -48,12 +43,10 @@ describe("TPriorityQueue", () => {
   })
 
   it("offerAll and takeAll", async () => {
-    const program = pipe(
-      TPriorityQueue.empty<Event>(eventOrd),
-      STM.tap(TPriorityQueue.offerAll(as)),
-      STM.chain(TPriorityQueue.takeAll),
-      STM.commit
-    )
+    const program = TPriorityQueue.empty<Event>(eventOrd)
+      .tap((queue) => queue.offerAll(as))
+      .flatMap((queue) => queue.takeAll())
+      .commit()
 
     const result = await program.unsafeRunPromise()
 
@@ -61,12 +54,10 @@ describe("TPriorityQueue", () => {
   })
 
   it("removeIf", async () => {
-    const program = pipe(
-      TPriorityQueue.fromIterable_(eventOrd, as),
-      STM.tap(TPriorityQueue.removeIf(eventPredicate)),
-      STM.chain(TPriorityQueue.toChunk),
-      STM.commit
-    )
+    const program = TPriorityQueue.fromIterable(eventOrd)(as)
+      .tap((queue) => queue.removeIf(eventPredicate))
+      .flatMap((queue) => queue.toChunk())
+      .commit()
 
     const result = await program.unsafeRunPromise()
 
@@ -74,12 +65,10 @@ describe("TPriorityQueue", () => {
   })
 
   it("retainIf", async () => {
-    const program = pipe(
-      TPriorityQueue.fromIterable_(eventOrd, as),
-      STM.tap(TPriorityQueue.retainIf(eventPredicate)),
-      STM.chain(TPriorityQueue.toChunk),
-      STM.commit
-    )
+    const program = TPriorityQueue.fromIterable(eventOrd)(as)
+      .tap((queue) => queue.retainIf(eventPredicate))
+      .flatMap((queue) => queue.toChunk())
+      .commit()
 
     const result = await program.unsafeRunPromise()
 
@@ -87,11 +76,9 @@ describe("TPriorityQueue", () => {
   })
 
   it("take", async () => {
-    const program = pipe(
-      TPriorityQueue.fromIterable_(eventOrd, as),
-      STM.chain(flow(TPriorityQueue.take, STM.replicate(as.size), STM.collectAll)),
-      STM.commit
-    )
+    const program = TPriorityQueue.fromIterable(eventOrd)(as)
+      .flatMap((queue) => STM.collectAll(queue.take().replicate(as.size)))
+      .commit()
 
     const result = await program.unsafeRunPromise()
 
@@ -99,18 +86,16 @@ describe("TPriorityQueue", () => {
   })
 
   it("takeUpTo", async () => {
-    const program = pipe(
-      TPriorityQueue.fromIterable_(eventOrd, as),
-      STM.chain((queue) =>
+    const program = TPriorityQueue.fromIterable(eventOrd)(as)
+      .flatMap((queue) =>
         STM.gen(function* (_) {
           return {
-            left: yield* _(TPriorityQueue.takeUpTo_(queue, 1)),
-            right: yield* _(TPriorityQueue.takeAll(queue))
+            left: yield* _(queue.takeUpTo(1)),
+            right: yield* _(queue.takeAll())
           }
         })
-      ),
-      STM.commit
-    )
+      )
+      .commit()
 
     const { left, right } = await program.unsafeRunPromise()
 
@@ -119,11 +104,9 @@ describe("TPriorityQueue", () => {
   })
 
   it("toChunk", async () => {
-    const program = pipe(
-      TPriorityQueue.fromIterable_(eventOrd, as),
-      STM.chain(TPriorityQueue.toChunk),
-      STM.commit
-    )
+    const program = TPriorityQueue.fromIterable(eventOrd)(as)
+      .flatMap((queue) => queue.toChunk())
+      .commit()
 
     const result = await program.unsafeRunPromise()
 

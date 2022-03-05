@@ -11,8 +11,7 @@ import { STM } from "../definition"
 export function mergeAll<R, E, A, B>(
   as: LazyArg<Iterable<STM<R, E, A>>>,
   zero: LazyArg<B>,
-  f: (b: B, a: A) => B,
-  ?: string
+  f: (b: B, a: A) => B
 ): STM<R, E, B> {
   return STM.suspend(() =>
     Iter.reduce_(as(), STM.succeed(zero) as STM<R, E, B>, (acc, a) => acc.zipWith(a, f))

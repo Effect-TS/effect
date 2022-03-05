@@ -1,6 +1,4 @@
-import { commit } from "../../stm/STM/core"
-import type { TSemaphore } from "../../stm/TSemaphore"
-import { make as makeTSemaphore } from "../../stm/TSemaphore/operations/make"
+import { TSemaphore } from "../../stm/TSemaphore"
 import type { UIO } from "../Effect"
 
 export * from "../../stm/TSemaphore/operations/acquire"
@@ -14,11 +12,22 @@ export * from "../../stm/TSemaphore/operations/withPermitManaged"
 export * from "../../stm/TSemaphore/operations/withPermits"
 export * from "../../stm/TSemaphore/operations/withPermitsManaged"
 
+/**
+ * @tsplus type ets/Semaphore
+ */
 export type Semaphore = TSemaphore
 
 /**
- * Creates a new `Semaphore` with the specified number of permits.
+ * @tsplus type ets/SemaphoreOps
  */
-export function make(permits: number, __trace?: string): UIO<Semaphore> {
-  return commit(makeTSemaphore(permits))
+export interface SemaphoreOps {}
+export const Semaphore: SemaphoreOps = {}
+
+/**
+ * Creates a new `Semaphore` with the specified number of permits.
+ *
+ * @tsplus static ets/SemaphoreOps make
+ */
+export function make(permits: number, __tsplusTrace?: string): UIO<Semaphore> {
+  return TSemaphore.make(permits).commit()
 }

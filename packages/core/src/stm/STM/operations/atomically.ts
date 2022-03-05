@@ -1,4 +1,4 @@
-import { Effect, EffectError } from "../../../io/Effect"
+import { Effect, EffectError } from "../../../io/Effect/definition"
 import { AtomicReference } from "../../../support/AtomicReference"
 import type { STM } from "../definition"
 import { tryCommitAsync, tryCommitSync } from "../Journal"

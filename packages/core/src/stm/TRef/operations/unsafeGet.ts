@@ -1,5 +1,5 @@
 import type { Journal } from "../../STM/Journal"
-import { getOrMakeEntry } from "../Atomic"
+import { getOrMakeEntry } from "../Atomic/operations/getOrMakeEntry"
 import type { XTRef } from "../definition"
 import { concrete } from "../definition"
 

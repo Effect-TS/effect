@@ -3,14 +3,14 @@ import type { Either } from "../../../data/Either"
 import type { AtomicReference } from "../../../support/AtomicReference"
 import type { STM } from "../../STM"
 import { STMEffect } from "../../STM"
-import { makeEntry } from "../../STM/Entry"
-import type { Journal, Todo } from "../../STM/Journal"
+import type { Todo } from "../../STM/Journal"
 import type { TxnId } from "../../STM/TxnId"
 import type { Versioned } from "../../STM/Versioned"
 import type { XTRef, XTRefInternal } from "../definition"
 import { _A, _B, _EA, _EB, TRefSym } from "../definition"
 import { Derived } from "./Derived"
 import { DerivedAll } from "./DerivedAll"
+import { getOrMakeEntry } from "./operations/getOrMakeEntry"
 
 /**
  * @tsplus type ets/AtomicTRef
@@ -60,16 +60,4 @@ export class Atomic<A> implements XTRefInternal<never, never, A, A> {
   ): XTRef<EC, ED, C, D> {
     return new DerivedAll(bd, ca, this, this.atomic)
   }
-}
-
-/**
- * @tsplus fluent ets/AtomicTRef getOrMakeEntry
- */
-export function getOrMakeEntry<A>(self: Atomic<A>, journal: Journal) {
-  if (journal.has(self)) {
-    return journal.get(self)!
-  }
-  const entry = makeEntry(self, false)
-  journal.set(self, entry)
-  return entry
 }
