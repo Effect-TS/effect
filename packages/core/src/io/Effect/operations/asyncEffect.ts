@@ -5,8 +5,8 @@ import type { Cb } from "./Cb"
 import { runtime } from "./runtime"
 
 /**
- * Imports an asynchronous effect into a pure `ZIO` value. This formulation is
- * necessary when the effect is itself expressed in terms of `ZIO`.
+ * Imports an asynchronous effect into a pure `Effect` value. This formulation
+ * is necessary when the effect is itself expressed in terms of an `Effect`.
  *
  * @tsplus static ets/EffectOps asyncEffect
  */

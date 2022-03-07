@@ -5,11 +5,11 @@ import { Effect } from "../definition"
 import type { Cb } from "./Cb"
 
 /**
- * Imports an asynchronous effect into a pure `ZIO` value, possibly returning
+ * Imports an asynchronous effect into a pure `Effect` value, possibly returning
  * the value synchronously.
  *
  * If the register function returns a value synchronously, then the callback
- * function `ZIO[R, E, A] => Any` must not be called. Otherwise the callback
+ * function `Effect<R, E, A> => any` must not be called. Otherwise the callback
  * function must be called at most once.
  *
  * @tsplus static ets/EffectOps asyncMaybe
@@ -22,11 +22,11 @@ export function asyncMaybe<R, E, A>(
 }
 
 /**
- * Imports an asynchronous effect into a pure `ZIO` value, possibly returning
+ * Imports an asynchronous effect into a pure `Effect` value, possibly returning
  * the value synchronously.
  *
  * If the register function returns a value synchronously, then the callback
- * function `ZIO[R, E, A] => Any` must not be called. Otherwise the callback
+ * function `Effect<R, E, A> => any` must not be called. Otherwise the callback
  * function must be called at most once.
  *
  * The list of fibers, that may complete the async callback, is used to
