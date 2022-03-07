@@ -8,7 +8,7 @@ import type { Cb } from "./Cb"
  * `asyncMaybe` for the more expressive variant of this function that can
  * return a value synchronously.
  *
- * The callback function `Effect<R, E, A] => Any` must be called at most once.
+ * The callback function `Effect<R, E, A> => any` must be called at most once.
  *
  * @tsplus static ets/EffectOps async
  */
@@ -22,11 +22,11 @@ export function _async<R, E, A>(
 export { _async as async }
 
 /**
- * Imports an asynchronous side-effect into a pure `ZIO` value. See
+ * Imports an asynchronous side-effect into a pure `Effect` value. See
  * `asyncMaybe` for the more expressive variant of this function that can
  * return a value synchronously.
  *
- * The callback function `ZIO[R, E, A] => Any` must be called at most once.
+ * The callback function `Effect<R, E, A> => any` must be called at most once.
  *
  * The list of fibers, that may complete the async callback, is used to
  * provide better diagnostics.
