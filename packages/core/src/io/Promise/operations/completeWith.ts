@@ -11,7 +11,7 @@ import type { Promise } from "../definition"
  * be evaluated each time the value of the promise is retrieved through
  * combinators such as `wait`, potentially producing different results if
  * the effect produces different results on subsequent evaluations. In this
- * case te meaning of the "exactly once" guarantee of `Promise` is that the
+ * case the meaning of the "exactly once" guarantee of `Promise` is that the
  * promise can be completed with exactly one effect. For a version that
  * completes the promise with the result of an effect see `Promise.complete`.
  *
@@ -47,7 +47,7 @@ export function completeWith_<E, A>(
  * be evaluated each time the value of the promise is retrieved through
  * combinators such as `wait`, potentially producing different results if
  * the effect produces different results on subsequent evaluations. In this
- * case te meaning of the "exactly once" guarantee of `Promise` is that the
+ * case the meaning of the "exactly once" guarantee of `Promise` is that the
  * promise can be completed with exactly one effect. For a version that
  * completes the promise with the result of an effect see
  * `Promise.complete`.

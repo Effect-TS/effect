@@ -6,7 +6,7 @@ import { Effect, IAsync } from "../definition"
 import type { Cb } from "./Cb"
 
 /**
- * Imports an asynchronous side-effect into a ZIO effect. The side-effect has
+ * Imports an asynchronous side-effect into an effect. The side-effect has
  * the option of returning the value synchronously, which is useful in cases
  * where it cannot be determined if the effect is synchronous or asynchronous
  * until the side-effect is actually executed. The effect also has the option
@@ -27,7 +27,7 @@ export function asyncInterrupt<R, E, A>(
 }
 
 /**
- * Imports an asynchronous side-effect into a ZIO effect. The side-effect has
+ * Imports an asynchronous side-effect into an effect. The side-effect has
  * the option of returning the value synchronously, which is useful in cases
  * where it cannot be determined if the effect is synchronous or asynchronous
  * until the side-effect is actually executed. The effect also has the option
