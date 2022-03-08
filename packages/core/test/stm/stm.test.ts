@@ -1,11 +1,14 @@
+import { Chunk } from "../../src/collection/immutable/Chunk"
 import { List } from "../../src/collection/immutable/List"
 import { Tuple } from "../../src/collection/immutable/Tuple"
 import { Either } from "../../src/data/Either"
+import { constVoid } from "../../src/data/Function"
 import { NoSuchElementException } from "../../src/data/GlobalExceptions"
+import { tag } from "../../src/data/Has"
 import { Option } from "../../src/data/Option"
-import { RuntimeError } from "../../src/io/Cause"
+import { Cause, RuntimeError } from "../../src/io/Cause"
 import type { HasClock } from "../../src/io/Clock"
-import type { UIO } from "../../src/io/Effect"
+import type { IO, UIO } from "../../src/io/Effect"
 import { Effect } from "../../src/io/Effect"
 import { Exit } from "../../src/io/Exit"
 import { Promise } from "../../src/io/Promise"
@@ -21,7 +24,7 @@ class UnpureBarrier {
     this.#isOpen = true
   }
 
-  await(): UIO<void> {
+  await(): Effect<HasClock, never, void> {
     return Effect.suspend(
       Effect.attempt(() => {
         if (this.#isOpen) {
@@ -75,10 +78,64 @@ function transfer(
   )
 }
 
+function permutation(
+  tRef1: TRef<number>,
+  tRef2: TRef<number>
+): STM<unknown, never, void> {
+  return STM.struct({
+    a: tRef1.get(),
+    b: tRef2.get()
+  })
+    .flatMap(({ a, b }) => tRef1.set(b) > tRef2.set(a))
+    .map(constVoid)
+}
+
+function chain(
+  depth: number,
+  next: (_: STM<unknown, never, number>) => STM<unknown, never, number>
+): UIO<number> {
+  return chainLoop(depth, STM.succeed(0), next)
+}
+
+function chainLoop(
+  n: number,
+  acc: STM<unknown, never, number>,
+  next: (_: STM<unknown, never, number>) => STM<unknown, never, number>
+): UIO<number> {
+  return n <= 0
+    ? acc.commit()
+    : Effect.suspendSucceed(chainLoop(n - 1, next(acc), next))
+}
+
+export const STMEnvId = Symbol.for("@effect-ts/core/test/stm/STMEnv")
+export type STMEnvId = typeof STMEnvId
+
+/**
+ * @tsplus type ets/STMTestEnv
+ */
+export interface STMEnv {
+  readonly ref: TRef<number>
+}
+
+/**
+ * @tsplus type ets/STMTestEnvOps
+ */
+export interface STMEnvOps {}
+export const STMEnv: STMEnvOps = {}
+
+/**
+ * @tsplus static ets/STMTestEnvOps make
+ */
+export function makeSTMEnv(n: number): UIO<STMEnv> {
+  return TRef.makeCommit(n).map((ref) => ({ ref }))
+}
+
+export const HasSTMEnv = tag<STMEnv>()
+
 describe("STM", () => {
   describe("Using `STM.atomically` to perform different computations and call:", () => {
     describe("absolve to convert", () => {
-      it.skip("a successful Right computation into the success channel", async () => {
+      it("a successful Right computation into the success channel", async () => {
         const program = STM.succeed(Either.right(42)).absolve().commit()
 
         const result = await program.unsafeRunPromise()
@@ -86,7 +143,7 @@ describe("STM", () => {
         expect(result).toBe(42)
       })
 
-      it.skip("a successful Left computation into the error channel", async () => {
+      it("a successful Left computation into the error channel", async () => {
         const program = STM.succeed(Either.left("oh no!")).absolve().commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -95,7 +152,7 @@ describe("STM", () => {
       })
     })
 
-    it.skip("catchAll errors", async () => {
+    it("catchAll errors", async () => {
       const program = (STM.fail("uh oh!") > STM.succeed("everything is fine"))
         .catchAll((s) => STM.succeed(`${s} phew`))
         .commit()
@@ -106,7 +163,7 @@ describe("STM", () => {
     })
 
     describe("catchSome errors", () => {
-      it.skip("catch the specified error", async () => {
+      it("catch the specified error", async () => {
         type ErrorTest = Error1
 
         interface Error1 {
@@ -126,7 +183,7 @@ describe("STM", () => {
         expect(result).toBe("gotcha")
       })
 
-      it.skip("lets the error pass", async () => {
+      it("lets the error pass", async () => {
         type ErrorTest = Error1 | Error2
 
         interface Error1 {
@@ -170,7 +227,7 @@ describe("STM", () => {
     })
 
     describe("either to convert", () => {
-      it.skip("a successful computation into Right(a)", async () => {
+      it("a successful computation into Right(a)", async () => {
         const program = STM.succeed(42).either().commit()
 
         const result = await program.unsafeRunPromise()
@@ -178,7 +235,7 @@ describe("STM", () => {
         expect(result).toEqual(Either.right(42))
       })
 
-      it.skip("a failed computation into Left(e)", async () => {
+      it("a failed computation into Left(e)", async () => {
         const program = STM.fail("oh no!").either().commit()
 
         const result = await program.unsafeRunPromise()
@@ -187,7 +244,7 @@ describe("STM", () => {
       })
     })
 
-    it.skip("eventually succeeds", async () => {
+    it("eventually succeeds", async () => {
       function stm(ref: TRef<number>): STM<unknown, string, number> {
         return ref
           .get()
@@ -205,7 +262,7 @@ describe("STM", () => {
       expect(result).toBe(10)
     })
 
-    it.skip("failed to make a failed computation and check the value", async () => {
+    it("failed to make a failed computation and check the value", async () => {
       const program = STM.fail("bye bye world").commit()
 
       const result = await program.unsafeRunPromiseExit()
@@ -213,7 +270,7 @@ describe("STM", () => {
       expect(result.untraced()).toEqual(Exit.fail("bye bye world"))
     })
 
-    it.skip("filter filters a collection using an effectual predicate", async () => {
+    it("filter filters a collection using an effectual predicate", async () => {
       const program = STM.Do()
         .bind("ref", () => TRef.make(List.empty<number>()))
         .bind("results", ({ ref }) =>
@@ -230,7 +287,7 @@ describe("STM", () => {
       expect(effects).toEqual(List(2, 4, 6, 3, 5, 6))
     })
 
-    it.skip("filterOrDie dies when predicate fails", async () => {
+    it("filterOrDie dies when predicate fails", async () => {
       const program = STM.succeed(1)
         .filterOrDie((n) => n !== 1, ExampleError)
         .commit()
@@ -240,7 +297,7 @@ describe("STM", () => {
       expect(result.untraced()).toEqual(Exit.die(ExampleError))
     })
 
-    it.skip("filterOrDieMessage dies with message when predicate fails ", async () => {
+    it("filterOrDieMessage dies with message when predicate fails ", async () => {
       const program = STM.succeed(1)
         .filterOrDieMessage((n) => n !== 1, "dies")
         .commit()
@@ -251,7 +308,7 @@ describe("STM", () => {
     })
 
     describe("filterOrElse", () => {
-      it.skip("returns checked failure", async () => {
+      it("returns checked failure", async () => {
         const program = STM.succeed(1)
           .filterOrElse((n) => n === 1, STM.succeed(2))
           .commit()
@@ -261,7 +318,7 @@ describe("STM", () => {
         expect(result).toBe(1)
       })
 
-      it.skip("returns held value", async () => {
+      it("returns held value", async () => {
         const program = STM.succeed(1)
           .filterOrElse((n) => n !== 1, STM.succeed(2))
           .commit()
@@ -273,7 +330,7 @@ describe("STM", () => {
     })
 
     describe("filterOrElseWith", () => {
-      it.skip("returns checked failure", async () => {
+      it("returns checked failure", async () => {
         const program = STM.succeed(1)
           .filterOrElseWith(
             (n) => n === 1,
@@ -286,7 +343,7 @@ describe("STM", () => {
         expect(result).toBe(1)
       })
 
-      it.skip("returns held value", async () => {
+      it("returns held value", async () => {
         const program = STM.succeed(1)
           .filterOrElseWith(
             (n) => n !== 1,
@@ -299,7 +356,7 @@ describe("STM", () => {
         expect(result).toBe(2)
       })
 
-      it.skip("returns error", async () => {
+      it("returns error", async () => {
         const program = (STM.fail(ExampleError) > STM.succeed(1))
           .filterOrElseWith(
             (n) => n !== 1,
@@ -313,7 +370,7 @@ describe("STM", () => {
       })
     })
 
-    it.skip("filterOrFail returns failure when predicate fails", async () => {
+    it("filterOrFail returns failure when predicate fails", async () => {
       const program = STM.succeed(1)
         .filterOrFail((n) => n !== 1, ExampleError)
         .commit()
@@ -323,7 +380,7 @@ describe("STM", () => {
       expect(result.untraced()).toEqual(Exit.fail(ExampleError))
     })
 
-    it.skip("flatMapError to flatMap from one error to another", async () => {
+    it("flatMapError to flatMap from one error to another", async () => {
       const program = STM.fail(-1)
         .flatMapError((n) => STM.succeed(`log: ${n}`))
         .commit()
@@ -333,7 +390,7 @@ describe("STM", () => {
       expect(result.untraced()).toEqual(Exit.fail("log: -1"))
     })
 
-    it.skip("flatten", async () => {
+    it("flatten", async () => {
       const program = STM.Do()
         .bind("result1", () => STM.succeed(STM.succeed("test")).flatten())
         .bind("result2", () => STM.flatten(STM.succeed(STM.succeed("test"))))
@@ -346,7 +403,7 @@ describe("STM", () => {
     })
 
     describe("flattenErrorOption", () => {
-      it.skip("with an existing error and return it", async () => {
+      it("with an existing error and return it", async () => {
         const program = STM.fail(Option.some("oh no!"))
           .flattenErrorOption("default error")
           .commit()
@@ -356,7 +413,7 @@ describe("STM", () => {
         expect(result.untraced()).toEqual(Exit.fail("oh no!"))
       })
 
-      it.skip("with no error and default to value", async () => {
+      it("with no error and default to value", async () => {
         const program = STM.fail(Option.none)
           .flattenErrorOption("default error")
           .commit()
@@ -367,7 +424,7 @@ describe("STM", () => {
       })
     })
 
-    it.skip("fold to handle both failure and success", async () => {
+    it("fold to handle both failure and success", async () => {
       const program = STM.Do()
         .bind("result1", () =>
           STM.succeed("yes").fold(
@@ -389,7 +446,7 @@ describe("STM", () => {
       expect(result2).toBe(-1)
     })
 
-    it.skip("foldSTM to fold over the `STM` effect, and handle failure and success", async () => {
+    it("foldSTM to fold over the `STM` effect, and handle failure and success", async () => {
       const program = STM.Do()
         .bind("result1", () =>
           STM.succeed("yes").foldSTM(() => STM.succeed("no"), STM.succeedNow)
@@ -406,7 +463,7 @@ describe("STM", () => {
     })
 
     describe("foldLeft", () => {
-      it.skip("with a successful step function sums the list properly", async () => {
+      it("with a successful step function sums the list properly", async () => {
         const program = STM.reduce(List(1, 2, 3, 4, 5), 0, (acc, n) =>
           STM.succeed(acc + n)
         ).commit()
@@ -416,7 +473,7 @@ describe("STM", () => {
         expect(result).toBe(15)
       })
 
-      it.skip("with a failing step function returns a failed transaction", async () => {
+      it("with a failing step function returns a failed transaction", async () => {
         const program = STM.reduce(List(1), 0, () => STM.fail("fail")).commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -424,7 +481,7 @@ describe("STM", () => {
         expect(result.untraced()).toEqual(Exit.fail("fail"))
       })
 
-      it.skip("run sequentially from left to right", async () => {
+      it("run sequentially from left to right", async () => {
         const program = STM.reduce(
           List(1, 2, 3, 4, 5),
           List.empty<number>(),
@@ -438,7 +495,7 @@ describe("STM", () => {
     })
 
     describe("foldRight", () => {
-      it.skip("with a successful step function sums the list properly", async () => {
+      it("with a successful step function sums the list properly", async () => {
         const program = STM.reduceRight(List(1, 2, 3, 4, 5), 0, (acc, n) =>
           STM.succeed(acc + n)
         ).commit()
@@ -448,7 +505,7 @@ describe("STM", () => {
         expect(result).toBe(15)
       })
 
-      it.skip("with a failing step function returns a failed transaction", async () => {
+      it("with a failing step function returns a failed transaction", async () => {
         const program = STM.reduceRight(List(1, 2, 3, 4, 5), 0, (acc, n) =>
           STM.fail("fail")
         ).commit()
@@ -458,7 +515,7 @@ describe("STM", () => {
         expect(result.untraced()).toEqual(Exit.fail("fail"))
       })
 
-      it.skip("run sequentially from right to left", async () => {
+      it("run sequentially from right to left", async () => {
         const program = STM.reduceRight(
           List(1, 2, 3, 4, 5),
           List.empty<number>(),
@@ -472,7 +529,7 @@ describe("STM", () => {
     })
 
     describe("head", () => {
-      it.skip("extracts the value from the List", async () => {
+      it("extracts the value from the List", async () => {
         const program = STM.succeed(List(1, 2)).head.commit()
 
         const result = await program.unsafeRunPromise()
@@ -480,7 +537,7 @@ describe("STM", () => {
         expect(result).toBe(1)
       })
 
-      it.skip("returns None if list is Empty", async () => {
+      it("returns None if list is Empty", async () => {
         const program = STM.succeed(List.empty<number>()).head.commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -488,7 +545,7 @@ describe("STM", () => {
         expect(result.untraced()).toEqual(Exit.fail(Option.none))
       })
 
-      it.skip("returns the Error around Some", async () => {
+      it("returns the Error around Some", async () => {
         const program = STM.fromEither(
           Either.leftW<string, List<number>>("my error")
         ).head.commit()
@@ -500,7 +557,7 @@ describe("STM", () => {
     })
 
     describe("ifSTM", () => {
-      it.skip("runs `onTrue` if result of `b` is `true`", async () => {
+      it("runs `onTrue` if result of `b` is `true`", async () => {
         const program = STM.ifSTM(
           STM.succeed(true),
           STM.succeed(true),
@@ -512,7 +569,7 @@ describe("STM", () => {
         expect(result).toBe(true)
       })
 
-      it.skip("runs `onFalse` if result of `b` is `false`", async () => {
+      it("runs `onFalse` if result of `b` is `false`", async () => {
         const program = STM.ifSTM(
           STM.succeed(false),
           STM.succeed(true),
@@ -526,7 +583,7 @@ describe("STM", () => {
     })
 
     describe("left", () => {
-      it.skip("on Left value", async () => {
+      it("on Left value", async () => {
         const program = STM.succeed(Either.left("left")).left.commit()
 
         const result = await program.unsafeRunPromise()
@@ -534,7 +591,7 @@ describe("STM", () => {
         expect(result).toBe("left")
       })
 
-      it.skip("on Right value", async () => {
+      it("on Right value", async () => {
         const program = STM.succeed(Either.right("right")).left.commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -542,7 +599,7 @@ describe("STM", () => {
         expect(result.untraced()).toEqual(Exit.fail(Either.right("right")))
       })
 
-      it.skip("on failure", async () => {
+      it("on failure", async () => {
         const program = STM.fail("fail").left.commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -550,7 +607,7 @@ describe("STM", () => {
         expect(result.untraced()).toEqual(Exit.fail(Either.left("fail")))
       })
 
-      it.skip("lifting a value", async () => {
+      it("lifting a value", async () => {
         const program = STM.left(42).commit()
 
         const result = await program.unsafeRunPromise()
@@ -560,7 +617,7 @@ describe("STM", () => {
     })
 
     describe("mapBoth when", () => {
-      it.skip("having a success value", async () => {
+      it("having a success value", async () => {
         const program = STM.succeed(1)
           .mapBoth(
             () => -1,
@@ -573,7 +630,7 @@ describe("STM", () => {
         expect(result).toBe("1 as string")
       })
 
-      it.skip("having a fail value", async () => {
+      it("having a fail value", async () => {
         const program = STM.fail(-1)
           .mapBoth(
             (n) => `${n} as string`,
@@ -587,7 +644,7 @@ describe("STM", () => {
       })
     })
 
-    it.skip("mapError to map from one error to another", async () => {
+    it("mapError to map from one error to another", async () => {
       const program = STM.fail(-1)
         .mapError(() => "oh no!")
         .commit()
@@ -598,7 +655,7 @@ describe("STM", () => {
     })
 
     describe("merge", () => {
-      it.skip("on error with same type", async () => {
+      it("on error with same type", async () => {
         const program = STM.fromEither<number, number>(Either.left(1)).merge().commit()
 
         const result = await program.unsafeRunPromise()
@@ -606,7 +663,7 @@ describe("STM", () => {
         expect(result).toBe(1)
       })
 
-      it.skip("when having a successful value", async () => {
+      it("when having a successful value", async () => {
         const program = STM.fromEither<number, number>(Either.right(1)).merge().commit()
 
         const result = await program.unsafeRunPromise()
@@ -616,7 +673,7 @@ describe("STM", () => {
     })
 
     describe("none", () => {
-      it.skip("when A is None", async () => {
+      it("when A is None", async () => {
         const program = STM.succeed(Option.none).noneOrFail().commit()
 
         const result = await program.unsafeRunPromise()
@@ -624,7 +681,7 @@ describe("STM", () => {
         expect(result).toBeUndefined()
       })
 
-      it.skip("when Error", async () => {
+      it("when Error", async () => {
         const program = STM.fail(ExampleError).noneOrFail().commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -632,7 +689,7 @@ describe("STM", () => {
         expect(result.untraced()).toEqual(Exit.fail(Option.some(ExampleError)))
       })
 
-      it.skip("when A is Some(a)", async () => {
+      it("when A is Some(a)", async () => {
         const program = STM.succeed(Option.some(1)).noneOrFail().commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -640,7 +697,7 @@ describe("STM", () => {
         expect(result.untraced()).toEqual(Exit.fail(Option.none))
       })
 
-      it.skip("lifting a value", async () => {
+      it("lifting a value", async () => {
         const program = STM.none.commit()
 
         const result = await program.unsafeRunPromise()
@@ -650,7 +707,7 @@ describe("STM", () => {
     })
 
     describe("option to convert:", () => {
-      it.skip("a successful computation into Some(a)", async () => {
+      it("a successful computation into Some(a)", async () => {
         const program = STM.succeed(42).option().commit()
 
         const result = await program.unsafeRunPromise()
@@ -658,7 +715,7 @@ describe("STM", () => {
         expect(result).toEqual(Option.some(42))
       })
 
-      it.skip("a failed computation into None", async () => {
+      it("a failed computation into None", async () => {
         const program = STM.fail("oh no!").option().commit()
 
         const result = await program.unsafeRunPromise()
@@ -668,7 +725,7 @@ describe("STM", () => {
     })
 
     describe("optional to convert:", () => {
-      it.skip("a Some(e) in E to a e in E", async () => {
+      it("a Some(e) in E to a e in E", async () => {
         const program = STM.fromEither<Option<string>, number>(
           Either.left(Option.some("my error"))
         )
@@ -680,7 +737,7 @@ describe("STM", () => {
         expect(result.untraced()).toEqual(Exit.fail("my error"))
       })
 
-      it.skip("a None in E into None in A", async () => {
+      it("a None in E into None in A", async () => {
         const program = STM.fromEither<Option<string>, number>(Either.left(Option.none))
           .unsome()
           .commit()
@@ -690,7 +747,7 @@ describe("STM", () => {
         expect(result).toEqual(Option.none)
       })
 
-      it.skip("no error", async () => {
+      it("no error", async () => {
         const program = STM.fromEither<Option<string>, number>(Either.right(42))
           .unsome()
           .commit()
@@ -702,7 +759,7 @@ describe("STM", () => {
     })
 
     describe("orDie", () => {
-      it.skip("when failure should die", async () => {
+      it("when failure should die", async () => {
         const program = STM.fail(() => {
           throw ExampleError
         })
@@ -714,7 +771,7 @@ describe("STM", () => {
         expect(result.untraced()).toEqual(Exit.die(ExampleError))
       })
 
-      it.skip("when succeed should keep going", async () => {
+      it("when succeed should keep going", async () => {
         const program = STM.succeed(1).orDie().commit()
 
         const result = await program.unsafeRunPromise()
@@ -724,7 +781,7 @@ describe("STM", () => {
     })
 
     describe("orDieWith", () => {
-      it.skip("when failure should die", async () => {
+      it("when failure should die", async () => {
         const program = STM.fail("-1")
           .orDieWith((s) => new Error(s))
           .commit()
@@ -734,7 +791,7 @@ describe("STM", () => {
         expect(result.untraced()).toEqual(Exit.die(new Error("-1")))
       })
 
-      it.skip("when succeed should keep going", async () => {
+      it("when succeed should keep going", async () => {
         const program = STM.fromEither<string, number>(Either.right(1))
           .orDieWith((s) => new Error(s))
           .commit()
@@ -746,7 +803,7 @@ describe("STM", () => {
     })
 
     describe("partition", () => {
-      it.skip("collects only successes", async () => {
+      it("collects only successes", async () => {
         const input = List.range(0, 10)
         const program = STM.partition(input, STM.succeedNow).commit()
 
@@ -758,7 +815,7 @@ describe("STM", () => {
         expect(right).toEqual(input)
       })
 
-      it.skip("collects only failures", async () => {
+      it("collects only failures", async () => {
         const input = List.from(Array.from({ length: 10 }, () => 0))
         const program = STM.partition(input, STM.failNow).commit()
 
@@ -770,7 +827,7 @@ describe("STM", () => {
         expect(right).toEqual(List.empty())
       })
 
-      it.skip("collects failures and successes", async () => {
+      it("collects failures and successes", async () => {
         const input = List.range(0, 10)
         const program = STM.partition(input, (n) =>
           n % 2 === 0 ? STM.fail(n) : STM.succeed(n)
@@ -784,7 +841,7 @@ describe("STM", () => {
         expect(right).toEqual(List(1, 3, 5, 7, 9))
       })
 
-      it.skip("evaluates effects in correct order", async () => {
+      it("evaluates effects in correct order", async () => {
         const input = List(2, 4, 6, 3, 5, 6)
         const program = STM.Do()
           .bind("ref", () => TRef.make(List.empty<number>()))
@@ -801,7 +858,7 @@ describe("STM", () => {
     })
 
     describe("reject", () => {
-      it.skip("returns failure ignoring value", async () => {
+      it("returns failure ignoring value", async () => {
         const program = STM.succeed(0)
           .reject((n) => (n !== 0 ? Option.some("partial failed") : Option.none))
           .commit()
@@ -811,7 +868,7 @@ describe("STM", () => {
         expect(result).toBe(0)
       })
 
-      it.skip("returns failure ignoring value", async () => {
+      it("returns failure ignoring value", async () => {
         const program = STM.succeed(1)
           .reject((n) => (n !== 0 ? Option.some("partial failed") : Option.none))
           .commit()
@@ -823,7 +880,7 @@ describe("STM", () => {
     })
 
     describe("rejectSTM", () => {
-      it.skip("doesnt collect value", async () => {
+      it("doesnt collect value", async () => {
         const program = STM.succeed(0)
           .rejectSTM((n) =>
             n !== 0 ? Option.some(STM.succeed("partial failed")) : Option.none
@@ -835,7 +892,7 @@ describe("STM", () => {
         expect(result).toBe(0)
       })
 
-      it.skip("returns failure ignoring value", async () => {
+      it("returns failure ignoring value", async () => {
         const program = STM.succeed(1)
           .rejectSTM((n) =>
             n !== 0 ? Option.some(STM.succeed("partial failed")) : Option.none
@@ -849,7 +906,7 @@ describe("STM", () => {
     })
 
     describe("replicate", () => {
-      it.skip("zero", async () => {
+      it("zero", async () => {
         const program = STM.collectAll(STM.replicate(0, STM.succeed(12)))
           .commit()
           .map((chunk) => chunk.toArray())
@@ -859,7 +916,7 @@ describe("STM", () => {
         expect(result).toEqual([])
       })
 
-      it.skip("negative", async () => {
+      it("negative", async () => {
         const program = STM.collectAll(STM.replicate(-2, STM.succeed(12)))
           .commit()
           .map((chunk) => chunk.toArray())
@@ -869,7 +926,7 @@ describe("STM", () => {
         expect(result).toEqual([])
       })
 
-      it.skip("positive", async () => {
+      it("positive", async () => {
         const program = STM.collectAll(STM.replicate(2, STM.succeed(12)))
           .commit()
           .map((chunk) => chunk.toArray())
@@ -881,7 +938,7 @@ describe("STM", () => {
     })
 
     describe("right", () => {
-      it.skip("on Right value", async () => {
+      it("on Right value", async () => {
         const program = STM.succeed(Either.right("right")).right.commit()
 
         const result = await program.unsafeRunPromise()
@@ -889,7 +946,7 @@ describe("STM", () => {
         expect(result).toEqual("right")
       })
 
-      it.skip("on Left value", async () => {
+      it("on Left value", async () => {
         const program = STM.succeed(Either.left("left")).right.commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -897,7 +954,7 @@ describe("STM", () => {
         expect(result.untraced()).toEqual(Exit.fail(Either.left("left")))
       })
 
-      it.skip("on failure", async () => {
+      it("on failure", async () => {
         const program = STM.fail("fail").right.commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -905,7 +962,7 @@ describe("STM", () => {
         expect(result.untraced()).toEqual(Exit.fail(Either.right("fail")))
       })
 
-      it.skip("lifting a value", async () => {
+      it("lifting a value", async () => {
         const program = STM.right(42).commit()
 
         const result = await program.unsafeRunPromise()
@@ -915,7 +972,7 @@ describe("STM", () => {
     })
 
     describe("some", () => {
-      it.skip("extracts the value from Some", async () => {
+      it("extracts the value from Some", async () => {
         const program = STM.succeed(Option.some(1)).some.commit()
 
         const result = await program.unsafeRunPromise()
@@ -923,7 +980,7 @@ describe("STM", () => {
         expect(result).toBe(1)
       })
 
-      it.skip("fails on None", async () => {
+      it("fails on None", async () => {
         const program = STM.succeed(Option.none).some.commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -931,7 +988,7 @@ describe("STM", () => {
         expect(result.untraced()).toEqual(Exit.fail(Option.none))
       })
 
-      it.skip("fails when given an exception", async () => {
+      it("fails when given an exception", async () => {
         const program = STM.fail(ExampleError).some.commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -939,7 +996,7 @@ describe("STM", () => {
         expect(result.untraced()).toEqual(Exit.fail(Option.some(ExampleError)))
       })
 
-      it.skip("lifting a value", async () => {
+      it("lifting a value", async () => {
         const program = STM.some(42).commit()
 
         const result = await program.unsafeRunPromise()
@@ -949,7 +1006,7 @@ describe("STM", () => {
     })
 
     describe("someOrElse", () => {
-      it.skip("extracts the value from Some", async () => {
+      it("extracts the value from Some", async () => {
         const program = STM.succeed(Option.some(1)).someOrElse(42).commit()
 
         const result = await program.unsafeRunPromise()
@@ -957,7 +1014,7 @@ describe("STM", () => {
         expect(result).toBe(1)
       })
 
-      it.skip("falls back to the default value if None", async () => {
+      it("falls back to the default value if None", async () => {
         const program = STM.succeed(Option.none).someOrElse(42).commit()
 
         const result = await program.unsafeRunPromise()
@@ -965,7 +1022,7 @@ describe("STM", () => {
         expect(result).toBe(42)
       })
 
-      it.skip("does not change failed state", async () => {
+      it("does not change failed state", async () => {
         const program = STM.fail(ExampleError).someOrElse(42).commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -975,7 +1032,7 @@ describe("STM", () => {
     })
 
     describe("someOrElseSTM", () => {
-      it.skip("extracts the value from Some", async () => {
+      it("extracts the value from Some", async () => {
         const program = STM.succeed(Option.some(1))
           .someOrElseSTM(STM.succeed(42))
           .commit()
@@ -985,7 +1042,7 @@ describe("STM", () => {
         expect(result).toBe(1)
       })
 
-      it.skip("falls back to the default value if None", async () => {
+      it("falls back to the default value if None", async () => {
         const program = STM.succeed(Option.none).someOrElseSTM(STM.succeed(42)).commit()
 
         const result = await program.unsafeRunPromise()
@@ -993,7 +1050,7 @@ describe("STM", () => {
         expect(result).toBe(42)
       })
 
-      it.skip("does not change failed state", async () => {
+      it("does not change failed state", async () => {
         const program = STM.fail(ExampleError).someOrElseSTM(STM.succeed(42)).commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -1003,7 +1060,7 @@ describe("STM", () => {
     })
 
     describe("someOrFail", () => {
-      it.skip("extracts the value from Some", async () => {
+      it("extracts the value from Some", async () => {
         const program = STM.succeed(Option.some(1)).someOrFail(ExampleError).commit()
 
         const result = await program.unsafeRunPromise()
@@ -1011,7 +1068,7 @@ describe("STM", () => {
         expect(result).toBe(1)
       })
 
-      it.skip("fails on None", async () => {
+      it("fails on None", async () => {
         const program = STM.succeed(Option.none).someOrFail(ExampleError).commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -1019,7 +1076,7 @@ describe("STM", () => {
         expect(result.untraced()).toEqual(Exit.fail(ExampleError))
       })
 
-      it.skip("fails with the original error", async () => {
+      it("fails with the original error", async () => {
         const program = STM.fail(ExampleError)
           .someOrFail(new Error("not example"))
           .commit()
@@ -1031,7 +1088,7 @@ describe("STM", () => {
     })
 
     describe("someOrFailException", () => {
-      it.skip("extracts the optional value", async () => {
+      it("extracts the optional value", async () => {
         const program = STM.succeed(Option.some(42)).someOrFailException().commit()
 
         const result = await program.unsafeRunPromise()
@@ -1039,7 +1096,7 @@ describe("STM", () => {
         expect(result).toBe(42)
       })
 
-      it.skip("fails when given a None", async () => {
+      it("fails when given a None", async () => {
         const program = STM.succeed(Option.none).someOrFailException().commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -1048,7 +1105,7 @@ describe("STM", () => {
       })
     })
 
-    it.skip("succeed to make a successful computation and check the value", async () => {
+    it("succeed to make a successful computation and check the value", async () => {
       const program = STM.succeed("hello world").commit()
 
       const result = await program.unsafeRunPromise()
@@ -1057,7 +1114,7 @@ describe("STM", () => {
     })
 
     describe("summarized", () => {
-      it.skip("returns summary and value", async () => {
+      it("returns summary and value", async () => {
         const program = STM.Do()
           .bind("counter", () => TRef.make(0))
           .bindValue("increment", ({ counter }) => counter.updateAndGet((n) => n + 1))
@@ -1081,7 +1138,7 @@ describe("STM", () => {
       })
     })
 
-    it.skip("zip to return a tuple of two computations", async () => {
+    it("zip to return a tuple of two computations", async () => {
       const program = STM.succeed(1).zip(STM.succeed("A")).commit()
 
       const {
@@ -1092,7 +1149,7 @@ describe("STM", () => {
       expect(s).toBe("A")
     })
 
-    it.skip("zipWith to perform an action to two computations", async () => {
+    it("zipWith to perform an action to two computations", async () => {
       const program = STM.succeed(598)
         .zipWith(STM.succeed(2), (a, b) => a + b)
         .commit()
@@ -1104,7 +1161,7 @@ describe("STM", () => {
   })
 
   describe("Make a new `TRef` and", () => {
-    it.skip("get its initial value", async () => {
+    it("get its initial value", async () => {
       const program = TRef.make(14)
         .flatMap((ref) => ref.get())
         .commit()
@@ -1114,7 +1171,7 @@ describe("STM", () => {
       expect(result).toBe(14)
     })
 
-    it.skip("set a new value", async () => {
+    it("set a new value", async () => {
       const program = TRef.make(14)
         .tap((ref) => ref.set(42))
         .flatMap((ref) => ref.get())
@@ -1127,7 +1184,7 @@ describe("STM", () => {
   })
 
   describe("Using `STM.atomically` perform concurrent computations", () => {
-    it.skip("increment `TRef` 100 times in 100 fibers", async () => {
+    it("increment `TRef` 100 times in 100 fibers", async () => {
       const program = Effect.Do()
         .bind("ref", () => TRef.makeCommit(0))
         .bind("fiber", ({ ref }) =>
@@ -1141,7 +1198,7 @@ describe("STM", () => {
       expect(result).toBe(1000)
     })
 
-    it.skip("compute a `TRef` from 2 variables, increment the first `TRef` and decrement the second `TRef` in different fibers", async () => {
+    it("compute a `TRef` from 2 variables, increment the first `TRef` and decrement the second `TRef` in different fibers", async () => {
       const program = Effect.Do()
         .bind("refs", () =>
           STM.atomically(TRef.make(10000) + TRef.make(0) + TRef.make(0))
@@ -1162,7 +1219,7 @@ describe("STM", () => {
 
   describe("Using `STM.atomically` perform concurrent computations that", () => {
     describe("have a simple condition lock should suspend the whole transaction and", () => {
-      it.skip("resume directly when the condition is already satisfied", async () => {
+      it("resume directly when the condition is already satisfied", async () => {
         const program = Effect.Do()
           .bind("tref1", () => TRef.makeCommit(10))
           .bind("tref2", () => TRef.makeCommit("failed!"))
@@ -1180,7 +1237,7 @@ describe("STM", () => {
         expect(result).toBe("succeeded!")
       })
 
-      it.skip("resume directly when the condition is already satisfied and change again the tvar with non satisfying value, the transaction shouldn't be suspended.", async () => {
+      it("resume directly when the condition is already satisfied and change again the tvar with non satisfying value, the transaction shouldn't be suspended.", async () => {
         const program = Effect.Do()
           .bind("tref", () => TRef.makeCommit(42))
           .bind("join", ({ tref }) =>
@@ -1228,29 +1285,1054 @@ describe("STM", () => {
         expect(oldValue).toBe("failed!")
         expect(newValue).toBe(join)
       })
+    })
 
-      describe("have a complex condition lock should suspend the whole transaction and", () => {
-        it.skip("resume directly when the condition is already satisfied", async () => {
-          const program = Effect.Do()
-            .bind("sender", () => TRef.makeCommit(100))
-            .bind("receiver", () => TRef.makeCommit(0))
-            .tap(({ receiver, sender }) => transfer(receiver, sender, 150).fork())
-            .tap(({ sender }) => sender.update((n) => n + 100).commit())
-            .tap(({ sender }) =>
-              sender
+    describe("have a complex condition lock should suspend the whole transaction and", () => {
+      it("resume directly when the condition is already satisfied", async () => {
+        const program = Effect.Do()
+          .bind("sender", () => TRef.makeCommit(100))
+          .bind("receiver", () => TRef.makeCommit(0))
+          .tap(({ receiver, sender }) => transfer(receiver, sender, 150).fork())
+          .tap(({ sender }) => sender.update((n) => n + 100).commit())
+          .tap(({ sender }) =>
+            sender
+              .get()
+              .retryUntil((n) => n === 50)
+              .commit()
+          )
+          .bind("senderValue", ({ sender }) => sender.get().commit())
+          .bind("receiverValue", ({ receiver }) => receiver.get().commit())
+
+        const { receiverValue, senderValue } = await program.unsafeRunPromise()
+
+        expect(senderValue).toBe(50)
+        expect(receiverValue).toBe(150)
+      })
+    })
+
+    describe("transfer an amount to a sender and send it back the account should contains the amount to transfer", () => {
+      it("run both transactions sequentially in 10 fibers", async () => {
+        const program = Effect.Do()
+          .bind("sender", () => TRef.makeCommit(100))
+          .bind("receiver", () => TRef.makeCommit(0))
+          .bindValue("toReceiver", ({ receiver, sender }) =>
+            transfer(receiver, sender, 150)
+          )
+          .bindValue("toSender", ({ receiver, sender }) =>
+            transfer(sender, receiver, 150)
+          )
+          .bind("fiber", ({ toReceiver, toSender }) =>
+            Effect.forkAll(List.repeat(toReceiver > toSender, 10))
+          )
+          .tap(({ sender }) => sender.update((n) => n + 50).commit())
+          .tap(({ fiber }) => fiber.join())
+          .bind("senderValue", ({ sender }) => sender.get().commit())
+          .bind("receiverValue", ({ receiver }) => receiver.get().commit())
+
+        const { receiverValue, senderValue } = await program.unsafeRunPromise()
+
+        expect(senderValue).toBe(150)
+        expect(receiverValue).toBe(0)
+      })
+
+      it("run 10 transactions `toReceiver` and 10 `toSender` concurrently", async () => {
+        const program = Effect.Do()
+          .bind("sender", () => TRef.makeCommit(50))
+          .bind("receiver", () => TRef.makeCommit(0))
+          .bindValue("toReceiver", ({ receiver, sender }) =>
+            transfer(receiver, sender, 100)
+          )
+          .bindValue("toSender", ({ receiver, sender }) =>
+            transfer(sender, receiver, 100)
+          )
+          .bind("fiber1", ({ toReceiver }) =>
+            Effect.forkAll(List.repeat(toReceiver, 10))
+          )
+          .bind("fiber2", ({ toSender }) => Effect.forkAll(List.repeat(toSender, 10)))
+          .tap(({ sender }) => sender.update((n) => n + 50).commit())
+          .tap(({ fiber1 }) => fiber1.join())
+          .tap(({ fiber2 }) => fiber2.join())
+          .bind("senderValue", ({ sender }) => sender.get().commit())
+          .bind("receiverValue", ({ receiver }) => receiver.get().commit())
+
+        const { receiverValue, senderValue } = await program.unsafeRunPromise()
+
+        expect(senderValue).toBe(100)
+        expect(receiverValue).toBe(0)
+      })
+
+      it("run transactions `toReceiver` 10 times and `toSender` 10 times each in 100 fibers concurrently", async () => {
+        const program = Effect.Do()
+          .bind("sender", () => TRef.makeCommit(50))
+          .bind("receiver", () => TRef.makeCommit(0))
+          .bindValue("toReceiver", ({ receiver, sender }) =>
+            transfer(receiver, sender, 100).repeatN(9)
+          )
+          .bindValue("toSender", ({ receiver, sender }) =>
+            transfer(sender, receiver, 100).repeatN(9)
+          )
+          .bind("fiber", ({ toReceiver, toSender }) =>
+            toReceiver.zipPar(toSender).fork()
+          )
+          .tap(({ sender }) => sender.update((n) => n + 50).commit())
+          .tap(({ fiber }) => fiber.join())
+          .bind("senderValue", ({ sender }) => sender.get().commit())
+          .bind("receiverValue", ({ receiver }) => receiver.get().commit())
+
+        const { receiverValue, senderValue } = await program.unsafeRunPromise()
+
+        expect(senderValue).toBe(100)
+        expect(receiverValue).toBe(0)
+      })
+    })
+
+    it("perform atomically a single transaction that has a tvar for 20 fibers, each one checks the value and increment it", async () => {
+      const program = Effect.Do()
+        .bind("tRef", () => TRef.makeCommit(0))
+        .bind("fiber", ({ tRef }) =>
+          Effect.forkAll(
+            List.range(0, 21).map((i) =>
+              tRef
                 .get()
-                .retryUntil((n) => n === 50)
+                .flatMap((v) => STM.check(v === i))
+                .zipRight(tRef.update((n) => n + 1).map(constVoid))
                 .commit()
             )
-            .bind("senderValue", ({ sender }) => sender.get().commit())
-            .bind("receiverValue", ({ receiver }) => receiver.get().commit())
+          )
+        )
+        .tap(({ fiber }) => fiber.join())
+        .flatMap(({ tRef }) => tRef.get().commit())
 
-          const { receiverValue, senderValue } = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise()
 
-          expect(senderValue).toBe(50)
-          expect(receiverValue).toBe(150)
-        })
+      expect(result).toBe(21)
+    })
+
+    describe("perform atomically a transaction with a condition that couldn't be satisfied, it should be suspended", () => {
+      it("interrupt the fiber should terminate the transaction", async () => {
+        const barrier = new UnpureBarrier()
+        const program = Effect.Do()
+          .bind("tRef", () => TRef.makeCommit(0))
+          .bind("fiber", ({ tRef }) =>
+            tRef
+              .get()
+              .tap(() => STM.succeed(barrier.open()))
+              .tap((v) => STM.check(v > 0))
+              .tap(() => tRef.update((n) => 10 / n))
+              .map(constVoid)
+              .commit()
+              .fork()
+          )
+          .tap(() => barrier.await())
+          .tap(({ fiber }) => fiber.interrupt())
+          .tap(({ tRef }) => tRef.set(10).commit())
+          .flatMap(({ tRef }) => Effect.sleep(10) > tRef.get().commit())
+
+        const result = await program.unsafeRunPromise()
+
+        expect(result).toBe(10)
       })
+
+      it("interrupt the fiber that has executed the transaction in 100 different fibers, should terminate all transactions", async () => {
+        const barrier = new UnpureBarrier()
+        const program = Effect.Do()
+          .bind("tRef", () => TRef.makeCommit(0))
+          .bind("fiber", ({ tRef }) =>
+            Effect.forkAll(
+              List.repeat(
+                tRef
+                  .get()
+                  .tap(() => STM.succeed(barrier.open()))
+                  .tap((v) => STM.check(v < 0))
+                  .tap(() => tRef.set(10))
+                  .commit(),
+                100
+              )
+            )
+          )
+          .tap(() => barrier.await())
+          .tap(({ fiber }) => fiber.interrupt())
+          .tap(({ tRef }) => tRef.set(-1).commit())
+          .flatMap(({ tRef }) => Effect.sleep(10) > tRef.get().commit())
+
+        const result = await program.unsafeRunPromise()
+
+        expect(result).toBe(-1)
+      })
+
+      it("interrupt the fiber and observe it, it should be resumed with Interrupted Cause", async () => {
+        const program = Effect.Do()
+          .bind("selfId", () => Effect.fiberId)
+          .bind("tRef", () => TRef.makeCommit(1))
+          .bind("fiber", ({ tRef }) =>
+            tRef
+              .get()
+              .flatMap((n) => STM.check(n === 0))
+              .commit()
+              .fork()
+          )
+          .tap(({ fiber }) => fiber.interrupt())
+          .bind("observe", ({ fiber }) => fiber.join().sandbox().either())
+
+        const { observe, selfId } = await program.unsafeRunPromise()
+
+        expect(observe.mapLeft((cause) => cause.untraced())).toEqual(
+          Either.left(Cause.interrupt(selfId))
+        )
+      })
+    })
+
+    it("Using `continueOrRetry` filter and map simultaneously the value produced by the transaction", async () => {
+      const program = STM.succeed(List.range(1, 20))
+        .continueOrRetry((list) =>
+          list.every((n) => n > 0) ? Option.some("positive") : Option.none
+        )
+        .commit()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual("positive")
+    })
+
+    it("Using `continueOrRetrySTM` filter and map simultaneously the value produced by the transaction", async () => {
+      const program = STM.succeed(List.range(1, 20))
+        .continueOrRetrySTM((list) =>
+          list.every((n) => n > 0) ? Option.some(STM.succeed("positive")) : Option.none
+        )
+        .commit()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual("positive")
+    })
+  })
+
+  it("permute 2 variables", async () => {
+    const program = Effect.Do()
+      .bind("tRef1", () => TRef.makeCommit(1))
+      .bind("tRef2", () => TRef.makeCommit(2))
+      .tap(({ tRef1, tRef2 }) => permutation(tRef1, tRef2).commit())
+      .bind("value1", ({ tRef1 }) => tRef1.get().commit())
+      .bind("value2", ({ tRef2 }) => tRef2.get().commit())
+
+    const { value1, value2 } = await program.unsafeRunPromise()
+
+    expect(value1).toBe(2)
+    expect(value2).toBe(1)
+  })
+
+  it("permute 2 variables in 100 fibers, the 2 variables should contains the same values", async () => {
+    const program = Effect.Do()
+      .bind("tRef1", () => TRef.makeCommit(1))
+      .bind("tRef2", () => TRef.makeCommit(2))
+      .bind("oldValue1", ({ tRef1 }) => tRef1.get().commit())
+      .bind("oldValue2", ({ tRef2 }) => tRef2.get().commit())
+      .bind("fiber", ({ tRef1, tRef2 }) =>
+        Effect.forkAll(List.repeat(permutation(tRef1, tRef2).commit(), 100))
+      )
+      .tap(({ fiber }) => fiber.join())
+      .bind("value1", ({ tRef1 }) => tRef1.get().commit())
+      .bind("value2", ({ tRef2 }) => tRef2.get().commit())
+
+    const { oldValue1, oldValue2, value1, value2 } = await program.unsafeRunPromise()
+
+    expect(value1).toBe(oldValue1)
+    expect(value2).toBe(oldValue2)
+  })
+
+  describe("collectAll", () => {
+    it("collects a list of transactional effects to a single transaction that produces a list of values", async () => {
+      const program = Effect.Do()
+        .bind("iterable", () =>
+          Effect.succeed(List.range(1, 101).map((n) => TRef.make(n)))
+        )
+        .bind("tRefs", ({ iterable }) => STM.collectAll(iterable).commit())
+        .flatMap(({ tRefs }) =>
+          Effect.forEachPar(tRefs, (tRef) => tRef.get().commit()).map((chunk) =>
+            chunk.toArray()
+          )
+        )
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual(List.range(1, 101).toArray())
+    })
+
+    it("collects a chunk of transactional effects to a single transaction that produces a chunk of values", async () => {
+      const program = Effect.Do()
+        .bind("iterable", () =>
+          Effect.succeed(List.range(1, 101).map((n) => TRef.make(n)))
+        )
+        .bind("tRefs", ({ iterable }) => STM.collectAll(Chunk.from(iterable)).commit())
+        .flatMap(({ tRefs }) =>
+          Effect.forEachPar(tRefs, (tRef) => tRef.get().commit()).map((chunk) =>
+            chunk.toArray()
+          )
+        )
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual(List.range(1, 101).toArray())
+    })
+  })
+
+  describe("forEach", () => {
+    it("performs an action on each list element and return a single transaction that contains the result", async () => {
+      const list = List(1, 2, 3, 4, 5)
+      const program = Effect.Do()
+        .bind("tRef", () => TRef.makeCommit(0))
+        .tap(({ tRef }) => STM.forEach(list, (n) => tRef.update((_) => _ + n)).commit())
+        .flatMap(({ tRef }) => tRef.get().commit())
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(list.reduce(0, (acc, n) => acc + n))
+    })
+
+    it("performs an action on each chunk element and return a single transaction that contains the result", async () => {
+      const chunk = Chunk(1, 2, 3, 4, 5)
+      const program = Effect.Do()
+        .bind("tRef", () => TRef.makeCommit(0))
+        .tap(({ tRef }) =>
+          STM.forEach(chunk, (n) => tRef.update((_) => _ + n)).commit()
+        )
+        .flatMap(({ tRef }) => tRef.get().commit())
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(chunk.reduce(0, (acc, n) => acc + n))
+    })
+  })
+
+  describe("forEachDiscard", () => {
+    it("performs actions in order given a list", async () => {
+      const list = List(1, 2, 3, 4, 5)
+      const program = Effect.Do()
+        .bind("tRef", () => TRef.makeCommit(List.empty<number>()))
+        .tap(({ tRef }) =>
+          STM.forEach(list, (n) => tRef.update((list) => list.append(n))).commit()
+        )
+        .flatMap(({ tRef }) => tRef.get().commit())
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual(list)
+    })
+
+    it("performs actions in order given a chunk", async () => {
+      const chunk = Chunk(1, 2, 3, 4, 5)
+      const program = Effect.Do()
+        .bind("tRef", () => TRef.makeCommit(List.empty<number>()))
+        .tap(({ tRef }) =>
+          STM.forEach(chunk, (n) => tRef.update((list) => list.append(n))).commit()
+        )
+        .flatMap(({ tRef }) => tRef.get().commit())
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result.toArray()).toEqual(chunk.toArray())
+    })
+  })
+
+  // TODO(Mike/Max): fix failing test
+  describe("Failure must", () => {
+    it.skip("rollback full transaction", async () => {
+      const program = Effect.Do()
+        .bind("tRef", () => TRef.makeCommit(0))
+        .bind("either", ({ tRef }) => {
+          console.log(tRef)
+          return (tRef.update((n) => n + 10) > STM.fail("error")).commit().either()
+        })
+        .bind("value", ({ tRef }) => tRef.get().commit())
+
+      const { either, value } = await program.unsafeRunPromise()
+
+      expect(either).toEqual(Either.left("error"))
+      expect(value).toBe(0)
+    })
+
+    it.skip("be ignored", async () => {
+      const program = Effect.Do()
+        .bind("tRef", () => TRef.makeCommit(0))
+        .bind("either", ({ tRef }) =>
+          (tRef.update((n) => n + 10) > STM.fail("error")).commit().ignore()
+        )
+        .bind("value", ({ tRef }) => tRef.get().commit())
+
+      const { either, value } = await program.unsafeRunPromise()
+
+      expect(either).toBeUndefined()
+      expect(value).toBe(0)
+    })
+  })
+
+  describe("commitEither", () => {
+    it("commits this transaction whether it is a success or a failure", async () => {
+      const program = Effect.Do()
+        .bind("tRef", () => TRef.makeCommit(false))
+        .bind("either", ({ tRef }) =>
+          (tRef.set(true) > STM.fail("error")).commitEither().flip()
+        )
+        .bind("value", ({ tRef }) => tRef.get().commit())
+
+      const { either, value } = await program.unsafeRunPromise()
+
+      expect(either).toBe("error")
+      expect(value).toBe(true)
+    })
+  })
+
+  describe("orElse", () => {
+    it("tries alternative once left retries", async () => {
+      const program = Effect.Do()
+        .bind("tRef", () => TRef.makeCommit(0))
+        .bindValue("left", ({ tRef }) => tRef.update((n) => n + 100) > STM.retry)
+        .bindValue("right", ({ tRef }) => tRef.update((n) => n + 200))
+        .tap(({ left, right }) => (left | right).commit())
+        .flatMap(({ tRef }) => tRef.get().commit())
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(200)
+    })
+
+    it("tries alternative once left fails", async () => {
+      const program = Effect.Do()
+        .bind("tRef", () => TRef.makeCommit(0))
+        .bindValue("left", ({ tRef }) => tRef.update((n) => n + 100) > STM.fail("boom"))
+        .bindValue("right", ({ tRef }) => tRef.update((n) => n + 200))
+        .tap(({ left, right }) => (left | right).commit())
+        .flatMap(({ tRef }) => tRef.get().commit())
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(200)
+    })
+
+    it("fail if alternative fails", async () => {
+      const program = (STM.fail("left") | STM.fail("right")).commit()
+
+      const result = await program.unsafeRunPromiseExit()
+
+      expect(result.untraced()).toEqual(Exit.fail("right"))
+    })
+  })
+
+  describe("orElseEither", () => {
+    it("returns result of the first successful transaction wrapped in either", async () => {
+      const program = Effect.struct({
+        rightValue: STM.retry.orElseEither(STM.succeed(42)).commit(),
+        leftValue1: STM.succeed(1).orElseEither(STM.succeed("nope")).commit(),
+        leftValue2: STM.succeed(2).orElseEither(STM.retry).commit()
+      })
+
+      const { leftValue1, leftValue2, rightValue } = await program.unsafeRunPromise()
+
+      expect(rightValue).toEqual(Either.right(42))
+      expect(leftValue1).toEqual(Either.left(1))
+      expect(leftValue2).toEqual(Either.left(2))
+    })
+  })
+
+  describe("orElseFail", () => {
+    it("tries left first", async () => {
+      const program = STM.succeed(true).orElseFail(false).commit()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(true)
+    })
+
+    it("fails with the specified error once left retries", async () => {
+      const program = STM.retry.orElseFail(false).either().commit()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual(Either.left(false))
+    })
+
+    it("fails with the specified error once left fails", async () => {
+      const program = STM.fail(true).orElseFail(false).either().commit()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual(Either.left(false))
+    })
+  })
+
+  describe("orElseSucceed", () => {
+    it("tries left first", async () => {
+      const program = STM.succeed(true).orElseSucceed(false).commit()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(true)
+    })
+
+    it("succeeds with the specified value if left retries", async () => {
+      const program = STM.retry.orElseSucceed(false).commit()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(false)
+    })
+
+    it("succeeds with the specified value if left fails", async () => {
+      const program = STM.fail(true).orElseSucceed(false).commit()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(false)
+    })
+  })
+
+  describe("alternative", () => {
+    it("succeeds if left succeeds", async () => {
+      const program = STM.succeed("left").orTry(STM.succeed("right")).commit()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe("left")
+    })
+
+    it("succeeds if right succeeds", async () => {
+      const program = STM.retry.orTry(STM.succeed("right")).commit()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe("right")
+    })
+
+    it("retries left after right retries", async () => {
+      const program = Effect.Do()
+        .bind("tRef", () => TRef.makeCommit(0))
+        .bindValue("left", ({ tRef }) =>
+          tRef.get().flatMap((n) => STM.check(n > 500).as("left"))
+        )
+        .bindValue("right", () => STM.retry)
+        .bindValue("updater", ({ tRef }) =>
+          tRef
+            .update((n) => n + 10)
+            .commit()
+            .forever()
+        )
+        .flatMap(({ left, right, updater }) => left.orTry(right).commit().race(updater))
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe("left")
+    })
+
+    it("fails if left fails", async () => {
+      const program = STM.fail("left").orTry(STM.succeed("right")).commit()
+
+      const result = await program.unsafeRunPromiseExit()
+
+      expect(result.untraced()).toEqual(Exit.fail("left"))
+    })
+
+    it("fails if right fails", async () => {
+      const program = STM.retry.orTry(STM.fail("right")).commit()
+
+      const result = await program.unsafeRunPromiseExit()
+
+      expect(result.untraced()).toEqual(Exit.fail("right"))
+    })
+  })
+
+  describe("mergeAll", () => {
+    it("return zero element on empty input", async () => {
+      const zeroElement = 42
+      const nonZero = 43
+      const program = STM.mergeAll(
+        List.empty<STM<unknown, never, number>>(),
+        zeroElement,
+        () => nonZero
+      ).commit()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(zeroElement)
+    })
+
+    it("merge list using function", async () => {
+      const program = STM.mergeAll(
+        List(3, 5, 7).map(STM.succeedNow),
+        1,
+        (a, b) => a + b
+      ).commit()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(1 + 3 + 5 + 7)
+    })
+
+    it("return error if it exists in list", async () => {
+      const program = STM.mergeAll(
+        List<STM<unknown, any, any>>(STM.unit, STM.fail(1)),
+        undefined,
+        constVoid
+      ).commit()
+
+      const result = await program.unsafeRunPromiseExit()
+
+      expect(result.untraced()).toEqual(Exit.fail(1))
+    })
+  })
+
+  describe("reduceAll", () => {
+    it("should reduce all elements to a single value", async () => {
+      const program = STM.reduceAll(
+        STM.succeed(1),
+        List(2, 3, 4).map(STM.succeedNow),
+        (acc, a) => acc + a
+      ).commit()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(10)
+    })
+
+    it("should handle an empty iterable", async () => {
+      const program = STM.reduceAll(
+        STM.succeed(1),
+        List.empty<STM<unknown, never, number>>(),
+        (acc, a) => acc + a
+      ).commit()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(1)
+    })
+  })
+
+  describe("validate", () => {
+    it("returns all errors if never valid", async () => {
+      const input = List.repeat(0, 10)
+      const program = STM.validate(input, STM.failNow).commit()
+
+      const result = await program.unsafeRunPromiseExit()
+
+      expect(result.untraced()).toEqual(Exit.fail(input.toArray()))
+    })
+
+    it("accumulate errors and ignore successes", async () => {
+      const input = List.range(0, 10)
+      const program = STM.validate(input, (n) =>
+        n % 2 === 0 ? STM.succeed(n) : STM.fail(n)
+      ).commit()
+
+      const result = await program.unsafeRunPromiseExit()
+
+      expect(result.untraced()).toEqual(Exit.fail([1, 3, 5, 7, 9]))
+    })
+
+    it("accumulate successes", async () => {
+      const input = List.range(0, 10)
+      const program = STM.validate(input, STM.succeedNow)
+        .commit()
+        .map((chunk) => chunk.toArray())
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual(input.toArray())
+    })
+  })
+
+  describe("validateFirst", () => {
+    it("returns all errors if never valid", async () => {
+      const input = List.repeat(0, 10)
+      const program = STM.validateFirst(input, STM.failNow)
+        .commit()
+        .mapError((chunk) => chunk.toArray())
+
+      const result = await program.unsafeRunPromiseExit()
+
+      expect(result.untraced()).toEqual(Exit.fail(input.toArray()))
+    })
+
+    it("runs sequentially and short circuits on first success validation", async () => {
+      const input = List.range(1, 10)
+      const program = STM.Do()
+        .bind("counter", () => TRef.make(0))
+        .bind("result", ({ counter }) =>
+          STM.validateFirst(
+            input,
+            (n) =>
+              counter.update((_) => _ + 1) > (n === 6 ? STM.succeed(n) : STM.fail(n))
+          )
+        )
+        .bind("count", ({ counter }) => counter.get())
+        .commit()
+
+      const { count, result } = await program.unsafeRunPromise()
+
+      expect(result).toBe(6)
+      expect(count).toBe(6)
+    })
+
+    it("returns errors in correct order", async () => {
+      const input = List(2, 4, 6, 3, 5, 6)
+      const program = STM.validateFirst(input, STM.failNow)
+        .commit()
+        .mapError((chunk) => chunk.toArray())
+
+      const result = await program.unsafeRunPromiseExit()
+
+      expect(result.untraced()).toEqual(Exit.fail(input.toArray()))
+    })
+  })
+
+  describe("when combinators", () => {
+    it("when true", async () => {
+      const program = TRef.make(false)
+        .commit()
+        .flatMap((tRef) => (STM.when(true, tRef.set(true)) > tRef.get()).commit())
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(true)
+    })
+
+    it("when false", async () => {
+      const program = TRef.make(false)
+        .commit()
+        .flatMap((tRef) => (STM.when(false, tRef.set(true)) > tRef.get()).commit())
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(false)
+    })
+
+    it("whenSTM true", async () => {
+      const program = TRef.make(0)
+        .commit()
+        .flatMap((tRef) =>
+          (
+            STM.whenSTM(
+              tRef.get().map((n) => n === 0),
+              tRef.update((n) => n + 1)
+            ) > tRef.get()
+          ).commit()
+        )
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(1)
+    })
+
+    it("whenSTM false", async () => {
+      const program = TRef.make(0)
+        .commit()
+        .flatMap((tRef) =>
+          (
+            STM.whenSTM(
+              tRef.get().map((n) => n !== 0),
+              tRef.update((n) => n + 1)
+            ) > tRef.get()
+          ).commit()
+        )
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(0)
+    })
+
+    it("whenCase executes correct branch only", async () => {
+      const program = STM.Do()
+        .bind("tRef", () => TRef.make(false))
+        .tap(({ tRef }) =>
+          STM.whenCase(Option.emptyOf<number>(), (option) =>
+            option._tag === "Some" ? Option.some(tRef.set(true)) : Option.none
+          )
+        )
+        .bind("result1", ({ tRef }) => tRef.get())
+        .tap(({ tRef }) =>
+          STM.whenCase(Option.some(0), (option) =>
+            option._tag === "Some" ? Option.some(tRef.set(true)) : Option.none
+          )
+        )
+        .bind("result2", ({ tRef }) => tRef.get())
+        .commit()
+
+      const { result1, result2 } = await program.unsafeRunPromise()
+
+      expect(result1).toBe(false)
+      expect(result2).toBe(true)
+    })
+
+    it("whenCaseSTM executes condition effect and correct branch", async () => {
+      const program = STM.Do()
+        .bind("tRef", () => TRef.make(false))
+        .tap(({ tRef }) =>
+          STM.whenCaseSTM(STM.succeed(Option.emptyOf<number>()), (option) =>
+            option._tag === "Some" ? Option.some(tRef.set(true)) : Option.none
+          )
+        )
+        .bind("result1", ({ tRef }) => tRef.get())
+        .tap(({ tRef }) =>
+          STM.whenCaseSTM(STM.succeed(Option.some(0)), (option) =>
+            option._tag === "Some" ? Option.some(tRef.set(true)) : Option.none
+          )
+        )
+        .bind("result2", ({ tRef }) => tRef.get())
+        .commit()
+
+      const { result1, result2 } = await program.unsafeRunPromise()
+
+      expect(result1).toBe(false)
+      expect(result2).toBe(true)
+    })
+  })
+
+  describe("regression tests", () => {
+    it("read only STM shouldn't return partial state of concurrent read-write STM", async () => {
+      const program = Effect.Do()
+        .bind("tRef1", () => TRef.makeCommit(0))
+        .bind("tRef2", () => TRef.makeCommit(0))
+        .bind("sumFiber", ({ tRef1, tRef2 }) =>
+          tRef1
+            .get()
+            .flatMap((n1) => tRef2.get().map((n2) => n1 + n2))
+            .commit()
+            .fork()
+        )
+        .tap(({ tRef1, tRef2 }) =>
+          (tRef1.update((n) => n + 1) > tRef2.update((n) => n + 1)).commit()
+        )
+        .flatMap(({ sumFiber }) => sumFiber.join())
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result === 0 || result === 2).toBe(true)
+    })
+  })
+
+  describe("STM stack safety", () => {
+    it("long alternative chains", async () => {
+      const program = TRef.make(0)
+        .tap((tRef) =>
+          STM.loopDiscard(
+            10000,
+            (n) => n > 0,
+            (n) => n - 1
+          )(() => STM.retry.orTry(tRef.getAndUpdate((n) => n + 1)))
+        )
+        .flatMap((tRef) => tRef.get())
+        .commit()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(10000)
+    })
+
+    it("long map chains", async () => {
+      const program = chain(10000, (stm) => stm.map((n) => n + 1))
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual(10000)
+    })
+
+    test("long collect chains", async () => {
+      const program = chain(10000, (stm) =>
+        stm.continueOrRetry((n) => Option.some(n + 1))
+      )
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual(10000)
+    })
+
+    it("long collectSTM chains", async () => {
+      const program = chain(10000, (stm) =>
+        stm.continueOrRetrySTM((n) => Option.some(STM.succeed(n + 1)))
+      )
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual(10000)
+    })
+
+    it("long flatMap chains", async () => {
+      const program = chain(10000, (stm) => stm.flatMap((n) => STM.succeed(n + 1)))
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual(10000)
+    })
+
+    it("long fold chains", async () => {
+      const program = chain(10000, (stm) =>
+        stm.fold(
+          () => 0,
+          (n) => n + 1
+        )
+      )
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual(10000)
+    })
+
+    it("long foldSTM chains", async () => {
+      const program = chain(10000, (stm) =>
+        stm.foldSTM(
+          () => STM.succeed(0),
+          (n) => STM.succeed(n + 1)
+        )
+      )
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual(10000)
+    })
+
+    it("long mapError chains", async () => {
+      function chainError(depth: number): IO<number, never> {
+        return chainErrorLoop(depth, STM.fail(0))
+      }
+
+      function chainErrorLoop(
+        n: number,
+        acc: STM<unknown, number, never>
+      ): IO<number, never> {
+        return n <= 0
+          ? acc.commit()
+          : Effect.suspendSucceed(
+              chainErrorLoop(
+                n - 1,
+                acc.mapError((n) => n + 1)
+              )
+            )
+      }
+
+      const program = chainError(10000)
+
+      const result = await program.unsafeRunPromiseExit()
+
+      expect(result.untraced()).toEqual(Exit.fail(10000))
+    })
+
+    it("long orElse chains", async () => {
+      const program = TRef.make(0)
+        .tap((tRef) =>
+          STM.loopDiscard(
+            10000,
+            (n) => n > 0,
+            (n) => n - 1
+          )(() => STM.retry | tRef.getAndUpdate((n) => n + 1))
+        )
+        .flatMap((tRef) => tRef.get())
+        .commit()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(10000)
+    })
+
+    it("long provide chains", async () => {
+      const program = chain(10000, (stm) => stm.provideEnvironment(0))
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual(0)
+    })
+  })
+
+  describe("STM environment", () => {
+    it("access environment and provide it outside transaction", async () => {
+      const program = STMEnv.make(0)
+        .tap((env) =>
+          STM.serviceWithSTM(HasSTMEnv)((_) => _.ref.update((n) => n + 1))
+            .commit()
+            .provideEnvironment(HasSTMEnv.has(env))
+        )
+        .flatMap((env) => env.ref.get().commit())
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(1)
+    })
+
+    it("access environment and provide it inside transaction", async () => {
+      const program = STMEnv.make(0)
+        .tap((env) =>
+          STM.serviceWithSTM(HasSTMEnv)((_) => _.ref.update((n) => n + 1))
+            .provideEnvironment(HasSTMEnv.has(env))
+            .commit()
+        )
+        .flatMap((env) => env.ref.get().commit())
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toBe(1)
+    })
+  })
+
+  // TODO: implement after TQueue
+  it.skip("STM collectAll ordering", async () => {
+    // val tx = for {
+    //   tq  <- TQueue.bounded[Int](3)
+    //   _   <- tq.offer(1)
+    //   _   <- tq.offer(2)
+    //   _   <- tq.offer(3)
+    //   ans <- ZSTM.collectAll(List(tq.take, tq.take, tq.take))
+    // } yield ans
+    // assertM(tx.commit)(equalTo(List(1, 2, 3)))
+  })
+
+  describe("taps", () => {
+    it("tap should apply the transactional function to the effect result while keeping the effect itself", async () => {
+      const program = STM.Do()
+        .bind("refA", () => TRef.make(10))
+        .bind("refB", () => TRef.make(0))
+        .bind("a", ({ refA, refB }) => refA.get().tap((n) => refB.set(n + 1)))
+        .bind("b", ({ refB }) => refB.get())
+        .commit()
+
+      const { a, b } = await program.unsafeRunPromise()
+
+      expect(a).toBe(10)
+      expect(b).toBe(11)
+    })
+
+    // TODO: implement after TPromise
+    it("tapBoth applies the success function to success values while keeping the effect intact", async () => {
+      // val tx =
+      //   for {
+      //     tapSuccess    <- TPromise.make[Nothing, Int]
+      //     tapError      <- TPromise.make[Nothing, String]
+      //     succeededSTM   = ZSTM.succeed(42): STM[String, Int]
+      //     result        <- succeededSTM.tapBoth(e => tapError.succeed(e), a => tapSuccess.succeed(a))
+      //     tappedSuccess <- tapSuccess.await
+      //   } yield (result, tappedSuccess)
+      // assertM(tx.commit)(equalTo((42, 42)))
+    })
+
+    // TODO: implement after TPromise
+    it("tapBoth applies the function to error and successful values while keeping the effect itself on error", async () => {
+      // val tx =
+      //   for {
+      //     tapSuccess  <- TPromise.make[Nothing, Int]
+      //     tapError    <- TPromise.make[Nothing, String]
+      //     succeededSTM = ZSTM.fail("error"): STM[String, Int]
+      //     result      <- succeededSTM.tapBoth(e => tapError.succeed(e), a => tapSuccess.succeed(a)).either
+      //     tappedError <- tapError.await
+      //   } yield (result, tappedError)
+      // assertM(tx.commit)(equalTo((Left("error"), "error")))
+    })
+
+    // TODO: implement after TPromise
+    it("tapError should apply the transactional function to the error result while keeping the effect itself", async () => {
+      // val tx =
+      //   for {
+      //     errorRef    <- TPromise.make[Nothing, String]
+      //     failedStm    = ZSTM.fail("error") *> ZSTM.succeed(0)
+      //     result      <- failedStm.tapError(e => errorRef.succeed(e)).either
+      //     tappedError <- errorRef.await
+      //   } yield (result, tappedError)
+      // assertM(tx.commit)(equalTo((Left("error"), "error")))
     })
   })
 })

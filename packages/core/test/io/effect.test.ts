@@ -4161,11 +4161,13 @@ describe("Effect", () => {
       expect(result).toBe(42)
     })
 
-    // TODO(Mike/Max): test passes, but handle is left open from Effect.never
-    it.skip("race in uninterruptible region", async () => {
-      const program = Effect.unit.race(Effect.never).uninterruptible()
+    // FIXED: swapped out Effect.never for Promise
+    it("race in uninterruptible region", async () => {
+      const promise = Promise.unsafeMake<never, void>(FiberId.none)
+      const program = Effect.unit.race(promise.await()).uninterruptible()
 
       const result = await program.unsafeRunPromise()
+      await promise.succeed(undefined).unsafeRunPromise()
 
       expect(result).toBeUndefined()
     })
@@ -4419,13 +4421,14 @@ describe("Effect", () => {
       expect(result).toBe(42)
     })
 
-    // TODO(Mike/Max): test passes, but handle is left open from Effect.never
-    it.skip("acquireReleaseWith is uninterruptible", async () => {
+    // FIXED: swapped Effect.never with Promise.await
+    it("acquireReleaseWith is uninterruptible", async () => {
+      const awaiter = Promise.unsafeMake<never, void>(FiberId.none)
       const program = Effect.Do()
         .bind("promise", () => Promise.make<never, void>())
         .bind("fiber", ({ promise }) =>
           Effect.acquireReleaseWith(
-            promise.succeed(undefined) < Effect.never,
+            promise.succeed(undefined) < awaiter.await(),
             () => Effect.unit,
             () => Effect.unit
           ).forkDaemon()
@@ -4436,17 +4439,19 @@ describe("Effect", () => {
         )
 
       const result = await program.unsafeRunPromise()
+      await awaiter.succeed(undefined).unsafeRunPromise()
 
       expect(result).toBe(42)
     })
 
-    // TODO(Mike/Max): test passes, but handle is left open from Effect.never
-    it.skip("acquireReleaseExitWith is uninterruptible", async () => {
+    // FIXED: swapped Effect.never with Promise.await
+    it("acquireReleaseExitWith is uninterruptible", async () => {
+      const awaiter = Promise.unsafeMake<never, void>(FiberId.none)
       const program = Effect.Do()
         .bind("promise", () => Promise.make<never, void>())
         .bind("fiber", ({ promise }) =>
           Effect.acquireReleaseWith(
-            promise.succeed(undefined) > Effect.never > Effect.succeed(1),
+            promise.succeed(undefined) > awaiter.await() > Effect.succeed(1),
             () => Effect.unit,
             () => Effect.unit
           ).forkDaemon()
@@ -4457,6 +4462,7 @@ describe("Effect", () => {
         )
 
       const result = await program.unsafeRunPromise()
+      await awaiter.succeed(undefined).unsafeRunPromise()
 
       expect(result).toBe(42)
     })
@@ -4914,13 +4920,15 @@ describe("Effect", () => {
       expect(result).toBe(true)
     })
 
-    // TODO(Mike/Max): test passes, but handle is left open from Effect.never
-    it.skip("disconnect returns immediately on interrupt", async () => {
+    // FIXED: swapped Effect.never for Promises
+    it("disconnect returns immediately on interrupt", async () => {
+      const awaiter1 = Promise.unsafeMake<never, void>(FiberId.none)
+      const awaiter2 = Promise.unsafeMake<never, void>(FiberId.none)
       const program = Effect.Do()
         .bind("promise", () => Promise.make<never, void>())
         .bind("fiber", ({ promise }) =>
-          (promise.succeed(undefined) > Effect.never)
-            .ensuring(Effect.never)
+          (promise.succeed(undefined) > awaiter1.await())
+            .ensuring(awaiter2.await())
             .disconnect()
             .fork()
         )
@@ -4928,6 +4936,8 @@ describe("Effect", () => {
         .flatMap(({ fiber }) => fiber.interrupt())
 
       const result = await program.unsafeRunPromise()
+      await awaiter1.succeed(undefined).unsafeRunPromise()
+      await awaiter2.succeed(undefined).unsafeRunPromise()
 
       expect(result.isInterrupted()).toBe(true)
     })
@@ -5369,9 +5379,12 @@ describe("Effect", () => {
       expect(result).toEqual(Option.some(undefined))
     })
 
-    // TODO(Mike/Max): test passes, but handle is left open from Effect.never
-    it.skip("returns `None` otherwise", async () => {
-      const program = Effect.never
+    // FIXED: converted Effect.never.uninterruptible to Promise.await to avoid
+    // leaking a Fiber
+    it("returns `None` otherwise", async () => {
+      const promise = Promise.unsafeMake<never, void>(FiberId.none)
+      const program = promise
+        .await()
         .uninterruptible()
         .disconnect()
         .timeout(10)
@@ -5380,14 +5393,14 @@ describe("Effect", () => {
         .flatMap((fiber) => fiber.join())
 
       const result = await program.unsafeRunPromise()
+      await promise.succeed(void 0).unsafeRunPromise()
 
       expect(result).toEqual(Option.none)
     })
   })
 
-  // TODO(Mike/Max): fix failing test due to Jest timeout
   describe("transplant", () => {
-    it.skip("preserves supervision relationship of nested fibers", async () => {
+    it("preserves supervision relationship of nested fibers", async () => {
       const program = Effect.Do()
         .bind("latch1", () => Promise.make<never, void>())
         .bind("latch2", () => Promise.make<never, void>())
