@@ -246,21 +246,21 @@ describe("Fiber", () => {
       await program.unsafeRunPromise()
 
       expect.anything()
-    })
+    }, 10_000)
     it("joinAll", async () => {
       const program = Fiber.joinAll(fibers)
 
       await program.unsafeRunPromise()
 
       expect.anything()
-    })
+    }, 10_000)
     it("collectAll", async () => {
       const program = Fiber.collectAll(fibers).join().map(constTrue)
 
       const result = await program.unsafeRunPromise()
 
       expect(result).toBe(true)
-    })
+    }, 10_000)
   })
 
   describe("track blockingOn", () => {
