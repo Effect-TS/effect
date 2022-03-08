@@ -1460,9 +1460,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                       FiberRef.forkScopeOverride.value
                     )
 
-                    const forkedScope = current.forkScope()
-
-                    this.unsafeSetRef(FiberRef.forkScopeOverride.value, forkedScope)
+                    this.unsafeSetRef(
+                      FiberRef.forkScopeOverride.value,
+                      current.forkScope()
+                    )
 
                     this.unsafeAddFinalizer(
                       Effect.succeed(

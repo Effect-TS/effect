@@ -409,7 +409,13 @@ export const currentReleaseMap: LazyValue<FiberRef.Runtime<ReleaseMap>> =
  * @tsplus static ets/XFiberRefOps forkScopeOverride
  */
 export const forkScopeOverride: LazyValue<FiberRef.Runtime<Option<Scope>>> =
-  LazyValue.make(() => unsafeMake<Option<Scope>>(Option.none, identity, (a, _) => a))
+  LazyValue.make(() =>
+    unsafeMake<Option<Scope>>(
+      Option.none,
+      () => Option.none,
+      (a, _) => a
+    )
+  )
 
 export function effectEnvironment<R>(__tsplusTrace?: string): RIO<R, R> {
   return Effect.suspendSucceed(currentEnvironment.value.get())

@@ -2,6 +2,7 @@
 export * from "./operations/getAndSet"
 export * from "./operations/getAndUpdate"
 export * from "./operations/getAndUpdateSome"
+export * from "./operations/getOrMakeEntry"
 export * from "./operations/modify"
 export * from "./operations/modifySome"
 export * from "./operations/update"

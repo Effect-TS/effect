@@ -11,7 +11,13 @@ import { Effect } from "../definition"
  *
  * WARNING: The raced effect will safely interrupt the "loser", but will not
  * resume until the loser has been cleanly terminated. If early return is
- * desired
+ * desired, then instead of performing `l race r`, perform `l.disconnect race
+ * r.disconnect`, which disconnects left and right interruption signals,
+ * allowing a fast return, with interruption performed in the background.
+ *
+ * Note that if the `race` is embedded into an uninterruptible region, then
+ * because the loser cannot be interrupted, it will be allowed to continue
+ * executing in the background, without delaying the return of the race.
  *
  * @tsplus fluent ets/Effect race
  */
@@ -48,7 +54,14 @@ export function race_<R, E, A, R2, E2, A2>(
  * effect will fail with some error.
  *
  * WARNING: The raced effect will safely interrupt the "loser", but will not
- * resume until the loser has been cleanly terminated.
+ * resume until the loser has been cleanly terminated. If early return is
+ * desired, then instead of performing `l race r`, perform `l.disconnect race
+ * r.disconnect`, which disconnects left and right interruption signals,
+ * allowing a fast return, with interruption performed in the background.
+ *
+ * Note that if the `race` is embedded into an uninterruptible region, then
+ * because the loser cannot be interrupted, it will be allowed to continue
+ * executing in the background, without delaying the return of the race.
  *
  * @ets_data_first race_
  */
