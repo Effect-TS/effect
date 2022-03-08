@@ -15,7 +15,7 @@ export function findLast_<A>(
 ): STM<unknown, never, Option<A>> {
   return STM.Effect((journal) => {
     concrete(self)
-    let i = self.chunk.length
+    let i = self.chunk.length - 1
     let res = Option.emptyOf<A>()
     while (res.isNone() && i >= 0) {
       const a = self.chunk.unsafeGet(i)!.unsafeGet(journal)

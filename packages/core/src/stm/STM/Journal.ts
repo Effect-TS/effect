@@ -289,7 +289,7 @@ export function tryCommitAsync<R, E, A>(
   r: R
 ) {
   return (k: (_: Effect<R, E, A>) => unknown) => {
-    if (!state.get.isRunning()) {
+    if (state.get.isRunning()) {
       if (journal == null) {
         const v = tryCommit(fiberId, stm, state, r)
         switch (v._typeId) {

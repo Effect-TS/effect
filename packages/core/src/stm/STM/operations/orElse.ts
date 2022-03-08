@@ -21,7 +21,7 @@ export function orElse_<R, E, A, R1, E1, A1>(
     >
   ).flatMap((reset) =>
     self
-      .orTry(STM.succeed(reset()) > that)
+      .orTry(STM.succeed(reset()) > that())
       .catchAll(() => STM.succeed(reset()) > that())
   )
 }
