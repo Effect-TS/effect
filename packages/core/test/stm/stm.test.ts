@@ -1634,15 +1634,13 @@ describe("STM", () => {
     })
   })
 
-  // TODO(Mike/Max): fix failing test
   describe("Failure must", () => {
-    it.skip("rollback full transaction", async () => {
+    it("rollback full transaction", async () => {
       const program = Effect.Do()
         .bind("tRef", () => TRef.makeCommit(0))
-        .bind("either", ({ tRef }) => {
-          console.log(tRef)
-          return (tRef.update((n) => n + 10) > STM.fail("error")).commit().either()
-        })
+        .bind("either", ({ tRef }) =>
+          (tRef.update((n) => n + 10) > STM.fail("error")).commit().either()
+        )
         .bind("value", ({ tRef }) => tRef.get().commit())
 
       const { either, value } = await program.unsafeRunPromise()
@@ -1651,7 +1649,7 @@ describe("STM", () => {
       expect(value).toBe(0)
     })
 
-    it.skip("be ignored", async () => {
+    it("be ignored", async () => {
       const program = Effect.Do()
         .bind("tRef", () => TRef.makeCommit(0))
         .bind("either", ({ tRef }) =>

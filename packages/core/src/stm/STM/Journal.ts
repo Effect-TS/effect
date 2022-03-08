@@ -209,7 +209,7 @@ export function tryCommitSync<R, E, A>(
   const value = new STMDriver(stm, journal, fiberId, r).run()
   const analysis = analyzeJournal(journal)
 
-  if (analysis === "RW") {
+  if (analysis === "RW" && value._typeId === SucceedTypeId) {
     commitJournal(journal)
   } else if (analysis === "I") {
     throw new Error("Bug: invalid journal")

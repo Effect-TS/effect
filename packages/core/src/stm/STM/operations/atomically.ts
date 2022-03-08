@@ -16,6 +16,7 @@ export function atomically<R, E, A>(
   return Effect.environmentWithEffect((r: R) =>
     Effect.suspendSucceedWith((_, fiberId) => {
       const v = tryCommitSync(fiberId, self, r)
+
       switch (v._typeId) {
         case DoneTypeId: {
           throw new EffectError(v.exit, __tsplusTrace)
