@@ -66,6 +66,22 @@ export const isRuntime = (u: unknown): u is RuntimeError =>
   u instanceof RuntimeError && u[RuntimeSymbol] === "RuntimeError"
 
 // -----------------------------------------------------------------------------
+// Channel
+// -----------------------------------------------------------------------------
+
+export const ChannelErrorSymbol = Symbol.for("@effect-ts/core/Cause/errors/Channel")
+export type ChannelErrorSymbol = typeof ChannelErrorSymbol
+
+export class ChannelError<E> {
+  readonly [ChannelErrorSymbol]: ChannelErrorSymbol = ChannelErrorSymbol
+  constructor(readonly error: E) {}
+}
+
+export function isChannelError(u: unknown): u is ChannelError<unknown> {
+  return typeof u === "object" && u != null && ChannelErrorSymbol in u
+}
+
+// -----------------------------------------------------------------------------
 // Interrupted
 // -----------------------------------------------------------------------------
 

@@ -6,7 +6,7 @@ import type { TSemaphore } from "../definition"
  * effect begins execution and releasing it immediately after the effect
  * completes execution, whether by success, failure, or interruption.
  *
- * @tsplus fluent ets/TSemaphore withPermit
+ * @tsplus getter ets/TSemaphore withPermit
  */
 export function withPermit(self: TSemaphore, __tsplusTrace?: string) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
