@@ -3,7 +3,7 @@ import type { Tuple } from "../../../collection/immutable/Tuple"
 import type { Effect } from "../../../io/Effect"
 import type { Channel } from "../definition"
 
-/*
+/**
  * @tsplus fluent ets/Channel runCollect
  */
 export function runCollect<Env, InErr, InDone, OutErr, OutElem, OutDone>(

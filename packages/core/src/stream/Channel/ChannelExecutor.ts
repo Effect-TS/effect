@@ -130,7 +130,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     return currInput != null ? currInput.close(exit) : Effect.unit
   }
 
-  private unwindeAllFinalizers(
+  private unwindAllFinalizers(
     acc: Effect<Env, never, Exit<never, unknown>>,
     conts: List<ErasedContinuation<Env>>,
     exit: Exit<unknown, unknown>
@@ -142,7 +142,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
         conts = conts.tail()
       } else {
         return Effect.suspendSucceed(
-          this.unwindeAllFinalizers(
+          this.unwindAllFinalizers(
             acc > head.finalizer(exit).exit(),
             conts.tail(),
             exit
@@ -157,11 +157,11 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
   ): RIO<Env, unknown> {
-    const effect = this.unwindeAllFinalizers(
+    const effect = this.unwindAllFinalizers(
       Effect.succeed(Exit.unit),
       this.doneStack,
       exit
-    )
+    ).flatMap((exit) => Effect.done(exit))
     this.doneStack = List.empty()
     this.storeInProgressFinalizer(effect)
     return effect
@@ -418,7 +418,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
             }
 
             case EmitTypeId: {
-              this.emitted = currentChannel.out
+              this.emitted = currentChannel.out()
               this.currentChannel =
                 this.activeSubexecutor != null ? undefined : new SucceedNow(undefined)
               result = ChannelState.Emit
@@ -628,9 +628,11 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   ): RIO<Env, unknown> | undefined {
     return finalizers.length === 0
       ? undefined
-      : Effect.forEach(finalizers, (f) => f(exit).exit()).map((results) =>
-          Exit.collectAll(results).getOrElse(Exit.unit)
-        )
+      : Effect.forEach(finalizers, (f) => f(exit).exit())
+          .map((results) =>
+            Exit.collectAll(results).getOrElse(Exit.succeed(List.empty()))
+          )
+          .flatMap((exit) => Effect.done(exit))
   }
 
   private runSubexecutor(): ChannelState<Env, unknown> | undefined {
@@ -815,7 +817,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
             )
           }
 
-          return Effect.unit
+          return undefined
         }
       },
       (exit) => {
@@ -836,12 +838,12 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
             this.executeCloseLastSubstream(closeLast).map(() =>
               this.replaceSubexecutor(drain)
             )
-            return Effect.unit
+            return undefined
           }
 
           this.replaceSubexecutor(drain)
 
-          return Effect.unit
+          return undefined
         } else {
           const lastClose = this.closeLastSubstream
           const state = this.finishSubexecutorWithCloseEffect(
@@ -849,7 +851,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
             () => lastClose,
             (exit) => self.upstreamExecutor.close(exit)
           )
-          return state != null ? state.effectOrNullIgnored() : Effect.unit
+          return state != null ? state.effectOrUndefinedIgnored() : undefined
         }
       }
     )
@@ -1043,7 +1045,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
           }
         }
         this.activeSubexecutor = Subexecutor.Emit(emitted, this.activeSubexecutor!)
-        return Effect.unit
+        return undefined
       },
       (exit) => {
         switch (exit._tag) {
@@ -1053,11 +1055,11 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
               parentSubexecutor,
               exit.cause
             )
-            return result != null ? result.effectOrNullIgnored() : Effect.unit
+            return result != null ? result.effectOrUndefinedIgnored() : undefined
           }
           case "Success": {
             this.finishWithDoneValue(childExecutor, parentSubexecutor, exit.value)
-            return Effect.unit
+            return undefined
           }
         }
       }
@@ -1090,7 +1092,7 @@ function read<R, E, A>(
         if (emitEffect == null) {
           return Effect.suspendSucceed(cont())
         }
-        return emitEffect > cont
+        return emitEffect > cont()
       }
       if (emitEffect == null) {
         return Effect.suspendSucceed(read(newReadStack, cont))
@@ -1104,7 +1106,7 @@ function read<R, E, A>(
         if (doneEffect == null) {
           return Effect.suspendSucceed(cont())
         }
-        return doneEffect > cont
+        return doneEffect > cont()
       }
       if (doneEffect == null) {
         return Effect.suspendSucceed(read(newReadStack, cont))

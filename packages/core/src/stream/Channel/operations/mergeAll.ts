@@ -1,6 +1,6 @@
 import { constVoid } from "../../../data/Function"
 import { Channel } from "../definition"
-import { MergeStrategy } from "./mergeAllWith"
+import { MergeStrategy } from "../MergeStrategy"
 
 /**
  * @tsplus static ets/ChannelOps mergeAll

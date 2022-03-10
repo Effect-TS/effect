@@ -65,8 +65,8 @@ export class ChannelStateRead<R, E> extends ChannelStateBase<R, E> {
   constructor(
     readonly upstream: ErasedExecutor<R>,
     readonly onEffect: (_: Effect<R, never, void>) => Effect<R, never, void>,
-    readonly onEmit: (_: unknown) => Effect<R, never, void>,
-    readonly onDone: (_: Exit<unknown, unknown>) => Effect<R, never, void>
+    readonly onEmit: (_: unknown) => Effect<R, never, void> | undefined,
+    readonly onDone: (_: Exit<unknown, unknown>) => Effect<R, never, void> | undefined
   ) {
     super()
   }
@@ -128,8 +128,8 @@ export function channelStateEffect<R, E>(
 export function channelStateRead<R, _E>(
   upstream: ErasedExecutor<R>,
   onEffect: (_: Effect<R, never, void>) => Effect<R, never, void>,
-  onEmit: (_: unknown) => Effect<R, never, void>,
-  onDone: (_: Exit<unknown, unknown>) => Effect<R, never, void>
+  onEmit: (_: unknown) => Effect<R, never, void> | undefined,
+  onDone: (_: Exit<unknown, unknown>) => Effect<R, never, void> | undefined
 ): ChannelState<R, _E> {
   return new ChannelStateRead(upstream, onEffect, onEmit, onDone)
 }
@@ -146,14 +146,14 @@ export function effectOrUnit<R, E>(
 }
 
 /**
- * @tsplus fluent ets/Channel/ChannelState effectOrNullIgnored
+ * @tsplus fluent ets/Channel/ChannelState effectOrUndefinedIgnored
  */
-export function effectOrNullIgnored<R, E>(
+export function effectOrUndefinedIgnored<R, E>(
   self: ChannelState<R, E>,
   __tsplusTrace?: string
-): Effect<R, never, void> {
+): Effect<R, never, void> | undefined {
   concreteChannelState(self)
   return self._typeId === ChannelStateEffectTypeId
     ? self.effect.ignore().asUnit()
-    : Effect.unit
+    : undefined
 }
