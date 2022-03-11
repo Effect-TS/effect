@@ -141,13 +141,8 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
       if (head._typeId === ContinuationKTypeId) {
         conts = conts.tail()
       } else {
-        return Effect.suspendSucceed(
-          this.unwindAllFinalizers(
-            acc > head.finalizer(exit).exit(),
-            conts.tail(),
-            exit
-          )
-        )
+        acc = acc > head.finalizer(exit).exit()
+        conts = conts.tail()
       }
     }
     return acc
@@ -161,6 +156,8 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
       Effect.succeed(Exit.unit),
       this.doneStack,
       exit
+      // TODO
+      // )
     ).flatMap((exit) => Effect.done(exit))
     this.doneStack = List.empty()
     this.storeInProgressFinalizer(effect)
@@ -206,12 +203,13 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
   ): RIO<Env, unknown> | undefined {
-    const runInProgressFinalizers =
-      this.inProgressFinalizer != null
-        ? this.inProgressFinalizer.ensuring(
-            Effect.succeed(this.clearInProgressFinalizer())
-          )
-        : undefined
+    let runInProgressFinalizers: RIO<Env, unknown> | undefined = undefined
+    if (this.inProgressFinalizer != null) {
+      const finalizer = this.inProgressFinalizer
+      runInProgressFinalizers = finalizer.ensuring(
+        Effect.succeed(this.clearInProgressFinalizer())
+      )
+    }
 
     const closeSubexecutors =
       this.activeSubexecutor != null ? this.activeSubexecutor.close(exit) : undefined
@@ -358,11 +356,11 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
                 identity,
                 (out) => {
                   this.currentChannel = currentChannel.more(out)
-                  return Effect.unit
+                  return undefined
                 },
                 (exit) => {
                   this.currentChannel = currentChannel.done.onExit(exit)
-                  return Effect.unit
+                  return undefined
                 }
               )
 

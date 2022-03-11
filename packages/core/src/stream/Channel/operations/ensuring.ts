@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import type { RIO } from "../../../io/Effect"
 import type { Channel } from "../definition"
 
@@ -16,9 +17,9 @@ export function ensuring_<
   Z
 >(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  finalizer: RIO<Env1, Z>
+  finalizer: LazyArg<RIO<Env1, Z>>
 ): Channel<Env & Env1, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  return self.ensuringWith(() => finalizer)
+  return self.ensuringWith(finalizer)
 }
 
 export const ensuring = Pipeable(ensuring_)
