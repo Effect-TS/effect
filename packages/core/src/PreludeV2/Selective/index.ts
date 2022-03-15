@@ -60,11 +60,11 @@ export function applicative<F extends HKT.HKT>(F_: Applicative<F>): Selective<F>
 
 export const branchF =
   <F extends HKT.HKT>(F_: Selective<F>) =>
-  <X2, I2, R2, E2, A, D1, X3, I3, R3, E3, B, D2>(
-    lhs: HKT.Kind<F, X2, I2, R2, E2, (a: A) => D1>,
-    rhs: HKT.Kind<F, X3, I3, R3, E3, (a: B) => D2>
+  <X, I2, R2, E2, A, D1, X3, I3, R3, E3, B, D2>(
+    lhs: HKT.Kind<F, X, I2, R2, E2, (a: A) => D1>,
+    rhs: HKT.Kind<F, X, I3, R3, E3, (a: B) => D2>
   ) =>
-  <X, I, R, E>(
+  <I, R, E>(
     fe: HKT.Kind<F, X, I, R, E, EI.Either<A, B>>
   ): HKT.Kind<F, X, I & I2 & I3, R & R2 & R3, E | E2 | E3, D1 | D2> => {
     return pipe(
@@ -80,59 +80,25 @@ export const branchF =
     )
   }
 
-export function ifF<F extends HKT.URIS, C = HKT.Auto>(
-  F: Selective<F, C>
-): <K2, Q2, W2, X2, I2, S2, R2, E2, A, K3, Q3, W3, X3, I3, S3, R3, E3, B>(
-  then_: HKT.Kind<F, X2, I2, S2, R2, E2, A>,
-  else_: HKT.Kind<F, C, K3, Q3, W3, X3, I3, S3, R3, E3, B>
-) => <K, Q, W, X, I, S, R, E>(
-  if_: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, boolean>
-) => HKT.Kind<
-  F,
-  C,
-  HKT.Mix<C, "K", [K, K2, K3]>,
-  HKT.Mix<C, "Q", [Q, Q2, Q3]>,
-  HKT.Mix<C, "W", [W, W2, W3]>,
-  HKT.Mix<C, "X", [X, X2, X3]>,
-  HKT.Mix<C, "I", [I, I2, I3]>,
-  HKT.Mix<C, "S", [S, S2, S3]>,
-  HKT.Mix<C, "R", [R, R2, R3]>,
-  HKT.Mix<C, "X", [E, E2, E3]>,
-  A | B
->
-export function ifF<F>(F: Selective<HKT.UHKT<F>>) {
-  return <A, B>(
-      then_: HKT.HKT<F, A>,
-      else_: HKT.HKT<F, B>
-    ): ((if_: HKT.HKT<F, boolean>) => HKT.HKT<F, A | B>) =>
-    (x) =>
-      pipe(
-        x,
-        F.map((x) => (x ? E.left(undefined) : E.right(undefined))),
-        branchF(F)(pipe(then_, F.map(constant)), pipe(else_, F.map(constant)))
-      )
-}
+export const ifF =
+  <F extends HKT.HKT>(F_: Selective<F>) =>
+  <X, I2, R2, E2, A, I3, R3, E3, B>(
+    then_: HKT.Kind<F, X, I2, R2, E2, A>,
+    else_: HKT.Kind<F, X, I3, R3, E3, B>
+  ) =>
+  <I, S, R, E>(
+    if_: HKT.Kind<F, X, I, R, E, boolean>
+  ): HKT.Kind<F, X, I & I2 & I3, R & R2 & R3, E | E2 | E3, A | B> =>
+    pipe(
+      if_,
+      F_.map((x) => (x ? EI.left(undefined) : EI.right(undefined))),
+      branchF(F_)(pipe(then_, F_.map(constant)), pipe(else_, F_.map(constant)))
+    )
 
-export function whenF<F extends HKT.URIS, C = HKT.Auto>(
-  F: Selective<F, C>
-): <K2, Q2, W2, X2, I2, S2, R2, E2>(
-  act: HKT.Kind<F, X2, I2, S2, R2, E2, void>
-) => <K, Q, W, X, I, S, R, E>(
-  if_: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, boolean>
-) => HKT.Kind<
-  F,
-  C,
-  HKT.Mix<C, "K", [K, K2]>,
-  HKT.Mix<C, "Q", [Q, Q2]>,
-  HKT.Mix<C, "W", [W, W2]>,
-  HKT.Mix<C, "X", [X, X2]>,
-  HKT.Mix<C, "I", [I, I2]>,
-  HKT.Mix<C, "S", [S, S2]>,
-  HKT.Mix<C, "R", [R, R2]>,
-  HKT.Mix<C, "X", [E, E2]>,
-  void
->
-export function whenF<F>(F: Selective<HKT.UHKT<F>>) {
-  return (act: HKT.HKT<F, void>): ((if_: HKT.HKT<F, boolean>) => HKT.HKT<F, void>) =>
-    ifF(F)(act, succeedF(F)(undefined))
-}
+export const whenF =
+  <F extends HKT.HKT>(F_: Selective<F>) =>
+  <X, I2, R2, E2>(act: HKT.Kind<F, X, I2, R2, E2, void>) =>
+  <I, R, E>(
+    if_: HKT.Kind<F, X, I, R, E, boolean>
+  ): HKT.Kind<F, X, I & I2, R & R2, E | E2, void> =>
+    pipe(if_, ifF(F_)(act, succeedF(F_)(undefined)))
