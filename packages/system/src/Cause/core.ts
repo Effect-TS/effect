@@ -10,17 +10,17 @@ import * as S from "../IO/index.js"
 import * as O from "../Option/index.js"
 import { Stack } from "../Stack/index.js"
 import type { Both, Cause, Then, Traced } from "./cause.js"
-import { both, die, empty, fail, interrupt, then, traced } from "./cause.js"
+import { combinePar, combineSeq, die, empty, fail, interrupt, traced } from "./cause.js"
 import { InterruptedException } from "./errors.js"
 
 export {
-  both,
+  combinePar,
   Cause,
   die,
   empty,
   fail,
   interrupt,
-  then,
+  combineSeq,
   traced,
   isEmpty
 } from "./cause.js"
@@ -77,14 +77,14 @@ export function chainSafe_<E, E1>(
       return S.zipWith_(
         S.suspend(() => chainSafe_(cause.left, f)),
         S.suspend(() => chainSafe_(cause.right, f)),
-        (l, r) => then(l, r)
+        (l, r) => combineSeq(l, r)
       )
     }
     case "Both": {
       return S.zipWith_(
         S.suspend(() => chainSafe_(cause.left, f)),
         S.suspend(() => chainSafe_(cause.right, f)),
-        (l, r) => both(l, r)
+        (l, r) => combinePar(l, r)
       )
     }
     case "Traced": {
@@ -269,7 +269,7 @@ export function stripSomeDefectsSafe<E>(
         S.suspend(() => stripSomeDefectsSafe(cause.right, f)),
         (l, r) => {
           if (l._tag === "Some" && r._tag === "Some") {
-            return O.some(both(l.value, r.value))
+            return O.some(combinePar(l.value, r.value))
           } else if (l._tag === "Some") {
             return l
           } else if (r._tag === "Some") {
@@ -286,7 +286,7 @@ export function stripSomeDefectsSafe<E>(
         S.suspend(() => stripSomeDefectsSafe(cause.right, f)),
         (l, r) => {
           if (l._tag === "Some" && r._tag === "Some") {
-            return O.some(then(l.value, r.value))
+            return O.some(combineSeq(l.value, r.value))
           } else if (l._tag === "Some") {
             return l
           } else if (r._tag === "Some") {
@@ -615,7 +615,7 @@ export function keepDefectsSafe<E>(cause: Cause<E>): S.IO<O.Option<Cause<never>>
         S.suspend(() => keepDefectsSafe(cause.right)),
         (l, r) => {
           if (l._tag === "Some" && r._tag === "Some") {
-            return O.some(then(l.value, r.value))
+            return O.some(combineSeq(l.value, r.value))
           } else if (l._tag === "Some") {
             return l
           } else if (r._tag === "Some") {
@@ -632,7 +632,7 @@ export function keepDefectsSafe<E>(cause: Cause<E>): S.IO<O.Option<Cause<never>>
         S.suspend(() => keepDefectsSafe(cause.right)),
         (l, r) => {
           if (l._tag === "Some" && r._tag === "Some") {
-            return O.some(both(l.value, r.value))
+            return O.some(combinePar(l.value, r.value))
           } else if (l._tag === "Some") {
             return l
           } else if (r._tag === "Some") {
@@ -699,7 +699,7 @@ export function sequenceCauseEitherSafe<E, A>(
             if (r._tag === "Right") {
               return E.right(r.right)
             } else {
-              return E.left(then(l.left, r.left))
+              return E.left(combineSeq(l.left, r.left))
             }
           } else {
             return E.right(l.right)
@@ -716,7 +716,7 @@ export function sequenceCauseEitherSafe<E, A>(
             if (r._tag === "Right") {
               return E.right(r.right)
             } else {
-              return E.left(both(l.left, r.left))
+              return E.left(combinePar(l.left, r.left))
             }
           } else {
             return E.right(l.right)
@@ -759,7 +759,7 @@ export function sequenceCauseOptionSafe<E>(
         S.suspend(() => sequenceCauseOptionSafe(c.right)),
         (l, r) => {
           if (l._tag === "Some" && r._tag === "Some") {
-            return O.some(then(l.value, r.value))
+            return O.some(combineSeq(l.value, r.value))
           } else if (l._tag === "Some") {
             return O.some(l.value)
           } else if (r._tag === "Some") {
@@ -776,7 +776,7 @@ export function sequenceCauseOptionSafe<E>(
         S.suspend(() => sequenceCauseOptionSafe(c.right)),
         (l, r) => {
           if (l._tag === "Some" && r._tag === "Some") {
-            return O.some(both(l.value, r.value))
+            return O.some(combinePar(l.value, r.value))
           } else if (l._tag === "Some") {
             return O.some(l.value)
           } else if (r._tag === "Some") {
@@ -877,14 +877,14 @@ export function stripFailuresSafe<E>(cause: Cause<E>): S.IO<Cause<never>> {
       return S.zipWith_(
         S.suspend(() => stripFailuresSafe(cause.left)),
         S.suspend(() => stripFailuresSafe(cause.right)),
-        (l, r) => both(l, r)
+        (l, r) => combinePar(l, r)
       )
     }
     case "Then": {
       return S.zipWith_(
         S.suspend(() => stripFailuresSafe(cause.left)),
         S.suspend(() => stripFailuresSafe(cause.right)),
-        (l, r) => then(l, r)
+        (l, r) => combineSeq(l, r)
       )
     }
   }
@@ -940,14 +940,14 @@ export function stripInterruptsSafe<E>(cause: Cause<E>): S.IO<Cause<E>> {
       return S.zipWith_(
         S.suspend(() => stripInterruptsSafe(cause.left)),
         S.suspend(() => stripInterruptsSafe(cause.right)),
-        (l, r) => both(l, r)
+        (l, r) => combinePar(l, r)
       )
     }
     case "Then": {
       return S.zipWith_(
         S.suspend(() => stripInterruptsSafe(cause.left)),
         S.suspend(() => stripInterruptsSafe(cause.right)),
-        (l, r) => then(l, r)
+        (l, r) => combineSeq(l, r)
       )
     }
   }
@@ -980,14 +980,14 @@ export function untracedSafe<E>(cause: Cause<E>): S.IO<Cause<E>> {
       return S.zipWith_(
         S.suspend(() => untracedSafe(cause.left)),
         S.suspend(() => untracedSafe(cause.right)),
-        (l, r) => both(l, r)
+        (l, r) => combinePar(l, r)
       )
     }
     case "Then": {
       return S.zipWith_(
         S.suspend(() => untracedSafe(cause.left)),
         S.suspend(() => untracedSafe(cause.right)),
-        (l, r) => then(l, r)
+        (l, r) => combineSeq(l, r)
       )
     }
     default: {
@@ -1109,7 +1109,7 @@ export function flipCauseOption<E>(c: Cause<O.Option<E>>): O.Option<Cause<E>> {
           const l = top.leftResult
 
           if (O.isSome(l) && O.isSome(result)) {
-            result = O.some(then(l.value, result.value))
+            result = O.some(combineSeq(l.value, result.value))
           }
 
           if (O.isNone(l) && O.isSome(result)) {
@@ -1132,7 +1132,7 @@ export function flipCauseOption<E>(c: Cause<O.Option<E>>): O.Option<Cause<E>> {
           const l = top.leftResult
 
           if (O.isSome(l) && O.isSome(result)) {
-            result = O.some(both(l.value, result.value))
+            result = O.some(combinePar(l.value, result.value))
           }
 
           if (O.isNone(l) && O.isSome(result)) {

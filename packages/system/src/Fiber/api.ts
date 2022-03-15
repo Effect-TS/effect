@@ -213,10 +213,12 @@ export function zipWith_<E, A, E1, A1, B>(
     inheritRefs: T.chain_(fiberA.inheritRefs, () => fiberB.inheritRefs),
     interruptAs: (id) =>
       T.zipWith_(fiberA.interruptAs(id), fiberB.interruptAs(id), (ea, eb) =>
-        Exit.zipWith_(ea, eb, f, Cause.both)
+        Exit.zipWith_(ea, eb, f, Cause.combinePar)
       ),
     poll: T.zipWith_(fiberA.poll, fiberB.poll, (oa, ob) =>
-      O.chain_(oa, (ea) => O.map_(ob, (eb) => Exit.zipWith_(ea, eb, f, Cause.both)))
+      O.chain_(oa, (ea) =>
+        O.map_(ob, (eb) => Exit.zipWith_(ea, eb, f, Cause.combinePar))
+      )
     ),
     await: T.result(
       T.zipWithPar_(T.chain_(fiberA.await, T.done), T.chain_(fiberB.await, T.done), f)
@@ -275,7 +277,7 @@ export function collectAll<E, A>(fibers: Iterable<Fiber.Fiber<E, A>>) {
           chunkReduceRight(
             Exit.succeed(Chunk.empty()) as Exit.Exit<E, Chunk.Chunk<A>>,
             (a, b) =>
-              Exit.zipWith_(a, b, (_a, _b) => Chunk.prepend_(_b, _a), Cause.both)
+              Exit.zipWith_(a, b, (_a, _b) => Chunk.prepend_(_b, _a), Cause.combinePar)
           )
         )
       ),
@@ -298,7 +300,7 @@ export function collectAll<E, A>(fibers: Iterable<Fiber.Fiber<E, A>>) {
                         ra,
                         rb,
                         (_a, _b) => Chunk.prepend_(_b, _a),
-                        Cause.both
+                        Cause.combinePar
                       )
                     )
                 )

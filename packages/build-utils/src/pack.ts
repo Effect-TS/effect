@@ -1,9 +1,21 @@
+import * as A from "@effect-ts/core/Collections/Immutable/Array"
 import * as TE from "@effect-ts/core/Effect"
 import { parseJSON_ } from "@effect-ts/core/Either"
+import type { Endomorphism } from "@effect-ts/core/Function"
 import { flow, pipe } from "@effect-ts/core/Function"
 import * as fs from "fs"
+import { posix } from "path"
 
-import { copy, exec, onLeft, onRight, readFile, runMain, writeFile } from "./_common"
+import {
+  copy,
+  exec,
+  modifyGlob,
+  onLeft,
+  onRight,
+  readFile,
+  runMain,
+  writeFile
+} from "./_common"
 
 const copyReadme = copy("./README.md", "./dist", { update: true })
 
@@ -54,8 +66,8 @@ const writePackageJsonContent = pipe(
     const exports = {}
     const mainExports = {}
 
-    if (fs.existsSync(`./build/esm/index.js`)) {
-      mainExports["import"] = `./_esm/index.js`
+    if (fs.existsSync(`./build/mjs/index.mjs`)) {
+      mainExports["import"] = `./_mjs/index.mjs`
     }
     if (fs.existsSync(`./build/cjs/index.js`)) {
       mainExports["require"] = `./index.js`
@@ -73,8 +85,8 @@ const writePackageJsonContent = pipe(
 
     modules.forEach((m) => {
       exports[`./${m}`] = {}
-      if (fs.existsSync(`./build/esm/${m}/index.js`)) {
-        exports[`./${m}`]["import"] = `./_esm/${m}/index.js`
+      if (fs.existsSync(`./build/mjs/${m}/index.mjs`)) {
+        exports[`./${m}`]["import"] = `./_mjs/${m}/index.mjs`
       }
       if (fs.existsSync(`./build/cjs/${m}/index.js`)) {
         exports[`./${m}`]["require"] = `./${m}/index.js`
@@ -83,6 +95,11 @@ const writePackageJsonContent = pipe(
         delete exports[`./${m}`]
       }
     })
+
+    exports["./*"] = {
+      import: "./_mjs/*.mjs",
+      require: "./*.js"
+    }
 
     return JSON.stringify(
       {
@@ -95,8 +112,8 @@ const writePackageJsonContent = pipe(
           if (fs.existsSync(`./build/cjs/${m}/index.js`)) {
             map.push(`./${m}/index.js`)
           }
-          if (fs.existsSync(`./build/esm/${m}/index.js`)) {
-            map.push(`./_esm/${m}/index.js`)
+          if (fs.existsSync(`./build/mjs/${m}/index.mjs`)) {
+            map.push(`./_mjs/${m}/index.mjs`)
           }
           return map
         }),
@@ -109,72 +126,32 @@ const writePackageJsonContent = pipe(
   TE.chain((str) => writeFile("./dist/package.json", str))
 )
 
-const writePackageJsonContentInESM = pipe(
-  TE.do,
-  TE.bind("content", () => loadPackageJson),
-  TE.bind("modules", ({ content }) => getModules(content)),
-  TE.bind("side", ({ content }) => getSide(content)),
-  TE.map(({ content, modules, side }) => {
-    const packageJson = {}
+const MAP_GLOB_PATTERN = "dist/**/*.map"
 
-    carry("name", content, packageJson)
-    carry("version", content, packageJson)
-    carry("private", content, packageJson)
-    carry("license", content, packageJson)
-    carry("repository", content, packageJson)
-    carry("dependencies", content, packageJson)
-    carry("peerDependencies", content, packageJson)
-    carry("gitHead", content, packageJson)
-    carry("bin", content, packageJson)
+const replaceString: (path: string) => Endomorphism<string> = (path) => {
+  const dir = posix.dirname(path)
+  const patch: (x: string) => string = path.startsWith("dist/_mjs/")
+    ? (x) => x.replace(/(.*)\.\.\/src(.*)/gm, "$1_src$2")
+    : (x) => x.replace(/(.*)\.\.\/\.\.\/src(.*)/gm, "$1_src$2")
+  return flow(
+    patch,
+    (x) => posix.relative(dir, posix.join(dir, x)),
+    (x) => (x.startsWith(".") ? x : "./" + x)
+  )
+}
 
-    packageJson["type"] = "module"
-
-    const exports = {}
-    const mainExports = {}
-
-    if (fs.existsSync(`./build/esm/index.js`)) {
-      mainExports["import"] = `./index.js`
-    }
-
-    if (mainExports["import"]) {
-      packageJson["main"] = mainExports["import"]
-    }
-
-    if (Object.keys(mainExports).length > 0) {
-      exports["."] = mainExports
-    }
-
-    modules.forEach((m) => {
-      exports[`./${m}`] = {}
-      if (fs.existsSync(`./build/esm/${m}/index.js`)) {
-        exports[`./${m}`]["import"] = `./${m}/index.js`
-      }
-      if (Object.keys(exports[`./${m}`]).length === 0) {
-        delete exports[`./${m}`]
-      }
-    })
-
-    return JSON.stringify(
-      {
-        ...packageJson,
-        publishConfig: {
-          access: "public"
-        },
-        sideEffects: side.flatMap((m) => {
-          const map = []
-          if (fs.existsSync(`./build/esm/${m}/index.js`)) {
-            map.push(`./${m}/index.js`)
-          }
-          return map
-        }),
-        exports
-      },
-      null,
-      2
+const replace = (content: string, path: string): string =>
+  JSON.stringify(
+    pipe(
+      Object.entries(JSON.parse(content)),
+      A.map(([k, v]) =>
+        k === "sources"
+          ? ([k, A.map_(v as string[], replaceString(path))] as const)
+          : ([k, v] as const)
+      ),
+      A.reduce({}, (acc, [k, v]) => ({ ...acc, [k]: v }))
     )
-  }),
-  TE.chain((str) => writeFile("./dist/_esm/package.json", str))
-)
+  )
 
 pipe(
   exec("rm -rf build/dist"),
@@ -185,8 +162,8 @@ pipe(
     )
   ),
   TE.tap(() =>
-    TE.when(() => fs.existsSync(`./build/esm`))(
-      exec(`mkdir -p ./dist/_esm && cp -r ./build/esm/* ./dist/_esm`)
+    TE.when(() => fs.existsSync(`./build/mjs`))(
+      exec(`mkdir -p ./dist/_mjs && cp -r ./build/mjs/* ./dist/_mjs`)
     )
   ),
   TE.tap(() =>
@@ -196,8 +173,8 @@ pipe(
     TE.when(() => fs.existsSync(`./build/dts`))(exec(`cp -r ./build/dts/* ./dist`))
   ),
   TE.tap(() => writePackageJsonContent),
-  TE.tap(() => (fs.existsSync("./dist/_esm") ? writePackageJsonContentInESM : TE.unit)),
   TE.tap(() => copyReadme),
+  TE.tap(() => modifyGlob(replace)(MAP_GLOB_PATTERN)),
   TE.fold(onLeft, onRight("pack succeeded!")),
   runMain
 )

@@ -5,41 +5,60 @@ describe("Cause", () => {
   it("equals", () => {
     expect(Cause.empty).equals(Cause.empty)
 
-    expect(Cause.then(Cause.empty, Cause.empty)).equals(Cause.empty)
-
-    expect(Cause.then(Cause.empty, Cause.both(Cause.empty, Cause.empty))).equals(
-      Cause.empty
-    )
-
-    expect(Cause.then(Cause.fail("ok"), Cause.both(Cause.empty, Cause.empty))).equals(
-      Cause.fail("ok")
-    )
+    expect(Cause.combineSeq(Cause.empty, Cause.empty)).equals(Cause.empty)
 
     expect(
-      St.hash(Cause.then(Cause.fail("ok"), Cause.both(Cause.empty, Cause.empty)))
+      Cause.combineSeq(Cause.empty, Cause.combinePar(Cause.empty, Cause.empty))
+    ).equals(Cause.empty)
+
+    expect(
+      Cause.combineSeq(Cause.fail("ok"), Cause.combinePar(Cause.empty, Cause.empty))
+    ).equals(Cause.fail("ok"))
+
+    expect(
+      St.hash(
+        Cause.combineSeq(Cause.fail("ok"), Cause.combinePar(Cause.empty, Cause.empty))
+      )
     ).equals(St.hash(Cause.fail("ok")))
 
     expect(
-      Cause.then(Cause.fail("ok"), Cause.both(Cause.empty, Cause.die("ok")))
-    ).equals(Cause.then(Cause.fail("ok"), Cause.die("ok")))
+      Cause.combineSeq(Cause.fail("ok"), Cause.combinePar(Cause.empty, Cause.die("ok")))
+    ).equals(Cause.combineSeq(Cause.fail("ok"), Cause.die("ok")))
 
     expect(
-      St.hash(Cause.then(Cause.fail("ok"), Cause.both(Cause.empty, Cause.die("ok"))))
-    ).equals(St.hash(Cause.then(Cause.fail("ok"), Cause.die("ok"))))
+      St.hash(
+        Cause.combineSeq(
+          Cause.fail("ok"),
+          Cause.combinePar(Cause.empty, Cause.die("ok"))
+        )
+      )
+    ).equals(St.hash(Cause.combineSeq(Cause.fail("ok"), Cause.die("ok"))))
 
     expect(
-      Cause.then(Cause.fail("ok"), Cause.both(Cause.fail("ok"), Cause.die("ok")))
+      Cause.combineSeq(
+        Cause.fail("ok"),
+        Cause.combinePar(Cause.fail("ok"), Cause.die("ok"))
+      )
     ).equals(
-      Cause.then(Cause.fail("ok"), Cause.both(Cause.fail("ok"), Cause.die("ok")))
+      Cause.combineSeq(
+        Cause.fail("ok"),
+        Cause.combinePar(Cause.fail("ok"), Cause.die("ok"))
+      )
     )
 
     expect(
       St.hash(
-        Cause.then(Cause.fail("ok"), Cause.both(Cause.fail("ok"), Cause.die("ok")))
+        Cause.combineSeq(
+          Cause.fail("ok"),
+          Cause.combinePar(Cause.fail("ok"), Cause.die("ok"))
+        )
       )
     ).equals(
       St.hash(
-        Cause.then(Cause.fail("ok"), Cause.both(Cause.fail("ok"), Cause.die("ok")))
+        Cause.combineSeq(
+          Cause.fail("ok"),
+          Cause.combinePar(Cause.fail("ok"), Cause.die("ok"))
+        )
       )
     )
   })

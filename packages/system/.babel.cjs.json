@@ -1,0 +1,10 @@
+{
+    "plugins": [
+        [
+            "@babel/transform-modules-commonjs"
+        ],
+        [
+            "annotate-pure-calls"
+        ]
+    ]
+}

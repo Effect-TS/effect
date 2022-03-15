@@ -136,7 +136,7 @@ export function fold<A, B>(
  * events, collecting them back into a single collection of events.
  */
 export function chain_<A, B>(self: ParSeq<A>, f: (a: A) => ParSeq<B>): ParSeq<B> {
-  return fold_(self, P.empty as ParSeq<B>, f, P.then_, P.both_)
+  return fold_(self, P.empty as ParSeq<B>, f, P.combineSeq_, P.combinePar_)
 }
 
 /**
@@ -161,7 +161,13 @@ export function flatten<A>(self: ParSeq<ParSeq<A>>) {
  * Converts a ParSeq to a Cause
  */
 export function toCause<A>(self: ParSeq<A>): Cause.Cause<A> {
-  return fold_(self, Cause.empty as Cause.Cause<A>, Cause.fail, Cause.then, Cause.both)
+  return fold_(
+    self,
+    Cause.empty as Cause.Cause<A>,
+    Cause.fail,
+    Cause.combineSeq,
+    Cause.combinePar
+  )
 }
 
 /**

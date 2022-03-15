@@ -110,7 +110,7 @@ export function collectAll<E, A>(
           (acc, el) =>
             pipe(
               acc,
-              zipWith(el, (acc, el) => [el, ...acc], C.then)
+              zipWith(el, (acc, el) => [el, ...acc], C.combineSeq)
             )
         ),
         map(A.reverse)
@@ -185,7 +185,7 @@ export function collectAllPar<E, A>(
           (acc, el) =>
             pipe(
               acc,
-              zipWith(el, (acc, el) => [el, ...acc], C.both)
+              zipWith(el, (acc, el) => [el, ...acc], C.combinePar)
             )
         ),
         map(A.reverse)
@@ -477,7 +477,7 @@ export function zip_<E, E1, A, B>(
 ): Exit<E | E1, Tp.Tuple<[A, B]>> {
   return pipe(
     exit,
-    zipWith(that, (a, b) => Tp.tuple(a, b), C.then)
+    zipWith(that, (a, b) => Tp.tuple(a, b), C.combineSeq)
   )
 }
 
@@ -499,7 +499,7 @@ export function zipLeft_<E, E1, A, B>(
 ): Exit<E | E1, A> {
   return pipe(
     exit,
-    zipWith(that, (a, _) => a, C.then)
+    zipWith(that, (a, _) => a, C.combineSeq)
   )
 }
 
@@ -521,7 +521,7 @@ export function zipPar_<E, E1, A, B>(
 ): Exit<E | E1, Tp.Tuple<[A, B]>> {
   return pipe(
     exit,
-    zipWith(that, (a, b) => Tp.tuple(a, b), C.both)
+    zipWith(that, (a, b) => Tp.tuple(a, b), C.combinePar)
   )
 }
 
@@ -543,7 +543,7 @@ export function zipParLeft_<E, E1, A, B>(
 ): Exit<E | E1, A> {
   return pipe(
     exit,
-    zipWith(that, (a, _) => a, C.both)
+    zipWith(that, (a, _) => a, C.combinePar)
   )
 }
 
@@ -565,7 +565,7 @@ export function zipParRight_<E, E1, A, B>(
 ): Exit<E | E1, B> {
   return pipe(
     exit,
-    zipWith(that, (_, b) => b, C.both)
+    zipWith(that, (_, b) => b, C.combinePar)
   )
 }
 
@@ -587,7 +587,7 @@ export function zipRight_<E, A, E1, B>(
 ): Exit<E | E1, B> {
   return pipe(
     exit,
-    zipWith(that, (_, b) => b, C.then)
+    zipWith(that, (_, b) => b, C.combineSeq)
   )
 }
 

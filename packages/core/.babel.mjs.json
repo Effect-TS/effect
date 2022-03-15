@@ -1,0 +1,15 @@
+{
+    "plugins": [
+        [
+            "replace-import-extension",
+            {
+                "extMapping": {
+                    ".js": ".mjs"
+                }
+            }
+        ],
+        [
+            "annotate-pure-calls"
+        ]
+    ]
+}

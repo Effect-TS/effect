@@ -45,5 +45,6 @@
   "editor.parameterHints.enabled": true,
   "files.watcherExclude": {
     "**/target": true
-  }
+  },
+  "files.insertFinalNewline": true
 }

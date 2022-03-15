@@ -417,7 +417,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         oldState.status.interruptible &&
         !interrupting(oldState)
       ) {
-        const newCause = Cause.then(oldState.interrupted, interruptedCause)
+        const newCause = Cause.combineSeq(oldState.interrupted, interruptedCause)
 
         this.state.set(
           new FiberStateExecuting(
@@ -429,7 +429,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
         this.evaluateLater(instruction(T.interruptAs(fiberId)))
       } else if (oldState._tag === "Executing") {
-        const newCause = Cause.then(oldState.interrupted, interruptedCause)
+        const newCause = Cause.combineSeq(oldState.interrupted, interruptedCause)
 
         this.state.set(
           new FiberStateExecuting(oldState.status, oldState.observers, newCause)
@@ -970,7 +970,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                         const causeAndInterrupt = !Cause.contains(interrupted)(
                           maybeRedactedCause
                         )
-                          ? Cause.then(maybeRedactedCause, interrupted)
+                          ? Cause.combineSeq(maybeRedactedCause, interrupted)
                           : maybeRedactedCause
 
                         return causeAndInterrupt
