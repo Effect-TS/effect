@@ -1,4 +1,3 @@
-import chalk from "chalk"
 import * as P from "child_process"
 import type { AsyncOptions } from "cpx"
 import { copy as copy_ } from "cpx"
@@ -11,6 +10,15 @@ import * as T from "fp-ts/Task"
 import * as TE from "fp-ts/TaskEither"
 import fs from "fs"
 import glob_ from "glob"
+
+export const importChalk = pipe(
+  () =>
+    Function('return import("chalk")')() as Promise<
+      // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+      typeof import("chalk")
+    >,
+  T.map((c) => c.default)
+)
 
 export const readFile = TE.taskify<
   fs.PathLike,
@@ -52,7 +60,11 @@ export function onLeft(e: NodeJS.ErrnoException): T.Task<void> {
 }
 
 export function onRight(msg: string) {
-  return (): T.Task<void> => T.fromIO(log(chalk.bold.green(msg)))
+  return (): T.Task<void> =>
+    pipe(
+      importChalk,
+      T.chain((chalk) => T.fromIO(log(chalk.bold.green(msg))))
+    )
 }
 
 function modifyFile(
@@ -91,8 +103,13 @@ export function modifyGlob(
   return (pattern) => pipe(glob(pattern), TE.chain(modifyFiles(f)))
 }
 
-export function runMain(t: T.Task<void>): Promise<void> {
-  return t().catch((e) => console.log(chalk.bold.red(`Unexpected error: ${e}`)))
+export async function runMain(t: T.Task<void>): Promise<void> {
+  try {
+    return await t()
+  } catch (e) {
+    const chalk = await importChalk()
+    return console.log(chalk.bold.red(`Unexpected error: ${e}`))
+  }
 }
 
 export const copy: FunctionN<
