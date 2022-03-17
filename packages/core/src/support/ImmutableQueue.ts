@@ -11,7 +11,7 @@ export class ImmutableQueue<A> {
   }
 
   prepend(a: A) {
-    return new ImmutableQueue(this.backing.append(a))
+    return new ImmutableQueue(this.backing.prepend(a))
   }
 
   get size() {

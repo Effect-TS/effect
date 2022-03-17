@@ -3,13 +3,7 @@ import { Effect } from "../../../io/Effect"
 import { Managed } from "../../../io/Managed"
 import { ChannelExecutor, readUpstream } from "../ChannelExecutor"
 import type { ChannelState } from "../ChannelState"
-import {
-  ChannelStateDoneTypeId,
-  ChannelStateEffectTypeId,
-  ChannelStateEmitTypeId,
-  ChannelStateReadTypeId,
-  concreteChannelState
-} from "../ChannelState"
+import { concreteChannelState } from "../ChannelState"
 import type { Channel } from "../definition"
 
 /**
@@ -38,20 +32,20 @@ function interpret<Env, InErr, InDone, OutErr, OutDone>(
   // eslint-disable-next-line no-constant-condition
   while (1) {
     concreteChannelState(channelState)
-    switch (channelState._typeId) {
-      case ChannelStateEffectTypeId: {
+    switch (channelState._tag) {
+      case "Effect": {
         return (
           channelState.effect > interpret(exec.run() as ChannelState<Env, OutErr>, exec)
         )
       }
-      case ChannelStateEmitTypeId: {
+      case "Emit": {
         channelState = exec.run() as ChannelState<Env, OutErr>
         break
       }
-      case ChannelStateDoneTypeId: {
+      case "Done": {
         return Effect.done(exec.getDone())
       }
-      case ChannelStateReadTypeId: {
+      case "Read": {
         return readUpstream(
           channelState,
           interpret(exec.run() as ChannelState<Env, OutErr>, exec)

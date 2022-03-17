@@ -16,7 +16,10 @@ export interface ChannelState<R, E> {
 }
 
 export declare namespace ChannelState {
+  type Done = ChannelStateDone
+  type Emit = ChannelStateEmit
   type Effect<R, E> = ChannelStateEffect<R, E>
+  type Read<R, E> = ChannelStateRead<R, E>
 }
 
 export abstract class ChannelStateBase<R, E> implements ChannelState<R, E> {
@@ -25,43 +28,23 @@ export abstract class ChannelStateBase<R, E> implements ChannelState<R, E> {
   readonly [_E]: () => E
 }
 
-export const ChannelStateDoneTypeId = Symbol.for(
-  "@effect-ts/core/stream/Channel/ChannelState/Done"
-)
-export type ChannelStateDoneTypeId = typeof ChannelStateDoneTypeId
-
 export class ChannelStateDone extends ChannelStateBase<unknown, never> {
-  readonly _typeId: ChannelStateDoneTypeId = ChannelStateDoneTypeId
+  readonly _tag = "Done"
 }
-
-export const ChannelStateEmitTypeId = Symbol.for(
-  "@effect-ts/core/stream/Channel/ChannelState/Emit"
-)
-export type ChannelStateEmitTypeId = typeof ChannelStateEmitTypeId
 
 export class ChannelStateEmit extends ChannelStateBase<unknown, never> {
-  readonly _typeId: ChannelStateEmitTypeId = ChannelStateEmitTypeId
+  readonly _tag = "Emit"
 }
 
-export const ChannelStateEffectTypeId = Symbol.for(
-  "@effect-ts/core/stream/Channel/ChannelState/Effect"
-)
-export type ChannelStateEffectTypeId = typeof ChannelStateEffectTypeId
-
 export class ChannelStateEffect<R, E> extends ChannelStateBase<R, E> {
-  readonly _typeId: ChannelStateEffectTypeId = ChannelStateEffectTypeId
+  readonly _tag = "Effect"
   constructor(readonly effect: Effect<R, E, unknown>) {
     super()
   }
 }
 
-export const ChannelStateReadTypeId = Symbol.for(
-  "@effect-ts/core/stream/Channel/ChannelState/Read"
-)
-export type ChannelStateReadTypeId = typeof ChannelStateReadTypeId
-
 export class ChannelStateRead<R, E> extends ChannelStateBase<R, E> {
-  readonly _typeId: ChannelStateReadTypeId = ChannelStateReadTypeId
+  readonly _tag = "Read"
   constructor(
     readonly upstream: ErasedExecutor<R>,
     readonly onEffect: (_: Effect<R, never, void>) => Effect<R, never, void>,
@@ -142,7 +125,7 @@ export function effectOrUnit<R, E>(
   __tsplusTrace?: string
 ): Effect<R, E, unknown> {
   concreteChannelState(self)
-  return self._typeId === ChannelStateEffectTypeId ? self.effect : Effect.unit
+  return self._tag === "Effect" ? self.effect : Effect.unit
 }
 
 /**
@@ -153,7 +136,5 @@ export function effectOrUndefinedIgnored<R, E>(
   __tsplusTrace?: string
 ): Effect<R, never, void> | undefined {
   concreteChannelState(self)
-  return self._typeId === ChannelStateEffectTypeId
-    ? self.effect.ignore().asUnit()
-    : undefined
+  return self._tag === "Effect" ? self.effect.ignore().asUnit() : undefined
 }

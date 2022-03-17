@@ -1569,6 +1569,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
             current = undefined
           } else {
             this.unsafeSetInterrupting(true)
+            console.log(e)
             current = instruction(Effect.die(e))
           }
         }

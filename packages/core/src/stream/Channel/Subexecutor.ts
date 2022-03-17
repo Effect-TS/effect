@@ -28,17 +28,12 @@ export interface Subexecutor<R> {
 export interface SubexecutorOps {}
 export const Subexecutor: SubexecutorOps = {}
 
-export const PullFromUpstreamTypeId = Symbol.for(
-  "@effect-ts/core/stream/Channel/Subexecutor/PullFromUpstream"
-)
-export type PullFromUpstreamTypeId = typeof PullFromUpstreamTypeId
-
 /**
  * Execute upstreamExecutor and for each emitted element, spawn a child
  * channel and continue with processing it by `PullFromChild`.
  */
 export class PullFromUpstream<R> implements Subexecutor<R> {
-  readonly _typeId: PullFromUpstreamTypeId = PullFromUpstreamTypeId;
+  readonly _tag = "PullFromUpstream";
 
   readonly [SubexecutorSym]: SubexecutorSym = SubexecutorSym
 
@@ -61,14 +56,13 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
     const fins = this.activeChildExecutors
       .map((child) => (child != null ? child.childExecutor.close(exit) : undefined))
       .push(fin1)
-
-    return fins.reduce<RIO<R, Exit<never, unknown>> | undefined>(
+    const result = fins.reduce<RIO<R, Exit<never, unknown>> | undefined>(
       undefined,
       (acc, next) => {
         if (acc != null && next != null) {
           return acc.zipWith(next.exit(), (a, b) => a > b)
         } else if (acc != null) {
-          return acc.exit()
+          return acc
         } else if (next != null) {
           return next.exit()
         } else {
@@ -76,9 +70,11 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
         }
       }
     )
+    return result == null ? result : result.flatMap((exit) => Effect.done(exit))
   }
 
   enqueuePullFromChild(child: PullFromChild<R>): Subexecutor<R> {
+    console.log(this.upstreamExecutor)
     return new PullFromUpstream(
       this.upstreamExecutor,
       this.createChild,
@@ -92,17 +88,12 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
   }
 }
 
-export const PullFromChildTypeId = Symbol.for(
-  "@effect-ts/core/stream/Channel/Subexecutor/PullFromChild"
-)
-export type PullFromChildTypeId = typeof PullFromChildTypeId
-
 /**
  * Execute the childExecutor and on each emitted value, decide what to do by
  * `onEmit`.
  */
 export class PullFromChild<R> implements Subexecutor<R> {
-  readonly _typeId: PullFromChildTypeId = PullFromChildTypeId;
+  readonly _tag = "PullFromChild";
 
   readonly [SubexecutorSym]: SubexecutorSym = SubexecutorSym
 
@@ -119,17 +110,17 @@ export class PullFromChild<R> implements Subexecutor<R> {
     const fin1 = this.childExecutor.close(exit)
     const fin2 = this.parentSubexecutor.close(exit)
 
-    if (fin1 == null && fin2 == null) {
-      return undefined
-    } else if (fin1 != null && fin2 != null) {
+    if (fin1 != null && fin2 != null) {
       return fin1
         .exit()
         .zipWith(fin2.exit(), (a, b) => a > b)
         .flatMap((exit) => Effect.done(exit))
     } else if (fin1 != null) {
       return fin1
-    } else {
+    } else if (fin2 != null) {
       return fin2
+    } else {
+      return undefined
     }
   }
 
@@ -138,13 +129,8 @@ export class PullFromChild<R> implements Subexecutor<R> {
   }
 }
 
-export const DrainChildExecutorsTypeId = Symbol.for(
-  "@effect-ts/core/stream/Channel/Subexecutor/DrainChildExecutors"
-)
-export type DrainChildExecutorsTypeId = typeof DrainChildExecutorsTypeId
-
 export class DrainChildExecutors<R> implements Subexecutor<R> {
-  readonly _typeId: DrainChildExecutorsTypeId = DrainChildExecutorsTypeId;
+  readonly _tag = "DrainChildExecutors";
 
   readonly [SubexecutorSym]: SubexecutorSym = SubexecutorSym
 
@@ -173,7 +159,7 @@ export class DrainChildExecutors<R> implements Subexecutor<R> {
         if (acc != null && next != null) {
           return acc.zipWith(next.exit(), (a, b) => a > b)
         } else if (acc != null) {
-          return acc.exit()
+          return acc
         } else if (next != null) {
           return next.exit()
         } else {
@@ -196,13 +182,8 @@ export class DrainChildExecutors<R> implements Subexecutor<R> {
   }
 }
 
-export const SubexecutorEmitTypeId = Symbol.for(
-  "@effect-ts/core/stream/Channel/Subexecutor/Emit"
-)
-export type SubexecutorEmitTypeId = typeof SubexecutorEmitTypeId
-
 export class Emit<R> implements Subexecutor<R> {
-  readonly _typeId: SubexecutorEmitTypeId = SubexecutorEmitTypeId;
+  readonly _tag = "Emit";
 
   readonly [SubexecutorSym]: SubexecutorSym = SubexecutorSym
 
@@ -215,7 +196,7 @@ export class Emit<R> implements Subexecutor<R> {
     return this.next.close(exit)
   }
 
-  enqueuePullFromChild(child: PullFromChild<R>): Subexecutor<R> {
+  enqueuePullFromChild(_child: PullFromChild<R>): Subexecutor<R> {
     return this
   }
 }

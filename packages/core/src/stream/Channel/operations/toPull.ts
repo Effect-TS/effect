@@ -4,13 +4,7 @@ import { Effect } from "../../../io/Effect"
 import { Managed } from "../../../io/Managed"
 import { ChannelExecutor, readUpstream } from "../ChannelExecutor"
 import type { ChannelState } from "../ChannelState"
-import {
-  ChannelStateDoneTypeId,
-  ChannelStateEffectTypeId,
-  ChannelStateEmitTypeId,
-  ChannelStateReadTypeId,
-  concreteChannelState
-} from "../ChannelState"
+import { concreteChannelState } from "../ChannelState"
 import type { Channel } from "../definition"
 
 /**
@@ -37,24 +31,25 @@ function interpret<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   exec: ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 ): Effect<Env, OutErr, Either<OutDone, OutElem>> {
   concreteChannelState(channelState)
-  switch (channelState._typeId) {
-    case ChannelStateDoneTypeId: {
+  switch (channelState._tag) {
+    case "Done": {
       return exec.getDone().fold(
         (cause) => Effect.failCause(cause),
         (done): Effect<Env, OutErr, Either<OutDone, OutElem>> =>
           Effect.succeed(Either.left(done))
       )
     }
-    case ChannelStateEmitTypeId: {
+    case "Emit": {
       return Effect.succeed(Either.right(exec.getEmit()))
     }
-    case ChannelStateEffectTypeId: {
+    case "Effect": {
       return (
         channelState.effect > interpret(exec.run() as ChannelState<Env, OutErr>, exec)
       )
     }
-    case ChannelStateReadTypeId: {
-      return readUpstream(channelState, () =>
+    case "Read": {
+      return readUpstream(
+        channelState,
         interpret(exec.run() as ChannelState<Env, OutErr>, exec)
       )
     }

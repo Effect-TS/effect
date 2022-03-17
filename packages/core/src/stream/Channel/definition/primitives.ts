@@ -24,9 +24,6 @@ import {
 // PipeTo
 // -----------------------------------------------------------------------------
 
-export const PipeToTypeId = Symbol.for("@effect-ts/core/stream/Channel/PipeTo")
-export type PipeToTypeId = typeof PipeToTypeId
-
 export class PipeTo<
   Env,
   InErr,
@@ -39,7 +36,7 @@ export class PipeTo<
   OutElem,
   OutDone
 > extends ChannelBase<Env, InErr, InElem, InDone, OutErr2, OutElem2, OutDone2> {
-  readonly _typeId: PipeToTypeId = PipeToTypeId
+  readonly _tag = "PipeTo"
   constructor(
     readonly left: Lazy<Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>,
     readonly right: Lazy<
@@ -54,9 +51,6 @@ export class PipeTo<
 // Read
 // -----------------------------------------------------------------------------
 
-export const ReadTypeId = Symbol.for("@effect-ts/core/stream/Channel/Read")
-export type ReadTypeId = typeof ReadTypeId
-
 export class Read<
   Env,
   InErr,
@@ -68,7 +62,7 @@ export class Read<
   OutErr,
   OutDone
 > extends ChannelBase<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2> {
-  readonly _typeId: ReadTypeId = ReadTypeId
+  readonly _tag = "Read"
   constructor(
     readonly more: (
       i: InElem
@@ -93,9 +87,6 @@ export class Read<
 // SucceedNow
 // -----------------------------------------------------------------------------
 
-export const SucceedNowTypeId = Symbol.for("@effect-ts/core/stream/Channel/SucceedNow")
-export type SucceedNowTypeId = typeof SucceedNowTypeId
-
 export class SucceedNow<OutDone> extends ChannelBase<
   unknown,
   unknown,
@@ -105,7 +96,7 @@ export class SucceedNow<OutDone> extends ChannelBase<
   never,
   OutDone
 > {
-  readonly _typeId: SucceedNowTypeId = SucceedNowTypeId
+  readonly _tag = "SucceedNow"
   constructor(readonly terminal: OutDone) {
     super()
   }
@@ -114,9 +105,6 @@ export class SucceedNow<OutDone> extends ChannelBase<
 // -----------------------------------------------------------------------------
 // Fail
 // -----------------------------------------------------------------------------
-
-export const FailTypeId = Symbol.for("@effect-ts/core/stream/Channel/Fail")
-export type FailTypeId = typeof FailTypeId
 
 export class Fail<OutErr> extends ChannelBase<
   unknown,
@@ -127,7 +115,7 @@ export class Fail<OutErr> extends ChannelBase<
   never,
   never
 > {
-  readonly _typeId: FailTypeId = FailTypeId
+  readonly _tag = "Fail"
   constructor(readonly error: Lazy<Cause<OutErr>>) {
     super()
   }
@@ -136,9 +124,6 @@ export class Fail<OutErr> extends ChannelBase<
 // -----------------------------------------------------------------------------
 // FromEffect
 // -----------------------------------------------------------------------------
-
-export const FromEffectTypeId = Symbol.for("@effect-ts/core/stream/Channel/FromEffect")
-export type FromEffectTypeId = typeof FromEffectTypeId
 
 export class FromEffect<Env, OutErr, OutDone> extends ChannelBase<
   Env,
@@ -149,7 +134,7 @@ export class FromEffect<Env, OutErr, OutDone> extends ChannelBase<
   never,
   OutDone
 > {
-  readonly _typeId: FromEffectTypeId = FromEffectTypeId
+  readonly _tag = "FromEffect"
   constructor(readonly effect: Lazy<Effect<Env, OutErr, OutDone>>) {
     super()
   }
@@ -158,9 +143,6 @@ export class FromEffect<Env, OutErr, OutDone> extends ChannelBase<
 // -----------------------------------------------------------------------------
 // Emit
 // -----------------------------------------------------------------------------
-
-export const EmitTypeId = Symbol.for("@effect-ts/core/stream/Channel/Emit")
-export type EmitTypeId = typeof EmitTypeId
 
 export class Emit<OutElem, OutDone> extends ChannelBase<
   unknown,
@@ -171,7 +153,7 @@ export class Emit<OutElem, OutDone> extends ChannelBase<
   OutElem,
   OutDone
 > {
-  readonly _typeId: EmitTypeId = EmitTypeId
+  readonly _tag = "Emit"
   constructor(readonly out: Lazy<OutElem>) {
     super()
   }
@@ -180,9 +162,6 @@ export class Emit<OutElem, OutDone> extends ChannelBase<
 // -----------------------------------------------------------------------------
 // Succeed
 // -----------------------------------------------------------------------------
-
-export const SucceedTypeId = Symbol.for("@effect-ts/core/stream/Channel/Succeed")
-export type SucceedTypeId = typeof SucceedTypeId
 
 export class Succeed<OutDone> extends ChannelBase<
   unknown,
@@ -193,7 +172,7 @@ export class Succeed<OutDone> extends ChannelBase<
   never,
   OutDone
 > {
-  readonly _typeId: SucceedTypeId = SucceedTypeId
+  readonly _tag = "Succeed"
   constructor(readonly effect: Lazy<OutDone>) {
     super()
   }
@@ -202,9 +181,6 @@ export class Succeed<OutDone> extends ChannelBase<
 // -----------------------------------------------------------------------------
 // Suspend
 // -----------------------------------------------------------------------------
-
-export const SuspendTypeId = Symbol.for("@effect-ts/core/stream/Channel/Suspend")
-export type SuspendTypeId = typeof SuspendTypeId
 
 export class Suspend<
   Env,
@@ -215,7 +191,7 @@ export class Suspend<
   OutElem,
   OutDone
 > extends ChannelBase<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  readonly _typeId: SuspendTypeId = SuspendTypeId
+  readonly _tag = "Suspend"
   constructor(
     readonly effect: Lazy<Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
   ) {
@@ -227,9 +203,6 @@ export class Suspend<
 // Ensuring
 // -----------------------------------------------------------------------------
 
-export const EnsuringTypeId = Symbol.for("@effect-ts/core/stream/Channel/Ensuring")
-export type EnsuringTypeId = typeof EnsuringTypeId
-
 export class Ensuring<
   Env,
   InErr,
@@ -239,7 +212,7 @@ export class Ensuring<
   OutElem,
   OutDone
 > extends ChannelBase<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  readonly _typeId: EnsuringTypeId = EnsuringTypeId
+  readonly _tag = "Ensuring"
   constructor(
     readonly channel: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     readonly finalizer: (exit: Exit<OutErr, OutDone>) => Effect<Env, never, unknown>
@@ -251,9 +224,6 @@ export class Ensuring<
 // -----------------------------------------------------------------------------
 // ConcatAll
 // -----------------------------------------------------------------------------
-
-export const ConcatAllTypeId = Symbol.for("@effect-ts/core/stream/Channel/ConcatAll")
-export type ConcatAllTypeId = typeof ConcatAllTypeId
 
 export class ConcatAll<
   Env,
@@ -267,7 +237,7 @@ export class ConcatAll<
   OutDone,
   OutDone2
 > extends ChannelBase<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone3> {
-  readonly _typeId: ConcatAllTypeId = ConcatAllTypeId
+  readonly _tag = "ConcatAll"
   constructor(
     readonly combineInners: (x: OutDone, y: OutDone) => OutDone,
     readonly combineAll: (x: OutDone, y: OutDone2) => OutDone3,
@@ -287,11 +257,8 @@ export class ConcatAll<
 }
 
 // -----------------------------------------------------------------------------
-// ConcatAll
+// Fold
 // -----------------------------------------------------------------------------
-
-export const FoldTypeId = Symbol.for("@effect-ts/core/stream/Channel/Fold")
-export type FoldTypeId = typeof FoldTypeId
 
 export class Fold<
   Env,
@@ -304,7 +271,7 @@ export class Fold<
   OutErr,
   OutDone
 > extends ChannelBase<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2> {
-  readonly _typeId: FoldTypeId = FoldTypeId
+  readonly _tag = "Fold"
   constructor(
     readonly value: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     readonly k: ContinuationK<
@@ -327,9 +294,6 @@ export class Fold<
 // Bridge
 // -----------------------------------------------------------------------------
 
-export const BridgeTypeId = Symbol.for("@effect-ts/core/stream/Channel/Bridge")
-export type BridgeTypeId = typeof BridgeTypeId
-
 export class Bridge<
   Env,
   InErr,
@@ -339,7 +303,7 @@ export class Bridge<
   OutElem,
   OutDone
 > extends ChannelBase<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  readonly _typeId: BridgeTypeId = BridgeTypeId
+  readonly _tag = "Bridge"
   constructor(
     readonly input: AsyncInputProducer<InErr, InElem, InDone>,
     readonly channel: Channel<Env, unknown, unknown, unknown, OutErr, OutElem, OutDone>
@@ -352,9 +316,6 @@ export class Bridge<
 // BracketOut
 // -----------------------------------------------------------------------------
 
-export const BracketOutTypeId = Symbol.for("@effect-ts/core/stream/Channel/BracketOut")
-export type BracketOutTypeId = typeof BracketOutTypeId
-
 export class BracketOut<R, E, Z, OutDone> extends ChannelBase<
   R,
   unknown,
@@ -364,7 +325,7 @@ export class BracketOut<R, E, Z, OutDone> extends ChannelBase<
   Z,
   OutDone
 > {
-  readonly _typeId: BracketOutTypeId = BracketOutTypeId
+  readonly _tag = "BracketOut"
   constructor(
     readonly acquire: Lazy<Effect<R, E, Z>>,
     readonly finalizer: (z: Z, exit: Exit<unknown, unknown>) => RIO<R, unknown>
@@ -374,11 +335,8 @@ export class BracketOut<R, E, Z, OutDone> extends ChannelBase<
 }
 
 // -----------------------------------------------------------------------------
-// BracketOut
+// Provide
 // -----------------------------------------------------------------------------
-
-export const ProvideTypeId = Symbol.for("@effect-ts/core/stream/Channel/Provide")
-export type ProvideTypeId = typeof ProvideTypeId
 
 export class Provide<
   Env,
@@ -389,7 +347,7 @@ export class Provide<
   OutElem,
   OutDone
 > extends ChannelBase<unknown, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  readonly _typeId: ProvideTypeId = ProvideTypeId
+  readonly _tag = "Provide"
   constructor(
     readonly env: Lazy<Env>,
     readonly channel: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
@@ -488,11 +446,6 @@ export function concreteContinuation<
   //
 }
 
-export const ContinuationKTypeId = Symbol.for(
-  "@effect-ts/core/stream/Channel/ContinuationK"
-)
-export type ContinuationKTypeId = typeof ContinuationKTypeId
-
 export class ContinuationK<
   Env,
   InErr,
@@ -514,7 +467,7 @@ export class ContinuationK<
   OutDone,
   OutDone2
 > {
-  readonly _typeId: ContinuationKTypeId = ContinuationKTypeId
+  readonly _tag = "ContinuationK"
 
   constructor(
     readonly onSuccess: (
@@ -541,11 +494,6 @@ export class ContinuationK<
   }
 }
 
-export const ContinuationFinalizerTypeId = Symbol.for(
-  "@effect-ts/core/stream/Channel/ContinuationFinalizer"
-)
-export type ContinuationFinalizerTypeId = typeof ContinuationFinalizerTypeId
-
 export class ContinuationFinalizer<Env, OutErr, OutDone> extends Continuation<
   Env,
   unknown,
@@ -557,7 +505,7 @@ export class ContinuationFinalizer<Env, OutErr, OutDone> extends Continuation<
   OutDone,
   never
 > {
-  readonly _typeId: ContinuationFinalizerTypeId = ContinuationFinalizerTypeId
+  readonly _tag = "ContinuationFinalizer"
 
   constructor(readonly finalizer: (exit: Exit<OutErr, OutDone>) => RIO<Env, unknown>) {
     super()

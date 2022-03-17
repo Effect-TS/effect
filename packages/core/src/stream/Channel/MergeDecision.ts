@@ -1,10 +1,10 @@
 import type { Effect } from "../../io/Effect"
 import type { Exit } from "../../io/Exit"
 
-export const MergeDecisionTypeId = Symbol.for(
+export const MergeDecisionSym = Symbol.for(
   "@effect-ts/core/stream/Channel/MergeDecision"
 )
-export type MergeDecisionTypeId = typeof MergeDecisionTypeId
+export type MergeDecisionSym = typeof MergeDecisionSym
 
 export const _R = Symbol.for("@effect-ts/core/stream/Channel/MergeDecision/_R")
 export type _R = typeof _R
@@ -25,7 +25,7 @@ export type _Z = typeof _Z
  * @tsplus type ets/Channel/MergeDecision
  */
 export interface MergeDecision<R, E0, Z0, E, Z> {
-  readonly _mergeDecisionTypeId: typeof MergeDecisionTypeId
+  readonly [MergeDecisionSym]: typeof MergeDecisionSym
 
   readonly [_R]: (_: R) => void
   readonly [_E0]: (_: E0) => void
@@ -43,7 +43,7 @@ export const MergeDecision: MergeDecisionOps = {}
 export abstract class MergeDecisionBase<R, E0, Z0, E, Z>
   implements MergeDecision<R, E0, Z0, E, Z>
 {
-  readonly _mergeDecisionTypeId: typeof MergeDecisionTypeId = MergeDecisionTypeId;
+  readonly [MergeDecisionSym]: typeof MergeDecisionSym = MergeDecisionSym;
 
   readonly [_R]: (_: R) => void;
   readonly [_E0]: (_: E0) => void;
@@ -68,7 +68,7 @@ export class Await<R, E0, Z0, E, Z> extends MergeDecisionBase<R, E0, Z0, E, Z> {
 }
 
 /**
- * @tsplus static ets/Channel/MergeDecisionOps Done
+ * @tsplus static ets/Channel/MergeDecisionOps done
  */
 export function done<R, E, Z>(
   io: Effect<R, E, Z>
@@ -77,7 +77,7 @@ export function done<R, E, Z>(
 }
 
 /**
- * @tsplus static ets/Channel/MergeDecisionOps Await
+ * @tsplus static ets/Channel/MergeDecisionOps await
  */
 export function _await<R, E0, Z0, E, Z>(
   f: (ex: Exit<E0, Z0>) => Effect<R, E, Z>
@@ -86,7 +86,7 @@ export function _await<R, E0, Z0, E, Z>(
 }
 
 /**
- * @tsplus static ets/Channel/MergeDecisionOps AwaitCont
+ * @tsplus static ets/Channel/MergeDecisionOps awaitConst
  */
 export function awaitConst<R, E, Z>(
   io: Effect<R, E, Z>

@@ -1,7 +1,7 @@
 import { List, MutableList } from "../../collection/immutable/List"
 import { Tuple } from "../../collection/immutable/Tuple"
 import type { Lazy, LazyArg } from "../../data/Function"
-import { identity } from "../../data/Function"
+import { constUndefined, identity } from "../../data/Function"
 import type { Option } from "../../data/Option"
 import { Stack } from "../../data/Stack"
 import type { Cause } from "../../io/Cause"
@@ -10,52 +10,23 @@ import { Effect } from "../../io/Effect"
 import { Exit } from "../../io/Exit"
 import { ImmutableQueue } from "../../support/ImmutableQueue"
 import type { ChannelStateRead } from "./ChannelState"
-import {
-  ChannelState,
-  ChannelStateDoneTypeId,
-  ChannelStateEffectTypeId,
-  ChannelStateEmitTypeId,
-  ChannelStateReadTypeId,
-  concreteChannelState
-} from "./ChannelState"
+import { ChannelState, concreteChannelState } from "./ChannelState"
 import type { ChildExecutorDecision } from "./ChildExecutorDecision"
 import type { BracketOut, Channel, Continuation, Ensuring } from "./definition"
 import {
-  BracketOutTypeId,
-  BridgeTypeId,
-  ConcatAllTypeId,
   concrete,
   concreteContinuation,
   ContinuationFinalizer,
-  ContinuationKTypeId,
   Emit,
-  EmitTypeId,
-  EnsuringTypeId,
   Fail,
-  FailTypeId,
-  FoldTypeId,
-  FromEffectTypeId,
-  PipeToTypeId,
-  ProvideTypeId,
-  ReadTypeId,
-  SucceedNow,
-  SucceedNowTypeId,
-  SucceedTypeId,
-  SuspendTypeId
+  SucceedNow
 } from "./definition"
 import type {
   DrainChildExecutors,
   PullFromChild,
   PullFromUpstream
 } from "./Subexecutor"
-import {
-  concreteSubexecutor,
-  DrainChildExecutorsTypeId,
-  PullFromChildTypeId,
-  PullFromUpstreamTypeId,
-  Subexecutor,
-  SubexecutorEmitTypeId
-} from "./Subexecutor"
+import { concreteSubexecutor, Subexecutor } from "./Subexecutor"
 import { UpstreamPullRequest } from "./UpstreamPullRequest"
 import type { UpstreamPullStrategy } from "./UpstreamPullStrategy"
 
@@ -135,10 +106,10 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     conts: List<ErasedContinuation<Env>>,
     exit: Exit<unknown, unknown>
   ): Effect<Env, never, Exit<never, unknown>> {
-    while (conts.length > 0) {
+    while (conts.length !== 0) {
       const head = conts.unsafeFirst()!
       concreteContinuation(head)
-      if (head._typeId === ContinuationKTypeId) {
+      if (head._tag === "ContinuationK") {
         conts = conts.tail()
       } else {
         acc = acc > head.finalizer(exit).exit()
@@ -156,8 +127,6 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
       Effect.succeed(Exit.unit),
       this.doneStack,
       exit
-      // TODO
-      // )
     ).flatMap((exit) => Effect.done(exit))
     this.doneStack = List.empty()
     this.storeInProgressFinalizer(effect)
@@ -171,7 +140,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     while (stack.length > 0) {
       const head = stack.unsafeFirst()!
       concreteContinuation(head)
-      if (head._typeId === ContinuationKTypeId) {
+      if (head._tag === "ContinuationK") {
         return stack
       }
       builder.push(head)
@@ -203,13 +172,12 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
   ): RIO<Env, unknown> | undefined {
-    let runInProgressFinalizers: RIO<Env, unknown> | undefined = undefined
-    if (this.inProgressFinalizer != null) {
-      const finalizer = this.inProgressFinalizer
-      runInProgressFinalizers = finalizer.ensuring(
-        Effect.succeed(this.clearInProgressFinalizer())
-      )
-    }
+    const runInProgressFinalizers =
+      this.inProgressFinalizer != null
+        ? this.inProgressFinalizer.ensuring(
+            Effect.succeed(this.clearInProgressFinalizer())
+          )
+        : undefined
 
     const closeSubexecutors =
       this.activeSubexecutor != null ? this.activeSubexecutor.close(exit) : undefined
@@ -264,12 +232,12 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
         if (this.currentChannel == null) {
           result = ChannelState.Done
         } else {
-          concrete(this.currentChannel)
-
           const currentChannel = this.currentChannel
 
-          switch (currentChannel._typeId) {
-            case BridgeTypeId: {
+          concrete(currentChannel)
+
+          switch (currentChannel._tag) {
+            case "Bridge": {
               // PipeTo(left, Bridge(queue, channel))
               // In a fiber: repeatedly run left and push its outputs to the queue
               // Add a finalizer to interrupt the fiber and close the executor
@@ -284,25 +252,25 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
                   Effect.suspendSucceed(() => {
                     const state = inputExecutor.run()
                     concreteChannelState(state)
-                    switch (state._typeId) {
-                      case ChannelStateDoneTypeId: {
+                    switch (state._tag) {
+                      case "Done": {
                         return inputExecutor.getDone().fold(
                           (cause) => currentChannel.input.error(cause),
                           (value) => currentChannel.input.done(value)
                         )
                       }
-                      case ChannelStateEmitTypeId: {
+                      case "Emit": {
                         return currentChannel.input
                           .emit(inputExecutor.getEmit())
                           .zipRight(() => drainer)
                       }
-                      case ChannelStateEffectTypeId: {
+                      case "Effect": {
                         return state.effect.foldCauseEffect(
                           (cause) => currentChannel.input.error(cause),
                           () => drainer
                         )
                       }
-                      case ChannelStateReadTypeId: {
+                      case "Read": {
                         return readUpstream(state, () => drainer).catchAllCause(
                           (cause) => currentChannel.input.error(cause)
                         )
@@ -329,7 +297,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
               break
             }
 
-            case PipeToTypeId: {
+            case "PipeTo": {
               const previousInput = this.input
 
               const leftExec: ErasedExecutor<Env> = new ChannelExecutor(
@@ -350,7 +318,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
               break
             }
 
-            case ReadTypeId: {
+            case "Read": {
               result = ChannelState.Read(
                 this.input!,
                 identity,
@@ -367,27 +335,27 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
               break
             }
 
-            case SucceedNowTypeId: {
+            case "SucceedNow": {
               result = this.doneSucceed(currentChannel.terminal)
               break
             }
 
-            case FailTypeId: {
+            case "Fail": {
               result = this.doneHalt(currentChannel.error())
               break
             }
 
-            case SucceedTypeId: {
+            case "Succeed": {
               result = this.doneSucceed(currentChannel.effect())
               break
             }
 
-            case SuspendTypeId: {
+            case "Suspend": {
               this.currentChannel = currentChannel.effect()
               break
             }
 
-            case FromEffectTypeId: {
+            case "FromEffect": {
               const peffect =
                 this.providedEnv != null
                   ? currentChannel.effect().provideEnvironment(this.providedEnv as Env)
@@ -415,7 +383,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
               break
             }
 
-            case EmitTypeId: {
+            case "Emit": {
               this.emitted = currentChannel.out()
               this.currentChannel =
                 this.activeSubexecutor != null ? undefined : new SucceedNow(undefined)
@@ -423,12 +391,12 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
               break
             }
 
-            case EnsuringTypeId: {
+            case "Ensuring": {
               this.runEnsuring(currentChannel)
               break
             }
 
-            case ConcatAllTypeId: {
+            case "ConcatAll": {
               const executor: ErasedExecutor<Env> = new ChannelExecutor(
                 currentChannel.value,
                 this.providedEnv,
@@ -460,18 +428,18 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
               break
             }
 
-            case FoldTypeId: {
+            case "Fold": {
               this.doneStack = this.doneStack.prepend(currentChannel.k)
               this.currentChannel = currentChannel.value
               break
             }
 
-            case BracketOutTypeId: {
+            case "BracketOut": {
               result = this.runBracketOut(currentChannel)
               break
             }
 
-            case ProvideTypeId: {
+            case "Provide": {
               const previousEnv = this.providedEnv
               this.providedEnv = currentChannel.env()
               this.currentChannel = currentChannel.channel
@@ -502,7 +470,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     const head = this.doneStack.unsafeFirst()!
     concreteContinuation(head)
 
-    if (head._typeId === ContinuationKTypeId) {
+    if (head._tag === "ContinuationK") {
       this.doneStack = this.doneStack.tail()
       this.currentChannel = head.onSuccess(z)
       return undefined
@@ -527,8 +495,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     return ChannelState.Effect(
       finalizerEffect
         .ensuring(Effect.succeed(this.clearInProgressFinalizer()))
-        .uninterruptible()
-        .zipRight(Effect.succeed(this.doneSucceed(z)))
+        .uninterruptible() > Effect.succeed(this.doneSucceed(z))
     )
   }
 
@@ -542,7 +509,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     const head = this.doneStack.unsafeFirst()!
     concreteContinuation(head)
 
-    if (head._typeId === ContinuationKTypeId) {
+    if (head._tag === "ContinuationK") {
       this.doneStack = this.doneStack.tail()
       this.currentChannel = head.onHalt(cause)
       return undefined
@@ -627,20 +594,26 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     return finalizers.length === 0
       ? undefined
       : Effect.forEach(finalizers, (f) => f(exit).exit())
-          .map((results) =>
-            Exit.collectAll(results).getOrElse(Exit.succeed(List.empty()))
-          )
-          .flatMap((exit) => Effect.done(exit))
+          .map((results) => {
+            const result = Exit.collectAll(results)
+            if (result._tag === "Some") {
+              return result.value
+            }
+            return Exit.unit
+          })
+          .flatMap((exit) => Effect.done(exit as Exit<never, unknown>))
   }
 
-  private runSubexecutor(): ChannelState<Env, unknown> | undefined {
+  private runSubexecutor(
+    __tsplusTrace?: string
+  ): ChannelState<Env, unknown> | undefined {
     const subexecutor = this.activeSubexecutor!
     concreteSubexecutor(subexecutor)
-    switch (subexecutor._typeId) {
-      case PullFromUpstreamTypeId: {
+    switch (subexecutor._tag) {
+      case "PullFromUpstream": {
         return this.pullFromUpstream(subexecutor)
       }
-      case PullFromChildTypeId: {
+      case "PullFromChild": {
         return this.pullFromChild(
           subexecutor.childExecutor,
           subexecutor.parentSubexecutor,
@@ -648,10 +621,10 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
           subexecutor
         )
       }
-      case DrainChildExecutorsTypeId: {
+      case "DrainChildExecutors": {
         return this.drainChildExecutors(subexecutor)
       }
-      case SubexecutorEmitTypeId: {
+      case "Emit": {
         this.emitted = subexecutor.value
         this.activeSubexecutor = subexecutor.next
         return ChannelState.Emit
@@ -900,7 +873,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
         return this.finishSubexecutorWithCloseEffect(
           self.upstreamDone,
           () => lastClose,
-          self.upstreamExecutor.close
+          (exit) => self.upstreamExecutor.close(exit)
         )
       },
       ({ tuple: [activeChild, rest] }) => {
@@ -922,6 +895,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
               activeChild.onEmit
             )
           )
+
           return undefined
         }
 
@@ -945,7 +919,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
           )
         )
 
-        return emitSeparator.fold(undefined, (value) => {
+        return emitSeparator.fold(constUndefined, (value) => {
           this.emitted = value
           return ChannelState.Emit
         })
@@ -960,8 +934,8 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   ): ChannelState<Env, unknown> | undefined {
     return this.finishSubexecutorWithCloseEffect(
       Exit.failCause(cause),
-      parentSubexecutor.close,
-      childExecutor.close
+      (exit) => parentSubexecutor.close(exit),
+      (exit) => childExecutor.close(exit)
     )
   }
 
@@ -971,8 +945,8 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     doneValue: unknown
   ): void {
     concreteSubexecutor(parentSubexecutor)
-    switch (parentSubexecutor._typeId) {
-      case PullFromUpstreamTypeId: {
+    switch (parentSubexecutor._tag) {
+      case "PullFromUpstream": {
         const modifiedParent = Subexecutor.PullFromUpstream(
           parentSubexecutor.upstreamExecutor,
           parentSubexecutor.createChild,
@@ -992,7 +966,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
         this.replaceSubexecutor(modifiedParent)
         break
       }
-      case DrainChildExecutorsTypeId: {
+      case "DrainChildExecutors": {
         const modifiedParent = Subexecutor.DrainChildExecutors(
           parentSubexecutor.upstreamExecutor,
           parentSubexecutor.lastDone != null
@@ -1075,7 +1049,7 @@ export function readUpstream<R, E, A>(
 }
 
 function read<R, E, A>(
-  readStack: Stack<ChannelStateRead<unknown, unknown>>,
+  readStack: Stack<ChannelState.Read<unknown, unknown>>,
   cont: LazyArg<Effect<R, E, A>>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
@@ -1083,8 +1057,8 @@ function read<R, E, A>(
   let newReadStack = readStack.previous
   const state = current.upstream.run()
   concreteChannelState(state)
-  switch (state._typeId) {
-    case ChannelStateEmitTypeId: {
+  switch (state._tag) {
+    case "Emit": {
       const emitEffect = current.onEmit(current.upstream.getEmit())
       if (newReadStack == null) {
         if (emitEffect == null) {
@@ -1098,7 +1072,7 @@ function read<R, E, A>(
       return emitEffect > read(newReadStack, cont)
     }
 
-    case ChannelStateDoneTypeId: {
+    case "Done": {
       const doneEffect = current.onDone(current.upstream.getDone())
       if (newReadStack == null) {
         if (doneEffect == null) {
@@ -1112,7 +1086,7 @@ function read<R, E, A>(
       return doneEffect > read(newReadStack, cont)
     }
 
-    case ChannelStateEffectTypeId: {
+    case "Effect": {
       newReadStack = new Stack(current, newReadStack)
       return (
         current
@@ -1126,7 +1100,7 @@ function read<R, E, A>(
       )
     }
 
-    case ChannelStateReadTypeId: {
+    case "Read": {
       newReadStack = new Stack(current, newReadStack)
       newReadStack = new Stack(state, newReadStack)
       return Effect.suspendSucceed(read(newReadStack, cont))
