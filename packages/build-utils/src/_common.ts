@@ -1,11 +1,21 @@
 import * as Ef from "@effect-ts/core/Effect"
 import { pipe } from "@effect-ts/core/Function"
-import chalk from "chalk"
 import cp from "child_process"
 import type { AsyncOptions } from "cpx"
 import { copy as copy_ } from "cpx"
 import fs from "fs"
 import glob_ from "glob"
+
+export const importChalk = pipe(
+  Ef.promise(
+    () =>
+      Function('return import("chalk")')() as Promise<
+        // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+        typeof import("chalk")
+      >
+  ),
+  Ef.map((c) => c.default)
+)
 
 export const log = (message: unknown) =>
   Ef.succeedWith(() => {
@@ -51,7 +61,11 @@ export function onLeft(e: NodeJS.ErrnoException | cp.ExecException) {
 }
 
 export function onRight(msg: string) {
-  return () => log(chalk.bold.green(msg))
+  return () =>
+    pipe(
+      importChalk,
+      Ef.chain((chalk) => log(chalk.bold.green(msg)))
+    )
 }
 
 function modifyFile(f: (content: string, path: string) => string) {
@@ -79,7 +93,14 @@ export async function runMain(t: Ef.UIO<void>): Promise<void> {
   try {
     return Ef.runPromise(t)
   } catch (e) {
-    return console.log(chalk.bold.red(`Unexpected error: ${e}`))
+    return Ef.runPromise(
+      pipe(
+        importChalk,
+        Ef.chain((chalk) =>
+          Ef.succeedWith(() => console.log(chalk.bold.red(`Unexpected error: ${e}`)))
+        )
+      )
+    )
   }
 }
 
