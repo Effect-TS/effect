@@ -7,7 +7,7 @@ import { ForwardListIterator } from "./ListIterator"
 
 export class ListInternal<A> implements Iterable<A>, List<A>, St.HasEquals, St.HasHash {
   readonly [ListTypeId]: ListTypeId = ListTypeId;
-  readonly [_A]: () => A
+  readonly [_A]!: () => A
 
   constructor(
     readonly bits: number,

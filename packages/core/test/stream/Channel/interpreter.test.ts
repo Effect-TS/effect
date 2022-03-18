@@ -1,19 +1,65 @@
-import { IllegalStateException, RuntimeError } from "packages/core/src/io/Cause"
-import { MergeDecision } from "packages/core/src/stream/Channel/MergeDecision"
-
 import { Chunk } from "../../../src/collection/immutable/Chunk"
+import { HashSet } from "../../../src/collection/immutable/HashSet"
 import { List } from "../../../src/collection/immutable/List"
 import { Tuple } from "../../../src/collection/immutable/Tuple"
+import { Either } from "../../../src/data/Either"
 import { constVoid } from "../../../src/data/Function"
+import { tag } from "../../../src/data/Has"
 import { Option } from "../../../src/data/Option"
+import { IllegalStateException, RuntimeError } from "../../../src/io/Cause"
 import { Effect } from "../../../src/io/Effect"
 import { Exit } from "../../../src/io/Exit"
 import { Managed } from "../../../src/io/Managed"
 import { Promise } from "../../../src/io/Promise"
+import { Random } from "../../../src/io/Random"
 import { Ref } from "../../../src/io/Ref"
 import { Channel } from "../../../src/stream/Channel"
 import { ChildExecutorDecision } from "../../../src/stream/Channel/ChildExecutorDecision"
+import { MergeDecision } from "../../../src/stream/Channel/MergeDecision"
 import { UpstreamPullStrategy } from "../../../src/stream/Channel/UpstreamPullStrategy"
+
+interface NumberService {
+  readonly n: number
+}
+
+const NumberService = tag<NumberService>()
+
+function mapper<A, B>(
+  f: (a: A) => B
+): Channel<unknown, unknown, A, unknown, never, B, void> {
+  return Channel.readWith(
+    (a: A) => Channel.write(f(a)) > mapper(f),
+    () => Channel.unit,
+    () => Channel.unit
+  )
+}
+
+function refWriter<A>(
+  ref: Ref<List<A>>
+): Channel<unknown, unknown, A, unknown, never, never, void> {
+  return Channel.readWith(
+    (a: A) =>
+      Channel.fromEffect(ref.update((list) => list.prepend(a)).asUnit()) >
+      refWriter(ref),
+    () => Channel.unit,
+    () => Channel.unit
+  )
+}
+
+function refReader<A>(
+  ref: Ref<List<A>>
+): Channel<unknown, unknown, unknown, unknown, never, A, void> {
+  return Channel.fromEffect(
+    ref.modify((list) =>
+      list.foldLeft(
+        () => Tuple(Option.none, List.empty<A>()),
+        (head, tail) => Tuple(Option.some(head), tail)
+      )
+    )
+  ).flatMap((option) =>
+    option.fold(Channel.unit, (i) => Channel.write(i) > refReader(ref))
+  )
+}
 
 describe("Channel", () => {
   it("succeed", async () => {
@@ -592,5 +638,469 @@ describe("Channel", () => {
 
       expect(result.isSuccess()).toBe(true)
     })
+  })
+
+  describe("interruptWhen", () => {
+    describe("promise", () => {
+      it("interrupts the current element", async () => {
+        const program = Effect.Do()
+          .bind("interrupted", () => Ref.make(false))
+          .bind("latch", () => Promise.make<never, void>())
+          .bind("halt", () => Promise.make<never, void>())
+          .bind("started", () => Promise.make<never, void>())
+          .bind("fiber", ({ halt, interrupted, latch, started }) =>
+            Channel.fromEffect(
+              (started.succeed(undefined) > latch.await()).onInterrupt(() =>
+                interrupted.set(true)
+              )
+            )
+              .interruptWhenPromise(halt)
+              .runDrain()
+              .fork()
+          )
+          .tap(({ halt, started }) => started.await() > halt.succeed(undefined))
+          .tap(({ fiber }) => fiber.await())
+          .flatMap(({ interrupted }) => interrupted.get())
+
+        const result = await program.unsafeRunPromise()
+
+        expect(result).toBe(true)
+      })
+
+      it("propagates errors", async () => {
+        const program = Promise.make<string, never>()
+          .tap((promise) => promise.fail("fail"))
+          .flatMap((promise) =>
+            (Channel.write(1) > Channel.fromEffect(Effect.never))
+              .interruptWhen(promise.await())
+              .runDrain()
+              .either()
+          )
+
+        const result = await program.unsafeRunPromise()
+
+        expect(result).toEqual(Either.left("fail"))
+      })
+    })
+
+    describe("io", () => {
+      it("interrupts the current element", async () => {
+        const program = Effect.Do()
+          .bind("interrupted", () => Ref.make(false))
+          .bind("latch", () => Promise.make<never, void>())
+          .bind("halt", () => Promise.make<never, void>())
+          .bind("started", () => Promise.make<never, void>())
+          .bind("fiber", ({ halt, interrupted, latch, started }) =>
+            Channel.fromEffect(
+              (started.succeed(undefined) > latch.await()).onInterrupt(() =>
+                interrupted.set(true)
+              )
+            )
+              .interruptWhen(halt.await())
+              .runDrain()
+              .fork()
+          )
+          .tap(({ halt, started }) => started.await() > halt.succeed(undefined))
+          .tap(({ fiber }) => fiber.await())
+          .flatMap(({ interrupted }) => interrupted.get())
+
+        const result = await program.unsafeRunPromise()
+
+        expect(result).toBe(true)
+      })
+
+      it("propagates errors", async () => {
+        const program = Promise.make<string, never>()
+          .tap((promise) => promise.fail("fail"))
+          .flatMap((promise) =>
+            Channel.fromEffect(Effect.never)
+              .interruptWhen(promise.await())
+              .runDrain()
+              .either()
+          )
+
+        const result = await program.unsafeRunPromise()
+
+        expect(result).toEqual(Either.left("fail"))
+      })
+    })
+  })
+
+  describe("reads", () => {
+    it("simple reads", async () => {
+      const left = Channel.writeAll(1, 2, 3)
+      const right = Channel.read<number>()
+        .catchAll(() => Channel.succeedNow(4))
+        .flatMap((i) => Channel.write({ whatever: i }))
+      const conduit = left >> (right > right > right > right)
+      const program = conduit.runCollect()
+
+      const {
+        tuple: [chunk, _]
+      } = await program.unsafeRunPromise()
+
+      expect(chunk.toArray()).toEqual([
+        { whatever: 1 },
+        { whatever: 2 },
+        { whatever: 3 },
+        { whatever: 4 }
+      ])
+    })
+
+    it("pipeline", async () => {
+      const effect = Channel.fromEffect(Ref.make(List.empty<number>())).flatMap(
+        (ref) => {
+          function inner(): Channel<
+            unknown,
+            unknown,
+            number,
+            unknown,
+            never,
+            number,
+            void
+          > {
+            return Channel.readWith(
+              (i: number) =>
+                Channel.fromEffect(ref.update((list) => list.prepend(i))) >
+                Channel.write(i) >
+                inner(),
+              () => Channel.unit,
+              () => Channel.unit
+            )
+          }
+          return inner() > Channel.fromEffect(ref.get())
+        }
+      )
+
+      const program = (
+        ((Channel.writeAll(1, 2) >> mapper((i: number) => i)) >>
+          mapper((i: number) => List(i, i)).concatMap((list) =>
+            Channel.writeAll(...list).as(undefined)
+          )) >>
+        effect
+      ).runCollect()
+
+      const {
+        tuple: [chunk, result]
+      } = await program.unsafeRunPromise()
+
+      expect(chunk.toArray()).toEqual([1, 1, 2, 2])
+      expect(result.toArray()).toEqual([2, 2, 1, 1])
+    })
+
+    it("another pipeline", async () => {
+      const program = Ref.make(Chunk.empty<number>())
+        .tap((ref) => {
+          const intProducer: Channel<
+            unknown,
+            unknown,
+            unknown,
+            unknown,
+            never,
+            number,
+            void
+          > = Channel.writeAll(1, 2, 3, 4, 5)
+
+          function readIntsN(
+            n: number
+          ): Channel<unknown, unknown, number, unknown, never, number, string> {
+            return n > 0
+              ? Channel.readWith(
+                  (i: number) => Channel.write(i) > readIntsN(n - 1),
+                  () => Channel.succeedNow("EOF"),
+                  () => Channel.succeedNow("EOF")
+                )
+              : Channel.succeedNow("end")
+          }
+
+          function sum(
+            label: string,
+            acc: number
+          ): Channel<unknown, unknown, number, unknown, unknown, never, void> {
+            return Channel.readWith(
+              (i: number) => sum(label, acc + i),
+              () => Channel.fromEffect(ref.update((chunk) => chunk.append(acc))),
+              () => Channel.fromEffect(ref.update((chunk) => chunk.append(acc)))
+            )
+          }
+
+          const conduit =
+            intProducer >>
+            (readIntsN(2) >> sum("left", 0) > readIntsN(2) >> sum("right", 0))
+
+          return conduit.run()
+        })
+        .flatMap((ref) => ref.get())
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result.toArray()).toEqual([3, 7])
+    })
+
+    it("resources", async () => {
+      const program = Ref.make(Chunk.empty<string>())
+        .tap((events) => {
+          const event = (label: string) => events.update((chunk) => chunk.append(label))
+
+          const left = Channel.acquireReleaseOutWith(event("Acquire outer"), () =>
+            event("Release outer")
+          ).concatMap(() =>
+            Channel.writeAll(1, 2, 3).concatMap((i) =>
+              Channel.acquireReleaseOutWith(event(`Acquire ${i}`).as(i), () =>
+                event(`Release ${i}`)
+              )
+            )
+          )
+
+          const read = Channel.read<number>().mapEffect((i) =>
+            event(`Read ${i}`).asUnit()
+          )
+
+          const right = (read > read).catchAll(() => Channel.unit)
+
+          return (left >> right).runDrain()
+        })
+        .flatMap((ref) => ref.get())
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result.toArray()).toEqual([
+        "Acquire outer",
+        "Acquire 1",
+        "Read 1",
+        "Release 1",
+        "Acquire 2",
+        "Read 2",
+        "Release 2",
+        "Release outer"
+      ])
+    })
+  })
+
+  describe("concurrent reads", () => {
+    it("simple concurrent reads", async () => {
+      const capacity = 128
+
+      const program = Effect.collectAll(List.repeat(Random.nextInt, capacity)).flatMap(
+        (data) =>
+          Ref.make(List.from(data))
+            .zip(Ref.make(List.empty<number>()))
+            .flatMap(({ tuple: [source, dest] }) => {
+              const twoWriters = refWriter(dest).mergeWith(
+                refWriter(dest),
+                () => MergeDecision.awaitConst(Effect.unit),
+                () => MergeDecision.awaitConst(Effect.unit)
+              )
+
+              return (refReader(source) >> twoWriters)
+                .mapEffect(() => dest.get())
+                .run()
+                .map((result) => {
+                  let missing = HashSet.from(data)
+                  let surplus = HashSet.from(result)
+
+                  for (const value of result) {
+                    missing = missing.remove(value)
+                  }
+                  for (const value of data) {
+                    surplus = surplus.remove(value)
+                  }
+
+                  return Tuple(missing, surplus)
+                })
+            })
+      )
+
+      const {
+        tuple: [missing, surplus]
+      } = await program.unsafeRunPromise()
+
+      expect(missing.size).toBe(0)
+      expect(surplus.size).toBe(0)
+    })
+
+    it("nested concurrent reads", async () => {
+      const capacity = 128
+      const f = (n: number) => n + 1
+
+      const program = Effect.collectAll(List.repeat(Random.nextInt, capacity)).flatMap(
+        (data) =>
+          Ref.make(List.from(data))
+            .zip(Ref.make(List.empty<number>()))
+            .flatMap(({ tuple: [source, dest] }) => {
+              const twoWriters = (mapper(f) >> refWriter(dest)).mergeWith(
+                mapper(f) >> refWriter(dest),
+                () => MergeDecision.awaitConst(Effect.unit),
+                () => MergeDecision.awaitConst(Effect.unit)
+              )
+
+              return (refReader(source) >> twoWriters)
+                .mapEffect(() => dest.get())
+                .run()
+                .map((result) => {
+                  const expected = HashSet.from(data.map(f))
+                  let missing = HashSet.from(expected)
+                  let surplus = HashSet.from(result)
+
+                  for (const value of result) {
+                    missing = missing.remove(value)
+                  }
+                  for (const value of expected) {
+                    surplus = surplus.remove(value)
+                  }
+
+                  return Tuple(missing, surplus)
+                })
+            })
+      )
+
+      const {
+        tuple: [missing, surplus]
+      } = await program.unsafeRunPromise()
+
+      expect(missing.size).toBe(0)
+      expect(surplus.size).toBe(0)
+    })
+  })
+
+  describe("mapError", () => {
+    it("structure confusion", async () => {
+      const program = Channel.fail("err")
+        .mapError(() => 1)
+        .runCollect()
+
+      const result = await program.unsafeRunPromiseExit()
+
+      expect(result.untraced()).toEqual(Exit.fail(1))
+    })
+  })
+
+  describe("provide", () => {
+    it("simple provide", async () => {
+      const program = Channel.fromEffect(Effect.service(NumberService))
+        .provideService(NumberService)({ n: 100 })
+        .run()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual({ n: 100 })
+    })
+
+    it("provide.zip(provide)", async () => {
+      const program = Channel.fromEffect(Effect.service(NumberService))
+        .provideService(NumberService)({ n: 100 })
+        .zip(
+          Channel.fromEffect(Effect.service(NumberService)).provideService(
+            NumberService
+          )({ n: 200 })
+        )
+        .run()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual(Tuple({ n: 100 }, { n: 200 }))
+    })
+
+    it("concatMap(provide).provide", async () => {
+      const program = Channel.fromEffect(Effect.service(NumberService))
+        .emitCollect()
+        .mapOut((tuple) => tuple.get(1))
+        .concatMap((n) =>
+          Channel.fromEffect(Effect.service(NumberService).map((m) => Tuple(n, m)))
+            .provideService(NumberService)({ n: 200 })
+            .flatMap((tuple) => Channel.write(tuple))
+        )
+        .provideService(NumberService)({ n: 100 })
+        .runCollect()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result.get(0).toArray()).toEqual([Tuple({ n: 100 }, { n: 200 })])
+      expect(result.get(1)).toBeUndefined()
+    })
+
+    it("provide is modular", async () => {
+      const program = Channel.Do()
+        .bind("v1", () => Channel.fromEffect(Effect.service(NumberService)))
+        .bind("v2", () =>
+          Channel.fromEffect(Effect.service(NumberService)).provideEnvironment(
+            NumberService.has({ n: 2 })
+          )
+        )
+        .bind("v3", () => Channel.fromEffect(Effect.service(NumberService)))
+        .runDrain()
+        .provideEnvironment(NumberService.has({ n: 4 }))
+
+      const { v1, v2, v3 } = await program.unsafeRunPromise()
+
+      expect(v1).toEqual({ n: 4 })
+      expect(v2).toEqual({ n: 2 })
+      expect(v3).toEqual({ n: 4 })
+    })
+  })
+
+  describe("stack safety", () => {
+    it("mapOut is stack safe", async () => {
+      const N = 10_000
+
+      const program = List.range(1, N + 1)
+        .reduce(Channel.write(1), (channel, n) => channel.mapOut((_) => _ + n))
+        .runCollect()
+
+      const {
+        tuple: [chunk, _]
+      } = await program.unsafeRunPromise()
+
+      expect(chunk.unsafeHead()).toBe(List.range(1, N + 1).reduce(1, (a, b) => a + b))
+    })
+
+    it("concatMap is stack safe", async () => {
+      const N = 10_000
+
+      const program = List.range(1, N + 1)
+        .reduce(Channel.write(1), (channel, n) =>
+          channel.concatMap(() => Channel.write(n)).asUnit()
+        )
+        .runCollect()
+
+      const {
+        tuple: [chunk, _]
+      } = await program.unsafeRunPromise()
+
+      expect(chunk.unsafeHead()).toBe(N)
+    })
+
+    it("flatMap is stack safe", async () => {
+      const N = 10_000
+
+      const program = List.range(1, N + 1)
+        .reduce(Channel.write(0), (channel, n) =>
+          channel.flatMap(() => Channel.write(n))
+        )
+        .runCollect()
+
+      const {
+        tuple: [chunk, _]
+      } = await program.unsafeRunPromise()
+
+      expect(chunk.toArray()).toEqual(List.range(0, N + 1).toArray())
+    })
+  })
+
+  it("cause is propagated on channel interruption", async () => {
+    const program = Effect.Do()
+      .bind("promise", () => Promise.make<never, void>())
+      .bind("ref", () => Ref.make<Exit<unknown, unknown>>(Exit.unit))
+      .tap(({ promise, ref }) =>
+        Channel.fromEffect(promise.succeed(undefined) > Effect.never)
+          .runDrain()
+          .onExit((exit) => ref.set(exit))
+          .raceEither(promise.await())
+      )
+      .flatMap(({ ref }) => ref.get())
+
+    const result = await program.unsafeRunPromise()
+
+    expect(result.isInterrupted()).toBe(true)
   })
 })

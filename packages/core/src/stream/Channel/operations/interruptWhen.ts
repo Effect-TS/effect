@@ -38,8 +38,8 @@ export function interruptWhen_<
 > {
   return self.mergeWith(
     Channel.fromEffect(io),
-    (selfDone) => MergeDecision.Done(Effect.done(selfDone)),
-    (ioDone) => MergeDecision.Done(Effect.done(ioDone))
+    (selfDone) => MergeDecision.done(Effect.done(selfDone)),
+    (ioDone) => MergeDecision.done(Effect.done(ioDone))
   )
 }
 

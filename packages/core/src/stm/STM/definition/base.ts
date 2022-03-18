@@ -66,7 +66,7 @@ export function unifySTM<X extends STM<any, any, any>>(
 
 export class STMBase<R, E, A> implements STM<R, E, A> {
   readonly [STMTypeId]: STMTypeId = STMTypeId;
-  readonly [_R]: (_: R) => void;
-  readonly [_E]: () => E;
-  readonly [_A]: () => A
+  readonly [_R]!: (_: R) => void;
+  readonly [_E]!: () => E;
+  readonly [_A]!: () => A
 }

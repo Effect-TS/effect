@@ -59,11 +59,11 @@ export abstract class ChannelBase<Env, InErr, InElem, InDone, OutErr, OutElem, O
   implements Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 {
   readonly [ChannelSym]: ChannelSym = ChannelSym;
-  readonly [_Env]: (_: Env) => void;
-  readonly [_InErr]: (_: InErr) => void;
-  readonly [_InElem]: (_: InElem) => void;
-  readonly [_InDone]: (_: InDone) => void;
-  readonly [_OutErr]: () => OutErr;
-  readonly [_OutElem]: () => OutElem;
-  readonly [_OutDone]: () => OutDone
+  readonly [_Env]!: (_: Env) => void;
+  readonly [_InErr]!: (_: InErr) => void;
+  readonly [_InElem]!: (_: InElem) => void;
+  readonly [_InDone]!: (_: InDone) => void;
+  readonly [_OutErr]!: () => OutErr;
+  readonly [_OutElem]!: () => OutElem;
+  readonly [_OutDone]!: () => OutDone
 }

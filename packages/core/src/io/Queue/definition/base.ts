@@ -151,12 +151,12 @@ export function concreteQueue<RA, RB, EA, EB, A, B>(
 export abstract class XQueueInternal<RA, RB, EA, EB, A, B>
   implements XQueue<RA, RB, EA, EB, A, B>
 {
-  readonly [_RA]: (_: RA) => void;
-  readonly [_RB]: (_: RB) => void;
-  readonly [_EA]: () => EA;
-  readonly [_EB]: () => EB;
-  readonly [_A]: (_: A) => void;
-  readonly [_B]: () => B
+  readonly [_RA]!: (_: RA) => void;
+  readonly [_RB]!: (_: RB) => void;
+  readonly [_EA]!: () => EA;
+  readonly [_EB]!: () => EB;
+  readonly [_A]!: (_: A) => void;
+  readonly [_B]!: () => B
 
   /**
    * Waits until the queue is shutdown. The `IO` returned by this method will

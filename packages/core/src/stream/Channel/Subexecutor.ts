@@ -74,7 +74,6 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
   }
 
   enqueuePullFromChild(child: PullFromChild<R>): Subexecutor<R> {
-    console.log(this.upstreamExecutor)
     return new PullFromUpstream(
       this.upstreamExecutor,
       this.createChild,

@@ -24,8 +24,8 @@ export declare namespace ChannelState {
 
 export abstract class ChannelStateBase<R, E> implements ChannelState<R, E> {
   readonly [ChannelStateSym]: ChannelStateSym = ChannelStateSym;
-  readonly [_R]: (_: R) => void;
-  readonly [_E]: () => E
+  readonly [_R]!: (_: R) => void;
+  readonly [_E]!: () => E
 }
 
 export class ChannelStateDone extends ChannelStateBase<unknown, never> {

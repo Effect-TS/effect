@@ -35,8 +35,8 @@ export function zipPar_<
 > {
   return self.mergeWith(
     that,
-    (exit1) => MergeDecision.Await((exit2) => Effect.done(exit1.zip(exit2))),
-    (exit2) => MergeDecision.Await((exit1) => Effect.done(exit1.zip(exit2)))
+    (exit1) => MergeDecision.await((exit2) => Effect.done(exit1.zip(exit2))),
+    (exit2) => MergeDecision.await((exit1) => Effect.done(exit1.zip(exit2)))
   )
 }
 

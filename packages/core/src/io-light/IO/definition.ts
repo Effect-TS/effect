@@ -32,8 +32,8 @@ export function unify<X extends IO<any>>(self: X): IO<UT._A<X>> {
 }
 
 abstract class Base<A> {
-  readonly [_U]: IoURI;
-  readonly [_A]: () => A
+  readonly [_U]!: IoURI;
+  readonly [_A]!: () => A
 }
 
 export class Succeed<A> extends Base<A> {

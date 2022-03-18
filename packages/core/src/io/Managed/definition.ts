@@ -50,10 +50,10 @@ export type RIO<R, A> = Managed<R, never, A>
 export type IO<E, A> = Managed<unknown, E, A>
 
 export class ManagedImpl<R, E, A> implements Managed<R, E, A> {
-  readonly [_U]: ManagedURI;
-  readonly [_E]: () => E;
-  readonly [_A]: () => A;
-  readonly [_R]: (_: R) => void
+  readonly [_U]!: ManagedURI;
+  readonly [_E]!: () => E;
+  readonly [_A]!: () => A;
+  readonly [_R]!: (_: R) => void
 
   constructor(readonly effect: Effect<R, E, Tuple<[Finalizer, A]>>) {}
 }

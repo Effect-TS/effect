@@ -394,15 +394,15 @@ export abstract class Continuation<
   OutDone,
   OutDone2
 > {
-  readonly [_Env]: (_: Env) => void;
-  readonly [_InErr]: (_: InErr) => void;
-  readonly [_InElem]: (_: InElem) => void;
-  readonly [_InDone]: (_: InDone) => void;
-  readonly [_OutErr]: (_: OutErr) => OutErr;
-  readonly [_OutDone]: (_: OutDone) => OutDone;
-  readonly [_OutErr2]: () => OutErr2;
-  readonly [_OutElem]: () => OutElem;
-  readonly [_OutDone2]: () => OutDone2
+  readonly [_Env]!: (_: Env) => void;
+  readonly [_InErr]!: (_: InErr) => void;
+  readonly [_InElem]!: (_: InElem) => void;
+  readonly [_InDone]!: (_: InDone) => void;
+  readonly [_OutErr]!: (_: OutErr) => OutErr;
+  readonly [_OutDone]!: (_: OutDone) => OutDone;
+  readonly [_OutErr2]!: () => OutErr2;
+  readonly [_OutElem]!: () => OutElem;
+  readonly [_OutDone2]!: () => OutDone2
 }
 
 /**

@@ -43,8 +43,8 @@ function interpret<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
       return Effect.succeed(Either.right(exec.getEmit()))
     }
     case "Effect": {
-      return (
-        channelState.effect > interpret(exec.run() as ChannelState<Env, OutErr>, exec)
+      return channelState.effect.zipRight(
+        interpret(exec.run() as ChannelState<Env, OutErr>, exec)
       )
     }
     case "Read": {

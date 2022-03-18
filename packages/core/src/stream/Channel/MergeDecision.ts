@@ -45,11 +45,11 @@ export abstract class MergeDecisionBase<R, E0, Z0, E, Z>
 {
   readonly [MergeDecisionSym]: typeof MergeDecisionSym = MergeDecisionSym;
 
-  readonly [_R]: (_: R) => void;
-  readonly [_E0]: (_: E0) => void;
-  readonly [_Z0]: (_: Z0) => void;
-  readonly [_E]: () => E;
-  readonly [_Z]: () => Z
+  readonly [_R]!: (_: R) => void;
+  readonly [_E0]!: (_: E0) => void;
+  readonly [_Z0]!: (_: Z0) => void;
+  readonly [_E]!: () => E;
+  readonly [_Z]!: () => Z
 }
 
 export class Done<R, E, Z> extends MergeDecisionBase<R, unknown, unknown, E, Z> {
