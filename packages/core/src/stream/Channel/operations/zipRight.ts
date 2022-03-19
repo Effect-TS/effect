@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import type { Channel } from "../definition"
 
 /**
@@ -25,7 +26,7 @@ export function zipRight_<
   OutDone1
 >(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  that: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
+  that: LazyArg<Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>>
 ): Channel<
   Env & Env1,
   InErr & InErr1,
@@ -35,7 +36,7 @@ export function zipRight_<
   OutElem | OutElem1,
   OutDone1
 > {
-  return self.zip(that).map((tuple) => tuple.get(1))
+  return self.flatMap(that)
 }
 
 /**

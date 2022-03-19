@@ -172,15 +172,16 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
   ): RIO<Env, unknown> | undefined {
-    const runInProgressFinalizers =
-      this.inProgressFinalizer != null
-        ? this.inProgressFinalizer.ensuring(
-            Effect.succeed(this.clearInProgressFinalizer())
-          )
-        : undefined
+    let runInProgressFinalizers: RIO<Env, unknown> | undefined = undefined
+    const finalizer = this.inProgressFinalizer
+    if (finalizer != null) {
+      runInProgressFinalizers = finalizer.ensuring(
+        Effect.succeed(this.clearInProgressFinalizer())
+      )
+    }
 
     const closeSubexecutors =
-      this.activeSubexecutor != null ? this.activeSubexecutor.close(exit) : undefined
+      this.activeSubexecutor == null ? undefined : this.activeSubexecutor.close(exit)
 
     let closeSelf: RIO<Env, unknown> | undefined = undefined
     const selfFinalizers = this.popAllFinalizers(exit)
