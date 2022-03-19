@@ -1,4 +1,5 @@
 import type { Either } from "../../../data/Either"
+import type { LazyArg } from "../../../data/Function"
 import type { Exit } from "../../../io/Exit"
 import type { Dequeue } from "../../../io/Queue"
 import { Channel } from "../definition"
@@ -7,9 +8,9 @@ import { Channel } from "../definition"
  * @tsplus static ets/ChannelOps fromQueue
  */
 export function fromQueue<Err, Elem, Done>(
-  queue: Dequeue<Either<Exit<Err, Done>, Elem>>
+  queue: LazyArg<Dequeue<Either<Exit<Err, Done>, Elem>>>
 ): Channel<unknown, unknown, unknown, unknown, Err, Elem, Done> {
-  return Channel.suspend(fromQueueInternal(queue))
+  return Channel.suspend(fromQueueInternal(queue()))
 }
 
 function fromQueueInternal<Err, Elem, Done>(
