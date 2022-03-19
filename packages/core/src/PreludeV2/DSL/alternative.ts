@@ -5,8 +5,10 @@ import type { AssociativeEither } from "../AssociativeEither"
 import type { Covariant } from "../Covariant"
 import type { HKT, Kind } from "../HKT"
 
+// @todo(warn): original requires fa to be Kind<R2, E2, A>, not Kind<R, E, A>
 export function orElseF<F extends HKT>(
-  F_: AssociativeEither<F> & Covariant<F>
+  F_: Covariant<F>,
+  A_: AssociativeEither<F>
 ): <X, I2, R2, E2, B>(
   fb: () => Kind<F, X, I2, R2, E2, B>
 ) => <I, R, E, A>(
@@ -15,7 +17,7 @@ export function orElseF<F extends HKT>(
   return (fb) => (fa) =>
     pipe(
       fa,
-      F_.orElseEither(fb),
+      A_.orElseEither(fb),
       F_.map((e) => (e._tag === "Left" ? e.left : e.right))
     )
 }

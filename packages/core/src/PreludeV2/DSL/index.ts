@@ -2,7 +2,7 @@
 
 // codegen:start {preset: barrel, include: ./*.ts}
 // export * from "./access-provide.js"
-// export * from "./alternative.js"
+export * from "./alternative.js"
 export * from "./applicative.js"
 export * from "./apply.js"
 export * from "./chain.js"
