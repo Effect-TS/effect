@@ -23,12 +23,28 @@ export type Kind<F extends HKT, X, I, R, E, A> = F extends { readonly type: unkn
     })["type"]
   : {
       readonly _F: F
-      readonly X: X
-      readonly I: I
+      readonly _X: X
+      readonly _I: I
       readonly _R: (_: R) => void
       readonly _E: () => E
       readonly _A: () => A
     }
+
+export type Infer<F extends HKT, P extends "X" | "I" | "R" | "E" | "A", K> = [
+  K
+] extends [Kind<F, infer X, infer I, infer R, infer E, infer A>]
+  ? P extends "X"
+    ? X
+    : P extends "I"
+    ? I
+    : P extends "R"
+    ? R
+    : P extends "E"
+    ? E
+    : P extends "A"
+    ? A
+    : never
+  : never
 
 export interface ComposeF<F extends HKT, G extends HKT> extends HKT {
   readonly type: Kind<
