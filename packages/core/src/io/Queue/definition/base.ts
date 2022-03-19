@@ -120,6 +120,9 @@ export interface XQueue<RA, RB, EA, EB, A, B> {
   readonly [_B]: () => B
 }
 
+/**
+ * @tsplus unify ets/XQueue
+ */
 export function unifyXQueue<X extends XQueue<any, any, any, any, any, any>>(
   self: X
 ): XQueue<
