@@ -1,3 +1,5 @@
+// ets_tracing: off
+
 import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import * as E from "@effect-ts/system/Either"
 import { pipe } from "@effect-ts/system/Function"
@@ -41,7 +43,7 @@ export const getValidationF =
                     E.fold_(
                       eitherB,
                       (e) => F_.fail(e),
-                      (b) => succeedF(A_)(Tp.tuple(a, b))
+                      (b) => succeedF(M_, A_)(Tp.tuple(a, b))
                     )
                 )
             ),
