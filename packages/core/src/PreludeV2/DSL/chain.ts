@@ -4,6 +4,7 @@ import { pipe } from "../../Function"
 import type * as HKT from "../HKT"
 import type { Monad } from "../Monad"
 
+// @todo(warn): original requires fa to be Kind<R2, E2, A>, not Kind<R, E, A>
 export function chainF<F extends HKT.HKT>(
   F_: Monad<F>
 ): <X, I2, R2, E2, A, B>(

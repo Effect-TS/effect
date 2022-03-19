@@ -5,7 +5,7 @@
 // export * from "./alternative.js"
 // export * from "./applicative.js"
 export * from "./apply.js"
-// export * from "./chain.js"
+export * from "./chain.js"
 // export * from "./conditionals.js"
 // export * from "./do.js"
 // export * from "./gen.js"
