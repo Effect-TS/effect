@@ -5,6 +5,7 @@ import type { EnforceNonEmptyRecord } from "../../Utils/index.js"
 import type { Apply } from "../Apply/index.js"
 import type * as HKT from "../HKT/index.js"
 
+// @todo(warn): original requires fa to be Kind<R2, E2, A>, not Kind<R, E, A>
 export function apF<F extends HKT.HKT>(F_: Apply<F>) {
   return <X, I, R, E, A>(fa: HKT.Kind<F, X, I, R, E, A>) =>
     <I2, R2, E2, B>(
