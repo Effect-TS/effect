@@ -10,6 +10,6 @@ export * from "./apply.js"
 // export * from "./do.js"
 // export * from "./gen.js"
 export * from "./matchers.js"
-// export * from "./succeed.js"
+export * from "./succeed.js"
 export * from "./validation.js"
 // codegen:end
