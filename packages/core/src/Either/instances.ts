@@ -1,87 +1,86 @@
 // ets_tracing: off
 
-import type { EitherURI } from "../Modules/index.js"
-import type { URI } from "../Prelude/index.js"
-import * as P from "../Prelude/index.js"
-import type { V } from "./definition.js"
-import * as E from "./operations/index.js"
+import * as P from "../PreludeV2/index.js"
+import * as EI from "./operations/index.js"
 
-export const Any = P.instance<P.Any<[URI<EitherURI>], V>>({
-  any: () => E.right({})
+export interface EitherF extends P.HKT {
+  readonly type: EI.Either<this["E"], this["A"]>
+}
+
+export const Any = P.instance<P.Any<EitherF>>({
+  any: () => EI.right({})
 })
 
-export const AssociativeBoth = P.instance<P.AssociativeBoth<[URI<EitherURI>], V>>({
-  both: E.zip
+export const AssociativeBoth = P.instance<P.AssociativeBoth<EitherF>>({
+  both: EI.zip
 })
 
-export const AssociativeEither = P.instance<P.AssociativeEither<[URI<EitherURI>], V>>({
+export const AssociativeEither = P.instance<P.AssociativeEither<EitherF>>({
   orElseEither: (fb) => (fa) =>
-    fa._tag === "Right" ? E.right(E.left(fa.right)) : E.map_(fb(), E.right)
+    fa._tag === "Right" ? EI.right(EI.left(fa.right)) : EI.map_(fb(), EI.right)
 })
 
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[URI<EitherURI>], V>>(
-  {
-    flatten: E.flatten
-  }
-)
-
-export const Covariant = P.instance<P.Covariant<[URI<EitherURI>], V>>({
-  map: E.map
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<EitherF>>({
+  flatten: EI.flatten
 })
 
-export const Applicative = P.instance<P.Applicative<[URI<EitherURI>], V>>({
+export const Covariant = P.instance<P.Covariant<EitherF>>({
+  map: EI.map
+})
+
+export const Applicative = P.instance<P.Applicative<EitherF>>({
   ...Any,
   ...Covariant,
   ...AssociativeBoth
 })
 
-export const Monad = P.instance<P.Monad<[URI<EitherURI>], V>>({
+export const Monad = P.instance<P.Monad<EitherF>>({
   ...Any,
   ...Covariant,
   ...AssociativeFlatten
 })
 
-export const Fail = P.instance<P.FX.Fail<[URI<EitherURI>], V>>({
-  fail: E.left
+export const Fail = P.instance<P.FX.Fail<EitherF>>({
+  fail: EI.left
 })
 
-export const Run = P.instance<P.FX.Run<[URI<EitherURI>], V>>({
-  either: E.right
+export const Run = P.instance<P.FX.Run<EitherF>>({
+  either: EI.right
 })
 
-export const ForEach = P.instance<P.ForEach<[URI<EitherURI>], V>>({
-  map: E.map,
-  forEachF: E.forEachF
+export const ForEach = P.instance<P.ForEach<EitherF>>({
+  map: EI.map,
+  forEachF: EI.forEachF
 })
 
-export const FoldMap = P.instance<P.FoldMap<[URI<EitherURI>], V>>({
-  foldMap: E.foldMap
+export const FoldMap = P.instance<P.FoldMap<EitherF>>({
+  foldMap: EI.foldMap
 })
 
-export const Reduce = P.instance<P.Reduce<[URI<EitherURI>], V>>({
-  reduce: E.reduce
+export const Reduce = P.instance<P.Reduce<EitherF>>({
+  reduce: EI.reduce
 })
 
-export const ReduceRight = P.instance<P.ReduceRight<[URI<EitherURI>], V>>({
-  reduceRight: E.reduceRight
+export const ReduceRight = P.instance<P.ReduceRight<EitherF>>({
+  reduceRight: EI.reduceRight
 })
 
-export const Foldable = P.instance<P.Foldable<[URI<EitherURI>], V>>({
+export const Foldable = P.instance<P.Foldable<EitherF>>({
   ...FoldMap,
   ...Reduce,
   ...ReduceRight
 })
 
-export const ChainRec = P.instance<P.ChainRec<[URI<EitherURI>]>>({
+export const ChainRec = P.instance<P.ChainRec<EitherF>>({
   chainRec:
-    <A, B, E>(f: (a: A) => E.Either<E, E.Either<A, B>>) =>
-    (a: A): E.Either<E, B> =>
-      P.tailRec<E.Either<E, E.Either<A, B>>, E.Either<E, B>>(f(a), (e) =>
-        E.isLeft(e)
-          ? E.right(E.left(e.left))
-          : E.isLeft(e.right)
-          ? E.left(f(e.right.left))
-          : E.right(E.right(e.right.right))
+    <A, B, E>(f: (a: A) => EI.Either<E, EI.Either<A, B>>) =>
+    (a: A): EI.Either<E, B> =>
+      P.tailRec<EI.Either<E, EI.Either<A, B>>, EI.Either<E, B>>(f(a), (e) =>
+        EI.isLeft(e)
+          ? EI.right(EI.left(e.left))
+          : EI.isLeft(e.right)
+          ? EI.left(f(e.right.left))
+          : EI.right(EI.right(e.right.right))
       )
 })
 export const { chainRec } = ChainRec
