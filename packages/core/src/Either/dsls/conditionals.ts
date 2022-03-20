@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import * as DSL from "../../Prelude/DSL/index.js"
-import { Covariant } from "../instances.js"
+import * as DSL from "../../PreludeV2/DSL/index.js"
+import type { EitherF } from "../instances.js"
 
 /**
  * Conditionals
  */
-const branch = DSL.conditionalF(Covariant)
-const branch_ = DSL.conditionalF_(Covariant)
+const branch = DSL.conditionalF<EitherF>()
+const branch_ = DSL.conditionalF_<EitherF>()
 
 export { branch as if, branch_ as if_ }
