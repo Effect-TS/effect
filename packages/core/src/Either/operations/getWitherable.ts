@@ -1,8 +1,9 @@
 // ets_tracing: off
 
+import type { EitherFixedLeftF } from "@effect-ts/core/Either"
+
 import type { Identity } from "../../Identity/index.js"
-import type { EitherURI } from "../../Modules/index.js"
-import * as P from "../../Prelude/index.js"
+import * as P from "../../PreludeV2/index.js"
 import { getCompactF } from "./compactOption.js"
 
 /**
@@ -10,7 +11,7 @@ import { getCompactF } from "./compactOption.js"
  */
 export function getWitherable<E>(M: Identity<E>) {
   const compactF = getCompactF(M)
-  return P.instance<P.Witherable<[P.URI<EitherURI>], P.Fix<"E", E>>>({
+  return P.instance<P.Witherable<EitherFixedLeftF<E>>>({
     compactF
   })
 }

@@ -1,8 +1,9 @@
 // ets_tracing: off
 
+import type { EitherFixedLeftF } from "@effect-ts/core/Either"
+
 import type { Identity } from "../../Identity/index.js"
-import type { EitherURI } from "../../Modules/index.js"
-import * as P from "../../Prelude/index.js"
+import * as P from "../../PreludeV2/index.js"
 import { getSeparateF } from "./separate.js"
 
 /**
@@ -10,7 +11,7 @@ import { getSeparateF } from "./separate.js"
  */
 export function getWiltable<E>(M: Identity<E>) {
   const separateF = getSeparateF(M)
-  return P.instance<P.Wiltable<[P.URI<EitherURI>], P.Fix<"E", E>>>({
+  return P.instance<P.Wiltable<EitherFixedLeftF<E>>>({
     separateF
   })
 }
