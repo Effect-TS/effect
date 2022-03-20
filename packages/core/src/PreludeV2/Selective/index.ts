@@ -2,15 +2,18 @@
 
 import * as EI from "@effect-ts/system/Either"
 
-import { constant, identity, pipe } from "../../Function"
-import * as HKT from "../../PreludeV2/HKT"
-import type { Any } from "../Any"
-import type { Applicative } from "../Applicative"
-import type { Covariant } from "../Covariant"
-import { chainF, succeedF } from "../DSL"
-import type { Monad } from "../Monad"
+import { constant, identity, pipe } from "../../Function/index.js"
+import type { Any } from "../Any/index.js"
+import type { Applicative } from "../Applicative/index.js"
+import type { Covariant } from "../Covariant/index.js"
+import { chainF, succeedF } from "../DSL/index.js"
+import * as HKT from "../HKT/index.js"
+import type { Monad } from "../Monad/index.js"
 
-export interface Select<F extends HKT.HKT> {
+
+
+
+export interface Select<F extends HKT.HKT> extends HKT.Typeclass<F> {
   readonly select: <X, I2, R2, E2, A, B>(
     fab: HKT.Kind<F, X, I2, R2, E2, (a: A) => B>
   ) => <I, R, E, B2>(
@@ -39,7 +42,7 @@ export function monad<F extends HKT.HKT>(F_: Monad<F>): SelectiveMonad<F> {
                   fab,
                   F_.map((g) => g(a))
                 ),
-              (b) => succeedF(F_)<B | B2, X, I & I2, R & R2, E | E2>(b)
+              (b) => succeedF(F_, F_)<B | B2, X, I & I2, R & R2, E | E2>(b)
             )
           )
         )
@@ -101,4 +104,4 @@ export const whenF =
   <I, R, E>(
     if_: HKT.Kind<F, X, I, R, E, boolean>
   ): HKT.Kind<F, X, I & I2, R & R2, E | E2, void> =>
-    pipe(if_, ifF(F_)(act, succeedF(F_)(undefined)))
+    pipe(if_, ifF(F_)(act, succeedF(F_, F_)(undefined)))

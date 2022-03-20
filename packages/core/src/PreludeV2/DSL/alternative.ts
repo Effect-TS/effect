@@ -1,11 +1,10 @@
 // ets_tracing: off
 
-import { pipe } from "../../Function"
-import type { AssociativeEither } from "../AssociativeEither"
-import type { Covariant } from "../Covariant"
-import type { HKT, Kind } from "../HKT"
+import { pipe } from "../../Function/index.js"
+import type { AssociativeEither } from "../AssociativeEither/index.js"
+import type { Covariant } from "../Covariant/index.js"
+import type { HKT, Kind } from "../HKT/index.js"
 
-// @todo(warn): original requires fa to be Kind<R2, E2, A>, not Kind<R, E, A>
 export function orElseF<F extends HKT>(
   F_: Covariant<F>,
   A_: AssociativeEither<F>

@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as HKT from "../HKT"
+import type * as HKT from "../HKT/index.js"
 
-export interface Invariant<F extends HKT.HKT> {
+export interface Invariant<F extends HKT.HKT> extends HKT.Typeclass<F> {
   readonly invmap: <A, B>(fg: {
     f: (a: A) => B
     g: (b: B) => A

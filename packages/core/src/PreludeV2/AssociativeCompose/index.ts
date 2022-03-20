@@ -1,8 +1,8 @@
 // ets_tracing: off
 
-import type * as HKT from "../HKT"
+import type * as HKT from "../HKT/index.js"
 
-export interface AssociativeCompose<F extends HKT.HKT> {
+export interface AssociativeCompose<F extends HKT.HKT> extends HKT.Typeclass<F> {
   readonly compose: <B, C, X = any, R = unknown, E = never>(
     bc: HKT.Kind<F, X, B, R, E, C>
   ) => <A, R2 = unknown, E2 = never>(

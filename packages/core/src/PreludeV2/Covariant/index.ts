@@ -1,8 +1,8 @@
 import { pipe } from "@effect-ts/core/Function"
 
-import * as HKT from "../HKT"
+import * as HKT from "../HKT/index.js"
 
-export interface Covariant<F extends HKT.HKT> {
+export interface Covariant<F extends HKT.HKT> extends HKT.Typeclass<F> {
   readonly map: <A, B>(
     f: (a: A) => B
   ) => <X, I, R, E>(fa: HKT.Kind<F, X, I, R, E, A>) => HKT.Kind<F, X, I, R, E, B>

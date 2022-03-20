@@ -1,5 +1,5 @@
-import type { Covariant } from "../Covariant"
-import type * as HKT from "../HKT"
-import type { IdentityBoth } from "../IdentityBoth"
+import type { Covariant } from "../Covariant/index.js"
+import type * as HKT from "../HKT/index.js"
+import type { IdentityBoth } from "../IdentityBoth/index.js"
 
 export interface Applicative<F extends HKT.HKT> extends IdentityBoth<F>, Covariant<F> {}

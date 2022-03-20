@@ -2,10 +2,10 @@
 
 import { pipe } from "@effect-ts/core/Function"
 
-import type * as HKT from "../HKT"
-import type { Monad } from "../Monad"
-import { chainF } from "./chain"
-import { succeedF } from "./succeed"
+import type * as HKT from "../HKT/index.js"
+import type { Monad } from "../Monad/index.js"
+import { chainF } from "./chain.js"
+import { succeedF } from "./succeed.js"
 
 export interface DoF<F extends HKT.HKT> {
   do: HKT.Kind<F, any, unknown, unknown, never, {}>

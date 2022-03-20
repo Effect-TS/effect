@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type * as HKT from "../HKT"
+import type * as HKT from "../HKT/index.js"
 
 type KindFromObj<F extends HKT.HKT, __> = HKT.Kind<
   F,

@@ -2,9 +2,9 @@
 
 import type { Either } from "@effect-ts/system/Either"
 
-import type * as HKT from "../HKT"
+import type * as HKT from "../HKT/index.js"
 
-export interface AssociativeEither<F extends HKT.HKT> {
+export interface AssociativeEither<F extends HKT.HKT> extends HKT.Typeclass<F> {
   readonly orElseEither: <X, I2, R2, E2, B>(
     fb: () => HKT.Kind<F, X, I2, R2, E2, B>
   ) => <I, R, E, A>(

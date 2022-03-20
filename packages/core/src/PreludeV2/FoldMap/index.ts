@@ -3,7 +3,7 @@
 import type { Identity } from "../../Identity/index.js"
 import type * as HKT from "../HKT/index.js"
 
-export interface FoldMap<F extends HKT.HKT> {
+export interface FoldMap<F extends HKT.HKT> extends HKT.Typeclass<F> {
   readonly foldMap: FoldMapFn<F>
 }
 

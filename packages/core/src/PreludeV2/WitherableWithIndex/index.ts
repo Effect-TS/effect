@@ -2,10 +2,10 @@
 
 import type { Option } from "@effect-ts/system/Option"
 
-import type { Applicative } from "../Applicative"
-import type * as HKT from "../HKT"
+import type { Applicative } from "../Applicative/index.js"
+import type * as HKT from "../HKT/index.js"
 
-export interface WitherWithIndex<K, F extends HKT.HKT> {
+export interface WitherWithIndex<K, F extends HKT.HKT> extends HKT.Typeclass<F> {
   <G extends HKT.HKT>(F: Applicative<G>): <GX, GI, GR, GE, A, B>(
     f: (k: K, a: A) => HKT.Kind<G, GX, GI, GR, GE, Option<B>>
   ) => <FX, FI, FR, FE>(

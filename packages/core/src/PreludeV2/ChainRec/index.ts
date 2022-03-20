@@ -2,9 +2,9 @@
 
 import type { Either } from "@effect-ts/system/Either"
 
-import type * as HKT from "../HKT"
+import type * as HKT from "../HKT/index.js"
 
-export interface ChainRec<F extends HKT.HKT> {
+export interface ChainRec<F extends HKT.HKT> extends HKT.Typeclass<F> {
   readonly chainRec: <A, B, X, I, R, E>(
     f: (a: A) => HKT.Kind<F, X, I, R, E, Either<A, B>>
   ) => (a: A) => HKT.Kind<F, X, I, R, E, B>
