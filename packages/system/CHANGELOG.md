@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.56.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.55.1...@effect-ts/system@0.56.0) (2022-03-21)
+
+
+### Bug Fixes
+
+* make empty queue value explicit ([e12cdef](https://github.com/Effect-TS/core/commit/e12cdef95d935417edf1090a808c90bdae5ccd5d))
+
+
+
+
+
 ## [0.55.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.55.0...@effect-ts/system@0.55.1) (2022-03-17)
 
 **Note:** Version bump only for package @effect-ts/system
