@@ -15,4 +15,13 @@ describe("Queue", () => {
     )
     expect(result).toEqual(A.from(["The number is 10", "The number is 20"]))
   })
+  it("deals with falsy values", async () => {
+    const result = await pipe(
+      Q.makeUnbounded<number>(),
+      T.tap((q) => Q.offer_(q, 0)),
+      T.chain(Q.take),
+      T.runPromise
+    )
+    expect(result).toEqual(0)
+  })
 })

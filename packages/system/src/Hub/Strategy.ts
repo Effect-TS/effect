@@ -61,13 +61,11 @@ export abstract class Strategy<A> {
     pollers: MQ.MutableQueue<P.Promise<never, A>>
   ): void {
     let keepPolling = true
-    const nullPoller = null as unknown as P.Promise<never, A>
-    const empty = null as unknown as A
 
     while (keepPolling && !subscription.isEmpty()) {
-      const poller = pollers.poll(nullPoller)!
+      const poller = pollers.poll(MQ.EmptyQueue)!
 
-      if (poller === nullPoller) {
+      if (poller === MQ.EmptyQueue) {
         const subPollerPair = Tp.tuple(subscription, pollers)
 
         subscribers.remove(subPollerPair)
@@ -77,9 +75,9 @@ export abstract class Strategy<A> {
         }
         keepPolling = false
       } else {
-        const pollResult = subscription.poll(empty)
+        const pollResult = subscription.poll(MQ.EmptyQueue)
 
-        if (pollResult === null) {
+        if (pollResult === MQ.EmptyQueue) {
           U.unsafeOfferAll(
             pollers,
             Chunk.prepend_(U.unsafePollAllQueue(pollers), poller)
@@ -167,13 +165,12 @@ export class BackPressure<A> extends Strategy<A> {
       Tp.Tuple<[InternalHub.Subscription<A>, MQ.MutableQueue<P.Promise<never, A>>]>
     >
   ): void {
-    const empty = null as unknown as readonly [A, P.Promise<never, boolean>, boolean]
     let keepPolling = true
 
     while (keepPolling && !hub.isFull()) {
-      const publisher = this.publishers.poll(empty)!
+      const publisher = this.publishers.poll(MQ.EmptyQueue)!
 
-      if (publisher === null) {
+      if (publisher === MQ.EmptyQueue) {
         keepPolling = false
       } else {
         const published = hub.publish(publisher[0])
