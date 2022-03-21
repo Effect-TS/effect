@@ -967,10 +967,11 @@ class UnsafeMakeSubscriptionImplementation<A> extends XQueueInternal<
       return T.interrupt
     }
 
-    const empty = null as unknown as A
-    const message = this.pollers.isEmpty ? this.subscription.poll(empty) : empty
+    const message = this.pollers.isEmpty
+      ? this.subscription.poll(MQ.EmptyQueue)
+      : MQ.EmptyQueue
 
-    if (message === null) {
+    if (message === MQ.EmptyQueue) {
       const promise = P.unsafeMake<never, A>(fiberId)
 
       return T.onInterrupt_(

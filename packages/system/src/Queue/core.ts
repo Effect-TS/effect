@@ -4,6 +4,7 @@ import * as ChunkFilter from "../Collections/Immutable/Chunk/api/filter.js"
 import * as Chunk from "../Collections/Immutable/Chunk/core.js"
 import type { AtomicBoolean } from "../Support/AtomicBoolean/index.js"
 import type { MutableQueue } from "../Support/MutableQueue/index.js"
+import { EmptyQueue } from "../Support/MutableQueue/index.js"
 import * as T from "./effect.js"
 import * as P from "./promise.js"
 import type { XQueue } from "./xqueue.js"
@@ -87,7 +88,7 @@ export class SlidingStrategy<A> implements Strategy<A> {
       }
 
       // poll 1 and retry
-      queue.poll(undefined)
+      queue.poll(EmptyQueue)
 
       if (queue.offer(Chunk.unsafeGet_(bs, 0))) {
         bs = Chunk.drop_(bs, 1)
@@ -108,12 +109,12 @@ export function unsafeCompleteTakers<A>(
   let keepPolling = true
 
   while (keepPolling && !queue.isEmpty) {
-    const taker = takers.poll(undefined)
+    const taker = takers.poll(EmptyQueue)
 
-    if (taker) {
-      const element = queue.poll(undefined)
+    if (taker !== EmptyQueue) {
+      const element = queue.poll(EmptyQueue)
 
-      if (element) {
+      if (element !== EmptyQueue) {
         unsafeCompletePromise(taker, element)
         strategy.unsafeOnQueueEmptySpace(queue, takers)
       } else {
@@ -149,7 +150,10 @@ export function unsafePollAll<A>(q: MutableQueue<A>): Chunk.Chunk<A> {
   let as = Chunk.empty<A>()
 
   while (!q.isEmpty) {
-    as = Chunk.append_(as, q.poll(undefined)!)
+    const elem = q.poll(EmptyQueue)!
+    if (elem !== EmptyQueue) {
+      as = Chunk.append_(as, elem)
+    }
   }
 
   return as
