@@ -113,13 +113,13 @@ class UnboundedHubSubscription<A> extends Subscription<A> {
     return empty
   }
 
-  poll(default_: A): A {
+  poll<D>(default_: D): A | D {
     if (this.unsubscribed) {
       return default_
     }
 
     let loop = true
-    let polled = default_
+    let polled: A | D = default_
 
     while (loop) {
       if (this.subscriberHead === this.self.publisherTail) {

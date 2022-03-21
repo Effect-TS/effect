@@ -6,7 +6,7 @@ import type * as Chunk from "../../Collections/Immutable/Chunk/index.js"
 
 export abstract class Subscription<A> {
   abstract isEmpty(): boolean
-  abstract poll(default_: A): A
+  abstract poll<D>(default_: D): A | D
   abstract pollUpTo(n: number): Chunk.Chunk<A>
   abstract size(): number
   abstract unsubscribe(): void

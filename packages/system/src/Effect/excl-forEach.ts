@@ -29,7 +29,7 @@ import * as Q from "../Queue/core.js"
 import { XQueueInternal } from "../Queue/xqueue.js"
 import { AtomicBoolean } from "../Support/AtomicBoolean/index.js"
 import type { MutableQueue } from "../Support/MutableQueue/index.js"
-import { Bounded, Unbounded } from "../Support/MutableQueue/index.js"
+import { Bounded, EmptyQueue, Unbounded } from "../Support/MutableQueue/index.js"
 import * as asUnit from "./asUnit.js"
 import * as bracket from "./bracket.js"
 import { bracketExit_ } from "./bracketExit.js"
@@ -1178,9 +1178,9 @@ export class BackPressureStrategy<A> implements Q.Strategy<A> {
     let keepPolling = true
 
     while (keepPolling && !queue.isFull) {
-      const putter = this.putters.poll(undefined)
+      const putter = this.putters.poll(EmptyQueue)
 
-      if (putter != null) {
+      if (putter !== EmptyQueue) {
         const offered = queue.offer(putter.get(0))
 
         if (offered && putter.get(2)) {
@@ -1268,9 +1268,9 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
       } else {
         const noRemaining = (() => {
           if (this.queue.isEmpty) {
-            const taker = this.takers.poll(undefined)
+            const taker = this.takers.poll(EmptyQueue)
 
-            if (!taker) {
+            if (taker === EmptyQueue) {
               return false
             } else {
               Q.unsafeCompletePromise(taker, a)
@@ -1372,9 +1372,9 @@ class UnsafeCreate<A> extends XQueueInternal<unknown, unknown, never, never, A, 
       return interruption.interrupt
     }
 
-    const item = this.queue.poll(undefined)
+    const item = this.queue.poll(EmptyQueue)
 
-    if (item) {
+    if (item !== EmptyQueue) {
       this.strategy.unsafeOnQueueEmptySpace(this.queue, this.takers)
       return core.succeed(item)
     } else {
