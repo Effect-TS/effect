@@ -3,55 +3,54 @@
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/Sync"
 
-import type { SyncURI } from "../../Modules/index.js"
-import type { URI } from "../../Prelude/index.js"
-import * as P from "../../Prelude/index.js"
+import * as P from "../../PreludeV2/index.js"
 
-export type V = P.V<"R", "-"> & P.V<"E", "+">
-
-export const Any = P.instance<P.Any<[URI<SyncURI>], V>>({
+export interface SyncF extends P.HKT {
+  readonly type: X.Sync<this["R"], this["E"], this["A"]>
+}
+export const Any = P.instance<P.Any<SyncF>>({
   any: () => X.succeed(constant({}))
 })
 
-export const Covariant = P.instance<P.Covariant<[URI<SyncURI>], V>>({
+export const Covariant = P.instance<P.Covariant<SyncF>>({
   map: X.map
 })
 
-export const AssociativeBoth = P.instance<P.AssociativeBoth<[URI<SyncURI>], V>>({
+export const AssociativeBoth = P.instance<P.AssociativeBoth<SyncF>>({
   both: X.zip
 })
 
-export const AssociativeEither = P.instance<P.AssociativeEither<[URI<SyncURI>], V>>({
+export const AssociativeEither = P.instance<P.AssociativeEither<SyncF>>({
   orElseEither: X.orElseEither
 })
 
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[URI<SyncURI>], V>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<SyncF>>({
   flatten: (ffa) => X.chain_(ffa, identity)
 })
 
-export const Applicative = P.instance<P.Applicative<[URI<SyncURI>], V>>({
+export const Applicative = P.instance<P.Applicative<SyncF>>({
   ...Any,
   ...Covariant,
   ...AssociativeBoth
 })
 
-export const Access = P.instance<P.FX.Access<[URI<SyncURI>], V>>({
+export const Access = P.instance<P.FX.Access<SyncF>>({
   access: X.access
 })
 
-export const Fail = P.instance<P.FX.Fail<[URI<SyncURI>], V>>({
+export const Fail = P.instance<P.FX.Fail<SyncF>>({
   fail: X.fail
 })
 
-export const Run = P.instance<P.FX.Run<[URI<SyncURI>], V>>({
+export const Run = P.instance<P.FX.Run<SyncF>>({
   either: X.either
 })
 
-export const Provide = P.instance<P.FX.Provide<[URI<SyncURI>], V>>({
+export const Provide = P.instance<P.FX.Provide<SyncF>>({
   provide: X.provideAll
 })
 
-export const Monad = P.instance<P.Monad<[URI<SyncURI>], V>>({
+export const Monad = P.instance<P.Monad<SyncF>>({
   ...Any,
   ...AssociativeFlatten,
   ...Covariant

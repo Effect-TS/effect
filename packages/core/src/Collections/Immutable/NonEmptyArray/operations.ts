@@ -1,5 +1,6 @@
 // ets_tracing: off
 
+import type { NonEmptyArrayF } from "@effect-ts/core/Collections/Immutable/NonEmptyArray/instances"
 import * as A from "@effect-ts/system/Collections/Immutable/Array"
 import * as L from "@effect-ts/system/Collections/Immutable/List"
 import type { NonEmptyArray } from "@effect-ts/system/Collections/Immutable/NonEmptyArray"
@@ -11,11 +12,9 @@ import type { Associative } from "../../../Associative/index.js"
 import { makeAssociative } from "../../../Associative/index.js"
 import type { Equal } from "../../../Equal/index.js"
 import { makeEqual } from "../../../Equal/index.js"
-import type { NonEmptyArrayURI } from "../../../Modules/index.js"
 import * as Ord from "../../../Ord/index.js"
-import * as DSL from "../../../Prelude/DSL/index.js"
-import type { URI } from "../../../Prelude/index.js"
-import * as P from "../../../Prelude/index.js"
+import * as DSL from "../../../PreludeV2/DSL/index.js"
+import * as P from "../../../PreludeV2/index.js"
 import type { Show } from "../../../Show/index.js"
 
 export * from "@effect-ts/system/Collections/Immutable/NonEmptyArray"
@@ -23,18 +22,23 @@ export * from "@effect-ts/system/Collections/Immutable/NonEmptyArray"
 /**
  * `ForEachWithIndex`'s `forEachWithIndexF` function
  */
-export const forEachWithIndexF = P.implementForEachWithIndexF<
-  [URI<NonEmptyArrayURI>]
->()(
+export const forEachWithIndexF = P.implementForEachWithIndexF<number, NonEmptyArrayF>()(
   (_) => (G) => (f) => (x) =>
     pipe(
       x,
-      A.reduceWithIndex(DSL.succeedF(G)(L.empty()), (k, b, a) =>
-        pipe(
-          b,
-          G.both(f(k, a as any)),
-          G.map(({ tuple: [x, y] }) => L.append_(x, y))
-        )
+      A.reduceWithIndex(
+        DSL.succeedF(
+          G,
+          G
+        )<L.List<typeof _.B>, typeof _.X, typeof _.I, typeof _.R, typeof _.E>(
+          L.empty()
+        ), // @todo: fix this GG thingy in succeedF
+        (k, b, a) =>
+          pipe(
+            b,
+            G.both(f(k, a)),
+            G.map(({ tuple: [x, y] }) => L.append_(x, y))
+          )
       ),
       G.map(L.toArray)
     ) as any
@@ -43,7 +47,7 @@ export const forEachWithIndexF = P.implementForEachWithIndexF<
 /**
  * `ForEach`'s `forEachF` function
  */
-export const forEachF = P.implementForEachF<[URI<NonEmptyArrayURI>]>()(
+export const forEachF = P.implementForEachF<NonEmptyArrayF>()(
   (_) => (G) => (f) => forEachWithIndexF(G)((_, a) => f(a))
 )
 

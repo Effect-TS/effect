@@ -1,5 +1,6 @@
 // ets_tracing: off
 
+import type { ListF } from "@effect-ts/core/Collections/Immutable/List/instances"
 import * as List from "@effect-ts/system/Collections/Immutable/List"
 
 import type { Equal } from "../../../Equal/index.js"
@@ -7,21 +8,19 @@ import { makeEqual } from "../../../Equal/index.js"
 import { pipe } from "../../../Function/index.js"
 import type { Identity } from "../../../Identity/index.js"
 import { makeIdentity } from "../../../Identity/index.js"
-import type { ListURI } from "../../../Modules/index.js"
 import type { Ord } from "../../../Ord/index.js"
-import type { URI } from "../../../Prelude/index.js"
-import * as P from "../../../Prelude/index.js"
+import * as P from "../../../PreludeV2/index.js"
 import type { Show } from "../../../Show/index.js"
-import * as A from "../Array/index.js"
+import * as AR from "../Array/index.js"
 
 export * from "@effect-ts/system/Collections/Immutable/List"
 
 /**
  * `ForEach`'s `forEachF` function
  */
-export const forEachF = P.implementForEachF<[URI<ListURI>]>()(
+export const forEachF = P.implementForEachF<ListF>()(
   () => (G) => (f) => (fa) =>
-    List.reduceRight_(fa, P.succeedF(G)(List.empty()), (a, acc) =>
+    List.reduceRight_(fa, P.succeedF(G, G)(List.empty()), (a, acc) =>
       pipe(
         f(a),
         G.both(acc),
@@ -80,14 +79,14 @@ export function sortBy_<B>(
 /**
  * `Wiltable`'s `separateF` function
  */
-export const separateF = P.implementSeparateF<[URI<ListURI>]>()(
+export const separateF = P.implementSeparateF<ListF>()(
   (_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(List.separate))
 )
 
 /**
  * `Wither`'s `compactF` function
  */
-export const compactF = P.implementCompactF<[URI<ListURI>]>()(
+export const compactF = P.implementCompactF<ListF>()(
   (_) => (G) => (f) => (x) => pipe(x, forEachF(G)(f), G.map(List.compact))
 )
 
@@ -138,7 +137,7 @@ export function difference<A>(
  * different lengths, the result is non equality.
  */
 export function getEqual<A>(E: Equal<A>): Equal<List.List<A>> {
-  const eq = A.getEqual(E)
+  const eq = AR.getEqual(E)
   return makeEqual(
     (xs, ys) =>
       xs === ys ||

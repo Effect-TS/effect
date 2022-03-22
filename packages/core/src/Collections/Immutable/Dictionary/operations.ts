@@ -1,5 +1,6 @@
 // ets_tracing: off
 
+import type { DictionaryF } from "@effect-ts/core/Collections/Immutable/Dictionary/instances"
 import * as R from "@effect-ts/system/Collections/Immutable/Dictionary"
 import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import * as O from "@effect-ts/system/Option"
@@ -13,11 +14,10 @@ import { makeEqual } from "../../../Equal/index.js"
 import { identity, pipe, tuple } from "../../../Function/index.js"
 import type { Identity } from "../../../Identity/index.js"
 import { makeIdentity } from "../../../Identity/index.js"
-import type { DictionaryURI } from "../../../Modules/index.js"
-import type * as HKT from "../../../Prelude/HKT/index.js"
-import type { Foldable, URI } from "../../../Prelude/index.js"
-import * as P from "../../../Prelude/index.js"
-import { succeedF } from "../../../Prelude/index.js"
+import type * as HKT from "../../../PreludeV2/HKT/index.js"
+import type { Foldable } from "../../../PreludeV2/index.js"
+import * as P from "../../../PreludeV2/index.js"
+import { succeedF } from "../../../PreludeV2/index.js"
 import type { Show } from "../../../Show/index.js"
 import * as A from "../Array/index.js"
 
@@ -26,11 +26,17 @@ export * from "@effect-ts/system/Collections/Immutable/Dictionary"
 /**
  * Traverse Record with Applicative, passing index to f
  */
-export const forEachWithIndexF = P.implementForEachWithIndexF<[URI<DictionaryURI>]>()(
+export const forEachWithIndexF = P.implementForEachWithIndexF<string, DictionaryF>()(
   (_) => (G) => {
-    const succeed = succeedF(G)
+    const succeed = succeedF(G, G)
     return (f) => (fa) => {
-      let base = succeed<R.Dictionary<typeof _.B>>({} as any)
+      let base = succeed<
+        R.Dictionary<typeof _.B>,
+        typeof _.X,
+        typeof _.I,
+        typeof _.R,
+        typeof _.E
+      >({} as any)
       for (const k of Object.keys(fa)) {
         base = G.map(
           ({ tuple: [x, b] }: Tp.Tuple<[R.Dictionary<typeof _.B>, typeof _.B]>) =>
@@ -45,27 +51,26 @@ export const forEachWithIndexF = P.implementForEachWithIndexF<[URI<DictionaryURI
 /**
  * Traverse Record with Applicative
  */
-export const forEachF = P.implementForEachF<[URI<DictionaryURI>]>()(
+export const forEachF = P.implementForEachF<DictionaryF>()(
   (_) => (G) => (f) => forEachWithIndexF(G)((_, a) => f(a))
 )
 
 /**
  * Fold + MapWithIndex
  */
-export const foldMapWithIndex: P.FoldMapWithIndexFn<[URI<DictionaryURI>]> =
-  (I) => (f) =>
-    R.reduceWithIndex(I.identity, (k, b, a) => I.combine(b, f(k, a)))
+export const foldMapWithIndex: P.FoldMapWithIndexFn<string, DictionaryF> = (I) => (f) =>
+  R.reduceWithIndex(I.identity, (k, b, a) => I.combine(b, f(k, a)))
 
 /**
  * Fold + Map
  */
-export const foldMap: P.FoldMapFn<[URI<DictionaryURI>]> = (I) => (f) =>
+export const foldMap: P.FoldMapFn<DictionaryF> = (I) => (f) =>
   foldMapWithIndex(I)((_, a) => f(a))
 
 /**
  * WiltWithIndex's separate
  */
-export const separateWithIndexF = P.implementSeparateWithIndexF<[URI<DictionaryURI>]>()(
+export const separateWithIndexF = P.implementSeparateWithIndexF<string, DictionaryF>()(
   () => (G) => (f) => (x) =>
     pipe(
       x,
@@ -90,14 +95,14 @@ export const separateWithIndexF = P.implementSeparateWithIndexF<[URI<DictionaryU
 /**
  * Wilt's separate
  */
-export const separateF = P.implementSeparateF<[URI<DictionaryURI>]>()(
+export const separateF = P.implementSeparateF<DictionaryF>()(
   () => (G) => (f) => separateWithIndexF(G)((_, a) => f(a))
 )
 
 /**
  * WitherWithIndex's compactWithIndex
  */
-export const compactWithIndexF = P.implementCompactWithIndexF<[URI<DictionaryURI>]>()(
+export const compactWithIndexF = P.implementCompactWithIndexF<string, DictionaryF>()(
   () => (G) => (f) => (x) =>
     pipe(
       x,
@@ -110,28 +115,24 @@ export const compactWithIndexF = P.implementCompactWithIndexF<[URI<DictionaryURI
 /**
  * Wither's compact
  */
-export const compactF = P.implementCompactF<[URI<DictionaryURI>]>()(
+export const compactF = P.implementCompactF<DictionaryF>()(
   () => (G) => (f) => compactWithIndexF(G)((_, a) => f(a))
 )
 
 /**
  * Like fromFoldable + map
  */
-export function fromFoldableMap_<F extends HKT.URIS, C, B>(
-  M: Closure<B>,
-  F: Foldable<F, C>
-): <K, Q, W, X, I, S, R, E, A>(
-  fa: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>,
-  f: (a: A) => Tp.Tuple<[string, B]>
-) => R.Dictionary<B>
-export function fromFoldableMap_<F, B>(
-  M: Closure<B>,
-  F: Foldable<HKT.UHKT<F>>
-): <A>(fa: HKT.HKT<F, A>, f: (a: A) => Tp.Tuple<[string, B]>) => R.Dictionary<B> {
-  return <A>(fa: HKT.HKT<F, A>, f: (a: A) => Tp.Tuple<[string, B]>) => {
-    return F.reduce<A, MutableRecord<string, B>>({}, (r, a) => {
+export function fromFoldableMap_<F extends HKT.HKT, B>(
+  M_: Closure<B>,
+  F_: Foldable<F>
+) {
+  return <X, I, R, E, A>(
+    fa: HKT.Kind<F, X, I, R, E, A>,
+    f: (a: A) => Tp.Tuple<[string, B]>
+  ): R.Dictionary<B> => {
+    return F_.reduce<A, MutableRecord<string, B>>({}, (r, a) => {
       const [k, b] = f(a).tuple
-      r[k] = Object.prototype.hasOwnProperty.call(r, k) ? M.combine(r[k]!, b) : b
+      r[k] = Object.prototype.hasOwnProperty.call(r, k) ? M_.combine(r[k]!, b) : b
       return r
     })(fa)
   }
@@ -140,38 +141,24 @@ export function fromFoldableMap_<F, B>(
 /**
  * Like fromFoldable + map
  */
-export function fromFoldableMap<F extends HKT.URIS, C, B>(
-  M: Closure<B>,
-  F: Foldable<F, C>
-): <A>(
-  f: (a: A) => Tp.Tuple<[string, B]>
-) => <K, Q, W, X, I, S, R, E>(
-  fa: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, A>
-) => R.Dictionary<B>
-export function fromFoldableMap<F, B>(
-  M: Closure<B>,
-  F: Foldable<HKT.UHKT<F>>
-): <A>(f: (a: A) => Tp.Tuple<[string, B]>) => (fa: HKT.HKT<F, A>) => R.Dictionary<B> {
-  const ff = fromFoldableMap_(M, F)
+export function fromFoldableMap<F extends HKT.HKT, B>(M_: Closure<B>, F_: Foldable<F>) {
   return <A>(f: (a: A) => Tp.Tuple<[string, B]>) =>
-    (fa: HKT.HKT<F, A>) =>
-      ff(fa, f)
+    <X, I, R, E>(fa: HKT.Kind<F, X, I, R, E, A>): R.Dictionary<B> => {
+      const ff = fromFoldableMap_(M_, F_)
+      return ff(fa, f)
+    }
 }
 
 /**
  * Construct a Record from a Foldable and a Closure of values
  */
-export function fromFoldable<F extends HKT.URIS, C, A>(
-  M: Closure<A>,
-  F: Foldable<F>
-): <K, Q, W, X, I, S, R, E>(
-  fa: HKT.Kind<F, C, K, Q, W, X, I, S, R, E, Tp.Tuple<[string, A]>>
-) => R.Dictionary<A>
-export function fromFoldable<F, A>(
-  M: Closure<A>,
-  F: Foldable<HKT.UHKT<F>>
-): (fa: HKT.HKT<F, Tp.Tuple<[string, A]>>) => R.Dictionary<A> {
-  const fromFoldableMapM = fromFoldableMap(M, F)
+export const fromFoldable = <F extends HKT.HKT, A>(
+  M_: Closure<A>,
+  F_: Foldable<F>
+): (<X, I, R, E>(
+  fa: HKT.Kind<F, X, I, R, E, Tp.Tuple<[string, A]>>
+) => R.Dictionary<A>) => {
+  const fromFoldableMapM = fromFoldableMap(M_, F_)
   return fromFoldableMapM(identity)
 }
 

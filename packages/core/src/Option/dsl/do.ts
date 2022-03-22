@@ -1,11 +1,8 @@
 // ets_tracing: off
 
-import * as P from "../../Prelude/index.js"
+import * as P from "../../PreludeV2/index.js"
 import { Monad } from "../instances/Monad.js"
 
-export const do_ = P.doF(Monad)
-export const let_ = P.letF(Monad)
+const { bind, do: do_, let: let_ } = P.getDo(Monad)
 
-export { do_ as do, let_ as let }
-
-export const bind = P.bindF(Monad)
+export { do_ as do, let_ as let, bind }
