@@ -27,6 +27,27 @@ export interface ForEach<F extends HKT.HKT> extends Covariant<F> {
   readonly forEachF: ForeachFn<F>
 }
 
+export function implementForEachF<F extends HKT.HKT>(): (
+  i: <N extends string, X, I, R, E, A, B, G extends HKT.HKT>(_: {
+    A: A
+    B: B
+    G: G
+    N: N
+    X: X
+    I: I
+    R: R
+    E: E
+  }) => (
+    G: IdentityBoth<G> & Covariant<G>
+  ) => (
+    f: (a: A) => HKT.Kind<G, X, I, R, E, B>
+  ) => (
+    fa: HKT.Kind<F, X, I, R, E, A>
+  ) => HKT.Kind<G, X, I, R, E, HKT.Kind<F, X, I, R, E, B>>
+) => ForeachFn<F>
+export function implementForEachF() {
+  return (i: any) => i()
+}
 
 export interface ForEachCompositionFn<F extends HKT.HKT, G extends HKT.HKT> {
   <H extends HKT.HKT>(H: IdentityBoth<H> & Covariant<H>): <HX, HI, HR, HE, A, B>(

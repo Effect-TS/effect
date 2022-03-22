@@ -5,7 +5,6 @@ import type { Either } from "../../Either/index.js"
 import type * as HKT from "../HKT/index.js"
 
 export interface PartitionMap<F extends HKT.HKT> extends HKT.Typeclass<F> {
-  readonly _PartitionMap: "PartitionMap"
   readonly partitionMap: <A, B, B1>(
     f: (a: A) => Either<B, B1>
   ) => <X, I, R, E>(

@@ -16,3 +16,24 @@ export interface Wither<F extends HKT.HKT> extends HKT.Typeclass<F> {
 export interface Witherable<F extends HKT.HKT> {
   readonly compactF: Wither<F>
 }
+
+export function implementCompactF<F extends HKT.HKT>(): (
+  i: <FX, FI, FR, FE, A, B, G extends HKT.HKT>(_: {
+    A: A
+    B: B
+    G: G
+    FX: FX
+    FI: FI
+    FR: FR
+    FE: FE
+  }) => (
+    G: Applicative<G>
+  ) => (
+    f: (a: A) => HKT.Kind<G, FX, FI, FR, FE, Option<B>>
+  ) => (
+    ta: HKT.Kind<F, FX, FI, FR, FE, A>
+  ) => HKT.Kind<G, FX, FI, FR, FE, HKT.Kind<F, FX, FI, FR, FE, B>>
+) => Wither<F>
+export function implementCompactF() {
+  return (i: any) => i()
+}

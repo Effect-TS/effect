@@ -16,4 +16,23 @@ export interface ForEachWithIndex<K, F extends HKT.HKT> extends Covariant<F> {
   readonly forEachWithIndexF: ForEachWithIndexFn<K, F>
 }
 
-// @todo: Warn noteable change, all implementX are gone
+export function implementForEachWithIndexF<K, F extends HKT.HKT>(): (
+  i: <X, I, R, E, A, B, G extends HKT.HKT>(_: {
+    A: A
+    B: B
+    G: G
+    X: X
+    I: I
+    R: R
+    E: E
+  }) => (
+    G: IdentityBoth<G> & Covariant<G>
+  ) => (
+    f: (k: K, a: A) => HKT.Kind<G, X, I, R, E, B>
+  ) => (
+    fa: HKT.Kind<F, X, I, R, E, A>
+  ) => HKT.Kind<G, X, I, R, E, HKT.Kind<F, X, I, R, E, B>>
+) => ForEachWithIndexFn<K, F>
+export function implementForEachWithIndexF() {
+  return (i: any) => i()
+}
