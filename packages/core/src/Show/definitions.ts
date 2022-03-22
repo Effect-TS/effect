@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-export { ShowURI } from "../Modules/index.js"
+import type { HKT } from "../PreludeV2/index.js"
 
 /**
  * `Show[A]` provides implicit evidence that values of type `A` have a total
@@ -8,6 +8,10 @@ export { ShowURI } from "../Modules/index.js"
  */
 export interface Show<A> {
   readonly show: (x: A) => string
+}
+
+export interface ShowF extends HKT {
+  readonly type: Show<this["A"]>
 }
 
 /**

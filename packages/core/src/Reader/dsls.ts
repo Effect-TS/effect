@@ -1,7 +1,9 @@
 // ets_tracing: off
 
-import * as P from "../Prelude/index.js"
-import { Applicative, Covariant, Monad } from "./instances.js"
+import type { ReaderF } from "@effect-ts/core/Reader/definition"
+
+import * as P from "../PreludeV2/index.js"
+import { Applicative, Monad } from "./instances.js"
 
 /**
  * Struct based applicative for Reader[-_, +_]
@@ -15,24 +17,20 @@ export const tuple = P.tupleF(Applicative)
 
 export const gen = P.genF(Monad)
 
-export const bind = P.bindF(Monad)
+const { bind, do: do_, let: let_ } = P.getDo(Monad)
 
-const let_ = P.letF(Monad)
-
-const do_ = P.doF(Monad)
-
-export { do_ as do, let_ as let }
+export { do_ as do, let_ as let, bind }
 
 /**
  * Matchers
  */
 export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
-  P.matchers(Covariant)
+  P.matchers<ReaderF>()
 
 /**
  * Conditionals
  */
-const branch = P.conditionalF(Covariant)
-const branch_ = P.conditionalF_(Covariant)
+const branch = P.conditionalF<ReaderF>()
+const branch_ = P.conditionalF_<ReaderF>()
 
 export { branch as if, branch_ as if_ }

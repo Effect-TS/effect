@@ -2,4 +2,10 @@
 
 import type { XPure } from "@effect-ts/system/XPure"
 
+import type { HKT } from "../../PreludeV2/index.js"
+
 export interface XReader<R, A> extends XPure<unknown, unknown, unknown, R, never, A> {}
+
+export interface XReaderF extends HKT {
+  readonly type: XReader<this["R"], this["A"]>
+}

@@ -5,19 +5,19 @@ import "../Operator/index.js"
 
 import * as T from "@effect-ts/system/Effect"
 
-import type * as P from "../Prelude/index.js"
+import type * as P from "../PreludeV2/index.js"
 
 /**
  * Like forEach but preserves the type of the collection used
  */
-export function forEachOf<F extends P.URIS, C>(
-  C: P.Collection<F, C>
+export function forEachOf<F extends P.HKT>(
+  C: P.Collection<F>
 ): {
-  <K, Q, W, X, I, S, R, E, A, RE, EE, AA>(
-    self: P.Kind<F, C, K, Q, W, X, I, S, R, E, A> & Iterable<A>,
+  <X, I, R, E, A, RE, EE, AA>(
+    self: P.Kind<F, X, I, R, E, A> & Iterable<A>,
     f: (a: A) => T.Effect<RE, EE, AA>,
     __trace?: string
-  ): T.Effect<RE, EE, P.Kind<F, C, K, Q, W, X, I, S, R, E, AA>>
+  ): T.Effect<RE, EE, P.Kind<F, X, I, R, E, AA>>
   /**
    * @ets_data_first self
    */
@@ -27,12 +27,11 @@ export function forEachOf<F extends P.URIS, C>(
     W,
     X,
     I,
-    S,
     R,
     E
   >(
-    self: P.Kind<F, C, K, Q, W, X, I, S, R, E, A> & Iterable<A>
-  ) => T.Effect<RE, EE, P.Kind<F, C, K, Q, W, X, I, S, R, E, AA>>
+    self: P.Kind<F, X, I, R, E, A> & Iterable<A>
+  ) => T.Effect<RE, EE, P.Kind<F, X, I, R, E, AA>>
 } {
   // @ts-expect-error
   return function () {
@@ -59,14 +58,14 @@ export function forEachOf<F extends P.URIS, C>(
 /**
  * Like forEachPar but preserves the type of the collection used
  */
-export function forEachParOf<F extends P.URIS, C>(
-  C: P.Collection<F, C>
+export function forEachParOf<F extends P.HKT>(
+  C: P.Collection<F>
 ): {
-  <K, Q, W, X, I, S, R, E, A, RE, EE, AA>(
-    self: P.Kind<F, C, K, Q, W, X, I, S, R, E, A> & Iterable<A>,
+  <X, I, R, E, A, RE, EE, AA>(
+    self: P.Kind<F, X, I, R, E, A> & Iterable<A>,
     f: (a: A) => T.Effect<RE, EE, AA>,
     __trace?: string
-  ): T.Effect<RE, EE, P.Kind<F, C, K, Q, W, X, I, S, R, E, AA>>
+  ): T.Effect<RE, EE, P.Kind<F, X, I, R, E, AA>>
   /**
    * @ets_data_first self
    */
@@ -76,12 +75,11 @@ export function forEachParOf<F extends P.URIS, C>(
     W,
     X,
     I,
-    S,
     R,
     E
   >(
-    self: P.Kind<F, C, K, Q, W, X, I, S, R, E, A> & Iterable<A>
-  ) => T.Effect<RE, EE, P.Kind<F, C, K, Q, W, X, I, S, R, E, AA>>
+    self: P.Kind<F, X, I, R, E, A> & Iterable<A>
+  ) => T.Effect<RE, EE, P.Kind<F, X, I, R, E, AA>>
 } {
   // @ts-expect-error
   return function () {
@@ -101,15 +99,15 @@ export function forEachParOf<F extends P.URIS, C>(
 /**
  * Like forEachParN but preserves the type of the collection used
  */
-export function forEachParNOf<F extends P.URIS, C>(
-  C: P.Collection<F, C>
+export function forEachParNOf<F extends P.HKT>(
+  C: P.Collection<F>
 ): {
-  <K, Q, W, X, I, S, R, E, A, RE, EE, AA>(
-    self: P.Kind<F, C, K, Q, W, X, I, S, R, E, A> & Iterable<A>,
+  <X, I, R, E, A, RE, EE, AA>(
+    self: P.Kind<F, X, I, R, E, A> & Iterable<A>,
     n: number,
     f: (a: A) => T.Effect<RE, EE, AA>,
     __trace?: string
-  ): T.Effect<RE, EE, P.Kind<F, C, K, Q, W, X, I, S, R, E, AA>>
+  ): T.Effect<RE, EE, P.Kind<F, X, I, R, E, AA>>
   /**
    * @ets_data_first self
    */
@@ -119,12 +117,11 @@ export function forEachParNOf<F extends P.URIS, C>(
     W,
     X,
     I,
-    S,
     R,
     E
   >(
-    self: P.Kind<F, C, K, Q, W, X, I, S, R, E, A> & Iterable<A>
-  ) => T.Effect<RE, EE, P.Kind<F, C, K, Q, W, X, I, S, R, E, AA>>
+    self: P.Kind<F, X, I, R, E, A> & Iterable<A>
+  ) => T.Effect<RE, EE, P.Kind<F, X, I, R, E, AA>>
 } {
   // @ts-expect-error
   return function () {
