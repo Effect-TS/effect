@@ -35,10 +35,12 @@ function findSafe<E, Z>(
   realCause(self)
   switch (self._tag) {
     case "Then":
+      // @ts-expect-error
       return IO.suspend(findSafe(self.left, f)).flatMap((leftResult) =>
         leftResult._tag === "Some" ? IO.succeedNow(leftResult) : findSafe(self.right, f)
       )
     case "Both": {
+      // @ts-expect-error
       return IO.suspend(findSafe(self.left, f)).flatMap((leftResult) =>
         leftResult._tag === "Some" ? IO.succeedNow(leftResult) : findSafe(self.right, f)
       )

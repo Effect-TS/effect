@@ -7,9 +7,10 @@ import { concrete } from "../definition"
  *
  * @tsplus fluent ets/XRef get
  */
-export function get<RA, RB, EA, EB, A>(
-  self: XRef<RA, RB, EA, EB, A, A>,
+export function get<RA, RB, EA, EB, A, B>(
+  self: XRef<RA, RB, EA, EB, A, B>,
   __tsplusTrace?: string
-): Effect<RB, EB, A> {
+): Effect<RB, EB, B> {
+  // @ts-expect-error
   return concrete(self)._get
 }

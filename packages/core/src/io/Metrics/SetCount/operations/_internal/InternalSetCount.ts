@@ -11,7 +11,7 @@ import type { SetCount } from "../../definition"
 import { SetCountSym } from "../../definition"
 
 export class InternalSetCount<A> implements SetCount<A>, St.HasHash, St.HasEquals {
-  readonly [_A]: (_: A) => void;
+  readonly [_A]!: (_: A) => void;
   readonly [SetCountSym]: SetCountSym = SetCountSym
 
   setCount: AtomicSetCount | undefined

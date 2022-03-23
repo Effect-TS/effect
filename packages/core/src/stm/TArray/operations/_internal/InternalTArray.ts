@@ -6,7 +6,7 @@ import { TArraySym } from "../../definition"
 
 export class InternalTArray<A> implements TArray<A> {
   readonly [TArraySym]: TArraySym = TArraySym;
-  readonly [_A]: () => A
+  readonly [_A]!: () => A
   constructor(readonly chunk: Chunk<TRef<A>>) {}
 }
 

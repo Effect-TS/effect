@@ -17,7 +17,6 @@ export function provideServiceSync_<R, E, A, T>(
     sync: Sync<R1, E1, T>,
     __tsplusTrace?: string
   ): Sync<R1 & Erase<R, Has<T>>, E | E1, A> =>
-    // @ts-expect-error
     Sync.environmentWithSync((r: R & R1) =>
       sync.flatMap((t) => self.provideEnvironment(mergeEnvironments(tag, r, t)))
     )

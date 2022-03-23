@@ -19,7 +19,6 @@ export function provideServiceEffect_<R, E, A, T>(
     effect: Effect<R1, E1, T>,
     __tsplusTrace?: string
   ): Managed<R1 & Erase<R, Has<T>>, E | E1, A> =>
-    // @ts-expect-error
     Managed.environmentWithManaged((r: R & R1) =>
       Managed.fromEffect(effect).flatMap((t) =>
         self.provideEnvironment(mergeEnvironments(tag, r, t))

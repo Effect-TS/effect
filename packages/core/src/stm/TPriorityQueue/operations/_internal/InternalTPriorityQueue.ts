@@ -6,8 +6,8 @@ import type { TPriorityQueue } from "../../definition"
 import { TPriorityQueueSym } from "../../definition"
 
 export class InternalTPriorityQueue<A> implements TPriorityQueue<A> {
-  readonly [TPriorityQueueSym]: TPriorityQueueSym;
-  readonly [_A]: () => A
+  readonly [TPriorityQueueSym]!: TPriorityQueueSym;
+  readonly [_A]!: () => A
   constructor(readonly map: TRef<SortedMap<A, Chunk<A>>>) {}
 }
 

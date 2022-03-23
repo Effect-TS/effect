@@ -11,7 +11,7 @@ import type { Counter } from "../../definition"
 import { CounterSym } from "../../definition"
 
 export class InternalCounter<A> implements Counter<A>, St.HasHash, St.HasEquals {
-  readonly [_A]: (_: A) => void;
+  readonly [_A]!: (_: A) => void;
   readonly [CounterSym]: CounterSym = CounterSym
 
   counter: AtomicCounter | undefined

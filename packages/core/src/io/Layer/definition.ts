@@ -44,9 +44,9 @@ export const Layer: LayerOps = {}
 export abstract class LayerAbstract<RIn, E, ROut> implements Layer<RIn, E, ROut> {
   readonly [LayerHashSym] = new AtomicReference<PropertyKey>(Symbol());
 
-  readonly [_RIn]: (_: RIn) => void;
-  readonly [_E]: () => E;
-  readonly [_ROut]: () => ROut
+  readonly [_RIn]!: (_: RIn) => void;
+  readonly [_E]!: () => E;
+  readonly [_ROut]!: () => ROut
 
   /**
    * Set the hash key for memoization

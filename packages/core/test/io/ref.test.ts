@@ -818,7 +818,6 @@ describe("Ref", () => {
         .bind("ref", () => Ref.make(current))
         .bindValue("readOnly", ({ ref }) => ref.readOnly())
         .tap(({ ref }) => ref.set(update))
-        // @ts-ignore
         .flatMap(({ readOnly }) => readOnly.get())
 
       const result = await program.unsafeRunPromise()

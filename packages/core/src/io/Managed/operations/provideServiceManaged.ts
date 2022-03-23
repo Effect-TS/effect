@@ -18,7 +18,6 @@ export function provideServiceManaged_<R, E, A, T>(
     managed: Managed<R1, E1, T>,
     __tsplusTrace?: string
   ): Managed<R1 & Erase<R, Has<T>>, E | E1, A> => {
-    // @ts-expect-error
     return Managed.environmentWithManaged((r: R & R1) =>
       managed.flatMap((t) => self.provideEnvironment(mergeEnvironments(tag, r, t)))
     )

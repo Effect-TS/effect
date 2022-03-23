@@ -8,7 +8,7 @@ export type DurationSym = typeof DurationSym
  * @tsplus companion ets/DurationOps
  */
 export class Duration implements St.HasHash, St.HasEquals {
-  readonly [DurationSym]: DurationSym
+  readonly [DurationSym]!: DurationSym
 
   constructor(readonly milliseconds: number) {}
 

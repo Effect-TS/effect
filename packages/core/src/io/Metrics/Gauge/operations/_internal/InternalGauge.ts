@@ -11,8 +11,8 @@ import type { Gauge } from "../../definition"
 import { GaugeSym } from "../../definition"
 
 export class InternalGauge<A> implements Gauge<A>, St.HasHash, St.HasEquals {
-  readonly [_A]: (_: A) => void;
-  readonly [GaugeSym]: GaugeSym
+  readonly [_A]!: (_: A) => void;
+  readonly [GaugeSym]!: GaugeSym
 
   gauge: AtomicGauge | undefined
   gaugeRef: FiberRef<AtomicGauge> | undefined

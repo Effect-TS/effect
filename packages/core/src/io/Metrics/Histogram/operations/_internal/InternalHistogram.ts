@@ -11,7 +11,7 @@ import type { Boundaries, Histogram } from "../../definition"
 import { HistogramSym } from "../../definition"
 
 export class InternalHistogram<A> implements Histogram<A>, St.HasHash, St.HasEquals {
-  readonly [_A]: (_: A) => void;
+  readonly [_A]!: (_: A) => void;
   readonly [HistogramSym]: HistogramSym = HistogramSym
 
   histogram: AtomicHistogram | undefined

@@ -17,6 +17,9 @@ export type IoURI = typeof IoURI
  * @tsplus type ets/IO
  */
 export type IO<A> = Succeed<A> | FlatMap<any, A> | Suspend<A>
+// export interface IO<A> {
+//   readonly [_A]: () => A
+// }
 
 /**
  * @tsplus type ets/IOOps
@@ -32,8 +35,8 @@ export function unify<X extends IO<any>>(self: X): IO<UT._A<X>> {
 }
 
 abstract class Base<A> {
-  readonly [_U]: IoURI;
-  readonly [_A]: () => A
+  readonly [_U]!: IoURI;
+  readonly [_A]!: () => A
 }
 
 export class Succeed<A> extends Base<A> {

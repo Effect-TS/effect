@@ -6,7 +6,7 @@ import { HashSet, HashSetSym } from "../../definition"
 
 export class HashSetInternal<A> implements HashSet<A>, St.HasHash, St.HasEquals {
   readonly [HashSetSym]: HashSetSym = HashSetSym;
-  readonly [_A]: () => A
+  readonly [_A]!: () => A
 
   constructor(readonly _keyMap: HashMap<A, unknown>) {}
 
