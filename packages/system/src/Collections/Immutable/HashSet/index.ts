@@ -38,7 +38,6 @@ export function make<V>() {
 /**
  * Creates a new set from an Iterable
  */
-
 export function from<K, V>(xs: Iterable<V>): HashSet<V> {
   return I.reduce_(xs, make<V>(), (s, v) => add_(s, v))
 }

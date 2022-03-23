@@ -77,7 +77,6 @@ export function make<K, V>() {
 /**
  * Creates a new map from an Iterable
  */
-
 export function from<K, V>(xs: Iterable<[K, V]>): HashMap<K, V> {
   return I.reduce_(xs, make<K, V>(), (m, p) => set_(m, ...p))
 }
