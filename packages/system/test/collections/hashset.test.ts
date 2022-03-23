@@ -8,4 +8,7 @@ describe("HashSet", () => {
 
     expect([...mapped]).toEqual([2, 4, 6, 8])
   })
+  it("from", () => {
+    expect(HS.from([1, 2])).toEqual(pipe(HS.make<number>(), HS.add(1), HS.add(2)))
+  })
 })

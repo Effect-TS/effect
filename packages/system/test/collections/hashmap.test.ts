@@ -9,4 +9,12 @@ describe("HashMap", () => {
       true
     )
   })
+  it("from", () => {
+    expect(
+      HM.from([
+        [1, 2],
+        [3, 4]
+      ])
+    ).toEqual(pipe(HM.make<number, number>(), HM.set(1, 2), HM.set(3, 4)))
+  })
 })
