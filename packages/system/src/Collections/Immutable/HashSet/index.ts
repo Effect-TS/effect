@@ -35,6 +35,13 @@ export function make<V>() {
   return new HashSet<V>(HM.make())
 }
 
+/**
+ * Creates a new set from an Iterable
+ */
+export function from<K, V>(xs: Iterable<V>): HashSet<V> {
+  return I.reduce_(xs, make<V>(), (s, v) => add_(s, v))
+}
+
 export function add_<V>(set: HashSet<V>, v: V) {
   return set.keyMap.editable
     ? (HM.set_(set.keyMap, v, true), set)

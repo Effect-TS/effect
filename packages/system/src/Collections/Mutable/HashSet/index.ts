@@ -48,6 +48,17 @@ export function make<A>(): HashSet<A> {
 }
 
 /**
+ * Creates a new set from an Iterable
+ */
+export function from<K, V>(xs: Iterable<V>): HashSet<V> {
+  const res = make<V>()
+  for (const v of xs) {
+    res.add(v)
+  }
+  return res
+}
+
+/**
  * Calculate the number of values in a set
  */
 export function size<A>(self: HashSet<A>): number {
