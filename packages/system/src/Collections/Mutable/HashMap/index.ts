@@ -161,7 +161,7 @@ export function make<K, V>() {
 /**
  * Creates a new map from an Iterable
  */
-export function from<K, V>(xs: Iterable<[K, V]>): HashMap<K, V> {
+export function from<K, V>(xs: Iterable<readonly [K, V]>): HashMap<K, V> {
   const res = make<K, V>()
   for (const p of xs) {
     res.set(...p)
