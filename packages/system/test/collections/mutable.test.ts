@@ -1,4 +1,5 @@
 import * as HM from "../../src/Collections/Mutable/HashMap/index.js"
+import * as HS from "../../src/Collections/Mutable/HashSet/index.js"
 import { pipe } from "../../src/Function/index.js"
 import * as O from "../../src/Option/index.js"
 import * as St from "../../src/Structural/index.js"
@@ -94,5 +95,22 @@ describe("Mutable HashMap", () => {
 
     expect(Array.from(map)).toEqual([[new Index(1, 1), new Value(3, 3)]])
     expect(HM.size(map)).toEqual(1)
+  })
+
+  it("from", () => {
+    expect(
+      HM.from([
+        [1, 2],
+        [3, 4]
+      ])
+    ).toEqual(pipe(HM.make<number, number>(), HM.set(1, 2), HM.set(3, 4)))
+  })
+})
+describe("Mutable HashSet", () => {
+  it("from", () => {
+    const s = HS.make<number>()
+    s.add(1)
+    s.add(2)
+    expect(HS.from([1, 2])).toEqual(s)
   })
 })
