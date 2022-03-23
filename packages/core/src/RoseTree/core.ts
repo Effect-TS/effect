@@ -16,12 +16,10 @@ import { makeEqual } from "../Equal/index.js"
 import { pipe } from "../Function/index.js"
 import type { Identity } from "../Identity/index.js"
 import * as IO from "../IO/index.js"
-import type { TreeURI } from "../Modules/index.js"
-import * as DSL from "../Prelude/DSL/index.js"
-import { getApplicativeF } from "../Prelude/DSL/index.js"
-import type { URI } from "../Prelude/index.js"
-import * as P from "../Prelude/index.js"
-import { sequenceF } from "../Prelude/index.js"
+import * as DSL from "../PreludeV2/DSL/index.js"
+import { getApplicativeF } from "../PreludeV2/DSL/index.js"
+import * as P from "../PreludeV2/index.js"
+import { sequenceF } from "../PreludeV2/index.js"
 import type { Show } from "../Show/index.js"
 
 export declare type Forest<A> = ReadonlyArray<Tree<A>>
@@ -29,6 +27,10 @@ export declare type Forest<A> = ReadonlyArray<Tree<A>>
 export interface Tree<A> {
   readonly value: A
   readonly forest: Forest<A>
+}
+
+export interface TreeF extends P.HKT {
+  readonly type: Tree<this["A"]>
 }
 
 export function make<A>(value: A, forest: Forest<A> = A.empty()): Tree<A> {
@@ -149,20 +151,15 @@ export function unfoldForestSafe<A, B>(
 /**
  * Monadic tree builder, in depth-first order
  */
-export function unfoldTreeM<M extends P.URIS, C>(
-  M: P.Monad<M, C> & P.Applicative<M, C>
-): <K, Q, W, X, I, S, R, E, A, B>(
-  b: B,
-  f: (b: B) => P.Kind<M, C, K, Q, W, X, I, S, R, E, [A, Array<B>]>
-) => P.Kind<M, C, K, Q, W, X, I, S, R, E, Tree<A>>
-export function unfoldTreeM<M>(
-  M: P.Monad<P.UHKT<M>> & P.Applicative<P.UHKT<M>>
-): <A, B>(b: B, f: (b: B) => P.HKT<M, [A, Array<B>]>) => P.HKT<M, Tree<A>> {
-  const unfoldForestMM = unfoldForestM(M)
-  const chain = DSL.chainF(M)
-  const succeed = DSL.succeedF(M)
-  return (b, f) =>
-    pipe(
+export function unfoldTreeM<M extends TreeF>(M_: P.Monad<M> & P.Applicative<M>) {
+  return <X, I, R, E, A, B>(
+    b: B,
+    f: (b: B) => P.Kind<M, X, I, R, E, [A, Array<B>]>
+  ): P.Kind<M, X, I, R, E, Tree<A>> => {
+    const unfoldForestMM = unfoldForestM(M_)
+    const chain = DSL.chainF(M_)
+    const succeed = DSL.succeedF(M_, M_)
+    return pipe(
       f(b),
       chain(([a, bs]) =>
         pipe(
@@ -171,27 +168,24 @@ export function unfoldTreeM<M>(
         )
       )
     )
+  }
 }
 
 /**
  * Monadic forest builder, in depth-first order
  */
-export function unfoldForestM<M extends P.URIS, C>(
-  M: P.Monad<M, C> & P.Applicative<M, C>
-): <K, Q, W, X, I, S, R, E, A, B>(
-  bs: Array<B>,
-  f: (b: B) => P.Kind<M, C, K, Q, W, X, I, S, R, E, [A, Array<B>]>
-) => P.Kind<M, C, K, Q, W, X, I, S, R, E, Forest<A>>
-export function unfoldForestM<M>(
-  M: P.Monad<P.UHKT<M>> & P.Applicative<P.UHKT<M>>
-): <A, B>(bs: Array<B>, f: (b: B) => P.HKT<M, [A, Array<B>]>) => P.HKT<M, Forest<A>> {
-  const traverseM = A.forEachF(M)
-  return (bs, f) =>
-    pipe(
+export const unfoldForestM =
+  <M extends TreeF>(M_: P.Monad<M> & P.Applicative<M>) =>
+  <X, I, R, E, A, B>(
+    bs: Array<B>,
+    f: (b: B) => P.Kind<M, X, I, R, E, [A, Array<B>]>
+  ): P.Kind<M, X, I, R, E, Forest<A>> => {
+    const traverseM = A.forEachF(M_)
+    return pipe(
       bs,
-      traverseM((b) => unfoldTreeM(M)(b, f))
+      traverseM((b) => unfoldTreeM(M_)(b, f))
     )
-}
+  }
 
 export function elem_<A>(E: Equal<A>): (fa: Tree<A>, a: A) => boolean {
   function goForest(forest: Forest<A>, a: A, i = 0): IO.IO<boolean> {
@@ -304,11 +298,15 @@ export function reduceRight_<A, B>(fa: Tree<A>, b: B, f: (a: A, b: B) => B): B {
   return IO.run(go(fa, b))
 }
 
-export const forEachF = P.implementForEachF<[URI<TreeURI>]>()((_) => (G) => {
+export const forEachF = P.implementForEachF<TreeF>()((_) => (G) => {
   const traverseF = A.forEachF(G)
   const r =
-    <A, B>(f: (a: A) => P.HKT<typeof _.G, B>) =>
-    (ta: Tree<A>): P.HKT<typeof _.G, Tree<B>> =>
+    <A, B>(
+      f: (a: A) => P.Kind<typeof _.G, typeof _.X, typeof _.I, typeof _.R, typeof _.E, B>
+    ) =>
+    (
+      ta: Tree<A>
+    ): P.Kind<typeof _.G, typeof _.X, typeof _.I, typeof _.R, typeof _.E, Tree<B>> =>
       pipe(
         f(ta.value),
         G.map((value: B) => (forest: Forest<B>) => ({
@@ -325,7 +323,7 @@ export const forEachF = P.implementForEachF<[URI<TreeURI>]>()((_) => (G) => {
   return r
 })
 
-export const ForEach = P.instance<P.ForEach<[URI<TreeURI>]>>({
+export const ForEach = P.instance<P.ForEach<TreeF>>({
   forEachF,
   map
 })
@@ -423,13 +421,13 @@ export function reduceRight<A, B>(b: B, f: (a: A, b: B) => B) {
   return (fa: Tree<A>): B => reduceRight_(fa, b, f)
 }
 
-export const Foldable = P.instance<P.Foldable<[URI<TreeURI>]>>({
+export const Foldable = P.instance<P.Foldable<TreeF>>({
   foldMap,
   reduce,
   reduceRight
 })
 
-export const Monad = P.instance<P.Monad<[URI<TreeURI>]>>({
+export const Monad = P.instance<P.Monad<TreeF>>({
   any: () => of({}),
   flatten,
   map
@@ -437,13 +435,10 @@ export const Monad = P.instance<P.Monad<[URI<TreeURI>]>>({
 
 export const Applicative = getApplicativeF(Monad)
 
-export const gen = DSL.genF(Monad)
+const { bind, do: do_, let: let_ } = P.getDo(Monad)
 
-export const bind = DSL.bindF(Monad)
+export { do_ as do, let_ as let, bind }
 
-const do_ = DSL.doF(Monad)
-
-export { do_ as do }
 export { branch as if, branch_ as if_ }
 
 export const struct = DSL.structF(Applicative)
@@ -453,10 +448,11 @@ export const tuple = DSL.tupleF(Applicative)
 /**
  * Matchers
  */
-export const { match, matchIn, matchMorph, matchTag, matchTagIn } = DSL.matchers(Monad)
+export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
+  DSL.matchers<TreeF>()
 
 /**
  * Conditionals
  */
-const branch = DSL.conditionalF(Monad)
-const branch_ = DSL.conditionalF_(Monad)
+const branch = DSL.conditionalF<TreeF>()
+const branch_ = DSL.conditionalF_<TreeF>()
