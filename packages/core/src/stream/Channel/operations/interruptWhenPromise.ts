@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import type { Promise } from "../../../io/Promise"
 import type { Channel } from "../definition"
 
@@ -23,9 +24,9 @@ export function interruptWhenPromise_<
   OutDone1
 >(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  promise: Promise<OutErr1, OutDone1>
+  promise: LazyArg<Promise<OutErr1, OutDone1>>
 ): Channel<Env, InErr, InElem, InDone, OutErr | OutErr1, OutElem, OutDone | OutDone1> {
-  return self.interruptWhen(promise.await())
+  return self.interruptWhen(promise().await())
 }
 
 /**

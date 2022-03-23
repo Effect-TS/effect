@@ -52,6 +52,21 @@ export abstract class MergeDecisionBase<R, E0, Z0, E, Z>
   readonly [_Z]!: () => Z
 }
 
+/**
+ * @tsplus unify ets/Channel/MergeDecision
+ */
+export function unifyMergeDecision<X extends MergeDecision<any, any, any, any, any>>(
+  self: X
+): MergeDecision<
+  [X] extends [{ [k in typeof _R]: (_: infer R) => void }] ? R : never,
+  [X] extends [{ [k in typeof _E0]: (_: infer E0) => void }] ? E0 : never,
+  [X] extends [{ [k in typeof _Z0]: (_: infer Z0) => void }] ? Z0 : never,
+  [X] extends [{ [k in typeof _E]: () => infer E }] ? E : never,
+  [X] extends [{ [k in typeof _Z]: () => infer A }] ? A : never
+> {
+  return self
+}
+
 export class Done<R, E, Z> extends MergeDecisionBase<R, unknown, unknown, E, Z> {
   readonly _tag = "Done"
 

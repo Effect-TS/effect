@@ -1,0 +1,57 @@
+import { Chunk } from "../../../collection/immutable/Chunk"
+import { Tuple } from "../../../collection/immutable/Tuple"
+import { Option } from "../../../data/Option"
+import { Effect } from "../../../io/Effect"
+import { Channel } from "../../Channel"
+import type { Stream } from "../definition"
+import { concreteStream, StreamInternal } from "./_internal/StreamInternal"
+
+/**
+ * Returns a new stream that only emits elements that are not equal to the
+ * previous element emitted, using the specified effectual function to
+ * determine whether two elements are equal.
+ *
+ * @tsplus fluent ets/Stream changesWithEffect
+ */
+export function changesWithEffect_<R, E, A, R2, E2>(
+  self: Stream<R, E, A>,
+  f: (x: A, y: A) => Effect<R2, E2, boolean>,
+  __tsplusTrace?: string
+): Stream<R & R2, E | E2, A> {
+  concreteStream(self)
+  return new StreamInternal(self.channel >> writer<R, E, A, R2, E2>(Option.none, f))
+}
+
+/**
+ * Returns a new stream that only emits elements that are not equal to the
+ * previous element emitted, using the specified effectual function to
+ * determine whether two elements are equal.
+ */
+export const changesWithEffect = Pipeable(changesWithEffect_)
+
+function writer<R, E, A, R2, E2>(
+  last: Option<A>,
+  f: (x: A, y: A) => Effect<R2, E2, boolean>
+): Channel<R & R2, E | E2, Chunk<A>, unknown, E | E2, Chunk<A>, void> {
+  return Channel.readWithCause(
+    (chunk: Chunk<A>) =>
+      Channel.fromEffect(
+        chunk.reduceEffect(
+          Tuple(last, Chunk.empty<A>()),
+          ({ tuple: [option, as] }, a) =>
+            option.fold(
+              Effect.succeedNow(Tuple(Option.some(a), as.append(a))),
+              (value) =>
+                f(value, a).map((b) =>
+                  b ? Tuple(Option.some(a), as) : Tuple(Option.some(a), as.append(a))
+                )
+            )
+        )
+      ).flatMap(
+        ({ tuple: [newLast, newChunk] }) =>
+          Channel.write(newChunk) > writer<R, E, A, R2, E2>(newLast, f)
+      ),
+    (cause) => Channel.failCause(cause),
+    () => Channel.unit
+  )
+}

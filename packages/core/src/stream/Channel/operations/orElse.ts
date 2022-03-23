@@ -32,7 +32,7 @@ export function orElse_<
   InErr & InErr1,
   InElem & InElem1,
   InDone & InDone1,
-  OutErr | OutErr1,
+  OutErr1,
   OutElem | OutElem1,
   OutDone | OutDone1
 > {

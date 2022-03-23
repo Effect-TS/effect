@@ -1,3 +1,4 @@
+import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../../io/Effect"
 import { Channel } from "../definition"
 import { MergeDecision } from "../MergeDecision"
@@ -26,7 +27,7 @@ export function interruptWhen_<
   OutDone1
 >(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  io: Effect<Env1, OutErr1, OutDone1>
+  io: LazyArg<Effect<Env1, OutErr1, OutDone1>>
 ): Channel<
   Env1 & Env,
   InErr,
