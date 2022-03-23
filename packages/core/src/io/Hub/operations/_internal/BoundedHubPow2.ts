@@ -106,7 +106,7 @@ class BoundedHubPow2Subscription<A> extends Subscription<A> {
     )
   }
 
-  poll(default_: A): A {
+  poll<D>(default_: D): A | D {
     if (this.unsubscribed) {
       return default_
     }

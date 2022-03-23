@@ -1,7 +1,7 @@
 import { Tuple } from "../../../collection/immutable/Tuple"
 import type { HashSet } from "../../../collection/mutable/HashSet"
 import type { AtomicBoolean } from "../../../support/AtomicBoolean"
-import { MutableQueue } from "../../../support/MutableQueue"
+import { EmptyQueue, MutableQueue } from "../../../support/MutableQueue"
 import type { UIO } from "../../Effect"
 import { Effect } from "../../Effect"
 import { Promise } from "../../Promise"
@@ -93,13 +93,11 @@ abstract class BaseStrategy<A> implements Strategy<A> {
     pollers: MutableQueue<Promise<never, A>>
   ): void {
     let keepPolling = true
-    const nullPoller = null as unknown as Promise<never, A>
-    const empty = null as unknown as A
 
     while (keepPolling && !subscription.isEmpty()) {
-      const poller = pollers.poll(nullPoller)!
+      const poller = pollers.poll(EmptyQueue)!
 
-      if (poller === nullPoller) {
+      if (poller === EmptyQueue) {
         const subPollerPair = Tuple(subscription, pollers)
 
         subscribers.remove(subPollerPair)
@@ -110,9 +108,9 @@ abstract class BaseStrategy<A> implements Strategy<A> {
           subscribers.add(subPollerPair)
         }
       } else {
-        const pollResult = subscription.poll(empty)
+        const pollResult = subscription.poll(EmptyQueue)
 
-        if (pollResult == null) {
+        if (pollResult == EmptyQueue) {
           unsafeOfferAll(pollers, unsafePollAllQueue(pollers).prepend(poller))
         } else {
           unsafeCompletePromise(poller, pollResult)
@@ -180,13 +178,12 @@ export class BackPressure<A> extends BaseStrategy<A> {
     hub: AtomicHub<A>,
     subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Promise<never, A>>]>>
   ): void {
-    const empty = null as unknown as readonly [A, Promise<never, boolean>, boolean]
     let keepPolling = true
 
     while (keepPolling && !hub.isFull()) {
-      const publisher = this.publishers.poll(empty)!
+      const publisher = this.publishers.poll(EmptyQueue)!
 
-      if (publisher == null) {
+      if (publisher === EmptyQueue) {
         keepPolling = false
       } else {
         const published = hub.publish(publisher[0])

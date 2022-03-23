@@ -1,6 +1,7 @@
 import type { Chunk } from "../../../collection/immutable/Chunk"
 import type { AtomicBoolean } from "../../../support/AtomicBoolean"
 import type { MutableQueue } from "../../../support/MutableQueue"
+import { EmptyQueue } from "../../../support/MutableQueue"
 import type { UIO } from "../../Effect"
 import { Effect } from "../../Effect"
 import type { Promise } from "../../Promise"
@@ -92,8 +93,10 @@ export class SlidingStrategy<A> implements Strategy<A> {
       if (queue.capacity === 0) {
         return
       }
+
       // Poll 1 and retry
-      queue.poll(undefined)
+      queue.poll(EmptyQueue)
+
       if (queue.offer(bs.unsafeGet(0))) {
         bs = bs.drop(1)
       }

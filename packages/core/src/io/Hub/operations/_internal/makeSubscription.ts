@@ -2,7 +2,7 @@ import { Chunk } from "../../../../collection/immutable/Chunk"
 import { Tuple } from "../../../../collection/immutable/Tuple"
 import type { HashSet } from "../../../../collection/mutable/HashSet"
 import { AtomicBoolean } from "../../../../support/AtomicBoolean"
-import { MutableQueue } from "../../../../support/MutableQueue"
+import { EmptyQueue, MutableQueue } from "../../../../support/MutableQueue"
 import type { UIO } from "../../../Effect"
 import { Effect } from "../../../Effect"
 import { Promise } from "../../../Promise"
@@ -122,10 +122,11 @@ class UnsafeMakeSubscriptionImplementation<A> extends XQueueInternal<
       return Effect.interrupt
     }
 
-    const empty = null as unknown as A
-    const message = this.pollers.isEmpty ? this.subscription.poll(empty) : empty
+    const message = this.pollers.isEmpty
+      ? this.subscription.poll(EmptyQueue)
+      : EmptyQueue
 
-    if (message == null) {
+    if (message === EmptyQueue) {
       const promise = Promise.unsafeMake<never, A>(fiberId)
 
       return Effect.suspendSucceed(() => {

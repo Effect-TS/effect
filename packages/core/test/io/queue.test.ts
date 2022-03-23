@@ -25,6 +25,16 @@ function waitForSize<RA, EA, RB, EB, A, B>(
 }
 
 describe("Queue", () => {
+  it("handles falsy values", async () => {
+    const program = Queue.unbounded<number>()
+      .tap((queue) => queue.offer(0))
+      .flatMap((queue) => queue.take())
+
+    const result = await program.unsafeRunPromise()
+
+    expect(result).toBe(0)
+  })
+
   it("sequential offer and take", async () => {
     const program = Effect.Do()
       .bind("queue", () => Queue.bounded<number>(100))
