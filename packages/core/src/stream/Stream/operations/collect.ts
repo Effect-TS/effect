@@ -16,5 +16,7 @@ export function collect_<R, E, A, B>(
 
 /**
  * Performs a filter and map in a single step.
+ *
+ * @tsplus static ets/StreamOps collect
  */
 export const collect = Pipeable(collect_)

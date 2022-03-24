@@ -24,6 +24,8 @@ export function mapAccum_<R, E, A, S, A1>(
 
 /**
  * Statefully maps over the elements of this stream to produce new elements.
+ *
+ * @tsplus static ets/StreamOps mapAccum
  */
 export const mapAccum = Pipeable(mapAccum_)
 

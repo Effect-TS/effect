@@ -17,5 +17,7 @@ export function mapEffect_<R, E, A, R1, E1, B>(
 
 /**
  * Maps over elements of the stream with the specified effectful function.
+ *
+ * @tsplus static ets/StreamOps mapEffect
  */
 export const mapEffect = Pipeable(mapEffect_)

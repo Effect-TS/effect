@@ -18,5 +18,7 @@ export function mapChunks_<R, E, A, A2>(
 
 /**
  * Transforms the chunks emitted by this stream.
+ *
+ * @tsplus static ets/StreamOps mapChunks
  */
 export const mapChunks = Pipeable(mapChunks_)

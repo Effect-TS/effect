@@ -25,7 +25,7 @@ function go(
 ): Channel<unknown, unknown, unknown, unknown, never, Chunk<number>, unknown> {
   const remaining = max - min
   return remaining > chunkSize
-    ? Channel.write(Chunk.range(min, min + chunkSize)) >
+    ? Channel.write(Chunk.range(min, min + chunkSize - 1)) >
         go(min + chunkSize, max, chunkSize)
-    : Channel.write(Chunk.range(min, min + remaining))
+    : Channel.write(Chunk.range(min, min + remaining - 1))
 }

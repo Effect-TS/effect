@@ -26,8 +26,9 @@ function reader<S, In>(
   f: (s: S, input: In) => S,
   __tsplusTrace?: string
 ): Channel<unknown, never, Chunk<In>, unknown, never, Chunk<In>, S> {
-  return cont(z)
-    ? Channel.readWith(
+  return !cont(z)
+    ? Channel.succeedNow(z)
+    : Channel.readWith(
         (chunk: Chunk<In>) => {
           const {
             tuple: [nextS, leftovers]
@@ -39,7 +40,6 @@ function reader<S, In>(
         (err) => Channel.fail(err),
         () => Channel.succeedNow(z)
       )
-    : Channel.succeedNow(z)
 }
 
 function foldChunkSplit<S, In>(

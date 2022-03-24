@@ -27,6 +27,8 @@ export function splitOnChunk_<R, E, A>(
 /**
  * Splits elements on a delimiter and transforms the splits into desired
  * output.
+ *
+ * @tsplus static ets/StreamOps splitOnChunk
  */
 export const splitOnChunk = Pipeable(splitOnChunk_)
 

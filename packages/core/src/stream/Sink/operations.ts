@@ -1,4 +1,5 @@
 // codegen:start {preset: barrel, include: ./operations/*.ts}
+export * from "./operations/as"
 export * from "./operations/chain"
 export * from "./operations/collectAll"
 export * from "./operations/collectAllN"
@@ -70,6 +71,7 @@ export * from "./operations/raceBoth"
 export * from "./operations/raceWith"
 export * from "./operations/repeat"
 export * from "./operations/splitWhere"
+export * from "./operations/succeed"
 export * from "./operations/sum"
 export * from "./operations/summarized"
 export * from "./operations/suspend"

@@ -26,5 +26,7 @@ export function filter_<R, E, A>(
 
 /**
  * Filters the elements emitted by this stream using the provided function.
+ *
+ * @tsplus static ets/StreamOps filter
  */
 export const filter = Pipeable(filter_)

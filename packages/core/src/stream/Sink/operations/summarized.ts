@@ -33,6 +33,6 @@ export function summarized_<R, E, R1, E1, In, L, Z, B, C>(
 
 /**
  * Summarize a sink by running an effect when the sink starts and again when
- * it completes
+ * it completes.
  */
 export const summarized = Pipeable(summarized_)

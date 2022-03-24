@@ -6,7 +6,7 @@ import type { Sink } from "../definition"
  *
  * @tsplus fluent ets/Sink filterInputEffect
  */
-export function filterInputEffect_<R, R2, E, E2 extends E, In, In1 extends In, L, Z>(
+export function filterInputEffect_<R, R2, E, E2, In, In1 extends In, L, Z>(
   self: Sink<R, E, In, L, Z>,
   p: (input: In1) => Effect<R2, E2, boolean>,
   __tsplusTrace?: string

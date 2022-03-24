@@ -46,27 +46,27 @@ function splitter<E, A>(
   f: Predicate<A>
 ): Channel<unknown, never, Chunk<A>, unknown, E, Chunk<A>, unknown> {
   return Channel.readWithCause(
-    (chunk: Chunk<A>) => {
-      if (chunk.isEmpty()) {
+    (input: Chunk<A>) => {
+      if (input.isEmpty()) {
         return splitter(written, leftovers, f)
       }
       if (written) {
-        const index = chunk.indexWhere(f)
+        const index = input.indexWhere(f)
         if (index === -1) {
-          return Channel.write(chunk) > splitter<E, A>(true, leftovers, f)
+          return Channel.write(input) > splitter<E, A>(true, leftovers, f)
         }
         const {
           tuple: [left, right]
-        } = chunk.splitAt(index)
+        } = input.splitAt(index)
         return Channel.write(left) > Channel.fromEffect(leftovers.set(right))
       }
-      const index = chunk.indexWhereFrom(1, f)
+      const index = input.indexWhereFrom(1, f)
       if (index === -1) {
-        return Channel.write(chunk) > splitter<E, A>(true, leftovers, f)
+        return Channel.write(input) > splitter<E, A>(true, leftovers, f)
       }
       const {
         tuple: [left, right]
-      } = chunk.splitAt(Math.max(index, 1))
+      } = input.splitAt(Math.max(index, 1))
       return Channel.write(left) > Channel.fromEffect(leftovers.set(right))
     },
     (cause) => Channel.failCause(cause),

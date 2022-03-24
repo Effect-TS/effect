@@ -85,7 +85,7 @@ function fold<S, In>(
   const total = cost + costFn(s, elem)
 
   if (total <= max) {
-    return fold(input, f(s, elem), costFn, decompose, f, dirty, cost, max, index)
+    return fold(input, f(s, elem), costFn, decompose, f, true, total, max, index + 1)
   }
 
   const decomposed = decompose(elem)
