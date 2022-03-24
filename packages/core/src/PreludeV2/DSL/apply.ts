@@ -1,9 +1,33 @@
 // ets_tracing: off
 
+import type { Monad } from "@effect-ts/core/PreludeV2"
+import { chainF } from "@effect-ts/core/PreludeV2"
+import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
+
 import { pipe, tuple } from "../../Function/index.js"
 import type { EnforceNonEmptyRecord } from "../../Utils/index.js"
 import type { Apply } from "../Apply/index.js"
-import type * as HKT from "../HKT/index.js"
+import * as HKT from "../HKT/index.js"
+
+
+
+
+export function getApplyF<F extends HKT.HKT>(F_: Monad<F>): Apply<F> {
+  const chain = chainF(F_)
+  return HKT.instance<Apply<F>>({
+    map: F_.map,
+    both: (fb) => (fa) =>
+      pipe(
+        fb,
+        chain((a) =>
+          pipe(
+            fa,
+            F_.map((b) => Tp.tuple(b, a))
+          )
+        )
+      )
+  })
+}
 
 export function apF<F extends HKT.HKT>(F_: Apply<F>) {
   return <X, I, R, E, A>(fa: HKT.Kind<F, X, I, R, E, A>) =>
@@ -14,6 +38,18 @@ export function apF<F extends HKT.HKT>(F_: Apply<F>) {
         F_.both(fab)(fa),
         F_.map(({ tuple: [a, f] }) => f(a))
       )
+}
+
+export function getZip<F extends HKT.HKT>(F_: Apply<F>) {
+  return <X, I, R, E, A, I1, R1, E1, A1>(
+    fa: HKT.Kind<F, X, I, R, E, A>,
+    fb: HKT.Kind<F, X, I1, R1, E1, A1>
+  ): HKT.Kind<F, X, I & I1, R & R1, E | E1, readonly [A, A1]> =>
+    pipe(
+      fa,
+      F_.both(fb),
+      F_.map(({ tuple: [a, b] }) => [a, b] as const)
+    )
 }
 
 function curried(f: Function, n: number, acc: ReadonlyArray<unknown>) {
