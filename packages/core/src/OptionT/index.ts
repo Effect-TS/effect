@@ -2,65 +2,53 @@
 
 import "../Operator/index.js"
 
-import { pipe } from "../Function/index.js"
+import type { OptionF } from "@effect-ts/core/Option/definitions"
+
+import { identity, pipe } from "../Function/index.js"
 import * as O from "../Option/index.js"
-import { succeedF } from "../Prelude/DSL/index.js"
-import type { Access, Provide } from "../Prelude/FX/index.js"
-import * as HKT from "../Prelude/HKT/index.js"
-import type { Applicative, Covariant, Monad } from "../Prelude/index.js"
+import { succeedF } from "../PreludeV2/DSL/index.js"
+import type { Access, Provide } from "../PreludeV2/FX/index.js"
+import * as HKT from "../PreludeV2/HKT/index.js"
+import type { Applicative, Covariant } from "../PreludeV2/index.js"
+import * as P from "../PreludeV2/index.js"
 
-export function monad<F extends HKT.URIS, C>(
-  M: Monad<F, C>
-): Monad<[F[0], ...HKT.Rest<F>, HKT.URI<O.OptionURI>], C>
-export function monad<F, C>(
-  M: Monad<HKT.UHKT<F>, C>
-): Monad<[HKT.UHKT<F>[0], HKT.URI<O.OptionURI>], C> {
-  const succeed = succeedF(M)
-  return HKT.instance<Monad<[HKT.UHKT<F>[0], HKT.URI<O.OptionURI>], C>>({
-    any: () => succeed(O.some({})),
-    flatten: (x) =>
+// @todo: write a test for flatten, just to check
+// @todo: merge monad & applicative ?
+type OptionTF<F extends HKT.HKT> = P.ComposeF<F, OptionF>
+
+export function monad<F extends P.HKT>(F_: P.Monad<F>) {
+  return P.instance<P.Monad<OptionTF<F>>>({
+    any: <X, I, R, E>() =>
       pipe(
-        x,
-        M.map((o) => (o._tag === "None" ? succeed(O.none) : o.value)),
-        M.flatten
+        F_.any<X, I, R, E>(),
+        F_.map((a) => O.some(a))
       ),
-    map: (f) => M.map(O.map(f))
-  })
-}
-
-export function applicative<F extends HKT.URIS, C>(
-  M: Applicative<F, C>
-): Applicative<[F[0], ...HKT.Rest<F>, HKT.URI<O.OptionURI>], C>
-export function applicative<F, C>(
-  M: Applicative<HKT.UHKT<F>, C>
-): Applicative<[HKT.UHKT<F>[0], HKT.URI<O.OptionURI>], C> {
-  const succeed = succeedF(M)
-  return HKT.instance<Applicative<[HKT.UHKT<F>[0], HKT.URI<O.OptionURI>], C>>({
-    any: () => succeed(O.some({})),
-    map: (f) => M.map(O.map(f)),
-    both: (fb) => (x) =>
+    map: (f) => F_.map(O.map(f)),
+    flatten: <X, I, R, E, A, I2, R2, E2>(
+      ffa: P.Kind<F, X, I2, R2, E2, O.Option<P.Kind<F, X, I, R, E, O.Option<A>>>>
+    ) =>
       pipe(
-        x,
-        M.both(fb),
-        M.map(({ tuple: [a, b] }) => O.zip_(a, b))
+        ffa,
+        F_.map(
+          O.fold(() => succeedF(F_, F_)<O.Option<A>, X, I, R, E>(O.none), identity)
+        ),
+        F_.flatten
       )
   })
 }
 
-export function access<F extends HKT.URIS, C>(
-  M: Access<F, C> & Covariant<F, C>
-): Access<[F[0], ...HKT.Rest<F>, HKT.URI<O.OptionURI>], C>
-export function access<F>(M: Access<HKT.UHKT<F>> & Covariant<HKT.UHKT<F>>) {
-  return HKT.instance<Access<[HKT.UHKT<F>[0], HKT.URI<O.OptionURI>]>>({
+export function applicative<F extends P.HKT>(F_: P.Monad<F>): Applicative<OptionTF<F>> {
+  return P.getApplicativeF(monad(F_))
+}
+
+export function access<F extends P.HKT>(M: Access<F> & Covariant<F>) {
+  return HKT.instance<Access<OptionTF<F>>>({
     access: (f) => pipe(M.access(f), M.map(O.some))
   })
 }
 
-export function provide<F extends HKT.URIS, C>(
-  M: Provide<F, C>
-): Provide<[F[0], ...HKT.Rest<F>, HKT.URI<O.OptionURI>], C>
-export function provide<F>(M: Provide<HKT.UHKT<F>>) {
-  return HKT.instance<Provide<[HKT.UHKT<F>[0], HKT.URI<O.OptionURI>]>>({
+export function provide<F extends P.HKT>(M: Provide<F>) {
+  return HKT.instance<Provide<OptionTF<F>>>({
     provide: M.provide
   })
 }
