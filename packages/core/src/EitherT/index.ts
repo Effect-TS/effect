@@ -2,89 +2,71 @@
 
 import "../Operator/index.js"
 
-import * as E from "../Either/index.js"
-import { pipe } from "../Function/index.js"
-import { succeedF } from "../Prelude/DSL/index.js"
-import type { Access, Fail, Provide, Run } from "../Prelude/FX/index.js"
-import * as HKT from "../Prelude/HKT/index.js"
-import type { Any, Applicative, Covariant, Monad, URI } from "../Prelude/index.js"
+import type { EitherF } from "../Either/index.js"
+import * as EI from "../Either/index.js"
+import { flow, identity, pipe } from "../Function/index.js"
+import type * as FX from "../PreludeV2/FX/index.js"
+import * as P from "../PreludeV2/index.js"
 
-export type V<C> = HKT.CleanParam<C, "E"> & HKT.V<"E", "+">
+type EitherTF<F extends P.HKT> = P.ComposeF<F, EitherF>
 
-export function monad<F extends HKT.URIS, C>(
-  M: Monad<F, C>
-): Monad<[F[0], ...HKT.Rest<F>, URI<E.EitherURI>], V<C>>
-export function monad<F>(M: Monad<HKT.UHKT<F>>) {
-  const succeed = succeedF(M)
-  return HKT.instance<Monad<[HKT.UHKT<F>[0], URI<E.EitherURI>], HKT.V<"E", "+">>>({
-    any: () => succeedF(M)(E.right({})),
-    flatten: <E, A, E2>(
-      ffa: HKT.HKT<F, E.Either<E2, HKT.HKT<F, E.Either<E, A>>>>
-    ): HKT.HKT<F, E.Either<E | E2, A>> =>
+export function monad<F extends P.HKT>(M_: P.Monad<F>) {
+  const succeed = P.succeedF(M_, M_)
+  return P.instance<P.Monad<EitherTF<F>>>({
+    any: () => succeed(EI.right({})),
+    flatten: <X, I, R, E, A, I2, R2, E2>(
+      ffa: P.Kind<
+        F,
+        X,
+        I2,
+        R2,
+        E2,
+        EI.Either<E2, P.Kind<F, X, I, R, E, EI.Either<E, A>>>
+      >
+    ) =>
       pipe(
         ffa,
-        M.map((e) => (e._tag === "Left" ? succeed<E.Either<E | E2, A>>(e) : e.right)),
-        M.flatten
+        M_.map(
+          EI.fold(
+            (e) => succeed<EI.Either<E | E2, A>, X, I, R, E>(EI.left(e)),
+            identity
+          )
+        ),
+        M_.flatten
       ),
-    map: (f) => M.map(E.map(f))
+    map: (f) => M_.map(EI.map(f))
   })
 }
 
-export function applicative<F extends HKT.URIS, C>(
-  M: Applicative<F, C>
-): Applicative<[F[0], ...HKT.Rest<F>, URI<E.EitherURI>], V<C>>
-export function applicative<F>(M: Applicative<HKT.UHKT<F>>) {
-  return HKT.instance<Applicative<[HKT.UHKT<F>[0], URI<E.EitherURI>], HKT.V<"E", "+">>>(
-    {
-      any: () => succeedF(M)(E.right({})),
-      map: (f) => M.map(E.map(f)),
-      both: (fb) => (x) =>
-        pipe(
-          x,
-          M.both(fb),
-          M.map(({ tuple: [ea, eb] }) => E.AssociativeBoth.both(eb)(ea))
-        )
-    }
-  )
+export function applicative<F extends P.HKT>(F_: P.Monad<F>) {
+  return P.getApplicativeF(monad(F_))
 }
 
-export function run<F extends HKT.URIS, C>(
-  M: Covariant<F, C>
-): Run<[F[0], ...HKT.Rest<F>, URI<E.EitherURI>], V<C>>
-export function run<F>(M: Covariant<HKT.UHKT<F>>) {
-  return HKT.instance<Run<[HKT.UHKT<F>[0], URI<E.EitherURI>], HKT.V<"E", "+">>>({
+export function run<F extends P.HKT>(M_: P.Covariant<F>) {
+  return P.instance<FX.Run<EitherTF<F>>>({
     either: <
-      <E, A>(
-        fa: HKT.HKT<F, E.Either<E, A>>
-      ) => HKT.HKT<F, E.Either<never, E.Either<E, A>>>
-    >M.map(E.Run.either)
+      <A, X, I, R, E>(
+        fa: P.Kind<F, X, I, R, E, EI.Either<E, A>>
+      ) => P.Kind<F, X, I, R, never, EI.Either<never, EI.Either<E, A>>>
+    >M_.map(EI.Run.either)
   })
 }
 
-export function fail<F extends HKT.URIS, C>(
-  M: Any<F, C> & Covariant<F, C>
-): Fail<[F[0], ...HKT.Rest<F>, URI<E.EitherURI>], V<C>>
-export function fail<F>(M: Any<HKT.UHKT<F>> & Covariant<HKT.UHKT<F>>) {
-  const succeed = succeedF(M)
-  return HKT.instance<Fail<[HKT.UHKT<F>[0], URI<E.EitherURI>], HKT.V<"E", "+">>>({
-    fail: (x) => pipe(x, E.left, succeed)
+export function fail<F extends P.HKT>(M_: P.Any<F> & P.Covariant<F>) {
+  const succeed = P.succeedF(M_, M_)
+  return P.instance<FX.Fail<EitherTF<F>>>({
+    fail: flow(EI.left, succeed)
   })
 }
 
-export function access<F extends HKT.URIS, C>(
-  M: Access<F, C> & Covariant<F, C>
-): Access<[F[0], ...HKT.Rest<F>, URI<E.EitherURI>], V<C>>
-export function access<F>(M: Access<HKT.UHKT<F>> & Covariant<HKT.UHKT<F>>) {
-  return HKT.instance<Access<[HKT.UHKT<F>[0], URI<E.EitherURI>], HKT.V<"E", "+">>>({
-    access: (f) => pipe(M.access(f), M.map(E.right))
+export function access<F extends P.HKT>(M_: FX.Access<F> & P.Covariant<F>) {
+  return P.instance<FX.Access<EitherTF<F>>>({
+    access: flow(M_.access, M_.map(EI.right))
   })
 }
 
-export function provide<F extends HKT.URIS, C>(
-  M: Provide<F, C>
-): Provide<[F[0], ...HKT.Rest<F>, URI<E.EitherURI>], V<C>>
-export function provide<F>(M: Provide<HKT.UHKT<F>>) {
-  return HKT.instance<Provide<[HKT.UHKT<F>[0], URI<E.EitherURI>], HKT.V<"E", "+">>>({
-    provide: M.provide
+export function provide<F extends P.HKT>(M_: FX.Provide<F>) {
+  return P.instance<FX.Provide<EitherTF<F>>>({
+    provide: M_.provide
   })
 }

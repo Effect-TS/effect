@@ -8,13 +8,10 @@ import { identity, pipe } from "../Function/index.js"
 import * as O from "../Option/index.js"
 import { succeedF } from "../PreludeV2/DSL/index.js"
 import type { Access, Provide } from "../PreludeV2/FX/index.js"
-import * as HKT from "../PreludeV2/HKT/index.js"
 import type { Applicative, Covariant } from "../PreludeV2/index.js"
 import * as P from "../PreludeV2/index.js"
 
-// @todo: write a test for flatten, just to check
-// @todo: merge monad & applicative ?
-type OptionTF<F extends HKT.HKT> = P.ComposeF<F, OptionF>
+type OptionTF<F extends P.HKT> = P.ComposeF<F, OptionF>
 
 export function monad<F extends P.HKT>(F_: P.Monad<F>) {
   return P.instance<P.Monad<OptionTF<F>>>({
@@ -42,13 +39,13 @@ export function applicative<F extends P.HKT>(F_: P.Monad<F>): Applicative<Option
 }
 
 export function access<F extends P.HKT>(M: Access<F> & Covariant<F>) {
-  return HKT.instance<Access<OptionTF<F>>>({
+  return P.instance<Access<OptionTF<F>>>({
     access: (f) => pipe(M.access(f), M.map(O.some))
   })
 }
 
 export function provide<F extends P.HKT>(M: Provide<F>) {
-  return HKT.instance<Provide<OptionTF<F>>>({
+  return P.instance<Provide<OptionTF<F>>>({
     provide: M.provide
   })
 }
