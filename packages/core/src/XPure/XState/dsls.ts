@@ -1,45 +1,40 @@
 // ets_tracing: off
 
-import * as P from "../../Prelude/index.js"
-import { Applicative, Covariant, Monad } from "./instances.js"
+import type { XStateF } from "@effect-ts/core/XPure/XState/definition"
+
+import * as P from "../../PreludeV2/index.js"
+import { applicative, monad } from "./instances.js"
 
 /**
  * Struct based applicative for Reader[-_, +_]
  */
-export const struct = P.structF(Applicative)
+export const struct = <S>() => P.structF(applicative<S>())
 
 /**
  * Struct based applicative for Reader[-_, +_]
  */
-export const tuple = P.tupleF(Applicative)
+export const tuple = <S>() => P.tupleF(applicative<S>())
 
 /**
  * Matchers
  */
-export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
-  P.matchers(Covariant)
+export const matchers = <S>() => P.matchers<XStateF<S>>()
 
 /**
  * Conditionals
  */
-const branch = P.conditionalF(Covariant)
-const branch_ = P.conditionalF_(Covariant)
+const branch = <S>() => P.conditionalF<XStateF<S>>()
+
+const branch_ = <S>() => P.conditionalF_<XStateF<S>>()
 
 export { branch as if, branch_ as if_ }
 
 /**
  * Do
  */
-
-export const bind = P.bindF(Monad)
-
-const let_ = P.letF(Monad)
-
-const do_ = P.doF(Monad)
-
-export { do_ as do, let_ as let }
+export const getDo = <S>() => P.getDo<XStateF<S>>(monad<S>())
 
 /**
  * Generator
  */
-export const gen = P.genF(Monad)
+export const gen = <S>() => P.genF(monad<S>())

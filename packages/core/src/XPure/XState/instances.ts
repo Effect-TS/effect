@@ -3,64 +3,62 @@
 import { constant } from "@effect-ts/system/Function"
 import * as F from "@effect-ts/system/XPure"
 
-import type { XStateURI } from "../../Modules/index.js"
-import type { URI } from "../../Prelude/index.js"
-import * as P from "../../Prelude/index.js"
-import type { V } from "./definition.js"
+import * as P from "../../PreludeV2/index.js"
+import type { XStateF } from "./definition.js"
 import { map, zip } from "./operations.js"
 
 /**
  * The `Any` instance for `Reader[-_, +_]`.
  */
-export const Any = P.instance<P.Any<[URI<XStateURI>], V>>({
-  any: () => F.succeed(constant({}))
-})
+export const any = <S>() =>
+  P.instance<P.Any<XStateF<S>>>({
+    any: () => F.succeed(constant({}))
+  })
 
 /**
  * The `Covariant` instance for `Reader[-_, +_]`.
  */
-export const Covariant = P.instance<P.Covariant<[URI<XStateURI>], V>>({
-  map
-})
+export const covariant = <S>() =>
+  P.instance<P.Covariant<XStateF<S>>>({
+    map
+  })
 
 /**
  * The `AssociativeBoth` instance for `Reader[-_, +_]`.
  */
-export const AssociativeBoth = P.instance<P.AssociativeBoth<[URI<XStateURI>], V>>({
-  both: zip
-})
+export const associativeBoth = <S>() =>
+  P.instance<P.AssociativeBoth<XStateF<S>>>({
+    both: zip
+  })
 
 /**
  * The `AssociativeFlatten` instance for `Reader[-_, +_]`.
  */
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[URI<XStateURI>], V>>(
-  {
+export const associativeFlatten = <S>() =>
+  P.instance<P.AssociativeFlatten<XStateF<S>>>({
     flatten: (ffa) => F.chain_(ffa, (x) => x)
-  }
-)
+  })
 
 /**
  * The `IdentityFlatten` instance for `Reader[-_, +_]`.
  */
-export const IdentityFlatten = P.instance<P.IdentityFlatten<[URI<XStateURI>], V>>({
-  ...Any,
-  ...AssociativeFlatten
-})
+export const identityFlatten = <S>() =>
+  P.instance<P.IdentityFlatten<XStateF<S>>>({
+    ...any(),
+    ...associativeFlatten()
+  })
 
 /**
  * The `Monad` instance for `Reader[-_, +_]`.
  */
-export const Monad = P.instance<P.Monad<[URI<XStateURI>], V>>({
-  ...Any,
-  ...Covariant,
-  ...AssociativeFlatten
-})
+export const monad = <S>() =>
+  P.instance<P.Monad<XStateF<S>>>({
+    ...any(),
+    ...covariant(),
+    ...associativeFlatten()
+  })
 
 /**
  * The `Applicative` instance for `Reader[-_, +_]`.
  */
-export const Applicative = P.instance<P.Applicative<[URI<XStateURI>], V>>({
-  ...Any,
-  ...Covariant,
-  ...AssociativeBoth
-})
+export const applicative = <S>() => P.getApplicativeF(monad())
