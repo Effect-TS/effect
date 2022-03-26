@@ -6,78 +6,99 @@ import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/XPure"
 
-import type {
-  XPureReaderCategoryURI,
-  XPureStateCategoryURI,
-  XPureURI
-} from "../Modules/index.js"
-import type { URI } from "../Prelude/index.js"
-import * as P from "../Prelude/index.js"
+import * as P from "../PreludeV2/index.js"
 
-export type V = P.V<"S", "_"> & P.V<"R", "-"> & P.V<"E", "+"> & P.V<"X", "+">
+export interface XPureF<S> extends P.HKT {
+  readonly type: X.XPure<this["X"], S, S, this["R"], this["E"], this["A"]>
+}
 
-export const Any = P.instance<P.Any<[URI<XPureURI>], V>>({
-  any: () => X.succeed(constant({}))
-})
+export interface XPureStateCategoryF extends P.HKT {
+  readonly type: X.XPure<
+    this["X"],
+    this["I"],
+    this["A"],
+    this["R"],
+    this["E"],
+    this["A"]
+  >
+}
 
-export const Covariant = P.instance<P.Covariant<[URI<XPureURI>], V>>({
-  map: X.map
-})
+export interface XPureReaderCategoryF<S> extends P.HKT {
+  readonly type: X.XPure<this["X"], S, S, this["I"], this["E"], this["A"]>
+}
 
-export const AssociativeBoth = P.instance<P.AssociativeBoth<[URI<XPureURI>], V>>({
-  both: X.zip
-})
+export const Any = <S>() =>
+  P.instance<P.Any<XPureF<S>>>({
+    any: () => X.succeed(constant({}))
+  })
 
-export const AssociativeEither = P.instance<P.AssociativeEither<[URI<XPureURI>], V>>({
-  orElseEither: X.orElseEither
-})
+export const Covariant = <S>() =>
+  P.instance<P.Covariant<XPureF<S>>>({
+    map: X.map
+  })
 
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[URI<XPureURI>], V>>({
-  flatten: (ffa) => X.chain_(ffa, identity)
-})
+export const AssociativeBoth = <S>() =>
+  P.instance<P.AssociativeBoth<XPureF<S>>>({
+    both: X.zip
+  })
 
-export const Applicative = P.instance<P.Applicative<[URI<XPureURI>], V>>({
-  ...Any,
-  ...Covariant,
-  ...AssociativeBoth
-})
+export const AssociativeEither = <S>() =>
+  P.instance<P.AssociativeEither<XPureF<S>>>({
+    orElseEither: X.orElseEither
+  })
 
-export const Access = P.instance<P.FX.Access<[URI<XPureURI>], V>>({
-  access: X.access
-})
+export const AssociativeFlatten = <S>() =>
+  P.instance<P.AssociativeFlatten<XPureF<S>>>({
+    flatten: (ffa) => X.chain_(ffa, identity)
+  })
 
-export const Fail = P.instance<P.FX.Fail<[URI<XPureURI>], V>>({
-  fail: X.fail
-})
+export const Applicative = <S>() =>
+  P.instance<P.Applicative<XPureF<S>>>({
+    ...Any(),
+    ...Covariant(),
+    ...AssociativeBoth()
+  })
 
-export const Provide = P.instance<P.FX.Provide<[URI<XPureURI>], V>>({
-  provide: X.provideAll
-})
+export const Access = <S>() =>
+  P.instance<P.FX.Access<XPureF<S>>>({
+    access: X.access
+  })
 
-export const Monad = P.instance<P.Monad<[URI<XPureURI>], V>>({
-  ...Any,
-  ...AssociativeFlatten,
-  ...Covariant
-})
+export const Fail = <S>() =>
+  P.instance<P.FX.Fail<XPureF<S>>>({
+    fail: X.fail
+  })
 
-export const StateCategory = P.instance<P.Category<[URI<XPureStateCategoryURI>], V>>({
+export const Provide = <S>() =>
+  P.instance<P.FX.Provide<XPureF<S>>>({
+    provide: X.provideAll
+  })
+
+export const Monad = <S>() =>
+  P.instance<P.Monad<XPureF<S>>>({
+    ...Any(),
+    ...AssociativeFlatten(),
+    ...Covariant()
+  })
+
+export const StateCategory = P.instance<P.Category<XPureStateCategoryF>>({
   id: () => X.modify((a) => Tp.tuple(a, a)),
   compose: (bc) => X.chain((_) => bc)
 })
 
-export const Category = P.instance<P.Category<[URI<XPureReaderCategoryURI>], V>>({
-  id: () => X.access(identity),
-  compose: (bc) => (ab) => X.chain_(ab, (b) => X.provideAll_(bc, b))
-})
+export const category = <S>() =>
+  P.instance<P.Category<XPureReaderCategoryF<S>>>({
+    id: () => X.access(identity),
+    compose: (bc) => (ab) => X.chain_(ab, (b) => X.provideAll_(bc, b))
+  })
 
-export const struct = P.structF(Applicative)
+export const struct = <S>() => P.structF(Applicative<S>())
 
-export const tuple = P.tupleF(Applicative)
+export const tuple = <S>() => P.tupleF(Applicative<S>())
 
 /**
  * Matchers
  */
-export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
-  P.matchers(Covariant)
+export const matchers = <S>() => P.matchers<XPureF<S>>()
 
 export * from "@effect-ts/system/XPure"
