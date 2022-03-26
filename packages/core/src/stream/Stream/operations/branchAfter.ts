@@ -20,14 +20,16 @@ export function branchAfter_<R, E, A, R2, E2, B>(
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, B> {
   concreteStream(self)
-  return new StreamInternal(self.channel >> collecting(Chunk.empty<A>(), n, f))
+  return new StreamInternal(
+    Channel.suspend(self.channel >> collecting(Chunk.empty<A>(), n, f))
+  )
 }
 
 /**
  * Reads the first `n` values from the stream and uses them to choose the
  * pipeline that will be used for the remainder of the stream.
  *
- * @tsplus static ets/Stream branchAfter
+ * @tsplus static ets/StreamOps branchAfter
  */
 export const branchAfter = Pipeable(branchAfter_)
 

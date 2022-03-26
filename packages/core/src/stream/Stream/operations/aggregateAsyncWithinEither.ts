@@ -189,19 +189,19 @@ function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
                 }
                 case "ScheduleTimeout": {
                   return Tuple(
-                    Channel.write(Chunk(Either.right(b))).as(Option.some(b)),
+                    Channel.write(Chunk.single(Either.right(b))).as(Option.some(b)),
                     SinkEndReason.SinkEnd
                   )
                 }
                 case "SinkEnd": {
                   return Tuple(
-                    Channel.write(Chunk(Either.right(b))).as(Option.some(b)),
+                    Channel.write(Chunk.single(Either.right(b))).as(Option.some(b)),
                     SinkEndReason.SinkEnd
                   )
                 }
                 case "UpstreamEnd": {
                   return Tuple(
-                    Channel.write(Chunk(Either.right(b))).as(Option.none),
+                    Channel.write(Chunk.single(Either.right(b))).as(Option.none),
                     SinkEndReason.UpstreamEnd
                   )
                 }

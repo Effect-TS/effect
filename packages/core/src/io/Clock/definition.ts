@@ -198,7 +198,7 @@ export abstract class AbstractClock implements Clock {
 
       const state = ref.get().map((_) => _.get(1))
 
-      const driver = Driver(next, last, reset, state)
+      const driver = new Driver(next, last, reset, state)
 
       return driver
     })

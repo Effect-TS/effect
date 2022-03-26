@@ -2,7 +2,7 @@ import type { Tuple } from "../../../collection/immutable/Tuple"
 import type { Promise } from "../../../io/Promise"
 import { Queue } from "../../../io/Queue"
 import type { Take } from "../../Take"
-import { Stream } from "../definition"
+import type { Stream } from "../definition"
 import { bufferSignal } from "./_internal/bufferSignal"
 import { concreteStream, StreamInternal } from "./_internal/StreamInternal"
 
@@ -22,10 +22,10 @@ export function bufferSliding_<R, E, A>(
   capacity: number,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  const queue = Queue.dropping<Tuple<[Take<E, A>, Promise<never, void>]>>(
+  const queue = Queue.sliding<Tuple<[Take<E, A>, Promise<never, void>]>>(
     capacity
   ).toManagedWith((queue) => queue.shutdown())
-  const stream = self.via(Stream.rechunk(1))
+  const stream = self.rechunk(1)
   concreteStream(stream)
   return new StreamInternal(bufferSignal(queue, stream.channel))
 }

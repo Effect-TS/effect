@@ -2,7 +2,7 @@ import type { Chunk } from "../../../collection/immutable/Chunk"
 import type { LazyArg } from "../../../data/Function"
 import { Option } from "../../../data/Option"
 import { Exit } from "../../../io/Exit"
-import { Managed } from "../../../io/Managed"
+import type { Managed } from "../../../io/Managed"
 import type { XQueue } from "../../../io/Queue"
 import { Channel } from "../../Channel"
 import type { Stream } from "../definition"
@@ -45,13 +45,11 @@ export function runIntoQueueElementsManaged_<R, E extends E1, A, R1, E1>(
     () => Channel.write(Exit.fail(Option.none))
   )
   concreteStream(self)
-  return Managed.succeed(queue).flatMap((queue) =>
-    (self.channel >> writer)
-      .mapOutEffect((take) => queue.offer(take))
-      .drain()
-      .runManaged()
-      .asUnit()
-  )
+  return (self.channel >> writer)
+    .mapOutEffect((take) => queue().offer(take))
+    .drain()
+    .runManaged()
+    .asUnit()
 }
 
 /**

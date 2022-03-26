@@ -34,8 +34,8 @@ function interpret<Env, InErr, InDone, OutErr, OutDone>(
     concreteChannelState(channelState)
     switch (channelState._tag) {
       case "Effect": {
-        return (
-          channelState.effect > interpret(exec.run() as ChannelState<Env, OutErr>, exec)
+        return channelState.effect.zipRight(
+          interpret(exec.run() as ChannelState<Env, OutErr>, exec)
         )
       }
       case "Emit": {

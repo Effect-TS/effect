@@ -272,8 +272,8 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
                         )
                       }
                       case "Read": {
-                        return readUpstream(state, () => drainer).catchAllCause(
-                          (cause) => currentChannel.input.error(cause)
+                        return readUpstream(state, drainer).catchAllCause((cause) =>
+                          currentChannel.input.error(cause)
                         )
                       }
                     }

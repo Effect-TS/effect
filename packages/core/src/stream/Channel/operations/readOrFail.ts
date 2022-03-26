@@ -7,7 +7,7 @@ export function readOrFail<In, E>(
   e: E
 ): Channel<unknown, unknown, In, unknown, E, never, In> {
   return new Read<unknown, unknown, In, unknown, E, never, In, never, In>(
-    Channel.succeedNow,
+    (i) => Channel.succeedNow(i),
     new ContinuationK(
       () => Channel.fail(e),
       () => Channel.fail(e)

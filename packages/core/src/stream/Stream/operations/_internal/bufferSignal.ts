@@ -87,6 +87,6 @@ function terminate<R, E, A>(
       .bind("promise", () => Promise.make<never, void>())
       .tap(({ promise }) => queue.offer(Tuple(take, promise)))
       .tap(({ promise }) => ref.set(promise))
-      .tap(({ promise }) => promise.await())
+      .map(({ promise }) => promise.await())
   )
 }

@@ -26,7 +26,7 @@ export class Empty {
 
 export class Full<A> {
   readonly _tag = "Full"
-  constructor(readonly value: A, readonly nofityProducer: Promise<never, void>) {}
+  constructor(readonly value: A, readonly notifyProducer: Promise<never, void>) {}
 }
 
 /**
@@ -53,7 +53,7 @@ export function offer<A>(self: Handoff<A>, a: A, __tsplusTrace?: string): UIO<vo
             )
           }
           case "Full": {
-            return Tuple(state.nofityProducer.await() > offer(self, a), state)
+            return Tuple(state.notifyProducer.await() > self.offer(a), state)
           }
         }
       })
@@ -70,11 +70,11 @@ export function take<A>(self: Handoff<A>, __tsplusTrace?: string): UIO<A> {
       .modify((state) => {
         switch (state._tag) {
           case "Empty": {
-            return Tuple(state.notifyConsumer.await() > take(self), state)
+            return Tuple(state.notifyConsumer.await() > self.take(), state)
           }
           case "Full": {
             return Tuple(
-              state.nofityProducer.succeed(undefined).as(state.value),
+              state.notifyProducer.succeed(undefined).as(state.value),
               new Empty(promise)
             )
           }
@@ -97,7 +97,7 @@ export function poll<A>(self: Handoff<A>, __tsplusTrace?: string): UIO<Option<A>
           }
           case "Full": {
             return Tuple(
-              state.nofityProducer.succeed(undefined).as(Option.some(state.value)),
+              state.notifyProducer.succeed(undefined).as(Option.some(state.value)),
               new Empty(promise)
             )
           }

@@ -37,7 +37,7 @@ function loop<R, E, A>(
 ): Channel<R, E, Chunk<A>, unknown, E, Chunk<A>, unknown> {
   return Channel.readWith(
     (chunk: Chunk<A>) => {
-      const taken = chunk.take(Math.min(Number.MIN_SAFE_INTEGER, n))
+      const taken = chunk.take(Math.min(n, Number.MAX_SAFE_INTEGER))
       const leftover = Math.max(0, n - taken.length)
       const more = leftover > 0
       return more
