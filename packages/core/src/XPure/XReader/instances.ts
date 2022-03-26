@@ -2,6 +2,7 @@
 
 import * as F from "@effect-ts/system/XPure"
 
+import type * as FX from "../../PreludeV2/FX/index.js"
 import * as P from "../../PreludeV2/index.js"
 import type { XReaderF } from "./definition.js"
 import { map, zip } from "./operations.js"
@@ -56,6 +57,10 @@ export const Monad = P.instance<P.Monad<XReaderF>>({
   ...Any,
   ...Covariant,
   ...AssociativeFlatten
+})
+
+export const Provide = P.instance<FX.Provide<XReaderF>>({
+  provide: F.provide
 })
 
 /**

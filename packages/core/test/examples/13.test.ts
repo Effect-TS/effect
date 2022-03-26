@@ -10,9 +10,9 @@ import { makeAssociative } from "../../src/Associative/index.js"
 import * as Either from "../../src/Either/index.js"
 import * as EitherT from "../../src/EitherT/index.js"
 import * as Option from "../../src/Option/index.js"
-import { GenHKT } from "../../src/Prelude/DSL/index.js"
-import * as DSL from "../../src/Prelude/DSL/index.js"
-import * as S from "../../src/Prelude/Selective/index.js"
+import * as DSL from "../../src/PreludeV2/DSL/index.js"
+import { GenHKT } from "../../src/PreludeV2/DSL/index.js"
+import * as S from "../../src/PreludeV2/Selective/index.js"
 import type { XIO } from "../../src/XPure/XIO/index.js"
 import * as IO from "../../src/XPure/XIO/index.js"
 import * as Reader from "../../src/XPure/XReader/index.js"
@@ -54,8 +54,7 @@ namespace ReaderIOEither {
   export const succeed = DSL.succeedF(Monad)
   export const accessM = DSL.accessMF({ ...Monad, ...Access })
 
-  export const Do = DSL.doF(Monad)
-  export const bind = DSL.bindF(Monad)
+  export const { bind, do: Do } = DSL.getDo(Monad)
 
   export const provideSome = DSL.provideSomeF({
     ...Monad,

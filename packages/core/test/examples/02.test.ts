@@ -4,10 +4,10 @@ import * as R from "../../src/Collections/Immutable/Dictionary/index.js"
 import * as E from "../../src/Either/index.js"
 
 test("02", () => {
-  const result = pipe(
+  const result: E.Either<never, R.Dictionary<number>> = pipe(
     { a: 0, b: 1 },
     R.forEachF(E.Applicative)((n) => E.right(n + 1))
   )
 
-  console.log(result)
+  expect(result).toEqual(E.right({ a: 1, b: 2 }))
 })
