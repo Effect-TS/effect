@@ -24,7 +24,7 @@ export * from "@effect-ts/system/Collections/Immutable/Chunk"
  */
 export const forEachWithIndexF = P.implementForEachWithIndexF<number, ChunkF>()(
   (_) => (G) => (f) => (fa) => {
-    const succeed = DSL.succeedF(G, G)
+    const succeed = DSL.succeedF(G)
     let base = succeed<
       Chunk.Chunk<typeof _.B>,
       typeof _.X,

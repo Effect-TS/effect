@@ -14,7 +14,7 @@ export * from "@effect-ts/system/Iterable"
  */
 export const forEachF = P.implementForEachF<IterableF>()(
   (_) => (G) => (f) =>
-    I.reduce(succeedF(G, G)(I.never as Iterable<typeof _.B>), (b, a) =>
+    I.reduce(succeedF(G)(I.never as Iterable<typeof _.B>), (b, a) =>
       pipe(
         b,
         G.both(f(a)),

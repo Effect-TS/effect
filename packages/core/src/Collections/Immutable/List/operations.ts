@@ -20,7 +20,7 @@ export * from "@effect-ts/system/Collections/Immutable/List"
  */
 export const forEachF = P.implementForEachF<ListF>()(
   () => (G) => (f) => (fa) =>
-    List.reduceRight_(fa, P.succeedF(G, G)(List.empty()), (a, acc) =>
+    List.reduceRight_(fa, P.succeedF(G)(List.empty()), (a, acc) =>
       pipe(
         f(a),
         G.both(acc),

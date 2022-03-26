@@ -28,7 +28,7 @@ export * from "@effect-ts/system/Collections/Immutable/Dictionary"
  */
 export const forEachWithIndexF = P.implementForEachWithIndexF<string, DictionaryF>()(
   (_) => (G) => {
-    const succeed = succeedF(G, G)
+    const succeed = succeedF(G)
     return (f) => (fa) => {
       let base = succeed<
         R.Dictionary<typeof _.B>,

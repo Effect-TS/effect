@@ -29,7 +29,7 @@ export interface State<F extends P.HKT, S> extends P.Typeclass<StateT<F, S>> {
 
 export function stateT<S>() {
   return <F extends P.HKT>(F_: P.Monad<F>) => {
-    const succeed = P.succeedF(F_, F_)
+    const succeed = P.succeedF(F_)
     const monad: P.Monad<StateT<F, S>> = {
       any: () => (s) => succeed([s, {} as unknown] as const),
       map: (f) => (fa) => (s) =>

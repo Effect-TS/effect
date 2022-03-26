@@ -158,7 +158,7 @@ export function unfoldTreeM<M extends TreeF>(M_: P.Monad<M> & P.Applicative<M>) 
   ): P.Kind<M, X, I, R, E, Tree<A>> => {
     const unfoldForestMM = unfoldForestM(M_)
     const chain = DSL.chainF(M_)
-    const succeed = DSL.succeedF(M_, M_)
+    const succeed = DSL.succeedF(M_)
     return pipe(
       f(b),
       chain(([a, bs]) =>

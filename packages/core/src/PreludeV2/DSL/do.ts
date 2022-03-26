@@ -43,7 +43,7 @@ export interface DoF<F extends HKT.HKT> {
 
 export function getDo<F extends HKT.HKT>(F_: Monad<F>): DoF<F> {
   return {
-    do: succeedF(F_, F_)({}),
+    do: succeedF(F_)({}),
     bind:
       <N extends string, X, I, R, E, A, Scope>(
         name: N extends keyof Scope

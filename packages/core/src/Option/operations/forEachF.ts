@@ -8,5 +8,5 @@ import * as P from "../../PreludeV2/index.js"
 
 export const forEachF = P.implementForEachF<OptionF>()(
   () => (G) => (f) => (fa) =>
-    O.isNone(fa) ? P.succeedF(G, G)(O.none) : pipe(f(fa.value), G.map(O.some))
+    O.isNone(fa) ? P.succeedF(G)(O.none) : pipe(f(fa.value), G.map(O.some))
 )

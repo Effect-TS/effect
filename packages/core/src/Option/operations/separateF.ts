@@ -14,5 +14,5 @@ export const separateF = P.implementSeparateF<OptionF>()((_) => (F) => (f) => (f
       F.map((e) => Tp.tuple(O.getLeft(e), O.getRight(e)))
     )
   )
-  return O.isNone(o) ? P.succeedF(F, F)(Tp.tuple(O.none, O.none)) : o.value
+  return O.isNone(o) ? P.succeedF(F)(Tp.tuple(O.none, O.none)) : o.value
 })

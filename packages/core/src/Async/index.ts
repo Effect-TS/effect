@@ -81,8 +81,12 @@ export const either: <A, R, E>(
   fa: A.Async<R, E, A>
 ) => A.Async<R, never, E.Either<E, A>> = Run.either
 
-// @todo: should imports be as spred object (cool when A + B = monad), weird otherwise or A, B, C
-export const getValidation = P.getValidationF(Monad, Run, Fail, Applicative)
+export const getValidation = P.getValidationF({
+  ...Monad,
+  ...Run,
+  ...Fail,
+  ...Applicative
+})
 
 export const Provide = P.instance<P.FX.Provide<AsyncF>>({
   provide: A.provideAll

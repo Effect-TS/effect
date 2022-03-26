@@ -78,12 +78,12 @@ export const Provide = PV2.instance<PV2.FX.Provide<EffectF>>({
   provide: T.provideAll
 })
 
-export const getValidationApplicative = DSL.getValidationF<EffectF>(
-  Monad,
-  Run,
-  Fail,
-  Applicative
-)
+export const getValidationApplicative = DSL.getValidationF<EffectF>({
+  ...Monad,
+  ...Run,
+  ...Fail,
+  ...Applicative
+})
 
 export const Category = PV2.instance<PV2.Category<EffectCategoryF>>({
   id: T.environment,

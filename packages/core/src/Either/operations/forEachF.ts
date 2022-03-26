@@ -11,4 +11,4 @@ import type { EitherF } from "../instances.js"
  * `ForEach`'s `forEachF` function
  */
 export const forEachF: P.ForeachFn<EitherF> = (G) => (f) => (fa) =>
-  E.isLeft(fa) ? DSL.succeedF(G, G)(fa) : pipe(f(fa.right), G.map(E.right))
+  E.isLeft(fa) ? DSL.succeedF(G)(fa) : pipe(f(fa.right), G.map(E.right))

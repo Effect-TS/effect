@@ -17,33 +17,33 @@ export interface Validation<F extends HKT.HKT, E> extends HKT.HKT {
 }
 
 export const getValidationF =
-  <F>(M_: Monad<F>, R_: Run<F>, F_: Fail<F>, A_: Applicative<F>) =>
+  <F>(M_: Monad<F> & Run<F> & Fail<F> & Applicative<F>) =>
   <Z>(S_: Associative<Z>): Applicative<Validation<F, Z>> =>
     HKT.instance<Applicative<Validation<F, Z>>>({
-      any: A_.any,
-      map: A_.map,
+      any: M_.any,
+      map: M_.map,
       both:
         <B>(fb: HKT.Kind<F, any, any, any, Z, B>) =>
         <A>(fa: HKT.Kind<F, any, any, any, Z, A>) =>
           pipe(
-            R_.either(fa),
-            A_.both(R_.either(fb)),
-            A_.map(Tp.toNative),
-            A_.map(
+            M_.either(fa),
+            M_.both(M_.either(fb)),
+            M_.map(Tp.toNative),
+            M_.map(
               ([eitherA, eitherB]): HKT.Kind<F, any, any, any, Z, Tp.Tuple<[A, B]>> =>
                 E.fold_(
                   eitherA,
                   (ea) =>
                     E.fold_(
                       eitherB,
-                      (eb) => F_.fail(S_.combine(ea, eb)),
-                      () => F_.fail(ea)
+                      (eb) => M_.fail(S_.combine(ea, eb)),
+                      () => M_.fail(ea)
                     ),
                   (a) =>
                     E.fold_(
                       eitherB,
-                      (e) => F_.fail(e),
-                      (b) => succeedF(M_, A_)(Tp.tuple(a, b))
+                      (e) => M_.fail(e),
+                      (b) => succeedF({ ...M_ })(Tp.tuple(a, b))
                     )
                 )
             ),

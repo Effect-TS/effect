@@ -27,7 +27,7 @@ export function monad<F extends P.HKT>(F_: P.Monad<F>) {
       pipe(
         ffa,
         F_.map(
-          O.fold(() => succeedF(F_, F_)<O.Option<A>, X, I, R, E>(O.none), identity)
+          O.fold(() => succeedF(F_)<O.Option<A>, X, I, R, E>(O.none), identity)
         ),
         F_.flatten
       )

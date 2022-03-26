@@ -8,7 +8,12 @@ export const tuple = P.tupleF(Applicative)
 
 export const struct = P.structF(Applicative)
 
-export const getValidationApplicative = P.getValidationF(Monad, Run, Fail, Applicative)
+export const getValidationApplicative = P.getValidationF({
+  ...Monad,
+  ...Run,
+  ...Fail,
+  ...Applicative
+})
 
 /**
  * Matchers

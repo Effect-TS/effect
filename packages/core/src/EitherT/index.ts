@@ -8,12 +8,16 @@ import { flow, identity, pipe } from "../Function/index.js"
 import type * as FX from "../PreludeV2/FX/index.js"
 import * as P from "../PreludeV2/index.js"
 
+
+
+
 type EitherTF<F extends P.HKT> = P.ComposeF<F, EitherF>
 
 export function monad<F extends P.HKT>(M_: P.Monad<F>) {
-  const succeed = P.succeedF(M_, M_)
+  const succeed = P.succeedF(M_)
   return P.instance<P.Monad<EitherTF<F>>>({
     any: () => succeed(EI.right({})),
+    map: (f) => M_.map(EI.map(f)),
     flatten: <X, I, R, E, A, I2, R2, E2>(
       ffa: P.Kind<
         F,
@@ -33,13 +37,21 @@ export function monad<F extends P.HKT>(M_: P.Monad<F>) {
           )
         ),
         M_.flatten
-      ),
-    map: (f) => M_.map(EI.map(f))
+      )
   })
 }
 
-export function applicative<F extends P.HKT>(F_: P.Monad<F>) {
-  return P.getApplicativeF(monad(F_))
+export function applicative<F extends P.HKT>(M: P.Applicative<F>) {
+  return P.instance<P.Applicative<EitherTF<F>>>({
+    any: () => P.succeedF(M)(EI.right({})),
+    map: (f) => M.map(EI.map(f)),
+    both: (fb) => (x) =>
+      pipe(
+        x,
+        M.both(fb),
+        M.map(({ tuple: [ea, eb] }) => EI.AssociativeBoth.both(eb)(ea))
+      )
+  })
 }
 
 export function run<F extends P.HKT>(M_: P.Covariant<F>) {
@@ -53,7 +65,7 @@ export function run<F extends P.HKT>(M_: P.Covariant<F>) {
 }
 
 export function fail<F extends P.HKT>(M_: P.Any<F> & P.Covariant<F>) {
-  const succeed = P.succeedF(M_, M_)
+  const succeed = P.succeedF(M_)
   return P.instance<FX.Fail<EitherTF<F>>>({
     fail: flow(EI.left, succeed)
   })

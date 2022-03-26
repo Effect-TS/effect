@@ -27,12 +27,13 @@ export const forEachWithIndexF = P.implementForEachWithIndexF<number, NonEmptyAr
     pipe(
       x,
       A.reduceWithIndex(
-        DSL.succeedF(
-          G,
-          G
-        )<L.List<typeof _.B>, typeof _.X, typeof _.I, typeof _.R, typeof _.E>(
-          L.empty()
-        ), // @todo: fix this GG thingy in succeedF
+        DSL.succeedF(G)<
+          L.List<typeof _.B>,
+          typeof _.X,
+          typeof _.I,
+          typeof _.R,
+          typeof _.E
+        >(L.empty()), // @todo: fix this GG thingy in succeedF
         (k, b, a) =>
           pipe(
             b,

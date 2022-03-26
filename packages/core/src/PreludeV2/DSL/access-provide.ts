@@ -7,40 +7,37 @@ import type { Access, Provide } from "../FX/index.js"
 import type * as HKT from "../HKT/index.js"
 import type { Monad } from "../Monad/index.js"
 
-export function accessMF<F extends HKT.HKT>(A_: Access<F>, F_: AssociativeFlatten<F>) {
+export function accessMF<F extends HKT.HKT>(F_: Access<F> & AssociativeFlatten<F>) {
   return <X, I, R, R2, E, A>(
-    f: (r: R2) => HKT.Kind<F, X, I, R, E, A> // @todo: find a way to handle fixed R
+    f: (r: R2) => HKT.Kind<F, X, I, R, E, A>
   ): HKT.Kind<F, X, I, R & R2, E, A> => {
-    return pipe(f, A_.access, F_.flatten)
+    return pipe(f, F_.access, F_.flatten)
   }
 }
 
-export function accessServiceMF<F extends HKT.HKT>(A_: Access<F>, M_: Monad<F>) {
+export function accessServiceMF<F extends HKT.HKT>(M_: Access<F> & Monad<F>) {
   return <Service>(H: Tag<Service>) =>
     <X, I, R, E, A>(
       f: (_: Service) => HKT.Kind<F, X, I, R, E, A>
     ): HKT.Kind<F, X, I, R & Has<Service>, E, A> =>
-      accessMF(A_, M_)((x: Has<Service>) => pipe(x, H.read, f))
+      accessMF(M_)((x: Has<Service>) => pipe(x, H.read, f))
 }
 
 export const provideServiceF =
-  <F extends HKT.HKT>(A_: Access<F>, M_: Monad<F>, P_: Provide<F>) =>
+  <F extends HKT.HKT>(M_: Access<F> & Monad<F> & Provide<F>) =>
   <Service>(H: Tag<Service>) =>
   (S: Service) =>
   <X, I, R, E, A>(
     fa: HKT.Kind<F, X, I, R & Has<Service>, E, A>
   ): HKT.Kind<F, X, I, R, E, A> =>
-    accessMF(
-      A_,
-      M_
-    )((r: R) =>
-      pipe(fa, P_.provide({ ...r, [H.key]: S } as unknown as R & Has<Service>))
+    accessMF(M_)((r: R) =>
+      pipe(fa, M_.provide({ ...r, [H.key]: S } as unknown as R & Has<Service>))
     )
 
 export const provideSomeF =
-  <F extends HKT.HKT>(A_: Access<F>, M_: Monad<F>, P_: Provide<F>) =>
+  <F extends HKT.HKT>(M_: Access<F> & Monad<F> & Provide<F>) =>
   <R, R2>(f: (_: R2) => R) =>
   <X, I, E, A>(
     fa: HKT.Kind<F, X, I, R, E, A>
   ): HKT.Kind<F, X, I, R2, E, A> => // @todo: find a way to handle fixed R
-    accessMF(A_, M_)((r0: R2) => pipe(fa, P_.provide(f(r0))))
+    accessMF(M_)((r0: R2) => pipe(fa, M_.provide(f(r0))))

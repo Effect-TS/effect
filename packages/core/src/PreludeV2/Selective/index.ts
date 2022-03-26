@@ -10,9 +10,6 @@ import { chainF, succeedF } from "../DSL/index.js"
 import * as HKT from "../HKT/index.js"
 import type { Monad } from "../Monad/index.js"
 
-
-
-
 export interface Select<F extends HKT.HKT> extends HKT.Typeclass<F> {
   readonly select: <X, I2, R2, E2, A, B>(
     fab: HKT.Kind<F, X, I2, R2, E2, (a: A) => B>
@@ -42,7 +39,7 @@ export function monad<F extends HKT.HKT>(F_: Monad<F>): SelectiveMonad<F> {
                   fab,
                   F_.map((g) => g(a))
                 ),
-              (b) => succeedF(F_, F_)<B | B2, X, I & I2, R & R2, E | E2>(b)
+              (b) => succeedF(F_)<B | B2, X, I & I2, R & R2, E | E2>(b)
             )
           )
         )
@@ -104,4 +101,4 @@ export const whenF =
   <I, R, E>(
     if_: HKT.Kind<F, X, I, R, E, boolean>
   ): HKT.Kind<F, X, I & I2, R & R2, E | E2, void> =>
-    pipe(if_, ifF(F_)(act, succeedF(F_, F_)(undefined)))
+    pipe(if_, ifF(F_)(act, succeedF(F_)(undefined)))

@@ -58,7 +58,7 @@ export function genWithHistoryF<
     AEff
   > => {
     const chain = chainF(F_)
-    const succeed = succeedF(F_, F_)
+    const succeed = succeedF(F_)
 
     return pipe(
       succeed({}),
@@ -126,7 +126,7 @@ export const genF =
     AEff
   > => {
     const chain = chainF(F_)
-    const succeed = succeedF(F_, F_)
+    const succeed = succeedF(F_)
 
     return pipe(
       succeed({}),
