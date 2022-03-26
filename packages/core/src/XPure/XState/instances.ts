@@ -10,7 +10,7 @@ import { map, zip } from "./operations.js"
 /**
  * The `Any` instance for `Reader[-_, +_]`.
  */
-export const any = <S>() =>
+export const Any = <S>() =>
   P.instance<P.Any<XStateF<S>>>({
     any: () => F.succeed(constant({}))
   })
@@ -18,7 +18,7 @@ export const any = <S>() =>
 /**
  * The `Covariant` instance for `Reader[-_, +_]`.
  */
-export const covariant = <S>() =>
+export const Covariant = <S>() =>
   P.instance<P.Covariant<XStateF<S>>>({
     map
   })
@@ -26,7 +26,7 @@ export const covariant = <S>() =>
 /**
  * The `AssociativeBoth` instance for `Reader[-_, +_]`.
  */
-export const associativeBoth = <S>() =>
+export const AssociativeBoth = <S>() =>
   P.instance<P.AssociativeBoth<XStateF<S>>>({
     both: zip
   })
@@ -34,7 +34,7 @@ export const associativeBoth = <S>() =>
 /**
  * The `AssociativeFlatten` instance for `Reader[-_, +_]`.
  */
-export const associativeFlatten = <S>() =>
+export const AssociativeFlatten = <S>() =>
   P.instance<P.AssociativeFlatten<XStateF<S>>>({
     flatten: (ffa) => F.chain_(ffa, (x) => x)
   })
@@ -42,23 +42,23 @@ export const associativeFlatten = <S>() =>
 /**
  * The `IdentityFlatten` instance for `Reader[-_, +_]`.
  */
-export const identityFlatten = <S>() =>
+export const IdentityFlatten = <S>() =>
   P.instance<P.IdentityFlatten<XStateF<S>>>({
-    ...any(),
-    ...associativeFlatten()
+    ...Any(),
+    ...AssociativeFlatten()
   })
 
 /**
  * The `Monad` instance for `Reader[-_, +_]`.
  */
-export const monad = <S>() =>
+export const Monad = <S>() =>
   P.instance<P.Monad<XStateF<S>>>({
-    ...any(),
-    ...covariant(),
-    ...associativeFlatten()
+    ...Any(),
+    ...Covariant(),
+    ...AssociativeFlatten()
   })
 
 /**
  * The `Applicative` instance for `Reader[-_, +_]`.
  */
-export const applicative = <S>() => P.getApplicativeF(monad())
+export const Applicative = <S>() => P.getApplicativeF(Monad())

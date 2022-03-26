@@ -3,17 +3,17 @@
 import type { XStateF } from "@effect-ts/core/XPure/XState/definition"
 
 import * as P from "../../PreludeV2/index.js"
-import { applicative, monad } from "./instances.js"
+import { Applicative, Monad } from "./instances.js"
 
 /**
  * Struct based applicative for Reader[-_, +_]
  */
-export const struct = <S>() => P.structF(applicative<S>())
+export const struct = <S>() => P.structF(Applicative<S>())
 
 /**
  * Struct based applicative for Reader[-_, +_]
  */
-export const tuple = <S>() => P.tupleF(applicative<S>())
+export const tuple = <S>() => P.tupleF(Applicative<S>())
 
 /**
  * Matchers
@@ -32,9 +32,9 @@ export { branch as if, branch_ as if_ }
 /**
  * Do
  */
-export const getDo = <S>() => P.getDo<XStateF<S>>(monad<S>())
+export const getDo = <S>() => P.getDo<XStateF<S>>(Monad<S>())
 
 /**
  * Generator
  */
-export const gen = <S>() => P.genF(monad<S>())
+export const gen = <S>() => P.genF(Monad<S>())
