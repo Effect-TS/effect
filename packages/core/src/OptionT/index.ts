@@ -6,7 +6,7 @@ import type { OptionF } from "@effect-ts/core/Option/definitions"
 
 import { identity, pipe } from "../Function/index.js"
 import * as O from "../Option/index.js"
-import { succeedF } from "../PreludeV2/DSL/index.js"
+import * as DSL from "../PreludeV2/DSL/index.js"
 import type { Access, Provide } from "../PreludeV2/FX/index.js"
 import type { Applicative, Covariant } from "../PreludeV2/index.js"
 import * as P from "../PreludeV2/index.js"
@@ -26,14 +26,16 @@ export function Monad<F extends P.HKT>(F_: P.Monad<F>) {
     ) =>
       pipe(
         ffa,
-        F_.map(O.fold(() => succeedF(F_)<O.Option<A>, X, I, R, E>(O.none), identity)),
+        F_.map(
+          O.fold(() => DSL.succeedF(F_)<O.Option<A>, X, I, R, E>(O.none), identity)
+        ),
         F_.flatten
       )
   })
 }
 
 export function Applicative<F extends P.HKT>(F_: P.Monad<F>): Applicative<OptionTF<F>> {
-  return P.getApplicativeF(Monad(F_))
+  return DSL.getApplicativeF(Monad(F_))
 }
 
 export function Access<F extends P.HKT>(M: Access<F> & Covariant<F>) {

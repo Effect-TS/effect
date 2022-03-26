@@ -3,7 +3,7 @@
 import "../Operator/index.js"
 
 import { pipe } from "../Function/index.js"
-import { succeedF } from "../PreludeV2/DSL/index.js"
+import * as DSL from "../PreludeV2/DSL/index.js"
 import type { Access, Fail, Provide, Run } from "../PreludeV2/FX/index.js"
 import type { Applicative, AssociativeEither, Monad } from "../PreludeV2/index.js"
 import * as P from "../PreludeV2/index.js"
@@ -26,10 +26,9 @@ export function Monad<F extends P.HKT>(M: Monad<F>) {
 
 export function Access<F extends P.HKT>(M: Monad<F>) {
   return P.instance<Access<ReaderTF<F>>>({
-    access: (f) => pipe(RD.access(f), RD.map(succeedF(M)))
+    access: (f) => pipe(RD.access(f), RD.map(DSL.succeedF(M)))
   })
 }
-
 export function AssociativeEither<F extends P.HKT>(M: AssociativeEither<F>) {
   return P.instance<AssociativeEither<ReaderTF<F>>>({
     orElseEither: (fb) => (fa) => (r) => M.orElseEither(() => fb()(r))(fa(r))

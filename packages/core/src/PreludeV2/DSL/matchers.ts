@@ -125,7 +125,7 @@ export interface MatchMorphFn<
   >
 }
 
-export const matchers = <F extends HKT.HKT>() => {
+export function matchers<F extends HKT.HKT>() {
   function match<N extends string>(tag: N): MatchFn<F, N> {
     return (...args: any[]) => {
       return (_: any) => {

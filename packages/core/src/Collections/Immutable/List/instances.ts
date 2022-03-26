@@ -1,5 +1,6 @@
 // ets_tracing: off
 
+import * as DSL from "../../../PreludeV2/DSL/index.js"
 import * as P from "../../../PreludeV2/index.js"
 import * as L from "./operations.js"
 
@@ -28,8 +29,7 @@ export const Monad = P.instance<P.Monad<ListF>>({
   ...Covariant,
   ...AssociativeFlatten
 })
-
-export const Applicative = P.getApplicativeF(Monad)
+export const Applicative = DSL.getApplicativeF(Monad)
 
 export const ApplyZip = P.instance<P.Apply<ListF>>({
   ...Covariant,

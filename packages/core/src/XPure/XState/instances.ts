@@ -4,6 +4,7 @@ import { constant } from "@effect-ts/system/Function"
 import * as F from "@effect-ts/system/XPure"
 
 import * as P from "../../PreludeV2/index.js"
+import * as DSL from "../../PreludeV2/DSL/index.js"
 import type { XStateF } from "./definition.js"
 import { map, zip } from "./operations.js"
 
@@ -61,4 +62,4 @@ export const Monad = <S>() =>
 /**
  * The `Applicative` instance for `Reader[-_, +_]`.
  */
-export const Applicative = <S>() => P.getApplicativeF(Monad())
+export const Applicative = <S>() => DSL.getApplicativeF(Monad())

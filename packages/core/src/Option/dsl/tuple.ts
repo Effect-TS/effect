@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as P from "../../PreludeV2/index.js"
+import * as DSL from "../../PreludeV2/DSL/index.js"
 import { Applicative } from "../instances/Applicative.js"
 import { Monad } from "../instances/Monad.js"
 
-export const tuple = P.tupleF({ ...Monad, ...Applicative })
+export const tuple = DSL.tupleF({ ...Monad, ...Applicative })

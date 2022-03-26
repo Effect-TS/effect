@@ -2,10 +2,10 @@
 
 import type { OptionF } from "@effect-ts/core/Option/definitions"
 
-import * as P from "../../PreludeV2/index.js"
+import * as DSL from "../../PreludeV2/DSL/index.js"
 
 /**
  * Matchers
  */
 export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
-  P.matchers<OptionF>()
+  DSL.matchers<OptionF>()

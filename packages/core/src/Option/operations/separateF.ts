@@ -5,6 +5,7 @@ import * as O from "@effect-ts/system/Option"
 
 import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import { pipe } from "../../Function/index.js"
+import * as DSL from "../../PreludeV2/DSL/index.js"
 import * as P from "../../PreludeV2/index.js"
 
 export const separateF = P.implementSeparateF<OptionF>()((_) => (F) => (f) => (fa) => {
@@ -14,5 +15,5 @@ export const separateF = P.implementSeparateF<OptionF>()((_) => (F) => (f) => (f
       F.map((e) => Tp.tuple(O.getLeft(e), O.getRight(e)))
     )
   )
-  return O.isNone(o) ? P.succeedF(F)(Tp.tuple(O.none, O.none)) : o.value
+  return O.isNone(o) ? DSL.succeedF(F)(Tp.tuple(O.none, O.none)) : o.value
 })

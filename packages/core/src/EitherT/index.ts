@@ -5,13 +5,14 @@ import "../Operator/index.js"
 import type { EitherF } from "../Either/index.js"
 import * as EI from "../Either/index.js"
 import { flow, identity, pipe } from "../Function/index.js"
+import { succeedF } from "../PreludeV2/DSL/index.js"
 import type * as FX from "../PreludeV2/FX/index.js"
 import * as P from "../PreludeV2/index.js"
 
 type EitherTF<F extends P.HKT> = P.ComposeF<F, EitherF>
 
 export function Monad<F extends P.HKT>(M_: P.Monad<F>) {
-  const succeed = P.succeedF(M_)
+  const succeed = succeedF(M_)
   return P.instance<P.Monad<EitherTF<F>>>({
     any: () => succeed(EI.right({})),
     map: (f) => M_.map(EI.map(f)),
@@ -40,7 +41,7 @@ export function Monad<F extends P.HKT>(M_: P.Monad<F>) {
 
 export function Applicative<F extends P.HKT>(M: P.Applicative<F>) {
   return P.instance<P.Applicative<EitherTF<F>>>({
-    any: () => P.succeedF(M)(EI.right({})),
+    any: () => succeedF(M)(EI.right({})),
     map: (f) => M.map(EI.map(f)),
     both: (fb) => (x) =>
       pipe(
@@ -62,7 +63,7 @@ export function Run<F extends P.HKT>(M_: P.Covariant<F>) {
 }
 
 export function Fail<F extends P.HKT>(M_: P.Any<F> & P.Covariant<F>) {
-  const succeed = P.succeedF(M_)
+  const succeed = succeedF(M_)
   return P.instance<FX.Fail<EitherTF<F>>>({
     fail: flow(EI.left, succeed)
   })

@@ -17,12 +17,11 @@ import type { Has, Tag } from "@effect-ts/system/Has"
 import type * as O from "@effect-ts/system/Option"
 
 import { identity, pipe } from "../Function/index.js"
+import * as DSL from "../PreludeV2/DSL/index.js"
 import * as P from "../PreludeV2/index.js"
 import type { Sync } from "../Sync/index.js"
 import { runEitherEnv } from "../Sync/index.js"
 import { isEither, isOption, isTag } from "../Utils/index.js"
-
-export { branch as if, branch_ as if_ }
 
 export interface AsyncF extends P.HKT {
   readonly type: A.Async<this["R"], this["E"], this["A"]>
@@ -81,7 +80,7 @@ export const either: <A, R, E>(
   fa: A.Async<R, E, A>
 ) => A.Async<R, never, E.Either<E, A>> = Run.either
 
-export const getValidation = P.getValidationF({
+export const getValidation = DSL.getValidationF({
   ...Monad,
   ...Run,
   ...Fail,
@@ -97,29 +96,29 @@ export const Access = P.instance<P.FX.Access<AsyncF>>({
 })
 
 const genAdapter: {
-  <A>(_: Tag<A>): P.GenHKT<A.Async<Has<A>, never, A>, A>
-  <E, A>(_: O.Option<A>, onNone: () => E): P.GenHKT<A.Async<unknown, E, A>, A>
-  <A>(_: O.Option<A>): P.GenHKT<A.Async<unknown, NoSuchElementException, A>, A>
-  <E, A>(_: E.Either<E, A>): P.GenHKT<A.Async<unknown, E, A>, A>
-  <R, E, A>(_: A.Async<R, E, A>): P.GenHKT<A.Async<R, E, A>, A>
+  <A>(_: Tag<A>): DSL.GenHKT<A.Async<Has<A>, never, A>, A>
+  <E, A>(_: O.Option<A>, onNone: () => E): DSL.GenHKT<A.Async<unknown, E, A>, A>
+  <A>(_: O.Option<A>): DSL.GenHKT<A.Async<unknown, NoSuchElementException, A>, A>
+  <E, A>(_: E.Either<E, A>): DSL.GenHKT<A.Async<unknown, E, A>, A>
+  <R, E, A>(_: A.Async<R, E, A>): DSL.GenHKT<A.Async<R, E, A>, A>
 } = (_: any, __?: any): any => {
   if (isTag(_)) {
-    return new P.GenHKT(A.service(_))
+    return new DSL.GenHKT(A.service(_))
   }
   if (isEither(_)) {
-    return new P.GenHKT(_._tag === "Left" ? A.fail(_.left) : A.succeed(_.right))
+    return new DSL.GenHKT(_._tag === "Left" ? A.fail(_.left) : A.succeed(_.right))
   }
   if (isOption(_)) {
-    return new P.GenHKT(
+    return new DSL.GenHKT(
       _._tag === "None"
         ? A.fail(__ ? __() : new NoSuchElementException())
         : A.succeed(_.value)
     )
   }
-  return new P.GenHKT(_)
+  return new DSL.GenHKT(_)
 }
 
-export const gen = P.genF(Monad, {
+export const gen = DSL.genF(Monad, {
   adapter: genAdapter
 })
 
@@ -137,12 +136,15 @@ export function fromSync<R, E, A>(_: Sync<R, E, A>) {
   return A.accessM((r: R) => fromEither(runEitherEnv(r)(_)))
 }
 
-export const { match, matchIn, matchMorph, matchTag, matchTagIn } = P.matchers<AsyncF>()
+export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
+  DSL.matchers<AsyncF>()
 
 /**
  * Conditionals
  */
-const branch = P.conditionalF<AsyncF>()
-const branch_ = P.conditionalF_<AsyncF>()
+const branch = DSL.conditionalF<AsyncF>()
+const branch_ = DSL.conditionalF_<AsyncF>()
+
+export { branch as if, branch_ as if_ }
 
 export * from "@effect-ts/system/Async"

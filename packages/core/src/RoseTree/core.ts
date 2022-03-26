@@ -17,7 +17,6 @@ import { pipe } from "../Function/index.js"
 import type { Identity } from "../Identity/index.js"
 import * as IO from "../IO/index.js"
 import * as DSL from "../PreludeV2/DSL/index.js"
-import { getApplicativeF } from "../PreludeV2/DSL/index.js"
 import * as P from "../PreludeV2/index.js"
 import { sequenceF } from "../PreludeV2/index.js"
 import type { Show } from "../Show/index.js"
@@ -433,9 +432,9 @@ export const Monad = P.instance<P.Monad<TreeF>>({
   map
 })
 
-export const Applicative = getApplicativeF(Monad)
+export const Applicative = DSL.getApplicativeF(Monad)
 
-const { bind, do: do_, let: let_ } = P.getDo(Monad)
+const { bind, do: do_, let: let_ } = DSL.getDo(Monad)
 
 export { do_ as do, let_ as let, bind }
 

@@ -2,22 +2,22 @@
 
 import type { ReaderF } from "@effect-ts/core/Reader/definition"
 
-import * as P from "../PreludeV2/index.js"
+import * as DSL from "../PreludeV2/DSL/index.js"
 import { Applicative, Monad } from "./instances.js"
 
 /**
  * Struct based applicative for Reader[-_, +_]
  */
-export const struct = P.structF(Applicative)
+export const struct = DSL.structF(Applicative)
 
 /**
  * Tuple based applicative for Reader[-_, +_]
  */
-export const tuple = P.tupleF(Applicative)
+export const tuple = DSL.tupleF(Applicative)
 
-export const gen = P.genF(Monad)
+export const gen = DSL.genF(Monad)
 
-const { bind, do: do_, let: let_ } = P.getDo(Monad)
+const { bind, do: do_, let: let_ } = DSL.getDo(Monad)
 
 export { do_ as do, let_ as let, bind }
 
@@ -25,12 +25,12 @@ export { do_ as do, let_ as let, bind }
  * Matchers
  */
 export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
-  P.matchers<ReaderF>()
+  DSL.matchers<ReaderF>()
 
 /**
  * Conditionals
  */
-const branch = P.conditionalF<ReaderF>()
-const branch_ = P.conditionalF_<ReaderF>()
+const branch = DSL.conditionalF<ReaderF>()
+const branch_ = DSL.conditionalF_<ReaderF>()
 
 export { branch as if, branch_ as if_ }

@@ -7,7 +7,7 @@ import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 
 import type { Equal } from "../Equal/index.js"
 import type { Identity } from "../Identity/index.js"
-import { structF, tupleF } from "../PreludeV2/DSL/index.js"
+import * as DSL from "../PreludeV2/DSL/index.js"
 import * as P from "../PreludeV2/index.js"
 import type { Show } from "../Show/index.js"
 
@@ -220,6 +220,6 @@ export const ForEach = P.instance<P.ForEach<IdF>>({
   forEachF: () => (f) => f
 })
 
-export const struct = structF(Applicative)
+export const struct = DSL.structF(Applicative)
 
-export const tuple = tupleF(Applicative)
+export const tuple = DSL.tupleF(Applicative)

@@ -4,7 +4,7 @@ import type { IterableF } from "@effect-ts/core/Iterable/instances"
 import { pipe } from "@effect-ts/system/Function"
 import * as I from "@effect-ts/system/Iterable"
 
-import { succeedF } from "../PreludeV2/DSL/index.js"
+import * as DSL from "../PreludeV2/DSL/index.js"
 import * as P from "../PreludeV2/index.js"
 
 export * from "@effect-ts/system/Iterable"
@@ -14,7 +14,7 @@ export * from "@effect-ts/system/Iterable"
  */
 export const forEachF = P.implementForEachF<IterableF>()(
   (_) => (G) => (f) =>
-    I.reduce(succeedF(G)(I.never as Iterable<typeof _.B>), (b, a) =>
+    I.reduce(DSL.succeedF(G)(I.never as Iterable<typeof _.B>), (b, a) =>
       pipe(
         b,
         G.both(f(a)),

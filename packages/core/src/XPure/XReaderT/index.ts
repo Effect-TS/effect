@@ -3,10 +3,10 @@
 import "../../Operator/index.js"
 
 import { pipe } from "../../Function/index.js"
-import { succeedF } from "../../PreludeV2/DSL/index.js"
 import type * as FX from "../../PreludeV2/FX/index.js"
 import * as HKT from "../../PreludeV2/HKT/index.js"
 import type * as P from "../../PreludeV2/index.js"
+import * as DSL from "../PreludeV2/DSL/index.js"
 import type { XReaderF } from "../XReader/index.js"
 import * as XR from "../XReader/index.js"
 
@@ -53,7 +53,7 @@ export function Monad<F extends P.HKT>(M_: P.Monad<F>) {
 
 export function Access<F extends P.HKT>(M: P.Monad<F>) {
   return HKT.instance<FX.Access<XReaderTF<F>>>({
-    access: (x) => pipe(x, XR.access, XR.map(succeedF(M)))
+    access: (x) => pipe(x, XR.access, XR.map(DSL.succeedF(M)))
   })
 }
 

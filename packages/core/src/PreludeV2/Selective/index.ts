@@ -3,6 +3,7 @@
 import * as EI from "@effect-ts/system/Either"
 
 import { constant, identity, pipe } from "../../Function/index.js"
+import * as DSL from "../../PreludeV2/DSL/index.js"
 import type { Any } from "../Any/index.js"
 import type { Applicative } from "../Applicative/index.js"
 import type { Covariant } from "../Covariant/index.js"
@@ -39,7 +40,7 @@ export function monad<F extends HKT.HKT>(F_: Monad<F>): SelectiveMonad<F> {
                   fab,
                   F_.map((g) => g(a))
                 ),
-              (b) => succeedF(F_)<B | B2, X, I & I2, R & R2, E | E2>(b)
+              (b) => DSL.succeedF(F_)<B | B2, X, I & I2, R & R2, E | E2>(b)
             )
           )
         )

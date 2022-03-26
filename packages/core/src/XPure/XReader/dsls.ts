@@ -2,41 +2,41 @@
 
 import type { XReaderF } from "@effect-ts/core/XPure/XReader/definition"
 
-import * as P from "../../PreludeV2/index.js"
+import * as DSL from "../../PreludeV2/DSL/index.js"
 import { Applicative, Monad } from "./instances.js"
 
 /**
  * Struct based applicative for Reader[-_, +_]
  */
-export const struct = P.structF(Applicative)
+export const struct = DSL.structF(Applicative)
 
 /**
  * Struct based applicative for Reader[-_, +_]
  */
-export const tuple = P.tupleF(Applicative)
+export const tuple = DSL.tupleF(Applicative)
 
 /**
  * Matchers
  */
 export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
-  P.matchers<XReaderF>()
+  DSL.matchers<XReaderF>()
 
 /**
  * Conditionals
  */
-const branch = P.conditionalF<XReaderF>()
-const branch_ = P.conditionalF_<XReaderF>()
+const branch = DSL.conditionalF<XReaderF>()
+const branch_ = DSL.conditionalF_<XReaderF>()
 
 export { branch as if, branch_ as if_ }
 
 /**
  * Do
  */
-const { bind, do: do_, let: let_ } = P.getDo(Monad)
+const { bind, do: do_, let: let_ } = DSL.getDo(Monad)
 
 export { do_ as do, let_ as let, bind }
 
 /**
  * Generator
  */
-export const gen = P.genF(Monad)
+export const gen = DSL.genF(Monad)

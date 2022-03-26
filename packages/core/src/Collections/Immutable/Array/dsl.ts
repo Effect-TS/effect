@@ -1,6 +1,7 @@
 // ets_tracing: off
 
 import type * as O from "../../../Option/index.js"
+import * as DSL from "../../../PreludeV2/DSL/index.js"
 import * as P from "../../../PreludeV2/index.js"
 import { isOption } from "../../../Utils/index.js"
 import type { ArrayF } from "./instances.js"
@@ -10,10 +11,10 @@ import type * as AR from "./operations.js"
 export const sequence = P.sequenceF(ForEach)
 
 const adapter: {
-  <A>(_: () => O.Option<A>): P.GenLazyHKT<AR.Array<A>, A>
-  <A>(_: () => AR.Array<A>): P.GenLazyHKT<AR.Array<A>, A>
+  <A>(_: () => O.Option<A>): DSL.GenLazyHKT<AR.Array<A>, A>
+  <A>(_: () => AR.Array<A>): DSL.GenLazyHKT<AR.Array<A>, A>
 } = (_: () => any) =>
-  new P.GenLazyHKT(() => {
+  new DSL.GenLazyHKT(() => {
     const x = _()
     if (isOption(x)) {
       return x._tag === "None" ? [] : [x.value]
@@ -21,34 +22,35 @@ const adapter: {
     return x
   })
 
-export const gen = P.genWithHistoryF(Monad, {
+export const gen = DSL.genWithHistoryF(Monad, {
   adapter
 })
 
-export const tupleZip = P.tupleF(ApplyZip)
+export const tupleZip = DSL.tupleF(ApplyZip)
 
-export const structZip = P.structF(ApplyZip)
+export const structZip = DSL.structF(ApplyZip)
 
-export const tuple = P.tupleF(Applicative)
+export const tuple = DSL.tupleF(Applicative)
 
-export const struct = P.structF(Applicative)
+export const struct = DSL.structF(Applicative)
 
 /**
  * Do
  */
-const { bind, do: do_, let: let_ } = P.getDo(Monad)
+const { bind, do: do_, let: let_ } = DSL.getDo(Monad)
 
 export { do_ as do, let_ as let, bind }
 
 /**
  * Matchers
  */
-export const { match, matchIn, matchMorph, matchTag, matchTagIn } = P.matchers<ArrayF>()
+export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
+  DSL.matchers<ArrayF>()
 
 /**
  * Conditionals
  */
-const branch = P.conditionalF<ArrayF>()
-const branch_ = P.conditionalF_<ArrayF>()
+const branch = DSL.conditionalF<ArrayF>()
+const branch_ = DSL.conditionalF_<ArrayF>()
 
 export { branch as if, branch_ as if_ }

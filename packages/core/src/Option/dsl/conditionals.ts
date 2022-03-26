@@ -2,13 +2,13 @@
 
 import type { OptionF } from "@effect-ts/core/Option/definitions"
 
-import * as P from "../../PreludeV2/index.js"
+import * as DSL from "../../PreludeV2/DSL/index.js"
 
 /**
  * Conditionals
  */
 
-const branch = P.conditionalF<OptionF>()
-const branch_ = P.conditionalF_<OptionF>()
+const branch = DSL.conditionalF<OptionF>()
+const branch_ = DSL.conditionalF_<OptionF>()
 
 export { branch as if, branch_ as if_ }

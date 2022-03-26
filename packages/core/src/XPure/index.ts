@@ -6,6 +6,7 @@ import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/XPure"
 
+import * as DSL from "../PreludeV2/DSL/index.js"
 import * as P from "../PreludeV2/index.js"
 
 export interface XPureF<S> extends P.HKT {
@@ -92,13 +93,13 @@ export const category = <S>() =>
     compose: (bc) => (ab) => X.chain_(ab, (b) => X.provideAll_(bc, b))
   })
 
-export const struct = <S>() => P.structF(Applicative<S>())
+export const struct = <S>() => DSL.structF(Applicative<S>()) // @todo: structF & tupleF with transformers are weird now
 
-export const tuple = <S>() => P.tupleF(Applicative<S>())
+export const tuple = <S>() => DSL.tupleF(Applicative<S>())
 
 /**
  * Matchers
  */
-export const matchers = <S>() => P.matchers<XPureF<S>>()
+export const matchers = <S>() => DSL.matchers<XPureF<S>>()
 
 export * from "@effect-ts/system/XPure"

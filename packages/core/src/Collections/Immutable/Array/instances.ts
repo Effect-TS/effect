@@ -2,8 +2,8 @@
 
 import type { Either } from "@effect-ts/system/Either"
 
+import * as DSL from "../../../PreludeV2/DSL/index.js"
 import * as P from "../../../PreludeV2/index.js"
-import { getApplicativeF } from "../../../PreludeV2/index.js"
 import * as A from "./operations.js"
 
 export interface ArrayF extends P.HKT {
@@ -37,7 +37,7 @@ export const Monad = P.instance<P.Monad<ArrayF>>({
   ...AssociativeFlatten
 })
 
-export const Applicative = getApplicativeF(Monad)
+export const Applicative = DSL.getApplicativeF(Monad)
 
 export const ForEach = P.instance<P.ForEach<ArrayF>>({
   map: A.map,
