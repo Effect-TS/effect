@@ -5,76 +5,73 @@ import "../Operator/index.js"
 import * as T from "@effect-ts/system/Effect"
 
 import * as I from "../Identity/index.js"
-import type * as P from "../Prelude/index.js"
 import * as DSL from "../PreludeV2/DSL/index.js"
-import * as PV2 from "../PreludeV2/index.js"
+import * as P from "../PreludeV2/index.js"
 
 export * from "@effect-ts/system/Effect"
 export { EffectURI } from "../Modules/index.js" // @todo: remove
 
-export type V = P.V<"R", "-"> & P.V<"E", "+">
-
-export interface EffectF extends PV2.HKT {
+export interface EffectF extends P.HKT {
   readonly type: T.Effect<this["R"], this["E"], this["A"]>
 }
 
-export interface EffectCategoryF extends PV2.HKT {
+export interface EffectCategoryF extends P.HKT {
   readonly type: T.Effect<this["I"], this["E"], this["A"]>
 }
 
-export const Any = PV2.instance<PV2.Any<EffectF>>({
+export const Any = P.instance<P.Any<EffectF>>({
   any: () => T.succeed({})
 })
 
-export const AssociativeEither = PV2.instance<PV2.AssociativeEither<EffectF>>({
+export const AssociativeEither = P.instance<P.AssociativeEither<EffectF>>({
   orElseEither: T.orElseEither
 })
 
-export const AssociativeFlatten = PV2.instance<PV2.AssociativeFlatten<EffectF>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<EffectF>>({
   flatten: T.flatten
 })
 
-export const AssociativeBoth = PV2.instance<PV2.AssociativeBoth<EffectF>>({
+export const AssociativeBoth = P.instance<P.AssociativeBoth<EffectF>>({
   both: T.zip
 })
 
-export const Covariant = PV2.instance<PV2.Covariant<EffectF>>({
+export const Covariant = P.instance<P.Covariant<EffectF>>({
   map: T.map
 })
 
-export const IdentityFlatten = PV2.instance<PV2.IdentityFlatten<EffectF>>({
+export const IdentityFlatten = P.instance<P.IdentityFlatten<EffectF>>({
   ...Any,
   ...AssociativeFlatten
 })
 
-export const IdentityBoth = PV2.instance<PV2.IdentityBoth<EffectF>>({
+export const IdentityBoth = P.instance<P.IdentityBoth<EffectF>>({
   ...Any,
   ...AssociativeBoth
 })
 
-export const Monad = PV2.instance<PV2.Monad<EffectF>>({
+export const Monad = P.instance<P.Monad<EffectF>>({
   ...IdentityFlatten,
   ...Covariant
 })
 
-export const Applicative = PV2.instance<PV2.Applicative<EffectF>>({
+export const Applicative = P.instance<P.Applicative<EffectF>>({
   ...Covariant,
   ...IdentityBoth
 })
 
-export const Fail = PV2.instance<PV2.FX.Fail<EffectF>>({
+export const Fail = P.instance<P.FX.Fail<EffectF>>({
   fail: T.fail
 })
 
-export const Run = PV2.instance<PV2.FX.Run<EffectF>>({
+export const Run = P.instance<P.FX.Run<EffectF>>({
   either: T.either
 })
 
-export const Access = PV2.instance<PV2.FX.Access<EffectF>>({
+export const Access = P.instance<P.FX.Access<EffectF>>({
   access: T.access
 })
 
-export const Provide = PV2.instance<PV2.FX.Provide<EffectF>>({
+export const Provide = P.instance<P.FX.Provide<EffectF>>({
   provide: T.provideAll
 })
 
@@ -85,7 +82,7 @@ export const getValidationApplicative = DSL.getValidationF<EffectF>({
   ...Applicative
 })
 
-export const Category = PV2.instance<PV2.Category<EffectCategoryF>>({
+export const Category = P.instance<P.Category<EffectCategoryF>>({
   id: T.environment,
   compose: T.compose
 })
@@ -94,7 +91,7 @@ export const Category = PV2.instance<PV2.Category<EffectCategoryF>>({
  * Matchers
  */
 export const { match, matchIn, matchMorph, matchTag, matchTagIn } =
-  PV2.matchers<EffectF>()
+  DSL.matchers<EffectF>()
 
 /**
  * Derive sequential identity
