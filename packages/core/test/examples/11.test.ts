@@ -5,7 +5,6 @@ import { flow, identity, pipe } from "@effect-ts/system/Function"
 import * as E from "../../src/Either/index.js"
 import * as EitherT from "../../src/EitherT/index.js"
 import * as DSL from "../../src/PreludeV2/DSL/index.js"
-import type * as H from "../../src/PreludeV2/HKT/index.js"
 import * as P from "../../src/PreludeV2/index.js"
 import * as T from "../../src/XPure/index.js"
 import * as R from "../../src/XPure/XReader/index.js"
@@ -16,34 +15,28 @@ type State<K, V> = M.Map<K, V>
 export interface Store<K, V, A>
   extends T.XPure<unknown, State<K, V>, State<K, V>, unknown, never, A> {}
 
-export const URI = "Store"
-export type URI = typeof URI
-
-type StoreKey = "StoreKey"
-type StoreValue = "StoreValue"
-type Params<K, V> = H.CustomType<StoreKey, K> & H.CustomType<StoreValue, V>
-
-declare module "../../src/Prelude/HKT" {
-  export interface URItoKind<FC, TC, K, Q, W, X, I, S, R, E, A> {
-    [URI]: Store<H.AccessCustom<TC, StoreKey>, H.AccessCustom<TC, StoreValue>, A>
-  }
+export interface StoreF<K, V> extends P.HKT {
+  readonly type: Store<K, V, this["A"]>
 }
 
 export const getStoreMonad = <K, V>() =>
-  P.instance<P.Monad<[H.URI<URI>], Params<K, V>>>({
-    any: () => T.Any.any(),
+  P.instance<P.Monad<StoreF<K, V>>>({
+    any: () => T.Any<State<K, V>>().any(),
     flatten: (ffa) => T.chain_(ffa, identity),
     map: T.map
   })
 
-export const K = pipe(getStoreMonad<string, number>(), EitherT.monad, ReaderT.monad)
+export const K = pipe(getStoreMonad<string, number>(), EitherT.Monad, ReaderT.Monad)
 
 export const chain = DSL.chainF(K)
 
 export const succeed = DSL.succeedF(K)
 
 test("11", () => {
-  const result = pipe(
+  const program: R.XReader<
+    number,
+    Store<string, number, E.Either<never, number>>
+  > = pipe(
     succeed("hello"),
     R.map(
       T.chain(
@@ -61,7 +54,11 @@ test("11", () => {
         )
       )
     ),
-    chain((x) => T.accessM((y: number) => succeed(x * y))),
+    chain((x) => T.accessM((y: number) => succeed(x * y)))
+  )
+
+  const result: Tp.Tuple<[State<string, number>, E.Either<never, number>]> = pipe(
+    program,
     R.runEnv(2),
     T.runState(M.empty)
   )

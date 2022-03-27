@@ -23,10 +23,10 @@ import * as ReaderT from "../../src/XPure/XReaderT/index.js"
 //
 
 namespace IOEither {
-  export const Monad = pipe(IO.Monad, EitherT.monad)
-  export const Applicative = pipe(IO.Applicative, EitherT.applicative)
-  export const Run = pipe(IO.Covariant, EitherT.run)
-  export const Fail = pipe(IO.Monad, EitherT.fail)
+  export const Monad = pipe(IO.Monad, EitherT.Monad)
+  export const Applicative = pipe(IO.Applicative, EitherT.Applicative)
+  export const Run = pipe(IO.Covariant, EitherT.Run)
+  export const Fail = pipe(IO.Monad, EitherT.Fail)
 }
 
 //
@@ -35,12 +35,12 @@ namespace IOEither {
 
 namespace ReaderIOEither {
   //
-  export const Monad = pipe(IOEither.Monad, ReaderT.monad)
-  export const Applicative = pipe(IOEither.Applicative, ReaderT.applicative)
-  export const Run = pipe(IOEither.Run, ReaderT.run)
-  export const Fail = pipe(IOEither.Fail, ReaderT.fail)
-  export const Access = pipe(IOEither.Monad, ReaderT.access)
-  export const Provide = pipe(IOEither.Monad, ReaderT.provide)
+  export const Monad = pipe(IOEither.Monad, ReaderT.Monad)
+  export const Applicative = pipe(IOEither.Applicative, ReaderT.Applicative)
+  export const Run = pipe(IOEither.Run, ReaderT.Run)
+  export const Fail = pipe(IOEither.Fail, ReaderT.Fail)
+  export const Access = pipe(IOEither.Monad, ReaderT.Access)
+  export const Provide = pipe(IOEither.Monad, ReaderT.Provide)
 
   export const { access, any, both, either, fail, flatten, map, provide } = {
     ...Monad,
@@ -101,8 +101,8 @@ namespace ReaderIOEither {
 //
 
 namespace ReaderIO {
-  export const RIOMonad = pipe(IO.Monad, ReaderT.monad)
-  export const RIOApplicative = pipe(IO.Applicative, ReaderT.applicative)
+  export const RIOMonad = pipe(IO.Monad, ReaderT.Monad)
+  export const RIOApplicative = pipe(IO.Applicative, ReaderT.Applicative)
   export const RIOSelectiveM = S.monad(RIOMonad)
   export const RIOSelectiveA = S.applicative(RIOApplicative)
 
@@ -113,7 +113,7 @@ namespace ReaderIO {
 }
 
 test("13", () => {
-  pipe(
+  const program: Reader.XReader<number, XIO<string>> = pipe(
     ReaderIOEither.Do,
     ReaderIOEither.bind("x", () => ReaderIOEither.succeed("0")),
     ReaderIOEither.bind("y", () => ReaderIOEither.succeed("1")),
@@ -128,17 +128,17 @@ test("13", () => {
     ReaderIO.branchA(
       ReaderIO.succeed((s) => `error: ${s}`),
       ReaderIO.succeed((s) => `success: ${s}`)
-    ),
-    Reader.runEnv(2),
-    IO.run,
-    (x) => {
-      console.log(x)
-    }
+    )
   )
+
+  expect(pipe(program, Reader.runEnv(2), IO.run)).toEqual("error: bar, foo")
 })
 
 test("13 generator", () => {
-  const result = ReaderIOEither.gen(function* (_) {
+  const result: Reader.XReader<
+    { a: number } & { b: number },
+    XIO<Either.Either<string | NoSuchElementException, number>>
+  > = ReaderIOEither.gen(function* (_) {
     const a = yield* _(ReaderIOEither.access((_: { a: number }) => _.a))
     const b = yield* _(ReaderIOEither.access((_: { b: number }) => _.b))
     const c = yield* _(Either.right(2))
