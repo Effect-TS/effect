@@ -34,8 +34,18 @@ export function Monad<F extends P.HKT>(F_: P.Monad<F>) {
   })
 }
 
-export function Applicative<F extends P.HKT>(F_: P.Monad<F>): Applicative<OptionTF<F>> {
-  return DSL.getApplicativeF(Monad(F_))
+export function Applicative<F extends P.HKT>(M: Applicative<F>) {
+  const succeed = DSL.succeedF(M)
+  return P.instance<P.Applicative<OptionTF<F>>>({
+    any: () => succeed(O.some({})),
+    map: (f) => M.map(O.map(f)),
+    both: (fb) => (x) =>
+      pipe(
+        x,
+        M.both(fb),
+        M.map(({ tuple: [a, b] }) => O.zip_(a, b))
+      )
+  })
 }
 
 export function Access<F extends P.HKT>(M: Access<F> & Covariant<F>) {

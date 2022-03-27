@@ -1,8 +1,10 @@
 import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 
+import type { HasClock } from "../../src/Effect/Clock/index.js"
 import * as T from "../../src/Effect/index.js"
 import * as Ref from "../../src/Effect/Ref/index.js"
 import { pipe } from "../../src/Function/index.js"
+import type { Has } from "../../src/Has/index.js"
 import { tag } from "../../src/Has/index.js"
 
 const ConsoleServiceId = Symbol()
@@ -18,7 +20,7 @@ class ConsoleService {
 interface Console extends ConsoleService {}
 const Console = tag<Console>(ConsoleServiceId)
 
-const program = T.gen(function* (_) {
+const program: T.Effect<Has<Console> & HasClock, never, void> = T.gen(function* (_) {
   const { logN } = yield* _(Console)
 
   const ref = yield* _(Ref.makeRef(0))
