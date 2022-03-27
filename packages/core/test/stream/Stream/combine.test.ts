@@ -1,3 +1,4 @@
+import { Chunk } from "../../../src/collection/immutable/Chunk"
 import { List } from "../../../src/collection/immutable/List"
 import { Effect } from "../../../src/io/Effect"
 import { Ref } from "../../../src/io/Ref"
@@ -34,6 +35,19 @@ describe("Stream", () => {
       const result = await program.unsafeRunPromise()
 
       expect(result).toEqual(["first", "second"])
+    })
+  })
+
+  describe("concatAll", () => {
+    it("simple example", async () => {
+      const chunks = Chunk(Chunk(1, 2), Chunk(3), Chunk.empty<number>(), Chunk(4, 5, 6))
+      const program = Stream.concatAll(
+        chunks.map((chunk) => Stream.fromChunk(chunk))
+      ).runCollect()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result.toArray()).toEqual(chunks.flatten().toArray())
     })
   })
 })

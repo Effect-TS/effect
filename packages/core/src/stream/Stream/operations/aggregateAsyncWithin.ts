@@ -1,5 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import { Option } from "../../../data/Option"
+import type { Option } from "../../../data/Option"
 import type { HasClock } from "../../../io/Clock"
 import type { Schedule } from "../../../io/Schedule"
 import type { Sink } from "../../Sink"
@@ -25,9 +25,7 @@ export function aggregateAsyncWithin_<R, E, A, R2, E2, A2, R3, B, C>(
   schedule: LazyArg<Schedule<R3, Option<B>, C>>,
   __tsplusTrace?: string
 ): Stream<R & R2 & R3 & HasClock, E | E2, B> {
-  return self
-    .aggregateAsyncWithinEither(sink, schedule)
-    .collect((either) => (either.isRight() ? Option.some(either.right) : Option.none))
+  return self.aggregateAsyncWithinEither(sink, schedule).collectRight()
 }
 
 /**

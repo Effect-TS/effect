@@ -8,15 +8,25 @@ import { Stream } from "../../../src/stream/Stream"
 import { NumberService } from "./test-utils"
 
 describe("Stream", () => {
-  describe("environmentWith", () => {
-    it("environmentWith", async () => {
-      const program = Stream.service(NumberService)
-        .provideEnvironment(NumberService.has({ n: 10 }))
-        .runHead().some
+  describe("environment", () => {
+    it("simple example", async () => {
+      const program = Stream.environment<string>().provideEnvironment("test").runHead()
 
       const result = await program.unsafeRunPromise()
 
-      expect(result.n).toEqual(10)
+      expect(result).toEqual(Option.some("test"))
+    })
+  })
+
+  describe("environmentWith", () => {
+    it("simple example", async () => {
+      const program = Stream.environmentWith((r: string) => r)
+        .provideEnvironment("test")
+        .runHead()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual(Option.some("test"))
     })
   })
 

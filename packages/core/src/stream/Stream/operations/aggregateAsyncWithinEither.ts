@@ -106,7 +106,7 @@ export function aggregateAsyncWithinEither_<R, E, A, R2, E2, A2, R3, B, C>(
     concreteSink(sink0)
     return Stream.managed(
       (self.channel >> handoffProducer).runManaged().fork()
-    ).zipRight(
+    ).crossRight(
       new StreamInternal(
         scheduledAggregator(
           sink0,

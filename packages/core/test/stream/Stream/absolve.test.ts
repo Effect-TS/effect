@@ -1,13 +1,7 @@
 import { Chunk } from "../../../src/collection/immutable/Chunk"
-import { List } from "../../../src/collection/immutable/List"
 import { Either } from "../../../src/data/Either"
-import { constTrue } from "../../../src/data/Function"
-import { RuntimeError } from "../../../src/io/Cause"
 import { Effect } from "../../../src/io/Effect"
 import { Exit } from "../../../src/io/Exit"
-import { Promise } from "../../../src/io/Promise"
-import { Ref } from "../../../src/io/Ref"
-import { Sink } from "../../../src/stream/Sink"
 import { Stream } from "../../../src/stream/Stream"
 
 describe("Stream", () => {

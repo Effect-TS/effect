@@ -1,3 +1,4 @@
+import { Chunk } from "../../../src/collection/immutable/Chunk"
 import { List } from "../../../src/collection/immutable/List"
 import { Tuple } from "../../../src/collection/immutable/Tuple"
 import { Effect } from "../../../src/io/Effect"
@@ -5,6 +6,18 @@ import { Ref } from "../../../src/io/Ref"
 import { Stream } from "../../../src/stream/Stream"
 
 describe("Stream", () => {
+  describe("iterate", () => {
+    it("simple example", async () => {
+      const program = Stream.iterate(1, (n) => n + 1)
+        .take(10)
+        .runCollect()
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result.toArray()).toEqual(Chunk.range(1, 10).toArray())
+    })
+  })
+
   describe("runForEach", () => {
     it("with small data set", async () => {
       const program = Effect.Do()

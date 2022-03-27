@@ -5,7 +5,7 @@ import type { Stream } from "../definition"
 /**
  * Extracts the optional value, or returns the given 'default'.
  *
- * @tsplus getter ets/Effect someOrElse
+ * @tsplus fluent ets/Stream someOrElse
  */
 export function someOrElse_<R, E, A, A2>(
   self: Stream<R, E, Option<A>>,

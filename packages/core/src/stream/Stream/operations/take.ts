@@ -14,14 +14,13 @@ export function take_<R, E, A>(
   n: number,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  if (n < 0) {
-    return Stream.empty
-  }
   if (!Number.isInteger(n)) {
     return Stream.die(new IllegalArgumentException(`${n} must be an integer`))
   }
   concreteStream(self)
-  return new StreamInternal(self.channel >> loop<R, E, A>(n))
+  return new StreamInternal(
+    n <= 0 ? Channel.unit : Channel.suspend(self.channel >> loop<R, E, A>(n))
+  )
 }
 
 /**

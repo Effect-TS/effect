@@ -14,7 +14,7 @@ import { Stream } from "../definition"
 export function paginate<S, A>(
   s: LazyArg<S>,
   f: (s: S) => Tuple<[A, Option<S>]>,
-  __tsplusTrace: string
+  __tsplusTrace?: string
 ): Stream<unknown, never, A> {
   return Stream.paginateChunk(s, (s) => {
     const {

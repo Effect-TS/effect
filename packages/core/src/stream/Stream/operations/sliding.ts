@@ -45,9 +45,9 @@ function reader<E, A>(
   __tsplusTrace?: string
 ): Channel<unknown, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown> {
   return Channel.readWithCause(
-    (chunk: Chunk<A>) =>
+    (input: Chunk<A>) =>
       Channel.write(
-        chunk.zipWithIndex().collect(({ tuple: [a, index] }) => {
+        input.zipWithIndex().collect(({ tuple: [a, index] }) => {
           queue.put(a)
 
           const currentIndex = queueSize + index + 1
@@ -56,7 +56,7 @@ function reader<E, A>(
             ? Option.none
             : Option.some(queue.toChunk())
         })
-      ) > reader<E, A>(chunkSize, stepSize, queue, queueSize + chunk.length),
+      ) > reader<E, A>(chunkSize, stepSize, queue, queueSize + input.length),
     (cause) =>
       emitOnStreamEnd<E, A>(
         chunkSize,

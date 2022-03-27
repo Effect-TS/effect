@@ -29,4 +29,48 @@ describe("Stream", () => {
       ])
     })
   })
+
+  describe("finalizer", () => {
+    it("happy path", async () => {
+      const program = Effect.Do()
+        .bind("log", () => Ref.make(List.empty<string>()))
+        .bindValue(
+          "entry",
+          ({ log }) =>
+            (label: string) =>
+              log.update((list) => list.prepend(label))
+        )
+        .tap(({ entry }) =>
+          Stream.acquireReleaseWith(entry("Acquire"), () => entry("Release"))
+            .flatMap(() => Stream.finalizer(entry("Use")))
+            .ensuring(entry("Ensuring"))
+            .runDrain()
+        )
+        .flatMap(({ log }) => log.get())
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result.reverse().toArray()).toEqual([
+        "Acquire",
+        "Use",
+        "Release",
+        "Ensuring"
+      ])
+    })
+
+    it("finalizer is not run if stream is not pulled", async () => {
+      const program = Effect.Do()
+        .bind("ref", () => Ref.make(false))
+        .tap(({ ref }) =>
+          Stream.finalizer(ref.set(true))
+            .toPull()
+            .use(() => Effect.unit)
+        )
+        .flatMap(({ ref }) => ref.get())
+
+      const result = await program.unsafeRunPromise()
+
+      expect(result).toEqual(false)
+    })
+  })
 })

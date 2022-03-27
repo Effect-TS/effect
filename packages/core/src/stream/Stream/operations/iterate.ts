@@ -6,6 +6,8 @@ import { Stream } from "../definition"
 /**
  * Returns an infinite stream of iterative function application: `a`, `f(a)`,
  * `f(f(a))`, `f(f(f(a)))`, ...
+ *
+ * @tsplus static ets/StreamOps iterate
  */
 export function iterate<A>(
   a: LazyArg<A>,

@@ -146,7 +146,6 @@ describe("Stream", () => {
       expect(result.untraced()).toEqual(Exit.fail(error))
     })
 
-    // TODO(Mike/Max): fix failing test
     it("fast producer progress independently", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(List.empty<number>()))
@@ -162,13 +161,10 @@ describe("Stream", () => {
               Stream.range(1, 17).ensuring(latch2.succeed(undefined))
             )
         )
-        .bindValue(
-          "stream2",
-          ({ latch3, latch4 }) =>
-            Stream(0) +
-            Stream.fromEffect(latch3.await()).flatMap(() =>
-              Stream.range(17, 25).ensuring(latch4.succeed(undefined))
-            )
+        .bindValue("stream2", ({ latch3, latch4 }) =>
+          Stream.fromEffect(latch3.await()).flatMap(() =>
+            Stream.range(17, 25).ensuring(latch4.succeed(undefined))
+          )
         )
         .bindValue("stream3", () => Stream(-1))
         .bindValue("stream", ({ stream1, stream2, stream3 }) =>
@@ -388,7 +384,6 @@ describe("Stream", () => {
       expect(result.untraced()).toEqual(Exit.fail(error))
     })
 
-    // TODO(Mike/Max): fix failing test
     it("fast producer progress independently", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(List.empty<number>()))
@@ -404,13 +399,10 @@ describe("Stream", () => {
               Stream.range(1, 17).rechunk(1).ensuring(latch2.succeed(undefined))
             )
         )
-        .bindValue(
-          "stream2",
-          ({ latch3, latch4 }) =>
-            Stream(0) +
-            Stream.fromEffect(latch3.await()).flatMap(() =>
-              Stream.range(17, 25).rechunk(1).ensuring(latch4.succeed(undefined))
-            )
+        .bindValue("stream2", ({ latch3, latch4 }) =>
+          Stream.fromEffect(latch3.await()).flatMap(() =>
+            Stream.range(17, 25).rechunk(1).ensuring(latch4.succeed(undefined))
+          )
         )
         .bindValue("stream3", () => Stream(-1))
         .bindValue("stream", ({ stream1, stream2, stream3 }) =>
