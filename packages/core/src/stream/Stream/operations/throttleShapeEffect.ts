@@ -71,7 +71,7 @@ function loop<E, A, R2, E2>(
             const delay = Duration(Math.floor(waitCycles * duration.milliseconds))
 
             return delay > Duration.Zero
-              ? Channel.fromEffect(Clock.sleep(delay.milliseconds)) >
+              ? Channel.fromEffect(Clock.sleep(delay)) >
                   Channel.write(input) >
                   loop<E, A, R2, E2>(units, duration, costFn, burst, remaining, current)
               : Channel.write(input) >

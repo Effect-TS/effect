@@ -18,7 +18,7 @@ export function haltAfter_<R, E, A>(
   duration: LazyArg<Duration>,
   __tsplusTrace?: string
 ): Stream<R & HasClock, E, A> {
-  return self.haltWhen(Effect.sleep(duration().milliseconds))
+  return self.haltWhen(Effect.sleep(duration))
 }
 
 /**

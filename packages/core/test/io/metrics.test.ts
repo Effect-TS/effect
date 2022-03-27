@@ -582,8 +582,8 @@ describe("Metrics", () => {
       // NOTE: observeDurations always uses real clock
       const program = Effect.Do()
         .bind("start", () => Effect(Date.now()))
-        .tap(() => Effect.sleep(1000).apply(histogram.apply))
-        .tap(() => Effect.sleep(3000).apply(histogram.apply))
+        .tap(() => Effect.sleep(Duration(1000)).apply(histogram.apply))
+        .tap(() => Effect.sleep(Duration(3000)).apply(histogram.apply))
         .bind("end", () => Effect(Date.now()))
         .bindValue("elapsed", ({ end, start }) => (end - start) / 1000)
         .bind("snapshots", () => Effect.succeed(MetricClient.unsafeSnapshots()))

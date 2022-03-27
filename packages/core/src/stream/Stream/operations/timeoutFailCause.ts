@@ -23,9 +23,7 @@ export function timeoutFailCause_<R, E, E2, A>(
       Stream.fromPull(
         self
           .toPull()
-          .map((pull) =>
-            pull.timeoutFailCause(cause.map(Option.some), duration.milliseconds)
-          )
+          .map((pull) => pull.timeoutFailCause(cause.map(Option.some), duration))
       )
   )
 }

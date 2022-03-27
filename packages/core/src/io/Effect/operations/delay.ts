@@ -14,7 +14,7 @@ export function delay_<R, E, A>(
   duration: Duration,
   __tsplusTrace?: string
 ): Effect<R & HasClock, E, A> {
-  return Clock.sleep(duration.milliseconds) > self
+  return Clock.sleep(duration) > self
 }
 
 /**

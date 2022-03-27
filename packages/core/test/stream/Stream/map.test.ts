@@ -1,5 +1,6 @@
 import { Chunk } from "../../../src/collection/immutable/Chunk"
 import { Tuple } from "../../../src/collection/immutable/Tuple"
+import { Duration } from "../../../src/data/Duration"
 import { Either } from "../../../src/data/Either"
 import { Effect } from "../../../src/io/Effect"
 import { Exit } from "../../../src/io/Exit"
@@ -352,7 +353,7 @@ describe("Stream", () => {
 
     it("propagates error of original stream", async () => {
       const program = (Stream(1, 2, 3, 4, 5, 6, 7, 8, 9, 10) + Stream.fail("boom"))
-        .mapEffectPar(2, () => Effect.sleep(100))
+        .mapEffectPar(2, () => Effect.sleep(Duration(100)))
         .runDrain()
         .fork()
         .flatMap((fiber) => fiber.await())

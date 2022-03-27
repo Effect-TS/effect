@@ -2671,7 +2671,7 @@ describe("Effect", () => {
     })
 
     it("returns last failure", async () => {
-      const program = (Effect.sleep(100) > Effect.fail(24))
+      const program = (Effect.sleep(Duration(100)) > Effect.fail(24))
         .raceAll(List(Effect.fail(25)))
         .flip()
 
@@ -2682,7 +2682,7 @@ describe("Effect", () => {
 
     it("returns success when it happens after failure", async () => {
       const program = Effect.fail(42).raceAll(
-        List(Effect.succeed(24) < Effect.sleep(100))
+        List(Effect.succeed(24) < Effect.sleep(Duration(100)))
       )
 
       const result = await program.unsafeRunPromise()
@@ -3461,7 +3461,9 @@ describe("Effect", () => {
     })
 
     it("timeout a long computation", async () => {
-      const program = (Effect.sleep(5000) > Effect.succeed(true)).timeoutFail(false, 10)
+      const program = (
+        Effect.sleep(Duration.fromSeconds(5)) > Effect.succeed(true)
+      ).timeoutFail(false, Duration(10))
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -3470,8 +3472,8 @@ describe("Effect", () => {
 
     it("timeout a long computation with a cause", async () => {
       const cause = Cause.die(new Error("boom"))
-      const program = (Effect.sleep(5000) > Effect.succeed(true))
-        .timeoutFailCause(cause, 10)
+      const program = (Effect.sleep(Duration.fromSeconds(5)) > Effect.succeed(true))
+        .timeoutFailCause(cause, Duration(10))
         .sandbox()
         .flip()
 
@@ -3482,7 +3484,7 @@ describe("Effect", () => {
 
     // FIXED: replaced Promise.resolve with setTimeout in Scheduler
     it("timeout repetition of uninterruptible effect", async () => {
-      const program = Effect.unit.uninterruptible().forever().timeout(10)
+      const program = Effect.unit.uninterruptible().forever().timeout(Duration(10))
 
       const result = await program.unsafeRunPromise()
 
@@ -3490,7 +3492,7 @@ describe("Effect", () => {
     })
 
     it("timeout in uninterruptible region", async () => {
-      const program = Effect.unit.timeout(20000).uninterruptible()
+      const program = Effect.unit.timeout(Duration.fromSeconds(20)).uninterruptible()
 
       const result = await program.unsafeRunPromise()
 
@@ -3705,18 +3707,20 @@ describe("Effect", () => {
             Effect.acquireReleaseWith(
               Effect.unit,
               () => Effect.unit,
-              () => log("start 1") > Effect.sleep(10) > log("release 1")
+              () => log("start 1") > Effect.sleep(Duration(10)) > log("release 1")
             ),
             () => Effect.unit,
-            () => log("start 2") > Effect.sleep(10) > log("release 2")
+            () => log("start 2") > Effect.sleep(Duration(10)) > log("release 2")
           ).fork()
         )
         .tap(({ ref }) =>
-          (ref.get() < Effect.sleep(1)).repeatUntil((list) => list.contains("start 1"))
+          (ref.get() < Effect.sleep(Duration(1))).repeatUntil((list) =>
+            list.contains("start 1")
+          )
         )
         .tap(({ fiber }) => fiber.interrupt())
         .tap(({ ref }) =>
-          (ref.get() < Effect.sleep(1)).repeatUntil((list) =>
+          (ref.get() < Effect.sleep(Duration(1))).repeatUntil((list) =>
             list.contains("release 2")
           )
         )
@@ -3737,7 +3741,7 @@ describe("Effect", () => {
         .bind("promise2", () => Promise.make<never, number>())
         .bind("fiber", ({ promise1, promise2, ref }) =>
           (promise1.succeed(undefined) > promise2.await())
-            .ensuring(ref.set(true) > Effect.sleep(10))
+            .ensuring(ref.set(true) > Effect.sleep(Duration(10)))
             .fork()
         )
         .tap(({ promise1 }) => promise1.await())
@@ -3836,7 +3840,8 @@ describe("Effect", () => {
     it("deep asyncEffect doesn't block", async () => {
       function asyncIO(cont: RIO<HasClock, number>): RIO<HasClock, number> {
         return Effect.asyncEffect(
-          (cb) => Effect.sleep(5) > cont > Effect.succeed(cb(Effect.succeed(42)))
+          (cb) =>
+            Effect.sleep(Duration(5)) > cont > Effect.succeed(cb(Effect.succeed(42)))
         )
       }
 
@@ -3897,7 +3902,7 @@ describe("Effect", () => {
             .ensuring(unexpectedPlace.update((list) => list.prepend(2)))
             .forkDaemon()
         )
-        .bind("result", ({ fork }) => fork.interrupt().timeout(1000))
+        .bind("result", ({ fork }) => fork.interrupt().timeout(Duration.fromSeconds(1)))
         .bind("unexpected", ({ unexpectedPlace }) => unexpectedPlace.get())
 
       const { result, unexpected } = await program.unsafeRunPromise()
@@ -3929,7 +3934,7 @@ describe("Effect", () => {
             .uninterruptible()
             .forkDaemon()
         )
-        .bind("result", ({ fork }) => fork.interrupt().timeout(1000))
+        .bind("result", ({ fork }) => fork.interrupt().timeout(Duration.fromSeconds(1)))
         .bind("unexpected", ({ unexpectedPlace }) => unexpectedPlace.get())
 
       const { result, unexpected } = await program.unsafeRunPromise()
@@ -3939,7 +3944,7 @@ describe("Effect", () => {
     })
 
     it("sleep 0 must return", async () => {
-      const program = Effect.sleep(0)
+      const program = Effect.sleep(Duration(0))
 
       const result = await program.unsafeRunPromise()
 
@@ -4049,9 +4054,9 @@ describe("Effect", () => {
 
     it("daemon fiber race interruption", async () => {
       function plus1<X>(latch: Promise<never, void>, finalizer: UIO<X>) {
-        return (latch.succeed(undefined) > Effect.sleep(1000 * 60 * 60)).onInterrupt(
-          () => finalizer.map((x) => x)
-        )
+        return (
+          latch.succeed(undefined) > Effect.sleep(Duration.fromHours(1))
+        ).onInterrupt(() => finalizer.map((x) => x))
       }
 
       const program = Effect.Do()
@@ -4110,7 +4115,7 @@ describe("Effect", () => {
 
     it("supervise fibers", async () => {
       function makeChild(n: number): RIO<HasClock, Fiber<never, void>> {
-        return (Effect.sleep(20 * n) > Effect.never).fork()
+        return (Effect.sleep(Duration(20 * n)) > Effect.never).fork()
       }
 
       const program = Ref.make(0)
@@ -4323,7 +4328,7 @@ describe("Effect", () => {
     })
 
     it("timeout of failure", async () => {
-      const program = Effect.fail("uh oh").timeout(Duration.fromHours(1).milliseconds)
+      const program = Effect.fail("uh oh").timeout(Duration.fromHours(1))
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -4331,9 +4336,7 @@ describe("Effect", () => {
     })
 
     it("timeout of terminate", async () => {
-      const program = Effect.die(ExampleError).timeout(
-        Duration.fromHours(1).milliseconds
-      )
+      const program = Effect.die(ExampleError).timeout(Duration.fromHours(1))
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -4435,7 +4438,8 @@ describe("Effect", () => {
         )
         .flatMap(
           ({ fiber, promise }) =>
-            promise.await() > fiber.interrupt().timeoutTo(42, () => 0, 1000)
+            promise.await() >
+            fiber.interrupt().timeoutTo(42, () => 0, Duration.fromSeconds(1))
         )
 
       const result = await program.unsafeRunPromise()
@@ -4458,7 +4462,8 @@ describe("Effect", () => {
         )
         .flatMap(
           ({ fiber, promise }) =>
-            promise.await() > fiber.interrupt().timeoutTo(42, () => 0, 1000)
+            promise.await() >
+            fiber.interrupt().timeoutTo(42, () => 0, Duration.fromSeconds(1))
         )
 
       const result = await program.unsafeRunPromise()
@@ -4488,7 +4493,9 @@ describe("Effect", () => {
         () => Effect.unit
       )
         .fork()
-        .flatMap((fiber) => fiber.interrupt().timeoutTo(42, () => 0, 1000))
+        .flatMap((fiber) =>
+          fiber.interrupt().timeoutTo(42, () => 0, Duration.fromSeconds(1))
+        )
 
       const result = await program.unsafeRunPromise()
 
@@ -4509,7 +4516,7 @@ describe("Effect", () => {
         .tap(({ promise1 }) => promise1.await())
         .tap(({ fiber }) => fiber.interrupt())
         .tap(({ promise2 }) => promise2.await())
-        .timeoutTo(42, () => 0, 1000)
+        .timeoutTo(42, () => 0, Duration.fromSeconds(1))
 
       const result = await program.unsafeRunPromise()
 
@@ -4529,7 +4536,9 @@ describe("Effect", () => {
           ).fork()
         )
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ done }) => done.await().timeoutTo(42, () => 0, 60000))
+        .flatMap(({ done }) =>
+          done.await().timeoutTo(42, () => 0, Duration.fromMinutes(1))
+        )
 
       const result = await program.unsafeRunPromise()
 
@@ -4605,7 +4614,9 @@ describe("Effect", () => {
       )
         .disconnect()
         .fork()
-        .flatMap((fiber) => fiber.interrupt().timeoutTo(42, () => 0, 1000))
+        .flatMap((fiber) =>
+          fiber.interrupt().timeoutTo(42, () => 0, Duration.fromSeconds(1))
+        )
 
       const result = await program.unsafeRunPromise()
 
@@ -4628,7 +4639,7 @@ describe("Effect", () => {
         .tap(({ promise1 }) => promise1.await())
         .tap(({ fiber }) => fiber.interrupt())
         .tap(({ promise2 }) => promise2.await())
-        .timeoutTo(false, () => true, 10000)
+        .timeoutTo(false, () => true, Duration.fromSeconds(10))
 
       const result = await program.unsafeRunPromise()
 
@@ -4650,7 +4661,9 @@ describe("Effect", () => {
           )
         )
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ done }) => done.await().timeoutTo(false, () => true, 10000))
+        .flatMap(({ done }) =>
+          done.await().timeoutTo(false, () => true, Duration.fromSeconds(10))
+        )
 
       const result = await program.unsafeRunPromise()
 
@@ -4949,7 +4962,9 @@ describe("Effect", () => {
         .bind("promise2", () => Promise.make<never, void>())
         .bind("fiber", ({ promise1, promise2, ref }) =>
           (promise1.succeed(undefined) > Effect.never)
-            .ensuring(ref.set(true) > Effect.sleep(10) > promise2.succeed(undefined))
+            .ensuring(
+              ref.set(true) > Effect.sleep(Duration(10)) > promise2.succeed(undefined)
+            )
             .disconnect()
             .fork()
         )
@@ -4987,7 +5002,7 @@ describe("Effect", () => {
               withLatch((release1) =>
                 release1
                   .acquireRelease(
-                    await2 > Effect.sleep(10) > ref.set(true),
+                    await2 > Effect.sleep(Duration(10)) > ref.set(true),
                     Effect.unit
                   )
                   .uninterruptible()
@@ -5012,7 +5027,8 @@ describe("Effect", () => {
           latch1
             .succeed(undefined)
             .acquireReleaseWith(
-              () => latch2.await() > Effect.sleep(10) > ref.set(true).asUnit(),
+              () =>
+                latch2.await() > Effect.sleep(Duration(10)) > ref.set(true).asUnit(),
               () => Effect.unit
             )
             .uninterruptible()
@@ -5033,7 +5049,7 @@ describe("Effect", () => {
         .bind("ref", () => Ref.make(false))
         .bind("fiber", ({ ref }) =>
           withLatch((release) =>
-            (release > Effect.sleep(10) > ref.set(true).asUnit())
+            (release > Effect.sleep(Duration(10)) > ref.set(true).asUnit())
               .uninterruptible()
               .fork()
           )
@@ -5053,7 +5069,7 @@ describe("Effect", () => {
         .bindValue(
           "child",
           ({ promise, ref }) =>
-            promise.succeed(undefined) > Effect.sleep(10) > ref.set(true)
+            promise.succeed(undefined) > Effect.sleep(Duration(10)) > ref.set(true)
         )
         .bindValue(
           "parent",
@@ -5372,7 +5388,7 @@ describe("Effect", () => {
 
   describe("timeout disconnect", () => {
     it("returns `Some` with the produced value if the effect completes before the timeout elapses", async () => {
-      const program = Effect.unit.disconnect().timeout(100)
+      const program = Effect.unit.disconnect().timeout(Duration(100))
 
       const result = await program.unsafeRunPromise()
 
@@ -5387,9 +5403,9 @@ describe("Effect", () => {
         .await()
         .uninterruptible()
         .disconnect()
-        .timeout(10)
+        .timeout(Duration(10))
         .fork()
-        .tap(() => Effect.sleep(100))
+        .tap(() => Effect.sleep(Duration(100)))
         .flatMap((fiber) => fiber.join())
 
       const result = await program.unsafeRunPromise()

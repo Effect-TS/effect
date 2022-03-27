@@ -1,4 +1,5 @@
 import { Tuple } from "../../collection/immutable/Tuple"
+import { Duration } from "../../data/Duration"
 import { Either } from "../../data/Either"
 import type { LazyArg } from "../../data/Function"
 import { NoSuchElementException } from "../../data/GlobalExceptions"
@@ -25,7 +26,7 @@ export interface Clock {
 
   readonly currentTime: UIO<number>
 
-  readonly sleep: (ms: number, __tsplusTrace?: string) => UIO<void>
+  readonly sleep: (duration: LazyArg<Duration>, __tsplusTrace?: string) => UIO<void>
 
   readonly driver: <State, Env, In, Out>(
     schedule: Schedule.WithState<State, Env, In, Out>,
@@ -162,9 +163,12 @@ export abstract class AbstractClock implements Clock {
   abstract currentTime: UIO<number>
 
   /**
-   * Sleeps for the provided number of milliseconds.
+   * Sleeps for the provided duration.
    */
-  abstract sleep(ms: number, __tsplusTrace?: string | undefined): UIO<void>
+  abstract sleep(
+    duration: LazyArg<Duration>,
+    __tsplusTrace?: string | undefined
+  ): UIO<void>
 
   driver<State, Env, In, Out>(
     schedule: Schedule.WithState<State, Env, In, Out>,
@@ -184,7 +188,9 @@ export abstract class AbstractClock implements Clock {
                 decision._tag === "Done"
                   ? ref.set(Tuple(Option.some(out), state)) > Effect.fail(Option.none)
                   : ref.set(Tuple(Option.some(out), state)) >
-                    this.sleep(decision.interval.startMilliseconds - now).as(out)
+                    this.sleep(Duration(decision.interval.startMilliseconds - now)).as(
+                      out
+                    )
               )
           )
 
@@ -403,15 +409,15 @@ export const currentTime = Effect.serviceWithEffect(HasClock)(
 )
 
 /**
- * Sleeps for the provided number of milliseconds.
+ * Sleeps for the provided duration.
  *
  * @tsplus static ets/ClockOps sleep
  */
 export function sleep(
-  milliseconds: number,
+  duration: LazyArg<Duration>,
   __tsplusTrace?: string
 ): Effect<HasClock, never, void> {
-  return Effect.serviceWithEffect(HasClock)((clock) => clock.sleep(milliseconds))
+  return Effect.serviceWithEffect(HasClock)((clock) => clock.sleep(duration))
 }
 
 /**

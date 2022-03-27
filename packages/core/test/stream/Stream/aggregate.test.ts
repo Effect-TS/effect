@@ -171,7 +171,7 @@ describe("Stream", () => {
                 .runCollect()
                 .fork()
             )
-            .tap(() => (c.offer > Effect.sleep(100) > c.awaitNext).repeatN(3))
+            .tap(() => (c.offer > Effect.sleep(Duration(100)) > c.awaitNext).repeatN(3))
             .flatMap(({ fiber }) =>
               fiber.join().map((chunk) => chunk.collect(identity))
             )

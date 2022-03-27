@@ -1,4 +1,5 @@
 import type { Duration } from "../../data/Duration"
+import type { LazyArg } from "../../data/Function"
 import type { Has } from "../../data/Has"
 import { tag } from "../../data/Has"
 import type { UIO } from "../Effect"
@@ -16,7 +17,7 @@ export class TestClock extends AbstractClock {
 
   readonly currentTime: UIO<number> = Effect.succeed(this.time)
 
-  sleep(ms: number, __tsplusTrace?: string): UIO<void> {
+  sleep(duration: LazyArg<Duration>, __tsplusTrace?: string): UIO<void> {
     return Effect.unit
   }
 

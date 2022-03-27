@@ -1,5 +1,6 @@
 import { Chunk } from "../../src/collection/immutable/Chunk"
 import { Tuple } from "../../src/collection/immutable/Tuple"
+import { Duration } from "../../src/data/Duration"
 import { constFalse, constTrue, identity } from "../../src/data/Function"
 import type { Has } from "../../src/data/Has"
 import { tag } from "../../src/data/Has"
@@ -364,7 +365,9 @@ describe("Layer", () => {
     // Given the use of `Managed.never`, race the test against a 10 second
     // timer and fail the test if the computation doesn't complete. This delay
     // time may be increased if it turns out this test is flaky.
-    const program = Effect.sleep(10000).zipRight(Effect.succeed(constFalse)).race(test)
+    const program = Effect.sleep(Duration.fromSeconds(10))
+      .zipRight(Effect.succeed(constFalse))
+      .race(test)
 
     const result = await program.unsafeRunPromise()
 
@@ -565,7 +568,7 @@ describe("Layer", () => {
   })
 
   it("error handling", async () => {
-    const sleep = Effect.sleep(100)
+    const sleep = Effect.sleep(Duration(100))
     const layer1 = Layer.fail("foo")
     const layer2 = Layer.succeed({ bar: "bar" })
     const layer3 = Layer.succeed({ baz: "baz" })

@@ -1,4 +1,5 @@
 import { Chunk } from "../../src/collection/immutable/Chunk"
+import { Duration } from "../../src/data/Duration"
 import { constTrue, constVoid, identity, pipe } from "../../src/data/Function"
 import { Option } from "../../src/data/Option"
 import { Effect } from "../../src/io/Effect"
@@ -228,7 +229,7 @@ describe("Fiber", () => {
       // Since `rootsTest` has a potentially infinite loop (T.never + T.repeatUntil),
       // race the real test against a 10 second timer and fail the test if it didn't complete.
       // This delay time may be increased if it turns out this test is flaky.
-      const program = Effect.sleep(10000)
+      const program = Effect.sleep(Duration.fromSeconds(10))
         .zipRight(Effect.succeedNow(false))
         .race(rootsTest)
 

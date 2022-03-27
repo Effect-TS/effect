@@ -1,3 +1,4 @@
+import { Duration } from "../../../src/data/Duration"
 import { Either } from "../../../src/data/Either"
 import { constVoid } from "../../../src/data/Function"
 import { Effect } from "../../../src/io/Effect"
@@ -67,7 +68,7 @@ describe("Stream", () => {
 
     it("interrupts pulling on finish", async () => {
       const stream1 = Stream(1, 2, 3)
-      const stream2 = Stream.fromEffect(Effect.sleep(5000).as(4))
+      const stream2 = Stream.fromEffect(Effect.sleep(Duration(5000)).as(4))
       const program = stream1
         .mergeTerminateLeft(stream2)
         .runCollect()

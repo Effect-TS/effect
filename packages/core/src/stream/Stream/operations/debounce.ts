@@ -54,7 +54,7 @@ export function debounce_<R, E, A>(
       .bind("handoff", () => Handoff.make<HandoffSignal<void, E, A>>())
       .map(({ duration, handoff, scope }) => {
         function enqueue(last: Chunk<A>, __tsplusTrace?: string) {
-          return Clock.sleep(duration.milliseconds)
+          return Clock.sleep(duration)
             .as(last)
             .forkIn(scope)
             .map((fiber) => consumer(new Previous(fiber)))

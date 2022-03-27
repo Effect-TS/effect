@@ -16,7 +16,7 @@ export function timeout_<R, E, A>(
 ): Stream<R & HasClock, E, A> {
   return Stream.succeed(duration).flatMap((duration) =>
     Stream.fromPull(
-      self.toPull().map((pull) => pull.timeoutFail(Option.none, duration.milliseconds))
+      self.toPull().map((pull) => pull.timeoutFail(Option.none, duration))
     )
   )
 }
