@@ -6,7 +6,7 @@ import * as StateT from "../../src/StateT/index.js"
 import * as IO from "../../src/XPure/XIO/index.js"
 
 namespace StateIO {
-  export const MonadState = StateT.stateT<number>()(IO.Monad)
+  export const MonadState = pipe(IO.Monad, StateT.stateT<number>())
 
   export const chain = DSL.chainF(MonadState)
   export const succeed = DSL.succeedF(MonadState)
