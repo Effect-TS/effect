@@ -157,4 +157,23 @@ describe("Stream", () => {
       expect(result).toEqual(Either.left("boom"))
     })
   })
+
+  describe("onError", () => {
+    it("simple example", async () => {
+      const program = Effect.Do()
+        .bind("ref", () => Ref.make(false))
+        .bind("exit", ({ ref }) =>
+          Stream.fail("boom")
+            .onError(() => ref.set(true))
+            .runDrain()
+            .exit()
+        )
+        .bind("called", ({ ref }) => ref.get())
+
+      const { called, exit } = await program.unsafeRunPromise()
+
+      expect(called).toBe(true)
+      expect(exit.untraced()).toEqual(Exit.fail("boom"))
+    })
+  })
 })

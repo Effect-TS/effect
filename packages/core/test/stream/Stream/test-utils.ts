@@ -1,12 +1,22 @@
 import type { Chunk } from "../../../src/collection/immutable/Chunk"
 import { List } from "../../../src/collection/immutable/List"
 import { Tuple } from "../../../src/collection/immutable/Tuple"
+import { tag } from "../../../src/data/Has"
 import { Option } from "../../../src/data/Option"
 import type { UIO } from "../../../src/io/Effect"
 import { Effect } from "../../../src/io/Effect"
 import { Exit } from "../../../src/io/Exit"
 import { Queue } from "../../../src/io/Queue"
 import { Ref } from "../../../src/io/Ref"
+
+export const NumberServiceId = Symbol.for("@effect-ts/core/test/stream/NumberService")
+export type NumberServiceId = typeof NumberServiceId
+
+export interface NumberService {
+  readonly n: number
+}
+
+export const NumberService = tag<NumberService>()
 
 export interface ChunkCoordination<A> {
   readonly queue: Queue<Exit<Option<never>, Chunk<A>>>

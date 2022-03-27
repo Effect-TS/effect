@@ -31,7 +31,11 @@ function loop<R, E, A, A2>(
   __tsplusTrace?: string
 ) {
   return (chunk: Chunk<A>, emit: (a: A2) => UIO<void>): Effect<R, E, boolean> =>
-    chunk.isEmpty() ? Effect.succeed(constTrue) : pfSome(chunk.unsafeHead(), pf, emit)
+    chunk.isEmpty()
+      ? Effect.succeed(constTrue)
+      : pfSome(chunk.unsafeHead(), pf, emit).flatMap((cont) =>
+          cont ? loop(pf)(chunk.unsafeTail(), emit) : Effect.succeed(constFalse)
+        )
 }
 
 function pfSome<R, E, A, A2>(
