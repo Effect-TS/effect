@@ -2,6 +2,10 @@ import * as I from "../../collection/immutable/Iterable"
 import * as MHM from "../../collection/mutable/HashMap"
 import * as O from "../../data/Option"
 
+/**
+ * @tsplus type ets/MutableHashSet
+ * @tsplus companion ets/MutableHashSetOps
+ */
 export class HashSet<A> {
   private hashMap: MHM.HashMap<A, boolean>
 
@@ -39,72 +43,81 @@ export class HashSet<A> {
 }
 
 /**
- * Creates a new set
+ * Creates a new empty set.
+ *
+ * @tsplus static ets/MutableHashSetOps empty
+ */
+export function empty<A>(): HashSet<A> {
+  return new HashSet()
+}
+
+/**
+ * Creates a new set.
+ *
+ * @tsplus static ets/MutableHashSetOps make
  */
 export function make<A>(): HashSet<A> {
   return new HashSet()
 }
 
 /**
- * Calculate the number of values in a set
+ * Calculate the number of values in a set.
+ *
+ * @tsplus getter ets/MutableHashSet size
  */
 export function size<A>(self: HashSet<A>): number {
   return self.size()
 }
 
 /**
- * returns `true` if the set is empty
+ * Returns `true` if the set is empty.
+ *
+ * @tsplus fluent ets/MutableHashSet isEmpty
  */
 export function isEmpty<A>(self: HashSet<A>): boolean {
   return self.isEmpty()
 }
 
 /**
- * Creates a new set
+ * Returns `true` if the set contains the specified value.
  *
- * @ets_data_first contains_
+ * @tsplus fluent ets/MutableHashSet contains
  */
 export function contains_<A>(self: HashSet<A>, a: A): boolean {
   return self.contains(a)
 }
 
 /**
- * return true if the set contains `a`
- *
- * @ets_data_first contains_
+ * Returns `true` if the set contains the specified value.
  */
-export function contains<A>(a: A) {
-  return (self: HashSet<A>) => contains_(self, a)
-}
+export const contains = Pipeable(contains_)
 
 /**
- * add `a` to the set
+ * Adds the specified value to the set.
+ *
+ * @tsplus operator ets/MutableHashSet +
+ * @tsplus fluent ets/MutableHashSet add
  */
 export function add_<A>(self: HashSet<A>, a: A): boolean {
   return self.add(a)
 }
 
 /**
- * add `a` to the set
- *
- * @ets_data_first add_
+ * Adds the specified value to the set.
  */
-export function add<A>(a: A) {
-  return (self: HashSet<A>) => add_(self, a)
-}
+export const add = Pipeable(add_)
 
 /**
- * remove `a` from the set
+ * Removes the specified value from the set.
+ *
+ * @tsplus operator ets/MutableHashSet -
+ * @tsplus fluent ets/MutableHashSet remove
  */
 export function remove_<A>(self: HashSet<A>, a: A): boolean {
   return self.remove(a)
 }
 
 /**
- * remove `a` from the set
- *
- * @ets_data_first remove_
+ * Removes the specified value from the set.
  */
-export function remove<A>(a: A) {
-  return (self: HashSet<A>) => remove_(self, a)
-}
+export const remove = Pipeable(remove_)

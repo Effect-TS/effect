@@ -5,6 +5,7 @@ import type { Exit } from "../definition"
  * Sequentially zips the this result with the specified result discarding the
  * first element of the tuple or else returns the failed `Cause`.
  *
+ * @tsplus operator ets/Exit >
  * @tsplus fluent ets/Exit zipRight
  */
 export function zipRight_<E, A, E1, B>(

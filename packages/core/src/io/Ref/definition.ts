@@ -76,13 +76,13 @@ export interface XRef<RA, RB, EA, EB, A, B> {
 export abstract class XRefInternal<RA, RB, EA, EB, A, B>
   implements XRef<RA, RB, EA, EB, A, B>
 {
-  readonly [XRefId]: XRefId;
-  readonly [_RA]: (_: RA) => void;
-  readonly [_RB]: (_: RB) => void;
-  readonly [_EA]: () => EA;
-  readonly [_EB]: () => EB;
-  readonly [_A]: (_: A) => void;
-  readonly [_B]: () => B
+  readonly [XRefId]: XRefId = XRefId;
+  readonly [_RA]!: (_: RA) => void;
+  readonly [_RB]!: (_: RB) => void;
+  readonly [_EA]!: () => EA;
+  readonly [_EB]!: () => EB;
+  readonly [_A]!: (_: A) => void;
+  readonly [_B]!: () => B
 
   /**
    * Reads the value from the `XRef`.

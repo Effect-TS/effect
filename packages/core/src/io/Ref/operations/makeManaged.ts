@@ -4,7 +4,7 @@ import { Ref } from "../definition"
 /**
  * Creates a new managed `XRef` with the specified value.
  *
- * @tsplus static ets/XRef makeManaged
+ * @tsplus static ets/XRefOps makeManaged
  */
 export function makeManaged<A>(
   value: A,

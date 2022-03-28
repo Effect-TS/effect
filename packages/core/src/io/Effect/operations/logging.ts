@@ -13,6 +13,7 @@ import { Effect, ILogged } from "../definition"
 const someFatal = Option.some(LogLevel.Fatal)
 const someError = Option.some(LogLevel.Error)
 const someWarning = Option.some(LogLevel.Warning)
+const someTrace = Option.some(LogLevel.Trace)
 const someInfo = Option.some(LogLevel.Info)
 const someDebug = Option.some(LogLevel.Debug)
 
@@ -39,8 +40,8 @@ export function logDebug(message: LazyArg<string>, __tsplusTrace?: string): UIO<
  *
  * @tsplus static ets/EffectOps logDebugCause
  */
-export function logDebugCause(
-  cause: LazyArg<Cause<any>>,
+export function logDebugCause<E>(
+  cause: LazyArg<Cause<E>>,
   __tsplusTrace?: string
 ): UIO<void> {
   return new ILogged(() => "", cause, someDebug, null, null, __tsplusTrace)
@@ -51,9 +52,9 @@ export function logDebugCause(
  *
  * @tsplus static ets/EffectOps logDebugCauseMessage
  */
-export function logDebugCauseMessage(
+export function logDebugCauseMessage<E>(
   message: LazyArg<string>,
-  cause: LazyArg<Cause<any>>,
+  cause: LazyArg<Cause<E>>,
   __tsplusTrace?: string
 ): UIO<void> {
   return new ILogged(message, cause, someDebug, null, null, __tsplusTrace)
@@ -73,8 +74,8 @@ export function logError(message: LazyArg<string>, __tsplusTrace?: string): UIO<
  *
  * @tsplus static ets/EffectOps logErrorCause
  */
-export function logErrorCause(
-  cause: LazyArg<Cause<any>>,
+export function logErrorCause<E>(
+  cause: LazyArg<Cause<E>>,
   __tsplusTrace?: string
 ): UIO<void> {
   return new ILogged(() => "", cause, someError, null, null, __tsplusTrace)
@@ -85,9 +86,9 @@ export function logErrorCause(
  *
  * @tsplus static ets/EffectOps logErrorCauseMessage
  */
-export function logErrorCauseMessage(
+export function logErrorCauseMessage<E>(
   message: LazyArg<string>,
-  cause: LazyArg<Cause<any>>,
+  cause: LazyArg<Cause<E>>,
   __tsplusTrace?: string
 ): UIO<void> {
   return new ILogged(message, cause, someError, null, null, __tsplusTrace)
@@ -107,8 +108,8 @@ export function logFatal(message: LazyArg<string>, __tsplusTrace?: string): UIO<
  *
  * @tsplus static ets/EffectOps logFatalCause
  */
-export function logFatalCause(
-  cause: LazyArg<Cause<any>>,
+export function logFatalCause<E>(
+  cause: LazyArg<Cause<E>>,
   __tsplusTrace?: string
 ): UIO<void> {
   return new ILogged(() => "", cause, someFatal, null, null, __tsplusTrace)
@@ -119,9 +120,9 @@ export function logFatalCause(
  *
  * @tsplus static ets/EffectOps logFatalCauseMessage
  */
-export function logFatalCauseMessage(
+export function logFatalCauseMessage<E>(
   message: LazyArg<string>,
-  cause: LazyArg<Cause<any>>,
+  cause: LazyArg<Cause<E>>,
   __tsplusTrace?: string
 ): UIO<void> {
   return new ILogged(message, cause, someFatal, null, null, __tsplusTrace)
@@ -141,8 +142,8 @@ export function logInfo(message: LazyArg<string>, __tsplusTrace?: string): UIO<v
  *
  * @tsplus static ets/EffectOps logInfoCause
  */
-export function logInfoCause(
-  cause: LazyArg<Cause<any>>,
+export function logInfoCause<E>(
+  cause: LazyArg<Cause<E>>,
   __tsplusTrace?: string
 ): UIO<void> {
   return new ILogged(() => "", cause, someInfo, null, null, __tsplusTrace)
@@ -153,9 +154,9 @@ export function logInfoCause(
  *
  * @tsplus static ets/EffectOps logInfoCauseMessage
  */
-export function logInfoCauseMessage(
+export function logInfoCauseMessage<E>(
   message: LazyArg<string>,
-  cause: LazyArg<Cause<any>>,
+  cause: LazyArg<Cause<E>>,
   __tsplusTrace?: string
 ): UIO<void> {
   return new ILogged(message, cause, someInfo, null, null, __tsplusTrace)
@@ -178,8 +179,8 @@ export function logWarning(
  *
  * @tsplus static ets/EffectOps logWarningCause
  */
-export function logWarningCause(
-  cause: LazyArg<Cause<any>>,
+export function logWarningCause<E>(
+  cause: LazyArg<Cause<E>>,
   __tsplusTrace?: string
 ): UIO<void> {
   return new ILogged(() => "", cause, someWarning, null, null, __tsplusTrace)
@@ -190,12 +191,46 @@ export function logWarningCause(
  *
  * @tsplus static ets/EffectOps logWarningCauseMessage
  */
-export function logWarningCauseMessage(
+export function logWarningCauseMessage<E>(
   message: LazyArg<string>,
-  cause: LazyArg<Cause<any>>,
+  cause: LazyArg<Cause<E>>,
   __tsplusTrace?: string
 ): UIO<void> {
   return new ILogged(message, cause, someWarning, null, null, __tsplusTrace)
+}
+
+/**
+ * Logs the specified message at the trace log level.
+ *
+ * @tsplus static ets/EffectOps logTrace
+ */
+export function logTrace(message: LazyArg<string>, __tsplusTrace?: string): UIO<void> {
+  return new ILogged(message, () => Cause.empty, someTrace, null, null, __tsplusTrace)
+}
+
+/**
+ * Logs the specified cause at the trace log level.
+ *
+ * @tsplus static ets/EffectOps logTraceCause
+ */
+export function logTraceCause<E>(
+  cause: LazyArg<Cause<E>>,
+  __tsplusTrace?: string
+): UIO<void> {
+  return new ILogged(() => "", cause, someTrace, null, null, __tsplusTrace)
+}
+
+/**
+ * Logs the specified message and cause at the trace log level.
+ *
+ * @tsplus static ets/EffectOps logTraceCauseMessage
+ */
+export function logTraceCauseMessage<E>(
+  message: LazyArg<string>,
+  cause: LazyArg<Cause<E>>,
+  __tsplusTrace?: string
+): UIO<void> {
+  return new ILogged(message, cause, someTrace, null, null, __tsplusTrace)
 }
 
 /**

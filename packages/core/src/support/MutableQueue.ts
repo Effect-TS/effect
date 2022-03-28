@@ -1,6 +1,9 @@
 import { Chunk } from "../collection/immutable/Chunk"
 import { DoublyLinkedList } from "./DoublyLinkedList"
 
+export const EmptyQueue = Symbol.for("@effect-ts/system/MutableQueue/Empty")
+export type EmptyQueue = typeof EmptyQueue
+
 /**
  * @tsplus type ets/MutableQueue
  */
@@ -37,7 +40,7 @@ export interface MutableQueue<A> {
    * can always use `poll(undefined)`. Not the best, but reasonable price
    * to pay for lower heap churn.
    */
-  readonly poll: (a: A | undefined) => A | undefined
+  readonly poll: <D>(a: D) => A | D
 
   /**
    * A non-blocking dequeue.
@@ -103,11 +106,11 @@ export class Unbounded<A> implements MutableQueue<A> {
     return Chunk.empty()
   }
 
-  poll(a: A | undefined) {
+  poll<D>(a: D) {
     if (this.isEmpty) {
       return a
     }
-    return this.queue.shift()
+    return this.queue.shift()!
   }
 
   pollUpTo(n: number): Chunk<A> {
@@ -115,9 +118,9 @@ export class Unbounded<A> implements MutableQueue<A> {
     let count = 0
 
     while (count < n) {
-      const elem = this.poll(undefined)
+      const elem = this.poll(EmptyQueue)
 
-      if (elem === undefined) {
+      if (elem === EmptyQueue) {
         break
       }
 
@@ -179,11 +182,11 @@ export class Bounded<A> implements MutableQueue<A> {
     return rem
   }
 
-  poll(a: A | undefined) {
+  poll<D>(a: D) {
     if (this.isEmpty) {
       return a
     }
-    return this.queue.shift()
+    return this.queue.shift()!
   }
 
   pollUpTo(n: number): Chunk<A> {
@@ -191,9 +194,9 @@ export class Bounded<A> implements MutableQueue<A> {
     let count = 0
 
     while (count < n) {
-      const elem = this.poll(undefined)
+      const elem = this.poll(EmptyQueue)
 
-      if (elem === undefined) {
+      if (elem === EmptyQueue) {
         break
       }
 

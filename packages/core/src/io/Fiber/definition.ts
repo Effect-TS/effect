@@ -189,8 +189,8 @@ export class SyntheticFiber<E, A> implements BaseFiber<E, A> {
   readonly _tag = "SyntheticFiber";
 
   readonly [FiberSym]: FiberSym = FiberSym;
-  readonly [_E]: () => E;
-  readonly [_A]: () => A
+  readonly [_E]!: () => E;
+  readonly [_A]!: () => A
 
   constructor(
     readonly _id: FiberId,

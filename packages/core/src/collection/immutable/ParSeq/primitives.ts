@@ -27,7 +27,7 @@ const _emptyHash = St.opt(St.randomInt())
 
 export class Empty implements St.HasEquals, St.HasHash {
   readonly _tag = "Empty";
-  readonly [_A]: () => never;
+  readonly [_A]!: () => never;
   readonly [_ParSeqBrand]: _ParSeqBrand = _ParSeqBrand;
   [St.equalsSym](that: unknown): boolean {
     return isParSeq(that) && this.equalsSafe(that).run()
@@ -42,7 +42,7 @@ export class Empty implements St.HasEquals, St.HasHash {
 
 export class Then<A> implements St.HasEquals, St.HasHash {
   readonly _tag = "Then";
-  readonly [_A]: () => never;
+  readonly [_A]!: () => never;
   readonly [_ParSeqBrand]: _ParSeqBrand = _ParSeqBrand
   constructor(readonly left: ParSeq<A>, readonly right: ParSeq<A>) {}
   [St.equalsSym](that: unknown): boolean {
@@ -158,7 +158,7 @@ function distributiveThen<A>(self: ParSeq<A>, that: ParSeq<A>): IO<boolean> {
 
 export class Both<A> implements St.HasEquals, St.HasHash {
   readonly _tag = "Both";
-  readonly [_A]: () => never;
+  readonly [_A]!: () => never;
   readonly [_ParSeqBrand]: _ParSeqBrand = _ParSeqBrand
   constructor(readonly left: ParSeq<A>, readonly right: ParSeq<A>) {}
   [St.equalsSym](that: unknown): boolean {
@@ -287,7 +287,7 @@ function commutativeBoth(self: Both<unknown>, that: ParSeq<unknown>): IO<boolean
 
 export class Single<A> implements St.HasEquals, St.HasHash {
   readonly _tag = "Single";
-  readonly [_A]: () => never;
+  readonly [_A]!: () => never;
   readonly [_ParSeqBrand]: _ParSeqBrand = _ParSeqBrand
   constructor(readonly a: A) {}
   [St.equalsSym](that: unknown): boolean {

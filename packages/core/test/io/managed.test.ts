@@ -2,6 +2,7 @@ import { Chunk } from "../../src/collection/immutable/Chunk"
 import { List } from "../../src/collection/immutable/List"
 import * as Map from "../../src/collection/immutable/Map"
 import { Tuple } from "../../src/collection/immutable/Tuple"
+import { Duration } from "../../src/data/Duration"
 import { Either } from "../../src/data/Either"
 import { constTrue, constVoid, identity } from "../../src/data/Function"
 import { tag } from "../../src/data/Has"
@@ -38,7 +39,7 @@ function wait(counter: Ref<number>): Effect<HasClock, never, void> {
   return counter
     .get()
     .flatMap((n) =>
-      n <= 0 ? Effect.unit : Effect.sleep(10).flatMap(() => wait(counter))
+      n <= 0 ? Effect.unit : Effect.sleep(Duration(10)).flatMap(() => wait(counter))
     )
 }
 
@@ -60,7 +61,7 @@ function doInterrupt(
     )
     .tap(({ reachedAcquisition }) => reachedAcquisition.await())
     .bind("interruption", ({ fiberId, managedFiber }) =>
-      managedFiber.interruptAs(fiberId).timeout(1000)
+      managedFiber.interruptAs(fiberId).timeout(Duration.fromSeconds(1))
     )
     .map(({ fiberId, interruption }) => Tuple(fiberId, interruption))
 }
@@ -1001,7 +1002,7 @@ describe("Managed", () => {
       // Since `forkTest` uses Effect.never race the real test against a
       // 10 second timer and fail the test if it didn't complete. This
       // delay time may be increased if it turns out this test is flaky.
-      const program = Effect.sleep(10000)
+      const program = Effect.sleep(Duration.fromSeconds(10))
         .zipRight(Effect.succeedNow(false))
         .race(forkTest)
 
@@ -1033,7 +1034,7 @@ describe("Managed", () => {
       // Since `forkTest` uses Effect.never race the real test against a
       // 10 second timer and fail the test if it didn't complete. This
       // delay time may be increased if it turns out this test is flaky.
-      const program = Effect.sleep(10000)
+      const program = Effect.sleep(Duration.fromSeconds(10))
         .zipRight(Effect.succeedNow(false))
         .race(forkTest)
 
@@ -2379,8 +2380,8 @@ describe("Managed", () => {
   describe("timed", () => {
     it("should time both the reservation and the acquisition", async () => {
       const managed = Managed.fromReservationEffect(
-        Effect.sleep(10).zipRight(
-          Effect.succeed(Reservation(Effect.sleep(10), () => Effect.unit))
+        Effect.sleep(Duration(10)).zipRight(
+          Effect.succeed(Reservation(Effect.sleep(Duration(10)), () => Effect.unit))
         )
       )
 
@@ -2399,7 +2400,7 @@ describe("Managed", () => {
   describe("timeout", () => {
     it("returns Some if the timeout isn't reached", async () => {
       const program = Managed.acquireReleaseWith(Effect.succeed(1), () => Effect.unit)
-        .timeout(100000)
+        .timeout(Duration.fromSeconds(10))
         .use(Effect.succeedNow)
 
       const result = await program.unsafeRunPromise()
@@ -2413,7 +2414,9 @@ describe("Managed", () => {
         .bindValue("managed", ({ latch }) =>
           Managed.acquireReleaseWith(latch.await(), () => Effect.unit)
         )
-        .bind("result", ({ managed }) => managed.timeout(0).use(Effect.succeedNow))
+        .bind("result", ({ managed }) =>
+          managed.timeout(Duration(0)).use(Effect.succeedNow)
+        )
         .tap(({ latch }) => latch.succeed(undefined))
 
       const { result } = await program.unsafeRunPromise()
@@ -2427,7 +2430,9 @@ describe("Managed", () => {
         .bindValue("managed", ({ latch }) =>
           Managed.fromReservation(Reservation(latch.await(), () => Effect.unit))
         )
-        .bind("result", ({ managed }) => managed.timeout(0).use(Effect.succeedNow))
+        .bind("result", ({ managed }) =>
+          managed.timeout(Duration(0)).use(Effect.succeedNow)
+        )
         .tap(({ latch }) => latch.succeed(undefined))
 
       const { result } = await program.unsafeRunPromise()
@@ -2444,7 +2449,9 @@ describe("Managed", () => {
             Reservation(reserveLatch.await(), () => releaseLatch.succeed(undefined))
           )
         )
-        .bind("result", ({ managed }) => managed.timeout(0).use(Effect.succeedNow))
+        .bind("result", ({ managed }) =>
+          managed.timeout(Duration(0)).use(Effect.succeedNow)
+        )
         .tap(({ reserveLatch }) => reserveLatch.succeed(undefined))
         .tap(({ releaseLatch }) => releaseLatch.await())
 
@@ -2468,7 +2475,9 @@ describe("Managed", () => {
               )
           )
         )
-        .bind("result", ({ managed }) => managed.timeout(0).use(Effect.succeedNow))
+        .bind("result", ({ managed }) =>
+          managed.timeout(Duration(0)).use(Effect.succeedNow)
+        )
         .tap(({ acquireLatch }) => acquireLatch.succeed(undefined))
         .tap(({ releaseLatch }) => releaseLatch.await())
 
@@ -2534,7 +2543,7 @@ describe("Managed", () => {
             canceler
               .forkDaemon()
               .tap(() => latch.await())
-              .flatMap((fiber) => fiber.interrupt().timeout(100))
+              .flatMap((fiber) => fiber.interrupt().timeout(Duration(100)))
               .tap(() => ref.set(false))
           )
         )
@@ -2655,7 +2664,9 @@ describe("Managed", () => {
       const program = Effect.Do()
         .bind("latch", () => Promise.make<never, void>())
         .bindValue("first", ({ latch }) =>
-          Managed.fromEffect(latch.succeed(undefined).zipRight(Effect.sleep(100000)))
+          Managed.fromEffect(
+            latch.succeed(undefined).zipRight(Effect.sleep(Duration.fromSeconds(100)))
+          )
         )
         .bindValue("second", ({ latch }) =>
           Managed.fromEffect(latch.await().zipRight(Effect.fail(undefined)))
@@ -2814,7 +2825,7 @@ describe("Managed", () => {
       // Since `switchableTest` uses Effect.never race the real test against a
       // 10 second timer and fail the test if it didn't complete. This
       // delay time may be increased if it turns out this test is flaky.
-      const program = Effect.sleep(10000)
+      const program = Effect.sleep(Duration.fromSeconds(10))
         .zipRight(Effect.succeedNow(List.empty<string>()))
         .race(switchableTest)
 
@@ -3106,7 +3117,7 @@ describe("Managed", () => {
       // Since `memoizeTest` uses Effect.never race the real test against a
       // 10 second timer and fail the test if it didn't complete. This
       // delay time may be increased if it turns out this test is flaky.
-      const program = Effect.sleep(1000)
+      const program = Effect.sleep(Duration.fromSeconds(10))
         .zipRight(Effect.succeedNow(Map.empty))
         .race(memoizeTest)
 

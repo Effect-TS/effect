@@ -7,6 +7,10 @@ import { concreteQueue } from "../definition"
  *
  * @tsplus fluent ets/Queue offer
  * @tsplus fluent ets/XQueue offer
+ * @tsplus fluent ets/Dequeue offer
+ * @tsplus fluent ets/XDequeue offer
+ * @tsplus fluent ets/Enqueue offer
+ * @tsplus fluent ets/XEnqueue offer
  */
 export function offer_<RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,

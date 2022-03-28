@@ -6,7 +6,7 @@ import { identity } from "../../../data/Function"
 import { Option } from "../../../data/Option"
 import { AtomicBoolean } from "../../../support/AtomicBoolean"
 import { AtomicNumber } from "../../../support/AtomicNumber"
-import { MutableQueue } from "../../../support/MutableQueue"
+import { EmptyQueue, MutableQueue } from "../../../support/MutableQueue"
 import { Cause } from "../../Cause"
 import { ExecutionStrategy } from "../../ExecutionStrategy"
 import { Exit } from "../../Exit"
@@ -760,9 +760,9 @@ export class UnsafeCreate<A> extends XQueueInternal<
 
       let noRemaining: boolean
       if (this.queue.isEmpty) {
-        const taker = this.takers.poll(undefined)
+        const taker = this.takers.poll(EmptyQueue)
 
-        if (taker != null) {
+        if (taker !== EmptyQueue) {
           unsafeCompletePromise(taker, a)
           noRemaining = true
         } else {
@@ -859,9 +859,9 @@ export class UnsafeCreate<A> extends XQueueInternal<
       return Effect.interrupt
     }
 
-    const item = this.queue.poll(undefined)
+    const item = this.queue.poll(EmptyQueue)
 
-    if (item != null) {
+    if (item !== EmptyQueue) {
       this.strategy.unsafeOnQueueEmptySpace(this.queue, this.takers)
       return Effect.succeedNow(item)
     } else {
@@ -967,9 +967,9 @@ export class BackPressureStrategy<A> implements Strategy<A> {
     let keepPolling = true
 
     while (keepPolling && !queue.isFull) {
-      const putter = this.putters.poll(undefined)
+      const putter = this.putters.poll(EmptyQueue)
 
-      if (putter != null) {
+      if (putter !== EmptyQueue) {
         const offered = queue.offer(putter.get(0))
 
         if (offered && putter.get(2)) {

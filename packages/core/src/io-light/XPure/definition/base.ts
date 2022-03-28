@@ -43,14 +43,14 @@ export function unify<X extends XPure<any, any, any, any, any, any>>(
 export abstract class Base<W, S1, S2, R, E, A> implements XPure<W, S1, S2, R, E, A> {
   readonly _tag = "XPure";
 
-  readonly [_S1]: (_: S1) => void;
-  readonly [_S2]: () => S2;
+  readonly [_S1]!: (_: S1) => void;
+  readonly [_S2]!: () => S2;
 
-  readonly [_U]: EffectURI;
-  readonly [_W]: () => W;
-  readonly [_R]: (_: R) => void;
-  readonly [_E]: () => E;
-  readonly [_A]: () => A
+  readonly [_U]!: EffectURI;
+  readonly [_W]!: () => W;
+  readonly [_R]!: (_: R) => void;
+  readonly [_E]!: () => E;
+  readonly [_A]!: () => A
 }
 
 /**

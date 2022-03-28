@@ -12,8 +12,8 @@ import type { Summary } from "../../definition"
 import { SummarySym } from "../../definition"
 
 export class InternalSummary<A> implements Summary<A>, St.HasHash, St.HasEquals {
-  readonly [_A]: (_: A) => void;
-  readonly [SummarySym]: SummarySym = SummarySym
+  readonly [SummarySym]: SummarySym = SummarySym;
+  readonly [_A]!: (_: A) => void
 
   summary: AtomicSummary | undefined
   summaryRef: FiberRef<AtomicSummary> | undefined

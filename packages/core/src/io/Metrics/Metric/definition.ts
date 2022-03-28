@@ -37,7 +37,7 @@ export function unifyMetric<X extends Metric<any>>(
 }
 
 class ConcreteMetric<A> implements Metric<A> {
-  readonly [_A]: (_: A) => void
+  readonly [_A]!: (_: A) => void
 
   constructor(
     readonly name: string,

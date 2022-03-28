@@ -1,4 +1,5 @@
 import { Tuple } from "../../../collection/immutable/Tuple"
+import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../definition"
 
 /**
@@ -10,11 +11,11 @@ import { Effect } from "../definition"
  */
 export function summarized_<R, E, A, R2, E2, B, C>(
   self: Effect<R, E, A>,
-  summary: Effect<R2, E2, B>,
+  summary: LazyArg<Effect<R2, E2, B>>,
   f: (start: B, end: B) => C,
   __tsplusTrace?: string
 ): Effect<R & R2, E | E2, Tuple<[C, A]>> {
-  return Effect.suspendSucceed(
+  return Effect.succeed(summary).flatMap((summary) =>
     Effect.Do()
       .bind("start", () => summary)
       .bind("value", () => self)
@@ -27,14 +28,5 @@ export function summarized_<R, E, A, R2, E2, B, C>(
  * Summarizes a effect by computing some value before and after execution, and
  * then combining the values to produce a summary, together with the result of
  * execution.
- *
- * @ets_data_first summarized_
  */
-export function summarized<R2, E2, B, C>(
-  summary: Effect<R2, E2, B>,
-  f: (start: B, end: B) => C,
-  __tsplusTrace?: string
-) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, Tuple<[C, A]>> =>
-    self.summarized(summary, f)
-}
+export const summarized = Pipeable(summarized_)
