@@ -7,10 +7,10 @@ import type { Reader } from "../../src/Reader"
 import * as ReaderT from "../../src/ReaderT/index.js"
 
 namespace ReaderEither {
-  export const Monad = ReaderT.Monad(E.Monad)
-  export const Access = ReaderT.Access(E.Monad)
-  export const Fail = ReaderT.Fail({ ...E.Monad, ...E.Fail })
-  export const Applicative = ReaderT.Applicative(E.Applicative)
+  export const Monad = ReaderT.monad(E.Monad)
+  export const Access = ReaderT.access(E.Monad)
+  export const Fail = ReaderT.fail({ ...E.Monad, ...E.Fail })
+  export const Applicative = ReaderT.applicative(E.Applicative)
 
   export const chain = DSL.chainF(Monad)
   export const succeed = DSL.succeedF(Monad)

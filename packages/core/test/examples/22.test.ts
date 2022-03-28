@@ -10,10 +10,10 @@ import * as P from "../../src/PreludeV2/index.js"
 
 export namespace EO {
   export const EffectOption = P.intersect(
-    OptionT.Monad(T.Monad),
-    OptionT.Applicative(T.Applicative),
-    OptionT.Access(intersect(T.Access, T.Covariant)),
-    OptionT.Provide(T.Provide)
+    OptionT.monad(T.Monad),
+    OptionT.applicative(T.Applicative),
+    OptionT.access(intersect(T.Access, T.Covariant)),
+    OptionT.provide(T.Provide)
   )
 
   export const { access, any, both, flatten, map, provide } = EffectOption

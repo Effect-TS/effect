@@ -3,15 +3,15 @@
 import { constant } from "@effect-ts/system/Function"
 import * as F from "@effect-ts/system/XPure"
 
-import * as P from "../../PreludeV2/index.js"
 import * as DSL from "../../PreludeV2/DSL/index.js"
+import * as P from "../../PreludeV2/index.js"
 import type { XStateF } from "./definition.js"
 import { map, zip } from "./operations.js"
 
 /**
  * The `Any` instance for `Reader[-_, +_]`.
  */
-export const Any = <S>() =>
+export const any = <S>() =>
   P.instance<P.Any<XStateF<S>>>({
     any: () => F.succeed(constant({}))
   })
@@ -19,7 +19,7 @@ export const Any = <S>() =>
 /**
  * The `Covariant` instance for `Reader[-_, +_]`.
  */
-export const Covariant = <S>() =>
+export const covariant = <S>() =>
   P.instance<P.Covariant<XStateF<S>>>({
     map
   })
@@ -27,7 +27,7 @@ export const Covariant = <S>() =>
 /**
  * The `AssociativeBoth` instance for `Reader[-_, +_]`.
  */
-export const AssociativeBoth = <S>() =>
+export const associativeBoth = <S>() =>
   P.instance<P.AssociativeBoth<XStateF<S>>>({
     both: zip
   })
@@ -35,7 +35,7 @@ export const AssociativeBoth = <S>() =>
 /**
  * The `AssociativeFlatten` instance for `Reader[-_, +_]`.
  */
-export const AssociativeFlatten = <S>() =>
+export const associativeFlatten = <S>() =>
   P.instance<P.AssociativeFlatten<XStateF<S>>>({
     flatten: (ffa) => F.chain_(ffa, (x) => x)
   })
@@ -43,23 +43,23 @@ export const AssociativeFlatten = <S>() =>
 /**
  * The `IdentityFlatten` instance for `Reader[-_, +_]`.
  */
-export const IdentityFlatten = <S>() =>
+export const identityFlatten = <S>() =>
   P.instance<P.IdentityFlatten<XStateF<S>>>({
-    ...Any(),
-    ...AssociativeFlatten()
+    ...any(),
+    ...associativeFlatten()
   })
 
 /**
  * The `Monad` instance for `Reader[-_, +_]`.
  */
-export const Monad = <S>() =>
+export const monad = <S>() =>
   P.instance<P.Monad<XStateF<S>>>({
-    ...Any(),
-    ...Covariant(),
-    ...AssociativeFlatten()
+    ...any(),
+    ...covariant(),
+    ...associativeFlatten()
   })
 
 /**
  * The `Applicative` instance for `Reader[-_, +_]`.
  */
-export const Applicative = <S>() => DSL.getApplicativeF(Monad())
+export const applicative = <S>() => DSL.getApplicativeF(monad())

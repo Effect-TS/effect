@@ -11,7 +11,7 @@ import * as RD from "../Reader/index.js"
 
 export type ReaderTF<F extends P.HKT> = P.ComposeF<RD.ReaderF, F>
 
-export function Monad<F extends P.HKT>(M: Monad<F>) {
+export function monad<F extends P.HKT>(M: Monad<F>) {
   return P.instance<Monad<ReaderTF<F>>>({
     any: () => M.any,
     flatten: (ffa) => (r) =>
@@ -24,18 +24,18 @@ export function Monad<F extends P.HKT>(M: Monad<F>) {
   })
 }
 
-export function Access<F extends P.HKT>(M: Monad<F>) {
+export function access<F extends P.HKT>(M: Monad<F>) {
   return P.instance<Access<ReaderTF<F>>>({
     access: (f) => pipe(RD.access(f), RD.map(DSL.succeedF(M)))
   })
 }
-export function AssociativeEither<F extends P.HKT>(M: AssociativeEither<F>) {
+export function associativeEither<F extends P.HKT>(M: AssociativeEither<F>) {
   return P.instance<AssociativeEither<ReaderTF<F>>>({
     orElseEither: (fb) => (fa) => (r) => M.orElseEither(() => fb()(r))(fa(r))
   })
 }
 
-export function Provide<F extends P.HKT>(M: Monad<F>) {
+export function provide<F extends P.HKT>(M: Monad<F>) {
   return P.instance<Provide<ReaderTF<F>>>({
     provide:
       <R>(r: R) =>
@@ -47,7 +47,7 @@ export function Provide<F extends P.HKT>(M: Monad<F>) {
   })
 }
 
-export function Applicative<F extends P.HKT>(M: Applicative<F>) {
+export function applicative<F extends P.HKT>(M: Applicative<F>) {
   return P.instance<Applicative<ReaderTF<F>>>({
     any: () => RD.succeed(M.any()),
     map:
@@ -63,13 +63,13 @@ export function Applicative<F extends P.HKT>(M: Applicative<F>) {
   })
 }
 
-export function Run<F extends P.HKT>(M: Run<F>) {
+export function run<F extends P.HKT>(M: Run<F>) {
   return P.instance<Run<ReaderTF<F>>>({
     either: (fa) => pipe(fa, RD.map(M.either))
   })
 }
 
-export function Fail<F extends P.HKT>(M: Fail<F>) {
+export function fail<F extends P.HKT>(M: Fail<F>) {
   return P.instance<Fail<ReaderTF<F>>>({
     fail: (e) => pipe(e, M.fail, RD.succeed)
   })

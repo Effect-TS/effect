@@ -13,7 +13,7 @@ import * as P from "../PreludeV2/index.js"
 
 type OptionTF<F extends P.HKT> = P.ComposeF<F, OptionF>
 
-export function Monad<F extends P.HKT>(F_: P.Monad<F>) {
+export function monad<F extends P.HKT>(F_: P.Monad<F>) {
   return P.instance<P.Monad<OptionTF<F>>>({
     any: <X, I, R, E>() =>
       pipe(
@@ -34,7 +34,7 @@ export function Monad<F extends P.HKT>(F_: P.Monad<F>) {
   })
 }
 
-export function Applicative<F extends P.HKT>(M: Applicative<F>) {
+export function applicative<F extends P.HKT>(M: Applicative<F>) {
   const succeed = DSL.succeedF(M)
   return P.instance<P.Applicative<OptionTF<F>>>({
     any: () => succeed(O.some({})),
@@ -48,13 +48,13 @@ export function Applicative<F extends P.HKT>(M: Applicative<F>) {
   })
 }
 
-export function Access<F extends P.HKT>(M: Access<F> & Covariant<F>) {
+export function access<F extends P.HKT>(M: Access<F> & Covariant<F>) {
   return P.instance<Access<OptionTF<F>>>({
     access: (f) => pipe(M.access(f), M.map(O.some))
   })
 }
 
-export function Provide<F extends P.HKT>(M: Provide<F>) {
+export function provide<F extends P.HKT>(M: Provide<F>) {
   return P.instance<Provide<OptionTF<F>>>({
     provide: M.provide
   })

@@ -11,7 +11,7 @@ import * as P from "../PreludeV2/index.js"
 
 type EitherTF<F extends P.HKT> = P.ComposeF<F, EitherF>
 
-export function Monad<F extends P.HKT>(M_: P.Monad<F>) {
+export function monad<F extends P.HKT>(M_: P.Monad<F>) {
   const succeed = succeedF(M_)
   return P.instance<P.Monad<EitherTF<F>>>({
     any: () => succeed(EI.right({})),
@@ -39,7 +39,7 @@ export function Monad<F extends P.HKT>(M_: P.Monad<F>) {
   })
 }
 
-export function Applicative<F extends P.HKT>(M: P.Applicative<F>) {
+export function applicative<F extends P.HKT>(M: P.Applicative<F>) {
   return P.instance<P.Applicative<EitherTF<F>>>({
     any: () => succeedF(M)(EI.right({})),
     map: (f) => M.map(EI.map(f)),
@@ -52,7 +52,7 @@ export function Applicative<F extends P.HKT>(M: P.Applicative<F>) {
   })
 }
 
-export function Run<F extends P.HKT>(M_: P.Covariant<F>) {
+export function run<F extends P.HKT>(M_: P.Covariant<F>) {
   return P.instance<FX.Run<EitherTF<F>>>({
     either: <
       <A, X, I, R, E>(
@@ -62,20 +62,20 @@ export function Run<F extends P.HKT>(M_: P.Covariant<F>) {
   })
 }
 
-export function Fail<F extends P.HKT>(M_: P.Any<F> & P.Covariant<F>) {
+export function fail<F extends P.HKT>(M_: P.Any<F> & P.Covariant<F>) {
   const succeed = succeedF(M_)
   return P.instance<FX.Fail<EitherTF<F>>>({
     fail: flow(EI.left, succeed)
   })
 }
 
-export function Access<F extends P.HKT>(M_: FX.Access<F> & P.Covariant<F>) {
+export function access<F extends P.HKT>(M_: FX.Access<F> & P.Covariant<F>) {
   return P.instance<FX.Access<EitherTF<F>>>({
     access: flow(M_.access, M_.map(EI.right))
   })
 }
 
-export function Provide<F extends P.HKT>(M_: FX.Provide<F>) {
+export function provide<F extends P.HKT>(M_: FX.Provide<F>) {
   return P.instance<FX.Provide<EitherTF<F>>>({
     provide: M_.provide
   })

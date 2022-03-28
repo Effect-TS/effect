@@ -26,7 +26,7 @@ export const getStoreMonad = <K, V>() =>
     map: T.map
   })
 
-export const K = pipe(getStoreMonad<string, number>(), EitherT.Monad, ReaderT.Monad)
+export const K = pipe(getStoreMonad<string, number>(), EitherT.monad, ReaderT.monad)
 
 export const chain = DSL.chainF(K)
 

@@ -8,7 +8,7 @@ import * as R from "../../src/XPure/XReader/index.js"
 import * as ReaderT from "../../src/XPure/XReaderT/index.js"
 
 test("10", () => {
-  const M = pipe(A.Monad, EitherT.Monad, ReaderT.Monad)
+  const M = pipe(A.Monad, EitherT.monad, ReaderT.monad)
 
   const program: R.XReader<number, A.Array<E.Either<never, number>>> = pipe(
     R.access((k: number) => A.range(0, 5).map((n) => E.right(n + k))),

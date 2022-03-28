@@ -3,17 +3,17 @@
 import type { XStateF } from "@effect-ts/core/XPure/XState/definition"
 
 import * as DSL from "../../PreludeV2/DSL/index.js"
-import { Applicative, Monad } from "./instances.js"
+import { applicative, monad } from "./instances.js"
 
 /**
  * Struct based applicative for Reader[-_, +_]
  */
-export const struct = <S>() => DSL.structF(Applicative<S>())
+export const struct = <S>() => DSL.structF(applicative<S>())
 
 /**
  * Struct based applicative for Reader[-_, +_]
  */
-export const tuple = <S>() => DSL.tupleF(Applicative<S>())
+export const tuple = <S>() => DSL.tupleF(applicative<S>())
 
 /**
  * Matchers
@@ -32,9 +32,9 @@ export { branch as if, branch_ as if_ }
 /**
  * Do
  */
-export const getDo = <S>() => DSL.getDo<XStateF<S>>(Monad<S>())
+export const getDo = <S>() => DSL.getDo<XStateF<S>>(monad<S>())
 
 /**
  * Generator
  */
-export const gen = <S>() => DSL.genF(Monad<S>())
+export const gen = <S>() => DSL.genF(monad<S>())

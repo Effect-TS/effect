@@ -21,7 +21,7 @@ const map =
   ) => XR.XReader<R, P.Kind<F, X, I, R, E, B>>) =>
     XR.map(M_.map(f))
 
-export function Applicative<F extends P.HKT>(M_: P.Applicative<F>) {
+export function applicative<F extends P.HKT>(M_: P.Applicative<F>) {
   return HKT.instance<P.Applicative<XReaderTF<F>>>({
     any: () => XR.succeed(M_.any()),
     map: map(M_),
@@ -34,7 +34,7 @@ export function Applicative<F extends P.HKT>(M_: P.Applicative<F>) {
   })
 }
 
-export function Monad<F extends P.HKT>(M_: P.Monad<F>) {
+export function monad<F extends P.HKT>(M_: P.Monad<F>) {
   return HKT.instance<P.Monad<XReaderTF<F>>>({
     any: () => XR.succeed(M_.any()),
     map: map(M_),
@@ -51,32 +51,32 @@ export function Monad<F extends P.HKT>(M_: P.Monad<F>) {
   })
 }
 
-export function Access<F extends P.HKT>(M: P.Monad<F>) {
+export function access<F extends P.HKT>(M: P.Monad<F>) {
   return HKT.instance<FX.Access<XReaderTF<F>>>({
     access: (x) => pipe(x, XR.access, XR.map(DSL.succeedF(M)))
   })
 }
 
-export function Provide<F extends P.HKT>(_: P.Monad<F>) {
+export function provide<F extends P.HKT>(_: P.Monad<F>) {
   return HKT.instance<FX.Provide<XReaderTF<F>>>({
     provide:
       <R>(r: R) =>
       <X, I, E, A>(fa: XR.XReader<R, HKT.Kind<F, X, I, R, E, A>>) => {
         return pipe(
           fa,
-          XR.provideSome(() => r) // @todo: is that ok, if you somehow want a ReaderT<Reader>, this will break
+          XR.provideSome(() => r)
         ) as XR.XReader<unknown, HKT.Kind<F, X, I, unknown, E, A>>
       }
   })
 }
 
-export function Run<F extends P.HKT>(M_: FX.Run<F>) {
+export function run<F extends P.HKT>(M_: FX.Run<F>) {
   return HKT.instance<FX.Run<XReaderTF<F>>>({
     either: (x) => pipe(x, XR.map(M_.either))
   })
 }
 
-export function Fail<F extends P.HKT>(M_: FX.Fail<F>) {
+export function fail<F extends P.HKT>(M_: FX.Fail<F>) {
   return HKT.instance<FX.Fail<XReaderTF<F>>>({
     fail: (x) => pipe(x, M_.fail, XR.succeed)
   })
