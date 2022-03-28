@@ -6,7 +6,7 @@ import { pipe } from "../Function"
 import * as DSL from "../PreludeV2/DSL/index.js"
 import * as P from "../PreludeV2/index.js"
 
-interface StateT<A, B> {
+export interface StateT<A, B> {
   (a: A): B
 }
 
