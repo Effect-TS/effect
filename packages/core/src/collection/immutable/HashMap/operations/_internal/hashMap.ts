@@ -27,8 +27,8 @@ export interface VisitResult<K, V, A> {
 
 export class HashMapInternal<K, V> implements HashMap<K, V>, St.HasHash, St.HasEquals {
   readonly [HashMapSym]: HashMapSym = HashMapSym;
-  readonly [_K]: () => K;
-  readonly [_V]: () => V
+  readonly [_K]!: () => K;
+  readonly [_V]!: () => V
 
   constructor(
     public _editable: boolean,

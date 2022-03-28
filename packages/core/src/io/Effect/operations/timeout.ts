@@ -1,3 +1,4 @@
+import type { Duration } from "../../../data/Duration"
 import type { LazyArg } from "../../../data/Function"
 import { Option } from "../../../data/Option"
 import type { HasClock } from "../../Clock"
@@ -23,10 +24,10 @@ import type { Effect } from "../definition"
  */
 export function timeout_<R, E, E1, A>(
   self: Effect<R, E, A>,
-  milliseconds: number,
+  duration: LazyArg<Duration>,
   __tsplusTrace?: string
 ): Effect<R & HasClock, E, Option<A>> {
-  return self.timeoutTo(Option.none, Option.some, milliseconds)
+  return self.timeoutTo(Option.none, Option.some, duration)
 }
 
 /**
@@ -44,14 +45,5 @@ export function timeout_<R, E, E1, A>(
  * first disconnects the effect's interruption signal before performing the
  * timeout, resulting in earliest possible return, before an underlying effect
  * has been successfully interrupted.
- *
- * @ets_data_first timeout_
  */
-export function timeout<E1>(
-  cause: LazyArg<E1>,
-  milliseconds: number,
-  __tsplusTrace?: string
-) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R & HasClock, E, Option<A>> =>
-    self.timeout(milliseconds)
-}
+export const timeout = Pipeable(timeout_)

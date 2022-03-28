@@ -1,4 +1,5 @@
 import { List } from "../../src/collection/immutable/List"
+import { Duration } from "../../src/data/Duration"
 import { Either } from "../../src/data/Either"
 import { identity } from "../../src/data/Function"
 import { Option } from "../../src/data/Option"
@@ -14,7 +15,7 @@ import { Queue } from "../../src/io/Queue"
 import { Ref } from "../../src/io/Ref"
 
 function waitForValue<A>(ref: UIO<A>, value: A): RIO<HasClock, A> {
-  return (ref < Clock.sleep(10)).repeatUntil((a) => value === a)
+  return (ref < Clock.sleep(Duration(10))).repeatUntil((a) => value === a)
 }
 
 function waitForSize<RA, EA, RB, EB, A, B>(
@@ -25,6 +26,16 @@ function waitForSize<RA, EA, RB, EB, A, B>(
 }
 
 describe("Queue", () => {
+  it("handles falsy values", async () => {
+    const program = Queue.unbounded<number>()
+      .tap((queue) => queue.offer(0))
+      .flatMap((queue) => queue.take())
+
+    const result = await program.unsafeRunPromise()
+
+    expect(result).toBe(0)
+  })
+
   it("sequential offer and take", async () => {
     const program = Effect.Do()
       .bind("queue", () => Queue.bounded<number>(100))

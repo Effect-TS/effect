@@ -1,3 +1,4 @@
+import type { Duration } from "../../../data/Duration"
 import type { LazyArg } from "../../../data/Function"
 import type { HasClock } from "../../Clock"
 import { Effect } from "../definition"
@@ -17,11 +18,11 @@ export function timeoutTo_<R, E, A, B, B1>(
   self: Effect<R, E, A>,
   def: LazyArg<B1>,
   f: (a: A) => B,
-  milliseconds: number,
+  duration: LazyArg<Duration>,
   __tsplusTrace?: string
 ): Effect<R & HasClock, E, B | B1> {
   return self.map(f).raceFirst(
-    Effect.sleep(milliseconds)
+    Effect.sleep(duration)
       .interruptible()
       .map(() => def())
   )
@@ -35,15 +36,5 @@ export function timeoutTo_<R, E, A, B, B1>(
  *
  * If the timeout elapses without producing a value, the running effect will
  * be safely interrupted.
- *
- * @ets_data_first timeoutTo_
  */
-export function timeoutTo<A, B, B1>(
-  def: LazyArg<B1>,
-  f: (a: A) => B,
-  milliseconds: number,
-  __tsplusTrace?: string
-) {
-  return <R, E>(self: Effect<R, E, A>): Effect<R & HasClock, E, B | B1> =>
-    self.timeoutTo(def, f, milliseconds)
-}
+export const timeoutTo = Pipeable(timeoutTo_)

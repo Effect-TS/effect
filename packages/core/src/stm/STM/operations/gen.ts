@@ -6,9 +6,9 @@ import { _A, _E, _R } from "../../../support/Symbols"
 import { STM } from "../definition"
 
 export class GenSTM<R, E, A> {
-  readonly [_R]: (_R: R) => void;
-  readonly [_E]: () => E;
-  readonly [_A]: () => A
+  readonly [_R]!: (_R: R) => void;
+  readonly [_E]!: () => E;
+  readonly [_A]!: () => A
 
   constructor(readonly stm: STM<R, E, A>) {}
 

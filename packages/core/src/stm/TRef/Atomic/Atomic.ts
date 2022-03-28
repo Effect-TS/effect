@@ -18,10 +18,10 @@ import { getOrMakeEntry } from "./operations/getOrMakeEntry"
 export class Atomic<A> implements XTRefInternal<never, never, A, A> {
   readonly _tag = "Atomic";
   readonly [TRefSym]: TRefSym = TRefSym;
-  readonly [_EA]: () => never;
-  readonly [_EB]: () => never;
-  readonly [_A]: (_: A) => void;
-  readonly [_B]: () => A
+  readonly [_EA]!: () => never;
+  readonly [_EB]!: () => never;
+  readonly [_A]!: (_: A) => void;
+  readonly [_B]!: () => A
 
   readonly atomic: Atomic<unknown> = this as Atomic<unknown>
 

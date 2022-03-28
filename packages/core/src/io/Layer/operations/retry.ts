@@ -1,3 +1,4 @@
+import { Duration } from "../../../data/Duration"
 import type { HasClock } from "../../Clock"
 import { Clock } from "../../Clock"
 import { Effect } from "../../Effect"
@@ -44,13 +45,13 @@ function update<S, RIn, E, X>(
 ): Layer<RIn & HasClock, E, UpdateState<S>> {
   return Layer.fromRawEffect(
     Clock.currentTime.flatMap((now) =>
-      schedule
-        ._step(now, e, s)
-        .flatMap(({ tuple: [state, _, decision] }) =>
-          decision._tag === "Done"
-            ? Effect.fail(e)
-            : Clock.sleep(decision.interval.startMilliseconds - now).as({ state })
-        )
+      schedule._step(now, e, s).flatMap(({ tuple: [state, _, decision] }) =>
+        decision._tag === "Done"
+          ? Effect.fail(e)
+          : Clock.sleep(Duration(decision.interval.startMilliseconds - now)).as({
+              state
+            })
+      )
     )
   )
 }

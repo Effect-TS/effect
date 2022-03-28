@@ -1,5 +1,6 @@
 import { Chunk } from "../../src/collection/immutable/Chunk"
 import { Tuple } from "../../src/collection/immutable/Tuple"
+import { Duration } from "../../src/data/Duration"
 import { Either } from "../../src/data/Either"
 import { identity } from "../../src/data/Function"
 import { Option } from "../../src/data/Option"
@@ -16,7 +17,7 @@ const update1 = "update1"
 const update2 = "update2"
 
 const loseTimeAndCpu: Effect<HasClock, never, void> = (
-  Effect.yieldNow < Clock.sleep(1)
+  Effect.yieldNow < Clock.sleep(Duration(1))
 ).repeatN(100)
 
 describe("FiberRef", () => {

@@ -62,12 +62,12 @@ export type UIO<A> = Effect<unknown, never, A>
 export abstract class Base<R, E, A> implements Effect<R, E, A> {
   readonly [_S1]!: (_: unknown) => void;
   readonly [_S2]!: () => unknown;
-  readonly [_W]: () => unknown;
+  readonly [_W]!: () => unknown;
 
-  readonly [_U]: EffectURI;
-  readonly [_E]: () => E;
-  readonly [_A]: () => A;
-  readonly [_R]: (_: R) => void
+  readonly [_U]!: EffectURI;
+  readonly [_E]!: () => E;
+  readonly [_A]!: () => A;
+  readonly [_R]!: (_: R) => void
 }
 
 export interface EffectF extends HKT {

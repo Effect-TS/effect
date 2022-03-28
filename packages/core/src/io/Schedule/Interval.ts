@@ -37,7 +37,10 @@ export const empty: Interval = Interval(0, 0)
  *
  * @tsplus static ets/IntervalOps __call
  */
-export function make(startMilliseconds: number, endMilliseconds: number): Interval {
+export function fromStartEndMillis(
+  startMilliseconds: number,
+  endMilliseconds: number
+): Interval {
   return startMilliseconds > endMilliseconds
     ? Interval.empty
     : {

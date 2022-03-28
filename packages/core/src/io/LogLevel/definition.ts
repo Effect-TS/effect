@@ -13,7 +13,7 @@
  * @param syslog
  *   The syslog severity level of the log level.
  */
-export type LogLevel = All | Fatal | Error | Warning | Info | Debug | Runtime | None
+export type LogLevel = All | Fatal | Error | Warning | Info | Debug | Trace | None
 
 /**
  * @tsplus type ets/LogLevelOps
@@ -63,9 +63,9 @@ export interface Debug {
   readonly ordinal: number
 }
 
-export interface Runtime {
-  readonly _tag: "Runtime"
-  readonly label: "RUNTIME"
+export interface Trace {
+  readonly _tag: "Trace"
+  readonly label: "TRACE"
   readonly syslog: 7
   readonly ordinal: number
 }
@@ -142,12 +142,12 @@ export const Debug: LogLevel = {
 }
 
 /**
- * @tsplus static ets/LogLevelOps Runtime
+ * @tsplus static ets/LogLevelOps Trace
  */
-export const Runtime: LogLevel = {
-  _tag: "Runtime",
+export const Trace: LogLevel = {
+  _tag: "Trace",
   syslog: 7,
-  label: "RUNTIME",
+  label: "TRACE",
   ordinal: 0
 }
 

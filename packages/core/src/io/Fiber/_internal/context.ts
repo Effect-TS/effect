@@ -130,8 +130,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly _tag = "RuntimeFiber";
 
   readonly [FiberSym]: FiberSym = FiberSym;
-  readonly [_E]: () => E;
-  readonly [_A]: () => A
+  readonly [_E]!: () => E;
+  readonly [_A]!: () => A
 
   readonly state = new AtomicReference(FiberState.initial<E, A>())
 

@@ -1,3 +1,5 @@
+import type { Duration } from "../../../data/Duration"
+import type { LazyArg } from "../../../data/Function"
 import { HasClock } from "../../Clock"
 import type { RIO } from "../definition"
 import { Effect } from "../definition"
@@ -9,8 +11,8 @@ import { Effect } from "../definition"
  * @tsplus static ets/EffectOps sleep
  */
 export function sleep(
-  milliseconds: number,
+  duration: LazyArg<Duration>,
   __tsplusTrace?: string
 ): RIO<HasClock, void> {
-  return Effect.serviceWithEffect(HasClock)((_) => _.sleep(milliseconds))
+  return Effect.serviceWithEffect(HasClock)((_) => _.sleep(duration))
 }

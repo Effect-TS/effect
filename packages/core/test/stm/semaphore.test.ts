@@ -117,7 +117,7 @@ describe("TSemaphore", () => {
         .bindValue(
           "effect",
           ({ promise, semaphore }) =>
-            promise.succeed(undefined).apply(semaphore.withPermit()) > Effect.never
+            promise.succeed(undefined).apply(semaphore.withPermit) > Effect.never
         )
         .bind("fiber", ({ effect }) => effect.fork())
         .tap(({ promise }) => promise.await())
@@ -134,7 +134,7 @@ describe("TSemaphore", () => {
       const program = Effect.Do()
         .bind("semaphore", () => TSemaphore.make(0).commit())
         .bindValue("effect", ({ semaphore }) =>
-          Effect.succeed(() => f()).apply(semaphore.withPermit())
+          Effect.succeed(() => f()).apply(semaphore.withPermit)
         )
         .bind("fiber", ({ effect }) => effect.fork())
         .tap(({ fiber }) => fiber.interrupt())

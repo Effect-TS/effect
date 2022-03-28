@@ -1,5 +1,7 @@
 import { Tuple } from "../../../collection/immutable/Tuple"
+import type { Duration } from "../../../data/Duration"
 import { Either } from "../../../data/Either"
+import type { LazyArg } from "../../../data/Function"
 import { Option } from "../../../data/Option"
 import type { HasClock } from "../../Clock"
 import { Effect } from "../../Effect"
@@ -22,7 +24,7 @@ import { ReleaseMap } from "../ReleaseMap"
  */
 export function timeout_<R, E, A>(
   self: Managed<R, E, A>,
-  duration: number,
+  duration: LazyArg<Duration>,
   __tsplusTrace?: string
 ): Managed<R & HasClock, E, Option<A>> {
   return Managed(
@@ -80,7 +82,4 @@ export function timeout_<R, E, A>(
  * action will be run on a new fiber. `Some` will be returned if acquisition
  * and reservation complete in time
  */
-export function timeout(duration: number, __tsplusTrace?: string) {
-  return <R, E, A>(self: Managed<R, E, A>): Managed<R & HasClock, E, Option<A>> =>
-    self.timeout(duration)
-}
+export const timeout = Pipeable(timeout_)

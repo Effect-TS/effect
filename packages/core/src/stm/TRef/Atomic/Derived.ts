@@ -8,10 +8,10 @@ import { DerivedAll } from "./DerivedAll"
 export class Derived<S, EA, EB, A, B> implements XTRefInternal<EA, EB, A, B> {
   readonly _tag = "Derived";
   readonly [TRefSym]: TRefSym = TRefSym;
-  readonly [_EA]: () => EA;
-  readonly [_EB]: () => EB;
-  readonly [_A]: (_: A) => void;
-  readonly [_B]: () => B
+  readonly [_EA]!: () => EA;
+  readonly [_EB]!: () => EB;
+  readonly [_A]!: (_: A) => void;
+  readonly [_B]!: () => B
 
   constructor(
     readonly getEither: (s: S) => Either<EB, B>,

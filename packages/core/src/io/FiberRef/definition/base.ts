@@ -70,10 +70,10 @@ export abstract class XFiberRefInternal<EA, EB, A, B>
   readonly [FiberRefSym]: FiberRefSym = FiberRefSym;
   readonly [FiberRefRuntimeSym]: FiberRefRuntimeSym = FiberRefRuntimeSym;
 
-  readonly [_EA]: (_: never) => EA;
-  readonly [_EB]: (_: never) => EB;
-  readonly [_A]: (_: A) => void;
-  readonly [_B]: (_: never) => B
+  readonly [_EA]!: (_: never) => EA;
+  readonly [_EB]!: (_: never) => EB;
+  readonly [_A]!: (_: A) => void;
+  readonly [_B]!: (_: never) => B
 
   /**
    * Returns the initial value or error.

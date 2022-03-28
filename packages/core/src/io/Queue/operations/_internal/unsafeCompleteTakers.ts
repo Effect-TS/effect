@@ -1,4 +1,5 @@
 import type { MutableQueue } from "../../../../support/MutableQueue"
+import { EmptyQueue } from "../../../../support/MutableQueue"
 import type { Promise } from "../../../Promise"
 import type { Strategy } from "../strategy"
 import { unsafeCompletePromise } from "./unsafeCompletePromise"
@@ -14,12 +15,12 @@ export function unsafeCompleteTakers<A>(
   let keepPolling = true
 
   while (keepPolling && !queue.isEmpty) {
-    const taker = takers.poll(undefined)
+    const taker = takers.poll(EmptyQueue)
 
-    if (taker) {
-      const element = queue.poll(undefined)
+    if (taker !== EmptyQueue) {
+      const element = queue.poll(EmptyQueue)
 
-      if (element) {
+      if (element !== EmptyQueue) {
         unsafeCompletePromise(taker, element)
         strategy.unsafeOnQueueEmptySpace(queue, takers)
       } else {

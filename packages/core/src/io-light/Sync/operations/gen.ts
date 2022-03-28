@@ -11,9 +11,9 @@ import { _A, _E, _R } from "../../../support/Symbols"
 import { Sync } from "../definition"
 
 export class GenSync<R, E, A> {
-  readonly [_R]: (_R: R) => void;
-  readonly [_E]: () => E;
-  readonly [_A]: () => A
+  readonly [_R]!: (_R: R) => void;
+  readonly [_E]!: () => E;
+  readonly [_A]!: () => A
 
   constructor(readonly sync: Sync<R, E, A>) {}
 

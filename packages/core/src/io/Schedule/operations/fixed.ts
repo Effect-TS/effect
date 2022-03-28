@@ -1,5 +1,6 @@
 import { Tuple } from "../../../collection/immutable/Tuple"
 import { Duration } from "../../../data/Duration"
+import type { LazyArg } from "../../../data/Function"
 import { Option } from "../../../data/Option"
 import { Effect } from "../../Effect"
 import { Decision } from "../Decision"
@@ -22,7 +23,7 @@ import { makeWithState } from "./_internal/makeWithState"
  * @tsplus static ets/ScheduleOps fixed
  */
 export function fixed(
-  interval: Duration
+  interval: LazyArg<Duration>
 ): Schedule.WithState<
   Tuple<[Option<Tuple<[number, number]>>, number]>,
   unknown,
@@ -31,7 +32,8 @@ export function fixed(
 > {
   return makeWithState(Tuple(Option.emptyOf(), 0), (now, _, { tuple: [option, n] }) =>
     Effect.succeed(() => {
-      const intervalMillis = interval.milliseconds
+      const interval0 = interval()
+      const intervalMillis = interval0.milliseconds
       return option.fold(
         () =>
           Tuple(
@@ -42,10 +44,10 @@ export function fixed(
         ({ tuple: [startMillis, lastRun] }) => {
           const runningBehind = now > lastRun + intervalMillis
           const boundary =
-            interval === Duration.Zero
-              ? interval
+            interval0 === Duration.Zero
+              ? interval0
               : Duration(intervalMillis - ((now - startMillis) % intervalMillis))
-          const sleepTime = boundary === Duration.Zero ? interval : boundary
+          const sleepTime = boundary === Duration.Zero ? interval0 : boundary
           const nextRun = runningBehind ? now : now + sleepTime.milliseconds
           return Tuple(
             Tuple(Option.some(Tuple(startMillis, nextRun)), n + 1),
