@@ -1,0 +1,17 @@
+import { releaseMapReleaseAll } from "../../Effect/operations/excl-forEach"
+
+/**
+ * Runs the finalizers associated with this scope using the specified
+ * execution strategy. After this action finishes, any finalizers added to
+ * this scope will be run immediately.
+ *
+ * @tsplus fluent ets/ReleaseMap releaseAll
+ */
+export const releaseAll_ = releaseMapReleaseAll
+
+/**
+ * Runs the finalizers associated with this scope using the specified
+ * execution strategy. After this action finishes, any finalizers added to
+ * this scope will be run immediately.
+ */
+export const releaseAll = Pipeable(releaseAll_)

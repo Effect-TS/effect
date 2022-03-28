@@ -5,9 +5,8 @@ import {
 import { Tuple } from "../../../collection/immutable/Tuple"
 import { Option } from "../../../data/Option"
 import type { UIO } from "../../Effect"
-import { modify_ as refModify_ } from "../../Ref/operations/modify"
+import type { Finalizer } from "../definition"
 import type { ReleaseMap } from "./definition"
-import type { Finalizer } from "./finalizer"
 import { Exited, Running } from "./state"
 
 /**
@@ -20,7 +19,7 @@ export function remove_(
   key: number,
   __tsplusTrace?: string
 ): UIO<Option<Finalizer>> {
-  return refModify_(self.ref, (s) => {
+  return self.ref.modify((s) => {
     switch (s._tag) {
       case "Exited": {
         return Tuple(Option.none, new Exited(s.nextKey, s.exit, s.update))
@@ -37,9 +36,5 @@ export function remove_(
 
 /**
  * Removes the finalizer associated with this key and returns it.
- *
- * @ets_data_first remove_
  */
-export function remove(key: number, __tsplusTrace?: string) {
-  return (self: ReleaseMap): UIO<Option<Finalizer>> => remove_(self, key)
-}
+export const remove = Pipeable(remove_)

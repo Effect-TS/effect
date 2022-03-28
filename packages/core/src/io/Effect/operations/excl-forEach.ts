@@ -14,9 +14,6 @@ import type { Fiber } from "../../Fiber/definition"
 import { FiberId } from "../../FiberId"
 import { FiberRef } from "../../FiberRef"
 import { Managed } from "../../Managed/definition"
-import { ReleaseMap } from "../../Managed/ReleaseMap/definition"
-import type { State } from "../../Managed/ReleaseMap/state"
-import { Exited } from "../../Managed/ReleaseMap/state"
 import { Promise } from "../../Promise"
 import type { Queue, Strategy } from "../../Queue"
 import { concreteQueue, XQueueInternal } from "../../Queue/definition"
@@ -26,6 +23,9 @@ import { unsafeOfferAll } from "../../Queue/operations/_internal/unsafeOfferAll"
 import { unsafePollAll } from "../../Queue/operations/_internal/unsafePollAll"
 import { unsafePollN } from "../../Queue/operations/_internal/unsafePollN"
 import { unsafeRemove } from "../../Queue/operations/_internal/unsafeRemove"
+import { ReleaseMap } from "../../Scope/ReleaseMap/definition"
+import type { State } from "../../Scope/ReleaseMap/state"
+import { Exited } from "../../Scope/ReleaseMap/state"
 import type { RIO, UIO } from "../definition"
 import { Effect } from "../definition"
 
@@ -584,12 +584,12 @@ export function fiberWaitAll<E, A>(
  */
 export function releaseMapReleaseAll(
   self: ReleaseMap,
-  ex: Exit<any, any>,
+  ex: Exit<unknown, unknown>,
   execStrategy: ExecutionStrategy,
   __tsplusTrace?: string
-): UIO<any> {
+): UIO<unknown> {
   return self.ref
-    .modify((s): Tuple<[UIO<any>, State]> => {
+    .modify((s): Tuple<[UIO<unknown>, State]> => {
       switch (s._tag) {
         case "Exited": {
           return Tuple(Effect.unit, s)
@@ -627,7 +627,7 @@ export function releaseMapReleaseAll(
                     // @ts-expect-error
                     Effect.done(Exit.collectAllPar(results).getOrElse(Exit.unit))
                   )
-                  .withParallelism(execStrategy.n) as UIO<any>,
+                  .withParallelism(execStrategy.n) as UIO<unknown>,
                 new Exited(s.nextKey, ex, s.update)
               )
             }

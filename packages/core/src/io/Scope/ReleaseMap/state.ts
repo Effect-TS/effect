@@ -1,5 +1,5 @@
 import type { Exit } from "../../Exit"
-import type { Finalizer } from "./finalizer"
+import type { Finalizer } from "../definition"
 
 export type State = Exited | Running
 

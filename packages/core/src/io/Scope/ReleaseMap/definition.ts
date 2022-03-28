@@ -10,18 +10,9 @@ import type { State } from "./state"
  * For mor information, see: https://github.com/snoyberg/conduit/blob/master/resourcet/Control/Monad/Trans/Resource/Internal.hs
  *
  * @tsplus type ets/ReleaseMap
+ * @tsplus companion ets/ReleaseMapOps
  */
-export interface ReleaseMap {
-  readonly ref: Ref<State>
-}
-
-/**
- * @tsplus type ets/ReleaseMapOps
- */
-export interface ReleaseMapOps {}
-export const ReleaseMap: ReleaseMapOps = {}
-
-export class ReleaseMapImpl implements ReleaseMap {
+export class ReleaseMap {
   constructor(readonly ref: Ref<State>) {}
 }
 
@@ -29,5 +20,5 @@ export class ReleaseMapImpl implements ReleaseMap {
  * @tsplus static ets/ReleaseMapOps __call
  */
 export function releaseMapApply(ref: Ref<State>): ReleaseMap {
-  return new ReleaseMapImpl(ref)
+  return new ReleaseMap(ref)
 }

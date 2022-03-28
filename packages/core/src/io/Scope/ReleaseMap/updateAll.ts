@@ -1,7 +1,6 @@
 import type { UIO } from "../../Effect"
-import { update_ as refUpdate_ } from "../../Ref/operations/update"
+import type { Finalizer } from "../definition"
 import type { ReleaseMap } from "./definition"
-import type { Finalizer } from "./finalizer"
 import { Exited, Running } from "./state"
 
 /**
@@ -15,7 +14,7 @@ export function updateAll_(
   f: (finalizer: Finalizer) => Finalizer,
   __tsplusTrace?: string
 ): UIO<void> {
-  return refUpdate_(self.ref, (state) => {
+  return self.ref.update((state) => {
     switch (state._tag) {
       case "Exited": {
         return new Exited(state.nextKey, state.exit, (_) => f(state.update(_)))
@@ -30,12 +29,5 @@ export function updateAll_(
 /**
  * Updates the finalizers associated with this scope using the specified
  * function.
- *
- * @ets_data_first updateAll_
  */
-export function updateAll(
-  f: (finalizer: Finalizer) => Finalizer,
-  __tsplusTrace?: string
-) {
-  return (self: ReleaseMap): UIO<void> => updateAll_(self, f)
-}
+export const updateAll = Pipeable(updateAll_)
