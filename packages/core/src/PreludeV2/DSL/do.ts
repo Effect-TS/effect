@@ -1,7 +1,6 @@
 // ets_tracing: off
 
-import { pipe } from "@effect-ts/core/Function"
-
+import { pipe } from "../../Function/index.js"
 import type * as HKT from "../HKT/index.js"
 import type { Monad } from "../Monad/index.js"
 import { chainF } from "./chain.js"

@@ -1,8 +1,7 @@
 // ets_tracing: off
 
-import type { XReaderF } from "@effect-ts/core/XPure/XReader/definition"
-
 import * as DSL from "../../PreludeV2/DSL/index.js"
+import type { XReaderF } from "./definition.js"
 import { Applicative, Monad } from "./instances.js"
 
 /**

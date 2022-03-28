@@ -1,8 +1,7 @@
 // ets_tracing: off
 
-import type { ReaderF } from "@effect-ts/core/Reader/definition"
-
 import * as DSL from "../PreludeV2/DSL/index.js"
+import type { ReaderF } from "./definition.js"
 import { Applicative, Monad } from "./instances.js"
 
 /**

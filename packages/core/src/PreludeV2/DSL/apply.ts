@@ -1,16 +1,13 @@
 // ets_tracing: off
 
-import type { Monad } from "@effect-ts/core/PreludeV2"
-import { chainF } from "@effect-ts/core/PreludeV2"
 import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 
 import { pipe, tuple } from "../../Function/index.js"
 import type { EnforceNonEmptyRecord } from "../../Utils/index.js"
 import type { Apply } from "../Apply/index.js"
+import { chainF } from "../DSL/chain.js"
 import * as HKT from "../HKT/index.js"
-
-
-
+import type { Monad } from "../Monad/index.js"
 
 export function getApplyF<F extends HKT.HKT>(F_: Monad<F>): Apply<F> {
   const chain = chainF(F_)

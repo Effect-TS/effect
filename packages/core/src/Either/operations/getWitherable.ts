@@ -1,9 +1,8 @@
 // ets_tracing: off
 
-import type { EitherFixedLeftF } from "@effect-ts/core/Either"
-
 import type { Identity } from "../../Identity/index.js"
 import * as P from "../../PreludeV2/index.js"
+import type { EitherFixedLeftF } from "../instances.js"
 import { getCompactF } from "./compactOption.js"
 
 /**

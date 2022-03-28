@@ -1,6 +1,5 @@
 // ets_tracing: off
 
-import type { NonEmptyArrayF } from "@effect-ts/core/Collections/Immutable/NonEmptyArray/instances"
 import * as A from "@effect-ts/system/Collections/Immutable/Array"
 import * as L from "@effect-ts/system/Collections/Immutable/List"
 import type { NonEmptyArray } from "@effect-ts/system/Collections/Immutable/NonEmptyArray"
@@ -16,6 +15,7 @@ import * as Ord from "../../../Ord/index.js"
 import * as DSL from "../../../PreludeV2/DSL/index.js"
 import * as P from "../../../PreludeV2/index.js"
 import type { Show } from "../../../Show/index.js"
+import type { NonEmptyArrayF } from "./instances.js"
 
 export * from "@effect-ts/system/Collections/Immutable/NonEmptyArray"
 

@@ -1,11 +1,11 @@
 // ets_tracing: off
 
-import type { IterableF } from "@effect-ts/core/Iterable/instances"
 import { pipe } from "@effect-ts/system/Function"
 import * as I from "@effect-ts/system/Iterable"
 
 import * as DSL from "../PreludeV2/DSL/index.js"
 import * as P from "../PreludeV2/index.js"
+import type { IterableF } from "./instances.js"
 
 export * from "@effect-ts/system/Iterable"
 

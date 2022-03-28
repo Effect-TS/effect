@@ -1,12 +1,12 @@
 // ets_tracing: off
 
-import type { OptionF } from "@effect-ts/core/Option/definitions"
 import * as O from "@effect-ts/system/Option"
 
 import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import { pipe } from "../../Function/index.js"
 import * as DSL from "../../PreludeV2/DSL/index.js"
 import * as P from "../../PreludeV2/index.js"
+import type { OptionF } from "../definitions.js"
 
 export const separateF = P.implementSeparateF<OptionF>()((_) => (F) => (f) => (fa) => {
   const o = O.map_(fa, (a) =>

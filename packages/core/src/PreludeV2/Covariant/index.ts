@@ -1,5 +1,4 @@
-import { pipe } from "@effect-ts/core/Function"
-
+import { pipe } from "../../Function/index.js"
 import * as HKT from "../HKT/index.js"
 
 export interface Covariant<F extends HKT.HKT> extends HKT.Typeclass<F> {

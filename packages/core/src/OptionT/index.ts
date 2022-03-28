@@ -2,8 +2,6 @@
 
 import "../Operator/index.js"
 
-import type { OptionF } from "@effect-ts/core/Option/definitions"
-
 import { identity, pipe } from "../Function/index.js"
 import * as O from "../Option/index.js"
 import * as DSL from "../PreludeV2/DSL/index.js"
@@ -11,7 +9,7 @@ import type { Access, Provide } from "../PreludeV2/FX/index.js"
 import type { Applicative, Covariant } from "../PreludeV2/index.js"
 import * as P from "../PreludeV2/index.js"
 
-type OptionTF<F extends P.HKT> = P.ComposeF<F, OptionF>
+type OptionTF<F extends P.HKT> = P.ComposeF<F, O.OptionF>
 
 export function monad<F extends P.HKT>(F_: P.Monad<F>) {
   return P.instance<P.Monad<OptionTF<F>>>({

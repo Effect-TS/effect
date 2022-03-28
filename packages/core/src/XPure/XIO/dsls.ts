@@ -1,8 +1,7 @@
 // ets_tracing: off
 
-import type { XIOF } from "@effect-ts/core/XPure/XIO/definition"
-
 import * as DSL from "../../PreludeV2/DSL/index.js"
+import type { XIOF } from "./definition.js"
 import { Applicative, Monad } from "./instances.js"
 
 /**

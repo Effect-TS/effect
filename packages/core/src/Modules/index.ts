@@ -28,7 +28,6 @@ import type { Ord } from "../Ord/index.js"
 import type { Reader } from "../Reader/index.js"
 import type { Tree } from "../RoseTree/index.js"
 import type { Show } from "../Show/index.js"
-import type { StateIn, StateOut } from "../StateT/Classic/index.js"
 import type { Sync } from "../Sync/index.js"
 import type { XPure } from "../XPure/index.js"
 import type { XIO } from "../XPure/XIO/index.js"
@@ -182,8 +181,8 @@ declare module "../Prelude/HKT/hkt.js" {
     [OptionURI]: Option<A>
     [ListURI]: List<A>
     [IOURI]: IO<A>
-    [StateInURI]: StateIn<S, A>
-    [StateOutURI]: StateOut<S, A>
+    // [StateInURI]: StateIn<S, A>
+    // [StateOutURI]: StateOut<S, A>
     [IxURI]: TC extends IxC<infer _I, infer _O> ? Ix<_I, _O, A> : any
     [ChunkURI]: Chunk<A>
   }

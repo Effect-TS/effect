@@ -1,8 +1,7 @@
 // ets_tracing: off
 
-import type { OptionF } from "@effect-ts/core/Option/definitions"
-
 import * as DSL from "../../PreludeV2/DSL/index.js"
+import type { OptionF } from "../definitions.js"
 
 /**
  * Conditionals

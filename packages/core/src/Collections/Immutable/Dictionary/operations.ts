@@ -1,6 +1,5 @@
 // ets_tracing: off
 
-import type { DictionaryF } from "@effect-ts/core/Collections/Immutable/Dictionary/instances"
 import * as R from "@effect-ts/system/Collections/Immutable/Dictionary"
 import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import * as O from "@effect-ts/system/Option"
@@ -14,12 +13,12 @@ import { makeEqual } from "../../../Equal/index.js"
 import { identity, pipe, tuple } from "../../../Function/index.js"
 import type { Identity } from "../../../Identity/index.js"
 import { makeIdentity } from "../../../Identity/index.js"
-import { succeedF } from "../../../PreludeV2/DSL/index.js"
 import type * as HKT from "../../../PreludeV2/HKT/index.js"
 import type { Foldable } from "../../../PreludeV2/index.js"
 import * as P from "../../../PreludeV2/index.js"
 import type { Show } from "../../../Show/index.js"
 import * as A from "../Array/index.js"
+import type { DictionaryF } from "./instances.js"
 
 export * from "@effect-ts/system/Collections/Immutable/Dictionary"
 
@@ -28,7 +27,7 @@ export * from "@effect-ts/system/Collections/Immutable/Dictionary"
  */
 export const forEachWithIndexF = P.implementForEachWithIndexF<string, DictionaryF>()(
   (_) => (G) => {
-    const succeed = succeedF(G)
+    const succeed = P.succeedF(G)
     return (f) => (fa) => {
       let base = succeed<
         R.Dictionary<typeof _.B>,

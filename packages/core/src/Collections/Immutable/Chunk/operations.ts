@@ -1,6 +1,5 @@
 // ets_tracing: off
 
-import type { ChunkF } from "@effect-ts/core/Collections/Immutable/Chunk/instances"
 import * as Chunk from "@effect-ts/system/Collections/Immutable/Chunk"
 import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 import type { Predicate } from "@effect-ts/system/Function"
@@ -16,6 +15,7 @@ import * as DSL from "../../../PreludeV2/DSL/index.js"
 import * as P from "../../../PreludeV2/index.js"
 import type { Show } from "../../../Show/index.js"
 import type { PredicateWithIndex } from "../../../Utils/index.js"
+import type { ChunkF } from "./instances.js"
 
 export * from "@effect-ts/system/Collections/Immutable/Chunk"
 

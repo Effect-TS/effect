@@ -1,4 +1,4 @@
-import type { UnionToIntersection } from "@effect-ts/core/Utils"
+import type { UnionToIntersection } from "../../Utils/index.js"
 
 export declare const URI: unique symbol
 

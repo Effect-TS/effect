@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { EitherFixedLeftF } from "@effect-ts/core/Either"
+import type { EitherFixedLeftF } from "../instances.js"
 import type { Either } from "@effect-ts/system/Either"
 import * as EI from "@effect-ts/system/Either"
 

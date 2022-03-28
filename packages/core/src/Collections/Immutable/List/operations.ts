@@ -1,6 +1,5 @@
 // ets_tracing: off
 
-import type { ListF } from "@effect-ts/core/Collections/Immutable/List/instances"
 import * as List from "@effect-ts/system/Collections/Immutable/List"
 
 import type { Equal } from "../../../Equal/index.js"
@@ -9,10 +8,10 @@ import { pipe } from "../../../Function/index.js"
 import type { Identity } from "../../../Identity/index.js"
 import { makeIdentity } from "../../../Identity/index.js"
 import type { Ord } from "../../../Ord/index.js"
-import { succeedF } from "../../../PreludeV2/DSL/index.js"
 import * as P from "../../../PreludeV2/index.js"
 import type { Show } from "../../../Show/index.js"
 import * as AR from "../Array/index.js"
+import type { ListF } from "./instances.js"
 
 export * from "@effect-ts/system/Collections/Immutable/List"
 
@@ -21,7 +20,7 @@ export * from "@effect-ts/system/Collections/Immutable/List"
  */
 export const forEachF = P.implementForEachF<ListF>()(
   () => (G) => (f) => (fa) =>
-    List.reduceRight_(fa, succeedF(G)(List.empty()), (a, acc) =>
+    List.reduceRight_(fa, P.succeedF(G)(List.empty()), (a, acc) =>
       pipe(
         f(a),
         G.both(acc),

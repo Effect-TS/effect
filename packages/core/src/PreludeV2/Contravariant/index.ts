@@ -1,7 +1,6 @@
 // ets_tracing: off
 
-import { pipe } from "@effect-ts/core/Function"
-
+import { pipe } from "../../Function/index.js"
 import type { CovariantComposition } from "../Covariant/index.js"
 import * as HKT from "../HKT/index.js"
 

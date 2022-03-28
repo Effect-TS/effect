@@ -1,8 +1,7 @@
 // ets_tracing: off
 
-import type { XStateF } from "@effect-ts/core/XPure/XState/definition"
-
 import * as DSL from "../../PreludeV2/DSL/index.js"
+import type { XStateF } from "./definition.js"
 import { applicative, monad } from "./instances.js"
 
 /**
