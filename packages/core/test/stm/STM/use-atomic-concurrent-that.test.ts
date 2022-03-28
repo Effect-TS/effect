@@ -1,4 +1,5 @@
 import { List } from "../../../src/collection/immutable/List"
+import { Duration } from "../../../src/data/Duration"
 import { Either } from "../../../src/data/Either"
 import { constVoid } from "../../../src/data/Function"
 import { Option } from "../../../src/data/Option"
@@ -219,7 +220,7 @@ describe("STM", () => {
           .tap(() => barrier.await())
           .tap(({ fiber }) => fiber.interrupt())
           .tap(({ tRef }) => tRef.set(10).commit())
-          .flatMap(({ tRef }) => Effect.sleep(10) > tRef.get().commit())
+          .flatMap(({ tRef }) => Effect.sleep(Duration(10)) > tRef.get().commit())
 
         const result = await program.unsafeRunPromise()
 
@@ -246,7 +247,7 @@ describe("STM", () => {
           .tap(() => barrier.await())
           .tap(({ fiber }) => fiber.interrupt())
           .tap(({ tRef }) => tRef.set(-1).commit())
-          .flatMap(({ tRef }) => Effect.sleep(10) > tRef.get().commit())
+          .flatMap(({ tRef }) => Effect.sleep(Duration(10)) > tRef.get().commit())
 
         const result = await program.unsafeRunPromise()
 
