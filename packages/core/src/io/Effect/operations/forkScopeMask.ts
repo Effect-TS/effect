@@ -1,9 +1,10 @@
+import type { LazyArg } from "../../../data/Function"
 import { Option } from "../../../data/Option"
-import type { Scope } from "../../Scope"
+import type { FiberScope } from "../../FiberScope"
 import { Effect, IOverrideForkScope } from "../definition"
 
 export class ForkScopeRestore {
-  constructor(private scope: Scope) {}
+  constructor(private scope: FiberScope) {}
 
   readonly restore = <R, E, A>(
     fa: Effect<R, E, A>,
@@ -24,7 +25,7 @@ export class ForkScopeRestore {
  * @tsplus static ets/EffectOps forkScopeMask
  */
 export function forkScopeMask_<R, E, A>(
-  newScope: Scope,
+  newScope: LazyArg<FiberScope>,
   f: (restore: ForkScopeRestore) => Effect<R, E, A>,
   __tsplusTrace?: string
 ) {
@@ -32,22 +33,8 @@ export function forkScopeMask_<R, E, A>(
     (scope) =>
       new IOverrideForkScope(
         () => f(new ForkScopeRestore(scope)),
-        () => Option.some(newScope),
+        () => Option.some(newScope()),
         __tsplusTrace
       )
   )
-}
-
-/**
- * Captures the fork scope, before overriding it with the specified new
- * scope, passing a function that allows restoring the fork scope to
- * what it was originally.
- *
- * @ets_data_first forkScopeMask_
- */
-export function forkScopeMask<R, E, A>(
-  f: (restore: ForkScopeRestore) => Effect<R, E, A>,
-  __tsplusTrace?: string
-) {
-  return (newScope: Scope) => forkScopeMask_(newScope, f)
 }

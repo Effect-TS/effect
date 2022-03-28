@@ -8,9 +8,9 @@ import type { Exit } from "../Exit"
 import { FiberContext } from "../Fiber/_internal/context"
 import { FiberId } from "../FiberId"
 import { FiberRef } from "../FiberRef"
+import { FiberScope } from "../FiberScope"
 import { InterruptStatus } from "../InterruptStatus"
 import type { RuntimeConfig } from "../RuntimeConfig"
-import { Scope } from "../Scope"
 import { TraceElement } from "../TraceElement"
 
 export class Runtime<R> {
@@ -39,7 +39,7 @@ export class Runtime<R> {
       new Stack(InterruptStatus.Interruptible.toBoolean)
     )
 
-    Scope.global.value.unsafeAdd(this.runtimeConfig, context)
+    FiberScope.global.value.unsafeAdd(this.runtimeConfig, context)
 
     if (supervisor !== Supervisor.none) {
       supervisor.unsafeOnStart(this.environment, effect, Option.none, context)

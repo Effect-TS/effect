@@ -1,4 +1,4 @@
-import type { Scope } from "../../Scope"
+import type { FiberScope } from "../../FiberScope"
 import { Effect } from "../definition"
 
 /**
@@ -8,7 +8,7 @@ import { Effect } from "../definition"
  * @tsplus static ets/EffectOps scopeWith
  */
 export function scopeWith<R, E, A>(
-  f: (scope: Scope) => Effect<R, E, A>,
+  f: (scope: FiberScope) => Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
   return Effect.descriptorWith((descriptor) => f(descriptor.scope))

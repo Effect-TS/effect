@@ -1,4 +1,4 @@
-import type { Scope } from "../../Scope"
+import type { FiberScope } from "../../FiberScope"
 import type { Effect } from "../definition"
 import { IGetForkScope } from "../definition"
 
@@ -8,7 +8,7 @@ import { IGetForkScope } from "../definition"
  * @tsplus static ets/EffectOps forkScopeWith
  */
 export function forkScopeWith<R, E, A>(
-  f: (scope: Scope) => Effect<R, E, A>,
+  f: (scope: FiberScope) => Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
   return new IGetForkScope(f, __tsplusTrace)

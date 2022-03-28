@@ -1,7 +1,7 @@
 import { Chunk } from "../../../collection/immutable/Chunk"
 import type { UIO } from "../../Effect"
 import { Effect } from "../../Effect"
-import { _roots } from "../../Scope"
+import { FiberScope } from "../../FiberScope"
 import type { Fiber } from "../definition"
 
 /**
@@ -11,5 +11,5 @@ import type { Fiber } from "../definition"
  * @tsplus static ets/FiberOps roots
  */
 export const roots: UIO<Chunk<Fiber.Runtime<any, any>>> = Effect.succeed(() =>
-  Chunk.from(_roots.value)
+  Chunk.from(FiberScope._roots.value)
 )

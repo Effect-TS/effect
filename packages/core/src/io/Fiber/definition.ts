@@ -7,8 +7,8 @@ import type { Effect, UIO } from "../Effect"
 import type { Exit } from "../Exit"
 import type { FiberId } from "../FiberId"
 import type { FiberRef } from "../FiberRef"
+import type { FiberScope } from "../FiberScope"
 import type { InterruptStatus } from "../InterruptStatus"
-import type { Scope } from "../Scope"
 import type { Trace } from "../Trace"
 import type { TraceElement } from "../TraceElement"
 import type { FiberStatus } from "./status"
@@ -59,7 +59,7 @@ export declare namespace Fiber {
     /**
      * The current scope of the `Fiber`.
      */
-    readonly scope: Scope
+    readonly scope: FiberScope
   }
 }
 
@@ -150,7 +150,7 @@ export interface RuntimeFiber<E, A> extends BaseFiber<E, A> {
   /**
    * The scope of the fiber.
    */
-  readonly _scope: Scope
+  readonly _scope: FiberScope
 
   /**
    * The status of the fiber.

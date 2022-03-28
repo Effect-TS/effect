@@ -1,4 +1,4 @@
-import type { Scope } from "../../Scope"
+import type { FiberScope } from "../../FiberScope"
 import type { UIO } from "../definition"
 import { Effect } from "../definition"
 
@@ -7,6 +7,6 @@ import { Effect } from "../definition"
  *
  * @tsplus static ets/EffectOps scope
  */
-export const scope: UIO<Scope> = Effect.descriptorWith((descriptor) =>
+export const scope: UIO<FiberScope> = Effect.descriptorWith((descriptor) =>
   Effect.succeedNow(descriptor.scope)
 )

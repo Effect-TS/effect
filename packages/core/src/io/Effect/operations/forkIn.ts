@@ -1,7 +1,7 @@
 import type { LazyArg } from "../../../data/Function"
 import { Option } from "../../../data/Option"
 import type { Fiber } from "../../Fiber"
-import type { Scope } from "../../Scope"
+import type { FiberScope } from "../../FiberScope"
 import type { RIO } from "../definition"
 import { Effect, IFork } from "../definition"
 
@@ -10,7 +10,7 @@ import { Effect, IFork } from "../definition"
  */
 export function forkIn_<R, E, A>(
   self: Effect<R, E, A>,
-  scope: LazyArg<Scope>,
+  scope: LazyArg<FiberScope>,
   __tsplusTrace?: string
 ): RIO<R, Fiber.Runtime<E, A>> {
   return Effect.suspendSucceed(
@@ -21,7 +21,7 @@ export function forkIn_<R, E, A>(
 /**
  * @ets_data_first forkIn_
  */
-export function forkIn(scope: LazyArg<Scope>, __tsplusTrace?: string) {
+export function forkIn(scope: LazyArg<FiberScope>, __tsplusTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): RIO<R, Fiber.Runtime<E, A>> =>
     self.forkIn(scope)
 }

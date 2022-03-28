@@ -8,12 +8,12 @@ import { Option } from "../../../data/Option"
 import type { IO, RIO, UIO } from "../../Effect/definition/base"
 import { Effect } from "../../Effect/definition/base"
 import { IFiberRefLocally, IFiberRefModify } from "../../Effect/definition/primitives"
+import type { FiberScope } from "../../FiberScope"
 import type { LogLevel } from "../../LogLevel"
 import { Info } from "../../LogLevel/definition"
 import type { LogSpan } from "../../LogSpan"
 import { Managed } from "../../Managed/definition"
 import { ReleaseMap } from "../../Managed/ReleaseMap"
-import type { Scope } from "../../Scope"
 import type { FiberRef, XFiberRef, XFiberRefRuntime } from "./base"
 import { FiberRefRuntimeSym, XFiberRefInternal } from "./base"
 
@@ -408,9 +408,9 @@ export const currentReleaseMap: LazyValue<FiberRef.Runtime<ReleaseMap>> =
  *
  * @tsplus static ets/XFiberRefOps forkScopeOverride
  */
-export const forkScopeOverride: LazyValue<FiberRef.Runtime<Option<Scope>>> =
+export const forkScopeOverride: LazyValue<FiberRef.Runtime<Option<FiberScope>>> =
   LazyValue.make(() =>
-    unsafeMake<Option<Scope>>(
+    unsafeMake<Option<FiberScope>>(
       Option.none,
       () => Option.none,
       (a, _) => a

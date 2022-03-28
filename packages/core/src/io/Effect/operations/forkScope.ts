@@ -1,4 +1,4 @@
-import type { Scope } from "../../Scope"
+import type { FiberScope } from "../../FiberScope"
 import type { UIO } from "../definition"
 import { Effect, IGetForkScope } from "../definition"
 
@@ -7,4 +7,6 @@ import { Effect, IGetForkScope } from "../definition"
  *
  * @tsplus static ets/EffectOps forkScope
  */
-export const forkScope: UIO<Scope> = new IGetForkScope((scope) => Effect.succeed(scope))
+export const forkScope: UIO<FiberScope> = new IGetForkScope((scope) =>
+  Effect.succeed(scope)
+)

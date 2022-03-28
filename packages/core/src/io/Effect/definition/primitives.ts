@@ -9,10 +9,10 @@ import type { Exit } from "../../Exit"
 import type { Fiber } from "../../Fiber"
 import type { FiberId } from "../../FiberId"
 import type { FiberRef } from "../../FiberRef"
+import type { FiberScope } from "../../FiberScope"
 import type { InterruptStatus } from "../../InterruptStatus"
 import type { LogLevel } from "../../LogLevel"
 import type { RuntimeConfig } from "../../RuntimeConfig"
-import type { Scope } from "../../Scope"
 import type { Trace } from "../../Trace"
 import type { Effect, RIO } from "./base"
 import { Base } from "./base"
@@ -151,7 +151,7 @@ export class IFork<R, E, A> extends Base<R, never, Fiber.Runtime<E, A>> {
 
   constructor(
     readonly effect: Effect<R, E, A>,
-    readonly scope: Lazy<Option<Scope>>,
+    readonly scope: Lazy<Option<FiberScope>>,
     readonly trace?: string
   ) {
     super()
@@ -284,7 +284,7 @@ export class IRaceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3> extends Base
     readonly right: Lazy<Effect<R1, E1, A1>>,
     readonly leftWins: (exit: Exit<E, A>, fiber: Fiber<E1, A1>) => Effect<R2, E2, A2>,
     readonly rightWins: (exit: Exit<E1, A1>, fiber: Fiber<E, A>) => Effect<R3, E3, A3>,
-    readonly scope: Lazy<Option<Scope>>,
+    readonly scope: Lazy<Option<FiberScope>>,
     readonly trace?: string
   ) {
     super()
@@ -306,7 +306,7 @@ export class ISupervise<R, E, A> extends Base<R, E, A> {
 export class IGetForkScope<R, E, A> extends Base<R, E, A> {
   readonly _tag = "GetForkScope"
 
-  constructor(readonly f: (_: Scope) => Effect<R, E, A>, readonly trace?: string) {
+  constructor(readonly f: (_: FiberScope) => Effect<R, E, A>, readonly trace?: string) {
     super()
   }
 }
@@ -316,7 +316,7 @@ export class IOverrideForkScope<R, E, A> extends Base<R, E, A> {
 
   constructor(
     readonly effect: Lazy<Effect<R, E, A>>,
-    readonly forkScope: Lazy<Option<Scope>>,
+    readonly forkScope: Lazy<Option<FiberScope>>,
     readonly trace?: string
   ) {
     super()

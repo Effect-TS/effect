@@ -27,6 +27,7 @@ import { Exit } from "../../Exit"
 import { FiberId } from "../../FiberId"
 import type { Runtime as RuntimeFiberRef } from "../../FiberRef"
 import { FiberRef } from "../../FiberRef"
+import { FiberScope } from "../../FiberScope"
 import { InterruptStatus } from "../../InterruptStatus"
 import { LogLevel } from "../../LogLevel"
 import { Metric } from "../../Metrics"
@@ -37,7 +38,6 @@ import { concreteSetCount } from "../../Metrics/SetCount/operations/_internal/In
 import { Promise } from "../../Promise"
 import { RuntimeConfig } from "../../RuntimeConfig"
 import { RuntimeConfigFlag } from "../../RuntimeConfig/Flag"
-import { Scope } from "../../Scope"
 import { Trace } from "../../Trace"
 import { TraceElement } from "../../TraceElement"
 import type { Fiber } from "../definition"
@@ -220,7 +220,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   _location: TraceElement = this._id.location
 
-  _scope: Scope = Scope.unsafeMake(this)
+  _scope: FiberScope = FiberScope.unsafeMake(this)
 
   get _status(): Effect<unknown, never, FiberStatus> {
     return Effect.succeed(this.state.get.status)
@@ -1019,7 +1019,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   unsafeFork(
     effect: Instruction,
     trace: TraceElement,
-    forkScope: Option<Scope> = Option.none
+    forkScope: Option<FiberScope> = Option.none
   ): FiberContext<any, any> {
     const childFiberRefLocals: FiberRefLocals = new Map<RuntimeFiberRef<any>, any>()
 
@@ -1027,7 +1027,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       childFiberRefLocals.set(k, (k as RuntimeFiberRef<A>).fork(v))
     }
 
-    const parentScope: Scope = (
+    const parentScope: FiberScope = (
       forkScope._tag === "Some"
         ? forkScope
         : this.unsafeGetRef(FiberRef.forkScopeOverride.value)
