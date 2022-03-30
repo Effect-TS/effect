@@ -3,7 +3,6 @@
 import { Option } from "../../../src/data/Option"
 // import { Clock } from "../../../src/io/Clock"
 import { Effect } from "../../../src/io/Effect"
-import { Managed } from "../../../src/io/Managed"
 import { Ref } from "../../../src/io/Ref"
 import { Schedule } from "../../../src/io/Schedule"
 import { Stream } from "../../../src/stream/Stream"
@@ -29,9 +28,9 @@ describe("Stream", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
         .bindValue("stream", ({ ref }) =>
-          Stream.unwrapManaged(
-            Managed.finalizer(ref.getAndUpdate((n) => n + 1)).as(
-              Stream.fromEffect(ref.get()) + Stream.fail(Option.none)
+          Stream.unwrapScoped(
+            Effect.addFinalizer(ref.getAndUpdate((n) => n + 1)).as(
+              Stream.fromEffect(ref.get) + Stream.fail(Option.none)
             )
           )
         )

@@ -16,7 +16,7 @@ export function fromQueue<Err, Elem, Done>(
 function fromQueueInternal<Err, Elem, Done>(
   queue: Dequeue<Either<Exit<Err, Done>, Elem>>
 ): Channel<unknown, unknown, unknown, unknown, Err, Elem, Done> {
-  return Channel.fromEffect(queue.take()).flatMap((either) =>
+  return Channel.fromEffect(queue.take).flatMap((either) =>
     either.fold(
       (exit) =>
         exit.fold(

@@ -1,4 +1,5 @@
-import { Cause } from "../../Cause/definition"
+import type { LazyArg } from "../../../data/Function"
+import { Cause } from "../../Cause"
 import { Layer } from "../definition"
 
 /**
@@ -6,6 +7,6 @@ import { Layer } from "../definition"
  *
  * @tsplus static ets/LayerOps die
  */
-export function die(defect: unknown): Layer<unknown, never, never> {
-  return Layer.failCause(Cause.die(defect))
+export function die(defect: LazyArg<unknown>): Layer<unknown, never, never> {
+  return Layer.failCause(Cause.die(defect()))
 }

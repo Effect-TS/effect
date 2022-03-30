@@ -72,7 +72,7 @@ describe("Stream", () => {
         )
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ cancelled }) => cancelled.get())
+        .flatMap(({ cancelled }) => cancelled.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -95,7 +95,7 @@ describe("Stream", () => {
         )
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ cancelled }) => cancelled.get())
+        .flatMap(({ cancelled }) => cancelled.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -148,8 +148,8 @@ describe("Stream", () => {
             .runDrain()
             .catchAll(() => Effect.succeedNow(undefined))
         )
-        .bind("value", ({ queue }) => queue.takeAll())
-        .tap(({ queue }) => queue.shutdown())
+        .bind("value", ({ queue }) => queue.takeAll)
+        .tap(({ queue }) => queue.shutdown)
 
       const { value } = await program.unsafeRunPromise()
 
@@ -162,7 +162,8 @@ describe("Stream", () => {
         (c) =>
           Effect.Do()
             .bind("fiber", () =>
-              Stream.fromQueue(c.queue.map((exit) => new TakeInternal(exit)))
+              Stream.fromQueue(c.queue)
+                .map((exit) => new TakeInternal(exit))
                 .tap(() => c.proceed)
                 .flattenTake()
                 .aggregateAsyncWithin(Sink.last(), Schedule.fixed(Duration(200)))
@@ -259,7 +260,7 @@ describe("Stream", () => {
         )
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ cancelled }) => cancelled.get())
+        .flatMap(({ cancelled }) => cancelled.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -285,7 +286,7 @@ describe("Stream", () => {
         )
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ cancelled }) => cancelled.get())
+        .flatMap(({ cancelled }) => cancelled.get)
 
       const result = await program.unsafeRunPromise()
 

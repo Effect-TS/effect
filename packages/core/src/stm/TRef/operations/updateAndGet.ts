@@ -1,35 +1,23 @@
-import { Tuple } from "../../../collection/immutable/Tuple"
-import type { STM } from "../../STM"
-import type { ETRef } from "../definition"
-import { concreteId } from "../definition"
+import type { USTM } from "../../STM"
+import { STM } from "../../STM"
+import type { TRef } from "../definition"
+import { getOrMakeEntry } from "./_internal/getOrMakeEntry"
 
 /**
  * Updates the value of the variable and returns the new value.
  *
- * @tsplus fluent ets/XTRef updateAndGet
+ * @tsplus fluent ets/TRef updateAndGet
  */
-export function updateAndGet_<E, A>(
-  self: ETRef<E, A>,
-  f: (a: A) => A
-): STM<unknown, E, A> {
-  concreteId(self)
-  switch (self._tag) {
-    case "Atomic": {
-      return self.updateAndGet(f)
-    }
-    default:
-      return (self as ETRef<E, A>).modify((a) => {
-        const result = f(a)
-        return Tuple(result, result)
-      })
-  }
+export function updateAndGet_<A>(self: TRef<A>, f: (a: A) => A): USTM<A> {
+  return STM.Effect((journal) => {
+    const entry = getOrMakeEntry(self, journal)
+    const newValue = entry.use((_) => f(_.unsafeGet()))
+    entry.use((_) => _.unsafeSet(newValue))
+    return newValue
+  })
 }
 
 /**
  * Updates the value of the variable and returns the new value.
- *
- * @ets_data_first updateAndGet_
  */
-export function updateAndGet<A>(f: (a: A) => A) {
-  return <E>(self: ETRef<E, A>): STM<unknown, E, A> => self.updateAndGet(f)
-}
+export const updateAndGet = Pipeable(updateAndGet_)

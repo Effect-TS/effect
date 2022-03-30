@@ -3,7 +3,6 @@ import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../../io/Effect"
 import { Exit } from "../../../io/Exit"
 import type { Fiber } from "../../../io/Fiber"
-import { Managed } from "../../../io/Managed"
 import { Channel } from "../definition"
 import type { MergeDecision } from "../MergeDecision"
 import { concreteMergeDecision } from "../MergeDecision"
@@ -55,13 +54,13 @@ export function mergeWith_<
   OutElem | OutElem1,
   OutDone2 | OutDone3
 > {
-  const managed = Managed.Do()
+  const effect = Effect.Do()
     .bind("input", () =>
       SingleProducerAsyncInput.make<
         InErr & InErr1,
         InElem & InElem1,
         InDone & InDone1
-      >().toManaged()
+      >()
     )
     .bindValue("queueReader", ({ input }) => Channel.fromInput(input))
     .bind("pullL", ({ queueReader }) => (queueReader >> self).toPull())
@@ -264,5 +263,5 @@ export function mergeWith_<
         .embedInput(input)
     })
 
-  return Channel.unwrapManaged(managed)
+  return Channel.unwrapScoped(effect)
 }

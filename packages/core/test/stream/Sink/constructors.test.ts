@@ -7,7 +7,6 @@ import { Option } from "../../../src/data/Option"
 import { Effect } from "../../../src/io/Effect"
 import { Exit } from "../../../src/io/Exit"
 import { Hub } from "../../../src/io/Hub"
-import { Managed } from "../../../src/io/Managed"
 import { Promise } from "../../../src/io/Promise"
 import { Queue } from "../../../src/io/Queue"
 import { Ref } from "../../../src/io/Ref"
@@ -337,19 +336,19 @@ describe("Sink", () => {
       const program = Effect.Do()
         .bind("closed", () => Ref.make(false))
         .bindValue("res", ({ closed }) =>
-          Managed.acquireReleaseWith(Effect.succeed(100), () => closed.set(true))
+          Effect.acquireRelease(Effect.succeed(100), () => closed.set(true))
         )
         .bindValue("sink", ({ closed, res }) =>
-          Sink.unwrapManaged(
+          Sink.unwrapScoped(
             res.map((m) =>
               Sink.count().mapEffect((cnt) =>
-                closed.get().map((cl) => Tuple(cnt + m, cl))
+                closed.get.map((cl) => Tuple(cnt + m, cl))
               )
             )
           )
         )
         .bind("resAndState", ({ sink }) => Stream(1, 2, 3).run(sink))
-        .bind("finalState", ({ closed }) => closed.get())
+        .bind("finalState", ({ closed }) => closed.get)
 
       const { finalState, resAndState } = await program.unsafeRunPromise()
 
@@ -362,13 +361,13 @@ describe("Sink", () => {
       const program = Effect.Do()
         .bind("closed", () => Ref.make(false))
         .bindValue("res", ({ closed }) =>
-          Managed.acquireReleaseWith(Effect.succeed(100), () => closed.set(true))
+          Effect.acquireRelease(Effect.succeed(100), () => closed.set(true))
         )
         .bindValue("sink", ({ closed, res }) =>
-          Sink.unwrapManaged(res.map(() => Sink.succeed("ok")))
+          Sink.unwrapScoped(res.map(() => Sink.succeed("ok")))
         )
         .bind("finalResult", ({ sink }) => Stream.fail("fail").run(sink))
-        .bind("finalState", ({ closed }) => closed.get())
+        .bind("finalState", ({ closed }) => closed.get)
 
       const { finalResult, finalState } = await program.unsafeRunPromise()
 
@@ -392,7 +391,7 @@ describe("Sink", () => {
       const program = Effect.Do()
         .bind("queue", () => Queue.unbounded<number>())
         .tap(({ queue }) => Stream(1, 2, 3).run(Sink.fromQueue(queue)))
-        .flatMap(({ queue }) => queue.takeAll())
+        .flatMap(({ queue }) => queue.takeAll)
 
       const result = await program.unsafeRunPromise()
 
@@ -405,8 +404,8 @@ describe("Sink", () => {
       const program = Effect.Do()
         .bind("queue", () => Queue.unbounded<number>().map(createQueueSpy))
         .tap(({ queue }) => Stream(1, 2, 3).run(Sink.fromQueueWithShutdown(queue)))
-        .bind("values", ({ queue }) => queue.takeAll())
-        .bind("isShutdown", ({ queue }) => queue.isShutdown())
+        .bind("values", ({ queue }) => queue.takeAll)
+        .bind("isShutdown", ({ queue }) => queue.isShutdown)
 
       const { isShutdown, values } = await program.unsafeRunPromise()
 
@@ -422,10 +421,11 @@ describe("Sink", () => {
         .bind("promise2", () => Promise.make<never, void>())
         .bind("hub", () => Hub.unbounded<number>())
         .bind("fiber", ({ hub, promise1, promise2 }) =>
-          hub
-            .subscribe()
-            .use((s) => promise1.succeed(undefined) > promise2.await() > s.takeAll())
-            .fork()
+          Effect.scoped(
+            hub.subscribe.flatMap(
+              (s) => promise1.succeed(undefined) > promise2.await() > s.takeAll
+            )
+          ).fork()
         )
         .tap(({ promise1 }) => promise1.await())
         .tap(({ hub }) => Stream(1, 2, 3).run(Sink.fromHub(hub)))
@@ -443,7 +443,7 @@ describe("Sink", () => {
       const program = Effect.Do()
         .bind("hub", () => Hub.unbounded<number>())
         .tap(({ hub }) => Stream(1, 2, 3).run(Sink.fromHubWithShutdown(hub)))
-        .flatMap(({ hub }) => hub.isShutdown())
+        .flatMap(({ hub }) => hub.isShutdown)
 
       const result = await program.unsafeRunPromise()
 

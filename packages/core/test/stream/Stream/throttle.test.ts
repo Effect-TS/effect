@@ -49,24 +49,26 @@ describe("Stream", () => {
 
     it("throttles", async () => {
       const program = Queue.bounded<number>(10).flatMap((queue) =>
-        Stream.fromQueue(queue)
-          .throttleShape(1, Duration(30), (chunk) => chunk.reduce(0, (a, b) => a + b))
-          .toPull()
-          .use((pull) =>
-            Effect.Do()
-              .tap(() => queue.offer(1))
-              .bind("result1", () => pull)
-              .tap(() => queue.offer(2))
-              .bind("result2", () => pull)
-              .tap(() => Effect.sleep(Duration(120)))
-              .tap(() => queue.offer(3))
-              .bind("result3", () => pull)
-              .map(({ result1, result2, result3 }) => [
-                result1.toArray(),
-                result2.toArray(),
-                result3.toArray()
-              ])
-          )
+        Effect.scoped(
+          Stream.fromQueue(queue)
+            .throttleShape(1, Duration(30), (chunk) => chunk.reduce(0, (a, b) => a + b))
+            .toPull()
+            .flatMap((pull) =>
+              Effect.Do()
+                .tap(() => queue.offer(1))
+                .bind("result1", () => pull)
+                .tap(() => queue.offer(2))
+                .bind("result2", () => pull)
+                .tap(() => Effect.sleep(Duration(120)))
+                .tap(() => queue.offer(3))
+                .bind("result3", () => pull)
+                .map(({ result1, result2, result3 }) => [
+                  result1.toArray(),
+                  result2.toArray(),
+                  result3.toArray()
+                ])
+            )
+        )
       )
 
       const result = await program.unsafeRunPromise()
@@ -77,26 +79,28 @@ describe("Stream", () => {
     it("infinite bandwidth", async () => {
       const program = Clock.currentTime.flatMap((start) =>
         Queue.bounded<number>(10).flatMap((queue) =>
-          Stream.fromQueue(queue)
-            .throttleShape(1, Duration(0), (chunk) => 100_000)
-            .toPull()
-            .use((pull) =>
-              Effect.Do()
-                .tap(() => queue.offer(1))
-                .bind("result1", () => pull)
-                .tap(() => queue.offer(2))
-                .bind("result2", () => pull)
-                .tap(() => queue.offer(3))
-                .bind("result3", () => pull)
-                .bind("end", () => Clock.currentTime)
-                .map(({ end, result1, result2, result3 }) =>
-                  Tuple(end - start, [
-                    result1.toArray(),
-                    result2.toArray(),
-                    result3.toArray()
-                  ])
-                )
-            )
+          Effect.scoped(
+            Stream.fromQueue(queue)
+              .throttleShape(1, Duration(0), (chunk) => 100_000)
+              .toPull()
+              .flatMap((pull) =>
+                Effect.Do()
+                  .tap(() => queue.offer(1))
+                  .bind("result1", () => pull)
+                  .tap(() => queue.offer(2))
+                  .bind("result2", () => pull)
+                  .tap(() => queue.offer(3))
+                  .bind("result3", () => pull)
+                  .bind("end", () => Clock.currentTime)
+                  .map(({ end, result1, result2, result3 }) =>
+                    Tuple(end - start, [
+                      result1.toArray(),
+                      result2.toArray(),
+                      result3.toArray()
+                    ])
+                  )
+              )
+          )
         )
       )
 
@@ -108,30 +112,32 @@ describe("Stream", () => {
 
     it("with burst", async () => {
       const program = Queue.bounded<number>(10).flatMap((queue) =>
-        Stream.fromQueue(queue)
-          .throttleShape(
-            1,
-            Duration(10),
-            (chunk) => chunk.reduce(0, (a, b) => a + b),
-            2
-          )
-          .toPull()
-          .use((pull) =>
-            Effect.Do()
-              .tap(() => queue.offer(1))
-              .bind("result1", () => pull)
-              .tap(() => Effect.sleep(Duration(40)))
-              .tap(() => queue.offer(2))
-              .bind("result2", () => pull)
-              .tap(() => Effect.sleep(Duration(80)))
-              .tap(() => queue.offer(3))
-              .bind("result3", () => pull)
-              .map(({ result1, result2, result3 }) => [
-                result1.toArray(),
-                result2.toArray(),
-                result3.toArray()
-              ])
-          )
+        Effect.scoped(
+          Stream.fromQueue(queue)
+            .throttleShape(
+              1,
+              Duration(10),
+              (chunk) => chunk.reduce(0, (a, b) => a + b),
+              2
+            )
+            .toPull()
+            .flatMap((pull) =>
+              Effect.Do()
+                .tap(() => queue.offer(1))
+                .bind("result1", () => pull)
+                .tap(() => Effect.sleep(Duration(40)))
+                .tap(() => queue.offer(2))
+                .bind("result2", () => pull)
+                .tap(() => Effect.sleep(Duration(80)))
+                .tap(() => queue.offer(3))
+                .bind("result3", () => pull)
+                .map(({ result1, result2, result3 }) => [
+                  result1.toArray(),
+                  result2.toArray(),
+                  result3.toArray()
+                ])
+            )
+        )
       )
 
       const result = await program.unsafeRunPromise()

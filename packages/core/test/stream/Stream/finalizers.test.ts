@@ -17,7 +17,7 @@ describe("Stream", () => {
             .ensuring(log.update(event("ensuring")))
             .runDrain()
         )
-        .flatMap(({ log }) => log.get())
+        .flatMap(({ log }) => log.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -46,7 +46,7 @@ describe("Stream", () => {
             .ensuring(entry("Ensuring"))
             .runDrain()
         )
-        .flatMap(({ log }) => log.get())
+        .flatMap(({ log }) => log.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -62,11 +62,13 @@ describe("Stream", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(false))
         .tap(({ ref }) =>
-          Stream.finalizer(ref.set(true))
-            .toPull()
-            .use(() => Effect.unit)
+          Effect.scoped(
+            Stream.finalizer(ref.set(true))
+              .toPull()
+              .flatMap(() => Effect.unit)
+          )
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

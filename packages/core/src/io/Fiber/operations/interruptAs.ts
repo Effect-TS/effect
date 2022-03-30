@@ -33,9 +33,5 @@ export function interruptAsNow_<E, A>(
  * Interrupts the fiber as if interrupted from the specified fiber. If the
  * fiber has already exited, the returned effect will resume immediately.
  * Otherwise, the effect will resume when the fiber exits.
- *
- * @ets_data_first interruptAsNow_
  */
-export function interruptAsNow(fiberId: FiberId) {
-  return <E, A>(self: Fiber<E, A>): UIO<Exit<E, A>> => self.interruptAs(fiberId)
-}
+export const interruptAsNow = Pipeable(interruptAsNow_)

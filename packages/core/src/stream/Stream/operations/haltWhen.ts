@@ -25,9 +25,9 @@ export function haltWhen_<R, E, A, R2, E2, Z>(
 ): Stream<R & R2, E | E2, A> {
   concreteStream(self)
   return new StreamInternal(
-    Channel.unwrapManaged(
+    Channel.unwrapScoped(
       io()
-        .forkManaged()
+        .forkScoped()
         .map((fiber) => self.channel >> writer<R, E, A, R2, E2, Z>(fiber))
     )
   )

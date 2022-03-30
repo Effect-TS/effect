@@ -1,0 +1,25 @@
+import type { Chunk } from "../../../collection/immutable/Chunk"
+import type { UIO } from "../../Effect"
+import type { CommonQueue } from "./common"
+import type { _Out } from "./symbols"
+
+export interface Dequeue<A> extends CommonQueue {
+  readonly [_Out]: () => A
+
+  /**
+   * Removes the oldest value in the queue. If the queue is empty, this will
+   * return a computation that resumes when an item has been added to the queue.
+   */
+  readonly take: UIO<A>
+
+  /**
+   * Removes all the values in the queue and returns the values. If the queue is
+   * empty returns an empty collection.
+   */
+  readonly takeAll: UIO<Chunk<A>>
+
+  /**
+   * Takes up to max number of values from the queue.
+   */
+  readonly takeUpTo: (max: number, __tsplusTrace?: string) => UIO<Chunk<A>>
+}

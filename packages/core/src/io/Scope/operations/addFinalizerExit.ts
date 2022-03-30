@@ -1,6 +1,6 @@
 import type { UIO } from "../../Effect"
 import type { Finalizer, Scope } from "../definition"
-import { concreteScope } from "../definition"
+import { concreteScope } from "./_internal/ScopeInternal"
 
 /**
  * A simplified version of `addFinalizerWith` when the `finalizer` does not

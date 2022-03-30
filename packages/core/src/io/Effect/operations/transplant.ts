@@ -1,6 +1,6 @@
 import type { LazyArg } from "../../../data/Function"
 import { Option } from "../../../data/Option"
-import { Effect, IOverrideForkScope } from "../definition"
+import { Effect, IGetForkScope, IOverrideForkScope } from "../definition"
 
 export interface Grafter {
   <R, E, A>(effect: LazyArg<Effect<R, E, A>>, __tsplusTrace?: string): Effect<R, E, A>
@@ -20,10 +20,12 @@ export function transplant<R, E, A>(
   f: (grafter: Grafter) => Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return Effect.forkScopeWith((scope) =>
-    f((effect, __tsplusTrace) =>
-      Effect.suspendSucceed(
-        new IOverrideForkScope(effect, () => Option.some(scope), __tsplusTrace)
+  return Effect.suspendSucceed(
+    new IGetForkScope((scope) =>
+      f((effect, __tsplusTrace) =>
+        Effect.suspendSucceed(
+          new IOverrideForkScope(effect, () => Option.some(scope), __tsplusTrace)
+        )
       )
     )
   )

@@ -1,27 +1,19 @@
 import type { Journal } from "../../STM/Journal"
-import { getOrMakeEntry } from "../Atomic/operations/getOrMakeEntry"
-import type { XTRef } from "../definition"
-import { concrete } from "../definition"
+import type { TRef } from "../definition"
+import { getOrMakeEntry } from "./_internal/getOrMakeEntry"
 
 /**
- * Unsafely sets the value of the `XTRef`.
+ * Unsafely sets the value of the `TRef`.
  *
- * @tsplus fluent ets/XTRef unsafeSet
+ * @tsplus fluent ets/TRef unsafeSet
  */
-export function unsafeSet_<EA, EB, A, B>(
-  self: XTRef<EA, EB, A, B>,
-  value: A,
-  journal: Journal
-): void {
-  concrete(self)
-  return getOrMakeEntry(self.atomic, journal).use((_) => _.unsafeSet(value))
+export function unsafeSet_<A>(self: TRef<A>, value: A, journal: Journal): void {
+  const entry = getOrMakeEntry(self, journal)
+  entry.use((_) => _.unsafeSet(value))
+  return undefined
 }
 
 /**
- * Unsafely sets the value of the `XTRef`.
- *
- * @ets_data_first unsafeSet_
+ * Unsafely sets the value of the `TRef`.
  */
-export function unsafeSet<A>(value: A, journal: Journal) {
-  return <EA, EB, B>(self: XTRef<EA, EB, A, B>): void => self.unsafeSet(value, journal)
-}
+export const unsafeSet = Pipeable(unsafeSet_)

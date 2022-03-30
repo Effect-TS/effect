@@ -1,18 +1,13 @@
-import type { IO } from "../../Effect"
-import type { XFiberRef, XFiberRefInternal } from "../definition"
+import { Tuple } from "../../../collection/immutable/Tuple"
+import type { UIO } from "../../Effect"
+import type { FiberRef } from "../definition"
 
 /**
  * Reads the value associated with the current fiber. Returns initial value if
  * no value was `set` or inherited from parent.
  *
- * @tsplus fluent ets/XFiberRef get
- * @tsplus fluent ets/XFiberRefRuntime get
+ * @tsplus fluent ets/FiberRef get
  */
-export function get<EA, EB, A, B>(
-  self: XFiberRef<EA, EB, A, B>,
-  __tsplusTrace?: string
-): IO<EB, B> {
-  // Using a type cast here instead of `concreteUnified` to prevent a circular
-  // dependency
-  return (self as XFiberRefInternal<EA, EB, A, B>)._get
+export function get<A>(self: FiberRef<A>, __tsplusTrace?: string): UIO<A> {
+  return self.modify((a) => Tuple(a, a))
 }

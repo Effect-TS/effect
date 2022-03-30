@@ -67,7 +67,7 @@ function loop<R, E, In, L extends In, Z, S>(
     ({ tuple: [leftovers, doneValue] }) =>
       p(doneValue)
         ? Channel.fromEffect(leftoversRef.set(leftovers.flatten())) >
-          Channel.fromEffect(upstreamDoneRef.get()).flatMap((upstreamDone) => {
+          Channel.fromEffect(upstreamDoneRef.get).flatMap((upstreamDone) => {
             const accumulatedResult = f(currentResult, doneValue)
             return upstreamDone
               ? Channel.write(leftovers.flatten()).as(accumulatedResult)

@@ -22,14 +22,14 @@ describe("Stream", () => {
                 ? Stream.acquireReleaseWith(Effect.unit, () =>
                     lastExecuted.set(true)
                   ).flatMap(() => Stream.empty)
-                : Stream.managed(semaphore.withPermitManaged()).flatMap(
+                : Stream.scoped(semaphore.withPermitScoped()).flatMap(
                     () => Stream.never
                   )
             )
             .runDrain()
         )
         .flatMap(({ lastExecuted, semaphore }) =>
-          semaphore.withPermit(lastExecuted.get())
+          semaphore.withPermit(lastExecuted.get)
         )
 
       const result = await program.unsafeRunPromise()
@@ -48,14 +48,14 @@ describe("Stream", () => {
                 ? Stream.acquireReleaseWith(Effect.unit, () =>
                     lastExecuted.update((n) => n + 1)
                   ).flatMap(() => Stream.empty)
-                : Stream.managed(semaphore.withPermitManaged()).flatMap(
+                : Stream.scoped(semaphore.withPermitScoped()).flatMap(
                     () => Stream.never
                   )
             )
             .runDrain()
         )
         .flatMap(({ lastExecuted, semaphore }) =>
-          semaphore.withPermits(4)(lastExecuted.get())
+          semaphore.withPermits(4)(lastExecuted.get)
         )
 
       const result = await program.unsafeRunPromise()
@@ -92,7 +92,7 @@ describe("Stream", () => {
         )
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ substreamCancelled }) => substreamCancelled.get())
+        .flatMap(({ substreamCancelled }) => substreamCancelled.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -116,7 +116,7 @@ describe("Stream", () => {
             .runDrain()
             .either()
         )
-        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
+        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get)
 
       const { cancelled, result } = await program.unsafeRunPromise()
 
@@ -140,7 +140,7 @@ describe("Stream", () => {
             .runDrain()
             .either()
         )
-        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
+        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get)
 
       const { cancelled, result } = await program.unsafeRunPromise()
 
@@ -166,7 +166,7 @@ describe("Stream", () => {
             .runDrain()
             .exit()
         )
-        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
+        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get)
 
       const { cancelled, result } = await program.unsafeRunPromise()
 
@@ -191,7 +191,7 @@ describe("Stream", () => {
             .runDrain()
             .exit()
         )
-        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
+        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get)
 
       const { cancelled, result } = await program.unsafeRunPromise()
 
@@ -218,7 +218,7 @@ describe("Stream", () => {
             .flatMapParSwitch(2, identity)
             .runDrain()
         )
-        .flatMap(({ effects }) => effects.get())
+        .flatMap(({ effects }) => effects.get)
 
       const result = await program.unsafeRunPromise()
 

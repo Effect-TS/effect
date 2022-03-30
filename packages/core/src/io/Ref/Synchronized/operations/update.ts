@@ -1,27 +1,21 @@
-import type { Effect } from "../../../Effect"
-import type { XRef } from "../../definition"
-import type { XSynchronized } from "../definition"
+import type { UIO } from "../../../Effect"
+import type { Ref } from "../../definition"
+import type { SynchronizedRef } from "../definition"
 
 /**
- * Atomically modifies the `XRef.Synchronized` with the specified function.
+ * Atomically modifies the `Ref.Synchronized` with the specified function.
  *
- * @tsplus fluent ets/XSynchronized update
+ * @tsplus fluent ets/Ref/Synchronized update
  */
-export function update_<RA, RB, EA, EB, A>(
-  self: XSynchronized<RA, RB, EA, EB, A, A>,
+export function update_<A>(
+  self: SynchronizedRef<A>,
   f: (a: A) => A,
   __tsplusTrace?: string
-): Effect<RA & RB, EA | EB, void> {
-  return (self as XRef<RA, RB, EA, EB, A, A>).update(f)
+): UIO<void> {
+  return (self as Ref<A>).update(f)
 }
 
 /**
- * Atomically modifies the `XRef.Synchronized` with the specified function.
- *
- * @ets_data_first update_
+ * Atomically modifies the `Ref.Synchronized` with the specified function.
  */
-export function update<A>(f: (a: A) => A, __tsplusTrace?: string) {
-  return <RA, RB, EA, EB>(
-    self: XSynchronized<RA, RB, EA, EB, A, A>
-  ): Effect<RA & RB, EA | EB, void> => self.update(f)
-}
+export const update = Pipeable(update_)

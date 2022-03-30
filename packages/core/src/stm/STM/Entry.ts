@@ -1,4 +1,5 @@
-import type { Atomic } from "../TRef/Atomic"
+import type { TRef } from "../TRef"
+import { concreteTRef } from "../TRef/operations/_internal/TRefInternal"
 import { Versioned } from "./Versioned"
 
 export const EntryTypeId = Symbol.for("@effect-ts/core/STM/Entry")
@@ -17,7 +18,8 @@ export class Entry {
 /**
  * @tsplus static ets/EntryOps __call
  */
-export function makeEntry<A0>(tref0: Atomic<A0>, isNew0: boolean): Entry {
+export function makeEntry<A0>(tref0: TRef<A0>, isNew0: boolean): Entry {
+  concreteTRef(tref0)
   const versioned = tref0.versioned
   const ops = new EntryOps<A0>(tref0, versioned, versioned.value, isNew0, false)
   return new Entry((f) => f(ops))
@@ -29,14 +31,14 @@ export type EntryOpsTypeId = typeof EntryOpsTypeId
 export class EntryOps<S> {
   readonly _typeId: EntryOpsTypeId = EntryOpsTypeId
 
-  readonly tref: Atomic<S>
+  readonly tref: TRef<S>
   readonly expected: Versioned<S>
   newValue: S
   readonly isNew: boolean
   _isChanged: boolean
 
   constructor(
-    tref: Atomic<S>,
+    tref: TRef<S>,
     expected: Versioned<S>,
     newValue: S,
     isNew: boolean,
@@ -59,6 +61,7 @@ export class EntryOps<S> {
   }
 
   commit() {
+    concreteTRef(this.tref)
     this.tref.versioned = Versioned(this.newValue)
   }
 
@@ -78,6 +81,7 @@ export class EntryOps<S> {
   }
 
   isValid() {
+    concreteTRef(this.tref)
     return this.tref.versioned === this.expected
   }
 

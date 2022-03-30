@@ -25,14 +25,8 @@ export function retry_<RIn, E, ROut, RIn1, X>(
 
 /**
  * Retries constructing this layer according to the specified schedule.
- *
- * @ets_data_first retry_
  */
-export function retry<S, RIn1, E, X>(schedule: Schedule.WithState<S, RIn1, E, X>) {
-  return <RIn, ROut>(
-    self: Layer<RIn, E, ROut>
-  ): Layer<RIn & RIn1 & HasClock, E, ROut> => self.retry(schedule)
-}
+export const retry = Pipeable(retry_)
 
 interface UpdateState<S> {
   readonly state: S

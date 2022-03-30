@@ -3,7 +3,7 @@ import type { Tuple } from "../../../collection/immutable/Tuple"
 import type { Either } from "../../../data/Either"
 import { Option } from "../../../data/Option"
 import { Effect } from "../../../io/Effect"
-import type { Managed } from "../../../io/Managed"
+import type { HasScope } from "../../../io/Scope"
 import { Channel } from "../../Channel"
 import type { Sink } from "../definition"
 import { SinkInternal } from "./_internal/SinkInternal"
@@ -14,14 +14,14 @@ import { SinkInternal } from "./_internal/SinkInternal"
  * @tsplus static ets/SinkOps fromPush
  */
 export function fromPush<R, E, In, L, Z>(
-  push: Managed<
-    R,
+  push: Effect<
+    R & HasScope,
     never,
     (input: Option<Chunk<In>>) => Effect<R, Tuple<[Either<E, Z>, Chunk<L>]>, void>
   >,
   __tsplusTrace?: string
 ): Sink<R, E, In, L, Z> {
-  return new SinkInternal(Channel.unwrapManaged(push.map(pull)))
+  return new SinkInternal(Channel.unwrapScoped(push.map(pull)))
 }
 
 function pull<R, E, In, L, Z>(

@@ -3,7 +3,6 @@ import type { LazyArg } from "../../../data/Function"
 import { Option } from "../../../data/Option"
 import { Effect } from "../../../io/Effect"
 import { Exit } from "../../../io/Exit"
-import { Managed } from "../../../io/Managed"
 import { Channel } from "../../Channel"
 import { Stream } from "../definition"
 import { Handoff } from "./_internal/Handoff"
@@ -33,19 +32,19 @@ export function combine_<R, E, A, R2, E2, A2, S, A3>(
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A3> {
   return new StreamInternal(
-    Channel.managed(
-      Managed.Do()
-        .bind("left", () => Handoff.make<Exit<Option<E>, A>>().toManaged())
-        .bind("right", () => Handoff.make<Exit<Option<E2>, A2>>().toManaged())
-        .bind("latchL", () => Handoff.make<void>().toManaged())
-        .bind("latchR", () => Handoff.make<void>().toManaged())
+    Channel.scoped(
+      Effect.Do()
+        .bind("left", () => Handoff.make<Exit<Option<E>, A>>())
+        .bind("right", () => Handoff.make<Exit<Option<E2>, A2>>())
+        .bind("latchL", () => Handoff.make<void>())
+        .bind("latchR", () => Handoff.make<void>())
         .tap(({ latchL, left }) => {
           concreteStream(self)
           return (
             self.channel.concatMap((chunk) => Channel.writeChunk(chunk)) >>
             producer(left, latchL)
           )
-            .runManaged()
+            .runScoped()
             .fork()
         })
         .tap(({ latchR, right }) => {
@@ -55,7 +54,7 @@ export function combine_<R, E, A, R2, E2, A2, S, A3>(
             that0.channel.concatMap((chunk) => Channel.writeChunk(chunk)) >>
             producer(right, latchR)
           )
-            .runManaged()
+            .runScoped()
             .fork()
         }),
       ({ latchL, latchR, left, right }) => {

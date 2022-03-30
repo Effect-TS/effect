@@ -13,7 +13,6 @@ import { Layer } from "../../src/io/Layer"
 import type { Logger } from "../../src/io/Logger"
 import type { LogLevel } from "../../src/io/LogLevel"
 import type { LogSpan } from "../../src/io/LogSpan"
-import { Managed } from "../../src/io/Managed"
 import { RuntimeConfig } from "../../src/io/RuntimeConfig"
 import type { TraceElement } from "../../src/io/TraceElement"
 import { AtomicReference } from "../../src/support/AtomicReference"
@@ -60,7 +59,7 @@ export type HasTestLogger = Has<TestLogger<string, void>>
 /**
  * @tsplus static ets/TestLoggerOps isTestLogger
  */
-export function isTestLogger(u: unknown): u is TestLogger<any, any> {
+export function isTestLogger(u: unknown): u is TestLogger<unknown, unknown> {
   return typeof u === "object" && u != null && TestLoggerId in u
 }
 
@@ -75,7 +74,7 @@ export class LogEntry {
     readonly logLevel: LogLevel,
     readonly message: Lazy<string>,
     readonly cause: Lazy<Cause<any>>,
-    readonly context: Map.Map<FiberRef.Runtime<any>, any>,
+    readonly context: Map.Map<FiberRef<unknown>, unknown>,
     readonly spans: List<LogSpan>,
     readonly annotations: Map.Map<string, string>
   ) {}
@@ -136,12 +135,12 @@ const makeTestLogger: UIO<TestLogger<string, void>> = Effect.succeed(() => {
  *
  * @tsplus static ets/TestLoggerOps default
  */
-export const defaultTestLogger: Layer<unknown, never, any> = Layer.fromRawManaged(
-  Managed.Do()
-    .bind("runtimeConfig", () => Managed.runtimeConfig)
-    .bind("testLogger", () => makeTestLogger.toManaged())
+export const defaultTestLogger: Layer<unknown, never, any> = Layer.scopedRaw(
+  Effect.Do()
+    .bind("runtimeConfig", () => Effect.runtimeConfig)
+    .bind("testLogger", () => makeTestLogger)
     .flatMap(({ runtimeConfig, testLogger }) =>
-      Managed.withRuntimeConfig(
+      Effect.setRuntimeConfig(
         RuntimeConfig({ ...runtimeConfig.value, logger: testLogger })
       )
     )

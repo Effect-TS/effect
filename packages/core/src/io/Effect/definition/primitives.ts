@@ -212,7 +212,7 @@ export class IFiberRefGetAll<R, E, A> extends Base<R, E, A> {
   readonly _tag = "FiberRefGetAll"
 
   constructor(
-    readonly make: (refs: Map<FiberRef.Runtime<any>, any>) => Effect<R, E, A>,
+    readonly make: (refs: Map<FiberRef<unknown>, unknown>) => Effect<R, E, A>,
     readonly trace?: string
   ) {
     super()
@@ -223,7 +223,7 @@ export class IFiberRefModify<A, B> extends Base<unknown, never, B> {
   readonly _tag = "FiberRefModify"
 
   constructor(
-    readonly fiberRef: FiberRef.Runtime<A>,
+    readonly fiberRef: FiberRef<A>,
     readonly f: (a: A) => Tuple<[B, A]>,
     readonly trace?: string
   ) {
@@ -236,7 +236,7 @@ export class IFiberRefLocally<V, R, E, A> extends Base<R, E, A> {
 
   constructor(
     readonly localValue: V,
-    readonly fiberRef: FiberRef.Runtime<V>,
+    readonly fiberRef: FiberRef<V>,
     readonly effect: Effect<R, E, A>,
     readonly trace?: string
   ) {
@@ -247,7 +247,7 @@ export class IFiberRefLocally<V, R, E, A> extends Base<R, E, A> {
 export class IFiberRefDelete extends Base<unknown, never, void> {
   readonly _tag = "FiberRefDelete"
 
-  constructor(readonly fiberRef: FiberRef.Runtime<any>, readonly trace?: string) {
+  constructor(readonly fiberRef: FiberRef<unknown>, readonly trace?: string) {
     super()
   }
 }
@@ -256,7 +256,7 @@ export class IFiberRefWith<R, E, A, B> extends Base<R, E, B> {
   readonly _tag = "FiberRefWith"
 
   constructor(
-    readonly fiberRef: FiberRef.Runtime<A>,
+    readonly fiberRef: FiberRef<A>,
     readonly f: (a: A) => Effect<R, E, B>,
     readonly trace?: string
   ) {
@@ -284,7 +284,6 @@ export class IRaceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3> extends Base
     readonly right: Lazy<Effect<R1, E1, A1>>,
     readonly leftWins: (exit: Exit<E, A>, fiber: Fiber<E1, A1>) => Effect<R2, E2, A2>,
     readonly rightWins: (exit: Exit<E1, A1>, fiber: Fiber<E, A>) => Effect<R3, E3, A3>,
-    readonly scope: Lazy<Option<FiberScope>>,
     readonly trace?: string
   ) {
     super()
@@ -342,8 +341,8 @@ export class ILogged<A> extends Base<unknown, never, void> {
     readonly message: Lazy<A>,
     readonly cause: Lazy<Cause<any>>,
     readonly overrideLogLevel: Option<LogLevel> = Option.none,
-    readonly overrideRef1: FiberRef.Runtime<any> | null = null,
-    readonly overrideValue1: any = null,
+    readonly overrideRef1: FiberRef<unknown> | null = null,
+    readonly overrideValue1: unknown = null,
     readonly trace?: string
   ) {
     super()

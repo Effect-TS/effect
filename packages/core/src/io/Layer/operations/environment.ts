@@ -1,4 +1,4 @@
-import { Managed } from "../../Managed"
+import { Effect } from "../../Effect"
 import { Layer } from "../definition"
 
 /**
@@ -8,5 +8,5 @@ import { Layer } from "../definition"
  * @tsplus static ets/LayerOps environment
  */
 export function environment<R>(): Layer<R, never, R> {
-  return Layer.fromRawManaged(Managed.environment<R>())
+  return Layer.fromRawEffect(Effect.environment<R>())
 }

@@ -1,13 +1,15 @@
-import type { STM } from "../../STM"
-import type { XTRef } from "../definition"
-import { concrete } from "../definition"
+import type { USTM } from "../../STM"
+import { STM } from "../../STM"
+import type { TRef } from "../definition"
+import { getOrMakeEntry } from "./_internal/getOrMakeEntry"
 
 /**
- * Retrieves the value of the `XTRef`.
+ * Retrieves the value of the `TRef`.
  *
- * @tsplus fluent ets/XTRef get
+ * @tsplus fluent ets/TRef get
  */
-export function get<EA, EB, A, B>(self: XTRef<EA, EB, A, B>): STM<unknown, EB, B> {
-  concrete(self)
-  return self._get
+export function get<A>(self: TRef<A>): USTM<A> {
+  return STM.Effect((journal) =>
+    getOrMakeEntry(self, journal).use((_) => _.unsafeGet())
+  )
 }

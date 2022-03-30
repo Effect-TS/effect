@@ -17,8 +17,8 @@ export interface Logger<Message, Output> {
     fiberId: FiberId,
     logLevel: LogLevel,
     message: Lazy<Message>,
-    cause: Lazy<Cause<any>>,
-    context: Map<FiberRef.Runtime<any>, any>,
+    cause: Lazy<Cause<unknown>>,
+    context: Map<FiberRef<unknown>, unknown>,
     spans: List<LogSpan>,
     annotations: Map<string, string>
   ) => Output
@@ -29,15 +29,3 @@ export interface Logger<Message, Output> {
  */
 export interface LoggerOps {}
 export const Logger: LoggerOps = {}
-
-/**
- * @tsplus unify ets/Logger
- */
-export function unify<X extends Logger<any, any>>(
-  self: X
-): Logger<
-  [X] extends [Logger<infer MX, any>] ? MX : never,
-  [X] extends [Logger<any, infer OX>] ? OX : never
-> {
-  return self
-}

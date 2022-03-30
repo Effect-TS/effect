@@ -5,5 +5,5 @@ export * from "./operations/empty"
 export * from "./operations/end"
 export * from "./operations/fail"
 export * from "./operations/failCause"
-export * from "./operations/fromQueue"
+export * from "./operations/fromDequeue"
 // codegen:end

@@ -1,7 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import { get } from "../../Ref/operations/get"
-import { make } from "../../Ref/operations/make"
-import { update_ } from "../../Ref/operations/update"
+import { Ref } from "../../Ref"
 import { Effect } from "../definition"
 
 /**
@@ -23,9 +21,9 @@ export function mergeAllPar<R, E, A, B>(
   f: (b: B, a: A) => B,
   __tsplusTrace?: string
 ): Effect<R, E, B> {
-  return make(zero).flatMap((acc) =>
+  return Ref.make(zero).flatMap((acc) =>
     Effect.forEachParDiscard(as, (effect) =>
-      effect.flatMap((a) => update_(acc, (b) => f(b, a)))
-    ).flatMap(() => get(acc))
+      effect.flatMap((a) => acc.update((b) => f(b, a)))
+    ).flatMap(() => acc.get)
   )
 }

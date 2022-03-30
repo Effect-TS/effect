@@ -179,7 +179,7 @@ export abstract class AbstractClock implements Clock {
     ).map((ref) => {
       const next = (input: In): Effect<Env, Option<never>, Out> =>
         Effect.Do()
-          .bind("state", () => ref.get().map((_) => _.get(1)))
+          .bind("state", () => ref.get.map((_) => _.get(1)))
           .bind("now", () => this.currentTime)
           .flatMap(({ now, state }) =>
             schedule
@@ -194,7 +194,7 @@ export abstract class AbstractClock implements Clock {
               )
           )
 
-      const last = ref.get().flatMap(({ tuple: [option] }) =>
+      const last = ref.get.flatMap(({ tuple: [option] }) =>
         option.fold(
           () => Effect.fail(new NoSuchElementException()),
           (b) => Effect.succeed(b)
@@ -202,7 +202,7 @@ export abstract class AbstractClock implements Clock {
       )
       const reset = ref.set(Tuple(Option.none, schedule._initial))
 
-      const state = ref.get().map((_) => _.get(1))
+      const state = ref.get.map((_) => _.get(1))
 
       const driver = new Driver(next, last, reset, state)
 

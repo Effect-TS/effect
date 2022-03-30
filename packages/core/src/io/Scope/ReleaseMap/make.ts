@@ -1,6 +1,6 @@
 import { identity } from "../../../data/Function"
 import { Effect } from "../../Effect"
-import { unsafeMake as unsafeMakeRef } from "../../Ref/operations/make"
+import { Ref } from "../../Ref"
 import { ReleaseMap } from "./definition"
 import type { State } from "./state"
 import { Running } from "./state"
@@ -18,5 +18,5 @@ export const make = Effect.succeed(unsafeMake)
  * @tsplus static ets/ReleaseMapOps unsafeMake
  */
 export function unsafeMake(): ReleaseMap {
-  return ReleaseMap(unsafeMakeRef<State>(new Running(0, new Map(), identity)))
+  return ReleaseMap(Ref.unsafeMake<State>(new Running(0, new Map(), identity)))
 }

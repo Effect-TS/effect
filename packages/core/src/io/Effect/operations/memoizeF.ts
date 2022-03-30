@@ -1,7 +1,7 @@
 import * as Map from "../../../collection/immutable/Map"
 import { Tuple } from "../../../collection/immutable/Tuple"
 import { Promise } from "../../Promise"
-import { Synchronized } from "../../Ref/Synchronized"
+import { SynchronizedRef } from "../../Ref/Synchronized"
 import type { UIO } from "../definition"
 import { Effect } from "../definition"
 
@@ -14,7 +14,7 @@ export function memoizeF<R, E, A, B>(
   f: (a: A) => Effect<R, E, B>,
   __tsplusTrace?: string
 ): UIO<(a: A) => Effect<R, E, B>> {
-  return Synchronized.make(Map.make<A, Promise<E, B>>([])).map(
+  return SynchronizedRef.make(Map.make<A, Promise<E, B>>([])).map(
     (ref) => (a: A) =>
       ref
         .modifyEffect((map) =>

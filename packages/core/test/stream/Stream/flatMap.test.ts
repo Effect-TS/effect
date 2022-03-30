@@ -2,8 +2,10 @@ import { Chunk } from "../../../src/collection/immutable/Chunk"
 import { List } from "../../../src/collection/immutable/List"
 import { constFalse, constVoid, identity } from "../../../src/data/Function"
 import { Effect } from "../../../src/io/Effect"
+import { Exit } from "../../../src/io/Exit"
 import { Promise } from "../../../src/io/Promise"
 import { Ref } from "../../../src/io/Ref"
+import { HasScope, Scope } from "../../../src/io/Scope"
 import { Stream } from "../../../src/stream/Stream"
 
 describe("Stream", () => {
@@ -99,7 +101,7 @@ describe("Stream", () => {
         )
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ effects }) => effects.get())
+        .flatMap(({ effects }) => effects.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -131,7 +133,7 @@ describe("Stream", () => {
           )
         )
         .tap(({ stream }) => stream.runDrain())
-        .flatMap(({ effects }) => effects.get())
+        .flatMap(({ effects }) => effects.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -171,7 +173,7 @@ describe("Stream", () => {
             )
         )
         .tap(({ stream }) => stream.runDrain())
-        .flatMap(({ effects }) => effects.get())
+        .flatMap(({ effects }) => effects.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -203,7 +205,7 @@ describe("Stream", () => {
             .either()
             .asUnit()
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -223,13 +225,8 @@ describe("Stream", () => {
           "stream",
           ({ push }) => Stream.finalizer(push(1)) > Stream.finalizer(push(2))
         )
-        .tap(({ stream }) =>
-          stream
-            .toPull()
-            .withEarlyRelease()
-            .use((tuple) => tuple.get(1))
-        )
-        .flatMap(({ ref }) => ref.get())
+        .tap(({ stream }) => Effect.scoped(stream.toPull().flatten()))
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -250,10 +247,12 @@ describe("Stream", () => {
           ({ push }) => Stream.finalizer(push(1)) > Stream.finalizer(push(2))
         )
         .flatMap(({ ref, stream }) =>
-          stream
-            .toPull()
-            .withEarlyRelease()
-            .use(({ tuple: [release, pull] }) => pull > release > ref.get())
+          Scope.make.flatMap((scope) =>
+            stream
+              .toPull()
+              .provideService(HasScope)(scope)
+              .flatMap((pull) => pull > scope.close(Exit.unit) > ref.get)
+          )
         )
 
       const result = await program.unsafeRunPromise()

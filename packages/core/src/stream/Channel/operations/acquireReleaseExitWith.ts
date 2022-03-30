@@ -31,6 +31,6 @@ export function acquireReleaseExitWith<
         .uninterruptible()
     )
       .flatMap(use)
-      .ensuringWith((exit) => ref.get().flatMap((f) => f(exit)))
+      .ensuringWith((exit) => ref.get.flatMap((f) => f(exit)))
   )
 }

@@ -1,6 +1,6 @@
 import type { Chunk } from "../../../collection/immutable/Chunk"
 import type { LazyArg } from "../../../data/Function"
-import type { XHub } from "../../../io/Hub"
+import type { Hub } from "../../../io/Hub"
 import { Stream } from "../definition"
 
 /**
@@ -10,11 +10,11 @@ import { Stream } from "../definition"
  *
  * @tsplus static ets/StreamOps fromChunkHubWithShutdown
  */
-export function fromChunkHubWithShutdown<R, E, A>(
-  hub: LazyArg<XHub<never, R, unknown, E, never, Chunk<A>>>,
+export function fromChunkHubWithShutdown<A>(
+  hub: LazyArg<Hub<Chunk<A>>>,
   __tsplusTrace?: string
-): Stream<R, E, A> {
+): Stream<unknown, never, A> {
   return Stream.succeed(hub).flatMap((hub) =>
-    Stream.fromChunkHub(hub).ensuring(hub.shutdown())
+    Stream.fromChunkHub(hub).ensuring(hub.shutdown)
   )
 }

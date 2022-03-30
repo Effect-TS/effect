@@ -104,8 +104,8 @@ export function aggregateAsyncWithinEither_<R, E, A, R2, E2, A2, R3, B, C>(
     const sink0 = sink()
     concreteStream(self)
     concreteSink(sink0)
-    return Stream.managed(
-      (self.channel >> handoffProducer).runManaged().fork()
+    return Stream.scoped(
+      (self.channel >> handoffProducer).runScoped().fork()
     ).crossRight(
       new StreamInternal(
         scheduledAggregator(
@@ -167,7 +167,7 @@ function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
       ),
     (c) => handoff.offer(HandoffSignal.End(SinkEndReason.ScheduleEnd(c)))
   )
-  return Channel.managed(timeout.forkManaged(), (fiber) =>
+  return Channel.scoped(timeout.forkScoped(), (fiber) =>
     handoffConsumer
       .pipeToOrFail(sink.channel)
       .doneCollect()

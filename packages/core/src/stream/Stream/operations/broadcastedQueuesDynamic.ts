@@ -1,5 +1,6 @@
-import type { Managed } from "../../../io/Managed"
+import type { Effect } from "../../../io/Effect"
 import type { Dequeue } from "../../../io/Queue"
+import type { HasScope } from "../../../io/Scope"
 import type { Take } from "../../Take"
 import type { Stream } from "../definition"
 
@@ -16,8 +17,8 @@ export function broadcastedQueuesDynamic_<R, E, A>(
   self: Stream<R, E, A>,
   maximumLag: number,
   __tsplusTrace?: string
-): Managed<R, never, Managed<unknown, never, Dequeue<Take<E, A>>>> {
-  return self.toHub(maximumLag).map((hub) => hub.subscribe())
+): Effect<R & HasScope, never, Effect<HasScope, never, Dequeue<Take<E, A>>>> {
+  return self.toHub(maximumLag).map((hub) => hub.subscribe)
 }
 
 /**

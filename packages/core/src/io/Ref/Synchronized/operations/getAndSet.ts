@@ -1,29 +1,23 @@
-import type { Effect } from "../../../Effect"
-import type { XRef } from "../../definition"
-import type { XSynchronized } from "../definition"
+import type { UIO } from "../../../Effect"
+import type { Ref } from "../../definition"
+import type { SynchronizedRef } from "../definition"
 
 /**
- * Atomically writes the specified value to the `XRef.Synchronized`, returning
+ * Atomically writes the specified value to the `Ref.Synchronized`, returning
  * the value immediately before modification.
  *
- * @tsplus fluent ets/XSynchronized getAndSet
+ * @tsplus fluent ets/Ref/Synchronized getAndSet
  */
-export function getAndSet_<RA, RB, EA, EB, A>(
-  self: XSynchronized<RA, RB, EA, EB, A, A>,
+export function getAndSet_<A>(
+  self: SynchronizedRef<A>,
   value: A,
   __tsplusTrace?: string
-): Effect<RA & RB, EA | EB, A> {
-  return (self as XRef<RA, RB, EA, EB, A, A>).getAndSet(value)
+): UIO<A> {
+  return (self as Ref<A>).getAndSet(value)
 }
 
 /**
- * Atomically writes the specified value to the `XRef.Synchronized`, returning
+ * Atomically writes the specified value to the `Ref.Synchronized`, returning
  * the value immediately before modification.
- *
- * @ets_data_first getAndSet_
  */
-export function getAndSet<A>(value: A, __tsplusTrace?: string) {
-  return <RA, RB, EA, EB>(
-    self: XSynchronized<RA, RB, EA, EB, A, A>
-  ): Effect<RA & RB, EA | EB, A> => self.getAndSet(value)
-}
+export const getAndSet = Pipeable(getAndSet_)

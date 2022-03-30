@@ -1,8 +1,8 @@
 import type { LazyArg } from "../../../data/Function"
 import type { UIO } from "../../Effect"
 import type { Exit } from "../../Exit"
-import type { CloseableScope } from "../definition"
-import { concreteCloseableScope } from "../definition"
+import type { Scope } from "../definition"
+import { concreteCloseableScope } from "./_internal/CloseableScopeInternal"
 
 /**
  * Closes a scope with the specified exit value, running all finalizers that
@@ -11,7 +11,7 @@ import { concreteCloseableScope } from "../definition"
  * @tsplus fluent ets/Scope/Closeable close
  */
 export function close_(
-  self: CloseableScope,
+  self: Scope.Closeable,
   exit: LazyArg<Exit<unknown, unknown>>
 ): UIO<void> {
   concreteCloseableScope(self)

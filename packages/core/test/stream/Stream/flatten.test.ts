@@ -3,7 +3,7 @@ import { List } from "../../../src/collection/immutable/List"
 // import { Either } from "../../../src/data/Either"
 // import { identity } from "../../../src/data/Function"
 import { RuntimeError } from "../../../src/io/Cause"
-// import { Effect } from "../../../src/io/Effect"
+import { Effect } from "../../../src/io/Effect"
 import { Exit } from "../../../src/io/Exit"
 import { Stream } from "../../../src/stream/Stream"
 // import { Promise } from "../../../src/io/Promise"
@@ -13,15 +13,17 @@ import { Take } from "../../../src/stream/Take"
 describe("Stream", () => {
   describe("flattenExitOption", () => {
     it("happy path", async () => {
-      const program = Stream.range(0, 10)
-        .toQueue(1)
-        .use((queue) =>
-          Stream.fromQueue(queue)
-            .map((take) => take.exit())
-            .flattenExitOption()
-            .runCollect()
-        )
-        .map((chunk) => chunk.flatten().toArray())
+      const program = Effect.scoped(
+        Stream.range(0, 10)
+          .toQueue(1)
+          .flatMap((queue) =>
+            Stream.fromQueue(queue)
+              .map((take) => take.exit())
+              .flattenExitOption()
+              .runCollect()
+          )
+          .map((chunk) => chunk.flatten().toArray())
+      )
 
       const result = await program.unsafeRunPromise()
 
@@ -30,14 +32,14 @@ describe("Stream", () => {
 
     it("errors", async () => {
       const error = new RuntimeError("boom")
-      const program = (Stream.range(0, 10) + Stream.fail(error))
-        .toQueue(1)
-        .use((queue) =>
+      const program = Effect.scoped(
+        (Stream.range(0, 10) + Stream.fail(error)).toQueue(1).flatMap((queue) =>
           Stream.fromQueue(queue)
             .map((take) => take.exit())
             .flattenExitOption()
             .runCollect()
         )
+      )
 
       const result = await program.unsafeRunPromiseExit()
 

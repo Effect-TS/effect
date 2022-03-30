@@ -2,7 +2,6 @@ import { List } from "../../../src/collection/immutable/List"
 import { Tuple } from "../../../src/collection/immutable/Tuple"
 import { Option } from "../../../src/data/Option"
 import { Effect } from "../../../src/io/Effect"
-import { Managed } from "../../../src/io/Managed"
 import { Ref } from "../../../src/io/Ref"
 import { Sink } from "../../../src/stream/Sink"
 import { Stream } from "../../../src/stream/Stream"
@@ -38,7 +37,7 @@ describe("Stream", () => {
             .flatten()
             .runHead()
         )
-        .bind("result", ({ ref }) => ref.get())
+        .bind("result", ({ ref }) => ref.get)
 
       const { head, result } = await program.unsafeRunPromise()
 
@@ -65,28 +64,24 @@ describe("Stream", () => {
     })
   })
 
-  describe("runManaged", () => {
+  describe("runScoped", () => {
     it("properly closes the resources", async () => {
       const program = Effect.Do()
         .bind("closed", () => Ref.make(false))
         .bindValue("res", ({ closed }) =>
-          Managed.acquireReleaseWith(Effect.succeed(1), () => closed.set(true))
+          Effect.acquireRelease(Effect.succeed(1), () => closed.set(true))
         )
         .bindValue("stream", ({ res }) =>
-          Stream.managed(res).flatMap((a) => Stream(a, a, a))
+          Stream.scoped(res).flatMap((a) => Stream(a, a, a))
         )
         .bind("collectAndCheck", ({ closed, stream }) =>
-          stream
-            .runManaged(Sink.collectAll())
-            .flatMap((r) =>
-              closed
-                .get()
-                .toManaged()
-                .map((b) => Tuple(r, b))
-            )
-            .useNow()
+          Effect.scoped(
+            stream
+              .runScoped(Sink.collectAll())
+              .flatMap((r) => closed.get.map((b) => Tuple(r, b)))
+          )
         )
-        .bind("finalState", ({ closed }) => closed.get())
+        .bind("finalState", ({ closed }) => closed.get)
 
       const { collectAndCheck, finalState } = await program.unsafeRunPromise()
 

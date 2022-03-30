@@ -8,22 +8,20 @@ import { AtomicBoolean } from "../../../support/AtomicBoolean"
 import { AtomicNumber } from "../../../support/AtomicNumber"
 import { EmptyQueue, MutableQueue } from "../../../support/MutableQueue"
 import { Cause } from "../../Cause"
-import { ExecutionStrategy } from "../../ExecutionStrategy"
+import type { ExecutionStrategy } from "../../ExecutionStrategy"
 import { Exit } from "../../Exit"
 import type { Fiber } from "../../Fiber/definition"
 import { FiberId } from "../../FiberId"
-import { FiberRef } from "../../FiberRef"
-import { Managed } from "../../Managed/definition"
 import { Promise } from "../../Promise"
 import type { Queue, Strategy } from "../../Queue"
-import { concreteQueue, XQueueInternal } from "../../Queue/definition"
+import { _In, _Out, QueueSym } from "../../Queue/definition"
 import { unsafeCompletePromise } from "../../Queue/operations/_internal/unsafeCompletePromise"
 import { unsafeCompleteTakers } from "../../Queue/operations/_internal/unsafeCompleteTakers"
 import { unsafeOfferAll } from "../../Queue/operations/_internal/unsafeOfferAll"
 import { unsafePollAll } from "../../Queue/operations/_internal/unsafePollAll"
 import { unsafePollN } from "../../Queue/operations/_internal/unsafePollN"
 import { unsafeRemove } from "../../Queue/operations/_internal/unsafeRemove"
-import { ReleaseMap } from "../../Scope/ReleaseMap/definition"
+import type { ReleaseMap } from "../../Scope/ReleaseMap/definition"
 import type { State } from "../../Scope/ReleaseMap/state"
 import { Exited } from "../../Scope/ReleaseMap/state"
 import type { RIO, UIO } from "../definition"
@@ -189,9 +187,8 @@ function forEachParN<R, E, A, B>(
       queue: Queue<Tuple<[A, number]>>,
       array: Array<B>
     ): Effect<R, E, void> {
-      concreteQueue(queue)
       return queue
-        ._takeUpTo(1)
+        .takeUpTo(1)
         .map((_) => _.head)
         .flatMap((_) =>
           _.fold(
@@ -352,9 +349,8 @@ function forEachParNDiscard<R, E, A, X>(
     }
 
     function worker(queue: Queue<A>): Effect<R, E, void> {
-      concreteQueue(queue)
       return queue
-        ._takeUpTo(1)
+        .takeUpTo(1)
         .map((chunk) => chunk.head)
         .flatMap((option) =>
           option.fold(
@@ -638,61 +634,6 @@ export function releaseMapReleaseAll(
     .flatten()
 }
 
-/**
- * Creates a `Managed` value that acquires the original resource in a fiber,
- * and provides that fiber. The finalizer for this value will interrupt the fiber
- * and run the original finalizer.
- */
-export function managedFork<R, E, A>(
-  self: Managed<R, E, A>,
-  __tsplusTrace?: string
-): Managed<R, never, Fiber.Runtime<E, A>> {
-  return Managed(
-    Effect.uninterruptibleMask(({ restore }) =>
-      Effect.Do()
-        .bind("outerReleaseMap", () => FiberRef.currentReleaseMap.value.get())
-        .bind("innerReleaseMap", () => ReleaseMap.make)
-        .bind("fiber", ({ innerReleaseMap }) =>
-          (
-            restore(self.effect.map((_) => _.get(1))).forkDaemon() as RIO<
-              R,
-              Fiber.Runtime<E, A>
-            >
-          ).apply(FiberRef.currentReleaseMap.value.locally(innerReleaseMap))
-        )
-        .bind("releaseMapEntry", ({ fiber, innerReleaseMap, outerReleaseMap }) =>
-          outerReleaseMap.add((e) =>
-            fiber
-              .interrupt()
-              .flatMap(() =>
-                releaseMapReleaseAll(innerReleaseMap, e, ExecutionStrategy.Sequential)
-              )
-          )
-        )
-        .map(({ fiber, releaseMapEntry }) => Tuple(releaseMapEntry, fiber))
-    )
-  )
-}
-
-/**
- * Run an effect while acquiring the resource before and releasing it after
- */
-export function managedUse<R, E, A, R2, E2, B>(
-  self: Managed<R, E, A>,
-  f: (a: A) => Effect<R2, E2, B>,
-  __tsplusTrace?: string
-): Effect<R & R2, E | E2, B> {
-  return ReleaseMap.make.flatMap((releaseMap) =>
-    FiberRef.currentReleaseMap.value
-      .get()
-      .acquireReleaseExitWith(
-        () => self.effect.flatMap((_) => f(_.get(1))),
-        (relMap, ex) => releaseMapReleaseAll(relMap, ex, ExecutionStrategy.Sequential)
-      )
-      .apply(FiberRef.currentReleaseMap.value.locally(releaseMap))
-  )
-}
-
 // -----------------------------------------------------------------------------
 // ReleaseMap
 // -----------------------------------------------------------------------------
@@ -732,27 +673,45 @@ export function unsafeCreateQueue<A>(
   return new UnsafeCreate(queue, takers, shutdownHook, shutdownFlag, strategy)
 }
 
-export class UnsafeCreate<A> extends XQueueInternal<
-  unknown,
-  unknown,
-  never,
-  never,
-  A,
-  A
-> {
+export class UnsafeCreate<A> implements Queue<A> {
+  readonly [QueueSym]: QueueSym = QueueSym;
+  readonly [_In]!: (_: A) => void;
+  readonly [_Out]!: () => A
+
   constructor(
     readonly queue: MutableQueue<A>,
     readonly takers: MutableQueue<Promise<never, A>>,
     readonly shutdownHook: Promise<never, void>,
     readonly shutdownFlag: AtomicBoolean,
     readonly strategy: Strategy<A>
-  ) {
-    super()
-  }
+  ) {}
 
-  _capacity: number = this.queue.capacity
+  capacity: number = this.queue.capacity
 
-  _offer(a: A, __tsplusTrace?: string): Effect<unknown, never, boolean> {
+  size: UIO<number> = Effect.suspendSucceed(
+    this.shutdownFlag.get
+      ? Effect.interrupt
+      : Effect.succeedNow(
+          this.queue.size - this.takers.size + this.strategy.surplusSize
+        )
+  )
+
+  awaitShutdown: UIO<void> = this.shutdownHook.await()
+
+  isShutdown: UIO<boolean> = Effect.succeed(this.shutdownFlag.get)
+
+  shutdown: UIO<void> = Effect.suspendSucceedWith((_, fiberId) => {
+    this.shutdownFlag.set(true)
+
+    return Effect.whenEffect(
+      this.shutdownHook.succeed(undefined),
+      Effect.forEachParDiscard(unsafePollAll(this.takers), (promise) =>
+        promise.interruptAs(fiberId)
+      ) > this.strategy.shutdown
+    ).asUnit()
+  }).uninterruptible()
+
+  offer(a: A, __tsplusTrace?: string): Effect<unknown, never, boolean> {
     return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
         return Effect.interrupt
@@ -792,7 +751,7 @@ export class UnsafeCreate<A> extends XQueueInternal<
     })
   }
 
-  _offerAll(as: Iterable<A>, __tsplusTrace?: string): Effect<unknown, never, boolean> {
+  offerAll(as: Iterable<A>, __tsplusTrace?: string): Effect<unknown, never, boolean> {
     return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
         return Effect.interrupt
@@ -831,30 +790,7 @@ export class UnsafeCreate<A> extends XQueueInternal<
     })
   }
 
-  _awaitShutdown: UIO<void> = this.shutdownHook.await()
-
-  _size: UIO<number> = Effect.suspendSucceed(
-    this.shutdownFlag.get
-      ? Effect.interrupt
-      : Effect.succeedNow(
-          this.queue.size - this.takers.size + this.strategy.surplusSize
-        )
-  )
-
-  _shutdown: UIO<void> = Effect.suspendSucceedWith((_, fiberId) => {
-    this.shutdownFlag.set(true)
-
-    return Effect.whenEffect(
-      this.shutdownHook.succeed(undefined),
-      Effect.forEachParDiscard(unsafePollAll(this.takers), (promise) =>
-        promise.interruptAs(fiberId)
-      ) > this.strategy.shutdown
-    ).asUnit()
-  }).uninterruptible()
-
-  _isShutdown: UIO<boolean> = Effect.succeed(this.shutdownFlag.get)
-
-  _take: Effect<unknown, never, A> = Effect.suspendSucceedWith((_, fiberId) => {
+  take: Effect<unknown, never, A> = Effect.suspendSucceedWith((_, fiberId) => {
     if (this.shutdownFlag.get) {
       return Effect.interrupt
     }
@@ -881,7 +817,7 @@ export class UnsafeCreate<A> extends XQueueInternal<
     }
   })
 
-  _takeAll: Effect<unknown, never, Chunk<A>> = Effect.suspendSucceed(() =>
+  takeAll: Effect<unknown, never, Chunk<A>> = Effect.suspendSucceed(() =>
     this.shutdownFlag.get
       ? Effect.interrupt
       : Effect.succeed(() => {
@@ -891,7 +827,7 @@ export class UnsafeCreate<A> extends XQueueInternal<
         })
   )
 
-  _takeUpTo(n: number, __tsplusTrace?: string): Effect<unknown, never, Chunk<A>> {
+  takeUpTo(n: number, __tsplusTrace?: string): Effect<unknown, never, Chunk<A>> {
     return Effect.suspendSucceed(() =>
       this.shutdownFlag.get
         ? Effect.interrupt

@@ -19,8 +19,8 @@ export type TSemaphoreSym = typeof TSemaphoreSym
  * permits become available without blocking any underlying operating system
  * threads. If you want to acquire more than one permit at a time you can use
  * `withPermits`, which allows specifying a number of permits to acquire. You
- * can also use `withPermitManaged` or `withPermitsManaged` to acquire and
- * release permits within the context of a managed effect for composing with
+ * You can also use `withPermitScoped` or `withPermitsScoped` to acquire and
+ * release permits within the context of a scoped effect for composing with
  * other resources.
  *
  * For more advanced concurrency problems you can use the `acquire` and

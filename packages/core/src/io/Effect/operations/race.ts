@@ -1,6 +1,6 @@
 import { Either } from "../../../data/Either"
+import type { LazyArg } from "../../../data/Function"
 import type { Exit } from "../../Exit"
-import { join } from "../../Fiber/operations/join"
 import { Effect } from "../definition"
 
 /**
@@ -23,24 +23,25 @@ import { Effect } from "../definition"
  */
 export function race_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
-  that: Effect<R2, E2, A2>,
+  that: LazyArg<Effect<R2, E2, A2>>,
   __tsplusTrace?: string
 ): Effect<R & R2, E | E2, A | A2> {
   return Effect.descriptorWith((descriptor) => {
     const parentFiberId = descriptor.id
-    const maybeDisconnect = <R, E, A>(io: Effect<R, E, A>) =>
-      Effect.uninterruptibleMask(({ force }) => force(io))
+    function maybeDisconnect<R, E, A>(io: LazyArg<Effect<R, E, A>>) {
+      return Effect.uninterruptibleMask(({ force }) => force(io))
+    }
 
     return maybeDisconnect(self).raceWith(
       maybeDisconnect(that),
       (exit, right) =>
         exit.foldEffect(
-          (cause) => join(right).mapErrorCause((_) => cause & _),
+          (cause) => right.join().mapErrorCause((_) => cause & _),
           (a) => right.interruptAs(parentFiberId).as(a)
         ),
       (exit, left) =>
         exit.foldEffect(
-          (cause) => join(left).mapErrorCause((_) => _ & cause),
+          (cause) => left.join().mapErrorCause((_) => _ & cause),
           (a) => left.interruptAs(parentFiberId).as(a)
         )
     )
@@ -62,13 +63,8 @@ export function race_<R, E, A, R2, E2, A2>(
  * Note that if the `race` is embedded into an uninterruptible region, then
  * because the loser cannot be interrupted, it will be allowed to continue
  * executing in the background, without delaying the return of the race.
- *
- * @ets_data_first race_
  */
-export function race<R2, E2, A2>(that: Effect<R2, E2, A2>, __tsplusTrace?: string) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A | A2> =>
-    self.race(that)
-}
+export const race = Pipeable(race_)
 
 /**
  * Returns an effect that races this effect with the specified effect,
@@ -82,10 +78,10 @@ export function race<R2, E2, A2>(that: Effect<R2, E2, A2>, __tsplusTrace?: strin
  */
 export function raceEither_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
-  that: Effect<R2, E2, A2>,
+  that: LazyArg<Effect<R2, E2, A2>>,
   __tsplusTrace?: string
 ): Effect<R & R2, E | E2, Either<A, A2>> {
-  return self.map(Either.left).race(that.map(Either.right))
+  return self.map(Either.left).race(that().map(Either.right))
 }
 
 /**
@@ -95,16 +91,8 @@ export function raceEither_<R, E, A, R2, E2, A2>(
  *
  * WARNING: The raced effect will safely interrupt the "loser", but will not
  * resume until the loser has been cleanly terminated.
- *
- * @ets_data_first raceEither_
  */
-export function raceEither<R2, E2, A2>(
-  that: Effect<R2, E2, A2>,
-  __tsplusTrace?: string
-) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, Either<A, A2>> =>
-    self.raceEither(that)
-}
+export const raceEither = Pipeable(raceEither_)
 
 /**
  * Returns an effect that races this effect with the specified effect,
@@ -122,12 +110,12 @@ export function raceEither<R2, E2, A2>(
  */
 export function raceFirst_<R, R2, E, E2, A, A2>(
   self: Effect<R, E, A>,
-  that: Effect<R2, E2, A2>,
+  that: LazyArg<Effect<R2, E2, A2>>,
   __tsplusTrace?: string
 ): Effect<R & R2, E2 | E, A2 | A> {
   return self
     .exit()
-    .race(that.exit())
+    .race(that().exit())
     .flatMap((a) => Effect.done(a as Exit<E | E2, A | A2>))
 }
 
@@ -142,12 +130,5 @@ export function raceFirst_<R, R2, E, E2, A, A2>(
  * `l.disconnect raceFirst r.disconnect`, which disconnects left and right
  * interrupt signal, allowing a fast return, with interruption performed
  * in the background.
- *
- * @ets_data_first raceFirst_
  */
-export function raceFirst<R2, E2, A2>(
-  that: Effect<R2, E2, A2>,
-  __tsplusTrace?: string
-) {
-  return <R, E, A>(self: Effect<R, E, A>) => self.raceFirst(that)
-}
+export const raceFirst = Pipeable(raceFirst_)

@@ -10,5 +10,5 @@ import { Channel } from "../definition"
 export function toHub<Err, Done, Elem>(
   hub: LazyArg<Hub<Either<Exit<Err, Done>, Elem>>>
 ): Channel<unknown, Err, Elem, Done, never, never, unknown> {
-  return Channel.toQueue(hub().toQueue())
+  return Channel.toQueue(hub)
 }

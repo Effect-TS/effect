@@ -7,13 +7,15 @@ describe("Stream", () => {
   describe("peel", () => {
     it("simple example", async () => {
       const sink: Sink<unknown, never, number, number, Chunk<number>> = Sink.take(3)
-      const program = Stream.fromChunks(Chunk(1, 2, 3), Chunk(4, 5, 6))
-        .peel(sink)
-        .use(({ tuple: [chunk, rest] }) =>
-          Effect.succeedNow(chunk.toArray()).zip(
-            rest.runCollect().map((chunk) => chunk.toArray())
+      const program = Effect.scoped(
+        Stream.fromChunks(Chunk(1, 2, 3), Chunk(4, 5, 6))
+          .peel(sink)
+          .flatMap(({ tuple: [chunk, rest] }) =>
+            Effect.succeedNow(chunk.toArray()).zip(
+              rest.runCollect().map((chunk) => chunk.toArray())
+            )
           )
-        )
+      )
 
       const {
         tuple: [result, leftover]

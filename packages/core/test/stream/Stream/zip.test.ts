@@ -3,6 +3,7 @@ import { Tuple } from "../../../src/collection/immutable/Tuple"
 import { Either } from "../../../src/data/Either"
 import { Option } from "../../../src/data/Option"
 import { Effect } from "../../../src/io/Effect"
+import { Exit } from "../../../src/io/Exit"
 import { Promise } from "../../../src/io/Promise"
 import { Queue } from "../../../src/io/Queue"
 import { Stream } from "../../../src/stream/Stream"
@@ -71,6 +72,22 @@ describe("Stream", () => {
 
       expect(result).toEqual(Either.left("ouch"))
     })
+
+    it("dies if one of the streams throws an exception", async () => {
+      const error = Error("ouch")
+      const program = Stream(1)
+        .flatMap(() =>
+          Stream.succeed(() => {
+            throw error
+          })
+        )
+        .zipWith(Stream(1), (a, b) => a + b)
+        .runCollect()
+
+      const result = await program.unsafeRunPromiseExit()
+
+      expect(result.untraced()).toEqual(Exit.die(error))
+    })
   })
 
   describe("zipAll", () => {
@@ -136,16 +153,14 @@ describe("Stream", () => {
         .tap(({ left }) => left.offer(Chunk.single(0)))
         .tap(({ right }) => right.offerAll(Chunk(Chunk.single(0), Chunk.single(1))))
         .bind("chunk1", ({ out }) =>
-          out
-            .take()
+          out.take
             .flatMap((take) => take.done())
             .replicateEffect(2)
             .map((chunk) => chunk.flatten())
         )
         .tap(({ left }) => left.offerAll(Chunk(Chunk.single(1), Chunk.single(2))))
         .bind("chunk2", ({ out }) =>
-          out
-            .take()
+          out.take
             .flatMap((take) => take.done())
             .replicateEffect(2)
             .map((chunk) => chunk.flatten())

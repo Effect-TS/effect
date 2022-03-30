@@ -48,123 +48,123 @@ export function debounce_<R, E, A>(
   __tsplusTrace?: string
 ): Stream<R & HasClock, E, A> {
   return Stream.unwrap(
-    Effect.Do()
-      .bind("duration", () => Effect.succeed(duration))
-      .bind("scope", () => Effect.forkScope)
-      .bind("handoff", () => Handoff.make<HandoffSignal<void, E, A>>())
-      .map(({ duration, handoff, scope }) => {
-        function enqueue(last: Chunk<A>, __tsplusTrace?: string) {
-          return Clock.sleep(duration)
-            .as(last)
-            .forkIn(scope)
-            .map((fiber) => consumer(new Previous(fiber)))
-        }
-
-        const producer: Channel<
-          R & HasClock,
-          E,
-          Chunk<A>,
-          unknown,
-          E,
-          never,
-          unknown
-        > = Channel.readWithCause(
-          (input: Chunk<A>) =>
-            input.last.fold(
-              producer,
-              (last) =>
-                Channel.fromEffect(
-                  handoff.offer(HandoffSignal.Emit(Chunk.single(last)))
-                ) > producer
-            ),
-          (cause) => Channel.fromEffect(handoff.offer(HandoffSignal.Halt(cause))),
-          () =>
-            Channel.fromEffect(
-              handoff.offer(HandoffSignal.End(SinkEndReason.UpstreamEnd))
+    Effect.transplant((grafter) =>
+      Effect.Do()
+        .bind("duration", () => Effect.succeed(duration))
+        .bind("handoff", () => Handoff.make<HandoffSignal<void, E, A>>())
+        .map(({ duration, handoff }) => {
+          function enqueue(last: Chunk<A>, __tsplusTrace?: string) {
+            return grafter(Clock.sleep(duration).as(last).fork()).map((fiber) =>
+              consumer(new Previous(fiber))
             )
-        )
+          }
 
-        function consumer(
-          state: DebounceState<E, A>,
-          __tsplusTrace?: string
-        ): Channel<R & HasClock, unknown, unknown, unknown, E, Chunk<A>, unknown> {
-          return Channel.unwrap(() => {
-            switch (state._tag) {
-              case "NotStarted": {
-                return handoff.take().map((signal) => {
-                  switch (signal._tag) {
-                    case "Emit": {
-                      return Channel.unwrap(enqueue(signal.elements))
+          const producer: Channel<
+            R & HasClock,
+            E,
+            Chunk<A>,
+            unknown,
+            E,
+            never,
+            unknown
+          > = Channel.readWithCause(
+            (input: Chunk<A>) =>
+              input.last.fold(
+                producer,
+                (last) =>
+                  Channel.fromEffect(
+                    handoff.offer(HandoffSignal.Emit(Chunk.single(last)))
+                  ) > producer
+              ),
+            (cause) => Channel.fromEffect(handoff.offer(HandoffSignal.Halt(cause))),
+            () =>
+              Channel.fromEffect(
+                handoff.offer(HandoffSignal.End(SinkEndReason.UpstreamEnd))
+              )
+          )
+
+          function consumer(
+            state: DebounceState<E, A>,
+            __tsplusTrace?: string
+          ): Channel<R & HasClock, unknown, unknown, unknown, E, Chunk<A>, unknown> {
+            return Channel.unwrap(() => {
+              switch (state._tag) {
+                case "NotStarted": {
+                  return handoff.take().map((signal) => {
+                    switch (signal._tag) {
+                      case "Emit": {
+                        return Channel.unwrap(enqueue(signal.elements))
+                      }
+                      case "Halt": {
+                        return Channel.failCause(signal.error)
+                      }
+                      case "End": {
+                        return Channel.unit
+                      }
                     }
-                    case "Halt": {
-                      return Channel.failCause(signal.error)
+                  })
+                }
+                case "Current": {
+                  return state.fiber.join().map((signal) => {
+                    switch (signal._tag) {
+                      case "Emit": {
+                        return Channel.unwrap(enqueue(signal.elements))
+                      }
+                      case "Halt": {
+                        return Channel.failCause(signal.error)
+                      }
+                      case "End": {
+                        return Channel.unit
+                      }
                     }
-                    case "End": {
-                      return Channel.unit
-                    }
-                  }
-                })
-              }
-              case "Current": {
-                return state.fiber.join().map((signal) => {
-                  switch (signal._tag) {
-                    case "Emit": {
-                      return Channel.unwrap(enqueue(signal.elements))
-                    }
-                    case "Halt": {
-                      return Channel.failCause(signal.error)
-                    }
-                    case "End": {
-                      return Channel.unit
-                    }
-                  }
-                })
-              }
-              case "Previous": {
-                return state.fiber.join().raceWith(
-                  handoff.take(),
-                  (exit, current) =>
-                    exit.fold(
-                      (cause) => current.interrupt().as(Channel.failCause(cause)),
-                      (chunk) =>
-                        Effect.succeedNow(
-                          Channel.write(chunk) > consumer(new Current(current))
-                        )
-                    ),
-                  (exit, previous) =>
-                    exit.fold(
-                      (cause) => previous.interrupt().as(Channel.failCause(cause)),
-                      (signal) => {
-                        switch (signal._tag) {
-                          case "Emit": {
-                            return previous.interrupt() > enqueue(signal.elements)
-                          }
-                          case "Halt": {
-                            return previous
-                              .interrupt()
-                              .as(Channel.failCause(signal.error))
-                          }
-                          case "End": {
-                            return previous
-                              .join()
-                              .map((chunk) => Channel.write(chunk) > Channel.unit)
+                  })
+                }
+                case "Previous": {
+                  return state.fiber.join().raceWith(
+                    handoff.take(),
+                    (exit, current) =>
+                      exit.fold(
+                        (cause) => current.interrupt().as(Channel.failCause(cause)),
+                        (chunk) =>
+                          Effect.succeedNow(
+                            Channel.write(chunk) > consumer(new Current(current))
+                          )
+                      ),
+                    (exit, previous) =>
+                      exit.fold(
+                        (cause) => previous.interrupt().as(Channel.failCause(cause)),
+                        (signal) => {
+                          switch (signal._tag) {
+                            case "Emit": {
+                              return previous.interrupt() > enqueue(signal.elements)
+                            }
+                            case "Halt": {
+                              return previous
+                                .interrupt()
+                                .as(Channel.failCause(signal.error))
+                            }
+                            case "End": {
+                              return previous
+                                .join()
+                                .map((chunk) => Channel.write(chunk) > Channel.unit)
+                            }
                           }
                         }
-                      }
-                    )
-                )
+                      )
+                  )
+                }
               }
-            }
-          })
-        }
+            })
+          }
 
-        concreteStream(self)
+          concreteStream(self)
 
-        return (
-          Stream.managed((self.channel >> producer).runManaged().fork()) >
-          new StreamInternal(consumer(new NotStarted()))
-        )
-      })
+          return (
+            Stream.scoped((self.channel >> producer).runScoped().fork()) >
+            new StreamInternal(consumer(new NotStarted()))
+          )
+        })
+    )
   )
 }
 

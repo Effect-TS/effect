@@ -11,7 +11,7 @@ import { Strategy } from "./strategy"
  *
  * For best performance use capacities that are powers of two.
  *
- * @tsplus static ets/XHubOps sliding
+ * @tsplus static ets/HubOps sliding
  */
 export function sliding<A>(
   requestedCapacity: number,

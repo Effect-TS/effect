@@ -1,28 +1,26 @@
-import type { Managed } from "../../Managed"
+import { Effect } from "../../Effect"
 import { Runtime } from "../../Runtime"
 import type { RuntimeConfig } from "../../RuntimeConfig"
+import type { HasScope } from "../../Scope"
 import type { Layer } from "../definition"
 
 /**
- * Converts a layer that requires no services into a managed runtime, which
- * can be used to execute effects.
+ * Converts a layer that requires no services into a scoped runtime, which can
+ * be used to execute effects.
  *
  * @tsplus fluent ets/Layer toRuntime
  */
-export function toRuntime_<R, E, A>(
-  self: Layer<R, E, A>,
+export function toRuntime_<RIn, E, ROut>(
+  self: Layer<RIn, E, ROut>,
   runtimeConfig: RuntimeConfig
-): Managed<R, E, Runtime<A>> {
-  return self.build().map((a) => new Runtime(a, runtimeConfig))
+): Effect<RIn & HasScope, E, Runtime<ROut>> {
+  return Effect.scopeWith((scope) => self.buildWithScope(scope)).map(
+    (environment) => new Runtime(environment, runtimeConfig)
+  )
 }
 
 /**
- * Converts a layer that requires no services into a managed runtime, which
- * can be used to execute effects.
- *
- * @ets_data_first toRuntime_
+ * Converts a layer that requires no services into a scoped runtime, which can
+ * be used to execute effects.
  */
-export function toRuntime(runtimeConfig: RuntimeConfig) {
-  return <R, E, A>(self: Layer<R, E, A>): Managed<R, E, Runtime<A>> =>
-    self.toRuntime(runtimeConfig)
-}
+export const toRuntime = Pipeable(toRuntime_)

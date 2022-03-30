@@ -7,7 +7,6 @@ import type { Effect, UIO } from "../Effect"
 import type { Exit } from "../Exit"
 import type { FiberId } from "../FiberId"
 import type { FiberRef } from "../FiberRef"
-import type { FiberScope } from "../FiberScope"
 import type { InterruptStatus } from "../InterruptStatus"
 import type { Trace } from "../Trace"
 import type { TraceElement } from "../TraceElement"
@@ -56,10 +55,6 @@ export declare namespace Fiber {
      * The interrupt status of the `Fiber`.
      */
     readonly interruptStatus: InterruptStatus
-    /**
-     * The current scope of the `Fiber`.
-     */
-    readonly scope: FiberScope
   }
 }
 
@@ -118,7 +113,7 @@ export interface BaseFiber<E, A> extends Fiber<E, A> {
    * Gets the value of the fiber ref for this fiber, or the initial value of the
    * fiber ref, if the fiber is not storing the ref.
    */
-  readonly _getRef: <K>(ref: FiberRef.Runtime<K>) => UIO<K>
+  readonly _getRef: <K>(ref: FiberRef<K>) => UIO<K>
 
   /**
    * Interrupts the fiber as if interrupted from the specified fiber. If the
@@ -146,11 +141,6 @@ export interface RuntimeFiber<E, A> extends BaseFiber<E, A> {
    * The location the fiber was forked from.
    */
   readonly _location: TraceElement
-
-  /**
-   * The scope of the fiber.
-   */
-  readonly _scope: FiberScope
 
   /**
    * The status of the fiber.
@@ -198,7 +188,7 @@ export class SyntheticFiber<E, A> implements BaseFiber<E, A> {
     readonly _children: UIO<Chunk<Fiber.Runtime<any, any>>>,
     readonly _inheritRefs: UIO<void>,
     readonly _poll: UIO<Option<Exit<E, A>>>,
-    readonly _getRef: <K>(ref: FiberRef.Runtime<K>) => UIO<K>,
+    readonly _getRef: <K>(ref: FiberRef<K>) => UIO<K>,
     readonly _interruptAs: (fiberId: FiberId) => UIO<Exit<E, A>>
   ) {}
 }
@@ -209,7 +199,7 @@ export function makeSynthetic<E, A>(_: {
   readonly children: UIO<Chunk<Fiber.Runtime<any, any>>>
   readonly inheritRefs: UIO<void>
   readonly poll: UIO<Option<Exit<E, A>>>
-  readonly getRef: <K>(ref: FiberRef.Runtime<K>) => UIO<K>
+  readonly getRef: <K>(ref: FiberRef<K>) => UIO<K>
   readonly interruptAs: (fiberId: FiberId) => UIO<Exit<E, A>>
 }): Fiber<E, A> {
   return new SyntheticFiber(

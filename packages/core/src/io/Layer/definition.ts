@@ -1,7 +1,8 @@
 import { AtomicReference } from "../../support/AtomicReference"
 import { _E, _RIn, _ROut } from "../../support/Symbols"
-import type { Cause } from "../Cause/definition"
-import type { Managed } from "../Managed/definition"
+import type { Cause } from "../Cause"
+import type { Effect } from "../Effect"
+import type { HasScope } from "../Scope"
 
 export const LayerHashSym = Symbol.for("@effect-ts/core/Layer")
 export type LayerHashSym = typeof LayerHashSym
@@ -58,13 +59,25 @@ export abstract class LayerAbstract<RIn, E, ROut> implements Layer<RIn, E, ROut>
 }
 
 export type Instruction =
+  | ILayerExtendScope<any, any, any>
   | ILayerFold<any, any, any, any, any, any, any, any, any>
   | ILayerFresh<any, any, any>
-  | ILayerManaged<any, any, any>
+  | ILayerScoped<any, any, any>
   | ILayerSuspend<any, any, any>
   | ILayerTo<any, any, any, any, any>
-  | ILayerZipWith<any, any, any, any, any, any, any>
   | ILayerZipWithPar<any, any, any, any, any, any, any>
+
+export class ILayerExtendScope<RIn, E, ROut> extends LayerAbstract<
+  RIn & HasScope,
+  E,
+  ROut
+> {
+  readonly _tag = "LayerExtendScope"
+
+  constructor(readonly self: Layer<RIn, E, ROut>) {
+    super()
+  }
+}
 
 export class ILayerFold<
   RIn,
@@ -96,10 +109,10 @@ export class ILayerFresh<RIn, E, ROut> extends LayerAbstract<RIn, E, ROut> {
   }
 }
 
-export class ILayerManaged<RIn, E, ROut> extends LayerAbstract<RIn, E, ROut> {
-  readonly _tag = "LayerManaged"
+export class ILayerScoped<RIn, E, ROut> extends LayerAbstract<RIn, E, ROut> {
+  readonly _tag = "LayerScoped"
 
-  constructor(readonly self: Managed<RIn, E, ROut>) {
+  constructor(readonly self: Effect<RIn & HasScope, E, ROut>) {
     super()
   }
 }
@@ -122,22 +135,6 @@ export class ILayerTo<RIn, E, ROut, E1, ROut1> extends LayerAbstract<
   constructor(
     readonly self: Layer<RIn, E, ROut>,
     readonly that: Layer<ROut, E1, ROut1>
-  ) {
-    super()
-  }
-}
-
-export class ILayerZipWith<RIn, E, ROut, RIn1, E1, ROut2, ROut3> extends LayerAbstract<
-  RIn & RIn1,
-  E | E1,
-  ROut3
-> {
-  readonly _tag = "LayerZipWith"
-
-  constructor(
-    readonly self: Layer<RIn, E, ROut>,
-    readonly that: Layer<RIn1, E1, ROut2>,
-    readonly f: (s: ROut, t: ROut2) => ROut3
   ) {
     super()
   }

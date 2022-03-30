@@ -27,13 +27,5 @@ export function andTo_<
  * Feeds the output services of this layer into the input of the specified
  * layer, resulting in a new layer with the inputs of this layer, and the
  * outputs of both layers.
- *
- * @ets_data_first andTo_
  */
-export function andTo<RIn2 extends Spreadable, E2, ROut2 extends Spreadable>(
-  that: Layer<RIn2, E2, ROut2>
-) {
-  return <RIn, E, ROut extends Spreadable>(
-    self: Layer<RIn, E, ROut>
-  ): Layer<RIn & Erase<ROut & RIn2, ROut>, E | E2, ROut & ROut2> => self > that
-}
+export const andTo = Pipeable(andTo_)

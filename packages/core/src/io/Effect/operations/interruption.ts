@@ -1,7 +1,6 @@
 import type * as HashSet from "../../../collection/immutable/HashSet"
 import type { LazyArg } from "../../../data/Function"
 import { Cause } from "../../Cause"
-import { join as fiberJoin } from "../../Fiber/operations/join"
 import type { FiberId } from "../../FiberId"
 import { InterruptStatus } from "../../InterruptStatus"
 import { Effect, ICheckInterrupt, IInterruptStatus } from "../definition"
@@ -86,15 +85,8 @@ export function interruptStatus_<R, E, A>(
  * effect becomes interruptible (the default), while if `false` is used, then
  * the effect becomes uninterruptible. These changes are compositional, so
  * they only affect regions of the effect.
- *
- * @ets_data_first interruptStatus_
  */
-export function interruptStatus(
-  flag: LazyArg<InterruptStatus>,
-  __tsplusTrace?: string
-) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> => self.interruptStatus(flag)
-}
+export const interruptStatus = Pipeable(interruptStatus_)
 
 /**
  * Returns a new effect that performs the same operations as this effect, but
@@ -202,7 +194,7 @@ export function disconnect<R, E, A>(
       .bind("id", () => Effect.fiberId)
       .bind("fiber", () => restore(effect).forkDaemon())
       .flatMap(({ fiber, id }) =>
-        restore(fiberJoin(fiber)).onInterrupt(() => fiber.interruptAs(id).forkDaemon())
+        restore(fiber.join()).onInterrupt(() => fiber.interruptAs(id).forkDaemon())
       )
   )
 }
@@ -232,16 +224,8 @@ export function onInterrupt_<R, E, A, R2, X>(
 /**
  * Calls the specified function, and runs the effect it returns, if this
  * effect is interrupted.
- *
- * @ets_data_first onInterrupt_
  */
-export function onInterrupt<R2, X>(
-  cleanup: (interruptors: HashSet.HashSet<FiberId>) => Effect<R2, never, X>,
-  __tsplusTrace?: string
-) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E, A> =>
-    self.onInterrupt(cleanup)
-}
+export const onInterrupt = Pipeable(onInterrupt_)
 
 /**
  * Calls the specified function, and runs the effect it returns, if this
@@ -271,16 +255,8 @@ export function onInterruptPolymorphic_<R, E, A, R2, E2, X>(
 /**
  * Calls the specified function, and runs the effect it returns, if this
  * effect is interrupted (allows for expanding error).
- *
- * @ets_data_first onInterruptPolymorphic_
  */
-export function onInterruptPolymorphic<R2, E2, X>(
-  cleanup: (interruptors: HashSet.HashSet<FiberId>) => Effect<R2, E2, X>,
-  __tsplusTrace?: string
-) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E | E2, A> =>
-    self.onInterruptPolymorphic(cleanup)
-}
+export const onInterruptPolymorphic = Pipeable(onInterruptPolymorphic_)
 
 /**
  * Returns an effect that is interrupted as if by the specified fiber.

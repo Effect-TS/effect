@@ -24,7 +24,7 @@ describe("Channel", () => {
               )
 
               return (refReader(source) >> twoWriters)
-                .mapEffect(() => dest.get())
+                .mapEffect(() => dest.get)
                 .run()
                 .map((result) => {
                   let missing = HashSet.from(data)
@@ -66,7 +66,7 @@ describe("Channel", () => {
               )
 
               return (refReader(source) >> twoWriters)
-                .mapEffect(() => dest.get())
+                .mapEffect(() => dest.get)
                 .run()
                 .map((result) => {
                   const expected = HashSet.from(data.map(f))

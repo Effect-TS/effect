@@ -1,6 +1,6 @@
 import type { Chunk } from "../../../collection/immutable/Chunk"
 import type { LazyArg } from "../../../data/Function"
-import { Managed } from "../../../io/Managed"
+import { Effect } from "../../../io/Effect"
 import { Channel } from "../../Channel"
 import type { Stream } from "../../Stream"
 import { Take } from "../../Take"
@@ -25,20 +25,20 @@ export function interleaveWith_<R, E, A, R2, E2, A2, R3, E3>(
 ): Stream<R & R2 & R3, E | E2 | E3, A | A2> {
   concreteStream(self)
   return new StreamInternal(
-    Channel.managed(
-      Managed.Do()
-        .bind("left", () => Handoff.make<Take<E | E2 | E3, A | A2>>().toManaged())
-        .bind("right", () => Handoff.make<Take<E | E2 | E3, A | A2>>().toManaged())
+    Channel.scoped(
+      Effect.Do()
+        .bind("left", () => Handoff.make<Take<E | E2 | E3, A | A2>>())
+        .bind("right", () => Handoff.make<Take<E | E2 | E3, A | A2>>())
         .tap(({ left }) =>
           (self.channel.concatMap(Channel.writeChunk) >> producer(left))
-            .runManaged()
+            .runScoped()
             .fork()
         )
         .tap(({ right }) => {
           const that0 = that()
           concreteStream(that0)
           return (that0.channel.concatMap(Channel.writeChunk) >> producer(right))
-            .runManaged()
+            .runScoped()
             .fork()
         }),
       ({ left, right }) => {

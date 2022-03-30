@@ -7,21 +7,23 @@ import { Stream } from "../../../src/stream/Stream"
 describe("Stream", () => {
   describe("broadcast", () => {
     it("values", async () => {
-      const program = Stream.range(0, 5)
-        .broadcast(2, 12)
-        .use((streams) =>
-          Effect.struct({
-            out1: streams
-              .unsafeGet(0)!
-              .runCollect()
-              .map((chunk) => chunk.toArray()),
-            out2: streams
-              .unsafeGet(1)!
-              .runCollect()
-              .map((chunk) => chunk.toArray()),
-            expected: Effect.succeed(List.range(0, 5).toArray())
-          })
-        )
+      const program = Effect.scoped(
+        Stream.range(0, 5)
+          .broadcast(2, 12)
+          .flatMap((streams) =>
+            Effect.struct({
+              out1: streams
+                .unsafeGet(0)!
+                .runCollect()
+                .map((chunk) => chunk.toArray()),
+              out2: streams
+                .unsafeGet(1)!
+                .runCollect()
+                .map((chunk) => chunk.toArray()),
+              expected: Effect.succeed(List.range(0, 5).toArray())
+            })
+          )
+      )
 
       const { expected, out1, out2 } = await program.unsafeRunPromise()
 
@@ -30,9 +32,8 @@ describe("Stream", () => {
     })
 
     it("errors", async () => {
-      const program = (Stream.range(0, 1) + Stream.fail("boom"))
-        .broadcast(2, 12)
-        .use((streams) =>
+      const program = Effect.scoped(
+        (Stream.range(0, 1) + Stream.fail("boom")).broadcast(2, 12).flatMap((streams) =>
           Effect.struct({
             out1: streams
               .unsafeGet(0)!
@@ -47,6 +48,7 @@ describe("Stream", () => {
             expected: Effect.left("boom")
           })
         )
+      )
 
       const { expected, out1, out2 } = await program.unsafeRunPromise()
 
@@ -55,30 +57,32 @@ describe("Stream", () => {
     })
 
     it("backPressure", async () => {
-      const program = Stream.range(0, 5)
-        .flatMap((n) => Stream.succeed(n))
-        .broadcast(2, 2)
-        .use((streams) =>
-          Effect.Do()
-            .bind("ref", () => Ref.make(List.empty<number>()))
-            .bind("latch", () => Promise.make<never, void>())
-            .bind("fib", ({ latch, ref }) =>
-              streams
-                .unsafeGet(0)!
-                .tap(
-                  (n) =>
-                    ref.update((list) => list.prepend(n)) >
-                    Effect.when(n === 1, latch.succeed(undefined))
-                )
-                .runDrain()
-                .fork()
-            )
-            .tap(({ latch }) => latch.await())
-            .bind("snapshot1", ({ ref }) => ref.get())
-            .tap(() => streams.unsafeGet(1)!.runDrain())
-            .tap(({ fib }) => fib.await())
-            .bind("snapshot2", ({ ref }) => ref.get())
-        )
+      const program = Effect.scoped(
+        Stream.range(0, 5)
+          .flatMap((n) => Stream.succeed(n))
+          .broadcast(2, 2)
+          .flatMap((streams) =>
+            Effect.Do()
+              .bind("ref", () => Ref.make(List.empty<number>()))
+              .bind("latch", () => Promise.make<never, void>())
+              .bind("fib", ({ latch, ref }) =>
+                streams
+                  .unsafeGet(0)!
+                  .tap(
+                    (n) =>
+                      ref.update((list) => list.prepend(n)) >
+                      Effect.when(n === 1, latch.succeed(undefined))
+                  )
+                  .runDrain()
+                  .fork()
+              )
+              .tap(({ latch }) => latch.await())
+              .bind("snapshot1", ({ ref }) => ref.get)
+              .tap(() => streams.unsafeGet(1)!.runDrain())
+              .tap(({ fib }) => fib.await())
+              .bind("snapshot2", ({ ref }) => ref.get)
+          )
+      )
 
       const { snapshot1, snapshot2 } = await program.unsafeRunPromise()
 
@@ -87,13 +91,15 @@ describe("Stream", () => {
     })
 
     it("unsubscribe", async () => {
-      const program = Stream.range(0, 5)
-        .broadcast(2, 2)
-        .use(
-          (streams) =>
-            streams.unsafeGet(0)!.toPull().useDiscard(Effect.unit).ignore() >
-            streams.unsafeGet(1)!.runCollect()
-        )
+      const program = Effect.scoped(
+        Stream.range(0, 5)
+          .broadcast(2, 2)
+          .flatMap(
+            (streams) =>
+              Effect.scoped(streams.unsafeGet(0)!.toPull().ignore()) >
+              streams.unsafeGet(1)!.runCollect()
+          )
+      )
 
       const result = await program.unsafeRunPromise()
 

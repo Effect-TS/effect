@@ -47,7 +47,7 @@ describe("Channel", () => {
               () => Channel.unit
             )
           }
-          return inner() > Channel.fromEffect(ref.get())
+          return inner() > Channel.fromEffect(ref.get)
         }
       )
 
@@ -109,7 +109,7 @@ describe("Channel", () => {
 
           return conduit.run()
         })
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -139,7 +139,7 @@ describe("Channel", () => {
 
           return (left >> right).runDrain()
         })
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

@@ -1,6 +1,6 @@
 import type { LazyArg } from "../../../data/Function"
-import type { Effect, RIO } from "../../../io/Effect"
-import { Managed } from "../../../io/Managed"
+import type { RIO } from "../../../io/Effect"
+import { Effect } from "../../../io/Effect"
 import { Stream } from "../definition"
 
 /**
@@ -14,5 +14,5 @@ export function acquireReleaseWith<R, E, A, R2, Z>(
   release: (a: A) => RIO<R2, Z>,
   __tsplusTrace?: string
 ): Stream<R & R2, E, A> {
-  return Stream.managed(Managed.acquireReleaseWith(acquire(), release))
+  return Stream.scoped(Effect.acquireRelease(acquire, release))
 }

@@ -1,16 +1,11 @@
 import type { UIO } from "../../Effect"
-import type { XHub } from "../definition"
-import { concreteHub } from "../definition"
+import type { Hub } from "../definition"
 
 /**
  * Checks whether the hub is currently empty.
  *
- * @tsplus fluent ets/XHub isEmpty
+ * @tsplus fluent ets/Hub isEmpty
  */
-export function isEmpty<RA, RB, EA, EB, A, B>(
-  self: XHub<RA, RB, EA, EB, A, B>,
-  __tsplusTrace?: string
-): UIO<boolean> {
-  concreteHub(self)
-  return self._size.map((n) => n === 0)
+export function isEmpty<A>(self: Hub<A>, __tsplusTrace?: string): UIO<boolean> {
+  return self.size.map((n) => n === 0)
 }

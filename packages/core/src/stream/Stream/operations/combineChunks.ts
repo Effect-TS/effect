@@ -4,7 +4,6 @@ import type { LazyArg } from "../../../data/Function"
 import type { Option } from "../../../data/Option"
 import { Effect } from "../../../io/Effect"
 import type { Exit } from "../../../io/Exit"
-import { Managed } from "../../../io/Managed"
 import { Channel } from "../../Channel"
 import { Take } from "../../Take"
 import { Stream } from "../definition"
@@ -32,20 +31,20 @@ export function combineChunks_<R, E, A, R2, E2, A2, S, A3>(
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A3> {
   return new StreamInternal(
-    Channel.managed(
-      Managed.Do()
-        .bind("left", () => Handoff.make<Take<E, A>>().toManaged())
-        .bind("right", () => Handoff.make<Take<E2, A2>>().toManaged())
-        .bind("latchL", () => Handoff.make<void>().toManaged())
-        .bind("latchR", () => Handoff.make<void>().toManaged())
+    Channel.scoped(
+      Effect.Do()
+        .bind("left", () => Handoff.make<Take<E, A>>())
+        .bind("right", () => Handoff.make<Take<E2, A2>>())
+        .bind("latchL", () => Handoff.make<void>())
+        .bind("latchR", () => Handoff.make<void>())
         .tap(({ latchL, left }) => {
           concreteStream(self)
-          return (self.channel >> producer(left, latchL)).runManaged().fork()
+          return (self.channel >> producer(left, latchL)).runScoped().fork()
         })
         .tap(({ latchR, right }) => {
           const that0 = that()
           concreteStream(that0)
-          return (that0.channel >> producer(right, latchR)).runManaged().fork()
+          return (that0.channel >> producer(right, latchR)).runScoped().fork()
         }),
       ({ latchL, latchR, left, right }) => {
         const pullLeft =

@@ -1,7 +1,6 @@
 import type { Chunk } from "../../../collection/immutable/Chunk"
 import { isFiberFailure } from "../../../io/Cause"
-import type { Effect } from "../../../io/Effect"
-import { Managed } from "../../../io/Managed"
+import { Effect } from "../../../io/Effect"
 import { Queue } from "../../../io/Queue"
 import { Channel } from "../../Channel"
 import { Take } from "../../Take"
@@ -23,19 +22,20 @@ export function asyncEffect<R, E, A, Z>(
   __tsplusTrace?: string
 ): Stream<R, E, A> {
   return new StreamInternal(
-    Channel.unwrapManaged(
-      Managed.Do()
+    Channel.unwrapScoped(
+      Effect.Do()
         .bind("output", () =>
-          Queue.bounded<Take<E, A>>(outputBuffer).toManagedWith((queue) =>
-            queue.shutdown()
+          Effect.acquireRelease(
+            Queue.bounded<Take<E, A>>(outputBuffer),
+            (queue) => queue.shutdown
           )
         )
-        .bind("runtime", () => Managed.runtime<R>())
+        .bind("runtime", () => Effect.runtime<R>())
         .tap(({ output, runtime }) =>
           register(
             Emit((k) => {
               try {
-                runtime.unsafeRunAsync(
+                runtime.unsafeRun(
                   Take.fromPull(k).flatMap((take) => output.offer(take))
                 )
               } catch (e: unknown) {
@@ -46,7 +46,7 @@ export function asyncEffect<R, E, A, Z>(
                 }
               }
             })
-          ).toManaged()
+          )
         )
         .map(({ output }) => {
           const loop: Channel<
@@ -58,12 +58,11 @@ export function asyncEffect<R, E, A, Z>(
             Chunk<A>,
             void
           > = Channel.unwrap(
-            output
-              .take()
+            output.take
               .flatMap((take) => take.done())
               .fold(
                 (maybeError) =>
-                  Channel.fromEffect(output.shutdown()) >
+                  Channel.fromEffect(output.shutdown) >
                   maybeError.fold(Channel.unit, (e) => Channel.fail(e)),
                 (a) => Channel.write(a) > loop
               )

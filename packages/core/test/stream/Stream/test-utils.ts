@@ -60,6 +60,6 @@ export function chunkCoordination<A>(
         )
         .flatMap((list) => queue.offerAll(list)),
       proceed: ps.offer(undefined).asUnit(),
-      awaitNext: ps.take()
+      awaitNext: ps.take
     }))
 }

@@ -1,7 +1,6 @@
 import type { LazyArg } from "../../../data/Function"
 import type { Effect } from "../../Effect"
-import type { CloseableScope, HasScope } from "../definition"
-import { concreteCloseableScope } from "../definition"
+import type { HasScope, Scope } from "../definition"
 
 /**
  * Uses the scope by providing it to an `Effect` workflow that needs a scope,
@@ -12,11 +11,10 @@ import { concreteCloseableScope } from "../definition"
  * @tsplus fluent ets/Scope/Closeable use
  */
 export function use_<R, E, A>(
-  self: CloseableScope,
+  self: Scope.Closeable,
   effect: LazyArg<Effect<R & HasScope, E, A>>
 ): Effect<R, E, A> {
-  concreteCloseableScope(self)
-  return self._use(effect)
+  return self.extend(effect).onExit((exit) => self.close(exit))
 }
 
 /**

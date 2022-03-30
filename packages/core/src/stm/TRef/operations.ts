@@ -1,6 +1,4 @@
 // codegen:start {preset: barrel, include: ./operations/*.ts}
-export * from "./operations/fold"
-export * from "./operations/foldAll"
 export * from "./operations/get"
 export * from "./operations/getAndSet"
 export * from "./operations/getAndUpdate"

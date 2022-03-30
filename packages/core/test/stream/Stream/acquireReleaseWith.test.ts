@@ -14,7 +14,7 @@ describe("Stream", () => {
           ).flatMap((chunk) => Stream.fromIterable(chunk))
         )
         .bind("result", ({ stream }) => stream.runCollect())
-        .bind("released", ({ done }) => done.get())
+        .bind("released", ({ done }) => done.get)
 
       const { released, result } = await program.unsafeRunPromise()
 
@@ -33,7 +33,7 @@ describe("Stream", () => {
             .take(2)
         )
         .bind("result", ({ stream }) => stream.runCollect())
-        .bind("released", ({ done }) => done.get())
+        .bind("released", ({ done }) => done.get)
 
       const { released, result } = await program.unsafeRunPromise()
 
@@ -50,7 +50,7 @@ describe("Stream", () => {
           ).take(0)
         )
         .bind("result", ({ stream }) => stream.runDrain())
-        .flatMap(({ acquired }) => acquired.get())
+        .flatMap(({ acquired }) => acquired.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -66,7 +66,7 @@ describe("Stream", () => {
             .runDrain()
             .exit()
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -77,12 +77,12 @@ describe("Stream", () => {
       const program = Effect.struct({
         leftAssoc: Stream.acquireReleaseWith(Ref.make(true), (ref) => ref.set(false))
           .flatMap((ref) => Stream.succeed(ref))
-          .flatMap((ref) => Stream.fromEffect(ref.get()))
+          .flatMap((ref) => Stream.fromEffect(ref.get))
           .runCollect()
           .map((chunk) => chunk.unsafeHead()),
         rightAssoc: Stream.acquireReleaseWith(Ref.make(true), (ref) => ref.set(false))
           .flatMap((ref) =>
-            Stream.succeed(ref).flatMap((ref) => Stream.fromEffect(ref.get()))
+            Stream.succeed(ref).flatMap((ref) => Stream.fromEffect(ref.get))
           )
           .runCollect()
           .map((chunk) => chunk.unsafeHead())

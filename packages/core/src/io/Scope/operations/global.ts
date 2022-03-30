@@ -1,6 +1,7 @@
 import { LazyValue } from "../../../data/LazyValue"
 import { Effect } from "../../Effect"
-import { CloseableScope, Scope } from "../definition"
+import { Scope } from "../definition"
+import { CloseableScopeInternal } from "./_internal/CloseableScopeInternal"
 
 /**
  * The global scope which is never closed. Finalizers added to this scope will
@@ -8,11 +9,11 @@ import { CloseableScope, Scope } from "../definition"
  *
  * @tsplus static ets/ScopeOps global
  */
-export const global: LazyValue<Scope.Closeable> = new LazyValue(
+export const global: LazyValue<Scope.Closeable> = LazyValue.make(
   () =>
-    new CloseableScope({
-      fork: Scope.make,
-      addFinalizerExit: () => Effect.unit,
-      close: () => Effect.unit
-    })
+    new CloseableScopeInternal(
+      Scope.make,
+      () => Effect.unit,
+      () => Effect.unit
+    )
 )

@@ -1,4 +1,3 @@
-import { IO } from "../../io-light/IO"
 import * as St from "../../prelude/Structural"
 import type { FiberId } from "../FiberId"
 import type { TraceElement } from "../TraceElement"
@@ -9,7 +8,7 @@ export type FiberStatusSym = typeof FiberStatusSym
 /**
  * @tsplus type ets/FiberStatus
  */
-export type FiberStatus = Done | Finishing | Running | Suspended
+export type FiberStatus = Done | Running | Suspended
 
 /**
  * @tsplus type ets/FiberStatusOps
@@ -27,25 +26,6 @@ export class Done implements St.HasEquals {
 
   [St.equalsSym](that: unknown): boolean {
     return isFiberStatus(that) && that._tag === "Done"
-  }
-}
-
-export class Finishing {
-  readonly _tag = "Finishing";
-  readonly [FiberStatusSym]: FiberStatusSym = FiberStatusSym
-
-  constructor(readonly interrupting: boolean) {}
-
-  get [St.hashSym](): number {
-    return St.combineHash(St.hashString(this._tag), St.hash(this.interrupting))
-  }
-
-  [St.equalsSym](that: unknown): boolean {
-    return (
-      isFiberStatus(that) &&
-      that._tag === "Finishing" &&
-      this.interrupting === that.interrupting
-    )
   }
 }
 
@@ -73,10 +53,10 @@ export class Suspended {
   readonly [FiberStatusSym]: FiberStatusSym = FiberStatusSym
 
   constructor(
-    readonly previous: FiberStatus,
+    readonly interrupting: boolean,
     readonly interruptible: boolean,
+    readonly asyncs: number,
     readonly blockingOn: FiberId,
-    readonly epoch: number,
     readonly asyncTrace: TraceElement
   ) {}
 
@@ -84,12 +64,12 @@ export class Suspended {
     return St.combineHash(
       St.hashString(this._tag),
       St.combineHash(
-        St.hash(this.previous),
+        St.hash(this.interrupting),
         St.combineHash(
-          St.hash(this.blockingOn),
+          St.hash(this.interruptible),
           St.combineHash(
-            St.hash(this.interruptible),
-            St.combineHash(St.hashNumber(this.epoch), St.hash(this.asyncTrace))
+            St.hashNumber(this.asyncs),
+            St.combineHash(St.hash(this.blockingOn), St.hash(this.asyncTrace))
           )
         )
       )
@@ -100,9 +80,9 @@ export class Suspended {
     return (
       isFiberStatus(that) &&
       that._tag === "Suspended" &&
-      St.equals(this.previous, that.previous) &&
+      this.interrupting === that.interrupting &&
       this.interruptible === that.interruptible &&
-      this.epoch === that.epoch &&
+      this.asyncs === that.asyncs &&
       St.equals(this.blockingOn, that.blockingOn)
     )
   }
@@ -118,13 +98,6 @@ export function isFiberStatus(u: unknown): u is FiberStatus {
 export const statusDone: FiberStatus = new Done()
 
 /**
- * @tsplus static ets/FiberStatusOps Finishing
- */
-export function statsFinishing(interrupting: boolean): FiberStatus {
-  return new Finishing(interrupting)
-}
-
-/**
  * @tsplus static ets/FiberStatusOps Running
  */
 export function statusRunning(interrupting: boolean): FiberStatus {
@@ -135,42 +108,28 @@ export function statusRunning(interrupting: boolean): FiberStatus {
  * @tsplus static ets/FiberStatusOps Suspended
  */
 export function statusSuspended(
-  previous: FiberStatus,
+  interrupting: boolean,
   interruptible: boolean,
+  asyncs: number,
   blockingOn: FiberId,
-  epoch: number,
   asyncTrace: TraceElement
 ): FiberStatus {
-  return new Suspended(previous, interruptible, blockingOn, epoch, asyncTrace)
-}
-
-/**
- * @tsplus fluent ets/FiberStatus isDone
- */
-export function isDone(self: FiberStatus): boolean {
-  return self._tag === "Done"
+  return new Suspended(interrupting, interruptible, asyncs, blockingOn, asyncTrace)
 }
 
 /**
  * @tsplus fluent ets/FiberStatus isInterrupting
  */
 export function isInterrupting(self: FiberStatus): boolean {
-  return isInterruptingSafe(self).run()
-}
-
-function isInterruptingSafe(self: FiberStatus): IO<boolean> {
   switch (self._tag) {
     case "Done": {
-      return IO.succeed(false)
-    }
-    case "Finishing": {
-      return IO.succeed(self.interrupting)
+      return false
     }
     case "Running": {
-      return IO.succeed(self.interrupting)
+      return self.interrupting
     }
     case "Suspended": {
-      return IO.suspend(isInterruptingSafe(self.previous))
+      return self.interrupting
     }
   }
 }
@@ -180,60 +139,23 @@ function isInterruptingSafe(self: FiberStatus): IO<boolean> {
  */
 export function withInterrupting(
   self: FiberStatus,
-  interrupting: boolean
+  newInterrupting: boolean
 ): FiberStatus {
-  return withInterruptingSafe(self, interrupting).run()
-}
-
-function withInterruptingSafe(
-  self: FiberStatus,
-  interrupting: boolean
-): IO<FiberStatus> {
   switch (self._tag) {
     case "Done": {
-      return IO.succeed(self)
-    }
-    case "Finishing": {
-      return IO.succeed(new Finishing(interrupting))
+      return self
     }
     case "Running": {
-      return IO.succeed(new Running(interrupting))
+      return new Running(newInterrupting)
     }
     case "Suspended": {
-      return IO.suspend(withInterruptingSafe(self.previous, interrupting)).map(
-        (previous) =>
-          new Suspended(
-            previous,
-            self.interruptible,
-            self.blockingOn,
-            self.epoch,
-            self.asyncTrace
-          )
+      return new Suspended(
+        newInterrupting,
+        self.interruptible,
+        self.asyncs,
+        self.blockingOn,
+        self.asyncTrace
       )
-    }
-  }
-}
-
-/**
- * @tsplus fluent ets/FiberStatus toFinishing
- */
-export function toFinishing(self: FiberStatus): FiberStatus {
-  return toFinishingSafe(self).run()
-}
-
-function toFinishingSafe(self: FiberStatus): IO<FiberStatus> {
-  switch (self._tag) {
-    case "Done": {
-      return IO.succeed(self)
-    }
-    case "Finishing": {
-      return IO.succeed(self)
-    }
-    case "Running": {
-      return IO.succeed(self)
-    }
-    case "Suspended": {
-      return IO.suspend(toFinishingSafe(self.previous))
     }
   }
 }

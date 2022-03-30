@@ -14,7 +14,7 @@ import { AtomicReference } from "../../../support/AtomicReference"
 import { defaultScheduler } from "../../../support/Scheduler"
 import * as StackTraceBuilder from "../../../support/StackTraceBuilder"
 import { _A, _E } from "../../../support/Symbols"
-import { Cause, InterruptedException } from "../../Cause"
+import { Cause, IllegalStateException, InterruptedException } from "../../Cause"
 import { Effect } from "../../Effect"
 import type {
   IAsync,
@@ -25,7 +25,6 @@ import type {
 import { EffectError, instruction } from "../../Effect/definition/primitives"
 import { Exit } from "../../Exit"
 import { FiberId } from "../../FiberId"
-import type { Runtime as RuntimeFiberRef } from "../../FiberRef"
 import { FiberRef } from "../../FiberRef"
 import { FiberScope } from "../../FiberScope"
 import { InterruptStatus } from "../../InterruptStatus"
@@ -47,34 +46,34 @@ import { CancelerState } from "./cancelerState"
 import type { Callback } from "./fiberState"
 import { FiberState } from "./fiberState"
 
-const fiberFailureCauses = new LazyValue(() => {
+const fiberFailureCauses = LazyValue.make(() => {
   const metric = Metric.occurrences("effect_fiber_failure_causes", "class")
   concreteSetCount(metric)
   return metric.setCount!
 })
-const fiberForkLocations = new LazyValue(() => {
+const fiberForkLocations = LazyValue.make(() => {
   const metric = Metric.occurrences("effect_fiber_fork", "location")
   concreteSetCount(metric)
   return metric.setCount!
 })
 
-const fibersStarted = new LazyValue(() => {
+const fibersStarted = LazyValue.make(() => {
   const metric = Metric.count("effect_fiber_started")
   concreteCounter(metric)
   return metric.counter!
 })
-const fiberSuccesses = new LazyValue(() => {
+const fiberSuccesses = LazyValue.make(() => {
   const metric = Metric.count("effect_fiber_successes")
   concreteCounter(metric)
   return metric.counter!
 })
-const fiberFailures = new LazyValue(() => {
+const fiberFailures = LazyValue.make(() => {
   const metric = Metric.count("effect_fiber_failures")
   concreteCounter(metric)
   return metric.counter!
 })
 
-const fiberLifetimes = new LazyValue(() => {
+const fiberLifetimes = LazyValue.make(() => {
   const fiberLifetimeBoundaries = Boundaries.exponential(1, 2, 100)
   const metric = Metric.observeHistogram(
     "effect_fiber_lifetimes",
@@ -120,7 +119,7 @@ export type Frame =
   | IFold<any, any, any, any, any, any, any, any, any>
   | ApplyFrame
 
-export type FiberRefLocals = Map<FiberRef.Runtime<any>, any>
+export type FiberRefLocals = Map<FiberRef<unknown>, unknown>
 
 export const catastrophicFailure = new AtomicBoolean(false)
 
@@ -197,7 +196,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       this.fiberRefLocals.size === 0
         ? Effect.unit
         : Effect.forEachDiscard(this.fiberRefLocals, ([ref, value]) =>
-            ref.update((old) => (ref as RuntimeFiberRef<A>).join(old, value))
+            ref.update((old) => ref.join(old, value))
           )
     )
   }
@@ -206,7 +205,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return Effect.succeed(this.unsafePoll())
   }
 
-  _getRef<K>(ref: FiberRef.Runtime<K>): Effect<unknown, never, K> {
+  _getRef<K>(ref: FiberRef<K>): Effect<unknown, never, K> {
     return Effect.succeed(this.unsafeGetRef(ref))
   }
 
@@ -262,8 +261,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       id: this.fiberId,
       status: this.state.get.status,
       interrupters: this.state.get.interruptors,
-      interruptStatus: InterruptStatus.fromBoolean(this.unsafeIsInterruptible),
-      scope: this._scope
+      interruptStatus: InterruptStatus.fromBoolean(this.unsafeIsInterruptible)
     }
   }
 
@@ -306,10 +304,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   unsafeLogWith(
     message: Lazy<string>,
-    cause: Lazy<Cause<any>>,
+    cause: Lazy<Cause<unknown>>,
     overrideLogLevel: Option<LogLevel>,
-    overrideRef1: FiberRef.Runtime<any> | null = null,
-    overrideValue1: any = null,
+    overrideRef1: FiberRef<unknown> | null = null,
+    overrideValue1: unknown = null,
     trace?: string
   ): void {
     const logLevel = overrideLogLevel.getOrElse(
@@ -479,7 +477,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         oldState.asyncCanceler._tag === "Registered"
       ) {
         const newState = FiberState.Executing(
-          oldState.status.previous.withInterrupting(true),
+          FiberStatus.Running(true),
           oldState.observers,
           oldState.suppressed,
           oldState.interruptors.add(fiberId),
@@ -565,15 +563,15 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   // FiberRefs
   // ---------------------------------------------------------------------------
 
-  unsafeGetRef<A>(fiberRef: FiberRef.Runtime<A>): A {
-    return this.fiberRefLocals.get(fiberRef) || (fiberRef as RuntimeFiberRef<A>).initial
+  unsafeGetRef<A>(fiberRef: FiberRef<A>): A {
+    return (this.fiberRefLocals.get(fiberRef) as A) || fiberRef.initialValue()
   }
 
-  unsafeSetRef<A>(fiberRef: FiberRef.Runtime<A>, value: A): void {
+  unsafeSetRef<A>(fiberRef: FiberRef<A>, value: A): void {
     this.fiberRefLocals.set(fiberRef, value)
   }
 
-  unsafeDeleteRef<A>(fiberRef: FiberRef.Runtime<A>): void {
+  unsafeDeleteRef<A>(fiberRef: FiberRef<A>): void {
     this.fiberRefLocals.delete(fiberRef)
   }
 
@@ -744,12 +742,16 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   unsafeEnterAsync(epoch: number, blockingOn: FiberId, trace: TraceElement): void {
     const oldState = this.state.get
 
-    if (oldState._tag === "Executing" && oldState.asyncCanceler._tag === "Empty") {
+    if (
+      oldState._tag === "Executing" &&
+      oldState.status._tag === "Running" &&
+      oldState.asyncCanceler._tag === "Empty"
+    ) {
       const newStatus = FiberStatus.Suspended(
-        oldState.status,
+        oldState.status.interrupting,
         this.unsafeIsInterruptible && !this.unsafeIsInterrupting,
-        blockingOn,
         epoch,
+        blockingOn,
         trace
       )
 
@@ -763,6 +765,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       )
 
       this.state.set(newState)
+    } else {
+      throw new IllegalStateException(
+        `Fiber ${this.fiberId.threadName()} is not running`
+      )
     }
   }
 
@@ -772,10 +778,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     if (
       oldState._tag === "Executing" &&
       oldState.status._tag === "Suspended" &&
-      oldState.status.epoch === epoch
+      oldState.status.asyncs === epoch
     ) {
       const newState = FiberState.Executing(
-        oldState.status.previous,
+        FiberStatus.Running(oldState.status.interrupting),
         oldState.observers,
         oldState.suppressed,
         oldState.interruptors,
@@ -810,7 +816,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       oldState._tag === "Executing" &&
       oldState.status._tag === "Suspended" &&
       oldState.asyncCanceler._tag === "Pending" &&
-      epoch === oldState.status.epoch
+      epoch === oldState.status.asyncs
     ) {
       this.state.set(
         FiberState.Executing(
@@ -827,7 +833,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       oldState._tag === "Executing" &&
       oldState.status._tag === "Suspended" &&
       oldState.asyncCanceler._tag === "Registered" &&
-      epoch === oldState.status.epoch
+      epoch === oldState.status.asyncs
     ) {
       throw new Error("Bug, inconsistent state in unsafeSetAsyncCanceler")
     }
@@ -1021,20 +1027,18 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     trace: TraceElement,
     forkScope: Option<FiberScope> = Option.none
   ): FiberContext<any, any> {
-    const childFiberRefLocals: FiberRefLocals = new Map<RuntimeFiberRef<any>, any>()
+    const childFiberRefLocals: FiberRefLocals = new Map<FiberRef<unknown>, unknown>()
 
     for (const [k, v] of this.fiberRefLocals) {
-      childFiberRefLocals.set(k, (k as RuntimeFiberRef<A>).fork(v))
+      childFiberRefLocals.set(k, k.fork(v))
     }
 
-    const parentScope: FiberScope = (
-      forkScope._tag === "Some"
-        ? forkScope
-        : this.unsafeGetRef(FiberRef.forkScopeOverride.value)
-    ).getOrElse(this._scope)
+    const parentScope = forkScope.getOrElse(
+      this.unsafeGetRef(FiberRef.forkScopeOverride.value).getOrElse(this._scope)
+    )
 
     const childId = FiberId.unsafeMake(trace)
-    const grandChildren = new Set<FiberContext<any, any>>()
+    const grandChildren = new Set<FiberContext<unknown, unknown>>()
 
     const childContext = new FiberContext(
       childId,
@@ -1088,11 +1092,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     race: IRaceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>,
     trace: TraceElement
   ): Effect<R & R1 & R2 & R3, E2 | E3, A2 | A3> {
-    const raceIndicator = new AtomicReference(true)
+    const raceIndicator = new AtomicBoolean(true)
 
-    const scope = race.scope()
-    const left = this.unsafeFork(instruction(race.left()), trace, scope)
-    const right = this.unsafeFork(instruction(race.right()), trace, scope)
+    const left = this.unsafeFork(instruction(race.left()), trace)
+    const right = this.unsafeFork(instruction(race.right()), trace)
 
     return Effect.asyncBlockingOn((cb) => {
       const leftRegister = left.unsafeAddObserverMaybe((exit) =>

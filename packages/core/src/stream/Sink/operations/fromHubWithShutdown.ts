@@ -1,5 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import type { XHub } from "../../../io/Hub"
+import type { Hub } from "../../../io/Hub"
 import { Sink } from "../definition"
 
 /**
@@ -9,8 +9,8 @@ import { Sink } from "../definition"
  * @tsplus static ets/SinkOps fromHubWithShutdown
  */
 export function fromHubWithShutdown<R, E, In>(
-  hub: LazyArg<XHub<R, never, E, unknown, In, unknown>>,
+  hub: LazyArg<Hub<In>>,
   __tsplusTrace?: string
 ): Sink<R, E, In, never, void> {
-  return Sink.fromQueueWithShutdown(hub().toQueue())
+  return Sink.fromQueueWithShutdown(hub)
 }

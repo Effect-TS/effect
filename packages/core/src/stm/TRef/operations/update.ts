@@ -1,32 +1,23 @@
-import { Tuple } from "../../../collection/immutable/Tuple"
-import type { STM } from "../../STM"
-import type { ETRef } from "../definition"
-import { concreteId } from "../definition"
+import type { USTM } from "../../STM"
+import { STM } from "../../STM"
+import type { TRef } from "../definition"
+import { getOrMakeEntry } from "./_internal/getOrMakeEntry"
 
 /**
  * Updates the value of the variable.
  *
- * @tsplus fluent ets/XTRef update
+ * @tsplus fluent ets/TRef update
  */
-export function update_<E, A>(
-  self: ETRef<E, A>,
-  f: (a: A) => A
-): STM<unknown, E, void> {
-  concreteId(self)
-  switch (self._tag) {
-    case "Atomic": {
-      return self.update(f)
-    }
-    default:
-      return (self as ETRef<E, A>).modify((a) => Tuple(undefined, f(a)))
-  }
+export function update_<A>(self: TRef<A>, f: (a: A) => A): USTM<void> {
+  return STM.Effect((journal) => {
+    const entry = getOrMakeEntry(self, journal)
+    const newValue = entry.use((_) => f(_.unsafeGet()))
+    entry.use((_) => _.unsafeSet(newValue))
+    return undefined
+  })
 }
 
 /**
  * Updates the value of the variable.
- *
- * @ets_data_first update_
  */
-export function update<A>(f: (a: A) => A) {
-  return <E>(self: ETRef<E, A>): STM<unknown, E, void> => self.update(f)
-}
+export const update = Pipeable(update_)

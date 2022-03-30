@@ -1,6 +1,6 @@
 import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../../io/Effect"
-import type { XQueue } from "../../../io/Queue"
+import type { Enqueue } from "../../../io/Queue"
 import type { Take } from "../../Take"
 import type { Stream } from "../definition"
 
@@ -10,12 +10,12 @@ import type { Stream } from "../definition"
  *
  * @tsplus fluent ets/Stream runIntoQueue
  */
-export function runIntoQueue_<R, E extends E1, A, R1, E1>(
+export function runIntoQueue_<R, E extends E1, A, E1>(
   self: Stream<R, E, A>,
-  queue: LazyArg<XQueue<R1, never, never, unknown, Take<E1, A>, unknown>>,
+  queue: LazyArg<Enqueue<Take<E1, A>>>,
   __tsplusTrace?: string
-): Effect<R & R1, E | E1, void> {
-  return self.runIntoQueueManaged(queue).useDiscard(Effect.unit)
+): Effect<R, E | E1, void> {
+  return Effect.scoped(self.runIntoQueueScoped(queue))
 }
 
 /**

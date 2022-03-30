@@ -4,7 +4,7 @@ import { Option } from "../../../src/data/Option"
 import type { UIO } from "../../../src/io/Effect"
 import { Effect } from "../../../src/io/Effect"
 import type { Queue } from "../../../src/io/Queue"
-import { XQueueInternal } from "../../../src/io/Queue"
+import { _In, _Out, QueueSym } from "../../../src/io/Queue"
 import { Sink } from "../../../src/stream/Sink"
 import type { Stream } from "../../../src/stream/Stream"
 
@@ -59,45 +59,40 @@ export function createQueueSpy<A>(queue: Queue<A>): Queue<A> {
   return new QueueSpyImplementation(queue)
 }
 
-class QueueSpyImplementation<A> extends XQueueInternal<
-  unknown,
-  unknown,
-  never,
-  never,
-  A,
-  A
-> {
+class QueueSpyImplementation<A> implements Queue<A> {
+  readonly [QueueSym]: QueueSym = QueueSym;
+  readonly [_In]!: (_: A) => void;
+  readonly [_Out]!: () => A
+
   #isShutdown = false
 
-  constructor(readonly queue: Queue<A>) {
-    super()
-  }
+  constructor(readonly queue: Queue<A>) {}
 
-  _awaitShutdown: UIO<void> = this.queue.awaitShutdown()
+  awaitShutdown: UIO<void> = this.queue.awaitShutdown
 
-  _capacity: number = this.queue.capacity()
+  capacity: number = this.queue.capacity
 
-  _isShutdown: UIO<boolean> = Effect.succeed(this.#isShutdown)
+  isShutdown: UIO<boolean> = Effect.succeed(this.#isShutdown)
 
-  _offer(a: A): Effect<unknown, never, boolean> {
+  offer(a: A): Effect<unknown, never, boolean> {
     return this.queue.offer(a)
   }
 
-  _offerAll(as: Iterable<A>): Effect<unknown, never, boolean> {
+  offerAll(as: Iterable<A>): Effect<unknown, never, boolean> {
     return this.queue.offerAll(as)
   }
 
-  _shutdown: UIO<void> = Effect.succeed(() => {
+  shutdown: UIO<void> = Effect.succeed(() => {
     this.#isShutdown = true
   })
 
-  _size: UIO<number> = this.queue.size
+  size: UIO<number> = this.queue.size
 
-  _take: Effect<unknown, never, A> = this.queue.take()
+  take: Effect<unknown, never, A> = this.queue.take
 
-  _takeAll: Effect<unknown, never, Chunk<A>> = this.queue.takeAll()
+  takeAll: Effect<unknown, never, Chunk<A>> = this.queue.takeAll
 
-  _takeUpTo(n: number): Effect<unknown, never, Chunk<A>> {
+  takeUpTo(n: number): Effect<unknown, never, Chunk<A>> {
     return this.queue.takeUpTo(n)
   }
 }

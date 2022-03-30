@@ -2,7 +2,7 @@ import type { Chunk } from "../../../collection/immutable/Chunk"
 import type { LazyArg } from "../../../data/Function"
 import { Option } from "../../../data/Option"
 import type { Effect } from "../../../io/Effect"
-import type { Managed } from "../../../io/Managed"
+import type { HasScope } from "../../../io/Scope"
 import { Channel } from "../../Channel"
 import type { Stream } from "../definition"
 import { concreteStream, StreamInternal } from "./_internal/StreamInternal"
@@ -14,7 +14,11 @@ import { concreteStream, StreamInternal } from "./_internal/StreamInternal"
  */
 export function transducePush<R2, R3, E2, In, Out>(
   push: LazyArg<
-    Managed<R2, never, (input: Option<Chunk<In>>) => Effect<R3, E2, Chunk<Out>>>
+    Effect<
+      R2 & HasScope,
+      never,
+      (input: Option<Chunk<In>>) => Effect<R3, E2, Chunk<Out>>
+    >
   >,
   __tsplusTrace?: string
 ) {
@@ -27,7 +31,7 @@ export function transducePush<R2, R3, E2, In, Out>(
       E | E2,
       Chunk<Out>,
       unknown
-    > = Channel.unwrapManaged(push().map((push) => pull(push)))
+    > = Channel.unwrapScoped(push().map((push) => pull(push)))
     concreteStream(stream)
     return new StreamInternal(stream.channel >> channel)
   }

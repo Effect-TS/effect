@@ -5,7 +5,8 @@ import { Exit } from "../../io/Exit"
 import type { FiberId } from "../../io/FiberId"
 import type { AtomicReference } from "../../support/AtomicReference"
 import { defaultScheduler } from "../../support/Scheduler"
-import type { Atomic } from "../TRef/Atomic"
+import type { TRef } from "../TRef"
+import { concreteTRef } from "../TRef/operations/_internal/TRefInternal"
 import type { STM } from "./definition"
 import type { Entry } from "./Entry"
 import { STMDriver } from "./operations/_internal/STMDriver"
@@ -20,7 +21,7 @@ import {
 import { DoneTypeId, SuspendTypeId, TryCommit } from "./TryCommit"
 import type { TxnId } from "./TxnId"
 
-export type Journal = Map<Atomic<any>, Entry>
+export type Journal = Map<TRef<unknown>, Entry>
 
 export type JournalAnalysis = "I" | "RW" | "RO"
 
@@ -81,7 +82,8 @@ export function collectTodos(journal: Journal): Map<TxnId, Todo> {
   const allTodos: Map<TxnId, Todo> = new Map()
 
   for (const entry of journal) {
-    const tref: Atomic<unknown> = entry[1].use((_) => _.tref as Atomic<unknown>)
+    const tref: TRef<unknown> = entry[1].use((_) => _.tref)
+    concreteTRef(tref)
     const todos = tref.todo.get
     for (const todo of todos) {
       allTodos.set(todo[0], todo[1])
@@ -125,7 +127,8 @@ export function addTodo(txnId: TxnId, journal: Journal, todoEffect: Todo): boole
   let added = false
 
   for (const entry of journal) {
-    const tref = entry[1].use((_) => _.tref as Atomic<unknown>)
+    const tref = entry[1].use((_) => _.tref)
+    concreteTRef(tref)
     const oldTodo = tref.todo.get
     if (!oldTodo.has(txnId)) {
       const newTodo = oldTodo.set(txnId, todoEffect)

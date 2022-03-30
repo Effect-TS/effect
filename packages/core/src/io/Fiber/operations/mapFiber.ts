@@ -24,9 +24,5 @@ export function mapFiber_<E, E1, A, B>(
 /**
  * Passes the success of this fiber to the specified callback, and continues
  * with the fiber that it returns.
- *
- * @ets_data_first mapFiber_
  */
-export function mapFiber<E1, A, B>(f: (a: A) => Fiber<E1, B>, __tsplusTrace?: string) {
-  return <E>(self: Fiber<E, A>): UIO<Fiber<E | E1, B>> => self.mapFiber(f)
-}
+export const mapFiber = Pipeable(mapFiber_)

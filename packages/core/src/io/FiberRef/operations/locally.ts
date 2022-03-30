@@ -1,33 +1,22 @@
 import type { Effect } from "../../Effect"
-import type { XFiberRef } from "../definition"
-import { concreteUnified } from "../definition/concrete"
+import { IFiberRefLocally } from "../../Effect/definition/primitives"
+import type { FiberRef } from "../definition"
 
 /**
  * Returns an `Effect` that runs with `value` bound to the current fiber.
  *
  * Guarantees that fiber data is properly restored via `acquireRelease`.
  *
- * @tsplus fluent ets/XFiberRef locally
- * @tsplus fluent ets/XFiberRefRuntime locally
+ * @tsplus fluent ets/FiberRef locally
  */
-export function locally_<EA, EB, A, B>(
-  self: XFiberRef<EA, EB, A, B>,
-  value: A,
-  __tsplusTrace?: string
-): <R, EC, C>(use: Effect<R, EC, C>) => Effect<R, EA | EC, C> {
-  concreteUnified(self)
-  return self._locally(value)
+export function locally_<A>(self: FiberRef<A>, value: A, __tsplusTrace?: string) {
+  return <R, E, B>(use: Effect<R, E, B>): Effect<R, E, B> =>
+    new IFiberRefLocally(value, self, use, __tsplusTrace)
 }
 
 /**
  * Returns an `Effect` that runs with `value` bound to the current fiber.
  *
  * Guarantees that fiber data is properly restored via `acquireRelease`.
- *
- * @ets_data_first locally_
  */
-export function locally<R, EC, A, C>(value: A, __tsplusTrace?: string) {
-  return <EA, EB, B>(
-    self: XFiberRef<EA, EB, A, B>
-  ): ((use: Effect<R, EC, C>) => Effect<R, EA | EC, C>) => self.locally(value)
-}
+export const locally = Pipeable(locally_)

@@ -17,10 +17,5 @@ export function tapError_<RIn, E, ROut, RIn2, E2, X>(
 
 /**
  * Performs the specified effect if this layer fails.
- *
- * @ets_data_first tapError_
  */
-export function tapError<E, RIn2, E2, X>(f: (e: E) => Effect<RIn2, E2, X>) {
-  return <RIn, ROut>(self: Layer<RIn, E, ROut>): Layer<RIn & RIn2, E | E2, ROut> =>
-    self.tapError(f)
-}
+export const tapError = Pipeable(tapError_)

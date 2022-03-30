@@ -24,7 +24,7 @@ export function splitWhere_<R, E, In, In1, L extends In1, Z>(
         .pipeToOrFail(self.channel)
         .doneCollect()
         .flatMap(({ tuple: [leftovers, z] }) =>
-          Channel.fromEffect(ref.get()).flatMap(
+          Channel.fromEffect(ref.get).flatMap(
             (leftover) =>
               Channel.write(leftover + leftovers.flatten()) > Channel.succeed(z)
           )

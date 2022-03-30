@@ -48,7 +48,7 @@ export function untilOutputEffect_<R, E, R2, E2, In, L extends In, Z>(
             Channel.fromEffect(f(doneValue)).flatMap(
               (satisfied) =>
                 Channel.fromEffect(leftoversRef.set(leftovers.flatten())) >
-                Channel.fromEffect(upstreamDoneRef.get()).flatMap((upstreamDone) =>
+                Channel.fromEffect(upstreamDoneRef.get).flatMap((upstreamDone) =>
                   satisfied
                     ? Channel.write(leftovers.flatten()).as(Option.some(doneValue))
                     : upstreamDone

@@ -22,7 +22,7 @@ export function buffer_<R, E, A>(
 ): Stream<R, E, A> {
   const queue = self.toQueueOfElements(capacity)
   return new StreamInternal(
-    Channel.managed(queue, (queue) => {
+    Channel.scoped(queue, (queue) => {
       const process: Channel<
         unknown,
         unknown,
@@ -31,7 +31,7 @@ export function buffer_<R, E, A>(
         E,
         Chunk<A>,
         void
-      > = Channel.fromEffect(queue.take()).flatMap((exit) =>
+      > = Channel.fromEffect(queue.take).flatMap((exit) =>
         exit.fold(
           (cause) =>
             Cause.flipCauseOption(cause).fold(Channel.unit, (cause) =>

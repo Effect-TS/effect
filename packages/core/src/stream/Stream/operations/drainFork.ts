@@ -17,11 +17,11 @@ export function drainFork_<R, E, A, R2, E2, Z>(
 ): Stream<R & R2, E | E2, A> {
   return Stream.fromEffect(Promise.make<E | E2, never>()).flatMap(
     (backgroundDied) =>
-      Stream.managed(
+      Stream.scoped(
         other()
-          .runForEachManaged(() => Effect.unit)
-          .catchAllCause((cause) => backgroundDied.failCause(cause).toManaged())
-          .fork()
+          .runForEachScoped(() => Effect.unit)
+          .catchAllCause((cause) => backgroundDied.failCause(cause))
+          .forkScoped()
       ) > self.interruptWhenPromise(backgroundDied)
   )
 }

@@ -12,7 +12,7 @@ import { Strategy } from "./strategy"
  *
  * For best performance use capacities that are powers of two.
  *
- * @tsplus static ets/XHubOps bounded
+ * @tsplus static ets/HubOps bounded
  */
 export function bounded<A>(
   requestedCapacity: number,

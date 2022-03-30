@@ -1,6 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
 import { Effect } from "../../../io/Effect"
-import { Managed } from "../../../io/Managed"
 import type { RuntimeConfig } from "../../../io/RuntimeConfig"
 import { Stream } from "../definition"
 
@@ -17,7 +16,11 @@ export function withRuntimeConfig_<R, E, A>(
 ): Stream<R, E, A> {
   return Stream.fromEffect(Effect.runtimeConfig).flatMap(
     (currentRuntimeConfig) =>
-      Stream.managed(Managed.withRuntimeConfig(runtimeConfig)) >
+      Stream.scoped(
+        Effect.acquireRelease(Effect.setRuntimeConfig(runtimeConfig), () =>
+          Effect.setRuntimeConfig(currentRuntimeConfig)
+        )
+      ) >
       self <
       Stream.fromEffect(Effect.setRuntimeConfig(currentRuntimeConfig))
   )

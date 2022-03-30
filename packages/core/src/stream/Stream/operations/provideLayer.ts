@@ -16,7 +16,7 @@ export function provideLayer_<R, E, A, E1, A1>(
 ): Stream<R, E | E1, A1> {
   concreteStream(self)
   return new StreamInternal(
-    Channel.managed(layer().build(), (r) => self.channel.provideEnvironment(r))
+    Channel.scoped(layer().build(), (r) => self.channel.provideEnvironment(r))
   )
 }
 

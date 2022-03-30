@@ -1,4 +1,5 @@
 import type { Tuple } from "../../../collection/immutable/Tuple"
+import { Effect } from "../../../io/Effect"
 import type { Promise } from "../../../io/Promise"
 import { Queue } from "../../../io/Queue"
 import type { Take } from "../../Take"
@@ -19,9 +20,10 @@ export function bufferChunksDropping_<R, E, A>(
   capacity: number,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  const queue = Queue.dropping<Tuple<[Take<E, A>, Promise<never, void>]>>(
-    capacity
-  ).toManagedWith((queue) => queue.shutdown())
+  const queue = Effect.acquireRelease(
+    Queue.dropping<Tuple<[Take<E, A>, Promise<never, void>]>>(capacity),
+    (queue) => queue.shutdown
+  )
   concreteStream(self)
   return new StreamInternal(bufferSignal(queue, self.channel))
 }

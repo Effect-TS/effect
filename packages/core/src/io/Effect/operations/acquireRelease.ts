@@ -1,47 +1,22 @@
 import type { LazyArg } from "../../../data/Function"
+import type { HasScope } from "../../Scope"
+import type { RIO } from "../definition"
 import { Effect } from "../definition"
 
 /**
- * A less powerful variant of `acquireReleaseWith` where the resource acquired
- * by this effect is not needed.
+ * Constructs a scoped resource from an `acquire` and `release` workflow. If
+ * `acquire` successfully completes execution then `release` will be added to
+ * the finalizers associated with the scope of this workflow and is guaranteed
+ * to be run when the scope is closed.
+ *
+ * The `acquire` and `release` workflows will be run uninterruptibly.
  *
  * @tsplus static ets/EffectOps acquireRelease
  */
-export function acquireRelease<R, E, A, E1, R1, A1, R2, E2, A2>(
+export function acquireRelease<R, E, A, R2, X>(
   acquire: LazyArg<Effect<R, E, A>>,
-  use: LazyArg<Effect<R1, E1, A1>>,
-  release: LazyArg<Effect<R2, E2, A2>>,
+  release: (a: A) => RIO<R2, X>,
   __tsplusTrace?: string
-): Effect<R & R1 & R2, E | E1 | E2, A1> {
-  return Effect.acquireReleaseWith(acquire, use, release)
-}
-
-/**
- * A less powerful variant of `acquireReleaseWith` where the resource acquired
- * by this effect is not needed.
- *
- * @tsplus fluent ets/Effect acquireRelease
- */
-export function acquireReleaseNow_<R, E, A, E1, R1, A1, R2, E2, A2>(
-  self: Effect<R, E, A>,
-  use: LazyArg<Effect<R1, E1, A1>>,
-  release: LazyArg<Effect<R2, E2, A2>>,
-  __tsplusTrace?: string
-): Effect<R & R1 & R2, E | E1 | E2, A1> {
-  return acquireRelease(self, use, release)
-}
-
-/**
- * A less powerful variant of `acquireReleaseWith` where the resource acquired
- * by this effect is not needed.
- *
- * @ets_data_first acquireReleaseNow_
- */
-export function acquireReleaseNow<E1, R1, A1, R2, E2, A2>(
-  use: LazyArg<Effect<R1, E1, A1>>,
-  release: LazyArg<Effect<R2, E2, A2>>,
-  __tsplusTrace?: string
-) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R1 & R2, E | E1 | E2, A1> =>
-    self.acquireRelease(use, release)
+): Effect<R & R2 & HasScope, E, A> {
+  return Effect.acquireReleaseExit(acquire, (a, _) => release(a))
 }

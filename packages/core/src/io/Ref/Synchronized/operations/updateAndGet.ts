@@ -1,29 +1,23 @@
-import type { Effect } from "../../../Effect"
-import type { XRef } from "../../definition"
-import type { XSynchronized } from "../definition"
+import type { UIO } from "../../../Effect"
+import type { Ref } from "../../definition"
+import type { SynchronizedRef } from "../definition"
 
 /**
- * Atomically modifies the `XRef.Synchronized` with the specified function and
+ * Atomically modifies the `Ref.Synchronized` with the specified function and
  * returns the updated value.
  *
- * @tsplus fluent ets/XSynchronized updateAndGet
+ * @tsplus fluent ets/Ref/Synchronized updateAndGet
  */
-export function updateAndGet_<RA, RB, EA, EB, A>(
-  self: XSynchronized<RA, RB, EA, EB, A, A>,
+export function updateAndGet_<A>(
+  self: SynchronizedRef<A>,
   f: (a: A) => A,
   __tsplusTrace?: string
-): Effect<RA & RB, EA | EB, A> {
-  return (self as XRef<RA, RB, EA, EB, A, A>).updateAndGet(f)
+): UIO<A> {
+  return (self as Ref<A>).updateAndGet(f)
 }
 
 /**
- * Atomically modifies the `XRef.Synchronized` with the specified function and
+ * Atomically modifies the `Ref.Synchronized` with the specified function and
  * returns the updated value.
- *
- * @ets_data_first updateAndGet_
  */
-export function updateAndGet<A>(f: (a: A) => A, __tsplusTrace?: string) {
-  return <RA, RB, EA, EB>(
-    self: XSynchronized<RA, RB, EA, EB, A, A>
-  ): Effect<RA & RB, EA | EB, A> => self.updateAndGet(f)
-}
+export const updateAndGet = Pipeable(updateAndGet_)

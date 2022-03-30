@@ -25,7 +25,7 @@ describe("Stream", () => {
         .tap(({ ref }) =>
           Stream(1, 1, 1, 1, 1).runForEach((n) => ref.update((m) => n + m))
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -40,7 +40,7 @@ describe("Stream", () => {
             ref.update((m) => n + m)
           )
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -60,7 +60,7 @@ describe("Stream", () => {
             )
           )
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -78,7 +78,7 @@ describe("Stream", () => {
             )
           )
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -93,7 +93,7 @@ describe("Stream", () => {
             Stream(true, true, false) + Stream.fromEffect(ref.set(false)).drain()
           ).runForEachWhile(Effect.succeedNow)
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

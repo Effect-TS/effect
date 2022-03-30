@@ -14,10 +14,10 @@ describe("Stream", () => {
           Effect.succeedNow(i % 2 === 0 ? Either.left(i) : Either.right(i))
         )
         .map(({ tuple: [evens, odds] }) => evens.mergeEither(odds))
-        .use((stream) => stream.runCollect())
-      const program = Effect.collectAll(Chunk.range(0, 50).map(() => stream)).map(
-        () => 0
-      )
+        .flatMap((stream) => stream.runCollect())
+      const program = Effect.collectAll(
+        Chunk.range(0, 50).map(() => Effect.scoped(stream))
+      ).map(() => 0)
 
       const result = await program.unsafeRunPromise()
 
@@ -25,18 +25,20 @@ describe("Stream", () => {
     })
 
     it("values", async () => {
-      const program = Stream.range(0, 6)
-        .partitionEither((i) =>
-          i % 2 === 0
-            ? Effect.succeedNow(Either.left(i))
-            : Effect.succeedNow(Either.right(i))
-        )
-        .use(({ tuple: [evens, odds] }) =>
-          Effect.struct({
-            evens: evens.runCollect().map((chunk) => chunk.toArray()),
-            odds: odds.runCollect().map((chunk) => chunk.toArray())
-          })
-        )
+      const program = Effect.scoped(
+        Stream.range(0, 6)
+          .partitionEither((i) =>
+            i % 2 === 0
+              ? Effect.succeedNow(Either.left(i))
+              : Effect.succeedNow(Either.right(i))
+          )
+          .flatMap(({ tuple: [evens, odds] }) =>
+            Effect.struct({
+              evens: evens.runCollect().map((chunk) => chunk.toArray()),
+              odds: odds.runCollect().map((chunk) => chunk.toArray())
+            })
+          )
+      )
 
       const { evens, odds } = await program.unsafeRunPromise()
 
@@ -45,18 +47,21 @@ describe("Stream", () => {
     })
 
     it("errors", async () => {
-      const program = (Stream.range(0, 1) + Stream.fail("boom"))
-        .partitionEither((i) =>
-          i % 2 === 0
-            ? Effect.succeedNow(Either.left(i))
-            : Effect.succeedNow(Either.right(i))
-        )
-        .use(({ tuple: [evens, odds] }) =>
-          Effect.struct({
-            evens: evens.runCollect().either(),
-            odds: odds.runCollect().either()
-          })
-        )
+      const program = Effect.scoped(
+        (Stream.range(0, 1) + Stream.fail("boom"))
+          .partitionEither((i) =>
+            i % 2 === 0
+              ? Effect.succeedNow(Either.left(i))
+              : Effect.succeedNow(Either.right(i))
+          )
+          .flatMap(({ tuple: [evens, odds] }) =>
+            Effect.struct({
+              evens: evens.runCollect().either(),
+              odds: odds.runCollect().either()
+            })
+          )
+      )
+
       const { evens, odds } = await program.unsafeRunPromise()
 
       expect(evens).toEqual(Either.left("boom"))
@@ -64,34 +69,36 @@ describe("Stream", () => {
     })
 
     it("backpressure", async () => {
-      const program = Stream.range(0, 6)
-        .partitionEither(
-          (i) =>
-            i % 2 === 0
-              ? Effect.succeedNow(Either.left(i))
-              : Effect.succeedNow(Either.right(i)),
-          1
-        )
-        .use(({ tuple: [evens, odds] }) =>
-          Effect.Do()
-            .bind("ref", () => Ref.make(List.empty<number>()))
-            .bind("latch", () => Promise.make<never, void>())
-            .bind("fiber", ({ latch, ref }) =>
-              evens
-                .tap(
-                  (i) =>
-                    ref.update((list) => list.prepend(i)) >
-                    Effect.when(i === 2, latch.succeed(undefined))
-                )
-                .runDrain()
-                .fork()
-            )
-            .tap(({ latch }) => latch.await())
-            .bind("snapshot1", ({ ref }) => ref.get())
-            .bind("other", () => odds.runCollect())
-            .tap(({ fiber }) => fiber.await())
-            .bind("snapshot2", ({ ref }) => ref.get())
-        )
+      const program = Effect.scoped(
+        Stream.range(0, 6)
+          .partitionEither(
+            (i) =>
+              i % 2 === 0
+                ? Effect.succeedNow(Either.left(i))
+                : Effect.succeedNow(Either.right(i)),
+            1
+          )
+          .flatMap(({ tuple: [evens, odds] }) =>
+            Effect.Do()
+              .bind("ref", () => Ref.make(List.empty<number>()))
+              .bind("latch", () => Promise.make<never, void>())
+              .bind("fiber", ({ latch, ref }) =>
+                evens
+                  .tap(
+                    (i) =>
+                      ref.update((list) => list.prepend(i)) >
+                      Effect.when(i === 2, latch.succeed(undefined))
+                  )
+                  .runDrain()
+                  .fork()
+              )
+              .tap(({ latch }) => latch.await())
+              .bind("snapshot1", ({ ref }) => ref.get)
+              .bind("other", () => odds.runCollect())
+              .tap(({ fiber }) => fiber.await())
+              .bind("snapshot2", ({ ref }) => ref.get)
+          )
+      )
 
       const { other, snapshot1, snapshot2 } = await program.unsafeRunPromise()
 

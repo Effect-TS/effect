@@ -4,7 +4,7 @@ import type { Lazy, LazyArg } from "../../data/Function"
 import { constUndefined, identity } from "../../data/Function"
 import type { Option } from "../../data/Option"
 import { Stack } from "../../data/Stack"
-import type { Cause } from "../../io/Cause"
+import { Cause } from "../../io/Cause"
 import type { RIO } from "../../io/Effect"
 import { Effect } from "../../io/Effect"
 import { Exit } from "../../io/Exit"
@@ -12,8 +12,9 @@ import { ImmutableQueue } from "../../support/ImmutableQueue"
 import type { ChannelStateRead } from "./ChannelState"
 import { ChannelState, concreteChannelState } from "./ChannelState"
 import type { ChildExecutorDecision } from "./ChildExecutorDecision"
-import type { BracketOut, Channel, Continuation, Ensuring } from "./definition"
+import type { BracketOut, Continuation, Ensuring } from "./definition"
 import {
+  Channel,
   concrete,
   concreteContinuation,
   ContinuationFinalizer,
@@ -233,226 +234,232 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
         if (this.currentChannel == null) {
           result = ChannelState.Done
         } else {
-          const currentChannel = this.currentChannel
+          try {
+            const currentChannel = this.currentChannel
 
-          concrete(currentChannel)
+            concrete(currentChannel)
 
-          switch (currentChannel._tag) {
-            case "Bridge": {
-              // PipeTo(left, Bridge(queue, channel))
-              // In a fiber: repeatedly run left and push its outputs to the queue
-              // Add a finalizer to interrupt the fiber and close the executor
-              this.currentChannel = currentChannel.channel
+            switch (currentChannel._tag) {
+              case "Bridge": {
+                // PipeTo(left, Bridge(queue, channel))
+                // In a fiber: repeatedly run left and push its outputs to the queue
+                // Add a finalizer to interrupt the fiber and close the executor
+                this.currentChannel = currentChannel.channel
 
-              if (this.input != null) {
-                const inputExecutor = this.input
-                this.input = undefined
+                if (this.input != null) {
+                  const inputExecutor = this.input
+                  this.input = undefined
 
-                const drainer: RIO<Env, unknown> =
-                  currentChannel.input.awaitRead >
-                  Effect.suspendSucceed(() => {
-                    const state = inputExecutor.run()
-                    concreteChannelState(state)
-                    switch (state._tag) {
-                      case "Done": {
-                        return inputExecutor.getDone().fold(
-                          (cause) => currentChannel.input.error(cause),
-                          (value) => currentChannel.input.done(value)
+                  const drainer: RIO<Env, unknown> =
+                    currentChannel.input.awaitRead >
+                    Effect.suspendSucceed(() => {
+                      const state = inputExecutor.run()
+                      concreteChannelState(state)
+                      switch (state._tag) {
+                        case "Done": {
+                          return inputExecutor.getDone().fold(
+                            (cause) => currentChannel.input.error(cause),
+                            (value) => currentChannel.input.done(value)
+                          )
+                        }
+                        case "Emit": {
+                          return currentChannel.input
+                            .emit(inputExecutor.getEmit())
+                            .zipRight(() => drainer)
+                        }
+                        case "Effect": {
+                          return state.effect.foldCauseEffect(
+                            (cause) => currentChannel.input.error(cause),
+                            () => drainer
+                          )
+                        }
+                        case "Read": {
+                          return readUpstream(state, drainer).catchAllCause((cause) =>
+                            currentChannel.input.error(cause)
+                          )
+                        }
+                      }
+                    })
+
+                  result = ChannelState.Effect(
+                    drainer.fork().flatMap((fiber) =>
+                      Effect.succeed(() =>
+                        this.addFinalizer(
+                          (exit) =>
+                            fiber.interrupt() >
+                            Effect.suspendSucceed(() => {
+                              const effect = this.restorePipe(exit, inputExecutor)
+                              return effect != null ? effect : Effect.unit
+                            })
                         )
-                      }
-                      case "Emit": {
-                        return currentChannel.input
-                          .emit(inputExecutor.getEmit())
-                          .zipRight(() => drainer)
-                      }
-                      case "Effect": {
-                        return state.effect.foldCauseEffect(
-                          (cause) => currentChannel.input.error(cause),
-                          () => drainer
-                        )
-                      }
-                      case "Read": {
-                        return readUpstream(state, drainer).catchAllCause((cause) =>
-                          currentChannel.input.error(cause)
-                        )
-                      }
-                    }
-                  })
-
-                result = ChannelState.Effect(
-                  drainer.fork().flatMap((fiber) =>
-                    Effect.succeed(() =>
-                      this.addFinalizer(
-                        (exit) =>
-                          fiber.interrupt() >
-                          Effect.suspendSucceed(() => {
-                            const effect = this.restorePipe(exit, inputExecutor)
-                            return effect != null ? effect : Effect.unit
-                          })
                       )
                     )
                   )
-                )
+                }
+
+                break
               }
 
-              break
-            }
+              case "PipeTo": {
+                const previousInput = this.input
 
-            case "PipeTo": {
-              const previousInput = this.input
+                const leftExec: ErasedExecutor<Env> = new ChannelExecutor(
+                  currentChannel.left,
+                  this.providedEnv,
+                  (effect) => this.executeCloseLastSubstream(effect)
+                )
+                leftExec.input = previousInput
+                this.input = leftExec
 
-              const leftExec: ErasedExecutor<Env> = new ChannelExecutor(
-                currentChannel.left,
-                this.providedEnv,
-                (effect) => this.executeCloseLastSubstream(effect)
-              )
-              leftExec.input = previousInput
-              this.input = leftExec
+                this.addFinalizer((exit) => {
+                  const effect = this.restorePipe(exit, previousInput)
+                  return effect != null ? effect : Effect.unit
+                })
 
-              this.addFinalizer((exit) => {
-                const effect = this.restorePipe(exit, previousInput)
-                return effect != null ? effect : Effect.unit
-              })
+                this.currentChannel = currentChannel.right()
 
-              this.currentChannel = currentChannel.right()
+                break
+              }
 
-              break
-            }
-
-            case "Read": {
-              result = ChannelState.Read(
-                this.input!,
-                identity,
-                (out) => {
-                  this.currentChannel = currentChannel.more(out)
-                  return undefined
-                },
-                (exit) => {
-                  this.currentChannel = currentChannel.done.onExit(exit)
-                  return undefined
-                }
-              )
-
-              break
-            }
-
-            case "SucceedNow": {
-              result = this.doneSucceed(currentChannel.terminal)
-              break
-            }
-
-            case "Fail": {
-              result = this.doneHalt(currentChannel.error())
-              break
-            }
-
-            case "Succeed": {
-              result = this.doneSucceed(currentChannel.effect())
-              break
-            }
-
-            case "Suspend": {
-              this.currentChannel = currentChannel.effect()
-              break
-            }
-
-            case "FromEffect": {
-              const peffect =
-                this.providedEnv != null
-                  ? currentChannel.effect().provideEnvironment(this.providedEnv as Env)
-                  : currentChannel.effect()
-
-              result = ChannelState.Effect(
-                peffect.foldCauseEffect(
-                  (cause) => {
-                    const state = this.doneHalt(cause)
-                    if (state == null) {
-                      return Effect.unit
-                    }
-                    return state.effectOrUnit()
+              case "Read": {
+                result = ChannelState.Read(
+                  this.input!,
+                  identity,
+                  (out) => {
+                    this.currentChannel = currentChannel.more(out)
+                    return undefined
                   },
-                  (a) => {
-                    const state = this.doneSucceed(a)
-                    if (state == null) {
-                      return Effect.unit
-                    }
-                    return state.effectOrUnit()
+                  (exit) => {
+                    this.currentChannel = currentChannel.done.onExit(exit)
+                    return undefined
                   }
                 )
-              )
 
-              break
-            }
+                break
+              }
 
-            case "Emit": {
-              this.emitted = currentChannel.out()
-              this.currentChannel =
-                this.activeSubexecutor != null ? undefined : new SucceedNow(undefined)
-              result = ChannelState.Emit
-              break
-            }
+              case "SucceedNow": {
+                result = this.doneSucceed(currentChannel.terminal)
+                break
+              }
 
-            case "Ensuring": {
-              this.runEnsuring(currentChannel)
-              break
-            }
+              case "Fail": {
+                result = this.doneHalt(currentChannel.error())
+                break
+              }
 
-            case "ConcatAll": {
-              const executor: ErasedExecutor<Env> = new ChannelExecutor(
-                currentChannel.value,
-                this.providedEnv,
-                (effect) =>
+              case "Succeed": {
+                result = this.doneSucceed(currentChannel.effect())
+                break
+              }
+
+              case "Suspend": {
+                this.currentChannel = currentChannel.effect()
+                break
+              }
+
+              case "FromEffect": {
+                const peffect =
+                  this.providedEnv != null
+                    ? currentChannel
+                        .effect()
+                        .provideEnvironment(this.providedEnv as Env)
+                    : currentChannel.effect()
+
+                result = ChannelState.Effect(
+                  peffect.foldCauseEffect(
+                    (cause) => {
+                      const state = this.doneHalt(cause)
+                      if (state == null) {
+                        return Effect.unit
+                      }
+                      return state.effectOrUnit()
+                    },
+                    (a) => {
+                      const state = this.doneSucceed(a)
+                      if (state == null) {
+                        return Effect.unit
+                      }
+                      return state.effectOrUnit()
+                    }
+                  )
+                )
+
+                break
+              }
+
+              case "Emit": {
+                this.emitted = currentChannel.out()
+                this.currentChannel =
+                  this.activeSubexecutor != null ? undefined : new SucceedNow(undefined)
+                result = ChannelState.Emit
+                break
+              }
+
+              case "Ensuring": {
+                this.runEnsuring(currentChannel)
+                break
+              }
+
+              case "ConcatAll": {
+                const executor: ErasedExecutor<Env> = new ChannelExecutor(
+                  currentChannel.value,
+                  this.providedEnv,
+                  (effect) =>
+                    Effect.succeed(() => {
+                      const prevLastClose =
+                        this.closeLastSubstream == null
+                          ? Effect.unit
+                          : this.closeLastSubstream
+                      this.closeLastSubstream = prevLastClose > effect
+                    })
+                )
+                executor.input = this.input
+
+                this.activeSubexecutor = Subexecutor.PullFromUpstream(
+                  executor,
+                  currentChannel.k,
+                  undefined,
+                  new ImmutableQueue(List.empty()),
+                  currentChannel.combineInners,
+                  currentChannel.combineAll,
+                  currentChannel.onPull,
+                  currentChannel.onEmit
+                )
+
+                this.closeLastSubstream = undefined
+                this.currentChannel = undefined
+
+                break
+              }
+
+              case "Fold": {
+                this.doneStack = this.doneStack.prepend(currentChannel.k)
+                this.currentChannel = currentChannel.value
+                break
+              }
+
+              case "BracketOut": {
+                result = this.runBracketOut(currentChannel)
+                break
+              }
+
+              case "Provide": {
+                const previousEnv = this.providedEnv
+                this.providedEnv = currentChannel.env()
+                this.currentChannel = currentChannel.channel
+
+                this.addFinalizer(() =>
                   Effect.succeed(() => {
-                    const prevLastClose =
-                      this.closeLastSubstream == null
-                        ? Effect.unit
-                        : this.closeLastSubstream
-                    this.closeLastSubstream = prevLastClose > effect
+                    this.providedEnv = previousEnv
                   })
-              )
-              executor.input = this.input
+                )
 
-              this.activeSubexecutor = Subexecutor.PullFromUpstream(
-                executor,
-                currentChannel.k,
-                undefined,
-                new ImmutableQueue(List.empty()),
-                currentChannel.combineInners,
-                currentChannel.combineAll,
-                currentChannel.onPull,
-                currentChannel.onEmit
-              )
-
-              this.closeLastSubstream = undefined
-              this.currentChannel = undefined
-
-              break
+                break
+              }
             }
-
-            case "Fold": {
-              this.doneStack = this.doneStack.prepend(currentChannel.k)
-              this.currentChannel = currentChannel.value
-              break
-            }
-
-            case "BracketOut": {
-              result = this.runBracketOut(currentChannel)
-              break
-            }
-
-            case "Provide": {
-              const previousEnv = this.providedEnv
-              this.providedEnv = currentChannel.env()
-              this.currentChannel = currentChannel.channel
-
-              this.addFinalizer(() =>
-                Effect.succeed(() => {
-                  this.providedEnv = previousEnv
-                })
-              )
-
-              break
-            }
+          } catch (error) {
+            this.currentChannel = Channel.failCause(Cause.die(error))
           }
         }
       }

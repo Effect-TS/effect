@@ -1,7 +1,7 @@
 import { Tuple } from "../../../collection/immutable/Tuple"
 import type { Duration } from "../../../data/Duration"
 import { Option } from "../../../data/Option"
-import { Synchronized } from "../../../io/Ref/Synchronized"
+import { SynchronizedRef } from "../../../io/Ref/Synchronized"
 import type { HasClock } from "../../Clock"
 import { currentTime } from "../../Clock"
 import { Promise } from "../../Promise"
@@ -24,7 +24,7 @@ export function cachedInvalidate_<R, E, A>(
   return Effect.Do()
     .bind("r", () => Effect.environment<R & HasClock>())
     .bind("cache", () =>
-      Synchronized.make<Option<Tuple<[number, Promise<E, A>]>>>(Option.none)
+      SynchronizedRef.make<Option<Tuple<[number, Promise<E, A>]>>>(Option.none)
     )
     .map(({ cache, r }) =>
       Tuple(get(self, timeToLive, cache).provideEnvironment(r), invalidate(cache))
@@ -36,15 +36,8 @@ export function cachedInvalidate_<R, E, A>(
  * effect. Cached results will expire after `timeToLive` duration. In
  * addition, returns an effect that can be used to invalidate the current
  * cached value before the `timeToLive` duration expires.
- *
- * @ets_data_first cachedInvalidate_
  */
-export function cachedInvalidate(timeToLive: Duration, __tsplusTrace?: string) {
-  return <R, E, A>(
-    self: Effect<R, E, A>
-  ): RIO<R & HasClock, Tuple<[IO<E, A>, UIO<void>]>> =>
-    self.cachedInvalidate(timeToLive)
-}
+export const cachedInvalidate = Pipeable(cachedInvalidate_)
 
 function compute<R, E, A>(
   self: Effect<R, E, A>,
@@ -60,7 +53,7 @@ function compute<R, E, A>(
 function get<R, E, A>(
   self: Effect<R, E, A>,
   timeToLive: Duration,
-  cache: Synchronized<Option<Tuple<[number, Promise<E, A>]>>>
+  cache: SynchronizedRef<Option<Tuple<[number, Promise<E, A>]>>>
 ): Effect<R & HasClock, E, A> {
   return Effect.uninterruptibleMask(({ restore }) =>
     currentTime.flatMap((time) =>
@@ -82,7 +75,7 @@ function get<R, E, A>(
 }
 
 function invalidate<E, A>(
-  cache: Synchronized<Option<Tuple<[number, Promise<E, A>]>>>
+  cache: SynchronizedRef<Option<Tuple<[number, Promise<E, A>]>>>
 ): UIO<void> {
   return cache.set(Option.none)
 }

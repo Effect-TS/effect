@@ -1,5 +1,6 @@
+import type { LazyArg } from "../../../data/Function"
 import type { Cause } from "../../Cause"
-import { Managed } from "../../Managed"
+import { Effect } from "../../Effect"
 import { Layer } from "../definition"
 
 /**
@@ -7,6 +8,6 @@ import { Layer } from "../definition"
  *
  * @tsplus static ets/LayerOps failCause
  */
-export function failCause<E>(cause: Cause<E>): Layer<unknown, E, never> {
-  return Layer.fromRawManaged(Managed.failCause(cause))
+export function failCause<E>(cause: LazyArg<Cause<E>>): Layer<unknown, E, never> {
+  return Layer.fromRawEffect(Effect.failCause(cause))
 }

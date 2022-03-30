@@ -13,9 +13,5 @@ export function as_<E, A, B>(self: Fiber<E, A>, b: LazyArg<B>): Fiber<E, B> {
 
 /**
  * Maps the output of this fiber to the specified constant value.
- *
- * @ets_data_first as_
  */
-export function as<B>(b: LazyArg<B>) {
-  return <E, A>(self: Fiber<E, A>): Fiber<E, B> => self.as(b)
-}
+export const as = Pipeable(as_)

@@ -1,41 +1,26 @@
 import { Tuple } from "../../../collection/immutable/Tuple"
-import { matchTag_ } from "../../../data/Utils"
-import type { Effect } from "../../Effect"
-import type { XRef } from "../definition"
-import { concrete } from "../definition"
+import type { UIO } from "../../Effect"
+import type { Ref } from "../definition"
 
 /**
- * Atomically modifies the `XRef` with the specified function and returns
+ * Atomically modifies the `Ref` with the specified function and returns
  * the updated value.
  *
- * @tsplus fluent ets/XRef updateAndGet
+ * @tsplus fluent ets/Ref updateAndGet
  */
-export function updateAndGet_<RA, RB, EA, EB, A>(
-  self: XRef<RA, RB, EA, EB, A, A>,
+export function updateAndGet_<A>(
+  self: Ref<A>,
   f: (a: A) => A,
   __tsplusTrace?: string
-): Effect<RA & RB, EA | EB, A> {
-  return matchTag_(
-    concrete(self),
-    {
-      Atomic: (atomic) => atomic.updateAndGet(f)
-    },
-    (_) =>
-      (_ as XRef<RA, RB, EA, EB, A, A>).modify((v) => {
-        const result = f(v)
-        return Tuple(result, result)
-      })
-  )
+): UIO<A> {
+  return self.modify((v) => {
+    const result = f(v)
+    return Tuple(result, result)
+  })
 }
 
 /**
- * Atomically modifies the `XRef` with the specified function and returns
+ * Atomically modifies the `Ref` with the specified function and returns
  * the updated value.
- *
- * @ets_data_first updateAndGet_
  */
-export function updateAndGet<A>(f: (a: A) => A, __tsplusTrace?: string) {
-  return <RA, RB, EA, EB>(
-    self: XRef<RA, RB, EA, EB, A, A>
-  ): Effect<RA & RB, EA | EB, A> => self.updateAndGet(f)
-}
+export const updateAndGet = Pipeable(updateAndGet_)

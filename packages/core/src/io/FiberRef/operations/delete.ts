@@ -3,11 +3,10 @@ import { IFiberRefDelete } from "../../Effect/definition/primitives"
 import type { FiberRef } from "../definition"
 
 /**
- * @tsplus fluent ets/XFiberRef delete
- * @tsplus fluent ets/XFiberRefRuntime delete
+ * @tsplus fluent ets/FiberRef delete
  */
-export function _delete<A>(self: FiberRef.Runtime<A>, __trace?: string): UIO<void> {
-  return new IFiberRefDelete(self, __trace)
+export function _delete<A>(self: FiberRef<A>, __tsplusTrace?: string): UIO<void> {
+  return new IFiberRefDelete(self, __tsplusTrace)
 }
 
 export { _delete as delete }

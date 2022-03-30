@@ -1,4 +1,4 @@
-import type { Effect } from "../../Effect/definition"
+import { Effect } from "../../Effect/definition"
 import type { Layer } from "../definition"
 
 /**
@@ -7,6 +7,8 @@ import type { Layer } from "../definition"
  *
  * @tsplus fluent ets/Layer launch
  */
-export function launch<R, E, A>(self: Layer<R, E, A>): Effect<R, E, never> {
-  return self.build().useForever()
+export function launch<RIn, E, ROut>(self: Layer<RIn, E, ROut>): Effect<RIn, E, never> {
+  return Effect.scoped(
+    Effect.scopeWith((scope) => self.buildWithScope(scope)) > Effect.never
+  )
 }

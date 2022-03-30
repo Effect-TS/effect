@@ -59,7 +59,7 @@ describe("Stream", () => {
             .runCollect()
             .exit()
         )
-        .flatMap(({ finalizers }) => finalizers.get())
+        .flatMap(({ finalizers }) => finalizers.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -80,7 +80,7 @@ describe("Stream", () => {
         .flatMap(({ finalizers, stream }) =>
           stream
             .drain()
-            .catchAllCause(() => Stream.fromEffect(finalizers.get()))
+            .catchAllCause(() => Stream.fromEffect(finalizers.get))
             .runCollect()
         )
 
@@ -98,7 +98,7 @@ describe("Stream", () => {
             .runDrain()
             .exit()
         )
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -168,7 +168,7 @@ describe("Stream", () => {
             .runDrain()
             .exit()
         )
-        .bind("called", ({ ref }) => ref.get())
+        .bind("called", ({ ref }) => ref.get)
 
       const { called, exit } = await program.unsafeRunPromise()
 

@@ -1,0 +1,17 @@
+import { Effect } from "../../Effect"
+import type { HasScope } from "../../Scope"
+import type { Fiber } from "../definition"
+
+/**
+ * Converts this fiber into a scoped effect. The fiber is interrupted when the
+ * scope is closed.
+ *
+ * @tsplus fluent ets/Fiber scoped
+ * @tsplus fluent ets/RuntimeFiber scoped
+ */
+export function scoped<E, A>(
+  self: Fiber<E, A>,
+  __tsplusTrace?: string
+): Effect<HasScope, never, Fiber<E, A>> {
+  return Effect.acquireRelease(Effect.succeedNow(self), (fiber) => fiber.interrupt())
+}

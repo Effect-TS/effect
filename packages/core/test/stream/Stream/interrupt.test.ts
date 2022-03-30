@@ -53,7 +53,7 @@ describe("Stream", () => {
         )
         .tap(({ halt, started }) => started.await() > halt.succeed(undefined))
         .tap(({ fiber }) => fiber.await())
-        .flatMap(({ interrupted }) => interrupted.get())
+        .flatMap(({ interrupted }) => interrupted.get)
 
       const result = await program.unsafeRunPromise()
 

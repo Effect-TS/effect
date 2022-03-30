@@ -130,25 +130,23 @@ export function makeTestConsole(
         outputError: A.append_(state.outputError, String(line) + "\n")
       })),
     readLine: () =>
-      consoleState
-        .get()
-        .flatMap((state) =>
-          Effect.fromOption(state.input.first).orElseFail(
-            new TestConsoleError("There is no more input left to read")
-          )
-        ),
+      consoleState.get.flatMap((state) =>
+        Effect.fromOption(state.input.first).orElseFail(
+          new TestConsoleError("There is no more input left to read")
+        )
+      ),
     feedLines: (lines) =>
       consoleState.update((state) => ({
         ...state,
         input: List.from(lines) + state.input
       })),
-    output: () => consoleState.get().map((state) => state.output),
-    outputError: () => consoleState.get().map((state) => state.outputError),
+    output: () => consoleState.get.map((state) => state.output),
+    outputError: () => consoleState.get.map((state) => state.outputError),
     clearInput: () =>
       consoleState.update((state) => ({ ...state, input: List.empty<string>() })),
     clearOutput: () =>
       consoleState.update((state) => ({ ...state, output: A.empty<string>() })),
-    save: () => consoleState.get().map((state) => consoleState.set(state))
+    save: () => consoleState.get.map((state) => consoleState.set(state))
   }
 }
 

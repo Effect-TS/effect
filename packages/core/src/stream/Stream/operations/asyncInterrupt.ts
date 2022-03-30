@@ -1,7 +1,7 @@
 import type { Chunk } from "../../../collection/immutable/Chunk"
 import type { Either } from "../../../data/Either"
 import { isFiberFailure } from "../../../io/Cause"
-import { Managed } from "../../../io/Managed"
+import { Effect } from "../../../io/Effect"
 import { Queue } from "../../../io/Queue"
 import { Channel } from "../../Channel"
 import { Take } from "../../Take"
@@ -23,20 +23,21 @@ export function asyncInterrupt<R, E, A>(
   outputBuffer = 16,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  return Stream.unwrapManaged(
-    Managed.Do()
+  return Stream.unwrapScoped(
+    Effect.Do()
       .bind("output", () =>
-        Queue.bounded<Take<E, A>>(outputBuffer).toManagedWith((queue) =>
-          queue.shutdown()
+        Effect.acquireRelease(
+          Queue.bounded<Take<E, A>>(outputBuffer),
+          (queue) => queue.shutdown
         )
       )
-      .bind("runtime", () => Managed.runtime<R>())
+      .bind("runtime", () => Effect.runtime<R>())
       .bind("eitherStream", ({ output, runtime }) =>
-        Managed.succeed<Either<Canceler<R>, Stream<R, E, A>>>(
+        Effect.succeed<Either<Canceler<R>, Stream<R, E, A>>>(
           register(
             Emit((k) => {
               try {
-                runtime.unsafeRunAsync(
+                runtime.unsafeRun(
                   Take.fromPull(k).flatMap((take) => output.offer(take))
                 )
               } catch (e: unknown) {
@@ -62,19 +63,18 @@ export function asyncInterrupt<R, E, A>(
               Chunk<A>,
               void
             > = Channel.unwrap(
-              output
-                .take()
+              output.take
                 .flatMap((take) => take.done())
                 .fold(
                   (maybeError) =>
-                    Channel.fromEffect(output.shutdown()) >
+                    Channel.fromEffect(output.shutdown) >
                     maybeError.fold(Channel.unit, (e) => Channel.fail(e)),
                   (a) => Channel.write(a) > loop
                 )
             )
             return (new StreamInternal(loop) as Stream<R, E, A>).ensuring(canceler)
           },
-          (stream) => Stream.unwrap(output.shutdown().as(stream))
+          (stream) => Stream.unwrap(output.shutdown.as(stream))
         )
       )
   )

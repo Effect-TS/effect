@@ -1,17 +1,12 @@
-import type { Either } from "../../../data/Either"
-import type { XFiberRef } from "../definition"
-import { concreteUnified } from "../definition"
+import type { FiberRef } from "../definition"
+import { concreteFiberRef } from "./_internal/FiberRefInternal"
 
 /**
- * Reads the value associated with the current fiber. Returns initial value if
- * no value was `set` or inherited from parent.
+ * Returns the initial value of the `FiberRef`.
  *
- * @tsplus fluent ets/XFiberRef initialValue
- * @tsplus fluent ets/XFiberRefRuntime initialValue
+ * @tsplus fluent ets/FiberRef initialValue
  */
-export function initialValue<EA, EB, A, B>(
-  self: XFiberRef<EA, EB, A, B>
-): Either<EB, B> {
-  concreteUnified(self)
-  return self._initialValue
+export function initialValue<A>(self: FiberRef<A>): A {
+  concreteFiberRef(self)
+  return self._initial
 }

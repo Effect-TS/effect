@@ -1,35 +1,21 @@
 import { Tuple } from "../../../collection/immutable/Tuple"
-import { matchTag_ } from "../../../data/Utils"
-import type { Effect } from "../../Effect"
-import type { XRef } from "../definition"
-import { concrete } from "../definition"
+import type { UIO } from "../../Effect"
+import type { Ref } from "../definition"
 
 /**
- * Atomically modifies the `XRef` with the specified function.
+ * Atomically modifies the `Ref` with the specified function.
  *
- * @tsplus fluent ets/XRef update
+ * @tsplus fluent ets/Ref update
  */
-export function update_<RA, RB, EA, EB, A>(
-  self: XRef<RA, RB, EA, EB, A, A>,
+export function update_<A>(
+  self: Ref<A>,
   f: (a: A) => A,
   __tsplusTrace?: string
-): Effect<RA & RB, EA | EB, void> {
-  return matchTag_(
-    concrete(self),
-    {
-      Atomic: (atomic) => atomic.update(f)
-    },
-    (_) => (_ as XRef<RA, RB, EA, EB, A, A>).modify((v) => Tuple(undefined, f(v)))
-  )
+): UIO<void> {
+  return self.modify((v) => Tuple(undefined, f(v)))
 }
 
 /**
- * Atomically modifies the `XRef` with the specified function.
- *
- * @ets_data_first update_
+ * Atomically modifies the `Ref` with the specified function.
  */
-export function update<A>(f: (a: A) => A, __tsplusTrace?: string) {
-  return <RA, RB, EA, EB>(
-    self: XRef<RA, RB, EA, EB, A, A>
-  ): Effect<RA & RB, EA | EB, void> => self.update(f)
-}
+export const update = Pipeable(update_)

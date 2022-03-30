@@ -17,9 +17,5 @@ export function zipLeft_<E, E1, A, A1>(
 
 /**
  * Same as `zip` but discards the output of the right hand side.
- *
- * @ets_data_first zipLeft_
  */
-export function zipLeft<E1, A1>(that: Fiber<E1, A1>) {
-  return <E, A>(self: Fiber<E, A>): Fiber<E | E1, A> => self.zipLeft(that)
-}
+export const zipLeft = Pipeable(zipLeft_)

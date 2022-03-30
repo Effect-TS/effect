@@ -54,6 +54,16 @@ export const defaultRuntimeConfig: RuntimeConfig = RuntimeConfig({
 export const defaultRuntime = new Runtime(defaultEnv, defaultRuntimeConfig)
 
 /**
+ * @tsplus fluent ets/Effect defaultRun
+ */
+export const unsafeRun = defaultRuntime.unsafeRun
+
+/**
+ * @tsplus fluent ets/Effect unsafeRunSync
+ */
+export const unsafeRunSync = defaultRuntime.unsafeRunSync
+
+/**
  * @tsplus fluent ets/Effect unsafeRunPromise
  */
 export const unsafeRunPromise = defaultRuntime.unsafeRunPromise

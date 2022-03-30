@@ -1,5 +1,4 @@
 import { Option } from "../../../data/Option"
-import type { Runtime } from "../../FiberRef"
 import type { Fiber } from "../definition"
 import { makeSynthetic } from "../definition"
 
@@ -27,7 +26,7 @@ export function orElse_<E, E1, A, A1>(
       self
         .getRef(ref)
         .zipWith(that.getRef(ref), (first, second) =>
-          first === (ref as Runtime<any>).initial ? second : first
+          first === ref.initialValue() ? second : first
         ),
     inheritRefs: that.inheritRefs() > self.inheritRefs(),
     interruptAs: (id) => self.interruptAs(id) > that.interruptAs(id),
@@ -43,9 +42,5 @@ export function orElse_<E, E1, A, A1>(
  * Returns a fiber that prefers `this` fiber, but falls back to the `that` one
  * when `this` one fails. Interrupting the returned fiber will interrupt both
  * fibers, sequentially, from left to right.
- *
- * @ets_data_first orElse_
  */
-export function orElse<E1, A1>(that: Fiber<E1, A1>) {
-  return <E, A>(self: Fiber<E, A>): Fiber<E | E1, A | A1> => self | that
-}
+export const orElse = Pipeable(orElse_)

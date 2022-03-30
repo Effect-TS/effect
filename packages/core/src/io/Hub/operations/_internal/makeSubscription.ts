@@ -7,7 +7,7 @@ import type { UIO } from "../../../Effect"
 import { Effect } from "../../../Effect"
 import { Promise } from "../../../Promise"
 import type { Dequeue } from "../../../Queue"
-import { XQueueInternal } from "../../../Queue/definition/base"
+import { _Out, QueueSym } from "../../../Queue"
 import { unsafePollAll } from "../../../Queue/operations/_internal/unsafePollAll"
 import type { Strategy } from "../strategy"
 import type { AtomicHub } from "./AtomicHub"
@@ -60,14 +60,10 @@ export function unsafeMakeSubscription<A>(
   )
 }
 
-class UnsafeMakeSubscriptionImplementation<A> extends XQueueInternal<
-  never,
-  unknown,
-  unknown,
-  never,
-  never,
-  A
-> {
+class UnsafeMakeSubscriptionImplementation<A> implements Dequeue<A> {
+  readonly [QueueSym]: QueueSym = QueueSym;
+  readonly [_Out]!: () => A
+
   constructor(
     private hub: AtomicHub<A>,
     private subscribers: HashSet<
@@ -78,17 +74,21 @@ class UnsafeMakeSubscriptionImplementation<A> extends XQueueInternal<
     private shutdownHook: Promise<never, void>,
     private shutdownFlag: AtomicBoolean,
     private strategy: Strategy<A>
-  ) {
-    super()
-  }
+  ) {}
 
-  _awaitShutdown: UIO<void> = this.shutdownHook.await()
+  capacity: number = this.hub.capacity
 
-  _capacity: number = this.hub.capacity
+  size: UIO<number> = Effect.suspendSucceed(
+    this.shutdownFlag.get
+      ? Effect.interrupt
+      : Effect.succeedNow(this.subscription.size())
+  )
 
-  _isShutdown: UIO<boolean> = Effect.succeed(this.shutdownFlag.get)
+  awaitShutdown: UIO<void> = this.shutdownHook.await()
 
-  _shutdown: UIO<void> = Effect.suspendSucceedWith((_, fiberId) => {
+  isShutdown: UIO<boolean> = Effect.succeed(this.shutdownFlag.get)
+
+  shutdown: UIO<void> = Effect.suspendSucceedWith((_, fiberId) => {
     this.shutdownFlag.set(true)
     return Effect.whenEffect(
       this.shutdownHook.succeed(undefined),
@@ -100,24 +100,15 @@ class UnsafeMakeSubscriptionImplementation<A> extends XQueueInternal<
     ).asUnit()
   }).uninterruptible()
 
-  _size: UIO<number> = Effect.suspendSucceed(
-    this.shutdownFlag.get
-      ? Effect.interrupt
-      : Effect.succeedNow(this.subscription.size())
-  )
-
-  _offer(_: never, __tsplusTrace?: string): Effect<never, unknown, boolean> {
+  offer(_: never, __tsplusTrace?: string): UIO<boolean> {
     return Effect.succeedNow(false)
   }
 
-  _offerAll(
-    _: Iterable<never>,
-    __tsplusTrace?: string
-  ): Effect<never, unknown, boolean> {
+  offerAll(_: Iterable<never>, __tsplusTrace?: string): UIO<boolean> {
     return Effect.succeedNow(false)
   }
 
-  _take: Effect<unknown, never, A> = Effect.suspendSucceedWith((_, fiberId) => {
+  take: UIO<A> = Effect.suspendSucceedWith((_, fiberId) => {
     if (this.shutdownFlag.get) {
       return Effect.interrupt
     }
@@ -146,7 +137,7 @@ class UnsafeMakeSubscriptionImplementation<A> extends XQueueInternal<
     }
   })
 
-  _takeAll: Effect<unknown, never, Chunk<A>> = Effect.suspendSucceed(() => {
+  takeAll: UIO<Chunk<A>> = Effect.suspendSucceed(() => {
     if (this.shutdownFlag.get) {
       return Effect.interrupt
     }
@@ -160,7 +151,7 @@ class UnsafeMakeSubscriptionImplementation<A> extends XQueueInternal<
     return Effect.succeedNow(as)
   })
 
-  _takeUpTo(n: number): Effect<unknown, never, Chunk<A>> {
+  takeUpTo(n: number): UIO<Chunk<A>> {
     return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
         return Effect.interrupt

@@ -1,29 +1,29 @@
 import type { LazyArg } from "../../../..//data/Function"
-import { Managed } from "../../../..//io/Managed"
 import { Promise } from "../../../..//io/Promise"
 import type { Queue } from "../../../..//io/Queue"
 import type { Chunk } from "../../../../collection/immutable/Chunk"
 import { Tuple } from "../../../../collection/immutable/Tuple"
 import { Effect } from "../../../../io/Effect"
 import { Ref } from "../../../../io/Ref"
+import type { HasScope } from "../../../../io/Scope"
 import { Channel } from "../../../Channel"
 import { Take } from "../../../Take"
 
 export function bufferSignal<R, E, A>(
-  managed: LazyArg<
-    Managed<unknown, never, Queue<Tuple<[Take<E, A>, Promise<never, void>]>>>
+  effect: LazyArg<
+    Effect<HasScope, never, Queue<Tuple<[Take<E, A>, Promise<never, void>]>>>
   >,
   channel: LazyArg<Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown>>,
   __tsplusTrace?: string
 ): Channel<R, unknown, unknown, unknown, E, Chunk<A>, void> {
-  return Channel.managed(
-    Managed.Do()
-      .bind("queue", () => managed())
-      .bind("start", () => Promise.makeManaged<never, void>())
-      .tap(({ start }) => start.succeed(undefined).toManaged())
-      .bind("ref", ({ start }) => Ref.makeManaged(start))
+  return Channel.scoped(
+    Effect.Do()
+      .bind("queue", () => effect())
+      .bind("start", () => Promise.make<never, void>())
+      .tap(({ start }) => start.succeed(undefined))
+      .bind("ref", ({ start }) => Ref.make(start))
       .tap(({ queue, ref }) =>
-        (channel() >> producer<R, E, A>(queue, ref)).runManaged().fork()
+        (channel() >> producer<R, E, A>(queue, ref)).runScoped().fork()
       )
       .map(({ queue }) => queue),
     (queue) => consumer<R, E, A>(queue)
@@ -62,7 +62,7 @@ function consumer<R, E, A>(
     E,
     Chunk<A>,
     void
-  > = Channel.fromEffect(queue.take()).flatMap(
+  > = Channel.fromEffect(queue.take).flatMap(
     ({ tuple: [take, promise] }) =>
       Channel.fromEffect(promise.succeed(undefined)) >
       take.fold(
@@ -82,7 +82,7 @@ function terminate<R, E, A>(
 ): Channel<R, E, Chunk<A>, unknown, never, never, unknown> {
   return Channel.fromEffect(
     Effect.Do()
-      .bind("latch", () => ref.get())
+      .bind("latch", () => ref.get)
       .tap(({ latch }) => latch.await())
       .bind("promise", () => Promise.make<never, void>())
       .tap(({ promise }) => queue.offer(Tuple(take, promise)))

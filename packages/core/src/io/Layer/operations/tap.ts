@@ -17,10 +17,5 @@ export function tap_<RIn, E, ROut, RIn2, E2, X>(
 
 /**
  * Performs the specified effect if this layer succeeds.
- *
- * @ets_data_first tap_
  */
-export function tap<ROut, RIn2, E2, X>(f: (_: ROut) => Effect<RIn2, E2, X>) {
-  return <RIn, E>(self: Layer<RIn, E, ROut>): Layer<RIn & RIn2, E | E2, ROut> =>
-    self.tap(f)
-}
+export const tap = Pipeable(tap_)

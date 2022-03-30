@@ -82,7 +82,7 @@ describe("Channel", () => {
           .runDrain()
           .exit()
 
-        return conduit.zip(events.get())
+        return conduit.zip(events.get)
       })
 
       const {

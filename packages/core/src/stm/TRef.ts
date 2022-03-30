@@ -2,5 +2,3 @@
 export * from "./TRef/definition"
 export * from "./TRef/operations"
 // codegen:end
-
-export * as Atomic from "./TRef/Atomic"

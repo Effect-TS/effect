@@ -1,4 +1,4 @@
-import type { Effect } from "../../../io/Effect"
+import { Effect } from "../../../io/Effect"
 import type { Channel } from "../definition"
 
 /**
@@ -9,5 +9,5 @@ import type { Channel } from "../definition"
 export function run<Env, InErr, InDone, OutErr, OutDone>(
   self: Channel<Env, InErr, unknown, InDone, OutErr, never, OutDone>
 ): Effect<Env, OutErr, OutDone> {
-  return self.runManaged().useNow()
+  return Effect.scoped(self.runScoped())
 }

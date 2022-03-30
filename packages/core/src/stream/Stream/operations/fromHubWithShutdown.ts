@@ -1,5 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import type { XHub } from "../../../io/Hub"
+import type { Hub } from "../../../io/Hub"
 import { DEFAULT_CHUNK_SIZE, Stream } from "../definition"
 
 /**
@@ -12,12 +12,12 @@ import { DEFAULT_CHUNK_SIZE, Stream } from "../definition"
  *
  * @tsplus static ets/StreamOps fromHubWithShutdown
  */
-export function fromHubWithShutdown<R, E, A>(
-  hub: LazyArg<XHub<never, R, unknown, E, never, A>>,
+export function fromHubWithShutdown<A>(
+  hub: LazyArg<Hub<A>>,
   maxChunkSize = DEFAULT_CHUNK_SIZE,
   __tsplusTrace?: string
-): Stream<R, E, A> {
+): Stream<unknown, never, A> {
   return Stream.succeed(hub).flatMap((hub) =>
-    Stream.fromHub(hub, maxChunkSize).ensuring(hub.shutdown())
+    Stream.fromHub(hub, maxChunkSize).ensuring(hub.shutdown)
   )
 }

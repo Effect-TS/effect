@@ -26,7 +26,7 @@ describe("Stream", () => {
           (Stream(1) + Stream.fromEffect(ref.set(true)).drain()).take(0)
         )
         .tap(({ stream }) => stream.runDrain())
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

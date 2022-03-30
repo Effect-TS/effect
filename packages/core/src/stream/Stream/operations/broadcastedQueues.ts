@@ -1,7 +1,8 @@
 import { Chunk } from "../../../collection/immutable/Chunk"
+import { Effect } from "../../../io/Effect"
 import { Hub } from "../../../io/Hub"
-import { Managed } from "../../../io/Managed"
 import type { Dequeue } from "../../../io/Queue"
+import type { HasScope } from "../../../io/Scope"
 import type { Take } from "../../Take"
 import type { Stream } from "../definition"
 
@@ -19,13 +20,11 @@ export function broadcastedQueues_<R, E, A>(
   n: number,
   maximumLag: number,
   __tsplusTrace?: string
-): Managed<R, never, Chunk<Dequeue<Take<E, A>>>> {
-  return Managed.Do()
-    .bind("hub", () => Hub.bounded<Take<E, A>>(maximumLag).toManaged())
-    .bind("queues", ({ hub }) =>
-      Managed.collectAll(Chunk.fill(n, () => hub.subscribe()))
-    )
-    .tap(({ hub }) => self.runIntoHubManaged(hub).fork())
+): Effect<R & HasScope, never, Chunk<Dequeue<Take<E, A>>>> {
+  return Effect.Do()
+    .bind("hub", () => Hub.bounded<Take<E, A>>(maximumLag))
+    .bind("queues", ({ hub }) => Effect.collectAll(Chunk.fill(n, () => hub.subscribe)))
+    .tap(({ hub }) => self.runIntoHubScoped(hub).fork())
     .map(({ queues }) => queues)
 }
 

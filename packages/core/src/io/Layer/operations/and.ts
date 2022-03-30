@@ -26,11 +26,5 @@ export function and_<
 /**
  * Combines this layer with the specified layer, producing a new layer that
  * has the inputs and outputs of both.
- *
- * @ets_data_first and_
  */
-export function and<RIn2, E2, ROut2 extends Spreadable>(that: Layer<RIn2, E2, ROut2>) {
-  return <RIn, E, ROut extends Spreadable>(
-    self: Layer<RIn, E, ROut>
-  ): Layer<RIn & RIn2, E | E2, ROut & ROut2> => self + that
-}
+export const and = Pipeable(and_)

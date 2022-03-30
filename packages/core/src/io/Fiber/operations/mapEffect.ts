@@ -33,9 +33,5 @@ export function mapEffect_<E, E1, A, B>(
 
 /**
  * Effectually maps over the value the fiber computes.
- *
- * @ets_data_first mapEffect_
  */
-export function mapEffect<E1, A, B>(f: (a: A) => IO<E1, B>, __tsplusTrace?: string) {
-  return <E>(self: Fiber<E, A>): Fiber<E | E1, B> => self.mapEffect(f)
-}
+export const mapEffect = Pipeable(mapEffect_)

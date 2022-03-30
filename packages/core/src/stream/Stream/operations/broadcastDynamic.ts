@@ -1,4 +1,5 @@
-import type { Managed } from "../../../io/Managed"
+import type { Effect } from "../../../io/Effect"
+import type { HasScope } from "../../../io/Scope"
 import { Stream } from "../definition"
 
 /**
@@ -12,9 +13,9 @@ export function broadcastDynamic_<R, E, A>(
   self: Stream<R, E, A>,
   maximumLag: number,
   __tsplusTrace?: string
-): Managed<R, never, Stream<unknown, E, A>> {
-  return self.broadcastedQueuesDynamic(maximumLag).map((managed) =>
-    Stream.managed(managed)
+): Effect<R & HasScope, never, Stream<unknown, E, A>> {
+  return self.broadcastedQueuesDynamic(maximumLag).map((effect) =>
+    Stream.scoped(effect)
       .flatMap((queue) => Stream.fromQueue(queue))
       .flattenTake()
   )

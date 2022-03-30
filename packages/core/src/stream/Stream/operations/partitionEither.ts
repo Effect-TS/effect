@@ -1,7 +1,7 @@
 import { Tuple } from "../../../collection/immutable/Tuple"
 import type { Either } from "../../../data/Either"
 import { Effect } from "../../../io/Effect"
-import { Managed } from "../../../io/Managed"
+import type { HasScope } from "../../../io/Scope"
 import { Stream } from "../../Stream"
 
 /**
@@ -15,8 +15,8 @@ export function partitionEither_<R, E, A, R2, E2, A2, A3>(
   p: (a: A) => Effect<R2, E2, Either<A2, A3>>,
   buffer = 16,
   __tsplusTrace?: string
-): Managed<
-  R & R2,
+): Effect<
+  R & R2 & HasScope,
   E | E2,
   Tuple<[Stream<unknown, E | E2, A2>, Stream<unknown, E | E2, A3>]>
 > {
@@ -30,7 +30,7 @@ export function partitionEither_<R, E, A, R2, E2, A2, A3>(
     )
     .flatMap((dequeues) => {
       if (dequeues.length === 2) {
-        return Managed.succeedNow(
+        return Effect.succeedNow(
           Tuple(
             Stream.fromQueueWithShutdown(dequeues.unsafeFirst()!)
               .flattenExitOption()
@@ -41,7 +41,7 @@ export function partitionEither_<R, E, A, R2, E2, A2, A3>(
           )
         )
       }
-      return Managed.dieMessage(
+      return Effect.dieMessage(
         `Stream.partitionEither: expected two streams but received: ${dequeues.length}`
       )
     })

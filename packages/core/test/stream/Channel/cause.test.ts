@@ -16,7 +16,7 @@ describe("Channel", () => {
             .onExit((exit) => ref.set(exit))
             .raceEither(promise.await())
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

@@ -1,7 +1,6 @@
 import type { LazyArg } from "../../../data/Function"
 import type { UIO } from "../../Effect"
 import type { Scope } from "../definition"
-import { concreteScope } from "../definition"
 
 /**
  * Adds a finalizer to this scope. The finalizer is guaranteed to be run when
@@ -14,8 +13,7 @@ export function addFinalizer_(
   self: Scope,
   finalizer: LazyArg<UIO<unknown>>
 ): UIO<void> {
-  concreteScope(self)
-  return self._addFinalizer(finalizer)
+  return self.addFinalizerExit(() => finalizer())
 }
 
 /**

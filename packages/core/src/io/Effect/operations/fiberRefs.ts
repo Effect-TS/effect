@@ -1,6 +1,6 @@
 import * as M from "../../../collection/immutable/Map"
 import type { Option } from "../../../data/Option"
-import type { FiberRef, Runtime } from "../../FiberRef"
+import type { FiberRef } from "../../FiberRef"
 import type { UIO } from "../definition"
 import { Effect, IFiberRefGetAll } from "../definition"
 
@@ -10,16 +10,16 @@ import { Effect, IFiberRefGetAll } from "../definition"
  * example between an asynchronous producer and consumer.
  */
 export class FiberRefs {
-  #fiberRefLocals: M.Map<FiberRef.Runtime<any>, any>
+  #fiberRefLocals: M.Map<FiberRef<unknown>, unknown>
 
-  constructor(fiberRefLocals: M.Map<FiberRef.Runtime<any>, any>) {
+  constructor(fiberRefLocals: M.Map<FiberRef<unknown>, unknown>) {
     this.#fiberRefLocals = fiberRefLocals
   }
 
   /**
    * Returns a set of each `FiberRef` in this collection.
    */
-  get fiberRefs(): ReadonlySet<FiberRef.Runtime<any>> {
+  get fiberRefs(): ReadonlySet<FiberRef<unknown>> {
     return new Set(this.#fiberRefLocals.keys())
   }
 
@@ -37,16 +37,16 @@ export class FiberRefs {
    * Gets the value of the specified `FiberRef` in this collection of `FiberRef`
    * values if it exists or `None` otherwise.
    */
-  get<A>(fiberRef: FiberRef.Runtime<A>): Option<A> {
-    return M.lookup_(this.#fiberRefLocals, fiberRef)
+  get<A>(fiberRef: FiberRef<A>): Option<A> {
+    return M.lookup_(this.#fiberRefLocals, fiberRef) as Option<A>
   }
 
   /**
    * Gets the value of the specified `FiberRef` in this collection of `FiberRef`
    * values if it exists or the `initial` value of the `FiberRef` otherwise.
    */
-  getOrDefault<A>(fiberRef: FiberRef.Runtime<A>): A {
-    return this.get(fiberRef).getOrElse((fiberRef as Runtime<A>).initial)
+  getOrDefault<A>(fiberRef: FiberRef<A>): A {
+    return this.get(fiberRef).getOrElse(fiberRef.initialValue())
   }
 }
 

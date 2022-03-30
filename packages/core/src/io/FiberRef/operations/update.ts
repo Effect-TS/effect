@@ -1,26 +1,21 @@
 import { Tuple } from "../../../collection/immutable/Tuple"
-import type { IO } from "../../Effect"
-import type { XFiberRef } from "../definition"
+import type { UIO } from "../../Effect"
+import type { FiberRef } from "../definition"
 
 /**
- * Atomically modifies the `XFiberRef` with the specified function.
+ * Atomically modifies the `FiberRef` with the specified function.
  *
- * @tsplus fluent ets/XFiberRef update
- * @tsplus fluent ets/XFiberRefRuntime update
+ * @tsplus fluent ets/FiberRef update
  */
-export function update_<EA, EB, A>(
-  self: XFiberRef<EA, EB, A, A>,
+export function update_<A>(
+  self: FiberRef<A>,
   f: (a: A) => A,
   __tsplusTrace?: string
-): IO<EA | EB, void> {
+): UIO<void> {
   return self.modify((v) => Tuple(undefined, f(v)))
 }
 
 /**
- * Atomically modifies the `XFiberRef` with the specified function.
- *
- * @ets_data_first update_
+ * Atomically modifies the `FiberRef` with the specified function.
  */
-export function update<A>(f: (a: A) => A, __tsplusTrace?: string) {
-  return <EA, EB>(self: XFiberRef<EA, EB, A, A>): IO<EA | EB, void> => self.update(f)
-}
+export const update = Pipeable(update_)

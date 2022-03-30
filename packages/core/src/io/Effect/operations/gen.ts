@@ -1,19 +1,14 @@
 /**
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
-import { Tuple } from "../../../collection/immutable/Tuple"
 import type { Either } from "../../../data/Either"
 import type { NoSuchElementException } from "../../../data/GlobalExceptions"
 import type { Has, Tag } from "../../../data/Has"
 import type { Option } from "../../../data/Option"
 import * as Utils from "../../../data/Utils"
 import { _A, _E, _R } from "../../../support/Symbols"
-import { ExecutionStrategy } from "../../ExecutionStrategy"
-import type { Managed } from "../../Managed/definition"
-import { ManagedImpl } from "../../Managed/definition"
-import type { ReleaseMap } from "../../Managed/ReleaseMap"
-import { make as makeReleaseMap } from "../../Managed/ReleaseMap/make"
-import { releaseAll } from "../../Managed/ReleaseMap/releaseAll"
+import type { HasScope } from "../../Scope"
+import { Scope } from "../../Scope"
 import { Effect } from "../definition"
 
 export class GenEffect<R, E, A> {
@@ -21,10 +16,7 @@ export class GenEffect<R, E, A> {
   readonly [_E]!: () => E;
   readonly [_A]!: () => A
 
-  constructor(
-    readonly effect: Effect<R, E, A> | Managed<R, E, A>,
-    readonly trace?: string
-  ) {}
+  constructor(readonly effect: Effect<R, E, A>, readonly trace?: string) {}
 
   *[Symbol.iterator](): Generator<GenEffect<R, E, A>, A, any> {
     return yield this
@@ -69,15 +61,15 @@ export interface Adapter {
   <R, E, A>(_: Effect<R, E, A>, __tsplusTrace?: string): GenEffect<R, E, A>
 }
 
-export interface AdapterWithManaged extends Adapter {
-  <R, E, A>(_: Managed<R, E, A>, __tsplusTrace?: string): GenEffect<R, E, A>
+export interface AdapterWithScope extends Adapter {
+  <R, E, A>(_: Effect<R & HasScope, E, A>, __tsplusTrace?: string): GenEffect<R, E, A>
 }
 
 /**
  * @tsplus static ets/EffectOps genWithManaged
  */
-export function genWithManaged<Eff extends GenEffect<any, any, any>, AEff>(
-  f: (i: AdapterWithManaged) => Generator<Eff, AEff, any>,
+export function genScoped<Eff extends GenEffect<any, any, any>, AEff>(
+  f: (i: AdapterWithScope) => Generator<Eff, AEff, any>,
   __tsplusTrace?: string
 ): Effect<Utils._R<Eff>, Utils._E<Eff>, AEff> {
   return Effect.suspendSucceed(() => {
@@ -85,36 +77,25 @@ export function genWithManaged<Eff extends GenEffect<any, any, any>, AEff>(
     const state = iterator.next()
 
     function run(
-      rm: ReleaseMap,
+      scope: Scope.Closeable,
       state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
     ): Effect<any, any, AEff> {
       if (state.done) {
         return Effect.succeed(state.value)
       }
-      return Effect.suspendSucceed(
-        () =>
-          state.value.trace
-            ? state.value["effect"] instanceof ManagedImpl
-              ? state.value["effect"]["effect"]
-                  .provideSomeEnvironment((r0) => Tuple(r0, rm))
-                  .map((_) => _.get(1))
-              : (state.value["effect"] as Effect<any, any, any>)
-            : state.value["effect"] instanceof ManagedImpl
-            ? state.value["effect"]["effect"]
-                .provideSomeEnvironment((r0) => Tuple(r0, rm))
-                .map((_) => _.get(1))
-            : (state.value["effect"] as Effect<any, any, any>),
-        state.value.trace
-      ).flatMap((val) => {
-        const next = iterator.next(val)
-        return run(rm, next)
-      })
+      return Effect.suspendSucceed(() => state.value.effect, state.value.trace).flatMap(
+        (val) => {
+          const next = iterator.next(val)
+          return run(scope, next)
+        }
+      )
     }
 
-    return makeReleaseMap.flatMap((rm) =>
-      Effect.unit.acquireReleaseExitWith(
-        () => run(rm, state),
-        (_, e) => releaseAll(e, ExecutionStrategy.Sequential)(rm)
+    return Scope.make.flatMap((scope) =>
+      Effect.acquireReleaseExitWith(
+        Effect.unit,
+        () => run(scope, state),
+        (_, exit) => scope.close(exit)
       )
     )
   })

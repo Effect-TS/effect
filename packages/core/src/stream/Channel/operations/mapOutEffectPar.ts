@@ -1,7 +1,6 @@
 import { Either } from "../../../data/Either"
 import { Effect } from "../../../io/Effect"
 import { Fiber } from "../../../io/Fiber"
-import { Managed } from "../../../io/Managed"
 import { Promise } from "../../../io/Promise"
 import { Queue } from "../../../io/Queue"
 import { Semaphore } from "../../../io/Semaphore"
@@ -26,19 +25,22 @@ export function mapOutEffectPar_<
   n: number,
   f: (o: OutElem) => Effect<Env1, OutErr1, OutElem1>
 ): Channel<Env & Env1, InErr, InElem, InDone, OutErr | OutErr1, OutElem1, OutDone> {
-  return Channel.managed(
-    Managed.withChildren((getChildren) =>
-      Managed.Do()
+  return Channel.scoped(
+    Effect.withChildren((getChildren) =>
+      Effect.Do()
         .tap(() =>
-          Managed.finalizer(getChildren.flatMap((fibers) => Fiber.interruptAll(fibers)))
+          Effect.addFinalizer(
+            getChildren.flatMap((fibers) => Fiber.interruptAll(fibers))
+          )
         )
         .bind("queue", () =>
-          Queue.bounded<Effect<Env1, OutErr | OutErr1, Either<OutDone, OutElem1>>>(
-            n
-          ).toManagedWith((queue) => queue.shutdown())
+          Effect.acquireRelease(
+            Queue.bounded<Effect<Env1, OutErr | OutErr1, Either<OutDone, OutElem1>>>(n),
+            (queue) => queue.shutdown
+          )
         )
-        .bind("errorSignal", () => Promise.makeManaged<OutErr1, never>())
-        .bind("permits", () => Semaphore.make(n).toManaged())
+        .bind("errorSignal", () => Promise.make<OutErr1, never>())
+        .bind("permits", () => Semaphore.make(n))
         .bind("pull", () => self.toPull())
         .tap(({ errorSignal, permits, pull, queue }) =>
           pull
@@ -73,7 +75,7 @@ export function mapOutEffectPar_<
             )
             .forever()
             .interruptible()
-            .forkManaged()
+            .forkScoped()
         )
         .map(({ queue }) => queue)
     ),
@@ -87,17 +89,14 @@ export function mapOutEffectPar_<
         OutElem1,
         OutDone
       > = Channel.unwrap(
-        queue
-          .take()
-          .flatten()
-          .foldCause(
-            (cause) => Channel.failCause(cause),
-            (either) =>
-              either.fold(
-                (outDone) => Channel.succeedNow(outDone),
-                (outElem) => Channel.write(outElem) > consumer
-              )
-          )
+        queue.take.flatten().foldCause(
+          (cause) => Channel.failCause(cause),
+          (either) =>
+            either.fold(
+              (outDone) => Channel.succeedNow(outDone),
+              (outElem) => Channel.write(outElem) > consumer
+            )
+        )
       )
       return consumer
     }

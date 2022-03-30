@@ -33,13 +33,15 @@ describe("Stream", () => {
 
     it("discards empty chunks", async () => {
       const chunks = Chunk(Chunk.single(1), Chunk.empty<number>(), Chunk.single(2))
-      const program = Stream.fromChunks(...chunks)
-        .toPull()
-        .use((pull) =>
-          Effect.forEach(Chunk.range(0, 2), () =>
-            pull.map((chunk) => chunk.toArray()).either()
+      const program = Effect.scoped(
+        Stream.fromChunks(...chunks)
+          .toPull()
+          .flatMap((pull) =>
+            Effect.forEach(Chunk.range(0, 2), () =>
+              pull.map((chunk) => chunk.toArray()).either()
+            )
           )
-        )
+      )
 
       const result = await program.unsafeRunPromise()
 

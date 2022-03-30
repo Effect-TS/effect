@@ -55,7 +55,7 @@ describe("Stream", () => {
         )
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ substreamCancelled }) => substreamCancelled.get())
+        .flatMap(({ substreamCancelled }) => substreamCancelled.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -79,7 +79,7 @@ describe("Stream", () => {
             .runDrain()
             .either()
         )
-        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
+        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get)
 
       const { cancelled, result } = await program.unsafeRunPromise()
 
@@ -103,7 +103,7 @@ describe("Stream", () => {
             .runDrain()
             .either()
         )
-        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
+        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get)
 
       const { cancelled, result } = await program.unsafeRunPromise()
 
@@ -129,7 +129,7 @@ describe("Stream", () => {
             .runDrain()
             .exit()
         )
-        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
+        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get)
 
       const { cancelled, result } = await program.unsafeRunPromise()
 
@@ -154,7 +154,7 @@ describe("Stream", () => {
             .runDrain()
             .exit()
         )
-        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
+        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get)
 
       const { cancelled, result } = await program.unsafeRunPromise()
 
@@ -181,7 +181,7 @@ describe("Stream", () => {
             .flatMapPar(2, identity)
             .runDrain()
         )
-        .flatMap(({ effects }) => effects.get())
+        .flatMap(({ effects }) => effects.get)
 
       const result = await program.unsafeRunPromise()
 

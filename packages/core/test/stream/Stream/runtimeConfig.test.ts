@@ -23,10 +23,10 @@ describe("Stream", () => {
         )
         .tap(({ stream1, stream2 }) => (stream1 > stream2).runDrain())
         .bind("count1", ({ ref1 }) =>
-          ref1.get().map((runtimeConfig) => runtimeConfig.value.maxOp)
+          ref1.get.map((runtimeConfig) => runtimeConfig.value.maxOp)
         )
         .bind("count2", ({ ref2 }) =>
-          ref2.get().map((runtimeConfig) => runtimeConfig.value.maxOp)
+          ref2.get.map((runtimeConfig) => runtimeConfig.value.maxOp)
         )
 
       const { count1, count2 } = await program.unsafeRunPromise()

@@ -1,6 +1,6 @@
 import { Chunk } from "../../../collection/immutable/Chunk"
 import type { LazyArg } from "../../../data/Function"
-import type { XQueue } from "../../../io/Queue"
+import type { Dequeue, Queue } from "../../../io/Queue"
 import { Pull } from "../../Pull"
 import { DEFAULT_CHUNK_SIZE, Stream } from "../definition"
 
@@ -12,18 +12,18 @@ import { DEFAULT_CHUNK_SIZE, Stream } from "../definition"
  *
  * @tsplus static ets/StreamOps fromQueue
  */
-export function fromQueue<R, E, A>(
-  queue: LazyArg<XQueue<never, R, unknown, E, never, A>>,
+export function fromQueue<A>(
+  queue: LazyArg<Dequeue<A>>,
   maxChunkSize = DEFAULT_CHUNK_SIZE,
   __tsplusTrace?: string
-): Stream<R, E, A> {
+): Stream<unknown, never, A> {
   return Stream.repeatEffectChunkOption(() => {
     const queue0 = queue()
-    return queue0
+    return (queue0 as Queue<A>)
       .takeBetween(1, maxChunkSize)
       .map(Chunk.from)
       .catchAllCause((cause) =>
-        queue0.isShutdown() && cause.isInterrupted() ? Pull.end : Pull.failCause(cause)
+        queue0.isShutdown && cause.isInterrupted() ? Pull.end : Pull.failCause(cause)
       )
   })
 }

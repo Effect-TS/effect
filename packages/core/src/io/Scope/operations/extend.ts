@@ -1,7 +1,8 @@
 import type { LazyArg } from "../../../data/Function"
-import type { Effect } from "../../Effect"
-import type { HasScope, Scope } from "../definition"
-import { concreteScope } from "../definition"
+import { mergeEnvironments } from "../../../data/Has"
+import { Effect } from "../../Effect"
+import type { Scope } from "../definition"
+import { HasScope } from "../definition"
 
 /**
  * Extends the scope of an `Effect` workflow that needs a scope into this
@@ -16,8 +17,9 @@ export function extend_<R, E, A>(
   self: Scope,
   effect: LazyArg<Effect<R & HasScope, E, A>>
 ): Effect<R, E, A> {
-  concreteScope(self)
-  return self._extend(effect)
+  return Effect.suspendSucceed(
+    effect().provideSomeEnvironment((r: R) => mergeEnvironments(HasScope, r, self))
+  )
 }
 
 /**

@@ -30,7 +30,7 @@ describe("Stream", () => {
             Stream.finalizer(log.update((list) => list.prepend("first")))
           ).runDrain()
         )
-        .flatMap((log) => log.get().map((list) => list.toArray()))
+        .flatMap((log) => log.get.map((list) => list.toArray()))
 
       const result = await program.unsafeRunPromise()
 

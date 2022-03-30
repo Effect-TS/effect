@@ -15,7 +15,7 @@ export function runFold_<R, E, A, S>(
   f: (s: S, a: A) => S,
   __tsplusTrace?: string
 ): Effect<R, E, S> {
-  return self.runFoldWhileManaged(s, constTrue, f).use(Effect.succeedNow)
+  return Effect.scoped(self.runFoldWhileScoped(s, constTrue, f))
 }
 
 /**

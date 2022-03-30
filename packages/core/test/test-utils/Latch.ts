@@ -25,6 +25,6 @@ export function withLatchAwait<R, E, A>(
         )
       )
     )
-    .tap(({ latch, ref }) => Effect.whenEffect(ref.get(), latch.await()))
+    .tap(({ latch, ref }) => Effect.whenEffect(ref.get, latch.await()))
     .map(({ result }) => result)
 }

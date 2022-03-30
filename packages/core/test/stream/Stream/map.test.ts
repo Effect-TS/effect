@@ -247,7 +247,7 @@ describe("Stream", () => {
             .mapEffectPar(1, (n) => queue.offer(n))
             .runDrain()
         )
-        .flatMap(({ queue }) => queue.takeAll())
+        .flatMap(({ queue }) => queue.takeAll)
 
       const result = await program.unsafeRunPromise()
 
@@ -270,7 +270,7 @@ describe("Stream", () => {
         )
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ interrupted }) => interrupted.get())
+        .flatMap(({ interrupted }) => interrupted.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -331,7 +331,7 @@ describe("Stream", () => {
             .runDrain()
             .exit()
         )
-        .bind("count", ({ interrupted }) => interrupted.get())
+        .bind("count", ({ interrupted }) => interrupted.get)
 
       const { count, result } = await program.unsafeRunPromise()
 

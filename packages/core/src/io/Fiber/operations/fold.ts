@@ -25,12 +25,5 @@ export function fold_<E, A, Z>(
 
 /**
  * Folds over the runtime or synthetic fiber.
- *
- * @ets_data_first fold_
  */
-export function fold<E, A, Z>(
-  onRuntime: (_: Fiber.Runtime<E, A>) => Z,
-  onSynthetic: (_: Fiber.Synthetic<E, A>) => Z
-) {
-  return (self: Fiber<E, A>): Z => self.fold(onRuntime, onSynthetic)
-}
+export const fold = Pipeable(fold_)

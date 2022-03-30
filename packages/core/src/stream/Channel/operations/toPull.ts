@@ -1,7 +1,7 @@
 import { Either } from "../../../data/Either"
 import { identity } from "../../../data/Function"
 import { Effect } from "../../../io/Effect"
-import { Managed } from "../../../io/Managed"
+import type { HasScope } from "../../../io/Scope"
 import { ChannelExecutor, readUpstream } from "../ChannelExecutor"
 import type { ChannelState } from "../ChannelState"
 import { concreteChannelState } from "../ChannelState"
@@ -14,8 +14,8 @@ import type { Channel } from "../definition"
  */
 export function toPull<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-): Managed<Env, never, Effect<Env, OutErr, Either<OutDone, OutElem>>> {
-  return Managed.acquireReleaseExitWith(
+): Effect<Env & HasScope, never, Effect<Env, OutErr, Either<OutDone, OutElem>>> {
+  return Effect.acquireReleaseExit(
     Effect.succeed(new ChannelExecutor(() => self, undefined, identity)),
     (exec, exit) => {
       const finalize = exec.close(exit)

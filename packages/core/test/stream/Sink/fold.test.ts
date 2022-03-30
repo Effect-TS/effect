@@ -105,7 +105,7 @@ describe("Sink", () => {
               )
               .runCollect()
           )
-          .bind("result", ({ effects }) => effects.get())
+          .bind("result", ({ effects }) => effects.get)
           .map(({ exit, result }) => Tuple(exit.toArray(), result.toArray()))
           .exit()
       }

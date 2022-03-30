@@ -31,7 +31,7 @@ describe("Stream", () => {
             .fork()
         )
         .tap(({ fiber }) => fiber.join())
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -96,13 +96,15 @@ describe("Stream", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
         .tap(({ ref }) =>
-          Stream.repeatEffectOption(
-            ref.getAndUpdate((n) => n + 1) > Effect.fail(Option.none)
+          Effect.scoped(
+            Stream.repeatEffectOption(
+              ref.getAndUpdate((n) => n + 1) > Effect.fail(Option.none)
+            )
+              .toPull()
+              .flatMap((pull) => pull.ignore() > pull.ignore())
           )
-            .toPull()
-            .use((pull) => pull.ignore() > pull.ignore())
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -140,7 +142,7 @@ describe("Stream", () => {
             .fork()
         )
         .tap(({ fiber }) => fiber.join())
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -223,7 +225,7 @@ describe("Stream", () => {
             .take(2)
             .runDrain()
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

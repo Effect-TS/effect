@@ -1,10 +1,10 @@
-import type { Map } from "../../../collection/immutable/Map"
+import * as Map from "../../../collection/immutable/Map"
 import type { LazyArg } from "../../../data/Function"
 import type { Cause } from "../../../io/Cause"
 import { Effect } from "../../../io/Effect"
 import { FiberRef } from "../../../io/FiberRef"
 import type { LogLevel } from "../../../io/LogLevel"
-import { Managed } from "../../../io/Managed"
+import { LogSpan } from "../../../io/LogSpan"
 import { Sink } from "../definition"
 
 /**
@@ -112,7 +112,8 @@ export function logLevel(level: LogLevel) {
   return <R, E, In, L, Z>(
     sink: Sink<R, E, In, L, Z>,
     __tsplusTrace?: string
-  ): Sink<R, E, In, L, Z> => Sink.unwrapManaged(Managed.logLevel(level).as(sink))
+  ): Sink<R, E, In, L, Z> =>
+    Sink.unwrapScoped(FiberRef.currentLogLevel.value.locallyScoped(level).as(sink))
 }
 
 /**
@@ -124,7 +125,16 @@ export function logSpan(label: LazyArg<string>) {
   return <R, E, In, L, Z>(
     sink: Sink<R, E, In, L, Z>,
     __tsplusTrace?: string
-  ): Sink<R, E, In, L, Z> => Sink.unwrapManaged(Managed.logSpan(label).as(sink))
+  ): Sink<R, E, In, L, Z> =>
+    Sink.unwrapScoped(
+      FiberRef.currentLogSpan.value.get().flatMap((stack) => {
+        const now = Date.now()
+        const logSpan = LogSpan(label(), now)
+        return FiberRef.currentLogSpan.value
+          .locallyScoped(stack.prepend(logSpan))
+          .as(sink)
+      })
+    )
 }
 
 /**
@@ -138,7 +148,15 @@ export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
     sink: Sink<R, E, In, L, Z>,
     __tsplusTrace?: string
   ): Sink<R, E, In, L, Z> =>
-    Sink.unwrapManaged(Managed.logAnnotate(key, value).as(sink))
+    Sink.unwrapScoped(
+      FiberRef.currentLogAnnotations.value
+        .get()
+        .flatMap((annotations) =>
+          FiberRef.currentLogAnnotations.value
+            .locallyScoped(Map.insert_(annotations, key(), value()))
+            .as(sink)
+        )
+    )
 }
 
 /**
@@ -148,6 +166,6 @@ export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
  */
 export function logAnnotations(
   __tsplusTrace?: string
-): Sink<unknown, never, unknown, unknown, Map<string, string>> {
+): Sink<unknown, never, unknown, unknown, Map.Map<string, string>> {
   return Sink.fromEffect(FiberRef.currentLogAnnotations.value.get())
 }

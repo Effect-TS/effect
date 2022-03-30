@@ -121,7 +121,7 @@ describe("Schedule", () => {
     it("for 'once' will repeat 1 additional time", async () => {
       const program = Ref.make(0)
         .tap((ref) => ref.update((n) => n + 1).repeat(Schedule.once))
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -249,7 +249,7 @@ describe("Schedule", () => {
           ref.update((n) => n + 1).repeat(Schedule.recurs(n))
         )
         .tap(({ io }) => io.repeat(Schedule.recurs(1)))
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -268,7 +268,7 @@ describe("Schedule", () => {
             .repeat(Schedule.recurs(2))
             .ensuring(promise.succeed(undefined))
         )
-        .bind("value", ({ ref }) => ref.get())
+        .bind("value", ({ ref }) => ref.get)
         .bind("finalizerValue", ({ promise }) => promise.poll())
 
       const { finalizerValue, value } = await program.unsafeRunPromise()

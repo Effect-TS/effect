@@ -11,9 +11,5 @@ export function map_<R, E, A, B>(self: Layer<R, E, A>, f: (a: A) => B): Layer<R,
 
 /**
  * Returns a new layer whose output is mapped by the specified function.
- *
- * @ets_data_first map_
  */
-export function map<A, B>(f: (a: A) => B) {
-  return <R, E>(self: Layer<R, E, A>): Layer<R, E, B> => self.map(f)
-}
+export const map = Pipeable(map_)

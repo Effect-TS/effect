@@ -1,29 +1,23 @@
 import { Tuple } from "../../../collection/immutable/Tuple"
-import type { IO } from "../../Effect"
-import type { XFiberRef } from "../definition"
+import type { UIO } from "../../Effect"
+import type { FiberRef } from "../definition"
 
 /**
  * Atomically sets the value associated with the current fiber and returns
  * the old value.
  *
- * @tsplus fluent ets/XFiberRef getAndSet
- * @tsplus fluent ets/XFiberRefRuntime getAndSet
+ * @tsplus fluent ets/FiberRef getAndSet
  */
-export function getAndSet_<EA, EB, A>(
-  self: XFiberRef<EA, EB, A, A>,
+export function getAndSet_<A>(
+  self: FiberRef<A>,
   value: A,
   __tsplusTrace?: string
-): IO<EA | EB, A> {
+): UIO<A> {
   return self.modify((v) => Tuple(v, value))
 }
 
 /**
  * Atomically sets the value associated with the current fiber and returns
  * the old value.
- *
- * @ets_data_first getAndSet_
  */
-export function getAndSet<A>(value: A, __tsplusTrace?: string) {
-  return <EA, EB>(self: XFiberRef<EA, EB, A, A>): IO<EA | EB, A> =>
-    self.getAndSet(value)
-}
+export const getAndSet = Pipeable(getAndSet_)

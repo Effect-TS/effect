@@ -49,7 +49,7 @@ describe("Stream", () => {
         )
         .bind("list1", ({ stream }) => stream.take(2).runCollect())
         .tap(({ latch }) => latch.await())
-        .bind("list2", ({ ref }) => ref.get())
+        .bind("list2", ({ ref }) => ref.get)
 
       const { list1, list2 } = await program.unsafeRunPromise()
 
@@ -102,21 +102,27 @@ describe("Stream", () => {
           (stream1 + stream2 + stream3).bufferDropping(8)
         )
         .flatMap(({ latch1, latch2, latch3, latch4, ref, stream }) =>
-          stream.toPull().use((as) =>
-            Effect.Do()
-              .bind("zero", () => as)
-              .tap(() => latch1.succeed(undefined))
-              .tap(() => latch2.await())
-              .tap(() =>
-                as.flatMap((a) => ref.update((list) => List.from(a) + list)).repeatN(7)
-              )
-              .bind("snapshot1", () => ref.get())
-              .tap(() => latch3.succeed(undefined))
-              .tap(() => latch4.await())
-              .tap(() =>
-                as.flatMap((a) => ref.update((list) => List.from(a) + list)).repeatN(7)
-              )
-              .bind("snapshot2", () => ref.get())
+          Effect.scoped(
+            stream.toPull().flatMap((as) =>
+              Effect.Do()
+                .bind("zero", () => as)
+                .tap(() => latch1.succeed(undefined))
+                .tap(() => latch2.await())
+                .tap(() =>
+                  as
+                    .flatMap((a) => ref.update((list) => List.from(a) + list))
+                    .repeatN(7)
+                )
+                .bind("snapshot1", () => ref.get)
+                .tap(() => latch3.succeed(undefined))
+                .tap(() => latch4.await())
+                .tap(() =>
+                  as
+                    .flatMap((a) => ref.update((list) => List.from(a) + list))
+                    .repeatN(7)
+                )
+                .bind("snapshot2", () => ref.get)
+            )
           )
         )
 
@@ -171,21 +177,27 @@ describe("Stream", () => {
           (stream1 + stream2 + stream3).bufferSliding(8)
         )
         .flatMap(({ latch1, latch2, latch3, latch4, ref, stream }) =>
-          stream.toPull().use((as) =>
-            Effect.Do()
-              .bind("zero", () => as)
-              .tap(() => latch1.succeed(undefined))
-              .tap(() => latch2.await())
-              .tap(() =>
-                as.flatMap((a) => ref.update((list) => List.from(a) + list)).repeatN(7)
-              )
-              .bind("snapshot1", () => ref.get())
-              .tap(() => latch3.succeed(undefined))
-              .tap(() => latch4.await())
-              .tap(() =>
-                as.flatMap((a) => ref.update((list) => List.from(a) + list)).repeatN(7)
-              )
-              .bind("snapshot2", () => ref.get())
+          Effect.scoped(
+            stream.toPull().flatMap((as) =>
+              Effect.Do()
+                .bind("zero", () => as)
+                .tap(() => latch1.succeed(undefined))
+                .tap(() => latch2.await())
+                .tap(() =>
+                  as
+                    .flatMap((a) => ref.update((list) => List.from(a) + list))
+                    .repeatN(7)
+                )
+                .bind("snapshot1", () => ref.get)
+                .tap(() => latch3.succeed(undefined))
+                .tap(() => latch4.await())
+                .tap(() =>
+                  as
+                    .flatMap((a) => ref.update((list) => List.from(a) + list))
+                    .repeatN(7)
+                )
+                .bind("snapshot2", () => ref.get)
+            )
           )
         )
 
@@ -235,7 +247,7 @@ describe("Stream", () => {
         )
         .bind("list1", ({ stream }) => stream.take(2).runCollect())
         .tap(({ latch }) => latch.await())
-        .bind("list2", ({ ref }) => ref.get())
+        .bind("list2", ({ ref }) => ref.get)
 
       const { list1, list2 } = await program.unsafeRunPromise()
 
@@ -287,7 +299,7 @@ describe("Stream", () => {
         )
         .bind("list1", ({ stream }) => stream.take(2).runCollect())
         .tap(({ latch }) => latch.await())
-        .bind("list2", ({ ref }) => ref.get())
+        .bind("list2", ({ ref }) => ref.get)
 
       const { list1, list2 } = await program.unsafeRunPromise()
 
@@ -340,21 +352,27 @@ describe("Stream", () => {
           (stream1 + stream2 + stream3).bufferChunksDropping(8)
         )
         .flatMap(({ latch1, latch2, latch3, latch4, ref, stream }) =>
-          stream.toPull().use((as) =>
-            Effect.Do()
-              .bind("zero", () => as)
-              .tap(() => latch1.succeed(undefined))
-              .tap(() => latch2.await())
-              .tap(() =>
-                as.flatMap((a) => ref.update((list) => List.from(a) + list)).repeatN(7)
-              )
-              .bind("snapshot1", () => ref.get())
-              .tap(() => latch3.succeed(undefined))
-              .tap(() => latch4.await())
-              .tap(() =>
-                as.flatMap((a) => ref.update((list) => List.from(a) + list)).repeatN(7)
-              )
-              .bind("snapshot2", () => ref.get())
+          Effect.scoped(
+            stream.toPull().flatMap((as) =>
+              Effect.Do()
+                .bind("zero", () => as)
+                .tap(() => latch1.succeed(undefined))
+                .tap(() => latch2.await())
+                .tap(() =>
+                  as
+                    .flatMap((a) => ref.update((list) => List.from(a) + list))
+                    .repeatN(7)
+                )
+                .bind("snapshot1", () => ref.get)
+                .tap(() => latch3.succeed(undefined))
+                .tap(() => latch4.await())
+                .tap(() =>
+                  as
+                    .flatMap((a) => ref.update((list) => List.from(a) + list))
+                    .repeatN(7)
+                )
+                .bind("snapshot2", () => ref.get)
+            )
           )
         )
 
@@ -409,21 +427,27 @@ describe("Stream", () => {
           (stream1 + stream2 + stream3).bufferChunksSliding(8)
         )
         .flatMap(({ latch1, latch2, latch3, latch4, ref, stream }) =>
-          stream.toPull().use((as) =>
-            Effect.Do()
-              .bind("zero", () => as)
-              .tap(() => latch1.succeed(undefined))
-              .tap(() => latch2.await())
-              .tap(() =>
-                as.flatMap((a) => ref.update((list) => List.from(a) + list)).repeatN(7)
-              )
-              .bind("snapshot1", () => ref.get())
-              .tap(() => latch3.succeed(undefined))
-              .tap(() => latch4.await())
-              .tap(() =>
-                as.flatMap((a) => ref.update((list) => List.from(a) + list)).repeatN(7)
-              )
-              .bind("snapshot2", () => ref.get())
+          Effect.scoped(
+            stream.toPull().flatMap((as) =>
+              Effect.Do()
+                .bind("zero", () => as)
+                .tap(() => latch1.succeed(undefined))
+                .tap(() => latch2.await())
+                .tap(() =>
+                  as
+                    .flatMap((a) => ref.update((list) => List.from(a) + list))
+                    .repeatN(7)
+                )
+                .bind("snapshot1", () => ref.get)
+                .tap(() => latch3.succeed(undefined))
+                .tap(() => latch4.await())
+                .tap(() =>
+                  as
+                    .flatMap((a) => ref.update((list) => List.from(a) + list))
+                    .repeatN(7)
+                )
+                .bind("snapshot2", () => ref.get)
+            )
           )
         )
 

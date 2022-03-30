@@ -1,6 +1,6 @@
 import type { UIO } from "../../Effect"
 import type { Scope } from "../definition"
-import { concreteScope } from "../definition"
+import { concreteScope } from "./_internal/ScopeInternal"
 
 /**
  * Forks a new scope that is a child of this scope. The child scope will

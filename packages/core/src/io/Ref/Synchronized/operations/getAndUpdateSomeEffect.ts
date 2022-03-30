@@ -1,20 +1,20 @@
 import { Tuple } from "../../../../collection/immutable/Tuple"
 import type { Option } from "../../../../data/Option"
 import { Effect } from "../../../Effect"
-import type { XSynchronized } from "../definition"
+import type { SynchronizedRef } from "../definition"
 
 /**
- * Atomically modifies the `XRef.Synchronized` with the specified partial
+ * Atomically modifies the `Ref.Synchronized` with the specified partial
  * function, returning the value immediately before modification. If the
  * function is undefined on the current value it doesn't change it.
  *
- * @tsplus fluent ets/XSynchronized getAndUpdateSomeEffect
+ * @tsplus fluent ets/Ref/Synchronized getAndUpdateSomeEffect
  */
-export function getAndUpdateSomeEffect_<RA, RB, RC, EA, EB, EC, A>(
-  self: XSynchronized<RA, RB, EA, EB, A, A>,
-  pf: (a: A) => Option<Effect<RC, EC, A>>,
+export function getAndUpdateSomeEffect_<R, E, A>(
+  self: SynchronizedRef<A>,
+  pf: (a: A) => Option<Effect<R, E, A>>,
   __tsplusTrace?: string
-): Effect<RA & RB & RC, EA | EB | EC, A> {
+): Effect<R, E, A> {
   return self.modifyEffect((v) =>
     pf(v)
       .getOrElse(Effect.succeedNow(v))
@@ -29,11 +29,4 @@ export function getAndUpdateSomeEffect_<RA, RB, RC, EA, EB, EC, A>(
  *
  * @ets_data_first getAndUpdateSomeEffect_
  */
-export function getAndUpdateSomeEffect<RC, EC, A>(
-  pf: (a: A) => Option<Effect<RC, EC, A>>,
-  __tsplusTrace?: string
-) {
-  return <RA, RB, EA, EB>(
-    self: XSynchronized<RA, RB, EA, EB, A, A>
-  ): Effect<RA & RB & RC, EA | EB | EC, A> => self.getAndUpdateSomeEffect(pf)
-}
+export const getAndUpdateSomeEffect = Pipeable(getAndUpdateSomeEffect_)

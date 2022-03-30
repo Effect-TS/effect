@@ -13,9 +13,10 @@ export function onTermination_<R, E, A, R2, X>(
   cleanup: (cause: Cause<never>) => RIO<R2, X>,
   __tsplusTrace?: string
 ): Effect<R & R2, E, A> {
-  return Effect.unit.acquireReleaseExitWith(
+  return Effect.acquireReleaseExitWith(
+    Effect.unit,
     () => self,
-    (_, exit): RIO<R2, X | void> =>
+    (_, exit) =>
       exit._tag === "Failure"
         ? exit.cause.failureOrCause().fold(() => Effect.unit, cleanup)
         : Effect.unit
@@ -25,13 +26,5 @@ export function onTermination_<R, E, A, R2, X>(
 /**
  * Runs the specified effect if this effect is terminated, either because of a
  * defect or because of interruption.
- *
- * @ets_data_first onTermination_
  */
-export function onTermination<R2, X>(
-  cleanup: (cause: Cause<never>) => RIO<R2, X>,
-  __tsplusTrace?: string
-) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R2, E, A> =>
-    self.onTermination(cleanup)
-}
+export const onTermination = Pipeable(onTermination_)

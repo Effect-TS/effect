@@ -1,6 +1,6 @@
 import type { Chunk } from "../../../collection/immutable/Chunk"
 import type { LazyArg } from "../../../data/Function"
-import type { XQueue } from "../../../io/Queue"
+import type { Dequeue } from "../../../io/Queue"
 import { Pull } from "../../Pull"
 import { Stream } from "../definition"
 
@@ -9,20 +9,16 @@ import { Stream } from "../definition"
  *
  * @tsplus static ets/StreamOps fromChunkQueue
  */
-export function fromChunkQueue<R, E, A>(
-  queue: LazyArg<XQueue<never, R, unknown, E, never, Chunk<A>>>,
+export function fromChunkQueue<A>(
+  queue: LazyArg<Dequeue<Chunk<A>>>,
   __tsplusTrace?: string
-): Stream<R, E, A> {
+): Stream<unknown, never, A> {
   return Stream.repeatEffectChunkOption(() => {
     const queue0 = queue()
-    return queue0
-      .take()
-      .catchAllCause((cause) =>
-        queue0
-          .isShutdown()
-          .flatMap((isShutdown) =>
-            isShutdown && cause.isInterrupted() ? Pull.end : Pull.failCause(cause)
-          )
+    return queue0.take.catchAllCause((cause) =>
+      queue0.isShutdown.flatMap((isShutdown) =>
+        isShutdown && cause.isInterrupted() ? Pull.end : Pull.failCause(cause)
       )
+    )
   })
 }

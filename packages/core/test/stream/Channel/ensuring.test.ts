@@ -14,7 +14,7 @@ describe("Channel", () => {
             .ensuring(event("Release11"))
             .ensuring(event("Release12")) >
           Channel.fromEffect(event("Acquire2")).ensuring(event("Release2"))
-        return channel.runDrain() > events.get()
+        return channel.runDrain() > events.get
       })
 
       const result = await program.unsafeRunPromise()
@@ -34,14 +34,13 @@ describe("Channel", () => {
           Channel.fromEffect(event("Acquire2")).ensuring(event("Release2"))
         ).ensuring(event("ReleaseOuter"))
 
-        return channel
-          .toPull()
-          .use((pull) => pull.exit() > events.get())
-          .flatMap((eventsInManaged) =>
-            events
-              .get()
-              .map((eventsAfterManaged) => Tuple(eventsInManaged, eventsAfterManaged))
+        return Effect.scoped(
+          channel.toPull().flatMap((pull) => pull.exit() > events.get)
+        ).flatMap((eventsInManaged) =>
+          events.get.map((eventsAfterManaged) =>
+            Tuple(eventsInManaged, eventsAfterManaged)
           )
+        )
       })
 
       const {
@@ -77,7 +76,7 @@ describe("Channel", () => {
           )
           .ensuring(event("Second concatMap"))
 
-        return conduit.runCollect().zipFlatten(events.get())
+        return conduit.runCollect().zipFlatten(events.get)
       })
 
       const {
@@ -117,7 +116,7 @@ describe("Channel", () => {
             .concatMap((n) => Channel.write(n).ensuring(push(`close ${n}`)))
             .runDrain()
         )
-        .flatMap(({ effects }) => effects.get())
+        .flatMap(({ effects }) => effects.get)
 
       const result = await program.unsafeRunPromise()
 

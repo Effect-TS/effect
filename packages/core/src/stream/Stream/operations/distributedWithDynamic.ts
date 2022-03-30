@@ -5,10 +5,10 @@ import { Option } from "../../../data/Option"
 import type { UIO } from "../../../io/Effect"
 import { Effect } from "../../../io/Effect"
 import { Exit } from "../../../io/Exit"
-import { Managed } from "../../../io/Managed"
 import type { Dequeue } from "../../../io/Queue"
 import { Queue } from "../../../io/Queue"
 import { Ref } from "../../../io/Ref"
+import type { HasScope } from "../../../io/Scope"
 import { Semaphore } from "../../../io/Semaphore"
 import { AtomicNumber } from "../../../support/AtomicNumber"
 import type { UniqueKey } from "../../GroupBy"
@@ -32,20 +32,20 @@ export function distributedWithDynamic_<R, E, A, Z>(
   decide: (a: A) => UIO<(key: UniqueKey) => boolean>,
   done: (exit: Exit<Option<E>, never>) => UIO<Z> = () => Effect.unit as UIO<Z>,
   __tsplusTrace?: string
-): Managed<R, never, UIO<Tuple<[UniqueKey, Dequeue<Exit<Option<E>, A>>]>>> {
-  return Managed.Do()
+): Effect<R & HasScope, never, UIO<Tuple<[UniqueKey, Dequeue<Exit<Option<E>, A>>]>>> {
+  return Effect.Do()
     .bind("queuesRef", () =>
-      Ref.make<HashMap<UniqueKey, Queue<Exit<Option<E>, A>>>>(
-        HashMap.empty()
-      ).toManagedWith((ref) =>
-        ref
-          .get()
-          .flatMap((queues) => Effect.forEach(queues, ([, queue]) => queue.shutdown()))
+      Effect.acquireRelease(
+        Ref.make<HashMap<UniqueKey, Queue<Exit<Option<E>, A>>>>(HashMap.empty()),
+        (map) =>
+          map.get.flatMap((queues) =>
+            Effect.forEach(queues, ([, queue]) => queue.shutdown)
+          )
       )
     )
     .bind("add", ({ queuesRef }) =>
-      Managed.Do()
-        .bind("queuesLock", () => Semaphore.make(1).toManaged())
+      Effect.Do()
+        .bind("queuesLock", () => Semaphore.make(1))
         .bind("newQueue", () =>
           Ref.make<UIO<Tuple<[UniqueKey, Queue<Exit<Option<E>, A>>]>>>(
             Effect.Do()
@@ -55,7 +55,7 @@ export function distributedWithDynamic_<R, E, A, Z>(
               )
               .tap(({ id, queue }) => queuesRef.update((map) => map.set(id, queue)))
               .map(({ id, queue }) => Tuple(id, queue))
-          ).toManaged()
+          )
         )
         .bindValue(
           "finalize",
@@ -79,7 +79,7 @@ export function distributedWithDynamic_<R, E, A, Z>(
                         .map(({ id, queue }) => Tuple(id, queue))
                     )
                   )
-                  .bind("queues", () => queuesRef.get().map((map) => map.values()))
+                  .bind("queues", () => queuesRef.get.map((map) => map.values()))
                   .tap(({ queues }) =>
                     Effect.forEach(queues, (queue) =>
                       queue
@@ -95,15 +95,15 @@ export function distributedWithDynamic_<R, E, A, Z>(
         )
         .tap(({ finalize }) =>
           self
-            .runForEachManaged((a) => offer(queuesRef, decide, a))
-            .foldCauseManaged(
-              (cause) => finalize(Exit.failCause(cause.map(Option.some))).toManaged(),
-              () => finalize(Exit.fail(Option.none)).toManaged()
+            .runForEachScoped((a) => offer(queuesRef, decide, a))
+            .foldCauseEffect(
+              (cause) => finalize(Exit.failCause(cause.map(Option.some))),
+              () => finalize(Exit.fail(Option.none))
             )
             .fork()
         )
         .map(({ newQueue, queuesLock }) =>
-          queuesLock.withPermit(newQueue.get().flatten())
+          queuesLock.withPermit(newQueue.get.flatten())
         )
     )
     .map(({ add }) => add)
@@ -127,7 +127,7 @@ function offer<E, A>(
 ): Effect<unknown, E, void> {
   return Effect.Do()
     .bind("shouldProcess", () => decide(a))
-    .bind("queues", () => ref.get())
+    .bind("queues", () => ref.get)
     .tap(({ queues, shouldProcess }) =>
       Effect.reduce(queues, List.empty<UniqueKey>(), (acc, [id, queue]) =>
         shouldProcess(id)

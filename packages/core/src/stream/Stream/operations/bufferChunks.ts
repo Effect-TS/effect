@@ -18,7 +18,7 @@ export function bufferChunks_<R, E, A>(
 ): Stream<R, E, A> {
   const queue = self.toQueue(capacity)
   return new StreamInternal(
-    Channel.managed(queue, (queue) => {
+    Channel.scoped(queue, (queue) => {
       const process: Channel<
         unknown,
         unknown,
@@ -27,7 +27,7 @@ export function bufferChunks_<R, E, A>(
         E,
         Chunk<A>,
         void
-      > = Channel.fromEffect(queue.take()).flatMap((take) =>
+      > = Channel.fromEffect(queue.take).flatMap((take) =>
         take.fold(
           Channel.unit,
           (cause) => Channel.failCause(cause),

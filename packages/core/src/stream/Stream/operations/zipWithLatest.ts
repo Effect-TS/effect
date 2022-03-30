@@ -3,7 +3,6 @@ import { Tuple } from "../../../collection/immutable/Tuple"
 import type { LazyArg } from "../../../data/Function"
 import type { Option } from "../../../data/Option"
 import { Effect } from "../../../io/Effect"
-import { Managed } from "../../../io/Managed"
 import { Ref } from "../../../io/Ref"
 import { Stream } from "../definition"
 
@@ -25,7 +24,7 @@ export function zipWithLatest_<R, E, A, R2, E2, A2, A3>(
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A3> {
   return Stream.fromPull(
-    Managed.Do()
+    Effect.Do()
       .bind("left", () => self.toPull().map(pullNonEmpty))
       .bind("right", () => that().toPull().map(pullNonEmpty))
       .flatMap(({ left, right }) =>

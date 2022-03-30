@@ -153,10 +153,8 @@ describe("Stream", () => {
     //     .bind("run", ({ stream }) =>
     //       stream.run(Sink.take(1) > Sink.fromEffect(promise.await())).fork()
     //     )
-    //     .tap(({ refCount }) =>
-    //       refCount.get().repeat(Schedule.recurWhile((n) => n !== 7))
-    //     )
-    //     .bind("isDone", ({ refDone }) => refDone.get())
+    //     .tap(({ refCount }) => refCount.get.repeat(Schedule.recurWhile((n) => n !== 7)))
+    //     .bind("isDone", ({ refDone }) => refDone.get)
     //     .tap(({ run }) => run.interrupt())
 
     //   const { isDone } = await program.unsafeRunPromise()
@@ -172,11 +170,11 @@ describe("Stream", () => {
       const program = Effect.Do()
         .bind("latch", () => Promise.make<never, void>())
         .bind("fiber", ({ latch }) =>
-          Stream.asyncManaged<unknown, never, number>((cb) => {
+          Stream.asyncScoped<unknown, never, number>((cb) => {
             chunk.forEach((n) => {
               cb(Effect.succeed(Chunk.single(n)))
             })
-            return latch.succeed(undefined).toManaged() > Effect.unit.toManaged()
+            return latch.succeed(undefined) > Effect.unit
           })
             .take(chunk.size)
             .run(Sink.collectAll<number>())
@@ -191,9 +189,9 @@ describe("Stream", () => {
     })
 
     it("asyncManaged signal end stream", async () => {
-      const program = Stream.asyncManaged<unknown, never, number>((cb) => {
+      const program = Stream.asyncScoped<unknown, never, number>((cb) => {
         cb(Effect.fail(Option.none))
-        return Effect.unit.toManaged()
+        return Effect.unit
       }).runCollect()
 
       const result = await program.unsafeRunPromise()
@@ -241,7 +239,7 @@ describe("Stream", () => {
         )
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ cancelled }) => cancelled.get())
+        .flatMap(({ cancelled }) => cancelled.get)
 
       const result = await program.unsafeRunPromise()
 

@@ -8,7 +8,7 @@ import { Strategy } from "./strategy"
 /**
  * Creates an unbounded hub.
  *
- * @tsplus static ets/XHubOps unbounded
+ * @tsplus static ets/HubOps unbounded
  */
 export function unbounded<A>(__tsplusTrace?: string): UIO<Hub<A>> {
   return Effect.succeed(makeUnbounded<A>()).flatMap((atomicHub) =>

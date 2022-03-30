@@ -2,7 +2,7 @@ import type { Tuple } from "../../../collection/immutable/Tuple"
 import { Either } from "../../../data/Either"
 import type { Predicate } from "../../../data/Function"
 import { Effect } from "../../../io/Effect"
-import type { Managed } from "../../../io/Managed"
+import type { HasScope } from "../../../io/Scope"
 import type { Stream } from "../../Stream"
 
 /**
@@ -18,7 +18,7 @@ export function partition_<R, E, A>(
   p: Predicate<A>,
   buffer = 16,
   __tsplusTrace?: string
-): Managed<R, E, Tuple<[Stream<unknown, E, A>, Stream<unknown, E, A>]>> {
+): Effect<R & HasScope, E, Tuple<[Stream<unknown, E, A>, Stream<unknown, E, A>]>> {
   return self.partitionEither(
     (a) =>
       p(a) ? Effect.succeedNow(Either.left(a)) : Effect.succeedNow(Either.right(a)),

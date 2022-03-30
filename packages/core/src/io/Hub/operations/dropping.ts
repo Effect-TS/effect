@@ -11,7 +11,7 @@ import { Strategy } from "./strategy"
  *
  * For best performance use capacities that are powers of two.
  *
- * @tsplus static ets/XHubOps dropping
+ * @tsplus static ets/HubOps dropping
  */
 export function dropping<A>(
   requestedCapacity: number,

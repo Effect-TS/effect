@@ -1,6 +1,6 @@
 import type { Chunk } from "../../../collection/immutable/Chunk"
 import type { LazyArg } from "../../../data/Function"
-import type { XQueue } from "../../../io/Queue"
+import type { Dequeue } from "../../../io/Queue"
 import { Stream } from "../definition"
 
 /**
@@ -10,10 +10,10 @@ import { Stream } from "../definition"
  * @tsplus static ets/StreamOps fromChunkQueueWithShutdown
  */
 export function fromChunkQueueWithShutdown<R, E, A>(
-  queue: LazyArg<XQueue<never, R, unknown, E, never, Chunk<A>>>,
+  queue: LazyArg<Dequeue<Chunk<A>>>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
   return Stream.succeed(queue).flatMap((queue) =>
-    Stream.fromChunkQueue(queue).ensuring(queue.shutdown())
+    Stream.fromChunkQueue(queue).ensuring(queue.shutdown)
   )
 }

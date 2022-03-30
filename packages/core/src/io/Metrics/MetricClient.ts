@@ -236,7 +236,7 @@ export class MetricClient {
 /**
  * @tsplus static ets/MetricClientOps client
  */
-export const metricClient: LazyValue<MetricClient> = new LazyValue(
+export const metricClient: LazyValue<MetricClient> = LazyValue.make(
   () => new MetricClient()
 )
 

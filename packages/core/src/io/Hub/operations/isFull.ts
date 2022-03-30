@@ -1,16 +1,11 @@
 import type { UIO } from "../../Effect"
-import type { XHub } from "../definition"
-import { concreteHub } from "../definition"
+import type { Hub } from "../definition"
 
 /**
  * Checks whether the hub is currently full.
  *
- * @tsplus fluent ets/XHub isFull
+ * @tsplus fluent ets/Hub isFull
  */
-export function isFull<RA, RB, EA, EB, A, B>(
-  self: XHub<RA, RB, EA, EB, A, B>,
-  __tsplusTrace?: string
-): UIO<boolean> {
-  concreteHub(self)
-  return self._size.map((n) => n === self._capacity)
+export function isFull<A>(self: Hub<A>, __tsplusTrace?: string): UIO<boolean> {
+  return self.size.map((n) => n === self.capacity)
 }

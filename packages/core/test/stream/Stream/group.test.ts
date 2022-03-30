@@ -160,7 +160,7 @@ describe("Stream", () => {
             .runCollect()
             .either()
         )
-        .bind("result", ({ ref }) => ref.get())
+        .bind("result", ({ ref }) => ref.get)
 
       const { either, result } = await program.unsafeRunPromise()
 

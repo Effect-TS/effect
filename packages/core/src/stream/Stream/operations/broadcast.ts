@@ -1,5 +1,6 @@
 import type { Chunk } from "../../../collection/immutable/Chunk"
-import type { Managed } from "../../../io/Managed"
+import type { Effect } from "../../../io/Effect"
+import type { HasScope } from "../../../io/Scope"
 import { Stream } from "../definition"
 
 /**
@@ -14,7 +15,7 @@ export function broadcast_<R, E, A>(
   n: number,
   maximumLag: number,
   __tsplusTrace?: string
-): Managed<R, never, Chunk<Stream<unknown, E, A>>> {
+): Effect<R & HasScope, never, Chunk<Stream<unknown, E, A>>> {
   return self
     .broadcastedQueues(n, maximumLag)
     .map((chunk) =>

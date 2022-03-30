@@ -1,5 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import { Managed } from "../../Managed"
+import { Effect } from "../../Effect"
 import { Layer } from "../definition"
 
 /**
@@ -8,5 +8,5 @@ import { Layer } from "../definition"
  * @tsplus static ets/LayerOps succeed
  */
 export function succeed<T>(resource: LazyArg<T>): Layer<unknown, never, T> {
-  return Layer.fromRawManaged(Managed.succeed(resource))
+  return Layer.fromRawEffect(Effect.succeed(resource))
 }

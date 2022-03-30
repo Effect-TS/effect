@@ -1,26 +1,18 @@
 import type { Journal } from "../../STM/Journal"
-import { getOrMakeEntry } from "../Atomic/operations/getOrMakeEntry"
-import type { XTRef } from "../definition"
-import { concrete } from "../definition"
+import type { TRef } from "../definition"
+import { getOrMakeEntry } from "./_internal/getOrMakeEntry"
 
 /**
- * Unsafely retrieves the value of the `XTRef`.
+ * Unsafely retrieves the value of the `TRef`.
  *
- * @tsplus fluent ets/XTRef unsafeGet
+ * @tsplus fluent ets/TRef unsafeGet
  */
-export function unsafeGet_<EA, EB, A, B>(
-  self: XTRef<EA, EB, A, B>,
-  journal: Journal
-): A {
-  concrete(self)
-  return getOrMakeEntry(self.atomic, journal).use((_) => _.unsafeGet<A>())
+export function unsafeGet_<A>(self: TRef<A>, journal: Journal): A {
+  const entry = getOrMakeEntry(self, journal)
+  return entry.use((_) => _.unsafeGet())
 }
 
 /**
- * Unsafely retrieves the value of the `XTRef`.
- *
- * @ets_data_first unsafeGet_
+ * Unsafely retrieves the value of the `TRef`.
  */
-export function unsafeGet(journal: Journal) {
-  return <EA, EB, A, B>(self: XTRef<EA, EB, A, B>): A => self.unsafeGet(journal)
-}
+export const unsafeGet = Pipeable(unsafeGet_)

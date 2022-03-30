@@ -1,17 +1,17 @@
 import { AtomicReference } from "../../../support/AtomicReference"
 import { emptyTodoMap } from "../../STM/Journal"
 import { Versioned } from "../../STM/Versioned"
-import { Atomic } from "../Atomic/Atomic"
 import type { TRef } from "../definition"
+import { TRefInternal } from "./_internal/TRefInternal"
 
 /**
- * Unsafely makes a new `XTRef` that is initialized to the specified value.
+ * Unsafely makes a new `TRef` that is initialized to the specified value.
  *
- * @tsplus static ets/XTRefOps unsafeMake
+ * @tsplus static ets/TRefOps unsafeMake
  */
 export function unsafeMake<A>(a: A): TRef<A> {
   const value = a
   const versioned = new Versioned(value)
   const todo = new AtomicReference(emptyTodoMap)
-  return new Atomic(versioned, todo)
+  return new TRefInternal(versioned, todo)
 }

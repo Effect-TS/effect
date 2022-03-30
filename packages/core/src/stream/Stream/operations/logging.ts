@@ -1,8 +1,9 @@
 import type { LazyArg } from "../../../data/Function"
 import type { Cause } from "../../../io/Cause"
 import { Effect } from "../../../io/Effect"
+import { FiberRef } from "../../../io/FiberRef"
 import type { LogLevel } from "../../../io/LogLevel"
-import { Managed } from "../../../io/Managed"
+import { LogSpan } from "../../../io/LogSpan"
 import { Stream } from "../definition"
 
 /**
@@ -91,10 +92,10 @@ export function logTrace(
  * Sets the log level for streams composed after this.
  */
 export function logLevel(
-  level: LogLevel,
+  level: LazyArg<LogLevel>,
   __tsplusTrace?: string
 ): Stream<unknown, never, void> {
-  return Stream.managed(Managed.logLevel(level))
+  return Stream.scoped(FiberRef.currentLogLevel.value.locallyScoped(level()))
 }
 
 /**
@@ -104,5 +105,11 @@ export function logSpan(
   label: LazyArg<string>,
   __tsplusTrace?: string
 ): Stream<unknown, never, void> {
-  return Stream.managed(Managed.logSpan(label))
+  return Stream.scoped(
+    FiberRef.currentLogSpan.value.get().flatMap((stack) => {
+      const now = Date.now()
+      const logSpan = LogSpan(label(), now)
+      return FiberRef.currentLogSpan.value.locallyScoped(stack.prepend(logSpan))
+    })
+  )
 }

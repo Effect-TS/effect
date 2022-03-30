@@ -14,7 +14,7 @@ export function withRuntimeConfig<R, E, A>(
   __tsplusTrace?: string
 ): Effect<R, E, A> {
   return Effect.runtimeConfig.flatMap((currentRuntimeConfig) =>
-    Effect.acquireRelease(
+    Effect.acquireReleaseWithDiscard(
       Effect.setRuntimeConfig(runtimeConfig) > Effect.yieldNow,
       effect,
       Effect.setRuntimeConfig(currentRuntimeConfig)

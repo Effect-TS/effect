@@ -1,12 +1,11 @@
 import type { UIO } from "../../Effect"
-import type { Runtime } from "../definition"
+import type { FiberRef } from "../definition"
 
 /**
  * Reset the value of a `FiberRef` back to its initial value.
  *
- * @tsplus fluent ets/XFiberRef reset
- * @tsplus fluent ets/XFiberRefRuntime reset
+ * @tsplus fluent ets/FiberRef reset
  */
-export function reset<A>(self: Runtime<A>, __tsplusTrace?: string): UIO<void> {
-  return self._set(self.initial)
+export function reset<A>(self: FiberRef<A>, __tsplusTrace?: string): UIO<void> {
+  return self.set(self.initialValue())
 }

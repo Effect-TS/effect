@@ -3,7 +3,6 @@ import { identity } from "../../../data/Function"
 import { Option } from "../../../data/Option"
 import { Effect } from "../../../io/Effect"
 import { Fiber } from "../../../io/Fiber"
-import { Managed } from "../../../io/Managed"
 import { Promise } from "../../../io/Promise"
 import { Queue } from "../../../io/Queue"
 import { Ref } from "../../../io/Ref"
@@ -50,25 +49,29 @@ export function mergeAllWith_<
   OutElem,
   OutDone
 > {
-  return Channel.managed(
-    Managed.withChildren((getChildren) =>
-      Managed.Do()
+  return Channel.scoped(
+    Effect.withChildren((getChildren) =>
+      Effect.Do()
         .tap(() =>
-          Managed.finalizer(getChildren.flatMap((chunk) => Fiber.interruptAll(chunk)))
+          Effect.addFinalizer(getChildren.flatMap((chunk) => Fiber.interruptAll(chunk)))
         )
         .bind("queue", () =>
-          Queue.bounded<Effect<Env, OutErr | OutErr1, Either<OutDone, OutElem>>>(
-            bufferSize
-          ).toManagedWith((queue) => queue.shutdown())
-        )
-        .bind("cancelers", () =>
-          Queue.unbounded<Promise<never, void>>().toManagedWith((queue) =>
-            queue.shutdown()
+          Effect.acquireRelease(
+            Queue.bounded<Effect<Env, OutErr | OutErr1, Either<OutDone, OutElem>>>(
+              bufferSize
+            ),
+            (queue) => queue.shutdown
           )
         )
-        .bind("lastDone", () => Ref.makeManaged<Option<OutDone>>(Option.none))
-        .bind("errorSignal", () => Promise.makeManaged<never, void>())
-        .bind("permits", () => Semaphore.make(n).toManaged())
+        .bind("cancelers", () =>
+          Effect.acquireRelease(
+            Queue.unbounded<Promise<never, void>>(),
+            (queue) => queue.shutdown
+          )
+        )
+        .bind("lastDone", () => Ref.make<Option<OutDone>>(Option.none))
+        .bind("errorSignal", () => Promise.make<never, void>())
+        .bind("permits", () => Semaphore.make(n))
         .bind("pull", () => channels.toPull())
         .bindValue(
           "evaluatePull",
@@ -109,23 +112,21 @@ export function mergeAllWith_<
                   either.fold(
                     (outDone) =>
                       errorSignal.await().raceWith(
-                        Effect.unit.apply(permits.withPermits(n)),
+                        permits.withPermits(n)(Effect.unit),
                         (_, permitAcquisition) =>
                           getChildren.flatMap((fibers) => Fiber.interruptAll(fibers)) >
                           permitAcquisition.interrupt().as(false),
                         (_, failureAwait) =>
                           failureAwait.interrupt() >
-                          lastDone
-                            .get()
-                            .flatMap((option) =>
-                              option.fold(
-                                queue.offer(Effect.succeed(Either.left(outDone))),
-                                (lastDone) =>
-                                  queue.offer(
-                                    Effect.succeed(Either.left(f(lastDone, outDone)))
-                                  )
-                              )
+                          lastDone.get.flatMap((option) =>
+                            option.fold(
+                              queue.offer(Effect.succeed(Either.left(outDone))),
+                              (lastDone) =>
+                                queue.offer(
+                                  Effect.succeed(Either.left(f(lastDone, outDone)))
+                                )
                             )
+                          )
                       ),
                     (channel) => {
                       switch (mergeStrategy._tag) {
@@ -133,11 +134,13 @@ export function mergeAllWith_<
                           return Effect.Do()
                             .bind("latch", () => Promise.make<never, void>())
                             .bindValue("raceIOs", () =>
-                              channel
-                                .toPull()
-                                .use((pull) =>
-                                  evaluatePull(pull).race(errorSignal.await())
-                                )
+                              Effect.scoped(
+                                channel
+                                  .toPull()
+                                  .flatMap((pull) =>
+                                    evaluatePull(pull).race(errorSignal.await())
+                                  )
+                              )
                             )
                             .tap(({ latch, raceIOs }) =>
                               (latch.succeed(undefined) > raceIOs)
@@ -156,24 +159,26 @@ export function mergeAllWith_<
                             .tap(({ size }) =>
                               Effect.when(
                                 size >= n,
-                                cancelers
-                                  .take()
-                                  .flatMap((promise) => promise.succeed(undefined))
+                                cancelers.take.flatMap((promise) =>
+                                  promise.succeed(undefined)
+                                )
                               )
                             )
                             .tap(({ canceler }) => cancelers.offer(canceler))
                             .bindValue("raceIOs", ({ canceler }) =>
-                              channel
-                                .toPull()
-                                .use((pull) =>
-                                  evaluatePull(pull)
-                                    .race(errorSignal.await())
-                                    .race(canceler.await())
-                                )
+                              Effect.scoped(
+                                channel
+                                  .toPull()
+                                  .flatMap((pull) =>
+                                    evaluatePull(pull)
+                                      .race(errorSignal.await())
+                                      .race(canceler.await())
+                                  )
+                              )
                             )
                             .tap(({ latch, raceIOs }) =>
-                              (latch.succeed(undefined) > raceIOs)
-                                .apply(permits.withPermit)
+                              permits
+                                .withPermit(latch.succeed(undefined) > raceIOs)
                                 .fork()
                             )
                             .tap(({ latch }) => latch.await())
@@ -185,7 +190,7 @@ export function mergeAllWith_<
                   )
               )
               .repeatWhile(identity)
-              .forkManaged()
+              .forkScoped()
         )
         .map(({ queue }) => queue)
     ),
@@ -199,17 +204,14 @@ export function mergeAllWith_<
         OutElem,
         OutDone
       > = Channel.unwrap(
-        queue
-          .take()
-          .flatten()
-          .foldCause(
-            (cause) => Channel.failCause(cause),
-            (either) =>
-              either.fold(
-                (outDone) => Channel.succeedNow(outDone),
-                (outElem) => Channel.write(outElem) > consumer
-              )
-          )
+        queue.take.flatten().foldCause(
+          (cause) => Channel.failCause(cause),
+          (either) =>
+            either.fold(
+              (outDone) => Channel.succeedNow(outDone),
+              (outElem) => Channel.write(outElem) > consumer
+            )
+        )
       )
 
       return consumer

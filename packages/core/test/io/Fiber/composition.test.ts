@@ -54,10 +54,7 @@ describe("Fiber", () => {
         n: number,
         worker: (a: A) => Effect<R, E, void>
       ): Effect<R, E, void> {
-        const worker1 = queue
-          .take()
-          .flatMap((a) => worker(a).uninterruptible())
-          .forever()
+        const worker1 = queue.take.flatMap((a) => worker(a).uninterruptible()).forever()
 
         return Effect.forkAll(Chunk.fill(n, () => worker1))
           .flatMap((fiber) => fiber.join())
@@ -74,7 +71,7 @@ describe("Fiber", () => {
               n === 100 ? Effect.failNow("fail") : queue.offer(n).asUnit()
         )
         .bind("exit", ({ queue, worker }) => shard(queue, 4, worker).exit())
-        .tap(({ queue }) => queue.shutdown())
+        .tap(({ queue }) => queue.shutdown)
         .map(({ exit }) => exit)
 
       const result = await program.unsafeRunPromise()

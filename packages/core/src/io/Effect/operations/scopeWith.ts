@@ -1,15 +1,15 @@
-import type { FiberScope } from "../../FiberScope"
+import type { Scope } from "../../Scope"
+import { HasScope } from "../../Scope"
 import { Effect } from "../definition"
 
 /**
- * Passes the fiber's scope to the specified function, which creates an effect
- * that will be returned from this method.
+ * Accesses the current scope and uses it to perform the specified effect.
  *
  * @tsplus static ets/EffectOps scopeWith
  */
 export function scopeWith<R, E, A>(
-  f: (scope: FiberScope) => Effect<R, E, A>,
+  f: (scope: Scope) => Effect<R, E, A>,
   __tsplusTrace?: string
-): Effect<R, E, A> {
-  return Effect.descriptorWith((descriptor) => f(descriptor.scope))
+): Effect<R & HasScope, E, A> {
+  return Effect.serviceWithEffect(HasScope)(f)
 }

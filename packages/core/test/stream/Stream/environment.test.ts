@@ -3,7 +3,6 @@ import { Option } from "../../../src/data/Option"
 import { Effect } from "../../../src/io/Effect"
 import { Exit } from "../../../src/io/Exit"
 import { Layer } from "../../../src/io/Layer"
-import { Managed } from "../../../src/io/Managed"
 import { Stream } from "../../../src/stream/Stream"
 import { NumberService } from "./test-utils"
 
@@ -84,7 +83,7 @@ describe("Stream", () => {
 
   describe("provideLayer", () => {
     it("simple example", async () => {
-      const program = Stream.managed(Managed.service(NumberService))
+      const program = Stream.scoped(Effect.service(NumberService))
         .provideLayer(Layer.succeed(NumberService.has({ n: 10 })))
         .runHead()
 

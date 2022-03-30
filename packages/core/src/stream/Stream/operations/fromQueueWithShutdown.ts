@@ -1,5 +1,5 @@
 import type { LazyArg } from "../../../data/Function"
-import type { XQueue } from "../../../io/Queue"
+import type { Dequeue } from "../../../io/Queue"
 import { DEFAULT_CHUNK_SIZE, Stream } from "../definition"
 
 /**
@@ -11,12 +11,12 @@ import { DEFAULT_CHUNK_SIZE, Stream } from "../definition"
  *
  * @tsplus static ets/StreamOps fromQueueWithShutdown
  */
-export function fromQueueWithShutdown<R, E, A>(
-  queue: LazyArg<XQueue<never, R, unknown, E, never, A>>,
+export function fromQueueWithShutdown<A>(
+  queue: LazyArg<Dequeue<A>>,
   maxChunkSize = DEFAULT_CHUNK_SIZE,
   __tsplusTrace?: string
-): Stream<R, E, A> {
+): Stream<unknown, never, A> {
   return Stream.succeed(queue).flatMap((queue) =>
-    Stream.fromQueue(queue, maxChunkSize).ensuring(queue.shutdown())
+    Stream.fromQueue(queue, maxChunkSize).ensuring(queue.shutdown)
   )
 }

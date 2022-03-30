@@ -22,7 +22,7 @@ export function provideLayer_<
   layer: LazyArg<Layer<Env0, OutErr2, Env>>,
   __tsplusTrace?: string
 ): Channel<Env0, InErr, InElem, InDone, OutErr | OutErr2, OutElem, OutDone> {
-  return Channel.managed(layer().build(), (env) => self.provideEnvironment(env))
+  return Channel.scoped(layer().build(), (env) => self.provideEnvironment(env))
 }
 
 /**

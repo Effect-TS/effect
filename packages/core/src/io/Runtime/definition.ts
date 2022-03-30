@@ -3,6 +3,7 @@ import { Option } from "../../data/Option"
 import { Stack } from "../../data/Stack"
 import { Supervisor } from "../../io/Supervisor"
 import { OneShot } from "../../support/OneShot"
+import { FiberFailure } from "../Cause"
 import type { Effect } from "../Effect"
 import type { Exit } from "../Exit"
 import { FiberContext } from "../Fiber/_internal/context"
@@ -56,6 +57,14 @@ export class Runtime<R> {
     return (id) => (k) =>
       this.unsafeRunAsyncWith(context._interruptAs(id), (exit) => k(exit.flatten()))
   }
+
+  unsafeRun = <E, A>(effect: Effect<R, E, A>, __tsplusTrace?: string): A =>
+    this.unsafeRunSync(effect).fold((cause) => {
+      throw new FiberFailure(cause)
+    }, identity)
+
+  unsafeRunSync = <E, A>(effect: Effect<R, E, A>, __tsplusTrace?: string): Exit<E, A> =>
+    this.defaultUnsafeRunSync(effect)
 
   /**
    * Executes the effect asynchronously, discarding the result of execution.
@@ -148,5 +157,14 @@ export class Runtime<R> {
         resolve(exit)
       })
     })
+  }
+
+  private defaultUnsafeRunSync<E, A>(
+    effect: Effect<R, E, A>,
+    __tsplusTrace?: string
+  ): Exit<E, A> {
+    const result = new OneShot<Exit<E, A>>()
+    this.unsafeRunWith(effect, result.set)
+    return result.get()
   }
 }

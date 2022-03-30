@@ -1,5 +1,6 @@
+import * as Map from "../../../collection/immutable/Map"
 import type { LazyArg } from "../../../data/Function"
-import { Managed } from "../../../io/Managed"
+import { FiberRef } from "../../../io/FiberRef"
 import { Stream } from "../definition"
 
 /**
@@ -13,5 +14,13 @@ export function logAnnotate(
   value: LazyArg<string>,
   __tsplusTrace?: string
 ): Stream<unknown, never, void> {
-  return Stream.managed(Managed.logAnnotate(key, value))
+  return Stream.scoped(
+    FiberRef.currentLogAnnotations.value
+      .get()
+      .flatMap((annotations) =>
+        FiberRef.currentLogAnnotations.value.locallyScoped(
+          Map.insert_(annotations, key(), value())
+        )
+      )
+  )
 }

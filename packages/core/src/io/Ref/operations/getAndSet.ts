@@ -1,37 +1,19 @@
 import { Tuple } from "../../../collection/immutable/Tuple"
-import { matchTag_ } from "../../../data/Utils/common"
-import type { Effect } from "../../Effect"
-import type { XRef } from "../definition"
-import { concrete } from "../definition"
+import type { UIO } from "../../Effect"
+import type { Ref } from "../definition"
 
 /**
- * Atomically writes the specified value to the `XRef`, returning the value
+ * Atomically writes the specified value to the `Ref`, returning the value
  * immediately before modification.
  *
- * @tsplus fluent ets/XRef getAndSet
+ * @tsplus fluent ets/Ref getAndSet
  */
-export function getAndSet_<RA, RB, EA, EB, A>(
-  self: XRef<RA, RB, EA, EB, A, A>,
-  value: A,
-  __tsplusTrace?: string
-): Effect<RA & RB, EA | EB, A> {
-  return matchTag_(
-    concrete(self),
-    {
-      Atomic: (atomic) => atomic.getAndSet(value)
-    },
-    (_) => (_ as XRef<RA, RB, EA, EB, A, A>).modify((a) => Tuple(a, value))
-  )
+export function getAndSet_<A>(self: Ref<A>, value: A, __tsplusTrace?: string): UIO<A> {
+  return self.modify((v) => Tuple(v, value))
 }
 
 /**
- * Atomically writes the specified value to the `XRef`, returning the value
+ * Atomically writes the specified value to the `Ref`, returning the value
  * immediately before modification.
- *
- * @ets_data_first getAndSet_
  */
-export function getAndSet<A>(value: A, __tsplusTrace?: string) {
-  return <RA, RB, EA, EB>(
-    self: XRef<RA, RB, EA, EB, A, A>
-  ): Effect<RA & RB, EA | EB, A> => self.getAndSet(value)
-}
+export const getAndSet = Pipeable(getAndSet_)

@@ -96,9 +96,9 @@ describe("Channel", () => {
             (exit) => MergeDecision.done(Effect.done(exit)),
             () =>
               MergeDecision.done(
-                interrupted
-                  .get()
-                  .flatMap((b) => (b ? Effect.unit : Effect.fail(undefined)))
+                interrupted.get.flatMap((b) =>
+                  b ? Effect.unit : Effect.fail(undefined)
+                )
               )
           )
           return merged.runDrain()

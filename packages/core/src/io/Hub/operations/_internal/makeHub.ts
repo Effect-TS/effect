@@ -5,14 +5,14 @@ import { AtomicBoolean } from "../../../../support/AtomicBoolean"
 import type { MutableQueue } from "../../../../support/MutableQueue"
 import type { UIO } from "../../../Effect"
 import { Effect } from "../../../Effect"
-import { ExecutionStrategy } from "../../../ExecutionStrategy"
 import { Exit } from "../../../Exit"
-import { Managed } from "../../../Managed"
-import { ReleaseMap } from "../../../Managed/ReleaseMap"
 import { Promise } from "../../../Promise"
-import type { XDequeue } from "../../../Queue"
+import type { Dequeue } from "../../../Queue"
+import { _In, QueueSym } from "../../../Queue"
+import type { HasScope } from "../../../Scope"
+import { Scope } from "../../../Scope"
 import type { Hub } from "../../definition"
-import { XHubInternal } from "../../definition"
+import { HubSym } from "../../definition"
 import type { Strategy } from "../strategy"
 import type { AtomicHub } from "./AtomicHub"
 import { makeSubscription } from "./makeSubscription"
@@ -23,12 +23,12 @@ import { unsafePublishAll } from "./unsafePublishAll"
  * Creates a hub with the specified strategy.
  */
 export function makeHub<A>(hub: AtomicHub<A>, strategy: Strategy<A>): UIO<Hub<A>> {
-  return ReleaseMap.make.flatMap((releaseMap) =>
+  return Scope.make.flatMap((scope) =>
     Promise.make<never, void>().map((promise) =>
       unsafeMakeHub(
         hub,
         HashSet.empty(),
-        releaseMap,
+        scope,
         promise,
         new AtomicBoolean(false),
         strategy
@@ -43,7 +43,7 @@ export function makeHub<A>(hub: AtomicHub<A>, strategy: Strategy<A>): UIO<Hub<A>
 export function unsafeMakeHub<A>(
   hub: AtomicHub<A>,
   subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Promise<never, A>>]>>,
-  releaseMap: ReleaseMap,
+  scope: Scope.Closeable,
   shutdownHook: Promise<never, void>,
   shutdownFlag: AtomicBoolean,
   strategy: Strategy<A>
@@ -51,64 +51,75 @@ export function unsafeMakeHub<A>(
   return new UnsafeMakeHubImplementation(
     hub,
     subscribers,
-    releaseMap,
+    scope,
     shutdownHook,
     shutdownFlag,
     strategy
   )
 }
 
-class UnsafeMakeHubImplementation<A> extends XHubInternal<
-  unknown,
-  unknown,
-  never,
-  never,
-  A,
-  A
-> {
-  _awaitShutdown: UIO<void>
-  _capacity: number
-  _isShutdown: UIO<boolean>
-  _shutdown: UIO<void>
-  _size: UIO<number>
-  _subscribe: Managed<unknown, never, XDequeue<unknown, never, A>>
+class UnsafeMakeHubImplementation<A> implements Hub<A> {
+  readonly [HubSym]: HubSym = HubSym;
+  readonly [QueueSym]: QueueSym = QueueSym;
+  readonly [_In]!: (_: A) => void
+
+  capacity: number
+
+  size: UIO<number>
+
+  awaitShutdown: UIO<void>
+
+  shutdown: UIO<void>
+
+  isShutdown: UIO<boolean>
+
+  subscribe: Effect<HasScope, never, Dequeue<A>>
 
   constructor(
     private hub: AtomicHub<A>,
     private subscribers: HashSet<
       Tuple<[Subscription<A>, MutableQueue<Promise<never, A>>]>
     >,
-    releaseMap: ReleaseMap,
+    scope: Scope.Closeable,
     shutdownHook: Promise<never, void>,
     private shutdownFlag: AtomicBoolean,
     private strategy: Strategy<A>
   ) {
-    super()
-    this._awaitShutdown = shutdownHook.await()
-    this._capacity = hub.capacity
-    this._isShutdown = Effect.succeed(shutdownFlag.get)
-    this._shutdown = Effect.suspendSucceedWith((_, fiberId) => {
+    this.capacity = hub.capacity
+
+    this.size = Effect.suspendSucceed(
+      shutdownFlag.get ? Effect.interrupt : Effect.succeed(hub.size())
+    )
+
+    this.awaitShutdown = shutdownHook.await()
+
+    this.shutdown = Effect.suspendSucceedWith((_, fiberId) => {
       shutdownFlag.set(true)
       return Effect.whenEffect(
         shutdownHook.succeed(undefined),
-        releaseMap.releaseAll(Exit.interrupt(fiberId), ExecutionStrategy.Parallel) >
-          strategy.shutdown
+        scope.close(Exit.interrupt(fiberId)) > strategy.shutdown
       ).asUnit()
     }).uninterruptible()
-    this._size = Effect.suspendSucceed(
-      shutdownFlag.get ? Effect.interrupt : Effect.succeed(hub.size())
+
+    this.isShutdown = Effect.succeed(shutdownFlag.get)
+
+    this.subscribe = Effect.acquireRelease(
+      makeSubscription(hub, subscribers, strategy).tap((dequeue) =>
+        scope.addFinalizer(dequeue.shutdown)
+      ),
+      (dequeue) => dequeue.shutdown
     )
-    this._subscribe = makeSubscription(hub, subscribers, strategy)
-      .toManaged()
-      .tap((dequeue) =>
-        Managed.acquireReleaseExitWith(
-          releaseMap.add(() => dequeue.shutdown()),
-          (finalizer, exit) => finalizer(exit)
-        )
-      )
   }
 
-  _publish(a: A, __tsplusTrace?: string): Effect<unknown, never, boolean> {
+  offer(a: A, __tsplusTrace?: string): UIO<boolean> {
+    return this.publish(a)
+  }
+
+  offerAll(as: Iterable<A>, __tsplusTrace?: string): UIO<boolean> {
+    return this.publishAll(as)
+  }
+
+  publish(a: A, __tsplusTrace?: string): UIO<boolean> {
     return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
         return Effect.interrupt
@@ -128,10 +139,7 @@ class UnsafeMakeHubImplementation<A> extends XHubInternal<
     })
   }
 
-  _publishAll(
-    as: Iterable<A>,
-    __tsplusTrace?: string
-  ): Effect<unknown, never, boolean> {
+  publishAll(as: Iterable<A>, __tsplusTrace?: string): UIO<boolean> {
     return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
         return Effect.interrupt

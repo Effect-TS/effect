@@ -12,7 +12,7 @@ import { realFiber } from "../definition"
  */
 export function getRef_<E, A, K>(
   self: Fiber<E, A>,
-  ref: FiberRef.Runtime<K>,
+  ref: FiberRef<K>,
   __tsplusTrace?: string
 ): UIO<K> {
   realFiber(self)
@@ -22,9 +22,5 @@ export function getRef_<E, A, K>(
 /**
  * Gets the value of the fiber ref for this fiber, or the initial value of the
  * fiber ref, if the fiber is not storing the ref.
- *
- * @ets_data_first getRef_
  */
-export function getRef<K>(ref: FiberRef.Runtime<K>, __tsplusTrace?: string) {
-  return <E, A>(self: Fiber<E, A>): UIO<K> => self.getRef(ref)
-}
+export const getRef = Pipeable(getRef_)

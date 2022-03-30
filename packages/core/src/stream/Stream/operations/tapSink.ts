@@ -36,13 +36,13 @@ export function tapSink_<R, E, A, R2, E2, X, Z>(
         Channel.write(chunk) >
         loop,
       (cause) => Channel.fromEffect(queue.offer(Take.failCause(cause))),
-      () => Channel.fromEffect(queue.shutdown())
+      () => Channel.fromEffect(queue.shutdown)
     )
 
     concreteStream(self)
 
     return (new StreamInternal(self.channel >> loop) as Stream<R & R2, E2, A>).merge(
-      Stream.execute(right.run(sink())),
+      Stream.execute(right.run(sink)),
       () => TerminationStrategy.Both
     )
   })
