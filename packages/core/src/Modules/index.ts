@@ -20,7 +20,7 @@ import type { Equal } from "../Equal/index.js"
 import type { FreeAssociative } from "../FreeAssociative/index.js"
 import type { Id } from "../Id/index.js"
 import type { Identity } from "../Identity/index.js"
-import type { Ix, IxC } from "../IndexedT/index.js"
+// import type { Ix, IxC } from "../IndexedT/index.js"
 import type { Inverse } from "../Inverse/index.js"
 import type { IO } from "../IO/index.js"
 import type { Option } from "../Option/index.js"
@@ -183,7 +183,7 @@ declare module "../Prelude/HKT/hkt.js" {
     [IOURI]: IO<A>
     // [StateInURI]: StateIn<S, A>
     // [StateOutURI]: StateOut<S, A>
-    [IxURI]: TC extends IxC<infer _I, infer _O> ? Ix<_I, _O, A> : any
+    // [IxURI]: TC extends IxC<infer _I, infer _O> ? Ix<_I, _O, A> : any
     [ChunkURI]: Chunk<A>
   }
   interface URItoIndex<K> {
