@@ -14,6 +14,7 @@ import { SIZE } from "./Config/index.js"
 import type { Node, UpdateFn } from "./Nodes/index.js"
 import { Empty, isEmptyNode } from "./Nodes/index.js"
 
+const HashMapHash = St.hashString("HashMap")
 export class HashMap<K, V> implements Iterable<readonly [K, V]> {
   readonly _K!: () => K
   readonly _V!: () => V
@@ -34,17 +35,31 @@ export class HashMap<K, V> implements Iterable<readonly [K, V]> {
   }
 
   get [St.hashSym](): number {
-    return St.hashIterator(
-      new HashMapIterator(this, ([k, v]) => St.combineHash(St.hash(k), St.hash(v)))
-    )
+    let hash = HashMapHash
+    for (const item of this) {
+      hash ^= St.combineHash(St.hashUnknown(item[0]), St.hashUnknown(item[1]))
+    }
+    return hash
   }
 
   [St.equalsSym](that: unknown): boolean {
-    return (
-      that instanceof HashMap &&
-      that.size === this.size &&
-      I.corresponds(this.tupleIterator, that.tupleIterator, St.equals)
-    )
+    if (that instanceof HashMap) {
+      if (that.size !== this.size) {
+        return false
+      }
+      for (const item of this) {
+        const elem = getHash_(that, item[0], St.hash(item[0]))
+        if (elem._tag === "None") {
+          return false
+        } else {
+          if (!St.equals(item[1], elem.value)) {
+            return false
+          }
+        }
+      }
+      return true
+    }
+    return false
   }
 }
 
