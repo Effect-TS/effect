@@ -17,11 +17,13 @@ describe("HashSet", () => {
   it("does not cache equals during mutation", () => {
     const a = HS.from([1, 2])
     const b = HS.from([1, 2])
-    expect(St.hash(a) === St.hash(b)).toBe(true)
+    const c = HS.from([1, 2, 3])
+
     HS.mutate_(a, (set) => {
       expect(St.hash(set) === St.hash(b)).toBeTruthy()
       HS.add_(set, 3)
       expect(St.hash(set) === St.hash(b)).toBeFalsy()
+      expect(St.hash(set) === St.hash(c)).toBeTruthy()
     })
   })
 })

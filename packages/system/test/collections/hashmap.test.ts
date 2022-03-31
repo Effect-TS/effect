@@ -64,10 +64,16 @@ describe("HashMap", () => {
       [new Key(0), new Value("a")],
       [new Key(1), new Value("b")]
     ])
+    const c = HM.from([
+      [new Key(0), new Value("a")],
+      [new Key(1), new Value("b")],
+      [new Key(2), new Value("c")]
+    ])
     HM.mutate_(a, (map) => {
       expect(St.hash(map) === St.hash(b)).toBeTruthy()
       HM.set_(map, new Key(2), new Value("c"))
       expect(St.hash(map) === St.hash(b)).toBeFalsy()
+      expect(St.hash(map) === St.hash(c)).toBeTruthy()
     })
   })
 })
