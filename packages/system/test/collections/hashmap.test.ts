@@ -54,4 +54,20 @@ describe("HashMap", () => {
 
     expect(St.equals(a, b)).toBe(true)
   })
+
+  it("does not cache equals during mutation", () => {
+    const a = HM.from([
+      [new Key(0), new Value("a")],
+      [new Key(1), new Value("b")]
+    ])
+    const b = HM.from([
+      [new Key(0), new Value("a")],
+      [new Key(1), new Value("b")]
+    ])
+    HM.mutate_(a, (map) => {
+      expect(St.hash(map) === St.hash(b)).toBeTruthy()
+      HM.set_(map, new Key(2), new Value("c"))
+      expect(St.hash(map) === St.hash(b)).toBeFalsy()
+    })
+  })
 })

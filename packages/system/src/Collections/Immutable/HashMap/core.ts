@@ -35,11 +35,13 @@ export class HashMap<K, V> implements Iterable<readonly [K, V]> {
   }
 
   get [St.hashSym](): number {
-    let hash = HashMapHash
-    for (const item of this) {
-      hash ^= St.combineHash(St.hashUnknown(item[0]), St.hashUnknown(item[1]))
-    }
-    return hash
+    return St.getCachedHash(this, () => {
+      let hash = HashMapHash
+      for (const item of this) {
+        hash ^= St.combineHash(St.hashUnknown(item[0]), St.hashUnknown(item[1]))
+      }
+      return hash
+    })
   }
 
   [St.equalsSym](that: unknown): boolean {
@@ -321,7 +323,9 @@ export function remove<K>(key: K) {
  * Mark `map` as mutable.
  */
 export function beginMutation<K, V>(map: HashMap<K, V>) {
-  return new HashMap(true, map.edit + 1, map.root, map.size)
+  const m = new HashMap(true, map.edit + 1, map.root, map.size)
+  St.disableCaching(m)
+  return m
 }
 
 /**
@@ -329,6 +333,7 @@ export function beginMutation<K, V>(map: HashMap<K, V>) {
  */
 export function endMutation<K, V>(map: HashMap<K, V>) {
   map.editable = false
+  St.enableCaching(map)
   return map
 }
 

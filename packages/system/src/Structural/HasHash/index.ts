@@ -5,9 +5,45 @@
 import { PCGRandom } from "../../Random/PCG/index.js"
 
 export const hashSym = Symbol()
+const hashCacheSym = Symbol()
+const disableCacheSym = Symbol()
 
 export interface HasHash {
   readonly [hashSym]: number
+  [hashCacheSym]?: number
+  [disableCacheSym]?: boolean
+}
+
+export function getHashCache(o: HasHash): number | undefined {
+  return o[hashCacheSym]
+}
+
+export function getCachedHash(o: HasHash, getHash: () => number): number {
+  let h = getHashCache(o)
+  if (h === undefined) {
+    h = getHash()
+    setHashCache(o, h)
+  }
+  return h
+}
+
+export function setHashCache(o: HasHash, v: number) {
+  if (!(disableCacheSym in o) && !Object.isFrozen(o)) {
+    o[hashCacheSym] = v
+  }
+}
+
+export function enableCaching(o: HasHash) {
+  if (!Object.isFrozen(o)) {
+    delete o[disableCacheSym]
+  }
+}
+
+export function disableCaching(o: HasHash) {
+  if (!Object.isFrozen(o)) {
+    o[disableCacheSym] = true
+    delete o[hashCacheSym]
+  }
 }
 
 export function hasHash(u: unknown): u is HasHash {
@@ -130,7 +166,7 @@ export function isIterable(value: object): value is Iterable<unknown> {
 
 export function _hashObject(value: object): number {
   if (hasHash(value)) {
-    return value[hashSym]
+    return getHashCache(value) ?? value[hashSym]
   } else {
     let h = CACHE.get(value)
     if (isDefined(h)) return h

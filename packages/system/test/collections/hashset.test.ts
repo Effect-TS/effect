@@ -1,3 +1,5 @@
+import * as St from "@effect-ts/system/Structural"
+
 import * as HS from "../../src/Collections/Immutable/HashSet/index.js"
 import { pipe } from "../../src/Function/index.js"
 
@@ -10,5 +12,16 @@ describe("HashSet", () => {
   })
   it("from", () => {
     expect(HS.from([1, 2])).toEqual(pipe(HS.make<number>(), HS.add(1), HS.add(2)))
+  })
+
+  it("does not cache equals during mutation", () => {
+    const a = HS.from([1, 2])
+    const b = HS.from([1, 2])
+    expect(St.hash(a) === St.hash(b)).toBe(true)
+    HS.mutate_(a, (set) => {
+      expect(St.hash(set) === St.hash(b)).toBeTruthy()
+      HS.add_(set, 3)
+      expect(St.hash(set) === St.hash(b)).toBeFalsy()
+    })
   })
 })

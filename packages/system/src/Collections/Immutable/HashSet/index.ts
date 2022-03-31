@@ -19,7 +19,7 @@ export class HashSet<V> implements Iterable<V>, St.HasHash, St.HasEquals {
   }
 
   get [St.hashSym](): number {
-    return St.hashIterator(this[Symbol.iterator]())
+    return St.getCachedHash(this, () => St.hashIterator(this[Symbol.iterator]()))
   }
 
   [St.equalsSym](that: unknown): boolean {
@@ -343,7 +343,9 @@ export function partition_<A>(
  * Mark `set` as mutable.
  */
 export function beginMutation<K>(set: HashSet<K>) {
-  return new HashSet(HM.beginMutation(set.keyMap))
+  const s = new HashSet(HM.beginMutation(set.keyMap))
+  St.disableCaching(s)
+  return s
 }
 
 /**
@@ -351,6 +353,7 @@ export function beginMutation<K>(set: HashSet<K>) {
  */
 export function endMutation<K>(set: HashSet<K>) {
   set.keyMap.editable = false
+  St.enableCaching(set)
   return set
 }
 
