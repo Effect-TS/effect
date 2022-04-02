@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as P from "../PreludeV2/index.js"
+import * as P from "../Prelude/index.js"
 import * as EI from "./operations/index.js"
 
 export interface EitherF extends P.HKT {

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { HKT } from "../PreludeV2/index.js"
+import type { HKT } from "../Prelude/index.js"
 
 /**
  * `Show[A]` provides implicit evidence that values of type `A` have a total

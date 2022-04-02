@@ -2,7 +2,7 @@
 
 import type { Equal } from "../Equal/index.js"
 import type { Ordering } from "../Ordering/index.js"
-import type { HKT } from "../PreludeV2/index.js"
+import type { HKT } from "../Prelude/index.js"
 
 /**
  * `Ord[A]` provides implicit evidence that values of type `A` have a total

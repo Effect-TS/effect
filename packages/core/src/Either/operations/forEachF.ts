@@ -3,8 +3,8 @@
 import * as E from "@effect-ts/system/Either"
 
 import { pipe } from "../../Function/index.js"
-import * as DSL from "../../PreludeV2/DSL/index.js"
-import type * as P from "../../PreludeV2/index.js"
+import * as DSL from "../../Prelude/DSL/index.js"
+import type * as P from "../../Prelude/index.js"
 import type { EitherF } from "../instances.js"
 
 /**

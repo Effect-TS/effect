@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { Associative } from "../Associative/index.js"
-import type { HKT } from "../PreludeV2/index.js"
+import type { HKT } from "../Prelude/index.js"
 
 /**
  * The `Commutative[A]` type class describes a commutative binary operator

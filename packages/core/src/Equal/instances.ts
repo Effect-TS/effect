@@ -2,7 +2,7 @@
 
 import * as Equal from "@effect-ts/system/Equal"
 
-import * as P from "../PreludeV2/index.js"
+import * as P from "../Prelude/index.js"
 
 export interface EqualF extends P.HKT {
   readonly type: Equal.Equal<this["A"]>

@@ -2,8 +2,8 @@
 
 import type { Either } from "../../../Either/index.js"
 import * as O from "../../../Option/index.js"
-import * as DSL from "../../../PreludeV2/DSL/index.js"
-import * as P from "../../../PreludeV2/index.js"
+import * as DSL from "../../../Prelude/DSL/index.js"
+import * as P from "../../../Prelude/index.js"
 import type { PredicateWithIndex } from "../../../Utils/index.js"
 import * as Chunk from "./operations.js"
 

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import type { HKT } from "../PreludeV2/index.js"
+import type { HKT } from "../Prelude/index.js"
 
 /**
  * Base combine

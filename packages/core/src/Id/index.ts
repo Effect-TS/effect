@@ -7,8 +7,8 @@ import * as Tp from "@effect-ts/system/Collections/Immutable/Tuple"
 
 import type { Equal } from "../Equal/index.js"
 import type { Identity } from "../Identity/index.js"
-import * as DSL from "../PreludeV2/DSL/index.js"
-import * as P from "../PreludeV2/index.js"
+import * as DSL from "../Prelude/DSL/index.js"
+import * as P from "../Prelude/index.js"
 import type { Show } from "../Show/index.js"
 
 export type Id<A> = A

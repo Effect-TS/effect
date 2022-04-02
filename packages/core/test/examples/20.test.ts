@@ -2,7 +2,7 @@
 import { pipe } from "@effect-ts/system/Function"
 
 import * as E from "../../src/Either/index.js"
-import * as DSL from "../../src/PreludeV2/DSL/index.js"
+import * as DSL from "../../src/Prelude/DSL/index.js"
 import type { Reader } from "../../src/Reader"
 import * as ReaderT from "../../src/ReaderT/index.js"
 

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as P from "../../../PreludeV2/index.js"
+import * as P from "../../../Prelude/index.js"
 import * as A from "./operations.js"
 
 export interface NonEmptyArrayF extends P.HKT {

@@ -3,10 +3,10 @@
 import "../Operator/index.js"
 
 import { pipe } from "../Function/index.js"
-import * as DSL from "../PreludeV2/DSL/index.js"
-import type { Access, Fail, Provide, Run } from "../PreludeV2/FX/index.js"
-import type { Applicative, AssociativeEither, Monad } from "../PreludeV2/index.js"
-import * as P from "../PreludeV2/index.js"
+import * as DSL from "../Prelude/DSL/index.js"
+import type { Access, Fail, Provide, Run } from "../Prelude/FX/index.js"
+import type { Applicative, AssociativeEither, Monad } from "../Prelude/index.js"
+import * as P from "../Prelude/index.js"
 import * as RD from "../Reader/index.js"
 
 export interface ReaderT<F extends P.HKT> extends P.HKT {

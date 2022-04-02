@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { Identity } from "../../Identity/index.js"
-import * as P from "../../PreludeV2/index.js"
+import * as P from "../../Prelude/index.js"
 import type { EitherFixedLeftF } from "../instances.js"
 import { getCompactF } from "./compactOption.js"
 

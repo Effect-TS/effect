@@ -2,7 +2,7 @@ import { pipe } from "@effect-ts/system/Function"
 import type { Has } from "@effect-ts/system/Has"
 import { tag } from "@effect-ts/system/Has"
 
-import * as DSL from "../../src/PreludeV2/DSL/index.js"
+import * as DSL from "../../src/Prelude/DSL/index.js"
 import * as X from "../../src/XPure/XReader/index.js"
 
 test("09", () => {

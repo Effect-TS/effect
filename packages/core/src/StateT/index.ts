@@ -3,8 +3,8 @@
 import "../Operator/index.js"
 
 import { pipe } from "../Function"
-import * as DSL from "../PreludeV2/DSL/index.js"
-import * as P from "../PreludeV2/index.js"
+import * as DSL from "../Prelude/DSL/index.js"
+import * as P from "../Prelude/index.js"
 
 export interface StateFn<A, B> {
   (a: A): B

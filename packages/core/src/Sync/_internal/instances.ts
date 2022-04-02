@@ -3,7 +3,7 @@
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/Sync"
 
-import * as P from "../../PreludeV2/index.js"
+import * as P from "../../Prelude/index.js"
 
 export interface SyncF extends P.HKT {
   readonly type: X.Sync<this["R"], this["E"], this["A"]>

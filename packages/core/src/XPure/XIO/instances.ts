@@ -2,7 +2,7 @@
 
 import * as F from "@effect-ts/system/XPure"
 
-import * as P from "../../PreludeV2/index.js"
+import * as P from "../../Prelude/index.js"
 import type { XIOF } from "./definition.js"
 import { map, zip } from "./operations.js"
 

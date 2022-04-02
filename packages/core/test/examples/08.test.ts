@@ -3,7 +3,7 @@ import { pipe } from "@effect-ts/system/Function"
 import { makeAssociative } from "../../src/Associative/index.js"
 import * as T from "../../src/Effect/index.js"
 import * as E from "../../src/Either"
-import * as DSL from "../../src/PreludeV2/DSL/index.js"
+import * as DSL from "../../src/Prelude/DSL/index.js"
 
 test("08", async () => {
   const ValidationApplicative = T.getValidationApplicative(

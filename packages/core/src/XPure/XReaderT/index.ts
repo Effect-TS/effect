@@ -3,8 +3,8 @@
 import "../../Operator/index.js"
 
 import { pipe } from "../../Function/index.js"
-import type * as FX from "../../PreludeV2/FX/index.js"
-import * as P from "../../PreludeV2/index.js"
+import type * as FX from "../../Prelude/FX/index.js"
+import * as P from "../../Prelude/index.js"
 import type { XReader } from "../XReader/index.js"
 import * as XR from "../XReader/index.js"
 

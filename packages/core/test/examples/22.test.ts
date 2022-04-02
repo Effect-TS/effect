@@ -5,8 +5,8 @@ import * as Ex from "../../src/Effect/Exit/index.js"
 import * as T from "../../src/Effect/index.js"
 import * as O from "../../src/Option/index.js"
 import * as OptionT from "../../src/OptionT/index.js"
-import * as DSL from "../../src/PreludeV2/DSL/index.js"
-import * as P from "../../src/PreludeV2/index.js"
+import * as DSL from "../../src/Prelude/DSL/index.js"
+import * as P from "../../src/Prelude/index.js"
 
 export namespace EO {
   export const EffectOption = P.intersect(

@@ -2,7 +2,7 @@
 
 import type { XPure } from "@effect-ts/system/XPure"
 
-import type { HKT } from "../../PreludeV2/HKT/index.js"
+import type { HKT } from "../../Prelude/HKT/index.js"
 
 export interface XState<S, A> extends XPure<unknown, S, S, unknown, never, A> {}
 
