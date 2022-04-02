@@ -13,19 +13,24 @@ type OptionTF<F extends P.HKT> = P.ComposeF<F, O.OptionF>
 
 export function monad<F extends P.HKT>(F_: P.Monad<F>) {
   return P.instance<P.Monad<OptionTF<F>>>({
-    any: <X, I, R, E>() =>
+    any: <R, E>() =>
       pipe(
-        F_.any<X, I, R, E>(),
+        F_.any<R, E>(),
         F_.map((a) => O.some(a))
       ),
     map: (f) => F_.map(O.map(f)),
-    flatten: <X, I, R, E, A, I2, R2, E2>(
-      ffa: P.Kind<F, X, I2, R2, E2, O.Option<P.Kind<F, X, I, R, E, O.Option<A>>>>
-    ) =>
+    flatten: (ffa) =>
       pipe(
         ffa,
         F_.map(
-          O.fold(() => DSL.succeedF(F_)<O.Option<A>, X, I, R, E>(O.none), identity)
+          O.fold(
+            () =>
+              pipe(
+                F_.any(),
+                F_.map(() => O.none)
+              ),
+            identity
+          )
         ),
         F_.flatten
       )

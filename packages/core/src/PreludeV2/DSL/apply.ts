@@ -27,10 +27,10 @@ export function getApplyF<F extends HKT.HKT>(F_: Monad<F>): Apply<F> {
 }
 
 export function apF<F extends HKT.HKT>(F_: Apply<F>) {
-  return <X, I, R, E, A>(fa: HKT.Kind<F, X, I, R, E, A>) =>
-    <I2, R2, E2, B>(
-      fab: HKT.Kind<F, X, I2, R2, E2, (a: A) => B>
-    ): HKT.Kind<F, X, I & I2, R & R2, E | E2, B> =>
+  return <R, E, A>(fa: HKT.Kind<F, R, E, A>) =>
+    <R2, E2, B>(
+      fab: HKT.Kind<F, R2, E2, (a: A) => B>
+    ): HKT.Kind<F, R & R2, E | E2, B> =>
       pipe(
         F_.both(fab)(fa),
         F_.map(({ tuple: [a, f] }) => f(a))
@@ -38,10 +38,10 @@ export function apF<F extends HKT.HKT>(F_: Apply<F>) {
 }
 
 export function getZip<F extends HKT.HKT>(F_: Apply<F>) {
-  return <X, I, R, E, A, I1, R1, E1, A1>(
-    fa: HKT.Kind<F, X, I, R, E, A>,
-    fb: HKT.Kind<F, X, I1, R1, E1, A1>
-  ): HKT.Kind<F, X, I & I1, R & R1, E | E1, readonly [A, A1]> =>
+  return <R, E, A, R1, E1, A1>(
+    fa: HKT.Kind<F, R, E, A>,
+    fb: HKT.Kind<F, R1, E1, A1>
+  ): HKT.Kind<F, R & R1, E | E1, readonly [A, A1]> =>
     pipe(
       fa,
       F_.both(fb),
@@ -74,12 +74,10 @@ function getRecordConstructor(keys: ReadonlyArray<string>) {
 
 export const structF =
   <F extends HKT.HKT>(F_: Apply<F>) =>
-  <NER extends Record<string, HKT.Kind<F, any, any, any, any, unknown>>>(
+  <NER extends Record<string, HKT.Kind<F, any, any, unknown>>>(
     r: EnforceNonEmptyRecord<NER>
   ): HKT.Kind<
     F,
-    HKT.Infer<F, "X", NER[keyof NER]>,
-    HKT.Infer<F, "I", NER[keyof NER]>,
     HKT.Infer<F, "R", NER[keyof NER]>,
     HKT.Infer<F, "E", NER[keyof NER]>,
     { [K in keyof NER]: HKT.Infer<F, "A", NER[K]> }
@@ -107,18 +105,14 @@ function getTupleConstructor(len: number): (a: unknown) => any {
 
 export const tupleF =
   <F extends HKT.HKT>(F_: Apply<F>) =>
-  <T extends Array<HKT.Kind<F, any, any, any, any, unknown>>>(
+  <T extends Array<HKT.Kind<F, any, any, unknown>>>(
     ...args: T
   ): HKT.Kind<
     F,
-    HKT.Infer<F, "X", T[number]>,
-    HKT.Infer<F, "I", T[number]>,
     HKT.Infer<F, "R", T[number]>,
     HKT.Infer<F, "E", T[number]>,
     {
-      [K in keyof T]: [T[K]] extends [HKT.Kind<F, any, any, any, any, infer A>]
-        ? A
-        : never
+      [K in keyof T]: [T[K]] extends [HKT.Kind<F, any, any, infer A>] ? A : never
     }
   > => {
     const ap = apF(F_)

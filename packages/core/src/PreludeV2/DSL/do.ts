@@ -7,16 +7,14 @@ import { chainF } from "./chain.js"
 import { succeedF } from "./succeed.js"
 
 export interface DoF<F extends HKT.HKT> {
-  do: HKT.Kind<F, any, unknown, unknown, never, {}>
-  bind: <N extends string, X, I, R, E, A, Scope>(
+  do: HKT.Kind<F, unknown, never, {}>
+  bind: <N extends string, R, E, A, Scope>(
     name: N extends keyof Scope ? { error: `binding name '${N}' already in use` } : N,
-    fn: (_: Scope) => HKT.Kind<F, X, I, R, E, A>
-  ) => <I0, R0, E0>(
-    self: HKT.Kind<F, X, I0, R0, E0, Scope>
+    fn: (_: Scope) => HKT.Kind<F, R, E, A>
+  ) => <R0, E0>(
+    self: HKT.Kind<F, R0, E0, Scope>
   ) => HKT.Kind<
     F,
-    X,
-    I & I0,
     R & R0,
     E | E0,
     {
@@ -26,12 +24,10 @@ export interface DoF<F extends HKT.HKT> {
   let: <N extends string, B, Scope>(
     name: N extends keyof Scope ? { error: `binding name '${N}' already in use` } : N,
     fn: (_: Scope) => B
-  ) => <X, I, R, E>(
-    self: HKT.Kind<F, X, I, R, E, Scope>
+  ) => <R, E>(
+    self: HKT.Kind<F, R, E, Scope>
   ) => HKT.Kind<
     F,
-    X,
-    I,
     R,
     E,
     {
@@ -44,13 +40,13 @@ export function getDo<F extends HKT.HKT>(F_: Monad<F>): DoF<F> {
   return {
     do: succeedF(F_)({}),
     bind:
-      <N extends string, X, I, R, E, A, Scope>(
+      <N extends string, R, E, A, Scope>(
         name: N extends keyof Scope
           ? { error: `binding name '${N}' already in use` }
           : N,
-        fn: (_: Scope) => HKT.Kind<F, X, I, R, E, A>
+        fn: (_: Scope) => HKT.Kind<F, R, E, A>
       ) =>
-      <I0, R0, E0>(self: HKT.Kind<F, X, I0, R0, E0, Scope>) =>
+      <R0, E0>(self: HKT.Kind<F, R0, E0, Scope>) =>
         pipe(
           self,
           chainF(F_)((scope) =>
@@ -74,12 +70,10 @@ export function getDo<F extends HKT.HKT>(F_: Monad<F>): DoF<F> {
           : N,
         fn: (_: Scope) => B
       ) =>
-      <X, I, R, E>(
-        self: HKT.Kind<F, X, I, R, E, Scope>
+      <R, E>(
+        self: HKT.Kind<F, R, E, Scope>
       ): HKT.Kind<
         F,
-        X,
-        I,
         R,
         E,
         {

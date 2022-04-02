@@ -1,6 +1,5 @@
 // ets_tracing: off
 
-import type { EitherFixedLeftF } from "../instances.js"
 import type { Either } from "@effect-ts/system/Either"
 import * as EI from "@effect-ts/system/Either"
 
@@ -8,6 +7,7 @@ import { pipe } from "../../Function/index.js"
 import type { Identity } from "../../Identity/index.js"
 import type { Option } from "../../Option/index.js"
 import * as P from "../../PreludeV2/index.js"
+import type { EitherFixedLeftF } from "../instances.js"
 import { forEachF } from "./forEachF.js"
 
 /**

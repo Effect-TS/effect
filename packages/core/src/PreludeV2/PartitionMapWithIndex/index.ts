@@ -8,6 +8,6 @@ export interface PartitionMapWithIndex<K, F extends HKT.HKT> extends HKT.Typecla
   readonly partitionMapWithIndex: <N extends string, A, B, B1>(
     f: (k: K, a: A) => Either<B, B1>
   ) => <X, I, R, E>(
-    fa: HKT.Kind<F, X, I, R, E, A>
-  ) => Tp.Tuple<[HKT.Kind<F, X, I, R, E, B>, HKT.Kind<F, X, I, R, E, B1>]>
+    fa: HKT.Kind<F, R, E, A>
+  ) => Tp.Tuple<[HKT.Kind<F, R, E, B>, HKT.Kind<F, R, E, B1>]>
 }

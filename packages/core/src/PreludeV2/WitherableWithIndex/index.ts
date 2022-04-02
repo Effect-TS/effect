@@ -6,11 +6,11 @@ import type { Applicative } from "../Applicative/index.js"
 import type * as HKT from "../HKT/index.js"
 
 export interface WitherWithIndex<K, F extends HKT.HKT> extends HKT.Typeclass<F> {
-  <G extends HKT.HKT>(F: Applicative<G>): <GX, GI, GR, GE, A, B>(
-    f: (k: K, a: A) => HKT.Kind<G, GX, GI, GR, GE, Option<B>>
-  ) => <FX, FI, FR, FE>(
-    ta: HKT.Kind<F, FX, FI, FR, FE, A>
-  ) => HKT.Kind<G, GX, GI, GR, GE, HKT.Kind<F, FX, FI, FR, FE, B>>
+  <G extends HKT.HKT>(F: Applicative<G>): <GR, GE, A, B>(
+    f: (k: K, a: A) => HKT.Kind<G, GR, GE, Option<B>>
+  ) => <FR, FE>(
+    ta: HKT.Kind<F, FR, FE, A>
+  ) => HKT.Kind<G, GR, GE, HKT.Kind<F, FR, FE, B>>
 }
 
 export interface WitherableWithIndex<K, F extends HKT.HKT> {
@@ -18,21 +18,17 @@ export interface WitherableWithIndex<K, F extends HKT.HKT> {
 }
 
 export function implementCompactWithIndexF<K, F extends HKT.HKT>(): (
-  i: <FX, FI, FR, FE, A, B, G>(_: {
+  i: <FR, FE, A, B, G>(_: {
     A: A
     B: B
     G: G
-    FX: FX
-    FI: FI
     FR: FR
     FE: FE
   }) => (
     G: Applicative<G>
   ) => (
-    f: (k: K, a: A) => HKT.Kind<G, FX, FI, FR, FE, Option<B>>
-  ) => (
-    ta: HKT.Kind<F, FX, FI, FR, FE, A>
-  ) => HKT.Kind<G, FX, FI, FR, FE, HKT.Kind<F, FX, FI, FR, FE, B>>
+    f: (k: K, a: A) => HKT.Kind<G, FR, FE, Option<B>>
+  ) => (ta: HKT.Kind<F, FR, FE, A>) => HKT.Kind<G, FR, FE, HKT.Kind<F, FR, FE, B>>
 ) => WitherWithIndex<K, F>
 export function implementCompactWithIndexF() {
   return (i: any) => i()

@@ -7,7 +7,7 @@ import * as HKT from "../HKT/index.js"
 export interface Contravariant<F extends HKT.HKT> extends HKT.Typeclass<F> {
   readonly contramap: <A, B>(
     f: (b: B) => A
-  ) => <X, I, R, E>(fa: HKT.Kind<F, X, I, R, E, A>) => HKT.Kind<F, X, I, R, E, B>
+  ) => <R, E>(fa: HKT.Kind<F, R, E, A>) => HKT.Kind<F, R, E, B>
 }
 
 export function getContravariantComposition<F extends HKT.HKT, G extends HKT.HKT>(

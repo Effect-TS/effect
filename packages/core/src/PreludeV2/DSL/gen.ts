@@ -41,18 +41,13 @@ export function genWithHistoryF<
   F extends HKT.HKT,
   C,
   ADAPTER = {
-    <X, I, R, E, A>(_: () => HKT.Kind<F, X, I, R, E, A>): GenLazyHKT<
-      HKT.Kind<F, X, I, R, E, A>,
-      A
-    >
+    <R, E, A>(_: () => HKT.Kind<F, R, E, A>): GenLazyHKT<HKT.Kind<F, R, E, A>, A>
   }
 >(F_: Monad<F>, config?: { adapter?: ADAPTER }) {
-  return <Eff extends GenLazyHKT<HKT.Kind<F, any, any, any, any, any>, any>, AEff>(
+  return <Eff extends GenLazyHKT<HKT.Kind<F, any, any, any>, any>, AEff>(
     f: (i: ADAPTER) => Generator<Eff, AEff, any>
   ): HKT.Kind<
     F,
-    HKT.Infer<F, "X", ReturnType<Eff["effect"]>>,
-    HKT.Infer<F, "I", ReturnType<Eff["effect"]>>,
     HKT.Infer<F, "R", ReturnType<Eff["effect"]>>,
     HKT.Infer<F, "E", ReturnType<Eff["effect"]>>,
     AEff
@@ -67,8 +62,6 @@ export function genWithHistoryF<
           replayStack: L.List<any>
         ): HKT.Kind<
           F,
-          HKT.Infer<F, "X", ReturnType<Eff["effect"]>>,
-          HKT.Infer<F, "I", ReturnType<Eff["effect"]>>,
           HKT.Infer<F, "R", ReturnType<Eff["effect"]>>,
           HKT.Infer<F, "E", ReturnType<Eff["effect"]>>,
           AEff
@@ -106,21 +99,16 @@ export const genF =
     F extends HKT.HKT,
     C,
     ADAPTER = {
-      <X, I, R, E, A>(_: HKT.Kind<F, X, I, R, E, A>): GenHKT<
-        HKT.Kind<F, X, I, R, E, A>,
-        A
-      >
+      <X, I, R, E, A>(_: HKT.Kind<F, R, E, A>): GenHKT<HKT.Kind<F, R, E, A>, A>
     }
   >(
     F_: Monad<F>,
     config?: { adapter?: ADAPTER }
   ) =>
-  <Eff extends GenHKT<HKT.Kind<F, any, any, any, any, any>, any>, AEff>(
+  <Eff extends GenHKT<HKT.Kind<F, any, any, any>, any>, AEff>(
     f: (i: ADAPTER) => Generator<Eff, AEff, any>
   ): HKT.Kind<
     F,
-    HKT.Infer<F, "X", Eff["effect"]>,
-    HKT.Infer<F, "I", Eff["effect"]>,
     HKT.Infer<F, "R", Eff["effect"]>,
     HKT.Infer<F, "E", Eff["effect"]>,
     AEff
@@ -138,8 +126,6 @@ export const genF =
           state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
         ): HKT.Kind<
           F,
-          HKT.Infer<F, "X", Eff["effect"]>,
-          HKT.Infer<F, "I", Eff["effect"]>,
           HKT.Infer<F, "R", Eff["effect"]>,
           HKT.Infer<F, "E", Eff["effect"]>,
           AEff

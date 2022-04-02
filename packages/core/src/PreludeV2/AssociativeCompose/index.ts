@@ -3,9 +3,7 @@
 import type * as HKT from "../HKT/index.js"
 
 export interface AssociativeCompose<F extends HKT.HKT> extends HKT.Typeclass<F> {
-  readonly compose: <B, C, X = any, R = unknown, E = never>(
-    bc: HKT.Kind<F, X, B, R, E, C>
-  ) => <A, R2 = unknown, E2 = never>(
-    ab: HKT.Kind<F, X, A, R & R2, E | E2, B>
-  ) => HKT.Kind<F, X, A, R & R2, E | E2, C>
+  readonly compose: <B, C, E2 = never>(
+    bc: HKT.Kind<F, B, E2, C>
+  ) => <A, E = never>(ab: HKT.Kind<F, A, E, B>) => HKT.Kind<F, A, E | E2, C>
 }

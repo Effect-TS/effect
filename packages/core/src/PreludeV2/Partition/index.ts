@@ -6,11 +6,11 @@ import type * as HKT from "../HKT/index.js"
 
 export interface Partition<F extends HKT.HKT> extends HKT.Typeclass<F> {
   readonly partition: {
-    <A, B extends A>(refinement: Refinement<A, B>): <X, I, R, E>(
-      fa: HKT.Kind<F, X, I, R, E, A>
-    ) => Tp.Tuple<[HKT.Kind<F, X, I, R, E, A>, HKT.Kind<F, X, I, R, E, B>]>
-    <A>(predicate: Predicate<A>): <X, I, R, E>(
-      fa: HKT.Kind<F, X, I, R, E, A>
-    ) => Tp.Tuple<[HKT.Kind<F, X, I, R, E, A>, HKT.Kind<F, X, I, R, E, A>]>
+    <A, B extends A>(refinement: Refinement<A, B>): <R, E>(
+      fa: HKT.Kind<F, R, E, A>
+    ) => Tp.Tuple<[HKT.Kind<F, R, E, A>, HKT.Kind<F, R, E, B>]>
+    <A>(predicate: Predicate<A>): <R, E>(
+      fa: HKT.Kind<F, R, E, A>
+    ) => Tp.Tuple<[HKT.Kind<F, R, E, A>, HKT.Kind<F, R, E, A>]>
   }
 }

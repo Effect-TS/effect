@@ -7,11 +7,9 @@ import type { HKT, Kind } from "../HKT/index.js"
 
 export function orElseF<F extends HKT>(
   F_: Covariant<F> & AssociativeEither<F>
-): <X, I2, R2, E2, B>(
-  fb: () => Kind<F, X, I2, R2, E2, B>
-) => <I, R, E, A>(
-  fa: Kind<F, X, I, R, E, A>
-) => Kind<F, X, I & I2, R2 & R, E2 | E, A | B> {
+): <R2, E2, B>(
+  fb: () => Kind<F, R2, E2, B>
+) => <I, R, E, A>(fa: Kind<F, R, E, A>) => Kind<F, R2 & R, E2 | E, A | B> {
   return (fb) => (fa) =>
     pipe(
       fa,

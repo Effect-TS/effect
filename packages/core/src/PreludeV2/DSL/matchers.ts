@@ -4,8 +4,6 @@ import type * as HKT from "../HKT/index.js"
 
 type KindFromObj<F extends HKT.HKT, __> = HKT.Kind<
   F,
-  HKT.Infer<F, "X", __>,
-  HKT.Infer<F, "I", __>,
   HKT.Infer<F, "R", __>,
   HKT.Infer<F, "E", __>,
   HKT.Infer<F, "A", __>
@@ -18,7 +16,7 @@ export interface MatchFn<F extends HKT.HKT, N extends string> {
       [k in X[N]]: (
         _: Extract<X, { [tag in N]: k }>,
         __: Extract<X, { [tag in N]: k }>
-      ) => HKT.Kind<F, any, any, any, any, any>
+      ) => HKT.Kind<F, any, any, any>
     }
   >(
     matcher: K
@@ -30,9 +28,9 @@ export interface MatchFn<F extends HKT.HKT, N extends string> {
       [k in X[N]]: (
         _: Extract<X, { [tag in N]: k }>,
         __: Extract<X, { [tag in N]: k }>
-      ) => HKT.Kind<F, any, any, any, any, any>
+      ) => HKT.Kind<F, any, any, any>
     }>,
-    Ret extends HKT.Kind<F, any, any, any, any, any>
+    Ret extends HKT.Kind<F, any, any, any>
   >(
     matcher: K,
     def: (
@@ -55,7 +53,7 @@ export interface MatchInFn<F extends HKT.HKT, N extends string> {
         [k in X[N]]: (
           _: Extract<X, { [tag in N]: k }>,
           __: Extract<X, { [tag in N]: k }>
-        ) => HKT.Kind<F, any, any, any, any, any>
+        ) => HKT.Kind<F, any, any, any>
       }
     >(
       matcher: K
@@ -66,9 +64,9 @@ export interface MatchInFn<F extends HKT.HKT, N extends string> {
         [k in X[N]]: (
           _: Extract<X, { [tag in N]: k }>,
           __: Extract<X, { [tag in N]: k }>
-        ) => HKT.Kind<F, any, any, any, any, any>
+        ) => HKT.Kind<F, any, any, any>
       }>,
-      Ret extends HKT.Kind<F, any, any, any, any, any>
+      Ret extends HKT.Kind<F, any, any, any>
     >(
       matcher: K,
       def: (
@@ -95,7 +93,7 @@ export interface MatchMorphFn<
       [k in X[N]]: (
         _: Extract<X, { [tag in N]: k }>,
         __: Extract<X, { [tag in N]: k }>
-      ) => HKT.Kind<F, any, any, any, any, any>
+      ) => HKT.Kind<F, any, any, any>
     }
   >(
     matcher: K
@@ -107,9 +105,9 @@ export interface MatchMorphFn<
       [k in X[N]]: (
         _: Extract<X, { [tag in N]: k }>,
         __: Extract<X, { [tag in N]: k }>
-      ) => HKT.Kind<F, any, any, any, any, any>
+      ) => HKT.Kind<F, any, any, any>
     }>,
-    Ret extends HKT.Kind<F, any, any, any, any, any>
+    Ret extends HKT.Kind<F, any, any, any>
   >(
     matcher: K,
     def: (

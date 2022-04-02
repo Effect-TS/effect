@@ -8,7 +8,5 @@ export interface FoldMap<F extends HKT.HKT> extends HKT.Typeclass<F> {
 }
 
 export interface FoldMapFn<F extends HKT.HKT> {
-  <M>(I: Identity<M>): <A>(
-    f: (a: A) => M
-  ) => <X, I, R, E>(fa: HKT.Kind<F, X, I, R, E, A>) => M
+  <M>(I: Identity<M>): <A>(f: (a: A) => M) => <R, E>(fa: HKT.Kind<F, R, E, A>) => M
 }

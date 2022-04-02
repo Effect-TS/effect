@@ -13,7 +13,7 @@ import type { Monad } from "../Monad/index.js"
 import { succeedF } from "./succeed.js"
 
 export interface Validation<F extends HKT.HKT, E> extends HKT.HKT {
-  readonly type: HKT.Kind<F, this["X"], this["I"], this["R"], E, this["A"]>
+  readonly type: HKT.Kind<F, this["R"], E, this["A"]>
 }
 
 export const getValidationF =
@@ -23,14 +23,14 @@ export const getValidationF =
       any: M_.any,
       map: M_.map,
       both:
-        <B>(fb: HKT.Kind<F, any, any, any, Z, B>) =>
-        <A>(fa: HKT.Kind<F, any, any, any, Z, A>) =>
+        <B>(fb: HKT.Kind<F, any, Z, B>) =>
+        <A>(fa: HKT.Kind<F, any, Z, A>) =>
           pipe(
             M_.either(fa),
             M_.both(M_.either(fb)),
             M_.map(Tp.toNative),
             M_.map(
-              ([eitherA, eitherB]): HKT.Kind<F, any, any, any, Z, Tp.Tuple<[A, B]>> =>
+              ([eitherA, eitherB]): HKT.Kind<F, any, Z, Tp.Tuple<[A, B]>> =>
                 E.fold_(
                   eitherA,
                   (ea) =>

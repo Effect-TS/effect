@@ -6,14 +6,14 @@ import * as E from "../../src/Either/index.js"
 import * as EitherT from "../../src/EitherT/index.js"
 import * as DSL from "../../src/PreludeV2/DSL/index.js"
 import * as P from "../../src/PreludeV2/index.js"
-import * as T from "../../src/XPure/index.js"
+import * as X from "../../src/XPure/index.js"
 import * as R from "../../src/XPure/XReader/index.js"
 import * as ReaderT from "../../src/XPure/XReaderT/index.js"
+import * as XS from "../../src/XPure/XState/index.js"
 
 type State<K, V> = M.Map<K, V>
 
-export interface Store<K, V, A>
-  extends T.XPure<unknown, State<K, V>, State<K, V>, unknown, never, A> {}
+export interface Store<K, V, A> extends XS.XState<State<K, V>, A> {}
 
 export interface StoreF<K, V> extends P.HKT {
   readonly type: Store<K, V, this["A"]>
@@ -21,12 +21,12 @@ export interface StoreF<K, V> extends P.HKT {
 
 export const getStoreMonad = <K, V>() =>
   P.instance<P.Monad<StoreF<K, V>>>({
-    any: () => T.Any<State<K, V>>().any(),
-    flatten: (ffa) => T.chain_(ffa, identity),
-    map: T.map
+    any: () => X.succeed({}),
+    flatten: XS.chain(identity),
+    map: XS.map
   })
 
-export const K = pipe(getStoreMonad<string, number>(), EitherT.monad, ReaderT.monad)
+const K = pipe(getStoreMonad<string, number>(), EitherT.monad, ReaderT.monad)
 
 export const chain = DSL.chainF(K)
 
@@ -39,11 +39,11 @@ test("11", () => {
   > = pipe(
     succeed("hello"),
     R.map(
-      T.chain(
+      X.chain(
         E.fold(
-          (e) => T.succeed(E.left(e)),
+          (e) => X.succeed(E.left(e)),
           (v) =>
-            T.modify(
+            X.modify(
               flow(
                 M.toMutable,
                 (s) => s.set(v, v.length),
@@ -54,13 +54,13 @@ test("11", () => {
         )
       )
     ),
-    chain((x) => T.accessM((y: number) => succeed(x * y)))
+    chain((x) => X.accessM((y: number) => succeed(x * y)))
   )
 
   const result: Tp.Tuple<[State<string, number>, E.Either<never, number>]> = pipe(
     program,
     R.runEnv(2),
-    T.runState(M.empty)
+    X.runState(M.empty)
   )
 
   expect(result).toEqual(Tp.tuple(M.singleton("hello", 5), E.right(10)))

@@ -10,10 +10,7 @@ import * as P from "../PreludeV2/index.js"
 import * as RD from "../Reader/index.js"
 
 export interface ReaderT<F extends P.HKT> extends P.HKT {
-  readonly type: RD.Reader<
-    this["R"],
-    P.Kind<F, this["X"], this["I"], unknown, this["E"], this["A"]>
-  >
+  readonly type: RD.Reader<this["R"], P.Kind<F, unknown, this["E"], this["A"]>>
 }
 
 export function monad<F extends P.HKT>(M: Monad<F>) {

@@ -29,13 +29,7 @@ export const forEachWithIndexF = P.implementForEachWithIndexF<string, Dictionary
   (_) => (G) => {
     const succeed = P.succeedF(G)
     return (f) => (fa) => {
-      let base = succeed<
-        R.Dictionary<typeof _.B>,
-        typeof _.X,
-        typeof _.I,
-        typeof _.R,
-        typeof _.E
-      >({} as any)
+      let base = succeed<R.Dictionary<typeof _.B>, typeof _.R, typeof _.E>({} as any)
       for (const k of Object.keys(fa)) {
         base = G.map(
           ({ tuple: [x, b] }: Tp.Tuple<[R.Dictionary<typeof _.B>, typeof _.B]>) =>
@@ -125,8 +119,8 @@ export function fromFoldableMap_<F extends HKT.HKT, B>(
   M_: Closure<B>,
   F_: Foldable<F>
 ) {
-  return <X, I, R, E, A>(
-    fa: HKT.Kind<F, X, I, R, E, A>,
+  return <R, E, A>(
+    fa: HKT.Kind<F, R, E, A>,
     f: (a: A) => Tp.Tuple<[string, B]>
   ): R.Dictionary<B> => {
     return F_.reduce<A, MutableRecord<string, B>>({}, (r, a) => {
@@ -142,7 +136,7 @@ export function fromFoldableMap_<F extends HKT.HKT, B>(
  */
 export function fromFoldableMap<F extends HKT.HKT, B>(M_: Closure<B>, F_: Foldable<F>) {
   return <A>(f: (a: A) => Tp.Tuple<[string, B]>) =>
-    <X, I, R, E>(fa: HKT.Kind<F, X, I, R, E, A>): R.Dictionary<B> => {
+    <R, E>(fa: HKT.Kind<F, R, E, A>): R.Dictionary<B> => {
       const ff = fromFoldableMap_(M_, F_)
       return ff(fa, f)
     }
@@ -154,9 +148,7 @@ export function fromFoldableMap<F extends HKT.HKT, B>(M_: Closure<B>, F_: Foldab
 export const fromFoldable = <F extends HKT.HKT, A>(
   M_: Closure<A>,
   F_: Foldable<F>
-): (<X, I, R, E>(
-  fa: HKT.Kind<F, X, I, R, E, Tp.Tuple<[string, A]>>
-) => R.Dictionary<A>) => {
+): (<R, E>(fa: HKT.Kind<F, R, E, Tp.Tuple<[string, A]>>) => R.Dictionary<A>) => {
   const fromFoldableMapM = fromFoldableMap(M_, F_)
   return fromFoldableMapM(identity)
 }

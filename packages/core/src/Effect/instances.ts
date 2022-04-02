@@ -15,10 +15,6 @@ export interface EffectF extends P.HKT {
   readonly type: T.Effect<this["R"], this["E"], this["A"]>
 }
 
-export interface EffectCategoryF extends P.HKT {
-  readonly type: T.Effect<this["I"], this["E"], this["A"]>
-}
-
 export const Any = P.instance<P.Any<EffectF>>({
   any: () => T.succeed({})
 })
@@ -82,7 +78,7 @@ export const getValidationApplicative = DSL.getValidationF<EffectF>({
   ...Applicative
 })
 
-export const Category = P.instance<P.Category<EffectCategoryF>>({
+export const Category = P.instance<P.Category<EffectF>>({
   id: T.environment,
   compose: T.compose
 })

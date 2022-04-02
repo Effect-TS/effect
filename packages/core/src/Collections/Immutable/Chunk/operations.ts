@@ -25,13 +25,7 @@ export * from "@effect-ts/system/Collections/Immutable/Chunk"
 export const forEachWithIndexF = P.implementForEachWithIndexF<number, ChunkF>()(
   (_) => (G) => (f) => (fa) => {
     const succeed = DSL.succeedF(G)
-    let base = succeed<
-      Chunk.Chunk<typeof _.B>,
-      typeof _.X,
-      typeof _.I,
-      typeof _.R,
-      typeof _.E
-    >(Chunk.empty())
+    let base = succeed<Chunk.Chunk<typeof _.B>, typeof _.R, typeof _.E>(Chunk.empty())
     for (let k = 0; k < fa.length; k += 1) {
       base = G.map(
         ({ tuple: [bs, b] }: Tp.Tuple<[Chunk.Chunk<typeof _.B>, typeof _.B]>) =>

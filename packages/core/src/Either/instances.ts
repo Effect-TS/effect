@@ -8,7 +8,7 @@ export interface EitherF extends P.HKT {
 }
 
 export interface EitherFixedLeftF<E> extends P.HKT {
-  readonly type: P.Kind<EitherF, this["X"], this["I"], this["R"], E, this["A"]>
+  readonly type: P.Kind<EitherF, this["R"], E, this["A"]>
 }
 
 export const Any = P.instance<P.Any<EitherF>>({

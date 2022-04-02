@@ -16,23 +16,13 @@ export function monad<F extends P.HKT>(M_: P.Monad<F>) {
   return P.instance<P.Monad<EitherTF<F>>>({
     any: () => succeed(EI.right({})),
     map: (f) => M_.map(EI.map(f)),
-    flatten: <X, I, R, E, A, I2, R2, E2>(
-      ffa: P.Kind<
-        F,
-        X,
-        I2,
-        R2,
-        E2,
-        EI.Either<E2, P.Kind<F, X, I, R, E, EI.Either<E, A>>>
-      >
+    flatten: <R, E, A, R2, E2>(
+      ffa: P.Kind<F, R2, E2, EI.Either<E2, P.Kind<F, R, E, EI.Either<E, A>>>>
     ) =>
       pipe(
         ffa,
         M_.map(
-          EI.fold(
-            (e) => succeed<EI.Either<E | E2, A>, X, I, R, E>(EI.left(e)),
-            identity
-          )
+          EI.fold((e) => succeed<EI.Either<E | E2, A>, R, E>(EI.left(e)), identity)
         ),
         M_.flatten
       )
@@ -55,9 +45,9 @@ export function applicative<F extends P.HKT>(M: P.Applicative<F>) {
 export function run<F extends P.HKT>(M_: P.Covariant<F>) {
   return P.instance<FX.Run<EitherTF<F>>>({
     either: <
-      <A, X, I, R, E>(
-        fa: P.Kind<F, X, I, R, E, EI.Either<E, A>>
-      ) => P.Kind<F, X, I, R, never, EI.Either<never, EI.Either<E, A>>>
+      <A, R, E>(
+        fa: P.Kind<F, R, E, EI.Either<E, A>>
+      ) => P.Kind<F, R, never, EI.Either<never, EI.Either<E, A>>>
     >M_.map(EI.Run.either)
   })
 }

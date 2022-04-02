@@ -6,37 +6,30 @@ import { pipe } from "../Function"
 import * as DSL from "../PreludeV2/DSL/index.js"
 import * as P from "../PreludeV2/index.js"
 
-export interface StateT<A, B> {
+export interface StateFn<A, B> {
   (a: A): B
 }
 
-export interface StateTF<F extends P.HKT, S> extends P.HKT {
-  readonly type: StateT<
-    S,
-    P.Kind<F, this["X"], this["I"], this["R"], this["E"], readonly [S, this["A"]]>
-  >
+export interface StateT<F extends P.HKT, S> extends P.HKT {
+  readonly type: StateFn<S, P.Kind<F, this["R"], this["E"], readonly [S, this["A"]]>>
 }
 
-export interface State<F extends P.HKT, S> extends P.Typeclass<StateTF<F, S>> {
-  readonly get: P.Kind<StateTF<F, S>, any, unknown, unknown, never, S>
+export interface State<F extends P.HKT, S> extends P.Typeclass<StateT<F, S>> {
+  readonly get: P.Kind<StateT<F, S>, unknown, never, S>
 
   readonly update: (
     f: (s: S) => S
-  ) => <X, I, R, E, A>(
-    fa: P.Kind<StateTF<F, S>, X, I, R, E, A>
-  ) => P.Kind<StateTF<F, S>, X, I, R, E, A>
+  ) => <R, E, A>(fa: P.Kind<StateT<F, S>, R, E, A>) => P.Kind<StateT<F, S>, R, E, A>
 
   readonly runState: (
     s: S
-  ) => <X, I, R, E, A>(
-    fa: P.Kind<StateTF<F, S>, X, I, R, E, A>
-  ) => P.Kind<F, X, I, R, E, A>
+  ) => <R, E, A>(fa: P.Kind<StateT<F, S>, R, E, A>) => P.Kind<F, R, E, A>
 }
 
 export function stateT<S>() {
   return <F extends P.HKT>(F_: P.Monad<F>) => {
     const succeed = DSL.succeedF(F_)
-    const monad: P.Monad<StateTF<F, S>> = {
+    const monad: P.Monad<StateT<F, S>> = {
       any: () => (s) => succeed([s, {} as unknown] as const),
       map: (f) => (fa) => (s) =>
         pipe(

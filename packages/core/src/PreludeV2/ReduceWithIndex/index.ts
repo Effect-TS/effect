@@ -7,7 +7,5 @@ export interface ReduceWithIndex<K, F extends HKT.HKT> extends HKT.Typeclass<F> 
 }
 
 export interface ReduceWithIndexFn<K, F extends HKT.HKT> {
-  <A, B>(b: B, f: (k: K, b: B, a: A) => B): <X, I, R, E>(
-    fa: HKT.Kind<F, X, I, R, E, A>
-  ) => B
+  <A, B>(b: B, f: (k: K, b: B, a: A) => B): <R, E>(fa: HKT.Kind<F, R, E, A>) => B
 }
