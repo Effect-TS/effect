@@ -1,6 +1,6 @@
 import { makeAssociative } from "../../src/Associative/index.js"
 import * as E from "../../src/Either/index.js"
-import * as DSL from "../../src/PreludeV2/DSL/index.js"
+import * as DSL from "../../src/Prelude/DSL/index.js"
 
 test("07", async () => {
   const A: E.Either<string | number, { a: never; b: number; d: never }> = E.struct({

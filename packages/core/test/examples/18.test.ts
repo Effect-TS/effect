@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 import * as E from "../../src/Either/index.js"
 import { pipe } from "../../src/Function"
-import * as DSL from "../../src/PreludeV2/DSL/index.js"
+import * as DSL from "../../src/Prelude/DSL/index.js"
 import * as StateT from "../../src/StateT/index.js"
 
 namespace StateStateEither {

@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as P from "../PreludeV2/index.js"
+import * as P from "../Prelude/index.js"
 import type { ReaderF } from "./definition.js"
 import { access, map, zip } from "./operations.js"
 

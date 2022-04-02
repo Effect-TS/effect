@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as P from "../PreludeV2/index.js"
+import * as P from "../Prelude/index.js"
 import * as It from "./operations.js"
 
 export interface IterableF extends P.HKT {

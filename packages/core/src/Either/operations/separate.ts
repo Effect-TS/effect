@@ -6,7 +6,7 @@ import * as EI from "@effect-ts/system/Either"
 import * as Tp from "../../Collections/Immutable/Tuple/index.js"
 import { pipe } from "../../Function/index.js"
 import type { Identity } from "../../Identity/index.js"
-import * as P from "../../PreludeV2/index.js"
+import * as P from "../../Prelude/index.js"
 import type { EitherFixedLeftF } from "../instances.js"
 import { forEachF } from "./forEachF.js"
 

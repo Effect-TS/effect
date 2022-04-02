@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as P from "../../PreludeV2/index.js"
+import * as P from "../../Prelude/index.js"
 import type { OptionF } from "../definitions.js"
 import { Any } from "./Any.js"
 import { AssociativeFlatten } from "./AssociativeFlatten.js"

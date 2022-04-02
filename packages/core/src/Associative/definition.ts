@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { Closure } from "../Closure/index.js"
-import type { HKT } from "../PreludeV2/index.js"
+import type { HKT } from "../Prelude/index.js"
 
 /**
  * The `Associative[A]` type class describes an associative binary operator

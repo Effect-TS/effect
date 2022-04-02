@@ -5,7 +5,7 @@ import "../Operator/index.js"
 
 import * as T from "@effect-ts/system/Effect"
 
-import type * as P from "../PreludeV2/index.js"
+import type * as P from "../Prelude/index.js"
 
 /**
  * Like forEach but preserves the type of the collection used

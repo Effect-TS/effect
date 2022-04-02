@@ -1,6 +1,6 @@
 // ets_tracing: off
 
-import * as P from "../../PreludeV2/index.js"
+import * as P from "../../Prelude/index.js"
 import type { OptionF } from "../definitions.js"
 import { filter } from "../operations/filter.js"
 import { filterMap } from "../operations/filterMap.js"

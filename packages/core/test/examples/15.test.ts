@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 import { pipe, tuple } from "@effect-ts/system/Function"
 
-import * as DSL from "../../src/PreludeV2/DSL/index.js"
+import * as DSL from "../../src/Prelude/DSL/index.js"
 import * as StateT from "../../src/StateT/index.js"
 import * as IO from "../../src/XPure/XIO/index.js"
 

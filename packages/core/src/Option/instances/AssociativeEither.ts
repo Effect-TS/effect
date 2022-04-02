@@ -4,7 +4,7 @@ import type { Either } from "@effect-ts/system/Either"
 import { left, right } from "@effect-ts/system/Either"
 import * as O from "@effect-ts/system/Option"
 
-import * as P from "../../PreludeV2/index.js"
+import * as P from "../../Prelude/index.js"
 import type { OptionF } from "../definitions.js"
 
 export const AssociativeEither = P.instance<P.AssociativeEither<OptionF>>({

@@ -5,11 +5,10 @@ import "../Operator/index.js"
 import * as T from "@effect-ts/system/Effect"
 
 import * as I from "../Identity/index.js"
-import * as DSL from "../PreludeV2/DSL/index.js"
-import * as P from "../PreludeV2/index.js"
+import * as DSL from "../Prelude/DSL/index.js"
+import * as P from "../Prelude/index.js"
 
 export * from "@effect-ts/system/Effect"
-export { EffectURI } from "../Modules/index.js" // @todo: remove
 
 export interface EffectF extends P.HKT {
   readonly type: T.Effect<this["R"], this["E"], this["A"]>

@@ -3,7 +3,7 @@
 import "../Operator/index.js"
 
 import { pipe } from "../Function/index.js"
-import * as P from "../PreludeV2/index.js"
+import * as P from "../Prelude/index.js"
 
 export interface IxTF<F extends P.HKT, I, O = I> extends P.HKT {
   readonly type: P.Kind<

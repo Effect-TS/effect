@@ -2,7 +2,7 @@
 
 import type * as O from "@effect-ts/system/Option"
 
-import type * as P from "../PreludeV2/index.js"
+import type * as P from "../Prelude/index.js"
 
 export type AOfOptions<Ts extends O.Option<any>[]> = {
   [k in keyof Ts]: Ts[k] extends O.Option<infer A> ? A : never

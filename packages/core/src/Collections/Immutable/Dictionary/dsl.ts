@@ -1,7 +1,7 @@
 // ets_tracing: off
 
-import * as DSL from "../../../PreludeV2/DSL/index.js"
-import * as P from "../../../PreludeV2/index.js"
+import * as DSL from "../../../Prelude/DSL/index.js"
+import * as P from "../../../Prelude/index.js"
 import type { DictionaryF } from "./instances.js"
 import { ForEach } from "./instances.js"
 

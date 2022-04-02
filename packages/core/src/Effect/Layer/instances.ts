@@ -3,7 +3,7 @@
 import * as T from "@effect-ts/system/Effect"
 import * as L from "@effect-ts/system/Layer"
 
-import * as P from "../../PreludeV2/index.js"
+import * as P from "../../Prelude/index.js"
 
 export interface LayerF extends P.HKT {
   readonly type: L.Layer<this["R"], this["E"], this["A"]>

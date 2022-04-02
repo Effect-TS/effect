@@ -1,8 +1,8 @@
 // ets_tracing: off
 
 import type * as O from "../../../Option/index.js"
-import * as DSL from "../../../PreludeV2/DSL/index.js"
-import * as P from "../../../PreludeV2/index.js"
+import * as DSL from "../../../Prelude/DSL/index.js"
+import * as P from "../../../Prelude/index.js"
 import { isOption } from "../../../Utils/index.js"
 import type { ArrayF } from "./instances.js"
 import { Applicative, ApplyZip, ForEach, Monad } from "./instances.js"

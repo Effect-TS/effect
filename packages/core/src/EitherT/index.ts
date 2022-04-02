@@ -5,9 +5,9 @@ import "../Operator/index.js"
 import type { EitherF } from "../Either/index.js"
 import * as EI from "../Either/index.js"
 import { flow, identity, pipe } from "../Function/index.js"
-import { succeedF } from "../PreludeV2/DSL/index.js"
-import type * as FX from "../PreludeV2/FX/index.js"
-import * as P from "../PreludeV2/index.js"
+import { succeedF } from "../Prelude/DSL/index.js"
+import type * as FX from "../Prelude/FX/index.js"
+import * as P from "../Prelude/index.js"
 
 type EitherTF<F extends P.HKT> = P.ComposeF<F, EitherF>
 

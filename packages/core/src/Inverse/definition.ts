@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { Identity } from "../Identity/index.js"
-import type { HKT } from "../PreludeV2/index.js"
+import type { HKT } from "../Prelude/index.js"
 
 export interface Inverse<A> extends Identity<A> {
   /**

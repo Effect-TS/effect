@@ -16,9 +16,9 @@ import { makeEqual } from "../Equal/index.js"
 import { pipe } from "../Function/index.js"
 import type { Identity } from "../Identity/index.js"
 import * as IO from "../IO/index.js"
-import * as DSL from "../PreludeV2/DSL/index.js"
-import * as P from "../PreludeV2/index.js"
-import { sequenceF } from "../PreludeV2/index.js"
+import * as DSL from "../Prelude/DSL/index.js"
+import * as P from "../Prelude/index.js"
+import { sequenceF } from "../Prelude/index.js"
 import type { Show } from "../Show/index.js"
 
 export declare type Forest<A> = ReadonlyArray<Tree<A>>
@@ -151,10 +151,10 @@ export function unfoldForestSafe<A, B>(
  * Monadic tree builder, in depth-first order
  */
 export function unfoldTreeM<M extends TreeF>(M_: P.Monad<M> & P.Applicative<M>) {
-  return <X, I, R, E, A, B>(
+  return <R, E, A, B>(
     b: B,
-    f: (b: B) => P.Kind<M, X, I, R, E, [A, Array<B>]>
-  ): P.Kind<M, X, I, R, E, Tree<A>> => {
+    f: (b: B) => P.Kind<M, R, E, [A, Array<B>]>
+  ): P.Kind<M, R, E, Tree<A>> => {
     const unfoldForestMM = unfoldForestM(M_)
     const chain = DSL.chainF(M_)
     const succeed = DSL.succeedF(M_)
@@ -175,10 +175,10 @@ export function unfoldTreeM<M extends TreeF>(M_: P.Monad<M> & P.Applicative<M>) 
  */
 export const unfoldForestM =
   <M extends TreeF>(M_: P.Monad<M> & P.Applicative<M>) =>
-  <X, I, R, E, A, B>(
+  <R, E, A, B>(
     bs: Array<B>,
-    f: (b: B) => P.Kind<M, X, I, R, E, [A, Array<B>]>
-  ): P.Kind<M, X, I, R, E, Forest<A>> => {
+    f: (b: B) => P.Kind<M, R, E, [A, Array<B>]>
+  ): P.Kind<M, R, E, Forest<A>> => {
     const traverseM = A.forEachF(M_)
     return pipe(
       bs,
@@ -300,12 +300,8 @@ export function reduceRight_<A, B>(fa: Tree<A>, b: B, f: (a: A, b: B) => B): B {
 export const forEachF = P.implementForEachF<TreeF>()((_) => (G) => {
   const traverseF = A.forEachF(G)
   const r =
-    <A, B>(
-      f: (a: A) => P.Kind<typeof _.G, typeof _.X, typeof _.I, typeof _.R, typeof _.E, B>
-    ) =>
-    (
-      ta: Tree<A>
-    ): P.Kind<typeof _.G, typeof _.X, typeof _.I, typeof _.R, typeof _.E, Tree<B>> =>
+    <A, B>(f: (a: A) => P.Kind<typeof _.G, typeof _.R, typeof _.E, B>) =>
+    (ta: Tree<A>): P.Kind<typeof _.G, typeof _.R, typeof _.E, Tree<B>> =>
       pipe(
         f(ta.value),
         G.map((value: B) => (forest: Forest<B>) => ({

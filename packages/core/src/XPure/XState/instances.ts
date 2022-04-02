@@ -3,8 +3,8 @@
 import { constant } from "@effect-ts/system/Function"
 import * as F from "@effect-ts/system/XPure"
 
-import * as DSL from "../../PreludeV2/DSL/index.js"
-import * as P from "../../PreludeV2/index.js"
+import * as DSL from "../../Prelude/DSL/index.js"
+import * as P from "../../Prelude/index.js"
 import type { XStateF } from "./definition.js"
 import { map, zip } from "./operations.js"
 

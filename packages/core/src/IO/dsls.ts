@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import * as A from "../Collections/Immutable/Array/index.js"
-import * as DSL from "../PreludeV2/DSL/index.js"
+import * as DSL from "../Prelude/DSL/index.js"
 import type { IOF } from "./instances.js"
 import { Applicative, Monad } from "./instances.js"
 

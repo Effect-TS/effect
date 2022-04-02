@@ -2,7 +2,7 @@
 
 import * as F from "@effect-ts/system/IO"
 
-import * as P from "../PreludeV2/index.js"
+import * as P from "../Prelude/index.js"
 
 export interface IOF extends P.HKT {
   readonly type: F.IO<this["A"]>

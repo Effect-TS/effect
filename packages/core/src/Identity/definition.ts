@@ -1,7 +1,7 @@
 // ets_tracing: off
 
 import type { Associative } from "../Associative/index.js"
-import type { HKT } from "../PreludeV2/index.js"
+import type { HKT } from "../Prelude/index.js"
 
 /**
  * Equivalent to a Monoid
