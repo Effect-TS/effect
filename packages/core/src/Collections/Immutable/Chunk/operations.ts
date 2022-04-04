@@ -318,7 +318,7 @@ export function uniq_<A>(as: Chunk.Chunk<A>, E: Equal<A>): Chunk.Chunk<A> {
   const len = as.length
   let i = 0
   for (; i < len; i++) {
-    const a = as[i]!
+    const a = Chunk.unsafeGet_(as, i)
     if (!elem_(r, E, a)) {
       r = Chunk.append_(r, a)
     }
