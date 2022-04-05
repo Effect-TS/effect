@@ -44,7 +44,7 @@ describe.concurrent("Stream", () => {
         .bindValue(
           "sink",
           ({ cancelled, latch }) =>
-            Sink.foldEffect(List.empty<number>(), constTrue, (acc, el) =>
+            Sink.foldEffect<unknown, never, number, List<number>>(List.empty<number>(), constTrue, (acc, el) =>
               el === 1
                 ? Effect.succeedNow(acc.prepend(el))
                 : (latch.succeed(undefined) > Effect.never).onInterrupt(() => cancelled.set(true)))
@@ -81,9 +81,9 @@ describe.concurrent("Stream", () => {
       const data = List(1, 2, 2, 3, 2, 3);
       const program = Stream(...data)
         .aggregateAsync(
-          Sink.foldWeighted(
-            List.empty<number>(),
-            (_, i: number) => i,
+          Sink.foldWeighted<number, List<number>>(
+            List.empty(),
+            (_, i) => i,
             4,
             (acc, el) => acc.prepend(el)
           )
@@ -218,7 +218,7 @@ describe.concurrent("Stream", () => {
         .bindValue(
           "sink",
           ({ cancelled, latch }) =>
-            Sink.foldEffect(List.empty<number>(), constTrue, (acc, el) =>
+            Sink.foldEffect<unknown, never, number, List<number>>(List.empty<number>(), constTrue, (acc, el) =>
               el === 1
                 ? Effect.succeedNow(acc.prepend(el))
                 : (latch.succeed(undefined) > Effect.never).onInterrupt(() => cancelled.set(true)))
@@ -263,7 +263,7 @@ describe.concurrent("Stream", () => {
       const data = List(1, 2, 2, 3, 2, 3);
       const program = Stream(...data)
         .aggregateAsyncWithinEither(
-          Sink.foldWeighted(
+          Sink.foldWeighted<number, List<number>>(
             List.empty<number>(),
             (_, n: number) => n,
             4,

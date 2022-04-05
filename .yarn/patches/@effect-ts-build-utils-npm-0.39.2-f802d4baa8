@@ -1,0 +1,21 @@
+diff --git a/pack.js b/pack.js
+index e690cb08e667ceeea60d155c7d99aa373fcf467b..9cc2e1da6c0413e906b0f6b1547ec013703fb220 100644
+--- a/pack.js
++++ b/pack.js
+@@ -106,12 +106,12 @@ const MAP_GLOB_PATTERN = "dist/**/*.map";
+ const replaceString = (path) => {
+     const dir = path_1.posix.dirname(path);
+     const patch = path.startsWith("dist/_mjs/")
+-        ? (x) => x.replace(/(.*)\.\.\/src(.*)/gm, "$1_src$2")
+-        : (x) => x.replace(/(.*)\.\.\/\.\.\/src(.*)/gm, "$1_src$2");
++        ? (x) => x.replace(/(.*)\.\.\/_src(.*)/gm, "$1_src$2")
++        : (x) => x.replace(/(.*)\.\.\/\.\.\/_src(.*)/gm, "$1_src$2");
+     return (0, Function_1.flow)(patch, (x) => path_1.posix.relative(dir, path_1.posix.join(dir, x)), (x) => (x.startsWith(".") ? x : "./" + x));
+ };
+ const replace = (content, path) => JSON.stringify((0, Function_1.pipe)(Object.entries(JSON.parse(content)), A.map(([k, v]) => k === "sources"
+     ? [k, A.map_(v, replaceString(path))]
+     : [k, v]), A.reduce({}, (acc, [k, v]) => ({ ...acc, [k]: v }))));
+-(0, Function_1.pipe)((0, _common_1.exec)("rm -rf build/dist"), TE.tap(() => (0, _common_1.exec)("mkdir -p dist")), TE.tap(() => TE.when(() => fs.existsSync(`./src`))((0, _common_1.exec)(`mkdir -p ./dist/_src && cp -r ./src/* ./dist/_src`))), TE.tap(() => TE.when(() => fs.existsSync(`./build/mjs`))((0, _common_1.exec)(`mkdir -p ./dist/_mjs && cp -r ./build/mjs/* ./dist/_mjs`))), TE.tap(() => TE.when(() => fs.existsSync(`./build/cjs`))((0, _common_1.exec)(`cp -r ./build/cjs/* ./dist`))), TE.tap(() => TE.when(() => fs.existsSync(`./build/dts`))((0, _common_1.exec)(`cp -r ./build/dts/* ./dist`))), TE.tap(() => writePackageJsonContent), TE.tap(() => copyReadme), TE.tap(() => (0, _common_1.modifyGlob)(replace)(MAP_GLOB_PATTERN)), TE.fold(_common_1.onLeft, (0, _common_1.onRight)("pack succeeded!")), _common_1.runMain);
++(0, Function_1.pipe)((0, _common_1.exec)("rm -rf build/dist"), TE.tap(() => (0, _common_1.exec)("mkdir -p dist")), TE.tap(() => TE.when(() => fs.existsSync(`./_src`))((0, _common_1.exec)(`mkdir -p ./dist/_src && cp -r ./_src/* ./dist/_src`))), TE.tap(() => TE.when(() => fs.existsSync(`./build/mjs`))((0, _common_1.exec)(`mkdir -p ./dist/_mjs && cp -r ./build/mjs/* ./dist/_mjs`))), TE.tap(() => TE.when(() => fs.existsSync(`./build/cjs`))((0, _common_1.exec)(`cp -r ./build/cjs/* ./dist`))), TE.tap(() => TE.when(() => fs.existsSync(`./build/dts`))((0, _common_1.exec)(`cp -r ./build/dts/* ./dist`))), TE.tap(() => writePackageJsonContent), TE.tap(() => copyReadme), TE.tap(() => (0, _common_1.modifyGlob)(replace)(MAP_GLOB_PATTERN)), TE.fold(_common_1.onLeft, (0, _common_1.onRight)("pack succeeded!")), _common_1.runMain);
+ //# sourceMappingURL=pack.js.map
+\ No newline at end of file

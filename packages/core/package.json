@@ -42,7 +42,7 @@
     }
   },
   "peerDependencies": {
-    "@tsplus/stdlib": "0.0.32"
+    "@tsplus/stdlib": "0.0.35"
   },
   "peerDependenciesMeta": {
     "@tsplus/stdlib": {

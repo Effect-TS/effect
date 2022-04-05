@@ -67,7 +67,7 @@ describe.concurrent("Effect", () => {
     it("async should not resume fiber twice after interruption", async () => {
       const program = Effect.Do()
         .bind("step", () => Deferred.make<never, void>())
-        .bind("unexpectedPlace", () => Ref.make(List.empty<number>()))
+        .bind("unexpectedPlace", () => Ref.make<List<number>>(List.empty()))
         .bind("runtime", () => Effect.runtime())
         .bind(
           "fork",
@@ -99,7 +99,7 @@ describe.concurrent("Effect", () => {
     it("asyncMaybe should not resume fiber twice after synchronous result", async () => {
       const program = Effect.Do()
         .bind("step", () => Deferred.make<never, void>())
-        .bind("unexpectedPlace", () => Ref.make(List.empty<number>()))
+        .bind("unexpectedPlace", () => Ref.make<List<number>>(List.empty()))
         .bind("runtime", () => Effect.runtime())
         .bind("fork", ({ runtime, step, unexpectedPlace }) =>
           Effect.asyncMaybe<unknown, never, void>((cb) => {

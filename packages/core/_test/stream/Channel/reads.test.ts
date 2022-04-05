@@ -25,7 +25,7 @@ describe.concurrent("Channel", () => {
     });
 
     it("pipeline", async () => {
-      const effect = Channel.fromEffect(Ref.make(List.empty<number>())).flatMap(
+      const effect = Channel.fromEffect(Ref.make<List<number>>(List.empty())).flatMap(
         (ref) => {
           function inner(): Channel<
             unknown,

@@ -20,7 +20,11 @@ describe.concurrent("Effect", () => {
 
     it("run sequentially from left to right", async () => {
       const list = List(1, 2, 3, 4, 5);
-      const program = Effect.reduce(list, List.empty<number>(), (acc, curr) => Effect.succeed(acc.prepend(curr)));
+      const program = Effect.reduce(
+        list,
+        List.empty<number>(),
+        (acc: List<number>, curr) => Effect.succeed(acc.prepend(curr))
+      );
 
       const result = await program.unsafeRunPromise();
 
@@ -47,7 +51,11 @@ describe.concurrent("Effect", () => {
 
     it("run sequentially from right to left", async () => {
       const list = List(1, 2, 3, 4, 5);
-      const program = Effect.reduceRight(list, List.empty<number>(), (curr, acc) => Effect.succeed(acc.prepend(curr)));
+      const program = Effect.reduceRight(
+        list,
+        List.empty<number>(),
+        (curr, acc: List<number>) => Effect.succeed(acc.prepend(curr))
+      );
 
       const result = await program.unsafeRunPromise();
 

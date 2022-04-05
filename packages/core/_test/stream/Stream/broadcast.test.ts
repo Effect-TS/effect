@@ -43,7 +43,7 @@ describe.concurrent("Stream", () => {
           .broadcast(2, 2)
           .flatMap((streams) =>
             Effect.Do()
-              .bind("ref", () => Ref.make(List.empty<number>()))
+              .bind("ref", () => Ref.make<List<number>>(List.empty()))
               .bind("latch", () => Deferred.make<never, void>())
               .bind("fib", ({ latch, ref }) =>
                 streams

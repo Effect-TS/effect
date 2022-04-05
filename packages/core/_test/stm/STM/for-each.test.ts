@@ -29,7 +29,7 @@ describe.concurrent("STM", () => {
     it("performs actions in order given a list", async () => {
       const input = Chunk(1, 2, 3, 4, 5);
       const program = Effect.Do()
-        .bind("tRef", () => TRef.makeCommit(List.empty<number>()))
+        .bind("tRef", () => TRef.makeCommit<List<number>>(List.empty()))
         .tap(({ tRef }) => STM.forEach(input, (n) => tRef.update((list) => list.prepend(n))).commit())
         .flatMap(({ tRef }) => tRef.get().commit());
 
@@ -41,7 +41,7 @@ describe.concurrent("STM", () => {
     it("performs actions in order given a chunk", async () => {
       const input = List(1, 2, 3, 4, 5);
       const program = Effect.Do()
-        .bind("tRef", () => TRef.makeCommit(List.empty<number>()))
+        .bind("tRef", () => TRef.makeCommit<List<number>>(List.empty()))
         .tap(({ tRef }) => STM.forEach(input, (n) => tRef.update((list) => list.prepend(n))).commit())
         .flatMap(({ tRef }) => tRef.get().map((list) => list.reverse()).commit());
 

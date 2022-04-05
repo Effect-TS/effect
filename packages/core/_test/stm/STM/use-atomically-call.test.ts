@@ -326,9 +326,9 @@ describe.concurrent("STM", () => {
         const program = STM.reduce(
           List(1, 2, 3, 4, 5),
           List.empty<number>(),
-          (acc, n) => STM.succeed(acc.prepend(n))
+          (acc: List<number>, n) => STM.succeed(acc.prepend(n))
         )
-          .map((list) => list.reverse())
+          .map((list: List<number>) => list.reverse())
           .commit();
 
         const result = await program.unsafeRunPromise();
@@ -358,9 +358,9 @@ describe.concurrent("STM", () => {
         const program = STM.reduceRight(
           List(1, 2, 3, 4, 5),
           List.empty<number>(),
-          (n, acc) => STM.succeed(acc.prepend(n))
+          (n, acc: List<number>) => STM.succeed(acc.prepend(n))
         )
-          .map((list) => list.reverse())
+          .map((list: List<number>) => list.reverse())
           .commit();
 
         const result = await program.unsafeRunPromise();
@@ -683,7 +683,7 @@ describe.concurrent("STM", () => {
       it("evaluates effects in correct order", async () => {
         const input = List(2, 4, 6, 3, 5, 6);
         const program = STM.Do()
-          .bind("ref", () => TRef.make(List.empty<number>()))
+          .bind("ref", () => TRef.make<List<number>>(List.empty()))
           .tap(({ ref }) => STM.partition(input, (n) => ref.update((list) => list.prepend(n))))
           .flatMap(({ ref }) => ref.get().map((list) => list.reverse()))
           .commit();

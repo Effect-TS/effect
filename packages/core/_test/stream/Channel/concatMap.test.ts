@@ -125,7 +125,7 @@ describe.concurrent("Channel", () => {
         .as(List("Outer-0"))
         .concatMapWith(
           (i) => Channel.write(i).as(List(`Inner-${i}`)),
-          (a, b) => a + b,
+          (a: List<string>, b) => a + b,
           (a, b) => Tuple(a, b)
         )
         .runCollect();

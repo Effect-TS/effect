@@ -252,8 +252,8 @@ describe.concurrent("Sink", () => {
       const sink = Sink.head<number>().collectAllWhileWith(
         List.empty<number>(),
         (option) => option.fold(constTrue, (n) => n < 5),
-        (acc, a) => (a.isSome() ? acc.prepend(a.value) : acc)
-      ).map((list) => list.reverse());
+        (acc: List<number>, a) => (a.isSome() ? acc.prepend(a.value) : acc)
+      ).map((list: List<number>) => list.reverse());
       const stream = Stream.fromChunk(Chunk.range(1, 100));
       const program = (stream + stream).rechunk(3).run(sink);
 

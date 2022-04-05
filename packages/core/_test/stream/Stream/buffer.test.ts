@@ -212,7 +212,7 @@ describe.concurrent("Stream", () => {
 
     it("fast producer progress independently", async () => {
       const program = Effect.Do()
-        .bind("ref", () => Ref.make(List.empty<number>()))
+        .bind("ref", () => Ref.make<List<number>>(List.empty()))
         .bind("latch", () => Deferred.make<never, void>())
         .bindValue("stream", ({ latch, ref }) =>
           Stream.range(1, 1000)

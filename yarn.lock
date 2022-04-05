@@ -617,11 +617,11 @@ __metadata:
   linkType: hard
 
 "@effect-ts/core@npm:^0.59.2":
-  version: 0.59.2
-  resolution: "@effect-ts/core@npm:0.59.2"
+  version: 0.59.3
+  resolution: "@effect-ts/core@npm:0.59.3"
   dependencies:
-    "@effect-ts/system": ^0.56.2
-  checksum: 42b6d212e72bda71ba1e7457eee24647987bb557ee8f963027de883a0244765e81a21d8a5cb0c40645a55739dfb125788d60426d8ff31b562c2e7cf97dc49fe6
+    "@effect-ts/system": ^0.56.3
+  checksum: 06654fceb30da1387018925b19e2b1a0692c845b032ad6837a31732cb2ef0afd49d95cb65ee3ee5bbb6af22605821c7fe76108083f943187b18af26313f6c878
   languageName: node
   linkType: hard
 
@@ -629,17 +629,17 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@effect-ts/core@workspace:packages/core"
   peerDependencies:
-    "@tsplus/stdlib": 0.0.32
+    "@tsplus/stdlib": 0.0.35
   peerDependenciesMeta:
     "@tsplus/stdlib":
       optional: true
   languageName: unknown
   linkType: soft
 
-"@effect-ts/system@npm:^0.56.2":
-  version: 0.56.2
-  resolution: "@effect-ts/system@npm:0.56.2"
-  checksum: d2ece0f6c5692aaa4eab8ada29c16a3b05e7d13fa545a70ab19c07b4a148b3e6bd84526a566e4b9d52eca4d699209e906ad484a21dab89b9adcfa4d411da4edf
+"@effect-ts/system@npm:^0.56.3":
+  version: 0.56.3
+  resolution: "@effect-ts/system@npm:0.56.3"
+  checksum: 5d8952b3d20c175b6670cce76a21c8f51ba5ac5bd2825393110034de18178d2725e47c8926a48befe8309c9baffb3b381d82589506d86e27987dd5ba66fe4532
   languageName: node
   linkType: hard
 
@@ -856,9 +856,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsplus/installer@npm:0.0.72":
-  version: 0.0.72
-  resolution: "@tsplus/installer@npm:0.0.72"
+"@tsplus/installer@npm:0.0.67":
+  version: 0.0.67
+  resolution: "@tsplus/installer@npm:0.0.67"
   dependencies:
     mkdirp: ^1.0.4
     rimraf: ^3.0.2
@@ -867,14 +867,14 @@ __metadata:
     zlib: ^1.0.5
   bin:
     tsplus-install: bin/tsplus-install
-  checksum: 34d74b126ab7fc20b8192cf87cde1c93fc1a1ece58d481716f7d3fd9076901fad89dc8b7cecdcb06a94f2dc4860515b7305f55a976b43632549f5917d6c175e3
+  checksum: ca4df4422d97535af133a3630245892b62f2cc6fd1c26824500a245570563d232156791a94220fe9e5ca810dc69f85686e921790020e712d4b60928496ac8505
   languageName: node
   linkType: hard
 
-"@tsplus/stdlib@npm:0.0.35":
-  version: 0.0.35
-  resolution: "@tsplus/stdlib@npm:0.0.35"
-  checksum: 3510c7a4048ab135910237a8606e61da1ec559214f340a13716af5b64b36dce7b4b65def5c2a87aab40984e8d5ca6635d9bbd73e513f5d36b8d77abf25215db2
+"@tsplus/stdlib@npm:0.0.34":
+  version: 0.0.34
+  resolution: "@tsplus/stdlib@npm:0.0.34"
+  checksum: 92ce2250ef608b977d87d77e0135dfb17c7b07dcfd1b13a502e70b622176660fdec9b1d8ca9ab4b4e7de3e06876e5ce96b9abc2f57d6e6085c35a9ae0ba96056
   languageName: node
   linkType: hard
 
@@ -2549,8 +2549,8 @@ __metadata:
     "@effect-ts/build-utils": 0.39.2
     "@effect-ts/core": ^0.59.2
     "@phaphoso/eslint-plugin-dprint": ^0.5.2
-    "@tsplus/installer": 0.0.72
-    "@tsplus/stdlib": 0.0.35
+    "@tsplus/installer": 0.0.67
+    "@tsplus/stdlib": 0.0.34
     "@types/node": ^17.0.23
     "@types/rimraf": ^3.0.2
     "@typescript-eslint/eslint-plugin": ^5.17.0

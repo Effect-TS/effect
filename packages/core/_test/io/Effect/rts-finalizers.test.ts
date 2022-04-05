@@ -197,7 +197,7 @@ describe.concurrent("Effect", () => {
       }
 
       const program = Effect.Do()
-        .bind("ref", () => Ref.make(List.empty<string>()))
+        .bind("ref", () => Ref.make<List<string>>(List.empty()))
         .bindValue("log", ({ ref }) => makeLogger(ref))
         .bind("fiber", ({ log }) =>
           Effect.acquireReleaseUse(

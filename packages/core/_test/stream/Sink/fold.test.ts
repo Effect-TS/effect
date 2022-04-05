@@ -83,7 +83,7 @@ describe.concurrent("Sink", () => {
 
       function run<E>(stream: Stream<unknown, E, number>) {
         return Effect.Do()
-          .bind("effects", () => Ref.make(List.empty<number>()))
+          .bind("effects", () => Ref.make<List<number>>(List.empty()))
           .bind("exit", ({ effects }) =>
             stream
               .transduce(
@@ -117,7 +117,7 @@ describe.concurrent("Sink", () => {
             .run(Sink.foldLeftEffect<unknown, never, number, string>("", (s, n) => Effect.succeed(s + n)))
             .exit(),
           foldResult: Stream(1, 2, 3)
-            .runFold(List.empty<number>(), (acc, el) => acc.prepend(el))
+            .runFold<unknown, never, number, List<number>>(List.empty<number>(), (acc, el) => acc.prepend(el))
             .map((list) => list.reverse().reduce("", (s, n) => s + n))
             .exit()
         });
@@ -233,10 +233,10 @@ describe.concurrent("Sink", () => {
             List.empty<number>(),
             (_, x: number) => Effect.succeed(x * 2),
             12 as number,
-            (acc, el) => Effect.succeed(acc.prepend(el))
+            (acc: List<number>, el) => Effect.succeed(acc.prepend(el))
           )
         )
-        .map((list) => list.reverse())
+        .map((list: List<number>) => list.reverse())
         .runCollect();
 
       const result = await program.unsafeRunPromise();
@@ -253,13 +253,13 @@ describe.concurrent("Sink", () => {
   describe.concurrent("foldWeightedDecompose", () => {
     it("simple example", async () => {
       const program = Stream(1, 5, 1)
-        .transduce(
+        .transduce<unknown, never, number, unknown, never, List<number>>(
           Sink.foldWeightedDecomposeEffect(
-            List.empty<number>(),
-            (_, i: number) => Effect.succeedNow(i),
+            List.empty(),
+            (_, i) => Effect.succeedNow(i),
             4,
             (i) => Effect.succeedNow(i > 1 ? Chunk(i - 1, 1) : Chunk(1)),
-            (acc, el) => Effect.succeedNow(acc.prepend(el))
+            (acc: List<number>, el) => Effect.succeedNow(acc.prepend(el))
           )
         )
         .map((list) => list.reverse())
