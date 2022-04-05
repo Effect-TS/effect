@@ -1,68 +1,58 @@
-import { Chunk } from "../../../src/collection/immutable/Chunk"
-import { Either } from "../../../src/data/Either"
-import { Option } from "../../../src/data/Option"
-import { Effect } from "../../../src/io/Effect"
-import { Promise } from "../../../src/io/Promise"
-import { Ref } from "../../../src/io/Ref"
-import { Sink } from "../../../src/stream/Sink"
-import { Stream } from "../../../src/stream/Stream"
-
-describe("Stream", () => {
-  describe("async", () => {
+describe.concurrent("Stream", () => {
+  describe.concurrent("async", () => {
     it("async", async () => {
-      const chunk = Chunk(1, 2, 3, 4, 5)
+      const chunk = Chunk(1, 2, 3, 4, 5);
       const program = Stream.async<unknown, never, number>((emit) => {
         chunk.forEach((n) => {
-          emit(Effect.succeed(Chunk.single(n)))
-        })
+          emit(Effect.succeed(Chunk.single(n)));
+        });
       })
         .take(chunk.size)
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual(chunk.toArray())
-    })
-  })
+      assert.isTrue(result == chunk);
+    });
+  });
 
-  describe("asyncMaybe", () => {
-    test("signal end stream", async () => {
+  describe.concurrent("asyncMaybe", () => {
+    it("signal end stream", async () => {
       const program = Stream.asyncMaybe<unknown, never, number>((emit) => {
-        emit(Effect.fail(Option.none))
-        return Option.none
-      }).runCollect()
+        emit(Effect.fail(Option.none));
+        return Option.none;
+      }).runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([])
-    })
+      assert.isTrue(result.isEmpty());
+    });
 
     it("Some", async () => {
-      const chunk = Chunk(1, 2, 3, 4, 5)
-      const program = Stream.asyncMaybe<unknown, never, number>(() =>
-        Option.some(Stream.fromChunk(chunk))
-      ).runCollect()
+      const chunk = Chunk(1, 2, 3, 4, 5);
+      const program = Stream.asyncMaybe<unknown, never, number>(() => Option.some(Stream.fromChunk(chunk)))
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual(chunk.toArray())
-    })
+      assert.isTrue(result == chunk);
+    });
 
     it("None", async () => {
-      const chunk = Chunk(1, 2, 3, 4, 5)
+      const chunk = Chunk(1, 2, 3, 4, 5);
       const program = Stream.asyncMaybe<unknown, never, number>((emit) => {
         chunk.forEach((n) => {
-          emit(Effect.succeed(Chunk.single(n)))
-        })
-        return Option.none
+          emit(Effect.succeed(Chunk.single(n)));
+        });
+        return Option.none;
       })
         .take(chunk.size)
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual(chunk.toArray())
-    })
+      assert.isTrue(result == chunk);
+    });
 
     // TODO(Mike/Max): determine implementation
     // it("back pressure", async () => {
@@ -91,46 +81,45 @@ describe("Stream", () => {
 
     //   expect(isDone).toBe(false)
     // })
-  })
+  });
 
-  describe("asyncEffect", () => {
+  describe.concurrent("asyncEffect", () => {
     it("simple example", async () => {
-      const chunk = Chunk(1, 2, 3, 4, 5)
+      const chunk = Chunk(1, 2, 3, 4, 5);
       const program = Effect.Do()
-        .bind("latch", () => Promise.make<never, void>())
+        .bind("latch", () => Deferred.make<never, void>())
         .bind("fiber", ({ latch }) =>
           Stream.asyncEffect((emit) => {
             chunk.forEach((n) => {
-              emit(Effect.succeed(Chunk.single(n)))
-            })
-            return latch.succeed(undefined) > Effect.unit
+              emit(Effect.succeed(Chunk.single(n)));
+            });
+            return latch.succeed(undefined) > Effect.unit;
           })
             .take(chunk.size)
             .runCollect()
-            .fork()
-        )
+            .fork())
         .tap(({ latch }) => latch.await())
-        .flatMap(({ fiber }) => fiber.join())
+        .flatMap(({ fiber }) => fiber.join());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual(chunk.toArray())
-    })
+      assert.isTrue(result == chunk);
+    });
 
     it("signal end stream", async () => {
       const program = Stream.asyncEffect<unknown, never, number, void>((emit) => {
-        emit(Effect.fail(Option.none))
-        return Effect.unit
-      }).runCollect()
+        emit(Effect.fail(Option.none));
+        return Effect.unit;
+      }).runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([])
-    })
+      assert.isTrue(result.isEmpty());
+    });
 
     // TODO(Mike/Max): determine implementation
     // it("back pressure", async () => {
-    //   const promise = Promise.unsafeMake<never, void>(FiberId.none)
+    //   const deferred = Deferred.unsafeMake<never, void>(FiberId.none)
     //   const program = Effect.Do()
     //     .bind("refCount", () => Ref.make(0))
     //     .bind("refDone", () => Ref.make(false))
@@ -151,53 +140,52 @@ describe("Stream", () => {
     //       }, 5)
     //     )
     //     .bind("run", ({ stream }) =>
-    //       stream.run(Sink.take(1) > Sink.fromEffect(promise.await())).fork()
+    //       stream.run(Sink.take(1) > Sink.fromEffect(deferred.await())).fork()
     //     )
     //     .tap(({ refCount }) => refCount.get.repeat(Schedule.recurWhile((n) => n !== 7)))
     //     .bind("isDone", ({ refDone }) => refDone.get)
     //     .tap(({ run }) => run.interrupt())
 
     //   const { isDone } = await program.unsafeRunPromise()
-    //   await promise.succeed(undefined).unsafeRunPromise()
+    //   await deferred.succeed(undefined).unsafeRunPromise()
 
     //   expect(isDone).toBe(false)
     // })
-  })
+  });
 
-  describe("asyncManaged", () => {
+  describe.concurrent("asyncManaged", () => {
     it("asyncManaged", async () => {
-      const chunk = Chunk(1, 2, 3, 4, 5)
+      const chunk = Chunk(1, 2, 3, 4, 5);
       const program = Effect.Do()
-        .bind("latch", () => Promise.make<never, void>())
+        .bind("latch", () => Deferred.make<never, void>())
         .bind("fiber", ({ latch }) =>
           Stream.asyncScoped<unknown, never, number>((cb) => {
             chunk.forEach((n) => {
-              cb(Effect.succeed(Chunk.single(n)))
-            })
-            return latch.succeed(undefined) > Effect.unit
+              cb(Effect.succeed(Chunk.single(n)));
+            });
+            return latch.succeed(undefined) > Effect.unit;
           })
             .take(chunk.size)
             .run(Sink.collectAll<number>())
-            .fork()
-        )
+            .fork())
         .tap(({ latch }) => latch.await())
-        .flatMap(({ fiber }) => fiber.join())
+        .flatMap(({ fiber }) => fiber.join());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual(chunk.toArray())
-    })
+      assert.isTrue(result == chunk);
+    });
 
     it("asyncManaged signal end stream", async () => {
       const program = Stream.asyncScoped<unknown, never, number>((cb) => {
-        cb(Effect.fail(Option.none))
-        return Effect.unit
-      }).runCollect()
+        cb(Effect.fail(Option.none));
+        return Effect.unit;
+      }).runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([])
-    })
+      assert.isTrue(result.isEmpty());
+    });
 
     // TODO(Mike/Max): determine implementation
     // it("asyncManaged back pressure", async () => {
@@ -221,52 +209,50 @@ describe("Stream", () => {
     //     _      <- run.interrupt
     //   } yield assert(isDone)(isFalse)
     // })
-  })
+  });
 
-  describe("asyncInterrupt", () => {
+  describe.concurrent("asyncInterrupt", () => {
     it("Left", async () => {
       const program = Effect.Do()
         .bind("cancelled", () => Ref.make(false))
-        .bind("latch", () => Promise.make<never, void>())
+        .bind("latch", () => Deferred.make<never, void>())
         .bind("fiber", ({ cancelled, latch }) =>
           Stream.asyncInterrupt<unknown, never, void>((emit) => {
-            emit.chunk(Chunk.single(undefined))
-            return Either.left(cancelled.set(true))
+            emit.chunk(Chunk.single(undefined));
+            return Either.left(cancelled.set(true));
           })
             .tap(() => latch.succeed(undefined))
             .runDrain()
-            .fork()
-        )
+            .fork())
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ cancelled }) => cancelled.get())
+        .flatMap(({ cancelled }) => cancelled.get());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe(true)
-    })
+      assert.isTrue(result);
+    });
 
     it("Right", async () => {
-      const chunk = Chunk(1, 2, 3, 4, 5)
-      const program = Stream.asyncInterrupt<unknown, never, number>(() =>
-        Either.right(Stream.fromChunk(chunk))
-      ).runCollect()
+      const chunk = Chunk(1, 2, 3, 4, 5);
+      const program = Stream.asyncInterrupt<unknown, never, number>(() => Either.right(Stream.fromChunk(chunk)))
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual(chunk.toArray())
-    })
+      assert.isTrue(result == chunk);
+    });
 
     it("signal end stream", async () => {
       const program = Stream.asyncInterrupt<unknown, never, number>((emit) => {
-        emit.end()
-        return Either.left(Effect.succeedNow(undefined))
-      }).runCollect()
+        emit.end();
+        return Either.left(Effect.succeedNow(undefined));
+      }).runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([])
-    })
+      assert.isTrue(result.isEmpty());
+    });
 
     // TODO(Mike/Max): determine implementation
     // it("asyncInterrupt back pressure", async () => {
@@ -292,5 +278,5 @@ describe("Stream", () => {
     //   } yield assert(isDone)(isFalse) &&
     //     assert(exit.untraced)(failsCause(containsCause(Cause.interrupt(selfId))))
     // })
-  })
-})
+  });
+});

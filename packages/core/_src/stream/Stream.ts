@@ -2,3 +2,7 @@
 export * from "@effect-ts/core/stream/Stream/definition";
 export * from "@effect-ts/core/stream/Stream/operations";
 // codegen:end
+
+export * as Emit from "@effect-ts/core/stream/Stream/Emit";
+export * as SinkEndReason from "@effect-ts/core/stream/Stream/SinkEndReason";
+export * as TerminationStrategy from "@effect-ts/core/stream/Stream/TerminationStrategy";

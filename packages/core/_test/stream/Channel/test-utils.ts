@@ -1,15 +1,11 @@
-import { List } from "../../../src/collection/immutable/List"
-import { Tuple } from "../../../src/collection/immutable/Tuple"
-import { tag } from "../../../src/data/Has"
-import { Option } from "../../../src/data/Option"
-import type { Ref } from "../../../src/io/Ref"
-import { Channel } from "../../../src/stream/Channel"
+export const NumberServiceId = Symbol.for("@effect-ts/core/test/stream/Channel/NumberService");
+export type NumberServiceId = typeof NumberService;
 
 export interface NumberService {
-  readonly n: number
+  readonly n: number;
 }
 
-export const NumberService = tag<NumberService>()
+export const NumberService = Service<NumberService>(NumberServiceId);
 
 export function mapper<A, B>(
   f: (a: A) => B
@@ -18,7 +14,7 @@ export function mapper<A, B>(
     (a: A) => Channel.write(f(a)) > mapper(f),
     () => Channel.unit,
     () => Channel.unit
-  )
+  );
 }
 
 export function refWriter<A>(
@@ -27,23 +23,21 @@ export function refWriter<A>(
   return Channel.readWith(
     (a: A) =>
       Channel.fromEffect(ref.update((list) => list.prepend(a)).asUnit()) >
-      refWriter(ref),
+        refWriter(ref),
     () => Channel.unit,
     () => Channel.unit
-  )
+  );
 }
 
 export function refReader<A>(
   ref: Ref<List<A>>
 ): Channel<unknown, unknown, unknown, unknown, never, A, void> {
   return Channel.fromEffect(
-    ref.modify((list) =>
-      list.foldLeft(
-        () => Tuple(Option.none, List.empty<A>()),
-        (head, tail) => Tuple(Option.some(head), tail)
-      )
-    )
-  ).flatMap((option) =>
-    option.fold(Channel.unit, (i) => Channel.write(i) > refReader(ref))
-  )
+    ref.modify((list) => {
+      if (list.isNil()) {
+        return Tuple(Option.none, List.empty<A>());
+      }
+      return Tuple(Option.some(list.head), list.tail);
+    })
+  ).flatMap((option) => option.fold(Channel.unit, (i) => Channel.write(i) > refReader(ref)));
 }

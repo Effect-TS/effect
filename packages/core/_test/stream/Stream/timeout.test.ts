@@ -1,87 +1,80 @@
-import { Duration } from "../../../src/data/Duration"
-import { Either } from "../../../src/data/Either"
-import { constFalse, constTrue } from "../../../src/data/Function"
-import { Cause, RuntimeError } from "../../../src/io/Cause"
-import { Effect } from "../../../src/io/Effect"
-import { Stream } from "../../../src/stream/Stream"
+import { constFalse, constTrue } from "@tsplus/stdlib/data/Function";
 
-describe("Stream", () => {
-  describe("timeout", () => {
+describe.concurrent("Stream", () => {
+  describe.concurrent("timeout", () => {
     it("succeed", async () => {
-      const program = Stream.succeed(1).timeout(Duration.Infinity).runCollect()
+      const program = Stream.succeed(1).timeout(new Duration(Number.MAX_SAFE_INTEGER)).runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([1])
-    })
+      assert.isTrue(result == Chunk(1));
+    });
 
     it("should end stream", async () => {
       const program = Stream.range(0, 5)
         .tap(() => Effect.never)
-        .timeout(Duration.Zero)
-        .runCollect()
+        .timeout((0).millis)
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([])
-    })
-  })
+      assert.isTrue(result.isEmpty());
+    });
+  });
 
-  describe("timeoutFail", () => {
+  describe.concurrent("timeoutFail", () => {
     it("succeed", async () => {
       const program = Stream.range(0, 5)
         .tap(() => Effect.never)
-        .timeoutFail(constFalse, Duration.Zero)
+        .timeoutFail(constFalse, (0).millis)
         .runDrain()
         .map(constTrue)
         .either()
-        .map((either) => either.merge())
+        .map((either) => either.merge());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe(false)
-    })
+      assert.isFalse(result);
+    });
 
     it("fail", async () => {
       const program = Stream.fail("original")
-        .timeoutFail("timeout", Duration.fromMinutes(15))
+        .timeoutFail("timeout", (15).minutes)
         .runDrain()
-        .flip()
+        .flip();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe("original")
-    })
-  })
+      assert.strictEqual(result, "original");
+    });
+  });
 
-  describe("timeoutFailCause", () => {
+  describe.concurrent("timeoutFailCause", () => {
     it("fail", async () => {
-      const error = new RuntimeError("boom")
+      const error = new RuntimeError("boom");
       const program = Stream.range(0, 5)
         .tap(() => Effect.never)
-        .timeoutFailCause(Cause.die(error), Duration.Zero)
+        .timeoutFailCause(Cause.die(error), (0).millis)
         .runDrain()
         .sandbox()
-        .either()
+        .either();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.mapLeft((cause) => cause.untraced())).toEqual(
-        Either.left(Cause.die(error))
-      )
-    })
-  })
+      assert.isTrue(result.mapLeft((cause) => cause.untraced()) == Either.left(Cause.die(error)));
+    });
+  });
 
-  describe("timeoutTo", () => {
+  describe.concurrent("timeoutTo", () => {
     it("succeed", async () => {
       const program = Stream.range(0, 5)
-        .timeoutTo(Duration.Infinity, Stream.succeed(-1))
-        .runCollect()
+        .timeoutTo(new Duration(Number.MAX_SAFE_INTEGER), Stream.succeed(-1))
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([0, 1, 2, 3, 4])
-    })
+      assert.isTrue(result == Chunk(0, 1, 2, 3, 4));
+    });
 
     // TODO(Mike/Max): implement after TestClock
     it.skip("should switch stream", async () => {
@@ -103,7 +96,7 @@ describe("Stream", () => {
       //     } yield result
       //   )(equalTo(Chunk(1, 2, 4)))
       // }
-    })
+    });
 
     // TODO(Mike/Max): implement after TestClock
     it.skip("should not apply timeout after switch", async () => {
@@ -120,6 +113,6 @@ describe("Stream", () => {
       //   _      <- queue2.offer(5) *> queue2.shutdown
       //   result <- fiber.join
       // } yield assert(result)(equalTo(Chunk(1, 2, 4, 5)))
-    })
-  })
-})
+    });
+  });
+});

@@ -1,32 +1,24 @@
-import { List } from "../../../src/collection/immutable/List"
-import { Tuple } from "../../../src/collection/immutable/Tuple"
-import { Option } from "../../../src/data/Option"
-import { Effect } from "../../../src/io/Effect"
-import { Ref } from "../../../src/io/Ref"
-import { Sink } from "../../../src/stream/Sink"
-import { Stream } from "../../../src/stream/Stream"
-
-describe("Stream", () => {
-  describe("runHead", () => {
+describe.concurrent("Stream", () => {
+  describe.concurrent("runHead", () => {
     it("nonempty stream", async () => {
-      const program = Stream(1, 2, 3, 4).runHead()
+      const program = Stream(1, 2, 3, 4).runHead();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Option.some(1))
-    })
+      assert.isTrue(result == Option.some(1));
+    });
 
     it("empty stream", async () => {
-      const program = Stream.empty.runHead()
+      const program = Stream.empty.runHead();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Option.none)
-    })
+      assert.isTrue(result == Option.none);
+    });
 
     it("pulls up to the first non-empty chunk", async () => {
       const program = Effect.Do()
-        .bind("ref", () => Ref.make(List.empty<number>()))
+        .bind("ref", () => Ref.make<List<number>>(List.empty()))
         .bind("head", ({ ref }) =>
           Stream(
             Stream.fromEffect(ref.update((list) => list.prepend(1))).drain(),
@@ -35,59 +27,53 @@ describe("Stream", () => {
             Stream.fromEffect(ref.update((list) => list.prepend(3)))
           )
             .flatten()
-            .runHead()
-        )
-        .bind("result", ({ ref }) => ref.get())
+            .runHead())
+        .bind("result", ({ ref }) => ref.get());
 
-      const { head, result } = await program.unsafeRunPromise()
+      const { head, result } = await program.unsafeRunPromise();
 
-      expect(head).toEqual(Option.some(1))
-      expect(result.toArray()).toEqual([2, 1])
-    })
-  })
+      assert.isTrue(head == Option.some(1));
+      assert.isTrue(result == Chunk(2, 1));
+    });
+  });
 
-  describe("runLast", () => {
+  describe.concurrent("runLast", () => {
     it("nonempty stream", async () => {
-      const program = Stream(1, 2, 3, 4).runLast()
+      const program = Stream(1, 2, 3, 4).runLast();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Option.some(4))
-    })
+      assert.isTrue(result == Option.some(4));
+    });
 
     it("empty stream", async () => {
-      const program = Stream.empty.runLast()
+      const program = Stream.empty.runLast();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Option.none)
-    })
-  })
+      assert.isTrue(result == Option.none);
+    });
+  });
 
-  describe("runScoped", () => {
+  describe.concurrent("runScoped", () => {
     it("properly closes the resources", async () => {
       const program = Effect.Do()
         .bind("closed", () => Ref.make(false))
-        .bindValue("res", ({ closed }) =>
-          Effect.acquireRelease(Effect.succeed(1), () => closed.set(true))
-        )
-        .bindValue("stream", ({ res }) =>
-          Stream.scoped(res).flatMap((a) => Stream(a, a, a))
-        )
+        .bindValue("res", ({ closed }) => Effect.acquireRelease(Effect.succeed(1), () => closed.set(true)))
+        .bindValue("stream", ({ res }) => Stream.scoped(res).flatMap((a) => Stream(a, a, a)))
         .bind("collectAndCheck", ({ closed, stream }) =>
           Effect.scoped(
             stream
               .runScoped(Sink.collectAll())
               .flatMap((r) => closed.get().map((b) => Tuple(r, b)))
-          )
-        )
-        .bind("finalState", ({ closed }) => closed.get())
+          ))
+        .bind("finalState", ({ closed }) => closed.get());
 
-      const { collectAndCheck, finalState } = await program.unsafeRunPromise()
+      const { collectAndCheck, finalState } = await program.unsafeRunPromise();
 
-      expect(collectAndCheck.get(0).toArray()).toEqual([1, 1, 1])
-      expect(collectAndCheck.get(1)).toBe(false)
-      expect(finalState).toBe(true)
-    })
-  })
-})
+      assert.isTrue(collectAndCheck.get(0) == Chunk(1, 1, 1));
+      assert.isFalse(collectAndCheck.get(1));
+      assert.isTrue(finalState);
+    });
+  });
+});

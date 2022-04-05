@@ -1,111 +1,91 @@
-import { Either } from "../../../src/data/Either"
-import { constTrue } from "../../../src/data/Function"
-import { Effect } from "../../../src/io/Effect"
-import { Stream } from "../../../src/stream/Stream"
+import { constTrue } from "@tsplus/stdlib/data/Function";
 
-describe("Stream", () => {
-  describe("drop", () => {
+describe.concurrent("Stream", () => {
+  describe.concurrent("drop", () => {
     it("drop", async () => {
-      const n = 2
-      const stream = Stream(1, 2, 3, 4, 5)
+      const n = 2;
+      const stream = Stream(1, 2, 3, 4, 5);
       const program = Effect.struct({
-        actual: stream
-          .drop(n)
-          .runCollect()
-          .map((chunk) => chunk.toArray()),
-        expected: stream.runCollect().map((chunk) => chunk.drop(n).toArray())
-      })
+        actual: stream.drop(n).runCollect(),
+        expected: stream.runCollect().map((chunk) => chunk.drop(n))
+      });
 
-      const { actual, expected } = await program.unsafeRunPromise()
+      const { actual, expected } = await program.unsafeRunPromise();
 
-      expect(actual).toEqual(expected)
-    })
+      assert.isTrue(actual == expected);
+    });
 
     it("doesn't swallow errors", async () => {
-      const program = (Stream.fail("ouch") + Stream(1)).drop(1).runDrain().either()
+      const program = (Stream.fail("ouch") + Stream(1)).drop(1).runDrain().either();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Either.left("ouch"))
-    })
-  })
+      assert.isTrue(result == Either.left("ouch"));
+    });
+  });
 
-  describe("dropRight", () => {
+  describe.concurrent("dropRight", () => {
     it("simple example", async () => {
-      const n = 2
-      const stream = Stream(1, 2, 3, 4, 5)
+      const n = 2;
+      const stream = Stream(1, 2, 3, 4, 5);
       const program = Effect.struct({
-        actual: stream
-          .dropRight(n)
-          .runCollect()
-          .map((chunk) => chunk.toArray()),
-        expected: stream.runCollect().map((chunk) => chunk.dropRight(n).toArray())
-      })
+        actual: stream.dropRight(n).runCollect(),
+        expected: stream.runCollect().map((chunk) => chunk.dropRight(n))
+      });
 
-      const { actual, expected } = await program.unsafeRunPromise()
+      const { actual, expected } = await program.unsafeRunPromise();
 
-      expect(actual).toEqual(expected)
-    })
+      assert.isTrue(actual == expected);
+    });
 
     it("doesn't swallow errors", async () => {
-      const program = (Stream(1) + Stream.fail("ouch")).dropRight(1).runDrain().either()
+      const program = (Stream(1) + Stream.fail("ouch")).dropRight(1).runDrain().either();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Either.left("ouch"))
-    })
-  })
+      assert.isTrue(result == Either.left("ouch"));
+    });
+  });
 
-  describe("dropUntil", () => {
+  describe.concurrent("dropUntil", () => {
     it("simple example", async () => {
-      const p = (n: number) => n >= 3
-      const stream = Stream(1, 2, 3, 4, 5)
+      const p = (n: number) => n >= 3;
+      const stream = Stream(1, 2, 3, 4, 5);
       const program = Effect.struct({
-        actual: stream
-          .dropUntil(p)
-          .runCollect()
-          .map((chunk) => chunk.toArray()),
-        expected: stream.runCollect().map((chunk) =>
-          chunk
-            .dropWhile((n) => !p(n))
-            .drop(1)
-            .toArray()
-        )
-      })
+        actual: stream.dropUntil(p).runCollect(),
+        expected: stream.runCollect().map((chunk) => chunk.dropWhile((n) => !p(n)).drop(1))
+      });
 
-      const { actual, expected } = await program.unsafeRunPromise()
+      const { actual, expected } = await program.unsafeRunPromise();
 
-      expect(actual).toEqual(expected)
-    })
-  })
+      assert.isTrue(actual == expected);
+    });
+  });
 
-  describe("dropWhile", () => {
+  describe.concurrent("dropWhile", () => {
     it("dropWhile", async () => {
-      const p = (n: number) => n >= 3
-      const stream = Stream(1, 2, 3, 4, 5)
+      const p = (n: number) => n >= 3;
+      const stream = Stream(1, 2, 3, 4, 5);
       const program = Effect.struct({
-        actual: stream
-          .dropWhile(p)
-          .runCollect()
-          .map((chunk) => chunk.toArray()),
-        expected: stream.runCollect().map((chunk) => chunk.dropWhile(p).toArray())
-      })
+        actual: stream.dropWhile(p).runCollect(),
+        expected: stream.runCollect().map((chunk) => chunk.dropWhile(p))
+      });
 
-      const { actual, expected } = await program.unsafeRunPromise()
+      const { actual, expected } = await program.unsafeRunPromise();
 
-      expect(actual).toEqual(expected)
-    })
+      assert.isTrue(actual == expected);
+    });
 
     it("short circuits", async () => {
       const program = (Stream(1) + Stream.fail("ouch"))
         .take(1)
         .dropWhile(constTrue)
         .runDrain()
-        .either()
+        .either();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Either.right(undefined))
-    })
-  })
-})
+      assert.isTrue(result == Either.right(undefined));
+    });
+  });
+});

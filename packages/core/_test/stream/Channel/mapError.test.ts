@@ -1,16 +1,13 @@
-import { Exit } from "../../../src/io/Exit"
-import { Channel } from "../../../src/stream/Channel"
-
-describe("Channel", () => {
-  describe("mapError", () => {
+describe.concurrent("Channel", () => {
+  describe.concurrent("mapError", () => {
     it("structure confusion", async () => {
       const program = Channel.fail("err")
         .mapError(() => 1)
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromiseExit()
+      const result = await program.unsafeRunPromiseExit();
 
-      expect(result.untraced()).toEqual(Exit.fail(1))
-    })
-  })
-})
+      assert.isTrue(result.untraced() == Exit.fail(1));
+    });
+  });
+});

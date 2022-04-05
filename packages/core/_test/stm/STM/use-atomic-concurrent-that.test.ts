@@ -1,18 +1,9 @@
-import { List } from "../../../src/collection/immutable/List"
-import { Duration } from "../../../src/data/Duration"
-import { Either } from "../../../src/data/Either"
-import { constVoid } from "../../../src/data/Function"
-import { Option } from "../../../src/data/Option"
-import { Cause } from "../../../src/io/Cause"
-import { Effect } from "../../../src/io/Effect"
-import { Promise } from "../../../src/io/Promise"
-import { STM } from "../../../src/stm/STM"
-import { TRef } from "../../../src/stm/TRef"
-import { transfer, UnpureBarrier } from "./utils"
+import { transfer, UnpureBarrier } from "@effect-ts/core/test/stm/STM/test-utils";
+import { constVoid } from "@tsplus/stdlib/data/Function";
 
-describe("STM", () => {
-  describe("Using `STM.atomically` perform concurrent computations that", () => {
-    describe("have a simple condition lock should suspend the whole transaction and", () => {
+describe.concurrent("STM", () => {
+  describe.concurrent("Using `STM.atomically` perform concurrent computations that", () => {
+    describe.concurrent("have a simple condition lock should suspend the whole transaction and", () => {
       it("resume directly when the condition is already satisfied", async () => {
         const program = Effect.Do()
           .bind("tref1", () => TRef.makeCommit(10))
@@ -24,12 +15,12 @@ describe("STM", () => {
               .tap(() => tref2.set("succeeded!"))
               .flatMap(() => tref2.get())
               .commit()
-          )
+          );
 
-        const result = await program.unsafeRunPromise()
+        const result = await program.unsafeRunPromise();
 
-        expect(result).toBe("succeeded!")
-      })
+        assert.strictEqual(result, "succeeded!");
+      });
 
       it("resume directly when the condition is already satisfied and change again the tvar with non satisfying value, the transaction shouldn't be suspended.", async () => {
         const program = Effect.Do()
@@ -38,21 +29,20 @@ describe("STM", () => {
             tref
               .get()
               .retryUntil((n) => n === 42)
-              .commit()
-          )
+              .commit())
           .tap(({ tref }) => tref.set(9).commit())
-          .bind("value", ({ tref }) => tref.get().commit())
+          .bind("value", ({ tref }) => tref.get().commit());
 
-        const { join, value } = await program.unsafeRunPromise()
+        const { join, value } = await program.unsafeRunPromise();
 
-        expect(join).toBe(42)
-        expect(value).toBe(9)
-      })
+        assert.strictEqual(join, 42);
+        assert.strictEqual(value, 9);
+      });
 
       it("resume after satisfying the condition", async () => {
-        const barrier = new UnpureBarrier()
+        const barrier = new UnpureBarrier();
         const program = Effect.Do()
-          .bind("done", () => Promise.make<never, void>())
+          .bind("done", () => Deferred.make<never, void>())
           .bind("tref1", () => TRef.makeCommit(0))
           .bind("tref2", () => TRef.makeCommit("failed!"))
           .bind("fiber", ({ done, tref1, tref2 }) =>
@@ -65,23 +55,22 @@ describe("STM", () => {
                   .tap(() => tref2.set("succeeded!"))
                   .flatMap(() => tref2.get())
               ) < done.succeed(undefined)
-            ).fork()
-          )
+            ).fork())
           .tap(() => barrier.await())
           .bind("oldValue", ({ tref2 }) => tref2.get().commit())
           .tap(({ tref1 }) => tref1.set(43).commit())
           .tap(({ done }) => done.await())
           .bind("newValue", ({ tref2 }) => tref2.get().commit())
-          .bind("join", ({ fiber }) => fiber.join())
+          .bind("join", ({ fiber }) => fiber.join());
 
-        const { join, newValue, oldValue } = await program.unsafeRunPromise()
+        const { join, newValue, oldValue } = await program.unsafeRunPromise();
 
-        expect(oldValue).toBe("failed!")
-        expect(newValue).toBe(join)
-      })
-    })
+        assert.strictEqual(oldValue, "failed!");
+        assert.strictEqual(newValue, join);
+      });
+    });
 
-    describe("have a complex condition lock should suspend the whole transaction and", () => {
+    describe.concurrent("have a complex condition lock should suspend the whole transaction and", () => {
       it("resume directly when the condition is already satisfied", async () => {
         const program = Effect.Do()
           .bind("sender", () => TRef.makeCommit(100))
@@ -95,116 +84,97 @@ describe("STM", () => {
               .commit()
           )
           .bind("senderValue", ({ sender }) => sender.get().commit())
-          .bind("receiverValue", ({ receiver }) => receiver.get().commit())
+          .bind("receiverValue", ({ receiver }) => receiver.get().commit());
 
-        const { receiverValue, senderValue } = await program.unsafeRunPromise()
+        const { receiverValue, senderValue } = await program.unsafeRunPromise();
 
-        expect(senderValue).toBe(50)
-        expect(receiverValue).toBe(150)
-      })
-    })
+        assert.strictEqual(senderValue, 50);
+        assert.strictEqual(receiverValue, 150);
+      });
+    });
 
-    describe("transfer an amount to a sender and send it back the account should contains the amount to transfer", () => {
+    describe.concurrent("transfer an amount to a sender and send it back the account should contains the amount to transfer", () => {
       it("run both transactions sequentially in 10 fibers", async () => {
         const program = Effect.Do()
           .bind("sender", () => TRef.makeCommit(100))
           .bind("receiver", () => TRef.makeCommit(0))
-          .bindValue("toReceiver", ({ receiver, sender }) =>
-            transfer(receiver, sender, 150)
-          )
-          .bindValue("toSender", ({ receiver, sender }) =>
-            transfer(sender, receiver, 150)
-          )
-          .bind("fiber", ({ toReceiver, toSender }) =>
-            Effect.forkAll(List.repeat(toReceiver > toSender, 10))
-          )
+          .bindValue("toReceiver", ({ receiver, sender }) => transfer(receiver, sender, 150))
+          .bindValue("toSender", ({ receiver, sender }) => transfer(sender, receiver, 150))
+          .bind("fiber", ({ toReceiver, toSender }) => Effect.forkAll(Chunk.fill(10, () => toReceiver > toSender)))
           .tap(({ sender }) => sender.update((n) => n + 50).commit())
           .tap(({ fiber }) => fiber.join())
           .bind("senderValue", ({ sender }) => sender.get().commit())
-          .bind("receiverValue", ({ receiver }) => receiver.get().commit())
+          .bind("receiverValue", ({ receiver }) => receiver.get().commit());
 
-        const { receiverValue, senderValue } = await program.unsafeRunPromise()
+        const { receiverValue, senderValue } = await program.unsafeRunPromise();
 
-        expect(senderValue).toBe(150)
-        expect(receiverValue).toBe(0)
-      })
+        assert.strictEqual(senderValue, 150);
+        assert.strictEqual(receiverValue, 0);
+      });
 
       it("run 10 transactions `toReceiver` and 10 `toSender` concurrently", async () => {
         const program = Effect.Do()
           .bind("sender", () => TRef.makeCommit(50))
           .bind("receiver", () => TRef.makeCommit(0))
-          .bindValue("toReceiver", ({ receiver, sender }) =>
-            transfer(receiver, sender, 100)
-          )
-          .bindValue("toSender", ({ receiver, sender }) =>
-            transfer(sender, receiver, 100)
-          )
-          .bind("fiber1", ({ toReceiver }) =>
-            Effect.forkAll(List.repeat(toReceiver, 10))
-          )
-          .bind("fiber2", ({ toSender }) => Effect.forkAll(List.repeat(toSender, 10)))
+          .bindValue("toReceiver", ({ receiver, sender }) => transfer(receiver, sender, 100))
+          .bindValue("toSender", ({ receiver, sender }) => transfer(sender, receiver, 100))
+          .bind("fiber1", ({ toReceiver }) => Effect.forkAll(Chunk.fill(10, () => toReceiver)))
+          .bind("fiber2", ({ toSender }) => Effect.forkAll(Chunk.fill(10, () => toSender)))
           .tap(({ sender }) => sender.update((n) => n + 50).commit())
           .tap(({ fiber1 }) => fiber1.join())
           .tap(({ fiber2 }) => fiber2.join())
           .bind("senderValue", ({ sender }) => sender.get().commit())
-          .bind("receiverValue", ({ receiver }) => receiver.get().commit())
+          .bind("receiverValue", ({ receiver }) => receiver.get().commit());
 
-        const { receiverValue, senderValue } = await program.unsafeRunPromise()
+        const { receiverValue, senderValue } = await program.unsafeRunPromise();
 
-        expect(senderValue).toBe(100)
-        expect(receiverValue).toBe(0)
-      })
+        assert.strictEqual(senderValue, 100);
+        assert.strictEqual(receiverValue, 0);
+      });
 
       it("run transactions `toReceiver` 10 times and `toSender` 10 times each in 100 fibers concurrently", async () => {
         const program = Effect.Do()
           .bind("sender", () => TRef.makeCommit(50))
           .bind("receiver", () => TRef.makeCommit(0))
-          .bindValue("toReceiver", ({ receiver, sender }) =>
-            transfer(receiver, sender, 100).repeatN(9)
-          )
-          .bindValue("toSender", ({ receiver, sender }) =>
-            transfer(sender, receiver, 100).repeatN(9)
-          )
-          .bind("fiber", ({ toReceiver, toSender }) =>
-            toReceiver.zipPar(toSender).fork()
-          )
+          .bindValue("toReceiver", ({ receiver, sender }) => transfer(receiver, sender, 100).repeatN(9))
+          .bindValue("toSender", ({ receiver, sender }) => transfer(sender, receiver, 100).repeatN(9))
+          .bind("fiber", ({ toReceiver, toSender }) => toReceiver.zipPar(toSender).fork())
           .tap(({ sender }) => sender.update((n) => n + 50).commit())
           .tap(({ fiber }) => fiber.join())
           .bind("senderValue", ({ sender }) => sender.get().commit())
-          .bind("receiverValue", ({ receiver }) => receiver.get().commit())
+          .bind("receiverValue", ({ receiver }) => receiver.get().commit());
 
-        const { receiverValue, senderValue } = await program.unsafeRunPromise()
+        const { receiverValue, senderValue } = await program.unsafeRunPromise();
 
-        expect(senderValue).toBe(100)
-        expect(receiverValue).toBe(0)
-      })
-    })
+        assert.strictEqual(senderValue, 100);
+        assert.strictEqual(receiverValue, 0);
+      });
+    });
 
     it("perform atomically a single transaction that has a tvar for 20 fibers, each one checks the value and increment it", async () => {
       const program = Effect.Do()
         .bind("tRef", () => TRef.makeCommit(0))
         .bind("fiber", ({ tRef }) =>
           Effect.forkAll(
-            List.range(0, 21).map((i) =>
+            Chunk.range(0, 20).map((i) =>
               tRef
                 .get()
                 .flatMap((v) => STM.check(v === i))
                 .zipRight(tRef.update((n) => n + 1).map(constVoid))
                 .commit()
             )
-          )
-        )
+          ))
         .tap(({ fiber }) => fiber.join())
-        .flatMap(({ tRef }) => tRef.get().commit())
+        .flatMap(({ tRef }) => tRef.get().commit());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe(21)
-    })
+      assert.strictEqual(result, 21);
+    });
 
-    describe("perform atomically a transaction with a condition that couldn't be satisfied, it should be suspended", () => {
+    describe.concurrent("perform atomically a transaction with a condition that couldn't be satisfied, it should be suspended", () => {
       it("interrupt the fiber should terminate the transaction", async () => {
-        const barrier = new UnpureBarrier()
+        const barrier = new UnpureBarrier();
         const program = Effect.Do()
           .bind("tRef", () => TRef.makeCommit(0))
           .bind("fiber", ({ tRef }) =>
@@ -215,44 +185,40 @@ describe("STM", () => {
               .tap(() => tRef.update((n) => 10 / n))
               .map(constVoid)
               .commit()
-              .fork()
-          )
+              .fork())
           .tap(() => barrier.await())
           .tap(({ fiber }) => fiber.interrupt())
           .tap(({ tRef }) => tRef.set(10).commit())
-          .flatMap(({ tRef }) => Effect.sleep(Duration(10)) > tRef.get().commit())
+          .flatMap(({ tRef }) => Effect.sleep((10).millis) > tRef.get().commit());
 
-        const result = await program.unsafeRunPromise()
+        const result = await program.unsafeRunPromise();
 
-        expect(result).toBe(10)
-      })
+        assert.strictEqual(result, 10);
+      });
 
       it("interrupt the fiber that has executed the transaction in 100 different fibers, should terminate all transactions", async () => {
-        const barrier = new UnpureBarrier()
+        const barrier = new UnpureBarrier();
         const program = Effect.Do()
           .bind("tRef", () => TRef.makeCommit(0))
           .bind("fiber", ({ tRef }) =>
             Effect.forkAll(
-              List.repeat(
+              Chunk.fill(100, () =>
                 tRef
                   .get()
                   .tap(() => STM.succeed(barrier.open()))
                   .tap((v) => STM.check(v < 0))
                   .tap(() => tRef.set(10))
-                  .commit(),
-                100
-              )
-            )
-          )
+                  .commit())
+            ))
           .tap(() => barrier.await())
           .tap(({ fiber }) => fiber.interrupt())
           .tap(({ tRef }) => tRef.set(-1).commit())
-          .flatMap(({ tRef }) => Effect.sleep(Duration(10)) > tRef.get().commit())
+          .flatMap(({ tRef }) => Effect.sleep((10).millis) > tRef.get().commit());
 
-        const result = await program.unsafeRunPromise()
+        const result = await program.unsafeRunPromise();
 
-        expect(result).toBe(-1)
-      })
+        assert.strictEqual(result, -1);
+      });
 
       it("interrupt the fiber and observe it, it should be resumed with Interrupted Cause", async () => {
         const program = Effect.Do()
@@ -263,41 +229,37 @@ describe("STM", () => {
               .get()
               .flatMap((n) => STM.check(n === 0))
               .commit()
-              .fork()
-          )
+              .fork())
           .tap(({ fiber }) => fiber.interrupt())
-          .bind("observe", ({ fiber }) => fiber.join().sandbox().either())
+          .bind("observe", ({ fiber }) => fiber.join().sandbox().either());
 
-        const { observe, selfId } = await program.unsafeRunPromise()
+        const { observe, selfId } = await program.unsafeRunPromise();
 
-        expect(observe.mapLeft((cause) => cause.untraced())).toEqual(
-          Either.left(Cause.interrupt(selfId))
-        )
-      })
-    })
+        assert.isTrue(
+          observe.mapLeft((cause) => cause.untraced()) ==
+            Either.left(Cause.interrupt(selfId))
+        );
+      });
+    });
 
     it("Using `continueOrRetry` filter and map simultaneously the value produced by the transaction", async () => {
-      const program = STM.succeed(List.range(1, 20))
-        .continueOrRetry((list) =>
-          list.every((n) => n > 0) ? Option.some("positive") : Option.none
-        )
-        .commit()
+      const program = STM.succeed(Chunk.range(1, 20))
+        .continueOrRetry((chunk) => chunk.forAll((n) => n > 0) ? Option.some("positive") : Option.none)
+        .commit();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual("positive")
-    })
+      assert.strictEqual(result, "positive");
+    });
 
     it("Using `continueOrRetrySTM` filter and map simultaneously the value produced by the transaction", async () => {
-      const program = STM.succeed(List.range(1, 20))
-        .continueOrRetrySTM((list) =>
-          list.every((n) => n > 0) ? Option.some(STM.succeed("positive")) : Option.none
-        )
-        .commit()
+      const program = STM.succeed(Chunk.range(1, 20))
+        .continueOrRetrySTM((chunk) => chunk.forAll((n) => n > 0) ? Option.some(STM.succeed("positive")) : Option.none)
+        .commit();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual("positive")
-    })
-  })
-})
+      assert.strictEqual(result, "positive");
+    });
+  });
+});

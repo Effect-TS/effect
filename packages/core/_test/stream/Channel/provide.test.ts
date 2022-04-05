@@ -1,19 +1,16 @@
-import { Tuple } from "../../../src/collection/immutable/Tuple"
-import { Effect } from "../../../src/io/Effect"
-import { Channel } from "../../../src/stream/Channel"
-import { NumberService } from "./test-utils"
+import { NumberService } from "@effect-ts/core/test/stream/Channel/test-utils";
 
 describe("Channel", () => {
   describe("provide", () => {
     it("simple provide", async () => {
       const program = Channel.fromEffect(Effect.service(NumberService))
         .provideService(NumberService)({ n: 100 })
-        .run()
+        .run();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual({ n: 100 })
-    })
+      assert.deepEqual(result, { n: 100 });
+    });
 
     it("provide.zip(provide)", async () => {
       const program = Channel.fromEffect(Effect.service(NumberService))
@@ -23,12 +20,12 @@ describe("Channel", () => {
             NumberService
           )({ n: 200 })
         )
-        .run()
+        .run();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Tuple({ n: 100 }, { n: 200 }))
-    })
+      assert.isTrue(result == Tuple({ n: 100 }, { n: 200 }));
+    });
 
     it("concatMap(provide).provide", async () => {
       const program = Channel.fromEffect(Effect.service(NumberService))
@@ -40,31 +37,30 @@ describe("Channel", () => {
             .flatMap((tuple) => Channel.write(tuple))
         )
         .provideService(NumberService)({ n: 100 })
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.get(0).toArray()).toEqual([Tuple({ n: 100 }, { n: 200 })])
-      expect(result.get(1)).toBeUndefined()
-    })
+      assert.isTrue(result.get(0) == Chunk(Tuple({ n: 100 }, { n: 200 })));
+      assert.isUndefined(result.get(1));
+    });
 
     it("provide is modular", async () => {
       const program = Channel.Do()
         .bind("v1", () => Channel.fromEffect(Effect.service(NumberService)))
         .bind("v2", () =>
           Channel.fromEffect(Effect.service(NumberService)).provideEnvironment(
-            NumberService.has({ n: 2 })
-          )
-        )
+            NumberService({ n: 2 })
+          ))
         .bind("v3", () => Channel.fromEffect(Effect.service(NumberService)))
         .runDrain()
-        .provideEnvironment(NumberService.has({ n: 4 }))
+        .provideEnvironment(NumberService({ n: 4 }));
 
-      const { v1, v2, v3 } = await program.unsafeRunPromise()
+      const { v1, v2, v3 } = await program.unsafeRunPromise();
 
-      expect(v1).toEqual({ n: 4 })
-      expect(v2).toEqual({ n: 2 })
-      expect(v3).toEqual({ n: 4 })
-    })
-  })
-})
+      assert.deepEqual(v1, { n: 4 });
+      assert.deepEqual(v2, { n: 2 });
+      assert.deepEqual(v3, { n: 4 });
+    });
+  });
+});

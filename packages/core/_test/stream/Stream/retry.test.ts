@@ -1,28 +1,18 @@
-// import { List } from "../../../src/collection/immutable/List"
-// import { Duration } from "../../../src/data/Duration"
-import { Option } from "../../../src/data/Option"
-// import { Clock } from "../../../src/io/Clock"
-import { Effect } from "../../../src/io/Effect"
-import { Ref } from "../../../src/io/Ref"
-import { Schedule } from "../../../src/io/Schedule"
-import { Stream } from "../../../src/stream/Stream"
-
-describe("Stream", () => {
-  describe("retry", () => {
+describe.concurrent("Stream", () => {
+  describe.concurrent("retry", () => {
     it("retry a failing stream", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
         .bindValue(
           "stream",
-          ({ ref }) =>
-            Stream.fromEffect(ref.getAndUpdate((n) => n + 1)) + Stream.fail(Option.none)
+          ({ ref }) => Stream.fromEffect(ref.getAndUpdate((n) => n + 1)) + Stream.fail(Option.none)
         )
-        .flatMap(({ stream }) => stream.retry(Schedule.forever).take(2).runCollect())
+        .flatMap(({ stream }) => stream.retry(Schedule.forever).take(2).runCollect());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([0, 1])
-    })
+      assert.isTrue(result == Chunk(0, 1));
+    });
 
     it("cleanup resources before restarting the stream", async () => {
       const program = Effect.Do()
@@ -32,14 +22,13 @@ describe("Stream", () => {
             Effect.addFinalizer(ref.getAndUpdate((n) => n + 1)).as(
               Stream.fromEffect(ref.get()) + Stream.fail(Option.none)
             )
-          )
-        )
-        .flatMap(({ stream }) => stream.retry(Schedule.forever).take(2).runCollect())
+          ))
+        .flatMap(({ stream }) => stream.retry(Schedule.forever).take(2).runCollect());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([0, 1])
-    })
+      assert.isTrue(result == Chunk(0, 1));
+    });
 
     // TODO(Mike/Max): implement after TestClock
     it.skip("retry a failing stream according to a schedule", async () => {
@@ -62,7 +51,7 @@ describe("Stream", () => {
       //   _         <- streamFib.interrupt
       //   results   <- times.get.map(_.map(_.getEpochSecond.toInt))
       // } yield assert(results)(equalTo(List(3, 1, 0)))
-    })
+    });
 
     // TODO(Mike/Max): implement after TestClock
     it.skip("reset the schedule after a successful pull", async () => {
@@ -87,6 +76,6 @@ describe("Stream", () => {
       //     _       <- streamFib.join
       //     results <- times.get.map(_.map(_.getEpochSecond.toInt))
       //   } yield assert(results)(equalTo(List(4, 3, 3, 1, 0)))
-    })
-  })
-})
+    });
+  });
+});

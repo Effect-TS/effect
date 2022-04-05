@@ -1,16 +1,10 @@
-import { Either } from "../../../src/data/Either"
-import { Effect } from "../../../src/io/Effect"
-import { Promise } from "../../../src/io/Promise"
-import { Ref } from "../../../src/io/Ref"
-import { Stream } from "../../../src/stream/Stream"
-
-describe("Stream", () => {
-  describe("haltWhen", () => {
+describe.concurrent("Stream", () => {
+  describe.concurrent("haltWhen", () => {
     it("halts after the current element", async () => {
       const program = Effect.Do()
         .bind("interrupted", () => Ref.make(false))
-        .bind("latch", () => Promise.make<never, void>())
-        .bind("halt", () => Promise.make<never, void>())
+        .bind("latch", () => Deferred.make<never, void>())
+        .bind("halt", () => Deferred.make<never, void>())
         .tap(({ halt, interrupted, latch }) =>
           Stream.fromEffect(latch.await().onInterrupt(() => interrupted.set(true)))
             .haltWhen(halt.await())
@@ -19,64 +13,60 @@ describe("Stream", () => {
         )
         .tap(({ halt }) => halt.succeed(undefined))
         .tap(({ latch }) => latch.succeed(undefined))
-        .flatMap(({ interrupted }) => interrupted.get())
+        .flatMap(({ interrupted }) => interrupted.get());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(false)
-    })
+      assert.isFalse(result);
+    });
 
     it("propagates errors", async () => {
       const program = Effect.Do()
-        .bind("halt", () => Promise.make<string, never>())
+        .bind("halt", () => Deferred.make<string, never>())
         .tap(({ halt }) => halt.fail("fail"))
-        .flatMap(({ halt }) =>
-          Stream(0).forever().haltWhen(halt.await()).runDrain().either()
-        )
+        .flatMap(({ halt }) => Stream(0).forever().haltWhen(halt.await()).runDrain().either());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Either.left("fail"))
-    })
-  })
+      assert.isTrue(result == Either.left("fail"));
+    });
+  });
 
-  describe("haltWhenPromise", () => {
-    test("halts after the current element", async () => {
+  describe.concurrent("haltWhenDeferred", () => {
+    it("halts after the current element", async () => {
       const program = Effect.Do()
         .bind("interrupted", () => Ref.make(false))
-        .bind("latch", () => Promise.make<never, void>())
-        .bind("halt", () => Promise.make<never, void>())
+        .bind("latch", () => Deferred.make<never, void>())
+        .bind("halt", () => Deferred.make<never, void>())
         .tap(({ halt, interrupted, latch }) =>
           Stream.fromEffect(latch.await().onInterrupt(() => interrupted.set(true)))
-            .haltWhenPromise(halt)
+            .haltWhenDeferred(halt)
             .runDrain()
             .fork()
         )
         .tap(({ halt }) => halt.succeed(undefined))
         .tap(({ latch }) => latch.succeed(undefined))
-        .flatMap(({ interrupted }) => interrupted.get())
+        .flatMap(({ interrupted }) => interrupted.get());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(false)
-    })
+      assert.isFalse(result);
+    });
 
     it("propagates errors", async () => {
       const program = Effect.Do()
-        .bind("halt", () => Promise.make<string, never>())
+        .bind("halt", () => Deferred.make<string, never>())
         .tap(({ halt }) => halt.fail("fail"))
-        .flatMap(({ halt }) =>
-          Stream(0).forever().haltWhenPromise(halt).runDrain().either()
-        )
+        .flatMap(({ halt }) => Stream(0).forever().haltWhenDeferred(halt).runDrain().either());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Either.left("fail"))
-    })
-  })
+      assert.isTrue(result == Either.left("fail"));
+    });
+  });
 
   // TODO(Mike/Max): implement after TestClock
-  // describe("haltAfter", () => {
+  // describe.concurrent("haltAfter", () => {
   //   it("halts after given duration", async () => {
   //     assertWithChunkCoordination(List(Chunk(1), Chunk(2), Chunk(3), Chunk(4))) { c =>
   //       assertM(
@@ -108,4 +98,4 @@ describe("Stream", () => {
   //     } yield assert(result)(equalTo(Chunk(1)))
   //   })
   // })
-})
+});

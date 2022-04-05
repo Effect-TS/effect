@@ -1,109 +1,84 @@
-import { Chunk } from "../../../src/collection/immutable/Chunk"
-import { List } from "../../../src/collection/immutable/List"
-import { Tuple } from "../../../src/collection/immutable/Tuple"
-import { Duration } from "../../../src/data/Duration"
-import { Either } from "../../../src/data/Either"
-import { constTrue, constVoid, identity } from "../../../src/data/Function"
-import { Option } from "../../../src/data/Option"
-import { RuntimeError } from "../../../src/io/Cause"
-import { Effect } from "../../../src/io/Effect"
-import { Exit } from "../../../src/io/Exit"
-import { FiberId } from "../../../src/io/FiberId"
-import { Promise } from "../../../src/io/Promise"
-import { Queue } from "../../../src/io/Queue"
-import { Ref } from "../../../src/io/Ref"
-import { Schedule } from "../../../src/io/Schedule"
-import { Sink } from "../../../src/stream/Sink"
-import { Stream } from "../../../src/stream/Stream"
-import { TakeInternal } from "../../../src/stream/Take/operations/_internal/TakeInternal"
-import { chunkCoordination } from "./test-utils"
+import { TakeInternal } from "@effect-ts/core/stream/Take/operations/_internal/TakeInternal";
+import { chunkCoordination } from "@effect-ts/core/test/stream/Stream/test-utils";
+import { constTrue, constVoid, identity } from "@tsplus/stdlib/data/Function";
 
-describe("Stream", () => {
-  describe("aggregateAsync", () => {
+describe.concurrent("Stream", () => {
+  describe.concurrent("aggregateAsync", () => {
     it("simple example", async () => {
       const program = Stream(1, 1, 1, 1)
         .aggregateAsync(
-          Sink.foldUntil(List.empty<number>(), 3, (acc, el) => acc.prepend(el))
+          Sink.foldUntil<number, Chunk<number>>(Chunk.empty<number>(), 3, (acc, el) => acc.prepend(el))
         )
-        .map((list) => Chunk.from(list))
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.flatten().toArray()).toEqual([1, 1, 1, 1])
-      expect(result.forAll((list) => list.length <= 3)).toBe(true)
-    })
+      assert.isTrue(result.flatten() == Chunk(1, 1, 1, 1));
+      assert.isTrue(result.forAll((list) => list.length <= 3));
+    });
 
     it("error propagation 1", async () => {
-      const error = new RuntimeError("boom")
-      const program = Stream(1, 1, 1, 1).aggregateAsync(Sink.die(error)).runCollect()
+      const error = new RuntimeError("boom");
+      const program = Stream(1, 1, 1, 1).aggregateAsync(Sink.die(error)).runCollect();
 
-      const result = await program.unsafeRunPromiseExit()
+      const result = await program.unsafeRunPromiseExit();
 
-      expect(result.untraced()).toEqual(Exit.die(error))
-    })
+      assert.isTrue(result.untraced() == Exit.die(error));
+    });
 
     it("error propagation 2", async () => {
-      const error = new RuntimeError("boom")
+      const error = new RuntimeError("boom");
       const program = Stream(1, 1, 1, 1)
         .aggregateAsync(Sink.foldLeftEffect(List.empty(), () => Effect.die(error)))
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromiseExit()
+      const result = await program.unsafeRunPromiseExit();
 
-      expect(result.untraced()).toEqual(Exit.die(error))
-    })
+      assert.isTrue(result.untraced() == Exit.die(error));
+    });
 
     it("interruption propagation 1", async () => {
       const program = Effect.Do()
-        .bind("latch", () => Promise.make<never, void>())
+        .bind("latch", () => Deferred.make<never, void>())
         .bind("cancelled", () => Ref.make(false))
-        .bindValue("sink", ({ cancelled, latch }) =>
-          Sink.foldEffect(List.empty<number>(), constTrue, (acc, el) =>
-            el === 1
-              ? Effect.succeedNow(acc.prepend(el))
-              : (latch.succeed(undefined) > Effect.never).onInterrupt(() =>
-                  cancelled.set(true)
-                )
-          )
+        .bindValue(
+          "sink",
+          ({ cancelled, latch }) =>
+            Sink.foldEffect(List.empty<number>(), constTrue, (acc, el) =>
+              el === 1
+                ? Effect.succeedNow(acc.prepend(el))
+                : (latch.succeed(undefined) > Effect.never).onInterrupt(() => cancelled.set(true)))
         )
-        .bind("fiber", ({ sink }) =>
-          Stream(1, 1, 2).aggregateAsync(sink).runCollect().fork()
-        )
+        .bind("fiber", ({ sink }) => Stream(1, 1, 2).aggregateAsync(sink).runCollect().fork())
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ cancelled }) => cancelled.get())
+        .flatMap(({ cancelled }) => cancelled.get());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe(true)
-    })
+      assert.isTrue(result);
+    });
 
     it("interruption propagation 2", async () => {
       const program = Effect.Do()
-        .bind("latch", () => Promise.make<never, void>())
+        .bind("latch", () => Deferred.make<never, void>())
         .bind("cancelled", () => Ref.make(false))
         .bindValue("sink", ({ cancelled, latch }) =>
           Sink.fromEffect(
-            (latch.succeed(undefined) > Effect.never).onInterrupt(() =>
-              cancelled.set(true)
-            )
-          )
-        )
-        .bind("fiber", ({ sink }) =>
-          Stream(1, 1, 2).aggregateAsync(sink).runCollect().fork()
-        )
+            (latch.succeed(undefined) > Effect.never).onInterrupt(() => cancelled.set(true))
+          ))
+        .bind("fiber", ({ sink }) => Stream(1, 1, 2).aggregateAsync(sink).runCollect().fork())
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ cancelled }) => cancelled.get())
+        .flatMap(({ cancelled }) => cancelled.get());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe(true)
-    })
+      assert.isTrue(result);
+    });
 
     it("leftover handling", async () => {
-      const data = List(1, 2, 2, 3, 2, 3)
+      const data = List(1, 2, 2, 3, 2, 3);
       const program = Stream(...data)
         .aggregateAsync(
           Sink.foldWeighted(
@@ -115,26 +90,25 @@ describe("Stream", () => {
         )
         .map((list) => list.reverse())
         .runCollect()
-        .map((chunk) => List.from(chunk).flatten().toArray())
+        .map((chunk) => List.from(chunk).flatten());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(data.toArray())
-    })
+      assert.isTrue(result == data);
+    });
 
     it("ZIO regression test issue 6395", async () => {
       const program = Stream(1, 2, 3)
         .aggregateAsync(Sink.collectAllN<number>(2))
-        .map((chunk) => chunk.toArray())
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([[1, 2], [3]])
-    })
-  })
+      assert.isTrue(result == Chunk(Chunk(1, 2), Chunk(3)));
+    });
+  });
 
-  describe("aggregateAsyncWithin", () => {
+  describe.concurrent("aggregateAsyncWithin", () => {
     it("fails fast", async () => {
       const program = Effect.Do()
         .bind("queue", () => Queue.unbounded<number>())
@@ -149,16 +123,16 @@ describe("Stream", () => {
             .catchAll(() => Effect.succeedNow(undefined))
         )
         .bind("value", ({ queue }) => queue.takeAll)
-        .tap(({ queue }) => queue.shutdown)
+        .tap(({ queue }) => queue.shutdown);
 
-      const { value } = await program.unsafeRunPromise()
+      const { value } = await program.unsafeRunPromise();
 
-      expect(value.toArray()).toEqual([1, 2, 3, 4, 5])
-    })
+      assert.isTrue(value == Chunk(1, 2, 3, 4, 5));
+    });
 
     it("child fiber handling", async () => {
-      const promise = Promise.unsafeMake<never, void>(FiberId.none)
-      const program = chunkCoordination(List(Chunk(1), Chunk(2), Chunk(3))).flatMap(
+      const deferred = Deferred.unsafeMake<never, void>(FiberId.none);
+      const program = chunkCoordination(Chunk(Chunk(1), Chunk(2), Chunk(3))).flatMap(
         (c) =>
           Effect.Do()
             .bind("fiber", () =>
@@ -166,26 +140,23 @@ describe("Stream", () => {
                 .map((exit) => new TakeInternal(exit))
                 .tap(() => c.proceed)
                 .flattenTake()
-                .aggregateAsyncWithin(Sink.last(), Schedule.fixed(Duration(200)))
-                .interruptWhen(promise.await())
+                .aggregateAsyncWithin(Sink.last(), Schedule.fixed((200).millis))
+                .interruptWhen(deferred.await())
                 .take(2)
                 .runCollect()
-                .fork()
-            )
-            .tap(() => (c.offer > Effect.sleep(Duration(100)) > c.awaitNext).repeatN(3))
-            .flatMap(({ fiber }) =>
-              fiber.join().map((chunk) => chunk.collect(identity))
-            )
-      )
+                .fork())
+            .tap(() => (c.offer > Effect.sleep((100).millis) > c.awaitNext).repeatN(3))
+            .flatMap(({ fiber }) => fiber.join().map((chunk) => chunk.collect(identity)))
+      );
 
-      const result = await program.unsafeRunPromise()
-      await promise.succeed(undefined).unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
+      await deferred.succeed(undefined).unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([2, 3])
-    })
-  })
+      assert.isTrue(result == Chunk(2, 3));
+    });
+  });
 
-  describe("aggregateAsyncWithinEither", () => {
+  describe.concurrent("aggregateAsyncWithinEither", () => {
     it("simple example", async () => {
       const program = Stream(1, 1, 1, 1, 2, 2)
         .aggregateAsyncWithinEither(
@@ -197,104 +168,99 @@ describe("Stream", () => {
                 ? Tuple(acc.get(0).prepend(el), true)
                 : Tuple(acc.get(0).prepend(el), false)
           ).map((tuple) => tuple.get(0)),
-          Schedule.spaced(Duration.fromMinutes(30))
+          Schedule.spaced((30).minutes)
         )
-        .map((either) => either.map((list) => list.toArray()))
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([
-        Either.right([2, 1, 1, 1, 1]),
-        Either.right([2]),
-        Either.right([])
-      ])
-    })
+      assert.isTrue(
+        result == Chunk(
+          Either.right(List(2, 1, 1, 1, 1)),
+          Either.right(List(2)),
+          Either.right(List.empty())
+        )
+      );
+    });
 
     it("error propagation 1", async () => {
-      const error = new RuntimeError("boom")
+      const error = new RuntimeError("boom");
       const program = Stream(1, 1, 1, 1)
         .aggregateAsyncWithinEither(
           Sink.die(error),
-          Schedule.spaced(Duration.fromMinutes(30))
+          Schedule.spaced((30).minutes)
         )
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromiseExit()
+      const result = await program.unsafeRunPromiseExit();
 
-      expect(result.untraced()).toEqual(Exit.die(error))
-    })
+      assert.isTrue(result.untraced() == Exit.die(error));
+    });
 
     it("error propagation 2", async () => {
-      const error = new RuntimeError("boom")
+      const error = new RuntimeError("boom");
       const program = Stream(1, 1, 1, 1)
         .aggregateAsyncWithinEither(
           Sink.foldLeftEffect(List.empty(), () => Effect.die(error)),
-          Schedule.spaced(Duration.fromMinutes(30))
+          Schedule.spaced((30).minutes)
         )
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromiseExit()
+      const result = await program.unsafeRunPromiseExit();
 
-      expect(result.untraced()).toEqual(Exit.die(error))
-    })
+      assert.isTrue(result.untraced() == Exit.die(error));
+    });
 
     it("interruption propagation 1", async () => {
       const program = Effect.Do()
-        .bind("latch", () => Promise.make<never, void>())
+        .bind("latch", () => Deferred.make<never, void>())
         .bind("cancelled", () => Ref.make(false))
-        .bindValue("sink", ({ cancelled, latch }) =>
-          Sink.foldEffect(List.empty<number>(), constTrue, (acc, el) =>
-            el === 1
-              ? Effect.succeedNow(acc.prepend(el))
-              : (latch.succeed(undefined) > Effect.never).onInterrupt(() =>
-                  cancelled.set(true)
-                )
-          )
+        .bindValue(
+          "sink",
+          ({ cancelled, latch }) =>
+            Sink.foldEffect(List.empty<number>(), constTrue, (acc, el) =>
+              el === 1
+                ? Effect.succeedNow(acc.prepend(el))
+                : (latch.succeed(undefined) > Effect.never).onInterrupt(() => cancelled.set(true)))
         )
         .bind("fiber", ({ sink }) =>
           Stream(1, 1, 2)
-            .aggregateAsyncWithinEither(sink, Schedule.spaced(Duration.fromMinutes(30)))
+            .aggregateAsyncWithinEither(sink, Schedule.spaced((30).minutes))
             .runCollect()
-            .fork()
-        )
+            .fork())
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ cancelled }) => cancelled.get())
+        .flatMap(({ cancelled }) => cancelled.get());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe(true)
-    })
+      assert.isTrue(result);
+    });
 
     it("interruption propagation 2", async () => {
       const program = Effect.Do()
-        .bind("latch", () => Promise.make<never, void>())
+        .bind("latch", () => Deferred.make<never, void>())
         .bind("cancelled", () => Ref.make(false))
         .bindValue("sink", ({ cancelled, latch }) =>
           Sink.fromEffect(
-            (latch.succeed(undefined) > Effect.never).onInterrupt(() =>
-              cancelled.set(true)
-            )
-          )
-        )
+            (latch.succeed(undefined) > Effect.never).onInterrupt(() => cancelled.set(true))
+          ))
         .bind("fiber", ({ sink }) =>
           Stream(1, 1, 2)
-            .aggregateAsyncWithinEither(sink, Schedule.spaced(Duration.fromMinutes(30)))
+            .aggregateAsyncWithinEither(sink, Schedule.spaced((30).minutes))
             .runCollect()
-            .fork()
-        )
+            .fork())
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ cancelled }) => cancelled.get())
+        .flatMap(({ cancelled }) => cancelled.get());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe(true)
-    })
+      assert.isTrue(result);
+    });
 
     it("leftover handling", async () => {
-      const data = List(1, 2, 2, 3, 2, 3)
+      const data = List(1, 2, 2, 3, 2, 3);
       const program = Stream(...data)
         .aggregateAsyncWithinEither(
           Sink.foldWeighted(
@@ -303,17 +269,15 @@ describe("Stream", () => {
             4,
             (acc, el) => acc.prepend(el)
           ).map((list) => list.reverse()),
-          Schedule.spaced(Duration(100))
+          Schedule.spaced((100).millis)
         )
-        .collect((either) =>
-          either.isRight() ? Option.some(either.right) : Option.none
-        )
+        .collect((either) => either.isRight() ? Option.some(either.right) : Option.none)
         .runCollect()
-        .map((chunk) => List.from(chunk).flatten())
+        .map((chunk) => List.from(chunk).flatten());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual(data.toArray())
-    })
-  })
-})
+      assert.isTrue(result == data);
+    });
+  });
+});

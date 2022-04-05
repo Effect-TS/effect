@@ -1,52 +1,45 @@
-import { List } from "../../../src/collection/immutable/List"
-import { Channel } from "../../../src/stream/Channel"
-
 describe("Channel", () => {
   describe("stack safety", () => {
     it("mapOut is stack safe", async () => {
-      const N = 10_000
+      const N = 10_000;
 
-      const program = List.range(1, N + 1)
-        .reduce(Channel.write(1), (channel, n) => channel.mapOut((_) => _ + n))
-        .runCollect()
+      const program = Chunk.range(1, N)
+        .reduce(Channel.write<number>(1), (channel, n) => channel.mapOut((_) => _ + n))
+        .runCollect();
 
       const {
         tuple: [chunk, _]
-      } = await program.unsafeRunPromise()
+      } = await program.unsafeRunPromise();
 
-      expect(chunk.unsafeHead()).toBe(List.range(1, N + 1).reduce(1, (a, b) => a + b))
-    })
+      assert.strictEqual(chunk.unsafeHead(), Chunk.range(1, N).reduce(1, (a, b) => a + b));
+    });
 
     it("concatMap is stack safe", async () => {
-      const N = 10_000
+      const N = 10_000;
 
-      const program = List.range(1, N + 1)
-        .reduce(Channel.write(1), (channel, n) =>
-          channel.concatMap(() => Channel.write(n)).asUnit()
-        )
-        .runCollect()
+      const program = Chunk.range(1, N)
+        .reduce(Channel.write<number>(1), (channel, n) => channel.concatMap(() => Channel.write(n)).asUnit())
+        .runCollect();
 
       const {
         tuple: [chunk, _]
-      } = await program.unsafeRunPromise()
+      } = await program.unsafeRunPromise();
 
-      expect(chunk.unsafeHead()).toBe(N)
-    })
+      assert.strictEqual(chunk.unsafeHead(), N);
+    });
 
     it("flatMap is stack safe", async () => {
-      const N = 10_000
+      const N = 10_000;
 
-      const program = List.range(1, N + 1)
-        .reduce(Channel.write(0), (channel, n) =>
-          channel.flatMap(() => Channel.write(n))
-        )
-        .runCollect()
+      const program = Chunk.range(1, N)
+        .reduce(Channel.write<number>(0), (channel, n) => channel.flatMap(() => Channel.write(n)))
+        .runCollect();
 
       const {
         tuple: [chunk, _]
-      } = await program.unsafeRunPromise()
+      } = await program.unsafeRunPromise();
 
-      expect(chunk.toArray()).toEqual(List.range(0, N + 1).toArray())
-    })
-  })
-})
+      assert.isTrue(chunk == Chunk.range(0, N));
+    });
+  });
+});

@@ -1,28 +1,18 @@
-import { Chunk } from "../../../src/collection/immutable/Chunk"
-import { List } from "../../../src/collection/immutable/List"
-import { Either } from "../../../src/data/Either"
-import { Effect } from "../../../src/io/Effect"
-import { Promise } from "../../../src/io/Promise"
-import { Ref } from "../../../src/io/Ref"
-import { Stream } from "../../../src/stream/Stream"
-
-describe("Stream", () => {
-  describe("partitionEither", () => {
+describe.concurrent("Stream", () => {
+  describe.concurrent("partitionEither", () => {
     it("allows repeated runs without hanging", async () => {
-      const stream = Stream.fromIterable(Chunk.empty<number>())
-        .partitionEither((i) =>
-          Effect.succeedNow(i % 2 === 0 ? Either.left(i) : Either.right(i))
-        )
+      const stream = Stream.fromCollection(Chunk.empty<number>())
+        .partitionEither((i) => Effect.succeedNow(i % 2 === 0 ? Either.left(i) : Either.right(i)))
         .map(({ tuple: [evens, odds] }) => evens.mergeEither(odds))
-        .flatMap((stream) => stream.runCollect())
+        .flatMap((stream) => stream.runCollect());
       const program = Effect.collectAll(
         Chunk.range(0, 50).map(() => Effect.scoped(stream))
-      ).map(() => 0)
+      ).map(() => 0);
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe(0)
-    })
+      assert.strictEqual(result, 0);
+    });
 
     it("values", async () => {
       const program = Effect.scoped(
@@ -34,17 +24,17 @@ describe("Stream", () => {
           )
           .flatMap(({ tuple: [evens, odds] }) =>
             Effect.struct({
-              evens: evens.runCollect().map((chunk) => chunk.toArray()),
-              odds: odds.runCollect().map((chunk) => chunk.toArray())
+              evens: evens.runCollect(),
+              odds: odds.runCollect()
             })
           )
-      )
+      );
 
-      const { evens, odds } = await program.unsafeRunPromise()
+      const { evens, odds } = await program.unsafeRunPromise();
 
-      expect(evens).toEqual([0, 2, 4])
-      expect(odds).toEqual([1, 3, 5])
-    })
+      assert.isTrue(evens == Chunk(0, 2, 4));
+      assert.isTrue(odds == Chunk(1, 3, 5));
+    });
 
     it("errors", async () => {
       const program = Effect.scoped(
@@ -60,13 +50,13 @@ describe("Stream", () => {
               odds: odds.runCollect().either()
             })
           )
-      )
+      );
 
-      const { evens, odds } = await program.unsafeRunPromise()
+      const { evens, odds } = await program.unsafeRunPromise();
 
-      expect(evens).toEqual(Either.left("boom"))
-      expect(odds).toEqual(Either.left("boom"))
-    })
+      assert.isTrue(evens == Either.left("boom"));
+      assert.isTrue(odds == Either.left("boom"));
+    });
 
     it("backpressure", async () => {
       const program = Effect.scoped(
@@ -80,31 +70,30 @@ describe("Stream", () => {
           )
           .flatMap(({ tuple: [evens, odds] }) =>
             Effect.Do()
-              .bind("ref", () => Ref.make(List.empty<number>()))
-              .bind("latch", () => Promise.make<never, void>())
+              .bind("ref", () => Ref.make<List<number>>(List.empty()))
+              .bind("latch", () => Deferred.make<never, void>())
               .bind("fiber", ({ latch, ref }) =>
                 evens
                   .tap(
                     (i) =>
                       ref.update((list) => list.prepend(i)) >
-                      Effect.when(i === 2, latch.succeed(undefined))
+                        Effect.when(i === 2, latch.succeed(undefined))
                   )
                   .runDrain()
-                  .fork()
-              )
+                  .fork())
               .tap(({ latch }) => latch.await())
               .bind("snapshot1", ({ ref }) => ref.get())
               .bind("other", () => odds.runCollect())
               .tap(({ fiber }) => fiber.await())
               .bind("snapshot2", ({ ref }) => ref.get())
           )
-      )
+      );
 
-      const { other, snapshot1, snapshot2 } = await program.unsafeRunPromise()
+      const { other, snapshot1, snapshot2 } = await program.unsafeRunPromise();
 
-      expect(snapshot1.toArray()).toEqual([2, 0])
-      expect(snapshot2.toArray()).toEqual([4, 2, 0])
-      expect(other.toArray()).toEqual([1, 3, 5])
-    })
-  })
-})
+      assert.isTrue(snapshot1 == List(2, 0));
+      assert.isTrue(snapshot2 == List(4, 2, 0));
+      assert.isTrue(other == Chunk(1, 3, 5));
+    });
+  });
+});

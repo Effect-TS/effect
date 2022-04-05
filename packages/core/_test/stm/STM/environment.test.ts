@@ -1,34 +1,33 @@
-import { STM } from "../../../src/stm/STM"
-import { HasSTMEnv, STMEnv } from "./utils"
+import { HasSTMEnv, STMEnv } from "@effect-ts/core/test/stm/STM/test-utils";
 
-describe("STM", () => {
-  describe("STM environment", () => {
+describe.concurrent("STM", () => {
+  describe.concurrent("STM environment", () => {
     it("access environment and provide it outside transaction", async () => {
       const program = STMEnv.make(0)
         .tap((env) =>
           STM.serviceWithSTM(HasSTMEnv)((_) => _.ref.update((n) => n + 1))
             .commit()
-            .provideEnvironment(HasSTMEnv.has(env))
+            .provideEnvironment(HasSTMEnv(env))
         )
-        .flatMap((env) => env.ref.get().commit())
+        .flatMap((env) => env.ref.get().commit());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe(1)
-    })
+      assert.strictEqual(result, 1);
+    });
 
     it("access environment and provide it inside transaction", async () => {
       const program = STMEnv.make(0)
         .tap((env) =>
           STM.serviceWithSTM(HasSTMEnv)((_) => _.ref.update((n) => n + 1))
-            .provideEnvironment(HasSTMEnv.has(env))
+            .provideEnvironment(HasSTMEnv(env))
             .commit()
         )
-        .flatMap((env) => env.ref.get().commit())
+        .flatMap((env) => env.ref.get().commit());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe(1)
-    })
-  })
-})
+      assert.strictEqual(result, 1);
+    });
+  });
+});

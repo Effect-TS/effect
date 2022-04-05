@@ -1,31 +1,18 @@
-import { Chunk } from "../../../src/collection/immutable/Chunk"
-import { List } from "../../../src/collection/immutable/List"
-import { Tuple } from "../../../src/collection/immutable/Tuple"
-import { Either } from "../../../src/data/Either"
-import { absurd, constTrue } from "../../../src/data/Function"
-import { Option } from "../../../src/data/Option"
-import { Effect } from "../../../src/io/Effect"
-import { Exit } from "../../../src/io/Exit"
-import { Hub } from "../../../src/io/Hub"
-import { Promise } from "../../../src/io/Promise"
-import { Queue } from "../../../src/io/Queue"
-import { Ref } from "../../../src/io/Ref"
-import { Sink } from "../../../src/stream/Sink"
-import { Stream } from "../../../src/stream/Stream"
-import { createQueueSpy } from "./test-utils"
+import { createQueueSpy } from "@effect-ts/core/test/stream/Sink/test-utils";
+import { absurd, constTrue } from "@tsplus/stdlib/data/Function";
 
-describe("Sink", () => {
-  describe("succeed", () => {
+describe.concurrent("Sink", () => {
+  describe.concurrent("succeed", () => {
     it("result is ok", async () => {
-      const program = Stream(1, 2, 3).run(Sink.succeed("ok"))
+      const program = Stream(1, 2, 3).run(Sink.succeed("ok"));
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe("ok")
-    })
-  })
+      assert.strictEqual(result, "ok");
+    });
+  });
 
-  describe("fail", () => {
+  describe.concurrent("fail", () => {
     it("handles leftovers", async () => {
       const sink = Sink.fail("boom").foldSink(
         (err) => Sink.collectAll<number>().map((c) => Tuple(c, err)),
@@ -33,116 +20,114 @@ describe("Sink", () => {
           absurd<Sink<unknown, never, number, never, Tuple<[Chunk<number>, string]>>>(
             null as never
           )
-      )
-      const program = Stream(1, 2, 3).run(sink)
+      );
+      const program = Stream(1, 2, 3).run(sink);
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.get(0).toArray()).toEqual([1, 2, 3])
-      expect(result.get(1)).toEqual("boom")
-    })
-  })
+      assert.isTrue(result.get(0) == Chunk(1, 2, 3));
+      assert.strictEqual(result.get(1), "boom");
+    });
+  });
 
-  describe("drain", () => {
+  describe.concurrent("drain", () => {
     it("fails if upstream fails", async () => {
       const program = Stream(1)
         .mapEffect(() => Effect.fail("boom"))
-        .run(Sink.drain())
+        .run(Sink.drain());
 
-      const result = await program.unsafeRunPromiseExit()
+      const result = await program.unsafeRunPromiseExit();
 
-      expect(result.untraced()).toEqual(Exit.fail("boom"))
-    })
-  })
+      assert.isTrue(result.untraced() == Exit.fail("boom"));
+    });
+  });
 
-  describe("collectAllN", () => {
+  describe.concurrent("collectAllN", () => {
     it("respects the given limit", async () => {
       const program = Stream.fromChunk(Chunk(1, 2, 3, 4))
         .transduce(Sink.collectAllN(3))
-        .map((chunk) => chunk.toArray())
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([[1, 2, 3], [4]])
-    })
+      assert.isTrue(result == Chunk(Chunk(1, 2, 3), Chunk(4)));
+    });
 
     it("produces empty trailing chunks", async () => {
       const program = Stream.fromChunk(Chunk(1, 2, 3, 4))
         .transduce(Sink.collectAllN(4))
-        .map((chunk) => chunk.toArray())
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([[1, 2, 3, 4], []])
-    })
+      assert.isTrue(result == Chunk(Chunk(1, 2, 3, 4), Chunk.empty<number>()));
+    });
 
     it("handles empty input", async () => {
       const program = Stream.fromChunk(Chunk.empty<number>())
         .transduce(Sink.collectAllN(3))
-        .map((chunk) => chunk.toArray())
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([[]])
-    })
-  })
+      assert.isTrue(result == Chunk(Chunk.empty()));
+    });
+  });
 
-  describe("collectAllToSet", () => {
+  describe.concurrent("collectAllToSet", () => {
     it("collects unique elements", async () => {
-      const program = Stream(1, 2, 3, 3, 4).run(Sink.collectAllToSet<number>())
+      const program = Stream(1, 2, 3, 3, 4).run(Sink.collectAllToSet<number>());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect([...result]).toEqual([1, 2, 3, 4])
-    })
-  })
+      assert.isTrue(result.asImmutableArray() == ImmutableArray(1, 2, 3, 4));
+    });
+  });
 
-  describe("collectAllToSetN", () => {
+  describe.concurrent("collectAllToSetN", () => {
     it("respects the given limit", async () => {
       const program = Stream.fromChunks(Chunk(1, 2, 1), Chunk(2, 3, 3, 4))
         .transduce(Sink.collectAllToSetN<number>(3))
-        .map((set) => [...set])
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([[1, 2, 3], [4]])
-    })
+      assert.isTrue(result == Chunk(HashSet(1, 2, 3), HashSet(4)));
+    });
 
     it("handles empty input", async () => {
       const program = Stream.fromChunk(Chunk.empty<number>())
         .transduce(Sink.collectAllToSetN<number>(3))
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.map((set) => [...set]).toArray()).toEqual([[]])
-    })
-  })
+      assert.isTrue(result == Chunk(HashSet.empty()));
+    });
+  });
 
-  describe("collectAllToMap", () => {
+  describe.concurrent("collectAllToMap", () => {
     it("collects unique elements", async () => {
       const program = Stream.range(0, 10).run(
         Sink.collectAllToMap(
           (n: number) => n % 3,
           (a, b) => a + b
         )
-      )
+      );
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect([...result]).toEqual([
-        [0, 18],
-        [1, 12],
-        [2, 15]
-      ])
-    })
-  })
+      assert.isTrue(
+        result == HashMap(
+          Tuple(0, 18),
+          Tuple(1, 12),
+          Tuple(2, 15)
+        )
+      );
+    });
+  });
 
-  describe("collectAllToMapN", () => {
+  describe.concurrent("collectAllToMapN", () => {
     it("respects the given limit", async () => {
       const program = Stream.fromChunk(Chunk(1, 1, 2, 2, 3, 2, 4, 5))
         .transduce(
@@ -152,26 +137,18 @@ describe("Sink", () => {
             (a, b) => a + b
           )
         )
-        .map((map) => [...map])
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([
-        [
-          [1, 2],
-          [2, 4]
-        ],
-        [
-          [0, 3],
-          [2, 2]
-        ],
-        [
-          [1, 4],
-          [2, 5]
-        ]
-      ])
-    })
+      assert.isTrue(
+        result == Chunk(
+          HashMap(Tuple(1, 2), Tuple(2, 4)),
+          HashMap(Tuple(0, 3), Tuple(2, 2)),
+          HashMap(Tuple(1, 4), Tuple(2, 5))
+        )
+      );
+    });
 
     it("collects as long as map size does not exceed the limit", async () => {
       const program = Stream.fromChunks(
@@ -186,19 +163,12 @@ describe("Sink", () => {
             (a, b) => a + b
           )
         )
-        .map((map) => [...map])
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([
-        [
-          [0, 18],
-          [1, 12],
-          [2, 15]
-        ]
-      ])
-    })
+      assert.isTrue(result == Chunk(HashMap(Tuple(0, 18), Tuple(1, 12), Tuple(2, 15))));
+    });
 
     it("handles empty input", async () => {
       const program = Stream.fromChunk(Chunk.empty<number>())
@@ -209,245 +179,231 @@ describe("Sink", () => {
             (a, b) => a + b
           )
         )
-        .map((map) => [...map])
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([[]])
-    })
-  })
+      assert.isTrue(result == Chunk(HashMap.empty()));
+    });
+  });
 
-  describe("dropWhile", () => {
+  describe.concurrent("dropWhile", () => {
     it("should drop elements while the predicate holds true", async () => {
       const program = Stream(1, 2, 3, 4, 5, 1, 2, 3, 4, 5)
         .pipeThrough(Sink.dropWhile<number>((n) => n < 3))
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([3, 4, 5, 1, 2, 3, 4, 5])
-    })
-  })
+      assert.isTrue(result == Chunk(3, 4, 5, 1, 2, 3, 4, 5));
+    });
+  });
 
-  describe("dropWhileEffect", () => {
+  describe.concurrent("dropWhileEffect", () => {
     it("happy path", async () => {
       const program = Stream(1, 2, 3, 4, 5, 1, 2, 3, 4, 5)
         .pipeThrough(Sink.dropWhileEffect((n) => Effect.succeed(n < 3)))
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([3, 4, 5, 1, 2, 3, 4, 5])
-    })
+      assert.isTrue(result == Chunk(3, 4, 5, 1, 2, 3, 4, 5));
+    });
 
     it("error", async () => {
       const program = (Stream(1, 2, 3) + Stream.fail("boom") + Stream(5, 1, 2, 3, 4, 5))
         .pipeThrough(Sink.dropWhileEffect((n) => Effect.succeed(n < 3)))
         .either()
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([Either.right(3), Either.left("boom")])
-    })
-  })
+      assert.isTrue(result == Chunk(Either.right(3), Either.left("boom")));
+    });
+  });
 
-  describe("environmentWithSink", () => {
+  describe.concurrent("environmentWithSink", () => {
     it("should access the environment with the provided sink", async () => {
       const program = Stream("ignore this").run(
         Sink.environmentWithSink((env: string) => Sink.succeed(env)).provideEnvironment(
           "use this"
         )
-      )
+      );
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe("use this")
-    })
-  })
+      assert.strictEqual(result, "use this");
+    });
+  });
 
-  describe("collectAllWhileWith", () => {
+  describe.concurrent("collectAllWhileWith", () => {
     it("example 1", async () => {
       const program = Effect.forEach(List(1, 3, 20), (chunkSize) =>
         Stream.fromChunk(Chunk.range(1, 10))
           .rechunk(chunkSize)
-          .run(Sink.sum().collectAllWhileWith(-1, constTrue, (a, b) => a + b))
-      ).map((chunk) => chunk.toArray())
+          .run(Sink.sum().collectAllWhileWith(-1, constTrue, (a, b) => a + b)));
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual([54, 54, 54])
-    })
+      assert.isTrue(result == Chunk(54, 54, 54));
+    });
 
     it("example 2", async () => {
       const sink = Sink.head<number>().collectAllWhileWith(
         List.empty<number>(),
         (option) => option.fold(constTrue, (n) => n < 5),
-        (acc, a) => (a.isSome() ? acc.append(a.value) : acc)
-      )
-      const stream = Stream.fromChunk(Chunk.range(1, 100))
-      const program = (stream + stream).rechunk(3).run(sink)
+        (acc, a) => (a.isSome() ? acc.prepend(a.value) : acc)
+      ).map((list) => list.reverse());
+      const stream = Stream.fromChunk(Chunk.range(1, 100));
+      const program = (stream + stream).rechunk(3).run(sink);
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([1, 2, 3, 4])
-    })
-  })
+      assert.isTrue(result == List(1, 2, 3, 4));
+    });
+  });
 
-  describe("head", () => {
+  describe.concurrent("head", () => {
     it("should return the first element", async () => {
-      const program = Stream.fromChunks(Chunk(1, 2), Chunk(3, 4)).run(Sink.head())
+      const program = Stream.fromChunks(Chunk(1, 2), Chunk(3, 4)).run(Sink.head());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Option.some(1))
-    })
+      assert.isTrue(result == Option.some(1));
+    });
 
     it("should return None for the empty stream", async () => {
-      const program = Stream.empty.run(Sink.head())
+      const program = Stream.empty.run(Sink.head());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Option.none)
-    })
-  })
+      assert.isTrue(result == Option.none);
+    });
+  });
 
-  describe("last", () => {
+  describe.concurrent("last", () => {
     it("should return the last element", async () => {
-      const program = Stream.fromChunks(Chunk(1, 2), Chunk(3, 4)).run(Sink.last())
+      const program = Stream.fromChunks(Chunk(1, 2), Chunk(3, 4)).run(Sink.last());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Option.some(4))
-    })
+      assert.isTrue(result == Option.some(4));
+    });
 
     it("should return None for the empty stream", async () => {
-      const program = Stream.empty.run(Sink.last())
+      const program = Stream.empty.run(Sink.last());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Option.none)
-    })
-  })
+      assert.isTrue(result == Option.none);
+    });
+  });
 
-  describe("unwrapManaged", () => {
+  describe.concurrent("unwrapScoped", () => {
     it("happy path", async () => {
       const program = Effect.Do()
         .bind("closed", () => Ref.make(false))
-        .bindValue("res", ({ closed }) =>
-          Effect.acquireRelease(Effect.succeed(100), () => closed.set(true))
-        )
+        .bindValue("res", ({ closed }) => Effect.acquireRelease(Effect.succeed(100), () => closed.set(true)))
         .bindValue("sink", ({ closed, res }) =>
           Sink.unwrapScoped(
-            res.map((m) =>
-              Sink.count().mapEffect((cnt) =>
-                closed.get().map((cl) => Tuple(cnt + m, cl))
-              )
-            )
-          )
-        )
+            res.map((m) => Sink.count().mapEffect((cnt) => closed.get().map((cl) => Tuple(cnt + m, cl))))
+          ))
         .bind("resAndState", ({ sink }) => Stream(1, 2, 3).run(sink))
-        .bind("finalState", ({ closed }) => closed.get())
+        .bind("finalState", ({ closed }) => closed.get());
 
-      const { finalState, resAndState } = await program.unsafeRunPromise()
+      const { finalState, resAndState } = await program.unsafeRunPromise();
 
-      expect(resAndState.get(0)).toBe(103)
-      expect(resAndState.get(1)).toBe(false)
-      expect(finalState).toBe(true)
-    })
+      assert.strictEqual(resAndState.get(0), 103);
+      assert.isFalse(resAndState.get(1));
+      assert.isTrue(finalState);
+    });
 
     it("sad path", async () => {
       const program = Effect.Do()
         .bind("closed", () => Ref.make(false))
-        .bindValue("res", ({ closed }) =>
-          Effect.acquireRelease(Effect.succeed(100), () => closed.set(true))
-        )
-        .bindValue("sink", ({ closed, res }) =>
-          Sink.unwrapScoped(res.map(() => Sink.succeed("ok")))
-        )
+        .bindValue("res", ({ closed }) => Effect.acquireRelease(Effect.succeed(100), () => closed.set(true)))
+        .bindValue("sink", ({ closed, res }) => Sink.unwrapScoped(res.map(() => Sink.succeed("ok"))))
         .bind("finalResult", ({ sink }) => Stream.fail("fail").run(sink))
-        .bind("finalState", ({ closed }) => closed.get())
+        .bind("finalState", ({ closed }) => closed.get());
 
-      const { finalResult, finalState } = await program.unsafeRunPromise()
+      const { finalResult, finalState } = await program.unsafeRunPromise();
 
-      expect(finalResult).toBe("ok")
-      expect(finalState).toBe(true)
-    })
-  })
+      assert.strictEqual(finalResult, "ok");
+      assert.isTrue(finalState);
+    });
+  });
 
-  describe("fromEffect", () => {
+  describe.concurrent("fromEffect", () => {
     it("result is ok", async () => {
-      const program = Stream(1, 2, 3).run(Sink.fromEffect(Effect.succeed("ok")))
+      const program = Stream(1, 2, 3).run(Sink.fromEffect(Effect.succeed("ok")));
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe("ok")
-    })
-  })
+      assert.strictEqual(result, "ok");
+    });
+  });
 
-  describe("fromQueue", () => {
+  describe.concurrent("fromQueue", () => {
     it("should enqueue all elements", async () => {
       const program = Effect.Do()
         .bind("queue", () => Queue.unbounded<number>())
         .tap(({ queue }) => Stream(1, 2, 3).run(Sink.fromQueue(queue)))
-        .flatMap(({ queue }) => queue.takeAll)
+        .flatMap(({ queue }) => queue.takeAll);
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([1, 2, 3])
-    })
-  })
+      assert.isTrue(result == Chunk(1, 2, 3));
+    });
+  });
 
-  describe("fromQueueWithShutdown", () => {
+  describe.concurrent("fromQueueWithShutdown", () => {
     it("should enqueue all elements", async () => {
       const program = Effect.Do()
         .bind("queue", () => Queue.unbounded<number>().map(createQueueSpy))
         .tap(({ queue }) => Stream(1, 2, 3).run(Sink.fromQueueWithShutdown(queue)))
         .bind("values", ({ queue }) => queue.takeAll)
-        .bind("isShutdown", ({ queue }) => queue.isShutdown)
+        .bind("isShutdown", ({ queue }) => queue.isShutdown);
 
-      const { isShutdown, values } = await program.unsafeRunPromise()
+      const { isShutdown, values } = await program.unsafeRunPromise();
 
-      expect(values.toArray()).toEqual([1, 2, 3])
-      expect(isShutdown).toBe(true)
-    })
-  })
+      assert.isTrue(values == Chunk(1, 2, 3));
+      assert.isTrue(isShutdown);
+    });
+  });
 
-  describe("fromHub", () => {
+  describe.concurrent("fromHub", () => {
     it("should publish all elements", async () => {
       const program = Effect.Do()
-        .bind("promise1", () => Promise.make<never, void>())
-        .bind("promise2", () => Promise.make<never, void>())
+        .bind("deferred1", () => Deferred.make<never, void>())
+        .bind("deferred2", () => Deferred.make<never, void>())
         .bind("hub", () => Hub.unbounded<number>())
-        .bind("fiber", ({ hub, promise1, promise2 }) =>
+        .bind("fiber", ({ deferred1, deferred2, hub }) =>
           Effect.scoped(
             hub.subscribe.flatMap(
-              (s) => promise1.succeed(undefined) > promise2.await() > s.takeAll
+              (s) => deferred1.succeed(undefined) > deferred2.await() > s.takeAll
             )
-          ).fork()
-        )
-        .tap(({ promise1 }) => promise1.await())
+          ).fork())
+        .tap(({ deferred1 }) => deferred1.await())
         .tap(({ hub }) => Stream(1, 2, 3).run(Sink.fromHub(hub)))
-        .tap(({ promise2 }) => promise2.succeed(undefined))
-        .flatMap(({ fiber }) => fiber.join())
+        .tap(({ deferred2 }) => deferred2.succeed(undefined))
+        .flatMap(({ fiber }) => fiber.join());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([1, 2, 3])
-    })
-  })
+      assert.isTrue(result == Chunk(1, 2, 3));
+    });
+  });
 
-  describe("fromHubWithShutdown", () => {
+  describe.concurrent("fromHubWithShutdown", () => {
     it("should shutdown hub", async () => {
       const program = Effect.Do()
         .bind("hub", () => Hub.unbounded<number>())
         .tap(({ hub }) => Stream(1, 2, 3).run(Sink.fromHubWithShutdown(hub)))
-        .flatMap(({ hub }) => hub.isShutdown)
+        .flatMap(({ hub }) => hub.isShutdown);
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe(true)
-    })
-  })
-})
+      assert.isTrue(result);
+    });
+  });
+});

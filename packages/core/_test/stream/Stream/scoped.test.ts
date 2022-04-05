@@ -1,18 +1,12 @@
-import { Either } from "../../../src/data/Either"
-import { Option } from "../../../src/data/Option"
-import { Effect } from "../../../src/io/Effect"
-import { InterruptStatus } from "../../../src/io/InterruptStatus"
-import { Stream } from "../../../src/stream/Stream"
-
-describe("Stream", () => {
-  describe("managed", () => {
+describe.concurrent("Stream", () => {
+  describe.concurrent("managed", () => {
     it("preserves failure of effect", async () => {
-      const program = Stream.scoped(Effect.fail("error")).runCollect().either()
+      const program = Stream.scoped(Effect.fail("error")).runCollect().either();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Either.left("error"))
-    })
+      assert.isTrue(result == Either.left("error"));
+    });
 
     it("preserves interruptibility of effect", async () => {
       const program = Effect.struct({
@@ -22,12 +16,12 @@ describe("Stream", () => {
         uninterruptible: Stream.scoped(
           Effect.checkInterruptible(Effect.succeedNow).uninterruptible()
         ).runHead()
-      })
+      });
 
-      const { interruptible, uninterruptible } = await program.unsafeRunPromise()
+      const { interruptible, uninterruptible } = await program.unsafeRunPromise();
 
-      expect(interruptible).toEqual(Option.some(InterruptStatus.Interruptible))
-      expect(uninterruptible).toEqual(Option.some(InterruptStatus.Uninterruptible))
-    })
-  })
-})
+      assert.isTrue(interruptible == Option.some(InterruptStatus.Interruptible));
+      assert.isTrue(uninterruptible == Option.some(InterruptStatus.Uninterruptible));
+    });
+  });
+});

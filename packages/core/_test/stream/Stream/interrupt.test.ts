@@ -1,18 +1,10 @@
-import { Chunk } from "../../../src/collection/immutable/Chunk"
-import { Tuple } from "../../../src/collection/immutable/Tuple"
-import { Either } from "../../../src/data/Either"
-import { constTrue } from "../../../src/data/Function"
-import { Effect } from "../../../src/io/Effect"
-import { Promise } from "../../../src/io/Promise"
-import { Queue } from "../../../src/io/Queue"
-import { Ref } from "../../../src/io/Ref"
-import { Stream } from "../../../src/stream/Stream"
+import { constTrue } from "@tsplus/stdlib/data/Function";
 
-describe("Stream", () => {
-  describe("interruptWhen", () => {
+describe.concurrent("Stream", () => {
+  describe.concurrent("interruptWhen", () => {
     it("preserves scope of inner fibers", async () => {
       const program = Effect.Do()
-        .bind("promise", () => Promise.make<never, void>())
+        .bind("deferred", () => Deferred.make<never, void>())
         .bind("queue1", () => Queue.unbounded<Chunk<number>>())
         .bind("queue2", () => Queue.unbounded<Chunk<number>>())
         .tap(({ queue1 }) => queue1.offer(Chunk(1)))
@@ -21,66 +13,62 @@ describe("Stream", () => {
         .tap(({ queue2 }) => queue2.offer(Chunk(4)).fork())
         .bindValue("stream1", ({ queue1 }) => Stream.fromChunkQueue(queue1))
         .bindValue("stream2", ({ queue2 }) => Stream.fromChunkQueue(queue2))
-        .bindValue("stream3", ({ promise, stream1, stream2 }) =>
+        .bindValue("stream3", ({ deferred, stream1, stream2 }) =>
           stream1
             .zipWithLatest(stream2, (a, b) => Tuple(a, b))
-            .interruptWhen(promise.await())
-            .take(3)
-        )
+            .interruptWhen(deferred.await())
+            .take(3))
         .tap(({ stream3 }) => stream3.runDrain())
-        .map(constTrue)
+        .map(constTrue);
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe(true)
-    })
+      assert.isTrue(result);
+    });
 
     it("interrupts the current element", async () => {
       const program = Effect.Do()
         .bind("interrupted", () => Ref.make(false))
-        .bind("latch", () => Promise.make<never, void>())
-        .bind("halt", () => Promise.make<never, void>())
-        .bind("started", () => Promise.make<never, void>())
+        .bind("latch", () => Deferred.make<never, void>())
+        .bind("halt", () => Deferred.make<never, void>())
+        .bind("started", () => Deferred.make<never, void>())
         .bind("fiber", ({ halt, interrupted, latch, started }) =>
           Stream.fromEffect(
-            (started.succeed(undefined) > latch.await()).onInterrupt(() =>
-              interrupted.set(true)
-            )
+            (started.succeed(undefined) > latch.await()).onInterrupt(() => interrupted.set(true))
           )
             .interruptWhen(halt.await())
             .runDrain()
-            .fork()
-        )
+            .fork())
         .tap(({ halt, started }) => started.await() > halt.succeed(undefined))
         .tap(({ fiber }) => fiber.await())
-        .flatMap(({ interrupted }) => interrupted.get())
+        .flatMap(({ interrupted }) => interrupted.get());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe(true)
-    })
+      assert.isTrue(result);
+    });
 
     it("propagates errors", async () => {
       const program = Effect.Do()
-        .bind("halt", () => Promise.make<string, never>())
+        .bind("halt", () => Deferred.make<string, never>())
         .tap(({ halt }) => halt.fail("fail"))
         .flatMap(({ halt }) =>
           Stream.fromEffect(Effect.never)
             .interruptWhen(halt.await())
             .runDrain()
             .either()
-        )
+        );
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Either.left("fail"))
-    })
-  })
+      assert.isTrue(result == Either.left("fail"));
+    });
+  });
 
-  describe("interruptWhenPromise", () => {
+  describe.concurrent("interruptWhenDeferred", () => {
     it("interrupts the current element", async () => {
       const program = Effect.Do()
-        .bind("promise", () => Promise.make<never, void>())
+        .bind("deferred", () => Deferred.make<never, void>())
         .bind("queue1", () => Queue.unbounded<Chunk<number>>())
         .bind("queue2", () => Queue.unbounded<Chunk<number>>())
         .tap(({ queue1 }) => queue1.offer(Chunk(1)))
@@ -89,36 +77,33 @@ describe("Stream", () => {
         .tap(({ queue2 }) => queue2.offer(Chunk(4)).fork())
         .bindValue("stream1", ({ queue1 }) => Stream.fromChunkQueue(queue1))
         .bindValue("stream2", ({ queue2 }) => Stream.fromChunkQueue(queue2))
-        .bindValue("stream3", ({ promise, stream1, stream2 }) =>
+        .bindValue("stream3", ({ deferred, stream1, stream2 }) =>
           stream1
             .zipWithLatest(stream2, (a, b) => Tuple(a, b))
-            .interruptWhenPromise(promise)
-            .take(3)
-        )
+            .interruptWhenDeferred(deferred)
+            .take(3))
         .tap(({ stream3 }) => stream3.runDrain())
-        .map(constTrue)
+        .map(constTrue);
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe(true)
-    })
+      assert.isTrue(result);
+    });
 
     it("propagates errors", async () => {
       const program = Effect.Do()
-        .bind("halt", () => Promise.make<string, never>())
+        .bind("halt", () => Deferred.make<string, never>())
         .tap(({ halt }) => halt.fail("fail"))
-        .flatMap(({ halt }) =>
-          Stream.fromEffect(Effect.never).interruptWhenPromise(halt).runDrain().either()
-        )
+        .flatMap(({ halt }) => Stream.fromEffect(Effect.never).interruptWhenDeferred(halt).runDrain().either());
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Either.left("fail"))
-    })
-  })
+      assert.isTrue(result == Either.left("fail"));
+    });
+  });
 
   // TODO(Mike/Max): implement after TestClock
-  // describe("interruptAfter", () => {
+  // describe.concurrent("interruptAfter", () => {
   //   test("interrupts after given duration") {
   //     assertWithChunkCoordination(List(Chunk(1), Chunk(2), Chunk(3))) { c =>
   //       assertM(
@@ -148,4 +133,4 @@ describe("Stream", () => {
   //     } yield assert(result)(isEmpty)
   //   } @@ timeout(10.seconds) @@ flaky
   // })
-})
+});

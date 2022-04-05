@@ -1,45 +1,34 @@
-import { Chunk } from "../../../src/collection/immutable/Chunk"
-import { Either } from "../../../src/data/Either"
-import { identity } from "../../../src/data/Function"
-import { Option } from "../../../src/data/Option"
-import { Effect } from "../../../src/io/Effect"
-import { Stream } from "../../../src/stream/Stream"
-
-describe("Stream", () => {
-  describe("collect", () => {
+describe.concurrent("Stream", () => {
+  describe.concurrent("collect", () => {
     it("collects values according to the partial function", async () => {
       const program = Stream<Either<number, number>>(
         Either.left(1),
         Either.right(2),
         Either.left(3)
       )
-        .collect((either) =>
-          either.isRight() ? Option.some(either.right) : Option.none
-        )
-        .runCollect()
+        .collect((either) => either.isRight() ? Option.some(either.right) : Option.none)
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([2])
-    })
-  })
+      assert.isTrue(result == Chunk(2));
+    });
+  });
 
-  describe("collectEffect", () => {
+  describe.concurrent("collectEffect", () => {
     it("simple example", async () => {
       const program = Stream<Either<number, number>>(
         Either.left(1),
         Either.right(2),
         Either.left(3)
       )
-        .collectEffect((either) =>
-          either.isRight() ? Option.some(Effect.succeed(either.right * 2)) : Option.none
-        )
-        .runCollect()
+        .collectEffect((either) => either.isRight() ? Option.some(Effect.succeed(either.right * 2)) : Option.none)
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([4])
-    })
+      assert.isTrue(result == Chunk(4));
+    });
 
     it("collects on multiple chunks", async () => {
       const program = Stream.fromChunks<Either<number, number>>(
@@ -51,65 +40,60 @@ describe("Stream", () => {
             ? Option.some(Effect.succeed(either.right * 10))
             : Option.none
         )
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([20, 30])
-    })
+      assert.isTrue(result == Chunk(20, 30));
+    });
 
     it("fails", async () => {
       const program = Stream.fromChunks<Either<number, number>>(
         Chunk(Either.left(1), Either.right(2)),
         Chunk(Either.left(3), Either.right(4))
       )
-        .collectEffect((either) =>
-          either.isRight() ? Option.some(Effect.fail("ouch")) : Option.none
-        )
+        .collectEffect((either) => either.isRight() ? Option.some(Effect.fail("ouch")) : Option.none)
         .runDrain()
-        .either()
+        .either();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Either.left("ouch"))
-    })
+      assert.isTrue(result == Either.left("ouch"));
+    });
 
     it("laziness on chunks", async () => {
       const program = Stream(1, 2, 3, 4)
-        .collectEffect((n) =>
-          n === 3 ? Option.some(Effect.fail("boom")) : Option.some(Effect.succeed(n))
-        )
+        .collectEffect((n) => n === 3 ? Option.some(Effect.fail("boom")) : Option.some(Effect.succeed(n)))
         .either()
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([
-        Either.right(1),
-        Either.right(2),
-        Either.left("boom")
-      ])
-    })
-  })
+      assert.isTrue(
+        result == Chunk(
+          Either.right(1),
+          Either.right(2),
+          Either.left("boom")
+        )
+      );
+    });
+  });
 
-  describe("collectSome", () => {
+  describe.concurrent("collectSome", () => {
     it("simple example", async () => {
-      const stream = Stream(Option.some(1), Option.none, Option.some(2))
+      const stream = Stream(Option.some(1), Option.none, Option.some(2));
       const program = Effect.struct({
-        actual: stream
-          .collectSome()
-          .runCollect()
-          .map((chunk) => chunk.toArray()),
-        expected: stream.runCollect().map((chunk) => chunk.compact().toArray())
-      })
+        actual: stream.collectSome().runCollect(),
+        expected: stream.runCollect().map((chunk) => chunk.compact())
+      });
 
-      const { actual, expected } = await program.unsafeRunPromise()
+      const { actual, expected } = await program.unsafeRunPromise();
 
-      expect(actual).toEqual(expected)
-    })
-  })
+      assert.isTrue(actual == expected);
+    });
+  });
 
-  describe("collectWhile", () => {
+  describe.concurrent("collectWhile", () => {
     it("simple example", async () => {
       const program = Stream(
         Option.some(1),
@@ -119,26 +103,26 @@ describe("Stream", () => {
         Option.some(4)
       )
         .collectWhile(identity)
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([1, 2, 3])
-    })
+      assert.isTrue(result == Chunk(1, 2, 3));
+    });
 
     it("short circuits", async () => {
       const program = (Stream(Option.some(1)) + Stream.fail("ouch"))
         .collectWhile((option) => (option.isNone() ? Option.some(1) : Option.none))
         .runDrain()
-        .either()
+        .either();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Either.right(undefined))
-    })
-  })
+      assert.isTrue(result == Either.right(undefined));
+    });
+  });
 
-  describe("collectWhileEffect", () => {
+  describe.concurrent("collectWhileEffect", () => {
     it("simple example", async () => {
       const program = Stream(
         Option.some(1),
@@ -147,28 +131,24 @@ describe("Stream", () => {
         Option.none,
         Option.some(4)
       )
-        .collectWhileEffect((option) =>
-          option.isSome() ? Option.some(Effect.succeed(option.value * 2)) : Option.none
-        )
-        .runCollect()
+        .collectWhileEffect((option) => option.isSome() ? Option.some(Effect.succeed(option.value * 2)) : Option.none)
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([2, 4, 6])
-    })
+      assert.isTrue(result == Chunk(2, 4, 6));
+    });
 
     it("short circuits", async () => {
       const program = (Stream(Option.some(1)) + Stream.fail("ouch"))
-        .collectWhileEffect((option) =>
-          option.isNone() ? Option.some(Effect.succeedNow(1)) : Option.none
-        )
+        .collectWhileEffect((option) => option.isNone() ? Option.some(Effect.succeedNow(1)) : Option.none)
         .runDrain()
-        .either()
+        .either();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Either.right(undefined))
-    })
+      assert.isTrue(result == Either.right(undefined));
+    });
 
     it("fails", async () => {
       const program = Stream(
@@ -178,32 +158,30 @@ describe("Stream", () => {
         Option.none,
         Option.some(4)
       )
-        .collectWhileEffect((option) =>
-          option.isSome() ? Option.some(Effect.fail("ouch")) : Option.none
-        )
+        .collectWhileEffect((option) => option.isSome() ? Option.some(Effect.fail("ouch")) : Option.none)
         .runDrain()
-        .either()
+        .either();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Either.left("ouch"))
-    })
+      assert.isTrue(result == Either.left("ouch"));
+    });
 
     it("laziness on chunks", async () => {
       const program = Stream(1, 2, 3, 4)
-        .collectWhileEffect((n) =>
-          n === 3 ? Option.some(Effect.fail("boom")) : Option.some(Effect.succeed(n))
-        )
+        .collectWhileEffect((n) => n === 3 ? Option.some(Effect.fail("boom")) : Option.some(Effect.succeed(n)))
         .either()
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([
-        Either.right(1),
-        Either.right(2),
-        Either.left("boom")
-      ])
-    })
-  })
-})
+      assert.isTrue(
+        result == Chunk(
+          Either.right(1),
+          Either.right(2),
+          Either.left("boom")
+        )
+      );
+    });
+  });
+});

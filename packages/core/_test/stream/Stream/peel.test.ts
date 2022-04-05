@@ -1,28 +1,19 @@
-import { Chunk } from "../../../src/collection/immutable/Chunk"
-import { Effect } from "../../../src/io/Effect"
-import { Sink } from "../../../src/stream/Sink"
-import { Stream } from "../../../src/stream/Stream"
-
-describe("Stream", () => {
-  describe("peel", () => {
+describe.concurrent("Stream", () => {
+  describe.concurrent("peel", () => {
     it("simple example", async () => {
-      const sink: Sink<unknown, never, number, number, Chunk<number>> = Sink.take(3)
+      const sink: Sink<unknown, never, number, number, Chunk<number>> = Sink.take(3);
       const program = Effect.scoped(
         Stream.fromChunks(Chunk(1, 2, 3), Chunk(4, 5, 6))
           .peel(sink)
-          .flatMap(({ tuple: [chunk, rest] }) =>
-            Effect.succeedNow(chunk.toArray()).zip(
-              rest.runCollect().map((chunk) => chunk.toArray())
-            )
-          )
-      )
+          .flatMap(({ tuple: [chunk, rest] }) => Effect.succeedNow(chunk).zip(rest.runCollect()))
+      );
 
       const {
         tuple: [result, leftover]
-      } = await program.unsafeRunPromise()
+      } = await program.unsafeRunPromise();
 
-      expect(result).toEqual([1, 2, 3])
-      expect(leftover).toEqual([4, 5, 6])
-    })
-  })
-})
+      assert.isTrue(result == Chunk(1, 2, 3));
+      assert.isTrue(leftover == Chunk(4, 5, 6));
+    });
+  });
+});

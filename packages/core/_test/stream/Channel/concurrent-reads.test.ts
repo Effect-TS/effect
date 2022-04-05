@@ -1,18 +1,12 @@
-import { HashSet } from "../../../src/collection/immutable/HashSet"
-import { List } from "../../../src/collection/immutable/List"
-import { Tuple } from "../../../src/collection/immutable/Tuple"
-import { Effect } from "../../../src/io/Effect"
-import { Random } from "../../../src/io/Random"
-import { Ref } from "../../../src/io/Ref"
-import { MergeDecision } from "../../../src/stream/Channel/MergeDecision"
-import { mapper, refReader, refWriter } from "./test-utils"
+import { MergeDecision } from "@effect-ts/core/stream/Channel/MergeDecision";
+import { mapper, refReader, refWriter } from "@effect-ts/core/test/stream/Channel/test-utils";
 
-describe("Channel", () => {
-  describe("concurrent reads", () => {
+describe.concurrent("Channel", () => {
+  describe.concurrent("concurrent reads", () => {
     it("simple concurrent reads", async () => {
-      const capacity = 128
+      const capacity = 128;
 
-      const program = Effect.collectAll(List.repeat(Random.nextInt, capacity)).flatMap(
+      const program = Effect.collectAll(Chunk.fill(capacity, () => Random.nextInt)).flatMap(
         (data) =>
           Ref.make(List.from(data))
             .zip(Ref.make(List.empty<number>()))
@@ -21,40 +15,40 @@ describe("Channel", () => {
                 refWriter(dest),
                 () => MergeDecision.awaitConst(Effect.unit),
                 () => MergeDecision.awaitConst(Effect.unit)
-              )
+              );
 
               return (refReader(source) >> twoWriters)
                 .mapEffect(() => dest.get())
                 .run()
                 .map((result) => {
-                  let missing = HashSet.from(data)
-                  let surplus = HashSet.from(result)
+                  let missing = HashSet.from(data);
+                  let surplus = HashSet.from(result);
 
                   for (const value of result) {
-                    missing = missing.remove(value)
+                    missing = missing.remove(value);
                   }
                   for (const value of data) {
-                    surplus = surplus.remove(value)
+                    surplus = surplus.remove(value);
                   }
 
-                  return Tuple(missing, surplus)
-                })
+                  return Tuple(missing, surplus);
+                });
             })
-      )
+      );
 
       const {
         tuple: [missing, surplus]
-      } = await program.unsafeRunPromise()
+      } = await program.unsafeRunPromise();
 
-      expect(missing.size).toBe(0)
-      expect(surplus.size).toBe(0)
-    })
+      assert.strictEqual(missing.size, 0);
+      assert.strictEqual(surplus.size, 0);
+    });
 
     it("nested concurrent reads", async () => {
-      const capacity = 128
-      const f = (n: number) => n + 1
+      const capacity = 128;
+      const f = (n: number) => n + 1;
 
-      const program = Effect.collectAll(List.repeat(Random.nextInt, capacity)).flatMap(
+      const program = Effect.collectAll(Chunk.fill(capacity, () => Random.nextInt)).flatMap(
         (data) =>
           Ref.make(List.from(data))
             .zip(Ref.make(List.empty<number>()))
@@ -63,34 +57,34 @@ describe("Channel", () => {
                 mapper(f) >> refWriter(dest),
                 () => MergeDecision.awaitConst(Effect.unit),
                 () => MergeDecision.awaitConst(Effect.unit)
-              )
+              );
 
               return (refReader(source) >> twoWriters)
                 .mapEffect(() => dest.get())
                 .run()
                 .map((result) => {
-                  const expected = HashSet.from(data.map(f))
-                  let missing = HashSet.from(expected)
-                  let surplus = HashSet.from(result)
+                  const expected = HashSet.from(data.map(f));
+                  let missing = HashSet.from(expected);
+                  let surplus = HashSet.from(result);
 
                   for (const value of result) {
-                    missing = missing.remove(value)
+                    missing = missing.remove(value);
                   }
                   for (const value of expected) {
-                    surplus = surplus.remove(value)
+                    surplus = surplus.remove(value);
                   }
 
-                  return Tuple(missing, surplus)
-                })
+                  return Tuple(missing, surplus);
+                });
             })
-      )
+      );
 
       const {
         tuple: [missing, surplus]
-      } = await program.unsafeRunPromise()
+      } = await program.unsafeRunPromise();
 
-      expect(missing.size).toBe(0)
-      expect(surplus.size).toBe(0)
-    })
-  })
-})
+      assert.strictEqual(missing.size, 0);
+      assert.strictEqual(surplus.size, 0);
+    });
+  });
+});

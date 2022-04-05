@@ -1,60 +1,52 @@
-import { Chunk } from "../../../src/collection/immutable/Chunk"
-import { Either } from "../../../src/data/Either"
-import { Effect } from "../../../src/io/Effect"
-import { Exit } from "../../../src/io/Exit"
-import { Stream } from "../../../src/stream/Stream"
-
-describe("Stream", () => {
-  describe("Combinators", () => {
-    describe("absolve", () => {
+describe.concurrent("Stream", () => {
+  describe.concurrent("Combinators", () => {
+    describe.concurrent("absolve", () => {
       it("happy path", async () => {
-        const program = Stream.fromIterable(Chunk(1, 2, 3).map(Either.right))
+        const program = Stream.fromCollection(Chunk(1, 2, 3).map(Either.right))
           .absolve()
-          .runCollect()
-          .map((chunk) => chunk.toArray())
+          .runCollect();
 
-        const result = await program.unsafeRunPromise()
+        const result = await program.unsafeRunPromise();
 
-        expect(result).toEqual([1, 2, 3])
-      })
+        assert.isTrue(result == Chunk(1, 2, 3));
+      });
 
       it("failure", async () => {
-        const program = Stream.fromIterable(
+        const program = Stream.fromCollection(
           Chunk(1, 2, 3).map(Either.right) + Chunk(Either.left("ouch"))
         )
           .absolve()
-          .runCollect()
-          .map((chunk) => chunk.toArray())
+          .runCollect();
 
-        const result = await program.unsafeRunPromiseExit()
+        const result = await program.unsafeRunPromiseExit();
 
-        expect(result.untraced()).toEqual(Exit.fail("ouch"))
-      })
+        assert.isTrue(result.untraced() == Exit.fail("ouch"));
+      });
 
       it("round trip #1", async () => {
-        const xss = Stream.fromIterable(Chunk(1, 2, 3).map(Either.right))
-        const stream = xss + Stream(Either.left(4)) + xss
+        const xss = Stream.fromCollection(Chunk(1, 2, 3).map(Either.right));
+        const stream = xss + Stream(Either.left(4)) + xss;
         const program = Effect.Do()
           .bind("res1", () => stream.runCollect())
-          .bind("res2", () => stream.absolve().either().runCollect())
+          .bind("res2", () => stream.absolve().either().runCollect());
 
-        const { res1, res2 } = await program.unsafeRunPromise()
+        const { res1, res2 } = await program.unsafeRunPromise();
 
-        expect(res1.toArray().slice(0, res2.length)).toEqual(res2.toArray())
-      })
+        assert.isTrue(res1.take(res2.length) == res2);
+      });
 
       it("round trip #2", async () => {
-        const xss = Stream.fromIterable(Chunk(1, 2, 3))
-        const stream = xss + Stream.fail("ouch")
+        const xss = Stream.fromCollection(Chunk(1, 2, 3));
+        const stream = xss + Stream.fail("ouch");
         const program = Effect.Do()
           .bind("res1", () => stream.runCollect().exit())
-          .bind("res2", () => stream.either().absolve().runCollect().exit())
+          .bind("res2", () => stream.either().absolve().runCollect().exit());
 
-        const { res1, res2 } = await program.unsafeRunPromise()
+        const { res1, res2 } = await program.unsafeRunPromise();
 
-        expect(res1.untraced()).toEqual(Exit.fail("ouch"))
-        expect(res2.untraced()).toEqual(Exit.fail("ouch"))
-      })
-    })
-  })
-})
+        assert.isTrue(res1.untraced() == Exit.fail("ouch"));
+        assert.isTrue(res2.untraced() == Exit.fail("ouch"));
+      });
+    });
+  });
+});

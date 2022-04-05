@@ -21,12 +21,12 @@ describe.concurrent("Effect", () => {
 
     it("asyncEffect creation is interruptible", async () => {
       const program = Effect.Do()
-        .bind("release", () => Promise.make<never, number>())
-        .bind("acquire", () => Promise.make<never, void>())
+        .bind("release", () => Deferred.make<never, number>())
+        .bind("acquire", () => Deferred.make<never, void>())
         .bindValue("task", ({ acquire, release }) =>
           Effect.asyncEffect((cb) =>
             // This will never complete because the callback is never invoked
-            Effect.acquireReleaseWith(
+            Effect.acquireReleaseUse(
               acquire.succeed(undefined),
               () => Effect.never,
               () => release.succeed(42).asUnit()
@@ -60,7 +60,7 @@ describe.concurrent("Effect", () => {
     });
 
     it("daemon fiber race interruption", async () => {
-      function plus1<X>(latch: Promise<never, void>, finalizer: UIO<X>) {
+      function plus1<X>(latch: Deferred<never, void>, finalizer: UIO<X>) {
         return (
           latch.succeed(undefined) > Effect.sleep((1).hours)
         ).onInterrupt(() => finalizer.map((x) => x));
@@ -68,8 +68,8 @@ describe.concurrent("Effect", () => {
 
       const program = Effect.Do()
         .bind("interruptionRef", () => Ref.make(0))
-        .bind("latch1Start", () => Promise.make<never, void>())
-        .bind("latch2Start", () => Promise.make<never, void>())
+        .bind("latch1Start", () => Deferred.make<never, void>())
+        .bind("latch2Start", () => Deferred.make<never, void>())
         .bindValue("inc", ({ interruptionRef }) => interruptionRef.updateAndGet((n) => n + 1))
         .bindValue("left", ({ inc, latch1Start }) => plus1(latch1Start, inc))
         .bindValue("right", ({ inc, latch2Start }) => plus1(latch2Start, inc))
@@ -86,28 +86,28 @@ describe.concurrent("Effect", () => {
 
     it("race in daemon is executed", async () => {
       const program = Effect.Do()
-        .bind("latch1", () => Promise.make<never, void>())
-        .bind("latch2", () => Promise.make<never, void>())
-        .bind("promise1", () => Promise.make<never, void>())
-        .bind("promise2", () => Promise.make<never, void>())
-        .bindValue("loser1", ({ latch1, promise1 }) =>
-          Effect.acquireReleaseWith(
+        .bind("latch1", () => Deferred.make<never, void>())
+        .bind("latch2", () => Deferred.make<never, void>())
+        .bind("deferred1", () => Deferred.make<never, void>())
+        .bind("deferred2", () => Deferred.make<never, void>())
+        .bindValue("loser1", ({ deferred1, latch1 }) =>
+          Effect.acquireReleaseUse(
             latch1.succeed(undefined),
             () => Effect.never,
-            () => promise1.succeed(undefined)
+            () => deferred1.succeed(undefined)
           ))
-        .bindValue("loser2", ({ latch2, promise2 }) =>
-          Effect.acquireReleaseWith(
+        .bindValue("loser2", ({ deferred2, latch2 }) =>
+          Effect.acquireReleaseUse(
             latch2.succeed(undefined),
             () => Effect.never,
-            () => promise2.succeed(undefined)
+            () => deferred2.succeed(undefined)
           ))
         .bind("fiber", ({ loser1, loser2 }) => loser1.race(loser2).forkDaemon())
         .tap(({ latch1 }) => latch1.await())
         .tap(({ latch2 }) => latch2.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .bind("res1", ({ promise1 }) => promise1.await())
-        .bind("res2", ({ promise2 }) => promise2.await());
+        .bind("res1", ({ deferred1 }) => deferred1.await())
+        .bind("res2", ({ deferred2 }) => deferred2.await());
 
       const { res1, res2 } = await program.unsafeRunPromise();
 
@@ -169,11 +169,11 @@ describe.concurrent("Effect", () => {
     });
 
     it("race in uninterruptible region", async () => {
-      const promise = Promise.unsafeMake<never, void>(FiberId.none);
-      const program = Effect.unit.race(promise.await()).uninterruptible();
+      const deferred = Deferred.unsafeMake<never, void>(FiberId.none);
+      const program = Effect.unit.race(deferred.await()).uninterruptible();
 
       const result = await program.unsafeRunPromise();
-      await promise.succeed(undefined).unsafeRunPromise();
+      await deferred.succeed(undefined).unsafeRunPromise();
 
       assert.isUndefined(result);
     });
@@ -182,7 +182,7 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
         .bind("fibers", () => Ref.make(HashSet.empty<Fiber<unknown, unknown>>()))
-        .bind("latch", () => Promise.make<never, void>())
+        .bind("latch", () => Deferred.make<never, void>())
         .bindValue(
           "effect",
           ({ fibers, latch, ref }) =>
@@ -238,12 +238,12 @@ describe.concurrent("Effect", () => {
 
     it("raceFirst interrupts loser on success", async () => {
       const program = Effect.Do()
-        .bind("promise", () => Promise.make<never, void>())
-        .bind("effect", () => Promise.make<never, number>())
-        .bindValue("winner", ({ promise }) => Effect.fromEither(Either.right(undefined)))
-        .bindValue("loser", ({ effect, promise }) =>
-          Effect.acquireReleaseWith(
-            promise.succeed(undefined),
+        .bind("deferred", () => Deferred.make<never, void>())
+        .bind("effect", () => Deferred.make<never, number>())
+        .bindValue("winner", () => Effect.fromEither(Either.right(undefined)))
+        .bindValue("loser", ({ deferred, effect }) =>
+          Effect.acquireReleaseUse(
+            deferred.succeed(undefined),
             () => Effect.never,
             () => effect.succeed(42)
           ))
@@ -258,15 +258,15 @@ describe.concurrent("Effect", () => {
 
     it("raceFirst interrupts loser on failure", async () => {
       const program = Effect.Do()
-        .bind("promise", () => Promise.make<never, void>())
-        .bind("effect", () => Promise.make<never, number>())
+        .bind("deferred", () => Deferred.make<never, void>())
+        .bind("effect", () => Deferred.make<never, number>())
         .bindValue(
           "winner",
-          ({ promise }) => promise.await() > Effect.fromEither(Either.left(new Error()))
+          ({ deferred }) => deferred.await() > Effect.fromEither(Either.left(new Error()))
         )
-        .bindValue("loser", ({ effect, promise }) =>
-          Effect.acquireReleaseWith(
-            promise.succeed(undefined),
+        .bindValue("loser", ({ deferred, effect }) =>
+          Effect.acquireReleaseUse(
+            deferred.succeed(undefined),
             () => Effect.never,
             () => effect.succeed(42)
           ))

@@ -60,9 +60,9 @@ describe.concurrent("Effect", () => {
 
     it("does not kill fiber when forked on parent scope", async () => {
       const program = Effect.Do()
-        .bind("latch1", () => Promise.make<never, void>())
-        .bind("latch2", () => Promise.make<never, void>())
-        .bind("latch3", () => Promise.make<never, void>())
+        .bind("latch1", () => Deferred.make<never, void>())
+        .bind("latch2", () => Deferred.make<never, void>())
+        .bind("latch3", () => Deferred.make<never, void>())
         .bind("ref", () => Ref.make(false))
         .bindValue("left", ({ latch1, latch2, latch3, ref }) =>
           Effect.uninterruptibleMask(

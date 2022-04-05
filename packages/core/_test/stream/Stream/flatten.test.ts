@@ -1,17 +1,5 @@
-import { Chunk } from "../../../src/collection/immutable/Chunk"
-import { List } from "../../../src/collection/immutable/List"
-// import { Either } from "../../../src/data/Either"
-// import { identity } from "../../../src/data/Function"
-import { RuntimeError } from "../../../src/io/Cause"
-import { Effect } from "../../../src/io/Effect"
-import { Exit } from "../../../src/io/Exit"
-import { Stream } from "../../../src/stream/Stream"
-// import { Promise } from "../../../src/io/Promise"
-// import { Ref } from "../../../src/io/Ref"
-import { Take } from "../../../src/stream/Take"
-
-describe("Stream", () => {
-  describe("flattenExitOption", () => {
+describe.concurrent("Stream", () => {
+  describe.concurrent("flattenExitOption", () => {
     it("happy path", async () => {
       const program = Effect.scoped(
         Stream.range(0, 10)
@@ -22,16 +10,16 @@ describe("Stream", () => {
               .flattenExitOption()
               .runCollect()
           )
-          .map((chunk) => chunk.flatten().toArray())
-      )
+          .map((chunk) => chunk.flatten())
+      );
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(List.range(0, 10).toArray())
-    })
+      assert.isTrue(result == Chunk.range(0, 9));
+    });
 
     it("errors", async () => {
-      const error = new RuntimeError("boom")
+      const error = new RuntimeError("boom");
       const program = Effect.scoped(
         (Stream.range(0, 10) + Stream.fail(error)).toQueue(1).flatMap((queue) =>
           Stream.fromQueue(queue)
@@ -39,49 +27,50 @@ describe("Stream", () => {
             .flattenExitOption()
             .runCollect()
         )
-      )
+      );
 
-      const result = await program.unsafeRunPromiseExit()
+      const result = await program.unsafeRunPromiseExit();
 
-      expect(result.untraced()).toEqual(Exit.fail(error))
-    })
-  })
+      assert.isTrue(result.untraced() == Exit.fail(error));
+    });
+  });
 
-  describe("flattenIterables", () => {
+  describe.concurrent("flattenIterables", () => {
     it("flattens a group of iterables", async () => {
-      const lists = List(List(1, 2, 3), List.empty<number>(), List(4, 5))
-      const program = Stream.fromIterable(lists).flattenIterables().runCollect()
+      const lists = List(List(1, 2, 3), List.empty<number>(), List(4, 5));
+      const program = Stream.fromCollection(lists).flattenCollections().runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual(lists.flatten().toArray())
-    })
-  })
+      assert.isTrue(result.asImmutableArray() == lists.flatten().asImmutableArray());
+    });
+  });
 
-  describe("flattenTake", () => {
+  describe.concurrent("flattenTake", () => {
     it("happy path", async () => {
-      const chunks = Chunk(Chunk(1, 2, 3), Chunk.empty<number>(), Chunk(4, 5))
+      const chunks = Chunk(Chunk(1, 2, 3), Chunk.empty<number>(), Chunk(4, 5));
       const program = Stream.fromChunks(...chunks)
         .mapChunks((chunk) => Chunk.single(Take.chunk(chunk)))
         .flattenTake()
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual(
-        chunks.reduce(Chunk.empty<number>(), (acc, c) => acc + c).toArray()
-      )
-    })
+      assert.isTrue(
+        result ==
+          chunks.reduce(Chunk.empty<number>(), (acc, c) => acc + c)
+      );
+    });
 
     it("stop collecting on Exit.Failure", async () => {
       const program = Stream(Take.chunk(Chunk(1, 2)), Take.single(3), Take.end)
         .flattenTake()
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([1, 2, 3])
-    })
+      assert.isTrue(result == Chunk(1, 2, 3));
+    });
 
     it("work with empty chunks", async () => {
       const program = Stream(
@@ -89,21 +78,21 @@ describe("Stream", () => {
         Take.chunk(Chunk.empty<number>())
       )
         .flattenTake()
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([])
-    })
+      assert.isTrue(result.isEmpty());
+    });
 
     it("work with empty streams", async () => {
-      const program = Stream.fromIterable(List.empty<Take<never, never>>())
+      const program = Stream.fromCollection(List.empty<Take<never, never>>())
         .flattenTake()
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([])
-    })
-  })
-})
+      assert.isTrue(result.isEmpty());
+    });
+  });
+});

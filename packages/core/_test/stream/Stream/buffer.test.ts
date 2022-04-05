@@ -1,86 +1,74 @@
-import { Chunk } from "../../../src/collection/immutable/Chunk"
-import { List } from "../../../src/collection/immutable/List"
-import { RuntimeError } from "../../../src/io/Cause"
-import { Effect } from "../../../src/io/Effect"
-import { Exit } from "../../../src/io/Exit"
-import { Promise } from "../../../src/io/Promise"
-import { Ref } from "../../../src/io/Ref"
-import { Stream } from "../../../src/stream/Stream"
-
-describe("Stream", () => {
-  describe("buffer", () => {
+describe.concurrent("Stream", () => {
+  describe.concurrent("buffer", () => {
     it("maintains elements and ordering", async () => {
       const chunk = Chunk(
         Chunk(1, 2),
         Chunk(3, 4, 5),
         Chunk.empty<number>(),
         Chunk(6, 7)
-      )
-      const program = Stream.fromChunks(...chunk)
-        .buffer(2)
-        .runCollect()
+      );
+      const program = Stream.fromChunks(...chunk).buffer(2).runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual(chunk.flatten().toArray())
-    })
+      assert.isTrue(result == chunk.flatten());
+    });
 
     it("buffer the stream with error", async () => {
-      const error = new RuntimeError("boom")
-      const program = (Stream.range(0, 10) + Stream.fail(error)).buffer(2).runCollect()
+      const error = new RuntimeError("boom");
+      const program = (Stream.range(0, 10) + Stream.fail(error)).buffer(2).runCollect();
 
-      const result = await program.unsafeRunPromiseExit()
+      const result = await program.unsafeRunPromiseExit();
 
-      expect(result.untraced()).toEqual(Exit.fail(error))
-    })
+      assert.isTrue(result.untraced() == Exit.fail(error));
+    });
 
     it("fast producer progress independently", async () => {
       const program = Effect.Do()
-        .bind("ref", () => Ref.make(List.empty<number>()))
-        .bind("latch", () => Promise.make<never, void>())
+        .bind("ref", () => Ref.make<List<number>>(List.empty()))
+        .bind("latch", () => Deferred.make<never, void>())
         .bindValue("stream", ({ latch, ref }) =>
           Stream.range(1, 5)
             .tap(
               (n) =>
                 ref.update((list) => list.prepend(n)) >
-                Effect.when(n === 4, latch.succeed(undefined))
+                  Effect.when(n === 4, latch.succeed(undefined))
             )
-            .buffer(2)
-        )
-        .bind("list1", ({ stream }) => stream.take(2).runCollect())
+            .buffer(2))
+        .bind("chunk", ({ stream }) => stream.take(2).runCollect())
         .tap(({ latch }) => latch.await())
-        .bind("list2", ({ ref }) => ref.get())
+        .bind("list", ({ ref }) => ref.get());
 
-      const { list1, list2 } = await program.unsafeRunPromise()
+      const { chunk, list } = await program.unsafeRunPromise();
 
-      expect(list1.toArray()).toEqual([1, 2])
-      expect(list2.reverse().toArray()).toEqual([1, 2, 3, 4])
-    })
-  })
+      assert.isTrue(chunk == Chunk(1, 2));
+      assert.isTrue(list.reverse() == List(1, 2, 3, 4));
+    });
+  });
 
-  describe("bufferDropping", () => {
+  describe.concurrent("bufferDropping", () => {
     it("buffer the stream with error", async () => {
-      const error = new RuntimeError("boom")
+      const error = new RuntimeError("boom");
       const program = (
         Stream.range(1, 1000) +
         Stream.fail(error) +
         Stream.range(1001, 2000)
       )
         .bufferDropping(2)
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromiseExit()
+      const result = await program.unsafeRunPromiseExit();
 
-      expect(result.untraced()).toEqual(Exit.fail(error))
-    })
+      assert.isTrue(result.untraced() == Exit.fail(error));
+    });
 
     it("fast producer progress independently", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(List.empty<number>()))
-        .bind("latch1", () => Promise.make<never, void>())
-        .bind("latch2", () => Promise.make<never, void>())
-        .bind("latch3", () => Promise.make<never, void>())
-        .bind("latch4", () => Promise.make<never, void>())
+        .bind("latch1", () => Deferred.make<never, void>())
+        .bind("latch2", () => Deferred.make<never, void>())
+        .bind("latch3", () => Deferred.make<never, void>())
+        .bind("latch4", () => Deferred.make<never, void>())
         .bindValue(
           "stream1",
           ({ latch1, latch2 }) =>
@@ -98,9 +86,7 @@ describe("Stream", () => {
             )
         )
         .bindValue("stream3", () => Stream(-1))
-        .bindValue("stream", ({ stream1, stream2, stream3 }) =>
-          (stream1 + stream2 + stream3).bufferDropping(8)
-        )
+        .bindValue("stream", ({ stream1, stream2, stream3 }) => (stream1 + stream2 + stream3).bufferDropping(8))
         .flatMap(({ latch1, latch2, latch3, latch4, ref, stream }) =>
           Effect.scoped(
             stream.toPull().flatMap((as) =>
@@ -124,58 +110,52 @@ describe("Stream", () => {
                 .bind("snapshot2", () => ref.get())
             )
           )
-        )
+        );
 
-      const { snapshot1, snapshot2, zero } = await program.unsafeRunPromise()
+      const { snapshot1, snapshot2, zero } = await program.unsafeRunPromise();
 
-      expect(zero.toArray()).toEqual([0])
-      expect(snapshot1.toArray()).toEqual([8, 7, 6, 5, 4, 3, 2, 1])
-      expect(snapshot2.toArray()).toEqual([
-        24, 23, 22, 21, 20, 19, 18, 17, 8, 7, 6, 5, 4, 3, 2, 1
-      ])
-    })
-  })
+      assert.isTrue(zero == Chunk(0));
+      assert.isTrue(snapshot1 == List(8, 7, 6, 5, 4, 3, 2, 1));
+      assert.isTrue(snapshot2 == List(24, 23, 22, 21, 20, 19, 18, 17, 8, 7, 6, 5, 4, 3, 2, 1));
+    });
+  });
 
-  describe("bufferSliding", () => {
+  describe.concurrent("bufferSliding", () => {
     it("buffer the stream with error", async () => {
-      const error = new RuntimeError("boom")
+      const error = new RuntimeError("boom");
       const program = (
         Stream.range(1, 1000) +
         Stream.fail(error) +
         Stream.range(1001, 2000)
       )
         .bufferSliding(2)
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromiseExit()
+      const result = await program.unsafeRunPromiseExit();
 
-      expect(result.untraced()).toEqual(Exit.fail(error))
-    })
+      assert.isTrue(result.untraced() == Exit.fail(error));
+    });
 
     it("fast producer progress independently", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(List.empty<number>()))
-        .bind("latch1", () => Promise.make<never, void>())
-        .bind("latch2", () => Promise.make<never, void>())
-        .bind("latch3", () => Promise.make<never, void>())
-        .bind("latch4", () => Promise.make<never, void>())
+        .bind("latch1", () => Deferred.make<never, void>())
+        .bind("latch2", () => Deferred.make<never, void>())
+        .bind("latch3", () => Deferred.make<never, void>())
+        .bind("latch4", () => Deferred.make<never, void>())
         .bindValue(
           "stream1",
           ({ latch1, latch2 }) =>
             Stream(0) +
-            Stream.fromEffect(latch1.await()).flatMap(() =>
-              Stream.range(1, 17).ensuring(latch2.succeed(undefined))
-            )
+            Stream.fromEffect(latch1.await()).flatMap(() => Stream.range(1, 17).ensuring(latch2.succeed(undefined)))
         )
-        .bindValue("stream2", ({ latch3, latch4 }) =>
-          Stream.fromEffect(latch3.await()).flatMap(() =>
-            Stream.range(17, 25).ensuring(latch4.succeed(undefined))
-          )
+        .bindValue(
+          "stream2",
+          ({ latch3, latch4 }) =>
+            Stream.fromEffect(latch3.await()).flatMap(() => Stream.range(17, 25).ensuring(latch4.succeed(undefined)))
         )
         .bindValue("stream3", () => Stream(-1))
-        .bindValue("stream", ({ stream1, stream2, stream3 }) =>
-          (stream1 + stream2 + stream3).bufferSliding(8)
-        )
+        .bindValue("stream", ({ stream1, stream2, stream3 }) => (stream1 + stream2 + stream3).bufferSliding(8))
         .flatMap(({ latch1, latch2, latch3, latch4, ref, stream }) =>
           Effect.scoped(
             stream.toPull().flatMap((as) =>
@@ -199,138 +179,134 @@ describe("Stream", () => {
                 .bind("snapshot2", () => ref.get())
             )
           )
-        )
+        );
 
-      const { snapshot1, snapshot2, zero } = await program.unsafeRunPromise()
+      const { snapshot1, snapshot2, zero } = await program.unsafeRunPromise();
 
-      expect(zero.toArray()).toEqual([0])
-      expect(snapshot1.toArray()).toEqual([16, 15, 14, 13, 12, 11, 10, 9])
-      expect(snapshot2.toArray()).toEqual([
-        -1, 24, 23, 22, 21, 20, 19, 18, 16, 15, 14, 13, 12, 11, 10, 9
-      ])
-    })
-  })
+      assert.isTrue(zero == Chunk(0));
+      assert.isTrue(snapshot1 == List(16, 15, 14, 13, 12, 11, 10, 9));
+      assert.isTrue(snapshot2 == List(-1, 24, 23, 22, 21, 20, 19, 18, 16, 15, 14, 13, 12, 11, 10, 9));
+    });
+  });
 
-  describe("bufferUnbounded", () => {
+  describe.concurrent("bufferUnbounded", () => {
     it("buffer the stream", async () => {
-      const chunk = Chunk(1, 2, 3, 4, 5)
-      const program = Stream.fromIterable(chunk).bufferUnbounded().runCollect()
+      const chunk = Chunk(1, 2, 3, 4, 5);
+      const program = Stream.fromCollection(chunk).bufferUnbounded().runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual(chunk.toArray())
-    })
+      assert.isTrue(result == chunk);
+    });
 
     it("buffer the stream with error", async () => {
-      const error = new RuntimeError("boom")
+      const error = new RuntimeError("boom");
       const program = (Stream.range(0, 10) + Stream.fail(error))
         .bufferUnbounded()
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromiseExit()
+      const result = await program.unsafeRunPromiseExit();
 
-      expect(result.untraced()).toEqual(Exit.fail(error))
-    })
+      assert.isTrue(result.untraced() == Exit.fail(error));
+    });
 
     it("fast producer progress independently", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(List.empty<number>()))
-        .bind("latch", () => Promise.make<never, void>())
+        .bind("latch", () => Deferred.make<never, void>())
         .bindValue("stream", ({ latch, ref }) =>
           Stream.range(1, 1000)
             .tap(
               (i) =>
                 ref.update((list) => list.prepend(i)) >
-                Effect.when(i === 999, latch.succeed(undefined))
+                  Effect.when(i === 999, latch.succeed(undefined))
             )
-            .bufferUnbounded()
-        )
-        .bind("list1", ({ stream }) => stream.take(2).runCollect())
+            .bufferUnbounded())
+        .bind("chunk", ({ stream }) => stream.take(2).runCollect())
         .tap(({ latch }) => latch.await())
-        .bind("list2", ({ ref }) => ref.get())
+        .bind("list", ({ ref }) => ref.get());
 
-      const { list1, list2 } = await program.unsafeRunPromise()
+      const { chunk, list } = await program.unsafeRunPromise();
 
-      expect(list1.toArray()).toEqual([1, 2])
-      expect(list2.toArray()).toEqual(List.range(1, 1000).reverse().toArray())
-    })
-  })
+      assert.isTrue(chunk == Chunk(1, 2));
+      assert.isTrue(list == List.from(Chunk.range(1, 1000)).reverse());
+    });
+  });
 
-  describe("bufferChunks", () => {
+  describe.concurrent("bufferChunks", () => {
     it("maintains elements and ordering", async () => {
       const chunk = Chunk(
         Chunk(1, 2),
         Chunk(3, 4, 5),
         Chunk.empty<number>(),
         Chunk(6, 7)
-      )
+      );
       const program = Stream.fromChunks(...chunk)
         .bufferChunks(2)
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual(chunk.flatten().toArray())
-    })
+      assert.isTrue(result == chunk.flatten());
+    });
 
     it("bufferChunks the stream with error", async () => {
-      const error = new RuntimeError("boom")
+      const error = new RuntimeError("boom");
       const program = (Stream.range(0, 10) + Stream.fail(error))
         .bufferChunks(2)
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromiseExit()
+      const result = await program.unsafeRunPromiseExit();
 
-      expect(result.untraced()).toEqual(Exit.fail(error))
-    })
+      assert.isTrue(result.untraced() == Exit.fail(error));
+    });
 
     it("fast producer progress independently", async () => {
       const program = Effect.Do()
-        .bind("ref", () => Ref.make(List.empty<number>()))
-        .bind("latch", () => Promise.make<never, void>())
+        .bind("ref", () => Ref.make<List<number>>(List.empty()))
+        .bind("latch", () => Deferred.make<never, void>())
         .bindValue("stream", ({ latch, ref }) =>
           Stream.range(1, 5)
             .tap(
               (n) =>
                 ref.update((list) => list.prepend(n)) >
-                Effect.when(n === 4, latch.succeed(undefined))
+                  Effect.when(n === 4, latch.succeed(undefined))
             )
-            .bufferChunks(2)
-        )
-        .bind("list1", ({ stream }) => stream.take(2).runCollect())
+            .bufferChunks(2))
+        .bind("chunk", ({ stream }) => stream.take(2).runCollect())
         .tap(({ latch }) => latch.await())
-        .bind("list2", ({ ref }) => ref.get())
+        .bind("list", ({ ref }) => ref.get());
 
-      const { list1, list2 } = await program.unsafeRunPromise()
+      const { chunk, list } = await program.unsafeRunPromise();
 
-      expect(list1.toArray()).toEqual([1, 2])
-      expect(list2.reverse().toArray()).toEqual([1, 2, 3, 4])
-    })
-  })
+      assert.isTrue(chunk == Chunk(1, 2));
+      assert.isTrue(list.reverse() == List(1, 2, 3, 4));
+    });
+  });
 
-  describe("bufferChunksDropping", () => {
+  describe.concurrent("bufferChunksDropping", () => {
     it("buffer the stream with error", async () => {
-      const error = new RuntimeError("boom")
+      const error = new RuntimeError("boom");
       const program = (
         Stream.range(1, 1000) +
         Stream.fail(error) +
         Stream.range(1001, 2000)
       )
         .bufferChunksDropping(2)
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromiseExit()
+      const result = await program.unsafeRunPromiseExit();
 
-      expect(result.untraced()).toEqual(Exit.fail(error))
-    })
+      assert.isTrue(result.untraced() == Exit.fail(error));
+    });
 
     it("fast producer progress independently", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(List.empty<number>()))
-        .bind("latch1", () => Promise.make<never, void>())
-        .bind("latch2", () => Promise.make<never, void>())
-        .bind("latch3", () => Promise.make<never, void>())
-        .bind("latch4", () => Promise.make<never, void>())
+        .bind("latch1", () => Deferred.make<never, void>())
+        .bind("latch2", () => Deferred.make<never, void>())
+        .bind("latch3", () => Deferred.make<never, void>())
+        .bind("latch4", () => Deferred.make<never, void>())
         .bindValue(
           "stream1",
           ({ latch1, latch2 }) =>
@@ -348,9 +324,7 @@ describe("Stream", () => {
             )
         )
         .bindValue("stream3", () => Stream(-1))
-        .bindValue("stream", ({ stream1, stream2, stream3 }) =>
-          (stream1 + stream2 + stream3).bufferChunksDropping(8)
-        )
+        .bindValue("stream", ({ stream1, stream2, stream3 }) => (stream1 + stream2 + stream3).bufferChunksDropping(8))
         .flatMap(({ latch1, latch2, latch3, latch4, ref, stream }) =>
           Effect.scoped(
             stream.toPull().flatMap((as) =>
@@ -374,41 +348,41 @@ describe("Stream", () => {
                 .bind("snapshot2", () => ref.get())
             )
           )
-        )
+        );
 
-      const { snapshot1, snapshot2, zero } = await program.unsafeRunPromise()
+      const { snapshot1, snapshot2, zero } = await program.unsafeRunPromise();
 
-      expect(zero.toArray()).toEqual([0])
-      expect(snapshot1.toArray()).toEqual([8, 7, 6, 5, 4, 3, 2, 1])
-      expect(snapshot2.toArray()).toEqual([
-        24, 23, 22, 21, 20, 19, 18, 17, 8, 7, 6, 5, 4, 3, 2, 1
-      ])
-    })
-  })
+      assert.isTrue(zero == Chunk(0));
+      assert.isTrue(snapshot1 == List(8, 7, 6, 5, 4, 3, 2, 1));
+      assert.isTrue(
+        snapshot2 == List(24, 23, 22, 21, 20, 19, 18, 17, 8, 7, 6, 5, 4, 3, 2, 1)
+      );
+    });
+  });
 
-  describe("bufferChunksSliding", () => {
+  describe.concurrent("bufferChunksSliding", () => {
     it("buffer the stream with error", async () => {
-      const error = new RuntimeError("boom")
+      const error = new RuntimeError("boom");
       const program = (
         Stream.range(1, 1000) +
         Stream.fail(error) +
         Stream.range(1001, 2000)
       )
         .bufferChunksSliding(2)
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromiseExit()
+      const result = await program.unsafeRunPromiseExit();
 
-      expect(result.untraced()).toEqual(Exit.fail(error))
-    })
+      assert.isTrue(result.untraced() == Exit.fail(error));
+    });
 
     it("fast producer progress independently", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(List.empty<number>()))
-        .bind("latch1", () => Promise.make<never, void>())
-        .bind("latch2", () => Promise.make<never, void>())
-        .bind("latch3", () => Promise.make<never, void>())
-        .bind("latch4", () => Promise.make<never, void>())
+        .bind("latch1", () => Deferred.make<never, void>())
+        .bind("latch2", () => Deferred.make<never, void>())
+        .bind("latch3", () => Deferred.make<never, void>())
+        .bind("latch4", () => Deferred.make<never, void>())
         .bindValue(
           "stream1",
           ({ latch1, latch2 }) =>
@@ -417,15 +391,15 @@ describe("Stream", () => {
               Stream.range(1, 17).rechunk(1).ensuring(latch2.succeed(undefined))
             )
         )
-        .bindValue("stream2", ({ latch3, latch4 }) =>
-          Stream.fromEffect(latch3.await()).flatMap(() =>
-            Stream.range(17, 25).rechunk(1).ensuring(latch4.succeed(undefined))
-          )
+        .bindValue(
+          "stream2",
+          ({ latch3, latch4 }) =>
+            Stream.fromEffect(latch3.await()).flatMap(() =>
+              Stream.range(17, 25).rechunk(1).ensuring(latch4.succeed(undefined))
+            )
         )
         .bindValue("stream3", () => Stream(-1))
-        .bindValue("stream", ({ stream1, stream2, stream3 }) =>
-          (stream1 + stream2 + stream3).bufferChunksSliding(8)
-        )
+        .bindValue("stream", ({ stream1, stream2, stream3 }) => (stream1 + stream2 + stream3).bufferChunksSliding(8))
         .flatMap(({ latch1, latch2, latch3, latch4, ref, stream }) =>
           Effect.scoped(
             stream.toPull().flatMap((as) =>
@@ -449,15 +423,13 @@ describe("Stream", () => {
                 .bind("snapshot2", () => ref.get())
             )
           )
-        )
+        );
 
-      const { snapshot1, snapshot2, zero } = await program.unsafeRunPromise()
+      const { snapshot1, snapshot2, zero } = await program.unsafeRunPromise();
 
-      expect(zero.toArray()).toEqual([0])
-      expect(snapshot1.toArray()).toEqual([16, 15, 14, 13, 12, 11, 10, 9])
-      expect(snapshot2.toArray()).toEqual([
-        -1, 24, 23, 22, 21, 20, 19, 18, 16, 15, 14, 13, 12, 11, 10, 9
-      ])
-    })
-  })
-})
+      assert.isTrue(zero == Chunk(0));
+      assert.isTrue(snapshot1 == List(16, 15, 14, 13, 12, 11, 10, 9));
+      assert.isTrue(snapshot2 == List(-1, 24, 23, 22, 21, 20, 19, 18, 16, 15, 14, 13, 12, 11, 10, 9));
+    });
+  });
+});

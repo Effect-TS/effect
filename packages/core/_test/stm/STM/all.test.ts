@@ -1,13 +1,7 @@
-import { Chunk } from "../../../src/collection/immutable/Chunk"
-import { List } from "../../../src/collection/immutable/List"
-import { constVoid } from "../../../src/data/Function"
-import { Effect } from "../../../src/io/Effect"
-import { Exit } from "../../../src/io/Exit"
-import { STM } from "../../../src/stm/STM"
-import { TRef } from "../../../src/stm/TRef"
+import { constVoid } from "@tsplus/stdlib/data/Function";
 
-describe("STM", () => {
-  describe("collectAll", () => {
+describe.concurrent("STM", () => {
+  describe.concurrent("collectAll", () => {
     // TODO: implement after TQueue
     it.skip("ordering", async () => {
       // val tx = for {
@@ -18,104 +12,92 @@ describe("STM", () => {
       //   ans <- ZSTM.collectAll(List(tq.take, tq.take, tq.take))
       // } yield ans
       // assertM(tx.commit)(equalTo(List(1, 2, 3)))
-    })
+    });
 
     it("collects a list of transactional effects to a single transaction that produces a list of values", async () => {
       const program = Effect.Do()
-        .bind("iterable", () =>
-          Effect.succeed(List.range(1, 101).map((n) => TRef.make(n)))
-        )
+        .bind("iterable", () => Effect.succeed(Chunk.range(1, 100).map((n) => TRef.make(n))))
         .bind("tRefs", ({ iterable }) => STM.collectAll(iterable).commit())
-        .flatMap(({ tRefs }) =>
-          Effect.forEachPar(tRefs, (tRef) => tRef.get().commit()).map((chunk) =>
-            chunk.toArray()
-          )
-        )
+        .flatMap(({ tRefs }) => Effect.forEachPar(tRefs, (tRef) => tRef.get().commit()));
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(List.range(1, 101).toArray())
-    })
+      assert.isTrue(result == Chunk.range(1, 100));
+    });
 
     it("collects a chunk of transactional effects to a single transaction that produces a chunk of values", async () => {
       const program = Effect.Do()
-        .bind("iterable", () =>
-          Effect.succeed(List.range(1, 101).map((n) => TRef.make(n)))
-        )
+        .bind("iterable", () => Effect.succeed(Chunk.range(1, 100).map((n) => TRef.make(n))))
         .bind("tRefs", ({ iterable }) => STM.collectAll(Chunk.from(iterable)).commit())
-        .flatMap(({ tRefs }) =>
-          Effect.forEachPar(tRefs, (tRef) => tRef.get().commit()).map((chunk) =>
-            chunk.toArray()
-          )
-        )
+        .flatMap(({ tRefs }) => Effect.forEachPar(tRefs, (tRef) => tRef.get().commit()));
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(List.range(1, 101).toArray())
-    })
-  })
+      assert.isTrue(result == Chunk.range(1, 100));
+    });
+  });
 
-  describe("mergeAll", () => {
+  describe.concurrent("mergeAll", () => {
     it("return zero element on empty input", async () => {
-      const zeroElement = 42
-      const nonZero = 43
+      const zeroElement = 42;
+      const nonZero = 43;
       const program = STM.mergeAll(
         List.empty<STM<unknown, never, number>>(),
         zeroElement,
         () => nonZero
-      ).commit()
+      ).commit();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe(zeroElement)
-    })
+      assert.strictEqual(result, zeroElement);
+    });
 
     it("merge list using function", async () => {
       const program = STM.mergeAll(
         List(3, 5, 7).map(STM.succeedNow),
         1,
         (a, b) => a + b
-      ).commit()
+      ).commit();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe(1 + 3 + 5 + 7)
-    })
+      assert.strictEqual(result, 1 + 3 + 5 + 7);
+    });
     it("return error if it exists in list", async () => {
       const program = STM.mergeAll(
-        List<STM<unknown, any, any>>(STM.unit, STM.fail(1)),
+        List(STM.unit, STM.fail(1)),
         undefined,
         constVoid
-      ).commit()
+      ).commit();
 
-      const result = await program.unsafeRunPromiseExit()
+      const result = await program.unsafeRunPromiseExit();
 
-      expect(result.untraced()).toEqual(Exit.fail(1))
-    })
-  })
-  describe("reduceAll", () => {
+      assert.isTrue(result.untraced() == Exit.fail(1));
+    });
+  });
+  describe.concurrent("reduceAll", () => {
     it("should reduce all elements to a single value", async () => {
       const program = STM.reduceAll(
         STM.succeed(1),
         List(2, 3, 4).map(STM.succeedNow),
         (acc, a) => acc + a
-      ).commit()
+      ).commit();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe(10)
-    })
+      assert.strictEqual(result, 10);
+    });
 
     it("should handle an empty iterable", async () => {
       const program = STM.reduceAll(
         STM.succeed(1),
         List.empty<STM<unknown, never, number>>(),
         (acc, a) => acc + a
-      ).commit()
+      ).commit();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toBe(1)
-    })
-  })
-})
+      assert.strictEqual(result, 1);
+    });
+  });
+});

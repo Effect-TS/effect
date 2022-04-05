@@ -1,15 +1,11 @@
-import { Effect } from "../../../src/io/Effect"
-import { Exit } from "../../../src/io/Exit"
-import { Channel } from "../../../src/stream/Channel"
-
-describe("Channel", () => {
-  describe("scopedOut", () => {
+describe.concurrent("Channel", () => {
+  describe.concurrent("scopedOut", () => {
     it("failure", async () => {
-      const program = Channel.scopedOut(Effect.fail("error")).runCollect()
+      const program = Channel.scopedOut(Effect.fail("error")).runCollect();
 
-      const result = await program.unsafeRunPromiseExit()
+      const result = await program.unsafeRunPromiseExit();
 
-      expect(result.untraced()).toEqual(Exit.fail("error"))
-    })
-  })
-})
+      assert.isTrue(result.untraced() == Exit.fail("error"));
+    });
+  });
+});

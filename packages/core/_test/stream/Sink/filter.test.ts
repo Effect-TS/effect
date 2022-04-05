@@ -1,30 +1,26 @@
-import { Effect } from "../../../src/io/Effect"
-import { Sink } from "../../../src/stream/Sink"
-import { Stream } from "../../../src/stream/Stream"
-
-describe("Sink", () => {
-  describe("filterInput", () => {
+describe.concurrent("Sink", () => {
+  describe.concurrent("filterInput", () => {
     it("should filter input values", async () => {
       const program = Stream.range(1, 10).run(
         Sink.collectAll<number>().filterInput((n) => n % 2 === 0)
-      )
+      );
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([2, 4, 6, 8])
-    })
-  })
+      assert.isTrue(result == Chunk(2, 4, 6, 8));
+    });
+  });
 
-  describe("filterInputEffect", () => {
+  describe.concurrent("filterInputEffect", () => {
     it("happy path", async () => {
       const program = Stream.range(1, 10).run(
         Sink.collectAll<number>().filterInputEffect((n) => Effect.succeed(n % 2 === 0))
-      )
+      );
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([2, 4, 6, 8])
-    })
+      assert.isTrue(result == Chunk(2, 4, 6, 8));
+    });
 
     it("failure", async () => {
       const program = Stream.range(1, 10)
@@ -33,11 +29,11 @@ describe("Sink", () => {
             () => Effect.fail("fail") as Effect<unknown, string, boolean>
           )
         )
-        .flip()
+        .flip();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual("fail")
-    })
-  })
-})
+      assert.strictEqual(result, "fail");
+    });
+  });
+});

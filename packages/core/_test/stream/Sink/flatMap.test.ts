@@ -1,30 +1,24 @@
-import { Chunk } from "../../../src/collection/immutable/Chunk"
-import { Tuple } from "../../../src/collection/immutable/Tuple"
-import { Option } from "../../../src/data/Option"
-import { Sink } from "../../../src/stream/Sink"
-import { Stream } from "../../../src/stream/Stream"
-
-describe("Sink", () => {
-  describe("flatMap", () => {
+describe.concurrent("Sink", () => {
+  describe.concurrent("flatMap", () => {
     it("non-empty input", async () => {
       const program = Stream(1, 2, 3).run(
         Sink.head<number>().flatMap((x) => Sink.succeed(x))
-      )
+      );
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Option.some(1))
-    })
+      assert.isTrue(result == Option.some(1));
+    });
 
     it("empty input", async () => {
       const program = Stream.empty.run(
         Sink.head<number>().flatMap((x) => Sink.succeed(x))
-      )
+      );
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Option.none)
-    })
+      assert.isTrue(result == Option.none);
+    });
 
     it("with leftovers", async () => {
       const chunks = Chunk(
@@ -32,21 +26,17 @@ describe("Sink", () => {
         Chunk(3, 4, 5),
         Chunk.empty<number>(),
         Chunk(7, 8, 9, 10)
-      )
-      const headAndCount = Sink.head<number>().flatMap((head) =>
-        Sink.count().map((count) => Tuple(head, count))
-      )
-      const program = Stream.fromChunks(...chunks).run(headAndCount)
+      );
+      const headAndCount = Sink.head<number>().flatMap((head) => Sink.count().map((count) => Tuple(head, count)));
+      const program = Stream.fromChunks(...chunks).run(headAndCount);
 
       const {
         tuple: [head, count]
-      } = await program.unsafeRunPromise()
+      } = await program.unsafeRunPromise();
 
-      expect(head).toEqual(chunks.flatten().head)
-      expect(count + head.fold(0, () => 1)).toBe(
-        chunks.map((chunk) => chunk.size).reduce(0, (a, b) => a + b)
-      )
-    })
+      assert.isTrue(head == chunks.flatten().head);
+      assert.strictEqual(count + head.fold(0, () => 1), chunks.map((chunk) => chunk.size).reduce(0, (a, b) => a + b));
+    });
 
     // TODO(Mike/Max): implement after Gen
     // test("leftovers are kept in order") {
@@ -105,5 +95,5 @@ describe("Sink", () => {
     //     }
     //   }
     // } @@ jvmOnly
-  })
-})
+  });
+});

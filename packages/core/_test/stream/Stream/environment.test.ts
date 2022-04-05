@@ -1,95 +1,81 @@
-import type { Has } from "../../../src/data/Has"
-import { Option } from "../../../src/data/Option"
-import { Effect } from "../../../src/io/Effect"
-import { Exit } from "../../../src/io/Exit"
-import { Layer } from "../../../src/io/Layer"
-import { Stream } from "../../../src/stream/Stream"
-import { NumberService } from "./test-utils"
+import { NumberService } from "@effect-ts/core/test/stream/Stream/test-utils";
 
 describe("Stream", () => {
   describe("environment", () => {
     it("simple example", async () => {
-      const program = Stream.environment<string>().provideEnvironment("test").runHead()
+      const program = Stream.environment<string>().provideEnvironment("test").runHead();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Option.some("test"))
-    })
-  })
+      assert.isTrue(result == Option.some("test"));
+    });
+  });
 
   describe("environmentWith", () => {
     it("simple example", async () => {
       const program = Stream.environmentWith((r: string) => r)
         .provideEnvironment("test")
-        .runHead()
+        .runHead();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Option.some("test"))
-    })
-  })
+      assert.isTrue(result == Option.some("test"));
+    });
+  });
 
   describe("environmentWithEffect", () => {
     it("simple example", async () => {
-      const program = Stream.environmentWithEffect((r: Has<NumberService>) =>
-        Effect.succeed(NumberService.read(r))
-      )
-        .provideEnvironment(NumberService.has({ n: 10 }))
-        .runHead().some
+      const program = Stream.environmentWithEffect((r: Has<NumberService>) => Effect.succeed(NumberService.get(r)))
+        .provideEnvironment(NumberService({ n: 10 }))
+        .runHead().some;
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.n).toEqual(10)
-    })
+      assert.strictEqual(result.n, 10);
+    });
 
     it("environmentWithZIO fails", async () => {
-      const program = Stream.environmentWithEffect((r: Has<NumberService>) =>
-        Effect.fail("fail")
-      )
-        .provideEnvironment(NumberService.has({ n: 10 }))
-        .runHead()
+      const program = Stream.environmentWithEffect((r: Has<NumberService>) => Effect.fail("fail"))
+        .provideEnvironment(NumberService({ n: 10 }))
+        .runHead();
 
-      const result = await program.unsafeRunPromiseExit()
+      const result = await program.unsafeRunPromiseExit();
 
-      expect(result.untraced()).toEqual(Exit.fail("fail"))
-    })
-  })
+      assert.isTrue(result.untraced() == Exit.fail("fail"));
+    });
+  });
 
   describe("environmentWithStream", () => {
     it("environmentWithStream", async () => {
-      const program = Stream.environmentWithStream((r: Has<NumberService>) =>
-        Stream.succeed(NumberService.read(r))
-      )
-        .provideEnvironment(NumberService.has({ n: 10 }))
-        .runHead().some
+      const program = Stream.environmentWithStream((r: Has<NumberService>) => Stream.succeed(NumberService.get(r)))
+        .provideEnvironment(NumberService({ n: 10 }))
+        .runHead().some;
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.n).toEqual(10)
-    })
+      assert.strictEqual(result.n, 10);
+    });
 
     it("environmentWithStream fails", async () => {
-      const program = Stream.environmentWithStream((r: Has<NumberService>) =>
-        Stream.fail("fail")
-      )
-        .provideEnvironment(NumberService.has({ n: 10 }))
-        .runHead()
+      const program = Stream.environmentWithStream((r: Has<NumberService>) => Stream.fail("fail"))
+        .provideEnvironment(NumberService({ n: 10 }))
+        .runHead();
 
-      const result = await program.unsafeRunPromiseExit()
+      const result = await program.unsafeRunPromiseExit();
 
-      expect(result.untraced()).toEqual(Exit.fail("fail"))
-    })
-  })
+      assert.isTrue(result.untraced() == Exit.fail("fail"));
+    });
+  });
 
   describe("provideLayer", () => {
     it("simple example", async () => {
       const program = Stream.scoped(Effect.service(NumberService))
-        .provideLayer(Layer.succeed(NumberService.has({ n: 10 })))
-        .runHead()
+        .provideLayer(Layer.succeed(NumberService({ n: 10 })))
+        .runHead();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result).toEqual(Option.some({ n: 10 }))
-    })
-  })
-})
+      assert.isTrue(result == Option.some({ n: 10 }));
+    });
+  });
+});

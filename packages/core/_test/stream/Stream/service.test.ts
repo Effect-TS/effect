@@ -1,44 +1,41 @@
-import { Chunk } from "../../../src/collection/immutable/Chunk"
-import { tag } from "../../../src/data/Has"
-import type { UIO } from "../../../src/io/Effect"
-import { Effect } from "../../../src/io/Effect"
-import { Layer } from "../../../src/io/Layer"
-import { Stream } from "../../../src/stream/Stream"
-
-describe("Stream", () => {
-  describe("serviceWith", () => {
+describe.concurrent("Stream", () => {
+  describe.concurrent("serviceWith", () => {
     it("serviceWithEffect", async () => {
-      interface A {
-        readonly live: UIO<number>
+      const ServiceWithEffectId = Symbol.for("@effect-ts/core/test/stream/Stream/ServiceWithEffectId");
+
+      interface ServiceWithEffect {
+        readonly live: UIO<number>;
       }
 
-      const A = tag<A>()
+      const ServiceWithEffect = Service<ServiceWithEffect>(ServiceWithEffectId);
 
-      const program = Stream.serviceWithEffect(A)((_) => _.live)
-        .provideSomeLayer(Layer.succeed(A.has({ live: Effect.succeed(10) })))
-        .runCollect()
+      const program = Stream.serviceWithEffect(ServiceWithEffect)((_) => _.live)
+        .provideSomeLayer(Layer.succeed(ServiceWithEffect({ live: Effect.succeed(10) })))
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual([10])
-    })
+      assert.isTrue(result == Chunk(10));
+    });
 
     it("serviceWithStream", async () => {
-      interface A {
-        readonly live: Stream<unknown, never, number>
+      const ServiceWithStreamId = Symbol.for("@effect-ts/core/test/stream/Stream/ServiceWithEffectId");
+
+      interface ServiceWithStream {
+        readonly live: Stream<unknown, never, number>;
       }
 
-      const A = tag<A>()
+      const ServiceWithStream = Service<ServiceWithStream>(ServiceWithStreamId);
 
-      const program = Stream.serviceWithStream(A)((_) => _.live)
+      const program = Stream.serviceWithStream(ServiceWithStream)((_) => _.live)
         .provideSomeLayer(
-          Layer.succeed(A.has({ live: Stream.fromIterable(Chunk.range(0, 10)) }))
+          Layer.succeed(ServiceWithStream({ live: Stream.fromCollection(Chunk.range(0, 10)) }))
         )
-        .runCollect()
+        .runCollect();
 
-      const result = await program.unsafeRunPromise()
+      const result = await program.unsafeRunPromise();
 
-      expect(result.toArray()).toEqual(Chunk.range(0, 10).toArray())
-    })
-  })
-})
+      assert.isTrue(result == Chunk.range(0, 10));
+    });
+  });
+});
