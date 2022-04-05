@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+      "noEmit": true,
+      "allowJs": true,
+      "baseUrl": ".",
+      "paths": {
+          "@effect-ts/core": [
+              "./packages/core/build/esm/index.js"
+          ],
+          "@effect-ts/core/test/*": [
+              "./packages/core/build/test/*"
+          ],
+          "@effect-ts/core/examples/*": [
+              "./packages/core/build/examples/*"
+          ],
+          "@effect-ts/core/*": [
+              "./packages/core/build/esm/*"
+          ],
+      }
+  },
+  "include": [
+      "./packages/core/build/esm/**/*.js",
+      "./packages/core/build/test/**/*.js",
+      "./packages/core/build/examples/**/*.js"
+  ]
+}

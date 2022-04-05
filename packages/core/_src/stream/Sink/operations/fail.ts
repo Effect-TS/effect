@@ -1,0 +1,13 @@
+import { SinkInternal } from "@effect-ts/core/stream/Sink/operations/_internal/SinkInternal";
+
+/**
+ * A sink that always fails with the specified error.
+ *
+ * @tsplus static ets/Sink/Ops fail
+ */
+export function fail<E>(
+  e: LazyArg<E>,
+  __tsplusTrace?: string
+): Sink<unknown, E, unknown, never, never> {
+  return new SinkInternal(Channel.fail(e));
+}

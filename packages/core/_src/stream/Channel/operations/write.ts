@@ -1,0 +1,12 @@
+import { Emit } from "@effect-ts/core/stream/Channel/definition/primitives";
+
+/**
+ * Writes an output to the channel.
+ *
+ * @tsplus static ets/Channel/Ops write
+ */
+export function write<OutElem>(
+  out: LazyArg<OutElem>
+): Channel<unknown, unknown, unknown, unknown, never, OutElem, void> {
+  return new Emit(out);
+}

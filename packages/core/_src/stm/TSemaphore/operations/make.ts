@@ -1,0 +1,10 @@
+import { TSemaphoreInternal } from "@effect-ts/core/stm/TSemaphore/operations/_internal/TSemaphoreInternal";
+
+/**
+ * Constructs a new `TSemaphore` with the specified number of permits.
+ *
+ * @tsplus static ets/TSemaphore/Ops make
+ */
+export function make(permits: number): STM<unknown, never, TSemaphore> {
+  return TRef.make(permits).map((v) => new TSemaphoreInternal(v));
+}

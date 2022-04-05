@@ -1,0 +1,12 @@
+import { Fail } from "@effect-ts/core/stream/Channel/definition/primitives";
+
+/**
+ * Halt a channel with the specified error.
+ *
+ * @tsplus static ets/Channel/Ops failNow
+ */
+export function failNow<E>(
+  e: E
+): Channel<unknown, unknown, unknown, unknown, E, never, never> {
+  return new Fail(() => Cause.fail(e));
+}

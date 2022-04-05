@@ -1,12 +1,24 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "lib": ["DOM", "ES2020"],
-    "target": "ES2017",
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "noErrorTruncation": true,
-    "types": ["jest", "node"]
+      "tsPlusConfig": "../../tsplus.config.json",
+      "tsBuildInfoFile": "build/tsbuildinfo/tsconfig.tsbuildinfo",
   },
-  "include": ["src/**/*", "scripts/**/*", "bench/**/*", "test/**/*", "demo/**/*"]
+  "references": [
+      {
+          "path": "./tsconfig.build.json"
+      },
+      {
+          "path": "./tsconfig.build-test.json"
+      },
+      {
+          "path": "./tsconfig.build-examples.json"
+      }
+  ],
+  "ts-node": {
+      "files": true,
+      "require": [
+          "tsconfig-paths/register"
+      ]
+  }
 }

@@ -1,0 +1,16 @@
+import type { AsyncInputConsumer } from "@effect-ts/core/stream/Channel/SingleProducerAsyncInput";
+
+/**
+ * @tsplus static ets/Channel/Ops fromInput
+ */
+export function fromInput<Err, Elem, Done>(
+  input: AsyncInputConsumer<Err, Elem, Done>
+): Channel<unknown, unknown, unknown, unknown, Err, Elem, Done> {
+  return Channel.unwrap(
+    input.takeWith(
+      (cause) => Channel.failCause(cause),
+      (elem) => Channel.write(elem) > fromInput(input),
+      (done) => Channel.succeedNow(done)
+    )
+  );
+}

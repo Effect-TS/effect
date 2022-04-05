@@ -1,0 +1,44 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+      {
+          "label": "clean",
+          "type": "shell",
+          "command": "yarn clean",
+          "isBackground": false,
+          "problemMatcher": []
+      },
+      {
+          "label": "build-watch",
+          "type": "shell",
+          "command": "yarn build-watch",
+          "problemMatcher": [
+              "$tsc-watch"
+          ],
+          "isBackground": true,
+          "presentation": {
+              "focus": false,
+              "panel": "shared",
+              "group": "dev",
+              "showReuseMessage": true,
+              "clear": false
+          }
+      },
+      {
+          "label": "build",
+          "type": "shell",
+          "command": "yarn build",
+          "problemMatcher": [],
+          "isBackground": false
+      },
+      {
+          "label": "test-watch",
+          "dependsOn": [
+              "build-watch"
+          ],
+          "type": "shell",
+          "command": "yarn test",
+          "problemMatcher": []
+      }
+  ]
+}

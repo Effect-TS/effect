@@ -1,18 +1,13 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "build/esm",
-    "target": "ES2018",
-    "module": "ES6",
-    "moduleResolution": "Node",
-    "incremental": true,
-    "tsBuildInfoFile": "tsbuildinfo/esm.tsbuildinfo",
-    "declaration": true,
-    "declarationDir": "build/dts",
-    "declarationMap": false,
-    "removeComments": false,
-    "tsPlusTracingPackageName": "@effect-ts/core",
-    "types": []
+      "outDir": "build/esm",
+      "declarationDir": "build/dts",
+      "tsBuildInfoFile": "build/tsbuildinfo/esm.tsbuildinfo",
+      "tsPlusConfig": "../../tsplus.config.json",
+      "rootDir": "_src"
   },
-  "include": ["src/**/*.ts"]
+  "include": [
+      "_src/**/*.ts"
+  ]
 }

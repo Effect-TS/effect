@@ -1,0 +1,16 @@
+import { concreteTPriorityQueue } from "@effect-ts/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue";
+
+/**
+ * Takes all values from the queue.
+ *
+ * @tsplus fluent ets/TPriorityQueue takeAll
+ */
+export function takeAll<A>(self: TPriorityQueue<A>): USTM<Chunk<A>> {
+  concreteTPriorityQueue(self);
+  return self.map.modify((map) =>
+    Tuple(
+      map.reduce(Chunk.empty<A>(), (acc, { tuple: [, a] }) => acc + a),
+      map
+    )
+  );
+}
