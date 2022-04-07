@@ -8,7 +8,7 @@ export function acquireReleaseExit<R, E, A, R2, X>(
   acquire: LazyArg<Effect<R, E, A>>,
   release: (a: A, exit: Exit<unknown, unknown>) => RIO<R2, X>,
   __tsplusTrace?: string
-): Effect<R & R2 & HasScope, E, A> {
+): Effect<R & R2 & Has<Scope>, E, A> {
   return Effect.suspendSucceed(acquire)
     .tap((a) => Effect.addFinalizerExit((exit) => release(a, exit)))
     .uninterruptible();

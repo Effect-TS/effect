@@ -12,7 +12,7 @@ import { next } from "@effect/core/io/Scope/ReleaseMap/operations/_internal/next
  */
 export function addIfOpen_(
   self: ReleaseMap,
-  finalizer: Finalizer,
+  finalizer: Scope.Finalizer,
   __tsplusTrace?: string
 ): UIO<Option<number>> {
   return self.ref

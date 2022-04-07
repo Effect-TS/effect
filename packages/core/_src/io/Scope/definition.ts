@@ -4,9 +4,8 @@ export type ScopeSym = typeof ScopeSym;
 export const CloseableScopeSym = Symbol.for("@effect/core/io/Scope/Closeable");
 export type CloseableScopeSym = typeof CloseableScopeSym;
 
-export type Finalizer = (exit: Exit<unknown, unknown>) => UIO<unknown>;
-
 export declare namespace Scope {
+  type Finalizer = (exit: Exit<unknown, unknown>) => UIO<unknown>;
   type Closeable = CloseableScope;
 }
 
@@ -34,16 +33,14 @@ export interface CloseableScope extends Scope {
  */
 export interface ScopeOps {
   $: ScopeAspects;
+  Service: Service<Scope>;
 }
 export const Scope: ScopeOps = {
-  $: {}
+  $: {},
+  Service: Service<Scope>(ScopeSym)
 };
 
 /**
  * @tsplus type ets/Scope/Aspects
  */
 export interface ScopeAspects {}
-
-export const HasScope = Service<Scope>(ScopeSym);
-
-export type HasScope = Has<Scope>;

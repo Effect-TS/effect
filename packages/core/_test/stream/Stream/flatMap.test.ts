@@ -217,7 +217,7 @@ describe.concurrent("Stream", () => {
           Scope.make.flatMap((scope) =>
             stream
               .toPull()
-              .provideService(HasScope)(scope)
+              .provideService(Scope.Service)(scope)
               .flatMap((pull) => pull > scope.close(Exit.unit) > ref.get())
           )
         );

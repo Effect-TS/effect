@@ -7,7 +7,7 @@
 export function toQueueUnbounded<R, E, A>(
   self: Stream<R, E, A>,
   __tsplusTrace?: string
-): Effect<R & HasScope, never, Dequeue<Take<E, A>>> {
+): Effect<R & Has<Scope>, never, Dequeue<Take<E, A>>> {
   return Effect.acquireRelease(
     Queue.unbounded<Take<E, A>>(),
     (queue) => queue.shutdown

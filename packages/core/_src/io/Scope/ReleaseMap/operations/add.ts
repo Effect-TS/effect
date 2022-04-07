@@ -10,13 +10,13 @@
  */
 export function add_(
   self: ReleaseMap,
-  finalizer: Finalizer,
+  finalizer: Scope.Finalizer,
   __tsplusTrace?: string
-): UIO<Finalizer> {
+): UIO<Scope.Finalizer> {
   return self.addIfOpen(finalizer).map((_) =>
     _.fold(
-      (): Finalizer => () => Effect.unit,
-      (k): Finalizer => (e) => self.release(k, e)
+      (): Scope.Finalizer => () => Effect.unit,
+      (k): Scope.Finalizer => (e) => self.release(k, e)
     )
   );
 }

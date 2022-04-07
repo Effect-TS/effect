@@ -8,6 +8,6 @@
 export function fromChunkHubScoped<A>(
   hub: LazyArg<Hub<Chunk<A>>>,
   __tsplusTrace?: string
-): Effect<HasScope, never, Stream<unknown, never, A>> {
+): Effect<Has<Scope>, never, Stream<unknown, never, A>> {
   return Effect.succeed(hub).flatMap((hub) => hub.subscribe.map((queue) => Stream.fromChunkQueue(queue)));
 }

@@ -8,7 +8,7 @@ import { environmentFor } from "@effect/core/io/Layer/operations/_internal/envir
  */
 export function scoped<T>(service: Service<T>) {
   return <R, E, A>(
-    effect: LazyArg<Effect<R & HasScope, E, T>>,
+    effect: LazyArg<Effect<R & Has<Scope>, E, T>>,
     __tsplusTrace?: string
   ): Layer<R, E, Has<T>> =>
     Layer.suspend(

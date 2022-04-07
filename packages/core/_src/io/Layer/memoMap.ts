@@ -7,7 +7,7 @@ import { instruction, LayerHashSym } from "@effect/core/io/Layer/definition";
 export class MemoMap {
   constructor(
     readonly ref: SynchronizedRef<
-      Map<PropertyKey, Tuple<[IO<any, any>, Finalizer]>>
+      Map<PropertyKey, Tuple<[IO<any, any>, Scope.Finalizer]>>
     >
   ) {}
 
@@ -43,7 +43,7 @@ export class MemoMap {
             return Effect.Do()
               .bind("observers", () => SynchronizedRef.make(0))
               .bind("deferred", () => Deferred.make<E, ROut>())
-              .bind("finalizerRef", () => SynchronizedRef.make<Finalizer>(() => () => Effect.unit))
+              .bind("finalizerRef", () => SynchronizedRef.make<Scope.Finalizer>(() => () => Effect.unit))
               .bindValue("resource", ({ deferred, finalizerRef, observers }) =>
                 Effect.uninterruptibleMask(({ restore }) =>
                   Effect.Do()
@@ -107,7 +107,7 @@ export class MemoMap {
  */
 export function makeMemoMap(): UIO<MemoMap> {
   return SynchronizedRef.make<
-    Map<PropertyKey, Tuple<[IO<any, any>, Finalizer]>>
+    Map<PropertyKey, Tuple<[IO<any, any>, Scope.Finalizer]>>
   >(new Map()).flatMap((r) => Effect.succeed(new MemoMap(r)));
 }
 
@@ -119,8 +119,8 @@ export function makeMemoMap(): UIO<MemoMap> {
 export function build<RIn, E, ROut>(
   self: Layer<RIn, E, ROut>,
   __tsplusTrace?: string
-): Effect<RIn & HasScope, E, ROut> {
-  return Effect.serviceWithEffect(HasScope)((scope) => self.buildWithScope(scope));
+): Effect<RIn & Has<Scope>, E, ROut> {
+  return Effect.serviceWithEffect(Scope.Service)((scope) => self.buildWithScope(scope));
 }
 
 /**

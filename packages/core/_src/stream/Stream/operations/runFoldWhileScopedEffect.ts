@@ -13,7 +13,7 @@ export function runFoldWhileScopedEffect_<R, E, A, R2, E2, S>(
   cont: Predicate<S>,
   f: (s: S, a: A) => Effect<R2, E2, S>,
   __tsplusTrace?: string
-): Effect<R & R2 & HasScope, E | E2, S> {
+): Effect<R & R2 & Has<Scope>, E | E2, S> {
   return self.runScoped(Sink.foldEffect(s, cont, f));
 }
 

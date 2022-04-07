@@ -11,7 +11,7 @@ export function broadcastedQueuesDynamic_<R, E, A>(
   self: Stream<R, E, A>,
   maximumLag: number,
   __tsplusTrace?: string
-): Effect<R & HasScope, never, Effect<HasScope, never, Dequeue<Take<E, A>>>> {
+): Effect<R & Has<Scope>, never, Effect<Has<Scope>, never, Dequeue<Take<E, A>>>> {
   return self.toHub(maximumLag).map((hub) => hub.subscribe);
 }
 

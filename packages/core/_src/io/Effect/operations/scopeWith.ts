@@ -6,6 +6,6 @@
 export function scopeWith<R, E, A>(
   f: (scope: Scope) => Effect<R, E, A>,
   __tsplusTrace?: string
-): Effect<R & HasScope, E, A> {
-  return Effect.serviceWithEffect(HasScope)(f);
+): Effect<R & Has<Scope>, E, A> {
+  return Effect.serviceWithEffect(Scope.Service)(f);
 }

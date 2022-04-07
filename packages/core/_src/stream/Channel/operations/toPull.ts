@@ -9,7 +9,7 @@ import { concreteChannelState } from "@effect/core/stream/Channel/ChannelState";
  */
 export function toPull<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-): Effect<Env & HasScope, never, Effect<Env, OutErr, Either<OutDone, OutElem>>> {
+): Effect<Env & Has<Scope>, never, Effect<Env, OutErr, Either<OutDone, OutElem>>> {
   return Effect.acquireReleaseExit(
     Effect.succeed(new ChannelExecutor(() => self, undefined, identity)),
     (exec, exit) => {

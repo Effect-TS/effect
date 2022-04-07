@@ -10,7 +10,7 @@ export function partitionEither_<R, E, A, R2, E2, A2, A3>(
   buffer = 16,
   __tsplusTrace?: string
 ): Effect<
-  R & R2 & HasScope,
+  R & R2 & Has<Scope>,
   E | E2,
   Tuple<[Stream<unknown, E | E2, A2>, Stream<unknown, E | E2, A3>]>
 > {

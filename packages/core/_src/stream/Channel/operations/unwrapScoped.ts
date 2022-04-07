@@ -15,7 +15,7 @@ export function unwrapScoped<
   OutDone
 >(
   self: Effect<
-    R & HasScope,
+    R & Has<Scope>,
     E,
     Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   >

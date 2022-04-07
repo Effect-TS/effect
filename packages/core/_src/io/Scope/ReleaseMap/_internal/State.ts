@@ -5,7 +5,7 @@ export class Exited {
   constructor(
     readonly nextKey: number,
     readonly exit: Exit<any, any>,
-    readonly update: (finalizer: Finalizer) => Finalizer
+    readonly update: (finalizer: Scope.Finalizer) => Scope.Finalizer
   ) {}
 }
 
@@ -13,11 +13,11 @@ export class Running {
   readonly _tag = "Running";
   constructor(
     readonly nextKey: number,
-    readonly _finalizers: Map<number, Finalizer>,
-    readonly update: (finalizer: Finalizer) => Finalizer
+    readonly _finalizers: Map<number, Scope.Finalizer>,
+    readonly update: (finalizer: Scope.Finalizer) => Scope.Finalizer
   ) {}
 
-  finalizers(): Map<number, Finalizer> {
+  finalizers(): Map<number, Scope.Finalizer> {
     return this._finalizers;
   }
 }

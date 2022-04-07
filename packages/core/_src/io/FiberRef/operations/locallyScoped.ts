@@ -9,7 +9,7 @@ export function locallyScoped_<A>(
   self: FiberRef<A>,
   value: A,
   __tsplusTrace?: string
-): Effect<HasScope, never, void> {
+): Effect<Has<Scope>, never, void> {
   return Effect.acquireRelease(
     self.get().flatMap((old) => self.set(value).as(old)),
     (a) => self.set(a)

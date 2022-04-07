@@ -8,7 +8,7 @@ export function toQueueSliding_<R, E, A>(
   self: Stream<R, E, A>,
   capacity = 2,
   __tsplusTrace?: string
-): Effect<R & HasScope, never, Dequeue<Take<E, A>>> {
+): Effect<R & Has<Scope>, never, Dequeue<Take<E, A>>> {
   return Effect.acquireRelease(
     Queue.sliding<Take<E, A>>(capacity),
     (queue) => queue.shutdown

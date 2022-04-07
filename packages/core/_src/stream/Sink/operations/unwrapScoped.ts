@@ -6,7 +6,7 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
  * @tsplus static ets/Sink/Ops unwrapScoped
  */
 export function unwrapScoped<R, E, In, L, Z>(
-  effect: LazyArg<Effect<R & HasScope, E, Sink<R, E, In, L, Z>>>,
+  effect: LazyArg<Effect<R & Has<Scope>, E, Sink<R, E, In, L, Z>>>,
   __tsplusTrace?: string
 ): Sink<R, E, In, L, Z> {
   return new SinkInternal(

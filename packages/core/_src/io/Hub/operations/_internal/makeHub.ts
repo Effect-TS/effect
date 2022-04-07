@@ -60,7 +60,7 @@ class UnsafeMakeHubImplementation<A> implements Hub<A> {
 
   isShutdown: UIO<boolean>;
 
-  subscribe: Effect<HasScope, never, Dequeue<A>>;
+  subscribe: Effect<Has<Scope>, never, Dequeue<A>>;
 
   constructor(
     private hub: AtomicHub<A>,
