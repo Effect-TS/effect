@@ -1,4 +1,4 @@
-import { zipChunks } from "@effect-ts/core/stream/Stream/operations/_internal/zipChunks";
+import { zipChunks } from "@effect/core/stream/Stream/operations/_internal/zipChunks";
 
 type State<A, A2> = DrainLeft | DrainRight | PullBoth | PullLeft<A2> | PullRight<A>;
 

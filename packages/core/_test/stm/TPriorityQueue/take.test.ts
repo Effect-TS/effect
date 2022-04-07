@@ -1,4 +1,4 @@
-import { a, as, b, eventEq, eventOrd } from "@effect-ts/core/test/stm/TPriorityQueue/test-utils";
+import { a, as, b, eventEq, eventOrd } from "@effect/core/test/stm/TPriorityQueue/test-utils";
 
 describe.concurrent("TPriorityQueue", () => {
   describe.concurrent("take", () => {

@@ -1,4 +1,4 @@
-import { None } from "@effect-ts/core/io/FiberId/definition";
+import { None } from "@effect/core/io/FiberId/definition";
 
 /**
  * @tsplus static ets/FiberId/Ops none

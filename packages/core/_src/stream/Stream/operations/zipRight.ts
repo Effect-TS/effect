@@ -1,4 +1,4 @@
-import { zipRightChunks } from "@effect-ts/core/stream/Stream/operations/_internal/zipRightChunks";
+import { zipRightChunks } from "@effect/core/stream/Stream/operations/_internal/zipRightChunks";
 
 /**
  * Zips this stream with another point-wise, but keeps only the outputs of the

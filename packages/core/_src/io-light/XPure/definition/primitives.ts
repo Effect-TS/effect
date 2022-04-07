@@ -1,4 +1,4 @@
-import { XPureBase } from "@effect-ts/core/io-light/XPure/definition/base";
+import { XPureBase } from "@effect/core/io-light/XPure/definition/base";
 
 export type XPureInstruction =
   | Succeed<any>

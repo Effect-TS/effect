@@ -1,4 +1,4 @@
-import { Both, Cause, Die, Fail, Interrupt, Stackless, Then } from "@effect-ts/core/io/Cause/definition";
+import { Both, Cause, Die, Fail, Interrupt, Stackless, Then } from "@effect/core/io/Cause/definition";
 
 /**
  * Transforms the traces in this cause with the specified function.

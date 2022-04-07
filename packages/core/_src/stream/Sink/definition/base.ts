@@ -1,6 +1,6 @@
 import type { _E, _In, _L, _R, _Z } from "./symbols";
 
-export const SinkSym = Symbol.for("@effect-ts/core/stream/Sink");
+export const SinkSym = Symbol.for("@effect/core/stream/Sink");
 export type SinkSym = typeof SinkSym;
 
 /**

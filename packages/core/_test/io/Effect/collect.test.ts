@@ -49,7 +49,7 @@ describe.concurrent("Effect", () => {
   describe.concurrent("collectFirst", () => {
     it("collects the first value for which the effectual function returns Some", async () => {
       const program = Effect.collectFirst(
-        Chunk.fill(10, () => 0),
+        Chunk.range(0, 10),
         (n) => n > 5 ? Effect.succeed(Option.some(n)) : Effect.succeed(Option.none)
       );
 

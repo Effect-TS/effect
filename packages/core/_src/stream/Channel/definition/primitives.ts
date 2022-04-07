@@ -1,6 +1,6 @@
-import type { ChildExecutorDecision } from "@effect-ts/core/stream/Channel/ChildExecutorDecision";
-import type { Channel } from "@effect-ts/core/stream/Channel/definition/base";
-import { ChannelBase } from "@effect-ts/core/stream/Channel/definition/base";
+import type { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision";
+import type { Channel } from "@effect/core/stream/Channel/definition/base";
+import { ChannelBase } from "@effect/core/stream/Channel/definition/base";
 import {
   _Env,
   _InDone,
@@ -11,10 +11,10 @@ import {
   _OutElem,
   _OutErr,
   _OutErr2
-} from "@effect-ts/core/stream/Channel/definition/symbols";
-import type { AsyncInputProducer } from "@effect-ts/core/stream/Channel/SingleProducerAsyncInput";
-import type { UpstreamPullRequest } from "@effect-ts/core/stream/Channel/UpstreamPullRequest";
-import type { UpstreamPullStrategy } from "@effect-ts/core/stream/Channel/UpstreamPullStrategy";
+} from "@effect/core/stream/Channel/definition/symbols";
+import type { AsyncInputProducer } from "@effect/core/stream/Channel/SingleProducerAsyncInput";
+import type { UpstreamPullRequest } from "@effect/core/stream/Channel/UpstreamPullRequest";
+import type { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy";
 
 // -----------------------------------------------------------------------------
 // PipeTo

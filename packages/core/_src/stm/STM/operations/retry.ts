@@ -1,4 +1,4 @@
-import { STMEffect, STMRetryException } from "@effect-ts/core/stm/STM/definition/primitives";
+import { STMEffect, STMRetryException } from "@effect/core/stm/STM/definition/primitives";
 
 /**
  * Abort and retry the whole transaction when any of the underlying

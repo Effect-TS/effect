@@ -1,4 +1,4 @@
-import { concreteTArray } from "@effect-ts/core/stm/TArray/operations/_internal/InternalTArray";
+import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/InternalTArray";
 
 /**
  * Get the index of the first entry in the array, starting at a specific

@@ -1,6 +1,6 @@
-import { ChannelExecutor, readUpstream } from "@effect-ts/core/stream/Channel/ChannelExecutor";
-import type { ChannelState } from "@effect-ts/core/stream/Channel/ChannelState";
-import { concreteChannelState } from "@effect-ts/core/stream/Channel/ChannelState";
+import { ChannelExecutor, readUpstream } from "@effect/core/stream/Channel/ChannelExecutor";
+import type { ChannelState } from "@effect/core/stream/Channel/ChannelState";
+import { concreteChannelState } from "@effect/core/stream/Channel/ChannelState";
 
 /**
  * Interpret a `Channel` to a managed pull.

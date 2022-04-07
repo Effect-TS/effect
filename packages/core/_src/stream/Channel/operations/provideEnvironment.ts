@@ -1,4 +1,4 @@
-import { Provide } from "@effect-ts/core/stream/Channel/definition/primitives";
+import { Provide } from "@effect/core/stream/Channel/definition/primitives";
 
 /**
  * Provides the channel with its required environment, which eliminates its

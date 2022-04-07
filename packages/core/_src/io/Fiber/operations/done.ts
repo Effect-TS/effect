@@ -1,4 +1,4 @@
-import { makeSynthetic } from "@effect-ts/core/io/Fiber/definition";
+import { makeSynthetic } from "@effect/core/io/Fiber/definition";
 
 /**
  * A fiber that is done with the specified `Exit` value.

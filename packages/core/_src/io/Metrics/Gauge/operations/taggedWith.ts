@@ -1,4 +1,4 @@
-import { concreteGauge } from "@effect-ts/core/io/Metrics/Gauge/operations/_internal/InternalGauge";
+import { concreteGauge } from "@effect/core/io/Metrics/Gauge/operations/_internal/InternalGauge";
 
 /**
  * Converts this gauge metric to one where the tags depend on the measured

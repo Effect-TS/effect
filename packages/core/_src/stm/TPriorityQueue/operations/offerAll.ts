@@ -1,4 +1,4 @@
-import { concreteTPriorityQueue } from "@effect-ts/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue";
+import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue";
 
 /**
  * Offers all of the elements in the specified collection to the queue.

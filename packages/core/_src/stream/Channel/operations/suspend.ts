@@ -1,4 +1,4 @@
-import { Suspend } from "@effect-ts/core/stream/Channel/definition/primitives";
+import { Suspend } from "@effect/core/stream/Channel/definition/primitives";
 
 /**
  * @tsplus static ets/Channel/Ops suspend

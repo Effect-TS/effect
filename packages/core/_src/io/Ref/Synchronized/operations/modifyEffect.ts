@@ -1,4 +1,4 @@
-import { concreteSynchronizedRef } from "@effect-ts/core/io/Ref/Synchronized/operations/_internal/SynchronizedRefInternal";
+import { concreteSynchronizedRef } from "@effect/core/io/Ref/Synchronized/operations/_internal/SynchronizedRefInternal";
 
 /**
  * Atomically modifies the `Ref.Synchronized` with the specified effectful

@@ -1,4 +1,4 @@
-import { ILayerScoped } from "@effect-ts/core/io/Layer/definition";
+import { ILayerScoped } from "@effect/core/io/Layer/definition";
 
 /**
  * Constructs a layer from the specified scoped effect.

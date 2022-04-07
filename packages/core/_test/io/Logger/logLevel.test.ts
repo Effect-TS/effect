@@ -1,4 +1,4 @@
-import { TestLogger } from "@effect-ts/core/test/test-utils/TestLogger";
+import { TestLogger } from "@effect/core/test/test-utils/TestLogger";
 
 describe.concurrent("Logger", () => {
   describe.concurrent("logLevel", () => {

@@ -1,5 +1,5 @@
-import type { HasService1 } from "@effect-ts/core/test/io/Layer/test-utils";
-import { acquire1, makeLayer1, makeRef, release1 } from "@effect-ts/core/test/io/Layer/test-utils";
+import type { HasService1 } from "@effect/core/test/io/Layer/test-utils";
+import { acquire1, makeLayer1, makeRef, release1 } from "@effect/core/test/io/Layer/test-utils";
 
 describe.concurrent("Layer", () => {
   describe.concurrent("memoization", () => {

@@ -1,4 +1,4 @@
-export const STMStateSym = Symbol.for("@effect-ts/core/stm/STM/State");
+export const STMStateSym = Symbol.for("@effect/core/stm/STM/State");
 export type STMStateSym = typeof STMStateSym;
 
 /**

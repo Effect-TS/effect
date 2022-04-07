@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 /**
  * Returns a new stream that only emits elements that are not equal to the

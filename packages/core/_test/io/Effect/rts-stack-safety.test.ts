@@ -1,4 +1,4 @@
-import { deepMapEffect } from "@effect-ts/core/test/io/Effect/test-utils";
+import { deepMapEffect } from "@effect/core/test/io/Effect/test-utils";
 
 describe.concurrent("Effect", () => {
   describe.concurrent("RTS synchronous stack safety", () => {

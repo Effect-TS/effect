@@ -1,4 +1,4 @@
-export const IntervalSym = Symbol.for("@effect-ts/core/io/Schedule/Interval");
+export const IntervalSym = Symbol.for("@effect/core/io/Schedule/Interval");
 export type IntervalSym = typeof IntervalSym;
 
 /**

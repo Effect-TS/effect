@@ -1,5 +1,5 @@
-import { Bridge } from "@effect-ts/core/stream/Channel/definition/primitives";
-import type { AsyncInputProducer } from "@effect-ts/core/stream/Channel/SingleProducerAsyncInput";
+import { Bridge } from "@effect/core/stream/Channel/definition/primitives";
+import type { AsyncInputProducer } from "@effect/core/stream/Channel/SingleProducerAsyncInput";
 
 /**
  * Embed inputs from continuos pulling of a producer.

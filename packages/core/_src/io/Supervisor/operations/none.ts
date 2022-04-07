@@ -1,4 +1,4 @@
-import { ConstSupervisor } from "@effect-ts/core/io/Supervisor/operations/const";
+import { ConstSupervisor } from "@effect/core/io/Supervisor/operations/const";
 
 /**
  * A supervisor that doesn't do anything in response to supervision events.

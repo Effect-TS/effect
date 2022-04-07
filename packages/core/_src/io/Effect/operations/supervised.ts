@@ -1,4 +1,4 @@
-import { ISupervise } from "@effect-ts/core/io/Effect/definition/primitives";
+import { ISupervise } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * Returns an effect with the behavior of this one, but where all child fibers

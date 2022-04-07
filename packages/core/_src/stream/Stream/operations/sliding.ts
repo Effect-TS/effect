@@ -1,5 +1,5 @@
-import { concreteStream, StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
-import { RingBufferNew } from "@effect-ts/core/support/RingBufferNew";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { RingBufferNew } from "@effect/core/support/RingBufferNew";
 
 /**
  * Emits a sliding window of `n` elements.

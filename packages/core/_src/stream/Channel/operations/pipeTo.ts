@@ -1,4 +1,4 @@
-import { PipeTo } from "@effect-ts/core/stream/Channel/definition/primitives";
+import { PipeTo } from "@effect/core/stream/Channel/definition/primitives";
 
 /**
  * Pipe the output of a channel into the input of another.

@@ -1,4 +1,4 @@
-import { textDecodeUsing } from "@effect-ts/core/stream/Stream/operations/_internal/textDecodeUsing";
+import { textDecodeUsing } from "@effect/core/stream/Stream/operations/_internal/textDecodeUsing";
 
 /**
  * @tsplus fluent ets/Stream usASCIIDecode

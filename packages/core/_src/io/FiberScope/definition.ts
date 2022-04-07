@@ -1,4 +1,4 @@
-import type { FiberContext } from "@effect-ts/core/io/Fiber/_internal/context";
+import type { FiberContext } from "@effect/core/io/Fiber/_internal/context";
 
 /**
  * A `FiberScope` represents the scope of a fiber lifetime. The scope of a

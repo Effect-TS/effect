@@ -1,4 +1,4 @@
-import { isChannelError } from "@effect-ts/core/io/Cause/errors";
+import { isChannelError } from "@effect/core/io/Cause/errors";
 
 /**
  * @tsplus fluent ets/Channel pipeToOrFail

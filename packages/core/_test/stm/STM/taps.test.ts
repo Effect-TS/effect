@@ -1,4 +1,4 @@
-import { HasSTMEnv, STMEnv } from "@effect-ts/core/test/stm/STM/test-utils";
+import { HasSTMEnv, STMEnv } from "@effect/core/test/stm/STM/test-utils";
 
 describe.concurrent("STM", () => {
   describe.concurrent("STM environment", () => {

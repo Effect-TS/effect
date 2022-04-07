@@ -1,4 +1,4 @@
-import { ISetRuntimeConfig } from "@effect-ts/core/io/Effect/definition/primitives";
+import { ISetRuntimeConfig } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * Sets the runtime configuration to the specified value.

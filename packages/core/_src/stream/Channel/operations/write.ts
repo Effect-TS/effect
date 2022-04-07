@@ -1,4 +1,4 @@
-import { Emit } from "@effect-ts/core/stream/Channel/definition/primitives";
+import { Emit } from "@effect/core/stream/Channel/definition/primitives";
 
 /**
  * Writes an output to the channel.

@@ -1,4 +1,4 @@
-import { FiberRefInternal } from "@effect-ts/core/io/FiberRef/operations/_internal/FiberRefInternal";
+import { FiberRefInternal } from "@effect/core/io/FiberRef/operations/_internal/FiberRefInternal";
 
 /**
  * @tsplus static ets/FiberRef/Ops unsafeMake

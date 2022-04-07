@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 /**
  * Re-chunks the elements of the stream into chunks of `n` elements each. The

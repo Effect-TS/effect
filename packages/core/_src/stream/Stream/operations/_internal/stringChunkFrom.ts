@@ -1,4 +1,4 @@
-import type { Charset } from "@effect-ts/core/stream/Stream/operations/_internal/Charset";
+import type { Charset } from "@effect/core/stream/Stream/operations/_internal/Charset";
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import type { TextDecoder } from "util";
 

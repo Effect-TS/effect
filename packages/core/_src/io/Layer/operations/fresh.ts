@@ -1,4 +1,4 @@
-import { ILayerFresh } from "@effect-ts/core/io/Layer/definition";
+import { ILayerFresh } from "@effect/core/io/Layer/definition";
 
 /**
  * Creates a fresh version of this layer that will not be shared.

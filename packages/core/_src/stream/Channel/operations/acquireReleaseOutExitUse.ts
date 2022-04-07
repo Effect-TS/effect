@@ -1,4 +1,4 @@
-import { BracketOut } from "@effect-ts/core/stream/Channel/definition/primitives";
+import { BracketOut } from "@effect/core/stream/Channel/definition/primitives";
 
 /**
  * @tsplus static ets/Channel/Ops acquireReleaseOutExitUse

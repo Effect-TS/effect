@@ -3,7 +3,7 @@ import {
   asyncUnit,
   ExampleError,
   ExampleErrorFail
-} from "@effect-ts/core/test/io/Effect/test-utils";
+} from "@effect/core/test/io/Effect/test-utils";
 import { constTrue } from "@tsplus/stdlib/data/Function";
 
 describe.concurrent("Effect", () => {

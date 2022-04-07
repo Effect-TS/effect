@@ -1,7 +1,7 @@
-export const TPriorityQueueSym = Symbol.for("@effect-ts/core/stm/TPriorityQueue");
+export const TPriorityQueueSym = Symbol.for("@effect/core/stm/TPriorityQueue");
 export type TPriorityQueueSym = typeof TPriorityQueueSym;
 
-export const _A = Symbol.for("@effect-ts/core/stm/TPriorityQueue/A");
+export const _A = Symbol.for("@effect/core/stm/TPriorityQueue/A");
 export type _A = typeof _A;
 
 /**

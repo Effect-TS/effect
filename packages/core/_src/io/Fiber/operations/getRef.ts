@@ -1,4 +1,4 @@
-import { realFiber } from "@effect-ts/core/io/Fiber/definition";
+import { realFiber } from "@effect/core/io/Fiber/definition";
 
 /**
  * Gets the value of the fiber ref for this fiber, or the initial value of the

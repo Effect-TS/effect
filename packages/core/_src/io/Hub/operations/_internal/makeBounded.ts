@@ -1,8 +1,8 @@
-import type { AtomicHub } from "@effect-ts/core/io/Hub/operations/_internal/AtomicHub";
-import { BoundedHubArb } from "@effect-ts/core/io/Hub/operations/_internal/BoundedHubArb";
-import { BoundedHubPow2 } from "@effect-ts/core/io/Hub/operations/_internal/BoundedHubPow2";
-import { BoundedHubSingle } from "@effect-ts/core/io/Hub/operations/_internal/BoundedHubSingle";
-import { ensureCapacity } from "@effect-ts/core/io/Hub/operations/_internal/errors";
+import type { AtomicHub } from "@effect/core/io/Hub/operations/_internal/AtomicHub";
+import { BoundedHubArb } from "@effect/core/io/Hub/operations/_internal/BoundedHubArb";
+import { BoundedHubPow2 } from "@effect/core/io/Hub/operations/_internal/BoundedHubPow2";
+import { BoundedHubSingle } from "@effect/core/io/Hub/operations/_internal/BoundedHubSingle";
+import { ensureCapacity } from "@effect/core/io/Hub/operations/_internal/errors";
 
 function nextPow2(n: number): number {
   const nextPow = Math.ceil(Math.log(n) / Math.log(2.0));

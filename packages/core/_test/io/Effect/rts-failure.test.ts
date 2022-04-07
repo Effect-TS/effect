@@ -6,7 +6,7 @@ import {
   InterruptCause1,
   InterruptCause2,
   InterruptCause3
-} from "@effect-ts/core/test/io/Effect/test-utils";
+} from "@effect/core/test/io/Effect/test-utils";
 
 describe.concurrent("Effect", () => {
   describe.concurrent("RTS failure", () => {

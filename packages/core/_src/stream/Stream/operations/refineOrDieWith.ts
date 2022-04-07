@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 /**
  * Keeps some of the errors, and terminates the fiber with the rest, using the

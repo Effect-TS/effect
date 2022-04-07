@@ -1,4 +1,4 @@
-export const NumberServiceId = Symbol.for("@effect-ts/core/test/stream/Channel/NumberService");
+export const NumberServiceId = Symbol.for("@effect/core/test/stream/Channel/NumberService");
 export type NumberServiceId = typeof NumberService;
 
 export interface NumberService {

@@ -1,4 +1,4 @@
-import { IFiberRefWith } from "@effect-ts/core/io/Effect/definition/primitives";
+import { IFiberRefWith } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * Gets the value associated with the current fiber and uses it to run the

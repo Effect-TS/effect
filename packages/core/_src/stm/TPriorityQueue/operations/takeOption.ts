@@ -1,4 +1,4 @@
-import { concreteTPriorityQueue } from "@effect-ts/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue";
+import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue";
 
 /**
  * Takes a value from the queue, returning `None` if there is not a value in

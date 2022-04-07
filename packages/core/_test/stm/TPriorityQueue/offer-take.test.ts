@@ -1,5 +1,5 @@
-import type { Event } from "@effect-ts/core/test/stm/TPriorityQueue/test-utils";
-import { as, eventEq, eventOrd } from "@effect-ts/core/test/stm/TPriorityQueue/test-utils";
+import type { Event } from "@effect/core/test/stm/TPriorityQueue/test-utils";
+import { as, eventEq, eventOrd } from "@effect/core/test/stm/TPriorityQueue/test-utils";
 
 describe.concurrent("TPriorityQueue", () => {
   it("offerAll and takeAll", async () => {

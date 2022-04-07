@@ -1,4 +1,4 @@
-import { concreteXPure } from "@effect-ts/core/io-light/Sync/definition";
+import { concreteXPure } from "@effect/core/io-light/Sync/definition";
 
 /**
  * Returns a computation whose failure and success have been lifted into an

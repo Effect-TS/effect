@@ -1,6 +1,6 @@
-import { _Env, _In, _Out, _State } from "@effect-ts/core/io/Schedule/definition";
+import { _Env, _In, _Out, _State } from "@effect/core/io/Schedule/definition";
 
-export const DriverSym = Symbol.for("@effect-ts/core/io/Schedule/Driver");
+export const DriverSym = Symbol.for("@effect/core/io/Schedule/Driver");
 export type DriverSym = typeof DriverSym;
 
 /**

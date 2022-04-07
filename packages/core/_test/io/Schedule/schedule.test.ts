@@ -1,5 +1,5 @@
-import type { TestClock } from "@effect-ts/core/io/Clock/test";
-import { HasTestClock } from "@effect-ts/core/io/Clock/test";
+import type { TestClock } from "@effect/core/io/Clock/test";
+import { HasTestClock } from "@effect/core/io/Clock/test";
 
 /**
  * A function that increments ref each time it is called. It always fails,

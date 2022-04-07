@@ -1,5 +1,5 @@
-import { concurrentFib, ExampleError, fib } from "@effect-ts/core/test/io/Effect/test-utils";
-import { withLatch } from "@effect-ts/core/test/test-utils/Latch";
+import { concurrentFib, ExampleError, fib } from "@effect/core/test/io/Effect/test-utils";
+import { withLatch } from "@effect/core/test/test-utils/Latch";
 
 describe.concurrent("Effect", () => {
   describe.concurrent("RTS concurrency correctness", () => {
@@ -133,7 +133,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise();
 
-      assert.strictEqual(result, 42);
+      assert.strictEqual(result, 2);
     });
 
     it("race of fail with success", async () => {
@@ -178,7 +178,7 @@ describe.concurrent("Effect", () => {
       assert.isUndefined(result);
     });
 
-    it.only("race of two forks does not interrupt winner", async () => {
+    it("race of two forks does not interrupt winner", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
         .bind("fibers", () => Ref.make(HashSet.empty<Fiber<unknown, unknown>>()))

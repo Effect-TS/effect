@@ -1,4 +1,4 @@
-import { IFork } from "@effect-ts/core/io/Effect/definition/primitives";
+import { IFork } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * Forks the effect into a new fiber attached to the global scope. Because the

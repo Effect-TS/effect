@@ -1,7 +1,7 @@
-import { Decision } from "@effect-ts/core/io/Schedule/Decision";
-import { Interval } from "@effect-ts/core/io/Schedule/Interval";
-import { makeWithState } from "@effect-ts/core/io/Schedule/operations/_internal/makeWithState";
-import { beginningOfMinute, endOfMinute, nextMinute } from "@effect-ts/core/io/Schedule/operations/_internal/time";
+import { Decision } from "@effect/core/io/Schedule/Decision";
+import { Interval } from "@effect/core/io/Schedule/Interval";
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import { beginningOfMinute, endOfMinute, nextMinute } from "@effect/core/io/Schedule/operations/_internal/time";
 
 /**
  * Cron-like schedule that recurs every specified `minute` of each hour. It

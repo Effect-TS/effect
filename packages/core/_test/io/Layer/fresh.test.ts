@@ -5,7 +5,7 @@ import {
   makeLayer3,
   makeRef,
   release1
-} from "@effect-ts/core/test/io/Layer/test-utils";
+} from "@effect/core/test/io/Layer/test-utils";
 
 describe.concurrent("Layer", () => {
   describe.concurrent("fresh", () => {

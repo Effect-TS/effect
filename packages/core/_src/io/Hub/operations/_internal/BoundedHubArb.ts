@@ -1,5 +1,5 @@
-import type { AtomicHub } from "@effect-ts/core/io/Hub/operations/_internal/AtomicHub";
-import { Subscription } from "@effect-ts/core/io/Hub/operations/_internal/Subscription";
+import type { AtomicHub } from "@effect/core/io/Hub/operations/_internal/AtomicHub";
+import { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription";
 
 export class BoundedHubArb<A> implements AtomicHub<A> {
   array: Array<A>;

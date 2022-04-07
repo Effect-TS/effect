@@ -1,4 +1,4 @@
-import { withSummary } from "@effect-ts/core/io/Metrics/Summary/operations/_internal/InternalSummary";
+import { withSummary } from "@effect/core/io/Metrics/Summary/operations/_internal/InternalSummary";
 
 /**
  * Returns the current count of all the values ever observed by this

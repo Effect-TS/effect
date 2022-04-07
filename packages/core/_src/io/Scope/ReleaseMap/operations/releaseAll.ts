@@ -1,4 +1,4 @@
-import { releaseMapReleaseAll } from "@effect-ts/core/io/Effect/operations/excl-forEach"
+import { releaseMapReleaseAll } from "@effect/core/io/Effect/operations/excl-forEach"
 
 /**
  * Runs the finalizers associated with this scope using the specified

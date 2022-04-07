@@ -1,4 +1,4 @@
-import { StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
+import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 /**
  * Like `unfoldChunkEffect`, but allows the emission of values to end one step

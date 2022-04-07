@@ -1,4 +1,4 @@
-import { STMOnSuccess } from "@effect-ts/core/stm/STM/definition/primitives";
+import { STMOnSuccess } from "@effect/core/stm/STM/definition/primitives";
 
 /**
  * Feeds the value produced by this effect to the specified function,

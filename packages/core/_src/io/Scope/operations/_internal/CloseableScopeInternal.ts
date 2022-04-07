@@ -1,5 +1,5 @@
-import type { Scope } from "@effect-ts/core/io/Scope/definition";
-import { CloseableScopeSym, ScopeSym } from "@effect-ts/core/io/Scope/definition";
+import type { Scope } from "@effect/core/io/Scope/definition";
+import { CloseableScopeSym, ScopeSym } from "@effect/core/io/Scope/definition";
 
 export class CloseableScopeInternal implements Scope.Closeable {
   readonly [ScopeSym]: ScopeSym = ScopeSym;

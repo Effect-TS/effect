@@ -1,4 +1,4 @@
-import { concreteTake } from "@effect-ts/core/stream/Take/operations/_internal/TakeInternal";
+import { concreteTake } from "@effect/core/stream/Take/operations/_internal/TakeInternal";
 
 /**
  * Transforms `Take<E, A>` to an `Effect<unknown, Option<E>, Chunk<A>>`.

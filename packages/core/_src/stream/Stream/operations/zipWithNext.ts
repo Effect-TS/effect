@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 /**
  * Zips each element with the next element if present.

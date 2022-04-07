@@ -1,4 +1,4 @@
-import { boom, makeTArray, valuesOf } from "@effect-ts/core/test/stm/TArray/test-utils";
+import { boom, makeTArray, valuesOf } from "@effect/core/test/stm/TArray/test-utils";
 
 describe.concurrent("TArray", () => {
   describe.concurrent("update", () => {

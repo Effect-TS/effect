@@ -1,4 +1,4 @@
-export const GaugeSym = Symbol.for("@effect-ts/core/io/Metrics/Gauge");
+export const GaugeSym = Symbol.for("@effect/core/io/Metrics/Gauge");
 export type GaugeSym = typeof GaugeSym;
 
 /**

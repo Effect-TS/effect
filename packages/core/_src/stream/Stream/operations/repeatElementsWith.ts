@@ -1,5 +1,5 @@
-import type { Driver } from "@effect-ts/core/io/Schedule/Driver";
-import { concreteStream, StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
+import type { Driver } from "@effect/core/io/Schedule/Driver";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 /**
  * Repeats each element of the stream using the provided schedule. When the

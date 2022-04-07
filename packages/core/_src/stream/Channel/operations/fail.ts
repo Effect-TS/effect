@@ -1,4 +1,4 @@
-import { Fail } from "@effect-ts/core/stream/Channel/definition/primitives";
+import { Fail } from "@effect/core/stream/Channel/definition/primitives";
 
 /**
  * Halt a channel with the specified error.

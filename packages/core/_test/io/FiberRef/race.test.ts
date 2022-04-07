@@ -1,4 +1,4 @@
-import { loseTimeAndCpu } from "@effect-ts/core/test/io/FiberRef/test-utils";
+import { loseTimeAndCpu } from "@effect/core/test/io/FiberRef/test-utils";
 
 const initial = "initial";
 const update = "update";

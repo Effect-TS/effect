@@ -1,4 +1,4 @@
-import { utfEncodeFor } from "@effect-ts/core/stream/Stream/operations/_internal/utfEncodeFor";
+import { utfEncodeFor } from "@effect/core/stream/Stream/operations/_internal/utfEncodeFor";
 
 /**
  * @tsplus fluent ets/Stream utf8Encode

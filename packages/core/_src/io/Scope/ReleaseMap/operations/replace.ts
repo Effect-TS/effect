@@ -1,4 +1,4 @@
-import { Exited, Running } from "@effect-ts/core/io/Scope/ReleaseMap/_internal/State";
+import { Exited, Running } from "@effect/core/io/Scope/ReleaseMap/_internal/State";
 
 /**
  * Replaces the finalizer associated with this key and returns it. If the

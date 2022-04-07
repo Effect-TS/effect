@@ -1,4 +1,4 @@
-import { ILayerExtendScope } from "@effect-ts/core/io/Layer/definition";
+import { ILayerExtendScope } from "@effect/core/io/Layer/definition";
 
 /**
  * Extends the scope of this layer, returning a new layer that when provided

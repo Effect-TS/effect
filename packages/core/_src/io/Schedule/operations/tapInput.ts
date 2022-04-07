@@ -1,4 +1,4 @@
-import { makeWithState } from "@effect-ts/core/io/Schedule/operations/_internal/makeWithState";
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
 
 /**
  * Returns a new schedule that effectfully processes every input to this

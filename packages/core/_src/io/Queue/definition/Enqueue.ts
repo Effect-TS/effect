@@ -1,5 +1,5 @@
-import type { CommonQueue } from "@effect-ts/core/io/Queue/definition/common";
-import type { _In } from "@effect-ts/core/io/Queue/definition/symbols";
+import type { CommonQueue } from "@effect/core/io/Queue/definition/common";
+import type { _In } from "@effect/core/io/Queue/definition/symbols";
 
 export interface Enqueue<A> extends CommonQueue {
   readonly [_In]: (_: A) => void;

@@ -1,6 +1,6 @@
-import { MergeDecision } from "@effect-ts/core/stream/Channel/MergeDecision";
-import { concreteStream, StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
-import { TerminationStrategy } from "@effect-ts/core/stream/Stream/TerminationStrategy";
+import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { TerminationStrategy } from "@effect/core/stream/Stream/TerminationStrategy";
 
 /**
  * Merges this stream and the specified stream together to a common element

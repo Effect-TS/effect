@@ -1,4 +1,4 @@
-import { IFiberRefModify } from "@effect-ts/core/io/Effect/definition/primitives";
+import { IFiberRefModify } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * Atomically modifies the `FiberRef` with the specified function, which

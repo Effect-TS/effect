@@ -1,4 +1,4 @@
-import { TerminationStrategy } from "@effect-ts/core/stream/Stream//TerminationStrategy";
+import { TerminationStrategy } from "@effect/core/stream/Stream//TerminationStrategy";
 
 /**
  * Merges this stream and the specified stream together, discarding the values

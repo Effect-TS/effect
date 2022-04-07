@@ -1,4 +1,4 @@
-import { concreteSink, SinkInternal } from "@effect-ts/core/stream/Sink/operations/_internal/SinkInternal";
+import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
 
 /**
  * Creates a sink that produces values until one verifies the predicate `f`.

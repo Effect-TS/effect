@@ -39,16 +39,16 @@
       "incremental": true,
       "removeComments": false,
       "paths": {
-          "@effect-ts/core": [
+          "@effect/core": [
               "./packages/core/_src/index.ts"
           ],
-          "@effect-ts/core/test/*": [
+          "@effect/core/test/*": [
               "./packages/core/_test/*"
           ],
-          "@effect-ts/core/examples/*": [
+          "@effect/core/examples/*": [
               "./packages/core/_examples/*"
           ],
-          "@effect-ts/core/*": [
+          "@effect/core/*": [
               "./packages/core/_src/*"
           ],
       }

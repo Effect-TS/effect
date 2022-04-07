@@ -1,4 +1,4 @@
-import { concreteScope } from "@effect-ts/core/io/Scope/operations/_internal/ScopeInternal";
+import { concreteScope } from "@effect/core/io/Scope/operations/_internal/ScopeInternal";
 
 /**
  * A simplified version of `addFinalizerWith` when the `finalizer` does not

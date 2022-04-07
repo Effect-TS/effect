@@ -1,4 +1,4 @@
-import type { Interval } from "@effect-ts/core/io/Schedule/Interval";
+import type { Interval } from "@effect/core/io/Schedule/Interval";
 
 /**
  * @tsplus type ets/Decision

@@ -1,4 +1,4 @@
-import { Both, Die, Empty, Fail, Interrupt, Stackless, Then } from "@effect-ts/core/io/Cause/definition";
+import { Both, Die, Empty, Fail, Interrupt, Stackless, Then } from "@effect/core/io/Cause/definition";
 
 /**
  * Converts the specified `Cause<Option<E>>` to an `Option[Cause[E]]` by

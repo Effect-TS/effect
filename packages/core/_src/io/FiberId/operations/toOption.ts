@@ -1,4 +1,4 @@
-import { realFiberId } from "@effect-ts/core/io/FiberId/definition";
+import { realFiberId } from "@effect/core/io/FiberId/definition";
 
 /**
  * Convert a `FiberId` into an `Option<FiberId>`.

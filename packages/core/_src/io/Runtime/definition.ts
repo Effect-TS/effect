@@ -1,5 +1,5 @@
-import { FiberContext } from "@effect-ts/core/io/Fiber/_internal/context";
-import { OneShot } from "@effect-ts/core/support/OneShot";
+import { FiberContext } from "@effect/core/io/Fiber/_internal/context";
+import { OneShot } from "@effect/core/support/OneShot";
 import { constVoid } from "@tsplus/stdlib/data/Function";
 
 export class Runtime<R> {

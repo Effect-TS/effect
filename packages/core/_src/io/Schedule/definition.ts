@@ -1,18 +1,18 @@
-import type { Decision } from "@effect-ts/core/io/Schedule/Decision";
+import type { Decision } from "@effect/core/io/Schedule/Decision";
 
-export const ScheduleSym = Symbol.for("@effect-ts/core/io/Schedule");
+export const ScheduleSym = Symbol.for("@effect/core/io/Schedule");
 export type ScheduleSym = typeof ScheduleSym;
 
-export const _Env = Symbol.for("@effect-ts/core/io/Schedule/Env");
+export const _Env = Symbol.for("@effect/core/io/Schedule/Env");
 export type _Env = typeof _Env;
 
-export const _In = Symbol.for("@effect-ts/core/io/Schedule/In");
+export const _In = Symbol.for("@effect/core/io/Schedule/In");
 export type _In = typeof _In;
 
-export const _Out = Symbol.for("@effect-ts/core/io/Schedule/Out");
+export const _Out = Symbol.for("@effect/core/io/Schedule/Out");
 export type _Out = typeof _Out;
 
-export const _State = Symbol.for("@effect-ts/core/io/Schedule/State");
+export const _State = Symbol.for("@effect/core/io/Schedule/State");
 export type _State = typeof _State;
 
 /**

@@ -1,4 +1,4 @@
-import { _A, FiberRefSym } from "@effect-ts/core/io/FiberRef/definition";
+import { _A, FiberRefSym } from "@effect/core/io/FiberRef/definition";
 
 export class FiberRefInternal<A> implements FiberRef<A> {
   readonly [FiberRefSym]: FiberRefSym = FiberRefSym;

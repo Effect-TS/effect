@@ -1,5 +1,5 @@
-import { _A, _E, DeferredSym } from "@effect-ts/core/io/Deferred/definition";
-import type { DeferredState } from "@effect-ts/core/io/Deferred/operations/_internal/DeferredState";
+import { _A, _E, DeferredSym } from "@effect/core/io/Deferred/definition";
+import type { DeferredState } from "@effect/core/io/Deferred/operations/_internal/DeferredState";
 
 export class DeferredInternal<E, A> implements Deferred<E, A> {
   readonly [DeferredSym]: DeferredSym = DeferredSym;

@@ -1,5 +1,5 @@
-import type { Decision } from "@effect-ts/core/io/Schedule/Decision";
-import { _Env, _In, _Out, _State, ScheduleSym } from "@effect-ts/core/io/Schedule/definition";
+import type { Decision } from "@effect/core/io/Schedule/Decision";
+import { _Env, _In, _Out, _State, ScheduleSym } from "@effect/core/io/Schedule/definition";
 
 export class ScheduleWithStateInternal<State, Env, In, Out> {
   readonly [ScheduleSym]: ScheduleSym = ScheduleSym;

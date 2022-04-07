@@ -1,7 +1,7 @@
-export const ScopeSym = Symbol.for("@effect-ts/core/io/Scope");
+export const ScopeSym = Symbol.for("@effect/core/io/Scope");
 export type ScopeSym = typeof ScopeSym;
 
-export const CloseableScopeSym = Symbol.for("@effect-ts/core/io/Scope/Closeable");
+export const CloseableScopeSym = Symbol.for("@effect/core/io/Scope/Closeable");
 export type CloseableScopeSym = typeof CloseableScopeSym;
 
 export type Finalizer = (exit: Exit<unknown, unknown>) => UIO<unknown>;

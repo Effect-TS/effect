@@ -1,4 +1,4 @@
-import { withGauge } from "@effect-ts/core/io/Metrics/Gauge/operations/_internal/InternalGauge";
+import { withGauge } from "@effect/core/io/Metrics/Gauge/operations/_internal/InternalGauge";
 
 /**
  * Sets this gauge to the specified value.

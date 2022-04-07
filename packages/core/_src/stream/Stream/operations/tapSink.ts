@@ -1,5 +1,5 @@
-import { concreteStream, StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
-import { TerminationStrategy } from "@effect-ts/core/stream/Stream/TerminationStrategy";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { TerminationStrategy } from "@effect/core/stream/Stream/TerminationStrategy";
 
 /**
  * Sends all elements emitted by this stream to the specified sink in addition

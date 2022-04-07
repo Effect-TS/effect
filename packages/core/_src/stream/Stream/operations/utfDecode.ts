@@ -1,6 +1,6 @@
-import { Utf8 } from "@effect-ts/core/stream/Stream/operations/_internal/bom";
-import { utf8DecodeNoBom } from "@effect-ts/core/stream/Stream/operations/_internal/utf8DecodeNoBom";
-import { utfDecodeDetectingBom } from "@effect-ts/core/stream/Stream/operations/_internal/utfDecodeDetectingBom";
+import { Utf8 } from "@effect/core/stream/Stream/operations/_internal/bom";
+import { utf8DecodeNoBom } from "@effect/core/stream/Stream/operations/_internal/utf8DecodeNoBom";
+import { utfDecodeDetectingBom } from "@effect/core/stream/Stream/operations/_internal/utfDecodeDetectingBom";
 
 // TODO(Mike/Max): look into utf16 and utf32 encodings
 

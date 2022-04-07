@@ -1,4 +1,4 @@
-export const TSemaphoreSym = Symbol.for("@effect-ts/core/stm/TSemaphore");
+export const TSemaphoreSym = Symbol.for("@effect/core/stm/TSemaphore");
 export type TSemaphoreSym = typeof TSemaphoreSym;
 
 /**

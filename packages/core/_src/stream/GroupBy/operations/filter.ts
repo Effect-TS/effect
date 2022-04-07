@@ -1,4 +1,4 @@
-import { concreteGroupBy } from "@effect-ts/core/stream/GroupBy/operations/_internal/GroupByInternal";
+import { concreteGroupBy } from "@effect/core/stream/GroupBy/operations/_internal/GroupByInternal";
 
 /**
  * Filter the groups to be processed.

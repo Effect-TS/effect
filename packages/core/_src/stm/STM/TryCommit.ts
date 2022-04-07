@@ -1,4 +1,4 @@
-import type { Journal } from "@effect-ts/core/stm/STM/Journal";
+import type { Journal } from "@effect/core/stm/STM/Journal";
 
 /**
  * @tsplus type ets/TryCommit

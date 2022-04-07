@@ -1,5 +1,5 @@
-import { unsafeOfferAll } from "@effect-ts/core/io/Queue/operations/_internal/unsafeOfferAll";
-import { unsafePollAll } from "@effect-ts/core/io/Queue/operations/_internal/unsafePollAll";
+import { unsafeOfferAll } from "@effect/core/io/Queue/operations/_internal/unsafeOfferAll";
+import { unsafePollAll } from "@effect/core/io/Queue/operations/_internal/unsafePollAll";
 
 /**
  * Remove an item from the queue.

@@ -1,4 +1,4 @@
-import { InternalGauge } from "@effect-ts/core/io/Metrics/Gauge/operations/_internal/InternalGauge";
+import { InternalGauge } from "@effect/core/io/Metrics/Gauge/operations/_internal/InternalGauge";
 
 /**
  * Creates a new gauge.

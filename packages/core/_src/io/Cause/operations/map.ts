@@ -1,4 +1,4 @@
-import { Fail } from "@effect-ts/core/io/Cause/definition";
+import { Fail } from "@effect/core/io/Cause/definition";
 
 /**
  * Transforms the error type of this cause with the specified function.

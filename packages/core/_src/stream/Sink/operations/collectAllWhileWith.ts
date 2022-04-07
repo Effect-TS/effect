@@ -1,4 +1,4 @@
-import { concreteSink, SinkInternal } from "@effect-ts/core/stream/Sink/operations/_internal/SinkInternal";
+import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
 
 /**
  * Repeatedly runs the sink for as long as its results satisfy the predicate

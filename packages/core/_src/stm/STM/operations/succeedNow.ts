@@ -1,4 +1,4 @@
-import { STMSucceedNow } from "@effect-ts/core/stm/STM/definition/primitives";
+import { STMSucceedNow } from "@effect/core/stm/STM/definition/primitives";
 
 /**
  * Returns an `STM` effect that succeeds with the specified value.

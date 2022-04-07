@@ -1,4 +1,4 @@
-import { makeSynthetic } from "@effect-ts/core/io/Fiber/definition";
+import { makeSynthetic } from "@effect/core/io/Fiber/definition";
 
 /**
  * Collects all fibers into a single fiber producing an in-order list of the

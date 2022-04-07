@@ -1,4 +1,4 @@
-import { ILayerScoped, ILayerTo } from "@effect-ts/core/io/Layer/definition";
+import { ILayerScoped, ILayerTo } from "@effect/core/io/Layer/definition";
 
 /**
  * Feeds the output services of this builder into the input of the specified

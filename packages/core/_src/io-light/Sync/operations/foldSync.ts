@@ -1,4 +1,4 @@
-import { concreteXPure } from "@effect-ts/core/io-light/Sync/definition";
+import { concreteXPure } from "@effect/core/io-light/Sync/definition";
 
 /**
  * Recovers from errors by accepting one computation to execute for the case

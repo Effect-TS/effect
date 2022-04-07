@@ -1,4 +1,4 @@
-import { ILogged } from "@effect-ts/core/io/Effect/definition/primitives";
+import { ILogged } from "@effect/core/io/Effect/definition/primitives";
 
 const someFatal = Option.some(LogLevel.Fatal);
 const someError = Option.some(LogLevel.Error);

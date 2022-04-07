@@ -1,4 +1,4 @@
-import { STMEffect } from "@effect-ts/core/stm/STM/definition/primitives";
+import { STMEffect } from "@effect/core/stm/STM/definition/primitives";
 
 /**
  * Retrieves the environment inside an `STM`.

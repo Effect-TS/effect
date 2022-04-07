@@ -1,4 +1,4 @@
-import { IFiberRefGetAll } from "@effect-ts/core/io/Effect/definition/primitives";
+import { IFiberRefGetAll } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * `FiberRefs` is a data type that represents a collection of `FiberRef` values.

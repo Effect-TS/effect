@@ -1,4 +1,4 @@
-export const SummarySym = Symbol.for("@effect-ts/core/io/Metrics/Summary");
+export const SummarySym = Symbol.for("@effect/core/io/Metrics/Summary");
 export type SummarySym = typeof SummarySym;
 
 /**

@@ -1,4 +1,4 @@
-import { withSummary } from "@effect-ts/core/io/Metrics/Summary/operations/_internal/InternalSummary";
+import { withSummary } from "@effect/core/io/Metrics/Summary/operations/_internal/InternalSummary";
 
 /**
  * Returns the values corresponding to each quantile in this summary.

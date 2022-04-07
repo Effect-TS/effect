@@ -1,4 +1,4 @@
-import { concreteSummary } from "@effect-ts/core/io/Metrics/Summary/operations/_internal/InternalSummary";
+import { concreteSummary } from "@effect/core/io/Metrics/Summary/operations/_internal/InternalSummary";
 
 /**
  * Converts this summary metric to one where the tags depend on the measured

@@ -1,4 +1,4 @@
-import { SinkInternal } from "@effect-ts/core/stream/Sink/operations/_internal/SinkInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
 
 /**
  * @tsplus static ets/Sink/Ops dropWhile

@@ -1,4 +1,4 @@
-import { chunkCoordination } from "@effect-ts/core/test/stream/Stream/test-utils";
+import { chunkCoordination } from "@effect/core/test/stream/Stream/test-utils";
 
 describe.concurrent("Stream", () => {
   describe.concurrent("fromChunk", () => {

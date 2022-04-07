@@ -1,4 +1,4 @@
-import { TSemaphoreInternal } from "@effect-ts/core/stm/TSemaphore/operations/_internal/TSemaphoreInternal";
+import { TSemaphoreInternal } from "@effect/core/stm/TSemaphore/operations/_internal/TSemaphoreInternal";
 
 /**
  * Constructs a new `TSemaphore` with the specified number of permits.

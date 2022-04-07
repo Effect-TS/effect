@@ -1,4 +1,4 @@
-import { Provide } from "@effect-ts/core/io-light/XPure/definition/primitives";
+import { Provide } from "@effect/core/io-light/XPure/definition/primitives";
 
 /**
  * Provides this computation with its required environment.

@@ -1,4 +1,4 @@
-import { makeWithState } from "@effect-ts/core/io/Schedule/operations/_internal/makeWithState";
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
 
 /**
  * Resets the schedule when the specified predicate on the schedule output

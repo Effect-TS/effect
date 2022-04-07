@@ -1,4 +1,4 @@
-import { InternalSetCount } from "@effect-ts/core/io/Metrics/SetCount/operations/_internal/InternalSetCount";
+import { InternalSetCount } from "@effect/core/io/Metrics/SetCount/operations/_internal/InternalSetCount";
 
 /**
  * Creates a new set count.

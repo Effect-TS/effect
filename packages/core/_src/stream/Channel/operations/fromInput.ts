@@ -1,4 +1,4 @@
-import type { AsyncInputConsumer } from "@effect-ts/core/stream/Channel/SingleProducerAsyncInput";
+import type { AsyncInputConsumer } from "@effect/core/stream/Channel/SingleProducerAsyncInput";
 
 /**
  * @tsplus static ets/Channel/Ops fromInput

@@ -1,4 +1,4 @@
-import { SynchronizedRefInternal } from "@effect-ts/core/io/Ref/Synchronized/operations/_internal/SynchronizedRefInternal";
+import { SynchronizedRefInternal } from "@effect/core/io/Ref/Synchronized/operations/_internal/SynchronizedRefInternal";
 
 /**
  * Creates a new `Ref.Synchronized` with the specified value.

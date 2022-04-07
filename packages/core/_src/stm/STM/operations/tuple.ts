@@ -1,4 +1,4 @@
-import type { _E, _R } from "@effect-ts/core/stm/STM/definition/base";
+import type { _E, _R } from "@effect/core/stm/STM/definition/base";
 
 type NonEmptyArraySTM = Array<STM<any, any, any>> & { readonly 0: STM<any, any, any>; };
 

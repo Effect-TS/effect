@@ -1,4 +1,4 @@
-import { InternalTPriorityQueue } from "@effect-ts/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue";
+import { InternalTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue";
 
 /**
  * Makes a new `TPriorityQueue` initialized with provided `Collection`.

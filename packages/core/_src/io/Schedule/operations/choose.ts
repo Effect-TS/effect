@@ -1,5 +1,5 @@
-import type { Decision } from "@effect-ts/core/io/Schedule/Decision";
-import { makeWithState } from "@effect-ts/core/io/Schedule/operations/_internal/makeWithState";
+import type { Decision } from "@effect/core/io/Schedule/Decision";
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
 
 /**
  * Returns a new schedule that allows choosing between feeding inputs to this

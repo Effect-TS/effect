@@ -1,4 +1,4 @@
-import { InternalCounter } from "@effect-ts/core/io/Metrics/Counter/operations/_internal/InternalCounter";
+import { InternalCounter } from "@effect/core/io/Metrics/Counter/operations/_internal/InternalCounter";
 
 /**
  * Creates a new counter.

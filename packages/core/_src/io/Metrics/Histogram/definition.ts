@@ -1,7 +1,7 @@
-export const HistogramSym = Symbol.for("@effect-ts/core/io/Metrics/Histogram");
+export const HistogramSym = Symbol.for("@effect/core/io/Metrics/Histogram");
 export type HistogramSym = typeof HistogramSym;
 
-export const HistogramBoundariesSym = Symbol.for("@effect-ts/core/io/Metrics/Histogram/Boundaries");
+export const HistogramBoundariesSym = Symbol.for("@effect/core/io/Metrics/Histogram/Boundaries");
 export type HistogramBoundariesSym = typeof HistogramBoundariesSym;
 
 /**

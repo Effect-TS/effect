@@ -1,5 +1,5 @@
-import { STMBase } from "@effect-ts/core/stm/STM/definition/base";
-import type { Journal } from "@effect-ts/core/stm/STM/Journal";
+import { STMBase } from "@effect/core/stm/STM/definition/base";
+import type { Journal } from "@effect/core/stm/STM/Journal";
 
 export class STMEffect<R, E, A> extends STMBase<R, E, A> {
   readonly _tag = "STMEffect";
@@ -80,7 +80,7 @@ export function concreteSTM<R, E, A>(
   //
 }
 
-export const STMFailExceptionSym = Symbol.for("@effect-ts/core/stm/STM/FailException");
+export const STMFailExceptionSym = Symbol.for("@effect/core/stm/STM/FailException");
 export type STMFailExceptionSym = typeof STMFailExceptionSym;
 
 export class STMFailException<E> {
@@ -95,7 +95,7 @@ export function isFailException(u: unknown): u is STMFailException<unknown> {
   return typeof u === "object" && u != null && STMFailExceptionSym in u;
 }
 
-export const STMDieExceptionSym = Symbol.for("@effect-ts/core/stm/STM/DieException");
+export const STMDieExceptionSym = Symbol.for("@effect/core/stm/STM/DieException");
 export type STMDieExceptionSym = typeof STMDieExceptionSym;
 
 export class STMDieException<E> {
@@ -110,7 +110,7 @@ export function isDieException(u: unknown): u is STMDieException<unknown> {
   return typeof u === "object" && u != null && STMDieExceptionSym in u;
 }
 
-export const STMInterruptExceptionSym = Symbol.for("@effect-ts/core/stm/STM/InterruptException");
+export const STMInterruptExceptionSym = Symbol.for("@effect/core/stm/STM/InterruptException");
 export type STMInterruptExceptionSym = typeof STMInterruptExceptionSym;
 
 export class STMInterruptException {
@@ -125,7 +125,7 @@ export function isInterruptException(u: unknown): u is STMInterruptException {
   return typeof u === "object" && u != null && STMInterruptExceptionSym in u;
 }
 
-export const STMRetryExceptionSym = Symbol.for("@effect-ts/core/stm/STM/RetryException");
+export const STMRetryExceptionSym = Symbol.for("@effect/core/stm/STM/RetryException");
 export type STMRetryExceptionSym = typeof STMRetryExceptionSym;
 
 export class STMRetryException {

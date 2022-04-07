@@ -1,4 +1,4 @@
-import { IFlatMap } from "@effect-ts/core/io/Effect/definition/primitives";
+import { IFlatMap } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * Returns an effect that models the execution of this effect, followed by the

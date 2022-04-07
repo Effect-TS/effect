@@ -156,7 +156,9 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit();
 
-      assert.isTrue(result.untraced() == Exit.die(new IllegalArgumentException()));
+      assert.isTrue(
+        result.isFailure() && result.cause.isDieType() && result.cause.value instanceof IllegalArgumentException
+      );
     });
   });
 
@@ -216,7 +218,9 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit();
 
-      assert.isTrue(result.untraced() == Exit.die(new IllegalArgumentException()));
+      assert.isTrue(
+        result.isFailure() && result.cause.isDieType() && result.cause.value instanceof IllegalArgumentException
+      );
     });
   });
 
@@ -298,7 +302,10 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit();
 
-      assert.isTrue(result.untraced() == Exit.die(new Error("1")));
+      assert.isTrue(
+        result.isFailure() && result.cause.isDieType() && result.cause.value instanceof Error &&
+          result.cause.value.message === "1"
+      );
     });
 
     it("returns results in the same order", async () => {

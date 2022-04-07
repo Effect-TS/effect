@@ -1,4 +1,4 @@
-import { StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
+import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 /**
  * Allows a faster producer to progress independently of a slower consumer by

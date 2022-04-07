@@ -1,5 +1,5 @@
-import { STMEffect } from "@effect-ts/core/stm/STM/definition/primitives";
-import type { Journal } from "@effect-ts/core/stm/STM/Journal";
+import { STMEffect } from "@effect/core/stm/STM/definition/primitives";
+import type { Journal } from "@effect/core/stm/STM/Journal";
 
 /**
  * @tsplus static ets/STM/Ops Effect

@@ -1,7 +1,7 @@
 /**
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
-import { _A, _E, _R } from "@effect-ts/core/stm/STM/definition/base";
+import { _A, _E, _R } from "@effect/core/stm/STM/definition/base";
 
 export class GenSTM<R, E, A> {
   readonly [_R]!: (_R: R) => void;

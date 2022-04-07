@@ -1,7 +1,7 @@
-import type { MergeDecision } from "@effect-ts/core/stream/Channel/MergeDecision";
-import { concreteMergeDecision } from "@effect-ts/core/stream/Channel/MergeDecision";
-import { MergeState } from "@effect-ts/core/stream/Channel/MergeState";
-import { SingleProducerAsyncInput } from "@effect-ts/core/stream/Channel/SingleProducerAsyncInput";
+import type { MergeDecision } from "@effect/core/stream/Channel/MergeDecision";
+import { concreteMergeDecision } from "@effect/core/stream/Channel/MergeDecision";
+import { MergeState } from "@effect/core/stream/Channel/MergeState";
+import { SingleProducerAsyncInput } from "@effect/core/stream/Channel/SingleProducerAsyncInput";
 
 /**
  * Returns a new channel, which is the merge of this channel and the specified

@@ -1,6 +1,6 @@
-import { Driver } from "@effect-ts/core/io/Schedule/Driver";
+import { Driver } from "@effect/core/io/Schedule/Driver";
 
-export const ClockId = Symbol.for("@effect-ts/core/io/Clock");
+export const ClockId = Symbol.for("@effect/core/io/Clock");
 export type ClockId = typeof ClockId;
 
 export const HasClock = Service<Clock>(ClockId);

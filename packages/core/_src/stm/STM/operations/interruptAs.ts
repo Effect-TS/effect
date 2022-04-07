@@ -1,4 +1,4 @@
-import { STMEffect, STMInterruptException } from "@effect-ts/core/stm/STM/definition/primitives";
+import { STMEffect, STMInterruptException } from "@effect/core/stm/STM/definition/primitives";
 /**
  * Interrupts the fiber running the effect with the specified fiber id.
  *

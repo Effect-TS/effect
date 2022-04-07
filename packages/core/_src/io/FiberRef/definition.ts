@@ -1,7 +1,7 @@
-export const FiberRefSym = Symbol.for("@effect-ts/core/io/FiberRef");
+export const FiberRefSym = Symbol.for("@effect/core/io/FiberRef");
 export type FiberRefSym = typeof FiberRefSym;
 
-export const _A = Symbol.for("@effect-ts/core/io/FiberRef/A");
+export const _A = Symbol.for("@effect/core/io/FiberRef/A");
 export type _A = typeof _A;
 
 /**

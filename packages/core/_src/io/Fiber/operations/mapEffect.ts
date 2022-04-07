@@ -1,4 +1,4 @@
-import { makeSynthetic } from "@effect-ts/core/io/Fiber/definition";
+import { makeSynthetic } from "@effect/core/io/Fiber/definition";
 
 /**
  * Effectually maps over the value the fiber computes.

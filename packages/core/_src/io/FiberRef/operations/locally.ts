@@ -1,4 +1,4 @@
-import { IFiberRefLocally } from "@effect-ts/core/io/Effect/definition/primitives";
+import { IFiberRefLocally } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * Returns an `Effect` that runs with `value` bound to the current fiber.

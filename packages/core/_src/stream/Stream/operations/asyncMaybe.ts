@@ -1,4 +1,4 @@
-import type { Emit } from "@effect-ts/core/stream/Stream/Emit";
+import type { Emit } from "@effect/core/stream/Stream/Emit";
 
 /**
  * Creates a stream from an asynchronous callback that can be called multiple

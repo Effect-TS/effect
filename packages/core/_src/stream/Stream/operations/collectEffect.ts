@@ -1,4 +1,4 @@
-import { loopOnPartialChunksElements } from "@effect-ts/core/stream/Stream/operations/_internal/loopOnPartialChunksElements";
+import { loopOnPartialChunksElements } from "@effect/core/stream/Stream/operations/_internal/loopOnPartialChunksElements";
 
 /**
  * Performs an effectful filter and map in a single step.

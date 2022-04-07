@@ -1,4 +1,4 @@
-import type { _A, _E, _R } from "@effect-ts/core/stream/Stream//definition";
+import type { _A, _E, _R } from "@effect/core/stream/Stream//definition";
 
 /**
  * @tsplus static ets/Stream/Ops tuple

@@ -1,4 +1,4 @@
-import type { State } from "@effect-ts/core/io/Scope/ReleaseMap/_internal/State";
+import type { State } from "@effect/core/io/Scope/ReleaseMap/_internal/State";
 
 /**
  * A `ReleaseMap` represents the finalizers associated with a scope.

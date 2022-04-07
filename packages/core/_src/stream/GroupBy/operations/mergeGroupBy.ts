@@ -1,4 +1,4 @@
-import { concreteGroupBy } from "@effect-ts/core/stream/GroupBy/operations/_internal/GroupByInternal";
+import { concreteGroupBy } from "@effect/core/stream/GroupBy/operations/_internal/GroupByInternal";
 
 /**
  * Run the function across all groups, collecting the results in an

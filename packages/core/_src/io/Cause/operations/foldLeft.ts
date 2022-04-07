@@ -1,5 +1,5 @@
-import type { RealCause } from "@effect-ts/core/io/Cause/definition";
-import { realCause } from "@effect-ts/core/io/Cause/definition";
+import type { RealCause } from "@effect/core/io/Cause/definition";
+import { realCause } from "@effect/core/io/Cause/definition";
 
 /**
  * Folds over the cause to statefully compute a value.

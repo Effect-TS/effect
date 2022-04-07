@@ -1,5 +1,5 @@
-import { MergeDecision } from "@effect-ts/core/stream/Channel/MergeDecision";
-import { mapper, refReader, refWriter } from "@effect-ts/core/test/stream/Channel/test-utils";
+import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision";
+import { mapper, refReader, refWriter } from "@effect/core/test/stream/Channel/test-utils";
 
 describe.concurrent("Channel", () => {
   describe.concurrent("concurrent reads", () => {

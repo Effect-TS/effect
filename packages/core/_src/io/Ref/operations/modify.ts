@@ -1,4 +1,4 @@
-import { concreteRef } from "@effect-ts/core/io/Ref/operations/_internal/RefInternal";
+import { concreteRef } from "@effect/core/io/Ref/operations/_internal/RefInternal";
 
 /**
  * Atomically modifies the `Ref` with the specified function, which computes a

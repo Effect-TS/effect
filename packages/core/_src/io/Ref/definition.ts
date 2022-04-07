@@ -1,9 +1,9 @@
 import type { SynchronizedRef } from "./Synchronized";
 
-export const RefSym = Symbol.for("@effect-ts/core/io/Ref");
+export const RefSym = Symbol.for("@effect/core/io/Ref");
 export type RefSym = typeof RefSym;
 
-export const _A = Symbol.for("@effect-ts/core/io/Ref/A");
+export const _A = Symbol.for("@effect/core/io/Ref/A");
 export type _A = typeof _A;
 
 /**

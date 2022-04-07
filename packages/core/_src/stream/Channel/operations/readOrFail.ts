@@ -1,4 +1,4 @@
-import { ContinuationK, Read } from "@effect-ts/core/stream/Channel/definition/primitives";
+import { ContinuationK, Read } from "@effect/core/stream/Channel/definition/primitives";
 
 /**
  * @tsplus static ets/Channel/Ops readOrFail

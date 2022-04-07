@@ -1,4 +1,4 @@
-import { concreteStream } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 /**
  * Like `Stream.runIntoQueue`, but provides the result as a scoped effect to

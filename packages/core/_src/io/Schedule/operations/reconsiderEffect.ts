@@ -1,6 +1,6 @@
-import { Decision } from "@effect-ts/core/io/Schedule/Decision";
-import type { Interval } from "@effect-ts/core/io/Schedule/Interval";
-import { makeWithState } from "@effect-ts/core/io/Schedule/operations/_internal/makeWithState";
+import { Decision } from "@effect/core/io/Schedule/Decision";
+import type { Interval } from "@effect/core/io/Schedule/Interval";
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
 
 /**
  * Returns a new schedule that effectfully reconsiders every decision made by

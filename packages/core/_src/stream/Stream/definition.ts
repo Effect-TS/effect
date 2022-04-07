@@ -1,13 +1,13 @@
-export const StreamSym = Symbol.for("@effect-ts/core/stream/Stream");
+export const StreamSym = Symbol.for("@effect/core/stream/Stream");
 export type StreamSym = typeof StreamSym;
 
-export const _R = Symbol.for("@effect-ts/core/stream/Stream/R");
+export const _R = Symbol.for("@effect/core/stream/Stream/R");
 export type _R = typeof _R;
 
-export const _E = Symbol.for("@effect-ts/core/stream/Stream/E");
+export const _E = Symbol.for("@effect/core/stream/Stream/E");
 export type _E = typeof _E;
 
-export const _A = Symbol.for("@effect-ts/core/stream/Stream/A");
+export const _A = Symbol.for("@effect/core/stream/Stream/A");
 export type _A = typeof _A;
 
 /**

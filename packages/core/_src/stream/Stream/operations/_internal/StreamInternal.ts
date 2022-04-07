@@ -1,4 +1,4 @@
-import { _A, _E, _R, StreamSym } from "@effect-ts/core/stream/Stream/definition";
+import { _A, _E, _R, StreamSym } from "@effect/core/stream/Stream/definition";
 
 export class StreamInternal<R, E, A> implements Stream<R, E, A> {
   readonly [StreamSym]: StreamSym = StreamSym;

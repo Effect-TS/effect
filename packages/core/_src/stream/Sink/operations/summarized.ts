@@ -1,4 +1,4 @@
-import { concreteSink, SinkInternal } from "@effect-ts/core/stream/Sink/operations/_internal/SinkInternal";
+import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
 
 /**
  * Summarize a sink by running an effect when the sink starts and again when

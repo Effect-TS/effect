@@ -1,5 +1,5 @@
-import { DEFAULT_CHUNK_SIZE } from "@effect-ts/core/stream/Stream/definition";
-import { StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
+import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition";
+import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 /**
  * Constructs a stream from a range of integers (lower bound included, upper

@@ -1,5 +1,5 @@
 {
-  "name": "@effect-ts/core",
+  "name": "@effect/core",
   "version": "0.0.0",
   "type": "module",
   "license": "MIT",
@@ -42,7 +42,7 @@
     }
   },
   "peerDependencies": {
-    "@tsplus/stdlib": "0.0.35"
+    "@tsplus/stdlib": "*"
   },
   "peerDependenciesMeta": {
     "@tsplus/stdlib": {

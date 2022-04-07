@@ -1,4 +1,4 @@
-import { IFold } from "@effect-ts/core/io/Effect/definition/primitives";
+import { IFold } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * Returns an effect that semantically runs the effect on a fiber, producing

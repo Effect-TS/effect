@@ -1,4 +1,4 @@
-import { getOrMakeEntry } from "@effect-ts/core/stm/TRef/operations/_internal/getOrMakeEntry";
+import { getOrMakeEntry } from "@effect/core/stm/TRef/operations/_internal/getOrMakeEntry";
 
 /**
  * Sets the value of the `TRef`.

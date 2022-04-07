@@ -1,6 +1,6 @@
-import { isFiberFailure } from "@effect-ts/core/io/Cause/errors";
-import { Emit } from "@effect-ts/core/stream/Stream/Emit";
-import { StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
+import { isFiberFailure } from "@effect/core/io/Cause/errors";
+import { Emit } from "@effect/core/stream/Stream/Emit";
+import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 /**
  * Creates a stream from an asynchronous callback that can be called multiple

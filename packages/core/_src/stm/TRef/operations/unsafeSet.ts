@@ -1,5 +1,5 @@
-import type { Journal } from "@effect-ts/core/stm/STM/Journal";
-import { getOrMakeEntry } from "@effect-ts/core/stm/TRef/operations/_internal/getOrMakeEntry";
+import type { Journal } from "@effect/core/stm/STM/Journal";
+import { getOrMakeEntry } from "@effect/core/stm/TRef/operations/_internal/getOrMakeEntry";
 
 /**
  * Unsafely sets the value of the `TRef`.

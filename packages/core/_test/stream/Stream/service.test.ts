@@ -1,7 +1,7 @@
 describe.concurrent("Stream", () => {
   describe.concurrent("serviceWith", () => {
     it("serviceWithEffect", async () => {
-      const ServiceWithEffectId = Symbol.for("@effect-ts/core/test/stream/Stream/ServiceWithEffectId");
+      const ServiceWithEffectId = Symbol.for("@effect/core/test/stream/Stream/ServiceWithEffectId");
 
       interface ServiceWithEffect {
         readonly live: UIO<number>;
@@ -19,7 +19,7 @@ describe.concurrent("Stream", () => {
     });
 
     it("serviceWithStream", async () => {
-      const ServiceWithStreamId = Symbol.for("@effect-ts/core/test/stream/Stream/ServiceWithEffectId");
+      const ServiceWithStreamId = Symbol.for("@effect/core/test/stream/Stream/ServiceWithEffectId");
 
       interface ServiceWithStream {
         readonly live: Stream<unknown, never, number>;

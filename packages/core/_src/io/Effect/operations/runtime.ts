@@ -1,4 +1,4 @@
-import { LiveClock } from "@effect-ts/core/io/Clock/live";
+import { LiveClock } from "@effect/core/io/Clock/live";
 
 /**
  * Returns an effect that accesses the runtime, which can be used to

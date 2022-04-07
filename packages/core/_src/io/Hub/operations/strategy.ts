@@ -1,8 +1,8 @@
-import type { AtomicHub } from "@effect-ts/core/io/Hub/operations/_internal/AtomicHub";
-import type { Subscription } from "@effect-ts/core/io/Hub/operations/_internal/Subscription";
-import { unsafeCompleteDeferred } from "@effect-ts/core/io/Hub/operations/_internal/unsafeCompleteDeferred";
-import { unsafeOfferAll } from "@effect-ts/core/io/Hub/operations/_internal/unsafeOfferAll";
-import { unsafePollAllQueue } from "@effect-ts/core/io/Hub/operations/_internal/unsafePollAllQueue";
+import type { AtomicHub } from "@effect/core/io/Hub/operations/_internal/AtomicHub";
+import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription";
+import { unsafeCompleteDeferred } from "@effect/core/io/Hub/operations/_internal/unsafeCompleteDeferred";
+import { unsafeOfferAll } from "@effect/core/io/Hub/operations/_internal/unsafeOfferAll";
+import { unsafePollAllQueue } from "@effect/core/io/Hub/operations/_internal/unsafePollAllQueue";
 
 /**
  * A `Strategy<A>` describes the protocol for how publishers and subscribers

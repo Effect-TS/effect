@@ -1,5 +1,5 @@
-import type { CommonQueue } from "@effect-ts/core/io/Queue/definition/common";
-import type { _Out } from "@effect-ts/core/io/Queue/definition/symbols";
+import type { CommonQueue } from "@effect/core/io/Queue/definition/common";
+import type { _Out } from "@effect/core/io/Queue/definition/symbols";
 
 export interface Dequeue<A> extends CommonQueue {
   readonly [_Out]: () => A;

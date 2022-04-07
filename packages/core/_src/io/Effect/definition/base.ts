@@ -3,25 +3,25 @@ import type { HKT } from "../../../prelude/HKT";
 export const EffectURI = "Effect";
 export type EffectURI = typeof EffectURI;
 
-export const _U = Symbol.for("@effect-ts/core/io/Effect/U");
+export const _U = Symbol.for("@effect/core/io/Effect/U");
 export type _U = typeof _U;
 
-export const _R = Symbol.for("@effect-ts/core/io/Effect/R");
+export const _R = Symbol.for("@effect/core/io/Effect/R");
 export type _R = typeof _R;
 
-export const _E = Symbol.for("@effect-ts/core/io/Effect/E");
+export const _E = Symbol.for("@effect/core/io/Effect/E");
 export type _E = typeof _E;
 
-export const _A = Symbol.for("@effect-ts/core/io/Effect/A");
+export const _A = Symbol.for("@effect/core/io/Effect/A");
 export type _A = typeof _A;
 
-export const _S1 = Symbol.for("@effect-ts/core/io/Effect/S1");
+export const _S1 = Symbol.for("@effect/core/io/Effect/S1");
 export type _S1 = typeof _S1;
 
-export const _S2 = Symbol.for("@effect-ts/core/io/Effect/S2");
+export const _S2 = Symbol.for("@effect/core/io/Effect/S2");
 export type _S2 = typeof _S2;
 
-export const _W = Symbol.for("@effect-ts/core/io/Effect/W");
+export const _W = Symbol.for("@effect/core/io/Effect/W");
 export type _W = typeof _W;
 
 /**

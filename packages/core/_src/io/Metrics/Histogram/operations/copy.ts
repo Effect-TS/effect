@@ -1,8 +1,8 @@
-import type { Boundaries } from "@effect-ts/core/io/Metrics/Histogram/definition";
+import type { Boundaries } from "@effect/core/io/Metrics/Histogram/definition";
 import {
   concreteHistogram,
   InternalHistogram
-} from "@effect-ts/core/io/Metrics/Histogram/operations/_internal/InternalHistogram";
+} from "@effect/core/io/Metrics/Histogram/operations/_internal/InternalHistogram";
 
 /**
  * Returns a copy of this histogram with the specified name, boundaries, and/or

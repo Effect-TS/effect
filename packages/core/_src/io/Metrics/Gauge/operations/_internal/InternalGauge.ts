@@ -1,7 +1,7 @@
-import type { AtomicGauge } from "@effect-ts/core/io/Metrics/atomic/AtomicGauge";
-import type { Gauge } from "@effect-ts/core/io/Metrics/Gauge/definition";
-import { GaugeSym } from "@effect-ts/core/io/Metrics/Gauge/definition";
-import { _A } from "@effect-ts/core/io/Metrics/Metric/definition";
+import type { AtomicGauge } from "@effect/core/io/Metrics/atomic/AtomicGauge";
+import type { Gauge } from "@effect/core/io/Metrics/Gauge/definition";
+import { GaugeSym } from "@effect/core/io/Metrics/Gauge/definition";
+import { _A } from "@effect/core/io/Metrics/Metric/definition";
 
 export class InternalGauge<A> implements Gauge<A>, Equals {
   readonly [GaugeSym]: GaugeSym = GaugeSym;

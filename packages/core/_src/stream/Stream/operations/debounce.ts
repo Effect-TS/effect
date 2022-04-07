@@ -1,7 +1,7 @@
-import { Handoff } from "@effect-ts/core/stream/Stream/operations/_internal/Handoff";
-import { HandoffSignal } from "@effect-ts/core/stream/Stream/operations/_internal/HandoffSignal";
-import { concreteStream, StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
-import { SinkEndReason } from "@effect-ts/core/stream/Stream/SinkEndReason";
+import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff";
+import { HandoffSignal } from "@effect/core/stream/Stream/operations/_internal/HandoffSignal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { SinkEndReason } from "@effect/core/stream/Stream/SinkEndReason";
 
 type DebounceState<E, A> = NotStarted | Previous<A> | Current<E, A>;
 

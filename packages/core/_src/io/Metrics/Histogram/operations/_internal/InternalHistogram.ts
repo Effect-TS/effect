@@ -1,7 +1,7 @@
-import type { AtomicHistogram } from "@effect-ts/core/io/Metrics/atomic/AtomicHistogram";
-import type { Boundaries } from "@effect-ts/core/io/Metrics/Histogram/definition";
-import { HistogramSym } from "@effect-ts/core/io/Metrics/Histogram/definition";
-import { _A } from "@effect-ts/core/io/Metrics/Metric/definition";
+import type { AtomicHistogram } from "@effect/core/io/Metrics/atomic/AtomicHistogram";
+import type { Boundaries } from "@effect/core/io/Metrics/Histogram/definition";
+import { HistogramSym } from "@effect/core/io/Metrics/Histogram/definition";
+import { _A } from "@effect/core/io/Metrics/Metric/definition";
 
 export class InternalHistogram<A> implements Histogram<A>, Equals {
   readonly [HistogramSym]: HistogramSym = HistogramSym;

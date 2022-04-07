@@ -1,4 +1,4 @@
-import { Failure } from "@effect-ts/core/io/Exit/definition";
+import { Failure } from "@effect/core/io/Exit/definition";
 
 /**
  * Maps over the cause type.

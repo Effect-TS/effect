@@ -1,5 +1,5 @@
-import type { None } from "@effect-ts/core/io/FiberId/definition";
-import { realFiberId } from "@effect-ts/core/io/FiberId/definition";
+import type { None } from "@effect/core/io/FiberId/definition";
+import { realFiberId } from "@effect/core/io/FiberId/definition";
 
 /**
  * Determines if the `FiberId` is a `None`.

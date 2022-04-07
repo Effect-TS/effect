@@ -1,18 +1,18 @@
 // =============================================================================
-// @effect-ts/core
+// @effect/core
 // =============================================================================
 /**
  * Ensure types are in scope
  */
-import type {} from "@effect-ts/core";
+import type {} from "@effect/core";
 /**
  * @tsplus global
  */
-import { LazyValue } from "@effect-ts/core/data/LazyValue";
+import { LazyValue } from "@effect/core/data/LazyValue";
 /**
  * @tsplus global
  */
-import { Cause } from "@effect-ts/core/io/Cause/definition";
+import { Cause } from "@effect/core/io/Cause/definition";
 /**
  * @tsplus global
  */
@@ -23,255 +23,255 @@ import {
   IllegalStateException,
   InterruptedException,
   RuntimeError
-} from "@effect-ts/core/io/Cause/errors";
+} from "@effect/core/io/Cause/errors";
 /**
  * @tsplus global
  */
-import { Clock, HasClock } from "@effect-ts/core/io/Clock/definition";
+import { Clock, HasClock } from "@effect/core/io/Clock/definition";
 /**
  * @tsplus global
  */
-import { Deferred } from "@effect-ts/core/io/Deferred/definition";
+import { Deferred } from "@effect/core/io/Deferred/definition";
 /**
  * @tsplus global
  */
-import { Canceler, Effect, EffectError, IO, RIO, UIO } from "@effect-ts/core/io/Effect/definition";
+import { Canceler, Effect, EffectError, IO, RIO, UIO } from "@effect/core/io/Effect/definition";
 /**
  * @tsplus global
  */
-import { FiberRefs } from "@effect-ts/core/io/Effect/operations/fiberRefs";
+import { FiberRefs } from "@effect/core/io/Effect/operations/fiberRefs";
 /**
  * @tsplus global
  */
-import { ExecutionStrategy } from "@effect-ts/core/io/ExecutionStrategy/definition";
+import { ExecutionStrategy } from "@effect/core/io/ExecutionStrategy/definition";
 /**
  * @tsplus global
  */
-import { Exit } from "@effect-ts/core/io/Exit/definition";
+import { Exit } from "@effect/core/io/Exit/definition";
 /**
  * @tsplus global
  */
-import { Fiber } from "@effect-ts/core/io/Fiber/definition";
+import { Fiber } from "@effect/core/io/Fiber/definition";
 /**
  * @tsplus global
  */
-import { FiberId } from "@effect-ts/core/io/FiberId/definition";
+import { FiberId } from "@effect/core/io/FiberId/definition";
 /**
  * @tsplus global
  */
-import { FiberRef } from "@effect-ts/core/io/FiberRef/definition";
+import { FiberRef } from "@effect/core/io/FiberRef/definition";
 /**
  * @tsplus global
  */
-import { FiberScope } from "@effect-ts/core/io/FiberScope/definition";
+import { FiberScope } from "@effect/core/io/FiberScope/definition";
 /**
  * @tsplus global
  */
-import { Hub } from "@effect-ts/core/io/Hub/definition";
+import { Hub } from "@effect/core/io/Hub/definition";
 /**
  * @tsplus global
  */
-import { InterruptStatus } from "@effect-ts/core/io/InterruptStatus/definition";
+import { InterruptStatus } from "@effect/core/io/InterruptStatus/definition";
 /**
  * @tsplus global
  */
-import { Layer } from "@effect-ts/core/io/Layer/definition";
+import { Layer } from "@effect/core/io/Layer/definition";
 /**
  * @tsplus global
  */
-import { Logger } from "@effect-ts/core/io/Logger/definition";
+import { Logger } from "@effect/core/io/Logger/definition";
 /**
  * @tsplus global
  */
-import { LogLevel } from "@effect-ts/core/io/LogLevel/definition";
+import { LogLevel } from "@effect/core/io/LogLevel/definition";
 /**
  * @tsplus global
  */
-import { LogSpan } from "@effect-ts/core/io/LogSpan/definition";
+import { LogSpan } from "@effect/core/io/LogSpan/definition";
 /**
  * @tsplus global
  */
-import { Counter } from "@effect-ts/core/io/Metrics/Counter/definition";
+import { Counter } from "@effect/core/io/Metrics/Counter/definition";
 /**
  * @tsplus global
  */
-import { Gauge } from "@effect-ts/core/io/Metrics/Gauge/definition";
+import { Gauge } from "@effect/core/io/Metrics/Gauge/definition";
 /**
  * @tsplus global
  */
-import { Boundaries, Histogram } from "@effect-ts/core/io/Metrics/Histogram/definition";
+import { Boundaries, Histogram } from "@effect/core/io/Metrics/Histogram/definition";
 /**
  * @tsplus global
  */
-import { Metric } from "@effect-ts/core/io/Metrics/Metric/definition";
+import { Metric } from "@effect/core/io/Metrics/Metric/definition";
 /**
  * @tsplus global
  */
-import { MetricClient } from "@effect-ts/core/io/Metrics/MetricClient";
+import { MetricClient } from "@effect/core/io/Metrics/MetricClient";
 /**
  * @tsplus global
  */
-import { MetricKey } from "@effect-ts/core/io/Metrics/MetricKey";
+import { MetricKey } from "@effect/core/io/Metrics/MetricKey";
 /**
  * @tsplus global
  */
-import { MetricLabel } from "@effect-ts/core/io/Metrics/MetricLabel";
+import { MetricLabel } from "@effect/core/io/Metrics/MetricLabel";
 /**
  * @tsplus global
  */
-import { MetricListener } from "@effect-ts/core/io/Metrics/MetricListener";
+import { MetricListener } from "@effect/core/io/Metrics/MetricListener";
 /**
  * @tsplus global
  */
-import { MetricSnapshot } from "@effect-ts/core/io/Metrics/MetricSnapshot";
+import { MetricSnapshot } from "@effect/core/io/Metrics/MetricSnapshot";
 /**
  * @tsplus global
  */
-import { MetricState } from "@effect-ts/core/io/Metrics/MetricState";
+import { MetricState } from "@effect/core/io/Metrics/MetricState";
 /**
  * @tsplus global
  */
-import { MetricType } from "@effect-ts/core/io/Metrics/MetricType";
+import { MetricType } from "@effect/core/io/Metrics/MetricType";
 /**
  * @tsplus global
  */
-import { SetCount } from "@effect-ts/core/io/Metrics/SetCount/definition";
+import { SetCount } from "@effect/core/io/Metrics/SetCount/definition";
 /**
  * @tsplus global
  */
-import { Summary } from "@effect-ts/core/io/Metrics/Summary/definition";
+import { Summary } from "@effect/core/io/Metrics/Summary/definition";
 /**
  * @tsplus global
  */
-import { Dequeue } from "@effect-ts/core/io/Queue/definition/Dequeue";
+import { Dequeue } from "@effect/core/io/Queue/definition/Dequeue";
 /**
  * @tsplus global
  */
-import { Enqueue } from "@effect-ts/core/io/Queue/definition/Enqueue";
+import { Enqueue } from "@effect/core/io/Queue/definition/Enqueue";
 /**
  * @tsplus global
  */
-import { Queue } from "@effect-ts/core/io/Queue/definition/Queue";
+import { Queue } from "@effect/core/io/Queue/definition/Queue";
 /**
  * @tsplus global
  */
-import { HasRandom, Random } from "@effect-ts/core/io/Random/definition";
+import { HasRandom, Random } from "@effect/core/io/Random/definition";
 /**
  * @tsplus global
  */
-import { Ref } from "@effect-ts/core/io/Ref/definition";
+import { Ref } from "@effect/core/io/Ref/definition";
 /**
  * @tsplus global
  */
-import { SynchronizedRef } from "@effect-ts/core/io/Ref/Synchronized/definition";
+import { SynchronizedRef } from "@effect/core/io/Ref/Synchronized/definition";
 /**
  * @tsplus global
  */
-import { Runtime } from "@effect-ts/core/io/Runtime/definition";
+import { Runtime } from "@effect/core/io/Runtime/definition";
 /**
  * @tsplus global
  */
-import { RuntimeConfig } from "@effect-ts/core/io/RuntimeConfig/definition";
+import { RuntimeConfig } from "@effect/core/io/RuntimeConfig/definition";
 /**
  * @tsplus global
  */
-import { RuntimeConfigFlag } from "@effect-ts/core/io/RuntimeConfig/Flag";
+import { RuntimeConfigFlag } from "@effect/core/io/RuntimeConfig/Flag";
 /**
  * @tsplus global
  */
-import { RuntimeConfigFlags } from "@effect-ts/core/io/RuntimeConfig/Flags/definition";
+import { RuntimeConfigFlags } from "@effect/core/io/RuntimeConfig/Flags/definition";
 /**
  * @tsplus global
  */
-import { Schedule } from "@effect-ts/core/io/Schedule/definition";
+import { Schedule } from "@effect/core/io/Schedule/definition";
 /**
  * @tsplus global
  */
-import { Finalizer, HasScope, Scope } from "@effect-ts/core/io/Scope/definition";
+import { Finalizer, HasScope, Scope } from "@effect/core/io/Scope/definition";
 /**
  * @tsplus global
  */
-import { ReleaseMap } from "@effect-ts/core/io/Scope/ReleaseMap/definition";
+import { ReleaseMap } from "@effect/core/io/Scope/ReleaseMap/definition";
 /**
  * @tsplus global
  */
-import { Semaphore } from "@effect-ts/core/io/Semaphore/definition";
+import { Semaphore } from "@effect/core/io/Semaphore/definition";
 /**
  * @tsplus global
  */
-import { Supervisor } from "@effect-ts/core/io/Supervisor/definition";
+import { Supervisor } from "@effect/core/io/Supervisor/definition";
 /**
  * @tsplus global
  */
-import { Trace } from "@effect-ts/core/io/Trace/definition";
+import { Trace } from "@effect/core/io/Trace/definition";
 /**
  * @tsplus global
  */
-import { TraceElement } from "@effect-ts/core/io/TraceElement/definition";
+import { TraceElement } from "@effect/core/io/TraceElement/definition";
 /**
  * @tsplus global
  */
-import { Sync } from "@effect-ts/core/io-light/Sync/definition";
+import { Sync } from "@effect/core/io-light/Sync/definition";
 /**
  * @tsplus global
  */
-import { XPure } from "@effect-ts/core/io-light/XPure/definition/base";
+import { XPure } from "@effect/core/io-light/XPure/definition/base";
 /**
  * @tsplus global
  */
-import { STM, USTM } from "@effect-ts/core/stm/STM/definition/base";
+import { STM, USTM } from "@effect/core/stm/STM/definition/base";
 /**
  * @tsplus global
  */
-import { TArray } from "@effect-ts/core/stm/TArray/definition";
+import { TArray } from "@effect/core/stm/TArray/definition";
 /**
  * @tsplus global
  */
-import { TExit } from "@effect-ts/core/stm/TExit/definition";
+import { TExit } from "@effect/core/stm/TExit/definition";
 /**
  * @tsplus global
  */
-import { TPriorityQueue } from "@effect-ts/core/stm/TPriorityQueue/definition";
+import { TPriorityQueue } from "@effect/core/stm/TPriorityQueue/definition";
 /**
  * @tsplus global
  */
-import { TRef } from "@effect-ts/core/stm/TRef/definition";
+import { TRef } from "@effect/core/stm/TRef/definition";
 /**
  * @tsplus global
  */
-import { TSemaphore } from "@effect-ts/core/stm/TSemaphore/definition";
+import { TSemaphore } from "@effect/core/stm/TSemaphore/definition";
 /**
  * @tsplus global
  */
-import { Channel } from "@effect-ts/core/stream/Channel/definition/base";
+import { Channel } from "@effect/core/stream/Channel/definition/base";
 /**
  * @tsplus global
  */
-import { GroupBy } from "@effect-ts/core/stream/GroupBy/definition/base";
+import { GroupBy } from "@effect/core/stream/GroupBy/definition/base";
 /**
  * @tsplus global
  */
-import { Pull } from "@effect-ts/core/stream/Pull/definition";
+import { Pull } from "@effect/core/stream/Pull/definition";
 /**
  * @tsplus global
  */
-import { Sink } from "@effect-ts/core/stream/Sink/definition/base";
+import { Sink } from "@effect/core/stream/Sink/definition/base";
 /**
  * @tsplus global
  */
-import { SortedByKey } from "@effect-ts/core/stream/SortedByKey/definition";
+import { SortedByKey } from "@effect/core/stream/SortedByKey/definition";
 /**
  * @tsplus global
  */
-import { Stream } from "@effect-ts/core/stream/Stream/definition";
+import { Stream } from "@effect/core/stream/Stream/definition";
 /**
  * @tsplus global
  */
-import { SubscriptionRef } from "@effect-ts/core/stream/SubscriptionRef/definition";
+import { SubscriptionRef } from "@effect/core/stream/SubscriptionRef/definition";
 /**
  * @tsplus global
  */
-import { Take } from "@effect-ts/core/stream/Take/definition";
+import { Take } from "@effect/core/stream/Take/definition";
 // =============================================================================
 // @tsplus/stdlib
 // =============================================================================

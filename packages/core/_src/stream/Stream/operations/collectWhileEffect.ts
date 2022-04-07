@@ -1,4 +1,4 @@
-import { loopOnPartialChunks } from "@effect-ts/core/stream/Stream/operations/_internal/loopOnPartialChunks";
+import { loopOnPartialChunks } from "@effect/core/stream/Stream/operations/_internal/loopOnPartialChunks";
 
 /**
  * Effectfully transforms all elements of the stream for as long as the

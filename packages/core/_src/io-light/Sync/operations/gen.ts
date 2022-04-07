@@ -2,8 +2,8 @@
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
 
-import { isEither, isOption, isService } from "@effect-ts/core/data/Utils";
-import { _GenA, _GenE, _GenR } from "@effect-ts/core/io/Effect/operations/gen";
+import { isEither, isOption, isService } from "@effect/core/data/Utils";
+import { _GenA, _GenE, _GenR } from "@effect/core/io/Effect/operations/gen";
 
 export class GenSync<R, E, A> {
   readonly [_GenR]!: (_R: R) => void;

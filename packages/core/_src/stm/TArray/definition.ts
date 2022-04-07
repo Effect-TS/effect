@@ -1,7 +1,7 @@
-export const TArraySym = Symbol.for("@effect-ts/core/stm/TArray");
+export const TArraySym = Symbol.for("@effect/core/stm/TArray");
 export type TArraySym = typeof TArraySym;
 
-export const _A = Symbol.for("@effect-ts/core/stm/TArray/A");
+export const _A = Symbol.for("@effect/core/stm/TArray/A");
 export type _A = typeof _A;
 
 /**

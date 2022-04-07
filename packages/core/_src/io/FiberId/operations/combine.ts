@@ -1,4 +1,4 @@
-import { CompositeFiberId, realFiberId } from "@effect-ts/core/io/FiberId/definition";
+import { CompositeFiberId, realFiberId } from "@effect/core/io/FiberId/definition";
 
 /**
  * Combine two `FiberId`s.

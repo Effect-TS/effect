@@ -1,5 +1,5 @@
-import { STMRetryException } from "@effect-ts/core/stm/STM/definition/primitives";
-import { concreteTPriorityQueue } from "@effect-ts/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue";
+import { STMRetryException } from "@effect/core/stm/STM/definition/primitives";
+import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue";
 
 /**
  * Takes a value from the queue, retrying until a value is in the queue.

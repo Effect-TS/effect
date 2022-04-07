@@ -1,4 +1,4 @@
-import { concreteCloseableScope } from "@effect-ts/core/io/Scope/operations/_internal/CloseableScopeInternal";
+import { concreteCloseableScope } from "@effect/core/io/Scope/operations/_internal/CloseableScopeInternal";
 
 /**
  * Closes a scope with the specified exit value, running all finalizers that

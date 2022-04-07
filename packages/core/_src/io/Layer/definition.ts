@@ -1,13 +1,13 @@
-export const LayerHashSym = Symbol.for("@effect-ts/core/Layer");
+export const LayerHashSym = Symbol.for("@effect/core/Layer");
 export type LayerHashSym = typeof LayerHashSym;
 
-export const _RIn = Symbol.for("@effect-ts/core/Layer/RIn");
+export const _RIn = Symbol.for("@effect/core/Layer/RIn");
 export type _RIn = typeof _RIn;
 
-export const _E = Symbol.for("@effect-ts/core/Layer/E");
+export const _E = Symbol.for("@effect/core/Layer/E");
 export type _E = typeof _E;
 
-export const _ROut = Symbol.for("@effect-ts/core/Layer/ROut");
+export const _ROut = Symbol.for("@effect/core/Layer/ROut");
 export type _ROut = typeof _ROut;
 
 /**

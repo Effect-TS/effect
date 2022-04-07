@@ -1,4 +1,4 @@
-import { mapper } from "@effect-ts/core/test/stream/Channel/test-utils";
+import { mapper } from "@effect/core/test/stream/Channel/test-utils";
 
 describe.concurrent("Channel", () => {
   describe.concurrent("reads", () => {

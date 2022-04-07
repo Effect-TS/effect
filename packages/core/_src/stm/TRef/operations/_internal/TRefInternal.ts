@@ -1,7 +1,7 @@
-import type { Todo } from "@effect-ts/core/stm/STM/Journal";
-import type { TxnId } from "@effect-ts/core/stm/STM/TxnId";
-import type { Versioned } from "@effect-ts/core/stm/STM/Versioned";
-import { _A, TRefSym } from "@effect-ts/core/stm/TRef/definition";
+import type { Todo } from "@effect/core/stm/STM/Journal";
+import type { TxnId } from "@effect/core/stm/STM/TxnId";
+import type { Versioned } from "@effect/core/stm/STM/Versioned";
+import { _A, TRefSym } from "@effect/core/stm/TRef/definition";
 
 export class TRefInternal<A> implements TRef<A> {
   readonly [TRefSym]: TRefSym = TRefSym;

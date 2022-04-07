@@ -1,7 +1,7 @@
-import type { ChildExecutorDecision } from "@effect-ts/core/stream/Channel/ChildExecutorDecision";
-import { ConcatAll } from "@effect-ts/core/stream/Channel/definition/primitives";
-import type { UpstreamPullRequest } from "@effect-ts/core/stream/Channel/UpstreamPullRequest";
-import type { UpstreamPullStrategy } from "@effect-ts/core/stream/Channel/UpstreamPullStrategy";
+import type { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision";
+import { ConcatAll } from "@effect/core/stream/Channel/definition/primitives";
+import type { UpstreamPullRequest } from "@effect/core/stream/Channel/UpstreamPullRequest";
+import type { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy";
 
 /**
  * Returns a new channel whose outputs are fed to the specified factory

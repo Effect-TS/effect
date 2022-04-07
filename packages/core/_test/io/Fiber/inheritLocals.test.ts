@@ -1,4 +1,4 @@
-import { withLatch } from "@effect-ts/core/test/test-utils/Latch";
+import { withLatch } from "@effect/core/test/test-utils/Latch";
 import { constVoid } from "@tsplus/stdlib/data/Function";
 
 const initial = "initial";

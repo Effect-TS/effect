@@ -1,4 +1,4 @@
-import { StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
+import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 /**
  * Creates a stream by peeling off the "layers" of a value of type `S`.

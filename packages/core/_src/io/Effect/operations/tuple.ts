@@ -1,4 +1,4 @@
-import type { _E, _R } from "@effect-ts/core/io/Effect/definition/base";
+import type { _E, _R } from "@effect/core/io/Effect/definition/base";
 
 type NonEmptyArrayEffect = Array<Effect<any, any, any>> & { readonly 0: Effect<any, any, any>; };
 

@@ -1,6 +1,6 @@
-import { concreteDeferred } from "@effect-ts/core/io/Deferred/operations/_internal/DeferredInternal";
-import { DeferredState } from "@effect-ts/core/io/Deferred/operations/_internal/DeferredState";
-import { interruptJoiner } from "@effect-ts/core/io/Deferred/operations/_internal/interruptJoiner";
+import { concreteDeferred } from "@effect/core/io/Deferred/operations/_internal/DeferredInternal";
+import { DeferredState } from "@effect/core/io/Deferred/operations/_internal/DeferredState";
+import { interruptJoiner } from "@effect/core/io/Deferred/operations/_internal/interruptJoiner";
 
 /**
  * Retrieves the value of the promise, suspending the fiber running the action

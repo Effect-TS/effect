@@ -1,5 +1,5 @@
-import { STMEffect, STMRetryException } from "@effect-ts/core/stm/STM/definition/primitives";
-import { concreteTSemaphore } from "@effect-ts/core/stm/TSemaphore/operations/_internal/TSemaphoreInternal";
+import { STMEffect, STMRetryException } from "@effect/core/stm/STM/definition/primitives";
+import { concreteTSemaphore } from "@effect/core/stm/TSemaphore/operations/_internal/TSemaphoreInternal";
 
 /**
  * Acquires the specified number of permits in a transactional context.

@@ -1,6 +1,6 @@
-import { tryCommitAsync, tryCommitSync } from "@effect-ts/core/stm/STM/Journal";
-import { State } from "@effect-ts/core/stm/STM/State";
-import { TxnId } from "@effect-ts/core/stm/STM/TxnId";
+import { tryCommitAsync, tryCommitSync } from "@effect/core/stm/STM/Journal";
+import { State } from "@effect/core/stm/STM/State";
+import { TxnId } from "@effect/core/stm/STM/TxnId";
 
 /**
  * @tsplus static ets/STM/Ops atomically

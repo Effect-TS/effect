@@ -1,5 +1,5 @@
-import { concreteDeferred } from "@effect-ts/core/io/Deferred/operations/_internal/DeferredInternal";
-import { DeferredState } from "@effect-ts/core/io/Deferred/operations/_internal/DeferredState";
+import { concreteDeferred } from "@effect/core/io/Deferred/operations/_internal/DeferredInternal";
+import { DeferredState } from "@effect/core/io/Deferred/operations/_internal/DeferredState";
 
 /**
  * Completes the deferred with the specified effect. If the deferred has

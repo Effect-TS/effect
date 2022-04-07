@@ -1,7 +1,7 @@
-import { createQueue } from "@effect-ts/core/io/Effect/operations/excl-forEach";
-import type { Strategy } from "@effect-ts/core/io/Queue/operations/strategy";
+import { createQueue } from "@effect/core/io/Effect/operations/excl-forEach";
+import type { Strategy } from "@effect/core/io/Queue/operations/strategy";
 
-export { createQueue } from "@effect-ts/core/io/Effect/operations/excl-forEach";
+export { createQueue } from "@effect/core/io/Effect/operations/excl-forEach";
 
 /**
  * Creates a new `Queue` using the provided `Strategy`.

@@ -1,4 +1,4 @@
-import { STMOnFailure } from "@effect-ts/core/stm/STM/definition/primitives";
+import { STMOnFailure } from "@effect/core/stm/STM/definition/primitives";
 
 /**
  * Recovers from all errors.

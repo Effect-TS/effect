@@ -1,4 +1,4 @@
-import { SinkInternal } from "@effect-ts/core/stream/Sink/operations/_internal/SinkInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
 
 /**
  * A sink that folds its inputs with the provided function, termination

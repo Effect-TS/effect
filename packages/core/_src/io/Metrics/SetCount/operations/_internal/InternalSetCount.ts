@@ -1,7 +1,7 @@
-import type { AtomicSetCount } from "@effect-ts/core/io/Metrics/atomic/AtomicSetCount";
-import { _A } from "@effect-ts/core/io/Metrics/Metric/definition";
-import type { SetCount } from "@effect-ts/core/io/Metrics/SetCount/definition";
-import { SetCountSym } from "@effect-ts/core/io/Metrics/SetCount/definition";
+import type { AtomicSetCount } from "@effect/core/io/Metrics/atomic/AtomicSetCount";
+import { _A } from "@effect/core/io/Metrics/Metric/definition";
+import type { SetCount } from "@effect/core/io/Metrics/SetCount/definition";
+import { SetCountSym } from "@effect/core/io/Metrics/SetCount/definition";
 
 export class InternalSetCount<A> implements SetCount<A>, Equals {
   readonly [SetCountSym]: SetCountSym = SetCountSym;

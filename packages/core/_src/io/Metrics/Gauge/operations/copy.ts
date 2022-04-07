@@ -1,4 +1,4 @@
-import { concreteGauge, InternalGauge } from "@effect-ts/core/io/Metrics/Gauge/operations/_internal/InternalGauge";
+import { concreteGauge, InternalGauge } from "@effect/core/io/Metrics/Gauge/operations/_internal/InternalGauge";
 
 /**
  * Returns a copy of this gauge with the specified name and/or tags.

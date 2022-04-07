@@ -1,5 +1,5 @@
-import type { Event } from "@effect-ts/core/test/stm/TPriorityQueue/test-utils";
-import { as, eventOrd } from "@effect-ts/core/test/stm/TPriorityQueue/test-utils";
+import type { Event } from "@effect/core/test/stm/TPriorityQueue/test-utils";
+import { as, eventOrd } from "@effect/core/test/stm/TPriorityQueue/test-utils";
 
 describe.concurrent("TPriorityQueue", () => {
   describe.concurrent("empty/nonEmpty", () => {

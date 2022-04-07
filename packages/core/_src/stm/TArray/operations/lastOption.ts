@@ -1,4 +1,4 @@
-import { concreteTArray } from "@effect-ts/core/stm/TArray/operations/_internal/InternalTArray";
+import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/InternalTArray";
 
 /**
  * The last entry in the array, if it exists.

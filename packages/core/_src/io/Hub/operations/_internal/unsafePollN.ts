@@ -1,4 +1,4 @@
-import type { Subscription } from "@effect-ts/core/io/Hub/operations/_internal/Subscription";
+import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription";
 
 /**
  * Unsafely polls the specified number of values from a subscription.

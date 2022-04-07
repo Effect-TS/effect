@@ -1,4 +1,4 @@
-import { realFiber } from "@effect-ts/core/io/Fiber/definition";
+import { realFiber } from "@effect/core/io/Fiber/definition";
 
 /**
  * Inherits values from all `FiberRef` instances into current fiber. This

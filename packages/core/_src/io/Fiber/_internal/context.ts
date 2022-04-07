@@ -1,16 +1,16 @@
-import type { IAsync, IFold, Instruction, IRaceWith } from "@effect-ts/core/io/Effect/definition/primitives";
-import { instruction } from "@effect-ts/core/io/Effect/definition/primitives";
-import { CancelerState } from "@effect-ts/core/io/Fiber/_internal/cancelerState";
-import type { Callback } from "@effect-ts/core/io/Fiber/_internal/fiberState";
-import { FiberState } from "@effect-ts/core/io/Fiber/_internal/fiberState";
-import { _A, _E, FiberSym } from "@effect-ts/core/io/Fiber/definition";
-import { FiberStatus } from "@effect-ts/core/io/Fiber/status";
-import { concreteCounter } from "@effect-ts/core/io/Metrics/Counter/operations/_internal/InternalCounter";
-import { Boundaries } from "@effect-ts/core/io/Metrics/Histogram";
-import { concreteHistogram } from "@effect-ts/core/io/Metrics/Histogram/operations/_internal/InternalHistogram";
-import { concreteSetCount } from "@effect-ts/core/io/Metrics/SetCount/operations/_internal/InternalSetCount";
-import { defaultScheduler } from "@effect-ts/core/support/Scheduler";
-import * as StackTraceBuilder from "@effect-ts/core/support/StackTraceBuilder";
+import type { IAsync, IFold, Instruction, IRaceWith } from "@effect/core/io/Effect/definition/primitives";
+import { instruction } from "@effect/core/io/Effect/definition/primitives";
+import { CancelerState } from "@effect/core/io/Fiber/_internal/cancelerState";
+import type { Callback } from "@effect/core/io/Fiber/_internal/fiberState";
+import { FiberState } from "@effect/core/io/Fiber/_internal/fiberState";
+import { _A, _E, FiberSym } from "@effect/core/io/Fiber/definition";
+import { FiberStatus } from "@effect/core/io/Fiber/status";
+import { concreteCounter } from "@effect/core/io/Metrics/Counter/operations/_internal/InternalCounter";
+import { Boundaries } from "@effect/core/io/Metrics/Histogram";
+import { concreteHistogram } from "@effect/core/io/Metrics/Histogram/operations/_internal/InternalHistogram";
+import { concreteSetCount } from "@effect/core/io/Metrics/SetCount/operations/_internal/InternalSetCount";
+import { defaultScheduler } from "@effect/core/support/Scheduler";
+import * as StackTraceBuilder from "@effect/core/support/StackTraceBuilder";
 
 const fiberFailureCauses = LazyValue.make(() => {
   const metric = Metric.occurrences("effect_fiber_failure_causes", "class");
@@ -307,7 +307,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   // ---------------------------------------------------------------------------
 
   get isStackEmpty(): boolean {
-    return !this.stack;
+    return this.stack == null;
   }
 
   pushContinuation(k: Frame): void {
@@ -791,8 +791,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           oldState.mailbox
         )
       );
-    }
-    if (
+    } else if (
       oldState._tag === "Executing" &&
       oldState.status._tag === "Suspended" &&
       oldState.asyncCanceler._tag === "Registered" &&
@@ -1034,16 +1033,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   complete<R, R1, R2, E2, A2, R3, E3, A3>(
     winner: Fiber<any, any>,
     loser: Fiber<any, any>,
-    cont: (exit: Exit<any, any>, fiber: Fiber<any, any>) => Effect<any, any, any>,
-    winnerExit: Exit<any, any>,
+    cont: (winner: Fiber<any, any>, loser: Fiber<any, any>) => Effect<any, any, any>,
     ab: AtomicReference<boolean>,
     cb: (_: Effect<R & R1 & R2 & R3, E2 | E3, A2 | A3>) => void
   ): void {
     if (ab.compareAndSet(true, false)) {
-      winnerExit.fold(
-        () => cb(cont(winnerExit, loser)),
-        () => cb(winner.inheritRefs().zipRight(cont(winnerExit, loser)))
-      );
+      cb(cont(winner, loser));
     }
   }
 
@@ -1057,25 +1052,19 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     const right = this.unsafeFork(instruction(race.right()), trace);
 
     return Effect.asyncBlockingOn((cb) => {
-      const leftRegister = left.unsafeAddObserverMaybe((exit) =>
-        exit.fold(
-          () => this.complete(left, right, race.leftWins, exit, raceIndicator, cb),
-          (value) => this.complete(left, right, race.leftWins, value, raceIndicator, cb)
-        )
+      const leftRegister = left.unsafeAddObserverMaybe(() =>
+        this.complete(left, right, race.leftWins, raceIndicator, cb)
       );
 
       if (leftRegister != null) {
-        this.complete(left, right, race.leftWins, leftRegister, raceIndicator, cb);
+        this.complete(left, right, race.leftWins, raceIndicator, cb);
       } else {
-        const rightRegister = right.unsafeAddObserverMaybe((exit) =>
-          exit.fold(
-            () => this.complete(right, left, race.rightWins, exit, raceIndicator, cb),
-            (value) => this.complete(right, left, race.rightWins, value, raceIndicator, cb)
-          )
+        const rightRegister = right.unsafeAddObserverMaybe(() =>
+          this.complete(right, left, race.rightWins, raceIndicator, cb)
         );
 
         if (rightRegister != null) {
-          this.complete(right, left, race.rightWins, rightRegister, raceIndicator, cb);
+          this.complete(right, left, race.rightWins, raceIndicator, cb);
         }
       }
     }, FiberId.combineAll(HashSet.from([left.fiberId, right.fiberId])));

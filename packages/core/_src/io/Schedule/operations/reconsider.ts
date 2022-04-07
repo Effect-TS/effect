@@ -1,5 +1,5 @@
-import type { Decision } from "@effect-ts/core/io/Schedule/Decision";
-import type { Interval } from "@effect-ts/core/io/Schedule/Interval";
+import type { Decision } from "@effect/core/io/Schedule/Decision";
+import type { Interval } from "@effect/core/io/Schedule/Interval";
 
 /**
  * Returns a new schedule that reconsiders every decision made by this

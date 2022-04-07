@@ -1,4 +1,4 @@
-import { concreteDeferred } from "@effect-ts/core/io/Deferred/operations/_internal/DeferredInternal";
+import { concreteDeferred } from "@effect/core/io/Deferred/operations/_internal/DeferredInternal";
 
 /**
  * Checks for completion of this `Deferred`. Returns the result effect if this

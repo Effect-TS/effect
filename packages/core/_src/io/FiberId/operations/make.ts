@@ -1,4 +1,4 @@
-import { RuntimeFiberId } from "@effect-ts/core/io/FiberId/definition";
+import { RuntimeFiberId } from "@effect/core/io/FiberId/definition";
 
 const _fiberCounter = new AtomicNumber(0);
 

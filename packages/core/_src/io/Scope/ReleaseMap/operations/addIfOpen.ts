@@ -1,5 +1,5 @@
-import { Exited, Running } from "@effect-ts/core/io/Scope/ReleaseMap/_internal/State";
-import { next } from "@effect-ts/core/io/Scope/ReleaseMap/operations/_internal/next";
+import { Exited, Running } from "@effect/core/io/Scope/ReleaseMap/_internal/State";
+import { next } from "@effect/core/io/Scope/ReleaseMap/operations/_internal/next";
 
 /**
  * Adds a finalizer to the finalizers associated with this scope. If the

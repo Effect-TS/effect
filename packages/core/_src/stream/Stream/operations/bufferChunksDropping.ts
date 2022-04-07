@@ -1,5 +1,5 @@
-import { bufferSignal } from "@effect-ts/core/stream/Stream/operations/_internal/bufferSignal";
-import { concreteStream, StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
+import { bufferSignal } from "@effect/core/stream/Stream/operations/_internal/bufferSignal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 /**
  * Allows a faster producer to progress independently of a slower consumer by

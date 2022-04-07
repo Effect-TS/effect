@@ -1,4 +1,4 @@
-import { concreteSetCount } from "@effect-ts/core/io/Metrics/SetCount/operations/_internal/InternalSetCount";
+import { concreteSetCount } from "@effect/core/io/Metrics/SetCount/operations/_internal/InternalSetCount";
 
 /**
  * Converts this set count metric to one where the tags depend on the

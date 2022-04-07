@@ -1,4 +1,4 @@
-import { withCounter } from "@effect-ts/core/io/Metrics/Counter/operations/_internal/InternalCounter";
+import { withCounter } from "@effect/core/io/Metrics/Counter/operations/_internal/InternalCounter";
 
 /**
  * Returns the current value of this counter.

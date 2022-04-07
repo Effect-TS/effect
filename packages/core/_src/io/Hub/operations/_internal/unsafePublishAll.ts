@@ -1,4 +1,4 @@
-import type { AtomicHub } from "@effect-ts/core/io/Hub/operations/_internal/AtomicHub";
+import type { AtomicHub } from "@effect/core/io/Hub/operations/_internal/AtomicHub";
 
 /**
  * Unsafely publishes the specified values to a hub.

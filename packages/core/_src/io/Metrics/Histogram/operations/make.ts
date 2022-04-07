@@ -1,5 +1,5 @@
-import type { Boundaries } from "@effect-ts/core/io/Metrics/Histogram/definition";
-import { InternalHistogram } from "@effect-ts/core/io/Metrics/Histogram/operations/_internal/InternalHistogram";
+import type { Boundaries } from "@effect/core/io/Metrics/Histogram/definition";
+import { InternalHistogram } from "@effect/core/io/Metrics/Histogram/operations/_internal/InternalHistogram";
 
 /**
  * Creates a new histogram.

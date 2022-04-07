@@ -1,13 +1,13 @@
-import { _In, _Out, QueueSym } from "@effect-ts/core/io/Queue/definition";
-import { unsafeCompleteDeferred } from "@effect-ts/core/io/Queue/operations/_internal/unsafeCompleteDeferred";
-import { unsafeCompleteTakers } from "@effect-ts/core/io/Queue/operations/_internal/unsafeCompleteTakers";
-import { unsafeOfferAll } from "@effect-ts/core/io/Queue/operations/_internal/unsafeOfferAll";
-import { unsafePollAll } from "@effect-ts/core/io/Queue/operations/_internal/unsafePollAll";
-import { unsafePollN } from "@effect-ts/core/io/Queue/operations/_internal/unsafePollN";
-import { unsafeRemove } from "@effect-ts/core/io/Queue/operations/_internal/unsafeRemove";
-import type { Strategy } from "@effect-ts/core/io/Queue/operations/strategy";
-import type { State } from "@effect-ts/core/io/Scope/ReleaseMap/_internal/State";
-import { Exited } from "@effect-ts/core/io/Scope/ReleaseMap/_internal/State";
+import { _In, _Out, QueueSym } from "@effect/core/io/Queue/definition";
+import { unsafeCompleteDeferred } from "@effect/core/io/Queue/operations/_internal/unsafeCompleteDeferred";
+import { unsafeCompleteTakers } from "@effect/core/io/Queue/operations/_internal/unsafeCompleteTakers";
+import { unsafeOfferAll } from "@effect/core/io/Queue/operations/_internal/unsafeOfferAll";
+import { unsafePollAll } from "@effect/core/io/Queue/operations/_internal/unsafePollAll";
+import { unsafePollN } from "@effect/core/io/Queue/operations/_internal/unsafePollN";
+import { unsafeRemove } from "@effect/core/io/Queue/operations/_internal/unsafeRemove";
+import type { Strategy } from "@effect/core/io/Queue/operations/strategy";
+import type { State } from "@effect/core/io/Scope/ReleaseMap/_internal/State";
+import { Exited } from "@effect/core/io/Scope/ReleaseMap/_internal/State";
 
 // -----------------------------------------------------------------------------
 // forEach

@@ -1,4 +1,4 @@
-import { ContinuationK, Fold } from "@effect-ts/core/stream/Channel/definition/primitives";
+import { ContinuationK, Fold } from "@effect/core/stream/Channel/definition/primitives";
 
 /**
  * Returns a new channel, which sequentially combines this channel, together

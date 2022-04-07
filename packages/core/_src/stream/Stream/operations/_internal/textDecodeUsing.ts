@@ -1,6 +1,6 @@
-import type { Charset } from "@effect-ts/core/stream/Stream/operations/_internal/Charset";
-import { concreteStream, StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
-import { stringChunkFrom } from "@effect-ts/core/stream/Stream/operations/_internal/stringChunkFrom";
+import type { Charset } from "@effect/core/stream/Stream/operations/_internal/Charset";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { stringChunkFrom } from "@effect/core/stream/Stream/operations/_internal/stringChunkFrom";
 
 export function textDecodeUsing(charset: Charset, __tsplusTrace?: string) {
   return <R, E>(stream: Stream<R, E, number>): Stream<R, E, string> => {

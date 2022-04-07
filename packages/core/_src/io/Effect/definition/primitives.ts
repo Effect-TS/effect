@@ -1,6 +1,6 @@
-import { Base } from "@effect-ts/core/io/Effect/definition/base";
+import { Base } from "@effect/core/io/Effect/definition/base";
 // TODO(Mike/Max): for some reason, this comment is needed to please dprint
-import type { XPureInstruction } from "@effect-ts/core/io-light/XPure/definition/primitives";
+import type { XPureInstruction } from "@effect/core/io-light/XPure/definition/primitives";
 
 export type Canceler<R> = RIO<R, void>;
 
@@ -267,8 +267,8 @@ export class IRaceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3> extends Base
   constructor(
     readonly left: Lazy<Effect<R, E, A>>,
     readonly right: Lazy<Effect<R1, E1, A1>>,
-    readonly leftWins: (exit: Exit<E, A>, fiber: Fiber<E1, A1>) => Effect<R2, E2, A2>,
-    readonly rightWins: (exit: Exit<E1, A1>, fiber: Fiber<E, A>) => Effect<R3, E3, A3>,
+    readonly leftWins: (winner: Fiber<E, A>, loser: Fiber<E1, A1>) => Effect<R2, E2, A2>,
+    readonly rightWins: (winner: Fiber<E1, A1>, loser: Fiber<E, A>) => Effect<R3, E3, A3>,
     readonly trace?: string
   ) {
     super();

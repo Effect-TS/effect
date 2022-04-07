@@ -1,4 +1,4 @@
-import { Both, Cause, Die, Interrupt, Stackless, Then } from "@effect-ts/core/io/Cause/definition";
+import { Both, Cause, Die, Interrupt, Stackless, Then } from "@effect/core/io/Cause/definition";
 
 /**
  * Transforms each error value in this cause to a new cause with the specified

@@ -1,4 +1,4 @@
-import { ILayerScoped } from "@effect-ts/core/io/Layer/definition";
+import { ILayerScoped } from "@effect/core/io/Layer/definition";
 
 /**
  * Returns a scoped effect that, if evaluated, will return the lazily computed

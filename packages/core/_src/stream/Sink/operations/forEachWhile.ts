@@ -1,4 +1,4 @@
-import { SinkInternal } from "@effect-ts/core/stream/Sink/operations/_internal/SinkInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
 
 /**
  * A sink that executes the provided effectful function for every element fed

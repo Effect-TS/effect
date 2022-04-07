@@ -1,5 +1,5 @@
 export const InvalidCapacityErrorSym: unique symbol = Symbol.for(
-  "@effect-ts/core/io/Hub/errors/InvalidCapacity"
+  "@effect/core/io/Hub/errors/InvalidCapacity"
 );
 
 export class InvalidCapacityError extends Error {

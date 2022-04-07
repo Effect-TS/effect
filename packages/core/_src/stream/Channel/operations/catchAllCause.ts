@@ -1,4 +1,4 @@
-import { ContinuationK, Fold } from "@effect-ts/core/stream/Channel/definition/primitives";
+import { ContinuationK, Fold } from "@effect/core/stream/Channel/definition/primitives";
 
 /**
  * Returns a new channel that is the same as this one, except if this channel

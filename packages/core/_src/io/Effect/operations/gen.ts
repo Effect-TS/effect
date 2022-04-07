@@ -1,15 +1,15 @@
 /**
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
-import { isEither, isOption, isService } from "@effect-ts/core/data/Utils";
+import { isEither, isOption, isService } from "@effect/core/data/Utils";
 
-export const _GenR = Symbol.for("@effect-ts/core/io/Effect/Gen/R");
+export const _GenR = Symbol.for("@effect/core/io/Effect/Gen/R");
 export type _GenR = typeof _GenR;
 
-export const _GenE = Symbol.for("@effect-ts/core/io/Effect/Gen/E");
+export const _GenE = Symbol.for("@effect/core/io/Effect/Gen/E");
 export type _GenE = typeof _GenE;
 
-export const _GenA = Symbol.for("@effect-ts/core/io/Effect/Gen/A");
+export const _GenA = Symbol.for("@effect/core/io/Effect/Gen/A");
 export type _GenA = typeof _GenA;
 
 export class GenEffect<R, E, A> {

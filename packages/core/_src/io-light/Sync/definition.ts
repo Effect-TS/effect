@@ -1,4 +1,4 @@
-import type { _A, _E, _R } from "@effect-ts/core/io/Effect/definition/base";
+import type { _A, _E, _R } from "@effect/core/io/Effect/definition/base";
 
 /**
  * @tsplus type ets/Sync

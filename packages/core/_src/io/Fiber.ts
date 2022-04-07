@@ -1,5 +1,5 @@
-// codegen:start {preset: barrel, include: ./Fiber/*.ts, prefix: "@effect-ts/core/io"}
-export * from "@effect-ts/core/io/Fiber/definition";
-export * from "@effect-ts/core/io/Fiber/operations";
-export * from "@effect-ts/core/io/Fiber/status";
+// codegen:start {preset: barrel, include: ./Fiber/*.ts, prefix: "@effect/core/io"}
+export * from "@effect/core/io/Fiber/definition";
+export * from "@effect/core/io/Fiber/operations";
+export * from "@effect/core/io/Fiber/status";
 // codegen:end

@@ -1,4 +1,4 @@
-export const FiberStatusSym = Symbol.for("@effect-ts/core/Fiber/FiberStatus");
+export const FiberStatusSym = Symbol.for("@effect/core/Fiber/FiberStatus");
 export type FiberStatusSym = typeof FiberStatusSym;
 
 /**
@@ -79,7 +79,7 @@ export class Suspended implements Equals {
       this.interrupting === that.interrupting &&
       this.interruptible === that.interruptible &&
       this.asyncs === that.asyncs &&
-      Equals.equals(this.blockingOn, that.blockingOn)
+      this.blockingOn == that.blockingOn
     );
   }
 }

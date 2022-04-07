@@ -1,4 +1,4 @@
-import { _A, _E, TakeSym } from "@effect-ts/core/stream/Take/definition";
+import { _A, _E, TakeSym } from "@effect/core/stream/Take/definition";
 
 export class TakeInternal<E, A> implements Take<E, A> {
   readonly [TakeSym]: TakeSym = TakeSym;

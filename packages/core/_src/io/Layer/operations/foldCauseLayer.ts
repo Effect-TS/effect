@@ -1,4 +1,4 @@
-import { ILayerFold } from "@effect-ts/core/io/Layer/definition";
+import { ILayerFold } from "@effect/core/io/Layer/definition";
 
 /**
  * Feeds the error or output services of this layer into the input of either

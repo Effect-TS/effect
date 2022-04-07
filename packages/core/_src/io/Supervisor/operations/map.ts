@@ -1,4 +1,4 @@
-import { ProxySupervisor } from "@effect-ts/core/io/Supervisor/operations/proxy";
+import { ProxySupervisor } from "@effect/core/io/Supervisor/operations/proxy";
 
 /**
  * Maps this supervisor to another one, which has the same effect, but whose

@@ -1,7 +1,7 @@
-import type { AtomicSummary } from "@effect-ts/core/io/Metrics/atomic/AtomicSummary";
-import { _A } from "@effect-ts/core/io/Metrics/Metric/definition";
-import type { Summary } from "@effect-ts/core/io/Metrics/Summary/definition";
-import { SummarySym } from "@effect-ts/core/io/Metrics/Summary/definition";
+import type { AtomicSummary } from "@effect/core/io/Metrics/atomic/AtomicSummary";
+import { _A } from "@effect/core/io/Metrics/Metric/definition";
+import type { Summary } from "@effect/core/io/Metrics/Summary/definition";
+import { SummarySym } from "@effect/core/io/Metrics/Summary/definition";
 
 export class InternalSummary<A> implements Summary<A>, Equals {
   readonly [SummarySym]: SummarySym = SummarySym;

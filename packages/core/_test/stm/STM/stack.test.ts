@@ -1,4 +1,4 @@
-import { chain } from "@effect-ts/core/test/stm/STM/test-utils";
+import { chain } from "@effect/core/test/stm/STM/test-utils";
 
 describe.concurrent("STM", () => {
   describe.concurrent("STM stack safety", () => {

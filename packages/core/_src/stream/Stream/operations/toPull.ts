@@ -1,4 +1,4 @@
-import { concreteStream } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 /**
  * @tsplus fluent ets/Stream toPull

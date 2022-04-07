@@ -1,4 +1,4 @@
-import { Fold } from "@effect-ts/core/io-light/XPure/definition/primitives";
+import { Fold } from "@effect/core/io-light/XPure/definition/primitives";
 
 /**
  * Recovers from errors by accepting one computation to execute for the case

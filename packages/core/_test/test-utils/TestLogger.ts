@@ -1,5 +1,5 @@
-// TODO(Mike/Max): move this to `@effect-ts/test`
-export const TestLoggerId = Symbol.for("@effect-ts/core/test/TestLogger");
+// TODO(Mike/Max): move this to `@effect/test`
+export const TestLoggerId = Symbol.for("@effect/core/test/TestLogger");
 export type TestLoggerId = typeof TestLoggerId;
 
 /**

@@ -1,4 +1,4 @@
-import { createQueueSpy } from "@effect-ts/core/test/stream/Sink/test-utils";
+import { createQueueSpy } from "@effect/core/test/stream/Sink/test-utils";
 import { absurd, constTrue } from "@tsplus/stdlib/data/Function";
 
 describe.concurrent("Sink", () => {

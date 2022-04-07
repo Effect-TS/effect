@@ -1,4 +1,4 @@
-import type { _E, _In, _L, _R, _Z } from "@effect-ts/core/stream/Sink/definition/symbols";
+import type { _E, _In, _L, _R, _Z } from "@effect/core/stream/Sink/definition/symbols";
 
 /**
  * @tsplus static ets/Sink/Ops tuple

@@ -1,4 +1,4 @@
-import type { UniqueKey } from "@effect-ts/core/stream/GroupBy/definition";
+import type { UniqueKey } from "@effect/core/stream/GroupBy/definition";
 
 const distributedWithDynamicId = new AtomicNumber(0);
 

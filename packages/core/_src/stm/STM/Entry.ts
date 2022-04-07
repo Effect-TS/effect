@@ -1,7 +1,7 @@
-import { Versioned } from "@effect-ts/core/stm/STM/Versioned";
-import { concreteTRef } from "@effect-ts/core/stm/TRef/operations/_internal/TRefInternal";
+import { Versioned } from "@effect/core/stm/STM/Versioned";
+import { concreteTRef } from "@effect/core/stm/TRef/operations/_internal/TRefInternal";
 
-export const EntrySym = Symbol.for("@effect-ts/core/stm/STM/Entry");
+export const EntrySym = Symbol.for("@effect/core/stm/STM/Entry");
 export type EntrySym = typeof EntrySym;
 
 /**
@@ -24,7 +24,7 @@ export function makeEntry<A0>(tref0: TRef<A0>, isNew0: boolean): Entry {
   return new Entry((f) => f(ops));
 }
 
-export const EntryOpsSym = Symbol.for("@effect-ts/core/stm/STM/Entry/Ops");
+export const EntryOpsSym = Symbol.for("@effect/core/stm/STM/Entry/Ops");
 export type EntryOpsSym = typeof EntryOpsSym;
 
 export class EntryOps<S> {

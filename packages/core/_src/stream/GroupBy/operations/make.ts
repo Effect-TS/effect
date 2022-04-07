@@ -1,4 +1,4 @@
-import { GroupByInternal } from "@effect-ts/core/stream/GroupBy/operations/_internal/GroupByInternal";
+import { GroupByInternal } from "@effect/core/stream/GroupBy/operations/_internal/GroupByInternal";
 
 /**
  * Constructs a new `GroupBy`.

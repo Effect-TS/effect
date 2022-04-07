@@ -1,4 +1,4 @@
-import { IYield } from "@effect-ts/core/io/Effect/definition/primitives";
+import { IYield } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * Returns an effect that yields to the runtime system, starting on a fresh

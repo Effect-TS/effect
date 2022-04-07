@@ -1,4 +1,4 @@
-import { Ensuring } from "@effect-ts/core/stream/Channel/definition/primitives";
+import { Ensuring } from "@effect/core/stream/Channel/definition/primitives";
 
 /**
  * Returns a new channel with an attached finalizer. The finalizer is

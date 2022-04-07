@@ -1,4 +1,4 @@
-export const FiberIdSym = Symbol.for("@effect-ts/core/io/FiberId");
+export const FiberIdSym = Symbol.for("@effect/core/io/FiberId");
 export type FiberIdSym = typeof FiberIdSym;
 
 /**

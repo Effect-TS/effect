@@ -1,5 +1,5 @@
-import { unsafeCreateQueue } from "@effect-ts/core/io/Effect/operations/excl-forEach";
-import type { Strategy } from "@effect-ts/core/io/Queue/operations/strategy";
+import { unsafeCreateQueue } from "@effect/core/io/Effect/operations/excl-forEach";
+import type { Strategy } from "@effect/core/io/Queue/operations/strategy";
 
 /**
  * Unsafely creates a new `Queue` using the provided `Strategy`.

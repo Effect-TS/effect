@@ -1,4 +1,4 @@
-import { AbstractClock } from "@effect-ts/core/io/Clock/definition";
+import { AbstractClock } from "@effect/core/io/Clock/definition";
 
 const MAX_SET_INTERVAL_VALUE = 2 ** 31 - 1;
 

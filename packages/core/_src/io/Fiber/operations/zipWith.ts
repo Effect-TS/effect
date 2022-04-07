@@ -1,4 +1,4 @@
-import { makeSynthetic } from "@effect-ts/core/io/Fiber/definition";
+import { makeSynthetic } from "@effect/core/io/Fiber/definition";
 
 /**
  * Zips this fiber with the specified fiber, combining their results using the

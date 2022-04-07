@@ -1,4 +1,4 @@
-export const CalculatorId = Symbol.for("@effect-ts/core/test/io-light/Calculator");
+export const CalculatorId = Symbol.for("@effect/core/test/io-light/Calculator");
 export type CalculatorId = typeof CalculatorId;
 
 export interface Calculator {

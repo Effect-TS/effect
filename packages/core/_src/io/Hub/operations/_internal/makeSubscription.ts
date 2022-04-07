@@ -1,11 +1,11 @@
-import type { AtomicHub } from "@effect-ts/core/io/Hub/operations/_internal/AtomicHub";
-import type { Subscription } from "@effect-ts/core/io/Hub/operations/_internal/Subscription";
-import { unsafePollAllSubscription } from "@effect-ts/core/io/Hub/operations/_internal/unsafePollAllSubscription";
-import { unsafePollN } from "@effect-ts/core/io/Hub/operations/_internal/unsafePollN";
-import { unsafeRemove } from "@effect-ts/core/io/Hub/operations/_internal/unsafeRemove";
-import type { Strategy } from "@effect-ts/core/io/Hub/operations/strategy";
-import { _In, _Out, QueueSym } from "@effect-ts/core/io/Queue/definition";
-import { unsafePollAll } from "@effect-ts/core/io/Queue/operations/_internal/unsafePollAll";
+import type { AtomicHub } from "@effect/core/io/Hub/operations/_internal/AtomicHub";
+import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription";
+import { unsafePollAllSubscription } from "@effect/core/io/Hub/operations/_internal/unsafePollAllSubscription";
+import { unsafePollN } from "@effect/core/io/Hub/operations/_internal/unsafePollN";
+import { unsafeRemove } from "@effect/core/io/Hub/operations/_internal/unsafeRemove";
+import type { Strategy } from "@effect/core/io/Hub/operations/strategy";
+import { _In, _Out, QueueSym } from "@effect/core/io/Queue/definition";
+import { unsafePollAll } from "@effect/core/io/Queue/operations/_internal/unsafePollAll";
 
 /**
  * Creates a subscription with the specified strategy.

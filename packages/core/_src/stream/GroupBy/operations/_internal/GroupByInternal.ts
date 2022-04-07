@@ -1,7 +1,7 @@
-import type { GroupBy, UniqueKey } from "@effect-ts/core/stream/GroupBy/definition/base";
-import { GroupBySym } from "@effect-ts/core/stream/GroupBy/definition/base";
-import { _A, _E, _K, _R, _V } from "@effect-ts/core/stream/GroupBy/definition/symbols";
-import { mapDequeue } from "@effect-ts/core/stream/GroupBy/operations/_internal/mapDequeue";
+import type { GroupBy, UniqueKey } from "@effect/core/stream/GroupBy/definition/base";
+import { GroupBySym } from "@effect/core/stream/GroupBy/definition/base";
+import { _A, _E, _K, _R, _V } from "@effect/core/stream/GroupBy/definition/symbols";
+import { mapDequeue } from "@effect/core/stream/GroupBy/operations/_internal/mapDequeue";
 
 export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
   readonly [GroupBySym]: GroupBySym = GroupBySym;

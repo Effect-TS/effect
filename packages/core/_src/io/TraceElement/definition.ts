@@ -1,4 +1,4 @@
-export const TraceElementSym = Symbol.for("@effect-ts/core/io/TraceElement");
+export const TraceElementSym = Symbol.for("@effect/core/io/TraceElement");
 export type TraceElementSym = typeof TraceElementSym;
 
 /**

@@ -1,4 +1,4 @@
-import { SinkInternal } from "@effect-ts/core/stream/Sink/operations/_internal/SinkInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
 
 /**
  * Creates a sink that folds elements of type `In` into a structure of type

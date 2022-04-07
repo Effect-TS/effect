@@ -1,4 +1,4 @@
-import { withHistogram } from "@effect-ts/core/io/Metrics/Histogram/operations/_internal/InternalHistogram";
+import { withHistogram } from "@effect/core/io/Metrics/Histogram/operations/_internal/InternalHistogram";
 
 /**
  * Adds the specified value to the distribution of values represented by

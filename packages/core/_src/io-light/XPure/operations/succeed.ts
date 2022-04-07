@@ -1,4 +1,4 @@
-import { Succeed } from "@effect-ts/core/io-light/XPure/definition/primitives";
+import { Succeed } from "@effect/core/io-light/XPure/definition/primitives";
 
 /**
  * Constructs a computation that always succeeds with the specified value,

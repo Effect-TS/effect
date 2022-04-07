@@ -1,4 +1,4 @@
-import { Access } from "@effect-ts/core/io-light/XPure/definition/primitives";
+import { Access } from "@effect/core/io-light/XPure/definition/primitives";
 
 /**
  * Access the environment monadically.

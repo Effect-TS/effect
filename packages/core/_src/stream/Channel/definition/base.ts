@@ -1,6 +1,6 @@
 import { _Env, _InDone, _InElem, _InErr, _OutDone, _OutDone2, _OutElem, _OutErr, _OutErr2 } from "./symbols";
 
-export const ChannelSym = Symbol.for("@effect-ts/core/stream/Channel");
+export const ChannelSym = Symbol.for("@effect/core/stream/Channel");
 export type ChannelSym = typeof ChannelSym;
 
 /**

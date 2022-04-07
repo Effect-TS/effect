@@ -1,10 +1,10 @@
-import { HubSym } from "@effect-ts/core/io/Hub/definition";
-import type { AtomicHub } from "@effect-ts/core/io/Hub/operations/_internal/AtomicHub";
-import { makeSubscription } from "@effect-ts/core/io/Hub/operations/_internal/makeSubscription";
-import type { Subscription } from "@effect-ts/core/io/Hub/operations/_internal/Subscription";
-import { unsafePublishAll } from "@effect-ts/core/io/Hub/operations/_internal/unsafePublishAll";
-import type { Strategy } from "@effect-ts/core/io/Hub/operations/strategy";
-import { _In, _Out, QueueSym } from "@effect-ts/core/io/Queue/definition";
+import { HubSym } from "@effect/core/io/Hub/definition";
+import type { AtomicHub } from "@effect/core/io/Hub/operations/_internal/AtomicHub";
+import { makeSubscription } from "@effect/core/io/Hub/operations/_internal/makeSubscription";
+import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription";
+import { unsafePublishAll } from "@effect/core/io/Hub/operations/_internal/unsafePublishAll";
+import type { Strategy } from "@effect/core/io/Hub/operations/strategy";
+import { _In, _Out, QueueSym } from "@effect/core/io/Queue/definition";
 
 /**
  * Creates a hub with the specified strategy.

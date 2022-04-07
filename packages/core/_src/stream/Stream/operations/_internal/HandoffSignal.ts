@@ -1,4 +1,4 @@
-import type { SinkEndReason } from "@effect-ts/core/stream/Stream/SinkEndReason";
+import type { SinkEndReason } from "@effect/core/stream/Stream/SinkEndReason";
 
 export type HandoffSignal<C, E, A> = Emit<A> | Halt<E> | End<C>;
 

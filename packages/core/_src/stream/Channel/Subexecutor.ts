@@ -1,9 +1,9 @@
-import type { ErasedChannel, ErasedExecutor } from "@effect-ts/core/stream/Channel/ChannelExecutor";
-import type { ChildExecutorDecision } from "@effect-ts/core/stream/Channel/ChildExecutorDecision";
-import type { UpstreamPullRequest } from "@effect-ts/core/stream/Channel/UpstreamPullRequest";
-import type { UpstreamPullStrategy } from "@effect-ts/core/stream/Channel/UpstreamPullStrategy";
+import type { ErasedChannel, ErasedExecutor } from "@effect/core/stream/Channel/ChannelExecutor";
+import type { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision";
+import type { UpstreamPullRequest } from "@effect/core/stream/Channel/UpstreamPullRequest";
+import type { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy";
 
-export const SubexecutorSym = Symbol.for("@effect-ts/core/stream/Channel/Subexecutor");
+export const SubexecutorSym = Symbol.for("@effect/core/stream/Channel/Subexecutor");
 export type SubexecutorSym = typeof SubexecutorSym;
 
 /**

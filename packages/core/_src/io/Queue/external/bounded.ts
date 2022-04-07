@@ -1,4 +1,4 @@
-import { makeBoundedQueue } from "@effect-ts/core/io/Effect/operations/excl-forEach";
+import { makeBoundedQueue } from "@effect/core/io/Effect/operations/excl-forEach";
 
 /**
  * Makes a new bounded queue. When the capacity of the queue is reached, any

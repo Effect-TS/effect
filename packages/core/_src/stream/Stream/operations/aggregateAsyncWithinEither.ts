@@ -1,10 +1,10 @@
-import type { Driver } from "@effect-ts/core/io/Schedule/Driver";
-import type { SinkInternal } from "@effect-ts/core/stream/Sink/operations/_internal/SinkInternal";
-import { concreteSink } from "@effect-ts/core/stream/Sink/operations/_internal/SinkInternal";
-import { Handoff } from "@effect-ts/core/stream/Stream/operations/_internal/Handoff";
-import { HandoffSignal } from "@effect-ts/core/stream/Stream/operations/_internal/HandoffSignal";
-import { concreteStream, StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
-import { SinkEndReason } from "@effect-ts/core/stream/Stream/SinkEndReason";
+import type { Driver } from "@effect/core/io/Schedule/Driver";
+import type { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { concreteSink } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff";
+import { HandoffSignal } from "@effect/core/stream/Stream/operations/_internal/HandoffSignal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { SinkEndReason } from "@effect/core/stream/Stream/SinkEndReason";
 
 /**
  * Aggregates elements using the provided sink until it completes, or until

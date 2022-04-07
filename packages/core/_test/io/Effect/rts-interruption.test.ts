@@ -1,4 +1,4 @@
-import { withLatch, withLatchAwait } from "@effect-ts/core/test/test-utils/Latch";
+import { withLatch, withLatchAwait } from "@effect/core/test/test-utils/Latch";
 import { constTrue, constVoid } from "@tsplus/stdlib/data/Function";
 
 describe.concurrent("Effect", () => {

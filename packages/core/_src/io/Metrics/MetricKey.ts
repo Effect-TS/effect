@@ -1,4 +1,4 @@
-export const MetricKeySym = Symbol.for("@effect-ts/core/io/Metrics/MetricKey");
+export const MetricKeySym = Symbol.for("@effect/core/io/Metrics/MetricKey");
 export type MetricKeySym = typeof MetricKeySym;
 
 /**

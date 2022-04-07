@@ -1,4 +1,4 @@
-import { Both, Cause, Die, Interrupt, Stackless, Then } from "@effect-ts/core/io/Cause/definition";
+import { Both, Cause, Die, Interrupt, Stackless, Then } from "@effect/core/io/Cause/definition";
 
 /**
  * Discards all typed failures kept on this `Cause`.

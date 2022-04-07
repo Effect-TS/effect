@@ -1,4 +1,4 @@
-import { State } from "@effect-ts/core/test/io/SynchronizedRef/test-utils";
+import { State } from "@effect/core/test/io/SynchronizedRef/test-utils";
 
 const current = "value";
 const update = "new value";

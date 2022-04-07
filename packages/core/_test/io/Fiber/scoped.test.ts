@@ -1,4 +1,4 @@
-import { withLatch } from "@effect-ts/core/test/test-utils/Latch";
+import { withLatch } from "@effect/core/test/test-utils/Latch";
 
 describe.concurrent("Fiber", () => {
   describe.concurrent("scoped", () => {

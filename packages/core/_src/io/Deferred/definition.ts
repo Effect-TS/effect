@@ -1,10 +1,10 @@
-export const DeferredSym = Symbol.for("@effect-ts/core/io/Deferred");
+export const DeferredSym = Symbol.for("@effect/core/io/Deferred");
 export type DeferredSym = typeof DeferredSym;
 
-export const _E = Symbol.for("@effect-ts/core/io/Deferred/E");
+export const _E = Symbol.for("@effect/core/io/Deferred/E");
 export type _E = typeof _E;
 
-export const _A = Symbol.for("@effect-ts/core/io/Deferred/A");
+export const _A = Symbol.for("@effect/core/io/Deferred/A");
 export type _A = typeof _A;
 
 /**

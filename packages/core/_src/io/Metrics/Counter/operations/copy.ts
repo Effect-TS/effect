@@ -1,7 +1,4 @@
-import {
-  concreteCounter,
-  InternalCounter
-} from "@effect-ts/core/io/Metrics/Counter/operations/_internal/InternalCounter";
+import { concreteCounter, InternalCounter } from "@effect/core/io/Metrics/Counter/operations/_internal/InternalCounter";
 
 /**
  * Returns a copy of this counter with the specified name and/or tags.

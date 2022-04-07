@@ -1,4 +1,4 @@
-// codegen:start {preset: barrel, include: ./operations/*.ts, prefix: "@effect-ts/core/io/LogLevel"}
-export * from "@effect-ts/core/io/LogLevel/operations/locally";
-export * from "@effect-ts/core/io/LogLevel/operations/ordinal";
+// codegen:start {preset: barrel, include: ./operations/*.ts, prefix: "@effect/core/io/LogLevel"}
+export * from "@effect/core/io/LogLevel/operations/locally";
+export * from "@effect/core/io/LogLevel/operations/ordinal";
 // codegen:end

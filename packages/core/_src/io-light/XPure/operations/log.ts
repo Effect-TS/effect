@@ -1,4 +1,4 @@
-import { Log } from "@effect-ts/core/io-light/XPure/definition/primitives";
+import { Log } from "@effect/core/io-light/XPure/definition/primitives";
 
 /**
  * Constructs a computation that lazily logs `W`.

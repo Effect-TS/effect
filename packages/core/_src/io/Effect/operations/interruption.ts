@@ -1,4 +1,4 @@
-import { ICheckInterrupt, IInterruptStatus } from "@effect-ts/core/io/Effect/definition/primitives";
+import { ICheckInterrupt, IInterruptStatus } from "@effect/core/io/Effect/definition/primitives";
 
 // -----------------------------------------------------------------------------
 // Model

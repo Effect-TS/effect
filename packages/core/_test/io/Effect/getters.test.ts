@@ -1,4 +1,4 @@
-import { ExampleError } from "@effect-ts/core/test/io/Effect/test-utils";
+import { ExampleError } from "@effect/core/test/io/Effect/test-utils";
 
 describe.concurrent("Effect", () => {
   describe.concurrent("isFailure", () => {
@@ -59,7 +59,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit();
 
-      assert.isTrue(result.untraced()) == Exit.fail(Either.left("fail"));
+      assert.isTrue(result.untraced() == Exit.fail(Either.left("fail")));
     });
   });
 
@@ -347,7 +347,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit();
 
-      assert.isTrue(result.untraced() == Exit.fail(new NoSuchElement()));
+      assert.isTrue(result.isFailure() && result.cause.isFailType() && result.cause.value instanceof NoSuchElement);
     });
   });
 
@@ -365,7 +365,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit();
 
-      assert.isTrue(result.untraced() == Exit.fail(new NoSuchElement()));
+      assert.isTrue(result.isFailure() && result.cause.isFailType() && result.cause.value instanceof NoSuchElement);
     });
   });
 

@@ -1,5 +1,5 @@
-import type { State } from "@effect-ts/core/io/Scope/ReleaseMap/_internal/State";
-import { Running } from "@effect-ts/core/io/Scope/ReleaseMap/_internal/State";
+import type { State } from "@effect/core/io/Scope/ReleaseMap/_internal/State";
+import { Running } from "@effect/core/io/Scope/ReleaseMap/_internal/State";
 
 /**
  * Creates a new `ReleaseMap`.

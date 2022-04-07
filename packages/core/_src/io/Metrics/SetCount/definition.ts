@@ -1,4 +1,4 @@
-export const SetCountSym = Symbol.for("@effect-ts/core/io/Metrics/SetCount");
+export const SetCountSym = Symbol.for("@effect/core/io/Metrics/SetCount");
 export type SetCountSym = typeof SetCountSym;
 
 /**

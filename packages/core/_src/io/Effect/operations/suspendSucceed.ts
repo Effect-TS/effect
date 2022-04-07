@@ -1,4 +1,4 @@
-import { ISuspend } from "@effect-ts/core/io/Effect/definition/primitives";
+import { ISuspend } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * Returns a lazily constructed effect, whose construction may itself require

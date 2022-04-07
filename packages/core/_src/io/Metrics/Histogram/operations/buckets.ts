@@ -1,4 +1,4 @@
-import { withHistogram } from "@effect-ts/core/io/Metrics/Histogram/operations/_internal/InternalHistogram";
+import { withHistogram } from "@effect/core/io/Metrics/Histogram/operations/_internal/InternalHistogram";
 
 /**
  * Returns the current sum and count of values in each bucket of this

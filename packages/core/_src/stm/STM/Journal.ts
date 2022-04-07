@@ -1,10 +1,10 @@
-import type { Entry } from "@effect-ts/core/stm/STM/Entry";
-import { STMDriver } from "@effect-ts/core/stm/STM/operations/_internal/STMDriver";
-import { State } from "@effect-ts/core/stm/STM/State";
-import { TryCommit } from "@effect-ts/core/stm/STM/TryCommit";
-import type { TxnId } from "@effect-ts/core/stm/STM/TxnId";
-import { concreteTRef } from "@effect-ts/core/stm/TRef/operations/_internal/TRefInternal";
-import { defaultScheduler } from "@effect-ts/core/support/Scheduler";
+import type { Entry } from "@effect/core/stm/STM/Entry";
+import { STMDriver } from "@effect/core/stm/STM/operations/_internal/STMDriver";
+import { State } from "@effect/core/stm/STM/State";
+import { TryCommit } from "@effect/core/stm/STM/TryCommit";
+import type { TxnId } from "@effect/core/stm/STM/TxnId";
+import { concreteTRef } from "@effect/core/stm/TRef/operations/_internal/TRefInternal";
+import { defaultScheduler } from "@effect/core/support/Scheduler";
 
 export type Journal = Map<TRef<unknown>, Entry>;
 
@@ -71,7 +71,7 @@ export function collectTodos(journal: Journal): Map<TxnId, Todo> {
     concreteTRef(tref);
     const todos = tref.todo.get;
     for (const todo of todos) {
-      allTodos.set(todo[0], todo[1]);
+      allTodos.set(todo.get(0), todo.get(1));
     }
     tref.todo.set(emptyTodoMap);
   }

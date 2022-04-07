@@ -4,16 +4,16 @@
       "allowJs": true,
       "baseUrl": ".",
       "paths": {
-          "@effect-ts/core": [
+          "@effect/core": [
               "./packages/core/build/esm/index.js"
           ],
-          "@effect-ts/core/test/*": [
+          "@effect/core/test/*": [
               "./packages/core/build/test/*"
           ],
-          "@effect-ts/core/examples/*": [
+          "@effect/core/examples/*": [
               "./packages/core/build/examples/*"
           ],
-          "@effect-ts/core/*": [
+          "@effect/core/*": [
               "./packages/core/build/esm/*"
           ],
       }

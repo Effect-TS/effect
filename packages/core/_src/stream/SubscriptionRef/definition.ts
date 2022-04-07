@@ -1,8 +1,8 @@
-import { _A, RefSym } from "@effect-ts/core/io/Ref/definition";
-import { SynchronizedRefSym } from "@effect-ts/core/io/Ref/Synchronized/definition";
-import { concreteSynchronizedRef } from "@effect-ts/core/io/Ref/Synchronized/operations/_internal/SynchronizedRefInternal";
+import { _A, RefSym } from "@effect/core/io/Ref/definition";
+import { SynchronizedRefSym } from "@effect/core/io/Ref/Synchronized/definition";
+import { concreteSynchronizedRef } from "@effect/core/io/Ref/Synchronized/operations/_internal/SynchronizedRefInternal";
 
-export const SubscriptionRefSym = Symbol.for("@effect-ts/core/stream/SubscriptionRef");
+export const SubscriptionRefSym = Symbol.for("@effect/core/stream/SubscriptionRef");
 export type SubscriptionRefSym = typeof SubscriptionRefSym;
 
 /**

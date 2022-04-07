@@ -1,5 +1,5 @@
-// TODO(Mike/Max): move this to `@effect-ts/test`
-export const TestConsoleId = Symbol.for("@effect-ts/core/test/TestConsole");
+// TODO(Mike/Max): move this to `@effect/test`
+export const TestConsoleId = Symbol.for("@effect/core/test/TestConsole");
 export type TestConsoleId = typeof TestConsoleId;
 
 export interface TestConsole {

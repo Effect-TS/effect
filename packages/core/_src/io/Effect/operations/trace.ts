@@ -1,4 +1,4 @@
-import { ITrace } from "@effect-ts/core/io/Effect/definition/primitives";
+import { ITrace } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * Capture the trace at the current point.

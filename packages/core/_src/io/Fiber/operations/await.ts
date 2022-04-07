@@ -1,4 +1,4 @@
-import { realFiber } from "@effect-ts/core/io/Fiber/definition";
+import { realFiber } from "@effect/core/io/Fiber/definition";
 
 /**
  * Awaits the fiber, which suspends the awaiting fiber until the result of the

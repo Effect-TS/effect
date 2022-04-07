@@ -1,4 +1,4 @@
-import { ISucceedWith } from "@effect-ts/core/io/Effect/definition/primitives";
+import { ISucceedWith } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * The same as `succeed`, but also provides access to the underlying

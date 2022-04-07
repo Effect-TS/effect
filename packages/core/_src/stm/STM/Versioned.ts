@@ -1,4 +1,4 @@
-export const VersionedSym = Symbol.for("@effect-ts/core/stm/STM/Versioned");
+export const VersionedSym = Symbol.for("@effect/core/stm/STM/Versioned");
 export type VersionedSym = typeof VersionedSym;
 
 /**

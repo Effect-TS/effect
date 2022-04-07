@@ -1,4 +1,4 @@
-import { IFold } from "@effect-ts/core/io/Effect/definition/primitives";
+import { IFold } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * Executed `that` in case `self` fails with a `Cause` that doesn't contain

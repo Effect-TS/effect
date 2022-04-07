@@ -1,4 +1,4 @@
-import { NumberService } from "@effect-ts/core/test/io/Effect/test-utils";
+import { NumberService } from "@effect/core/test/io/Effect/test-utils";
 
 describe.concurrent("Effect", () => {
   describe.concurrent("RTS environment", () => {

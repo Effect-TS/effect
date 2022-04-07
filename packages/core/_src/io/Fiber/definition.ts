@@ -1,12 +1,12 @@
-import type { FiberStatus } from "@effect-ts/core/io/Fiber/status";
+import type { FiberStatus } from "@effect/core/io/Fiber/status";
 
-export const FiberSym = Symbol.for("@effect-ts/core/io/Fiber");
+export const FiberSym = Symbol.for("@effect/core/io/Fiber");
 export type FiberSym = typeof FiberSym;
 
-export const _E = Symbol.for("@effect-ts/core/io/Fiber/E");
+export const _E = Symbol.for("@effect/core/io/Fiber/E");
 export type _E = typeof _E;
 
-export const _A = Symbol.for("@effect-ts/core/io/Fiber/A");
+export const _A = Symbol.for("@effect/core/io/Fiber/A");
 export type _A = typeof _A;
 
 /**

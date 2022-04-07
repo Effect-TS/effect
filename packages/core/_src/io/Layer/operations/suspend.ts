@@ -1,4 +1,4 @@
-import { ILayerSuspend } from "@effect-ts/core/io/Layer/definition";
+import { ILayerSuspend } from "@effect/core/io/Layer/definition";
 
 /**
  * Lazily constructs a layer. This is useful to avoid infinite recursion when

@@ -1,4 +1,4 @@
-import { isFiberFailure } from "@effect-ts/core/io/Cause/errors";
+import { isFiberFailure } from "@effect/core/io/Cause/errors";
 
 /**
  * Creates a stream from an asynchronous callback that can be called multiple

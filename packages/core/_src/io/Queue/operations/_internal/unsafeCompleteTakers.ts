@@ -1,7 +1,7 @@
-import { unsafeCompleteDeferred } from "@effect-ts/core/io/Queue/operations/_internal/unsafeCompleteDeferred";
-import { unsafeOfferAll } from "@effect-ts/core/io/Queue/operations/_internal/unsafeOfferAll";
-import { unsafePollAll } from "@effect-ts/core/io/Queue/operations/_internal/unsafePollAll";
-import type { Strategy } from "@effect-ts/core/io/Queue/operations/strategy";
+import { unsafeCompleteDeferred } from "@effect/core/io/Queue/operations/_internal/unsafeCompleteDeferred";
+import { unsafeOfferAll } from "@effect/core/io/Queue/operations/_internal/unsafeOfferAll";
+import { unsafePollAll } from "@effect/core/io/Queue/operations/_internal/unsafePollAll";
+import type { Strategy } from "@effect/core/io/Queue/operations/strategy";
 
 export function unsafeCompleteTakers<A>(
   strategy: Strategy<A>,

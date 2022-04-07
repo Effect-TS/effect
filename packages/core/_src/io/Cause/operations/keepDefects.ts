@@ -1,4 +1,4 @@
-import { Both, Die, Stackless, Then } from "@effect-ts/core/io/Cause/definition";
+import { Both, Die, Stackless, Then } from "@effect/core/io/Cause/definition";
 
 /**
  * Remove all `Fail` and `Interrupt` nodes from this `Cause`, return only

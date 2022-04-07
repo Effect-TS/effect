@@ -1,4 +1,4 @@
-import { findSink, sinkRaceLaw } from "@effect-ts/core/test/stream/Sink/test-utils";
+import { findSink, sinkRaceLaw } from "@effect/core/test/stream/Sink/test-utils";
 
 describe.concurrent("Sink", () => {
   describe.concurrent("raceBoth", () => {

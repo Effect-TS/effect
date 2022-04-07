@@ -1,4 +1,4 @@
-import { findSink, zipParLaw } from "@effect-ts/core/test/stream/Sink/test-utils";
+import { findSink, zipParLaw } from "@effect/core/test/stream/Sink/test-utils";
 
 describe("Sink", () => {
   describe("zip", () => {

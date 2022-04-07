@@ -1,4 +1,4 @@
-import { makeSynthetic } from "@effect-ts/core/io/Fiber/definition";
+import { makeSynthetic } from "@effect/core/io/Fiber/definition";
 
 /**
  * Returns a fiber that prefers `this` fiber, but falls back to the `that` one

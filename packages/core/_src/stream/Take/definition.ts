@@ -1,10 +1,10 @@
-export const TakeSym = Symbol.for("@effect-ts/core/stream/Take");
+export const TakeSym = Symbol.for("@effect/core/stream/Take");
 export type TakeSym = typeof TakeSym;
 
-export const _E = Symbol.for("@effect-ts/core/stream/Take/E");
+export const _E = Symbol.for("@effect/core/stream/Take/E");
 export type _E = typeof _E;
 
-export const _A = Symbol.for("@effect-ts/core/stream/Take/A");
+export const _A = Symbol.for("@effect/core/stream/Take/A");
 export type _A = typeof _A;
 
 /**

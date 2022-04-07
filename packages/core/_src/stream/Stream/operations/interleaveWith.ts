@@ -1,5 +1,5 @@
-import { Handoff } from "@effect-ts/core/stream/Stream/operations/_internal/Handoff";
-import { concreteStream, StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
+import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 /**
  * Combines this stream and the specified stream deterministically using the

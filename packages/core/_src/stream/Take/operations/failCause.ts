@@ -1,4 +1,4 @@
-import { TakeInternal } from "@effect-ts/core/stream/Take/operations/_internal/TakeInternal";
+import { TakeInternal } from "@effect/core/stream/Take/operations/_internal/TakeInternal";
 
 /**
  * Creates a failing `Take<E, never>` with the specified cause.

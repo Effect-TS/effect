@@ -1,4 +1,4 @@
-import type { Subscription } from "@effect-ts/core/io/Hub/operations/_internal/Subscription";
+import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription";
 
 export interface AtomicHub<A> {
   readonly capacity: number;

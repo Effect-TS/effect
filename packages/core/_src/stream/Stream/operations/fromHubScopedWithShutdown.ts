@@ -1,4 +1,4 @@
-import { DEFAULT_CHUNK_SIZE } from "@effect-ts/core/stream/Stream/definition";
+import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition";
 
 /**
  * Creates a stream from a subscription to a hub in the context of a scoped

@@ -1,4 +1,4 @@
-import { Running } from "@effect-ts/core/io/Scope/ReleaseMap/_internal/State";
+import { Running } from "@effect/core/io/Scope/ReleaseMap/_internal/State";
 
 /**
  * Runs the specified finalizer and removes it from the finalizers associated

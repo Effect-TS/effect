@@ -1,4 +1,4 @@
-import { ExampleError } from "@effect-ts/core/test/stm/STM/test-utils";
+import { ExampleError } from "@effect/core/test/stm/STM/test-utils";
 
 describe.concurrent("STM", () => {
   describe.concurrent("Using `STM.atomically` to perform different computations and call:", () => {

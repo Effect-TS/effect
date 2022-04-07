@@ -6,7 +6,7 @@
 // import { pretty } from "./Pretty"
 
 export const FiberFailureSymbol: unique symbol = Symbol.for(
-  "@effect-ts/core/Cause/errors/FiberFailure"
+  "@effect/core/Cause/errors/FiberFailure"
 );
 
 export class FiberFailure<E> extends Error {
@@ -31,7 +31,7 @@ export function isFiberFailure(u: unknown): u is FiberFailure<unknown> {
 // // -----------------------------------------------------------------------------
 
 // export const UntracedSymbol: unique symbol = Symbol.for(
-//   "@effect-ts/core/Cause/errors/Untraced"
+//   "@effect/core/Cause/errors/Untraced"
 // )
 
 // export class Untraced extends Error {
@@ -52,7 +52,7 @@ export function isFiberFailure(u: unknown): u is FiberFailure<unknown> {
 // -----------------------------------------------------------------------------
 
 export const RuntimeErrorSymbol: unique symbol = Symbol.for(
-  "@effect-ts/core/Cause/errors/Runtime"
+  "@effect/core/Cause/errors/Runtime"
 );
 
 export class RuntimeError {
@@ -69,7 +69,7 @@ export function isRuntime(u: unknown): u is RuntimeError {
 // Channel
 // -----------------------------------------------------------------------------
 
-export const ChannelErrorSymbol = Symbol.for("@effect-ts/core/Cause/errors/Channel");
+export const ChannelErrorSymbol = Symbol.for("@effect/core/Cause/errors/Channel");
 export type ChannelErrorSymbol = typeof ChannelErrorSymbol;
 
 export class ChannelError<E> {
@@ -86,7 +86,7 @@ export function isChannelError(u: unknown): u is ChannelError<unknown> {
 // -----------------------------------------------------------------------------
 
 export const InterruptedSymbol: unique symbol = Symbol.for(
-  "@effect-ts/core/Cause/errors/Interrupted"
+  "@effect/core/Cause/errors/Interrupted"
 );
 
 export class InterruptedException extends Error {
@@ -107,7 +107,7 @@ export function isInterruptedException(u: unknown): u is InterruptedException {
 // -----------------------------------------------------------------------------
 
 export const IllegalStateExceptionSymbol: unique symbol = Symbol.for(
-  "@effect-ts/core/Cause/errors/IllegalState"
+  "@effect/core/Cause/errors/IllegalState"
 );
 
 export class IllegalStateException extends Error {
@@ -128,7 +128,7 @@ export function isIllegalStateException(u: unknown): u is IllegalStateException 
 // -----------------------------------------------------------------------------
 
 export const IllegalArgumentExceptionSymbol: unique symbol = Symbol.for(
-  "@effect-ts/core/Cause/errors/IllegalArgument"
+  "@effect/core/Cause/errors/IllegalArgument"
 );
 export class IllegalArgumentException extends Error {
   readonly [IllegalArgumentExceptionSymbol] = "IllegalArgumentException";

@@ -1,7 +1,7 @@
-import type { AtomicCounter } from "@effect-ts/core/io/Metrics/atomic/AtomicCounter";
-import type { Counter } from "@effect-ts/core/io/Metrics/Counter/definition";
-import { CounterSym } from "@effect-ts/core/io/Metrics/Counter/definition";
-import { _A } from "@effect-ts/core/io/Metrics/Metric/definition";
+import type { AtomicCounter } from "@effect/core/io/Metrics/atomic/AtomicCounter";
+import type { Counter } from "@effect/core/io/Metrics/Counter/definition";
+import { CounterSym } from "@effect/core/io/Metrics/Counter/definition";
+import { _A } from "@effect/core/io/Metrics/Metric/definition";
 
 export class InternalCounter<A> implements Counter<A>, Equals {
   readonly [CounterSym]: CounterSym = CounterSym;

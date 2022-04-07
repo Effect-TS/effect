@@ -1,5 +1,5 @@
-import { TakeInternal } from "@effect-ts/core/stream/Take/operations/_internal/TakeInternal";
-import { chunkCoordination } from "@effect-ts/core/test/stream/Stream/test-utils";
+import { TakeInternal } from "@effect/core/stream/Take/operations/_internal/TakeInternal";
+import { chunkCoordination } from "@effect/core/test/stream/Stream/test-utils";
 import { constTrue, constVoid, identity } from "@tsplus/stdlib/data/Function";
 
 describe.concurrent("Stream", () => {

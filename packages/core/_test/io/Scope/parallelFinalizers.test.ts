@@ -1,4 +1,4 @@
-import { Action, resource } from "@effect-ts/core/test/io/Scope/test-utils";
+import { Action, resource } from "@effect/core/test/io/Scope/test-utils";
 import { constTrue } from "@tsplus/stdlib/data/Function";
 
 describe.concurrent("Scope", () => {

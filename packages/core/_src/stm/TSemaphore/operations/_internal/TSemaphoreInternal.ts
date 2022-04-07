@@ -1,5 +1,5 @@
-import type { TSemaphore } from "@effect-ts/core/stm/TSemaphore/definition";
-import { TSemaphoreSym } from "@effect-ts/core/stm/TSemaphore/definition";
+import type { TSemaphore } from "@effect/core/stm/TSemaphore/definition";
+import { TSemaphoreSym } from "@effect/core/stm/TSemaphore/definition";
 
 export class TSemaphoreInternal implements TSemaphore {
   readonly [TSemaphoreSym]: TSemaphoreSym = TSemaphoreSym;

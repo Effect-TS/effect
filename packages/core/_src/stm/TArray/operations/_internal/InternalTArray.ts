@@ -1,4 +1,4 @@
-import { _A, TArraySym } from "@effect-ts/core/stm/TArray/definition";
+import { _A, TArraySym } from "@effect/core/stm/TArray/definition";
 
 export class InternalTArray<A> implements TArray<A> {
   readonly [TArraySym]: TArraySym = TArraySym;

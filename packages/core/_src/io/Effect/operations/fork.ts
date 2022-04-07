@@ -1,4 +1,4 @@
-import { IFork } from "@effect-ts/core/io/Effect/definition/primitives";
+import { IFork } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * Returns an effect that forks this effect into its own separate fiber,

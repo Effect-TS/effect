@@ -8,7 +8,7 @@ export const ExampleErrorDie = Effect.die(() => {
   throw ExampleError;
 });
 
-export const NumberServiceId = Symbol.for("@effect-ts/core/test/NumberService");
+export const NumberServiceId = Symbol.for("@effect/core/test/NumberService");
 
 export interface NumberService {
   readonly n: number;

@@ -1,4 +1,4 @@
-import { makeTArray, n } from "@effect-ts/core/test/stm/TArray/test-utils";
+import { makeTArray, n } from "@effect/core/test/stm/TArray/test-utils";
 
 describe.concurrent("TArray", () => {
   describe.concurrent("forEach", () => {

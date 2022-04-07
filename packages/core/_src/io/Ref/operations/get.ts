@@ -1,4 +1,4 @@
-import { concreteRef } from "@effect-ts/core/io/Ref/operations/_internal/RefInternal";
+import { concreteRef } from "@effect/core/io/Ref/operations/_internal/RefInternal";
 
 /**
  * Reads the value from the `Ref`.

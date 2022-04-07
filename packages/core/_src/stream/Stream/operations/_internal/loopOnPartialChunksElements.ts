@@ -1,4 +1,4 @@
-import { loopOnPartialChunks } from "@effect-ts/core/stream/Stream/operations/_internal/loopOnPartialChunks";
+import { loopOnPartialChunks } from "@effect/core/stream/Stream/operations/_internal/loopOnPartialChunks";
 
 export function loopOnPartialChunksElements<R, E, A, R1, E1, A1>(
   self: Stream<R, E, A>,

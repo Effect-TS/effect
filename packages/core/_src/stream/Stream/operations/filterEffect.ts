@@ -1,4 +1,4 @@
-import { loopOnPartialChunksElements } from "@effect-ts/core/stream/Stream/operations/_internal/loopOnPartialChunksElements";
+import { loopOnPartialChunksElements } from "@effect/core/stream/Stream/operations/_internal/loopOnPartialChunksElements";
 
 /**
  * Effectfully filters the elements emitted by this stream.

@@ -1,4 +1,4 @@
-import { concreteFiberRef } from "@effect-ts/core/io/FiberRef/operations/_internal/FiberRefInternal";
+import { concreteFiberRef } from "@effect/core/io/FiberRef/operations/_internal/FiberRefInternal";
 
 /**
  * @tsplus fluent ets/FiberRef fork

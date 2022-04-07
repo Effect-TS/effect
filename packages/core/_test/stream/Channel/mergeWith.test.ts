@@ -1,4 +1,4 @@
-import { MergeDecision } from "@effect-ts/core/stream/Channel/MergeDecision";
+import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision";
 
 describe.concurrent("Channel", () => {
   describe.concurrent("mergeWith", () => {

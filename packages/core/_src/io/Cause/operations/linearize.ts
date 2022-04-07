@@ -1,4 +1,4 @@
-import { Die, Fail, Interrupt, Stackless } from "@effect-ts/core/io/Cause/definition";
+import { Die, Fail, Interrupt, Stackless } from "@effect/core/io/Cause/definition";
 
 /**
  * Linearizes this cause to a set of parallel causes where each parallel cause

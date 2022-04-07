@@ -1,8 +1,8 @@
-import type { AtomicCounter } from "@effect-ts/core/io/Metrics/atomic/AtomicCounter";
-import type { AtomicGauge } from "@effect-ts/core/io/Metrics/atomic/AtomicGauge";
-import type { AtomicHistogram } from "@effect-ts/core/io/Metrics/atomic/AtomicHistogram";
-import type { AtomicSetCount } from "@effect-ts/core/io/Metrics/atomic/AtomicSetCount";
-import type { AtomicSummary } from "@effect-ts/core/io/Metrics/atomic/AtomicSummary";
+import type { AtomicCounter } from "@effect/core/io/Metrics/atomic/AtomicCounter";
+import type { AtomicGauge } from "@effect/core/io/Metrics/atomic/AtomicGauge";
+import type { AtomicHistogram } from "@effect/core/io/Metrics/atomic/AtomicHistogram";
+import type { AtomicSetCount } from "@effect/core/io/Metrics/atomic/AtomicSetCount";
+import type { AtomicSummary } from "@effect/core/io/Metrics/atomic/AtomicSummary";
 
 /**
  * A `MetricClient` provides the functionality to consume metrics produced by

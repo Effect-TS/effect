@@ -1,15 +1,15 @@
 export type USTM<A> = STM<unknown, never, A>;
 
-export const STMSym = Symbol.for("@effect-ts/core/stm/STM");
+export const STMSym = Symbol.for("@effect/core/stm/STM");
 export type STMSym = typeof STMSym;
 
-export const _R = Symbol.for("@effect-ts/core/stm/STM/R");
+export const _R = Symbol.for("@effect/core/stm/STM/R");
 export type _R = typeof _R;
 
-export const _E = Symbol.for("@effect-ts/core/stm/STM/E");
+export const _E = Symbol.for("@effect/core/stm/STM/E");
 export type _E = typeof _E;
 
-export const _A = Symbol.for("@effect-ts/core/stm/STM/A");
+export const _A = Symbol.for("@effect/core/stm/STM/A");
 export type _A = typeof _A;
 
 /**

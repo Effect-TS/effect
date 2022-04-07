@@ -1,4 +1,4 @@
-import { STMEffect, STMFailException } from "@effect-ts/core/stm/STM/definition/primitives";
+import { STMEffect, STMFailException } from "@effect/core/stm/STM/definition/primitives";
 
 /**
  * Returns a value that models failure in the transaction.

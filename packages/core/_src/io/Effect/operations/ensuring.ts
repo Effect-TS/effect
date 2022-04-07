@@ -1,4 +1,4 @@
-import { IEnsuring } from "@effect-ts/core/io/Effect/definition/primitives";
+import { IEnsuring } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * Returns an effect that, if this effect _starts_ execution, then the

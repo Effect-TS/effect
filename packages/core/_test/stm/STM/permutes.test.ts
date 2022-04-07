@@ -1,4 +1,4 @@
-import { permutation } from "@effect-ts/core/test/stm/STM/test-utils";
+import { permutation } from "@effect/core/test/stm/STM/test-utils";
 
 describe.concurrent("STM", () => {
   describe.concurrent("Permutes 2 variables", () => {

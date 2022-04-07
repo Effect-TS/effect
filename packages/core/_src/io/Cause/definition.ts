@@ -9,10 +9,10 @@
 // Model
 // -----------------------------------------------------------------------------
 
-export const CauseSym = Symbol.for("@effect-ts/core/io/Cause");
+export const CauseSym = Symbol.for("@effect/core/io/Cause");
 export type CauseSym = typeof CauseSym;
 
-export const _E = Symbol.for("@effect-ts/core/io/Cause/E");
+export const _E = Symbol.for("@effect/core/io/Cause/E");
 export type _E = typeof _E;
 
 /**

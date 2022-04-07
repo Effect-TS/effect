@@ -1,4 +1,4 @@
-import { withSetCount } from "@effect-ts/core/io/Metrics/SetCount/operations/_internal/InternalSetCount";
+import { withSetCount } from "@effect/core/io/Metrics/SetCount/operations/_internal/InternalSetCount";
 
 /**
  * Increments the counter associated with the specified value by one.

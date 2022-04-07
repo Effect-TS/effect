@@ -1,4 +1,4 @@
-import { concreteTArray } from "@effect-ts/core/stm/TArray/operations/_internal/InternalTArray";
+import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/InternalTArray";
 
 /**
  * Get the first index of a specific value in the array, bounded above by a

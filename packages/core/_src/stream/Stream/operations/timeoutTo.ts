@@ -1,5 +1,5 @@
 export const StreamTimeoutErrorSym = Symbol.for(
-  "@effect-ts/core/stream/Stream/StreamTimeoutError"
+  "@effect/core/stream/Stream/StreamTimeoutError"
 );
 
 export class StreamTimeoutError {

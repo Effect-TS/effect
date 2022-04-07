@@ -1,7 +1,7 @@
 import {
   concreteSetCount,
   InternalSetCount
-} from "@effect-ts/core/io/Metrics/SetCount/operations/_internal/InternalSetCount";
+} from "@effect/core/io/Metrics/SetCount/operations/_internal/InternalSetCount";
 
 /**
  * Returns a copy of this counter with the specified name, setTag, and/or tags.

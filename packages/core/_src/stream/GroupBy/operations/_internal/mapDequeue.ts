@@ -1,4 +1,4 @@
-import { _Out, QueueSym } from "@effect-ts/core/io/Queue/definition";
+import { _Out, QueueSym } from "@effect/core/io/Queue/definition";
 
 export function mapDequeue<A, B>(dequeue: Dequeue<A>, f: (a: A) => B): Dequeue<B> {
   return new MapDequeueImplementation(dequeue, f);

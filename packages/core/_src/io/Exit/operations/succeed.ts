@@ -1,4 +1,4 @@
-import { Success } from "@effect-ts/core/io/Exit/definition";
+import { Success } from "@effect/core/io/Exit/definition";
 
 /**
  * @tsplus static ets/Exit/Ops succeed

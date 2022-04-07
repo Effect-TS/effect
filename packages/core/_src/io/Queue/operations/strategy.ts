@@ -1,4 +1,4 @@
-import { unsafeCompleteTakers } from "@effect-ts/core/io/Queue/operations/_internal/unsafeCompleteTakers";
+import { unsafeCompleteTakers } from "@effect/core/io/Queue/operations/_internal/unsafeCompleteTakers";
 
 /**
  * @tsplus type ets/QueueStrategy

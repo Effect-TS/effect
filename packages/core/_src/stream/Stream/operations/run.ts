@@ -1,5 +1,5 @@
-import { concreteSink } from "@effect-ts/core/stream/Sink/operations/_internal/SinkInternal";
-import { concreteStream } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteSink } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { concreteStream } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 /**
  * Runs the sink on the stream to produce either the sink's result or an

@@ -1,5 +1,5 @@
-import { MergeStrategy } from "@effect-ts/core/stream/Channel/MergeStrategy";
-import { concreteStream, StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
+import { MergeStrategy } from "@effect/core/stream/Channel/MergeStrategy";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 /**
  * Maps each element of this stream to another stream and returns the

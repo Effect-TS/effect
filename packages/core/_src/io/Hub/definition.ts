@@ -1,4 +1,4 @@
-export const HubSym = Symbol.for("@effect-ts/core/io/XHub");
+export const HubSym = Symbol.for("@effect/core/io/XHub");
 export type HubSym = typeof HubSym;
 
 /**

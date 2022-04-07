@@ -1,5 +1,5 @@
-import type { EffectURI } from "@effect-ts/core/io/Effect/definition/base";
-import { _A, _E, _R, _S1, _S2, _U, _W } from "@effect-ts/core/io/Effect/definition/base";
+import type { EffectURI } from "@effect/core/io/Effect/definition/base";
+import { _A, _E, _R, _S1, _S2, _U, _W } from "@effect/core/io/Effect/definition/base";
 
 /**
  * `XPure<W, S1, S2, R, E, A>` is a purely functional description of a

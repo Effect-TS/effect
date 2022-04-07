@@ -1,6 +1,6 @@
-import { SinkInternal } from "@effect-ts/core/stream/Sink/operations/_internal/SinkInternal";
-import { Handoff } from "@effect-ts/core/stream/Stream/operations/_internal/Handoff";
-import { StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff";
+import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 type Signal<E, A> = Emit<A> | Halt<E> | End;
 

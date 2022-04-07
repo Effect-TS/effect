@@ -1,4 +1,4 @@
-import { IAsync } from "@effect-ts/core/io/Effect/definition/primitives";
+import { IAsync } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * Imports an asynchronous side-effect into an effect. The side-effect has

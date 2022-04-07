@@ -1,4 +1,4 @@
-import { MergeDecision } from "@effect-ts/core/stream/Channel/MergeDecision";
+import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision";
 
 /**
  * Returns a new channel, which is the same as this one, except it will be

@@ -2,7 +2,7 @@ import { constVoid } from "@tsplus/stdlib/data/Function";
 
 export const ExampleError = new Error("fail");
 
-export const STMEnvId = Symbol.for("@effect-ts/core/test/stm/STMEnv");
+export const STMEnvId = Symbol.for("@effect/core/test/stm/STMEnv");
 export type STMEnvId = typeof STMEnvId;
 
 /**

@@ -1,4 +1,4 @@
-import { FromEffect } from "@effect-ts/core/stream/Channel/definition/primitives";
+import { FromEffect } from "@effect/core/stream/Channel/definition/primitives";
 
 /**
  * Use an effect to end a channel.

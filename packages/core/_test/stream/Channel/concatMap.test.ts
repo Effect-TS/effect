@@ -1,5 +1,5 @@
-import { ChildExecutorDecision } from "@effect-ts/core/stream/Channel/ChildExecutorDecision";
-import { UpstreamPullStrategy } from "@effect-ts/core/stream/Channel/UpstreamPullStrategy";
+import { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision";
+import { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy";
 import { constVoid } from "@tsplus/stdlib/data/Function";
 
 describe.concurrent("Channel", () => {

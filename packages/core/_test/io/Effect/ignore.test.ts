@@ -1,4 +1,4 @@
-import { ExampleError } from "@effect-ts/core/test/io/Effect/test-utils";
+import { ExampleError } from "@effect/core/test/io/Effect/test-utils";
 
 describe.concurrent("Effect", () => {
   describe.concurrent("ignore", () => {

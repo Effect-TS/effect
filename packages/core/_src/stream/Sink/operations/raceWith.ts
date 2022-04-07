@@ -1,5 +1,5 @@
-import { MergeDecision } from "@effect-ts/core/stream/Channel/MergeDecision";
-import { concreteSink, SinkInternal } from "@effect-ts/core/stream/Sink/operations/_internal/SinkInternal";
+import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision";
+import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
 
 /**
  * Runs both sinks in parallel on the input, using the specified merge

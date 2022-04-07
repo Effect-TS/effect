@@ -1,4 +1,4 @@
-export const _A = Symbol.for("@effect-ts/core/io/Metric/_A");
+export const _A = Symbol.for("@effect/core/io/Metric/_A");
 export type _A = typeof _A;
 
 /**

@@ -1,4 +1,4 @@
-import { Succeed } from "@effect-ts/core/stream/Channel/definition/primitives";
+import { Succeed } from "@effect/core/stream/Channel/definition/primitives";
 
 /**
  * @tsplus static ets/Channel/Ops succeed

@@ -1,4 +1,4 @@
-import { concreteTake, TakeInternal } from "@effect-ts/core/stream/Take/operations/_internal/TakeInternal";
+import { concreteTake, TakeInternal } from "@effect/core/stream/Take/operations/_internal/TakeInternal";
 
 /**
  * Transforms `Take<E, A>` to `Take<E, B>` by applying function `f`.

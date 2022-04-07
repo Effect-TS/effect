@@ -1,4 +1,4 @@
-export const RuntimeConfigFlagSym = Symbol.for("@effect-ts/core/io/RuntimeConfig/Flag");
+export const RuntimeConfigFlagSym = Symbol.for("@effect/core/io/RuntimeConfig/Flag");
 export type RuntimeConfigFlagSym = typeof RuntimeConfigFlagSym;
 
 /**

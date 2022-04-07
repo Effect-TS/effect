@@ -1,4 +1,4 @@
-import { ILayerZipWithPar } from "@effect-ts/core/io/Layer/definition";
+import { ILayerZipWithPar } from "@effect/core/io/Layer/definition";
 
 /**
  * Combines this layer with the specified layer, producing a new layer that

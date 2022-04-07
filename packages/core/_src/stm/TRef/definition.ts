@@ -1,7 +1,7 @@
-export const TRefSym = Symbol.for("@effect-ts/core/stm/TRef");
+export const TRefSym = Symbol.for("@effect/core/stm/TRef");
 export type TRefSym = typeof TRefSym;
 
-export const _A = Symbol.for("@effect-ts/core/stm/TRef/A");
+export const _A = Symbol.for("@effect/core/stm/TRef/A");
 export type _A = typeof _A;
 
 /**

@@ -1,4 +1,4 @@
-import { concreteTSemaphore } from "@effect-ts/core/stm/TSemaphore/operations/_internal/TSemaphoreInternal";
+import { concreteTSemaphore } from "@effect/core/stm/TSemaphore/operations/_internal/TSemaphoreInternal";
 
 /**
  * Releases the specified number of permits in a transactional context

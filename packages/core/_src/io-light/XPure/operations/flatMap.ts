@@ -1,4 +1,4 @@
-import { FlatMap } from "@effect-ts/core/io-light/XPure/definition/primitives";
+import { FlatMap } from "@effect/core/io-light/XPure/definition/primitives";
 
 /**
  * Extends this computation with another computation that depends on the

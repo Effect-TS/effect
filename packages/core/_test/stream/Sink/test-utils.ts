@@ -1,4 +1,4 @@
-import { _In, _Out, QueueSym } from "@effect-ts/core/io/Queue";
+import { _In, _Out, QueueSym } from "@effect/core/io/Queue";
 import { constVoid } from "@tsplus/stdlib/data/Function";
 
 export function findSink<A>(a: A): Sink<unknown, void, A, A, A> {

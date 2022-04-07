@@ -1,4 +1,4 @@
-import { IFold } from "@effect-ts/core/io/Effect/definition/primitives";
+import { IFold } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * A more powerful version of `foldEffect` that allows recovering from any kind

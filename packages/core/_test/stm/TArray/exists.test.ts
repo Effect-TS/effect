@@ -1,4 +1,4 @@
-import { boom, makeStair, n } from "@effect-ts/core/test/stm/TArray/test-utils";
+import { boom, makeStair, n } from "@effect/core/test/stm/TArray/test-utils";
 import { constTrue } from "@tsplus/stdlib/data/Function";
 
 describe.concurrent("TArray", () => {

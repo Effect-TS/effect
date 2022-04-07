@@ -1,4 +1,4 @@
-import { STMProvide } from "@effect-ts/core/stm/STM/definition/primitives";
+import { STMProvide } from "@effect/core/stm/STM/definition/primitives";
 
 /**
  * Provides some of the environment required to run this effect,

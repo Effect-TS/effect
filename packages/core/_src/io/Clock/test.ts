@@ -1,6 +1,6 @@
-import { AbstractClock } from "@effect-ts/core/io/Clock/definition";
+import { AbstractClock } from "@effect/core/io/Clock/definition";
 
-export const TestClockId = Symbol.for("@effect-ts/core/io/TestClock");
+export const TestClockId = Symbol.for("@effect/core/io/TestClock");
 export type TestClockId = typeof TestClockId;
 
 export const HasTestClock = Service<TestClock>(TestClockId);

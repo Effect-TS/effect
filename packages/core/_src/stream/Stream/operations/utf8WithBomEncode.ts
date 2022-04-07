@@ -1,5 +1,5 @@
-import { Utf8 } from "@effect-ts/core/stream/Stream/operations/_internal/bom";
-import { utfEncodeFor } from "@effect-ts/core/stream/Stream/operations/_internal/utfEncodeFor";
+import { Utf8 } from "@effect/core/stream/Stream/operations/_internal/bom";
+import { utfEncodeFor } from "@effect/core/stream/Stream/operations/_internal/utfEncodeFor";
 
 /**
  * @tsplus fluent ets/Stream utf8WithBomEncode

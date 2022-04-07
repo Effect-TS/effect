@@ -1,4 +1,4 @@
-import { InternalSummary } from "@effect-ts/core/io/Metrics/Summary/operations/_internal/InternalSummary";
+import { InternalSummary } from "@effect/core/io/Metrics/Summary/operations/_internal/InternalSummary";
 
 /**
  * Creates a new summary.

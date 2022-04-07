@@ -25,7 +25,7 @@ export type State<Err, Elem, Done> =
   | StateError<Err>
   | StateDone<Done>;
 
-export const DoneTypeId = Symbol.for("@effect-ts/core/stream/Channel/Producer/Done");
+export const DoneTypeId = Symbol.for("@effect/core/stream/Channel/Producer/Done");
 export type DoneTypeId = typeof DoneTypeId;
 
 export class StateDone<Elem> {
@@ -33,7 +33,7 @@ export class StateDone<Elem> {
   constructor(readonly a: Elem) {}
 }
 
-export const ErrorTypeId = Symbol.for("@effect-ts/core/stream/Channel/Producer/Error");
+export const ErrorTypeId = Symbol.for("@effect/core/stream/Channel/Producer/Error");
 export type ErrorTypeId = typeof ErrorTypeId;
 
 export class StateError<Err> {
@@ -41,7 +41,7 @@ export class StateError<Err> {
   constructor(readonly cause: Cause<Err>) {}
 }
 
-export const EmptyTypeId = Symbol.for("@effect-ts/core/stream/Channel/Producer/Empty");
+export const EmptyTypeId = Symbol.for("@effect/core/stream/Channel/Producer/Empty");
 export type EmptyTypeId = typeof EmptyTypeId;
 
 export class StateEmpty {
@@ -49,7 +49,7 @@ export class StateEmpty {
   constructor(readonly notifyProducer: Deferred<never, void>) {}
 }
 
-export const EmitTypeId = Symbol.for("@effect-ts/core/stream/Channel/Producer/Emit");
+export const EmitTypeId = Symbol.for("@effect/core/stream/Channel/Producer/Emit");
 export type EmitTypeId = typeof EmitTypeId;
 
 export class StateEmit<Err, Elem, Done> {

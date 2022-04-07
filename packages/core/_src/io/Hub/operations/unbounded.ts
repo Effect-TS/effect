@@ -1,6 +1,6 @@
-import { makeHub } from "@effect-ts/core/io/Hub/operations/_internal/makeHub";
-import { makeUnbounded } from "@effect-ts/core/io/Hub/operations/_internal/makeUnbounded";
-import { Strategy } from "@effect-ts/core/io/Hub/operations/strategy";
+import { makeHub } from "@effect/core/io/Hub/operations/_internal/makeHub";
+import { makeUnbounded } from "@effect/core/io/Hub/operations/_internal/makeUnbounded";
+import { Strategy } from "@effect/core/io/Hub/operations/strategy";
 
 /**
  * Creates an unbounded hub.

@@ -1,4 +1,4 @@
-import { STMOnRetry } from "@effect-ts/core/stm/STM/definition/primitives";
+import { STMOnRetry } from "@effect/core/stm/STM/definition/primitives";
 
 /**
  * Tries this effect first, and if it enters retry, then it tries the other

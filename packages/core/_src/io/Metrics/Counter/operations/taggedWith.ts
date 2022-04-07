@@ -1,4 +1,4 @@
-import { concreteCounter } from "@effect-ts/core/io/Metrics/Counter/operations/_internal/InternalCounter";
+import { concreteCounter } from "@effect/core/io/Metrics/Counter/operations/_internal/InternalCounter";
 
 /**
  * Converts this counter metric to one where the tags depend on the measured

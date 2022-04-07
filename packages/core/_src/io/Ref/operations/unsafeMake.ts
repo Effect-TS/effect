@@ -1,4 +1,4 @@
-import { RefInternal } from "@effect-ts/core/io/Ref/operations/_internal/RefInternal";
+import { RefInternal } from "@effect/core/io/Ref/operations/_internal/RefInternal";
 
 /**
  * @tsplus static ets/Ref/Ops unsafeMake

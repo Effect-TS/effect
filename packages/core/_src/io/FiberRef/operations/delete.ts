@@ -1,4 +1,4 @@
-import { IFiberRefDelete } from "@effect-ts/core/io/Effect/definition/primitives";
+import { IFiberRefDelete } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * @tsplus fluent ets/FiberRef delete

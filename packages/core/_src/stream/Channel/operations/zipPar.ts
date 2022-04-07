@@ -1,4 +1,4 @@
-import { MergeDecision } from "@effect-ts/core/stream/Channel/MergeDecision";
+import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision";
 
 /**
  * @tsplus fluent ets/Channel zipPar

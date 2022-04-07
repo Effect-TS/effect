@@ -1,5 +1,5 @@
-import { ILayerScoped } from "@effect-ts/core/io/Layer/definition";
-import { environmentFor } from "@effect-ts/core/io/Layer/operations/_internal/environmentFor";
+import { ILayerScoped } from "@effect/core/io/Layer/definition";
+import { environmentFor } from "@effect/core/io/Layer/operations/_internal/environmentFor";
 
 /**
  * Constructs a layer from the specified scoped effect.

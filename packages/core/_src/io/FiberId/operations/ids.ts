@@ -1,4 +1,4 @@
-import { realFiberId } from "@effect-ts/core/io/FiberId/definition";
+import { realFiberId } from "@effect/core/io/FiberId/definition";
 
 /**
  * Get the set of identifiers for this `FiberId`.

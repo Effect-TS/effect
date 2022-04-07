@@ -1,4 +1,4 @@
-import { makeStair, n } from "@effect-ts/core/test/stm/TArray/test-utils";
+import { makeStair, n } from "@effect/core/test/stm/TArray/test-utils";
 
 describe.concurrent("TArray", () => {
   describe.concurrent("maxOption", () => {

@@ -1,4 +1,4 @@
-import { partitionMap } from "@effect-ts/core/io/Effect/operations/_internal/partitionMap";
+import { partitionMap } from "@effect/core/io/Effect/operations/_internal/partitionMap";
 
 /**
  * Feeds elements of type `A` to a function `f` that returns an effect.

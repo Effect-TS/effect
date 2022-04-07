@@ -1,4 +1,4 @@
-import { chain, HasSTMEnv, STMEnv } from "@effect-ts/core/test/stm/STM/test-utils";
+import { chain, HasSTMEnv, STMEnv } from "@effect/core/test/stm/STM/test-utils";
 import { constVoid } from "@tsplus/stdlib/data/Function";
 
 describe.concurrent("STM", () => {

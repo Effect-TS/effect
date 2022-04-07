@@ -1,6 +1,6 @@
-import type { STMOnFailure, STMOnRetry, STMOnSuccess } from "@effect-ts/core/stm/STM/definition/primitives";
-import { concreteSTM } from "@effect-ts/core/stm/STM/definition/primitives";
-import type { Journal } from "@effect-ts/core/stm/STM/Journal";
+import type { STMOnFailure, STMOnRetry, STMOnSuccess } from "@effect/core/stm/STM/definition/primitives";
+import { concreteSTM } from "@effect/core/stm/STM/definition/primitives";
+import type { Journal } from "@effect/core/stm/STM/Journal";
 
 type Erased = STM<unknown, unknown, unknown>;
 type Cont =

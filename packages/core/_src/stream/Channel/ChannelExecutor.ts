@@ -1,7 +1,7 @@
-import type { ChannelStateRead } from "@effect-ts/core/stream/Channel/ChannelState";
-import { ChannelState, concreteChannelState } from "@effect-ts/core/stream/Channel/ChannelState";
-import type { ChildExecutorDecision } from "@effect-ts/core/stream/Channel/ChildExecutorDecision";
-import type { BracketOut, Continuation, Ensuring } from "@effect-ts/core/stream/Channel/definition/primitives";
+import type { ChannelStateRead } from "@effect/core/stream/Channel/ChannelState";
+import { ChannelState, concreteChannelState } from "@effect/core/stream/Channel/ChannelState";
+import type { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision";
+import type { BracketOut, Continuation, Ensuring } from "@effect/core/stream/Channel/definition/primitives";
 import {
   concrete,
   concreteContinuation,
@@ -9,11 +9,11 @@ import {
   Emit,
   Fail,
   SucceedNow
-} from "@effect-ts/core/stream/Channel/definition/primitives";
-import type { DrainChildExecutors, PullFromChild, PullFromUpstream } from "@effect-ts/core/stream/Channel/Subexecutor";
-import { concreteSubexecutor, Subexecutor } from "@effect-ts/core/stream/Channel/Subexecutor";
-import { UpstreamPullRequest } from "@effect-ts/core/stream/Channel/UpstreamPullRequest";
-import type { UpstreamPullStrategy } from "@effect-ts/core/stream/Channel/UpstreamPullStrategy";
+} from "@effect/core/stream/Channel/definition/primitives";
+import type { DrainChildExecutors, PullFromChild, PullFromUpstream } from "@effect/core/stream/Channel/Subexecutor";
+import { concreteSubexecutor, Subexecutor } from "@effect/core/stream/Channel/Subexecutor";
+import { UpstreamPullRequest } from "@effect/core/stream/Channel/UpstreamPullRequest";
+import type { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy";
 
 export type ErasedExecutor<Env> = ChannelExecutor<
   Env,

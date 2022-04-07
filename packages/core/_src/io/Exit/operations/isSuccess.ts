@@ -1,4 +1,4 @@
-import type { Success } from "@effect-ts/core/io/Exit/definition";
+import type { Success } from "@effect/core/io/Exit/definition";
 
 /**
  * Determines if the `Exit` result is a success.

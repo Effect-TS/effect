@@ -1,4 +1,4 @@
-import { NumberService } from "@effect-ts/core/test/stream/Channel/test-utils";
+import { NumberService } from "@effect/core/test/stream/Channel/test-utils";
 
 describe("Channel", () => {
   describe("provide", () => {

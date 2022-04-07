@@ -1,4 +1,4 @@
-import { ExampleError, fib, sum } from "@effect-ts/core/test/io/Effect/test-utils";
+import { ExampleError, fib, sum } from "@effect/core/test/io/Effect/test-utils";
 
 describe.concurrent("Effect", () => {
   describe.concurrent("RTS synchronous correctness", () => {
@@ -43,8 +43,9 @@ describe.concurrent("Effect", () => {
     });
 
     it("suspendSucceed must not catch throwable", async () => {
+      const error = new Error("woops");
       const program = Effect.suspendSucceed(() => {
-        throw new Error("woops");
+        throw error;
       })
         .sandbox()
         .either()
@@ -52,7 +53,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise();
 
-      assert.isTrue(result == Either.left(Cause.die(new Error("woops"))));
+      assert.isTrue(result == Either.left(Cause.die(error)));
     });
 
     it("suspend must catch throwable", async () => {

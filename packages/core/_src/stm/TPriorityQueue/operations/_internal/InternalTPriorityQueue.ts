@@ -1,4 +1,4 @@
-import { _A, TPriorityQueueSym } from "@effect-ts/core/stm/TPriorityQueue/definition";
+import { _A, TPriorityQueueSym } from "@effect/core/stm/TPriorityQueue/definition";
 
 export class InternalTPriorityQueue<A> implements TPriorityQueue<A> {
   readonly [TPriorityQueueSym]: TPriorityQueueSym = TPriorityQueueSym;

@@ -1,4 +1,4 @@
-import type { Driver } from "@effect-ts/core/io/Schedule/Driver";
+import type { Driver } from "@effect/core/io/Schedule/Driver";
 
 /**
  * Returns a driver that can be used to step the schedule, appropriately

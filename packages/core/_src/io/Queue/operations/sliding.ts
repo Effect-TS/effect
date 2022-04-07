@@ -1,4 +1,4 @@
-import { Strategy } from "@effect-ts/core/io/Queue/operations/strategy";
+import { Strategy } from "@effect/core/io/Queue/operations/strategy";
 
 /**
  * Makes a new bounded queue with sliding strategy. When the capacity of the

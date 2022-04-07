@@ -1,4 +1,4 @@
-import { loopOnPartialChunks } from "@effect-ts/core/stream/Stream/operations/_internal/loopOnPartialChunks";
+import { loopOnPartialChunks } from "@effect/core/stream/Stream/operations/_internal/loopOnPartialChunks";
 
 /**
  * Takes all elements of the stream until the specified effectual predicate

@@ -1,4 +1,4 @@
-import { MergeStrategy } from "@effect-ts/core/stream/Channel/MergeStrategy";
+import { MergeStrategy } from "@effect/core/stream/Channel/MergeStrategy";
 
 /**
  * @tsplus fluent ets/Channel mergeMap

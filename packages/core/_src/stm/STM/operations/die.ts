@@ -1,4 +1,4 @@
-import { STMDieException, STMEffect } from "@effect-ts/core/stm/STM/definition/primitives";
+import { STMDieException, STMEffect } from "@effect/core/stm/STM/definition/primitives";
 
 /**
  * Kills the fiber running the effect.

@@ -1,4 +1,4 @@
-import { exactlyOnce } from "@effect-ts/core/test/io/Effect/test-utils";
+import { exactlyOnce } from "@effect/core/test/io/Effect/test-utils";
 
 describe.concurrent("Effect", () => {
   describe.concurrent("filter", () => {

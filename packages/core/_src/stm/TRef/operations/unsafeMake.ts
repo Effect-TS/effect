@@ -1,6 +1,6 @@
-import { emptyTodoMap } from "@effect-ts/core/stm/STM/Journal";
-import { Versioned } from "@effect-ts/core/stm/STM/Versioned";
-import { TRefInternal } from "@effect-ts/core/stm/TRef/operations/_internal/TRefInternal";
+import { emptyTodoMap } from "@effect/core/stm/STM/Journal";
+import { Versioned } from "@effect/core/stm/STM/Versioned";
+import { TRefInternal } from "@effect/core/stm/TRef/operations/_internal/TRefInternal";
 
 /**
  * Unsafely makes a new `TRef` that is initialized to the specified value.

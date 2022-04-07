@@ -1,12 +1,12 @@
-import type { ErasedExecutor } from "@effect-ts/core/stream/Channel/ChannelExecutor";
+import type { ErasedExecutor } from "@effect/core/stream/Channel/ChannelExecutor";
 
-export const ChannelStateSym = Symbol.for("@effect-ts/core/stream/Channel/ChannelState");
+export const ChannelStateSym = Symbol.for("@effect/core/stream/Channel/ChannelState");
 export type ChannelStateSym = typeof ChannelStateSym;
 
-export const _R = Symbol.for("@effect-ts/core/stream/Channel/ChannelState/R");
+export const _R = Symbol.for("@effect/core/stream/Channel/ChannelState/R");
 export type _R = typeof _R;
 
-export const _E = Symbol.for("@effect-ts/core/stream/Channel/ChannelState/E");
+export const _E = Symbol.for("@effect/core/stream/Channel/ChannelState/E");
 export type _E = typeof _E;
 
 /**

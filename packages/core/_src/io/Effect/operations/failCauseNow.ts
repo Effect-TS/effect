@@ -1,4 +1,4 @@
-import { IFail } from "@effect-ts/core/io/Effect/definition/primitives";
+import { IFail } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * Returns an effect that models failure with the specified `Cause`.

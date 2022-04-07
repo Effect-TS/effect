@@ -1,4 +1,4 @@
-export const CounterSym = Symbol.for("@effect-ts/core/io/Metrics/Counter");
+export const CounterSym = Symbol.for("@effect/core/io/Metrics/Counter");
 export type CounterSym = typeof CounterSym;
 
 /**

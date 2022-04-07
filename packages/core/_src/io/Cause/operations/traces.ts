@@ -1,4 +1,4 @@
-import { realCause } from "@effect-ts/core/io/Cause/definition";
+import { realCause } from "@effect/core/io/Cause/definition";
 
 /**
  * Grabs a list of execution traces from the cause.

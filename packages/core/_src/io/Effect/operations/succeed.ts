@@ -1,4 +1,4 @@
-import { ISucceed } from "@effect-ts/core/io/Effect/definition/primitives";
+import { ISucceed } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * Returns an effect that models success with the specified synchronous

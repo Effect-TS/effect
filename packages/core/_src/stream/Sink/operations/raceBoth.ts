@@ -1,4 +1,4 @@
-import { MergeDecision } from "@effect-ts/core/stream/Channel/MergeDecision";
+import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision";
 
 /**
  * Runs both sinks in parallel on the input, returning the result or the error

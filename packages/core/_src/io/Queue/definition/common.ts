@@ -1,4 +1,4 @@
-export const QueueSym = Symbol.for("@effect-ts/core/io/Queue");
+export const QueueSym = Symbol.for("@effect/core/io/Queue");
 export type QueueSym = typeof QueueSym;
 
 export interface CommonQueue {

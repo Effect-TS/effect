@@ -1,4 +1,4 @@
-import { realFiber } from "@effect-ts/core/io/Fiber/definition";
+import { realFiber } from "@effect/core/io/Fiber/definition";
 
 /**
  * Tentatively observes the fiber, but returns immediately if it is not

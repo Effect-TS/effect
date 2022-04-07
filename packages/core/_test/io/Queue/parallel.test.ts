@@ -1,4 +1,4 @@
-import { waitForSize } from "@effect-ts/core/test/io/Queue/test-utils";
+import { waitForSize } from "@effect/core/test/io/Queue/test-utils";
 
 describe.concurrent("Queue", () => {
   describe.concurrent("parallel", () => {

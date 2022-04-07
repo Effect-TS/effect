@@ -1,4 +1,4 @@
-import { ISucceedNow } from "@effect-ts/core/io/Effect/definition/primitives";
+import { ISucceedNow } from "@effect/core/io/Effect/definition/primitives";
 
 /**
  * Returns an effect that models success with the specified value.

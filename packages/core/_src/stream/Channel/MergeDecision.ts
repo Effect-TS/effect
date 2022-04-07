@@ -1,19 +1,19 @@
-export const MergeDecisionSym = Symbol.for("@effect-ts/core/stream/Channel/MergeDecision");
+export const MergeDecisionSym = Symbol.for("@effect/core/stream/Channel/MergeDecision");
 export type MergeDecisionSym = typeof MergeDecisionSym;
 
-export const _R = Symbol.for("@effect-ts/core/stream/Channel/MergeDecision/R");
+export const _R = Symbol.for("@effect/core/stream/Channel/MergeDecision/R");
 export type _R = typeof _R;
 
-export const _E0 = Symbol.for("@effect-ts/core/stream/Channel/MergeDecision/E0");
+export const _E0 = Symbol.for("@effect/core/stream/Channel/MergeDecision/E0");
 export type _E0 = typeof _E0;
 
-export const _Z0 = Symbol.for("@effect-ts/core/stream/Channel/MergeDecision/Z0");
+export const _Z0 = Symbol.for("@effect/core/stream/Channel/MergeDecision/Z0");
 export type _Z0 = typeof _Z0;
 
-export const _E = Symbol.for("@effect-ts/core/stream/Channel/MergeDecision/E");
+export const _E = Symbol.for("@effect/core/stream/Channel/MergeDecision/E");
 export type _E = typeof _E;
 
-export const _Z = Symbol.for("@effect-ts/core/stream/Channel/MergeDecision/Z");
+export const _Z = Symbol.for("@effect/core/stream/Channel/MergeDecision/Z");
 export type _Z = typeof _Z;
 
 /**

@@ -1,4 +1,4 @@
-import { Action, resource } from "@effect-ts/core/test/io/Scope/test-utils";
+import { Action, resource } from "@effect/core/test/io/Scope/test-utils";
 
 describe.concurrent("Scope", () => {
   describe.concurrent("scoped", () => {

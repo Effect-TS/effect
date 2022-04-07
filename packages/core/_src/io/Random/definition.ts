@@ -1,4 +1,4 @@
-export const RandomId = Symbol.for("@effect-ts/core/io/Random");
+export const RandomId = Symbol.for("@effect/core/io/Random");
 export type RandomId = typeof RandomId;
 
 /**

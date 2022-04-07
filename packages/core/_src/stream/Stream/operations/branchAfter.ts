@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect-ts/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 interface Pipeline<R, E, A, R2, E2, B> {
   (stream: Stream<R, E, A>): Stream<R2, E2, B>;
