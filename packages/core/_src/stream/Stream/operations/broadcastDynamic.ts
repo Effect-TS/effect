@@ -9,7 +9,7 @@ export function broadcastDynamic_<R, E, A>(
   self: Stream<R, E, A>,
   maximumLag: number,
   __tsplusTrace?: string
-): Effect<R & HasScope, never, Stream<unknown, E, A>> {
+): Effect<R & Has<Scope>, never, Stream<unknown, E, A>> {
   return self.broadcastedQueuesDynamic(maximumLag).map((effect) =>
     Stream.scoped(effect)
       .flatMap((queue) => Stream.fromQueue(queue))

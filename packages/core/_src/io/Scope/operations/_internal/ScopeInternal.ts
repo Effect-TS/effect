@@ -6,7 +6,7 @@ export class ScopeInternal implements Scope {
 
   constructor(
     readonly _fork: UIO<Scope.Closeable>,
-    readonly _addFinalizerExit: (finalizer: Finalizer) => UIO<void>
+    readonly _addFinalizerExit: (finalizer: Scope.Finalizer) => UIO<void>
   ) {}
 }
 

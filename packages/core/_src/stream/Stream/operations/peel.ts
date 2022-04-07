@@ -30,7 +30,7 @@ export function peel_<R, E extends E2, A extends A2, R2, E2, A2, Z>(
   self: Stream<R, E, A>,
   sink: LazyArg<Sink<R2, E2, A2, A2, Z>>,
   __tsplusTrace?: string
-): Effect<R & R2 & HasScope, E | E2, Tuple<[Z, Stream<unknown, E, A2>]>> {
+): Effect<R & R2 & Has<Scope>, E | E2, Tuple<[Z, Stream<unknown, E, A2>]>> {
   return Effect.Do()
     .bind("deferred", () => Deferred.make<E | E2, Z>())
     .bind("handoff", () => Handoff.make<Signal<E, A2>>())

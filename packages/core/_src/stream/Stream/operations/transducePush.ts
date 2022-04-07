@@ -8,7 +8,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 export function transducePush<R2, R3, E2, In, Out>(
   push: LazyArg<
     Effect<
-      R2 & HasScope,
+      R2 & Has<Scope>,
       never,
       (input: Option<Chunk<In>>) => Effect<R3, E2, Chunk<Out>>
     >

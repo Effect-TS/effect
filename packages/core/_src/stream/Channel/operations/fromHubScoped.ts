@@ -4,7 +4,7 @@
 export function fromHubManaged<Err, Done, Elem>(
   hub: Hub<Either<Exit<Err, Done>, Elem>>
 ): Effect<
-  HasScope,
+  Has<Scope>,
   never,
   Channel<unknown, unknown, unknown, unknown, Err, Elem, Done>
 > {

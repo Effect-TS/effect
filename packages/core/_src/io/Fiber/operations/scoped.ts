@@ -8,6 +8,6 @@
 export function scoped<E, A>(
   self: Fiber<E, A>,
   __tsplusTrace?: string
-): Effect<HasScope, never, Fiber<E, A>> {
+): Effect<Has<Scope>, never, Fiber<E, A>> {
   return Effect.acquireRelease(Effect.succeedNow(self), (fiber) => fiber.interrupt());
 }

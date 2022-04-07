@@ -8,7 +8,7 @@ export function runIntoHubScoped_<R, E extends E1, A, E1>(
   self: Stream<R, E, A>,
   hub: LazyArg<Hub<Take<E1, A>>>,
   __tsplusTrace?: string
-): Effect<R & HasScope, E | E1, void> {
+): Effect<R & Has<Scope>, E | E1, void> {
   return self.runIntoQueueScoped(hub);
 }
 

@@ -8,7 +8,7 @@ import { Exited, Running } from "@effect/core/io/Scope/ReleaseMap/_internal/Stat
  */
 export function updateAll_(
   self: ReleaseMap,
-  f: (finalizer: Finalizer) => Finalizer,
+  f: (finalizer: Scope.Finalizer) => Scope.Finalizer,
   __tsplusTrace?: string
 ): UIO<void> {
   return self.ref.update((state) => {

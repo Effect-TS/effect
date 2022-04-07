@@ -7,7 +7,7 @@
 export function addFinalizerExit<R, X>(
   finalizer: (exit: Exit<unknown, unknown>) => RIO<R, X>,
   __tsplusTrace?: string
-): Effect<R & HasScope, never, void> {
+): Effect<R & Has<Scope>, never, void> {
   return Effect.Do()
     .bind("environment", () => Effect.environment<R>())
     .bind("scope", () => Effect.scope)

@@ -36,6 +36,6 @@ jobs:
           CI: "true"
       - name: Test
         run: |
-          yarn test --run --coverage
+          yarn test --run
         env:
           CI: "true"

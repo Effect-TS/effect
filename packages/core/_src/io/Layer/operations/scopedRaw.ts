@@ -6,7 +6,7 @@ import { ILayerScoped } from "@effect/core/io/Layer/definition";
  * @tsplus static ets/Layer/Ops scopedRaw
  */
 export function scopedRaw<R, E, A>(
-  effect: LazyArg<Effect<R & HasScope, E, A>>,
+  effect: LazyArg<Effect<R & Has<Scope>, E, A>>,
   __tsplusTrace?: string
 ): Layer<R, E, A> {
   return Layer.suspend(new ILayerScoped(effect()));

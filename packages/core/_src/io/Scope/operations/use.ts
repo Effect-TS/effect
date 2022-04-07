@@ -8,7 +8,7 @@
  */
 export function use_<R, E, A>(
   self: Scope.Closeable,
-  effect: LazyArg<Effect<R & HasScope, E, A>>
+  effect: LazyArg<Effect<R & Has<Scope>, E, A>>
 ): Effect<R, E, A> {
   return self.extend(effect).onExit((exit) => self.close(exit));
 }
