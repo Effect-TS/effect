@@ -6,7 +6,7 @@ import type { HKT } from "../Prelude/index.js"
  * Base combine
  */
 export interface Closure<A> {
-  readonly _Closure: "Closure" // @todo: should we remove those from the types ?
+  readonly _Closure: "Closure"
   readonly combine: (x: A, y: A) => A
 }
 

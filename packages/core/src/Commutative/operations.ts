@@ -4,7 +4,7 @@ import type { Commutative } from "./definition.js"
 
 export function makeCommutative<A>(f: (l: A, r: A) => A): Commutative<A> {
   return {
-    _Closure: "Closure", // @todo: should we remove those from the types ?
+    _Closure: "Closure",
     _Commutative: "Commutative",
     _Associative: "Associative",
     combine: f,

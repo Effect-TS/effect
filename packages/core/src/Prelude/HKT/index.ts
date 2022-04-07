@@ -26,7 +26,6 @@ export type Kind<F extends HKT, R, E, A> = F extends { readonly type: unknown }
       readonly _A: () => A
     }
 
-// @todo: re-check this with fixed types
 export type Infer<F extends HKT, P extends "R" | "E" | "A", K> = [K] extends [
   Kind<F, infer R, infer E, infer A>
 ]
