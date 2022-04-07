@@ -8,7 +8,7 @@ export function runForEachScoped_<R, E, A, R1, E1, Z>(
   self: Stream<R, E, A>,
   f: (a: A) => Effect<R1, E1, Z>,
   __tsplusTrace?: string
-): Effect<R & R1 & HasScope, E | E1, void> {
+): Effect<R & R1 & Has<Scope>, E | E1, void> {
   return self.runScoped(Sink.forEach(f));
 }
 

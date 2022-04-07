@@ -80,7 +80,7 @@ export type Instruction =
   | ILayerZipWithPar<any, any, any, any, any, any, any>;
 
 export class ILayerExtendScope<RIn, E, ROut> extends LayerAbstract<
-  RIn & HasScope,
+  RIn & Has<Scope>,
   E,
   ROut
 > {
@@ -124,7 +124,7 @@ export class ILayerFresh<RIn, E, ROut> extends LayerAbstract<RIn, E, ROut> {
 export class ILayerScoped<RIn, E, ROut> extends LayerAbstract<RIn, E, ROut> {
   readonly _tag = "LayerScoped";
 
-  constructor(readonly self: Effect<RIn & HasScope, E, ROut>) {
+  constructor(readonly self: Effect<RIn & Has<Scope>, E, ROut>) {
     super();
   }
 }

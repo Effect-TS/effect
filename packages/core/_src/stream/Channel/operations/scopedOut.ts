@@ -4,7 +4,7 @@
  * @tsplus static ets/Channel/Ops scopedOut
  */
 export function scopedOut<R, E, A>(
-  effect: LazyArg<Effect<R & HasScope, E, A>>
+  effect: LazyArg<Effect<R & Has<Scope>, E, A>>
 ): Channel<R, unknown, unknown, unknown, E, A, unknown> {
   return Channel.acquireReleaseOutExitUse(
     Scope.make.flatMap((scope) =>

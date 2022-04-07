@@ -7,6 +7,6 @@
 export function addFinalizer<R, X>(
   finalizer: LazyArg<RIO<R, X>>,
   __tsplusTrace?: string
-): Effect<R & HasScope, never, void> {
+): Effect<R & Has<Scope>, never, void> {
   return Effect.addFinalizerExit(finalizer);
 }

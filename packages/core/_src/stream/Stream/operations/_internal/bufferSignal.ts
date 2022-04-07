@@ -1,6 +1,6 @@
 export function bufferSignal<R, E, A>(
   effect: LazyArg<
-    Effect<HasScope, never, Queue<Tuple<[Take<E, A>, Deferred<never, void>]>>>
+    Effect<Has<Scope>, never, Queue<Tuple<[Take<E, A>, Deferred<never, void>]>>>
   >,
   channel: LazyArg<Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown>>,
   __tsplusTrace?: string

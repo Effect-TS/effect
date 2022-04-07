@@ -13,7 +13,7 @@ export function scoped<
   OutDone,
   A
 >(
-  effect: LazyArg<Effect<Env & HasScope, OutErr, A>>,
+  effect: LazyArg<Effect<Env & Has<Scope>, OutErr, A>>,
   use: (a: A) => Channel<Env1, InErr, InElem, InDone, OutErr1, OutElem, OutDone>
 ): Channel<Env & Env1, InErr, InElem, InDone, OutErr | OutErr1, OutElem, OutDone> {
   return Channel.acquireReleaseExitUse(

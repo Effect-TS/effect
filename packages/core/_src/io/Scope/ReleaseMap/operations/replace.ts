@@ -10,9 +10,9 @@ import { Exited, Running } from "@effect/core/io/Scope/ReleaseMap/_internal/Stat
 export function replace_(
   self: ReleaseMap,
   key: number,
-  finalizer: Finalizer,
+  finalizer: Scope.Finalizer,
   __tsplusTrace?: string
-): UIO<Option<Finalizer>> {
+): UIO<Option<Scope.Finalizer>> {
   return self.ref
     .modify((s) => {
       switch (s._tag) {

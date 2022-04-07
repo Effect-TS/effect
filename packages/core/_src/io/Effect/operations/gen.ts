@@ -63,7 +63,7 @@ export interface Adapter {
 }
 
 export interface AdapterWithScope extends Adapter {
-  <R, E, A>(_: Effect<R & HasScope, E, A>, __tsplusTrace?: string): GenEffect<R, E, A>;
+  <R, E, A>(_: Effect<R & Has<Scope>, E, A>, __tsplusTrace?: string): GenEffect<R, E, A>;
 }
 
 /**

@@ -7,7 +7,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  */
 export function fromPush<R, E, In, L, Z>(
   push: Effect<
-    R & HasScope,
+    R & Has<Scope>,
     never,
     (input: Option<Chunk<In>>) => Effect<R, Tuple<[Either<E, Z>, Chunk<L>]>, void>
   >,

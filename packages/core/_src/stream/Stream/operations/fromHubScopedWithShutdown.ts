@@ -16,7 +16,7 @@ export function fromHubScopedWithShutdown<A>(
   hub: LazyArg<Hub<A>>,
   maxChunkSize = DEFAULT_CHUNK_SIZE,
   __tsplusTrace?: string
-): Effect<HasScope, never, Stream<unknown, never, A>> {
+): Effect<Has<Scope>, never, Stream<unknown, never, A>> {
   return Effect.succeed(hub).flatMap((hub) =>
     Stream.fromHubScoped(hub, maxChunkSize).map((stream) => stream.ensuring(hub.shutdown))
   );

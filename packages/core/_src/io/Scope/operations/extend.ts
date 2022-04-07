@@ -9,10 +9,10 @@
  */
 export function extend_<R, E, A>(
   self: Scope,
-  effect: LazyArg<Effect<R & HasScope, E, A>>
+  effect: LazyArg<Effect<R & Has<Scope>, E, A>>
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(
-    effect().provideSomeEnvironment((r: R) => ({ ...r, ...HasScope(self) }))
+    effect().provideSomeEnvironment((r: R) => ({ ...r, ...Scope.Service(self) }))
   );
 }
 

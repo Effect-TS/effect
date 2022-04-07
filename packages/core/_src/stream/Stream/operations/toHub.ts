@@ -8,7 +8,7 @@ export function toHub_<R, E, A>(
   self: Stream<R, E, A>,
   capacity: number,
   __tsplusTrace?: string
-): Effect<R & HasScope, never, Hub<Take<E, A>>> {
+): Effect<R & Has<Scope>, never, Hub<Take<E, A>>> {
   return Effect.acquireRelease(
     Hub.bounded<Take<E, A>>(capacity),
     (hub) => hub.shutdown

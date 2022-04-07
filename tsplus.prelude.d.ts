@@ -187,7 +187,7 @@ import { Schedule } from "@effect/core/io/Schedule/definition";
 /**
  * @tsplus global
  */
-import { Finalizer, HasScope, Scope } from "@effect/core/io/Scope/definition";
+import { Scope } from "@effect/core/io/Scope/definition";
 /**
  * @tsplus global
  */

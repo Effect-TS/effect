@@ -3,4 +3,4 @@
  *
  * @tsplus static ets/Effect/Ops scope
  */
-export const scope: Effect<HasScope, never, Scope> = Effect.service(HasScope);
+export const scope: Effect<Has<Scope>, never, Scope> = Effect.service(Scope.Service);

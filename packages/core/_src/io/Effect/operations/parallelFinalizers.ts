@@ -4,7 +4,7 @@
 export function parallelFinalizers<R, E, A>(
   effect: LazyArg<Effect<R, E, A>>,
   __tsplusTrace?: string
-): Effect<R & HasScope, E, A> {
+): Effect<R & Has<Scope>, E, A> {
   return Effect.Do()
     .bind("outerScope", () => Effect.scope)
     .bind("innerScope", () => Scope.parallel())
