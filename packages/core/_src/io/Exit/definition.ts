@@ -1,5 +1,3 @@
-import type { Cause } from "../Cause";
-
 /**
  * @tsplus type ets/Exit
  */
@@ -21,17 +19,8 @@ export const Exit: ExitOps = {
 export interface ExitAspects {}
 
 /**
- * @tsplus unify ets/Exit
+ * @tsplus type ets/Exit/Success
  */
-export function unifyExit<X extends Exit<any, any>>(
-  self: X
-): Exit<
-  [X] extends [Exit<infer EX, any>] ? EX : never,
-  [X] extends [Exit<any, infer AX>] ? AX : never
-> {
-  return self;
-}
-
 export class Success<A> implements Equals {
   readonly _tag = "Success";
 
@@ -46,6 +35,9 @@ export class Success<A> implements Equals {
   }
 }
 
+/**
+ * @tsplus type ets/Exit/Failure
+ */
 export class Failure<E> implements Equals {
   readonly _tag = "Failure";
 
@@ -58,4 +50,18 @@ export class Failure<E> implements Equals {
   [Equals.sym](that: unknown): boolean {
     return that instanceof Failure && Equals.equals(this.cause, that.cause);
   }
+}
+
+/**
+ * @tsplus unify ets/Exit
+ * @tsplus unify ets/Exit/Success
+ * @tsplus unify ets/Exit/Failure
+ */
+export function unifyExit<X extends Exit<any, any>>(
+  self: X
+): Exit<
+  [X] extends [Exit<infer EX, any>] ? EX : never,
+  [X] extends [Exit<any, infer AX>] ? AX : never
+> {
+  return self;
 }

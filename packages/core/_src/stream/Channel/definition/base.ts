@@ -1,4 +1,14 @@
-import { _Env, _InDone, _InElem, _InErr, _OutDone, _OutDone2, _OutElem, _OutErr, _OutErr2 } from "./symbols";
+import {
+  _Env,
+  _InDone,
+  _InElem,
+  _InErr,
+  _OutDone,
+  _OutDone2,
+  _OutElem,
+  _OutErr,
+  _OutErr2
+} from "@effect/core/stream/Channel/definition/symbols";
 
 export const ChannelSym = Symbol.for("@effect/core/stream/Channel");
 export type ChannelSym = typeof ChannelSym;

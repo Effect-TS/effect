@@ -10,7 +10,7 @@ export function getAndUpdateSome_<A>(
   pf: (a: A) => Option<A>,
   __tsplusTrace?: string
 ): UIO<A> {
-  return (self as Ref<A>).getAndUpdateSome(pf);
+  return self.modify(v => Tuple(v, pf(v).getOrElse(v)));
 }
 
 /**

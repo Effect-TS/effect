@@ -9,7 +9,7 @@ export function getAndSet_<A>(
   value: A,
   __tsplusTrace?: string
 ): UIO<A> {
-  return (self as Ref<A>).getAndSet(value);
+  return self.modify(v => Tuple(v, value));
 }
 
 /**

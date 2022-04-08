@@ -1,4 +1,4 @@
 /**
  * @tsplus global
  */
-import { assert, describe, it } from "vitest";
+import { assert, describe, it, vi } from "vitest";

@@ -1,6 +1,3 @@
-import { Cause } from "../../Cause";
-import type { Exit } from "../definition";
-
 /**
  * Sequentially zips the this result with the specified result discarding the
  * second element of the tuple or else returns the failed `Cause`.

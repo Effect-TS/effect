@@ -26,6 +26,9 @@ export declare namespace MetricKey {
 export interface MetricKeyOps {}
 export const MetricKey: MetricKeyOps = {};
 
+/**
+ * @tsplus type ets/MetricKey/Counter
+ */
 export class CounterKey implements Equals {
   readonly _tag = "CounterKey";
   readonly [MetricKeySym] = MetricKeySym;
@@ -37,18 +40,24 @@ export class CounterKey implements Equals {
 
   [Hash.sym](): number {
     return Hash.combine(
-      Hash.string(this.name),
-      Hash.combine(Hash.string(this._tag), Hash.unknown(this.tags))
+      Hash.string(this._tag),
+      Hash.combine(Hash.string(this.name), Hash.unknown(this.tags))
     );
   }
 
   [Equals.sym](that: unknown): boolean {
     return (
-      isMetricKey(that) && that._tag === "CounterKey" && Hash.unknown(this) === Hash.unknown(that)
+      isMetricKey(that) &&
+      that._tag === "CounterKey" &&
+      this.name === that.name &&
+      this.tags == that.tags
     );
   }
 }
 
+/**
+ * @tsplus type ets/MetricKey/Gauge
+ */
 export class GaugeKey implements Equals {
   readonly _tag = "GaugeKey";
   readonly [MetricKeySym] = MetricKeySym;
@@ -60,18 +69,23 @@ export class GaugeKey implements Equals {
 
   [Hash.sym](): number {
     return Hash.combine(
-      Hash.string(this.name),
-      Hash.combine(Hash.string(this._tag), Hash.unknown(this.tags))
+      Hash.string(this._tag),
+      Hash.combine(Hash.string(this.name), Hash.unknown(this.tags))
     );
   }
 
   [Equals.sym](that: unknown): boolean {
     return (
-      isMetricKey(that) && that._tag === "GaugeKey" && Hash.unknown(this) === Hash.unknown(that)
+      isMetricKey(that) &&
+      that._tag === "GaugeKey" &&
+      this.tags == that.tags
     );
   }
 }
 
+/**
+ * @tsplus type ets/MetricKey/Histogram
+ */
 export class HistogramKey implements Equals {
   readonly _tag = "HistogramKey";
   readonly [MetricKeySym] = MetricKeySym;
@@ -93,11 +107,16 @@ export class HistogramKey implements Equals {
     return (
       isMetricKey(that) &&
       that._tag === "HistogramKey" &&
-      Hash.unknown(this) === Hash.unknown(that)
+      this.name === that.name &&
+      this.boundaries == that.boundaries &&
+      this.tags == that.tags
     );
   }
 }
 
+/**
+ * @tsplus type ets/MetricKey/Summary
+ */
 export class SummaryKey implements Equals {
   readonly _tag = "SummaryKey";
   readonly [MetricKeySym] = MetricKeySym;
@@ -132,11 +151,21 @@ export class SummaryKey implements Equals {
 
   [Equals.sym](that: unknown): boolean {
     return (
-      isMetricKey(that) && that._tag === "SummaryKey" && Hash.unknown(this) === Hash.unknown(that)
+      isMetricKey(that) &&
+      that._tag === "SummaryKey" &&
+      this.name === that.name &&
+      this.maxSize === that.maxSize &&
+      this.maxAge == that.maxAge &&
+      this.error === that.error &&
+      this.quantiles == that.quantiles &&
+      this.tags == that.tags
     );
   }
 }
 
+/**
+ * @tsplus type ets/MetricKey/SetCount
+ */
 export class SetCountKey implements Equals {
   readonly _tag = "SetCountKey";
   readonly [MetricKeySym] = MetricKeySym;
@@ -168,7 +197,9 @@ export class SetCountKey implements Equals {
     return (
       isMetricKey(that) &&
       that._tag === "SetCountKey" &&
-      Hash.unknown(this) === Hash.unknown(that)
+      this.name === that.name &&
+      this.setTag === that.setTag &&
+      this.tags == that.tags
     );
   }
 }

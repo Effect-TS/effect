@@ -29,8 +29,13 @@ export declare namespace MetricType {
 export interface MetricTypeOps {}
 export const MetricType: MetricTypeOps = {};
 
+/**
+ * @tsplus type ets/MetricType/Counter
+ */
 export class CounterType implements Equals {
   readonly _tag = "CounterType";
+
+  readonly [MetricTypeSym]: MetricTypeSym = MetricTypeSym;
 
   constructor(readonly count: number) {}
 
@@ -42,7 +47,7 @@ export class CounterType implements Equals {
     return (
       isMetricType(that) &&
       that._tag === "CounterType" &&
-      Hash.unknown(this) === Hash.unknown(that)
+      this.count === that.count
     );
   }
 
@@ -51,8 +56,13 @@ export class CounterType implements Equals {
   }
 }
 
+/**
+ * @tsplus type ets/MetricType/Gauge
+ */
 export class GaugeType implements Equals {
   readonly _tag = "GaugeType";
+
+  readonly [MetricTypeSym]: MetricTypeSym = MetricTypeSym;
 
   constructor(readonly value: number) {}
 
@@ -62,7 +72,9 @@ export class GaugeType implements Equals {
 
   [Equals.sym](that: unknown): boolean {
     return (
-      isMetricType(that) && that._tag === "GaugeType" && Hash.unknown(this) === Hash.unknown(that)
+      isMetricType(that) &&
+      that._tag === "GaugeType" &&
+      this.value === that.value
     );
   }
 
@@ -71,8 +83,13 @@ export class GaugeType implements Equals {
   }
 }
 
+/**
+ * @tsplus type ets/MetricType/Histogram
+ */
 export class HistogramType implements Equals {
   readonly _tag = "HistogramType";
+
+  readonly [MetricTypeSym]: MetricTypeSym = MetricTypeSym;
 
   constructor(
     readonly buckets: Chunk<Tuple<[number, number]>>,
@@ -94,7 +111,9 @@ export class HistogramType implements Equals {
     return (
       isMetricType(that) &&
       that._tag === "HistogramType" &&
-      Hash.unknown(this) === Hash.unknown(that)
+      this.buckets == that.buckets &&
+      this.count === that.count &&
+      this.sum === that.sum
     );
   }
 
@@ -106,8 +125,13 @@ export class HistogramType implements Equals {
   }
 }
 
+/**
+ * @tsplus type ets/MetricType/Summary
+ */
 export class SummaryType implements Equals {
   readonly _tag = "SummaryType";
+
+  readonly [MetricTypeSym]: MetricTypeSym = MetricTypeSym;
 
   constructor(
     readonly error: number,
@@ -132,8 +156,11 @@ export class SummaryType implements Equals {
   [Equals.sym](that: unknown): boolean {
     return (
       isMetricType(that) &&
-      that._tag === "HistogramType" &&
-      Hash.unknown(this) === Hash.unknown(that)
+      that._tag === "SummaryType" &&
+      this.error === that.error &&
+      this.quantiles == that.quantiles &&
+      this.count === that.count &&
+      this.sum === that.sum
     );
   }
 
@@ -145,8 +172,13 @@ export class SummaryType implements Equals {
   }
 }
 
+/**
+ * @tsplus type ets/MetricType/SetCount
+ */
 export class SetCountType implements Equals {
   readonly _tag = "SetCountType";
+
+  readonly [MetricTypeSym]: MetricTypeSym = MetricTypeSym;
 
   constructor(
     readonly setTag: string,
@@ -163,8 +195,9 @@ export class SetCountType implements Equals {
   [Equals.sym](that: unknown): boolean {
     return (
       isMetricType(that) &&
-      that._tag === "HistogramType" &&
-      Hash.unknown(this) === Hash.unknown(that)
+      that._tag === "SetCountType" &&
+      this.setTag === that.setTag &&
+      this.occurrences == that.occurrences
     );
   }
 

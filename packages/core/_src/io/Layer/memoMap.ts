@@ -170,10 +170,7 @@ export function withScope<RIn, E, ROut>(
       ),
     LayerScoped: (_) =>
       Effect.succeed<(_: MemoMap) => Effect<RIn, E, ROut>>(
-        (__: MemoMap) => {
-          console.log("Extending scope!");
-          return scope().extend(_.self);
-        }
+        (__: MemoMap) => scope().extend(_.self)
       ),
     LayerSuspend: (_) =>
       Effect.succeed<(_: MemoMap) => Effect<RIn, E, ROut>>(
@@ -195,7 +192,6 @@ export function withScope<RIn, E, ROut>(
         (memoMap: MemoMap) =>
           memoMap
             .getOrElseMemoize(_.self, scope)
-            .tap(() => Effect.succeed(console.log("memoized self!")))
             .zipWithPar(memoMap.getOrElseMemoize(_.that, scope), _.f)
       )
   });

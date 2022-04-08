@@ -19,7 +19,14 @@ describe.concurrent("TArray", () => {
 
       const result = await program.unsafeRunPromiseExit();
 
-      assert.isTrue(result.untraced() == Exit.die(new IndexOutOfBounds(-1, 0, 42)));
+      assert.isTrue(
+        result.isFailure() &&
+          result.cause.isDieType() &&
+          result.cause.value instanceof IndexOutOfBounds &&
+          result.cause.value.index === -1 &&
+          result.cause.value.min === 0 &&
+          result.cause.value.max === 1
+      );
     });
   });
 
@@ -41,7 +48,14 @@ describe.concurrent("TArray", () => {
 
       const result = await program.unsafeRunPromiseExit();
 
-      assert.isTrue(result.untraced() == Exit.die(new IndexOutOfBounds(-1, 0, 42)));
+      assert.isTrue(
+        result.isFailure() &&
+          result.cause.isDieType() &&
+          result.cause.value instanceof IndexOutOfBounds &&
+          result.cause.value.index === -1 &&
+          result.cause.value.min === 0 &&
+          result.cause.value.max === 1
+      );
     });
 
     it("failure", async () => {

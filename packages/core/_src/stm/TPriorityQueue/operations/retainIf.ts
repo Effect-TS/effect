@@ -7,7 +7,7 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
  */
 export function retainIf_<A>(self: TPriorityQueue<A>, f: Predicate<A>): USTM<void> {
   concreteTPriorityQueue(self);
-  return self.map.update((sa) => sa.map(({ tuple: [_, chunk] }) => chunk.filter(f)) as SortedMap<A, Chunk<A>>);
+  return self.map.update((map) => map.map((chunk) => chunk.filter(f)));
 }
 
 /**

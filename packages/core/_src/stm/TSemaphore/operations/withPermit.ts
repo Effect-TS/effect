@@ -1,6 +1,3 @@
-import type { Effect } from "../../../io/Effect"
-import type { TSemaphore } from "../definition"
-
 /**
  * Executes the specified effect, acquiring a permit immediately before the
  * effect begins execution and releasing it immediately after the effect
@@ -9,6 +6,5 @@ import type { TSemaphore } from "../definition"
  * @tsplus getter ets/TSemaphore withPermit
  */
 export function withPermit(self: TSemaphore, __tsplusTrace?: string) {
-  return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
-    self.withPermits(1)(effect)
+  return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> => self.withPermits(1)(effect);
 }

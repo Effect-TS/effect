@@ -6,6 +6,25 @@ export class TakeInternal<E, A> implements Take<E, A> {
   readonly [_A]!: () => A;
 
   constructor(readonly _exit: Exit<Option<E>, Chunk<A>>) {}
+
+  [Hash.sym](): number {
+    return this._exit[Hash.sym]();
+  }
+
+  [Equals.sym](u: unknown): boolean {
+    if (isTake(u)) {
+      concreteTake(u);
+      return u._exit == this._exit;
+    }
+    return false;
+  }
+}
+
+/**
+ * @tsplus static ets/Take/Ops isTake
+ */
+export function isTake(u: unknown): u is Take<unknown, unknown> {
+  return typeof u === "object" && u != null && TakeSym in u;
 }
 
 /**

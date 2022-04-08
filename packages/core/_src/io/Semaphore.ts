@@ -1,3 +1,3 @@
-// codegen:start {preset: barrel, include: ./Semaphore/*.ts}
-export * from "./Semaphore/definition"
+// codegen:start {preset: barrel, include: ./Semaphore/*.ts, prefix: "@effect/core/io"}
+export * from "@effect/core/io/Semaphore/definition";
 // codegen:end

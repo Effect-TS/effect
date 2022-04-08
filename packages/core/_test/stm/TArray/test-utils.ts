@@ -22,7 +22,7 @@ export function makeRepeats(
   length: number
 ): STM<unknown, never, TArray<number>> {
   return TArray.from(
-    Chunk.range(0, blocks * length).map((i) => (i % length) + 1)
+    Chunk.range(0, (blocks * length) - 1).map((i) => (i % length) + 1)
   );
 }
 

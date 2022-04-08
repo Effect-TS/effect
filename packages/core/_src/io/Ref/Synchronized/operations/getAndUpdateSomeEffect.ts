@@ -12,7 +12,7 @@ export function getAndUpdateSomeEffect_<R, E, A>(
 ): Effect<R, E, A> {
   return self.modifyEffect((v) =>
     pf(v)
-      .getOrElse<Effect<R, E, A>, Effect<R, E, A>>(Effect.succeedNow(v))
+      .getOrElse(Effect.succeedNow(v))
       .map((result) => Tuple(v, result))
   );
 }

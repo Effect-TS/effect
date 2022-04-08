@@ -121,7 +121,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("fromQueue", () => {
     it("emits queued elements", async () => {
-      const program = chunkCoordination(Chunk(Chunk(1, 2))).flatMap((c) =>
+      const program = chunkCoordination(List(Chunk(1, 2))).flatMap((c) =>
         Effect.Do()
           .bind("fiber", () =>
             Stream.fromQueue(c.queue)

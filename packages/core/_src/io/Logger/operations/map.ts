@@ -1,5 +1,3 @@
-import type { Logger } from "../definition";
-
 /**
  * @tsplus fluent ets/Logger map
  */

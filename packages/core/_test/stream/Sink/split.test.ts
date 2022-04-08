@@ -44,7 +44,7 @@ describe.concurrent("Sink", () => {
           Chunk(1, 2),
           Chunk(3, 4),
           Chunk(5, 6),
-          Chunk(7)
+          Chunk(7, 8)
         )
       );
     });

@@ -1,5 +1,3 @@
-import { Effect } from "../definition";
-
 /**
  * Accesses the specified service in the environment of the effect.
  *

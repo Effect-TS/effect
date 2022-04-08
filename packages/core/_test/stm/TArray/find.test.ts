@@ -41,7 +41,7 @@ describe.concurrent("TArray", () => {
             .find((n) => n % largePrime === 0)
             .commit()
             .fork())
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N), (i) => tArray.update(i, () => 1)).commit())
+        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => 1)).commit())
         .flatMap(({ findFiber }) => findFiber.join());
 
       const result = await program.unsafeRunPromise();
@@ -89,7 +89,7 @@ describe.concurrent("TArray", () => {
             .findSTM((n) => STM.succeed(n % largePrime === 0))
             .commit()
             .fork())
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N), (i) => tArray.update(i, () => 1)).commit())
+        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => 1)).commit())
         .flatMap(({ findFiber }) => findFiber.join());
 
       const result = await program.unsafeRunPromise();
@@ -166,7 +166,7 @@ describe.concurrent("TArray", () => {
             .findLast((n) => n % largePrime === 0)
             .commit()
             .fork())
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N), (i) => tArray.update(i, () => 1)).commit())
+        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => 1)).commit())
         .flatMap(({ findFiber }) => findFiber.join());
 
       const result = await program.unsafeRunPromise();
@@ -214,7 +214,7 @@ describe.concurrent("TArray", () => {
             .findLastSTM((n) => STM.succeed(n % largePrime === 0))
             .commit()
             .fork())
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N), (i) => tArray.update(i, () => 1)).commit())
+        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => 1)).commit())
         .flatMap(({ findFiber }) => findFiber.join());
 
       const result = await program.unsafeRunPromise();

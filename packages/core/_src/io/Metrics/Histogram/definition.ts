@@ -65,7 +65,7 @@ export class Boundaries implements HistogramBoundaries, Equals {
   }
 
   [Equals.sym](that: unknown): boolean {
-    return isBoundaries(that) && Equals.equals(this.chunk, that.chunk);
+    return isBoundaries(that) && this.chunk == that.chunk;
   }
 }
 

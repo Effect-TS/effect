@@ -1,4 +1,4 @@
-import type { HKT } from "../../../prelude/HKT";
+import type { HKT } from "@effect/core/prelude/HKT";
 
 export const EffectURI = "Effect";
 export type EffectURI = typeof EffectURI;

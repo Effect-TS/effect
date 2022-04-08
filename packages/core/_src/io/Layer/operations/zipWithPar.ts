@@ -1,5 +1,4 @@
-import type { Layer } from "../definition";
-import { ILayerZipWithPar } from "../definition";
+import { ILayerZipWithPar } from "@effect/core/io/Layer/definition";
 
 /**
  * Combines this layer the specified layer, producing a new layer that has the

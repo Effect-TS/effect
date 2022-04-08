@@ -7,7 +7,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromise();
 
-      assert.isFalse(result);
+      assert.isTrue(result);
     });
 
     it("when false", async () => {

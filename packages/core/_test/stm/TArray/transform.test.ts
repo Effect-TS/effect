@@ -10,7 +10,7 @@ describe.concurrent("TArray", () => {
             .transform((a) => a + "+b")
             .commit()
             .fork())
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N), (i) => tArray.update(i, (ab) => ab + "+c")).commit())
+        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, (ab) => ab + "+c")).commit())
         .bind("first", ({ tArray }) => tArray[0].commit())
         .bind("last", ({ tArray }) => tArray[N - 1].commit());
 
@@ -30,7 +30,7 @@ describe.concurrent("TArray", () => {
             .transformSTM((a) => STM.succeed(a + "+b"))
             .commit()
             .fork())
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N), (i) => tArray.update(i, (ab) => ab + "+c")).commit())
+        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, (ab) => ab + "+c")).commit())
         .bind("first", ({ tArray }) => tArray[0].commit())
         .bind("last", ({ tArray }) => tArray[N - 1].commit());
 

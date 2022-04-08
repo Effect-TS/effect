@@ -1,5 +1,4 @@
-import type { Sync } from "../definition"
-import { concreteXPure } from "../definition"
+import { concreteXPure } from "@effect/core/io-light/Sync/definition";
 
 /**
  * Returns a computation that effectfully "peeks" at the success of this one.
@@ -10,8 +9,8 @@ export function tap_<R, E, A, R1, E1, X>(
   self: Sync<R, E, A>,
   f: (a: A) => Sync<R1, E1, X>
 ): Sync<R & R1, E | E1, A> {
-  concreteXPure(self)
-  return self.tap(f)
+  concreteXPure(self);
+  return self.tap(f);
 }
 
 /**
@@ -20,5 +19,5 @@ export function tap_<R, E, A, R1, E1, X>(
  * @ets_data_first tap_
  */
 export function tap<A, R1, E1, X>(f: (a: A) => Sync<R1, E1, X>) {
-  return <R, E>(self: Sync<R, E, A>): Sync<R & R1, E1 | E, A> => self.tap(f)
+  return <R, E>(self: Sync<R, E, A>): Sync<R & R1, E1 | E, A> => self.tap(f);
 }

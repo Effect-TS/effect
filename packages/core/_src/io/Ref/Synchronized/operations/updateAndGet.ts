@@ -9,7 +9,10 @@ export function updateAndGet_<A>(
   f: (a: A) => A,
   __tsplusTrace?: string
 ): UIO<A> {
-  return (self as Ref<A>).updateAndGet(f);
+  return self.modify((v) => {
+    const result = f(v);
+    return Tuple(result, result);
+  });
 }
 
 /**

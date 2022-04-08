@@ -178,7 +178,7 @@ describe.concurrent("Effect", () => {
       assert.isUndefined(result);
     });
 
-    it("race of two forks does not interrupt winner", async () => {
+    it.only("race of two forks does not interrupt winner", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
         .bind("fibers", () => Ref.make(HashSet.empty<Fiber<unknown, unknown>>()))
@@ -200,7 +200,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise();
 
-      assert.isTrue(result <= 1);
+      assert.isAtMost(result, 1);
     });
 
     it("firstSuccessOf of values", async () => {

@@ -17,7 +17,7 @@ export function modifyEffect_<R, E, A, B>(
     self
       .get()
       .flatMap(f)
-      .flatMap(({ tuple: [b, a] }) => self.set(a).as(b))
+      .flatMap(({ tuple: [b, a] }) => self.ref.set(a).as(b))
   );
 }
 

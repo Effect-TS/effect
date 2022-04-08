@@ -1,4 +1,4 @@
-import { NumberService } from "@effect/core/test/stream/Stream/test-utils";
+import { NumberService, NumberServiceImpl } from "@effect/core/test/stream/Stream/test-utils";
 
 describe("Stream", () => {
   describe("environment", () => {
@@ -26,7 +26,7 @@ describe("Stream", () => {
   describe("environmentWithEffect", () => {
     it("simple example", async () => {
       const program = Stream.environmentWithEffect((r: Has<NumberService>) => Effect.succeed(NumberService.get(r)))
-        .provideEnvironment(NumberService({ n: 10 }))
+        .provideEnvironment(NumberService(new NumberServiceImpl(10)))
         .runHead().some;
 
       const result = await program.unsafeRunPromise();
@@ -36,7 +36,7 @@ describe("Stream", () => {
 
     it("environmentWithZIO fails", async () => {
       const program = Stream.environmentWithEffect((r: Has<NumberService>) => Effect.fail("fail"))
-        .provideEnvironment(NumberService({ n: 10 }))
+        .provideEnvironment(NumberService(new NumberServiceImpl(10)))
         .runHead();
 
       const result = await program.unsafeRunPromiseExit();
@@ -48,7 +48,7 @@ describe("Stream", () => {
   describe("environmentWithStream", () => {
     it("environmentWithStream", async () => {
       const program = Stream.environmentWithStream((r: Has<NumberService>) => Stream.succeed(NumberService.get(r)))
-        .provideEnvironment(NumberService({ n: 10 }))
+        .provideEnvironment(NumberService(new NumberServiceImpl(10)))
         .runHead().some;
 
       const result = await program.unsafeRunPromise();
@@ -58,7 +58,7 @@ describe("Stream", () => {
 
     it("environmentWithStream fails", async () => {
       const program = Stream.environmentWithStream((r: Has<NumberService>) => Stream.fail("fail"))
-        .provideEnvironment(NumberService({ n: 10 }))
+        .provideEnvironment(NumberService(new NumberServiceImpl(10)))
         .runHead();
 
       const result = await program.unsafeRunPromiseExit();
@@ -70,12 +70,12 @@ describe("Stream", () => {
   describe("provideLayer", () => {
     it("simple example", async () => {
       const program = Stream.scoped(Effect.service(NumberService))
-        .provideLayer(Layer.succeed(NumberService({ n: 10 })))
+        .provideLayer(Layer.succeed(NumberService(new NumberServiceImpl(10))))
         .runHead();
 
       const result = await program.unsafeRunPromise();
 
-      assert.isTrue(result == Option.some({ n: 10 }));
+      assert.isTrue(result == Option.some(new NumberServiceImpl(10)));
     });
   });
 });

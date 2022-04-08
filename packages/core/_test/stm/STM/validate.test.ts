@@ -59,7 +59,7 @@ describe.concurrent("STM", () => {
     });
 
     it("returns errors in correct order", async () => {
-      const input = List(2, 4, 6, 3, 5, 6);
+      const input = Chunk(2, 4, 6, 3, 5, 6);
       const program = STM.validateFirst(input, STM.failNow)
         .commit();
 

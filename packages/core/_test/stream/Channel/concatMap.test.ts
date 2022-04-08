@@ -1,5 +1,6 @@
 import { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision";
 import { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy";
+import { First, Second } from "@effect/core/test/stream/Channel/test-utils";
 import { constVoid } from "@tsplus/stdlib/data/Function";
 
 describe.concurrent("Channel", () => {
@@ -19,9 +20,9 @@ describe.concurrent("Channel", () => {
     it("complex", async () => {
       const program = Channel.writeAll(1, 2)
         .concatMap((i) => Channel.writeAll(i, i))
-        .mapOut((i) => ({ first: i }))
+        .mapOut((i) => new First(i))
         .concatMap((i) => Channel.writeAll(i, i))
-        .mapOut((n) => ({ second: n }))
+        .mapOut((i) => new Second(i))
         .runCollect();
 
       const {
@@ -30,14 +31,14 @@ describe.concurrent("Channel", () => {
 
       assert.isTrue(
         chunk == Chunk(
-          { second: { first: 1 } },
-          { second: { first: 1 } },
-          { second: { first: 1 } },
-          { second: { first: 1 } },
-          { second: { first: 2 } },
-          { second: { first: 2 } },
-          { second: { first: 2 } },
-          { second: { first: 2 } }
+          new Second(new First(1)),
+          new Second(new First(1)),
+          new Second(new First(1)),
+          new Second(new First(1)),
+          new Second(new First(2)),
+          new Second(new First(2)),
+          new Second(new First(2)),
+          new Second(new First(2))
         )
       );
     });

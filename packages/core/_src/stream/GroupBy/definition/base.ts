@@ -1,4 +1,4 @@
-import type { _A, _E, _K, _R, _V } from "./symbols";
+import type { _A, _E, _K, _R, _V } from "@effect/core/stream/GroupBy/definition/symbols";
 
 export const GroupBySym = Symbol.for("@effect/core/stream/GroupBy");
 export type GroupBySym = typeof GroupBySym;

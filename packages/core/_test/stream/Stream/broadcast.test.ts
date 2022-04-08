@@ -8,7 +8,7 @@ describe.concurrent("Stream", () => {
             Effect.struct({
               out1: streams.unsafeGet(0)!.runCollect(),
               out2: streams.unsafeGet(1)!.runCollect(),
-              expected: Effect.succeed(Chunk.range(0, 5))
+              expected: Effect.succeed(Chunk.range(0, 4))
             })
           )
       );

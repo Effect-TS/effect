@@ -1,23 +1,23 @@
-describe("Hub", () => {
-  describe("sequential publishers and subscribers", () => {
+describe.concurrent("Hub", () => {
+  describe.concurrent("sequential publishers and subscribers", () => {
     it("with one publisher and one subscriber", async () => {
-      const as = Chunk.range(0, 10);
+      const as = Chunk.range(0, 9);
       const program = Effect.Do()
-        .bind("promise1", () => Deferred.make<never, void>())
-        .bind("promise2", () => Deferred.make<never, void>())
+        .bind("deferred1", () => Deferred.make<never, void>())
+        .bind("deferred2", () => Deferred.make<never, void>())
         .bind("hub", () => Hub.bounded<number>(10))
-        .bind("subscriber", ({ hub, promise1, promise2 }) =>
+        .bind("subscriber", ({ deferred1, deferred2, hub }) =>
           Effect.scoped(
             hub.subscribe.flatMap(
               (subscription) =>
-                promise1.succeed(undefined) >
-                  promise2.await() >
+                deferred1.succeed(undefined) >
+                  deferred2.await() >
                   Effect.forEach(as, () => subscription.take)
             )
           ).fork())
-        .tap(({ promise1 }) => promise1.await())
+        .tap(({ deferred1 }) => deferred1.await())
         .tap(({ hub }) => Effect.forEach(as, (n) => hub.publish(n)))
-        .tap(({ promise2 }) => promise2.succeed(undefined))
+        .tap(({ deferred2 }) => deferred2.succeed(undefined))
         .flatMap(({ subscriber }) => subscriber.join());
 
       const result = await program.unsafeRunPromise();
@@ -26,34 +26,34 @@ describe("Hub", () => {
     });
 
     it("with one publisher and two subscribers", async () => {
-      const as = Chunk.range(0, 10);
+      const as = Chunk.range(0, 9);
       const program = Effect.Do()
-        .bind("promise1", () => Deferred.make<never, void>())
-        .bind("promise2", () => Deferred.make<never, void>())
-        .bind("promise3", () => Deferred.make<never, void>())
+        .bind("deferred1", () => Deferred.make<never, void>())
+        .bind("deferred2", () => Deferred.make<never, void>())
+        .bind("deferred3", () => Deferred.make<never, void>())
         .bind("hub", () => Hub.bounded<number>(10))
-        .bind("subscriber1", ({ hub, promise1, promise3 }) =>
+        .bind("subscriber1", ({ deferred1, deferred3, hub }) =>
           Effect.scoped(
             hub.subscribe.flatMap(
               (subscription) =>
-                promise1.succeed(undefined) >
-                  promise3.await() >
+                deferred1.succeed(undefined) >
+                  deferred3.await() >
                   Effect.forEach(as, () => subscription.take)
             )
           ).fork())
-        .bind("subscriber2", ({ hub, promise1, promise2, promise3 }) =>
+        .bind("subscriber2", ({ deferred1, deferred2, deferred3, hub }) =>
           Effect.scoped(
             hub.subscribe.flatMap(
               (subscription) =>
-                promise2.succeed(undefined) >
-                  promise3.await() >
+                deferred2.succeed(undefined) >
+                  deferred3.await() >
                   Effect.forEach(as, () => subscription.take)
             )
           ).fork())
-        .tap(({ promise1 }) => promise1.await())
-        .tap(({ promise2 }) => promise2.await())
+        .tap(({ deferred1 }) => deferred1.await())
+        .tap(({ deferred2 }) => deferred2.await())
         .tap(({ hub }) => Effect.forEach(as, (n) => hub.publish(n)))
-        .tap(({ promise3 }) => promise3.succeed(undefined))
+        .tap(({ deferred3 }) => deferred3.succeed(undefined))
         .bind("v1", ({ subscriber1 }) => subscriber1.join())
         .bind("v2", ({ subscriber2 }) => subscriber2.join());
 

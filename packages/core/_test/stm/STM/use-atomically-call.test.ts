@@ -153,7 +153,12 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit();
 
-      assert.isTrue(result.untraced() == Exit.die(new RuntimeError("dies")));
+      assert.isTrue(
+        result.isFailure() &&
+          result.cause.isDieType() &&
+          result.cause.value instanceof RuntimeError &&
+          result.cause.value.message === "dies"
+      );
     });
 
     describe.concurrent("filterOrElse", () => {
@@ -629,7 +634,12 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit();
 
-        assert.isTrue(result.untraced() == Exit.die(new Error("-1")));
+        assert.isTrue(
+          result.isFailure() &&
+            result.cause.isDieType() &&
+            result.cause.value instanceof Error &&
+            result.cause.value.message === "-1"
+        );
       });
 
       it("when succeed should keep going", async () => {
@@ -820,7 +830,13 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit();
 
-        assert.isTrue(result.untraced() == Exit.fail(Option.some(ExampleError)));
+        assert.isTrue(
+          result.isFailure() &&
+            result.cause.isFailType() &&
+            result.cause.value._tag === "Some" &&
+            result.cause.value.value instanceof Error &&
+            result.cause.value.value.message === "fail"
+        );
       });
 
       it("lifting a value", async () => {
@@ -854,7 +870,12 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit();
 
-        assert.isTrue(result.untraced() == Exit.fail(ExampleError));
+        assert.isTrue(
+          result.isFailure() &&
+            result.cause.isFailType() &&
+            result.cause.value instanceof Error &&
+            result.cause.value.message === "fail"
+        );
       });
     });
 
@@ -882,7 +903,12 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit();
 
-        assert.isTrue(result.untraced() == Exit.fail(ExampleError));
+        assert.isTrue(
+          result.isFailure() &&
+            result.cause.isFailType() &&
+            result.cause.value instanceof Error &&
+            result.cause.value.message === "fail"
+        );
       });
     });
 
@@ -900,7 +926,12 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit();
 
-        assert.isTrue(result.untraced() == Exit.fail(ExampleError));
+        assert.isTrue(
+          result.isFailure() &&
+            result.cause.isFailType() &&
+            result.cause.value instanceof Error &&
+            result.cause.value.message === "fail"
+        );
       });
 
       it("fails with the original error", async () => {
@@ -910,7 +941,12 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit();
 
-        assert.isTrue(result.untraced() == Exit.fail(ExampleError));
+        assert.isTrue(
+          result.isFailure() &&
+            result.cause.isFailType() &&
+            result.cause.value instanceof Error &&
+            result.cause.value.message === "fail"
+        );
       });
     });
 
@@ -928,7 +964,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit();
 
-        assert.isTrue(result.untraced() == Exit.fail(new NoSuchElement()));
+        assert.isTrue(result.isFailure() && result.cause.isFailType() && result.cause.value instanceof NoSuchElement);
       });
     });
 

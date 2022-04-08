@@ -60,7 +60,7 @@ describe.concurrent("TArray", () => {
             )
             .commit()
             .fork())
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N), (i) => tArray.update(i, () => Option.some(1))).commit())
+        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => Option.some(1))).commit())
         .flatMap(({ findFiber }) => findFiber.join());
 
       const result = await program.unsafeRunPromise();
@@ -128,7 +128,7 @@ describe.concurrent("TArray", () => {
             )
             .commit()
             .fork())
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N), (i) => tArray.update(i, () => Option.some(1))).commit())
+        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => Option.some(1))).commit())
         .flatMap(({ findFiber }) => findFiber.join());
 
       const result = await program.unsafeRunPromise();

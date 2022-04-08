@@ -1,6 +1,6 @@
-describe("Hub", () => {
-  describe("concurrent publishers and subscribers", () => {
-    describe("unbounded", () => {
+describe.concurrent("Hub", () => {
+  describe.concurrent("concurrent publishers and subscribers", () => {
+    describe.concurrent("unbounded", () => {
       it("one to one", async () => {
         const as = Chunk.range(0, 64);
         const program = Effect.Do()
@@ -58,7 +58,7 @@ describe("Hub", () => {
       });
 
       it("many to many", async () => {
-        const as = Chunk.range(1, 65);
+        const as = Chunk.range(1, 64);
         const program = Effect.Do()
           .bind("deferred1", () => Deferred.make<never, void>())
           .bind("deferred2", () => Deferred.make<never, void>())

@@ -1,5 +1,3 @@
-import type { SynchronizedRef } from "./Synchronized";
-
 export const RefSym = Symbol.for("@effect/core/io/Ref");
 export type RefSym = typeof RefSym;
 

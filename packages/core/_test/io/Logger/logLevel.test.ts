@@ -11,19 +11,19 @@ describe.concurrent("Logger", () => {
       const result = await program.unsafeRunPromise();
 
       assert.strictEqual(result.array.length, 1);
-      assert.isTrue(result[0].map((_) => _.message()) == Option.some("It's alive!"));
+      assert.isTrue(result[0].map((_) => _.message()) == Option.some("It's alive"));
       assert.isTrue(result[0].map((_) => _.logLevel) == Option.some(LogLevel.Warning));
     });
 
     it("log at a different log level", async () => {
-      const program = Effect.logWarning("It's alive!")
+      const program = Effect.logWarning("It's alive")
         .zipRight(TestLogger.logOutput)
         .provideLayer(TestLogger.default);
 
       const result = await program.unsafeRunPromise();
 
       assert.strictEqual(result.array.length, 1);
-      assert.isTrue(result[0].map((_) => _.message()) == Option.some("It's alive!"));
+      assert.isTrue(result[0].map((_) => _.message()) == Option.some("It's alive"));
       assert.isTrue(result[0].map((_) => _.logLevel) == Option.some(LogLevel.Warning));
     });
   });

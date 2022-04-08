@@ -1,3 +1,5 @@
+import { First, Second } from "@effect/core/test/stream/Channel/test-utils";
+
 describe("Channel", () => {
   describe("ensuring", () => {
     it("prompt closure between continuations", async () => {
@@ -64,9 +66,9 @@ describe("Channel", () => {
 
         const conduit = Channel.writeAll(1, 2, 3)
           .ensuring(event("Inner"))
-          .concatMap((i) => Channel.write({ first: i }).ensuring(event("First write")))
+          .concatMap((i) => Channel.write(new First(i)).ensuring(event("First write")))
           .ensuring(event("First concatMap"))
-          .concatMap((i) => Channel.write({ second: i }).ensuring(event("Second write")))
+          .concatMap((i) => Channel.write(new Second(i)).ensuring(event("Second write")))
           .ensuring(event("Second concatMap"));
 
         return conduit.runCollect().zipFlatten(events.get());
@@ -91,9 +93,9 @@ describe("Channel", () => {
       );
       assert.isTrue(
         elements == Chunk(
-          { second: { first: 1 } },
-          { second: { first: 2 } },
-          { second: { first: 3 } }
+          new Second(new First(1)),
+          new Second(new First(2)),
+          new Second(new First(3))
         )
       );
     });

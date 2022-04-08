@@ -12,12 +12,10 @@ export function transformSTM_<E, A>(
   concreteTArray(self);
   return STM.forEach(self.chunk, (tref) => tref.get().flatMap(f)).flatMap((newData) =>
     STM.Effect((journal) => {
-      let i = 0;
-      const iterator = newData[Symbol.iterator]();
-      let next: IteratorResult<A, any>;
-      while (!(next = iterator.next()).done) {
-        self.chunk.unsafeGet(i)!.unsafeSet(next.value, journal);
-        i = i + 1;
+      for (let i = 0; i < newData.length; i++) {
+        const value = newData.unsafeGet(i)!;
+        const entry = self.chunk.unsafeGet(i)!;
+        entry.unsafeSet(value, journal);
       }
     })
   );

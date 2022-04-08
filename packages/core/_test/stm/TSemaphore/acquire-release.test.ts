@@ -110,13 +110,10 @@ describe.concurrent("TSemaphore", () => {
     });
 
     it("withPermit acquire is interruptible", async () => {
-      let called = false;
+      const called = vi.fn();
       const program = Effect.Do()
         .bind("semaphore", () => TSemaphore.make(0).commit())
-        .bindValue("effect", ({ semaphore }) =>
-          Effect.succeed(() => {
-            called = true;
-          }).apply(semaphore.withPermit))
+        .bindValue("effect", ({ semaphore }) => Effect.succeed(() => called()).apply(semaphore.withPermit))
         .bind("fiber", ({ effect }) => effect.fork())
         .tap(({ fiber }) => fiber.interrupt())
         .flatMap(({ fiber }) => fiber.join());
@@ -124,7 +121,7 @@ describe.concurrent("TSemaphore", () => {
       const result = await program.unsafeRunPromiseExit();
 
       assert.isTrue(result.isInterrupted());
-      assert.isTrue(called);
+      assert.isTrue(called.mock.calls.length === 0);
     });
   });
 });

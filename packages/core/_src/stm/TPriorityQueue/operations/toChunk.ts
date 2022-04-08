@@ -7,16 +7,11 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
  */
 export function toChunk<A>(self: TPriorityQueue<A>): USTM<Chunk<A>> {
   concreteTPriorityQueue(self);
-  return self.map.modify((map) => {
-    const entries = map.entries();
+  return self.map.modify((sortedMap) => {
     const builder = Chunk.builder<Chunk<A>>();
-    let e: IteratorResult<Tuple<[A, Chunk<A>]>>;
-
-    while (!(e = entries.next()).done) {
-      const { tuple: [, as] } = e.value;
+    for (const { tuple: [, as] } of sortedMap) {
       builder.append(as);
     }
-
-    return Tuple(builder.build().flatten(), map);
+    return Tuple(builder.build().flatten(), sortedMap);
   });
 }

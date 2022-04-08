@@ -36,7 +36,7 @@ export function fixed(
             Decision.Continue(Interval.after(now + intervalMillis))
           ),
         ({ tuple: [startMillis, lastRun] }) => {
-          const runningBehind = now > lastRun + intervalMillis;
+          const runningBehind = now > (lastRun + intervalMillis);
           const boundary = interval0 == (0).millis
             ? interval0
             : new Duration(intervalMillis - ((now - startMillis) % intervalMillis));

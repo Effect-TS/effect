@@ -15,11 +15,9 @@ describe.concurrent("TPriorityQueue", () => {
     it("takeUpTo", async () => {
       const program = TPriorityQueue.from(eventOrd)(as)
         .flatMap((queue) =>
-          STM.gen(function*(_) {
-            return {
-              left: yield* _(queue.takeUpTo(1)),
-              right: yield* _(queue.takeAll())
-            };
+          STM.struct({
+            left: queue.takeUpTo(1),
+            right: queue.takeAll()
           })
         )
         .commit();

@@ -1,6 +1,3 @@
-import type { Trace } from "../../../io/Trace";
-import { Effect } from "../definition";
-
 /**
  * A version of `tapError` that gives you the trace of the error.
  *

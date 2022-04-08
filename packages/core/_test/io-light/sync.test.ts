@@ -55,8 +55,8 @@ const program = gen((_) => _(1))
   .flatMap(({ b, f, tuple: [x, y] }) => add(b, f).map((k) => k + x + y))
   .flatMap((sum) => mul(sum, 3));
 
-describe("Sync", () => {
-  describe("effect", () => {
+describe.concurrent("Sync", () => {
+  describe.concurrent("effect", () => {
     it("should run a Sync program in a fiber", async () => {
       const effectProgram = Effect.suspend(() => program).provideService(Calculator)(
         LiveCalculator()
@@ -68,7 +68,7 @@ describe("Sync", () => {
     });
   });
 
-  describe("derivation", () => {
+  describe.concurrent("derivation", () => {
     it("should use derived access function", () => {
       const result = program.provideService(Calculator)(LiveCalculator()).run();
 

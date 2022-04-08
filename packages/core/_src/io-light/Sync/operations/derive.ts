@@ -70,7 +70,7 @@ export function deriveLifted<T>(
   };
 }
 
-export type DerivedAccessM<T, Gens extends keyof T> = {
+export type DerivedAccessSync<T, Gens extends keyof T> = {
   [k in Gens]: <R_, E_, A_>(
     f: (_: T[k]) => Sync<R_, E_, A_>,
     __trace?: string
@@ -80,14 +80,12 @@ export type DerivedAccessM<T, Gens extends keyof T> = {
 /**
  * @tsplus static ets/Sync/Ops deriveAccessSync
  */
-export function deriveAccessSync<T>(
-  S: Service<T>
-): <Gens extends keyof T = never>(generics: Gens[]) => DerivedAccessM<T, Gens> {
-  return (generics) => {
+export function deriveAccessSync<T>(S: Service<T>) {
+  return <Gens extends keyof T = never>(generics: Gens[]): DerivedAccessSync<T, Gens> => {
     const ret = {} as any;
 
     for (const k of generics) {
-      ret[k] = (f: any) => Sync.serviceWithSync(S)((h) => f(S(h)));
+      ret[k] = (f: any) => Sync.serviceWithSync(S)((h) => f(h[k]));
     }
 
     return ret as any;
@@ -95,7 +93,7 @@ export function deriveAccessSync<T>(
 }
 
 export type DerivedAccess<T, Gens extends keyof T> = {
-  [k in Gens]: <A_>(f: (_: T[k]) => A_, __trace?: string) => Sync<Has<T>, never, A_>;
+  [k in Gens]: <A_>(f: (_: T[k]) => A_, __tsplusTrace?: string) => Sync<Has<T>, never, A_>;
 };
 
 /**
@@ -103,8 +101,8 @@ export type DerivedAccess<T, Gens extends keyof T> = {
  */
 export function deriveAccess<T>(
   S: Service<T>
-): <Gens extends keyof T = never>(generics: Gens[]) => DerivedAccess<T, Gens> {
-  return (generics) => {
+) {
+  return <Gens extends keyof T = never>(generics: Gens[]): DerivedAccess<T, Gens> => {
     const ret = {} as any;
 
     for (const k of generics) {

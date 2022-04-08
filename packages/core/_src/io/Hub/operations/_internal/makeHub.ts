@@ -14,7 +14,7 @@ export function makeHub<A>(hub: AtomicHub<A>, strategy: Strategy<A>): UIO<Hub<A>
     Deferred.make<never, void>().map((deferred) =>
       unsafeMakeHub(
         hub,
-        HashSet.empty(),
+        MutableHashSet.empty(),
         scope,
         deferred,
         new AtomicBoolean(false),
@@ -29,7 +29,7 @@ export function makeHub<A>(hub: AtomicHub<A>, strategy: Strategy<A>): UIO<Hub<A>
  */
 export function unsafeMakeHub<A>(
   hub: AtomicHub<A>,
-  subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
+  subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
   scope: Scope.Closeable,
   shutdownHook: Deferred<never, void>,
   shutdownFlag: AtomicBoolean,
@@ -64,9 +64,7 @@ class UnsafeMakeHubImplementation<A> implements Hub<A> {
 
   constructor(
     private hub: AtomicHub<A>,
-    private subscribers: HashSet<
-      Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>
-    >,
+    private subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
     scope: Scope.Closeable,
     shutdownHook: Deferred<never, void>,
     private shutdownFlag: AtomicBoolean,

@@ -91,7 +91,7 @@ describe.concurrent("Stream", () => {
         result == Chunk(
           Chunk(1, 2),
           Chunk(3, 4),
-          Chunk(5, 6, 5)
+          Chunk(5, 6, 5, 6)
         )
       );
     });
@@ -115,7 +115,7 @@ describe.concurrent("Stream", () => {
         result == Chunk(
           Chunk(1, 2),
           Chunk(3, 4),
-          Chunk(5, 6, 5)
+          Chunk(5, 6, 5, 6)
         )
       );
     });

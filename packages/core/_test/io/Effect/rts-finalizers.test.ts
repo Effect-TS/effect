@@ -1,9 +1,4 @@
-import {
-  asyncExampleError,
-  asyncUnit,
-  ExampleError,
-  ExampleErrorFail
-} from "@effect/core/test/io/Effect/test-utils";
+import { asyncExampleError, asyncUnit, ExampleError, ExampleErrorFail } from "@effect/core/test/io/Effect/test-utils";
 import { constTrue } from "@tsplus/stdlib/data/Function";
 
 describe.concurrent("Effect", () => {

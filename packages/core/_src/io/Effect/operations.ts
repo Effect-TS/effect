@@ -314,4 +314,4 @@ export {
   forEachParDiscard,
   forEachParWithIndex,
   forEachWithIndex
-} from "./operations/excl-forEach";
+} from "@effect/core/io/Effect/operations/excl-forEach";

@@ -12,7 +12,7 @@ import { unsafePollAll } from "@effect/core/io/Queue/operations/_internal/unsafe
  */
 export function makeSubscription<A>(
   hub: AtomicHub<A>,
-  subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
+  subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
   strategy: Strategy<A>
 ): UIO<Dequeue<A>> {
   return Deferred.make<never, void>().map((deferred) =>
@@ -33,7 +33,7 @@ export function makeSubscription<A>(
  */
 export function unsafeMakeSubscription<A>(
   hub: AtomicHub<A>,
-  subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
+  subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
   subscription: Subscription<A>,
   pollers: MutableQueue<Deferred<never, A>>,
   shutdownHook: Deferred<never, void>,
@@ -57,9 +57,7 @@ class UnsafeMakeSubscriptionImplementation<A> implements Dequeue<A> {
 
   constructor(
     private hub: AtomicHub<A>,
-    private subscribers: HashSet<
-      Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>
-    >,
+    private subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
     private subscription: Subscription<A>,
     private pollers: MutableQueue<Deferred<never, A>>,
     private shutdownHook: Deferred<never, void>,
@@ -111,6 +109,7 @@ class UnsafeMakeSubscriptionImplementation<A> implements Dequeue<A> {
 
       return Effect.suspendSucceed(() => {
         this.pollers.offer(deferred);
+
         this.subscribers.add(Tuple(this.subscription, this.pollers));
         this.strategy.unsafeCompletePollers(
           this.hub,

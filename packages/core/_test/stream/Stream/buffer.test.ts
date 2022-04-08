@@ -229,7 +229,7 @@ describe.concurrent("Stream", () => {
       const { chunk, list } = await program.unsafeRunPromise();
 
       assert.isTrue(chunk == Chunk(1, 2));
-      assert.isTrue(list == List.from(Chunk.range(1, 1000)).reverse());
+      assert.isTrue(list == List.from(Chunk.range(1, 999)).reverse());
     });
   });
 

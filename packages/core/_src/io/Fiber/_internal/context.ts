@@ -991,9 +991,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       childFiberRefLocals.set(k, k.fork(v));
     }
 
-    const parentScope = forkScope.getOrElse(
-      this.unsafeGetRef(FiberRef.forkScopeOverride.value).getOrElse(this._scope)
-    );
+    const parentScope = forkScope.orElse(this.unsafeGetRef(FiberRef.forkScopeOverride.value)).getOrElse(this._scope);
 
     const childId = FiberId.unsafeMake(trace);
     const grandChildren = new Set<FiberContext<unknown, unknown>>();
@@ -1282,11 +1280,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "Fork": {
+                    const effect = current;
                     current = this.unsafeNextEffect(
                       this.unsafeFork(
-                        instruction(current.effect),
-                        TraceElement.parse(current.trace),
-                        current.scope()
+                        instruction(effect.effect),
+                        TraceElement.parse(effect.trace),
+                        effect.scope()
                       )
                     );
                     break;

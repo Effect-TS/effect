@@ -17,7 +17,7 @@ export interface Strategy<A> {
    */
   readonly handleSurplus: (
     hub: AtomicHub<A>,
-    subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
+    subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
     as: Collection<A>,
     isShutdown: AtomicBoolean
   ) => UIO<boolean>;
@@ -33,7 +33,7 @@ export interface Strategy<A> {
    */
   readonly unsafeOnHubEmptySpace: (
     hub: AtomicHub<A>,
-    subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>
+    subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>
   ) => void;
 
   /**
@@ -43,7 +43,7 @@ export interface Strategy<A> {
    */
   readonly unsafeCompletePollers: (
     hub: AtomicHub<A>,
-    subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
+    subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
     subscription: Subscription<A>,
     pollers: MutableQueue<Deferred<never, A>>
   ) => void;
@@ -54,7 +54,7 @@ export interface Strategy<A> {
    */
   readonly unsafeCompleteSubscribers: (
     hub: AtomicHub<A>,
-    subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>
+    subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>
   ) => void;
 }
 
@@ -67,7 +67,7 @@ export const Strategy: StrategyOps = {};
 abstract class BaseStrategy<A> implements Strategy<A> {
   abstract handleSurplus(
     hub: AtomicHub<A>,
-    subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
+    subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
     as: Collection<A>,
     isShutdown: AtomicBoolean
   ): UIO<boolean>;
@@ -76,12 +76,12 @@ abstract class BaseStrategy<A> implements Strategy<A> {
 
   abstract unsafeOnHubEmptySpace(
     hub: AtomicHub<A>,
-    subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>
+    subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>
   ): void;
 
   unsafeCompletePollers(
     hub: AtomicHub<A>,
-    subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
+    subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
     subscription: Subscription<A>,
     pollers: MutableQueue<Deferred<never, A>>
   ): void {
@@ -115,7 +115,7 @@ abstract class BaseStrategy<A> implements Strategy<A> {
 
   unsafeCompleteSubscribers(
     hub: AtomicHub<A>,
-    subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>
+    subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>
   ): void {
     for (
       const {
@@ -139,20 +139,20 @@ export class BackPressure<A> extends BaseStrategy<A> {
 
   handleSurplus(
     hub: AtomicHub<A>,
-    subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
+    subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
     as: Collection<A>,
     isShutdown: AtomicBoolean
   ): UIO<boolean> {
     return Effect.suspendSucceedWith((_, fiberId) => {
-      const promise = Deferred.unsafeMake<never, boolean>(fiberId);
+      const deferred: Deferred<never, boolean> = Deferred.unsafeMake<never, boolean>(fiberId);
 
       return Effect.suspendSucceed(() => {
-        this.unsafeOffer(as, promise);
+        this.unsafeOffer(as, deferred);
         this.unsafeOnHubEmptySpace(hub, subscribers);
         this.unsafeCompleteSubscribers(hub, subscribers);
 
-        return isShutdown.get ? Effect.interrupt : promise.await();
-      }).onInterrupt(() => Effect.succeed(this.unsafeRemove(promise)));
+        return isShutdown.get ? Effect.interrupt : deferred.await();
+      }).onInterrupt(() => Effect.succeed(this.unsafeRemove(deferred)));
     });
   }
 
@@ -171,7 +171,7 @@ export class BackPressure<A> extends BaseStrategy<A> {
 
   unsafeOnHubEmptySpace(
     hub: AtomicHub<A>,
-    subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>
+    subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>
   ): void {
     let keepPolling = true;
 
@@ -196,24 +196,24 @@ export class BackPressure<A> extends BaseStrategy<A> {
     }
   }
 
-  private unsafeOffer(as: Collection<A>, promise: Deferred<never, boolean>): void {
+  private unsafeOffer(as: Collection<A>, deferred: Deferred<never, boolean>): void {
     const it = as[Symbol.iterator]();
     let curr = it.next();
 
     if (!curr.done) {
       let next;
       while ((next = it.next()) && !next.done) {
-        this.publishers.offer([curr.value, promise, false] as const);
+        this.publishers.offer([curr.value, deferred, false] as const);
         curr = next;
       }
-      this.publishers.offer([curr.value, promise, true] as const);
+      this.publishers.offer([curr.value, deferred, true] as const);
     }
   }
 
-  private unsafeRemove(promise: Deferred<never, boolean>): void {
+  private unsafeRemove(deferred: Deferred<never, boolean>): void {
     unsafeOfferAll(
       this.publishers,
-      unsafePollAllQueue(this.publishers).filter(([_, a]) => a !== promise)
+      unsafePollAllQueue(this.publishers).filter(([_, a]) => a !== deferred)
     );
   }
 }
@@ -229,7 +229,7 @@ export class BackPressure<A> extends BaseStrategy<A> {
 export class Dropping<A> extends BaseStrategy<A> {
   handleSurplus(
     _hub: AtomicHub<A>,
-    _subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
+    _subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
     _as: Collection<A>,
     _isShutdown: AtomicBoolean
   ): UIO<boolean> {
@@ -240,7 +240,7 @@ export class Dropping<A> extends BaseStrategy<A> {
 
   unsafeOnHubEmptySpace(
     _hub: AtomicHub<A>,
-    _subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>
+    _subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>
   ): void {
     //
   }
@@ -275,7 +275,7 @@ export class Sliding<A> extends BaseStrategy<A> {
 
   handleSurplus(
     hub: AtomicHub<A>,
-    subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
+    subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
     as: Collection<A>,
     _isShutdown: AtomicBoolean
   ): UIO<boolean> {
@@ -290,7 +290,7 @@ export class Sliding<A> extends BaseStrategy<A> {
 
   unsafeOnHubEmptySpace(
     _hub: AtomicHub<A>,
-    _subscribers: HashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>
+    _subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>
   ): void {
     //
   }

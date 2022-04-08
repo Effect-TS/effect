@@ -1,4 +1,4 @@
-import { releaseMapReleaseAll } from "@effect/core/io/Effect/operations/excl-forEach"
+import { releaseMapReleaseAll } from "@effect/core/io/Effect/operations/excl-forEach";
 
 /**
  * Runs the finalizers associated with this scope using the specified
@@ -7,7 +7,7 @@ import { releaseMapReleaseAll } from "@effect/core/io/Effect/operations/excl-for
  *
  * @tsplus fluent ets/ReleaseMap releaseAll
  */
-export const releaseAll_ = releaseMapReleaseAll
+export const releaseAll_ = releaseMapReleaseAll;
 
 /**
  * Runs the finalizers associated with this scope using the specified
@@ -16,4 +16,4 @@ export const releaseAll_ = releaseMapReleaseAll
  *
  * @tsplus static ets/ReleaseMap/Aspects releaseAll
  */
-export const releaseAll = Pipeable(releaseAll_)
+export const releaseAll = Pipeable(releaseAll_);

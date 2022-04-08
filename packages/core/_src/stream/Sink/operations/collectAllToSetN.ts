@@ -8,7 +8,7 @@ export function collectAllToSetN<In>(
 ): Sink<unknown, never, In, In, HashSet<In>> {
   return Sink.foldWeighted(
     HashSet.empty(),
-    (acc, in_) => (acc.has(in_) ? 0 : 1),
+    (set, a) => (set.has(a) ? 0 : 1),
     n,
     (set, a) => set.add(a)
   );

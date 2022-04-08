@@ -1,4 +1,4 @@
-import type { _E, _In, _L, _R, _Z } from "./symbols";
+import type { _E, _In, _L, _R, _Z } from "@effect/core/stream/Sink/definition/symbols";
 
 export const SinkSym = Symbol.for("@effect/core/stream/Sink");
 export type SinkSym = typeof SinkSym;

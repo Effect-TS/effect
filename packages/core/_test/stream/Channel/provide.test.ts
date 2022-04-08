@@ -1,30 +1,30 @@
-import { NumberService } from "@effect/core/test/stream/Channel/test-utils";
+import { NumberService, NumberServiceImpl } from "@effect/core/test/stream/Channel/test-utils";
 
 describe("Channel", () => {
   describe("provide", () => {
     it("simple provide", async () => {
       const program = Channel.fromEffect(Effect.service(NumberService))
-        .provideService(NumberService)({ n: 100 })
+        .provideService(NumberService)(new NumberServiceImpl(100))
         .run();
 
       const result = await program.unsafeRunPromise();
 
-      assert.deepEqual(result, { n: 100 });
+      assert.deepEqual(result, new NumberServiceImpl(100));
     });
 
     it("provide.zip(provide)", async () => {
       const program = Channel.fromEffect(Effect.service(NumberService))
-        .provideService(NumberService)({ n: 100 })
+        .provideService(NumberService)(new NumberServiceImpl(100))
         .zip(
           Channel.fromEffect(Effect.service(NumberService)).provideService(
             NumberService
-          )({ n: 200 })
+          )(new NumberServiceImpl(200))
         )
         .run();
 
       const result = await program.unsafeRunPromise();
 
-      assert.isTrue(result == Tuple({ n: 100 }, { n: 200 }));
+      assert.isTrue(result == Tuple(new NumberServiceImpl(100), new NumberServiceImpl(200)));
     });
 
     it("concatMap(provide).provide", async () => {
@@ -33,15 +33,15 @@ describe("Channel", () => {
         .mapOut((tuple) => tuple.get(1))
         .concatMap((n) =>
           Channel.fromEffect(Effect.service(NumberService).map((m) => Tuple(n, m)))
-            .provideService(NumberService)({ n: 200 })
+            .provideService(NumberService)(new NumberServiceImpl(200))
             .flatMap((tuple) => Channel.write(tuple))
         )
-        .provideService(NumberService)({ n: 100 })
+        .provideService(NumberService)(new NumberServiceImpl(100))
         .runCollect();
 
       const result = await program.unsafeRunPromise();
 
-      assert.isTrue(result.get(0) == Chunk(Tuple({ n: 100 }, { n: 200 })));
+      assert.isTrue(result.get(0) == Chunk(Tuple(new NumberServiceImpl(100), new NumberServiceImpl(200))));
       assert.isUndefined(result.get(1));
     });
 

@@ -1,6 +1,4 @@
-import { TakeInternal } from "@effect/core/stream/Take/operations/_internal/TakeInternal";
-import { chunkCoordination } from "@effect/core/test/stream/Stream/test-utils";
-import { constTrue, constVoid, identity } from "@tsplus/stdlib/data/Function";
+import { constTrue, constVoid } from "@tsplus/stdlib/data/Function";
 
 describe.concurrent("Stream", () => {
   describe.concurrent("aggregateAsync", () => {
@@ -130,29 +128,30 @@ describe.concurrent("Stream", () => {
       assert.isTrue(value == Chunk(1, 2, 3, 4, 5));
     });
 
-    it("child fiber handling", async () => {
-      const deferred = Deferred.unsafeMake<never, void>(FiberId.none);
-      const program = chunkCoordination(Chunk(Chunk(1), Chunk(2), Chunk(3))).flatMap(
-        (c) =>
-          Effect.Do()
-            .bind("fiber", () =>
-              Stream.fromQueue(c.queue)
-                .map((exit) => new TakeInternal(exit))
-                .tap(() => c.proceed)
-                .flattenTake()
-                .aggregateAsyncWithin(Sink.last(), Schedule.fixed((200).millis))
-                .interruptWhen(deferred.await())
-                .take(2)
-                .runCollect()
-                .fork())
-            .tap(() => (c.offer > Effect.sleep((100).millis) > c.awaitNext).repeatN(3))
-            .flatMap(({ fiber }) => fiber.join().map((chunk) => chunk.collect(identity)))
-      );
+    // TODO(Mike/Max): re-enable after implementing TestClock
+    it.skip("child fiber handling", async () => {
+      //   const deferred = Deferred.unsafeMake<never, void>(FiberId.none);
+      //   const program = chunkCoordination(List(Chunk(1), Chunk(2), Chunk(3))).flatMap(
+      //     (c) =>
+      //       Effect.Do()
+      //         .bind("fiber", () =>
+      //           Stream.fromQueue(c.queue)
+      //             .map((exit) => new TakeInternal(exit))
+      //             .tap(() => c.proceed)
+      //             .flattenTake()
+      //             .aggregateAsyncWithin(Sink.last(), Schedule.fixed((100).millis))
+      //             .interruptWhen(deferred.await())
+      //             .take(2)
+      //             .runCollect()
+      //             .fork())
+      //         .tap(() => (c.offer > Effect.sleep((50).millis) > c.awaitNext).repeatN(3))
+      //         .flatMap(({ fiber }) => fiber.join().map((chunk) => chunk.collect(identity)))
+      //   );
 
-      const result = await program.unsafeRunPromise();
-      await deferred.succeed(undefined).unsafeRunPromise();
+      //   const result = await program.unsafeRunPromise();
+      //   await deferred.succeed(undefined).unsafeRunPromise();
 
-      assert.isTrue(result == Chunk(2, 3));
+      //   assert.isTrue(result == Chunk(2, 3));
     });
   });
 

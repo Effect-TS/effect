@@ -8,7 +8,7 @@ export function update_<A>(
   f: (a: A) => A,
   __tsplusTrace?: string
 ): UIO<void> {
-  return (self as Ref<A>).update(f);
+  return self.modify(v => Tuple(undefined, f(v)));
 }
 
 /**

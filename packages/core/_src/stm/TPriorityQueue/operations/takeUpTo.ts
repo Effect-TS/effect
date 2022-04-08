@@ -14,7 +14,7 @@ export function takeUpTo_<A>(self: TPriorityQueue<A>, n: number): USTM<Chunk<A>>
     let e: IteratorResult<Tuple<[A, Chunk<A>]>>;
     let i = 0;
 
-    while (!(e = entries.next()).done) {
+    while (!(e = entries.next()).done && i < n) {
       const { tuple: [a, as] } = e.value;
       const { tuple: [l, r] } = as.splitAt(n - i);
 

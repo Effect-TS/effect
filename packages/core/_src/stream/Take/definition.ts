@@ -14,7 +14,7 @@ export type _A = typeof _A;
  *
  * @tsplus type ets/Take
  */
-export interface Take<E, A> {
+export interface Take<E, A> extends Equals {
   readonly [TakeSym]: TakeSym;
   readonly [_E]: () => E;
   readonly [_A]: () => A;

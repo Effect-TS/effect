@@ -83,7 +83,7 @@ describe.concurrent("Sink", () => {
 
       function run<E>(stream: Stream<unknown, E, number>) {
         return Effect.Do()
-          .bind("effects", () => Ref.make<List<number>>(List.empty()))
+          .bind("effects", () => Ref.make(List.empty<number>()))
           .bind("exit", ({ effects }) =>
             stream
               .transduce(
@@ -104,9 +104,9 @@ describe.concurrent("Sink", () => {
       const result3 = await run(double).unsafeRunPromise();
       const result4 = await run(failed).unsafeRunPromise();
 
-      assert.isTrue(result1 == Exit.succeed(Tuple([0], [])));
-      assert.isTrue(result2 == Exit.succeed(Tuple([30], [1])));
-      assert.isTrue(result3 == Exit.succeed(Tuple([30], [2, 1])));
+      assert.isTrue(result1 == Exit.succeed(Tuple(Chunk(0), List.empty())));
+      assert.isTrue(result2 == Exit.succeed(Tuple(Chunk(30), List(1))));
+      assert.isTrue(result3 == Exit.succeed(Tuple(Chunk(30), List(2, 1))));
       assert.isTrue(result4.untraced() == Exit.fail("ouch"));
     });
 

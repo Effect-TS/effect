@@ -3,10 +3,22 @@ import { mapper } from "@effect/core/test/stream/Channel/test-utils";
 describe.concurrent("Channel", () => {
   describe.concurrent("reads", () => {
     it("simple reads", async () => {
+      class Whatever implements Equals {
+        constructor(readonly i: number) {}
+
+        [Hash.sym](): number {
+          return Hash.number(this.i);
+        }
+
+        [Equals.sym](u: unknown): boolean {
+          return u instanceof Whatever && u.i === this.i;
+        }
+      }
+
       const left = Channel.writeAll(1, 2, 3);
       const right = Channel.read<number>()
         .catchAll(() => Channel.succeedNow(4))
-        .flatMap((i) => Channel.write({ whatever: i }));
+        .flatMap((i) => Channel.write(new Whatever(i)));
       const conduit = left >> (right > right > right > right);
       const program = conduit.runCollect();
 
@@ -14,14 +26,7 @@ describe.concurrent("Channel", () => {
         tuple: [chunk, _]
       } = await program.unsafeRunPromise();
 
-      assert.isTrue(
-        chunk == Chunk(
-          { whatever: 1 },
-          { whatever: 2 },
-          { whatever: 3 },
-          { whatever: 4 }
-        )
-      );
+      assert.isTrue(chunk == Chunk(new Whatever(1), new Whatever(2), new Whatever(3), new Whatever(4)));
     });
 
     it("pipeline", async () => {

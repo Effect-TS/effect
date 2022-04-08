@@ -10,13 +10,10 @@
 export function validate<R, E, A, B>(
   as: LazyArg<Collection<A>>,
   f: (a: A) => STM<R, E, B>
-): STM<R, Array<E> & { readonly 0: E; }, Chunk<B>> {
+): STM<R, Chunk<E>, Chunk<B>> {
   return STM.partition(as, f).flatMap(({ tuple: [es, bs] }) =>
     es.isEmpty()
       ? STM.succeedNow(Chunk.from(bs))
-      : STM.fail([
-        es.unsafeHead()!,
-        ...es.tail().fold([], (tail) => Array.from(tail))
-      ])
+      : STM.fail(es)
   );
 }

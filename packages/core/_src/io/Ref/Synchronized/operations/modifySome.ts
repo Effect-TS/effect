@@ -12,7 +12,7 @@ export function modifySome_<A, B>(
   pf: (a: A) => Option<Tuple<[B, A]>>,
   __tsplusTrace?: string
 ): UIO<B> {
-  return (self as Ref<A>).modifySome(def, pf);
+  return self.modify((v) => pf(v).getOrElse(Tuple(def, v)));
 }
 
 /**

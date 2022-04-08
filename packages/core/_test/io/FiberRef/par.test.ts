@@ -1,9 +1,11 @@
-import { loseTimeAndCpu } from "@effect/core/test/io/FiberRef/test-utils";
-
 const initial = "initial";
 const update = "update";
 const update1 = "update1";
 const update2 = "update2";
+
+const loseTimeAndCpu: Effect<HasClock, never, void> = (
+  Effect.yieldNow < Clock.sleep((1).millis)
+).repeatN(100);
 
 describe.concurrent("FiberRef", () => {
   describe.concurrent("zipPar", () => {

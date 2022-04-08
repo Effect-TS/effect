@@ -1,7 +1,4 @@
-import {
-  concreteSummary,
-  InternalSummary
-} from "@effect/core/io/Metrics/Summary/operations/_internal/InternalSummary";
+import { concreteSummary, InternalSummary } from "@effect/core/io/Metrics/Summary/operations/_internal/InternalSummary";
 
 /**
  * Returns a copy of this counter with the specified properties.

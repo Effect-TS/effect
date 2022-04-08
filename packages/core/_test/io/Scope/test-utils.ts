@@ -22,6 +22,9 @@ export type Action = Acquire | Use | Release;
 export interface ActionOps {}
 export const Action: ActionOps = {};
 
+/**
+ * @tsplus type ets/Test/Scope/Action/Acquire
+ */
 export class Acquire implements Equals {
   readonly _tag = "Acquire";
 
@@ -36,6 +39,9 @@ export class Acquire implements Equals {
   }
 }
 
+/**
+ * @tsplus type ets/Test/Scope/Action/Use
+ */
 export class Use implements Equals {
   readonly _tag = "Use";
 
@@ -50,6 +56,9 @@ export class Use implements Equals {
   }
 }
 
+/**
+ * @tsplus type ets/Test/Scope/Action/Release
+ */
 export class Release implements Equals {
   readonly _tag = "Release";
 
