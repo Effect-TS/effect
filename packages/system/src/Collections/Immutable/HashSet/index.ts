@@ -45,7 +45,7 @@ export function from<K, V>(xs: Iterable<V>): HashSet<V> {
 export function add_<V>(set: HashSet<V>, v: V) {
   return set.keyMap.editable
     ? (HM.set_(set.keyMap, v, true), set)
-    : new HashSet(HM.set_(set.keyMap, v, undefined))
+    : new HashSet(HM.set_(set.keyMap, v, true))
 }
 
 export function add<V>(v: V) {
