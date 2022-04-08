@@ -546,19 +546,16 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     const oldState = this.state.get;
     switch (oldState._tag) {
       case "Executing": {
-        const observers = oldState.observers.prepend(k);
-
         this.state.set(
           FiberState.Executing(
             oldState.status,
-            observers,
+            oldState.observers.prepend(k),
             oldState.suppressed,
             oldState.interruptors,
             oldState.asyncCanceler,
             oldState.mailbox
           )
         );
-
         return undefined;
       }
       case "Done": {

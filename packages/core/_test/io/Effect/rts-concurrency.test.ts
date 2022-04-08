@@ -178,7 +178,7 @@ describe.concurrent("Effect", () => {
       assert.isUndefined(result);
     });
 
-    it.only("race of two forks does not interrupt winner", async () => {
+    it("race of two forks does not interrupt winner", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
         .bind("fibers", () => Ref.make(HashSet.empty<Fiber<unknown, unknown>>()))

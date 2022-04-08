@@ -63,6 +63,6 @@ function appendQuoted(label: string, output: string): string {
   if (label.indexOf(" ") < 0) {
     return output + label;
   } else {
-    return `"${label}"`;
+    return output + `"${label}"`;
   }
 }

@@ -172,17 +172,6 @@ export function isService(u: unknown): u is Service<unknown> {
   );
 }
 
-// const of: ServiceOf<T> = (r: T) => ({ [key]: r } as any as Service.Has<T>);
-// const in_: <R>(environment: R) => environment is R & Service.Has<T> = (environment): environment is any =>
-//   typeof environment === "object" && environment != null && key in environment;
-// const access: Service.Access<T> = {
-//   id: (x) => x,
-//   identifier: key,
-//   get: (r) => r[key],
-//   getMaybe: (r) => in_(r) ? Option.some(r[key]) : Option.none,
-//   in: in_
-// };
-
 export function isAdtElement<A extends { _tag: string; }, K extends A["_tag"]>(
   tag: K
 ): (adt: A) => adt is Extract<A, { _tag: K; }> {
