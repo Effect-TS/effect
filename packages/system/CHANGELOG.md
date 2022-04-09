@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.56.4](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.56.3...@effect-ts/system@0.56.4) (2022-04-09)
+
+
+### Bug Fixes
+
+* **@effect-ts/system:** fix implementation of HashSet.add ([49cfca6](https://github.com/Effect-TS/core/commit/49cfca6b443f20ad94c37c2d26437201d5c8c2f4))
+
+
+
+
+
 ## [0.56.3](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.56.2...@effect-ts/system@0.56.3) (2022-04-04)
 
 **Note:** Version bump only for package @effect-ts/system
