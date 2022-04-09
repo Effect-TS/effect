@@ -109,9 +109,7 @@ export function zipPar<RIn, RIn1, E, E1, ROut, ROut1>(that: Layer<RIn1, E1, ROut
  */
 export function fromValue<T>(has: Tag<T>) {
   return (resource: T): Layer<unknown, never, Has<T>> =>
-    new LayerManaged(pipe(M.fromEffect(T.succeed(resource)), M.map(has.has))).setKey(
-      has.key
-    )
+    new LayerManaged(M.fromEffect(T.succeed(has.has(resource)))).setKey(has.key)
 }
 
 /**
