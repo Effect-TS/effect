@@ -39,7 +39,7 @@ export function mergeAllWith_<
   OutElem,
   OutDone
 > {
-  return Channel.scoped(
+  return Channel.unwrapScoped(
     Effect.withChildren((getChildren) =>
       Effect.Do()
         .tap(() => Effect.addFinalizer(getChildren.flatMap((chunk) => Fiber.interruptAll(chunk))))
@@ -70,8 +70,8 @@ export function mergeAllWith_<
                     (out) => queue.offer(Effect.succeedNow(Either.right(out))).as(Option.none)
                   )
                 )
-                .repeatUntil((option: Option<OutDone>) => option.isSome())
-                .flatMap((option: Option<OutDone>) =>
+                .repeatUntil((option) => option.isSome())
+                .flatMap((option) =>
                   option.fold(Effect.unit, (outDone) =>
                     lastDone.update((_) =>
                       _.fold(Option.some(outDone), (lastDone) => Option.some(f(lastDone, outDone)))
@@ -140,7 +140,7 @@ export function mergeAllWith_<
                             .tap(({ size }) =>
                               Effect.when(
                                 size >= n,
-                                cancelers.take.flatMap((promise) => promise.succeed(undefined))
+                                cancelers.take.flatMap((deferred) => deferred.succeed(undefined))
                               )
                             )
                             .tap(({ canceler }) => cancelers.offer(canceler))
@@ -167,12 +167,11 @@ export function mergeAllWith_<
                     }
                   )
               )
-              .repeatWhile(identity)
+              .repeatWhileEquals(Equivalence.boolean)(true)
               .forkScoped()
         )
         .map(({ queue }) => queue)
-    ),
-    (queue) => {
+    ).map((queue) => {
       const consumer: Channel<
         Env & Env1,
         unknown,
@@ -193,7 +192,7 @@ export function mergeAllWith_<
       );
 
       return consumer;
-    }
+    })
   );
 }
 

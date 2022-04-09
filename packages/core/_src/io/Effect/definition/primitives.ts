@@ -1,6 +1,5 @@
-import { Base } from "@effect/core/io/Effect/definition/base";
-// TODO(Mike/Max): for some reason, this comment is needed to please dprint
 import type { XPureInstruction } from "@effect/core/io-light/XPure/definition/primitives";
+import { Base } from "@effect/core/io/Effect/definition/base";
 
 export type Canceler<R> = RIO<R, void>;
 

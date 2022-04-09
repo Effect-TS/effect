@@ -183,7 +183,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   _location: TraceElement = this._id.location;
 
-  _scope: FiberScope = FiberScope.unsafeMake(this);
+  get _scope(): FiberScope {
+    return FiberScope.unsafeMake(this);
+  }
 
   get _status(): Effect<unknown, never, FiberStatus> {
     return Effect.succeed(this.state.get.status);
@@ -1020,7 +1022,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
     childContext.nextEffect = childEffect;
 
-    childContext.runUntil(this.runtimeConfig.value.maxOp);
+    defaultScheduler(() => childContext.runUntil(this.runtimeConfig.value.maxOp));
 
     return childContext;
   }

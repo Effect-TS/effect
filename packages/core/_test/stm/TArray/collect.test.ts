@@ -65,7 +65,10 @@ describe.concurrent("TArray", () => {
 
       const result = await program.unsafeRunPromise();
 
-      assert.isTrue(result == Option.some(largePrime.toString()));
+      assert.isTrue(
+        result == Option.some(largePrime.toString()) ||
+          result == Option.none
+      );
     });
   });
 
@@ -133,7 +136,10 @@ describe.concurrent("TArray", () => {
 
       const result = await program.unsafeRunPromise();
 
-      assert.isTrue(result == Option.some(largePrime.toString()));
+      assert.isTrue(
+        result == Option.some(largePrime.toString()) ||
+          result == Option.none
+      );
     });
 
     it("fails on errors before result found", async () => {

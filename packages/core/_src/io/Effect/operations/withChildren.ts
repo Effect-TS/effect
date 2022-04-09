@@ -13,7 +13,7 @@ export function withChildren<R, E, A>(
       supervisor.value.flatMap((children) =>
         Effect.descriptor.map((descriptor) =>
           // Filter out the fiber id of whoever is calling `withChildren`
-          children.filter((_) => Equals.equals(_.id(), descriptor.id))
+          children.filter((fiber) => !(fiber.id() == descriptor.id))
         )
       )
     ).supervised(supervisor)

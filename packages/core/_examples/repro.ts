@@ -1,4 +1,4 @@
-import type { FiberContext } from "@effect/core/io/Fiber/_internal/context";
+// import type { FiberContext } from "@effect/core/io/Fiber/_internal/context";
 
 const program = Effect.Do()
   .bind("ref", () => Ref.make(0))
@@ -17,7 +17,8 @@ const program = Effect.Do()
   )
   .bindValue("awaitAll", ({ fibers }) =>
     fibers.get().flatMap((set) => {
-      console.log("Fibers", Array.from(set).map((f) => (((f as FiberContext<any, any>).state.get) as any).value));
+      // console.log("Fibers", Array.from(set).map((f) => (((f as FiberContext<any, any>).state.get) as any).value));
+      // console.log("Fibers", Array.from(set).map((f) => f.id()));
       return Fiber.awaitAll(set);
     }))
   .tap(({ effect }) => effect.race(effect))
@@ -26,6 +27,4 @@ const program = Effect.Do()
   )
   .tap(() => Effect.sleep((1).seconds));
 
-program.unsafeRunPromise().then((i) => {
-  console.log(i);
-});
+program.tap((n) => Effect.succeed(console.log(n))).unsafeRunPromise();

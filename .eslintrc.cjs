@@ -65,7 +65,7 @@ module.exports = {
     "import/no-duplicates": "error",
     "import/no-unresolved": "off",
     "import/order": "off",
-    "simple-import-sort/imports": "error",
+    "simple-import-sort/imports": "off",
     "sort-destructure-keys/sort-destructure-keys": "error"
   }
 };

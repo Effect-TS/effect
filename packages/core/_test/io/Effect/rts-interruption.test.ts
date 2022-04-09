@@ -147,15 +147,15 @@ describe.concurrent("Effect", () => {
               Effect.unit,
               () => release > Effect.never,
               () => done.succeed(undefined)
-            )
-          ).fork())
+            ).fork()
+          ))
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ done }) => done.await().timeoutTo(42, () => 0, (1).minutes));
+        .flatMap(({ done }) => done.await().timeoutTo(42, () => 0, (60).seconds));
 
       const result = await program.unsafeRunPromise();
 
       assert.strictEqual(result, 0);
-    });
+    }, 180000);
 
     it("acquireReleaseUse acquire returns immediately on interrupt", async () => {
       const program = Effect.Do()

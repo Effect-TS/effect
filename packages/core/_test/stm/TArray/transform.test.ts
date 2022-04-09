@@ -10,14 +10,15 @@ describe.concurrent("TArray", () => {
             .transform((a) => a + "+b")
             .commit()
             .fork())
+        .tap(({ transformFiber }) => transformFiber.join())
         .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, (ab) => ab + "+c")).commit())
         .bind("first", ({ tArray }) => tArray[0].commit())
-        .bind("last", ({ tArray }) => tArray[N - 1].commit());
+        .bind("last", ({ tArray }) => tArray[N - 1].commit())
+        .map(({ first, last }) => Tuple(first, last));
 
-      const { first, last } = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise();
 
-      assert.isTrue(first === "a+b+c" || first === "a+c+b");
-      assert.isTrue(last === "a+b+c" || last === "a+c+b");
+      assert.isTrue(result == Tuple("a+b+c", "a+b+c") || result == Tuple("a+c+b", "a+c+b"));
     });
   });
 
@@ -30,14 +31,15 @@ describe.concurrent("TArray", () => {
             .transformSTM((a) => STM.succeed(a + "+b"))
             .commit()
             .fork())
+        .tap(({ transformFiber }) => transformFiber.join())
         .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, (ab) => ab + "+c")).commit())
         .bind("first", ({ tArray }) => tArray[0].commit())
-        .bind("last", ({ tArray }) => tArray[N - 1].commit());
+        .bind("last", ({ tArray }) => tArray[N - 1].commit())
+        .map(({ first, last }) => Tuple(first, last));
 
-      const { first, last } = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise();
 
-      assert.isTrue(first === "a+b+c" || first === "a+c+b");
-      assert.isTrue(last === "a+b+c" || last === "a+c+b");
+      assert.isTrue(result == Tuple("a+b+c", "a+b+c") || result == Tuple("a+c+b", "a+c+b"));
     });
 
     it("updates all or nothing", async () => {
