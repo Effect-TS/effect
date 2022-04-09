@@ -6,7 +6,6 @@ import * as Tp from "../Collections/Immutable/Tuple/index.js"
 import * as E from "../Either/index.js"
 import { identity as idFn, pipe } from "../Function/index.js"
 import type { Has, Tag } from "../Has/index.js"
-import { mergeEnvironments } from "../Has/index.js"
 import type * as SCD from "../Schedule/Decision/index.js"
 import type * as SC from "../Schedule/index.js"
 import type { UnionToIntersection } from "../Utils/index.js"
@@ -34,15 +33,6 @@ import * as T from "./deps-effect.js"
 import * as M from "./deps-managed.js"
 
 export * from "./definitions.js"
-
-function environmentFor<T>(has: Tag<T>, a: T): M.Managed<{}, never, Has<T>> {
-  // @ts-expect-error
-  return M.fromEffect(
-    T.access((r) => ({
-      [has.key]: mergeEnvironments(has, r, a)[has.key]
-    }))
-  )
-}
 
 /**
  * Lazily constructs a layer. This is useful to avoid infinite recursion when
@@ -118,10 +108,10 @@ export function zipPar<RIn, RIn1, E, E1, ROut, ROut1>(that: Layer<RIn1, E1, ROut
  * Construct a service layer from a value
  */
 export function fromValue<T>(has: Tag<T>) {
-  return (resource: T): Layer<{}, never, Has<T>> =>
-    new LayerManaged(
-      M.chain_(M.fromEffect(T.succeed(resource)), (a) => environmentFor(has, a))
-    ).setKey(has.key)
+  return (resource: T): Layer<unknown, never, Has<T>> =>
+    new LayerManaged(pipe(M.fromEffect(T.succeed(resource)), M.map(has.has))).setKey(
+      has.key
+    )
 }
 
 /**
@@ -141,9 +131,7 @@ export function fromEffect_<R, E, T>(
   resource: T.Effect<R, E, T>,
   has: Tag<T>
 ): Layer<R, E, Has<T>> {
-  return new LayerManaged(
-    M.chain_(M.fromEffect(resource), (a) => environmentFor(has, a))
-  ).setKey(has.key)
+  return new LayerManaged(M.map_(M.fromEffect(resource), has.has)).setKey(has.key)
 }
 
 /**
@@ -151,7 +139,7 @@ export function fromEffect_<R, E, T>(
  */
 export function fromManaged<T>(has: Tag<T>) {
   return <R, E>(resource: M.Managed<R, E, T>): Layer<R, E, Has<T>> =>
-    new LayerManaged(M.chain_(resource, (a) => environmentFor(has, a))).setKey(has.key)
+    new LayerManaged(M.map_(resource, has.has)).setKey(has.key)
 }
 
 /**
@@ -161,9 +149,7 @@ export function fromManaged_<R, E, T>(
   resource: M.Managed<R, E, T>,
   has: Tag<T>
 ): Layer<R, E, Has<T>> {
-  return new LayerManaged(M.chain_(resource, (a) => environmentFor(has, a))).setKey(
-    has.key
-  )
+  return new LayerManaged(M.map_(resource, has.has)).setKey(has.key)
 }
 
 /**
