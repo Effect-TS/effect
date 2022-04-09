@@ -3,7 +3,7 @@ import { constTrue } from "@tsplus/stdlib/data/Function";
 
 describe.concurrent("Effect", () => {
   describe.concurrent("provideSomeLayer", () => {
-    it.only("can split environment into two parts", async () => {
+    it("can split environment into two parts", async () => {
       const clockLayer: Layer<{}, never, HasClock> = Layer.fromValue(HasClock)(
         new LiveClock()
       );
