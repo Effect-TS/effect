@@ -1,10 +1,7 @@
 /**
  * @tsplus operator ets/Effect >=
  * @tsplus fluent ets/Effect apply
+ * @tsplus fluent ets/Effect __call
+ * @tsplus macro pipe
  */
-export function pipeEffect<R, E, A, B>(
-  self: Effect<R, E, A>,
-  f: (a: Effect<R, E, A>) => B
-) {
-  return f(self);
-}
+export const pipeEffect = pipe;
