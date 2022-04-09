@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.base.json",
+  "files": [
+      "./tsplus.prelude.d.ts",
+      "./tsplus.prelude.test.d.ts"
+  ]
+}
