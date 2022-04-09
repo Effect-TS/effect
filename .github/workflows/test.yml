@@ -1,42 +1,40 @@
-name: Node CI
+name: Test CI
 
 on:
-  push:
+  pull_request:
     branches:
-      - feat/*
-      - fix/*
+      - master
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v1
-      - name: Use Node.js 12.x
-        uses: actions/setup-node@v1
+      - uses: actions/checkout@v3
         with:
-          node-version: 12.x
-      - name: npm install and build
+          fetch-depth: 0
+      - name: Use Node.js 16.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: yarn
+      - name: Install
         run: |
           npm install -g yarn
-          yarn install
-          yarn ci
+          yarn
         env:
           CI: "true"
-
-  test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v1
-      - name: Use Node.js 12.x
-        uses: actions/setup-node@v1
-        with:
-          node-version: 12.x
-      - name: test
+      - name: Build
         run: |
-          npm install -g yarn
-          yarn install
-          yarn test
+          yarn build
+        env:
+          CI: "true"
+      - name: Check Circular Dependencies
+        run: |
+          yarn circular
+        env:
+          CI: "true"
+      - name: Test
+        run: |
+          yarn test --run --coverage
         env:
           CI: "true"
