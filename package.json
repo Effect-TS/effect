@@ -34,7 +34,7 @@
     "@babel/plugin-transform-modules-commonjs": "^7.17.9",
     "@changesets/changelog-github": "^0.4.4",
     "@changesets/cli": "^2.22.0",
-    "@effect-ts/build-utils": "0.39.3",
+    "@effect-ts/build-utils": "0.39.4",
     "@effect-ts/core": "^0.59.3",
     "@phaphoso/eslint-plugin-dprint": "^0.5.2",
     "@tsplus/installer": "0.0.81",
