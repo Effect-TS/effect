@@ -3,8 +3,8 @@ name: Node CI
 on:
   pull_request:
     branches:
-      - master
-      - features/*
+      - current
+      - current/*
 
 jobs:
   build:
