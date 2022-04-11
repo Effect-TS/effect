@@ -6,13 +6,15 @@
  */
 export function provideService_<R, E, A, T>(
   self: Stream<R & Has<T>, E, A>,
-  service: Service<T>
+  tag: Tag<T>
 ) {
   return (
-    resource: LazyArg<T>,
+    service: LazyArg<T>,
     __tsplusTrace?: string
   ): Stream<Erase<R & Has<T>, Has<T>>, E, A> =>
-    Stream.environmentWithStream((r: R) => self.provideEnvironment({ ...r, ...service(resource()) }));
+    Stream.succeed(service).flatMap((service) =>
+      Stream.environmentWithStream((env: Env<R>) => self.provideEnvironment(env.add(tag, service)))
+    );
 }
 
 /**

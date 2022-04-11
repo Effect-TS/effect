@@ -7,7 +7,7 @@ import { Provide } from "@effect/core/stream/Channel/definition/primitives";
  * @tsplus fluent ets/Channel provideEnvironment
  */
 export function provideEnvironment_<
-  Env,
+  R,
   InErr,
   InElem,
   InDone,
@@ -15,8 +15,8 @@ export function provideEnvironment_<
   OutElem,
   OutDone
 >(
-  self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  env: LazyArg<Env>
+  self: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
+  env: LazyArg<Env<R>>
 ): Channel<unknown, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
   return new Provide(env, self);
 }

@@ -116,12 +116,6 @@ export interface BaseFiber<E, A> extends Fiber<E, A> {
   readonly _poll: UIO<Option<Exit<E, A>>>;
 
   /**
-   * Gets the value of the fiber ref for this fiber, or the initial value of the
-   * fiber ref, if the fiber is not storing the ref.
-   */
-  readonly _getRef: <K>(ref: FiberRef<K>) => UIO<K>;
-
-  /**
    * Interrupts the fiber as if interrupted from the specified fiber. If the
    * fiber has already exited, the returned effect will resume immediately.
    * Otherwise, the effect will resume when the fiber exits.
@@ -194,7 +188,6 @@ export class SyntheticFiber<E, A> implements BaseFiber<E, A> {
     readonly _children: UIO<Chunk<Fiber.Runtime<any, any>>>,
     readonly _inheritRefs: UIO<void>,
     readonly _poll: UIO<Option<Exit<E, A>>>,
-    readonly _getRef: <K>(ref: FiberRef<K>) => UIO<K>,
     readonly _interruptAs: (fiberId: FiberId) => UIO<Exit<E, A>>
   ) {}
 }
@@ -205,7 +198,6 @@ export function makeSynthetic<E, A>(_: {
   readonly children: UIO<Chunk<Fiber.Runtime<any, any>>>;
   readonly inheritRefs: UIO<void>;
   readonly poll: UIO<Option<Exit<E, A>>>;
-  readonly getRef: <K>(ref: FiberRef<K>) => UIO<K>;
   readonly interruptAs: (fiberId: FiberId) => UIO<Exit<E, A>>;
 }): Fiber<E, A> {
   return new SyntheticFiber(
@@ -214,7 +206,6 @@ export function makeSynthetic<E, A>(_: {
     _.children,
     _.inheritRefs,
     _.poll,
-    _.getRef,
     _.interruptAs
   );
 }

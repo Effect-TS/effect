@@ -7,7 +7,7 @@
  *
  * @tsplus static ets/Effect/Ops serviceWithEffect
  */
-export function serviceWithEffect<T>(service: Service<T>) {
+export function serviceWithEffect<T>(tag: Tag<T>) {
   return <R, E, A>(
     f: (a: T) => Effect<R, E, A>,
     __tsplusTrace?: string
@@ -15,6 +15,6 @@ export function serviceWithEffect<T>(service: Service<T>) {
     Effect.suspendSucceed(
       FiberRef.currentEnvironment.value
         .get()
-        .flatMap((environment: Has<T>) => f(service.get(environment)))
+        .flatMap((env: Env<Has<T>>) => f(env.unsafeGet(tag)))
     );
 }

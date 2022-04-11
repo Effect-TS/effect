@@ -63,6 +63,10 @@ import { FiberRef } from "@effect/core/io/FiberRef/definition";
 /**
  * @tsplus global
  */
+import { FiberRefs } from "@effect/core/io/FiberRefs/definition";
+/**
+ * @tsplus global
+ */
 import { FiberScope } from "@effect/core/io/FiberScope/definition";
 /**
  * @tsplus global
@@ -374,6 +378,14 @@ import { identity, Lazy, LazyArg, pipe, Refinement, unsafeCoerce } from "@tsplus
 /**
  * @tsplus global
  */
+import { LazyValue } from "@tsplus/stdlib/data/LazyValue";
+/**
+ * @tsplus global
+ */
+import { Match } from "@tsplus/stdlib/data/Match";
+/**
+ * @tsplus global
+ */
 import { Option } from "@tsplus/stdlib/data/Option/definition";
 /**
  * @tsplus global
@@ -382,7 +394,19 @@ import { Predicate } from "@tsplus/stdlib/data/Predicate";
 /**
  * @tsplus global
  */
-import { Has, Service } from "@tsplus/stdlib/data/Service";
+import { Env } from "@tsplus/stdlib/service/Env";
+/**
+ * @tsplus global
+ */
+import { Has } from "@tsplus/stdlib/service/Has";
+/**
+ * @tsplus global
+ */
+import { Service } from "@tsplus/stdlib/service/Service";
+/**
+ * @tsplus global
+ */
+import { Tag } from "@tsplus/stdlib/service/Tag";
 /**
  * @tsplus global
  */

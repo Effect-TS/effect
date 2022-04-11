@@ -1,3 +1,5 @@
+import { RandomSym } from "@effect/core/io/Random/definition";
+
 /**
  * @tsplus static ets/Random/Ops live
  */
@@ -30,6 +32,7 @@ export function live(seed: number): Random {
   }
 
   return {
+    [RandomSym]: RandomSym,
     next,
     nextBoolean,
     nextInt,
@@ -45,13 +48,13 @@ function shuffleWith<A>(
   __tsplusTrace?: string
 ): UIO<Collection<A>> {
   return Effect.suspendSucceed(() => {
-    const Collection0 = Collection();
+    const collection0 = collection();
 
     return Effect.Do()
       .bind("buffer", () =>
         Effect.succeed(() => {
           const buffer: Array<A> = [];
-          for (const element of Collection0) {
+          for (const element of collection0) {
             buffer.push(element);
           }
           return buffer;

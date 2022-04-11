@@ -5,8 +5,8 @@
  * @tsplus fluent ets/Channel provideSomeEnvironment
  */
 export function provideSomeEnvironment_<
-  Env0,
-  Env,
+  R0,
+  R,
   InErr,
   InElem,
   InDone,
@@ -14,10 +14,10 @@ export function provideSomeEnvironment_<
   OutElem,
   OutDone
 >(
-  self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  f: (env0: Env0) => Env
-): Channel<Env0, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  return Channel.environmentWithChannel((env: Env0) => self.provideEnvironment(f(env)));
+  self: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
+  f: (env: Env<R0>) => Env<R>
+): Channel<R0, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+  return Channel.environmentWithChannel((env: Env<R0>) => self.provideEnvironment(f(env)));
 }
 
 /**

@@ -1,4 +1,4 @@
 /**
  * @tsplus static ets/FiberRef/Ops currentEnvironment
  */
-export const currentEnvironment: LazyValue<FiberRef<any>> = LazyValue.make(() => FiberRef.unsafeMake({}));
+export const currentEnvironment: LazyValue<FiberRef<Env<any>>> = LazyValue.make(() => FiberRef.unsafeMake(Env()));

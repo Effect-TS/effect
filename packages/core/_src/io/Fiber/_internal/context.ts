@@ -5,6 +5,8 @@ import type { Callback } from "@effect/core/io/Fiber/_internal/fiberState";
 import { FiberState } from "@effect/core/io/Fiber/_internal/fiberState";
 import { _A, _E, FiberSym } from "@effect/core/io/Fiber/definition";
 import { FiberStatus } from "@effect/core/io/Fiber/status";
+import { concreteFiberRefs } from "@effect/core/io/FiberRefs/operations/_internal/FiberRefsInternal";
+import { joinFiberRefs } from "@effect/core/io/FiberRefs/operations/_internal/join";
 import { concreteCounter } from "@effect/core/io/Metrics/Counter/operations/_internal/InternalCounter";
 import { Boundaries } from "@effect/core/io/Metrics/Histogram";
 import { concreteHistogram } from "@effect/core/io/Metrics/Histogram/operations/_internal/InternalHistogram";
@@ -85,7 +87,7 @@ export type Frame =
   | IFold<any, any, any, any, any, any, any, any, any>
   | ApplyFrame;
 
-export type FiberRefLocals = Map<FiberRef<unknown>, unknown>;
+export type FiberRefLocals = HashMap<FiberRef<unknown>, List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>>;
 
 export const catastrophicFailure = new AtomicBoolean(false);
 
@@ -110,13 +112,16 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   interruptStatus?: Stack<boolean> | undefined;
 
+  fiberRefLocals: FiberRefLocals;
+
   constructor(
     readonly _id: FiberId.Runtime,
-    readonly fiberRefLocals: FiberRefLocals,
     readonly childFibers: Set<FiberContext<any, any>>,
+    fiberRefLocals: FiberRefLocals,
     runtimeConfig: RuntimeConfig,
     interruptStatus?: Stack<boolean>
   ) {
+    this.fiberRefLocals = fiberRefLocals;
     this.runtimeConfig = runtimeConfig;
     this.interruptStatus = interruptStatus;
     if (this.trackMetrics) {
@@ -158,19 +163,19 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   get _inheritRefs(): Effect<unknown, never, void> {
-    return Effect.suspendSucceed(
-      this.fiberRefLocals.size === 0
-        ? Effect.unit
-        : Effect.forEachDiscard(this.fiberRefLocals, ([ref, value]) => ref.update((old) => ref.join(old, value)))
-    );
+    return Effect.suspendSucceed(() => {
+      if (this.fiberRefLocals.isEmpty()) {
+        return Effect.unit;
+      }
+
+      const childFiberRefs = FiberRefs(this.fiberRefLocals);
+
+      return Effect.updateFiberRefs((_, parentFiberRefs) => joinFiberRefs(parentFiberRefs, childFiberRefs));
+    });
   }
 
   get _poll(): Effect<unknown, never, Option<Exit<E, A>>> {
     return Effect.succeed(this.unsafePoll());
-  }
-
-  _getRef<K>(ref: FiberRef<K>): Effect<unknown, never, K> {
-    return Effect.succeed(this.unsafeGetRef(ref));
   }
 
   _interruptAs(fiberId: FiberId): Effect<unknown, never, Exit<E, A>> {
@@ -255,6 +260,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     const logLevel = this.unsafeGetRef(FiberRef.currentLogLevel.value);
     const spans = this.unsafeGetRef(FiberRef.currentLogSpan.value);
     const annotations = this.unsafeGetRef(FiberRef.currentLogAnnotations.value);
+    const contextMap = this.unsafeGetRefs(this.fiberRefLocals);
 
     this.runtimeConfig.value.logger.apply(
       TraceElement.parse(trace),
@@ -262,7 +268,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       logLevel,
       message,
       () => Cause.empty,
-      this.fiberRefLocals,
+      contextMap,
       spans,
       annotations
     );
@@ -283,12 +289,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     const spans = this.unsafeGetRef(FiberRef.currentLogSpan.value);
     const annotations = this.unsafeGetRef(FiberRef.currentLogAnnotations.value);
 
-    const contextMap = new Map(this.fiberRefLocals.entries());
+    let contextMap = this.unsafeGetRefs(this.fiberRefLocals);
     if (overrideRef1 != null) {
       if (overrideValue1 == null) {
-        contextMap.delete(overrideRef1);
+        contextMap = contextMap.remove(overrideRef1);
       } else {
-        contextMap.set(overrideRef1, overrideValue1);
+        contextMap = contextMap.set(overrideRef1, overrideValue1);
       }
     }
 
@@ -529,15 +535,31 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   // ---------------------------------------------------------------------------
 
   unsafeGetRef<A>(fiberRef: FiberRef<A>): A {
-    return (this.fiberRefLocals.get(fiberRef) as A) || fiberRef.initialValue();
+    return this.fiberRefLocals.get(fiberRef).map((list) => list.head.get(1) as A).getOrElse(fiberRef.initial());
+  }
+
+  unsafeGetRefs(fiberRefLocals: FiberRefLocals): HashMap<FiberRef<unknown>, unknown> {
+    return HashMap.empty<FiberRef<unknown>, unknown>().mutate((map) => {
+      for (const { tuple: [fiberRef, stack] } of fiberRefLocals) {
+        map.set(fiberRef, stack.head);
+      }
+      return map;
+    });
   }
 
   unsafeSetRef<A>(fiberRef: FiberRef<A>, value: A): void {
-    this.fiberRefLocals.set(fiberRef, value);
+    const oldState = this.fiberRefLocals;
+    const oldStack = oldState.get(fiberRef).getOrElse(List.empty<Tuple<[FiberId.Runtime, unknown]>>());
+    const newStack = (
+      oldStack.isNil() ?
+        List.empty().prepend(Tuple(this._id, value)) :
+        oldStack.tail.prepend(Tuple(this._id, value))
+    ) as List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>;
+    this.fiberRefLocals = oldState.set(fiberRef, newStack);
   }
 
   unsafeDeleteRef<A>(fiberRef: FiberRef<A>): void {
-    this.fiberRefLocals.delete(fiberRef);
+    this.fiberRefLocals = this.fiberRefLocals.remove(fiberRef);
   }
 
   // ---------------------------------------------------------------------------
@@ -984,21 +1006,23 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     trace: TraceElement,
     forkScope: Option<FiberScope> = Option.none
   ): FiberContext<any, any> {
-    const childFiberRefLocals: FiberRefLocals = new Map<FiberRef<unknown>, unknown>();
+    const childId = FiberId.unsafeMake(trace);
 
-    for (const [k, v] of this.fiberRefLocals) {
-      childFiberRefLocals.set(k, k.fork(v));
+    const childFiberRefLocals: FiberRefLocals = HashMap.empty();
+
+    for (const { tuple: [fiberRef, stack] } of this.fiberRefLocals) {
+      const value = fiberRef.patch(fiberRef.fork())(stack.head.get(1));
+      childFiberRefLocals.set(fiberRef, stack.prepend(Tuple(childId, value)));
     }
 
     const parentScope = forkScope.orElse(this.unsafeGetRef(FiberRef.forkScopeOverride.value)).getOrElse(this._scope);
 
-    const childId = FiberId.unsafeMake(trace);
     const grandChildren = new Set<FiberContext<unknown, unknown>>();
 
     const childContext = new FiberContext(
       childId,
-      childFiberRefLocals,
       grandChildren,
+      childFiberRefLocals,
       this.runtimeConfig,
       new Stack(this.interruptStatus ? this.interruptStatus.value : true)
     );
@@ -1308,17 +1332,26 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     break;
                   }
 
-                  case "FiberRefGetAll": {
-                    current = instruction(current.make(this.fiberRefLocals));
-                    break;
-                  }
-
                   case "FiberRefModify": {
                     const {
                       tuple: [result, newValue]
                     } = current.f(this.unsafeGetRef(current.fiberRef));
 
                     this.unsafeSetRef(current.fiberRef, newValue);
+
+                    current = this.unsafeNextEffect(result);
+
+                    break;
+                  }
+
+                  case "FiberRefModifyAll": {
+                    const {
+                      tuple: [result, newValue]
+                    } = current.f(this._id, FiberRefs(this.fiberRefLocals));
+
+                    concreteFiberRefs(newValue);
+
+                    this.fiberRefLocals = newValue.fiberRefLocals;
 
                     current = this.unsafeNextEffect(result);
 

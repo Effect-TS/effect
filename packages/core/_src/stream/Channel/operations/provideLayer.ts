@@ -4,8 +4,8 @@
  * @tsplus fluent ets/Channel provideLayer
  */
 export function provideLayer_<
-  Env0,
-  Env,
+  R0,
+  R,
   InErr,
   InElem,
   InDone,
@@ -14,10 +14,10 @@ export function provideLayer_<
   OutElem,
   OutDone
 >(
-  self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  layer: LazyArg<Layer<Env0, OutErr2, Env>>,
+  self: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
+  layer: LazyArg<Layer<R0, OutErr2, R>>,
   __tsplusTrace?: string
-): Channel<Env0, InErr, InElem, InDone, OutErr | OutErr2, OutElem, OutDone> {
+): Channel<R0, InErr, InElem, InDone, OutErr | OutErr2, OutElem, OutDone> {
   return Channel.scoped(layer().build(), (env) => self.provideEnvironment(env));
 }
 

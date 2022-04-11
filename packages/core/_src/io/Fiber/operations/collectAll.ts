@@ -26,12 +26,6 @@ export function collectAll<E, A>(fibers: Collection<Fiber<E, A>>): Fiber<E, Chun
           )
       )
     ),
-    getRef: (ref) =>
-      Effect.reduce(
-        fibers,
-        () => ref.initialValue(),
-        (a, fiber) => fiber.getRef(ref).map((a2) => ref.join(a, a2))
-      ),
     interruptAs: (fiberId) =>
       Effect.forEach(fibers, (fiber) => fiber.interruptAs(fiberId)).map((_) =>
         _.reduceRight(

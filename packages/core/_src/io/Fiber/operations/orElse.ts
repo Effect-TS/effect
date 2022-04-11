@@ -20,10 +20,6 @@ export function orElse_<E, E1, A, A1>(
       .await()
       .zipWith(that.await(), (e1, e2) => (e1._tag === "Success" ? e1 : e2)),
     children: self.children(),
-    getRef: (ref) =>
-      self
-        .getRef(ref)
-        .zipWith(that.getRef(ref), (first, second) => first === ref.initialValue() ? second : first),
     inheritRefs: that.inheritRefs() > self.inheritRefs(),
     interruptAs: (id) => self.interruptAs(id) > that.interruptAs(id),
     poll: self

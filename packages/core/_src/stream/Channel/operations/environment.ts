@@ -3,6 +3,6 @@
  *
  * @tsplus static ets/Channel/Ops environment
  */
-export function environment<Env>(): Channel<Env, unknown, unknown, unknown, never, never, Env> {
-  return Channel.fromEffect(Effect.environment<Env>());
+export function environment<R>(): Channel<R, unknown, unknown, unknown, never, never, Env<R>> {
+  return Channel.fromEffect(Effect.environment<R>());
 }

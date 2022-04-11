@@ -34,7 +34,7 @@ export type Instruction =
   | IGetForkScope<any, any, any>
   | IOverrideForkScope<any, any, any>
   | ILogged<any>
-  | IFiberRefGetAll<any, any, any>
+  | IFiberRefModifyAll<any>
   | IFiberRefLocally<any, any, any, any>
   | IFiberRefDelete
   | IFiberRefWith<any, any, any, any>
@@ -192,11 +192,11 @@ export class IYield extends Base<unknown, never, void> {
   }
 }
 
-export class IFiberRefGetAll<R, E, A> extends Base<R, E, A> {
-  readonly _tag = "FiberRefGetAll";
+export class IFiberRefModifyAll<A> extends Base<unknown, never, A> {
+  readonly _tag = "FiberRefModifyAll";
 
   constructor(
-    readonly make: (refs: Map<FiberRef<unknown>, unknown>) => Effect<R, E, A>,
+    readonly f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs) => Tuple<[A, FiberRefs]>,
     readonly trace?: string
   ) {
     super();
