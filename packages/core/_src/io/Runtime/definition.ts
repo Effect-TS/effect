@@ -3,7 +3,7 @@ import { OneShot } from "@effect/core/support/OneShot";
 import { constVoid } from "@tsplus/stdlib/data/Function";
 
 export class Runtime<R> {
-  constructor(readonly environment: R, readonly runtimeConfig: RuntimeConfig) {}
+  constructor(readonly environment: Env<R>, readonly runtimeConfig: RuntimeConfig) {}
 
   unsafeRunWith = <E, A>(
     effect: Effect<R, E, A>,
@@ -16,14 +16,15 @@ export class Runtime<R> {
 
     const supervisor = this.runtimeConfig.value.supervisor;
 
-    const fiberRefLocals = new Map([
-      [FiberRef.currentEnvironment.value, this.environment]
+    const fiberRefLocals: Map<FiberRef<unknown>, List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>> = new Map<any, any>([
+      [FiberRef.currentEnvironment.value, List.cons(Tuple(fiberId, this.environment), List.nil())],
+      [DefaultEnv.services.value, List.cons(Tuple(fiberId, DefaultEnv.Services.live.value), List.nil())]
     ]);
 
     const context: FiberContext<E, A> = new FiberContext(
       fiberId,
-      fiberRefLocals,
       children,
+      fiberRefLocals,
       this.runtimeConfig,
       new Stack(InterruptStatus.Interruptible.toBoolean)
     );

@@ -1,15 +1,11 @@
-import { ILayerScoped } from "@effect/core/io/Layer/definition";
-import { environmentFor } from "@effect/core/io/Layer/operations/_internal/environmentFor";
-
 /**
  * Constructs a layer from the specified effect.
  *
  * @tsplus static ets/Layer/Ops fromEffect
  */
-export function fromEffect<T>(service: Service<T>) {
-  return <R, E>(effect: Effect<R, E, T>): Layer<R, E, Has<T>> => {
-    return new ILayerScoped(effect.flatMap((a) => environmentFor(service, a) as UIO<Has<T>>)).setKey(
-      service.identifier
-    );
-  };
+export function fromEffect<T>(tag: Tag<T>) {
+  return <R, E>(effect: LazyArg<Effect<R, E, T>>): Layer<R, E, Has<T>> =>
+    Layer.fromEffectEnvironment(
+      Effect.suspendSucceed(effect).map((service) => Env().add(tag, service))
+    ).setKey(tag.id);
 }

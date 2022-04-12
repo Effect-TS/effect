@@ -9,7 +9,7 @@ describe.concurrent("FiberRef", () => {
         .bind("local", ({ fiberRef }) => fiberRef.get().apply(fiberRef.locally(update)))
         .bind("value", ({ fiberRef }) => fiberRef.get());
 
-      const { local, value } = await program.unsafeRunPromise();
+      const { local, value } = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(local, update);
       assert.strictEqual(value, initial);
@@ -22,7 +22,7 @@ describe.concurrent("FiberRef", () => {
         .bind("local", ({ child }) => child.join())
         .bind("value", ({ fiberRef }) => fiberRef.get());
 
-      const { local, value } = await program.unsafeRunPromise();
+      const { local, value } = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(local, update);
       assert.strictEqual(value, initial);
@@ -36,7 +36,7 @@ describe.concurrent("FiberRef", () => {
         .bind("localValue", ({ fiberRef }) => fiberRef.get().apply(fiberRef.locally(update)))
         .bind("value", ({ fiberRef }) => fiberRef.get());
 
-      const { localValue, value } = await program.unsafeRunPromise();
+      const { localValue, value } = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(localValue, update);
       assert.strictEqual(value, initial);

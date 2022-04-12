@@ -7,8 +7,8 @@
  * @tsplus static ets/Effect/Ops service
  */
 export function service<T>(
-  service: Service<T>,
+  tag: Tag<T>,
   __tsplusTrace?: string
 ): Effect<Has<T>, never, T> {
-  return Effect.serviceWithEffect(service)(Effect.succeedNow);
+  return Effect.serviceWithEffect(tag)(Effect.succeedNow);
 }

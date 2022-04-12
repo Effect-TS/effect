@@ -3,7 +3,7 @@ const update = "update";
 const update1 = "update1";
 const update2 = "update2";
 
-const loseTimeAndCpu: Effect<HasClock, never, void> = (
+const loseTimeAndCpu: UIO<void> = (
   Effect.yieldNow < Clock.sleep((1).millis)
 ).repeatN(100);
 
@@ -15,7 +15,7 @@ describe("FiberRef", () => {
         .tap(({ fiberRef }) => fiberRef.set(update1).race(fiberRef.set(update2)))
         .flatMap(({ fiberRef }) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.isTrue(new RegExp(`${update1}|${update2}`).test(result));
     });
@@ -34,7 +34,7 @@ describe("FiberRef", () => {
         .tap(({ badWinner, goodLoser }) => badWinner.race(goodLoser))
         .flatMap(({ fiberRef }) => fiberRef.get());
 
-      const value = await program.unsafeRunPromise();
+      const value = await Effect.scoped(program).unsafeRunPromise();
 
       assert.isTrue(new RegExp(update2).test(value));
     });
@@ -47,7 +47,7 @@ describe("FiberRef", () => {
         .tap(({ loser1, loser2 }) => loser1.race(loser2).ignore())
         .flatMap(({ fiberRef }) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(result, initial);
     });
@@ -57,7 +57,7 @@ describe("FiberRef", () => {
         .tap((fiberRef) => fiberRef.set(update).raceAll(Chunk.empty<UIO<void>>()))
         .flatMap((fiberRef) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(result, update);
     });
@@ -84,7 +84,7 @@ describe("FiberRef", () => {
         .tap(({ loser2, winner2 }) => loser2.raceAll([winner2]))
         .bind("value2", ({ fiberRef }) => fiberRef.get() < fiberRef.set(initial));
 
-      const { value1, value2 } = await program.unsafeRunPromise();
+      const { value1, value2 } = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(value1, update1);
       assert.strictEqual(value2, update1);
@@ -110,7 +110,7 @@ describe("FiberRef", () => {
         .tap(({ losers2, winner2 }) => winner2.raceAll(losers2))
         .bind("value2", ({ fiberRef }) => fiberRef.get() < fiberRef.set(initial));
 
-      const { value1, value2 } = await program.unsafeRunPromise();
+      const { value1, value2 } = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(value1, update1);
       assert.strictEqual(value2, update1);
@@ -123,7 +123,7 @@ describe("FiberRef", () => {
         .tap(({ loser }) => loser.raceAll(Chunk.fill(63, () => loser)) | Effect.unit)
         .flatMap(({ fiberRef }) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(result, initial);
     });

@@ -6,10 +6,10 @@
  */
 export function provideSomeEnvironment_<R0, R, E, A>(
   self: Effect<R, E, A>,
-  f: (r0: R0) => R,
+  f: (r0: Env<R0>) => Env<R>,
   __tsplusTrace?: string
 ): Effect<R0, E, A> {
-  return Effect.environmentWithEffect((r0: R0) => self.provideEnvironment(f(r0)));
+  return Effect.environmentWithEffect((r0: Env<R0>) => self.provideEnvironment(f(r0)));
 }
 
 /**

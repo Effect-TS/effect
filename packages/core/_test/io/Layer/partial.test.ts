@@ -1,19 +1,16 @@
 describe.concurrent("Layer", () => {
   describe.concurrent("partial environment", () => {
     it("provides a partial environment to an effect", async () => {
-      const NumberProviderId = Symbol();
-      const NumberProvider = Service<number>(NumberProviderId);
-
-      const StringProviderId = Symbol();
-      const StringProvider = Service<string>(StringProviderId);
+      const NumberTag = Tag<number>();
+      const StringTag = Tag<string>();
 
       const needsNumberAndString = Effect.tuple(
-        Effect.service(NumberProvider),
-        Effect.service(StringProvider)
+        Effect.service(NumberTag),
+        Effect.service(StringTag)
       );
 
-      const providesNumber = Layer.fromValue(NumberProvider)(10);
-      const providesString = Layer.fromValue(StringProvider)("hi");
+      const providesNumber = Layer.fromValue(NumberTag)(10);
+      const providesString = Layer.fromValue(StringTag)("hi");
 
       const needsString = needsNumberAndString.provideSomeLayer(providesNumber);
 
@@ -26,15 +23,8 @@ describe.concurrent("Layer", () => {
     });
 
     it("to provides a partial environment to another layer", async () => {
-      const StringProviderId = Symbol();
-
-      const StringProvider = Service<string>(StringProviderId);
-
-      const NumberRefProviderId = Symbol();
-
-      const NumberRefProvider = Service<Ref<number>>(NumberRefProviderId);
-
-      const FooServiceId = Symbol();
+      const StringTag = Tag<string>();
+      const NumberRefTag = Tag<Ref<number>>();
 
       interface FooService {
         readonly ref: Ref<number>;
@@ -42,22 +32,22 @@ describe.concurrent("Layer", () => {
         readonly get: Effect<unknown, never, Tuple<[number, string]>>;
       }
 
-      const FooService = Service<FooService>(FooServiceId);
+      const FooTag = Tag<FooService>();
 
       const fooBuilder = Layer.environment<Has<string> & Has<Ref<number>>>().map(
-        (_) => {
-          const s = StringProvider.get(_);
-          const ref = NumberRefProvider.get(_);
-          return FooService({ ref, string: s, get: ref.get().map((i) => Tuple(i, s)) });
+        (env) => {
+          const s = env.get(StringTag);
+          const ref = env.get(NumberRefTag);
+          return Env().add(FooTag, { ref, string: s, get: ref.get().map((i) => Tuple(i, s)) });
         }
       );
 
-      const provideNumberRef = Layer.fromEffect(NumberRefProvider)(Ref.make(10));
-      const provideString = Layer.fromValue(StringProvider)("hi");
+      const provideNumberRef = Layer.fromEffect(NumberRefTag)(Ref.make(10));
+      const provideString = Layer.fromValue(StringTag)("hi");
       const needsString = provideNumberRef >> fooBuilder;
       const layer = provideString >> needsString;
 
-      const program = Effect.serviceWithEffect(FooService)((_) => _.get).provideLayer(
+      const program = Effect.serviceWithEffect(FooTag)((_) => _.get).provideLayer(
         layer
       );
 
@@ -68,15 +58,8 @@ describe.concurrent("Layer", () => {
     });
 
     it("andTo provides a partial environment to another layer", async () => {
-      const StringProviderId = Symbol();
-
-      const StringProvider = Service<string>(StringProviderId);
-
-      const NumberRefProviderId = Symbol();
-
-      const NumberRefProvider = Service<Ref<number>>(NumberRefProviderId);
-
-      const FooServiceId = Symbol();
+      const StringTag = Tag<string>();
+      const NumberRefTag = Tag<Ref<number>>();
 
       interface FooService {
         readonly ref: Ref<number>;
@@ -84,24 +67,24 @@ describe.concurrent("Layer", () => {
         readonly get: Effect<unknown, never, Tuple<[number, string]>>;
       }
 
-      const FooService = Service<FooService>(FooServiceId);
+      const FooTag = Tag<FooService>();
 
       const fooBuilder = Layer.environment<Has<string> & Has<Ref<number>>>().map(
-        (_) => {
-          const s = StringProvider.get(_);
-          const ref = NumberRefProvider.get(_);
-          return FooService({ ref, string: s, get: ref.get().map((i) => Tuple(i, s)) });
+        (env) => {
+          const s = env.get(StringTag);
+          const ref = env.get(NumberRefTag);
+          return Env().add(FooTag, { ref, string: s, get: ref.get().map((i) => Tuple(i, s)) });
         }
       );
 
-      const provideNumberRef = Layer.fromEffect(NumberRefProvider)(Ref.make(10));
-      const provideString = Layer.fromValue(StringProvider)("hi");
+      const provideNumberRef = Layer.fromEffect(NumberRefTag)(Ref.make(10));
+      const provideString = Layer.fromValue(StringTag)("hi");
       const needsString = provideNumberRef > fooBuilder;
       const layer = provideString > needsString;
 
-      const program = Effect.serviceWithEffect(FooService)((_) => _.get)
+      const program = Effect.serviceWithEffect(FooTag)((_) => _.get)
         .flatMap(({ tuple: [i1, s] }) =>
-          Effect.serviceWithEffect(NumberRefProvider)((ref) => ref.get()).map((i2) => Tuple(i1, i2, s))
+          Effect.serviceWithEffect(NumberRefTag)((ref) => ref.get()).map((i2) => Tuple(i1, i2, s))
         )
         .provideLayer(layer);
 

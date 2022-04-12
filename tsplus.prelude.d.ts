@@ -8,10 +8,6 @@ import type {} from "@effect/core";
 /**
  * @tsplus global
  */
-import { LazyValue } from "@effect/core/data/LazyValue";
-/**
- * @tsplus global
- */
 import { Cause } from "@effect/core/io/Cause/definition";
 /**
  * @tsplus global
@@ -27,7 +23,11 @@ import {
 /**
  * @tsplus global
  */
-import { Clock, HasClock } from "@effect/core/io/Clock/definition";
+import { Clock } from "@effect/core/io/Clock/definition";
+/**
+ * @tsplus global
+ */
+import { DefaultEnv } from "@effect/core/io/DefaultEnv/definition";
 /**
  * @tsplus global
  */
@@ -60,6 +60,10 @@ import { FiberId } from "@effect/core/io/FiberId/definition";
  * @tsplus global
  */
 import { FiberRef } from "@effect/core/io/FiberRef/definition";
+/**
+ * @tsplus global
+ */
+import { FiberRefs } from "@effect/core/io/FiberRefs/definition";
 /**
  * @tsplus global
  */
@@ -155,7 +159,7 @@ import { Queue } from "@effect/core/io/Queue/definition/Queue";
 /**
  * @tsplus global
  */
-import { HasRandom, Random } from "@effect/core/io/Random/definition";
+import { Random } from "@effect/core/io/Random/definition";
 /**
  * @tsplus global
  */
@@ -374,6 +378,14 @@ import { identity, Lazy, LazyArg, pipe, Refinement, unsafeCoerce } from "@tsplus
 /**
  * @tsplus global
  */
+import { LazyValue } from "@tsplus/stdlib/data/LazyValue";
+/**
+ * @tsplus global
+ */
+import { Match } from "@tsplus/stdlib/data/Match";
+/**
+ * @tsplus global
+ */
 import { Option } from "@tsplus/stdlib/data/Option/definition";
 /**
  * @tsplus global
@@ -382,7 +394,19 @@ import { Predicate } from "@tsplus/stdlib/data/Predicate";
 /**
  * @tsplus global
  */
-import { Has, Service } from "@tsplus/stdlib/data/Service";
+import { Env } from "@tsplus/stdlib/service/Env";
+/**
+ * @tsplus global
+ */
+import { Has } from "@tsplus/stdlib/service/Has";
+/**
+ * @tsplus global
+ */
+import { Service } from "@tsplus/stdlib/service/Service";
+/**
+ * @tsplus global
+ */
+import { Tag } from "@tsplus/stdlib/service/Tag";
 /**
  * @tsplus global
  */

@@ -14,14 +14,14 @@ export function repeatWith_<R, E, A, S, R2, B, C1, C2>(
   f: (a: A) => C1,
   g: (b: B) => C2,
   __tsplusTrace?: string
-): Stream<R & R2 & HasClock, E, C1 | C2>;
+): Stream<R & R2, E, C1 | C2>;
 export function repeatWith_<R, E, A, R2, B, C1, C2>(
   self: Stream<R, E, A>,
   schedule: LazyArg<Schedule<R2, unknown, B>>,
   f: (a: A) => C1,
   g: (b: B) => C2,
   __tsplusTrace?: string
-): Stream<R & R2 & HasClock, E, C1 | C2> {
+): Stream<R & R2, E, C1 | C2> {
   return new StreamInternal(
     Channel.fromEffect(schedule().driver()).flatMap((driver) => {
       const scheduleOutput = driver.last.orDie().map(g);
@@ -30,7 +30,7 @@ export function repeatWith_<R, E, A, R2, B, C1, C2>(
       const process = stream.channel;
 
       const loop: Channel<
-        R & R2 & HasClock,
+        R & R2,
         unknown,
         unknown,
         unknown,

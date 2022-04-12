@@ -1,4 +1,3 @@
-import { matchTag_ } from "@effect/core/data/Utils";
 import { instruction, LayerHashSym } from "@effect/core/io/Layer/definition";
 
 /**
@@ -19,7 +18,7 @@ export class MemoMap {
   getOrElseMemoize<RIn, E, ROut>(
     layer: Layer<RIn, E, ROut>,
     scope: LazyArg<Scope>
-  ): Effect<RIn, E, ROut> {
+  ): Effect<RIn, E, Env<ROut>> {
     return Effect.succeed(scope).flatMap((scope) =>
       this.ref.modifyEffect((map) => {
         const inMap = Option.fromNullable(map.get(layer[LayerHashSym].get));
@@ -30,7 +29,7 @@ export class MemoMap {
               tuple: [acquire, release]
             } = inMap.value;
 
-            const cached: Effect<unknown, E, ROut> = acquire.onExit((exit) =>
+            const cached: Effect<unknown, E, Env<ROut>> = acquire.onExit((exit) =>
               exit.fold(
                 () => Effect.unit,
                 () => scope.addFinalizerExit(release)
@@ -42,7 +41,7 @@ export class MemoMap {
           case "None": {
             return Effect.Do()
               .bind("observers", () => SynchronizedRef.make(0))
-              .bind("deferred", () => Deferred.make<E, ROut>())
+              .bind("deferred", () => Deferred.make<E, Env<ROut>>())
               .bind("finalizerRef", () => SynchronizedRef.make<Scope.Finalizer>(() => () => Effect.unit))
               .bindValue("resource", ({ deferred, finalizerRef, observers }) =>
                 Effect.uninterruptibleMask(({ restore }) =>
@@ -119,8 +118,8 @@ export function makeMemoMap(): UIO<MemoMap> {
 export function build<RIn, E, ROut>(
   self: Layer<RIn, E, ROut>,
   __tsplusTrace?: string
-): Effect<RIn & Has<Scope>, E, ROut> {
-  return Effect.serviceWithEffect(Scope.Service)((scope) => self.buildWithScope(scope));
+): Effect<RIn & Has<Scope>, E, Env<ROut>> {
+  return Effect.serviceWithEffect(Scope.Tag)((scope) => self.buildWithScope(scope));
 }
 
 /**
@@ -136,7 +135,7 @@ export function buildWithScope<RIn, E, ROut>(
   self: Layer<RIn, E, ROut>,
   scope: LazyArg<Scope>,
   __tsplusTrace?: string
-): Effect<RIn, E, ROut> {
+): Effect<RIn, E, Env<ROut>> {
   return Effect.Do()
     .bind("memoMap", () => makeMemoMap())
     .bind("run", () => self.withScope(scope))
@@ -150,14 +149,15 @@ export function withScope<RIn, E, ROut>(
   self: Layer<RIn, E, ROut>,
   scope: LazyArg<Scope>,
   __tsplusTrace?: string
-): Effect<unknown, never, (_: MemoMap) => Effect<RIn, E, ROut>> {
-  return matchTag_(instruction(self), {
+): Effect<unknown, never, (_: MemoMap) => Effect<RIn, E, Env<ROut>>> {
+  return Match.tag(instruction(self), {
+    LayerApply: (_) => Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((memoMap: MemoMap) => _.self),
     LayerExtendScope: (_) =>
-      Effect.succeed<(_: MemoMap) => Effect<RIn, E, ROut>>((memoMap: MemoMap) =>
+      Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((memoMap: MemoMap) =>
         Effect.scopeWith((scope) => memoMap.getOrElseMemoize(_.self, scope))
       ),
     LayerFold: (_) =>
-      Effect.succeed<(_: MemoMap) => Effect<RIn, E, ROut>>(
+      Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
         (memoMap: MemoMap) =>
           memoMap.getOrElseMemoize(_.self, scope).foldCauseEffect(
             (e) => memoMap.getOrElseMemoize(_.failure(e), scope),
@@ -165,19 +165,19 @@ export function withScope<RIn, E, ROut>(
           )
       ),
     LayerFresh: (_) =>
-      Effect.succeed<(_: MemoMap) => Effect<RIn, E, ROut>>(
+      Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
         (__: MemoMap) => _.self.buildWithScope(scope)
       ),
     LayerScoped: (_) =>
-      Effect.succeed<(_: MemoMap) => Effect<RIn, E, ROut>>(
+      Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
         (__: MemoMap) => scope().extend(_.self)
       ),
     LayerSuspend: (_) =>
-      Effect.succeed<(_: MemoMap) => Effect<RIn, E, ROut>>(
+      Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
         (memoMap: MemoMap) => memoMap.getOrElseMemoize(_.self(), scope)
       ),
     LayerTo: (_) =>
-      Effect.succeed<(_: MemoMap) => Effect<RIn, E, ROut>>(
+      Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
         (memoMap: MemoMap) =>
           memoMap
             .getOrElseMemoize(_.self, scope)
@@ -188,7 +188,7 @@ export function withScope<RIn, E, ROut>(
             )
       ),
     LayerZipWithPar: (_) =>
-      Effect.succeed<(_: MemoMap) => Effect<RIn, E, ROut>>(
+      Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
         (memoMap: MemoMap) =>
           memoMap
             .getOrElseMemoize(_.self, scope)

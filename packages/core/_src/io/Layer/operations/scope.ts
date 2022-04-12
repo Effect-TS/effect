@@ -1,5 +1,3 @@
-import { ILayerScoped } from "@effect/core/io/Layer/definition";
-
 /**
  * A layer that constructs a scope and closes it when the workflow the layer
  * is provided to completes execution, whether by success, failure, or
@@ -8,8 +6,9 @@ import { ILayerScoped } from "@effect/core/io/Layer/definition";
  *
  * @tsplus static ets/Layer/Ops scope
  */
-export const scope: Layer<unknown, never, Scope.Closeable> = Layer.suspend(
-  new ILayerScoped(
-    Effect.acquireReleaseExit(Scope.make, (scope, exit) => scope.close(exit))
-  )
+export const scope: Layer<unknown, never, Has<Scope.Closeable>> = Layer.scopedEnvironment(
+  Effect.acquireReleaseExit(
+    Scope.make,
+    (scope, exit) => scope.close(exit)
+  ).map((scope) => Env().add(Scope.Tag, scope)) as Effect<Has<Scope>, never, Env<Has<Scope.Closeable>>>
 );

@@ -11,12 +11,12 @@ export function repeatElements_<R, E, A, S, R2, B>(
   self: Stream<R, E, A>,
   schedule: LazyArg<Schedule.WithState<S, R2, unknown, B>>,
   __tsplusTrace?: string
-): Stream<R & R2 & HasClock, E, A>;
+): Stream<R & R2, E, A>;
 export function repeatElements_<R, E, A, R2, B>(
   self: Stream<R, E, A>,
   schedule: LazyArg<Schedule<R2, unknown, B>>,
   __tsplusTrace?: string
-): Stream<R & R2 & HasClock, E, A> {
+): Stream<R & R2, E, A> {
   return self.repeatElementsEither(schedule).collectRight();
 }
 

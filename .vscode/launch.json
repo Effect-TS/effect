@@ -11,7 +11,7 @@
       "skipFiles": [
         "<node_internals>/**"
       ],
-      "program": "${workspaceFolder}/packages/core/build/examples/repro2.js",
+      "program": "${workspaceFolder}/packages/core/build/examples/repro.js",
       "outFiles": [
         "${workspaceFolder}/**/*.js"
       ]

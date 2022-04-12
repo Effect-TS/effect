@@ -47,50 +47,50 @@ export type ErasedContinuation<R> = Continuation<
   unknown
 >;
 
-export type ErasedFinalizer<Env> = (_: Exit<unknown, unknown>) => RIO<Env, unknown>;
+export type ErasedFinalizer<R> = (_: Exit<unknown, unknown>) => RIO<R, unknown>;
 
-export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  private currentChannel: ErasedChannel<Env> | undefined;
+export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+  private currentChannel: ErasedChannel<R> | undefined;
 
   private done: Exit<unknown, unknown> | undefined = undefined;
 
-  private doneStack: List<ErasedContinuation<Env>> = List.empty();
+  private doneStack: List<ErasedContinuation<R>> = List.empty();
 
   private emitted: unknown | undefined = undefined;
 
-  private inProgressFinalizer: RIO<Env, unknown> | undefined = undefined;
+  private inProgressFinalizer: RIO<R, unknown> | undefined = undefined;
 
-  private input: ErasedExecutor<Env> | undefined = undefined;
+  private input: ErasedExecutor<R> | undefined = undefined;
 
-  private activeSubexecutor: Subexecutor<Env> | undefined = undefined;
+  private activeSubexecutor: Subexecutor<R> | undefined = undefined;
 
   private cancelled: Exit<OutErr, OutDone> | undefined = undefined;
 
-  private closeLastSubstream: RIO<Env, unknown> | undefined = undefined;
+  private closeLastSubstream: RIO<R, unknown> | undefined = undefined;
 
   constructor(
-    initialChannel: Lazy<Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>,
-    private providedEnv: unknown,
-    private executeCloseLastSubstream: (_: RIO<Env, unknown>) => RIO<Env, unknown>
+    initialChannel: Lazy<Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>>,
+    private providedEnv: Env<unknown> | undefined,
+    private executeCloseLastSubstream: (_: RIO<R, unknown>) => RIO<R, unknown>
   ) {
-    this.currentChannel = initialChannel() as ErasedChannel<Env>;
+    this.currentChannel = initialChannel() as ErasedChannel<R>;
   }
 
   private restorePipe(
     exit: Exit<unknown, unknown>,
-    prev: ErasedExecutor<Env> | undefined,
+    prev: ErasedExecutor<R> | undefined,
     __tsplusTrace?: string
-  ): Effect<Env, never, unknown> | undefined {
+  ): Effect<R, never, unknown> | undefined {
     const currInput = this.input;
     this.input = prev;
     return currInput != null ? currInput.close(exit) : Effect.unit;
   }
 
   private unwindAllFinalizers(
-    acc: Effect<Env, never, Exit<never, unknown>>,
-    conts: List<ErasedContinuation<Env>>,
+    acc: Effect<R, never, Exit<never, unknown>>,
+    conts: List<ErasedContinuation<R>>,
     exit: Exit<unknown, unknown>
-  ): Effect<Env, never, Exit<never, unknown>> {
+  ): Effect<R, never, Exit<never, unknown>> {
     while (conts.length() !== 0) {
       const head = conts.unsafeHead()!;
       concreteContinuation(head);
@@ -107,7 +107,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   private popAllFinalizers(
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
-  ): RIO<Env, unknown> {
+  ): RIO<R, unknown> {
     const effect = this.unwindAllFinalizers(
       Effect.succeed(Exit.unit),
       this.doneStack,
@@ -119,9 +119,9 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   }
 
   private popNextFinalizersGo(
-    stack: List<ErasedContinuation<Env>>,
-    builder: ListBuffer<ContinuationFinalizer<Env, unknown, unknown>>
-  ): List<ErasedContinuation<Env>> {
+    stack: List<ErasedContinuation<R>>,
+    builder: ListBuffer<ContinuationFinalizer<R, unknown, unknown>>
+  ): List<ErasedContinuation<R>> {
     while (stack.length() > 0) {
       const head = stack.unsafeHead()!;
       concreteContinuation(head);
@@ -134,13 +134,13 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     return List.empty();
   }
 
-  private popNextFinalizers(): List<ContinuationFinalizer<Env, unknown, unknown>> {
-    const builder = ListBuffer.empty<ContinuationFinalizer<Env, unknown, unknown>>();
+  private popNextFinalizers(): List<ContinuationFinalizer<R, unknown, unknown>> {
+    const builder = ListBuffer.empty<ContinuationFinalizer<R, unknown, unknown>>();
     this.doneStack = this.popNextFinalizersGo(this.doneStack, builder);
     return List.from(builder);
   }
 
-  private storeInProgressFinalizer(finalizer: RIO<Env, unknown>): void {
+  private storeInProgressFinalizer(finalizer: RIO<R, unknown>): void {
     this.inProgressFinalizer = finalizer;
   }
 
@@ -155,8 +155,8 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   close(
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
-  ): RIO<Env, unknown> | undefined {
-    let runInProgressFinalizers: RIO<Env, unknown> | undefined = undefined;
+  ): RIO<R, unknown> | undefined {
+    let runInProgressFinalizers: RIO<R, unknown> | undefined = undefined;
     const finalizer = this.inProgressFinalizer;
     if (finalizer != null) {
       runInProgressFinalizers = finalizer.ensuring(
@@ -166,7 +166,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
 
     const closeSubexecutors = this.activeSubexecutor == null ? undefined : this.activeSubexecutor.close(exit);
 
-    let closeSelf: RIO<Env, unknown> | undefined = undefined;
+    let closeSelf: RIO<R, unknown> | undefined = undefined;
     const selfFinalizers = this.popAllFinalizers(exit);
     if (selfFinalizers != null) {
       closeSelf = selfFinalizers.ensuring(
@@ -204,8 +204,8 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     this.cancelled = exit;
   }
 
-  run(): ChannelState<Env, unknown> {
-    let result: ChannelState<Env, unknown> | undefined = undefined;
+  run(): ChannelState<R, unknown> {
+    let result: ChannelState<R, unknown> | undefined = undefined;
 
     while (result == null) {
       if (this.cancelled != null) {
@@ -232,7 +232,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
                   const inputExecutor = this.input;
                   this.input = undefined;
 
-                  const drainer: RIO<Env, unknown> = currentChannel.input.awaitRead >
+                  const drainer: RIO<R, unknown> = currentChannel.input.awaitRead >
                     Effect.suspendSucceed(() => {
                       const state = inputExecutor.run();
                       concreteChannelState(state);
@@ -284,7 +284,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
               case "PipeTo": {
                 const previousInput = this.input;
 
-                const leftExec: ErasedExecutor<Env> = new ChannelExecutor(
+                const leftExec: ErasedExecutor<R> = new ChannelExecutor(
                   currentChannel.left,
                   this.providedEnv,
                   (effect) => this.executeCloseLastSubstream(effect)
@@ -343,7 +343,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
                 const peffect = this.providedEnv != null
                   ? currentChannel
                     .effect()
-                    .provideEnvironment(this.providedEnv as Env)
+                    .provideEnvironment(this.providedEnv as Env<R>)
                   : currentChannel.effect();
 
                 result = ChannelState.Effect(
@@ -381,7 +381,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
               }
 
               case "ConcatAll": {
-                const executor: ErasedExecutor<Env> = new ChannelExecutor(
+                const executor: ErasedExecutor<R> = new ChannelExecutor(
                   currentChannel.value,
                   this.providedEnv,
                   (effect) =>
@@ -443,10 +443,10 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
       }
     }
 
-    return result! as ChannelState<Env, OutErr>;
+    return result! as ChannelState<R, OutErr>;
   }
 
-  private doneSucceed(z: unknown): ChannelState<Env, unknown> | undefined {
+  private doneSucceed(z: unknown): ChannelState<R, unknown> | undefined {
     if (this.doneStack.length() === 0) {
       this.done = Exit.succeed(z);
       this.currentChannel = undefined;
@@ -485,7 +485,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     );
   }
 
-  doneHalt(cause: Cause<unknown>): ChannelState<Env, unknown> | undefined {
+  doneHalt(cause: Cause<unknown>): ChannelState<R, unknown> | undefined {
     if (this.doneStack.length() === 0) {
       this.done = Exit.failCause(cause);
       this.currentChannel = undefined;
@@ -525,7 +525,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     );
   }
 
-  private processCancellation(): ChannelState<Env, unknown> {
+  private processCancellation(): ChannelState<R, unknown> {
     this.currentChannel = undefined;
     this.done = this.cancelled;
     this.cancelled = undefined;
@@ -533,8 +533,8 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   }
 
   private runBracketOut(
-    bracketOut: BracketOut<Env, unknown, unknown, unknown>
-  ): ChannelState<Env, unknown> {
+    bracketOut: BracketOut<R, unknown, unknown, unknown>
+  ): ChannelState<R, unknown> {
     return ChannelState.Effect(
       Effect.uninterruptibleMask(({ restore }) =>
         restore(this.provide(bracketOut.acquire())).foldCauseEffect(
@@ -552,31 +552,31 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     );
   }
 
-  private provide<Env, OutErr, OutDone>(
-    effect: Effect<Env, OutErr, OutDone>,
+  private provide<R, OutErr, OutDone>(
+    effect: Effect<R, OutErr, OutDone>,
     __tsplusTrace?: string
-  ): Effect<Env, OutErr, OutDone> {
+  ): Effect<R, OutErr, OutDone> {
     return this.providedEnv == null
       ? effect
-      : effect.provideEnvironment(this.providedEnv as Env);
+      : effect.provideEnvironment(this.providedEnv as Env<R>);
   }
 
   private runEnsuring(
-    ensuring: Ensuring<Env, unknown, unknown, unknown, unknown, unknown, unknown>
+    ensuring: Ensuring<R, unknown, unknown, unknown, unknown, unknown, unknown>
   ): void {
     this.addFinalizer(ensuring.finalizer);
     this.currentChannel = ensuring.channel;
   }
 
-  private addFinalizer(f: ErasedFinalizer<Env>): void {
+  private addFinalizer(f: ErasedFinalizer<R>): void {
     this.doneStack = this.doneStack.prepend(new ContinuationFinalizer(f));
   }
 
   private runFinalizers(
-    finalizers: List<(exit: Exit<unknown, unknown>) => RIO<Env, unknown>>,
+    finalizers: List<(exit: Exit<unknown, unknown>) => RIO<R, unknown>>,
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
-  ): RIO<Env, unknown> | undefined {
+  ): RIO<R, unknown> | undefined {
     return finalizers.length() === 0
       ? undefined
       : Effect.forEach(finalizers, (f) => f(exit).exit())
@@ -592,7 +592,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
 
   private runSubexecutor(
     __tsplusTrace?: string
-  ): ChannelState<Env, unknown> | undefined {
+  ): ChannelState<R, unknown> | undefined {
     const subexecutor = this.activeSubexecutor!;
     concreteSubexecutor(subexecutor);
     switch (subexecutor._tag) {
@@ -618,15 +618,15 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
     }
   }
 
-  private replaceSubexecutor(nextSubExecutor: Subexecutor<Env>): void {
+  private replaceSubexecutor(nextSubExecutor: Subexecutor<R>): void {
     this.currentChannel = undefined;
     this.activeSubexecutor = nextSubExecutor;
   }
 
   private finishSubexecutorWithCloseEffect(
     subexecutorDone: Exit<unknown, unknown>,
-    ...closeFns: Array<(exit: Exit<unknown, unknown>) => RIO<Env, unknown> | undefined>
-  ): ChannelState<Env, unknown> | undefined {
+    ...closeFns: Array<(exit: Exit<unknown, unknown>) => RIO<R, unknown> | undefined>
+  ): ChannelState<R, unknown> | undefined {
     this.addFinalizer(() =>
       Effect.forEachDiscard(
         closeFns,
@@ -648,7 +648,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   finishWithExit(
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
-  ): Effect<Env, unknown, unknown> {
+  ): Effect<R, unknown, unknown> {
     const state = exit.fold(
       (cause) => this.doneHalt(cause),
       (a) => this.doneSucceed(a)
@@ -659,9 +659,9 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
 
   private applyUpstreamPullStrategy(
     upstreamFinished: boolean,
-    queue: ImmutableQueue<PullFromChild<Env> | undefined>,
+    queue: ImmutableQueue<PullFromChild<R> | undefined>,
     strategy: UpstreamPullStrategy<unknown>
-  ): Tuple<[Option<unknown>, ImmutableQueue<PullFromChild<Env> | undefined>]> {
+  ): Tuple<[Option<unknown>, ImmutableQueue<PullFromChild<R> | undefined>]> {
     switch (strategy._tag) {
       case "PullAfterNext": {
         return Tuple(
@@ -683,8 +683,8 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   }
 
   private performPullFromUpstream(
-    self: PullFromUpstream<Env>
-  ): ChannelState<Env, unknown> {
+    self: PullFromUpstream<R>
+  ): ChannelState<R, unknown> {
     return ChannelState.Read(
       self.upstreamExecutor,
       (effect) => {
@@ -814,8 +814,8 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   }
 
   private pullFromUpstream(
-    self: PullFromUpstream<Env>
-  ): ChannelState<Env, unknown> | undefined {
+    self: PullFromUpstream<R>
+  ): ChannelState<R, unknown> | undefined {
     return self.activeChildExecutors
       .dequeue()
       .fold(this.performPullFromUpstream(self), ({ tuple: [activeChild, rest] }) => {
@@ -828,7 +828,7 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
           self.combineWithChildResult,
           self.onPull,
           self.onEmit
-        ) as PullFromUpstream<Env>;
+        ) as PullFromUpstream<R>;
 
         if (activeChild == null) {
           return this.performPullFromUpstream(parentSubexecutor);
@@ -847,8 +847,8 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   }
 
   private drainChildExecutors(
-    self: DrainChildExecutors<Env>
-  ): ChannelState<Env, unknown> | undefined {
+    self: DrainChildExecutors<R>
+  ): ChannelState<R, unknown> | undefined {
     return self.activeChildExecutors.dequeue().fold(
       () => {
         const lastClose = this.closeLastSubstream;
@@ -913,10 +913,10 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   }
 
   private handleSubexecFailure(
-    childExecutor: ErasedExecutor<Env>,
-    parentSubexecutor: Subexecutor<Env>,
+    childExecutor: ErasedExecutor<R>,
+    parentSubexecutor: Subexecutor<R>,
     cause: Cause<unknown>
-  ): ChannelState<Env, unknown> | undefined {
+  ): ChannelState<R, unknown> | undefined {
     return this.finishSubexecutorWithCloseEffect(
       Exit.failCause(cause),
       (exit) => parentSubexecutor.close(exit),
@@ -925,8 +925,8 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   }
 
   private finishWithDoneValue(
-    childExecutor: ErasedExecutor<Env>,
-    parentSubexecutor: Subexecutor<Env>,
+    childExecutor: ErasedExecutor<R>,
+    parentSubexecutor: Subexecutor<R>,
     doneValue: unknown
   ): void {
     concreteSubexecutor(parentSubexecutor);
@@ -977,11 +977,11 @@ export class ChannelExecutor<Env, InErr, InElem, InDone, OutErr, OutElem, OutDon
   }
 
   private pullFromChild(
-    childExecutor: ErasedExecutor<Env>,
-    parentSubexecutor: Subexecutor<Env>,
+    childExecutor: ErasedExecutor<R>,
+    parentSubexecutor: Subexecutor<R>,
     onEmitted: (_: unknown) => ChildExecutorDecision,
-    self: PullFromChild<Env>
-  ): ChannelState<Env, unknown> {
+    self: PullFromChild<R>
+  ): ChannelState<R, unknown> {
     return ChannelState.Read(
       childExecutor,
       identity,

@@ -8,11 +8,11 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
  */
 export function provideEnvironment_<R, E, In, L, Z>(
   self: Sink<R, E, In, L, Z>,
-  r: LazyArg<R>,
+  env: LazyArg<Env<R>>,
   __tsplusTrace?: string
 ): Sink<unknown, E, In, L, Z> {
   concreteSink(self);
-  return new SinkInternal(self.channel.provideEnvironment(r));
+  return new SinkInternal(self.channel.provideEnvironment(env));
 }
 
 /**

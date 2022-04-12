@@ -1,5 +1,3 @@
-import { LiveClock } from "@effect/core/io/Clock/live";
-
 /**
  * Returns an effect that accesses the runtime, which can be used to
  * (unsafely) execute tasks. This is useful for integration with legacy code
@@ -13,16 +11,6 @@ export function runtime<R>(__tsplusTrace?: string): RIO<R, Runtime<R>> {
     __tsplusTrace
   );
 }
-
-export type DefaultEnv = HasClock & HasRandom;
-
-/**
- * @tsplus static ets/Effect/Ops defaultEnv
- */
-export const defaultEnv: DefaultEnv = {
-  [HasClock.identifier]: new LiveClock(),
-  [HasRandom.identifier]: Random.default
-} as any;
 
 /**
  * @tsplus static ets/Effect/Ops defaultRuntimeConfig
@@ -40,7 +28,7 @@ export const defaultRuntimeConfig: RuntimeConfig = RuntimeConfig({
   maxOp: 2048
 });
 
-export const defaultRuntime = new Runtime(defaultEnv, defaultRuntimeConfig);
+export const defaultRuntime = new Runtime(Env(), defaultRuntimeConfig);
 
 /**
  * @tsplus fluent ets/Effect defaultRun

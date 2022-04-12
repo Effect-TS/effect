@@ -1,42 +1,54 @@
+import { RandomSym } from "@effect/core/io/Random/definition";
+
+/**
+ * @tsplus static ets/Random/Ops default
+ */
+export const defaultRandom = LazyValue.make(() => new LiveRandom((Math.random() * 4294967296) >>> 0));
+
 /**
  * @tsplus static ets/Random/Ops live
  */
-export function live(seed: number): Random {
-  const PRNG = new RandomPCG(seed);
+export const live = Layer.fromValue(Random.Tag)(defaultRandom.value);
 
-  const next: UIO<number> = Effect.succeed(() => PRNG.number());
+export class LiveRandom implements Random {
+  readonly [RandomSym]: RandomSym = RandomSym;
 
-  const nextBoolean: UIO<boolean> = next.flatMap((n) => Effect.succeed(n > 0.5));
+  readonly PRNG: RandomPCG;
 
-  const nextInt: UIO<number> = Effect.succeed(() => PRNG.integer(0));
-
-  function nextRange(low: number, high: number, __tsplusTrace?: string): UIO<number> {
-    return next.flatMap((n) => Effect.succeed((high - low) * n + low));
+  constructor(readonly seed: number) {
+    this.PRNG = new RandomPCG(seed);
   }
 
-  function nextIntBetween(
+  get next(): UIO<number> {
+    return Effect.succeed(this.PRNG.number());
+  }
+
+  get nextBoolean(): UIO<boolean> {
+    return this.next.flatMap((n) => Effect.succeed(n > 0.5));
+  }
+
+  get nextInt(): UIO<number> {
+    return Effect.succeed(this.PRNG.integer(0));
+  }
+
+  nextRange(low: number, high: number, __tsplusTrace?: string): UIO<number> {
+    return this.next.flatMap((n) => Effect.succeed((high - low) * n + low));
+  }
+
+  nextIntBetween(
     low: number,
     high: number,
     __tsplusTrace?: string
   ): UIO<number> {
-    return Effect.succeed(() => PRNG.integer(1 + high - low) + low);
+    return Effect.succeed(() => this.PRNG.integer(1 + high - low) + low);
   }
 
-  function shuffle<A>(
+  shuffle<A>(
     collection: LazyArg<Collection<A>>,
     __tsplusTrace?: string
   ): UIO<Collection<A>> {
-    return shuffleWith(collection, (n) => nextIntBetween(0, n));
+    return shuffleWith(collection, (n) => this.nextIntBetween(0, n));
   }
-
-  return {
-    next,
-    nextBoolean,
-    nextInt,
-    nextRange,
-    nextIntBetween,
-    shuffle
-  };
 }
 
 function shuffleWith<A>(
@@ -45,13 +57,13 @@ function shuffleWith<A>(
   __tsplusTrace?: string
 ): UIO<Collection<A>> {
   return Effect.suspendSucceed(() => {
-    const Collection0 = Collection();
+    const collection0 = collection();
 
     return Effect.Do()
       .bind("buffer", () =>
         Effect.succeed(() => {
           const buffer: Array<A> = [];
-          for (const element of Collection0) {
+          for (const element of collection0) {
             buffer.push(element);
           }
           return buffer;

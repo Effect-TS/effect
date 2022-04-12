@@ -18,8 +18,12 @@ export interface TestLogger<Message, Output> extends Logger<Message, Output> {
 /**
  * @tsplus type ets/TestLogger/Ops
  */
-export interface TestLoggerOps {}
-export const TestLogger: TestLoggerOps = {};
+export interface TestLoggerOps {
+  Tag: Service.Tag<TestLogger<string, void>>;
+}
+export const TestLogger: TestLoggerOps = {
+  Tag: Tag<TestLogger<string, void>>()
+};
 
 /**
  * @tsplus unify ets/Logger
@@ -32,10 +36,6 @@ export function unifyLogger<X extends TestLogger<any, any>>(
 > {
   return self;
 }
-
-export const HasTestLogger = Service<TestLogger<string, void>>(TestLoggerId);
-
-export type HasTestLogger = Has<TestLogger<string, void>>;
 
 /**
  * @tsplus static ets/TestLogger/Ops isTestLogger
@@ -117,15 +117,17 @@ export const makeTestLogger: UIO<TestLogger<string, void>> = Effect.succeed(() =
  *
  * @tsplus static ets/TestLogger/Ops default
  */
-export const defaultTestLogger: Layer<unknown, never, any> = Layer.scopedRaw(
+export const defaultTestLogger: Layer<unknown, never, Has<TestLogger<string, void>>> = Layer.scoped(TestLogger.Tag)(
   Effect.Do()
     .bind("runtimeConfig", () => Effect.runtimeConfig)
     .bind("testLogger", () => makeTestLogger)
-    .flatMap(({ runtimeConfig, testLogger }) =>
+    .bindValue("acquire", ({ runtimeConfig, testLogger }) =>
       Effect.setRuntimeConfig(
         RuntimeConfig({ ...runtimeConfig.value, logger: testLogger })
-      )
-    )
+      ))
+    .bindValue("release", ({ runtimeConfig }) => Effect.setRuntimeConfig(runtimeConfig))
+    .tap(({ acquire, release }) => Effect.acquireRelease(acquire, () => release))
+    .map(({ testLogger }) => testLogger)
 );
 
 /**

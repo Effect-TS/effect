@@ -5,40 +5,36 @@ describe.concurrent("Layer", () => {
         constructor(readonly value: number) {}
       }
 
-      const AId = Symbol();
+      const ConfigTag = Tag<Config>();
 
       class A {
         constructor(readonly value: number) {}
       }
 
-      const ATag = Service<A>(AId);
+      const ATag = Tag<A>();
 
-      const aLayer = Layer.fromFunction(ATag)((_: Config) => new A(_.value));
-
-      const BId = Symbol();
+      const aLayer = Layer.fromFunction(ConfigTag, ATag)((_: Config) => new A(_.value));
 
       class B {
         constructor(readonly value: number) {}
       }
 
-      const BTag = Service<B>(BId);
+      const BTag = Tag<B>();
 
-      const bLayer = Layer.fromFunction(BTag)((_: Has<A>) => new B(ATag.get(_).value));
-
-      const CId = Symbol();
+      const bLayer = Layer.fromFunction(ATag, BTag)((_: A) => new B(_.value));
 
       class C {
         constructor(readonly value: number) {}
       }
 
-      const CTag = Service<C>(CId);
+      const CTag = Tag<C>();
 
-      const cLayer = Layer.fromFunction(CTag)((_: Has<A>) => new C(ATag.get(_).value));
+      const cLayer = Layer.fromFunction(ATag, CTag)((_: A) => new C(_.value));
 
-      const fedB = (Layer.succeed(new Config(1)) >> aLayer) >> bLayer;
-      const fedC = (Layer.succeed(new Config(2)) >> aLayer) >> cLayer;
+      const fedB = (Layer.succeed(ConfigTag)(new Config(1)) >> aLayer) >> bLayer;
+      const fedC = (Layer.succeed(ConfigTag)(new Config(2)) >> aLayer) >> cLayer;
 
-      const program = Effect.scoped((fedB + fedC).build()).map((_) => Tuple(BTag.get(_), CTag.get(_)));
+      const program = Effect.scoped((fedB + fedC).build()).map((env) => Tuple(env.get(BTag), env.get(CTag)));
 
       const result = await program.unsafeRunPromise();
 

@@ -1,7 +1,4 @@
 // TODO(Mike/Max): move this to `@effect/test`
-export const TestConsoleId = Symbol.for("@effect/core/test/TestConsole");
-export type TestConsoleId = typeof TestConsoleId;
-
 export interface TestConsole {
   /**
    * Writes the specified string to the output buffer.
@@ -78,9 +75,15 @@ export interface TestConsole {
   readonly save: (__tsplusTrace?: string) => UIO<UIO<void>>;
 }
 
-export const TestConsole = Service<TestConsole>(TestConsoleId);
-
-export type HasTestConsole = Has<TestConsole>;
+/**
+ * @tsplus type ets/TestConsole/Ops
+ */
+export interface TestConsoleOps {
+  readonly Tag: Tag<TestConsole>;
+}
+export const TestConsole: TestConsoleOps = {
+  Tag: Tag<TestConsole>()
+};
 
 export class TestConsoleError {
   constructor(readonly message: string) {}
@@ -147,8 +150,8 @@ export function makeTestConsole(
 export function print(
   line: any,
   __tsplusTrace?: string
-): Effect<HasTestConsole, TestConsoleError, void> {
-  return Effect.serviceWithEffect(TestConsole)((_) => _.print(line));
+): Effect<Has<TestConsole>, TestConsoleError, void> {
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.print(line));
 }
 
 /**
@@ -157,8 +160,8 @@ export function print(
 export function printError(
   line: any,
   __tsplusTrace?: string
-): Effect<HasTestConsole, TestConsoleError, void> {
-  return Effect.serviceWithEffect(TestConsole)((_) => _.printError(line));
+): Effect<Has<TestConsole>, TestConsoleError, void> {
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.printError(line));
 }
 
 /**
@@ -168,8 +171,8 @@ export function printError(
 export function printLine(
   line: any,
   __tsplusTrace?: string
-): Effect<HasTestConsole, TestConsoleError, void> {
-  return Effect.serviceWithEffect(TestConsole)((_) => _.printLine(line));
+): Effect<Has<TestConsole>, TestConsoleError, void> {
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.printLine(line));
 }
 
 /**
@@ -179,8 +182,8 @@ export function printLine(
 export function printLineError(
   line: any,
   __tsplusTrace?: string
-): Effect<HasTestConsole, TestConsoleError, void> {
-  return Effect.serviceWithEffect(TestConsole)((_) => _.printLineError(line));
+): Effect<Has<TestConsole>, TestConsoleError, void> {
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.printLineError(line));
 }
 
 /**
@@ -189,8 +192,8 @@ export function printLineError(
  */
 export function readLine(
   __tsplusTrace?: string
-): Effect<HasTestConsole, TestConsoleError, void> {
-  return Effect.serviceWithEffect(TestConsole)((_) => _.readLine());
+): Effect<Has<TestConsole>, TestConsoleError, void> {
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.readLine());
 }
 
 /**
@@ -201,36 +204,36 @@ export function readLine(
 export function feedLines(
   lines: ImmutableArray<string>,
   __tsplusTrace?: string
-): RIO<HasTestConsole, void> {
-  return Effect.serviceWithEffect(TestConsole)((_) => _.feedLines(lines));
+): RIO<Has<TestConsole>, void> {
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.feedLines(lines));
 }
 
 /**
  * Takes the first value from the input buffer, if one exists, or else fails
  * with an `EOFException`.
  */
-export function output(__tsplusTrace?: string): RIO<HasTestConsole, ImmutableArray<string>> {
-  return Effect.serviceWithEffect(TestConsole)((_) => _.output());
+export function output(__tsplusTrace?: string): RIO<Has<TestConsole>, ImmutableArray<string>> {
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.output());
 }
 
 /**
  * Returns the contents of the error output buffer. The first value written
  * to the error output buffer will be the first in the sequence.
  */
-export function outputError(__tsplusTrace?: string): RIO<HasTestConsole, void> {
-  return Effect.serviceWithEffect(TestConsole)((_) => _.outputError());
+export function outputError(__tsplusTrace?: string): RIO<Has<TestConsole>, void> {
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.outputError());
 }
 
 /**
  * Clears the contents of the input buffer.
  */
-export function clearInput(__tsplusTrace?: string): RIO<HasTestConsole, void> {
-  return Effect.serviceWithEffect(TestConsole)((_) => _.clearInput());
+export function clearInput(__tsplusTrace?: string): RIO<Has<TestConsole>, void> {
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.clearInput());
 }
 
 /**
  * Clears the contents of the output buffer.
  */
-export function clearOutput(__tsplusTrace?: string): RIO<HasTestConsole, void> {
-  return Effect.serviceWithEffect(TestConsole)((_) => _.clearOutput());
+export function clearOutput(__tsplusTrace?: string): RIO<Has<TestConsole>, void> {
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.clearOutput());
 }

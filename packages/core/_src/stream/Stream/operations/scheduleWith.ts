@@ -14,14 +14,14 @@ export function scheduleWith_<R, E, A, S, R2, B, C>(
   f: (a: A) => C,
   g: (b: B) => C,
   __tsplusTrace?: string
-): Stream<R & HasClock, E, C>;
+): Stream<R, E, C>;
 export function scheduleWith_<R, E, A, R2, B, C>(
   self: Stream<R, E, A>,
   schedule: LazyArg<Schedule<R2, A, B>>,
   f: (a: A) => C,
   g: (b: B) => C,
   __tsplusTrace?: string
-): Stream<R & R2 & HasClock, E, C> {
+): Stream<R & R2, E, C> {
   concreteStream(self);
   return new StreamInternal(
     Channel.fromEffect(schedule().driver()).flatMap(

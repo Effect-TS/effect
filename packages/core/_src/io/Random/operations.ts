@@ -1,5 +1,4 @@
 // codegen:start {preset: barrel, include: ./operations/*.ts, prefix: "@effect/core/io/Random"}
-export * from "@effect/core/io/Random/operations/default";
 export * from "@effect/core/io/Random/operations/live";
 export * from "@effect/core/io/Random/operations/next";
 export * from "@effect/core/io/Random/operations/nextBoolean";

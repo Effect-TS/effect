@@ -4,8 +4,8 @@
  * @tsplus static ets/Channel/Ops environmentWithChannel
  */
 export function environmentWithChannel<
-  Env,
-  Env1,
+  R,
+  R1,
   InErr,
   InElem,
   InDone,
@@ -13,7 +13,7 @@ export function environmentWithChannel<
   OutElem,
   OutDone
 >(
-  f: (env: Env) => Channel<Env1, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-): Channel<Env & Env1, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  return Channel.environment<Env>().flatMap(f);
+  f: (env: Env<R>) => Channel<R1, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+): Channel<R & R1, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+  return Channel.environment<R>().flatMap(f);
 }

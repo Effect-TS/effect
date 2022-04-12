@@ -50,11 +50,11 @@ describe("Channel", () => {
         .bind("v1", () => Channel.fromEffect(Effect.service(NumberService)))
         .bind("v2", () =>
           Channel.fromEffect(Effect.service(NumberService)).provideEnvironment(
-            NumberService({ n: 2 })
+            Env().add(NumberService, { n: 2 })
           ))
         .bind("v3", () => Channel.fromEffect(Effect.service(NumberService)))
         .runDrain()
-        .provideEnvironment(NumberService({ n: 4 }));
+        .provideEnvironment(Env().add(NumberService, { n: 4 }));
 
       const { v1, v2, v3 } = await program.unsafeRunPromise();
 

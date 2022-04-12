@@ -8,11 +8,11 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  */
 export function provideEnvironment_<R, E, A>(
   self: Stream<R, E, A>,
-  r: LazyArg<R>,
+  env: LazyArg<Env<R>>,
   __tsplusTrace?: string
 ): Stream<unknown, E, A> {
   concreteStream(self);
-  return new StreamInternal(self.channel.provideEnvironment(r));
+  return new StreamInternal(self.channel.provideEnvironment(env));
 }
 
 /**

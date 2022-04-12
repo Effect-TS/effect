@@ -28,13 +28,13 @@ export function aggregateAsyncWithinEither_<R, E, A, R2, E2, A2, S, R3, B, C>(
   sink: LazyArg<Sink<R2, E2, A | A2, A2, B>>,
   schedule: LazyArg<Schedule.WithState<S, R3, Option<B>, C>>,
   __tsplusTrace?: string
-): Stream<R & R2 & R3 & HasClock, E | E2, Either<C, B>>;
+): Stream<R & R2 & R3, E | E2, Either<C, B>>;
 export function aggregateAsyncWithinEither_<R, E, A, R2, E2, A2, R3, B, C>(
   self: Stream<R, E, A>,
   sink: LazyArg<Sink<R2, E | E2, A | A2, A2, B>>,
   schedule: LazyArg<Schedule<R3, Option<B>, C>>,
   __tsplusTrace?: string
-): Stream<R & R2 & R3 & HasClock, E | E2, Either<C, B>> {
+): Stream<R & R2 & R3, E | E2, Either<C, B>> {
   type EndReason = SinkEndReason<C>;
   type Signal = HandoffSignal<C, E | E2, A>;
 
@@ -140,7 +140,7 @@ function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
   lastB: Option<B>,
   __tsplusTrace?: string
 ): Channel<
-  R2 & R3 & HasClock,
+  R2 & R3,
   unknown,
   unknown,
   unknown,

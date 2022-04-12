@@ -6,12 +6,12 @@
  */
 export function provideService_<R, E, A, T>(
   self: Effect<R & Has<T>, E, A>,
-  service: Service<T>
+  tag: Tag<T>
 ) {
   return (
     resource: LazyArg<T>,
     __tsplusTrace?: string
-  ): Effect<Erase<R & Has<T>, Has<T>>, E, A> => self.provideServiceEffect(service)(Effect.succeed(resource));
+  ): Effect<Erase<R & Has<T>, Has<T>>, E, A> => self.provideServiceEffect(tag)(Effect.succeed(resource));
 }
 
 /**

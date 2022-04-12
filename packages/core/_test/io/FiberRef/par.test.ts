@@ -3,7 +3,7 @@ const update = "update";
 const update1 = "update1";
 const update2 = "update2";
 
-const loseTimeAndCpu: Effect<HasClock, never, void> = (
+const loseTimeAndCpu: UIO<void> = (
   Effect.yieldNow < Clock.sleep((1).millis)
 ).repeatN(100);
 
@@ -24,7 +24,7 @@ describe.concurrent("FiberRef", () => {
         .tap(({ loser, winner }) => winner.zipPar(loser))
         .flatMap(({ fiberRef }) => fiberRef.get());
 
-      const value = await program.unsafeRunPromise();
+      const value = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(value, update2);
     });
@@ -38,7 +38,7 @@ describe.concurrent("FiberRef", () => {
         .tap(({ failure1, failure2, success }) => success.zipPar(failure1.zipPar(failure2)).orElse(Effect.unit))
         .flatMap(({ fiberRef }) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.isTrue(result.includes(initial));
     });
@@ -51,12 +51,12 @@ describe.concurrent("FiberRef", () => {
         () => 0,
         (x, y) => x + y
       )
-        .tap((fiberRef) => Effect.collectAllPar(Chunk.fill(100000, () => fiberRef.update((n) => n + 1))))
+        .tap((fiberRef) => Effect.collectAllPar(Chunk.fill(10000, () => fiberRef.update((n) => n + 1))))
         .flatMap((fiberRef) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
-      assert.strictEqual(result, 100000);
+      assert.strictEqual(result, 10000);
     });
   });
 });

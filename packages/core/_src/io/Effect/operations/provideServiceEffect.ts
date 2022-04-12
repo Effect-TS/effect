@@ -6,14 +6,14 @@
  */
 export function provideServiceEffect_<R, E, A, T>(
   self: Effect<R & Has<T>, E, A>,
-  service: Service<T>
+  tag: Tag<T>
 ) {
   return <R1, E1>(
     effect: Effect<R1, E1, T>,
     __tsplusTrace?: string
   ): Effect<R1 & Erase<R, Has<T>>, E | E1, A> =>
-    Effect.environmentWithEffect((r: R & R1) =>
-      effect.flatMap((t) => self.provideEnvironment({ ...r, ...service(t) }))
+    Effect.environmentWithEffect((env: Env<R & R1>) =>
+      effect.flatMap((service) => self.provideEnvironment(env.add(tag, service)))
     );
 }
 

@@ -8,9 +8,8 @@ export function make<A>(
   fork: (a: A) => A = identity,
   join: (left: A, right: A) => A = (_, a) => a,
   __tsplusTrace?: string
-): UIO<FiberRef<A>> {
-  return Effect.suspendSucceed(() => {
-    const ref = FiberRef.unsafeMake(initial, fork, join);
-    return ref.update(identity).as(ref);
-  });
+): Effect<Has<Scope>, never, FiberRef<A>> {
+  return FiberRef.makeWith(
+    FiberRef.unsafeMake(initial, fork, join)
+  );
 }

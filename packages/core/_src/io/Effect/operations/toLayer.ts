@@ -5,9 +5,9 @@
  */
 export function toLayer_<R, E, A>(
   self: Effect<R, E, A>,
-  service: Service<A>
+  tag: Tag<A>
 ): Layer<R, E, Has<A>> {
-  return Layer.fromEffect(service)(self);
+  return Layer.fromEffect(tag)(self);
 }
 
 /**
@@ -15,6 +15,6 @@ export function toLayer_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects toLayer
  */
-export function toLayer<A>(service: Service<A>) {
-  return <R, E>(self: Effect<R, E, A>): Layer<R, E, Has<A>> => self.toLayer(service);
+export function toLayer<A>(tag: Tag<A>) {
+  return <R, E>(self: Effect<R, E, A>): Layer<R, E, Has<A>> => self.toLayer(tag);
 }

@@ -6,11 +6,13 @@
  */
 export function provideEnvironment_<R, E, A>(
   self: Effect<R, E, A>,
-  environment: R,
+  environment: LazyArg<Env<R>>,
   __tsplusTrace?: string
 ): IO<E, A> {
-  return (self as IO<E, A>).apply(
-    FiberRef.currentEnvironment.value.locally(environment)
+  return Effect.succeed(environment).flatMap((env) =>
+    (self as IO<E, A>).apply(
+      FiberRef.currentEnvironment.value.locally(env)
+    )
   );
 }
 

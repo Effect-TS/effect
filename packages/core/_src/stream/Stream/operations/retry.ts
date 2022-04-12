@@ -15,7 +15,7 @@ export function retry_<R, E, A, S, R2, Z>(
   self: Stream<R, E, A>,
   schedule: LazyArg<Schedule.WithState<S, R2, E, Z>>,
   __tsplusTrace?: string
-): Stream<R & R2 & HasClock, E, A> {
+): Stream<R & R2, E, A> {
   return Stream.unwrap(
     schedule()
       .driver()

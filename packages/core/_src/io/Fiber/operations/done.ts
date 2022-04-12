@@ -12,7 +12,6 @@ export function done<E, A>(exit: Exit<E, A>): Fiber<E, A> {
     children: Effect.succeedNow(Chunk.empty()),
     inheritRefs: Effect.unit,
     poll: Effect.succeedNow(Option.some(exit)),
-    getRef: (ref) => Effect.succeed(() => ref.initialValue()),
     interruptAs: () => Effect.succeedNow(exit)
   });
 }

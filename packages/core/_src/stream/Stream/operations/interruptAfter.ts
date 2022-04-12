@@ -8,7 +8,7 @@ export function interruptAfter_<R, E, A>(
   self: Stream<R, E, A>,
   duration: LazyArg<Duration>,
   __tsplusTrace?: string
-): Stream<R & HasClock, E, A> {
+): Stream<R, E, A> {
   return self.interruptWhen(Effect.sleep(duration));
 }
 

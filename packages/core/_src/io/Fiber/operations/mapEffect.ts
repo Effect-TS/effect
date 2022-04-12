@@ -22,7 +22,6 @@ export function mapEffect_<E, E1, A, B>(
         (exit) => exit.forEach(f).map(Option.some)
       )
     ),
-    getRef: (ref) => self.getRef(ref),
     interruptAs: (id) => self.interruptAs(id).flatMap((exit) => exit.forEach(f))
   });
 }

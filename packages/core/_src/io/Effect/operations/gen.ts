@@ -1,8 +1,6 @@
 /**
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
-import { isEither, isOption, isService } from "@effect/core/data/Utils";
-
 export const _GenR = Symbol.for("@effect/core/io/Effect/Gen/R");
 export type _GenR = typeof _GenR;
 
@@ -25,13 +23,13 @@ export class GenEffect<R, E, A> {
 }
 
 function adapter(_: any, __?: any, ___?: any) {
-  if (isEither(_)) {
+  if (Either.isEither(_)) {
     return new GenEffect(
       Effect.fromEither(() => _),
       __
     );
   }
-  if (isOption(_)) {
+  if (Option.isOption(_)) {
     if (__ && typeof __ === "function") {
       return new GenEffect(
         _._tag === "None" ? Effect.fail(() => __()) : Effect.succeed(() => _.value),
@@ -40,14 +38,14 @@ function adapter(_: any, __?: any, ___?: any) {
     }
     return new GenEffect(Effect.getOrFail(_), __);
   }
-  if (isService(_)) {
+  if (Tag.is(_)) {
     return new GenEffect(Effect.service(_), __);
   }
   return new GenEffect(_, __);
 }
 
 export interface Adapter {
-  <A>(_: Service<A>, __tsplusTrace?: string): GenEffect<Has<A>, never, A>;
+  <A>(_: Tag<A>, __tsplusTrace?: string): GenEffect<Has<A>, never, A>;
   <E, A>(_: Option<A>, onNone: () => E, __tsplusTrace?: string): GenEffect<
     unknown,
     E,

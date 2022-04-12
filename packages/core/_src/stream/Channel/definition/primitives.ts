@@ -335,7 +335,7 @@ export class BracketOut<R, E, Z, OutDone> extends ChannelBase<
 // -----------------------------------------------------------------------------
 
 export class Provide<
-  Env,
+  R,
   InErr,
   InElem,
   InDone,
@@ -345,8 +345,8 @@ export class Provide<
 > extends ChannelBase<unknown, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
   readonly _tag = "Provide";
   constructor(
-    readonly env: Lazy<Env>,
-    readonly channel: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+    readonly env: Lazy<Env<R>>,
+    readonly channel: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) {
     super();
   }

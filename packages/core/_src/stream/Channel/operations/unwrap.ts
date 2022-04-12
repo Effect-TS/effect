@@ -3,10 +3,10 @@
  *
  * @tsplus static ets/Channel/Ops unwrap
  */
-export function unwrap<R, E, Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
+export function unwrap<R, E, R2, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   channel: LazyArg<
-    Effect<R, E, Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
+    Effect<R, E, Channel<R2, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
   >
-): Channel<R & Env, InErr, InElem, InDone, E | OutErr, OutElem, OutDone> {
+): Channel<R & R2, InErr, InElem, InDone, E | OutErr, OutElem, OutDone> {
   return Channel.fromEffect(channel).flatten();
 }

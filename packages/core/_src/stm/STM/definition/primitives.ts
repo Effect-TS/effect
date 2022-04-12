@@ -4,7 +4,7 @@ import type { Journal } from "@effect/core/stm/STM/Journal";
 export class STMEffect<R, E, A> extends STMBase<R, E, A> {
   readonly _tag = "STMEffect";
 
-  constructor(readonly f: (journal: Journal, fiberId: FiberId, environment: R) => A) {
+  constructor(readonly f: (journal: Journal, fiberId: FiberId, environment: Env<R>) => A) {
     super();
   }
 }
@@ -42,7 +42,7 @@ export class STMOnSuccess<R, E, A, B> extends STMBase<R, E, B> {
 export class STMProvide<R0, R, E, A> extends STMBase<R, E, A> {
   readonly _tag = "STMProvide";
 
-  constructor(readonly stm: STM<R0, E, A>, readonly f: (r: R) => R0) {
+  constructor(readonly stm: STM<R0, E, A>, readonly f: (env: Env<R>) => Env<R0>) {
     super();
   }
 }

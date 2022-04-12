@@ -7,6 +7,6 @@
 export function sleep(
   duration: LazyArg<Duration>,
   __tsplusTrace?: string
-): RIO<HasClock, void> {
-  return Effect.serviceWithEffect(HasClock)((_) => _.sleep(duration));
+): UIO<void> {
+  return Clock.sleep(duration);
 }

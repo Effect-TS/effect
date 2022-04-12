@@ -11,7 +11,7 @@ export function haltAfter_<R, E, A>(
   self: Stream<R, E, A>,
   duration: LazyArg<Duration>,
   __tsplusTrace?: string
-): Stream<R & HasClock, E, A> {
+): Stream<R, E, A> {
   return self.haltWhen(Effect.sleep(duration));
 }
 

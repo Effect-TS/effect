@@ -1,5 +1,3 @@
-import { FiberRefInternal } from "@effect/core/io/FiberRef/operations/_internal/FiberRefInternal";
-
 /**
  * @tsplus static ets/FiberRef/Ops unsafeMake
  */
@@ -8,5 +6,11 @@ export function unsafeMake<A>(
   fork: (a: A) => A = identity,
   join: (left: A, right: A) => A = (_, a) => a
 ): FiberRef<A> {
-  return new FiberRefInternal(initial, fork, join);
+  return FiberRef.unsafeMakePatch<A, (a: A) => A>(
+    initial,
+    (_, newValue) => () => newValue,
+    (first, second) => (value) => second(first(value)),
+    (patch) => (value) => join(value, patch(value)),
+    fork
+  );
 }

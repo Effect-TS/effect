@@ -9,7 +9,7 @@ export function timeoutFailCause_<R, E, E1, A>(
   cause: LazyArg<Cause<E1>>,
   duration: LazyArg<Duration>,
   __tsplusTrace?: string
-): Effect<R & HasClock, E | E1, A> {
+): Effect<R, E | E1, A> {
   return self.timeoutTo(Effect.failCause(cause), Effect.succeedNow, duration).flatten();
 }
 

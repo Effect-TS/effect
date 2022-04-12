@@ -15,7 +15,7 @@ export function timeoutTo_<R, E, A, B, B1>(
   f: (a: A) => B,
   duration: LazyArg<Duration>,
   __tsplusTrace?: string
-): Effect<R & HasClock, E, B | B1> {
+): Effect<R, E, B | B1> {
   return self.map(f).raceFirst(
     Effect.sleep(duration)
       .interruptible()

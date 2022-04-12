@@ -1,27 +1,25 @@
 describe.concurrent("Layer", () => {
   describe.concurrent("passthrough", () => {
     it("passes the inputs through to the next layer", async () => {
-      const NumberServiceId = Symbol();
       interface NumberService {
         readonly value: number;
       }
-      const NumberService = Service<NumberService>(NumberServiceId);
+      const NumberTag = Tag<NumberService>();
 
-      const ToStringServiceId = Symbol();
       interface ToStringService {
         readonly value: string;
       }
-      const ToStringService = Service<ToStringService>(ToStringServiceId);
+      const ToStringTag = Tag<ToStringService>();
 
-      const layer = Layer.fromFunction(ToStringService)((_: Has<NumberService>) => ({
-        value: NumberService.get(_).value.toString()
+      const layer = Layer.fromFunction(NumberTag, ToStringTag)((_: NumberService) => ({
+        value: _.value.toString()
       }));
 
-      const live = Layer.fromValue(NumberService)({ value: 1 }) >> layer.passthrough();
+      const live = Layer.fromValue(NumberTag)({ value: 1 }) >> layer.passthrough();
 
       const program = Effect.Do()
-        .bind("i", () => Effect.service(NumberService))
-        .bind("s", () => Effect.service(ToStringService))
+        .bind("i", () => Effect.service(NumberTag))
+        .bind("s", () => Effect.service(ToStringTag))
         .provideLayer(live);
 
       const { i, s } = await program.unsafeRunPromise();

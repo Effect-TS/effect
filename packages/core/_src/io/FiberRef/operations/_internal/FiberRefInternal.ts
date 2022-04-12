@@ -1,19 +1,22 @@
-import { _A, FiberRefSym } from "@effect/core/io/FiberRef/definition";
+import { _Patch, _Value, FiberRefSym } from "@effect/core/io/FiberRef/definition";
 
-export class FiberRefInternal<A> implements FiberRef<A> {
+export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value, Patch> {
   readonly [FiberRefSym]: FiberRefSym = FiberRefSym;
-  readonly [_A]!: () => A;
+  readonly [_Value]!: () => Value;
+  readonly [_Patch]!: Patch;
 
   constructor(
-    readonly _initial: A,
-    readonly _fork: (a: A) => A,
-    readonly _join: (left: A, right: A) => A
+    readonly _initial: Value,
+    readonly _diff: (oldValue: Value, newValue: Value) => Patch,
+    readonly _combine: (first: Patch, second: Patch) => Patch,
+    readonly _patch: (patch: Patch) => (oldValue: Value) => Value,
+    readonly _fork: Patch
   ) {}
 }
 
 /**
  * @tsplus macro remove
  */
-export function concreteFiberRef<A>(_: FiberRef<A>): asserts _ is FiberRefInternal<A> {
+export function concreteFiberRef<Value>(_: FiberRef<Value>): asserts _ is FiberRefInternal<Value, unknown> {
   //
 }

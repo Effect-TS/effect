@@ -13,7 +13,7 @@ describe.concurrent("Fiber", () => {
         .tap(({ child }) => child.map(constVoid).inheritRefs())
         .flatMap(({ fiberRef }) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(result, update);
     });
@@ -29,7 +29,7 @@ describe.concurrent("Fiber", () => {
         .tap(({ child1, child2 }) => (child1 | child2).inheritRefs())
         .flatMap(({ fiberRef }) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(result, "child1");
     });
@@ -45,7 +45,7 @@ describe.concurrent("Fiber", () => {
         .tap(({ child1, child2 }) => child1.zip(child2).inheritRefs())
         .flatMap(({ fiberRef }) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(result, "child1");
     });

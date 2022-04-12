@@ -156,10 +156,10 @@ export function tryCommit<R, E, A>(
   fiberId: FiberId,
   stm: STM<R, E, A>,
   state: AtomicReference<State<E, A>>,
-  r: R
+  env: Env<R>
 ): TryCommit<E, A> {
   const journal: Journal = new Map();
-  const value = new STMDriver(stm, journal, fiberId, r).run();
+  const value = new STMDriver(stm, journal, fiberId, env).run();
   const analysis = analyzeJournal(journal);
 
   if (analysis === "RW") {
@@ -191,10 +191,10 @@ export function tryCommit<R, E, A>(
 export function tryCommitSync<R, E, A>(
   fiberId: FiberId,
   stm: STM<R, E, A>,
-  r: R
+  env: Env<R>
 ): TryCommit<E, A> {
   const journal: Journal = new Map();
-  const value = new STMDriver(stm, journal, fiberId, r).run();
+  const value = new STMDriver(stm, journal, fiberId, env).run();
   const analysis = analyzeJournal(journal);
 
   if (analysis === "RW" && value._tag === "Succeed") {
@@ -234,16 +234,16 @@ function suspendTryCommit<R, E, A>(
   stm: STM<R, E, A>,
   txnId: TxnId,
   state: AtomicReference<State<E, A>>,
-  r: R,
+  env: Env<R>,
   k: (_: Effect<R, E, A>) => unknown,
   accum: Journal,
   journal: Journal
 ) {
   // eslint-disable-next-line no-constant-condition
   while (1) {
-    addTodo(txnId, journal, () => tryCommitAsync(undefined, fiberId, stm, txnId, state, r)(k));
+    addTodo(txnId, journal, () => tryCommitAsync(undefined, fiberId, stm, txnId, state, env)(k));
     if (isInvalid(journal)) {
-      const v = tryCommit(fiberId, stm, state, r);
+      const v = tryCommit(fiberId, stm, state, env);
       switch (v._tag) {
         case "Done": {
           completeTryCommit(v.exit, k);
@@ -272,24 +272,24 @@ export function tryCommitAsync<R, E, A>(
   stm: STM<R, E, A>,
   txnId: TxnId,
   state: AtomicReference<State<E, A>>,
-  r: R
+  env: Env<R>
 ) {
   return (k: (_: Effect<R, E, A>) => unknown) => {
     if (state.get.isRunning()) {
       if (journal == null) {
-        const v = tryCommit(fiberId, stm, state, r);
+        const v = tryCommit(fiberId, stm, state, env);
         switch (v._tag) {
           case "Done": {
             completeTryCommit(v.exit, k);
             break;
           }
           case "Suspend": {
-            suspendTryCommit(fiberId, stm, txnId, state, r, k, v.journal, v.journal);
+            suspendTryCommit(fiberId, stm, txnId, state, env, k, v.journal, v.journal);
             break;
           }
         }
       } else {
-        suspendTryCommit(fiberId, stm, txnId, state, r, k, journal, journal);
+        suspendTryCommit(fiberId, stm, txnId, state, env, k, journal, journal);
       }
     }
   };

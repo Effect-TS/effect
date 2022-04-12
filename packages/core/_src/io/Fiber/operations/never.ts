@@ -11,6 +11,5 @@ export const never: Fiber<never, never> = makeSynthetic({
   children: Effect.succeedNow(Chunk.empty()),
   inheritRefs: Effect.never,
   poll: Effect.succeedNow(Option.none),
-  getRef: (ref) => Effect.succeed(() => ref.initialValue()),
   interruptAs: () => Effect.never
 });

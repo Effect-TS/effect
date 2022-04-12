@@ -9,7 +9,6 @@ export * from "@effect/core/io/Fiber/operations/fail";
 export * from "@effect/core/io/Fiber/operations/failCause";
 export * from "@effect/core/io/Fiber/operations/fold";
 export * from "@effect/core/io/Fiber/operations/fromEffect";
-export * from "@effect/core/io/Fiber/operations/getRef";
 export * from "@effect/core/io/Fiber/operations/id";
 export * from "@effect/core/io/Fiber/operations/inheritRefs";
 export * from "@effect/core/io/Fiber/operations/interrupt";

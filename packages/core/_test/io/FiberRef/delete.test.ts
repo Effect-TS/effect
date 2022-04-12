@@ -10,7 +10,7 @@ describe.concurrent("FiberRef", () => {
         .tap(({ fiberRef }) => fiberRef.delete())
         .flatMap(({ fiberRef }) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(result, initial);
     });

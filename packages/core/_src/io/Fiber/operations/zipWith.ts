@@ -24,7 +24,6 @@ export function zipWith_<E, E1, A, B, C>(
       )
       .exit(),
     children: self.children(),
-    getRef: (ref) => self.getRef(ref).zipWith(that.getRef(ref), (a, b) => ref.join(a, b)),
     inheritRefs: that.inheritRefs() > self.inheritRefs(),
     interruptAs: (id) =>
       self

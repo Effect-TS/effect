@@ -19,7 +19,7 @@ export function aggregateAsync_<R, E, A, R2, E2, A2, B>(
   self: Stream<R, E, A>,
   sink: LazyArg<Sink<R2, E | E2, A | A2, A2, B>>,
   __tsplusTrace?: string
-): Stream<R & R2 & HasClock, E | E2, B> {
+): Stream<R & R2, E | E2, B> {
   return self.aggregateAsyncWithin(sink, Schedule.recurs(0));
 }
 

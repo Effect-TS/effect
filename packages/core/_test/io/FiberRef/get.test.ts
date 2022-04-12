@@ -6,7 +6,7 @@ describe.concurrent("FiberRef", () => {
     it("returns the current value", async () => {
       const program = FiberRef.make(initial).flatMap((fiberRef) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(result, initial);
     });
@@ -16,7 +16,7 @@ describe.concurrent("FiberRef", () => {
         .flatMap((fiberRef) => fiberRef.get().fork())
         .flatMap((fiber) => fiber.join());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(result, initial);
     });
@@ -29,7 +29,7 @@ describe.concurrent("FiberRef", () => {
         .bind("value1", ({ fiberRef }) => fiberRef.getAndUpdate(() => update))
         .bind("value2", ({ fiberRef }) => fiberRef.get());
 
-      const { value1, value2 } = await program.unsafeRunPromise();
+      const { value1, value2 } = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(value1, initial);
       assert.strictEqual(value2, update);
@@ -43,7 +43,7 @@ describe.concurrent("FiberRef", () => {
         .bind("value1", ({ fiberRef }) => fiberRef.getAndUpdateSome(() => Option.some(update)))
         .bind("value2", ({ fiberRef }) => fiberRef.get());
 
-      const { value1, value2 } = await program.unsafeRunPromise();
+      const { value1, value2 } = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(value1, initial);
       assert.strictEqual(value2, update);
@@ -55,7 +55,7 @@ describe.concurrent("FiberRef", () => {
         .bind("value1", ({ fiberRef }) => fiberRef.getAndUpdateSome(() => Option.none))
         .bind("value2", ({ fiberRef }) => fiberRef.get());
 
-      const { value1, value2 } = await program.unsafeRunPromise();
+      const { value1, value2 } = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(value1, initial);
       assert.strictEqual(value2, initial);

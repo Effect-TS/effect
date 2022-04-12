@@ -33,11 +33,11 @@ export interface CloseableScope extends Scope {
  */
 export interface ScopeOps {
   $: ScopeAspects;
-  Service: Service<Scope>;
+  Tag: Tag<Scope>;
 }
 export const Scope: ScopeOps = {
   $: {},
-  Service: Service<Scope>(ScopeSym)
+  Tag: Tag<Scope>()
 };
 
 /**

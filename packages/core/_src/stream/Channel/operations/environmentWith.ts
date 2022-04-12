@@ -3,8 +3,8 @@
  *
  * @tsplus static ets/Channel/Ops environmentWith
  */
-export function environmentWith<Env, OutDone>(
-  f: (env: Env) => OutDone
-): Channel<Env, unknown, unknown, unknown, never, never, OutDone> {
-  return Channel.environment<Env>().map(f);
+export function environmentWith<R, OutDone>(
+  f: (env: Env<R>) => OutDone
+): Channel<R, unknown, unknown, unknown, never, never, OutDone> {
+  return Channel.environment<R>().map(f);
 }
