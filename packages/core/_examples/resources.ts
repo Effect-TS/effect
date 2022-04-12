@@ -1,5 +1,5 @@
 const makeSet = Effect.acquireRelease(
-  Effect.succeed(new Set<string>()),
+  Effect.scoped(Effect.acquireRelease(Effect.succeed(new Set<string>()), () => Effect.unit)),
   (set) => Effect.log(`cleaning: [${Array.from(set).join(", ")}]`) > Effect.succeed(set.clear())
 );
 

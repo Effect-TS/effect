@@ -151,6 +151,7 @@ export function withScope<RIn, E, ROut>(
   __tsplusTrace?: string
 ): Effect<unknown, never, (_: MemoMap) => Effect<RIn, E, Env<ROut>>> {
   return Match.tag(instruction(self), {
+    LayerApply: (_) => Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((memoMap: MemoMap) => _.self),
     LayerExtendScope: (_) =>
       Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((memoMap: MemoMap) =>
         Effect.scopeWith((scope) => memoMap.getOrElseMemoize(_.self, scope))

@@ -39,7 +39,7 @@ export type DerivedLifted<
  * @tsplus static ets/Sync/Ops deriveLifted
  */
 export function deriveLifted<T>(
-  S: Service<T>
+  S: Tag<T>
 ): <
   Fns extends keyof ShapeFn<T> = never,
   Cns extends keyof ShapeCn<T> = never,
@@ -80,7 +80,7 @@ export type DerivedAccessSync<T, Gens extends keyof T> = {
 /**
  * @tsplus static ets/Sync/Ops deriveAccessSync
  */
-export function deriveAccessSync<T>(S: Service<T>) {
+export function deriveAccessSync<T>(S: Tag<T>) {
   return <Gens extends keyof T = never>(generics: Gens[]): DerivedAccessSync<T, Gens> => {
     const ret = {} as any;
 
@@ -100,7 +100,7 @@ export type DerivedAccess<T, Gens extends keyof T> = {
  * @tsplus static ets/Sync/Ops deriveAccess
  */
 export function deriveAccess<T>(
-  S: Service<T>
+  S: Tag<T>
 ) {
   return <Gens extends keyof T = never>(generics: Gens[]): DerivedAccess<T, Gens> => {
     const ret = {} as any;

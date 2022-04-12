@@ -11,13 +11,13 @@ type Cont =
 export class STMDriver<R, E, A> {
   private yieldOpCount = 2048;
   private contStack: Stack<Cont> | undefined;
-  private envStack: Stack<unknown>;
+  private envStack: Stack<Env<unknown>>;
 
   constructor(
     readonly self: STM<R, E, A>,
     readonly journal: Journal,
     readonly fiberId: FiberId,
-    r0: R
+    r0: Env<R>
   ) {
     this.envStack = new Stack(r0);
   }

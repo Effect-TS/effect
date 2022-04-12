@@ -9,7 +9,7 @@ export function timeoutFailCause_<R, E, E2, A>(
   cause: LazyArg<Cause<E2>>,
   duration: LazyArg<Duration>,
   __tsplusTrace?: string
-): Stream<R & HasClock, E | E2, A> {
+): Stream<R, E | E2, A> {
   return Stream.succeed(Tuple(cause(), duration())).flatMap(
     ({ tuple: [cause, duration] }) =>
       Stream.fromPull(

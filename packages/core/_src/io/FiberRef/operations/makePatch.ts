@@ -6,15 +6,14 @@
  * @tsplus static ets/FiberRef/Ops makePatch
  */
 export function makePatch<Value, Patch>(
-  initialValue: Value,
+  initial: Value,
   diff: (oldValue: Value, newValue: Value) => Patch,
   combine: (first: Patch, second: Patch) => Patch,
   patch: (patch: Patch) => (oldValue: Value) => Value,
   fork: Patch,
   __tsplusTrace?: string
-): UIO<FiberRef.WithPatch<Value, Patch>> {
-  return Effect.suspendSucceed(() => {
-    const ref = FiberRef.unsafeMakePatch(initialValue, diff, combine, patch, fork);
-    return ref.update(identity).as(ref);
-  });
+): Effect<Has<Scope>, never, FiberRef.WithPatch<Value, Patch>> {
+  return FiberRef.makeWith(
+    FiberRef.unsafeMakePatch(initial, diff, combine, patch, fork)
+  );
 }

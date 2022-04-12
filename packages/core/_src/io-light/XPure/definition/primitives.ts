@@ -94,7 +94,7 @@ export class Access<W, S1, S2, R, E, A> extends XPureBase<W, S1, S2, R, E, A> {
   readonly _xptag = "Access";
 
   constructor(
-    readonly access: (r: R) => XPure<W, S1, S2, R, E, A>,
+    readonly access: (env: Env<R>) => XPure<W, S1, S2, R, E, A>,
     readonly trace?: string
   ) {
     super();
@@ -106,7 +106,7 @@ export class Provide<W, S1, S2, R, E, A> extends XPureBase<W, S1, S2, unknown, E
 
   constructor(
     readonly xpure: XPure<W, S1, S2, R, E, A>,
-    readonly r: Lazy<R>,
+    readonly env: Lazy<Env<R>>,
     readonly trace?: string
   ) {
     super();

@@ -3,6 +3,7 @@
  *
  * @tsplus static ets/Layer/Ops succeed
  */
-export function succeed<T>(resource: LazyArg<T>): Layer<unknown, never, T> {
-  return Layer.fromRawEffect(Effect.succeed(resource));
+export function succeed<T>(tag: Tag<T>) {
+  return (resource: LazyArg<T>): Layer<unknown, never, Has<T>> =>
+    Layer.fromEffectEnvironment(Effect.succeed(Env().add(tag, resource())));
 }

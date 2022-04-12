@@ -1,4 +1,4 @@
-import type { HasService1 } from "@effect/core/test/io/Layer/test-utils";
+import type { Service1 } from "@effect/core/test/io/Layer/test-utils";
 import { acquire1, makeLayer1, makeRef, release1 } from "@effect/core/test/io/Layer/test-utils";
 
 describe.concurrent("Layer", () => {
@@ -10,9 +10,9 @@ describe.concurrent("Layer", () => {
         .tap(({ memoized }) =>
           Effect.scoped(
             memoized.flatMap((layer) =>
-              Effect.environment<HasService1>()
+              Effect.environment<Has<Service1>>()
                 .provideLayer(layer)
-                .flatMap(() => Effect.environment<HasService1>().provideLayer(layer))
+                .flatMap(() => Effect.environment<Has<Service1>>().provideLayer(layer))
             )
           )
         )

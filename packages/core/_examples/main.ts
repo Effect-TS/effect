@@ -5,6 +5,18 @@ export const isPositive = (n: number) => n > 0 ? Either("positive") : Either.lef
 
 export const isPositiveEff = (n: number) => n > 0 ? Effect("positive") : Effect.fail("negative");
 
+export interface Foo {
+  readonly foo: string;
+}
+
+export const FooTag = Service.Tag<Foo>();
+
+export interface Bar {
+  readonly bar: string;
+}
+
+export const BarTag = Service.Tag<Bar>();
+
 export const switched = (n: number) => {
   switch (n) {
     case 0:
@@ -16,9 +28,9 @@ export const switched = (n: number) => {
     case 3:
       return Effect.fail(3 as const);
     case 4:
-      return Effect.environmentWithEffect((r: { bar: string; }) => Effect.die(r.bar));
+      return Effect.environmentWithEffect((env: Env<Has<Bar>>) => Effect.die(env.get(BarTag).bar));
     default:
-      return Effect.environmentWithEffect((r: { foo: string; }) => Effect.die(r.foo));
+      return Effect.environmentWithEffect((env: Env<Has<Foo>>) => Effect.die(env.get(FooTag).foo));
   }
 };
 

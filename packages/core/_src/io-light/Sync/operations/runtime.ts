@@ -19,9 +19,9 @@ export function runEither<E, A>(self: Sync<unknown, E, A>): Either<E, A> {
  */
 export function runEitherEnv_<R, E, A>(
   self: Sync<R, E, A>,
-  r: LazyArg<R>
+  env: LazyArg<Env<R>>
 ): Either<E, A> {
-  return self.provideEnvironment(r).runEither();
+  return self.provideEnvironment(env).runEither();
 }
 
 /**

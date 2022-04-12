@@ -52,7 +52,7 @@ class Runtime {
   ): Tuple<[Chunk<W>, Either<E, Tuple<[S2, A]>>]> {
     let s0 = s as any;
     let a: any = undefined;
-    let environments: Stack<any> | undefined = undefined;
+    let environments: Stack<Env<unknown>> | undefined = undefined;
     let failed = false;
     let current = self as XPure<any, any, any, any, any, any> | undefined;
     let logs = Chunk.empty<W>();
@@ -134,11 +134,11 @@ class Runtime {
           break;
         }
         case "Access": {
-          current = xp.access(environments?.value || {});
+          current = xp.access(environments?.value || Env());
           break;
         }
         case "Provide": {
-          environments = new Stack(xp.r(), environments);
+          environments = new Stack(xp.env(), environments);
           current = xp.xpure.foldXPure(
             (e) =>
               XPure.succeed(() => {

@@ -116,7 +116,7 @@ describe.concurrent("Effect", () => {
     });
 
     it("supervise fibers", async () => {
-      function makeChild(n: number): RIO<HasClock, Fiber<never, void>> {
+      function makeChild(n: number): UIO<Fiber<never, void>> {
         return (Effect.sleep(new Duration(20 * n)) > Effect.never).fork();
       }
 

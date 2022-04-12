@@ -37,7 +37,7 @@ export function debounce_<R, E, A>(
   self: Stream<R, E, A>,
   duration: LazyArg<Duration>,
   __tsplusTrace?: string
-): Stream<R & HasClock, E, A> {
+): Stream<R, E, A> {
   return Stream.unwrap(
     Effect.transplant((grafter) =>
       Effect.Do()
@@ -49,7 +49,7 @@ export function debounce_<R, E, A>(
           }
 
           const producer: Channel<
-            R & HasClock,
+            R,
             E,
             Chunk<A>,
             unknown,
@@ -75,7 +75,7 @@ export function debounce_<R, E, A>(
           function consumer(
             state: DebounceState<E, A>,
             __tsplusTrace?: string
-          ): Channel<R & HasClock, unknown, unknown, unknown, E, Chunk<A>, unknown> {
+          ): Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown> {
             return Channel.unwrap(() => {
               switch (state._tag) {
                 case "NotStarted": {

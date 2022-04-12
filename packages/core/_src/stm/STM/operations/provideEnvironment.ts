@@ -6,9 +6,9 @@
  */
 export function provideEnvironment_<R, E, A>(
   self: STM<R, E, A>,
-  r: LazyArg<R>
+  env: LazyArg<Env<R>>
 ): STM<unknown, E, A> {
-  return self.provideSomeEnvironment(r);
+  return self.provideSomeEnvironment(env);
 }
 
 /**

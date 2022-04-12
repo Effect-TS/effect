@@ -7,38 +7,41 @@ export function joinFiberRefs(self: FiberRefs, that: FiberRefs): FiberRefs {
   const parentFiberRefs = self.fiberRefLocals;
   const childFiberRefs = that.fiberRefLocals;
 
-  const fiberRefLocals = childFiberRefs.reduceWithIndex(parentFiberRefs, (parentFiberRefs, fiberRef, childStack) => {
-    const parentStack = parentFiberRefs.get(fiberRef).getOrElse(List.empty<Tuple<[FiberId.Runtime, unknown]>>());
+  const fiberRefLocals = Chunk.from(childFiberRefs).reduce(
+    parentFiberRefs,
+    (parentFiberRefs, [fiberRef, childStack]) => {
+      const parentStack = parentFiberRefs.get(fiberRef) ?? List.empty<Tuple<[FiberId.Runtime, unknown]>>();
 
-    const values = combine(fiberRef, parentStack, childStack);
+      const values: List.NonEmpty<unknown> = combine(fiberRef, parentStack, childStack);
 
-    const patches = values.tail.reduce(
-      Tuple(values.head, List.empty<unknown>()),
-      ({ tuple: [oldValue, patches] }, newValue) => Tuple(newValue, patches.prepend(fiberRef.diff(oldValue, newValue)))
-    ).get(1).reverse();
+      const patches: List<unknown> = values.tail.reduce(
+        Tuple(values.head, List.empty<unknown>()),
+        ({ tuple: [oldValue, patches] }, newValue) =>
+          Tuple(newValue, List.cons(fiberRef.diff(oldValue, newValue), patches))
+      ).get(1).reverse();
 
-    if (patches.isNil()) {
-      return parentFiberRefs;
-    }
-
-    const firstPatch = patches.head;
-    const restPatches = patches.tail;
-    const patch = restPatches.reduce(firstPatch, (a, b) => fiberRef.combine(a, b));
-
-    const newStack = (function() {
-      if (parentStack.isNil()) {
-        return Option.none;
+      if (patches.isNil()) {
+        return parentFiberRefs;
       }
-      const { tuple: [fiberId, oldValue] } = parentStack.head;
-      const tail = parentStack.tail;
-      return Option.some(tail.prepend(Tuple(fiberId, fiberRef.patch(patch)(oldValue))));
-    })();
 
-    return newStack.fold(
-      parentFiberRefs,
-      (stack) => parentFiberRefs.set(fiberRef, stack)
-    );
-  });
+      let newStack: Option<List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>>;
+      if (parentStack.isNil()) {
+        newStack = Option.none;
+      } else {
+        const patch = patches.tail.reduce(patches.head, (a, b) => fiberRef.combine(a, b));
+
+        const { tuple: [fiberId, oldValue] } = parentStack.head;
+        const tail = parentStack.tail;
+
+        newStack = Option.some(List.cons(Tuple(fiberId, fiberRef.patch(patch)(oldValue)), tail));
+      }
+
+      return newStack.fold(
+        parentFiberRefs,
+        (stack) => parentFiberRefs.set(fiberRef, stack)
+      );
+    }
+  );
 
   return new FiberRefsInternal(fiberRefLocals);
 }
@@ -57,7 +60,7 @@ function combine<A>(
 }
 
 /**
- * @tsplus tailrec
+ * @tsplus tailRec
  */
 function combineLoop<A>(
   parentStack: List<Tuple<[FiberId.Runtime, A]>>,
@@ -66,7 +69,7 @@ function combineLoop<A>(
   lastChildValue: A
 ): List.NonEmpty<A> {
   if (parentStack.isNil() || childStack.isNil()) {
-    return childStack.map((tuple) => tuple.get(1)).prepend(lastChildValue);
+    return List.cons(lastChildValue, childStack.map((tuple) => tuple.get(1)));
   }
 
   const { tuple: [parentId, parentValue] } = parentStack.head;

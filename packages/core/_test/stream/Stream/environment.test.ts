@@ -3,7 +3,12 @@ import { NumberService, NumberServiceImpl } from "@effect/core/test/stream/Strea
 describe("Stream", () => {
   describe("environment", () => {
     it("simple example", async () => {
-      const program = Stream.environment<string>().provideEnvironment("test").runHead();
+      const StringTag = Tag<string>();
+      const program = Stream
+        .environment<Has<string>>()
+        .map((env) => env.get(StringTag))
+        .provideEnvironment(Env().add(StringTag, "test"))
+        .runHead();
 
       const result = await program.unsafeRunPromise();
 
@@ -13,8 +18,9 @@ describe("Stream", () => {
 
   describe("environmentWith", () => {
     it("simple example", async () => {
-      const program = Stream.environmentWith((r: string) => r)
-        .provideEnvironment("test")
+      const StringTag = Tag<string>();
+      const program = Stream.environmentWith((env: Env<Has<string>>) => env.get(StringTag))
+        .provideEnvironment(Env().add(StringTag, "test"))
         .runHead();
 
       const result = await program.unsafeRunPromise();
@@ -25,9 +31,10 @@ describe("Stream", () => {
 
   describe("environmentWithEffect", () => {
     it("simple example", async () => {
-      const program = Stream.environmentWithEffect((r: Has<NumberService>) => Effect.succeed(NumberService.get(r)))
-        .provideEnvironment(NumberService(new NumberServiceImpl(10)))
-        .runHead().some;
+      const program =
+        Stream.environmentWithEffect((env: Env<Has<NumberService>>) => Effect.succeed(env.get(NumberService)))
+          .provideEnvironment(Env().add(NumberService, new NumberServiceImpl(10)))
+          .runHead().some;
 
       const result = await program.unsafeRunPromise();
 
@@ -35,8 +42,8 @@ describe("Stream", () => {
     });
 
     it("environmentWithZIO fails", async () => {
-      const program = Stream.environmentWithEffect((r: Has<NumberService>) => Effect.fail("fail"))
-        .provideEnvironment(NumberService(new NumberServiceImpl(10)))
+      const program = Stream.environmentWithEffect((_: Env<Has<NumberService>>) => Effect.fail("fail"))
+        .provideEnvironment(Env().add(NumberService, new NumberServiceImpl(10)))
         .runHead();
 
       const result = await program.unsafeRunPromiseExit();
@@ -47,9 +54,10 @@ describe("Stream", () => {
 
   describe("environmentWithStream", () => {
     it("environmentWithStream", async () => {
-      const program = Stream.environmentWithStream((r: Has<NumberService>) => Stream.succeed(NumberService.get(r)))
-        .provideEnvironment(NumberService(new NumberServiceImpl(10)))
-        .runHead().some;
+      const program =
+        Stream.environmentWithStream((env: Env<Has<NumberService>>) => Stream.succeed(env.get(NumberService)))
+          .provideEnvironment(Env().add(NumberService, new NumberServiceImpl(10)))
+          .runHead().some;
 
       const result = await program.unsafeRunPromise();
 
@@ -57,8 +65,8 @@ describe("Stream", () => {
     });
 
     it("environmentWithStream fails", async () => {
-      const program = Stream.environmentWithStream((r: Has<NumberService>) => Stream.fail("fail"))
-        .provideEnvironment(NumberService(new NumberServiceImpl(10)))
+      const program = Stream.environmentWithStream((env: Env<Has<NumberService>>) => Stream.fail("fail"))
+        .provideEnvironment(Env().add(NumberService, new NumberServiceImpl(10)))
         .runHead();
 
       const result = await program.unsafeRunPromiseExit();
@@ -70,7 +78,7 @@ describe("Stream", () => {
   describe("provideLayer", () => {
     it("simple example", async () => {
       const program = Stream.scoped(Effect.service(NumberService))
-        .provideLayer(Layer.succeed(NumberService(new NumberServiceImpl(10))))
+        .provideLayer(Layer.succeed(NumberService)(new NumberServiceImpl(10)))
         .runHead();
 
       const result = await program.unsafeRunPromise();

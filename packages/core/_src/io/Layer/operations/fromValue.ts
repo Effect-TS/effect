@@ -1,16 +1,15 @@
 import { ILayerScoped } from "@effect/core/io/Layer/definition";
-import { environmentFor } from "@effect/core/io/Layer/operations/_internal/environmentFor";
 
 /**
  * Construct a service layer from a value
  *
  * @tsplus static ets/Layer/Ops fromValue
  */
-export function fromValue<T>(service: Service<T>) {
-  return (resource: LazyArg<T>): Layer<{}, never, Has<T>> =>
+export function fromValue<T>(tag: Tag<T>) {
+  return (service: LazyArg<T>): Layer<unknown, never, Has<T>> =>
     Layer.suspend(
       new ILayerScoped(
-        Effect.succeed(resource).flatMap((a) => environmentFor(service, a))
-      ).setKey(service.identifier)
+        Effect.succeed(service).map((service) => Env().add(tag, service))
+      ).setKey(tag.id)
     );
 }

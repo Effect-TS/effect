@@ -27,13 +27,25 @@ describe.concurrent("Layer", () => {
 
   describe.concurrent("error handling", () => {
     it("handles errors gracefully", async () => {
+      interface Bar {
+        readonly bar: string;
+      }
+
+      const BarTag = Tag<Bar>();
+
+      interface Baz {
+        readonly baz: string;
+      }
+
+      const BazTag = Tag<Baz>();
+
+      const ScopedTag = Tag<void>();
+
       const sleep = Effect.sleep((100).millis);
       const layer1 = Layer.fail("foo");
-      const layer2 = Layer.succeed({ bar: "bar" });
-      const layer3 = Layer.succeed({ baz: "baz" });
-      const layer4 = Effect.scoped(Effect.acquireRelease(sleep, () => sleep))
-        .toLayerRaw()
-        .map((b) => ({ b }));
+      const layer2 = Layer.succeed(BarTag)({ bar: "bar" });
+      const layer3 = Layer.succeed(BazTag)({ baz: "baz" });
+      const layer4 = Layer.scoped(ScopedTag)(Effect.scoped(Effect.acquireRelease(sleep, () => sleep)));
 
       const program = Effect.unit
         .provideLayer(layer1 + (layer2 + layer3 > layer4))

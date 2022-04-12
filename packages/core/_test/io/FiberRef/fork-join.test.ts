@@ -10,7 +10,7 @@ describe.concurrent("FiberRef", () => {
         .tap(({ child }) => child.join())
         .flatMap(({ fiberRef }) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(result, update);
     });
@@ -21,7 +21,7 @@ describe.concurrent("FiberRef", () => {
         .bind("fiberRef", ({ child }) => child.await().flatMap((_) => Effect.done(_)))
         .flatMap(({ fiberRef }) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(result, initial);
     });
@@ -39,7 +39,7 @@ describe.concurrent("FiberRef", () => {
         .tap(({ child }) => child.join())
         .flatMap(({ fiberRef }) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(result, 1);
     });
@@ -59,7 +59,7 @@ describe.concurrent("FiberRef", () => {
         .tap(({ child }) => child.join())
         .flatMap(({ fiberRef }) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(result, 2);
     });
@@ -73,7 +73,7 @@ describe.concurrent("FiberRef", () => {
         .tap(({ child }) => child.join())
         .flatMap(({ fiberRef }) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(result, 1);
     });
@@ -86,7 +86,7 @@ describe.concurrent("FiberRef", () => {
         .tap(({ child }) => child.join())
         .flatMap(({ fiberRef }) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(result, 2);
     });

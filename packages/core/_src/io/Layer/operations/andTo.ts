@@ -9,10 +9,10 @@
 export function andTo_<
   RIn,
   E,
-  ROut extends Spreadable,
-  RIn2 extends Spreadable,
+  ROut,
+  RIn2,
   E2,
-  ROut2 extends Spreadable
+  ROut2
 >(
   self: Layer<RIn, E, ROut>,
   that: Layer<RIn2, E2, ROut2>

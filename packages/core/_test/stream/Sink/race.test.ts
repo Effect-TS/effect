@@ -20,9 +20,7 @@ describe.concurrent("Sink", () => {
             .concat(success2 ? Chunk.single(40) : Chunk.empty<number>());
 
           return sinkRaceLaw(
-            Stream.fromCollectionEffect(
-              Random.shuffle(chunk).provideService(HasRandom)(Random.default)
-            ),
+            Stream.fromCollectionEffect(Random.shuffle(chunk)),
             findSink(20),
             findSink(40)
           );

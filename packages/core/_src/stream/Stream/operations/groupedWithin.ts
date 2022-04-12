@@ -9,7 +9,7 @@ export function groupedWithin_<R, E, A>(
   chunkSize: number,
   within: LazyArg<Duration>,
   __tsplusTrace?: string
-): Stream<R & HasClock, E, Chunk<A>> {
+): Stream<R, E, Chunk<A>> {
   return self.aggregateAsyncWithin(
     Sink.collectAllN<A>(chunkSize),
     Schedule.spaced(within())

@@ -4,6 +4,6 @@
 export function shuffle<A>(
   collection: LazyArg<Collection<A>>,
   __tsplusTrace?: string
-): RIO<HasRandom, Collection<A>> {
-  return Effect.serviceWithEffect(HasRandom)((_) => _.shuffle(collection));
+): UIO<Collection<A>> {
+  return Effect.randomWith((random) => random.shuffle(collection));
 }

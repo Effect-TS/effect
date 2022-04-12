@@ -18,7 +18,7 @@ export class Supervisor<A> {
      */
     readonly value: UIO<A>,
     readonly unsafeOnStart: <R, E, A>(
-      environment: R,
+      environment: Env<R>,
       effect: Effect<R, E, A>,
       parent: Option<Fiber.Runtime<any, any>>,
       fiber: Fiber.Runtime<E, A>

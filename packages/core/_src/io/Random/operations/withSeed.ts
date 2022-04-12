@@ -1,7 +1,11 @@
+import { LiveRandom } from "@effect/core/io/Random/operations/live";
+
 /**
  * @tsplus static ets/Random/Ops withSeed
  */
 export function withSeed(seed: number) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R & HasRandom, E, A> =>
-    self.updateService(HasRandom)(() => Random.live(seed));
+  return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
+    Effect.succeed(new LiveRandom(seed)).flatMap((random) =>
+      effect.apply(DefaultEnv.services.value.locally(Env().add(Random.Tag, random)))
+    );
 }

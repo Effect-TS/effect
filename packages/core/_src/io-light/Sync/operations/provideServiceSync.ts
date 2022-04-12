@@ -6,13 +6,13 @@
  */
 export function provideServiceSync_<R, E, A, T>(
   self: Sync<R & Has<T>, E, A>,
-  service: Service<T>
+  tag: Tag<T>
 ) {
   return <R1, E1>(
     sync: Sync<R1, E1, T>,
     __tsplusTrace?: string
   ): Sync<R1 & Erase<R, Has<T>>, E | E1, A> =>
-    Sync.environmentWithSync((r: R & R1) => sync.flatMap((t) => self.provideEnvironment({ ...r, ...service(t) })));
+    Sync.environmentWithSync((env: Env<R & R1>) => sync.flatMap((t) => self.provideEnvironment(env.add(tag, t))));
 }
 
 /**

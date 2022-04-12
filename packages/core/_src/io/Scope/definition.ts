@@ -37,7 +37,7 @@ export interface ScopeOps {
 }
 export const Scope: ScopeOps = {
   $: {},
-  Tag: Service.Tag<Scope>()
+  Tag: Tag<Scope>()
 };
 
 /**

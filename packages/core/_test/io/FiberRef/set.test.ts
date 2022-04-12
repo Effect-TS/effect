@@ -8,7 +8,7 @@ describe.concurrent("FiberRef", () => {
         .tap((fiberRef) => fiberRef.set(update))
         .flatMap((fiberRef) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(result, update);
     });
@@ -21,7 +21,7 @@ describe.concurrent("FiberRef", () => {
         .tap(({ deferred }) => deferred.await())
         .flatMap(({ fiberRef }) => fiberRef.get());
 
-      const result = await program.unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise();
 
       assert.strictEqual(result, initial);
     });

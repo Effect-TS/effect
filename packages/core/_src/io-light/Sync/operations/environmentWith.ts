@@ -3,6 +3,6 @@
  *
  * @tsplus static ets/Sync/Ops environmentWith
  */
-export function environmentWith<R, A>(f: (_: R) => A): Sync<R, never, A> {
+export function environmentWith<R, A>(f: (env: Env<R>) => A): Sync<R, never, A> {
   return XPure.environmentWith(f);
 }

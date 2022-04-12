@@ -7,7 +7,7 @@
 export function withDuration<R, E, In, L, Z>(
   self: Sink<R, E, In, L, Z>,
   __tsplusTrace?: string
-): Sink<R & HasClock, E, In, L, Tuple<[Z, Duration]>> {
+): Sink<R, E, In, L, Tuple<[Z, Duration]>> {
   return self.summarized(Clock.currentTime, (start, end) => new Duration(end - start));
 }
 
@@ -18,7 +18,7 @@ export function withDuration<R, E, In, L, Z>(
  */
 export function timed(
   __tsplusTrace?: string
-): Sink<HasClock, never, unknown, never, Duration> {
+): Sink<unknown, never, unknown, never, Duration> {
   return Sink.drain()
     .timed()
     .map((tuple) => tuple.get(1));

@@ -5,6 +5,6 @@ import { STMEffect } from "@effect/core/stm/STM/definition/primitives";
  *
  * @tsplus static ets/STM/Ops environment
  */
-export function environment<R>(): STM<R, never, R> {
-  return new STMEffect((_, __, r: R) => r);
+export function environment<R>(): STM<R, never, Env<R>> {
+  return new STMEffect((_, __, env: Env<R>) => env);
 }

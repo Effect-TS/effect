@@ -8,13 +8,11 @@ export const ExampleErrorDie = Effect.die(() => {
   throw ExampleError;
 });
 
-export const NumberServiceId = Symbol.for("@effect/core/test/NumberService");
-
 export interface NumberService {
   readonly n: number;
 }
 
-export const NumberService = Service<NumberService>(NumberServiceId);
+export const NumberService = Tag<NumberService>();
 
 export function asyncExampleError<A>(): IO<unknown, A> {
   return Effect.async((cb) => {

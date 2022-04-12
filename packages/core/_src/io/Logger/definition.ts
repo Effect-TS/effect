@@ -10,7 +10,7 @@ export interface Logger<Message, Output> {
     logLevel: LogLevel,
     message: Lazy<Message>,
     cause: Lazy<Cause<unknown>>,
-    context: HashMap<FiberRef<unknown>, unknown>,
+    context: Map<FiberRef<unknown>, unknown>,
     spans: List<LogSpan>,
     annotations: Map<string, string>
   ) => Output;

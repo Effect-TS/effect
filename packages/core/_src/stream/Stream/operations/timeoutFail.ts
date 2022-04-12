@@ -9,7 +9,7 @@ export function timeoutFail_<R, E, E2, A>(
   e: LazyArg<E2>,
   duration: LazyArg<Duration>,
   __tsplusTrace?: string
-): Stream<R & HasClock, E | E2, A> {
+): Stream<R, E | E2, A> {
   return self.timeoutTo(duration, Stream.fail(e));
 }
 

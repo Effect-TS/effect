@@ -1,6 +1,3 @@
-export const CalculatorId = Symbol.for("@effect/core/test/io-light/Calculator");
-export type CalculatorId = typeof CalculatorId;
-
 export interface Calculator {
   readonly factor: number;
   readonly factorFun: () => number;
@@ -10,7 +7,7 @@ export interface Calculator {
   readonly gen: <A>(a: A) => Sync<unknown, never, A>;
 }
 
-export const Calculator = Service<Calculator>(CalculatorId);
+export const Calculator = Tag<Calculator>();
 
 export function LiveCalculator(): Calculator {
   return {

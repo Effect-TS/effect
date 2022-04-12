@@ -7,10 +7,10 @@ import { concreteXPure } from "@effect/core/io-light/Sync/definition";
  */
 export function provideEnvironment_<R, E, A>(
   self: Sync<R, E, A>,
-  r: LazyArg<R>
+  env: LazyArg<Env<R>>
 ): Sync<unknown, E, A> {
   concreteXPure(self);
-  return self.provideEnvironment(r);
+  return self.provideEnvironment(env);
 }
 
 /**

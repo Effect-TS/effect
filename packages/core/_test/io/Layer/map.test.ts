@@ -1,32 +1,27 @@
 describe.concurrent("Layer", () => {
   describe.concurrent("map", () => {
     it("can map a layer to an unrelated type", async () => {
-      const ServiceAId = Symbol();
-
-      class ServiceAImpl {
-        readonly [ServiceAId] = ServiceAId;
-        constructor(readonly name: string, readonly value: number) {}
+      interface ServiceA {
+        readonly name: string;
+        readonly value: number;
       }
 
-      const ServiceA = Service<ServiceAImpl>(ServiceAId);
+      const ServiceATag = Tag<ServiceA>();
 
-      const ServiceBId = Symbol();
-
-      class ServiceBImpl {
-        readonly [ServiceBId] = ServiceBId;
-        constructor(readonly name: string) {}
+      interface ServiceB {
+        readonly name: string;
       }
 
-      const ServiceB = Service<ServiceBImpl>(ServiceBId);
+      const ServiceBTag = Tag<ServiceB>();
 
-      const layer1 = Layer.fromValue(ServiceA)(new ServiceAImpl("name", 1));
-      const layer2 = Layer.fromFunction(ServiceB)(
-        (_: ServiceAImpl) => new ServiceBImpl(_.name)
-      );
+      const StringTag = Tag<string>();
 
-      const live = layer1.map(ServiceA.get) >> layer2;
+      const layer1 = Layer.fromValue(ServiceATag)({ name: "name", value: 1 });
+      const layer2 = Layer.fromFunction(StringTag, ServiceBTag)((_) => ({ name: _ }));
 
-      const program = Effect.service(ServiceB).provideLayer(live);
+      const live = layer1.map((env) => Env().add(StringTag, env.get(ServiceATag).name)) >> layer2;
+
+      const program = Effect.service(ServiceBTag).provideLayer(live);
 
       const { name } = await program.unsafeRunPromise();
 

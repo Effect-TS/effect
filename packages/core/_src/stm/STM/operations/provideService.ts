@@ -4,10 +4,10 @@
  *
  * @tsplus fluent ets/STM provideService
  */
-export function provideService_<R, E, A, T>(self: STM<R & Has<T>, E, A>, service: Service<T>) {
-  return (resource: LazyArg<T>): STM<Erase<R, Has<T>>, E, A> =>
+export function provideService_<R, E, A, T>(self: STM<R & Has<T>, E, A>, tag: Tag<T>) {
+  return (service: LazyArg<T>): STM<Erase<R, Has<T>>, E, A> =>
     // @ts-expect-error
-    STM.environmentWith((r) => ({ ...r, ...service(resource()) }));
+    STM.succeed(service).flatMap((service) => self.provideEnvironment(Env().add(tag, service)));
 }
 
 /**

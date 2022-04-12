@@ -8,7 +8,7 @@ import { STMProvide } from "@effect/core/stm/STM/definition/primitives";
  */
 export function provideSomeEnvironment_<R, E, A, R0>(
   self: STM<R, E, A>,
-  f: (r: R0) => R
+  f: (env: Env<R0>) => Env<R>
 ): STM<R0, E, A> {
   return new STMProvide(self, f);
 }

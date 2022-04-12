@@ -5,9 +5,9 @@ describe.concurrent("Effect", () => {
     it("provide is modular", async () => {
       const program = Effect.Do()
         .bind("v1", () => Effect.service(NumberService))
-        .bind("v2", () => Effect.service(NumberService).provideEnvironment(NumberService({ n: 2 })))
+        .bind("v2", () => Effect.service(NumberService).provideEnvironment(Env().add(NumberService, { n: 2 })))
         .bind("v3", () => Effect.service(NumberService))
-        .provideEnvironment(NumberService({ n: 4 }));
+        .provideEnvironment(Env().add(NumberService, { n: 4 }));
 
       const { v1, v2, v3 } = await program.unsafeRunPromise();
 
@@ -19,7 +19,7 @@ describe.concurrent("Effect", () => {
     it("async can use environment", async () => {
       const program = Effect.async<Has<NumberService>, never, number>((cb) =>
         cb(Effect.service(NumberService).map(({ n }) => n))
-      ).provideEnvironment(NumberService({ n: 10 }));
+      ).provideEnvironment(Env().add(NumberService, { n: 10 }));
 
       const result = await program.unsafeRunPromise();
 

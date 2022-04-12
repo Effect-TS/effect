@@ -3,6 +3,6 @@
  *
  * @tsplus static ets/Sync/Ops service
  */
-export function service<T>(service: Service<T>): Sync<Has<T>, never, T> {
-  return Sync.serviceWithSync(service)((a) => Sync.succeed(a));
+export function service<T>(tag: Tag<T>): Sync<Has<T>, never, T> {
+  return Sync.serviceWithSync(tag)((a) => Sync.succeed(a));
 }

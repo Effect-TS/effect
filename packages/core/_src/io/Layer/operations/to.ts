@@ -1,4 +1,4 @@
-import { ILayerScoped, ILayerTo } from "@effect/core/io/Layer/definition";
+import { ILayerTo } from "@effect/core/io/Layer/definition";
 
 /**
  * Feeds the output services of this builder into the input of the specified
@@ -12,9 +12,9 @@ export function to_<
   RIn,
   E,
   ROut,
-  RIn2 extends Spreadable,
+  RIn2,
   E2,
-  ROut2 extends Spreadable
+  ROut2
 >(
   self: Layer<RIn, E, ROut>,
   that: Layer<RIn2, E2, ROut2>
@@ -22,15 +22,17 @@ export function to_<
 export function to_<
   RIn,
   E,
-  ROut extends Spreadable,
-  RIn2 extends Spreadable,
+  ROut,
+  RIn2,
   E2,
   ROut2
 >(
   self: Layer<RIn, E, ROut>,
   that: Layer<RIn2 & ROut, E2, ROut2>
 ): Layer<RIn & RIn2, E | E2, ROut2> {
-  return new ILayerTo(new ILayerScoped(Effect.environment<RIn2>()).and(self), that);
+  return Layer.suspend(
+    new ILayerTo(Layer.environment<RIn2>().and(self), that)
+  );
 }
 
 /**

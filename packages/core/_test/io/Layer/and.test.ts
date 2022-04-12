@@ -1,13 +1,13 @@
 import {
   acquire1,
   acquire2,
-  HasService1,
   makeLayer1,
   makeLayer2,
   makeRef,
   release1,
   release2,
-  Service1
+  Service1,
+  Service1Tag
 } from "@effect/core/test/io/Layer/test-utils";
 
 describe.concurrent("Layer", () => {
@@ -31,9 +31,9 @@ describe.concurrent("Layer", () => {
       const program = Effect.scoped(
         Effect.Do()
           .bindValue("m", () => new Service1())
-          .bindValue("layer", ({ m }) => Layer.fromValue(HasService1)(m))
+          .bindValue("layer", ({ m }) => Layer.fromValue(Service1Tag)(m))
           .bindValue("env", ({ layer }) => (layer + layer + layer).build())
-          .bind("m1", ({ env }) => env.flatMap((m) => Effect.attempt(HasService1.get(m))))
+          .bind("m1", ({ env }) => env.flatMap((_) => Effect.attempt(_.get(Service1Tag))))
       );
 
       const { m, m1 } = await program.unsafeRunPromise();

@@ -9,9 +9,9 @@ export function atomically<R, E, A>(
   self: STM<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return Effect.environmentWithEffect((r: R) =>
+  return Effect.environmentWithEffect((env: Env<R>) =>
     Effect.suspendSucceedWith((_, fiberId) => {
-      const v = tryCommitSync(fiberId, self, r);
+      const v = tryCommitSync(fiberId, self, env);
 
       switch (v._tag) {
         case "Done": {
@@ -21,7 +21,7 @@ export function atomically<R, E, A>(
           const txnId = TxnId();
           const state = new AtomicReference<State<E, A>>(State.running);
           const io = Effect.async(
-            tryCommitAsync(v.journal, fiberId, self, txnId, state, r)
+            tryCommitAsync(v.journal, fiberId, self, txnId, state, env)
           );
           return Effect.uninterruptibleMask(({ restore }) =>
             restore(io).catchAllCause((cause) => {

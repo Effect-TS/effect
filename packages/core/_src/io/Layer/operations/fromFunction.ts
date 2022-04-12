@@ -3,6 +3,9 @@
  *
  * @tsplus static ets/Layer/Ops fromFunction
  */
-export function fromFunction<B>(service: Service<B>) {
-  return <A>(f: (a: A) => B): Layer<A, never, Has<B>> => Layer.fromEffect(service)(Effect.environmentWith<A, B>(f));
+export function fromFunction<A, B>(tagA: Tag<A>, tagB: Tag<B>) {
+  return (f: (a: A) => B): Layer<Has<A>, never, Has<B>> =>
+    Layer.fromEffectEnvironment(
+      Effect.serviceWith(tagA)((a) => Env().add(tagB, f(a)))
+    );
 }

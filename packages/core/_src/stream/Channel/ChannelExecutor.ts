@@ -70,7 +70,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 
   constructor(
     initialChannel: Lazy<Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>>,
-    private providedEnv: Env<unknown>,
+    private providedEnv: Env<unknown> | undefined,
     private executeCloseLastSubstream: (_: RIO<R, unknown>) => RIO<R, unknown>
   ) {
     this.currentChannel = initialChannel() as ErasedChannel<R>;

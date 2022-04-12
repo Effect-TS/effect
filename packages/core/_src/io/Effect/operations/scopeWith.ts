@@ -7,5 +7,5 @@ export function scopeWith<R, E, A>(
   f: (scope: Scope) => Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R & Has<Scope>, E, A> {
-  return Effect.serviceWithEffect(Scope.Service)(f);
+  return Effect.serviceWithEffect(Scope.Tag)(f);
 }

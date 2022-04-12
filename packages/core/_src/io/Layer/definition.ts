@@ -71,6 +71,7 @@ export abstract class LayerAbstract<RIn, E, ROut> implements Layer<RIn, E, ROut>
 }
 
 export type Instruction =
+  | ILayerApply<any, any, any>
   | ILayerExtendScope<any, any, any>
   | ILayerFold<any, any, any, any, any, any, any, any, any>
   | ILayerFresh<any, any, any>
@@ -78,6 +79,14 @@ export type Instruction =
   | ILayerSuspend<any, any, any>
   | ILayerTo<any, any, any, any, any>
   | ILayerZipWithPar<any, any, any, any, any, any, any>;
+
+export class ILayerApply<RIn, E, ROut> extends LayerAbstract<RIn, E, ROut> {
+  readonly _tag = "LayerApply";
+
+  constructor(readonly self: Effect<RIn, E, Env<ROut>>) {
+    super();
+  }
+}
 
 export class ILayerExtendScope<RIn, E, ROut> extends LayerAbstract<
   RIn & Has<Scope>,
@@ -107,7 +116,7 @@ export class ILayerFold<
   constructor(
     readonly self: Layer<RIn, E, ROut>,
     readonly failure: (cause: Cause<E>) => Layer<RIn2, E2, ROut2>,
-    readonly success: (r: ROut) => Layer<RIn3, E3, ROut3>
+    readonly success: (r: Env<ROut>) => Layer<RIn3, E3, ROut3>
   ) {
     super();
   }
@@ -124,7 +133,7 @@ export class ILayerFresh<RIn, E, ROut> extends LayerAbstract<RIn, E, ROut> {
 export class ILayerScoped<RIn, E, ROut> extends LayerAbstract<RIn, E, ROut> {
   readonly _tag = "LayerScoped";
 
-  constructor(readonly self: Effect<RIn & Has<Scope>, E, ROut>) {
+  constructor(readonly self: Effect<RIn & Has<Scope>, E, Env<ROut>>) {
     super();
   }
 }
@@ -166,7 +175,7 @@ export class ILayerZipWithPar<
   constructor(
     readonly self: Layer<RIn, E, ROut>,
     readonly that: Layer<RIn1, E1, ROut2>,
-    readonly f: (s: ROut, t: ROut2) => ROut3
+    readonly f: (s: Env<ROut>, t: Env<ROut2>) => Env<ROut3>
   ) {
     super();
   }

@@ -5,7 +5,7 @@ export interface NumberService {
   readonly n: number;
 }
 
-export const NumberService = Service<NumberService>(NumberServiceId);
+export const NumberService = Tag<NumberService>();
 
 export class NumberServiceImpl implements NumberService, Equals {
   readonly [NumberServiceId]: NumberServiceId = NumberServiceId;

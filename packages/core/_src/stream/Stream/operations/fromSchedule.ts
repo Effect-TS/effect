@@ -8,11 +8,11 @@
 export function fromSchedule<S, R, A>(
   schedule: LazyArg<Schedule.WithState<S, R, unknown, A>>,
   __tsplusTrace?: string
-): Stream<R & HasClock, never, A>;
+): Stream<R, never, A>;
 export function fromSchedule<R, A>(
   schedule: LazyArg<Schedule<R, unknown, A>>,
   __tsplusTrace?: string
-): Stream<R & HasClock, never, A> {
+): Stream<R, never, A> {
   return Stream.unwrap(
     schedule()
       .driver()

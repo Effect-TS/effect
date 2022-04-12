@@ -1,6 +1,6 @@
 /**
  * @tsplus static ets/Random/Ops nextInt
  */
-export const nextInt: RIO<HasRandom, number> = Effect.serviceWithEffect(HasRandom)(
-  (_) => _.nextInt
+export const nextInt: UIO<number> = Effect.randomWith(
+  (random) => random.nextInt
 );

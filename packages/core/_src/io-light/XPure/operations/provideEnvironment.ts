@@ -7,9 +7,9 @@ import { Provide } from "@effect/core/io-light/XPure/definition/primitives";
  */
 export function provideEnvironment_<W, S1, S2, R, E, A>(
   self: XPure<W, S1, S2, R, E, A>,
-  r: LazyArg<R>
+  env: LazyArg<Env<R>>
 ): XPure<W, S1, S2, unknown, E, A> {
-  return new Provide(self, r);
+  return new Provide(self, env);
 }
 
 /**

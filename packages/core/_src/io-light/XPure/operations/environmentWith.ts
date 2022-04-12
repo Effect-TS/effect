@@ -4,7 +4,7 @@
  * @tsplus static ets/XPure/Ops environmentWith
  */
 export function environmentWith<R, A, S>(
-  f: (_: R) => A
+  f: (env: Env<R>) => A
 ): XPure<never, S, S, R, never, A> {
-  return XPure.environmentWithXPure((r: R) => XPure.succeed(f(r)));
+  return XPure.environmentWithXPure((env: Env<R>) => XPure.succeed(f(env)));
 }

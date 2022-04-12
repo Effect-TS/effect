@@ -1,8 +1,6 @@
 /**
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
-
-import { isEither, isOption, isService } from "@effect/core/data/Utils";
 import { _GenA, _GenE, _GenR } from "@effect/core/io/Effect/operations/gen";
 
 export class GenSync<R, E, A> {
@@ -18,13 +16,13 @@ export class GenSync<R, E, A> {
 }
 
 const adapter = (_: any, __?: any) => {
-  if (isService(_)) {
+  if (Tag.is(_)) {
     return new GenSync(Sync.service(_));
   }
-  if (isEither(_)) {
+  if (Either.isEither(_)) {
     return new GenSync(_._tag === "Left" ? Sync.fail(_.left) : Sync.succeed(_.right));
   }
-  if (isOption(_)) {
+  if (Option.isOption(_)) {
     return new GenSync(
       _._tag === "None"
         ? Sync.fail(() => (__ ? __() : new NoSuchElement()))
@@ -36,7 +34,7 @@ const adapter = (_: any, __?: any) => {
 
 export function gen<Eff extends GenSync<any, any, any>, AEff>(
   f: (i: {
-    <A>(_: Service<A>): GenSync<Has<A>, never, A>;
+    <A>(_: Tag<A>): GenSync<Has<A>, never, A>;
     <E, A>(_: Option<A>, onNone: () => E): GenSync<unknown, E, A>;
     <A>(_: Option<A>): GenSync<unknown, NoSuchElement, A>;
     <E, A>(_: Either<E, A>): GenSync<unknown, E, A>;

@@ -6,9 +6,9 @@
  */
 export function provideSomeEnvironment_<W, S1, S2, R0, R1, E, A>(
   self: XPure<W, S1, S2, R1, E, A>,
-  f: (r: R0) => R1
+  f: (r: Env<R0>) => Env<R1>
 ) {
-  return XPure.environmentWithXPure((r: R0) => self.provideEnvironment(f(r)));
+  return XPure.environmentWithXPure((env: Env<R0>) => self.provideEnvironment(f(env)));
 }
 
 /**

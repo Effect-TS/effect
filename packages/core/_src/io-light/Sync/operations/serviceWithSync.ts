@@ -3,7 +3,7 @@
  *
  * @tsplus static ets/Sync/Ops serviceWithSync
  */
-export function serviceWithSync<T>(service: Service<T>) {
+export function serviceWithSync<T>(tag: Tag<T>) {
   return <R, E, B>(f: (resource: T) => Sync<R, E, B>): Sync<R & Has<T>, E, B> =>
-    Sync.environmentWithSync((r: Has<T>) => f(service.get(r)));
+    Sync.environmentWithSync((env: Env<Has<T>>) => f(env.get(tag)));
 }

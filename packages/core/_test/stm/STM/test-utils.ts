@@ -15,8 +15,12 @@ export interface STMEnv {
 /**
  * @tsplus type ets/STMTestEnvOps
  */
-export interface STMEnvOps {}
-export const STMEnv: STMEnvOps = {};
+export interface STMEnvOps {
+  Tag: Tag<STMEnv>;
+}
+export const STMEnv: STMEnvOps = {
+  Tag: Tag<STMEnv>()
+};
 
 /**
  * @tsplus static ets/STMTestEnvOps make
@@ -25,12 +29,7 @@ export function makeSTMEnv(n: number): UIO<STMEnv> {
   return TRef.makeCommit(n).map((ref) => ({ ref }));
 }
 
-export const HasSTMEnv = Service<STMEnv>(STMEnvId);
-
-export function incrementRefN(
-  n: number,
-  ref: TRef<number>
-): Effect<HasClock, never, number> {
+export function incrementRefN(n: number, ref: TRef<number>): UIO<number> {
   return STM.atomically(
     ref
       .get()
@@ -44,7 +43,7 @@ export function compute3RefN(
   ref1: TRef<number>,
   ref2: TRef<number>,
   ref3: TRef<number>
-): Effect<HasClock, never, number> {
+): UIO<number> {
   return STM.atomically(
     STM.Do()
       .bind("value1", () => ref1.get())
@@ -64,7 +63,7 @@ export class UnpureBarrier {
     this.#isOpen = true;
   }
 
-  await(): Effect<HasClock, never, void> {
+  await(): UIO<void> {
     return Effect.suspend(
       Effect.attempt(() => {
         if (this.#isOpen) {

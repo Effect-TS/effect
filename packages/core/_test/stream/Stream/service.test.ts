@@ -1,16 +1,14 @@
 describe.concurrent("Stream", () => {
   describe.concurrent("serviceWith", () => {
     it("serviceWithEffect", async () => {
-      const ServiceWithEffectId = Symbol.for("@effect/core/test/stream/Stream/ServiceWithEffectId");
-
       interface ServiceWithEffect {
         readonly live: UIO<number>;
       }
 
-      const ServiceWithEffect = Service<ServiceWithEffect>(ServiceWithEffectId);
+      const ServiceWithEffect = Tag<ServiceWithEffect>();
 
       const program = Stream.serviceWithEffect(ServiceWithEffect)((_) => _.live)
-        .provideSomeLayer(Layer.succeed(ServiceWithEffect({ live: Effect.succeed(10) })))
+        .provideSomeLayer(Layer.succeed(ServiceWithEffect)({ live: Effect.succeed(10) }))
         .runCollect();
 
       const result = await program.unsafeRunPromise();
@@ -19,17 +17,15 @@ describe.concurrent("Stream", () => {
     });
 
     it("serviceWithStream", async () => {
-      const ServiceWithStreamId = Symbol.for("@effect/core/test/stream/Stream/ServiceWithEffectId");
-
       interface ServiceWithStream {
         readonly live: Stream<unknown, never, number>;
       }
 
-      const ServiceWithStream = Service<ServiceWithStream>(ServiceWithStreamId);
+      const ServiceWithStream = Tag<ServiceWithStream>();
 
       const program = Stream.serviceWithStream(ServiceWithStream)((_) => _.live)
         .provideSomeLayer(
-          Layer.succeed(ServiceWithStream({ live: Stream.fromCollection(Chunk.range(0, 10)) }))
+          Layer.succeed(ServiceWithStream)({ live: Stream.fromCollection(Chunk.range(0, 10)) })
         )
         .runCollect();
 

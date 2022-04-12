@@ -29,7 +29,7 @@ export interface ClockOps {
 export const Clock: ClockOps = {
   $: {},
   Scheduler: {},
-  Tag: Service.Tag<Clock>()
+  Tag: Tag<Clock>()
 };
 
 /**
@@ -82,28 +82,3 @@ export const globalScheduler: Clock.Scheduler = {
     };
   }
 };
-
-export class LiveClock implements Clock {
-  readonly [ClockSym]: ClockSym = ClockSym;
-
-  get currentTime(): UIO<number> {
-    return Effect.succeed(this.unsafeCurrentTime);
-  }
-
-  get unsafeCurrentTime(): number {
-    return new Date().getTime();
-  }
-
-  get scheduler(): UIO<Clock.Scheduler> {
-    return Effect.succeed(globalScheduler);
-  }
-
-  sleep(duration: LazyArg<Duration>, __tsplusTrace?: string): UIO<void> {
-    return Effect.succeed(duration).flatMap((duration) =>
-      Effect.asyncInterrupt((cb) => {
-        const canceler = globalScheduler.unsafeSchedule(() => cb(Effect.unit), duration);
-        return Either.left(Effect.succeed(canceler));
-      })
-    );
-  }
-}

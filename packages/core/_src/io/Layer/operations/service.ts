@@ -4,6 +4,6 @@
  *
  * @tsplus static ets/Layer/Ops service
  */
-export function service<T>(service: Service<T>): Layer<Has<T>, never, T> {
-  return Layer.fromRawEffect(Effect.service(service));
+export function service<T>(tag: Tag<T>): Layer<Has<T>, never, Has<T>> {
+  return Layer.fromEffect(tag)(Effect.service(tag));
 }

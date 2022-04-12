@@ -7,6 +7,6 @@
  *
  * @tsplus static ets/STM/Ops serviceWithSTM
  */
-export function serviceWithSTM<T>(service: Service<T>) {
-  return <R, E, A>(f: (a: T) => STM<R, E, A>): STM<R & Has<T>, E, A> => STM.service(service).flatMap(f);
+export function serviceWithSTM<T>(tag: Tag<T>) {
+  return <R, E, A>(f: (a: T) => STM<R, E, A>): STM<R & Has<T>, E, A> => STM.service(tag).flatMap(f);
 }

@@ -3,24 +3,24 @@
  *
  * @tsplus fluent ets/Channel updateService
  */
-export function updateService_<Env, InErr, InDone, OutElem, OutErr, OutDone, T>(
-  self: Channel<Env, InErr, unknown, InDone, OutErr, OutElem, OutDone>,
-  service: Service<T>
+export function updateService_<R, InErr, InDone, OutElem, OutErr, OutDone, T>(
+  self: Channel<R, InErr, unknown, InDone, OutErr, OutElem, OutDone>,
+  tag: Tag<T>
 ) {
   return (
     f: (resource: T) => T,
     __tsplusTrace?: string
-  ): Channel<Env & Has<T>, InErr, unknown, InDone, OutErr, OutElem, OutDone> =>
-    self.provideSomeEnvironment((r) => ({ ...r, ...service(f(service.get(r))) }));
+  ): Channel<R & Has<T>, InErr, unknown, InDone, OutErr, OutElem, OutDone> =>
+    self.provideSomeEnvironment((env) => env.merge(Env().add(tag, f(env.get(tag)))));
 }
 
 /**
  * Updates a service in the environment of this channel.
  */
-export function updateService<T>(service: Service<T>) {
-  return <Env, InErr, InDone, OutElem, OutErr, OutDone>(
-    self: Channel<Env, InErr, unknown, InDone, OutErr, OutElem, OutDone>,
+export function updateService<T>(tag: Tag<T>) {
+  return <R, InErr, InDone, OutElem, OutErr, OutDone>(
+    self: Channel<R, InErr, unknown, InDone, OutErr, OutElem, OutDone>,
     f: (resource: T) => T,
     __tsplusTrace?: string
-  ): Channel<Env & Has<T>, InErr, unknown, InDone, OutErr, OutElem, OutDone> => self.updateService(service)(f);
+  ): Channel<R & Has<T>, InErr, unknown, InDone, OutErr, OutElem, OutDone> => self.updateService(tag)(f);
 }

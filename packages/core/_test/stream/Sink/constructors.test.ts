@@ -224,9 +224,10 @@ describe.concurrent("Sink", () => {
 
   describe.concurrent("environmentWithSink", () => {
     it("should access the environment with the provided sink", async () => {
+      const StringTag = Tag<string>();
       const program = Stream("ignore this").run(
-        Sink.environmentWithSink((env: string) => Sink.succeed(env)).provideEnvironment(
-          "use this"
+        Sink.environmentWithSink((env: Env<Has<string>>) => Sink.succeed(env.get(StringTag))).provideEnvironment(
+          Env().add(StringTag, "use this")
         )
       );
 

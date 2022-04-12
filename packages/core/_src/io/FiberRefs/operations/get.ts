@@ -8,7 +8,7 @@ import { concreteFiberRefs } from "@effect/core/io/FiberRefs/operations/_interna
  */
 export function get_<A>(self: FiberRefs, fiberRef: FiberRef<A>): Option<A> {
   concreteFiberRefs(self);
-  return self.fiberRefLocals.get(fiberRef).map((list) => list.head.get(1) as A);
+  return Option.fromNullable(self.fiberRefLocals.get(fiberRef)).map((list) => list.head.get(1) as A);
 }
 
 /**

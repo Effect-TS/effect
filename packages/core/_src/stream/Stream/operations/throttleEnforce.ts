@@ -15,7 +15,7 @@ export function throttleEnforce_<R, E, A>(
   costFn: (input: Chunk<A>) => number,
   burst = 0,
   __tsplusTrace?: string
-): Stream<R & HasClock, E, A> {
+): Stream<R, E, A> {
   return self.throttleEnforceEffect(
     units,
     duration,

@@ -8,10 +8,6 @@ import type {} from "@effect/core";
 /**
  * @tsplus global
  */
-import { LazyValue } from "@effect/core/data/LazyValue";
-/**
- * @tsplus global
- */
 import { Cause } from "@effect/core/io/Cause/definition";
 /**
  * @tsplus global
@@ -27,7 +23,11 @@ import {
 /**
  * @tsplus global
  */
-import { Clock, HasClock } from "@effect/core/io/Clock/definition";
+import { Clock } from "@effect/core/io/Clock/definition";
+/**
+ * @tsplus global
+ */
+import { DefaultEnv } from "@effect/core/io/DefaultEnv/definition";
 /**
  * @tsplus global
  */
@@ -159,7 +159,7 @@ import { Queue } from "@effect/core/io/Queue/definition/Queue";
 /**
  * @tsplus global
  */
-import { HasRandom, Random } from "@effect/core/io/Random/definition";
+import { Random } from "@effect/core/io/Random/definition";
 /**
  * @tsplus global
  */

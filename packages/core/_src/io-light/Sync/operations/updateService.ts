@@ -3,9 +3,9 @@
  *
  * @tsplus fluent ets/Sync updateService
  */
-export function updateService_<R, E, A, T>(self: Sync<R, E, A>, service: Service<T>) {
+export function updateService_<R, E, A, T>(self: Sync<R, E, A>, tag: Tag<T>) {
   return (f: (resource: T) => T, __tsplusTrace?: string): Sync<R & Has<T>, E, A> =>
-    self.provideSomeEnvironment((r) => ({ ...r, ...service(f(service.get(r))) }));
+    self.provideSomeEnvironment((env) => env.add(tag, f(env.get(tag))));
 }
 
 /**

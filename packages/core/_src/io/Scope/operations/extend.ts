@@ -12,7 +12,7 @@ export function extend_<R, E, A>(
   effect: LazyArg<Effect<R & Has<Scope>, E, A>>
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(
-    effect().provideSomeEnvironment((r: R) => ({ ...r, ...Scope.Service(self) }))
+    effect().provideSomeEnvironment((env) => env.merge(Env().add(Scope.Tag, self)))
   );
 }
 
