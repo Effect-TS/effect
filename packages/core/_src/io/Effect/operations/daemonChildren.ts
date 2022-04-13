@@ -12,8 +12,8 @@ export function daemonChildren<R, E, A>(
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(
     new IOverrideForkScope(
-      () => self,
-      () => Option.some(FiberScope.global.value),
+      self,
+      Option.some(FiberScope.global.value),
       __tsplusTrace
     )
   );

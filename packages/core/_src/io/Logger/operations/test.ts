@@ -11,7 +11,7 @@ export function test_<Message, Output>(
     LogLevel.Info,
     () => input,
     () => Cause.empty,
-    HashMap.empty(),
+    new Map(),
     List.empty(),
     new Map()
   );

@@ -1,6 +1,4 @@
 export * as chunk from "@effect/core/collection/Chunk";
-export * as sync from "@effect/core/io-light/Sync";
-export * as xPure from "@effect/core/io-light/XPure";
 export * as cause from "@effect/core/io/Cause";
 export * as clock from "@effect/core/io/Clock";
 export * as defaultEnv from "@effect/core/io/DefaultEnv";

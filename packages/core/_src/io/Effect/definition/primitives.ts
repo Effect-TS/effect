@@ -1,4 +1,4 @@
-import type { XPureInstruction } from "@effect/core/io-light/XPure/definition/primitives";
+import type { Effect } from "@effect/core/io/Effect/definition/base";
 import { Base } from "@effect/core/io/Effect/definition/base";
 
 export type Canceler<R> = RIO<R, void>;
@@ -38,8 +38,7 @@ export type Instruction =
   | IFiberRefLocally<any, any, any, any>
   | IFiberRefDelete
   | IFiberRefWith<any, any, any, any>
-  | ISetRuntimeConfig
-  | XPureInstruction;
+  | ISetRuntimeConfig;
 
 export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R & R1, E | E1, A1> {
   readonly _tag = "FlatMap";
@@ -51,6 +50,14 @@ export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R & R1, E | E1, A1> {
   ) {
     super();
   }
+
+  apply(a: A): Effect<R1, E1, A1> {
+    return this.k(a);
+  }
+
+  unsafeLog() {
+    return `FlatMap at ${this.trace}`;
+  }
 }
 
 export class ISucceedNow<A> extends Base<unknown, never, A> {
@@ -59,6 +66,10 @@ export class ISucceedNow<A> extends Base<unknown, never, A> {
   constructor(readonly value: A, readonly trace?: string) {
     super();
   }
+
+  unsafeLog() {
+    return `SucceedNow at ${this.trace}`;
+  }
 }
 
 export class ISucceed<A> extends Base<unknown, never, A> {
@@ -66,6 +77,10 @@ export class ISucceed<A> extends Base<unknown, never, A> {
 
   constructor(readonly effect: Lazy<A>, readonly trace?: string) {
     super();
+  }
+
+  unsafeLog() {
+    return `Succeed at ${this.trace}`;
   }
 }
 
@@ -78,6 +93,10 @@ export class ISucceedWith<A> extends Base<unknown, never, A> {
   ) {
     super();
   }
+
+  unsafeLog() {
+    return `SucceedWith at ${this.trace}`;
+  }
 }
 
 export class ISuspend<R, E, A> extends Base<R, E, A> {
@@ -85,6 +104,10 @@ export class ISuspend<R, E, A> extends Base<R, E, A> {
 
   constructor(readonly make: Lazy<Effect<R, E, A>>, readonly trace?: string) {
     super();
+  }
+
+  unsafeLog() {
+    return `Suspend at ${this.trace}`;
   }
 }
 
@@ -96,6 +119,10 @@ export class ISuspendWith<R, E, A> extends Base<R, E, A> {
     readonly trace?: string
   ) {
     super();
+  }
+
+  unsafeLog() {
+    return `SuspendWith at ${this.trace}`;
   }
 }
 
@@ -110,6 +137,10 @@ export class IAsync<R, E, A> extends Base<R, E, A> {
     readonly trace?: string
   ) {
     super();
+  }
+
+  unsafeLog() {
+    return `Async at ${this.trace}`;
   }
 }
 
@@ -128,6 +159,14 @@ export class IFold<R, E, A, R2, E2, A2, R3, E3, A3> extends Base<
   ) {
     super();
   }
+
+  apply(a: A): Effect<R3, E3, A3> {
+    return this.success(a);
+  }
+
+  unsafeLog() {
+    return `Fold at ${this.trace}`;
+  }
 }
 
 export class IFork<R, E, A> extends Base<R, never, Fiber.Runtime<E, A>> {
@@ -139,6 +178,10 @@ export class IFork<R, E, A> extends Base<R, never, Fiber.Runtime<E, A>> {
     readonly trace?: string
   ) {
     super();
+  }
+
+  unsafeLog() {
+    return `Fork at ${this.trace}`;
   }
 }
 
@@ -152,6 +195,10 @@ export class IInterruptStatus<R, E, A> extends Base<R, E, A> {
   ) {
     super();
   }
+
+  unsafeLog() {
+    return `InterruptStatus at ${this.trace}`;
+  }
 }
 
 export class ICheckInterrupt<R, E, A> extends Base<R, E, A> {
@@ -163,6 +210,10 @@ export class ICheckInterrupt<R, E, A> extends Base<R, E, A> {
   ) {
     super();
   }
+
+  unsafeLog() {
+    return `CheckInterrupt at ${this.trace}`;
+  }
 }
 
 export class IFail<E> extends Base<unknown, E, never> {
@@ -170,6 +221,10 @@ export class IFail<E> extends Base<unknown, E, never> {
 
   constructor(readonly cause: Lazy<Cause<E>>, readonly trace?: string) {
     super();
+  }
+
+  unsafeLog() {
+    return `Fail at ${this.trace}`;
   }
 }
 
@@ -182,6 +237,10 @@ export class IDescriptor<R, E, A> extends Base<R, E, A> {
   ) {
     super();
   }
+
+  unsafeLog() {
+    return `Descriptor at ${this.trace}`;
+  }
 }
 
 export class IYield extends Base<unknown, never, void> {
@@ -189,6 +248,10 @@ export class IYield extends Base<unknown, never, void> {
 
   constructor(readonly trace?: string) {
     super();
+  }
+
+  unsafeLog() {
+    return `Yield at ${this.trace}`;
   }
 }
 
@@ -201,6 +264,10 @@ export class IFiberRefModifyAll<A> extends Base<unknown, never, A> {
   ) {
     super();
   }
+
+  unsafeLog() {
+    return `FiberRefModifyAll at ${this.trace}`;
+  }
 }
 
 export class IFiberRefModify<A, B> extends Base<unknown, never, B> {
@@ -212,6 +279,10 @@ export class IFiberRefModify<A, B> extends Base<unknown, never, B> {
     readonly trace?: string
   ) {
     super();
+  }
+
+  unsafeLog() {
+    return `FiberRefModify at ${this.trace}`;
   }
 }
 
@@ -226,6 +297,10 @@ export class IFiberRefLocally<V, R, E, A> extends Base<R, E, A> {
   ) {
     super();
   }
+
+  unsafeLog() {
+    return `FiberRefLocally at ${this.trace}`;
+  }
 }
 
 export class IFiberRefDelete extends Base<unknown, never, void> {
@@ -233,6 +308,10 @@ export class IFiberRefDelete extends Base<unknown, never, void> {
 
   constructor(readonly fiberRef: FiberRef<unknown>, readonly trace?: string) {
     super();
+  }
+
+  unsafeLog() {
+    return `FiberRefDelete at ${this.trace}`;
   }
 }
 
@@ -246,6 +325,10 @@ export class IFiberRefWith<R, E, A, B> extends Base<R, E, B> {
   ) {
     super();
   }
+
+  unsafeLog() {
+    return `FiberRefWith at ${this.trace}`;
+  }
 }
 
 export class ITrace extends Base<unknown, never, Trace> {
@@ -253,6 +336,10 @@ export class ITrace extends Base<unknown, never, Trace> {
 
   constructor(readonly trace?: string) {
     super();
+  }
+
+  unsafeLog() {
+    return `Trace at ${this.trace}`;
   }
 }
 
@@ -272,6 +359,10 @@ export class IRaceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3> extends Base
   ) {
     super();
   }
+
+  unsafeLog() {
+    return `RaceWith at ${this.trace}`;
+  }
 }
 
 export class ISupervise<R, E, A> extends Base<R, E, A> {
@@ -284,6 +375,10 @@ export class ISupervise<R, E, A> extends Base<R, E, A> {
   ) {
     super();
   }
+
+  unsafeLog() {
+    return `Supervise at ${this.trace}`;
+  }
 }
 
 export class IGetForkScope<R, E, A> extends Base<R, E, A> {
@@ -292,17 +387,25 @@ export class IGetForkScope<R, E, A> extends Base<R, E, A> {
   constructor(readonly f: (_: FiberScope) => Effect<R, E, A>, readonly trace?: string) {
     super();
   }
+
+  unsafeLog() {
+    return `GetForkScope at ${this.trace}`;
+  }
 }
 
 export class IOverrideForkScope<R, E, A> extends Base<R, E, A> {
   readonly _tag = "OverrideForkScope";
 
   constructor(
-    readonly effect: Lazy<Effect<R, E, A>>,
-    readonly forkScope: Lazy<Option<FiberScope>>,
+    readonly effect: Effect<R, E, A>,
+    readonly forkScope: Option<FiberScope>,
     readonly trace?: string
   ) {
     super();
+  }
+
+  unsafeLog() {
+    return `OverrideForkScope at ${this.trace}`;
   }
 }
 
@@ -311,10 +414,14 @@ export class IEnsuring<R, R1, E, A> extends Base<R, E, A> {
 
   constructor(
     readonly effect: Effect<R, E, A>,
-    readonly finalizer: Lazy<Effect<R1, never, any>>,
+    readonly finalizer: Effect<R1, never, unknown>,
     readonly trace?: string
   ) {
     super();
+  }
+
+  unsafeLog() {
+    return `Ensuring at ${this.trace}`;
   }
 }
 
@@ -323,7 +430,7 @@ export class ILogged<A> extends Base<unknown, never, void> {
 
   constructor(
     readonly message: Lazy<A>,
-    readonly cause: Lazy<Cause<any>>,
+    readonly cause: Lazy<Cause<unknown>>,
     readonly overrideLogLevel: Option<LogLevel> = Option.none,
     readonly overrideRef1: FiberRef<unknown> | null = null,
     readonly overrideValue1: unknown = null,
@@ -331,13 +438,21 @@ export class ILogged<A> extends Base<unknown, never, void> {
   ) {
     super();
   }
+
+  unsafeLog() {
+    return `Logged at ${this.trace}`;
+  }
 }
 
 export class ISetRuntimeConfig extends Base<unknown, never, void> {
   readonly _tag = "SetRuntimeConfig";
 
-  constructor(readonly runtimeConfig: Lazy<RuntimeConfig>, readonly trace?: string) {
+  constructor(readonly runtimeConfig: RuntimeConfig, readonly trace?: string) {
     super();
+  }
+
+  unsafeLog() {
+    return `SetRuntimeConfig at ${this.trace}`;
   }
 }
 
