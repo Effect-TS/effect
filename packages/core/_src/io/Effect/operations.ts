@@ -138,6 +138,7 @@ export * from "@effect/core/io/Effect/operations/memoizeF";
 export * from "@effect/core/io/Effect/operations/merge";
 export * from "@effect/core/io/Effect/operations/mergeAll";
 export * from "@effect/core/io/Effect/operations/mergeAllPar";
+export * from "@effect/core/io/Effect/operations/modifyRuntimeConfig";
 export * from "@effect/core/io/Effect/operations/negate";
 export * from "@effect/core/io/Effect/operations/never";
 export * from "@effect/core/io/Effect/operations/none";

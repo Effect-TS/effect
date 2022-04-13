@@ -1141,9 +1141,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                 current = undefined;
               } else {
                 if (logRuntime) {
-                  const effect = current;
-                  // TODO: implement unsafeLog on Effect primitives
-                  this.unsafeLog(() => effect._tag, effect.trace);
+                  this.unsafeLog(() => current!.unsafeLog(), current.trace);
                 }
 
                 if (superviseOps) {
@@ -1484,26 +1482,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "SetRuntimeConfig": {
-                    this.runtimeConfig = current.runtimeConfig();
+                    this.runtimeConfig = current.runtimeConfig;
                     current = instruction(Effect.unit);
                     break;
-                  }
-
-                  case "XPure": {
-                    const effect: XPure<any, any, any, any, any, any> = current;
-                    const environment = this.unsafeGetRef(
-                      FiberRef.currentEnvironment.value
-                    );
-                    const result = effect
-                      .provideEnvironment(() => environment)
-                      .runEither();
-
-                    current = instruction(
-                      result.fold(
-                        (e) => Effect.failCauseNow(Cause.fail(e)),
-                        (a) => Effect.succeedNow(a)
-                      )
-                    );
                   }
                 }
               }

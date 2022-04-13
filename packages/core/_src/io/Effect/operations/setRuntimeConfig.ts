@@ -9,5 +9,5 @@ export function setRuntimeConfig(
   runtimeConfig: LazyArg<RuntimeConfig>,
   __tsplusTrace?: string
 ): UIO<void> {
-  return new ISetRuntimeConfig(runtimeConfig, __tsplusTrace);
+  return Effect.suspendSucceed(new ISetRuntimeConfig(runtimeConfig(), __tsplusTrace));
 }

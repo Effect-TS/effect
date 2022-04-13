@@ -18,7 +18,7 @@ export function ensuring_<R, E, A, R1, X>(
   finalizer: LazyArg<Effect<R1, never, X>>,
   __tsplusTrace?: string
 ): Effect<R & R1, E, A> {
-  return Effect.suspendSucceed(new IEnsuring(self, finalizer, __tsplusTrace));
+  return Effect.suspendSucceed(new IEnsuring(self, finalizer(), __tsplusTrace));
 }
 
 /**
