@@ -9,8 +9,8 @@ export type MetricLabelSym = typeof MetricLabelSym;
  * be used to create separate versions that track response times for different
  * clients.
  *
- * @tsplus type ets/MetricLabel
- * @tsplus companion ets/MetricLabel/Ops
+ * @tsplus type ets/Metrics/MetricLabel
+ * @tsplus companion ets/Metrics/MetricLabel/Ops
  */
 export class MetricLabel implements Equals {
   readonly [MetricLabelSym] = MetricLabelSym;
@@ -27,14 +27,14 @@ export class MetricLabel implements Equals {
 }
 
 /**
- * @tsplus static ets/MetricLabel/Ops __call
+ * @tsplus static ets/Metrics/MetricLabel/Ops __call
  */
 export function make(key: string, value: string): MetricLabel {
   return new MetricLabel(key, value);
 }
 
 /**
- * @tsplus static ets/MetricLabel/Ops isMetricLabel
+ * @tsplus static ets/Metrics/MetricLabel/Ops isMetricLabel
  */
 export function isMetricLabel(u: unknown): u is MetricLabel {
   return typeof u === "object" && u != null && MetricLabelSym in u;

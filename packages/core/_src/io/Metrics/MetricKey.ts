@@ -1,268 +1,133 @@
-export const MetricKeySym = Symbol.for("@effect/core/io/Metrics/MetricKey");
+export const MetricKeySym = Symbol.for("@effect/core/io/Metric/MetricKey");
 export type MetricKeySym = typeof MetricKeySym;
 
 /**
  * A `MetricKey` is a unique key associated with each metric. The key is based
- * on a combination of the metric type, the name and labels associated with the
+ * on a combination of the metric type, the name and tags associated with the
  * metric, and any other information to describe a a metric, such as the
  * boundaries of a histogram. In this way, it is impossible to ever create
- * metrics with conflicting keys.
+ * different metrics with conflicting keys.
  *
- * @tsplus type ets/MetricKey
+ * @tsplus type ets/Metrics/MetricKey
+ * @tsplus companion ets/Metrics/MetricKey/Ops
  */
-export type MetricKey = CounterKey | GaugeKey | HistogramKey | SummaryKey | SetCountKey;
+export class MetricKey<Type> implements Equals {
+  readonly [MetricKeySym]: MetricKeySym = MetricKeySym;
+
+  constructor(
+    readonly name: string,
+    readonly keyType: Type,
+    readonly tags: HashSet<MetricLabel> = HashSet.empty()
+  ) {}
+
+  [Hash.sym](): number {
+    return Hash.combine(
+      Hash.string(this.name),
+      Hash.combine(Hash.unknown(this.keyType), Hash.unknown(this.tags))
+    );
+  }
+
+  [Equals.sym](u: unknown): boolean {
+    return isMetricKey(u) &&
+      this.name === u.name &&
+      Hash.unknown(this.keyType) === Hash.unknown(u.keyType) &&
+      this.tags == u.tags;
+  }
+}
 
 export declare namespace MetricKey {
-  type Counter = CounterKey;
-  type Gauge = GaugeKey;
-  type Histogram = HistogramKey;
-  type Summary = SummaryKey;
-  type SetCount = SetCountKey;
+  export type Untyped = MetricKey<unknown>;
+
+  export type Counter = MetricKey<MetricKeyType.Counter>;
+  export type Gauge = MetricKey<MetricKeyType.Gauge>;
+  export type Frequency = MetricKey<MetricKeyType.Frequency>;
+  export type Histogram = MetricKey<MetricKeyType.Histogram>;
+  export type Summary = MetricKey<MetricKeyType.Summary>;
 }
 
 /**
- * @tsplus type ets/MetricKey/Ops
+ * Creates a metric key for a counter, with the specified name.
+ *
+ * @tsplus static ets/Metrics/MetricKey/Ops Counter
  */
-export interface MetricKeyOps {}
-export const MetricKey: MetricKeyOps = {};
-
-/**
- * @tsplus type ets/MetricKey/Counter
- */
-export class CounterKey implements Equals {
-  readonly _tag = "CounterKey";
-  readonly [MetricKeySym] = MetricKeySym;
-
-  constructor(
-    readonly name: string,
-    readonly tags: Chunk<MetricLabel> = Chunk.empty()
-  ) {}
-
-  [Hash.sym](): number {
-    return Hash.combine(
-      Hash.string(this._tag),
-      Hash.combine(Hash.string(this.name), Hash.unknown(this.tags))
-    );
-  }
-
-  [Equals.sym](that: unknown): boolean {
-    return (
-      isMetricKey(that) &&
-      that._tag === "CounterKey" &&
-      this.name === that.name &&
-      this.tags == that.tags
-    );
-  }
+export function counter(name: string): MetricKey.Counter {
+  return new MetricKey(name, MetricKeyType.Counter);
 }
 
 /**
- * @tsplus type ets/MetricKey/Gauge
+ * Creates a metric key for a gauge, with the specified name.
+ *
+ * @tsplus static ets/Metrics/MetricKey/Ops Gauge
  */
-export class GaugeKey implements Equals {
-  readonly _tag = "GaugeKey";
-  readonly [MetricKeySym] = MetricKeySym;
-
-  constructor(
-    readonly name: string,
-    readonly tags: Chunk<MetricLabel> = Chunk.empty()
-  ) {}
-
-  [Hash.sym](): number {
-    return Hash.combine(
-      Hash.string(this._tag),
-      Hash.combine(Hash.string(this.name), Hash.unknown(this.tags))
-    );
-  }
-
-  [Equals.sym](that: unknown): boolean {
-    return (
-      isMetricKey(that) &&
-      that._tag === "GaugeKey" &&
-      this.tags == that.tags
-    );
-  }
+export function gauge(name: string): MetricKey.Gauge {
+  return new MetricKey(name, MetricKeyType.Gauge);
 }
 
 /**
- * @tsplus type ets/MetricKey/Histogram
+ * Creates a metric key for a categorical frequency table, with the specified
+ * name.
+ *
+ * @tsplus static ets/Metrics/MetricKey/Ops Frequency
  */
-export class HistogramKey implements Equals {
-  readonly _tag = "HistogramKey";
-  readonly [MetricKeySym] = MetricKeySym;
-
-  constructor(
-    readonly name: string,
-    readonly boundaries: Boundaries,
-    readonly tags: Chunk<MetricLabel> = Chunk.empty()
-  ) {}
-
-  [Hash.sym](): number {
-    return Hash.combine(
-      Hash.combine(Hash.string(this._tag), Hash.string(this.name)),
-      Hash.combine(Hash.unknown(this.boundaries), Hash.unknown(this.tags))
-    );
-  }
-
-  [Equals.sym](that: unknown): boolean {
-    return (
-      isMetricKey(that) &&
-      that._tag === "HistogramKey" &&
-      this.name === that.name &&
-      this.boundaries == that.boundaries &&
-      this.tags == that.tags
-    );
-  }
+export function frequency(name: string): MetricKey.Frequency {
+  return new MetricKey(name, MetricKeyType.Frequency);
 }
 
 /**
- * @tsplus type ets/MetricKey/Summary
+ * Creates a metric key for a histogram, with the specified name and boundaries.
+ *
+ * @tsplus static ets/Metrics/MetricKey/Ops Histogram
  */
-export class SummaryKey implements Equals {
-  readonly _tag = "SummaryKey";
-  readonly [MetricKeySym] = MetricKeySym;
-
-  constructor(
-    readonly name: string,
-    readonly maxSize: number,
-    readonly maxAge: Duration,
-    readonly error: number,
-    readonly quantiles: Chunk<number>,
-    readonly tags: Chunk<MetricLabel> = Chunk.empty()
-  ) {}
-
-  [Hash.sym](): number {
-    return Hash.combine(
-      Hash.string(this._tag),
-      Hash.combine(
-        Hash.string(this.name),
-        Hash.combine(
-          Hash.number(this.maxSize),
-          Hash.combine(
-            Hash.unknown(this.maxAge),
-            Hash.combine(
-              Hash.number(this.error),
-              Hash.combine(Hash.unknown(this.quantiles), Hash.unknown(this.tags))
-            )
-          )
-        )
-      )
-    );
-  }
-
-  [Equals.sym](that: unknown): boolean {
-    return (
-      isMetricKey(that) &&
-      that._tag === "SummaryKey" &&
-      this.name === that.name &&
-      this.maxSize === that.maxSize &&
-      this.maxAge == that.maxAge &&
-      this.error === that.error &&
-      this.quantiles == that.quantiles &&
-      this.tags == that.tags
-    );
-  }
+export function histogram(name: string, boundaries: Metric.Histogram.Boundaries): MetricKey.Histogram {
+  return new MetricKey(name, MetricKeyType.Histogram(boundaries));
 }
 
 /**
- * @tsplus type ets/MetricKey/SetCount
- */
-export class SetCountKey implements Equals {
-  readonly _tag = "SetCountKey";
-  readonly [MetricKeySym] = MetricKeySym;
-
-  constructor(
-    readonly name: string,
-    readonly setTag: string,
-    readonly tags: Chunk<MetricLabel> = Chunk.empty()
-  ) {}
-
-  counterKey(word: string): CounterKey {
-    return new CounterKey(
-      this.name,
-      this.tags.prepend(new MetricLabel(this.setTag, word))
-    );
-  }
-
-  [Hash.sym](): number {
-    return Hash.combine(
-      Hash.string(this._tag),
-      Hash.combine(
-        Hash.string(this.name),
-        Hash.combine(Hash.string(this.setTag), Hash.unknown(this.tags))
-      )
-    );
-  }
-
-  [Equals.sym](that: unknown): boolean {
-    return (
-      isMetricKey(that) &&
-      that._tag === "SetCountKey" &&
-      this.name === that.name &&
-      this.setTag === that.setTag &&
-      this.tags == that.tags
-    );
-  }
-}
-
-/**
- * @tsplus static ets/MetricKey/Ops Counter
- */
-export function counter(
-  name: string,
-  tags: Chunk<MetricLabel> = Chunk.empty()
-): MetricKey.Counter {
-  return new CounterKey(name, tags);
-}
-
-/**
- * @tsplus static ets/MetricKey/Ops Gauge
- */
-export function gauge(
-  name: string,
-  tags: Chunk<MetricLabel> = Chunk.empty()
-): MetricKey.Gauge {
-  return new GaugeKey(name, tags);
-}
-
-/**
- * @tsplus static ets/MetricKey/Ops Histogram
- */
-export function histogram(
-  name: string,
-  boundaries: Boundaries,
-  tags: Chunk<MetricLabel> = Chunk.empty()
-): MetricKey.Histogram {
-  return new HistogramKey(name, boundaries, tags);
-}
-
-/**
- * @tsplus static ets/MetricKey/Ops Summary
+ * Creates a metric key for a histogram, with the specified name, maxAge,
+ * maxSize, error, and quantiles.
+ *
+ * @tsplus static ets/Metrics/MetricKey/Ops Summary
  */
 export function summary(
   name: string,
-  maxSize: number,
   maxAge: Duration,
+  maxSize: number,
   error: number,
-  quantiles: Chunk<number>,
-  tags: Chunk<MetricLabel> = Chunk.empty()
+  quantiles: Chunk<number>
 ): MetricKey.Summary {
-  return new SummaryKey(name, maxSize, maxAge, error, quantiles, tags);
+  return new MetricKey(name, MetricKeyType.Summary(maxAge, maxSize, error, quantiles));
 }
 
 /**
- * @tsplus static ets/MetricKey/Ops SetCount
+ * Returns a new `MetricKey` with the specified tag appended.
+ *
+ * @tsplus fluent ets/Metrics/MetricKey tagged
  */
-export function setCount(
-  name: string,
-  setTag: string,
-  tags: Chunk<MetricLabel> = Chunk.empty()
-): MetricKey.SetCount {
-  return new SetCountKey(name, setTag, tags);
+export function tagged<Type>(self: MetricKey<Type>, key: string, value: string): MetricKey<Type> {
+  return self.taggedWithLabelSet(HashSet(MetricLabel(key, value)));
 }
 
 /**
- * @tsplus static ets/MetricKey/Ops isMetricKey
+ * Returns a new `MetricKey` with the specified tags appended.
+ *
+ * @tsplus fluent ets/Metrics/MetricKey taggedWithLabels
  */
-export function isMetricKey(u: unknown): u is MetricKey {
+export function taggedWithLabels<Type>(self: MetricKey<Type>, extraTags: Collection<MetricLabel>): MetricKey<Type> {
+  return self.taggedWithLabelSet(HashSet.from(extraTags));
+}
+
+/**
+ * Returns a new `MetricKey` with the specified tags appended.
+ *
+ * @tsplus fluent ets/Metrics/MetricKey taggedWithLabelSet
+ */
+export function taggedWithLabelSet<Type>(self: MetricKey<Type>, extraTags: HashSet<MetricLabel>): MetricKey<Type> {
+  return extraTags.size === 0 ? self : new MetricKey(self.name, self.keyType, self.tags.union(extraTags));
+}
+
+/**
+ * @tsplus static ets/Metrics/MetricKey/Ops isMetricKey
+ */
+export function isMetricKey(u: unknown): u is MetricKey<unknown> {
   return typeof u === "object" && u != null && MetricKeySym in u;
 }

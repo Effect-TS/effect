@@ -7,48 +7,20 @@ import { _A, _E, FiberSym } from "@effect/core/io/Fiber/definition";
 import { FiberStatus } from "@effect/core/io/Fiber/status";
 import { concreteFiberRefs } from "@effect/core/io/FiberRefs/operations/_internal/FiberRefsInternal";
 import { joinFiberRefs } from "@effect/core/io/FiberRefs/operations/_internal/join";
-import { concreteCounter } from "@effect/core/io/Metrics/Counter/operations/_internal/InternalCounter";
-import { Boundaries } from "@effect/core/io/Metrics/Histogram";
-import { concreteHistogram } from "@effect/core/io/Metrics/Histogram/operations/_internal/InternalHistogram";
-import { concreteSetCount } from "@effect/core/io/Metrics/SetCount/operations/_internal/InternalSetCount";
 import { defaultScheduler } from "@effect/core/support/Scheduler";
 import * as StackTraceBuilder from "@effect/core/support/StackTraceBuilder";
+import { constVoid } from "@tsplus/stdlib/data/Function";
 
-const fiberFailureCauses = LazyValue.make(() => {
-  const metric = Metric.occurrences("effect_fiber_failure_causes", "class");
-  concreteSetCount(metric);
-  return metric.setCount!;
-});
-const fiberForkLocations = LazyValue.make(() => {
-  const metric = Metric.occurrences("effect_fiber_fork", "location");
-  concreteSetCount(metric);
-  return metric.setCount!;
-});
+const fiberFailureCauses = LazyValue.make(() => Metric.frequency("effect_fiber_failure_causes"));
+const fiberForkLocations = LazyValue.make(() => Metric.frequency("effect_fiber_fork_locations"));
 
-const fibersStarted = LazyValue.make(() => {
-  const metric = Metric.count("effect_fiber_started");
-  concreteCounter(metric);
-  return metric.counter!;
-});
-const fiberSuccesses = LazyValue.make(() => {
-  const metric = Metric.count("effect_fiber_successes");
-  concreteCounter(metric);
-  return metric.counter!;
-});
-const fiberFailures = LazyValue.make(() => {
-  const metric = Metric.count("effect_fiber_failures");
-  concreteCounter(metric);
-  return metric.counter!;
-});
+const fibersStarted = LazyValue.make(() => Metric.counter("effect_fiber_started"));
+const fiberSuccesses = LazyValue.make(() => Metric.counter("effect_fiber_successes"));
+const fiberFailures = LazyValue.make(() => Metric.counter("effect_fiber_failures"));
 
 const fiberLifetimes = LazyValue.make(() => {
-  const fiberLifetimeBoundaries = Boundaries.exponential(1, 2, 100);
-  const metric = Metric.observeHistogram(
-    "effect_fiber_lifetimes",
-    fiberLifetimeBoundaries
-  );
-  concreteHistogram(metric);
-  return metric.histogram!;
+  const fiberLifetimeBoundaries = Metric.Histogram.Boundaries.exponential(1, 2, 100);
+  return Metric.histogram("effect_fiber_lifetimes", fiberLifetimeBoundaries);
 });
 
 export class InterruptExit {
@@ -125,8 +97,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     this.runtimeConfig = runtimeConfig;
     this.interruptStatus = interruptStatus;
     if (this.trackMetrics) {
-      fibersStarted.value.unsafeIncrement();
-      fiberForkLocations.value.unsafeObserve(this._location.stringify());
+      fibersStarted.value.unsafeUpdate(1, HashSet.empty());
+      fiberForkLocations.value.unsafeUpdate(this._location.stringify(), HashSet.empty());
     }
   }
 
@@ -248,7 +220,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   observeFailure(failure: string): void {
     if (this.trackMetrics) {
-      // fiberFailureCauses.unsafeObserve(failure)
+      fiberFailureCauses.value.unsafeUpdate(failure, HashSet.empty());
     }
   }
 
@@ -906,17 +878,17 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           const lifetime = endTimeSeconds - startTimeSeconds;
 
           if (this.trackMetrics) {
-            fiberLifetimes.value.unsafeObserve(lifetime);
+            fiberLifetimes.value.unsafeUpdate(lifetime, HashSet.empty());
           }
 
           newExit.fold(
             (cause) => {
               if (this.trackMetrics) {
-                fiberFailures.value.unsafeIncrement();
+                fiberFailures.value.unsafeUpdate(1, HashSet.empty());
               }
 
               return cause.fold<E, void>(
-                () => fiberFailureCauses.value.unsafeObserve("<empty>"),
+                () => fiberFailureCauses.value.unsafeUpdate("<empty>", HashSet.empty()),
                 (failure, _) => {
                   this.observeFailure(
                     typeof failure === "object"
@@ -934,14 +906,14 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                 () => {
                   this.observeFailure("InterruptedException");
                 },
-                () => undefined,
-                () => undefined,
-                () => undefined
+                constVoid,
+                constVoid,
+                constVoid
               );
             },
             () => {
               if (this.trackMetrics) {
-                fiberSuccesses.value.unsafeIncrement();
+                fiberSuccesses.value.unsafeUpdate(1, HashSet.empty());
               }
             }
           );

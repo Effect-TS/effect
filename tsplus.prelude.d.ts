@@ -95,23 +95,23 @@ import { LogSpan } from "@effect/core/io/LogSpan/definition";
 /**
  * @tsplus global
  */
-import { Counter } from "@effect/core/io/Metrics/Counter/definition";
+import { MetricRegistry } from "@effect/core/io/Metrics/MetricRegistry";
 /**
  * @tsplus global
  */
-import { Gauge } from "@effect/core/io/Metrics/Gauge/definition";
+import { MetricPair } from "@effect/core/io/Metrics/MetricPair";
 /**
  * @tsplus global
  */
-import { Boundaries, Histogram } from "@effect/core/io/Metrics/Histogram/definition";
+import { MetricHook } from "@effect/core/io/Metrics/MetricHook";
 /**
  * @tsplus global
  */
-import { Metric } from "@effect/core/io/Metrics/Metric/definition";
+import { MetricHooks } from "@effect/core/io/Metrics/MetricHooks";
 /**
  * @tsplus global
  */
-import { MetricClient } from "@effect/core/io/Metrics/MetricClient";
+import { Metric } from "@effect/core/io/Metrics/definition";
 /**
  * @tsplus global
  */
@@ -127,23 +127,11 @@ import { MetricListener } from "@effect/core/io/Metrics/MetricListener";
 /**
  * @tsplus global
  */
-import { MetricSnapshot } from "@effect/core/io/Metrics/MetricSnapshot";
-/**
- * @tsplus global
- */
 import { MetricState } from "@effect/core/io/Metrics/MetricState";
 /**
  * @tsplus global
  */
-import { MetricType } from "@effect/core/io/Metrics/MetricType";
-/**
- * @tsplus global
- */
-import { SetCount } from "@effect/core/io/Metrics/SetCount/definition";
-/**
- * @tsplus global
- */
-import { Summary } from "@effect/core/io/Metrics/Summary/definition";
+import { MetricKeyType } from "@effect/core/io/Metrics/MetricKeyType";
 /**
  * @tsplus global
  */
