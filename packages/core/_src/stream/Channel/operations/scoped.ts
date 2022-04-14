@@ -1,24 +1,20 @@
 /**
+ * Use a scoped effect to emit an output element.
+ *
  * @tsplus static ets/Channel/Ops scoped
  */
-export function scoped<
-  Env,
-  Env1,
-  InErr,
-  InElem,
-  InDone,
-  OutErr,
-  OutErr1,
-  OutElem,
-  OutDone,
-  A
->(
-  effect: LazyArg<Effect<Env & Has<Scope>, OutErr, A>>,
-  use: (a: A) => Channel<Env1, InErr, InElem, InDone, OutErr1, OutElem, OutDone>
-): Channel<Env & Env1, InErr, InElem, InDone, OutErr | OutErr1, OutElem, OutDone> {
-  return Channel.acquireReleaseExitUse(
-    Scope.make,
-    (scope) => Channel.fromEffect<Env, OutErr, A>(scope.extend(effect)).flatMap(use),
-    (scope, exit) => scope.close(exit)
-  );
+export function scoped<R, E, A>(
+  effect: LazyArg<Effect<R & Has<Scope>, E, A>>
+): Channel<R, unknown, unknown, unknown, E, A, unknown> {
+  return Channel.acquireReleaseOutExitUse(
+    Scope.make.flatMap((scope) =>
+      Effect.uninterruptibleMask(({ restore }) =>
+        restore(scope.extend(effect)).foldCauseEffect(
+          (cause) => scope.close(Exit.failCause(cause)) > Effect.failCause(cause),
+          (out) => Effect.succeedNow(Tuple(out, scope))
+        )
+      )
+    ),
+    ({ tuple: [_, scope] }, exit) => scope.close(exit)
+  ).mapOut((_) => _.get(0));
 }

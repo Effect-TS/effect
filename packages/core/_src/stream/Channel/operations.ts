@@ -85,7 +85,6 @@ export * from "@effect/core/stream/Channel/operations/runCollect";
 export * from "@effect/core/stream/Channel/operations/runDrain";
 export * from "@effect/core/stream/Channel/operations/runScoped";
 export * from "@effect/core/stream/Channel/operations/scoped";
-export * from "@effect/core/stream/Channel/operations/scopedOut";
 export * from "@effect/core/stream/Channel/operations/service";
 export * from "@effect/core/stream/Channel/operations/serviceWith";
 export * from "@effect/core/stream/Channel/operations/serviceWithChannel";
