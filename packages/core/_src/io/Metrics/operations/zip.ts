@@ -5,7 +5,7 @@ export function zip_<Type, In, Out, Type2, In2, Out2>(
   self: Metric<Type, In, Out>,
   that: Metric<Type2, In2, Out2>
 ): Metric<Tuple<[Type, Type2]>, Tuple<[In, In2]>, Tuple<[Out, Out2]>> {
-  return new Metric(
+  return Metric(
     Tuple(self.keyType, that.keyType),
     (input: Tuple<[In, In2]>, extraTags) => {
       const { tuple: [l, r] } = input;

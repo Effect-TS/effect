@@ -8,7 +8,7 @@ export function taggedWithLabelSet_<Type, In, Out>(
   self: Metric<Type, In, Out>,
   extraTags: HashSet<MetricLabel>
 ): Metric<Type, In, Out> {
-  return new Metric(
+  return Metric(
     self.keyType,
     (input, extraTags1) => self.unsafeUpdate(input, extraTags.union(extraTags1)),
     (extraTags1) => self.unsafeValue(extraTags.union(extraTags1))

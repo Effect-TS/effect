@@ -5,9 +5,9 @@ describe.concurrent("Metrics", () => {
     it("custom occurrences as aspect", async () => {
       const frequency = Metric.frequency("f1").taggedWithLabels(labels);
 
-      const program = Effect.succeed("hello")(frequency.apply) >
-        Effect.succeed("hello")(frequency.apply) >
-        Effect.succeed("world")(frequency.apply) >
+      const program = Effect.succeed("hello")(frequency) >
+        Effect.succeed("hello")(frequency) >
+        Effect.succeed("world")(frequency) >
         frequency.value();
 
       const result = await program.unsafeRunPromise();
@@ -44,9 +44,9 @@ describe.concurrent("Metrics", () => {
         .taggedWithLabels(labels)
         .contramap((n: number) => n.toString());
 
-      const program = Effect.succeed(1)(frequency.apply) >
-        Effect.succeed(1)(frequency.apply) >
-        Effect.succeed(100)(frequency.apply) >
+      const program = Effect.succeed(1)(frequency) >
+        Effect.succeed(1)(frequency) >
+        Effect.succeed(100)(frequency) >
         frequency.value();
 
       const result = await program.unsafeRunPromise();
@@ -63,9 +63,9 @@ describe.concurrent("Metrics", () => {
       const base = Metric.frequency("f4").taggedWithLabels(labels);
       const frequency = base.taggedWith((s: string) => HashSet(MetricLabel("dyn", s)));
 
-      const program = Effect.succeed("hello")(frequency.apply) >
-        Effect.succeed("hello")(frequency.apply) >
-        Effect.succeed("world")(frequency.apply) >
+      const program = Effect.succeed("hello")(frequency) >
+        Effect.succeed("hello")(frequency) >
+        Effect.succeed("world")(frequency) >
         Effect.struct({
           r0: base.value(),
           r1: base.tagged("dyn", "hello").value(),

@@ -9,7 +9,7 @@ export function map_<Type, In, Out, Out2>(
   self: Metric<Type, In, Out>,
   f: (out: Out) => Out2
 ): Metric<Type, In, Out2> {
-  return new Metric(
+  return Metric(
     self.keyType,
     self.unsafeUpdate,
     (extraTags) => f(self.unsafeValue(extraTags))
