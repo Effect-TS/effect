@@ -26,9 +26,9 @@ export function asyncInterrupt<R, E, A>(
       .bind("eitherStream", ({ output, runtime }) =>
         Effect.succeed<Either<Canceler<R>, Stream<R, E, A>>>(
           register(
-            Emit((k) => {
+            Emit(async (k) => {
               try {
-                runtime.unsafeRun(
+                runtime.unsafeRunPromise(
                   Take.fromPull(k).flatMap((take) => output.offer(take))
                 );
               } catch (e: unknown) {
