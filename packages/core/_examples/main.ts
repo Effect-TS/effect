@@ -9,13 +9,13 @@ export interface Foo {
   readonly foo: string;
 }
 
-export const FooTag = Service.Tag<Foo>();
+export const Foo = Service.Tag<Foo>();
 
 export interface Bar {
   readonly bar: string;
 }
 
-export const BarTag = Service.Tag<Bar>();
+export const Bar = Service.Tag<Bar>();
 
 export const switched = (n: number) => {
   switch (n) {
@@ -28,9 +28,9 @@ export const switched = (n: number) => {
     case 3:
       return Effect.fail(3 as const);
     case 4:
-      return Effect.environmentWithEffect((env: Env<Has<Bar>>) => Effect.die(env.get(BarTag).bar));
+      return Effect.serviceWithEffect(Bar)(({ bar }) => Effect.die(bar));
     default:
-      return Effect.environmentWithEffect((env: Env<Has<Foo>>) => Effect.die(env.get(FooTag).foo));
+      return Effect.serviceWithEffect(Foo)(({ foo }) => Effect.die(foo));
   }
 };
 
