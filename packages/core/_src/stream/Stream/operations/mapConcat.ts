@@ -9,7 +9,7 @@ export function mapConcat_<R, E, A, A2>(
   f: (a: A) => Collection<A2>,
   __tsplusTrace?: string
 ): Stream<R, E, A2> {
-  return self.mapConcatChunk((a) => Chunk.from(f(a)));
+  return self.chunksWith((chunk) => chunk.map((chunk) => chunk.flatMap((a) => Chunk.from(f(a)))));
 }
 
 /**

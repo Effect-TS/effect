@@ -1,10 +1,10 @@
 import { constTrue, constVoid } from "@tsplus/stdlib/data/Function";
 
 describe.concurrent("Stream", () => {
-  describe.concurrent("aggregateAsync", () => {
+  describe.concurrent("aggregate", () => {
     it("simple example", async () => {
       const program = Stream(1, 1, 1, 1)
-        .aggregateAsync(
+        .aggregate(
           Sink.foldUntil<number, Chunk<number>>(Chunk.empty<number>(), 3, (acc, el) => acc.prepend(el))
         )
         .runCollect();
@@ -17,7 +17,7 @@ describe.concurrent("Stream", () => {
 
     it("error propagation 1", async () => {
       const error = new RuntimeError("boom");
-      const program = Stream(1, 1, 1, 1).aggregateAsync(Sink.die(error)).runCollect();
+      const program = Stream(1, 1, 1, 1).aggregate(Sink.die(error)).runCollect();
 
       const result = await program.unsafeRunPromiseExit();
 
@@ -27,7 +27,7 @@ describe.concurrent("Stream", () => {
     it("error propagation 2", async () => {
       const error = new RuntimeError("boom");
       const program = Stream(1, 1, 1, 1)
-        .aggregateAsync(Sink.foldLeftEffect(List.empty(), () => Effect.die(error)))
+        .aggregate(Sink.foldLeftEffect(List.empty(), () => Effect.die(error)))
         .runCollect();
 
       const result = await program.unsafeRunPromiseExit();
@@ -47,7 +47,7 @@ describe.concurrent("Stream", () => {
                 ? Effect.succeedNow(acc.prepend(el))
                 : (latch.succeed(undefined) > Effect.never).onInterrupt(() => cancelled.set(true)))
         )
-        .bind("fiber", ({ sink }) => Stream(1, 1, 2).aggregateAsync(sink).runCollect().fork())
+        .bind("fiber", ({ sink }) => Stream(1, 1, 2).aggregate(sink).runCollect().fork())
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
         .flatMap(({ cancelled }) => cancelled.get());
@@ -65,7 +65,7 @@ describe.concurrent("Stream", () => {
           Sink.fromEffect(
             (latch.succeed(undefined) > Effect.never).onInterrupt(() => cancelled.set(true))
           ))
-        .bind("fiber", ({ sink }) => Stream(1, 1, 2).aggregateAsync(sink).runCollect().fork())
+        .bind("fiber", ({ sink }) => Stream(1, 1, 2).aggregate(sink).runCollect().fork())
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
         .flatMap(({ cancelled }) => cancelled.get());
@@ -78,7 +78,7 @@ describe.concurrent("Stream", () => {
     it("leftover handling", async () => {
       const data = List(1, 2, 2, 3, 2, 3);
       const program = Stream(...data)
-        .aggregateAsync(
+        .aggregate(
           Sink.foldWeighted<number, List<number>>(
             List.empty(),
             (_, i) => i,
@@ -97,7 +97,7 @@ describe.concurrent("Stream", () => {
 
     it("ZIO regression test issue 6395", async () => {
       const program = Stream(1, 2, 3)
-        .aggregateAsync(Sink.collectAllN<number>(2))
+        .aggregate(Sink.collectAllN<number>(2))
         .runCollect();
 
       const result = await program.unsafeRunPromise();
@@ -106,14 +106,14 @@ describe.concurrent("Stream", () => {
     });
   });
 
-  describe.concurrent("aggregateAsyncWithin", () => {
+  describe.concurrent("aggregateWithin", () => {
     it("fails fast", async () => {
       const program = Effect.Do()
         .bind("queue", () => Queue.unbounded<number>())
         .tap(({ queue }) =>
           Stream.range(1, 10)
             .tap((i) => Effect.when(i === 6, Effect.fail("boom")) > queue.offer(i))
-            .aggregateAsyncWithin(
+            .aggregateWithin(
               Sink.foldUntil(undefined, 5, constVoid),
               Schedule.forever
             )
@@ -139,7 +139,7 @@ describe.concurrent("Stream", () => {
       //             .map((exit) => new TakeInternal(exit))
       //             .tap(() => c.proceed)
       //             .flattenTake()
-      //             .aggregateAsyncWithin(Sink.last(), Schedule.fixed((100).millis))
+      //             .aggregateWithin(Sink.last(), Schedule.fixed((100).millis))
       //             .interruptWhen(deferred.await())
       //             .take(2)
       //             .runCollect()
@@ -155,10 +155,10 @@ describe.concurrent("Stream", () => {
     });
   });
 
-  describe.concurrent("aggregateAsyncWithinEither", () => {
+  describe.concurrent("aggregateWithinEither", () => {
     it("simple example", async () => {
       const program = Stream(1, 1, 1, 1, 2, 2)
-        .aggregateAsyncWithinEither(
+        .aggregateWithinEither(
           Sink.fold(
             Tuple(List.empty<number>(), true),
             (tuple) => tuple.get(1),
@@ -185,7 +185,7 @@ describe.concurrent("Stream", () => {
     it("error propagation 1", async () => {
       const error = new RuntimeError("boom");
       const program = Stream(1, 1, 1, 1)
-        .aggregateAsyncWithinEither(
+        .aggregateWithinEither(
           Sink.die(error),
           Schedule.spaced((30).minutes)
         )
@@ -199,7 +199,7 @@ describe.concurrent("Stream", () => {
     it("error propagation 2", async () => {
       const error = new RuntimeError("boom");
       const program = Stream(1, 1, 1, 1)
-        .aggregateAsyncWithinEither(
+        .aggregateWithinEither(
           Sink.foldLeftEffect(List.empty(), () => Effect.die(error)),
           Schedule.spaced((30).minutes)
         )
@@ -224,7 +224,7 @@ describe.concurrent("Stream", () => {
         )
         .bind("fiber", ({ sink }) =>
           Stream(1, 1, 2)
-            .aggregateAsyncWithinEither(sink, Schedule.spaced((30).minutes))
+            .aggregateWithinEither(sink, Schedule.spaced((30).minutes))
             .runCollect()
             .fork())
         .tap(({ latch }) => latch.await())
@@ -246,7 +246,7 @@ describe.concurrent("Stream", () => {
           ))
         .bind("fiber", ({ sink }) =>
           Stream(1, 1, 2)
-            .aggregateAsyncWithinEither(sink, Schedule.spaced((30).minutes))
+            .aggregateWithinEither(sink, Schedule.spaced((30).minutes))
             .runCollect()
             .fork())
         .tap(({ latch }) => latch.await())
@@ -261,7 +261,7 @@ describe.concurrent("Stream", () => {
     it("leftover handling", async () => {
       const data = List(1, 2, 2, 3, 2, 3);
       const program = Stream(...data)
-        .aggregateAsyncWithinEither(
+        .aggregateWithinEither(
           Sink.foldWeighted<number, List<number>>(
             List.empty<number>(),
             (_, n: number) => n,

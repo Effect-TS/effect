@@ -126,7 +126,7 @@ describe.concurrent("Stream", () => {
           .bind("fiber", () =>
             Stream.fromQueue(c.queue)
               .collectWhileSuccess()
-              .flattenChunks()
+              .unchunks()
               .tap(() => c.proceed)
               .runCollect()
               .fork())

@@ -42,7 +42,7 @@ describe.concurrent("Stream", () => {
       const input = Stream(Chunk(1, 2), Chunk(1), Chunk(2, 1, 2, 3, 1, 2), Chunk(1, 2));
       const splitSequence = Chunk(1, 2);
       const program = input
-        .flattenChunks()
+        .unchunks()
         .splitOnChunk(splitSequence)
         .map((chunk) => chunk.size)
         .runCollect();

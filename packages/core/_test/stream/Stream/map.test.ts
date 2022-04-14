@@ -125,49 +125,6 @@ describe.concurrent("Stream", () => {
     });
   });
 
-  describe.concurrent("mapConcatChunk", () => {
-    it("simple example", async () => {
-      const f = (n: number) => Chunk(n);
-      const stream = Stream(1, 2, 3, 4, 5);
-      const program = Effect.struct({
-        actual: stream
-          .mapConcatChunk(f)
-          .runCollect(),
-        expected: stream.runCollect().map((chunk) => chunk.flatMap(f))
-      });
-
-      const { actual, expected } = await program.unsafeRunPromise();
-
-      assert.isTrue(actual == expected);
-    });
-  });
-
-  describe.concurrent("mapConcatChunkEffect", () => {
-    it("happy path", async () => {
-      const f = (n: number) => Chunk(n);
-      const stream = Stream(1, 2, 3, 4, 5);
-      const program = Effect.struct({
-        actual: stream.mapConcatChunkEffect((n) => Effect.succeed(f(n))).runCollect(),
-        expected: stream.runCollect().map((chunk) => chunk.flatMap(f))
-      });
-
-      const { actual, expected } = await program.unsafeRunPromise();
-
-      assert.isTrue(actual == expected);
-    });
-
-    it("error", async () => {
-      const program = Stream(1, 2, 3)
-        .mapConcatChunkEffect(() => Effect.fail("ouch"))
-        .runCollect()
-        .either();
-
-      const result = await program.unsafeRunPromise();
-
-      assert.isTrue(result == Either.left("ouch"));
-    });
-  });
-
   describe.concurrent("mapError", () => {
     it("simple example", async () => {
       const program = Stream.fail("123")

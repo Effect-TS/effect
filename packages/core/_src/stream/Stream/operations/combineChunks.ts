@@ -22,7 +22,7 @@ export function combineChunks_<R, E, A, R2, E2, A2, S, A3>(
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A3> {
   return new StreamInternal(
-    Channel.scoped(
+    Channel.unwrapScoped(
       Effect.Do()
         .bind("left", () => Handoff.make<Take<E, A>>())
         .bind("right", () => Handoff.make<Take<E2, A2>>())
@@ -36,17 +36,22 @@ export function combineChunks_<R, E, A, R2, E2, A2, S, A3>(
           const that0 = that();
           concreteStream(that0);
           return (that0.channel >> producer(right, latchR)).runScoped().fork();
-        }),
-      ({ latchL, latchR, left, right }) => {
-        const pullLeft = latchL.offer(undefined) > left.take().flatMap((take) => take.done());
-        const pullRight = latchR.offer(undefined) > right.take().flatMap((take) => take.done());
-        const stream = Stream.unfoldChunkEffect(
-          s,
-          (s) => f(s, pullLeft, pullRight).flatMap((exit) => Effect.done(exit).unsome())
-        );
-        concreteStream(stream);
-        return stream.channel;
-      }
+        })
+        .bindValue(
+          "pullLeft",
+          ({ latchL, left }) => latchL.offer(undefined) > left.take().flatMap((take) => take.done())
+        )
+        .bindValue(
+          "pullRight",
+          ({ latchR, right }) => latchR.offer(undefined) > right.take().flatMap((take) => take.done())
+        )
+        .map(({ pullLeft, pullRight }) => {
+          const stream = Stream.unfoldChunkEffect(s, (s) =>
+            f(s, pullLeft, pullRight)
+              .flatMap((exit) => Effect.done(exit).unsome()));
+          concreteStream(stream);
+          return stream.channel;
+        })
     )
   );
 }

@@ -13,14 +13,14 @@
  *
  * @param sink Used for the aggregation
  *
- * @tsplus fluent ets/Stream aggregateAsync
+ * @tsplus fluent ets/Stream aggregate
  */
-export function aggregateAsync_<R, E, A, R2, E2, A2, B>(
+export function aggregate_<R, E, A, R2, E2, A2, B>(
   self: Stream<R, E, A>,
   sink: LazyArg<Sink<R2, E | E2, A | A2, A2, B>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, B> {
-  return self.aggregateAsyncWithin(sink, Schedule.recurs(0));
+  return self.aggregateWithin(sink, Schedule.recurs(0));
 }
 
 /**
@@ -38,6 +38,6 @@ export function aggregateAsync_<R, E, A, R2, E2, A2, B>(
  *
  * @param sink Used for the aggregation
  *
- * @tsplus static ets/Stream/Aspects aggregateAsync
+ * @tsplus static ets/Stream/Aspects aggregate
  */
-export const aggregateAsync = Pipeable(aggregateAsync_);
+export const aggregate = Pipeable(aggregate_);

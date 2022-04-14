@@ -5,15 +5,14 @@ export function bufferSignal<R, E, A>(
   channel: LazyArg<Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown>>,
   __tsplusTrace?: string
 ): Channel<R, unknown, unknown, unknown, E, Chunk<A>, void> {
-  return Channel.scoped(
+  return Channel.unwrapScoped(
     Effect.Do()
       .bind("queue", () => effect())
       .bind("start", () => Deferred.make<never, void>())
       .tap(({ start }) => start.succeed(undefined))
       .bind("ref", ({ start }) => Ref.make(start))
       .tap(({ queue, ref }) => (channel() >> producer<R, E, A>(queue, ref)).runScoped().fork())
-      .map(({ queue }) => queue),
-    (queue) => consumer<R, E, A>(queue)
+      .map(({ queue }) => consumer<R, E, A>(queue))
   );
 }
 

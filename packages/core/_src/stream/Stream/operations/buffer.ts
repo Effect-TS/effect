@@ -18,7 +18,7 @@ export function buffer_<R, E, A>(
 ): Stream<R, E, A> {
   const queue = self.toQueueOfElements(capacity);
   return new StreamInternal(
-    Channel.scoped(queue, (queue) => {
+    Channel.unwrapScoped(queue.map((queue) => {
       const process: Channel<
         unknown,
         unknown,
@@ -34,7 +34,7 @@ export function buffer_<R, E, A>(
         )
       );
       return process;
-    })
+    }))
   );
 }
 
