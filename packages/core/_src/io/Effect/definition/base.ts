@@ -77,9 +77,19 @@ export function unifyEffect<X extends Effect<any, any, any>>(
  */
 export interface EffectOps {
   $: EffectAspects;
+  Error: {
+    new<E, A>(exit: Exit<E, A>, __taPlusTrace?: string): Effect.Error<E, A>;
+  };
 }
 export const Effect: EffectOps = {
-  $: {}
+  $: {},
+  Error: class EffectError<E, A> extends Error {
+    readonly _tag = "EffectError";
+
+    constructor(readonly exit: Exit<E, A>, readonly trace?: string) {
+      super();
+    }
+  }
 };
 
 /**
@@ -91,6 +101,12 @@ export namespace Effect {
   export type UIO<A> = Effect<unknown, never, A>;
   export type IO<E, A> = Effect<unknown, E, A>;
   export type RIO<R, A> = Effect<R, never, A>;
+  export type Canceler<R> = RIO<R, void>;
+  export interface Error<E, A> {
+    readonly _tag: "EffectError";
+    readonly exit: Exit<E, A>;
+    readonly trace?: string;
+  }
 }
 
 export abstract class Base<R, E, A> implements Effect<R, E, A> {
@@ -109,3 +125,5 @@ export abstract class Base<R, E, A> implements Effect<R, E, A> {
 export interface EffectF extends HKT {
   type: Effect<this["R"], this["E"], this["A"]>;
 }
+
+export type Canceler<R> = Effect.RIO<R, void>;

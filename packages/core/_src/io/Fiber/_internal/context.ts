@@ -1482,7 +1482,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
             // Prevent interruption of interruption:
             this.unsafeSetInterrupting(true);
-          } else if (e instanceof EffectError) {
+          } else if (e instanceof Effect.Error) {
             switch (e.exit._tag) {
               case "Success": {
                 current = this.unsafeNextEffect(e.exit.value);

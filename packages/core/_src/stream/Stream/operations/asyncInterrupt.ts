@@ -11,7 +11,7 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  * @tsplus static ets/Stream/Ops asyncInterrupt
  */
 export function asyncInterrupt<R, E, A>(
-  register: (emit: Emit<R, E, A, void>) => Either<Canceler<R>, Stream<R, E, A>>,
+  register: (emit: Emit<R, E, A, void>) => Either<Effect.Canceler<R>, Stream<R, E, A>>,
   outputBuffer = 16,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
@@ -24,7 +24,7 @@ export function asyncInterrupt<R, E, A>(
         ))
       .bind("runtime", () => Effect.runtime<R>())
       .bind("eitherStream", ({ output, runtime }) =>
-        Effect.succeed<Either<Canceler<R>, Stream<R, E, A>>>(
+        Effect.succeed<Either<Effect.Canceler<R>, Stream<R, E, A>>>(
           register(
             Emit(async (k) => {
               try {

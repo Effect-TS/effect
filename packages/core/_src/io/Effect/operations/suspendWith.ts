@@ -14,7 +14,7 @@ export function suspendWith<R, A>(
       return f(runtimeConfig, fiberId);
     } catch (error) {
       if (!runtimeConfig.value.fatal(error)) {
-        throw new EffectError(Exit.fail(error), __tsplusTrace);
+        throw new Effect.Error(Exit.fail(error), __tsplusTrace);
       }
       throw error;
     }
