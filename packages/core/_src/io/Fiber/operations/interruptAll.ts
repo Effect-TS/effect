@@ -6,6 +6,6 @@
 export function interruptAll(
   fibers: Collection<Fiber<any, any>>,
   __tsplusTrace?: string
-): UIO<void> {
+): Effect.UIO<void> {
   return Effect.fiberId.flatMap((fiberId) => Fiber.interruptAllAs(fibers, fiberId));
 }

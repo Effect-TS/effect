@@ -9,7 +9,7 @@ export function intoDeferred_<R, E, A>(
   self: Effect<R, E, A>,
   promise: LazyArg<Deferred<E, A>>,
   __tsplusTrace?: string
-): RIO<R, boolean> {
+): Effect.RIO<R, boolean> {
   return Effect.uninterruptibleMask(({ restore }) =>
     restore(self)
       .exit()

@@ -5,7 +5,7 @@
  * @tsplus static ets/Effect/Ops addFinalizerExit
  */
 export function addFinalizerExit<R, X>(
-  finalizer: (exit: Exit<unknown, unknown>) => RIO<R, X>,
+  finalizer: (exit: Exit<unknown, unknown>) => Effect.RIO<R, X>,
   __tsplusTrace?: string
 ): Effect<R & Has<Scope>, never, void> {
   return Effect.Do()

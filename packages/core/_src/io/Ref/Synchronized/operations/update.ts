@@ -7,7 +7,7 @@ export function update_<A>(
   self: SynchronizedRef<A>,
   f: (a: A) => A,
   __tsplusTrace?: string
-): UIO<void> {
+): Effect.UIO<void> {
   return self.modify(v => Tuple(undefined, f(v)));
 }
 

@@ -3,7 +3,7 @@ import { DeferredState } from "@effect/core/io/Deferred/operations/_internal/Def
 
 export function interruptJoiner<E, A>(
   self: Deferred<E, A>,
-  joiner: (a: IO<E, A>) => void,
+  joiner: (a: Effect.IO<E, A>) => void,
   __tsplusTrace?: string
 ): Canceler<unknown> {
   return Effect.succeed(() => {

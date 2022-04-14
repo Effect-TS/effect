@@ -11,7 +11,7 @@ export function modifySome_<A, B, P>(
   def: B,
   f: (a: A) => Option<Tuple<[B, A]>>,
   __tsplusTrace?: string
-): UIO<B> {
+): Effect.UIO<B> {
   return self.modify((v) => f(v).getOrElse(Tuple(def, v)));
 }
 

@@ -60,7 +60,7 @@ describe.concurrent("Effect", () => {
     });
 
     it("daemon fiber race interruption", async () => {
-      function plus1<X>(latch: Deferred<never, void>, finalizer: UIO<X>) {
+      function plus1<X>(latch: Deferred<never, void>, finalizer: Effect.UIO<X>) {
         return (
           latch.succeed(undefined) > Effect.sleep((1).hours)
         ).onInterrupt(() => finalizer.map((x) => x));
@@ -116,7 +116,7 @@ describe.concurrent("Effect", () => {
     });
 
     it("supervise fibers", async () => {
-      function makeChild(n: number): UIO<Fiber<never, void>> {
+      function makeChild(n: number): Effect.UIO<Fiber<never, void>> {
         return (Effect.sleep(new Duration(20 * n)) > Effect.never).fork();
       }
 
@@ -292,7 +292,7 @@ describe.concurrent("Effect", () => {
     });
 
     it("mergeAll - empty", async () => {
-      const program = Effect.mergeAll(List.empty<UIO<number>>(), 0, (b, a) => b + a);
+      const program = Effect.mergeAll(List.empty<Effect.UIO<number>>(), 0, (b, a) => b + a);
 
       const result = await program.unsafeRunPromise();
 
@@ -314,7 +314,7 @@ describe.concurrent("Effect", () => {
     it("reduceAll - empty list", async () => {
       const program = Effect.reduceAll(
         Effect.succeed(1),
-        List.empty<UIO<number>>(),
+        List.empty<Effect.UIO<number>>(),
         (acc, a) => acc + a
       );
 

@@ -466,7 +466,7 @@ describe.concurrent("Effect", () => {
         started: Ref<number>,
         trigger: Deferred<never, void>,
         n: number
-      ): IO<number, void> {
+      ): Effect.IO<number, void> {
         return started
           .updateAndGet((n) => n + 1)
           .flatMap(
@@ -560,7 +560,7 @@ describe.concurrent("Effect", () => {
     });
 
     it("empty input", async () => {
-      const program = Effect.forkAll<unknown, never, List<UIO<number>>>(List.empty())
+      const program = Effect.forkAll<unknown, never, List<Effect.UIO<number>>>(List.empty())
         .flatMap((fiber) => fiber.join());
 
       const result = await program.unsafeRunPromise();

@@ -3,7 +3,7 @@ const update = "update";
 const update1 = "update1";
 const update2 = "update2";
 
-const loseTimeAndCpu: UIO<void> = (
+const loseTimeAndCpu: Effect.UIO<void> = (
   Effect.yieldNow < Clock.sleep((1).millis)
 ).repeatN(100);
 
@@ -54,7 +54,7 @@ describe("FiberRef", () => {
 
     it("its value is inherited in a trivial race", async () => {
       const program = FiberRef.make(initial)
-        .tap((fiberRef) => fiberRef.set(update).raceAll(Chunk.empty<UIO<void>>()))
+        .tap((fiberRef) => fiberRef.set(update).raceAll(Chunk.empty<Effect.UIO<void>>()))
         .flatMap((fiberRef) => fiberRef.get());
 
       const result = await Effect.scoped(program).unsafeRunPromise();

@@ -6,7 +6,7 @@
 export function make<A>(
   value: LazyArg<A>,
   __tsplusTrace?: string
-): UIO<SubscriptionRef<A>> {
+): Effect.UIO<SubscriptionRef<A>> {
   return Effect.suspendSucceed(
     Effect.struct({
       ref: SynchronizedRef.make(value),

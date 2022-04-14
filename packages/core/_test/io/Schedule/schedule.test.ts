@@ -8,7 +8,7 @@ function alwaysFail(ref: Ref<number>): Effect<unknown, string, number> {
 
 // function checkDelays<State, Env>(
 //   schedule: Schedule.WithState<State, Env, unknown, Duration>
-// ): RIO<Env, Tuple<[Chunk<Duration>, Chunk<Duration>]>> {
+// ): Effect.RIO<Env, Tuple<[Chunk<Duration>, Chunk<Duration>]>> {
 //   return Effect.Do()
 //     .bind("now", () => Effect.succeed(Date.now()))
 //     .bindValue("input", () => Chunk(1, 2, 3, 4, 5))
@@ -19,7 +19,7 @@ function alwaysFail(ref: Ref<number>): Effect<unknown, string, number> {
 
 // function checkRepetitions<State, Env>(
 //   schedule: Schedule.WithState<State, Env, unknown, number>
-// ): RIO<Env, Tuple<[Chunk<number>, Chunk<number>]>> {
+// ): Effect.RIO<Env, Tuple<[Chunk<number>, Chunk<number>]>> {
 //   return Effect.Do()
 //     .bind("now", () => Effect.succeed(Date.now()))
 //     .bindValue("input", () => Chunk(1, 2, 3, 4, 5))
@@ -30,7 +30,7 @@ function alwaysFail(ref: Ref<number>): Effect<unknown, string, number> {
 
 // function repeat<State, B>(
 //   schedule: Schedule.WithState<State, unknown, number, B>
-// ): UIO<B> {
+// ): Effect.UIO<B> {
 //   return Ref.make(0).flatMap((ref) => ref.updateAndGet((n) => n + 1).repeat(schedule));
 // }
 

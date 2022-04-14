@@ -24,6 +24,6 @@ export const Semaphore: SemaphoreOps = {};
  *
  * @tsplus static ets/SemaphoreOps make
  */
-export function make(permits: number, __tsplusTrace?: string): UIO<Semaphore> {
+export function make(permits: number, __tsplusTrace?: string): Effect.UIO<Semaphore> {
   return TSemaphore.make(permits).commit();
 }

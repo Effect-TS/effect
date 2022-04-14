@@ -9,7 +9,7 @@ import { concreteCloseableScope } from "@effect/core/io/Scope/operations/_intern
 export function close_(
   self: Scope.Closeable,
   exit: LazyArg<Exit<unknown, unknown>>
-): UIO<void> {
+): Effect.UIO<void> {
   concreteCloseableScope(self);
   return self._close(exit);
 }

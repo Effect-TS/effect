@@ -11,7 +11,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  */
 export function modifyDelayEffect_<State, Env, In, Out, Env1>(
   self: Schedule<State, Env, In, Out>,
-  f: (out: Out, duration: Duration) => RIO<Env1, Duration>
+  f: (out: Out, duration: Duration) => Effect.RIO<Env1, Duration>
 ): Schedule<State, Env & Env1, In, Out> {
   return makeWithState(
     self._initial,

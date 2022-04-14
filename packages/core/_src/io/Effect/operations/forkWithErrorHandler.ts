@@ -5,9 +5,9 @@
  */
 export function forkWithErrorHandler_<R, E, A, X>(
   self: Effect<R, E, A>,
-  handler: (e: E) => UIO<X>,
+  handler: (e: E) => Effect.UIO<X>,
   __tsplusTrace?: string
-): RIO<R, Fiber.Runtime<E, A>> {
+): Effect.RIO<R, Fiber.Runtime<E, A>> {
   return self
     .onError((cause) => cause.failureOrCause().fold(handler, Effect.failCauseNow))
     .fork();
@@ -19,8 +19,8 @@ export function forkWithErrorHandler_<R, E, A, X>(
  * @tsplus static ets/Effect/Aspects forkWithErrorHandler
  */
 export function forkWithErrorHandler<E, X>(
-  handler: (e: E) => UIO<X>,
+  handler: (e: E) => Effect.UIO<X>,
   __tsplusTrace?: string
 ) {
-  return <R, A>(self: Effect<R, E, A>): RIO<R, Fiber.Runtime<E, A>> => self.forkWithErrorHandler(handler);
+  return <R, A>(self: Effect<R, E, A>): Effect.RIO<R, Fiber.Runtime<E, A>> => self.forkWithErrorHandler(handler);
 }

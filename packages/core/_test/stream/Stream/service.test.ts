@@ -2,7 +2,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("serviceWith", () => {
     it("serviceWithEffect", async () => {
       interface ServiceWithEffect {
-        readonly live: UIO<number>;
+        readonly live: Effect.UIO<number>;
       }
 
       const ServiceWithEffect = Tag<ServiceWithEffect>();

@@ -8,6 +8,6 @@ import { IFail } from "@effect/core/io/Effect/definition/primitives";
 export function failCause<E>(
   cause: LazyArg<Cause<E>>,
   __tsplusTrace?: string
-): IO<E, never> {
+): Effect.IO<E, never> {
   return new IFail(cause, __tsplusTrace);
 }

@@ -9,7 +9,7 @@ import { IFold } from "@effect/core/io/Effect/definition/primitives";
 export function exit<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
-): RIO<R, Exit<E, A>> {
+): Effect.RIO<R, Exit<E, A>> {
   return new IFold(
     self,
     (cause) => Effect.succeedNow(Exit.failCause(cause)),

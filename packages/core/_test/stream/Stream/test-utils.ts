@@ -27,14 +27,14 @@ export function isNumberService(u: unknown): u is NumberService {
 
 export interface ChunkCoordination<A> {
   readonly queue: Queue<Exit<Option<never>, Chunk<A>>>;
-  readonly offer: UIO<boolean>;
-  readonly proceed: UIO<void>;
-  readonly awaitNext: UIO<void>;
+  readonly offer: Effect.UIO<boolean>;
+  readonly proceed: Effect.UIO<void>;
+  readonly awaitNext: Effect.UIO<void>;
 }
 
 export function chunkCoordination<A>(
   chunks: List<Chunk<A>>
-): UIO<ChunkCoordination<A>> {
+): Effect.UIO<ChunkCoordination<A>> {
   return Effect.Do()
     .bind("queue", () => Queue.unbounded<Exit<Option<never>, Chunk<A>>>())
     .bind("ps", () => Queue.unbounded<void>())

@@ -37,7 +37,7 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
   ): Stream<R, E, Tuple<[K, Dequeue<Exit<Option<E>, V>>]>> {
     return Stream.unwrapScoped(
       Effect.Do()
-        .bind("decider", () => Deferred.make<never, (k: K, v: V) => UIO<Predicate<UniqueKey>>>())
+        .bind("decider", () => Deferred.make<never, (k: K, v: V) => Effect.UIO<Predicate<UniqueKey>>>())
         .bind("out", () =>
           Effect.acquireRelease(
             Queue.bounded<Exit<Option<E>, Tuple<[K, Dequeue<Exit<Option<E>, V>>]>>>(

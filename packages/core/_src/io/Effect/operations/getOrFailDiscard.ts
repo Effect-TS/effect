@@ -7,6 +7,6 @@
 export function getOrFailDiscard<A>(
   option: LazyArg<Option<A>>,
   __tsplusTrace?: string
-): IO<void, A> {
+): Effect.IO<void, A> {
   return Effect.getOrFailWith(option, () => undefined);
 }

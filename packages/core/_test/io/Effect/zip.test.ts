@@ -45,7 +45,7 @@ describe.concurrent("Effect", () => {
     });
 
     it("paralellizes simple success values", async () => {
-      function countdown(n: number): UIO<number> {
+      function countdown(n: number): Effect.UIO<number> {
         return n === 0
           ? Effect.succeed(0)
           : Effect.succeed(1)

@@ -6,7 +6,7 @@
 export function memoizeF<R, E, A, B>(
   f: (a: A) => Effect<R, E, B>,
   __tsplusTrace?: string
-): UIO<(a: A) => Effect<R, E, B>> {
+): Effect.UIO<(a: A) => Effect<R, E, B>> {
   return SynchronizedRef.make(new Map<A, Deferred<E, B>>()).map(
     (ref) =>
       (a: A) =>

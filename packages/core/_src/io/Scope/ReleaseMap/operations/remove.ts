@@ -8,7 +8,7 @@ export function remove_(
   self: ReleaseMap,
   key: number,
   __tsplusTrace?: string
-): UIO<Option<Scope.Finalizer>> {
+): Effect.UIO<Option<Scope.Finalizer>> {
   return self.ref.modify((s) => {
     switch (s._tag) {
       case "Exited": {

@@ -3,4 +3,4 @@
  *
  * @tsplus static ets/Effect/Ops random
  */
-export const random: UIO<Random> = Effect.randomWith(Effect.succeedNow);
+export const random: Effect.UIO<Random> = Effect.randomWith(Effect.succeedNow);

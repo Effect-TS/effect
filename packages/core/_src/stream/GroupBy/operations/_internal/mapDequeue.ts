@@ -12,19 +12,19 @@ class MapDequeueImplementation<A, B> implements Dequeue<B> {
 
   capacity: number = this.dequeue.capacity;
 
-  size: UIO<number> = this.dequeue.size;
+  size: Effect.UIO<number> = this.dequeue.size;
 
-  awaitShutdown: UIO<void> = this.dequeue.awaitShutdown;
+  awaitShutdown: Effect.UIO<void> = this.dequeue.awaitShutdown;
 
-  shutdown: UIO<void> = this.dequeue.shutdown;
+  shutdown: Effect.UIO<void> = this.dequeue.shutdown;
 
-  isShutdown: UIO<boolean> = this.dequeue.isShutdown;
+  isShutdown: Effect.UIO<boolean> = this.dequeue.isShutdown;
 
-  take: UIO<B> = this.dequeue.take.map((a) => this.f(a));
+  take: Effect.UIO<B> = this.dequeue.take.map((a) => this.f(a));
 
-  takeAll: UIO<Chunk<B>> = this.dequeue.takeAll.map((chunk) => chunk.map((a) => this.f(a)));
+  takeAll: Effect.UIO<Chunk<B>> = this.dequeue.takeAll.map((chunk) => chunk.map((a) => this.f(a)));
 
-  takeUpTo(max: number, __tsplusTrace?: string): UIO<Chunk<B>> {
+  takeUpTo(max: number, __tsplusTrace?: string): Effect.UIO<Chunk<B>> {
     return this.dequeue.takeUpTo(max).map((chunk) => chunk.map((a) => this.f(a)));
   }
 }

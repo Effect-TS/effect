@@ -17,9 +17,9 @@ import { DeferredState } from "@effect/core/io/Deferred/operations/_internal/Def
  */
 export function completeWith_<E, A>(
   self: Deferred<E, A>,
-  effect: IO<E, A>,
+  effect: Effect.IO<E, A>,
   __tsplusTrace?: string
-): UIO<boolean> {
+): Effect.UIO<boolean> {
   concreteDeferred(self);
   return Effect.succeed(() => {
     const state = self.state.get;

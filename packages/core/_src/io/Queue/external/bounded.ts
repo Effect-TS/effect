@@ -14,4 +14,4 @@ import { makeBoundedQueue } from "@effect/core/io/Effect/operations/excl-forEach
 export const bounded: <A>(
   requestedCapacity: number,
   __tsplusTrace?: string | undefined
-) => UIO<Queue<A>> = makeBoundedQueue;
+) => Effect.UIO<Queue<A>> = makeBoundedQueue;

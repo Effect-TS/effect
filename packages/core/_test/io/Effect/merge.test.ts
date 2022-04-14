@@ -3,7 +3,7 @@ import { constVoid } from "@tsplus/stdlib/data/Function";
 describe.concurrent("Effect", () => {
   describe.concurrent("merge", () => {
     it("on flipped result", async () => {
-      const effect: IO<number, number> = Effect.succeed(1);
+      const effect: Effect.IO<number, number> = Effect.succeed(1);
       const program = Effect.struct({
         a: effect.merge(),
         b: effect.flip().merge()
@@ -20,7 +20,7 @@ describe.concurrent("Effect", () => {
       const zeroElement = 42;
       const nonZero = 43;
       const program = Effect.mergeAll(
-        List.empty<UIO<unknown>>(),
+        List.empty<Effect.UIO<unknown>>(),
         zeroElement,
         () => nonZero
       );
@@ -54,7 +54,7 @@ describe.concurrent("Effect", () => {
       const zeroElement = 42;
       const nonZero = 43;
       const program = Effect.mergeAllPar(
-        List.empty<UIO<unknown>>(),
+        List.empty<Effect.UIO<unknown>>(),
         zeroElement,
         () => nonZero
       );

@@ -25,11 +25,11 @@ export const STMEnv: STMEnvOps = {
 /**
  * @tsplus static ets/STMTestEnvOps make
  */
-export function makeSTMEnv(n: number): UIO<STMEnv> {
+export function makeSTMEnv(n: number): Effect.UIO<STMEnv> {
   return TRef.makeCommit(n).map((ref) => ({ ref }));
 }
 
-export function incrementRefN(n: number, ref: TRef<number>): UIO<number> {
+export function incrementRefN(n: number, ref: TRef<number>): Effect.UIO<number> {
   return STM.atomically(
     ref
       .get()
@@ -43,7 +43,7 @@ export function compute3RefN(
   ref1: TRef<number>,
   ref2: TRef<number>,
   ref3: TRef<number>
-): UIO<number> {
+): Effect.UIO<number> {
   return STM.atomically(
     STM.Do()
       .bind("value1", () => ref1.get())
@@ -63,7 +63,7 @@ export class UnpureBarrier {
     this.#isOpen = true;
   }
 
-  await(): UIO<void> {
+  await(): Effect.UIO<void> {
     return Effect.suspend(
       Effect.attempt(() => {
         if (this.#isOpen) {
@@ -79,7 +79,7 @@ export function transfer(
   receiver: TRef<number>,
   sender: TRef<number>,
   much: number
-): UIO<number> {
+): Effect.UIO<number> {
   return STM.atomically(
     sender
       .get()
@@ -105,7 +105,7 @@ export function permutation(
 export function chain(
   depth: number,
   next: (_: STM<unknown, never, number>) => STM<unknown, never, number>
-): UIO<number> {
+): Effect.UIO<number> {
   return chainLoop(depth, STM.succeed(0), next);
 }
 
@@ -113,7 +113,7 @@ export function chainLoop(
   n: number,
   acc: STM<unknown, never, number>,
   next: (_: STM<unknown, never, number>) => STM<unknown, never, number>
-): UIO<number> {
+): Effect.UIO<number> {
   return n <= 0
     ? acc.commit()
     : Effect.suspendSucceed(chainLoop(n - 1, next(acc), next));

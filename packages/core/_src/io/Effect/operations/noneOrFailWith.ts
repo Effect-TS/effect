@@ -9,6 +9,6 @@ export function noneOrFailWith<E, A>(
   option: LazyArg<Option<A>>,
   f: (a: A) => E,
   __tsplusTrace?: string
-): IO<E, void> {
+): Effect.IO<E, void> {
   return Effect.getOrFailDiscard(option).flip().mapError(f);
 }

@@ -4,4 +4,4 @@
  *
  * @tsplus static ets/Effect/Ops fiberId
  */
-export const fiberId: UIO<FiberId> = Effect.descriptor.map((descriptor) => descriptor.id);
+export const fiberId: Effect.UIO<FiberId> = Effect.descriptor.map((descriptor) => descriptor.id);

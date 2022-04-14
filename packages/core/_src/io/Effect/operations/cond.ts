@@ -11,6 +11,6 @@ export function cond<E, A>(
   result: LazyArg<A>,
   error: LazyArg<E>,
   __tsplusTrace?: string
-): IO<E, A> {
+): Effect.IO<E, A> {
   return Effect.suspendSucceed(() => predicate() ? Effect.succeed(result) : Effect.fail(error));
 }

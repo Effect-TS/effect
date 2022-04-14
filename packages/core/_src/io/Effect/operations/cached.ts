@@ -8,7 +8,7 @@ export function cached_<R, E, A>(
   self: Effect<R, E, A>,
   timeToLive: Duration,
   __tsplusTrace?: string
-): Effect<R, never, IO<E, A>> {
+): Effect<R, never, Effect.IO<E, A>> {
   return self.cachedInvalidate(timeToLive).map((tuple) => tuple.get(0));
 }
 

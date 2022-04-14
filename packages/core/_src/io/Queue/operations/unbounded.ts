@@ -5,6 +5,6 @@ import { Strategy } from "@effect/core/io/Queue/operations/strategy";
  *
  * @tsplus static ets/Queue/Ops unbounded
  */
-export function unbounded<A>(__tsplusTrace?: string): UIO<Queue<A>> {
+export function unbounded<A>(__tsplusTrace?: string): Effect.UIO<Queue<A>> {
   return Effect.succeed(MutableQueue.unbounded<A>()).flatMap((queue) => Queue.create(queue, Strategy.Dropping()));
 }

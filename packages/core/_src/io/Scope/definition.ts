@@ -5,7 +5,7 @@ export const CloseableScopeSym = Symbol.for("@effect/core/io/Scope/Closeable");
 export type CloseableScopeSym = typeof CloseableScopeSym;
 
 export declare namespace Scope {
-  type Finalizer = (exit: Exit<unknown, unknown>) => UIO<unknown>;
+  type Finalizer = (exit: Exit<unknown, unknown>) => Effect.UIO<unknown>;
   type Closeable = CloseableScope;
 }
 

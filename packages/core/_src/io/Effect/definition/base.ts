@@ -87,9 +87,11 @@ export const Effect: EffectOps = {
  */
 export interface EffectAspects {}
 
-export type IO<E, A> = Effect<unknown, E, A>;
-export type RIO<R, A> = Effect<R, never, A>;
-export type UIO<A> = Effect<unknown, never, A>;
+export namespace Effect {
+  export type UIO<A> = Effect<unknown, never, A>;
+  export type IO<E, A> = Effect<unknown, E, A>;
+  export type RIO<R, A> = Effect<R, never, A>;
+}
 
 export abstract class Base<R, E, A> implements Effect<R, E, A> {
   readonly [_U]!: EffectURI;

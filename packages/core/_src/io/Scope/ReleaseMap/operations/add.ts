@@ -12,7 +12,7 @@ export function add_(
   self: ReleaseMap,
   finalizer: Scope.Finalizer,
   __tsplusTrace?: string
-): UIO<Scope.Finalizer> {
+): Effect.UIO<Scope.Finalizer> {
   return self.addIfOpen(finalizer).map((_) =>
     _.fold(
       (): Scope.Finalizer => () => Effect.unit,

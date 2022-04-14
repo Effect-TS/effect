@@ -7,7 +7,7 @@
 export function option<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
-): RIO<R, Option<A>> {
+): Effect.RIO<R, Option<A>> {
   return self.foldEffect(
     () => Effect.succeedNow(Option.none),
     (a) => Effect.succeedNow(Option.some(a))

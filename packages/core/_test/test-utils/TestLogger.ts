@@ -12,7 +12,7 @@ export type TestLoggerId = typeof TestLoggerId;
  */
 export interface TestLogger<Message, Output> extends Logger<Message, Output> {
   readonly [TestLoggerId]: TestLoggerId;
-  readonly logOutput: UIO<ImmutableArray<LogEntry>>;
+  readonly logOutput: Effect.UIO<ImmutableArray<LogEntry>>;
 }
 
 /**
@@ -77,7 +77,7 @@ export class LogEntry {
 /**
  * @tsplus static ets/TestLogger/Ops make
  */
-export const makeTestLogger: UIO<TestLogger<string, void>> = Effect.succeed(() => {
+export const makeTestLogger: Effect.UIO<TestLogger<string, void>> = Effect.succeed(() => {
   const logOutput = new AtomicReference<ImmutableArray<LogEntry>>(ImmutableArray.empty());
   return {
     [TestLoggerId]: TestLoggerId,
@@ -135,7 +135,7 @@ export const defaultTestLogger: Layer<unknown, never, Has<TestLogger<string, voi
  *
  * @tsplus static ets/TestLogger/Ops logOutput
  */
-export const logOutput: UIO<ImmutableArray<LogEntry>> = Effect.runtimeConfig.flatMap(
+export const logOutput: Effect.UIO<ImmutableArray<LogEntry>> = Effect.runtimeConfig.flatMap(
   (runtimeConfig) =>
     isTestLogger(runtimeConfig.value.logger)
       ? runtimeConfig.value.logger.logOutput

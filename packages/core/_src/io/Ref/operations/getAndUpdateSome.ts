@@ -9,7 +9,7 @@ export function getAndUpdateSome_<A>(
   self: Ref<A>,
   pf: (a: A) => Option<A>,
   __tsplusTrace?: string
-): UIO<A> {
+): Effect.UIO<A> {
   return self.modify((v) => Tuple(v, pf(v).getOrElse(v)));
 }
 

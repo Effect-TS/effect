@@ -7,6 +7,6 @@
 export function sleep(
   duration: LazyArg<Duration>,
   __tsplusTrace?: string
-): UIO<void> {
+): Effect.UIO<void> {
   return Clock.sleep(duration);
 }

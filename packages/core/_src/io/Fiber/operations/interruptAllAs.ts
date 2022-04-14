@@ -8,6 +8,6 @@ export function interruptAllAs(
   fibers: Collection<Fiber<any, any>>,
   fiberId: FiberId,
   __tsplusTrace?: string
-): UIO<void> {
+): Effect.UIO<void> {
   return fibers.reduce(Effect.unit, (io, fiber) => io.zipLeft(fiber.interruptAs(fiberId)));
 }

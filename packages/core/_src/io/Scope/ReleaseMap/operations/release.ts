@@ -11,7 +11,7 @@ export function release_(
   key: number,
   exit: Exit<any, any>,
   __tsplusTrace?: string
-): UIO<any> {
+): Effect.UIO<any> {
   return self.ref
     .modify((s) => {
       switch (s._tag) {

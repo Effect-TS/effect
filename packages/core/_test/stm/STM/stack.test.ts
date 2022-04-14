@@ -76,14 +76,14 @@ describe.concurrent("STM", () => {
     });
 
     it("long mapError chains", async () => {
-      function chainError(depth: number): IO<number, never> {
+      function chainError(depth: number): Effect.IO<number, never> {
         return chainErrorLoop(depth, STM.fail(0));
       }
 
       function chainErrorLoop(
         n: number,
         acc: STM<unknown, number, never>
-      ): IO<number, never> {
+      ): Effect.IO<number, never> {
         return n <= 0
           ? acc.commit()
           : Effect.suspendSucceed(

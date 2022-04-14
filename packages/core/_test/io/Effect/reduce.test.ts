@@ -69,7 +69,7 @@ describe.concurrent("Effect", () => {
       const nonZero = 43;
       const program = Effect.reduceAllPar(
         Effect.succeed(zeroElement),
-        List.empty<UIO<number>>(),
+        List.empty<Effect.UIO<number>>(),
         () => nonZero
       );
 

@@ -9,7 +9,7 @@ import { concreteDeferred } from "@effect/core/io/Deferred/operations/_internal/
 export function isDone<E, A>(
   self: Deferred<E, A>,
   __tsplusTrace?: string
-): UIO<boolean> {
+): Effect.UIO<boolean> {
   concreteDeferred(self);
   return Effect.succeed(self.state.get._tag === "Done");
 }

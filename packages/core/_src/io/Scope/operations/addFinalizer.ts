@@ -7,8 +7,8 @@
  */
 export function addFinalizer_(
   self: Scope,
-  finalizer: LazyArg<UIO<unknown>>
-): UIO<void> {
+  finalizer: LazyArg<Effect.UIO<unknown>>
+): Effect.UIO<void> {
   return self.addFinalizerExit(() => finalizer());
 }
 

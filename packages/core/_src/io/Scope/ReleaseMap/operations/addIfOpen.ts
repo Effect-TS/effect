@@ -14,7 +14,7 @@ export function addIfOpen_(
   self: ReleaseMap,
   finalizer: Scope.Finalizer,
   __tsplusTrace?: string
-): UIO<Option<number>> {
+): Effect.UIO<Option<number>> {
   return self.ref
     .modify((s) => {
       switch (s._tag) {

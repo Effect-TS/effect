@@ -14,7 +14,7 @@ export function makeSubscription<A>(
   hub: AtomicHub<A>,
   subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
   strategy: Strategy<A>
-): UIO<Dequeue<A>> {
+): Effect.UIO<Dequeue<A>> {
   return Deferred.make<never, void>().map((deferred) =>
     unsafeMakeSubscription(
       hub,
@@ -67,17 +67,17 @@ class UnsafeMakeSubscriptionImplementation<A> implements Dequeue<A> {
 
   capacity: number = this.hub.capacity;
 
-  size: UIO<number> = Effect.suspendSucceed(
+  size: Effect.UIO<number> = Effect.suspendSucceed(
     this.shutdownFlag.get
       ? Effect.interrupt
       : Effect.succeedNow(this.subscription.size())
   );
 
-  awaitShutdown: UIO<void> = this.shutdownHook.await();
+  awaitShutdown: Effect.UIO<void> = this.shutdownHook.await();
 
-  isShutdown: UIO<boolean> = Effect.succeed(this.shutdownFlag.get);
+  isShutdown: Effect.UIO<boolean> = Effect.succeed(this.shutdownFlag.get);
 
-  shutdown: UIO<void> = Effect.suspendSucceedWith((_, fiberId) => {
+  shutdown: Effect.UIO<void> = Effect.suspendSucceedWith((_, fiberId) => {
     this.shutdownFlag.set(true);
     return Effect.whenEffect(
       this.shutdownHook.succeed(undefined),
@@ -87,15 +87,15 @@ class UnsafeMakeSubscriptionImplementation<A> implements Dequeue<A> {
     ).asUnit();
   }).uninterruptible();
 
-  offer(_: never, __tsplusTrace?: string): UIO<boolean> {
+  offer(_: never, __tsplusTrace?: string): Effect.UIO<boolean> {
     return Effect.succeedNow(false);
   }
 
-  offerAll(_: Collection<never>, __tsplusTrace?: string): UIO<boolean> {
+  offerAll(_: Collection<never>, __tsplusTrace?: string): Effect.UIO<boolean> {
     return Effect.succeedNow(false);
   }
 
-  take: UIO<A> = Effect.suspendSucceedWith((_, fiberId) => {
+  take: Effect.UIO<A> = Effect.suspendSucceedWith((_, fiberId) => {
     if (this.shutdownFlag.get) {
       return Effect.interrupt;
     }
@@ -125,7 +125,7 @@ class UnsafeMakeSubscriptionImplementation<A> implements Dequeue<A> {
     }
   });
 
-  takeAll: UIO<Chunk<A>> = Effect.suspendSucceed(() => {
+  takeAll: Effect.UIO<Chunk<A>> = Effect.suspendSucceed(() => {
     if (this.shutdownFlag.get) {
       return Effect.interrupt;
     }
@@ -139,7 +139,7 @@ class UnsafeMakeSubscriptionImplementation<A> implements Dequeue<A> {
     return Effect.succeedNow(as);
   });
 
-  takeUpTo(n: number): UIO<Chunk<A>> {
+  takeUpTo(n: number): Effect.UIO<Chunk<A>> {
     return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
         return Effect.interrupt;

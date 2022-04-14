@@ -10,7 +10,7 @@ export interface Strategy<A> {
     takers: MutableQueue<Deferred<never, A>>,
     isShutdown: AtomicBoolean,
     __tsplusTrace?: string
-  ) => UIO<boolean>;
+  ) => Effect.UIO<boolean>;
 
   readonly unsafeOnQueueEmptySpace: (
     queue: MutableQueue<A>,
@@ -19,7 +19,7 @@ export interface Strategy<A> {
 
   readonly surplusSize: number;
 
-  readonly shutdown: UIO<void>;
+  readonly shutdown: Effect.UIO<void>;
 }
 
 /**
@@ -36,7 +36,7 @@ export class DroppingStrategy<A> implements Strategy<A> {
     _takers: MutableQueue<Deferred<never, A>>,
     _isShutdown: AtomicBoolean,
     __tsplusTrace?: string
-  ): UIO<boolean> {
+  ): Effect.UIO<boolean> {
     return Effect.succeedNow(false);
   }
 
@@ -48,7 +48,7 @@ export class DroppingStrategy<A> implements Strategy<A> {
     return 0;
   }
 
-  get shutdown(): UIO<void> {
+  get shutdown(): Effect.UIO<void> {
     return Effect.unit;
   }
 }
@@ -60,7 +60,7 @@ export class SlidingStrategy<A> implements Strategy<A> {
     takers: MutableQueue<Deferred<never, A>>,
     _isShutdown: AtomicBoolean,
     __tsplusTrace?: string
-  ): UIO<boolean> {
+  ): Effect.UIO<boolean> {
     return Effect.succeed(() => {
       this.unsafeSlidingOffer(queue, as);
       unsafeCompleteTakers(this, queue, takers);
@@ -76,7 +76,7 @@ export class SlidingStrategy<A> implements Strategy<A> {
     return 0;
   }
 
-  get shutdown(): UIO<void> {
+  get shutdown(): Effect.UIO<void> {
     return Effect.unit;
   }
 

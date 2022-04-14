@@ -9,7 +9,7 @@ export function foldCause_<R, E, A, A2, A3>(
   failure: (cause: Cause<E>) => A2,
   success: (a: A) => A3,
   __tsplusTrace?: string
-): RIO<R, A2 | A3> {
+): Effect.RIO<R, A2 | A3> {
   return self.foldCauseEffect(
     (c) => Effect.succeedNow(failure(c)),
     (a) => Effect.succeedNow(success(a))

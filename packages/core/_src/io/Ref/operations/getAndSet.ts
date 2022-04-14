@@ -4,7 +4,7 @@
  *
  * @tsplus fluent ets/Ref getAndSet
  */
-export function getAndSet_<A>(self: Ref<A>, value: A, __tsplusTrace?: string): UIO<A> {
+export function getAndSet_<A>(self: Ref<A>, value: A, __tsplusTrace?: string): Effect.UIO<A> {
   return self.modify((v) => Tuple(v, value));
 }
 

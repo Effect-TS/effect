@@ -6,7 +6,7 @@ import { instruction, LayerHashSym } from "@effect/core/io/Layer/definition";
 export class MemoMap {
   constructor(
     readonly ref: SynchronizedRef<
-      Map<PropertyKey, Tuple<[IO<any, any>, Scope.Finalizer]>>
+      Map<PropertyKey, Tuple<[Effect.IO<any, any>, Scope.Finalizer]>>
     >
   ) {}
 
@@ -104,9 +104,9 @@ export class MemoMap {
 /**
  * Creates an empty `MemoMap`.
  */
-export function makeMemoMap(): UIO<MemoMap> {
+export function makeMemoMap(): Effect.UIO<MemoMap> {
   return SynchronizedRef.make<
-    Map<PropertyKey, Tuple<[IO<any, any>, Scope.Finalizer]>>
+    Map<PropertyKey, Tuple<[Effect.IO<any, any>, Scope.Finalizer]>>
   >(new Map()).flatMap((r) => Effect.succeed(new MemoMap(r)));
 }
 
