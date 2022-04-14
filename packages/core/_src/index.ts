@@ -47,7 +47,6 @@ export * as sortedByKey from "@effect/core/stream/SortedByKey";
 export * as stream from "@effect/core/stream/Stream";
 export * as subscriptionRef from "@effect/core/stream/SubscriptionRef";
 export * as take from "@effect/core/stream/Take";
-export * as oneShot from "@effect/core/support/OneShot";
 export * as ringBuffer from "@effect/core/support/RingBuffer";
 export * as ringBufferNew from "@effect/core/support/RingBufferNew";
 export * as scheduler from "@effect/core/support/Scheduler";

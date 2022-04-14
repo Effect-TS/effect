@@ -2,7 +2,7 @@
  * @tsplus type ets/Stream/Emit
  */
 export interface Emit<R, E, A, B> extends EmitOps<R, E, A, B> {
-  (f: Effect<R, Option<E>, Chunk<A>>): B;
+  (f: Effect<R, Option<E>, Chunk<A>>): Promise<B>;
 }
 
 /**
@@ -15,75 +15,75 @@ export interface EmitOps<R, E, A, B> {
   /**
    * Emits a chunk containing the specified values.
    */
-  readonly chunk: (as: Chunk<A>) => B;
+  readonly chunk: (as: Chunk<A>) => Promise<B>;
 
   /**
    * Terminates with a cause that dies with the specified `Throwable`.
    */
-  readonly die: <Err>(err: Err) => B;
+  readonly die: <Err>(err: Err) => Promise<B>;
 
   /**
    * Terminates with a cause that dies with a `Throwable` with the specified
    * message.
    */
-  readonly dieMessage: (message: string) => B;
+  readonly dieMessage: (message: string) => Promise<B>;
 
   /**
    * Either emits the specified value if this `Exit` is a `Success` or else
    * terminates with the specified cause if this `Exit` is a `Failure`.
    */
-  readonly done: (exit: Exit<E, A>) => B;
+  readonly done: (exit: Exit<E, A>) => Promise<B>;
 
   /**
    * Terminates with an end of stream signal.
    */
-  readonly end: () => B;
+  readonly end: () => Promise<B>;
 
   /**
    * Terminates with the specified error.
    */
-  readonly fail: (e: E) => B;
+  readonly fail: (e: E) => Promise<B>;
 
   /**
    * Either emits the success value of this effect or terminates the stream
    * with the failure value of this effect.
    */
-  readonly fromEffect: (io: Effect<R, E, A>) => B;
+  readonly fromEffect: (io: Effect<R, E, A>) => Promise<B>;
 
   /**
    * Either emits the success value of this effect or terminates the stream
    * with the failure value of this effect.
    */
-  readonly fromEffectChunk: (io: Effect<R, E, Chunk<A>>) => B;
+  readonly fromEffectChunk: (io: Effect<R, E, Chunk<A>>) => Promise<B>;
 
   /**
    * Terminates the stream with the specified cause.
    */
-  readonly halt: (cause: Cause<E>) => B;
+  readonly halt: (cause: Cause<E>) => Promise<B>;
 
   /**
    * Emits a chunk containing the specified value.
    */
-  readonly single: (a: A) => B;
+  readonly single: (a: A) => Promise<B>;
 }
 
 /**
  * @tsplus static ets/Stream/Emit/Ops __call
  */
 export function apply<R, E, A, B>(
-  fn: (f: Effect<R, Option<E>, Chunk<A>>) => B
+  fn: (f: Effect<R, Option<E>, Chunk<A>>) => Promise<B>
 ): Emit<R, E, A, B> {
   const ops: EmitOps<R, E, A, B> = {
     chunk(this: Emit<R, E, A, B>, as: Chunk<A>, __tsplusTrace?: string) {
       return this(Effect.succeedNow(as));
     },
-    die<Err>(this: Emit<R, E, A, B>, err: Err, __tsplusTrace?: string): B {
+    die<Err>(this: Emit<R, E, A, B>, err: Err, __tsplusTrace?: string) {
       return this(Effect.die(err));
     },
-    dieMessage(this: Emit<R, E, A, B>, message: string, __tsplusTrace?: string): B {
+    dieMessage(this: Emit<R, E, A, B>, message: string, __tsplusTrace?: string) {
       return this(Effect.dieMessage(message));
     },
-    done(this: Emit<R, E, A, B>, exit: Exit<E, A>, __tsplusTrace?: string): B {
+    done(this: Emit<R, E, A, B>, exit: Exit<E, A>, __tsplusTrace?: string) {
       return this(
         Effect.done(
           exit.mapBoth(
@@ -93,13 +93,13 @@ export function apply<R, E, A, B>(
         )
       );
     },
-    end(this: Emit<R, E, A, B>, __tsplusTrace?: string): B {
+    end(this: Emit<R, E, A, B>, __tsplusTrace?: string) {
       return this(Effect.fail(Option.none));
     },
-    fail(this: Emit<R, E, A, B>, e: E, __tsplusTrace?: string): B {
+    fail(this: Emit<R, E, A, B>, e: E, __tsplusTrace?: string) {
       return this(Effect.fail(Option.some(e)));
     },
-    fromEffect(this: Emit<R, E, A, B>, io: Effect<R, E, A>, __tsplusTrace?: string): B {
+    fromEffect(this: Emit<R, E, A, B>, io: Effect<R, E, A>, __tsplusTrace?: string) {
       return this(
         io.mapBoth(
           (e) => Option.some(e),
@@ -111,13 +111,13 @@ export function apply<R, E, A, B>(
       this: Emit<R, E, A, B>,
       io: Effect<R, E, Chunk<A>>,
       __tsplusTrace?: string
-    ): B {
+    ) {
       return this(io.mapError((e) => Option.some(e)));
     },
-    halt(this: Emit<R, E, A, B>, cause: Cause<E>, __tsplusTrace?: string): B {
+    halt(this: Emit<R, E, A, B>, cause: Cause<E>, __tsplusTrace?: string) {
       return this(Effect.failCause(cause.map((e) => Option.some(e))));
     },
-    single(this: Emit<R, E, A, B>, a: A, __tsplusTrace?: string): B {
+    single(this: Emit<R, E, A, B>, a: A, __tsplusTrace?: string) {
       return this(Effect.succeedNow(Chunk.single(a)));
     }
   };

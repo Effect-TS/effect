@@ -24,9 +24,9 @@ export function asyncScoped<R, E, A>(
         ))
       .bind("runtime", () => Effect.runtime<R>())
       .tap(({ output, runtime }) =>
-        register((k) => {
+        register(async (k) => {
           try {
-            runtime.unsafeRun(Take.fromPull(k).flatMap((take) => output.offer(take)));
+            runtime.unsafeRunPromise(Take.fromPull(k).flatMap((take) => output.offer(take)));
           } catch (e: unknown) {
             if (isFiberFailure(e)) {
               if (!e.cause.isInterrupted()) {

@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feat/*
+      - fix/*
 
 jobs:
   build:

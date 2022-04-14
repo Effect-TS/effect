@@ -1,5 +1,4 @@
 import { FiberContext } from "@effect/core/io/Fiber/_internal/context";
-import { OneShot } from "@effect/core/support/OneShot";
 import { constVoid } from "@tsplus/stdlib/data/Function";
 
 export class Runtime<R> {
@@ -46,14 +45,6 @@ export class Runtime<R> {
     return (id) => (k) => this.unsafeRunAsyncWith(context._interruptAs(id), (exit) => k(exit.flatten()));
   };
 
-  unsafeRun = <E, A>(effect: Effect<R, E, A>, __tsplusTrace?: string): A =>
-    this.unsafeRunSync(effect).fold((cause) => {
-      throw new FiberFailure(cause);
-    }, identity);
-
-  unsafeRunSync = <E, A>(effect: Effect<R, E, A>, __tsplusTrace?: string): Exit<E, A> =>
-    this.defaultUnsafeRunSync(effect);
-
   /**
    * Executes the effect asynchronously, discarding the result of execution.
    *
@@ -76,29 +67,7 @@ export class Runtime<R> {
     k: (exit: Exit<E, A>) => void,
     __tsplusTrace?: string
   ): void => {
-    this.unsafeRunAsyncCancelable(effect, k);
-  };
-
-  /**
-   * Executes the effect asynchronously, eventually passing the exit value to
-   * the specified callback. It returns a callback, which can be used to
-   * interrupt the running execution.
-   *
-   * This method is effectful and should only be invoked at the edges of your
-   * program.
-   */
-  unsafeRunAsyncCancelable = <E, A>(
-    effect: Effect<R, E, A>,
-    k: (exit: Exit<E, A>) => void,
-    __tsplusTrace?: string
-  ): ((fiberId: FiberId) => Exit<E, A>) => {
-    const current = effect;
-    const canceler = this.unsafeRunWith(current, k);
-    return (fiberId) => {
-      const result = new OneShot<Exit<E, A>>();
-      canceler(fiberId)(result.set);
-      return result.get();
-    };
+    this.unsafeRunWith(effect, k);
   };
 
   /**
@@ -146,13 +115,4 @@ export class Runtime<R> {
       });
     });
   };
-
-  private defaultUnsafeRunSync<E, A>(
-    effect: Effect<R, E, A>,
-    __tsplusTrace?: string
-  ): Exit<E, A> {
-    const result = new OneShot<Exit<E, A>>();
-    this.unsafeRunWith(effect, result.set);
-    return result.get();
-  }
 }

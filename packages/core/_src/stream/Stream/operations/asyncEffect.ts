@@ -26,9 +26,9 @@ export function asyncEffect<R, E, A, Z>(
         .bind("runtime", () => Effect.runtime<R>())
         .tap(({ output, runtime }) =>
           register(
-            Emit((k) => {
+            Emit(async (k) => {
               try {
-                runtime.unsafeRun(
+                runtime.unsafeRunPromise(
                   Take.fromPull(k).flatMap((take) => output.offer(take))
                 );
               } catch (e: unknown) {
