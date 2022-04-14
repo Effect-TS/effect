@@ -5,8 +5,8 @@ export class ScopeInternal implements Scope {
   readonly [ScopeSym]: ScopeSym = ScopeSym;
 
   constructor(
-    readonly _fork: UIO<Scope.Closeable>,
-    readonly _addFinalizerExit: (finalizer: Scope.Finalizer) => UIO<void>
+    readonly _fork: Effect.UIO<Scope.Closeable>,
+    readonly _addFinalizerExit: (finalizer: Scope.Finalizer) => Effect.UIO<void>
   ) {}
 }
 

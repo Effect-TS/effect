@@ -13,7 +13,7 @@ export function sinkRaceLaw<E, A, L>(
   s: Stream<unknown, never, A>,
   sink1: Sink<unknown, E, A, L, A>,
   sink2: Sink<unknown, E, A, L, A>
-): UIO<boolean> {
+): Effect.UIO<boolean> {
   return Effect.struct({
     r1: s.run(sink1).either(),
     r2: s.run(sink2).either(),
@@ -34,7 +34,7 @@ export function zipParLaw<A, B, C, E>(
   s: Stream<unknown, never, A>,
   sink1: Sink<unknown, E, A, A, B>,
   sink2: Sink<unknown, E, A, A, C>
-): UIO<boolean> {
+): Effect.UIO<boolean> {
   return Effect.struct({
     zb: s.run(sink1).either(),
     zc: s.run(sink2).either(),
@@ -60,11 +60,11 @@ class QueueSpyImplementation<A> implements Queue<A> {
 
   constructor(readonly queue: Queue<A>) {}
 
-  awaitShutdown: UIO<void> = this.queue.awaitShutdown;
+  awaitShutdown: Effect.UIO<void> = this.queue.awaitShutdown;
 
   capacity: number = this.queue.capacity;
 
-  isShutdown: UIO<boolean> = Effect.succeed(this.#isShutdown);
+  isShutdown: Effect.UIO<boolean> = Effect.succeed(this.#isShutdown);
 
   offer(a: A): Effect<unknown, never, boolean> {
     return this.queue.offer(a);
@@ -74,11 +74,11 @@ class QueueSpyImplementation<A> implements Queue<A> {
     return this.queue.offerAll(as);
   }
 
-  shutdown: UIO<void> = Effect.succeed(() => {
+  shutdown: Effect.UIO<void> = Effect.succeed(() => {
     this.#isShutdown = true;
   });
 
-  size: UIO<number> = this.queue.size;
+  size: Effect.UIO<number> = this.queue.size;
 
   take: Effect<unknown, never, A> = this.queue.take;
 

@@ -10,7 +10,7 @@ export function cachedInvalidate_<R, E, A>(
   self: Effect<R, E, A>,
   timeToLive: Duration,
   __tsplusTrace?: string
-): RIO<R, Tuple<[IO<E, A>, UIO<void>]>> {
+): Effect.RIO<R, Tuple<[Effect.IO<E, A>, Effect.UIO<void>]>> {
   return Effect.Do()
     .bind("r", () => Effect.environment<R>())
     .bind("cache", () => SynchronizedRef.make<Option<Tuple<[number, Deferred<E, A>]>>>(Option.none))
@@ -62,6 +62,6 @@ function get<R, E, A>(
 
 function invalidate<E, A>(
   cache: SynchronizedRef<Option<Tuple<[number, Deferred<E, A>]>>>
-): UIO<void> {
+): Effect.UIO<void> {
   return cache.set(Option.none);
 }

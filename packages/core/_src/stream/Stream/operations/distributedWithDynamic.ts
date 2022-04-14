@@ -15,10 +15,10 @@ const distributedWithDynamicId = new AtomicNumber(0);
 export function distributedWithDynamic_<R, E, A, Z>(
   self: Stream<R, E, A>,
   maximumLag: number,
-  decide: (a: A) => UIO<(key: UniqueKey) => boolean>,
-  done: (exit: Exit<Option<E>, never>) => UIO<Z> = () => Effect.unit as UIO<Z>,
+  decide: (a: A) => Effect.UIO<(key: UniqueKey) => boolean>,
+  done: (exit: Exit<Option<E>, never>) => Effect.UIO<Z> = () => Effect.unit as Effect.UIO<Z>,
   __tsplusTrace?: string
-): Effect<R & Has<Scope>, never, UIO<Tuple<[UniqueKey, Dequeue<Exit<Option<E>, A>>]>>> {
+): Effect<R & Has<Scope>, never, Effect.UIO<Tuple<[UniqueKey, Dequeue<Exit<Option<E>, A>>]>>> {
   return Effect.Do()
     .bind("queuesRef", () =>
       Effect.acquireRelease(
@@ -32,7 +32,7 @@ export function distributedWithDynamic_<R, E, A, Z>(
       Effect.Do()
         .bind("queuesLock", () => Semaphore.make(1))
         .bind("newQueue", () =>
-          Ref.make<UIO<Tuple<[UniqueKey, Queue<Exit<Option<E>, A>>]>>>(
+          Ref.make<Effect.UIO<Tuple<[UniqueKey, Queue<Exit<Option<E>, A>>]>>>(
             Effect.Do()
               .bind("queue", () => Queue.bounded<Exit<Option<E>, A>>(maximumLag))
               .bind("id", () => Effect.succeed(distributedWithDynamicId.incrementAndGet()))
@@ -93,7 +93,7 @@ export const distributedWithDynamic = Pipeable(distributedWithDynamic_);
 
 function offer<E, A>(
   ref: Ref<HashMap<UniqueKey, Queue<Exit<Option<E>, A>>>>,
-  decide: (a: A) => UIO<(key: UniqueKey) => boolean>,
+  decide: (a: A) => Effect.UIO<(key: UniqueKey) => boolean>,
   a: A,
   __tsplusTrace?: string
 ): Effect<unknown, E, void> {

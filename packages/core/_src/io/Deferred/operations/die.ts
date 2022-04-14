@@ -8,7 +8,7 @@ export function die_<E, A>(
   self: Deferred<E, A>,
   defect: LazyArg<unknown>,
   __tsplusTrace?: string
-): UIO<boolean> {
+): Effect.UIO<boolean> {
   return self.completeWith(Effect.die(defect));
 }
 

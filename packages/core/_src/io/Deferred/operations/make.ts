@@ -3,6 +3,6 @@
  *
  * @tsplus static ets/Deferred/Ops make
  */
-export function make<E, A>(__tsplusTrace?: string): UIO<Deferred<E, A>> {
+export function make<E, A>(__tsplusTrace?: string): Effect.UIO<Deferred<E, A>> {
   return Effect.fiberId.flatMap((id) => Deferred.makeAs(id));
 }

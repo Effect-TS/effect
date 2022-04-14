@@ -8,7 +8,7 @@ export function forkIn_<R, E, A>(
   self: Effect<R, E, A>,
   scope: LazyArg<Scope>,
   __tsplusTrace?: string
-): RIO<R, Fiber.Runtime<E, A>> {
+): Effect.RIO<R, Fiber.Runtime<E, A>> {
   return Effect.uninterruptibleMask(({ restore }) =>
     restore(self)
       .forkDaemon()

@@ -188,7 +188,7 @@ describe.concurrent("Effect", () => {
 
     it("acquireReleaseWith regression 1", async () => {
       function makeLogger(ref: Ref<List<string>>) {
-        return (line: string): UIO<void> => ref.update((list) => list + List(line));
+        return (line: string): Effect.UIO<void> => ref.update((list) => list + List(line));
       }
 
       const program = Effect.Do()

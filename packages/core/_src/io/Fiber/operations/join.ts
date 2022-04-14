@@ -8,6 +8,6 @@
  * @tsplus fluent ets/Fiber join
  * @tsplus fluent ets/RuntimeFiber join
  */
-export function join<E, A>(self: Fiber<E, A>, __tsplusTrace?: string): IO<E, A> {
+export function join<E, A>(self: Fiber<E, A>, __tsplusTrace?: string): Effect.IO<E, A> {
   return self.await().flatMap((exit) => Effect.done(exit)) < self.inheritRefs();
 }

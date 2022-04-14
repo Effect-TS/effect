@@ -8,6 +8,6 @@
 export function joinAll<E>(
   fibers: Collection<Fiber<E, any>>,
   __tsplusTrace?: string
-): IO<E, void> {
+): Effect.IO<E, void> {
   return Fiber.collectAll(fibers).join().asUnit();
 }

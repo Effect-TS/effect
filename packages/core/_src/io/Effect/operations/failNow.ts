@@ -4,6 +4,6 @@
  *
  * @tsplus static ets/Effect/Ops failNow
  */
-export function failNow<E>(error: E, __tsplusTrace?: string): IO<E, never> {
+export function failNow<E>(error: E, __tsplusTrace?: string): Effect.IO<E, never> {
   return Effect.failCauseNow(Cause.fail(error, Trace.none));
 }

@@ -10,7 +10,7 @@
  */
 export function acquireRelease<R, E, A, R2, X>(
   acquire: LazyArg<Effect<R, E, A>>,
-  release: (a: A) => RIO<R2, X>,
+  release: (a: A) => Effect.RIO<R2, X>,
   __tsplusTrace?: string
 ): Effect<R & R2 & Has<Scope>, E, A> {
   return Effect.acquireReleaseExit(acquire, (a, _) => release(a));

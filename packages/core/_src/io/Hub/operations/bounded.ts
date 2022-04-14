@@ -14,7 +14,7 @@ import { Strategy } from "@effect/core/io/Hub/operations/strategy";
 export function bounded<A>(
   requestedCapacity: number,
   __tsplusTrace?: string
-): UIO<Hub<A>> {
+): Effect.UIO<Hub<A>> {
   return Effect.succeed(makeBounded<A>(requestedCapacity)).flatMap((atomicHub) =>
     makeHub(atomicHub, Strategy.BackPressure())
   );

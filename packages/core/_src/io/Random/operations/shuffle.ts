@@ -4,6 +4,6 @@
 export function shuffle<A>(
   collection: LazyArg<Collection<A>>,
   __tsplusTrace?: string
-): UIO<Collection<A>> {
+): Effect.UIO<Collection<A>> {
   return Effect.randomWith((random) => random.shuffle(collection));
 }

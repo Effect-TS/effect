@@ -7,4 +7,4 @@ import { IYield } from "@effect/core/io/Effect/definition/primitives";
  *
  * @tsplus static ets/Effect/Ops yieldNow
  */
-export const yieldNow: UIO<void> = new IYield();
+export const yieldNow: Effect.UIO<void> = new IYield();

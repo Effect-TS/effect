@@ -11,10 +11,10 @@ export function distributedWith_<R, E, A>(
   self: Stream<R, E, A>,
   n: number,
   maximumLag: number,
-  decide: (a: A) => UIO<Predicate<number>>,
+  decide: (a: A) => Effect.UIO<Predicate<number>>,
   __tsplusTrace?: string
 ): Effect<R & Has<Scope>, never, List<Dequeue<Exit<Option<E>, A>>>> {
-  return Deferred.make<never, (a: A) => UIO<Predicate<UniqueKey>>>().flatMap((deferred) =>
+  return Deferred.make<never, (a: A) => Effect.UIO<Predicate<UniqueKey>>>().flatMap((deferred) =>
     self
       .distributedWithDynamic(
         maximumLag,

@@ -9,7 +9,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  */
 export function contramapEffect_<State, Env, In, Out, Env1, In2>(
   self: Schedule<State, Env, In, Out>,
-  f: (in2: In2) => RIO<Env1, In>
+  f: (in2: In2) => Effect.RIO<Env1, In>
 ): Schedule<State, Env & Env1, In2, Out> {
   return makeWithState(
     self._initial,

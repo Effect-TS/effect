@@ -7,6 +7,6 @@
 export function fromFiber<E, A>(
   fiber: LazyArg<Fiber<E, A>>,
   __tsplusTrace?: string
-): IO<E, A> {
+): Effect.IO<E, A> {
   return Effect.succeed(fiber).flatMap((fiber) => fiber.join());
 }

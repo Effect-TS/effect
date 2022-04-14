@@ -7,6 +7,6 @@
 export function fromOption<A>(
   option: LazyArg<Option<A>>,
   __tsplusTrace?: string
-): IO<Option<never>, A> {
+): Effect.IO<Option<never>, A> {
   return Effect.succeed(option).flatMap((option) => option.fold(Effect.fail(Option.none), Effect.succeedNow));
 }

@@ -6,7 +6,7 @@
 export function done<E, A>(
   exit: LazyArg<Exit<E, A>>,
   __tsplusTrace?: string
-): IO<E, A> {
+): Effect.IO<E, A> {
   return Effect.suspendSucceed(() => {
     const exit0 = exit();
     return exit0._tag === "Success"

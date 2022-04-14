@@ -25,7 +25,7 @@ export class Full<A> {
 /**
  * @tsplus static ets/Stream/Handoff/Ops make
  */
-export function make<A>(__tsplusTrace?: string): UIO<Handoff<A>> {
+export function make<A>(__tsplusTrace?: string): Effect.UIO<Handoff<A>> {
   return Deferred.make<never, void>()
     .flatMap((deferred) => Ref.make<HandoffState<A>>(new Empty(deferred)))
     .map((state) => new Handoff(state));
@@ -34,7 +34,7 @@ export function make<A>(__tsplusTrace?: string): UIO<Handoff<A>> {
 /**
  * @tsplus fluent ets/Stream/Handoff offer
  */
-export function offer<A>(self: Handoff<A>, a: A, __tsplusTrace?: string): UIO<void> {
+export function offer<A>(self: Handoff<A>, a: A, __tsplusTrace?: string): Effect.UIO<void> {
   return Deferred.make<never, void>().flatMap((deferred) =>
     self.ref
       .modify((state) => {
@@ -57,7 +57,7 @@ export function offer<A>(self: Handoff<A>, a: A, __tsplusTrace?: string): UIO<vo
 /**
  * @tsplus fluent ets/Stream/Handoff take
  */
-export function take<A>(self: Handoff<A>, __tsplusTrace?: string): UIO<A> {
+export function take<A>(self: Handoff<A>, __tsplusTrace?: string): Effect.UIO<A> {
   return Deferred.make<never, void>().flatMap((deferred) =>
     self.ref
       .modify((state) => {
@@ -80,7 +80,7 @@ export function take<A>(self: Handoff<A>, __tsplusTrace?: string): UIO<A> {
 /**
  * @tsplus fluent ets/Stream/Handoff poll
  */
-export function poll<A>(self: Handoff<A>, __tsplusTrace?: string): UIO<Option<A>> {
+export function poll<A>(self: Handoff<A>, __tsplusTrace?: string): Effect.UIO<Option<A>> {
   return Deferred.make<never, void>().flatMap((deferred) =>
     self.ref
       .modify((state) => {

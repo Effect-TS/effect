@@ -7,6 +7,6 @@
 export function cause<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
-): RIO<R, Cause<E>> {
+): Effect.RIO<R, Cause<E>> {
   return self.foldCause(identity, () => Cause.empty);
 }

@@ -1,7 +1,7 @@
 import type { Effect } from "@effect/core/io/Effect/definition/base";
 import { Base } from "@effect/core/io/Effect/definition/base";
 
-export type Canceler<R> = RIO<R, void>;
+export type Canceler<R> = Effect.RIO<R, void>;
 
 export class EffectError<E, A> extends Error {
   readonly _tag = "EffectError";

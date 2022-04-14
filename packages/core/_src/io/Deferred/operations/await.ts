@@ -8,7 +8,7 @@ import { interruptJoiner } from "@effect/core/io/Deferred/operations/_internal/i
  *
  * @tsplus fluent ets/Deferred await
  */
-export function _await<E, A>(self: Deferred<E, A>, __tsplusTrace?: string): IO<E, A> {
+export function _await<E, A>(self: Deferred<E, A>, __tsplusTrace?: string): Effect.IO<E, A> {
   concreteDeferred(self);
   return Effect.asyncInterruptBlockingOn((k) => {
     const state = self.state.get;

@@ -113,7 +113,7 @@ describe.concurrent("Effect", () => {
     });
 
     it("runs sequentially and short circuits on first success validation", async () => {
-      function f(n: number): IO<number, number> {
+      function f(n: number): Effect.IO<number, number> {
         return n === 6 ? Effect.succeed(n) : Effect.fail(n);
       }
 
@@ -152,7 +152,7 @@ describe.concurrent("Effect", () => {
     });
 
     it("returns success if valid", async () => {
-      function f(n: number): IO<number, number> {
+      function f(n: number): Effect.IO<number, number> {
         return n === 6 ? Effect.succeed(n) : Effect.fail(n);
       }
 

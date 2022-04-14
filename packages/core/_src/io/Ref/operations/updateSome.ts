@@ -8,7 +8,7 @@ export function updateSome_<A>(
   self: Ref<A>,
   pf: (a: A) => Option<A>,
   __tsplusTrace?: string
-): UIO<void> {
+): Effect.UIO<void> {
   return self.modify((v) => Tuple(undefined, pf(v).getOrElse(v)));
 }
 

@@ -6,6 +6,6 @@
 export function succeedLeft<A>(
   value: LazyArg<A>,
   __tsplusTrace?: string
-): UIO<Either<A, never>> {
+): Effect.UIO<Either<A, never>> {
   return Effect.succeed(Either.left(value()));
 }

@@ -3,7 +3,7 @@ const update = "update";
 const update1 = "update1";
 const update2 = "update2";
 
-const loseTimeAndCpu: UIO<void> = (
+const loseTimeAndCpu: Effect.UIO<void> = (
   Effect.yieldNow < Clock.sleep((1).millis)
 ).repeatN(100);
 

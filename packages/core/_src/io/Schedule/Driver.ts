@@ -17,9 +17,9 @@ export class Driver<State, Env, In, Out> {
 
   constructor(
     readonly next: (input: In) => Effect<Env, Option<never>, Out>,
-    readonly last: IO<NoSuchElement, Out>,
-    readonly reset: UIO<void>,
-    readonly state: UIO<State>
+    readonly last: Effect.IO<NoSuchElement, Out>,
+    readonly reset: Effect.UIO<void>,
+    readonly state: Effect.UIO<State>
   ) {}
 }
 
@@ -28,9 +28,9 @@ export class Driver<State, Env, In, Out> {
  */
 export function make<State, Env, In, Out>(
   next: (input: In) => Effect<Env, Option<never>, Out>,
-  last: IO<NoSuchElement, Out>,
-  reset: UIO<void>,
-  state: UIO<State>
+  last: Effect.IO<NoSuchElement, Out>,
+  reset: Effect.UIO<void>,
+  state: Effect.UIO<State>
 ): Driver<State, Env, In, Out> {
   return new Driver(next, last, reset, state);
 }

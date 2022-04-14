@@ -79,7 +79,7 @@ describe.concurrent("Effect", () => {
     });
 
     it("point, bind, map", async () => {
-      function fibEffect(n: number): UIO<number> {
+      function fibEffect(n: number): Effect.UIO<number> {
         if (n <= 1) {
           return Effect.succeed(n);
         }
@@ -133,14 +133,14 @@ describe.concurrent("Effect", () => {
     });
 
     it("deep effects", async () => {
-      function incLeft(n: number, ref: Ref<number>): UIO<number> {
+      function incLeft(n: number, ref: Ref<number>): Effect.UIO<number> {
         if (n <= 0) {
           return ref.get();
         }
         return incLeft(n - 1, ref) < ref.update((n) => n + 1);
       }
 
-      function incRight(n: number, ref: Ref<number>): UIO<number> {
+      function incRight(n: number, ref: Ref<number>): Effect.UIO<number> {
         if (n <= 0) {
           return ref.get();
         }

@@ -7,7 +7,7 @@ import { concreteScope } from "@effect/core/io/Scope/operations/_internal/ScopeI
  * @tsplus fluent ets/Scope fork
  * @tsplus fluent ets/Scope/Closeable fork
  */
-export function fork(self: Scope): UIO<Scope.Closeable> {
+export function fork(self: Scope): Effect.UIO<Scope.Closeable> {
   concreteScope(self);
   return self._fork;
 }

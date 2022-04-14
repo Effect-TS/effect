@@ -21,7 +21,7 @@ export function interruptAsNow_<E, A>(
   self: Fiber<E, A>,
   fiberId: FiberId,
   __tsplusTrace?: string
-): UIO<Exit<E, A>> {
+): Effect.UIO<Exit<E, A>> {
   realFiber(self);
   return self._interruptAs(fiberId);
 }

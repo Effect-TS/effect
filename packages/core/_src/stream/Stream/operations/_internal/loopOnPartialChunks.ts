@@ -2,7 +2,7 @@ import { loopOnChunks } from "@effect/core/stream/Stream/operations/_internal/lo
 
 export function loopOnPartialChunks<R, E, A, R1, E1, A1>(
   self: Stream<R, E, A>,
-  f: (a: Chunk<A>, emit: (a: A1) => UIO<void>) => Effect<R1, E1, boolean>,
+  f: (a: Chunk<A>, emit: (a: A1) => Effect.UIO<void>) => Effect<R1, E1, boolean>,
   __tsplusTrace?: string
 ): Stream<R & R1, E | E1, A1> {
   return loopOnChunks(self, (chunk) =>

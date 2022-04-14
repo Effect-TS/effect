@@ -19,19 +19,19 @@ export class LiveRandom implements Random {
     this.PRNG = new RandomPCG(seed);
   }
 
-  get next(): UIO<number> {
+  get next(): Effect.UIO<number> {
     return Effect.succeed(this.PRNG.number());
   }
 
-  get nextBoolean(): UIO<boolean> {
+  get nextBoolean(): Effect.UIO<boolean> {
     return this.next.flatMap((n) => Effect.succeed(n > 0.5));
   }
 
-  get nextInt(): UIO<number> {
+  get nextInt(): Effect.UIO<number> {
     return Effect.succeed(this.PRNG.integer(0));
   }
 
-  nextRange(low: number, high: number, __tsplusTrace?: string): UIO<number> {
+  nextRange(low: number, high: number, __tsplusTrace?: string): Effect.UIO<number> {
     return this.next.flatMap((n) => Effect.succeed((high - low) * n + low));
   }
 
@@ -39,23 +39,23 @@ export class LiveRandom implements Random {
     low: number,
     high: number,
     __tsplusTrace?: string
-  ): UIO<number> {
+  ): Effect.UIO<number> {
     return Effect.succeed(() => this.PRNG.integer(1 + high - low) + low);
   }
 
   shuffle<A>(
     collection: LazyArg<Collection<A>>,
     __tsplusTrace?: string
-  ): UIO<Collection<A>> {
+  ): Effect.UIO<Collection<A>> {
     return shuffleWith(collection, (n) => this.nextIntBetween(0, n));
   }
 }
 
 function shuffleWith<A>(
   collection: LazyArg<Collection<A>>,
-  nextIntBounded: (n: number) => UIO<number>,
+  nextIntBounded: (n: number) => Effect.UIO<number>,
   __tsplusTrace?: string
-): UIO<Collection<A>> {
+): Effect.UIO<Collection<A>> {
   return Effect.suspendSucceed(() => {
     const collection0 = collection();
 

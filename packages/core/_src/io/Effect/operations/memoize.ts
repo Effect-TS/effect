@@ -7,7 +7,7 @@
 export function memoize<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
-): UIO<Effect<R, E, A>> {
+): Effect.UIO<Effect<R, E, A>> {
   return Effect.Do()
     .bind("deferred", () => Deferred.make<E, A>())
     .bind("complete", ({ deferred }) => self.intoDeferred(deferred).once())

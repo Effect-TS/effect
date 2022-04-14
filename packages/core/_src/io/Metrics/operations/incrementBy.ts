@@ -5,7 +5,7 @@ export function incrementBy_(
   self: Metric.Counter<number>,
   amount: LazyArg<number>,
   __tsplusTrace?: string
-): UIO<void> {
+): Effect.UIO<void> {
   return self.update(amount);
 }
 

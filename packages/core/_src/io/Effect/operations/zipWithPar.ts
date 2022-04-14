@@ -52,7 +52,7 @@ function coordinate<E, B, X, Y>(
         ),
       (a) =>
         loser.await().flatMap((loserExit) =>
-          loserExit.fold<E, Y, IO<E, B>>(
+          loserExit.fold<E, Y, Effect.IO<E, B>>(
             (loserCause) => Effect.failCause(loserCause),
             (b) => winner.inheritRefs() > loser.inheritRefs() > Effect.succeed(f(a, b))
           )

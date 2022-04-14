@@ -10,7 +10,7 @@ import { realFiber } from "@effect/core/io/Fiber/definition";
 export function _await<E, A>(
   self: Fiber<E, A>,
   __tsplusTrace?: string
-): UIO<Exit<E, A>> {
+): Effect.UIO<Exit<E, A>> {
   realFiber(self);
   return self._await;
 }

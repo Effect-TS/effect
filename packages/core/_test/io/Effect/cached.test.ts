@@ -2,7 +2,7 @@ describe.concurrent("Effect", () => {
   // TODO: enable after porting TestClock
   describe.concurrent("cached", () => {
     it.skip("returns new instances after duration", async () => {
-      // function incrementAndGet(ref: Ref.Ref<number>): UIO<number> {
+      // function incrementAndGet(ref: Ref.Ref<number>): Effect.UIO<number> {
       //   return Ref.updateAndGet_(ref, (n) => n + 1)
       // }
       // const program = Effect.Do()
@@ -45,7 +45,7 @@ describe.concurrent("Effect", () => {
   // TODO: enable after porting TestClock
   describe.concurrent("cachedInvalidate", () => {
     it.skip("returns new instances after duration", async () => {
-      // function incrementAndGet(ref: Ref.Ref<number>): UIO<number> {
+      // function incrementAndGet(ref: Ref.Ref<number>): Effect.UIO<number> {
       //   return Ref.updateAndGet_(ref, (n) => n + 1)
       // }
       // const program = Effect.Do()

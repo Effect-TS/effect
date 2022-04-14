@@ -16,7 +16,7 @@ export function reconsiderEffect_<State, Env, In, Out, Env1, Out2>(
     state: State,
     out: Out,
     decision: Decision
-  ) => RIO<Env1, Either<Out2, Tuple<[Out2, Interval]>>>
+  ) => Effect.RIO<Env1, Either<Out2, Tuple<[Out2, Interval]>>>
 ): Schedule<State, Env & Env1, In, Out2> {
   return makeWithState(
     self._initial,

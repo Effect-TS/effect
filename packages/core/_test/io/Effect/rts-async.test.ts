@@ -21,13 +21,13 @@ describe.concurrent("Effect", () => {
     });
 
     it("deep asyncEffect doesn't block", async () => {
-      function asyncIO(cont: UIO<number>): UIO<number> {
+      function asyncIO(cont: Effect.UIO<number>): Effect.UIO<number> {
         return Effect.asyncEffect(
           (cb) => Effect.sleep((5).millis) > cont > Effect.succeed(cb(Effect.succeed(42)))
         );
       }
 
-      function stackIOs(count: number): UIO<number> {
+      function stackIOs(count: number): Effect.UIO<number> {
         return count < 0 ? Effect.succeed(42) : asyncIO(stackIOs(count - 1));
       }
 

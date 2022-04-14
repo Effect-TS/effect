@@ -14,13 +14,13 @@ export interface NumberService {
 
 export const NumberService = Tag<NumberService>();
 
-export function asyncExampleError<A>(): IO<unknown, A> {
+export function asyncExampleError<A>(): Effect.IO<unknown, A> {
   return Effect.async((cb) => {
     cb(Effect.fail(ExampleError));
   });
 }
 
-export function asyncUnit<E>(): IO<E, void> {
+export function asyncUnit<E>(): Effect.IO<E, void> {
   return Effect.async((cb) => {
     cb(Effect.unit);
   });
@@ -28,7 +28,7 @@ export function asyncUnit<E>(): IO<E, void> {
 
 export function exactlyOnce<R, A, A1>(
   value: A,
-  f: (_: UIO<A>) => Effect<R, string, A1>
+  f: (_: Effect.UIO<A>) => Effect<R, string, A1>
 ): Effect<R, string, A1> {
   return Ref.make(0).flatMap((ref) =>
     Effect.Do()
@@ -53,7 +53,7 @@ export function fib(n: number): number {
   return fib(n - 1) + fib(n - 2);
 }
 
-export function concurrentFib(n: number): UIO<number> {
+export function concurrentFib(n: number): Effect.UIO<number> {
   if (n <= 1) {
     return Effect.succeed(n);
   }
@@ -65,7 +65,7 @@ export function concurrentFib(n: number): UIO<number> {
     .map(({ v1, v2 }) => v1 + v2);
 }
 
-export function deepErrorEffect(n: number): IO<unknown, void> {
+export function deepErrorEffect(n: number): Effect.IO<unknown, void> {
   if (n === 0) {
     return Effect.attempt(() => {
       throw ExampleError;
@@ -74,15 +74,15 @@ export function deepErrorEffect(n: number): IO<unknown, void> {
   return Effect.unit > deepErrorEffect(n - 1);
 }
 
-export function deepErrorFail(n: number): IO<unknown, void> {
+export function deepErrorFail(n: number): Effect.IO<unknown, void> {
   if (n === 0) {
     return Effect.fail(ExampleError);
   }
   return Effect.unit > deepErrorFail(n - 1);
 }
 
-export function deepMapEffect(n: number): UIO<number> {
-  function loop(n: number, acc: UIO<number>): UIO<number> {
+export function deepMapEffect(n: number): Effect.UIO<number> {
+  function loop(n: number, acc: Effect.UIO<number>): Effect.UIO<number> {
     if (n <= 0) {
       return acc;
     }

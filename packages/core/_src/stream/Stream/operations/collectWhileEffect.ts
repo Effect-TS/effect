@@ -26,7 +26,7 @@ function loop<R, E, A, A2>(
   pf: (a: A) => Option<Effect<R, E, A2>>,
   __tsplusTrace?: string
 ) {
-  return (chunk: Chunk<A>, emit: (a: A2) => UIO<void>): Effect<R, E, boolean> =>
+  return (chunk: Chunk<A>, emit: (a: A2) => Effect.UIO<void>): Effect<R, E, boolean> =>
     chunk.isEmpty()
       ? Effect.succeed(true)
       : pfSome(chunk.unsafeHead(), pf, emit).flatMap((cont) =>
@@ -37,7 +37,7 @@ function loop<R, E, A, A2>(
 function pfSome<R, E, A, A2>(
   a: A,
   pf: (a: A) => Option<Effect<R, E, A2>>,
-  emit: (a: A2) => UIO<void>,
+  emit: (a: A2) => Effect.UIO<void>,
   __tsplusTrace?: string
 ) {
   return pf(a).fold(Effect.succeed(false), (effect) => effect.flatMap(emit).as(true));

@@ -7,7 +7,7 @@ export function update_<A, P>(
   self: FiberRef<A, P>,
   f: (a: A) => A,
   __tsplusTrace?: string
-): UIO<void> {
+): Effect.UIO<void> {
   return self.modify((v) => Tuple(undefined, f(v)));
 }
 

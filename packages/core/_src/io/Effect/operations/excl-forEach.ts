@@ -542,7 +542,7 @@ export function fiberJoinAll<E, A>(
 export function fiberWaitAll<E, A>(
   as: LazyArg<Collection<Fiber<E, A>>>,
   __tsplusTrace?: string
-): RIO<unknown, Exit<E, Chunk<A>>> {
+): Effect.RIO<unknown, Exit<E, Chunk<A>>> {
   return Effect.forEachPar(as, (fiber) => fiber.await().flatMap((exit) => Effect.done(exit))).exit();
 }
 
@@ -558,9 +558,9 @@ export function releaseMapReleaseAll(
   ex: Exit<unknown, unknown>,
   execStrategy: ExecutionStrategy,
   __tsplusTrace?: string
-): UIO<unknown> {
+): Effect.UIO<unknown> {
   return self.ref
-    .modify((s): Tuple<[UIO<unknown>, State]> => {
+    .modify((s): Tuple<[Effect.UIO<unknown>, State]> => {
       switch (s._tag) {
         case "Exited": {
           return Tuple(Effect.unit, s);
@@ -587,7 +587,7 @@ export function releaseMapReleaseAll(
               return Tuple(
                 Effect.forEachPar(Array.from(s.finalizers()).reverse(), ([_, f]) => s.update(f)(ex).exit())
                   .flatMap((results) => Effect.done(Exit.collectAllPar(results).getOrElse(Exit.unit)))
-                  .withParallelism(execStrategy.n) as UIO<unknown>,
+                  .withParallelism(execStrategy.n) as Effect.UIO<unknown>,
                 new Exited(s.nextKey, ex, s.update)
               );
             }
@@ -605,7 +605,7 @@ export function releaseMapReleaseAll(
 export function makeBoundedQueue<A>(
   requestedCapacity: number,
   __tsplusTrace?: string
-): UIO<Queue<A>> {
+): Effect.UIO<Queue<A>> {
   return Effect.succeed(MutableQueue.bounded<A>(requestedCapacity)).flatMap((queue) =>
     createQueue(queue, new BackPressureStrategy())
   );
@@ -615,7 +615,7 @@ export function createQueue<A>(
   queue: MutableQueue<A>,
   strategy: Strategy<A>,
   __tsplusTrace?: string
-): UIO<Queue<A>> {
+): Effect.UIO<Queue<A>> {
   return Deferred.make<never, void>().map((deferred) =>
     unsafeCreateQueue(
       queue,
@@ -652,7 +652,7 @@ export class UnsafeCreate<A> implements Queue<A> {
 
   capacity: number = this.queue.capacity;
 
-  size: UIO<number> = Effect.suspendSucceed(
+  size: Effect.UIO<number> = Effect.suspendSucceed(
     this.shutdownFlag.get
       ? Effect.interrupt
       : Effect.succeedNow(
@@ -660,11 +660,11 @@ export class UnsafeCreate<A> implements Queue<A> {
       )
   );
 
-  awaitShutdown: UIO<void> = this.shutdownHook.await();
+  awaitShutdown: Effect.UIO<void> = this.shutdownHook.await();
 
-  isShutdown: UIO<boolean> = Effect.succeed(this.shutdownFlag.get);
+  isShutdown: Effect.UIO<boolean> = Effect.succeed(this.shutdownFlag.get);
 
-  shutdown: UIO<void> = Effect.suspendSucceedWith((_, fiberId) => {
+  shutdown: Effect.UIO<void> = Effect.suspendSucceedWith((_, fiberId) => {
     this.shutdownFlag.set(true);
 
     return Effect.whenEffect(
@@ -822,7 +822,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
     takers: MutableQueue<Deferred<never, A>>,
     isShutdown: AtomicBoolean,
     __tsplusTrace?: string
-  ): UIO<boolean> {
+  ): Effect.UIO<boolean> {
     return Effect.suspendSucceedWith((_, fiberId) => {
       const deferred = Deferred.unsafeMake<never, boolean>(fiberId);
 
@@ -886,7 +886,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
     return this.putters.size;
   }
 
-  get shutdown(): UIO<void> {
+  get shutdown(): Effect.UIO<void> {
     return Effect.Do()
       .bind("fiberId", () => Effect.fiberId)
       .bind("putters", () => Effect.succeed(unsafePollAll(this.putters)))

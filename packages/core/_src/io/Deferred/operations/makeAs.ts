@@ -6,6 +6,6 @@
 export function makeAs<E, A>(
   fiberId: LazyArg<FiberId>,
   __tsplusTrace?: string
-): UIO<Deferred<E, A>> {
+): Effect.UIO<Deferred<E, A>> {
   return Effect.succeed(Deferred.unsafeMake(fiberId()));
 }

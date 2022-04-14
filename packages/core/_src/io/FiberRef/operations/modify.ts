@@ -11,7 +11,7 @@ export function modify_<A, B, P>(
   self: FiberRef<A, P>,
   f: (a: A) => Tuple<[B, A]>,
   __tsplusTrace?: string
-): UIO<B> {
+): Effect.UIO<B> {
   return new IFiberRefModify(self, f, __tsplusTrace);
 }
 

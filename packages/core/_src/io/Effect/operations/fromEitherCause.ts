@@ -6,6 +6,6 @@
 export function fromEitherCause<E, A>(
   either: LazyArg<Either<Cause<E>, A>>,
   __tsplusTrace?: string
-): IO<E, A> {
+): Effect.IO<E, A> {
   return Effect.succeed(either).flatMap((either) => either.fold(Effect.failCauseNow, Effect.succeedNow));
 }

@@ -96,31 +96,31 @@ export interface BaseFiber<E, A> extends Fiber<E, A> {
    * Awaits the fiber, which suspends the awaiting fiber until the result of the
    * fiber has been determined.
    */
-  readonly _await: UIO<Exit<E, A>>;
+  readonly _await: Effect.UIO<Exit<E, A>>;
 
   /**
    * Retrieves the immediate children of the fiber.
    */
-  readonly _children: UIO<Chunk<Fiber.Runtime<any, any>>>;
+  readonly _children: Effect.UIO<Chunk<Fiber.Runtime<any, any>>>;
 
   /**
    * Inherits values from all `FiberRef` instances into current fiber. This
    * will resume immediately.
    */
-  readonly _inheritRefs: UIO<void>;
+  readonly _inheritRefs: Effect.UIO<void>;
 
   /**
    * Tentatively observes the fiber, but returns immediately if it is not
    * already done.
    */
-  readonly _poll: UIO<Option<Exit<E, A>>>;
+  readonly _poll: Effect.UIO<Option<Exit<E, A>>>;
 
   /**
    * Interrupts the fiber as if interrupted from the specified fiber. If the
    * fiber has already exited, the returned effect will resume immediately.
    * Otherwise, the effect will resume when the fiber exits.
    */
-  readonly _interruptAs: (fiberId: FiberId) => UIO<Exit<E, A>>;
+  readonly _interruptAs: (fiberId: FiberId) => Effect.UIO<Exit<E, A>>;
 }
 
 /**
@@ -145,19 +145,19 @@ export interface RuntimeFiber<E, A> extends BaseFiber<E, A> {
   /**
    * The status of the fiber.
    */
-  readonly _status: UIO<FiberStatus>;
+  readonly _status: Effect.UIO<FiberStatus>;
 
   /**
    * The trace of the fiber.
    */
-  readonly _trace: UIO<Trace>;
+  readonly _trace: Effect.UIO<Trace>;
 
   /**
    * Evaluates the specified effect on the fiber. If this is not possible,
    * because the fiber has already ended life, then the specified alternate
    * effect will be executed instead.
    */
-  readonly _evalOn: (effect: UIO<any>, orElse: UIO<any>) => UIO<void>;
+  readonly _evalOn: (effect: Effect.UIO<any>, orElse: Effect.UIO<any>) => Effect.UIO<void>;
 
   /**
    * A fully-featured, but much slower version of `evalOn`, which is useful
@@ -184,21 +184,21 @@ export class SyntheticFiber<E, A> implements BaseFiber<E, A> {
 
   constructor(
     readonly _id: FiberId,
-    readonly _await: UIO<Exit<E, A>>,
-    readonly _children: UIO<Chunk<Fiber.Runtime<any, any>>>,
-    readonly _inheritRefs: UIO<void>,
-    readonly _poll: UIO<Option<Exit<E, A>>>,
-    readonly _interruptAs: (fiberId: FiberId) => UIO<Exit<E, A>>
+    readonly _await: Effect.UIO<Exit<E, A>>,
+    readonly _children: Effect.UIO<Chunk<Fiber.Runtime<any, any>>>,
+    readonly _inheritRefs: Effect.UIO<void>,
+    readonly _poll: Effect.UIO<Option<Exit<E, A>>>,
+    readonly _interruptAs: (fiberId: FiberId) => Effect.UIO<Exit<E, A>>
   ) {}
 }
 
 export function makeSynthetic<E, A>(_: {
   readonly id: FiberId;
-  readonly await: UIO<Exit<E, A>>;
-  readonly children: UIO<Chunk<Fiber.Runtime<any, any>>>;
-  readonly inheritRefs: UIO<void>;
-  readonly poll: UIO<Option<Exit<E, A>>>;
-  readonly interruptAs: (fiberId: FiberId) => UIO<Exit<E, A>>;
+  readonly await: Effect.UIO<Exit<E, A>>;
+  readonly children: Effect.UIO<Chunk<Fiber.Runtime<any, any>>>;
+  readonly inheritRefs: Effect.UIO<void>;
+  readonly poll: Effect.UIO<Option<Exit<E, A>>>;
+  readonly interruptAs: (fiberId: FiberId) => Effect.UIO<Exit<E, A>>;
 }): Fiber<E, A> {
   return new SyntheticFiber(
     _.id,

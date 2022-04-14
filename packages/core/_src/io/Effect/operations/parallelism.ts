@@ -4,7 +4,7 @@
  *
  * @tsplus static ets/Effect/Ops parallelism
  */
-export function parallelism(__tsplusTrace?: string): UIO<Option<number>> {
+export function parallelism(__tsplusTrace?: string): Effect.UIO<Option<number>> {
   return FiberRef.currentParallelism.value.get();
 }
 

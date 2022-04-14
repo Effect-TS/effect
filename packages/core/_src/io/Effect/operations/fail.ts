@@ -4,6 +4,6 @@
  *
  * @tsplus static ets/Effect/Ops fail
  */
-export function fail<E>(error: LazyArg<E>, __tsplusTrace?: string): IO<E, never> {
+export function fail<E>(error: LazyArg<E>, __tsplusTrace?: string): Effect.IO<E, never> {
   return Effect.failCause(Cause.fail(error(), Trace.none));
 }

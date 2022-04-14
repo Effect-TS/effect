@@ -8,7 +8,7 @@ import { concreteTake } from "@effect/core/stream/Take/operations/_internal/Take
 export function done<E, A>(
   self: Take<E, A>,
   __tsplusTrace?: string
-): IO<Option<E>, Chunk<A>> {
+): Effect.IO<Option<E>, Chunk<A>> {
   concreteTake(self);
   return Effect.done(self._exit);
 }

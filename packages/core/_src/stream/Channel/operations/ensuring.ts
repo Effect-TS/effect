@@ -13,7 +13,7 @@ export function ensuring_<
   Z
 >(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  finalizer: LazyArg<RIO<Env1, Z>>
+  finalizer: LazyArg<Effect.RIO<Env1, Z>>
 ): Channel<Env & Env1, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
   return self.ensuringWith(finalizer);
 }

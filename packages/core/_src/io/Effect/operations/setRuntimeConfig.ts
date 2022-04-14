@@ -8,6 +8,6 @@ import { ISetRuntimeConfig } from "@effect/core/io/Effect/definition/primitives"
 export function setRuntimeConfig(
   runtimeConfig: LazyArg<RuntimeConfig>,
   __tsplusTrace?: string
-): UIO<void> {
+): Effect.UIO<void> {
   return Effect.suspendSucceed(new ISetRuntimeConfig(runtimeConfig(), __tsplusTrace));
 }

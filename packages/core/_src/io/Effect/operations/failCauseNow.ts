@@ -5,6 +5,6 @@ import { IFail } from "@effect/core/io/Effect/definition/primitives";
  *
  * @tsplus static ets/Effect/Ops failCauseNow
  */
-export function failCauseNow<E>(cause: Cause<E>, __tsplusTrace?: string): IO<E, never> {
+export function failCauseNow<E>(cause: Cause<E>, __tsplusTrace?: string): Effect.IO<E, never> {
   return new IFail(() => cause, __tsplusTrace);
 }

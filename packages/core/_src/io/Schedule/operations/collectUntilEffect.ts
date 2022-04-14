@@ -5,7 +5,7 @@
  * @tsplus static ets/Schedule/Ops collectUntilEffect
  */
 export function collectUntilEffect<Env, A>(
-  f: (a: A) => RIO<Env, boolean>
+  f: (a: A) => Effect.RIO<Env, boolean>
 ): Schedule<Tuple<[void, Chunk<A>]>, Env, A, Chunk<A>> {
   return Schedule.recurUntilEffect(f).collectAll();
 }

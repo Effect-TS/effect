@@ -8,7 +8,7 @@ import { makeSynthetic } from "@effect/core/io/Fiber/definition";
  */
 export function mapEffect_<E, E1, A, B>(
   self: Fiber<E, A>,
-  f: (a: A) => IO<E1, B>,
+  f: (a: A) => Effect.IO<E1, B>,
   __tsplusTrace?: string
 ): Fiber<E | E1, B> {
   return makeSynthetic({

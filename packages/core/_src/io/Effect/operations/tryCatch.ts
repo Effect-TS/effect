@@ -8,7 +8,7 @@ export function tryCatch<E, A>(
   attempt: LazyArg<A>,
   onThrow: (u: unknown) => E,
   __tsplusTrace?: string
-): IO<E, A> {
+): Effect.IO<E, A> {
   return Effect.suspendSucceed(() => {
     try {
       return Effect.succeed(attempt);

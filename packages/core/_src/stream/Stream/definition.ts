@@ -36,9 +36,11 @@ export interface Stream<R, E, A> {
   readonly [_A]: () => A;
 }
 
-export type IO<E, A> = Stream<unknown, E, A>;
-export type RIO<R, A> = Stream<R, never, A>;
-export type UIO<A> = Stream<unknown, never, A>;
+export declare namespace Stream {
+  export type IO<E, A> = Stream<unknown, E, A>;
+  export type RIO<R, A> = Stream<R, never, A>;
+  export type UIO<A> = Stream<unknown, never, A>;
+}
 
 /**
  * @tsplus type ets/Stream/Ops

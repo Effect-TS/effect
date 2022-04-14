@@ -1,6 +1,6 @@
 /**
  * @tsplus static ets/Random/Ops nextInt
  */
-export const nextInt: UIO<number> = Effect.randomWith(
+export const nextInt: Effect.UIO<number> = Effect.randomWith(
   (random) => random.nextInt
 );

@@ -324,7 +324,7 @@ export class BracketOut<R, E, Z, OutDone> extends ChannelBase<
   readonly _tag = "BracketOut";
   constructor(
     readonly acquire: Lazy<Effect<R, E, Z>>,
-    readonly finalizer: (z: Z, exit: Exit<unknown, unknown>) => RIO<R, unknown>
+    readonly finalizer: (z: Z, exit: Exit<unknown, unknown>) => Effect.RIO<R, unknown>
   ) {
     super();
   }
@@ -505,7 +505,7 @@ export class ContinuationFinalizer<Env, OutErr, OutDone> extends Continuation<
 > {
   readonly _tag = "ContinuationFinalizer";
 
-  constructor(readonly finalizer: (exit: Exit<OutErr, OutDone>) => RIO<Env, unknown>) {
+  constructor(readonly finalizer: (exit: Exit<OutErr, OutDone>) => Effect.RIO<Env, unknown>) {
     super();
   }
 }
