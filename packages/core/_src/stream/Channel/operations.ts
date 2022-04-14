@@ -46,7 +46,7 @@ export * from "@effect/core/stream/Channel/operations/fromInput";
 export * from "@effect/core/stream/Channel/operations/fromOption";
 export * from "@effect/core/stream/Channel/operations/fromQueue";
 export * from "@effect/core/stream/Channel/operations/identity";
-export * from "@effect/core/stream/Channel/operations/interrupt";
+export * from "@effect/core/stream/Channel/operations/interruptAs";
 export * from "@effect/core/stream/Channel/operations/interruptWhen";
 export * from "@effect/core/stream/Channel/operations/interruptWhenDeferred";
 export * from "@effect/core/stream/Channel/operations/map";
