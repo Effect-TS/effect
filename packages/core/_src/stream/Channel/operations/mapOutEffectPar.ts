@@ -17,7 +17,7 @@ export function mapOutEffectPar_<
   n: number,
   f: (o: OutElem) => Effect<Env1, OutErr1, OutElem1>
 ): Channel<Env & Env1, InErr, InElem, InDone, OutErr | OutErr1, OutElem1, OutDone> {
-  return Channel.scoped(
+  return Channel.unwrapScoped(
     Effect.withChildren((getChildren) =>
       Effect.Do()
         .tap(() =>
@@ -67,8 +67,7 @@ export function mapOutEffectPar_<
             .forkScoped()
         )
         .map(({ queue }) => queue)
-    ),
-    (queue) => {
+    ).map((queue) => {
       const consumer: Channel<
         Env1,
         unknown,
@@ -88,7 +87,7 @@ export function mapOutEffectPar_<
         )
       );
       return consumer;
-    }
+    })
   );
 }
 

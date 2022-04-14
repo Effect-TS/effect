@@ -21,7 +21,7 @@ export function unwrapScoped<
   >
 ): Channel<R & Env, InErr, InElem, InDone, E | OutErr, OutElem, OutDone> {
   return Channel.concatAllWith(
-    Channel.scopedOut(self),
+    Channel.scoped(self),
     (d, _) => d,
     (d, _) => d
   );
