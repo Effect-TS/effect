@@ -2,7 +2,6 @@
  * Imports a synchronous side-effect into a pure `Effect` value, translating any
  * thrown exceptions into typed failed effects creating with `Effect.fail`.
  *
- * @tsplus static ets/Effect/Ops __call
  * @tsplus static ets/Effect/Ops attempt
  */
 export function attempt<A>(
