@@ -6,6 +6,6 @@
  */
 export function fromFunction<A, B>(
   f: (a: A) => B
-): Schedule.WithState<void, unknown, A, B> {
+): Schedule<void, unknown, A, B> {
   return Schedule.identity<A>().map(f);
 }

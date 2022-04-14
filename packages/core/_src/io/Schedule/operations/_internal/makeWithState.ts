@@ -26,6 +26,6 @@ export function makeWithState<State, Env, In, Out>(
     state: State,
     __tsplusTrace?: string
   ) => Effect<Env, never, Tuple<[State, Out, Decision]>>
-): Schedule.WithState<State, Env, In, Out> {
+): Schedule<State, Env, In, Out> {
   return new ScheduleWithStateInternal(initial, step);
 }

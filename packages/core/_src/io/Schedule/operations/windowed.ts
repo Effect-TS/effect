@@ -17,7 +17,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  */
 export function windowed(
   interval: Duration
-): Schedule.WithState<Tuple<[Option<number>, number]>, unknown, unknown, number> {
+): Schedule<Tuple<[Option<number>, number]>, unknown, unknown, number> {
   const millis = interval.millis;
   return makeWithState(
     Tuple(Option.emptyOf(), 0),

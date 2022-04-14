@@ -8,9 +8,9 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * @tsplus fluent ets/Schedule/WithState provideSomeEnvironment
  */
 export function provideSomeEnvironment_<State, R0, R, In, Out>(
-  self: Schedule.WithState<State, R, In, Out>,
+  self: Schedule<State, R, In, Out>,
   f: (env0: Env<R0>) => Env<R>
-): Schedule.WithState<State, R0, In, Out> {
+): Schedule<State, R0, In, Out> {
   return makeWithState(self._initial, (now, input, state) => self._step(now, input, state).provideSomeEnvironment(f));
 }
 

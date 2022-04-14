@@ -5,7 +5,7 @@
  * @tsplus fluent ets/Schedule/WithState asUnit
  */
 export function asUnit<State, Env, In, Out>(
-  self: Schedule.WithState<State, Env, In, Out>
-): Schedule.WithState<State, Env, In, void> {
+  self: Schedule<State, Env, In, Out>
+): Schedule<State, Env, In, void> {
   return self.as(() => undefined);
 }

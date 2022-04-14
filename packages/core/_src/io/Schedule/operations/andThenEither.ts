@@ -11,9 +11,9 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * @tsplus fluent ets/Schedule/WithState andThenEither
  */
 export function andThenEither_<State, Env, In, Out, State1, Env1, In1, Out2>(
-  self: Schedule.WithState<State, Env, In, Out>,
-  that: Schedule.WithState<State1, Env1, In1, Out2>
-): Schedule.WithState<
+  self: Schedule<State, Env, In, Out>,
+  that: Schedule<State1, Env1, In1, Out2>
+): Schedule<
   Tuple<[State, State1, boolean]>,
   Env & Env1,
   In & In1,

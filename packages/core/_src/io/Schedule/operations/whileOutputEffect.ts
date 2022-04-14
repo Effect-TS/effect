@@ -6,9 +6,9 @@
  * @tsplus fluent ets/Schedule/WithState whileOutputEffect
  */
 export function whileOutputEffect_<State, Env, In, Out, Env1>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   f: (out: Out) => RIO<Env1, boolean>
-): Schedule.WithState<State, Env & Env1, In, Out> {
+): Schedule<State, Env & Env1, In, Out> {
   return self.checkEffect((_, out) => f(out));
 }
 

@@ -7,9 +7,9 @@
  * @tsplus fluent ets/Schedule/WithState composeUsing
  */
 export function composeUsing_<State, Env, In, Out, State1, Env1, In2>(
-  self: Schedule.WithState<State, Env, In, Out>,
-  that: Schedule.WithState<State1, Env1, In2, In>
-): Schedule.WithState<Tuple<[State1, State]>, Env & Env1, In2, Out> {
+  self: Schedule<State, Env, In, Out>,
+  that: Schedule<State1, Env1, In2, In>
+): Schedule<Tuple<[State1, State]>, Env & Env1, In2, Out> {
   return that >> self;
 }
 

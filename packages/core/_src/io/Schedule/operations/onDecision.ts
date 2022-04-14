@@ -10,9 +10,9 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * @tsplus fluent ets/Schedule/WithState onDecision
  */
 export function onDecision_<State, Env, In, Out, Env1, X>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   f: (state: State, out: Out, decision: Decision) => RIO<Env1, X>
-): Schedule.WithState<State, Env & Env1, In, Out> {
+): Schedule<State, Env & Env1, In, Out> {
   return makeWithState(self._initial, (now, input, state) =>
     self
       ._step(now, input, state)

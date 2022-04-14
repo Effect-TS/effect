@@ -5,7 +5,7 @@
  * @tsplus fluent ets/Schedule/WithState run
  */
 export function run_<State, Env, In, Out>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   now: number,
   input: Collection<In>,
   __tsplusTrace?: string
@@ -21,7 +21,7 @@ export function run_<State, Env, In, Out>(
 export const run = Pipeable(run_);
 
 function runLoop<State, Env, In, Out>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   now: number,
   inputs: ListBuffer<In>,
   state: State,

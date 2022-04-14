@@ -13,13 +13,7 @@ import type { Driver } from "@effect/core/io/Schedule";
  */
 export function repeatOrElseEither_<S, R, E, A, R1, B, R2, E2, C>(
   self: Effect<R, E, A>,
-  schedule: LazyArg<Schedule.WithState<S, R1, A, B>>,
-  orElse: (e: E, option: Option<B>) => Effect<R2, E2, C>,
-  __tsplusTrace?: string
-): Effect<R & R1 & R2, E2, Either<C, B>>;
-export function repeatOrElseEither_<R, E, A, R1, B, R2, E2, C>(
-  self: Effect<R, E, A>,
-  schedule: LazyArg<Schedule<R1, A, B>>,
+  schedule: LazyArg<Schedule<S, R1, A, B>>,
   orElse: (e: E, option: Option<B>) => Effect<R2, E2, C>,
   __tsplusTrace?: string
 ): Effect<R & R1 & R2, E2, Either<C, B>> {
@@ -46,15 +40,10 @@ export function repeatOrElseEither_<R, E, A, R1, B, R2, E2, C>(
  * @tsplus static ets/Effect/Aspects repeateOrElseEither
  */
 export function repeatOrElseEither<S, R1, A, B, E, R2, E2, C>(
-  schedule: LazyArg<Schedule.WithState<S, R1, A, B>>,
+  schedule: LazyArg<Schedule<S, R1, A, B>>,
   orElse: (e: E, option: Option<B>) => Effect<R2, E2, C>,
   __tsplusTrace?: string
-): <R>(self: Effect<R, E, A>) => Effect<R & R1 & R2, E2, Either<C, B>>;
-export function repeatOrElseEither<R1, A, B, E, R2, E2, C>(
-  schedule: LazyArg<Schedule<R1, A, B>>,
-  orElse: (e: E, option: Option<B>) => Effect<R2, E2, C>,
-  __tsplusTrace?: string
-) {
+): <R>(self: Effect<R, E, A>) => Effect<R & R1 & R2, E2, Either<C, B>> {
   return <R>(self: Effect<R, E, A>): Effect<R & R1 & R2, E2, Either<C, B>> => self.repeatOrElseEither(schedule, orElse);
 }
 

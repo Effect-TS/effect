@@ -12,10 +12,10 @@ import type { MergeTuple } from "@tsplus/stdlib/data/Tuple";
  * @tsplus fluent ets/Schedule/WithState intersectWith
  */
 export function intersectWith_<State, State1, Env, In, Out, Env1, In1, Out2>(
-  self: Schedule.WithState<State, Env, In, Out>,
-  that: Schedule.WithState<State1, Env1, In1, Out2>,
+  self: Schedule<State, Env, In, Out>,
+  that: Schedule<State1, Env1, In1, Out2>,
   f: (x: Interval, y: Interval) => Interval
-): Schedule.WithState<
+): Schedule<
   Tuple<[State, State1]>,
   Env & Env1,
   In & In1,
@@ -68,8 +68,8 @@ export function intersectWith_<State, State1, Env, In, Out, Env1, In1, Out2>(
 export const intersectWith = Pipeable(intersectWith_);
 
 function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
-  self: Schedule.WithState<State, Env, In, Out>,
-  that: Schedule.WithState<State1, Env1, In1, Out2>,
+  self: Schedule<State, Env, In, Out>,
+  that: Schedule<State1, Env1, In1, Out2>,
   input: In & In1,
   lState: State,
   out: Out,

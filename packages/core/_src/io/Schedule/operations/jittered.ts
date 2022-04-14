@@ -9,10 +9,10 @@
  * @tsplus fluent ets/Schedule/WithState jittered
  */
 export function jittered_<State, Env, In, Out>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   min: number,
   max: number
-): Schedule.WithState<State, Env & Has<Random>, In, Out> {
+): Schedule<State, Env & Has<Random>, In, Out> {
   return self.delayedEffect((duration) =>
     Random.next.map((random) => {
       const d = duration.millis;
@@ -44,7 +44,7 @@ export const jittered = Pipeable(jittered_);
  * @tsplus fluent ets/Schedule/WithState jitteredDefault
  */
 export function jitteredDefault<State, Env, In, Out>(
-  self: Schedule.WithState<State, Env, In, Out>
-): Schedule.WithState<State, Env & Has<Random>, In, Out> {
+  self: Schedule<State, Env, In, Out>
+): Schedule<State, Env & Has<Random>, In, Out> {
   return self.jittered(0.8, 1.2);
 }

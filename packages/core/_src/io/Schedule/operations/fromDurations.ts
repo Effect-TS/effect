@@ -12,7 +12,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
 export function fromDurations(
   duration: Duration,
   ...durations: Array<Duration>
-): Schedule.WithState<
+): Schedule<
   Tuple<[Chunk<Duration>, boolean]>,
   unknown,
   unknown,

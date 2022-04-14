@@ -6,9 +6,9 @@
  * @tsplus fluent ets/Schedule/WithState resetAfter
  */
 export function resetAfter_<State, Env, In, Out>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   duration: Duration
-): Schedule.WithState<Tuple<[State, Option<number>]>, Env, In, Out> {
+): Schedule<Tuple<[State, Option<number>]>, Env, In, Out> {
   return self
     .zip(Schedule.elapsed)
     .resetWhen(({ tuple: [, _] }) => (_ as Duration) >= duration)

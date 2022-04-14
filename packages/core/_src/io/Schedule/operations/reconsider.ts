@@ -10,13 +10,13 @@ import type { Interval } from "@effect/core/io/Schedule/Interval";
  * @tsplus fluent ets/Schedule/WithState reconsider
  */
 export function reconsider_<State, Env, In, Out, Out2>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   f: (
     state: State,
     out: Out,
     decision: Decision
   ) => Either<Out2, Tuple<[Out2, Interval]>>
-): Schedule.WithState<State, Env, In, Out2> {
+): Schedule<State, Env, In, Out2> {
   return self.reconsiderEffect((state, out, decision) => Effect.succeed(f(state, out, decision)));
 }
 

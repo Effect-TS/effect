@@ -10,7 +10,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  */
 export function duration(
   duration: Duration
-): Schedule.WithState<boolean, unknown, unknown, Duration> {
+): Schedule<boolean, unknown, unknown, Duration> {
   return makeWithState(true as boolean, (now, _, state) =>
     Effect.succeed(
       state

@@ -8,8 +8,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * @tsplus fluent ets/Schedule/WithState delays
  */
 export function delays<State, Env, In, Out>(
-  self: Schedule.WithState<State, Env, In, Out>
-): Schedule.WithState<State, Env, In, Duration> {
+  self: Schedule<State, Env, In, Out>
+): Schedule<State, Env, In, Duration> {
   return makeWithState(self._initial, (now, input, state) =>
     self
       ._step(now, input, state)

@@ -12,9 +12,9 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * @tsplus fluent ets/Schedule/WithState ensuring
  */
 export function ensuring_<State, Env, In, Out, X>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   finalizer: UIO<X>
-): Schedule.WithState<State, Env, In, Out> {
+): Schedule<State, Env, In, Out> {
   return makeWithState(self._initial, (now, input, state) =>
     self
       ._step(now, input, state)

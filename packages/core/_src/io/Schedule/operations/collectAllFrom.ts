@@ -5,7 +5,7 @@
  * @tsplus fluent ets/Schedule/WithState collectAll
  */
 export function collectAllFrom<State, Env, In, Out>(
-  self: Schedule.WithState<State, Env, In, Out>
-): Schedule.WithState<Tuple<[State, Chunk<Out>]>, Env, In, Chunk<Out>> {
+  self: Schedule<State, Env, In, Out>
+): Schedule<Tuple<[State, Chunk<Out>]>, Env, In, Chunk<Out>> {
   return self.fold(Chunk.empty(), (xs, x) => xs.append(x));
 }

@@ -10,9 +10,9 @@ import type { MergeTuple } from "@tsplus/stdlib/data/Tuple";
  * @tsplus fluent ets/Schedule/WithState zip
  */
 export function zip_<State, State1, Env, In, Out, Env1, In1, Out2>(
-  self: Schedule.WithState<State, Env, In, Out>,
-  that: Schedule.WithState<State1, Env1, In1, Out2>
-): Schedule.WithState<
+  self: Schedule<State, Env, In, Out>,
+  that: Schedule<State1, Env1, In1, Out2>
+): Schedule<
   Tuple<[State, State1]>,
   Env & Env1,
   In & In1,

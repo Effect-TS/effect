@@ -6,9 +6,9 @@
  * @tsplus fluent ets/Schedule/WithState contramap
  */
 export function contramap_<State, Env, In, Out, In2>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   f: (in2: In2) => In
-): Schedule.WithState<State, Env, In2, Out> {
+): Schedule<State, Env, In2, Out> {
   return self.contramapEffect((input2) => Effect.succeed(f(input2)));
 }
 

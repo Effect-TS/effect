@@ -26,13 +26,7 @@ import { SinkEndReason } from "@effect/core/stream/Stream/SinkEndReason";
 export function aggregateAsyncWithinEither_<R, E, A, R2, E2, A2, S, R3, B, C>(
   self: Stream<R, E, A>,
   sink: LazyArg<Sink<R2, E2, A | A2, A2, B>>,
-  schedule: LazyArg<Schedule.WithState<S, R3, Option<B>, C>>,
-  __tsplusTrace?: string
-): Stream<R & R2 & R3, E | E2, Either<C, B>>;
-export function aggregateAsyncWithinEither_<R, E, A, R2, E2, A2, R3, B, C>(
-  self: Stream<R, E, A>,
-  sink: LazyArg<Sink<R2, E | E2, A | A2, A2, B>>,
-  schedule: LazyArg<Schedule<R3, Option<B>, C>>,
+  schedule: LazyArg<Schedule<S, R3, Option<B>, C>>,
   __tsplusTrace?: string
 ): Stream<R & R2 & R3, E | E2, Either<C, B>> {
   type EndReason = SinkEndReason<C>;

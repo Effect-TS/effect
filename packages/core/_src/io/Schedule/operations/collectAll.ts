@@ -3,7 +3,7 @@
  *
  * @tsplus static ets/Schedule/Ops collectAll
  */
-export function collectAll<A>(): Schedule.WithState<
+export function collectAll<A>(): Schedule<
   Tuple<[void, Chunk<A>]>,
   unknown,
   A,

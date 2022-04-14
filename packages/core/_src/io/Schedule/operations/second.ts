@@ -7,7 +7,7 @@
  * @tsplus fluent ets/Schedule/WithState second
  */
 export function second<State, Env, In, Out, X>(
-  self: Schedule.WithState<State, Env, In, Out>
-): Schedule.WithState<Tuple<[void, State]>, Env, Tuple<[X, In]>, Tuple<[X, Out]>> {
+  self: Schedule<State, Env, In, Out>
+): Schedule<Tuple<[void, State]>, Env, Tuple<[X, In]>, Tuple<[X, Out]>> {
   return Schedule.identity<X>() ** self;
 }

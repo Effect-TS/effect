@@ -6,9 +6,9 @@
  * @tsplus fluent ets/Schedule/WithState map
  */
 export function map_<State, Env, In, Out, Out2>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   f: (out: Out) => Out2
-): Schedule.WithState<State, Env, In, Out2> {
+): Schedule<State, Env, In, Out2> {
   return self.mapEffect((out) => Effect.succeed(f(out)));
 }
 

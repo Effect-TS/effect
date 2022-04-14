@@ -12,10 +12,10 @@ import type { MergeTuple } from "@tsplus/stdlib/data/Tuple";
  * @tsplus fluent ets/Schedule/WithState unionWith
  */
 export function unionWith_<State, Env, In, Out, State1, Env1, In1, Out2>(
-  self: Schedule.WithState<State, Env, In, Out>,
-  that: Schedule.WithState<State1, Env1, In1, Out2>,
+  self: Schedule<State, Env, In, Out>,
+  that: Schedule<State1, Env1, In1, Out2>,
   f: (x: Interval, y: Interval) => Interval
-): Schedule.WithState<
+): Schedule<
   Tuple<[State, State1]>,
   Env & Env1,
   In & In1,

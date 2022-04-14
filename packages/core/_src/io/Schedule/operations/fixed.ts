@@ -18,7 +18,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  */
 export function fixed(
   interval: LazyArg<Duration>
-): Schedule.WithState<
+): Schedule<
   Tuple<[Option<Tuple<[number, number]>>, number]>,
   unknown,
   unknown,

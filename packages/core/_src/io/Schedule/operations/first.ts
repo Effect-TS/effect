@@ -4,7 +4,7 @@
  * this schedule.
  */
 export function first<State, Env, In, Out, X>(
-  self: Schedule.WithState<State, Env, In, Out>
-): Schedule.WithState<Tuple<[State, void]>, Env, Tuple<[In, X]>, Tuple<[Out, X]>> {
+  self: Schedule<State, Env, In, Out>
+): Schedule<Tuple<[State, void]>, Env, Tuple<[In, X]>, Tuple<[Out, X]>> {
   return self ** Schedule.identity<X>();
 }

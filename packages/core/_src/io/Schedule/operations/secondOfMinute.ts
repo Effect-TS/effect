@@ -14,7 +14,7 @@ import { beginningOfSecond, endOfSecond, nextSecond } from "@effect/core/io/Sche
  */
 export function secondOfMinute(
   second: number
-): Schedule.WithState<number, unknown, unknown, number> {
+): Schedule<number, unknown, unknown, number> {
   return makeWithState(0, (now, _, state) => {
     if (!Number.isInteger(second) || second < 0 || 59 < second) {
       return Effect.die(

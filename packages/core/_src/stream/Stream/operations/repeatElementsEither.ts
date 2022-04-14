@@ -10,12 +10,7 @@
  */
 export function repeatElementsEither_<R, E, A, S, R2, B>(
   self: Stream<R, E, A>,
-  schedule: LazyArg<Schedule.WithState<S, R2, unknown, B>>,
-  __tsplusTrace?: string
-): Stream<R & R2, E, Either<B, A>>;
-export function repeatElementsEither_<R, E, A, R2, B>(
-  self: Stream<R, E, A>,
-  schedule: LazyArg<Schedule<R2, unknown, B>>,
+  schedule: LazyArg<Schedule<S, R2, unknown, B>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E, Either<B, A>> {
   return self.repeatElementsWith(

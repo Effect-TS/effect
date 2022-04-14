@@ -6,9 +6,9 @@
  * @tsplus fluent ets/Schedule/WithState whileOutput
  */
 export function whileOutput_<State, Env, In, Out>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   f: Predicate<Out>
-): Schedule.WithState<State, Env, In, Out> {
+): Schedule<State, Env, In, Out> {
   return self.check((_, out) => f(out));
 }
 

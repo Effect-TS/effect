@@ -8,7 +8,7 @@ import { Driver } from "@effect/core/io/Schedule/Driver";
  * @tsplus fluent ets/Schedule/WithState driver
  */
 export function driver<State, Env, In, Out>(
-  self: Schedule.WithState<State, Env, In, Out>
+  self: Schedule<State, Env, In, Out>
 ): UIO<Driver<State, Env, In, Out>> {
   return Ref.make<Tuple<[Option<Out>, State]>>(Tuple(Option.none, self._initial)).map((ref) => {
     const last: IO<NoSuchElement, Out> = ref.get().flatMap(({ tuple: [element, _] }) =>
@@ -24,7 +24,7 @@ export function driver<State, Env, In, Out>(
 }
 
 function next<State, Env, In, Out>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   ref: Ref<Tuple<[Option<Out>, State]>>
 ) {
   return (input: In): Effect<Env, Option<never>, Out> =>

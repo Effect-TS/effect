@@ -6,9 +6,9 @@
  * @tsplus fluent ets/Schedule/WithState addDelayEffect
  */
 export function addDelayEffect_<State, Env, In, Out, Env1>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   f: (out: Out) => RIO<Env1, Duration>
-): Schedule.WithState<State, Env & Env1, In, Out> {
+): Schedule<State, Env & Env1, In, Out> {
   return self.modifyDelayEffect((out, duration) => f(out).map((_) => duration + _));
 }
 

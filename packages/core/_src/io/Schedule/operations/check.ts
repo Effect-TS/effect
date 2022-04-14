@@ -7,9 +7,9 @@
  * @tsplus fluent ets/Schedule/WithState check
  */
 export function check_<State, Env, In, Out>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   test: (input: In, output: Out) => boolean
-): Schedule.WithState<State, Env, In, Out> {
+): Schedule<State, Env, In, Out> {
   return self.checkEffect((in1: In, out) => Effect.succeed(test(in1, out)));
 }
 
