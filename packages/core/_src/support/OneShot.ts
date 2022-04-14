@@ -1,7 +1,7 @@
 export class OneShot<A> {
   private internal: A | undefined = undefined;
 
-  set(a: A) {
+  set = (a: A) => {
     if (this.internal) {
       throw new Error("OneShot already set");
     }
@@ -11,7 +11,7 @@ export class OneShot<A> {
     this.internal = a;
   }
 
-  get() {
+  get = () => {
     if (this.internal) {
       return this.internal;
     }
