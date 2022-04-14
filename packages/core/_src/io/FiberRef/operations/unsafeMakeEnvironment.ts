@@ -5,7 +5,7 @@ import { FiberRefInternal } from "@effect/core/io/FiberRef/operations/_internal/
  */
 export function unsafeMakeEnvironment<A>(
   initial: Service.Env<A>
-): FiberRef.WithPatch<Service.Env<A>, Service.Patch<A, A>> {
+): FiberRef<Service.Env<A>, Service.Patch<A, A>> {
   return new FiberRefInternal(
     initial,
     Service.Patch.diff,

@@ -27,7 +27,7 @@ export type Instruction =
   | IFork<any, any, any>
   | IDescriptor<any, any, any>
   | IYield
-  | IFiberRefModify<any, any>
+  | IFiberRefModify<any, any, any>
   | ITrace
   | IRaceWith<any, any, any, any, any, any, any, any, any, any, any, any>
   | ISupervise<any, any, any>
@@ -35,9 +35,9 @@ export type Instruction =
   | IOverrideForkScope<any, any, any>
   | ILogged<any>
   | IFiberRefModifyAll<any>
-  | IFiberRefLocally<any, any, any, any>
+  | IFiberRefLocally<any, any, any, any, any>
   | IFiberRefDelete
-  | IFiberRefWith<any, any, any, any>
+  | IFiberRefWith<any, any, any, any, any>
   | ISetRuntimeConfig;
 
 export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R & R1, E | E1, A1> {
@@ -270,11 +270,11 @@ export class IFiberRefModifyAll<A> extends Base<unknown, never, A> {
   }
 }
 
-export class IFiberRefModify<A, B> extends Base<unknown, never, B> {
+export class IFiberRefModify<A, B, P> extends Base<unknown, never, B> {
   readonly _tag = "FiberRefModify";
 
   constructor(
-    readonly fiberRef: FiberRef<A>,
+    readonly fiberRef: FiberRef<A, P>,
     readonly f: (a: A) => Tuple<[B, A]>,
     readonly trace?: string
   ) {
@@ -286,12 +286,12 @@ export class IFiberRefModify<A, B> extends Base<unknown, never, B> {
   }
 }
 
-export class IFiberRefLocally<V, R, E, A> extends Base<R, E, A> {
+export class IFiberRefLocally<V, R, E, A, P> extends Base<R, E, A> {
   readonly _tag = "FiberRefLocally";
 
   constructor(
     readonly localValue: V,
-    readonly fiberRef: FiberRef<V>,
+    readonly fiberRef: FiberRef<V, P>,
     readonly effect: Effect<R, E, A>,
     readonly trace?: string
   ) {
@@ -306,7 +306,7 @@ export class IFiberRefLocally<V, R, E, A> extends Base<R, E, A> {
 export class IFiberRefDelete extends Base<unknown, never, void> {
   readonly _tag = "FiberRefDelete";
 
-  constructor(readonly fiberRef: FiberRef<unknown>, readonly trace?: string) {
+  constructor(readonly fiberRef: FiberRef<unknown, unknown>, readonly trace?: string) {
     super();
   }
 
@@ -315,11 +315,11 @@ export class IFiberRefDelete extends Base<unknown, never, void> {
   }
 }
 
-export class IFiberRefWith<R, E, A, B> extends Base<R, E, B> {
+export class IFiberRefWith<R, E, A, B, P> extends Base<R, E, B> {
   readonly _tag = "FiberRefWith";
 
   constructor(
-    readonly fiberRef: FiberRef<A>,
+    readonly fiberRef: FiberRef<A, P>,
     readonly f: (a: A) => Effect<R, E, B>,
     readonly trace?: string
   ) {
@@ -432,7 +432,7 @@ export class ILogged<A> extends Base<unknown, never, void> {
     readonly message: Lazy<A>,
     readonly cause: Lazy<Cause<unknown>>,
     readonly overrideLogLevel: Option<LogLevel> = Option.none,
-    readonly overrideRef1: FiberRef<unknown> | null = null,
+    readonly overrideRef1: FiberRef<unknown, unknown> | null = null,
     readonly overrideValue1: unknown = null,
     readonly trace?: string
   ) {

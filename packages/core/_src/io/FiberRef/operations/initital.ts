@@ -5,7 +5,7 @@ import { concreteFiberRef } from "@effect/core/io/FiberRef/operations/_internal/
  *
  * @tsplus fluent ets/FiberRef initial
  */
-export function initial<A>(self: FiberRef<A>): A {
+export function initial<A, P>(self: FiberRef<A, P>): A {
   concreteFiberRef(self);
   return self._initial;
 }

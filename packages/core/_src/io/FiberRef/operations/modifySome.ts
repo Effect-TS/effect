@@ -6,8 +6,8 @@
  *
  * @tsplus fluent ets/FiberRef modifySome
  */
-export function modifySome_<A, B>(
-  self: FiberRef<A>,
+export function modifySome_<A, B, P>(
+  self: FiberRef<A, P>,
   def: B,
   f: (a: A) => Option<Tuple<[B, A]>>,
   __tsplusTrace?: string

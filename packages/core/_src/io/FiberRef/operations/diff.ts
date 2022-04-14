@@ -6,7 +6,7 @@ import { concreteFiberRef } from "@effect/core/io/FiberRef/operations/_internal/
  *
  * @tsplus fluent ets/FiberRef diff
  */
-export function diff_<Value, Patch>(self: FiberRef.WithPatch<Value, Patch>, oldValue: Value, newValue: Value): Patch {
+export function diff_<Value, Patch>(self: FiberRef<Value, Patch>, oldValue: Value, newValue: Value): Patch {
   concreteFiberRef(self);
   return self._diff(oldValue, newValue) as Patch;
 }

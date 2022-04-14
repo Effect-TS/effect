@@ -3,8 +3,8 @@
  *
  * @tsplus fluent ets/FiberRef set
  */
-export function set_<A>(
-  self: FiberRef<A>,
+export function set_<A, P>(
+  self: FiberRef<A, P>,
   value: A,
   __tsplusTrace?: string
 ): UIO<void> {

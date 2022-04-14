@@ -7,8 +7,8 @@ import { IFiberRefModify } from "@effect/core/io/Effect/definition/primitives";
  *
  * @tsplus fluent ets/FiberRef modify
  */
-export function modify_<A, B>(
-  self: FiberRef<A>,
+export function modify_<A, B, P>(
+  self: FiberRef<A, P>,
   f: (a: A) => Tuple<[B, A]>,
   __tsplusTrace?: string
 ): UIO<B> {

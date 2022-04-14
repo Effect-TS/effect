@@ -9,7 +9,7 @@ import { concreteFiberRef } from "@effect/core/io/FiberRef/operations/_internal/
  *
  * @tsplus fluent ets/FiberRef combine
  */
-export function combine_<Value, Patch>(self: FiberRef.WithPatch<Value, Patch>, first: Patch, second: Patch): Patch {
+export function combine_<Value, Patch>(self: FiberRef<Value, Patch>, first: Patch, second: Patch): Patch {
   concreteFiberRef(self);
   return self._combine(first, second) as Patch;
 }

@@ -3,8 +3,8 @@
  *
  * @tsplus fluent ets/FiberRef update
  */
-export function update_<A>(
-  self: FiberRef<A>,
+export function update_<A, P>(
+  self: FiberRef<A, P>,
   f: (a: A) => A,
   __tsplusTrace?: string
 ): UIO<void> {

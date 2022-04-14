@@ -59,7 +59,7 @@ export type Frame =
   | IFold<any, any, any, any, any, any, any, any, any>
   | ApplyFrame;
 
-export type FiberRefLocals = Map<FiberRef<unknown>, List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>>;
+export type FiberRefLocals = Map<FiberRef<unknown, unknown>, List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>>;
 
 export const catastrophicFailure = new AtomicBoolean(false);
 
@@ -250,7 +250,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     message: Lazy<string>,
     cause: Lazy<Cause<unknown>>,
     overrideLogLevel: Option<LogLevel>,
-    overrideRef1: FiberRef<unknown> | null = null,
+    overrideRef1: FiberRef<unknown, unknown> | null = null,
     overrideValue1: unknown = null,
     trace?: string
   ): void {
@@ -506,22 +506,22 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   // FiberRefs
   // ---------------------------------------------------------------------------
 
-  unsafeGetRef<A>(fiberRef: FiberRef<A>): A {
+  unsafeGetRef<A, P>(fiberRef: FiberRef<A, P>): A {
     const stack = this.fiberRefLocals.get(fiberRef);
     return stack != null ?
       (stack.head.get(1) as A) :
       fiberRef.initial();
   }
 
-  unsafeGetRefs(fiberRefLocals: FiberRefLocals): Map<FiberRef<unknown>, unknown> {
-    const refs = new Map<FiberRef<unknown>, unknown>();
+  unsafeGetRefs(fiberRefLocals: FiberRefLocals): Map<FiberRef<unknown, unknown>, unknown> {
+    const refs = new Map<FiberRef<unknown, unknown>, unknown>();
     for (const [fiberRef, stack] of fiberRefLocals) {
       refs.set(fiberRef, stack.head.get(1));
     }
     return refs;
   }
 
-  unsafeSetRef<A>(fiberRef: FiberRef<A>, value: A): void {
+  unsafeSetRef<A, P>(fiberRef: FiberRef<A, P>, value: A): void {
     const oldStack = this.fiberRefLocals.get(fiberRef) ?? List.empty<Tuple<[FiberId.Runtime, unknown]>>();
     const newStack = (
       oldStack.isNil() ?
@@ -531,7 +531,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     this.fiberRefLocals.set(fiberRef, newStack);
   }
 
-  unsafeDeleteRef<A>(fiberRef: FiberRef<A>): void {
+  unsafeDeleteRef<A, P>(fiberRef: FiberRef<A, P>): void {
     this.fiberRefLocals.delete(fiberRef);
   }
 

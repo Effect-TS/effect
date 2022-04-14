@@ -18,12 +18,12 @@ export type _Patch = typeof _Patch;
  *
  * @tsplus type ets/FiberRef
  */
-export interface FiberRef<A> {
+export interface FiberRef<Value, Patch> {
   readonly [FiberRefSym]: FiberRefSym;
   /**
    * The type of the value of the `FiberRef`.
    */
-  readonly [_Value]: () => A;
+  readonly [_Value]: () => Value;
   /**
    * The type of the patch that describes updates to the value of the
    * `FiberRef`. In the simple case this will just be a function that sets the
@@ -31,16 +31,7 @@ export interface FiberRef<A> {
    * to a piece of a whole value, allowing updates to the value by different
    * fibers to be combined in a compositional way when those fibers are joined.
    */
-  readonly [_Patch]: unknown;
-}
-
-export declare namespace FiberRef {
-  /**
-   * @tsplus type ets/FiberRef/WithPatch
-   */
-  export interface WithPatch<Value, Patch> extends FiberRef<Value> {
-    readonly [_Patch]: Patch;
-  }
+  readonly [_Patch]: Patch;
 }
 
 /**

@@ -6,7 +6,7 @@ import { concreteFiberRef } from "@effect/core/io/FiberRef/operations/_internal/
  *
  * @tsplus fluent ets/FiberRef patch
  */
-export function patch_<Value, Patch>(self: FiberRef.WithPatch<Value, Patch>, patch: Patch) {
+export function patch_<Value, Patch>(self: FiberRef<Value, Patch>, patch: Patch) {
   return (oldValue: Value): Value => {
     concreteFiberRef(self);
     return self._patch(patch)(oldValue);
@@ -20,5 +20,5 @@ export function patch_<Value, Patch>(self: FiberRef.WithPatch<Value, Patch>, pat
  * @tsplus static ets/FiberRef/Aspects patch
  */
 export function patch<Value, Patch>(patch: Patch, value: Value) {
-  return (self: FiberRef.WithPatch<Value, Patch>): Value => self.patch(patch)(value);
+  return (self: FiberRef<Value, Patch>): Value => self.patch(patch)(value);
 }
