@@ -35,7 +35,7 @@ import { Deferred } from "@effect/core/io/Deferred/definition";
 /**
  * @tsplus global
  */
-import { Canceler, Effect, EffectError } from "@effect/core/io/Effect/definition";
+import { Effect } from "@effect/core/io/Effect/definition";
 /**
  * @tsplus global
  */

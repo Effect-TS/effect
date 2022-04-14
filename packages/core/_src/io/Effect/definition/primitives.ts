@@ -1,16 +1,6 @@
 import type { Effect } from "@effect/core/io/Effect/definition/base";
 import { Base } from "@effect/core/io/Effect/definition/base";
 
-export type Canceler<R> = Effect.RIO<R, void>;
-
-export class EffectError<E, A> extends Error {
-  readonly _tag = "EffectError";
-
-  constructor(readonly exit: Exit<E, A>, readonly trace?: string) {
-    super();
-  }
-}
-
 export type Instruction =
   | IFlatMap<any, any, any, any, any, any>
   | IFold<any, any, any, any, any, any, any, any, any>
@@ -132,7 +122,7 @@ export class IAsync<R, E, A> extends Base<R, E, A> {
   constructor(
     readonly register: (
       cb: (_: Effect<R, E, A>) => void
-    ) => Either<Canceler<R>, Effect<R, E, A>>,
+    ) => Either<Effect.Canceler<R>, Effect<R, E, A>>,
     readonly blockingOn: Lazy<FiberId>,
     readonly trace?: string
   ) {

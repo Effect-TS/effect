@@ -15,7 +15,7 @@ export function atomically<R, E, A>(
 
       switch (v._tag) {
         case "Done": {
-          throw new EffectError(v.exit, __tsplusTrace);
+          throw new Effect.Error(v.exit, __tsplusTrace);
         }
         case "Suspend": {
           const txnId = TxnId();
