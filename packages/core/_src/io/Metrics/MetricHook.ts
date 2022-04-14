@@ -45,8 +45,8 @@ export function onUpdate<In, Out>(
 ): MetricHook<In, Out> {
   return {
     update: (input) => {
-      f(input);
-      return self.update(input);
+      self.update(input);
+      return f(input);
     },
     get: self.get
   };
