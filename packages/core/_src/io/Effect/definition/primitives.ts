@@ -56,7 +56,7 @@ export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R & R1, E | E1, A1> {
   }
 
   unsafeLog() {
-    return `FlatMap at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -68,7 +68,7 @@ export class ISucceedNow<A> extends Base<unknown, never, A> {
   }
 
   unsafeLog() {
-    return `SucceedNow at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -80,7 +80,7 @@ export class ISucceed<A> extends Base<unknown, never, A> {
   }
 
   unsafeLog() {
-    return `Succeed at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -95,7 +95,7 @@ export class ISucceedWith<A> extends Base<unknown, never, A> {
   }
 
   unsafeLog() {
-    return `SucceedWith at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -107,7 +107,7 @@ export class ISuspend<R, E, A> extends Base<R, E, A> {
   }
 
   unsafeLog() {
-    return `Suspend at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -122,7 +122,7 @@ export class ISuspendWith<R, E, A> extends Base<R, E, A> {
   }
 
   unsafeLog() {
-    return `SuspendWith at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -140,7 +140,7 @@ export class IAsync<R, E, A> extends Base<R, E, A> {
   }
 
   unsafeLog() {
-    return `Async at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -165,7 +165,7 @@ export class IFold<R, E, A, R2, E2, A2, R3, E3, A3> extends Base<
   }
 
   unsafeLog() {
-    return `Fold at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -181,7 +181,7 @@ export class IFork<R, E, A> extends Base<R, never, Fiber.Runtime<E, A>> {
   }
 
   unsafeLog() {
-    return `Fork at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -197,7 +197,7 @@ export class IInterruptStatus<R, E, A> extends Base<R, E, A> {
   }
 
   unsafeLog() {
-    return `InterruptStatus at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -212,7 +212,7 @@ export class ICheckInterrupt<R, E, A> extends Base<R, E, A> {
   }
 
   unsafeLog() {
-    return `CheckInterrupt at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -224,7 +224,7 @@ export class IFail<E> extends Base<unknown, E, never> {
   }
 
   unsafeLog() {
-    return `Fail at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -239,7 +239,7 @@ export class IDescriptor<R, E, A> extends Base<R, E, A> {
   }
 
   unsafeLog() {
-    return `Descriptor at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -251,7 +251,7 @@ export class IYield extends Base<unknown, never, void> {
   }
 
   unsafeLog() {
-    return `Yield at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -266,7 +266,7 @@ export class IFiberRefModifyAll<A> extends Base<unknown, never, A> {
   }
 
   unsafeLog() {
-    return `FiberRefModifyAll at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -282,7 +282,7 @@ export class IFiberRefModify<A, B> extends Base<unknown, never, B> {
   }
 
   unsafeLog() {
-    return `FiberRefModify at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -299,7 +299,7 @@ export class IFiberRefLocally<V, R, E, A> extends Base<R, E, A> {
   }
 
   unsafeLog() {
-    return `FiberRefLocally at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -311,7 +311,7 @@ export class IFiberRefDelete extends Base<unknown, never, void> {
   }
 
   unsafeLog() {
-    return `FiberRefDelete at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -327,7 +327,7 @@ export class IFiberRefWith<R, E, A, B> extends Base<R, E, B> {
   }
 
   unsafeLog() {
-    return `FiberRefWith at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -339,7 +339,7 @@ export class ITrace extends Base<unknown, never, Trace> {
   }
 
   unsafeLog() {
-    return `Trace at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -361,7 +361,7 @@ export class IRaceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3> extends Base
   }
 
   unsafeLog() {
-    return `RaceWith at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -377,7 +377,7 @@ export class ISupervise<R, E, A> extends Base<R, E, A> {
   }
 
   unsafeLog() {
-    return `Supervise at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -389,7 +389,7 @@ export class IGetForkScope<R, E, A> extends Base<R, E, A> {
   }
 
   unsafeLog() {
-    return `GetForkScope at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -405,7 +405,7 @@ export class IOverrideForkScope<R, E, A> extends Base<R, E, A> {
   }
 
   unsafeLog() {
-    return `OverrideForkScope at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -421,7 +421,7 @@ export class IEnsuring<R, R1, E, A> extends Base<R, E, A> {
   }
 
   unsafeLog() {
-    return `Ensuring at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -440,7 +440,7 @@ export class ILogged<A> extends Base<unknown, never, void> {
   }
 
   unsafeLog() {
-    return `Logged at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
@@ -452,7 +452,7 @@ export class ISetRuntimeConfig extends Base<unknown, never, void> {
   }
 
   unsafeLog() {
-    return `SetRuntimeConfig at ${this.trace}`;
+    return `${this._tag} at ${this.trace}`;
   }
 }
 
