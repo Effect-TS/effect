@@ -21,9 +21,11 @@ export const defaultRuntimeConfig: RuntimeConfig = RuntimeConfig({
     throw defect;
   },
   supervisor: Supervisor.unsafeTrack(),
-  logger: Logger.default
-    .map((output) => console.log(output))
-    .filterLogLevel((level) => level >= LogLevel.Info),
+  loggers: HashSet(
+    Logger.default
+      .map((output) => console.log(output))
+      .filterLogLevel((level) => level >= LogLevel.Info)
+  ),
   flags: RuntimeConfigFlags.empty + RuntimeConfigFlag.EnableFiberRoots,
   maxOp: 2048
 });

@@ -278,7 +278,7 @@ export function logAnnotations(__tsplusTrace?: string): UIO<Map<string, string>>
 export function disableLogging<R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> {
   return Effect.runtimeConfig.flatMap((runtimeConfig) =>
     Effect.withRuntimeConfig(
-      RuntimeConfig({ ...runtimeConfig.value, logger: Logger.none }),
+      RuntimeConfig({ ...runtimeConfig.value, loggers: HashSet.empty() }),
       effect
     )
   );

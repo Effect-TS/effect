@@ -123,7 +123,7 @@ export const defaultTestLogger: Layer<unknown, never, Has<TestLogger<string, voi
     .bind("testLogger", () => makeTestLogger)
     .bindValue("acquire", ({ runtimeConfig, testLogger }) =>
       Effect.setRuntimeConfig(
-        RuntimeConfig({ ...runtimeConfig.value, logger: testLogger })
+        runtimeConfig.copy({ loggers: HashSet(testLogger) })
       ))
     .bindValue("release", ({ runtimeConfig }) => Effect.setRuntimeConfig(runtimeConfig))
     .tap(({ acquire, release }) => Effect.acquireRelease(acquire, () => release))
@@ -137,7 +137,7 @@ export const defaultTestLogger: Layer<unknown, never, Has<TestLogger<string, voi
  */
 export const logOutput: UIO<ImmutableArray<LogEntry>> = Effect.runtimeConfig.flatMap(
   (runtimeConfig) =>
-    isTestLogger(runtimeConfig.value.logger)
-      ? runtimeConfig.value.logger.logOutput
-      : Effect.dieMessage("Error: TestLogger is missing")
+    runtimeConfig.value.loggers.asList().head().flatMap((logger) =>
+      isTestLogger(logger) ? Option.some(logger.logOutput) : Option.none
+    ).getOrElse(Effect.dieMessage("Defect: TestLogger is missing"))
 );
