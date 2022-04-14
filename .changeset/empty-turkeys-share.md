@@ -8,6 +8,9 @@ Special thanks to all of the contributors involved in this huge effort in improv
 
 First alpha release of the new version of effect, this release contains cumulative work addressed in the following PRs:
 
+- https://github.com/Effect-TS/core/pull/1188
+- https://github.com/Effect-TS/core/pull/1187
+- https://github.com/Effect-TS/core/pull/1186
 - https://github.com/Effect-TS/core/pull/1185
 - https://github.com/Effect-TS/core/pull/1184
 - https://github.com/Effect-TS/core/pull/1183
