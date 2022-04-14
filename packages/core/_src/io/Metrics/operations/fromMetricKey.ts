@@ -17,7 +17,7 @@ export function fromMetricKey<Type extends MetricKeyType<any, any>>(
     const fullKey = key.taggedWithLabelSet(extraTags);
     return Metric.registry.value.get(fullKey);
   };
-  return new Metric(
+  return Metric(
     key.keyType,
     (input, extraTags) => hook(extraTags).update(input),
     (extraTags) => hook(extraTags).get()

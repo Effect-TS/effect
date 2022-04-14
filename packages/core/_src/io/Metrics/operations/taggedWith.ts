@@ -12,7 +12,7 @@ export function taggedWith_<Type, In, Out>(
   self: Metric<Type, In, Out>,
   f: (input: In) => HashSet<MetricLabel>
 ): Metric<Type, In, void> {
-  return new Metric<Type, In, Out>(
+  return Metric<Type, In, Out>(
     self.keyType,
     (input, extraTags) => self.unsafeUpdate(input, f(input).union(extraTags)),
     self.unsafeValue

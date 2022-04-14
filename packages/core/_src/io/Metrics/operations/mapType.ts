@@ -5,7 +5,7 @@ export function mapType_<Type, Type2, In, Out>(
   self: Metric<Type, In, Out>,
   f: (type: Type) => Type2
 ): Metric<Type2, In, Out> {
-  return new Metric(
+  return Metric(
     f(self.keyType),
     self.unsafeUpdate,
     self.unsafeValue

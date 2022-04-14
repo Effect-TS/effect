@@ -10,7 +10,7 @@ export function contramap_<Type, In, In2, Out>(
   f: (input: In2) => In,
   __tsplusTrace?: string
 ): Metric<Type, In2, Out> {
-  return new Metric(
+  return Metric(
     self.keyType,
     (input, extraTags) => self.unsafeUpdate(f(input), extraTags),
     self.unsafeValue

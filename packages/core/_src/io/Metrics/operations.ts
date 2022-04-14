@@ -1,5 +1,4 @@
 // codegen:start {preset: barrel, include: ./operations/*.ts, prefix: "@effect/core/io/Metrics"}
-export * from "@effect/core/io/Metrics/operations/apply";
 export * from "@effect/core/io/Metrics/operations/contramap";
 export * from "@effect/core/io/Metrics/operations/counter";
 export * from "@effect/core/io/Metrics/operations/frequency";
@@ -30,7 +29,6 @@ export * from "@effect/core/io/Metrics/operations/trackError";
 export * from "@effect/core/io/Metrics/operations/trackErrorWith";
 export * from "@effect/core/io/Metrics/operations/trackSuccess";
 export * from "@effect/core/io/Metrics/operations/trackSuccessWith";
-export * from "@effect/core/io/Metrics/operations/update";
 export * from "@effect/core/io/Metrics/operations/value";
 export * from "@effect/core/io/Metrics/operations/withNow";
 export * from "@effect/core/io/Metrics/operations/zip";

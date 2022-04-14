@@ -6,7 +6,7 @@ import { constVoid } from "@tsplus/stdlib/data/Function";
  * @tsplus static ets/Metrics/Metric/Ops succeed
  */
 export function succeed<Out>(out: LazyArg<Out>): Metric<void, unknown, Out> {
-  return new Metric(
+  return Metric(
     undefined,
     constVoid,
     out
