@@ -10,7 +10,7 @@ describe.concurrent("Fiber", () => {
       const result = await program.unsafeRunPromise();
 
       assert.isTrue(result);
-    }, 10_000);
+    }, 15_000);
 
     it("joinAll", async () => {
       const program = Fiber.joinAll(fibers).map(constTrue);
@@ -18,7 +18,7 @@ describe.concurrent("Fiber", () => {
       const result = await program.unsafeRunPromise();
 
       assert.isTrue(result);
-    }, 10_000);
+    }, 15_000);
 
     it("collectAll", async () => {
       const program = Fiber.collectAll(fibers).join().map(constTrue);
@@ -26,6 +26,6 @@ describe.concurrent("Fiber", () => {
       const result = await program.unsafeRunPromise();
 
       assert.isTrue(result);
-    }, 10_000);
+    }, 15_000);
   });
 });
