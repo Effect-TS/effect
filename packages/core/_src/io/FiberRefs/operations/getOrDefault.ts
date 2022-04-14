@@ -4,7 +4,7 @@
  *
  * @tsplus fluent ets/FiberRefs getOrDefault
  */
-export function getOrDefault_<A>(self: FiberRefs, fiberRef: FiberRef<A>): A {
+export function getOrDefault_<A, P>(self: FiberRefs, fiberRef: FiberRef<A, P>): A {
   return self.get(fiberRef).getOrElse(fiberRef.initial());
 }
 

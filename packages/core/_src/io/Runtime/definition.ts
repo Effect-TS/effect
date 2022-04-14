@@ -15,7 +15,10 @@ export class Runtime<R> {
 
     const supervisor = this.runtimeConfig.value.supervisor;
 
-    const fiberRefLocals: Map<FiberRef<unknown>, List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>> = new Map<any, any>([
+    const fiberRefLocals: Map<FiberRef<unknown, unknown>, List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>> = new Map<
+      any,
+      any
+    >([
       [FiberRef.currentEnvironment.value, List.cons(Tuple(fiberId, this.environment), List.nil())],
       [DefaultEnv.services.value, List.cons(Tuple(fiberId, DefaultEnv.Services.live.value), List.nil())]
     ]);

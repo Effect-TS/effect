@@ -4,8 +4,8 @@
  *
  * @tsplus fluent ets/FiberRef getAndUpdate
  */
-export function getAndUpdate_<A>(
-  self: FiberRef<A>,
+export function getAndUpdate_<A, P>(
+  self: FiberRef<A, P>,
   f: (a: A) => A,
   __tsplusTrace?: string
 ): UIO<A> {

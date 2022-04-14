@@ -13,8 +13,7 @@ export function serviceWithEffect<T>(tag: Tag<T>) {
     __tsplusTrace?: string
   ): Effect<R & Has<T>, E, A> =>
     Effect.suspendSucceed(
-      FiberRef.currentEnvironment.value
-        .get()
-        .flatMap((env: Env<Has<T>>) => f(env.unsafeGet(tag)))
+      FiberRef.currentEnvironment.value.get()
+        .flatMap((env) => f(env.unsafeGet(tag)))
     );
 }

@@ -1,6 +1,6 @@
 import { _Patch, _Value, FiberRefSym } from "@effect/core/io/FiberRef/definition";
 
-export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value, Patch> {
+export class FiberRefInternal<Value, Patch> implements FiberRef<Value, Patch> {
   readonly [FiberRefSym]: FiberRefSym = FiberRefSym;
   readonly [_Value]!: () => Value;
   readonly [_Patch]!: Patch;
@@ -17,6 +17,6 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
 /**
  * @tsplus macro remove
  */
-export function concreteFiberRef<Value>(_: FiberRef<Value>): asserts _ is FiberRefInternal<Value, unknown> {
+export function concreteFiberRef<Value, Patch>(_: FiberRef<Value, Patch>): asserts _ is FiberRefInternal<Value, Patch> {
   //
 }

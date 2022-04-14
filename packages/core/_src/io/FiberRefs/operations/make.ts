@@ -5,7 +5,7 @@ import { FiberRefsInternal } from "@effect/core/io/FiberRefs/operations/_interna
  */
 export function make(
   fiberRefLocals: Map<
-    FiberRef<unknown>,
+    FiberRef<unknown, unknown>,
     List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>
   >
 ): FiberRefs {

@@ -6,7 +6,7 @@ import { concreteFiberRef } from "@effect/core/io/FiberRef/operations/_internal/
  *
  * @tsplus fluent ets/FiberRef fork
  */
-export function fork_<Value, Patch>(self: FiberRef.WithPatch<Value, Patch>): Patch {
+export function fork_<Value, Patch>(self: FiberRef<Value, Patch>): Patch {
   concreteFiberRef(self);
   return self._fork as Patch;
 }

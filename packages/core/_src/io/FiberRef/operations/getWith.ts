@@ -6,8 +6,8 @@ import { IFiberRefWith } from "@effect/core/io/Effect/definition/primitives";
  *
  * @tsplus fluent ets/FiberRef getWith
  */
-export function getWith_<R, E, A, B>(
-  self: FiberRef<A>,
+export function getWith_<R, E, A, B, P>(
+  self: FiberRef<A, P>,
   f: (a: A) => Effect<R, E, B>,
   __tsplusTrace?: string
 ): Effect<R, E, B> {

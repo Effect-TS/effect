@@ -5,8 +5,8 @@
  *
  * @tsplus fluent ets/FiberRef locallyScoped
  */
-export function locallyScoped_<A>(
-  self: FiberRef<A>,
+export function locallyScoped_<A, P>(
+  self: FiberRef<A, P>,
   value: A,
   __tsplusTrace?: string
 ): Effect<Has<Scope>, never, void> {

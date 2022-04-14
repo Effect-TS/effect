@@ -9,7 +9,7 @@ export function unsafeMakePatch<Value, Patch>(
   combine: (first: Patch, second: Patch) => Patch,
   patch: (patch: Patch) => (oldValue: Value) => Value,
   fork: Patch
-): FiberRef.WithPatch<Value, Patch> {
+): FiberRef<Value, Patch> {
   return new FiberRefInternal(
     initial,
     diff,

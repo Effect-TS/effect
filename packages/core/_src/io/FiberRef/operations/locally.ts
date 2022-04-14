@@ -7,7 +7,7 @@ import { IFiberRefLocally } from "@effect/core/io/Effect/definition/primitives";
  *
  * @tsplus fluent ets/FiberRef locally
  */
-export function locally_<A>(self: FiberRef<A>, value: A, __tsplusTrace?: string) {
+export function locally_<A, P>(self: FiberRef<A, P>, value: A, __tsplusTrace?: string) {
   return <R, E, B>(use: Effect<R, E, B>): Effect<R, E, B> => new IFiberRefLocally(value, self, use, __tsplusTrace);
 }
 
