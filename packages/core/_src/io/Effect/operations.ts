@@ -216,6 +216,7 @@ export * from "@effect/core/io/Effect/operations/runtime";
 export * from "@effect/core/io/Effect/operations/runtimeConfig";
 export * from "@effect/core/io/Effect/operations/sandbox";
 export * from "@effect/core/io/Effect/operations/schedule";
+export * from "@effect/core/io/Effect/operations/scheduleForked";
 export * from "@effect/core/io/Effect/operations/scheduleFrom";
 export * from "@effect/core/io/Effect/operations/scope";
 export * from "@effect/core/io/Effect/operations/scoped";
