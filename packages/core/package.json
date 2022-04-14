@@ -3,7 +3,6 @@
   "version": "0.0.1",
   "type": "module",
   "license": "MIT",
-  "private": true,
   "repository": "https://github.com/Effect-TS/core.git",
   "homepage": "https://www.matechs.com",
   "publishConfig": {
