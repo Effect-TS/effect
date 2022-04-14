@@ -5,7 +5,7 @@ export function interruptJoiner<E, A>(
   self: Deferred<E, A>,
   joiner: (a: Effect.IO<E, A>) => void,
   __tsplusTrace?: string
-): Effect.Canceler<unknown> {
+): Effect.UIO<void> {
   return Effect.succeed(() => {
     concreteDeferred(self);
     const state = self.state.get;
