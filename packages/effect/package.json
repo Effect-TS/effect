@@ -37,9 +37,9 @@
     "@effect-ts/build-utils": "0.39.4",
     "@effect-ts/core": "^0.59.4",
     "@phaphoso/eslint-plugin-dprint": "^0.5.2",
-    "@tsplus/installer": "0.0.81",
-    "@tsplus/stdlib": "0.0.47",
-    "@types/node": "^17.0.23",
+    "@tsplus/installer": "0.0.82",
+    "@tsplus/stdlib": "0.0.50",
+    "@types/node": "^17.0.24",
     "@types/rimraf": "^3.0.2",
     "@typescript-eslint/eslint-plugin": "^5.19.0",
     "@typescript-eslint/parser": "^5.19.0",
@@ -60,11 +60,11 @@
     "rimraf": "^3.0.2",
     "typescript": "^4.6.3",
     "ultra-runner": "^3.10.5",
-    "vite": "^2.9.1",
+    "vite": "^2.9.4",
     "vitest": "0.9.3"
   },
   "resolutions": {
     "eslint-plugin-codegen": "patch:eslint-plugin-codegen@npm:0.16.1#.yarn/patches/eslint-plugin-codegen-npm-0.16.1-87770191cd",
-    "@effect-ts/build-utils": "patch:@effect-ts/build-utils@npm:0.39.2#.yarn/patches/@effect-ts-build-utils-npm-0.39.2-f802d4baa8"
+    "@effect-ts/build-utils": "patch:@effect-ts/build-utils@npm:0.39.4#.yarn/patches/@effect-ts-build-utils-npm-0.39.4-1fbfd5f3de"
   }
 }
