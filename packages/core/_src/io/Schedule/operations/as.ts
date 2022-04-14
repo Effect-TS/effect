@@ -5,9 +5,9 @@
  * @tsplus fluent ets/Schedule/WithState as
  */
 export function as_<State, Env, In, Out, Out2>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   out2: LazyArg<Out2>
-): Schedule.WithState<State, Env, In, Out2> {
+): Schedule<State, Env, In, Out2> {
   return self.map(out2);
 }
 

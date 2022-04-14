@@ -5,6 +5,6 @@
  */
 export function fromDuration(
   duration: Duration
-): Schedule.WithState<boolean, unknown, unknown, Duration> {
+): Schedule<boolean, unknown, unknown, Duration> {
   return Schedule.duration(duration);
 }

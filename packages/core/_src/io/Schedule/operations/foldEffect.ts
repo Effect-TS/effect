@@ -8,10 +8,10 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * @tsplus fluent ets/Schedule/WithState foldEffect
  */
 export function foldEffect_<State, Env, In, Out, Env1, Z>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   z: Z,
   f: (z: Z, out: Out) => RIO<Env1, Z>
-): Schedule.WithState<Tuple<[State, Z]>, Env & Env1, In, Z> {
+): Schedule<Tuple<[State, Z]>, Env & Env1, In, Z> {
   return makeWithState(Tuple(self._initial, z), (now, input, { tuple: [s, z] }) =>
     self
       ._step(now, input, s)

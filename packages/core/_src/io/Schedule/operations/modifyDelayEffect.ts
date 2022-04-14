@@ -10,9 +10,9 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * @tsplus fluent ets/Schedule/WithState modifyDelayEffect
  */
 export function modifyDelayEffect_<State, Env, In, Out, Env1>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   f: (out: Out, duration: Duration) => RIO<Env1, Duration>
-): Schedule.WithState<State, Env & Env1, In, Out> {
+): Schedule<State, Env & Env1, In, Out> {
   return makeWithState(
     self._initial,
     (now, input, state) =>

@@ -8,6 +8,6 @@
 export function exponential(
   base: Duration,
   factor = 2.0
-): Schedule.WithState<number, unknown, unknown, Duration> {
+): Schedule<number, unknown, unknown, Duration> {
   return Schedule.delayed(Schedule.forever.map((i) => new Duration(base.millis * Math.pow(factor, i))));
 }

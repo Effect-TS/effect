@@ -6,11 +6,7 @@
  * @tsplus static ets/Stream/Ops fromSchedule
  */
 export function fromSchedule<S, R, A>(
-  schedule: LazyArg<Schedule.WithState<S, R, unknown, A>>,
-  __tsplusTrace?: string
-): Stream<R, never, A>;
-export function fromSchedule<R, A>(
-  schedule: LazyArg<Schedule<R, unknown, A>>,
+  schedule: LazyArg<Schedule<S, R, unknown, A>>,
   __tsplusTrace?: string
 ): Stream<R, never, A> {
   return Stream.unwrap(

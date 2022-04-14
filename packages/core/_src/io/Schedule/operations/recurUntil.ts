@@ -5,6 +5,6 @@
  */
 export function recurUntil<A>(
   f: Predicate<A>
-): Schedule.WithState<void, unknown, A, A> {
+): Schedule<void, unknown, A, A> {
   return Schedule.identity<A>().untilInput(f);
 }

@@ -6,9 +6,9 @@
  * @tsplus fluent ets/Schedule/WithState untilInput
  */
 export function untilInput_<State, Env, In, Out>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   f: Predicate<In>
-): Schedule.WithState<State, Env, In, Out> {
+): Schedule<State, Env, In, Out> {
   return self.check((input, _) => !f(input));
 }
 

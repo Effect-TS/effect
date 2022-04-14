@@ -9,12 +9,12 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * @tsplus fluent ets/Schedule/WithState provideService
  */
 export function provideService_<State, R, In, Out, T>(
-  self: Schedule.WithState<State, R & Has<T>, In, Out>,
+  self: Schedule<State, R & Has<T>, In, Out>,
   tag: Tag<T>
 ) {
   return (
     service: LazyArg<T>
-  ): Schedule.WithState<State, Erase<R, Has<T>>, In, Out> =>
+  ): Schedule<State, Erase<R, Has<T>>, In, Out> =>
     makeWithState(self._initial, (now, input, state) =>
       Effect.environmentWithEffect((env: Env<R>) =>
         self

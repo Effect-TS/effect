@@ -8,12 +8,7 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  */
 export function repeatNow_<R, E, A, S, R2, B>(
   self: Stream<R, E, A>,
-  schedule: LazyArg<Schedule.WithState<S, R2, unknown, B>>,
-  __tsplusTrace?: string
-): Stream<R & R2, E, A>;
-export function repeatNow_<R, E, A, R2, B>(
-  self: Stream<R, E, A>,
-  schedule: LazyArg<Schedule<R2, unknown, B>>,
+  schedule: LazyArg<Schedule<S, R2, unknown, B>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E, A> {
   return self.repeatEither(schedule).collectRight();

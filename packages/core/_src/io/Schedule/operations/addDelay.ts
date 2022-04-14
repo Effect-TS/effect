@@ -6,9 +6,9 @@
  * @tsplus fluent ets/Schedule/WithState addDelay
  */
 export function addDelay_<State, Env, In, Out>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   f: (out: Out) => Duration
-): Schedule.WithState<State, Env, In, Out> {
+): Schedule<State, Env, In, Out> {
   return self.addDelayEffect((out) => Effect.succeed(f(out)));
 }
 

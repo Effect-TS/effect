@@ -3,4 +3,4 @@
  *
  * @tsplus static ets/Schedule/Ops once
  */
-export const once: Schedule.WithState<number, unknown, unknown, void> = Schedule.recurs(1).asUnit();
+export const once: Schedule<number, unknown, unknown, void> = Schedule.recurs(1).asUnit();

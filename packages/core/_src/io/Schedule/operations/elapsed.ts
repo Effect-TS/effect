@@ -8,7 +8,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  *
  * @tsplus static ets/Schedule/Ops elapsed
  */
-export const elapsed: Schedule.WithState<
+export const elapsed: Schedule<
   Option<number>,
   unknown,
   unknown,

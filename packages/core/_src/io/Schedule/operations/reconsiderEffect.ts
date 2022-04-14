@@ -11,13 +11,13 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * @tsplus fluent ets/Schedule/WithState reconsiderEffect
  */
 export function reconsiderEffect_<State, Env, In, Out, Env1, Out2>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   f: (
     state: State,
     out: Out,
     decision: Decision
   ) => RIO<Env1, Either<Out2, Tuple<[Out2, Interval]>>>
-): Schedule.WithState<State, Env & Env1, In, Out2> {
+): Schedule<State, Env & Env1, In, Out2> {
   return makeWithState(
     self._initial,
     (now, input, state) =>

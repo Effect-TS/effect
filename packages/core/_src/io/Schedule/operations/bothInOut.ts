@@ -11,9 +11,9 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * @tsplus fluent ets/Schedule/WithState bothInOut
  */
 export function bothInOut_<State, Env, In, Out, State1, Env1, In2, Out2>(
-  self: Schedule.WithState<State, Env, In, Out>,
-  that: Schedule.WithState<State1, Env1, In2, Out2>
-): Schedule.WithState<
+  self: Schedule<State, Env, In, Out>,
+  that: Schedule<State1, Env1, In2, Out2>
+): Schedule<
   Tuple<[State, State1]>,
   Env & Env1,
   Tuple<[In, In2]>,

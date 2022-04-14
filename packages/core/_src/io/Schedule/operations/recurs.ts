@@ -6,6 +6,6 @@
  */
 export function recurs(
   n: number
-): Schedule.WithState<number, unknown, unknown, number> {
+): Schedule<number, unknown, unknown, number> {
   return Schedule.forever.whileOutput((_) => _ < n);
 }

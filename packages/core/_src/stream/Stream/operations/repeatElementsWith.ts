@@ -17,14 +17,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  */
 export function repeatElementsWith_<R, E, A, S, R2, B, C1, C2>(
   self: Stream<R, E, A>,
-  schedule: LazyArg<Schedule.WithState<S, R2, unknown, B>>,
-  f: (a: A) => C1,
-  g: (b: B) => C2,
-  __tsplusTrace?: string
-): Stream<R & R2, E, C1 | C2>;
-export function repeatElementsWith_<R, E, A, R2, B, C1, C2>(
-  self: Stream<R, E, A>,
-  schedule: LazyArg<Schedule<R2, unknown, B>>,
+  schedule: LazyArg<Schedule<S, R2, unknown, B>>,
   f: (a: A) => C1,
   g: (b: B) => C2,
   __tsplusTrace?: string

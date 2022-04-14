@@ -10,14 +10,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  */
 export function scheduleWith_<R, E, A, S, R2, B, C>(
   self: Stream<R, E, A>,
-  schedule: LazyArg<Schedule.WithState<S, R2, A, B>>,
-  f: (a: A) => C,
-  g: (b: B) => C,
-  __tsplusTrace?: string
-): Stream<R, E, C>;
-export function scheduleWith_<R, E, A, R2, B, C>(
-  self: Stream<R, E, A>,
-  schedule: LazyArg<Schedule<R2, A, B>>,
+  schedule: LazyArg<Schedule<S, R2, A, B>>,
   f: (a: A) => C,
   g: (b: B) => C,
   __tsplusTrace?: string

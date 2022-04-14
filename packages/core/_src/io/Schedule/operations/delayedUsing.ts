@@ -5,7 +5,7 @@
  * @tsplus static ets/Schedule/Ops delayed
  */
 export function delayedUsing<State, Env, In>(
-  schedule: Schedule.WithState<State, Env, In, Duration>
-): Schedule.WithState<State, Env, In, Duration> {
+  schedule: Schedule<State, Env, In, Duration>
+): Schedule<State, Env, In, Duration> {
   return schedule.addDelay((x) => x);
 }

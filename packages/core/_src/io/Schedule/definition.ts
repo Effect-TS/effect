@@ -42,30 +42,20 @@ export type _State = typeof _State;
  *
  * @tsplus type ets/Schedule
  */
-export interface Schedule<Env, In, Out> {
+export interface Schedule<State, Env, In, Out> {
   readonly [ScheduleSym]: ScheduleSym;
   readonly [_Env]: (_: Env) => void;
   readonly [_In]: (_: In) => void;
   readonly [_Out]: () => Out;
-  readonly [_State]: unknown;
 
-  readonly _initial: this[_State];
+  readonly _initial: State;
 
   readonly _step: (
     _now: number,
     _in: In,
-    _state: this[_State],
+    _state: State,
     _trace?: string
-  ) => Effect<Env, never, Tuple<[this[_State], Out, Decision]>>;
-}
-
-export declare namespace Schedule {
-  /**
-   * @tsplus type ets/Schedule/WithState
-   */
-  export interface WithState<State, Env, In, Out> extends Schedule<Env, In, Out> {
-    readonly [_State]: State;
-  }
+  ) => Effect<Env, never, Tuple<[State, Out, Decision]>>;
 }
 
 /**

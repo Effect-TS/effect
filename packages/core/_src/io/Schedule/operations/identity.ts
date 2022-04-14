@@ -7,7 +7,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  *
  * @tsplus static ets/Schedule/Ops identity
  */
-export function identity<A>(): Schedule.WithState<void, unknown, A, A> {
+export function identity<A>(): Schedule<void, unknown, A, A> {
   return makeWithState(
     undefined as void,
     (now, input, state) => Effect.succeed(Tuple(state, input, Decision.Continue(Interval.after(now))))

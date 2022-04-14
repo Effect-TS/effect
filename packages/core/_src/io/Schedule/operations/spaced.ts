@@ -6,6 +6,6 @@
  */
 export function spaced(
   duration: LazyArg<Duration>
-): Schedule.WithState<number, unknown, unknown, number> {
+): Schedule<number, unknown, unknown, number> {
   return Schedule.forever.addDelay(duration);
 }

@@ -6,9 +6,9 @@
  * @tsplus fluent ets/Schedule/WithState modifyDelay
  */
 export function modifyDelay_<State, Env, In, Out>(
-  self: Schedule.WithState<State, Env, In, Out>,
+  self: Schedule<State, Env, In, Out>,
   f: (out: Out, duration: Duration) => Duration
-): Schedule.WithState<State, Env, In, Out> {
+): Schedule<State, Env, In, Out> {
   return self.modifyDelayEffect((out, duration) => Effect.succeedNow(f(out, duration)));
 }
 

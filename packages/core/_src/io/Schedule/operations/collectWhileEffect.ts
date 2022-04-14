@@ -6,6 +6,6 @@
  */
 export function collectWhileEffect<Env, A>(
   f: (a: A) => RIO<Env, boolean>
-): Schedule.WithState<Tuple<[void, Chunk<A>]>, Env, A, Chunk<A>> {
+): Schedule<Tuple<[void, Chunk<A>]>, Env, A, Chunk<A>> {
   return Schedule.recurWhileEffect(f).collectAll();
 }

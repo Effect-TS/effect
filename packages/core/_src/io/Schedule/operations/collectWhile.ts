@@ -6,6 +6,6 @@
  */
 export function collectWhile<A>(
   f: Predicate<A>
-): Schedule.WithState<Tuple<[void, Chunk<A>]>, unknown, A, Chunk<A>> {
+): Schedule<Tuple<[void, Chunk<A>]>, unknown, A, Chunk<A>> {
   return Schedule.recurWhile(f).collectAll();
 }
