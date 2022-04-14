@@ -101,7 +101,6 @@ export namespace Effect {
   export type UIO<A> = Effect<unknown, never, A>;
   export type IO<E, A> = Effect<unknown, E, A>;
   export type RIO<R, A> = Effect<R, never, A>;
-  export type Canceler<R> = RIO<R, void>;
   export interface Error<E, A> {
     readonly _tag: "EffectError";
     readonly exit: Exit<E, A>;
