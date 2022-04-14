@@ -29,6 +29,7 @@ export * from "@effect/core/io/Metrics/operations/trackError";
 export * from "@effect/core/io/Metrics/operations/trackErrorWith";
 export * from "@effect/core/io/Metrics/operations/trackSuccess";
 export * from "@effect/core/io/Metrics/operations/trackSuccessWith";
+export * from "@effect/core/io/Metrics/operations/update";
 export * from "@effect/core/io/Metrics/operations/value";
 export * from "@effect/core/io/Metrics/operations/withNow";
 export * from "@effect/core/io/Metrics/operations/zip";

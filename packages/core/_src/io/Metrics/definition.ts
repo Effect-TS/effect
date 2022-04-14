@@ -53,7 +53,7 @@ export const Metric: MetricOps = function<Type, In, Out>(
 ): Metric<Type, In, Out> {
   const metric: Metric<Type, In, Out> = Object.assign(
     <R, E, A extends In>(effect: Effect<R, E, A>, __tsplusTrace?: string): Effect<R, E, A> =>
-      effect.tap((a) => metric.update(a)),
+      effect.tap((a) => Effect.succeed(unsafeUpdate(a, HashSet.empty()))),
     {
       [MetricSym]: MetricSym,
       keyType,
@@ -63,30 +63,6 @@ export const Metric: MetricOps = function<Type, In, Out>(
   );
   return metric;
 };
-
-/**
- * Updates the metric with the specified update message. For example, if the
- * metric were a counter, the update would increment the method by the
- * provided amount.
- *
- * @tsplus fluent ets/Metrics/Metric update
- */
-export function update_<Type, In, Out>(
-  self: Metric<Type, In, Out>,
-  input: LazyArg<In>,
-  __tsplusTrace?: string
-): UIO<void> {
-  return Effect.succeed(self.unsafeUpdate(input(), HashSet.empty()));
-}
-
-/**
- * Updates the metric with the specified update message. For example, if the
- * metric were a counter, the update would increment the method by the
- * provided amount.
- *
- * @tsplus static ets/Metrics/Metric/Aspects update
- */
-export const update = Pipeable(update_);
 
 export declare namespace Metric {
   export interface Counter<In> extends Metric<MetricKeyType.Counter, In, MetricState.Counter> {}
