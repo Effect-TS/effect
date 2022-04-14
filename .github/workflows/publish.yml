@@ -1,7 +1,7 @@
 name: Test CI
 
 on:
-  pull_request:
+  push:
     branches:
       - main
 
@@ -38,3 +38,12 @@ jobs:
           yarn test --run
         env:
           CI: "true"
+      - name: Create Version PR or Publish to NPM
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          version: node .github/changeset-version.cjs
+          publish: yarn release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.EFFECT_BOT_NPM }}

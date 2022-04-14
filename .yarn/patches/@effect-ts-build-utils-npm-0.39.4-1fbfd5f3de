@@ -1,8 +1,16 @@
 diff --git a/pack.js b/pack.js
-index e690cb08e667ceeea60d155c7d99aa373fcf467b..9cc2e1da6c0413e906b0f6b1547ec013703fb220 100644
+index e690cb08e667ceeea60d155c7d99aa373fcf467b..8053c1927db9458af65ee88d00df30df9afa6577 100644
 --- a/pack.js
 +++ b/pack.js
-@@ -106,12 +106,12 @@ const MAP_GLOB_PATTERN = "dist/**/*.map";
+@@ -49,6 +49,7 @@ const writePackageJsonContent = (0, Function_1.pipe)(TE.do, TE.bind("content", (
+     carry("repository", content, packageJson);
+     carry("dependencies", content, packageJson);
+     carry("peerDependencies", content, packageJson);
++    carry("peerDependenciesMeta", content, packageJson);
+     carry("gitHead", content, packageJson);
+     carry("bin", content, packageJson);
+     const exports = {};
+@@ -106,12 +107,12 @@ const MAP_GLOB_PATTERN = "dist/**/*.map";
  const replaceString = (path) => {
      const dir = path_1.posix.dirname(path);
      const patch = path.startsWith("dist/_mjs/")
