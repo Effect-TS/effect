@@ -606,19 +606,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect-ts/core@npm:^0.59.4":
-  version: 0.59.4
-  resolution: "@effect-ts/core@npm:0.59.4"
+"@effect-ts/core@npm:^0.60.0":
+  version: 0.60.0
+  resolution: "@effect-ts/core@npm:0.60.0"
   dependencies:
-    "@effect-ts/system": ^0.56.4
-  checksum: 9d4b536cc34d252bb975ccaa0fc54b36480a6f01fe6ad5cc063c97a45ed59f712384f58662d337ade5fadb0e687b668ecf2815da08efc5ff7579a7fa60b4a1ce
+    "@effect-ts/system": ^0.57.0
+  checksum: fd43af7409e62e99261c8b59aeab7a3d94277af27e7790a630d8ab3cfe7db657aed744af7d67eeba3a233fa8b0f5fc7374892ddf72e33270dcedef92e965ded7
   languageName: node
   linkType: hard
 
-"@effect-ts/system@npm:^0.56.4":
-  version: 0.56.4
-  resolution: "@effect-ts/system@npm:0.56.4"
-  checksum: 141606b6d3a3896d2c5aae8b56bd1d7ec8d1d9399af7e197a28cb5ed24b861f2e0a7934a7739eab15855e5612281a98ced175bb34fc6d6c8a1983b60fbc25a4a
+"@effect-ts/system@npm:^0.57.0":
+  version: 0.57.0
+  resolution: "@effect-ts/system@npm:0.57.0"
+  checksum: 9f5dd596734091969f30e943c1303a501f5e91de3413b06d5513a342ce054b3749170fd6f4136ec5cc727c702337f122f549d7c903de2bc3f2f9f85615764ff6
   languageName: node
   linkType: hard
 
@@ -2536,8 +2536,8 @@ __metadata:
     "@babel/plugin-transform-modules-commonjs": ^7.17.9
     "@changesets/changelog-github": ^0.4.4
     "@changesets/cli": ^2.22.0
-    "@effect-ts/build-utils": 0.39.4
-    "@effect-ts/core": ^0.59.4
+    "@effect-ts/build-utils": 0.40.0
+    "@effect-ts/core": ^0.60.0
     "@phaphoso/eslint-plugin-dprint": ^0.5.2
     "@tsplus/installer": 0.0.82
     "@tsplus/stdlib": 0.0.50
@@ -2562,7 +2562,7 @@ __metadata:
     rimraf: ^3.0.2
     typescript: ^4.6.3
     ultra-runner: ^3.10.5
-    vite: ^2.9.4
+    vite: ^2.9.5
     vitest: 0.9.3
   languageName: unknown
   linkType: soft
@@ -7492,9 +7492,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vite@npm:^2.9.1, vite@npm:^2.9.4":
-  version: 2.9.4
-  resolution: "vite@npm:2.9.4"
+"vite@npm:^2.9.1, vite@npm:^2.9.5":
+  version: 2.9.5
+  resolution: "vite@npm:2.9.5"
   dependencies:
     esbuild: ^0.14.27
     fsevents: ~2.3.2
@@ -7517,7 +7517,7 @@ __metadata:
       optional: true
   bin:
     vite: bin/vite.js
-  checksum: 40c8e37f9442cda3021bdbfda25b9aeb9e2204d346565588f87eb4d157b5e10fbe937f8feb4b0fb3e67ab86858763015166aca7ca45f1adb29bd40da4cb1afb6
+  checksum: 354189cbce6904a3b58ca70b7ad9e1bb751ded9c13e483165562e634804cfb29bbf1507a4e6334cb9987e3f1f41e9f50764878a3c837523762e9da65229c9543
   languageName: node
   linkType: hard
 

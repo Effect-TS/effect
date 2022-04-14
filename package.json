@@ -34,8 +34,8 @@
     "@babel/plugin-transform-modules-commonjs": "^7.17.9",
     "@changesets/changelog-github": "^0.4.4",
     "@changesets/cli": "^2.22.0",
-    "@effect-ts/build-utils": "0.39.4",
-    "@effect-ts/core": "^0.59.4",
+    "@effect-ts/build-utils": "0.40.0",
+    "@effect-ts/core": "^0.60.0",
     "@phaphoso/eslint-plugin-dprint": "^0.5.2",
     "@tsplus/installer": "0.0.82",
     "@tsplus/stdlib": "0.0.50",
@@ -60,7 +60,7 @@
     "rimraf": "^3.0.2",
     "typescript": "^4.6.3",
     "ultra-runner": "^3.10.5",
-    "vite": "^2.9.4",
+    "vite": "^2.9.5",
     "vitest": "0.9.3"
   },
   "resolutions": {
