@@ -10,9 +10,11 @@ export function splitOn_<R, E>(
 ): Stream<R, E, string> {
   return Stream.succeed(delimiter).flatMap((delimiter) =>
     self
-      .mapChunks((chunk) => chunk.flatMap(Chunk.from))
-      .via(Stream.$.splitOnChunkFlatten(Chunk.from(delimiter)))
-      .via(Stream.$.mapChunks((chunk) => Chunk.single(chunk.join(""))))
+      .map((s) => Chunk.from(s))
+      .unchunks()
+      .splitOnChunkFlatten(Chunk.from(delimiter))
+      .chunks()
+      .map((chunk) => chunk.join(""))
   );
 }
 

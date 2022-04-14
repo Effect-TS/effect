@@ -19,7 +19,7 @@ export function interleaveWith_<R, E, A, R2, E2, A2, R3, E3>(
 ): Stream<R & R2 & R3, E | E2 | E3, A | A2> {
   concreteStream(self);
   return new StreamInternal(
-    Channel.scoped(
+    Channel.unwrapScoped(
       Effect.Do()
         .bind("left", () => Handoff.make<Take<E | E2 | E3, A | A2>>())
         .bind("right", () => Handoff.make<Take<E | E2 | E3, A | A2>>())
@@ -34,14 +34,14 @@ export function interleaveWith_<R, E, A, R2, E2, A2, R3, E3>(
           return (that0.channel.concatMap(Channel.writeChunk) >> producer(right))
             .runScoped()
             .fork();
-        }),
-      ({ left, right }) => {
-        const b0 = b();
-        concreteStream(b0);
-        return (
-          b0.channel.concatMap(Channel.writeChunk) >> process(left, right, false, false)
-        );
-      }
+        })
+        .map(({ left, right }) => {
+          const b0 = b();
+          concreteStream(b0);
+          return (
+            b0.channel.concatMap(Channel.writeChunk) >> process(left, right, false, false)
+          );
+        })
     )
   );
 }

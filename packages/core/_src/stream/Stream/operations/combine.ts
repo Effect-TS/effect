@@ -25,7 +25,7 @@ export function combine_<R, E, A, R2, E2, A2, S, A3>(
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A3> {
   return new StreamInternal(
-    Channel.scoped(
+    Channel.unwrapScoped(
       Effect.Do()
         .bind("left", () => Handoff.make<Exit<Option<E>, A>>())
         .bind("right", () => Handoff.make<Exit<Option<E2>, A2>>())
@@ -49,17 +49,22 @@ export function combine_<R, E, A, R2, E2, A2, S, A3>(
           )
             .runScoped()
             .fork();
-        }),
-      ({ latchL, latchR, left, right }) => {
-        const pullLeft = latchL.offer(undefined) > left.take().flatMap((exit) => Effect.done(exit));
-        const pullRight = latchR.offer(undefined) > right.take().flatMap((exit) => Effect.done(exit));
-        const stream = Stream.unfoldEffect(
-          s,
-          (s) => f(s, pullLeft, pullRight).flatMap((exit) => Effect.done(exit).unsome())
-        );
-        concreteStream(stream);
-        return stream.channel;
-      }
+        })
+        .bindValue(
+          "pullLeft",
+          ({ latchL, left }) => latchL.offer(undefined) > left.take().flatMap((exit) => Effect.done(exit))
+        )
+        .bindValue(
+          "pullRight",
+          ({ latchR, right }) => latchR.offer(undefined) > right.take().flatMap((exit) => Effect.done(exit))
+        )
+        .map(({ pullLeft, pullRight }) => {
+          const stream = Stream.unfoldEffect(s, (s) =>
+            f(s, pullLeft, pullRight)
+              .flatMap((exit) => Effect.done(exit).unsome()));
+          concreteStream(stream);
+          return stream.channel;
+        })
     )
   );
 }

@@ -12,7 +12,7 @@ export function bufferUnbounded_<R, E, A>(
 ): Stream<R, E, A> {
   const queue = self.toQueueUnbounded();
   return new StreamInternal(
-    Channel.scoped(queue, (queue) => {
+    Channel.unwrapScoped(queue.map((queue) => {
       const process: Channel<
         unknown,
         unknown,
@@ -29,7 +29,7 @@ export function bufferUnbounded_<R, E, A>(
         )
       );
       return process;
-    })
+    }))
   );
 }
 

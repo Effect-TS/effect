@@ -1,3 +1,5 @@
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+
 /**
  * Filters the elements emitted by this stream using the provided function.
  *
@@ -18,7 +20,8 @@ export function filter_<R, E, A>(
   f: Predicate<A>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  return self.mapChunks((chunk) => chunk.filter(f));
+  concreteStream(self);
+  return new StreamInternal(self.channel.mapOut((chunk) => chunk.filter(f)));
 }
 
 /**

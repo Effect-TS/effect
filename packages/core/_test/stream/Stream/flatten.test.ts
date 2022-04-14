@@ -35,10 +35,10 @@ describe.concurrent("Stream", () => {
     });
   });
 
-  describe.concurrent("flattenIterables", () => {
-    it("flattens a group of iterables", async () => {
+  describe.concurrent("flattenCollection", () => {
+    it("flattens a stream of collections", async () => {
       const lists = List(List(1, 2, 3), List.empty<number>(), List(4, 5));
-      const program = Stream.fromCollection(lists).flattenCollections().runCollect();
+      const program = Stream.fromCollection(lists).flattenCollection().runCollect();
 
       const result = await program.unsafeRunPromise();
 

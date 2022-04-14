@@ -191,7 +191,7 @@ describe.concurrent("Stream", () => {
         0,
         (n) => Option.some(Tuple(n < 3 ? Chunk.empty<number>() : Chunk.single(2), n + 1))
       )
-        .flattenChunks()
+        .unchunks()
         .forever()
         .zipWithLatest(Stream(1).forever(), (_, n) => n)
         .take(3)

@@ -1,3 +1,5 @@
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+
 /**
  * Performs a filter and map in a single step.
  *
@@ -8,7 +10,8 @@ export function collect_<R, E, A, B>(
   pf: (a: A) => Option<B>,
   __tsplusTrace?: string
 ): Stream<R, E, B> {
-  return self.mapChunks((chunk) => chunk.collect(pf));
+  concreteStream(self);
+  return new StreamInternal(self.channel.mapOut((chunk) => chunk.collect(pf)));
 }
 
 /**

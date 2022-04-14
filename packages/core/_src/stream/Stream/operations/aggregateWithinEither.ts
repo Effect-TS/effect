@@ -21,9 +21,9 @@ import { SinkEndReason } from "@effect/core/stream/Stream/SinkEndReason";
  * @param sink Used for the aggregation
  * @param schedule Used for signalling for when to stop the aggregation
  *
- * @tsplus fluent ets/Stream aggregateAsyncWithinEither
+ * @tsplus fluent ets/Stream aggregateWithinEither
  */
-export function aggregateAsyncWithinEither_<R, E, A, R2, E2, A2, S, R3, B, C>(
+export function aggregateWithinEither_<R, E, A, R2, E2, A2, S, R3, B, C>(
   self: Stream<R, E, A>,
   sink: LazyArg<Sink<R2, E2, A | A2, A2, B>>,
   schedule: LazyArg<Schedule<S, R3, Option<B>, C>>,
@@ -119,9 +119,9 @@ export function aggregateAsyncWithinEither_<R, E, A, R2, E2, A2, S, R3, B, C>(
  * @param sink Used for the aggregation
  * @param schedule Used for signalling for when to stop the aggregation
  *
- * @tsplus static ets/Stream/Aspects aggregateAsyncWithinEither
+ * @tsplus static ets/Stream/Aspects aggregateWithinEither
  */
-export const aggregateAsyncWithinEither = Pipeable(aggregateAsyncWithinEither_);
+export const aggregateWithinEither = Pipeable(aggregateWithinEither_);
 
 function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
   sink: SinkInternal<R2, E2, A | A2, A2, B>,
@@ -150,59 +150,62 @@ function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
       ),
     (c) => handoff.offer(HandoffSignal.End(SinkEndReason.ScheduleEnd(c)))
   );
-  return Channel.scoped(timeout.forkScoped(), (fiber) =>
-    handoffConsumer
-      .pipeToOrFail(sink.channel)
-      .doneCollect()
-      .flatMap(
-        ({ tuple: [leftovers, b] }) =>
-          Channel.fromEffect(
-            fiber.interrupt() > sinkLeftovers.set(leftovers.flatten())
-          ) >
-            Channel.unwrap(
-              sinkEndReason.modify((reason) => {
-                switch (reason._tag) {
-                  case "ScheduleEnd": {
-                    return Tuple(
-                      Channel.write(Chunk(Either.right(b), Either.left(reason.c))).as(
-                        Option.some(b)
-                      ),
-                      SinkEndReason.SinkEnd
-                    );
+  return Channel.unwrapScoped(
+    timeout.forkScoped().map((fiber) =>
+      handoffConsumer
+        .pipeToOrFail(sink.channel)
+        .doneCollect()
+        .flatMap(
+          ({ tuple: [leftovers, b] }) =>
+            Channel.fromEffect(
+              fiber.interrupt() > sinkLeftovers.set(leftovers.flatten())
+            ) >
+              Channel.unwrap(
+                sinkEndReason.modify((reason) => {
+                  switch (reason._tag) {
+                    case "ScheduleEnd": {
+                      return Tuple(
+                        Channel.write(Chunk(Either.right(b), Either.left(reason.c))).as(
+                          Option.some(b)
+                        ),
+                        SinkEndReason.SinkEnd
+                      );
+                    }
+                    case "ScheduleTimeout": {
+                      return Tuple(
+                        Channel.write(Chunk.single(Either.right(b))).as(Option.some(b)),
+                        SinkEndReason.SinkEnd
+                      );
+                    }
+                    case "SinkEnd": {
+                      return Tuple(
+                        Channel.write(Chunk.single(Either.right(b))).as(Option.some(b)),
+                        SinkEndReason.SinkEnd
+                      );
+                    }
+                    case "UpstreamEnd": {
+                      return Tuple(
+                        Channel.write(Chunk.single(Either.right(b))).as(Option.none),
+                        SinkEndReason.UpstreamEnd
+                      );
+                    }
                   }
-                  case "ScheduleTimeout": {
-                    return Tuple(
-                      Channel.write(Chunk.single(Either.right(b))).as(Option.some(b)),
-                      SinkEndReason.SinkEnd
-                    );
-                  }
-                  case "SinkEnd": {
-                    return Tuple(
-                      Channel.write(Chunk.single(Either.right(b))).as(Option.some(b)),
-                      SinkEndReason.SinkEnd
-                    );
-                  }
-                  case "UpstreamEnd": {
-                    return Tuple(
-                      Channel.write(Chunk.single(Either.right(b))).as(Option.none),
-                      SinkEndReason.UpstreamEnd
-                    );
-                  }
-                }
-              })
-            )
-      )).flatMap((option: Option<B>) =>
-      option.isSome()
-        ? scheduledAggregator(
-          sink,
-          handoff,
-          scheduleDriver,
-          sinkEndReason,
-          sinkLeftovers,
-          handoffProducer,
-          handoffConsumer,
-          option
+                })
+              )
         )
-        : Channel.unit
-    );
+    )
+  ).flatMap((option: Option<B>) =>
+    option.isSome()
+      ? scheduledAggregator(
+        sink,
+        handoff,
+        scheduleDriver,
+        sinkEndReason,
+        sinkLeftovers,
+        handoffProducer,
+        handoffConsumer,
+        option
+      )
+      : Channel.unit
+  );
 }

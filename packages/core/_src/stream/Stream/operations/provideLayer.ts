@@ -12,7 +12,7 @@ export function provideLayer_<R, E, A, E1, A1>(
 ): Stream<R, E | E1, A1> {
   concreteStream(self);
   return new StreamInternal(
-    Channel.scoped(layer().build(), (r) => self.channel.provideEnvironment(r))
+    Channel.unwrapScoped(layer().build().map((env) => self.channel.provideEnvironment(env)))
   );
 }
 
