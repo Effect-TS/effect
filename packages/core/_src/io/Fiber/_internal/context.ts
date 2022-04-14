@@ -516,7 +516,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   unsafeGetRefs(fiberRefLocals: FiberRefLocals): Map<FiberRef<unknown>, unknown> {
     const refs = new Map<FiberRef<unknown>, unknown>();
     for (const [fiberRef, stack] of fiberRefLocals) {
-      refs.set(fiberRef, stack.head);
+      refs.set(fiberRef, stack.head.get(1));
     }
     return refs;
   }
