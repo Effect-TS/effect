@@ -234,16 +234,18 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     const annotations = this.unsafeGetRef(FiberRef.currentLogAnnotations.value);
     const contextMap = this.unsafeGetRefs(this.fiberRefLocals);
 
-    this.runtimeConfig.value.logger.apply(
-      TraceElement.parse(trace),
-      this.fiberId,
-      logLevel,
-      message,
-      () => Cause.empty,
-      contextMap,
-      spans,
-      annotations
-    );
+    this.runtimeConfig.value.loggers.forEach((logger) => {
+      logger.apply(
+        TraceElement.parse(trace),
+        this.fiberId,
+        logLevel,
+        message,
+        () => Cause.empty,
+        contextMap,
+        spans,
+        annotations
+      );
+    });
   }
 
   unsafeLogWith(
@@ -270,16 +272,18 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       }
     }
 
-    this.runtimeConfig.value.logger.apply(
-      TraceElement.parse(trace),
-      this.fiberId,
-      logLevel,
-      message,
-      cause,
-      contextMap,
-      spans,
-      annotations
-    );
+    this.runtimeConfig.value.loggers.forEach((logger) => {
+      logger.apply(
+        TraceElement.parse(trace),
+        this.fiberId,
+        logLevel,
+        message,
+        cause,
+        contextMap,
+        spans,
+        annotations
+      );
+    });
   }
 
   // ---------------------------------------------------------------------------

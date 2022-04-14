@@ -8,8 +8,8 @@ export interface RuntimeConfig {
   readonly value: {
     readonly fatal: (defect: unknown) => boolean;
     readonly reportFatal: (defect: unknown) => void;
-    readonly supervisor: Supervisor<any>;
-    readonly logger: Logger<string, any>;
+    readonly supervisor: Supervisor<unknown>;
+    readonly loggers: HashSet<Logger<string, unknown>>;
     readonly flags: RuntimeConfigFlags;
     readonly maxOp: number;
   };

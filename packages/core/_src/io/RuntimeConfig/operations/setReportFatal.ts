@@ -2,7 +2,7 @@
  * @tsplus fluent ets/RuntimeConfig setReportFatal
  */
 export function setReportFatal_(self: RuntimeConfig, reportFatal: (defect: unknown) => void): RuntimeConfig {
-  return RuntimeConfig({ ...self.value, reportFatal });
+  return self.copy({ reportFatal });
 }
 
 /**
