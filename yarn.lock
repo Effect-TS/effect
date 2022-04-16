@@ -833,9 +833,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsplus/installer@npm:0.0.84":
-  version: 0.0.84
-  resolution: "@tsplus/installer@npm:0.0.84"
+"@tsplus/installer@npm:0.0.85":
+  version: 0.0.85
+  resolution: "@tsplus/installer@npm:0.0.85"
   dependencies:
     mkdirp: ^1.0.4
     rimraf: ^3.0.2
@@ -844,7 +844,7 @@ __metadata:
     zlib: ^1.0.5
   bin:
     tsplus-install: bin/tsplus-install
-  checksum: 843f9a70230300862cc98c6cc78ec5239edae4ca45041a71a61fe7796a0aeafec142df7e3c9b49e847d64fb3f4bede97b34d7397dd6295d80db13ec27fd8aa85
+  checksum: a7cab02d07918e27ec14e70c9d798698b1b99cf9342566766fe324e7b8b8cbedd11ba4eb3c366928c0c367139682d94815e625272b036c39bb0224c6046bef8c
   languageName: node
   linkType: hard
 
@@ -2498,12 +2498,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dprint@npm:^0.24.4":
-  version: 0.24.4
-  resolution: "dprint@npm:0.24.4"
+"dprint@npm:^0.25.0":
+  version: 0.25.0
+  resolution: "dprint@npm:0.25.0"
   bin:
     dprint: bin.js
-  checksum: 832d388cdef9c6f8ca27ad2059e65ba83764c0ff2664b7671e05194155a6f55d7c9d9b47ac5a18161733f64e09788d83d6cdedc79ea38ef2b7451f389e05c456
+  checksum: c61f31755297b756d97cd56fc26ad9ff9e3f3bf377f1c7b87748108fcf22896478b58e5c36b81878c86c7f167b3f1976b8089e098e343d418dbae5d6bce67c33
   languageName: node
   linkType: hard
 
@@ -2526,7 +2526,7 @@ __metadata:
     "@effect-ts/build-utils": 0.40.1
     "@effect-ts/core": ^0.60.0
     "@phaphoso/eslint-plugin-dprint": ^0.5.2
-    "@tsplus/installer": 0.0.84
+    "@tsplus/installer": 0.0.85
     "@tsplus/stdlib": 0.0.50
     "@types/node": ^17.0.24
     "@types/rimraf": ^3.0.2
@@ -2537,7 +2537,7 @@ __metadata:
     c8: ^7.11.0
     concurrently: ^7.1.0
     cpx: ^1.5.0
-    dprint: ^0.24.4
+    dprint: ^0.25.0
     eslint: ^8.13.0
     eslint-import-resolver-typescript: ^2.7.1
     eslint-plugin-codegen: 0.16.1
