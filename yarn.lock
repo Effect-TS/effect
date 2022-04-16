@@ -580,29 +580,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect-ts/build-utils@npm:0.39.4":
-  version: 0.39.4
-  resolution: "@effect-ts/build-utils@npm:0.39.4"
+"@effect-ts/build-utils@npm:0.40.1":
+  version: 0.40.1
+  resolution: "@effect-ts/build-utils@npm:0.40.1"
   peerDependencies:
     "@effect-ts/core": ">= 0.28.9"
     cpx: ">= 1.5.0"
     picocolors: ^1.0.0
   bin:
     build-utils: build-utils
-  checksum: 44a92a6917d5d8622b0a7f022aed19a38cbca87c474a32504d058ca76f59202a450f80b91718a04206e29bc6de5cdfd3945895e9b863d9baba3a9d2d025c4fa6
-  languageName: node
-  linkType: hard
-
-"@effect-ts/build-utils@patch:@effect-ts/build-utils@npm:0.39.4#.yarn/patches/@effect-ts-build-utils-npm-0.39.4-1fbfd5f3de::locator=effect%40workspace%3A.":
-  version: 0.39.4
-  resolution: "@effect-ts/build-utils@patch:@effect-ts/build-utils@npm%3A0.39.4#.yarn/patches/@effect-ts-build-utils-npm-0.39.4-1fbfd5f3de::version=0.39.4&hash=2def61&locator=effect%40workspace%3A."
-  peerDependencies:
-    "@effect-ts/core": ">= 0.28.9"
-    cpx: ">= 1.5.0"
-    picocolors: ^1.0.0
-  bin:
-    build-utils: build-utils
-  checksum: ae36d8346b86429fe29330e98fb10d4ffa86bab94ab81b8bb11d2276274e33454e6e3bf216a53f62c196ee59bb273573e0722ee45af67fcd894725d40a0b026f
+  checksum: 4485a8c39f35cee8f57dac352900e598ebf551d71d644594afa7f9f28979d8b8697b4aec631e52e46ca0be8f2395f0846802ad4cb1cb1ac4c1289d103b3a74f1
   languageName: node
   linkType: hard
 
@@ -2536,7 +2523,7 @@ __metadata:
     "@babel/plugin-transform-modules-commonjs": ^7.17.9
     "@changesets/changelog-github": ^0.4.4
     "@changesets/cli": ^2.22.0
-    "@effect-ts/build-utils": 0.40.0
+    "@effect-ts/build-utils": 0.40.1
     "@effect-ts/core": ^0.60.0
     "@phaphoso/eslint-plugin-dprint": ^0.5.2
     "@tsplus/installer": 0.0.84
