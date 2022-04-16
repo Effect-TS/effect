@@ -33,7 +33,7 @@
     "@babel/plugin-transform-modules-commonjs": "^7.17.9",
     "@changesets/changelog-github": "^0.4.4",
     "@changesets/cli": "^2.22.0",
-    "@effect-ts/build-utils": "0.40.0",
+    "@effect-ts/build-utils": "0.40.1",
     "@effect-ts/core": "^0.60.0",
     "@phaphoso/eslint-plugin-dprint": "^0.5.2",
     "@tsplus/installer": "0.0.84",
@@ -63,7 +63,6 @@
     "vitest": "0.9.3"
   },
   "resolutions": {
-    "eslint-plugin-codegen": "patch:eslint-plugin-codegen@npm:0.16.1#.yarn/patches/eslint-plugin-codegen-npm-0.16.1-87770191cd",
-    "@effect-ts/build-utils": "patch:@effect-ts/build-utils@npm:0.39.4#.yarn/patches/@effect-ts-build-utils-npm-0.39.4-1fbfd5f3de"
+    "eslint-plugin-codegen": "patch:eslint-plugin-codegen@npm:0.16.1#.yarn/patches/eslint-plugin-codegen-npm-0.16.1-87770191cd"
   }
 }
