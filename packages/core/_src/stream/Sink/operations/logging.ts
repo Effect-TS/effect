@@ -156,6 +156,6 @@ export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
  */
 export function logAnnotations(
   __tsplusTrace?: string
-): Sink<unknown, never, unknown, unknown, Map<string, string>> {
+): Sink<unknown, never, unknown, unknown, ImmutableMap<string, string>> {
   return Sink.fromEffect(FiberRef.currentLogAnnotations.value.get());
 }

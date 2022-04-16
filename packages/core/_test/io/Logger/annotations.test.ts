@@ -12,7 +12,7 @@ describe.concurrent("Logger", () => {
       const result = await program.unsafeRunPromise();
 
       assert.strictEqual(result.array.length, 1);
-      assert.isTrue(result[0].map((_) => _.annotations.get(key)) == Option.some(value));
+      assert.isTrue(result[0].map((_) => _.annotations.get(key).value) == Option.some(value));
     });
   });
 });

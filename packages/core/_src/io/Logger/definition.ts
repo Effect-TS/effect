@@ -10,9 +10,9 @@ export interface Logger<Message, Output> {
     logLevel: LogLevel,
     message: Lazy<Message>,
     cause: Lazy<Cause<unknown>>,
-    context: Map<FiberRef<unknown, unknown>, unknown>,
+    context: ImmutableMap<FiberRef<unknown, unknown>, unknown>,
     spans: List<LogSpan>,
-    annotations: Map<string, string>
+    annotations: ImmutableMap<string, string>
   ) => Output;
 }
 

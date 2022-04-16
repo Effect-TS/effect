@@ -294,6 +294,10 @@ import { ImmutableArray } from "@tsplus/stdlib/collections/ImmutableArray";
 /**
  * @tsplus global
  */
+import { ImmutableMap } from "@tsplus/stdlib/collections/ImmutableMap/definition";
+/**
+ * @tsplus global
+ */
 import { ImmutableQueue } from "@tsplus/stdlib/collections/ImmutableQueue/definition";
 /**
  * @tsplus global
