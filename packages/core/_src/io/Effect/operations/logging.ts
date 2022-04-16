@@ -266,7 +266,7 @@ export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
  *
  * @tsplus static ets/Effect/Ops logAnnotations
  */
-export function logAnnotations(__tsplusTrace?: string): Effect.UIO<Map<string, string>> {
+export function logAnnotations(__tsplusTrace?: string): Effect.UIO<ImmutableMap<string, string>> {
   return FiberRef.currentLogAnnotations.value.get();
 }
 

@@ -59,7 +59,7 @@ export type Frame =
   | IFold<any, any, any, any, any, any, any, any, any>
   | ApplyFrame;
 
-export type FiberRefLocals = Map<FiberRef<unknown, unknown>, List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>>;
+export type FiberRefLocals = ImmutableMap<FiberRef<unknown, unknown>, List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>>;
 
 export const catastrophicFailure = new AtomicBoolean(false);
 
@@ -263,12 +263,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     const spans = this.unsafeGetRef(FiberRef.currentLogSpan.value);
     const annotations = this.unsafeGetRef(FiberRef.currentLogAnnotations.value);
 
-    const contextMap = this.unsafeGetRefs(this.fiberRefLocals);
+    let contextMap = this.unsafeGetRefs(this.fiberRefLocals);
     if (overrideRef1 != null) {
       if (overrideValue1 == null) {
-        contextMap.delete(overrideRef1);
+        contextMap = contextMap.remove(overrideRef1);
       } else {
-        contextMap.set(overrideRef1, overrideValue1);
+        contextMap = contextMap.set(overrideRef1, overrideValue1);
       }
     }
 
@@ -511,32 +511,31 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   // ---------------------------------------------------------------------------
 
   unsafeGetRef<A, P>(fiberRef: FiberRef<A, P>): A {
-    const stack = this.fiberRefLocals.get(fiberRef);
-    return stack != null ?
-      (stack.head.get(1) as A) :
-      fiberRef.initial();
+    return this.fiberRefLocals.get(fiberRef)
+      .map((stack) => stack.head.get(1) as A)
+      .getOrElse(fiberRef.initial());
   }
 
-  unsafeGetRefs(fiberRefLocals: FiberRefLocals): Map<FiberRef<unknown, unknown>, unknown> {
-    const refs = new Map<FiberRef<unknown, unknown>, unknown>();
-    for (const [fiberRef, stack] of fiberRefLocals) {
-      refs.set(fiberRef, stack.head.get(1));
+  unsafeGetRefs(fiberRefLocals: FiberRefLocals): ImmutableMap<FiberRef<unknown, unknown>, unknown> {
+    const refs: Array<Tuple<[FiberRef<unknown, unknown>, unknown]>> = [];
+    for (const { tuple: [fiberRef, stack] } of fiberRefLocals) {
+      refs.push(Tuple(fiberRef, stack.head.get(1)));
     }
-    return refs;
+    return ImmutableMap.from(...refs);
   }
 
   unsafeSetRef<A, P>(fiberRef: FiberRef<A, P>, value: A): void {
-    const oldStack = this.fiberRefLocals.get(fiberRef) ?? List.empty<Tuple<[FiberId.Runtime, unknown]>>();
+    const oldStack = this.fiberRefLocals.get(fiberRef).getOrElse(List.empty<Tuple<[FiberId.Runtime, unknown]>>());
     const newStack = (
       oldStack.isNil() ?
         List.cons(Tuple(this._id, value), List.nil()) :
         List.cons(Tuple(this._id, value), oldStack.tail)
     ) as List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>;
-    this.fiberRefLocals.set(fiberRef, newStack);
+    this.fiberRefLocals = this.fiberRefLocals.set(fiberRef, newStack);
   }
 
   unsafeDeleteRef<A, P>(fiberRef: FiberRef<A, P>): void {
-    this.fiberRefLocals.delete(fiberRef);
+    this.fiberRefLocals = this.fiberRefLocals.remove(fiberRef);
   }
 
   // ---------------------------------------------------------------------------
@@ -985,12 +984,19 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   ): FiberContext<any, any> {
     const childId = FiberId.unsafeMake(trace);
 
-    const childFiberRefLocals: FiberRefLocals = new Map();
+    const childFiberRefLocalEntries: Array<
+      Tuple<[
+        FiberRef<unknown, unknown>,
+        List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>
+      ]>
+    > = [];
 
-    for (const [fiberRef, stack] of this.fiberRefLocals) {
+    for (const { tuple: [fiberRef, stack] } of this.fiberRefLocals) {
       const value = fiberRef.patch(fiberRef.fork())(stack.head.get(1));
-      childFiberRefLocals.set(fiberRef, stack.prepend(Tuple(childId, value)));
+      childFiberRefLocalEntries.push(Tuple(fiberRef, stack.prepend(Tuple(childId, value))));
     }
+
+    const childFiberRefLocals: FiberRefLocals = ImmutableMap.from(...childFiberRefLocalEntries);
 
     const parentScope = forkScope.orElse(this.unsafeGetRef(FiberRef.forkScopeOverride.value)).getOrElse(this._scope);
 

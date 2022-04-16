@@ -9,8 +9,8 @@ export function joinFiberRefs(self: FiberRefs, that: FiberRefs): FiberRefs {
 
   const fiberRefLocals = Chunk.from(childFiberRefs).reduce(
     parentFiberRefs,
-    (parentFiberRefs, [fiberRef, childStack]) => {
-      const parentStack = parentFiberRefs.get(fiberRef) ?? List.empty<Tuple<[FiberId.Runtime, unknown]>>();
+    (parentFiberRefs, { tuple: [fiberRef, childStack] }) => {
+      const parentStack = parentFiberRefs.get(fiberRef).getOrElse(List.empty<Tuple<[FiberId.Runtime, unknown]>>());
 
       const values: List.NonEmpty<unknown> = combine(fiberRef, parentStack, childStack);
 

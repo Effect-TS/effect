@@ -1,5 +1,10 @@
 /**
  * @tsplus static ets/FiberRef/Ops currentLogAnnotations
  */
-export const currentLogAnnotations: LazyValue<FiberRef<Map<any, any>, (a: Map<any, any>) => Map<any, any>>> = LazyValue
-  .make(() => FiberRef.unsafeMake(new Map()));
+export const currentLogAnnotations: LazyValue<
+  FiberRef<
+    ImmutableMap<string, string>,
+    (a: ImmutableMap<string, string>) => ImmutableMap<string, string>
+  >
+> = LazyValue
+  .make(() => FiberRef.unsafeMake(ImmutableMap.empty()));

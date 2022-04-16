@@ -14,7 +14,7 @@ describe.concurrent("Logger", () => {
       const { output, ref } = await program.unsafeRunPromise();
 
       assert.strictEqual(output.size, 1);
-      assert.isTrue(output[0].map((entry) => entry.context.get(ref)) == Option.some(value));
+      assert.isTrue(output[0].map((entry) => entry.context.get(ref).value) == Option.some(value));
     });
   });
 });

@@ -4,7 +4,7 @@ export class FiberRefsInternal implements FiberRefs {
   readonly [FiberRefsSym]: FiberRefsSym = FiberRefsSym;
 
   constructor(
-    readonly fiberRefLocals: Map<
+    readonly fiberRefLocals: ImmutableMap<
       FiberRef<unknown, unknown>,
       List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>
     >

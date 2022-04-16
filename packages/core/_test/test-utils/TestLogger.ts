@@ -55,9 +55,9 @@ export class LogEntry {
     readonly logLevel: LogLevel,
     readonly message: Lazy<string>,
     readonly cause: Lazy<Cause<any>>,
-    readonly context: Map<FiberRef<unknown, unknown>, unknown>,
+    readonly context: ImmutableMap<FiberRef<unknown, unknown>, unknown>,
     readonly spans: List<LogSpan>,
-    readonly annotations: Map<string, string>
+    readonly annotations: ImmutableMap<string, string>
   ) {}
 
   call<A>(logger: Logger<string, A>): A {

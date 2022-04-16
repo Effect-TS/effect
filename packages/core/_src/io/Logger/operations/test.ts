@@ -11,9 +11,9 @@ export function test_<Message, Output>(
     LogLevel.Info,
     () => input,
     () => Cause.empty,
-    new Map(),
+    ImmutableMap.empty(),
     List.empty(),
-    new Map()
+    ImmutableMap.empty()
   );
 }
 
