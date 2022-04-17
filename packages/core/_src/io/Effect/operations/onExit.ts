@@ -9,7 +9,7 @@ export function onExit_<R, E, A, R2, X>(
   cleanup: (exit: Exit<E, A>) => Effect.RIO<R2, X>,
   __tsplusTrace?: string
 ): Effect<R & R2, E, A> {
-  return Effect.acquireReleaseExitUse(
+  return Effect.acquireUseReleaseExit(
     Effect.unit,
     () => self,
     (_, exit) => cleanup(exit)

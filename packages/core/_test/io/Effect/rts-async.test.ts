@@ -47,7 +47,7 @@ describe.concurrent("Effect", () => {
         .bind("fiber", ({ acquire, release }) =>
           Effect.asyncEffect(() =>
             // This will never complete because we never call the callback
-            Effect.acquireReleaseUseDiscard(
+            Effect.acquireUseReleaseDiscard(
               acquire.succeed(undefined),
               Effect.never,
               release.succeed(undefined)

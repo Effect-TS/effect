@@ -1,7 +1,7 @@
 /**
- * @tsplus static ets/Channel/Ops acquireReleaseUse
+ * @tsplus static ets/Channel/Ops acquireUseRelease
  */
-export function acquireReleaseUse<
+export function acquireUseRelease<
   Env,
   InErr,
   InElem,
@@ -15,5 +15,5 @@ export function acquireReleaseUse<
   use: (a: Acquired) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone>,
   release: (a: Acquired) => Effect.RIO<Env, any>
 ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone> {
-  return Channel.acquireReleaseExitUse(acquire, use, (a, _) => release(a));
+  return Channel.acquireUseReleaseExit(acquire, use, (a, _) => release(a));
 }

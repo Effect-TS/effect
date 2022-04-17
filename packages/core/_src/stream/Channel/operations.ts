@@ -1,8 +1,8 @@
 // codegen:start {preset: barrel, include: ./operations/*.ts, prefix: "@effect/core/stream/Channel"}
-export * from "@effect/core/stream/Channel/operations/acquireReleaseExitUse";
-export * from "@effect/core/stream/Channel/operations/acquireReleaseOutExitUse";
-export * from "@effect/core/stream/Channel/operations/acquireReleaseOutUse";
-export * from "@effect/core/stream/Channel/operations/acquireReleaseUse";
+export * from "@effect/core/stream/Channel/operations/acquireUseRelease";
+export * from "@effect/core/stream/Channel/operations/acquireUseReleaseExit";
+export * from "@effect/core/stream/Channel/operations/acquireUseReleaseOut";
+export * from "@effect/core/stream/Channel/operations/acquireUseReleaseOutExit";
 export * from "@effect/core/stream/Channel/operations/as";
 export * from "@effect/core/stream/Channel/operations/asUnit";
 export * from "@effect/core/stream/Channel/operations/buffer";

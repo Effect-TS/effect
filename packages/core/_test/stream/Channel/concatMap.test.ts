@@ -72,7 +72,7 @@ describe.concurrent("Channel", () => {
       const program = Ref.make(Chunk.empty<string>()).flatMap((events) => {
         const event = (label: string) => events.update((chunk) => chunk.append(label));
 
-        const conduit = Channel.acquireReleaseOutUse(event("Acquired"), () => event("Released"))
+        const conduit = Channel.acquireUseReleaseOut(event("Acquired"), () => event("Released"))
           .concatMap(() => Channel.fail("error"))
           .runDrain()
           .exit();

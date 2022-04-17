@@ -5,10 +5,10 @@
  * succeeds. If `use` fails, then after release, the returned effect will fail
  * with the same error.
  *
- * @tsplus static ets/Effect/Ops acquireReleaseExitUse
- * @tsplus fluent ets/Effect acquireReleaseExitUse
+ * @tsplus static ets/Effect/Ops acquireUseReleaseExit
+ * @tsplus fluent ets/Effect acquireUseReleaseExit
  */
-export function acquireReleaseExitUse<R, E, A, R2, E2, A2, R3, X>(
+export function acquireUseReleaseExit<R, E, A, R2, E2, A2, R3, X>(
   acquire: LazyArg<Effect<R, E, A>>,
   use: (a: A) => Effect<R2, E2, A2>,
   release: (a: A, exit: Exit<E2, A2>) => Effect.RIO<R3, X>,

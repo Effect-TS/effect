@@ -67,8 +67,8 @@ describe.concurrent("Effect", () => {
       assert.isFalse(reported && reported.isSuccess());
     });
 
-    it("acquireReleaseUse exit is usage result", async () => {
-      const program = Effect.acquireReleaseUse(
+    it("acquireUseRelease exit is usage result", async () => {
+      const program = Effect.acquireUseRelease(
         Effect.unit,
         () => Effect.succeed(42),
         () => Effect.unit
@@ -80,7 +80,7 @@ describe.concurrent("Effect", () => {
     });
 
     it("error in just acquisition", async () => {
-      const program = Effect.acquireReleaseUse(
+      const program = Effect.acquireUseRelease(
         ExampleErrorFail,
         () => Effect.unit,
         () => Effect.unit
@@ -92,7 +92,7 @@ describe.concurrent("Effect", () => {
     });
 
     it("error in just release", async () => {
-      const program = Effect.acquireReleaseUse(
+      const program = Effect.acquireUseRelease(
         Effect.unit,
         () => Effect.unit,
         () => Effect.die(ExampleError)
@@ -104,7 +104,7 @@ describe.concurrent("Effect", () => {
     });
 
     it("error in just usage", async () => {
-      const program = Effect.acquireReleaseUse(
+      const program = Effect.acquireUseRelease(
         Effect.unit,
         () => Effect.fail(ExampleError),
         () => Effect.unit
@@ -117,7 +117,7 @@ describe.concurrent("Effect", () => {
 
     it("rethrown caught error in acquisition", async () => {
       const program = Effect.absolve(
-        Effect.acquireReleaseUse(
+        Effect.acquireUseRelease(
           ExampleErrorFail,
           () => Effect.unit,
           () => Effect.unit
@@ -130,7 +130,7 @@ describe.concurrent("Effect", () => {
     });
 
     it("rethrown caught error in release", async () => {
-      const program = Effect.acquireReleaseUse(
+      const program = Effect.acquireUseRelease(
         Effect.unit,
         () => Effect.unit,
         () => Effect.die(ExampleError)
@@ -143,7 +143,7 @@ describe.concurrent("Effect", () => {
 
     it("rethrown caught error in usage", async () => {
       const program = Effect.absolve(
-        Effect.acquireReleaseUseDiscard(
+        Effect.acquireUseReleaseDiscard(
           Effect.unit,
           ExampleErrorFail,
           Effect.unit
@@ -156,12 +156,12 @@ describe.concurrent("Effect", () => {
     });
 
     it("test eval of async fail", async () => {
-      const io1 = Effect.acquireReleaseUseDiscard(
+      const io1 = Effect.acquireUseReleaseDiscard(
         Effect.unit,
         asyncExampleError<void>(),
         asyncUnit<never>()
       );
-      const io2 = Effect.acquireReleaseUseDiscard(
+      const io2 = Effect.acquireUseReleaseDiscard(
         asyncUnit<never>(),
         asyncExampleError<void>(),
         asyncUnit<never>()
@@ -195,8 +195,8 @@ describe.concurrent("Effect", () => {
         .bind("ref", () => Ref.make<List<string>>(List.empty()))
         .bindValue("log", ({ ref }) => makeLogger(ref))
         .bind("fiber", ({ log }) =>
-          Effect.acquireReleaseUse(
-            Effect.acquireReleaseUse(
+          Effect.acquireUseRelease(
+            Effect.acquireUseRelease(
               Effect.unit,
               () => Effect.unit,
               () => log("start 1") > Effect.sleep((10).millis) > log("release 1")

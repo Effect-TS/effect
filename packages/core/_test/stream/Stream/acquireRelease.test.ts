@@ -1,12 +1,12 @@
 describe.concurrent("Stream", () => {
-  describe.concurrent("acquireReleaseUse", () => {
+  describe.concurrent("acquireUseRelease", () => {
     it("simple example", async () => {
       const program = Effect.Do()
         .bind("done", () => Ref.make(false))
         .bindValue(
           "stream",
           ({ done }) =>
-            Stream.acquireReleaseUse(Effect.succeed(Chunk.range(0, 2)), () => done.set(true)).flatMap((chunk) =>
+            Stream.acquireUseRelease(Effect.succeed(Chunk.range(0, 2)), () => done.set(true)).flatMap((chunk) =>
               Stream.fromCollection(chunk)
             )
         )
@@ -25,7 +25,7 @@ describe.concurrent("Stream", () => {
         .bindValue(
           "stream",
           ({ done }) =>
-            Stream.acquireReleaseUse(Effect.succeed(Chunk.range(0, 3)), () => done.set(true))
+            Stream.acquireUseRelease(Effect.succeed(Chunk.range(0, 3)), () => done.set(true))
               .flatMap((chunk) => Stream.fromCollection(chunk))
               .take(2)
         )
@@ -43,7 +43,7 @@ describe.concurrent("Stream", () => {
         .bind("acquired", () => Ref.make(false))
         .bindValue("stream", ({ acquired }) =>
           (
-            Stream(1) + Stream.acquireReleaseUse(acquired.set(true), () => Effect.unit)
+            Stream(1) + Stream.acquireUseRelease(acquired.set(true), () => Effect.unit)
           ).take(0))
         .bind("result", ({ stream }) => stream.runDrain())
         .flatMap(({ acquired }) => acquired.get());
@@ -57,7 +57,7 @@ describe.concurrent("Stream", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(false))
         .tap(({ ref }) =>
-          Stream.acquireReleaseUse(Effect.unit, () => ref.set(true))
+          Stream.acquireUseRelease(Effect.unit, () => ref.set(true))
             .flatMap(() => Stream.fromEffect(Effect.dieMessage("boom")))
             .runDrain()
             .exit()
@@ -71,12 +71,12 @@ describe.concurrent("Stream", () => {
 
     it("flatMap associativity doesn't affect acquire release lifetime", async () => {
       const program = Effect.struct({
-        leftAssoc: Stream.acquireReleaseUse(Ref.make(true), (ref) => ref.set(false))
+        leftAssoc: Stream.acquireUseRelease(Ref.make(true), (ref) => ref.set(false))
           .flatMap((ref) => Stream.succeed(ref))
           .flatMap((ref) => Stream.fromEffect(ref.get()))
           .runCollect()
           .map((chunk) => chunk.unsafeHead()),
-        rightAssoc: Stream.acquireReleaseUse(Ref.make(true), (ref) => ref.set(false))
+        rightAssoc: Stream.acquireUseRelease(Ref.make(true), (ref) => ref.set(false))
           .flatMap((ref) => Stream.succeed(ref).flatMap((ref) => Stream.fromEffect(ref.get())))
           .runCollect()
           .map((chunk) => chunk.unsafeHead())
@@ -89,7 +89,7 @@ describe.concurrent("Stream", () => {
     });
 
     it("propagates errors", async () => {
-      const program = Stream.acquireReleaseUse(Effect.unit, () => Effect.dieMessage("die")).runCollect();
+      const program = Stream.acquireUseRelease(Effect.unit, () => Effect.dieMessage("die")).runCollect();
 
       const result = await program.unsafeRunPromiseExit();
 

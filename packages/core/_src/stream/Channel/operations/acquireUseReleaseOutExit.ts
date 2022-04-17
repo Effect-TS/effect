@@ -1,9 +1,9 @@
 import { BracketOut } from "@effect/core/stream/Channel/definition/primitives";
 
 /**
- * @tsplus static ets/Channel/Ops acquireReleaseOutExitUse
+ * @tsplus static ets/Channel/Ops acquireUseReleaseOutExit
  */
-export function acquireReleaseOutExitUse_<R, R2, E, Z>(
+export function acquireUseReleaseOutExit_<R, R2, E, Z>(
   self: LazyArg<Effect<R, E, Z>>,
   release: (z: Z, e: Exit<unknown, unknown>) => Effect.RIO<R2, unknown>
 ): Channel<R & R2, unknown, unknown, unknown, E, Z, void> {
@@ -11,6 +11,6 @@ export function acquireReleaseOutExitUse_<R, R2, E, Z>(
 }
 
 /**
- * @tsplus static ets/Channel/Aspects acquireReleaseOutExitUse
+ * @tsplus static ets/Channel/Aspects acquireUseReleaseOutExit
  */
-export const acquireReleaseOutExitUse = Pipeable(acquireReleaseOutExitUse_);
+export const acquireUseReleaseOutExit = Pipeable(acquireUseReleaseOutExit_);
