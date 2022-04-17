@@ -3,6 +3,7 @@
  * workflow to depend on the `Exit` value specified when the scope is closed.
  *
  * @tsplus static ets/Effect/Ops acquireReleaseExit
+ * @tsplus fluent ets/Effect acquireReleaseExit
  */
 export function acquireReleaseExit<R, E, A, R2, X>(
   acquire: LazyArg<Effect<R, E, A>>,

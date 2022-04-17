@@ -3,6 +3,7 @@
  * by this effect is not needed.
  *
  * @tsplus static ets/Effect/Ops acquireReleaseUseDiscard
+ * @tsplus fluent ets/Effect acquireReleaseUseDiscard
  */
 export function acquireReleaseUseDiscard<R, E, A, R2, E2, A2, R3, X>(
   acquire: LazyArg<Effect<R, E, A>>,

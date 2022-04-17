@@ -21,6 +21,7 @@
  * produced by the `release` effect can be caught and ignored.
  *
  * @tsplus static ets/Effect/Ops acquireReleaseUse
+ * @tsplus fluent ets/Effect acquireReleaseUse
  */
 export function acquireReleaseUse<R, E, A, R2, E2, A2, R3, X>(
   acquire: LazyArg<Effect<R, E, A>>,

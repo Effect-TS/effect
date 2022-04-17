@@ -9,10 +9,10 @@ describe.concurrent("Layer", () => {
         .bindValue("layer1", () => Layer.fromEffectEnvironment(Effect.never))
         .bindValue("layer2", ({ deferred }) =>
           Layer.scopedEnvironment(
-            Effect.acquireRelease(
-              deferred.succeed(undefined).map((bool) => Env().add(BoolTag, bool)),
-              () => Effect.unit
-            )
+            deferred
+              .succeed(undefined)
+              .map((bool) => Env().add(BoolTag, bool))
+              .acquireRelease(() => Effect.unit)
           ))
         .bindValue("env", ({ layer1, layer2 }) => (layer1 + layer2).build())
         .bind("fiber", ({ env }) => Effect.scoped(env).forkDaemon())
