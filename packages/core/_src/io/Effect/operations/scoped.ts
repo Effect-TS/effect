@@ -4,6 +4,7 @@
  * execution, whether by success, failure, or interruption.
  *
  * @tsplus static ets/Effect/Ops scoped
+ * @tsplus fluent ets/Effect scoped
  */
 export function scoped<R, E, A>(
   effect: LazyArg<Effect<R & Has<Scope>, E, A>>,

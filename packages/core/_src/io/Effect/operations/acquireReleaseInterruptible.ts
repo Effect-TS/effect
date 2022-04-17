@@ -7,6 +7,7 @@
  * memory state).
  *
  * @tsplus static ets/Effect/Ops acquireReleaseInterruptible
+ * @tsplus fluent ets/Effect acquireReleaseInterruptible
  */
 export function acquireReleaseInterruptible<R, E, A, R2, X>(
   acquire: LazyArg<Effect<R, E, A>>,

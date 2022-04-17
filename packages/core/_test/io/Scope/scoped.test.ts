@@ -6,9 +6,9 @@ describe.concurrent("Scope", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(Chunk.empty<Action>()))
         .tap(({ ref }) =>
-          Effect.scoped(
-            resource(1, ref).flatMap((id) => ref.update((chunk) => chunk.append(Action.Use(id))))
-          )
+          resource(1, ref)
+            .flatMap((id) => ref.update((chunk) => chunk.append(Action.Use(id))))
+            .scoped()
         )
         .flatMap(({ ref }) => ref.get());
 

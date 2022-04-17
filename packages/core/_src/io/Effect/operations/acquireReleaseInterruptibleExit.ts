@@ -4,6 +4,7 @@
  * is closed.
  *
  * @tsplus static ets/Effect/Ops acquireReleaseInterruptibleExit
+ * @tsplus fluent ets/Effect acquireReleaseInterruptibleExit
  */
 export function acquireReleaseInterruptibleExit<R, E, A, R2, X>(
   acquire: LazyArg<Effect<R, E, A>>,

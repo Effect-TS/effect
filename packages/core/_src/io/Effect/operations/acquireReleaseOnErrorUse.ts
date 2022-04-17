@@ -2,6 +2,7 @@
  * Executes the release effect only if there was an error.
  *
  * @tsplus static ets/Effect/Ops acquireReleaseOnErrorUse
+ * @tsplus fluent ets/Effect acquireReleaseOnErrorUse
  */
 export function acquireReleaseOnErrorWith<R, E, A, R2, E2, A2, R3, X>(
   acquire: LazyArg<Effect<R, E, A>>,

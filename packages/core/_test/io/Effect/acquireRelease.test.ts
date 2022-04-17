@@ -4,8 +4,7 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("release", () => Ref.make(false))
         .bind("result", ({ release }) =>
-          Effect.acquireReleaseUse(
-            Effect.succeed(42),
+          Effect.succeed(42).acquireReleaseUse(
             (n) => Effect.succeed(n + 1),
             () => release.set(true)
           ))
@@ -21,8 +20,7 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("release", () => Ref.make(false))
         .bind("result", ({ release }) =>
-          Effect.acquireReleaseUse(
-            Effect.succeed(42),
+          Effect.succeed(42).acquireReleaseUse(
             (n) => Effect.succeed(n + 1),
             () => release.set(true)
           ).disconnect())
