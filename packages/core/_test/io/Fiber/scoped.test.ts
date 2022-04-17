@@ -7,7 +7,7 @@ describe.concurrent("Fiber", () => {
         .bind("ref", () => Ref.make<boolean>(false))
         .bind("fiber", ({ ref }) =>
           withLatch((release) =>
-            Effect.acquireReleaseUseDiscard(
+            Effect.acquireUseReleaseDiscard(
               release > Effect.unit,
               Effect.never,
               ref.set(true)

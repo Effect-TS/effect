@@ -95,7 +95,7 @@ export function genScoped<Eff extends GenEffect<any, any, any>, AEff>(
     }
 
     return Scope.make.flatMap((scope) =>
-      Effect.acquireReleaseExitUse(
+      Effect.acquireUseReleaseExit(
         Effect.unit,
         () => run(scope, state),
         (_, exit) => scope.close(exit)

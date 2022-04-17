@@ -1,7 +1,7 @@
 /**
- * @tsplus static ets/Channel/Ops acquireReleaseExitUse
+ * @tsplus static ets/Channel/Ops acquireUseReleaseExit
  */
-export function acquireReleaseExitUse<
+export function acquireUseReleaseExit<
   Env,
   InErr,
   InElem,

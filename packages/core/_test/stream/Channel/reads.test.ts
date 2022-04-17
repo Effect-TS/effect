@@ -121,10 +121,10 @@ describe.concurrent("Channel", () => {
         .tap((events) => {
           const event = (label: string) => events.update((chunk) => chunk.append(label));
 
-          const left = Channel.acquireReleaseOutUse(event("Acquire outer"), () => event("Release outer")).concatMap(
+          const left = Channel.acquireUseReleaseOut(event("Acquire outer"), () => event("Release outer")).concatMap(
             () =>
               Channel.writeAll(1, 2, 3).concatMap((i) =>
-                Channel.acquireReleaseOutUse(event(`Acquire ${i}`).as(i), () => event(`Release ${i}`))
+                Channel.acquireUseReleaseOut(event(`Acquire ${i}`).as(i), () => event(`Release ${i}`))
               )
           );
 

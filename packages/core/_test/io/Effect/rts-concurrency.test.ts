@@ -26,7 +26,7 @@ describe.concurrent("Effect", () => {
         .bindValue("task", ({ acquire, release }) =>
           Effect.asyncEffect((cb) =>
             // This will never complete because the callback is never invoked
-            Effect.acquireReleaseUse(
+            Effect.acquireUseRelease(
               acquire.succeed(undefined),
               () => Effect.never,
               () => release.succeed(42).asUnit()
@@ -91,13 +91,13 @@ describe.concurrent("Effect", () => {
         .bind("deferred1", () => Deferred.make<never, void>())
         .bind("deferred2", () => Deferred.make<never, void>())
         .bindValue("loser1", ({ deferred1, latch1 }) =>
-          Effect.acquireReleaseUse(
+          Effect.acquireUseRelease(
             latch1.succeed(undefined),
             () => Effect.never,
             () => deferred1.succeed(undefined)
           ))
         .bindValue("loser2", ({ deferred2, latch2 }) =>
-          Effect.acquireReleaseUse(
+          Effect.acquireUseRelease(
             latch2.succeed(undefined),
             () => Effect.never,
             () => deferred2.succeed(undefined)
@@ -242,7 +242,7 @@ describe.concurrent("Effect", () => {
         .bind("effect", () => Deferred.make<never, number>())
         .bindValue("winner", () => Effect.fromEither(Either.right(undefined)))
         .bindValue("loser", ({ deferred, effect }) =>
-          Effect.acquireReleaseUse(
+          Effect.acquireUseRelease(
             deferred.succeed(undefined),
             () => Effect.never,
             () => effect.succeed(42)
@@ -265,7 +265,7 @@ describe.concurrent("Effect", () => {
           ({ deferred }) => deferred.await() > Effect.fromEither(Either.left(new Error()))
         )
         .bindValue("loser", ({ deferred, effect }) =>
-          Effect.acquireReleaseUse(
+          Effect.acquireUseRelease(
             deferred.succeed(undefined),
             () => Effect.never,
             () => effect.succeed(42)

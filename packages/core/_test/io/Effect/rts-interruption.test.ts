@@ -46,12 +46,12 @@ describe.concurrent("Effect", () => {
       assert.strictEqual(result, 42);
     });
 
-    it("acquireReleaseUse is uninterruptible", async () => {
+    it("acquireUseRelease is uninterruptible", async () => {
       const awaiter = Deferred.unsafeMake<never, void>(FiberId.none);
       const program = Effect.Do()
         .bind("deferred", () => Deferred.make<never, void>())
         .bind("fiber", ({ deferred }) =>
-          Effect.acquireReleaseUse(
+          Effect.acquireUseRelease(
             deferred.succeed(undefined) < awaiter.await(),
             () => Effect.unit,
             () => Effect.unit
@@ -68,12 +68,12 @@ describe.concurrent("Effect", () => {
       assert.strictEqual(result, 42);
     });
 
-    it("acquireReleaseExitUse is uninterruptible", async () => {
+    it("acquireUseReleaseExit is uninterruptible", async () => {
       const awaiter = Deferred.unsafeMake<never, void>(FiberId.none);
       const program = Effect.Do()
         .bind("deferred", () => Deferred.make<never, void>())
         .bind("fiber", ({ deferred }) =>
-          Effect.acquireReleaseUse(
+          Effect.acquireUseRelease(
             deferred.succeed(undefined) > awaiter.await() > Effect.succeed(1),
             () => Effect.unit,
             () => Effect.unit
@@ -90,8 +90,8 @@ describe.concurrent("Effect", () => {
       assert.strictEqual(result, 42);
     });
 
-    it("acquireReleaseUse use is interruptible", async () => {
-      const program = Effect.acquireReleaseUse(
+    it("acquireUseRelease use is interruptible", async () => {
+      const program = Effect.acquireUseRelease(
         Effect.unit,
         () => Effect.never,
         () => Effect.unit
@@ -104,8 +104,8 @@ describe.concurrent("Effect", () => {
       assert.isTrue(result.isInterrupted());
     });
 
-    it("acquireReleaseExitUse use is interruptible", async () => {
-      const program = Effect.acquireReleaseExitUse(
+    it("acquireUseReleaseExit use is interruptible", async () => {
+      const program = Effect.acquireUseReleaseExit(
         Effect.unit,
         () => Effect.never,
         () => Effect.unit
@@ -118,12 +118,12 @@ describe.concurrent("Effect", () => {
       assert.strictEqual(result, 0);
     });
 
-    it("acquireReleaseUse release called on interrupt", async () => {
+    it("acquireUseRelease release called on interrupt", async () => {
       const program = Effect.Do()
         .bind("deferred1", () => Deferred.make<never, void>())
         .bind("deferred2", () => Deferred.make<never, void>())
         .bind("fiber", ({ deferred1, deferred2 }) =>
-          Effect.acquireReleaseUse(
+          Effect.acquireUseRelease(
             Effect.unit,
             () => deferred1.succeed(undefined) > Effect.never,
             () => deferred2.succeed(undefined) > Effect.unit
@@ -138,12 +138,12 @@ describe.concurrent("Effect", () => {
       assert.strictEqual(result, 0);
     });
 
-    it("acquireReleaseExitUse release called on interrupt", async () => {
+    it("acquireUseReleaseExit release called on interrupt", async () => {
       const program = Effect.Do()
         .bind("done", () => Deferred.make<never, void>())
         .bind("fiber", ({ done }) =>
           withLatch((release) =>
-            Effect.acquireReleaseExitUse(
+            Effect.acquireUseReleaseExit(
               Effect.unit,
               () => release > Effect.never,
               () => done.succeed(undefined)
@@ -157,13 +157,13 @@ describe.concurrent("Effect", () => {
       assert.strictEqual(result, 0);
     }, 180000);
 
-    it("acquireReleaseUse acquire returns immediately on interrupt", async () => {
+    it("acquireUseRelease acquire returns immediately on interrupt", async () => {
       const program = Effect.Do()
         .bind("deferred1", () => Deferred.make<never, void>())
         .bind("deferred2", () => Deferred.make<never, number>())
         .bind("deferred3", () => Deferred.make<never, void>())
         .bind("fiber", ({ deferred1, deferred2, deferred3 }) =>
-          Effect.acquireReleaseUse(
+          Effect.acquireUseRelease(
             deferred1.succeed(undefined) > deferred2.await(),
             () => Effect.unit,
             () => deferred3.await()
@@ -179,13 +179,13 @@ describe.concurrent("Effect", () => {
       assert.isTrue(result.isInterrupted());
     });
 
-    it("acquireReleaseExitUse disconnect acquire returns immediately on interrupt", async () => {
+    it("acquireUseReleaseExit disconnect acquire returns immediately on interrupt", async () => {
       const program = Effect.Do()
         .bind("deferred1", () => Deferred.make<never, void>())
         .bind("deferred2", () => Deferred.make<never, void>())
         .bind("deferred3", () => Deferred.make<never, void>())
         .bind("fiber", ({ deferred1, deferred2, deferred3 }) =>
-          Effect.acquireReleaseExitUse(
+          Effect.acquireUseReleaseExit(
             deferred1.succeed(undefined) > deferred2.await(),
             () => Effect.unit,
             () => deferred3.await()
@@ -201,8 +201,8 @@ describe.concurrent("Effect", () => {
       assert.isTrue(result.isInterrupted());
     });
 
-    it("acquireReleaseUse disconnect use is interruptible", async () => {
-      const program = Effect.acquireReleaseUse(
+    it("acquireUseRelease disconnect use is interruptible", async () => {
+      const program = Effect.acquireUseRelease(
         Effect.unit,
         () => Effect.never,
         () => Effect.unit
@@ -216,8 +216,8 @@ describe.concurrent("Effect", () => {
       assert.isTrue(result.isInterrupted());
     });
 
-    it("acquireReleaseExitUse disconnect use is interruptible", async () => {
-      const program = Effect.acquireReleaseExitUse(
+    it("acquireUseReleaseExit disconnect use is interruptible", async () => {
+      const program = Effect.acquireUseReleaseExit(
         Effect.unit,
         () => Effect.never,
         () => Effect.unit
@@ -231,12 +231,12 @@ describe.concurrent("Effect", () => {
       assert.strictEqual(result, 0);
     });
 
-    it("acquireReleaseUse disconnect release called on interrupt in separate fiber", async () => {
+    it("acquireUseRelease disconnect release called on interrupt in separate fiber", async () => {
       const program = Effect.Do()
         .bind("deferred1", () => Deferred.make<never, void>())
         .bind("deferred2", () => Deferred.make<never, void>())
         .bind("fiber", ({ deferred1, deferred2 }) =>
-          Effect.acquireReleaseUse(
+          Effect.acquireUseRelease(
             Effect.unit,
             () => deferred1.succeed(undefined) > Effect.never,
             () => deferred2.succeed(undefined) > Effect.unit
@@ -253,12 +253,12 @@ describe.concurrent("Effect", () => {
       assert.isTrue(result);
     });
 
-    it("acquireReleaseExitUse disconnect release called on interrupt in separate fiber", async () => {
+    it("acquireUseReleaseExit disconnect release called on interrupt in separate fiber", async () => {
       const program = Effect.Do()
         .bind("done", () => Deferred.make<never, void>())
         .bind("fiber", ({ done }) =>
           withLatch((release) =>
-            Effect.acquireReleaseExitUse(
+            Effect.acquireUseReleaseExit(
               Effect.unit,
               () => release > Effect.never,
               () => done.succeed(undefined)
@@ -587,7 +587,7 @@ describe.concurrent("Effect", () => {
           withLatchAwait(
             (release2, await2) =>
               withLatch((release1) =>
-                Effect.acquireReleaseUseDiscard(
+                Effect.acquireUseReleaseDiscard(
                   release1,
                   await2 > Effect.sleep((10).millis) > ref.set(true),
                   Effect.unit
@@ -610,7 +610,7 @@ describe.concurrent("Effect", () => {
         .bind("latch2", () => Deferred.make<never, void>())
         .bind("ref", () => Ref.make(false))
         .bind("fiber", ({ latch1, latch2, ref }) =>
-          Effect.acquireReleaseUse(
+          Effect.acquireUseRelease(
             latch1.succeed(undefined),
             () => latch2.await() > Effect.sleep((10).millis) > ref.set(true).asUnit(),
             () => Effect.unit

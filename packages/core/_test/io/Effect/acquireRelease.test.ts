@@ -1,10 +1,10 @@
 describe.concurrent("Effect", () => {
-  describe.concurrent("acquireReleaseUse", () => {
+  describe.concurrent("acquireUseRelease", () => {
     it("happy path", async () => {
       const program = Effect.Do()
         .bind("release", () => Ref.make(false))
         .bind("result", ({ release }) =>
-          Effect.succeed(42).acquireReleaseUse(
+          Effect.succeed(42).acquireUseRelease(
             (n) => Effect.succeed(n + 1),
             () => release.set(true)
           ))
@@ -20,7 +20,7 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("release", () => Ref.make(false))
         .bind("result", ({ release }) =>
-          Effect.succeed(42).acquireReleaseUse(
+          Effect.succeed(42).acquireUseRelease(
             (n) => Effect.succeed(n + 1),
             () => release.set(true)
           ).disconnect())
@@ -33,12 +33,12 @@ describe.concurrent("Effect", () => {
     });
   });
 
-  describe.concurrent("acquireReleaseUseDiscard", () => {
+  describe.concurrent("acquireUseReleaseDiscard", () => {
     it("happy path", async () => {
       const program = Effect.Do()
         .bind("release", () => Ref.make(false))
         .bind("result", ({ release }) =>
-          Effect.acquireReleaseUseDiscard(
+          Effect.acquireUseReleaseDiscard(
             Effect.succeed(42),
             Effect.succeed(0),
             release.set(true)
@@ -55,7 +55,7 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("release", () => Ref.make(false))
         .bind("result", ({ release }) =>
-          Effect.acquireReleaseUseDiscard(
+          Effect.acquireUseReleaseDiscard(
             Effect.succeed(42),
             Effect.succeed(0),
             release.set(true)
@@ -74,7 +74,7 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("release", () => Ref.make(false))
         .bind("result", ({ release }) =>
-          Effect.acquireReleaseExitUse(
+          Effect.acquireUseReleaseExit(
             Effect.succeed(42),
             () => Effect.succeed(0),
             () => release.set(true)
@@ -91,7 +91,7 @@ describe.concurrent("Effect", () => {
       const releaseDied = new RuntimeError("release died");
       const program = Effect.Do()
         .bind("exit", () =>
-          Effect.acquireReleaseExitUse(
+          Effect.acquireUseReleaseExit(
             Effect.succeed(42),
             () => Effect.fail("use failed"),
             () => Effect.die(releaseDied)
@@ -113,7 +113,7 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("release", () => Ref.make(false))
         .bind("result", ({ release }) =>
-          Effect.acquireReleaseExitUse(
+          Effect.acquireUseReleaseExit(
             Effect.succeed(42),
             () => Effect.succeed(0),
             () => release.set(true)
@@ -130,7 +130,7 @@ describe.concurrent("Effect", () => {
       const releaseDied = new RuntimeError("release died");
       const program = Effect.Do()
         .bind("exit", () =>
-          Effect.acquireReleaseExitUse(
+          Effect.acquireUseReleaseExit(
             Effect.succeed(42),
             () => Effect.fail("use failed"),
             () => Effect.die(releaseDied)
@@ -155,7 +155,7 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("release", () => Ref.make(false))
         .bind("exit", ({ release }) =>
-          Effect.acquireReleaseExitUse(
+          Effect.acquireUseReleaseExit(
             Effect.succeed(42),
             () => {
               throw releaseDied;

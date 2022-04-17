@@ -8,7 +8,7 @@ export function provideLayer_<R, E, A, E1, A1>(
   layer: Layer<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E | E1, A1> {
-  return Effect.acquireReleaseExitUse(
+  return Effect.acquireUseReleaseExit(
     Scope.make,
     (scope) => layer.buildWithScope(scope).flatMap((r) => self.provideEnvironment(r)),
     (scope, exit) => scope.close(exit)

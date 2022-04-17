@@ -8,5 +8,5 @@ export function finalizer<R, Z>(
   finalizer: LazyArg<Effect.RIO<R, Z>>,
   __tsplusTrace?: string
 ): Stream<R, never, void> {
-  return Stream.acquireReleaseUse(Effect.unit, finalizer);
+  return Stream.acquireUseRelease(Effect.unit, finalizer);
 }
