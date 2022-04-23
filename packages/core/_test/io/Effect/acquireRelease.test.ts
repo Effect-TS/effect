@@ -1,36 +1,25 @@
 describe.concurrent("Effect", () => {
   describe.concurrent("acquireUseRelease", () => {
-    it("happy path", async () => {
-      const program = Effect.Do()
-        .bind("release", () => Ref.make(false))
-        .bind("result", ({ release }) =>
-          Effect.succeed(42).acquireUseRelease(
-            (n) => Effect.succeed(n + 1),
-            () => release.set(true)
-          ))
-        .bind("released", ({ release }) => release.get());
+    test("happy path", () =>
+      Do((await) => {
+        const release = await (Ref.make(false));
+        const result = await (Effect.succeed(42)
+          .acquireUseRelease((n) => Effect.succeed(n + 1), () => release.set(true)));
+        const released = await (release.get());
+        assert.strictEqual(result, 43);
+        assert.isTrue(released);
+      }));
 
-      const { released, result } = await program.unsafeRunPromise();
-
-      assert.strictEqual(result, 43);
-      assert.isTrue(released);
-    });
-
-    it("happy path + disconnect", async () => {
-      const program = Effect.Do()
-        .bind("release", () => Ref.make(false))
-        .bind("result", ({ release }) =>
-          Effect.succeed(42).acquireUseRelease(
-            (n) => Effect.succeed(n + 1),
-            () => release.set(true)
-          ).disconnect())
-        .bind("released", ({ release }) => release.get());
-
-      const { released, result } = await program.unsafeRunPromise();
-
-      assert.strictEqual(result, 43);
-      assert.isTrue(released);
-    });
+    test("happy path + disconnect", () =>
+      Do((await) => {
+        const release = await (Ref.make(false));
+        const result = await (Effect.succeed(42)
+          .acquireUseRelease((n) => Effect.succeed(n + 1), () => release.set(true))
+          .disconnect());
+        const released = await (release.get());
+        assert.strictEqual(result, 43);
+        assert.isTrue(released);
+      }));
   });
 
   describe.concurrent("acquireUseReleaseDiscard", () => {
