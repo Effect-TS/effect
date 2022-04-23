@@ -1435,13 +1435,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                       )
                     );
 
-                    current = instruction(current.effect());
+                    current = instruction(current.effect);
 
                     break;
                   }
 
                   case "Ensuring": {
-                    this.unsafeAddFinalizer(current.finalizer());
+                    this.unsafeAddFinalizer(current.finalizer);
                     current = instruction(current.effect);
                     break;
                   }

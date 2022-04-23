@@ -7,4 +7,4 @@ const program = Effect.scoped(
   makeSet.flatMap((s) => Effect.succeed(s.add("a"))) > Effect.log("done")
 );
 
-program(LogLevel.locally(LogLevel.Warning)).unsafeRunPromise();
+(program / LogLevel.locally(LogLevel.Warning)).unsafeRunPromise();

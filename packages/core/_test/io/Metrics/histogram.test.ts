@@ -6,8 +6,8 @@ describe.concurrent("Metrics", () => {
       const boundaries = Metric.Histogram.Boundaries.linear(0, 1, 10);
       const histogram = Metric.histogram("h1", boundaries).taggedWithLabels(labels);
 
-      const program = Effect.succeed(1)(histogram) >
-        Effect.succeed(3)(histogram) >
+      const program = Effect.succeed(1) / histogram >
+        Effect.succeed(3) / histogram >
         histogram.value();
 
       const result = await program.unsafeRunPromise();
@@ -42,8 +42,8 @@ describe.concurrent("Metrics", () => {
       // NOTE: observeDurations always uses real clock
       const program = Effect.Do()
         .bind("start", () => Effect.attempt(Date.now()))
-        .tap(() => Clock.sleep((100).millis)(histogram.trackDuration))
-        .tap(() => Clock.sleep((300).millis)(histogram.trackDuration))
+        .tap(() => Clock.sleep((100).millis) / histogram.trackDuration)
+        .tap(() => Clock.sleep((300).millis) / histogram.trackDuration)
         .bind("end", () => Effect.attempt(Date.now()))
         .bindValue("elapsed", ({ end, start }) => end - start)
         .bind("state", () => histogram.value());
@@ -66,8 +66,8 @@ describe.concurrent("Metrics", () => {
         .taggedWithLabels(labels)
         .contramap((s: string) => s.length);
 
-      const program = Effect.succeed("x")(histogram) >
-        Effect.succeed("xyz")(histogram) >
+      const program = Effect.succeed("x") / histogram >
+        Effect.succeed("xyz") / histogram >
         histogram.value();
 
       const result = await program.unsafeRunPromise();
@@ -86,8 +86,8 @@ describe.concurrent("Metrics", () => {
         .contramap((s: string) => s.length);
       const histogram = base.taggedWith((s) => HashSet(MetricLabel("dyn", s)));
 
-      const program = Effect.succeed("x")(histogram) >
-        Effect.succeed("xyz")(histogram) >
+      const program = Effect.succeed("x") / histogram >
+        Effect.succeed("xyz") / histogram >
         Effect.struct({
           r0: base.value(),
           r1: base.tagged("dyn", "x").value(),
