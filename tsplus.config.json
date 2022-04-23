@@ -6,6 +6,6 @@
     "^(.*)/packages/([^/]*)/_examples/(.*)\\.ts$": "@effect/$2/examples/$3"
   },
   "traceMap": {
-      "^(.*)/packages/([^/]*)/(.*)$": "(@effect/$2) $3"
+    "^(.*)/packages/([^/]*)/(.*)$": "(@effect/$2) $3"
   }
 }

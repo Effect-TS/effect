@@ -9,7 +9,7 @@ describe.concurrent("Stream", () => {
             .flatMapParSwitch(1, (i) =>
               i > 3
                 ? Stream.acquireUseRelease(Effect.unit, () => lastExecuted.set(true)).flatMap(() => Stream.empty)
-                : Stream.scoped(semaphore.withPermitScoped()).flatMap(
+                : Stream.scoped(semaphore.withPermitScoped).flatMap(
                   () => Stream.never
                 ))
             .runDrain()
@@ -32,7 +32,7 @@ describe.concurrent("Stream", () => {
                 ? Stream.acquireUseRelease(Effect.unit, () => lastExecuted.update((n) => n + 1)).flatMap(() =>
                   Stream.empty
                 )
-                : Stream.scoped(semaphore.withPermitScoped()).flatMap(
+                : Stream.scoped(semaphore.withPermitScoped).flatMap(
                   () => Stream.never
                 ))
             .runDrain()

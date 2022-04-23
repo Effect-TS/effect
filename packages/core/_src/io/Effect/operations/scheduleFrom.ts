@@ -40,7 +40,7 @@ export function scheduleFrom<S, R1, A, A1>(
 function scheduleFromLoop<R, E, A>(self: Effect<R, E, A>, value: A, __tsplusTrace?: string) {
   return <S, R1, B>(driver: Driver<S, R1, A, B>): Effect<R & R1, E, B> =>
     driver.next(value).foldEffect(
-      () => driver.last().orDie(),
+      () => driver.last.orDie(),
       () => self.flatMap((a) => scheduleFromLoop(self, a)(driver))
     );
 }

@@ -1,7 +1,9 @@
 /**
- * @tsplus operator ets/Effect >=
+ * @tsplus operator ets/Effect /
  * @tsplus fluent ets/Effect apply
- * @tsplus fluent ets/Effect __call
+ * @tsplus fluent ets/Effect meteredWith
  * @tsplus macro pipe
  */
-export const pipeEffect = pipe;
+export function pipeEffect<A, B>(a: A, f: (a: A) => B): B {
+  return f(a);
+}

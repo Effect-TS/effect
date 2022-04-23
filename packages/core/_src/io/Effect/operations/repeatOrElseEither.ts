@@ -54,7 +54,7 @@ function repeatOrElseEitherLoop<R, E, A, R1, B, R2, E2, C>(
   value: A
 ): Effect<R & R1 & R2, E2, Either<C, B>> {
   return driver.next(value).foldEffect(
-    () => driver.last().orDie().map(Either.right),
+    () => driver.last.orDie().map(Either.right),
     (b) =>
       self.foldEffect(
         (e) => orElse(e, Option.some(b)).map(Either.left),

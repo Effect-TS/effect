@@ -46,7 +46,7 @@ function retryOrElseEitherLoop<R, E, A, R1, A1, R2, E2, A2>(
 ): Effect<R & R1 & R2, E | E2, Either<A2, A>> {
   return self.map(Either.right).catchAll((e) =>
     driver.next(e).foldEffect(
-      () => driver.last().orDie().flatMap((out) => orElse(e, out).map(Either.left)),
+      () => driver.last.orDie().flatMap((out) => orElse(e, out).map(Either.left)),
       () => retryOrElseEitherLoop(self, driver, orElse)
     )
   );
