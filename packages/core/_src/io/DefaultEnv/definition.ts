@@ -20,11 +20,7 @@ export interface DefaultServices {}
 /**
  * @tsplus static ets/DefaultEnv/Services/Ops live
  */
-export const liveServices = LazyValue.make(() =>
-  Env()
-    .add(Clock.Tag, new LiveClock())
-    .add(Random.Tag, Random.default.value)
-);
+export const liveServices = LazyValue.make(() => Env(Clock.Tag, new LiveClock()).add(Random.Tag, Random.default.value));
 
 /**
  * @tsplus static ets/DefaultEnv/Ops live

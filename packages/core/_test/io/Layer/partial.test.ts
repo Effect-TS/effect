@@ -38,7 +38,7 @@ describe.concurrent("Layer", () => {
         (env) => {
           const s = env.get(StringTag);
           const ref = env.get(NumberRefTag);
-          return Env().add(FooTag, { ref, string: s, get: ref.get().map((i) => Tuple(i, s)) });
+          return Env(FooTag, { ref, string: s, get: ref.get().map((i) => Tuple(i, s)) });
         }
       );
 
@@ -73,7 +73,7 @@ describe.concurrent("Layer", () => {
         (env) => {
           const s = env.get(StringTag);
           const ref = env.get(NumberRefTag);
-          return Env().add(FooTag, { ref, string: s, get: ref.get().map((i) => Tuple(i, s)) });
+          return Env(FooTag, { ref, string: s, get: ref.get().map((i) => Tuple(i, s)) });
         }
       );
 

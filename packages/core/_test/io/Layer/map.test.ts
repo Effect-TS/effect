@@ -19,7 +19,7 @@ describe.concurrent("Layer", () => {
       const layer1 = Layer.fromValue(ServiceATag)({ name: "name", value: 1 });
       const layer2 = Layer.fromFunction(StringTag, ServiceBTag)((_) => ({ name: _ }));
 
-      const live = layer1.map((env) => Env().add(StringTag, env.get(ServiceATag).name)) >> layer2;
+      const live = layer1.map((env) => Env(StringTag, env.get(ServiceATag).name)) >> layer2;
 
       const program = Effect.service(ServiceBTag).provideLayer(live);
 

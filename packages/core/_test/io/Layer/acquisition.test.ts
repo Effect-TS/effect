@@ -11,7 +11,7 @@ describe.concurrent("Layer", () => {
           Layer.scopedEnvironment(
             deferred
               .succeed(undefined)
-              .map((bool) => Env().add(BoolTag, bool))
+              .map((bool) => Env(BoolTag, bool))
               .acquireRelease(() => Effect.unit)
           ))
         .bindValue("env", ({ layer1, layer2 }) => (layer1 + layer2).build())

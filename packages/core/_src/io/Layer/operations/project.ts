@@ -10,7 +10,7 @@ export function project_<RIn, E, ROut, A, B>(
   tagB: Tag<B>,
   f: (a: A) => B
 ): Layer<RIn, E, Has<B>> {
-  return self.map((environment) => Env().add(tagB, f(environment.get(tagA))));
+  return self.map((environment) => Env(tagB, f(environment.get(tagA))));
 }
 
 /**

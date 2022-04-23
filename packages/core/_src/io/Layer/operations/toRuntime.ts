@@ -10,7 +10,6 @@ export function toRuntime_<RIn, E, ROut>(
 ): Effect<RIn & Has<Scope>, E, Runtime<ROut>> {
   return Effect
     .scopeWith((scope) => self.buildWithScope(scope))
-    .provideSomeEnvironment((env: Env<RIn & Has<Scope>>) => Env().merge(env))
     .map((environment) => new Runtime(environment, runtimeConfig));
 }
 

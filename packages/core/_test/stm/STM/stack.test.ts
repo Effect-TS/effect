@@ -119,7 +119,7 @@ describe.concurrent("STM", () => {
     });
 
     it("long provide chains", async () => {
-      const program = chain(10000, (stm) => stm.provideEnvironment(Env()));
+      const program = chain(10000, (stm) => stm.provideEnvironment(Env.empty));
 
       const result = await program.unsafeRunPromise();
 

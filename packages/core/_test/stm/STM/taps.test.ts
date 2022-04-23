@@ -7,7 +7,7 @@ describe.concurrent("STM", () => {
         .tap((env) =>
           STM.serviceWithSTM(STMEnv.Tag)((_) => _.ref.update((n) => n + 1))
             .commit()
-            .provideEnvironment(Env().add(STMEnv.Tag, env))
+            .provideEnvironment(Env(STMEnv.Tag, env))
         )
         .flatMap((env) => env.ref.get().commit());
 
@@ -20,7 +20,7 @@ describe.concurrent("STM", () => {
       const program = STMEnv.make(0)
         .tap((env) =>
           STM.serviceWithSTM(STMEnv.Tag)((_) => _.ref.update((n) => n + 1))
-            .provideEnvironment(Env().add(STMEnv.Tag, env))
+            .provideEnvironment(Env(STMEnv.Tag, env))
             .commit()
         )
         .flatMap((env) => env.ref.get().commit());
