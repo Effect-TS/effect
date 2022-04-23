@@ -7,28 +7,22 @@ const ExampleErrorDie = Effect.die(() => {
 
 describe.concurrent("Effect", () => {
   describe.concurrent("absorbWith", () => {
-    it("on fail", async () => {
-      const program = ExampleErrorFail.absorbWith(identity);
+    test("on fail", () =>
+      Do(($) => {
+        const result = $(ExampleErrorFail.absorbWith(identity).exit());
+        assert.isTrue(result.untraced() == Exit.fail(ExampleError));
+      }));
 
-      const result = await program.unsafeRunPromiseExit();
+    test("on die", () =>
+      Do(($) => {
+        const result = $(ExampleErrorDie.absorbWith(identity).exit());
+        assert.isTrue(result.untraced() == Exit.fail(ExampleError));
+      }));
 
-      assert.isTrue(result.untraced() == Exit.fail(ExampleError));
-    });
-
-    it("on die", async () => {
-      const program = ExampleErrorDie.absorbWith(identity);
-
-      const result = await program.unsafeRunPromiseExit();
-
-      assert.isTrue(result.untraced() == Exit.fail(ExampleError));
-    });
-
-    it("on success", async () => {
-      const program = Effect.succeed(1).absorbWith(() => ExampleError);
-
-      const result = await program.unsafeRunPromise();
-
-      assert.strictEqual(result, 1);
-    });
+    test("on success", () =>
+      Do(($) => {
+        const result = $(Effect.succeed(1).absorbWith(() => ExampleError));
+        assert.strictEqual(result, 1);
+      }));
   });
 });
