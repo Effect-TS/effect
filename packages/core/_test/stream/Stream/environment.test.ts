@@ -7,7 +7,7 @@ describe("Stream", () => {
       const program = Stream
         .environment<Has<string>>()
         .map((env) => env.get(StringTag))
-        .provideEnvironment(Env().add(StringTag, "test"))
+        .provideEnvironment(Env(StringTag, "test"))
         .runHead();
 
       const result = await program.unsafeRunPromise();
@@ -20,7 +20,7 @@ describe("Stream", () => {
     it("simple example", async () => {
       const StringTag = Tag<string>();
       const program = Stream.environmentWith((env: Env<Has<string>>) => env.get(StringTag))
-        .provideEnvironment(Env().add(StringTag, "test"))
+        .provideEnvironment(Env(StringTag, "test"))
         .runHead();
 
       const result = await program.unsafeRunPromise();
@@ -33,7 +33,7 @@ describe("Stream", () => {
     it("simple example", async () => {
       const program =
         Stream.environmentWithEffect((env: Env<Has<NumberService>>) => Effect.succeed(env.get(NumberService)))
-          .provideEnvironment(Env().add(NumberService, new NumberServiceImpl(10)))
+          .provideEnvironment(Env(NumberService, new NumberServiceImpl(10)))
           .runHead().some;
 
       const result = await program.unsafeRunPromise();
@@ -43,7 +43,7 @@ describe("Stream", () => {
 
     it("environmentWithZIO fails", async () => {
       const program = Stream.environmentWithEffect((_: Env<Has<NumberService>>) => Effect.fail("fail"))
-        .provideEnvironment(Env().add(NumberService, new NumberServiceImpl(10)))
+        .provideEnvironment(Env(NumberService, new NumberServiceImpl(10)))
         .runHead();
 
       const result = await program.unsafeRunPromiseExit();
@@ -56,7 +56,7 @@ describe("Stream", () => {
     it("environmentWithStream", async () => {
       const program =
         Stream.environmentWithStream((env: Env<Has<NumberService>>) => Stream.succeed(env.get(NumberService)))
-          .provideEnvironment(Env().add(NumberService, new NumberServiceImpl(10)))
+          .provideEnvironment(Env(NumberService, new NumberServiceImpl(10)))
           .runHead().some;
 
       const result = await program.unsafeRunPromise();
@@ -66,7 +66,7 @@ describe("Stream", () => {
 
     it("environmentWithStream fails", async () => {
       const program = Stream.environmentWithStream((env: Env<Has<NumberService>>) => Stream.fail("fail"))
-        .provideEnvironment(Env().add(NumberService, new NumberServiceImpl(10)))
+        .provideEnvironment(Env(NumberService, new NumberServiceImpl(10)))
         .runHead();
 
       const result = await program.unsafeRunPromiseExit();

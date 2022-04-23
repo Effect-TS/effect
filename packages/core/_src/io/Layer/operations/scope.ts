@@ -10,5 +10,5 @@ export const scope: Layer<unknown, never, Has<Scope.Closeable>> = Layer.scopedEn
   Effect.acquireReleaseExit(
     Scope.make,
     (scope, exit) => scope.close(exit)
-  ).map((scope) => Env().add(Scope.Tag, scope)) as Effect<Has<Scope>, never, Env<Has<Scope.Closeable>>>
+  ).map((scope) => Env(Scope.Tag, scope)) as Effect<Has<Scope>, never, Env<Has<Scope.Closeable>>>
 );

@@ -30,7 +30,7 @@ export const defaultRuntimeConfig: RuntimeConfig = RuntimeConfig({
   maxOp: 2048
 });
 
-export const defaultRuntime = new Runtime(Env(), defaultRuntimeConfig);
+export const defaultRuntime = new Runtime(Env.empty, defaultRuntimeConfig);
 
 /**
  * @tsplus fluent ets/Effect unsafeRunPromise

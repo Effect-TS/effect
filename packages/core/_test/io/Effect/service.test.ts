@@ -4,7 +4,7 @@ describe.concurrent("Effect", () => {
   describe.concurrent("serviceWith", () => {
     it("effectfully accesses a service in the environment", async () => {
       const program = Effect.serviceWithEffect(NumberService)(({ n }) => Effect.succeed(n + 3)).provideEnvironment(
-        Env().add(NumberService, { n: 0 })
+        Env(NumberService, { n: 0 })
       );
 
       const result = await program.unsafeRunPromise();
@@ -21,7 +21,7 @@ describe.concurrent("Effect", () => {
             n: n + 1
           })))
         .bind("b", () => Effect.service(NumberService))
-        .provideEnvironment(Env().add(NumberService, { n: 0 }));
+        .provideEnvironment(Env(NumberService, { n: 0 }));
 
       const { a, b } = await program.unsafeRunPromise();
 
