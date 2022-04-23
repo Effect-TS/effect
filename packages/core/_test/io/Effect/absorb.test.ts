@@ -9,13 +9,13 @@ describe.concurrent("Effect", () => {
   describe.concurrent("absorbWith", () => {
     test("on fail", () =>
       Do(($) => {
-        const result = $(ExampleErrorFail.absorbWith(identity).exit());
-        assert.isTrue(result.untraced() == Exit.fail(ExampleError));
+        const result = $(ExampleErrorFail.absorbWith(Option.some).exit());
+        assert.isTrue(result.untraced() == Exit.fail(Option.some(ExampleError)));
       }));
 
     test("on die", () =>
       Do(($) => {
-        const result = $(ExampleErrorDie.absorbWith(identity).exit());
+        const result = $(ExampleErrorDie.absorbWith(() => "never").exit());
         assert.isTrue(result.untraced() == Exit.fail(ExampleError));
       }));
 
