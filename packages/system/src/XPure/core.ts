@@ -130,6 +130,14 @@ class Fold<W, W1, W2, S1, S2, S3, R, E1, E2, A, B> extends XPureBase<
   }
 }
 
+class Get<W, S1, S2, R, E, A> extends XPureBase<W, S1, S2, R, E, A> {
+  readonly _xptag = "Get"
+
+  constructor(readonly get: (s: S1) => XPure<W, S1, S2, R, E, A>) {
+    super()
+  }
+}
+
 class Access<W, S1, S2, R, E, A> extends XPureBase<W, S1, S2, R, E, A> {
   readonly _xptag = "Access"
 
@@ -150,6 +158,7 @@ type Concrete<W, S1, S2, R, E, A> =
   | Succeed<A>
   | Fail<E>
   | Log<W>
+  | Get<W, S1, S2, R, E, A>
   | Modify<S1, S2, E, A>
   | FlatMap<W, W, S1, unknown, S2, R, R, E, E, unknown, A>
   | Fold<W, W, W, S1, unknown, S2, R, unknown, E, unknown, A>
@@ -448,6 +457,22 @@ export function provide<R>(r: R) {
 }
 
 /**
+ * Get the state monadically
+ */
+export function getM<W, R, S1, S2, R1, E, A>(
+  f: (_: S1) => XPure<W, S1, S2, R1, E, A>
+): XPure<W, S1, S2, R1 & R, E, A> {
+  return new Get<W, S1, S2, R1 & R, E, A>(f)
+}
+
+/**
+ * Get the state with the function f
+ */
+export function get<A, S>(f: (_: S) => A): XPure<never, S, S, unknown, never, A> {
+  return getM((s: S) => succeed(f(s)))
+}
+
+/**
  * Access the environment monadically
  */
 export function accessM<W, R, S1, S2, R1, E, A>(
@@ -719,6 +744,10 @@ class Runtime {
         }
         case "Access": {
           curXPure = xp.access(environments?.value || {})
+          break
+        }
+        case "Get": {
+          curXPure = xp.get(s0)
           break
         }
         case "Provide": {
