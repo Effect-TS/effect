@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.57.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.57.0...@effect-ts/system@0.57.1) (2022-04-26)
+
+
+### Features
+
+* **system:** Add XPure Get. ([#1199](https://github.com/Effect-TS/core/issues/1199)) ([59ec9de](https://github.com/Effect-TS/core/commit/59ec9debf693fbbf3c3c72ff80bbf4f2c3e225bd))
+
+
+
+
+
 # [0.57.0](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.56.4...@effect-ts/system@0.57.0) (2022-04-14)
 
 **Note:** Version bump only for package @effect-ts/system
