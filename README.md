@@ -4,7 +4,7 @@ Effect-TS is a zero dependenibraries to write highly productive, purely function
 
 The main driver of inspiration and the source of most of the ideas politely borrowed by this library is the core [ZIO](https://github.com/zio/zio) and its ecosystem of libraries, in particular [ZIO-Prelude](https://github.com/zio/zio-prelude) from which we take the naming and design of a highly innovative typeclass system.
 
-Within the TypeScript ecosystem, this library takes inspiration from [fp-ts](https://github.com/gcanti/fp-ts), [io-ts](https://github.com/gcanti/fp-ts), [morphic-ts](https://github.com/sledorze/morphic-ts), [waveguide](https://github.com/rzeigler/waveguide), [qio](https://github.com/tusharmath/qio) and please forgive us if we are forgetting some.
+Within the TypeScript ecosystem, this library takes inspiration from [fp-ts](https://github.com/gcanti/fp-ts), [io-ts](https://github.com/gcanti/io-ts), [morphic-ts](https://github.com/sledorze/morphic-ts), [waveguide](https://github.com/rzeigler/waveguide), [qio](https://github.com/tusharmath/qio) and please forgive us if we are forgetting some.
 
 Before anything we would like to say THANK YOU to all the contributors and authors of all the libraries we took something from, this work would have not been possible without you!
 
