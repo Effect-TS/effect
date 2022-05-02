@@ -1,5 +1,5 @@
 {
-  "name": "@effect/printer",
+  "name": "@effect/printer-ansi",
   "version": "0.0.1",
   "type": "module",
   "license": "MIT",
@@ -42,7 +42,8 @@
   },
   "peerDependencies": {
     "@effect/core": "^0.0.1",
-    "@tsplus/stdlib": "^0.0.50"
+    "@effect/printer": "workspace:^",
+    "@tsplus/stdlib": "^0.0.63"
   },
   "peerDependenciesMeta": {
     "@effect/core": {
