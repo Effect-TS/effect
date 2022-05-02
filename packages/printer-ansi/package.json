@@ -49,6 +49,9 @@
     "@effect/core": {
       "optional": true
     },
+    "@effect/printer": {
+      "optional": true
+    },
     "@tsplus/stdlib": {
       "optional": true
     }
