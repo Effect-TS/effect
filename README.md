@@ -1,6 +1,6 @@
-## Welcome to Effect-TS [![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-ready--to--code-908a85?logo=gitpod)](https://gitpod.io/#https://github.com/Effect-TS/core)
+## Welcome to Effect [![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-ready--to--code-908a85?logo=gitpod)](https://gitpod.io/#https://github.com/Effect-TS/core)
 
-Effect-TS is a zero dependenibraries to write highly productive, purely functional TypeScript at scale.
+Effect is an ecosystem of libraries to write highly productive, purely functional TypeScript at scale.
 
 The main driver of inspiration and the source of most of the ideas politely borrowed by this library is the core [ZIO](https://github.com/zio/zio) and its ecosystem of libraries, in particular [ZIO-Prelude](https://github.com/zio/zio-prelude) from which we take the naming and design of a highly innovative typeclass system.
 
@@ -54,16 +54,6 @@ For a recommended sample config, see https://github.com/Effect-TS/core/blob/mast
 
 Join us using discord at: [https://discord.gg/hdt7t7jpvn](https://discord.gg/hdt7t7jpvn)
 
-## Articles
-
-If you like to know more check out our, incomplete, series of articles:
-
-- [Encoding HKTs in TS4.1](https://dev.to/matechs/encoding-hkts-in-ts4-1-1fn2)
-- [Effect-TS Core: ZIO-Prelude Inspired Typeclasses & Module Structure](https://dev.to/matechs/effect-ts-core-zio-prelude-inspired-typeclasses-module-structure-50g6)
-- [The Effect Data Types: Effect](https://dev.to/matechs/the-effect-data-types-effect-1e3f)
-- [The Effect Data Types: Managed & Layer](https://dev.to/matechs/the-effect-data-types-managed-layer-4722)
-- [Abusing TypeScript Generators](https://dev.to/matechs/abusing-typescript-generators-4m5h)
-
 ## Documentation
 
 This is not an excuse, we will write docs when the active development slows down but:
@@ -71,10 +61,6 @@ This is not an excuse, we will write docs when the active development slows down
 Functional libraries tend to have almost no documentation and the reason is that the best documentation for a function is its own definition assuming the name is meaningful and the types are clear.
 
 For the reason above, when we will begin documenting it, it will be along the lines of a guide in order to introduce concepts used in the library rather than just an "online database of function definitions"
-
-## Examples
-
-- AWS Lambda Setup: [https://github.com/Matechs-Garage/effect-ts-lambda](https://github.com/Matechs-Garage/effect-ts-lambda)
 
 ## Maintainers
 
