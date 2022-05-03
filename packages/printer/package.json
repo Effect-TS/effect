@@ -19,13 +19,6 @@
     "autofix": "yarn lint --fix",
     "tc": "yarn org:tsc --noEmit"
   },
-  "typesVersions": {
-    "*": {
-      "*": [
-        "./build/dts/*"
-      ]
-    }
-  },
   "exports": {
     ".": {
       "import": "./build/esm/index.js"
@@ -51,9 +44,6 @@
     "@tsplus/stdlib": {
       "optional": true
     }
-  },
-  "tsplus": {
-    "typeDir": "./build/dts"
   },
   "config": {
     "side": [],
