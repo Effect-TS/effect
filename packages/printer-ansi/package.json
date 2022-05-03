@@ -42,8 +42,11 @@
   },
   "peerDependencies": {
     "@effect/core": "^0.0.1",
-    "@effect/printer": "workspace:^",
+    "@effect/printer": "^0.0.1",
     "@tsplus/stdlib": "^0.0.63"
+  },
+  "devDependencies": {
+    "@effect/printer": "^0.0.1"
   },
   "peerDependenciesMeta": {
     "@effect/core": {
