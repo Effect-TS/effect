@@ -221,6 +221,7 @@ describe.concurrent("Stream", () => {
                 ref.update((list) => list.prepend(i)) >
                   Effect.when(i === 999, latch.succeed(undefined))
             )
+            .rechunk(1000)
             .bufferUnbounded())
         .bind("chunk", ({ stream }) => stream.take(2).runCollect())
         .tap(({ latch }) => latch.await())
