@@ -77,6 +77,26 @@ describe.concurrent("Stream", () => {
         )
       );
     });
+
+    it("eagerness on values", async () => {
+      const builder = Chunk.builder<number>();
+      const program = Stream.fromChunk(Chunk.range(0, 3))
+        .collectEffect((n) => {
+          builder.append(n);
+          return Option.some(Effect.succeed(n));
+        })
+        .map((n) => {
+          builder.append(n);
+          return n;
+        })
+        .runDrain();
+
+      await program.unsafeRunPromise();
+
+      assert.isTrue(
+        builder.build() == Chunk(0, 0, 1, 1, 2, 2, 3, 3)
+      );
+    });
   });
 
   describe.concurrent("collectSome", () => {
@@ -181,6 +201,26 @@ describe.concurrent("Stream", () => {
           Either.right(2),
           Either.left("boom")
         )
+      );
+    });
+
+    it("eagerness on values", async () => {
+      const builder = Chunk.builder<number>();
+      const program = Stream.fromChunk(Chunk.range(0, 3))
+        .collectWhileEffect((n) => {
+          builder.append(n);
+          return Option.some(Effect.succeed(n));
+        })
+        .map((n) => {
+          builder.append(n);
+          return n;
+        })
+        .runDrain();
+
+      await program.unsafeRunPromise();
+
+      assert.isTrue(
+        builder.build() == Chunk(0, 0, 1, 1, 2, 2, 3, 3)
       );
     });
   });

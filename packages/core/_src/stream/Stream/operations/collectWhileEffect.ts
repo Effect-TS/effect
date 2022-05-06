@@ -1,4 +1,4 @@
-import { loopOnPartialChunks } from "@effect/core/stream/Stream/operations/_internal/loopOnPartialChunks";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
 
 /**
  * Effectfully transforms all elements of the stream for as long as the
@@ -11,7 +11,10 @@ export function collectWhileEffect_<R, E, A, R2, E2, A2>(
   pf: (a: A) => Option<Effect<R2, E2, A2>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A2> {
-  return loopOnPartialChunks(self, loop(pf));
+  concreteStream(self);
+  return new StreamInternal(
+    self.channel >> loop(Chunk.empty<A>()[Symbol.iterator](), pf)
+  );
 }
 
 /**
@@ -22,23 +25,28 @@ export function collectWhileEffect_<R, E, A, R2, E2, A2>(
  */
 export const collectWhileEffect = Pipeable(collectWhileEffect_);
 
-function loop<R, E, A, A2>(
-  pf: (a: A) => Option<Effect<R, E, A2>>,
-  __tsplusTrace?: string
-) {
-  return (chunk: Chunk<A>, emit: (a: A2) => Effect.UIO<void>): Effect<R, E, boolean> =>
-    chunk.isEmpty()
-      ? Effect.succeed(true)
-      : pfSome(chunk.unsafeHead(), pf, emit).flatMap((cont) =>
-        cont ? loop(pf)(chunk.unsafeTail(), emit) : Effect.succeed(false)
-      );
-}
-
-function pfSome<R, E, A, A2>(
-  a: A,
-  pf: (a: A) => Option<Effect<R, E, A2>>,
-  emit: (a: A2) => Effect.UIO<void>,
-  __tsplusTrace?: string
-) {
-  return pf(a).fold(Effect.succeed(false), (effect) => effect.flatMap(emit).as(true));
+function loop<R, E, A, R1, E1, A1>(
+  chunkIterator: Iterator<A>,
+  pf: (a: A) => Option<Effect<R1, E1, A1>>
+): Channel<R & R1, E, Chunk<A>, unknown, E | E1, Chunk<A1>, unknown> {
+  const next = chunkIterator.next();
+  if (next.done) {
+    return Channel.readWithCause(
+      elem => loop(elem[Symbol.iterator](), pf),
+      err => Channel.failCause(err),
+      done => Channel.succeed(done)
+    );
+  } else {
+    return Channel.unwrap(
+      pf(next.value).fold(
+        () => Effect.succeed(Channel.unit),
+        effect =>
+          effect.map(
+            a1 =>
+              Channel.write(Chunk.single(a1)) >
+                loop<R, E, A, R1, E1, A1>(chunkIterator, pf)
+          )
+      )
+    );
+  }
 }

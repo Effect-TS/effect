@@ -108,7 +108,6 @@ describe.concurrent("Stream", () => {
       assert.isTrue(
         result == Chunk(
           Either.right(1),
-          Either.right(2),
           Either.left("boom")
         )
       );

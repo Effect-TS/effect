@@ -46,5 +46,25 @@ describe("Stream", () => {
         )
       );
     });
+
+    it("eagerness on values", async () => {
+      const builder = Chunk.builder<number>();
+      const program = Stream.fromChunk(Chunk.range(0, 3))
+        .filterEffect((n) => {
+          builder.append(n);
+          return Effect.succeed(true);
+        })
+        .map((n) => {
+          builder.append(n);
+          return n;
+        })
+        .runDrain();
+
+      await program.unsafeRunPromise();
+
+      assert.isTrue(
+        builder.build() == Chunk(0, 0, 1, 1, 2, 2, 3, 3)
+      );
+    });
   });
 });

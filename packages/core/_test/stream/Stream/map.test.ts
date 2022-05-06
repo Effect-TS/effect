@@ -5,7 +5,7 @@ describe.concurrent("Stream", () => {
       const stream = Stream(1, 2, 3, 4, 5);
       const program = Effect.struct({
         actual: stream.map(f).runCollect(),
-        expected: stream.runCollect().map((chunk) => chunk.map(f))
+        expected: stream.runCollect().map(chunk => chunk.map(f))
       });
 
       const { actual, expected } = await program.unsafeRunPromise();
@@ -20,8 +20,8 @@ describe.concurrent("Stream", () => {
       const chunk = Chunk(1, 2, 3, 4, 5);
       const stream = Stream.fromCollection(chunk);
       const program = Effect.struct({
-        actual: stream.mapEffect((n) => Effect.succeed(f(n))).runCollect(),
-        expected: Effect.forEach(chunk, (n) => Effect.succeed(f(n)))
+        actual: stream.mapEffect(n => Effect.succeed(f(n))).runCollect(),
+        expected: Effect.forEach(chunk, n => Effect.succeed(f(n)))
       });
 
       const { actual, expected } = await program.unsafeRunPromise();
@@ -31,19 +31,33 @@ describe.concurrent("Stream", () => {
 
     it("laziness on chunks", async () => {
       const program = Stream(1, 2, 3)
-        .mapEffect((n) => (n === 3 ? Effect.fail("boom") : Effect.succeed(n)))
+        .mapEffect(n => (n === 3 ? Effect.fail("boom") : Effect.succeed(n)))
         .either()
         .runCollect();
 
       const result = await program.unsafeRunPromise();
 
       assert.isTrue(
-        result == Chunk(
-          Either.right(1),
-          Either.right(2),
-          Either.left("boom")
-        )
+        result == Chunk(Either.right(1), Either.right(2), Either.left("boom"))
       );
+    });
+
+    it("eagerness on values", async () => {
+      const builder = Chunk.builder<number>();
+      const program = Stream.fromChunk(Chunk.range(0, 3))
+        .mapEffect(n => {
+          builder.append(n);
+          return Effect.succeed(n);
+        })
+        .map(n => {
+          builder.append(n);
+          return n;
+        })
+        .runDrain();
+
+      await program.unsafeRunPromise();
+
+      assert.isTrue(builder.build() == Chunk(0, 0, 1, 1, 2, 2, 3, 3));
     });
   });
 
@@ -90,11 +104,7 @@ describe.concurrent("Stream", () => {
       const result = await program.unsafeRunPromise();
 
       assert.isTrue(
-        result == Chunk(
-          Either.right(1),
-          Either.right(2),
-          Either.left("boom")
-        )
+        result == Chunk(Either.right(1), Either.right(2), Either.left("boom"))
       );
     });
   });
@@ -104,8 +114,8 @@ describe.concurrent("Stream", () => {
       const f = (n: number) => Chunk(n);
       const stream = Stream(1, 2, 3, 4, 5);
       const program = Effect.struct({
-        actual: stream.mapConcatEffect((n) => Effect.succeed(f(n))).runCollect(),
-        expected: stream.runCollect().map((chunk) => chunk.flatMap(f))
+        actual: stream.mapConcatEffect(n => Effect.succeed(f(n))).runCollect(),
+        expected: stream.runCollect().map(chunk => chunk.flatMap(f))
       });
 
       const { actual, expected } = await program.unsafeRunPromise();
@@ -128,7 +138,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("mapError", () => {
     it("simple example", async () => {
       const program = Stream.fail("123")
-        .mapError((s) => Number.parseInt(s))
+        .mapError(s => Number.parseInt(s))
         .runCollect()
         .either();
 
@@ -141,7 +151,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("mapErrorCause", () => {
     it("simple example", async () => {
       const program = Stream.fail("123")
-        .mapErrorCause((cause) => cause.map((s) => Number.parseInt(s)))
+        .mapErrorCause(cause => cause.map(s => Number.parseInt(s)))
         .runCollect()
         .either();
 
@@ -171,14 +181,17 @@ describe.concurrent("Stream", () => {
         .bind("queue", () => Queue.unbounded<number>())
         .tap(({ queue }) =>
           Stream.range(0, 9)
-            .mapEffectPar(1, (n) => queue.offer(n))
+            .mapEffectPar(1, n => queue.offer(n))
             .runDrain()
         )
         .flatMap(({ queue }) => queue.takeAll);
 
       const result = await program.unsafeRunPromise();
 
-      assert.deepEqual(result.asImmutableArray().array, (result.asImmutableArray().array as Array<number>).sort());
+      assert.deepEqual(
+        result.asImmutableArray().array,
+        (result.asImmutableArray().array as Array<number>).sort()
+      );
     });
 
     it("interruption propagation", async () => {
@@ -202,8 +215,12 @@ describe.concurrent("Stream", () => {
     it("guarantee ordering", async () => {
       const data = Chunk(1, 2, 3, 4, 5);
       const program = Effect.struct({
-        mapEffect: Stream.fromCollection(data).mapEffect(Effect.succeedNow).runCollect(),
-        mapEffectPar: Stream.fromCollection(data).mapEffectPar(8, Effect.succeedNow).runCollect()
+        mapEffect: Stream.fromCollection(data)
+          .mapEffect(Effect.succeedNow)
+          .runCollect(),
+        mapEffectPar: Stream.fromCollection(data)
+          .mapEffectPar(8, Effect.succeedNow)
+          .runCollect()
       });
 
       const { mapEffect, mapEffectPar } = await program.unsafeRunPromise();
@@ -218,7 +235,7 @@ describe.concurrent("Stream", () => {
         .mapEffectPar(8, () => Effect.succeed(1).repeatN(200))
         .runDrain()
         .exit()
-        .map((exit) => exit.isInterrupted());
+        .map(exit => exit.isInterrupted());
 
       const result = await program.unsafeRunPromise();
       await deferred.succeed(undefined).unsafeRunPromise();
@@ -233,11 +250,11 @@ describe.concurrent("Stream", () => {
         .bind("latch2", () => Deferred.make<never, void>())
         .bind("result", ({ interrupted, latch1, latch2 }) =>
           Stream(1, 2, 3)
-            .mapEffectPar(3, (n) =>
+            .mapEffectPar(3, n =>
               n === 1
-                ? (latch1.succeed(undefined) > Effect.never).onInterrupt(() => interrupted.update((n) => n + 1))
+                ? (latch1.succeed(undefined) > Effect.never).onInterrupt(() => interrupted.update(n => n + 1))
                 : n === 2
-                ? (latch2.succeed(undefined) > Effect.never).onInterrupt(() => interrupted.update((n) => n + 1))
+                ? (latch2.succeed(undefined) > Effect.never).onInterrupt(() => interrupted.update(n => n + 1))
                 : latch1.await() > latch2.await() > Effect.fail("boom"))
             .runDrain()
             .exit())
@@ -251,7 +268,7 @@ describe.concurrent("Stream", () => {
 
     it("propagates correct error with subsequent mapEffectPar call (ZIO issue #4514)", async () => {
       const program = Stream.fromCollection(Chunk.range(1, 50))
-        .mapEffectPar(20, (i) => (i < 10 ? Effect.succeed(i) : Effect.fail("boom")))
+        .mapEffectPar(20, i => i < 10 ? Effect.succeed(i) : Effect.fail("boom"))
         .mapEffectPar(20, Effect.succeedNow)
         .runCollect()
         .either();
@@ -262,11 +279,13 @@ describe.concurrent("Stream", () => {
     });
 
     it("propagates error of original stream", async () => {
-      const program = (Stream(1, 2, 3, 4, 5, 6, 7, 8, 9, 10) + Stream.fail("boom"))
+      const program = (
+        Stream(1, 2, 3, 4, 5, 6, 7, 8, 9, 10) + Stream.fail("boom")
+      )
         .mapEffectPar(2, () => Effect.sleep((100).millis))
         .runDrain()
         .fork()
-        .flatMap((fiber) => fiber.await());
+        .flatMap(fiber => fiber.await());
 
       const result = await program.unsafeRunPromise();
 
