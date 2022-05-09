@@ -146,9 +146,9 @@ describe.concurrent("Stream", () => {
           "push",
           ({ effects }) => (label: string) => effects.update((list) => list.prepend(label))
         )
-        .bindValue("inner", ({ push }) => Stream.acquireUseRelease(push("InnerAcquire"), () => push("InnerRelease")))
+        .bindValue("inner", ({ push }) => Stream.acquireRelease(push("InnerAcquire"), () => push("InnerRelease")))
         .tap(({ inner, push }) =>
-          Stream.acquireUseRelease(push("OuterAcquire").as(inner), () => push("OuterRelease"))
+          Stream.acquireRelease(push("OuterAcquire").as(inner), () => push("OuterRelease"))
             .flatMapPar(2, identity)
             .runDrain()
         )

@@ -1,7 +1,7 @@
 // codegen:start {preset: barrel, include: ./operations/*.ts, prefix: "@effect/core/stream/Stream"}
 export * from "@effect/core/stream/Stream/operations/absolve";
-export * from "@effect/core/stream/Stream/operations/acquireUseRelease";
-export * from "@effect/core/stream/Stream/operations/acquireUseReleaseExit";
+export * from "@effect/core/stream/Stream/operations/acquireRelease";
+export * from "@effect/core/stream/Stream/operations/acquireReleaseExit";
 export * from "@effect/core/stream/Stream/operations/aggregate";
 export * from "@effect/core/stream/Stream/operations/aggregateWithin";
 export * from "@effect/core/stream/Stream/operations/aggregateWithinEither";

@@ -2,9 +2,10 @@
  * Creates a stream from a single value that will get cleaned up after the
  * stream is consumed.
  *
- * @tsplus static ets/Stream/Ops acquireUseRelease
+ * @tsplus static ets/Stream/Ops acquireRelease
+ * @tsplus fluent ets/Stream acquireRelease
  */
-export function acquireUseRelease<R, E, A, R2, Z>(
+export function acquireRelease<R, E, A, R2, Z>(
   acquire: LazyArg<Effect<R, E, A>>,
   release: (a: A) => Effect.RIO<R2, Z>,
   __tsplusTrace?: string

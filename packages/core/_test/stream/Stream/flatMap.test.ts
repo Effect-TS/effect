@@ -65,9 +65,9 @@ describe.concurrent("Stream", () => {
         .bind("latch", () => Deferred.make<never, void>())
         .bind("fiber", ({ latch, push }) =>
           Stream(
-            Stream.acquireUseRelease(push(1), () => push(1)),
+            Stream.acquireRelease(push(1), () => push(1)),
             Stream.fromEffect(push(2)),
-            Stream.acquireUseRelease(push(3), () => push(3)) >
+            Stream.acquireRelease(push(3), () => push(3)) >
               Stream.fromEffect(latch.succeed(undefined) > Effect.never)
           )
             .flatMap(identity)
@@ -92,12 +92,12 @@ describe.concurrent("Stream", () => {
         .bindValue(
           "stream",
           ({ push }) =>
-            Stream.acquireUseRelease(push("open1"), () => push("close1")).flatMap(() =>
+            Stream.acquireRelease(push("open1"), () => push("close1")).flatMap(() =>
               Stream.fromChunks(Chunk(undefined), Chunk(undefined))
                 .tap(() => push("use2"))
                 .ensuring(push("close2"))
                 .flatMap(() =>
-                  Stream.acquireUseRelease(push("open3"), () => push("close3")).flatMap(
+                  Stream.acquireRelease(push("open3"), () => push("close3")).flatMap(
                     () =>
                       Stream.fromChunks(Chunk(undefined), Chunk(undefined))
                         .tap(() => push("use4"))
@@ -142,7 +142,7 @@ describe.concurrent("Stream", () => {
         .bindValue("stream", ({ push }) =>
           Stream.fromChunks(Chunk(1), Chunk(2))
             .tap(() => push("use2"))
-            .flatMap(() => Stream.acquireUseRelease(push("open3"), () => push("close3"))))
+            .flatMap(() => Stream.acquireRelease(push("open3"), () => push("close3"))))
         .tap(({ stream }) => stream.runDrain())
         .flatMap(({ effects }) => effects.get());
 
@@ -164,7 +164,7 @@ describe.concurrent("Stream", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(constFalse))
         .bindValue("inner", ({ ref }) =>
-          Stream.acquireUseReleaseExit(Effect.unit, (_, exit) =>
+          Stream.acquireReleaseExit(Effect.unit, (_, exit) =>
             exit.fold(
               () => ref.set(true),
               () => Effect.unit

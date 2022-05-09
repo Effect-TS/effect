@@ -8,7 +8,7 @@ describe.concurrent("Stream", () => {
           Stream(1, 2, 3, 4)
             .flatMapParSwitch(1, (i) =>
               i > 3
-                ? Stream.acquireUseRelease(Effect.unit, () => lastExecuted.set(true)).flatMap(() => Stream.empty)
+                ? Stream.acquireRelease(Effect.unit, () => lastExecuted.set(true)).flatMap(() => Stream.empty)
                 : Stream.scoped(semaphore.withPermitScoped).flatMap(
                   () => Stream.never
                 ))
@@ -29,7 +29,7 @@ describe.concurrent("Stream", () => {
           Stream.range(1, 13)
             .flatMapParSwitch(4, (i) =>
               i > 8
-                ? Stream.acquireUseRelease(Effect.unit, () => lastExecuted.update((n) => n + 1)).flatMap(() =>
+                ? Stream.acquireRelease(Effect.unit, () => lastExecuted.update((n) => n + 1)).flatMap(() =>
                   Stream.empty
                 )
                 : Stream.scoped(semaphore.withPermitScoped).flatMap(
@@ -175,9 +175,9 @@ describe.concurrent("Stream", () => {
           "push",
           ({ effects }) => (label: string) => effects.update((list) => list.prepend(label))
         )
-        .bindValue("inner", ({ push }) => Stream.acquireUseRelease(push("InnerAcquire"), () => push("InnerRelease")))
+        .bindValue("inner", ({ push }) => Stream.acquireRelease(push("InnerAcquire"), () => push("InnerRelease")))
         .tap(({ inner, push }) =>
-          Stream.acquireUseRelease(push("OuterAcquire").as(inner), () => push("OuterRelease"))
+          Stream.acquireRelease(push("OuterAcquire").as(inner), () => push("OuterRelease"))
             .flatMapParSwitch(2, identity)
             .runDrain()
         )

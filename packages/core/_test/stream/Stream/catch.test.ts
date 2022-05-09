@@ -80,7 +80,7 @@ describe.concurrent("Stream", () => {
     it("propagates the right exit value to the failing stream (ZIO issue #3609)", async () => {
       const program = Ref.make<Exit<unknown, unknown>>(Exit.unit)
         .tap((ref) =>
-          Stream.acquireUseReleaseExit(Effect.unit, (_, exit) => ref.set(exit))
+          Stream.acquireReleaseExit(Effect.unit, (_, exit) => ref.set(exit))
             .flatMap(() => Stream.fail("boom"))
             .either()
             .runDrain()

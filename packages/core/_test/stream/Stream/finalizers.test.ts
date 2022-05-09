@@ -5,7 +5,7 @@ describe.concurrent("Stream", () => {
       const program = Effect.Do()
         .bind("log", () => Ref.make<List<string>>(List.empty()))
         .tap(({ log }) =>
-          Stream.acquireUseRelease(log.update(event("acquire")), () => log.update(event("release")))
+          Stream.acquireRelease(log.update(event("acquire")), () => log.update(event("release")))
             .flatMap(() => Stream.fromEffect(log.update(event("use"))))
             .ensuring(log.update(event("ensuring")))
             .runDrain()
@@ -34,7 +34,7 @@ describe.concurrent("Stream", () => {
           ({ log }) => (label: string) => log.update((list) => list.prepend(label))
         )
         .tap(({ entry }) =>
-          Stream.acquireUseRelease(entry("Acquire"), () => entry("Release"))
+          Stream.acquireRelease(entry("Acquire"), () => entry("Release"))
             .flatMap(() => Stream.finalizer(entry("Use")))
             .ensuring(entry("Ensuring"))
             .runDrain()
