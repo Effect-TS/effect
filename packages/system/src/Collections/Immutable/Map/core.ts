@@ -3,6 +3,8 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import type { Equal } from "../../../Equal/index.js"
+import { pipe } from "../../../Function/index.js"
 import * as Op from "../../../Option/index.js"
 import { fromNullable } from "../../../Option/index.js"
 import type { MutableMap } from "../../../Support/Mutable/index.js"
@@ -234,6 +236,24 @@ export function remove<K>(k: K) {
   return <V>(self: ReadonlyMap<K, V>) => remove_(self, k)
 }
 
+export function removeEq_<K, V>(
+  eq: Equal<K>,
+  self: ReadonlyMap<K, V>,
+  k: K
+): ReadonlyMap<K, V> {
+  return pipe(
+    lookupWithKeyEq_(eq, self, k),
+    Op.fold(
+      () => self,
+      (match) => {
+        const r = new Map(self)
+        r.delete(match.get(0))
+        return r
+      }
+    )
+  )
+}
+
 export function removeMany_<K, V>(
   self: ReadonlyMap<K, V>,
   ks: Iterable<K>
@@ -259,6 +279,42 @@ export function lookup<K>(k: K) {
   return <V>(m: ReadonlyMap<K, V>) => lookup_(m, k)
 }
 
+export function lookupWithKeyEq_<K, V>(
+  eq: Equal<K>,
+  map: Map<K, V>,
+  key: K
+): Op.Option<Tp.Tuple<[K, V]>> {
+  const entries = map.entries()
+
+  let e: Next<readonly [K, V]>
+
+  while (!(e = entries.next()).done) {
+    const [ka, a] = e.value
+
+    if (eq.equals(ka, key)) {
+      return Op.some(Tp.tuple(ka, a))
+    }
+  }
+
+  return Op.none
+}
+
+export function lookupWithKeyEq<K>(eq: Equal<K>) {
+  return (key: K) =>
+    <V>(self: Map<K, V>) =>
+      lookupWithKeyEq_(eq, self, key)
+}
+
+export function lookupEq_<K, V>(eq: Equal<K>, map: Map<K, V>, key: K): Op.Option<V> {
+  return pipe(lookupWithKeyEq_(eq, map, key), Op.map(Tp.get(1)))
+}
+
+export function lookupEq<K>(eq: Equal<K>) {
+  return (key: K) =>
+    <V>(map: Map<K, V>): Op.Option<V> =>
+      lookupEq_(eq, map, key)
+}
+
 export function copy<K, V>(self: ReadonlyMap<K, V>) {
   const m = new Map<K, V>()
 
@@ -267,4 +323,8 @@ export function copy<K, V>(self: ReadonlyMap<K, V>) {
   })
 
   return m
+}
+
+export function combineEq_<K, V>(eq: Equal<K>, a: Map<K, V>, b: Map<K, V>): Map<K, V> {
+  return a
 }
