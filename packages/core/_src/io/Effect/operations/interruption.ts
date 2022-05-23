@@ -181,10 +181,11 @@ export function disconnect<R, E, A>(
   __tsplusTrace?: string
 ): Effect<R, E, A> {
   return uninterruptibleMask(({ restore }) =>
-    Effect.Do()
-      .bind("id", () => Effect.fiberId)
-      .bind("fiber", () => restore(effect).forkDaemon())
-      .flatMap(({ fiber, id }) => restore(fiber.join()).onInterrupt(() => fiber.interruptAs(id).forkDaemon()))
+    Do(($) => {
+      const id = $(Effect.fiberId);
+      const fiber = $(restore(effect).forkDaemon());
+      return $(restore(fiber.join()).onInterrupt(() => fiber.interruptAs(id).forkDaemon()));
+    })
   );
 }
 
