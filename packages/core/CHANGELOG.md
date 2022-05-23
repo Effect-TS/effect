@@ -1,5 +1,21 @@
 # @effect/core
 
+## 0.0.2
+
+### Patch Changes
+
+- [#1196](https://github.com/Effect-TS/core/pull/1196) [`3859d3cb6`](https://github.com/Effect-TS/core/commit/3859d3cb665752d6c8f3930ab0d7204cd5e69ce6) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Update stdlib and Env usage
+
+* [#1193](https://github.com/Effect-TS/core/pull/1193) [`6999580ec`](https://github.com/Effect-TS/core/commit/6999580ec8e704792ca2966cccec176d4d6f69de) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Add fluent variants for scoped/scopedEnvironment/acquireRelease\*
+
+- [#1198](https://github.com/Effect-TS/core/pull/1198) [`e817ef45b`](https://github.com/Effect-TS/core/commit/e817ef45bfd86362a71a0944029edfb776b5a650) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Remove Effect \_\_call and add pipe as /
+
+* [#1192](https://github.com/Effect-TS/core/pull/1192) [`b375237af`](https://github.com/Effect-TS/core/commit/b375237af58490d4fd4d1c03e3ca4204f404e526) Thanks [@IMax153](https://github.com/IMax153)! - make FiberRefLocals immutable
+
+- [#1204](https://github.com/Effect-TS/core/pull/1204) [`db577b633`](https://github.com/Effect-TS/core/commit/db577b6331b3064a5cb0b5e62f2206a6b7f77fe2) Thanks [@IMax153](https://github.com/IMax153)! - fix naming of acquireRelease Stream combinators
+
+* [#1207](https://github.com/Effect-TS/core/pull/1207) [`e24875f72`](https://github.com/Effect-TS/core/commit/e24875f72eff538bb46efdc9a29729df0f58291d) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Update TS+ & Stdlib, revise layer cache
+
 ## 0.0.1
 
 ### Patch Changes
