@@ -11,10 +11,11 @@ export function cachedInvalidate_<R, E, A>(
   timeToLive: Duration,
   __tsplusTrace?: string
 ): Effect.RIO<R, Tuple<[Effect.IO<E, A>, Effect.UIO<void>]>> {
-  return Effect.Do()
-    .bind("r", () => Effect.environment<R>())
-    .bind("cache", () => SynchronizedRef.make<Option<Tuple<[number, Deferred<E, A>]>>>(Option.none))
-    .map(({ cache, r }) => Tuple(get(self, timeToLive, cache).provideEnvironment(r), invalidate(cache)));
+  return Do(($) => {
+    const environment = $(Effect.environment<R>());
+    const cache = $(SynchronizedRef.make<Option<Tuple<[number, Deferred<E, A>]>>>(Option.none));
+    return Tuple(get(self, timeToLive, cache).provideEnvironment(environment), invalidate(cache));
+  });
 }
 
 /**
@@ -32,10 +33,11 @@ function compute<R, E, A>(
   timeToLive: Duration,
   start: number
 ): Effect<R, never, Option<Tuple<[number, Deferred<E, A>]>>> {
-  return Effect.Do()
-    .bind("deferred", () => Deferred.make<E, A>())
-    .tap(({ deferred }) => self.intoDeferred(deferred))
-    .map(({ deferred }) => Option.some(Tuple(start + timeToLive.millis, deferred)));
+  return Do(($) => {
+    const deferred = $(Deferred.make<E, A>());
+    $(self.intoDeferred(deferred));
+    return Option.some(Tuple(start + timeToLive.millis, deferred));
+  });
 }
 
 function get<R, E, A>(

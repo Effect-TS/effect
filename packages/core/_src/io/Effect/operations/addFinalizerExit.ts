@@ -8,10 +8,9 @@ export function addFinalizerExit<R, X>(
   finalizer: (exit: Exit<unknown, unknown>) => Effect.RIO<R, X>,
   __tsplusTrace?: string
 ): Effect<R & Has<Scope>, never, void> {
-  return Effect.Do()
-    .bind("environment", () => Effect.environment<R>())
-    .bind("scope", () => Effect.scope)
-    .flatMap(({ environment, scope }) =>
-      scope.addFinalizerExit((exit) => finalizer(exit).provideEnvironment(environment))
-    );
+  return Do(($) => {
+    const environment = $(Effect.environment<R>());
+    const scope = $(Effect.scope);
+    return $(scope.addFinalizerExit((exit) => finalizer(exit).provideEnvironment(environment)));
+  });
 }

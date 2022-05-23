@@ -5,9 +5,10 @@ export function parallelFinalizers<R, E, A>(
   effect: LazyArg<Effect<R, E, A>>,
   __tsplusTrace?: string
 ): Effect<R & Has<Scope>, E, A> {
-  return Effect.Do()
-    .bind("outerScope", () => Effect.scope)
-    .bind("innerScope", () => Scope.parallel())
-    .tap(({ innerScope, outerScope }) => outerScope.addFinalizerExit((exit) => innerScope.close(exit)))
-    .flatMap(({ innerScope }) => innerScope.extend(effect));
+  return Do(($) => {
+    const outerScope = $(Effect.scope);
+    const innerScope = $(Scope.parallel());
+    $(outerScope.addFinalizerExit((exit) => innerScope.close(exit)));
+    return $(innerScope.extend(effect));
+  });
 }

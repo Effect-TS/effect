@@ -8,8 +8,9 @@ export function memoize<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect.UIO<Effect<R, E, A>> {
-  return Effect.Do()
-    .bind("deferred", () => Deferred.make<E, A>())
-    .bind("complete", ({ deferred }) => self.intoDeferred(deferred).once())
-    .map(({ complete, deferred }) => complete > deferred.await());
+  return Do(($) => {
+    const deferred = $(Deferred.make<E, A>());
+    const complete = $(self.intoDeferred(deferred).once());
+    return complete > deferred.await();
+  });
 }

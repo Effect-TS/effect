@@ -10,39 +10,28 @@ export function raceAll_<R, E, A, R1, E1, A1>(
   effects: LazyArg<Collection<Effect<R1, E1, A1>>>,
   __tsplusTrace?: string
 ): Effect<R & R1, E | E1, A | A1> {
-  return Effect.Do()
-    .bind("ios", () => Effect.succeed(Chunk.from(effects())))
-    .bind("done", () => Deferred.make<E | E1, Tuple<[A | A1, Fiber<E | E1, A | A1>]>>())
-    .bind("fails", ({ ios }) => Ref.make(ios.size))
-    .flatMap(({ done, fails, ios }) =>
-      Effect.uninterruptibleMask(({ restore }) =>
-        Effect.Do()
-          .bind("head", () => self.interruptible().fork())
-          .bind("tail", () => Effect.forEach(ios, (io) => io.interruptible().fork()))
-          .bindValue(
-            "fs",
-            ({ head, tail }) => tail.prepend(head) as Chunk<Fiber.Runtime<E | E1, A | A1>>
+  return Do(($) => {
+    const ios = $(Effect.succeed(Chunk.from(effects())));
+    const done = $(Deferred.make<E | E1, Tuple<[A | A1, Fiber<E | E1, A | A1>]>>());
+    const fails = $(Ref.make(ios.size));
+    return $(Effect.uninterruptibleMask(({ restore }) =>
+      Do(($) => {
+        const head = $(self.interruptible().fork());
+        const tail = $(Effect.forEach(ios, (io) => io.interruptible().fork()));
+        const fs = tail.prepend(head) as Chunk<Fiber.Runtime<E | E1, A | A1>>;
+        $(fs.reduce(
+          Effect.unit,
+          (io, fiber) => io > fiber.await().flatMap(arbiter(fs, fiber, done, fails)).fork()
+        ));
+        const inheritRefs = (res: Tuple<[A | A1, Fiber<E | E1, A | A1>]>) => res.get(1).inheritRefs().as(res.get(0));
+        return $(
+          restore(done.await().flatMap(inheritRefs)).onInterrupt(() =>
+            fs.reduce(Effect.unit, (io, fiber) => io < fiber.interrupt())
           )
-          .tap(({ fs }) =>
-            fs.reduce(
-              Effect.unit,
-              (io, fiber) => io > fiber.await().flatMap(arbiter(fs, fiber, done, fails)).fork()
-            )
-          )
-          .bindValue(
-            "inheritRefs",
-            () =>
-              (
-                res: Tuple<[A | A1, Fiber<E | E1, A | A1>]>
-              ): Effect<unknown, never, A | A1> => res.get(1).inheritRefs().as(res.get(0))
-          )
-          .flatMap(({ fs, inheritRefs }) =>
-            restore(done.await().flatMap(inheritRefs)).onInterrupt(() =>
-              fs.reduce(Effect.unit, (io, fiber) => io < fiber.interrupt())
-            )
-          )
-      )
-    );
+        );
+      })
+    ));
+  });
 }
 
 /**

@@ -887,15 +887,13 @@ export class BackPressureStrategy<A> implements Strategy<A> {
   }
 
   get shutdown(): Effect.UIO<void> {
-    return Effect.Do()
-      .bind("fiberId", () => Effect.fiberId)
-      .bind("putters", () => Effect.succeed(unsafePollAll(this.putters)))
-      .tap(({ fiberId, putters }) =>
-        Effect.forEachPar(
-          putters,
-          ({ tuple: [_, promise, lastItem] }) => lastItem ? promise.interruptAs(fiberId) : Effect.unit
-        )
-      )
-      .asUnit();
+    return Do(($) => {
+      const fiberId = $(Effect.fiberId);
+      const putters = $(Effect.succeed(unsafePollAll(this.putters)));
+      $(Effect.forEachPar(
+        putters,
+        ({ tuple: [_, promise, lastItem] }) => lastItem ? promise.interruptAs(fiberId) : Effect.unit
+      ));
+    });
   }
 }
