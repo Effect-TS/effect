@@ -7,9 +7,5 @@ import { ILayerScoped } from "@effect/core/io/Layer/definition";
  */
 export function fromValue<T>(tag: Tag<T>) {
   return (service: LazyArg<T>): Layer<unknown, never, Has<T>> =>
-    Layer.suspend(
-      new ILayerScoped(
-        Effect.succeed(service).map((service) => Env(tag, service))
-      ).setKey(tag.id)
-    );
+    Layer.suspend(new ILayerScoped(Effect.succeed(service).map((service) => Env(tag, service))));
 }

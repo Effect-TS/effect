@@ -1,5 +1,5 @@
-export const LayerHashSym = Symbol.for("@effect/core/Layer");
-export type LayerHashSym = typeof LayerHashSym;
+export const LayerTypeId = Symbol.for("@effect/core/Layer");
+export type LayerTypeId = typeof LayerTypeId;
 
 export const _RIn = Symbol.for("@effect/core/Layer/RIn");
 export type _RIn = typeof _RIn;
@@ -34,9 +34,7 @@ export interface Layer<RIn, E, ROut> {
   readonly [_E]: () => E;
   readonly [_ROut]: () => ROut;
 
-  readonly [LayerHashSym]: AtomicReference<PropertyKey>;
-
-  setKey(hash: PropertyKey): this;
+  readonly [LayerTypeId]: LayerTypeId;
 }
 
 /**
@@ -55,19 +53,10 @@ export const Layer: LayerOps = {
 export interface LayerAspects {}
 
 export abstract class LayerAbstract<RIn, E, ROut> implements Layer<RIn, E, ROut> {
-  readonly [LayerHashSym] = new AtomicReference<PropertyKey>(Symbol());
-
   readonly [_RIn]!: (_: RIn) => void;
   readonly [_E]!: () => E;
   readonly [_ROut]!: () => ROut;
-
-  /**
-   * Set the hash key for memoization
-   */
-  setKey(hash: PropertyKey) {
-    this[LayerHashSym].set(hash);
-    return this;
-  }
+  readonly [LayerTypeId]: LayerTypeId = LayerTypeId;
 }
 
 export type Instruction =
@@ -80,54 +69,46 @@ export type Instruction =
   | ILayerTo<any, any, any, any, any>
   | ILayerZipWithPar<any, any, any, any, any, any, any>;
 
-export class ILayerApply<RIn, E, ROut> extends LayerAbstract<RIn, E, ROut> {
+export class ILayerApply<RIn, E, ROut> implements Layer<RIn, E, ROut> {
   readonly _tag = "LayerApply";
-
-  constructor(readonly self: Effect<RIn, E, Env<ROut>>) {
-    super();
-  }
+  readonly [_RIn]!: (_: RIn) => void;
+  readonly [_E]!: () => E;
+  readonly [_ROut]!: () => ROut;
+  readonly [LayerTypeId]: LayerTypeId = LayerTypeId;
+  constructor(readonly self: Effect<RIn, E, Env<ROut>>) {}
 }
 
-export class ILayerExtendScope<RIn, E, ROut> extends LayerAbstract<
-  RIn & Has<Scope>,
-  E,
-  ROut
-> {
+export class ILayerExtendScope<RIn, E, ROut> implements Layer<RIn & Has<Scope>, E, ROut> {
   readonly _tag = "LayerExtendScope";
-
-  constructor(readonly self: Layer<RIn, E, ROut>) {
-    super();
-  }
+  readonly [_RIn]!: (_: RIn & Has<Scope>) => void;
+  readonly [_E]!: () => E;
+  readonly [_ROut]!: () => ROut;
+  readonly [LayerTypeId]: LayerTypeId = LayerTypeId;
+  constructor(readonly self: Layer<RIn, E, ROut>) {}
 }
 
-export class ILayerFold<
-  RIn,
-  E,
-  ROut,
-  RIn2,
-  E2,
-  ROut2,
-  RIn3,
-  E3,
-  ROut3
-> extends LayerAbstract<RIn & RIn2 & RIn3, E2 | E3, ROut2 | ROut3> {
+export class ILayerFold<RIn, E, ROut, RIn2, E2, ROut2, RIn3, E3, ROut3>
+  implements Layer<RIn & RIn2 & RIn3, E2 | E3, ROut2 | ROut3>
+{
   readonly _tag = "LayerFold";
-
+  readonly [_RIn]!: (_: RIn & RIn2 & RIn3) => void;
+  readonly [_E]!: () => E2 | E3;
+  readonly [_ROut]!: () => ROut2 | ROut3;
+  readonly [LayerTypeId]: LayerTypeId = LayerTypeId;
   constructor(
     readonly self: Layer<RIn, E, ROut>,
     readonly failure: (cause: Cause<E>) => Layer<RIn2, E2, ROut2>,
     readonly success: (r: Env<ROut>) => Layer<RIn3, E3, ROut3>
-  ) {
-    super();
-  }
+  ) {}
 }
 
-export class ILayerFresh<RIn, E, ROut> extends LayerAbstract<RIn, E, ROut> {
+export class ILayerFresh<RIn, E, ROut> implements Layer<RIn, E, ROut> {
   readonly _tag = "LayerFresh";
-
-  constructor(readonly self: Layer<RIn, E, ROut>) {
-    super();
-  }
+  readonly [_RIn]!: (_: RIn) => void;
+  readonly [_E]!: () => E;
+  readonly [_ROut]!: () => ROut;
+  readonly [LayerTypeId]: LayerTypeId = LayerTypeId;
+  constructor(readonly self: Layer<RIn, E, ROut>) {}
 }
 
 export class ILayerScoped<RIn, E, ROut> extends LayerAbstract<RIn, E, ROut> {
@@ -138,27 +119,25 @@ export class ILayerScoped<RIn, E, ROut> extends LayerAbstract<RIn, E, ROut> {
   }
 }
 
-export class ILayerSuspend<RIn, E, ROut> extends LayerAbstract<RIn, E, ROut> {
+export class ILayerSuspend<RIn, E, ROut> implements Layer<RIn, E, ROut> {
   readonly _tag = "LayerSuspend";
-
-  constructor(readonly self: () => Layer<RIn, E, ROut>) {
-    super();
-  }
+  readonly [_RIn]!: (_: RIn) => void;
+  readonly [_E]!: () => E;
+  readonly [_ROut]!: () => ROut;
+  readonly [LayerTypeId]: LayerTypeId = LayerTypeId;
+  constructor(readonly self: () => Layer<RIn, E, ROut>) {}
 }
 
-export class ILayerTo<RIn, E, ROut, E1, ROut1> extends LayerAbstract<
-  RIn,
-  E | E1,
-  ROut1
-> {
+export class ILayerTo<RIn, E, ROut, E1, ROut1> implements Layer<RIn, E | E1, ROut1> {
   readonly _tag = "LayerTo";
-
+  readonly [_RIn]!: (_: RIn) => void;
+  readonly [_E]!: () => E | E1;
+  readonly [_ROut]!: () => ROut1;
+  readonly [LayerTypeId]: LayerTypeId = LayerTypeId;
   constructor(
     readonly self: Layer<RIn, E, ROut>,
     readonly that: Layer<ROut, E1, ROut1>
-  ) {
-    super();
-  }
+  ) {}
 }
 
 export class ILayerZipWithPar<
@@ -169,16 +148,17 @@ export class ILayerZipWithPar<
   E1,
   ROut2,
   ROut3
-> extends LayerAbstract<RIn & RIn1, E | E1, ROut3> {
+> implements Layer<RIn & RIn1, E | E1, ROut3> {
   readonly _tag = "LayerZipWithPar";
-
+  readonly [_RIn]!: (_: RIn & RIn1) => void;
+  readonly [_E]!: () => E | E1;
+  readonly [_ROut]!: () => ROut3;
+  readonly [LayerTypeId]: LayerTypeId = LayerTypeId;
   constructor(
     readonly self: Layer<RIn, E, ROut>,
     readonly that: Layer<RIn1, E1, ROut2>,
     readonly f: (s: Env<ROut>, t: Env<ROut2>) => Env<ROut3>
-  ) {
-    super();
-  }
+  ) {}
 }
 
 /**
