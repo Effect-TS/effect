@@ -5,7 +5,5 @@
  */
 export function fromEffect<T>(tag: Tag<T>) {
   return <R, E>(effect: LazyArg<Effect<R, E, T>>): Layer<R, E, Has<T>> =>
-    Layer.fromEffectEnvironment(
-      Effect.suspendSucceed(effect).map((service) => Env(tag, service))
-    ).setKey(tag.id);
+    Layer.fromEffectEnvironment(Effect.suspendSucceed(effect).map((service) => Env(tag, service)));
 }

@@ -1,4 +1,4 @@
-import { instruction, LayerHashSym } from "@effect/core/io/Layer/definition";
+import { instruction } from "@effect/core/io/Layer/definition";
 
 /**
  * A `MemoMap` memoizes layers.
@@ -6,7 +6,7 @@ import { instruction, LayerHashSym } from "@effect/core/io/Layer/definition";
 export class MemoMap {
   constructor(
     readonly ref: SynchronizedRef<
-      Map<PropertyKey, Tuple<[Effect.IO<any, any>, Scope.Finalizer]>>
+      Map<Layer<any, any, any>, Tuple<[Effect.IO<any, any>, Scope.Finalizer]>>
     >
   ) {}
 
@@ -21,7 +21,7 @@ export class MemoMap {
   ): Effect<RIn, E, Env<ROut>> {
     return Effect.succeed(scope).flatMap((scope) =>
       this.ref.modifyEffect((map) => {
-        const inMap = Option.fromNullable(map.get(layer[LayerHashSym].get));
+        const inMap = Option.fromNullable(map.get(layer));
 
         switch (inMap._tag) {
           case "Some": {
@@ -91,9 +91,7 @@ export class MemoMap {
                     ),
                   (e: Exit<unknown, unknown>) => finalizerRef.get().flatMap((fin) => fin(e))
                 ))
-              .map(({ memoized, resource }) =>
-                Tuple(resource, layer.isFresh() ? map : map.set(layer[LayerHashSym].get, memoized))
-              );
+              .map(({ memoized, resource }) => Tuple(resource, layer.isFresh() ? map : map.set(layer, memoized)));
           }
         }
       }).flatten()
@@ -106,7 +104,7 @@ export class MemoMap {
  */
 export function makeMemoMap(): Effect.UIO<MemoMap> {
   return SynchronizedRef.make<
-    Map<PropertyKey, Tuple<[Effect.IO<any, any>, Scope.Finalizer]>>
+    Map<Layer<any, any, any>, Tuple<[Effect.IO<any, any>, Scope.Finalizer]>>
   >(new Map()).flatMap((r) => Effect.succeed(new MemoMap(r)));
 }
 
