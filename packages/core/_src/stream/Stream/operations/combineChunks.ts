@@ -1,5 +1,5 @@
-import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff";
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff"
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Combines the chunks from this stream and the specified stream by repeatedly
@@ -29,13 +29,13 @@ export function combineChunks_<R, E, A, R2, E2, A2, S, A3>(
         .bind("latchL", () => Handoff.make<void>())
         .bind("latchR", () => Handoff.make<void>())
         .tap(({ latchL, left }) => {
-          concreteStream(self);
-          return (self.channel >> producer(left, latchL)).runScoped().fork();
+          concreteStream(self)
+          return (self.channel >> producer(left, latchL)).runScoped().fork()
         })
         .tap(({ latchR, right }) => {
-          const that0 = that();
-          concreteStream(that0);
-          return (that0.channel >> producer(right, latchR)).runScoped().fork();
+          const that0 = that()
+          concreteStream(that0)
+          return (that0.channel >> producer(right, latchR)).runScoped().fork()
         })
         .bindValue(
           "pullLeft",
@@ -48,12 +48,12 @@ export function combineChunks_<R, E, A, R2, E2, A2, S, A3>(
         .map(({ pullLeft, pullRight }) => {
           const stream = Stream.unfoldChunkEffect(s, (s) =>
             f(s, pullLeft, pullRight)
-              .flatMap((exit) => Effect.done(exit).unsome()));
-          concreteStream(stream);
-          return stream.channel;
+              .flatMap((exit) => Effect.done(exit).unsome()))
+          concreteStream(stream)
+          return stream.channel
         })
     )
-  );
+  )
 }
 
 /**
@@ -65,7 +65,7 @@ export function combineChunks_<R, E, A, R2, E2, A2, S, A3>(
  *
  * @tsplus static ets/Stream/Aspects combineChunks
  */
-export const combineChunks = Pipeable(combineChunks_);
+export const combineChunks = Pipeable(combineChunks_)
 
 function producer<Err, Elem>(
   handoff: Handoff<Take<Err, Elem>>,
@@ -79,5 +79,5 @@ function producer<Err, Elem>(
         (cause) => Channel.fromEffect(handoff.offer(Take.failCause(cause))),
         () => Channel.fromEffect(handoff.offer(Take.end)) > producer(handoff, latch)
       )
-  );
+  )
 }

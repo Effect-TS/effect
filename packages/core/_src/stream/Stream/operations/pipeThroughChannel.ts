@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Pipes all the values from this stream through the provided channel.
@@ -10,8 +10,8 @@ export function pipeThroughChannel_<R, E, A, R2, E2, A2>(
   channel: LazyArg<Channel<R2, E, Chunk<A>, unknown, E2, Chunk<A2>, unknown>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A2> {
-  concreteStream(self);
-  return new StreamInternal(self.channel >> channel);
+  concreteStream(self)
+  return new StreamInternal(self.channel >> channel)
 }
 
 /**
@@ -19,4 +19,4 @@ export function pipeThroughChannel_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Stream/Aspects pipeThroughChannel
  */
-export const pipeThroughChannel = Pipeable(pipeThroughChannel_);
+export const pipeThroughChannel = Pipeable(pipeThroughChannel_)

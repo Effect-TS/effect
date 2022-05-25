@@ -5,5 +5,5 @@
  * @tsplus fluent ets/Cause failureTraceOption
  */
 export function failureTraceOption<E>(self: Cause<E>): Option<Tuple<[E, Trace]>> {
-  return self.find((cause) => cause.isFailType() ? Option.some(Tuple(cause.value, cause.trace)) : Option.none);
+  return self.find((cause) => cause.isFailType() ? Option.some(Tuple(cause.value, cause.trace)) : Option.none)
 }

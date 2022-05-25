@@ -5,16 +5,16 @@ export type ShapeFn<T> = Pick<
       ...args: infer ARGS
     ) => Effect<infer R, infer E, infer A> ? ((...args: ARGS) => Effect<R, E, A>) extends T[k] ? k
     : never
-      : never;
+      : never
   }[keyof T]
->;
+>
 
 export type ShapeCn<T> = Pick<
   T,
   {
-    [k in keyof T]: T[k] extends Effect<any, any, any> ? k : never;
+    [k in keyof T]: T[k] extends Effect<any, any, any> ? k : never
   }[keyof T]
->;
+>
 
 export type DerivedLifted<
   T,
@@ -25,15 +25,15 @@ export type DerivedLifted<
   & {
     [k in Fns]: T[k] extends (...args: infer ARGS) => Effect<infer R, infer E, infer A>
       ? (...args: ARGS) => Effect<R & Has<T>, E, A>
-      : never;
+      : never
   }
   & {
     [k in Cns]: T[k] extends Effect<infer R, infer E, infer A> ? Effect<R & Has<T>, E, A>
-      : never;
+      : never
   }
   & {
-    [k in Values]: Effect<Has<T>, never, T[k]>;
-  };
+    [k in Values]: Effect<Has<T>, never, T[k]>
+  }
 
 /**
  * @tsplus static ets/Effect/Ops deriveLifted
@@ -50,30 +50,30 @@ export function deriveLifted<T>(
   values: Values[]
 ) => DerivedLifted<T, Fns, Cns, Values> {
   return (functions, constants, values) => {
-    const ret = {} as any;
+    const ret = {} as any
 
     for (const k of functions) {
-      ret[k] = (...args: any[]) => Effect.serviceWithEffect(S)((h) => (h[k] as any)(...args));
+      ret[k] = (...args: any[]) => Effect.serviceWithEffect(S)((h) => (h[k] as any)(...args))
     }
 
     for (const k of constants) {
-      ret[k] = Effect.serviceWithEffect(S)((h) => h[k] as any);
+      ret[k] = Effect.serviceWithEffect(S)((h) => h[k] as any)
     }
 
     for (const k of values) {
-      ret[k] = Effect.serviceWith(S)((h) => h[k]);
+      ret[k] = Effect.serviceWith(S)((h) => h[k])
     }
 
-    return ret as any;
-  };
+    return ret as any
+  }
 }
 
 export type DerivedAccessM<T, Gens extends keyof T> = {
   [k in Gens]: <R_, E_, A_>(
     f: (_: T[k]) => Effect<R_, E_, A_>,
     __tsplusTrace?: string
-  ) => Effect<R_ & Has<T>, E_, A_>;
-};
+  ) => Effect<R_ & Has<T>, E_, A_>
+}
 
 /**
  * @tsplus static ets/Effect/Ops deriveAccessEffect
@@ -82,22 +82,22 @@ export function deriveAccessEffect<T>(
   S: Tag<T>
 ): <Gens extends keyof T = never>(generics: Gens[]) => DerivedAccessM<T, Gens> {
   return (generics) => {
-    const ret = {} as any;
+    const ret = {} as any
 
     for (const k of generics) {
-      ret[k] = (f: any, trace?: string) => Effect.serviceWithEffect(S)((h) => f(h[k]), trace);
+      ret[k] = (f: any, trace?: string) => Effect.serviceWithEffect(S)((h) => f(h[k]), trace)
     }
 
-    return ret as any;
-  };
+    return ret as any
+  }
 }
 
 export type DerivedAccess<T, Gens extends keyof T> = {
   [k in Gens]: <A_>(
     f: (_: T[k]) => A_,
     __tsplusTrace?: string
-  ) => Effect<Has<T>, never, A_>;
-};
+  ) => Effect<Has<T>, never, A_>
+}
 
 /**
  * @tsplus static ets/Effect/Ops deriveAccess
@@ -106,12 +106,12 @@ export function deriveAccess<T>(
   S: Tag<T>
 ): <Gens extends keyof T = never>(generics: Gens[]) => DerivedAccess<T, Gens> {
   return (generics) => {
-    const ret = {} as any;
+    const ret = {} as any
 
     for (const k of generics) {
-      ret[k] = (f: any, trace?: string) => Effect.serviceWith(S)((h) => f(h[k]), trace);
+      ret[k] = (f: any, trace?: string) => Effect.serviceWith(S)((h) => f(h[k]), trace)
     }
 
-    return ret as any;
-  };
+    return ret as any
+  }
 }

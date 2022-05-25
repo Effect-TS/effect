@@ -9,7 +9,7 @@ export function dropUntil_<R, E, A>(
   f: Predicate<A>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  return self.dropWhile((a) => !f(a)).via(Stream.$.drop(1));
+  return self.dropWhile((a) => !f(a)).via(Stream.$.drop(1))
 }
 
 /**
@@ -18,4 +18,4 @@ export function dropUntil_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects dropUntil
  */
-export const dropUntil = Pipeable(dropUntil_);
+export const dropUntil = Pipeable(dropUntil_)

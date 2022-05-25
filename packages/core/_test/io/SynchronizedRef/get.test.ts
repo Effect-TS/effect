@@ -1,43 +1,41 @@
-import { State } from "@effect/core/test/io/SynchronizedRef/test-utils";
+import { State } from "@effect/core/test/io/SynchronizedRef/test-utils"
 
-const current = "value";
-const update = "new value";
-const failure = "failure";
+const current = "value"
+const update = "new value"
+const failure = "failure"
 
 describe.concurrent("SynchronizedRef", () => {
   describe.concurrent("simple", () => {
     it("get", async () => {
-      const program = SynchronizedRef.make(current).flatMap((ref) => ref.get());
+      const program = SynchronizedRef.make(current).flatMap((ref) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, current);
-    });
-  });
+      assert.strictEqual(result, current)
+    })
+  })
 
   describe.concurrent("getAndUpdateEffect", () => {
     it("happy path", async () => {
       const program = Effect.Do()
         .bind("ref", () => SynchronizedRef.make(current))
         .bind("v1", ({ ref }) => ref.getAndUpdateEffect(() => Effect.succeed(update)))
-        .bind("v2", ({ ref }) => ref.get());
+        .bind("v2", ({ ref }) => ref.get())
 
-      const { v1, v2 } = await program.unsafeRunPromise();
+      const { v1, v2 } = await program.unsafeRunPromise()
 
-      assert.strictEqual(v1, current);
-      assert.strictEqual(v2, update);
-    });
+      assert.strictEqual(v1, current)
+      assert.strictEqual(v2, update)
+    })
 
     it("with failure", async () => {
-      const program = SynchronizedRef.make(current).flatMap((ref) =>
-        ref.getAndUpdateEffect(() => Effect.fail(failure))
-      );
+      const program = SynchronizedRef.make(current).flatMap((ref) => ref.getAndUpdateEffect(() => Effect.fail(failure)))
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(failure));
-    });
-  });
+      assert.isTrue(result.untraced() == Exit.fail(failure))
+    })
+  })
 
   describe.concurrent("getAndUpdateSomeEffect", () => {
     it("happy path", async () => {
@@ -50,13 +48,13 @@ describe.concurrent("SynchronizedRef", () => {
               state.isClosed() ? Option.some(Effect.succeed(State.Changed)) : Option.none
             )
         )
-        .bind("v2", ({ ref }) => ref.get());
+        .bind("v2", ({ ref }) => ref.get())
 
-      const { v1, v2 } = await program.unsafeRunPromise();
+      const { v1, v2 } = await program.unsafeRunPromise()
 
-      assert.deepEqual(v1, State.Active);
-      assert.deepEqual(v2, State.Active);
-    });
+      assert.deepEqual(v1, State.Active)
+      assert.deepEqual(v2, State.Active)
+    })
 
     it("twice", async () => {
       const program = Effect.Do()
@@ -76,24 +74,24 @@ describe.concurrent("SynchronizedRef", () => {
               ? Option.some(Effect.succeed(State.Closed))
               : Option.none
           ))
-        .bind("v3", ({ ref }) => ref.get());
+        .bind("v3", ({ ref }) => ref.get())
 
-      const { v1, v2, v3 } = await program.unsafeRunPromise();
+      const { v1, v2, v3 } = await program.unsafeRunPromise()
 
-      assert.deepEqual(v1, State.Active);
-      assert.deepEqual(v2, State.Changed);
-      assert.deepEqual(v3, State.Closed);
-    });
+      assert.deepEqual(v1, State.Active)
+      assert.deepEqual(v2, State.Changed)
+      assert.deepEqual(v3, State.Closed)
+    })
 
     it("with failure", async () => {
       const program = SynchronizedRef.make<State>(State.Active).flatMap((ref) =>
         ref.getAndUpdateSomeEffect((state) => state.isActive() ? Option.some(Effect.fail(failure)) : Option.none)
-      );
+      )
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(failure));
-    });
+      assert.isTrue(result.untraced() == Exit.fail(failure))
+    })
 
     it("interrupt parent fiber and update", async () => {
       const program = Effect.Do()
@@ -106,11 +104,11 @@ describe.concurrent("SynchronizedRef", () => {
         .bind("fiber", ({ makeAndWait }) => makeAndWait.fork())
         .bind("ref", ({ deferred }) => deferred.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ ref }) => ref.updateAndGetEffect(() => Effect.succeed(State.Closed)));
+        .flatMap(({ ref }) => ref.updateAndGetEffect(() => Effect.succeed(State.Closed)))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.deepEqual(result, State.Closed);
-    });
-  });
-});
+      assert.deepEqual(result, State.Closed)
+    })
+  })
+})

@@ -9,7 +9,7 @@ export function zipLeft_<R, R1, E, E1, In, In1 extends In, L, L1 extends L, Z, Z
   that: LazyArg<Sink<R1, E1, In1, L1, Z1>>,
   __tsplusTrace?: string
 ): Sink<R & R1, E | E1, In & In1, L1, Z> {
-  return self.zipWith(that, (z, _) => z);
+  return self.zipWith(that, (z, _) => z)
 }
 
 /**
@@ -17,4 +17,4 @@ export function zipLeft_<R, R1, E, E1, In, In1 extends In, L, L1 extends L, Z, Z
  *
  * @tsplus static ets/Sink/Aspects zipLeft
  */
-export const zipLeft = Pipeable(zipLeft_);
+export const zipLeft = Pipeable(zipLeft_)

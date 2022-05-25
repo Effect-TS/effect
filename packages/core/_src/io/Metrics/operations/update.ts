@@ -10,7 +10,7 @@ export function update_<Type, In, Out>(
   input: LazyArg<In>,
   __tsplusTrace?: string
 ): Effect.UIO<void> {
-  return Effect.succeed(self.unsafeUpdate(input(), HashSet.empty()));
+  return Effect.succeed(self.unsafeUpdate(input(), HashSet.empty()))
 }
 
 /**
@@ -20,4 +20,4 @@ export function update_<Type, In, Out>(
  *
  * @tsplus static ets/Metrics/Metric/Aspects update
  */
-export const update = Pipeable(update_);
+export const update = Pipeable(update_)

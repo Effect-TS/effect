@@ -14,7 +14,7 @@ export function provideService_<R, E, A, T>(
   ): Stream<Erase<R & Has<T>, Has<T>>, E, A> =>
     Stream.succeed(service).flatMap((service) =>
       Stream.environmentWithStream((env: Env<R>) => self.provideEnvironment(env.add(tag, service)))
-    );
+    )
 }
 
 /**
@@ -23,4 +23,4 @@ export function provideService_<R, E, A, T>(
  *
  * @tsplus static ets/Stream/Aspects provideService
  */
-export const provideService = Pipeable(provideService_);
+export const provideService = Pipeable(provideService_)

@@ -1,4 +1,4 @@
-import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * A sink that executes the provided effectful function for every element fed
@@ -22,8 +22,8 @@ export function forEachWhile<R, E, In>(
     (input: Chunk<In>) => go(f, input, 0, input.length, process),
     (cause) => Channel.failCause(cause),
     () => Channel.unit
-  );
-  return new SinkInternal(process);
+  )
+  return new SinkInternal(process)
 }
 
 function go<R, E, In>(
@@ -38,5 +38,5 @@ function go<R, E, In>(
     ? cont
     : Channel.fromEffect(f(chunk.unsafeGet(index)))
       .flatMap((b) => b ? go(f, chunk, index + 1, length, cont) : Channel.write(chunk.drop(index)))
-      .catchAll((e) => Channel.write(chunk.drop(index)) > Channel.fail(e));
+      .catchAll((e) => Channel.write(chunk.drop(index)) > Channel.fail(e))
 }

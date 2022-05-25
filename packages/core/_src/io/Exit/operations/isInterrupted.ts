@@ -6,8 +6,8 @@
 export function isInterrupted<E, A>(self: Exit<E, A>): boolean {
   switch (self._tag) {
     case "Failure":
-      return self.cause.isInterrupted();
+      return self.cause.isInterrupted()
     case "Success":
-      return false;
+      return false
   }
 }

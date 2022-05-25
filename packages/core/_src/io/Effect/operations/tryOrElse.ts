@@ -1,4 +1,4 @@
-import { IFold } from "@effect/core/io/Effect/definition/primitives";
+import { IFold } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Executed `that` in case `self` fails with a `Cause` that doesn't contain
@@ -17,7 +17,7 @@ export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
     (cause) => cause.keepDefects().fold(that, Effect.failCauseNow),
     success,
     __tsplusTrace
-  );
+  )
 }
 
 /**
@@ -26,4 +26,4 @@ export function tryOrElse_<R, E, A, R2, E2, A2, R3, E3, A3>(
  *
  * @tsplus static ets/Effect/Aspects tryOrElse
  */
-export const tryOrElse = Pipeable(tryOrElse_);
+export const tryOrElse = Pipeable(tryOrElse_)

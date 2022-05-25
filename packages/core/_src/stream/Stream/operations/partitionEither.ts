@@ -32,12 +32,12 @@ export function partitionEither_<R, E, A, R2, E2, A2, A3>(
               .flattenExitOption()
               .collectRight()
           )
-        );
+        )
       }
       return Effect.dieMessage(
         `Stream.partitionEither: expected two streams but received: ${dequeues.length()}`
-      );
-    });
+      )
+    })
 }
 
 /**
@@ -46,4 +46,4 @@ export function partitionEither_<R, E, A, R2, E2, A2, A3>(
  *
  * @tsplus static ets/Stream/Aspects partitionEither
  */
-export const partitionEither = Pipeable(partitionEither_);
+export const partitionEither = Pipeable(partitionEither_)

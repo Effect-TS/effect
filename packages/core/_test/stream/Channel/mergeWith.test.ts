@@ -1,4 +1,4 @@
-import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision";
+import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision"
 
 describe.concurrent("Channel", () => {
   describe.concurrent("mergeWith", () => {
@@ -9,56 +9,56 @@ describe.concurrent("Channel", () => {
           (exit) => MergeDecision.awaitConst(Effect.done(exit)),
           (exit) => MergeDecision.awaitConst(Effect.done(exit))
         )
-        .runCollect();
+        .runCollect()
 
       const {
         tuple: [chunk, _]
-      } = await program.unsafeRunPromise();
+      } = await program.unsafeRunPromise()
 
-      assert.isTrue(chunk == Chunk(1, 2, 3, 4, 5, 6));
-    });
+      assert.isTrue(chunk == Chunk(1, 2, 3, 4, 5, 6))
+    })
 
     it("merge with different types", async () => {
       const left = Channel.write(1) >
         Channel.fromEffect(
           Effect.attempt("whatever").refineOrDie((e) => e instanceof RuntimeError ? Option.some(e) : Option.none)
-        );
+        )
       const right = Channel.write(2) >
         Channel.fromEffect(
           Effect.attempt(true).refineOrDie((e) => e instanceof IllegalStateException ? Option.some(e) : Option.none)
-        );
+        )
       const program = left
         .mergeWith(
           right,
           (exit) => MergeDecision.await((exit2) => Effect.done(exit.zip(exit2))),
           (exit2) => MergeDecision.await((exit) => Effect.done(exit.zip(exit2)))
         )
-        .runCollect();
+        .runCollect()
 
       const {
         tuple: [chunk, result]
-      } = await program.unsafeRunPromise();
+      } = await program.unsafeRunPromise()
 
-      assert.isTrue(chunk == Chunk(1, 2));
-      assert.strictEqual(result.get(0), "whatever");
-      assert.isTrue(result.get(1));
-    });
+      assert.isTrue(chunk == Chunk(1, 2))
+      assert.strictEqual(result.get(0), "whatever")
+      assert.isTrue(result.get(1))
+    })
 
     it("handles polymorphic failures", async () => {
-      const left = Channel.write(1) > Channel.fail("boom").as(true);
-      const right = Channel.write(2) > Channel.fail(true).as(true);
+      const left = Channel.write(1) > Channel.fail("boom").as(true)
+      const right = Channel.write(2) > Channel.fail(true).as(true)
       const program = left
         .mergeWith(
           right,
           (exit) => MergeDecision.await((exit2) => Effect.done(exit).flip().zip(Effect.done(exit2).flip()).flip()),
           (exit2) => MergeDecision.await((exit) => Effect.done(exit).flip().zip(Effect.done(exit2).flip()).flip())
         )
-        .runDrain();
+        .runDrain()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(Tuple("boom", true)));
-    });
+      assert.isTrue(result.untraced() == Exit.fail(Tuple("boom", true)))
+    })
 
     it("interrupts losing side", async () => {
       const program = Deferred.make<never, void>().flatMap((latch) =>
@@ -66,8 +66,8 @@ describe.concurrent("Channel", () => {
           const left = Channel.write(1) >
             Channel.fromEffect(
               (latch.succeed(undefined) > Effect.never).onInterrupt(() => interrupted.set(true))
-            );
-          const right = Channel.write(2) > Channel.fromEffect(latch.await());
+            )
+          const right = Channel.write(2) > Channel.fromEffect(latch.await())
           const merged = left.mergeWith(
             right,
             (exit) => MergeDecision.done(Effect.done(exit)),
@@ -77,14 +77,14 @@ describe.concurrent("Channel", () => {
                   .get()
                   .flatMap((b) => (b ? Effect.unit : Effect.fail(undefined)))
               )
-          );
-          return merged.runDrain();
+          )
+          return merged.runDrain()
         })
-      );
+      )
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.isSuccess());
-    });
-  });
-});
+      assert.isTrue(result.isSuccess())
+    })
+  })
+})

@@ -1,4 +1,4 @@
-import { constTrue } from "@tsplus/stdlib/data/Function";
+import { constTrue } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Effect", () => {
   describe.concurrent("onExit", () => {
@@ -12,12 +12,12 @@ describe.concurrent("Effect", () => {
             )
           )
         )
-        .flatMap((ref) => ref.get());
+        .flatMap((ref) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("ensures that a cleanup function runs when an effect fails", async () => {
       const program = Ref.make(false)
@@ -31,12 +31,12 @@ describe.concurrent("Effect", () => {
             .sandbox()
             .ignore()
         )
-        .flatMap((ref) => ref.get());
+        .flatMap((ref) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("ensures that a cleanup function runs when an effect is interrupted", async () => {
       const program = Effect.Do()
@@ -53,11 +53,11 @@ describe.concurrent("Effect", () => {
         .tap(({ latch1 }) => latch1.await())
         .tap(({ fiber }) => fiber.interrupt())
         .tap(({ latch2 }) => latch2.await())
-        .map(constTrue);
+        .map(constTrue)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
-  });
-});
+      assert.isTrue(result)
+    })
+  })
+})

@@ -1,4 +1,4 @@
-import { waitForSize } from "@effect/core/test/io/Queue/test-utils";
+import { waitForSize } from "@effect/core/test/io/Queue/test-utils"
 
 describe.concurrent("Queue", () => {
   describe.concurrent("takeAll", () => {
@@ -8,12 +8,12 @@ describe.concurrent("Queue", () => {
         .tap(({ queue }) => queue.offer(1))
         .tap(({ queue }) => queue.offer(2))
         .tap(({ queue }) => queue.offer(3))
-        .flatMap(({ queue }) => queue.takeAll);
+        .flatMap(({ queue }) => queue.takeAll)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(1, 2, 3));
-    });
+      assert.isTrue(result == Chunk(1, 2, 3))
+    })
 
     it("returns all values from an empty queue", async () => {
       const program = Effect.Do()
@@ -21,13 +21,13 @@ describe.concurrent("Queue", () => {
         .bind("v1", ({ queue }) => queue.takeAll)
         .tap(({ queue }) => queue.offer(1))
         .tap(({ queue }) => queue.take)
-        .bind("v2", ({ queue }) => queue.takeAll);
+        .bind("v2", ({ queue }) => queue.takeAll)
 
-      const { v1, v2 } = await program.unsafeRunPromise();
+      const { v1, v2 } = await program.unsafeRunPromise()
 
-      assert.isTrue(v1.isEmpty());
-      assert.isTrue(v2.isEmpty());
-    });
+      assert.isTrue(v1.isEmpty())
+      assert.isTrue(v2.isEmpty())
+    })
 
     it("does not return more than the queue size", async () => {
       const program = Effect.Do()
@@ -41,12 +41,12 @@ describe.concurrent("Queue", () => {
         .tap(({ queue }) => queue.offer(5).fork())
         .tap(({ queue }) => waitForSize(queue, 5))
         .bind("v1", ({ queue }) => queue.takeAll)
-        .bind("v2", ({ queue }) => queue.take);
+        .bind("v2", ({ queue }) => queue.take)
 
-      const { v1, v2, values } = await program.unsafeRunPromise();
+      const { v1, v2, values } = await program.unsafeRunPromise()
 
-      assert.isTrue(v1 == Chunk.from(values));
-      assert.strictEqual(v2, 5);
-    });
-  });
-});
+      assert.isTrue(v1 == Chunk.from(values))
+      assert.strictEqual(v2, 5)
+    })
+  })
+})

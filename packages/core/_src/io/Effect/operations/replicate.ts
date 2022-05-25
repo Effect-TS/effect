@@ -7,7 +7,7 @@ export function replicate<R, E, A>(
   n: number,
   effect: LazyArg<Effect<R, E, A>>
 ): Chunk<Effect<R, E, A>> {
-  return Chunk.range(0, n - 1).map(effect);
+  return Chunk.range(0, n - 1).map(effect)
 }
 
 /**
@@ -19,7 +19,7 @@ export function replicateNow_<R, E, A>(
   self: Effect<R, E, A>,
   n: number
 ): Chunk<Effect<R, E, A>> {
-  return replicate(n, self);
+  return replicate(n, self)
 }
 
 /**
@@ -27,4 +27,4 @@ export function replicateNow_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects replicateNow
  */
-export const replicateNow = Pipeable(replicateNow_);
+export const replicateNow = Pipeable(replicateNow_)

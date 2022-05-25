@@ -13,9 +13,9 @@ export function tryCatchPromise<E, A>(
     Effect.async<unknown, E, A>((resolve) => {
       promise
         .then((a) => resolve(Effect.succeedNow(a)))
-        .catch((e) => resolve(Effect.failNow(onReject(e))));
+        .catch((e) => resolve(Effect.failNow(onReject(e))))
     })
-  );
+  )
 }
 
 /**
@@ -32,9 +32,9 @@ export function tryPromise<A>(
     Effect.async<unknown, unknown, A>((resolve) => {
       promise
         .then((a) => resolve(Effect.succeedNow(a)))
-        .catch((e) => resolve(Effect.failNow(e)));
+        .catch((e) => resolve(Effect.failNow(e)))
     })
-  );
+  )
 }
 
 /**
@@ -50,7 +50,7 @@ export function promise<A>(
     Effect.async<unknown, never, A>((resolve) => {
       promise
         .then((a) => resolve(Effect.succeedNow(a)))
-        .catch((e) => resolve(Effect.dieNow(e)));
+        .catch((e) => resolve(Effect.dieNow(e)))
     })
-  );
+  )
 }

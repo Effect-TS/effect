@@ -1,4 +1,4 @@
-import { ILayerExtendScope } from "@effect/core/io/Layer/definition";
+import { ILayerExtendScope } from "@effect/core/io/Layer/definition"
 
 /**
  * Extends the scope of this layer, returning a new layer that when provided
@@ -12,5 +12,5 @@ export function extendScope<RIn, E, ROut>(
   self: Layer<RIn, E, ROut>,
   __tsplusTrace?: string
 ): Layer<RIn & Has<Scope>, E, ROut> {
-  return new ILayerExtendScope(self);
+  return new ILayerExtendScope(self)
 }

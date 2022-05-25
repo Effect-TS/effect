@@ -6,22 +6,22 @@ describe.concurrent("Stream", () => {
         Chunk(3, 4, 5),
         Chunk.empty<number>(),
         Chunk(6, 7)
-      );
-      const program = Stream.fromChunks(...chunk).buffer(2).runCollect();
+      )
+      const program = Stream.fromChunks(...chunk).buffer(2).runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == chunk.flatten());
-    });
+      assert.isTrue(result == chunk.flatten())
+    })
 
     it("buffer the stream with error", async () => {
-      const error = new RuntimeError("boom");
-      const program = (Stream.range(0, 10) + Stream.fail(error)).buffer(2).runCollect();
+      const error = new RuntimeError("boom")
+      const program = (Stream.range(0, 10) + Stream.fail(error)).buffer(2).runCollect()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(error));
-    });
+      assert.isTrue(result.untraced() == Exit.fail(error))
+    })
 
     it("fast producer progress independently", async () => {
       const program = Effect.Do()
@@ -37,30 +37,30 @@ describe.concurrent("Stream", () => {
             .buffer(2))
         .bind("chunk", ({ stream }) => stream.take(2).runCollect())
         .tap(({ latch }) => latch.await())
-        .bind("list", ({ ref }) => ref.get());
+        .bind("list", ({ ref }) => ref.get())
 
-      const { chunk, list } = await program.unsafeRunPromise();
+      const { chunk, list } = await program.unsafeRunPromise()
 
-      assert.isTrue(chunk == Chunk(1, 2));
-      assert.isTrue(list.reverse() == List(1, 2, 3, 4));
-    });
-  });
+      assert.isTrue(chunk == Chunk(1, 2))
+      assert.isTrue(list.reverse() == List(1, 2, 3, 4))
+    })
+  })
 
   describe.concurrent("bufferDropping", () => {
     it("buffer the stream with error", async () => {
-      const error = new RuntimeError("boom");
+      const error = new RuntimeError("boom")
       const program = (
         Stream.range(1, 1000) +
         Stream.fail(error) +
         Stream.range(1001, 2000)
       )
         .bufferDropping(2)
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(error));
-    });
+      assert.isTrue(result.untraced() == Exit.fail(error))
+    })
 
     it("fast producer progress independently", async () => {
       const program = Effect.Do()
@@ -110,31 +110,31 @@ describe.concurrent("Stream", () => {
                 .bind("snapshot2", () => ref.get())
             )
           )
-        );
+        )
 
-      const { snapshot1, snapshot2, zero } = await program.unsafeRunPromise();
+      const { snapshot1, snapshot2, zero } = await program.unsafeRunPromise()
 
-      assert.isTrue(zero == Chunk(0));
-      assert.isTrue(snapshot1 == List(8, 7, 6, 5, 4, 3, 2, 1));
-      assert.isTrue(snapshot2 == List(24, 23, 22, 21, 20, 19, 18, 17, 8, 7, 6, 5, 4, 3, 2, 1));
-    });
-  });
+      assert.isTrue(zero == Chunk(0))
+      assert.isTrue(snapshot1 == List(8, 7, 6, 5, 4, 3, 2, 1))
+      assert.isTrue(snapshot2 == List(24, 23, 22, 21, 20, 19, 18, 17, 8, 7, 6, 5, 4, 3, 2, 1))
+    })
+  })
 
   describe.concurrent("bufferSliding", () => {
     it("buffer the stream with error", async () => {
-      const error = new RuntimeError("boom");
+      const error = new RuntimeError("boom")
       const program = (
         Stream.range(1, 1000) +
         Stream.fail(error) +
         Stream.range(1001, 2000)
       )
         .bufferSliding(2)
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(error));
-    });
+      assert.isTrue(result.untraced() == Exit.fail(error))
+    })
 
     it("fast producer progress independently", async () => {
       const program = Effect.Do()
@@ -179,36 +179,36 @@ describe.concurrent("Stream", () => {
                 .bind("snapshot2", () => ref.get())
             )
           )
-        );
+        )
 
-      const { snapshot1, snapshot2, zero } = await program.unsafeRunPromise();
+      const { snapshot1, snapshot2, zero } = await program.unsafeRunPromise()
 
-      assert.isTrue(zero == Chunk(0));
-      assert.isTrue(snapshot1 == List(16, 15, 14, 13, 12, 11, 10, 9));
-      assert.isTrue(snapshot2 == List(-1, 24, 23, 22, 21, 20, 19, 18, 16, 15, 14, 13, 12, 11, 10, 9));
-    });
-  });
+      assert.isTrue(zero == Chunk(0))
+      assert.isTrue(snapshot1 == List(16, 15, 14, 13, 12, 11, 10, 9))
+      assert.isTrue(snapshot2 == List(-1, 24, 23, 22, 21, 20, 19, 18, 16, 15, 14, 13, 12, 11, 10, 9))
+    })
+  })
 
   describe.concurrent("bufferUnbounded", () => {
     it("buffer the stream", async () => {
-      const chunk = Chunk(1, 2, 3, 4, 5);
-      const program = Stream.fromCollection(chunk).bufferUnbounded().runCollect();
+      const chunk = Chunk(1, 2, 3, 4, 5)
+      const program = Stream.fromCollection(chunk).bufferUnbounded().runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == chunk);
-    });
+      assert.isTrue(result == chunk)
+    })
 
     it("buffer the stream with error", async () => {
-      const error = new RuntimeError("boom");
+      const error = new RuntimeError("boom")
       const program = (Stream.range(0, 10) + Stream.fail(error))
         .bufferUnbounded()
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(error));
-    });
+      assert.isTrue(result.untraced() == Exit.fail(error))
+    })
 
     it("fast producer progress independently", async () => {
       const program = Effect.Do()
@@ -225,14 +225,14 @@ describe.concurrent("Stream", () => {
             .bufferUnbounded())
         .bind("chunk", ({ stream }) => stream.take(2).runCollect())
         .tap(({ latch }) => latch.await())
-        .bind("list", ({ ref }) => ref.get());
+        .bind("list", ({ ref }) => ref.get())
 
-      const { chunk, list } = await program.unsafeRunPromise();
+      const { chunk, list } = await program.unsafeRunPromise()
 
-      assert.isTrue(chunk == Chunk(1, 2));
-      assert.isTrue(list == List.from(Chunk.range(1, 999)).reverse());
-    });
-  });
+      assert.isTrue(chunk == Chunk(1, 2))
+      assert.isTrue(list == List.from(Chunk.range(1, 999)).reverse())
+    })
+  })
 
   describe.concurrent("bufferChunks", () => {
     it("maintains elements and ordering", async () => {
@@ -241,26 +241,26 @@ describe.concurrent("Stream", () => {
         Chunk(3, 4, 5),
         Chunk.empty<number>(),
         Chunk(6, 7)
-      );
+      )
       const program = Stream.fromChunks(...chunk)
         .bufferChunks(2)
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == chunk.flatten());
-    });
+      assert.isTrue(result == chunk.flatten())
+    })
 
     it("bufferChunks the stream with error", async () => {
-      const error = new RuntimeError("boom");
+      const error = new RuntimeError("boom")
       const program = (Stream.range(0, 10) + Stream.fail(error))
         .bufferChunks(2)
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(error));
-    });
+      assert.isTrue(result.untraced() == Exit.fail(error))
+    })
 
     it("fast producer progress independently", async () => {
       const program = Effect.Do()
@@ -276,12 +276,12 @@ describe.concurrent("Stream", () => {
             .bufferChunks(2))
         .bind("chunk", ({ stream }) => stream.take(2).runCollect())
         .tap(({ latch }) => latch.await())
-        .bind("list", ({ ref }) => ref.get());
+        .bind("list", ({ ref }) => ref.get())
 
-      const { chunk, list } = await program.unsafeRunPromise();
+      const { chunk, list } = await program.unsafeRunPromise()
 
-      assert.isTrue(chunk == Chunk(1, 2));
-      assert.isTrue(list.reverse() == List(1, 2, 3, 4));
-    });
-  });
-});
+      assert.isTrue(chunk == Chunk(1, 2))
+      assert.isTrue(list.reverse() == List(1, 2, 3, 4))
+    })
+  })
+})

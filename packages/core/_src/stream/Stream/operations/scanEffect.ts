@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Statefully and effectfully maps over the elements of this stream to produce
@@ -15,12 +15,12 @@ export function scanEffect_<R, E, A, S, R2, E2>(
   return new StreamInternal(
     Channel.succeed(s).flatMap((s) =>
       Channel.write(Chunk.single(s)).zipRight(() => {
-        const stream = self.mapAccumEffect(s, (s, a) => f(s, a).map((s) => Tuple(s, s)));
-        concreteStream(stream);
-        return stream.channel;
+        const stream = self.mapAccumEffect(s, (s, a) => f(s, a).map((s) => Tuple(s, s)))
+        concreteStream(stream)
+        return stream.channel
       })
     )
-  );
+  )
 }
 
 /**
@@ -29,4 +29,4 @@ export function scanEffect_<R, E, A, S, R2, E2>(
  *
  * @tsplus static ets/Stream/Aspects scanEffect
  */
-export const scanEffect = Pipeable(scanEffect_);
+export const scanEffect = Pipeable(scanEffect_)

@@ -1,4 +1,4 @@
-import { Suspend } from "@effect/core/stream/Channel/definition/primitives";
+import { Suspend } from "@effect/core/stream/Channel/definition/primitives"
 
 /**
  * @tsplus static ets/Channel/Ops suspend
@@ -6,5 +6,5 @@ import { Suspend } from "@effect/core/stream/Channel/definition/primitives";
 export function suspend<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   effect: LazyArg<Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
 ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  return new Suspend(effect);
+  return new Suspend(effect)
 }

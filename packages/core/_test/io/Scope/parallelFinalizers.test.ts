@@ -1,5 +1,5 @@
-import { Action, resource } from "@effect/core/test/io/Scope/test-utils";
-import { constTrue } from "@tsplus/stdlib/data/Function";
+import { Action, resource } from "@effect/core/test/io/Scope/test-utils"
+import { constTrue } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Scope", () => {
   describe.concurrent("parallelFinalizers", () => {
@@ -17,17 +17,17 @@ describe.concurrent("Scope", () => {
             )
           )
         )
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.take(2).find((action) => action == Action.Acquire(1)).isSome());
-      assert.isTrue(result.take(2).find((action) => action == Action.Acquire(2)).isSome());
-      assert.isTrue(result.drop(2).take(2).find((action) => action == Action.Use(1)).isSome());
-      assert.isTrue(result.drop(2).take(2).find((action) => action == Action.Use(2)).isSome());
-      assert.isTrue(result.drop(4).take(2).find((action) => action == Action.Release(1)).isSome());
-      assert.isTrue(result.drop(4).take(2).find((action) => action == Action.Release(2)).isSome());
-    });
+      assert.isTrue(result.take(2).find((action) => action == Action.Acquire(1)).isSome())
+      assert.isTrue(result.take(2).find((action) => action == Action.Acquire(2)).isSome())
+      assert.isTrue(result.drop(2).take(2).find((action) => action == Action.Use(1)).isSome())
+      assert.isTrue(result.drop(2).take(2).find((action) => action == Action.Use(2)).isSome())
+      assert.isTrue(result.drop(4).take(2).find((action) => action == Action.Release(1)).isSome())
+      assert.isTrue(result.drop(4).take(2).find((action) => action == Action.Release(2)).isSome())
+    })
 
     it("runs finalizers in parallel", async () => {
       const program = Effect.Do()
@@ -40,11 +40,11 @@ describe.concurrent("Scope", () => {
             )
           )
         )
-        .map(constTrue);
+        .map(constTrue)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
-  });
-});
+      assert.isTrue(result)
+    })
+  })
+})

@@ -8,7 +8,7 @@ export function orElseSucceed_<R, E, A, A1>(
   self: STM<R, E, A>,
   a: LazyArg<A1>
 ): STM<R, E, A | A1> {
-  return self | STM.succeed(a);
+  return self | STM.succeed(a)
 }
 
 /**
@@ -17,4 +17,4 @@ export function orElseSucceed_<R, E, A, A1>(
  *
  * @tsplus static ets/STM/Aspects orElseSucceed
  */
-export const orElseSucceed = Pipeable(orElseSucceed_);
+export const orElseSucceed = Pipeable(orElseSucceed_)

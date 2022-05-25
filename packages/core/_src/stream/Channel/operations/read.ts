@@ -10,5 +10,5 @@ export function read<In>(): Channel<
   never,
   In
 > {
-  return Channel.readOrFail(Option.none);
+  return Channel.readOrFail(Option.none)
 }

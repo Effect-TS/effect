@@ -7,5 +7,5 @@ export function fromCollection<A>(
   as: LazyArg<Collection<A>>,
   __tsplusTrace?: string
 ): Stream<unknown, never, A> {
-  return Stream.fromChunk(Chunk.from(as()));
+  return Stream.fromChunk(Chunk.from(as()))
 }

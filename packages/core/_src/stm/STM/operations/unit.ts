@@ -3,4 +3,4 @@
  *
  * @tsplus static ets/STM/Ops unit
  */
-export const unit: USTM<void> = STM.succeed(undefined);
+export const unit: USTM<void> = STM.succeed(undefined)

@@ -7,5 +7,5 @@ export function die(
   defect: LazyArg<unknown>,
   __tsplusTrace?: string
 ): Sink<unknown, never, unknown, never, never> {
-  return Sink.failCause(Cause.die(defect()));
+  return Sink.failCause(Cause.die(defect()))
 }

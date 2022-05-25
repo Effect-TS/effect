@@ -4,5 +4,5 @@
  * @tsplus fluent ets/FiberRef reset
  */
 export function reset<A, P>(self: FiberRef<A, P>, __tsplusTrace?: string): Effect.UIO<void> {
-  return self.set(self.initial());
+  return self.set(self.initial())
 }

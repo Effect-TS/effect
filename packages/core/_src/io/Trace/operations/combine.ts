@@ -5,10 +5,10 @@
  * @tsplus fluent ets/Trace combine
  */
 export function combine_(self: Trace, that: Trace): Trace {
-  return Trace(self.fiberId + that.fiberId, self.stackTrace + that.stackTrace);
+  return Trace(self.fiberId + that.fiberId, self.stackTrace + that.stackTrace)
 }
 
 /**
  * Combine two `Trace`s.
  */
-export const combine = Pipeable(combine_);
+export const combine = Pipeable(combine_)

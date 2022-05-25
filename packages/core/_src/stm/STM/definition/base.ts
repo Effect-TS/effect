@@ -1,16 +1,16 @@
-export type USTM<A> = STM<unknown, never, A>;
+export type USTM<A> = STM<unknown, never, A>
 
-export const STMSym = Symbol.for("@effect/core/stm/STM");
-export type STMSym = typeof STMSym;
+export const STMSym = Symbol.for("@effect/core/stm/STM")
+export type STMSym = typeof STMSym
 
-export const _R = Symbol.for("@effect/core/stm/STM/R");
-export type _R = typeof _R;
+export const _R = Symbol.for("@effect/core/stm/STM/R")
+export type _R = typeof _R
 
-export const _E = Symbol.for("@effect/core/stm/STM/E");
-export type _E = typeof _E;
+export const _E = Symbol.for("@effect/core/stm/STM/E")
+export type _E = typeof _E
 
-export const _A = Symbol.for("@effect/core/stm/STM/A");
-export type _A = typeof _A;
+export const _A = Symbol.for("@effect/core/stm/STM/A")
+export type _A = typeof _A
 
 /**
  * `STM<R, E, A>` represents an effect that can be performed transactionally,
@@ -49,21 +49,21 @@ export type _A = typeof _A;
  * @tsplus type ets/STM
  */
 export interface STM<R, E, A> {
-  readonly [STMSym]: STMSym;
-  readonly [_R]: (_: R) => void;
-  readonly [_E]: () => E;
-  readonly [_A]: () => A;
+  readonly [STMSym]: STMSym
+  readonly [_R]: (_: R) => void
+  readonly [_E]: () => E
+  readonly [_A]: () => A
 }
 
 /**
  * @tsplus type ets/STM/Ops
  */
 export interface STMOps {
-  $: STMAspects;
+  $: STMAspects
 }
 export const STM: STMOps = {
   $: {}
-};
+}
 
 /**
  * @tsplus type ets/STM/Aspects
@@ -76,16 +76,16 @@ export interface STMAspects {}
 export function unifySTM<X extends STM<any, any, any>>(
   self: X
 ): STM<
-  [X] extends [{ [_R]: (_: infer R) => void; }] ? R : never,
-  [X] extends [{ [_E]: () => infer E; }] ? E : never,
-  [X] extends [{ [_A]: () => infer A; }] ? A : never
+  [X] extends [{ [_R]: (_: infer R) => void }] ? R : never,
+  [X] extends [{ [_E]: () => infer E }] ? E : never,
+  [X] extends [{ [_A]: () => infer A }] ? A : never
 > {
-  return self;
+  return self
 }
 
 export class STMBase<R, E, A> implements STM<R, E, A> {
-  readonly [STMSym]: STMSym = STMSym;
-  readonly [_R]!: (_: R) => void;
-  readonly [_E]!: () => E;
-  readonly [_A]!: () => A;
+  readonly [STMSym]: STMSym = STMSym
+  readonly [_R]!: (_: R) => void
+  readonly [_E]!: () => E
+  readonly [_A]!: () => A
 }

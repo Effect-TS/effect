@@ -6,5 +6,5 @@
 export function recurWhile<A>(
   f: Predicate<A>
 ): Schedule<void, unknown, A, A> {
-  return Schedule.identity<A>().whileInput(f);
+  return Schedule.identity<A>().whileInput(f)
 }

@@ -11,7 +11,7 @@ export function retryOrElse_<R, E, A, S, R1, A1, R2, E2, A2>(
   orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
   __tsplusTrace?: string
 ): Effect<R & R1 & R2, E | E2, A | A2> {
-  return self.retryOrElseEither(policy, orElse).map((either) => either.merge());
+  return self.retryOrElseEither(policy, orElse).map((either) => either.merge())
 }
 
 /**
@@ -28,5 +28,5 @@ export function retryOrElse<S, R1, E, A1, R2, E2, A2>(
 ): <R, A>(self: Effect<R, E, A>) => Effect<R & R1 & R2, E | E2, A | A2> {
   return <R, A>(
     self: Effect<R, E, A>
-  ): Effect<R & R1 & R2, E | E2, A | A2> => self.retryOrElse(policy, orElse);
+  ): Effect<R & R1 & R2, E | E2, A | A2> => self.retryOrElse(policy, orElse)
 }

@@ -9,5 +9,5 @@ export function filterNot<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
   __tsplusTrace?: string
 ): Effect<R, E, Chunk<A>> {
-  return Effect.filter(as, (x) => f(x).map((b) => !b));
+  return Effect.filter(as, (x) => f(x).map((b) => !b))
 }

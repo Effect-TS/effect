@@ -1,46 +1,46 @@
 describe.concurrent("Fiber", () => {
   describe.concurrent("if one composed fiber fails then all must fail", () => {
     it("await", async () => {
-      const program = Fiber.fail("fail").zip(Fiber.never).await();
+      const program = Fiber.fail("fail").zip(Fiber.never).await()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
       assert.isTrue(
         result.isFailure() &&
           (result.cause.failures().head() == Option.some("fail"))
-      );
-    });
+      )
+    })
 
     it("join", async () => {
-      const program = Fiber.fail("fail").zip(Fiber.never).join();
+      const program = Fiber.fail("fail").zip(Fiber.never).join()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
       assert.isTrue(
         result.isFailure() &&
           (result.cause.failures().head() == Option.some("fail"))
-      );
-    });
+      )
+    })
 
     it("awaitAll", async () => {
       const program = Fiber.awaitAll(
         Chunk.fill(100, () => Fiber.never).prepend(Fiber.fail("fail"))
-      );
+      )
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result == Exit.succeed(undefined));
-    });
+      assert.isTrue(result == Exit.succeed(undefined))
+    })
 
     it("joinAll", async () => {
       const program = Fiber.joinAll(
         Chunk.fill(100, () => Fiber.never).prepend(Fiber.fail("fail"))
-      ).exit();
+      ).exit()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isFailure());
-    });
+      assert.isTrue(result.isFailure())
+    })
 
     it("shard example", async () => {
       function shard<R, E, A>(
@@ -48,11 +48,11 @@ describe.concurrent("Fiber", () => {
         n: number,
         worker: (a: A) => Effect<R, E, void>
       ): Effect<R, E, void> {
-        const worker1 = queue.take.flatMap((a) => worker(a).uninterruptible()).forever();
+        const worker1 = queue.take.flatMap((a) => worker(a).uninterruptible()).forever()
 
         return Effect.forkAll(Chunk.fill(n, () => worker1))
           .flatMap((fiber) => fiber.join())
-          .zipRight(Effect.never);
+          .zipRight(Effect.never)
       }
 
       const program = Effect.Do()
@@ -64,12 +64,12 @@ describe.concurrent("Fiber", () => {
         )
         .bind("exit", ({ queue, worker }) => shard(queue, 4, worker).exit())
         .tap(({ queue }) => queue.shutdown)
-        .map(({ exit }) => exit);
+        .map(({ exit }) => exit)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isFailure());
-    });
+      assert.isTrue(result.isFailure())
+    })
 
     it("grandparent interruption is propagated to grandchild despite parent termination", async () => {
       const program = Effect.Do()
@@ -89,11 +89,11 @@ describe.concurrent("Fiber", () => {
         .tap(({ latch1 }) => latch1.await())
         .tap(({ fiber }) => fiber.interrupt())
         .tap(({ latch2 }) => latch2.await())
-        .exit();
+        .exit()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isSuccess());
-    });
-  });
-});
+      assert.isTrue(result.isSuccess())
+    })
+  })
+})

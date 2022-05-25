@@ -8,7 +8,7 @@ export function absolveNow<R, E, A>(
   self: Effect<R, E, Either<E, A>>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return Effect.absolve(self);
+  return Effect.absolve(self)
 }
 
 /**
@@ -21,5 +21,5 @@ export function absolve<R, E, A>(
   self: LazyArg<Effect<R, E, Either<E, A>>>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return Effect.suspendSucceed(self).flatMap((either) => Effect.fromEither(either));
+  return Effect.suspendSucceed(self).flatMap((either) => Effect.fromEither(either))
 }

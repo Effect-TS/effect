@@ -11,13 +11,13 @@ export function forEachDiscard<R, E, A, X>(
   as: LazyArg<Collection<A>>,
   f: (a: A) => STM<R, E, X>
 ): STM<R, E, void> {
-  return STM.succeed(as).flatMap((Collection) => loop(Collection[Symbol.iterator](), f));
+  return STM.succeed(as).flatMap((Collection) => loop(Collection[Symbol.iterator](), f))
 }
 
 function loop<R, E, A, X>(
   iterator: Iterator<A, any, undefined>,
   f: (a: A) => STM<R, E, X>
 ): STM<R, E, void> {
-  const next = iterator.next();
-  return next.done ? STM.unit : f(next.value) > loop(iterator, f);
+  const next = iterator.next()
+  return next.done ? STM.unit : f(next.value) > loop(iterator, f)
 }

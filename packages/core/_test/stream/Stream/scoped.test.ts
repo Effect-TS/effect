@@ -1,12 +1,12 @@
 describe.concurrent("Stream", () => {
   describe.concurrent("managed", () => {
     it("preserves failure of effect", async () => {
-      const program = Stream.scoped(Effect.fail("error")).runCollect().either();
+      const program = Stream.scoped(Effect.fail("error")).runCollect().either()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left("error"));
-    });
+      assert.isTrue(result == Either.left("error"))
+    })
 
     it("preserves interruptibility of effect", async () => {
       const program = Effect.struct({
@@ -16,12 +16,12 @@ describe.concurrent("Stream", () => {
         uninterruptible: Stream.scoped(
           Effect.checkInterruptible(Effect.succeedNow).uninterruptible()
         ).runHead()
-      });
+      })
 
-      const { interruptible, uninterruptible } = await program.unsafeRunPromise();
+      const { interruptible, uninterruptible } = await program.unsafeRunPromise()
 
-      assert.isTrue(interruptible == Option.some(InterruptStatus.Interruptible));
-      assert.isTrue(uninterruptible == Option.some(InterruptStatus.Uninterruptible));
-    });
-  });
-});
+      assert.isTrue(interruptible == Option.some(InterruptStatus.Interruptible))
+      assert.isTrue(uninterruptible == Option.some(InterruptStatus.Uninterruptible))
+    })
+  })
+})

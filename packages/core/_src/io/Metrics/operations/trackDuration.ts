@@ -8,5 +8,5 @@
 export function trackDuration<Type, Out>(
   self: Metric<Type, Duration, Out>
 ): <R, E, A>(effect: Effect<R, E, A>, __tsplusTrace?: string) => Effect<R, E, A> {
-  return self.trackDurationWith(identity);
+  return self.trackDurationWith(identity)
 }

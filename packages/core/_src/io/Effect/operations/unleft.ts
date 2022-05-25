@@ -11,5 +11,5 @@ export function unleft<R, E, B, A>(
   return self.foldEffect(
     (either) => either.fold(Effect.failNow, (b) => Effect.succeedNow(Either.right(b))),
     (a) => Effect.succeedNow(Either.left(a))
-  );
+  )
 }

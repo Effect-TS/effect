@@ -25,5 +25,5 @@ export function acquireUseReleaseExit<
     )
       .flatMap(use)
       .ensuringWith((exit) => ref.get().flatMap((f) => f(exit)))
-  );
+  )
 }

@@ -1,4 +1,4 @@
-import { realFiber } from "@effect/core/io/Fiber/definition";
+import { realFiber } from "@effect/core/io/Fiber/definition"
 
 /**
  * Inherits values from all `FiberRef` instances into current fiber. This
@@ -11,6 +11,6 @@ export function inheritRefs<E, A>(
   self: Fiber<E, A>,
   __tsplusTrace?: string
 ): Effect.UIO<void> {
-  realFiber(self);
-  return self._inheritRefs;
+  realFiber(self)
+  return self._inheritRefs
 }

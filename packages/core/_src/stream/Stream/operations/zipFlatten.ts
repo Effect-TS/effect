@@ -1,4 +1,4 @@
-import type { MergeTuple } from "@tsplus/stdlib/data/Tuple";
+import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
 
 /**
  * Zips this stream with another point-wise and emits tuples of elements from
@@ -13,7 +13,7 @@ export function zipFlatten_<R, E, A, R2, E2, A2>(
   that: LazyArg<Stream<R2, E2, A2>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, MergeTuple<A, A2>> {
-  return self.zipWith(that, (a, a2) => Tuple.mergeTuple(a, a2));
+  return self.zipWith(that, (a, a2) => Tuple.mergeTuple(a, a2))
 }
 
 /**
@@ -24,4 +24,4 @@ export function zipFlatten_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Stream/Aspects zipFlatten
  */
-export const zipFlatten = Pipeable(zipFlatten_);
+export const zipFlatten = Pipeable(zipFlatten_)

@@ -9,5 +9,5 @@ export function validateFirstPar<R, E, A, B>(
   f: (a: A) => Effect<R, E, B>,
   __tsplusTrace?: string
 ): Effect<R, Chunk<E>, B> {
-  return Effect.forEachPar(as, (a) => f(a).flip()).flip();
+  return Effect.forEachPar(as, (a) => f(a).flip()).flip()
 }

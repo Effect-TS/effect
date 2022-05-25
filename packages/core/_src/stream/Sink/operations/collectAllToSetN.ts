@@ -11,5 +11,5 @@ export function collectAllToSetN<In>(
     (set, a) => (set.has(a) ? 0 : 1),
     n,
     (set, a) => set.add(a)
-  );
+  )
 }

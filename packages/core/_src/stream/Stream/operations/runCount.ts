@@ -7,5 +7,5 @@ export function runCount<R, E, A>(
   self: Stream<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, number> {
-  return self.run(Sink.count());
+  return self.run(Sink.count())
 }

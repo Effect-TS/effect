@@ -8,7 +8,7 @@ export function zipPar_<R, E, A, R2, E2, A2>(
   that: LazyArg<Effect<R2, E2, A2>>,
   __tsplusTrace?: string
 ): Effect<R & R2, E | E2, Tuple<[A, A2]>> {
-  return self.zipWithPar(that, (a, b) => Tuple(a, b));
+  return self.zipWithPar(that, (a, b) => Tuple(a, b))
 }
 
 /**
@@ -16,4 +16,4 @@ export function zipPar_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Effect/Aspects zipPar
  */
-export const zipPar = Pipeable(zipPar_);
+export const zipPar = Pipeable(zipPar_)

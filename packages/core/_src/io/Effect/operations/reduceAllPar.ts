@@ -23,8 +23,8 @@ export function reduceAllPar<R, E, A>(
         )
     ).map((option) =>
       option.getOrElse(() => {
-        throw new Error("Bug");
+        throw new Error("Bug")
       })
     )
-  );
+  )
 }

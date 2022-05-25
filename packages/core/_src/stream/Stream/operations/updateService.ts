@@ -5,7 +5,7 @@
  */
 export function updateService_<R, E, A, T>(self: Stream<R, E, A>, tag: Tag<T>) {
   return (f: (service: T) => T, __tsplusTrace?: string): Stream<R & Has<T>, E, A> =>
-    self.provideSomeEnvironment((env) => env.add(tag, f(env.get(tag))));
+    self.provideSomeEnvironment((env) => env.add(tag, f(env.get(tag))))
 }
 
 /**
@@ -13,4 +13,4 @@ export function updateService_<R, E, A, T>(self: Stream<R, E, A>, tag: Tag<T>) {
  *
  * @tsplus static ets/Stream/Aspects updateService
  */
-export const updateService = Pipeable(updateService_);
+export const updateService = Pipeable(updateService_)

@@ -1,4 +1,4 @@
-import { Exited, Running } from "@effect/core/io/Scope/ReleaseMap/_internal/State";
+import { Exited, Running } from "@effect/core/io/Scope/ReleaseMap/_internal/State"
 
 /**
  * Replaces the finalizer associated with this key and returns it. If the
@@ -20,20 +20,20 @@ export function replace_(
           return Tuple(
             finalizer(s.exit).map(() => Option.none),
             new Exited(s.nextKey, s.exit, s.update)
-          );
+          )
         }
         case "Running": {
-          const finalizers = s.finalizers();
-          const oldFinalizer = Option.fromNullable(finalizers.get(key));
-          const newFinalizers = finalizers.set(key, finalizer);
+          const finalizers = s.finalizers()
+          const oldFinalizer = Option.fromNullable(finalizers.get(key))
+          const newFinalizers = finalizers.set(key, finalizer)
           return Tuple(
             Effect.succeed(oldFinalizer),
             new Running(s.nextKey, newFinalizers, s.update)
-          );
+          )
         }
       }
     })
-    .flatten();
+    .flatten()
 }
 
 /**
@@ -43,4 +43,4 @@ export function replace_(
  *
  * @tsplus static ets/ReleaseMap/Aspects replace
  */
-export const replace = Pipeable(replace_);
+export const replace = Pipeable(replace_)

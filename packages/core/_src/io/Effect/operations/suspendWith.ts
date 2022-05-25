@@ -11,12 +11,12 @@ export function suspendWith<R, A>(
 ): Effect.RIO<R, A> {
   return Effect.suspendSucceedWith((runtimeConfig, fiberId) => {
     try {
-      return f(runtimeConfig, fiberId);
+      return f(runtimeConfig, fiberId)
     } catch (error) {
       if (!runtimeConfig.value.fatal(error)) {
-        throw new Effect.Error(Exit.fail(error), __tsplusTrace);
+        throw new Effect.Error(Exit.fail(error), __tsplusTrace)
       }
-      throw error;
+      throw error
     }
-  });
+  })
 }

@@ -1,4 +1,4 @@
-import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * A sink that takes the specified number of values.
@@ -16,7 +16,7 @@ export function take<In>(
   ).flatMap((acc) => {
     const {
       tuple: [taken, leftover]
-    } = acc.splitAt(n);
-    return new SinkInternal(Channel.write(leftover) > Channel.succeedNow(taken));
-  });
+    } = acc.splitAt(n)
+    return new SinkInternal(Channel.write(leftover) > Channel.succeedNow(taken))
+  })
 }

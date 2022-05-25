@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Returns a lazily constructed stream.
@@ -11,9 +11,9 @@ export function suspend<R, E, A>(
 ): Stream<R, E, A> {
   return new StreamInternal(
     Channel.suspend(() => {
-      const stream0 = stream();
-      concreteStream(stream0);
-      return stream0.channel;
+      const stream0 = stream()
+      concreteStream(stream0)
+      return stream0.channel
     })
-  );
+  )
 }

@@ -12,7 +12,7 @@ export function haltAfter_<R, E, A>(
   duration: LazyArg<Duration>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  return self.haltWhen(Effect.sleep(duration));
+  return self.haltWhen(Effect.sleep(duration))
 }
 
 /**
@@ -24,4 +24,4 @@ export function haltAfter_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects haltAfter
  */
-export const haltAfter = Pipeable(haltAfter_);
+export const haltAfter = Pipeable(haltAfter_)

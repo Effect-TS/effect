@@ -5,5 +5,5 @@
  * @tsplus fluent ets/Layer orDie
  */
 export function orDie<R, E, A>(self: Layer<R, E, A>): Layer<R, never, A> {
-  return self.catchAll((e) => Layer.die(e));
+  return self.catchAll((e) => Layer.die(e))
 }

@@ -1,5 +1,5 @@
-export const TSemaphoreSym = Symbol.for("@effect/core/stm/TSemaphore");
-export type TSemaphoreSym = typeof TSemaphoreSym;
+export const TSemaphoreSym = Symbol.for("@effect/core/stm/TSemaphore")
+export type TSemaphoreSym = typeof TSemaphoreSym
 
 /**
  * A `TSemaphore` is a semaphore that can be composed transactionally. Because
@@ -31,18 +31,18 @@ export type TSemaphoreSym = typeof TSemaphoreSym;
  * @tsplus type ets/TSemaphore
  */
 export interface TSemaphore {
-  readonly [TSemaphoreSym]: TSemaphoreSym;
+  readonly [TSemaphoreSym]: TSemaphoreSym
 }
 
 /**
  * @tsplus type ets/TSemaphore/Ops
  */
 export interface TSemaphoreOps {
-  $: TSemaphoreAspects;
+  $: TSemaphoreAspects
 }
 export const TSemaphore: TSemaphoreOps = {
   $: {}
-};
+}
 
 /**
  * @tsplus type ets/TSemaphore/Aspects

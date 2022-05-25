@@ -12,7 +12,7 @@ export function provideLayer_<R, E, A, E1, A1>(
     Scope.make,
     (scope) => layer.buildWithScope(scope).flatMap((r) => self.provideEnvironment(r)),
     (scope, exit) => scope.close(exit)
-  );
+  )
 }
 
 /**
@@ -20,4 +20,4 @@ export function provideLayer_<R, E, A, E1, A1>(
  *
  * @tsplus static ets/Effect/Aspects provideLayer
  */
-export const provideLayer = Pipeable(provideLayer_);
+export const provideLayer = Pipeable(provideLayer_)

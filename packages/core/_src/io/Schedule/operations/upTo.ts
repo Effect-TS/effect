@@ -8,7 +8,7 @@ export function upTo_<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>,
   duration: Duration
 ): Schedule<Tuple<[State, Option<number>]>, Env, In, Out> {
-  return self < Schedule.upTo(duration);
+  return self < Schedule.upTo(duration)
 }
 
 /**
@@ -16,4 +16,4 @@ export function upTo_<State, Env, In, Out>(
  *
  * @tsplus static ets/Schedule/Aspects upTo
  */
-export const upTo = Pipeable(upTo_);
+export const upTo = Pipeable(upTo_)

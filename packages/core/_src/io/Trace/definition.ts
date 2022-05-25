@@ -10,5 +10,5 @@ export class Trace {
  * @tsplus static ets/Trace/Ops __call
  */
 export function make(fiberId: FiberId, stackTrace: Chunk<TraceElement>) {
-  return new Trace(fiberId, stackTrace);
+  return new Trace(fiberId, stackTrace)
 }

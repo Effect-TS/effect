@@ -35,10 +35,10 @@ export function mergeOutWith_<
   OutElem1,
   OutDone1
 > {
-  return Channel.mergeAllWith(self.mapOut(identity), n, f);
+  return Channel.mergeAllWith(self.mapOut(identity), n, f)
 }
 
 /**
  * @tsplus static ets/Channel/Aspects mergeOutWith
  */
-export const mergeOutWith = Pipeable(mergeOutWith_);
+export const mergeOutWith = Pipeable(mergeOutWith_)

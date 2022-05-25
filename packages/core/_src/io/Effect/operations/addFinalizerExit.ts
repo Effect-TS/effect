@@ -9,8 +9,8 @@ export function addFinalizerExit<R, X>(
   __tsplusTrace?: string
 ): Effect<R & Has<Scope>, never, void> {
   return Do(($) => {
-    const environment = $(Effect.environment<R>());
-    const scope = $(Effect.scope);
-    return $(scope.addFinalizerExit((exit) => finalizer(exit).provideEnvironment(environment)));
-  });
+    const environment = $(Effect.environment<R>())
+    const scope = $(Effect.scope)
+    return $(scope.addFinalizerExit((exit) => finalizer(exit).provideEnvironment(environment)))
+  })
 }

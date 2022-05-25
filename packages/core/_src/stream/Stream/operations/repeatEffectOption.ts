@@ -8,5 +8,5 @@ export function repeatEffectOption<R, E, A>(
   effect: LazyArg<Effect<R, Option<E>, A>>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  return Stream.repeatEffectChunkOption(effect().map(Chunk.single));
+  return Stream.repeatEffectChunkOption(effect().map(Chunk.single))
 }

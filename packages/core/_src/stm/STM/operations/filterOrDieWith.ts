@@ -7,18 +7,18 @@ export function filterOrDieWith_<R, E, A, B extends A>(
   self: STM<R, E, A>,
   f: Refinement<A, B>,
   dieWith: (a: Exclude<A, B>) => unknown
-): STM<R, E, B>;
+): STM<R, E, B>
 export function filterOrDieWith_<R, E, A>(
   self: STM<R, E, A>,
   f: Predicate<A>,
   dieWith: (a: A) => unknown
-): STM<R, E, A>;
+): STM<R, E, A>
 export function filterOrDieWith_<R, E, A>(
   self: STM<R, E, A>,
   f: Predicate<A>,
   dieWith: unknown
 ) {
-  return self.filterOrElseWith(f, (x) => STM.die((dieWith as (a: A) => unknown)(x)));
+  return self.filterOrElseWith(f, (x) => STM.die((dieWith as (a: A) => unknown)(x)))
 }
 
 /**
@@ -29,11 +29,11 @@ export function filterOrDieWith_<R, E, A>(
 export function filterOrDieWith<A, B extends A>(
   f: Refinement<A, B>,
   dieWith: (a: Exclude<A, B>) => unknown
-): <R, E>(self: STM<R, E, A>) => STM<R, E, B>;
+): <R, E>(self: STM<R, E, A>) => STM<R, E, B>
 export function filterOrDieWith<A>(
   f: Predicate<A>,
   dieWith: (a: A) => unknown
-): <R, E>(self: STM<R, E, A>) => STM<R, E, A>;
+): <R, E>(self: STM<R, E, A>) => STM<R, E, A>
 export function filterOrDieWith<A>(f: Predicate<A>, dieWith: unknown) {
-  return <R, E>(self: STM<R, E, A>): STM<R, E, A> => self.filterOrDieWith(f, dieWith as (a: A) => unknown);
+  return <R, E>(self: STM<R, E, A>): STM<R, E, A> => self.filterOrDieWith(f, dieWith as (a: A) => unknown)
 }

@@ -9,5 +9,5 @@ export function reduceAll<R, E, A>(
   as: LazyArg<Collection<STM<R, E, A>>>,
   f: (acc: A, a: A) => A
 ): STM<R, E, A> {
-  return STM.suspend(as().reduce(a(), (acc, a) => acc.zipWith(a, f)));
+  return STM.suspend(as().reduce(a(), (acc, a) => acc.zipWith(a, f)))
 }

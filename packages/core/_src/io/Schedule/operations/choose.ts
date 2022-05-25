@@ -1,5 +1,5 @@
-import type { Decision } from "@effect/core/io/Schedule/Decision";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import type { Decision } from "@effect/core/io/Schedule/Decision"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * Returns a new schedule that allows choosing between feeding inputs to this
@@ -44,7 +44,7 @@ export function choose_<State, Env, In, Out, State1, Env1, In2, Out2>(
               Tuple(Tuple(state.get(0), rState), Either.right(out2), decision)
             )
       )
-  );
+  )
 }
 
 /**
@@ -53,4 +53,4 @@ export function choose_<State, Env, In, Out, State1, Env1, In2, Out2>(
  *
  * @tsplus static ets/Schedule/Aspects choose
  */
-export const choose = Pipeable(choose_);
+export const choose = Pipeable(choose_)

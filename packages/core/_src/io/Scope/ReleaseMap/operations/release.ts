@@ -1,4 +1,4 @@
-import { Running } from "@effect/core/io/Scope/ReleaseMap/_internal/State";
+import { Running } from "@effect/core/io/Scope/ReleaseMap/_internal/State"
 
 /**
  * Runs the specified finalizer and removes it from the finalizers associated
@@ -16,23 +16,23 @@ export function release_(
     .modify((s) => {
       switch (s._tag) {
         case "Exited": {
-          return Tuple(Effect.unit, s);
+          return Tuple(Effect.unit, s)
         }
         case "Running": {
-          const finalizers = s.finalizers();
-          const finalizer = Option.fromNullable(finalizers.get(key));
-          finalizers.delete(key);
+          const finalizers = s.finalizers()
+          const finalizer = Option.fromNullable(finalizers.get(key))
+          finalizers.delete(key)
           return Tuple(
             finalizer.fold(
               () => Effect.unit,
               (fin) => s.update(fin)(exit)
             ),
             new Running(s.nextKey, finalizers, s.update)
-          );
+          )
         }
       }
     })
-    .flatten();
+    .flatten()
 }
 
 /**
@@ -41,4 +41,4 @@ export function release_(
  *
  * @tsplus static ets/ReleaseMap/Aspects release
  */
-export const release = Pipeable(release_);
+export const release = Pipeable(release_)

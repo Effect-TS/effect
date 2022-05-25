@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Halts the evaluation of this stream when the provided IO completes. The
@@ -17,14 +17,14 @@ export function haltWhen_<R, E, A, R2, E2, Z>(
   io: LazyArg<Effect<R2, E2, Z>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A> {
-  concreteStream(self);
+  concreteStream(self)
   return new StreamInternal(
     Channel.unwrapScoped(
       io()
         .forkScoped()
         .map((fiber) => self.channel >> writer<R, E, A, R2, E2, Z>(fiber))
     )
-  );
+  )
 }
 
 /**
@@ -39,7 +39,7 @@ export function haltWhen_<R, E, A, R2, E2, Z>(
  *
  * @tsplus static ets/Stream/Aspects haltWhen
  */
-export const haltWhen = Pipeable(haltWhen_);
+export const haltWhen = Pipeable(haltWhen_)
 
 function writer<R, E, A, R2, E2, Z>(
   fiber: Fiber<E2, Z>,
@@ -60,5 +60,5 @@ function writer<R, E, A, R2, E2, Z>(
           )
       )
     )
-  );
+  )
 }

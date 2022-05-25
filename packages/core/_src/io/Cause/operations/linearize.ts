@@ -1,4 +1,4 @@
-import { Die, Fail, Interrupt, Stackless } from "@effect/core/io/Cause/definition";
+import { Die, Fail, Interrupt, Stackless } from "@effect/core/io/Cause/definition"
 
 /**
  * Linearizes this cause to a set of parallel causes where each parallel cause
@@ -15,5 +15,5 @@ export function linearize<E>(self: Cause<E>): HashSet<Cause<E>> {
     (left, right) => left.flatMap((l) => right.map((r) => l + r)),
     (left, right) => left.union(right),
     (cause, stackless) => cause.map((c) => new Stackless(c, stackless))
-  );
+  )
 }

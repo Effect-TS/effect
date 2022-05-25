@@ -9,7 +9,7 @@ export function rightWith_<R, E, A, A1, B, B1, R1, E1>(
   f: (effect: Effect<R, Either<A, E>, B>) => Effect<R1, Either<A1, E1>, B1>,
   __tsplusTrace?: string
 ): Effect<R & R1, E | E1, Either<A1, B1>> {
-  return Effect.suspendSucceed(f(self.right).unright());
+  return Effect.suspendSucceed(f(self.right).unright())
 }
 
 /**
@@ -18,4 +18,4 @@ export function rightWith_<R, E, A, A1, B, B1, R1, E1>(
  *
  * @tsplus static ets/Effect/Aspects rightWith
  */
-export const rightWith = Pipeable(rightWith_);
+export const rightWith = Pipeable(rightWith_)

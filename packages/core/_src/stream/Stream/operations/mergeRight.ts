@@ -1,4 +1,4 @@
-import { TerminationStrategy } from "@effect/core/stream/Stream//TerminationStrategy";
+import { TerminationStrategy } from "@effect/core/stream/Stream//TerminationStrategy"
 
 /**
  * Merges this stream and the specified stream together, discarding the values
@@ -12,7 +12,7 @@ export function mergeRight_<R, E, A, R2, E2, A2>(
   strategy: LazyArg<TerminationStrategy> = () => TerminationStrategy.Both,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A2> {
-  return self.drain().merge(that, strategy);
+  return self.drain().merge(that, strategy)
 }
 
 /**
@@ -21,4 +21,4 @@ export function mergeRight_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Stream/Aspects mergeRight
  */
-export const mergeRight = Pipeable(mergeRight_);
+export const mergeRight = Pipeable(mergeRight_)

@@ -3,4 +3,4 @@
  */
 export const nextBoolean: Effect.UIO<boolean> = Effect.randomWith(
   (random) => random.nextBoolean
-);
+)

@@ -1,4 +1,4 @@
-import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision";
+import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision"
 
 /**
  * Returns a new channel, which is the same as this one, except it will be
@@ -38,7 +38,7 @@ export function interruptWhen_<
     Channel.fromEffect(io),
     (selfDone) => MergeDecision.done(Effect.done(selfDone)),
     (ioDone) => MergeDecision.done(Effect.done(ioDone))
-  );
+  )
 }
 
 /**
@@ -52,4 +52,4 @@ export function interruptWhen_<
  *
  * @tsplus static ets/Channel/Aspects interruptWhen
  */
-export const interruptWhen = Pipeable(interruptWhen_);
+export const interruptWhen = Pipeable(interruptWhen_)

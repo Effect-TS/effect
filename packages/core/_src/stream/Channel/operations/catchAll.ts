@@ -39,7 +39,7 @@ export function catchAll_<
       (outErr) => f(outErr),
       (cause) => Channel.failCause(cause)
     )
-  );
+  )
 }
 
 /**
@@ -49,4 +49,4 @@ export function catchAll_<
  *
  * @tsplus static ets/Channel/Aspects catchAll
  */
-export const catchAll = Pipeable(catchAll_);
+export const catchAll = Pipeable(catchAll_)

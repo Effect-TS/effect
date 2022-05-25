@@ -12,7 +12,7 @@ export function toQueueSliding_<R, E, A>(
   return Effect.acquireRelease(
     Queue.sliding<Take<E, A>>(capacity),
     (queue) => queue.shutdown
-  ).tap((queue) => self.runIntoQueueScoped(queue).fork());
+  ).tap((queue) => self.runIntoQueueScoped(queue).fork())
 }
 
 /**
@@ -21,4 +21,4 @@ export function toQueueSliding_<R, E, A>(
  *
  * toQueueSliding
  */
-export const toQueueSliding = Pipeable(toQueueSliding_);
+export const toQueueSliding = Pipeable(toQueueSliding_)

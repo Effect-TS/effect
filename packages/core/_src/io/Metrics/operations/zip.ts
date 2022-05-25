@@ -8,15 +8,15 @@ export function zip_<Type, In, Out, Type2, In2, Out2>(
   return Metric(
     Tuple(self.keyType, that.keyType),
     (input: Tuple<[In, In2]>, extraTags) => {
-      const { tuple: [l, r] } = input;
-      self.unsafeUpdate(l, extraTags);
-      that.unsafeUpdate(r, extraTags);
+      const { tuple: [l, r] } = input
+      self.unsafeUpdate(l, extraTags)
+      that.unsafeUpdate(r, extraTags)
     },
     (extraTags) => Tuple(self.unsafeValue(extraTags), that.unsafeValue(extraTags))
-  );
+  )
 }
 
 /**
  * @tsplus static ets/Metrics/Metric/Aspects zip
  */
-export const zip = Pipeable(zip_);
+export const zip = Pipeable(zip_)

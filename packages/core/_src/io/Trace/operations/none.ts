@@ -1,4 +1,4 @@
 /**
  * @tsplus static ets/Trace/Ops none
  */
-export const none: Trace = Trace(FiberId.none, Chunk.empty());
+export const none: Trace = Trace(FiberId.none, Chunk.empty())

@@ -8,5 +8,5 @@
 export function linear(
   base: Duration
 ): Schedule<number, unknown, unknown, Duration> {
-  return Schedule.delayed(Schedule.forever.map((i) => new Duration(base.millis * (i + 1))));
+  return Schedule.delayed(Schedule.forever.map((i) => new Duration(base.millis * (i + 1))))
 }

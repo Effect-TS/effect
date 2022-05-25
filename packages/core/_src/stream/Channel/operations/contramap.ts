@@ -14,13 +14,13 @@ export function contramap_<
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   f: (a: InDone0) => InDone
 ): Channel<Env, InErr, InElem, InDone0, OutErr, OutElem, OutDone> {
-  return contramapReader<InErr, InElem, InDone0, InDone>(f) >> self;
+  return contramapReader<InErr, InElem, InDone0, InDone>(f) >> self
 }
 
 /**
  * @tsplus static ets/Channel/Aspects contramap
  */
-export const contramap = Pipeable(contramap_);
+export const contramap = Pipeable(contramap_)
 
 function contramapReader<InErr, InElem, InDone0, InDone>(
   f: (a: InDone0) => InDone
@@ -29,5 +29,5 @@ function contramapReader<InErr, InElem, InDone0, InDone>(
     (inElem: InElem) => Channel.write(inElem) > contramapReader<InErr, InElem, InDone0, InDone>(f),
     (inErr: InErr) => Channel.fail(inErr),
     (done: InDone0) => Channel.succeedNow(f(done))
-  );
+  )
 }

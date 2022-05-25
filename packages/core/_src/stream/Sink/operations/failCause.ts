@@ -1,4 +1,4 @@
-import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Creates a sink halting with a specified cause.
@@ -9,5 +9,5 @@ export function failCause<E>(
   cause: LazyArg<Cause<E>>,
   __tsplusTrace?: string
 ): Sink<unknown, E, unknown, never, never> {
-  return new SinkInternal(Channel.failCause(cause));
+  return new SinkInternal(Channel.failCause(cause))
 }

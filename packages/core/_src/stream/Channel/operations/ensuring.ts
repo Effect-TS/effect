@@ -15,10 +15,10 @@ export function ensuring_<
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   finalizer: LazyArg<Effect.RIO<Env1, Z>>
 ): Channel<Env & Env1, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  return self.ensuringWith(finalizer);
+  return self.ensuringWith(finalizer)
 }
 
 /**
  * @tsplus static ets/Channel/Aspects ensuring
  */
-export const ensuring = Pipeable(ensuring_);
+export const ensuring = Pipeable(ensuring_)

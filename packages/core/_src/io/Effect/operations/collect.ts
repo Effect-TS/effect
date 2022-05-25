@@ -9,5 +9,5 @@ export function collect<A, R, E, B>(
   f: (a: A) => Effect<R, Option<E>, B>,
   __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
-  return Effect.forEach(as, (a) => f(a).unsome()).map((chunk) => chunk.compact());
+  return Effect.forEach(as, (a) => f(a).unsome()).map((chunk) => chunk.compact())
 }

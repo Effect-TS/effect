@@ -12,7 +12,7 @@ export function modifySome_<A, B>(
   pf: (a: A) => Option<Tuple<[B, A]>>,
   __tsplusTrace?: string
 ): Effect.UIO<B> {
-  return self.modify((v) => pf(v).getOrElse(Tuple(def, v)));
+  return self.modify((v) => pf(v).getOrElse(Tuple(def, v)))
 }
 
 /**
@@ -23,4 +23,4 @@ export function modifySome_<A, B>(
  *
  * @tsplus static ets/Ref/Synchronized/Aspects modifySome
  */
-export const modifySome = Pipeable(modifySome_);
+export const modifySome = Pipeable(modifySome_)

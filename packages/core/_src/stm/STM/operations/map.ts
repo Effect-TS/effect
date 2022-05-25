@@ -4,7 +4,7 @@
  * @tsplus fluent ets/STM map
  */
 export function map_<R, E, A, B>(self: STM<R, E, A>, f: (a: A) => B): STM<R, E, B> {
-  return self.flatMap((a) => STM.succeedNow(f(a)));
+  return self.flatMap((a) => STM.succeedNow(f(a)))
 }
 
 /**
@@ -12,4 +12,4 @@ export function map_<R, E, A, B>(self: STM<R, E, A>, f: (a: A) => B): STM<R, E, 
  *
  * @tsplus static ets/STM/Aspects map
  */
-export const map = Pipeable(map_);
+export const map = Pipeable(map_)

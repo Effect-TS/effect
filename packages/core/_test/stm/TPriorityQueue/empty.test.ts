@@ -1,5 +1,5 @@
-import type { Event } from "@effect/core/test/stm/TPriorityQueue/test-utils";
-import { as, eventOrd } from "@effect/core/test/stm/TPriorityQueue/test-utils";
+import type { Event } from "@effect/core/test/stm/TPriorityQueue/test-utils"
+import { as, eventOrd } from "@effect/core/test/stm/TPriorityQueue/test-utils"
 
 describe.concurrent("TPriorityQueue", () => {
   describe.concurrent("empty/nonEmpty", () => {
@@ -7,22 +7,22 @@ describe.concurrent("TPriorityQueue", () => {
       const program = TPriorityQueue.empty<Event>(eventOrd)
         .tap((queue) => queue.offerAll(as))
         .flatMap((queue) => queue.isEmpty())
-        .commit();
+        .commit()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result === as.isEmpty());
-    });
+      assert.isTrue(result === as.isEmpty())
+    })
 
     it("isNonEmpty", async () => {
       const program = TPriorityQueue.empty<Event>(eventOrd)
         .tap((queue) => queue.offerAll(as))
         .flatMap((queue) => queue.isNonEmpty())
-        .commit();
+        .commit()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result === as.isNonEmpty());
-    });
-  });
-});
+      assert.isTrue(result === as.isNonEmpty())
+    })
+  })
+})

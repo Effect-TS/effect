@@ -8,7 +8,7 @@ export function taggedWithLabels_<Type, In, Out>(
   self: Metric<Type, In, Out>,
   extraTags: Collection<MetricLabel>
 ): Metric<Type, In, Out> {
-  return self.taggedWithLabelSet(HashSet.from(extraTags));
+  return self.taggedWithLabelSet(HashSet.from(extraTags))
 }
 
 /**
@@ -17,4 +17,4 @@ export function taggedWithLabels_<Type, In, Out>(
  *
  * @tsplus static ets/Metrics/Metric/Aspects taggedWithLabels
  */
-export const taggedWithLabels = Pipeable(taggedWithLabels_);
+export const taggedWithLabels = Pipeable(taggedWithLabels_)

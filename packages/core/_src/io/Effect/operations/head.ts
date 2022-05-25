@@ -11,5 +11,5 @@ export function head<R, E, A>(
   return self.foldEffect(
     (e) => Effect.fail(Option.some(e)),
     (collection) => Chunk.from(collection).head.fold(Effect.fail(Option.none), Effect.succeedNow)
-  );
+  )
 }

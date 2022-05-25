@@ -1,5 +1,5 @@
-import { STMEffect, STMRetryException } from "@effect/core/stm/STM/definition/primitives";
-import { concreteTSemaphore } from "@effect/core/stm/TSemaphore/operations/_internal/TSemaphoreInternal";
+import { STMEffect, STMRetryException } from "@effect/core/stm/STM/definition/primitives"
+import { concreteTSemaphore } from "@effect/core/stm/TSemaphore/operations/_internal/TSemaphoreInternal"
 
 /**
  * Acquires the specified number of permits in a transactional context.
@@ -7,20 +7,20 @@ import { concreteTSemaphore } from "@effect/core/stm/TSemaphore/operations/_inte
  * @tsplus fluent ets/TSemaphore acquireN
  */
 export function acquireN_(self: TSemaphore, n: number): STM<unknown, never, void> {
-  concreteTSemaphore(self);
+  concreteTSemaphore(self)
   return new STMEffect((journal) => {
     if (n < 0) {
       throw new IllegalArgumentException(
         `Unexpected negative value ${n} passed to acquireN`
-      );
+      )
     }
-    const value = self.permits.unsafeGet(journal);
+    const value = self.permits.unsafeGet(journal)
     if (value < n) {
-      throw new STMRetryException();
+      throw new STMRetryException()
     } else {
-      return self.permits.unsafeSet(value - n, journal);
+      return self.permits.unsafeSet(value - n, journal)
     }
-  });
+  })
 }
 
 /**
@@ -28,4 +28,4 @@ export function acquireN_(self: TSemaphore, n: number): STM<unknown, never, void
  *
  * @tsplus static ets/TSemaphore/Aspects acquireN
  */
-export const acquireN = Pipeable(acquireN_);
+export const acquireN = Pipeable(acquireN_)

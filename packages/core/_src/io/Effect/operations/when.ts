@@ -10,5 +10,5 @@ export function when<R, E, A>(
 ): Effect<R, E, Option<A>> {
   return Effect.suspendSucceed(
     predicate() ? effect.map(Option.some) : Effect.succeedNow(Option.none)
-  );
+  )
 }

@@ -1,4 +1,4 @@
-import { boom, makeTArray, N } from "@effect/core/test/stm/TArray/test-utils";
+import { boom, makeTArray, N } from "@effect/core/test/stm/TArray/test-utils"
 
 describe.concurrent("TArray", () => {
   describe.concurrent("transform", () => {
@@ -14,13 +14,13 @@ describe.concurrent("TArray", () => {
         .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, (ab) => ab + "+c")).commit())
         .bind("first", ({ tArray }) => tArray[0].commit())
         .bind("last", ({ tArray }) => tArray[N - 1].commit())
-        .map(({ first, last }) => Tuple(first, last));
+        .map(({ first, last }) => Tuple(first, last))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Tuple("a+b+c", "a+b+c") || result == Tuple("a+c+b", "a+c+b"));
-    });
-  });
+      assert.isTrue(result == Tuple("a+b+c", "a+b+c") || result == Tuple("a+c+b", "a+c+b"))
+    })
+  })
 
   describe.concurrent("transformSTM", () => {
     it("updates values atomically", async () => {
@@ -35,12 +35,12 @@ describe.concurrent("TArray", () => {
         .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, (ab) => ab + "+c")).commit())
         .bind("first", ({ tArray }) => tArray[0].commit())
         .bind("last", ({ tArray }) => tArray[N - 1].commit())
-        .map(({ first, last }) => Tuple(first, last));
+        .map(({ first, last }) => Tuple(first, last))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Tuple("a+b+c", "a+b+c") || result == Tuple("a+c+b", "a+c+b"));
-    });
+      assert.isTrue(result == Tuple("a+b+c", "a+b+c") || result == Tuple("a+c+b", "a+c+b"))
+    })
 
     it("updates all or nothing", async () => {
       const program = Effect.Do()
@@ -51,12 +51,12 @@ describe.concurrent("TArray", () => {
             .transformSTM((a) => (a === 0 ? STM.succeed(42) : STM.fail(boom)))
             .commit()
             .flip())
-        .bind("first", ({ tArray }) => tArray[0].commit());
+        .bind("first", ({ tArray }) => tArray[0].commit())
 
-      const { first, result } = await program.unsafeRunPromise();
+      const { first, result } = await program.unsafeRunPromise()
 
-      assert.deepEqual(result, boom);
-      assert.strictEqual(first, 0);
-    });
-  });
-});
+      assert.deepEqual(result, boom)
+      assert.strictEqual(first, 0)
+    })
+  })
+})

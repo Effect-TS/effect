@@ -1,4 +1,4 @@
-import { makeSynthetic } from "@effect/core/io/Fiber/definition";
+import { makeSynthetic } from "@effect/core/io/Fiber/definition"
 
 /**
  * Zips this fiber with the specified fiber, combining their results using the
@@ -32,7 +32,7 @@ export function zipWith_<E, E1, A, B, C>(
     poll: self
       .poll()
       .zipWith(that.poll(), (oa, ob) => oa.flatMap((ea) => ob.map((eb) => ea.zipWith(eb, f, Cause.both))))
-  });
+  })
 }
 
 /**
@@ -42,4 +42,4 @@ export function zipWith_<E, E1, A, B, C>(
  *
  * @tsplus static ets/Fiber/Aspects zipWith
  */
-export const zipWith = Pipeable(zipWith_);
+export const zipWith = Pipeable(zipWith_)

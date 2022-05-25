@@ -1,4 +1,4 @@
-import { concreteChunk, SingletonTypeId } from "@tsplus/stdlib/collections/Chunk/definition";
+import { concreteChunk, SingletonTypeId } from "@tsplus/stdlib/collections/Chunk/definition"
 
 /**
  * Folds over the elements in this chunk from the right.
@@ -11,14 +11,14 @@ export function reduceRightEffect_<A, R, E, S>(
   f: (a: A, s: S) => Effect<R, E, S>,
   __tsplusTrace?: string
 ): Effect<R, E, S> {
-  concreteChunk(self);
+  concreteChunk(self)
   if (self._typeId === SingletonTypeId) {
-    return f(self.a, s);
+    return f(self.a, s)
   }
   return (self as Chunk<A>).reduceRight(
     Effect.succeedNow(s) as Effect<R, E, S>,
     (a, s) => s.flatMap((s1) => f(a, s1))
-  );
+  )
 }
 
 /**
@@ -26,4 +26,4 @@ export function reduceRightEffect_<A, R, E, S>(
  *
  * @tsplus static Chunk/Aspects reduceRightEffect
  */
-export const reduceRightEffect = Pipeable(reduceRightEffect_);
+export const reduceRightEffect = Pipeable(reduceRightEffect_)

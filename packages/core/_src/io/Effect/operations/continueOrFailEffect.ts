@@ -10,7 +10,7 @@ export function continueOrFailEffect_<R, E, A, E1, R2, E2, A2>(
   pf: (a: A) => Option<Effect<R2, E2, A2>>,
   __tsplusTrace?: string
 ): Effect<R & R2, E | E1 | E2, A2> {
-  return self.flatMap((v): Effect<R2, E1 | E2, A2> => pf(v).getOrElse(Effect.fail(e)));
+  return self.flatMap((v): Effect<R2, E1 | E2, A2> => pf(v).getOrElse(Effect.fail(e)))
 }
 
 /**
@@ -19,4 +19,4 @@ export function continueOrFailEffect_<R, E, A, E1, R2, E2, A2>(
  *
  * @tsplus static ets/Effect/Aspects continueOrFailEffect
  */
-export const continueOrFailEffect = Pipeable(continueOrFailEffect_);
+export const continueOrFailEffect = Pipeable(continueOrFailEffect_)

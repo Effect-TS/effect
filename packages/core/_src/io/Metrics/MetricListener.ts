@@ -1,4 +1,4 @@
-import type { _In } from "@effect/core/io/Metrics/MetricKeyType";
+import type { _In } from "@effect/core/io/Metrics/MetricKeyType"
 
 /**
  * A `MetricListener` is capable of taking some action in response to a metric
@@ -9,13 +9,13 @@ import type { _In } from "@effect/core/io/Metrics/MetricKeyType";
 export class MetricListener {
   constructor(
     readonly unsafeUpdate: <Type extends MetricKeyType<any, any>>(key: MetricKey<Type>) => (
-      _: [typeof key["keyType"]] extends [{ [_In]: () => infer In; }] ? In : never
+      _: [typeof key["keyType"]] extends [{ [_In]: () => infer In }] ? In : never
     ) => void
   ) {}
 
   unsafeUpdateCache<Type extends MetricKeyType<any, any>>(key: MetricKey<Type>): (
-    _: [typeof key["keyType"]] extends [{ [_In]: () => infer In; }] ? In : never
+    _: [typeof key["keyType"]] extends [{ [_In]: () => infer In }] ? In : never
   ) => void {
-    return this.unsafeUpdate(key);
+    return this.unsafeUpdate(key)
   }
 }

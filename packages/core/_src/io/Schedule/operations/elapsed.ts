@@ -1,6 +1,6 @@
-import { Decision } from "@effect/core/io/Schedule/Decision";
-import { Interval } from "@effect/core/io/Schedule/Interval";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import { Decision } from "@effect/core/io/Schedule/Decision"
+import { Interval } from "@effect/core/io/Schedule/Interval"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * A schedule that occurs everywhere, which returns the total elapsed duration
@@ -24,4 +24,4 @@ export const elapsed: Schedule<
           Decision.Continue(Interval.after(now))
         )
     )
-  ));
+  ))

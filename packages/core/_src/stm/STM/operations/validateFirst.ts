@@ -8,5 +8,5 @@ export function validateFirst<R, E, A, B>(
   as: LazyArg<Collection<A>>,
   f: (a: A) => STM<R, E, B>
 ): STM<R, Chunk<E>, B> {
-  return STM.forEach(as, (a) => f(a).flip()).flip();
+  return STM.forEach(as, (a) => f(a).flip()).flip()
 }

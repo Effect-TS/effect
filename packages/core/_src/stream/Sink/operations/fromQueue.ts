@@ -9,5 +9,5 @@ export function fromQueue<R, E, In>(
 ): Sink<R, E, In, never, void> {
   return Sink.unwrap(
     Effect.succeed(queue).map((queue) => Sink.forEachChunk((chunk) => queue.offerAll(chunk)))
-  );
+  )
 }

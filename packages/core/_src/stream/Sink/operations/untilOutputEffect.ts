@@ -1,4 +1,4 @@
-import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Creates a sink that produces values until one verifies the predicate `f`.
@@ -10,7 +10,7 @@ export function untilOutputEffect_<R, E, R2, E2, In, L extends In, Z>(
   f: (z: Z) => Effect<R2, E2, boolean>,
   __tsplusTrace?: string
 ): Sink<R & R2, E | E2, In, L, Option<Z>> {
-  concreteSink(self);
+  concreteSink(self)
   return new SinkInternal(
     Channel.fromEffect(Ref.make(Chunk.empty<In>()).zip(Ref.make(false))).flatMap(
       ({ tuple: [leftoversRef, upstreamDoneRef] }) => {
@@ -26,7 +26,7 @@ export function untilOutputEffect_<R, E, R2, E2, In, L extends In, Z>(
           (chunk: Chunk<In>) => Channel.write(chunk) > upstreamMarker,
           (err) => Channel.fail(err),
           (done) => Channel.fromEffect(upstreamDoneRef.set(true)).as(done)
-        );
+        )
 
         const loop: Channel<
           R & R2,
@@ -50,15 +50,15 @@ export function untilOutputEffect_<R, E, R2, E2, In, L extends In, Z>(
                       : loop
                   )
             )
-        );
+        )
 
         return (
           (upstreamMarker >> Channel.bufferChunk<In, never, unknown>(leftoversRef)) >>
           loop
-        );
+        )
       }
     )
-  );
+  )
 }
 
 /**
@@ -66,4 +66,4 @@ export function untilOutputEffect_<R, E, R2, E2, In, L extends In, Z>(
  *
  * @tsplus static ets/Sink/Aspects untilOutputEffect
  */
-export const untilOutputEffect = Pipeable(untilOutputEffect_);
+export const untilOutputEffect = Pipeable(untilOutputEffect_)

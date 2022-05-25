@@ -3,11 +3,11 @@ describe.concurrent("Channel", () => {
     it("structure confusion", async () => {
       const program = Channel.fail("err")
         .mapError(() => 1)
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(1));
-    });
-  });
-});
+      assert.isTrue(result.untraced() == Exit.fail(1))
+    })
+  })
+})

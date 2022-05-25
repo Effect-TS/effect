@@ -1,6 +1,6 @@
-import { Utf8 } from "@effect/core/stream/Stream/operations/_internal/bom";
-import { utf8DecodeNoBom } from "@effect/core/stream/Stream/operations/_internal/utf8DecodeNoBom";
-import { utfDecodeDetectingBom } from "@effect/core/stream/Stream/operations/_internal/utfDecodeDetectingBom";
+import { Utf8 } from "@effect/core/stream/Stream/operations/_internal/bom"
+import { utf8DecodeNoBom } from "@effect/core/stream/Stream/operations/_internal/utf8DecodeNoBom"
+import { utfDecodeDetectingBom } from "@effect/core/stream/Stream/operations/_internal/utfDecodeDetectingBom"
 
 /**
  * @tsplus fluent ets/Stream utf8Decode
@@ -14,5 +14,5 @@ export function utf8Decode<R, E>(
       bom.corresponds(Utf8, (a, b) => a === b)
         ? Tuple(Chunk.empty(), utf8DecodeNoBom)
         : Tuple(bom, utf8DecodeNoBom))
-  );
+  )
 }

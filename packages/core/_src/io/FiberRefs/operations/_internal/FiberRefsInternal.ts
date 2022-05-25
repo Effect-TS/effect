@@ -1,7 +1,7 @@
-import { FiberRefsSym } from "@effect/core/io/FiberRefs/definition";
+import { FiberRefsSym } from "@effect/core/io/FiberRefs/definition"
 
 export class FiberRefsInternal implements FiberRefs {
-  readonly [FiberRefsSym]: FiberRefsSym = FiberRefsSym;
+  readonly [FiberRefsSym]: FiberRefsSym = FiberRefsSym
 
   constructor(
     readonly fiberRefLocals: ImmutableMap<

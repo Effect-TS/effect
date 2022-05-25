@@ -5,4 +5,4 @@
  */
 export const descriptor: Effect.UIO<Fiber.Descriptor> = Effect.descriptorWith(
   Effect.succeedNow
-);
+)

@@ -13,11 +13,11 @@ export function squashWith_<E>(self: Cause<E>, f: (e: E) => unknown): unknown {
         const fibers = self.interruptors().flatMap((fiberId) => fiberId.ids().map((n) => `#${n}`)).reduce(
           "",
           (acc, id) => `${acc}, ${id}`
-        );
-        return new InterruptedException(`Interrupted by fibers: ${fibers}`);
+        )
+        return new InterruptedException(`Interrupted by fibers: ${fibers}`)
       }
-      return self.defects().head().getOrElse(new InterruptedException());
-    });
+      return self.defects().head().getOrElse(new InterruptedException())
+    })
 }
 
 /**
@@ -26,4 +26,4 @@ export function squashWith_<E>(self: Cause<E>, f: (e: E) => unknown): unknown {
  *
  * @tsplus static ets/Cause/Aspects squashWith
  */
-export const squashWith = Pipeable(squashWith_);
+export const squashWith = Pipeable(squashWith_)

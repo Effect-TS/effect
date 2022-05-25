@@ -8,5 +8,5 @@ export function noneOrFail<E>(
   option: LazyArg<Option<E>>,
   __tsplusTrace?: string
 ): Effect.IO<E, void> {
-  return Effect.getOrFailDiscard(option).flip();
+  return Effect.getOrFailDiscard(option).flip()
 }

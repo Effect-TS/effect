@@ -13,5 +13,5 @@ export function filter<A, R, E>(
       Effect.succeed(Chunk.empty<A>()) as Effect<R, E, Chunk<A>>,
       (io, a) => io.zipWith(Effect.suspendSucceed(f(a)), (acc, b) => (b ? acc.append(a) : acc))
     )
-  );
+  )
 }

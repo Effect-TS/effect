@@ -1,6 +1,6 @@
-import type { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision";
-import type { Channel } from "@effect/core/stream/Channel/definition/base";
-import { ChannelBase } from "@effect/core/stream/Channel/definition/base";
+import type { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision"
+import type { Channel } from "@effect/core/stream/Channel/definition/base"
+import { ChannelBase } from "@effect/core/stream/Channel/definition/base"
 import {
   _Env,
   _InDone,
@@ -11,10 +11,10 @@ import {
   _OutElem,
   _OutErr,
   _OutErr2
-} from "@effect/core/stream/Channel/definition/symbols";
-import type { AsyncInputProducer } from "@effect/core/stream/Channel/SingleProducerAsyncInput";
-import type { UpstreamPullRequest } from "@effect/core/stream/Channel/UpstreamPullRequest";
-import type { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy";
+} from "@effect/core/stream/Channel/definition/symbols"
+import type { AsyncInputProducer } from "@effect/core/stream/Channel/SingleProducerAsyncInput"
+import type { UpstreamPullRequest } from "@effect/core/stream/Channel/UpstreamPullRequest"
+import type { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy"
 
 // -----------------------------------------------------------------------------
 // PipeTo
@@ -32,14 +32,14 @@ export class PipeTo<
   OutElem,
   OutDone
 > extends ChannelBase<Env, InErr, InElem, InDone, OutErr2, OutElem2, OutDone2> {
-  readonly _tag = "PipeTo";
+  readonly _tag = "PipeTo"
   constructor(
     readonly left: Lazy<Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>,
     readonly right: Lazy<
       Channel<Env, OutErr, OutElem, OutDone, OutErr2, OutElem2, OutDone2>
     >
   ) {
-    super();
+    super()
   }
 }
 
@@ -58,7 +58,7 @@ export class Read<
   OutErr,
   OutDone
 > extends ChannelBase<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2> {
-  readonly _tag = "Read";
+  readonly _tag = "Read"
   constructor(
     readonly more: (
       i: InElem
@@ -75,7 +75,7 @@ export class Read<
       OutDone2
     >
   ) {
-    super();
+    super()
   }
 }
 
@@ -92,9 +92,9 @@ export class SucceedNow<OutDone> extends ChannelBase<
   never,
   OutDone
 > {
-  readonly _tag = "SucceedNow";
+  readonly _tag = "SucceedNow"
   constructor(readonly terminal: OutDone) {
-    super();
+    super()
   }
 }
 
@@ -111,9 +111,9 @@ export class Fail<OutErr> extends ChannelBase<
   never,
   never
 > {
-  readonly _tag = "Fail";
+  readonly _tag = "Fail"
   constructor(readonly error: Lazy<Cause<OutErr>>) {
-    super();
+    super()
   }
 }
 
@@ -130,9 +130,9 @@ export class FromEffect<Env, OutErr, OutDone> extends ChannelBase<
   never,
   OutDone
 > {
-  readonly _tag = "FromEffect";
+  readonly _tag = "FromEffect"
   constructor(readonly effect: Lazy<Effect<Env, OutErr, OutDone>>) {
-    super();
+    super()
   }
 }
 
@@ -149,9 +149,9 @@ export class Emit<OutElem, OutDone> extends ChannelBase<
   OutElem,
   OutDone
 > {
-  readonly _tag = "Emit";
+  readonly _tag = "Emit"
   constructor(readonly out: Lazy<OutElem>) {
-    super();
+    super()
   }
 }
 
@@ -168,9 +168,9 @@ export class Succeed<OutDone> extends ChannelBase<
   never,
   OutDone
 > {
-  readonly _tag = "Succeed";
+  readonly _tag = "Succeed"
   constructor(readonly effect: Lazy<OutDone>) {
-    super();
+    super()
   }
 }
 
@@ -187,11 +187,11 @@ export class Suspend<
   OutElem,
   OutDone
 > extends ChannelBase<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  readonly _tag = "Suspend";
+  readonly _tag = "Suspend"
   constructor(
     readonly effect: Lazy<Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
   ) {
-    super();
+    super()
   }
 }
 
@@ -208,12 +208,12 @@ export class Ensuring<
   OutElem,
   OutDone
 > extends ChannelBase<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  readonly _tag = "Ensuring";
+  readonly _tag = "Ensuring"
   constructor(
     readonly channel: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     readonly finalizer: (exit: Exit<OutErr, OutDone>) => Effect<Env, never, unknown>
   ) {
-    super();
+    super()
   }
 }
 
@@ -233,7 +233,7 @@ export class ConcatAll<
   OutDone,
   OutDone2
 > extends ChannelBase<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone3> {
-  readonly _tag = "ConcatAll";
+  readonly _tag = "ConcatAll"
   constructor(
     readonly combineInners: (x: OutDone, y: OutDone) => OutDone,
     readonly combineAll: (x: OutDone, y: OutDone2) => OutDone3,
@@ -248,7 +248,7 @@ export class ConcatAll<
       o: OutElem
     ) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone>
   ) {
-    super();
+    super()
   }
 }
 
@@ -267,7 +267,7 @@ export class Fold<
   OutErr,
   OutDone
 > extends ChannelBase<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2> {
-  readonly _tag = "Fold";
+  readonly _tag = "Fold"
   constructor(
     readonly value: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
     readonly k: ContinuationK<
@@ -282,7 +282,7 @@ export class Fold<
       OutDone2
     >
   ) {
-    super();
+    super()
   }
 }
 
@@ -299,12 +299,12 @@ export class Bridge<
   OutElem,
   OutDone
 > extends ChannelBase<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  readonly _tag = "Bridge";
+  readonly _tag = "Bridge"
   constructor(
     readonly input: AsyncInputProducer<InErr, InElem, InDone>,
     readonly channel: Channel<Env, unknown, unknown, unknown, OutErr, OutElem, OutDone>
   ) {
-    super();
+    super()
   }
 }
 
@@ -321,12 +321,12 @@ export class BracketOut<R, E, Z, OutDone> extends ChannelBase<
   Z,
   OutDone
 > {
-  readonly _tag = "BracketOut";
+  readonly _tag = "BracketOut"
   constructor(
     readonly acquire: Lazy<Effect<R, E, Z>>,
     readonly finalizer: (z: Z, exit: Exit<unknown, unknown>) => Effect.RIO<R, unknown>
   ) {
-    super();
+    super()
   }
 }
 
@@ -343,12 +343,12 @@ export class Provide<
   OutElem,
   OutDone
 > extends ChannelBase<unknown, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  readonly _tag = "Provide";
+  readonly _tag = "Provide"
   constructor(
     readonly env: Lazy<Env<R>>,
     readonly channel: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) {
-    super();
+    super()
   }
 }
 
@@ -391,15 +391,15 @@ export abstract class Continuation<
   OutDone,
   OutDone2
 > {
-  readonly [_Env]!: (_: Env) => void;
-  readonly [_InErr]!: (_: InErr) => void;
-  readonly [_InElem]!: (_: InElem) => void;
-  readonly [_InDone]!: (_: InDone) => void;
-  readonly [_OutErr]!: (_: OutErr) => OutErr;
-  readonly [_OutDone]!: (_: OutDone) => OutDone;
-  readonly [_OutErr2]!: () => OutErr2;
-  readonly [_OutElem]!: () => OutElem;
-  readonly [_OutDone2]!: () => OutDone2;
+  readonly [_Env]!: (_: Env) => void
+  readonly [_InErr]!: (_: InErr) => void
+  readonly [_InElem]!: (_: InElem) => void
+  readonly [_InDone]!: (_: InDone) => void
+  readonly [_OutErr]!: (_: OutErr) => OutErr
+  readonly [_OutDone]!: (_: OutDone) => OutDone
+  readonly [_OutErr2]!: () => OutErr2
+  readonly [_OutElem]!: () => OutElem
+  readonly [_OutDone2]!: () => OutDone2
 }
 
 /**
@@ -465,7 +465,7 @@ export class ContinuationK<
   OutDone,
   OutDone2
 > {
-  readonly _tag = "ContinuationK";
+  readonly _tag = "ContinuationK"
 
   constructor(
     readonly onSuccess: (
@@ -475,7 +475,7 @@ export class ContinuationK<
       c: Cause<OutErr>
     ) => Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2>
   ) {
-    super();
+    super()
   }
 
   onExit(
@@ -483,10 +483,10 @@ export class ContinuationK<
   ): Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone2> {
     switch (exit._tag) {
       case "Failure": {
-        return this.onHalt(exit.cause);
+        return this.onHalt(exit.cause)
       }
       case "Success": {
-        return this.onSuccess(exit.value);
+        return this.onSuccess(exit.value)
       }
     }
   }
@@ -503,9 +503,9 @@ export class ContinuationFinalizer<Env, OutErr, OutDone> extends Continuation<
   OutDone,
   never
 > {
-  readonly _tag = "ContinuationFinalizer";
+  readonly _tag = "ContinuationFinalizer"
 
   constructor(readonly finalizer: (exit: Exit<OutErr, OutDone>) => Effect.RIO<Env, unknown>) {
-    super();
+    super()
   }
 }

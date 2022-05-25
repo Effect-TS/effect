@@ -20,7 +20,7 @@ export function throttleShape_<R, E, A>(
     duration,
     (input) => Effect.succeedNow(costFn(input)),
     burst
-  );
+  )
 }
 
 /**
@@ -32,4 +32,4 @@ export function throttleShape_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects throttleShape
  */
-export const throttleShape = Pipeable(throttleShape_);
+export const throttleShape = Pipeable(throttleShape_)

@@ -1,4 +1,4 @@
-import { ILayerFold } from "@effect/core/io/Layer/definition";
+import { ILayerFold } from "@effect/core/io/Layer/definition"
 
 /**
  * Feeds the error or output services of this layer into the input of either
@@ -12,7 +12,7 @@ export function foldCauseLayer_<R, E, A, R2, E2, A2, R3, E3, A3>(
   failure: (cause: Cause<E>) => Layer<R2, E2, A2>,
   success: (env: Env<A>) => Layer<R3, E3, A3>
 ): Layer<R & R2 & R3, E2 | E3, A2 | A3> {
-  return new ILayerFold(self, failure, success);
+  return new ILayerFold(self, failure, success)
 }
 
 /**
@@ -22,4 +22,4 @@ export function foldCauseLayer_<R, E, A, R2, E2, A2, R3, E3, A3>(
  *
  * @tsplus static ets/Layer/Aspects foldCauseLayer
  */
-export const foldCauseLayer = Pipeable(foldCauseLayer_);
+export const foldCauseLayer = Pipeable(foldCauseLayer_)

@@ -8,5 +8,5 @@ export function interruptAllChildren<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return self.ensuringChildren((chunk) => Fiber.interruptAll(chunk));
+  return self.ensuringChildren((chunk) => Fiber.interruptAll(chunk))
 }

@@ -9,5 +9,5 @@
 export function left<State, Env, In, Out, X>(
   self: Schedule<State, Env, In, Out>
 ): Schedule<Tuple<[State, void]>, Env, Either<In, X>, Either<Out, X>> {
-  return self + Schedule.identity<X>();
+  return self + Schedule.identity<X>()
 }

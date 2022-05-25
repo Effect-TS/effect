@@ -1,4 +1,4 @@
-import { realCause } from "@effect/core/io/Cause/definition";
+import { realCause } from "@effect/core/io/Cause/definition"
 
 /**
  * Folds over the cases of this cause with the specified functions.
@@ -24,7 +24,7 @@ export function fold_<E, Z>(
     onThenCause,
     onBothCause,
     onStacklessCause
-  ).run();
+  ).run()
 }
 
 /**
@@ -32,7 +32,7 @@ export function fold_<E, Z>(
  *
  * @tsplus static ets/Cause/Aspects fold
  */
-export const fold = Pipeable(fold_);
+export const fold = Pipeable(fold_)
 
 function foldSafe<E, Z>(
   self: Cause<E>,
@@ -44,16 +44,16 @@ function foldSafe<E, Z>(
   onBothCause: (x: Z, y: Z) => Z,
   onStacklessCause: (z: Z, stackless: boolean) => Z
 ): Eval<Z> {
-  realCause(self);
+  realCause(self)
   switch (self._tag) {
     case "Empty":
-      return Eval.succeed(onEmptyCause);
+      return Eval.succeed(onEmptyCause)
     case "Fail":
-      return Eval.succeed(onFailCause(self.value, self.trace));
+      return Eval.succeed(onFailCause(self.value, self.trace))
     case "Die":
-      return Eval.succeed(onDieCause(self.value, self.trace));
+      return Eval.succeed(onDieCause(self.value, self.trace))
     case "Interrupt":
-      return Eval.succeed(onInterruptCause(self.fiberId, self.trace));
+      return Eval.succeed(onInterruptCause(self.fiberId, self.trace))
     case "Both":
       return Eval.suspend(
         foldSafe(
@@ -80,7 +80,7 @@ function foldSafe<E, Z>(
           )
         ),
         (left, right) => onBothCause(left, right)
-      );
+      )
     case "Then":
       return Eval.suspend(
         foldSafe(
@@ -107,7 +107,7 @@ function foldSafe<E, Z>(
           )
         ),
         (left, right) => onThenCause(left, right)
-      );
+      )
     case "Stackless":
       return Eval.suspend(
         foldSafe(
@@ -120,6 +120,6 @@ function foldSafe<E, Z>(
           onBothCause,
           onStacklessCause
         )
-      ).map((z) => onStacklessCause(z, self.stackless));
+      ).map((z) => onStacklessCause(z, self.stackless))
   }
 }

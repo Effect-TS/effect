@@ -7,14 +7,14 @@ describe.concurrent("Effect", () => {
           Effect.dieMessage("die")
             .tapErrorCause(() => ref.set(true))
             .exit())
-        .bind("effect", ({ ref }) => ref.get());
+        .bind("effect", ({ ref }) => ref.get())
 
-      const { effect, result } = await program.unsafeRunPromise();
+      const { effect, result } = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isFailure() && result.cause.dieOption().isSome());
-      assert.isTrue(effect);
-    });
-  });
+      assert.isTrue(result.isFailure() && result.cause.dieOption().isSome())
+      assert.isTrue(effect)
+    })
+  })
 
   describe.concurrent("tapDefect", () => {
     it("effectually peeks at the cause of the failure of this effect", async () => {
@@ -24,14 +24,14 @@ describe.concurrent("Effect", () => {
           Effect.dieMessage("die")
             .tapDefect(() => ref.set(true))
             .exit())
-        .bind("effect", ({ ref }) => ref.get());
+        .bind("effect", ({ ref }) => ref.get())
 
-      const { effect, result } = await program.unsafeRunPromise();
+      const { effect, result } = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isFailure() && result.cause.dieOption().isSome());
-      assert.isTrue(effect);
-    });
-  });
+      assert.isTrue(result.isFailure() && result.cause.dieOption().isSome())
+      assert.isTrue(effect)
+    })
+  })
 
   describe.concurrent("tapEither", () => {
     it("effectually peeks at the failure of this effect", async () => {
@@ -46,12 +46,12 @@ describe.concurrent("Effect", () => {
             )
             .exit()
         )
-        .flatMap((ref) => ref.get());
+        .flatMap((ref) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 42);
-    });
+      assert.strictEqual(result, 42)
+    })
 
     it("effectually peeks at the success of this effect", async () => {
       const program = Ref.make(0)
@@ -65,26 +65,26 @@ describe.concurrent("Effect", () => {
             )
             .exit()
         )
-        .flatMap((ref) => ref.get());
+        .flatMap((ref) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 42);
-    });
-  });
+      assert.strictEqual(result, 42)
+    })
+  })
 
   describe.concurrent("tapSome", () => {
     it("is identity if the function doesn't match", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(false))
         .bind("result", ({ ref }) => ref.set(true).as(42).tapSome(Option.emptyOf))
-        .bind("effect", ({ ref }) => ref.get());
+        .bind("effect", ({ ref }) => ref.get())
 
-      const { effect, result } = await program.unsafeRunPromise();
+      const { effect, result } = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 42);
-      assert.isTrue(effect);
-    });
+      assert.strictEqual(result, 42)
+      assert.isTrue(effect)
+    })
 
     it("runs the effect if the function matches", async () => {
       const program = Effect.Do()
@@ -94,12 +94,12 @@ describe.concurrent("Effect", () => {
             .set(10)
             .as(42)
             .tapSome((n) => Option.some(ref.set(n))))
-        .bind("effect", ({ ref }) => ref.get());
+        .bind("effect", ({ ref }) => ref.get())
 
-      const { effect, result } = await program.unsafeRunPromise();
+      const { effect, result } = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 42);
-      assert.strictEqual(effect, 42);
-    });
-  });
-});
+      assert.strictEqual(result, 42)
+      assert.strictEqual(effect, 42)
+    })
+  })
+})

@@ -22,7 +22,7 @@ export function interruptWhenDeferred_<
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   deferred: LazyArg<Deferred<OutErr1, OutDone1>>
 ): Channel<Env, InErr, InElem, InDone, OutErr | OutErr1, OutElem, OutDone | OutDone1> {
-  return self.interruptWhen(deferred().await());
+  return self.interruptWhen(deferred().await())
 }
 
 /**
@@ -35,4 +35,4 @@ export function interruptWhenDeferred_<
  *
  * @tsplus static ets/Channel/Aspects interruptWhenDeferred
  */
-export const interruptWhenDeferred = Pipeable(interruptWhenDeferred_);
+export const interruptWhenDeferred = Pipeable(interruptWhenDeferred_)

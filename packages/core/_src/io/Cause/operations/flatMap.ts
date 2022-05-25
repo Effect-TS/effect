@@ -1,4 +1,4 @@
-import { Both, Cause, Die, Interrupt, Stackless, Then } from "@effect/core/io/Cause/definition";
+import { Both, Cause, Die, Interrupt, Stackless, Then } from "@effect/core/io/Cause/definition"
 
 /**
  * Transforms each error value in this cause to a new cause with the specified
@@ -15,7 +15,7 @@ export function flatMap_<E, E1>(self: Cause<E>, f: (e: E) => Cause<E1>): Cause<E
     (left, right) => new Then(left, right),
     (left, right) => new Both(left, right),
     (cause, stackless) => new Stackless(cause, stackless)
-  );
+  )
 }
 
 /**
@@ -24,4 +24,4 @@ export function flatMap_<E, E1>(self: Cause<E>, f: (e: E) => Cause<E1>): Cause<E
  *
  * @tsplus static ets/Cause/Aspects flatMap
  */
-export const flatMap = Pipeable(flatMap_);
+export const flatMap = Pipeable(flatMap_)

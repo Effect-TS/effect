@@ -1,5 +1,5 @@
-import { withLatch, withLatchAwait } from "@effect/core/test/test-utils/Latch";
-import { constTrue, constVoid } from "@tsplus/stdlib/data/Function";
+import { withLatch, withLatchAwait } from "@effect/core/test/test-utils/Latch"
+import { constTrue, constVoid } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Effect", () => {
   describe.concurrent("RTS interruption", () => {
@@ -7,47 +7,47 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("fiber", () => Effect.succeed(1).forever().fork())
         .flatMap(({ fiber }) => fiber.interrupt())
-        .map(constTrue);
+        .map(constTrue)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("interrupt of never is interrupted with cause", async () => {
       const program = Effect.Do()
         .bind("fiber", () => Effect.never.fork())
-        .flatMap(({ fiber }) => fiber.interrupt());
+        .flatMap(({ fiber }) => fiber.interrupt())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isFailure() && result.cause.isInterruptedOnly());
-    });
+      assert.isTrue(result.isFailure() && result.cause.isInterruptedOnly())
+    })
 
     it("asyncEffect is interruptible", async () => {
       const program = Effect.Do()
         .bind("fiber", () => Effect.asyncEffect(() => Effect.never).fork())
         .flatMap(({ fiber }) => fiber.interrupt())
-        .map(() => 42);
+        .map(() => 42)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 42);
-    });
+      assert.strictEqual(result, 42)
+    })
 
     it("async is interruptible", async () => {
       const program = Effect.Do()
         .bind("fiber", () => Effect.async(constVoid).fork())
         .flatMap(({ fiber }) => fiber.interrupt())
-        .map(() => 42);
+        .map(() => 42)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 42);
-    });
+      assert.strictEqual(result, 42)
+    })
 
     it("acquireUseRelease is uninterruptible", async () => {
-      const awaiter = Deferred.unsafeMake<never, void>(FiberId.none);
+      const awaiter = Deferred.unsafeMake<never, void>(FiberId.none)
       const program = Effect.Do()
         .bind("deferred", () => Deferred.make<never, void>())
         .bind("fiber", ({ deferred }) =>
@@ -60,16 +60,16 @@ describe.concurrent("Effect", () => {
           ({ deferred, fiber }) =>
             deferred.await() >
               fiber.interrupt().timeoutTo(42, () => 0, (1).seconds)
-        );
+        )
 
-      const result = await program.unsafeRunPromise();
-      await awaiter.succeed(undefined).unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
+      await awaiter.succeed(undefined).unsafeRunPromise()
 
-      assert.strictEqual(result, 42);
-    });
+      assert.strictEqual(result, 42)
+    })
 
     it("acquireUseReleaseExit is uninterruptible", async () => {
-      const awaiter = Deferred.unsafeMake<never, void>(FiberId.none);
+      const awaiter = Deferred.unsafeMake<never, void>(FiberId.none)
       const program = Effect.Do()
         .bind("deferred", () => Deferred.make<never, void>())
         .bind("fiber", ({ deferred }) =>
@@ -82,13 +82,13 @@ describe.concurrent("Effect", () => {
           ({ deferred, fiber }) =>
             deferred.await() >
               fiber.interrupt().timeoutTo(42, () => 0, (1).seconds)
-        );
+        )
 
-      const result = await program.unsafeRunPromise();
-      await awaiter.succeed(undefined).unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
+      await awaiter.succeed(undefined).unsafeRunPromise()
 
-      assert.strictEqual(result, 42);
-    });
+      assert.strictEqual(result, 42)
+    })
 
     it("acquireUseRelease use is interruptible", async () => {
       const program = Effect.acquireUseRelease(
@@ -97,12 +97,12 @@ describe.concurrent("Effect", () => {
         () => Effect.unit
       )
         .fork()
-        .flatMap((fiber) => fiber.interrupt());
+        .flatMap((fiber) => fiber.interrupt())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isInterrupted());
-    });
+      assert.isTrue(result.isInterrupted())
+    })
 
     it("acquireUseReleaseExit use is interruptible", async () => {
       const program = Effect.acquireUseReleaseExit(
@@ -111,12 +111,12 @@ describe.concurrent("Effect", () => {
         () => Effect.unit
       )
         .fork()
-        .flatMap((fiber) => fiber.interrupt().timeoutTo(42, () => 0, (1).seconds));
+        .flatMap((fiber) => fiber.interrupt().timeoutTo(42, () => 0, (1).seconds))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 0);
-    });
+      assert.strictEqual(result, 0)
+    })
 
     it("acquireUseRelease release called on interrupt", async () => {
       const program = Effect.Do()
@@ -131,12 +131,12 @@ describe.concurrent("Effect", () => {
         .tap(({ deferred1 }) => deferred1.await())
         .tap(({ fiber }) => fiber.interrupt())
         .tap(({ deferred2 }) => deferred2.await())
-        .timeoutTo(42, () => 0, (1).seconds);
+        .timeoutTo(42, () => 0, (1).seconds)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 0);
-    });
+      assert.strictEqual(result, 0)
+    })
 
     it("acquireUseReleaseExit release called on interrupt", async () => {
       const program = Effect.Do()
@@ -150,12 +150,12 @@ describe.concurrent("Effect", () => {
             ).fork()
           ))
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ done }) => done.await().timeoutTo(42, () => 0, (60).seconds));
+        .flatMap(({ done }) => done.await().timeoutTo(42, () => 0, (60).seconds))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 0);
-    }, 180000);
+      assert.strictEqual(result, 0)
+    }, 180000)
 
     it("acquireUseRelease acquire returns immediately on interrupt", async () => {
       const program = Effect.Do()
@@ -172,12 +172,12 @@ describe.concurrent("Effect", () => {
             .fork())
         .tap(({ deferred1 }) => deferred1.await())
         .bind("result", ({ fiber }) => fiber.interrupt())
-        .tap(({ deferred3 }) => deferred3.succeed(undefined));
+        .tap(({ deferred3 }) => deferred3.succeed(undefined))
 
-      const { result } = await program.unsafeRunPromise();
+      const { result } = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isInterrupted());
-    });
+      assert.isTrue(result.isInterrupted())
+    })
 
     it("acquireUseReleaseExit disconnect acquire returns immediately on interrupt", async () => {
       const program = Effect.Do()
@@ -194,12 +194,12 @@ describe.concurrent("Effect", () => {
             .fork())
         .tap(({ deferred1 }) => deferred1.await())
         .bind("result", ({ fiber }) => fiber.interrupt())
-        .tap(({ deferred3 }) => deferred3.succeed(undefined));
+        .tap(({ deferred3 }) => deferred3.succeed(undefined))
 
-      const { result } = await program.unsafeRunPromise();
+      const { result } = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isInterrupted());
-    });
+      assert.isTrue(result.isInterrupted())
+    })
 
     it("acquireUseRelease disconnect use is interruptible", async () => {
       const program = Effect.acquireUseRelease(
@@ -209,12 +209,12 @@ describe.concurrent("Effect", () => {
       )
         .disconnect()
         .fork()
-        .flatMap((fiber) => fiber.interrupt());
+        .flatMap((fiber) => fiber.interrupt())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isInterrupted());
-    });
+      assert.isTrue(result.isInterrupted())
+    })
 
     it("acquireUseReleaseExit disconnect use is interruptible", async () => {
       const program = Effect.acquireUseReleaseExit(
@@ -224,12 +224,12 @@ describe.concurrent("Effect", () => {
       )
         .disconnect()
         .fork()
-        .flatMap((fiber) => fiber.interrupt().timeoutTo(42, () => 0, (1).seconds));
+        .flatMap((fiber) => fiber.interrupt().timeoutTo(42, () => 0, (1).seconds))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 0);
-    });
+      assert.strictEqual(result, 0)
+    })
 
     it("acquireUseRelease disconnect release called on interrupt in separate fiber", async () => {
       const program = Effect.Do()
@@ -246,12 +246,12 @@ describe.concurrent("Effect", () => {
         .tap(({ deferred1 }) => deferred1.await())
         .tap(({ fiber }) => fiber.interrupt())
         .tap(({ deferred2 }) => deferred2.await())
-        .timeoutTo(false, () => true, (10).seconds);
+        .timeoutTo(false, () => true, (10).seconds)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("acquireUseReleaseExit disconnect release called on interrupt in separate fiber", async () => {
       const program = Effect.Do()
@@ -267,12 +267,12 @@ describe.concurrent("Effect", () => {
               .fork()
           ))
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ done }) => done.await().timeoutTo(false, () => true, (10).seconds));
+        .flatMap(({ done }) => done.await().timeoutTo(false, () => true, (10).seconds))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("catchAll + ensuring + interrupt", async () => {
       const program = Effect.Do()
@@ -285,12 +285,12 @@ describe.concurrent("Effect", () => {
             .fork())
         .tap(({ cont }) => cont.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ deferred }) => deferred.await());
+        .flatMap(({ deferred }) => deferred.await())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("finalizer can detect interruption", async () => {
       const program = Effect.Do()
@@ -304,16 +304,16 @@ describe.concurrent("Effect", () => {
             .fork())
         .tap(({ deferred2 }) => deferred2.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ deferred1 }) => deferred1.await());
+        .flatMap(({ deferred1 }) => deferred1.await())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("interrupted cause persists after catching", async () => {
       function process(list: List<Exit<never, any>>): List<Exit<never, any>> {
-        return list.map((exit) => exit.mapErrorCause((cause) => cause.untraced()));
+        return list.map((exit) => exit.mapErrorCause((cause) => cause.untraced()))
       }
 
       const program = Effect.Do()
@@ -334,18 +334,18 @@ describe.concurrent("Effect", () => {
               .fork()
           ))
         .tap(({ fiber, latch1 }) => latch1.await() > fiber.interrupt())
-        .flatMap(({ exits }) => exits.get().map(process));
+        .flatMap(({ exits }) => exits.get().map(process))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result.length(), 2);
+      assert.strictEqual(result.length(), 2)
       assert.isTrue(
         result.reduce(
           true,
           (acc, curr) => acc && curr.isFailure() && curr.cause.isInterruptedOnly()
         )
-      );
-    });
+      )
+    })
 
     it("interruption of raced", async () => {
       const program = Effect.Do()
@@ -361,12 +361,12 @@ describe.concurrent("Effect", () => {
         .bind("raced", ({ cont1, cont2, make }) => make(cont1).race(make(cont2)).fork())
         .tap(({ cont1, cont2 }) => cont1.await() > cont2.await())
         .tap(({ raced }) => raced.interrupt())
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 2);
-    });
+      assert.strictEqual(result, 2)
+    })
 
     it("recovery of error in finalizer", async () => {
       const program = Effect.Do()
@@ -380,12 +380,12 @@ describe.concurrent("Effect", () => {
               .fork()
           ))
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ recovered }) => recovered.get());
+        .flatMap(({ recovered }) => recovered.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("recovery of interruptible", async () => {
       const program = Effect.Do()
@@ -401,12 +401,12 @@ describe.concurrent("Effect", () => {
               .fork()
           ))
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ recovered }) => recovered.get());
+        .flatMap(({ recovered }) => recovered.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("sandbox of interruptible", async () => {
       const program = Effect.Do()
@@ -425,12 +425,12 @@ describe.concurrent("Effect", () => {
               .fork()
           ))
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ recovered }) => recovered.get());
+        .flatMap(({ recovered }) => recovered.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(Either.left(true)));
-    });
+      assert.isTrue(result == Option.some(Either.left(true)))
+    })
 
     it("run of interruptible", async () => {
       const program = Effect.Do()
@@ -444,12 +444,12 @@ describe.concurrent("Effect", () => {
               .fork()
           ))
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ recovered }) => recovered.get());
+        .flatMap(({ recovered }) => recovered.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(true));
-    });
+      assert.isTrue(result == Option.some(true))
+    })
 
     it("alternating interruptibility", async () => {
       const program = Effect.Do()
@@ -470,12 +470,12 @@ describe.concurrent("Effect", () => {
               .fork()
           ))
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ counter }) => counter.get());
+        .flatMap(({ counter }) => counter.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 2);
-    });
+      assert.strictEqual(result, 2)
+    })
 
     it("interruption after defect", async () => {
       const program = Effect.Do()
@@ -484,7 +484,7 @@ describe.concurrent("Effect", () => {
           withLatch((release) =>
             (
               Effect.attempt(() => {
-                throw new Error();
+                throw new Error()
               }).exit() >
                 release >
                 Effect.never
@@ -493,12 +493,12 @@ describe.concurrent("Effect", () => {
               .fork()
           ))
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("interruption after defect 2", async () => {
       const program = Effect.Do()
@@ -507,7 +507,7 @@ describe.concurrent("Effect", () => {
           withLatch((release) =>
             (
               Effect.attempt(() => {
-                throw new Error();
+                throw new Error()
               }).exit() >
                 release >
                 Effect.unit.forever()
@@ -516,16 +516,16 @@ describe.concurrent("Effect", () => {
               .fork()
           ))
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("disconnect returns immediately on interrupt", async () => {
-      const awaiter1 = Deferred.unsafeMake<never, void>(FiberId.none);
-      const awaiter2 = Deferred.unsafeMake<never, void>(FiberId.none);
+      const awaiter1 = Deferred.unsafeMake<never, void>(FiberId.none)
+      const awaiter2 = Deferred.unsafeMake<never, void>(FiberId.none)
       const program = Effect.Do()
         .bind("deferred", () => Deferred.make<never, void>())
         .bind("fiber", ({ deferred }) =>
@@ -534,14 +534,14 @@ describe.concurrent("Effect", () => {
             .disconnect()
             .fork())
         .tap(({ deferred }) => deferred.await())
-        .flatMap(({ fiber }) => fiber.interrupt());
+        .flatMap(({ fiber }) => fiber.interrupt())
 
-      const result = await program.unsafeRunPromise();
-      await awaiter1.succeed(undefined).unsafeRunPromise();
-      await awaiter2.succeed(undefined).unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
+      await awaiter1.succeed(undefined).unsafeRunPromise()
+      await awaiter2.succeed(undefined).unsafeRunPromise()
 
-      assert.isTrue(result.isInterrupted());
-    });
+      assert.isTrue(result.isInterrupted())
+    })
 
     it("disconnected effect that is then interrupted eventually performs interruption", async () => {
       const program = Effect.Do()
@@ -558,27 +558,27 @@ describe.concurrent("Effect", () => {
         .tap(({ deferred1 }) => deferred1.await())
         .tap(({ fiber }) => fiber.interrupt())
         .tap(({ deferred2 }) => deferred2.await())
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("cause reflects interruption", async () => {
       const program = withLatch((release) => (release > Effect.fail("foo")).fork()).flatMap((fiber) =>
         fiber.interrupt()
-      );
+      )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      const isInterruptedOnly = result.isFailure() && result.cause.isInterruptedOnly();
+      const isInterruptedOnly = result.isFailure() && result.cause.isInterruptedOnly()
       if (isInterruptedOnly) {
-        assert.isTrue(isInterruptedOnly);
+        assert.isTrue(isInterruptedOnly)
       } else {
-        assert.isTrue(result.untraced() == Exit.fail("foo"));
+        assert.isTrue(result.untraced() == Exit.fail("foo"))
       }
-    });
+    })
 
     it("acquireRelease use inherits interrupt status", async () => {
       const program = Effect.Do()
@@ -597,12 +597,12 @@ describe.concurrent("Effect", () => {
               ) < release2
           ))
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("acquireRelease use inherits interrupt status 2", async () => {
       const program = Effect.Do()
@@ -620,12 +620,12 @@ describe.concurrent("Effect", () => {
         .tap(({ latch1 }) => latch1.await())
         .tap(({ latch2 }) => latch2.succeed(undefined))
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("async can be uninterruptible", async () => {
       const program = Effect.Do()
@@ -640,12 +640,12 @@ describe.concurrent("Effect", () => {
             )
         )
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("closing scope is uninterruptible", async () => {
       const program = Effect.Do()
@@ -662,27 +662,27 @@ describe.concurrent("Effect", () => {
         .bind("fiber", ({ parent }) => parent.fork())
         .tap(({ deferred }) => deferred.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("effectAsyncInterrupt cancelation", async () => {
       const program = Effect.Do()
         .bind("ref", () => Effect.succeed(new AtomicNumber(0)))
         .bindValue("effect", ({ ref }) =>
           Effect.asyncInterrupt(() => {
-            ref.incrementAndGet();
-            return Either.left(Effect.succeed(ref.decrementAndGet()));
+            ref.incrementAndGet()
+            return Either.left(Effect.succeed(ref.decrementAndGet()))
           }))
         .tap(({ effect }) => Effect.unit.race(effect))
-        .flatMap(({ ref }) => Effect.succeed(ref.get));
+        .flatMap(({ ref }) => Effect.succeed(ref.get))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 0);
-    });
-  });
-});
+      assert.strictEqual(result, 0)
+    })
+  })
+})

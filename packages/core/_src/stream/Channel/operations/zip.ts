@@ -32,7 +32,7 @@ export function zip_<
   OutElem | OutElem1,
   Tuple<[OutDone, OutDone1]>
 > {
-  return self.flatMap((a) => that().map((b) => Tuple(a, b)));
+  return self.flatMap((a) => that().map((b) => Tuple(a, b)))
 }
 
 /**
@@ -42,4 +42,4 @@ export function zip_<
  *
  * @tsplus static ets/Channel/Aspects zip
  */
-export const zip = Pipeable(zip_);
+export const zip = Pipeable(zip_)

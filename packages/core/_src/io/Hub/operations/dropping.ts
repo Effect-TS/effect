@@ -1,6 +1,6 @@
-import { makeBounded } from "@effect/core/io/Hub/operations/_internal/makeBounded";
-import { makeHub } from "@effect/core/io/Hub/operations/_internal/makeHub";
-import { Strategy } from "@effect/core/io/Hub/operations/strategy";
+import { makeBounded } from "@effect/core/io/Hub/operations/_internal/makeBounded"
+import { makeHub } from "@effect/core/io/Hub/operations/_internal/makeHub"
+import { Strategy } from "@effect/core/io/Hub/operations/strategy"
 
 /**
  * Creates a bounded hub with the dropping strategy. The hub will drop new
@@ -16,5 +16,5 @@ export function dropping<A>(
 ): Effect.UIO<Hub<A>> {
   return Effect.succeed(makeBounded<A>(requestedCapacity)).flatMap((atomicHub) =>
     makeHub(atomicHub, Strategy.Dropping())
-  );
+  )
 }

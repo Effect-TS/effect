@@ -11,7 +11,7 @@ export function as_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, OutDon
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   z2: LazyArg<OutDone2>
 ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone2> {
-  return self.map(z2);
+  return self.map(z2)
 }
 
 /**
@@ -23,4 +23,4 @@ export function as_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, OutDon
  *
  * @tsplus static ets/Channel/Aspects as
  */
-export const as = Pipeable(as_);
+export const as = Pipeable(as_)

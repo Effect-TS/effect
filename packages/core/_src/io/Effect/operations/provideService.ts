@@ -11,7 +11,7 @@ export function provideService_<R, E, A, T>(
   return (
     resource: LazyArg<T>,
     __tsplusTrace?: string
-  ): Effect<Erase<R & Has<T>, Has<T>>, E, A> => self.provideServiceEffect(tag)(Effect.succeed(resource));
+  ): Effect<Erase<R & Has<T>, Has<T>>, E, A> => self.provideServiceEffect(tag)(Effect.succeed(resource))
 }
 
 /**
@@ -20,4 +20,4 @@ export function provideService_<R, E, A, T>(
  *
  * @tsplus static ets/Effect/Aspects provideService
  */
-export const provideService = Pipeable(provideService_);
+export const provideService = Pipeable(provideService_)

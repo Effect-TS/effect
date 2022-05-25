@@ -9,7 +9,7 @@ export function whileOutput_<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>,
   f: Predicate<Out>
 ): Schedule<State, Env, In, Out> {
-  return self.check((_, out) => f(out));
+  return self.check((_, out) => f(out))
 }
 
 /**
@@ -18,4 +18,4 @@ export function whileOutput_<State, Env, In, Out>(
  *
  * @tsplus static ets/Schedule/Aspects whileOutput
  */
-export const whileOutput = Pipeable(whileOutput_);
+export const whileOutput = Pipeable(whileOutput_)

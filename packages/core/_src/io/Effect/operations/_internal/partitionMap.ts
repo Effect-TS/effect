@@ -9,5 +9,5 @@ export function partitionMap<A, A1, A2>(
         (e) => Tuple(es.prepend(e), bs),
         (b) => Tuple(es, bs.prepend(b))
       )
-  );
+  )
 }

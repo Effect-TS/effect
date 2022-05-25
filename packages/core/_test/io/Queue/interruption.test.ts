@@ -1,4 +1,4 @@
-import { waitForSize } from "@effect/core/test/io/Queue/test-utils";
+import { waitForSize } from "@effect/core/test/io/Queue/test-utils"
 
 describe.concurrent("Queue", () => {
   describe.concurrent("interruption", () => {
@@ -8,12 +8,12 @@ describe.concurrent("Queue", () => {
         .bind("fiber", ({ queue }) => queue.take.fork())
         .tap(({ queue }) => waitForSize(queue, -1))
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ queue }) => queue.size);
+        .flatMap(({ queue }) => queue.size)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 0);
-    });
+      assert.strictEqual(result, 0)
+    })
 
     it("offer interruption", async () => {
       const program = Effect.Do()
@@ -23,11 +23,11 @@ describe.concurrent("Queue", () => {
         .bind("fiber", ({ queue }) => queue.offer(1).fork())
         .tap(({ queue }) => waitForSize(queue, 3))
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ queue }) => queue.size);
+        .flatMap(({ queue }) => queue.size)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 2);
-    });
-  });
-});
+      assert.strictEqual(result, 2)
+    })
+  })
+})

@@ -9,5 +9,5 @@ export function foldLeftChunksEffect<R, E, In, S>(
   f: (s: S, input: Chunk<In>) => Effect<R, E, S>,
   __tsplusTrace?: string
 ): Sink<R, E, In, never, S> {
-  return Sink.foldChunksEffect(z, () => true, f).dropLeftover();
+  return Sink.foldChunksEffect(z, () => true, f).dropLeftover()
 }

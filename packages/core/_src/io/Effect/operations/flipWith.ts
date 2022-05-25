@@ -9,7 +9,7 @@ export function flipWith_<R, E, A, R2, E2, A2>(
   f: (self: Effect<R, A, E>) => Effect<R2, A2, E2>,
   __tsplusTrace?: string
 ): Effect<R2, E2, A2> {
-  return f(self.flip()).flip();
+  return f(self.flip()).flip()
 }
 
 /**
@@ -18,4 +18,4 @@ export function flipWith_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Effect/Aspects flipWith
  */
-export const flipWith = Pipeable(flipWith_);
+export const flipWith = Pipeable(flipWith_)

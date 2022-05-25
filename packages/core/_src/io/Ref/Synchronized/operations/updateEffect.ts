@@ -8,7 +8,7 @@ export function updateEffect_<R, E, A>(
   f: (a: A) => Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, void> {
-  return self.modifyEffect((v) => f(v).map((result) => Tuple(undefined, result)));
+  return self.modifyEffect((v) => f(v).map((result) => Tuple(undefined, result)))
 }
 
 /**
@@ -16,4 +16,4 @@ export function updateEffect_<R, E, A>(
  *
  * @tsplus static ets/Ref/Synchronized/Aspects updateEffect
  */
-export const updateEffect = Pipeable(updateEffect_);
+export const updateEffect = Pipeable(updateEffect_)

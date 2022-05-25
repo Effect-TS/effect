@@ -20,18 +20,18 @@ module.exports = {
     "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",
     "plugin:@typescript-eslint/recommended",
-    "plugin:@phaphoso/dprint/recommended"
+    "plugin:@repo-tooling/dprint/recommended"
   ],
   plugins: ["import", "sort-destructure-keys", "simple-import-sort", "codegen"],
   rules: {
-    "@phaphoso/dprint/dprint": [
+    "@repo-tooling/dprint/dprint": [
       "error",
       {
         config: {
           // The TypeScript configuration of dprint
           // See also https://dprint.dev/plugins/typescript/config/,
           "indentWidth": 2,
-          "semiColons": "always",
+          "semiColons": "asi",
           "quoteStyle": "alwaysDouble",
           "trailingCommas": "never",
           "operatorPosition": "maintain",
@@ -68,4 +68,4 @@ module.exports = {
     "simple-import-sort/imports": "off",
     "sort-destructure-keys/sort-destructure-keys": "error"
   }
-};
+}

@@ -9,5 +9,5 @@ export function whenCaseEffect<R, E, A, R1, E1, B>(
   pf: (a: A) => Option<Effect<R1, E1, B>>,
   __tsplusTrace?: string
 ): Effect<R & R1, E | E1, Option<B>> {
-  return Effect.suspendSucceed(a().flatMap((a) => Effect.whenCase(a, pf)));
+  return Effect.suspendSucceed(a().flatMap((a) => Effect.whenCase(a, pf)))
 }

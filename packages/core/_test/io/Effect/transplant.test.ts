@@ -1,4 +1,4 @@
-import { constTrue, constVoid } from "@tsplus/stdlib/data/Function";
+import { constTrue, constVoid } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Effect", () => {
   describe.concurrent("transplant", () => {
@@ -20,11 +20,11 @@ describe.concurrent("Effect", () => {
         .tap(({ latch1 }) => latch1.await())
         .tap(({ fiber }) => fiber.interrupt())
         .tap(({ latch2 }) => latch2.await())
-        .map(constTrue);
+        .map(constTrue)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
-  });
-});
+      assert.isTrue(result)
+    })
+  })
+})

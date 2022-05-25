@@ -16,11 +16,11 @@
 export function iterate<Z>(initial: LazyArg<Z>, cont: (z: Z) => boolean) {
   return <R, E>(body: (z: Z) => STM<R, E, Z>): STM<R, E, Z> => {
     return STM.suspend(() => {
-      const initial0 = initial();
+      const initial0 = initial()
       if (cont(initial0)) {
-        return body(initial0).flatMap((z2) => iterate(z2, cont)(body));
+        return body(initial0).flatMap((z2) => iterate(z2, cont)(body))
       }
-      return STM.succeedNow(initial0);
-    });
-  };
+      return STM.succeedNow(initial0)
+    })
+  }
 }

@@ -12,7 +12,7 @@ export function mapBoth_<R, E, A, E1, B>(
   return self.foldSTM(
     (e) => STM.fail(g(e)),
     (a) => STM.succeedNow(f(a))
-  );
+  )
 }
 
 /**
@@ -21,4 +21,4 @@ export function mapBoth_<R, E, A, E1, B>(
  *
  * @tsplus static ets/STM/Aspects mapBoth
  */
-export const mapBoth = Pipeable(mapBoth_);
+export const mapBoth = Pipeable(mapBoth_)

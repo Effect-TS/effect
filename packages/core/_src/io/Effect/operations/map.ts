@@ -8,7 +8,7 @@ export function map_<R, E, A, B>(
   f: (a: A) => B,
   __tsplusTrace?: string
 ): Effect<R, E, B> {
-  return self.flatMap((a) => Effect.succeedNow(f(a)));
+  return self.flatMap((a) => Effect.succeedNow(f(a)))
 }
 
 /**
@@ -16,4 +16,4 @@ export function map_<R, E, A, B>(
  *
  * @tsplus static ets/Effect/Aspects map
  */
-export const map = Pipeable(map_);
+export const map = Pipeable(map_)

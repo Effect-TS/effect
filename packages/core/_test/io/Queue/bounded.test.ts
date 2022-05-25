@@ -4,11 +4,11 @@ describe.concurrent("Queue", () => {
       const program = Effect.Do()
         .bind("queue", () => Queue.bounded<number>(5))
         .bindValue("iter", () => Chunk.range(1, 3))
-        .flatMap(({ iter, queue }) => queue.offerAll(iter));
+        .flatMap(({ iter, queue }) => queue.offerAll(iter))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
-  });
-});
+      assert.isTrue(result)
+    })
+  })
+})

@@ -1,10 +1,10 @@
-import type { Driver } from "@effect/core/io/Schedule/Driver";
-import type { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
-import { concreteSink } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
-import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff";
-import { HandoffSignal } from "@effect/core/stream/Stream/operations/_internal/HandoffSignal";
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
-import { SinkEndReason } from "@effect/core/stream/Stream/SinkEndReason";
+import type { Driver } from "@effect/core/io/Schedule/Driver"
+import type { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import { concreteSink } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff"
+import { HandoffSignal } from "@effect/core/stream/Stream/operations/_internal/HandoffSignal"
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import { SinkEndReason } from "@effect/core/stream/Stream/SinkEndReason"
 
 /**
  * Aggregates elements using the provided sink until it completes, or until
@@ -29,8 +29,8 @@ export function aggregateWithinEither_<R, E, A, R2, E2, A2, S, R3, B, C>(
   schedule: LazyArg<Schedule<S, R3, Option<B>, C>>,
   __tsplusTrace?: string
 ): Stream<R & R2 & R3, E | E2, Either<C, B>> {
-  type EndReason = SinkEndReason<C>;
-  type Signal = HandoffSignal<C, E | E2, A>;
+  type EndReason = SinkEndReason<C>
+  type Signal = HandoffSignal<C, E | E2, A>
 
   return Stream.fromEffect(
     Effect.tuple(
@@ -52,7 +52,7 @@ export function aggregateWithinEither_<R, E, A, R2, E2, A2, S, R3, B, C>(
       (input: Chunk<A>) => Channel.fromEffect(handoff.offer(HandoffSignal.Emit(input))) > handoffProducer,
       (cause) => Channel.fromEffect(handoff.offer(HandoffSignal.Halt(cause))),
       () => Channel.fromEffect(handoff.offer(HandoffSignal.End(SinkEndReason.UpstreamEnd)))
-    );
+    )
 
     const handoffConsumer: Channel<
       unknown,
@@ -69,22 +69,22 @@ export function aggregateWithinEither_<R, E, A, R2, E2, A2, S, R3, B, C>(
           : handoff.take().map((signal) => {
             switch (signal._tag) {
               case "Emit": {
-                return Channel.write(signal.elements) > handoffConsumer;
+                return Channel.write(signal.elements) > handoffConsumer
               }
               case "Halt": {
-                return Channel.failCause(signal.error);
+                return Channel.failCause(signal.error)
               }
               case "End": {
-                return Channel.fromEffect(sinkEndReason.set(signal.reason));
+                return Channel.fromEffect(sinkEndReason.set(signal.reason))
               }
             }
           })
       )
-    );
+    )
 
-    const sink0 = sink();
-    concreteStream(self);
-    concreteSink(sink0);
+    const sink0 = sink()
+    concreteStream(self)
+    concreteSink(sink0)
     return Stream.scoped(
       (self.channel >> handoffProducer).runScoped().fork()
     ).crossRight(
@@ -100,8 +100,8 @@ export function aggregateWithinEither_<R, E, A, R2, E2, A2, S, R3, B, C>(
           Option.none
         )
       )
-    );
-  });
+    )
+  })
 }
 
 /**
@@ -121,7 +121,7 @@ export function aggregateWithinEither_<R, E, A, R2, E2, A2, S, R3, B, C>(
  *
  * @tsplus static ets/Stream/Aspects aggregateWithinEither
  */
-export const aggregateWithinEither = Pipeable(aggregateWithinEither_);
+export const aggregateWithinEither = Pipeable(aggregateWithinEither_)
 
 function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
   sink: SinkInternal<R2, E2, A | A2, A2, B>,
@@ -149,7 +149,7 @@ function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
         (cause) => handoff.offer(HandoffSignal.Halt(cause))
       ),
     (c) => handoff.offer(HandoffSignal.End(SinkEndReason.ScheduleEnd(c)))
-  );
+  )
   return Channel.unwrapScoped(
     timeout.forkScoped().map((fiber) =>
       handoffConsumer
@@ -169,25 +169,25 @@ function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
                           Option.some(b)
                         ),
                         SinkEndReason.SinkEnd
-                      );
+                      )
                     }
                     case "ScheduleTimeout": {
                       return Tuple(
                         Channel.write(Chunk.single(Either.right(b))).as(Option.some(b)),
                         SinkEndReason.SinkEnd
-                      );
+                      )
                     }
                     case "SinkEnd": {
                       return Tuple(
                         Channel.write(Chunk.single(Either.right(b))).as(Option.some(b)),
                         SinkEndReason.SinkEnd
-                      );
+                      )
                     }
                     case "UpstreamEnd": {
                       return Tuple(
                         Channel.write(Chunk.single(Either.right(b))).as(Option.none),
                         SinkEndReason.UpstreamEnd
-                      );
+                      )
                     }
                   }
                 })
@@ -207,5 +207,5 @@ function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
         option
       )
       : Channel.unit
-  );
+  )
 }

@@ -6,5 +6,5 @@
 export function asUnit<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, void> {
-  return self > Channel.unit;
+  return self > Channel.unit
 }

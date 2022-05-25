@@ -1,4 +1,4 @@
-import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Transforms this sink's input chunks. `f` must preserve chunking-invariance.
@@ -22,9 +22,9 @@ export function contramapChunks_<R, E, In, In1, L, Z>(
     (chunk: Chunk<In1>) => Channel.write(f(chunk)) > loop,
     (err) => Channel.fail(err),
     (done) => Channel.succeed(done)
-  );
-  concreteSink(self);
-  return new SinkInternal(loop >> self.channel);
+  )
+  concreteSink(self)
+  return new SinkInternal(loop >> self.channel)
 }
 
 /**
@@ -32,4 +32,4 @@ export function contramapChunks_<R, E, In, In1, L, Z>(
  *
  * @tsplus static ets/Sink/Aspects contramapChunks
  */
-export const contramapChunks = Pipeable(contramapChunks_);
+export const contramapChunks = Pipeable(contramapChunks_)

@@ -14,5 +14,5 @@ export function acquireUseReleaseOnError<R, E, A, R2, E2, A2, R3, X>(
     acquire,
     use,
     (a, exit): Effect.RIO<R3, void> => exit._tag === "Failure" ? release(a) : Effect.unit
-  );
+  )
 }

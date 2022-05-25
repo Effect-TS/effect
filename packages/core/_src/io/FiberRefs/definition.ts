@@ -1,5 +1,5 @@
-export const FiberRefsSym = Symbol.for("@effect/core/io/FiberRefs");
-export type FiberRefsSym = typeof FiberRefsSym;
+export const FiberRefsSym = Symbol.for("@effect/core/io/FiberRefs")
+export type FiberRefsSym = typeof FiberRefsSym
 
 /**
  * `FiberRefs` is a data type that represents a collection of `FiberRef` values.
@@ -9,18 +9,18 @@ export type FiberRefsSym = typeof FiberRefsSym;
  * @tsplus type ets/FiberRefs
  */
 export interface FiberRefs {
-  readonly [FiberRefsSym]: FiberRefsSym;
+  readonly [FiberRefsSym]: FiberRefsSym
 }
 
 /**
  * @tsplus type ets/FiberRefs/Ops
  */
 export interface FiberRefsOps {
-  $: FiberRefsAspects;
+  $: FiberRefsAspects
 }
 export const FiberRefs: FiberRefsOps = {
   $: {}
-};
+}
 
 /**
  * @tsplus type ets/FiberRefs/Aspects

@@ -7,5 +7,5 @@ export function collectWhileSome<R, E, L, A>(
   self: Stream<R, E, Option<A>>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  return self.collectWhile((option) => option.isSome() ? Option.some(option.value) : Option.none);
+  return self.collectWhile((option) => option.isSome() ? Option.some(option.value) : Option.none)
 }

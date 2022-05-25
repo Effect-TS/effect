@@ -1,4 +1,4 @@
-import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Allows a faster producer to progress independently of a slower consumer by
@@ -10,7 +10,7 @@ export function bufferUnbounded_<R, E, A>(
   self: Stream<R, E, A>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  const queue = self.toQueueUnbounded();
+  const queue = self.toQueueUnbounded()
   return new StreamInternal(
     Channel.unwrapScoped(queue.map((queue) => {
       const process: Channel<
@@ -27,10 +27,10 @@ export function bufferUnbounded_<R, E, A>(
           (cause) => Channel.failCause(cause),
           (a) => Channel.write(a) > process
         )
-      );
-      return process;
+      )
+      return process
     }))
-  );
+  )
 }
 
 /**
@@ -39,4 +39,4 @@ export function bufferUnbounded_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects bufferUnbounded
  */
-export const bufferUnbounded = Pipeable(bufferUnbounded_);
+export const bufferUnbounded = Pipeable(bufferUnbounded_)

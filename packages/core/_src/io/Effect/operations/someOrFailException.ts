@@ -7,5 +7,5 @@ export function someOrFailException<R, E, A>(
   self: Effect<R, E, Option<A>>,
   __tsplusTrace?: string
 ): Effect<R, E | NoSuchElement, A> {
-  return self.someOrFail(new NoSuchElement());
+  return self.someOrFail(new NoSuchElement())
 }

@@ -1,4 +1,4 @@
-import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue";
+import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue"
 
 /**
  * Checks whether the queue is empty.
@@ -6,6 +6,6 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
  * @tsplus fluent ets/TPriorityQueue isEmpty
  */
 export function isEmpty<A>(self: TPriorityQueue<A>): USTM<boolean> {
-  concreteTPriorityQueue(self);
-  return self.map.get().map((map) => map.isEmpty());
+  concreteTPriorityQueue(self)
+  return self.map.get().map((map) => map.isEmpty())
 }

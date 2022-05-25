@@ -13,7 +13,7 @@ export function crossWith_<R, E, A, R2, E2, B, C>(
   f: (a: A, b: B) => C,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, C> {
-  return self.flatMap((a) => that().map((b) => f(a, b)));
+  return self.flatMap((a) => that().map((b) => f(a, b)))
 }
 
 /**
@@ -25,4 +25,4 @@ export function crossWith_<R, E, A, R2, E2, B, C>(
  *
  * @tsplus static ets/Stream/Aspects crossWith
  */
-export const crossWith = Pipeable(crossWith_);
+export const crossWith = Pipeable(crossWith_)

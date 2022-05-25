@@ -1,4 +1,4 @@
-import { IFlatMap } from "@effect/core/io/Effect/definition/primitives";
+import { IFlatMap } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Returns an effect that models the execution of this effect, followed by the
@@ -12,7 +12,7 @@ export function flatMap_<R, E, A, R1, E1, B>(
   f: (a: A) => Effect<R1, E1, B>,
   __tsplusTrace?: string
 ): Effect<R & R1, E | E1, B> {
-  return new IFlatMap(self, f, __tsplusTrace);
+  return new IFlatMap(self, f, __tsplusTrace)
 }
 
 /**
@@ -22,4 +22,4 @@ export function flatMap_<R, E, A, R1, E1, B>(
  *
  * @tsplus static ets/Effect/Aspects flatMap
  */
-export const flatMap = Pipeable(flatMap_);
+export const flatMap = Pipeable(flatMap_)

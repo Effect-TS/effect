@@ -7,5 +7,5 @@
 export function passthrough<RIn extends Spreadable, E, ROut extends Spreadable>(
   self: Layer<RIn, E, ROut>
 ): Layer<RIn, E, RIn & ROut> {
-  return Layer.environment<RIn>() + self;
+  return Layer.environment<RIn>() + self
 }

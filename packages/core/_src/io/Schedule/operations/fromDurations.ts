@@ -1,6 +1,6 @@
-import { Decision } from "@effect/core/io/Schedule/Decision";
-import { Interval } from "@effect/core/io/Schedule/Interval";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import { Decision } from "@effect/core/io/Schedule/Decision"
+import { Interval } from "@effect/core/io/Schedule/Interval"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * A schedule that recurs once for each of the specified durations, delaying
@@ -23,19 +23,19 @@ export function fromDurations(
     (now, _, { tuple: [durations, cont] }) =>
       Effect.succeed(() => {
         if (cont) {
-          const x = durations.unsafeGet(0)!;
-          const interval = Interval.after(now + x.millis);
+          const x = durations.unsafeGet(0)!
+          const interval = Interval.after(now + x.millis)
 
           if (durations.length >= 2) {
-            return Tuple(Tuple(durations.drop(1), true), x, Decision.Continue(interval));
+            return Tuple(Tuple(durations.drop(1), true), x, Decision.Continue(interval))
           }
 
-          const y = durations.drop(1);
+          const y = durations.drop(1)
 
-          return Tuple(Tuple(y.prepend(x), false), x, Decision.Continue(interval));
+          return Tuple(Tuple(y.prepend(x), false), x, Decision.Continue(interval))
         }
 
-        return Tuple(Tuple(durations, false), (0).millis, Decision.Done);
+        return Tuple(Tuple(durations, false), (0).millis, Decision.Done)
       })
-  );
+  )
 }

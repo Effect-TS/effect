@@ -33,7 +33,7 @@ export function concatMap_<
   OutElem2,
   unknown
 > {
-  return self.concatMapWith(f, () => undefined, () => undefined);
+  return self.concatMapWith(f, () => undefined, () => undefined)
 }
 
 /**
@@ -44,4 +44,4 @@ export function concatMap_<
  *
  * @tsplus static ets/Channel/Aspects concatMap
  */
-export const concatMap = Pipeable(concatMap_);
+export const concatMap = Pipeable(concatMap_)

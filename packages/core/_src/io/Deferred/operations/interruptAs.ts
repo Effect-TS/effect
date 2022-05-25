@@ -9,7 +9,7 @@ export function interruptAs_<E, A>(
   fiberId: LazyArg<FiberId>,
   __tsplusTrace?: string
 ): Effect.UIO<boolean> {
-  return self.completeWith(Effect.interruptAs(fiberId));
+  return self.completeWith(Effect.interruptAs(fiberId))
 }
 
 /**
@@ -18,4 +18,4 @@ export function interruptAs_<E, A>(
  *
  * @tsplus static ets/Deferred/Aspects interruptAs
  */
-export const interruptAs = Pipeable(interruptAs_);
+export const interruptAs = Pipeable(interruptAs_)

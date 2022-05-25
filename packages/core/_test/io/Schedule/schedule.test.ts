@@ -3,7 +3,7 @@
  * with the incremented value in error.
  */
 function alwaysFail(ref: Ref<number>): Effect<unknown, string, number> {
-  return ref.updateAndGet((n) => n + 1).flatMap((n) => Effect.fail(`Error: ${n}`));
+  return ref.updateAndGet((n) => n + 1).flatMap((n) => Effect.fail(`Error: ${n}`))
 }
 
 // function checkDelays<State, Env>(
@@ -82,7 +82,7 @@ describe.concurrent("Schedule", () => {
       // const result = await program.unsafeRunPromise();
 
       // assert.strictEqual(result, 0);
-    });
+    })
 
     it.skip("for 'recurs(0)' does repeat 0 additional time", async () => {
       // A repeat with 0 number of times should not repeat the action at all
@@ -91,7 +91,7 @@ describe.concurrent("Schedule", () => {
       // const result = await program.unsafeRunPromise();
 
       // assert.strictEqual(result, 0);
-    });
+    })
 
     it.skip("for 'recurs(1)' does repeat 1 additional time", async () => {
       // const program = repeat(Schedule.recurs(1));
@@ -99,17 +99,17 @@ describe.concurrent("Schedule", () => {
       // const result = await program.unsafeRunPromise();
 
       // assert.strictEqual(result, 1);
-    });
+    })
 
     it("for 'once' will repeat 1 additional time", async () => {
       const program = Ref.make(0)
         .tap((ref) => ref.update((n) => n + 1).repeat(Schedule.once))
-        .flatMap((ref) => ref.get());
+        .flatMap((ref) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 2);
-    });
+      assert.strictEqual(result, 2)
+    })
 
     it.skip("for 'recurs(a positive given number)' repeats that additional number of time", async () => {
       // const program = repeat(Schedule.recurs(42));
@@ -117,7 +117,7 @@ describe.concurrent("Schedule", () => {
       // const result = await program.unsafeRunPromise();
 
       // assert.strictEqual(result, 42);
-    });
+    })
 
     it.skip("for 'recurWhile(cond)' repeats while the cond still holds", async () => {
       // const program = repeat(Schedule.recurWhile((n) => n < 10));
@@ -125,7 +125,7 @@ describe.concurrent("Schedule", () => {
       // const result = await program.unsafeRunPromise();
 
       // assert.strictEqual(result, 10);
-    });
+    })
 
     it.skip("for 'recurWhileEffect(cond)' repeats while the effectful cond still holds", async () => {
       // const program = repeat(Schedule.recurWhileEffect((n) => Effect.succeed(n > 10)));
@@ -133,7 +133,7 @@ describe.concurrent("Schedule", () => {
       // const result = await program.unsafeRunPromise();
 
       // assert.strictEqual(result, 1);
-    });
+    })
 
     it.skip("for 'recurWhileEquals(cond)' repeats while the cond is equal", async () => {
       // const program = repeat(Schedule.recurWhileEquals(Equivalence.number)(1));
@@ -141,7 +141,7 @@ describe.concurrent("Schedule", () => {
       // const result = await program.unsafeRunPromise();
 
       // assert.strictEqual(result, 2);
-    });
+    })
 
     it.skip("for 'recurUntil(cond)' repeats until the cond is satisfied", async () => {
       // const program = repeat(Schedule.recurUntil((n) => n < 10));
@@ -149,7 +149,7 @@ describe.concurrent("Schedule", () => {
       // const result = await program.unsafeRunPromise();
 
       // assert.strictEqual(result, 1);
-    });
+    })
 
     it.skip("for 'recurUntilEffect(cond)' repeats until the effectful cond is satisfied", async () => {
       // const program = repeat(Schedule.recurUntilEffect((n) => Effect.succeed(n > 10)));
@@ -157,7 +157,7 @@ describe.concurrent("Schedule", () => {
       // const result = await program.unsafeRunPromise();
 
       // assert.strictEqual(result, 11);
-    });
+    })
 
     it.skip("for 'recurUntilEquals(cond)' repeats until the cond is equal", async () => {
       // const program = repeat(Schedule.recurUntilEquals(Equivalence.number)(1));
@@ -165,8 +165,8 @@ describe.concurrent("Schedule", () => {
       // const result = await program.unsafeRunPromise();
 
       // assert.strictEqual(result, 1);
-    });
-  });
+    })
+  })
 
   describe.concurrent("collect all inputs into a list", () => {
     it.skip("as long as the condition f holds", async () => {
@@ -175,7 +175,7 @@ describe.concurrent("Schedule", () => {
       // const result = await program.unsafeRunPromise();
 
       // assert.isTrue(result == Chunk(1, 2, 3, 4, 5, 6, 7, 8, 9));
-    });
+    })
 
     it.skip("as long as the effectful condition f holds", async () => {
       // const program = repeat(Schedule.collectWhileEffect((n) => Effect.succeed(n > 10)));
@@ -183,7 +183,7 @@ describe.concurrent("Schedule", () => {
       // const result = await program.unsafeRunPromise();
 
       // assert.isTrue(result.isEmpty());
-    });
+    })
 
     it.skip("until the effectful condition f fails", async () => {
       // const program = repeat(Schedule.collectUntil((n) => n < 10 && n > 1));
@@ -191,7 +191,7 @@ describe.concurrent("Schedule", () => {
       // const result = await program.unsafeRunPromise();
 
       // assert.isTrue(result == Chunk.single(1));
-    });
+    })
 
     it.skip("until the effectful condition f fails", async () => {
       // const program = repeat(Schedule.collectUntilEffect((n) => Effect.succeed(n > 10)));
@@ -199,8 +199,8 @@ describe.concurrent("Schedule", () => {
       // const result = await program.unsafeRunPromise();
 
       // assert.isTrue(result == Chunk(1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
-    });
-  });
+    })
+  })
 
   describe.concurrent("repeat an action a single time", () => {
     it("Repeat on failure does not actually repeat", async () => {
@@ -209,26 +209,26 @@ describe.concurrent("Schedule", () => {
         .foldEffect(
           (e) => Effect.succeed(e),
           () => Effect.succeed("it should never be a success")
-        );
+        )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, "Error: 1");
-    });
+      assert.strictEqual(result, "Error: 1")
+    })
 
     it("repeat a scheduled repeat repeats the whole number", async () => {
-      const n = 42;
+      const n = 42
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
         .bindValue("io", ({ ref }) => ref.update((n) => n + 1).repeat(Schedule.recurs(n)))
         .tap(({ io }) => io.repeat(Schedule.recurs(1)))
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, (n + 1) * 2);
-    });
-  });
+      assert.strictEqual(result, (n + 1) * 2)
+    })
+  })
 
   describe.concurrent("repeat an action two times and call ensuring should", () => {
     it("run the specified finalizer as soon as the schedule is complete", async () => {
@@ -242,14 +242,14 @@ describe.concurrent("Schedule", () => {
             .ensuring(deferred.succeed(undefined))
         )
         .bind("value", ({ ref }) => ref.get())
-        .bind("finalizerValue", ({ deferred }) => deferred.poll());
+        .bind("finalizerValue", ({ deferred }) => deferred.poll())
 
-      const { finalizerValue, value } = await program.unsafeRunPromise();
+      const { finalizerValue, value } = await program.unsafeRunPromise()
 
-      assert.strictEqual(value, 6);
-      assert.isTrue(finalizerValue.isSome());
-    });
-  });
+      assert.strictEqual(value, 6)
+      assert.isTrue(finalizerValue.isSome())
+    })
+  })
 
   // describe.concurrent("simulate a schedule", () => {
   //   it("without timing out", async () => {
@@ -273,4 +273,4 @@ describe.concurrent("Schedule", () => {
   //     ])
   //   })
   // })
-});
+})

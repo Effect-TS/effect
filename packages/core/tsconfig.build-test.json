@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.base.test.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
       "outDir": "build/test",
       "declarationDir": "build/test-dts",
@@ -14,5 +14,9 @@
       {
           "path": "./tsconfig.build.json"
       }
+  ],
+  "files": [
+    "./tsplus.prelude.d.ts",
+    "../../tsplus.prelude.test.d.ts",
   ]
 }

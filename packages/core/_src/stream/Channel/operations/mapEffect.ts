@@ -20,5 +20,5 @@ export function mapEffect_<
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   f: (o: OutDone) => Effect<Env1, OutErr1, OutDone1>
 ): Channel<Env & Env1, InErr, InElem, InDone, OutErr | OutErr1, OutElem, OutDone1> {
-  return self.flatMap((z) => Channel.fromEffect(f(z)));
+  return self.flatMap((z) => Channel.fromEffect(f(z)))
 }

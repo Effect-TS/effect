@@ -11,7 +11,7 @@ export function onError_<R, E, A, R2, X>(
 ): Effect<R & R2, E, A> {
   return self.onExit(
     (exit): Effect.RIO<R2, X | void> => exit._tag === "Success" ? Effect.unit : cleanup(exit.cause)
-  );
+  )
 }
 
 /**
@@ -20,4 +20,4 @@ export function onError_<R, E, A, R2, X>(
  *
  * @tsplus static ets/Effect/Aspects onError
  */
-export const onError = Pipeable(onError_);
+export const onError = Pipeable(onError_)

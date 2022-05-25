@@ -1,4 +1,4 @@
-import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition";
+import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition"
 
 /**
  * Creates a stream from a `Queue` of values. The queue will be shutdown once
@@ -14,5 +14,5 @@ export function fromQueueWithShutdown<A>(
   maxChunkSize = DEFAULT_CHUNK_SIZE,
   __tsplusTrace?: string
 ): Stream<unknown, never, A> {
-  return Stream.succeed(queue).flatMap((queue) => Stream.fromQueue(queue, maxChunkSize).ensuring(queue.shutdown));
+  return Stream.succeed(queue).flatMap((queue) => Stream.fromQueue(queue, maxChunkSize).ensuring(queue.shutdown))
 }

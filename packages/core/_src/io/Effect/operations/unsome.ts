@@ -10,5 +10,5 @@ export function unsome<R, E, A>(
   return self.foldEffect(
     (option) => option.fold(Effect.succeedNow(Option.none), Effect.failNow),
     (a) => Effect.succeedNow(Option.some(a))
-  );
+  )
 }

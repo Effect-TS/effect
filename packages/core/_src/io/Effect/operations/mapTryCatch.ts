@@ -10,7 +10,7 @@ export function mapTryCatch_<R, E1, E, A, B>(
   onThrow: (u: unknown) => E,
   __tsplusTrace?: string
 ): Effect<R, E | E1, B> {
-  return self.flatMap((a) => Effect.tryCatch(() => f(a), onThrow));
+  return self.flatMap((a) => Effect.tryCatch(() => f(a), onThrow))
 }
 
 /**
@@ -19,4 +19,4 @@ export function mapTryCatch_<R, E1, E, A, B>(
  *
  * @tsplus static ets/Effect/Aspects mapTryCatch
  */
-export const mapTryCatch = Pipeable(mapTryCatch_);
+export const mapTryCatch = Pipeable(mapTryCatch_)

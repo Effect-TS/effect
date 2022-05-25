@@ -10,7 +10,7 @@ export function mapBoth_<R, E, E2, A, A2>(
   g: (a: A) => A2,
   __tsplusTrace?: string
 ): Stream<R, E2, A2> {
-  return self.mapError(f).map(g);
+  return self.mapError(f).map(g)
 }
 
 /**
@@ -19,4 +19,4 @@ export function mapBoth_<R, E, E2, A, A2>(
  *
  * @tsplus static ets/Stream/Aspects mapBoth
  */
-export const mapBoth = Pipeable(mapBoth_);
+export const mapBoth = Pipeable(mapBoth_)

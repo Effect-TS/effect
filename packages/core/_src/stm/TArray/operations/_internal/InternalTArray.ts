@@ -1,13 +1,13 @@
-import { _A, TArraySym } from "@effect/core/stm/TArray/definition";
+import { _A, TArraySym } from "@effect/core/stm/TArray/definition"
 
 export class InternalTArray<A> implements TArray<A> {
-  readonly [TArraySym]: TArraySym = TArraySym;
-  readonly [_A]!: () => A;
+  readonly [TArraySym]: TArraySym = TArraySym
+  readonly [_A]!: () => A
 
   constructor(readonly chunk: Chunk<TRef<A>>) {}
 
   [Symbol.iterator](): Iterator<TRef<A>> {
-    return this.chunk[Symbol.iterator]();
+    return this.chunk[Symbol.iterator]()
   }
 }
 

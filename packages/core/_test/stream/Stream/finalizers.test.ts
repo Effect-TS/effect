@@ -1,7 +1,7 @@
 describe.concurrent("Stream", () => {
   describe.concurrent("ensuring", () => {
     it("runs finalizers in the correct order", async () => {
-      const event = (label: string) => (list: List<string>) => list.prepend(label);
+      const event = (label: string) => (list: List<string>) => list.prepend(label)
       const program = Effect.Do()
         .bind("log", () => Ref.make<List<string>>(List.empty()))
         .tap(({ log }) =>
@@ -10,9 +10,9 @@ describe.concurrent("Stream", () => {
             .ensuring(log.update(event("ensuring")))
             .runDrain()
         )
-        .flatMap(({ log }) => log.get());
+        .flatMap(({ log }) => log.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
       assert.isTrue(
         result.reverse() == List(
@@ -21,9 +21,9 @@ describe.concurrent("Stream", () => {
           "release",
           "ensuring"
         )
-      );
-    });
-  });
+      )
+    })
+  })
 
   describe.concurrent("finalizer", () => {
     it("happy path", async () => {
@@ -39,9 +39,9 @@ describe.concurrent("Stream", () => {
             .ensuring(entry("Ensuring"))
             .runDrain()
         )
-        .flatMap(({ log }) => log.get());
+        .flatMap(({ log }) => log.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
       assert.isTrue(
         result.reverse() == List(
@@ -50,8 +50,8 @@ describe.concurrent("Stream", () => {
           "Release",
           "Ensuring"
         )
-      );
-    });
+      )
+    })
 
     it("finalizer is not run if stream is not pulled", async () => {
       const program = Effect.Do()
@@ -63,11 +63,11 @@ describe.concurrent("Stream", () => {
               .flatMap(() => Effect.unit)
           )
         )
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isFalse(result);
-    });
-  });
-});
+      assert.isFalse(result)
+    })
+  })
+})

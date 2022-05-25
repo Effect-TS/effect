@@ -13,7 +13,7 @@ export function mapErrorCause_<R, E, A, E2>(
   f: (cause: Cause<E>) => Cause<E2>,
   __tsplusTrace?: string
 ): Effect<R, E2, A> {
-  return self.foldCauseEffect((c) => Effect.failCauseNow(f(c)), Effect.succeedNow);
+  return self.foldCauseEffect((c) => Effect.failCauseNow(f(c)), Effect.succeedNow)
 }
 
 /**
@@ -26,4 +26,4 @@ export function mapErrorCause_<R, E, A, E2>(
  *
  * @tsplus static ets/Effect/Aspects mapErrorCause
  */
-export const mapErrorCause = Pipeable(mapErrorCause_);
+export const mapErrorCause = Pipeable(mapErrorCause_)

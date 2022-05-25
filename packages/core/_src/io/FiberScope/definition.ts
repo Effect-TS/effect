@@ -1,4 +1,4 @@
-import type { FiberContext } from "@effect/core/io/Fiber/_internal/context";
+import type { FiberContext } from "@effect/core/io/Fiber/_internal/context"
 
 /**
  * A `FiberScope` represents the scope of a fiber lifetime. The scope of a
@@ -7,25 +7,25 @@ import type { FiberContext } from "@effect/core/io/Fiber/_internal/context";
  *
  * @tsplus type ets/FiberScope
  */
-export type FiberScope = Global | Local;
+export type FiberScope = Global | Local
 
 /**
  * @tsplus type ets/FiberScope/Ops
  */
 export interface FiberScopeOps {}
-export const FiberScope: FiberScopeOps = {};
+export const FiberScope: FiberScopeOps = {}
 
 export interface CommonScope {
-  readonly fiberId: FiberId;
+  readonly fiberId: FiberId
   readonly unsafeAdd: (
     runtimeConfig: RuntimeConfig,
     child: FiberContext<any, any>,
     __tsplusTrace?: string
-  ) => boolean;
+  ) => boolean
 }
 
 export class Global implements CommonScope {
-  readonly fiberId = FiberId.none;
+  readonly fiberId = FiberId.none
 
   unsafeAdd(
     runtimeConfig: RuntimeConfig,
@@ -33,13 +33,13 @@ export class Global implements CommonScope {
     __tsplusTrace?: string | undefined
   ): boolean {
     if (runtimeConfig.value.flags.isEnabled(RuntimeConfigFlag.EnableFiberRoots)) {
-      _roots.value.add(child);
+      _roots.value.add(child)
 
       child.unsafeOnDone(() => {
-        _roots.value.delete(child);
-      });
+        _roots.value.delete(child)
+      })
     }
-    return true;
+    return true
   }
 }
 
@@ -50,8 +50,8 @@ export class Local implements CommonScope {
     child: FiberContext<any, any>,
     __tsplusTrace?: string | undefined
   ): boolean {
-    const parent = this.parent;
-    return parent != null && parent.unsafeAddChild(child);
+    const parent = this.parent
+    return parent != null && parent.unsafeAddChild(child)
   }
 }
 
@@ -66,7 +66,7 @@ export class Local implements CommonScope {
  *
  * @tsplus static ets/FiberScope/Ops global
  */
-export const globalScope = LazyValue.make(() => new Global());
+export const globalScope = LazyValue.make(() => new Global())
 
 /**
  * Unsafely creats a new `Scope` from a `Fiber`.
@@ -74,10 +74,10 @@ export const globalScope = LazyValue.make(() => new Global());
  * @tsplus static ets/FiberScope/Ops unsafeMake
  */
 export function unsafeMake(fiber: FiberContext<any, any>): FiberScope {
-  return new Local(fiber.fiberId, fiber);
+  return new Local(fiber.fiberId, fiber)
 }
 
 /**
  * @tsplus static ets/FiberScope/Ops _roots
  */
-export const _roots = LazyValue.make(() => new Set<FiberContext<any, any>>());
+export const _roots = LazyValue.make(() => new Set<FiberContext<any, any>>())

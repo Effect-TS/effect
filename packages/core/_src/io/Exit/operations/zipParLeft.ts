@@ -8,7 +8,7 @@ export function zipParLeft_<E, E1, A, B>(
   self: Exit<E, A>,
   that: Exit<E1, B>
 ): Exit<E | E1, A> {
-  return self.zipWith(that, (a, _) => a, Cause.both);
+  return self.zipWith(that, (a, _) => a, Cause.both)
 }
 
 /**
@@ -17,4 +17,4 @@ export function zipParLeft_<E, E1, A, B>(
  *
  * @tsplus static ets/Exit/Aspects zipParLeft
  */
-export const zipParLeft = Pipeable(zipParLeft_);
+export const zipParLeft = Pipeable(zipParLeft_)

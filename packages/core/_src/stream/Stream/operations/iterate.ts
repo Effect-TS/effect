@@ -9,5 +9,5 @@ export function iterate<A>(
   f: (a: A) => A,
   __tsplusTrace?: string
 ): Stream<unknown, never, A> {
-  return Stream.unfold(a, (a) => Option.some(Tuple(a, f(a))));
+  return Stream.unfold(a, (a) => Option.some(Tuple(a, f(a))))
 }

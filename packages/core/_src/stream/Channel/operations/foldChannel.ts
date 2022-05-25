@@ -44,11 +44,11 @@ export function foldChannel_<
     return _.failureOrCause().fold(
       (err) => onErr(err),
       (cause) => Channel.failCause(cause)
-    );
-  }, onSucc);
+    )
+  }, onSucc)
 }
 
 /**
  * @tsplus static ets/Channel/Aspects foldChannel
  */
-export const foldChannel = Pipeable(foldChannel_);
+export const foldChannel = Pipeable(foldChannel_)

@@ -1,5 +1,5 @@
-import type { Decision } from "@effect/core/io/Schedule/Decision";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import type { Decision } from "@effect/core/io/Schedule/Decision"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * Returns a new schedule that outputs the delay between each occurence.
@@ -23,5 +23,5 @@ export function delays<State, Env, In, Out>(
               decision
             )
           )
-      ));
+      ))
 }

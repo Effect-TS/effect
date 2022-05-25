@@ -1,5 +1,5 @@
-import { Bridge } from "@effect/core/stream/Channel/definition/primitives";
-import type { AsyncInputProducer } from "@effect/core/stream/Channel/SingleProducerAsyncInput";
+import { Bridge } from "@effect/core/stream/Channel/definition/primitives"
+import type { AsyncInputProducer } from "@effect/core/stream/Channel/SingleProducerAsyncInput"
 
 /**
  * Embed inputs from continuos pulling of a producer.
@@ -10,7 +10,7 @@ export function embedInput_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone
   self: Channel<Env, unknown, unknown, unknown, OutErr, OutElem, OutDone>,
   input: AsyncInputProducer<InErr, InElem, InDone>
 ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  return new Bridge(input, self);
+  return new Bridge(input, self)
 }
 
 /**
@@ -18,4 +18,4 @@ export function embedInput_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone
  *
  * @tsplus static ets/Channel/Aspects embedInput
  */
-export const embedInput = Pipeable(embedInput_);
+export const embedInput = Pipeable(embedInput_)

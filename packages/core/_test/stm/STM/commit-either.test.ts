@@ -4,12 +4,12 @@ describe.concurrent("STM", () => {
       const program = Effect.Do()
         .bind("tRef", () => TRef.makeCommit(false))
         .bind("either", ({ tRef }) => (tRef.set(true) > STM.fail("error")).commitEither().flip())
-        .bind("value", ({ tRef }) => tRef.get().commit());
+        .bind("value", ({ tRef }) => tRef.get().commit())
 
-      const { either, value } = await program.unsafeRunPromise();
+      const { either, value } = await program.unsafeRunPromise()
 
-      assert.strictEqual(either, "error");
-      assert.isTrue(value);
-    });
-  });
-});
+      assert.strictEqual(either, "error")
+      assert.isTrue(value)
+    })
+  })
+})

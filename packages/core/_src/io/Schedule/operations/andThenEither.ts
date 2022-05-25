@@ -1,5 +1,5 @@
-import { Decision } from "@effect/core/io/Schedule/Decision";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import { Decision } from "@effect/core/io/Schedule/Decision"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * Returns a new schedule that first executes this schedule to completion, and
@@ -47,7 +47,7 @@ export function andThenEither_<State, Env, In, Out, State1, Env1, In1, Out2>(
           .map(({ tuple: [rState, out, decision] }) =>
             Tuple(Tuple(state.get(0), rState, false), Either.rightW(out), decision)
           )
-  );
+  )
 }
 
 /**
@@ -56,4 +56,4 @@ export function andThenEither_<State, Env, In, Out, State1, Env1, In1, Out2>(
  *
  * @tsplus static ets/Schedule/Aspects andThenEither
  */
-export const andThenEither = Pipeable(andThenEither_);
+export const andThenEither = Pipeable(andThenEither_)

@@ -4,7 +4,7 @@
  * @tsplus fluent ets/Exit as
  */
 export function as_<E, A, A1>(self: Exit<E, A>, value: LazyArg<A1>): Exit<E, A1> {
-  return self.map(value);
+  return self.map(value)
 }
 
 /**
@@ -12,4 +12,4 @@ export function as_<E, A, A1>(self: Exit<E, A>, value: LazyArg<A1>): Exit<E, A1>
  *
  * @tsplus static ets/Exit/Aspects as
  */
-export const as = Pipeable(as_);
+export const as = Pipeable(as_)

@@ -8,7 +8,7 @@ export function unrefine_<R, E, A, E1>(
   pf: (u: unknown) => Option<E1>,
   __tsplusTrace?: string
 ) {
-  return self.unrefineWith(pf, identity);
+  return self.unrefineWith(pf, identity)
 }
 
 /**
@@ -16,4 +16,4 @@ export function unrefine_<R, E, A, E1>(
  *
  * @tsplus static ets/Effect/Aspects unrefine
  */
-export const unrefine = Pipeable(unrefine_);
+export const unrefine = Pipeable(unrefine_)

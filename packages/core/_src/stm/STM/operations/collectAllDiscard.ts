@@ -10,5 +10,5 @@
 export function collectAllDiscard<R, E, A>(
   as: LazyArg<Collection<STM<R, E, A>>>
 ): STM<R, E, void> {
-  return STM.forEachDiscard(as, identity);
+  return STM.forEachDiscard(as, identity)
 }

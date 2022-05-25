@@ -6,5 +6,5 @@
 export function logAnnotations(
   __tsplusTrace?: string
 ): Stream<unknown, never, ImmutableMap<string, string>> {
-  return Stream.fromEffect(FiberRef.currentLogAnnotations.value.get());
+  return Stream.fromEffect(FiberRef.currentLogAnnotations.value.get())
 }

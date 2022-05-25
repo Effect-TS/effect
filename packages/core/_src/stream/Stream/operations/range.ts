@@ -1,5 +1,5 @@
-import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition";
-import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition"
+import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Constructs a stream from a range of integers (lower bound included, upper
@@ -13,7 +13,7 @@ export function range(
   chunkSize = DEFAULT_CHUNK_SIZE,
   __tsplusTrace?: string
 ): Stream<unknown, never, number> {
-  return Stream.suspend(new StreamInternal(go(min, max, chunkSize)));
+  return Stream.suspend(new StreamInternal(go(min, max, chunkSize)))
 }
 
 function go(
@@ -21,9 +21,9 @@ function go(
   max: number,
   chunkSize: number
 ): Channel<unknown, unknown, unknown, unknown, never, Chunk<number>, unknown> {
-  const remaining = max - min;
+  const remaining = max - min
   return remaining > chunkSize
     ? Channel.write(Chunk.range(min, min + chunkSize - 1)) >
       go(min + chunkSize, max, chunkSize)
-    : Channel.write(Chunk.range(min, min + remaining - 1));
+    : Channel.write(Chunk.range(min, min + remaining - 1))
 }

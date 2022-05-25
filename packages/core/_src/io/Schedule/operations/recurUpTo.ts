@@ -6,5 +6,5 @@
 export function recurUpTo(
   duration: Duration
 ): Schedule<Option<number>, unknown, unknown, Duration> {
-  return Schedule.elapsed.whileOutput((_) => _ < duration);
+  return Schedule.elapsed.whileOutput((_) => _ < duration)
 }

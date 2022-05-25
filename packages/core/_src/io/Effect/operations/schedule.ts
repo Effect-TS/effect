@@ -11,7 +11,7 @@ export function schedule_<R, E, A, S, R1, A1>(
   schedule: LazyArg<Schedule<S, R1, any, A1>>,
   __tsplusTrace?: string
 ): Effect<R & R1, E, A1> {
-  return self.scheduleFrom(undefined, schedule);
+  return self.scheduleFrom(undefined, schedule)
 }
 
 /**
@@ -26,5 +26,5 @@ export function schedule<S, R1, A1>(
   schedule: LazyArg<Schedule<S, R1, any, A1>>,
   __tsplusTrace?: string
 ): <R, E, A>(self: Effect<R, E, A>) => Effect<R & R1, E, A1> {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R1, E, A1> => self.schedule(schedule);
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R & R1, E, A1> => self.schedule(schedule)
 }

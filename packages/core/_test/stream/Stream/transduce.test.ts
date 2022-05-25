@@ -1,4 +1,4 @@
-import { constTrue } from "@tsplus/stdlib/data/Function";
+import { constTrue } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Stream", () => {
   describe.concurrent("transduce", () => {
@@ -6,12 +6,12 @@ describe.concurrent("Stream", () => {
       const program = Stream("1", "2", ",", "3", "4")
         .transduce(Sink.collectAllWhile((c: string) => /\d/.test(c)))
         .map((chunk) => chunk.join(""))
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk("12", "34"));
-    });
+      assert.isTrue(result == Chunk("12", "34"))
+    })
 
     it("no remainder", async () => {
       const program = Stream(1, 2, 3, 4)
@@ -22,30 +22,30 @@ describe.concurrent("Stream", () => {
             (a, b) => a + b
           )
         )
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(101, 105, 104));
-    });
+      assert.isTrue(result == Chunk(101, 105, 104))
+    })
 
     it("with a sink that always signals more", async () => {
       const program = Stream(1, 2, 3)
         .transduce(Sink.fold(0, constTrue, (a, b) => a + b))
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(6));
-    });
+      assert.isTrue(result == Chunk(6))
+    })
 
     it("propagate managed error", async () => {
-      const fail = "I'm such a failure!";
-      const program = Stream(1, 2, 3).transduce(Sink.fail(fail)).runCollect().either();
+      const fail = "I'm such a failure!"
+      const program = Stream(1, 2, 3).transduce(Sink.fail(fail)).runCollect().either()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left(fail));
-    });
-  });
-});
+      assert.isTrue(result == Either.left(fail))
+    })
+  })
+})

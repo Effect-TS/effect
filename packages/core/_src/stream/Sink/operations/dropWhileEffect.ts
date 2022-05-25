@@ -1,4 +1,4 @@
-import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * @tsplus static ets/Sink/Ops dropWhileEffect
@@ -28,6 +28,6 @@ export function dropWhileEffect<R, E, In>(
       ),
     (err) => Channel.fail(err),
     () => Channel.unit
-  );
-  return new SinkInternal(loop);
+  )
+  return new SinkInternal(loop)
 }

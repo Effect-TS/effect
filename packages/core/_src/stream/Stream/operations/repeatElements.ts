@@ -12,7 +12,7 @@ export function repeatElements_<R, E, A, S, R2, B>(
   schedule: LazyArg<Schedule<S, R2, unknown, B>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E, A> {
-  return self.repeatElementsEither(schedule).collectRight();
+  return self.repeatElementsEither(schedule).collectRight()
 }
 
 /**
@@ -24,4 +24,4 @@ export function repeatElements_<R, E, A, S, R2, B>(
  *
  * @tsplus static ets/Stream/Aspects repeatElements
  */
-export const repeatElements = Pipeable(repeatElements_);
+export const repeatElements = Pipeable(repeatElements_)

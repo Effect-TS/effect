@@ -1,7 +1,7 @@
-import type { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision";
-import { ConcatAll } from "@effect/core/stream/Channel/definition/primitives";
-import type { UpstreamPullRequest } from "@effect/core/stream/Channel/UpstreamPullRequest";
-import type { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy";
+import type { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision"
+import { ConcatAll } from "@effect/core/stream/Channel/definition/primitives"
+import type { UpstreamPullRequest } from "@effect/core/stream/Channel/UpstreamPullRequest"
+import type { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy"
 
 /**
  * Returns a new channel whose outputs are fed to the specified factory
@@ -60,7 +60,7 @@ export function concatMapWithCustom_<
     OutElem,
     OutDone,
     OutDone2
-  >(g, h, onPull, onEmit, () => self, f);
+  >(g, h, onPull, onEmit, () => self, f)
 }
 
 /**
@@ -73,4 +73,4 @@ export function concatMapWithCustom_<
  *
  * @tsplus static ets/Channel/Aspects concatMapWithCustom
  */
-export const concatMapWithCustom = Pipeable(concatMapWithCustom_);
+export const concatMapWithCustom = Pipeable(concatMapWithCustom_)

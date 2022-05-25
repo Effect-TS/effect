@@ -1,5 +1,5 @@
-import type { Service1 } from "@effect/core/test/io/Layer/test-utils";
-import { acquire1, makeLayer1, makeRef, release1 } from "@effect/core/test/io/Layer/test-utils";
+import type { Service1 } from "@effect/core/test/io/Layer/test-utils"
+import { acquire1, makeLayer1, makeRef, release1 } from "@effect/core/test/io/Layer/test-utils"
 
 describe.concurrent("Layer", () => {
   describe.concurrent("memoization", () => {
@@ -16,11 +16,11 @@ describe.concurrent("Layer", () => {
             )
           )
         )
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(acquire1, release1));
-    });
-  });
-});
+      assert.isTrue(result == Chunk(acquire1, release1))
+    })
+  })
+})

@@ -1,5 +1,5 @@
-export const MetricLabelSym = Symbol.for("@effect/core/io/Metrics/MetricLabel");
-export type MetricLabelSym = typeof MetricLabelSym;
+export const MetricLabelSym = Symbol.for("@effect/core/io/Metrics/MetricLabel")
+export type MetricLabelSym = typeof MetricLabelSym
 
 /**
  * A `MetricLabel` represents a key value pair that allows analyzing metrics at
@@ -13,16 +13,16 @@ export type MetricLabelSym = typeof MetricLabelSym;
  * @tsplus companion ets/Metrics/MetricLabel/Ops
  */
 export class MetricLabel implements Equals {
-  readonly [MetricLabelSym] = MetricLabelSym;
+  readonly [MetricLabelSym] = MetricLabelSym
 
   constructor(readonly key: string, readonly value: string) {}
 
   [Hash.sym](): number {
-    return Hash.combine(Hash.string(this.key), Hash.string(this.value));
+    return Hash.combine(Hash.string(this.key), Hash.string(this.value))
   }
 
   [Equals.sym](that: unknown): boolean {
-    return isMetricLabel(that) && this[Hash.sym]() === that[Hash.sym]();
+    return isMetricLabel(that) && this[Hash.sym]() === that[Hash.sym]()
   }
 }
 
@@ -30,12 +30,12 @@ export class MetricLabel implements Equals {
  * @tsplus static ets/Metrics/MetricLabel/Ops __call
  */
 export function make(key: string, value: string): MetricLabel {
-  return new MetricLabel(key, value);
+  return new MetricLabel(key, value)
 }
 
 /**
  * @tsplus static ets/Metrics/MetricLabel/Ops isMetricLabel
  */
 export function isMetricLabel(u: unknown): u is MetricLabel {
-  return typeof u === "object" && u != null && MetricLabelSym in u;
+  return typeof u === "object" && u != null && MetricLabelSym in u
 }

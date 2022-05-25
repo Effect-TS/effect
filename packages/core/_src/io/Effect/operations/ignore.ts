@@ -7,5 +7,5 @@ export function ignore<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect.RIO<R, void> {
-  return self.fold(() => undefined, () => undefined);
+  return self.fold(() => undefined, () => undefined)
 }

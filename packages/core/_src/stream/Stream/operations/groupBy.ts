@@ -9,7 +9,7 @@ export function groupBy_<R, R2, E, E2, A, K, V>(
   buffer = 16,
   __tsplusTrace?: string
 ): GroupBy<R & R2, E | E2, K, V, A> {
-  return GroupBy(self, f, buffer);
+  return GroupBy(self, f, buffer)
 }
 
 /**
@@ -17,4 +17,4 @@ export function groupBy_<R, R2, E, E2, A, K, V>(
  *
  * @tsplus static ets/Stream/Aspects groupBy
  */
-export const groupBy = Pipeable(groupBy_);
+export const groupBy = Pipeable(groupBy_)

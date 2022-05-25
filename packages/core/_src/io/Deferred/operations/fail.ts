@@ -9,7 +9,7 @@ export function fail_<E, A>(
   e: LazyArg<E>,
   __tsplusTrace?: string
 ): Effect.UIO<boolean> {
-  return self.completeWith(Effect.fail(e), __tsplusTrace);
+  return self.completeWith(Effect.fail(e), __tsplusTrace)
 }
 
 /**
@@ -18,4 +18,4 @@ export function fail_<E, A>(
  *
  * @tsplus static ets/Deferred/Aspects fail
  */
-export const fail = Pipeable(fail_);
+export const fail = Pipeable(fail_)

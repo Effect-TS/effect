@@ -7,7 +7,7 @@ export function forEach_<E, A>(
   self: TArray<A>,
   f: (a: A) => STM<unknown, E, void>
 ): STM<unknown, E, void> {
-  return self.reduceSTM(undefined as void, (_, a) => f(a));
+  return self.reduceSTM(undefined as void, (_, a) => f(a))
 }
 
 /**
@@ -15,4 +15,4 @@ export function forEach_<E, A>(
  *
  * @tsplus static ets/TArray/Aspects forEach
  */
-export const forEach = Pipeable(forEach_);
+export const forEach = Pipeable(forEach_)

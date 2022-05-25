@@ -1,12 +1,12 @@
-import { _In, _Out, QueueSym } from "@effect/core/io/Queue";
-import { constVoid } from "@tsplus/stdlib/data/Function";
+import { _In, _Out, QueueSym } from "@effect/core/io/Queue"
+import { constVoid } from "@tsplus/stdlib/data/Function"
 
 export function findSink<A>(a: A): Sink<unknown, void, A, A, A> {
   return Sink.fold<A, Option<A>>(
     Option.none,
     (option) => option.isNone(),
     (_, v) => (a === v ? Option.some(a) : Option.none)
-  ).mapEffect((option) => option.fold(Effect.fail(constVoid), Effect.succeedNow));
+  ).mapEffect((option) => option.fold(Effect.fail(constVoid), Effect.succeedNow))
 }
 
 export function sinkRaceLaw<E, A, L>(
@@ -27,7 +27,7 @@ export function sinkRaceLaw<E, A, L>(
           (w) => r2.isRight() && r2.right === w
         )
     )
-  );
+  )
 }
 
 export function zipParLaw<A, B, C, E>(
@@ -44,47 +44,47 @@ export function zipParLaw<A, B, C, E>(
       (e) => (zb.isLeft() && zb.left === e) || (zc.isLeft() && zc.left === e),
       ({ tuple: [b, c] }) => zb.isRight() && zb.right === b && zc.isRight() && zc.right === c
     )
-  );
+  )
 }
 
 export function createQueueSpy<A>(queue: Queue<A>): Queue<A> {
-  return new QueueSpyImplementation(queue);
+  return new QueueSpyImplementation(queue)
 }
 
 class QueueSpyImplementation<A> implements Queue<A> {
-  readonly [QueueSym]: QueueSym = QueueSym;
-  readonly [_In]!: (_: A) => void;
-  readonly [_Out]!: () => A;
+  readonly [QueueSym]: QueueSym = QueueSym
+  readonly [_In]!: (_: A) => void
+  readonly [_Out]!: () => A
 
-  #isShutdown = false;
+  #isShutdown = false
 
   constructor(readonly queue: Queue<A>) {}
 
-  awaitShutdown: Effect.UIO<void> = this.queue.awaitShutdown;
+  awaitShutdown: Effect.UIO<void> = this.queue.awaitShutdown
 
-  capacity: number = this.queue.capacity;
+  capacity: number = this.queue.capacity
 
-  isShutdown: Effect.UIO<boolean> = Effect.succeed(this.#isShutdown);
+  isShutdown: Effect.UIO<boolean> = Effect.succeed(this.#isShutdown)
 
   offer(a: A): Effect<unknown, never, boolean> {
-    return this.queue.offer(a);
+    return this.queue.offer(a)
   }
 
   offerAll(as: Collection<A>): Effect<unknown, never, boolean> {
-    return this.queue.offerAll(as);
+    return this.queue.offerAll(as)
   }
 
   shutdown: Effect.UIO<void> = Effect.succeed(() => {
-    this.#isShutdown = true;
-  });
+    this.#isShutdown = true
+  })
 
-  size: Effect.UIO<number> = this.queue.size;
+  size: Effect.UIO<number> = this.queue.size
 
-  take: Effect<unknown, never, A> = this.queue.take;
+  take: Effect<unknown, never, A> = this.queue.take
 
-  takeAll: Effect<unknown, never, Chunk<A>> = this.queue.takeAll;
+  takeAll: Effect<unknown, never, Chunk<A>> = this.queue.takeAll
 
   takeUpTo(n: number): Effect<unknown, never, Chunk<A>> {
-    return this.queue.takeUpTo(n);
+    return this.queue.takeUpTo(n)
   }
 }

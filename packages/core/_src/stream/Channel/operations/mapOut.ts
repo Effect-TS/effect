@@ -11,9 +11,9 @@ export function mapOut_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Ou
     (outElem) => Channel.write(f(outElem)) > reader,
     (outErr) => Channel.fail(outErr),
     (outDone) => Channel.succeedNow(outDone)
-  );
+  )
 
-  return self >> reader;
+  return self >> reader
 }
 
 /**
@@ -21,4 +21,4 @@ export function mapOut_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, Ou
  *
  * @tsplus static ets/Channel/Aspects mapOut
  */
-export const mapOut = Pipeable(mapOut_);
+export const mapOut = Pipeable(mapOut_)

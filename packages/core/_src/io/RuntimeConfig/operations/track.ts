@@ -3,5 +3,5 @@
  * @tsplus static ets/RuntimeConfig/Aspects track
  */
 export function track(self: RuntimeConfig): RuntimeConfig {
-  return self.addSupervisor(Supervisor.unsafeTrack());
+  return self.addSupervisor(Supervisor.unsafeTrack())
 }

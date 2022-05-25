@@ -1,4 +1,4 @@
-import { concreteStream } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Like `Stream.runIntoQueue`, but provides the result as a scoped effect to
@@ -35,13 +35,13 @@ export function runIntoQueueElementsScoped_<R, E extends E1, A, E1>(
       ) > writer,
     (err) => Channel.write(Exit.fail(Option.some(err))),
     () => Channel.write(Exit.fail(Option.none))
-  );
-  concreteStream(self);
+  )
+  concreteStream(self)
   return (self.channel >> writer)
     .mapOutEffect((take) => queue().offer(take))
     .drain()
     .runScoped()
-    .asUnit();
+    .asUnit()
 }
 
 /**
@@ -50,4 +50,4 @@ export function runIntoQueueElementsScoped_<R, E extends E1, A, E1>(
  *
  * @tsplus static ets/Stream/Aspects runIntoQueueElementsScoped
  */
-export const runIntoQueueElementsScoped = Pipeable(runIntoQueueElementsScoped_);
+export const runIntoQueueElementsScoped = Pipeable(runIntoQueueElementsScoped_)

@@ -1,4 +1,4 @@
-import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/InternalTArray";
+import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/InternalTArray"
 
 /**
  * Updates element in the array with given function.
@@ -6,11 +6,11 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
  * @tsplus fluent ets/TArray update
  */
 export function update_<A>(self: TArray<A>, index: number, f: (a: A) => A): USTM<void> {
-  concreteTArray(self);
+  concreteTArray(self)
   if (0 <= index && index < self.chunk.length) {
-    return self.chunk.unsafeGet(index)!.update(f);
+    return self.chunk.unsafeGet(index)!.update(f)
   } else {
-    return STM.die(new IndexOutOfBounds(index, 0, self.chunk.length));
+    return STM.die(new IndexOutOfBounds(index, 0, self.chunk.length))
   }
 }
 
@@ -19,4 +19,4 @@ export function update_<A>(self: TArray<A>, index: number, f: (a: A) => A): USTM
  *
  * @tsplus static ets/TArray/Aspects update
  */
-export const update = Pipeable(update_);
+export const update = Pipeable(update_)

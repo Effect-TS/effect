@@ -12,5 +12,5 @@ export function isTraced<E>(self: Cause<E>): boolean {
         ? Option.some(undefined)
         : Option.none
     )
-    .isSome();
+    .isSome()
 }

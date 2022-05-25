@@ -1,4 +1,4 @@
-import { IAsync } from "@effect/core/io/Effect/definition/primitives";
+import { IAsync } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Imports an asynchronous side-effect into an effect. The side-effect has
@@ -18,7 +18,7 @@ export function asyncInterrupt<R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void) => Either<Effect.RIO<R, void>, Effect<R, E, A>>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return Effect.suspendSucceed(new IAsync(register, () => FiberId.none, __tsplusTrace));
+  return Effect.suspendSucceed(new IAsync(register, () => FiberId.none, __tsplusTrace))
 }
 
 /**
@@ -43,5 +43,5 @@ export function asyncInterruptBlockingOn<R, E, A>(
   blockingOn: LazyArg<FiberId>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return Effect.suspendSucceed(new IAsync(register, blockingOn, __tsplusTrace));
+  return Effect.suspendSucceed(new IAsync(register, blockingOn, __tsplusTrace))
 }

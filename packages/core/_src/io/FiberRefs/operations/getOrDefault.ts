@@ -5,7 +5,7 @@
  * @tsplus fluent ets/FiberRefs getOrDefault
  */
 export function getOrDefault_<A, P>(self: FiberRefs, fiberRef: FiberRef<A, P>): A {
-  return self.get(fiberRef).getOrElse(fiberRef.initial());
+  return self.get(fiberRef).getOrElse(fiberRef.initial())
 }
 
 /**
@@ -14,4 +14,4 @@ export function getOrDefault_<A, P>(self: FiberRefs, fiberRef: FiberRef<A, P>): 
  *
  * @tsplus static ets/FiberRefs/Aspects getOrDefault
  */
-export const getOrDefault = Pipeable(getOrDefault_);
+export const getOrDefault = Pipeable(getOrDefault_)

@@ -1,4 +1,4 @@
-import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Summarize a sink by running an effect when the sink starts and again when
@@ -16,12 +16,12 @@ export function summarized_<R, E, R1, E1, In, L, Z, B, C>(
     Channel.unwrap(
       Effect.succeed(summary).map((summary) =>
         Channel.fromEffect(summary).flatMap((start) => {
-          concreteSink(self);
-          return self.channel.flatMap((done) => Channel.fromEffect(summary).map((end) => Tuple(done, f(start, end))));
+          concreteSink(self)
+          return self.channel.flatMap((done) => Channel.fromEffect(summary).map((end) => Tuple(done, f(start, end))))
         })
       )
     )
-  );
+  )
 }
 
 /**
@@ -30,4 +30,4 @@ export function summarized_<R, E, R1, E1, In, L, Z, B, C>(
  *
  * @tsplus static ets/Sink/Aspects summarized
  */
-export const summarized = Pipeable(summarized_);
+export const summarized = Pipeable(summarized_)

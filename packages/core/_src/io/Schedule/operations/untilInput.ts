@@ -9,7 +9,7 @@ export function untilInput_<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>,
   f: Predicate<In>
 ): Schedule<State, Env, In, Out> {
-  return self.check((input, _) => !f(input));
+  return self.check((input, _) => !f(input))
 }
 
 /**
@@ -18,4 +18,4 @@ export function untilInput_<State, Env, In, Out>(
  *
  * @tsplus static ets/Schedule/Aspects untilInput
  */
-export const untilInput = Pipeable(untilInput_);
+export const untilInput = Pipeable(untilInput_)

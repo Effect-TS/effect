@@ -13,24 +13,24 @@ describe.concurrent("Stream", () => {
         )
         .tap(({ halt }) => halt.succeed(undefined))
         .tap(({ latch }) => latch.succeed(undefined))
-        .flatMap(({ interrupted }) => interrupted.get());
+        .flatMap(({ interrupted }) => interrupted.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isFalse(result);
-    });
+      assert.isFalse(result)
+    })
 
     it("propagates errors", async () => {
       const program = Effect.Do()
         .bind("halt", () => Deferred.make<string, never>())
         .tap(({ halt }) => halt.fail("fail"))
-        .flatMap(({ halt }) => Stream(0).forever().haltWhen(halt.await()).runDrain().either());
+        .flatMap(({ halt }) => Stream(0).forever().haltWhen(halt.await()).runDrain().either())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left("fail"));
-    });
-  });
+      assert.isTrue(result == Either.left("fail"))
+    })
+  })
 
   describe.concurrent("haltWhenDeferred", () => {
     it("halts after the current element", async () => {
@@ -46,24 +46,24 @@ describe.concurrent("Stream", () => {
         )
         .tap(({ halt }) => halt.succeed(undefined))
         .tap(({ latch }) => latch.succeed(undefined))
-        .flatMap(({ interrupted }) => interrupted.get());
+        .flatMap(({ interrupted }) => interrupted.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isFalse(result);
-    });
+      assert.isFalse(result)
+    })
 
     it("propagates errors", async () => {
       const program = Effect.Do()
         .bind("halt", () => Deferred.make<string, never>())
         .tap(({ halt }) => halt.fail("fail"))
-        .flatMap(({ halt }) => Stream(0).forever().haltWhenDeferred(halt).runDrain().either());
+        .flatMap(({ halt }) => Stream(0).forever().haltWhenDeferred(halt).runDrain().either())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left("fail"));
-    });
-  });
+      assert.isTrue(result == Either.left("fail"))
+    })
+  })
 
   // TODO(Mike/Max): implement after TestClock
   // describe.concurrent("haltAfter", () => {
@@ -98,4 +98,4 @@ describe.concurrent("Stream", () => {
   //     } yield assert(result)(equalTo(Chunk(1)))
   //   })
   // })
-});
+})

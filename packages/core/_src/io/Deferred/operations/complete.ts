@@ -12,7 +12,7 @@ export function complete_<E, A>(
   effect: Effect.IO<E, A>,
   __tsplusTrace?: string
 ): Effect.UIO<boolean> {
-  return effect.intoDeferred(self);
+  return effect.intoDeferred(self)
 }
 
 /**
@@ -24,4 +24,4 @@ export function complete_<E, A>(
  *
  * @tsplus static ets/Deferred/Aspects complete
  */
-export const complete = Pipeable(complete_);
+export const complete = Pipeable(complete_)

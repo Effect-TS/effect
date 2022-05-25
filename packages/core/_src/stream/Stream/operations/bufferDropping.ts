@@ -1,5 +1,5 @@
-import { bufferSignal } from "@effect/core/stream/Stream/operations/_internal/bufferSignal";
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { bufferSignal } from "@effect/core/stream/Stream/operations/_internal/bufferSignal"
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Allows a faster producer to progress independently of a slower consumer by
@@ -20,10 +20,10 @@ export function bufferDropping_<R, E, A>(
   const queue = Effect.acquireRelease(
     Queue.dropping<Tuple<[Take<E, A>, Deferred<never, void>]>>(capacity),
     (queue) => queue.shutdown
-  );
-  const stream = self.via(Stream.$.rechunk(1));
-  concreteStream(stream);
-  return new StreamInternal(bufferSignal(queue, stream.channel));
+  )
+  const stream = self.via(Stream.$.rechunk(1))
+  concreteStream(stream)
+  return new StreamInternal(bufferSignal(queue, stream.channel))
 }
 
 /**
@@ -37,4 +37,4 @@ export function bufferDropping_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects bufferDropping
  */
-export const bufferDropping = Pipeable(bufferDropping_);
+export const bufferDropping = Pipeable(bufferDropping_)

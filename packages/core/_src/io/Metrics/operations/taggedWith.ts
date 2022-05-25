@@ -1,4 +1,4 @@
-import { constVoid } from "@tsplus/stdlib/data/Function";
+import { constVoid } from "@tsplus/stdlib/data/Function"
 
 /**
  * Returns a new metric, which is identical in every way to this one, except
@@ -16,7 +16,7 @@ export function taggedWith_<Type, In, Out>(
     self.keyType,
     (input, extraTags) => self.unsafeUpdate(input, f(input).union(extraTags)),
     self.unsafeValue
-  ).map(constVoid);
+  ).map(constVoid)
 }
 
 /**
@@ -27,4 +27,4 @@ export function taggedWith_<Type, In, Out>(
  *
  * @tsplus static ets/Metrics/Metric/Aspects taggedWith
  */
-export const taggedWith = Pipeable(taggedWith_);
+export const taggedWith = Pipeable(taggedWith_)

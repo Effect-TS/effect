@@ -1,11 +1,11 @@
 function repeat<E, A>(self: STM<unknown, E, A>, n: number): STM<unknown, E, A> {
   if (n < 1) {
-    return STM.die(`The value of "n" must be greater than 0, received: ${n}`);
+    return STM.die(`The value of "n" must be greater than 0, received: ${n}`)
   }
   if (n === 1) {
-    return self;
+    return self
   }
-  return self > STM.suspend(repeat(self, n - 1));
+  return self > STM.suspend(repeat(self, n - 1))
 }
 
 describe.concurrent("TSemaphore", () => {
@@ -15,17 +15,17 @@ describe.concurrent("TSemaphore", () => {
         .flatMap(
           (semaphore) => semaphore.acquire() > semaphore.release() > semaphore.available()
         )
-        .commit();
+        .commit()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 10);
-    });
+      assert.strictEqual(result, 10)
+    })
 
     it("used capacity must be equal to the # of acquires minus # of releases", async () => {
-      const capacity = 10;
-      const acquire = 7;
-      const release = 4;
+      const capacity = 10
+      const acquire = 7
+      const release = 4
 
       const program = TSemaphore.make(capacity)
         .flatMap(
@@ -34,17 +34,17 @@ describe.concurrent("TSemaphore", () => {
               repeat(semaphore.release(), release) >
               semaphore.available()
         )
-        .commit();
+        .commit()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      const usedCapacity = acquire - release;
+      const usedCapacity = acquire - release
 
-      assert.strictEqual(result, capacity - usedCapacity);
-    });
+      assert.strictEqual(result, capacity - usedCapacity)
+    })
 
     it("acquireN/releaseN(n) is acquire/release repeated N times", async () => {
-      const capacity = 50;
+      const capacity = 50
 
       function acquireRelease(
         semaphore: TSemaphore,
@@ -52,44 +52,44 @@ describe.concurrent("TSemaphore", () => {
         release: (n: number) => STM<unknown, never, void>
       ): STM<unknown, never, Tuple<[number, number]>> {
         return STM.gen(function*(_) {
-          yield* _(acquire(50));
+          yield* _(acquire(50))
 
-          const usedCapacity = yield* _(semaphore.available());
+          const usedCapacity = yield* _(semaphore.available())
 
-          yield* _(release(capacity));
+          yield* _(release(capacity))
 
-          const freeCapacity = yield* _(semaphore.available());
+          const freeCapacity = yield* _(semaphore.available())
 
-          return Tuple(usedCapacity, freeCapacity);
-        });
+          return Tuple(usedCapacity, freeCapacity)
+        })
       }
 
       const stm = STM.gen(function*(_) {
-        const semaphore = yield* _(TSemaphore.make(capacity));
+        const semaphore = yield* _(TSemaphore.make(capacity))
         const acquireReleaseN = acquireRelease(
           semaphore,
           (n) => semaphore.acquireN(n),
           (n) => semaphore.releaseN(n)
-        );
+        )
         const acquireReleaseRep = acquireRelease(
           semaphore,
           (n) => repeat(semaphore.acquire(), n),
           (n) => repeat(semaphore.release(), n)
-        );
-        const resN = yield* _(acquireReleaseN);
-        const resRep = yield* _(acquireReleaseRep);
-        return { resN, resRep };
-      });
+        )
+        const resN = yield* _(acquireReleaseN)
+        const resRep = yield* _(acquireReleaseRep)
+        return { resN, resRep }
+      })
 
-      const program = stm.commit();
+      const program = stm.commit()
 
-      const { resN, resRep } = await program.unsafeRunPromise();
+      const { resN, resRep } = await program.unsafeRunPromise()
 
-      assert.strictEqual(resN.get(0), resRep.get(0));
-      assert.strictEqual(resN.get(1), resRep.get(1));
-      assert.strictEqual(resN.get(0), 0);
-      assert.strictEqual(resN.get(1), capacity);
-    });
+      assert.strictEqual(resN.get(0), resRep.get(0))
+      assert.strictEqual(resN.get(1), resRep.get(1))
+      assert.strictEqual(resN.get(0), 0)
+      assert.strictEqual(resN.get(1), capacity)
+    })
 
     it("withPermit automatically releases the permit if the effect is interrupted", async () => {
       const program = Effect.Do()
@@ -102,26 +102,26 @@ describe.concurrent("TSemaphore", () => {
         .bind("fiber", ({ effect }) => effect.fork())
         .tap(({ deferred }) => deferred.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ semaphore }) => semaphore.available().commit());
+        .flatMap(({ semaphore }) => semaphore.available().commit())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 1);
-    });
+      assert.strictEqual(result, 1)
+    })
 
     it("withPermit acquire is interruptible", async () => {
-      const called = vi.fn();
+      const called = vi.fn()
       const program = Effect.Do()
         .bind("semaphore", () => TSemaphore.make(0).commit())
         .bindValue("effect", ({ semaphore }) => Effect.succeed(() => called()).apply(semaphore.withPermit))
         .bind("fiber", ({ effect }) => effect.fork())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ fiber }) => fiber.join());
+        .flatMap(({ fiber }) => fiber.join())
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.isInterrupted());
-      assert.isTrue(called.mock.calls.length === 0);
-    });
-  });
-});
+      assert.isTrue(result.isInterrupted())
+      assert.isTrue(called.mock.calls.length === 0)
+    })
+  })
+})

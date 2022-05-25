@@ -1,4 +1,4 @@
-import { IFiberRefModifyAll } from "@effect/core/io/Effect/definition/primitives";
+import { IFiberRefModifyAll } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Updates the `FiberRef` values for the fiber running this effect using the
@@ -13,5 +13,5 @@ export function updateFiberRefs(
   return new IFiberRefModifyAll(
     (fiberId, fiberRefs) => Tuple(undefined, f(fiberId, fiberRefs)),
     __tsplusTrace
-  );
+  )
 }

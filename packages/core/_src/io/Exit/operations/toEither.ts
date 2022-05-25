@@ -7,8 +7,8 @@
 export function toEither<E, A>(self: Exit<E, A>): Either<FiberFailure<E>, A> {
   switch (self._tag) {
     case "Failure":
-      return Either.left(new FiberFailure(self.cause));
+      return Either.left(new FiberFailure(self.cause))
     case "Success":
-      return Either.right(self.value);
+      return Either.right(self.value)
   }
 }

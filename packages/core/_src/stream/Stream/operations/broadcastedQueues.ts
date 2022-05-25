@@ -17,7 +17,7 @@ export function broadcastedQueues_<R, E, A>(
     .bind("hub", () => Hub.bounded<Take<E, A>>(maximumLag))
     .bind("queues", ({ hub }) => Effect.collectAll(Chunk.fill(n, () => hub.subscribe)))
     .tap(({ hub }) => self.runIntoHubScoped(hub).fork())
-    .map(({ queues }) => queues);
+    .map(({ queues }) => queues)
 }
 
 /**
@@ -29,4 +29,4 @@ export function broadcastedQueues_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects broadcastedQueues
  */
-export const broadcastedQueues = Pipeable(broadcastedQueues_);
+export const broadcastedQueues = Pipeable(broadcastedQueues_)

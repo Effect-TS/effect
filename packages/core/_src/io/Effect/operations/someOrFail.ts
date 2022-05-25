@@ -8,7 +8,7 @@ export function someOrFail_<R, E, A, E2>(
   orFail: LazyArg<E2>,
   __tsplusTrace?: string
 ): Effect<R, E | E2, A> {
-  return self.flatMap((option) => option.fold(Effect.succeed(orFail).flatMap(Effect.failNow), Effect.succeedNow));
+  return self.flatMap((option) => option.fold(Effect.succeed(orFail).flatMap(Effect.failNow), Effect.succeedNow))
 }
 
 /**
@@ -16,4 +16,4 @@ export function someOrFail_<R, E, A, E2>(
  *
  * @tsplus static ets/Effect/Aspects someOrFail
  */
-export const someOrFail = Pipeable(someOrFail_);
+export const someOrFail = Pipeable(someOrFail_)

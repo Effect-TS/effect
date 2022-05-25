@@ -7,6 +7,6 @@
 export function threadName(self: FiberId): string {
   const identifiers = Chunk.from(self.ids)
     .map((n) => `${n}`)
-    .join(",");
-  return `effect-ts-fiber-${identifiers}`;
+    .join(",")
+  return `effect-ts-fiber-${identifiers}`
 }

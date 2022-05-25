@@ -9,7 +9,7 @@ export function reject_<R, E, A, E1>(
   pf: (a: A) => Option<E1>,
   __tsplusTrace?: string
 ): Effect<R, E | E1, A> {
-  return self.rejectEffect((a) => pf(a).map(Effect.failNow));
+  return self.rejectEffect((a) => pf(a).map(Effect.failNow))
 }
 
 /**
@@ -18,4 +18,4 @@ export function reject_<R, E, A, E1>(
  *
  * @tsplus static ets/Effect/Aspects reject
  */
-export const reject = Pipeable(reject_);
+export const reject = Pipeable(reject_)

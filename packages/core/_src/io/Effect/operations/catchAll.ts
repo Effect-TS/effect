@@ -8,7 +8,7 @@ export function catchAll_<R2, E2, A2, R, E, A>(
   f: (e: E) => Effect<R2, E2, A2>,
   __tsplusTrace?: string
 ): Effect<R2 & R, E2, A2 | A> {
-  return self.foldEffect(f, Effect.succeedNow);
+  return self.foldEffect(f, Effect.succeedNow)
 }
 
 /**
@@ -16,4 +16,4 @@ export function catchAll_<R2, E2, A2, R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects catchAll
  */
-export const catchAll = Pipeable(catchAll_);
+export const catchAll = Pipeable(catchAll_)

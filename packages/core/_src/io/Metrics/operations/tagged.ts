@@ -9,7 +9,7 @@ export function tagged_<Type, In, Out>(
   key: string,
   value: string
 ): Metric<Type, In, Out> {
-  return self.taggedWithLabelSet(HashSet(MetricLabel(key, value)));
+  return self.taggedWithLabelSet(HashSet(MetricLabel(key, value)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function tagged_<Type, In, Out>(
  *
  * @tsplus static ets/Metrics/Metric/Aspects tagged
  */
-export const tagged = Pipeable(tagged_);
+export const tagged = Pipeable(tagged_)

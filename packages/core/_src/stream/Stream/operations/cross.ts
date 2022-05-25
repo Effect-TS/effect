@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Composes this stream with the specified stream to create a cartesian
@@ -14,14 +14,14 @@ export function cross_<R, E, A, R2, E2, B>(
   that: LazyArg<Stream<R2, E2, B>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, Tuple<[A, B]>> {
-  concreteStream(self);
+  concreteStream(self)
   return new StreamInternal(
     self.channel.concatMap((a) => {
-      const that0 = that();
-      concreteStream(that0);
-      return that0.channel.mapOut((b) => a.flatMap((a) => b.map((b) => Tuple(a, b))));
+      const that0 = that()
+      concreteStream(that0)
+      return that0.channel.mapOut((b) => a.flatMap((a) => b.map((b) => Tuple(a, b))))
     })
-  );
+  )
 }
 
 /**
@@ -33,4 +33,4 @@ export function cross_<R, E, A, R2, E2, B>(
  *
  * @tsplus static ets/Stream/Aspects cross
  */
-export const cross = Pipeable(cross_);
+export const cross = Pipeable(cross_)

@@ -1,4 +1,4 @@
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * Resets the schedule when the specified predicate on the schedule output
@@ -18,7 +18,7 @@ export function resetWhen_<State, Env, In, Out>(
         f(out)
           ? self._step(now, input, self._initial)
           : Effect.succeedNow(Tuple(state, out, decision))
-      ));
+      ))
 }
 
 /**
@@ -27,4 +27,4 @@ export function resetWhen_<State, Env, In, Out>(
  *
  * @tsplus static ets/Schedule/Aspects resetWhen
  */
-export const resetWhen = Pipeable(resetWhen_);
+export const resetWhen = Pipeable(resetWhen_)

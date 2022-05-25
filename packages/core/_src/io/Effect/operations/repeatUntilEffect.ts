@@ -11,7 +11,7 @@ export function repeatUntilEffect_<R, E, A, R1>(
 ): Effect<R & R1, E, A> {
   return self.flatMap((a) =>
     f(a).flatMap((b) => b ? Effect.succeedNow(a) : Effect.yieldNow.zipRight(repeatUntilEffect_(self, f)))
-  );
+  )
 }
 
 /**
@@ -20,4 +20,4 @@ export function repeatUntilEffect_<R, E, A, R1>(
  *
  * @tsplus static ets/Effect/Aspects repeatUntilEffect
  */
-export const repeatUntilEffect = Pipeable(repeatUntilEffect_);
+export const repeatUntilEffect = Pipeable(repeatUntilEffect_)

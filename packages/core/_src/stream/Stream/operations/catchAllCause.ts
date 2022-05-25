@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Switches over to the stream produced by the provided function in case this
@@ -12,14 +12,14 @@ export function catchAllCause_<R, E, A, R2, E2, A2>(
   f: (cause: Cause<E>) => Stream<R2, E2, A2>,
   __tsplusTrace?: string
 ): Stream<R & R2, E2, A | A2> {
-  concreteStream(self);
+  concreteStream(self)
   return new StreamInternal(
     self.channel.catchAllCause((cause) => {
-      const stream = f(cause);
-      concreteStream(stream);
-      return stream.channel;
+      const stream = f(cause)
+      concreteStream(stream)
+      return stream.channel
     })
-  );
+  )
 }
 
 /**
@@ -29,4 +29,4 @@ export function catchAllCause_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Stream/Aspects catchAllCause
  */
-export const catchAllCause = Pipeable(catchAllCause_);
+export const catchAllCause = Pipeable(catchAllCause_)

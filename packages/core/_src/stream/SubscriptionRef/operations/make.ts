@@ -12,5 +12,5 @@ export function make<A>(
       ref: SynchronizedRef.make(value),
       hub: Hub.unbounded<A>()
     }).map(({ hub, ref }) => new SubscriptionRef(ref, hub))
-  );
+  )
 }

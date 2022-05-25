@@ -13,7 +13,7 @@ export function validateWith_<R, E, A, R1, E1, B, C>(
   return self
     .exit()
     .zipWith(that().exit(), (ea, eb) => ea.zipWith(eb, f, (ca, cb) => Cause.then(ca, cb)))
-    .flatMap((exit) => Effect.done(exit));
+    .flatMap((exit) => Effect.done(exit))
 }
 
 /**
@@ -22,4 +22,4 @@ export function validateWith_<R, E, A, R1, E1, B, C>(
  *
  * @tsplus static ets/Effect/Aspects validateWith
  */
-export const validateWith = Pipeable(validateWith_);
+export const validateWith = Pipeable(validateWith_)

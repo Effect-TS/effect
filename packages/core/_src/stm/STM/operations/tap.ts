@@ -7,7 +7,7 @@ export function tap_<R2, E2, A, R, E, X>(
   self: STM<R2, E2, A>,
   f: (a: A) => STM<R, E, X>
 ) {
-  return self.flatMap((a: A) => f(a).map(() => a));
+  return self.flatMap((a: A) => f(a).map(() => a))
 }
 
 /**
@@ -15,4 +15,4 @@ export function tap_<R2, E2, A, R, E, X>(
  *
  * @tsplus static ets/STM/Aspects tap
  */
-export const tap = Pipeable(tap_);
+export const tap = Pipeable(tap_)

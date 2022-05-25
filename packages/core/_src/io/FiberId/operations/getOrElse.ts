@@ -4,7 +4,7 @@
  * @tsplus fluent ets/FiberId getOrElse
  */
 export function getOrElse_(self: FiberId, that: LazyArg<FiberId>): FiberId {
-  return self.isNone() ? that() : self;
+  return self.isNone() ? that() : self
 }
 
 /**
@@ -12,4 +12,4 @@ export function getOrElse_(self: FiberId, that: LazyArg<FiberId>): FiberId {
  *
  * @tsplus static ets/FiberId/Aspects getOrElse
  */
-export const getOrElse = Pipeable(getOrElse_);
+export const getOrElse = Pipeable(getOrElse_)

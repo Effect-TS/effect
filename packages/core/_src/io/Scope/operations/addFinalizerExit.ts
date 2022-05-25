@@ -1,4 +1,4 @@
-import { concreteScope } from "@effect/core/io/Scope/operations/_internal/ScopeInternal";
+import { concreteScope } from "@effect/core/io/Scope/operations/_internal/ScopeInternal"
 
 /**
  * A simplified version of `addFinalizerWith` when the `finalizer` does not
@@ -8,8 +8,8 @@ import { concreteScope } from "@effect/core/io/Scope/operations/_internal/ScopeI
  * @tsplus fluent ets/Scope/Closeable addFinalizerExit
  */
 export function addFinalizerExit_(self: Scope, finalizer: Scope.Finalizer): Effect.UIO<void> {
-  concreteScope(self);
-  return self._addFinalizerExit(finalizer);
+  concreteScope(self)
+  return self._addFinalizerExit(finalizer)
 }
 
 /**
@@ -18,4 +18,4 @@ export function addFinalizerExit_(self: Scope, finalizer: Scope.Finalizer): Effe
  *
  * @tsplus static ets/Scope/Aspects addFinalizerExit
  */
-export const addFinalizerExit = Pipeable(addFinalizerExit_);
+export const addFinalizerExit = Pipeable(addFinalizerExit_)

@@ -4,5 +4,5 @@
  * @tsplus fluent ets/STM asUnit
  */
 export function asUnit<R, E, X>(self: STM<R, E, X>): STM<R, E, void> {
-  return self > STM.unit;
+  return self > STM.unit
 }

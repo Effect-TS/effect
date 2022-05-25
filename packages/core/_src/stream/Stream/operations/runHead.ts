@@ -8,5 +8,5 @@ export function runHead<R, E, A>(
   self: Stream<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, Option<A>> {
-  return self.run(Sink.head());
+  return self.run(Sink.head())
 }

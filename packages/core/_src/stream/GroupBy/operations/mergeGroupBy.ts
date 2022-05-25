@@ -1,4 +1,4 @@
-import { concreteGroupBy } from "@effect/core/stream/GroupBy/operations/_internal/GroupByInternal";
+import { concreteGroupBy } from "@effect/core/stream/GroupBy/operations/_internal/GroupByInternal"
 
 /**
  * Run the function across all groups, collecting the results in an
@@ -11,8 +11,8 @@ export function mergeGroupBy_<R, E, K, V, A, R1, E1, A1>(
   f: (k: K, stream: Stream<unknown, E, V>) => Stream<R1, E1, A1>,
   __tsplusTrace?: string
 ): Stream<R & R1, E | E1, A1> {
-  concreteGroupBy(self);
-  return self.apply(f);
+  concreteGroupBy(self)
+  return self.apply(f)
 }
 
 /**
@@ -21,4 +21,4 @@ export function mergeGroupBy_<R, E, K, V, A, R1, E1, A1>(
  *
  * @tsplus static ets/GroupBy/Aspects mergeGroupBy
  */
-export const mergeGroupBy = Pipeable(mergeGroupBy_);
+export const mergeGroupBy = Pipeable(mergeGroupBy_)

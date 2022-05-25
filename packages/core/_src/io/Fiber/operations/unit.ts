@@ -3,4 +3,4 @@
  *
  * @tsplus static ets/Fiber/Ops unit
  */
-export const unit: Fiber<never, void> = Fiber.succeed(undefined);
+export const unit: Fiber<never, void> = Fiber.succeed(undefined)

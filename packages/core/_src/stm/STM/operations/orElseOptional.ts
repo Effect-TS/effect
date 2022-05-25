@@ -9,7 +9,7 @@ export function orElseOptional_<R, E, A, R1, E1, A1>(
   self: STM<R, Option<E>, A>,
   that: LazyArg<STM<R1, Option<E1>, A1>>
 ): STM<R & R1, Option<E | E1>, A | A1> {
-  return self.catchAll((option) => option.fold(that, (e) => STM.fail(Option.some<E | E1>(e))));
+  return self.catchAll((option) => option.fold(that, (e) => STM.fail(Option.some<E | E1>(e))))
 }
 
 /**
@@ -19,4 +19,4 @@ export function orElseOptional_<R, E, A, R1, E1, A1>(
  *
  * @tsplus static ets/STM/Aspects orElseOptional
  */
-export const orElseOptional = Pipeable(orElseOptional_);
+export const orElseOptional = Pipeable(orElseOptional_)

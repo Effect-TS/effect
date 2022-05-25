@@ -1,4 +1,4 @@
-import { concreteScope } from "@effect/core/io/Scope/operations/_internal/ScopeInternal";
+import { concreteScope } from "@effect/core/io/Scope/operations/_internal/ScopeInternal"
 
 /**
  * Forks a new scope that is a child of this scope. The child scope will
@@ -8,6 +8,6 @@ import { concreteScope } from "@effect/core/io/Scope/operations/_internal/ScopeI
  * @tsplus fluent ets/Scope/Closeable fork
  */
 export function fork(self: Scope): Effect.UIO<Scope.Closeable> {
-  concreteScope(self);
-  return self._fork;
+  concreteScope(self)
+  return self._fork
 }

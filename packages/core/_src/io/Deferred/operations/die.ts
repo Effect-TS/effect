@@ -9,7 +9,7 @@ export function die_<E, A>(
   defect: LazyArg<unknown>,
   __tsplusTrace?: string
 ): Effect.UIO<boolean> {
-  return self.completeWith(Effect.die(defect));
+  return self.completeWith(Effect.die(defect))
 }
 
 /**
@@ -18,4 +18,4 @@ export function die_<E, A>(
  *
  * @tsplus static ets/Deferred/Aspects die
  */
-export const die = Pipeable(die_);
+export const die = Pipeable(die_)

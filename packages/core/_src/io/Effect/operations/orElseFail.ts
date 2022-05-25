@@ -9,7 +9,7 @@ export function orElseFail_<R, E, A, E2>(
   e: LazyArg<E2>,
   __tsplusTrace?: string
 ): Effect<R, E2, A> {
-  return self.orElse(Effect.fail(e));
+  return self.orElse(Effect.fail(e))
 }
 
 /**
@@ -18,4 +18,4 @@ export function orElseFail_<R, E, A, E2>(
  *
  * @tsplus static ets/Effect/Aspects orElseFail
  */
-export const orElseFail = Pipeable(orElseFail_);
+export const orElseFail = Pipeable(orElseFail_)

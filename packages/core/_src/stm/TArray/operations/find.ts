@@ -1,4 +1,4 @@
-import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/InternalTArray";
+import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/InternalTArray"
 
 /**
  * Find the first element in the array matching a predicate.
@@ -10,17 +10,17 @@ export function find_<A>(
   p: Predicate<A>
 ): STM<unknown, never, Option<A>> {
   return STM.Effect((journal) => {
-    let i = 0;
-    concreteTArray(self);
+    let i = 0
+    concreteTArray(self)
     while (i < self.chunk.length) {
-      const a = self.chunk.unsafeGet(i)!.unsafeGet(journal);
+      const a = self.chunk.unsafeGet(i)!.unsafeGet(journal)
       if (p(a)) {
-        return Option.some(a);
+        return Option.some(a)
       }
-      i++;
+      i++
     }
-    return Option.none;
-  });
+    return Option.none
+  })
 }
 
 /**
@@ -28,4 +28,4 @@ export function find_<A>(
  *
  * @tsplus static ets/TArray/Aspects find
  */
-export const find = Pipeable(find_);
+export const find = Pipeable(find_)

@@ -7,5 +7,5 @@ export function asRight<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, Either<never, A>> {
-  return self.map(Either.right);
+  return self.map(Either.right)
 }

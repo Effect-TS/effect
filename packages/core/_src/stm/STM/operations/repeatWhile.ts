@@ -18,7 +18,7 @@ export function repeatWhile_<R, E, A>(
   self: STM<R, E, A>,
   f: Predicate<A>
 ): STM<R, E, A> {
-  return self.flatMap((a) => (f(a) ? self.repeatWhile(f) : STM.succeedNow(a)));
+  return self.flatMap((a) => (f(a) ? self.repeatWhile(f) : STM.succeedNow(a)))
 }
 
 /**
@@ -37,4 +37,4 @@ export function repeatWhile_<R, E, A>(
  *
  * @tsplus static ets/STM/Aspects repeatWhile
  */
-export const repeatWhile = Pipeable(repeatWhile_);
+export const repeatWhile = Pipeable(repeatWhile_)

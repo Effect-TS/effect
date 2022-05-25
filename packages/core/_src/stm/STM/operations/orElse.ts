@@ -1,5 +1,5 @@
-import { STMEffect } from "@effect/core/stm/STM/definition/primitives";
-import { prepareResetJournal } from "@effect/core/stm/STM/Journal";
+import { STMEffect } from "@effect/core/stm/STM/definition/primitives"
+import { prepareResetJournal } from "@effect/core/stm/STM/Journal"
 
 /**
  * Tries this effect first, and if it fails or retries, tries the other
@@ -22,7 +22,7 @@ export function orElse_<R, E, A, R1, E1, A1>(
     self
       .orTry(STM.succeed(reset()) > that())
       .catchAll(() => STM.succeed(reset()) > that())
-  );
+  )
 }
 
 /**
@@ -31,4 +31,4 @@ export function orElse_<R, E, A, R1, E1, A1>(
  *
  * @tsplus static ets/STM/Aspects orElse
  */
-export const orElse = Pipeable(orElse_);
+export const orElse = Pipeable(orElse_)

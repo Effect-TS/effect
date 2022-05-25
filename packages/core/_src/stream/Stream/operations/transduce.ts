@@ -1,5 +1,5 @@
-import { concreteSink } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteSink } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Applies the transducer to the stream and emits its outputs.
@@ -11,13 +11,13 @@ export function transduce_<R, E, A, R2, E2, Z>(
   sink: LazyArg<Sink<R2, E2, A, A, Z>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, Z> {
-  concreteStream(self);
+  concreteStream(self)
   return new StreamInternal(
     Channel.suspend(() => {
-      const sink0 = sink();
-      concreteSink(sink0);
-      const leftovers = new AtomicReference(Chunk.empty<Chunk<A>>());
-      const upstreamDone = new AtomicBoolean(false);
+      const sink0 = sink()
+      concreteSink(sink0)
+      const leftovers = new AtomicReference(Chunk.empty<Chunk<A>>())
+      const upstreamDone = new AtomicBoolean(false)
 
       const upstreamMarker: Channel<
         unknown,
@@ -31,7 +31,7 @@ export function transduce_<R, E, A, R2, E2, Z>(
         (chunk: Chunk<A>) => Channel.write(chunk) > upstreamMarker,
         (err) => Channel.fail(err),
         (done) => Channel.succeed(upstreamDone.set(true)) > Channel.succeedNow(done)
-      );
+      )
 
       const buffer: Channel<
         unknown,
@@ -42,20 +42,20 @@ export function transduce_<R, E, A, R2, E2, Z>(
         Chunk<A>,
         unknown
       > = Channel.suspend(() => {
-        const leftover = leftovers.get;
+        const leftover = leftovers.get
 
         if (leftover.isEmpty()) {
           return Channel.readWith(
             (chunk: Chunk<A>) => Channel.write(chunk) > buffer,
             (err) => Channel.fail(err),
             (done) => Channel.succeedNow(done)
-          );
+          )
         }
 
-        leftovers.set(Chunk.empty());
+        leftovers.set(Chunk.empty())
 
-        return Channel.writeChunk(leftover) > buffer;
-      });
+        return Channel.writeChunk(leftover) > buffer
+      })
 
       const transducer: Channel<
         R & R2,
@@ -69,14 +69,14 @@ export function transduce_<R, E, A, R2, E2, Z>(
         Channel.succeed(
           Tuple(upstreamDone.get, concatAndGet(leftovers, leftover))
         ).flatMap(({ tuple: [done, newLeftovers] }) => {
-          const nextChannel = done && newLeftovers.isEmpty() ? Channel.unit : transducer;
-          return Channel.write(Chunk.single(z)) > nextChannel;
+          const nextChannel = done && newLeftovers.isEmpty() ? Channel.unit : transducer
+          return Channel.write(Chunk.single(z)) > nextChannel
         })
-      );
+      )
 
-      return (self.channel >> upstreamMarker) >> buffer.pipeToOrFail(transducer);
+      return (self.channel >> upstreamMarker) >> buffer.pipeToOrFail(transducer)
     })
-  );
+  )
 }
 
 /**
@@ -85,15 +85,15 @@ export function transduce_<R, E, A, R2, E2, Z>(
  *
  * @tsplus static ets/Stream/Aspects fromSink
  */
-export const transduce = Pipeable(transduce_);
+export const transduce = Pipeable(transduce_)
 
 function concatAndGet<A>(
   leftovers: AtomicReference<Chunk<Chunk<A>>>,
   chunk: Chunk<Chunk<A>>,
   __tsplusTrace?: string
 ): Chunk<Chunk<A>> {
-  const ls = leftovers.get;
-  const concat = ls + chunk.filter((c) => c.isNonEmpty());
-  leftovers.set(concat);
-  return concat;
+  const ls = leftovers.get
+  const concat = ls + chunk.filter((c) => c.isNonEmpty())
+  leftovers.set(concat)
+  return concat
 }

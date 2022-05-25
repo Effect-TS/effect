@@ -1,6 +1,6 @@
-import { RuntimeFiberId } from "@effect/core/io/FiberId/definition";
+import { RuntimeFiberId } from "@effect/core/io/FiberId/definition"
 
-const _fiberCounter = new AtomicNumber(0);
+const _fiberCounter = new AtomicNumber(0)
 
 /**
  * @tsplus static ets/FiberId/Ops __call
@@ -10,7 +10,7 @@ export function make(
   startTimeSeconds: number,
   location: TraceElement
 ): FiberId {
-  return new RuntimeFiberId(id, startTimeSeconds, location);
+  return new RuntimeFiberId(id, startTimeSeconds, location)
 }
 
 /**
@@ -21,5 +21,5 @@ export function unsafeMake(location: TraceElement): FiberId.Runtime {
     _fiberCounter.getAndIncrement(),
     Math.floor(new Date().getTime() / 1000),
     location
-  );
+  )
 }

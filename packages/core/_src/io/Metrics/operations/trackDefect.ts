@@ -7,5 +7,5 @@
 export function trackDefect<Type, Out>(
   self: Metric<Type, unknown, Out>
 ): <R, E, A>(effect: Effect<R, E, A>, __tsplusTrace?: string) => Effect<R, E, A> {
-  return self.trackDefectWith(identity);
+  return self.trackDefectWith(identity)
 }

@@ -10,7 +10,7 @@ export function forkWithErrorHandler_<R, E, A, X>(
 ): Effect.RIO<R, Fiber.Runtime<E, A>> {
   return self
     .onError((cause) => cause.failureOrCause().fold(handler, Effect.failCauseNow))
-    .fork();
+    .fork()
 }
 
 /**
@@ -22,5 +22,5 @@ export function forkWithErrorHandler<E, X>(
   handler: (e: E) => Effect.UIO<X>,
   __tsplusTrace?: string
 ) {
-  return <R, A>(self: Effect<R, E, A>): Effect.RIO<R, Fiber.Runtime<E, A>> => self.forkWithErrorHandler(handler);
+  return <R, A>(self: Effect<R, E, A>): Effect.RIO<R, Fiber.Runtime<E, A>> => self.forkWithErrorHandler(handler)
 }

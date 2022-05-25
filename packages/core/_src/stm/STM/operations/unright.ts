@@ -10,5 +10,5 @@ export function unright<R, B, E, A>(
   return self.foldSTM(
     (either) => either.fold((b) => STM.succeedNow(Either.left(b)), STM.failNow),
     (a) => STM.succeedNow(Either.right(a))
-  );
+  )
 }

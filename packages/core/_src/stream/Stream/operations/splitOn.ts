@@ -15,7 +15,7 @@ export function splitOn_<R, E>(
       .splitOnChunkFlatten(Chunk.from(delimiter))
       .chunks()
       .map((chunk) => chunk.join(""))
-  );
+  )
 }
 
 /**
@@ -23,4 +23,4 @@ export function splitOn_<R, E>(
  *
  * @tsplus static ets/Stream/Aspects splitOn
  */
-export const splitOn = Pipeable(splitOn_);
+export const splitOn = Pipeable(splitOn_)

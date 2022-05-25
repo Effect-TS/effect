@@ -1,5 +1,5 @@
-import { unsafeCreateQueue } from "@effect/core/io/Effect/operations/excl-forEach";
-import type { Strategy } from "@effect/core/io/Queue/operations/strategy";
+import { unsafeCreateQueue } from "@effect/core/io/Effect/operations/excl-forEach"
+import type { Strategy } from "@effect/core/io/Queue/operations/strategy"
 
 /**
  * Unsafely creates a new `Queue` using the provided `Strategy`.
@@ -12,4 +12,4 @@ export const unsafeCreate: <A>(
   shutdownHook: Deferred<never, void>,
   shutdownFlag: AtomicBoolean,
   strategy: Strategy<A>
-) => Queue<A> = unsafeCreateQueue;
+) => Queue<A> = unsafeCreateQueue

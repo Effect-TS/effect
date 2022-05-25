@@ -1,4 +1,4 @@
-import { realFiber } from "@effect/core/io/Fiber/definition";
+import { realFiber } from "@effect/core/io/Fiber/definition"
 
 /**
  * Tentatively observes the fiber, but returns immediately if it is not
@@ -11,6 +11,6 @@ export function poll<E, A>(
   self: Fiber<E, A>,
   __tsplusTrace?: string
 ): Effect.UIO<Option<Exit<E, A>>> {
-  realFiber(self);
-  return self._poll;
+  realFiber(self)
+  return self._poll
 }

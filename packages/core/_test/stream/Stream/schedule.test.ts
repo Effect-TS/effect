@@ -14,8 +14,8 @@ describe.concurrent("Stream", () => {
       //   .flatMap(({ fiber }) => fiber.join())
       // const result = await program.unsafeRunPromise()
       // expected = Chunk((1, 100L), (2, 200L), (3, 300L), (4, 400L), (5, 500L), (6, 600L), (7, 700L), (8, 800L))
-    });
-  });
+    })
+  })
 
   describe.concurrent("scheduleWith", () => {
     // TODO(Mike/Max): implement after TestClock
@@ -28,8 +28,8 @@ describe.concurrent("Stream", () => {
       //     )
       //     .runCollect
       // )(equalTo(Chunk("a", "b", "c", "Done", "a", "b", "c", "Done")))
-    });
-  });
+    })
+  })
 
   describe.concurrent("scheduleEither", () => {
     // TODO(Mike/Max): implement after TestClock
@@ -39,6 +39,6 @@ describe.concurrent("Stream", () => {
       //       .scheduleEither(Schedule.recurs(2) *> Schedule.fromFunction((_) => "!"))
       //       .runCollect
       //   )(equalTo(Chunk(Right("A"), Right("B"), Right("C"), Left("!"))))
-    });
-  });
-});
+    })
+  })
+})

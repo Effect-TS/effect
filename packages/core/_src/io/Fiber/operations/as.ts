@@ -5,7 +5,7 @@
  * @tsplus fluent ets/RuntimeFiber as
  */
 export function as_<E, A, B>(self: Fiber<E, A>, b: LazyArg<B>): Fiber<E, B> {
-  return self.map(b);
+  return self.map(b)
 }
 
 /**
@@ -13,4 +13,4 @@ export function as_<E, A, B>(self: Fiber<E, A>, b: LazyArg<B>): Fiber<E, B> {
  *
  * @tsplus static ets/Fiber/Aspects as
  */
-export const as = Pipeable(as_);
+export const as = Pipeable(as_)

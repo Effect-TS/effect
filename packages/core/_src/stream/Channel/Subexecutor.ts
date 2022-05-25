@@ -1,37 +1,37 @@
-import type { ErasedChannel, ErasedExecutor } from "@effect/core/stream/Channel/ChannelExecutor";
-import type { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision";
-import type { UpstreamPullRequest } from "@effect/core/stream/Channel/UpstreamPullRequest";
-import type { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy";
+import type { ErasedChannel, ErasedExecutor } from "@effect/core/stream/Channel/ChannelExecutor"
+import type { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision"
+import type { UpstreamPullRequest } from "@effect/core/stream/Channel/UpstreamPullRequest"
+import type { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy"
 
-export const SubexecutorSym = Symbol.for("@effect/core/stream/Channel/Subexecutor");
-export type SubexecutorSym = typeof SubexecutorSym;
+export const SubexecutorSym = Symbol.for("@effect/core/stream/Channel/Subexecutor")
+export type SubexecutorSym = typeof SubexecutorSym
 
 /**
  * @tsplus type ets/Channel/Subexecutor
  */
 export interface Subexecutor<R> {
-  readonly [SubexecutorSym]: SubexecutorSym;
+  readonly [SubexecutorSym]: SubexecutorSym
   readonly close: (
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
-  ) => Effect.RIO<R, unknown> | undefined;
-  readonly enqueuePullFromChild: (child: PullFromChild<R>) => Subexecutor<R>;
+  ) => Effect.RIO<R, unknown> | undefined
+  readonly enqueuePullFromChild: (child: PullFromChild<R>) => Subexecutor<R>
 }
 
 /**
  * @tsplus type ets/Channel/Subexecutor/Ops
  */
 export interface SubexecutorOps {}
-export const Subexecutor: SubexecutorOps = {};
+export const Subexecutor: SubexecutorOps = {}
 
 /**
  * Execute upstreamExecutor and for each emitted element, spawn a child
  * channel and continue with processing it by `PullFromChild`.
  */
 export class PullFromUpstream<R> implements Subexecutor<R> {
-  readonly _tag = "PullFromUpstream";
+  readonly _tag = "PullFromUpstream"
 
-  readonly [SubexecutorSym]: SubexecutorSym = SubexecutorSym;
+  readonly [SubexecutorSym]: SubexecutorSym = SubexecutorSym
 
   constructor(
     readonly upstreamExecutor: ErasedExecutor<R>,
@@ -48,25 +48,25 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
   ): Effect.RIO<R, unknown> | undefined {
-    const fin1 = this.upstreamExecutor.close(exit);
+    const fin1 = this.upstreamExecutor.close(exit)
     const fins = this.activeChildExecutors
       .map((child) => (child != null ? child.childExecutor.close(exit) : undefined))
-      .append(fin1);
+      .append(fin1)
     const result = fins.reduce(
       undefined as Effect.RIO<R, Exit<unknown, unknown>> | undefined,
       (acc, next) => {
         if (acc != null && next != null) {
-          return acc.zipWith(next.exit(), (a, b) => a > b);
+          return acc.zipWith(next.exit(), (a, b) => a > b)
         } else if (acc != null) {
-          return acc;
+          return acc
         } else if (next != null) {
-          return next.exit();
+          return next.exit()
         } else {
-          return undefined;
+          return undefined
         }
       }
-    );
-    return result == null ? result : result.flatMap((exit) => Effect.done(exit)) as Effect.RIO<R, unknown>;
+    )
+    return result == null ? result : result.flatMap((exit) => Effect.done(exit)) as Effect.RIO<R, unknown>
   }
 
   enqueuePullFromChild(child: PullFromChild<R>): Subexecutor<R> {
@@ -79,7 +79,7 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
       this.combineWithChildResult,
       this.onPull,
       this.onEmit
-    );
+    )
   }
 }
 
@@ -88,9 +88,9 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
  * `onEmit`.
  */
 export class PullFromChild<R> implements Subexecutor<R> {
-  readonly _tag = "PullFromChild";
+  readonly _tag = "PullFromChild"
 
-  readonly [SubexecutorSym]: SubexecutorSym = SubexecutorSym;
+  readonly [SubexecutorSym]: SubexecutorSym = SubexecutorSym
 
   constructor(
     readonly childExecutor: ErasedExecutor<R>,
@@ -102,32 +102,32 @@ export class PullFromChild<R> implements Subexecutor<R> {
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
   ): Effect.RIO<R, unknown> | undefined {
-    const fin1 = this.childExecutor.close(exit);
-    const fin2 = this.parentSubexecutor.close(exit);
+    const fin1 = this.childExecutor.close(exit)
+    const fin2 = this.parentSubexecutor.close(exit)
 
     if (fin1 != null && fin2 != null) {
       return fin1
         .exit()
         .zipWith(fin2.exit(), (a, b) => a > b)
-        .flatMap((exit) => Effect.done(exit));
+        .flatMap((exit) => Effect.done(exit))
     } else if (fin1 != null) {
-      return fin1;
+      return fin1
     } else if (fin2 != null) {
-      return fin2;
+      return fin2
     } else {
-      return undefined;
+      return undefined
     }
   }
 
   enqueuePullFromChild(_: PullFromChild<R>): Subexecutor<R> {
-    return this;
+    return this
   }
 }
 
 export class DrainChildExecutors<R> implements Subexecutor<R> {
-  readonly _tag = "DrainChildExecutors";
+  readonly _tag = "DrainChildExecutors"
 
-  readonly [SubexecutorSym]: SubexecutorSym = SubexecutorSym;
+  readonly [SubexecutorSym]: SubexecutorSym = SubexecutorSym
 
   constructor(
     readonly upstreamExecutor: ErasedExecutor<R>,
@@ -143,25 +143,25 @@ export class DrainChildExecutors<R> implements Subexecutor<R> {
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
   ): Effect.RIO<R, unknown> | undefined {
-    const fin1 = this.upstreamExecutor.close(exit);
+    const fin1 = this.upstreamExecutor.close(exit)
     const fins = this.activeChildExecutors
       .map((child) => (child != null ? child.childExecutor.close(exit) : undefined))
-      .append(fin1);
+      .append(fin1)
 
     return fins.reduce(
       undefined as Effect.RIO<R, Exit<unknown, unknown>> | undefined,
       (acc, next) => {
         if (acc != null && next != null) {
-          return acc.zipWith(next.exit(), (a, b) => a > b);
+          return acc.zipWith(next.exit(), (a, b) => a > b)
         } else if (acc != null) {
-          return acc;
+          return acc
         } else if (next != null) {
-          return next.exit();
+          return next.exit()
         } else {
-          return undefined;
+          return undefined
         }
       }
-    );
+    )
   }
 
   enqueuePullFromChild(child: PullFromChild<R>): Subexecutor<R> {
@@ -173,14 +173,14 @@ export class DrainChildExecutors<R> implements Subexecutor<R> {
       this.combineChildResults,
       this.combineWithChildResult,
       this.onPull
-    );
+    )
   }
 }
 
 export class Emit<R> implements Subexecutor<R> {
-  readonly _tag = "Emit";
+  readonly _tag = "Emit"
 
-  readonly [SubexecutorSym]: SubexecutorSym = SubexecutorSym;
+  readonly [SubexecutorSym]: SubexecutorSym = SubexecutorSym
 
   constructor(readonly value: unknown, readonly next: Subexecutor<R>) {}
 
@@ -188,11 +188,11 @@ export class Emit<R> implements Subexecutor<R> {
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
   ): Effect.RIO<R, unknown> | undefined {
-    return this.next.close(exit);
+    return this.next.close(exit)
   }
 
   enqueuePullFromChild(_child: PullFromChild<R>): Subexecutor<R> {
-    return this;
+    return this
   }
 }
 
@@ -232,7 +232,7 @@ export function pullFromUpstream<R>(
     combineWithChildResult,
     onPull,
     onEmit
-  );
+  )
 }
 
 /**
@@ -243,7 +243,7 @@ export function pullFromChild<R>(
   parentSubexecutor: Subexecutor<R>,
   onEmit: (_: unknown) => ChildExecutorDecision
 ): Subexecutor<R> {
-  return new PullFromChild(childExecutor, parentSubexecutor, onEmit);
+  return new PullFromChild(childExecutor, parentSubexecutor, onEmit)
 }
 
 /**
@@ -266,12 +266,12 @@ export function drainChildExecutors<R>(
     combineChildResults,
     combineWithChildResult,
     onPull
-  );
+  )
 }
 
 /**
  * @tsplus static ets/Channel/Subexecutor/Ops Emit
  */
 export function emit<R>(value: unknown, next: Subexecutor<R>): Subexecutor<R> {
-  return new Emit(value, next);
+  return new Emit(value, next)
 }

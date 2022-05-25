@@ -12,7 +12,7 @@ export function asyncMaybe<R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void) => Option<Effect<R, E, A>>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return asyncMaybeBlockingOn(register, FiberId.none);
+  return asyncMaybeBlockingOn(register, FiberId.none)
 }
 
 /**
@@ -36,5 +36,5 @@ export function asyncMaybeBlockingOn<R, E, A>(
   return Effect.asyncInterruptBlockingOn(
     (cb) => register(cb).fold(Either.left(Effect.unit), Either.right),
     blockingOn
-  );
+  )
 }

@@ -1,4 +1,4 @@
-import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * A sink that folds its inputs with the provided function, termination
@@ -12,7 +12,7 @@ export function fold<In, S>(
   f: (s: S, input: In) => S,
   __tsplusTrace?: string
 ): Sink<unknown, never, In, In, S> {
-  return Sink.suspend(new SinkInternal(reader(z(), cont, f)));
+  return Sink.suspend(new SinkInternal(reader(z(), cont, f)))
 }
 
 function reader<S, In>(
@@ -27,14 +27,14 @@ function reader<S, In>(
       (chunk: Chunk<In>) => {
         const {
           tuple: [nextS, leftovers]
-        } = foldChunkSplit(z, chunk, cont, f);
+        } = foldChunkSplit(z, chunk, cont, f)
         return leftovers.isNonEmpty()
           ? Channel.write(leftovers).as(nextS)
-          : reader<S, In>(nextS, cont, f);
+          : reader<S, In>(nextS, cont, f)
       },
       (err) => Channel.fail(err),
       () => Channel.succeedNow(z)
-    );
+    )
 }
 
 function foldChunkSplit<S, In>(
@@ -44,7 +44,7 @@ function foldChunkSplit<S, In>(
   f: (s: S, input: In) => S,
   __tsplusTrace?: string
 ): Tuple<[S, Chunk<In>]> {
-  return foldInternal(z, chunk, cont, f, 0, chunk.length);
+  return foldInternal(z, chunk, cont, f, 0, chunk.length)
 }
 
 function foldInternal<S, In>(
@@ -57,10 +57,10 @@ function foldInternal<S, In>(
   __tsplusTrace?: string
 ): Tuple<[S, Chunk<In>]> {
   if (index === length) {
-    return Tuple(z, Chunk.empty<In>());
+    return Tuple(z, Chunk.empty<In>())
   }
-  const z1 = f(z, chunk.unsafeGet(index));
+  const z1 = f(z, chunk.unsafeGet(index))
   return cont(z1)
     ? foldInternal<S, In>(z1, chunk, cont, f, index + 1, length)
-    : Tuple(z1, chunk.drop(index + 1));
+    : Tuple(z1, chunk.drop(index + 1))
 }

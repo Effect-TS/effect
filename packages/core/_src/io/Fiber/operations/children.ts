@@ -1,4 +1,4 @@
-import { realFiber } from "@effect/core/io/Fiber/definition";
+import { realFiber } from "@effect/core/io/Fiber/definition"
 
 /**
  * Retrieves the immediate children of the fiber.
@@ -10,6 +10,6 @@ export function children<E, A>(
   self: Fiber<E, A>,
   __tsplusTrace?: string
 ): Effect.UIO<Chunk<Fiber.Runtime<any, any>>> {
-  realFiber(self);
-  return self._children;
+  realFiber(self)
+  return self._children
 }

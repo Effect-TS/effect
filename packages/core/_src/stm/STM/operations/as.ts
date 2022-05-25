@@ -4,7 +4,7 @@
  * @tsplus fluent ets/STM as
  */
 export function as_<R, E, A, B>(self: STM<R, E, A>, b: LazyArg<B>): STM<R, E, B> {
-  return self.map(b);
+  return self.map(b)
 }
 
 /**
@@ -12,4 +12,4 @@ export function as_<R, E, A, B>(self: STM<R, E, A>, b: LazyArg<B>): STM<R, E, B>
  *
  * @tsplus static ets/STM/Aspects as
  */
-export const as = Pipeable(as_);
+export const as = Pipeable(as_)

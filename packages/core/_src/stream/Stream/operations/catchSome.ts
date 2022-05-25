@@ -9,7 +9,7 @@ export function catchSome_<R, E, A, R2, E2, A2>(
   pf: (e: E) => Option<Stream<R2, E2, A2>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A | A2> {
-  return self.catchAll((e): Stream<R2, E | E2, A2> => pf(e).getOrElse(Stream.fail(e)));
+  return self.catchAll((e): Stream<R2, E | E2, A2> => pf(e).getOrElse(Stream.fail(e)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function catchSome_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Stream/Aspects catchSome
  */
-export const catchSome = Pipeable(catchSome_);
+export const catchSome = Pipeable(catchSome_)

@@ -8,10 +8,10 @@ import {
   _OutElem,
   _OutErr,
   _OutErr2
-} from "@effect/core/stream/Channel/definition/symbols";
+} from "@effect/core/stream/Channel/definition/symbols"
 
-export const ChannelSym = Symbol.for("@effect/core/stream/Channel");
-export type ChannelSym = typeof ChannelSym;
+export const ChannelSym = Symbol.for("@effect/core/stream/Channel")
+export type ChannelSym = typeof ChannelSym
 
 /**
  * A `Channel` is a nexus of I/O operations, which supports both reading and
@@ -39,25 +39,25 @@ export type ChannelSym = typeof ChannelSym;
  * @tsplus type ets/Channel
  */
 export interface Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  readonly [ChannelSym]: ChannelSym;
-  readonly [_Env]: (_: Env) => void;
-  readonly [_InErr]: (_: InErr) => void;
-  readonly [_InElem]: (_: InElem) => void;
-  readonly [_InDone]: (_: InDone) => void;
-  readonly [_OutErr]: () => OutErr;
-  readonly [_OutElem]: () => OutElem;
-  readonly [_OutDone]: () => OutDone;
+  readonly [ChannelSym]: ChannelSym
+  readonly [_Env]: (_: Env) => void
+  readonly [_InErr]: (_: InErr) => void
+  readonly [_InElem]: (_: InElem) => void
+  readonly [_InDone]: (_: InDone) => void
+  readonly [_OutErr]: () => OutErr
+  readonly [_OutElem]: () => OutElem
+  readonly [_OutDone]: () => OutDone
 }
 
 /**
  * @tsplus type ets/Channel/Ops
  */
 export interface ChannelOps {
-  $: ChannelAspects;
+  $: ChannelAspects
 }
 export const Channel: ChannelOps = {
   $: {}
-};
+}
 
 /**
  * @tsplus type ets/Channel/Aspects
@@ -68,26 +68,26 @@ export interface ChannelAspects {}
  * @tsplus unify ets/Channel
  */
 export function unifyChannel<X extends Channel<any, any, any, any, any, any, any>>(self: X): Channel<
-  [X] extends [{ [_Env]: (_: infer Env) => void; }] ? Env : never,
-  [X] extends [{ [_InErr]: (_: infer InErr) => void; }] ? InErr : never,
-  [X] extends [{ [_InElem]: (_: infer InElem) => void; }] ? InElem : never,
-  [X] extends [{ [_InDone]: (_: infer InDone) => void; }] ? InDone : never,
-  [X] extends [{ [_OutErr]: () => infer OutErr; }] ? OutErr : never,
-  [X] extends [{ [_OutElem]: () => infer OutElem; }] ? OutElem : never,
-  [X] extends [{ [_OutDone]: () => infer OutDone; }] ? OutDone : never
+  [X] extends [{ [_Env]: (_: infer Env) => void }] ? Env : never,
+  [X] extends [{ [_InErr]: (_: infer InErr) => void }] ? InErr : never,
+  [X] extends [{ [_InElem]: (_: infer InElem) => void }] ? InElem : never,
+  [X] extends [{ [_InDone]: (_: infer InDone) => void }] ? InDone : never,
+  [X] extends [{ [_OutErr]: () => infer OutErr }] ? OutErr : never,
+  [X] extends [{ [_OutElem]: () => infer OutElem }] ? OutElem : never,
+  [X] extends [{ [_OutDone]: () => infer OutDone }] ? OutDone : never
 > {
-  return self;
+  return self
 }
 
 export abstract class ChannelBase<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   implements Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 {
-  readonly [ChannelSym]: ChannelSym = ChannelSym;
-  readonly [_Env]!: (_: Env) => void;
-  readonly [_InErr]!: (_: InErr) => void;
-  readonly [_InElem]!: (_: InElem) => void;
-  readonly [_InDone]!: (_: InDone) => void;
-  readonly [_OutErr]!: () => OutErr;
-  readonly [_OutElem]!: () => OutElem;
-  readonly [_OutDone]!: () => OutDone;
+  readonly [ChannelSym]: ChannelSym = ChannelSym
+  readonly [_Env]!: (_: Env) => void
+  readonly [_InErr]!: (_: InErr) => void
+  readonly [_InElem]!: (_: InElem) => void
+  readonly [_InDone]!: (_: InDone) => void
+  readonly [_OutErr]!: () => OutErr
+  readonly [_OutElem]!: () => OutElem
+  readonly [_OutDone]!: () => OutDone
 }

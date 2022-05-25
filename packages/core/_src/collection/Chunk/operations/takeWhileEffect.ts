@@ -1,4 +1,4 @@
-import { concreteChunkId } from "@tsplus/stdlib/collections/Chunk/definition";
+import { concreteChunkId } from "@tsplus/stdlib/collections/Chunk/definition"
 
 /**
  * Takes all elements so long as the effectual predicate returns true.
@@ -11,30 +11,30 @@ export function takeWhileEffect_<R, E, A>(
   __tsplusTrace?: string
 ): Effect<R, E, Chunk<A>> {
   return Effect.suspendSucceed(() => {
-    const iterator = concreteChunkId(self)._arrayLikeIterator();
-    let next;
-    let taking: Effect<R, E, boolean> = Effect.succeedNow(true);
-    let builder = Chunk.empty<A>();
+    const iterator = concreteChunkId(self)._arrayLikeIterator()
+    let next
+    let taking: Effect<R, E, boolean> = Effect.succeedNow(true)
+    let builder = Chunk.empty<A>()
 
     while ((next = iterator.next()) && !next.done) {
-      const array = next.value;
-      const len = array.length;
-      let i = 0;
+      const array = next.value
+      const len = array.length
+      let i = 0
       while (i < len) {
-        const a = array[i]!;
+        const a = array[i]!
         taking = taking.flatMap((d) =>
           (d ? f(a) : Effect.succeedNow(false)).map((b) => {
             if (b) {
-              builder = builder.append(a);
+              builder = builder.append(a)
             }
-            return b;
+            return b
           })
-        );
-        i++;
+        )
+        i++
       }
     }
-    return taking.map(() => builder);
-  });
+    return taking.map(() => builder)
+  })
 }
 
 /**
@@ -42,4 +42,4 @@ export function takeWhileEffect_<R, E, A>(
  *
  * @tsplus static Chunk/Aspects takeWhileEffect
  */
-export const takeWhileEffect = Pipeable(takeWhileEffect_);
+export const takeWhileEffect = Pipeable(takeWhileEffect_)

@@ -17,7 +17,7 @@ export function repeatUntil_<R, E, A>(
   self: STM<R, E, A>,
   f: Predicate<A>
 ): STM<R, E, A> {
-  return self.flatMap((a) => (f(a) ? STM.succeedNow(a) : self.repeatUntil(f)));
+  return self.flatMap((a) => (f(a) ? STM.succeedNow(a) : self.repeatUntil(f)))
 }
 
 /**
@@ -35,4 +35,4 @@ export function repeatUntil_<R, E, A>(
  *
  * @tsplus static ets/STM/Aspects repeatUntil
  */
-export const repeatUntil = Pipeable(repeatUntil_);
+export const repeatUntil = Pipeable(repeatUntil_)

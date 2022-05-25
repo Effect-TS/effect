@@ -13,10 +13,10 @@ export function repeatN_<R, E, A>(
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(() => {
     function loop(n: number): Effect<R, E, A> {
-      return self.flatMap((a) => n <= 0 ? Effect.succeedNow(a) : Effect.yieldNow > loop(n - 1));
+      return self.flatMap((a) => n <= 0 ? Effect.succeedNow(a) : Effect.yieldNow > loop(n - 1))
     }
-    return loop(n);
-  });
+    return loop(n)
+  })
 }
 
 /**
@@ -27,4 +27,4 @@ export function repeatN_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects repeatN
  */
-export const repeatN = Pipeable(repeatN_);
+export const repeatN = Pipeable(repeatN_)

@@ -1,4 +1,4 @@
-import { exactlyOnce } from "@effect/core/test/io/Effect/test-utils";
+import { exactlyOnce } from "@effect/core/test/io/Effect/test-utils"
 
 describe.concurrent("Effect", () => {
   describe.concurrent("reject", () => {
@@ -17,14 +17,14 @@ describe.concurrent("Effect", () => {
           .sandbox()
           .either()
           .map((either) => either.mapLeft((cause) => cause.failureOrCause()))
-      });
+      })
 
-      const { badCase, goodCase } = await program.unsafeRunPromise();
+      const { badCase, goodCase } = await program.unsafeRunPromise()
 
-      assert.isTrue(goodCase == Either.right(0));
-      assert.isTrue(badCase == Either.left(Either.left("partial failed!")));
-    });
-  });
+      assert.isTrue(goodCase == Either.right(0))
+      assert.isTrue(badCase == Either.left(Either.left("partial failed!")))
+    })
+  })
 
   describe.concurrent("rejectEffect", () => {
     it("returns failure ignoring value", async () => {
@@ -49,13 +49,13 @@ describe.concurrent("Effect", () => {
           .sandbox()
           .either()
           .map((either) => either.mapLeft((cause) => cause.failureOrCause()))
-      });
+      })
 
-      const { badCase, goodCase, partialBadCase } = await program.unsafeRunPromise();
+      const { badCase, goodCase, partialBadCase } = await program.unsafeRunPromise()
 
-      assert.isTrue(goodCase == Either.right(0));
-      assert.isTrue(partialBadCase == Either.right(0));
-      assert.isTrue(badCase == Either.left(Either.left("partial failed!")));
-    });
-  });
-});
+      assert.isTrue(goodCase == Either.right(0))
+      assert.isTrue(partialBadCase == Either.right(0))
+      assert.isTrue(badCase == Either.left(Either.left("partial failed!")))
+    })
+  })
+})

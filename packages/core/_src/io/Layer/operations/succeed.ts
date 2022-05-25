@@ -5,5 +5,5 @@
  */
 export function succeed<T>(tag: Tag<T>) {
   return (resource: LazyArg<T>): Layer<unknown, never, Has<T>> =>
-    Layer.fromEffectEnvironment(Effect.succeed(Env(tag, resource())));
+    Layer.fromEffectEnvironment(Effect.succeed(Env(tag, resource())))
 }

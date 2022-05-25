@@ -14,12 +14,12 @@ describe.concurrent("Stream", () => {
                 ))
             .runDrain()
         )
-        .flatMap(({ lastExecuted, semaphore }) => semaphore.withPermit(lastExecuted.get()));
+        .flatMap(({ lastExecuted, semaphore }) => semaphore.withPermit(lastExecuted.get()))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("guarantee ordering with parallelism", async () => {
       const program = Effect.Do()
@@ -37,23 +37,23 @@ describe.concurrent("Stream", () => {
                 ))
             .runDrain()
         )
-        .flatMap(({ lastExecuted, semaphore }) => semaphore.withPermits(4)(lastExecuted.get()));
+        .flatMap(({ lastExecuted, semaphore }) => semaphore.withPermits(4)(lastExecuted.get()))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 4);
-    });
+      assert.strictEqual(result, 4)
+    })
 
     it("short circuiting", async () => {
       const program = Stream(Stream.never, Stream(1))
         .flatMapParSwitch(1, identity)
         .take(1)
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(1));
-    });
+      assert.isTrue(result == Chunk(1))
+    })
 
     it("interruption propagation", async () => {
       const program = Effect.Do()
@@ -69,12 +69,12 @@ describe.concurrent("Stream", () => {
             .fork())
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ substreamCancelled }) => substreamCancelled.get());
+        .flatMap(({ substreamCancelled }) => substreamCancelled.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("inner errors interrupt all fibers", async () => {
       const program = Effect.Do()
@@ -90,13 +90,13 @@ describe.concurrent("Stream", () => {
             .flatMapParSwitch(2, identity)
             .runDrain()
             .either())
-        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get());
+        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
 
-      const { cancelled, result } = await program.unsafeRunPromise();
+      const { cancelled, result } = await program.unsafeRunPromise()
 
-      assert.isTrue(cancelled);
-      assert.isTrue(result == Either.left("ouch"));
-    });
+      assert.isTrue(cancelled)
+      assert.isTrue(result == Either.left("ouch"))
+    })
 
     it("outer errors interrupt all fibers", async () => {
       const program = Effect.Do()
@@ -113,16 +113,16 @@ describe.concurrent("Stream", () => {
               .runDrain()
               .either()
         )
-        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get());
+        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
 
-      const { cancelled, result } = await program.unsafeRunPromise();
+      const { cancelled, result } = await program.unsafeRunPromise()
 
-      assert.isTrue(cancelled);
-      assert.isTrue(result == Either.left("ouch"));
-    });
+      assert.isTrue(cancelled)
+      assert.isTrue(result == Either.left("ouch"))
+    })
 
     it("inner defects interrupt all fibers", async () => {
-      const error = new RuntimeError("ouch");
+      const error = new RuntimeError("ouch")
       const program = Effect.Do()
         .bind("substreamCancelled", () => Ref.make(false))
         .bind("latch", () => Deferred.make<never, void>())
@@ -136,16 +136,16 @@ describe.concurrent("Stream", () => {
             .flatMapPar(2, identity)
             .runDrain()
             .exit())
-        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get());
+        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
 
-      const { cancelled, result } = await program.unsafeRunPromise();
+      const { cancelled, result } = await program.unsafeRunPromise()
 
-      assert.isTrue(cancelled);
-      assert.isTrue(result.untraced() == Exit.die(error));
-    });
+      assert.isTrue(cancelled)
+      assert.isTrue(result.untraced() == Exit.die(error))
+    })
 
     it("outer defects interrupt all fibers", async () => {
-      const error = new RuntimeError("ouch");
+      const error = new RuntimeError("ouch")
       const program = Effect.Do()
         .bind("substreamCancelled", () => Ref.make(false))
         .bind("latch", () => Deferred.make<never, void>())
@@ -160,13 +160,13 @@ describe.concurrent("Stream", () => {
               .runDrain()
               .exit()
         )
-        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get());
+        .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
 
-      const { cancelled, result } = await program.unsafeRunPromise();
+      const { cancelled, result } = await program.unsafeRunPromise()
 
-      assert.isTrue(cancelled);
-      assert.isTrue(result.untraced() == Exit.die(error));
-    });
+      assert.isTrue(cancelled)
+      assert.isTrue(result.untraced() == Exit.die(error))
+    })
 
     it("finalizer ordering", async () => {
       const program = Effect.Do()
@@ -181,9 +181,9 @@ describe.concurrent("Stream", () => {
             .flatMapParSwitch(2, identity)
             .runDrain()
         )
-        .flatMap(({ effects }) => effects.get());
+        .flatMap(({ effects }) => effects.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
       assert.isTrue(
         result == List(
@@ -192,7 +192,7 @@ describe.concurrent("Stream", () => {
           "InnerAcquire",
           "OuterAcquire"
         )
-      );
-    });
-  });
-});
+      )
+    })
+  })
+})

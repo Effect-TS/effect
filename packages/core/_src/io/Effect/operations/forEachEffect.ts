@@ -12,7 +12,7 @@ export function forEachEffect_<R, E, A, R1, E1, B>(
   return self.foldCauseEffect(
     () => Effect.none,
     (a) => f(a).map(Option.some)
-  );
+  )
 }
 
 /**
@@ -21,4 +21,4 @@ export function forEachEffect_<R, E, A, R1, E1, B>(
  *
  * @tsplus static ets/Effect/Aspects forEachEffect
  */
-export const forEachEffect = Pipeable(forEachEffect_);
+export const forEachEffect = Pipeable(forEachEffect_)

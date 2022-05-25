@@ -1,4 +1,4 @@
-import { STMEnv } from "@effect/core/test/stm/STM/test-utils";
+import { STMEnv } from "@effect/core/test/stm/STM/test-utils"
 
 describe.concurrent("STM", () => {
   describe.concurrent("STM environment", () => {
@@ -9,12 +9,12 @@ describe.concurrent("STM", () => {
             .commit()
             .provideEnvironment(Env(STMEnv.Tag, env))
         )
-        .flatMap((env) => env.ref.get().commit());
+        .flatMap((env) => env.ref.get().commit())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 1);
-    });
+      assert.strictEqual(result, 1)
+    })
 
     it("access environment and provide it inside transaction", async () => {
       const program = STMEnv.make(0)
@@ -23,11 +23,11 @@ describe.concurrent("STM", () => {
             .provideEnvironment(Env(STMEnv.Tag, env))
             .commit()
         )
-        .flatMap((env) => env.ref.get().commit());
+        .flatMap((env) => env.ref.get().commit())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 1);
-    });
-  });
-});
+      assert.strictEqual(result, 1)
+    })
+  })
+})

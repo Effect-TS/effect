@@ -1,5 +1,5 @@
-import { bufferSignal } from "@effect/core/stream/Stream/operations/_internal/bufferSignal";
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { bufferSignal } from "@effect/core/stream/Stream/operations/_internal/bufferSignal"
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Allows a faster producer to progress independently of a slower consumer by
@@ -20,10 +20,10 @@ export function bufferSliding_<R, E, A>(
   const queue = Effect.acquireRelease(
     Queue.sliding<Tuple<[Take<E, A>, Deferred<never, void>]>>(capacity),
     (queue) => queue.shutdown
-  );
-  const stream = self.rechunk(1);
-  concreteStream(stream);
-  return new StreamInternal(bufferSignal(queue, stream.channel));
+  )
+  const stream = self.rechunk(1)
+  concreteStream(stream)
+  return new StreamInternal(bufferSignal(queue, stream.channel))
 }
 
 /**
@@ -37,4 +37,4 @@ export function bufferSliding_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects bufferSliding
  */
-export const bufferSliding = Pipeable(bufferSliding_);
+export const bufferSliding = Pipeable(bufferSliding_)

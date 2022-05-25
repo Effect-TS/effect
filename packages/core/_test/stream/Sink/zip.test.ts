@@ -1,48 +1,48 @@
-import { findSink, zipParLaw } from "@effect/core/test/stream/Sink/test-utils";
+import { findSink, zipParLaw } from "@effect/core/test/stream/Sink/test-utils"
 
 describe("Sink", () => {
   describe("zip", () => {
     it("should return the value of both sinks", async () => {
-      const program = Stream(1, 2, 3).run(Sink.head().zip(Sink.succeed("hello")));
+      const program = Stream(1, 2, 3).run(Sink.head().zip(Sink.succeed("hello")))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.get(0) == Option.some(1));
-      assert.strictEqual(result.get(1), "hello");
-    });
-  });
+      assert.isTrue(result.get(0) == Option.some(1))
+      assert.strictEqual(result.get(1), "hello")
+    })
+  })
 
   describe("zipRight", () => {
     it("should return the value of the right sink", async () => {
-      const program = Stream(1, 2, 3).run(Sink.head() > Sink.succeed("hello"));
+      const program = Stream(1, 2, 3).run(Sink.head() > Sink.succeed("hello"))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, "hello");
-    });
-  });
+      assert.strictEqual(result, "hello")
+    })
+  })
 
   describe("zipLeft", () => {
     it("should return the value of the left sink", async () => {
-      const program = Stream(1, 2, 3).run(Sink.head() < Sink.succeed("hello"));
+      const program = Stream(1, 2, 3).run(Sink.head() < Sink.succeed("hello"))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(1));
-    });
-  });
+      assert.isTrue(result == Option.some(1))
+    })
+  })
 
   describe("zipWith", () => {
     it("should use the specified function to zip the sink values", async () => {
       const program = Stream(1, 2, 3).run(
         Sink.head().zipWith(Sink.succeed("hello"), (option, s) => option.fold(s, (a) => s + 1))
-      );
+      )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, "hello1");
-    });
-  });
+      assert.strictEqual(result, "hello1")
+    })
+  })
 
   describe("zipWithPar", () => {
     it("coherence", async () => {
@@ -60,18 +60,18 @@ describe("Sink", () => {
         .flatMap(({ ints, success1, success2 }) => {
           const chunk = ints
             .concat(success1 ? Chunk.single(20) : Chunk.empty<number>())
-            .concat(success2 ? Chunk.single(40) : Chunk.empty<number>());
+            .concat(success2 ? Chunk.single(40) : Chunk.empty<number>())
 
           return zipParLaw(
             Stream.fromCollectionEffect(Random.shuffle(chunk)),
             findSink(20),
             findSink(40)
-          );
-        });
+          )
+        })
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
-  });
-});
+      assert.isTrue(result)
+    })
+  })
+})

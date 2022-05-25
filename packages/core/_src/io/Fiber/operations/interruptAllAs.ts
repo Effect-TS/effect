@@ -9,5 +9,5 @@ export function interruptAllAs(
   fiberId: FiberId,
   __tsplusTrace?: string
 ): Effect.UIO<void> {
-  return fibers.reduce(Effect.unit, (io, fiber) => io.zipLeft(fiber.interruptAs(fiberId)));
+  return fibers.reduce(Effect.unit, (io, fiber) => io.zipLeft(fiber.interruptAs(fiberId)))
 }

@@ -19,10 +19,10 @@ export function mapOutEffect_<
   return (
     self >>
     mapOutEffectReader<Env, Env1, OutErr, OutErr1, OutElem, OutElem1, OutDone>(f)
-  );
+  )
 }
 
-export const mapOutEffect = Pipeable(mapOutEffect_);
+export const mapOutEffect = Pipeable(mapOutEffect_)
 
 function mapOutEffectReader<Env, Env1, OutErr, OutErr1, OutElem, OutElem1, OutDone>(
   f: (o: OutElem) => Effect<Env1, OutErr1, OutElem1>
@@ -33,5 +33,5 @@ function mapOutEffectReader<Env, Env1, OutErr, OutErr1, OutElem, OutElem1, OutDo
         mapOutEffectReader<Env, Env1, OutErr, OutErr1, OutElem, OutElem1, OutDone>(f),
     (outErr) => Channel.fail(outErr),
     (outDone) => Channel.succeedNow(outDone)
-  );
+  )
 }

@@ -22,8 +22,8 @@ export function loop<Z>(
   inc: (z: Z) => Z
 ) {
   return <R, E, A>(body: (z: Z) => STM<R, E, A>): STM<R, E, Chunk<A>> => {
-    return loopInternal(initial, cont, inc, body).map((list: ListBuffer<A>) => Chunk.from(list));
-  };
+    return loopInternal(initial, cont, inc, body).map((list: ListBuffer<A>) => Chunk.from(list))
+  }
 }
 
 function loopInternal<Z, R, E, A>(
@@ -33,14 +33,14 @@ function loopInternal<Z, R, E, A>(
   body: (z: Z) => STM<R, E, A>
 ): STM<R, E, ListBuffer<A>> {
   return STM.suspend(() => {
-    const initial0 = initial();
+    const initial0 = initial()
     return cont(initial0)
       ? body(initial0).flatMap((a) =>
         loopInternal(inc(initial0), cont, inc, body).map((as) => {
-          as.prepend(a);
-          return as;
+          as.prepend(a)
+          return as
         })
       )
-      : STM.succeed(ListBuffer.empty());
-  });
+      : STM.succeed(ListBuffer.empty())
+  })
 }

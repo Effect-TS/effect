@@ -7,5 +7,5 @@ export function succeedRight<A>(
   value: LazyArg<A>,
   __tsplusTrace?: string
 ): Effect.UIO<Either<never, A>> {
-  return Effect.succeed(Either.right(value()));
+  return Effect.succeed(Either.right(value()))
 }

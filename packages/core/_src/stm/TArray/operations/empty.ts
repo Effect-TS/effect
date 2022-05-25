@@ -4,5 +4,5 @@
  * @tsplus static ets/TArray/Ops empty
  */
 export function empty<A>(): STM<unknown, never, TArray<A>> {
-  return TArray.from<A>([]);
+  return TArray.from<A>([])
 }

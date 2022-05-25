@@ -4,5 +4,5 @@
  * @tsplus static ets/Metrics/Metric/Ops counter
  */
 export function counter(name: string): Metric.Counter<number> {
-  return Metric.fromMetricKey(MetricKey.Counter(name));
+  return Metric.fromMetricKey(MetricKey.Counter(name))
 }

@@ -4,5 +4,5 @@
  * @tsplus static ets/TRef/Ops makeCommit
  */
 export function makeCommit<A>(a: LazyArg<A>): Effect.UIO<TRef<A>> {
-  return TRef.make(a).commit();
+  return TRef.make(a).commit()
 }

@@ -1,4 +1,4 @@
-import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition";
+import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition"
 
 /**
  * Creates a stream from a subscription to a hub in the context of a scoped
@@ -19,5 +19,5 @@ export function fromHubScopedWithShutdown<A>(
 ): Effect<Has<Scope>, never, Stream<unknown, never, A>> {
   return Effect.succeed(hub).flatMap((hub) =>
     Stream.fromHubScoped(hub, maxChunkSize).map((stream) => stream.ensuring(hub.shutdown))
-  );
+  )
 }

@@ -1,4 +1,4 @@
-import { ICheckInterrupt, IInterruptStatus } from "@effect/core/io/Effect/definition/primitives";
+import { ICheckInterrupt, IInterruptStatus } from "@effect/core/io/Effect/definition/primitives"
 
 // -----------------------------------------------------------------------------
 // Model
@@ -11,7 +11,7 @@ export interface InterruptStatusRestore {
   readonly restore: <R, E, A>(
     effect: LazyArg<Effect<R, E, A>>,
     __tsplusTrace?: string
-  ) => Effect<R, E, A>;
+  ) => Effect<R, E, A>
   /**
    * Returns a new effect that, if the parent region is uninterruptible, can
    * be interrupted in the background instantaneously. If the parent region is
@@ -21,7 +21,7 @@ export interface InterruptStatusRestore {
   readonly force: <R, E, A>(
     effect: LazyArg<Effect<R, E, A>>,
     __tsplusTrace?: string
-  ) => Effect<R, E, A>;
+  ) => Effect<R, E, A>
 }
 
 export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
@@ -31,8 +31,8 @@ export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
     effect: LazyArg<Effect<R, E, A>>,
     __tsplusTrace?: string
   ): Effect<R, E, A> => {
-    return Effect.suspendSucceed(effect().interruptStatus(this.flag));
-  };
+    return Effect.suspendSucceed(effect().interruptStatus(this.flag))
+  }
 
   force = <R, E, A>(
     effect: LazyArg<Effect<R, E, A>>,
@@ -42,8 +42,8 @@ export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
       this.flag.isUninterruptible
         ? effect().uninterruptible().disconnect().interruptible()
         : effect().interruptStatus(this.flag)
-    );
-  };
+    )
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -55,7 +55,7 @@ export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
  *
  * @tsplus static ets/Effect/Ops interrupt
  */
-export const interrupt = Effect.fiberId.flatMap((fiberId) => Effect.interruptAs(fiberId));
+export const interrupt = Effect.fiberId.flatMap((fiberId) => Effect.interruptAs(fiberId))
 
 /**
  * Switches the interrupt status for this effect. If `true` is used, then the
@@ -70,7 +70,7 @@ export function interruptStatus_<R, E, A>(
   flag: LazyArg<InterruptStatus>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return new IInterruptStatus(self, flag, __tsplusTrace);
+  return new IInterruptStatus(self, flag, __tsplusTrace)
 }
 
 /**
@@ -81,7 +81,7 @@ export function interruptStatus_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects interruptStatus
  */
-export const interruptStatus = Pipeable(interruptStatus_);
+export const interruptStatus = Pipeable(interruptStatus_)
 
 /**
  * Returns a new effect that performs the same operations as this effect, but
@@ -100,7 +100,7 @@ export function interruptible<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return self.interruptStatus(InterruptStatus.Interruptible);
+  return self.interruptStatus(InterruptStatus.Interruptible)
 }
 
 /**
@@ -117,7 +117,7 @@ export function uninterruptible<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return self.interruptStatus(InterruptStatus.Uninterruptible);
+  return self.interruptStatus(InterruptStatus.Uninterruptible)
 }
 
 /**
@@ -130,7 +130,7 @@ export function checkInterruptible<R, E, A>(
   f: (interruptStatus: InterruptStatus) => Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return new ICheckInterrupt(f, __tsplusTrace);
+  return new ICheckInterrupt(f, __tsplusTrace)
 }
 
 /**
@@ -144,7 +144,7 @@ export function interruptibleMask<R, E, A>(
   f: (statusRestore: InterruptStatusRestore) => Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return checkInterruptible((flag) => f(new InterruptStatusRestoreImpl(flag)).interruptible());
+  return checkInterruptible((flag) => f(new InterruptStatusRestoreImpl(flag)).interruptible())
 }
 
 /**
@@ -158,7 +158,7 @@ export function uninterruptibleMask<R, E, A>(
   f: (statusRestore: InterruptStatusRestore) => Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return checkInterruptible((flag) => f(new InterruptStatusRestoreImpl(flag)).uninterruptible());
+  return checkInterruptible((flag) => f(new InterruptStatusRestoreImpl(flag)).uninterruptible())
 }
 
 /**
@@ -182,11 +182,11 @@ export function disconnect<R, E, A>(
 ): Effect<R, E, A> {
   return uninterruptibleMask(({ restore }) =>
     Do(($) => {
-      const id = $(Effect.fiberId);
-      const fiber = $(restore(effect).forkDaemon());
-      return $(restore(fiber.join()).onInterrupt(() => fiber.interruptAs(id).forkDaemon()));
+      const id = $(Effect.fiberId)
+      const fiber = $(restore(effect).forkDaemon())
+      return $(restore(fiber.join()).onInterrupt(() => fiber.interruptAs(id).forkDaemon()))
     })
-  );
+  )
 }
 
 /**
@@ -208,7 +208,7 @@ export function onInterrupt_<R, E, A, R2, X>(
           : Effect.failCauseNow(cause),
       Effect.succeedNow
     )
-  );
+  )
 }
 
 /**
@@ -217,7 +217,7 @@ export function onInterrupt_<R, E, A, R2, X>(
  *
  * @tsplus static ets/Effect/Aspects onInterrupt
  */
-export const onInterrupt = Pipeable(onInterrupt_);
+export const onInterrupt = Pipeable(onInterrupt_)
 
 /**
  * Calls the specified function, and runs the effect it returns, if this
@@ -241,7 +241,7 @@ export function onInterruptPolymorphic_<R, E, A, R2, E2, X>(
           : Effect.failCauseNow(cause),
       Effect.succeedNow
     )
-  );
+  )
 }
 
 /**
@@ -250,7 +250,7 @@ export function onInterruptPolymorphic_<R, E, A, R2, E2, X>(
  *
  * @tsplus static ets/Effect/Aspects onInterruptPolymorphic
  */
-export const onInterruptPolymorphic = Pipeable(onInterruptPolymorphic_);
+export const onInterruptPolymorphic = Pipeable(onInterruptPolymorphic_)
 
 /**
  * Returns an effect that is interrupted as if by the specified fiber.
@@ -258,5 +258,5 @@ export const onInterruptPolymorphic = Pipeable(onInterruptPolymorphic_);
  * @tsplus static ets/Effect/Ops interruptAs
  */
 export function interruptAs(fiberId: LazyArg<FiberId>, __tsplusTrace?: string) {
-  return Effect.failCause(Cause.interrupt(fiberId()));
+  return Effect.failCause(Cause.interrupt(fiberId()))
 }

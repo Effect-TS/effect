@@ -8,7 +8,7 @@ export function as_<R, E, In, L, Z, Z2>(
   a: LazyArg<Z2>,
   __tsplusTrace?: string
 ): Sink<R, E, In, L, Z2> {
-  return self.map(a);
+  return self.map(a)
 }
 
 /**
@@ -16,4 +16,4 @@ export function as_<R, E, In, L, Z, Z2>(
  *
  * @tsplus static ets/Sink/Aspects as
  */
-export const as = Pipeable(as_);
+export const as = Pipeable(as_)

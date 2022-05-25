@@ -9,5 +9,5 @@ export function when<R, E, A>(
   stream: LazyArg<Stream<R, E, A>>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  return Stream.whenEffect(Effect.succeed(b), stream);
+  return Stream.whenEffect(Effect.succeed(b), stream)
 }

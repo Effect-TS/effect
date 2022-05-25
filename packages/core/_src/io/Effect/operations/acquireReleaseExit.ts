@@ -12,5 +12,5 @@ export function acquireReleaseExit<R, E, A, R2, X>(
 ): Effect<R & R2 & Has<Scope>, E, A> {
   return Effect.suspendSucceed(acquire)
     .tap((a) => Effect.addFinalizerExit((exit) => release(a, exit)))
-    .uninterruptible();
+    .uninterruptible()
 }

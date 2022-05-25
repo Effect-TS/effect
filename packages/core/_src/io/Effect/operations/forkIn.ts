@@ -13,7 +13,7 @@ export function forkIn_<R, E, A>(
     restore(self)
       .forkDaemon()
       .tap((fiber) => scope().addFinalizer(fiber.interrupt()))
-  );
+  )
 }
 
 /**
@@ -22,4 +22,4 @@ export function forkIn_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects forkIn
  */
-export const forkIn = Pipeable(forkIn_);
+export const forkIn = Pipeable(forkIn_)

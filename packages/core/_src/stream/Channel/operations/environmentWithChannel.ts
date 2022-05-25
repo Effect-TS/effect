@@ -15,5 +15,5 @@ export function environmentWithChannel<
 >(
   f: (env: Env<R>) => Channel<R1, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 ): Channel<R & R1, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  return Channel.environment<R>().flatMap(f);
+  return Channel.environment<R>().flatMap(f)
 }

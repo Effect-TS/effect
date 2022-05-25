@@ -17,7 +17,7 @@ export function withRuntimeConfig_<R, E, A>(
           ) >
           self <
         Stream.fromEffect(Effect.setRuntimeConfig(currentRuntimeConfig))
-  );
+  )
 }
 
 /**
@@ -26,4 +26,4 @@ export function withRuntimeConfig_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects withRuntimeConfig
  */
-export const withRuntimeConfig = Pipeable(withRuntimeConfig_);
+export const withRuntimeConfig = Pipeable(withRuntimeConfig_)

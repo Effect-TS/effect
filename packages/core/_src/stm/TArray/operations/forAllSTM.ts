@@ -8,7 +8,7 @@ export function forAllSTM_<E, A>(
   self: TArray<A>,
   f: (a: A) => STM<unknown, E, boolean>
 ): STM<unknown, E, boolean> {
-  return self.countSTM(f).map((n) => n === self.length());
+  return self.countSTM(f).map((n) => n === self.length())
 }
 
 /**
@@ -17,4 +17,4 @@ export function forAllSTM_<E, A>(
  *
  * @tsplus static ets/TArray/Aspects forAllSTM
  */
-export const forAllSTM = Pipeable(forAllSTM_);
+export const forAllSTM = Pipeable(forAllSTM_)

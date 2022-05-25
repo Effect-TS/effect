@@ -1,7 +1,7 @@
-import { Decision } from "@effect/core/io/Schedule/Decision";
-import { Interval } from "@effect/core/io/Schedule/Interval";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
-import { beginningOfSecond, endOfSecond, nextSecond } from "@effect/core/io/Schedule/operations/_internal/time";
+import { Decision } from "@effect/core/io/Schedule/Decision"
+import { Interval } from "@effect/core/io/Schedule/Interval"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
+import { beginningOfSecond, endOfSecond, nextSecond } from "@effect/core/io/Schedule/operations/_internal/time"
 
 /**
  * Cron-like schedule that recurs every specified `second` of each minute. It
@@ -21,12 +21,12 @@ export function secondOfMinute(
         new IllegalArgumentException(
           `Invalid argument in: secondOfMinute(${second}). Must be in range 0...59`
         )
-      );
+      )
     }
-    const sec = nextSecond(now, second);
-    const start = Math.max(beginningOfSecond(sec), now);
-    const end = endOfSecond(sec);
-    const interval = Interval(start, end);
-    return Effect.succeedNow(Tuple(state + 1, state, Decision.Continue(interval)));
-  });
+    const sec = nextSecond(now, second)
+    const start = Math.max(beginningOfSecond(sec), now)
+    const end = endOfSecond(sec)
+    const interval = Interval(start, end)
+    return Effect.succeedNow(Tuple(state + 1, state, Decision.Continue(interval)))
+  })
 }

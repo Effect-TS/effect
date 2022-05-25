@@ -15,11 +15,11 @@ export function jittered_<State, Env, In, Out>(
 ): Schedule<State, Env & Has<Random>, In, Out> {
   return self.delayedEffect((duration) =>
     Random.next.map((random) => {
-      const d = duration.millis;
-      const jittered = d * min * (1 - random) + d * max * random;
-      return new Duration(jittered);
+      const d = duration.millis
+      const jittered = d * min * (1 - random) + d * max * random
+      return new Duration(jittered)
     })
-  );
+  )
 }
 
 /**
@@ -31,7 +31,7 @@ export function jittered_<State, Env, In, Out>(
  *
  * @tsplus static ets/Schedule/Aspects jittered
  */
-export const jittered = Pipeable(jittered_);
+export const jittered = Pipeable(jittered_)
 
 /**
  * Returns a new schedule that randomly modifies the size of the intervals of
@@ -46,5 +46,5 @@ export const jittered = Pipeable(jittered_);
 export function jitteredDefault<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>
 ): Schedule<State, Env & Has<Random>, In, Out> {
-  return self.jittered(0.8, 1.2);
+  return self.jittered(0.8, 1.2)
 }

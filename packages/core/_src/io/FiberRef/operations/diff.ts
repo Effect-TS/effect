@@ -1,4 +1,4 @@
-import { concreteFiberRef } from "@effect/core/io/FiberRef/operations/_internal/FiberRefInternal";
+import { concreteFiberRef } from "@effect/core/io/FiberRef/operations/_internal/FiberRefInternal"
 
 /**
  * Constructs a patch describing the updates to a value from an old value and
@@ -7,8 +7,8 @@ import { concreteFiberRef } from "@effect/core/io/FiberRef/operations/_internal/
  * @tsplus fluent ets/FiberRef diff
  */
 export function diff_<Value, Patch>(self: FiberRef<Value, Patch>, oldValue: Value, newValue: Value): Patch {
-  concreteFiberRef(self);
-  return self._diff(oldValue, newValue) as Patch;
+  concreteFiberRef(self)
+  return self._diff(oldValue, newValue) as Patch
 }
 
 /**
@@ -17,4 +17,4 @@ export function diff_<Value, Patch>(self: FiberRef<Value, Patch>, oldValue: Valu
  *
  * @tsplus static ets/FiberRef/Aspects diff
  */
-export const diff = Pipeable(diff_);
+export const diff = Pipeable(diff_)

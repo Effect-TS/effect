@@ -7,7 +7,7 @@ export function refineOrDie_<R, A, E, E1>(
   self: STM<R, E, A>,
   pf: (e: E) => Option<E1>
 ) {
-  return self.refineOrDieWith(pf, identity);
+  return self.refineOrDieWith(pf, identity)
 }
 
 /**
@@ -15,4 +15,4 @@ export function refineOrDie_<R, A, E, E1>(
  *
  * @tsplus static ets/STM/Aspects refineOrDie
  */
-export const refineOrDie = Pipeable(refineOrDie_);
+export const refineOrDie = Pipeable(refineOrDie_)

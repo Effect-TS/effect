@@ -1,5 +1,5 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
-import { RingBufferNew } from "@effect/core/support/RingBufferNew";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import { RingBufferNew } from "@effect/core/support/RingBufferNew"
 
 /**
  * Emits a sliding window of `n` elements.
@@ -17,14 +17,14 @@ export function sliding_<R, E, A>(
       new IllegalArgumentException(
         "Invalid bounds - `chunkSize` and `stepSize` must be greater than 0"
       )
-    );
+    )
   }
   return Stream.succeed(new RingBufferNew<A>(chunkSize)).flatMap((queue) => {
-    concreteStream(self);
+    concreteStream(self)
     return new StreamInternal(
       self.channel >> reader<E, A>(chunkSize, stepSize, queue, 0)
-    );
-  });
+    )
+  })
 }
 
 /**
@@ -32,7 +32,7 @@ export function sliding_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects sliding
  */
-export const sliding = Pipeable(sliding_);
+export const sliding = Pipeable(sliding_)
 
 function reader<E, A>(
   chunkSize: number,
@@ -45,13 +45,13 @@ function reader<E, A>(
     (input: Chunk<A>) =>
       Channel.write(
         input.zipWithIndex().collect(({ tuple: [a, index] }) => {
-          queue.put(a);
+          queue.put(a)
 
-          const currentIndex = queueSize + index + 1;
+          const currentIndex = queueSize + index + 1
 
           return currentIndex < chunkSize || (currentIndex - chunkSize) % stepSize > 0
             ? Option.none
-            : Option.some(queue.toChunk());
+            : Option.some(queue.toChunk())
         })
       ) > reader<E, A>(chunkSize, stepSize, queue, queueSize + input.length),
     (cause) =>
@@ -63,7 +63,7 @@ function reader<E, A>(
         Channel.failCause(cause)
       ),
     () => emitOnStreamEnd<E, A>(chunkSize, stepSize, queue, queueSize, Channel.unit)
-  );
+  )
 }
 
 function emitOnStreamEnd<E, A>(
@@ -75,20 +75,20 @@ function emitOnStreamEnd<E, A>(
   __tsplusTrace?: string
 ): Channel<unknown, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown> {
   if (queueSize < chunkSize) {
-    const items = queue.toChunk();
-    const result = items.isEmpty() ? Chunk.empty<Chunk<A>>() : Chunk.single(items);
-    return Channel.write(result) > channelEnd;
+    const items = queue.toChunk()
+    const result = items.isEmpty() ? Chunk.empty<Chunk<A>>() : Chunk.single(items)
+    return Channel.write(result) > channelEnd
   }
 
-  const lastEmitIndex = queueSize - ((queueSize - chunkSize) % stepSize);
+  const lastEmitIndex = queueSize - ((queueSize - chunkSize) % stepSize)
 
   if (lastEmitIndex === queueSize) {
-    return channelEnd;
+    return channelEnd
   }
 
-  const leftovers = queueSize - (lastEmitIndex - chunkSize + stepSize);
-  const lastItems = queue.toChunk().takeRight(leftovers);
-  const result = lastItems.isEmpty() ? Chunk.empty<Chunk<A>>() : Chunk.single(lastItems);
+  const leftovers = queueSize - (lastEmitIndex - chunkSize + stepSize)
+  const lastItems = queue.toChunk().takeRight(leftovers)
+  const result = lastItems.isEmpty() ? Chunk.empty<Chunk<A>>() : Chunk.single(lastItems)
 
-  return Channel.write(result) > channelEnd;
+  return Channel.write(result) > channelEnd
 }

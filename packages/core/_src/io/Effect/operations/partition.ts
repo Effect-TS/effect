@@ -1,4 +1,4 @@
-import { partitionMap } from "@effect/core/io/Effect/operations/_internal/partitionMap";
+import { partitionMap } from "@effect/core/io/Effect/operations/_internal/partitionMap"
 
 /**
  * Feeds elements of type `A` to a function `f` that returns an effect.
@@ -11,5 +11,5 @@ export function partition<R, E, A, B>(
   f: (a: A) => Effect<R, E, B>,
   __tsplusTrace?: string
 ): Effect<R, never, Tuple<[Chunk<E>, Chunk<B>]>> {
-  return Effect.suspendSucceed(Effect.forEach(as, (a) => f(a).either())).map((chunk) => partitionMap(chunk, identity));
+  return Effect.suspendSucceed(Effect.forEach(as, (a) => f(a).either())).map((chunk) => partitionMap(chunk, identity))
 }

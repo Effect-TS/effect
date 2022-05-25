@@ -1,3 +1,3 @@
 export function next(l: number) {
-  return l + 1;
+  return l + 1
 }

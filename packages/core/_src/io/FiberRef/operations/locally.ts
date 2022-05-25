@@ -1,4 +1,4 @@
-import { IFiberRefLocally } from "@effect/core/io/Effect/definition/primitives";
+import { IFiberRefLocally } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Returns an `Effect` that runs with `value` bound to the current fiber.
@@ -8,7 +8,7 @@ import { IFiberRefLocally } from "@effect/core/io/Effect/definition/primitives";
  * @tsplus fluent ets/FiberRef locally
  */
 export function locally_<A, P>(self: FiberRef<A, P>, value: A, __tsplusTrace?: string) {
-  return <R, E, B>(use: Effect<R, E, B>): Effect<R, E, B> => new IFiberRefLocally(value, self, use, __tsplusTrace);
+  return <R, E, B>(use: Effect<R, E, B>): Effect<R, E, B> => new IFiberRefLocally(value, self, use, __tsplusTrace)
 }
 
 /**
@@ -18,4 +18,4 @@ export function locally_<A, P>(self: FiberRef<A, P>, value: A, __tsplusTrace?: s
  *
  * @tsplus static ets/FiberRef/Aspects locally
  */
-export const locally = Pipeable(locally_);
+export const locally = Pipeable(locally_)

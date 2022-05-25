@@ -8,7 +8,7 @@ export function timedWith_<R, E, A, R1, E1>(
   milliseconds: LazyArg<Effect<R1, E1, number>>,
   __tsplusTrace?: string
 ): Effect<R & R1, E | E1, Tuple<[Duration, A]>> {
-  return self.summarized(milliseconds, (start, end) => new Duration(end - start));
+  return self.summarized(milliseconds, (start, end) => new Duration(end - start))
 }
 
 /**
@@ -16,4 +16,4 @@ export function timedWith_<R, E, A, R1, E1>(
  *
  * @tsplus static ets/Effect/Aspects timedWith
  */
-export const timedWith = Pipeable(timedWith_);
+export const timedWith = Pipeable(timedWith_)

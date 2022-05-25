@@ -7,6 +7,6 @@ export class ProxySupervisor<A> extends Supervisor<A> {
       underlying.unsafeOnEffect,
       underlying.unsafeOnSuspend,
       underlying.unsafeOnResume
-    );
+    )
   }
 }

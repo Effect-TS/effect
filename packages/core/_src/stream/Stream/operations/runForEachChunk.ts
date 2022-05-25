@@ -9,7 +9,7 @@ export function runForEachChunk_<R, E, A, R2, E2, Z>(
   f: (chunk: Chunk<A>) => Effect<R2, E2, Z>,
   __tsplusTrace?: string
 ): Effect<R & R2, E | E2, void> {
-  return self.run(Sink.forEachChunk(f));
+  return self.run(Sink.forEachChunk(f))
 }
 
 /**
@@ -18,4 +18,4 @@ export function runForEachChunk_<R, E, A, R2, E2, Z>(
  *
  * @tsplus static ets/Stream/Aspects runForEachChunk
  */
-export const runForEachChunk = Pipeable(runForEachChunk_);
+export const runForEachChunk = Pipeable(runForEachChunk_)

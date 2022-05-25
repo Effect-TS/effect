@@ -1,4 +1,4 @@
-import { withLatch } from "@effect/core/test/test-utils/Latch";
+import { withLatch } from "@effect/core/test/test-utils/Latch"
 
 describe.concurrent("Fiber", () => {
   describe.concurrent("scoped", () => {
@@ -15,11 +15,11 @@ describe.concurrent("Fiber", () => {
           ))
         .tap(({ fiber }) => Effect.scoped(fiber.scoped()))
         .tap(({ fiber }) => fiber.await())
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
-  });
-});
+      assert.isTrue(result)
+    })
+  })
+})

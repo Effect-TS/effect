@@ -1,4 +1,4 @@
-import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Allows a faster producer to progress independently of a slower consumer by
@@ -16,7 +16,7 @@ export function buffer_<R, E, A>(
   capacity: number,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  const queue = self.toQueueOfElements(capacity);
+  const queue = self.toQueueOfElements(capacity)
   return new StreamInternal(
     Channel.unwrapScoped(queue.map((queue) => {
       const process: Channel<
@@ -32,10 +32,10 @@ export function buffer_<R, E, A>(
           (cause) => Cause.flipCauseOption<E>(cause).fold(() => Channel.unit, (cause) => Channel.failCause(cause)),
           (a) => Channel.write(Chunk.single(a)) > process
         )
-      );
-      return process;
+      )
+      return process
     }))
-  );
+  )
 }
 
 /**
@@ -49,4 +49,4 @@ export function buffer_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects buffer
  */
-export const buffer = Pipeable(buffer_);
+export const buffer = Pipeable(buffer_)

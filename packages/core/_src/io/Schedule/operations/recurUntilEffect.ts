@@ -6,5 +6,5 @@
 export function recurUntilEffect<Env, A>(
   f: (a: A) => Effect.RIO<Env, boolean>
 ): Schedule<void, Env, A, A> {
-  return Schedule.identity<A>().untilInputEffect(f);
+  return Schedule.identity<A>().untilInputEffect(f)
 }

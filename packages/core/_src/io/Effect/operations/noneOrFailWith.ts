@@ -10,5 +10,5 @@ export function noneOrFailWith<E, A>(
   f: (a: A) => E,
   __tsplusTrace?: string
 ): Effect.IO<E, void> {
-  return Effect.getOrFailDiscard(option).flip().mapError(f);
+  return Effect.getOrFailDiscard(option).flip().mapError(f)
 }

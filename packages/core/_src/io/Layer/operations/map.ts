@@ -4,7 +4,7 @@
  * @tsplus fluent ets/Layer map
  */
 export function map_<R, E, A, B>(self: Layer<R, E, A>, f: (a: Env<A>) => Env<B>): Layer<R, E, B> {
-  return self.flatMap((a) => Layer.succeedEnvironment(f(a)));
+  return self.flatMap((a) => Layer.succeedEnvironment(f(a)))
 }
 
 /**
@@ -12,4 +12,4 @@ export function map_<R, E, A, B>(self: Layer<R, E, A>, f: (a: Env<A>) => Env<B>)
  *
  * @tsplus static ets/Layer/Aspects map
  */
-export const map = Pipeable(map_);
+export const map = Pipeable(map_)

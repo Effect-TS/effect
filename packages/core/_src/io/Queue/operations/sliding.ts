@@ -1,4 +1,4 @@
-import { Strategy } from "@effect/core/io/Queue/operations/strategy";
+import { Strategy } from "@effect/core/io/Queue/operations/strategy"
 
 /**
  * Makes a new bounded queue with sliding strategy. When the capacity of the
@@ -17,5 +17,5 @@ export function sliding<A>(
 ): Effect.UIO<Queue<A>> {
   return Effect.succeed(MutableQueue.bounded<A>(requestedCapacity)).flatMap((queue) =>
     Queue.create(queue, Strategy.Sliding())
-  );
+  )
 }

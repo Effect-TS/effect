@@ -9,7 +9,7 @@ export function dropWhileEffect_<R, E, A, R2, E2>(
   f: (a: A) => Effect<R2, E2, boolean>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A> {
-  return self.pipeThrough(Sink.dropWhileEffect(f));
+  return self.pipeThrough(Sink.dropWhileEffect(f))
 }
 
 /**
@@ -18,4 +18,4 @@ export function dropWhileEffect_<R, E, A, R2, E2>(
  *
  * @tsplus static ets/Stream/Aspects dropWhileEffect
  */
-export const dropWhileEffect = Pipeable(dropWhileEffect_);
+export const dropWhileEffect = Pipeable(dropWhileEffect_)

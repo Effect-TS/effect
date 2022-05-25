@@ -8,7 +8,7 @@ export function leftOrFail_<R, E, E2, A1, A2>(
   e: LazyArg<E2>,
   __tsplusTrace?: string
 ): Stream<R, E | E2, A1> {
-  return self.mapEffect((either) => either.fold(Effect.succeedNow, () => Effect.fail(e)));
+  return self.mapEffect((either) => either.fold(Effect.succeedNow, () => Effect.fail(e)))
 }
 
 /**
@@ -16,4 +16,4 @@ export function leftOrFail_<R, E, E2, A1, A2>(
  *
  * @tsplus static ets/Stream/Aspects leftOrFail
  */
-export const leftOrFail = Pipeable(leftOrFail_);
+export const leftOrFail = Pipeable(leftOrFail_)

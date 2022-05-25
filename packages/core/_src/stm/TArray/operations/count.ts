@@ -4,7 +4,7 @@
  * @tsplus fluent ets/TArray count
  */
 export function count_<A>(self: TArray<A>, f: Predicate<A>): USTM<number> {
-  return self.reduce(0, (n, a) => (f(a) ? n + 1 : n));
+  return self.reduce(0, (n, a) => (f(a) ? n + 1 : n))
 }
 
 /**
@@ -12,4 +12,4 @@ export function count_<A>(self: TArray<A>, f: Predicate<A>): USTM<number> {
  *
  * @tsplus static ets/TArray/Aspects count
  */
-export const count = Pipeable(count_);
+export const count = Pipeable(count_)

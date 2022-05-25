@@ -14,28 +14,28 @@ export function and_<A, B>(
     self.value.zip(that.value),
     (environment, effect, parent, fiber) => {
       try {
-        self.unsafeOnStart(environment, effect, parent, fiber);
+        self.unsafeOnStart(environment, effect, parent, fiber)
       } finally {
-        that.unsafeOnStart(environment, effect, parent, fiber);
+        that.unsafeOnStart(environment, effect, parent, fiber)
       }
     },
     (exit, fiber) => {
-      self.unsafeOnEnd(exit, fiber);
-      that.unsafeOnEnd(exit, fiber);
+      self.unsafeOnEnd(exit, fiber)
+      that.unsafeOnEnd(exit, fiber)
     },
     (fiber, effect) => {
-      self.unsafeOnEffect(fiber, effect);
-      that.unsafeOnEffect(fiber, effect);
+      self.unsafeOnEffect(fiber, effect)
+      that.unsafeOnEffect(fiber, effect)
     },
     (fiber) => {
-      self.unsafeOnSuspend(fiber);
-      that.unsafeOnSuspend(fiber);
+      self.unsafeOnSuspend(fiber)
+      that.unsafeOnSuspend(fiber)
     },
     (fiber) => {
-      self.unsafeOnSuspend(fiber);
-      that.unsafeOnSuspend(fiber);
+      self.unsafeOnSuspend(fiber)
+      that.unsafeOnSuspend(fiber)
     }
-  );
+  )
 }
 
 /**
@@ -43,4 +43,4 @@ export function and_<A, B>(
  * the function of the specified supervisor, producing a tuple of the outputs
  * produced by both supervisors.
  */
-export const and = Pipeable(and_);
+export const and = Pipeable(and_)

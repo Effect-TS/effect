@@ -1,4 +1,4 @@
-import { Emit } from "@effect/core/stream/Channel/definition/primitives";
+import { Emit } from "@effect/core/stream/Channel/definition/primitives"
 
 /**
  * Writes an output to the channel.
@@ -8,5 +8,5 @@ import { Emit } from "@effect/core/stream/Channel/definition/primitives";
 export function write<OutElem>(
   out: LazyArg<OutElem>
 ): Channel<unknown, unknown, unknown, unknown, never, OutElem, void> {
-  return new Emit(out);
+  return new Emit(out)
 }

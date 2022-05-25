@@ -8,7 +8,7 @@ export function mapEffectPar_<A, R, E, B>(
   f: (a: A) => Effect<R, E, B>,
   __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
-  return Effect.forEachPar(self, f);
+  return Effect.forEachPar(self, f)
 }
 
 /**
@@ -16,4 +16,4 @@ export function mapEffectPar_<A, R, E, B>(
  *
  * @tsplus static Chunk/Aspects mapEffectPar
  */
-export const mapEffectPar = Pipeable(mapEffectPar_);
+export const mapEffectPar = Pipeable(mapEffectPar_)

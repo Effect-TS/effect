@@ -4,5 +4,5 @@
  * @tsplus static ets/Fiber/Ops succeed
  */
 export function succeed<A>(a: A): Fiber<never, A> {
-  return Fiber.done(Exit.succeed(a));
+  return Fiber.done(Exit.succeed(a))
 }

@@ -8,9 +8,9 @@ export function done<E, A>(
   __tsplusTrace?: string
 ): Effect.IO<E, A> {
   return Effect.suspendSucceed(() => {
-    const exit0 = exit();
+    const exit0 = exit()
     return exit0._tag === "Success"
       ? Effect.succeedNow(exit0.value)
-      : Effect.failCauseNow(exit0.cause);
-  });
+      : Effect.failCauseNow(exit0.cause)
+  })
 }

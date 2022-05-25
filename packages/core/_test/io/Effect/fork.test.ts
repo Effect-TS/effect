@@ -1,14 +1,14 @@
-import { constTrue } from "@tsplus/stdlib/data/Function";
+import { constTrue } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Effect", () => {
   describe.concurrent("fork", () => {
     it("propagates interruption", async () => {
-      const program = Effect.never.fork().flatMap((fiber) => fiber.interrupt());
+      const program = Effect.never.fork().flatMap((fiber) => fiber.interrupt())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isInterrupted());
-    });
+      assert.isTrue(result.isInterrupted())
+    })
 
     it("propagates interruption with zip of defect", async () => {
       const program = Effect.Do()
@@ -22,50 +22,50 @@ describe.concurrent("Effect", () => {
           fiber
             .interrupt()
             .map((exit) => exit.mapErrorCause((cause) => cause.untraced()))
-        );
+        )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isInterrupted());
-    });
-  });
+      assert.isTrue(result.isInterrupted())
+    })
+  })
 
   describe.concurrent("forkWithErrorHandler", () => {
     it("calls provided function when task fails", async () => {
       const program = Deferred.make<never, void>()
         .tap((deferred) => Effect.fail(undefined).forkWithErrorHandler((e) => deferred.succeed(e).asUnit()))
         .flatMap((deferred) => deferred.await())
-        .map(constTrue);
+        .map(constTrue)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
-  });
+      assert.isTrue(result)
+    })
+  })
 
   describe.concurrent("head", () => {
     it("on non empty list", async () => {
-      const program = Effect.succeed(List(1, 2, 3)).head.either();
+      const program = Effect.succeed(List(1, 2, 3)).head.either()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.right(1));
-    });
+      assert.isTrue(result == Either.right(1))
+    })
 
     it("on empty list", async () => {
-      const program = Effect.succeed(List.empty<number>()).head.either();
+      const program = Effect.succeed(List.empty<number>()).head.either()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left(Option.none));
-    });
+      assert.isTrue(result == Either.left(Option.none))
+    })
 
     it("on failure", async () => {
-      const program = Effect.fail("fail").head.either();
+      const program = Effect.fail("fail").head.either()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left(Option.some("fail")));
-    });
-  });
-});
+      assert.isTrue(result == Either.left(Option.some("fail")))
+    })
+  })
+})

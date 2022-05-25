@@ -10,7 +10,7 @@ export function scan_<R, E, A, S>(
   f: (s: S, a: A) => S,
   __tsplusTrace?: string
 ): Stream<R, E, S> {
-  return self.scanEffect(s, (s, a) => Effect.succeedNow(f(s, a)));
+  return self.scanEffect(s, (s, a) => Effect.succeedNow(f(s, a)))
 }
 
 /**
@@ -19,4 +19,4 @@ export function scan_<R, E, A, S>(
  *
  * @tsplus static ets/Stream/Aspects scan
  */
-export const scan = Pipeable(scan_);
+export const scan = Pipeable(scan_)

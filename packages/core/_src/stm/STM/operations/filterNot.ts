@@ -8,5 +8,5 @@ export function filterNot<A, R, E>(
   as: Collection<A>,
   f: (a: A) => STM<R, E, boolean>
 ): STM<R, E, Chunk<A>> {
-  return STM.filter(as, (x) => f(x).map((b) => !b));
+  return STM.filter(as, (x) => f(x).map((b) => !b))
 }

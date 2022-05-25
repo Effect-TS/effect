@@ -1,4 +1,4 @@
-import { concreteRef } from "@effect/core/io/Ref/operations/_internal/RefInternal";
+import { concreteRef } from "@effect/core/io/Ref/operations/_internal/RefInternal"
 
 /**
  * Reads the value from the `Ref`.
@@ -6,6 +6,6 @@ import { concreteRef } from "@effect/core/io/Ref/operations/_internal/RefInterna
  * @tsplus fluent ets/Ref get
  */
 export function get<A>(self: Ref<A>, __tsplusTrace?: string): Effect.UIO<A> {
-  concreteRef(self);
-  return Effect.succeed(self.value.get);
+  concreteRef(self)
+  return Effect.succeed(self.value.get)
 }

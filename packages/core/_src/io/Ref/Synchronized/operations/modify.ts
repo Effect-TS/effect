@@ -1,4 +1,4 @@
-import { concreteSynchronizedRef } from "@effect/core/io/Ref/Synchronized/operations/_internal/SynchronizedRefInternal";
+import { concreteSynchronizedRef } from "@effect/core/io/Ref/Synchronized/operations/_internal/SynchronizedRefInternal"
 
 /**
  * Atomically modifies the `Ref` with the specified function, which computes a
@@ -12,8 +12,8 @@ export function modify_<R, E, A, B>(
   f: (a: A) => Tuple<[B, A]>,
   __tsplusTrace?: string
 ): Effect<R, E, B> {
-  concreteSynchronizedRef(self);
-  return self.modifyEffect((a) => Effect.succeed(f(a)));
+  concreteSynchronizedRef(self)
+  return self.modifyEffect((a) => Effect.succeed(f(a)))
 }
 
 /**
@@ -23,4 +23,4 @@ export function modify_<R, E, A, B>(
  *
  * @tsplus static ets/Ref/Synchronized/Aspects modify
  */
-export const modify = Pipeable(modify_);
+export const modify = Pipeable(modify_)

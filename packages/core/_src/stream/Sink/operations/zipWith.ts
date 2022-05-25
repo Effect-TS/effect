@@ -11,7 +11,7 @@ export function zipWith_<R, R1, E, E1, In, In1 extends In, L, L1 extends L, Z, Z
   f: (z: Z, z1: Z1) => Z2,
   __tsplusTrace?: string
 ): Sink<R & R1, E | E1, In & In1, L1, Z2> {
-  return self.flatMap((z) => that().map((z1) => f(z, z1)));
+  return self.flatMap((z) => that().map((z1) => f(z, z1)))
 }
 
 /**
@@ -21,4 +21,4 @@ export function zipWith_<R, R1, E, E1, In, In1 extends In, L, L1 extends L, Z, Z
  *
  * @tsplus static ets/Sink/Aspects zipWith
  */
-export const zipWith = Pipeable(zipWith_);
+export const zipWith = Pipeable(zipWith_)

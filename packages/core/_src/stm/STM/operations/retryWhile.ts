@@ -8,7 +8,7 @@ export function retryWhile_<R, E, A>(
   self: STM<R, E, A>,
   f: Predicate<A>
 ): STM<R, E, A> {
-  return self.continueOrRetry((a) => (f(a) ? Option.none : Option.some(a)));
+  return self.continueOrRetry((a) => (f(a) ? Option.none : Option.some(a)))
 }
 
 /**
@@ -17,4 +17,4 @@ export function retryWhile_<R, E, A>(
  *
  * @ets_data_first retryWhile_
  */
-export const retryWhile = Pipeable(retryWhile_);
+export const retryWhile = Pipeable(retryWhile_)

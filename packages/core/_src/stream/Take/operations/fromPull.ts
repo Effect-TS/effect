@@ -9,5 +9,5 @@ export function fromPull<R, E, A>(pull: Pull<R, E, A>): Effect.RIO<R, Take<E, A>
   return pull.foldCause(
     (cause) => Cause.flipCauseOption(cause).fold(() => Take.end, Take.failCause),
     Take.chunk
-  );
+  )
 }

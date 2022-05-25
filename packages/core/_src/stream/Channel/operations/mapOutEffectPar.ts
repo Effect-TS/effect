@@ -85,13 +85,13 @@ export function mapOutEffectPar_<
               (outElem) => Channel.write(outElem) > consumer
             )
         )
-      );
-      return consumer;
+      )
+      return consumer
     })
-  );
+  )
 }
 
 /**
  * @tsplus static ets/Channel/Aspects mapOutEffectPar
  */
-export const mapOutEffectPar = Pipeable(mapOutEffectPar_);
+export const mapOutEffectPar = Pipeable(mapOutEffectPar_)

@@ -6,6 +6,6 @@
  */
 export function dieMessage(message: LazyArg<string>): STM<unknown, never, never> {
   return STM.succeed(() => {
-    throw new RuntimeError(message());
-  });
+    throw new RuntimeError(message())
+  })
 }

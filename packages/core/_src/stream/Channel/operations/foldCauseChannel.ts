@@ -1,4 +1,4 @@
-import { ContinuationK, Fold } from "@effect/core/stream/Channel/definition/primitives";
+import { ContinuationK, Fold } from "@effect/core/stream/Channel/definition/primitives"
 
 /**
  * Fold the channel exposing success and full error cause.
@@ -67,7 +67,7 @@ export function foldCauseChannel_<
       OutDone,
       OutDone2 | OutDone3
     >(onSucc, onErr)
-  );
+  )
 }
 
 /**
@@ -75,4 +75,4 @@ export function foldCauseChannel_<
  *
  * @tsplus static ets/Channel/Aspects foldCauseChannel
  */
-export const foldCauseChannel = Pipeable(foldCauseChannel_);
+export const foldCauseChannel = Pipeable(foldCauseChannel_)

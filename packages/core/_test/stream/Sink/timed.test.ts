@@ -3,11 +3,11 @@ describe.concurrent("Sink", () => {
     it("should time execution of a sink", async () => {
       const program = Stream.fromCollection(Chunk(1, 10))
         .mapEffect((i) => Clock.sleep((10).millis).as(i))
-        .run(Sink.$.timed());
+        .run(Sink.$.timed())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.millis >= 10);
-    });
-  });
-});
+      assert.isTrue(result.millis >= 10)
+    })
+  })
+})

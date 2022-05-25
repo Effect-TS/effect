@@ -9,7 +9,7 @@ export function modifyRuntimeConfig_<R, E, A>(
   f: (runtimeConfig: RuntimeConfig) => RuntimeConfig,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return Effect.runtimeConfig.flatMap((runtimeConfig) => self.withRuntimeConfig(f(runtimeConfig)));
+  return Effect.runtimeConfig.flatMap((runtimeConfig) => self.withRuntimeConfig(f(runtimeConfig)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function modifyRuntimeConfig_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects modifyRuntimeConfig
  */
-export const modifyRuntimeConfig = Pipeable(modifyRuntimeConfig_);
+export const modifyRuntimeConfig = Pipeable(modifyRuntimeConfig_)

@@ -9,7 +9,7 @@ export function forAll<R, E, A>(
   f: (a: A) => Effect<R, E, boolean>,
   __tsplusTrace?: string
 ): Effect<R, E, boolean> {
-  return Effect.succeed(as).flatMap((Collection) => loop(Collection[Symbol.iterator](), f));
+  return Effect.succeed(as).flatMap((Collection) => loop(Collection[Symbol.iterator](), f))
 }
 
 function loop<R, E, A>(
@@ -17,8 +17,8 @@ function loop<R, E, A>(
   f: (a: A) => Effect<R, E, boolean>,
   __tsplusTrace?: string
 ): Effect<R, E, boolean> {
-  const next = iterator.next();
+  const next = iterator.next()
   return next.done
     ? Effect.succeedNow(true)
-    : f(next.value).flatMap((b) => b ? Effect.suspendSucceed(loop(iterator, f)) : Effect.succeedNow(b));
+    : f(next.value).flatMap((b) => b ? Effect.suspendSucceed(loop(iterator, f)) : Effect.succeedNow(b))
 }

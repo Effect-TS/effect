@@ -10,5 +10,5 @@ export function head<In>(
     Option.emptyOf<In>(),
     (option: Option<In>) => option.isNone(),
     (option: Option<In>, input) => (option.isSome() ? option : Option.some(input))
-  );
+  )
 }

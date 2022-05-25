@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Splits elements on a delimiter and transforms the splits into desired
@@ -11,10 +11,10 @@ export function splitOnChunk_<R, E, A>(
   delimiter: LazyArg<Chunk<A>>,
   __tsplusTrace?: string
 ): Stream<R, E, Chunk<A>> {
-  concreteStream(self);
+  concreteStream(self)
   return Stream.succeed(delimiter).flatMap(
     (delimiter) => new StreamInternal(self.channel >> next<R, E, A>(delimiter, Option.none, 0))
-  );
+  )
 }
 
 /**
@@ -23,7 +23,7 @@ export function splitOnChunk_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects splitOnChunk
  */
-export const splitOnChunk = Pipeable(splitOnChunk_);
+export const splitOnChunk = Pipeable(splitOnChunk_)
 
 function next<R, E, A>(
   delimiter: Chunk<A>,
@@ -33,27 +33,27 @@ function next<R, E, A>(
 ): Channel<R, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown> {
   return Channel.readWithCause(
     (inputChunk: Chunk<A>) => {
-      const buffer = Chunk.builder<Chunk<A>>();
+      const buffer = Chunk.builder<Chunk<A>>()
 
       const {
         tuple: [carry, delimiterCursor]
       } = inputChunk.reduce(
         Tuple(leftover.getOrElse(Chunk.empty<A>()), delimiterIndex),
         ({ tuple: [carry, delimiterCursor] }, a) => {
-          const concatenated = carry.append(a);
+          const concatenated = carry.append(a)
           if (
             delimiterCursor < delimiter.length &&
             a === delimiter.unsafeGet(delimiterCursor)
           ) {
             if (delimiterCursor + 1 === delimiter.length) {
-              buffer.append(concatenated.take(concatenated.length - delimiter.length));
-              return Tuple(Chunk.empty<A>(), 0);
+              buffer.append(concatenated.take(concatenated.length - delimiter.length))
+              return Tuple(Chunk.empty<A>(), 0)
             }
-            return Tuple(concatenated, delimiterCursor + 1);
+            return Tuple(concatenated, delimiterCursor + 1)
           }
-          return Tuple(concatenated, a === delimiter.unsafeHead() ? 1 : 0);
+          return Tuple(concatenated, a === delimiter.unsafeHead() ? 1 : 0)
         }
-      );
+      )
 
       return (
         Channel.write(buffer.build()) >
@@ -62,7 +62,7 @@ function next<R, E, A>(
             carry.isNonEmpty() ? Option.some(carry) : Option.none,
             delimiterCursor
           )
-      );
+      )
     },
     (cause) =>
       leftover.fold(
@@ -74,5 +74,5 @@ function next<R, E, A>(
         Channel.succeed(done),
         (chunk) => Channel.write(Chunk.single(chunk)) > Channel.succeed(done)
       )
-  );
+  )
 }

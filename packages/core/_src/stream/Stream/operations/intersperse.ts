@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Intersperse stream with provided element.
@@ -10,8 +10,8 @@ export function intersperse_<R, E, A, A2>(
   middle: LazyArg<A2>,
   __tsplusTrace?: string
 ): Stream<R, E, A | A2> {
-  concreteStream(self);
-  return new StreamInternal(self.channel >> writer<R, E, A, A2>(middle(), true));
+  concreteStream(self)
+  return new StreamInternal(self.channel >> writer<R, E, A, A2>(middle(), true))
 }
 
 /**
@@ -19,7 +19,7 @@ export function intersperse_<R, E, A, A2>(
  *
  * @tsplus static ets/Stream/Aspects intersperse
  */
-export const intersperse = Pipeable(intersperse_);
+export const intersperse = Pipeable(intersperse_)
 
 function writer<R, E, A, A2>(
   middle: A2,
@@ -27,22 +27,22 @@ function writer<R, E, A, A2>(
 ): Channel<R, E, Chunk<A>, unknown, E, Chunk<A | A2>, void> {
   return Channel.readWith(
     (chunk: Chunk<A>) => {
-      const builder = Chunk.builder<A | A2>();
-      let flagResult = isFirst;
+      const builder = Chunk.builder<A | A2>()
+      let flagResult = isFirst
 
       chunk.forEach((value) => {
         if (flagResult) {
-          flagResult = false;
-          builder.append(value);
+          flagResult = false
+          builder.append(value)
         } else {
-          builder.append(middle);
-          builder.append(value);
+          builder.append(middle)
+          builder.append(value)
         }
-      });
+      })
 
-      return Channel.write(builder.build()) > writer<R, E, A, A2>(middle, flagResult);
+      return Channel.write(builder.build()) > writer<R, E, A, A2>(middle, flagResult)
     },
     (err) => Channel.fail(err),
     () => Channel.unit
-  );
+  )
 }

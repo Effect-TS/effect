@@ -14,7 +14,7 @@ export function catchSome_<R, E, A, R2, E2, A2>(
         .failureOrCause()
         .fold((x) => f(x).getOrElse(Effect.failCauseNow(cause)), Effect.failCauseNow),
     Effect.succeedNow
-  );
+  )
 }
 
 /**
@@ -22,4 +22,4 @@ export function catchSome_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Effect/Aspects catchSome
  */
-export const catchSome = Pipeable(catchSome_);
+export const catchSome = Pipeable(catchSome_)

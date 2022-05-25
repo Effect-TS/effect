@@ -8,9 +8,9 @@ describe.concurrent("Sink", () => {
         Chunk(6, 7),
         Chunk(8, 9)
       )
-        .run(Sink.take<number>(3).repeat());
+        .run(Sink.take<number>(3).repeat())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
       assert.isTrue(
         result == Chunk(
@@ -19,8 +19,8 @@ describe.concurrent("Sink", () => {
           Chunk(7, 8, 9),
           Chunk.empty<number>()
         )
-      );
-    });
+      )
+    })
 
     it("combinators", async () => {
       const program = Stream.fromChunks(
@@ -33,21 +33,21 @@ describe.concurrent("Sink", () => {
         Sink.sum()
           .repeat()
           .map((chunk) => chunk.reduce(0, (a, b) => a + b))
-      );
+      )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 45);
-    });
+      assert.strictEqual(result, 45)
+    })
 
     it("handles errors", async () => {
       const program = Stream.fromChunks(Chunk(1, 2))
         .run(Sink.fail(undefined).repeat())
-        .either();
+        .either()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left(undefined));
-    });
-  });
-});
+      assert.isTrue(result == Either.left(undefined))
+    })
+  })
+})

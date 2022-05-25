@@ -9,7 +9,7 @@ export function addFinalizer_(
   self: Scope,
   finalizer: LazyArg<Effect.UIO<unknown>>
 ): Effect.UIO<void> {
-  return self.addFinalizerExit(() => finalizer());
+  return self.addFinalizerExit(() => finalizer())
 }
 
 /**
@@ -18,4 +18,4 @@ export function addFinalizer_(
  *
  * @tsplus static ets/Scope/Aspects addFinalizer
  */
-export const addFinalizer = Pipeable(addFinalizer_);
+export const addFinalizer = Pipeable(addFinalizer_)

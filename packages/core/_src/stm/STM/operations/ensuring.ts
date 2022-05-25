@@ -12,7 +12,7 @@ export function ensuring_<R, E, A, R1, B>(
   return self.foldSTM(
     (e) => finalizer > STM.fail(e),
     (a) => finalizer > STM.succeedNow(a)
-  );
+  )
 }
 
 /**
@@ -22,4 +22,4 @@ export function ensuring_<R, E, A, R1, B>(
  *
  * @tsplus static ets/STM/Aspects ensuring
  */
-export const ensuring = Pipeable(ensuring_);
+export const ensuring = Pipeable(ensuring_)

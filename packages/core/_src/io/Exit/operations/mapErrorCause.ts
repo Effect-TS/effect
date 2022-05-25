@@ -1,4 +1,4 @@
-import { Failure } from "@effect/core/io/Exit/definition";
+import { Failure } from "@effect/core/io/Exit/definition"
 
 /**
  * Maps over the cause type.
@@ -11,9 +11,9 @@ export function mapErrorCause_<E, A, E1>(
 ): Exit<E1, A> {
   switch (self._tag) {
     case "Failure":
-      return new Failure(f(self.cause));
+      return new Failure(f(self.cause))
     case "Success":
-      return self;
+      return self
   }
 }
 
@@ -22,4 +22,4 @@ export function mapErrorCause_<E, A, E1>(
  *
  * @tsplus static ets/Exit/Aspects mapErrorCause
  */
-export const mapErrorCause = Pipeable(mapErrorCause_);
+export const mapErrorCause = Pipeable(mapErrorCause_)

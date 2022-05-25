@@ -8,9 +8,9 @@ export function fromChunkQueue<A>(
   __tsplusTrace?: string
 ): Stream<unknown, never, A> {
   return Stream.repeatEffectChunkOption(() => {
-    const queue0 = queue();
+    const queue0 = queue()
     return queue0.take.catchAllCause((cause) =>
       queue0.isShutdown.flatMap((isShutdown) => isShutdown && cause.isInterrupted() ? Pull.end : Pull.failCause(cause))
-    );
-  });
+    )
+  })
 }

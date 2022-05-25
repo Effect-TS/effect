@@ -7,7 +7,7 @@ export function indexWhereSTM_<E, A>(
   self: TArray<A>,
   f: (a: A) => STM<unknown, E, boolean>
 ): STM<unknown, E, number> {
-  return self.indexWhereFromSTM(f, 0);
+  return self.indexWhereFromSTM(f, 0)
 }
 
 /**
@@ -15,4 +15,4 @@ export function indexWhereSTM_<E, A>(
  *
  * @tsplus static ets/TArray/Aspects indexWhereSTM
  */
-export const indexWhereSTM = Pipeable(indexWhereSTM_);
+export const indexWhereSTM = Pipeable(indexWhereSTM_)

@@ -7,5 +7,5 @@ export function fromChunkHub<A>(
   hub: LazyArg<Hub<Chunk<A>>>,
   __tsplusTrace?: string
 ): Stream<unknown, never, A> {
-  return Stream.scoped(hub().subscribe).flatMap((queue) => Stream.fromChunkQueue(queue));
+  return Stream.scoped(hub().subscribe).flatMap((queue) => Stream.fromChunkQueue(queue))
 }

@@ -7,5 +7,5 @@ export function sandbox<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, Cause<E>, A> {
-  return self.foldCauseEffect(Effect.failNow, Effect.succeedNow);
+  return self.foldCauseEffect(Effect.failNow, Effect.succeedNow)
 }

@@ -1,9 +1,9 @@
 describe.concurrent("Stream", () => {
   describe.concurrent("either", () => {
     it("should convert stream elements to Either", async () => {
-      const program = (Stream(1, 2, 3) + Stream.fail("boom")).either().runCollect();
+      const program = (Stream(1, 2, 3) + Stream.fail("boom")).either().runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
       assert.isTrue(
         result == Chunk(
@@ -12,7 +12,7 @@ describe.concurrent("Stream", () => {
           Either.right(3),
           Either.left("boom")
         )
-      );
-    });
-  });
-});
+      )
+    })
+  })
+})

@@ -1,5 +1,5 @@
-import { Decision } from "@effect/core/io/Schedule/Decision";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import { Decision } from "@effect/core/io/Schedule/Decision"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * Returns the composition of this schedule and the specified schedule, by
@@ -33,7 +33,7 @@ export function compose_<State, Env, In, Out, State1, Env1, Out2>(
                 Decision.Continue(lDecision.interval.max(rDecision.interval))
               )
           )
-      ));
+      ))
 }
 
 /**
@@ -44,4 +44,4 @@ export function compose_<State, Env, In, Out, State1, Env1, Out2>(
  *
  * @tsplus static ets/Schedule/Aspects compose
  */
-export const compose = Pipeable(compose_);
+export const compose = Pipeable(compose_)

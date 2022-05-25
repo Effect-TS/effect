@@ -11,5 +11,5 @@ export function repeatEffectChunkOption<R, E, A>(
   return Stream.unfoldChunkEffect(effect, (eff) =>
     eff
       .map((chunk) => Option.some(Tuple(chunk, eff)))
-      .catchAll((option) => option.fold(Effect.none, (e) => Effect.fail(e))));
+      .catchAll((option) => option.fold(Effect.none, (e) => Effect.fail(e))))
 }

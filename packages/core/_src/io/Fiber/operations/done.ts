@@ -1,4 +1,4 @@
-import { makeSynthetic } from "@effect/core/io/Fiber/definition";
+import { makeSynthetic } from "@effect/core/io/Fiber/definition"
 
 /**
  * A fiber that is done with the specified `Exit` value.
@@ -13,5 +13,5 @@ export function done<E, A>(exit: Exit<E, A>): Fiber<E, A> {
     inheritRefs: Effect.unit,
     poll: Effect.succeedNow(Option.some(exit)),
     interruptAs: () => Effect.succeedNow(exit)
-  });
+  })
 }

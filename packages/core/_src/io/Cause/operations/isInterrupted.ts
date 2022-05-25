@@ -6,5 +6,5 @@
 export function isInterrupted<E>(self: Cause<E>): boolean {
   return self
     .find((cause) => (cause.isInterruptType() ? Option.some(undefined) : Option.none))
-    .isSome();
+    .isSome()
 }

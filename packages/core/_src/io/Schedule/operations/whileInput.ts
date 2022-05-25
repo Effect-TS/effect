@@ -9,7 +9,7 @@ export function whileInput_<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>,
   f: Predicate<In>
 ): Schedule<State, Env, In, Out> {
-  return self.check((input, _) => f(input));
+  return self.check((input, _) => f(input))
 }
 
 /**
@@ -18,4 +18,4 @@ export function whileInput_<State, Env, In, Out>(
  *
  * @tsplus static ets/Schedule/Aspects whileInput
  */
-export const whileInput = Pipeable(whileInput_);
+export const whileInput = Pipeable(whileInput_)

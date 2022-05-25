@@ -1,5 +1,5 @@
-export const SemaphoreSym = Symbol.for("@effect/core/io/Semaphore");
-export type SemaphoreSym = typeof SemaphoreSym;
+export const SemaphoreSym = Symbol.for("@effect/core/io/Semaphore")
+export type SemaphoreSym = typeof SemaphoreSym
 
 /**
  * An asynchronous semaphore, which is a generalization of a mutex. Semaphores
@@ -11,14 +11,14 @@ export type SemaphoreSym = typeof SemaphoreSym;
  * @tsplus type ets/Semaphore
  */
 export interface Semaphore {
-  readonly [SemaphoreSym]: SemaphoreSym;
+  readonly [SemaphoreSym]: SemaphoreSym
 }
 
 /**
  * @tsplus type ets/Semaphore/Ops
  */
 export interface SemaphoreOps {}
-export const Semaphore: SemaphoreOps = {};
+export const Semaphore: SemaphoreOps = {}
 
 /**
  * @tsplus type ets/Semaphore/Aspects

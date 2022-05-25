@@ -20,7 +20,7 @@ export function foldEffect_<R, E, A, R2, E2, A2, R3, E3, A3>(
   return self.foldCauseEffect(
     (cause) => cause.failureOrCause<E>().fold(failure, Effect.failCauseNow),
     success
-  );
+  )
 }
 
 /**
@@ -36,4 +36,4 @@ export function foldEffect_<R, E, A, R2, E2, A2, R3, E3, A3>(
  *
  * @tsplus static ets/Effect/Aspects foldEffect_
  */
-export const foldEffect = Pipeable(foldEffect_);
+export const foldEffect = Pipeable(foldEffect_)

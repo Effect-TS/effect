@@ -19,10 +19,10 @@ export function map_<Message, Output, B>(
           annotations
         )
       )
-  };
+  }
 }
 
 /**
  * @tsplus static ets/Logger/Aspects map
  */
-export const map = Pipeable(map_);
+export const map = Pipeable(map_)

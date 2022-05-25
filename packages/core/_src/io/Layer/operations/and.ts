@@ -1,4 +1,4 @@
-import { ILayerZipWithPar } from "@effect/core/io/Layer/definition";
+import { ILayerZipWithPar } from "@effect/core/io/Layer/definition"
 
 /**
  * Combines this layer with the specified layer, producing a new layer that
@@ -18,7 +18,7 @@ export function and_<
   self: Layer<RIn, E, ROut>,
   that: Layer<RIn2, E2, ROut2>
 ): Layer<RIn & RIn2, E | E2, ROut & ROut2> {
-  return new ILayerZipWithPar(self, that, (a, b) => a.merge(b));
+  return new ILayerZipWithPar(self, that, (a, b) => a.merge(b))
 }
 
 /**
@@ -27,4 +27,4 @@ export function and_<
  *
  * @tsplus static ets/Layer/Aspects and
  */
-export const and = Pipeable(and_);
+export const and = Pipeable(and_)

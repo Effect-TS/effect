@@ -1,4 +1,4 @@
-import { makeSynthetic } from "@effect/core/io/Fiber/definition";
+import { makeSynthetic } from "@effect/core/io/Fiber/definition"
 
 /**
  * Collects all fibers into a single fiber producing an in-order list of the
@@ -33,5 +33,5 @@ export function collectAll<E, A>(fibers: Collection<Fiber<E, A>>): Fiber<E, Chun
           (a, b) => a.zipWith(b, (_a, _b) => _b.prepend(_a), Cause.both)
         )
       )
-  });
+  })
 }

@@ -6,8 +6,8 @@
  * @tsplus fluent ets/Metrics/Metric trackSuccessWith
  */
 export function trackSuccessWith_<Type, In, In2, Out>(self: Metric<Type, In, Out>, f: (value: In2) => In) {
-  const updater = (value: In2): Effect.UIO<void> => self.update(f(value));
-  return <R, E, A extends In2>(effect: Effect<R, E, A>, __tsplusTrace?: string): Effect<R, E, A> => effect.tap(updater);
+  const updater = (value: In2): Effect.UIO<void> => self.update(f(value))
+  return <R, E, A extends In2>(effect: Effect<R, E, A>, __tsplusTrace?: string): Effect<R, E, A> => effect.tap(updater)
 }
 
 /**
@@ -17,4 +17,4 @@ export function trackSuccessWith_<Type, In, In2, Out>(self: Metric<Type, In, Out
  *
  * @tsplus static ets/Metrics/Metric/Aspects trackSuccessWith
  */
-export const trackSuccessWith = Pipeable(trackSuccessWith_);
+export const trackSuccessWith = Pipeable(trackSuccessWith_)

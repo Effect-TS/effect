@@ -1,4 +1,4 @@
-import { ISuspendWith } from "@effect/core/io/Effect/definition/primitives";
+import { ISuspendWith } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Returns a lazily constructed effect, whose construction may itself require
@@ -13,5 +13,5 @@ export function suspendSucceedWith<R, E, A>(
   f: (runtimeConfig: RuntimeConfig, fiberId: FiberId) => Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return new ISuspendWith(f, __tsplusTrace);
+  return new ISuspendWith(f, __tsplusTrace)
 }

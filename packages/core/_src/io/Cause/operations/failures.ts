@@ -9,5 +9,5 @@ export function failures<E>(self: Cause<E>): List<E> {
       List.empty<E>(),
       (acc, curr) => curr.isFailType() ? Option.some(acc.prepend(curr.value)) : Option.some(acc)
     )
-    .reverse();
+    .reverse()
 }

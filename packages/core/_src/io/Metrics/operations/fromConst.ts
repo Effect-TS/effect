@@ -9,7 +9,7 @@ export function fromConst_<Type, In, Out>(
   self: Metric<Type, In, Out>,
   input: LazyArg<In>
 ): Metric<Type, unknown, Out> {
-  return self.contramap(input);
+  return self.contramap(input)
 }
 
 /**
@@ -19,4 +19,4 @@ export function fromConst_<Type, In, Out>(
  *
  * @tsplus static ets/Metrics/Metric/Aspects fromConst
  */
-export const fromConst = Pipeable(fromConst_);
+export const fromConst = Pipeable(fromConst_)

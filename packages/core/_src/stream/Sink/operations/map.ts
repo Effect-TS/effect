@@ -1,4 +1,4 @@
-import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Transforms this sink's result.
@@ -10,8 +10,8 @@ export function map_<R, E, In, L, Z, Z2>(
   f: (z: Z) => Z2,
   __tsplusTrace?: string
 ): Sink<R, E, In, L, Z2> {
-  concreteSink(self);
-  return new SinkInternal(self.channel.map(f));
+  concreteSink(self)
+  return new SinkInternal(self.channel.map(f))
 }
 
 /**
@@ -19,4 +19,4 @@ export function map_<R, E, In, L, Z, Z2>(
  *
  * @tsplus static ets/Sink/Aspects map
  */
-export const map = Pipeable(map_);
+export const map = Pipeable(map_)

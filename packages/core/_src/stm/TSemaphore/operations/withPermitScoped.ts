@@ -8,5 +8,5 @@ export function withPermitScoped(
   self: TSemaphore,
   __tsplusTrace?: string
 ): Effect<Has<Scope>, never, void> {
-  return self.withPermitsScoped(1);
+  return self.withPermitsScoped(1)
 }

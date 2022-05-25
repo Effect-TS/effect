@@ -9,5 +9,5 @@ export function noneOrFail<R, E, A, B>(
   return self.foldSTM(
     (e) => STM.fail(Option.some(e)),
     (option) => option.fold(STM.unit, () => STM.fail(Option.none))
-  );
+  )
 }

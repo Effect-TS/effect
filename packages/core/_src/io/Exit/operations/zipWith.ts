@@ -14,20 +14,20 @@ export function zipWith_<E, E1, A, B, C>(
     case "Failure": {
       switch (that._tag) {
         case "Success": {
-          return self;
+          return self
         }
         case "Failure": {
-          return Exit.failCause(g(self.cause, that.cause));
+          return Exit.failCause(g(self.cause, that.cause))
         }
       }
     }
     case "Success": {
       switch (that._tag) {
         case "Success": {
-          return Exit.succeed(f(self.value, that.value));
+          return Exit.succeed(f(self.value, that.value))
         }
         case "Failure": {
-          return that;
+          return that
         }
       }
     }
@@ -40,4 +40,4 @@ export function zipWith_<E, E1, A, B, C>(
  *
  * @tsplus static ets/Exit/Aspects zipWith
  */
-export const zipWith = Pipeable(zipWith_);
+export const zipWith = Pipeable(zipWith_)

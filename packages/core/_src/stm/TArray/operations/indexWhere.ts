@@ -4,7 +4,7 @@
  * @tsplus fluent ets/TArray indexWhere
  */
 export function indexWhere_<A>(self: TArray<A>, f: Predicate<A>): USTM<number> {
-  return self.indexWhereFrom(f, 0);
+  return self.indexWhereFrom(f, 0)
 }
 
 /**
@@ -12,4 +12,4 @@ export function indexWhere_<A>(self: TArray<A>, f: Predicate<A>): USTM<number> {
  *
  * @tsplus static ets/TArray/Aspects indexWhere
  */
-export const indexWhere = Pipeable(indexWhere_);
+export const indexWhere = Pipeable(indexWhere_)

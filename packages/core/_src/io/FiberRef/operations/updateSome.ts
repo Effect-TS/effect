@@ -9,7 +9,7 @@ export function updateSome_<A, P>(
   pf: (a: A) => Option<A>,
   __tsplusTrace?: string
 ): Effect.UIO<void> {
-  return self.modify((v) => Tuple(undefined, pf(v).getOrElse(v)));
+  return self.modify((v) => Tuple(undefined, pf(v).getOrElse(v)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function updateSome_<A, P>(
  *
  * @tsplus static ets/FiberRef/Aspects updateSome
  */
-export const updateSome = Pipeable(updateSome_);
+export const updateSome = Pipeable(updateSome_)

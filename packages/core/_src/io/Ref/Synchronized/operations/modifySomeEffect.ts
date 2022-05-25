@@ -12,7 +12,7 @@ export function modifySomeEffect_<R, E, A, B>(
   pf: (a: A) => Option<Effect<R, E, Tuple<[B, A]>>>,
   __tsplusTrace?: string
 ): Effect<R, E, B> {
-  return self.modifyEffect((v) => pf(v).getOrElse(Effect.succeedNow(Tuple(def, v))));
+  return self.modifyEffect((v) => pf(v).getOrElse(Effect.succeedNow(Tuple(def, v))))
 }
 
 /**
@@ -23,4 +23,4 @@ export function modifySomeEffect_<R, E, A, B>(
  *
  * @tsplus static ets/Ref/Synchronized/Aspects modifySomeEffect
  */
-export const modifySomeEffect = Pipeable(modifySomeEffect_);
+export const modifySomeEffect = Pipeable(modifySomeEffect_)

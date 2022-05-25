@@ -15,7 +15,7 @@ export function rejectEffect_<R, E, A, R1, E1>(
       () => Effect.succeedNow(a),
       (effect) => effect.flatMap(Effect.failNow)
     )
-  );
+  )
 }
 
 /**
@@ -25,4 +25,4 @@ export function rejectEffect_<R, E, A, R1, E1>(
  *
  * @tsplus static ets/Effect/Aspects rejectEffect
  */
-export const rejectEffect = Pipeable(rejectEffect_);
+export const rejectEffect = Pipeable(rejectEffect_)

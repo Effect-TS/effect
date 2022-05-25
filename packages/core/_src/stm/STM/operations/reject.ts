@@ -8,7 +8,7 @@ export function reject_<R, E, A, E1>(
   self: STM<R, E, A>,
   pf: (a: A) => Option<E1>
 ): STM<R, E | E1, A> {
-  return self.rejectSTM((a) => pf(a).map(STM.failNow));
+  return self.rejectSTM((a) => pf(a).map(STM.failNow))
 }
 
 /**
@@ -17,4 +17,4 @@ export function reject_<R, E, A, E1>(
  *
  * @tsplus static ets/STM/Aspects reject
  */
-export const reject = Pipeable(reject_);
+export const reject = Pipeable(reject_)

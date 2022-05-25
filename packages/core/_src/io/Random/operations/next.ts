@@ -3,4 +3,4 @@
  */
 export const next: Effect.UIO<number> = Effect.randomWith(
   (random) => random.next
-);
+)

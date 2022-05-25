@@ -1,8 +1,8 @@
-import type { Semaphore } from "@effect/core/io/Semaphore/definition";
-import { SemaphoreSym } from "@effect/core/io/Semaphore/definition";
+import type { Semaphore } from "@effect/core/io/Semaphore/definition"
+import { SemaphoreSym } from "@effect/core/io/Semaphore/definition"
 
 export class SemaphoreInternal implements Semaphore {
-  readonly [SemaphoreSym]: SemaphoreSym = SemaphoreSym;
+  readonly [SemaphoreSym]: SemaphoreSym = SemaphoreSym
   constructor(readonly semaphore: TSemaphore) {}
 }
 

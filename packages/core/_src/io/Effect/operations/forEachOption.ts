@@ -9,5 +9,5 @@ export function forEachOption<R, E, A, B>(
   f: (a: A) => Effect<R, E, B>,
   __tsplusTrace?: string
 ): Effect<R, E, Option<B>> {
-  return option.fold(Effect.none, (a) => f(a).map(Option.some));
+  return option.fold(Effect.none, (a) => f(a).map(Option.some))
 }

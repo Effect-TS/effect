@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Interrupts the evaluation of this stream when the provided effect completes.
@@ -16,8 +16,8 @@ export function interruptWhen_<R, E, A, R2, E2, Z>(
   effect: LazyArg<Effect<R2, E2, Z>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A> {
-  concreteStream(self);
-  return new StreamInternal(self.channel.interruptWhen(effect));
+  concreteStream(self)
+  return new StreamInternal(self.channel.interruptWhen(effect))
 }
 
 /**
@@ -31,4 +31,4 @@ export function interruptWhen_<R, E, A, R2, E2, Z>(
  *
  * @tsplus static ets/Stream/Aspects interruptWhen
  */
-export const interruptWhen = Pipeable(interruptWhen_);
+export const interruptWhen = Pipeable(interruptWhen_)

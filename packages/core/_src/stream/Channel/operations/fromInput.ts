@@ -1,4 +1,4 @@
-import type { AsyncInputConsumer } from "@effect/core/stream/Channel/SingleProducerAsyncInput";
+import type { AsyncInputConsumer } from "@effect/core/stream/Channel/SingleProducerAsyncInput"
 
 /**
  * @tsplus static ets/Channel/Ops fromInput
@@ -12,5 +12,5 @@ export function fromInput<Err, Elem, Done>(
       (elem) => Channel.write(elem) > fromInput(input),
       (done) => Channel.succeedNow(done)
     )
-  );
+  )
 }

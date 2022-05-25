@@ -1,6 +1,6 @@
-import { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision";
-import { ConcatAll } from "@effect/core/stream/Channel/definition/primitives";
-import { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy";
+import { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision"
+import { ConcatAll } from "@effect/core/stream/Channel/definition/primitives"
+import { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy"
 
 /**
  * Concat sequentially a channel of channels.
@@ -63,5 +63,5 @@ export function concatAllWith<
     () => ChildExecutorDecision.Continue,
     channels,
     identity
-  );
+  )
 }

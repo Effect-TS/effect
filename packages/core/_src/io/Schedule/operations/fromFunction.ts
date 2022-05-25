@@ -7,5 +7,5 @@
 export function fromFunction<A, B>(
   f: (a: A) => B
 ): Schedule<void, unknown, A, B> {
-  return Schedule.identity<A>().map(f);
+  return Schedule.identity<A>().map(f)
 }

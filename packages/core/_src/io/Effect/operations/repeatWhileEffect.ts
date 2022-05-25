@@ -9,7 +9,7 @@ export function repeatWhileEffect_<R, R1, E, A>(
   f: (a: A) => Effect.RIO<R1, boolean>,
   __tsplusTrace?: string
 ): Effect<R & R1, E, A> {
-  return self.repeatUntilEffect((a) => f(a).negate());
+  return self.repeatUntilEffect((a) => f(a).negate())
 }
 
 /**
@@ -18,4 +18,4 @@ export function repeatWhileEffect_<R, R1, E, A>(
  *
  * @tsplus static ets/Effect/Aspects repeatWhileEffect
  */
-export const repeatWhileEffect = Pipeable(repeatWhileEffect_);
+export const repeatWhileEffect = Pipeable(repeatWhileEffect_)

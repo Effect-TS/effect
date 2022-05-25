@@ -5,5 +5,5 @@
  * @tsplus macro pipe
  */
 export function pipeEffect<A, B>(a: A, f: (a: A) => B): B {
-  return f(a);
+  return f(a)
 }

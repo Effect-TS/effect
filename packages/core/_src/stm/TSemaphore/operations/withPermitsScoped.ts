@@ -12,7 +12,7 @@ export function withPermitsScoped_(
   return Effect.acquireReleaseInterruptible(
     self.acquireN(permits).commit(),
     self.releaseN(permits).commit()
-  );
+  )
 }
 
 /**
@@ -21,4 +21,4 @@ export function withPermitsScoped_(
  *
  * @tsplus static ets/TSemaphore/Aspects withPermitsScoped
  */
-export const withPermitsScoped = Pipeable(withPermitsScoped_);
+export const withPermitsScoped = Pipeable(withPermitsScoped_)

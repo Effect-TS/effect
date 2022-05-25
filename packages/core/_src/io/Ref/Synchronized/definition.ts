@@ -1,5 +1,5 @@
-export const SynchronizedRefSym = Symbol.for("@effect/core/io/Ref/Synchronized");
-export type SynchronizedRefSym = typeof SynchronizedRefSym;
+export const SynchronizedRefSym = Symbol.for("@effect/core/io/Ref/Synchronized")
+export type SynchronizedRefSym = typeof SynchronizedRefSym
 
 /**
  * A `Ref.Synchronized` is a purely functional description of a mutable
@@ -15,14 +15,14 @@ export type SynchronizedRefSym = typeof SynchronizedRefSym;
  * @tsplus type ets/Ref/Synchronized
  */
 export interface SynchronizedRef<A> extends Ref<A> {
-  readonly [SynchronizedRefSym]: SynchronizedRefSym;
+  readonly [SynchronizedRefSym]: SynchronizedRefSym
 }
 
 /**
  * @tsplus type ets/Ref/Synchronized/Ops
  */
 export interface SynchronizedRefOps {}
-export const SynchronizedRef: SynchronizedRefOps = {};
+export const SynchronizedRef: SynchronizedRefOps = {}
 
 /**
  * @tsplus type ets/Ref/Synchronized/Aspects

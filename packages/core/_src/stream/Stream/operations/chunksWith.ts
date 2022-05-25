@@ -9,7 +9,7 @@ export function chunksWith_<R, E, A, R1, E1, A1>(
   f: (stream: Stream<R, E, Chunk<A>>) => Stream<R1, E1, Chunk<A1>>,
   __tsplusTrace?: string
 ): Stream<R & R1, E | E1, A1> {
-  return Stream.suspend(f(self.chunks()).unchunks());
+  return Stream.suspend(f(self.chunks()).unchunks())
 }
 
 /**
@@ -18,4 +18,4 @@ export function chunksWith_<R, E, A, R1, E1, A1>(
  *
  * @tsplus static ets/Stream/Aspects chunksWith
  */
-export const chunksWith = Pipeable(chunksWith_);
+export const chunksWith = Pipeable(chunksWith_)

@@ -11,5 +11,5 @@ export function reduceRight_<A, Z, R, E>(
 ): Effect<R, E, Z> {
   return Effect.suspendSucceed(
     Chunk.from(as()).reduceRight(Effect.succeed(z) as Effect<R, E, Z>, (el, acc) => acc.flatMap((a) => f(el, a)))
-  );
+  )
 }

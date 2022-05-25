@@ -17,7 +17,7 @@ export function repeatElementsEither_<R, E, A, S, R2, B>(
     schedule,
     (a) => Either.rightW(a),
     (b) => Either.leftW(b)
-  );
+  )
 }
 
 /**
@@ -30,4 +30,4 @@ export function repeatElementsEither_<R, E, A, S, R2, B>(
  *
  * @tsplus static ets/Stream/Aspects repeatElementsEither
  */
-export const repeatElementsEither = Pipeable(repeatElementsEither_);
+export const repeatElementsEither = Pipeable(repeatElementsEither_)

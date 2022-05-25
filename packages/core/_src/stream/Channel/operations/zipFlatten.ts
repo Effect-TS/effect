@@ -1,4 +1,4 @@
-import type { MergeTuple } from "@tsplus/stdlib/data/Tuple";
+import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
 
 /**
  * Returns a new channel that is the sequential composition of this channel
@@ -35,7 +35,7 @@ export function zipFlatten_<
   OutElem | OutElem1,
   MergeTuple<OutDone, OutDone1>
 > {
-  return self.flatMap((a) => that().map((b) => Tuple.mergeTuple(a, b)));
+  return self.flatMap((a) => that().map((b) => Tuple.mergeTuple(a, b)))
 }
 
 /**
@@ -45,4 +45,4 @@ export function zipFlatten_<
  *
  * @tsplus static ets/Channel/Aspects zipFlatten
  */
-export const zipFlatten = Pipeable(zipFlatten_);
+export const zipFlatten = Pipeable(zipFlatten_)

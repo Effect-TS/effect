@@ -8,7 +8,7 @@ export function retryUntil_<R, E, A>(
   f: Predicate<E>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return self.retryUntilEffect((e) => Effect.succeed(f(e)));
+  return self.retryUntilEffect((e) => Effect.succeed(f(e)))
 }
 
 /**
@@ -16,4 +16,4 @@ export function retryUntil_<R, E, A>(
  *
  * @ets_data_first retryUntil_
  */
-export const retryUntil = Pipeable(retryUntil_);
+export const retryUntil = Pipeable(retryUntil_)

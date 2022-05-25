@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Returns a new stream that only emits elements that are not equal to the
@@ -12,8 +12,8 @@ export function changesWithEffect_<R, E, A, R2, E2>(
   f: (x: A, y: A) => Effect<R2, E2, boolean>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A> {
-  concreteStream(self);
-  return new StreamInternal(self.channel >> writer<R, E, A, R2, E2>(Option.none, f));
+  concreteStream(self)
+  return new StreamInternal(self.channel >> writer<R, E, A, R2, E2>(Option.none, f))
 }
 
 /**
@@ -23,7 +23,7 @@ export function changesWithEffect_<R, E, A, R2, E2>(
  *
  * @tsplus static ets/Stream/Aspects changesWithEffect
  */
-export const changesWithEffect = Pipeable(changesWithEffect_);
+export const changesWithEffect = Pipeable(changesWithEffect_)
 
 function writer<R, E, A, R2, E2>(
   last: Option<A>,
@@ -45,5 +45,5 @@ function writer<R, E, A, R2, E2>(
       ),
     (cause) => Channel.failCause(cause),
     () => Channel.unit
-  );
+  )
 }

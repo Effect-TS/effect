@@ -7,5 +7,5 @@ export function awaitAll(
   fibers: Collection<Fiber<any, any>>,
   __tsplusTrace?: string
 ): Effect.UIO<void> {
-  return Fiber.collectAll(fibers).await().asUnit();
+  return Fiber.collectAll(fibers).await().asUnit()
 }

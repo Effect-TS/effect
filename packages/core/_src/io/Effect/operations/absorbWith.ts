@@ -11,7 +11,7 @@ export function absorbWith_<R, A, E>(
 ) {
   return self
     .sandbox()
-    .foldEffect((cause) => Effect.failNow(cause.squashWith(f)), Effect.succeedNow);
+    .foldEffect((cause) => Effect.failNow(cause.squashWith(f)), Effect.succeedNow)
 }
 
 /**
@@ -20,4 +20,4 @@ export function absorbWith_<R, A, E>(
  *
  * @tsplus static ets/Effect/Aspects absorbWith
  */
-export const absorbWith = Pipeable(absorbWith_);
+export const absorbWith = Pipeable(absorbWith_)

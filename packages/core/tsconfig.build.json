@@ -9,5 +9,8 @@
   },
   "include": [
       "_src/**/*.ts"
+  ],
+  "files": [
+    "./tsplus.prelude.d.ts"
   ]
 }

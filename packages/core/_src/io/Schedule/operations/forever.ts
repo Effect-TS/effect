@@ -1,5 +1,5 @@
-import { Decision } from "@effect/core/io/Schedule/Decision";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import { Decision } from "@effect/core/io/Schedule/Decision"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * Returns a new schedule that loops this one continuously, resetting the
@@ -23,8 +23,8 @@ export function forever<State, Env, In, Out>(
           decision._tag === "Done"
             ? step(now, input, self._initial)
             : Effect.succeedNow(Tuple(state, out, Decision.Continue(decision.interval)))
-        );
+        )
     }
-    return step(now, input, state);
-  });
+    return step(now, input, state)
+  })
 }

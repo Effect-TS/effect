@@ -10,7 +10,7 @@ export function orElseFail_<R, E, E2, A>(
   e: LazyArg<E2>,
   __tsplusTrace?: string
 ): Stream<R, E2, A> {
-  return self | Stream.fail(e);
+  return self | Stream.fail(e)
 }
 
 /**
@@ -20,4 +20,4 @@ export function orElseFail_<R, E, E2, A>(
  *
  * @tsplus static ets/Stream/Aspects orElseFail
  */
-export const orElseFail = Pipeable(orElseFail_);
+export const orElseFail = Pipeable(orElseFail_)

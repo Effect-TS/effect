@@ -8,7 +8,7 @@ export function provideEnvironment_<R, E, A>(
   self: STM<R, E, A>,
   env: LazyArg<Env<R>>
 ): STM<unknown, E, A> {
-  return self.provideSomeEnvironment(env);
+  return self.provideSomeEnvironment(env)
 }
 
 /**
@@ -17,4 +17,4 @@ export function provideEnvironment_<R, E, A>(
  *
  * @tsplus static ets/STM/Aspects provideEnvironment
  */
-export const provideEnvironment = Pipeable(provideEnvironment_);
+export const provideEnvironment = Pipeable(provideEnvironment_)

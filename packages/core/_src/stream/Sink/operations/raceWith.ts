@@ -1,5 +1,5 @@
-import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision";
-import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision"
+import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Runs both sinks in parallel on the input, using the specified merge
@@ -22,10 +22,10 @@ export function raceWith_<R, R1, E, E1, In, In1, L, L1, Z, Z1, Z2>(
       .bind("c2", ({ hub }) => Channel.fromHubManaged(hub))
       .bindValue("reader", ({ hub }) => Channel.toHub(hub))
       .bindValue("writer", ({ c1, c2 }) => {
-        const that0 = that();
-        concreteSink(self);
-        concreteSink(that0);
-        return (c1 >> self.channel).mergeWith(c2 >> that0.channel, leftDone, rightDone);
+        const that0 = that()
+        concreteSink(self)
+        concreteSink(that0)
+        return (c1 >> self.channel).mergeWith(c2 >> that0.channel, leftDone, rightDone)
       })
       .bindValue("channel", ({ reader, writer }) =>
         reader.mergeWith(
@@ -34,7 +34,7 @@ export function raceWith_<R, R1, E, E1, In, In1, L, L1, Z, Z1, Z2>(
           (done) => MergeDecision.done(Effect.done(done))
         ))
       .map(({ channel }) => new SinkInternal(channel))
-  );
+  )
 }
 
 /**
@@ -43,4 +43,4 @@ export function raceWith_<R, R1, E, E1, In, In1, L, L1, Z, Z1, Z2>(
  *
  * @tsplus static ets/Sink/Aspects raceWith
  */
-export const raceWith = Pipeable(raceWith_);
+export const raceWith = Pipeable(raceWith_)

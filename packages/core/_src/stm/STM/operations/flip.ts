@@ -5,5 +5,5 @@
  * @tsplus fluent ets/STM flip
  */
 export function flip<R, E, A>(self: STM<R, E, A>): STM<R, A, E> {
-  return self.foldSTM(STM.succeedNow, STM.failNow);
+  return self.foldSTM(STM.succeedNow, STM.failNow)
 }

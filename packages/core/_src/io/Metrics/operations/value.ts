@@ -4,5 +4,5 @@
  * @tsplus fluent ets/Metrics/Metric value
  */
 export function value<Type, In, Out>(self: Metric<Type, In, Out>, __tsplusTrace?: string): Effect.UIO<Out> {
-  return Effect.succeed(self.unsafeValue(HashSet.empty()));
+  return Effect.succeed(self.unsafeValue(HashSet.empty()))
 }

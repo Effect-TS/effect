@@ -1,4 +1,4 @@
-import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision";
+import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision"
 
 /**
  * Runs both sinks in parallel on the input, returning the result or the error
@@ -23,7 +23,7 @@ export function raceBoth_<R, R1, E, E1, In, In1, L, L1, Z, Z1>(
         Effect.done(thatDone).map(Either.right)
       ),
     capacity
-  );
+  )
 }
 
 /**
@@ -32,4 +32,4 @@ export function raceBoth_<R, R1, E, E1, In, In1, L, L1, Z, Z1>(
  *
  * @tsplus static ets/Sink/Aspects raceBoth
  */
-export const raceBoth = Pipeable(raceBoth_);
+export const raceBoth = Pipeable(raceBoth_)

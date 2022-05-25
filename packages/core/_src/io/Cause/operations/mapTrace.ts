@@ -1,4 +1,4 @@
-import { Both, Cause, Die, Fail, Interrupt, Stackless, Then } from "@effect/core/io/Cause/definition";
+import { Both, Cause, Die, Fail, Interrupt, Stackless, Then } from "@effect/core/io/Cause/definition"
 
 /**
  * Transforms the traces in this cause with the specified function.
@@ -14,7 +14,7 @@ export function mapTrace_<E>(self: Cause<E>, f: (trace: Trace) => Trace): Cause<
     (left, right) => new Then(left, right),
     (left, right) => new Both(left, right),
     (cause, stackless) => new Stackless(cause, stackless)
-  );
+  )
 }
 
 /**
@@ -22,4 +22,4 @@ export function mapTrace_<E>(self: Cause<E>, f: (trace: Trace) => Trace): Cause<
  *
  * @tsplus static ets/Cause/Aspects mapTrace
  */
-export const mapTrace = Pipeable(mapTrace_);
+export const mapTrace = Pipeable(mapTrace_)

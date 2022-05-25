@@ -1,4 +1,4 @@
-import { concreteTake } from "@effect/core/stream/Take/operations/_internal/TakeInternal";
+import { concreteTake } from "@effect/core/stream/Take/operations/_internal/TakeInternal"
 
 /**
  * Effectful version of `Take.fold`.
@@ -15,11 +15,11 @@ export function foldEffect_<R, R1, R2, E, E1, E2, E3, A, Z>(
   value: (chunk: Chunk<A>) => Effect<R2, E3, Z>,
   __tsplusTrace?: string
 ): Effect<R & R1 & R2, E1 | E2 | E3, Z> {
-  concreteTake(self);
+  concreteTake(self)
   return self._exit.foldEffect(
     (cause): Effect<R & R1, E1 | E2, Z> => Cause.flipCauseOption(cause).fold(() => end, error),
     value
-  );
+  )
 }
 
 /**
@@ -30,4 +30,4 @@ export function foldEffect_<R, R1, R2, E, E1, E2, E3, A, Z>(
  *
  * @tsplus static ets/Take/Aspects foldEffect
  */
-export const foldEffect = Pipeable(foldEffect_);
+export const foldEffect = Pipeable(foldEffect_)

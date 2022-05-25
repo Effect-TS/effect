@@ -11,11 +11,11 @@ describe.concurrent("STM", () => {
             .commit()
             .fork())
         .tap(({ tRef1, tRef2 }) => (tRef1.update((n) => n + 1) > tRef2.update((n) => n + 1)).commit())
-        .flatMap(({ sumFiber }) => sumFiber.join());
+        .flatMap(({ sumFiber }) => sumFiber.join())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result === 0 || result === 2);
-    });
-  });
-});
+      assert.isTrue(result === 0 || result === 2)
+    })
+  })
+})

@@ -1,4 +1,4 @@
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * Returns a new schedule that effectfully processes every output from this
@@ -14,7 +14,7 @@ export function tapOutput_<State, Env, In, Out, Env1, X>(
   return makeWithState(
     self._initial,
     (now, input, state) => self._step(now, input, state).tap(({ tuple: [, out] }) => f(out))
-  );
+  )
 }
 
 /**
@@ -23,4 +23,4 @@ export function tapOutput_<State, Env, In, Out, Env1, X>(
  *
  * @tsplus static ets/Schedule/Aspects tapOutput
  */
-export const tapOutput = Pipeable(tapOutput_);
+export const tapOutput = Pipeable(tapOutput_)

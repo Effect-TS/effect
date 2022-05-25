@@ -1,4 +1,4 @@
-import { getOrMakeEntry } from "@effect/core/stm/TRef/operations/_internal/getOrMakeEntry";
+import { getOrMakeEntry } from "@effect/core/stm/TRef/operations/_internal/getOrMakeEntry"
 
 /**
  * Sets the value of the `TRef`.
@@ -7,10 +7,10 @@ import { getOrMakeEntry } from "@effect/core/stm/TRef/operations/_internal/getOr
  */
 export function set_<A>(self: TRef<A>, a: A): USTM<void> {
   return STM.Effect((journal) => {
-    const entry = getOrMakeEntry(self, journal);
-    entry.use((_) => _.unsafeSet(a));
-    return undefined;
-  });
+    const entry = getOrMakeEntry(self, journal)
+    entry.use((_) => _.unsafeSet(a))
+    return undefined
+  })
 }
 
 /**
@@ -18,4 +18,4 @@ export function set_<A>(self: TRef<A>, a: A): USTM<void> {
  *
  * @tsplus static ets/TRef/Aspects set
  */
-export const set = Pipeable(set_);
+export const set = Pipeable(set_)

@@ -12,10 +12,10 @@ export function cachedInvalidate_<R, E, A>(
   __tsplusTrace?: string
 ): Effect.RIO<R, Tuple<[Effect.IO<E, A>, Effect.UIO<void>]>> {
   return Do(($) => {
-    const environment = $(Effect.environment<R>());
-    const cache = $(SynchronizedRef.make<Option<Tuple<[number, Deferred<E, A>]>>>(Option.none));
-    return Tuple(get(self, timeToLive, cache).provideEnvironment(environment), invalidate(cache));
-  });
+    const environment = $(Effect.environment<R>())
+    const cache = $(SynchronizedRef.make<Option<Tuple<[number, Deferred<E, A>]>>>(Option.none))
+    return Tuple(get(self, timeToLive, cache).provideEnvironment(environment), invalidate(cache))
+  })
 }
 
 /**
@@ -26,7 +26,7 @@ export function cachedInvalidate_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects cachedInvalidate
  */
-export const cachedInvalidate = Pipeable(cachedInvalidate_);
+export const cachedInvalidate = Pipeable(cachedInvalidate_)
 
 function compute<R, E, A>(
   self: Effect<R, E, A>,
@@ -34,10 +34,10 @@ function compute<R, E, A>(
   start: number
 ): Effect<R, never, Option<Tuple<[number, Deferred<E, A>]>>> {
   return Do(($) => {
-    const deferred = $(Deferred.make<E, A>());
-    $(self.intoDeferred(deferred));
-    return Option.some(Tuple(start + timeToLive.millis, deferred));
-  });
+    const deferred = $(Deferred.make<E, A>())
+    $(self.intoDeferred(deferred))
+    return Option.some(Tuple(start + timeToLive.millis, deferred))
+  })
 }
 
 function get<R, E, A>(
@@ -59,11 +59,11 @@ function get<R, E, A>(
         )
         .flatMap((a) => a._tag === "None" ? Effect.die("Bug") : restore(a.value.get(1).await()))
     )
-  );
+  )
 }
 
 function invalidate<E, A>(
   cache: SynchronizedRef<Option<Tuple<[number, Deferred<E, A>]>>>
 ): Effect.UIO<void> {
-  return cache.set(Option.none);
+  return cache.set(Option.none)
 }

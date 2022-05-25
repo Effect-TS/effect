@@ -9,7 +9,7 @@ export function provideSomeLayer_<R, E, A, R1 extends Spreadable, E1, A1 extends
   layer: Layer<R1, E1, A1>,
   __tsplusTrace?: string
 ): Effect<R1 & Erase<R, A1>, E | E1, A> {
-  return self.provideLayer(Layer.environment<R1>() + layer);
+  return self.provideLayer(Layer.environment<R1>() + layer)
 }
 
 /**
@@ -18,4 +18,4 @@ export function provideSomeLayer_<R, E, A, R1 extends Spreadable, E1, A1 extends
  *
  * @tsplus static ets/Effect/Aspects provideSomeLayer
  */
-export const provideSomeLayer = Pipeable(provideSomeLayer_);
+export const provideSomeLayer = Pipeable(provideSomeLayer_)

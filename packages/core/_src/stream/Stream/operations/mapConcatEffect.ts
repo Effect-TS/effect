@@ -9,7 +9,7 @@ export function mapConcatEffect_<R, E, A, R2, E2, A2>(
   f: (a: A) => Effect<R2, E2, Collection<A2>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A2> {
-  return self.mapEffect((a) => f(a).map(Chunk.from)).mapConcat(identity);
+  return self.mapEffect((a) => f(a).map(Chunk.from)).mapConcat(identity)
 }
 
 /**
@@ -18,4 +18,4 @@ export function mapConcatEffect_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Stream/Aspects mapConcatEffect
  */
-export const mapConcatEffect = Pipeable(mapConcatEffect_);
+export const mapConcatEffect = Pipeable(mapConcatEffect_)

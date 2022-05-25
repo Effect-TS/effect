@@ -1,4 +1,4 @@
-import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/InternalTArray";
+import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/InternalTArray"
 
 /**
  * Collects all elements into a chunk.
@@ -6,6 +6,6 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
  * @tsplus fluent ets/TArray toChunk
  */
 export function toChunk<A>(self: TArray<A>): USTM<Chunk<A>> {
-  concreteTArray(self);
-  return STM.forEach(self.chunk, (tref) => tref.get());
+  concreteTArray(self)
+  return STM.forEach(self.chunk, (tref) => tref.get())
 }

@@ -9,5 +9,5 @@ export function makeEnvironment<A>(
   initial: LazyArg<Service.Env<A>>,
   __tsplusTrace?: string
 ): Effect<Has<Scope>, never, FiberRef<Service.Env<A>, Service.Patch<A, A>>> {
-  return FiberRef.makeWith(FiberRef.unsafeMakeEnvironment(initial()));
+  return FiberRef.makeWith(FiberRef.unsafeMakeEnvironment(initial()))
 }

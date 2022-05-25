@@ -13,5 +13,5 @@ export function fromSchedule<S, R, A>(
     schedule()
       .driver()
       .map((driver) => Stream.repeatEffectOption(driver.next(undefined)))
-  );
+  )
 }

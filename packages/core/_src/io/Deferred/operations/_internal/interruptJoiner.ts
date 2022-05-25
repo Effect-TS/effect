@@ -1,5 +1,5 @@
-import { concreteDeferred } from "@effect/core/io/Deferred/operations/_internal/DeferredInternal";
-import { DeferredState } from "@effect/core/io/Deferred/operations/_internal/DeferredState";
+import { concreteDeferred } from "@effect/core/io/Deferred/operations/_internal/DeferredInternal"
+import { DeferredState } from "@effect/core/io/Deferred/operations/_internal/DeferredState"
 
 export function interruptJoiner<E, A>(
   self: Deferred<E, A>,
@@ -7,10 +7,10 @@ export function interruptJoiner<E, A>(
   __tsplusTrace?: string
 ): Effect.UIO<void> {
   return Effect.succeed(() => {
-    concreteDeferred(self);
-    const state = self.state.get;
+    concreteDeferred(self)
+    const state = self.state.get
     if (state._tag === "Pending") {
-      self.state.set(DeferredState.pending(state.joiners.filter((j) => j !== joiner)));
+      self.state.set(DeferredState.pending(state.joiners.filter((j) => j !== joiner)))
     }
-  });
+  })
 }

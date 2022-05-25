@@ -5,5 +5,5 @@
  * @tsplus static ets/Layer/Ops environment
  */
 export function environment<R>(): Layer<R, never, R> {
-  return Layer.fromEffectEnvironment(Effect.environment<R>());
+  return Layer.fromEffectEnvironment(Effect.environment<R>())
 }

@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Repeats the entire stream using the specified schedule. The stream will
@@ -17,10 +17,10 @@ export function repeatWith_<R, E, A, S, R2, B, C1, C2>(
 ): Stream<R & R2, E, C1 | C2> {
   return new StreamInternal(
     Channel.fromEffect(schedule().driver()).flatMap((driver) => {
-      const scheduleOutput = driver.last.orDie().map(g);
-      const stream = self.map(f);
-      concreteStream(stream);
-      const process = stream.channel;
+      const scheduleOutput = driver.last.orDie().map(g)
+      const stream = self.map(f)
+      concreteStream(stream)
+      const process = stream.channel
 
       const loop: Channel<
         R & R2,
@@ -38,11 +38,11 @@ export function repeatWith_<R, E, A, S, R2, B, C1, C2>(
               Channel.unwrap(scheduleOutput.map((c) => Channel.write(Chunk.single(c)))) >
               loop
         )
-      );
+      )
 
-      return process > loop;
+      return process > loop
     })
-  );
+  )
 }
 
 /**
@@ -53,4 +53,4 @@ export function repeatWith_<R, E, A, S, R2, B, C1, C2>(
  *
  * @tsplus static ets/Stream/Aspects repeatWith
  */
-export const repeatWith = Pipeable(repeatWith_);
+export const repeatWith = Pipeable(repeatWith_)

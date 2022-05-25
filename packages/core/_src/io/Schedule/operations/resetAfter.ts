@@ -12,7 +12,7 @@ export function resetAfter_<State, Env, In, Out>(
   return self
     .zip(Schedule.elapsed)
     .resetWhen(({ tuple: [, _] }) => (_ as Duration) >= duration)
-    .map((out) => out.get(0) as Out);
+    .map((out) => out.get(0) as Out)
 }
 
 /**
@@ -21,4 +21,4 @@ export function resetAfter_<State, Env, In, Out>(
  *
  * @tsplus static ets/Schedule/Aspects resetAfter
  */
-export const resetAfter = Pipeable(resetAfter_);
+export const resetAfter = Pipeable(resetAfter_)

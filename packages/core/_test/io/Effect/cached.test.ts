@@ -21,7 +21,7 @@ describe.concurrent("Effect", () => {
       // expect(a).toStrictEqual(b)
       // expect(b).not.toStrictEqual(c)
       // expect(c).toStrictEqual(d)
-    });
+    })
 
     it.skip("correctly handles an infinite duration time to live", async () => {
       // const program = Effect.Do()
@@ -39,8 +39,8 @@ describe.concurrent("Effect", () => {
       // expect(a).toBe(0)
       // expect(b).toBe(0)
       // expect(c).toBe(0)
-    });
-  });
+    })
+  })
 
   // TODO: enable after porting TestClock
   describe.concurrent("cachedInvalidate", () => {
@@ -69,6 +69,6 @@ describe.concurrent("Effect", () => {
       // expect(b).not.toStrictEqual(c)
       // expect(c).toStrictEqual(d)
       // expect(d).not.toStrictEqual(e)
-    });
-  });
-});
+    })
+  })
+})

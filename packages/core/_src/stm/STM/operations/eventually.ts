@@ -4,5 +4,5 @@
  * @tsplus fluent ets/STM eventually
  */
 export function eventually<R, E, A>(self: STM<R, E, A>): STM<R, never, A> {
-  return self.foldSTM(() => self.eventually(), STM.succeedNow);
+  return self.foldSTM(() => self.eventually(), STM.succeedNow)
 }

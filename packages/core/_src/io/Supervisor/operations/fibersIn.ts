@@ -10,13 +10,13 @@ export function fibersIn(
     new Supervisor(
       Effect.succeed(() => ref.get),
       (_environment, _effect, _parent, fiber) => {
-        const set = ref.get;
-        ref.set(set.add(fiber));
+        const set = ref.get
+        ref.set(set.add(fiber))
       },
       (_exit, fiber) => {
-        const set = ref.get;
-        ref.set(set.remove(fiber));
+        const set = ref.get
+        ref.set(set.remove(fiber))
       }
     )
-  );
+  )
 }

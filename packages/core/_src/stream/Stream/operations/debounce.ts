@@ -1,21 +1,21 @@
-import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff";
-import { HandoffSignal } from "@effect/core/stream/Stream/operations/_internal/HandoffSignal";
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
-import { SinkEndReason } from "@effect/core/stream/Stream/SinkEndReason";
+import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff"
+import { HandoffSignal } from "@effect/core/stream/Stream/operations/_internal/HandoffSignal"
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import { SinkEndReason } from "@effect/core/stream/Stream/SinkEndReason"
 
-type DebounceState<E, A> = NotStarted | Previous<A> | Current<E, A>;
+type DebounceState<E, A> = NotStarted | Previous<A> | Current<E, A>
 
 class NotStarted {
-  readonly _tag = "NotStarted";
+  readonly _tag = "NotStarted"
 }
 
 class Previous<A> {
-  readonly _tag = "Previous";
+  readonly _tag = "Previous"
   constructor(readonly fiber: Fiber<never, Chunk<A>>) {}
 }
 
 class Current<E, A> {
-  readonly _tag = "Current";
+  readonly _tag = "Current"
   constructor(readonly fiber: Fiber<E, HandoffSignal<void, E, A>>) {}
 }
 
@@ -45,7 +45,7 @@ export function debounce_<R, E, A>(
         .bind("handoff", () => Handoff.make<HandoffSignal<void, E, A>>())
         .map(({ duration, handoff }) => {
           function enqueue(last: Chunk<A>, __tsplusTrace?: string) {
-            return grafter(Clock.sleep(duration).as(last).fork()).map((fiber) => consumer(new Previous(fiber)));
+            return grafter(Clock.sleep(duration).as(last).fork()).map((fiber) => consumer(new Previous(fiber)))
           }
 
           const producer: Channel<
@@ -70,7 +70,7 @@ export function debounce_<R, E, A>(
               Channel.fromEffect(
                 handoff.offer(HandoffSignal.End(SinkEndReason.UpstreamEnd))
               )
-          );
+          )
 
           function consumer(
             state: DebounceState<E, A>,
@@ -82,31 +82,31 @@ export function debounce_<R, E, A>(
                   return handoff.take().map((signal) => {
                     switch (signal._tag) {
                       case "Emit": {
-                        return Channel.unwrap(enqueue(signal.elements));
+                        return Channel.unwrap(enqueue(signal.elements))
                       }
                       case "Halt": {
-                        return Channel.failCause(signal.error);
+                        return Channel.failCause(signal.error)
                       }
                       case "End": {
-                        return Channel.unit;
+                        return Channel.unit
                       }
                     }
-                  });
+                  })
                 }
                 case "Current": {
                   return state.fiber.join().map((signal) => {
                     switch (signal._tag) {
                       case "Emit": {
-                        return Channel.unwrap(enqueue(signal.elements));
+                        return Channel.unwrap(enqueue(signal.elements))
                       }
                       case "Halt": {
-                        return Channel.failCause(signal.error);
+                        return Channel.failCause(signal.error)
                       }
                       case "End": {
-                        return Channel.unit;
+                        return Channel.unit
                       }
                     }
-                  });
+                  })
                 }
                 case "Previous": {
                   return state.fiber.join().raceWith(
@@ -125,36 +125,36 @@ export function debounce_<R, E, A>(
                         (signal) => {
                           switch (signal._tag) {
                             case "Emit": {
-                              return previous.interrupt() > enqueue(signal.elements);
+                              return previous.interrupt() > enqueue(signal.elements)
                             }
                             case "Halt": {
                               return previous
                                 .interrupt()
-                                .as(Channel.failCause(signal.error));
+                                .as(Channel.failCause(signal.error))
                             }
                             case "End": {
                               return previous
                                 .join()
-                                .map((chunk) => Channel.write(chunk) > Channel.unit);
+                                .map((chunk) => Channel.write(chunk) > Channel.unit)
                             }
                           }
                         }
                       )
-                  );
+                  )
                 }
               }
-            });
+            })
           }
 
-          concreteStream(self);
+          concreteStream(self)
 
           return (
             Stream.scoped((self.channel >> producer).runScoped().fork()) >
               new StreamInternal(consumer(new NotStarted()))
-          );
+          )
         })
     )
-  );
+  )
 }
 
 /**
@@ -171,4 +171,4 @@ export function debounce_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects debounce
  */
-export const debounce = Pipeable(debounce_);
+export const debounce = Pipeable(debounce_)

@@ -3,112 +3,112 @@ describe.concurrent("Stream", () => {
     it("values", async () => {
       const words = Chunk.fill(10, () => Chunk.range(0, 10))
         .flatten()
-        .map((n) => n.toString());
+        .map((n) => n.toString())
       const program = Stream.fromCollection(words)
         .groupByKey(identity, 8192)
         .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect().map((c) => Tuple(k, c.size).toNative())))
         .runCollect()
-        .map((chunk) => new Map([...chunk]));
+        .map((chunk) => new Map([...chunk]))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
       const expected = new Map([
         ...Chunk.range(0, 10).map((n) => Tuple(n.toString(), 10).toNative())
-      ]);
+      ])
 
-      assert.deepStrictEqual(result, expected);
-    });
+      assert.deepStrictEqual(result, expected)
+    })
 
     it("first", async () => {
       const words = Chunk.fill(10, () => Chunk.range(0, 10))
         .flatten()
-        .map((n) => n.toString());
+        .map((n) => n.toString())
       const program = Stream.fromCollection(words)
         .groupByKey(identity, 1050)
         .first(2)
         .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect().map((c) => Tuple(k, c.size).toNative())))
         .runCollect()
-        .map((chunk) => new Map([...chunk]));
+        .map((chunk) => new Map([...chunk]))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
       const expected = new Map([
         ...Chunk.range(0, 1).map((n) => Tuple(n.toString(), 10).toNative())
-      ]);
+      ])
 
-      assert.deepStrictEqual(result, expected);
-    });
+      assert.deepStrictEqual(result, expected)
+    })
 
     it("filter", async () => {
-      const words = Chunk.fill(10, () => Chunk.range(0, 10)).flatten();
+      const words = Chunk.fill(10, () => Chunk.range(0, 10)).flatten()
       const program = Stream.fromCollection(words)
         .groupByKey(identity, 1050)
         .filter((n) => n <= 5)
         .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect().map((c) => Tuple(k, c.size).toNative())))
         .runCollect()
-        .map((chunk) => new Map([...chunk]));
+        .map((chunk) => new Map([...chunk]))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
       const expected = new Map([
         ...Chunk.range(0, 5).map((n) => Tuple(n, 10).toNative())
-      ]);
+      ])
 
-      assert.deepStrictEqual(result, expected);
-    });
+      assert.deepStrictEqual(result, expected)
+    })
 
     it("outer errors", async () => {
-      const words = Chunk("abc", "test", "test", "foo");
+      const words = Chunk("abc", "test", "test", "foo")
       const program = (Stream.fromCollection(words) + Stream.fail("boom"))
         .groupByKey(identity)
         .mergeGroupBy((_, s) => s.drain())
         .runCollect()
-        .either();
+        .either()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left("boom"));
-    });
-  });
+      assert.isTrue(result == Either.left("boom"))
+    })
+  })
 
   describe.concurrent("grouped", () => {
     it("sanity", async () => {
       const program = Stream(1, 2, 3, 4, 5)
         .grouped(2)
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(Chunk(1, 2), Chunk(3, 4), Chunk(5)));
-    });
+      assert.isTrue(result == Chunk(Chunk(1, 2), Chunk(3, 4), Chunk(5)))
+    })
 
     it("group size is correct", async () => {
       const program = Stream.range(0, 100)
         .grouped(10)
         .map((chunk) => chunk.size)
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk.fill(10, () => 10));
-    });
+      assert.isTrue(result == Chunk.fill(10, () => 10))
+    })
 
     it("doesn't emit empty chunks", async () => {
-      const program = Stream.fromCollection(Chunk.empty<number>()).grouped(5).runCollect();
+      const program = Stream.fromCollection(Chunk.empty<number>()).grouped(5).runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty());
-    });
+      assert.isTrue(result.isEmpty())
+    })
 
     it("is equivalent to Chunk#grouped", async () => {
-      const stream = Stream.range(1, 10);
+      const stream = Stream.range(1, 10)
       const program = Effect.Do()
         .bind("result1", () => stream.grouped(2).runCollect())
         .bind("partial", () => stream.runCollect())
-        .bindValue("result2", ({ partial }) => partial.grouped(2));
+        .bindValue("result2", ({ partial }) => partial.grouped(2))
 
-      const { result1, result2 } = await program.unsafeRunPromise();
+      const { result1, result2 } = await program.unsafeRunPromise()
 
-      assert.isTrue(result1 == result2);
-    });
+      assert.isTrue(result1 == result2)
+    })
 
     it("emits elements properly when a failure occurs", async () => {
       const program = Effect.Do()
@@ -120,14 +120,14 @@ describe.concurrent("Stream", () => {
             .mapEffect((chunk) => ref.update((cs) => cs.append(chunk)))
             .runCollect()
             .either())
-        .bind("result", ({ ref }) => ref.get());
+        .bind("result", ({ ref }) => ref.get())
 
-      const { either, result } = await program.unsafeRunPromise();
+      const { either, result } = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(Chunk(1, 2, 3), Chunk(4, 5, 6), Chunk(7, 8)));
-      assert.isTrue(either == Either.left("ouch"));
-    });
-  });
+      assert.isTrue(result == Chunk(Chunk(1, 2, 3), Chunk(4, 5, 6), Chunk(7, 8)))
+      assert.isTrue(either == Either.left("ouch"))
+    })
+  })
 
   // TODO(Mike/Max): implement after TestClock
   // describe.concurrent("groupedWithin", () => {
@@ -206,4 +206,4 @@ describe.concurrent("Stream", () => {
   //     )
   //   })
   // })
-});
+})

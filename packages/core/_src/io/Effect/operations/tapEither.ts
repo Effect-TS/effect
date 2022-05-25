@@ -15,7 +15,7 @@ export function tapEither_<R, E, A, R2, E2, X>(
         () => Effect.failCauseNow(cause)
       ),
     (a) => f(Either.right(a)).as(a)
-  );
+  )
 }
 
 /**
@@ -23,4 +23,4 @@ export function tapEither_<R, E, A, R2, E2, X>(
  *
  * @tsplus static ets/Effect/Aspects tapEither
  */
-export const tapEither = Pipeable(tapEither_);
+export const tapEither = Pipeable(tapEither_)

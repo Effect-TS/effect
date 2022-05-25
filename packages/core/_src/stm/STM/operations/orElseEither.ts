@@ -9,7 +9,7 @@ export function orElseEither_<R, E, A, R1, E1, B>(
   self: STM<R, E, A>,
   that: LazyArg<STM<R1, E1, B>>
 ): STM<R & R1, E | E1, Either<A, B>> {
-  return self.map(Either.left) | that().map(Either.right);
+  return self.map(Either.left) | that().map(Either.right)
 }
 
 /**
@@ -19,4 +19,4 @@ export function orElseEither_<R, E, A, R1, E1, B>(
  *
  * @tsplus static ets/STM/Aspects orElseEither
  */
-export const orElseEither = Pipeable(orElseEither_);
+export const orElseEither = Pipeable(orElseEither_)

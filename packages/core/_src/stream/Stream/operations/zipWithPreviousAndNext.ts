@@ -24,5 +24,5 @@ export function zipWithPreviousAndNext<R, E, A>(
           curr,
           next.map((tuple) => tuple.get(1))
         )
-    );
+    )
 }

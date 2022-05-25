@@ -11,5 +11,5 @@ export function cond<E, A>(
   result: LazyArg<A>,
   error: LazyArg<E>
 ): STM<unknown, E, A> {
-  return STM.suspend(() => (predicate() ? STM.succeed(result) : STM.fail(error)));
+  return STM.suspend(() => (predicate() ? STM.succeed(result) : STM.fail(error)))
 }

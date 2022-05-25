@@ -1,11 +1,11 @@
-import type { AtomicHub } from "@effect/core/io/Hub/operations/_internal/AtomicHub";
-import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription";
-import { unsafePollAllSubscription } from "@effect/core/io/Hub/operations/_internal/unsafePollAllSubscription";
-import { unsafePollN } from "@effect/core/io/Hub/operations/_internal/unsafePollN";
-import { unsafeRemove } from "@effect/core/io/Hub/operations/_internal/unsafeRemove";
-import type { Strategy } from "@effect/core/io/Hub/operations/strategy";
-import { _In, _Out, QueueSym } from "@effect/core/io/Queue/definition";
-import { unsafePollAll } from "@effect/core/io/Queue/operations/_internal/unsafePollAll";
+import type { AtomicHub } from "@effect/core/io/Hub/operations/_internal/AtomicHub"
+import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription"
+import { unsafePollAllSubscription } from "@effect/core/io/Hub/operations/_internal/unsafePollAllSubscription"
+import { unsafePollN } from "@effect/core/io/Hub/operations/_internal/unsafePollN"
+import { unsafeRemove } from "@effect/core/io/Hub/operations/_internal/unsafeRemove"
+import type { Strategy } from "@effect/core/io/Hub/operations/strategy"
+import { _In, _Out, QueueSym } from "@effect/core/io/Queue/definition"
+import { unsafePollAll } from "@effect/core/io/Queue/operations/_internal/unsafePollAll"
 
 /**
  * Creates a subscription with the specified strategy.
@@ -25,7 +25,7 @@ export function makeSubscription<A>(
       new AtomicBoolean(false),
       strategy
     )
-  );
+  )
 }
 
 /**
@@ -48,12 +48,12 @@ export function unsafeMakeSubscription<A>(
     shutdownHook,
     shutdownFlag,
     strategy
-  );
+  )
 }
 
 class UnsafeMakeSubscriptionImplementation<A> implements Dequeue<A> {
-  readonly [QueueSym]: QueueSym = QueueSym;
-  readonly [_Out]!: () => A;
+  readonly [QueueSym]: QueueSym = QueueSym
+  readonly [_Out]!: () => A
 
   constructor(
     private hub: AtomicHub<A>,
@@ -65,92 +65,92 @@ class UnsafeMakeSubscriptionImplementation<A> implements Dequeue<A> {
     private strategy: Strategy<A>
   ) {}
 
-  capacity: number = this.hub.capacity;
+  capacity: number = this.hub.capacity
 
   size: Effect.UIO<number> = Effect.suspendSucceed(
     this.shutdownFlag.get
       ? Effect.interrupt
       : Effect.succeedNow(this.subscription.size())
-  );
+  )
 
-  awaitShutdown: Effect.UIO<void> = this.shutdownHook.await();
+  awaitShutdown: Effect.UIO<void> = this.shutdownHook.await()
 
-  isShutdown: Effect.UIO<boolean> = Effect.succeed(this.shutdownFlag.get);
+  isShutdown: Effect.UIO<boolean> = Effect.succeed(this.shutdownFlag.get)
 
   shutdown: Effect.UIO<void> = Effect.suspendSucceedWith((_, fiberId) => {
-    this.shutdownFlag.set(true);
+    this.shutdownFlag.set(true)
     return Effect.whenEffect(
       this.shutdownHook.succeed(undefined),
       Effect.forEachPar(unsafePollAll(this.pollers), (deferred) => deferred.interruptAs(fiberId)) >
         Effect.succeed(this.subscription.unsubscribe()) >
         Effect.succeed(this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers))
-    ).asUnit();
-  }).uninterruptible();
+    ).asUnit()
+  }).uninterruptible()
 
   offer(_: never, __tsplusTrace?: string): Effect.UIO<boolean> {
-    return Effect.succeedNow(false);
+    return Effect.succeedNow(false)
   }
 
   offerAll(_: Collection<never>, __tsplusTrace?: string): Effect.UIO<boolean> {
-    return Effect.succeedNow(false);
+    return Effect.succeedNow(false)
   }
 
   take: Effect.UIO<A> = Effect.suspendSucceedWith((_, fiberId) => {
     if (this.shutdownFlag.get) {
-      return Effect.interrupt;
+      return Effect.interrupt
     }
 
     const message = this.pollers.isEmpty
       ? this.subscription.poll(EmptyMutableQueue)
-      : EmptyMutableQueue;
+      : EmptyMutableQueue
 
     if (message === EmptyMutableQueue) {
-      const deferred = Deferred.unsafeMake<never, A>(fiberId);
+      const deferred = Deferred.unsafeMake<never, A>(fiberId)
 
       return Effect.suspendSucceed(() => {
-        this.pollers.offer(deferred);
+        this.pollers.offer(deferred)
 
-        this.subscribers.add(Tuple(this.subscription, this.pollers));
+        this.subscribers.add(Tuple(this.subscription, this.pollers))
         this.strategy.unsafeCompletePollers(
           this.hub,
           this.subscribers,
           this.subscription,
           this.pollers
-        );
-        return this.shutdownFlag.get ? Effect.interrupt : deferred.await();
-      }).onInterrupt(() => Effect.succeed(unsafeRemove(this.pollers, deferred)));
+        )
+        return this.shutdownFlag.get ? Effect.interrupt : deferred.await()
+      }).onInterrupt(() => Effect.succeed(unsafeRemove(this.pollers, deferred)))
     } else {
-      this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers);
-      return Effect.succeedNow(message);
+      this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
+      return Effect.succeedNow(message)
     }
-  });
+  })
 
   takeAll: Effect.UIO<Chunk<A>> = Effect.suspendSucceed(() => {
     if (this.shutdownFlag.get) {
-      return Effect.interrupt;
+      return Effect.interrupt
     }
 
     const as = this.pollers.isEmpty
       ? unsafePollAllSubscription(this.subscription)
-      : Chunk.empty<A>();
+      : Chunk.empty<A>()
 
-    this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers);
+    this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
 
-    return Effect.succeedNow(as);
-  });
+    return Effect.succeedNow(as)
+  })
 
   takeUpTo(n: number): Effect.UIO<Chunk<A>> {
     return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
-        return Effect.interrupt;
+        return Effect.interrupt
       }
 
       const as = this.pollers.isEmpty
         ? unsafePollN(this.subscription, n)
-        : Chunk.empty<A>();
+        : Chunk.empty<A>()
 
-      this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers);
-      return Effect.succeedNow(as);
-    });
+      this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
+      return Effect.succeedNow(as)
+    })
   }
 }

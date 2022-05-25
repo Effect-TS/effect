@@ -1,4 +1,4 @@
-import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Like `unfoldChunkEffect`, but allows the emission of values to end one step
@@ -12,7 +12,7 @@ export function paginateChunkEffect<S, R, E, A>(
   f: (s: S) => Effect<R, E, Tuple<[Chunk<A>, Option<S>]>>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  return new StreamInternal(Channel.suspend(loop(s, f)));
+  return new StreamInternal(Channel.suspend(loop(s, f)))
 }
 
 function loop<S, R, E, A>(
@@ -27,5 +27,5 @@ function loop<S, R, E, A>(
         (s) => Channel.write(as) > loop(s, f)
       )
     )
-  );
+  )
 }

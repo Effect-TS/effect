@@ -1,16 +1,16 @@
 export const StreamTimeoutErrorSym = Symbol.for(
   "@effect/core/stream/Stream/StreamTimeoutError"
-);
+)
 
 export class StreamTimeoutError {
-  readonly [StreamTimeoutErrorSym] = "StreamTimeoutError";
+  readonly [StreamTimeoutErrorSym] = "StreamTimeoutError"
   constructor(readonly message?: string) {}
 }
 
 export function isStreamTimeoutError(u: unknown): u is StreamTimeoutError {
   return (
     u instanceof StreamTimeoutError && u[StreamTimeoutErrorSym] === "StreamTimeoutError"
-  );
+  )
 }
 
 /**
@@ -31,7 +31,7 @@ export function timeoutTo_<R, E, A, R2, E2, A2>(
       cause.isDieType() && isStreamTimeoutError(cause.value)
         ? Option.some(that())
         : Option.none
-    );
+    )
 }
 
 /**
@@ -40,4 +40,4 @@ export function timeoutTo_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Stream/Aspects timeoutTo
  */
-export const timeoutTo = Pipeable(timeoutTo_);
+export const timeoutTo = Pipeable(timeoutTo_)

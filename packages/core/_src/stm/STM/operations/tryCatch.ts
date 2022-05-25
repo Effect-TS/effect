@@ -10,9 +10,9 @@ export function tryCatch<E, A>(
 ): STM<unknown, E, A> {
   return STM.suspend(() => {
     try {
-      return STM.succeed(attempt);
+      return STM.succeed(attempt)
     } catch (error) {
-      return STM.fail(onThrow(error));
+      return STM.fail(onThrow(error))
     }
-  });
+  })
 }

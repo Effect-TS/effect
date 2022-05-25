@@ -1,4 +1,4 @@
-import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Accesses the environment of the sink in the context of a sink.
@@ -12,10 +12,10 @@ export function environmentWithSink<R0, R, E, In, L, Z>(
   return new SinkInternal(
     Channel.unwrap(
       Effect.environmentWith((r: Env<R0>) => {
-        const sink = f(r);
-        concreteSink(sink);
-        return sink.channel;
+        const sink = f(r)
+        concreteSink(sink)
+        return sink.channel
       })
     )
-  );
+  )
 }

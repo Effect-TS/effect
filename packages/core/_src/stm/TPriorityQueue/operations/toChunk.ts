@@ -1,4 +1,4 @@
-import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue";
+import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue"
 
 /**
  * Collects all values into a chunk.
@@ -6,12 +6,12 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
  * @tsplus fluent ets/TPriorityQueue toChunk
  */
 export function toChunk<A>(self: TPriorityQueue<A>): USTM<Chunk<A>> {
-  concreteTPriorityQueue(self);
+  concreteTPriorityQueue(self)
   return self.map.modify((sortedMap) => {
-    const builder = Chunk.builder<Chunk<A>>();
+    const builder = Chunk.builder<Chunk<A>>()
     for (const { tuple: [, as] } of sortedMap) {
-      builder.append(as);
+      builder.append(as)
     }
-    return Tuple(builder.build().flatten(), sortedMap);
-  });
+    return Tuple(builder.build().flatten(), sortedMap)
+  })
 }

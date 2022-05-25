@@ -10,9 +10,9 @@ export function fold_<E, A, Z>(
 ): Z {
   switch (self._tag) {
     case "Failure":
-      return failed(self.cause);
+      return failed(self.cause)
     case "Success":
-      return completed(self.value);
+      return completed(self.value)
   }
 }
 
@@ -21,4 +21,4 @@ export function fold_<E, A, Z>(
  *
  * @tsplus static ets/Exit/Aspects fold
  */
-export const fold = Pipeable(fold_);
+export const fold = Pipeable(fold_)

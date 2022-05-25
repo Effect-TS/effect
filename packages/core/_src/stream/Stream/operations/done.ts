@@ -7,5 +7,5 @@ export function done<E, A>(
   exit: LazyArg<Exit<E, A>>,
   __tsplusTrace?: string
 ): Stream<unknown, E, A> {
-  return Stream.fromEffect(Effect.done(exit));
+  return Stream.fromEffect(Effect.done(exit))
 }

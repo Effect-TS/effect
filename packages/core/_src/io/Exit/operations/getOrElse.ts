@@ -6,9 +6,9 @@
 export function getOrElse_<E, A>(self: Exit<E, A>, orElse: (cause: Cause<E>) => A): A {
   switch (self._tag) {
     case "Failure":
-      return orElse(self.cause);
+      return orElse(self.cause)
     case "Success":
-      return self.value;
+      return self.value
   }
 }
 
@@ -17,4 +17,4 @@ export function getOrElse_<E, A>(self: Exit<E, A>, orElse: (cause: Cause<E>) => 
  *
  * @tsplus static ets/Exit/Aspects getOrElse
  */
-export const getOrElse = Pipeable(getOrElse_);
+export const getOrElse = Pipeable(getOrElse_)

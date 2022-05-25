@@ -11,7 +11,7 @@ export function interleave_<R, E, A, R2, E2, A2>(
   that: LazyArg<Stream<R2, E2, A2>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A | A2> {
-  return self.interleaveWith(that, Stream(true, false).forever());
+  return self.interleaveWith(that, Stream(true, false).forever())
 }
 
 /**
@@ -22,4 +22,4 @@ export function interleave_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Stream/Aspects interleave
  */
-export const interleave = Pipeable(interleave_);
+export const interleave = Pipeable(interleave_)

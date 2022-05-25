@@ -9,7 +9,7 @@ export function scanReduce_<R, E, A, A2 extends A>(
   f: (a2: A2, a: A) => A2,
   __tsplusTrace?: string
 ): Stream<R, E, A2> {
-  return self.scanReduceEffect((curr, next) => Effect.succeedNow(f(curr, next)));
+  return self.scanReduceEffect((curr, next) => Effect.succeedNow(f(curr, next)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function scanReduce_<R, E, A, A2 extends A>(
  *
  * @tsplus static ets/Stream/Aspects scanReduce
  */
-export const scanReduce = Pipeable(scanReduce_);
+export const scanReduce = Pipeable(scanReduce_)

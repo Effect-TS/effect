@@ -1,4 +1,4 @@
-import { IFiberRefWith } from "@effect/core/io/Effect/definition/primitives";
+import { IFiberRefWith } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Gets the value associated with the current fiber and uses it to run the
@@ -11,7 +11,7 @@ export function getWith_<R, E, A, B, P>(
   f: (a: A) => Effect<R, E, B>,
   __tsplusTrace?: string
 ): Effect<R, E, B> {
-  return new IFiberRefWith(self, f, __tsplusTrace);
+  return new IFiberRefWith(self, f, __tsplusTrace)
 }
 
 /**
@@ -20,4 +20,4 @@ export function getWith_<R, E, A, B, P>(
  *
  * @tsplus static ets/FiberRef/Aspects getWith
  */
-export const getWith = Pipeable(getWith_);
+export const getWith = Pipeable(getWith_)

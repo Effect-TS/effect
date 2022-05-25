@@ -7,7 +7,7 @@ export function mapError_<R, E, E1, A>(
   self: Layer<R, E, A>,
   f: (e: E) => E1
 ): Layer<R, E1, A> {
-  return self.catchAll((e) => Layer.fail(f(e)));
+  return self.catchAll((e) => Layer.fail(f(e)))
 }
 
 /**
@@ -15,4 +15,4 @@ export function mapError_<R, E, E1, A>(
  *
  * @tsplus static ets/Layer/Aspects mapError
  */
-export const mapError = Pipeable(mapError_);
+export const mapError = Pipeable(mapError_)

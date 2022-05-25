@@ -1,4 +1,4 @@
-import { ContinuationK, Fold } from "@effect/core/stream/Channel/definition/primitives";
+import { ContinuationK, Fold } from "@effect/core/stream/Channel/definition/primitives"
 
 /**
  * Returns a new channel that is the same as this one, except if this channel
@@ -46,7 +46,7 @@ export function catchAllCause_<
     OutDone | OutDone1,
     OutErr,
     OutDone | OutDone1
-  >(self, new ContinuationK(Channel.succeedNow, f));
+  >(self, new ContinuationK(Channel.succeedNow, f))
 }
 
 /**
@@ -56,4 +56,4 @@ export function catchAllCause_<
  *
  * @tsplus static ets/Channel/Aspects catchAllCause
  */
-export const catchAllCause = Pipeable(catchAllCause_);
+export const catchAllCause = Pipeable(catchAllCause_)

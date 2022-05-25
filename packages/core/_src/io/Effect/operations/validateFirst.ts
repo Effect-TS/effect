@@ -9,5 +9,5 @@ export function validateFirst<R, E, A, B>(
   f: (a: A) => Effect<R, E, B>,
   __tsplusTrace?: string
 ): Effect<R, Chunk<E>, B> {
-  return Effect.forEach(as, (a) => f(a).flip()).flip();
+  return Effect.forEach(as, (a) => f(a).flip()).flip()
 }

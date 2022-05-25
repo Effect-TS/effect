@@ -13,7 +13,7 @@ export function map_<Type, In, Out, Out2>(
     self.keyType,
     self.unsafeUpdate,
     (extraTags) => f(self.unsafeValue(extraTags))
-  );
+  )
 }
 
 /**
@@ -23,4 +23,4 @@ export function map_<Type, In, Out, Out2>(
  *
  * @tsplus static ets/Metrics/Metric/Aspects map
  */
-export const map = Pipeable(map_);
+export const map = Pipeable(map_)

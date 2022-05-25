@@ -1,23 +1,23 @@
-import { concurrentFib, ExampleError, fib } from "@effect/core/test/io/Effect/test-utils";
-import { withLatch } from "@effect/core/test/test-utils/Latch";
+import { concurrentFib, ExampleError, fib } from "@effect/core/test/io/Effect/test-utils"
+import { withLatch } from "@effect/core/test/test-utils/Latch"
 
 describe.concurrent("Effect", () => {
   describe.concurrent("RTS concurrency correctness", () => {
     it("shallow fork/join identity", async () => {
       const program = Effect.succeed(42)
         .fork()
-        .flatMap((fiber) => fiber.join());
+        .flatMap((fiber) => fiber.join())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 42);
-    });
+      assert.strictEqual(result, 42)
+    })
 
     it("deep fork/join identity", async () => {
-      const result = await concurrentFib(20).unsafeRunPromise();
+      const result = await concurrentFib(20).unsafeRunPromise()
 
-      assert.strictEqual(result, fib(20));
-    });
+      assert.strictEqual(result, fib(20))
+    })
 
     it("asyncEffect creation is interruptible", async () => {
       const program = Effect.Do()
@@ -35,16 +35,16 @@ describe.concurrent("Effect", () => {
         .bind("fiber", ({ task }) => task.fork())
         .tap(({ acquire }) => acquire.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ release }) => release.await());
+        .flatMap(({ release }) => release.await())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 42);
-    });
+      assert.strictEqual(result, 42)
+    })
 
     it("daemon fiber is unsupervised", async () => {
       function child(ref: Ref<boolean>) {
-        return withLatch((release) => (release > Effect.never).ensuring(ref.set(true)));
+        return withLatch((release) => (release > Effect.never).ensuring(ref.set(true)))
       }
 
       const program = Effect.Do()
@@ -52,18 +52,18 @@ describe.concurrent("Effect", () => {
         .bind("fiber1", ({ ref }) => child(ref).forkDaemon().fork())
         .bind("fiber2", ({ fiber1 }) => fiber1.join())
         .bind("result", ({ ref }) => ref.get())
-        .tap(({ fiber2 }) => fiber2.interrupt());
+        .tap(({ fiber2 }) => fiber2.interrupt())
 
-      const { result } = await program.unsafeRunPromise();
+      const { result } = await program.unsafeRunPromise()
 
-      assert.isFalse(result);
-    });
+      assert.isFalse(result)
+    })
 
     it("daemon fiber race interruption", async () => {
       function plus1<X>(latch: Deferred<never, void>, finalizer: Effect.UIO<X>) {
         return (
           latch.succeed(undefined) > Effect.sleep((1).hours)
-        ).onInterrupt(() => finalizer.map((x) => x));
+        ).onInterrupt(() => finalizer.map((x) => x))
       }
 
       const program = Effect.Do()
@@ -77,12 +77,12 @@ describe.concurrent("Effect", () => {
         .tap(
           ({ fiber, latch1Start, latch2Start }) => latch1Start.await() > latch2Start.await() > fiber.interrupt()
         )
-        .flatMap(({ interruptionRef }) => interruptionRef.get());
+        .flatMap(({ interruptionRef }) => interruptionRef.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 2);
-    });
+      assert.strictEqual(result, 2)
+    })
 
     it("race in daemon is executed", async () => {
       const program = Effect.Do()
@@ -107,17 +107,17 @@ describe.concurrent("Effect", () => {
         .tap(({ latch2 }) => latch2.await())
         .tap(({ fiber }) => fiber.interrupt())
         .bind("res1", ({ deferred1 }) => deferred1.await())
-        .bind("res2", ({ deferred2 }) => deferred2.await());
+        .bind("res2", ({ deferred2 }) => deferred2.await())
 
-      const { res1, res2 } = await program.unsafeRunPromise();
+      const { res1, res2 } = await program.unsafeRunPromise()
 
-      assert.isUndefined(res1);
-      assert.isUndefined(res2);
-    });
+      assert.isUndefined(res1)
+      assert.isUndefined(res2)
+    })
 
     it("supervise fibers", async () => {
       function makeChild(n: number): Effect.UIO<Fiber<never, void>> {
-        return (Effect.sleep(new Duration(20 * n)) > Effect.never).fork();
+        return (Effect.sleep(new Duration(20 * n)) > Effect.never).fork()
       }
 
       const program = Ref.make(0)
@@ -129,54 +129,54 @@ describe.concurrent("Effect", () => {
             )
           )
         )
-        .flatMap((ref) => ref.get());
+        .flatMap((ref) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 2);
-    });
+      assert.strictEqual(result, 2)
+    })
 
     it("race of fail with success", async () => {
-      const program = Effect.fail(42).race(Effect.succeed(24)).either();
+      const program = Effect.fail(42).race(Effect.succeed(24)).either()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.right(24));
-    });
+      assert.isTrue(result == Either.right(24))
+    })
 
     it("race of terminate with success", async () => {
-      const program = Effect.die(new Error()).race(Effect.succeed(24));
+      const program = Effect.die(new Error()).race(Effect.succeed(24))
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 24);
-    });
+      assert.strictEqual(result, 24)
+    })
 
     it("race of fail with fail", async () => {
-      const program = Effect.fail(42).race(Effect.fail(24)).either();
+      const program = Effect.fail(42).race(Effect.fail(24)).either()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left(42));
-    });
+      assert.isTrue(result == Either.left(42))
+    })
 
     it("race of value and never", async () => {
-      const program = Effect.succeed(42).race(Effect.never);
+      const program = Effect.succeed(42).race(Effect.never)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 42);
-    });
+      assert.strictEqual(result, 42)
+    })
 
     it("race in uninterruptible region", async () => {
-      const deferred = Deferred.unsafeMake<never, void>(FiberId.none);
-      const program = Effect.unit.race(deferred.await()).uninterruptible();
+      const deferred = Deferred.unsafeMake<never, void>(FiberId.none)
+      const program = Effect.unit.race(deferred.await()).uninterruptible()
 
-      const result = await program.unsafeRunPromise();
-      await deferred.succeed(undefined).unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
+      await deferred.succeed(undefined).unsafeRunPromise()
 
-      assert.isUndefined(result);
-    });
+      assert.isUndefined(result)
+    })
 
     it("race of two forks does not interrupt winner", async () => {
       const program = Effect.Do()
@@ -196,45 +196,45 @@ describe.concurrent("Effect", () => {
         .tap(({ effect }) => effect.race(effect))
         .flatMap(
           ({ awaitAll, latch, ref }) => latch.succeed(undefined) > awaitAll > ref.get()
-        );
+        )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isAtMost(result, 1);
-    });
+      assert.isAtMost(result, 1)
+    })
 
     it("firstSuccessOf of values", async () => {
       const program = Effect.firstSuccessOf([
         Effect.fail(0),
         Effect.succeed(100)
-      ]).either();
+      ]).either()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.right(100));
-    });
+      assert.isTrue(result == Either.right(100))
+    })
 
     it("firstSuccessOf of failures", async () => {
       const program = Effect.firstSuccessOf([
         Effect.fail(0).delay((10).millis),
         Effect.fail(101)
-      ]).either();
+      ]).either()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left(101));
-    });
+      assert.isTrue(result == Either.left(101))
+    })
 
     it("firstSuccessOf of failures & 1 success", async () => {
       const program = Effect.firstSuccessOf([
         Effect.fail(0),
         Effect.succeed(102).delay((1).millis)
-      ]).either();
+      ]).either()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.right(102));
-    });
+      assert.isTrue(result == Either.right(102))
+    })
 
     it("raceFirst interrupts loser on success", async () => {
       const program = Effect.Do()
@@ -249,12 +249,12 @@ describe.concurrent("Effect", () => {
           ))
         .bindValue("race", ({ loser, winner }) => winner.raceFirst(loser))
         .tap(({ race }) => race)
-        .flatMap(({ effect }) => effect.await());
+        .flatMap(({ effect }) => effect.await())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 42);
-    });
+      assert.strictEqual(result, 42)
+    })
 
     it("raceFirst interrupts loser on failure", async () => {
       const program = Effect.Do()
@@ -272,71 +272,71 @@ describe.concurrent("Effect", () => {
           ))
         .bindValue("race", ({ loser, winner }) => winner.raceFirst(loser))
         .tap(({ race }) => race.either())
-        .flatMap(({ effect }) => effect.await());
+        .flatMap(({ effect }) => effect.await())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 42);
-    });
+      assert.strictEqual(result, 42)
+    })
 
     it("mergeAll", async () => {
       const program = Effect.mergeAll(
         List("a", "aa", "aaa", "aaaa").map(Effect.succeedNow),
         0,
         (b, a) => b + a.length
-      );
+      )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 10);
-    });
+      assert.strictEqual(result, 10)
+    })
 
     it("mergeAll - empty", async () => {
-      const program = Effect.mergeAll(List.empty<Effect.UIO<number>>(), 0, (b, a) => b + a);
+      const program = Effect.mergeAll(List.empty<Effect.UIO<number>>(), 0, (b, a) => b + a)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 0);
-    });
+      assert.strictEqual(result, 0)
+    })
 
     it("reduceAll", async () => {
       const program = Effect.reduceAll(
         Effect.succeed(1),
         List(2, 3, 4).map(Effect.succeedNow),
         (acc, a) => acc + a
-      );
+      )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 10);
-    });
+      assert.strictEqual(result, 10)
+    })
 
     it("reduceAll - empty list", async () => {
       const program = Effect.reduceAll(
         Effect.succeed(1),
         List.empty<Effect.UIO<number>>(),
         (acc, a) => acc + a
-      );
+      )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 1);
-    });
+      assert.strictEqual(result, 1)
+    })
 
     it("timeout of failure", async () => {
-      const program = Effect.fail("uh oh").timeout((1).hours);
+      const program = Effect.fail("uh oh").timeout((1).hours)
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("uh oh"));
-    });
+      assert.isTrue(result.untraced() == Exit.fail("uh oh"))
+    })
 
     it("timeout of terminate", async () => {
-      const program = Effect.die(ExampleError).timeout((1).hours);
+      const program = Effect.die(ExampleError).timeout((1).hours)
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(ExampleError));
-    });
-  });
-});
+      assert.isTrue(result.untraced() == Exit.die(ExampleError))
+    })
+  })
+})

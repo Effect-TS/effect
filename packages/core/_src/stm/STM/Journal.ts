@@ -1,34 +1,34 @@
-import type { Entry } from "@effect/core/stm/STM/Entry";
-import { STMDriver } from "@effect/core/stm/STM/operations/_internal/STMDriver";
-import { State } from "@effect/core/stm/STM/State";
-import { TryCommit } from "@effect/core/stm/STM/TryCommit";
-import type { TxnId } from "@effect/core/stm/STM/TxnId";
-import { concreteTRef } from "@effect/core/stm/TRef/operations/_internal/TRefInternal";
-import { defaultScheduler } from "@effect/core/support/Scheduler";
+import type { Entry } from "@effect/core/stm/STM/Entry"
+import { STMDriver } from "@effect/core/stm/STM/operations/_internal/STMDriver"
+import { State } from "@effect/core/stm/STM/State"
+import { TryCommit } from "@effect/core/stm/STM/TryCommit"
+import type { TxnId } from "@effect/core/stm/STM/TxnId"
+import { concreteTRef } from "@effect/core/stm/TRef/operations/_internal/TRefInternal"
+import { defaultScheduler } from "@effect/core/support/Scheduler"
 
-export type Journal = Map<TRef<unknown>, Entry>;
+export type Journal = Map<TRef<unknown>, Entry>
 
-export type JournalAnalysis = "I" | "RW" | "RO";
+export type JournalAnalysis = "I" | "RW" | "RO"
 
-export type Todo = Lazy<unknown>;
+export type Todo = Lazy<unknown>
 
 /**
  * Creates a function that can reset the journal.
  */
 export function prepareResetJournal(journal: Journal): Lazy<unknown> {
-  const saved: Journal = new Map();
+  const saved: Journal = new Map()
   for (const entry of journal) {
     saved.set(
       entry[0],
       entry[1].use((_) => _.copy())
-    );
+    )
   }
   return () => {
-    journal.clear();
+    journal.clear()
     for (const entry of saved) {
-      journal.set(entry[0], entry[1]);
+      journal.set(entry[0], entry[1])
     }
-  };
+  }
 }
 
 /**
@@ -36,7 +36,7 @@ export function prepareResetJournal(journal: Journal): Lazy<unknown> {
  */
 export function commitJournal(journal: Journal) {
   for (const entry of journal) {
-    entry[1].use((_) => _.commit());
+    entry[1].use((_) => _.commit())
   }
 }
 
@@ -47,36 +47,36 @@ export function commitJournal(journal: Journal) {
  * to short-circuiting that occurs on an invalid journal.
  */
 export function analyzeJournal(journal: Journal): JournalAnalysis {
-  let val: JournalAnalysis = "RO";
+  let val: JournalAnalysis = "RO"
   for (const entry of journal) {
-    val = entry[1].use((_) => (_.isInvalid() ? "I" : _.isChanged() ? "RW" : val));
+    val = entry[1].use((_) => (_.isInvalid() ? "I" : _.isChanged() ? "RW" : val))
     if (val === "I") {
-      return val;
+      return val
     }
   }
-  return val;
+  return val
 }
 
-export const emptyTodoMap = HashMap.empty<TxnId, Todo>();
+export const emptyTodoMap = HashMap.empty<TxnId, Todo>()
 
 /**
  * Atomically collects and clears all the todos from any `TRef` that
  * participated in the transaction.
  */
 export function collectTodos(journal: Journal): Map<TxnId, Todo> {
-  const allTodos: Map<TxnId, Todo> = new Map();
+  const allTodos: Map<TxnId, Todo> = new Map()
 
   for (const entry of journal) {
-    const tref: TRef<unknown> = entry[1].use((_) => _.tref);
-    concreteTRef(tref);
-    const todos = tref.todo.get;
+    const tref: TRef<unknown> = entry[1].use((_) => _.tref)
+    concreteTRef(tref)
+    const todos = tref.todo.get
     for (const todo of todos) {
-      allTodos.set(todo.get(0), todo.get(1));
+      allTodos.set(todo.get(0), todo.get(1))
     }
-    tref.todo.set(emptyTodoMap);
+    tref.todo.set(emptyTodoMap)
   }
 
-  return allTodos;
+  return allTodos
 }
 
 /**
@@ -84,7 +84,7 @@ export function collectTodos(journal: Journal): Map<TxnId, Todo> {
  */
 export function execTodos(todos: Map<TxnId, Todo>) {
   for (const todo of todos) {
-    todo[1]();
+    todo[1]()
   }
 }
 
@@ -97,11 +97,11 @@ export function completeTodos<E, A>(
   exit: Exit<E, A>,
   journal: Journal
 ): TryCommit<E, A> {
-  const todos = collectTodos(journal);
+  const todos = collectTodos(journal)
   if (todos.size > 0) {
-    defaultScheduler(() => execTodos(todos));
+    defaultScheduler(() => execTodos(todos))
   }
-  return TryCommit.done(exit);
+  return TryCommit.done(exit)
 }
 
 /**
@@ -109,20 +109,20 @@ export function completeTodos<E, A>(
  * `TRef` values.
  */
 export function addTodo(txnId: TxnId, journal: Journal, todoEffect: Todo): boolean {
-  let added = false;
+  let added = false
 
   for (const entry of journal) {
-    const tref = entry[1].use((_) => _.tref);
-    concreteTRef(tref);
-    const oldTodo = tref.todo.get;
+    const tref = entry[1].use((_) => _.tref)
+    concreteTRef(tref)
+    const oldTodo = tref.todo.get
     if (!oldTodo.has(txnId)) {
-      const newTodo = oldTodo.set(txnId, todoEffect);
-      tref.todo.set(newTodo);
-      added = true;
+      const newTodo = oldTodo.set(txnId, todoEffect)
+      tref.todo.set(newTodo)
+      added = true
     }
   }
 
-  return added;
+  return added
 }
 
 /**
@@ -133,10 +133,10 @@ export function untrackedTodoTargets(
   oldJournal: Journal,
   newJournal: Journal
 ): Journal {
-  const untracked: Journal = new Map();
+  const untracked: Journal = new Map()
   for (const entry of newJournal) {
-    const key = entry[0];
-    const value = entry[1];
+    const key = entry[0]
+    const value = entry[1]
     if (
       // We already tracked this one
       !oldJournal.has(key) &&
@@ -146,10 +146,10 @@ export function untrackedTodoTargets(
       // succeed.
       !value.use((_) => _.isNew)
     ) {
-      untracked.set(key, value);
+      untracked.set(key, value)
     }
   }
-  return untracked;
+  return untracked
 }
 
 export function tryCommit<R, E, A>(
@@ -158,32 +158,32 @@ export function tryCommit<R, E, A>(
   state: AtomicReference<State<E, A>>,
   env: Env<R>
 ): TryCommit<E, A> {
-  const journal: Journal = new Map();
-  const value = new STMDriver(stm, journal, fiberId, env).run();
-  const analysis = analyzeJournal(journal);
+  const journal: Journal = new Map()
+  const value = new STMDriver(stm, journal, fiberId, env).run()
+  const analysis = analyzeJournal(journal)
 
   if (analysis === "RW") {
-    state.compareAndSet(State.running, State.done(value));
-    commitJournal(journal);
+    state.compareAndSet(State.running, State.done(value))
+    commitJournal(journal)
   } else if (analysis === "I") {
-    throw new Error("Bug: invalid journal");
+    throw new Error("Bug: invalid journal")
   }
 
   switch (value._tag) {
     case "Succeed": {
-      return completeTodos(Exit.succeed(value.value), journal);
+      return completeTodos(Exit.succeed(value.value), journal)
     }
     case "Fail": {
-      return completeTodos(Exit.fail(value.value), journal);
+      return completeTodos(Exit.fail(value.value), journal)
     }
     case "Die": {
-      return completeTodos(Exit.die(value.value), journal);
+      return completeTodos(Exit.die(value.value), journal)
     }
     case "Interrupt": {
-      return completeTodos(Exit.interrupt(fiberId), journal);
+      return completeTodos(Exit.interrupt(fiberId), journal)
     }
     case "Retry": {
-      return TryCommit.suspend(journal);
+      return TryCommit.suspend(journal)
     }
   }
 }
@@ -193,31 +193,31 @@ export function tryCommitSync<R, E, A>(
   stm: STM<R, E, A>,
   env: Env<R>
 ): TryCommit<E, A> {
-  const journal: Journal = new Map();
-  const value = new STMDriver(stm, journal, fiberId, env).run();
-  const analysis = analyzeJournal(journal);
+  const journal: Journal = new Map()
+  const value = new STMDriver(stm, journal, fiberId, env).run()
+  const analysis = analyzeJournal(journal)
 
   if (analysis === "RW" && value._tag === "Succeed") {
-    commitJournal(journal);
+    commitJournal(journal)
   } else if (analysis === "I") {
-    throw new Error("Bug: invalid journal");
+    throw new Error("Bug: invalid journal")
   }
 
   switch (value._tag) {
     case "Succeed": {
-      return completeTodos(Exit.succeed(value.value), journal);
+      return completeTodos(Exit.succeed(value.value), journal)
     }
     case "Fail": {
-      return completeTodos(Exit.fail(value.value), journal);
+      return completeTodos(Exit.fail(value.value), journal)
     }
     case "Die": {
-      return completeTodos(Exit.die(value.value), journal);
+      return completeTodos(Exit.die(value.value), journal)
     }
     case "Interrupt": {
-      return completeTodos(Exit.interrupt(fiberId), journal);
+      return completeTodos(Exit.interrupt(fiberId), journal)
     }
     case "Retry": {
-      return TryCommit.suspend(journal);
+      return TryCommit.suspend(journal)
     }
   }
 }
@@ -226,7 +226,7 @@ function completeTryCommit<R, E, A>(
   exit: Exit<E, A>,
   k: (_: Effect<R, E, A>) => unknown
 ) {
-  k(Effect.done(exit));
+  k(Effect.done(exit))
 }
 
 function suspendTryCommit<R, E, A>(
@@ -241,27 +241,27 @@ function suspendTryCommit<R, E, A>(
 ) {
   // eslint-disable-next-line no-constant-condition
   while (1) {
-    addTodo(txnId, journal, () => tryCommitAsync(undefined, fiberId, stm, txnId, state, env)(k));
+    addTodo(txnId, journal, () => tryCommitAsync(undefined, fiberId, stm, txnId, state, env)(k))
     if (isInvalid(journal)) {
-      const v = tryCommit(fiberId, stm, state, env);
+      const v = tryCommit(fiberId, stm, state, env)
       switch (v._tag) {
         case "Done": {
-          completeTryCommit(v.exit, k);
-          return;
+          completeTryCommit(v.exit, k)
+          return
         }
         case "Suspend": {
-          const untracked = untrackedTodoTargets(accum, v.journal);
+          const untracked = untrackedTodoTargets(accum, v.journal)
           if (untracked.size > 0) {
             for (const entry of untracked) {
-              accum.set(entry[0], entry[1]);
+              accum.set(entry[0], entry[1])
             }
-            journal = untracked;
+            journal = untracked
           }
-          break;
+          break
         }
       }
     } else {
-      return;
+      return
     }
   }
 }
@@ -277,41 +277,41 @@ export function tryCommitAsync<R, E, A>(
   return (k: (_: Effect<R, E, A>) => unknown) => {
     if (state.get.isRunning()) {
       if (journal == null) {
-        const v = tryCommit(fiberId, stm, state, env);
+        const v = tryCommit(fiberId, stm, state, env)
         switch (v._tag) {
           case "Done": {
-            completeTryCommit(v.exit, k);
-            break;
+            completeTryCommit(v.exit, k)
+            break
           }
           case "Suspend": {
-            suspendTryCommit(fiberId, stm, txnId, state, env, k, v.journal, v.journal);
-            break;
+            suspendTryCommit(fiberId, stm, txnId, state, env, k, v.journal, v.journal)
+            break
           }
         }
       } else {
-        suspendTryCommit(fiberId, stm, txnId, state, env, k, journal, journal);
+        suspendTryCommit(fiberId, stm, txnId, state, env, k, journal, journal)
       }
     }
-  };
+  }
 }
 
 /**
  * Determines if the journal is valid.
  */
 export function isValid(journal: Journal) {
-  let valid = true;
+  let valid = true
   for (const entry of journal) {
-    valid = entry[1].use((_) => _.isValid());
+    valid = entry[1].use((_) => _.isValid())
     if (!valid) {
-      return valid;
+      return valid
     }
   }
-  return valid;
+  return valid
 }
 
 /**
  * Determines if the journal is invalid.
  */
 export function isInvalid(journal: Journal) {
-  return !isValid(journal);
+  return !isValid(journal)
 }

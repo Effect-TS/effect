@@ -1,10 +1,10 @@
-import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision";
-import { mapper, refReader, refWriter } from "@effect/core/test/stream/Channel/test-utils";
+import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision"
+import { mapper, refReader, refWriter } from "@effect/core/test/stream/Channel/test-utils"
 
 describe.concurrent("Channel", () => {
   describe.concurrent("concurrent reads", () => {
     it("simple concurrent reads", async () => {
-      const capacity = 128;
+      const capacity = 128
 
       const program = Effect.collectAll(Chunk.fill(capacity, () => Random.nextInt)).flatMap(
         (data) =>
@@ -15,38 +15,38 @@ describe.concurrent("Channel", () => {
                 refWriter(dest),
                 () => MergeDecision.awaitConst(Effect.unit),
                 () => MergeDecision.awaitConst(Effect.unit)
-              );
+              )
 
               return (refReader(source) >> twoWriters)
                 .mapEffect(() => dest.get())
                 .run()
                 .map((result) => {
-                  let missing = HashSet.from(data);
-                  let surplus = HashSet.from(result);
+                  let missing = HashSet.from(data)
+                  let surplus = HashSet.from(result)
 
                   for (const value of result) {
-                    missing = missing.remove(value);
+                    missing = missing.remove(value)
                   }
                   for (const value of data) {
-                    surplus = surplus.remove(value);
+                    surplus = surplus.remove(value)
                   }
 
-                  return Tuple(missing, surplus);
-                });
+                  return Tuple(missing, surplus)
+                })
             })
-      );
+      )
 
       const {
         tuple: [missing, surplus]
-      } = await program.unsafeRunPromise();
+      } = await program.unsafeRunPromise()
 
-      assert.strictEqual(missing.size, 0);
-      assert.strictEqual(surplus.size, 0);
-    });
+      assert.strictEqual(missing.size, 0)
+      assert.strictEqual(surplus.size, 0)
+    })
 
     it("nested concurrent reads", async () => {
-      const capacity = 128;
-      const f = (n: number) => n + 1;
+      const capacity = 128
+      const f = (n: number) => n + 1
 
       const program = Effect.collectAll(Chunk.fill(capacity, () => Random.nextInt)).flatMap(
         (data) =>
@@ -57,34 +57,34 @@ describe.concurrent("Channel", () => {
                 mapper(f) >> refWriter(dest),
                 () => MergeDecision.awaitConst(Effect.unit),
                 () => MergeDecision.awaitConst(Effect.unit)
-              );
+              )
 
               return (refReader(source) >> twoWriters)
                 .mapEffect(() => dest.get())
                 .run()
                 .map((result) => {
-                  const expected = HashSet.from(data.map(f));
-                  let missing = HashSet.from(expected);
-                  let surplus = HashSet.from(result);
+                  const expected = HashSet.from(data.map(f))
+                  let missing = HashSet.from(expected)
+                  let surplus = HashSet.from(result)
 
                   for (const value of result) {
-                    missing = missing.remove(value);
+                    missing = missing.remove(value)
                   }
                   for (const value of expected) {
-                    surplus = surplus.remove(value);
+                    surplus = surplus.remove(value)
                   }
 
-                  return Tuple(missing, surplus);
-                });
+                  return Tuple(missing, surplus)
+                })
             })
-      );
+      )
 
       const {
         tuple: [missing, surplus]
-      } = await program.unsafeRunPromise();
+      } = await program.unsafeRunPromise()
 
-      assert.strictEqual(missing.size, 0);
-      assert.strictEqual(surplus.size, 0);
-    });
-  });
-});
+      assert.strictEqual(missing.size, 0)
+      assert.strictEqual(surplus.size, 0)
+    })
+  })
+})

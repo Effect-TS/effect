@@ -14,5 +14,5 @@ export function identity<Err, Elem, Done>(): Channel<
     (inElem) => Channel.write(inElem) > identity<Err, Elem, Done>(),
     (inErr) => Channel.fail(inErr),
     (inDone) => Channel.succeedNow(inDone)
-  );
+  )
 }

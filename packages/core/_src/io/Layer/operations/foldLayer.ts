@@ -13,7 +13,7 @@ export function foldLayer_<R, E, A, R2, E2, A2, R3, E3, A3>(
   return self.foldCauseLayer(
     (cause) => cause.failureOrCause().fold(failure, (cause) => Layer.failCause(cause)),
     success
-  );
+  )
 }
 
 /**
@@ -23,4 +23,4 @@ export function foldLayer_<R, E, A, R2, E2, A2, R3, E3, A3>(
  *
  * @tsplus static ets/Layer/Aspects foldLayer
  */
-export const foldLayer = Pipeable(foldLayer_);
+export const foldLayer = Pipeable(foldLayer_)

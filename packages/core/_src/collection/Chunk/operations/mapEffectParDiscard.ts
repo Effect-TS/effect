@@ -10,7 +10,7 @@ export function mapEffectParDiscard_<A, R, E, B>(
   f: (a: A) => Effect<R, E, B>,
   __tsplusTrace?: string
 ): Effect<R, E, void> {
-  return Effect.forEachParDiscard(self, f).withParallelism(n);
+  return Effect.forEachParDiscard(self, f).withParallelism(n)
 }
 
 /**
@@ -18,4 +18,4 @@ export function mapEffectParDiscard_<A, R, E, B>(
  *
  * @tsplus static Chunk/Aspects mapEffectParDiscard
  */
-export const mapEffectParDiscard = Pipeable(mapEffectParDiscard_);
+export const mapEffectParDiscard = Pipeable(mapEffectParDiscard_)

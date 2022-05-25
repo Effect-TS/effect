@@ -1,4 +1,4 @@
-import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * A sink that ignores its inputs.
@@ -20,6 +20,6 @@ export function drain(
     () => loop,
     (err) => Channel.fail(err),
     () => Channel.unit
-  );
-  return new SinkInternal(loop);
+  )
+  return new SinkInternal(loop)
 }

@@ -1,4 +1,4 @@
-import { constFalse, constVoid, identity } from "@tsplus/stdlib/data/Function";
+import { constFalse, constVoid, identity } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Stream", () => {
   describe.concurrent("flatMap", () => {
@@ -6,54 +6,54 @@ describe.concurrent("Stream", () => {
       function fib(n: number): Stream<unknown, never, number> {
         return n <= 1
           ? Stream.succeed(n)
-          : fib(n - 1).flatMap((a) => fib(n - 2).flatMap((b) => Stream.succeed(a + b)));
+          : fib(n - 1).flatMap((a) => fib(n - 2).flatMap((b) => Stream.succeed(a + b)))
       }
 
-      const program = fib(20).runCollect();
+      const program = fib(20).runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(6765));
-    });
+      assert.isTrue(result == Chunk(6765))
+    })
 
     it("left identity", async () => {
-      const x = 0;
-      const f = (n: number) => Stream(n, 1, 2, 3, 4, 5);
+      const x = 0
+      const f = (n: number) => Stream(n, 1, 2, 3, 4, 5)
       const program = Effect.struct({
         actual: Stream(x).flatMap(f).runCollect(),
         expected: f(x).runCollect()
-      });
+      })
 
-      const { actual, expected } = await program.unsafeRunPromise();
+      const { actual, expected } = await program.unsafeRunPromise()
 
-      assert.isTrue(actual == expected);
-    });
+      assert.isTrue(actual == expected)
+    })
 
     it("right identity", async () => {
-      const stream = Stream(1, 2, 3, 4, 5);
+      const stream = Stream(1, 2, 3, 4, 5)
       const program = Effect.struct({
         actual: stream.flatMap((i) => Stream(i)).runCollect(),
         expected: stream.runCollect()
-      });
+      })
 
-      const { actual, expected } = await program.unsafeRunPromise();
+      const { actual, expected } = await program.unsafeRunPromise()
 
-      assert.isTrue(actual == expected);
-    });
+      assert.isTrue(actual == expected)
+    })
 
     it("associativity", async () => {
-      const stream = Stream(1, 2, 3);
-      const f = (_: number) => Stream(4, 5);
-      const g = (_: number) => Stream(6, 7);
+      const stream = Stream(1, 2, 3)
+      const f = (_: number) => Stream(4, 5)
+      const g = (_: number) => Stream(6, 7)
       const program = Effect.struct({
         actual: stream.flatMap(f).flatMap(g).runCollect(),
         expected: stream.flatMap((x) => f(x).flatMap(g)).runCollect()
-      });
+      })
 
-      const { actual, expected } = await program.unsafeRunPromise();
+      const { actual, expected } = await program.unsafeRunPromise()
 
-      assert.isTrue(actual == expected);
-    });
+      assert.isTrue(actual == expected)
+    })
 
     it("inner finalizers", async () => {
       const program = Effect.Do()
@@ -75,12 +75,12 @@ describe.concurrent("Stream", () => {
             .fork())
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ effects }) => effects.get());
+        .flatMap(({ effects }) => effects.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == List(3, 3, 2, 1, 1));
-    });
+      assert.isTrue(result == List(3, 3, 2, 1, 1))
+    })
 
     it("finalizer ordering 1", async () => {
       const program = Effect.Do()
@@ -107,9 +107,9 @@ describe.concurrent("Stream", () => {
             )
         )
         .tap(({ stream }) => stream.runDrain())
-        .flatMap(({ effects }) => effects.get());
+        .flatMap(({ effects }) => effects.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
       assert.isTrue(
         result.reverse() == List(
@@ -129,8 +129,8 @@ describe.concurrent("Stream", () => {
           "close2",
           "close1"
         )
-      );
-    });
+      )
+    })
 
     it("finalizer ordering 2", async () => {
       const program = Effect.Do()
@@ -144,9 +144,9 @@ describe.concurrent("Stream", () => {
             .tap(() => push("use2"))
             .flatMap(() => Stream.acquireRelease(push("open3"), () => push("close3"))))
         .tap(({ stream }) => stream.runDrain())
-        .flatMap(({ effects }) => effects.get());
+        .flatMap(({ effects }) => effects.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
       assert.isTrue(
         result.reverse() == List(
@@ -157,8 +157,8 @@ describe.concurrent("Stream", () => {
           "open3",
           "close3"
         )
-      );
-    });
+      )
+    })
 
     it("exit signal", async () => {
       const program = Effect.Do()
@@ -176,12 +176,12 @@ describe.concurrent("Stream", () => {
             .either()
             .asUnit()
         )
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("finalizers are registered in the proper order", async () => {
       const program = Effect.Do()
@@ -195,12 +195,12 @@ describe.concurrent("Stream", () => {
           ({ push }) => Stream.finalizer(push(1)) > Stream.finalizer(push(2))
         )
         .tap(({ stream }) => Effect.scoped(stream.toPull().flatten()))
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == List(1, 2));
-    });
+      assert.isTrue(result == List(1, 2))
+    })
 
     it("early release finalizer concatenation is preserved", async () => {
       const program = Effect.Do()
@@ -220,11 +220,11 @@ describe.concurrent("Stream", () => {
               .provideService(Scope.Tag)(scope)
               .flatMap((pull) => pull > scope.close(Exit.unit) > ref.get())
           )
-        );
+        )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == List(1, 2));
-    });
-  });
-});
+      assert.isTrue(result == List(1, 2))
+    })
+  })
+})

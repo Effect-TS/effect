@@ -9,5 +9,5 @@ export function foldLeftChunks<In, S>(
   f: (s: S, input: Chunk<In>) => S,
   __tsplusTrace?: string
 ): Sink<unknown, never, In, never, S> {
-  return Sink.foldChunks(z, () => true, f).dropLeftover();
+  return Sink.foldChunks(z, () => true, f).dropLeftover()
 }

@@ -1,4 +1,4 @@
-import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue";
+import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue"
 
 /**
  * Collects all values into an array.
@@ -6,15 +6,15 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
  * @tsplus fluent ets/TPriorityQueue toImmutableArray
  */
 export function toArray<A>(self: TPriorityQueue<A>): USTM<ImmutableArray<A>> {
-  concreteTPriorityQueue(self);
+  concreteTPriorityQueue(self)
   return self.map.modify((map) => {
-    const entries = map.entries();
-    const result: A[] = [];
-    let e: IteratorResult<Tuple<[A, Chunk<A>]>>;
+    const entries = map.entries()
+    const result: A[] = []
+    let e: IteratorResult<Tuple<[A, Chunk<A>]>>
     while (!(e = entries.next()).done) {
-      const { tuple: [, as] } = e.value;
-      result.push(...Array.from(as));
+      const { tuple: [, as] } = e.value
+      result.push(...Array.from(as))
     }
-    return Tuple(ImmutableArray.from(result), map);
-  });
+    return Tuple(ImmutableArray.from(result), map)
+  })
 }

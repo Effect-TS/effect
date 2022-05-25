@@ -1,4 +1,4 @@
-import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * A sink that executes the provided effectful function for every chunk fed to
@@ -22,6 +22,6 @@ export function forEachChunkWhile<R, E, In>(
     (input: Chunk<In>) => Channel.fromEffect(f(input)).flatMap((cont) => (cont ? reader : Channel.unit)),
     (err) => Channel.fail(err),
     () => Channel.unit
-  );
-  return new SinkInternal(reader);
+  )
+  return new SinkInternal(reader)
 }

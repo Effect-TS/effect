@@ -1,4 +1,4 @@
-import { concreteSynchronizedRef } from "@effect/core/io/Ref/Synchronized/operations/_internal/SynchronizedRefInternal";
+import { concreteSynchronizedRef } from "@effect/core/io/Ref/Synchronized/operations/_internal/SynchronizedRefInternal"
 
 /**
  * Writes a new value to the `Ref.Synchronized`, with a guarantee of immediate
@@ -11,8 +11,8 @@ export function set_<A>(
   value: A,
   __tsplusTrace?: string
 ): Effect.UIO<void> {
-  concreteSynchronizedRef(self);
-  return self.semaphore.withPermit(self.ref.set(value));
+  concreteSynchronizedRef(self)
+  return self.semaphore.withPermit(self.ref.set(value))
 }
 
 /**
@@ -21,4 +21,4 @@ export function set_<A>(
  *
  * @tsplus static ets/Ref/Synchronized/Aspects set
  */
-export const set = Pipeable(set_);
+export const set = Pipeable(set_)

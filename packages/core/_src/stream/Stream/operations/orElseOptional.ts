@@ -11,7 +11,7 @@ export function orElseOptional_<R, E, A, R2, E2, A2>(
   that: LazyArg<Stream<R2, Option<E2>, A2>>,
   __tsplusTrace?: string
 ): Stream<R & R2, Option<E | E2>, A | A2> {
-  return self.catchAll((option) => option.fold(that, (e) => Stream.fail(Option.some<E | E2>(e))));
+  return self.catchAll((option) => option.fold(that, (e) => Stream.fail(Option.some<E | E2>(e))))
 }
 
 /**
@@ -22,4 +22,4 @@ export function orElseOptional_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Stream/Aspects orElseOptional
  */
-export const orElseOptional = Pipeable(orElseOptional_);
+export const orElseOptional = Pipeable(orElseOptional_)

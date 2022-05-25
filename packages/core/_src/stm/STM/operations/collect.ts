@@ -8,5 +8,5 @@ export function collect<R, E, A, B>(
   as: LazyArg<Collection<A>>,
   f: (a: A) => STM<R, Option<E>, B>
 ): STM<R, E, Chunk<B>> {
-  return STM.forEach(as, (a) => f(a).unsome()).map((chunk) => chunk.compact());
+  return STM.forEach(as, (a) => f(a).unsome()).map((chunk) => chunk.compact())
 }

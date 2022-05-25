@@ -8,7 +8,7 @@ export function as_<State, Env, In, Out, Out2>(
   self: Schedule<State, Env, In, Out>,
   out2: LazyArg<Out2>
 ): Schedule<State, Env, In, Out2> {
-  return self.map(out2);
+  return self.map(out2)
 }
 
 /**
@@ -16,4 +16,4 @@ export function as_<State, Env, In, Out, Out2>(
  *
  * @tsplus static ets/Schedule/Aspects as
  */
-export const as = Pipeable(as_);
+export const as = Pipeable(as_)

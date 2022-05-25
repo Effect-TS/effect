@@ -1,7 +1,7 @@
-import { Decision } from "@effect/core/io/Schedule/Decision";
-import type { Interval } from "@effect/core/io/Schedule/Interval";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
-import type { MergeTuple } from "@tsplus/stdlib/data/Tuple";
+import { Decision } from "@effect/core/io/Schedule/Decision"
+import type { Interval } from "@effect/core/io/Schedule/Interval"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
+import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
 
 /**
  * Returns a new schedule that combines this schedule with the specified
@@ -22,8 +22,8 @@ export function intersectWith_<State, State1, Env, In, Out, Env1, In1, Out2>(
   MergeTuple<Out, Out2>
 > {
   return makeWithState(Tuple(self._initial, that._initial), (now, input, state) => {
-    const left = self._step(now, input, state.get(0));
-    const right = that._step(now, input, state.get(1));
+    const left = self._step(now, input, state.get(0))
+    const right = that._step(now, input, state.get(1))
 
     return left
       .zipWith(right, (a, b) => Tuple(a, b))
@@ -54,8 +54,8 @@ export function intersectWith_<State, State1, Env, In, Out, Env1, In1, Out2>(
             : Effect.succeedNow(
               Tuple(Tuple(lState, rState), Tuple.mergeTuple(out, out2), Decision.Done)
             )
-      );
-  });
+      )
+  })
 }
 
 /**
@@ -65,7 +65,7 @@ export function intersectWith_<State, State1, Env, In, Out, Env1, In1, Out2>(
  *
  * @tsplus static ets/Schedule/Aspects intersectWith
  */
-export const intersectWith = Pipeable(intersectWith_);
+export const intersectWith = Pipeable(intersectWith_)
 
 function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
   self: Schedule<State, Env, In, Out>,
@@ -84,7 +84,7 @@ function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
   never,
   Tuple<[Tuple<[State, State1]>, MergeTuple<Out, Out2>, Decision]>
 > {
-  const combined = f(lInterval, rInterval);
+  const combined = f(lInterval, rInterval)
 
   if (combined.isNonEmpty()) {
     return Effect.succeedNow(
@@ -93,7 +93,7 @@ function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
         Tuple.mergeTuple(out, out2),
         Decision.Continue(combined)
       )
-    );
+    )
   }
 
   if (lInterval < rInterval) {
@@ -120,7 +120,7 @@ function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
               Decision.Done
             )
           )
-      );
+      )
   }
 
   return that
@@ -146,5 +146,5 @@ function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
             Decision.Done
           )
         )
-    );
+    )
 }

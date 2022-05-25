@@ -1,4 +1,4 @@
-import { STMEffect, STMInterruptException } from "@effect/core/stm/STM/definition/primitives";
+import { STMEffect, STMInterruptException } from "@effect/core/stm/STM/definition/primitives"
 /**
  * Interrupts the fiber running the effect with the specified fiber id.
  *
@@ -6,6 +6,6 @@ import { STMEffect, STMInterruptException } from "@effect/core/stm/STM/definitio
  */
 export function interruptAs(fiberId: LazyArg<FiberId>): USTM<never> {
   return new STMEffect(() => {
-    throw new STMInterruptException(fiberId());
-  });
+    throw new STMInterruptException(fiberId())
+  })
 }

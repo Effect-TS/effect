@@ -15,7 +15,7 @@ export function tapError_<R, E, A, R2, E2, X>(
         () => Effect.failCauseNow(cause)
       ),
     Effect.succeedNow
-  );
+  )
 }
 
 /**
@@ -23,4 +23,4 @@ export function tapError_<R, E, A, R2, E2, X>(
  *
  * @tsplus static ets/Effect/Aspects tapError
  */
-export const tapError = Pipeable(tapError_);
+export const tapError = Pipeable(tapError_)

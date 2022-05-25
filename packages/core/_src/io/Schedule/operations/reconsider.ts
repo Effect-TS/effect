@@ -1,5 +1,5 @@
-import type { Decision } from "@effect/core/io/Schedule/Decision";
-import type { Interval } from "@effect/core/io/Schedule/Interval";
+import type { Decision } from "@effect/core/io/Schedule/Decision"
+import type { Interval } from "@effect/core/io/Schedule/Interval"
 
 /**
  * Returns a new schedule that reconsiders every decision made by this
@@ -17,7 +17,7 @@ export function reconsider_<State, Env, In, Out, Out2>(
     decision: Decision
   ) => Either<Out2, Tuple<[Out2, Interval]>>
 ): Schedule<State, Env, In, Out2> {
-  return self.reconsiderEffect((state, out, decision) => Effect.succeed(f(state, out, decision)));
+  return self.reconsiderEffect((state, out, decision) => Effect.succeed(f(state, out, decision)))
 }
 
 /**
@@ -27,4 +27,4 @@ export function reconsider_<State, Env, In, Out, Out2>(
  *
  * @tsplus static ets/Schedule/Aspects reconsider
  */
-export const reconsider = Pipeable(reconsider_);
+export const reconsider = Pipeable(reconsider_)

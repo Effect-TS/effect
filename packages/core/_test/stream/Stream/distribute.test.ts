@@ -1,4 +1,4 @@
-import { constTrue } from "@tsplus/stdlib/data/Function";
+import { constTrue } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Stream", () => {
   describe.concurrent("distributedWithDynamic", () => {
@@ -9,7 +9,7 @@ describe.concurrent("Stream", () => {
           .flatMap((add) => {
             const subscribe = Stream.unwrap(
               add.map(({ tuple: [_, queue] }) => Stream.fromQueue(queue).collectWhileSuccess())
-            );
+            )
 
             return Deferred.make<never, void>().flatMap(
               (onEnd) =>
@@ -17,13 +17,13 @@ describe.concurrent("Stream", () => {
                   onEnd.await() >
                   subscribe.runDrain() >
                   Effect.succeedNow(true)
-            );
+            )
           })
-      );
+      )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
-  });
-});
+      assert.isTrue(result)
+    })
+  })
+})

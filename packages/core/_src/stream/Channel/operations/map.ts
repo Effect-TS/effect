@@ -9,7 +9,7 @@ export function map_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, OutDo
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   f: (out: OutDone) => OutDone2
 ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone2> {
-  return self.flatMap((z) => Channel.succeed(f(z)));
+  return self.flatMap((z) => Channel.succeed(f(z)))
 }
 
 /**
@@ -19,4 +19,4 @@ export function map_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, OutDo
  *
  * @tsplus static ets/Channel/Aspects map
  */
-export const map = Pipeable(map_);
+export const map = Pipeable(map_)

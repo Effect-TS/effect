@@ -4,5 +4,5 @@
  * @tsplus static ets/Metrics/Metric/Ops gauge
  */
 export function gauge(name: string): Metric.Gauge<number> {
-  return Metric.fromMetricKey(MetricKey.Gauge(name));
+  return Metric.fromMetricKey(MetricKey.Gauge(name))
 }

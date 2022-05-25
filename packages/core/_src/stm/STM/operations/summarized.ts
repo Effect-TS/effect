@@ -14,7 +14,7 @@ export function summarized_<R, E, A, R2, E2, B, C>(
     .bind("start", () => summary)
     .bind("value", () => self)
     .bind("end", () => summary)
-    .map(({ end, start, value }) => Tuple(f(start, end), value));
+    .map(({ end, start, value }) => Tuple(f(start, end), value))
 }
 
 /**
@@ -24,4 +24,4 @@ export function summarized_<R, E, A, R2, E2, B, C>(
  *
  * @tsplus static ets/STM/Aspects summarized
  */
-export const summarized = Pipeable(summarized_);
+export const summarized = Pipeable(summarized_)

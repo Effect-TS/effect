@@ -7,5 +7,5 @@
 export function delayedUsing<State, Env, In>(
   schedule: Schedule<State, Env, In, Duration>
 ): Schedule<State, Env, In, Duration> {
-  return schedule.addDelay((x) => x);
+  return schedule.addDelay((x) => x)
 }

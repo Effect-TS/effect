@@ -9,7 +9,7 @@ export function withFinalizerExit_<R, R2, E, A, X>(
   finalizer: (exit: Exit<unknown, unknown>) => Effect.RIO<R2, X>,
   __tsplusTrace?: string
 ): Effect<R & R2 & Has<Scope>, E, A> {
-  return Effect.acquireReleaseExit(self, (_, exit) => finalizer(exit));
+  return Effect.acquireReleaseExit(self, (_, exit) => finalizer(exit))
 }
 
 /**
@@ -18,4 +18,4 @@ export function withFinalizerExit_<R, R2, E, A, X>(
  *
  * @tsplus static ets/Effect/Aspects withFinalizerExit
  */
-export const withFinalizerExit = Pipeable(withFinalizerExit_);
+export const withFinalizerExit = Pipeable(withFinalizerExit_)

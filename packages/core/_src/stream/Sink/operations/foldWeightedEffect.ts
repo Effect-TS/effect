@@ -22,5 +22,5 @@ export function foldWeightedEffect<R, E, R2, E2, In, S>(
     max,
     (i) => Effect.succeedNow(Chunk.single(i)),
     f
-  );
+  )
 }

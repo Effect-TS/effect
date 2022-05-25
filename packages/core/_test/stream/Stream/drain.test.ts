@@ -1,4 +1,4 @@
-import { constFalse, constTrue } from "@tsplus/stdlib/data/Function";
+import { constFalse, constTrue } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Stream", () => {
   describe.concurrent("drain", () => {
@@ -10,25 +10,25 @@ describe.concurrent("Stream", () => {
             .drain()
             .runDrain()
         )
-        .flatMap((ref) => ref.get());
+        .flatMap((ref) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.reverse() == List.from(Chunk.range(0, 9)));
-    });
+      assert.isTrue(result.reverse() == List.from(Chunk.range(0, 9)))
+    })
 
     it("isn't too eager", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
         .bind("res", ({ ref }) => (Stream(1).tap((n) => ref.set(n)) + Stream.fail("fail")).runDrain().either())
-        .bind("refRes", ({ ref }) => ref.get());
+        .bind("refRes", ({ ref }) => ref.get())
 
-      const { refRes, res } = await program.unsafeRunPromise();
+      const { refRes, res } = await program.unsafeRunPromise()
 
-      assert.isTrue(res == Either.left("fail"));
-      assert.strictEqual(refRes, 1);
-    });
-  });
+      assert.isTrue(res == Either.left("fail"))
+      assert.strictEqual(refRes, 1)
+    })
+  })
 
   describe.concurrent("drainFork", () => {
     it("runs the other stream in the background", async () => {
@@ -37,12 +37,12 @@ describe.concurrent("Stream", () => {
           .drainFork(Stream.fromEffect(latch.succeed(undefined)))
           .runDrain()
           .map(constTrue)
-      );
+      )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("interrupts the background stream when the foreground exits", async () => {
       const program = Effect.Do()
@@ -57,28 +57,28 @@ describe.concurrent("Stream", () => {
             )
             .runDrain()
         )
-        .flatMap(({ backgroundInterrupted }) => backgroundInterrupted.get());
+        .flatMap(({ backgroundInterrupted }) => backgroundInterrupted.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("fails the foreground stream if the background fails with a typed error", async () => {
-      const program = Stream.never.drainFork(Stream.fail("boom")).runDrain();
+      const program = Stream.never.drainFork(Stream.fail("boom")).runDrain()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("boom"));
-    });
+      assert.isTrue(result.untraced() == Exit.fail("boom"))
+    })
 
     it("fails the foreground stream if the background fails with a defect", async () => {
-      const error = new RuntimeError("boom");
-      const program = Stream.never.drainFork(Stream.die(error)).runDrain();
+      const error = new RuntimeError("boom")
+      const program = Stream.never.drainFork(Stream.die(error)).runDrain()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(error));
-    });
-  });
-});
+      assert.isTrue(result.untraced() == Exit.die(error))
+    })
+  })
+})

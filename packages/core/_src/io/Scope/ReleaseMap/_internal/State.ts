@@ -1,7 +1,7 @@
-export type State = Exited | Running;
+export type State = Exited | Running
 
 export class Exited {
-  readonly _tag = "Exited";
+  readonly _tag = "Exited"
   constructor(
     readonly nextKey: number,
     readonly exit: Exit<any, any>,
@@ -10,7 +10,7 @@ export class Exited {
 }
 
 export class Running {
-  readonly _tag = "Running";
+  readonly _tag = "Running"
   constructor(
     readonly nextKey: number,
     readonly _finalizers: Map<number, Scope.Finalizer>,
@@ -18,6 +18,6 @@ export class Running {
   ) {}
 
   finalizers(): Map<number, Scope.Finalizer> {
-    return this._finalizers;
+    return this._finalizers
   }
 }

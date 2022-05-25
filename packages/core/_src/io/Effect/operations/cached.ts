@@ -9,7 +9,7 @@ export function cached_<R, E, A>(
   timeToLive: Duration,
   __tsplusTrace?: string
 ): Effect<R, never, Effect.IO<E, A>> {
-  return self.cachedInvalidate(timeToLive).map((tuple) => tuple.get(0));
+  return self.cachedInvalidate(timeToLive).map((tuple) => tuple.get(0))
 }
 
 /**
@@ -18,4 +18,4 @@ export function cached_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects cached
  */
-export const cached = Pipeable(cached_);
+export const cached = Pipeable(cached_)

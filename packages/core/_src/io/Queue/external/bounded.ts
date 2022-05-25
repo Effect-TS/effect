@@ -1,4 +1,4 @@
-import { makeBoundedQueue } from "@effect/core/io/Effect/operations/excl-forEach";
+import { makeBoundedQueue } from "@effect/core/io/Effect/operations/excl-forEach"
 
 /**
  * Makes a new bounded queue. When the capacity of the queue is reached, any
@@ -14,4 +14,4 @@ import { makeBoundedQueue } from "@effect/core/io/Effect/operations/excl-forEach
 export const bounded: <A>(
   requestedCapacity: number,
   __tsplusTrace?: string | undefined
-) => Effect.UIO<Queue<A>> = makeBoundedQueue;
+) => Effect.UIO<Queue<A>> = makeBoundedQueue

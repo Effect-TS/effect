@@ -9,7 +9,7 @@ export function runtime<R>(__tsplusTrace?: string): Effect.RIO<R, Runtime<R>> {
   return Effect.environment<R>().flatMap(
     (env) => Effect.runtimeConfig.map((config) => new Runtime(env, config)),
     __tsplusTrace
-  );
+  )
 }
 
 /**
@@ -18,7 +18,7 @@ export function runtime<R>(__tsplusTrace?: string): Effect.RIO<R, Runtime<R>> {
 export const defaultRuntimeConfig: RuntimeConfig = RuntimeConfig({
   fatal: () => false,
   reportFatal: (defect) => {
-    throw defect;
+    throw defect
   },
   supervisor: Supervisor.unsafeTrack(),
   loggers: HashSet(
@@ -28,31 +28,31 @@ export const defaultRuntimeConfig: RuntimeConfig = RuntimeConfig({
   ),
   flags: RuntimeConfigFlags.empty + RuntimeConfigFlag.EnableFiberRoots,
   maxOp: 2048
-});
+})
 
-export const defaultRuntime = new Runtime(Env.empty, defaultRuntimeConfig);
+export const defaultRuntime = new Runtime(Env.empty, defaultRuntimeConfig)
 
 /**
  * @tsplus fluent ets/Effect unsafeRunPromise
  */
-export const unsafeRunPromise = defaultRuntime.unsafeRunPromise;
+export const unsafeRunPromise = defaultRuntime.unsafeRunPromise
 
 /**
  * @tsplus fluent ets/Effect unsafeRunAsync
  */
-export const unsafeRunAsync = defaultRuntime.unsafeRunAsync;
+export const unsafeRunAsync = defaultRuntime.unsafeRunAsync
 
 /**
  * @tsplus fluent ets/Effect unsafeRunAsyncWith
  */
-export const unsafeRunAsyncWith = defaultRuntime.unsafeRunAsyncWith;
+export const unsafeRunAsyncWith = defaultRuntime.unsafeRunAsyncWith
 
 /**
  * @tsplus fluent ets/Effect unsafeRunPromiseExit
  */
-export const unsafeRunPromiseExit = defaultRuntime.unsafeRunPromiseExit;
+export const unsafeRunPromiseExit = defaultRuntime.unsafeRunPromiseExit
 
 /**
  * @tsplus fluent ets/Effect unsafeRunWith
  */
-export const unsafeRunWith = defaultRuntime.unsafeRunWith;
+export const unsafeRunWith = defaultRuntime.unsafeRunWith

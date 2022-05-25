@@ -1,7 +1,7 @@
-import type { HistogramBoundaries, HistogramBoundariesOps } from "@effect/core/io/Metrics/Boundaries";
+import type { HistogramBoundaries, HistogramBoundariesOps } from "@effect/core/io/Metrics/Boundaries"
 
-export const MetricSym = Symbol.for("@effect/core/io/Metric");
-export type MetricSym = typeof MetricSym;
+export const MetricSym = Symbol.for("@effect/core/io/Metric")
+export type MetricSym = typeof MetricSym
 
 /**
  * A `Metric<Type, In, Out>` represents a concurrent metric which accepts
@@ -23,12 +23,12 @@ export type MetricSym = typeof MetricSym;
  * @tsplus type ets/Metrics/Metric
  */
 export interface Metric<Type, In, Out> {
-  readonly [MetricSym]: MetricSym;
-  readonly keyType: Type;
-  readonly unsafeUpdate: (input: In, extraTags: HashSet<MetricLabel>) => void;
-  readonly unsafeValue: (extraTags: HashSet<MetricLabel>) => Out;
+  readonly [MetricSym]: MetricSym
+  readonly keyType: Type
+  readonly unsafeUpdate: (input: In, extraTags: HashSet<MetricLabel>) => void
+  readonly unsafeValue: (extraTags: HashSet<MetricLabel>) => Out
 
-  <R, E, A extends In>(effect: Effect<R, E, A>, __tsplusTrace?: string): Effect<R, E, A>;
+  <R, E, A extends In>(effect: Effect<R, E, A>, __tsplusTrace?: string): Effect<R, E, A>
 }
 
 /**
@@ -43,7 +43,7 @@ export interface MetricOps {
     keyType: Type,
     unsafeUpdate: (input: In, extraTags: HashSet<MetricLabel>) => void,
     unsafeValue: (extraTags: HashSet<MetricLabel>) => Out
-  ): Metric<Type, In, Out>;
+  ): Metric<Type, In, Out>
 }
 
 export const Metric: MetricOps = function<Type, In, Out>(
@@ -60,9 +60,9 @@ export const Metric: MetricOps = function<Type, In, Out>(
       unsafeUpdate,
       unsafeValue
     } as const
-  );
-  return metric;
-};
+  )
+  return metric
+}
 
 export declare namespace Metric {
   export interface Counter<In> extends Metric<MetricKeyType.Counter, In, MetricState.Counter> {}
@@ -75,19 +75,19 @@ export declare namespace Metric {
     /**
      * @tsplus type ets/Metrics/Histogram/Boundaries
      */
-    export type Boundaries = HistogramBoundaries;
+    export type Boundaries = HistogramBoundaries
   }
 }
 
 /**
  * @tsplus static ets/Metrics/Metric/Ops $
  */
-export const metricAspects: MetricAspects = {};
+export const metricAspects: MetricAspects = {}
 
 /**
  * @tsplus static ets/Metrics/Metric/Ops Histogram
  */
-export const histogramBoundaries: { readonly Boundaries: HistogramBoundariesOps; } = { Boundaries: {} };
+export const histogramBoundaries: { readonly Boundaries: HistogramBoundariesOps } = { Boundaries: {} }
 
 /**
  * @tsplus type ets/Metrics/Metric/Aspects

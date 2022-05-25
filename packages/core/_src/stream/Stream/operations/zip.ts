@@ -11,7 +11,7 @@ export function zip_<R, E, A, R2, E2, A2>(
   that: LazyArg<Stream<R2, E2, A2>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, Tuple<[A, A2]>> {
-  return self.zipWith(that, (a, a2) => Tuple(a, a2));
+  return self.zipWith(that, (a, a2) => Tuple(a, a2))
 }
 
 /**
@@ -22,4 +22,4 @@ export function zip_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Stream/Aspects zip
  */
-export const zip = Pipeable(zip_);
+export const zip = Pipeable(zip_)

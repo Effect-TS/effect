@@ -7,5 +7,5 @@ export function fail<E>(
   error: LazyArg<E>,
   __tsplusTrace?: string
 ): Stream<unknown, E, never> {
-  return Stream.fromEffect(Effect.fail(error));
+  return Stream.fromEffect(Effect.fail(error))
 }

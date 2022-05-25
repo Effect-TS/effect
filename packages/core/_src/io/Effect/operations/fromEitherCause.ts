@@ -7,5 +7,5 @@ export function fromEitherCause<E, A>(
   either: LazyArg<Either<Cause<E>, A>>,
   __tsplusTrace?: string
 ): Effect.IO<E, A> {
-  return Effect.succeed(either).flatMap((either) => either.fold(Effect.failCauseNow, Effect.succeedNow));
+  return Effect.succeed(either).flatMap((either) => either.fold(Effect.failCauseNow, Effect.succeedNow))
 }

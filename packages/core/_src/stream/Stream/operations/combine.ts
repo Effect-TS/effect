@@ -1,5 +1,5 @@
-import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff";
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff"
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Combines the elements from this stream and the specified stream by
@@ -32,23 +32,23 @@ export function combine_<R, E, A, R2, E2, A2, S, A3>(
         .bind("latchL", () => Handoff.make<void>())
         .bind("latchR", () => Handoff.make<void>())
         .tap(({ latchL, left }) => {
-          concreteStream(self);
+          concreteStream(self)
           return (
             self.channel.concatMap((chunk) => Channel.writeChunk(chunk)) >>
             producer(left, latchL)
           )
             .runScoped()
-            .fork();
+            .fork()
         })
         .tap(({ latchR, right }) => {
-          const that0 = that();
-          concreteStream(that0);
+          const that0 = that()
+          concreteStream(that0)
           return (
             that0.channel.concatMap((chunk) => Channel.writeChunk(chunk)) >>
             producer(right, latchR)
           )
             .runScoped()
-            .fork();
+            .fork()
         })
         .bindValue(
           "pullLeft",
@@ -61,12 +61,12 @@ export function combine_<R, E, A, R2, E2, A2, S, A3>(
         .map(({ pullLeft, pullRight }) => {
           const stream = Stream.unfoldEffect(s, (s) =>
             f(s, pullLeft, pullRight)
-              .flatMap((exit) => Effect.done(exit).unsome()));
-          concreteStream(stream);
-          return stream.channel;
+              .flatMap((exit) => Effect.done(exit).unsome()))
+          concreteStream(stream)
+          return stream.channel
         })
     )
-  );
+  )
 }
 
 /**
@@ -81,7 +81,7 @@ export function combine_<R, E, A, R2, E2, A2, S, A3>(
  *
  * @tsplus static ets/Stream/Aspects combine
  */
-export const combine = Pipeable(combine_);
+export const combine = Pipeable(combine_)
 
 function producer<Err, Elem>(
   handoff: Handoff<Exit<Option<Err>, Elem>>,
@@ -99,5 +99,5 @@ function producer<Err, Elem>(
           Channel.fromEffect(handoff.offer(Exit.fail(Option.none))) >
             producer(handoff, latch)
       )
-  );
+  )
 }

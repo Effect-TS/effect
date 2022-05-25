@@ -12,5 +12,5 @@ export function fibonacci(
     Schedule.unfold(Tuple(one, one), ({ tuple: [a1, a2] }) => Tuple(a2, a1 + a2)).map(
       (out) => out.get(0)
     )
-  );
+  )
 }

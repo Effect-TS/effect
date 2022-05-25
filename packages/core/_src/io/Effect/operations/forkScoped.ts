@@ -11,5 +11,5 @@ export function forkScoped<R, E, A>(
     restore(self)
       .forkDaemon()
       .tap((fiber) => Effect.addFinalizer(fiber.interrupt()))
-  );
+  )
 }

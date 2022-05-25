@@ -17,5 +17,5 @@ export function withChildren<R, E, A>(
         )
       )
     ).supervised(supervisor)
-  );
+  )
 }

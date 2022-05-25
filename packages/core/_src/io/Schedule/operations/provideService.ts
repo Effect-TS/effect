@@ -1,4 +1,4 @@
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * Returns a new schedule with the single service it requires provided to it.
@@ -20,7 +20,7 @@ export function provideService_<State, R, In, Out, T>(
         self
           ._step(now, input, state)
           .provideEnvironment(env.add(tag, service()))
-      ));
+      ))
 }
 
 /**
@@ -30,4 +30,4 @@ export function provideService_<State, R, In, Out, T>(
  *
  * @tsplus static ets/Schedule/Aspects provideService
  */
-export const provideService = Pipeable(provideService_);
+export const provideService = Pipeable(provideService_)

@@ -14,7 +14,7 @@ export function validateWithPar_<R, E, A, R1, E1, B, C>(
   return self
     .exit()
     .zipWithPar(that().exit(), (ea, eb) => ea.zipWith(eb, f, (ca, cb) => Cause.both(ca, cb)))
-    .flatMap((exit) => Effect.done(exit));
+    .flatMap((exit) => Effect.done(exit))
 }
 
 /**
@@ -24,4 +24,4 @@ export function validateWithPar_<R, E, A, R1, E1, B, C>(
  *
  * @tsplus static ets/Effect/Aspects validateWithPar
  */
-export const validateWithPar = Pipeable(validateWithPar_);
+export const validateWithPar = Pipeable(validateWithPar_)

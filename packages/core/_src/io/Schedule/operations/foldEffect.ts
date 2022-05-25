@@ -1,5 +1,5 @@
-import type { Decision } from "@effect/core/io/Schedule/Decision";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import type { Decision } from "@effect/core/io/Schedule/Decision"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * Returns a new schedule that effectfully folds over the outputs of this one.
@@ -19,7 +19,7 @@ export function foldEffect_<State, Env, In, Out, Env1, Z>(
         decision._tag === "Done"
           ? Effect.succeed(Tuple(Tuple(s, z), z, decision))
           : f(z, out).map((z2) => Tuple(Tuple(s, z2), z, decision))
-      ));
+      ))
 }
 
 /**
@@ -27,4 +27,4 @@ export function foldEffect_<State, Env, In, Out, Env1, Z>(
  *
  * @tsplus static ets/Schedule/Aspects foldEffect
  */
-export const foldEffect = Pipeable(foldEffect_);
+export const foldEffect = Pipeable(foldEffect_)

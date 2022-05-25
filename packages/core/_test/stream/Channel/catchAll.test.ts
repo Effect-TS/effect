@@ -4,11 +4,11 @@ describe.concurrent("Channel", () => {
       const program = Channel.write(8)
         .catchAll(() => Channel.write(0).concatMap(() => Channel.fail("error1")))
         .concatMap(() => Channel.fail("error2"))
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("error2"));
-    });
-  });
-});
+      assert.isTrue(result.untraced() == Exit.fail("error2"))
+    })
+  })
+})

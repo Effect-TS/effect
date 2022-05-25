@@ -13,5 +13,5 @@ export function simple<A, B>(log: (a: A) => B): Logger<A, B> {
       _spans,
       _annotations
     ) => log(message())
-  };
+  }
 }

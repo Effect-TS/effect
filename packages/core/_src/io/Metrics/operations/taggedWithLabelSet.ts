@@ -12,7 +12,7 @@ export function taggedWithLabelSet_<Type, In, Out>(
     self.keyType,
     (input, extraTags1) => self.unsafeUpdate(input, extraTags.union(extraTags1)),
     (extraTags1) => self.unsafeValue(extraTags.union(extraTags1))
-  );
+  )
 }
 
 /**
@@ -21,4 +21,4 @@ export function taggedWithLabelSet_<Type, In, Out>(
  *
  * @tsplus static ets/Metrics/Metric/Aspects taggedWithLabelSet
  */
-export const taggedWithLabelSet = Pipeable(taggedWithLabelSet_);
+export const taggedWithLabelSet = Pipeable(taggedWithLabelSet_)

@@ -19,5 +19,5 @@ export function mergeAllPar<R, E, A, B>(
 ): Effect<R, E, B> {
   return Ref.make(zero).flatMap((acc) =>
     Effect.forEachParDiscard(as, (effect) => effect.flatMap((a) => acc.update((b) => f(b, a)))).flatMap(() => acc.get())
-  );
+  )
 }

@@ -1,4 +1,4 @@
-import { makeSynthetic } from "@effect/core/io/Fiber/definition";
+import { makeSynthetic } from "@effect/core/io/Fiber/definition"
 
 /**
  * Returns a fiber that prefers `this` fiber, but falls back to the `that` one
@@ -25,7 +25,7 @@ export function orElse_<E, E1, A, A1>(
     poll: self
       .poll()
       .zipWith(that.poll(), (o1, o2) => o1.fold(Option.none, (_) => (_._tag === "Success" ? o1 : o2)))
-  });
+  })
 }
 
 /**
@@ -35,4 +35,4 @@ export function orElse_<E, E1, A, A1>(
  *
  * @tsplus static ets/Fiber/Aspects orElse
  */
-export const orElse = Pipeable(orElse_);
+export const orElse = Pipeable(orElse_)

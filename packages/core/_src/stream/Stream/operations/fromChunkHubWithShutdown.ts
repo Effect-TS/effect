@@ -9,5 +9,5 @@ export function fromChunkHubWithShutdown<A>(
   hub: LazyArg<Hub<Chunk<A>>>,
   __tsplusTrace?: string
 ): Stream<unknown, never, A> {
-  return Stream.succeed(hub).flatMap((hub) => Stream.fromChunkHub(hub).ensuring(hub.shutdown));
+  return Stream.succeed(hub).flatMap((hub) => Stream.fromChunkHub(hub).ensuring(hub.shutdown))
 }

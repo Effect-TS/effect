@@ -5,7 +5,7 @@
  * @tsplus fluent ets/TArray forAll
  */
 export function forAll_<A>(self: TArray<A>, f: Predicate<A>): USTM<boolean> {
-  return self.exists((a) => !f(a)).negate();
+  return self.exists((a) => !f(a)).negate()
 }
 
 /**
@@ -14,4 +14,4 @@ export function forAll_<A>(self: TArray<A>, f: Predicate<A>): USTM<boolean> {
  *
  * @tsplus static ets/TArray/Aspects forAll
  */
-export const forAll = Pipeable(forAll_);
+export const forAll = Pipeable(forAll_)

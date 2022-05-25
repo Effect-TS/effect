@@ -13,7 +13,7 @@ export function paginate<S, A>(
   return Stream.paginateChunk(s, (s) => {
     const {
       tuple: [a, maybeS]
-    } = f(s);
-    return Tuple(Chunk.single(a), maybeS);
-  });
+    } = f(s)
+    return Tuple(Chunk.single(a), maybeS)
+  })
 }

@@ -1,4 +1,4 @@
-import { IOverrideForkScope } from "@effect/core/io/Effect/definition/primitives";
+import { IOverrideForkScope } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Returns a new workflow that will not supervise any fibers forked by this
@@ -16,5 +16,5 @@ export function daemonChildren<R, E, A>(
       Option.some(FiberScope.global.value),
       __tsplusTrace
     )
-  );
+  )
 }

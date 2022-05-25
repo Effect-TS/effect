@@ -1,6 +1,6 @@
-import { Decision } from "@effect/core/io/Schedule/Decision";
-import { Interval } from "@effect/core/io/Schedule/Interval";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import { Decision } from "@effect/core/io/Schedule/Decision"
+import { Interval } from "@effect/core/io/Schedule/Interval"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * A schedule that can recur one time, the specified amount of time into the
@@ -20,5 +20,5 @@ export function duration(
           Decision.Continue(Interval.after(now + duration.millis))
         )
         : Tuple(false, (0).millis, Decision.Done)
-    ));
+    ))
 }

@@ -7,5 +7,5 @@
 export function isInterruptedOnly<E>(self: Cause<E>): boolean {
   return self
     .find((cause) => cause.isDieType() || cause.isFailType() ? Option.some(false) : Option.none)
-    .getOrElse(true);
+    .getOrElse(true)
 }

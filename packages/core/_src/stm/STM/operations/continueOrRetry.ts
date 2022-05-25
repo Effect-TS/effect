@@ -8,7 +8,7 @@ export function continueOrRetry_<R, E, A, A2>(
   self: STM<R, E, A>,
   pf: (a: A) => Option<A2>
 ): STM<R, E, A2> {
-  return self.continueOrRetrySTM((x) => pf(x).map(STM.succeedNow));
+  return self.continueOrRetrySTM((x) => pf(x).map(STM.succeedNow))
 }
 
 /**
@@ -17,4 +17,4 @@ export function continueOrRetry_<R, E, A, A2>(
  *
  * @tsplus static ets/STM/Aspects continueOrRetry
  */
-export const continueOrRetry = Pipeable(continueOrRetry_);
+export const continueOrRetry = Pipeable(continueOrRetry_)

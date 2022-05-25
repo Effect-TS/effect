@@ -1,4 +1,4 @@
-import { CloseableScopeInternal } from "@effect/core/io/Scope/operations/_internal/CloseableScopeInternal";
+import { CloseableScopeInternal } from "@effect/core/io/Scope/operations/_internal/CloseableScopeInternal"
 
 /**
  * Makes a scope. Finalizers added to this scope will be run according to the
@@ -24,5 +24,5 @@ export function makeWith(
             releaseMap.releaseAll(exit(), executionStrategy()).asUnit()
           )
       )
-  );
+  )
 }

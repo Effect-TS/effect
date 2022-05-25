@@ -8,5 +8,5 @@ export function dieMessage(
   message: LazyArg<string>,
   __tsplusTrace?: string
 ): Sink<unknown, never, unknown, never, never> {
-  return Sink.failCause(Cause.die(new RuntimeError(message())));
+  return Sink.failCause(Cause.die(new RuntimeError(message())))
 }

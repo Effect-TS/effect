@@ -10,7 +10,7 @@ export function runFold_<R, E, A, S>(
   f: (s: S, a: A) => S,
   __tsplusTrace?: string
 ): Effect<R, E, S> {
-  return Effect.scoped(self.runFoldWhileScoped(s, () => true, f));
+  return Effect.scoped(self.runFoldWhileScoped(s, () => true, f))
 }
 
 /**
@@ -19,4 +19,4 @@ export function runFold_<R, E, A, S>(
  *
  * @tsplus static ets/Stream/Aspects runFold
  */
-export const runFold = Pipeable(runFold_);
+export const runFold = Pipeable(runFold_)

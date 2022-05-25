@@ -8,7 +8,7 @@ export function set_<A, P>(
   value: A,
   __tsplusTrace?: string
 ): Effect.UIO<void> {
-  return self.modify(() => Tuple(undefined, value));
+  return self.modify(() => Tuple(undefined, value))
 }
 
 /**
@@ -16,4 +16,4 @@ export function set_<A, P>(
  *
  * @tsplus static ets/FiberRef/Aspects set
  */
-export const set = Pipeable(set_);
+export const set = Pipeable(set_)

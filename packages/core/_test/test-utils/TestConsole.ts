@@ -3,16 +3,16 @@ export interface TestConsole {
   /**
    * Writes the specified string to the output buffer.
    */
-  readonly print: (line: any, __tsplusTrace?: string) => Effect.IO<TestConsoleError, void>;
+  readonly print: (line: any, __tsplusTrace?: string) => Effect.IO<TestConsoleError, void>
   /**
    * Writes the specified string to the error buffer.
    */
-  readonly printError: (line: any, __tsplusTrace?: string) => Effect.IO<TestConsoleError, void>;
+  readonly printError: (line: any, __tsplusTrace?: string) => Effect.IO<TestConsoleError, void>
   /**
    * Writes the specified string to the output buffer followed by a newline
    * character.
    */
-  readonly printLine: (line: any, __tsplusTrace?: string) => Effect.IO<TestConsoleError, void>;
+  readonly printLine: (line: any, __tsplusTrace?: string) => Effect.IO<TestConsoleError, void>
   /**
    * Writes the specified string to the error buffer followed by a newline
    * character.
@@ -20,36 +20,36 @@ export interface TestConsole {
   readonly printLineError: (
     line: any,
     __tsplusTrace?: string
-  ) => Effect.IO<TestConsoleError, void>;
+  ) => Effect.IO<TestConsoleError, void>
   /**
    * Takes the first value from the input buffer, if one exists, or else fails
    * with an `EOFException`.
    */
-  readonly readLine: (__tsplusTrace?: string) => Effect.IO<TestConsoleError, void>;
+  readonly readLine: (__tsplusTrace?: string) => Effect.IO<TestConsoleError, void>
   /**
    * Writes the specified sequence of strings to the input buffer. The first
    * string in the sequence will be the first to be taken. These strings will
    * be taken before any strings that were previously in the input buffer.
    */
-  readonly feedLines: (lines: ImmutableArray<string>, __tsplusTrace?: string) => Effect.UIO<void>;
+  readonly feedLines: (lines: ImmutableArray<string>, __tsplusTrace?: string) => Effect.UIO<void>
   /**
    * Takes the first value from the input buffer, if one exists, or else fails
    * with an `EOFException`.
    */
-  readonly output: (__tsplusTrace?: string) => Effect.UIO<ImmutableArray<string>>;
+  readonly output: (__tsplusTrace?: string) => Effect.UIO<ImmutableArray<string>>
   /**
    * Returns the contents of the error output buffer. The first value written
    * to the error output buffer will be the first in the sequence.
    */
-  readonly outputError: (__tsplusTrace?: string) => Effect.UIO<void>;
+  readonly outputError: (__tsplusTrace?: string) => Effect.UIO<void>
   /**
    * Clears the contents of the input buffer.
    */
-  readonly clearInput: (__tsplusTrace?: string) => Effect.UIO<void>;
+  readonly clearInput: (__tsplusTrace?: string) => Effect.UIO<void>
   /**
    * Clears the contents of the output buffer.
    */
-  readonly clearOutput: (__tsplusTrace?: string) => Effect.UIO<void>;
+  readonly clearOutput: (__tsplusTrace?: string) => Effect.UIO<void>
   // /**
   //  * Runs the specified effect with the `TestConsole` set to silent mode, so
   //  * that console output is only written to the output buffer and not rendered
@@ -72,18 +72,18 @@ export interface TestConsole {
    * Saves the `TestConsole`'s current state in an effect which, when run,
    * will restore the `TestConsole` state to the saved state.
    */
-  readonly save: (__tsplusTrace?: string) => Effect.UIO<Effect.UIO<void>>;
+  readonly save: (__tsplusTrace?: string) => Effect.UIO<Effect.UIO<void>>
 }
 
 /**
  * @tsplus type ets/TestConsole/Ops
  */
 export interface TestConsoleOps {
-  readonly Tag: Tag<TestConsole>;
+  readonly Tag: Tag<TestConsole>
 }
 export const TestConsole: TestConsoleOps = {
   Tag: Tag<TestConsole>()
-};
+}
 
 export class TestConsoleError {
   constructor(readonly message: string) {}
@@ -93,9 +93,9 @@ export class TestConsoleError {
  * The state of the `TestConsole`.
  */
 export interface TestConsoleState {
-  readonly input: List<string>;
-  readonly output: ImmutableArray<string>;
-  readonly outputError: ImmutableArray<string>;
+  readonly input: List<string>
+  readonly output: ImmutableArray<string>
+  readonly outputError: ImmutableArray<string>
 }
 
 export function makeTestConsole(
@@ -141,7 +141,7 @@ export function makeTestConsole(
     clearInput: () => consoleState.update((state) => ({ ...state, input: List.empty<string>() })),
     clearOutput: () => consoleState.update((state) => ({ ...state, output: ImmutableArray.empty<string>() })),
     save: () => consoleState.get().map((state) => consoleState.set(state))
-  };
+  }
 }
 
 /**
@@ -151,7 +151,7 @@ export function print(
   line: any,
   __tsplusTrace?: string
 ): Effect<Has<TestConsole>, TestConsoleError, void> {
-  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.print(line));
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.print(line))
 }
 
 /**
@@ -161,7 +161,7 @@ export function printError(
   line: any,
   __tsplusTrace?: string
 ): Effect<Has<TestConsole>, TestConsoleError, void> {
-  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.printError(line));
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.printError(line))
 }
 
 /**
@@ -172,7 +172,7 @@ export function printLine(
   line: any,
   __tsplusTrace?: string
 ): Effect<Has<TestConsole>, TestConsoleError, void> {
-  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.printLine(line));
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.printLine(line))
 }
 
 /**
@@ -183,7 +183,7 @@ export function printLineError(
   line: any,
   __tsplusTrace?: string
 ): Effect<Has<TestConsole>, TestConsoleError, void> {
-  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.printLineError(line));
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.printLineError(line))
 }
 
 /**
@@ -193,7 +193,7 @@ export function printLineError(
 export function readLine(
   __tsplusTrace?: string
 ): Effect<Has<TestConsole>, TestConsoleError, void> {
-  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.readLine());
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.readLine())
 }
 
 /**
@@ -205,7 +205,7 @@ export function feedLines(
   lines: ImmutableArray<string>,
   __tsplusTrace?: string
 ): Effect.RIO<Has<TestConsole>, void> {
-  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.feedLines(lines));
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.feedLines(lines))
 }
 
 /**
@@ -213,7 +213,7 @@ export function feedLines(
  * with an `EOFException`.
  */
 export function output(__tsplusTrace?: string): Effect.RIO<Has<TestConsole>, ImmutableArray<string>> {
-  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.output());
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.output())
 }
 
 /**
@@ -221,19 +221,19 @@ export function output(__tsplusTrace?: string): Effect.RIO<Has<TestConsole>, Imm
  * to the error output buffer will be the first in the sequence.
  */
 export function outputError(__tsplusTrace?: string): Effect.RIO<Has<TestConsole>, void> {
-  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.outputError());
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.outputError())
 }
 
 /**
  * Clears the contents of the input buffer.
  */
 export function clearInput(__tsplusTrace?: string): Effect.RIO<Has<TestConsole>, void> {
-  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.clearInput());
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.clearInput())
 }
 
 /**
  * Clears the contents of the output buffer.
  */
 export function clearOutput(__tsplusTrace?: string): Effect.RIO<Has<TestConsole>, void> {
-  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.clearOutput());
+  return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.clearOutput())
 }

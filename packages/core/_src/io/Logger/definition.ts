@@ -1,4 +1,4 @@
-import type { Lazy } from "@tsplus/stdlib/data/Function";
+import type { Lazy } from "@tsplus/stdlib/data/Function"
 
 /**
  * @tsplus type ets/Logger
@@ -13,18 +13,18 @@ export interface Logger<Message, Output> {
     context: ImmutableMap<FiberRef<unknown, unknown>, unknown>,
     spans: List<LogSpan>,
     annotations: ImmutableMap<string, string>
-  ) => Output;
+  ) => Output
 }
 
 /**
  * @tsplus type ets/Logger/Ops
  */
 export interface LoggerOps {
-  $: LoggerAspects;
+  $: LoggerAspects
 }
 export const Logger: LoggerOps = {
   $: {}
-};
+}
 
 /**
  * @tsplus type ets/Logger/Aspects

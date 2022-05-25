@@ -3,4 +3,4 @@
  *
  * @tsplus static ets/STM/Ops interrupt
  */
-export const interrupt: USTM<never> = STM.fiberId.flatMap((fiberId) => STM.interruptAs(fiberId));
+export const interrupt: USTM<never> = STM.fiberId.flatMap((fiberId) => STM.interruptAs(fiberId))

@@ -18,7 +18,7 @@ describe("Stream", () => {
       //       result <- fiber.join
       //     } yield result)(equalTo(Chunk(Chunk(3, 4), Chunk(6, 7))))
       //   }
-    });
+    })
 
     // TODO(Mike/Max): implement after TestClock
     it.skip("should take latest chunk within waitTime", async () => {
@@ -35,7 +35,7 @@ describe("Stream", () => {
       //     result <- fiber.join
       //   } yield result)(equalTo(Chunk(Chunk(5, 6))))
       // }
-    });
+    })
 
     // TODO(Mike/Max): implement after TestClock
     it.skip("should work properly with parallelization", async () => {
@@ -51,7 +51,7 @@ describe("Stream", () => {
       //     _      <- TestClock.adjust(1.second)
       //     result <- fiber.join
       //   } yield result)(hasSize(equalTo(1)))
-    });
+    })
 
     // TODO(Mike/Max): implement after TestClock
     it.skip("should handle empty chunks properly", async () => {
@@ -60,26 +60,26 @@ describe("Stream", () => {
       //   _      <- TestClock.adjust(3.seconds)
       //   result <- fiber.join
       // } yield assert(result)(equalTo(Chunk(3)))
-    });
+    })
 
     it("should fail immediately", async () => {
       const program = Stream.fromEffect(Effect.fail(Option.none))
         .debounce((100_000_000).millis)
         .runCollect()
-        .either();
+        .either()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left(Option.none));
-    });
+      assert.isTrue(result == Either.left(Option.none))
+    })
 
     it("should work with empty streams", async () => {
-      const program = Stream.empty.debounce((100_000_000).millis).runCollect();
+      const program = Stream.empty.debounce((100_000_000).millis).runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty());
-    });
+      assert.isTrue(result.isEmpty())
+    })
 
     // TODO(Mike/Max): implement after TestClock
     it.skip("should pick last element from every chunk", async () => {
@@ -88,7 +88,7 @@ describe("Stream", () => {
       //   _      <- TestClock.adjust(1.second)
       //   result <- fiber.join
       // } yield result)(equalTo(Chunk(3)))
-    });
+    })
 
     // TODO(Mike/Max): implement after TestClock
     it.skip("should interrupt fibers properly", async () => {
@@ -109,7 +109,7 @@ describe("Stream", () => {
       //     results <- fib.join
       //   } yield assert(results)(equalTo(Chunk(3)))
       // }
-    });
+    })
 
     // TODO(Mike/Max): implement after TestClock
     it.skip("should interrupt children fiber on stream interruption", async () => {
@@ -123,6 +123,6 @@ describe("Stream", () => {
       //   _     <- fiber.interrupt
       //   value <- ref.get
       // } yield assert(value)(equalTo(true))
-    });
-  });
-});
+    })
+  })
+})

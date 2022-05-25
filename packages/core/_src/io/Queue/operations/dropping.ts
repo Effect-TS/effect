@@ -1,4 +1,4 @@
-import { Strategy } from "@effect/core/io/Queue/operations/strategy";
+import { Strategy } from "@effect/core/io/Queue/operations/strategy"
 
 /**
  * Makes a new bounded queue with the dropping strategy. When the capacity of
@@ -16,5 +16,5 @@ export function dropping<A>(
 ): Effect.UIO<Queue<A>> {
   return Effect.succeed(MutableQueue.bounded<A>(requestedCapacity)).flatMap((queue) =>
     Queue.create(queue, Strategy.Dropping())
-  );
+  )
 }

@@ -9,7 +9,7 @@ export function modifySome_<A, B>(
   def: B,
   pf: (a: A) => Option<Tuple<[B, A]>>
 ): USTM<B> {
-  return self.modify((a) => pf(a).getOrElse(Tuple(def, a)));
+  return self.modify((a) => pf(a).getOrElse(Tuple(def, a)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function modifySome_<A, B>(
  *
  * @tsplus static ets/TRef/Aspects modifySome
  */
-export const modifySome = Pipeable(modifySome_);
+export const modifySome = Pipeable(modifySome_)

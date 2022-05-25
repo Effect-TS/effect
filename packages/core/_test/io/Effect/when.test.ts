@@ -9,20 +9,20 @@ describe.concurrent("Effect", () => {
         .bind("v2", ({ ref }) => ref.get())
         .bindValue("failure", () => new Error("expected"))
         .tap(({ failure }) => Effect.when(false, Effect.fail(failure)))
-        .bind("failed", ({ failure }) => Effect.when(true, Effect.fail(failure)).either());
+        .bind("failed", ({ failure }) => Effect.when(true, Effect.fail(failure)).either())
 
-      const { failed, failure, v1, v2 } = await program.unsafeRunPromise();
+      const { failed, failure, v1, v2 } = await program.unsafeRunPromise()
 
-      assert.strictEqual(v1, 0);
-      assert.strictEqual(v2, 2);
-      assert.isTrue(failed == Either.left(failure));
-    });
-  });
+      assert.strictEqual(v1, 0)
+      assert.strictEqual(v2, 2)
+      assert.isTrue(failed == Either.left(failure))
+    })
+  })
 
   describe.concurrent("whenCase", () => {
     it("executes correct branch only", async () => {
-      const v1 = Option.emptyOf<number>();
-      const v2 = Option.some(0);
+      const v1 = Option.emptyOf<number>()
+      const v2 = Option.some(0)
       const program = Effect.Do()
         .bind("ref", () => Ref.make(false))
         .tap(({ ref }) =>
@@ -32,19 +32,19 @@ describe.concurrent("Effect", () => {
         .tap(({ ref }) =>
           Effect.whenCase(v2, (option) => option._tag === "Some" ? Option.some(ref.set(true)) : Option.none)
         )
-        .bind("res2", ({ ref }) => ref.get());
+        .bind("res2", ({ ref }) => ref.get())
 
-      const { res1, res2 } = await program.unsafeRunPromise();
+      const { res1, res2 } = await program.unsafeRunPromise()
 
-      assert.isFalse(res1);
-      assert.isTrue(res2);
-    });
-  });
+      assert.isFalse(res1)
+      assert.isTrue(res2)
+    })
+  })
 
   describe.concurrent("whenCaseEffect", () => {
     it("executes condition effect and correct branch", async () => {
-      const v1 = Option.emptyOf<number>();
-      const v2 = Option.some(0);
+      const v1 = Option.emptyOf<number>()
+      const v2 = Option.some(0)
       const program = Effect.Do()
         .bind("ref", () => Ref.make(false))
         .tap(({ ref }) =>
@@ -60,14 +60,14 @@ describe.concurrent("Effect", () => {
             (option) => option._tag === "Some" ? Option.some(ref.set(true)) : Option.none
           )
         )
-        .bind("res2", ({ ref }) => ref.get());
+        .bind("res2", ({ ref }) => ref.get())
 
-      const { res1, res2 } = await program.unsafeRunPromise();
+      const { res1, res2 } = await program.unsafeRunPromise()
 
-      assert.isFalse(res1);
-      assert.isTrue(res2);
-    });
-  });
+      assert.isFalse(res1)
+      assert.isTrue(res2)
+    })
+  })
 
   describe.concurrent("whenEffect", () => {
     it("executes condition effect and correct branch", async () => {
@@ -87,15 +87,15 @@ describe.concurrent("Effect", () => {
         .bind(
           "failed",
           ({ conditionTrue, failure }) => Effect.whenEffect(conditionTrue, Effect.fail(failure)).either()
-        );
+        )
 
-      const { c1, c2, failed, failure, v1, v2 } = await program.unsafeRunPromise();
+      const { c1, c2, failed, failure, v1, v2 } = await program.unsafeRunPromise()
 
-      assert.strictEqual(v1, 0);
-      assert.strictEqual(c1, 1);
-      assert.strictEqual(v2, 2);
-      assert.strictEqual(c2, 2);
-      assert.isTrue(failed == Either.left(failure));
-    });
-  });
-});
+      assert.strictEqual(v1, 0)
+      assert.strictEqual(c1, 1)
+      assert.strictEqual(v2, 2)
+      assert.strictEqual(c2, 2)
+      assert.isTrue(failed == Either.left(failure))
+    })
+  })
+})

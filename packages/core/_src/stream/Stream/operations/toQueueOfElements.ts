@@ -12,7 +12,7 @@ export function toQueueOfElements_<R, E, A>(
   return Effect.acquireRelease(
     Queue.bounded<Exit<Option<E>, A>>(capacity),
     (queue) => queue.shutdown
-  ).tap((queue) => self.runIntoQueueElementsScoped(queue).fork());
+  ).tap((queue) => self.runIntoQueueElementsScoped(queue).fork())
 }
 
 /**
@@ -21,4 +21,4 @@ export function toQueueOfElements_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects toQueueOfElements
  */
-export const toQueueOfElements = Pipeable(toQueueOfElements_);
+export const toQueueOfElements = Pipeable(toQueueOfElements_)

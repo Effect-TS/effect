@@ -1,5 +1,5 @@
-import type { Driver } from "@effect/core/io/Schedule/Driver";
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import type { Driver } from "@effect/core/io/Schedule/Driver"
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Repeats each element of the stream using the provided schedule. When the
@@ -22,7 +22,7 @@ export function repeatElementsWith_<R, E, A, S, R2, B, C1, C2>(
   g: (b: B) => C2,
   __tsplusTrace?: string
 ): Stream<R & R2, E, C1 | C2> {
-  concreteStream(self);
+  concreteStream(self)
   return new StreamInternal(
     self.channel >>
       Channel.unwrap(
@@ -41,12 +41,12 @@ export function repeatElementsWith_<R, E, A, S, R2, B, C1, C2>(
               (chunk: Chunk<A>) => feed<R, E, A, R2, B, C1, C2>(loop, driver, f, g, chunk),
               (err) => Channel.fail(err),
               () => Channel.unit
-            );
+            )
 
-            return loop;
+            return loop
           })
       )
-  );
+  )
 }
 
 /**
@@ -63,7 +63,7 @@ export function repeatElementsWith_<R, E, A, S, R2, B, C1, C2>(
  *
  * @tsplus static ets/Stream/Aspects repeatElementsWith
  */
-export const repeatElementsWith = Pipeable(repeatElementsWith_);
+export const repeatElementsWith = Pipeable(repeatElementsWith_)
 
 function feed<R, E, A, R2, B, C1, C2>(
   loop: Channel<R & R2, E, Chunk<A>, unknown, E, Chunk<C1 | C2>, void>,
@@ -78,7 +78,7 @@ function feed<R, E, A, R2, B, C1, C2>(
     (a) =>
       Channel.write(Chunk.single(f(a))) >
         step<R, E, A, R2, B, C1, C2>(loop, driver, f, g, input.drop(1), a)
-  );
+  )
 }
 
 function step<R, E, A, R2, B, C1, C2>(
@@ -95,7 +95,7 @@ function step<R, E, A, R2, B, C1, C2>(
     .as(
       Channel.write(Chunk.single(f(value))) >
         step<R, E, A, R2, B, C1, C2>(loop, driver, f, g, input, value)
-    );
+    )
   const reset: Effect<
     R & R2,
     never,
@@ -107,6 +107,6 @@ function step<R, E, A, R2, B, C1, C2>(
       (b) =>
         Channel.write(Chunk.single(g(b))) >
           feed<R, E, A, R2, B, C1, C2>(loop, driver, f, g, input)
-    );
-  return Channel.unwrap(advance | reset);
+    )
+  return Channel.unwrap(advance | reset)
 }

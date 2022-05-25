@@ -12,7 +12,7 @@ export function foldSTM_<R, E, A, R1, E1, B, R2, E2, C>(
   return self
     .map(Either.right)
     .catchAll((e) => g(e).map(Either.left))
-    .flatMap((either) => either.fold(STM.succeedNow, f));
+    .flatMap((either) => either.fold(STM.succeedNow, f))
 }
 
 /**
@@ -21,4 +21,4 @@ export function foldSTM_<R, E, A, R1, E1, B, R2, E2, C>(
  *
  * @tsplus static ets/STM/Aspects foldSTM
  */
-export const foldSTM = Pipeable(foldSTM_);
+export const foldSTM = Pipeable(foldSTM_)

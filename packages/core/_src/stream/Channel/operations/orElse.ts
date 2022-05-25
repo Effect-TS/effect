@@ -33,7 +33,7 @@ export function orElse_<
   OutElem | OutElem1,
   OutDone | OutDone1
 > {
-  return self.catchAll(that);
+  return self.catchAll(that)
 }
 
 /**
@@ -43,4 +43,4 @@ export function orElse_<
  *
  * @tsplus static ets/Channel/Aspects orElse
  */
-export const orElse = Pipeable(orElse_);
+export const orElse = Pipeable(orElse_)

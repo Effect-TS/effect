@@ -12,5 +12,5 @@ export function unsafeMake<A>(
     (first, second) => (value) => second(first(value)),
     (patch) => (value) => join(value, patch(value)),
     fork
-  );
+  )
 }

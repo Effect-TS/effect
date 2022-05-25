@@ -9,7 +9,7 @@ export function delayed_<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>,
   f: (duration: Duration) => Duration
 ): Schedule<State, Env, In, Out> {
-  return self.delayedEffect((duration) => Effect.succeed(f(duration)));
+  return self.delayedEffect((duration) => Effect.succeed(f(duration)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function delayed_<State, Env, In, Out>(
  *
  * @tsplus static ets/Schedule/Aspects delayed
  */
-export const delayed = Pipeable(delayed_);
+export const delayed = Pipeable(delayed_)

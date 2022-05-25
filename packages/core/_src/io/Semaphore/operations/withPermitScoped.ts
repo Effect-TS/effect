@@ -1,4 +1,4 @@
-import { concreteSemaphore } from "@effect/core/io/Semaphore/operations/_internal/SemaphoreInternal";
+import { concreteSemaphore } from "@effect/core/io/Semaphore/operations/_internal/SemaphoreInternal"
 
 /**
  * Returns a scoped effect that describes acquiring a permit as the `acquire`
@@ -7,6 +7,6 @@ import { concreteSemaphore } from "@effect/core/io/Semaphore/operations/_interna
  * @tsplus getter ets/Semaphore withPermitScoped
  */
 export function withPermitScoped(self: Semaphore, __tsplusTrace?: string): Effect.RIO<Has<Scope>, void> {
-  concreteSemaphore(self);
-  return self.semaphore.withPermitScoped();
+  concreteSemaphore(self)
+  return self.semaphore.withPermitScoped()
 }

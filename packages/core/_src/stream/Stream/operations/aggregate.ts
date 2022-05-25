@@ -20,7 +20,7 @@ export function aggregate_<R, E, A, R2, E2, A2, B>(
   sink: LazyArg<Sink<R2, E | E2, A | A2, A2, B>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, B> {
-  return self.aggregateWithin(sink, Schedule.recurs(0));
+  return self.aggregateWithin(sink, Schedule.recurs(0))
 }
 
 /**
@@ -40,4 +40,4 @@ export function aggregate_<R, E, A, R2, E2, A2, B>(
  *
  * @tsplus static ets/Stream/Aspects aggregate
  */
-export const aggregate = Pipeable(aggregate_);
+export const aggregate = Pipeable(aggregate_)

@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Creates a stream that groups on adjacent keys, calculated by function f.
@@ -10,8 +10,8 @@ export function groupAdjacentBy_<R, E, A, K>(
   f: (a: A) => K,
   __tsplusTrace?: string
 ) {
-  concreteStream(self);
-  return new StreamInternal(self.channel >> chunkAdjacent<E, A, K>(Option.none, f));
+  concreteStream(self)
+  return new StreamInternal(self.channel >> chunkAdjacent<E, A, K>(Option.none, f))
 }
 
 /**
@@ -19,7 +19,7 @@ export function groupAdjacentBy_<R, E, A, K>(
  *
  * @tsplus static ets/Stream/Aspects groupAdjacentBy
  */
-export const groupAdjacentBy = Pipeable(groupAdjacentBy_);
+export const groupAdjacentBy = Pipeable(groupAdjacentBy_)
 
 function chunkAdjacent<E, A, K>(
   buffer: Option<Tuple<[K, Chunk<A>]>>,
@@ -30,12 +30,12 @@ function chunkAdjacent<E, A, K>(
     (chunk: Chunk<A>) => {
       const {
         tuple: [outputs, newBuffer]
-      } = go(chunk, buffer, f);
-      return Channel.write(outputs) > chunkAdjacent<E, A, K>(newBuffer, f);
+      } = go(chunk, buffer, f)
+      return Channel.write(outputs) > chunkAdjacent<E, A, K>(newBuffer, f)
     },
     (cause) => Channel.failCause(cause),
     () => buffer.fold(Channel.unit, (o) => Channel.write(Chunk.single(o)))
-  );
+  )
 }
 
 function go<A, K>(
@@ -48,16 +48,16 @@ function go<A, K>(
     Tuple(Chunk.empty<Tuple<[K, Chunk<A>]>>(), state),
     ({ tuple: [os, o] }, a) =>
       o.fold(Tuple(os, Option.some(Tuple(f(a), Chunk.single(a)))), (agg) => {
-        const k2 = f(a);
+        const k2 = f(a)
         const {
           tuple: [k, aggregated]
-        } = agg;
+        } = agg
 
         if (k === k2) {
-          return Tuple(os, Option.some(Tuple(k, aggregated.append(a))));
+          return Tuple(os, Option.some(Tuple(k, aggregated.append(a))))
         } else {
-          return Tuple(os.append(agg), Option.some(Tuple(k2, Chunk.single(a))));
+          return Tuple(os.append(agg), Option.some(Tuple(k2, Chunk.single(a))))
         }
       })
-  );
+  )
 }

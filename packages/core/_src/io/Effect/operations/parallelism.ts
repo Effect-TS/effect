@@ -5,7 +5,7 @@
  * @tsplus static ets/Effect/Ops parallelism
  */
 export function parallelism(__tsplusTrace?: string): Effect.UIO<Option<number>> {
-  return FiberRef.currentParallelism.value.get();
+  return FiberRef.currentParallelism.value.get()
 }
 
 /**
@@ -18,7 +18,7 @@ export function parallelismWith<R, E, A>(
   f: (parallelism: Option<number>) => Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return FiberRef.currentParallelism.value.getWith(f);
+  return FiberRef.currentParallelism.value.getWith(f)
 }
 
 /**
@@ -34,7 +34,7 @@ export function withParallelism_<R, E, A>(
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(
     self.apply(FiberRef.currentParallelism.value.locally(Option.some(n)))
-  );
+  )
 }
 
 /**
@@ -43,7 +43,7 @@ export function withParallelism_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects withParallelism
  */
-export const withParallelism = Pipeable(withParallelism_);
+export const withParallelism = Pipeable(withParallelism_)
 
 /**
  * Runs the specified effect with an unbounded maximum number of fibers for
@@ -57,5 +57,5 @@ export function withParallelismUnbounded<R, E, A>(
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(
     self.apply(FiberRef.currentParallelism.value.locally(Option.none))
-  );
+  )
 }

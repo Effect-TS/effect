@@ -18,7 +18,7 @@ export function provideLayer_<
   layer: LazyArg<Layer<R0, OutErr2, R>>,
   __tsplusTrace?: string
 ): Channel<R0, InErr, InElem, InDone, OutErr | OutErr2, OutElem, OutDone> {
-  return Channel.unwrapScoped(layer().build().map((env) => self.provideEnvironment(env)));
+  return Channel.unwrapScoped(layer().build().map((env) => self.provideEnvironment(env)))
 }
 
 /**
@@ -26,4 +26,4 @@ export function provideLayer_<
  *
  * @tsplus static ets/Channel/Aspects provideLayer
  */
-export const provideLayer = Pipeable(provideLayer_);
+export const provideLayer = Pipeable(provideLayer_)

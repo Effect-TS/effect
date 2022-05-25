@@ -7,7 +7,7 @@ export function flattenErrorOption_<R, E, A, E2>(
   self: STM<R, Option<E>, A>,
   def: LazyArg<E2>
 ): STM<R, E | E2, A> {
-  return self.mapError((option) => option.fold(def, identity));
+  return self.mapError((option) => option.fold(def, identity))
 }
 
 /**
@@ -15,4 +15,4 @@ export function flattenErrorOption_<R, E, A, E2>(
  *
  * @tsplus static ets/STM/Aspects flattenErrorOption
  */
-export const flattenErrorOption = Pipeable(flattenErrorOption_);
+export const flattenErrorOption = Pipeable(flattenErrorOption_)

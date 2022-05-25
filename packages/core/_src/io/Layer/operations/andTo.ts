@@ -17,7 +17,7 @@ export function andTo_<
   self: Layer<RIn, E, ROut>,
   that: Layer<RIn2, E2, ROut2>
 ): Layer<RIn & Erase<ROut & RIn2, ROut>, E2 | E, ROut & ROut2> {
-  return self + (self >> that);
+  return self + (self >> that)
 }
 
 /**
@@ -27,4 +27,4 @@ export function andTo_<
  *
  * @tsplus static ets/Layer/Aspects andTo
  */
-export const andTo = Pipeable(andTo_);
+export const andTo = Pipeable(andTo_)

@@ -9,7 +9,7 @@ export function provideSomeEnvironment_<R0, R, E, A>(
   f: (r0: Env<R0>) => Env<R>,
   __tsplusTrace?: string
 ): Effect<R0, E, A> {
-  return Effect.environmentWithEffect((r0: Env<R0>) => self.provideEnvironment(f(r0)));
+  return Effect.environmentWithEffect((r0: Env<R0>) => self.provideEnvironment(f(r0)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function provideSomeEnvironment_<R0, R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects provideSomeEnvironment
  */
-export const provideSomeEnvironment = Pipeable(provideSomeEnvironment_);
+export const provideSomeEnvironment = Pipeable(provideSomeEnvironment_)

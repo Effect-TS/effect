@@ -9,7 +9,7 @@ export function untilInputEffect_<State, Env, In, Out, Env1>(
   self: Schedule<State, Env, In, Out>,
   f: (input: In) => Effect.RIO<Env1, boolean>
 ): Schedule<State, Env & Env1, In, Out> {
-  return self.checkEffect((input, _) => f(input).negate());
+  return self.checkEffect((input, _) => f(input).negate())
 }
 
 /**
@@ -18,4 +18,4 @@ export function untilInputEffect_<State, Env, In, Out, Env1>(
  *
  * @tsplus static ets/Schedule/Aspects untilInputEffect
  */
-export const untilInputEffect = Pipeable(untilInputEffect_);
+export const untilInputEffect = Pipeable(untilInputEffect_)

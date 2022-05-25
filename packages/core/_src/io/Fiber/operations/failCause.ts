@@ -4,5 +4,5 @@
  * @tsplus static ets/Fiber/Ops failCause
  */
 export function failCause<E>(cause: Cause<E>): Fiber<E, never> {
-  return Fiber.done(Exit.failCause(cause));
+  return Fiber.done(Exit.failCause(cause))
 }

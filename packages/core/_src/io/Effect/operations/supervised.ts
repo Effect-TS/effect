@@ -1,4 +1,4 @@
-import { ISupervise } from "@effect/core/io/Effect/definition/primitives";
+import { ISupervise } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Returns an effect with the behavior of this one, but where all child fibers
@@ -11,7 +11,7 @@ export function supervised_<R, E, A, X>(
   supervisor: LazyArg<Supervisor<X>>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return Effect.suspendSucceed(new ISupervise(self, supervisor, __tsplusTrace));
+  return Effect.suspendSucceed(new ISupervise(self, supervisor, __tsplusTrace))
 }
 
 /**
@@ -20,4 +20,4 @@ export function supervised_<R, E, A, X>(
  *
  * @tsplus static ets/Effect/Aspects supervised
  */
-export const supervised = Pipeable(supervised_);
+export const supervised = Pipeable(supervised_)

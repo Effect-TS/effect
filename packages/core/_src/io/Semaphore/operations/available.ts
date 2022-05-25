@@ -1,4 +1,4 @@
-import { concreteSemaphore } from "@effect/core/io/Semaphore/operations/_internal/SemaphoreInternal";
+import { concreteSemaphore } from "@effect/core/io/Semaphore/operations/_internal/SemaphoreInternal"
 
 /**
  * Returns the number of available permits.
@@ -6,6 +6,6 @@ import { concreteSemaphore } from "@effect/core/io/Semaphore/operations/_interna
  * @tsplus fluent ets/Semaphore available
  */
 export function available(self: Semaphore, __tsplusTrace?: string): Effect.UIO<number> {
-  concreteSemaphore(self);
-  return self.semaphore.available().commit();
+  concreteSemaphore(self)
+  return self.semaphore.available().commit()
 }

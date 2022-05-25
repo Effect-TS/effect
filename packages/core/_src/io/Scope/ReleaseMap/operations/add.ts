@@ -18,7 +18,7 @@ export function add_(
       (): Scope.Finalizer => () => Effect.unit,
       (k): Scope.Finalizer => (e) => self.release(k, e)
     )
-  );
+  )
 }
 
 /**
@@ -31,4 +31,4 @@ export function add_(
  *
  * @tsplus static ets/ReleaseMap/Aspects add
  */
-export const add = Pipeable(add_);
+export const add = Pipeable(add_)

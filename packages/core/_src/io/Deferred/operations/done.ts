@@ -9,7 +9,7 @@ export function done_<E, A>(
   exit: LazyArg<Exit<E, A>>,
   __tsplusTrace?: string
 ): Effect<unknown, never, boolean> {
-  return self.completeWith(Effect.done(exit));
+  return self.completeWith(Effect.done(exit))
 }
 
 /**
@@ -18,4 +18,4 @@ export function done_<E, A>(
  *
  * @tsplus static ets/Deferred/Aspects done
  */
-export const done = Pipeable(done_);
+export const done = Pipeable(done_)
