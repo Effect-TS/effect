@@ -9,5 +9,5 @@ export function recurUntilOption<A, B>(
 ): Schedule<void, unknown, A, Option<B>> {
   return Schedule.identity<A>()
     .map(pf)
-    .untilOutput((_) => _.isSome());
+    .untilOutput((_) => _.isSome())
 }

@@ -38,5 +38,5 @@ export function flatten<
   OutElem | OutElem1,
   OutDone2
 > {
-  return self.flatMap(identity);
+  return self.flatMap(identity)
 }

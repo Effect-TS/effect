@@ -9,8 +9,8 @@ export function asyncEffect<R, E, A, R2, E2, X>(
   __tsplusTrace?: string
 ): Effect<R & R2, E | E2, A> {
   return Do(($) => {
-    const deferred = $(Deferred.make<E | E2, A>());
-    const runtime = $(Effect.runtime<R & R2>());
+    const deferred = $(Deferred.make<E | E2, A>())
+    const runtime = $(Effect.runtime<R & R2>())
     return $(
       Effect.uninterruptibleMask(({ restore }) =>
         restore(
@@ -18,6 +18,6 @@ export function asyncEffect<R, E, A, R2, E2, X>(
             .catchAllCause((cause) => deferred.failCause(cause as Cause<E | E2>))
         ).fork() > restore(deferred.await())
       )
-    );
-  });
+    )
+  })
 }

@@ -9,9 +9,9 @@ export function flatMap_<E, A, E1, A1>(
 ): Exit<E | E1, A1> {
   switch (self._tag) {
     case "Failure":
-      return self;
+      return self
     case "Success":
-      return f(self.value);
+      return f(self.value)
   }
 }
 
@@ -20,4 +20,4 @@ export function flatMap_<E, A, E1, A1>(
  *
  * @tsplus static ets/Exit/Aspects flatMap
  */
-export const flatMap = Pipeable(flatMap_);
+export const flatMap = Pipeable(flatMap_)

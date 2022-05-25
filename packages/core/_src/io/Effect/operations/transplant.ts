@@ -1,7 +1,7 @@
-import { IGetForkScope, IOverrideForkScope } from "@effect/core/io/Effect/definition/primitives";
+import { IGetForkScope, IOverrideForkScope } from "@effect/core/io/Effect/definition/primitives"
 
 export interface Grafter {
-  <R, E, A>(effect: LazyArg<Effect<R, E, A>>, __tsplusTrace?: string): Effect<R, E, A>;
+  <R, E, A>(effect: LazyArg<Effect<R, E, A>>, __tsplusTrace?: string): Effect<R, E, A>
 }
 
 /**
@@ -26,5 +26,5 @@ export function transplant<R, E, A>(
         )
       )
     )
-  );
+  )
 }

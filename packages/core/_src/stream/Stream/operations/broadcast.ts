@@ -13,7 +13,7 @@ export function broadcast_<R, E, A>(
 ): Effect<R & Has<Scope>, never, Chunk<Stream<unknown, E, A>>> {
   return self
     .broadcastedQueues(n, maximumLag)
-    .map((chunk) => chunk.map((queue) => Stream.fromQueueWithShutdown(queue).flattenTake()));
+    .map((chunk) => chunk.map((queue) => Stream.fromQueueWithShutdown(queue).flattenTake()))
 }
 
 /**
@@ -23,4 +23,4 @@ export function broadcast_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects broadcast
  */
-export const broadcast = Pipeable(broadcast_);
+export const broadcast = Pipeable(broadcast_)

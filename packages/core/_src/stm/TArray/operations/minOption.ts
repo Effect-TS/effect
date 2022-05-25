@@ -4,7 +4,7 @@
  * @tsplus fluent ets/TArray minOption
  */
 export function minOption_<A>(self: TArray<A>, ord: Ord<A>): USTM<Option<A>> {
-  return self.reduceOption((acc, a) => (ord.lt(a, acc) ? a : acc));
+  return self.reduceOption((acc, a) => (ord.lt(a, acc) ? a : acc))
 }
 
 /**
@@ -12,4 +12,4 @@ export function minOption_<A>(self: TArray<A>, ord: Ord<A>): USTM<Option<A>> {
  *
  * @tsplus static ets/TArray/Aspects minOption
  */
-export const minOption = Pipeable(minOption_);
+export const minOption = Pipeable(minOption_)

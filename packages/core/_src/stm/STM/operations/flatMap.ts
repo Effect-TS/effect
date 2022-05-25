@@ -1,4 +1,4 @@
-import { STMOnSuccess } from "@effect/core/stm/STM/definition/primitives";
+import { STMOnSuccess } from "@effect/core/stm/STM/definition/primitives"
 
 /**
  * Feeds the value produced by this effect to the specified function,
@@ -10,7 +10,7 @@ export function flatMap_<R, E, A, R1, E1, B>(
   self: STM<R, E, A>,
   f: (a: A) => STM<R1, E1, B>
 ): STM<R1 & R, E | E1, B> {
-  return new STMOnSuccess<R1 & R, E | E1, A, B>(self, f);
+  return new STMOnSuccess<R1 & R, E | E1, A, B>(self, f)
 }
 
 /**
@@ -19,4 +19,4 @@ export function flatMap_<R, E, A, R1, E1, B>(
  *
  * @tsplus static ets/STM/Aspects flatMap
  */
-export const flatMap = Pipeable(flatMap_);
+export const flatMap = Pipeable(flatMap_)

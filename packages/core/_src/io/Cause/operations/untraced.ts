@@ -4,5 +4,5 @@
  * @tsplus fluent ets/Cause untraced
  */
 export function untraced<E>(self: Cause<E>): Cause<E> {
-  return self.mapTrace(() => Trace.none);
+  return self.mapTrace(() => Trace.none)
 }

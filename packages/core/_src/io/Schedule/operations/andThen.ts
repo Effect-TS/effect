@@ -15,7 +15,7 @@ export function andThen_<State, Env, In, Out, State1, Env1, In1, Out2>(
   In & In1,
   Out | Out2
 > {
-  return self.andThenEither(that).map((either) => either.merge());
+  return self.andThenEither(that).map((either) => either.merge())
 }
 
 /**
@@ -23,4 +23,4 @@ export function andThen_<State, Env, In, Out, State1, Env1, In1, Out2>(
  *
  * @tsplus static ets/Schedule/Aspects andThen
  */
-export const andThen = Pipeable(andThen_);
+export const andThen = Pipeable(andThen_)

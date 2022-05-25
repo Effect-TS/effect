@@ -10,7 +10,7 @@ export function timeoutFailCause_<R, E, E1, A>(
   duration: LazyArg<Duration>,
   __tsplusTrace?: string
 ): Effect<R, E | E1, A> {
-  return self.timeoutTo(Effect.failCause(cause), Effect.succeedNow, duration).flatten();
+  return self.timeoutTo(Effect.failCause(cause), Effect.succeedNow, duration).flatten()
 }
 
 /**
@@ -19,4 +19,4 @@ export function timeoutFailCause_<R, E, E1, A>(
  *
  * @tsplus static ets/Effect/Aspects timeoutFailCause
  */
-export const timeoutFailCause = Pipeable(timeoutFailCause_);
+export const timeoutFailCause = Pipeable(timeoutFailCause_)

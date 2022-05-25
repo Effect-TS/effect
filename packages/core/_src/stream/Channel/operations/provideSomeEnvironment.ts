@@ -17,7 +17,7 @@ export function provideSomeEnvironment_<
   self: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   f: (env: Env<R0>) => Env<R>
 ): Channel<R0, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  return Channel.environmentWithChannel((env: Env<R0>) => self.provideEnvironment(f(env)));
+  return Channel.environmentWithChannel((env: Env<R0>) => self.provideEnvironment(f(env)))
 }
 
 /**
@@ -26,4 +26,4 @@ export function provideSomeEnvironment_<
  *
  * @tsplus static ets/Channel/Aspects provideSomeEnvironment
  */
-export const provideSomeEnvironment = Pipeable(provideSomeEnvironment_);
+export const provideSomeEnvironment = Pipeable(provideSomeEnvironment_)

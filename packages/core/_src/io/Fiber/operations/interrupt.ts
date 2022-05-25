@@ -10,5 +10,5 @@ export function interrupt<E, A>(
   self: Fiber<E, A>,
   __tsplusTrace?: string
 ): Effect.UIO<Exit<E, A>> {
-  return Effect.fiberId.flatMap((fiberId) => self.interruptAs(fiberId));
+  return Effect.fiberId.flatMap((fiberId) => self.interruptAs(fiberId))
 }

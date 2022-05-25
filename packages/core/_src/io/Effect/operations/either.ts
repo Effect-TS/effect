@@ -17,5 +17,5 @@ export function either<R, E, A>(
   return self.foldEffect(
     (e) => Effect.succeedNow(Either.left(e)),
     (a) => Effect.succeedNow(Either.right(a))
-  );
+  )
 }

@@ -8,7 +8,7 @@ export function orElseSucceed_<R, E, A, A2>(
   a: LazyArg<A2>,
   __tsplusTrace?: string
 ): Stream<R, never, A | A2> {
-  return self | Stream.succeed(a);
+  return self | Stream.succeed(a)
 }
 
 /**
@@ -16,4 +16,4 @@ export function orElseSucceed_<R, E, A, A2>(
  *
  * @tsplus static ets/Stream/Aspects orElseSucceed
  */
-export const orElseSucceed = Pipeable(orElseSucceed_);
+export const orElseSucceed = Pipeable(orElseSucceed_)

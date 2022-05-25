@@ -8,7 +8,7 @@ export function as_<R, E, A, A2>(
   a: LazyArg<A2>,
   __tsplusTrace?: string
 ): Stream<R, E, A2> {
-  return self.map(a);
+  return self.map(a)
 }
 
 /**
@@ -16,4 +16,4 @@ export function as_<R, E, A, A2>(
  *
  * @tsplus static ets/Stream/Aspects as
  */
-export const as = Pipeable(as_);
+export const as = Pipeable(as_)

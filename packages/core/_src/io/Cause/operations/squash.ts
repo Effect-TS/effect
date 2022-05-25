@@ -5,5 +5,5 @@
  * @tsplus fluent ets/Cause squash
  */
 export function squash<E>(self: Cause<E>): Error {
-  return self.squashWith((e) => e instanceof Error) as Error;
+  return self.squashWith((e) => e instanceof Error) as Error
 }

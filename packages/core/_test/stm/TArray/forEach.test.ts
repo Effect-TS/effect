@@ -1,4 +1,4 @@
-import { makeTArray, n } from "@effect/core/test/stm/TArray/test-utils";
+import { makeTArray, n } from "@effect/core/test/stm/TArray/test-utils"
 
 describe.concurrent("TArray", () => {
   describe.concurrent("forEach", () => {
@@ -13,11 +13,11 @@ describe.concurrent("TArray", () => {
             .fork())
         .bind("value", ({ tRef }) => tRef.get().commit())
         .tap(({ fiber }) => fiber.join())
-        .map(({ value }) => value);
+        .map(({ value }) => value)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result === 0 || result === n);
-    });
-  });
-});
+      assert.isTrue(result === 0 || result === n)
+    })
+  })
+})

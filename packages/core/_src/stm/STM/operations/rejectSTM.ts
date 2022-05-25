@@ -14,7 +14,7 @@ export function rejectSTM_<R, E, A, R1, E1>(
       () => STM.succeedNow(a),
       (effect) => effect.flatMap(STM.failNow)
     )
-  );
+  )
 }
 
 /**
@@ -24,4 +24,4 @@ export function rejectSTM_<R, E, A, R1, E1>(
  *
  * @tsplus static ets/STM/Aspects rejectSTM
  */
-export const rejectSTM = Pipeable(rejectSTM_);
+export const rejectSTM = Pipeable(rejectSTM_)

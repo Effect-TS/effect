@@ -1,4 +1,4 @@
-import { CompositeFiberId, realFiberId } from "@effect/core/io/FiberId/definition";
+import { CompositeFiberId, realFiberId } from "@effect/core/io/FiberId/definition"
 
 /**
  * Combine two `FiberId`s.
@@ -7,36 +7,36 @@ import { CompositeFiberId, realFiberId } from "@effect/core/io/FiberId/definitio
  * @tsplus fluent ets/FiberId combine
  */
 export function combine_(self: FiberId, that: FiberId): FiberId {
-  realFiberId(self);
+  realFiberId(self)
   switch (self._tag) {
     case "None": {
-      return that;
+      return that
     }
     case "Runtime": {
-      realFiberId(that);
+      realFiberId(that)
       switch (that._tag) {
         case "None": {
-          return self;
+          return self
         }
         case "Runtime": {
-          return new CompositeFiberId(HashSet.from([self, that]));
+          return new CompositeFiberId(HashSet.from([self, that]))
         }
         case "Composite": {
-          return new CompositeFiberId(that.fiberIds.add(self));
+          return new CompositeFiberId(that.fiberIds.add(self))
         }
       }
     }
     case "Composite": {
-      realFiberId(that);
+      realFiberId(that)
       switch (that._tag) {
         case "None": {
-          return self;
+          return self
         }
         case "Runtime": {
-          return new CompositeFiberId(self.fiberIds.add(that));
+          return new CompositeFiberId(self.fiberIds.add(that))
         }
         case "Composite": {
-          return new CompositeFiberId(self.fiberIds.union(that.fiberIds));
+          return new CompositeFiberId(self.fiberIds.union(that.fiberIds))
         }
       }
     }
@@ -48,4 +48,4 @@ export function combine_(self: FiberId, that: FiberId): FiberId {
  *
  * @tsplus static ets/FiberId/Aspects combine
  */
-export const combine = Pipeable(combine_);
+export const combine = Pipeable(combine_)

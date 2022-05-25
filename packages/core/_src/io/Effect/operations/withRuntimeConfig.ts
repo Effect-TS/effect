@@ -15,7 +15,7 @@ export function withRuntimeConfig<R, E, A>(
       effect,
       Effect.setRuntimeConfig(currentRuntimeConfig)
     )
-  );
+  )
 }
 
 /**
@@ -29,7 +29,7 @@ export function withRuntimeConfigNow_<R, E, A>(
   runtimeConfig: LazyArg<RuntimeConfig>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return withRuntimeConfig(runtimeConfig, self);
+  return withRuntimeConfig(runtimeConfig, self)
 }
 
 /**
@@ -38,4 +38,4 @@ export function withRuntimeConfigNow_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects withRuntimeConfig
  */
-export const withRuntimeConfigNow = Pipeable(withRuntimeConfigNow_);
+export const withRuntimeConfigNow = Pipeable(withRuntimeConfigNow_)

@@ -3,11 +3,11 @@ describe.concurrent("TArray", () => {
     it("should convert to a chunk", async () => {
       const program = TArray(1, 2, 3, 4)
         .commit()
-        .flatMap((tArray) => tArray.toChunk().commit());
+        .flatMap((tArray) => tArray.toChunk().commit())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(1, 2, 3, 4));
-    });
-  });
-});
+      assert.isTrue(result == Chunk(1, 2, 3, 4))
+    })
+  })
+})

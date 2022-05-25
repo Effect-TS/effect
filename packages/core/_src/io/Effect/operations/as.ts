@@ -8,7 +8,7 @@ export function as_<R, E, A, B>(
   value: LazyArg<B>,
   __tsplusTrace?: string
 ): Effect<R, E, B> {
-  return self.map(value);
+  return self.map(value)
 }
 
 /**
@@ -16,4 +16,4 @@ export function as_<R, E, A, B>(
  *
  * @tsplus static ets/Effect/Aspects as
  */
-export const as = Pipeable(as_);
+export const as = Pipeable(as_)

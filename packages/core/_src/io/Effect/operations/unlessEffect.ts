@@ -10,7 +10,7 @@ export function unlessEffect_<R, E, A, R2, E2>(
 ): Effect<R & R2, E | E2, Option<A>> {
   return Effect.suspendSucceed(
     predicate().flatMap((b) => (b ? Effect.none : self.asSome()))
-  );
+  )
 }
 
 /**
@@ -18,4 +18,4 @@ export function unlessEffect_<R, E, A, R2, E2>(
  *
  * @tsplus static ets/Effect/Aspects unlessEffect
  */
-export const unlessEffect = Pipeable(unlessEffect_);
+export const unlessEffect = Pipeable(unlessEffect_)

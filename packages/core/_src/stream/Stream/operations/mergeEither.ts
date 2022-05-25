@@ -1,4 +1,4 @@
-import { TerminationStrategy } from "@effect/core/stream/Stream//TerminationStrategy";
+import { TerminationStrategy } from "@effect/core/stream/Stream//TerminationStrategy"
 
 /**
  * Merges this stream and the specified stream together to produce a stream of
@@ -17,7 +17,7 @@ export function mergeEither_<R, E, A, R2, E2, A2>(
     (a) => Either.leftW(a),
     (a2) => Either.rightW(a2),
     strategy
-  );
+  )
 }
 
 /**
@@ -26,4 +26,4 @@ export function mergeEither_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Stream/Aspects mergeEither
  */
-export const mergeEither = Pipeable(mergeEither_);
+export const mergeEither = Pipeable(mergeEither_)

@@ -11,9 +11,9 @@ export function forEach_<E, A, R, E1, B>(
 ): Effect<R, never, Exit<E | E1, B>> {
   switch (self._tag) {
     case "Failure":
-      return Effect.succeed(Exit.failCause(self.cause));
+      return Effect.succeed(Exit.failCause(self.cause))
     case "Success":
-      return f(self.value).exit();
+      return f(self.value).exit()
   }
 }
 
@@ -23,4 +23,4 @@ export function forEach_<E, A, R, E1, B>(
  *
  * @tsplus static ets/Exit/Aspects forEach
  */
-export const forEach = Pipeable(forEach_);
+export const forEach = Pipeable(forEach_)

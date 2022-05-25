@@ -7,5 +7,5 @@ export function scoped<T>(tag: Tag<T>) {
   return <R, E>(
     effect: LazyArg<Effect<R & Has<Scope>, E, T>>,
     __tsplusTrace?: string
-  ): Layer<R, E, Has<T>> => Layer.scopedEnvironment(Effect.suspendSucceed(effect).map((service) => Env(tag, service)));
+  ): Layer<R, E, Has<T>> => Layer.scopedEnvironment(Effect.suspendSucceed(effect).map((service) => Env(tag, service)))
 }

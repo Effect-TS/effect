@@ -1,5 +1,5 @@
-import type { Driver } from "@effect/core/io/Schedule/Driver";
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import type { Driver } from "@effect/core/io/Schedule/Driver"
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Schedules the output of the stream using the provided `schedule` and emits
@@ -15,12 +15,12 @@ export function scheduleWith_<R, E, A, S, R2, B, C>(
   g: (b: B) => C,
   __tsplusTrace?: string
 ): Stream<R & R2, E, C> {
-  concreteStream(self);
+  concreteStream(self)
   return new StreamInternal(
     Channel.fromEffect(schedule().driver()).flatMap(
       (driver) => self.channel >> loop<R, R2, E, A, B, C>(driver, Chunk.empty<A>(), f, g, 0)
     )
-  );
+  )
 }
 
 /**
@@ -30,7 +30,7 @@ export function scheduleWith_<R, E, A, S, R2, B, C>(
  *
  * @tsplus static ets/Stream/Aspects scheduleWith
  */
-export const scheduleWith = Pipeable(scheduleWith_);
+export const scheduleWith = Pipeable(scheduleWith_)
 
 function loop<R, R2, E, A, B, C>(
   driver: Driver<unknown, R2, A, B>,
@@ -41,7 +41,7 @@ function loop<R, R2, E, A, B, C>(
 ): Channel<R & R2, E, Chunk<A>, unknown, E, Chunk<C>, unknown> {
   if (index < chunk.length) {
     return Channel.unwrap(() => {
-      const a = chunk.unsafeGet(index);
+      const a = chunk.unsafeGet(index)
       return driver.next(a).foldEffect(
         () =>
           driver.last
@@ -56,12 +56,12 @@ function loop<R, R2, E, A, B, C>(
             Channel.write(Chunk(f(a))) >
               loop<R, R2, E, A, B, C>(driver, chunk, f, g, index + 1)
           )
-      );
-    });
+      )
+    })
   }
   return Channel.readWithCause(
     (chunk: Chunk<A>) => loop(driver, chunk, f, g, 0),
     (cause) => Channel.failCause(cause),
     Channel.succeedNow
-  );
+  )
 }

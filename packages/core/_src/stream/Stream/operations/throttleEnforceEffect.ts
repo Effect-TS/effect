@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Throttles the chunks of this stream according to the given bandwidth
@@ -18,7 +18,7 @@ export function throttleEnforceEffect_<R, E, A, R2, E2>(
   burst = 0,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A> {
-  concreteStream(self);
+  concreteStream(self)
   return new StreamInternal(
     Channel.succeed(duration)
       .zip(Channel.fromEffect(Clock.currentTime))
@@ -27,7 +27,7 @@ export function throttleEnforceEffect_<R, E, A, R2, E2>(
           self.channel >>
           loop<E, A, R2, E2>(units, duration, costFn, burst, units, timestamp)
       )
-  );
+  )
 }
 
 /**
@@ -40,7 +40,7 @@ export function throttleEnforceEffect_<R, E, A, R2, E2>(
  *
  * @tsplus static ets/Stream/Aspects throttleEnforceEffect
  */
-export const throttleEnforceEffect = Pipeable(throttleEnforceEffect_);
+export const throttleEnforceEffect = Pipeable(throttleEnforceEffect_)
 
 function loop<E, A, R2, E2>(
   units: number,
@@ -57,11 +57,11 @@ function loop<E, A, R2, E2>(
         costFn(input)
           .zip(Clock.currentTime)
           .map(({ tuple: [weight, current] }) => {
-            const elapsed = current - timestamp;
-            const cycles = elapsed / duration.millis;
-            const sum = tokens + cycles * units;
-            const max = units + burst < 0 ? Number.MAX_SAFE_INTEGER : units + burst;
-            const available = sum < 0 ? max : Math.min(sum, max);
+            const elapsed = current - timestamp
+            const cycles = elapsed / duration.millis
+            const sum = tokens + cycles * units
+            const max = units + burst < 0 ? Number.MAX_SAFE_INTEGER : units + burst
+            const available = sum < 0 ? max : Math.min(sum, max)
             return weight <= available
               ? Channel.write(input) >
                 loop<E, A, R2, E2>(
@@ -72,10 +72,10 @@ function loop<E, A, R2, E2>(
                   available - weight,
                   current
                 )
-              : loop<E, A, R2, E2>(units, duration, costFn, burst, available, current);
+              : loop<E, A, R2, E2>(units, duration, costFn, burst, available, current)
           })
       ),
     (err) => Channel.fail(err),
     () => Channel.unit
-  );
+  )
 }

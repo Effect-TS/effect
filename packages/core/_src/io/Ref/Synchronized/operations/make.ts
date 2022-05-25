@@ -1,4 +1,4 @@
-import { SynchronizedRefInternal } from "@effect/core/io/Ref/Synchronized/operations/_internal/SynchronizedRefInternal";
+import { SynchronizedRefInternal } from "@effect/core/io/Ref/Synchronized/operations/_internal/SynchronizedRefInternal"
 
 /**
  * Creates a new `Ref.Synchronized` with the specified value.
@@ -12,5 +12,5 @@ export function make<A>(
   return Effect.Do()
     .bind("ref", () => Ref.make<A>(value))
     .bind("semaphore", () => Semaphore.make(1))
-    .map(({ ref, semaphore }) => new SynchronizedRefInternal(ref, semaphore));
+    .map(({ ref, semaphore }) => new SynchronizedRefInternal(ref, semaphore))
 }

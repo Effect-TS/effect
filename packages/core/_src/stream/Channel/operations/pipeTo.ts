@@ -1,4 +1,4 @@
-import { PipeTo } from "@effect/core/stream/Channel/definition/primitives";
+import { PipeTo } from "@effect/core/stream/Channel/definition/primitives"
 
 /**
  * Pipe the output of a channel into the input of another.
@@ -33,7 +33,7 @@ export function pipeTo_<
     OutErr,
     OutElem,
     OutDone
-  >(() => self, that);
+  >(() => self, that)
 }
 
 /**
@@ -41,4 +41,4 @@ export function pipeTo_<
  *
  * @tsplus static ets/Channel/Aspects pipeTo
  */
-export const pipeTo = Pipeable(pipeTo_);
+export const pipeTo = Pipeable(pipeTo_)

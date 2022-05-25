@@ -10,5 +10,5 @@ export function some<R, E, A>(
   return self.foldEffect(
     (e) => Effect.fail(Option.some(e)),
     (option) => option.fold(Effect.fail(Option.none), Effect.succeedNow)
-  );
+  )
 }

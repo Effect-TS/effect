@@ -28,10 +28,10 @@ export function zipParLeft_<
   OutElem | OutElem1,
   OutDone
 > {
-  return self.zipPar(that).map((tuple) => tuple.get(0));
+  return self.zipPar(that).map((tuple) => tuple.get(0))
 }
 
 /**
  * @tsplus static ets/Channel/Aspects zipParLeft
  */
-export const zipParLeft = Pipeable(zipParLeft_);
+export const zipParLeft = Pipeable(zipParLeft_)

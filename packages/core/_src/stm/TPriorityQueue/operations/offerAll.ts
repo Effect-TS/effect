@@ -1,4 +1,4 @@
-import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue";
+import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue"
 
 /**
  * Offers all of the elements in the specified collection to the queue.
@@ -6,7 +6,7 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
  * @tsplus fluent ets/TPriorityQueue offerAll
  */
 export function offerAll_<A>(self: TPriorityQueue<A>, values: LazyArg<Collection<A>>): USTM<void> {
-  concreteTPriorityQueue(self);
+  concreteTPriorityQueue(self)
   return self.map
     .getAndUpdate((sa) =>
       values().reduce(
@@ -14,7 +14,7 @@ export function offerAll_<A>(self: TPriorityQueue<A>, values: LazyArg<Collection
         (map, a) => map.set(a, Chunk.single(a))
       )
     )
-    .map(() => STM.unit);
+    .map(() => STM.unit)
 }
 
 /**
@@ -22,4 +22,4 @@ export function offerAll_<A>(self: TPriorityQueue<A>, values: LazyArg<Collection
  *
  * @tsplus static ets/TPriorityQueue/Aspects offerAll
  */
-export const offerAll = Pipeable(offerAll_);
+export const offerAll = Pipeable(offerAll_)

@@ -1,4 +1,4 @@
-import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Creates a sink that folds elements of type `In` into a structure of type
@@ -26,7 +26,7 @@ export function foldWeightedDecompose<S, In>(
   f: (s: S, input: In) => S,
   __tsplusTrace?: string
 ): Sink<unknown, never, In, In, S> {
-  return Sink.suspend(new SinkInternal(go(z(), costFn, decompose, f, false, 0, max)));
+  return Sink.suspend(new SinkInternal(go(z(), costFn, decompose, f, false, 0, max)))
 }
 
 function go<S, In>(
@@ -43,21 +43,21 @@ function go<S, In>(
     (chunk: Chunk<In>) => {
       const {
         tuple: [nextS, nextCost, nextDirty, leftovers]
-      } = fold(chunk, s, costFn, decompose, f, dirty, cost, max, 0);
+      } = fold(chunk, s, costFn, decompose, f, dirty, cost, max, 0)
 
       if (leftovers.isNonEmpty()) {
-        return Channel.write(leftovers) > Channel.succeedNow(nextS);
+        return Channel.write(leftovers) > Channel.succeedNow(nextS)
       }
 
       if (cost > max) {
-        return Channel.succeedNow(nextS);
+        return Channel.succeedNow(nextS)
       }
 
-      return go(nextS, costFn, decompose, f, nextDirty, nextCost, max);
+      return go(nextS, costFn, decompose, f, nextDirty, nextCost, max)
     },
     (err) => Channel.fail(err),
     () => Channel.succeedNow(s)
-  );
+  )
 }
 
 function fold<S, In>(
@@ -73,29 +73,29 @@ function fold<S, In>(
   __tsplusTrace?: string
 ): Tuple<[S, number, boolean, Chunk<In>]> {
   if (index === input.length) {
-    return Tuple(s, cost, dirty, Chunk.empty<In>());
+    return Tuple(s, cost, dirty, Chunk.empty<In>())
   }
 
-  const elem = input.unsafeGet(index);
-  const total = cost + costFn(s, elem);
+  const elem = input.unsafeGet(index)
+  const total = cost + costFn(s, elem)
 
   if (total <= max) {
-    return fold(input, f(s, elem), costFn, decompose, f, true, total, max, index + 1);
+    return fold(input, f(s, elem), costFn, decompose, f, true, total, max, index + 1)
   }
 
-  const decomposed = decompose(elem);
+  const decomposed = decompose(elem)
 
   if (decomposed.length <= 1 && !dirty) {
     // If `elem` cannot be decomposed, we need to cross the `max` threshold. To
     // minimize "injury", we only allow this when we haven't added anything else
     // to the aggregate (dirty = false).
-    return Tuple(f(s, elem), total, true, input.drop(index + 1));
+    return Tuple(f(s, elem), total, true, input.drop(index + 1))
   }
 
   if (decomposed.length <= 1 && dirty) {
     // If the state is dirty and `elem` cannot be decomposed, we stop folding
     // and include `elem` in the leftovers.
-    return Tuple(s, cost, dirty, input.drop(index));
+    return Tuple(s, cost, dirty, input.drop(index))
   }
 
   // `elem` got decomposed, so we will recurse with the decomposed elements pushed
@@ -110,5 +110,5 @@ function fold<S, In>(
     cost,
     max,
     0
-  );
+  )
 }

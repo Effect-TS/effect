@@ -12,5 +12,5 @@ export function fromQueueWithShutdown<R, E, In>(
     Effect.acquireRelease(Effect.succeed(queue), (queue) => queue.shutdown).map(
       (queue) => Sink.fromQueue(queue)
     )
-  );
+  )
 }

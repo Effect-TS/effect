@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Transduce a stream using a chunk processing function.
@@ -24,10 +24,10 @@ export function transducePush<R2, R3, E2, In, Out>(
       E | E2,
       Chunk<Out>,
       unknown
-    > = Channel.unwrapScoped(push().map((push) => pull(push)));
-    concreteStream(stream);
-    return new StreamInternal(stream.channel >> channel);
-  };
+    > = Channel.unwrapScoped(push().map((push) => pull(push)))
+    concreteStream(stream)
+    return new StreamInternal(stream.channel >> channel)
+  }
 }
 
 function pull<R, E, E2, In, Out>(
@@ -39,5 +39,5 @@ function pull<R, E, E2, In, Out>(
       Channel.fromEffect(push(Option.some(input))).flatMap((out) => Channel.write(out)) > pull<R, E, E2, In, Out>(push),
     (err) => Channel.fail(err),
     () => Channel.fromEffect(push(Option.none)).flatMap((out) => Channel.write(out))
-  );
+  )
 }

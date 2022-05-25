@@ -1,4 +1,4 @@
-import type { MergeTuple } from "@tsplus/stdlib/data/Tuple";
+import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
 
 /**
  * Sequentially zips this effect with the specified effect
@@ -11,7 +11,7 @@ export function zipFlatten_<R, E, A, R2, E2, A2>(
   that: LazyArg<Effect<R2, E2, A2>>,
   __tsplusTrace?: string
 ): Effect<R & R2, E | E2, MergeTuple<A, A2>> {
-  return self.zipWith(that, Tuple.mergeTuple);
+  return self.zipWith(that, Tuple.mergeTuple)
 }
 
 /**
@@ -19,4 +19,4 @@ export function zipFlatten_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Effect/Aspects zipFlatten
  */
-export const zipFlatten = Pipeable(zipFlatten_);
+export const zipFlatten = Pipeable(zipFlatten_)

@@ -4,5 +4,5 @@
  * @tsplus static ets/STM/Ops check
  */
 export function check(predicate: LazyArg<boolean>) {
-  return STM.suspend(predicate() ? STM.unit : STM.retry);
+  return STM.suspend(predicate() ? STM.unit : STM.retry)
 }

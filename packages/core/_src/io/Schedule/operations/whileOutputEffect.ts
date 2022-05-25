@@ -9,7 +9,7 @@ export function whileOutputEffect_<State, Env, In, Out, Env1>(
   self: Schedule<State, Env, In, Out>,
   f: (out: Out) => Effect.RIO<Env1, boolean>
 ): Schedule<State, Env & Env1, In, Out> {
-  return self.checkEffect((_, out) => f(out));
+  return self.checkEffect((_, out) => f(out))
 }
 
 /**
@@ -18,4 +18,4 @@ export function whileOutputEffect_<State, Env, In, Out, Env1>(
  *
  * @tsplus static ets/Schedule/Aspects whileOutputEffect
  */
-export const whileOutputEffect = Pipeable(whileOutputEffect_);
+export const whileOutputEffect = Pipeable(whileOutputEffect_)

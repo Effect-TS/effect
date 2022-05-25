@@ -10,9 +10,9 @@ export function mapBoth_<E, A, E1, A1>(
 ): Exit<E1, A1> {
   switch (self._tag) {
     case "Failure":
-      return Exit.failCause(self.cause.map(onFailure));
+      return Exit.failCause(self.cause.map(onFailure))
     case "Success":
-      return Exit.succeed(onSuccess(self.value));
+      return Exit.succeed(onSuccess(self.value))
   }
 }
 
@@ -21,4 +21,4 @@ export function mapBoth_<E, A, E1, A1>(
  *
  * @tsplus static ets/Exit/Aspects mapBoth
  */
-export const mapBoth = Pipeable(mapBoth_);
+export const mapBoth = Pipeable(mapBoth_)

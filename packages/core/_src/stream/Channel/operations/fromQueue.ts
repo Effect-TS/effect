@@ -4,7 +4,7 @@
 export function fromQueue<Err, Elem, Done>(
   queue: LazyArg<Dequeue<Either<Exit<Err, Done>, Elem>>>
 ): Channel<unknown, unknown, unknown, unknown, Err, Elem, Done> {
-  return Channel.suspend(fromQueueInternal(queue()));
+  return Channel.suspend(fromQueueInternal(queue()))
 }
 
 function fromQueueInternal<Err, Elem, Done>(
@@ -19,5 +19,5 @@ function fromQueueInternal<Err, Elem, Done>(
         ),
       (elem) => Channel.write(elem) > fromQueueInternal<Err, Elem, Done>(queue)
     )
-  );
+  )
 }

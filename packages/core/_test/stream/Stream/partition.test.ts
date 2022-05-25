@@ -4,15 +4,15 @@ describe.concurrent("Stream", () => {
       const stream = Stream.fromCollection(Chunk.empty<number>())
         .partitionEither((i) => Effect.succeedNow(i % 2 === 0 ? Either.left(i) : Either.right(i)))
         .map(({ tuple: [evens, odds] }) => evens.mergeEither(odds))
-        .flatMap((stream) => stream.runCollect());
+        .flatMap((stream) => stream.runCollect())
       const program = Effect.collectAll(
         Chunk.range(0, 50).map(() => Effect.scoped(stream))
-      ).map(() => 0);
+      ).map(() => 0)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 0);
-    });
+      assert.strictEqual(result, 0)
+    })
 
     it("values", async () => {
       const program = Effect.scoped(
@@ -28,13 +28,13 @@ describe.concurrent("Stream", () => {
               odds: odds.runCollect()
             })
           )
-      );
+      )
 
-      const { evens, odds } = await program.unsafeRunPromise();
+      const { evens, odds } = await program.unsafeRunPromise()
 
-      assert.isTrue(evens == Chunk(0, 2, 4));
-      assert.isTrue(odds == Chunk(1, 3, 5));
-    });
+      assert.isTrue(evens == Chunk(0, 2, 4))
+      assert.isTrue(odds == Chunk(1, 3, 5))
+    })
 
     it("errors", async () => {
       const program = Effect.scoped(
@@ -50,13 +50,13 @@ describe.concurrent("Stream", () => {
               odds: odds.runCollect().either()
             })
           )
-      );
+      )
 
-      const { evens, odds } = await program.unsafeRunPromise();
+      const { evens, odds } = await program.unsafeRunPromise()
 
-      assert.isTrue(evens == Either.left("boom"));
-      assert.isTrue(odds == Either.left("boom"));
-    });
+      assert.isTrue(evens == Either.left("boom"))
+      assert.isTrue(odds == Either.left("boom"))
+    })
 
     it("backpressure", async () => {
       const program = Effect.scoped(
@@ -87,13 +87,13 @@ describe.concurrent("Stream", () => {
               .tap(({ fiber }) => fiber.await())
               .bind("snapshot2", ({ ref }) => ref.get())
           )
-      );
+      )
 
-      const { other, snapshot1, snapshot2 } = await program.unsafeRunPromise();
+      const { other, snapshot1, snapshot2 } = await program.unsafeRunPromise()
 
-      assert.isTrue(snapshot1 == List(2, 0));
-      assert.isTrue(snapshot2 == List(4, 2, 0));
-      assert.isTrue(other == Chunk(1, 3, 5));
-    });
-  });
-});
+      assert.isTrue(snapshot1 == List(2, 0))
+      assert.isTrue(snapshot2 == List(4, 2, 0))
+      assert.isTrue(other == Chunk(1, 3, 5))
+    })
+  })
+})

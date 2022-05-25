@@ -7,5 +7,5 @@ export function fromCollectionEffect<R, E, A>(
   collection: LazyArg<Effect<R, E, Collection<A>>>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  return Stream.fromEffect(collection).mapConcat(identity);
+  return Stream.fromEffect(collection).mapConcat(identity)
 }

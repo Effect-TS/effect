@@ -7,5 +7,5 @@ export function environmentWith<R, A>(
   f: (env: Env<R>) => A,
   __tsplusTrace?: string
 ): Stream<R, never, A> {
-  return Stream.fromEffect(Effect.environmentWith(f));
+  return Stream.fromEffect(Effect.environmentWith(f))
 }

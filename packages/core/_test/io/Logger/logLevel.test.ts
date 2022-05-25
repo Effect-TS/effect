@@ -1,4 +1,4 @@
-import { TestLogger } from "@effect/core/test/test-utils/TestLogger";
+import { TestLogger } from "@effect/core/test/test-utils/TestLogger"
 
 describe.concurrent("Logger", () => {
   describe.concurrent("logLevel", () => {
@@ -6,25 +6,25 @@ describe.concurrent("Logger", () => {
       const program = Effect.log("It's alive")
         .apply(LogLevel(LogLevel.Warning))
         .zipRight(TestLogger.logOutput)
-        .provideLayer(TestLogger.default);
+        .provideLayer(TestLogger.default)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result.array.length, 1);
-      assert.isTrue(result[0].map((_) => _.message()) == Option.some("It's alive"));
-      assert.isTrue(result[0].map((_) => _.logLevel) == Option.some(LogLevel.Warning));
-    });
+      assert.strictEqual(result.array.length, 1)
+      assert.isTrue(result[0].map((_) => _.message()) == Option.some("It's alive"))
+      assert.isTrue(result[0].map((_) => _.logLevel) == Option.some(LogLevel.Warning))
+    })
 
     it("log at a different log level", async () => {
       const program = Effect.logWarning("It's alive")
         .zipRight(TestLogger.logOutput)
-        .provideLayer(TestLogger.default);
+        .provideLayer(TestLogger.default)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result.array.length, 1);
-      assert.isTrue(result[0].map((_) => _.message()) == Option.some("It's alive"));
-      assert.isTrue(result[0].map((_) => _.logLevel) == Option.some(LogLevel.Warning));
-    });
-  });
-});
+      assert.strictEqual(result.array.length, 1)
+      assert.isTrue(result[0].map((_) => _.message()) == Option.some("It's alive"))
+      assert.isTrue(result[0].map((_) => _.logLevel) == Option.some(LogLevel.Warning))
+    })
+  })
+})

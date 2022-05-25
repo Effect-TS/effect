@@ -17,7 +17,7 @@ export function tapBoth_<R, E, A, R2, E2, X, R3, E3, X1>(
         () => Effect.failCauseNow(cause)
       ),
     (a) => g(a).as(a)
-  );
+  )
 }
 
 /**
@@ -26,4 +26,4 @@ export function tapBoth_<R, E, A, R2, E2, X, R3, E3, X1>(
  *
  * @tsplus static ets/Effect/Aspects tapBoth
  */
-export const tapBoth = Pipeable(tapBoth_);
+export const tapBoth = Pipeable(tapBoth_)

@@ -7,5 +7,5 @@ export function dieMessage(
   message: LazyArg<string>,
   __tsplusTrace?: string
 ): Stream<unknown, never, never> {
-  return Stream.fromEffect(Effect.dieMessage(message));
+  return Stream.fromEffect(Effect.dieMessage(message))
 }

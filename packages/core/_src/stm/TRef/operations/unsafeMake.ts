@@ -1,6 +1,6 @@
-import { emptyTodoMap } from "@effect/core/stm/STM/Journal";
-import { Versioned } from "@effect/core/stm/STM/Versioned";
-import { TRefInternal } from "@effect/core/stm/TRef/operations/_internal/TRefInternal";
+import { emptyTodoMap } from "@effect/core/stm/STM/Journal"
+import { Versioned } from "@effect/core/stm/STM/Versioned"
+import { TRefInternal } from "@effect/core/stm/TRef/operations/_internal/TRefInternal"
 
 /**
  * Unsafely makes a new `TRef` that is initialized to the specified value.
@@ -8,8 +8,8 @@ import { TRefInternal } from "@effect/core/stm/TRef/operations/_internal/TRefInt
  * @tsplus static ets/TRef/Ops unsafeMake
  */
 export function unsafeMake<A>(a: A): TRef<A> {
-  const value = a;
-  const versioned = new Versioned(value);
-  const todo = new AtomicReference(emptyTodoMap);
-  return new TRefInternal(versioned, todo);
+  const value = a
+  const versioned = new Versioned(value)
+  const todo = new AtomicReference(emptyTodoMap)
+  return new TRefInternal(versioned, todo)
 }

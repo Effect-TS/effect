@@ -32,10 +32,10 @@ export function mergeAllUnbounded_<
   OutElem,
   unknown
 > {
-  return Channel.mergeAllWith(channels, Number.MAX_SAFE_INTEGER, () => undefined);
+  return Channel.mergeAllWith(channels, Number.MAX_SAFE_INTEGER, () => undefined)
 }
 
 /**
  * @tsplus static ets/Channel/Aspects mergeAllUnbounded
  */
-export const mergeAllUnbounded = Pipeable(mergeAllUnbounded_);
+export const mergeAllUnbounded = Pipeable(mergeAllUnbounded_)

@@ -4,7 +4,7 @@
  * @tsplus fluent ets/Exit ap
  */
 export function ap_<E, A, B>(fa: Exit<E, A>, fab: Exit<E, (a: A) => B>): Exit<E, B> {
-  return fab.flatMap((f) => fa.map((a) => f(a)));
+  return fab.flatMap((f) => fa.map((a) => f(a)))
 }
 
 /**
@@ -12,4 +12,4 @@ export function ap_<E, A, B>(fa: Exit<E, A>, fab: Exit<E, (a: A) => B>): Exit<E,
  *
  * @tsplus static ets/Exit/Aspects ap
  */
-export const ap = Pipeable(ap_);
+export const ap = Pipeable(ap_)

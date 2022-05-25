@@ -8,7 +8,7 @@ export function contramap_<R, E, In, In1, L, Z>(
   f: (input: In1) => In,
   __tsplusTrace?: string
 ): Sink<R, E, In1, L, Z> {
-  return self.contramapChunks((chunk) => chunk.map(f));
+  return self.contramapChunks((chunk) => chunk.map(f))
 }
 
 /**
@@ -16,4 +16,4 @@ export function contramap_<R, E, In, In1, L, Z>(
  *
  * @tsplus static ets/Sink/Aspects contramap
  */
-export const contramap = Pipeable(contramap_);
+export const contramap = Pipeable(contramap_)

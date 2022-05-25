@@ -7,5 +7,5 @@ export function get<R, E, A>(self: STM<R, E, Option<A>>): STM<R, Option<E>, A> {
   return self.foldSTM(
     (x) => STM.fail(Option.some(x)),
     (_) => _.fold(() => STM.fail(Option.none), STM.succeedNow)
-  );
+  )
 }

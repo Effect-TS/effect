@@ -10,7 +10,7 @@ export function provideSomeLayer_<R, E, A, R1, E1, A1>(
   __tsplusTrace?: string
 ): Stream<R1 & Erase<R, A1>, E | E1, A> {
   // @ts-expect-error
-  return self.provideLayer(Layer.environment<R1>().and(layer));
+  return self.provideLayer(Layer.environment<R1>().and(layer))
 }
 
 /**
@@ -19,4 +19,4 @@ export function provideSomeLayer_<R, E, A, R1, E1, A1>(
  *
  * @tsplus static ets/Stream/Aspects provideSomeLayer
  */
-export const provideSomeLayer = Pipeable(provideSomeLayer_);
+export const provideSomeLayer = Pipeable(provideSomeLayer_)

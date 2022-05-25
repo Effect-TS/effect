@@ -1,4 +1,4 @@
-import type { Emit } from "@effect/core/stream/Stream/Emit";
+import type { Emit } from "@effect/core/stream/Stream/Emit"
 
 /**
  * Creates a stream from an asynchronous callback that can be called multiple
@@ -13,9 +13,9 @@ export function _async<R, E, A>(
   __tsplusTrace?: string
 ): Stream<R, E, A> {
   return Stream.asyncMaybe((callback) => {
-    register(callback);
-    return Option.none;
-  }, outputBuffer);
+    register(callback)
+    return Option.none
+  }, outputBuffer)
 }
 
-export { _async as async };
+export { _async as async }

@@ -4,5 +4,5 @@
  * @tsplus static ets/Layer/Ops fail
  */
 export function fail<E>(e: LazyArg<E>): Layer<unknown, E, never> {
-  return Layer.failCause(Cause.fail(e()));
+  return Layer.failCause(Cause.fail(e()))
 }

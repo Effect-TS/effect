@@ -1,8 +1,8 @@
-import type { AtomicHub } from "@effect/core/io/Hub/operations/_internal/AtomicHub";
-import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription";
-import { unsafeCompleteDeferred } from "@effect/core/io/Hub/operations/_internal/unsafeCompleteDeferred";
-import { unsafeOfferAll } from "@effect/core/io/Hub/operations/_internal/unsafeOfferAll";
-import { unsafePollAllQueue } from "@effect/core/io/Hub/operations/_internal/unsafePollAllQueue";
+import type { AtomicHub } from "@effect/core/io/Hub/operations/_internal/AtomicHub"
+import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription"
+import { unsafeCompleteDeferred } from "@effect/core/io/Hub/operations/_internal/unsafeCompleteDeferred"
+import { unsafeOfferAll } from "@effect/core/io/Hub/operations/_internal/unsafeOfferAll"
+import { unsafePollAllQueue } from "@effect/core/io/Hub/operations/_internal/unsafePollAllQueue"
 
 /**
  * A `Strategy<A>` describes the protocol for how publishers and subscribers
@@ -20,12 +20,12 @@ export interface Strategy<A> {
     subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
     as: Collection<A>,
     isShutdown: AtomicBoolean
-  ) => Effect.UIO<boolean>;
+  ) => Effect.UIO<boolean>
 
   /**
    * Describes any finalization logic associated with this strategy.
    */
-  readonly shutdown: Effect.UIO<void>;
+  readonly shutdown: Effect.UIO<void>
 
   /**
    * Describes how subscribers should signal to publishers waiting for space
@@ -34,7 +34,7 @@ export interface Strategy<A> {
   readonly unsafeOnHubEmptySpace: (
     hub: AtomicHub<A>,
     subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>
-  ) => void;
+  ) => void
 
   /**
    * Describes how subscribers waiting for additional values from the hub
@@ -46,7 +46,7 @@ export interface Strategy<A> {
     subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
     subscription: Subscription<A>,
     pollers: MutableQueue<Deferred<never, A>>
-  ) => void;
+  ) => void
 
   /**
    * Describes how publishers should signal to subscribers waiting for
@@ -55,14 +55,14 @@ export interface Strategy<A> {
   readonly unsafeCompleteSubscribers: (
     hub: AtomicHub<A>,
     subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>
-  ) => void;
+  ) => void
 }
 
 /**
  * @tsplus type ets/Hub/StrategyOps
  */
 export interface StrategyOps {}
-export const Strategy: StrategyOps = {};
+export const Strategy: StrategyOps = {}
 
 abstract class BaseStrategy<A> implements Strategy<A> {
   abstract handleSurplus(
@@ -70,14 +70,14 @@ abstract class BaseStrategy<A> implements Strategy<A> {
     subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
     as: Collection<A>,
     isShutdown: AtomicBoolean
-  ): Effect.UIO<boolean>;
+  ): Effect.UIO<boolean>
 
-  abstract shutdown: Effect.UIO<void>;
+  abstract shutdown: Effect.UIO<void>
 
   abstract unsafeOnHubEmptySpace(
     hub: AtomicHub<A>,
     subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>
-  ): void;
+  ): void
 
   unsafeCompletePollers(
     hub: AtomicHub<A>,
@@ -85,29 +85,29 @@ abstract class BaseStrategy<A> implements Strategy<A> {
     subscription: Subscription<A>,
     pollers: MutableQueue<Deferred<never, A>>
   ): void {
-    let keepPolling = true;
+    let keepPolling = true
 
     while (keepPolling && !subscription.isEmpty()) {
-      const poller = pollers.poll(EmptyMutableQueue)!;
+      const poller = pollers.poll(EmptyMutableQueue)!
 
       if (poller === EmptyMutableQueue) {
-        const subPollerPair = Tuple(subscription, pollers);
+        const subPollerPair = Tuple(subscription, pollers)
 
-        subscribers.remove(subPollerPair);
+        subscribers.remove(subPollerPair)
 
         if (pollers.isEmpty) {
-          keepPolling = false;
+          keepPolling = false
         } else {
-          subscribers.add(subPollerPair);
+          subscribers.add(subPollerPair)
         }
       } else {
-        const pollResult = subscription.poll(EmptyMutableQueue);
+        const pollResult = subscription.poll(EmptyMutableQueue)
 
         if (pollResult == EmptyMutableQueue) {
-          unsafeOfferAll(pollers, unsafePollAllQueue(pollers).prepend(poller));
+          unsafeOfferAll(pollers, unsafePollAllQueue(pollers).prepend(poller))
         } else {
-          unsafeCompleteDeferred(poller, pollResult);
-          this.unsafeOnHubEmptySpace(hub, subscribers);
+          unsafeCompleteDeferred(poller, pollResult)
+          this.unsafeOnHubEmptySpace(hub, subscribers)
         }
       }
     }
@@ -122,7 +122,7 @@ abstract class BaseStrategy<A> implements Strategy<A> {
         tuple: [subscription, pollers]
       } of subscribers
     ) {
-      this.unsafeCompletePollers(hub, subscribers, subscription, pollers);
+      this.unsafeCompletePollers(hub, subscribers, subscription, pollers)
     }
   }
 }
@@ -135,7 +135,7 @@ abstract class BaseStrategy<A> implements Strategy<A> {
  * are published and received by other subscribers.
  */
 export class BackPressure<A> extends BaseStrategy<A> {
-  publishers: MutableQueue<readonly [A, Deferred<never, boolean>, boolean]> = MutableQueue.unbounded();
+  publishers: MutableQueue<readonly [A, Deferred<never, boolean>, boolean]> = MutableQueue.unbounded()
 
   handleSurplus(
     hub: AtomicHub<A>,
@@ -144,16 +144,16 @@ export class BackPressure<A> extends BaseStrategy<A> {
     isShutdown: AtomicBoolean
   ): Effect.UIO<boolean> {
     return Effect.suspendSucceedWith((_, fiberId) => {
-      const deferred: Deferred<never, boolean> = Deferred.unsafeMake<never, boolean>(fiberId);
+      const deferred: Deferred<never, boolean> = Deferred.unsafeMake<never, boolean>(fiberId)
 
       return Effect.suspendSucceed(() => {
-        this.unsafeOffer(as, deferred);
-        this.unsafeOnHubEmptySpace(hub, subscribers);
-        this.unsafeCompleteSubscribers(hub, subscribers);
+        this.unsafeOffer(as, deferred)
+        this.unsafeOnHubEmptySpace(hub, subscribers)
+        this.unsafeCompleteSubscribers(hub, subscribers)
 
-        return isShutdown.get ? Effect.interrupt : deferred.await();
-      }).onInterrupt(() => Effect.succeed(this.unsafeRemove(deferred)));
-    });
+        return isShutdown.get ? Effect.interrupt : deferred.await()
+      }).onInterrupt(() => Effect.succeed(this.unsafeRemove(deferred)))
+    })
   }
 
   get shutdown(): Effect.UIO<void> {
@@ -166,47 +166,47 @@ export class BackPressure<A> extends BaseStrategy<A> {
           ([_, deferred, last]) => last ? deferred.interruptAs(fiberId) : Effect.unit
         )
       )
-      .asUnit();
+      .asUnit()
   }
 
   unsafeOnHubEmptySpace(
     hub: AtomicHub<A>,
     subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>
   ): void {
-    let keepPolling = true;
+    let keepPolling = true
 
     while (keepPolling && !hub.isFull()) {
-      const publisher = this.publishers.poll(EmptyMutableQueue)!;
+      const publisher = this.publishers.poll(EmptyMutableQueue)!
 
       if (publisher === EmptyMutableQueue) {
-        keepPolling = false;
+        keepPolling = false
       } else {
-        const published = hub.publish(publisher[0]);
+        const published = hub.publish(publisher[0])
 
         if (published && publisher[2]) {
-          unsafeCompleteDeferred(publisher[1], true);
+          unsafeCompleteDeferred(publisher[1], true)
         } else if (!published) {
           unsafeOfferAll(
             this.publishers,
             unsafePollAllQueue(this.publishers).prepend(publisher)
-          );
+          )
         }
-        this.unsafeCompleteSubscribers(hub, subscribers);
+        this.unsafeCompleteSubscribers(hub, subscribers)
       }
     }
   }
 
   private unsafeOffer(as: Collection<A>, deferred: Deferred<never, boolean>): void {
-    const it = as[Symbol.iterator]();
-    let curr = it.next();
+    const it = as[Symbol.iterator]()
+    let curr = it.next()
 
     if (!curr.done) {
-      let next;
+      let next
       while ((next = it.next()) && !next.done) {
-        this.publishers.offer([curr.value, deferred, false] as const);
-        curr = next;
+        this.publishers.offer([curr.value, deferred, false] as const)
+        curr = next
       }
-      this.publishers.offer([curr.value, deferred, true] as const);
+      this.publishers.offer([curr.value, deferred, true] as const)
     }
   }
 
@@ -214,7 +214,7 @@ export class BackPressure<A> extends BaseStrategy<A> {
     unsafeOfferAll(
       this.publishers,
       unsafePollAllQueue(this.publishers).filter(([_, a]) => a !== deferred)
-    );
+    )
   }
 }
 
@@ -233,10 +233,10 @@ export class Dropping<A> extends BaseStrategy<A> {
     _as: Collection<A>,
     _isShutdown: AtomicBoolean
   ): Effect.UIO<boolean> {
-    return Effect.succeed(false);
+    return Effect.succeed(false)
   }
 
-  shutdown: Effect.UIO<void> = Effect.unit;
+  shutdown: Effect.UIO<void> = Effect.unit
 
   unsafeOnHubEmptySpace(
     _hub: AtomicHub<A>,
@@ -255,19 +255,19 @@ export class Dropping<A> extends BaseStrategy<A> {
  */
 export class Sliding<A> extends BaseStrategy<A> {
   private unsafeSlidingPublish(hub: AtomicHub<A>, as: Collection<A>): void {
-    const it = as[Symbol.iterator]();
-    let next = it.next();
+    const it = as[Symbol.iterator]()
+    let next = it.next()
 
     if (!next.done && hub.capacity > 0) {
-      let a = next.value;
-      let loop = true;
+      let a = next.value
+      let loop = true
       while (loop) {
-        hub.slide();
-        const pub = hub.publish(a);
+        hub.slide()
+        const pub = hub.publish(a)
         if (pub && (next = it.next()) && !next.done) {
-          a = next.value;
+          a = next.value
         } else if (pub) {
-          loop = false;
+          loop = false
         }
       }
     }
@@ -280,13 +280,13 @@ export class Sliding<A> extends BaseStrategy<A> {
     _isShutdown: AtomicBoolean
   ): Effect.UIO<boolean> {
     return Effect.succeed(() => {
-      this.unsafeSlidingPublish(hub, as);
-      this.unsafeCompleteSubscribers(hub, subscribers);
-      return true;
-    });
+      this.unsafeSlidingPublish(hub, as)
+      this.unsafeCompleteSubscribers(hub, subscribers)
+      return true
+    })
   }
 
-  shutdown: Effect.UIO<void> = Effect.unit;
+  shutdown: Effect.UIO<void> = Effect.unit
 
   unsafeOnHubEmptySpace(
     _hub: AtomicHub<A>,
@@ -300,19 +300,19 @@ export class Sliding<A> extends BaseStrategy<A> {
  * @tsplus static ets/Hub/StrategyOps BackPressure
  */
 export function backPressureStrategy<A>(): Strategy<A> {
-  return new BackPressure<A>();
+  return new BackPressure<A>()
 }
 
 /**
  * @tsplus static ets/Hub/StrategyOps Dropping
  */
 export function droppingStrategy<A>(): Strategy<A> {
-  return new Dropping<A>();
+  return new Dropping<A>()
 }
 
 /**
  * @tsplus static ets/Hub/StrategyOps Sliding
  */
 export function slidingStrategy<A>(): Strategy<A> {
-  return new Sliding<A>();
+  return new Sliding<A>()
 }

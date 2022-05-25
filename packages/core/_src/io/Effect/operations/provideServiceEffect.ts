@@ -14,7 +14,7 @@ export function provideServiceEffect_<R, E, A, T>(
   ): Effect<R1 & Erase<R, Has<T>>, E | E1, A> =>
     Effect.environmentWithEffect((env: Env<R & R1>) =>
       effect.flatMap((service) => self.provideEnvironment(env.add(tag, service)))
-    );
+    )
 }
 
 /**
@@ -23,4 +23,4 @@ export function provideServiceEffect_<R, E, A, T>(
  *
  * @tsplus static ets/Effect/Aspects provideServiceEffect
  */
-export const provideServiceEffect = Pipeable(provideServiceEffect_);
+export const provideServiceEffect = Pipeable(provideServiceEffect_)

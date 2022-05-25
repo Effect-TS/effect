@@ -9,5 +9,5 @@ export function concatAll<R, E, A>(
 ): Stream<R, E, A> {
   return Stream.suspend(
     streams().reduce(Stream.empty as Stream<R, E, A>, (acc, a) => acc + a)
-  );
+  )
 }

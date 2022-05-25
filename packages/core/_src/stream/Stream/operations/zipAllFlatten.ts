@@ -1,4 +1,4 @@
-import type { MergeTuple } from "@tsplus/stdlib/data/Tuple";
+import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
 
 /**
  * Zips this stream with another point-wise, creating a new stream of pairs of
@@ -21,7 +21,7 @@ export function zipAllFlatten_<R, E, A, R2, E2, A2>(
     (a) => Tuple.mergeTuple(a, defaultRight()),
     (a2) => Tuple.mergeTuple(defaultLeft(), a2),
     (a, a2) => Tuple.mergeTuple(a, a2)
-  );
+  )
 }
 
 /**
@@ -33,4 +33,4 @@ export function zipAllFlatten_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Stream/Aspects zipAllFlatten
  */
-export const zipAllFlatten = Pipeable(zipAllFlatten_);
+export const zipAllFlatten = Pipeable(zipAllFlatten_)

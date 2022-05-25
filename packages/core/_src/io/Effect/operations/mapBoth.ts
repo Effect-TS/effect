@@ -13,7 +13,7 @@ export function mapBoth_<R, E, A, E2, B>(
   return self.foldEffect(
     (e) => Effect.failNow(f(e)),
     (a) => Effect.succeedNow(g(a))
-  );
+  )
 }
 
 /**
@@ -22,4 +22,4 @@ export function mapBoth_<R, E, A, E2, B>(
  *
  * @tsplus static ets/Effect/Aspects mapBoth
  */
-export const mapBoth = Pipeable(mapBoth_);
+export const mapBoth = Pipeable(mapBoth_)

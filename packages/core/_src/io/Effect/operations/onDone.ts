@@ -15,10 +15,10 @@ export function onDone_<R, E, A, R1, X1, R2, X2>(
       )
       .forkDaemon()
       .asUnit()
-  );
+  )
 }
 
 /**
  * @tsplus static ets/Effect/Aspects onDone
  */
-export const onDone = Pipeable(onDone_);
+export const onDone = Pipeable(onDone_)

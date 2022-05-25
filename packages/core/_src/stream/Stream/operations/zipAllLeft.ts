@@ -13,7 +13,7 @@ export function zipAllLeft_<R, E, A, R2, E2, A2>(
   def: LazyArg<A>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A> {
-  return self.zipAllWith(that, identity, def, (a, _) => a);
+  return self.zipAllWith(that, identity, def, (a, _) => a)
 }
 
 /**
@@ -25,4 +25,4 @@ export function zipAllLeft_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Stream/Aspects zipAllLeft
  */
-export const zipAllLeft = Pipeable(zipAllLeft_);
+export const zipAllLeft = Pipeable(zipAllLeft_)

@@ -1,6 +1,6 @@
-import { Utf8 } from "@effect/core/stream/Stream/operations/_internal/bom";
-import { utf8DecodeNoBom } from "@effect/core/stream/Stream/operations/_internal/utf8DecodeNoBom";
-import { utfDecodeDetectingBom } from "@effect/core/stream/Stream/operations/_internal/utfDecodeDetectingBom";
+import { Utf8 } from "@effect/core/stream/Stream/operations/_internal/bom"
+import { utf8DecodeNoBom } from "@effect/core/stream/Stream/operations/_internal/utf8DecodeNoBom"
+import { utfDecodeDetectingBom } from "@effect/core/stream/Stream/operations/_internal/utfDecodeDetectingBom"
 
 // TODO(Mike/Max): look into utf16 and utf32 encodings
 
@@ -19,5 +19,5 @@ export function utfDecode<R, E>(
       bytes.take(3).corresponds(Utf8, (a, b) => a === b)
         ? Tuple(bytes.drop(3), utf8DecodeNoBom)
         : Tuple(bytes, utf8DecodeNoBom))
-  );
+  )
 }

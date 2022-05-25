@@ -9,7 +9,7 @@ export function collectFirst<R, E, A, B>(
   f: (a: A) => Effect<R, E, Option<B>>,
   __tsplusTrace?: string
 ): Effect<R, E, Option<B>> {
-  return Effect.succeed(as).flatMap((Collection) => loop(Collection[Symbol.iterator](), f));
+  return Effect.succeed(as).flatMap((Collection) => loop(Collection[Symbol.iterator](), f))
 }
 
 function loop<R, E, A, B>(
@@ -17,8 +17,8 @@ function loop<R, E, A, B>(
   f: (a: A) => Effect<R, E, Option<B>>,
   __tsplusTrace?: string
 ): Effect<R, E, Option<B>> {
-  const next = iterator.next();
+  const next = iterator.next()
   return next.done
     ? Effect.none
-    : f(next.value).flatMap((option) => option.fold(loop(iterator, f), (b) => Effect.some(b)));
+    : f(next.value).flatMap((option) => option.fold(loop(iterator, f), (b) => Effect.some(b)))
 }

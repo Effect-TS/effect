@@ -1,13 +1,13 @@
-import type { CommonQueue } from "@effect/core/io/Queue/definition/common";
-import type { _In } from "@effect/core/io/Queue/definition/symbols";
+import type { CommonQueue } from "@effect/core/io/Queue/definition/common"
+import type { _In } from "@effect/core/io/Queue/definition/symbols"
 
 export interface Enqueue<A> extends CommonQueue {
-  readonly [_In]: (_: A) => void;
+  readonly [_In]: (_: A) => void
 
   /**
    * Places one value in the queue.
    */
-  readonly offer: (a: A, __tsplusTrace?: string) => Effect.UIO<boolean>;
+  readonly offer: (a: A, __tsplusTrace?: string) => Effect.UIO<boolean>
 
   /**
    * For Bounded Queue: uses the `BackPressure` Strategy, places the values in
@@ -24,5 +24,5 @@ export interface Enqueue<A> extends CommonQueue {
    * For Dropping Queue: uses `Dropping` Strategy, It places the values in the
    * queue but if there is no room it will not enqueue them and return false.
    */
-  readonly offerAll: (as: Collection<A>, __tsplusTrace?: string) => Effect.UIO<boolean>;
+  readonly offerAll: (as: Collection<A>, __tsplusTrace?: string) => Effect.UIO<boolean>
 }

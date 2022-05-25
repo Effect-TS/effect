@@ -9,7 +9,7 @@ export function continueOrFailSTM_<R, E, E1, A, R2, E2, A2>(
   e: LazyArg<E1>,
   pf: (a: A) => Option<STM<R2, E2, A2>>
 ) {
-  return self.flatMap((a): STM<R2, E1 | E2, A2> => pf(a).getOrElse(STM.fail(e)));
+  return self.flatMap((a): STM<R2, E1 | E2, A2> => pf(a).getOrElse(STM.fail(e)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function continueOrFailSTM_<R, E, E1, A, R2, E2, A2>(
  *
  * @tsplus static ets/STM/Aspects continueOrFailSTM
  */
-export const continueOrFailSTM = Pipeable(continueOrFailSTM_);
+export const continueOrFailSTM = Pipeable(continueOrFailSTM_)

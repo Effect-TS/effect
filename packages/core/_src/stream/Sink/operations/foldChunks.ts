@@ -1,4 +1,4 @@
-import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * A sink that folds its input chunks with the provided function, termination
@@ -14,7 +14,7 @@ export function foldChunks<In, S>(
   f: (s: S, input: Chunk<In>) => S,
   __tsplusTrace?: string
 ): Sink<unknown, never, In, unknown, S> {
-  return Sink.suspend(new SinkInternal(reader(z(), cont, f)));
+  return Sink.suspend(new SinkInternal(reader(z(), cont, f)))
 }
 
 function reader<S, In>(
@@ -26,11 +26,11 @@ function reader<S, In>(
   return cont(z)
     ? Channel.readWith(
       (chunk: Chunk<In>) => {
-        const nextS = f(z, chunk);
-        return reader(nextS, cont, f);
+        const nextS = f(z, chunk)
+        return reader(nextS, cont, f)
       },
       (err) => Channel.fail(err),
       () => Channel.succeedNow(z)
     )
-    : Channel.succeedNow(z);
+    : Channel.succeedNow(z)
 }

@@ -1,4 +1,4 @@
-import { STMEffect, STMFailException } from "@effect/core/stm/STM/definition/primitives";
+import { STMEffect, STMFailException } from "@effect/core/stm/STM/definition/primitives"
 
 /**
  * Returns a value that models failure in the transaction.
@@ -7,6 +7,6 @@ import { STMEffect, STMFailException } from "@effect/core/stm/STM/definition/pri
  */
 export function failNow<E>(e: E): STM<unknown, E, never> {
   return new STMEffect(() => {
-    throw new STMFailException(e);
-  });
+    throw new STMFailException(e)
+  })
 }

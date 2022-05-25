@@ -1,4 +1,4 @@
-import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition";
+import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition"
 
 /**
  * Creates a stream from a `Queue` of values.
@@ -14,10 +14,10 @@ export function fromQueue<A>(
   __tsplusTrace?: string
 ): Stream<unknown, never, A> {
   return Stream.repeatEffectChunkOption(() => {
-    const queue0 = queue();
+    const queue0 = queue()
     return (queue0 as Queue<A>)
       .takeBetween(1, maxChunkSize)
       .map(Chunk.from)
-      .catchAllCause((cause) => queue0.isShutdown && cause.isInterrupted() ? Pull.end : Pull.failCause(cause));
-  });
+      .catchAllCause((cause) => queue0.isShutdown && cause.isInterrupted() ? Pull.end : Pull.failCause(cause))
+  })
 }

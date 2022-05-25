@@ -21,7 +21,7 @@ export function timeout_<R, E, E1, A>(
   duration: LazyArg<Duration>,
   __tsplusTrace?: string
 ): Effect<R, E, Option<A>> {
-  return self.timeoutTo(Option.none, Option.some, duration);
+  return self.timeoutTo(Option.none, Option.some, duration)
 }
 
 /**
@@ -42,4 +42,4 @@ export function timeout_<R, E, E1, A>(
  *
  * @tsplus static ets/Effect/Aspects timeout
  */
-export const timeout = Pipeable(timeout_);
+export const timeout = Pipeable(timeout_)

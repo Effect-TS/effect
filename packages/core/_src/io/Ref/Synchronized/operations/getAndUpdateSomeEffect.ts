@@ -14,7 +14,7 @@ export function getAndUpdateSomeEffect_<R, E, A>(
     pf(v)
       .getOrElse(Effect.succeedNow(v))
       .map((result) => Tuple(v, result))
-  );
+  )
 }
 
 /**
@@ -24,4 +24,4 @@ export function getAndUpdateSomeEffect_<R, E, A>(
  *
  * @tsplus static ets/Ref/Synchronized/Aspects getAndUpdateSomeEffect
  */
-export const getAndUpdateSomeEffect = Pipeable(getAndUpdateSomeEffect_);
+export const getAndUpdateSomeEffect = Pipeable(getAndUpdateSomeEffect_)

@@ -16,5 +16,5 @@ export function concatOut<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     OutDone
   >
 ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, any> {
-  return Channel.concatAll(self);
+  return Channel.concatAll(self)
 }

@@ -4,5 +4,5 @@
  * @tsplus static ets/STM/Ops right
  */
 export function succeedRight<A>(value: A): USTM<Either<never, A>> {
-  return STM.succeed(Either.right(value));
+  return STM.succeed(Either.right(value))
 }

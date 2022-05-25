@@ -1,4 +1,4 @@
-import { concreteCloseableScope } from "@effect/core/io/Scope/operations/_internal/CloseableScopeInternal";
+import { concreteCloseableScope } from "@effect/core/io/Scope/operations/_internal/CloseableScopeInternal"
 
 /**
  * Closes a scope with the specified exit value, running all finalizers that
@@ -10,8 +10,8 @@ export function close_(
   self: Scope.Closeable,
   exit: LazyArg<Exit<unknown, unknown>>
 ): Effect.UIO<void> {
-  concreteCloseableScope(self);
-  return self._close(exit);
+  concreteCloseableScope(self)
+  return self._close(exit)
 }
 
 /**
@@ -20,4 +20,4 @@ export function close_(
  *
  * @tsplus static ets/Scope/Aspects close
  */
-export const close = Pipeable(close_);
+export const close = Pipeable(close_)

@@ -6,7 +6,7 @@
  * @tsplus fluent ets/FiberRef locallyWith
  */
 export function locallyWith_<A, P>(self: FiberRef<A, P>, f: (a: A) => A, __tsplusTrace?: string) {
-  return <R, E, B>(effect: Effect<R, E, B>): Effect<R, E, B> => self.getWith((a) => effect.apply(self.locally(f(a))));
+  return <R, E, B>(effect: Effect<R, E, B>): Effect<R, E, B> => self.getWith((a) => effect.apply(self.locally(f(a))))
 }
 
 /**
@@ -16,4 +16,4 @@ export function locallyWith_<A, P>(self: FiberRef<A, P>, f: (a: A) => A, __tsplu
  *
  * @tsplus static ets/FiberRef/Aspects locallyWith
  */
-export const locallyWith = Pipeable(locallyWith_);
+export const locallyWith = Pipeable(locallyWith_)

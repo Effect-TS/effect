@@ -1,20 +1,20 @@
 describe.concurrent("Stream", () => {
   describe.concurrent("runHead", () => {
     it("nonempty stream", async () => {
-      const program = Stream(1, 2, 3, 4).runHead();
+      const program = Stream(1, 2, 3, 4).runHead()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(1));
-    });
+      assert.isTrue(result == Option.some(1))
+    })
 
     it("empty stream", async () => {
-      const program = Stream.empty.runHead();
+      const program = Stream.empty.runHead()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none);
-    });
+      assert.isTrue(result == Option.none)
+    })
 
     it("pulls up to the first non-empty chunk", async () => {
       const program = Effect.Do()
@@ -28,32 +28,32 @@ describe.concurrent("Stream", () => {
           )
             .flatten()
             .runHead())
-        .bind("result", ({ ref }) => ref.get());
+        .bind("result", ({ ref }) => ref.get())
 
-      const { head, result } = await program.unsafeRunPromise();
+      const { head, result } = await program.unsafeRunPromise()
 
-      assert.isTrue(head == Option.some(1));
-      assert.isTrue(result == Chunk(2, 1));
-    });
-  });
+      assert.isTrue(head == Option.some(1))
+      assert.isTrue(result == Chunk(2, 1))
+    })
+  })
 
   describe.concurrent("runLast", () => {
     it("nonempty stream", async () => {
-      const program = Stream(1, 2, 3, 4).runLast();
+      const program = Stream(1, 2, 3, 4).runLast()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(4));
-    });
+      assert.isTrue(result == Option.some(4))
+    })
 
     it("empty stream", async () => {
-      const program = Stream.empty.runLast();
+      const program = Stream.empty.runLast()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none);
-    });
-  });
+      assert.isTrue(result == Option.none)
+    })
+  })
 
   describe.concurrent("runScoped", () => {
     it("properly closes the resources", async () => {
@@ -67,13 +67,13 @@ describe.concurrent("Stream", () => {
               .runScoped(Sink.collectAll())
               .flatMap((r) => closed.get().map((b) => Tuple(r, b)))
           ))
-        .bind("finalState", ({ closed }) => closed.get());
+        .bind("finalState", ({ closed }) => closed.get())
 
-      const { collectAndCheck, finalState } = await program.unsafeRunPromise();
+      const { collectAndCheck, finalState } = await program.unsafeRunPromise()
 
-      assert.isTrue(collectAndCheck.get(0) == Chunk(1, 1, 1));
-      assert.isFalse(collectAndCheck.get(1));
-      assert.isTrue(finalState);
-    });
-  });
-});
+      assert.isTrue(collectAndCheck.get(0) == Chunk(1, 1, 1))
+      assert.isFalse(collectAndCheck.get(1))
+      assert.isTrue(finalState)
+    })
+  })
+})

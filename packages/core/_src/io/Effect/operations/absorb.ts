@@ -5,5 +5,5 @@
  * @tsplus fluent ets/Effect absorb
  */
 export function absorb<R, E, A>(self: Effect<R, E, A>, __tsplusTrace?: string) {
-  return self.absorbWith(identity);
+  return self.absorbWith(identity)
 }

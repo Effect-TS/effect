@@ -1,4 +1,4 @@
-import { IRaceWith } from "@effect/core/io/Effect/definition/primitives";
+import { IRaceWith } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Returns an effect that races this effect with the specified effect, calling
@@ -17,23 +17,23 @@ export function raceWith_<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
     winner.await().flatMap((exit) => {
       switch (exit._tag) {
         case "Success": {
-          return winner.inheritRefs().flatMap(() => leftDone(exit, loser));
+          return winner.inheritRefs().flatMap(() => leftDone(exit, loser))
         }
         case "Failure": {
-          return leftDone(exit, loser);
+          return leftDone(exit, loser)
         }
       }
     }), (winner, loser) =>
     winner.await().flatMap((exit) => {
       switch (exit._tag) {
         case "Success": {
-          return winner.inheritRefs().flatMap(() => rightDone(exit, loser));
+          return winner.inheritRefs().flatMap(() => rightDone(exit, loser))
         }
         case "Failure": {
-          return rightDone(exit, loser);
+          return rightDone(exit, loser)
         }
       }
-    }), __tsplusTrace);
+    }), __tsplusTrace)
 }
 
 /**
@@ -42,4 +42,4 @@ export function raceWith_<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
  *
  * @tsplus static ets/Effect/Aspects raceWith
  */
-export const raceWith = Pipeable(raceWith_);
+export const raceWith = Pipeable(raceWith_)

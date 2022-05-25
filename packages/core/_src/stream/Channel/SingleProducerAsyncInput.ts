@@ -2,10 +2,10 @@
  * Producer-side view of `SingleProducerAsyncInput` for variance purposes.
  */
 export interface AsyncInputProducer<Err, Elem, Done> {
-  readonly emit: (el: Elem) => Effect.UIO<unknown>;
-  readonly done: (a: Done) => Effect.UIO<unknown>;
-  readonly error: (cause: Cause<Err>) => Effect.UIO<unknown>;
-  readonly awaitRead: Effect.UIO<unknown>;
+  readonly emit: (el: Elem) => Effect.UIO<unknown>
+  readonly done: (a: Done) => Effect.UIO<unknown>
+  readonly error: (cause: Cause<Err>) => Effect.UIO<unknown>
+  readonly awaitRead: Effect.UIO<unknown>
 }
 
 /**
@@ -16,44 +16,44 @@ export interface AsyncInputConsumer<Err, Elem, Done> {
     onError: (cause: Cause<Err>) => A,
     onElement: (element: Elem) => A,
     onDone: (done: Done) => A
-  ) => Effect.UIO<A>;
+  ) => Effect.UIO<A>
 }
 
 export type State<Err, Elem, Done> =
   | StateEmpty
   | StateEmit<Err, Elem, Done>
   | StateError<Err>
-  | StateDone<Done>;
+  | StateDone<Done>
 
-export const DoneTypeId = Symbol.for("@effect/core/stream/Channel/Producer/Done");
-export type DoneTypeId = typeof DoneTypeId;
+export const DoneTypeId = Symbol.for("@effect/core/stream/Channel/Producer/Done")
+export type DoneTypeId = typeof DoneTypeId
 
 export class StateDone<Elem> {
-  readonly _typeId: DoneTypeId = DoneTypeId;
+  readonly _typeId: DoneTypeId = DoneTypeId
   constructor(readonly a: Elem) {}
 }
 
-export const ErrorTypeId = Symbol.for("@effect/core/stream/Channel/Producer/Error");
-export type ErrorTypeId = typeof ErrorTypeId;
+export const ErrorTypeId = Symbol.for("@effect/core/stream/Channel/Producer/Error")
+export type ErrorTypeId = typeof ErrorTypeId
 
 export class StateError<Err> {
-  readonly _typeId: ErrorTypeId = ErrorTypeId;
+  readonly _typeId: ErrorTypeId = ErrorTypeId
   constructor(readonly cause: Cause<Err>) {}
 }
 
-export const EmptyTypeId = Symbol.for("@effect/core/stream/Channel/Producer/Empty");
-export type EmptyTypeId = typeof EmptyTypeId;
+export const EmptyTypeId = Symbol.for("@effect/core/stream/Channel/Producer/Empty")
+export type EmptyTypeId = typeof EmptyTypeId
 
 export class StateEmpty {
-  readonly _typeId: EmptyTypeId = EmptyTypeId;
+  readonly _typeId: EmptyTypeId = EmptyTypeId
   constructor(readonly notifyProducer: Deferred<never, void>) {}
 }
 
-export const EmitTypeId = Symbol.for("@effect/core/stream/Channel/Producer/Emit");
-export type EmitTypeId = typeof EmitTypeId;
+export const EmitTypeId = Symbol.for("@effect/core/stream/Channel/Producer/Emit")
+export type EmitTypeId = typeof EmitTypeId
 
 export class StateEmit<Err, Elem, Done> {
-  readonly _typeId: EmitTypeId = EmitTypeId;
+  readonly _typeId: EmitTypeId = EmitTypeId
   constructor(
     readonly notifyConsumers: ImmutableQueue<Deferred<Err, Either<Done, Elem>>>
   ) {}
@@ -88,11 +88,11 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
       (cause) => Exit.failCause(cause.map(Either.left)),
       (element) => Exit.succeed(element),
       (done) => Exit.fail(Either.right(done))
-    );
+    )
   }
 
   get close(): Effect.UIO<unknown> {
-    return Effect.fiberId.flatMap((fiberId) => this.error(Cause.interrupt(fiberId)));
+    return Effect.fiberId.flatMap((fiberId) => this.error(Cause.interrupt(fiberId)))
   }
 
   get awaitRead(): Effect.UIO<unknown> {
@@ -102,7 +102,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
           ? Tuple(state.notifyProducer.await(), state)
           : Tuple(Effect.unit, state)
       )
-      .flatten();
+      .flatten()
   }
 
   emit(el: Elem): Effect.UIO<unknown> {
@@ -111,36 +111,36 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
         .modify((state) => {
           switch (state._typeId) {
             case EmitTypeId: {
-              const dequeued = state.notifyConsumers.dequeue();
+              const dequeued = state.notifyConsumers.dequeue()
 
               if (dequeued._tag === "Some") {
                 const {
                   tuple: [notifyConsumer, notifyConsumers]
-                } = dequeued.value;
+                } = dequeued.value
 
                 return Tuple(
                   notifyConsumer.succeed(Either.right(el)),
                   notifyConsumers.size === 0
                     ? new StateEmpty(deferred)
                     : new StateEmit(notifyConsumers)
-                );
+                )
               }
 
-              throw new Error("SingleProducerAsyncInput#emit: queue was empty");
+              throw new Error("SingleProducerAsyncInput#emit: queue was empty")
             }
             case ErrorTypeId: {
-              return Tuple(Effect.interrupt, state);
+              return Tuple(Effect.interrupt, state)
             }
             case DoneTypeId: {
-              return Tuple(Effect.interrupt, state);
+              return Tuple(Effect.interrupt, state)
             }
             case EmptyTypeId: {
-              return Tuple(state.notifyProducer.await(), state);
+              return Tuple(state.notifyProducer.await(), state)
             }
           }
         })
         .flatten()
-    );
+    )
   }
 
   done(a: Done): Effect.UIO<unknown> {
@@ -151,20 +151,20 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
             return Tuple(
               Effect.forEachDiscard(state.notifyConsumers, (promise) => promise.succeed(Either.left(a))),
               new StateDone(a)
-            );
+            )
           }
           case ErrorTypeId: {
-            return Tuple(Effect.interrupt, state);
+            return Tuple(Effect.interrupt, state)
           }
           case DoneTypeId: {
-            return Tuple(Effect.interrupt, state);
+            return Tuple(Effect.interrupt, state)
           }
           case EmptyTypeId: {
-            return Tuple(state.notifyProducer.await(), state);
+            return Tuple(state.notifyProducer.await(), state)
           }
         }
       })
-      .flatten();
+      .flatten()
   }
 
   error(cause: Cause<Err>): Effect.UIO<unknown> {
@@ -175,20 +175,20 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
             return Tuple(
               Effect.forEachDiscard(state.notifyConsumers, (promise) => promise.failCause(cause)),
               new StateError(cause)
-            );
+            )
           }
           case ErrorTypeId: {
-            return Tuple(Effect.interrupt, state);
+            return Tuple(Effect.interrupt, state)
           }
           case DoneTypeId: {
-            return Tuple(Effect.interrupt, state);
+            return Tuple(Effect.interrupt, state)
           }
           case EmptyTypeId: {
-            return Tuple(state.notifyProducer.await(), state);
+            return Tuple(state.notifyProducer.await(), state)
           }
         }
       })
-      .flatten();
+      .flatten()
   }
 
   takeWith<X>(
@@ -206,13 +206,13 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
                   .await()
                   .foldCause(onError, (either) => either.fold(onDone, onElement)),
                 new StateEmit(state.notifyConsumers.append(deferred))
-              );
+              )
             }
             case ErrorTypeId: {
-              return Tuple(Effect.succeed(onError(state.cause)), state);
+              return Tuple(Effect.succeed(onError(state.cause)), state)
             }
             case DoneTypeId: {
-              return Tuple(Effect.succeed(onDone(state.a)), state);
+              return Tuple(Effect.succeed(onDone(state.a)), state)
             }
             case EmptyTypeId: {
               return Tuple(
@@ -221,12 +221,12 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
                     .await()
                     .foldCause(onError, (either) => either.fold(onDone, onElement)),
                 new StateEmit(ImmutableQueue.single(deferred))
-              );
+              )
             }
           }
         })
         .flatten()
-    );
+    )
   }
 }
 
@@ -240,5 +240,5 @@ export function make<Err, Elem, Done>(): Effect.UIO<
 > {
   return Deferred.make<never, void>()
     .flatMap((deferred) => Ref.make<State<Err, Elem, Done>>(new StateEmpty(deferred)))
-    .map((ref) => new SingleProducerAsyncInput(ref));
+    .map((ref) => new SingleProducerAsyncInput(ref))
 }

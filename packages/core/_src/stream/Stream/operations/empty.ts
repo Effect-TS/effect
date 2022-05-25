@@ -1,4 +1,4 @@
-import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * The empty stream.
@@ -7,4 +7,4 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  */
 export const empty: Stream<unknown, never, never> = new StreamInternal(
   Channel.write(Chunk.empty())
-);
+)

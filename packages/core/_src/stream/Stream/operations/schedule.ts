@@ -10,7 +10,7 @@ export function schedule_<R, E, A, S, R2, B>(
 ): Stream<R & R2, E, A> {
   return self
     .scheduleEither(schedule)
-    .collect((either) => (either.isRight() ? Option.some(either.right) : Option.none));
+    .collect((either) => (either.isRight() ? Option.some(either.right) : Option.none))
 }
 
 /**
@@ -18,4 +18,4 @@ export function schedule_<R, E, A, S, R2, B>(
  *
  * @tsplus static ets/Stream/Aspects schedule
  */
-export const schedule = Pipeable(schedule_);
+export const schedule = Pipeable(schedule_)

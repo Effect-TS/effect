@@ -8,5 +8,5 @@ export function mkString<R, E, A>(
   self: Stream<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, string> {
-  return self.run(Sink.mkString());
+  return self.run(Sink.mkString())
 }

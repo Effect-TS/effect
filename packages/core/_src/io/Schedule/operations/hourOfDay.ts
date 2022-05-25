@@ -1,7 +1,7 @@
-import { Decision } from "@effect/core/io/Schedule/Decision";
-import { Interval } from "@effect/core/io/Schedule/Interval";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
-import { beginningOfHour, endOfHour, nextHour } from "@effect/core/io/Schedule/operations/_internal/time";
+import { Decision } from "@effect/core/io/Schedule/Decision"
+import { Interval } from "@effect/core/io/Schedule/Interval"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
+import { beginningOfHour, endOfHour, nextHour } from "@effect/core/io/Schedule/operations/_internal/time"
 
 /**
  * Cron-like schedule that recurs every specified `hour` of each day. It
@@ -20,12 +20,12 @@ export function hourOfDay(
         new IllegalArgumentException(
           `Invalid argument in: hourOfDay(${hour}). Must be in range 0...23`
         )
-      );
+      )
     }
-    const hr = nextHour(now, hour);
-    const start = Math.max(beginningOfHour(hr), now);
-    const end = endOfHour(hr);
-    const interval = Interval(start, end);
-    return Effect.succeedNow(Tuple(state + 1, state, Decision.Continue(interval)));
-  });
+    const hr = nextHour(now, hour)
+    const start = Math.max(beginningOfHour(hr), now)
+    const end = endOfHour(hr)
+    const interval = Interval(start, end)
+    return Effect.succeedNow(Tuple(state + 1, state, Decision.Continue(interval)))
+  })
 }

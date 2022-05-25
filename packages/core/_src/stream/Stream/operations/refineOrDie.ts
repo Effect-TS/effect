@@ -8,7 +8,7 @@ export function refineOrDie_<R, E, E2, A>(
   pf: (e: E) => Option<E2>,
   __tsplusTrace?: string
 ): Stream<R, E2, A> {
-  return self.refineOrDieWith(pf, identity);
+  return self.refineOrDieWith(pf, identity)
 }
 
 /**
@@ -16,4 +16,4 @@ export function refineOrDie_<R, E, E2, A>(
  *
  * @tsplus static ets/Stream/Aspects refineOrDie
  */
-export const refineOrDie = Pipeable(refineOrDie_);
+export const refineOrDie = Pipeable(refineOrDie_)

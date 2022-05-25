@@ -22,9 +22,9 @@ export function race_<R, E, A, R2, E2, A2>(
   __tsplusTrace?: string
 ): Effect<R & R2, E | E2, A | A2> {
   return Effect.descriptorWith((descriptor) => {
-    const parentFiberId = descriptor.id;
+    const parentFiberId = descriptor.id
     function maybeDisconnect<R, E, A>(io: LazyArg<Effect<R, E, A>>) {
-      return Effect.uninterruptibleMask(({ force }) => force(io));
+      return Effect.uninterruptibleMask(({ force }) => force(io))
     }
 
     return maybeDisconnect(self).raceWith(
@@ -39,8 +39,8 @@ export function race_<R, E, A, R2, E2, A2>(
           (cause) => left.join().mapErrorCause((_) => _ & cause),
           (a) => left.interruptAs(parentFiberId).as(a)
         )
-    );
-  });
+    )
+  })
 }
 
 /**
@@ -61,7 +61,7 @@ export function race_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Effect/Aspects race
  */
-export const race = Pipeable(race_);
+export const race = Pipeable(race_)
 
 /**
  * Returns an effect that races this effect with the specified effect,
@@ -78,7 +78,7 @@ export function raceEither_<R, E, A, R2, E2, A2>(
   that: LazyArg<Effect<R2, E2, A2>>,
   __tsplusTrace?: string
 ): Effect<R & R2, E | E2, Either<A, A2>> {
-  return self.map(Either.left).race(that().map(Either.right));
+  return self.map(Either.left).race(that().map(Either.right))
 }
 
 /**
@@ -91,7 +91,7 @@ export function raceEither_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Effect/Aspects raceEither
  */
-export const raceEither = Pipeable(raceEither_);
+export const raceEither = Pipeable(raceEither_)
 
 /**
  * Returns an effect that races this effect with the specified effect,
@@ -115,7 +115,7 @@ export function raceFirst_<R, R2, E, E2, A, A2>(
   return self
     .exit()
     .race(that().exit())
-    .flatMap((a) => Effect.done(a as Exit<E | E2, A | A2>));
+    .flatMap((a) => Effect.done(a as Exit<E | E2, A | A2>))
 }
 
 /**
@@ -132,4 +132,4 @@ export function raceFirst_<R, R2, E, E2, A, A2>(
  *
  * @tsplus static ets/Effect/Aspects raceFirst
  */
-export const raceFirst = Pipeable(raceFirst_);
+export const raceFirst = Pipeable(raceFirst_)

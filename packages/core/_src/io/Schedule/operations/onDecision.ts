@@ -1,5 +1,5 @@
-import type { Decision } from "@effect/core/io/Schedule/Decision";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import type { Decision } from "@effect/core/io/Schedule/Decision"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * Returns a new schedule that applies the current one but runs the specified
@@ -16,7 +16,7 @@ export function onDecision_<State, Env, In, Out, Env1, X>(
   return makeWithState(self._initial, (now, input, state) =>
     self
       ._step(now, input, state)
-      .flatMap(({ tuple: [state, out, decision] }) => f(state, out, decision).as(Tuple(state, out, decision))));
+      .flatMap(({ tuple: [state, out, decision] }) => f(state, out, decision).as(Tuple(state, out, decision))))
 }
 
 /**
@@ -26,4 +26,4 @@ export function onDecision_<State, Env, In, Out, Env1, X>(
  *
  * @tsplus static ets/Schedule/Aspects onDecision
  */
-export const onDecision = Pipeable(onDecision_);
+export const onDecision = Pipeable(onDecision_)

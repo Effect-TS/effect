@@ -6,4 +6,4 @@
  */
 export const roots: Effect.UIO<Chunk<Fiber.Runtime<any, any>>> = Effect.succeed(() =>
   Chunk.from(FiberScope._roots.value)
-);
+)

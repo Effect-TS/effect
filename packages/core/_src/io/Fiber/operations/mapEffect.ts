@@ -1,4 +1,4 @@
-import { makeSynthetic } from "@effect/core/io/Fiber/definition";
+import { makeSynthetic } from "@effect/core/io/Fiber/definition"
 
 /**
  * Effectually maps over the value the fiber computes.
@@ -23,7 +23,7 @@ export function mapEffect_<E, E1, A, B>(
       )
     ),
     interruptAs: (id) => self.interruptAs(id).flatMap((exit) => exit.forEach(f))
-  });
+  })
 }
 
 /**
@@ -31,4 +31,4 @@ export function mapEffect_<E, E1, A, B>(
  *
  * @tsplus static ets/Fiber/Aspects mapEffect
  */
-export const mapEffect = Pipeable(mapEffect_);
+export const mapEffect = Pipeable(mapEffect_)

@@ -15,7 +15,7 @@ export function mapFiber_<E, E1, A, B>(
       (cause): Fiber<E | E1, B> => Fiber.failCause(cause),
       (a) => f(a)
     )
-  );
+  )
 }
 
 /**
@@ -24,4 +24,4 @@ export function mapFiber_<E, E1, A, B>(
  *
  * @tsplus static ets/Fiber/Aspects mapFiber
  */
-export const mapFiber = Pipeable(mapFiber_);
+export const mapFiber = Pipeable(mapFiber_)

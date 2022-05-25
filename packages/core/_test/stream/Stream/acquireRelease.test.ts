@@ -11,13 +11,13 @@ describe.concurrent("Stream", () => {
             )
         )
         .bind("result", ({ stream }) => stream.runCollect())
-        .bind("released", ({ done }) => done.get());
+        .bind("released", ({ done }) => done.get())
 
-      const { released, result } = await program.unsafeRunPromise();
+      const { released, result } = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(0, 1, 2));
-      assert.isTrue(released);
-    });
+      assert.isTrue(result == Chunk(0, 1, 2))
+      assert.isTrue(released)
+    })
 
     it("short circuits", async () => {
       const program = Effect.Do()
@@ -30,13 +30,13 @@ describe.concurrent("Stream", () => {
               .take(2)
         )
         .bind("result", ({ stream }) => stream.runCollect())
-        .bind("released", ({ done }) => done.get());
+        .bind("released", ({ done }) => done.get())
 
-      const { released, result } = await program.unsafeRunPromise();
+      const { released, result } = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(0, 1));
-      assert.isTrue(released);
-    });
+      assert.isTrue(result == Chunk(0, 1))
+      assert.isTrue(released)
+    })
 
     it("no acquisition when short circuiting", async () => {
       const program = Effect.Do()
@@ -46,12 +46,12 @@ describe.concurrent("Stream", () => {
             Stream(1) + Stream.acquireRelease(acquired.set(true), () => Effect.unit)
           ).take(0))
         .bind("result", ({ stream }) => stream.runDrain())
-        .flatMap(({ acquired }) => acquired.get());
+        .flatMap(({ acquired }) => acquired.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isFalse(result);
-    });
+      assert.isFalse(result)
+    })
 
     it("releases when there are defects", async () => {
       const program = Effect.Do()
@@ -62,12 +62,12 @@ describe.concurrent("Stream", () => {
             .runDrain()
             .exit()
         )
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("flatMap associativity doesn't affect acquire release lifetime", async () => {
       const program = Effect.struct({
@@ -80,20 +80,20 @@ describe.concurrent("Stream", () => {
           .flatMap((ref) => Stream.succeed(ref).flatMap((ref) => Stream.fromEffect(ref.get())))
           .runCollect()
           .map((chunk) => chunk.unsafeHead())
-      });
+      })
 
-      const { leftAssoc, rightAssoc } = await program.unsafeRunPromise();
+      const { leftAssoc, rightAssoc } = await program.unsafeRunPromise()
 
-      assert.isTrue(rightAssoc);
-      assert.isTrue(leftAssoc);
-    });
+      assert.isTrue(rightAssoc)
+      assert.isTrue(leftAssoc)
+    })
 
     it("propagates errors", async () => {
-      const program = Stream.acquireRelease(Effect.unit, () => Effect.dieMessage("die")).runCollect();
+      const program = Stream.acquireRelease(Effect.unit, () => Effect.dieMessage("die")).runCollect()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.isFailure() && result.cause.isDie());
-    });
-  });
-});
+      assert.isTrue(result.isFailure() && result.cause.isDie())
+    })
+  })
+})

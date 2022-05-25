@@ -7,4 +7,4 @@ export const currentLogAnnotations: LazyValue<
     (a: ImmutableMap<string, string>) => ImmutableMap<string, string>
   >
 > = LazyValue
-  .make(() => FiberRef.unsafeMake(ImmutableMap.empty()));
+  .make(() => FiberRef.unsafeMake(ImmutableMap.empty()))

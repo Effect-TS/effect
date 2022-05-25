@@ -9,7 +9,7 @@ export function filterNotPar_<A, R, E>(
   f: (a: A) => Effect<R, E, boolean>,
   __tsplusTrace?: string
 ): Effect<R, E, Chunk<A>> {
-  return Effect.filterPar(as, (x) => f(x).map((b) => !b));
+  return Effect.filterPar(as, (x) => f(x).map((b) => !b))
 }
 
 /**
@@ -18,4 +18,4 @@ export function filterNotPar_<A, R, E>(
  *
  * @tsplus static ets/Effect/Aspects filterNotPar
  */
-export const filterNotPar = Pipeable(filterNotPar_);
+export const filterNotPar = Pipeable(filterNotPar_)

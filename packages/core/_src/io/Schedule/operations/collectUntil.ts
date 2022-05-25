@@ -7,5 +7,5 @@
 export function collectUntil<A>(
   f: Predicate<A>
 ): Schedule<Tuple<[void, Chunk<A>]>, unknown, A, Chunk<A>> {
-  return Schedule.recurUntil(f).collectAll();
+  return Schedule.recurUntil(f).collectAll()
 }

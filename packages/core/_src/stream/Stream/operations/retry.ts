@@ -27,10 +27,10 @@ export function retry_<R, E, A, S, R2, Z>(
               () => Effect.succeed(loop.tap(() => driver.reset))
             )
           )
-        );
-        return loop;
+        )
+        return loop
       })
-  );
+  )
 }
 
 /**
@@ -46,4 +46,4 @@ export function retry_<R, E, A, S, R2, Z>(
  *
  * @tsplus static ets/Stream/Aspects retry
  */
-export const retry = Pipeable(retry_);
+export const retry = Pipeable(retry_)

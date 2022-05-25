@@ -10,12 +10,12 @@ export function attempt<A>(
 ): Effect<unknown, unknown, A> {
   return Effect.succeedWith((runtimeConfig) => {
     try {
-      return f();
+      return f()
     } catch (error) {
       if (!runtimeConfig.value.fatal(error)) {
-        throw new Effect.Error(Exit.fail(error), __tsplusTrace);
+        throw new Effect.Error(Exit.fail(error), __tsplusTrace)
       }
-      throw error;
+      throw error
     }
-  });
+  })
 }

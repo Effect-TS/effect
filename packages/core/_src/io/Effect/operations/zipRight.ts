@@ -9,7 +9,7 @@ export function zipRight_<R, E, A, R2, E2, A2>(
   that: LazyArg<Effect<R2, E2, A2>>,
   __tsplusTrace?: string
 ): Effect<R & R2, E | E2, A2> {
-  return self.flatMap(that);
+  return self.flatMap(that)
 }
 
 /**
@@ -17,4 +17,4 @@ export function zipRight_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Effect/Aspects zipRight
  */
-export const zipRight = Pipeable(zipRight_);
+export const zipRight = Pipeable(zipRight_)

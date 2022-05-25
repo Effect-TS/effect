@@ -1,6 +1,6 @@
-import { isFiberFailure } from "@effect/core/io/Cause/errors";
-import { Emit } from "@effect/core/stream/Stream/Emit";
-import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { isFiberFailure } from "@effect/core/io/Cause/errors"
+import { Emit } from "@effect/core/stream/Stream/Emit"
+import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Creates a stream from an asynchronous callback that can be called multiple
@@ -30,11 +30,11 @@ export function asyncInterrupt<R, E, A>(
               try {
                 runtime.unsafeRunPromise(
                   Take.fromPull(k).flatMap((take) => output.offer(take))
-                );
+                )
               } catch (e: unknown) {
                 if (isFiberFailure(e)) {
                   if (!e.cause.isInterrupted()) {
-                    throw e;
+                    throw e
                   }
                 }
               }
@@ -61,11 +61,11 @@ export function asyncInterrupt<R, E, A>(
                       maybeError.fold(Channel.unit, (e) => Channel.fail(e)),
                   (a) => Channel.write(a) > loop
                 )
-            );
-            return (new StreamInternal(loop) as Stream<R, E, A>).ensuring(canceler);
+            )
+            return (new StreamInternal(loop) as Stream<R, E, A>).ensuring(canceler)
           },
           (stream) => Stream.unwrap(output.shutdown.as(stream))
         )
       )
-  );
+  )
 }

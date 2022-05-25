@@ -8,5 +8,5 @@ export function fromHubManaged<Err, Done, Elem>(
   never,
   Channel<unknown, unknown, unknown, unknown, Err, Elem, Done>
 > {
-  return hub.subscribe.map((queue) => Channel.fromQueue(queue));
+  return hub.subscribe.map((queue) => Channel.fromQueue(queue))
 }

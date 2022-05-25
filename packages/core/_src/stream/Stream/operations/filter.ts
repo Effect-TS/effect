@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Filters the elements emitted by this stream using the provided function.
@@ -9,19 +9,19 @@ export function filter_<R, E, A, B extends A>(
   self: Stream<R, E, A>,
   f: Refinement<A, B>,
   __tsplusTrace?: string
-): Stream<R, E, B>;
+): Stream<R, E, B>
 export function filter_<R, E, A>(
   self: Stream<R, E, A>,
   f: Predicate<A>,
   __tsplusTrace?: string
-): Stream<R, E, A>;
+): Stream<R, E, A>
 export function filter_<R, E, A>(
   self: Stream<R, E, A>,
   f: Predicate<A>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  concreteStream(self);
-  return new StreamInternal(self.channel.mapOut((chunk) => chunk.filter(f)));
+  concreteStream(self)
+  return new StreamInternal(self.channel.mapOut((chunk) => chunk.filter(f)))
 }
 
 /**
@@ -32,8 +32,8 @@ export function filter_<R, E, A>(
 export function filter<A, B extends A>(
   f: Refinement<A, B>,
   __tsplusTrace?: string
-): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B>;
-export function filter<A>(f: Predicate<A>, __tsplusTrace?: string): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A>;
+): <R, E>(self: Stream<R, E, A>) => Stream<R, E, B>
+export function filter<A>(f: Predicate<A>, __tsplusTrace?: string): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A>
 export function filter<A>(f: Predicate<A>, __tsplusTrace?: string) {
-  return <R, E>(self: Stream<R, E, A>): Stream<R, E, A> => self.filter(f);
+  return <R, E>(self: Stream<R, E, A>): Stream<R, E, A> => self.filter(f)
 }

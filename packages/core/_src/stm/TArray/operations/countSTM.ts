@@ -7,7 +7,7 @@ export function countSTM_<E, A>(
   self: TArray<A>,
   f: (a: A) => STM<unknown, E, boolean>
 ): STM<unknown, E, number> {
-  return self.reduceSTM(0, (n, a) => f(a).map((result) => (result ? n + 1 : n)));
+  return self.reduceSTM(0, (n, a) => f(a).map((result) => (result ? n + 1 : n)))
 }
 
 /**
@@ -15,4 +15,4 @@ export function countSTM_<E, A>(
  *
  * @tsplus static ets/TArray/Aspects countSTM
  */
-export const countSTM = Pipeable(countSTM_);
+export const countSTM = Pipeable(countSTM_)

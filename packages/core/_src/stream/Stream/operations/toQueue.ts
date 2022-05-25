@@ -12,7 +12,7 @@ export function toQueue_<R, E, A>(
   return Effect.acquireRelease(
     Queue.bounded<Take<E, A>>(capacity),
     (queue) => queue.shutdown
-  ).tap((queue) => self.runIntoQueueScoped(queue).fork());
+  ).tap((queue) => self.runIntoQueueScoped(queue).fork())
 }
 
 /**
@@ -21,4 +21,4 @@ export function toQueue_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects toQueue
  */
-export const toQueue = Pipeable(toQueue_);
+export const toQueue = Pipeable(toQueue_)

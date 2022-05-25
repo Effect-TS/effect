@@ -1,4 +1,4 @@
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * Transforms the environment being provided to this schedule with the
@@ -11,7 +11,7 @@ export function provideSomeEnvironment_<State, R0, R, In, Out>(
   self: Schedule<State, R, In, Out>,
   f: (env0: Env<R0>) => Env<R>
 ): Schedule<State, R0, In, Out> {
-  return makeWithState(self._initial, (now, input, state) => self._step(now, input, state).provideSomeEnvironment(f));
+  return makeWithState(self._initial, (now, input, state) => self._step(now, input, state).provideSomeEnvironment(f))
 }
 
 /**
@@ -20,4 +20,4 @@ export function provideSomeEnvironment_<State, R0, R, In, Out>(
  *
  * @tsplus static ets/Schedule/Aspects provideSomeEnvironment
  */
-export const provideSomeEnvironment = Pipeable(provideSomeEnvironment_);
+export const provideSomeEnvironment = Pipeable(provideSomeEnvironment_)

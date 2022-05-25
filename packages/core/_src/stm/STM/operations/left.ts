@@ -10,5 +10,5 @@ export function left<R, E, A, B>(
   return self.foldSTM(
     (e) => STM.fail(Either.left(e)),
     (either) => either.fold(STM.succeedNow, (b) => STM.fail(Either.right(b)))
-  );
+  )
 }

@@ -8,7 +8,7 @@ export function refineOrDie_<R, A, E, E1>(
   pf: (e: E) => Option<E1>,
   __tsplusTrace?: string
 ) {
-  return self.refineOrDieWith(pf, identity);
+  return self.refineOrDieWith(pf, identity)
 }
 
 /**
@@ -16,4 +16,4 @@ export function refineOrDie_<R, A, E, E1>(
  *
  * @tsplus static ets/Effect/Aspects refineOrDie
  */
-export const refineOrDie = Pipeable(refineOrDie_);
+export const refineOrDie = Pipeable(refineOrDie_)

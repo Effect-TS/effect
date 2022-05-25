@@ -17,7 +17,7 @@ export function timeoutFailCause_<R, E, E2, A>(
           .toPull()
           .map((pull) => pull.timeoutFailCause(cause.map(Option.some), duration))
       )
-  );
+  )
 }
 
 /**
@@ -26,4 +26,4 @@ export function timeoutFailCause_<R, E, E2, A>(
  *
  * @tsplus static ets/Stream/Aspects timeoutFailCause
  */
-export const timeoutFailCause = Pipeable(timeoutFailCause_);
+export const timeoutFailCause = Pipeable(timeoutFailCause_)

@@ -6,5 +6,5 @@
 export function environmentWith<R, OutDone>(
   f: (env: Env<R>) => OutDone
 ): Channel<R, unknown, unknown, unknown, never, never, OutDone> {
-  return Channel.environment<R>().map(f);
+  return Channel.environment<R>().map(f)
 }

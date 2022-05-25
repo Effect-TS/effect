@@ -10,7 +10,7 @@ export function dimapChunks_<R, E, In, In1, L, Z, Z1>(
   g: (z: Z) => Z1,
   __tsplusTrace?: string
 ): Sink<R, E, In1, L, Z1> {
-  return self.contramapChunks(f).map(g);
+  return self.contramapChunks(f).map(g)
 }
 
 /**
@@ -19,4 +19,4 @@ export function dimapChunks_<R, E, In, In1, L, Z, Z1>(
  *
  * @tsplus static ets/Sink/Aspects dimapChunks
  */
-export const dimapChunks = Pipeable(dimapChunks_);
+export const dimapChunks = Pipeable(dimapChunks_)

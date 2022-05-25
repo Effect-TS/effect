@@ -9,7 +9,7 @@ export function addDelayEffect_<State, Env, In, Out, Env1>(
   self: Schedule<State, Env, In, Out>,
   f: (out: Out) => Effect.RIO<Env1, Duration>
 ): Schedule<State, Env & Env1, In, Out> {
-  return self.modifyDelayEffect((out, duration) => f(out).map((_) => duration + _));
+  return self.modifyDelayEffect((out, duration) => f(out).map((_) => duration + _))
 }
 
 /**
@@ -18,4 +18,4 @@ export function addDelayEffect_<State, Env, In, Out, Env1>(
  *
  * @tsplus static ets/Schedule/Aspects addDelayEffect
  */
-export const addDelayEffect = Pipeable(addDelayEffect_);
+export const addDelayEffect = Pipeable(addDelayEffect_)

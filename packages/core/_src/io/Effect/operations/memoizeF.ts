@@ -11,14 +11,14 @@ export function memoizeF<R, E, A, B>(
     (ref) =>
       (a: A) =>
         ref.modifyEffect((map) => {
-          const result = Option.fromNullable(map.get(a));
+          const result = Option.fromNullable(map.get(a))
           return result.fold(
             Deferred.make<E, B>()
               .tap((deferred) => f(a).intoDeferred(deferred).fork())
               .map((deferred) => Tuple(deferred, map.set(a, deferred))),
             (deferred) => Effect.succeedNow(Tuple(deferred, map))
-          );
+          )
         })
           .flatMap((deferred) => deferred.await())
-  );
+  )
 }

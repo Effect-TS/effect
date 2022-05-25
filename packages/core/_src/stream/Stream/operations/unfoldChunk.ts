@@ -1,4 +1,4 @@
-import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Creates a stream by peeling off the "layers" of a value of type `S`.
@@ -10,7 +10,7 @@ export function unfoldChunk<S, A>(
   f: (s: S) => Option<Tuple<[Chunk<A>, S]>>,
   __tsplusTrace?: string
 ): Stream<unknown, never, A> {
-  return new StreamInternal(Channel.suspend(loop(s, f)));
+  return new StreamInternal(Channel.suspend(loop(s, f)))
 }
 
 function loop<S, A>(
@@ -21,5 +21,5 @@ function loop<S, A>(
   return f(s()).fold(
     Channel.unit,
     ({ tuple: [as, s] }) => Channel.write(as) > loop(s, f)
-  );
+  )
 }

@@ -1,6 +1,6 @@
-import { Decision } from "@effect/core/io/Schedule/Decision";
-import { Interval } from "@effect/core/io/Schedule/Interval";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import { Decision } from "@effect/core/io/Schedule/Decision"
+import { Interval } from "@effect/core/io/Schedule/Interval"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * A schedule that divides the timeline to `interval`-long windows, and sleeps
@@ -18,7 +18,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
 export function windowed(
   interval: Duration
 ): Schedule<Tuple<[Option<number>, number]>, unknown, unknown, number> {
-  const millis = interval.millis;
+  const millis = interval.millis
   return makeWithState(
     Tuple(Option.emptyOf(), 0),
     (now, input, { tuple: [option, n] }) =>
@@ -40,5 +40,5 @@ export function windowed(
             )
         )
       )
-  );
+  )
 }

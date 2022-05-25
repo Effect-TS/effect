@@ -1,9 +1,9 @@
-import { _Patch, _Value, FiberRefSym } from "@effect/core/io/FiberRef/definition";
+import { _Patch, _Value, FiberRefSym } from "@effect/core/io/FiberRef/definition"
 
 export class FiberRefInternal<Value, Patch> implements FiberRef<Value, Patch> {
-  readonly [FiberRefSym]: FiberRefSym = FiberRefSym;
-  readonly [_Value]!: () => Value;
-  readonly [_Patch]!: Patch;
+  readonly [FiberRefSym]: FiberRefSym = FiberRefSym
+  readonly [_Value]!: () => Value
+  readonly [_Patch]!: Patch
 
   constructor(
     readonly _initial: Value,

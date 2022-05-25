@@ -8,7 +8,7 @@ export function flatMapError_<R, E, A, R2, E2>(
   self: STM<R, E, A>,
   f: (e: E) => STM<R2, never, E2>
 ) {
-  return self.flipWith((_) => _.flatMap(f));
+  return self.flipWith((_) => _.flatMap(f))
 }
 
 /**
@@ -17,4 +17,4 @@ export function flatMapError_<R, E, A, R2, E2>(
  *
  * @tsplus static ets/STM/Aspects flatMapError
  */
-export const flatMapError = Pipeable(flatMapError_);
+export const flatMapError = Pipeable(flatMapError_)

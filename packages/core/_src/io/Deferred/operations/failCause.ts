@@ -9,7 +9,7 @@ export function failCause_<E, A>(
   cause: LazyArg<Cause<E>>,
   __tsplusTrace?: string
 ): Effect.UIO<boolean> {
-  return self.completeWith(Effect.failCause(cause));
+  return self.completeWith(Effect.failCause(cause))
 }
 
 /**
@@ -18,4 +18,4 @@ export function failCause_<E, A>(
  *
  * @tsplus static ets/Deferred/Aspects failCause
  */
-export const failCause = Pipeable(failCause_);
+export const failCause = Pipeable(failCause_)

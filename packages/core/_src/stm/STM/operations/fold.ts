@@ -12,7 +12,7 @@ export function fold_<R, E, A, B, C>(
   return self.foldSTM(
     (e) => STM.succeedNow(g(e)),
     (a) => STM.succeedNow(f(a))
-  );
+  )
 }
 
 /**
@@ -21,4 +21,4 @@ export function fold_<R, E, A, B, C>(
  *
  * @tsplus static ets/STM/Aspects fold
  */
-export const fold = Pipeable(fold_);
+export const fold = Pipeable(fold_)

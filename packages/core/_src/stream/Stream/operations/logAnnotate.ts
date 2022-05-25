@@ -17,5 +17,5 @@ export function logAnnotate(
           annotations.set(key(), value())
         )
       )
-  );
+  )
 }

@@ -1,4 +1,4 @@
-import { isFiberFailure } from "@effect/core/io/Cause/errors";
+import { isFiberFailure } from "@effect/core/io/Cause/errors"
 
 /**
  * Creates a stream from an asynchronous callback that can be called multiple
@@ -26,11 +26,11 @@ export function asyncScoped<R, E, A>(
       .tap(({ output, runtime }) =>
         register(async (k) => {
           try {
-            runtime.unsafeRunPromise(Take.fromPull(k).flatMap((take) => output.offer(take)));
+            runtime.unsafeRunPromise(Take.fromPull(k).flatMap((take) => output.offer(take)))
           } catch (e: unknown) {
             if (isFiberFailure(e)) {
               if (!e.cause.isInterrupted()) {
-                throw e;
+                throw e
               }
             }
           }
@@ -48,5 +48,5 @@ export function asyncScoped<R, E, A>(
                 .onError(() => done.set(true) > output.shutdown)
           )
       )
-  ).flatMap((pull) => Stream.repeatEffectChunkOption(pull));
+  ).flatMap((pull) => Stream.repeatEffectChunkOption(pull))
 }

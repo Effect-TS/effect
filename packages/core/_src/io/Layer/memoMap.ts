@@ -1,4 +1,4 @@
-import { instruction } from "@effect/core/io/Layer/definition";
+import { instruction } from "@effect/core/io/Layer/definition"
 
 /**
  * A `MemoMap` memoizes layers.
@@ -21,22 +21,22 @@ export class MemoMap {
   ): Effect<RIn, E, Env<ROut>> {
     return Effect.succeed(scope).flatMap((scope) =>
       this.ref.modifyEffect((map) => {
-        const inMap = Option.fromNullable(map.get(layer));
+        const inMap = Option.fromNullable(map.get(layer))
 
         switch (inMap._tag) {
           case "Some": {
             const {
               tuple: [acquire, release]
-            } = inMap.value;
+            } = inMap.value
 
             const cached: Effect<unknown, E, Env<ROut>> = acquire.onExit((exit) =>
               exit.fold(
                 () => Effect.unit,
                 () => scope.addFinalizerExit(release)
               )
-            );
+            )
 
-            return Effect.succeed(Tuple(cached, map));
+            return Effect.succeed(Tuple(cached, map))
           }
           case "None": {
             return Effect.Do()
@@ -59,7 +59,7 @@ export class MemoMap {
                                 deferred.failCause(exit.cause) >
                                   innerScope.close(exit) >
                                   Effect.failCause(exit.cause)
-                              );
+                              )
                             }
                             case "Success": {
                               return finalizerRef.set((exit) =>
@@ -73,7 +73,7 @@ export class MemoMap {
                                   outerScope.addFinalizerExit((e) => finalizerRef.get().flatMap((fin) => fin(e)))
                                 )
                                 .zipRight(deferred.succeed(exit.value))
-                                .as(exit.value);
+                                .as(exit.value)
                             }
                           }
                         })
@@ -91,11 +91,11 @@ export class MemoMap {
                     ),
                   (e: Exit<unknown, unknown>) => finalizerRef.get().flatMap((fin) => fin(e))
                 ))
-              .map(({ memoized, resource }) => Tuple(resource, layer.isFresh() ? map : map.set(layer, memoized)));
+              .map(({ memoized, resource }) => Tuple(resource, layer.isFresh() ? map : map.set(layer, memoized)))
           }
         }
       }).flatten()
-    );
+    )
   }
 }
 
@@ -105,7 +105,7 @@ export class MemoMap {
 export function makeMemoMap(): Effect.UIO<MemoMap> {
   return SynchronizedRef.make<
     Map<Layer<any, any, any>, Tuple<[Effect.IO<any, any>, Scope.Finalizer]>>
-  >(new Map()).flatMap((r) => Effect.succeed(new MemoMap(r)));
+  >(new Map()).flatMap((r) => Effect.succeed(new MemoMap(r)))
 }
 
 /**
@@ -117,7 +117,7 @@ export function build<RIn, E, ROut>(
   self: Layer<RIn, E, ROut>,
   __tsplusTrace?: string
 ): Effect<RIn & Has<Scope>, E, Env<ROut>> {
-  return Effect.serviceWithEffect(Scope.Tag)((scope) => self.buildWithScope(scope));
+  return Effect.serviceWithEffect(Scope.Tag)((scope) => self.buildWithScope(scope))
 }
 
 /**
@@ -137,7 +137,7 @@ export function buildWithScope<RIn, E, ROut>(
   return Effect.Do()
     .bind("memoMap", () => makeMemoMap())
     .bind("run", () => self.withScope(scope))
-    .flatMap(({ memoMap, run }) => run(memoMap));
+    .flatMap(({ memoMap, run }) => run(memoMap))
 }
 
 /**
@@ -192,7 +192,7 @@ export function withScope<RIn, E, ROut>(
             .getOrElseMemoize(_.self, scope)
             .zipWithPar(memoMap.getOrElseMemoize(_.that, scope), _.f)
       )
-  });
+  })
 }
 
 /**
@@ -201,5 +201,5 @@ export function withScope<RIn, E, ROut>(
  * @tsplus fluent ets/Layer isFresh
  */
 export function isFresh<R, E, A>(self: Layer<R, E, A>): boolean {
-  return instruction(self)._tag === "LayerFresh";
+  return instruction(self)._tag === "LayerFresh"
 }

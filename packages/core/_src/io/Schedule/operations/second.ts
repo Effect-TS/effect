@@ -9,5 +9,5 @@
 export function second<State, Env, In, Out, X>(
   self: Schedule<State, Env, In, Out>
 ): Schedule<Tuple<[void, State]>, Env, Tuple<[X, In]>, Tuple<[X, Out]>> {
-  return Schedule.identity<X>() ** self;
+  return Schedule.identity<X>() ** self
 }

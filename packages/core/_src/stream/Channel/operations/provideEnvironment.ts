@@ -1,4 +1,4 @@
-import { Provide } from "@effect/core/stream/Channel/definition/primitives";
+import { Provide } from "@effect/core/stream/Channel/definition/primitives"
 
 /**
  * Provides the channel with its required environment, which eliminates its
@@ -18,7 +18,7 @@ export function provideEnvironment_<
   self: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   env: LazyArg<Env<R>>
 ): Channel<unknown, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  return new Provide(env, self);
+  return new Provide(env, self)
 }
 
 /**
@@ -27,4 +27,4 @@ export function provideEnvironment_<
  *
  * @tsplus static ets/Channel/Aspects provideEnvironment
  */
-export const provideEnvironment = Pipeable(provideEnvironment_);
+export const provideEnvironment = Pipeable(provideEnvironment_)

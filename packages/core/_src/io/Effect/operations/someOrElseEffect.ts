@@ -8,7 +8,7 @@ export function someOrElseEffect_<R, E, A, R2, E2, B>(
   orElse: LazyArg<Effect<R2, E2, B>>,
   __tsplusTrace?: string
 ): Effect<R & R2, E | E2, A | B> {
-  return (self as Effect<R, E, Option<A | B>>).flatMap((option) => option.map(Effect.succeedNow).getOrElse(orElse));
+  return (self as Effect<R, E, Option<A | B>>).flatMap((option) => option.map(Effect.succeedNow).getOrElse(orElse))
 }
 
 /**
@@ -16,4 +16,4 @@ export function someOrElseEffect_<R, E, A, R2, E2, B>(
  *
  * @tsplus static ets/Effect/Aspects someOrElseEffect
  */
-export const someOrElseEffect = Pipeable(someOrElseEffect_);
+export const someOrElseEffect = Pipeable(someOrElseEffect_)

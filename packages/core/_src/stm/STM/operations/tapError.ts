@@ -7,7 +7,7 @@ export function tapError_<R, E, A, R2, E2, X>(
   self: STM<R, E, A>,
   f: (e: E) => STM<R2, E2, X>
 ): STM<R & R2, E | E2, A> {
-  return self.foldSTM((e) => f(e) > STM.fail(e), STM.succeedNow);
+  return self.foldSTM((e) => f(e) > STM.fail(e), STM.succeedNow)
 }
 
 /**
@@ -15,4 +15,4 @@ export function tapError_<R, E, A, R2, E2, X>(
  *
  * @tsplus static ets/STM/Aspects tapError
  */
-export const tapError = Pipeable(tapError_);
+export const tapError = Pipeable(tapError_)

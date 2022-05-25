@@ -17,7 +17,7 @@ export function mapErrorCause_<
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   f: (cause: Cause<OutErr>) => Cause<OutErr2>
 ): Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone> {
-  return self.catchAllCause((cause) => Channel.failCause(f(cause)));
+  return self.catchAllCause((cause) => Channel.failCause(f(cause)))
 }
 
 /**
@@ -26,4 +26,4 @@ export function mapErrorCause_<
  *
  * @tsplus static ets/Channel/Aspects mapErrorCause
  */
-export const mapErrorCause = Pipeable(mapErrorCause_);
+export const mapErrorCause = Pipeable(mapErrorCause_)

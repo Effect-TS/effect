@@ -1,4 +1,4 @@
-import { findSink, sinkRaceLaw } from "@effect/core/test/stream/Sink/test-utils";
+import { findSink, sinkRaceLaw } from "@effect/core/test/stream/Sink/test-utils"
 
 describe.concurrent("Sink", () => {
   describe.concurrent("raceBoth", () => {
@@ -17,18 +17,18 @@ describe.concurrent("Sink", () => {
         .flatMap(({ ints, success1, success2 }) => {
           const chunk = ints
             .concat(success1 ? Chunk.single(20) : Chunk.empty<number>())
-            .concat(success2 ? Chunk.single(40) : Chunk.empty<number>());
+            .concat(success2 ? Chunk.single(40) : Chunk.empty<number>())
 
           return sinkRaceLaw(
             Stream.fromCollectionEffect(Random.shuffle(chunk)),
             findSink(20),
             findSink(40)
-          );
-        });
+          )
+        })
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
-  });
-});
+      assert.isTrue(result)
+    })
+  })
+})

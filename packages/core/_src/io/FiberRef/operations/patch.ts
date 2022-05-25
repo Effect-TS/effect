@@ -1,4 +1,4 @@
-import { concreteFiberRef } from "@effect/core/io/FiberRef/operations/_internal/FiberRefInternal";
+import { concreteFiberRef } from "@effect/core/io/FiberRef/operations/_internal/FiberRefInternal"
 
 /**
  * Applies a patch to an old value to produce a new value that is equal to the
@@ -8,9 +8,9 @@ import { concreteFiberRef } from "@effect/core/io/FiberRef/operations/_internal/
  */
 export function patch_<Value, Patch>(self: FiberRef<Value, Patch>, patch: Patch) {
   return (oldValue: Value): Value => {
-    concreteFiberRef(self);
-    return self._patch(patch)(oldValue);
-  };
+    concreteFiberRef(self)
+    return self._patch(patch)(oldValue)
+  }
 }
 
 /**
@@ -20,5 +20,5 @@ export function patch_<Value, Patch>(self: FiberRef<Value, Patch>, patch: Patch)
  * @tsplus static ets/FiberRef/Aspects patch
  */
 export function patch<Value, Patch>(patch: Patch, value: Value) {
-  return (self: FiberRef<Value, Patch>): Value => self.patch(patch)(value);
+  return (self: FiberRef<Value, Patch>): Value => self.patch(patch)(value)
 }

@@ -1,4 +1,4 @@
-import { concreteTSemaphore } from "@effect/core/stm/TSemaphore/operations/_internal/TSemaphoreInternal";
+import { concreteTSemaphore } from "@effect/core/stm/TSemaphore/operations/_internal/TSemaphoreInternal"
 
 /**
  * Releases the specified number of permits in a transactional context
@@ -6,16 +6,16 @@ import { concreteTSemaphore } from "@effect/core/stm/TSemaphore/operations/_inte
  * @tsplus fluent ets/TSemaphore releaseN
  */
 export function releaseN_(self: TSemaphore, n: number): STM<unknown, never, void> {
-  concreteTSemaphore(self);
+  concreteTSemaphore(self)
   return STM.Effect((journal) => {
     if (n < 0) {
       throw new IllegalArgumentException(
         `Unexpected negative value ${n} passed to releaseN`
-      );
+      )
     }
-    const current = self.permits.unsafeGet(journal);
-    return self.permits.unsafeSet(current + n, journal);
-  });
+    const current = self.permits.unsafeGet(journal)
+    return self.permits.unsafeSet(current + n, journal)
+  })
 }
 
 /**
@@ -23,4 +23,4 @@ export function releaseN_(self: TSemaphore, n: number): STM<unknown, never, void
  *
  * @tsplus static ets/TSemaphore/Aspects releaseN
  */
-export const releaseN = Pipeable(releaseN_);
+export const releaseN = Pipeable(releaseN_)

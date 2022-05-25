@@ -9,7 +9,7 @@ export function addDelay_<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>,
   f: (out: Out) => Duration
 ): Schedule<State, Env, In, Out> {
-  return self.addDelayEffect((out) => Effect.succeed(f(out)));
+  return self.addDelayEffect((out) => Effect.succeed(f(out)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function addDelay_<State, Env, In, Out>(
  *
  * @tsplus static ets/Schedule/Aspects addDelay
  */
-export const addDelay = Pipeable(addDelay_);
+export const addDelay = Pipeable(addDelay_)

@@ -18,7 +18,7 @@ export function collectFirstSTM_<A, E, B>(
             .map((stm) => stm.map(Option.some))
             .getOrElse(STM.none)
       )
-    );
+    )
 }
 
 /**
@@ -27,4 +27,4 @@ export function collectFirstSTM_<A, E, B>(
  *
  * @tsplus static ets/TArray/Aspects collectFirstSTM
  */
-export const collectFirstSTM = Pipeable(collectFirstSTM_);
+export const collectFirstSTM = Pipeable(collectFirstSTM_)

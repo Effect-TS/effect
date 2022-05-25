@@ -1,4 +1,4 @@
-import { ILayerTo } from "@effect/core/io/Layer/definition";
+import { ILayerTo } from "@effect/core/io/Layer/definition"
 
 /**
  * Feeds the output services of this builder into the input of the specified
@@ -18,7 +18,7 @@ export function to_<
 >(
   self: Layer<RIn, E, ROut>,
   that: Layer<RIn2, E2, ROut2>
-): Layer<RIn & Erase<RIn2, ROut>, E | E2, ROut2>;
+): Layer<RIn & Erase<RIn2, ROut>, E | E2, ROut2>
 export function to_<
   RIn,
   E,
@@ -32,7 +32,7 @@ export function to_<
 ): Layer<RIn & RIn2, E | E2, ROut2> {
   return Layer.suspend(
     new ILayerTo(Layer.environment<RIn2>().and(self), that)
-  );
+  )
 }
 
 /**
@@ -42,4 +42,4 @@ export function to_<
  *
  * @tsplus static ets/Layer/Aspects to
  */
-export const to = Pipeable(to_);
+export const to = Pipeable(to_)

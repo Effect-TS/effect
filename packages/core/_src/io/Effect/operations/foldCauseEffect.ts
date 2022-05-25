@@ -1,4 +1,4 @@
-import { IFold } from "@effect/core/io/Effect/definition/primitives";
+import { IFold } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * A more powerful version of `foldEffect` that allows recovering from any kind
@@ -12,7 +12,7 @@ export function foldCauseEffect_<R, E, A, R2, E2, A2, R3, E3, A3>(
   success: (a: A) => Effect<R3, E3, A3>,
   __tsplusTrace?: string
 ): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
-  return new IFold(self, failure, success, __tsplusTrace);
+  return new IFold(self, failure, success, __tsplusTrace)
 }
 
 /**
@@ -21,4 +21,4 @@ export function foldCauseEffect_<R, E, A, R2, E2, A2, R3, E3, A3>(
  *
  * @tsplus static ets/Effect/Aspects foldCauseEffect
  */
-export const foldCauseEffect = Pipeable(foldCauseEffect_);
+export const foldCauseEffect = Pipeable(foldCauseEffect_)

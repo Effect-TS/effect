@@ -9,7 +9,7 @@ export function contramap_<State, Env, In, Out, In2>(
   self: Schedule<State, Env, In, Out>,
   f: (in2: In2) => In
 ): Schedule<State, Env, In2, Out> {
-  return self.contramapEffect((input2) => Effect.succeed(f(input2)));
+  return self.contramapEffect((input2) => Effect.succeed(f(input2)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function contramap_<State, Env, In, Out, In2>(
  *
  * @tsplus static ets/Schedule/Aspects contramap
  */
-export const contramap = Pipeable(contramap_);
+export const contramap = Pipeable(contramap_)

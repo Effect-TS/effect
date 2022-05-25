@@ -14,7 +14,7 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
   MergeRecord<
     K,
     {
-      [k in N]: A;
+      [k in N]: A
     }
   >
 > {
@@ -25,11 +25,11 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
       ): MergeRecord<
         K,
         {
-          [k in N]: A;
+          [k in N]: A
         }
       > => ({ ...k, [tag]: a } as any)
     )
-  );
+  )
 }
 
 /**
@@ -50,10 +50,10 @@ export function bind<R, E, A, K, N extends string>(
     MergeRecord<
       K,
       {
-        [k in N]: A;
+        [k in N]: A
       }
     >
-  > => self.bind(tag, f);
+  > => self.bind(tag, f)
 }
 
 /**
@@ -72,7 +72,7 @@ export function bindValue_<R2, E2, A, K, N extends string>(
   MergeRecord<
     K,
     {
-      [k in N]: A;
+      [k in N]: A
     }
   >
 > {
@@ -82,10 +82,10 @@ export function bindValue_<R2, E2, A, K, N extends string>(
     ): MergeRecord<
       K,
       {
-        [k in N]: A;
+        [k in N]: A
       }
     > => ({ ...k, [tag]: f(k) } as any)
-  );
+  )
 }
 
 /**
@@ -106,15 +106,15 @@ export function bindValue<A, K, N extends string>(
     MergeRecord<
       K,
       {
-        [k in N]: A;
+        [k in N]: A
       }
     >
-  > => self.bindValue(tag, f);
+  > => self.bindValue(tag, f)
 }
 
 /**
  * @tsplus static ets/Effect/Ops Do
  */
 export function Do(): Effect<unknown, never, {}> {
-  return Effect.succeedNow({});
+  return Effect.succeedNow({})
 }

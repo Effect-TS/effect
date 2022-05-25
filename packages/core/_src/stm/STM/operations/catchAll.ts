@@ -1,4 +1,4 @@
-import { STMOnFailure } from "@effect/core/stm/STM/definition/primitives";
+import { STMOnFailure } from "@effect/core/stm/STM/definition/primitives"
 
 /**
  * Recovers from all errors.
@@ -9,7 +9,7 @@ export function catchAll_<R, E, A, R1, E1, B>(
   self: STM<R, E, A>,
   f: (e: E) => STM<R1, E1, B>
 ): STM<R1 & R, E1, A | B> {
-  return new STMOnFailure<R1 & R, E, E1, A | B>(self, f);
+  return new STMOnFailure<R1 & R, E, E1, A | B>(self, f)
 }
 
 /**
@@ -17,4 +17,4 @@ export function catchAll_<R, E, A, R1, E1, B>(
  *
  * @tsplus static ets/STM/Aspects catchAll
  */
-export const catchAll = Pipeable(catchAll_);
+export const catchAll = Pipeable(catchAll_)

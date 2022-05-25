@@ -8,5 +8,5 @@ export function flattenCollection<R, E, A>(
   self: Stream<R, E, Collection<A>>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  return self.map((a) => Chunk.from(a)).unchunks();
+  return self.map((a) => Chunk.from(a)).unchunks()
 }

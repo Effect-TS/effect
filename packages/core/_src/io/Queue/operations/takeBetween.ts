@@ -10,7 +10,7 @@ export function takeBetween_<A>(
   min: number,
   max: number
 ): Effect.UIO<Chunk<A>> {
-  return Effect.suspendSucceed(takeRemainderLoop(self, min, max, Chunk.empty()));
+  return Effect.suspendSucceed(takeRemainderLoop(self, min, max, Chunk.empty()))
 }
 
 /**
@@ -20,7 +20,7 @@ export function takeBetween_<A>(
  *
  * @tsplus static ets/Queue/Aspects takeBetween
  */
-export const takeBetween = Pipeable(takeBetween_);
+export const takeBetween = Pipeable(takeBetween_)
 
 function takeRemainderLoop<A>(
   self: Queue<A>,
@@ -30,13 +30,13 @@ function takeRemainderLoop<A>(
   __tsplusTrace?: string
 ): Effect.UIO<Chunk<A>> {
   if (max < min) {
-    return Effect.succeedNow(acc);
+    return Effect.succeedNow(acc)
   }
   return self.takeUpTo(max).flatMap((bs) => {
-    const remaining = min - bs.length;
+    const remaining = min - bs.length
 
     if (remaining === 1) {
-      return self.take.map((b) => (acc + bs).append(b));
+      return self.take.map((b) => (acc + bs).append(b))
     }
 
     if (remaining > 1) {
@@ -47,9 +47,9 @@ function takeRemainderLoop<A>(
           max - bs.length - 1,
           (acc + bs).append(b)
         )
-      );
+      )
     }
 
-    return Effect.succeedNow(acc + bs);
-  });
+    return Effect.succeedNow(acc + bs)
+  })
 }

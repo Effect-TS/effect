@@ -8,7 +8,7 @@ export function retryN_<R, E, A>(
   n: number,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return Effect.suspendSucceed(retryNLoop(self, n));
+  return Effect.suspendSucceed(retryNLoop(self, n))
 }
 
 /**
@@ -16,12 +16,12 @@ export function retryN_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects retryN
  */
-export const retryN = Pipeable(retryN_);
+export const retryN = Pipeable(retryN_)
 
 function retryNLoop<R, E, A>(
   self: Effect<R, E, A>,
   n: number,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return self.catchAll((e) => n < 0 ? Effect.fail(e) : Effect.yieldNow > retryNLoop(self, n - 1));
+  return self.catchAll((e) => n < 0 ? Effect.fail(e) : Effect.yieldNow > retryNLoop(self, n - 1))
 }

@@ -1,4 +1,4 @@
-import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Creates a stream from a `Chunk` of values.
@@ -11,5 +11,5 @@ export function fromChunk<A>(
 ): Stream<unknown, never, A> {
   return new StreamInternal(
     Channel.succeed(chunk).flatMap((chunk) => chunk.isEmpty() ? Channel.unit : Channel.write(chunk))
-  );
+  )
 }

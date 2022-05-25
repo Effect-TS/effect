@@ -1,5 +1,5 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
-import { RingBufferNew } from "@effect/core/support/RingBufferNew";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import { RingBufferNew } from "@effect/core/support/RingBufferNew"
 
 /**
  * Takes the last specified number of elements from this stream.
@@ -12,9 +12,9 @@ export function takeRight_<R, E, A>(
   __tsplusTrace?: string
 ): Stream<R, E, A> {
   if (n <= 0) {
-    return Stream.empty;
+    return Stream.empty
   }
-  concreteStream(self);
+  concreteStream(self)
   return new StreamInternal(
     Channel.unwrap(
       Effect.succeed(new RingBufferNew<A>(n)).map((queue) => {
@@ -28,16 +28,16 @@ export function takeRight_<R, E, A>(
           void
         > = Channel.readWith(
           (input: Chunk<A>) => {
-            input.forEach((a) => queue.put(a));
-            return reader;
+            input.forEach((a) => queue.put(a))
+            return reader
           },
           (err) => Channel.fail(err),
           () => Channel.write(queue.toChunk()) > Channel.unit
-        );
-        return self.channel >> reader;
+        )
+        return self.channel >> reader
       })
     )
-  );
+  )
 }
 
 /**
@@ -45,4 +45,4 @@ export function takeRight_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects takeRight
  */
-export const takeRight = Pipeable(takeRight_);
+export const takeRight = Pipeable(takeRight_)

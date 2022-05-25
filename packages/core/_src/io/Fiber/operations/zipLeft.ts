@@ -10,7 +10,7 @@ export function zipLeft_<E, E1, A, A1>(
   self: Fiber<E, A>,
   that: Fiber<E1, A1>
 ): Fiber<E | E1, A> {
-  return self.zipWith(that, (a, _) => a);
+  return self.zipWith(that, (a, _) => a)
 }
 
 /**
@@ -18,4 +18,4 @@ export function zipLeft_<E, E1, A, A1>(
  *
  * @tsplus static ets/Fiber/Aspects zipLeft
  */
-export const zipLeft = Pipeable(zipLeft_);
+export const zipLeft = Pipeable(zipLeft_)

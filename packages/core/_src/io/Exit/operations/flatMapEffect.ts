@@ -10,9 +10,9 @@ export function flatMapEffect_<E, A, R, E1, A1>(
 ): Effect<R, E1, Exit<E, A1>> {
   switch (self._tag) {
     case "Failure":
-      return Effect.succeed(self);
+      return Effect.succeed(self)
     case "Success":
-      return f(self.value);
+      return f(self.value)
   }
 }
 
@@ -21,4 +21,4 @@ export function flatMapEffect_<E, A, R, E1, A1>(
  *
  * @tsplus static ets/Exit/Aspects flatMapEffect
  */
-export const flatMapEffect = Pipeable(flatMapEffect_);
+export const flatMapEffect = Pipeable(flatMapEffect_)

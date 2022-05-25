@@ -1,58 +1,58 @@
 describe.concurrent("Stream", () => {
   describe.concurrent("async", () => {
     it("async", async () => {
-      const chunk = Chunk(1, 2, 3, 4, 5);
+      const chunk = Chunk(1, 2, 3, 4, 5)
       const program = Stream.async<unknown, never, number>((emit) => {
         chunk.forEach((n) => {
-          emit(Effect.succeed(Chunk.single(n)));
-        });
+          emit(Effect.succeed(Chunk.single(n)))
+        })
       })
         .take(chunk.size)
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == chunk);
-    });
-  });
+      assert.isTrue(result == chunk)
+    })
+  })
 
   describe.concurrent("asyncMaybe", () => {
     it("signal end stream", async () => {
       const program = Stream.asyncMaybe<unknown, never, number>((emit) => {
-        emit(Effect.fail(Option.none));
-        return Option.none;
-      }).runCollect();
+        emit(Effect.fail(Option.none))
+        return Option.none
+      }).runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty());
-    });
+      assert.isTrue(result.isEmpty())
+    })
 
     it("Some", async () => {
-      const chunk = Chunk(1, 2, 3, 4, 5);
+      const chunk = Chunk(1, 2, 3, 4, 5)
       const program = Stream.asyncMaybe<unknown, never, number>(() => Option.some(Stream.fromChunk(chunk)))
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == chunk);
-    });
+      assert.isTrue(result == chunk)
+    })
 
     it("None", async () => {
-      const chunk = Chunk(1, 2, 3, 4, 5);
+      const chunk = Chunk(1, 2, 3, 4, 5)
       const program = Stream.asyncMaybe<unknown, never, number>((emit) => {
         chunk.forEach((n) => {
-          emit(Effect.succeed(Chunk.single(n)));
-        });
-        return Option.none;
+          emit(Effect.succeed(Chunk.single(n)))
+        })
+        return Option.none
       })
         .take(chunk.size)
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == chunk);
-    });
+      assert.isTrue(result == chunk)
+    })
 
     // TODO(Mike/Max): determine implementation
     // it("back pressure", async () => {
@@ -81,41 +81,41 @@ describe.concurrent("Stream", () => {
 
     //   expect(isDone).toBe(false)
     // })
-  });
+  })
 
   describe.concurrent("asyncEffect", () => {
     it("simple example", async () => {
-      const chunk = Chunk(1, 2, 3, 4, 5);
+      const chunk = Chunk(1, 2, 3, 4, 5)
       const program = Effect.Do()
         .bind("latch", () => Deferred.make<never, void>())
         .bind("fiber", ({ latch }) =>
           Stream.asyncEffect((emit) => {
             chunk.forEach((n) => {
-              emit(Effect.succeed(Chunk.single(n)));
-            });
-            return latch.succeed(undefined) > Effect.unit;
+              emit(Effect.succeed(Chunk.single(n)))
+            })
+            return latch.succeed(undefined) > Effect.unit
           })
             .take(chunk.size)
             .runCollect()
             .fork())
         .tap(({ latch }) => latch.await())
-        .flatMap(({ fiber }) => fiber.join());
+        .flatMap(({ fiber }) => fiber.join())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == chunk);
-    });
+      assert.isTrue(result == chunk)
+    })
 
     it("signal end stream", async () => {
       const program = Stream.asyncEffect<unknown, never, number, void>((emit) => {
-        emit(Effect.fail(Option.none));
-        return Effect.unit;
-      }).runCollect();
+        emit(Effect.fail(Option.none))
+        return Effect.unit
+      }).runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty());
-    });
+      assert.isTrue(result.isEmpty())
+    })
 
     // TODO(Mike/Max): determine implementation
     // it("back pressure", async () => {
@@ -151,41 +151,41 @@ describe.concurrent("Stream", () => {
 
     //   expect(isDone).toBe(false)
     // })
-  });
+  })
 
   describe.concurrent("asyncManaged", () => {
     it("asyncManaged", async () => {
-      const chunk = Chunk(1, 2, 3, 4, 5);
+      const chunk = Chunk(1, 2, 3, 4, 5)
       const program = Effect.Do()
         .bind("latch", () => Deferred.make<never, void>())
         .bind("fiber", ({ latch }) =>
           Stream.asyncScoped<unknown, never, number>((cb) => {
             chunk.forEach((n) => {
-              cb(Effect.succeed(Chunk.single(n)));
-            });
-            return latch.succeed(undefined) > Effect.unit;
+              cb(Effect.succeed(Chunk.single(n)))
+            })
+            return latch.succeed(undefined) > Effect.unit
           })
             .take(chunk.size)
             .run(Sink.collectAll<number>())
             .fork())
         .tap(({ latch }) => latch.await())
-        .flatMap(({ fiber }) => fiber.join());
+        .flatMap(({ fiber }) => fiber.join())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == chunk);
-    });
+      assert.isTrue(result == chunk)
+    })
 
     it("asyncManaged signal end stream", async () => {
       const program = Stream.asyncScoped<unknown, never, number>((cb) => {
-        cb(Effect.fail(Option.none));
-        return Effect.unit;
-      }).runCollect();
+        cb(Effect.fail(Option.none))
+        return Effect.unit
+      }).runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty());
-    });
+      assert.isTrue(result.isEmpty())
+    })
 
     // TODO(Mike/Max): determine implementation
     // it("asyncManaged back pressure", async () => {
@@ -209,7 +209,7 @@ describe.concurrent("Stream", () => {
     //     _      <- run.interrupt
     //   } yield assert(isDone)(isFalse)
     // })
-  });
+  })
 
   describe.concurrent("asyncInterrupt", () => {
     it("Left", async () => {
@@ -218,41 +218,41 @@ describe.concurrent("Stream", () => {
         .bind("latch", () => Deferred.make<never, void>())
         .bind("fiber", ({ cancelled, latch }) =>
           Stream.asyncInterrupt<unknown, never, void>((emit) => {
-            emit.chunk(Chunk.single(undefined));
-            return Either.left(cancelled.set(true));
+            emit.chunk(Chunk.single(undefined))
+            return Either.left(cancelled.set(true))
           })
             .tap(() => latch.succeed(undefined))
             .runDrain()
             .fork())
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ cancelled }) => cancelled.get());
+        .flatMap(({ cancelled }) => cancelled.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("Right", async () => {
-      const chunk = Chunk(1, 2, 3, 4, 5);
+      const chunk = Chunk(1, 2, 3, 4, 5)
       const program = Stream.asyncInterrupt<unknown, never, number>(() => Either.right(Stream.fromChunk(chunk)))
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == chunk);
-    });
+      assert.isTrue(result == chunk)
+    })
 
     it("signal end stream", async () => {
       const program = Stream.asyncInterrupt<unknown, never, number>((emit) => {
-        emit.end();
-        return Either.left(Effect.succeedNow(undefined));
-      }).runCollect();
+        emit.end()
+        return Either.left(Effect.succeedNow(undefined))
+      }).runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty());
-    });
+      assert.isTrue(result.isEmpty())
+    })
 
     // TODO(Mike/Max): determine implementation
     // it("asyncInterrupt back pressure", async () => {
@@ -278,5 +278,5 @@ describe.concurrent("Stream", () => {
     //   } yield assert(isDone)(isFalse) &&
     //     assert(exit.untraced)(failsCause(containsCause(Cause.interrupt(selfId))))
     // })
-  });
-});
+  })
+})

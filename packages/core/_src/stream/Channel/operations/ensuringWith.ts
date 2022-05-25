@@ -1,4 +1,4 @@
-import { Ensuring } from "@effect/core/stream/Channel/definition/primitives";
+import { Ensuring } from "@effect/core/stream/Channel/definition/primitives"
 
 /**
  * Returns a new channel with an attached finalizer. The finalizer is
@@ -23,7 +23,7 @@ export function ensuringWith_<
   return new Ensuring<Env & Env2, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     channel,
     finalizer
-  );
+  )
 }
 
 /**
@@ -33,4 +33,4 @@ export function ensuringWith_<
  *
  * @tsplus static ets/Channel/Aspects ensuringWith
  */
-export const ensuringWith = Pipeable(ensuringWith_);
+export const ensuringWith = Pipeable(ensuringWith_)

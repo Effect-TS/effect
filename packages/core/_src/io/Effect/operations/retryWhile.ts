@@ -8,7 +8,7 @@ export function retryWhile_<R, E, A>(
   f: Predicate<E>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return self.retryWhileEffect((e) => Effect.succeed(f(e)));
+  return self.retryWhileEffect((e) => Effect.succeed(f(e)))
 }
 
 /**
@@ -16,4 +16,4 @@ export function retryWhile_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects retryWhile
  */
-export const retryWhile = Pipeable(retryWhile_);
+export const retryWhile = Pipeable(retryWhile_)

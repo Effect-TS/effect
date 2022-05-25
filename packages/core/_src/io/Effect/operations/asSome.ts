@@ -7,5 +7,5 @@ export function asSome<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, Option<A>> {
-  return self.map(Option.some);
+  return self.map(Option.some)
 }

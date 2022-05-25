@@ -1,5 +1,5 @@
-import type { IterableArrayLike } from "@tsplus/stdlib/collections/Chunk/definition";
-import { concreteChunkId } from "@tsplus/stdlib/collections/Chunk/definition";
+import type { IterableArrayLike } from "@tsplus/stdlib/collections/Chunk/definition"
+import { concreteChunkId } from "@tsplus/stdlib/collections/Chunk/definition"
 
 /**
  * Returns the first element that satisfies the effectful predicate.
@@ -12,8 +12,8 @@ export function findEffect_<R, E, A>(
   __tsplusTrace?: string
 ): Effect<R, E, Option<A>> {
   return Effect.suspendSucceed(() => {
-    const iterator = concreteChunkId(self)._arrayLikeIterator();
-    let next: IteratorResult<IterableArrayLike<A>, any>;
+    const iterator = concreteChunkId(self)._arrayLikeIterator()
+    let next: IteratorResult<IterableArrayLike<A>, any>
     const loop = (
       iterator: Iterator<IterableArrayLike<A>>,
       array: IterableArrayLike<A>,
@@ -21,24 +21,24 @@ export function findEffect_<R, E, A>(
       length: number
     ): Effect<R, E, Option<A>> => {
       if (i < length) {
-        const a = array[i]!;
+        const a = array[i]!
 
-        return f(a).flatMap((r) => r ? Effect.succeedNow(Option.some(a)) : loop(iterator, array, i + 1, length));
+        return f(a).flatMap((r) => r ? Effect.succeedNow(Option.some(a)) : loop(iterator, array, i + 1, length))
       } else if (!(next = iterator.next()).done) {
-        return loop(iterator, next.value, 0, next.value.length);
+        return loop(iterator, next.value, 0, next.value.length)
       } else {
-        return Effect.succeedNow(Option.none);
+        return Effect.succeedNow(Option.none)
       }
-    };
+    }
 
-    next = iterator.next();
+    next = iterator.next()
 
     if (!next.done) {
-      return loop(iterator, next.value, 0, next.value.length);
+      return loop(iterator, next.value, 0, next.value.length)
     } else {
-      return Effect.succeedNow(Option.none);
+      return Effect.succeedNow(Option.none)
     }
-  });
+  })
 }
 
 /**
@@ -46,4 +46,4 @@ export function findEffect_<R, E, A>(
  *
  * @tsplus static Chunk/Aspects findEffect
  */
-export const findEffect = Pipeable(findEffect_);
+export const findEffect = Pipeable(findEffect_)

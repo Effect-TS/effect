@@ -10,7 +10,7 @@ export function takeN_<A>(
   n: number,
   __tsplusTrace?: string
 ): Effect.UIO<Chunk<A>> {
-  return self.takeBetween(n, n);
+  return self.takeBetween(n, n)
 }
 
 /**
@@ -20,4 +20,4 @@ export function takeN_<A>(
  *
  * @tsplus static ets/Queue/Aspects takeN
  */
-export const takeN = Pipeable(takeN_);
+export const takeN = Pipeable(takeN_)

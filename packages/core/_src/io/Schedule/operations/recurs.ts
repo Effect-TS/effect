@@ -7,5 +7,5 @@
 export function recurs(
   n: number
 ): Schedule<number, unknown, unknown, number> {
-  return Schedule.forever.whileOutput((_) => _ < n);
+  return Schedule.forever.whileOutput((_) => _ < n)
 }

@@ -14,7 +14,7 @@ export function broadcastDynamic_<R, E, A>(
     Stream.scoped(effect)
       .flatMap((queue) => Stream.fromQueue(queue))
       .flattenTake()
-  );
+  )
 }
 
 /**
@@ -24,4 +24,4 @@ export function broadcastDynamic_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects broadcastDynamic
  */
-export const broadcastDynamic = Pipeable(broadcastDynamic_);
+export const broadcastDynamic = Pipeable(broadcastDynamic_)

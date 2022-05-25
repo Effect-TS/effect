@@ -11,7 +11,7 @@ export function updateService_<R, InErr, InDone, OutElem, OutErr, OutDone, T>(
     f: (resource: T) => T,
     __tsplusTrace?: string
   ): Channel<R & Has<T>, InErr, unknown, InDone, OutErr, OutElem, OutDone> =>
-    self.provideSomeEnvironment((env) => env.merge(Env(tag, f(env.get(tag)))));
+    self.provideSomeEnvironment((env) => env.merge(Env(tag, f(env.get(tag)))))
 }
 
 /**
@@ -22,5 +22,5 @@ export function updateService<T>(tag: Tag<T>) {
     self: Channel<R, InErr, unknown, InDone, OutErr, OutElem, OutDone>,
     f: (resource: T) => T,
     __tsplusTrace?: string
-  ): Channel<R & Has<T>, InErr, unknown, InDone, OutErr, OutElem, OutDone> => self.updateService(tag)(f);
+  ): Channel<R & Has<T>, InErr, unknown, InDone, OutErr, OutElem, OutDone> => self.updateService(tag)(f)
 }

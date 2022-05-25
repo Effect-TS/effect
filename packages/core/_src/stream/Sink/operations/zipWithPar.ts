@@ -1,4 +1,4 @@
-import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision";
+import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision"
 
 /**
  * Feeds inputs to this sink until it yields a result, then switches over to
@@ -37,7 +37,7 @@ export function zipWithPar_<R, R1, E, E1, In, In1, L, L1, Z, Z1, Z2>(
             )
           )
       )
-  );
+  )
 }
 
 /**
@@ -47,4 +47,4 @@ export function zipWithPar_<R, R1, E, E1, In, In1, L, L1, Z, Z1, Z2>(
  *
  * @tsplus static ets/Sink/Aspects zipWithPar
  */
-export const zipWithPar = Pipeable(zipWithPar_);
+export const zipWithPar = Pipeable(zipWithPar_)

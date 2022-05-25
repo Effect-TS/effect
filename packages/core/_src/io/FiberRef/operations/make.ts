@@ -11,5 +11,5 @@ export function make<A>(
 ): Effect<Has<Scope>, never, FiberRef<A, (a: A) => A>> {
   return FiberRef.makeWith(
     FiberRef.unsafeMake(initial, fork, join)
-  );
+  )
 }

@@ -8,7 +8,7 @@ export function succeed_<E, A>(
   value: LazyArg<A>,
   __tsplusTrace?: string
 ): Effect.UIO<boolean> {
-  return self.completeWith(Effect.succeed(value));
+  return self.completeWith(Effect.succeed(value))
 }
 
 /**
@@ -16,4 +16,4 @@ export function succeed_<E, A>(
  *
  * @tsplus static ets/Deferred/Aspects succeed
  */
-export const succeed = Pipeable(succeed_);
+export const succeed = Pipeable(succeed_)

@@ -12,5 +12,5 @@ export function filter<A, R, E>(
       STM.succeed(Chunk.empty<A>()) as STM<R, E, Chunk<A>>,
       (io, a) => io.zipWith(STM.suspend(f(a)), (acc, b) => (b ? acc.append(a) : acc))
     )
-  );
+  )
 }

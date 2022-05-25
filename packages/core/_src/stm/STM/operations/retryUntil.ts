@@ -8,7 +8,7 @@ export function retryUntil_<R, E, A>(
   self: STM<R, E, A>,
   f: Predicate<A>
 ): STM<R, E, A> {
-  return self.continueOrRetry((a) => (f(a) ? Option.some(a) : Option.none));
+  return self.continueOrRetry((a) => (f(a) ? Option.some(a) : Option.none))
 }
 
 /**
@@ -17,4 +17,4 @@ export function retryUntil_<R, E, A>(
  *
  * @tsplus static ets/STM/Aspects retryUntil
  */
-export const retryUntil = Pipeable(retryUntil_);
+export const retryUntil = Pipeable(retryUntil_)

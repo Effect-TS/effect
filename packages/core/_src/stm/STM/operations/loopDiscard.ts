@@ -20,10 +20,10 @@ export function loopDiscard<Z>(
 ) {
   return <R, E, X>(body: (z: Z) => STM<R, E, X>): STM<R, E, void> => {
     return STM.suspend(() => {
-      const initial0 = initial();
+      const initial0 = initial()
       return cont(initial0)
         ? body(initial0) > loopDiscard(inc(initial0), cont, inc)(body)
-        : STM.unit;
-    });
-  };
+        : STM.unit
+    })
+  }
 }

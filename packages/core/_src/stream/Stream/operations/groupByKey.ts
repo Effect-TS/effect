@@ -19,7 +19,7 @@ export function groupByKey_<R, E, A, K>(
   buffer = 16,
   __tsplusTrace?: string
 ): GroupBy<R, E, K, A, A> {
-  return self.groupBy((a) => Effect.succeedNow(Tuple(f(a), a)), buffer);
+  return self.groupBy((a) => Effect.succeedNow(Tuple(f(a), a)), buffer)
 }
 
 /**
@@ -37,4 +37,4 @@ export function groupByKey_<R, E, A, K>(
  *
  * @tsplus static ets/Stream/Aspects groupByKey
  */
-export const groupByKey = Pipeable(groupByKey_);
+export const groupByKey = Pipeable(groupByKey_)

@@ -23,7 +23,7 @@ export function provideService_<
   ): Channel<Erase<R & Has<T>, Has<T>>, InErr, InElem, InDone, OutErr, OutElem, OutDone> =>
     Channel.succeed(service).flatMap((service) =>
       Channel.environment<R>().flatMap((env: Env<R>) => self.provideEnvironment(env.add(tag, service)))
-    );
+    )
 }
 
 /**
@@ -46,5 +46,5 @@ export function provideService<T>(tag: Tag<T>) {
     service: LazyArg<T>,
     __tsplusTrace?: string
   ): Channel<Erase<Env & Has<T>, Has<T>>, InErr, InElem, InDone, OutErr, OutElem, OutDone> =>
-    self.provideService(tag)(service);
+    self.provideService(tag)(service)
 }

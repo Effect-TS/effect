@@ -10,5 +10,5 @@ export function none<R, E, A>(
   return self.foldEffect(
     (e) => Effect.fail(Option.some(e)),
     (option) => option.fold(Effect.succeedNow(undefined), () => Effect.fail(Option.none))
-  );
+  )
 }

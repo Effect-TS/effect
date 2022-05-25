@@ -1,4 +1,4 @@
-import { CloseableScopeInternal } from "@effect/core/io/Scope/operations/_internal/CloseableScopeInternal";
+import { CloseableScopeInternal } from "@effect/core/io/Scope/operations/_internal/CloseableScopeInternal"
 
 /**
  * The global scope which is never closed. Finalizers added to this scope will
@@ -13,4 +13,4 @@ export const global: LazyValue<Scope.Closeable> = LazyValue.make(
       () => Effect.unit,
       () => Effect.unit
     )
-);
+)

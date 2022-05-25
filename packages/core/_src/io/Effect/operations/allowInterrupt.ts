@@ -6,4 +6,4 @@
  */
 export const allowInterrupt: Effect.UIO<void> = Effect.descriptorWith((descriptor) =>
   descriptor.interrupters.size > 0 ? Effect.interrupt : Effect.unit
-);
+)

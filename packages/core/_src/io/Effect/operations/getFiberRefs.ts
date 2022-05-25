@@ -1,4 +1,4 @@
-import { IFiberRefModifyAll } from "@effect/core/io/Effect/definition/primitives";
+import { IFiberRefModifyAll } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Returns a collection of all `FiberRef` values for the fiber running this
@@ -10,5 +10,5 @@ export function getFiberRefs(__tsplusTrace?: string): Effect.UIO<FiberRefs> {
   return new IFiberRefModifyAll(
     (_, fiberRefs) => Tuple(fiberRefs, fiberRefs),
     __tsplusTrace
-  );
+  )
 }

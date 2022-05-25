@@ -8,5 +8,5 @@ export function awaitAllChildren<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return self.ensuringChildren((fibers) => Fiber.awaitAll(fibers));
+  return self.ensuringChildren((fibers) => Fiber.awaitAll(fibers))
 }

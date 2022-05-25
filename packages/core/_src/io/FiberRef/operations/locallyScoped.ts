@@ -13,7 +13,7 @@ export function locallyScoped_<A, P>(
   return Effect.acquireRelease(
     self.get().flatMap((old) => self.set(value).as(old)),
     (a) => self.set(a)
-  ).asUnit();
+  ).asUnit()
 }
 
 /**
@@ -23,4 +23,4 @@ export function locallyScoped_<A, P>(
  *
  * @tsplus static ets/FiberRef/Aspects locallyScoped
  */
-export const locallyScoped = Pipeable(locallyScoped_);
+export const locallyScoped = Pipeable(locallyScoped_)

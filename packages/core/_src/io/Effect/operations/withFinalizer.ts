@@ -10,7 +10,7 @@ export function withFinalizer_<R, R2, E, A, X>(
   finalizer: LazyArg<Effect.RIO<R2, X>>,
   __tsplusTrace?: string
 ): Effect<R & R2 & Has<Scope>, E, A> {
-  return self.withFinalizerExit(finalizer);
+  return self.withFinalizerExit(finalizer)
 }
 
 /**
@@ -20,4 +20,4 @@ export function withFinalizer_<R, R2, E, A, X>(
  *
  * @tsplus static ets/Effect/Aspects withFinalizer
  */
-export const withFinalizer = Pipeable(withFinalizer_);
+export const withFinalizer = Pipeable(withFinalizer_)

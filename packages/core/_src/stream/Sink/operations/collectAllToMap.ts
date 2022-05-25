@@ -12,7 +12,7 @@ export function collectAllToMap<Err, In, K>(
 ): Sink<unknown, never, In, never, HashMap<K, In>> {
   return Sink.foldLeftChunks(HashMap.empty<K, In>(), (acc, as) =>
     as.reduce(acc, (acc, a) => {
-      const k = key(a);
-      return acc.has(k) ? acc.update(k, (v) => f(v, a)) : acc.set(k, a);
-    }));
+      const k = key(a)
+      return acc.has(k) ? acc.update(k, (v) => f(v, a)) : acc.set(k, a)
+    }))
 }

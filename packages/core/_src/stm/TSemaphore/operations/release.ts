@@ -4,5 +4,5 @@
  * @tsplus fluent ets/TSemaphore release
  */
 export function release(self: TSemaphore): STM<unknown, never, void> {
-  return self.releaseN(1);
+  return self.releaseN(1)
 }

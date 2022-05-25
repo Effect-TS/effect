@@ -10,5 +10,5 @@ export function reduceAll<R, E, A>(
   f: (acc: A, a: A) => A,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return Effect.suspendSucceed(as().reduce(a(), (acc, a) => acc.zipWith(a, f)));
+  return Effect.suspendSucceed(as().reduce(a(), (acc, a) => acc.zipWith(a, f)))
 }

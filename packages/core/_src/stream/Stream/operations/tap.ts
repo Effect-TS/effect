@@ -8,7 +8,7 @@ export function tap_<R, E, A, R2, E2, Z>(
   f: (a: A) => Effect<R2, E2, Z>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A> {
-  return self.mapEffect((a) => f(a).as(a));
+  return self.mapEffect((a) => f(a).as(a))
 }
 
 /**
@@ -16,4 +16,4 @@ export function tap_<R, E, A, R2, E2, Z>(
  *
  * @tsplus static ets/Stream/Aspects tap
  */
-export const tap = Pipeable(tap_);
+export const tap = Pipeable(tap_)

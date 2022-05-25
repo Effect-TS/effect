@@ -1,8 +1,8 @@
-export const TRefSym = Symbol.for("@effect/core/stm/TRef");
-export type TRefSym = typeof TRefSym;
+export const TRefSym = Symbol.for("@effect/core/stm/TRef")
+export type TRefSym = typeof TRefSym
 
-export const _A = Symbol.for("@effect/core/stm/TRef/A");
-export type _A = typeof _A;
+export const _A = Symbol.for("@effect/core/stm/TRef/A")
+export type _A = typeof _A
 
 /**
  * A `TRef` is a purely functional description of a mutable reference that can
@@ -19,19 +19,19 @@ export type _A = typeof _A;
  * @tsplus type ets/TRef
  */
 export interface TRef<A> {
-  readonly [TRefSym]: TRefSym;
-  readonly [_A]: () => A;
+  readonly [TRefSym]: TRefSym
+  readonly [_A]: () => A
 }
 
 /**
  * @tsplus type ets/TRef/Ops
  */
 export interface TRefOps {
-  $: TRefAspects;
+  $: TRefAspects
 }
 export const TRef: TRefOps = {
   $: {}
-};
+}
 
 /**
  * @tsplus type ets/TRef/Aspects

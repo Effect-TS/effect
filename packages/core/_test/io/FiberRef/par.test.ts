@@ -1,11 +1,11 @@
-const initial = "initial";
-const update = "update";
-const update1 = "update1";
-const update2 = "update2";
+const initial = "initial"
+const update = "update"
+const update1 = "update1"
+const update2 = "update2"
 
 const loseTimeAndCpu: Effect.UIO<void> = (
   Effect.yieldNow < Clock.sleep((1).millis)
-).repeatN(100);
+).repeatN(100)
 
 describe.concurrent("FiberRef", () => {
   describe.concurrent("zipPar", () => {
@@ -22,12 +22,12 @@ describe.concurrent("FiberRef", () => {
           ({ fiberRef, latch }) => latch.await() > fiberRef.set(update2) > loseTimeAndCpu
         )
         .tap(({ loser, winner }) => winner.zipPar(loser))
-        .flatMap(({ fiberRef }) => fiberRef.get());
+        .flatMap(({ fiberRef }) => fiberRef.get())
 
-      const value = await Effect.scoped(program).unsafeRunPromise();
+      const value = await Effect.scoped(program).unsafeRunPromise()
 
-      assert.strictEqual(value, update2);
-    });
+      assert.strictEqual(value, update2)
+    })
 
     it("nothing gets inherited with a failure in zipPar", async () => {
       const program = Effect.Do()
@@ -36,13 +36,13 @@ describe.concurrent("FiberRef", () => {
         .bindValue("failure1", ({ fiberRef }) => fiberRef.set(update).zipRight(Effect.failNow(":-(")))
         .bindValue("failure2", ({ fiberRef }) => fiberRef.set(update).zipRight(Effect.failNow(":-O")))
         .tap(({ failure1, failure2, success }) => success.zipPar(failure1.zipPar(failure2)).orElse(Effect.unit))
-        .flatMap(({ fiberRef }) => fiberRef.get());
+        .flatMap(({ fiberRef }) => fiberRef.get())
 
-      const result = await Effect.scoped(program).unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise()
 
-      assert.isTrue(result.includes(initial));
-    });
-  });
+      assert.isTrue(result.includes(initial))
+    })
+  })
 
   describe.concurrent("collectAllPar", () => {
     it("the value of all fibers in inherited when running many effects with collectAllPar", async () => {
@@ -52,11 +52,11 @@ describe.concurrent("FiberRef", () => {
         (x, y) => x + y
       )
         .tap((fiberRef) => Effect.collectAllPar(Chunk.fill(10000, () => fiberRef.update((n) => n + 1))))
-        .flatMap((fiberRef) => fiberRef.get());
+        .flatMap((fiberRef) => fiberRef.get())
 
-      const result = await Effect.scoped(program).unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise()
 
-      assert.strictEqual(result, 10000);
-    });
-  });
-});
+      assert.strictEqual(result, 10000)
+    })
+  })
+})

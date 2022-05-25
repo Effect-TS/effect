@@ -8,7 +8,7 @@ export function tap_<R2, E2, A, R, E, X>(
   f: (a: A) => Effect<R, E, X>,
   __tsplusTrace?: string
 ) {
-  return self.flatMap((a: A) => f(a).map(() => a));
+  return self.flatMap((a: A) => f(a).map(() => a))
 }
 
 /**
@@ -16,4 +16,4 @@ export function tap_<R2, E2, A, R, E, X>(
  *
  * @tsplus static ets/Effect/Aspects tap
  */
-export const tap = Pipeable(tap_);
+export const tap = Pipeable(tap_)

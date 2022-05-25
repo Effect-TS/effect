@@ -1,4 +1,4 @@
-import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/InternalTArray";
+import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/InternalTArray"
 
 /**
  * Find the last element in the array matching a transactional predicate.
@@ -9,19 +9,19 @@ export function findLastSTM_<E, A>(
   self: TArray<A>,
   f: (a: A) => STM<unknown, E, boolean>
 ): STM<unknown, E, Option<A>> {
-  concreteTArray(self);
-  const init = Tuple(Option.emptyOf<A>(), self.chunk.length - 1);
-  const cont = (s: Tuple<[Option<A>, number]>) => s.get(0).isNone() && s.get(1) >= 0;
+  concreteTArray(self)
+  const init = Tuple(Option.emptyOf<A>(), self.chunk.length - 1)
+  const cont = (s: Tuple<[Option<A>, number]>) => s.get(0).isNone() && s.get(1) >= 0
   return STM.iterate(
     init,
     cont
   )((s) => {
-    const index = s.get(1);
+    const index = s.get(1)
     return self.chunk
       .unsafeGet(index)!
       .get()
-      .flatMap((a) => f(a).map((result) => Tuple(result ? Option.some(a) : Option.none, index - 1)));
-  }).map((tuple) => tuple.get(0));
+      .flatMap((a) => f(a).map((result) => Tuple(result ? Option.some(a) : Option.none, index - 1)))
+  }).map((tuple) => tuple.get(0))
 }
 
 /**
@@ -29,4 +29,4 @@ export function findLastSTM_<E, A>(
  *
  * @tsplus static ets/TArray/Aspects findLastSTM
  */
-export const findLastSTM = Pipeable(findLastSTM_);
+export const findLastSTM = Pipeable(findLastSTM_)

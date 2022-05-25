@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Takes the specified number of elements from this stream.
@@ -11,12 +11,12 @@ export function take_<R, E, A>(
   __tsplusTrace?: string
 ): Stream<R, E, A> {
   if (!Number.isInteger(n)) {
-    return Stream.die(new IllegalArgumentException(`${n} must be an integer`));
+    return Stream.die(new IllegalArgumentException(`${n} must be an integer`))
   }
-  concreteStream(self);
+  concreteStream(self)
   return new StreamInternal(
     n <= 0 ? Channel.unit : Channel.suspend(self.channel >> loop<R, E, A>(n))
-  );
+  )
 }
 
 /**
@@ -24,7 +24,7 @@ export function take_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects take
  */
-export const take = Pipeable(take_);
+export const take = Pipeable(take_)
 
 function loop<R, E, A>(
   n: number,
@@ -32,14 +32,14 @@ function loop<R, E, A>(
 ): Channel<R, E, Chunk<A>, unknown, E, Chunk<A>, unknown> {
   return Channel.readWith(
     (chunk: Chunk<A>) => {
-      const taken = chunk.take(Math.min(n, Number.MAX_SAFE_INTEGER));
-      const leftover = Math.max(0, n - taken.length);
-      const more = leftover > 0;
+      const taken = chunk.take(Math.min(n, Number.MAX_SAFE_INTEGER))
+      const leftover = Math.max(0, n - taken.length)
+      const more = leftover > 0
       return more
         ? Channel.write(taken) > loop<R, E, A>(leftover)
-        : Channel.write(taken);
+        : Channel.write(taken)
     },
     (err) => Channel.fail(err),
     (done) => Channel.succeed(done)
-  );
+  )
 }

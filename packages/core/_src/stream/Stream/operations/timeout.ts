@@ -12,7 +12,7 @@ export function timeout_<R, E, A>(
     Stream.fromPull(
       self.toPull().map((pull) => pull.timeoutFail(Option.none, duration))
     )
-  );
+  )
 }
 
 /**
@@ -20,4 +20,4 @@ export function timeout_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects timeout
  */
-export const timeout = Pipeable(timeout_);
+export const timeout = Pipeable(timeout_)

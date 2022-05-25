@@ -9,7 +9,7 @@ export function getAndSet_<A, P>(
   value: A,
   __tsplusTrace?: string
 ): Effect.UIO<A> {
-  return self.modify((v) => Tuple(v, value));
+  return self.modify((v) => Tuple(v, value))
 }
 
 /**
@@ -18,4 +18,4 @@ export function getAndSet_<A, P>(
  *
  * @tsplus static ets/FiberRef/Aspects getAndSet
  */
-export const getAndSet = Pipeable(getAndSet_);
+export const getAndSet = Pipeable(getAndSet_)

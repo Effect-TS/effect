@@ -6,5 +6,5 @@
 export function fromDuration(
   duration: Duration
 ): Schedule<boolean, unknown, unknown, Duration> {
-  return Schedule.duration(duration);
+  return Schedule.duration(duration)
 }

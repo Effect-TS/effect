@@ -16,5 +16,5 @@ export function foldWeighted<In, S>(
   f: (s: S, input: In) => S,
   __tsplusTrace?: string
 ): Sink<unknown, never, In, In, S> {
-  return Sink.foldWeightedDecompose(z, costFn, max, Chunk.single, f);
+  return Sink.foldWeightedDecompose(z, costFn, max, Chunk.single, f)
 }

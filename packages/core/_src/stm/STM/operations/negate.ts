@@ -7,5 +7,5 @@ export function negate<R, E>(
   self: STM<R, E, boolean>,
   __tsplusTrace?: string
 ): STM<R, E, boolean> {
-  return self.map((b) => !b);
+  return self.map((b) => !b)
 }

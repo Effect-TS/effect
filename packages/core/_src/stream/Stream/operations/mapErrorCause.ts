@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Transforms the full causes of failures emitted by this stream.
@@ -10,8 +10,8 @@ export function mapErrorCause_<R, E, E2, A>(
   f: (e: Cause<E>) => Cause<E2>,
   __tsplusTrace?: string
 ): Stream<R, E2, A> {
-  concreteStream(self);
-  return new StreamInternal(self.channel.mapErrorCause(f));
+  concreteStream(self)
+  return new StreamInternal(self.channel.mapErrorCause(f))
 }
 
 /**
@@ -19,4 +19,4 @@ export function mapErrorCause_<R, E, E2, A>(
  *
  * @tsplus static ets/Stream/Aspects mapErrorCause
  */
-export const mapErrorCause = Pipeable(mapErrorCause_);
+export const mapErrorCause = Pipeable(mapErrorCause_)

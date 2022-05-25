@@ -5,5 +5,5 @@
  * @tsplus fluent ets/STM orDie
  */
 export function orDie<R, E, A>(self: STM<R, E, A>): STM<R, never, A> {
-  return self.orDieWith(identity);
+  return self.orDieWith(identity)
 }

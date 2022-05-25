@@ -16,7 +16,7 @@ export function onTermination_<R, E, A, R2, X>(
       exit._tag === "Failure"
         ? exit.cause.failureOrCause().fold(() => Effect.unit, cleanup)
         : Effect.unit
-  );
+  )
 }
 
 /**
@@ -25,4 +25,4 @@ export function onTermination_<R, E, A, R2, X>(
  *
  * @tsplus static ets/Effect/Aspects onTermination
  */
-export const onTermination = Pipeable(onTermination_);
+export const onTermination = Pipeable(onTermination_)

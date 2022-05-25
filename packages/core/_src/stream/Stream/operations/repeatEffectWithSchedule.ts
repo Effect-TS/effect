@@ -20,5 +20,5 @@ export function repeatEffectWithSchedule<S, R, E, A>(
               () => effect.map((nextA) => Option.some(Tuple(nextA, nextA)))
             ))
       )
-  );
+  )
 }

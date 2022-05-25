@@ -8,5 +8,5 @@ export function unfold<S, A>(
   f: (s: S) => Option<Tuple<[A, S]>>,
   __tsplusTrace?: string
 ): Stream<unknown, never, A> {
-  return Stream.unfoldChunk(s, (s) => f(s).map(({ tuple: [a, s] }) => Tuple(Chunk.single(a), s)));
+  return Stream.unfoldChunk(s, (s) => f(s).map(({ tuple: [a, s] }) => Tuple(Chunk.single(a), s)))
 }

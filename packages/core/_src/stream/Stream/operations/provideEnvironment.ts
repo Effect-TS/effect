@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Provides the stream with its required environment, which eliminates its
@@ -11,8 +11,8 @@ export function provideEnvironment_<R, E, A>(
   env: LazyArg<Env<R>>,
   __tsplusTrace?: string
 ): Stream<unknown, E, A> {
-  concreteStream(self);
-  return new StreamInternal(self.channel.provideEnvironment(env));
+  concreteStream(self)
+  return new StreamInternal(self.channel.provideEnvironment(env))
 }
 
 /**
@@ -21,4 +21,4 @@ export function provideEnvironment_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects provideEnvironment
  */
-export const provideEnvironment = Pipeable(provideEnvironment_);
+export const provideEnvironment = Pipeable(provideEnvironment_)

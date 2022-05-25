@@ -9,7 +9,7 @@ export function exists<R, E, A>(
   f: (a: A) => Effect<R, E, boolean>,
   __tsplusTrace?: string
 ): Effect<R, E, boolean> {
-  return Effect.succeed(as).flatMap((Collection) => loop(Collection[Symbol.iterator](), f));
+  return Effect.succeed(as).flatMap((Collection) => loop(Collection[Symbol.iterator](), f))
 }
 
 function loop<R, E, A>(
@@ -17,9 +17,9 @@ function loop<R, E, A>(
   f: (a: A) => Effect<R, E, boolean>,
   __tsplusTrace?: string
 ): Effect<R, E, boolean> {
-  const next = iterator.next();
+  const next = iterator.next()
   if (next.done) {
-    return Effect.succeedNow(false);
+    return Effect.succeedNow(false)
   }
-  return f(next.value).flatMap((b) => b ? Effect.succeedNow(b) : Effect.suspendSucceed(loop(iterator, f)));
+  return f(next.value).flatMap((b) => b ? Effect.succeedNow(b) : Effect.suspendSucceed(loop(iterator, f)))
 }

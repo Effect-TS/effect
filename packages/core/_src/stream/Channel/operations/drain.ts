@@ -11,6 +11,6 @@ export function drain<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     () => drainer,
     (cause) => Channel.failCause(cause),
     Channel.succeedNow
-  );
-  return self >> drainer;
+  )
+  return self >> drainer
 }

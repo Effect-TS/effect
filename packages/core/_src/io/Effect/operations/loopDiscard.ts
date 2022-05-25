@@ -23,10 +23,10 @@ export function loopDiscard<Z>(
     __tsplusTrace?: string
   ): Effect<R, E, void> => {
     return Effect.suspendSucceed(() => {
-      const initial0 = initial();
+      const initial0 = initial()
       return cont(initial0)
         ? body(initial0) > loopDiscard(inc(initial0), cont, inc)(body)
-        : Effect.unit;
-    });
-  };
+        : Effect.unit
+    })
+  }
 }

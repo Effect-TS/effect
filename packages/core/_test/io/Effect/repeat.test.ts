@@ -1,4 +1,4 @@
-import { constFalse, constTrue } from "@tsplus/stdlib/data/Function";
+import { constFalse, constTrue } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Effect", () => {
   describe.concurrent("repeatUntil", () => {
@@ -11,23 +11,23 @@ describe.concurrent("Effect", () => {
             (n) => n === 0
           )
         )
-        .flatMap(({ output }) => output.get());
+        .flatMap(({ output }) => output.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 10);
-    });
+      assert.strictEqual(result, 10)
+    })
 
     it("repeatUntil always evaluates effect at least once", async () => {
       const program = Ref.make<number>(0)
         .tap((ref) => ref.update((n) => n + 1).repeatUntil(constTrue))
-        .flatMap((ref) => ref.get());
+        .flatMap((ref) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 1);
-    });
-  });
+      assert.strictEqual(result, 1)
+    })
+  })
 
   describe.concurrent("repeatUntilEquals", () => {
     it("repeatUntilEquals repeats until result is equal to predicate", async () => {
@@ -36,13 +36,13 @@ describe.concurrent("Effect", () => {
         .tap(({ queue }) => queue.offerAll(List(1, 2, 3, 4, 5, 6)))
         .bind("acc", () => Ref.make<number>(0))
         .tap(({ acc, queue }) => (queue.take < acc.update((n) => n + 1)).repeatUntilEquals(Equivalence.number)(5))
-        .flatMap(({ acc }) => acc.get());
+        .flatMap(({ acc }) => acc.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 5);
-    });
-  });
+      assert.strictEqual(result, 5)
+    })
+  })
 
   describe.concurrent("repeatUntilEffect", () => {
     it("repeats until the effectful condition is true", async () => {
@@ -54,23 +54,23 @@ describe.concurrent("Effect", () => {
             input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)
           ).repeatUntilEffect((n) => Effect.succeed(n === 0))
         )
-        .flatMap(({ output }) => output.get());
+        .flatMap(({ output }) => output.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 10);
-    });
+      assert.strictEqual(result, 10)
+    })
 
     it("always evaluates the effect at least once", async () => {
       const program = Ref.make<number>(0)
         .tap((ref) => ref.update((n) => n + 1).repeatUntilEffect(() => Effect.succeed(true)))
-        .flatMap((ref) => ref.get());
+        .flatMap((ref) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 1);
-    });
-  });
+      assert.strictEqual(result, 1)
+    })
+  })
 
   describe.concurrent("repeatWhile", () => {
     it("repeats while the condition is true", async () => {
@@ -82,23 +82,23 @@ describe.concurrent("Effect", () => {
             (n) => n >= 0
           )
         )
-        .flatMap(({ output }) => output.get());
+        .flatMap(({ output }) => output.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 11);
-    });
+      assert.strictEqual(result, 11)
+    })
 
     it("always evaluates the effect at least once", async () => {
       const program = Ref.make<number>(0)
         .tap((ref) => ref.update((n) => n + 1).repeatWhile(constFalse))
-        .flatMap((ref) => ref.get());
+        .flatMap((ref) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 1);
-    });
-  });
+      assert.strictEqual(result, 1)
+    })
+  })
 
   describe.concurrent("repeatWhileEquals", () => {
     it("repeats while the result equals the predicate", async () => {
@@ -107,13 +107,13 @@ describe.concurrent("Effect", () => {
         .tap(({ queue }) => queue.offerAll(List(0, 0, 0, 0, 1, 2)))
         .bind("acc", () => Ref.make<number>(0))
         .tap(({ acc, queue }) => (queue.take < acc.update((n) => n + 1)).repeatWhileEquals(Equivalence.number)(0))
-        .flatMap(({ acc }) => acc.get());
+        .flatMap(({ acc }) => acc.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 5);
-    });
-  });
+      assert.strictEqual(result, 5)
+    })
+  })
 
   describe.concurrent("repeatWhileEffect", () => {
     it("repeats while condition is true", async () => {
@@ -125,21 +125,21 @@ describe.concurrent("Effect", () => {
             input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)
           ).repeatWhileEffect((v) => Effect.succeed(v >= 0))
         )
-        .flatMap(({ output }) => output.get());
+        .flatMap(({ output }) => output.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 11);
-    });
+      assert.strictEqual(result, 11)
+    })
 
     it("always evaluates effect at least once", async () => {
       const program = Ref.make<number>(0)
         .tap((ref) => ref.update((n) => n + 1).repeatWhileEffect(() => Effect.succeed(false)))
-        .flatMap((ref) => ref.get());
+        .flatMap((ref) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 1);
-    });
-  });
-});
+      assert.strictEqual(result, 1)
+    })
+  })
+})

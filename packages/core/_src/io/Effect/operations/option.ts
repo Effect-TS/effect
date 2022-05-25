@@ -11,5 +11,5 @@ export function option<R, E, A>(
   return self.foldEffect(
     () => Effect.succeedNow(Option.none),
     (a) => Effect.succeedNow(Option.some(a))
-  );
+  )
 }

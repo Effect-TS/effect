@@ -6,8 +6,8 @@
  */
 export function lastIndexOf_<A>(self: TArray<A>, equivalence: Equivalence<A>) {
   return (a: A): USTM<number> => {
-    return self.lastIndexOfFrom(equivalence)(a, self.length() - 1);
-  };
+    return self.lastIndexOfFrom(equivalence)(a, self.length() - 1)
+  }
 }
 
 /**
@@ -16,4 +16,4 @@ export function lastIndexOf_<A>(self: TArray<A>, equivalence: Equivalence<A>) {
  *
  * @tsplus static ets/TArray/Aspects lastIndexOf
  */
-export const lastIndexOf = Pipeable(lastIndexOf_);
+export const lastIndexOf = Pipeable(lastIndexOf_)

@@ -24,5 +24,5 @@ export function unwrapScoped<
     Channel.scoped(self),
     (d, _) => d,
     (d, _) => d
-  );
+  )
 }

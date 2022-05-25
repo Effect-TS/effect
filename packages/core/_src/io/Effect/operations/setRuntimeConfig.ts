@@ -1,4 +1,4 @@
-import { ISetRuntimeConfig } from "@effect/core/io/Effect/definition/primitives";
+import { ISetRuntimeConfig } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Sets the runtime configuration to the specified value.
@@ -9,5 +9,5 @@ export function setRuntimeConfig(
   runtimeConfig: LazyArg<RuntimeConfig>,
   __tsplusTrace?: string
 ): Effect.UIO<void> {
-  return Effect.suspendSucceed(new ISetRuntimeConfig(runtimeConfig(), __tsplusTrace));
+  return Effect.suspendSucceed(new ISetRuntimeConfig(runtimeConfig(), __tsplusTrace))
 }

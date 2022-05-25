@@ -6,24 +6,24 @@
  */
 export interface RuntimeConfig {
   readonly value: {
-    readonly fatal: (defect: unknown) => boolean;
-    readonly reportFatal: (defect: unknown) => void;
-    readonly supervisor: Supervisor<unknown>;
-    readonly loggers: HashSet<Logger<string, unknown>>;
-    readonly flags: RuntimeConfigFlags;
-    readonly maxOp: number;
-  };
+    readonly fatal: (defect: unknown) => boolean
+    readonly reportFatal: (defect: unknown) => void
+    readonly supervisor: Supervisor<unknown>
+    readonly loggers: HashSet<Logger<string, unknown>>
+    readonly flags: RuntimeConfigFlags
+    readonly maxOp: number
+  }
 }
 
 /**
  * @tsplus type ets/RuntimeConfig/Ops
  */
 export interface RuntimeConfigOps {
-  $: RuntimeConfigAspects;
+  $: RuntimeConfigAspects
 }
 export const RuntimeConfig: RuntimeConfigOps = {
   $: {}
-};
+}
 
 /**
  * @tsplus type ets/RuntimeConfig/Aspects

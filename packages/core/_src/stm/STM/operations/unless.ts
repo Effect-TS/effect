@@ -7,7 +7,7 @@ export function unless_<R, E, A>(
   self: STM<R, E, A>,
   predicate: LazyArg<boolean>
 ): STM<R, E, Option<A>> {
-  return STM.suspend(predicate() ? STM.none : self.asSome());
+  return STM.suspend(predicate() ? STM.none : self.asSome())
 }
 
 /**
@@ -15,4 +15,4 @@ export function unless_<R, E, A>(
  *
  * @tsplus static ets/STM/Aspects unless
  */
-export const unless = Pipeable(unless_);
+export const unless = Pipeable(unless_)

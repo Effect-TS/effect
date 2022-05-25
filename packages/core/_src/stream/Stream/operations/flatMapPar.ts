@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Maps each element of this stream to another stream and returns the
@@ -15,18 +15,18 @@ export function flatMapPar_<R, E, A, R2, E2, B>(
   bufferSize = 16,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, B> {
-  concreteStream(self);
+  concreteStream(self)
   return new StreamInternal(
     self.channel.concatMap(Channel.writeChunk).mergeMap(
       n,
       (a: A) => {
-        const stream = f(a);
-        concreteStream(stream);
-        return stream.channel;
+        const stream = f(a)
+        concreteStream(stream)
+        return stream.channel
       },
       bufferSize
     )
-  );
+  )
 }
 
 /**
@@ -37,4 +37,4 @@ export function flatMapPar_<R, E, A, R2, E2, B>(
  *
  * @tsplus static ets/Stream/Aspects flatMapPar
  */
-export const flatMapPar = Pipeable(flatMapPar_);
+export const flatMapPar = Pipeable(flatMapPar_)

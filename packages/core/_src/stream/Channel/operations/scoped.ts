@@ -16,5 +16,5 @@ export function scoped<R, E, A>(
       )
     ),
     ({ tuple: [_, scope] }, exit) => scope.close(exit)
-  ).mapOut((_) => _.get(0));
+  ).mapOut((_) => _.get(0))
 }

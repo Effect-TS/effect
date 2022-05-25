@@ -1,6 +1,6 @@
-import { Decision } from "@effect/core/io/Schedule/Decision";
-import type { Interval } from "@effect/core/io/Schedule/Interval";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import { Decision } from "@effect/core/io/Schedule/Decision"
+import type { Interval } from "@effect/core/io/Schedule/Interval"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * Returns a new schedule that effectfully reconsiders every decision made by
@@ -36,7 +36,7 @@ export function reconsiderEffect_<State, Env, In, Out, Env1, Out2>(
             )
           )
       )
-  );
+  )
 }
 
 /**
@@ -46,4 +46,4 @@ export function reconsiderEffect_<State, Env, In, Out, Env1, Out2>(
  *
  * @tsplus static ets/Schedule/Aspects reconsiderEffect
  */
-export const reconsiderEffect = Pipeable(reconsiderEffect_);
+export const reconsiderEffect = Pipeable(reconsiderEffect_)

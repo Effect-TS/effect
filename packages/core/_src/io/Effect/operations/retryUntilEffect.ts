@@ -9,7 +9,7 @@ export function retryUntilEffect_<R, R1, E, A>(
   f: (e: E) => Effect.RIO<R1, boolean>,
   __tsplusTrace?: string
 ): Effect<R & R1, E, A> {
-  return self.catchAll((e) => f(e).flatMap((b) => b ? Effect.fail(e) : Effect.yieldNow > self.retryUntilEffect(f)));
+  return self.catchAll((e) => f(e).flatMap((b) => b ? Effect.fail(e) : Effect.yieldNow > self.retryUntilEffect(f)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function retryUntilEffect_<R, R1, E, A>(
  *
  * @tsplus static ets/Effect/Aspects retryUntilEffect
  */
-export const retryUntilEffect = Pipeable(retryUntilEffect_);
+export const retryUntilEffect = Pipeable(retryUntilEffect_)

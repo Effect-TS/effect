@@ -1,4 +1,4 @@
-import { MergeStrategy } from "@effect/core/stream/Channel/MergeStrategy";
+import { MergeStrategy } from "@effect/core/stream/Channel/MergeStrategy"
 
 /**
  * @tsplus static ets/Channel/Ops mergeAllWith
@@ -130,7 +130,7 @@ export function mergeAllWith_<
                             )
                             .tap(({ latch }) => latch.await())
                             .bind("errored", () => errorSignal.isDone())
-                            .map(({ errored }) => !errored);
+                            .map(({ errored }) => !errored)
                         }
                         case "BufferSliding": {
                           return Effect.Do()
@@ -161,7 +161,7 @@ export function mergeAllWith_<
                             )
                             .tap(({ latch }) => latch.await())
                             .bind("errored", () => errorSignal.isDone())
-                            .map(({ errored }) => !errored);
+                            .map(({ errored }) => !errored)
                         }
                       }
                     }
@@ -189,14 +189,14 @@ export function mergeAllWith_<
               (outElem) => Channel.write(outElem) > consumer
             )
         )
-      );
+      )
 
-      return consumer;
+      return consumer
     })
-  );
+  )
 }
 
 /**
  * @tsplus static ets/Channel/Aspects mergeAllWith
  */
-export const mergeAllWith = Pipeable(mergeAllWith_);
+export const mergeAllWith = Pipeable(mergeAllWith_)

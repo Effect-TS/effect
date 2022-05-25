@@ -1,35 +1,35 @@
-export const NumberServiceId = Symbol.for("@effect/core/test/stream/Stream/NumberService");
-export type NumberServiceId = typeof NumberServiceId;
+export const NumberServiceId = Symbol.for("@effect/core/test/stream/Stream/NumberService")
+export type NumberServiceId = typeof NumberServiceId
 
 export interface NumberService {
-  readonly n: number;
+  readonly n: number
 }
 
-export const NumberService = Tag<NumberService>();
+export const NumberService = Tag<NumberService>()
 
 export class NumberServiceImpl implements NumberService, Equals {
-  readonly [NumberServiceId]: NumberServiceId = NumberServiceId;
+  readonly [NumberServiceId]: NumberServiceId = NumberServiceId
 
   constructor(readonly n: number) {}
 
   [Hash.sym](): number {
-    return Hash.number(this.n);
+    return Hash.number(this.n)
   }
 
   [Equals.sym](u: unknown): boolean {
-    return isNumberService(u) && u.n === this.n;
+    return isNumberService(u) && u.n === this.n
   }
 }
 
 export function isNumberService(u: unknown): u is NumberService {
-  return typeof u === "object" && u != null && NumberServiceId in u;
+  return typeof u === "object" && u != null && NumberServiceId in u
 }
 
 export interface ChunkCoordination<A> {
-  readonly queue: Queue<Exit<Option<never>, Chunk<A>>>;
-  readonly offer: Effect.UIO<boolean>;
-  readonly proceed: Effect.UIO<void>;
-  readonly awaitNext: Effect.UIO<void>;
+  readonly queue: Queue<Exit<Option<never>, Chunk<A>>>
+  readonly offer: Effect.UIO<boolean>
+  readonly proceed: Effect.UIO<void>
+  readonly awaitNext: Effect.UIO<void>
 }
 
 export function chunkCoordination<A>(
@@ -53,5 +53,5 @@ export function chunkCoordination<A>(
       ).flatMap((list) => queue.offerAll(list)),
       proceed: ps.offer(undefined).asUnit(),
       awaitNext: ps.take
-    }));
+    }))
 }

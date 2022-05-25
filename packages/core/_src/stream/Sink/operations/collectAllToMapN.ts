@@ -16,8 +16,8 @@ export function collectAllToMapN<In, K>(
     (acc, in_) => (acc.has(key(in_)) ? 0 : 1),
     n,
     (acc, in_) => {
-      const k = key(in_);
-      return acc.has(k) ? acc.update(k, (v) => f(v, in_)) : acc.set(k, in_);
+      const k = key(in_)
+      return acc.has(k) ? acc.update(k, (v) => f(v, in_)) : acc.set(k, in_)
     }
-  );
+  )
 }

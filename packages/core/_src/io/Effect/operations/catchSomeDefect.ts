@@ -15,7 +15,7 @@ export function catchSomeDefect_<R, E, A, R2, E2, A2>(
 ): Effect<R & R2, E | E2, A | A2> {
   return self
     .unrefineWith(pf, Effect.failNow)
-    .catchAll((s): Effect<R2, E | E2, A2> => s);
+    .catchAll((s): Effect<R2, E | E2, A2> => s)
 }
 
 /**
@@ -28,4 +28,4 @@ export function catchSomeDefect_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Effect/Aspects catchSomeDefect
  */
-export const catchSomeDefect = Pipeable(catchSomeDefect_);
+export const catchSomeDefect = Pipeable(catchSomeDefect_)

@@ -25,8 +25,8 @@ export function loop<Z>(
     body: (z: Z) => Effect<R, E, A>,
     __tsplusTrace?: string
   ): Effect<R, E, Chunk<A>> => {
-    return loopInternal(initial, cont, inc, body).map((listBuffer) => Chunk.from(listBuffer));
-  };
+    return loopInternal(initial, cont, inc, body).map((listBuffer) => Chunk.from(listBuffer))
+  }
 }
 
 function loopInternal<Z, R, E, A>(
@@ -37,14 +37,14 @@ function loopInternal<Z, R, E, A>(
   __tsplusTrace?: string
 ): Effect<R, E, ListBuffer<A>> {
   return Effect.suspendSucceed(() => {
-    const initial0 = initial();
+    const initial0 = initial()
     return cont(initial0)
       ? body(initial0).flatMap((a) =>
         loopInternal(inc(initial0), cont, inc, body).map((as) => {
-          as.prepend(a);
-          return as;
+          as.prepend(a)
+          return as
         })
       )
-      : Effect.succeed(ListBuffer.empty());
-  });
+      : Effect.succeed(ListBuffer.empty())
+  })
 }

@@ -9,7 +9,7 @@ export function dimap_<State, Env, In, Out, In2, Out2>(
   f: (in2: In2) => In,
   g: (out: Out) => Out2
 ): Schedule<State, Env, In2, Out2> {
-  return self.contramap(f).map(g);
+  return self.contramap(f).map(g)
 }
 
 /**
@@ -17,4 +17,4 @@ export function dimap_<State, Env, In, Out, In2, Out2>(
  *
  * @tsplus static ets/Schedule/Aspects dimap
  */
-export const dimap = Pipeable(dimap_);
+export const dimap = Pipeable(dimap_)

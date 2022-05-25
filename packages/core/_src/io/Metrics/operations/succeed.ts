@@ -1,4 +1,4 @@
-import { constVoid } from "@tsplus/stdlib/data/Function";
+import { constVoid } from "@tsplus/stdlib/data/Function"
 
 /**
  * Creates a metric that ignores input and produces constant output.
@@ -10,5 +10,5 @@ export function succeed<Out>(out: LazyArg<Out>): Metric<void, unknown, Out> {
     undefined,
     constVoid,
     out
-  );
+  )
 }

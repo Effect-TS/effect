@@ -14,5 +14,5 @@ export function acquireReleaseInterruptible<R, E, A, R2, X>(
   release: LazyArg<Effect.RIO<R2, X>>,
   __tsplusTrace?: string
 ): Effect<R & R2 & Has<Scope>, E, A> {
-  return Effect.acquireReleaseInterruptibleExit(acquire, release);
+  return Effect.acquireReleaseInterruptibleExit(acquire, release)
 }

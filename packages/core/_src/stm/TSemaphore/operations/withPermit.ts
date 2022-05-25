@@ -6,5 +6,5 @@
  * @tsplus getter ets/TSemaphore withPermit
  */
 export function withPermit(self: TSemaphore, __tsplusTrace?: string) {
-  return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> => self.withPermits(1)(effect);
+  return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> => self.withPermits(1)(effect)
 }

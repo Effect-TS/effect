@@ -14,7 +14,7 @@ export function refineOrDieWith_<R, A, E, E1>(
       () => STM.dieNow(f(e)),
       (e1) => STM.failNow(e1)
     )
-  );
+  )
 }
 
 /**
@@ -23,4 +23,4 @@ export function refineOrDieWith_<R, A, E, E1>(
  *
  * @tsplus static ets/STM/Aspects refineOrDieWith
  */
-export const refineOrDieWith = Pipeable(refineOrDieWith_);
+export const refineOrDieWith = Pipeable(refineOrDieWith_)

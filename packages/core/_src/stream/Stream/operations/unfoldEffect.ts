@@ -11,5 +11,5 @@ export function unfoldEffect<S, R, E, A>(
   return Stream.unfoldChunkEffect<S, R, E, A>(
     s,
     (s) => f(s).map((option) => option.map(({ tuple: [a, s] }) => Tuple(Chunk.single(a), s)))
-  );
+  )
 }

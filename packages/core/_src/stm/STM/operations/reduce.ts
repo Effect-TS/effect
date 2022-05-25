@@ -11,5 +11,5 @@ export function reduce<A, Z, R, E>(
 ): STM<R, E, Z> {
   return STM.suspend(
     as().reduce(STM.succeed(z) as STM<R, E, Z>, (acc, el) => acc.flatMap((a) => f(a, el)))
-  );
+  )
 }

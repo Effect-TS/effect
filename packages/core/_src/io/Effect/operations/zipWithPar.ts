@@ -1,4 +1,4 @@
-import { IRaceWith } from "@effect/core/io/Effect/definition/primitives";
+import { IRaceWith } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Sequentially zips this effect with the specified effect using the
@@ -12,7 +12,7 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
   f: (a: A, b: A2) => B,
   __tsplusTrace?: string
 ): Effect<R & R2, E | E2, B> {
-  const g = (b: A2, a: A) => f(a, b);
+  const g = (b: A2, a: A) => f(a, b)
   return Effect.transplant((graft) =>
     Effect.descriptorWith((d) =>
       new IRaceWith(
@@ -22,7 +22,7 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
         (winner, loser) => coordinate<E | E2, B, A2, A>(d.id, g, false, winner, loser)
       )
     )
-  );
+  )
 }
 
 /**
@@ -31,7 +31,7 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
  *
  * @tsplus static ets/Effect/Aspects zipWithPar
  */
-export const zipWithPar = Pipeable(zipWithPar_);
+export const zipWithPar = Pipeable(zipWithPar_)
 
 function coordinate<E, B, X, Y>(
   fiberId: FiberId,
@@ -58,5 +58,5 @@ function coordinate<E, B, X, Y>(
           )
         )
     )
-  );
+  )
 }

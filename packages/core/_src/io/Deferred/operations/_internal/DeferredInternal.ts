@@ -1,10 +1,10 @@
-import { _A, _E, DeferredSym } from "@effect/core/io/Deferred/definition";
-import type { DeferredState } from "@effect/core/io/Deferred/operations/_internal/DeferredState";
+import { _A, _E, DeferredSym } from "@effect/core/io/Deferred/definition"
+import type { DeferredState } from "@effect/core/io/Deferred/operations/_internal/DeferredState"
 
 export class DeferredInternal<E, A> implements Deferred<E, A> {
-  readonly [DeferredSym]: DeferredSym = DeferredSym;
-  readonly [_E]!: () => E;
-  readonly [_A]!: () => A;
+  readonly [DeferredSym]: DeferredSym = DeferredSym
+  readonly [_E]!: () => E
+  readonly [_A]!: () => A
   constructor(
     readonly state: AtomicReference<DeferredState<E, A>>,
     readonly blockingOn: FiberId

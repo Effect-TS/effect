@@ -1,4 +1,4 @@
-import { Action, resource } from "@effect/core/test/io/Scope/test-utils";
+import { Action, resource } from "@effect/core/test/io/Scope/test-utils"
 
 describe.concurrent("Scope", () => {
   describe.concurrent("scoped", () => {
@@ -10,9 +10,9 @@ describe.concurrent("Scope", () => {
             .flatMap((id) => ref.update((chunk) => chunk.append(Action.Use(id))))
             .scoped()
         )
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
       assert.isTrue(
         result == Chunk(
@@ -20,7 +20,7 @@ describe.concurrent("Scope", () => {
           Action.Use(1),
           Action.Release(1)
         )
-      );
-    });
-  });
-});
+      )
+    })
+  })
+})

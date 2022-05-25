@@ -13,11 +13,11 @@ describe.concurrent("Fiber", () => {
                   ? Option.some(status.blockingOn)
                   : Option.none
             )
-            .eventually());
+            .eventually())
 
-      const { blockingOn, f1 } = await program.unsafeRunPromise();
+      const { blockingOn, f1 } = await program.unsafeRunPromise()
 
-      assert.isTrue(blockingOn == f1.id());
-    });
-  });
-});
+      assert.isTrue(blockingOn == f1.id())
+    })
+  })
+})

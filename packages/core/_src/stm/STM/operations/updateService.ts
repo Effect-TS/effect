@@ -5,7 +5,7 @@
  */
 export function updateService_<R, E, A, T>(self: STM<R, E, A>, tag: Tag<T>) {
   return (f: (service: T) => T): STM<R & Has<T>, E, A> =>
-    self.provideSomeEnvironment((env) => env.merge(Env(tag, f(env.get(tag)))));
+    self.provideSomeEnvironment((env) => env.merge(Env(tag, f(env.get(tag)))))
 }
 
 /**
@@ -13,4 +13,4 @@ export function updateService_<R, E, A, T>(self: STM<R, E, A>, tag: Tag<T>) {
  *
  * @tsplus static ets/STM/Aspects updateService
  */
-export const updateService = Pipeable(updateService_);
+export const updateService = Pipeable(updateService_)

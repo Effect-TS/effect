@@ -1,6 +1,6 @@
 // TODO(Mike/Max): move this to `@effect/test`
-export const TestLoggerId = Symbol.for("@effect/core/test/TestLogger");
-export type TestLoggerId = typeof TestLoggerId;
+export const TestLoggerId = Symbol.for("@effect/core/test/TestLogger")
+export type TestLoggerId = typeof TestLoggerId
 
 /**
  * A `TestLogger` is an implementation of a `Logger` that writes all log
@@ -11,19 +11,19 @@ export type TestLoggerId = typeof TestLoggerId;
  * @tsplus type ets/TestLogger
  */
 export interface TestLogger<Message, Output> extends Logger<Message, Output> {
-  readonly [TestLoggerId]: TestLoggerId;
-  readonly logOutput: Effect.UIO<ImmutableArray<LogEntry>>;
+  readonly [TestLoggerId]: TestLoggerId
+  readonly logOutput: Effect.UIO<ImmutableArray<LogEntry>>
 }
 
 /**
  * @tsplus type ets/TestLogger/Ops
  */
 export interface TestLoggerOps {
-  Tag: Service.Tag<TestLogger<string, void>>;
+  Tag: Service.Tag<TestLogger<string, void>>
 }
 export const TestLogger: TestLoggerOps = {
   Tag: Tag<TestLogger<string, void>>()
-};
+}
 
 /**
  * @tsplus unify ets/Logger
@@ -34,14 +34,14 @@ export function unifyLogger<X extends TestLogger<any, any>>(
   [X] extends [TestLogger<infer MX, any>] ? MX : never,
   [X] extends [TestLogger<any, infer OX>] ? OX : never
 > {
-  return self;
+  return self
 }
 
 /**
  * @tsplus static ets/TestLogger/Ops isTestLogger
  */
 export function isTestLogger(u: unknown): u is TestLogger<unknown, unknown> {
-  return typeof u === "object" && u != null && TestLoggerId in u;
+  return typeof u === "object" && u != null && TestLoggerId in u
 }
 
 /**
@@ -70,7 +70,7 @@ export class LogEntry {
       this.context,
       this.spans,
       this.annotations
-    );
+    )
   }
 }
 
@@ -78,7 +78,7 @@ export class LogEntry {
  * @tsplus static ets/TestLogger/Ops make
  */
 export const makeTestLogger: Effect.UIO<TestLogger<string, void>> = Effect.succeed(() => {
-  const logOutput = new AtomicReference<ImmutableArray<LogEntry>>(ImmutableArray.empty());
+  const logOutput = new AtomicReference<ImmutableArray<LogEntry>>(ImmutableArray.empty())
   return {
     [TestLoggerId]: TestLoggerId,
     apply: (
@@ -91,7 +91,7 @@ export const makeTestLogger: Effect.UIO<TestLogger<string, void>> = Effect.succe
       spans,
       annotations
     ): void => {
-      const oldState = logOutput.get;
+      const oldState = logOutput.get
       logOutput.set(
         oldState.append(
           new LogEntry(
@@ -105,11 +105,11 @@ export const makeTestLogger: Effect.UIO<TestLogger<string, void>> = Effect.succe
             annotations
           )
         )
-      );
+      )
     },
     logOutput: Effect.succeed(logOutput.get)
-  };
-});
+  }
+})
 
 /**
  * A layer which constructs a new `TestLogger` and runs the effect it is
@@ -128,7 +128,7 @@ export const defaultTestLogger: Layer<unknown, never, Has<TestLogger<string, voi
     .bindValue("release", ({ runtimeConfig }) => Effect.setRuntimeConfig(runtimeConfig))
     .tap(({ acquire, release }) => Effect.acquireRelease(acquire, () => release))
     .map(({ testLogger }) => testLogger)
-);
+)
 
 /**
  * Accesses the contents of the current test logger.
@@ -140,4 +140,4 @@ export const logOutput: Effect.UIO<ImmutableArray<LogEntry>> = Effect.runtimeCon
     runtimeConfig.value.loggers.asList().head().flatMap((logger) =>
       isTestLogger(logger) ? Option.some(logger.logOutput) : Option.none
     ).getOrElse(Effect.dieMessage("Defect: TestLogger is missing"))
-);
+)

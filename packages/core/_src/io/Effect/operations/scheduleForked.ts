@@ -9,7 +9,7 @@ export function scheduleForked_<R, E, A, S, R1, A1>(
   schedule: LazyArg<Schedule<S, R1, unknown, A1>>,
   __tsplusTrace?: string
 ): Effect<R & R1 & Has<Scope>, E, Fiber.Runtime<unknown, A1>> {
-  return self.schedule(schedule).forkScoped();
+  return self.schedule(schedule).forkScoped()
 }
 
 /**
@@ -23,5 +23,5 @@ export function scheduleForked<S, R1, A1>(
   __tsplusTrace?: string
 ): <R, E, A>(self: Effect<R, E, A>) => Effect<R & R1 & Has<Scope>, E, Fiber.Runtime<unknown, A1>> {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R & R1 & Has<Scope>, E, Fiber.Runtime<unknown, A1>> =>
-    self.scheduleForked(schedule);
+    self.scheduleForked(schedule)
 }

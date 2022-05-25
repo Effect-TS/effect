@@ -1,7 +1,7 @@
-import type { MergeDecision } from "@effect/core/stream/Channel/MergeDecision";
-import { concreteMergeDecision } from "@effect/core/stream/Channel/MergeDecision";
-import { MergeState } from "@effect/core/stream/Channel/MergeState";
-import { SingleProducerAsyncInput } from "@effect/core/stream/Channel/SingleProducerAsyncInput";
+import type { MergeDecision } from "@effect/core/stream/Channel/MergeDecision"
+import { concreteMergeDecision } from "@effect/core/stream/Channel/MergeDecision"
+import { MergeState } from "@effect/core/stream/Channel/MergeState"
+import { SingleProducerAsyncInput } from "@effect/core/stream/Channel/SingleProducerAsyncInput"
 
 /**
  * Returns a new channel, which is the merge of this channel and the specified
@@ -68,7 +68,7 @@ export function mergeWith_<
         OutDone,
         OutDone1,
         OutDone2 | OutDone3
-      >;
+      >
 
       const handleSide = <Err, Done, Err2, Done2>(
         exit: Exit<Err, Either<Done, OutElem | OutElem1>>,
@@ -128,9 +128,9 @@ export function mergeWith_<
               OutDone2 | OutDone3
             >
           > => {
-            concreteMergeDecision(decision);
+            concreteMergeDecision(decision)
             if (decision._tag === "Done") {
-              return Effect.succeed(Channel.fromEffect(fiber.interrupt() > decision.io));
+              return Effect.succeed(Channel.fromEffect(fiber.interrupt() > decision.io))
             }
             return fiber.await().map((exit) =>
               exit.fold(
@@ -141,8 +141,8 @@ export function mergeWith_<
                     (elem) => Channel.write(elem) > go(single(decision.f))
                   )
               )
-            );
-          };
+            )
+          }
 
           return exit.fold(
             (cause) => onDecision(done(Exit.failCause(cause))),
@@ -155,8 +155,8 @@ export function mergeWith_<
                       Channel.fromEffect(pull.forkDaemon()).flatMap((leftFiber) => go(both(leftFiber, fiber)))
                   )
               )
-          );
-        };
+          )
+        }
 
       const go = (
         state: State
@@ -175,12 +175,12 @@ export function mergeWith_<
               Env1,
               OutErr,
               Either<OutDone, OutElem | OutElem1>
-            > = state.left.join();
+            > = state.left.join()
             const rj: Effect<
               Env1,
               OutErr1,
               Either<OutDone1, OutElem | OutElem1>
-            > = state.right.join();
+            > = state.right.join()
 
             return Channel.unwrap(
               lj.raceWith(
@@ -198,7 +198,7 @@ export function mergeWith_<
                     (_) => MergeState.RightDone(_)
                   )
               )
-            );
+            )
           }
           case "LeftDone": {
             return Channel.unwrap(
@@ -212,7 +212,7 @@ export function mergeWith_<
                     )
                 )
               )
-            );
+            )
           }
           case "RightDone": {
             return Channel.unwrap(
@@ -226,10 +226,10 @@ export function mergeWith_<
                     )
                 )
               )
-            );
+            )
           }
         }
-      };
+      }
 
       return Channel.fromEffect(
         pullL
@@ -250,8 +250,8 @@ export function mergeWith_<
           )
       )
         .flatMap(go)
-        .embedInput(input);
-    });
+        .embedInput(input)
+    })
 
-  return Channel.unwrapScoped(effect);
+  return Channel.unwrapScoped(effect)
 }

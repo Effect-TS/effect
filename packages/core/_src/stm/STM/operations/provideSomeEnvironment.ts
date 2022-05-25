@@ -1,4 +1,4 @@
-import { STMProvide } from "@effect/core/stm/STM/definition/primitives";
+import { STMProvide } from "@effect/core/stm/STM/definition/primitives"
 
 /**
  * Provides some of the environment required to run this effect,
@@ -10,7 +10,7 @@ export function provideSomeEnvironment_<R, E, A, R0>(
   self: STM<R, E, A>,
   f: (env: Env<R0>) => Env<R>
 ): STM<R0, E, A> {
-  return new STMProvide(self, f);
+  return new STMProvide(self, f)
 }
 
 /**
@@ -19,4 +19,4 @@ export function provideSomeEnvironment_<R, E, A, R0>(
  *
  * @tsplus static ets/STM/Aspects provideSomeEnvironment
  */
-export const provideSomeEnvironment = Pipeable(provideSomeEnvironment_);
+export const provideSomeEnvironment = Pipeable(provideSomeEnvironment_)

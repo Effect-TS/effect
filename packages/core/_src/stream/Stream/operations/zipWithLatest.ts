@@ -64,7 +64,7 @@ export function zipWithLatest_<R, E, A, R2, E2, A2, A3>(
           )
           .toPull()
       )
-  );
+  )
 }
 
 /**
@@ -78,11 +78,11 @@ export function zipWithLatest_<R, E, A, R2, E2, A2, A3>(
  *
  * @tsplus static ets/Stream/Aspects zipWithLatest
  */
-export const zipWithLatest = Pipeable(zipWithLatest_);
+export const zipWithLatest = Pipeable(zipWithLatest_)
 
 function pullNonEmpty<R, E, A>(
   pull: Effect<R, Option<E>, Chunk<A>>,
   __tsplusTrace?: string
 ): Effect<R, Option<E>, Chunk<A>> {
-  return pull.flatMap((chunk) => chunk.isEmpty() ? pullNonEmpty(pull) : Effect.succeedNow(chunk));
+  return pull.flatMap((chunk) => chunk.isEmpty() ? pullNonEmpty(pull) : Effect.succeedNow(chunk))
 }

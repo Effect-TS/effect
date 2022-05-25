@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Transforms the elements of this stream using the supplied function.
@@ -10,8 +10,8 @@ export function map_<R, E, A, B>(
   f: (a: A) => B,
   __tsplusTrace?: string
 ): Stream<R, E, B> {
-  concreteStream(self);
-  return new StreamInternal(self.channel.mapOut((chunk) => chunk.map(f)));
+  concreteStream(self)
+  return new StreamInternal(self.channel.mapOut((chunk) => chunk.map(f)))
 }
 
 /**
@@ -19,4 +19,4 @@ export function map_<R, E, A, B>(
  *
  * @tsplus static ets/Stream/Aspects map
  */
-export const map = Pipeable(map_);
+export const map = Pipeable(map_)

@@ -12,5 +12,5 @@ export function concatAll<Env, InErr, InElem, InDone, OutErr, OutElem>(
     any
   >
 ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, any> {
-  return Channel.concatAllWith(channels, () => undefined, () => undefined);
+  return Channel.concatAllWith(channels, () => undefined, () => undefined)
 }

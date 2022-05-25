@@ -28,15 +28,15 @@ export function bind_<
   InDone & InDone1,
   OutErr | OutErr1,
   OutElem | OutElem1,
-  K & { [k in N]: OutDone; }
+  K & { [k in N]: OutDone }
 > {
-  return self.flatMap((k) => f(k).map((a): K & { [k in N]: OutDone; } => ({ ...k, [tag]: a } as any)));
+  return self.flatMap((k) => f(k).map((a): K & { [k in N]: OutDone } => ({ ...k, [tag]: a } as any)))
 }
 
 /**
  * @tsplus static ets/Channel/Aspects bind
  */
-export const bind = Pipeable(bind_);
+export const bind = Pipeable(bind_)
 
 /**
  * @tsplus fluent ets/Channel bindValue
@@ -62,19 +62,19 @@ export function bindValue_<
   InDone1,
   OutErr1,
   OutElem1,
-  K & { [k in N]: OutDone; }
+  K & { [k in N]: OutDone }
 > {
-  return self.map((k): K & { [k in N]: OutDone; } => ({ ...k, [tag]: f(k) } as any));
+  return self.map((k): K & { [k in N]: OutDone } => ({ ...k, [tag]: f(k) } as any))
 }
 
 /**
  * @tsplus static ets/Channel/Aspects bindValue
  */
-export const bindValue = Pipeable(bindValue_);
+export const bindValue = Pipeable(bindValue_)
 
 /**
  * @tsplus static ets/Channel/Ops Do
  */
 export function Do(): Channel<unknown, unknown, unknown, unknown, never, never, {}> {
-  return Channel.fromEffect(Effect.succeedNow({}));
+  return Channel.fromEffect(Effect.succeedNow({}))
 }

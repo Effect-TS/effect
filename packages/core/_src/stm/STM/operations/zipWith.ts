@@ -9,7 +9,7 @@ export function zipWith_<R, E, A, R1, E1, B, C>(
   that: LazyArg<STM<R1, E1, B>>,
   f: (a: A, b: B) => C
 ): STM<R1 & R, E | E1, C> {
-  return self.flatMap((a) => that().map((b) => f(a, b)));
+  return self.flatMap((a) => that().map((b) => f(a, b)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function zipWith_<R, E, A, R1, E1, B, C>(
  *
  * @tsplus static ets/STM/Aspects zipWith
  */
-export const zipWith = Pipeable(zipWith_);
+export const zipWith = Pipeable(zipWith_)

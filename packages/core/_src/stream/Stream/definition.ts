@@ -1,14 +1,14 @@
-export const StreamSym = Symbol.for("@effect/core/stream/Stream");
-export type StreamSym = typeof StreamSym;
+export const StreamSym = Symbol.for("@effect/core/stream/Stream")
+export type StreamSym = typeof StreamSym
 
-export const _R = Symbol.for("@effect/core/stream/Stream/R");
-export type _R = typeof _R;
+export const _R = Symbol.for("@effect/core/stream/Stream/R")
+export type _R = typeof _R
 
-export const _E = Symbol.for("@effect/core/stream/Stream/E");
-export type _E = typeof _E;
+export const _E = Symbol.for("@effect/core/stream/Stream/E")
+export type _E = typeof _E
 
-export const _A = Symbol.for("@effect/core/stream/Stream/A");
-export type _A = typeof _A;
+export const _A = Symbol.for("@effect/core/stream/Stream/A")
+export type _A = typeof _A
 
 /**
  * A `Stream<R, E, A>` is a description of a program that, when evaluated, may
@@ -30,27 +30,27 @@ export type _A = typeof _A;
  * @tsplus type ets/Stream
  */
 export interface Stream<R, E, A> {
-  readonly [StreamSym]: StreamSym;
-  readonly [_R]: (_: R) => void;
-  readonly [_E]: () => E;
-  readonly [_A]: () => A;
+  readonly [StreamSym]: StreamSym
+  readonly [_R]: (_: R) => void
+  readonly [_E]: () => E
+  readonly [_A]: () => A
 }
 
 export declare namespace Stream {
-  export type IO<E, A> = Stream<unknown, E, A>;
-  export type RIO<R, A> = Stream<R, never, A>;
-  export type UIO<A> = Stream<unknown, never, A>;
+  export type IO<E, A> = Stream<unknown, E, A>
+  export type RIO<R, A> = Stream<R, never, A>
+  export type UIO<A> = Stream<unknown, never, A>
 }
 
 /**
  * @tsplus type ets/Stream/Ops
  */
 export interface StreamOps {
-  $: StreamAspects;
+  $: StreamAspects
 }
 export const Stream: StreamOps = {
   $: {}
-};
+}
 
 /**
  * @tsplus type ets/Stream/Aspects
@@ -61,7 +61,7 @@ export interface StreamAspects {}
  * The default chunk size used by the various combinators and constructors of
  * `Stream`.
  */
-export const DEFAULT_CHUNK_SIZE = 4096;
+export const DEFAULT_CHUNK_SIZE = 4096
 
 /**
  * Determines if the provided `unknown` value is a `Stream`.
@@ -69,5 +69,5 @@ export const DEFAULT_CHUNK_SIZE = 4096;
  * @tsplus static ets/Stream/Ops isStream
  */
 export function isStream(u: unknown): u is Stream<unknown, unknown, unknown> {
-  return typeof u === "object" && u != null && StreamSym in u;
+  return typeof u === "object" && u != null && StreamSym in u
 }

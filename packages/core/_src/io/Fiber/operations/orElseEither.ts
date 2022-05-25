@@ -10,7 +10,7 @@ export function orElseEither_<E, E1, A, B>(
   self: Fiber<E, A>,
   that: LazyArg<Fiber<E1, B>>
 ): Fiber<E | E1, Either<A, B>> {
-  return self.map(Either.left) | that().map(Either.right);
+  return self.map(Either.left) | that().map(Either.right)
 }
 
 /**
@@ -20,4 +20,4 @@ export function orElseEither_<E, E1, A, B>(
  *
  * @tsplus static ets/Fiber/Aspects orElseEither
  */
-export const orElseEither = Pipeable(orElseEither_);
+export const orElseEither = Pipeable(orElseEither_)

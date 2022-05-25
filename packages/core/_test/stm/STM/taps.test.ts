@@ -1,4 +1,4 @@
-import { STMEnv } from "@effect/core/test/stm/STM/test-utils";
+import { STMEnv } from "@effect/core/test/stm/STM/test-utils"
 
 describe.concurrent("STM", () => {
   describe.concurrent("STM environment", () => {
@@ -9,12 +9,12 @@ describe.concurrent("STM", () => {
             .commit()
             .provideEnvironment(Env(STMEnv.Tag, env))
         )
-        .flatMap((env) => env.ref.get().commit());
+        .flatMap((env) => env.ref.get().commit())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 1);
-    });
+      assert.strictEqual(result, 1)
+    })
 
     it("access environment and provide it inside transaction", async () => {
       const program = STMEnv.make(0)
@@ -23,13 +23,13 @@ describe.concurrent("STM", () => {
             .provideEnvironment(Env(STMEnv.Tag, env))
             .commit()
         )
-        .flatMap((env) => env.ref.get().commit());
+        .flatMap((env) => env.ref.get().commit())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 1);
-    });
-  });
+      assert.strictEqual(result, 1)
+    })
+  })
 
   describe.concurrent("taps", () => {
     it("tap should apply the transactional function to the effect result while keeping the effect itself", async () => {
@@ -38,13 +38,13 @@ describe.concurrent("STM", () => {
         .bind("refB", () => TRef.make(0))
         .bind("a", ({ refA, refB }) => refA.get().tap((n) => refB.set(n + 1)))
         .bind("b", ({ refB }) => refB.get())
-        .commit();
+        .commit()
 
-      const { a, b } = await program.unsafeRunPromise();
+      const { a, b } = await program.unsafeRunPromise()
 
-      assert.strictEqual(a, 10);
-      assert.strictEqual(b, 11);
-    });
+      assert.strictEqual(a, 10)
+      assert.strictEqual(b, 11)
+    })
 
     // TODO: implement after TPromise
     it("tapBoth applies the success function to success values while keeping the effect intact", async () => {
@@ -57,7 +57,7 @@ describe.concurrent("STM", () => {
       //     tappedSuccess <- tapSuccess.await
       //   } yield (result, tappedSuccess)
       // assertM(tx.commit)(equalTo((42, 42)))
-    });
+    })
 
     // TODO: implement after TPromise
     it("tapBoth applies the function to error and successful values while keeping the effect itself on error", async () => {
@@ -70,7 +70,7 @@ describe.concurrent("STM", () => {
       //     tappedError <- tapError.await
       //   } yield (result, tappedError)
       // assertM(tx.commit)(equalTo((Left("error"), "error")))
-    });
+    })
 
     // TODO: implement after TPromise
     it("tapError should apply the transactional function to the error result while keeping the effect itself", async () => {
@@ -82,6 +82,6 @@ describe.concurrent("STM", () => {
       //     tappedError <- errorRef.await
       //   } yield (result, tappedError)
       // assertM(tx.commit)(equalTo((Left("error"), "error")))
-    });
-  });
-});
+    })
+  })
+})

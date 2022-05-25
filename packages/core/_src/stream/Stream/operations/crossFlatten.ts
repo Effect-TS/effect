@@ -1,5 +1,5 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
-import type { MergeTuple } from "@tsplus/stdlib/data/Tuple";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
 
 /**
  * Composes this stream with the specified stream to create a cartesian
@@ -15,14 +15,14 @@ export function crossFlatten_<R, E, A, R2, E2, B>(
   that: LazyArg<Stream<R2, E2, B>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, MergeTuple<A, B>> {
-  concreteStream(self);
+  concreteStream(self)
   return new StreamInternal(
     self.channel.concatMap((a) => {
-      const that0 = that();
-      concreteStream(that0);
-      return that0.channel.mapOut((b) => a.flatMap((a) => b.map((b) => Tuple.mergeTuple(a, b))));
+      const that0 = that()
+      concreteStream(that0)
+      return that0.channel.mapOut((b) => a.flatMap((a) => b.map((b) => Tuple.mergeTuple(a, b))))
     })
-  );
+  )
 }
 
 /**
@@ -34,4 +34,4 @@ export function crossFlatten_<R, E, A, R2, E2, B>(
  *
  * @tsplus static ets/Stream/Aspects crossFlatten
  */
-export const crossFlatten = Pipeable(crossFlatten_);
+export const crossFlatten = Pipeable(crossFlatten_)

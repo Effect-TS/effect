@@ -1,5 +1,5 @@
-import { Decision } from "@effect/core/io/Schedule/Decision";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import { Decision } from "@effect/core/io/Schedule/Decision"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * Returns a new schedule that passes each input and output of this schedule
@@ -24,7 +24,7 @@ export function checkEffect_<State, Env, In, Out, Env1>(
               ? Tuple(state, out, Decision.Continue(decision.interval))
               : Tuple(state, out, Decision.Done)
           )
-      ));
+      ))
 }
 
 /**
@@ -34,4 +34,4 @@ export function checkEffect_<State, Env, In, Out, Env1>(
  *
  * @tsplus static ets/Schedule/Aspects checkEffect
  */
-export const checkEffect = Pipeable(checkEffect_);
+export const checkEffect = Pipeable(checkEffect_)

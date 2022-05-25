@@ -9,7 +9,7 @@ export function fixed_<R, E, A>(
   duration: LazyArg<Duration>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  return self.schedule(Schedule.fixed(duration));
+  return self.schedule(Schedule.fixed(duration))
 }
 
 /**
@@ -18,4 +18,4 @@ export function fixed_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects fixed
  */
-export const fixed = Pipeable(fixed_);
+export const fixed = Pipeable(fixed_)

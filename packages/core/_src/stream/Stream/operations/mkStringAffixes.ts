@@ -12,7 +12,7 @@ export function mkStringAffixes_<R, E, A>(
   end: LazyArg<string>,
   __tsplusTrace?: string
 ): Effect<R, E, string> {
-  return self.intersperseAffixes(start, middle, end).mkString();
+  return self.intersperseAffixes(start, middle, end).mkString()
 }
 
 /**
@@ -22,4 +22,4 @@ export function mkStringAffixes_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects mkStringAffixes
  */
-export const mkStringAffixes = Pipeable(mkStringAffixes_);
+export const mkStringAffixes = Pipeable(mkStringAffixes_)

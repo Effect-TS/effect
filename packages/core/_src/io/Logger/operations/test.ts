@@ -14,10 +14,10 @@ export function test_<Message, Output>(
     ImmutableMap.empty(),
     List.empty(),
     ImmutableMap.empty()
-  );
+  )
 }
 
 /**
  * @tsplus static ets/Logger/Aspects test
  */
-export const test = Pipeable(test_);
+export const test = Pipeable(test_)

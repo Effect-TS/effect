@@ -1,4 +1,4 @@
-import { concreteGroupBy } from "@effect/core/stream/GroupBy/operations/_internal/GroupByInternal";
+import { concreteGroupBy } from "@effect/core/stream/GroupBy/operations/_internal/GroupByInternal"
 
 /**
  * Only consider the first `n` groups found in the stream.
@@ -9,8 +9,8 @@ export function first_<R, E, K, V, A>(
   self: GroupBy<R, E, K, V, A>,
   n: number
 ): GroupBy<R, E, K, V, A> {
-  concreteGroupBy(self);
-  return self.first(n);
+  concreteGroupBy(self)
+  return self.first(n)
 }
 
 /**
@@ -18,4 +18,4 @@ export function first_<R, E, K, V, A>(
  *
  * @tsplus static ets/GroupBy/Aspects first
  */
-export const first = Pipeable(first_);
+export const first = Pipeable(first_)

@@ -9,7 +9,7 @@ export function retryWhileEffect_<R, R1, E, A>(
   f: (e: E) => Effect.RIO<R1, boolean>,
   __tsplusTrace?: string
 ): Effect<R & R1, E, A> {
-  return self.retryUntilEffect((e) => f(e).negate());
+  return self.retryUntilEffect((e) => f(e).negate())
 }
 
 /**
@@ -18,4 +18,4 @@ export function retryWhileEffect_<R, R1, E, A>(
  *
  * @tsplus static ets/Effect/Aspects retryWhileEffect
  */
-export const retryWhileEffect = Pipeable(retryWhileEffect_);
+export const retryWhileEffect = Pipeable(retryWhileEffect_)

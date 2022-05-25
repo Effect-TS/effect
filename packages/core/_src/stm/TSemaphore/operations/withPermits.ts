@@ -12,7 +12,7 @@ export function withPermits_(self: TSemaphore, permits: number, __tsplusTrace?: 
       ({ restore }) =>
         restore(self.acquireN(permits).commit()) >
           restore(effect).ensuring(self.releaseN(permits).commit())
-    );
+    )
 }
 
 /**
@@ -23,4 +23,4 @@ export function withPermits_(self: TSemaphore, permits: number, __tsplusTrace?: 
  *
  * @tsplus static ets/TSemaphore/Aspects withPermits
  */
-export const withPermits = Pipeable(withPermits_);
+export const withPermits = Pipeable(withPermits_)

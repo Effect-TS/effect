@@ -15,5 +15,5 @@ export function makePatch<Value, Patch>(
 ): Effect<Has<Scope>, never, FiberRef<Value, Patch>> {
   return FiberRef.makeWith(
     FiberRef.unsafeMakePatch(initial, diff, combine, patch, fork)
-  );
+  )
 }

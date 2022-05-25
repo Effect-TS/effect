@@ -7,5 +7,5 @@
  */
 export function mergeAll(n: number, outputBuffer = 16, __tsplusTrace?: string) {
   return <R, E, A>(...streams: Array<Stream<R, E, A>>): Stream<R, E, A> =>
-    Stream.fromCollection(streams).flattenPar(n, outputBuffer);
+    Stream.fromCollection(streams).flattenPar(n, outputBuffer)
 }

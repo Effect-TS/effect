@@ -1,4 +1,4 @@
-import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * A sink that immediately ends with the specified value.
@@ -9,5 +9,5 @@ export function succeed<Z>(
   z: LazyArg<Z>,
   __tsplusTrace?: string
 ): Sink<unknown, never, unknown, never, Z> {
-  return new SinkInternal(Channel.succeed(z));
+  return new SinkInternal(Channel.succeed(z))
 }

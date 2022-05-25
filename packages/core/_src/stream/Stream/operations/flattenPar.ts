@@ -11,5 +11,5 @@ export function flattenPar<R, E, A, R1, E1>(
   outputBuffer = 16,
   __tsplusTrace?: string
 ): Stream<R & R1, E | E1, A> {
-  return self.flatMapPar(n, identity, outputBuffer);
+  return self.flatMapPar(n, identity, outputBuffer)
 }

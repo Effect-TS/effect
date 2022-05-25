@@ -7,7 +7,7 @@ export function flatMap_<R, E, A, R2, E2, A2>(
   self: Layer<R, E, A>,
   f: (a: Env<A>) => Layer<R2, E2, A2>
 ): Layer<R & R2, E | E2, A2> {
-  return self.foldLayer((e) => Layer.fail(e), f);
+  return self.foldLayer((e) => Layer.fail(e), f)
 }
 
 /**
@@ -15,4 +15,4 @@ export function flatMap_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Layer/Aspects flatMap
  */
-export const flatMap = Pipeable(flatMap_);
+export const flatMap = Pipeable(flatMap_)

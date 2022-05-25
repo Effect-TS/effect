@@ -1,9 +1,9 @@
-import { constFalse, constTrue } from "@tsplus/stdlib/data/Function";
+import { constFalse, constTrue } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Layer", () => {
   describe.concurrent("acquisition", () => {
     it("layers can be acquired in parallel", async () => {
-      const BoolTag = Tag();
+      const BoolTag = Tag()
       const test = Effect.Do()
         .bind("deferred", () => Deferred.make<never, void>())
         .bindValue("layer1", () => Layer.fromEffectEnvironment(Effect.never))
@@ -18,22 +18,22 @@ describe.concurrent("Layer", () => {
         .bind("fiber", ({ env }) => Effect.scoped(env).forkDaemon())
         .tap(({ deferred }) => deferred.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .map(constTrue);
+        .map(constTrue)
 
       // Given the use of `Managed.never`, race the test against a 10 second
       // timer and fail the test if the computation doesn't complete. This delay
       // time may be increased if it turns out this test is flaky.
       const program = Effect.sleep((10).seconds)
         .zipRight(Effect.succeed(constFalse))
-        .race(test);
+        .race(test)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("preserves identity of acquired resources", async () => {
-      const ChunkTag = Tag<Ref<Chunk<string>>>();
+      const ChunkTag = Tag<Ref<Chunk<string>>>()
 
       const program = Effect.Do()
         .bind("testRef", () => Ref.make(Chunk.empty<string>()))
@@ -49,11 +49,11 @@ describe.concurrent("Layer", () => {
               .flatMap((env) => env.get(ChunkTag).update((chunk) => chunk.append("test")))
           )
         )
-        .flatMap(({ testRef }) => testRef.get());
+        .flatMap(({ testRef }) => testRef.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk.single("test"));
-    });
-  });
-});
+      assert.isTrue(result == Chunk.single("test"))
+    })
+  })
+})

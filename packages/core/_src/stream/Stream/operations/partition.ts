@@ -15,7 +15,7 @@ export function partition_<R, E, A>(
   return self.partitionEither(
     (a) => p(a) ? Effect.succeedNow(Either.left(a)) : Effect.succeedNow(Either.right(a)),
     buffer
-  );
+  )
 }
 
 /**
@@ -26,4 +26,4 @@ export function partition_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects partition
  */
-export const partition = Pipeable(partition_);
+export const partition = Pipeable(partition_)

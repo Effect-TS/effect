@@ -11,7 +11,7 @@ export function ensuringChildren_<R, E, A, R1, X>(
 ): Effect<R & R1, E, A> {
   return Supervisor.track().flatMap((supervisor) =>
     self.supervised(supervisor).ensuring(supervisor.value.flatMap(children))
-  );
+  )
 }
 
 /**
@@ -20,4 +20,4 @@ export function ensuringChildren_<R, E, A, R1, X>(
  *
  * @tsplus static ets/Effect/Aspects ensuringChildren
  */
-export const ensuringChildren = Pipeable(ensuringChildren_);
+export const ensuringChildren = Pipeable(ensuringChildren_)

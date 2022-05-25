@@ -1,26 +1,26 @@
-import { zipChunks } from "@effect/core/stream/Stream/operations/_internal/zipChunks";
+import { zipChunks } from "@effect/core/stream/Stream/operations/_internal/zipChunks"
 
-type State<A, A2> = DrainLeft | DrainRight | PullBoth | PullLeft<A2> | PullRight<A>;
+type State<A, A2> = DrainLeft | DrainRight | PullBoth | PullLeft<A2> | PullRight<A>
 
 class DrainLeft {
-  readonly _tag = "DrainLeft";
+  readonly _tag = "DrainLeft"
 }
 
 class DrainRight {
-  readonly _tag = "DrainRight";
+  readonly _tag = "DrainRight"
 }
 
 class PullBoth {
-  readonly _tag = "PullBoth";
+  readonly _tag = "PullBoth"
 }
 
 class PullLeft<A2> {
-  readonly _tag = "PullLeft";
+  readonly _tag = "PullLeft"
   constructor(readonly rightChunk: Chunk<A2>) {}
 }
 
 class PullRight<A> {
-  readonly _tag = "PullRight";
+  readonly _tag = "PullRight"
   constructor(readonly leftChunk: Chunk<A>) {}
 }
 
@@ -45,7 +45,7 @@ export function zipAllWith_<R, E, A, R2, E2, A2, A3>(
     that,
     (): State<A, A2> => new PullBoth(),
     pull(left, right, both)
-  );
+  )
 }
 
 /**
@@ -57,7 +57,7 @@ export function zipAllWith_<R, E, A, R2, E2, A2, A3>(
  *
  * @tsplus static ets/Stream/Aspects zipAllWith
  */
-export const zipAllWith = Pipeable(zipAllWith_);
+export const zipAllWith = Pipeable(zipAllWith_)
 
 function zipWithChunks<A, A2, A3>(
   leftChunk: Chunk<A>,
@@ -67,7 +67,7 @@ function zipWithChunks<A, A2, A3>(
 ): Tuple<[Chunk<A3>, State<A, A2>]> {
   const {
     tuple: [out, either]
-  } = zipChunks(leftChunk, rightChunk, f);
+  } = zipChunks(leftChunk, rightChunk, f)
   return either.fold(
     (leftChunk) =>
       leftChunk.isEmpty()
@@ -77,7 +77,7 @@ function zipWithChunks<A, A2, A3>(
       rightChunk.isEmpty()
         ? Tuple(out, new PullBoth())
         : Tuple(out, new PullLeft(rightChunk))
-  );
+  )
 }
 
 function pull<A, A2, A3>(
@@ -96,7 +96,7 @@ function pull<A, A2, A3>(
         return pullLeft.foldEffect(
           (err) => Effect.succeedNow(Exit.fail(err)),
           (leftChunk) => Effect.succeedNow(Exit.succeed(Tuple(leftChunk.map(left), new DrainLeft())))
-        );
+        )
       }
       case "DrainRight": {
         return pullRight.foldEffect(
@@ -105,7 +105,7 @@ function pull<A, A2, A3>(
             Effect.succeedNow(
               Exit.succeed(Tuple(rightChunk.map(right), new DrainRight()))
             )
-        );
+        )
       }
       case "PullBoth": {
         return pullLeft
@@ -115,40 +115,40 @@ function pull<A, A2, A3>(
             (err) => Effect.succeedNow(Exit.fail(Option.some(err))),
             ({ tuple: [l, r] }) => {
               if (l._tag === "Some" && r._tag === "Some") {
-                const leftChunk = l.value;
-                const rightChunk = r.value;
+                const leftChunk = l.value
+                const rightChunk = r.value
                 if (leftChunk.isEmpty() && rightChunk.isEmpty()) {
-                  return pull(left, right, both)(new PullBoth(), pullLeft, pullRight);
+                  return pull(left, right, both)(new PullBoth(), pullLeft, pullRight)
                 } else if (leftChunk.isEmpty()) {
                   return pull(left, right, both)(
                     new PullLeft(rightChunk),
                     pullLeft,
                     pullRight
-                  );
+                  )
                 } else if (rightChunk.isEmpty()) {
                   return pull(left, right, both)(
                     new PullRight(leftChunk),
                     pullLeft,
                     pullRight
-                  );
+                  )
                 } else {
                   return Effect.succeedNow(
                     Exit.succeed(zipWithChunks(leftChunk, rightChunk, both))
-                  );
+                  )
                 }
               } else if (l._tag === "Some" && r._tag === "None") {
                 return Effect.succeedNow(
                   Exit.succeed(Tuple(l.value.map(left), new DrainLeft()))
-                );
+                )
               } else if (l._tag === "None" && r._tag === "Some") {
                 return Effect.succeedNow(
                   Exit.succeed(Tuple(r.value.map(right), new DrainRight()))
-                );
+                )
               } else {
-                return Effect.succeedNow(Exit.fail(Option.none));
+                return Effect.succeedNow(Exit.fail(Option.none))
               }
             }
-          );
+          )
       }
       case "PullLeft": {
         return pullLeft.foldEffect(
@@ -174,7 +174,7 @@ function pull<A, A2, A3>(
               : Effect.succeedNow(
                 Exit.succeed(zipWithChunks(leftChunk, state.rightChunk, both))
               )
-        );
+        )
       }
       case "PullRight": {
         return pullRight.foldEffect(
@@ -198,8 +198,8 @@ function pull<A, A2, A3>(
               : Effect.succeedNow(
                 Exit.succeed(zipWithChunks(state.leftChunk, rightChunk, both))
               )
-        );
+        )
       }
     }
-  };
+  }
 }

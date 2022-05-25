@@ -1,4 +1,4 @@
-import { TerminationStrategy } from "@effect/core/stream/Stream/TerminationStrategy";
+import { TerminationStrategy } from "@effect/core/stream/Stream/TerminationStrategy"
 
 /**
  * Merges this stream and the specified stream together.
@@ -19,7 +19,7 @@ export function merge_<R, E, A, R2, E2, A2>(
     (a): A | A2 => a,
     (a): A | A2 => a,
     strategy
-  );
+  )
 }
 
 /**
@@ -30,4 +30,4 @@ export function merge_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Stream/Aspects merge
  */
-export const merge = Pipeable(merge_);
+export const merge = Pipeable(merge_)

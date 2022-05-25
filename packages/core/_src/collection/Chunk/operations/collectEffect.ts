@@ -1,4 +1,4 @@
-import { ArrTypeId, Chunk, concreteChunk, SingletonTypeId } from "@tsplus/stdlib/collections/Chunk/definition";
+import { ArrTypeId, Chunk, concreteChunk, SingletonTypeId } from "@tsplus/stdlib/collections/Chunk/definition"
 
 /**
  * Returns a filtered, mapped subset of the elements of this chunk based on a
@@ -11,28 +11,28 @@ export function collectEffect_<A, R, E, B>(
   f: (a: A) => Option<Effect<R, E, B>>,
   __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
-  concreteChunk(self);
+  concreteChunk(self)
 
   switch (self._typeId) {
     case SingletonTypeId: {
       return f(self.a).fold(
         () => Effect.succeedNow(Chunk.empty()),
         (b) => b.map(Chunk.single)
-      );
+      )
     }
     case ArrTypeId: {
-      const array = self._arrayLike();
-      let dest: Effect<R, E, Chunk<B>> = Effect.succeedNow(Chunk.empty<B>());
+      const array = self._arrayLike()
+      let dest: Effect<R, E, Chunk<B>> = Effect.succeedNow(Chunk.empty<B>())
       for (let i = 0; i < array.length; i++) {
-        const rhs = f(array[i]!);
+        const rhs = f(array[i]!)
         if (rhs.isSome()) {
-          dest = dest.zipWith(rhs.value, (a, b) => a.append(b));
+          dest = dest.zipWith(rhs.value, (a, b) => a.append(b))
         }
       }
-      return dest;
+      return dest
     }
     default: {
-      return collectEffect_(self._materialize(), f);
+      return collectEffect_(self._materialize(), f)
     }
   }
 }
@@ -43,4 +43,4 @@ export function collectEffect_<A, R, E, B>(
  *
  * @tsplus static Chunk/Aspects collectEffect
  */
-export const collectEffect = Pipeable(collectEffect_);
+export const collectEffect = Pipeable(collectEffect_)

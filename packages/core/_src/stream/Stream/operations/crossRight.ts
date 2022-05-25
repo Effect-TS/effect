@@ -13,7 +13,7 @@ export function crossRight_<R, E, A, R2, E2, B>(
   that: LazyArg<Stream<R2, E2, B>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, B> {
-  return self.cross(that).map((tuple) => tuple.get(1));
+  return self.cross(that).map((tuple) => tuple.get(1))
 }
 
 /**
@@ -25,4 +25,4 @@ export function crossRight_<R, E, A, R2, E2, B>(
  *
  * @tsplus static ets/Stream/Aspects crossRight
  */
-export const crossRight = Pipeable(crossRight_);
+export const crossRight = Pipeable(crossRight_)

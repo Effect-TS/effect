@@ -5,11 +5,11 @@ describe.concurrent("Stream", () => {
         0,
         (n) => n < 3,
         (a, b) => a + b
-      );
+      )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 3);
-    });
-  });
-});
+      assert.strictEqual(result, 3)
+    })
+  })
+})

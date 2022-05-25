@@ -18,7 +18,7 @@ export function drainFork_<R, E, A, R2, E2, Z>(
           .catchAllCause((cause) => backgroundDied.failCause(cause))
           .forkScoped()
       ) > self.interruptWhenDeferred(backgroundDied)
-  );
+  )
 }
 
 /**
@@ -28,4 +28,4 @@ export function drainFork_<R, E, A, R2, E2, Z>(
  *
  * @tsplus static ets/Stream/Aspects drainFork
  */
-export const drainFork = Pipeable(drainFork_);
+export const drainFork = Pipeable(drainFork_)

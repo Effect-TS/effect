@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Switches to the provided stream in case this one fails with a typed error.
@@ -13,14 +13,14 @@ export function orElse_<R, E, A, R2, E2, A2>(
   that: LazyArg<Stream<R2, E2, A2>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E2, A | A2> {
-  concreteStream(self);
+  concreteStream(self)
   return new StreamInternal(
     self.channel.orElse(() => {
-      const that0 = that();
-      concreteStream(that0);
-      return that0.channel;
+      const that0 = that()
+      concreteStream(that0)
+      return that0.channel
     })
-  );
+  )
 }
 
 /**
@@ -30,4 +30,4 @@ export function orElse_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Stream/Aspects orElse
  */
-export const orElse = Pipeable(orElse_);
+export const orElse = Pipeable(orElse_)

@@ -1,44 +1,44 @@
-export const numbers = Effect(0) + Effect(1) + Effect(2);
-export const numbersPar = Effect(0) & Effect(1) & Effect(2);
+export const numbers = Effect(0) + Effect(1) + Effect(2)
+export const numbersPar = Effect(0) & Effect(1) & Effect(2)
 
-export const isPositive = (n: number) => n > 0 ? Either("positive") : Either.left("negative");
+export const isPositive = (n: number) => n > 0 ? Either("positive") : Either.left("negative")
 
-export const isPositiveEff = (n: number) => n > 0 ? Effect("positive") : Effect.fail("negative");
+export const isPositiveEff = (n: number) => n > 0 ? Effect("positive") : Effect.fail("negative")
 
 export interface Foo {
-  readonly foo: string;
+  readonly foo: string
 }
 
-export const Foo = Service.Tag<Foo>();
+export const Foo = Service.Tag<Foo>()
 
 export interface Bar {
-  readonly bar: string;
+  readonly bar: string
 }
 
-export const Bar = Service.Tag<Bar>();
+export const Bar = Service.Tag<Bar>()
 
 export const switched = (n: number) => {
   switch (n) {
     case 0:
-      return Effect(0 as const);
+      return Effect(0 as const)
     case 1:
-      return Effect.fail(1 as const);
+      return Effect.fail(1 as const)
     case 2:
-      return Effect(2 as const);
+      return Effect(2 as const)
     case 3:
-      return Effect.fail(3 as const);
+      return Effect.fail(3 as const)
     case 4:
-      return Effect.serviceWithEffect(Bar)(({ bar }) => Effect.die(bar));
+      return Effect.serviceWithEffect(Bar)(({ bar }) => Effect.die(bar))
     default:
-      return Effect.serviceWithEffect(Foo)(({ foo }) => Effect.die(foo));
+      return Effect.serviceWithEffect(Foo)(({ foo }) => Effect.die(foo))
   }
-};
+}
 
-export const message = isPositive(10);
-export const messageLeft = message.left.value;
+export const message = isPositive(10)
+export const messageLeft = message.left.value
 
 if (message.isLeft()) {
-  console.log(message.left);
+  console.log(message.left)
 }
 
 export const program = (numbers + numbersPar).flatMap(
@@ -49,13 +49,13 @@ export const program = (numbers + numbersPar).flatMap(
       Effect.log(`yay: ${d}`) >
       Effect.logInfo(`ok: ${e}`) >
       Effect.logWarning(`maybe: ${f}`)
-);
+)
 
-export const executeOrDie = Effect.fail("error") | program;
+export const executeOrDie = Effect.fail("error") | program
 
-program.apply(LogLevel(LogLevel.Error)).unsafeRunPromise();
+program.apply(LogLevel(LogLevel.Error)).unsafeRunPromise()
 
 export const useHashMap = HashMap(Tuple("foo", "map-foo"), Tuple("bar", "map-bar")) +
-  HashMap(Tuple("baz", "map-baz"), Tuple("tap", "map-tap"));
+  HashMap(Tuple("baz", "map-baz"), Tuple("tap", "map-tap"))
 
-export const accessHashMap = useHashMap["foo"].value;
+export const accessHashMap = useHashMap["foo"].value

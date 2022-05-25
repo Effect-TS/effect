@@ -5,4 +5,4 @@
  */
 export const runtimeConfig: Effect.UIO<RuntimeConfig> = Effect.suspendSucceedWith(
   (runtimeConfig, _) => Effect.succeedNow(runtimeConfig)
-);
+)

@@ -16,7 +16,7 @@ export function scanReduceEffect_<R, E, A, R2, E2, A2 extends A>(
         Effect.succeedNow(Tuple(Option.some(a as A2), a as A2)),
         (a2) => f(a2, a).map((a2) => Tuple(Option.some(a2), a2))
       )
-  );
+  )
 }
 
 /**
@@ -25,4 +25,4 @@ export function scanReduceEffect_<R, E, A, R2, E2, A2 extends A>(
  *
  * @tsplus static ets/Stream/Aspects scanReduceEffect
  */
-export const scanReduceEffect = Pipeable(scanReduceEffect_);
+export const scanReduceEffect = Pipeable(scanReduceEffect_)

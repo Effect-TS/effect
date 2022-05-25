@@ -8,5 +8,5 @@ export function tick(
   interval: LazyArg<Duration>,
   __tsplusTrace?: string
 ): Stream<unknown, never, void> {
-  return Stream.repeatWithSchedule(() => undefined, Schedule.spaced(interval));
+  return Stream.repeatWithSchedule(() => undefined, Schedule.spaced(interval))
 }

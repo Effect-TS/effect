@@ -13,5 +13,5 @@ export function whenCase<R, E, A, B>(
     pf(a())
       .map((effect) => effect.asSome())
       .getOrElse(STM.none)
-  );
+  )
 }

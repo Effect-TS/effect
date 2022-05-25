@@ -1,4 +1,4 @@
-import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Like `unfoldChunk`, but allows the emission of values to end one step
@@ -12,7 +12,7 @@ export function paginateChunk<S, A>(
   f: (s: S) => Tuple<[Chunk<A>, Option<S>]>,
   __tsplusTrace?: string
 ): Stream<unknown, never, A> {
-  return new StreamInternal(Channel.suspend(loop(s, f)));
+  return new StreamInternal(Channel.suspend(loop(s, f)))
 }
 
 function loop<S, A>(
@@ -22,9 +22,9 @@ function loop<S, A>(
 ): Channel<unknown, unknown, unknown, unknown, never, Chunk<A>, unknown> {
   const {
     tuple: [as, maybeS]
-  } = f(s());
+  } = f(s())
   return maybeS.fold(
     Channel.write(as) > Channel.unit,
     (s) => Channel.write(as) > loop(s, f)
-  );
+  )
 }

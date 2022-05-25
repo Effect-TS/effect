@@ -13,5 +13,5 @@ export function validateParDiscard<R, E, A, X>(
     es.isEmpty()
       ? Effect.unit
       : Effect.fail(es)
-  );
+  )
 }

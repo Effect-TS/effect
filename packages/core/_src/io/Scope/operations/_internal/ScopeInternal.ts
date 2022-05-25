@@ -1,8 +1,8 @@
-import type { Scope } from "@effect/core/io/Scope/definition";
-import { ScopeSym } from "@effect/core/io/Scope/definition";
+import type { Scope } from "@effect/core/io/Scope/definition"
+import { ScopeSym } from "@effect/core/io/Scope/definition"
 
 export class ScopeInternal implements Scope {
-  readonly [ScopeSym]: ScopeSym = ScopeSym;
+  readonly [ScopeSym]: ScopeSym = ScopeSym
 
   constructor(
     readonly _fork: Effect.UIO<Scope.Closeable>,

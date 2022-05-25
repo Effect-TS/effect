@@ -9,7 +9,7 @@ export function repeatUntil_<R, E, A>(
   p: Predicate<A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return self.repeatUntilEffect((a) => Effect.succeed(p(a)));
+  return self.repeatUntilEffect((a) => Effect.succeed(p(a)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function repeatUntil_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects repeatUntil
  */
-export const repeatUntil = Pipeable(repeatUntil_);
+export const repeatUntil = Pipeable(repeatUntil_)

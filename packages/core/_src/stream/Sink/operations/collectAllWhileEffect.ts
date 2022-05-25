@@ -12,5 +12,5 @@ export function collectAllWhileEffect<R, E, In>(
     Tuple(List.empty<In>(), true),
     (tuple) => tuple.get(1),
     ({ tuple: [as, _] }, a) => p(a).map((b) => (b ? Tuple(as.prepend(a), true) : Tuple(as, false)))
-  ).map(({ tuple: [inputs, _] }) => Chunk.from(inputs.reverse()));
+  ).map(({ tuple: [inputs, _] }) => Chunk.from(inputs.reverse()))
 }

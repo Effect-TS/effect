@@ -1,13 +1,13 @@
-import type { FiberStatus } from "@effect/core/io/Fiber/status";
+import type { FiberStatus } from "@effect/core/io/Fiber/status"
 
-export const FiberSym = Symbol.for("@effect/core/io/Fiber");
-export type FiberSym = typeof FiberSym;
+export const FiberSym = Symbol.for("@effect/core/io/Fiber")
+export type FiberSym = typeof FiberSym
 
-export const _E = Symbol.for("@effect/core/io/Fiber/E");
-export type _E = typeof _E;
+export const _E = Symbol.for("@effect/core/io/Fiber/E")
+export type _E = typeof _E
 
-export const _A = Symbol.for("@effect/core/io/Fiber/A");
-export type _A = typeof _A;
+export const _A = Symbol.for("@effect/core/io/Fiber/A")
+export type _A = typeof _A
 
 /**
  * A fiber is a lightweight thread of execution that never consumes more than a
@@ -21,34 +21,34 @@ export type _A = typeof _A;
  * @tsplus type ets/Fiber
  */
 export interface Fiber<E, A> {
-  readonly [FiberSym]: FiberSym;
-  readonly [_E]: () => E;
-  readonly [_A]: () => A;
+  readonly [FiberSym]: FiberSym
+  readonly [_E]: () => E
+  readonly [_A]: () => A
 }
 
-export type RealFiber<E, A> = Fiber.Runtime<E, A> | Fiber.Synthetic<E, A>;
+export type RealFiber<E, A> = Fiber.Runtime<E, A> | Fiber.Synthetic<E, A>
 
 export declare namespace Fiber {
-  type Runtime<E, A> = RuntimeFiber<E, A>;
-  type Synthetic<E, A> = SyntheticFiber<E, A>;
+  type Runtime<E, A> = RuntimeFiber<E, A>
+  type Synthetic<E, A> = SyntheticFiber<E, A>
 
   interface Descriptor {
     /**
      * The unique identifier of the `Fiber`.
      */
-    readonly id: FiberId;
+    readonly id: FiberId
     /**
      * The status of the `Fiber`.
      */
-    readonly status: FiberStatus;
+    readonly status: FiberStatus
     /**
      * The set of fibers attempting to interrupt the fiber or its ancestors.
      */
-    readonly interrupters: HashSet<FiberId>;
+    readonly interrupters: HashSet<FiberId>
     /**
      * The interrupt status of the `Fiber`.
      */
-    readonly interruptStatus: InterruptStatus;
+    readonly interruptStatus: InterruptStatus
   }
 }
 
@@ -58,21 +58,21 @@ export declare namespace Fiber {
 export function unifyFiber<X extends Fiber<any, any>>(
   self: X
 ): Fiber<
-  [X] extends [{ [_E]: () => infer E; }] ? E : never,
-  [X] extends [{ [_A]: () => infer A; }] ? A : never
+  [X] extends [{ [_E]: () => infer E }] ? E : never,
+  [X] extends [{ [_A]: () => infer A }] ? A : never
 > {
-  return self;
+  return self
 }
 
 /**
  * @tsplus type ets/Fiber/Ops
  */
 export interface FiberOps {
-  $: FiberAspects;
+  $: FiberAspects
 }
 export const Fiber: FiberOps = {
   $: {}
-};
+}
 
 /**
  * @tsplus type ets/Fiber/Aspects
@@ -90,37 +90,37 @@ export interface BaseFiber<E, A> extends Fiber<E, A> {
   /**
    * The identity of the fiber.
    */
-  readonly _id: FiberId;
+  readonly _id: FiberId
 
   /**
    * Awaits the fiber, which suspends the awaiting fiber until the result of the
    * fiber has been determined.
    */
-  readonly _await: Effect.UIO<Exit<E, A>>;
+  readonly _await: Effect.UIO<Exit<E, A>>
 
   /**
    * Retrieves the immediate children of the fiber.
    */
-  readonly _children: Effect.UIO<Chunk<Fiber.Runtime<any, any>>>;
+  readonly _children: Effect.UIO<Chunk<Fiber.Runtime<any, any>>>
 
   /**
    * Inherits values from all `FiberRef` instances into current fiber. This
    * will resume immediately.
    */
-  readonly _inheritRefs: Effect.UIO<void>;
+  readonly _inheritRefs: Effect.UIO<void>
 
   /**
    * Tentatively observes the fiber, but returns immediately if it is not
    * already done.
    */
-  readonly _poll: Effect.UIO<Option<Exit<E, A>>>;
+  readonly _poll: Effect.UIO<Option<Exit<E, A>>>
 
   /**
    * Interrupts the fiber as if interrupted from the specified fiber. If the
    * fiber has already exited, the returned effect will resume immediately.
    * Otherwise, the effect will resume when the fiber exits.
    */
-  readonly _interruptAs: (fiberId: FiberId) => Effect.UIO<Exit<E, A>>;
+  readonly _interruptAs: (fiberId: FiberId) => Effect.UIO<Exit<E, A>>
 }
 
 /**
@@ -130,34 +130,34 @@ export interface BaseFiber<E, A> extends Fiber<E, A> {
  * @tsplus type ets/RuntimeFiber
  */
 export interface RuntimeFiber<E, A> extends BaseFiber<E, A> {
-  readonly _tag: "RuntimeFiber";
+  readonly _tag: "RuntimeFiber"
 
   /**
    * The identity of the fiber.
    */
-  readonly _id: FiberId.Runtime;
+  readonly _id: FiberId.Runtime
 
   /**
    * The location the fiber was forked from.
    */
-  readonly _location: TraceElement;
+  readonly _location: TraceElement
 
   /**
    * The status of the fiber.
    */
-  readonly _status: Effect.UIO<FiberStatus>;
+  readonly _status: Effect.UIO<FiberStatus>
 
   /**
    * The trace of the fiber.
    */
-  readonly _trace: Effect.UIO<Trace>;
+  readonly _trace: Effect.UIO<Trace>
 
   /**
    * Evaluates the specified effect on the fiber. If this is not possible,
    * because the fiber has already ended life, then the specified alternate
    * effect will be executed instead.
    */
-  readonly _evalOn: (effect: Effect.UIO<any>, orElse: Effect.UIO<any>) => Effect.UIO<void>;
+  readonly _evalOn: (effect: Effect.UIO<any>, orElse: Effect.UIO<any>) => Effect.UIO<void>
 
   /**
    * A fully-featured, but much slower version of `evalOn`, which is useful
@@ -166,7 +166,7 @@ export interface RuntimeFiber<E, A> extends BaseFiber<E, A> {
   readonly _evalOnEffect: <R, E2, A2>(
     effect: Effect<R, E2, A2>,
     orElse: Effect<R, E2, A2>
-  ) => Effect<R, E2, A2>;
+  ) => Effect<R, E2, A2>
 }
 
 /**
@@ -176,11 +176,11 @@ export interface RuntimeFiber<E, A> extends BaseFiber<E, A> {
  * @tsplus type ets/SyntheticFiber
  */
 export class SyntheticFiber<E, A> implements BaseFiber<E, A> {
-  readonly _tag = "SyntheticFiber";
+  readonly _tag = "SyntheticFiber"
 
-  readonly [FiberSym]: FiberSym = FiberSym;
-  readonly [_E]!: () => E;
-  readonly [_A]!: () => A;
+  readonly [FiberSym]: FiberSym = FiberSym
+  readonly [_E]!: () => E
+  readonly [_A]!: () => A
 
   constructor(
     readonly _id: FiberId,
@@ -193,12 +193,12 @@ export class SyntheticFiber<E, A> implements BaseFiber<E, A> {
 }
 
 export function makeSynthetic<E, A>(_: {
-  readonly id: FiberId;
-  readonly await: Effect.UIO<Exit<E, A>>;
-  readonly children: Effect.UIO<Chunk<Fiber.Runtime<any, any>>>;
-  readonly inheritRefs: Effect.UIO<void>;
-  readonly poll: Effect.UIO<Option<Exit<E, A>>>;
-  readonly interruptAs: (fiberId: FiberId) => Effect.UIO<Exit<E, A>>;
+  readonly id: FiberId
+  readonly await: Effect.UIO<Exit<E, A>>
+  readonly children: Effect.UIO<Chunk<Fiber.Runtime<any, any>>>
+  readonly inheritRefs: Effect.UIO<void>
+  readonly poll: Effect.UIO<Option<Exit<E, A>>>
+  readonly interruptAs: (fiberId: FiberId) => Effect.UIO<Exit<E, A>>
 }): Fiber<E, A> {
   return new SyntheticFiber(
     _.id,
@@ -207,5 +207,5 @@ export function makeSynthetic<E, A>(_: {
     _.inheritRefs,
     _.poll,
     _.interruptAs
-  );
+  )
 }

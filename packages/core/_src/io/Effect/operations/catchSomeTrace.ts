@@ -17,7 +17,7 @@ export function catchSomeTrace_<R, E, A, R2, E2, A2>(
           Effect.failCauseNow
         ),
     Effect.succeedNow
-  );
+  )
 }
 
 /**
@@ -25,4 +25,4 @@ export function catchSomeTrace_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Effect/Aspects catchSomeTrace
  */
-export const catchSomeTrace = Pipeable(catchSomeTrace_);
+export const catchSomeTrace = Pipeable(catchSomeTrace_)

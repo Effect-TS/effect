@@ -8,7 +8,7 @@ export function someOrElse_<R, E, A, A2>(
   def: LazyArg<A2>,
   __tsplusTrace?: string
 ): Stream<R, E, A | A2> {
-  return self.map((option) => option.getOrElse(def));
+  return self.map((option) => option.getOrElse(def))
 }
 
 /**
@@ -16,4 +16,4 @@ export function someOrElse_<R, E, A, A2>(
  *
  * @tsplus static ets/Stream/Aspects someOrElse
  */
-export const someOrElse = Pipeable(someOrElse_);
+export const someOrElse = Pipeable(someOrElse_)

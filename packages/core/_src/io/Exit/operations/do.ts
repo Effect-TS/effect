@@ -11,7 +11,7 @@ export function bind<E, A, K, N extends string>(
     E | E2,
     & K
     & {
-      [k in N]: A;
+      [k in N]: A
     }
   > =>
     mk.flatMap((k) =>
@@ -21,10 +21,10 @@ export function bind<E, A, K, N extends string>(
         ):
           & K
           & {
-            [k in N]: A;
+            [k in N]: A
           } => ({ ...k, [tag]: a } as any)
       )
-    );
+    )
 }
 
 /**
@@ -40,7 +40,7 @@ export function bindValue<A, K, N extends string>(
     E2,
     & K
     & {
-      [k in N]: A;
+      [k in N]: A
     }
   > =>
     mk.map(
@@ -49,14 +49,14 @@ export function bindValue<A, K, N extends string>(
       ):
         & K
         & {
-          [k in N]: A;
+          [k in N]: A
         } => ({ ...k, [tag]: f(k) } as any)
-    );
+    )
 }
 
 /**
  * @tsplus static ets/Exit/Ops Do
  */
 export function Do() {
-  return Exit.succeed({});
+  return Exit.succeed({})
 }

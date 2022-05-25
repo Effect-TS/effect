@@ -13,7 +13,7 @@ export function onExit_<R, E, A, R2, X>(
     Effect.unit,
     () => self,
     (_, exit) => cleanup(exit)
-  );
+  )
 }
 
 /**
@@ -22,4 +22,4 @@ export function onExit_<R, E, A, R2, X>(
  *
  * @tsplus static ets/Effect/Aspects onExit
  */
-export const onExit = Pipeable(onExit_);
+export const onExit = Pipeable(onExit_)

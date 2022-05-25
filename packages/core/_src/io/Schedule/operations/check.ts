@@ -10,7 +10,7 @@ export function check_<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>,
   test: (input: In, output: Out) => boolean
 ): Schedule<State, Env, In, Out> {
-  return self.checkEffect((in1: In, out) => Effect.succeed(test(in1, out)));
+  return self.checkEffect((in1: In, out) => Effect.succeed(test(in1, out)))
 }
 
 /**
@@ -20,4 +20,4 @@ export function check_<State, Env, In, Out>(
  *
  * @tsplus static ets/Schedule/Aspects check
  */
-export const check = Pipeable(check_);
+export const check = Pipeable(check_)

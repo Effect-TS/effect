@@ -5,5 +5,5 @@
  * @tsplus static ets/Effect/Ops setFiberRefs
  */
 export function setFiberRefs(fiberRefs: LazyArg<FiberRefs>, __tsplusTrace?: string): Effect.UIO<void> {
-  return Effect.suspendSucceed(fiberRefs().setAll());
+  return Effect.suspendSucceed(fiberRefs().setAll())
 }

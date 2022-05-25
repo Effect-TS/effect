@@ -9,7 +9,7 @@ export function validateParNow_<R, E, A, R1, E1, B>(
   that: LazyArg<Effect<R1, E1, B>>,
   __tsplusTrace?: string
 ): Effect<R & R1, E | E1, Tuple<[A, B]>> {
-  return self.validateWithPar(that, (a, b) => Tuple(a, b));
+  return self.validateWithPar(that, (a, b) => Tuple(a, b))
 }
 
 /**
@@ -18,7 +18,7 @@ export function validateParNow_<R, E, A, R1, E1, B>(
  *
  * @tsplus static ets/Effect/Aspects validatePar
  */
-export const validateParNow = Pipeable(validateParNow_);
+export const validateParNow = Pipeable(validateParNow_)
 
 /**
  * Feeds elements of type `A` to `f `and accumulates, in parallel, all errors
@@ -38,5 +38,5 @@ export function validatePar<R, E, A, B>(
     es.isEmpty()
       ? Effect.succeedNow(Chunk.from(bs))
       : Effect.fail(es)
-  );
+  )
 }

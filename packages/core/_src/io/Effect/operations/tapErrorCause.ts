@@ -12,7 +12,7 @@ export function tapErrorCause_<R, E, A, R2, E2, X>(
   return self.foldCauseEffect(
     (cause) => f(cause).zipRight(Effect.failCauseNow(cause)),
     Effect.succeedNow
-  );
+  )
 }
 
 /**
@@ -21,4 +21,4 @@ export function tapErrorCause_<R, E, A, R2, E2, X>(
  *
  * @tsplus static ets/Effect/Aspects tapErrorCause
  */
-export const tapErrorCause = Pipeable(tapErrorCause_);
+export const tapErrorCause = Pipeable(tapErrorCause_)

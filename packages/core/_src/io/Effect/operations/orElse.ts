@@ -10,10 +10,10 @@ export function orElse_<R, E, A, R2, E2, A2>(
   that: LazyArg<Effect<R2, E2, A2>>,
   __tsplusTrace?: string
 ): Effect<R & R2, E2, A | A2> {
-  return self.tryOrElse(that, Effect.succeedNow);
+  return self.tryOrElse(that, Effect.succeedNow)
 }
 
 /**
  * @tsplus static ets/Effect/Aspects orElse
  */
-export const orElse = Pipeable(orElse_);
+export const orElse = Pipeable(orElse_)

@@ -3,4 +3,4 @@
  */
 export const never: Sink<unknown, never, unknown, unknown, never> = Sink.fromEffect(
   Effect.never
-);
+)

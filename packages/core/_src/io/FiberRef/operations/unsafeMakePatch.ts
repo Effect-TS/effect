@@ -1,4 +1,4 @@
-import { FiberRefInternal } from "@effect/core/io/FiberRef/operations/_internal/FiberRefInternal";
+import { FiberRefInternal } from "@effect/core/io/FiberRef/operations/_internal/FiberRefInternal"
 
 /**
  * @tsplus static ets/FiberRef/Ops unsafeMakePatch
@@ -16,5 +16,5 @@ export function unsafeMakePatch<Value, Patch>(
     combine,
     patch,
     fork
-  );
+  )
 }

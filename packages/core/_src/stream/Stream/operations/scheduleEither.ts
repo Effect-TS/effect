@@ -13,7 +13,7 @@ export function scheduleEither_<R, E, A, S, R2, B>(
     schedule,
     (a) => Either.rightW(a),
     (b) => Either.leftW(b)
-  );
+  )
 }
 
 /**
@@ -22,4 +22,4 @@ export function scheduleEither_<R, E, A, S, R2, B>(
  *
  * @tsplus static ets/Stream/Aspects scheduleEither
  */
-export const scheduleEither = Pipeable(scheduleEither_);
+export const scheduleEither = Pipeable(scheduleEither_)

@@ -7,7 +7,7 @@ export function someOrElse_<R, E, A, B>(
   self: STM<R, E, Option<A>>,
   orElse: LazyArg<B>
 ): STM<R, E, A | B> {
-  return self.map((option) => option.getOrElse(orElse));
+  return self.map((option) => option.getOrElse(orElse))
 }
 
 /**
@@ -15,4 +15,4 @@ export function someOrElse_<R, E, A, B>(
  *
  * @tsplus static ets/STM/Aspects someOrElse
  */
-export const someOrElse = Pipeable(someOrElse_);
+export const someOrElse = Pipeable(someOrElse_)

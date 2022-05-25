@@ -17,12 +17,12 @@ export function contramap_<Message, Output, Message1>(
         spans,
         annotations
       )
-  };
+  }
 }
 
 /**
  * @tsplus type ets/Logger/Aspects contramap
  */
 export function contramap<Message1, Message>(f: (message: Message1) => Message) {
-  return <Output>(self: Logger<Message, Output>): Logger<Message1, Output> => self.contramap(f);
+  return <Output>(self: Logger<Message, Output>): Logger<Message1, Output> => self.contramap(f)
 }

@@ -1,8 +1,8 @@
-import { _A, RefSym } from "@effect/core/io/Ref/definition";
+import { _A, RefSym } from "@effect/core/io/Ref/definition"
 
 export class RefInternal<A> implements Ref<A> {
-  readonly [RefSym]: RefSym = RefSym;
-  readonly [_A]!: () => A;
+  readonly [RefSym]: RefSym = RefSym
+  readonly [_A]!: () => A
 
   constructor(readonly value: AtomicReference<A>) {}
 }

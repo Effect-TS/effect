@@ -1,4 +1,4 @@
-import { as, b, eventEq, eventOrd, eventPredicate } from "@effect/core/test/stm/TPriorityQueue/test-utils";
+import { as, b, eventEq, eventOrd, eventPredicate } from "@effect/core/test/stm/TPriorityQueue/test-utils"
 
 describe.concurrent("TPriorityQueue", () => {
   describe.concurrent("retainIf", () => {
@@ -6,11 +6,11 @@ describe.concurrent("TPriorityQueue", () => {
       const program = TPriorityQueue.from(eventOrd)(as)
         .tap((queue) => queue.retainIf(eventPredicate))
         .flatMap((queue) => queue.toChunk())
-        .commit();
+        .commit()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.corresponds(Chunk.single(b), eventEq.equals));
-    });
-  });
-});
+      assert.isTrue(result.corresponds(Chunk.single(b), eventEq.equals))
+    })
+  })
+})

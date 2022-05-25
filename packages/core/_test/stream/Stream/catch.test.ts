@@ -3,32 +3,32 @@ describe.concurrent("Stream", () => {
     it("happy path", async () => {
       const program = Stream(1, 2)
         .catchAllCause(() => Stream(3, 4))
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(1, 2));
-    });
+      assert.isTrue(result == Chunk(1, 2))
+    })
 
     it("recovery from errors", async () => {
       const program = (Stream(1, 2) + Stream.fail("boom"))
         .catchAllCause(() => Stream(3, 4))
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(1, 2, 3, 4));
-    });
+      assert.isTrue(result == Chunk(1, 2, 3, 4))
+    })
 
     it("recovery from defects", async () => {
       const program = (Stream(1, 2) + Stream.dieMessage("boom"))
         .catchAllCause(() => Stream(3, 4))
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(1, 2, 3, 4));
-    });
+      assert.isTrue(result == Chunk(1, 2, 3, 4))
+    })
 
     it("executes finalizers", async () => {
       const program = Effect.Do()
@@ -47,12 +47,12 @@ describe.concurrent("Stream", () => {
             .runCollect()
             .exit()
         )
-        .flatMap(({ finalizers }) => finalizers.get());
+        .flatMap(({ finalizers }) => finalizers.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk("stream2", "stream1"));
-    });
+      assert.isTrue(result == Chunk("stream2", "stream1"))
+    })
 
     it("releases all resources by the time the failover stream has started", async () => {
       const program = Effect.Do()
@@ -70,12 +70,12 @@ describe.concurrent("Stream", () => {
             .drain()
             .catchAllCause(() => Stream.fromEffect(finalizers.get()))
             .runCollect()
-        );
+        )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.flatten() == Chunk(1, 2, 3));
-    });
+      assert.isTrue(result.flatten() == Chunk(1, 2, 3))
+    })
 
     it("propagates the right exit value to the failing stream (ZIO issue #3609)", async () => {
       const program = Ref.make<Exit<unknown, unknown>>(Exit.unit)
@@ -86,36 +86,36 @@ describe.concurrent("Stream", () => {
             .runDrain()
             .exit()
         )
-        .flatMap((ref) => ref.get());
+        .flatMap((ref) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.untraced() == Exit.fail("boom"));
-    });
-  });
+      assert.isTrue(result.untraced() == Exit.fail("boom"))
+    })
+  })
 
   describe.concurrent("catchSome", () => {
     it("recovery from some errors", async () => {
       const program = (Stream(1, 2) + Stream.fail("boom"))
         .catchSome((s) => (s === "boom" ? Option.some(Stream(3, 4)) : Option.none))
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(1, 2, 3, 4));
-    });
+      assert.isTrue(result == Chunk(1, 2, 3, 4))
+    })
 
     it("fails stream when partial function does not match", async () => {
       const program = (Stream(1, 2) + Stream.fail("boom"))
         .catchSome((s) => (s === "boomer" ? Option.some(Stream(3, 4)) : Option.none))
         .runCollect()
-        .either();
+        .either()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left("boom"));
-    });
-  });
+      assert.isTrue(result == Either.left("boom"))
+    })
+  })
 
   describe.concurrent("catchSomeCause", () => {
     it("recovery from some errors", async () => {
@@ -125,24 +125,24 @@ describe.concurrent("Stream", () => {
             ? Option.some(Stream(3, 4))
             : Option.none
         )
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(1, 2, 3, 4));
-    });
+      assert.isTrue(result == Chunk(1, 2, 3, 4))
+    })
 
     it("halts stream when partial function does not match", async () => {
       const program = (Stream(1, 2) + Stream.fail("boom"))
         .catchSomeCause((cause) => cause.isEmpty() ? Option.some(Stream(3, 4)) : Option.none)
         .runCollect()
-        .either();
+        .either()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left("boom"));
-    });
-  });
+      assert.isTrue(result == Either.left("boom"))
+    })
+  })
 
   describe.concurrent("onError", () => {
     it("simple example", async () => {
@@ -153,12 +153,12 @@ describe.concurrent("Stream", () => {
             .onError(() => ref.set(true))
             .runDrain()
             .exit())
-        .bind("called", ({ ref }) => ref.get());
+        .bind("called", ({ ref }) => ref.get())
 
-      const { called, exit } = await program.unsafeRunPromise();
+      const { called, exit } = await program.unsafeRunPromise()
 
-      assert.isTrue(called);
-      assert.isTrue(exit.untraced() == Exit.fail("boom"));
-    });
-  });
-});
+      assert.isTrue(called)
+      assert.isTrue(exit.untraced() == Exit.fail("boom"))
+    })
+  })
+})

@@ -12,5 +12,5 @@ export function mergeAll<R, E, A, B>(
 ): Effect<R, E, B> {
   return Effect.suspendSucceed(() =>
     as().reduce(Effect.succeed(zero) as Effect<R, E, B>, (acc, a) => acc.zipWith(a, f))
-  );
+  )
 }

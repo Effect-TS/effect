@@ -8,5 +8,5 @@ export function eventually<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect.RIO<R, A> {
-  return self | (Effect.yieldNow > self.eventually());
+  return self | (Effect.yieldNow > self.eventually())
 }

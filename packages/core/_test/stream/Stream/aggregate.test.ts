@@ -1,4 +1,4 @@
-import { constTrue, constVoid } from "@tsplus/stdlib/data/Function";
+import { constTrue, constVoid } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Stream", () => {
   describe.concurrent("aggregate", () => {
@@ -7,33 +7,33 @@ describe.concurrent("Stream", () => {
         .aggregate(
           Sink.foldUntil<number, Chunk<number>>(Chunk.empty<number>(), 3, (acc, el) => acc.prepend(el))
         )
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.flatten() == Chunk(1, 1, 1, 1));
-      assert.isTrue(result.forAll((list) => list.length <= 3));
-    });
+      assert.isTrue(result.flatten() == Chunk(1, 1, 1, 1))
+      assert.isTrue(result.forAll((list) => list.length <= 3))
+    })
 
     it("error propagation 1", async () => {
-      const error = new RuntimeError("boom");
-      const program = Stream(1, 1, 1, 1).aggregate(Sink.die(error)).runCollect();
+      const error = new RuntimeError("boom")
+      const program = Stream(1, 1, 1, 1).aggregate(Sink.die(error)).runCollect()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(error));
-    });
+      assert.isTrue(result.untraced() == Exit.die(error))
+    })
 
     it("error propagation 2", async () => {
-      const error = new RuntimeError("boom");
+      const error = new RuntimeError("boom")
       const program = Stream(1, 1, 1, 1)
         .aggregate(Sink.foldLeftEffect(List.empty(), () => Effect.die(error)))
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(error));
-    });
+      assert.isTrue(result.untraced() == Exit.die(error))
+    })
 
     it("interruption propagation 1", async () => {
       const program = Effect.Do()
@@ -50,12 +50,12 @@ describe.concurrent("Stream", () => {
         .bind("fiber", ({ sink }) => Stream(1, 1, 2).aggregate(sink).runCollect().fork())
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ cancelled }) => cancelled.get());
+        .flatMap(({ cancelled }) => cancelled.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("interruption propagation 2", async () => {
       const program = Effect.Do()
@@ -68,15 +68,15 @@ describe.concurrent("Stream", () => {
         .bind("fiber", ({ sink }) => Stream(1, 1, 2).aggregate(sink).runCollect().fork())
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ cancelled }) => cancelled.get());
+        .flatMap(({ cancelled }) => cancelled.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("leftover handling", async () => {
-      const data = List(1, 2, 2, 3, 2, 3);
+      const data = List(1, 2, 2, 3, 2, 3)
       const program = Stream(...data)
         .aggregate(
           Sink.foldWeighted<number, List<number>>(
@@ -88,23 +88,23 @@ describe.concurrent("Stream", () => {
         )
         .map((list) => list.reverse())
         .runCollect()
-        .map((chunk) => List.from(chunk).flatten());
+        .map((chunk) => List.from(chunk).flatten())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == data);
-    });
+      assert.isTrue(result == data)
+    })
 
     it("ZIO regression test issue 6395", async () => {
       const program = Stream(1, 2, 3)
         .aggregate(Sink.collectAllN<number>(2))
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(Chunk(1, 2), Chunk(3)));
-    });
-  });
+      assert.isTrue(result == Chunk(Chunk(1, 2), Chunk(3)))
+    })
+  })
 
   describe.concurrent("aggregateWithin", () => {
     it("fails fast", async () => {
@@ -121,12 +121,12 @@ describe.concurrent("Stream", () => {
             .catchAll(() => Effect.succeedNow(undefined))
         )
         .bind("value", ({ queue }) => queue.takeAll)
-        .tap(({ queue }) => queue.shutdown);
+        .tap(({ queue }) => queue.shutdown)
 
-      const { value } = await program.unsafeRunPromise();
+      const { value } = await program.unsafeRunPromise()
 
-      assert.isTrue(value == Chunk(1, 2, 3, 4, 5));
-    });
+      assert.isTrue(value == Chunk(1, 2, 3, 4, 5))
+    })
 
     // TODO(Mike/Max): re-enable after implementing TestClock
     it.skip("child fiber handling", async () => {
@@ -152,8 +152,8 @@ describe.concurrent("Stream", () => {
       //   await deferred.succeed(undefined).unsafeRunPromise();
 
       //   assert.isTrue(result == Chunk(2, 3));
-    });
-  });
+    })
+  })
 
   describe.concurrent("aggregateWithinEither", () => {
     it("simple example", async () => {
@@ -169,9 +169,9 @@ describe.concurrent("Stream", () => {
           ).map((tuple) => tuple.get(0)),
           Schedule.spaced((30).minutes)
         )
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
       assert.isTrue(
         result == Chunk(
@@ -179,36 +179,36 @@ describe.concurrent("Stream", () => {
           Either.right(List(2)),
           Either.right(List.empty())
         )
-      );
-    });
+      )
+    })
 
     it("error propagation 1", async () => {
-      const error = new RuntimeError("boom");
+      const error = new RuntimeError("boom")
       const program = Stream(1, 1, 1, 1)
         .aggregateWithinEither(
           Sink.die(error),
           Schedule.spaced((30).minutes)
         )
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(error));
-    });
+      assert.isTrue(result.untraced() == Exit.die(error))
+    })
 
     it("error propagation 2", async () => {
-      const error = new RuntimeError("boom");
+      const error = new RuntimeError("boom")
       const program = Stream(1, 1, 1, 1)
         .aggregateWithinEither(
           Sink.foldLeftEffect(List.empty(), () => Effect.die(error)),
           Schedule.spaced((30).minutes)
         )
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(error));
-    });
+      assert.isTrue(result.untraced() == Exit.die(error))
+    })
 
     it("interruption propagation 1", async () => {
       const program = Effect.Do()
@@ -229,12 +229,12 @@ describe.concurrent("Stream", () => {
             .fork())
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ cancelled }) => cancelled.get());
+        .flatMap(({ cancelled }) => cancelled.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("interruption propagation 2", async () => {
       const program = Effect.Do()
@@ -251,15 +251,15 @@ describe.concurrent("Stream", () => {
             .fork())
         .tap(({ latch }) => latch.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ cancelled }) => cancelled.get());
+        .flatMap(({ cancelled }) => cancelled.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("leftover handling", async () => {
-      const data = List(1, 2, 2, 3, 2, 3);
+      const data = List(1, 2, 2, 3, 2, 3)
       const program = Stream(...data)
         .aggregateWithinEither(
           Sink.foldWeighted<number, List<number>>(
@@ -272,11 +272,11 @@ describe.concurrent("Stream", () => {
         )
         .collect((either) => either.isRight() ? Option.some(either.right) : Option.none)
         .runCollect()
-        .map((chunk) => List.from(chunk).flatten());
+        .map((chunk) => List.from(chunk).flatten())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == data);
-    });
-  });
-});
+      assert.isTrue(result == data)
+    })
+  })
+})

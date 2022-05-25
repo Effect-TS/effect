@@ -1,4 +1,4 @@
-import { realFiber } from "@effect/core/io/Fiber/definition";
+import { realFiber } from "@effect/core/io/Fiber/definition"
 
 /**
  * Folds over the runtime or synthetic fiber.
@@ -11,13 +11,13 @@ export function fold_<E, A, Z>(
   onRuntime: (_: Fiber.Runtime<E, A>) => Z,
   onSynthetic: (_: Fiber.Synthetic<E, A>) => Z
 ): Z {
-  realFiber(self);
+  realFiber(self)
   switch (self._tag) {
     case "RuntimeFiber": {
-      return onRuntime(self);
+      return onRuntime(self)
     }
     case "SyntheticFiber": {
-      return onSynthetic(self);
+      return onSynthetic(self)
     }
   }
 }
@@ -27,4 +27,4 @@ export function fold_<E, A, Z>(
  *
  * @tsplus static ets/Fiber/Aspects fold
  */
-export const fold = Pipeable(fold_);
+export const fold = Pipeable(fold_)

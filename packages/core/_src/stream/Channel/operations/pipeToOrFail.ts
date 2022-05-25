@@ -1,4 +1,4 @@
-import { isChannelError } from "@effect/core/io/Cause/errors";
+import { isChannelError } from "@effect/core/io/Cause/errors"
 
 /**
  * @tsplus fluent ets/Channel pipeToOrFail
@@ -23,7 +23,7 @@ export function pipeToOrFail_<
     (outElem) => Channel.write(outElem) > reader,
     (outErr) => Channel.failCause(Cause.die(new ChannelError(outErr))),
     (outDone) => Channel.succeedNow(outDone)
-  );
+  )
 
   const writer: Channel<
     Env2,
@@ -40,12 +40,12 @@ export function pipeToOrFail_<
         ? Channel.fail(cause.value.error as OutErr2)
         : Channel.failCause(cause),
     (outDone) => Channel.succeedNow(outDone)
-  );
+  )
 
-  return ((self >> reader) >> that()) >> writer;
+  return ((self >> reader) >> that()) >> writer
 }
 
 /**
  * @tsplus static ets/Channel/Aspects pipeToOrFail
  */
-export const pipeToOrFail = Pipeable(pipeToOrFail_);
+export const pipeToOrFail = Pipeable(pipeToOrFail_)

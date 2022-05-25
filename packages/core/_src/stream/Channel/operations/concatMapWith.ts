@@ -1,6 +1,6 @@
-import { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision";
-import { ConcatAll } from "@effect/core/stream/Channel/definition/primitives";
-import { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy";
+import { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision"
+import { ConcatAll } from "@effect/core/stream/Channel/definition/primitives"
+import { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy"
 
 /**
  * Returns a new channel whose outputs are fed to the specified factory
@@ -62,7 +62,7 @@ export function concatMapWith_<
     () => ChildExecutorDecision.Continue,
     () => self,
     f
-  );
+  )
 }
 
 /**
@@ -75,4 +75,4 @@ export function concatMapWith_<
  *
  * @tsplus static ets/Channel/Aspects concatMapWith
  */
-export const concatMapWith = Pipeable(concatMapWith_);
+export const concatMapWith = Pipeable(concatMapWith_)

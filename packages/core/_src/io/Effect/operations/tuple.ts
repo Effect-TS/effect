@@ -1,10 +1,10 @@
-import type { _E, _R } from "@effect/core/io/Effect/definition/base";
+import type { _E, _R } from "@effect/core/io/Effect/definition/base"
 
-type NonEmptyArrayEffect = Array<Effect<any, any, any>> & { readonly 0: Effect<any, any, any>; };
+type NonEmptyArrayEffect = Array<Effect<any, any, any>> & { readonly 0: Effect<any, any, any> }
 
 export type TupleA<T extends NonEmptyArrayEffect> = {
-  [K in keyof T]: [T[K]] extends [Effect<any, any, infer A>] ? A : never;
-};
+  [K in keyof T]: [T[K]] extends [Effect<any, any, infer A>] ? A : never
+}
 
 /**
  * Like `forEach` + `identity` with a tuple type.
@@ -13,14 +13,14 @@ export type TupleA<T extends NonEmptyArrayEffect> = {
  */
 export function tuple<T extends NonEmptyArrayEffect>(
   ...t: T & {
-    0: Effect<any, any, any>;
+    0: Effect<any, any, any>
   }
 ): Effect<
-  [T[number]] extends [{ [_R]: (_: infer R) => void; }] ? R : never,
-  [T[number]] extends [{ [_E]: () => infer E; }] ? E : never,
+  [T[number]] extends [{ [_R]: (_: infer R) => void }] ? R : never,
+  [T[number]] extends [{ [_E]: () => infer E }] ? E : never,
   ForcedTuple<TupleA<T>>
 > {
-  return Effect.collectAll(t).map((x) => Tuple(...x)) as any;
+  return Effect.collectAll(t).map((x) => Tuple(...x)) as any
 }
 
 /**
@@ -30,12 +30,12 @@ export function tuple<T extends NonEmptyArrayEffect>(
  */
 export function tuplePar<T extends NonEmptyArrayEffect>(
   ...t: T & {
-    0: Effect<any, any, any>;
+    0: Effect<any, any, any>
   }
 ): Effect<
-  [T[number]] extends [{ [_R]: (_: infer R) => void; }] ? R : never,
-  [T[number]] extends [{ [_E]: () => infer E; }] ? E : never,
+  [T[number]] extends [{ [_R]: (_: infer R) => void }] ? R : never,
+  [T[number]] extends [{ [_E]: () => infer E }] ? E : never,
   ForcedTuple<TupleA<T>>
 > {
-  return Effect.collectAllPar(t).map((x) => Tuple(...x)) as any;
+  return Effect.collectAllPar(t).map((x) => Tuple(...x)) as any
 }

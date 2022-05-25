@@ -1,4 +1,4 @@
-import { concreteRef } from "@effect/core/io/Ref/operations/_internal/RefInternal";
+import { concreteRef } from "@effect/core/io/Ref/operations/_internal/RefInternal"
 
 /**
  * Writes a new value to the `Ref`, with a guarantee of immediate consistency
@@ -7,8 +7,8 @@ import { concreteRef } from "@effect/core/io/Ref/operations/_internal/RefInterna
  * @tsplus fluent ets/Ref set
  */
 export function set_<A>(self: Ref<A>, value: A, __tsplusTrace?: string): Effect.UIO<void> {
-  concreteRef(self);
-  return Effect.succeed(self.value.set(value));
+  concreteRef(self)
+  return Effect.succeed(self.value.set(value))
 }
 
 /**
@@ -17,4 +17,4 @@ export function set_<A>(self: Ref<A>, value: A, __tsplusTrace?: string): Effect.
  *
  * @tsplus static ets/Ref/Aspects set
  */
-export const set = Pipeable(set_);
+export const set = Pipeable(set_)

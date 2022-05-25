@@ -6,18 +6,18 @@
 export function track(
   __tsplusTrace?: string
 ): Effect.UIO<Supervisor<Chunk<Fiber.Runtime<any, any>>>> {
-  return Effect.succeed(unsafeTrack);
+  return Effect.succeed(unsafeTrack)
 }
 
 // `setInterval` is limited to take delays which are 32-bit values
-const MAX_SET_INTERVAL_VALUE = 2 ** 31 - 1;
+const MAX_SET_INTERVAL_VALUE = 2 ** 31 - 1
 
 /**
  * @tsplus static ets/Supervisor/Ops unsafeTrack
  */
 export function unsafeTrack(): Supervisor<Chunk<Fiber.Runtime<any, any>>> {
-  const set = new Set<Fiber.Runtime<any, any>>();
-  const interval = new AtomicReference<number | undefined>(undefined);
+  const set = new Set<Fiber.Runtime<any, any>>()
+  const interval = new AtomicReference<number | undefined>(undefined)
 
   return new Supervisor(
     Effect.succeed(Chunk.from(set)),
@@ -29,21 +29,21 @@ export function unsafeTrack(): Supervisor<Chunk<Fiber.Runtime<any, any>>> {
             setInterval(() => {
               // Keep the process alive
             }, MAX_SET_INTERVAL_VALUE)
-          );
+          )
         }
       } else {
-        set.add(fiber);
+        set.add(fiber)
       }
     },
     (_, fiber) => {
-      set.delete(fiber);
+      set.delete(fiber)
       if (set.size === 0) {
-        const ci = interval.get;
+        const ci = interval.get
 
         if (ci) {
-          clearInterval(ci as any);
+          clearInterval(ci as any)
         }
       }
     }
-  );
+  )
 }

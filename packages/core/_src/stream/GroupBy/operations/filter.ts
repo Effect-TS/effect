@@ -1,4 +1,4 @@
-import { concreteGroupBy } from "@effect/core/stream/GroupBy/operations/_internal/GroupByInternal";
+import { concreteGroupBy } from "@effect/core/stream/GroupBy/operations/_internal/GroupByInternal"
 
 /**
  * Filter the groups to be processed.
@@ -10,8 +10,8 @@ export function filter_<R, E, K, V, A>(
   f: Predicate<K>,
   __tsplusTrace?: string
 ): GroupBy<R, E, K, V, A> {
-  concreteGroupBy(self);
-  return self.filter(f);
+  concreteGroupBy(self)
+  return self.filter(f)
 }
 
 /**
@@ -19,4 +19,4 @@ export function filter_<R, E, K, V, A>(
  *
  * @tsplus static ets/GroupBy/Aspects filter
  */
-export const filter = Pipeable(filter_);
+export const filter = Pipeable(filter_)

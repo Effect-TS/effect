@@ -9,5 +9,5 @@ export function whenCaseSTM<R, E, A, R1, E1, B>(
   pf: (a: A) => Option<STM<R1, E1, B>>,
   __tsplusTrace?: string
 ): STM<R & R1, E | E1, Option<B>> {
-  return STM.suspend(a().flatMap((a) => STM.whenCase(a, pf)));
+  return STM.suspend(a().flatMap((a) => STM.whenCase(a, pf)))
 }

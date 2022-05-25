@@ -1,5 +1,5 @@
-import { concreteDeferred } from "@effect/core/io/Deferred/operations/_internal/DeferredInternal";
-import { DeferredState } from "@effect/core/io/Deferred/operations/_internal/DeferredState";
+import { concreteDeferred } from "@effect/core/io/Deferred/operations/_internal/DeferredInternal"
+import { DeferredState } from "@effect/core/io/Deferred/operations/_internal/DeferredState"
 
 /**
  * Completes the deferred with the specified effect. If the deferred has
@@ -20,22 +20,22 @@ export function completeWith_<E, A>(
   effect: Effect.IO<E, A>,
   __tsplusTrace?: string
 ): Effect.UIO<boolean> {
-  concreteDeferred(self);
+  concreteDeferred(self)
   return Effect.succeed(() => {
-    const state = self.state.get;
+    const state = self.state.get
     switch (state._tag) {
       case "Done": {
-        return false;
+        return false
       }
       case "Pending": {
-        self.state.set(DeferredState.done(effect));
+        self.state.set(DeferredState.done(effect))
         state.joiners.forEach((f) => {
-          f(effect);
-        });
-        return true;
+          f(effect)
+        })
+        return true
       }
     }
-  });
+  })
 }
 
 /**
@@ -52,4 +52,4 @@ export function completeWith_<E, A>(
  *
  * @tsplus static ets/Deferred/Aspects completeWith
  */
-export const completeWith = Pipeable(completeWith_);
+export const completeWith = Pipeable(completeWith_)

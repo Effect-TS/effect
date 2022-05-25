@@ -9,7 +9,7 @@ export function modifyDelay_<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>,
   f: (out: Out, duration: Duration) => Duration
 ): Schedule<State, Env, In, Out> {
-  return self.modifyDelayEffect((out, duration) => Effect.succeedNow(f(out, duration)));
+  return self.modifyDelayEffect((out, duration) => Effect.succeedNow(f(out, duration)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function modifyDelay_<State, Env, In, Out>(
  *
  * @tsplus static ets/Schedule/Aspects modifyDelay
  */
-export const modifyDelay = Pipeable(modifyDelay_);
+export const modifyDelay = Pipeable(modifyDelay_)

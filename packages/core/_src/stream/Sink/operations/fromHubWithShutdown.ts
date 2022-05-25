@@ -8,5 +8,5 @@ export function fromHubWithShutdown<R, E, In>(
   hub: LazyArg<Hub<In>>,
   __tsplusTrace?: string
 ): Sink<R, E, In, never, void> {
-  return Sink.fromQueueWithShutdown(hub);
+  return Sink.fromQueueWithShutdown(hub)
 }

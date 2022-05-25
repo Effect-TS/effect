@@ -21,9 +21,9 @@ export function collect_<
     (out) => pf(out).fold(collector, (out2) => Channel.write(out2) > collector),
     (e) => Channel.fail(e),
     (z) => Channel.succeedNow(z)
-  );
+  )
 
-  return self >> collector;
+  return self >> collector
 }
 
 /**
@@ -32,4 +32,4 @@ export function collect_<
  *
  * @tsplus static ets/Channel/Aspects collect
  */
-export const collect = Pipeable(collect_);
+export const collect = Pipeable(collect_)

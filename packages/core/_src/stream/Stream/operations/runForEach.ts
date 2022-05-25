@@ -9,7 +9,7 @@ export function runForEach_<R, E, A, R2, E2, Z>(
   f: (a: A) => Effect<R2, E2, Z>,
   __tsplusTrace?: string
 ): Effect<R & R2, E | E2, void> {
-  return self.run(Sink.forEach(f));
+  return self.run(Sink.forEach(f))
 }
 
 /**
@@ -18,4 +18,4 @@ export function runForEach_<R, E, A, R2, E2, Z>(
  *
  * @tsplus static ets/Stream/Aspects runForEach
  */
-export const runForEach = Pipeable(runForEach_);
+export const runForEach = Pipeable(runForEach_)

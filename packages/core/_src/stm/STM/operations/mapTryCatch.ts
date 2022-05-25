@@ -9,7 +9,7 @@ export function mapTryCatch_<R, E1, E, A, B>(
   f: (a: A) => B,
   onThrow: (u: unknown) => E
 ): STM<R, E | E1, B> {
-  return self.flatMap((a) => STM.tryCatch(() => f(a), onThrow));
+  return self.flatMap((a) => STM.tryCatch(() => f(a), onThrow))
 }
 
 /**
@@ -18,4 +18,4 @@ export function mapTryCatch_<R, E1, E, A, B>(
  *
  * @tsplus static ets/STM/Aspects mapTryCatch
  */
-export const mapTryCatch = Pipeable(mapTryCatch_);
+export const mapTryCatch = Pipeable(mapTryCatch_)

@@ -7,5 +7,5 @@ export function runSum<R, E, A>(
   self: Stream<R, E, number>,
   __tsplusTrace?: string
 ): Effect<R, E, number> {
-  return self.run(Sink.sum());
+  return self.run(Sink.sum())
 }

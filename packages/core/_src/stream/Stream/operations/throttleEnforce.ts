@@ -21,7 +21,7 @@ export function throttleEnforce_<R, E, A>(
     duration,
     (input) => Effect.succeedNow(costFn(input)),
     burst
-  );
+  )
 }
 
 /**
@@ -34,4 +34,4 @@ export function throttleEnforce_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects throttleEnforce
  */
-export const throttleEnforce = Pipeable(throttleEnforce_);
+export const throttleEnforce = Pipeable(throttleEnforce_)

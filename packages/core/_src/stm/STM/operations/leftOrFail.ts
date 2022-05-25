@@ -7,7 +7,7 @@ export function leftOrFail_<R, E, B, C, E1>(
   self: STM<R, E, Either<B, C>>,
   orFail: (c: C) => E1
 ): STM<R, E | E1, B> {
-  return self.flatMap((_) => _.fold(STM.succeedNow, (x) => STM.fail(orFail(x))));
+  return self.flatMap((_) => _.fold(STM.succeedNow, (x) => STM.fail(orFail(x))))
 }
 
 /**
@@ -15,4 +15,4 @@ export function leftOrFail_<R, E, B, C, E1>(
  *
  * @tsplus static ets/STM/Aspects leftOrFail
  */
-export const leftOrFail = Pipeable(leftOrFail_);
+export const leftOrFail = Pipeable(leftOrFail_)

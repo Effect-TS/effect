@@ -12,7 +12,7 @@ export function orElseEither_<R, E, A, R2, E2, A2>(
   return self.tryOrElse(
     () => that().map(Either.right),
     (a) => Effect.succeedNow(Either.left(a))
-  );
+  )
 }
 
 /**
@@ -21,4 +21,4 @@ export function orElseEither_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Effect/Aspects orElseEither
  */
-export const orElseEither = Pipeable(orElseEither_);
+export const orElseEither = Pipeable(orElseEither_)

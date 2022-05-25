@@ -9,5 +9,5 @@ export function collectAll<A>(): Schedule<
   A,
   Chunk<A>
 > {
-  return Schedule.identity<A>().collectAll();
+  return Schedule.identity<A>().collectAll()
 }

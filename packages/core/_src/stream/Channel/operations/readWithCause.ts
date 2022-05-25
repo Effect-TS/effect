@@ -1,4 +1,4 @@
-import { ContinuationK, Read } from "@effect/core/stream/Channel/definition/primitives";
+import { ContinuationK, Read } from "@effect/core/stream/Channel/definition/primitives"
 
 /**
  * Reads an input and continue exposing both full error cause and completion.
@@ -59,5 +59,5 @@ export function readWithCause<
       InDone,
       OutDone | OutDone1 | OutDone2
     >(done, halt)
-  );
+  )
 }

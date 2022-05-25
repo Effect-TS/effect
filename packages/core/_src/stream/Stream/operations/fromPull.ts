@@ -7,5 +7,5 @@ export function fromPull<R, E, A>(
 ): Stream<R, E, A> {
   return Stream.unwrapScoped(
     effect().map((pull) => Stream.repeatEffectChunkOption(pull))
-  );
+  )
 }

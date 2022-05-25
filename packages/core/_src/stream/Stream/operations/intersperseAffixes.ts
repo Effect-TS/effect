@@ -10,7 +10,7 @@ export function intersperseAffixes_<R, E, A, A2>(
   end: LazyArg<A2>,
   __tsplusTrace?: string
 ): Stream<R, E, A | A2> {
-  return Stream.suspend(Stream(start()) + self.intersperse(middle) + Stream(end()));
+  return Stream.suspend(Stream(start()) + self.intersperse(middle) + Stream(end()))
 }
 
 /**
@@ -18,4 +18,4 @@ export function intersperseAffixes_<R, E, A, A2>(
  *
  * @tsplus static ets/Stream/Aspects intersperseAffixes
  */
-export const intersperseAffixes = Pipeable(intersperseAffixes_);
+export const intersperseAffixes = Pipeable(intersperseAffixes_)

@@ -7,5 +7,5 @@
 export function serviceWithEffect<T>(tag: Tag<T>) {
   return <Env, OutErr, OutDone>(
     f: (resource: T) => Effect<Env, OutErr, OutDone>
-  ): Channel<Env & Has<T>, unknown, unknown, unknown, OutErr, never, OutDone> => Channel.service(tag).mapEffect(f);
+  ): Channel<Env & Has<T>, unknown, unknown, unknown, OutErr, never, OutDone> => Channel.service(tag).mapEffect(f)
 }

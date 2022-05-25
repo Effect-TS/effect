@@ -8,5 +8,5 @@ export function flattenExit<R, E, E2, A>(
   self: Stream<R, E, Exit<E2, A>>,
   __tsplusTrace?: string
 ): Stream<R, E | E2, A> {
-  return self.mapEffect((exit) => Effect.done(exit));
+  return self.mapEffect((exit) => Effect.done(exit))
 }

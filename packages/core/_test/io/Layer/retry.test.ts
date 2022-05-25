@@ -9,11 +9,11 @@ describe.concurrent("Layer", () => {
         )
         .bindValue("layer", ({ effect }) => Layer.fromEffectEnvironment(effect).retry(Schedule.recurs(3)))
         .tap(({ layer }) => Effect.scoped(layer.build()).ignore())
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 4);
-    });
-  });
-});
+      assert.strictEqual(result, 4)
+    })
+  })
+})

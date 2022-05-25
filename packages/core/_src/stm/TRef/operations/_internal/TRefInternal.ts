@@ -1,11 +1,11 @@
-import type { Todo } from "@effect/core/stm/STM/Journal";
-import type { TxnId } from "@effect/core/stm/STM/TxnId";
-import type { Versioned } from "@effect/core/stm/STM/Versioned";
-import { _A, TRefSym } from "@effect/core/stm/TRef/definition";
+import type { Todo } from "@effect/core/stm/STM/Journal"
+import type { TxnId } from "@effect/core/stm/STM/TxnId"
+import type { Versioned } from "@effect/core/stm/STM/Versioned"
+import { _A, TRefSym } from "@effect/core/stm/TRef/definition"
 
 export class TRefInternal<A> implements TRef<A> {
-  readonly [TRefSym]: TRefSym = TRefSym;
-  readonly [_A]!: () => A;
+  readonly [TRefSym]: TRefSym = TRefSym
+  readonly [_A]!: () => A
   constructor(
     public versioned: Versioned<A>,
     readonly todo: AtomicReference<HashMap<TxnId, Todo>>

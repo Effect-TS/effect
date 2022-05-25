@@ -1,4 +1,4 @@
-import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Repeats the entire stream using the specified schedule. The stream will
@@ -11,7 +11,7 @@ export function repeatNow_<R, E, A, S, R2, B>(
   schedule: LazyArg<Schedule<S, R2, unknown, B>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E, A> {
-  return self.repeatEither(schedule).collectRight();
+  return self.repeatEither(schedule).collectRight()
 }
 
 /**
@@ -20,7 +20,7 @@ export function repeatNow_<R, E, A, S, R2, B>(
  *
  * @tsplus static ets/Stream/Aspects repeat
  */
-export const repeatNow = Pipeable(repeatNow_);
+export const repeatNow = Pipeable(repeatNow_)
 
 /**
  * Repeats the provided value infinitely.
@@ -33,5 +33,5 @@ export function repeat<A>(
 ): Stream<unknown, never, A> {
   return new StreamInternal(
     Channel.succeed(a).flatMap((a) => Channel.write(Chunk.single(a)).repeated())
-  );
+  )
 }

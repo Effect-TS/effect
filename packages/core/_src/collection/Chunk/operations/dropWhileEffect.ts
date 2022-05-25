@@ -1,4 +1,4 @@
-import { concreteChunkId } from "@tsplus/stdlib/collections/Chunk/definition";
+import { concreteChunkId } from "@tsplus/stdlib/collections/Chunk/definition"
 
 /**
  * Drops all elements so long as the predicate returns true.
@@ -11,30 +11,30 @@ export function dropWhileEffect_<R, E, A>(
   __tsplusTrace?: string
 ): Effect<R, E, Chunk<A>> {
   return Effect.suspendSucceed(() => {
-    const iterator = concreteChunkId(self)._arrayLikeIterator();
-    let next;
-    let dropping: Effect<R, E, boolean> = Effect.succeedNow(true);
-    let builder = Chunk.empty<A>();
+    const iterator = concreteChunkId(self)._arrayLikeIterator()
+    let next
+    let dropping: Effect<R, E, boolean> = Effect.succeedNow(true)
+    let builder = Chunk.empty<A>()
 
     while ((next = iterator.next()) && !next.done) {
-      const array = next.value;
-      const len = array.length;
-      let i = 0;
+      const array = next.value
+      const len = array.length
+      let i = 0
       while (i < len) {
-        const a = array[i]!;
+        const a = array[i]!
         dropping = dropping.flatMap((d) =>
           (d ? f(a) : Effect.succeedNow(false)).map((b) => {
             if (!b) {
-              builder = builder.append(a);
+              builder = builder.append(a)
             }
-            return b;
+            return b
           })
-        );
-        i++;
+        )
+        i++
       }
     }
-    return dropping.map(() => builder);
-  });
+    return dropping.map(() => builder)
+  })
 }
 
 /**
@@ -42,4 +42,4 @@ export function dropWhileEffect_<R, E, A>(
  *
  * @tsplus static Chunk/Aspects dropWhileEffect
  */
-export const dropWhileEffect = Pipeable(dropWhileEffect_);
+export const dropWhileEffect = Pipeable(dropWhileEffect_)

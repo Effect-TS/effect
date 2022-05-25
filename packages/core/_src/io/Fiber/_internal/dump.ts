@@ -1,4 +1,4 @@
-import type { FiberStatus } from "@effect/core/io/Fiber/status";
+import type { FiberStatus } from "@effect/core/io/Fiber/status"
 
 export class Dump {
   constructor(

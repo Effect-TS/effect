@@ -8,7 +8,7 @@ export function orElseFail_<R, E, E1, A>(
   self: STM<R, E, A>,
   e: LazyArg<E1>
 ): STM<R, E | E1, A> {
-  return self | STM.fail(e);
+  return self | STM.fail(e)
 }
 
 /**
@@ -17,4 +17,4 @@ export function orElseFail_<R, E, E1, A>(
  *
  * @tsplus static ets/STM/Aspects orElseFail
  */
-export const orElseFail = Pipeable(orElseFail_);
+export const orElseFail = Pipeable(orElseFail_)

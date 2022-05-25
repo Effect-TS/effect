@@ -1,4 +1,4 @@
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * Returns a new schedule that deals with a narrower class of inputs than this
@@ -14,7 +14,7 @@ export function contramapEffect_<State, Env, In, Out, Env1, In2>(
   return makeWithState(
     self._initial,
     (now, input2, state) => f(input2).flatMap((input) => self._step(now, input, state))
-  );
+  )
 }
 
 /**
@@ -23,4 +23,4 @@ export function contramapEffect_<State, Env, In, Out, Env1, In2>(
  *
  * @tsplus static ets/Schedule/Aspects contramapEffect
  */
-export const contramapEffect = Pipeable(contramapEffect_);
+export const contramapEffect = Pipeable(contramapEffect_)

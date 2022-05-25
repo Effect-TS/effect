@@ -1,4 +1,4 @@
-import type { MergeTuple } from "@tsplus/stdlib/data/Tuple";
+import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
 
 /**
  * Returns a new schedule that performs a geometric intersection on the
@@ -18,7 +18,7 @@ export function zip_<State, State1, Env, In, Out, Env1, In1, Out2>(
   In & In1,
   MergeTuple<Out, Out2>
 > {
-  return self.intersectWith(that, (a, b) => a.intersect(b));
+  return self.intersectWith(that, (a, b) => a.intersect(b))
 }
 
 /**
@@ -28,4 +28,4 @@ export function zip_<State, State1, Env, In, Out, Env1, In1, Out2>(
  *
  * @tsplus static ets/Schedule/Aspects zip
  */
-export const zip = Pipeable(zip_);
+export const zip = Pipeable(zip_)

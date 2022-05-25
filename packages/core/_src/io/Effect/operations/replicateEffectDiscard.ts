@@ -9,7 +9,7 @@ export function replicateEffectDiscard_<R, E, A>(
   n: number,
   __tsplusTrace?: string
 ): Effect<R, E, void> {
-  return Effect.collectAllDiscard(self.replicate(n));
+  return Effect.collectAllDiscard(self.replicate(n))
 }
 
 /**
@@ -18,4 +18,4 @@ export function replicateEffectDiscard_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects replicateEffectDiscard
  */
-export const replicateEffectDiscard = Pipeable(replicateEffectDiscard_);
+export const replicateEffectDiscard = Pipeable(replicateEffectDiscard_)

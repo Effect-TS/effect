@@ -1,4 +1,4 @@
-import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Creates a sink produced from a scoped effect.
@@ -12,9 +12,9 @@ export function unwrapScoped<R, E, In, L, Z>(
   return new SinkInternal(
     Channel.unwrapScoped(
       effect().map((sink) => {
-        concreteSink(sink);
-        return sink.channel;
+        concreteSink(sink)
+        return sink.channel
       })
     )
-  );
+  )
 }

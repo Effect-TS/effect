@@ -6,5 +6,5 @@
  */
 export function trackSuccess<Type, In, Out>(self: Metric<Type, In, Out>) {
   return <R, E, A extends In>(effect: Effect<R, E, A>, __tsplusTrace?: string): Effect<R, E, A> =>
-    self.trackSuccessWith<Type, In, A, Out>(identity)(effect);
+    self.trackSuccessWith<Type, In, A, Out>(identity)(effect)
 }

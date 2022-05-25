@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Keeps some of the errors, and terminates the fiber with the rest, using the
@@ -12,10 +12,10 @@ export function refineOrDieWith_<R, E, E2, A>(
   f: (e: E) => unknown,
   __tsplusTrace?: string
 ): Stream<R, E2, A> {
-  concreteStream(self);
+  concreteStream(self)
   return new StreamInternal(
     self.channel.catchAll((e) => pf(e).fold(Channel.failCause(Cause.die(f(e))), (e2) => Channel.fail(e2)))
-  );
+  )
 }
 
 /**
@@ -24,4 +24,4 @@ export function refineOrDieWith_<R, E, E2, A>(
  *
  * @tsplus static ets/Stream/Aspects refineOrDieWith
  */
-export const refineOrDieWith = Pipeable(refineOrDieWith_);
+export const refineOrDieWith = Pipeable(refineOrDieWith_)

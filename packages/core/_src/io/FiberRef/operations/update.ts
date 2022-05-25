@@ -8,7 +8,7 @@ export function update_<A, P>(
   f: (a: A) => A,
   __tsplusTrace?: string
 ): Effect.UIO<void> {
-  return self.modify((v) => Tuple(undefined, f(v)));
+  return self.modify((v) => Tuple(undefined, f(v)))
 }
 
 /**
@@ -16,4 +16,4 @@ export function update_<A, P>(
  *
  * @tsplus static ets/FiberRef/Aspects update
  */
-export const update = Pipeable(update_);
+export const update = Pipeable(update_)

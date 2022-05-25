@@ -1,4 +1,4 @@
-import { mapper } from "@effect/core/test/stream/Channel/test-utils";
+import { mapper } from "@effect/core/test/stream/Channel/test-utils"
 
 describe.concurrent("Channel", () => {
   describe.concurrent("reads", () => {
@@ -7,27 +7,27 @@ describe.concurrent("Channel", () => {
         constructor(readonly i: number) {}
 
         [Hash.sym](): number {
-          return Hash.number(this.i);
+          return Hash.number(this.i)
         }
 
         [Equals.sym](u: unknown): boolean {
-          return u instanceof Whatever && u.i === this.i;
+          return u instanceof Whatever && u.i === this.i
         }
       }
 
-      const left = Channel.writeAll(1, 2, 3);
+      const left = Channel.writeAll(1, 2, 3)
       const right = Channel.read<number>()
         .catchAll(() => Channel.succeedNow(4))
-        .flatMap((i) => Channel.write(new Whatever(i)));
-      const conduit = left >> (right > right > right > right);
-      const program = conduit.runCollect();
+        .flatMap((i) => Channel.write(new Whatever(i)))
+      const conduit = left >> (right > right > right > right)
+      const program = conduit.runCollect()
 
       const {
         tuple: [chunk, _]
-      } = await program.unsafeRunPromise();
+      } = await program.unsafeRunPromise()
 
-      assert.isTrue(chunk == Chunk(new Whatever(1), new Whatever(2), new Whatever(3), new Whatever(4)));
-    });
+      assert.isTrue(chunk == Chunk(new Whatever(1), new Whatever(2), new Whatever(3), new Whatever(4)))
+    })
 
     it("pipeline", async () => {
       const effect = Channel.fromEffect(Ref.make<List<number>>(List.empty())).flatMap(
@@ -48,25 +48,25 @@ describe.concurrent("Channel", () => {
                   inner(),
               () => Channel.unit,
               () => Channel.unit
-            );
+            )
           }
-          return inner() > Channel.fromEffect(ref.get());
+          return inner() > Channel.fromEffect(ref.get())
         }
-      );
+      )
 
       const program = (
         ((Channel.writeAll(1, 2) >> mapper((i: number) => i)) >>
           mapper((i: number) => List(i, i)).concatMap((list) => Channel.writeAll(...list).as(undefined))) >>
         effect
-      ).runCollect();
+      ).runCollect()
 
       const {
         tuple: [chunk, result]
-      } = await program.unsafeRunPromise();
+      } = await program.unsafeRunPromise()
 
-      assert.isTrue(chunk == Chunk(1, 1, 2, 2));
-      assert.isTrue(result == Chunk(2, 2, 1, 1));
-    });
+      assert.isTrue(chunk == Chunk(1, 1, 2, 2))
+      assert.isTrue(result == Chunk(2, 2, 1, 1))
+    })
 
     it("another pipeline", async () => {
       const program = Ref.make(Chunk.empty<number>())
@@ -79,7 +79,7 @@ describe.concurrent("Channel", () => {
             never,
             number,
             void
-          > = Channel.writeAll(1, 2, 3, 4, 5);
+          > = Channel.writeAll(1, 2, 3, 4, 5)
 
           function readIntsN(
             n: number
@@ -90,7 +90,7 @@ describe.concurrent("Channel", () => {
                 () => Channel.succeedNow("EOF"),
                 () => Channel.succeedNow("EOF")
               )
-              : Channel.succeedNow("end");
+              : Channel.succeedNow("end")
           }
 
           function sum(
@@ -101,42 +101,42 @@ describe.concurrent("Channel", () => {
               (i: number) => sum(label, acc + i),
               () => Channel.fromEffect(ref.update((chunk) => chunk.append(acc))),
               () => Channel.fromEffect(ref.update((chunk) => chunk.append(acc)))
-            );
+            )
           }
 
           const conduit = intProducer >>
-            (readIntsN(2) >> sum("left", 0) > readIntsN(2) >> sum("right", 0));
+            (readIntsN(2) >> sum("left", 0) > readIntsN(2) >> sum("right", 0))
 
-          return conduit.run();
+          return conduit.run()
         })
-        .flatMap((ref) => ref.get());
+        .flatMap((ref) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(3, 7));
-    });
+      assert.isTrue(result == Chunk(3, 7))
+    })
 
     it("resources", async () => {
       const program = Ref.make(Chunk.empty<string>())
         .tap((events) => {
-          const event = (label: string) => events.update((chunk) => chunk.append(label));
+          const event = (label: string) => events.update((chunk) => chunk.append(label))
 
           const left = Channel.acquireUseReleaseOut(event("Acquire outer"), () => event("Release outer")).concatMap(
             () =>
               Channel.writeAll(1, 2, 3).concatMap((i) =>
                 Channel.acquireUseReleaseOut(event(`Acquire ${i}`).as(i), () => event(`Release ${i}`))
               )
-          );
+          )
 
-          const read = Channel.read<number>().mapEffect((i) => event(`Read ${i}`).asUnit());
+          const read = Channel.read<number>().mapEffect((i) => event(`Read ${i}`).asUnit())
 
-          const right = (read > read).catchAll(() => Channel.unit);
+          const right = (read > read).catchAll(() => Channel.unit)
 
-          return (left >> right).runDrain();
+          return (left >> right).runDrain()
         })
-        .flatMap((ref) => ref.get());
+        .flatMap((ref) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
       assert.isTrue(
         result == Chunk(
@@ -149,7 +149,7 @@ describe.concurrent("Channel", () => {
           "Release 2",
           "Release outer"
         )
-      );
-    });
-  });
-});
+      )
+    })
+  })
+})

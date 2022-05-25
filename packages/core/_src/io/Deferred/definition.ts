@@ -1,11 +1,11 @@
-export const DeferredSym = Symbol.for("@effect/core/io/Deferred");
-export type DeferredSym = typeof DeferredSym;
+export const DeferredSym = Symbol.for("@effect/core/io/Deferred")
+export type DeferredSym = typeof DeferredSym
 
-export const _E = Symbol.for("@effect/core/io/Deferred/E");
-export type _E = typeof _E;
+export const _E = Symbol.for("@effect/core/io/Deferred/E")
+export type _E = typeof _E
 
-export const _A = Symbol.for("@effect/core/io/Deferred/A");
-export type _A = typeof _A;
+export const _A = Symbol.for("@effect/core/io/Deferred/A")
+export type _A = typeof _A
 
 /**
  * A `Deferred` represents an asynchronous variable that can be set exactly
@@ -19,20 +19,20 @@ export type _A = typeof _A;
  * @tsplus type ets/Deferred
  */
 export interface Deferred<E, A> {
-  readonly [DeferredSym]: DeferredSym;
-  readonly [_E]: () => E;
-  readonly [_A]: () => A;
+  readonly [DeferredSym]: DeferredSym
+  readonly [_E]: () => E
+  readonly [_A]: () => A
 }
 
 /**
  * @tsplus type ets/Deferred/Ops
  */
 export interface DeferredOps {
-  $: DeferredAspects;
+  $: DeferredAspects
 }
 export const Deferred: DeferredOps = {
   $: {}
-};
+}
 
 /**
  * @tsplus type ets/Deferred/Aspects

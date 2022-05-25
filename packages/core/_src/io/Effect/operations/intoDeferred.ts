@@ -14,7 +14,7 @@ export function intoDeferred_<R, E, A>(
     restore(self)
       .exit()
       .flatMap((exit) => promise().done(exit))
-  );
+  )
 }
 
 /**
@@ -24,4 +24,4 @@ export function intoDeferred_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects intoPromise
  */
-export const intoDeferred = Pipeable(intoDeferred_);
+export const intoDeferred = Pipeable(intoDeferred_)

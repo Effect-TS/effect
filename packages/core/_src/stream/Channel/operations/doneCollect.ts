@@ -1,4 +1,4 @@
-import type { ChunkBuilder } from "@tsplus/stdlib/collections/Chunk";
+import type { ChunkBuilder } from "@tsplus/stdlib/collections/Chunk"
 
 /**
  * Returns a new channel, which is the same as this one, except that all the
@@ -23,11 +23,11 @@ export function doneCollect<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone
   Tuple<[Chunk<OutElem>, OutDone]>
 > {
   return Channel.suspend(() => {
-    const builder = Chunk.builder<OutElem>();
+    const builder = Chunk.builder<OutElem>()
     return (self >> reader<Env, OutErr, OutElem, OutDone>(builder)).flatMap((z) =>
       Channel.succeed(Tuple(builder.build(), z))
-    );
-  });
+    )
+  })
 }
 
 function reader<Env, OutErr, OutElem, OutDone>(
@@ -36,9 +36,9 @@ function reader<Env, OutErr, OutElem, OutDone>(
   return Channel.readWith(
     (outElem) =>
       Channel.succeed(() => {
-        builder.append(outElem);
+        builder.append(outElem)
       }) > reader<Env, OutErr, OutElem, OutDone>(builder),
     (outErr) => Channel.fail(outErr),
     (outDone) => Channel.succeedNow(outDone)
-  );
+  )
 }

@@ -6,10 +6,10 @@ export function incrementBy_(
   amount: LazyArg<number>,
   __tsplusTrace?: string
 ): Effect.UIO<void> {
-  return self.update(amount);
+  return self.update(amount)
 }
 
 /**
  * @tsplus static ets/Metrics/Metric/Aspects incrementBy
  */
-export const incrementBy = Pipeable(incrementBy_);
+export const incrementBy = Pipeable(incrementBy_)

@@ -7,5 +7,5 @@
 export function collectWhile<A>(
   f: Predicate<A>
 ): Schedule<Tuple<[void, Chunk<A>]>, unknown, A, Chunk<A>> {
-  return Schedule.recurWhile(f).collectAll();
+  return Schedule.recurWhile(f).collectAll()
 }

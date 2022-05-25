@@ -12,7 +12,7 @@ export function toQueueDropping_<R, E, A>(
   return Effect.acquireRelease(
     Queue.dropping<Take<E, A>>(capacity),
     (queue) => queue.shutdown
-  ).tap((queue) => self.runIntoQueueScoped(queue).fork());
+  ).tap((queue) => self.runIntoQueueScoped(queue).fork())
 }
 
 /**
@@ -21,4 +21,4 @@ export function toQueueDropping_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects toQueueDropping
  */
-export const toQueueDropping = Pipeable(toQueueDropping_);
+export const toQueueDropping = Pipeable(toQueueDropping_)

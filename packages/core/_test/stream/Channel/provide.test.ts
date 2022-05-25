@@ -1,16 +1,16 @@
-import { NumberService, NumberServiceImpl } from "@effect/core/test/stream/Channel/test-utils";
+import { NumberService, NumberServiceImpl } from "@effect/core/test/stream/Channel/test-utils"
 
 describe("Channel", () => {
   describe("provide", () => {
     it("simple provide", async () => {
       const program = Channel.fromEffect(Effect.service(NumberService))
         .provideService(NumberService)(new NumberServiceImpl(100))
-        .run();
+        .run()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.deepEqual(result, new NumberServiceImpl(100));
-    });
+      assert.deepEqual(result, new NumberServiceImpl(100))
+    })
 
     it("provide.zip(provide)", async () => {
       const program = Channel.fromEffect(Effect.service(NumberService))
@@ -20,12 +20,12 @@ describe("Channel", () => {
             NumberService
           )(new NumberServiceImpl(200))
         )
-        .run();
+        .run()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Tuple(new NumberServiceImpl(100), new NumberServiceImpl(200)));
-    });
+      assert.isTrue(result == Tuple(new NumberServiceImpl(100), new NumberServiceImpl(200)))
+    })
 
     it("concatMap(provide).provide", async () => {
       const program = Channel.fromEffect(Effect.service(NumberService))
@@ -37,13 +37,13 @@ describe("Channel", () => {
             .flatMap((tuple) => Channel.write(tuple))
         )
         .provideService(NumberService)(new NumberServiceImpl(100))
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.get(0) == Chunk(Tuple(new NumberServiceImpl(100), new NumberServiceImpl(200))));
-      assert.isUndefined(result.get(1));
-    });
+      assert.isTrue(result.get(0) == Chunk(Tuple(new NumberServiceImpl(100), new NumberServiceImpl(200))))
+      assert.isUndefined(result.get(1))
+    })
 
     it("provide is modular", async () => {
       const program = Channel.Do()
@@ -54,13 +54,13 @@ describe("Channel", () => {
           ))
         .bind("v3", () => Channel.fromEffect(Effect.service(NumberService)))
         .runDrain()
-        .provideEnvironment(Env(NumberService, { n: 4 }));
+        .provideEnvironment(Env(NumberService, { n: 4 }))
 
-      const { v1, v2, v3 } = await program.unsafeRunPromise();
+      const { v1, v2, v3 } = await program.unsafeRunPromise()
 
-      assert.deepEqual(v1, { n: 4 });
-      assert.deepEqual(v2, { n: 2 });
-      assert.deepEqual(v3, { n: 4 });
-    });
-  });
-});
+      assert.deepEqual(v1, { n: 4 })
+      assert.deepEqual(v2, { n: 2 })
+      assert.deepEqual(v3, { n: 4 })
+    })
+  })
+})

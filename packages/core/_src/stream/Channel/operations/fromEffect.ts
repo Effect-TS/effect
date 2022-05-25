@@ -1,4 +1,4 @@
-import { FromEffect } from "@effect/core/stream/Channel/definition/primitives";
+import { FromEffect } from "@effect/core/stream/Channel/definition/primitives"
 
 /**
  * Use an effect to end a channel.
@@ -8,5 +8,5 @@ import { FromEffect } from "@effect/core/stream/Channel/definition/primitives";
 export function fromEffect<R, E, A>(
   effect: LazyArg<Effect<R, E, A>>
 ): Channel<R, unknown, unknown, unknown, E, never, A> {
-  return new FromEffect(effect);
+  return new FromEffect(effect)
 }

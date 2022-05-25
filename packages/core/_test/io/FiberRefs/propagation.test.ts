@@ -16,10 +16,10 @@ describe("FiberRefs", () => {
         )
         .tap(({ producer }) => producer.join())
         .flatMap(({ consumer }) => consumer.join())
-    );
+    )
 
-    const result = await program.unsafeRunPromise();
+    const result = await program.unsafeRunPromise()
 
-    assert.isTrue(result);
-  });
-});
+    assert.isTrue(result)
+  })
+})

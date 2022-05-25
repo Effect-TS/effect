@@ -9,7 +9,7 @@ export function repeatWhile_<R, E, A>(
   f: Predicate<A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return self.repeatWhileEffect((a) => Effect.succeed(f(a)));
+  return self.repeatWhileEffect((a) => Effect.succeed(f(a)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function repeatWhile_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects repeatWhile
  */
-export const repeatWhile = Pipeable(repeatWhile_);
+export const repeatWhile = Pipeable(repeatWhile_)

@@ -15,5 +15,5 @@ export function validate<R, E, A, B>(
     es.isEmpty()
       ? STM.succeedNow(Chunk.from(bs))
       : STM.fail(es)
-  );
+  )
 }

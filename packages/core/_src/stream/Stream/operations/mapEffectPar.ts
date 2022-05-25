@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Maps over elements of the stream with the specified effectful function,
@@ -16,13 +16,13 @@ export function mapEffectPar_<R, E, A, R1, E1, B>(
   f: (a: A) => Effect<R1, E1, B>,
   __tsplusTrace?: string
 ): Stream<R & R1, E | E1, B> {
-  concreteStream(self);
+  concreteStream(self)
   return new StreamInternal(
     self.channel
       .concatMap(Channel.writeChunk)
       .mapOutEffectPar(n, f)
       .mapOut(Chunk.single)
-  );
+  )
 }
 
 /**
@@ -35,4 +35,4 @@ export function mapEffectPar_<R, E, A, R1, E1, B>(
  *
  * @tsplus static ets/Stream/Aspects mapEffectPar
  */
-export const mapEffectPar = Pipeable(mapEffectPar_);
+export const mapEffectPar = Pipeable(mapEffectPar_)

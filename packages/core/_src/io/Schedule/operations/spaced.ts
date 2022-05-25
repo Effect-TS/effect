@@ -7,5 +7,5 @@
 export function spaced(
   duration: LazyArg<Duration>
 ): Schedule<number, unknown, unknown, number> {
-  return Schedule.forever.addDelay(duration);
+  return Schedule.forever.addDelay(duration)
 }

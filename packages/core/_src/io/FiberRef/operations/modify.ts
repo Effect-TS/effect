@@ -1,4 +1,4 @@
-import { IFiberRefModify } from "@effect/core/io/Effect/definition/primitives";
+import { IFiberRefModify } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Atomically modifies the `FiberRef` with the specified function, which
@@ -12,7 +12,7 @@ export function modify_<A, B, P>(
   f: (a: A) => Tuple<[B, A]>,
   __tsplusTrace?: string
 ): Effect.UIO<B> {
-  return new IFiberRefModify(self, f, __tsplusTrace);
+  return new IFiberRefModify(self, f, __tsplusTrace)
 }
 
 /**
@@ -22,4 +22,4 @@ export function modify_<A, B, P>(
  *
  * @tsplus static ets/FiberRef/Aspects modify
  */
-export const modify = Pipeable(modify_);
+export const modify = Pipeable(modify_)

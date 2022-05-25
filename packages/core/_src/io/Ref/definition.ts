@@ -1,8 +1,8 @@
-export const RefSym = Symbol.for("@effect/core/io/Ref");
-export type RefSym = typeof RefSym;
+export const RefSym = Symbol.for("@effect/core/io/Ref")
+export type RefSym = typeof RefSym
 
-export const _A = Symbol.for("@effect/core/io/Ref/A");
-export type _A = typeof _A;
+export const _A = Symbol.for("@effect/core/io/Ref/A")
+export type _A = typeof _A
 
 /**
  * A `Ref` is a purely functional description of a mutable reference. The
@@ -26,23 +26,23 @@ export type _A = typeof _A;
  * @tsplus type ets/Ref
  */
 export interface Ref<A> {
-  readonly [RefSym]: RefSym;
-  readonly [_A]: () => A;
+  readonly [RefSym]: RefSym
+  readonly [_A]: () => A
 }
 
 export declare namespace Ref {
-  type Synchronized<A> = SynchronizedRef<A>;
+  type Synchronized<A> = SynchronizedRef<A>
 }
 
 /**
  * @tsplus type ets/Ref/Ops
  */
 export interface RefOps {
-  $: RefAspects;
+  $: RefAspects
 }
 export const Ref: RefOps = {
   $: {}
-};
+}
 
 /**
  * @tsplus type ets/Ref/Aspects

@@ -10,11 +10,11 @@ export interface Queue<A> extends Enqueue<A>, Dequeue<A> {}
  * @tsplus type ets/Queue/Ops
  */
 export interface QueueOps {
-  $: QueueAspects;
+  $: QueueAspects
 }
 export const Queue: QueueOps = {
   $: {}
-};
+}
 
 /**
  * @tsplus type ets/Queue/Aspects

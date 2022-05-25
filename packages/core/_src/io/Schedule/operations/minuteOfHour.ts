@@ -1,7 +1,7 @@
-import { Decision } from "@effect/core/io/Schedule/Decision";
-import { Interval } from "@effect/core/io/Schedule/Interval";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
-import { beginningOfMinute, endOfMinute, nextMinute } from "@effect/core/io/Schedule/operations/_internal/time";
+import { Decision } from "@effect/core/io/Schedule/Decision"
+import { Interval } from "@effect/core/io/Schedule/Interval"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
+import { beginningOfMinute, endOfMinute, nextMinute } from "@effect/core/io/Schedule/operations/_internal/time"
 
 /**
  * Cron-like schedule that recurs every specified `minute` of each hour. It
@@ -21,12 +21,12 @@ export function minuteOfHour(
         new IllegalArgumentException(
           `Invalid argument in: minuteOfHour(${minute}). Must be in range 0...59`
         )
-      );
+      )
     }
-    const min = nextMinute(now, minute);
-    const start = Math.max(beginningOfMinute(min), now);
-    const end = endOfMinute(min);
-    const interval = Interval(start, end);
-    return Effect.succeedNow(Tuple(state + 1, state, Decision.Continue(interval)));
-  });
+    const min = nextMinute(now, minute)
+    const start = Math.max(beginningOfMinute(min), now)
+    const end = endOfMinute(min)
+    const interval = Interval(start, end)
+    return Effect.succeedNow(Tuple(state + 1, state, Decision.Continue(interval)))
+  })
 }

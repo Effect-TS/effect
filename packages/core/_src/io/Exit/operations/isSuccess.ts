@@ -1,4 +1,4 @@
-import type { Success } from "@effect/core/io/Exit/definition";
+import type { Success } from "@effect/core/io/Exit/definition"
 
 /**
  * Determines if the `Exit` result is a success.
@@ -6,5 +6,5 @@ import type { Success } from "@effect/core/io/Exit/definition";
  * @tsplus fluent ets/Exit isSuccess
  */
 export function isSuccess<E, A>(self: Exit<E, A>): self is Success<A> {
-  return self._tag === "Success";
+  return self._tag === "Success"
 }

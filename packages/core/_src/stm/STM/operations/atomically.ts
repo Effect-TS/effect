@@ -1,6 +1,6 @@
-import { tryCommitAsync, tryCommitSync } from "@effect/core/stm/STM/Journal";
-import { State } from "@effect/core/stm/STM/State";
-import { TxnId } from "@effect/core/stm/STM/TxnId";
+import { tryCommitAsync, tryCommitSync } from "@effect/core/stm/STM/Journal"
+import { State } from "@effect/core/stm/STM/State"
+import { TxnId } from "@effect/core/stm/STM/TxnId"
 
 /**
  * @tsplus static ets/STM/Ops atomically
@@ -11,29 +11,29 @@ export function atomically<R, E, A>(
 ): Effect<R, E, A> {
   return Effect.environmentWithEffect((env: Env<R>) =>
     Effect.suspendSucceedWith((_, fiberId) => {
-      const v = tryCommitSync(fiberId, self, env);
+      const v = tryCommitSync(fiberId, self, env)
 
       switch (v._tag) {
         case "Done": {
-          throw new Effect.Error(v.exit, __tsplusTrace);
+          throw new Effect.Error(v.exit, __tsplusTrace)
         }
         case "Suspend": {
-          const txnId = TxnId();
-          const state = new AtomicReference<State<E, A>>(State.running);
+          const txnId = TxnId()
+          const state = new AtomicReference<State<E, A>>(State.running)
           const io = Effect.async(
             tryCommitAsync(v.journal, fiberId, self, txnId, state, env)
-          );
+          )
           return Effect.uninterruptibleMask(({ restore }) =>
             restore(io).catchAllCause((cause) => {
-              state.compareAndSet(State.running, State.interrupted);
-              const currentState = state.get;
+              state.compareAndSet(State.running, State.interrupted)
+              const currentState = state.get
               return currentState._tag === "Done"
                 ? Effect.done(currentState.exit)
-                : Effect.failCause(cause);
+                : Effect.failCause(cause)
             })
-          );
+          )
         }
       }
     })
-  );
+  )
 }

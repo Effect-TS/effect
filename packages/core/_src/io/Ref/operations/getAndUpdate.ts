@@ -9,7 +9,7 @@ export function getAndUpdate_<A>(
   f: (a: A) => A,
   __tsplusTrace?: string
 ): Effect.UIO<A> {
-  return self.modify((v) => Tuple(v, f(v)));
+  return self.modify((v) => Tuple(v, f(v)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function getAndUpdate_<A>(
  *
  * @tsplus static ets/Ref/Aspects getAndUpdate
  */
-export const getAndUpdate = Pipeable(getAndUpdate_);
+export const getAndUpdate = Pipeable(getAndUpdate_)

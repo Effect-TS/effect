@@ -11,7 +11,7 @@ export function catchNonFatalOrDie_<R, E, A, R2, E2, A2>(
   return self.foldEffect(
     (e) => Effect.runtime().flatMap((runtime) => runtime.runtimeConfig.value.fatal(e) ? Effect.dieNow(e) : f(e)),
     Effect.succeedNow
-  );
+  )
 }
 
 /**
@@ -19,4 +19,4 @@ export function catchNonFatalOrDie_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Effect/Aspects catchNonFatalOrDie
  */
-export const catchNonFatalOrDie = Pipeable(catchNonFatalOrDie_);
+export const catchNonFatalOrDie = Pipeable(catchNonFatalOrDie_)

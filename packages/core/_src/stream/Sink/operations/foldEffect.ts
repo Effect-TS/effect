@@ -1,4 +1,4 @@
-import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * A sink that effectfully folds its inputs with the provided function,
@@ -12,7 +12,7 @@ export function foldEffect<R, E, In, S>(
   f: (s: S, input: In) => Effect<R, E, S>,
   __tsplusTrace?: string
 ): Sink<R, E, In, In, S> {
-  return Sink.suspend(new SinkInternal(reader(z(), cont, f)));
+  return Sink.suspend(new SinkInternal(reader(z(), cont, f)))
 }
 
 function reader<R, E, S, In>(
@@ -22,7 +22,7 @@ function reader<R, E, S, In>(
   __tsplusTrace?: string
 ): Channel<R, E, Chunk<In>, unknown, E, Chunk<In>, S> {
   if (!cont(z)) {
-    return Channel.succeedNow(z);
+    return Channel.succeedNow(z)
   }
   return Channel.readWith(
     (chunk: Chunk<In>) =>
@@ -32,7 +32,7 @@ function reader<R, E, S, In>(
       ),
     (err) => Channel.fail(err),
     () => Channel.succeedNow(z)
-  );
+  )
 }
 
 function foldChunkSplitEffect<R, E, S, In>(
@@ -42,7 +42,7 @@ function foldChunkSplitEffect<R, E, S, In>(
   f: (s: S, input: In) => Effect<R, E, S>,
   __tsplusTrace?: string
 ): Effect<R, E, Tuple<[S, Option<Chunk<In>>]>> {
-  return foldEffectInternal(z, chunk, cont, f, 0, chunk.length);
+  return foldEffectInternal(z, chunk, cont, f, 0, chunk.length)
 }
 
 function foldEffectInternal<R, E, S, In>(
@@ -55,11 +55,11 @@ function foldEffectInternal<R, E, S, In>(
   __tsplusTrace?: string
 ): Effect<R, E, Tuple<[S, Option<Chunk<In>>]>> {
   if (index === length) {
-    return Effect.succeed(Tuple(z, Option.none));
+    return Effect.succeed(Tuple(z, Option.none))
   }
   return f(z, chunk.unsafeGet(index)).flatMap((z1) =>
     cont(z1)
       ? foldEffectInternal<R, E, S, In>(z1, chunk, cont, f, index + 1, length)
       : Effect.succeed(Tuple(z1, Option.some(chunk.drop(index + 1))))
-  );
+  )
 }

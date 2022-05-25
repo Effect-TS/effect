@@ -1,4 +1,4 @@
-import { ILayerSuspend } from "@effect/core/io/Layer/definition";
+import { ILayerSuspend } from "@effect/core/io/Layer/definition"
 
 /**
  * Lazily constructs a layer. This is useful to avoid infinite recursion when
@@ -9,5 +9,5 @@ import { ILayerSuspend } from "@effect/core/io/Layer/definition";
 export function suspend<RIn, E, ROut>(
   f: LazyArg<Layer<RIn, E, ROut>>
 ): Layer<RIn, E, ROut> {
-  return new ILayerSuspend(f);
+  return new ILayerSuspend(f)
 }

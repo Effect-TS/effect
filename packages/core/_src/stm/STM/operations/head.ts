@@ -8,9 +8,9 @@ export function head<R, E, A>(self: STM<R, E, Collection<A>>): STM<R, Option<E>,
   return self.foldSTM(
     (x) => STM.fail(Option.some(x)),
     (x) => {
-      const it = x[Symbol.iterator]();
-      const next = it.next();
-      return next.done ? STM.fail(Option.none) : STM.succeedNow(next.value);
+      const it = x[Symbol.iterator]()
+      const next = it.next()
+      return next.done ? STM.fail(Option.none) : STM.succeedNow(next.value)
     }
-  );
+  )
 }

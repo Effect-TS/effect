@@ -1,5 +1,5 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
-import { RingBufferNew } from "@effect/core/support/RingBufferNew";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import { RingBufferNew } from "@effect/core/support/RingBufferNew"
 
 /**
  * Drops the last specified number of elements from this stream.
@@ -15,7 +15,7 @@ export function dropRight_<R, E, A>(
   __tsplusTrace?: string
 ): Stream<R, E, A> {
   if (n <= 0) {
-    return self;
+    return self
   }
   return Stream.succeed(new RingBufferNew<A>(n)).flatMap((queue) => {
     const reader: Channel<
@@ -29,18 +29,18 @@ export function dropRight_<R, E, A>(
     > = Channel.readWith(
       (chunk: Chunk<A>) => {
         const outs = chunk.collect((elem) => {
-          const head = queue.head();
-          queue.put(elem);
-          return head;
-        });
-        return Channel.write(outs) > reader;
+          const head = queue.head()
+          queue.put(elem)
+          return head
+        })
+        return Channel.write(outs) > reader
       },
       (err) => Channel.fail(err),
       () => Channel.unit
-    );
-    concreteStream(self);
-    return new StreamInternal(self.channel >> reader);
-  });
+    )
+    concreteStream(self)
+    return new StreamInternal(self.channel >> reader)
+  })
 }
 
 /**
@@ -51,4 +51,4 @@ export function dropRight_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects dropRight
  */
-export const dropRight = Pipeable(dropRight_);
+export const dropRight = Pipeable(dropRight_)

@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Performs a filter and map in a single step.
@@ -10,8 +10,8 @@ export function collect_<R, E, A, B>(
   pf: (a: A) => Option<B>,
   __tsplusTrace?: string
 ): Stream<R, E, B> {
-  concreteStream(self);
-  return new StreamInternal(self.channel.mapOut((chunk) => chunk.collect(pf)));
+  concreteStream(self)
+  return new StreamInternal(self.channel.mapOut((chunk) => chunk.collect(pf)))
 }
 
 /**
@@ -19,4 +19,4 @@ export function collect_<R, E, A, B>(
  *
  * @tsplus static ets/Stream/Aspects collect
  */
-export const collect = Pipeable(collect_);
+export const collect = Pipeable(collect_)

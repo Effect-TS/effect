@@ -1,4 +1,4 @@
-import { concreteTake } from "@effect/core/stream/Take/operations/_internal/TakeInternal";
+import { concreteTake } from "@effect/core/stream/Take/operations/_internal/TakeInternal"
 
 /**
  * Folds over the failure cause, success value and end-of-stream marker to
@@ -13,11 +13,11 @@ export function fold_<E, A, Z>(
   value: (chunk: Chunk<A>) => Z,
   __tsplusTrace?: string
 ): Z {
-  concreteTake(self);
+  concreteTake(self)
   return self._exit.fold(
     (cause) => Cause.flipCauseOption(cause).fold(() => end, error),
     value
-  );
+  )
 }
 
 /**
@@ -26,4 +26,4 @@ export function fold_<E, A, Z>(
  *
  * @tsplus static ets/Take/Aspects fold
  */
-export const fold = Pipeable(fold_);
+export const fold = Pipeable(fold_)

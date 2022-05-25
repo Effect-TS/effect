@@ -10,15 +10,15 @@ export class Handoff<A> {
   constructor(readonly ref: Ref<HandoffState<A>>) {}
 }
 
-export type HandoffState<A> = Empty | Full<A>;
+export type HandoffState<A> = Empty | Full<A>
 
 export class Empty {
-  readonly _tag = "Empty";
+  readonly _tag = "Empty"
   constructor(readonly notifyConsumer: Deferred<never, void>) {}
 }
 
 export class Full<A> {
-  readonly _tag = "Full";
+  readonly _tag = "Full"
   constructor(readonly value: A, readonly notifyProducer: Deferred<never, void>) {}
 }
 
@@ -28,7 +28,7 @@ export class Full<A> {
 export function make<A>(__tsplusTrace?: string): Effect.UIO<Handoff<A>> {
   return Deferred.make<never, void>()
     .flatMap((deferred) => Ref.make<HandoffState<A>>(new Empty(deferred)))
-    .map((state) => new Handoff(state));
+    .map((state) => new Handoff(state))
 }
 
 /**
@@ -43,15 +43,15 @@ export function offer<A>(self: Handoff<A>, a: A, __tsplusTrace?: string): Effect
             return Tuple(
               state.notifyConsumer.succeed(undefined) > deferred.await(),
               new Full(a, deferred)
-            );
+            )
           }
           case "Full": {
-            return Tuple(state.notifyProducer.await() > self.offer(a), state);
+            return Tuple(state.notifyProducer.await() > self.offer(a), state)
           }
         }
       })
       .flatten()
-  );
+  )
 }
 
 /**
@@ -63,18 +63,18 @@ export function take<A>(self: Handoff<A>, __tsplusTrace?: string): Effect.UIO<A>
       .modify((state) => {
         switch (state._tag) {
           case "Empty": {
-            return Tuple(state.notifyConsumer.await() > self.take(), state);
+            return Tuple(state.notifyConsumer.await() > self.take(), state)
           }
           case "Full": {
             return Tuple(
               state.notifyProducer.succeed(undefined).as(state.value),
               new Empty(deferred)
-            );
+            )
           }
         }
       })
       .flatten()
-  );
+  )
 }
 
 /**
@@ -86,16 +86,16 @@ export function poll<A>(self: Handoff<A>, __tsplusTrace?: string): Effect.UIO<Op
       .modify((state) => {
         switch (state._tag) {
           case "Empty": {
-            return Tuple(Effect.succeedNow(Option.none), state);
+            return Tuple(Effect.succeedNow(Option.none), state)
           }
           case "Full": {
             return Tuple(
               state.notifyProducer.succeed(undefined).as(Option.some(state.value)),
               new Empty(deferred)
-            );
+            )
           }
         }
       })
       .flatten()
-  );
+  )
 }

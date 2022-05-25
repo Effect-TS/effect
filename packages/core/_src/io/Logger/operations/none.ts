@@ -5,4 +5,4 @@
  */
 export const none: Logger<unknown, void> = {
   apply: () => undefined
-};
+}

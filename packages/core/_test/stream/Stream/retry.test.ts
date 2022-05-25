@@ -7,12 +7,12 @@ describe.concurrent("Stream", () => {
           "stream",
           ({ ref }) => Stream.fromEffect(ref.getAndUpdate((n) => n + 1)) + Stream.fail(Option.none)
         )
-        .flatMap(({ stream }) => stream.retry(Schedule.forever).take(2).runCollect());
+        .flatMap(({ stream }) => stream.retry(Schedule.forever).take(2).runCollect())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(0, 1));
-    });
+      assert.isTrue(result == Chunk(0, 1))
+    })
 
     it("cleanup resources before restarting the stream", async () => {
       const program = Effect.Do()
@@ -23,12 +23,12 @@ describe.concurrent("Stream", () => {
               Stream.fromEffect(ref.get()) + Stream.fail(Option.none)
             )
           ))
-        .flatMap(({ stream }) => stream.retry(Schedule.forever).take(2).runCollect());
+        .flatMap(({ stream }) => stream.retry(Schedule.forever).take(2).runCollect())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(0, 1));
-    });
+      assert.isTrue(result == Chunk(0, 1))
+    })
 
     // TODO(Mike/Max): implement after TestClock
     it.skip("retry a failing stream according to a schedule", async () => {
@@ -51,7 +51,7 @@ describe.concurrent("Stream", () => {
       //   _         <- streamFib.interrupt
       //   results   <- times.get.map(_.map(_.getEpochSecond.toInt))
       // } yield assert(results)(equalTo(List(3, 1, 0)))
-    });
+    })
 
     // TODO(Mike/Max): implement after TestClock
     it.skip("reset the schedule after a successful pull", async () => {
@@ -76,6 +76,6 @@ describe.concurrent("Stream", () => {
       //     _       <- streamFib.join
       //     results <- times.get.map(_.map(_.getEpochSecond.toInt))
       //   } yield assert(results)(equalTo(List(4, 3, 3, 1, 0)))
-    });
-  });
-});
+    })
+  })
+})

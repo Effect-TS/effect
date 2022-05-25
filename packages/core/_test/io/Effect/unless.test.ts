@@ -9,15 +9,15 @@ describe.concurrent("Effect", () => {
         .bind("v2", ({ ref }) => ref.get())
         .bindValue("failure", () => new Error("expected"))
         .tap(({ failure }) => Effect.fail(failure).unless(true))
-        .bind("failed", ({ failure }) => Effect.fail(failure).unless(false).either());
+        .bind("failed", ({ failure }) => Effect.fail(failure).unless(false).either())
 
-      const { failed, failure, v1, v2 } = await program.unsafeRunPromise();
+      const { failed, failure, v1, v2 } = await program.unsafeRunPromise()
 
-      assert.strictEqual(v1, 0);
-      assert.strictEqual(v2, 2);
-      assert.isTrue(failed == Either.left(failure));
-    });
-  });
+      assert.strictEqual(v1, 0)
+      assert.strictEqual(v2, 2)
+      assert.isTrue(failed == Either.left(failure))
+    })
+  })
 
   describe.concurrent("unlessEffect", () => {
     it("executes condition effect and correct branch", async () => {
@@ -34,15 +34,15 @@ describe.concurrent("Effect", () => {
         .bind("c2", ({ conditionRef }) => conditionRef.get())
         .bindValue("failure", () => new Error("expected"))
         .tap(({ conditionTrue, failure }) => Effect.fail(failure).unlessEffect(conditionTrue))
-        .bind("failed", ({ conditionFalse, failure }) => Effect.fail(failure).unlessEffect(conditionFalse).either());
+        .bind("failed", ({ conditionFalse, failure }) => Effect.fail(failure).unlessEffect(conditionFalse).either())
 
-      const { c1, c2, failed, failure, v1, v2 } = await program.unsafeRunPromise();
+      const { c1, c2, failed, failure, v1, v2 } = await program.unsafeRunPromise()
 
-      assert.strictEqual(v1, 0);
-      assert.strictEqual(c1, 1);
-      assert.strictEqual(v2, 2);
-      assert.strictEqual(c2, 2);
-      assert.isTrue(failed == Either.left(failure));
-    });
-  });
-});
+      assert.strictEqual(v1, 0)
+      assert.strictEqual(c1, 1)
+      assert.strictEqual(v2, 2)
+      assert.strictEqual(c2, 2)
+      assert.isTrue(failed == Either.left(failure))
+    })
+  })
+})

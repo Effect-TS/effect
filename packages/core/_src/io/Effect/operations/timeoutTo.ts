@@ -20,7 +20,7 @@ export function timeoutTo_<R, E, A, B, B1>(
     Effect.sleep(duration)
       .interruptible()
       .map(() => def())
-  );
+  )
 }
 
 /**
@@ -34,4 +34,4 @@ export function timeoutTo_<R, E, A, B, B1>(
  *
  * @tsplus static ets/Effect/Aspects timeoutTo
  */
-export const timeoutTo = Pipeable(timeoutTo_);
+export const timeoutTo = Pipeable(timeoutTo_)

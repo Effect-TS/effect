@@ -9,7 +9,7 @@ export function map_<State, Env, In, Out, Out2>(
   self: Schedule<State, Env, In, Out>,
   f: (out: Out) => Out2
 ): Schedule<State, Env, In, Out2> {
-  return self.mapEffect((out) => Effect.succeed(f(out)));
+  return self.mapEffect((out) => Effect.succeed(f(out)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function map_<State, Env, In, Out, Out2>(
  *
  * @tsplus static ets/Schedule/Aspects map
  */
-export const map = Pipeable(map_);
+export const map = Pipeable(map_)

@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Zips each element with the next element if present.
@@ -9,8 +9,8 @@ export function zipWithNext<R, E, A>(
   self: Stream<R, E, A>,
   __tsplusTrace?: string
 ): Stream<R, E, Tuple<[A, Option<A>]>> {
-  concreteStream(self);
-  return new StreamInternal(self.channel >> process<E, A>(Option.none));
+  concreteStream(self)
+  return new StreamInternal(self.channel >> process<E, A>(Option.none))
 }
 
 function process<E, A>(
@@ -25,13 +25,13 @@ function process<E, A>(
         Tuple(
           Option.some(curr),
           prev.map((a) => Tuple(a, curr))
-        ));
+        ))
       const out = chunk.collect((option) =>
         option.isSome()
           ? Option.some(Tuple(option.value.get(0), Option.some(option.value.get(1))))
           : Option.none
-      );
-      return Channel.write(out) > process<E, A>(newLast);
+      )
+      return Channel.write(out) > process<E, A>(newLast)
     },
     (err: E) => Channel.fail(err),
     () =>
@@ -39,5 +39,5 @@ function process<E, A>(
         Channel.unit,
         (a) => Channel.write(Chunk.single(Tuple(a, Option.none))) > Channel.unit
       )
-  );
+  )
 }

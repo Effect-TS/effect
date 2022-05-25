@@ -1,5 +1,5 @@
-import { STMRetryException } from "@effect/core/stm/STM/definition/primitives";
-import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue";
+import { STMRetryException } from "@effect/core/stm/STM/definition/primitives"
+import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue"
 
 /**
  * Peeks at the first value in the queue without removing it, retrying until a
@@ -9,14 +9,14 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
  */
 export function peek<A>(self: TPriorityQueue<A>): USTM<A> {
   return STM.Effect((journal) => {
-    concreteTPriorityQueue(self);
+    concreteTPriorityQueue(self)
     const result = self.map.unsafeGet(journal).headOption()
       .map((tuple) => tuple.get(1))
-      .flatMap((chunk) => chunk.head);
+      .flatMap((chunk) => chunk.head)
 
     if (result._tag === "None") {
-      throw new STMRetryException();
+      throw new STMRetryException()
     }
-    return result.value;
-  });
+    return result.value
+  })
 }

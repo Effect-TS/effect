@@ -3,7 +3,7 @@ export function withLatch<R, E, A>(
 ): Effect<R, E, A> {
   return Deferred.make<never, void>().flatMap(
     (latch) => f(latch.succeed(undefined).asUnit()) < latch.await()
-  );
+  )
 }
 
 export function withLatchAwait<R, E, A>(
@@ -20,5 +20,5 @@ export function withLatchAwait<R, E, A>(
         )
       ))
     .tap(({ latch, ref }) => Effect.whenEffect(ref.get(), latch.await()))
-    .map(({ result }) => result);
+    .map(({ result }) => result)
 }

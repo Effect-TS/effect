@@ -1,4 +1,4 @@
-import { Fail } from "@effect/core/stream/Channel/definition/primitives";
+import { Fail } from "@effect/core/stream/Channel/definition/primitives"
 
 /**
  * Halt a channel with the specified cause.
@@ -8,5 +8,5 @@ import { Fail } from "@effect/core/stream/Channel/definition/primitives";
 export function failCause<E>(
   cause: LazyArg<Cause<E>>
 ): Channel<unknown, unknown, unknown, unknown, E, never, never> {
-  return new Fail(cause);
+  return new Fail(cause)
 }

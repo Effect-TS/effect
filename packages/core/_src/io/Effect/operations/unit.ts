@@ -3,7 +3,7 @@
  *
  * @tsplus static ets/Effect/Ops unit
  */
-export const unit: Effect.UIO<void> = Effect.succeedNow(undefined);
+export const unit: Effect.UIO<void> = Effect.succeedNow(undefined)
 
 /**
  * An effect that succeeds with a unit value.
@@ -11,5 +11,5 @@ export const unit: Effect.UIO<void> = Effect.succeedNow(undefined);
  * @tsplus static ets/Effect/Ops unitTraced
  */
 export function unitTraced(__tsplusTrace?: string): Effect.UIO<void> {
-  return Effect.succeedNow(undefined);
+  return Effect.succeedNow(undefined)
 }

@@ -1,4 +1,4 @@
-import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition";
+import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition"
 
 /**
  * Creates a stream from a subscription to a hub.
@@ -13,5 +13,5 @@ export function fromHub<A>(
   maxChunkSize = DEFAULT_CHUNK_SIZE,
   __tsplusTrace?: string
 ): Stream<unknown, never, A> {
-  return Stream.scoped(hub().subscribe).flatMap((queue) => Stream.fromQueue(queue, maxChunkSize));
+  return Stream.scoped(hub().subscribe).flatMap((queue) => Stream.fromQueue(queue, maxChunkSize))
 }

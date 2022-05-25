@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Creates a pipeline that drops elements while the specified predicate
@@ -11,8 +11,8 @@ export function dropWhile_<R, E, A>(
   f: Predicate<A>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  concreteStream(self);
-  return new StreamInternal(self.channel >> dropWhileInternal<R, E, A>(f));
+  concreteStream(self)
+  return new StreamInternal(self.channel >> dropWhileInternal<R, E, A>(f))
 }
 
 /**
@@ -21,7 +21,7 @@ export function dropWhile_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects dropWhile
  */
-export const dropWhile = Pipeable(dropWhile_);
+export const dropWhile = Pipeable(dropWhile_)
 
 function dropWhileInternal<R, E, A>(
   f: Predicate<A>,
@@ -29,12 +29,12 @@ function dropWhileInternal<R, E, A>(
 ): Channel<R, E, Chunk<A>, unknown, E, Chunk<A>, unknown> {
   return Channel.readWith(
     (chunk: Chunk<A>) => {
-      const out = chunk.dropWhile(f);
+      const out = chunk.dropWhile(f)
       return out.isEmpty()
         ? dropWhileInternal<R, E, A>(f)
-        : Channel.write(out) > Channel.identity<E, Chunk<A>, unknown>();
+        : Channel.write(out) > Channel.identity<E, Chunk<A>, unknown>()
     },
     (err) => Channel.fail(err),
     (out) => Channel.succeedNow(out)
-  );
+  )
 }

@@ -9,7 +9,7 @@ export function runIntoQueue_<R, E extends E1, A, E1>(
   queue: LazyArg<Enqueue<Take<E1, A>>>,
   __tsplusTrace?: string
 ): Effect<R, E | E1, void> {
-  return Effect.scoped(self.runIntoQueueScoped(queue));
+  return Effect.scoped(self.runIntoQueueScoped(queue))
 }
 
 /**
@@ -18,4 +18,4 @@ export function runIntoQueue_<R, E extends E1, A, E1>(
  *
  * @tsplus static ets/Stream/Aspects runIntoQueue
  */
-export const runIntoQueue = Pipeable(runIntoQueue_);
+export const runIntoQueue = Pipeable(runIntoQueue_)

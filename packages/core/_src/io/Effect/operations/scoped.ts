@@ -10,5 +10,5 @@ export function scoped<R, E, A>(
   effect: LazyArg<Effect<R & Has<Scope>, E, A>>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return Scope.make.flatMap((scope) => scope.use(effect));
+  return Scope.make.flatMap((scope) => scope.use(effect))
 }

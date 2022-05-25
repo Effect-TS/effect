@@ -12,7 +12,7 @@ export function catchSomeCause_<R, E, A, R2, E2, A2>(
 ): Stream<R & R2, E | E2, A | A2> {
   return self.catchAllCause(
     (cause): Stream<R2, E | E2, A2> => pf(cause).getOrElse(Stream.failCause(cause))
-  );
+  )
 }
 
 /**
@@ -22,4 +22,4 @@ export function catchSomeCause_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Stream/Aspects catchSomeCause
  */
-export const catchSomeCause = Pipeable(catchSomeCause_);
+export const catchSomeCause = Pipeable(catchSomeCause_)

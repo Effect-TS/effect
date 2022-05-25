@@ -5,5 +5,5 @@
  * @tsplus static ets/Scope/Ops parallel
  */
 export function parallel(__tsplusTrace?: string): Effect.UIO<Scope.Closeable> {
-  return Scope.makeWith(ExecutionStrategy.Parallel);
+  return Scope.makeWith(ExecutionStrategy.Parallel)
 }

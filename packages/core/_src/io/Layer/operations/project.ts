@@ -10,7 +10,7 @@ export function project_<RIn, E, ROut, A, B>(
   tagB: Tag<B>,
   f: (a: A) => B
 ): Layer<RIn, E, Has<B>> {
-  return self.map((environment) => Env(tagB, f(environment.get(tagA))));
+  return self.map((environment) => Env(tagB, f(environment.get(tagA))))
 }
 
 /**
@@ -19,4 +19,4 @@ export function project_<RIn, E, ROut, A, B>(
  *
  * @tsplus static ets/Layer/Aspects project
  */
-export const project = Pipeable(project_);
+export const project = Pipeable(project_)

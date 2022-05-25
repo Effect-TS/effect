@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Converts this stream to a stream that executes its effects but emits no
@@ -10,6 +10,6 @@ export function drain<R, E, A>(
   self: Stream<R, E, A>,
   __tsplusTrace?: string
 ): Stream<R, E, never> {
-  concreteStream(self);
-  return new StreamInternal(self.channel.drain());
+  concreteStream(self)
+  return new StreamInternal(self.channel.drain())
 }

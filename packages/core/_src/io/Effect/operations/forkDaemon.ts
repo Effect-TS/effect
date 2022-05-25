@@ -1,4 +1,4 @@
-import { IFork } from "@effect/core/io/Effect/definition/primitives";
+import { IFork } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Forks the effect into a new fiber attached to the global scope. Because the
@@ -13,5 +13,5 @@ export function forkDaemon<R, E, A>(
 ): Effect.RIO<R, Fiber.Runtime<E, A>> {
   return Effect.suspendSucceed(
     new IFork(self, () => Option.some(FiberScope.global.value), __tsplusTrace)
-  );
+  )
 }

@@ -13,7 +13,7 @@ export function provideEnvironment_<R, E, A>(
     (self as Effect.IO<E, A>).apply(
       FiberRef.currentEnvironment.value.locally(env)
     )
-  );
+  )
 }
 
 /**
@@ -22,4 +22,4 @@ export function provideEnvironment_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects provideEnvironment
  */
-export const provideEnvironment = Pipeable(provideEnvironment_);
+export const provideEnvironment = Pipeable(provideEnvironment_)

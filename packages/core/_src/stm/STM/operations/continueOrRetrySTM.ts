@@ -8,7 +8,7 @@ export function continueOrRetrySTM_<R, E, A, R2, E2, A2>(
   self: STM<R, E, A>,
   pf: (a: A) => Option<STM<R2, E2, A2>>
 ): STM<R2 & R, E | E2, A2> {
-  return self.flatMap((a): STM<R2, E2, A2> => pf(a).getOrElse(STM.retry));
+  return self.flatMap((a): STM<R2, E2, A2> => pf(a).getOrElse(STM.retry))
 }
 
 /**
@@ -17,4 +17,4 @@ export function continueOrRetrySTM_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/STM/Aspects continueOrRetrySTM
  */
-export const continueOrRetrySTM = Pipeable(continueOrRetrySTM_);
+export const continueOrRetrySTM = Pipeable(continueOrRetrySTM_)

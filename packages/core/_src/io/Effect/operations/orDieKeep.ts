@@ -7,5 +7,5 @@ export function orDieKeep<R, E, A>(effect: Effect<R, E, A>, __tsplusTrace?: stri
   return effect.foldCauseEffect(
     (cause) => Effect.failCauseNow(cause.flatMap(Cause.die)),
     Effect.succeedNow
-  );
+  )
 }

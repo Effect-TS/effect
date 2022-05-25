@@ -1,5 +1,5 @@
-import { Exited, Running } from "@effect/core/io/Scope/ReleaseMap/_internal/State";
-import { next } from "@effect/core/io/Scope/ReleaseMap/operations/_internal/next";
+import { Exited, Running } from "@effect/core/io/Scope/ReleaseMap/_internal/State"
+import { next } from "@effect/core/io/Scope/ReleaseMap/operations/_internal/next"
 
 /**
  * Adds a finalizer to the finalizers associated with this scope. If the
@@ -22,18 +22,18 @@ export function addIfOpen_(
           return Tuple(
             finalizer(s.exit).map(() => Option.none),
             new Exited(next(s.nextKey), s.exit, s.update)
-          );
+          )
         }
         case "Running": {
-          const finalizers = s.finalizers().set(s.nextKey, finalizer);
+          const finalizers = s.finalizers().set(s.nextKey, finalizer)
           return Tuple(
             Effect.succeed(() => Option.some(s.nextKey)),
             new Running(next(s.nextKey), finalizers, s.update)
-          );
+          )
         }
       }
     })
-    .flatten();
+    .flatten()
 }
 
 /**
@@ -45,4 +45,4 @@ export function addIfOpen_(
  *
  * @tsplus static ets/ReleaseMap/Aspects addIfOpen
  */
-export const addIfOpen = Pipeable(addIfOpen_);
+export const addIfOpen = Pipeable(addIfOpen_)

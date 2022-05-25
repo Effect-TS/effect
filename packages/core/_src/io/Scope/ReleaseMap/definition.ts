@@ -1,4 +1,4 @@
-import type { State } from "@effect/core/io/Scope/ReleaseMap/_internal/State";
+import type { State } from "@effect/core/io/Scope/ReleaseMap/_internal/State"
 
 /**
  * A `ReleaseMap` represents the finalizers associated with a scope.
@@ -19,5 +19,5 @@ export class ReleaseMap {
  * @tsplus static ets/ReleaseMap/Ops __call
  */
 export function apply(ref: Ref<State>): ReleaseMap {
-  return new ReleaseMap(ref);
+  return new ReleaseMap(ref)
 }

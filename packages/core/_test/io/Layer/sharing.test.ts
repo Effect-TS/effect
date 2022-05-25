@@ -9,7 +9,7 @@ import {
   release1,
   release2,
   release3
-} from "@effect/core/test/io/Layer/test-utils";
+} from "@effect/core/test/io/Layer/test-utils"
 
 describe.concurrent("Layer", () => {
   describe.concurrent("map", () => {
@@ -24,18 +24,18 @@ describe.concurrent("Layer", () => {
           ({ layer1, layer2, layer3 }) => ((layer1.map(identity) >> layer2) + (layer1 >> layer3)).build()
         )
         .tap(({ env }) => Effect.scoped(env))
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result[0] == Option.some(acquire1));
-      assert.isTrue(result.drop(1).take(2).find((s) => s === acquire2).isSome());
-      assert.isTrue(result.drop(1).take(2).find((s) => s === acquire3).isSome());
-      assert.isTrue(result.drop(3).take(2).find((s) => s === release2).isSome());
-      assert.isTrue(result.drop(3).take(2).find((s) => s === release3).isSome());
-      assert.isTrue(result[5] == Option.some(release1));
-    });
-  });
+      assert.isTrue(result[0] == Option.some(acquire1))
+      assert.isTrue(result.drop(1).take(2).find((s) => s === acquire2).isSome())
+      assert.isTrue(result.drop(1).take(2).find((s) => s === acquire3).isSome())
+      assert.isTrue(result.drop(3).take(2).find((s) => s === release2).isSome())
+      assert.isTrue(result.drop(3).take(2).find((s) => s === release3).isSome())
+      assert.isTrue(result[5] == Option.some(release1))
+    })
+  })
 
   describe.concurrent("mapError", () => {
     it("does not interfere with sharing", async () => {
@@ -49,18 +49,18 @@ describe.concurrent("Layer", () => {
           ({ layer1, layer2, layer3 }) => ((layer1.mapError(identity) >> layer2) >> (layer1 >> layer3)).build()
         )
         .tap(({ env }) => Effect.scoped(env))
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result[0] == Option.some(acquire1));
-      assert.isTrue(result.drop(1).take(2).find((s) => s === acquire2).isSome());
-      assert.isTrue(result.drop(1).take(2).find((s) => s === acquire3).isSome());
-      assert.isTrue(result.drop(3).take(2).find((s) => s === release2).isSome());
-      assert.isTrue(result.drop(3).take(2).find((s) => s === release3).isSome());
-      assert.isTrue(result[5] == Option.some(release1));
-    });
-  });
+      assert.isTrue(result[0] == Option.some(acquire1))
+      assert.isTrue(result.drop(1).take(2).find((s) => s === acquire2).isSome())
+      assert.isTrue(result.drop(1).take(2).find((s) => s === acquire3).isSome())
+      assert.isTrue(result.drop(3).take(2).find((s) => s === release2).isSome())
+      assert.isTrue(result.drop(3).take(2).find((s) => s === release3).isSome())
+      assert.isTrue(result[5] == Option.some(release1))
+    })
+  })
 
   describe.concurrent("orDie", () => {
     it("does not interfere with sharing", async () => {
@@ -71,16 +71,16 @@ describe.concurrent("Layer", () => {
         .bindValue("layer3", ({ ref }) => makeLayer3(ref))
         .bindValue("env", ({ layer1, layer2, layer3 }) => ((layer1.orDie() >> layer2) >> (layer1 >> layer3)).build())
         .tap(({ env }) => Effect.scoped(env))
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result[0] == Option.some(acquire1));
-      assert.isTrue(result.drop(1).take(2).find((s) => s === acquire2).isSome());
-      assert.isTrue(result.drop(1).take(2).find((s) => s === acquire3).isSome());
-      assert.isTrue(result.drop(3).take(2).find((s) => s === release2).isSome());
-      assert.isTrue(result.drop(3).take(2).find((s) => s === release3).isSome());
-      assert.isTrue(result[5] == Option.some(release1));
-    });
-  });
-});
+      assert.isTrue(result[0] == Option.some(acquire1))
+      assert.isTrue(result.drop(1).take(2).find((s) => s === acquire2).isSome())
+      assert.isTrue(result.drop(1).take(2).find((s) => s === acquire3).isSome())
+      assert.isTrue(result.drop(3).take(2).find((s) => s === release2).isSome())
+      assert.isTrue(result.drop(3).take(2).find((s) => s === release3).isSome())
+      assert.isTrue(result[5] == Option.some(release1))
+    })
+  })
+})

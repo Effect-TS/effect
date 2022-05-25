@@ -19,7 +19,7 @@ export function zipAll_<R, E, A, R2, E2, A2>(
     (a) => Tuple(a, defaultRight()),
     (a2) => Tuple(defaultLeft(), a2),
     (a, a2) => Tuple(a, a2)
-  );
+  )
 }
 
 /**
@@ -31,4 +31,4 @@ export function zipAll_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Stream/Aspects zipAll
  */
-export const zipAll = Pipeable(zipAll_);
+export const zipAll = Pipeable(zipAll_)

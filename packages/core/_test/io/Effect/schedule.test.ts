@@ -9,11 +9,11 @@ describe.concurrent("Effect", () => {
           () => Schedule.spaced((10).millis) && Schedule.recurs(5)
         )
         .tap(({ effect, schedule }) => effect.schedule(schedule))
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result.length(), 5);
-    });
-  });
-});
+      assert.strictEqual(result.length(), 5)
+    })
+  })
+})

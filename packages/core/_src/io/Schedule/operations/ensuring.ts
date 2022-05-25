@@ -1,5 +1,5 @@
-import type { Decision } from "@effect/core/io/Schedule/Decision";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import type { Decision } from "@effect/core/io/Schedule/Decision"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * Returns a new schedule that will run the specified finalizer as soon as the
@@ -22,7 +22,7 @@ export function ensuring_<State, Env, In, Out, X>(
         decision._tag === "Done"
           ? finalizer.as(Tuple(state, out, decision))
           : Effect.succeedNow(Tuple(state, out, decision))
-      ));
+      ))
 }
 
 /**
@@ -34,4 +34,4 @@ export function ensuring_<State, Env, In, Out, X>(
  *
  * @tsplus static ets/Schedule/Aspects ensuring
  */
-export const ensuring = Pipeable(ensuring_);
+export const ensuring = Pipeable(ensuring_)

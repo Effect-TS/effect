@@ -1,4 +1,4 @@
-import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Creates a sink that effectfully folds elements of type `In` into a
@@ -22,7 +22,7 @@ export function foldWeightedDecomposeEffect<R, E, R2, E2, R3, E3, In, S>(
   f: (s: S, input: In) => Effect<R3, E3, S>,
   __tsplusTrace?: string
 ): Sink<R & R2 & R3, E | E2 | E3, In, In, S> {
-  return Sink.suspend(new SinkInternal(go(z(), costFn, max, decompose, f, false, 0)));
+  return Sink.suspend(new SinkInternal(go(z(), costFn, max, decompose, f, false, 0)))
 }
 
 function go<R, E, R2, E2, R3, E3, In, S>(
@@ -56,7 +56,7 @@ function go<R, E, R2, E2, R3, E3, In, S>(
       Chunk<In>,
       S
     > => Channel.succeedNow(s)
-  );
+  )
 }
 
 function fold<R, E, R2, E2, R3, E3, In, S>(
@@ -72,16 +72,16 @@ function fold<R, E, R2, E2, R3, E3, In, S>(
   __tsplusTrace?: string
 ): Effect<R & R2 & R3, E | E2 | E3, Tuple<[S, number, boolean, Chunk<In>]>> {
   if (index === input.length) {
-    return Effect.succeed(Tuple(s, cost, dirty, Chunk.empty<In>()));
+    return Effect.succeed(Tuple(s, cost, dirty, Chunk.empty<In>()))
   }
 
-  const elem = input.unsafeGet(index);
+  const elem = input.unsafeGet(index)
 
   return costFn(s, elem)
     .map((addedCost) => cost + addedCost)
     .flatMap((total) => {
       if (total <= max) {
-        return f(s, elem).flatMap((s) => fold(input, s, costFn, max, decompose, f, true, total, index + 1));
+        return f(s, elem).flatMap((s) => fold(input, s, costFn, max, decompose, f, true, total, index + 1))
       }
 
       return decompose(elem).flatMap((decomposed) => {
@@ -89,13 +89,13 @@ function fold<R, E, R2, E2, R3, E3, In, S>(
           // If `elem` cannot be decomposed, we need to cross the `max` threshold. To
           // minimize "injury", we only allow this when we haven't added anything else
           // to the aggregate (dirty = false).
-          return f(s, elem).map((s) => Tuple(s, total, true, input.drop(index + 1)));
+          return f(s, elem).map((s) => Tuple(s, total, true, input.drop(index + 1)))
         }
 
         if (decomposed.length <= 1 && dirty) {
           // If the state is dirty and `elem` cannot be decomposed, we stop folding
           // and include `elem` in the leftovers.
-          return Effect.succeed(Tuple(s, cost, dirty, input.drop(index)));
+          return Effect.succeed(Tuple(s, cost, dirty, input.drop(index)))
         }
         // `elem` got decomposed, so we will recurse with the decomposed elements pushed
         // into the chunk we're processing and see if we can aggregate further.
@@ -109,7 +109,7 @@ function fold<R, E, R2, E2, R3, E3, In, S>(
           dirty,
           cost,
           0
-        );
-      });
-    });
+        )
+      })
+    })
 }

@@ -9,7 +9,7 @@ export function fold_<State, Env, In, Out, Z>(
   z: Z,
   f: (z: Z, out: Out) => Z
 ): Schedule<Tuple<[State, Z]>, Env, In, Z> {
-  return self.foldEffect(z, (z, out) => Effect.succeed(f(z, out)));
+  return self.foldEffect(z, (z, out) => Effect.succeed(f(z, out)))
 }
 
 /**
@@ -17,4 +17,4 @@ export function fold_<State, Env, In, Out, Z>(
  *
  * @tsplus static ets/Schedule/Aspects fold
  */
-export const fold = Pipeable(fold_);
+export const fold = Pipeable(fold_)

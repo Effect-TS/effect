@@ -1,4 +1,4 @@
-import type { UniqueKey } from "@effect/core/stream/GroupBy/definition";
+import type { UniqueKey } from "@effect/core/stream/GroupBy/definition"
 
 /**
  * More powerful version of `Stream.broadcast`. Allows to provide a function
@@ -34,15 +34,15 @@ export function distributedWith_<R, E, A>(
             ),
             ({ tuple: [mapping, queue] }, { tuple: [mappings, queues] }) =>
               Tuple(mappings.set(mapping.get(0), mapping.get(1)), queues.prepend(queue))
-          );
+          )
           return deferred
             .succeed(
               () => (a: A) => decide(a).map((f) => (key: UniqueKey) => f(mappings.unsafeGet(key)))
             )
-            .as(queues);
+            .as(queues)
         })
       )
-  );
+  )
 }
 
 /**
@@ -52,4 +52,4 @@ export function distributedWith_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects distributedWith
  */
-export const distributedWith = Pipeable(distributedWith_);
+export const distributedWith = Pipeable(distributedWith_)

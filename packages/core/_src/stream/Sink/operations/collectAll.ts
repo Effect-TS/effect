@@ -1,4 +1,4 @@
-import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * @tsplus static ets/Sink/Ops collectAll
@@ -6,7 +6,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
 export function collectAll<In>(
   __tsplusTrace?: string
 ): Sink<unknown, never, In, never, Chunk<In>> {
-  return new SinkInternal(loop(Chunk.empty()));
+  return new SinkInternal(loop(Chunk.empty()))
 }
 
 function loop<In>(
@@ -16,5 +16,5 @@ function loop<In>(
     (chunk: Chunk<In>) => loop<In>(acc + chunk),
     (cause) => Channel.failCause(cause),
     () => Channel.succeed(acc)
-  );
+  )
 }

@@ -8,7 +8,7 @@ export function catchAllTrace_<R, E, A, R2, E2, A2>(
   h: (tuple: Tuple<[E, Trace]>) => Effect<R2, E2, A2>,
   __tsplusTrace?: string
 ): Effect<R & R2, E2, A | A2> {
-  return self.foldTraceEffect(h, Effect.succeedNow);
+  return self.foldTraceEffect(h, Effect.succeedNow)
 }
 
 /**
@@ -16,4 +16,4 @@ export function catchAllTrace_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Effect/Aspects catchAllTrace
  */
-export const catchAllTrace = Pipeable(catchAllTrace_);
+export const catchAllTrace = Pipeable(catchAllTrace_)

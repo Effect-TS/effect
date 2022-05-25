@@ -15,7 +15,7 @@ export function unrefineWith_<R, E, E1, E2, A>(
       cause
         .find((c) => (c.isDieType() ? pf(c.value) : Option.none))
         .fold(Effect.failCauseNow(cause.map(f)), Effect.failNow)
-  );
+  )
 }
 
 /**
@@ -24,4 +24,4 @@ export function unrefineWith_<R, E, E1, E2, A>(
  *
  * @tsplus static ets/Effect/Aspects unrefineWith
  */
-export const unrefineWith = Pipeable(unrefineWith_);
+export const unrefineWith = Pipeable(unrefineWith_)

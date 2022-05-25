@@ -11,7 +11,7 @@ export function mapEffectParUnordered_<R, E, A, R1, E1, B>(
   f: (a: A) => Effect<R1, E1, B>,
   __tsplusTrace?: string
 ): Stream<R & R1, E | E1, B> {
-  return self.flatMapPar(n, (a) => Stream.fromEffect(f(a)));
+  return self.flatMapPar(n, (a) => Stream.fromEffect(f(a)))
 }
 
 /**
@@ -21,4 +21,4 @@ export function mapEffectParUnordered_<R, E, A, R1, E1, B>(
  *
  * @tsplus static ets/Stream/Aspects mapEffectParUnordered
  */
-export const mapEffectParUnordered = Pipeable(mapEffectParUnordered_);
+export const mapEffectParUnordered = Pipeable(mapEffectParUnordered_)

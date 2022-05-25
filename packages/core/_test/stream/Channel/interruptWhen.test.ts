@@ -16,12 +16,12 @@ describe("Channel", () => {
               .fork())
           .tap(({ halt, started }) => started.await() > halt.succeed(undefined))
           .tap(({ fiber }) => fiber.await())
-          .flatMap(({ interrupted }) => interrupted.get());
+          .flatMap(({ interrupted }) => interrupted.get())
 
-        const result = await program.unsafeRunPromise();
+        const result = await program.unsafeRunPromise()
 
-        assert.isTrue(result);
-      });
+        assert.isTrue(result)
+      })
 
       it("propagates errors", async () => {
         const program = Deferred.make<string, never>()
@@ -31,13 +31,13 @@ describe("Channel", () => {
               .interruptWhen(deferred.await())
               .runDrain()
               .either()
-          );
+          )
 
-        const result = await program.unsafeRunPromise();
+        const result = await program.unsafeRunPromise()
 
-        assert.isTrue(result == Either.left("fail"));
-      });
-    });
+        assert.isTrue(result == Either.left("fail"))
+      })
+    })
 
     describe("io", () => {
       it("interrupts the current element", async () => {
@@ -55,12 +55,12 @@ describe("Channel", () => {
               .fork())
           .tap(({ halt, started }) => started.await() > halt.succeed(undefined))
           .tap(({ fiber }) => fiber.await())
-          .flatMap(({ interrupted }) => interrupted.get());
+          .flatMap(({ interrupted }) => interrupted.get())
 
-        const result = await program.unsafeRunPromise();
+        const result = await program.unsafeRunPromise()
 
-        assert.isTrue(result);
-      });
+        assert.isTrue(result)
+      })
 
       it("propagates errors", async () => {
         const program = Deferred.make<string, never>()
@@ -70,12 +70,12 @@ describe("Channel", () => {
               .interruptWhen(deferred.await())
               .runDrain()
               .either()
-          );
+          )
 
-        const result = await program.unsafeRunPromise();
+        const result = await program.unsafeRunPromise()
 
-        assert.isTrue(result == Either.left("fail"));
-      });
-    });
-  });
-});
+        assert.isTrue(result == Either.left("fail"))
+      })
+    })
+  })
+})

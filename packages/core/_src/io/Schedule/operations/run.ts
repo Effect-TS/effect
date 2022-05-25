@@ -10,7 +10,7 @@ export function run_<State, Env, In, Out>(
   input: Collection<In>,
   __tsplusTrace?: string
 ): Effect.RIO<Env, Chunk<Out>> {
-  return runLoop(self, now, ListBuffer.from(input), self._initial, Chunk.empty<Out>());
+  return runLoop(self, now, ListBuffer.from(input), self._initial, Chunk.empty<Out>())
 }
 
 /**
@@ -18,7 +18,7 @@ export function run_<State, Env, In, Out>(
  *
  * @tsplus static ets/Schedule/Aspects run
  */
-export const run = Pipeable(run_);
+export const run = Pipeable(run_)
 
 function runLoop<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>,
@@ -28,9 +28,9 @@ function runLoop<State, Env, In, Out>(
   acc: Chunk<Out>
 ): Effect.RIO<Env, Chunk<Out>> {
   if (inputs.length === 0) {
-    return Effect.succeedNow(acc);
+    return Effect.succeedNow(acc)
   }
-  const input = inputs.unprepend();
+  const input = inputs.unprepend()
   return self
     ._step(now, input, state)
     .flatMap(({ tuple: [_, out, decision] }) =>
@@ -43,5 +43,5 @@ function runLoop<State, Env, In, Out>(
           state,
           acc.append(out)
         )
-    );
+    )
 }

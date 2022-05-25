@@ -10,7 +10,7 @@ export function ensuringChild_<R, E, A, R2, X>(
   f: (_: Fiber<any, Chunk<unknown>>) => Effect.RIO<R2, X>,
   __tsplusTrace?: string
 ): Effect<R & R2, E, A> {
-  return self.ensuringChildren((children) => f(Fiber.collectAll(children)));
+  return self.ensuringChildren((children) => f(Fiber.collectAll(children)))
 }
 
 /**
@@ -20,4 +20,4 @@ export function ensuringChild_<R, E, A, R2, X>(
  *
  * @tsplus static ets/Effect/Aspects ensuringChild
  */
-export const ensuringChild = Pipeable(ensuringChild_);
+export const ensuringChild = Pipeable(ensuringChild_)

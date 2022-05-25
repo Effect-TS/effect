@@ -10,7 +10,7 @@ export function timeoutFail_<R, E, E2, A>(
   duration: LazyArg<Duration>,
   __tsplusTrace?: string
 ): Stream<R, E | E2, A> {
-  return self.timeoutTo(duration, Stream.fail(e));
+  return self.timeoutTo(duration, Stream.fail(e))
 }
 
 /**
@@ -19,4 +19,4 @@ export function timeoutFail_<R, E, E2, A>(
  *
  * @tsplus static ets/Stream/Aspects timeoutFail
  */
-export const timeoutFail = Pipeable(timeoutFail_);
+export const timeoutFail = Pipeable(timeoutFail_)

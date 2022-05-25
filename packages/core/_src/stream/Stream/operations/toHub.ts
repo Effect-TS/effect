@@ -12,7 +12,7 @@ export function toHub_<R, E, A>(
   return Effect.acquireRelease(
     Hub.bounded<Take<E, A>>(capacity),
     (hub) => hub.shutdown
-  ).tap((hub) => self.runIntoHubScoped(hub).fork());
+  ).tap((hub) => self.runIntoHubScoped(hub).fork())
 }
 
 /**
@@ -21,4 +21,4 @@ export function toHub_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects toHub
  */
-export const toHub = Pipeable(toHub_);
+export const toHub = Pipeable(toHub_)

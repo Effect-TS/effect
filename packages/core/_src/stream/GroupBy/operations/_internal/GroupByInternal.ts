@@ -1,15 +1,15 @@
-import type { GroupBy, UniqueKey } from "@effect/core/stream/GroupBy/definition/base";
-import { GroupBySym } from "@effect/core/stream/GroupBy/definition/base";
-import { _A, _E, _K, _R, _V } from "@effect/core/stream/GroupBy/definition/symbols";
-import { mapDequeue } from "@effect/core/stream/GroupBy/operations/_internal/mapDequeue";
+import type { GroupBy, UniqueKey } from "@effect/core/stream/GroupBy/definition/base"
+import { GroupBySym } from "@effect/core/stream/GroupBy/definition/base"
+import { _A, _E, _K, _R, _V } from "@effect/core/stream/GroupBy/definition/symbols"
+import { mapDequeue } from "@effect/core/stream/GroupBy/operations/_internal/mapDequeue"
 
 export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
-  readonly [GroupBySym]: GroupBySym = GroupBySym;
-  readonly [_R]!: (_: R) => void;
-  readonly [_E]!: () => E;
-  readonly [_K]!: () => K;
-  readonly [_V]!: () => V;
-  readonly [_A]!: () => A;
+  readonly [GroupBySym]: GroupBySym = GroupBySym
+  readonly [_R]!: (_: R) => void
+  readonly [_E]!: () => E
+  readonly [_K]!: () => K
+  readonly [_V]!: () => V
+  readonly [_A]!: () => A
 
   constructor(
     readonly stream: Stream<R, E, A>,
@@ -29,7 +29,7 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
       Number.MAX_SAFE_INTEGER,
       ({ tuple: [key, queue] }) => f(key, Stream.fromQueueWithShutdown(queue).flattenExitOption()),
       this.buffer
-    );
+    )
   }
 
   grouped(
@@ -80,21 +80,21 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
           )
         )
         .map(({ out }) => Stream.fromQueueWithShutdown(out).flattenExitOption())
-    );
+    )
   }
 
   /**
    * Only consider the first `n` groups found in the stream.
    */
   first(n: number, __tsplusTrace?: string): GroupByInternal<R, E, K, V, A> {
-    return new FirstInternal(this.stream, this.key, this.buffer, n);
+    return new FirstInternal(this.stream, this.key, this.buffer, n)
   }
 
   /**
    * Filter the groups to be processed.
    */
   filter(f: Predicate<K>, __tsplusTrace?: string): GroupByInternal<R, E, K, V, A> {
-    return new FilterInternal(this.stream, this.key, this.buffer, f);
+    return new FilterInternal(this.stream, this.key, this.buffer, f)
   }
 }
 
@@ -114,7 +114,7 @@ export class FirstInternal<R, E, K, V, A> extends GroupByInternal<R, E, K, V, A>
     buffer: number,
     readonly n: number
   ) {
-    super(stream, key, buffer);
+    super(stream, key, buffer)
   }
 
   grouped(
@@ -131,12 +131,12 @@ export class FirstInternal<R, E, K, V, A> extends GroupByInternal<R, E, K, V, A>
             },
             i
           ]
-        } = elem;
+        } = elem
         return i < this.n
           ? Effect.succeedNow(elem).as(() => true)
-          : queue.shutdown.as(() => false);
+          : queue.shutdown.as(() => false)
       })
-      .map((tuple) => tuple.get(0));
+      .map((tuple) => tuple.get(0))
   }
 }
 
@@ -147,7 +147,7 @@ export class FilterInternal<R, E, K, V, A> extends GroupByInternal<R, E, K, V, A
     buffer: number,
     readonly f: Predicate<K>
   ) {
-    super(stream, key, buffer);
+    super(stream, key, buffer)
   }
 
   grouped(
@@ -156,10 +156,10 @@ export class FilterInternal<R, E, K, V, A> extends GroupByInternal<R, E, K, V, A
     return super.grouped().filterEffect((elem) => {
       const {
         tuple: [k, queue]
-      } = elem;
+      } = elem
       return this.f(k)
         ? Effect.succeedNow(elem).as(() => true)
-        : queue.shutdown.as(() => false);
-    });
+        : queue.shutdown.as(() => false)
+    })
   }
 }

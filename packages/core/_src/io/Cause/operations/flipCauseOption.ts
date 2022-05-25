@@ -1,4 +1,4 @@
-import { Both, Die, Empty, Fail, Interrupt, Stackless, Then } from "@effect/core/io/Cause/definition";
+import { Both, Die, Empty, Fail, Interrupt, Stackless, Then } from "@effect/core/io/Cause/definition"
 
 /**
  * Converts the specified `Cause<Option<E>>` to an `Option[Cause[E]]` by
@@ -14,28 +14,28 @@ export function flipCauseOption<E>(cause: Cause<Option<E>>): Option<Cause<E>> {
     (fiberId, trace) => Option.some(new Interrupt(fiberId, trace)),
     (left, right) => {
       if (left._tag === "Some" && right._tag === "Some") {
-        return Option.some(new Then(left.value, right.value));
+        return Option.some(new Then(left.value, right.value))
       }
       if (left._tag === "None" && right._tag === "Some") {
-        return Option.some(right.value);
+        return Option.some(right.value)
       }
       if (left._tag === "Some" && right._tag === "None") {
-        return Option.some(left.value);
+        return Option.some(left.value)
       }
-      return Option.none;
+      return Option.none
     },
     (left, right) => {
       if (left._tag === "Some" && right._tag === "Some") {
-        return Option.some(new Both(left.value, right.value));
+        return Option.some(new Both(left.value, right.value))
       }
       if (left._tag === "None" && right._tag === "Some") {
-        return Option.some(right.value);
+        return Option.some(right.value)
       }
       if (left._tag === "Some" && right._tag === "None") {
-        return Option.some(left.value);
+        return Option.some(left.value)
       }
-      return Option.none;
+      return Option.none
     },
     (causeOption, stackless) => causeOption.map((cause) => new Stackless(cause, stackless))
-  );
+  )
 }

@@ -1,4 +1,4 @@
-import { IEnsuring } from "@effect/core/io/Effect/definition/primitives";
+import { IEnsuring } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Returns an effect that, if this effect _starts_ execution, then the
@@ -18,7 +18,7 @@ export function ensuring_<R, E, A, R1, X>(
   finalizer: LazyArg<Effect<R1, never, X>>,
   __tsplusTrace?: string
 ): Effect<R & R1, E, A> {
-  return Effect.suspendSucceed(new IEnsuring(self, finalizer(), __tsplusTrace));
+  return Effect.suspendSucceed(new IEnsuring(self, finalizer(), __tsplusTrace))
 }
 
 /**
@@ -34,4 +34,4 @@ export function ensuring_<R, E, A, R1, X>(
  *
  * @tsplus static ets/Effect/Aspects ensuring
  */
-export const ensuring = Pipeable(ensuring_);
+export const ensuring = Pipeable(ensuring_)

@@ -15,7 +15,7 @@ export function refineOrDieWith_<R, A, E, E1>(
       () => Effect.dieNow(f(e)),
       (e1) => Effect.failNow(e1)
     )
-  );
+  )
 }
 
 /**
@@ -24,4 +24,4 @@ export function refineOrDieWith_<R, A, E, E1>(
  *
  * @tsplus static ets/Effect/Aspects refineOrDieWith
  */
-export const refineOrDieWith = Pipeable(refineOrDieWith_);
+export const refineOrDieWith = Pipeable(refineOrDieWith_)

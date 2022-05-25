@@ -5,23 +5,23 @@ describe.concurrent("Effect", () => {
         Effect.succeed(true),
         Effect.succeed(true),
         Effect.succeed(false)
-      );
+      )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("runs `onFalse` if result of `b` is `false`", async () => {
       const program = Effect.ifEffect(
         Effect.succeed(false),
         Effect.succeed(true),
         Effect.succeed(false)
-      );
+      )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isFalse(result);
-    });
-  });
-});
+      assert.isFalse(result)
+    })
+  })
+})

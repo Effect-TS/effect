@@ -12,5 +12,5 @@ export function ifSTM<R, R1, R2, E, E1, E2, A, A1>(
     b().flatMap(
       (b): STM<R & R1 & R2, E | E1 | E2, A | A1> => (b ? onTrue() : onFalse())
     )
-  );
+  )
 }

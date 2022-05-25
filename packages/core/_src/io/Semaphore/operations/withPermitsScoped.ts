@@ -1,4 +1,4 @@
-import { concreteSemaphore } from "@effect/core/io/Semaphore/operations/_internal/SemaphoreInternal";
+import { concreteSemaphore } from "@effect/core/io/Semaphore/operations/_internal/SemaphoreInternal"
 
 /**
  * Returns a scoped effect that describes acquiring the specified number of
@@ -11,8 +11,8 @@ export function withPermitsScoped_(
   permits: number,
   __tsplusTrace?: string
 ): Effect.RIO<Has<Scope>, void> {
-  concreteSemaphore(self);
-  return self.semaphore.withPermitsScoped(permits);
+  concreteSemaphore(self)
+  return self.semaphore.withPermitsScoped(permits)
 }
 
 /**
@@ -21,4 +21,4 @@ export function withPermitsScoped_(
  *
  * @tsplus static ets/Semaphore/Aspects withPermitsScoped
  */
-export const withPermitsScoped = Pipeable(withPermitsScoped_);
+export const withPermitsScoped = Pipeable(withPermitsScoped_)

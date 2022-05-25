@@ -1,4 +1,4 @@
-import type { MergeTuple } from "@tsplus/stdlib/data/Tuple";
+import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
 
 /**
  * Combines this logger with the specified logger to produce a new logger that
@@ -35,7 +35,7 @@ export function zip_<Message, Message1, Output, Output1>(
           annotations
         )
       )
-  };
+  }
 }
 
 /**
@@ -44,4 +44,4 @@ export function zip_<Message, Message1, Output, Output1>(
  *
  * @tsplus static ets/Logger/Aspects zip
  */
-export const zip = Pipeable(zip_);
+export const zip = Pipeable(zip_)

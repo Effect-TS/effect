@@ -1,4 +1,4 @@
-import { realFiberId } from "@effect/core/io/FiberId/definition";
+import { realFiberId } from "@effect/core/io/FiberId/definition"
 
 /**
  * Get the set of identifiers for this `FiberId`.
@@ -6,24 +6,24 @@ import { realFiberId } from "@effect/core/io/FiberId/definition";
  * @tsplus getter ets/FiberId ids
  */
 export function ids(self: FiberId): HashSet<number> {
-  return idsSafe(self).run();
+  return idsSafe(self).run()
 }
 
 function idsSafe(self: FiberId): Eval<HashSet<number>> {
-  realFiberId(self);
+  realFiberId(self)
   switch (self._tag) {
     case "None": {
-      return Eval.succeed(HashSet());
+      return Eval.succeed(HashSet())
     }
     case "Runtime": {
-      return Eval.succeed(HashSet.from([self.id]));
+      return Eval.succeed(HashSet.from([self.id]))
     }
     case "Composite": {
-      let base = Eval.succeed(HashSet<number>());
+      let base = Eval.succeed(HashSet<number>())
       for (const fiberId of self.fiberIds) {
-        base = Eval.suspend(idsSafe(fiberId)).zipWith(base, (a, b) => a.union(b));
+        base = Eval.suspend(idsSafe(fiberId)).zipWith(base, (a, b) => a.union(b))
       }
-      return base;
+      return base
     }
   }
 }

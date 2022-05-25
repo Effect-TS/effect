@@ -1,4 +1,4 @@
-import { FiberRefInternal } from "@effect/core/io/FiberRef/operations/_internal/FiberRefInternal";
+import { FiberRefInternal } from "@effect/core/io/FiberRef/operations/_internal/FiberRefInternal"
 
 /**
  * @tsplus static ets/FiberRef/Ops unsafeMakeEnvironment
@@ -12,5 +12,5 @@ export function unsafeMakeEnvironment<A>(
     (first, second) => first.combine(second),
     (patch) => (value) => patch.patch(value),
     Service.Patch.empty()
-  );
+  )
 }

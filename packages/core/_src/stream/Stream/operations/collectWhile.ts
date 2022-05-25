@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Transforms all elements of the stream for as long as the specified partial
@@ -21,16 +21,16 @@ export function collectWhile_<R, E, A, A1>(
     unknown
   > = Channel.readWith(
     (input: Chunk<A>) => {
-      const mapped = input.collectWhile(pf);
+      const mapped = input.collectWhile(pf)
       return mapped.size === input.size
         ? Channel.write(mapped) > loop
-        : Channel.write(mapped);
+        : Channel.write(mapped)
     },
     (err) => Channel.fail(err),
     (done) => Channel.succeed(done)
-  );
-  concreteStream(self);
-  return new StreamInternal(self.channel >> loop);
+  )
+  concreteStream(self)
+  return new StreamInternal(self.channel >> loop)
 }
 
 /**
@@ -39,4 +39,4 @@ export function collectWhile_<R, E, A, A1>(
  *
  * @tsplus static ets/Stream/Aspects collectWhile
  */
-export const collectWhile = Pipeable(collectWhile_);
+export const collectWhile = Pipeable(collectWhile_)

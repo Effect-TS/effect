@@ -3,34 +3,34 @@ describe.concurrent("Stream", () => {
     it("free elements", async () => {
       const program = Stream(1, 2, 3, 4)
         .throttleEnforce(0, new Duration(Number.MAX_SAFE_INTEGER), () => 0)
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(1, 2, 3, 4));
-    });
+      assert.isTrue(result == Chunk(1, 2, 3, 4))
+    })
 
     it("no bandwidth", async () => {
       const program = Stream(1, 2, 3, 4)
         .throttleEnforce(0, new Duration(Number.MAX_SAFE_INTEGER), () => 1)
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty());
-    });
-  });
+      assert.isTrue(result.isEmpty())
+    })
+  })
 
   describe.concurrent("throttleShape", () => {
     it("free elements", async () => {
       const program = Stream(1, 2, 3, 4)
         .throttleShape(1, new Duration(Number.MAX_SAFE_INTEGER), () => 0)
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(1, 2, 3, 4));
-    });
+      assert.isTrue(result == Chunk(1, 2, 3, 4))
+    })
 
     it("throttles", async () => {
       const program = Queue.bounded<number>(10).flatMap((queue) =>
@@ -56,12 +56,12 @@ describe.concurrent("Stream", () => {
                 )
             )
         )
-      );
+      )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Tuple(Chunk(1), Chunk(2), Chunk(3)));
-    });
+      assert.isTrue(result == Tuple(Chunk(1), Chunk(2), Chunk(3)))
+    })
 
     it("infinite bandwidth", async () => {
       const program = Clock.currentTime.flatMap((start) =>
@@ -83,13 +83,13 @@ describe.concurrent("Stream", () => {
               )
           )
         )
-      );
+      )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.get(0) < 1000);
-      assert.isTrue(result.get(1) == Tuple(Chunk(1), Chunk(2), Chunk(3)));
-    });
+      assert.isTrue(result.get(0) < 1000)
+      assert.isTrue(result.get(1) == Tuple(Chunk(1), Chunk(2), Chunk(3)))
+    })
 
     it("with burst", async () => {
       const program = Queue.bounded<number>(10).flatMap((queue) =>
@@ -121,11 +121,11 @@ describe.concurrent("Stream", () => {
                 )
             )
         )
-      );
+      )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Tuple(Chunk(1), Chunk(2), Chunk(3)));
-    });
-  });
-});
+      assert.isTrue(result == Tuple(Chunk(1), Chunk(2), Chunk(3)))
+    })
+  })
+})

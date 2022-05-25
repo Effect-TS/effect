@@ -1,4 +1,4 @@
-import type { MergeTuple } from "@tsplus/stdlib/data/Tuple";
+import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
 
 /**
  * Returns a new schedule that performs a geometric union on the intervals
@@ -18,7 +18,7 @@ export function either_<State, Env, In, Out, State1, Env1, In1, Out2>(
   In & In1,
   MergeTuple<Out, Out2>
 > {
-  return self.unionWith(that, (l, r) => l.union(r).getOrElse(l.min(r)));
+  return self.unionWith(that, (l, r) => l.union(r).getOrElse(l.min(r)))
 }
 
 /**
@@ -27,4 +27,4 @@ export function either_<State, Env, In, Out, State1, Env1, In1, Out2>(
  *
  * @tsplus static ets/Schedule/Aspects either
  */
-export const either = Pipeable(either_);
+export const either = Pipeable(either_)

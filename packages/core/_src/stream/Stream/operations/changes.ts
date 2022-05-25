@@ -9,5 +9,5 @@ export function changes<R, E, A>(
   self: Stream<R, E, A>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  return self.changesWith((x, y) => x === y);
+  return self.changesWith((x, y) => x === y)
 }

@@ -3,4 +3,4 @@
  *
  * @tsplus static ets/Schedule/Ops stop
  */
-export const stop: Schedule<number, unknown, unknown, void> = Schedule.recurs(0).asUnit();
+export const stop: Schedule<number, unknown, unknown, void> = Schedule.recurs(0).asUnit()

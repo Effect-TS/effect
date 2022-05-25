@@ -27,7 +27,7 @@ export function zipAllSortedByKey_<R, E, K, A>(
       (a) => Tuple(a, defaultRight()),
       (b) => Tuple(defaultLeft(), b),
       (a, b) => Tuple(a, b)
-    );
+    )
 }
 
 /**
@@ -43,4 +43,4 @@ export function zipAllSortedByKey_<R, E, K, A>(
  *
  * @tsplus static ets/SortedByKey/Aspects zipAllSortedByKey
  */
-export const zipAllSortedByKey = Pipeable(zipAllSortedByKey_);
+export const zipAllSortedByKey = Pipeable(zipAllSortedByKey_)

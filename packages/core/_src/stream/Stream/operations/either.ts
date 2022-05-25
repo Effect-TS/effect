@@ -11,5 +11,5 @@ export function either<R, E, A>(
   self: Stream<R, E, A>,
   __tsplusTrace?: string
 ): Stream<R, never, Either<E, A>> {
-  return self.map(Either.right).catchAll((e) => Stream(Either.left(e)));
+  return self.map(Either.right).catchAll((e) => Stream(Either.left(e)))
 }

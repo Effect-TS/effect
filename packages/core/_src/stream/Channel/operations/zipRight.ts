@@ -33,7 +33,7 @@ export function zipRight_<
   OutElem | OutElem1,
   OutDone1
 > {
-  return self.flatMap(that);
+  return self.flatMap(that)
 }
 
 /**
@@ -43,4 +43,4 @@ export function zipRight_<
  *
  * @tsplus static ets/Channel/Aspects zipRight
  */
-export const zipRight = Pipeable(zipRight_);
+export const zipRight = Pipeable(zipRight_)

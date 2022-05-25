@@ -7,5 +7,5 @@
 export function launch<RIn, E, ROut>(self: Layer<RIn, E, ROut>): Effect<RIn, E, never> {
   return Effect.scoped(
     Effect.scopeWith((scope) => self.buildWithScope(scope)) > Effect.never
-  );
+  )
 }

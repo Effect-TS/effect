@@ -8,13 +8,13 @@ describe.concurrent("Effect", () => {
             (n) => Effect.succeed(n + 1),
             () => release.set(true)
           ))
-        .bind("released", ({ release }) => release.get());
+        .bind("released", ({ release }) => release.get())
 
-      const { released, result } = await program.unsafeRunPromise();
+      const { released, result } = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 43);
-      assert.isTrue(released);
-    });
+      assert.strictEqual(result, 43)
+      assert.isTrue(released)
+    })
 
     it("happy path + disconnect", async () => {
       const program = Effect.Do()
@@ -24,14 +24,14 @@ describe.concurrent("Effect", () => {
             (n) => Effect.succeed(n + 1),
             () => release.set(true)
           ).disconnect())
-        .bind("released", ({ release }) => release.get());
+        .bind("released", ({ release }) => release.get())
 
-      const { released, result } = await program.unsafeRunPromise();
+      const { released, result } = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 43);
-      assert.isTrue(released);
-    });
-  });
+      assert.strictEqual(result, 43)
+      assert.isTrue(released)
+    })
+  })
 
   describe.concurrent("acquireUseReleaseDiscard", () => {
     it("happy path", async () => {
@@ -43,13 +43,13 @@ describe.concurrent("Effect", () => {
             Effect.succeed(0),
             release.set(true)
           ))
-        .bind("released", ({ release }) => release.get());
+        .bind("released", ({ release }) => release.get())
 
-      const { released, result } = await program.unsafeRunPromise();
+      const { released, result } = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 0);
-      assert.isTrue(released);
-    });
+      assert.strictEqual(result, 0)
+      assert.isTrue(released)
+    })
 
     it("happy path + disconnect", async () => {
       const program = Effect.Do()
@@ -60,14 +60,14 @@ describe.concurrent("Effect", () => {
             Effect.succeed(0),
             release.set(true)
           ).disconnect())
-        .bind("released", ({ release }) => release.get());
+        .bind("released", ({ release }) => release.get())
 
-      const { released, result } = await program.unsafeRunPromise();
+      const { released, result } = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 0);
-      assert.isTrue(released);
-    });
-  });
+      assert.strictEqual(result, 0)
+      assert.isTrue(released)
+    })
+  })
 
   describe.concurrent("acquireReleaseExitWith", () => {
     it("happy path", async () => {
@@ -79,16 +79,16 @@ describe.concurrent("Effect", () => {
             () => Effect.succeed(0),
             () => release.set(true)
           ).disconnect())
-        .bind("released", ({ release }) => release.get());
+        .bind("released", ({ release }) => release.get())
 
-      const { released, result } = await program.unsafeRunPromise();
+      const { released, result } = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 0);
-      assert.isTrue(released);
-    });
+      assert.strictEqual(result, 0)
+      assert.isTrue(released)
+    })
 
     it("error handling", async () => {
-      const releaseDied = new RuntimeError("release died");
+      const releaseDied = new RuntimeError("release died")
       const program = Effect.Do()
         .bind("exit", () =>
           Effect.acquireUseReleaseExit(
@@ -101,13 +101,13 @@ describe.concurrent("Effect", () => {
             (cause) => Effect.succeed(cause),
             () => Effect.fail("effect should have failed")
           )
-        );
+        )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.failures() == List("use failed"));
-      assert.isTrue(result.defects() == List(releaseDied));
-    });
+      assert.isTrue(result.failures() == List("use failed"))
+      assert.isTrue(result.defects() == List(releaseDied))
+    })
 
     it("happy path + disconnect", async () => {
       const program = Effect.Do()
@@ -118,16 +118,16 @@ describe.concurrent("Effect", () => {
             () => Effect.succeed(0),
             () => release.set(true)
           ).disconnect())
-        .bind("released", ({ release }) => release.get());
+        .bind("released", ({ release }) => release.get())
 
-      const { released, result } = await program.unsafeRunPromise();
+      const { released, result } = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, 0);
-      assert.isTrue(released);
-    });
+      assert.strictEqual(result, 0)
+      assert.isTrue(released)
+    })
 
     it("error handling + disconnect", async () => {
-      const releaseDied = new RuntimeError("release died");
+      const releaseDied = new RuntimeError("release died")
       const program = Effect.Do()
         .bind("exit", () =>
           Effect.acquireUseReleaseExit(
@@ -142,23 +142,23 @@ describe.concurrent("Effect", () => {
             (cause) => Effect.succeed(cause),
             () => Effect.fail("effect should have failed")
           )
-        );
+        )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.failures() == List("use failed"));
-      assert.isTrue(result.defects() == List(releaseDied));
-    });
+      assert.isTrue(result.failures() == List("use failed"))
+      assert.isTrue(result.defects() == List(releaseDied))
+    })
 
     it("beast mode error handling + disconnect", async () => {
-      const releaseDied = new RuntimeError("release died");
+      const releaseDied = new RuntimeError("release died")
       const program = Effect.Do()
         .bind("release", () => Ref.make(false))
         .bind("exit", ({ release }) =>
           Effect.acquireUseReleaseExit(
             Effect.succeed(42),
             () => {
-              throw releaseDied;
+              throw releaseDied
             },
             () => release.set(true)
           )
@@ -169,12 +169,12 @@ describe.concurrent("Effect", () => {
             (cause) => Effect.succeed(cause),
             () => Effect.fail("effect should have failed")
           ))
-        .bind("released", ({ release }) => release.get());
+        .bind("released", ({ release }) => release.get())
 
-      const { cause, released } = await program.unsafeRunPromise();
+      const { cause, released } = await program.unsafeRunPromise()
 
-      assert.isTrue(cause.defects() == List(releaseDied));
-      assert.isTrue(released);
-    });
-  });
-});
+      assert.isTrue(cause.defects() == List(releaseDied))
+      assert.isTrue(released)
+    })
+  })
+})

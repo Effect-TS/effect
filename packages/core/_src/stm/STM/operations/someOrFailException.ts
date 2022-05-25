@@ -6,5 +6,5 @@
 export function someOrFailException<R, E, A>(
   self: STM<R, E, Option<A>>
 ): STM<R, E | NoSuchElement, A> {
-  return self.someOrFail(new NoSuchElement());
+  return self.someOrFail(new NoSuchElement())
 }

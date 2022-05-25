@@ -8,7 +8,7 @@ export function replicateSTM_<R, E, A>(
   self: STM<R, E, A>,
   n: number
 ): STM<R, E, Chunk<A>> {
-  return STM.suspend(STM.collectAll(self.replicate(n)));
+  return STM.suspend(STM.collectAll(self.replicate(n)))
 }
 
 /**
@@ -17,4 +17,4 @@ export function replicateSTM_<R, E, A>(
  *
  * @tsplus static ets/STM/Aspects replicateSTM
  */
-export const replicateSTM = Pipeable(replicateSTM_);
+export const replicateSTM = Pipeable(replicateSTM_)

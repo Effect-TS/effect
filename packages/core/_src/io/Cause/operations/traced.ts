@@ -4,7 +4,7 @@
  * @tsplus fluent ets/Cause traced
  */
 export function traced_<E>(self: Cause<E>, trace: Trace): Cause<E> {
-  return self.mapTrace((_) => _ + trace);
+  return self.mapTrace((_) => _ + trace)
 }
 
 /**
@@ -12,4 +12,4 @@ export function traced_<E>(self: Cause<E>, trace: Trace): Cause<E> {
  *
  * @ets_data_first traced_
  */
-export const traced = Pipeable(traced_);
+export const traced = Pipeable(traced_)

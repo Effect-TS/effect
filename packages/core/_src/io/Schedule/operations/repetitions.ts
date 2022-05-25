@@ -7,5 +7,5 @@
 export function repetitions<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>
 ): Schedule<Tuple<[State, number]>, Env, In, number> {
-  return self.fold(0, (n, _) => n + 1);
+  return self.fold(0, (n, _) => n + 1)
 }

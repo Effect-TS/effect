@@ -1,4 +1,4 @@
-import { IFork } from "@effect/core/io/Effect/definition/primitives";
+import { IFork } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Returns an effect that forks this effect into its own separate fiber,
@@ -27,5 +27,5 @@ export function fork<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect.RIO<R, Fiber.Runtime<E, A>> {
-  return new IFork(self, () => Option.none, __tsplusTrace);
+  return new IFork(self, () => Option.none, __tsplusTrace)
 }

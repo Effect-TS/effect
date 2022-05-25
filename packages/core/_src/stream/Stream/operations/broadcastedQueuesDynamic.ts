@@ -12,7 +12,7 @@ export function broadcastedQueuesDynamic_<R, E, A>(
   maximumLag: number,
   __tsplusTrace?: string
 ): Effect<R & Has<Scope>, never, Effect<Has<Scope>, never, Dequeue<Take<E, A>>>> {
-  return self.toHub(maximumLag).map((hub) => hub.subscribe);
+  return self.toHub(maximumLag).map((hub) => hub.subscribe)
 }
 
 /**
@@ -24,4 +24,4 @@ export function broadcastedQueuesDynamic_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects broadcastedQueuesDynamic
  */
-export const broadcastedQueuesDynamic = Pipeable(broadcastedQueuesDynamic_);
+export const broadcastedQueuesDynamic = Pipeable(broadcastedQueuesDynamic_)

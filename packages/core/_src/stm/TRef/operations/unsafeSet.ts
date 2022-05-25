@@ -1,5 +1,5 @@
-import type { Journal } from "@effect/core/stm/STM/Journal";
-import { getOrMakeEntry } from "@effect/core/stm/TRef/operations/_internal/getOrMakeEntry";
+import type { Journal } from "@effect/core/stm/STM/Journal"
+import { getOrMakeEntry } from "@effect/core/stm/TRef/operations/_internal/getOrMakeEntry"
 
 /**
  * Unsafely sets the value of the `TRef`.
@@ -7,9 +7,9 @@ import { getOrMakeEntry } from "@effect/core/stm/TRef/operations/_internal/getOr
  * @tsplus fluent ets/TRef unsafeSet
  */
 export function unsafeSet_<A>(self: TRef<A>, value: A, journal: Journal): void {
-  const entry = getOrMakeEntry(self, journal);
-  entry.use((_) => _.unsafeSet(value));
-  return undefined;
+  const entry = getOrMakeEntry(self, journal)
+  entry.use((_) => _.unsafeSet(value))
+  return undefined
 }
 
 /**
@@ -17,4 +17,4 @@ export function unsafeSet_<A>(self: TRef<A>, value: A, journal: Journal): void {
  *
  * @tsplus static ets/TRef/Aspects unsafeSet
  */
-export const unsafeSet = Pipeable(unsafeSet_);
+export const unsafeSet = Pipeable(unsafeSet_)

@@ -18,7 +18,7 @@ export interface MetricClientOps {}
  * implementers of integrations with third party metrics services but not by end
  * users.
  */
-export const MetricClient: MetricClientOps = {};
+export const MetricClient: MetricClientOps = {}
 
 /**
  * Unsafely installs the specified metric listener.
@@ -26,7 +26,7 @@ export const MetricClient: MetricClientOps = {};
  * @tsplus static ets/Metrics/MetricClient/Ops unsafeInstallListener
  */
 export function unsafeInstallListener(listener: MetricListener): void {
-  Metric.registry.value.installListener(listener);
+  Metric.registry.value.installListener(listener)
 }
 
 /**
@@ -35,7 +35,7 @@ export function unsafeInstallListener(listener: MetricListener): void {
  * @tsplus static ets/Metrics/MetricClient/Ops unsafeInstallListener
  */
 export function unsafeRemoveListener(listener: MetricListener): void {
-  Metric.registry.value.removeListener(listener);
+  Metric.registry.value.removeListener(listener)
 }
 
 /**
@@ -44,5 +44,5 @@ export function unsafeRemoveListener(listener: MetricListener): void {
  * @tsplus static ets/Metrics/MetricClient/Ops unsafeSnapshot
  */
 export function unsafeSnapshot(): HashSet<MetricPair.Untyped> {
-  return Metric.registry.value.snapshot();
+  return Metric.registry.value.snapshot()
 }

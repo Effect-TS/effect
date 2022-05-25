@@ -1,4 +1,4 @@
-import { ISuspend } from "@effect/core/io/Effect/definition/primitives";
+import { ISuspend } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Returns a lazily constructed effect, whose construction may itself require
@@ -13,5 +13,5 @@ export function suspendSucceed<R, E, A>(
   effect: LazyArg<Effect<R, E, A>>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return new ISuspend(effect, __tsplusTrace);
+  return new ISuspend(effect, __tsplusTrace)
 }

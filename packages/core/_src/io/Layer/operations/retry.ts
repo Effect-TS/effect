@@ -8,13 +8,13 @@ export function retry_<RIn, E, ROut, S, RIn1, X>(
   schedule: LazyArg<Schedule<S, RIn1, E, X>>
 ): Layer<RIn & RIn1, E, ROut> {
   return Layer.suspend(() => {
-    const schedule0 = schedule();
-    const stateTag = Tag<UpdateState<S>>();
+    const schedule0 = schedule()
+    const stateTag = Tag<UpdateState<S>>()
 
     return Layer.succeed(stateTag)({ state: schedule0._initial }).flatMap((env) =>
       loop(self, schedule0, stateTag, env.get(stateTag).state)
-    );
-  });
+    )
+  })
 }
 
 /**
@@ -22,7 +22,7 @@ export function retry_<RIn, E, ROut, S, RIn1, X>(
  *
  * @tsplus static ets/Layer/Aspects retry
  */
-export const retry = Pipeable(retry_);
+export const retry = Pipeable(retry_)
 
 function loop<S, RIn, E, ROut, RIn1, X>(
   self: Layer<RIn, E, ROut>,
@@ -32,11 +32,11 @@ function loop<S, RIn, E, ROut, RIn1, X>(
 ): Layer<RIn & RIn1, E, ROut> {
   return self.catchAll((e) =>
     update(schedule, stateTag, e, s).flatMap((env) => loop(self, schedule, stateTag, env.get(stateTag).state).fresh())
-  );
+  )
 }
 
 interface UpdateState<S> {
-  readonly state: S;
+  readonly state: S
 }
 
 function update<S, RIn, E, X>(
@@ -55,5 +55,5 @@ function update<S, RIn, E, X>(
           })
       )
     )
-  );
+  )
 }

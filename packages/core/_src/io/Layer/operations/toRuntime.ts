@@ -10,7 +10,7 @@ export function toRuntime_<RIn, E, ROut>(
 ): Effect<RIn & Has<Scope>, E, Runtime<ROut>> {
   return Effect
     .scopeWith((scope) => self.buildWithScope(scope))
-    .map((environment) => new Runtime(environment, runtimeConfig));
+    .map((environment) => new Runtime(environment, runtimeConfig))
 }
 
 /**
@@ -19,4 +19,4 @@ export function toRuntime_<RIn, E, ROut>(
  *
  * @tsplus static ets/Layer/Aspects toRuntime
  */
-export const toRuntime = Pipeable(toRuntime_);
+export const toRuntime = Pipeable(toRuntime_)

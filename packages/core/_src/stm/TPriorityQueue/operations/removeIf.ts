@@ -4,7 +4,7 @@
  * @tsplus fluent ets/TPriorityQueue removeIf
  */
 export function removeIf_<A>(self: TPriorityQueue<A>, f: Predicate<A>): USTM<void> {
-  return self.retainIf((a) => !f(a));
+  return self.retainIf((a) => !f(a))
 }
 
 /**
@@ -12,4 +12,4 @@ export function removeIf_<A>(self: TPriorityQueue<A>, f: Predicate<A>): USTM<voi
  *
  * @tsplus static ets/TPriorityQueue/Aspects removeIf
  */
-export const removeIf = Pipeable(removeIf_);
+export const removeIf = Pipeable(removeIf_)

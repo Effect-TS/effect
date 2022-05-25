@@ -1,4 +1,4 @@
-import { makeSynthetic } from "@effect/core/io/Fiber/definition";
+import { makeSynthetic } from "@effect/core/io/Fiber/definition"
 
 /**
  * A fiber that never fails or succeeds.
@@ -12,4 +12,4 @@ export const never: Fiber<never, never> = makeSynthetic({
   inheritRefs: Effect.never,
   poll: Effect.succeedNow(Option.none),
   interruptAs: () => Effect.never
-});
+})

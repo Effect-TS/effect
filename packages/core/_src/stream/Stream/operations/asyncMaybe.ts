@@ -1,4 +1,4 @@
-import type { Emit } from "@effect/core/stream/Stream/Emit";
+import type { Emit } from "@effect/core/stream/Stream/Emit"
 
 /**
  * Creates a stream from an asynchronous callback that can be called multiple
@@ -16,5 +16,5 @@ export function asyncMaybe<R, E, A>(
   return Stream.asyncInterrupt(
     (emit) => Either.fromOption(register(emit), Effect.unit),
     outputBuffer
-  );
+  )
 }

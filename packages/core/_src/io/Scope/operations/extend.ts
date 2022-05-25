@@ -13,7 +13,7 @@ export function extend_<R, E, A>(
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(
     effect().provideSomeEnvironment((env) => env.merge(Env(Scope.Tag, self)))
-  );
+  )
 }
 
 /**
@@ -24,4 +24,4 @@ export function extend_<R, E, A>(
  *
  * @tsplus static ets/Scope/Aspects extend
  */
-export const extend = Pipeable(extend_);
+export const extend = Pipeable(extend_)

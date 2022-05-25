@@ -1,14 +1,14 @@
-import type { Charset } from "@effect/core/stream/Stream/operations/_internal/Charset";
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
-import { stringChunkFrom } from "@effect/core/stream/Stream/operations/_internal/stringChunkFrom";
+import type { Charset } from "@effect/core/stream/Stream/operations/_internal/Charset"
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import { stringChunkFrom } from "@effect/core/stream/Stream/operations/_internal/stringChunkFrom"
 
 export function textDecodeUsing(charset: Charset, __tsplusTrace?: string) {
   return <R, E>(stream: Stream<R, E, number>): Stream<R, E, string> => {
-    concreteStream(stream);
+    concreteStream(stream)
     return new StreamInternal(
       Channel.suspend(stream.channel >> transform<R, E>(charset))
-    );
-  };
+    )
+  }
 }
 
 function transform<R, E>(
@@ -21,5 +21,5 @@ function transform<R, E>(
         : Channel.write(stringChunkFrom(received, charset)),
     (err) => Channel.fail(err),
     () => Channel.unit
-  );
+  )
 }

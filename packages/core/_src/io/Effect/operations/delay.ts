@@ -9,7 +9,7 @@ export function delay_<R, E, A>(
   duration: Duration,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return Clock.sleep(duration) > self;
+  return Clock.sleep(duration) > self
 }
 
 /**
@@ -18,4 +18,4 @@ export function delay_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects delay
  */
-export const delay = Pipeable(delay_);
+export const delay = Pipeable(delay_)

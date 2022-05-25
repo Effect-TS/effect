@@ -4,7 +4,7 @@
 export function writeChunk<Out>(
   outs: Chunk<Out>
 ): Channel<unknown, unknown, unknown, unknown, never, Out, void> {
-  return writer(0, outs.size, outs);
+  return writer(0, outs.size, outs)
 }
 
 function writer<Out>(
@@ -14,5 +14,5 @@ function writer<Out>(
 ): Channel<unknown, unknown, unknown, unknown, never, Out, void> {
   return idx === len
     ? Channel.unit
-    : Channel.write(chunk.unsafeGet(idx)) > writer(idx + 1, len, chunk);
+    : Channel.write(chunk.unsafeGet(idx)) > writer(idx + 1, len, chunk)
 }

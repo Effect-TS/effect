@@ -1,4 +1,4 @@
-import { constTrue } from "@tsplus/stdlib/data/Function";
+import { constTrue } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Stream", () => {
   describe.concurrent("interruptWhen", () => {
@@ -19,12 +19,12 @@ describe.concurrent("Stream", () => {
             .interruptWhen(deferred.await())
             .take(3))
         .tap(({ stream3 }) => stream3.runDrain())
-        .map(constTrue);
+        .map(constTrue)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("interrupts the current element", async () => {
       const program = Effect.Do()
@@ -41,12 +41,12 @@ describe.concurrent("Stream", () => {
             .fork())
         .tap(({ halt, started }) => started.await() > halt.succeed(undefined))
         .tap(({ fiber }) => fiber.await())
-        .flatMap(({ interrupted }) => interrupted.get());
+        .flatMap(({ interrupted }) => interrupted.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("propagates errors", async () => {
       const program = Effect.Do()
@@ -57,13 +57,13 @@ describe.concurrent("Stream", () => {
             .interruptWhen(halt.await())
             .runDrain()
             .either()
-        );
+        )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left("fail"));
-    });
-  });
+      assert.isTrue(result == Either.left("fail"))
+    })
+  })
 
   describe.concurrent("interruptWhenDeferred", () => {
     it("interrupts the current element", async () => {
@@ -83,24 +83,24 @@ describe.concurrent("Stream", () => {
             .interruptWhenDeferred(deferred)
             .take(3))
         .tap(({ stream3 }) => stream3.runDrain())
-        .map(constTrue);
+        .map(constTrue)
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("propagates errors", async () => {
       const program = Effect.Do()
         .bind("halt", () => Deferred.make<string, never>())
         .tap(({ halt }) => halt.fail("fail"))
-        .flatMap(({ halt }) => Stream.fromEffect(Effect.never).interruptWhenDeferred(halt).runDrain().either());
+        .flatMap(({ halt }) => Stream.fromEffect(Effect.never).interruptWhenDeferred(halt).runDrain().either())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left("fail"));
-    });
-  });
+      assert.isTrue(result == Either.left("fail"))
+    })
+  })
 
   // TODO(Mike/Max): implement after TestClock
   // describe.concurrent("interruptAfter", () => {
@@ -133,4 +133,4 @@ describe.concurrent("Stream", () => {
   //     } yield assert(result)(isEmpty)
   //   } @@ timeout(10.seconds) @@ flaky
   // })
-});
+})

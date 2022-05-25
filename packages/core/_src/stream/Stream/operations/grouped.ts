@@ -10,7 +10,7 @@ export function grouped_<R, E, A>(
   chunkSize: number,
   __tsplusTrace?: string
 ): Stream<R, E, Chunk<A>> {
-  return self.rechunk(chunkSize).chunks();
+  return self.rechunk(chunkSize).chunks()
 }
 
 /**
@@ -20,4 +20,4 @@ export function grouped_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects grouped
  */
-export const grouped = Pipeable(grouped_);
+export const grouped = Pipeable(grouped_)

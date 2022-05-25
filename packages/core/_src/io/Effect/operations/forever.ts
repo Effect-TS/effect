@@ -7,5 +7,5 @@ export function forever<R, E, A>(
   effect: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, never> {
-  return effect > Effect.yieldNow > forever(effect);
+  return effect > Effect.yieldNow > forever(effect)
 }

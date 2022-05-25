@@ -11,10 +11,10 @@ export function _async<R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void) => void,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return asyncBlockingOn(register, FiberId.none);
+  return asyncBlockingOn(register, FiberId.none)
 }
 
-export { _async as async };
+export { _async as async }
 
 /**
  * Imports an asynchronous side-effect into a pure `Effect` value. See
@@ -34,7 +34,7 @@ export function asyncBlockingOn<R, E, A>(
   __tsplusTrace?: string
 ): Effect<R, E, A> {
   return Effect.asyncMaybeBlockingOn((cb) => {
-    register(cb);
-    return Option.none;
-  }, blockingOn);
+    register(cb)
+    return Option.none
+  }, blockingOn)
 }

@@ -7,5 +7,5 @@ export function failCause<E>(
   cause: LazyArg<Cause<E>>,
   __tsplusTrace?: string
 ): Stream<unknown, E, never> {
-  return Stream.fromEffect(Effect.failCause(cause));
+  return Stream.fromEffect(Effect.failCause(cause))
 }

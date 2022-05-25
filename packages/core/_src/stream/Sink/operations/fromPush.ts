@@ -1,4 +1,4 @@
-import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal";
+import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Creates a sink from a chunk processing function.
@@ -13,7 +13,7 @@ export function fromPush<R, E, In, L, Z>(
   >,
   __tsplusTrace?: string
 ): Sink<R, E, In, L, Z> {
-  return new SinkInternal(Channel.unwrapScoped(push.map(pull)));
+  return new SinkInternal(Channel.unwrapScoped(push.map(pull)))
 }
 
 function pull<R, E, In, L, Z>(
@@ -40,5 +40,5 @@ function pull<R, E, In, L, Z>(
           ),
         () => Channel.fromEffect(Effect.dieMessage("empty sink"))
       )
-  );
+  )
 }

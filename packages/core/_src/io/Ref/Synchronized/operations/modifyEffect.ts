@@ -1,4 +1,4 @@
-import { concreteSynchronizedRef } from "@effect/core/io/Ref/Synchronized/operations/_internal/SynchronizedRefInternal";
+import { concreteSynchronizedRef } from "@effect/core/io/Ref/Synchronized/operations/_internal/SynchronizedRefInternal"
 
 /**
  * Atomically modifies the `Ref.Synchronized` with the specified effectful
@@ -12,13 +12,13 @@ export function modifyEffect_<R, E, A, B>(
   f: (a: A) => Effect<R, E, Tuple<[B, A]>>,
   __tsplusTrace?: string
 ): Effect<R, E, B> {
-  concreteSynchronizedRef(self);
+  concreteSynchronizedRef(self)
   return self.semaphore.withPermit(
     self
       .get()
       .flatMap(f)
       .flatMap(({ tuple: [b, a] }) => self.ref.set(a).as(b))
-  );
+  )
 }
 
 /**
@@ -28,4 +28,4 @@ export function modifyEffect_<R, E, A, B>(
  *
  * @tsplus static ets/Ref/Synchronized/Aspects modifyEffect
  */
-export const modifyEffect = Pipeable(modifyEffect_);
+export const modifyEffect = Pipeable(modifyEffect_)

@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Halts the evaluation of this stream when the provided deferred resolves.
@@ -39,9 +39,9 @@ export function haltWhenDeferred_<R, E, A, E2, Z>(
             )
         )
       )
-  );
-  concreteStream(self);
-  return new StreamInternal(self.channel >> writer);
+  )
+  concreteStream(self)
+  return new StreamInternal(self.channel >> writer)
 }
 
 /**
@@ -51,4 +51,4 @@ export function haltWhenDeferred_<R, E, A, E2, Z>(
  *
  * @tsplus static ets/Stream/Aspects haltWhenDeferred
  */
-export const haltWhenDeferred = Pipeable(haltWhenDeferred_);
+export const haltWhenDeferred = Pipeable(haltWhenDeferred_)

@@ -10,7 +10,7 @@ export function buffer<InElem, InErr, InDone>(
   isEmpty: Predicate<InElem>,
   ref: Ref<InElem>
 ): Channel<unknown, InErr, InElem, InDone, InErr, InElem, InDone> {
-  return Channel.suspend(bufferInternal(empty, isEmpty, ref));
+  return Channel.suspend(bufferInternal(empty, isEmpty, ref))
 }
 
 function bufferInternal<InElem, InErr, InDone>(
@@ -37,5 +37,5 @@ function bufferInternal<InElem, InErr, InDone>(
           empty
         )
     )
-  );
+  )
 }

@@ -11,13 +11,13 @@ describe.concurrent("Stream", () => {
               expected: Effect.succeed(Chunk.range(0, 4))
             })
           )
-      );
+      )
 
-      const { expected, out1, out2 } = await program.unsafeRunPromise();
+      const { expected, out1, out2 } = await program.unsafeRunPromise()
 
-      assert.isTrue(out1 == expected);
-      assert.isTrue(out2 == expected);
-    });
+      assert.isTrue(out1 == expected)
+      assert.isTrue(out2 == expected)
+    })
 
     it("errors", async () => {
       const program = Effect.scoped(
@@ -28,13 +28,13 @@ describe.concurrent("Stream", () => {
             expected: Effect.left("boom")
           })
         )
-      );
+      )
 
-      const { expected, out1, out2 } = await program.unsafeRunPromise();
+      const { expected, out1, out2 } = await program.unsafeRunPromise()
 
-      assert.isTrue(out1 == expected);
-      assert.isTrue(out2 == expected);
-    });
+      assert.isTrue(out1 == expected)
+      assert.isTrue(out2 == expected)
+    })
 
     it("backPressure", async () => {
       const program = Effect.scoped(
@@ -61,13 +61,13 @@ describe.concurrent("Stream", () => {
               .tap(({ fib }) => fib.await())
               .bind("snapshot2", ({ ref }) => ref.get())
           )
-      );
+      )
 
-      const { snapshot1, snapshot2 } = await program.unsafeRunPromise();
+      const { snapshot1, snapshot2 } = await program.unsafeRunPromise()
 
-      assert.isTrue(snapshot1 == List(1, 0));
-      assert.isTrue(snapshot2 == List(4, 3, 2, 1, 0));
-    });
+      assert.isTrue(snapshot1 == List(1, 0))
+      assert.isTrue(snapshot2 == List(4, 3, 2, 1, 0))
+    })
 
     it("unsubscribe", async () => {
       const program = Effect.scoped(
@@ -78,11 +78,11 @@ describe.concurrent("Stream", () => {
               Effect.scoped(streams.unsafeGet(0)!.toPull().ignore()) >
                 streams.unsafeGet(1)!.runCollect()
           )
-      );
+      )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(0, 1, 2, 3, 4));
-    });
-  });
-});
+      assert.isTrue(result == Chunk(0, 1, 2, 3, 4))
+    })
+  })
+})

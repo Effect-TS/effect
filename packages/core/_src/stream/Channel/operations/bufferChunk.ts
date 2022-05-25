@@ -8,5 +8,5 @@ export function bufferChunk<InElem, InErr, InDone>(
     Chunk.empty<InElem>(),
     (chunk) => chunk.isEmpty(),
     ref
-  );
+  )
 }

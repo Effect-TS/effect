@@ -5,7 +5,7 @@
  * @tsplus fluent ets/TArray indexOf
  */
 export function indexOf_<A>(self: TArray<A>, equivalence: Equivalence<A>) {
-  return (a: A): USTM<number> => self.indexOfFrom(equivalence)(a, 0);
+  return (a: A): USTM<number> => self.indexOfFrom(equivalence)(a, 0)
 }
 
 /**
@@ -14,4 +14,4 @@ export function indexOf_<A>(self: TArray<A>, equivalence: Equivalence<A>) {
  *
  * @tsplus static ets/TArray/Aspects indexOf
  */
-export const indexOf = Pipeable(indexOf_);
+export const indexOf = Pipeable(indexOf_)

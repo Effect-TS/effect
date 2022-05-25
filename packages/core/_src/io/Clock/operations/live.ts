@@ -1,31 +1,31 @@
-import { ClockSym, globalScheduler } from "@effect/core/io/Clock/definition";
+import { ClockSym, globalScheduler } from "@effect/core/io/Clock/definition"
 
 export class LiveClock implements Clock {
-  readonly [ClockSym]: ClockSym = ClockSym;
+  readonly [ClockSym]: ClockSym = ClockSym
 
   get currentTime(): Effect.UIO<number> {
-    return Effect.succeed(this.unsafeCurrentTime);
+    return Effect.succeed(this.unsafeCurrentTime)
   }
 
   get unsafeCurrentTime(): number {
-    return new Date().getTime();
+    return new Date().getTime()
   }
 
   get scheduler(): Effect.UIO<Clock.Scheduler> {
-    return Effect.succeed(globalScheduler);
+    return Effect.succeed(globalScheduler)
   }
 
   sleep(duration: LazyArg<Duration>, __tsplusTrace?: string): Effect.UIO<void> {
     return Effect.succeed(duration).flatMap((duration) =>
       Effect.asyncInterrupt((cb) => {
-        const canceler = globalScheduler.unsafeSchedule(() => cb(Effect.unit), duration);
-        return Either.left(Effect.succeed(canceler));
+        const canceler = globalScheduler.unsafeSchedule(() => cb(Effect.unit), duration)
+        return Either.left(Effect.succeed(canceler))
       })
-    );
+    )
   }
 }
 
 /**
  * @tsplus static ets/Clock/Ops live
  */
-export const live: Layer<unknown, never, Has<Clock>> = Layer.fromEffect(Clock.Tag)(Effect.succeed(new LiveClock()));
+export const live: Layer<unknown, never, Has<Clock>> = Layer.fromEffect(Clock.Tag)(Effect.succeed(new LiveClock()))

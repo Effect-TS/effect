@@ -13,12 +13,12 @@ export function summarized_<R, E, A, R2, E2, B, C>(
 ): Effect<R & R2, E | E2, Tuple<[C, A]>> {
   return Effect.succeed(summary).flatMap((summary) =>
     Do(($) => {
-      const start = $(summary);
-      const value = $(self);
-      const end = $(summary);
-      return Tuple(f(start, end), value);
+      const start = $(summary)
+      const value = $(self)
+      const end = $(summary)
+      return Tuple(f(start, end), value)
     })
-  );
+  )
 }
 
 /**
@@ -28,4 +28,4 @@ export function summarized_<R, E, A, R2, E2, B, C>(
  *
  * @tsplus static ets/Effect/Aspects summarized
  */
-export const summarized = Pipeable(summarized_);
+export const summarized = Pipeable(summarized_)

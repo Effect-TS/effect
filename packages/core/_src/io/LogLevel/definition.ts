@@ -13,17 +13,17 @@
  * @param syslog
  *   The syslog severity level of the log level.
  */
-export type LogLevel = All | Fatal | Error | Warning | Info | Debug | Trace | None;
+export type LogLevel = All | Fatal | Error | Warning | Info | Debug | Trace | None
 
 /**
  * @tsplus type ets/LogLevel/Ops
  */
 export interface LogLevelOps {
-  $: LogLevelAspects;
+  $: LogLevelAspects
 }
 export const LogLevel: LogLevelOps = {
   $: {}
-};
+}
 
 /**
  * @tsplus type ets/LogLevel/Aspects
@@ -31,59 +31,59 @@ export const LogLevel: LogLevelOps = {
 export interface LogLevelAspects {}
 
 export interface All {
-  readonly _tag: "All";
-  readonly label: "ALL";
-  readonly syslog: 0;
-  readonly ordinal: number;
+  readonly _tag: "All"
+  readonly label: "ALL"
+  readonly syslog: 0
+  readonly ordinal: number
 }
 
 export interface Fatal {
-  readonly _tag: "Fatal";
-  readonly label: "FATAL";
-  readonly syslog: 2;
-  readonly ordinal: number;
+  readonly _tag: "Fatal"
+  readonly label: "FATAL"
+  readonly syslog: 2
+  readonly ordinal: number
 }
 
 export interface Error {
-  readonly _tag: "Error";
-  readonly label: "ERROR";
-  readonly syslog: 3;
-  readonly ordinal: number;
+  readonly _tag: "Error"
+  readonly label: "ERROR"
+  readonly syslog: 3
+  readonly ordinal: number
 }
 
 export interface Warning {
-  readonly _tag: "Warning";
-  readonly label: "WARN";
-  readonly syslog: 4;
-  readonly ordinal: number;
+  readonly _tag: "Warning"
+  readonly label: "WARN"
+  readonly syslog: 4
+  readonly ordinal: number
 }
 
 export interface Info {
-  readonly _tag: "Info";
-  readonly label: "INFO";
-  readonly syslog: 6;
-  readonly ordinal: number;
+  readonly _tag: "Info"
+  readonly label: "INFO"
+  readonly syslog: 6
+  readonly ordinal: number
 }
 
 export interface Debug {
-  readonly _tag: "Debug";
-  readonly label: "DEBUG";
-  readonly syslog: 7;
-  readonly ordinal: number;
+  readonly _tag: "Debug"
+  readonly label: "DEBUG"
+  readonly syslog: 7
+  readonly ordinal: number
 }
 
 export interface Trace {
-  readonly _tag: "Trace";
-  readonly label: "TRACE";
-  readonly syslog: 7;
-  readonly ordinal: number;
+  readonly _tag: "Trace"
+  readonly label: "TRACE"
+  readonly syslog: 7
+  readonly ordinal: number
 }
 
 export interface None {
-  readonly _tag: "None";
-  readonly label: "OFF";
-  readonly syslog: 7;
-  readonly ordinal: number;
+  readonly _tag: "None"
+  readonly label: "OFF"
+  readonly syslog: 7
+  readonly ordinal: number
 }
 
 // -----------------------------------------------------------------------------
@@ -98,7 +98,7 @@ export const All: LogLevel = {
   syslog: 0,
   label: "ALL",
   ordinal: Number.MIN_SAFE_INTEGER
-};
+}
 
 /**
  * @tsplus static ets/LogLevel/Ops Fatal
@@ -108,7 +108,7 @@ export const Fatal: LogLevel = {
   syslog: 2,
   label: "FATAL",
   ordinal: 50000
-};
+}
 
 /**
  * @tsplus static ets/LogLevel/Ops Error
@@ -118,7 +118,7 @@ export const Error: LogLevel = {
   syslog: 3,
   label: "ERROR",
   ordinal: 40000
-};
+}
 
 /**
  * @tsplus static ets/LogLevel/Ops Warning
@@ -128,7 +128,7 @@ export const Warning: LogLevel = {
   syslog: 4,
   label: "WARN",
   ordinal: 30000
-};
+}
 
 /**
  * @tsplus static ets/LogLevel/Ops Info
@@ -138,7 +138,7 @@ export const Info: LogLevel = {
   syslog: 6,
   label: "INFO",
   ordinal: 20000
-};
+}
 
 /**
  * @tsplus static ets/LogLevel/Ops Debug
@@ -148,7 +148,7 @@ export const Debug: LogLevel = {
   syslog: 7,
   label: "DEBUG",
   ordinal: 10000
-};
+}
 
 /**
  * @tsplus static ets/LogLevel/Ops Trace
@@ -158,7 +158,7 @@ export const Trace: LogLevel = {
   syslog: 7,
   label: "TRACE",
   ordinal: 0
-};
+}
 
 /**
  * @tsplus static ets/LogLevel/Ops None
@@ -168,4 +168,4 @@ export const None: LogLevel = {
   syslog: 7,
   label: "OFF",
   ordinal: Number.MAX_SAFE_INTEGER
-};
+}

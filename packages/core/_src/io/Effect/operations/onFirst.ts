@@ -6,5 +6,5 @@
  * @tsplus fluent ets/Effect onFirst
  */
 export function onFirst<R, E, A>(self: Effect<R, E, A>, __tsplusTrace?: string) {
-  return self.zip(Effect.environment<R>());
+  return self.zip(Effect.environment<R>())
 }

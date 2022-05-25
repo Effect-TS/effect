@@ -23,9 +23,9 @@ export function filterLogLevel_<Message, Output>(
             annotations
           )
         )
-        : Option.none;
+        : Option.none
     }
-  };
+  }
 }
 
 /**
@@ -34,4 +34,4 @@ export function filterLogLevel_<Message, Output>(
  *
  * @tsplus static ets/Logger/Aspects filterLogLevel
  */
-export const filterLogLevel = Pipeable(filterLogLevel_);
+export const filterLogLevel = Pipeable(filterLogLevel_)

@@ -19,7 +19,7 @@ export function zipAllSortedByKeyRight_<R, E, K, A>(
     that: LazyArg<SortedByKey<R2, E2, K, B>>,
     def: LazyArg<B>,
     __tsplusTrace?: string
-  ): Stream<R & R2, E | E2, Tuple<[K, B]>> => self.zipAllSortedByKeyWith(ord)(that, def, identity, (_, b) => b);
+  ): Stream<R & R2, E | E2, Tuple<[K, B]>> => self.zipAllSortedByKeyWith(ord)(that, def, identity, (_, b) => b)
 }
 
 /**
@@ -34,4 +34,4 @@ export function zipAllSortedByKeyRight_<R, E, K, A>(
  *
  * @tsplus static ets/SortedByKey/Aspects zipAllSortedByKeyRight
  */
-export const zipAllSortedByKeyRight = Pipeable(zipAllSortedByKeyRight_);
+export const zipAllSortedByKeyRight = Pipeable(zipAllSortedByKeyRight_)

@@ -8,5 +8,5 @@ export function commitEither<R, E, A>(
   self: STM<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return self.either().commit().absolve();
+  return self.either().commit().absolve()
 }

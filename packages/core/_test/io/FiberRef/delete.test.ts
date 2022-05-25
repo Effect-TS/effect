@@ -1,5 +1,5 @@
-const initial = "initial";
-const update = "update";
+const initial = "initial"
+const update = "update"
 
 describe.concurrent("FiberRef", () => {
   describe.concurrent("delete", () => {
@@ -8,11 +8,11 @@ describe.concurrent("FiberRef", () => {
         .bind("fiberRef", () => FiberRef.make(initial))
         .tap(({ fiberRef }) => fiberRef.set(update))
         .tap(({ fiberRef }) => fiberRef.delete())
-        .flatMap(({ fiberRef }) => fiberRef.get());
+        .flatMap(({ fiberRef }) => fiberRef.get())
 
-      const result = await Effect.scoped(program).unsafeRunPromise();
+      const result = await Effect.scoped(program).unsafeRunPromise()
 
-      assert.strictEqual(result, initial);
-    });
-  });
-});
+      assert.strictEqual(result, initial)
+    })
+  })
+})

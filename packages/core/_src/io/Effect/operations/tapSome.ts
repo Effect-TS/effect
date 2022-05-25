@@ -10,7 +10,7 @@ export function tapSome_<R, E, A, R1, E1, X>(
   pf: (a: A) => Option<Effect<R1, E1, X>>,
   __tsplusTrace?: string
 ): Effect<R & R1, E | E1, A> {
-  return self.tap((a) => pf(a).getOrElse(Effect.unit));
+  return self.tap((a) => pf(a).getOrElse(Effect.unit))
 }
 
 /**
@@ -20,4 +20,4 @@ export function tapSome_<R, E, A, R1, E1, X>(
  *
  * @tsplus static ets/Effect/Aspects tapSome
  */
-export const tapSome = Pipeable(tapSome_);
+export const tapSome = Pipeable(tapSome_)

@@ -14,7 +14,7 @@ export function contramap_<Type, In, In2, Out>(
     self.keyType,
     (input, extraTags) => self.unsafeUpdate(f(input), extraTags),
     self.unsafeValue
-  );
+  )
 }
 
 /**
@@ -24,4 +24,4 @@ export function contramap_<Type, In, In2, Out>(
  *
  * @tsplus fluent ets/Metrics/Metric/Aspects contramap
  */
-export const contramap = Pipeable(contramap_);
+export const contramap = Pipeable(contramap_)

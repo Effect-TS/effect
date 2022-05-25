@@ -38,5 +38,5 @@ export function readWith<
     input,
     (cause) => cause.failureOrCause().fold(error, (cause) => Channel.failCause(cause)),
     done
-  );
+  )
 }

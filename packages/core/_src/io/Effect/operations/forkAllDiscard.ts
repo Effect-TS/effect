@@ -9,5 +9,5 @@ export function forkAllDiscard<R, E, A>(
   effects: Collection<Effect<R, E, A>>,
   __tsplusTrace?: string
 ): Effect<R, never, void> {
-  return Effect.forEachDiscard(effects, (effect) => effect.fork());
+  return Effect.forEachDiscard(effects, (effect) => effect.fork())
 }

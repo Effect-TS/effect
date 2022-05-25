@@ -1,7 +1,7 @@
-import { State } from "@effect/core/test/io/Ref/test-utils";
+import { State } from "@effect/core/test/io/Ref/test-utils"
 
-const current = "value";
-const update = "new value";
+const current = "value"
+const update = "new value"
 
 describe.concurrent("Ref", () => {
   describe.concurrent("modify", () => {
@@ -9,14 +9,14 @@ describe.concurrent("Ref", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(current))
         .bind("v1", ({ ref }) => ref.modify(() => Tuple("hello", update)))
-        .bind("v2", ({ ref }) => ref.get());
+        .bind("v2", ({ ref }) => ref.get())
 
-      const { v1, v2 } = await program.unsafeRunPromise();
+      const { v1, v2 } = await program.unsafeRunPromise()
 
-      assert.strictEqual(v1, "hello");
-      assert.strictEqual(v2, update);
-    });
-  });
+      assert.strictEqual(v1, "hello")
+      assert.strictEqual(v2, update)
+    })
+  })
 
   describe.concurrent("modifySome", () => {
     it("simple", async () => {
@@ -25,12 +25,12 @@ describe.concurrent("Ref", () => {
           "state doesn't change",
           (state) => state.isClosed() ? Option.some(Tuple("active", State.Active)) : Option.none
         )
-      );
+      )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result, "state doesn't change");
-    });
+      assert.strictEqual(result, "state doesn't change")
+    })
 
     it("twice", async () => {
       const program = Effect.Do()
@@ -46,12 +46,12 @@ describe.concurrent("Ref", () => {
               ? Option.some(Tuple("changed", State.Changed))
               : state.isChanged()
               ? Option.some(Tuple("closed", State.Closed))
-              : Option.none));
+              : Option.none))
 
-      const { v1, v2 } = await program.unsafeRunPromise();
+      const { v1, v2 } = await program.unsafeRunPromise()
 
-      assert.strictEqual(v1, "changed");
-      assert.strictEqual(v2, "closed");
-    });
-  });
-});
+      assert.strictEqual(v1, "changed")
+      assert.strictEqual(v2, "closed")
+    })
+  })
+})

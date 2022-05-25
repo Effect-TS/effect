@@ -1,4 +1,4 @@
-import { unsafeCompleteTakers } from "@effect/core/io/Queue/operations/_internal/unsafeCompleteTakers";
+import { unsafeCompleteTakers } from "@effect/core/io/Queue/operations/_internal/unsafeCompleteTakers"
 
 /**
  * @tsplus type ets/QueueStrategy
@@ -10,23 +10,23 @@ export interface Strategy<A> {
     takers: MutableQueue<Deferred<never, A>>,
     isShutdown: AtomicBoolean,
     __tsplusTrace?: string
-  ) => Effect.UIO<boolean>;
+  ) => Effect.UIO<boolean>
 
   readonly unsafeOnQueueEmptySpace: (
     queue: MutableQueue<A>,
     takers: MutableQueue<Deferred<never, A>>
-  ) => void;
+  ) => void
 
-  readonly surplusSize: number;
+  readonly surplusSize: number
 
-  readonly shutdown: Effect.UIO<void>;
+  readonly shutdown: Effect.UIO<void>
 }
 
 /**
  * @tsplus type ets/QueueStrategy/Ops
  */
 export interface StrategyOps {}
-export const Strategy: StrategyOps = {};
+export const Strategy: StrategyOps = {}
 
 export class DroppingStrategy<A> implements Strategy<A> {
   // Do nothing, drop the surplus
@@ -37,7 +37,7 @@ export class DroppingStrategy<A> implements Strategy<A> {
     _isShutdown: AtomicBoolean,
     __tsplusTrace?: string
   ): Effect.UIO<boolean> {
-    return Effect.succeedNow(false);
+    return Effect.succeedNow(false)
   }
 
   unsafeOnQueueEmptySpace(_queue: MutableQueue<A>): void {
@@ -45,11 +45,11 @@ export class DroppingStrategy<A> implements Strategy<A> {
   }
 
   get surplusSize(): number {
-    return 0;
+    return 0
   }
 
   get shutdown(): Effect.UIO<void> {
-    return Effect.unit;
+    return Effect.unit
   }
 }
 
@@ -62,10 +62,10 @@ export class SlidingStrategy<A> implements Strategy<A> {
     __tsplusTrace?: string
   ): Effect.UIO<boolean> {
     return Effect.succeed(() => {
-      this.unsafeSlidingOffer(queue, as);
-      unsafeCompleteTakers(this, queue, takers);
-      return true;
-    });
+      this.unsafeSlidingOffer(queue, as)
+      unsafeCompleteTakers(this, queue, takers)
+      return true
+    })
   }
 
   unsafeOnQueueEmptySpace(_queue: MutableQueue<A>): void {
@@ -73,25 +73,25 @@ export class SlidingStrategy<A> implements Strategy<A> {
   }
 
   get surplusSize(): number {
-    return 0;
+    return 0
   }
 
   get shutdown(): Effect.UIO<void> {
-    return Effect.unit;
+    return Effect.unit
   }
 
   private unsafeSlidingOffer(queue: MutableQueue<A>, as: Chunk<A>) {
-    let bs = as;
+    let bs = as
     while (bs.size > 0) {
       if (queue.capacity === 0) {
-        return;
+        return
       }
 
       // Poll 1 and retry
-      queue.poll(EmptyMutableQueue);
+      queue.poll(EmptyMutableQueue)
 
       if (queue.offer(bs.unsafeGet(0))) {
-        bs = bs.drop(1);
+        bs = bs.drop(1)
       }
     }
   }
@@ -101,12 +101,12 @@ export class SlidingStrategy<A> implements Strategy<A> {
  * @tsplus static ets/QueueStrategy/Ops Sliding
  */
 export function slidingStrategy<A>() {
-  return new SlidingStrategy<A>();
+  return new SlidingStrategy<A>()
 }
 
 /**
  * @tsplus static ets/QueueStrategy/Ops Dropping
  */
 export function dropppingStrategy<A>() {
-  return new DroppingStrategy<A>();
+  return new DroppingStrategy<A>()
 }

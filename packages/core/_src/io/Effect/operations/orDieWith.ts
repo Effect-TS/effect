@@ -9,7 +9,7 @@ export function orDieWith_<R, E, A>(
   f: (e: E) => unknown,
   __tsplusTrace?: string
 ): Effect.RIO<R, A> {
-  return self.foldEffect((e) => Effect.dieNow(f(e)), Effect.succeedNow);
+  return self.foldEffect((e) => Effect.dieNow(f(e)), Effect.succeedNow)
 }
 
 /**
@@ -18,4 +18,4 @@ export function orDieWith_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects orDieWith
  */
-export const orDieWith = Pipeable(orDieWith_);
+export const orDieWith = Pipeable(orDieWith_)

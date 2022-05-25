@@ -10,11 +10,11 @@ describe.concurrent("Channel", () => {
             .onExit((exit) => ref.set(exit))
             .raceEither(deferred.await())
         )
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isInterrupted());
-    });
-  });
-});
+      assert.isTrue(result.isInterrupted())
+    })
+  })
+})

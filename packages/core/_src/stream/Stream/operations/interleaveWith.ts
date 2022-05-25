@@ -1,5 +1,5 @@
-import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff";
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff"
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Combines this stream and the specified stream deterministically using the
@@ -17,7 +17,7 @@ export function interleaveWith_<R, E, A, R2, E2, A2, R3, E3>(
   b: LazyArg<Stream<R3, E3, boolean>>,
   __tsplusTrace?: string
 ): Stream<R & R2 & R3, E | E2 | E3, A | A2> {
-  concreteStream(self);
+  concreteStream(self)
   return new StreamInternal(
     Channel.unwrapScoped(
       Effect.Do()
@@ -29,21 +29,21 @@ export function interleaveWith_<R, E, A, R2, E2, A2, R3, E3>(
             .fork()
         )
         .tap(({ right }) => {
-          const that0 = that();
-          concreteStream(that0);
+          const that0 = that()
+          concreteStream(that0)
           return (that0.channel.concatMap(Channel.writeChunk) >> producer(right))
             .runScoped()
-            .fork();
+            .fork()
         })
         .map(({ left, right }) => {
-          const b0 = b();
-          concreteStream(b0);
+          const b0 = b()
+          concreteStream(b0)
           return (
             b0.channel.concatMap(Channel.writeChunk) >> process(left, right, false, false)
-          );
+          )
         })
     )
-  );
+  )
 }
 
 /**
@@ -56,7 +56,7 @@ export function interleaveWith_<R, E, A, R2, E2, A2, R3, E3>(
  *
  * @tsplus static ets/Stream/Aspects interleaveWith
  */
-export const interleaveWith = Pipeable(interleaveWith_);
+export const interleaveWith = Pipeable(interleaveWith_)
 
 function producer<R, R2, R3, E, E2, E3, A, A2>(
   handoff: Handoff<Take<E | E2 | E3, A | A2>>,
@@ -68,7 +68,7 @@ function producer<R, R2, R3, E, E2, E3, A, A2>(
         producer<R, R2, R3, E, E2, E3, A, A2>(handoff),
     (cause) => Channel.fromEffect(handoff.offer(Take.failCause(cause))),
     () => Channel.fromEffect(handoff.offer(Take.end))
-  );
+  )
 }
 
 function process<E, E2, E3, A, A2>(
@@ -87,7 +87,7 @@ function process<E, E2, E3, A, A2>(
             (cause) => Channel.failCause(cause),
             (chunk) => Channel.write(chunk) > process(left, right, leftDone, rightDone)
           )
-        );
+        )
       }
       if (!bool && !rightDone) {
         return Channel.fromEffect(right.take()).flatMap((take) =>
@@ -96,11 +96,11 @@ function process<E, E2, E3, A, A2>(
             (cause) => Channel.failCause(cause),
             (chunk) => Channel.write(chunk) > process(left, right, leftDone, rightDone)
           )
-        );
+        )
       }
-      return process(left, right, leftDone, rightDone);
+      return process(left, right, leftDone, rightDone)
     },
     (cause) => Channel.failCause(cause),
     () => Channel.unit
-  );
+  )
 }

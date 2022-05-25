@@ -12,7 +12,7 @@ export function repeat_<S, R, E, A, R1, B>(
   schedule: LazyArg<Schedule<S, R1, A, B>>,
   __tsplusTrace?: string
 ): Effect<R & R1, E, B> {
-  return self.repeatOrElse(schedule, (e, _) => Effect.fail(e));
+  return self.repeatOrElse(schedule, (e, _) => Effect.fail(e))
 }
 
 /**
@@ -28,5 +28,5 @@ export function repeat<S, R1, A, B>(
   schedule: LazyArg<Schedule<S, R1, A, B>>,
   __tsplusTrace?: string
 ): <R, E>(self: Effect<R, E, A>) => Effect<R & R1, E, B> {
-  return <R, E>(self: Effect<R, E, A>): Effect<R & R1, E, B> => self.repeat(schedule);
+  return <R, E>(self: Effect<R, E, A>): Effect<R & R1, E, B> => self.repeat(schedule)
 }

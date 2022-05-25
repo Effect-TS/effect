@@ -1,6 +1,6 @@
-import type { UniqueKey } from "@effect/core/stream/GroupBy/definition";
+import type { UniqueKey } from "@effect/core/stream/GroupBy/definition"
 
-const distributedWithDynamicId = new AtomicNumber(0);
+const distributedWithDynamicId = new AtomicNumber(0)
 
 /**
  * More powerful version of `Stream.distributedWith`. This returns a function
@@ -78,7 +78,7 @@ export function distributedWithDynamic_<R, E, A, Z>(
             .fork()
         )
         .map(({ newQueue, queuesLock }) => queuesLock.withPermit(newQueue.get().flatten())))
-    .map(({ add }) => add);
+    .map(({ add }) => add)
 }
 
 /**
@@ -89,7 +89,7 @@ export function distributedWithDynamic_<R, E, A, Z>(
  * also shutdown queues manually. In this case the driver will continue but no
  * longer backpressure on them.
  */
-export const distributedWithDynamic = Pipeable(distributedWithDynamic_);
+export const distributedWithDynamic = Pipeable(distributedWithDynamic_)
 
 function offer<E, A>(
   ref: Ref<HashMap<UniqueKey, Queue<Exit<Option<E>, A>>>>,
@@ -114,5 +114,5 @@ function offer<E, A>(
           )
           : Effect.succeedNow(acc)).flatMap((ids) =>
           ids.isNil() ? Effect.unit : ref.update((map) => map.removeMany(ids)))
-    );
+    )
 }

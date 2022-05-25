@@ -12,9 +12,9 @@ export function foldEffect_<E, A, R1, E1, A1, R2, E2, A2>(
 ): Effect<R1 & R2, E1 | E2, A1 | A2> {
   switch (self._tag) {
     case "Failure":
-      return failed(self.cause);
+      return failed(self.cause)
     case "Success":
-      return completed(self.value);
+      return completed(self.value)
   }
 }
 
@@ -24,4 +24,4 @@ export function foldEffect_<E, A, R1, E1, A1, R2, E2, A2>(
  *
  * @tsplus static ets/Exit/Aspects foldEffect
  */
-export const foldEffect = Pipeable(foldEffect_);
+export const foldEffect = Pipeable(foldEffect_)

@@ -1,21 +1,21 @@
-import { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision";
-import { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy";
-import { First, Second } from "@effect/core/test/stream/Channel/test-utils";
-import { constVoid } from "@tsplus/stdlib/data/Function";
+import { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision"
+import { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy"
+import { First, Second } from "@effect/core/test/stream/Channel/test-utils"
+import { constVoid } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Channel", () => {
   describe.concurrent("concatMap", () => {
     it("plain", async () => {
       const program = Channel.writeAll(1, 2, 3)
         .concatMap((i) => Channel.writeAll(i, i))
-        .runCollect();
+        .runCollect()
 
       const {
         tuple: [chunk, _]
-      } = await program.unsafeRunPromise();
+      } = await program.unsafeRunPromise()
 
-      assert.isTrue(chunk == Chunk(1, 1, 2, 2, 3, 3));
-    });
+      assert.isTrue(chunk == Chunk(1, 1, 2, 2, 3, 3))
+    })
 
     it("complex", async () => {
       const program = Channel.writeAll(1, 2)
@@ -23,11 +23,11 @@ describe.concurrent("Channel", () => {
         .mapOut((i) => new First(i))
         .concatMap((i) => Channel.writeAll(i, i))
         .mapOut((i) => new Second(i))
-        .runCollect();
+        .runCollect()
 
       const {
         tuple: [chunk, _]
-      } = await program.unsafeRunPromise();
+      } = await program.unsafeRunPromise()
 
       assert.isTrue(
         chunk == Chunk(
@@ -40,86 +40,86 @@ describe.concurrent("Channel", () => {
           new Second(new First(2)),
           new Second(new First(2))
         )
-      );
-    });
+      )
+    })
 
     it("read from inner conduit", async () => {
-      const source = Channel.writeAll(1, 2, 3, 4);
-      const reader = Channel.read<number>().flatMap((n) => Channel.write(n));
+      const source = Channel.writeAll(1, 2, 3, 4)
+      const reader = Channel.read<number>().flatMap((n) => Channel.write(n))
       const readers = Channel.writeAll(undefined, undefined).concatMap(
         () => reader > reader
-      );
-      const program = (source >> readers).runCollect();
+      )
+      const program = (source >> readers).runCollect()
 
       const {
         tuple: [chunk, _]
-      } = await program.unsafeRunPromise();
+      } = await program.unsafeRunPromise()
 
-      assert.isTrue(chunk == Chunk(1, 2, 3, 4));
-    });
+      assert.isTrue(chunk == Chunk(1, 2, 3, 4))
+    })
 
     it("downstream failure", async () => {
       const program = Channel.write(0)
         .concatMap(() => Channel.fail("error"))
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("error"));
-    });
+      assert.isTrue(result.untraced() == Exit.fail("error"))
+    })
 
     it("upstream acquireReleaseOut + downstream failure", async () => {
       const program = Ref.make(Chunk.empty<string>()).flatMap((events) => {
-        const event = (label: string) => events.update((chunk) => chunk.append(label));
+        const event = (label: string) => events.update((chunk) => chunk.append(label))
 
         const conduit = Channel.acquireUseReleaseOut(event("Acquired"), () => event("Released"))
           .concatMap(() => Channel.fail("error"))
           .runDrain()
-          .exit();
+          .exit()
 
-        return conduit.zip(events.get());
-      });
+        return conduit.zip(events.get())
+      })
 
       const {
         tuple: [exit, events]
-      } = await program.unsafeRunPromise();
+      } = await program.unsafeRunPromise()
 
-      assert.isTrue(exit.untraced() == Exit.fail("error"));
-      assert.isTrue(events == Chunk("Acquired", "Released"));
-    });
+      assert.isTrue(exit.untraced() == Exit.fail("error"))
+      assert.isTrue(events == Chunk("Acquired", "Released"))
+    })
 
     it("multiple concatMaps with failure in first", async () => {
       const program = Channel.write(undefined)
         .concatMap(() => Channel.write(Channel.fail("error")))
         .concatMap((e) => e)
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("error"));
-    });
+      assert.isTrue(result.untraced() == Exit.fail("error"))
+    })
 
     it("concatMap with failure then flatMap", async () => {
       const program = Channel.write(undefined)
         .concatMap(() => Channel.fail("error"))
         .flatMap(() => Channel.write(undefined))
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("error"));
-    });
+      assert.isTrue(result.untraced() == Exit.fail("error"))
+    })
 
     it("multiple concatMaps with failure in first and catchAll in second", async () => {
       const program = Channel.write(undefined)
         .concatMap(() => Channel.write(Channel.fail("error")))
         .concatMap((e) => e.catchAllCause(() => Channel.fail("error2")))
-        .runCollect();
+        .runCollect()
 
-      const result = await program.unsafeRunPromiseExit();
+      const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("error2"));
-    });
+      assert.isTrue(result.untraced() == Exit.fail("error2"))
+    })
 
     it("done value combination", async () => {
       const program = Channel.writeAll(1, 2, 3)
@@ -129,7 +129,7 @@ describe.concurrent("Channel", () => {
           (a: List<string>, b) => a + b,
           (a, b) => Tuple(a, b)
         )
-        .runCollect();
+        .runCollect()
 
       const {
         tuple: [
@@ -138,12 +138,12 @@ describe.concurrent("Channel", () => {
             tuple: [list1, list2]
           }
         ]
-      } = await program.unsafeRunPromise();
+      } = await program.unsafeRunPromise()
 
-      assert.isTrue(chunk == Chunk(1, 2, 3));
-      assert.isTrue(list1 == List("Inner-1", "Inner-2", "Inner-3"));
-      assert.isTrue(list2 == List("Outer-0"));
-    });
+      assert.isTrue(chunk == Chunk(1, 2, 3))
+      assert.isTrue(list1 == List("Inner-1", "Inner-2", "Inner-3"))
+      assert.isTrue(list2 == List("Outer-0"))
+    })
 
     it("custom 1", async () => {
       const program = Channel.writeAll(1, 2, 3, 4)
@@ -163,10 +163,10 @@ describe.concurrent("Channel", () => {
           (pullRequest) => {
             switch (pullRequest._tag) {
               case "Pulled": {
-                return UpstreamPullStrategy.PullAfterNext(Option.none);
+                return UpstreamPullStrategy.PullAfterNext(Option.none)
               }
               case "NoUpstream": {
-                return UpstreamPullStrategy.PullAfterAllEnqueued(Option.none);
+                return UpstreamPullStrategy.PullAfterAllEnqueued(Option.none)
               }
             }
           },
@@ -177,9 +177,9 @@ describe.concurrent("Channel", () => {
             )
         )
         .runCollect()
-        .map((tuple) => tuple.get(0).compact());
+        .map((tuple) => tuple.get(0).compact())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
       assert.isTrue(
         result == Chunk(
@@ -200,8 +200,8 @@ describe.concurrent("Channel", () => {
           Tuple(3, 4),
           Tuple(4, 4)
         )
-      );
-    });
+      )
+    })
 
     it("custom 2", async () => {
       const program = Channel.writeAll(1, 2, 3, 4)
@@ -226,9 +226,9 @@ describe.concurrent("Channel", () => {
             )
         )
         .runCollect()
-        .map((tuple) => tuple.get(0).compact());
+        .map((tuple) => tuple.get(0).compact())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
       assert.isTrue(
         result == Chunk(
@@ -249,7 +249,7 @@ describe.concurrent("Channel", () => {
           Tuple(3, 4),
           Tuple(4, 4)
         )
-      );
-    });
-  });
-});
+      )
+    })
+  })
+})

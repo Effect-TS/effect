@@ -5,5 +5,5 @@
  * @tsplus static ets/Metrics/Metric/Ops histogram
  */
 export function histogram(name: string, boundaries: Metric.Histogram.Boundaries) {
-  return Metric.fromMetricKey(MetricKey.Histogram(name, boundaries));
+  return Metric.fromMetricKey(MetricKey.Histogram(name, boundaries))
 }

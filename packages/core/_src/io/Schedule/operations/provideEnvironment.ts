@@ -1,4 +1,4 @@
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * Returns a new schedule with its environment provided to it, so the
@@ -14,7 +14,7 @@ export function provideEnvironment_<State, R, In, Out>(
   return makeWithState(
     self._initial,
     (now, input, state) => self._step(now, input, state).provideEnvironment(environment)
-  );
+  )
 }
 
 /**
@@ -23,4 +23,4 @@ export function provideEnvironment_<State, R, In, Out>(
  *
  * @tsplus static ets/Schedule/Aspects provideEnvironment
  */
-export const provideEnvironment = Pipeable(provideEnvironment_);
+export const provideEnvironment = Pipeable(provideEnvironment_)

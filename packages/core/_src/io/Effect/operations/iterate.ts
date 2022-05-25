@@ -19,11 +19,11 @@ export function iterate<Z>(initial: LazyArg<Z>, cont: (z: Z) => boolean) {
     __tsplusTrace?: string
   ): Effect<R, E, Z> => {
     return Effect.suspendSucceed(() => {
-      const initial0 = initial();
+      const initial0 = initial()
       if (cont(initial0)) {
-        return body(initial0).flatMap((z2) => iterate(z2, cont)(body));
+        return body(initial0).flatMap((z2) => iterate(z2, cont)(body))
       }
-      return Effect.succeedNow(initial0);
-    });
-  };
+      return Effect.succeedNow(initial0)
+    })
+  }
 }

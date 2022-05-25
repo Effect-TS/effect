@@ -16,5 +16,5 @@ export function foldUntilEffect<R, E, In, S>(
     Tuple(z(), 0),
     (tuple) => tuple.get(1) < max,
     ({ tuple: [o, count] }, i: In) => f(o, i).map((s) => Tuple(s, count + 1))
-  ).map((tuple) => tuple.get(0));
+  ).map((tuple) => tuple.get(0))
 }

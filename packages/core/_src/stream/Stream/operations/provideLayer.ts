@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Provides a layer to the stream, which translates it to another level.
@@ -10,10 +10,10 @@ export function provideLayer_<R, E, A, E1, A1>(
   layer: LazyArg<Layer<R, E, A>>,
   __tsplusTrace?: string
 ): Stream<R, E | E1, A1> {
-  concreteStream(self);
+  concreteStream(self)
   return new StreamInternal(
     Channel.unwrapScoped(layer().build().map((env) => self.channel.provideEnvironment(env)))
-  );
+  )
 }
 
 /**
@@ -21,4 +21,4 @@ export function provideLayer_<R, E, A, E1, A1>(
  *
  * @tsplus static ets/Stream/Aspects provideLayer
  */
-export const provideLayer = Pipeable(provideLayer_);
+export const provideLayer = Pipeable(provideLayer_)

@@ -1,5 +1,5 @@
-import { FiberContext } from "@effect/core/io/Fiber/_internal/context";
-import { constVoid } from "@tsplus/stdlib/data/Function";
+import { FiberContext } from "@effect/core/io/Fiber/_internal/context"
+import { constVoid } from "@tsplus/stdlib/data/Function"
 
 export class Runtime<R> {
   constructor(readonly environment: Env<R>, readonly runtimeConfig: RuntimeConfig) {}
@@ -9,17 +9,17 @@ export class Runtime<R> {
     k: (exit: Exit<E, A>) => void,
     __tsplusTrace?: string
   ): ((fiberId: FiberId) => (_: (exit: Exit<E, A>) => void) => void) => {
-    const fiberId = FiberId.unsafeMake(TraceElement.parse(__tsplusTrace));
+    const fiberId = FiberId.unsafeMake(TraceElement.parse(__tsplusTrace))
 
-    const children = new Set<FiberContext<any, any>>();
+    const children = new Set<FiberContext<any, any>>()
 
-    const supervisor = this.runtimeConfig.value.supervisor;
+    const supervisor = this.runtimeConfig.value.supervisor
 
     const fiberRefLocals: ImmutableMap<FiberRef<unknown, unknown>, List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>> =
       ImmutableMap(
         Tuple(FiberRef.currentEnvironment.value, List.cons(Tuple(fiberId, this.environment), List.nil())),
         Tuple(DefaultEnv.services.value, List.cons(Tuple(fiberId, DefaultEnv.Services.live.value), List.nil()))
-      ) as any;
+      ) as any
 
     const context: FiberContext<E, A> = new FiberContext(
       fiberId,
@@ -27,24 +27,24 @@ export class Runtime<R> {
       fiberRefLocals,
       this.runtimeConfig,
       new Stack(InterruptStatus.Interruptible.toBoolean)
-    );
+    )
 
-    FiberScope.global.value.unsafeAdd(this.runtimeConfig, context);
+    FiberScope.global.value.unsafeAdd(this.runtimeConfig, context)
 
     if (supervisor !== Supervisor.none) {
-      supervisor.unsafeOnStart(this.environment, effect, Option.none, context);
+      supervisor.unsafeOnStart(this.environment, effect, Option.none, context)
 
-      context.unsafeOnDone((exit) => supervisor.unsafeOnEnd(exit.flatten(), context));
+      context.unsafeOnDone((exit) => supervisor.unsafeOnEnd(exit.flatten(), context))
     }
 
-    context.nextEffect = effect;
-    context.run();
+    context.nextEffect = effect
+    context.run()
     context.unsafeOnDone((exit) => {
-      k(exit.flatten());
-    });
+      k(exit.flatten())
+    })
 
-    return (id) => (k) => this.unsafeRunAsyncWith(context._interruptAs(id), (exit) => k(exit.flatten()));
-  };
+    return (id) => (k) => this.unsafeRunAsyncWith(context._interruptAs(id), (exit) => k(exit.flatten()))
+  }
 
   /**
    * Executes the effect asynchronously, discarding the result of execution.
@@ -53,8 +53,8 @@ export class Runtime<R> {
    * program.
    */
   unsafeRunAsync = <E, A>(effect: Effect<R, E, A>, __tsplusTrace?: string): void => {
-    return this.unsafeRunAsyncWith(effect, constVoid);
-  };
+    return this.unsafeRunAsyncWith(effect, constVoid)
+  }
 
   /**
    * Executes the effect asynchronously, eventually passing the exit value to
@@ -68,8 +68,8 @@ export class Runtime<R> {
     k: (exit: Exit<E, A>) => void,
     __tsplusTrace?: string
   ): void => {
-    this.unsafeRunWith(effect, k);
-  };
+    this.unsafeRunWith(effect, k)
+  }
 
   /**
    * Runs the `Effect`, returning a JavaScript `Promise` that will be resolved
@@ -87,17 +87,17 @@ export class Runtime<R> {
       this.unsafeRunAsyncWith(effect, (exit) => {
         switch (exit._tag) {
           case "Success": {
-            resolve(exit.value);
-            break;
+            resolve(exit.value)
+            break
           }
           case "Failure": {
-            reject(exit.cause.squashWith(identity));
-            break;
+            reject(exit.cause.squashWith(identity))
+            break
           }
         }
-      });
-    });
-  };
+      })
+    })
+  }
 
   /**
    * Runs the `Effect`, returning a JavaScript `Promise` that will be resolved
@@ -112,8 +112,8 @@ export class Runtime<R> {
   ): Promise<Exit<E, A>> => {
     return new Promise((resolve) => {
       this.unsafeRunAsyncWith(effect, (exit) => {
-        resolve(exit);
-      });
-    });
-  };
+        resolve(exit)
+      })
+    })
+  }
 }

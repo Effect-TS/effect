@@ -13,7 +13,7 @@ export function bufferSignal<R, E, A>(
       .bind("ref", ({ start }) => Ref.make(start))
       .tap(({ queue, ref }) => (channel() >> producer<R, E, A>(queue, ref)).runScoped().fork())
       .map(({ queue }) => consumer<R, E, A>(queue))
-  );
+  )
 }
 
 function producer<R, E, A>(
@@ -31,7 +31,7 @@ function producer<R, E, A>(
       ) > producer(queue, ref),
     (err) => terminate(queue, ref, Take.fail(err)),
     () => terminate(queue, ref, Take.end)
-  );
+  )
 }
 
 function consumer<R, E, A>(
@@ -54,8 +54,8 @@ function consumer<R, E, A>(
           (cause) => Channel.failCause(cause),
           (a) => Channel.write(a) > process
         )
-  );
-  return process;
+  )
+  return process
 }
 
 function terminate<R, E, A>(
@@ -72,5 +72,5 @@ function terminate<R, E, A>(
       .tap(({ deferred }) => queue.offer(Tuple(take, deferred)))
       .tap(({ deferred }) => ref.set(deferred))
       .map(({ deferred }) => deferred.await())
-  );
+  )
 }

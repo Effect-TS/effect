@@ -1,4 +1,4 @@
-import { concreteRef } from "@effect/core/io/Ref/operations/_internal/RefInternal";
+import { concreteRef } from "@effect/core/io/Ref/operations/_internal/RefInternal"
 
 /**
  * Atomically modifies the `Ref` with the specified function, which computes a
@@ -12,13 +12,13 @@ export function modify_<A, B>(
   f: (a: A) => Tuple<[B, A]>,
   __tsplusTrace?: string
 ): Effect.UIO<B> {
-  concreteRef(self);
+  concreteRef(self)
   return Effect.succeed(() => {
-    const v = self.value.get;
-    const o = f(v);
-    self.value.set(o.get(1));
-    return o.get(0);
-  });
+    const v = self.value.get
+    const o = f(v)
+    self.value.set(o.get(1))
+    return o.get(0)
+  })
 }
 
 /**
@@ -28,4 +28,4 @@ export function modify_<A, B>(
  *
  * @tsplus static ets/Ref/Aspects modify
  */
-export const modify = Pipeable(modify_);
+export const modify = Pipeable(modify_)

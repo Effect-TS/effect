@@ -9,7 +9,7 @@ export function runForEachScoped_<R, E, A, R1, E1, Z>(
   f: (a: A) => Effect<R1, E1, Z>,
   __tsplusTrace?: string
 ): Effect<R & R1 & Has<Scope>, E | E1, void> {
-  return self.runScoped(Sink.forEach(f));
+  return self.runScoped(Sink.forEach(f))
 }
 
 /**
@@ -18,4 +18,4 @@ export function runForEachScoped_<R, E, A, R1, E1, Z>(
  *
  * @tsplus static ets/Stream/Aspects runForEachScoped
  */
-export const runForEachScoped = Pipeable(runForEachScoped_);
+export const runForEachScoped = Pipeable(runForEachScoped_)

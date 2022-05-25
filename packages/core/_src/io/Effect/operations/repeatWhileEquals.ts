@@ -6,7 +6,7 @@
  */
 export function repeatWhileEquals_<R, E, A>(self: Effect<R, E, A>, E: Equivalence<A>) {
   return (a: LazyArg<A>, __tsplusTrace?: string): Effect<R, E, A> =>
-    Effect.succeed(a).flatMap((a) => self.repeatWhile((_) => E.equals(_, a)));
+    Effect.succeed(a).flatMap((a) => self.repeatWhile((_) => E.equals(_, a)))
 }
 
 /**
@@ -15,4 +15,4 @@ export function repeatWhileEquals_<R, E, A>(self: Effect<R, E, A>, E: Equivalenc
  *
  * @tsplus static ets/Effect/Aspects repeatWhileEquals
  */
-export const repeatWhileEquals = Pipeable(repeatWhileEquals_);
+export const repeatWhileEquals = Pipeable(repeatWhileEquals_)

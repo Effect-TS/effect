@@ -1,4 +1,4 @@
-import { boom, largePrime, makeStairWithHoles, makeTArray, N, n } from "@effect/core/test/stm/TArray/test-utils";
+import { boom, largePrime, makeStairWithHoles, makeTArray, N, n } from "@effect/core/test/stm/TArray/test-utils"
 
 describe.concurrent("TArray", () => {
   describe.concurrent("collectFirst", () => {
@@ -13,22 +13,22 @@ describe.concurrent("TArray", () => {
                 : Option.none
             )
             .commit()
-        );
+        )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some("4"));
-    });
+      assert.isTrue(result == Option.some("4"))
+    })
 
     it("succeeds for empty", async () => {
       const program = makeTArray(0, Option.emptyOf<number>())
         .commit()
-        .flatMap((tArray) => tArray.collectFirst((option) => Option.some(option)).commit());
+        .flatMap((tArray) => tArray.collectFirst((option) => Option.some(option)).commit())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none);
-    });
+      assert.isTrue(result == Option.none)
+    })
 
     it("fails to find absent", async () => {
       const program = makeStairWithHoles(n)
@@ -41,12 +41,12 @@ describe.concurrent("TArray", () => {
                 : Option.none
             )
             .commit()
-        );
+        )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none);
-    });
+      assert.isTrue(result == Option.none)
+    })
 
     it("is atomic", async () => {
       const program = Effect.Do()
@@ -61,16 +61,16 @@ describe.concurrent("TArray", () => {
             .commit()
             .fork())
         .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => Option.some(1))).commit())
-        .flatMap(({ findFiber }) => findFiber.join());
+        .flatMap(({ findFiber }) => findFiber.join())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
       assert.isTrue(
         result == Option.some(largePrime.toString()) ||
           result == Option.none
-      );
-    });
-  });
+      )
+    })
+  })
 
   describe.concurrent("collectFirstSTM", () => {
     it("finds and transforms correctly", async () => {
@@ -84,22 +84,22 @@ describe.concurrent("TArray", () => {
                 : Option.none
             )
             .commit()
-        );
+        )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some("4"));
-    });
+      assert.isTrue(result == Option.some("4"))
+    })
 
     it("succeeds for empty", async () => {
       const program = makeTArray(0, Option.emptyOf<number>())
         .commit()
-        .flatMap((tArray) => tArray.collectFirstSTM((option) => Option.some(STM.succeed(option))).commit());
+        .flatMap((tArray) => tArray.collectFirstSTM((option) => Option.some(STM.succeed(option))).commit())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none);
-    });
+      assert.isTrue(result == Option.none)
+    })
 
     it("fails to find absent", async () => {
       const program = makeStairWithHoles(n)
@@ -112,12 +112,12 @@ describe.concurrent("TArray", () => {
                 : Option.none
             )
             .commit()
-        );
+        )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none);
-    });
+      assert.isTrue(result == Option.none)
+    })
 
     it("is atomic", async () => {
       const program = Effect.Do()
@@ -132,15 +132,15 @@ describe.concurrent("TArray", () => {
             .commit()
             .fork())
         .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => Option.some(1))).commit())
-        .flatMap(({ findFiber }) => findFiber.join());
+        .flatMap(({ findFiber }) => findFiber.join())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
       assert.isTrue(
         result == Option.some(largePrime.toString()) ||
           result == Option.none
-      );
-    });
+      )
+    })
 
     it("fails on errors before result found", async () => {
       const program = makeStairWithHoles(n)
@@ -155,12 +155,12 @@ describe.concurrent("TArray", () => {
             )
             .commit()
             .flip()
-        );
+        )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.deepEqual(result, boom);
-    });
+      assert.deepEqual(result, boom)
+    })
 
     it("succeeds on errors after result found", async () => {
       const program = makeStairWithHoles(n)
@@ -175,11 +175,11 @@ describe.concurrent("TArray", () => {
                 : Option.none
             )
             .commit()
-        );
+        )
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some("4"));
-    });
-  });
-});
+      assert.isTrue(result == Option.some("4"))
+    })
+  })
+})

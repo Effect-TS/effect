@@ -4,7 +4,7 @@
  * @tsplus fluent ets/TRef updateSome
  */
 export function updateSome_<A>(self: TRef<A>, pf: (a: A) => Option<A>): USTM<void> {
-  return self.update((a) => pf(a).getOrElse(a));
+  return self.update((a) => pf(a).getOrElse(a))
 }
 
 /**
@@ -12,4 +12,4 @@ export function updateSome_<A>(self: TRef<A>, pf: (a: A) => Option<A>): USTM<voi
  *
  * @tsplus static ets/TRef/Aspects updateSome
  */
-export const updateSome = Pipeable(updateSome_);
+export const updateSome = Pipeable(updateSome_)

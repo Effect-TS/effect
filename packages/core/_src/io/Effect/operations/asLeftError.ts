@@ -7,5 +7,5 @@ export function asLeftError<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, Either<E, never>, A> {
-  return self.mapError(Either.left);
+  return self.mapError(Either.left)
 }

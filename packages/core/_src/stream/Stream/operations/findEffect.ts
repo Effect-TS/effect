@@ -1,4 +1,4 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal";
+import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Finds the first element emitted by this stream that satisfies the provided
@@ -28,9 +28,9 @@ export function findEffect_<R, R1, E, E1, A>(
       ),
     (e) => Channel.fail(e),
     () => Channel.unit
-  );
-  concreteStream(self);
-  return new StreamInternal(self.channel >> loop);
+  )
+  concreteStream(self)
+  return new StreamInternal(self.channel >> loop)
 }
 
 /**
@@ -39,4 +39,4 @@ export function findEffect_<R, R1, E, E1, A>(
  *
  * @tsplus static ets/Stream/Aspects findEffect
  */
-export const findEffect = Pipeable(findEffect_);
+export const findEffect = Pipeable(findEffect_)

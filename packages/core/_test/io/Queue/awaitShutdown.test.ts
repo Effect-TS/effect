@@ -6,12 +6,12 @@ describe.concurrent("Queue", () => {
         .bind("deferred", () => Deferred.make<never, boolean>())
         .tap(({ deferred, queue }) => (queue.awaitShutdown > deferred.succeed(true)).fork())
         .tap(({ queue }) => queue.shutdown)
-        .flatMap(({ deferred }) => deferred.await());
+        .flatMap(({ deferred }) => deferred.await())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result);
-    });
+      assert.isTrue(result)
+    })
 
     it("multiple", async () => {
       const program = Effect.Do()
@@ -22,12 +22,12 @@ describe.concurrent("Queue", () => {
         .tap(({ deferred2, queue }) => (queue.awaitShutdown > deferred2.succeed(true)).fork())
         .tap(({ queue }) => queue.shutdown)
         .bind("result1", ({ deferred1 }) => deferred1.await())
-        .bind("result2", ({ deferred2 }) => deferred2.await());
+        .bind("result2", ({ deferred2 }) => deferred2.await())
 
-      const { result1, result2 } = await program.unsafeRunPromise();
+      const { result1, result2 } = await program.unsafeRunPromise()
 
-      assert.isTrue(result1);
-      assert.isTrue(result2);
-    });
-  });
-});
+      assert.isTrue(result1)
+      assert.isTrue(result2)
+    })
+  })
+})

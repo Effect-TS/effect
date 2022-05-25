@@ -7,5 +7,5 @@ export function fromHub<R, E, In>(
   hub: LazyArg<Hub<In>>,
   __tsplusTrace?: string
 ): Sink<R, E, In, never, void> {
-  return Sink.fromQueue(hub);
+  return Sink.fromQueue(hub)
 }

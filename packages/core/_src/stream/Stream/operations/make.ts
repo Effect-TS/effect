@@ -4,5 +4,5 @@
  * @tsplus static ets/Stream/Ops __call
  */
 export function make<A>(...as: Array<A>): Stream<unknown, never, A> {
-  return Stream.fromCollection(as);
+  return Stream.fromCollection(as)
 }

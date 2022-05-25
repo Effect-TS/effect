@@ -11,5 +11,5 @@ export function acquireReleaseInterruptibleExit<R, E, A, R2, X>(
   release: (exit: Exit<unknown, unknown>) => Effect.RIO<R2, X>,
   __tsplusTrace?: string
 ): Effect<R & R2 & Has<Scope>, E, A> {
-  return Effect.suspendSucceed(acquire().ensuring(Effect.addFinalizerExit(release)));
+  return Effect.suspendSucceed(acquire().ensuring(Effect.addFinalizerExit(release)))
 }

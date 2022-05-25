@@ -9,7 +9,7 @@ describe.concurrent("Stream", () => {
           ) >
             Effect.suspendSucceed(deferred.succeed(undefined) > Effect.never) >
             Effect.succeed(Stream(1, 2, 3))
-        );
+        )
       }
 
       const program = Effect.Do()
@@ -18,11 +18,11 @@ describe.concurrent("Stream", () => {
         .bind("fiber", ({ deferred, ref }) => stream(ref, deferred).runDrain().fork())
         .tap(({ deferred }) => deferred.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ ref }) => ref.get());
+        .flatMap(({ ref }) => ref.get())
 
-      const result = await program.unsafeRunPromise();
+      const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.reverse() == List("acquire outer", "release outer"));
-    });
-  });
-});
+      assert.isTrue(result.reverse() == List("acquire outer", "release outer"))
+    })
+  })
+})

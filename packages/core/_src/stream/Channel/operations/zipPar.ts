@@ -1,4 +1,4 @@
-import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision";
+import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision"
 
 /**
  * @tsplus fluent ets/Channel zipPar
@@ -34,10 +34,10 @@ export function zipPar_<
     that,
     (exit1) => MergeDecision.await((exit2) => Effect.done(exit1.zip(exit2))),
     (exit2) => MergeDecision.await((exit1) => Effect.done(exit1.zip(exit2)))
-  );
+  )
 }
 
 /**
  * @tsplus static ets/Channel/Aspects zipPar
  */
-export const zipPar = Pipeable(zipPar_);
+export const zipPar = Pipeable(zipPar_)

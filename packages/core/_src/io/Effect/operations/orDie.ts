@@ -8,5 +8,5 @@ export function orDie<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect.RIO<R, A> {
-  return self.orDieWith(identity);
+  return self.orDieWith(identity)
 }

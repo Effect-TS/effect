@@ -6,5 +6,5 @@
  * @tsplus fluent ets/Effect onSecond
  */
 export function onSecond<R, E, A>(self: Effect<R, E, A>, __tsplusTrace?: string) {
-  return Effect.environment<R>().zip(self);
+  return Effect.environment<R>().zip(self)
 }

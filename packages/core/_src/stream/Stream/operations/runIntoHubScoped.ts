@@ -9,7 +9,7 @@ export function runIntoHubScoped_<R, E extends E1, A, E1>(
   hub: LazyArg<Hub<Take<E1, A>>>,
   __tsplusTrace?: string
 ): Effect<R & Has<Scope>, E | E1, void> {
-  return self.runIntoQueueScoped(hub);
+  return self.runIntoQueueScoped(hub)
 }
 
 /**
@@ -18,4 +18,4 @@ export function runIntoHubScoped_<R, E extends E1, A, E1>(
  *
  * @tsplus static ets/Stream/Aspects runIntoHubScoped
  */
-export const runIntoHubScoped = Pipeable(runIntoHubScoped_);
+export const runIntoHubScoped = Pipeable(runIntoHubScoped_)

@@ -1,12 +1,12 @@
-import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription";
+import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription"
 
 export interface AtomicHub<A> {
-  readonly capacity: number;
-  isEmpty(): boolean;
-  isFull(): boolean;
-  publish(a: A): boolean;
-  publishAll(as: Collection<A>): Chunk<A>;
-  size(): number;
-  slide(): void;
-  subscribe(): Subscription<A>;
+  readonly capacity: number
+  isEmpty(): boolean
+  isFull(): boolean
+  publish(a: A): boolean
+  publishAll(as: Collection<A>): Chunk<A>
+  size(): number
+  slide(): void
+  subscribe(): Subscription<A>
 }

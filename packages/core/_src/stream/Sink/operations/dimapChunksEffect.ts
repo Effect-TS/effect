@@ -10,7 +10,7 @@ export function dimapChunksEffect_<R, E, R2, E2, In, In1, L, Z, Z1>(
   g: (z: Z) => Z1,
   __tsplusTrace?: string
 ): Sink<R & R2, E | E2, In1, L, Z1> {
-  return self.contramapChunksEffect(f).map(g);
+  return self.contramapChunksEffect(f).map(g)
 }
 
 /**
@@ -19,4 +19,4 @@ export function dimapChunksEffect_<R, E, R2, E2, In, In1, L, Z, Z1>(
  *
  * @tsplus static ets/Sink/Aspects dimapChunksEffect
  */
-export const dimapChunksEffect = Pipeable(dimapChunksEffect_);
+export const dimapChunksEffect = Pipeable(dimapChunksEffect_)

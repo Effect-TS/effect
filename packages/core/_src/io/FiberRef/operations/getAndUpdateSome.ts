@@ -10,7 +10,7 @@ export function getAndUpdateSome_<A, P>(
   pf: (a: A) => Option<A>,
   __tsplusTrace?: string
 ): Effect.UIO<A> {
-  return self.modify((v) => Tuple(v, pf(v).getOrElse(v)));
+  return self.modify((v) => Tuple(v, pf(v).getOrElse(v)))
 }
 
 /**
@@ -20,4 +20,4 @@ export function getAndUpdateSome_<A, P>(
  *
  * @tsplus static ets/FiberRef/Aspects getAndUpdateSome
  */
-export const getAndUpdateSome = Pipeable(getAndUpdateSome_);
+export const getAndUpdateSome = Pipeable(getAndUpdateSome_)

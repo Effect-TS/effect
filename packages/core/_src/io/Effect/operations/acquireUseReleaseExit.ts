@@ -31,5 +31,5 @@ export function acquireUseReleaseExit<R, E, A, R2, E2, A2, R3, X>(
           )
         )
     )
-  );
+  )
 }

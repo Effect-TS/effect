@@ -11,7 +11,7 @@ export function filterPar_<A, R, E>(
 ): Effect<R, E, Chunk<A>> {
   return Effect.forEachPar(as, (a) => f(a).map((b) => (b ? Option.some(a) : Option.none))).map((chunk) =>
     chunk.compact()
-  );
+  )
 }
 
 /**
@@ -20,4 +20,4 @@ export function filterPar_<A, R, E>(
  *
  * @tsplus static ets/Effect/Aspects filterPar
  */
-export const filterPar = Pipeable(filterPar_);
+export const filterPar = Pipeable(filterPar_)

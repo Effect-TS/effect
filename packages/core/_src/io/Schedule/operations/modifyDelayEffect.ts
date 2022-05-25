@@ -1,6 +1,6 @@
-import { Decision } from "@effect/core/io/Schedule/Decision";
-import { Interval } from "@effect/core/io/Schedule/Interval";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
+import { Decision } from "@effect/core/io/Schedule/Decision"
+import { Interval } from "@effect/core/io/Schedule/Interval"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
  * Returns a new schedule that modifies the delay using the specified
@@ -18,21 +18,21 @@ export function modifyDelayEffect_<State, Env, In, Out, Env1>(
     (now, input, state) =>
       self._step(now, input, state).flatMap(({ tuple: [state, out, decision] }) => {
         if (decision._tag === "Done") {
-          return Effect.succeedNow(Tuple(state, out, decision));
+          return Effect.succeedNow(Tuple(state, out, decision))
         }
 
-        const delay = Interval(now, decision.interval.startMillis).size;
+        const delay = Interval(now, decision.interval.startMillis).size
 
         return f(out, delay).map((duration) => {
-          const oldStart = decision.interval.startMillis;
-          const newStart = now + duration.millis;
-          const delta = newStart - oldStart;
-          const newEnd = decision.interval.endMillis + delta;
-          const newInterval = Interval(newStart, newEnd);
-          return Tuple(state, out, Decision.Continue(newInterval));
-        });
+          const oldStart = decision.interval.startMillis
+          const newStart = now + duration.millis
+          const delta = newStart - oldStart
+          const newEnd = decision.interval.endMillis + delta
+          const newInterval = Interval(newStart, newEnd)
+          return Tuple(state, out, Decision.Continue(newInterval))
+        })
       })
-  );
+  )
 }
 
 /**
@@ -41,4 +41,4 @@ export function modifyDelayEffect_<State, Env, In, Out, Env1>(
  *
  * @tsplus static ets/Schedule/Aspects modifyDelayEffect
  */
-export const modifyDelayEffect = Pipeable(modifyDelayEffect_);
+export const modifyDelayEffect = Pipeable(modifyDelayEffect_)

@@ -13,7 +13,7 @@ export function groupedWithin_<R, E, A>(
   return self.aggregateWithin(
     Sink.collectAllN<A>(chunkSize),
     Schedule.spaced(within())
-  );
+  )
 }
 
 /**
@@ -22,4 +22,4 @@ export function groupedWithin_<R, E, A>(
  *
  * @tsplus static ets/Stream/Aspects groupedWithin
  */
-export const groupedWithin = Pipeable(groupedWithin_);
+export const groupedWithin = Pipeable(groupedWithin_)

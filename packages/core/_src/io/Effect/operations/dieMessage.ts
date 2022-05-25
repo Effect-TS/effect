@@ -9,5 +9,5 @@ export function dieMessage(
   message: LazyArg<string>,
   __tsplusTrace?: string
 ): Effect.UIO<never> {
-  return Effect.failCause(Cause.stackless(Cause.die(new RuntimeError(message()))));
+  return Effect.failCause(Cause.stackless(Cause.die(new RuntimeError(message()))))
 }

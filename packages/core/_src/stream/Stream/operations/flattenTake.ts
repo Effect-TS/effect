@@ -11,5 +11,5 @@ export function flattenTake<R, E, E2, A>(
   return self
     .map((take) => take.exit<E | E2, A>())
     .flattenExitOption()
-    .unchunks();
+    .unchunks()
 }

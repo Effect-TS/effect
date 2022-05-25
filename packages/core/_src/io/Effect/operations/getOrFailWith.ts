@@ -9,5 +9,5 @@ export function getOrFailWith<E, A>(
   e: LazyArg<E>,
   __tsplusTrace?: string
 ): Effect.IO<E, A> {
-  return Effect.suspendSucceed(option().fold(Effect.fail(e), Effect.succeedNow));
+  return Effect.suspendSucceed(option().fold(Effect.fail(e), Effect.succeedNow))
 }

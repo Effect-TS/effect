@@ -1,4 +1,4 @@
-import { realFiber } from "@effect/core/io/Fiber/definition";
+import { realFiber } from "@effect/core/io/Fiber/definition"
 
 /**
  * A fiber that is already interrupted.
@@ -6,7 +6,7 @@ import { realFiber } from "@effect/core/io/Fiber/definition";
  * @tsplus static ets/Fiber/Ops interruptAs
  */
 export function interruptAs(fiberId: FiberId): Fiber<never, never> {
-  return Fiber.done(Exit.interrupt(fiberId));
+  return Fiber.done(Exit.interrupt(fiberId))
 }
 
 /**
@@ -22,8 +22,8 @@ export function interruptAsNow_<E, A>(
   fiberId: FiberId,
   __tsplusTrace?: string
 ): Effect.UIO<Exit<E, A>> {
-  realFiber(self);
-  return self._interruptAs(fiberId);
+  realFiber(self)
+  return self._interruptAs(fiberId)
 }
 
 /**
@@ -33,4 +33,4 @@ export function interruptAsNow_<E, A>(
  *
  * @tsplus static ets/Fiber/Aspects interruptAs
  */
-export const interruptAsNow = Pipeable(interruptAsNow_);
+export const interruptAsNow = Pipeable(interruptAsNow_)

@@ -1,32 +1,32 @@
-import { constVoid } from "@tsplus/stdlib/data/Function";
+import { constVoid } from "@tsplus/stdlib/data/Function"
 
-export const ExampleError = new Error("fail");
+export const ExampleError = new Error("fail")
 
-export const STMEnvId = Symbol.for("@effect/core/test/stm/STMEnv");
-export type STMEnvId = typeof STMEnvId;
+export const STMEnvId = Symbol.for("@effect/core/test/stm/STMEnv")
+export type STMEnvId = typeof STMEnvId
 
 /**
  * @tsplus type ets/STMTestEnv
  */
 export interface STMEnv {
-  readonly ref: TRef<number>;
+  readonly ref: TRef<number>
 }
 
 /**
  * @tsplus type ets/STMTestEnvOps
  */
 export interface STMEnvOps {
-  Tag: Tag<STMEnv>;
+  Tag: Tag<STMEnv>
 }
 export const STMEnv: STMEnvOps = {
   Tag: Tag<STMEnv>()
-};
+}
 
 /**
  * @tsplus static ets/STMTestEnvOps make
  */
 export function makeSTMEnv(n: number): Effect.UIO<STMEnv> {
-  return TRef.makeCommit(n).map((ref) => ({ ref }));
+  return TRef.makeCommit(n).map((ref) => ({ ref }))
 }
 
 export function incrementRefN(n: number, ref: TRef<number>): Effect.UIO<number> {
@@ -35,7 +35,7 @@ export function incrementRefN(n: number, ref: TRef<number>): Effect.UIO<number> 
       .get()
       .tap((value) => ref.set(value + 1))
       .tap(() => ref.get())
-  ).repeatN(n);
+  ).repeatN(n)
 }
 
 export function compute3RefN(
@@ -53,25 +53,25 @@ export function compute3RefN(
       .tap(({ value1 }) => ref1.set(value1 - 1))
       .tap(({ value2 }) => ref2.set(value2 + 1))
       .map(({ value3 }) => value3)
-  ).repeatN(n);
+  ).repeatN(n)
 }
 
 export class UnpureBarrier {
-  #isOpen = false;
+  #isOpen = false
 
   open(): void {
-    this.#isOpen = true;
+    this.#isOpen = true
   }
 
   await(): Effect.UIO<void> {
     return Effect.suspend(
       Effect.attempt(() => {
         if (this.#isOpen) {
-          return undefined;
+          return undefined
         }
-        throw new Error();
+        throw new Error()
       })
-    ).eventually();
+    ).eventually()
   }
 }
 
@@ -87,7 +87,7 @@ export function transfer(
       .tap(() => receiver.update((n) => n + much))
       .tap(() => sender.update((n) => n - much))
       .zipRight(receiver.get())
-  );
+  )
 }
 
 export function permutation(
@@ -99,14 +99,14 @@ export function permutation(
     b: tRef2.get()
   })
     .flatMap(({ a, b }) => tRef1.set(b) > tRef2.set(a))
-    .map(constVoid);
+    .map(constVoid)
 }
 
 export function chain(
   depth: number,
   next: (_: STM<unknown, never, number>) => STM<unknown, never, number>
 ): Effect.UIO<number> {
-  return chainLoop(depth, STM.succeed(0), next);
+  return chainLoop(depth, STM.succeed(0), next)
 }
 
 export function chainLoop(
@@ -116,5 +116,5 @@ export function chainLoop(
 ): Effect.UIO<number> {
   return n <= 0
     ? acc.commit()
-    : Effect.suspendSucceed(chainLoop(n - 1, next(acc), next));
+    : Effect.suspendSucceed(chainLoop(n - 1, next(acc), next))
 }

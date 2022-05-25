@@ -34,7 +34,7 @@ export function zipWith_<
   OutElem | OutElem1,
   OutDone2
 > {
-  return self.flatMap((a) => that().map((b) => f(a, b)));
+  return self.flatMap((a) => that().map((b) => f(a, b)))
 }
 
 /**
@@ -44,4 +44,4 @@ export function zipWith_<
  *
  * @tsplus static ets/Channel/Aspects zipWith
  */
-export const zipWith = Pipeable(zipWith_);
+export const zipWith = Pipeable(zipWith_)

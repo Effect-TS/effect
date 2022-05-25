@@ -1,4 +1,4 @@
-import { ContinuationK, Fold } from "@effect/core/stream/Channel/definition/primitives";
+import { ContinuationK, Fold } from "@effect/core/stream/Channel/definition/primitives"
 
 /**
  * Returns a new channel, which sequentially combines this channel, together
@@ -48,7 +48,7 @@ export function flatMap_<
     OutDone2,
     OutErr | OutErr1,
     OutDone
-  >(self, new ContinuationK(f, (cause) => Channel.failCause(cause)));
+  >(self, new ContinuationK(f, (cause) => Channel.failCause(cause)))
 }
 
 /**
@@ -60,4 +60,4 @@ export function flatMap_<
  *
  * @tsplus static ets/Channel/Aspects flatMap
  */
-export const flatMap = Pipeable(flatMap_);
+export const flatMap = Pipeable(flatMap_)

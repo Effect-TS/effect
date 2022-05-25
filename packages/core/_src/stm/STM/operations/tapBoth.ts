@@ -11,7 +11,7 @@ export function tapBoth_<R, E, A, R2, E2, X, R3, E3, X1>(
   return self.foldSTM(
     (e) => f(e) > STM.fail(e),
     (a) => g(a).as(a)
-  );
+  )
 }
 
 /**
@@ -19,4 +19,4 @@ export function tapBoth_<R, E, A, R2, E2, X, R3, E3, X1>(
  *
  * @tsplus static ets/STM/Aspects tapBoth
  */
-export const tapBoth = Pipeable(tapBoth_);
+export const tapBoth = Pipeable(tapBoth_)

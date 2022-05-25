@@ -1,5 +1,5 @@
-export const MetricKeySym = Symbol.for("@effect/core/io/Metric/MetricKey");
-export type MetricKeySym = typeof MetricKeySym;
+export const MetricKeySym = Symbol.for("@effect/core/io/Metric/MetricKey")
+export type MetricKeySym = typeof MetricKeySym
 
 /**
  * A `MetricKey` is a unique key associated with each metric. The key is based
@@ -12,7 +12,7 @@ export type MetricKeySym = typeof MetricKeySym;
  * @tsplus companion ets/Metrics/MetricKey/Ops
  */
 export class MetricKey<Type> implements Equals {
-  readonly [MetricKeySym]: MetricKeySym = MetricKeySym;
+  readonly [MetricKeySym]: MetricKeySym = MetricKeySym
 
   constructor(
     readonly name: string,
@@ -24,25 +24,25 @@ export class MetricKey<Type> implements Equals {
     return Hash.combine(
       Hash.string(this.name),
       Hash.combine(Hash.unknown(this.keyType), Hash.unknown(this.tags))
-    );
+    )
   }
 
   [Equals.sym](u: unknown): boolean {
     return isMetricKey(u) &&
       this.name === u.name &&
       Hash.unknown(this.keyType) === Hash.unknown(u.keyType) &&
-      this.tags == u.tags;
+      this.tags == u.tags
   }
 }
 
 export declare namespace MetricKey {
-  export type Untyped = MetricKey<unknown>;
+  export type Untyped = MetricKey<unknown>
 
-  export type Counter = MetricKey<MetricKeyType.Counter>;
-  export type Gauge = MetricKey<MetricKeyType.Gauge>;
-  export type Frequency = MetricKey<MetricKeyType.Frequency>;
-  export type Histogram = MetricKey<MetricKeyType.Histogram>;
-  export type Summary = MetricKey<MetricKeyType.Summary>;
+  export type Counter = MetricKey<MetricKeyType.Counter>
+  export type Gauge = MetricKey<MetricKeyType.Gauge>
+  export type Frequency = MetricKey<MetricKeyType.Frequency>
+  export type Histogram = MetricKey<MetricKeyType.Histogram>
+  export type Summary = MetricKey<MetricKeyType.Summary>
 }
 
 /**
@@ -51,7 +51,7 @@ export declare namespace MetricKey {
  * @tsplus static ets/Metrics/MetricKey/Ops Counter
  */
 export function counter(name: string): MetricKey.Counter {
-  return new MetricKey(name, MetricKeyType.Counter);
+  return new MetricKey(name, MetricKeyType.Counter)
 }
 
 /**
@@ -60,7 +60,7 @@ export function counter(name: string): MetricKey.Counter {
  * @tsplus static ets/Metrics/MetricKey/Ops Gauge
  */
 export function gauge(name: string): MetricKey.Gauge {
-  return new MetricKey(name, MetricKeyType.Gauge);
+  return new MetricKey(name, MetricKeyType.Gauge)
 }
 
 /**
@@ -70,7 +70,7 @@ export function gauge(name: string): MetricKey.Gauge {
  * @tsplus static ets/Metrics/MetricKey/Ops Frequency
  */
 export function frequency(name: string): MetricKey.Frequency {
-  return new MetricKey(name, MetricKeyType.Frequency);
+  return new MetricKey(name, MetricKeyType.Frequency)
 }
 
 /**
@@ -79,7 +79,7 @@ export function frequency(name: string): MetricKey.Frequency {
  * @tsplus static ets/Metrics/MetricKey/Ops Histogram
  */
 export function histogram(name: string, boundaries: Metric.Histogram.Boundaries): MetricKey.Histogram {
-  return new MetricKey(name, MetricKeyType.Histogram(boundaries));
+  return new MetricKey(name, MetricKeyType.Histogram(boundaries))
 }
 
 /**
@@ -95,7 +95,7 @@ export function summary(
   error: number,
   quantiles: Chunk<number>
 ): MetricKey.Summary {
-  return new MetricKey(name, MetricKeyType.Summary(maxAge, maxSize, error, quantiles));
+  return new MetricKey(name, MetricKeyType.Summary(maxAge, maxSize, error, quantiles))
 }
 
 /**
@@ -104,7 +104,7 @@ export function summary(
  * @tsplus fluent ets/Metrics/MetricKey tagged
  */
 export function tagged<Type>(self: MetricKey<Type>, key: string, value: string): MetricKey<Type> {
-  return self.taggedWithLabelSet(HashSet(MetricLabel(key, value)));
+  return self.taggedWithLabelSet(HashSet(MetricLabel(key, value)))
 }
 
 /**
@@ -113,7 +113,7 @@ export function tagged<Type>(self: MetricKey<Type>, key: string, value: string):
  * @tsplus fluent ets/Metrics/MetricKey taggedWithLabels
  */
 export function taggedWithLabels<Type>(self: MetricKey<Type>, extraTags: Collection<MetricLabel>): MetricKey<Type> {
-  return self.taggedWithLabelSet(HashSet.from(extraTags));
+  return self.taggedWithLabelSet(HashSet.from(extraTags))
 }
 
 /**
@@ -122,12 +122,12 @@ export function taggedWithLabels<Type>(self: MetricKey<Type>, extraTags: Collect
  * @tsplus fluent ets/Metrics/MetricKey taggedWithLabelSet
  */
 export function taggedWithLabelSet<Type>(self: MetricKey<Type>, extraTags: HashSet<MetricLabel>): MetricKey<Type> {
-  return extraTags.size === 0 ? self : new MetricKey(self.name, self.keyType, self.tags.union(extraTags));
+  return extraTags.size === 0 ? self : new MetricKey(self.name, self.keyType, self.tags.union(extraTags))
 }
 
 /**
  * @tsplus static ets/Metrics/MetricKey/Ops isMetricKey
  */
 export function isMetricKey(u: unknown): u is MetricKey<unknown> {
-  return typeof u === "object" && u != null && MetricKeySym in u;
+  return typeof u === "object" && u != null && MetricKeySym in u
 }

@@ -9,10 +9,10 @@ export function mapType_<Type, Type2, In, Out>(
     f(self.keyType),
     self.unsafeUpdate,
     self.unsafeValue
-  );
+  )
 }
 
 /**
  * @tsplus static ets/Metrics/Metric/Aspects mapType
  */
-export const mapType = Pipeable(mapType_);
+export const mapType = Pipeable(mapType_)

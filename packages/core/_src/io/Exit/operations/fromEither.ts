@@ -4,8 +4,8 @@
 export function fromEither<E, A>(e: Either<E, A>): Exit<E, A> {
   switch (e._tag) {
     case "Left":
-      return Exit.fail(e.left);
+      return Exit.fail(e.left)
     case "Right":
-      return Exit.succeed(e.right);
+      return Exit.succeed(e.right)
   }
 }

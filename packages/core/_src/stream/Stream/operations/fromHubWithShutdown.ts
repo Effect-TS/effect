@@ -1,4 +1,4 @@
-import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition";
+import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition"
 
 /**
  * Creates a stream from a subscription to a hub.
@@ -15,5 +15,5 @@ export function fromHubWithShutdown<A>(
   maxChunkSize = DEFAULT_CHUNK_SIZE,
   __tsplusTrace?: string
 ): Stream<unknown, never, A> {
-  return Stream.succeed(hub).flatMap((hub) => Stream.fromHub(hub, maxChunkSize).ensuring(hub.shutdown));
+  return Stream.succeed(hub).flatMap((hub) => Stream.fromHub(hub, maxChunkSize).ensuring(hub.shutdown))
 }

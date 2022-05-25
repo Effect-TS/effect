@@ -1,4 +1,4 @@
-import { concreteFiberRef } from "@effect/core/io/FiberRef/operations/_internal/FiberRefInternal";
+import { concreteFiberRef } from "@effect/core/io/FiberRef/operations/_internal/FiberRefInternal"
 
 /**
  * Combines two patches to produce a new patch that describes the updates of
@@ -10,8 +10,8 @@ import { concreteFiberRef } from "@effect/core/io/FiberRef/operations/_internal/
  * @tsplus fluent ets/FiberRef combine
  */
 export function combine_<Value, Patch>(self: FiberRef<Value, Patch>, first: Patch, second: Patch): Patch {
-  concreteFiberRef(self);
-  return self._combine(first, second) as Patch;
+  concreteFiberRef(self)
+  return self._combine(first, second) as Patch
 }
 
 /**
@@ -23,4 +23,4 @@ export function combine_<Value, Patch>(self: FiberRef<Value, Patch>, first: Patc
  *
  * @tsplus static ets/FiberRef/Aspects combine
  */
-export const combine = Pipeable(combine_);
+export const combine = Pipeable(combine_)

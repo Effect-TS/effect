@@ -11,7 +11,7 @@ export function tapDefect_<R, E, A, R2, E2, X>(
   return self.foldCauseEffect(
     (cause) => f(cause.stripFailures()).zipRight(Effect.failCauseNow(cause)),
     Effect.succeedNow
-  );
+  )
 }
 
 /**
@@ -19,4 +19,4 @@ export function tapDefect_<R, E, A, R2, E2, X>(
  *
  * @tsplus static ets/Effect/Aspects tapDefect
  */
-export const tapDefect = Pipeable(tapDefect_);
+export const tapDefect = Pipeable(tapDefect_)

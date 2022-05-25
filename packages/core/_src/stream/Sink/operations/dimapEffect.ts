@@ -10,7 +10,7 @@ export function dimapEffect_<R, E, R2, E2, In, In1, L, Z, Z1>(
   g: (z: Z) => Z1,
   __tsplusTrace?: string
 ): Sink<R & R2, E | E2, In1, L, Z1> {
-  return self.contramapEffect(f).map(g);
+  return self.contramapEffect(f).map(g)
 }
 
 /**
@@ -19,4 +19,4 @@ export function dimapEffect_<R, E, R2, E2, In, In1, L, Z, Z1>(
  *
  * @tsplus static ets/Sink/Aspects dimapEffect
  */
-export const dimapEffect = Pipeable(dimapEffect_);
+export const dimapEffect = Pipeable(dimapEffect_)

@@ -1,7 +1,7 @@
-import { Decision } from "@effect/core/io/Schedule/Decision";
-import { Interval } from "@effect/core/io/Schedule/Interval";
-import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState";
-import { beginningOfDay, endOfDay, nextDayOfMonth } from "@effect/core/io/Schedule/operations/_internal/time";
+import { Decision } from "@effect/core/io/Schedule/Decision"
+import { Interval } from "@effect/core/io/Schedule/Interval"
+import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
+import { beginningOfDay, endOfDay, nextDayOfMonth } from "@effect/core/io/Schedule/operations/_internal/time"
 
 /**
  * Cron-like schedule that recurs every specified `day` of month. Won't recur
@@ -22,12 +22,12 @@ export function dayOfMonth(
         new IllegalArgumentException(
           `Invalid argument in: dayOfMonth(${day}). Must be in range 1...31`
         )
-      );
+      )
     }
-    const d = nextDayOfMonth(now, day);
-    const start = Math.max(beginningOfDay(d), now);
-    const end = endOfDay(d);
-    const interval = Interval(start, end);
-    return Effect.succeedNow(Tuple(state + 1, state, Decision.Continue(interval)));
-  });
+    const d = nextDayOfMonth(now, day)
+    const start = Math.max(beginningOfDay(d), now)
+    const end = endOfDay(d)
+    const interval = Interval(start, end)
+    return Effect.succeedNow(Tuple(state + 1, state, Decision.Continue(interval)))
+  })
 }

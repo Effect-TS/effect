@@ -1,5 +1,5 @@
-export const IntervalSym = Symbol.for("@effect/core/io/Schedule/Interval");
-export type IntervalSym = typeof IntervalSym;
+export const IntervalSym = Symbol.for("@effect/core/io/Schedule/Interval")
+export type IntervalSym = typeof IntervalSym
 
 /**
  * An `Interval` represents an interval of time. Intervals can encompass all
@@ -8,20 +8,20 @@ export type IntervalSym = typeof IntervalSym;
  * @tsplus type ets/Schedule/Interval
  */
 export interface Interval {
-  readonly [IntervalSym]: IntervalSym;
-  readonly startMillis: number;
-  readonly endMillis: number;
+  readonly [IntervalSym]: IntervalSym
+  readonly startMillis: number
+  readonly endMillis: number
 }
 
 /**
  * @tsplus type ets/Schedule/Interval/Ops
  */
 export interface IntervalOps {
-  $: IntervalAspects;
+  $: IntervalAspects
 }
 export const Interval: IntervalOps = {
   $: {}
-};
+}
 
 /**
  * @tsplus type ets/Schedule/Interval/Aspects
@@ -33,7 +33,7 @@ export interface IntervalAspects {}
  *
  * @tsplus static ets/Schedule/Interval/Ops empty
  */
-export const empty: Interval = Interval(0, 0);
+export const empty: Interval = Interval(0, 0)
 
 /**
  * Constructs a new interval from the two specified endpoints. If the start
@@ -52,7 +52,7 @@ export function fromStartEndMillis(
       [IntervalSym]: IntervalSym,
       startMillis: startMilliseconds,
       endMillis: endMilliseconds
-    };
+    }
 }
 
 /**
@@ -60,91 +60,91 @@ export function fromStartEndMillis(
  * @tsplus fluent ets/Schedule/Interval lessThan
  */
 export function lessThan_(self: Interval, that: Interval): boolean {
-  return self.min(that) === self;
+  return self.min(that) === self
 }
 
 /**
  * @tsplus static ets/Schedule/Interval/Aspects lessThan
  */
-export const lessThan = Pipeable(lessThan_);
+export const lessThan = Pipeable(lessThan_)
 
 /**
  * @tsplus fluent ets/Schedule/Interval min
  */
 export function min_(self: Interval, that: Interval): Interval {
-  if (self.endMillis <= that.startMillis) return self;
-  if (that.endMillis <= self.startMillis) return that;
-  if (self.startMillis < that.startMillis) return self;
-  if (that.startMillis < self.startMillis) return that;
-  if (self.endMillis <= that.endMillis) return self;
-  return that;
+  if (self.endMillis <= that.startMillis) return self
+  if (that.endMillis <= self.startMillis) return that
+  if (self.startMillis < that.startMillis) return self
+  if (that.startMillis < self.startMillis) return that
+  if (self.endMillis <= that.endMillis) return self
+  return that
 }
 
 /**
  * @tsplus static ets/Schedule/Interval/Aspects min
  */
-export const min = Pipeable(min_);
+export const min = Pipeable(min_)
 
 /**
  * @tsplus fluent ets/Schedule/Interval max
  */
 export function max_(self: Interval, that: Interval): Interval {
-  return self.min(that) === self ? that : self;
+  return self.min(that) === self ? that : self
 }
 
 /**
  * @tsplus static ets/Schedule/Interval/Aspects max
  */
-export const max = Pipeable(max_);
+export const max = Pipeable(max_)
 
 /**
  * @tsplus fluent ets/Schedule/Interval isEmpty
  */
 export function isEmpty(self: Interval): boolean {
-  return self.startMillis >= self.endMillis;
+  return self.startMillis >= self.endMillis
 }
 
 /**
  * @tsplus fluent ets/Schedule/Interval isNonEmpty
  */
 export function isNonEmpty(self: Interval): boolean {
-  return !self.isEmpty();
+  return !self.isEmpty()
 }
 
 /**
  * @tsplus fluent ets/Schedule/Interval intersect
  */
 export function intersect_(self: Interval, that: Interval): Interval {
-  const start = Ord.number.min(self.startMillis, that.startMillis);
-  const end = Ord.number.max(self.endMillis, that.endMillis);
-  return Interval(start, end);
+  const start = Ord.number.min(self.startMillis, that.startMillis)
+  const end = Ord.number.max(self.endMillis, that.endMillis)
+  return Interval(start, end)
 }
 
 /**
  * @tsplus static ets/Schedule/Interval/Aspects intersect
  */
-export const intersect = Pipeable(intersect_);
+export const intersect = Pipeable(intersect_)
 
 /**
  * @tsplus getter ets/Schedule/Interval size
  */
 export function size(self: Interval): Duration {
-  return new Duration(self.endMillis - self.startMillis);
+  return new Duration(self.endMillis - self.startMillis)
 }
 
 /**
  * @tsplus fluent ets/Schedule/Interval union
  */
 export function union_(self: Interval, that: Interval): Option<Interval> {
-  const start = Ord.number.max(self.startMillis, that.startMillis);
-  const end = Ord.number.min(self.endMillis, that.endMillis);
-  return start < end ? Option.none : Option.some(Interval(start, end));
+  const start = Ord.number.max(self.startMillis, that.startMillis)
+  const end = Ord.number.min(self.endMillis, that.endMillis)
+  return start < end ? Option.none : Option.some(Interval(start, end))
 }
 
 /**
  * @tsplus static ets/Schedule/Interval/Aspects union
  */
-export const union = Pipeable(union_);
+export const union = Pipeable(union_)
 
 /**
  * Construct an `Interval` that includes all time equal to and after the
@@ -153,7 +153,7 @@ export const union = Pipeable(union_);
  * @tsplus static ets/Schedule/Interval/Ops after
  */
 export function after(startMilliseconds: number): Interval {
-  return Interval(startMilliseconds, Number.MAX_SAFE_INTEGER);
+  return Interval(startMilliseconds, Number.MAX_SAFE_INTEGER)
 }
 
 /**
@@ -163,5 +163,5 @@ export function after(startMilliseconds: number): Interval {
  * @tsplus static ets/Schedule/Interval before
  */
 export function before(endMilliseconds: number): Interval {
-  return Interval(Number.MIN_SAFE_INTEGER, endMilliseconds);
+  return Interval(Number.MIN_SAFE_INTEGER, endMilliseconds)
 }

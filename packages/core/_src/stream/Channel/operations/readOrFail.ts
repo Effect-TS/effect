@@ -1,4 +1,4 @@
-import { ContinuationK, Read } from "@effect/core/stream/Channel/definition/primitives";
+import { ContinuationK, Read } from "@effect/core/stream/Channel/definition/primitives"
 
 /**
  * @tsplus static ets/Channel/Ops readOrFail
@@ -12,5 +12,5 @@ export function readOrFail<In, E>(
       () => Channel.fail(e),
       () => Channel.fail(e)
     )
-  );
+  )
 }

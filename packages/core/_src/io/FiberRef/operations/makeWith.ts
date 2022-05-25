@@ -8,5 +8,5 @@ export function makeWith<Value, Patch>(
   return Effect.acquireRelease(
     Effect.succeed(ref).tap((ref) => ref.update(identity)),
     (ref) => ref.delete()
-  );
+  )
 }

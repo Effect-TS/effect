@@ -10,5 +10,5 @@ export function interruptFork<E, A>(
   self: Fiber<E, A>,
   __tsplusTrace?: string
 ): Effect.UIO<void> {
-  return self.interrupt().forkDaemon().asUnit();
+  return self.interrupt().forkDaemon().asUnit()
 }

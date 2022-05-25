@@ -9,7 +9,7 @@ export function replicateEffect_<R, E, A>(
   n: number,
   __tsplusTrace?: string
 ): Effect<R, E, Chunk<A>> {
-  return Effect.suspendSucceed(Effect.collectAll(self.replicate(n)));
+  return Effect.suspendSucceed(Effect.collectAll(self.replicate(n)))
 }
 
 /**
@@ -18,4 +18,4 @@ export function replicateEffect_<R, E, A>(
  *
  * @tsplus static ets/Effect/Aspects replicateEffect
  */
-export const replicateEffect = Pipeable(replicateEffect_);
+export const replicateEffect = Pipeable(replicateEffect_)

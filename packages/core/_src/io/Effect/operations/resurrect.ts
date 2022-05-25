@@ -7,5 +7,5 @@ export function resurrect<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, unknown, A> {
-  return self.unrefineWith(Option.some, identity);
+  return self.unrefineWith(Option.some, identity)
 }

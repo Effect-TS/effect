@@ -9,16 +9,16 @@ export function forEach<A, R, E, B>(
   f: (a: A) => STM<R, E, B>
 ): STM<R, E, Chunk<B>> {
   return STM.suspend(() => {
-    let stm = STM.succeedNow([]) as STM<R, E, B[]>;
+    let stm = STM.succeedNow([]) as STM<R, E, B[]>
 
-    const as0 = as();
+    const as0 = as()
     for (const a of as0) {
       stm = stm.zipWith(f(a), (acc, b) => {
-        acc.push(b);
-        return acc;
-      });
+        acc.push(b)
+        return acc
+      })
     }
 
-    return stm.map(Chunk.from);
-  });
+    return stm.map(Chunk.from)
+  })
 }

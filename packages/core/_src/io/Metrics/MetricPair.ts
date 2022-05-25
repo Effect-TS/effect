@@ -1,23 +1,23 @@
-import type { _Out } from "@effect/core/io/Metrics/MetricKeyType";
+import type { _Out } from "@effect/core/io/Metrics/MetricKeyType"
 
 /**
  * @tsplus type ets/Metrics/MetricPair
  */
 export interface MetricPair<Type extends MetricKeyType<any, any>> {
-  readonly metricKey: MetricKey<Type>;
+  readonly metricKey: MetricKey<Type>
   readonly metricState: MetricState<
-    [Type] extends [{ [_Out]: () => infer Out; }] ? Out : never
-  >;
+    [Type] extends [{ [_Out]: () => infer Out }] ? Out : never
+  >
 }
 
 /**
  * @tsplus type ets/Metrics/MetricPair/Ops
  */
 export interface MetricPairOps {}
-export const MetricPair: MetricPairOps = {};
+export const MetricPair: MetricPairOps = {}
 
 export declare namespace MetricPair {
-  export type Untyped = MetricPair<MetricKeyType<any, any>>;
+  export type Untyped = MetricPair<MetricKeyType<any, any>>
 }
 
 /**
@@ -26,10 +26,10 @@ export declare namespace MetricPair {
 export function make<Type extends MetricKeyType<any, any>>(
   metricKey: MetricKey<Type>,
   metricState: MetricState<
-    [Type] extends [{ [_Out]: () => infer Out; }] ? Out : never
+    [Type] extends [{ [_Out]: () => infer Out }] ? Out : never
   >
 ): MetricPair.Untyped {
-  return { metricKey, metricState };
+  return { metricKey, metricState }
 }
 
 /**
@@ -39,5 +39,5 @@ export function unsafeMake<Type extends MetricKeyType<any, any>>(
   metricKey: MetricKey<Type>,
   metricState: MetricState.Untyped
 ): MetricPair.Untyped {
-  return { metricKey, metricState };
+  return { metricKey, metricState }
 }

@@ -7,5 +7,5 @@ export function die(
   defect: LazyArg<unknown>,
   __tsplusTrace?: string
 ): Stream<unknown, never, never> {
-  return Stream.fromEffect(Effect.die(defect));
+  return Stream.fromEffect(Effect.die(defect))
 }

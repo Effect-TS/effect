@@ -15,5 +15,5 @@ export function serviceWithEffect<T>(tag: Tag<T>) {
     Effect.suspendSucceed(
       FiberRef.currentEnvironment.value.get()
         .flatMap((env) => f(env.unsafeGet(tag)))
-    );
+    )
 }

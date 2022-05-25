@@ -1,4 +1,4 @@
-import { zipRightChunks } from "@effect/core/stream/Stream/operations/_internal/zipRightChunks";
+import { zipRightChunks } from "@effect/core/stream/Stream/operations/_internal/zipRightChunks"
 
 /**
  * Zips this stream with another point-wise, but keeps only the outputs of the
@@ -13,7 +13,7 @@ export function zipRight_<R, E, A, R2, E2, A2>(
   that: LazyArg<Stream<R2, E2, A2>>,
   __tsplusTrace?: string
 ): Stream<R & R2, E | E2, A2> {
-  return self.zipWithChunks(that, zipRightChunks);
+  return self.zipWithChunks(that, zipRightChunks)
 }
 
 /**
@@ -24,4 +24,4 @@ export function zipRight_<R, E, A, R2, E2, A2>(
  *
  * @tsplus static ets/Stream/Aspects zipRight
  */
-export const zipRight = Pipeable(zipRight_);
+export const zipRight = Pipeable(zipRight_)

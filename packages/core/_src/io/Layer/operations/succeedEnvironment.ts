@@ -5,5 +5,5 @@
  * @tsplus static ets/Layer/Ops succeedEnvironment
  */
 export function succeedEnvironment<A>(a: LazyArg<Env<A>>): Layer<unknown, never, A> {
-  return Layer.fromEffectEnvironment(Effect.succeed(a));
+  return Layer.fromEffectEnvironment(Effect.succeed(a))
 }

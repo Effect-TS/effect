@@ -5,5 +5,5 @@
  * @tsplus fluent ets/STM leftOrFailException
  */
 export function leftOrFailException<R, E, B, C>(self: STM<R, E, Either<B, C>>) {
-  return self.leftOrFail(() => new NoSuchElement());
+  return self.leftOrFail(() => new NoSuchElement())
 }
