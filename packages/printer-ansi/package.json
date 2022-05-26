@@ -34,17 +34,10 @@
     }
   },
   "peerDependencies": {
-    "@effect/core": "^0.0.1",
     "@effect/printer": "^0.0.1",
-    "@tsplus/stdlib": "^0.0.63"
-  },
-  "devDependencies": {
-    "@effect/printer": "^0.0.1"
+    "@tsplus/stdlib": "0.0.71"
   },
   "peerDependenciesMeta": {
-    "@effect/core": {
-      "optional": true
-    },
     "@effect/printer": {
       "optional": true
     },

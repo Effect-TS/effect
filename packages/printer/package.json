@@ -34,13 +34,9 @@
     }
   },
   "peerDependencies": {
-    "@effect/core": "^0.0.1",
-    "@tsplus/stdlib": "^0.0.50"
+    "@tsplus/stdlib": "0.0.71"
   },
   "peerDependenciesMeta": {
-    "@effect/core": {
-      "optional": true
-    },
     "@tsplus/stdlib": {
       "optional": true
     }
