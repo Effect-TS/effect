@@ -98,7 +98,7 @@ export function widenA<A1>() {
 }
 
 /**
- * Alternatively construct that if self is left
+ * Alternatively construct `that` if `self` is left
  */
 export function alt_<E, E2, A, A2>(
   self: Either<E, A>,
@@ -108,7 +108,7 @@ export function alt_<E, E2, A, A2>(
 }
 
 /**
- * Alternatively construct that if self is left
+ * Alternatively construct `that` if `self` is left
  *
  * @ets_data_first alt_
  */
