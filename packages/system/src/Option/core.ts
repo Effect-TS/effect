@@ -76,14 +76,14 @@ export function ap<A>(fa: Option<A>) {
 }
 
 /**
- * Zips `Option[A]` and `Option[B]` into `Option[(A, B)]
+ * Zips `Option[A]` and `Option[B]` into `Option[(A, B)]`
  */
 export function zip_<A, B>(fa: Option<A>, fb: Option<B>): Option<Tp.Tuple<[A, B]>> {
   return chain_(fa, (a) => map_(fb, (b) => Tp.tuple(a, b)))
 }
 
 /**
- * Zips `Option[A]` and `Option[B]` into `Option[(A, B)]
+ * Zips `Option[A]` and `Option[B]` into `Option[(A, B)]`
  *
  * @ets_data_first zip_
  */
