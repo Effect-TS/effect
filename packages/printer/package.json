@@ -33,13 +33,8 @@
       "import": "./build/esm/*.js"
     }
   },
-  "peerDependencies": {
-    "@tsplus/stdlib": "0.0.71"
-  },
-  "peerDependenciesMeta": {
-    "@tsplus/stdlib": {
-      "optional": true
-    }
+  "dependencies": {
+    "@tsplus/stdlib": "*"
   },
   "config": {
     "side": [],

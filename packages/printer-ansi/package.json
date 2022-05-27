@@ -33,17 +33,9 @@
       "import": "./build/esm/*.js"
     }
   },
-  "peerDependencies": {
-    "@effect/printer": "^0.0.1",
-    "@tsplus/stdlib": "0.0.71"
-  },
-  "peerDependenciesMeta": {
-    "@effect/printer": {
-      "optional": true
-    },
-    "@tsplus/stdlib": {
-      "optional": true
-    }
+  "dependencies": {
+    "@effect/printer": "*",
+    "@tsplus/stdlib": "*"
   },
   "config": {
     "side": [],
