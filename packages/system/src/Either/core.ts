@@ -517,7 +517,7 @@ export function mapLeft<E, G>(f: (e: E) => G) {
 }
 
 /**
- * Merges Left<E> | Right<B> into A | B
+ * Merges `Left<E> | Right<B>` into `A | B`
  */
 export function merge<E, A>(self: Either<E, A>): E | A {
   return fold_(
