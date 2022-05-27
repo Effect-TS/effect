@@ -635,7 +635,7 @@ export function tryCatch<E, A>(f: Lazy<A>, onError: (e: unknown) => E): Either<E
 }
 
 /**
- * Compact types Either<E, A> | Either<E2, B> = Either<E | E2, A | B>
+ * Compact types `Either<E, A> | Either<E2, B> = Either<E | E2, A | B>`
  *
  * @ets_optimize identity
  */
