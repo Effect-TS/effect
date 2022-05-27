@@ -304,7 +304,7 @@ export function extend<E, A, B>(f: (fa: Either<E, A>) => B) {
 }
 
 /**
- * Apply predicate to A and construct E in case the predicate is false
+ * Apply predicate to `A` and construct `E` in case the predicate is `false`
  *
  * @ets_data_first filterOrElse_
  */
@@ -322,7 +322,7 @@ export function filterOrElse<E, A>(predicate: Predicate<A>, onFalse: (a: A) => E
 }
 
 /**
- * Apply predicate to A and construct E in case the predicate is false
+ * Apply predicate to `A` and construct `E` in case the predicate is `false`
  */
 export function filterOrElse_<E, E2, A, B extends A>(
   ma: Either<E2, A>,
