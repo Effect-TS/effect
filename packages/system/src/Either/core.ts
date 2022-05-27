@@ -285,22 +285,22 @@ export function exists_<E, A>(ma: Either<E, A>, predicate: Predicate<A>): boolea
 }
 
 /**
- * Apply `Either[E, A] => B` in case self is right returning `Either[E, B]`
+ * Apply `Either[E, A] => B` in case `self` is `Right` returning `Either[E, B]`
  */
 export function extend_<E, A, B>(
-  wa: Either<E, A>,
+  self: Either<E, A>,
   f: (wa: Either<E, A>) => B
 ): Either<E, B> {
-  return isLeft(wa) ? wa : right(f(wa))
+  return isLeft(self) ? self : right(f(self))
 }
 
 /**
- * Apply `Either[E, A] => B` in case self is right returning `Either[E, B]`
+ * Apply `Either[E, A] => B` in case `self` is `Right` returning `Either[E, B]`
  *
  * @ets_data_first extend_
  */
 export function extend<E, A, B>(f: (fa: Either<E, A>) => B) {
-  return (ma: Either<E, A>): Either<E, B> => extend_(ma, f)
+  return (self: Either<E, A>): Either<E, B> => extend_(self, f)
 }
 
 /**
