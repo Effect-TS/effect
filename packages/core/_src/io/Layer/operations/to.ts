@@ -18,21 +18,8 @@ export function to_<
 >(
   self: Layer<RIn, E, ROut>,
   that: Layer<RIn2, E2, ROut2>
-): Layer<RIn & Erase<RIn2, ROut>, E | E2, ROut2>
-export function to_<
-  RIn,
-  E,
-  ROut,
-  RIn2,
-  E2,
-  ROut2
->(
-  self: Layer<RIn, E, ROut>,
-  that: Layer<RIn2 & ROut, E2, ROut2>
-): Layer<RIn & RIn2, E | E2, ROut2> {
-  return Layer.suspend(
-    new ILayerTo(Layer.environment<RIn2>().and(self), that)
-  )
+): Layer<RIn & Erase<RIn2, ROut>, E | E2, ROut2> {
+  return Layer.suspend(new ILayerTo(Layer.environment<RIn2>() + self, that))
 }
 
 /**

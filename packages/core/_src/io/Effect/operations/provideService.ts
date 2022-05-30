@@ -5,13 +5,12 @@
  * @tsplus fluent ets/Effect provideService
  */
 export function provideService_<R, E, A, T>(
-  self: Effect<R & Has<T>, E, A>,
-  tag: Tag<T>
-) {
-  return (
-    resource: LazyArg<T>,
-    __tsplusTrace?: string
-  ): Effect<Erase<R & Has<T>, Has<T>>, E, A> => self.provideServiceEffect(tag)(Effect.succeed(resource))
+  self: Effect<R, E, A>,
+  tag: Tag<T>,
+  resource: LazyArg<T>,
+  __tsplusTrace?: string
+): Effect<Erase<R, Has<T>>, E, A> {
+  return self.provideServiceEffect(tag, Effect.succeed(resource))
 }
 
 /**

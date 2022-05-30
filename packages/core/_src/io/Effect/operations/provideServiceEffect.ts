@@ -4,17 +4,15 @@
  *
  * @tsplus fluent ets/Effect provideServiceEffect
  */
-export function provideServiceEffect_<R, E, A, T>(
-  self: Effect<R & Has<T>, E, A>,
-  tag: Tag<T>
-) {
-  return <R1, E1>(
-    effect: Effect<R1, E1, T>,
-    __tsplusTrace?: string
-  ): Effect<R1 & Erase<R, Has<T>>, E | E1, A> =>
-    Effect.environmentWithEffect((env: Env<R & R1>) =>
-      effect.flatMap((service) => self.provideEnvironment(env.add(tag, service)))
-    )
+export function provideServiceEffect_<R1, E1, R, E, A, T>(
+  self: Effect<R, E, A>,
+  tag: Tag<T>,
+  effect: Effect<R1, E1, T>,
+  __tsplusTrace?: string
+): Effect<R1 & Erase<R, Has<T>>, E | E1, A> {
+  return Effect.environmentWithEffect((env: Env<R & R1>) =>
+    effect.flatMap((service) => self.provideEnvironment(env.add(tag, service)))
+  )
 }
 
 /**
