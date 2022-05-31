@@ -4,7 +4,7 @@ import { State } from "@effect/core/stm/STM/State"
 import { TryCommit } from "@effect/core/stm/STM/TryCommit"
 import type { TxnId } from "@effect/core/stm/STM/TxnId"
 import { concreteTRef } from "@effect/core/stm/TRef/operations/_internal/TRefInternal"
-import { defaultScheduler } from "@effect/core/support/Scheduler"
+import { scheduleTask } from "@effect/core/support/Scheduler"
 
 export type Journal = Map<TRef<unknown>, Entry>
 
@@ -99,7 +99,7 @@ export function completeTodos<E, A>(
 ): TryCommit<E, A> {
   const todos = collectTodos(journal)
   if (todos.size > 0) {
-    defaultScheduler(() => execTodos(todos))
+    scheduleTask(() => execTodos(todos))
   }
   return TryCommit.done(exit)
 }
