@@ -7,7 +7,7 @@ import { _A, _E, FiberSym } from "@effect/core/io/Fiber/definition"
 import { FiberStatus } from "@effect/core/io/Fiber/status"
 import { concreteFiberRefs } from "@effect/core/io/FiberRefs/operations/_internal/FiberRefsInternal"
 import { joinFiberRefs } from "@effect/core/io/FiberRefs/operations/_internal/join"
-import { defaultScheduler } from "@effect/core/support/Scheduler"
+import { scheduleTask } from "@effect/core/support/Scheduler"
 import * as StackTraceBuilder from "@effect/core/support/StackTraceBuilder"
 import { constVoid } from "@tsplus/stdlib/data/Function"
 
@@ -1027,7 +1027,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
     childContext.nextEffect = childEffect
 
-    defaultScheduler(() => childContext.runUntil(this.runtimeConfig.value.maxOp))
+    scheduleTask(() => childContext.runUntil(this.runtimeConfig.value.maxOp))
 
     return childContext
   }
@@ -1074,7 +1074,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   unsafeRunLater(instr: Instruction): void {
     this.nextEffect = instr
-    defaultScheduler(() => this.runUntil(this.runtimeConfig.value.maxOp))
+    scheduleTask(() => this.runUntil(this.runtimeConfig.value.maxOp))
   }
 
   /**
