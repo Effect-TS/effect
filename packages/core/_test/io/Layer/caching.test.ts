@@ -13,7 +13,7 @@ describe.concurrent("Layer", () => {
 
       const ATag = Tag<A>()
 
-      const aLayer = Layer.fromFunction(ConfigTag, ATag)((_: Config) => new A(_.value))
+      const aLayer = Layer.fromFunction(ConfigTag, ATag, (_: Config) => new A(_.value))
 
       class B {
         constructor(readonly value: number) {}
@@ -21,7 +21,7 @@ describe.concurrent("Layer", () => {
 
       const BTag = Tag<B>()
 
-      const bLayer = Layer.fromFunction(ATag, BTag)((_: A) => new B(_.value))
+      const bLayer = Layer.fromFunction(ATag, BTag, (_: A) => new B(_.value))
 
       class C {
         constructor(readonly value: number) {}
@@ -29,7 +29,7 @@ describe.concurrent("Layer", () => {
 
       const CTag = Tag<C>()
 
-      const cLayer = Layer.fromFunction(ATag, CTag)((_: A) => new C(_.value))
+      const cLayer = Layer.fromFunction(ATag, CTag, (_: A) => new C(_.value))
 
       const fedB = (Layer.succeed(ConfigTag)(new Config(1)) >> aLayer) >> bLayer
       const fedC = (Layer.succeed(ConfigTag)(new Config(2)) >> aLayer) >> cLayer

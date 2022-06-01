@@ -3,7 +3,6 @@
  *
  * @tsplus static ets/Layer/Ops fromEffect
  */
-export function fromEffect<T>(tag: Tag<T>) {
-  return <R, E>(effect: LazyArg<Effect<R, E, T>>): Layer<R, E, T> =>
-    Layer.fromEffectEnvironment(Effect.suspendSucceed(effect).map((service) => Env(tag, service)))
+export function fromEffect<T, R, E, T1 extends T>(tag: Tag<T>, effect: LazyArg<Effect<R, E, T1>>): Layer<R, E, T> {
+  return Layer.fromEffectEnvironment(Effect.suspendSucceed(effect).map((service) => Env(tag, service)))
 }

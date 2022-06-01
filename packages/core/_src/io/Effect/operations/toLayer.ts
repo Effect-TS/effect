@@ -7,7 +7,7 @@ export function toLayer_<R, E, A>(
   self: Effect<R, E, A>,
   tag: Tag<A>
 ): Layer<R, E, A> {
-  return Layer.fromEffect(tag)(self)
+  return Layer.fromEffect(tag, self)
 }
 
 /**
