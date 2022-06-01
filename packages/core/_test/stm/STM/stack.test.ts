@@ -82,7 +82,7 @@ describe.concurrent("STM", () => {
 
       function chainErrorLoop(
         n: number,
-        acc: STM<unknown, number, never>
+        acc: STM<never, number, never>
       ): Effect.IO<number, never> {
         return n <= 0
           ? acc.commit()

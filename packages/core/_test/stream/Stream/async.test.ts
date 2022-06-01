@@ -2,7 +2,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("async", () => {
     it("async", async () => {
       const chunk = Chunk(1, 2, 3, 4, 5)
-      const program = Stream.async<unknown, never, number>((emit) => {
+      const program = Stream.async<never, never, number>((emit) => {
         chunk.forEach((n) => {
           emit(Effect.succeed(Chunk.single(n)))
         })
@@ -18,7 +18,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("asyncMaybe", () => {
     it("signal end stream", async () => {
-      const program = Stream.asyncMaybe<unknown, never, number>((emit) => {
+      const program = Stream.asyncMaybe<never, never, number>((emit) => {
         emit(Effect.fail(Option.none))
         return Option.none
       }).runCollect()
@@ -30,7 +30,7 @@ describe.concurrent("Stream", () => {
 
     it("Some", async () => {
       const chunk = Chunk(1, 2, 3, 4, 5)
-      const program = Stream.asyncMaybe<unknown, never, number>(() => Option.some(Stream.fromChunk(chunk)))
+      const program = Stream.asyncMaybe<never, never, number>(() => Option.some(Stream.fromChunk(chunk)))
         .runCollect()
 
       const result = await program.unsafeRunPromise()
@@ -40,7 +40,7 @@ describe.concurrent("Stream", () => {
 
     it("None", async () => {
       const chunk = Chunk(1, 2, 3, 4, 5)
-      const program = Stream.asyncMaybe<unknown, never, number>((emit) => {
+      const program = Stream.asyncMaybe<never, never, number>((emit) => {
         chunk.forEach((n) => {
           emit(Effect.succeed(Chunk.single(n)))
         })
@@ -89,7 +89,7 @@ describe.concurrent("Stream", () => {
       const program = Effect.Do()
         .bind("latch", () => Deferred.make<never, void>())
         .bind("fiber", ({ latch }) =>
-          Stream.asyncEffect((emit) => {
+          Stream.asyncEffect<never, unknown, unknown, void>((emit) => {
             chunk.forEach((n) => {
               emit(Effect.succeed(Chunk.single(n)))
             })
@@ -107,7 +107,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("signal end stream", async () => {
-      const program = Stream.asyncEffect<unknown, never, number, void>((emit) => {
+      const program = Stream.asyncEffect<never, never, number, void>((emit) => {
         emit(Effect.fail(Option.none))
         return Effect.unit
       }).runCollect()
@@ -124,7 +124,7 @@ describe.concurrent("Stream", () => {
     //     .bind("refCount", () => Ref.make(0))
     //     .bind("refDone", () => Ref.make(false))
     //     .bindValue("stream", ({ refCount, refDone }) =>
-    //       Stream.asyncEffect<unknown, never, number, void>((emit) => {
+    //       Stream.asyncEffect<never, never, number, void>((emit) => {
     //         const t1 = setTimeout(() => {
     //           Chunk.range(0, 7).forEach((n) => {
     //             emit(refCount.set(n) > Effect.succeed(Chunk.single(1)))
@@ -159,7 +159,7 @@ describe.concurrent("Stream", () => {
       const program = Effect.Do()
         .bind("latch", () => Deferred.make<never, void>())
         .bind("fiber", ({ latch }) =>
-          Stream.asyncScoped<unknown, never, number>((cb) => {
+          Stream.asyncScoped<never, never, number>((cb) => {
             chunk.forEach((n) => {
               cb(Effect.succeed(Chunk.single(n)))
             })
@@ -177,7 +177,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("asyncManaged signal end stream", async () => {
-      const program = Stream.asyncScoped<unknown, never, number>((cb) => {
+      const program = Stream.asyncScoped<never, never, number>((cb) => {
         cb(Effect.fail(Option.none))
         return Effect.unit
       }).runCollect()
@@ -217,7 +217,7 @@ describe.concurrent("Stream", () => {
         .bind("cancelled", () => Ref.make(false))
         .bind("latch", () => Deferred.make<never, void>())
         .bind("fiber", ({ cancelled, latch }) =>
-          Stream.asyncInterrupt<unknown, never, void>((emit) => {
+          Stream.asyncInterrupt<never, never, void>((emit) => {
             emit.chunk(Chunk.single(undefined))
             return Either.left(cancelled.set(true))
           })
@@ -235,7 +235,7 @@ describe.concurrent("Stream", () => {
 
     it("Right", async () => {
       const chunk = Chunk(1, 2, 3, 4, 5)
-      const program = Stream.asyncInterrupt<unknown, never, number>(() => Either.right(Stream.fromChunk(chunk)))
+      const program = Stream.asyncInterrupt<never, never, number>(() => Either.right(Stream.fromChunk(chunk)))
         .runCollect()
 
       const result = await program.unsafeRunPromise()
@@ -244,7 +244,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("signal end stream", async () => {
-      const program = Stream.asyncInterrupt<unknown, never, number>((emit) => {
+      const program = Stream.asyncInterrupt<never, never, number>((emit) => {
         emit.end()
         return Either.left(Effect.succeedNow(undefined))
       }).runCollect()

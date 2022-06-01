@@ -8,6 +8,6 @@
 export function fromChunkHubWithShutdown<A>(
   hub: LazyArg<Hub<Chunk<A>>>,
   __tsplusTrace?: string
-): Stream<unknown, never, A> {
+): Stream<never, never, A> {
   return Stream.succeed(hub).flatMap((hub) => Stream.fromChunkHub(hub).ensuring(hub.shutdown))
 }

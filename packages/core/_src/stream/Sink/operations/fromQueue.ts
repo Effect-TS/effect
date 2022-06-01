@@ -3,10 +3,10 @@
  *
  * @tsplus static ets/Sink/Ops fromQueue
  */
-export function fromQueue<R, E, In>(
+export function fromQueue<In>(
   queue: LazyArg<Enqueue<In>>,
   __tsplusTrace?: string
-): Sink<R, E, In, never, void> {
+): Sink<never, never, In, never, void> {
   return Sink.unwrap(
     Effect.succeed(queue).map((queue) => Sink.forEachChunk((chunk) => queue.offerAll(chunk)))
   )

@@ -8,7 +8,7 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
 export function find_<A>(
   self: TArray<A>,
   p: Predicate<A>
-): STM<unknown, never, Option<A>> {
+): STM<never, never, Option<A>> {
   return STM.Effect((journal) => {
     let i = 0
     concreteTArray(self)

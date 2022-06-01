@@ -17,7 +17,7 @@ export function intersectWith_<State, State1, Env, In, Out, Env1, In1, Out2>(
   f: (x: Interval, y: Interval) => Interval
 ): Schedule<
   Tuple<[State, State1]>,
-  Env & Env1,
+  Env | Env1,
   In & In1,
   MergeTuple<Out, Out2>
 > {
@@ -80,7 +80,7 @@ function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
   f: (x: Interval, y: Interval) => Interval,
   __tsplusTrace?: string
 ): Effect<
-  Env & Env1,
+  Env | Env1,
   never,
   Tuple<[Tuple<[State, State1]>, MergeTuple<Out, Out2>, Decision]>
 > {

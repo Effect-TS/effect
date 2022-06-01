@@ -9,10 +9,10 @@
  */
 export function extend_<R, E, A>(
   self: Scope,
-  effect: LazyArg<Effect<R & Has<Scope>, E, A>>
-): Effect<R, E, A> {
+  effect: LazyArg<Effect<R, E, A>>
+): Effect<Exclude<R, Scope>, E, A> {
   return Effect.suspendSucceed(
-    effect().provideSomeEnvironment((env) => env.merge(Env(Scope.Tag, self)))
+    effect().provideSomeEnvironment((env) => env.merge(Env(Scope.Tag, self) as Env<R>))
   )
 }
 

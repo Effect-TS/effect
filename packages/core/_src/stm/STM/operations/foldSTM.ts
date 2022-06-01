@@ -8,7 +8,7 @@ export function foldSTM_<R, E, A, R1, E1, B, R2, E2, C>(
   self: STM<R, E, A>,
   g: (e: E) => STM<R2, E2, C>,
   f: (a: A) => STM<R1, E1, B>
-): STM<R1 & R2 & R, E1 | E2, B | C> {
+): STM<R1 | R2 | R, E1 | E2, B | C> {
   return self
     .map(Either.right)
     .catchAll((e) => g(e).map(Either.left))

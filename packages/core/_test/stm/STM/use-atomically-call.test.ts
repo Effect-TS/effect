@@ -97,7 +97,7 @@ describe.concurrent("STM", () => {
     })
 
     it("eventually succeeds", async () => {
-      function stm(ref: TRef<number>): STM<unknown, string, number> {
+      function stm(ref: TRef<number>): STM<never, string, number> {
         return ref
           .get()
           .flatMap((n) => n < 10 ? ref.update((n) => n + 1) > STM.fail("ouch") : STM.succeed(n))

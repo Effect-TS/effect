@@ -29,7 +29,7 @@ export class MemoMap {
               tuple: [acquire, release]
             } = inMap.value
 
-            const cached: Effect<unknown, E, Env<ROut>> = acquire.onExit((exit) =>
+            const cached: Effect<never, E, Env<ROut>> = acquire.onExit((exit) =>
               exit.fold(
                 () => Effect.unit,
                 () => scope.addFinalizerExit(release)
@@ -116,7 +116,7 @@ export function makeMemoMap(): Effect.UIO<MemoMap> {
 export function build<RIn, E, ROut>(
   self: Layer<RIn, E, ROut>,
   __tsplusTrace?: string
-): Effect<RIn & Has<Scope>, E, Env<ROut>> {
+): Effect<RIn | Scope, E, Env<ROut>> {
   return Effect.serviceWithEffect(Scope.Tag)((scope) => self.buildWithScope(scope))
 }
 
@@ -147,7 +147,7 @@ export function withScope<RIn, E, ROut>(
   self: Layer<RIn, E, ROut>,
   scope: LazyArg<Scope>,
   __tsplusTrace?: string
-): Effect<unknown, never, (_: MemoMap) => Effect<RIn, E, Env<ROut>>> {
+): Effect<never, never, (_: MemoMap) => Effect<RIn, E, Env<ROut>>> {
   return Match.tag(instruction(self), {
     LayerApply: (_) => Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((memoMap: MemoMap) => _.self),
     LayerExtendScope: (_) =>

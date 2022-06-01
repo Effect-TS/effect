@@ -2,7 +2,7 @@
  * @tsplus static ets/Channel/Ops read
  */
 export function read<In>(): Channel<
-  unknown,
+  never,
   unknown,
   In,
   unknown,

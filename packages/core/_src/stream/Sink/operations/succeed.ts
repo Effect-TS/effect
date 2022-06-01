@@ -8,6 +8,6 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
 export function succeed<Z>(
   z: LazyArg<Z>,
   __tsplusTrace?: string
-): Sink<unknown, never, unknown, never, Z> {
+): Sink<never, never, unknown, never, Z> {
   return new SinkInternal(Channel.succeed(z))
 }

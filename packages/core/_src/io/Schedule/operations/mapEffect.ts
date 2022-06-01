@@ -10,7 +10,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
 export function mapEffect_<State, Env, In, Out, Env1, Out2>(
   self: Schedule<State, Env, In, Out>,
   f: (out: Out) => Effect.RIO<Env1, Out2>
-): Schedule<State, Env & Env1, In, Out2> {
+): Schedule<State, Env | Env1, In, Out2> {
   return makeWithState(self._initial, (now, input, state) =>
     self
       ._step(now, input, state)

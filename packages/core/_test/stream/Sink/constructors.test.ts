@@ -17,7 +17,7 @@ describe.concurrent("Sink", () => {
       const sink = Sink.fail("boom").foldSink(
         (err) => Sink.collectAll<number>().map((c) => Tuple(c, err)),
         () =>
-          absurd<Sink<unknown, never, number, never, Tuple<[Chunk<number>, string]>>>(
+          absurd<Sink<never, never, number, never, Tuple<[Chunk<number>, string]>>>(
             null as never
           )
       )
@@ -226,7 +226,7 @@ describe.concurrent("Sink", () => {
     it("should access the environment with the provided sink", async () => {
       const StringTag = Tag<string>()
       const program = Stream("ignore this").run(
-        Sink.environmentWithSink((env: Env<Has<string>>) => Sink.succeed(env.get(StringTag))).provideEnvironment(
+        Sink.environmentWithSink((env: Env<string>) => Sink.succeed(env.get(StringTag))).provideEnvironment(
           Env(StringTag, "use this")
         )
       )

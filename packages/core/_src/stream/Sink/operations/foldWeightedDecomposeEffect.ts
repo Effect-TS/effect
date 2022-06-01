@@ -21,7 +21,7 @@ export function foldWeightedDecomposeEffect<R, E, R2, E2, R3, E3, In, S>(
   decompose: (input: In) => Effect<R2, E2, Chunk<In>>,
   f: (s: S, input: In) => Effect<R3, E3, S>,
   __tsplusTrace?: string
-): Sink<R & R2 & R3, E | E2 | E3, In, In, S> {
+): Sink<R | R2 | R3, E | E2 | E3, In, In, S> {
   return Sink.suspend(new SinkInternal(go(z(), costFn, max, decompose, f, false, 0)))
 }
 
@@ -34,7 +34,7 @@ function go<R, E, R2, E2, R3, E3, In, S>(
   dirty: boolean,
   cost: number,
   __tsplusTrace?: string
-): Channel<R & R2 & R3, E | E2 | E3, Chunk<In>, unknown, E | E2 | E3, Chunk<In>, S> {
+): Channel<R | R2 | R3, E | E2 | E3, Chunk<In>, unknown, E | E2 | E3, Chunk<In>, S> {
   return Channel.readWith(
     (chunk: Chunk<In>) =>
       Channel.fromEffect(
@@ -48,7 +48,7 @@ function go<R, E, R2, E2, R3, E3, In, S>(
       ),
     (err) => Channel.fail(err),
     (): Channel<
-      R & R2 & R3,
+      R | R2 | R3,
       E | E2 | E3,
       Chunk<In>,
       unknown,
@@ -70,7 +70,7 @@ function fold<R, E, R2, E2, R3, E3, In, S>(
   cost: number,
   index: number,
   __tsplusTrace?: string
-): Effect<R & R2 & R3, E | E2 | E3, Tuple<[S, number, boolean, Chunk<In>]>> {
+): Effect<R | R2 | R3, E | E2 | E3, Tuple<[S, number, boolean, Chunk<In>]>> {
   if (index === input.length) {
     return Effect.succeed(Tuple(s, cost, dirty, Chunk.empty<In>()))
   }

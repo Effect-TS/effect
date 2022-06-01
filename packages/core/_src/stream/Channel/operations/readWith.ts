@@ -26,7 +26,7 @@ export function readWith<
   ) => Channel<Env1, InErr, InElem, InDone, OutErr1, OutElem1, OutDone1>,
   done: (d: InDone) => Channel<Env2, InErr, InElem, InDone, OutErr2, OutElem2, OutDone2>
 ): Channel<
-  Env & Env1 & Env2,
+  Env | Env1 | Env2,
   InErr,
   InElem,
   InDone,

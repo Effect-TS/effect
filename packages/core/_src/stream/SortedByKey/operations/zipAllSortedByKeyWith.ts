@@ -51,13 +51,13 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
     right: (b: B) => C2,
     both: (a: A, b: B) => C3,
     __tsplusTrace?: string
-  ): Stream<R & R2, E | E2, Tuple<[K, C1 | C2 | C3]>> => {
+  ): Stream<R | R2, E | E2, Tuple<[K, C1 | C2 | C3]>> => {
     const pull = (
       state: State<K, A, B>,
       pullLeft: Effect<R, Option<E>, Chunk<Tuple<[K, A]>>>,
       pullRight: Effect<R2, Option<E2>, Chunk<Tuple<[K, B]>>>
     ): Effect<
-      R & R2,
+      R | R2,
       never,
       Exit<Option<E | E2>, Tuple<[Chunk<Tuple<[K, C1 | C2 | C3]>>, State<K, A, B>]>>
     > => {
@@ -145,7 +145,7 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
             (option) =>
               option.fold(
                 (): Effect<
-                  unknown,
+                  never,
                   never,
                   Exit<Option<E>, Tuple<[Chunk<Tuple<[K, C2]>>, DrainRight]>>
                 > =>
@@ -174,7 +174,7 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
             (option) =>
               option.fold(
                 (): Effect<
-                  unknown,
+                  never,
                   never,
                   Exit<Option<E2>, Tuple<[Chunk<Tuple<[K, C1]>>, DrainLeft]>>
                 > =>

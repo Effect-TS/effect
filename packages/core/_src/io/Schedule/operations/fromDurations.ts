@@ -14,7 +14,7 @@ export function fromDurations(
   ...durations: Array<Duration>
 ): Schedule<
   Tuple<[Chunk<Duration>, boolean]>,
-  unknown,
+  never,
   unknown,
   Duration
 > {

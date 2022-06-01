@@ -11,7 +11,7 @@ import { isFiberFailure } from "@effect/core/io/Cause/errors"
 export function asyncScoped<R, E, A>(
   register: (
     f: (effect: Effect<R, Option<E>, Chunk<A>>) => void
-  ) => Effect<R & Has<Scope>, E, unknown>,
+  ) => Effect<R | Scope, E, unknown>,
   outputBuffer = 16,
   __tsplusTrace?: string
 ): Stream<R, E, A> {

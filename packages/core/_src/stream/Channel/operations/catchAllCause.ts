@@ -28,7 +28,7 @@ export function catchAllCause_<
     cause: Cause<OutErr>
   ) => Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
 ): Channel<
-  Env & Env1,
+  Env | Env1,
   InErr & InErr1,
   InElem & InElem1,
   InDone & InDone1,
@@ -37,7 +37,7 @@ export function catchAllCause_<
   OutDone | OutDone1
 > {
   return new Fold<
-    Env & Env1,
+    Env | Env1,
     InErr & InErr1,
     InElem & InElem1,
     InDone & InDone1,

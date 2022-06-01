@@ -8,7 +8,7 @@ export function onExit_<R, E, A, R2, X>(
   self: Effect<R, E, A>,
   cleanup: (exit: Exit<E, A>) => Effect.RIO<R2, X>,
   __tsplusTrace?: string
-): Effect<R & R2, E, A> {
+): Effect<R | R2, E, A> {
   return Effect.acquireUseReleaseExit(
     Effect.unit,
     () => self,

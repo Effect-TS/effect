@@ -12,7 +12,7 @@ export function zipAllRight_<R, E, A, R2, E2, A2>(
   that: LazyArg<Stream<R2, E2, A2>>,
   def: LazyArg<A2>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A2> {
+): Stream<R | R2, E | E2, A2> {
   return self.zipAllWith(that, def, identity, (_, a2) => a2)
 }
 

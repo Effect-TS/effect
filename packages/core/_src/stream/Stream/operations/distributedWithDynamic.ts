@@ -18,7 +18,7 @@ export function distributedWithDynamic_<R, E, A, Z>(
   decide: (a: A) => Effect.UIO<(key: UniqueKey) => boolean>,
   done: (exit: Exit<Option<E>, never>) => Effect.UIO<Z> = () => Effect.unit as Effect.UIO<Z>,
   __tsplusTrace?: string
-): Effect<R & Has<Scope>, never, Effect.UIO<Tuple<[UniqueKey, Dequeue<Exit<Option<E>, A>>]>>> {
+): Effect<R | Scope, never, Effect.UIO<Tuple<[UniqueKey, Dequeue<Exit<Option<E>, A>>]>>> {
   return Effect.Do()
     .bind("queuesRef", () =>
       Effect.acquireRelease(
@@ -96,7 +96,7 @@ function offer<E, A>(
   decide: (a: A) => Effect.UIO<(key: UniqueKey) => boolean>,
   a: A,
   __tsplusTrace?: string
-): Effect<unknown, E, void> {
+): Effect<never, E, void> {
   return Effect.Do()
     .bind("shouldProcess", () => decide(a))
     .bind("queues", () => ref.get())

@@ -24,7 +24,7 @@ export const contramap = Pipeable(contramap_)
 
 function contramapReader<InErr, InElem, InDone0, InDone>(
   f: (a: InDone0) => InDone
-): Channel<unknown, InErr, InElem, InDone0, InErr, InElem, InDone> {
+): Channel<never, InErr, InElem, InDone0, InErr, InElem, InDone> {
   return Channel.readWith(
     (inElem: InElem) => Channel.write(inElem) > contramapReader<InErr, InElem, InDone0, InDone>(f),
     (inErr: InErr) => Channel.fail(inErr),

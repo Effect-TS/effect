@@ -11,12 +11,12 @@ export function tapSink_<R, E, A, R2, E2, X, Z>(
   self: Stream<R, E, A>,
   sink: LazyArg<Sink<R2, E2, A, X, Z>>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A> {
+): Stream<R | R2, E | E2, A> {
   return Stream.fromEffect(Queue.bounded<Take<E | E2, A>>(1)).flatMap((queue) => {
     const right = Stream.fromQueueWithShutdown(queue, 1).flattenTake()
 
     const loop: Channel<
-      R & R2,
+      R | R2,
       E,
       Chunk<A>,
       unknown,
@@ -34,7 +34,7 @@ export function tapSink_<R, E, A, R2, E2, X, Z>(
 
     concreteStream(self)
 
-    return (new StreamInternal(self.channel >> loop) as Stream<R & R2, E2, A>).merge(
+    return (new StreamInternal(self.channel >> loop) as Stream<R | R2, E2, A>).merge(
       Stream.execute(right.run(sink)),
       () => TerminationStrategy.Both
     )

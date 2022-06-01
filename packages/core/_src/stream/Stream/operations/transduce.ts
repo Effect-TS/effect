@@ -10,7 +10,7 @@ export function transduce_<R, E, A, R2, E2, Z>(
   self: Stream<R, E, A>,
   sink: LazyArg<Sink<R2, E2, A, A, Z>>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, Z> {
+): Stream<R | R2, E | E2, Z> {
   concreteStream(self)
   return new StreamInternal(
     Channel.suspend(() => {
@@ -20,7 +20,7 @@ export function transduce_<R, E, A, R2, E2, Z>(
       const upstreamDone = new AtomicBoolean(false)
 
       const upstreamMarker: Channel<
-        unknown,
+        never,
         E,
         Chunk<A>,
         unknown,
@@ -34,7 +34,7 @@ export function transduce_<R, E, A, R2, E2, Z>(
       )
 
       const buffer: Channel<
-        unknown,
+        never,
         E,
         Chunk<A>,
         unknown,
@@ -58,7 +58,7 @@ export function transduce_<R, E, A, R2, E2, Z>(
       })
 
       const transducer: Channel<
-        R & R2,
+        R | R2,
         never,
         Chunk<A>,
         unknown,

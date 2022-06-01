@@ -5,6 +5,6 @@
  */
 export function recurUntil<A>(
   f: Predicate<A>
-): Schedule<void, unknown, A, A> {
+): Schedule<void, never, A, A> {
   return Schedule.identity<A>().untilInput(f)
 }

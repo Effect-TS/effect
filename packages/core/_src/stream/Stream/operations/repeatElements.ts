@@ -11,7 +11,7 @@ export function repeatElements_<R, E, A, S, R2, B>(
   self: Stream<R, E, A>,
   schedule: LazyArg<Schedule<S, R2, unknown, B>>,
   __tsplusTrace?: string
-): Stream<R & R2, E, A> {
+): Stream<R | R2, E, A> {
   return self.repeatElementsEither(schedule).collectRight()
 }
 

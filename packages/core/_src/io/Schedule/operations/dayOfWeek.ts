@@ -14,7 +14,7 @@ import { beginningOfDay, endOfDay, nextDay } from "@effect/core/io/Schedule/oper
  */
 export function dayOfWeek(
   day: number
-): Schedule<number, unknown, unknown, number> {
+): Schedule<number, never, unknown, number> {
   return makeWithState(0, (now, _, state) => {
     if (!Number.isInteger(day) || day < 0 || 7 < day) {
       return Effect.die(

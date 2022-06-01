@@ -45,7 +45,7 @@ function adapter(_: any, __?: any, ___?: any) {
 }
 
 export interface Adapter {
-  <A>(_: Tag<A>, __tsplusTrace?: string): GenEffect<Has<A>, never, A>
+  <A>(_: Tag<A>, __tsplusTrace?: string): GenEffect<A, never, A>
   <E, A>(_: Option<A>, onNone: () => E, __tsplusTrace?: string): GenEffect<
     unknown,
     E,
@@ -56,12 +56,12 @@ export interface Adapter {
     NoSuchElement,
     A
   >
-  <E, A>(_: Either<E, A>, __tsplusTrace?: string): GenEffect<unknown, E, A>
+  <E, A>(_: Either<E, A>, __tsplusTrace?: string): GenEffect<never, E, A>
   <R, E, A>(_: Effect<R, E, A>, __tsplusTrace?: string): GenEffect<R, E, A>
 }
 
 export interface AdapterWithScope extends Adapter {
-  <R, E, A>(_: Effect<R & Has<Scope>, E, A>, __tsplusTrace?: string): GenEffect<R, E, A>
+  <R, E, A>(_: Effect<R | Scope, E, A>, __tsplusTrace?: string): GenEffect<R, E, A>
 }
 
 /**
@@ -71,7 +71,7 @@ export function genScoped<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: AdapterWithScope) => Generator<Eff, AEff, any>,
   __tsplusTrace?: string
 ): Effect<
-  [Eff] extends [{ [_GenR]: (_: infer R) => void }] ? R : never,
+  [Eff] extends [{ [_GenR]: () => infer R }] ? R : never,
   [Eff] extends [{ [_GenE]: () => infer E }] ? E : never,
   AEff
 > {
@@ -111,7 +111,7 @@ export function gen<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: Adapter) => Generator<Eff, AEff, any>,
   __tsplusTrace?: string
 ): Effect<
-  [Eff] extends [{ [_GenR]: (_: infer R) => void }] ? R : never,
+  [Eff] extends [{ [_GenR]: () => infer R }] ? R : never,
   [Eff] extends [{ [_GenE]: () => infer E }] ? E : never,
   AEff
 > {

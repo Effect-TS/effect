@@ -17,7 +17,7 @@ export function bufferChunks_<R, E, A>(
   return new StreamInternal(
     Channel.unwrapScoped(queue.map((queue) => {
       const process: Channel<
-        unknown,
+        never,
         unknown,
         unknown,
         unknown,

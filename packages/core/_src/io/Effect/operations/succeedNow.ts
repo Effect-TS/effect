@@ -5,6 +5,6 @@ import { ISucceedNow } from "@effect/core/io/Effect/definition/primitives"
  *
  * @tsplus static ets/Effect/Ops succeedNow
  */
-export function succeedNow<A>(value: A, __tsplusTrace?: string): Effect<unknown, never, A> {
+export function succeedNow<A>(value: A, __tsplusTrace?: string): Effect<never, never, A> {
   return new ISucceedNow(value, __tsplusTrace)
 }

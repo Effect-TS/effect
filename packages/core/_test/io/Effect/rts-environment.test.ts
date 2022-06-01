@@ -17,7 +17,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("async can use environment", async () => {
-      const program = Effect.async<Has<NumberService>, never, number>((cb) =>
+      const program = Effect.async<NumberService, never, number>((cb) =>
         cb(Effect.service(NumberService).map(({ n }) => n))
       ).provideEnvironment(Env(NumberService, { n: 10 }))
 

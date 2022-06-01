@@ -9,7 +9,7 @@ export function filterEffect_<R, E, A, R1, E1>(
   self: Stream<R, E, A>,
   f: (a: A) => Effect<R1, E1, boolean>,
   __tsplusTrace?: string
-): Stream<R & R1, E | E1, A> {
+): Stream<R | R1, E | E1, A> {
   concreteStream(self)
   return new StreamInternal(
     self.channel >> loop(Chunk.empty<A>()[Symbol.iterator](), f)
@@ -23,10 +23,10 @@ export function filterEffect_<R, E, A, R1, E1>(
  */
 export const filterEffect = Pipeable(filterEffect_)
 
-function loop<R, E, A, R1, E1>(
+function loop<E, A, R1, E1>(
   chunkIterator: Iterator<A>,
   f: (a: A) => Effect<R1, E1, boolean>
-): Channel<R & R1, E, Chunk<A>, unknown, E | E1, Chunk<A>, unknown> {
+): Channel<R1, E, Chunk<A>, unknown, E | E1, Chunk<A>, unknown> {
   const next = chunkIterator.next()
   if (next.done) {
     return Channel.readWithCause(
@@ -39,8 +39,8 @@ function loop<R, E, A, R1, E1>(
       f(next.value).map(b =>
         b
           ? Channel.write(Chunk.single(next.value)) >
-            loop<R, E, A, R1, E1>(chunkIterator, f)
-          : loop<R, E, A, R1, E1>(chunkIterator, f)
+            loop<E, A, R1, E1>(chunkIterator, f)
+          : loop<E, A, R1, E1>(chunkIterator, f)
       )
     )
   }

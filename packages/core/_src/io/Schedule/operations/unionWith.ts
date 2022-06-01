@@ -17,7 +17,7 @@ export function unionWith_<State, Env, In, Out, State1, Env1, In1, Out2>(
   f: (x: Interval, y: Interval) => Interval
 ): Schedule<
   Tuple<[State, State1]>,
-  Env & Env1,
+  Env | Env1,
   In & In1,
   MergeTuple<Out, Out2>
 > {

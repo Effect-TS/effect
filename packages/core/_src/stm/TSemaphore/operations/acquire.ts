@@ -3,6 +3,6 @@
  *
  * @tsplus fluent ets/TSemaphore acquire
  */
-export function acquire(self: TSemaphore): STM<unknown, never, void> {
+export function acquire(self: TSemaphore): STM<never, never, void> {
   return self.acquireN(1)
 }

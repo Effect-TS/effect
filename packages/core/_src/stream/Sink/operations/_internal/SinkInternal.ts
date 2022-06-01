@@ -3,7 +3,7 @@ import { _E, _In, _L, _R, _Z } from "@effect/core/stream/Sink/definition/symbols
 
 export class SinkInternal<R, E, In, L, Z> implements Sink<R, E, In, L, Z> {
   readonly [SinkSym]: SinkSym = SinkSym
-  readonly [_R]!: (_: R) => void
+  readonly [_R]!: () => R
   readonly [_E]!: () => E
   readonly [_In]!: (_: In) => void
   readonly [_L]!: () => L

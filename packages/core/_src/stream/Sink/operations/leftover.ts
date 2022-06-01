@@ -6,6 +6,6 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
 export function leftover<L>(
   chunk: LazyArg<Chunk<L>>,
   __tsplusTrace?: string
-): Sink<unknown, never, unknown, L, void> {
+): Sink<never, never, unknown, L, void> {
   return new SinkInternal(Channel.suspend(Channel.write(chunk())))
 }

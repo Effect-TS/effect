@@ -157,7 +157,7 @@ describe.concurrent("Effect", () => {
         .bind("exit", ({ release }) =>
           Effect.acquireUseReleaseExit(
             Effect.succeed(42),
-            () => {
+            (): Effect<never, unknown, unknown> => {
               throw releaseDied
             },
             () => release.set(true)

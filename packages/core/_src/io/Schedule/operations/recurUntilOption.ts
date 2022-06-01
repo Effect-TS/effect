@@ -6,7 +6,7 @@
  */
 export function recurUntilOption<A, B>(
   pf: (a: A) => Option<B>
-): Schedule<void, unknown, A, Option<B>> {
+): Schedule<void, never, A, Option<B>> {
   return Schedule.identity<A>()
     .map(pf)
     .untilOutput((_) => _.isSome())

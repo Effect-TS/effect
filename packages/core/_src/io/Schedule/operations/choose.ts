@@ -15,7 +15,7 @@ export function choose_<State, Env, In, Out, State1, Env1, In2, Out2>(
   that: Schedule<State1, Env1, In2, Out2>
 ): Schedule<
   Tuple<[State, State1]>,
-  Env & Env1,
+  Env | Env1,
   Either<In, In2>,
   Either<Out, Out2>
 > {
@@ -26,7 +26,7 @@ export function choose_<State, Env, In, Out, State1, Env1, In2, Out2>(
       either,
       state
     ): Effect<
-      Env & Env1,
+      Env | Env1,
       never,
       Tuple<[Tuple<[State, State1]>, Either<Out, Out2>, Decision]>
     > =>

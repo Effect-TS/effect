@@ -42,7 +42,7 @@ describe.concurrent("Stream", () => {
         .bindValue(
           "sink",
           ({ cancelled, latch }) =>
-            Sink.foldEffect<unknown, never, number, List<number>>(List.empty<number>(), constTrue, (acc, el) =>
+            Sink.foldEffect<never, never, number, List<number>>(List.empty<number>(), constTrue, (acc, el) =>
               el === 1
                 ? Effect.succeedNow(acc.prepend(el))
                 : (latch.succeed(undefined) > Effect.never).onInterrupt(() => cancelled.set(true)))
@@ -217,7 +217,7 @@ describe.concurrent("Stream", () => {
         .bindValue(
           "sink",
           ({ cancelled, latch }) =>
-            Sink.foldEffect<unknown, never, number, List<number>>(List.empty<number>(), constTrue, (acc, el) =>
+            Sink.foldEffect<never, never, number, List<number>>(List.empty<number>(), constTrue, (acc, el) =>
               el === 1
                 ? Effect.succeedNow(acc.prepend(el))
                 : (latch.succeed(undefined) > Effect.never).onInterrupt(() => cancelled.set(true)))

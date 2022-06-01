@@ -15,7 +15,7 @@ export function mapEffectPar_<R, E, A, R1, E1, B>(
   n: number,
   f: (a: A) => Effect<R1, E1, B>,
   __tsplusTrace?: string
-): Stream<R & R1, E | E1, B> {
+): Stream<R | R1, E | E1, B> {
   concreteStream(self)
   return new StreamInternal(
     self.channel

@@ -12,8 +12,10 @@ export function withRuntimeConfig_<R, E, A>(
   return Stream.fromEffect(Effect.runtimeConfig).flatMap(
     (currentRuntimeConfig) =>
       Stream.scoped(
-            Effect.acquireRelease(Effect.setRuntimeConfig(runtimeConfig), () =>
-              Effect.setRuntimeConfig(currentRuntimeConfig))
+            Effect.acquireRelease(
+              Effect.setRuntimeConfig(runtimeConfig),
+              () => Effect.setRuntimeConfig(currentRuntimeConfig)
+            )
           ) >
           self <
         Stream.fromEffect(Effect.setRuntimeConfig(currentRuntimeConfig))

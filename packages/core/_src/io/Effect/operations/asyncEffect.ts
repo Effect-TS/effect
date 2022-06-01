@@ -7,10 +7,10 @@
 export function asyncEffect<R, E, A, R2, E2, X>(
   register: (callback: (_: Effect<R, E, A>) => void) => Effect<R2, E2, X>,
   __tsplusTrace?: string
-): Effect<R & R2, E | E2, A> {
+): Effect<R | R2, E | E2, A> {
   return Do(($) => {
     const deferred = $(Deferred.make<E | E2, A>())
-    const runtime = $(Effect.runtime<R & R2>())
+    const runtime = $(Effect.runtime<R | R2>())
     return $(
       Effect.uninterruptibleMask(({ restore }) =>
         restore(

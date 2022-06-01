@@ -12,7 +12,7 @@ export function zipWithPar_<R, R1, E, E1, In, In1, L, L1, Z, Z1, Z2>(
   that: LazyArg<Sink<R1, E1, In1, L1, Z1>>,
   f: (z: Z, z1: Z1) => Z2,
   __tsplusTrace?: string
-): Sink<R & R1, E | E1, In & In1, L | L1, Z2> {
+): Sink<R | R1, E | E1, In & In1, L | L1, Z2> {
   return self.raceWith(
     that,
     (exit) =>

@@ -24,15 +24,15 @@ export type DerivedLifted<
 > =
   & {
     [k in Fns]: T[k] extends (...args: infer ARGS) => Effect<infer R, infer E, infer A>
-      ? (...args: ARGS) => Effect<R & Has<T>, E, A>
+      ? (...args: ARGS) => Effect<R | T, E, A>
       : never
   }
   & {
-    [k in Cns]: T[k] extends Effect<infer R, infer E, infer A> ? Effect<R & Has<T>, E, A>
+    [k in Cns]: T[k] extends Effect<infer R, infer E, infer A> ? Effect<R | T, E, A>
       : never
   }
   & {
-    [k in Values]: Effect<Has<T>, never, T[k]>
+    [k in Values]: Effect<T, never, T[k]>
   }
 
 /**
@@ -72,7 +72,7 @@ export type DerivedAccessM<T, Gens extends keyof T> = {
   [k in Gens]: <R_, E_, A_>(
     f: (_: T[k]) => Effect<R_, E_, A_>,
     __tsplusTrace?: string
-  ) => Effect<R_ & Has<T>, E_, A_>
+  ) => Effect<R_ | T, E_, A_>
 }
 
 /**
@@ -96,7 +96,7 @@ export type DerivedAccess<T, Gens extends keyof T> = {
   [k in Gens]: <A_>(
     f: (_: T[k]) => A_,
     __tsplusTrace?: string
-  ) => Effect<Has<T>, never, A_>
+  ) => Effect<T, never, A_>
 }
 
 /**

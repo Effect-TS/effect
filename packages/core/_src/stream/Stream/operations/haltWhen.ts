@@ -16,7 +16,7 @@ export function haltWhen_<R, E, A, R2, E2, Z>(
   self: Stream<R, E, A>,
   io: LazyArg<Effect<R2, E2, Z>>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A> {
+): Stream<R | R2, E | E2, A> {
   concreteStream(self)
   return new StreamInternal(
     Channel.unwrapScoped(
@@ -44,7 +44,7 @@ export const haltWhen = Pipeable(haltWhen_)
 function writer<R, E, A, R2, E2, Z>(
   fiber: Fiber<E2, Z>,
   __tsplusTrace?: string
-): Channel<R & R2, E, Chunk<A>, unknown, E | E2, Chunk<A>, void> {
+): Channel<R | R2, E, Chunk<A>, unknown, E | E2, Chunk<A>, void> {
   return Channel.unwrap(
     fiber.poll().map((option) =>
       option.fold(
@@ -56,7 +56,7 @@ function writer<R, E, A, R2, E2, Z>(
         (exit) =>
           exit.fold(
             (cause) => Channel.failCause(cause),
-            (): Channel<R & R2, E | E2, Chunk<A>, unknown, E | E2, Chunk<A>, void> => Channel.unit
+            (): Channel<R | R2, E | E2, Chunk<A>, unknown, E | E2, Chunk<A>, void> => Channel.unit
           )
       )
     )

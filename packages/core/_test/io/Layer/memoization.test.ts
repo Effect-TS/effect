@@ -10,9 +10,9 @@ describe.concurrent("Layer", () => {
         .tap(({ memoized }) =>
           Effect.scoped(
             memoized.flatMap((layer) =>
-              Effect.environment<Has<Service1>>()
+              Effect.environment<Service1>()
                 .provideLayer(layer)
-                .flatMap(() => Effect.environment<Has<Service1>>().provideLayer(layer))
+                .flatMap(() => Effect.environment<Service1>().provideLayer(layer))
             )
           )
         )

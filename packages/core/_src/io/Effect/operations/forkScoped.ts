@@ -6,7 +6,7 @@
 export function forkScoped<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
-): Effect<R & Has<Scope>, never, Fiber.Runtime<E, A>> {
+): Effect<R | Scope, never, Fiber.Runtime<E, A>> {
   return Effect.uninterruptibleMask(({ restore }) =>
     restore(self)
       .forkDaemon()

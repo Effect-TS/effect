@@ -7,9 +7,9 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  */
 export function drain(
   __tsplusTrace?: string
-): Sink<unknown, never, unknown, never, void> {
+): Sink<never, never, unknown, never, void> {
   const loop: Channel<
-    unknown,
+    never,
     never,
     Chunk<unknown>,
     unknown,

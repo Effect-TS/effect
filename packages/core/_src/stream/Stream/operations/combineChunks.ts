@@ -18,9 +18,9 @@ export function combineChunks_<R, E, A, R2, E2, A2, S, A3>(
     s: S,
     pullLeft: Effect<R, Option<E>, Chunk<A>>,
     pullRight: Effect<R2, Option<E2>, Chunk<A2>>
-  ) => Effect<R & R2, never, Exit<Option<E | E2>, Tuple<[Chunk<A3>, S]>>>,
+  ) => Effect<R | R2, never, Exit<Option<E | E2>, Tuple<[Chunk<A3>, S]>>>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A3> {
+): Stream<R | R2, E | E2, A3> {
   return new StreamInternal(
     Channel.unwrapScoped(
       Effect.Do()
@@ -71,7 +71,7 @@ function producer<Err, Elem>(
   handoff: Handoff<Take<Err, Elem>>,
   latch: Handoff<void>,
   __tsplusTrace?: string
-): Channel<unknown, Err, Chunk<Elem>, unknown, never, never, unknown> {
+): Channel<never, Err, Chunk<Elem>, unknown, never, never, unknown> {
   return (
     Channel.fromEffect(latch.take()) >
       Channel.readWithCause(

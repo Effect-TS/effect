@@ -8,7 +8,7 @@ export function dropWhileEffect_<R, E, A, R2, E2>(
   self: Stream<R, E, A>,
   f: (a: A) => Effect<R2, E2, boolean>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A> {
+): Stream<R | R2, E | E2, A> {
   return self.pipeThrough(Sink.dropWhileEffect(f))
 }
 

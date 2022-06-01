@@ -8,9 +8,9 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
  */
 export function indexWhereFromSTM_<E, A>(
   self: TArray<A>,
-  f: (a: A) => STM<unknown, E, boolean>,
+  f: (a: A) => STM<never, E, boolean>,
   from: number
-): STM<unknown, E, number> {
+): STM<never, E, number> {
   if (from < 0) {
     return STM.succeedNow(-1)
   }
@@ -28,8 +28,8 @@ export const indexWhereFromSTM = Pipeable(indexWhereFromSTM_)
 function forIndex<E, A>(
   self: TArray<A>,
   index: number,
-  f: (a: A) => STM<unknown, E, boolean>
-): STM<unknown, E, number> {
+  f: (a: A) => STM<never, E, boolean>
+): STM<never, E, number> {
   concreteTArray(self)
   return index < self.chunk.length
     ? self.chunk

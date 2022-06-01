@@ -18,8 +18,14 @@ export function to_<
 >(
   self: Layer<RIn, E, ROut>,
   that: Layer<RIn2, E2, ROut2>
-): Layer<RIn & Erase<RIn2, ROut>, E | E2, ROut2> {
-  return Layer.suspend(new ILayerTo(Layer.environment<RIn2>() + self, that))
+): Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut2> {
+  return Layer.suspend(
+    new ILayerTo(
+      Layer.environment<Exclude<RIn2, ROut>>() + self,
+      // @ts-expect-error
+      that
+    )
+  )
 }
 
 /**

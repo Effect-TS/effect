@@ -13,7 +13,7 @@ export function distributedWith_<R, E, A>(
   maximumLag: number,
   decide: (a: A) => Effect.UIO<Predicate<number>>,
   __tsplusTrace?: string
-): Effect<R & Has<Scope>, never, List<Dequeue<Exit<Option<E>, A>>>> {
+): Effect<R | Scope, never, List<Dequeue<Exit<Option<E>, A>>>> {
   return Deferred.make<never, (a: A) => Effect.UIO<Predicate<UniqueKey>>>().flatMap((deferred) =>
     self
       .distributedWithDynamic(

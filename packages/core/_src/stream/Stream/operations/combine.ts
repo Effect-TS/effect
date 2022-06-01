@@ -21,9 +21,9 @@ export function combine_<R, E, A, R2, E2, A2, S, A3>(
     s: S,
     pullLeft: Effect<R, Option<E>, A>,
     pullRight: Effect<R2, Option<E2>, A2>
-  ) => Effect<R & R2, never, Exit<Option<E | E2>, Tuple<[A3, S]>>>,
+  ) => Effect<R | R2, never, Exit<Option<E | E2>, Tuple<[A3, S]>>>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A3> {
+): Stream<R | R2, E | E2, A3> {
   return new StreamInternal(
     Channel.unwrapScoped(
       Effect.Do()
@@ -87,7 +87,7 @@ function producer<Err, Elem>(
   handoff: Handoff<Exit<Option<Err>, Elem>>,
   latch: Handoff<void>,
   __tsplusTrace?: string
-): Channel<unknown, Err, Elem, unknown, never, never, unknown> {
+): Channel<never, Err, Elem, unknown, never, never, unknown> {
   return (
     Channel.fromEffect(latch.take()) >
       Channel.readWithCause(

@@ -9,7 +9,7 @@ export function raceAll_<R, E, A, R1, E1, A1>(
   self: Effect<R, E, A>,
   effects: LazyArg<Collection<Effect<R1, E1, A1>>>,
   __tsplusTrace?: string
-): Effect<R & R1, E | E1, A | A1> {
+): Effect<R | R1, E | E1, A | A1> {
   return Do(($) => {
     const ios = $(Effect.succeed(Chunk.from(effects())))
     const done = $(Deferred.make<E | E1, Tuple<[A | A1, Fiber<E | E1, A | A1>]>>())
@@ -43,13 +43,13 @@ export function raceAll_<R, E, A, R1, E1, A1>(
  */
 export const raceAll = Pipeable(raceAll_)
 
-function arbiter<R, R1, E, E1, A, A1>(
+function arbiter<E, E1, A, A1>(
   fibers: Chunk<Fiber<E | E1, A | A1>>,
   winner: Fiber<E | E1, A | A1>,
   promise: Deferred<E | E1, Tuple<[A | A1, Fiber<E | E1, A | A1>]>>,
   fails: Ref<number>
 ) {
-  return (exit: Exit<E, A | A1>): Effect.RIO<R & R1, void> => {
+  return (exit: Exit<E, A | A1>): Effect.RIO<never, void> => {
     return exit.foldEffect(
       (e) =>
         fails

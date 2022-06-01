@@ -8,8 +8,8 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
 export function updateSTM_<E, A>(
   self: TArray<A>,
   index: number,
-  f: (a: A) => STM<unknown, E, A>
-): STM<unknown, E, void> {
+  f: (a: A) => STM<never, E, A>
+): STM<never, E, void> {
   concreteTArray(self)
   if (0 <= index && index < self.chunk.length) {
     return STM.Do()

@@ -1029,12 +1029,12 @@ export function readUpstream<R, E, A>(
   cont: LazyArg<Effect<R, E, A>>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  const readStack = new Stack(r as ChannelStateRead<unknown, unknown>)
+  const readStack = new Stack(r as ChannelStateRead<R, unknown>)
   return read(readStack, cont)
 }
 
 function read<R, E, A>(
-  readStack: Stack<ChannelState.Read<unknown, unknown>>,
+  readStack: Stack<ChannelState.Read<R, unknown>>,
   cont: LazyArg<Effect<R, E, A>>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
@@ -1075,7 +1075,7 @@ function read<R, E, A>(
       newReadStack = new Stack(current, newReadStack)
       return (
         current
-          .onEffect(state.effect as Effect<unknown, never, void>)
+          .onEffect(state.effect as Effect<never, never, void>)
           .catchAllCause((cause) =>
             Effect.suspendSucceed(() => {
               const doneEffect = current.onDone(Exit.failCause(cause))

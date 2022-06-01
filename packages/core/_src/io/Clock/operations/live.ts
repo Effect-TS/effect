@@ -24,8 +24,3 @@ export class LiveClock implements Clock {
     )
   }
 }
-
-/**
- * @tsplus static ets/Clock/Ops live
- */
-export const live: Layer<unknown, never, Has<Clock>> = Layer.fromEffect(Clock.Tag)(Effect.succeed(new LiveClock()))

@@ -8,7 +8,7 @@
 export function ensuring_<R, E, A, R1, B>(
   self: STM<R, E, A>,
   finalizer: STM<R1, never, B>
-): STM<R & R1, E, A> {
+): STM<R | R1, E, A> {
   return self.foldSTM(
     (e) => finalizer > STM.fail(e),
     (a) => finalizer > STM.succeedNow(a)

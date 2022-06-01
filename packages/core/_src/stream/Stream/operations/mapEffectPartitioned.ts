@@ -14,7 +14,7 @@ export function mapEffectPartitioned_<R, E, A, R2, E2, A2, K>(
   f: (a: A) => Effect<R2, E2, A2>,
   buffer = 16,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A2> {
+): Stream<R | R2, E | E2, A2> {
   return self.groupByKey(keyBy, buffer).mergeGroupBy((_, s) => s.mapEffect(f))
 }
 

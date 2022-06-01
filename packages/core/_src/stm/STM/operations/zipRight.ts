@@ -8,7 +8,7 @@
 export function zipRight_<R, E, A, R1, E1, A1>(
   self: STM<R, E, A>,
   that: LazyArg<STM<R1, E1, A1>>
-): STM<R & R1, E | E1, A1> {
+): STM<R | R1, E | E1, A1> {
   return self.zipWith(that, (_, b) => b)
 }
 

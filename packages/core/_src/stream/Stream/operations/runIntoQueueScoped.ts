@@ -10,7 +10,7 @@ export function runIntoQueueScoped_<R, E extends E1, A, E1>(
   self: Stream<R, E, A>,
   queue: LazyArg<Enqueue<Take<E1, A>>>,
   __tsplusTrace?: string
-): Effect<R & Has<Scope>, E | E1, void> {
+): Effect<R | Scope, E | E1, void> {
   const writer: Channel<
     R,
     E,

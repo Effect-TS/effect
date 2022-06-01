@@ -3,9 +3,12 @@
  *
  * @tsplus fluent ets/STM updateService
  */
-export function updateService_<R, E, A, T>(self: STM<R, E, A>, tag: Tag<T>) {
-  return (f: (service: T) => T): STM<R & Has<T>, E, A> =>
-    self.provideSomeEnvironment((env) => env.merge(Env(tag, f(env.get(tag)))))
+export function updateService_<R, E, A, T, T1 extends T>(
+  self: STM<R, E, A>,
+  tag: Tag<T>,
+  f: (service: T) => T1
+): STM<R | T, E, A> {
+  return self.provideSomeEnvironment((env) => env.merge(Env(tag, f(env.unsafeGet(tag)))))
 }
 
 /**

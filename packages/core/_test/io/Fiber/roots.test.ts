@@ -5,7 +5,7 @@ describe.concurrent("Fiber", () => {
     it("dual roots", async () => {
       function rootContains(
         fiber: Fiber.Runtime<any, any>
-      ): Effect<unknown, never, boolean> {
+      ): Effect<never, never, boolean> {
         return Fiber.roots.map((chunk) => chunk.find((f) => f === fiber).isSome())
       }
 

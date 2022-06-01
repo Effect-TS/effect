@@ -10,7 +10,7 @@ export function withPermitsScoped_(
   self: Semaphore,
   permits: number,
   __tsplusTrace?: string
-): Effect.RIO<Has<Scope>, void> {
+): Effect.RIO<Scope, void> {
   concreteSemaphore(self)
   return self.semaphore.withPermitsScoped(permits)
 }

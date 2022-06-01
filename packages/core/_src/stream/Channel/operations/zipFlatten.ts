@@ -27,7 +27,7 @@ export function zipFlatten_<
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   that: LazyArg<Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>>
 ): Channel<
-  Env & Env1,
+  Env | Env1,
   InErr & InErr1,
   InElem & InElem1,
   InDone & InDone1,

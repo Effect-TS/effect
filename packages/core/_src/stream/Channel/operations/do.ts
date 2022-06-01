@@ -22,7 +22,7 @@ export function bind_<
   tag: Exclude<N, keyof K>,
   f: (_: K) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 ): Channel<
-  Env & Env1,
+  Env | Env1,
   InErr & InErr1,
   InElem & InElem1,
   InDone & InDone1,
@@ -75,6 +75,6 @@ export const bindValue = Pipeable(bindValue_)
 /**
  * @tsplus static ets/Channel/Ops Do
  */
-export function Do(): Channel<unknown, unknown, unknown, unknown, never, never, {}> {
+export function Do(): Channel<never, unknown, unknown, unknown, never, never, {}> {
   return Channel.fromEffect(Effect.succeedNow({}))
 }

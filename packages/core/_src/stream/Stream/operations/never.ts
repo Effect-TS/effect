@@ -3,4 +3,4 @@
  *
  * @tsplus static ets/Stream/Ops never
  */
-export const never: Stream<unknown, never, never> = Stream.fromEffect(Effect.never)
+export const never: Stream<never, never, never> = Stream.fromEffect(Effect.never)

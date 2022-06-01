@@ -11,7 +11,7 @@ export function changesWithEffect_<R, E, A, R2, E2>(
   self: Stream<R, E, A>,
   f: (x: A, y: A) => Effect<R2, E2, boolean>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A> {
+): Stream<R | R2, E | E2, A> {
   concreteStream(self)
   return new StreamInternal(self.channel >> writer<R, E, A, R2, E2>(Option.none, f))
 }
@@ -28,7 +28,7 @@ export const changesWithEffect = Pipeable(changesWithEffect_)
 function writer<R, E, A, R2, E2>(
   last: Option<A>,
   f: (x: A, y: A) => Effect<R2, E2, boolean>
-): Channel<R & R2, E | E2, Chunk<A>, unknown, E | E2, Chunk<A>, void> {
+): Channel<R | R2, E | E2, Chunk<A>, unknown, E | E2, Chunk<A>, void> {
   return Channel.readWithCause(
     (chunk: Chunk<A>) =>
       Channel.fromEffect(

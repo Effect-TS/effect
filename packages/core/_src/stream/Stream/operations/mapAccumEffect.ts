@@ -11,7 +11,7 @@ export function mapAccumEffect_<R, E, A, R2, E2, A2, S>(
   s: LazyArg<S>,
   f: (s: S, a: A) => Effect<R2, E2, Tuple<[S, A2]>>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A2> {
+): Stream<R | R2, E | E2, A2> {
   concreteStream(self)
   return new StreamInternal(self.channel >> accumulator(s, f))
 }

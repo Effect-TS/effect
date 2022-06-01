@@ -6,6 +6,6 @@ import { ILayerScoped } from "@effect/core/io/Layer/definition"
  * @tsplus static ets/Layer/Ops fromValue
  */
 export function fromValue<T>(tag: Tag<T>) {
-  return (service: LazyArg<T>): Layer<unknown, never, Has<T>> =>
+  return (service: LazyArg<T>): Layer<never, never, T> =>
     Layer.suspend(new ILayerScoped(Effect.succeed(service).map((service) => Env(tag, service))))
 }

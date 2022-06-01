@@ -6,7 +6,7 @@
 export function toEffect<E, A>(
   self: Exit<E, A>,
   __tsplusTrace?: string
-): Effect<unknown, E, A> {
+): Effect<never, E, A> {
   switch (self._tag) {
     case "Failure":
       return Effect.failCause(self.cause)

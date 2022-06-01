@@ -6,6 +6,6 @@
 export function die(
   defect: LazyArg<unknown>,
   __tsplusTrace?: string
-): Stream<unknown, never, never> {
+): Stream<never, never, never> {
   return Stream.fromEffect(Effect.die(defect))
 }

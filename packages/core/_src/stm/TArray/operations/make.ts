@@ -5,6 +5,6 @@
  */
 export function make<ARGS extends any[]>(
   ...data: ARGS
-): STM<unknown, never, TArray<ARGS[number]>> {
+): STM<never, never, TArray<ARGS[number]>> {
   return TArray.from(data)
 }

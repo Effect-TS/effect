@@ -8,7 +8,7 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
 export function environmentWithSink<R0, R, E, In, L, Z>(
   f: (env: Env<R0>) => Sink<R, E, In, L, Z>,
   __tsplusTrace?: string
-): Sink<R0 & R, E, In, L, Z> {
+): Sink<R0 | R, E, In, L, Z> {
   return new SinkInternal(
     Channel.unwrap(
       Effect.environmentWith((r: Env<R0>) => {

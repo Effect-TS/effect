@@ -8,7 +8,7 @@ export function withFinalizerExit_<R, R2, E, A, X>(
   self: Effect<R, E, A>,
   finalizer: (exit: Exit<unknown, unknown>) => Effect.RIO<R2, X>,
   __tsplusTrace?: string
-): Effect<R & R2 & Has<Scope>, E, A> {
+): Effect<R | R2 | Scope, E, A> {
   return Effect.acquireReleaseExit(self, (_, exit) => finalizer(exit))
 }
 

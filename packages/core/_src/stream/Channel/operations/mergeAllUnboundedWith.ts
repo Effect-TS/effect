@@ -26,7 +26,7 @@ export function mergeAllUnboundedWith_<
   >,
   f: (o1: OutDone, o2: OutDone) => OutDone
 ): Channel<
-  Env & Env1,
+  Env | Env1,
   InErr & InErr1,
   InElem & InElem1,
   InDone & InDone1,

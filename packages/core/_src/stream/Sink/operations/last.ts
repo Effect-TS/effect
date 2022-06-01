@@ -5,6 +5,6 @@
  */
 export function last<In>(
   __tsplusTrace?: string
-): Sink<unknown, never, In, In, Option<In>> {
+): Sink<never, never, In, In, Option<In>> {
   return Sink.foldLeft(Option.emptyOf<In>(), (_, input) => Option.some(input))
 }

@@ -9,7 +9,7 @@ export function dimapChunksEffect_<R, E, R2, E2, In, In1, L, Z, Z1>(
   f: (input: Chunk<In1>) => Effect<R2, E2, Chunk<In>>,
   g: (z: Z) => Z1,
   __tsplusTrace?: string
-): Sink<R & R2, E | E2, In1, L, Z1> {
+): Sink<R | R2, E | E2, In1, L, Z1> {
   return self.contramapChunksEffect(f).map(g)
 }
 

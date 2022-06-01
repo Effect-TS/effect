@@ -9,7 +9,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 export function defaultIfEmpty_<R, R1, E, E1, A, A1>(
   self: Stream<R, E, A>,
   stream: Stream<R1, E1, A1>
-): Stream<R & R1, E | E1, A | A1>
+): Stream<R | R1, E | E1, A | A1>
 export function defaultIfEmpty_<R, E, A, A1>(
   self: Stream<R, E, A>,
   chunk: Chunk<A1>
@@ -20,7 +20,7 @@ export function defaultIfEmpty_<R, E, A, A1>(
 ): Stream<R, E, A | A1>
 export function defaultIfEmpty_<R, E, E1, A, A1>(
   self: Stream<R, E, A>,
-  emptyValue: A1 | Chunk<A1> | Stream<unknown, E1, A1>
+  emptyValue: A1 | Chunk<A1> | Stream<never, E1, A1>
 ): Stream<R, E | E1, A | A1> {
   if (Chunk.isChunk(emptyValue)) {
     return defaultIfEmptyChunk(self, emptyValue)
@@ -65,7 +65,7 @@ function defaultIfEmptyChunk<R, E, A, A1>(
 function defaultIfEmptyStream<R, R1, E, E1, A, A1>(
   self: Stream<R, E, A>,
   stream: Stream<R1, E1, A1>
-): Stream<R & R1, E | E1, A | A1> {
+): Stream<R | R1, E | E1, A | A1> {
   const writer: Channel<
     R1,
     E,

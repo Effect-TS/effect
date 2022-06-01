@@ -10,7 +10,7 @@ export function mapEffectParUnordered_<R, E, A, R1, E1, B>(
   n: number,
   f: (a: A) => Effect<R1, E1, B>,
   __tsplusTrace?: string
-): Stream<R & R1, E | E1, B> {
+): Stream<R | R1, E | E1, B> {
   return self.flatMapPar(n, (a) => Stream.fromEffect(f(a)))
 }
 

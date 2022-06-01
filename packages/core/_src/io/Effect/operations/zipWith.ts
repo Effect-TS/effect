@@ -9,7 +9,7 @@ export function zipWith_<R, E, A, R2, E2, A2, B>(
   that: LazyArg<Effect<R2, E2, A2>>,
   f: (a: A, b: A2) => B,
   __tsplusTrace?: string
-): Effect<R & R2, E | E2, B> {
+): Effect<R | R2, E | E2, B> {
   return self.flatMap((a) => that().map((b) => f(a, b)))
 }
 

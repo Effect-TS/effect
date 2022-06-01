@@ -11,7 +11,7 @@ export function flatMap_<R, E, A, R1, E1, B>(
   self: Effect<R, E, A>,
   f: (a: A) => Effect<R1, E1, B>,
   __tsplusTrace?: string
-): Effect<R & R1, E | E1, B> {
+): Effect<R | R1, E | E1, B> {
   return new IFlatMap(self, f, __tsplusTrace)
 }
 

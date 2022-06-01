@@ -9,7 +9,7 @@ export function validateWith_<R, E, A, R1, E1, B, C>(
   that: LazyArg<Effect<R1, E1, B>>,
   f: (a: A, b: B) => C,
   __tsplusTrace?: string
-): Effect<R & R1, E | E1, C> {
+): Effect<R | R1, E | E1, C> {
   return self
     .exit()
     .zipWith(that().exit(), (ea, eb) => ea.zipWith(eb, f, (ca, cb) => Cause.then(ca, cb)))

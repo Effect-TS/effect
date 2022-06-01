@@ -21,7 +21,7 @@ export function zipAllSortedByKey_<R, E, K, A>(
     defaultLeft: LazyArg<A>,
     defaultRight: LazyArg<B>,
     __tsplusTrace?: string
-  ): Stream<R & R2, E | E2, Tuple<[K, Tuple<[A, B]>]>> =>
+  ): Stream<R | R2, E | E2, Tuple<[K, Tuple<[A, B]>]>> =>
     self.zipAllSortedByKeyWith(ord)(
       that,
       (a) => Tuple(a, defaultRight()),

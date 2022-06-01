@@ -1,6 +1,6 @@
 export function bufferSignal<R, E, A>(
   effect: LazyArg<
-    Effect<Has<Scope>, never, Queue<Tuple<[Take<E, A>, Deferred<never, void>]>>>
+    Effect<Scope, never, Queue<Tuple<[Take<E, A>, Deferred<never, void>]>>>
   >,
   channel: LazyArg<Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown>>,
   __tsplusTrace?: string
@@ -11,16 +11,16 @@ export function bufferSignal<R, E, A>(
       .bind("start", () => Deferred.make<never, void>())
       .tap(({ start }) => start.succeed(undefined))
       .bind("ref", ({ start }) => Ref.make(start))
-      .tap(({ queue, ref }) => (channel() >> producer<R, E, A>(queue, ref)).runScoped().fork())
-      .map(({ queue }) => consumer<R, E, A>(queue))
+      .tap(({ queue, ref }) => (channel() >> producer<E, A>(queue, ref)).runScoped().fork())
+      .map(({ queue }) => consumer<E, A>(queue))
   )
 }
 
-function producer<R, E, A>(
+function producer<E, A>(
   queue: Queue<Tuple<[Take<E, A>, Deferred<never, void>]>>,
   ref: Ref<Deferred<never, void>>,
   __tsplusTrace?: string
-): Channel<R, E, Chunk<A>, unknown, never, never, unknown> {
+): Channel<never, E, Chunk<A>, unknown, never, never, unknown> {
   return Channel.readWith(
     (input: Chunk<A>) =>
       Channel.fromEffect(
@@ -34,12 +34,12 @@ function producer<R, E, A>(
   )
 }
 
-function consumer<R, E, A>(
+function consumer<E, A>(
   queue: Queue<Tuple<[Take<E, A>, Deferred<never, void>]>>,
   __tsplusTrace?: string
-): Channel<R, unknown, unknown, unknown, E, Chunk<A>, void> {
+): Channel<never, unknown, unknown, unknown, E, Chunk<A>, void> {
   const process: Channel<
-    unknown,
+    never,
     unknown,
     unknown,
     unknown,
@@ -58,12 +58,12 @@ function consumer<R, E, A>(
   return process
 }
 
-function terminate<R, E, A>(
+function terminate<E, A>(
   queue: Queue<Tuple<[Take<E, A>, Deferred<never, void>]>>,
   ref: Ref<Deferred<never, void>>,
   take: Take<E, A>,
   __tsplusTrace?: string
-): Channel<R, E, Chunk<A>, unknown, never, never, unknown> {
+): Channel<never, E, Chunk<A>, unknown, never, never, unknown> {
   return Channel.fromEffect(
     Effect.Do()
       .bind("latch", () => ref.get())

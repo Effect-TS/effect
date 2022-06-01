@@ -8,7 +8,7 @@
 export function whileInputEffect_<State, Env, In, Out, Env1>(
   self: Schedule<State, Env, In, Out>,
   f: (input: In) => Effect.RIO<Env1, boolean>
-): Schedule<State, Env & Env1, In, Out> {
+): Schedule<State, Env | Env1, In, Out> {
   return self.checkEffect((input, _) => f(input))
 }
 

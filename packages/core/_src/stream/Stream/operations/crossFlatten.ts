@@ -14,7 +14,7 @@ export function crossFlatten_<R, E, A, R2, E2, B>(
   self: Stream<R, E, A>,
   that: LazyArg<Stream<R2, E2, B>>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, MergeTuple<A, B>> {
+): Stream<R | R2, E | E2, MergeTuple<A, B>> {
   concreteStream(self)
   return new StreamInternal(
     self.channel.concatMap((a) => {

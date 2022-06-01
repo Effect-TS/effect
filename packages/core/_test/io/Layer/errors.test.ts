@@ -45,7 +45,7 @@ describe.concurrent("Layer", () => {
       const layer1 = Layer.fail("foo")
       const layer2 = Layer.succeed(BarTag)({ bar: "bar" })
       const layer3 = Layer.succeed(BazTag)({ baz: "baz" })
-      const layer4 = Layer.scoped(ScopedTag)(Effect.scoped(Effect.acquireRelease(sleep, () => sleep)))
+      const layer4 = Layer.scoped(ScopedTag, Effect.scoped(Effect.acquireRelease(sleep, () => sleep)))
 
       const program = Effect.unit
         .provideLayer(layer1 + (layer2 + layer3 > layer4))

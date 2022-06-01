@@ -6,6 +6,6 @@
  */
 export function recurs(
   n: number
-): Schedule<number, unknown, unknown, number> {
+): Schedule<number, never, unknown, number> {
   return Schedule.forever.whileOutput((_) => _ < n)
 }

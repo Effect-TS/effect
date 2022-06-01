@@ -7,7 +7,7 @@ const MAX_SET_TIMEOUT_VALUE = 2 ** 31 - 1
  *
  * @tsplus static ets/Effect/Ops never
  */
-export const never: Effect.UIO<never> = Effect.asyncInterrupt<unknown, never, never>(() => {
+export const never: Effect.UIO<never> = Effect.asyncInterrupt<never, never, never>(() => {
   const interval = setInterval(() => {
     //
   }, MAX_SET_TIMEOUT_VALUE)

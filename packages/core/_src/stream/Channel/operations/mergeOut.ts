@@ -27,7 +27,7 @@ export function mergeOut_<
   >,
   n: number
 ): Channel<
-  Env & Env1,
+  Env | Env1,
   InErr & InErr1,
   InElem & InElem1,
   InDone & InDone1,

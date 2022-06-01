@@ -30,7 +30,7 @@ export function zipWithChunks_<R, E, A, R2, E2, A2, A3>(
     rightChunk: Chunk<A2>
   ) => Tuple<[Chunk<A3>, Either<Chunk<A>, Chunk<A2>>]>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A3> {
+): Stream<R | R2, E | E2, A3> {
   return self.combineChunks(that, (): State<A, A2> => new PullBoth(), pull(f))
 }
 
@@ -79,7 +79,7 @@ function pull<A, A2, A3>(
     pullLeft: Effect<R, Option<E>, Chunk<A>>,
     pullRight: Effect<R2, Option<E2>, Chunk<A2>>,
     __tsplusTrace?: string
-  ): Effect<R & R2, never, Exit<Option<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>> => {
+  ): Effect<R | R2, never, Exit<Option<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>> => {
     switch (state._tag) {
       case "PullBoth": {
         return pullLeft.zipPar(pullRight).foldEffect(

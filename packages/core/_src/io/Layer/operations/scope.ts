@@ -6,9 +6,9 @@
  *
  * @tsplus static ets/Layer/Ops scope
  */
-export const scope: Layer<unknown, never, Has<Scope.Closeable>> = Layer.scopedEnvironment(
+export const scope: Layer<never, never, Scope.Closeable> = Layer.scopedEnvironment(
   Effect.acquireReleaseExit(
     Scope.make,
     (scope, exit) => scope.close(exit)
-  ).map((scope) => Env(Scope.Tag, scope)) as Effect<Has<Scope>, never, Env<Has<Scope.Closeable>>>
+  ).map((scope) => Env(Scope.Tag, scope)) as Effect<Scope, never, Env<Scope.Closeable>>
 )

@@ -16,7 +16,7 @@ export function interleaveWith_<R, E, A, R2, E2, A2, R3, E3>(
   that: LazyArg<Stream<R2, E2, A2>>,
   b: LazyArg<Stream<R3, E3, boolean>>,
   __tsplusTrace?: string
-): Stream<R & R2 & R3, E | E2 | E3, A | A2> {
+): Stream<R | R2 | R3, E | E2 | E3, A | A2> {
   concreteStream(self)
   return new StreamInternal(
     Channel.unwrapScoped(
@@ -58,14 +58,14 @@ export function interleaveWith_<R, E, A, R2, E2, A2, R3, E3>(
  */
 export const interleaveWith = Pipeable(interleaveWith_)
 
-function producer<R, R2, R3, E, E2, E3, A, A2>(
+function producer<E, E2, E3, A, A2>(
   handoff: Handoff<Take<E | E2 | E3, A | A2>>,
   __tsplusTrace?: string
-): Channel<R & R2 & R3, E | E2 | E3, A | A2, unknown, never, never, void> {
+): Channel<never, E | E2 | E3, A | A2, unknown, never, never, void> {
   return Channel.readWithCause(
     (value: A | A2) =>
       Channel.fromEffect(handoff.offer(Take.single(value))) >
-        producer<R, R2, R3, E, E2, E3, A, A2>(handoff),
+        producer<E, E2, E3, A, A2>(handoff),
     (cause) => Channel.fromEffect(handoff.offer(Take.failCause(cause))),
     () => Channel.fromEffect(handoff.offer(Take.end))
   )
@@ -77,7 +77,7 @@ function process<E, E2, E3, A, A2>(
   leftDone: boolean,
   rightDone: boolean,
   __tsplusTrace?: string
-): Channel<unknown, E | E2 | E3, boolean, unknown, E | E2 | E3, Chunk<A | A2>, void> {
+): Channel<never, E | E2 | E3, boolean, unknown, E | E2 | E3, Chunk<A | A2>, void> {
   return Channel.readWithCause(
     (bool: boolean) => {
       if (bool && !leftDone) {

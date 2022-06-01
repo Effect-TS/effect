@@ -5,6 +5,6 @@
  */
 export function sum(
   __tsplusTrace?: string
-): Sink<unknown, never, number, never, number> {
+): Sink<never, never, number, never, number> {
   return Sink.foldLeft(0, (acc, curr) => acc + curr)
 }

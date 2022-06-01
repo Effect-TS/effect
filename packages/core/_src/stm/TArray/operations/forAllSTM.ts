@@ -6,8 +6,8 @@
  */
 export function forAllSTM_<E, A>(
   self: TArray<A>,
-  f: (a: A) => STM<unknown, E, boolean>
-): STM<unknown, E, boolean> {
+  f: (a: A) => STM<never, E, boolean>
+): STM<never, E, boolean> {
   return self.countSTM(f).map((n) => n === self.length())
 }
 

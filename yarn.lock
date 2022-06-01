@@ -878,22 +878,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsplus/stdlib-global@npm:^0.0.37":
-  version: 0.0.37
-  resolution: "@tsplus/stdlib-global@npm:0.0.37"
+"@tsplus/stdlib-global@npm:^0.0.39":
+  version: 0.0.39
+  resolution: "@tsplus/stdlib-global@npm:0.0.39"
   peerDependencies:
-    "@tsplus/stdlib": ^0.0.72
+    "@tsplus/stdlib": ^0.0.74
   peerDependenciesMeta:
     "@tsplus/stdlib":
       optional: true
-  checksum: 688637004451d1ede498d570420221e1ad4344d26ee5230ea7d20467b6450033c21210ec8bc8de401be69f0ed2de5da48675fc04405130b77e26dc1f22566c9b
+  checksum: f4d3c832f4f04d05b163200779cb3fbc1f7d6ddefb798b104f7dc831dce1d650e7954e0012f47562956a8b9c3ad464ba2bd7849e465a3b280a49443e1e36838a
   languageName: node
   linkType: hard
 
-"@tsplus/stdlib@npm:0.0.72":
-  version: 0.0.72
-  resolution: "@tsplus/stdlib@npm:0.0.72"
-  checksum: cb47e0f087f79b9cfed40d976d6c23a0da210fd772366390c2b0fdc641bb5ec147662c87da2bd7a3844b6e199fcde4e7702dcbc1c2ec1b76c66399f3c79a98f3
+"@tsplus/stdlib@npm:0.0.74":
+  version: 0.0.74
+  resolution: "@tsplus/stdlib@npm:0.0.74"
+  checksum: bc20bc5cdd7ca6dcf9b1630c32ce0938a5d70f41c810746cc4d46e073eaec64f0d7db5ae68d53e798423991735a6730266712440edd59df88076a67c33c4fa9f
   languageName: node
   linkType: hard
 
@@ -985,10 +985,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*":
-  version: 17.0.35
-  resolution: "@types/node@npm:17.0.35"
-  checksum: 7a24946ae7fd20267ed92466384f594e448bfb151081158d565cc635d406ecb29ea8fb85fcd2a1f71efccf26fb5bd3c6f509bde56077eb8b832b847a6664bc62
+"@types/node@npm:*, @types/node@npm:^17.0.38":
+  version: 17.0.38
+  resolution: "@types/node@npm:17.0.38"
+  checksum: 9db1c39d603850ced665ab60b8f8ebce674ff9d762dfff0f776d520e71e4d73fdcd4c7f69213b804d878cf3e726911b09cae4ee66e35ae2724538de9f4838681
   languageName: node
   linkType: hard
 
@@ -996,13 +996,6 @@ __metadata:
   version: 12.20.47
   resolution: "@types/node@npm:12.20.47"
   checksum: 97487af02fada4342e1bd47f9c9ebf601c12b85cbf17056ba73a315339ae996490403f2d4d1d799d8078cfe43a59e33370b4a5ae2d4fb79dd02359f4691934b4
-  languageName: node
-  linkType: hard
-
-"@types/node@npm:^17.0.38":
-  version: 17.0.38
-  resolution: "@types/node@npm:17.0.38"
-  checksum: 9db1c39d603850ced665ab60b8f8ebce674ff9d762dfff0f776d520e71e4d73fdcd4c7f69213b804d878cf3e726911b09cae4ee66e35ae2724538de9f4838681
   languageName: node
   linkType: hard
 
@@ -1093,16 +1086,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@typescript-eslint/scope-manager@npm:5.26.0":
-  version: 5.26.0
-  resolution: "@typescript-eslint/scope-manager@npm:5.26.0"
-  dependencies:
-    "@typescript-eslint/types": 5.26.0
-    "@typescript-eslint/visitor-keys": 5.26.0
-  checksum: 56db69b8dc3502261c403c1217f32fb7e8244c1f192c3b486733ad8cd3e7672b365d2c6da7ec8ff40113c4da507c04f4e00b6104ca68579c19525cac828a631b
-  languageName: node
-  linkType: hard
-
 "@typescript-eslint/scope-manager@npm:5.27.0":
   version: 5.27.0
   resolution: "@typescript-eslint/scope-manager@npm:5.27.0"
@@ -1136,35 +1119,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@typescript-eslint/types@npm:5.26.0":
-  version: 5.26.0
-  resolution: "@typescript-eslint/types@npm:5.26.0"
-  checksum: 98798616d832da8e5ef61f050e4e72ed921a162cb4ce2b2dfe0a317c66998157e832f449aeab21a1fdfd806e7134091bc1a9446b1089f4687786b646ad8738e7
-  languageName: node
-  linkType: hard
-
 "@typescript-eslint/types@npm:5.27.0":
   version: 5.27.0
   resolution: "@typescript-eslint/types@npm:5.27.0"
   checksum: d19802bb7bc8202885a47118e196ad9a26b686f00da5aa71a84974c1e838c5e3a36f54116605c46ffe909ccf856a49623f2a095fd05243b4fe4fecfe5cecb89c
-  languageName: node
-  linkType: hard
-
-"@typescript-eslint/typescript-estree@npm:5.26.0":
-  version: 5.26.0
-  resolution: "@typescript-eslint/typescript-estree@npm:5.26.0"
-  dependencies:
-    "@typescript-eslint/types": 5.26.0
-    "@typescript-eslint/visitor-keys": 5.26.0
-    debug: ^4.3.4
-    globby: ^11.1.0
-    is-glob: ^4.0.3
-    semver: ^7.3.7
-    tsutils: ^3.21.0
-  peerDependenciesMeta:
-    typescript:
-      optional: true
-  checksum: 2cf147629474952725593da64827a7e4e39f79614019529d0d6e5b89236c55f3607c6b4a24f160dbc5978f4cfd60f96fcb573a770c2877f8e29d7552b40e2135
   languageName: node
   linkType: hard
 
@@ -1204,7 +1162,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@typescript-eslint/utils@npm:5.27.0":
+"@typescript-eslint/utils@npm:5.27.0, @typescript-eslint/utils@npm:^5.0.0":
   version: 5.27.0
   resolution: "@typescript-eslint/utils@npm:5.27.0"
   dependencies:
@@ -1220,22 +1178,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@typescript-eslint/utils@npm:^5.0.0":
-  version: 5.26.0
-  resolution: "@typescript-eslint/utils@npm:5.26.0"
-  dependencies:
-    "@types/json-schema": ^7.0.9
-    "@typescript-eslint/scope-manager": 5.26.0
-    "@typescript-eslint/types": 5.26.0
-    "@typescript-eslint/typescript-estree": 5.26.0
-    eslint-scope: ^5.1.1
-    eslint-utils: ^3.0.0
-  peerDependencies:
-    eslint: ^6.0.0 || ^7.0.0 || ^8.0.0
-  checksum: c16828ba6bfbe3b0b6e9dadeece1cfd2345141bcd13824f99fe210c76e5ddb11f6f79e61705cafa421c549657da12d1700a1316d24c2eeaee6179b08f512b5fb
-  languageName: node
-  linkType: hard
-
 "@typescript-eslint/visitor-keys@npm:4.33.0":
   version: 4.33.0
   resolution: "@typescript-eslint/visitor-keys@npm:4.33.0"
@@ -1243,16 +1185,6 @@ __metadata:
     "@typescript-eslint/types": 4.33.0
     eslint-visitor-keys: ^2.0.0
   checksum: 59953e474ad4610c1aa23b2b1a964445e2c6201521da6367752f37939d854352bbfced5c04ea539274065e012b1337ba3ffa49c2647a240a4e87155378ba9873
-  languageName: node
-  linkType: hard
-
-"@typescript-eslint/visitor-keys@npm:5.26.0":
-  version: 5.26.0
-  resolution: "@typescript-eslint/visitor-keys@npm:5.26.0"
-  dependencies:
-    "@typescript-eslint/types": 5.26.0
-    eslint-visitor-keys: ^3.3.0
-  checksum: 4a5085d19e677f3b44ca4455bba85fd1a3be4d7d2e96bb22738a7497f6f4d16bfdee51059454a78b1e108d8e1593b1a31be40764a66448945118277cff5eff02
   languageName: node
   linkType: hard
 
@@ -2636,8 +2568,8 @@ __metadata:
     "@effect-ts/core": ^0.60.1
     "@repo-tooling/eslint-plugin-dprint": ^0.0.4
     "@tsplus/installer": 0.0.108
-    "@tsplus/stdlib": 0.0.72
-    "@tsplus/stdlib-global": ^0.0.37
+    "@tsplus/stdlib": 0.0.74
+    "@tsplus/stdlib-global": ^0.0.39
     "@types/node": ^17.0.38
     "@types/rimraf": ^3.0.2
     "@typescript-eslint/eslint-plugin": ^5.27.0

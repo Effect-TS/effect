@@ -11,7 +11,7 @@ export function partition_<R, E, A>(
   p: Predicate<A>,
   buffer = 16,
   __tsplusTrace?: string
-): Effect<R & Has<Scope>, E, Tuple<[Stream<unknown, E, A>, Stream<unknown, E, A>]>> {
+): Effect<R | Scope, E, Tuple<[Stream<never, E, A>, Stream<never, E, A>]>> {
   return self.partitionEither(
     (a) => p(a) ? Effect.succeedNow(Either.left(a)) : Effect.succeedNow(Either.right(a)),
     buffer

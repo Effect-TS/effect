@@ -8,7 +8,7 @@ export function runScoped_<R, E, A, R2, E2, B>(
   self: Stream<R, E, A>,
   sink: LazyArg<Sink<R2, E2, A, unknown, B>>,
   __tsplusTrace?: string
-): Effect<R & R2 & Has<Scope>, E | E2, B> {
+): Effect<R | R2 | Scope, E | E2, B> {
   concreteStream(self)
   return self.channel
     .pipeToOrFail(() => {

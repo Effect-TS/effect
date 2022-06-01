@@ -1,7 +1,7 @@
 export function resource(
   id: number,
   ref: Ref<Chunk<Action>>
-): Effect<Has<Scope>, never, number> {
+): Effect<Scope, never, number> {
   return ref
     .update((chunk) => chunk.append(Action.Acquire(id)))
     .as(id)

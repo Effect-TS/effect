@@ -21,9 +21,9 @@ export function pipeTo_<
 >(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   that: LazyArg<Channel<Env2, OutErr, OutElem, OutDone, OutErr2, OutElem2, OutDone2>>
-): Channel<Env & Env2, InErr, InElem, InDone, OutErr2, OutElem2, OutDone2> {
+): Channel<Env | Env2, InErr, InElem, InDone, OutErr2, OutElem2, OutDone2> {
   return new PipeTo<
-    Env & Env2,
+    Env | Env2,
     InErr,
     InElem,
     InDone,

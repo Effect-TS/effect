@@ -5,7 +5,7 @@
  */
 export function collectAll<A>(): Schedule<
   Tuple<[void, Chunk<A>]>,
-  unknown,
+  never,
   A,
   Chunk<A>
 > {

@@ -14,7 +14,7 @@ import { beginningOfMinute, endOfMinute, nextMinute } from "@effect/core/io/Sche
  */
 export function minuteOfHour(
   minute: number
-): Schedule<number, unknown, unknown, number> {
+): Schedule<number, never, unknown, number> {
   return makeWithState(0, (now, _, state) => {
     if (!Number.isInteger(minute) || minute < 0 || 59 < minute) {
       return Effect.die(

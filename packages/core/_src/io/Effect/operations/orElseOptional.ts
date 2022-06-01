@@ -9,7 +9,7 @@ export function orElseOptional_<R, E, A, R2, E2, A2>(
   self: Effect<R, Option<E>, A>,
   that: LazyArg<Effect<R2, Option<E2>, A2>>,
   __tsplusTrace?: string
-): Effect<R & R2, Option<E | E2>, A | A2> {
+): Effect<R | R2, Option<E | E2>, A | A2> {
   return self.catchAll((option) => option.fold(that, (e) => Effect.failNow(Option.some<E | E2>(e))))
 }
 

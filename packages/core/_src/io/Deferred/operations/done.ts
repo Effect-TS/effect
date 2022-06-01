@@ -8,7 +8,7 @@ export function done_<E, A>(
   self: Deferred<E, A>,
   exit: LazyArg<Exit<E, A>>,
   __tsplusTrace?: string
-): Effect<unknown, never, boolean> {
+): Effect<never, never, boolean> {
   return self.completeWith(Effect.done(exit))
 }
 

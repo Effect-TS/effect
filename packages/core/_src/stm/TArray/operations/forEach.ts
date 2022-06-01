@@ -5,8 +5,8 @@
  */
 export function forEach_<E, A>(
   self: TArray<A>,
-  f: (a: A) => STM<unknown, E, void>
-): STM<unknown, E, void> {
+  f: (a: A) => STM<never, E, void>
+): STM<never, E, void> {
   return self.reduceSTM(undefined as void, (_, a) => f(a))
 }
 

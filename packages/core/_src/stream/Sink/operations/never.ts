@@ -1,6 +1,6 @@
 /**
  * @tsplus static ets/Sink/Ops never
  */
-export const never: Sink<unknown, never, unknown, unknown, never> = Sink.fromEffect(
+export const never: Sink<never, never, unknown, unknown, never> = Sink.fromEffect(
   Effect.never
 )

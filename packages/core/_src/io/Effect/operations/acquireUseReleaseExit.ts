@@ -13,7 +13,7 @@ export function acquireUseReleaseExit<R, E, A, R2, E2, A2, R3, X>(
   use: (a: A) => Effect<R2, E2, A2>,
   release: (a: A, exit: Exit<E2, A2>) => Effect.RIO<R3, X>,
   __tsplusTrace?: string
-): Effect<R & R2 & R3, E | E2, A2> {
+): Effect<R | R2 | R3, E | E2, A2> {
   return Effect.uninterruptibleMask(({ restore }) =>
     acquire().flatMap((a) =>
       Effect.suspendSucceed(restore(use(a)))

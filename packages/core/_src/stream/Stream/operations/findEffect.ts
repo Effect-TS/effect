@@ -10,7 +10,7 @@ export function findEffect_<R, R1, E, E1, A>(
   self: Stream<R, E, A>,
   f: (a: A) => Effect<R1, E1, boolean>,
   __tsplusTrace?: string
-): Stream<R & R1, E | E1, A> {
+): Stream<R | R1, E | E1, A> {
   const loop: Channel<
     R1,
     E,

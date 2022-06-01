@@ -15,11 +15,11 @@ export function unwrapScoped<
   OutDone
 >(
   self: Effect<
-    R & Has<Scope>,
+    R,
     E,
     Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   >
-): Channel<R & Env, InErr, InElem, InDone, E | OutErr, OutElem, OutDone> {
+): Channel<Exclude<R, Scope> | Env, InErr, InElem, InDone, E | OutErr, OutElem, OutDone> {
   return Channel.concatAllWith(
     Channel.scoped(self),
     (d, _) => d,

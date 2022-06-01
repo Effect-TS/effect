@@ -10,9 +10,9 @@ export function partitionEither_<R, E, A, R2, E2, A2, A3>(
   buffer = 16,
   __tsplusTrace?: string
 ): Effect<
-  R & R2 & Has<Scope>,
+  R | R2 | Scope,
   E | E2,
-  Tuple<[Stream<unknown, E | E2, A2>, Stream<unknown, E | E2, A3>]>
+  Tuple<[Stream<never, E | E2, A2>, Stream<never, E | E2, A3>]>
 > {
   return self
     .mapEffect(p)

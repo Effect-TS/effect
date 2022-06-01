@@ -8,7 +8,7 @@ export function catchAll_<R, E, A, R2, E2, A2>(
   self: Stream<R, E, A>,
   f: (e: E) => Stream<R2, E2, A2>,
   __tsplusTrace?: string
-): Stream<R & R2, E2, A | A2> {
+): Stream<R | R2, E2, A | A2> {
   return self.catchAllCause((cause) => cause.failureOrCause().fold(f, (cause) => Stream.failCause(cause)))
 }
 

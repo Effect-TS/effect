@@ -5,6 +5,6 @@
  */
 export function count(
   __tsplusTrace?: string
-): Sink<unknown, never, unknown, never, number> {
+): Sink<never, never, unknown, never, number> {
   return Sink.foldLeft(0, (acc, _) => acc + 1)
 }

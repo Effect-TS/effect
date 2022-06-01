@@ -10,7 +10,7 @@ export function takeUntilEffect_<R, E, A, R2, E2>(
   self: Stream<R, E, A>,
   f: (a: A) => Effect<R2, E2, boolean>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A> {
+): Stream<R | R2, E | E2, A> {
   concreteStream(self)
   return new StreamInternal(
     self.channel >> loop(Chunk.empty<A>()[Symbol.iterator](), f)
@@ -25,10 +25,10 @@ export function takeUntilEffect_<R, E, A, R2, E2>(
  */
 export const takeUntilEffect = Pipeable(takeUntilEffect_)
 
-function loop<R, E, A, R1, E1>(
+function loop<E, A, R1, E1>(
   chunkIterator: Iterator<A>,
   f: (a: A) => Effect<R1, E1, boolean>
-): Channel<R & R1, E, Chunk<A>, unknown, E | E1, Chunk<A>, unknown> {
+): Channel<R1, E, Chunk<A>, unknown, E | E1, Chunk<A>, unknown> {
   const next = chunkIterator.next()
   if (next.done) {
     return Channel.readWithCause(
@@ -42,7 +42,7 @@ function loop<R, E, A, R1, E1>(
         b
           ? Channel.write(Chunk.single(next.value))
           : Channel.write(Chunk.single(next.value)) >
-            loop<R, E, A, R1, E1>(chunkIterator, f)
+            loop<E, A, R1, E1>(chunkIterator, f)
       )
     )
   }

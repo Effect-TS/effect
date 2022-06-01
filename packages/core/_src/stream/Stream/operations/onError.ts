@@ -11,7 +11,7 @@ export function onError_<R, E, A, R2, Z>(
   self: Stream<R, E, A>,
   cleanup: (cause: Cause<E>) => Effect.RIO<R2, Z>,
   __tsplusTrace?: string
-): Stream<R & R2, E, A> {
+): Stream<R | R2, E, A> {
   return self.catchAllCause((cause) => Stream.fromEffect(cleanup(cause) > Effect.failCause(cause)))
 }
 

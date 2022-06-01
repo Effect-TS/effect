@@ -12,18 +12,17 @@ export function provideService_<
   OutErr,
   OutElem,
   OutDone,
-  T
+  T,
+  T1 extends T
 >(
-  self: Channel<R & Has<T>, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  tag: Tag<T>
-) {
-  return (
-    service: LazyArg<T>,
-    __tsplusTrace?: string
-  ): Channel<Erase<R & Has<T>, Has<T>>, InErr, InElem, InDone, OutErr, OutElem, OutDone> =>
-    Channel.succeed(service).flatMap((service) =>
-      Channel.environment<R>().flatMap((env: Env<R>) => self.provideEnvironment(env.add(tag, service)))
-    )
+  self: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
+  tag: Tag<T>,
+  service: LazyArg<T1>,
+  __tsplusTrace?: string
+): Channel<Exclude<R, T>, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+  return Channel.succeed(service).flatMap((service) =>
+    Channel.environment<Exclude<R, T>>().flatMap((env) => self.provideEnvironment(env.add(tag, service) as Env<R>))
+  )
 }
 
 /**
@@ -32,19 +31,4 @@ export function provideService_<
  *
  * @tsplus static ets/Channel/Aspects provideService
  */
-export function provideService<T>(tag: Tag<T>) {
-  return <
-    Env,
-    InErr,
-    InElem,
-    InDone,
-    OutErr,
-    OutElem,
-    OutDone
-  >(
-    self: Channel<Env & Has<T>, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-    service: LazyArg<T>,
-    __tsplusTrace?: string
-  ): Channel<Erase<Env & Has<T>, Has<T>>, InErr, InElem, InDone, OutErr, OutElem, OutDone> =>
-    self.provideService(tag)(service)
-}
+export const provideService = Pipeable(provideService_)

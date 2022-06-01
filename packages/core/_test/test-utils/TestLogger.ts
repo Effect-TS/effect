@@ -117,7 +117,8 @@ export const makeTestLogger: Effect.UIO<TestLogger<string, void>> = Effect.succe
  *
  * @tsplus static ets/TestLogger/Ops default
  */
-export const defaultTestLogger: Layer<unknown, never, Has<TestLogger<string, void>>> = Layer.scoped(TestLogger.Tag)(
+export const defaultTestLogger: Layer<never, never, TestLogger<string, void>> = Layer.scoped(
+  TestLogger.Tag,
   Effect.Do()
     .bind("runtimeConfig", () => Effect.runtimeConfig)
     .bind("testLogger", () => makeTestLogger)

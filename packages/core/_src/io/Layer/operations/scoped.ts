@@ -3,9 +3,10 @@
  *
  * @tsplus static ets/Layer/Ops scoped
  */
-export function scoped<T>(tag: Tag<T>) {
-  return <R, E>(
-    effect: LazyArg<Effect<R & Has<Scope>, E, T>>,
-    __tsplusTrace?: string
-  ): Layer<R, E, Has<T>> => Layer.scopedEnvironment(Effect.suspendSucceed(effect).map((service) => Env(tag, service)))
+export function scoped<T, R, E, T1 extends T>(
+  tag: Tag<T>,
+  effect: LazyArg<Effect<R, E, T1>>,
+  __tsplusTrace?: string
+): Layer<Exclude<R, Scope>, E, T> {
+  return Layer.scopedEnvironment(Effect.suspendSucceed(effect).map((service) => Env(tag, service)))
 }

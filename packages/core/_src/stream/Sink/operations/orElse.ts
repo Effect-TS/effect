@@ -12,7 +12,7 @@ export function orElse_<R, R1, E, E1, In, In1 extends In, L, L1 extends L, Z, Z1
   self: Sink<R, E, In, L, Z>,
   that: LazyArg<Sink<R1, E1, In1, L1, Z1>>,
   __tsplusTrace?: string
-): Sink<R & R1, E1, In & In1, L, Z | Z1> {
+): Sink<R | R1, E1, In & In1, L, Z | Z1> {
   concreteSink(self)
   return new SinkInternal(
     self.channel.orElse(() => {

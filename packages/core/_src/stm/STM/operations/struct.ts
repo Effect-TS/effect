@@ -9,7 +9,7 @@ export function struct<NER extends Record<string, STM<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, STM<any, any, any>>,
   __tsplusTrace?: string
 ): STM<
-  [NER[keyof NER]] extends [{ [_R]: (_: infer R) => void }] ? R : never,
+  [NER[keyof NER]] extends [{ [_R]: () => infer R }] ? R : never,
   [NER[keyof NER]] extends [{ [_E]: () => infer E }] ? E : never,
   {
     [K in keyof NER]: [NER[K]] extends [STM<any, any, infer A>] ? A : never

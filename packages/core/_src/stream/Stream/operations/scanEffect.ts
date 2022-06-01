@@ -11,7 +11,7 @@ export function scanEffect_<R, E, A, S, R2, E2>(
   s: LazyArg<S>,
   f: (s: S, a: A) => Effect<R2, E2, S>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, S> {
+): Stream<R | R2, E | E2, S> {
   return new StreamInternal(
     Channel.succeed(s).flatMap((s) =>
       Channel.write(Chunk.single(s)).zipRight(() => {

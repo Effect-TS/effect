@@ -4,7 +4,7 @@ describe("Channel", () => {
   describe("provide", () => {
     it("simple provide", async () => {
       const program = Channel.fromEffect(Effect.service(NumberService))
-        .provideService(NumberService)(new NumberServiceImpl(100))
+        .provideService(NumberService, new NumberServiceImpl(100))
         .run()
 
       const result = await program.unsafeRunPromise()
@@ -14,11 +14,12 @@ describe("Channel", () => {
 
     it("provide.zip(provide)", async () => {
       const program = Channel.fromEffect(Effect.service(NumberService))
-        .provideService(NumberService)(new NumberServiceImpl(100))
+        .provideService(NumberService, new NumberServiceImpl(100))
         .zip(
           Channel.fromEffect(Effect.service(NumberService)).provideService(
-            NumberService
-          )(new NumberServiceImpl(200))
+            NumberService,
+            new NumberServiceImpl(200)
+          )
         )
         .run()
 
@@ -33,10 +34,10 @@ describe("Channel", () => {
         .mapOut((tuple) => tuple.get(1))
         .concatMap((n) =>
           Channel.fromEffect(Effect.service(NumberService).map((m) => Tuple(n, m)))
-            .provideService(NumberService)(new NumberServiceImpl(200))
+            .provideService(NumberService, new NumberServiceImpl(200))
             .flatMap((tuple) => Channel.write(tuple))
         )
-        .provideService(NumberService)(new NumberServiceImpl(100))
+        .provideService(NumberService, new NumberServiceImpl(100))
         .runCollect()
 
       const result = await program.unsafeRunPromise()

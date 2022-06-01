@@ -9,7 +9,7 @@ export function tuple<SN extends readonly Sink<any, any, any, any, any>[]>(
     readonly 1: Sink<any, any, any, any, any>
   }
 ): Sink<
-  [SN[number]] extends [{ [k in typeof _R]: (_: infer R) => void }] ? R : never,
+  [SN[number]] extends [{ [k in typeof _R]: () => infer R }] ? R : never,
   [SN[number]] extends [{ [k in typeof _E]: () => infer E }] ? E : never,
   [SN[number]] extends [{ [k in typeof _In]: (_: infer In) => void }] ? In : never,
   [SN[number]] extends [{ [k in typeof _L]: () => infer L }] ? L : never,

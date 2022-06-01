@@ -28,7 +28,7 @@ export function aggregateWithinEither_<R, E, A, R2, E2, A2, S, R3, B, C>(
   sink: LazyArg<Sink<R2, E2, A | A2, A2, B>>,
   schedule: LazyArg<Schedule<S, R3, Option<B>, C>>,
   __tsplusTrace?: string
-): Stream<R & R2 & R3, E | E2, Either<C, B>> {
+): Stream<R | R2 | R3, E | E2, Either<C, B>> {
   type EndReason = SinkEndReason<C>
   type Signal = HandoffSignal<C, E | E2, A>
 
@@ -41,7 +41,7 @@ export function aggregateWithinEither_<R, E, A, R2, E2, A2, S, R3, B, C>(
     )
   ).flatMap(({ tuple: [handoff, sinkEndReason, sinkLeftovers, scheduleDriver] }) => {
     const handoffProducer: Channel<
-      unknown,
+      never,
       E | E2,
       Chunk<A>,
       unknown,
@@ -55,7 +55,7 @@ export function aggregateWithinEither_<R, E, A, R2, E2, A2, S, R3, B, C>(
     )
 
     const handoffConsumer: Channel<
-      unknown,
+      never,
       unknown,
       unknown,
       unknown,
@@ -129,12 +129,12 @@ function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
   scheduleDriver: Driver<S, R3, Option<B>, C>,
   sinkEndReason: Ref<SinkEndReason<C>>,
   sinkLeftovers: Ref<Chunk<A2>>,
-  handoffProducer: Channel<unknown, E2, Chunk<A>, unknown, never, never, unknown>,
-  handoffConsumer: Channel<unknown, unknown, unknown, unknown, E2, Chunk<A | A2>, void>,
+  handoffProducer: Channel<never, E2, Chunk<A>, unknown, never, never, unknown>,
+  handoffConsumer: Channel<never, unknown, unknown, unknown, E2, Chunk<A | A2>, void>,
   lastB: Option<B>,
   __tsplusTrace?: string
 ): Channel<
-  R2 & R3,
+  R2 | R3,
   unknown,
   unknown,
   unknown,

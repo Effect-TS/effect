@@ -12,7 +12,7 @@ export function crossRight_<R, E, A, R2, E2, B>(
   self: Stream<R, E, A>,
   that: LazyArg<Stream<R2, E2, B>>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, B> {
+): Stream<R | R2, E | E2, B> {
   return self.cross(that).map((tuple) => tuple.get(1))
 }
 

@@ -150,7 +150,7 @@ export function makeTestConsole(
 export function print(
   line: any,
   __tsplusTrace?: string
-): Effect<Has<TestConsole>, TestConsoleError, void> {
+): Effect<TestConsole, TestConsoleError, void> {
   return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.print(line))
 }
 
@@ -160,7 +160,7 @@ export function print(
 export function printError(
   line: any,
   __tsplusTrace?: string
-): Effect<Has<TestConsole>, TestConsoleError, void> {
+): Effect<TestConsole, TestConsoleError, void> {
   return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.printError(line))
 }
 
@@ -171,7 +171,7 @@ export function printError(
 export function printLine(
   line: any,
   __tsplusTrace?: string
-): Effect<Has<TestConsole>, TestConsoleError, void> {
+): Effect<TestConsole, TestConsoleError, void> {
   return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.printLine(line))
 }
 
@@ -182,7 +182,7 @@ export function printLine(
 export function printLineError(
   line: any,
   __tsplusTrace?: string
-): Effect<Has<TestConsole>, TestConsoleError, void> {
+): Effect<TestConsole, TestConsoleError, void> {
   return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.printLineError(line))
 }
 
@@ -192,7 +192,7 @@ export function printLineError(
  */
 export function readLine(
   __tsplusTrace?: string
-): Effect<Has<TestConsole>, TestConsoleError, void> {
+): Effect<TestConsole, TestConsoleError, void> {
   return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.readLine())
 }
 
@@ -204,7 +204,7 @@ export function readLine(
 export function feedLines(
   lines: ImmutableArray<string>,
   __tsplusTrace?: string
-): Effect.RIO<Has<TestConsole>, void> {
+): Effect.RIO<TestConsole, void> {
   return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.feedLines(lines))
 }
 
@@ -212,7 +212,7 @@ export function feedLines(
  * Takes the first value from the input buffer, if one exists, or else fails
  * with an `EOFException`.
  */
-export function output(__tsplusTrace?: string): Effect.RIO<Has<TestConsole>, ImmutableArray<string>> {
+export function output(__tsplusTrace?: string): Effect.RIO<TestConsole, ImmutableArray<string>> {
   return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.output())
 }
 
@@ -220,20 +220,20 @@ export function output(__tsplusTrace?: string): Effect.RIO<Has<TestConsole>, Imm
  * Returns the contents of the error output buffer. The first value written
  * to the error output buffer will be the first in the sequence.
  */
-export function outputError(__tsplusTrace?: string): Effect.RIO<Has<TestConsole>, void> {
+export function outputError(__tsplusTrace?: string): Effect.RIO<TestConsole, void> {
   return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.outputError())
 }
 
 /**
  * Clears the contents of the input buffer.
  */
-export function clearInput(__tsplusTrace?: string): Effect.RIO<Has<TestConsole>, void> {
+export function clearInput(__tsplusTrace?: string): Effect.RIO<TestConsole, void> {
   return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.clearInput())
 }
 
 /**
  * Clears the contents of the output buffer.
  */
-export function clearOutput(__tsplusTrace?: string): Effect.RIO<Has<TestConsole>, void> {
+export function clearOutput(__tsplusTrace?: string): Effect.RIO<TestConsole, void> {
   return Effect.serviceWithEffect(TestConsole.Tag)((_) => _.clearOutput())
 }

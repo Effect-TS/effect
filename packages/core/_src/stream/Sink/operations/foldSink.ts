@@ -24,7 +24,7 @@ export function foldSink_<
   failure: (err: E) => Sink<R1, E1, In1, L1, Z1>,
   success: (z: Z) => Sink<R2, E2, In2, L2, Z2>,
   __tsplusTrace?: string
-): Sink<R & R1 & R2, E1 | E2, In1 & In2, L1 | L2, Z1 | Z2> {
+): Sink<R | R1 | R2, E1 | E2, In1 & In2, L1 | L2, Z1 | Z2> {
   concreteSink(self)
   return new SinkInternal(
     self.channel.doneCollect().foldChannel(

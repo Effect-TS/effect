@@ -15,7 +15,7 @@ export function catchTag_<
   self: STM<R, E, A>,
   k: K,
   f: (e: Extract<E, { _tag: K }>) => STM<R1, E1, A1>
-): STM<R & R1, Exclude<E, { _tag: K }> | E1, A | A1> {
+): STM<R | R1, Exclude<E, { _tag: K }> | E1, A | A1> {
   return self.catchAll((e) => {
     if ("_tag" in e && e["_tag"] === k) {
       return f(e as any)
@@ -38,5 +38,5 @@ export function catchTag<
 >(k: K, f: (e: Extract<E, { _tag: K }>) => STM<R1, E1, A1>, __trace?: string) {
   return <R, A>(
     self: STM<R, E, A>
-  ): STM<R & R1, Exclude<E, { _tag: K }> | E1, A | A1> => self.catchTag(k, f)
+  ): STM<R | R1, Exclude<E, { _tag: K }> | E1, A | A1> => self.catchTag(k, f)
 }

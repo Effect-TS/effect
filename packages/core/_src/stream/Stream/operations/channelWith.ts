@@ -11,7 +11,7 @@ export function channelWith_<R, E, A, R1, E1, A1>(
     channel: Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown>
   ) => Channel<R1, unknown, unknown, unknown, E1, Chunk<A1>, unknown>,
   __tsplusTrace?: string
-): Stream<R & R1, E | E1, A1> {
+): Stream<R | R1, E | E1, A1> {
   concreteStream(self)
   return new StreamInternal(f(self.channel))
 }

@@ -7,7 +7,7 @@
 export function attempt<A>(
   f: LazyArg<A>,
   __tsplusTrace?: string
-): Effect<unknown, unknown, A> {
+): Effect<never, unknown, A> {
   return Effect.succeedWith((runtimeConfig) => {
     try {
       return f()

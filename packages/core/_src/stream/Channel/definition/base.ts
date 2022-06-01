@@ -40,7 +40,7 @@ export type ChannelSym = typeof ChannelSym
  */
 export interface Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
   readonly [ChannelSym]: ChannelSym
-  readonly [_Env]: (_: Env) => void
+  readonly [_Env]: () => Env
   readonly [_InErr]: (_: InErr) => void
   readonly [_InElem]: (_: InElem) => void
   readonly [_InDone]: (_: InDone) => void
@@ -68,7 +68,7 @@ export interface ChannelAspects {}
  * @tsplus unify ets/Channel
  */
 export function unifyChannel<X extends Channel<any, any, any, any, any, any, any>>(self: X): Channel<
-  [X] extends [{ [_Env]: (_: infer Env) => void }] ? Env : never,
+  [X] extends [{ [_Env]: () => infer Env }] ? Env : never,
   [X] extends [{ [_InErr]: (_: infer InErr) => void }] ? InErr : never,
   [X] extends [{ [_InElem]: (_: infer InElem) => void }] ? InElem : never,
   [X] extends [{ [_InDone]: (_: infer InDone) => void }] ? InDone : never,
@@ -83,7 +83,7 @@ export abstract class ChannelBase<Env, InErr, InElem, InDone, OutErr, OutElem, O
   implements Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 {
   readonly [ChannelSym]: ChannelSym = ChannelSym
-  readonly [_Env]!: (_: Env) => void
+  readonly [_Env]!: () => Env
   readonly [_InErr]!: (_: InErr) => void
   readonly [_InElem]!: (_: InElem) => void
   readonly [_InDone]!: (_: InDone) => void

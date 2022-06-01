@@ -5,7 +5,7 @@ import { concreteTSemaphore } from "@effect/core/stm/TSemaphore/operations/_inte
  *
  * @tsplus fluent ets/TSemaphore available
  */
-export function available(self: TSemaphore): STM<unknown, never, number> {
+export function available(self: TSemaphore): STM<never, never, number> {
   concreteTSemaphore(self)
   return self.permits.get()
 }

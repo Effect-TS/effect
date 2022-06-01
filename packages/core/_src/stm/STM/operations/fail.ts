@@ -5,7 +5,7 @@ import { STMEffect, STMFailException } from "@effect/core/stm/STM/definition/pri
  *
  * @tsplus static ets/STM/Ops fail
  */
-export function fail<E>(e: LazyArg<E>): STM<unknown, E, never> {
+export function fail<E>(e: LazyArg<E>): STM<never, E, never> {
   return new STMEffect(() => {
     throw new STMFailException(e())
   })

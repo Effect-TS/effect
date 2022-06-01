@@ -22,7 +22,7 @@ export type _Z = typeof _Z
 export interface MergeDecision<R, E0, Z0, E, Z> {
   readonly [MergeDecisionSym]: typeof MergeDecisionSym
 
-  readonly [_R]: (_: R) => void
+  readonly [_R]: () => R
   readonly [_E0]: (_: E0) => void
   readonly [_Z0]: (_: Z0) => void
   readonly [_E]: () => E
@@ -38,7 +38,7 @@ export const MergeDecision: MergeDecisionOps = {}
 export abstract class MergeDecisionBase<R, E0, Z0, E, Z> implements MergeDecision<R, E0, Z0, E, Z> {
   readonly [MergeDecisionSym]: typeof MergeDecisionSym = MergeDecisionSym
 
-  readonly [_R]!: (_: R) => void
+  readonly [_R]!: () => R
   readonly [_E0]!: (_: E0) => void
   readonly [_Z0]!: (_: Z0) => void
   readonly [_E]!: () => E
@@ -51,7 +51,7 @@ export abstract class MergeDecisionBase<R, E0, Z0, E, Z> implements MergeDecisio
 export function unifyMergeDecision<X extends MergeDecision<any, any, any, any, any>>(
   self: X
 ): MergeDecision<
-  [X] extends [{ [k in typeof _R]: (_: infer R) => void }] ? R : never,
+  [X] extends [{ [k in typeof _R]: () => infer R }] ? R : never,
   [X] extends [{ [k in typeof _E0]: (_: infer E0) => void }] ? E0 : never,
   [X] extends [{ [k in typeof _Z0]: (_: infer Z0) => void }] ? Z0 : never,
   [X] extends [{ [k in typeof _E]: () => infer E }] ? E : never,

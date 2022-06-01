@@ -14,7 +14,7 @@ export function contramapInEffect_<
 >(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   f: (a: InElem0) => Effect<Env1, InErr, InElem>
-): Channel<Env1 & Env, InErr, InElem0, InDone, OutErr, OutElem, OutDone> {
+): Channel<Env1 | Env, InErr, InElem0, InDone, OutErr, OutElem, OutDone> {
   return contramapInEffectReader<Env1, InErr, InElem0, InElem, InDone>(f) >> self
 }
 

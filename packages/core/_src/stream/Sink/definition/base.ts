@@ -8,7 +8,7 @@ export type SinkSym = typeof SinkSym
  */
 export interface Sink<R, E, In, L, Z> {
   readonly [SinkSym]: SinkSym
-  readonly [_R]: (_: R) => void
+  readonly [_R]: () => R
   readonly [_E]: () => E
   readonly [_In]: (_: In) => void
   readonly [_L]: () => L

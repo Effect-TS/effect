@@ -8,7 +8,7 @@ import { SynchronizedRefInternal } from "@effect/core/io/Ref/Synchronized/operat
 export function make<A>(
   value: LazyArg<A>,
   __tsplusTrace?: string
-): Effect<unknown, never, SynchronizedRef<A>> {
+): Effect<never, never, SynchronizedRef<A>> {
   return Effect.Do()
     .bind("ref", () => Ref.make<A>(value))
     .bind("semaphore", () => Semaphore.make(1))

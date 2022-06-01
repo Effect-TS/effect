@@ -14,7 +14,7 @@ export function flatMapPar_<R, E, A, R2, E2, B>(
   f: (a: A) => Stream<R2, E2, B>,
   bufferSize = 16,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, B> {
+): Stream<R | R2, E | E2, B> {
   concreteStream(self)
   return new StreamInternal(
     self.channel.concatMap(Channel.writeChunk).mergeMap(

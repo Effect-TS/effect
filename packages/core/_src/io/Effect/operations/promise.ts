@@ -10,7 +10,7 @@ export function tryCatchPromise<E, A>(
   __tsplusTrace?: string
 ): Effect.IO<E, A> {
   return Effect.succeed(promise).flatMap((promise) =>
-    Effect.async<unknown, E, A>((resolve) => {
+    Effect.async<never, E, A>((resolve) => {
       promise
         .then((a) => resolve(Effect.succeedNow(a)))
         .catch((e) => resolve(Effect.failNow(onReject(e))))
@@ -29,7 +29,7 @@ export function tryPromise<A>(
   __tsplusTrace?: string
 ): Effect.IO<unknown, A> {
   return Effect.succeed(promise).flatMap((promise) =>
-    Effect.async<unknown, unknown, A>((resolve) => {
+    Effect.async<never, unknown, A>((resolve) => {
       promise
         .then((a) => resolve(Effect.succeedNow(a)))
         .catch((e) => resolve(Effect.failNow(e)))
@@ -47,7 +47,7 @@ export function promise<A>(
   __tsplusTrace?: string
 ): Effect.UIO<A> {
   return Effect.succeed(promise).flatMap((promise) =>
-    Effect.async<unknown, never, A>((resolve) => {
+    Effect.async<never, never, A>((resolve) => {
       promise
         .then((a) => resolve(Effect.succeedNow(a)))
         .catch((e) => resolve(Effect.dieNow(e)))

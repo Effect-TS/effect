@@ -10,6 +10,6 @@ export function flattenPar<R, E, A, R1, E1>(
   n: number,
   outputBuffer = 16,
   __tsplusTrace?: string
-): Stream<R & R1, E | E1, A> {
+): Stream<R | R1, E | E1, A> {
   return self.flatMapPar(n, identity, outputBuffer)
 }

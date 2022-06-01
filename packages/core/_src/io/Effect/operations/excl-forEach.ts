@@ -530,7 +530,7 @@ export function collectAllSuccessesPar<R, E, A>(
 export function fiberJoinAll<E, A>(
   as: LazyArg<Collection<Fiber<E, A>>>,
   __tsplusTrace?: string
-): Effect<unknown, E, Chunk<A>> {
+): Effect<never, E, Chunk<A>> {
   return fiberWaitAll(as)
     .flatMap((exit) => Effect.done(exit))
     .tap(() => Effect.forEach(as, (fiber) => fiber.inheritRefs()))
@@ -542,7 +542,7 @@ export function fiberJoinAll<E, A>(
 export function fiberWaitAll<E, A>(
   as: LazyArg<Collection<Fiber<E, A>>>,
   __tsplusTrace?: string
-): Effect.RIO<unknown, Exit<E, Chunk<A>>> {
+): Effect.RIO<never, Exit<E, Chunk<A>>> {
   return Effect.forEachPar(as, (fiber) => fiber.await().flatMap((exit) => Effect.done(exit))).exit()
 }
 
@@ -674,7 +674,7 @@ export class UnsafeCreate<A> implements Queue<A> {
     ).asUnit()
   }).uninterruptible()
 
-  offer(a: A, __tsplusTrace?: string): Effect<unknown, never, boolean> {
+  offer(a: A, __tsplusTrace?: string): Effect<never, never, boolean> {
     return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
         return Effect.interrupt
@@ -714,7 +714,7 @@ export class UnsafeCreate<A> implements Queue<A> {
     })
   }
 
-  offerAll(as: Collection<A>, __tsplusTrace?: string): Effect<unknown, never, boolean> {
+  offerAll(as: Collection<A>, __tsplusTrace?: string): Effect<never, never, boolean> {
     return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
         return Effect.interrupt
@@ -753,7 +753,7 @@ export class UnsafeCreate<A> implements Queue<A> {
     })
   }
 
-  take: Effect<unknown, never, A> = Effect.suspendSucceedWith((_, fiberId) => {
+  take: Effect<never, never, A> = Effect.suspendSucceedWith((_, fiberId) => {
     if (this.shutdownFlag.get) {
       return Effect.interrupt
     }
@@ -780,7 +780,7 @@ export class UnsafeCreate<A> implements Queue<A> {
     }
   })
 
-  takeAll: Effect<unknown, never, Chunk<A>> = Effect.suspendSucceed(() =>
+  takeAll: Effect<never, never, Chunk<A>> = Effect.suspendSucceed(() =>
     this.shutdownFlag.get
       ? Effect.interrupt
       : Effect.succeed(() => {
@@ -790,7 +790,7 @@ export class UnsafeCreate<A> implements Queue<A> {
       })
   )
 
-  takeUpTo(n: number, __tsplusTrace?: string): Effect<unknown, never, Chunk<A>> {
+  takeUpTo(n: number, __tsplusTrace?: string): Effect<never, never, Chunk<A>> {
     return Effect.suspendSucceed(() =>
       this.shutdownFlag.get
         ? Effect.interrupt

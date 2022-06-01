@@ -4,8 +4,8 @@
  * @tsplus static ets/Channel/Ops scoped
  */
 export function scoped<R, E, A>(
-  effect: LazyArg<Effect<R & Has<Scope>, E, A>>
-): Channel<R, unknown, unknown, unknown, E, A, unknown> {
+  effect: LazyArg<Effect<R, E, A>>
+): Channel<Exclude<R, Scope>, unknown, unknown, unknown, E, A, unknown> {
   return Channel.acquireUseReleaseOutExit(
     Scope.make.flatMap((scope) =>
       Effect.uninterruptibleMask(({ restore }) =>

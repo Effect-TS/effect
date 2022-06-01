@@ -12,7 +12,7 @@ export function dropWhile_<R, E, A>(
   __tsplusTrace?: string
 ): Stream<R, E, A> {
   concreteStream(self)
-  return new StreamInternal(self.channel >> dropWhileInternal<R, E, A>(f))
+  return new StreamInternal(self.channel >> dropWhileInternal<E, A>(f))
 }
 
 /**
@@ -23,15 +23,15 @@ export function dropWhile_<R, E, A>(
  */
 export const dropWhile = Pipeable(dropWhile_)
 
-function dropWhileInternal<R, E, A>(
+function dropWhileInternal<E, A>(
   f: Predicate<A>,
   __tsplusTrace?: string
-): Channel<R, E, Chunk<A>, unknown, E, Chunk<A>, unknown> {
+): Channel<never, E, Chunk<A>, unknown, E, Chunk<A>, unknown> {
   return Channel.readWith(
     (chunk: Chunk<A>) => {
       const out = chunk.dropWhile(f)
       return out.isEmpty()
-        ? dropWhileInternal<R, E, A>(f)
+        ? dropWhileInternal<E, A>(f)
         : Channel.write(out) > Channel.identity<E, Chunk<A>, unknown>()
     },
     (err) => Channel.fail(err),

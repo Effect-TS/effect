@@ -13,7 +13,7 @@ export function zipWith_<R, E, A, R2, E2, A2, A3>(
   that: LazyArg<Stream<R2, E2, A2>>,
   f: (a: A, a2: A2) => A3,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A3> {
+): Stream<R | R2, E | E2, A3> {
   return self.zipWithChunks(that, (leftChunk, rightChunk) => zipChunks(leftChunk, rightChunk, f))
 }
 

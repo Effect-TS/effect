@@ -44,7 +44,7 @@ export type _State = typeof _State
  */
 export interface Schedule<State, Env, In, Out> {
   readonly [ScheduleSym]: ScheduleSym
-  readonly [_Env]: (_: Env) => void
+  readonly [_Env]: () => Env
   readonly [_In]: (_: In) => void
   readonly [_Out]: () => Out
 

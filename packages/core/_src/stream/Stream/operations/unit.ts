@@ -3,4 +3,4 @@
  *
  * @tsplus static ets/Stream/Ops unit
  */
-export const unit: Stream<unknown, never, void> = Stream.succeed(() => undefined)
+export const unit: Stream<never, never, void> = Stream.succeed(() => undefined)

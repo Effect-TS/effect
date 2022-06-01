@@ -41,7 +41,7 @@ export function concatMapWithCustom_<
   ) => UpstreamPullStrategy<OutElem2>,
   onEmit: (elem: OutElem2) => ChildExecutorDecision
 ): Channel<
-  Env & Env2,
+  Env | Env2,
   InErr & InErr2,
   InElem & InElem2,
   InDone & InDone2,
@@ -50,7 +50,7 @@ export function concatMapWithCustom_<
   OutDone3
 > {
   return new ConcatAll<
-    Env & Env2,
+    Env | Env2,
     InErr & InErr2,
     InElem & InElem2,
     InDone & InDone2,

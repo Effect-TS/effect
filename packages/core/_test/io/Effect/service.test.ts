@@ -16,10 +16,7 @@ describe.concurrent("Effect", () => {
   describe.concurrent("updateService", () => {
     it("updates a service in the environment", async () => {
       const program = Effect.Do()
-        .bind("a", () =>
-          Effect.service(NumberService).updateService(NumberService)(({ n }) => ({
-            n: n + 1
-          })))
+        .bind("a", () => Effect.service(NumberService).updateService(NumberService, ({ n }) => ({ n: n + 1 })))
         .bind("b", () => Effect.service(NumberService))
         .provideEnvironment(Env(NumberService, { n: 0 }))
 

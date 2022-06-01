@@ -1,7 +1,7 @@
 import { _In, _Out, QueueSym } from "@effect/core/io/Queue"
 import { constVoid } from "@tsplus/stdlib/data/Function"
 
-export function findSink<A>(a: A): Sink<unknown, void, A, A, A> {
+export function findSink<A>(a: A): Sink<never, void, A, A, A> {
   return Sink.fold<A, Option<A>>(
     Option.none,
     (option) => option.isNone(),
@@ -10,9 +10,9 @@ export function findSink<A>(a: A): Sink<unknown, void, A, A, A> {
 }
 
 export function sinkRaceLaw<E, A, L>(
-  s: Stream<unknown, never, A>,
-  sink1: Sink<unknown, E, A, L, A>,
-  sink2: Sink<unknown, E, A, L, A>
+  s: Stream<never, never, A>,
+  sink1: Sink<never, E, A, L, A>,
+  sink2: Sink<never, E, A, L, A>
 ): Effect.UIO<boolean> {
   return Effect.struct({
     r1: s.run(sink1).either(),
@@ -31,9 +31,9 @@ export function sinkRaceLaw<E, A, L>(
 }
 
 export function zipParLaw<A, B, C, E>(
-  s: Stream<unknown, never, A>,
-  sink1: Sink<unknown, E, A, A, B>,
-  sink2: Sink<unknown, E, A, A, C>
+  s: Stream<never, never, A>,
+  sink1: Sink<never, E, A, A, B>,
+  sink2: Sink<never, E, A, A, C>
 ): Effect.UIO<boolean> {
   return Effect.struct({
     zb: s.run(sink1).either(),
@@ -66,11 +66,11 @@ class QueueSpyImplementation<A> implements Queue<A> {
 
   isShutdown: Effect.UIO<boolean> = Effect.succeed(this.#isShutdown)
 
-  offer(a: A): Effect<unknown, never, boolean> {
+  offer(a: A): Effect<never, never, boolean> {
     return this.queue.offer(a)
   }
 
-  offerAll(as: Collection<A>): Effect<unknown, never, boolean> {
+  offerAll(as: Collection<A>): Effect<never, never, boolean> {
     return this.queue.offerAll(as)
   }
 
@@ -80,11 +80,11 @@ class QueueSpyImplementation<A> implements Queue<A> {
 
   size: Effect.UIO<number> = this.queue.size
 
-  take: Effect<unknown, never, A> = this.queue.take
+  take: Effect<never, never, A> = this.queue.take
 
-  takeAll: Effect<unknown, never, Chunk<A>> = this.queue.takeAll
+  takeAll: Effect<never, never, Chunk<A>> = this.queue.takeAll
 
-  takeUpTo(n: number): Effect<unknown, never, Chunk<A>> {
+  takeUpTo(n: number): Effect<never, never, Chunk<A>> {
     return this.queue.takeUpTo(n)
   }
 }

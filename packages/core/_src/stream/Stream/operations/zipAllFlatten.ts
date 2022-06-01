@@ -15,7 +15,7 @@ export function zipAllFlatten_<R, E, A, R2, E2, A2>(
   defaultLeft: LazyArg<A>,
   defaultRight: LazyArg<A2>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, MergeTuple<A, A2>> {
+): Stream<R | R2, E | E2, MergeTuple<A, A2>> {
   return self.zipAllWith(
     that,
     (a) => Tuple.mergeTuple(a, defaultRight()),

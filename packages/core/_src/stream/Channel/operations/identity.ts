@@ -2,7 +2,7 @@
  * @tsplus static ets/Channel/Ops identity
  */
 export function identity<Err, Elem, Done>(): Channel<
-  unknown,
+  never,
   Err,
   Elem,
   Done,

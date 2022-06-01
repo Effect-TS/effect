@@ -40,7 +40,7 @@ export function mergeWith_<
     ex: Exit<OutErr1, OutDone1>
   ) => MergeDecision<Env1, OutErr, OutDone, OutErr3, OutDone3>
 ): Channel<
-  Env1 & Env,
+  Env1 | Env,
   InErr & InErr1,
   InElem & InElem1,
   InDone & InDone1,
@@ -60,7 +60,7 @@ export function mergeWith_<
     .bind("pullR", ({ queueReader }) => (queueReader >> that()).toPull())
     .map(({ input, pullL, pullR }) => {
       type State = MergeState<
-        Env & Env1,
+        Env | Env1,
         OutErr,
         OutErr1,
         OutErr2 | OutErr3,
@@ -73,13 +73,13 @@ export function mergeWith_<
       const handleSide = <Err, Done, Err2, Done2>(
         exit: Exit<Err, Either<Done, OutElem | OutElem1>>,
         fiber: Fiber<Err2, Either<Done2, OutElem | OutElem1>>,
-        pull: Effect<Env & Env1, Err, Either<Done, OutElem | OutElem1>>
+        pull: Effect<Env | Env1, Err, Either<Done, OutElem | OutElem1>>
       ) =>
         (
           done: (
             ex: Exit<Err, Done>
           ) => MergeDecision<
-            Env & Env1,
+            Env | Env1,
             Err2,
             Done2,
             OutErr2 | OutErr3,
@@ -92,13 +92,13 @@ export function mergeWith_<
           single: (
             f: (
               ex: Exit<Err2, Done2>
-            ) => Effect<Env & Env1, OutErr2 | OutErr3, OutDone2 | OutDone3>
+            ) => Effect<Env | Env1, OutErr2 | OutErr3, OutDone2 | OutDone3>
           ) => State
         ): Effect<
-          Env & Env1,
+          Env | Env1,
           never,
           Channel<
-            Env & Env1,
+            Env | Env1,
             unknown,
             unknown,
             unknown,
@@ -109,17 +109,17 @@ export function mergeWith_<
         > => {
           const onDecision = (
             decision: MergeDecision<
-              Env & Env1,
+              Env | Env1,
               Err2,
               Done2,
               OutErr2 | OutErr3,
               OutDone2 | OutDone3
             >
           ): Effect<
-            unknown,
+            never,
             never,
             Channel<
-              Env & Env1,
+              Env | Env1,
               unknown,
               unknown,
               unknown,
@@ -161,7 +161,7 @@ export function mergeWith_<
       const go = (
         state: State
       ): Channel<
-        Env & Env1,
+        Env | Env1,
         unknown,
         unknown,
         unknown,
@@ -238,7 +238,7 @@ export function mergeWith_<
             pullR.forkDaemon(),
             (left, right): State =>
               MergeState.BothRunning<
-                Env & Env1,
+                Env | Env1,
                 OutErr,
                 OutErr1,
                 OutErr2 | OutErr3,

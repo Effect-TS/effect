@@ -15,7 +15,7 @@ export function catchTag_<
   self: Stream<R, E, A>,
   k: K,
   f: (e: Extract<E, { _tag: K }>) => Stream<R1, E1, A1>
-): Stream<R & R1, Exclude<E, { _tag: K }> | E1, A | A1> {
+): Stream<R | R1, Exclude<E, { _tag: K }> | E1, A | A1> {
   return self.catchAll((e) => {
     if ("_tag" in e && e["_tag"] === k) {
       return f(e as any)

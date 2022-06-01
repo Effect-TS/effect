@@ -37,11 +37,15 @@ describe.concurrent("Layer", () => {
 
       const program = Effect.Do()
         .bind("testRef", () => Ref.make(Chunk.empty<string>()))
-        .bindValue("layer", ({ testRef }) =>
-          Layer.scoped(ChunkTag)(
-            Effect.acquireRelease(Ref.make(Chunk.empty<string>()), (ref) => ref.get().flatMap((_) => testRef.set(_)))
-              .tap(() => Effect.unit)
-          ))
+        .bindValue(
+          "layer",
+          ({ testRef }) =>
+            Layer.scoped(
+              ChunkTag,
+              Effect.acquireRelease(Ref.make(Chunk.empty<string>()), (ref) => ref.get().flatMap((_) => testRef.set(_)))
+                .tap(() => Effect.unit)
+            )
+        )
         .tap(({ layer }) =>
           Effect.scoped(
             layer

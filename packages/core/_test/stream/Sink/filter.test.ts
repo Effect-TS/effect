@@ -26,7 +26,7 @@ describe.concurrent("Sink", () => {
       const program = Stream.range(1, 10)
         .run(
           Sink.collectAll<number>().filterInputEffect(
-            () => Effect.fail("fail") as Effect<unknown, string, boolean>
+            () => Effect.fail("fail") as Effect<never, string, boolean>
           )
         )
         .flip()

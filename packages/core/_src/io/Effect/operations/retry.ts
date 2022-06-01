@@ -10,7 +10,7 @@ export function retry_<R, E, A, S, R1, B>(
   self: Effect<R, E, A>,
   policy: LazyArg<Schedule<S, R1, E, B>>,
   __tsplusTrace?: string
-): Effect<R & R1, E, A> {
+): Effect<R | R1, E, A> {
   return self.retryOrElse(policy, (e, _) => Effect.fail(e))
 }
 
@@ -25,6 +25,6 @@ export function retry_<R, E, A, S, R1, B>(
 export function retry<S, R1, E, B>(
   policy: LazyArg<Schedule<S, R1, E, B>>,
   __tsplusTrace?: string
-): <R, A>(self: Effect<R, E, A>) => Effect<R & R1, E, A> {
-  return <R, A>(self: Effect<R, E, A>): Effect<R & R1, E, A> => self.retry(policy)
+): <R, A>(self: Effect<R, E, A>) => Effect<R | R1, E, A> {
+  return <R, A>(self: Effect<R, E, A>): Effect<R | R1, E, A> => self.retry(policy)
 }

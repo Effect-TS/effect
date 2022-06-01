@@ -28,7 +28,7 @@ export interface Hub<A> extends Enqueue<A> {
    * be evaluated multiple times within the scope to take a message from the hub
    * each time.
    */
-  readonly subscribe: Effect<Has<Scope>, never, Dequeue<A>>
+  readonly subscribe: Effect<Scope, never, Dequeue<A>>
 }
 
 /**

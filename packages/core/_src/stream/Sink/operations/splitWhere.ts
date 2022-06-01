@@ -40,7 +40,7 @@ function splitter<E, A>(
   written: boolean,
   leftovers: Ref<Chunk<A>>,
   f: Predicate<A>
-): Channel<unknown, never, Chunk<A>, unknown, E, Chunk<A>, unknown> {
+): Channel<never, never, Chunk<A>, unknown, E, Chunk<A>, unknown> {
   return Channel.readWithCause(
     (input: Chunk<A>) => {
       if (input.isEmpty()) {

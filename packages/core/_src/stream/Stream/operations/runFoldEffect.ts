@@ -9,7 +9,7 @@ export function runFoldEffect_<R, E, A, R2, E2, S>(
   s: LazyArg<S>,
   f: (s: S, a: A) => Effect<R2, E2, S>,
   __tsplusTrace?: string
-): Effect<R & R2, E | E2, S> {
+): Effect<R | R2, E | E2, S> {
   return Effect.scoped(self.runFoldWhileScopedEffect(s, () => true, f))
 }
 

@@ -5,7 +5,7 @@ import { concreteTSemaphore } from "@effect/core/stm/TSemaphore/operations/_inte
  *
  * @tsplus fluent ets/TSemaphore releaseN
  */
-export function releaseN_(self: TSemaphore, n: number): STM<unknown, never, void> {
+export function releaseN_(self: TSemaphore, n: number): STM<never, never, void> {
   concreteTSemaphore(self)
   return STM.Effect((journal) => {
     if (n < 0) {

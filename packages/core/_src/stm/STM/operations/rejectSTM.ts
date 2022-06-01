@@ -8,7 +8,7 @@
 export function rejectSTM_<R, E, A, R1, E1>(
   self: STM<R, E, A>,
   pf: (a: A) => Option<STM<R1, E1, E1>>
-): STM<R & R1, E | E1, A> {
+): STM<R | R1, E | E1, A> {
   return self.flatMap((a) =>
     pf(a).fold(
       () => STM.succeedNow(a),

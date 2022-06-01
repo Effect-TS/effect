@@ -25,7 +25,7 @@ export function foldWeightedDecompose<S, In>(
   decompose: (input: In) => Chunk<In>,
   f: (s: S, input: In) => S,
   __tsplusTrace?: string
-): Sink<unknown, never, In, In, S> {
+): Sink<never, never, In, In, S> {
   return Sink.suspend(new SinkInternal(go(z(), costFn, decompose, f, false, 0, max)))
 }
 
@@ -38,7 +38,7 @@ function go<S, In>(
   cost: number,
   max: number,
   __tsplusTrace?: string
-): Channel<unknown, never, Chunk<In>, unknown, never, Chunk<In>, S> {
+): Channel<never, never, Chunk<In>, unknown, never, Chunk<In>, S> {
   return Channel.readWith(
     (chunk: Chunk<In>) => {
       const {

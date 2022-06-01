@@ -9,7 +9,7 @@ export function paginate<S, A>(
   s: LazyArg<S>,
   f: (s: S) => Tuple<[A, Option<S>]>,
   __tsplusTrace?: string
-): Stream<unknown, never, A> {
+): Stream<never, never, A> {
   return Stream.paginateChunk(s, (s) => {
     const {
       tuple: [a, maybeS]

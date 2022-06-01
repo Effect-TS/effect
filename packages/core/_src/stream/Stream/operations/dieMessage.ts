@@ -6,6 +6,6 @@
 export function dieMessage(
   message: LazyArg<string>,
   __tsplusTrace?: string
-): Stream<unknown, never, never> {
+): Stream<never, never, never> {
   return Stream.fromEffect(Effect.dieMessage(message))
 }

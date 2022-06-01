@@ -17,7 +17,7 @@ export function provideEnvironment_<
 >(
   self: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   env: LazyArg<Env<R>>
-): Channel<unknown, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+): Channel<never, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
   return new Provide(env, self)
 }
 

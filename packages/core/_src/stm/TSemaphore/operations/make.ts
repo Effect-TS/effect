@@ -5,6 +5,6 @@ import { TSemaphoreInternal } from "@effect/core/stm/TSemaphore/operations/_inte
  *
  * @tsplus static ets/TSemaphore/Ops make
  */
-export function make(permits: number): STM<unknown, never, TSemaphore> {
+export function make(permits: number): STM<never, never, TSemaphore> {
   return TRef.make(permits).map((v) => new TSemaphoreInternal(v))
 }
