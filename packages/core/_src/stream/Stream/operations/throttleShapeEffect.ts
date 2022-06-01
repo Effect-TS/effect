@@ -16,7 +16,7 @@ export function throttleShapeEffect_<R, E, A, R2, E2>(
   costFn: (input: Chunk<A>) => Effect<R2, E2, number>,
   burst = 0,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A> {
+): Stream<R | R2, E | E2, A> {
   concreteStream(self)
   return new StreamInternal(
     Channel.succeed(duration)

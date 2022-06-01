@@ -30,7 +30,7 @@ export type Instruction =
   | IFiberRefWith<any, any, any, any, any>
   | ISetRuntimeConfig
 
-export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R & R1, E | E1, A1> {
+export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R | R1, E | E1, A1> {
   readonly _tag = "FlatMap"
 
   constructor(
@@ -50,7 +50,7 @@ export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R & R1, E | E1, A1> {
   }
 }
 
-export class ISucceedNow<A> extends Base<unknown, never, A> {
+export class ISucceedNow<A> extends Base<never, never, A> {
   readonly _tag = "SucceedNow"
 
   constructor(readonly value: A, readonly trace?: string) {
@@ -62,7 +62,7 @@ export class ISucceedNow<A> extends Base<unknown, never, A> {
   }
 }
 
-export class ISucceed<A> extends Base<unknown, never, A> {
+export class ISucceed<A> extends Base<never, never, A> {
   readonly _tag = "Succeed"
 
   constructor(readonly effect: Lazy<A>, readonly trace?: string) {
@@ -74,7 +74,7 @@ export class ISucceed<A> extends Base<unknown, never, A> {
   }
 }
 
-export class ISucceedWith<A> extends Base<unknown, never, A> {
+export class ISucceedWith<A> extends Base<never, never, A> {
   readonly _tag = "SucceedWith"
 
   constructor(
@@ -135,7 +135,7 @@ export class IAsync<R, E, A> extends Base<R, E, A> {
 }
 
 export class IFold<R, E, A, R2, E2, A2, R3, E3, A3> extends Base<
-  R & R2 & R3,
+  R | R2 | R3,
   E2 | E3,
   A2 | A3
 > {
@@ -206,7 +206,7 @@ export class ICheckInterrupt<R, E, A> extends Base<R, E, A> {
   }
 }
 
-export class IFail<E> extends Base<unknown, E, never> {
+export class IFail<E> extends Base<never, E, never> {
   readonly _tag = "Fail"
 
   constructor(readonly cause: Lazy<Cause<E>>, readonly trace?: string) {
@@ -233,7 +233,7 @@ export class IDescriptor<R, E, A> extends Base<R, E, A> {
   }
 }
 
-export class IYield extends Base<unknown, never, void> {
+export class IYield extends Base<never, never, void> {
   readonly _tag = "Yield"
 
   constructor(readonly trace?: string) {
@@ -245,7 +245,7 @@ export class IYield extends Base<unknown, never, void> {
   }
 }
 
-export class IFiberRefModifyAll<A> extends Base<unknown, never, A> {
+export class IFiberRefModifyAll<A> extends Base<never, never, A> {
   readonly _tag = "FiberRefModifyAll"
 
   constructor(
@@ -260,7 +260,7 @@ export class IFiberRefModifyAll<A> extends Base<unknown, never, A> {
   }
 }
 
-export class IFiberRefModify<A, B, P> extends Base<unknown, never, B> {
+export class IFiberRefModify<A, B, P> extends Base<never, never, B> {
   readonly _tag = "FiberRefModify"
 
   constructor(
@@ -293,7 +293,7 @@ export class IFiberRefLocally<V, R, E, A, P> extends Base<R, E, A> {
   }
 }
 
-export class IFiberRefDelete extends Base<unknown, never, void> {
+export class IFiberRefDelete extends Base<never, never, void> {
   readonly _tag = "FiberRefDelete"
 
   constructor(readonly fiberRef: FiberRef<unknown, unknown>, readonly trace?: string) {
@@ -321,7 +321,7 @@ export class IFiberRefWith<R, E, A, B, P> extends Base<R, E, B> {
   }
 }
 
-export class ITrace extends Base<unknown, never, Trace> {
+export class ITrace extends Base<never, never, Trace> {
   readonly _tag = "Trace"
 
   constructor(readonly trace?: string) {
@@ -334,7 +334,7 @@ export class ITrace extends Base<unknown, never, Trace> {
 }
 
 export class IRaceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3> extends Base<
-  R & R1 & R2 & R3,
+  R | R1 | R2 | R3,
   E2 | E3,
   A2 | A3
 > {
@@ -415,7 +415,7 @@ export class IEnsuring<R, R1, E, A> extends Base<R, E, A> {
   }
 }
 
-export class ILogged<A> extends Base<unknown, never, void> {
+export class ILogged<A> extends Base<never, never, void> {
   readonly _tag = "Logged"
 
   constructor(
@@ -434,7 +434,7 @@ export class ILogged<A> extends Base<unknown, never, void> {
   }
 }
 
-export class ISetRuntimeConfig extends Base<unknown, never, void> {
+export class ISetRuntimeConfig extends Base<never, never, void> {
   readonly _tag = "SetRuntimeConfig"
 
   constructor(readonly runtimeConfig: RuntimeConfig, readonly trace?: string) {

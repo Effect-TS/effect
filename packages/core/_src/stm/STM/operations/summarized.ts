@@ -9,7 +9,7 @@ export function summarized_<R, E, A, R2, E2, B, C>(
   self: STM<R, E, A>,
   summary: STM<R2, E2, B>,
   f: (start: B, end: B) => C
-): STM<R & R2, E | E2, Tuple<[C, A]>> {
+): STM<R | R2, E | E2, Tuple<[C, A]>> {
   return STM.Do()
     .bind("start", () => summary)
     .bind("value", () => self)

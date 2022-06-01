@@ -3,6 +3,6 @@
  *
  * @tsplus static ets/Stream/Ops fromChunks
  */
-export function fromChunks<A>(...chunks: Array<Chunk<A>>): Stream<unknown, never, A> {
+export function fromChunks<A>(...chunks: Array<Chunk<A>>): Stream<never, never, A> {
   return Stream.fromCollection(chunks).flatMap((chunk) => Stream.fromChunk(chunk))
 }

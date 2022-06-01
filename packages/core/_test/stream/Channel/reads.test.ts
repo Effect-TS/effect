@@ -33,7 +33,7 @@ describe.concurrent("Channel", () => {
       const effect = Channel.fromEffect(Ref.make<List<number>>(List.empty())).flatMap(
         (ref) => {
           function inner(): Channel<
-            unknown,
+            never,
             unknown,
             number,
             unknown,
@@ -72,7 +72,7 @@ describe.concurrent("Channel", () => {
       const program = Ref.make(Chunk.empty<number>())
         .tap((ref) => {
           const intProducer: Channel<
-            unknown,
+            never,
             unknown,
             unknown,
             unknown,
@@ -83,7 +83,7 @@ describe.concurrent("Channel", () => {
 
           function readIntsN(
             n: number
-          ): Channel<unknown, unknown, number, unknown, never, number, string> {
+          ): Channel<never, unknown, number, unknown, never, number, string> {
             return n > 0
               ? Channel.readWith(
                 (i: number) => Channel.write(i) > readIntsN(n - 1),
@@ -96,7 +96,7 @@ describe.concurrent("Channel", () => {
           function sum(
             label: string,
             acc: number
-          ): Channel<unknown, unknown, number, unknown, unknown, never, void> {
+          ): Channel<never, unknown, number, unknown, unknown, never, void> {
             return Channel.readWith(
               (i: number) => sum(label, acc + i),
               () => Channel.fromEffect(ref.update((chunk) => chunk.append(acc))),

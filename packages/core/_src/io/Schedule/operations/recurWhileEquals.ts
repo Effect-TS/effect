@@ -5,5 +5,5 @@
  * @tsplus static ets/Schedule/Ops recurWhileEquals
  */
 export function recurWhileEquals<A>(E: Equivalence<A>) {
-  return (a: A): Schedule<void, unknown, A, A> => Schedule.identity<A>().whileInput((_) => E.equals(_, a))
+  return (a: A): Schedule<void, never, A, A> => Schedule.identity<A>().whileInput((_) => E.equals(_, a))
 }

@@ -11,7 +11,7 @@ export function fold<In, S>(
   cont: Predicate<S>,
   f: (s: S, input: In) => S,
   __tsplusTrace?: string
-): Sink<unknown, never, In, In, S> {
+): Sink<never, never, In, In, S> {
   return Sink.suspend(new SinkInternal(reader(z(), cont, f)))
 }
 
@@ -20,7 +20,7 @@ function reader<S, In>(
   cont: Predicate<S>,
   f: (s: S, input: In) => S,
   __tsplusTrace?: string
-): Channel<unknown, never, Chunk<In>, unknown, never, Chunk<In>, S> {
+): Channel<never, never, Chunk<In>, unknown, never, Chunk<In>, S> {
   return !cont(z)
     ? Channel.succeedNow(z)
     : Channel.readWith(

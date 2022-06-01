@@ -3,4 +3,4 @@
  *
  * @tsplus static ets/Schedule/Ops forever
  */
-export const repeatForever: Schedule<number, unknown, unknown, number> = Schedule.unfold(0, (n) => n + 1)
+export const repeatForever: Schedule<number, never, unknown, number> = Schedule.unfold(0, (n) => n + 1)

@@ -8,7 +8,7 @@ import { ILayerScoped } from "@effect/core/io/Layer/definition"
  */
 export function memoize<RIn, E, ROut>(
   self: Layer<RIn, E, ROut>
-): Effect<Has<Scope>, never, Layer<RIn, E, ROut>> {
+): Effect<Scope, never, Layer<RIn, E, ROut>> {
   return Effect.scopeWith((scope) => self.buildWithScope(scope))
     .memoize()
     .map((effect) => new ILayerScoped(effect))

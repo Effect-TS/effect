@@ -3,7 +3,7 @@ import * as os from "os"
 describe.concurrent("Effect", () => {
   describe.concurrent("RTS asynchronous correctness", () => {
     it("simple async must return", async () => {
-      const program = Effect.async((cb) => {
+      const program = Effect.async<never, unknown, number>((cb) => {
         cb(Effect.succeed(42))
       })
 
@@ -13,7 +13,9 @@ describe.concurrent("Effect", () => {
     })
 
     it("simple asyncEffect must return", async () => {
-      const program = Effect.asyncEffect((cb) => Effect.succeed(cb(Effect.succeed(42))))
+      const program = Effect.asyncEffect<never, unknown, unknown, never, never, void>((cb) =>
+        Effect.succeed(cb(Effect.succeed(42)))
+      )
 
       const result = await program.unsafeRunPromise()
 
@@ -45,7 +47,7 @@ describe.concurrent("Effect", () => {
         .bind("release", () => Deferred.make<never, void>())
         .bind("acquire", () => Deferred.make<never, void>())
         .bind("fiber", ({ acquire, release }) =>
-          Effect.asyncEffect(() =>
+          Effect.asyncEffect<never, unknown, unknown, never, never, never>(() =>
             // This will never complete because we never call the callback
             Effect.acquireUseReleaseDiscard(
               acquire.succeed(undefined),
@@ -68,18 +70,18 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("step", () => Deferred.make<never, void>())
         .bind("unexpectedPlace", () => Ref.make<List<number>>(List.empty()))
-        .bind("runtime", () => Effect.runtime())
+        .bind("runtime", () => Effect.runtime<never>())
         .bind(
           "fork",
           ({ runtime, step, unexpectedPlace }) =>
-            Effect.async<unknown, never, void>((cb) =>
+            Effect.async<never, never, void>((cb) =>
               runtime.unsafeRunAsync(
                 step.await() >
                   Effect.succeed(cb(unexpectedPlace.update((list) => list.prepend(1))))
               )
             )
               .ensuring(
-                Effect.async<unknown, never, void>(() => {
+                Effect.async<never, never, void>(() => {
                   // The callback is never called so this never completes
                   runtime.unsafeRunAsync(step.succeed(undefined))
                 })
@@ -100,9 +102,9 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("step", () => Deferred.make<never, void>())
         .bind("unexpectedPlace", () => Ref.make<List<number>>(List.empty()))
-        .bind("runtime", () => Effect.runtime())
+        .bind("runtime", () => Effect.runtime<never>())
         .bind("fork", ({ runtime, step, unexpectedPlace }) =>
-          Effect.asyncMaybe<unknown, never, void>((cb) => {
+          Effect.asyncMaybe<never, never, void>((cb) => {
             runtime.unsafeRunAsync(
               step.await() >
                 Effect.succeed(cb(unexpectedPlace.update((list) => list.prepend(1))))
@@ -110,7 +112,7 @@ describe.concurrent("Effect", () => {
             return Option.some(Effect.unit)
           })
             .flatMap(() =>
-              Effect.async<unknown, never, void>(() => {
+              Effect.async<never, never, void>(() => {
                 // The callback is never called so this never completes
                 runtime.unsafeRunAsync(step.succeed(undefined))
               })
@@ -152,7 +154,15 @@ describe.concurrent("Effect", () => {
     })
 
     it("asyncEffect can fail before registering", async () => {
-      const program = Effect.asyncEffect((cb) => Effect.fail("ouch")).flip()
+      const program = Effect.asyncEffect<
+        never,
+        unknown,
+        unknown,
+        never,
+        string,
+        never
+      >((cb) => Effect.fail("ouch"))
+        .flip()
 
       const result = await program.unsafeRunPromise()
 
@@ -160,7 +170,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("asyncEffect can defect before registering", async () => {
-      const program = Effect.asyncEffect((cb) =>
+      const program = Effect.asyncEffect<never, unknown, unknown, never, string, never>((cb) =>
         Effect.succeed(() => {
           throw new Error("ouch")
         })

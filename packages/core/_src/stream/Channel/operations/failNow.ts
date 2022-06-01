@@ -7,6 +7,6 @@ import { Fail } from "@effect/core/stream/Channel/definition/primitives"
  */
 export function failNow<E>(
   e: E
-): Channel<unknown, unknown, unknown, unknown, E, never, never> {
+): Channel<never, unknown, unknown, unknown, E, never, never> {
   return new Fail(() => Cause.fail(e))
 }

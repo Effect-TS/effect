@@ -9,11 +9,11 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  *
  * @tsplus fluent ets/Stream interruptWhenDeferred
  */
-export function interruptWhenDeferred_<R, E, A, R2, E2, Z>(
+export function interruptWhenDeferred_<R, E, A, E2, Z>(
   self: Stream<R, E, A>,
   promise: LazyArg<Deferred<E2, Z>>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A> {
+): Stream<R, E | E2, A> {
   concreteStream(self)
   return new StreamInternal(self.channel.interruptWhenDeferred(promise))
 }

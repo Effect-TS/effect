@@ -13,6 +13,6 @@ export function fromQueueWithShutdown<A>(
   queue: LazyArg<Dequeue<A>>,
   maxChunkSize = DEFAULT_CHUNK_SIZE,
   __tsplusTrace?: string
-): Stream<unknown, never, A> {
+): Stream<never, never, A> {
   return Stream.succeed(queue).flatMap((queue) => Stream.fromQueue(queue, maxChunkSize).ensuring(queue.shutdown))
 }

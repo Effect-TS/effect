@@ -8,7 +8,7 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
 export function findLast_<A>(
   self: TArray<A>,
   f: Predicate<A>
-): STM<unknown, never, Option<A>> {
+): STM<never, never, Option<A>> {
   return STM.Effect((journal) => {
     concreteTArray(self)
     let i = self.chunk.length - 1

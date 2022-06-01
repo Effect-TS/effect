@@ -9,7 +9,7 @@
 export function zipRight_<State, Env, In, Out, State1, Env1, In1, Out2>(
   self: Schedule<State, Env, In, Out>,
   that: Schedule<State1, Env1, In1, Out2>
-): Schedule<Tuple<[State, State1]>, Env & Env1, In & In1, Out2> {
+): Schedule<Tuple<[State, State1]>, Env | Env1, In & In1, Out2> {
   return (self && that).map((out) => out.get(1) as Out2)
 }
 

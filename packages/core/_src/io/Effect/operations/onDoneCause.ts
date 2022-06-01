@@ -6,7 +6,7 @@ export function onDoneCause_<R, E, A, R1, X1, R2, X2>(
   error: (e: Cause<E>) => Effect.RIO<R1, X1>,
   success: (a: A) => Effect.RIO<R2, X2>,
   __tsplusTrace?: string
-): Effect.RIO<R & R1 & R2, void> {
+): Effect.RIO<R | R1 | R2, void> {
   return Effect.uninterruptibleMask(({ restore }) =>
     restore(self)
       .foldCauseEffect(

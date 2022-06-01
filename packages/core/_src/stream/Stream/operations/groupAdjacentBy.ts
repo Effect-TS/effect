@@ -25,7 +25,7 @@ function chunkAdjacent<E, A, K>(
   buffer: Option<Tuple<[K, Chunk<A>]>>,
   f: (a: A) => K,
   __tsplusTrace?: string
-): Channel<unknown, E, Chunk<A>, unknown, E, Chunk<Tuple<[K, Chunk<A>]>>, unknown> {
+): Channel<never, E, Chunk<A>, unknown, E, Chunk<Tuple<[K, Chunk<A>]>>, unknown> {
   return Channel.readWithCause(
     (chunk: Chunk<A>) => {
       const {

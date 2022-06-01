@@ -10,7 +10,7 @@ export function broadcast_<R, E, A>(
   n: number,
   maximumLag: number,
   __tsplusTrace?: string
-): Effect<R & Has<Scope>, never, Chunk<Stream<unknown, E, A>>> {
+): Effect<R | Scope, never, Chunk<Stream<never, E, A>>> {
   return self
     .broadcastedQueues(n, maximumLag)
     .map((chunk) => chunk.map((queue) => Stream.fromQueueWithShutdown(queue).flattenTake()))

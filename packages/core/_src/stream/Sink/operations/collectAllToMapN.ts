@@ -10,7 +10,7 @@ export function collectAllToMapN<In, K>(
   key: (in_: In) => K,
   f: (in1: In, in2: In) => In,
   __tsplusTrace?: string
-): Sink<unknown, never, In, In, HashMap<K, In>> {
+): Sink<never, never, In, In, HashMap<K, In>> {
   return Sink.foldWeighted(
     HashMap.empty(),
     (acc, in_) => (acc.has(key(in_)) ? 0 : 1),

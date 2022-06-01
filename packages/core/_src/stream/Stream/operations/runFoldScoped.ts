@@ -9,7 +9,7 @@ export function runFoldScoped_<R, E, A, S>(
   s: LazyArg<S>,
   f: (s: S, a: A) => S,
   __tsplusTrace?: string
-): Effect<R & Has<Scope>, E, S> {
+): Effect<R | Scope, E, S> {
   return self.runFoldWhileScoped(s, () => true, f)
 }
 

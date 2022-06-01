@@ -15,12 +15,12 @@ export function retry_<R, E, A, S, R2, Z>(
   self: Stream<R, E, A>,
   schedule: LazyArg<Schedule<S, R2, E, Z>>,
   __tsplusTrace?: string
-): Stream<R & R2, E, A> {
+): Stream<R | R2, E, A> {
   return Stream.unwrap(
     schedule()
       .driver()
       .map((driver) => {
-        const loop: Stream<R & R2, E, A> = self.catchAll((e) =>
+        const loop: Stream<R | R2, E, A> = self.catchAll((e) =>
           Stream.unwrap(
             driver.next(e).foldEffect(
               () => Effect.fail(e),

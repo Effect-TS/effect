@@ -40,7 +40,7 @@ function reader<E, A>(
   queue: RingBufferNew<A>,
   queueSize: number,
   __tsplusTrace?: string
-): Channel<unknown, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown> {
+): Channel<never, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown> {
   return Channel.readWithCause(
     (input: Chunk<A>) =>
       Channel.write(
@@ -71,9 +71,9 @@ function emitOnStreamEnd<E, A>(
   stepSize: number,
   queue: RingBufferNew<A>,
   queueSize: number,
-  channelEnd: Channel<unknown, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown>,
+  channelEnd: Channel<never, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown>,
   __tsplusTrace?: string
-): Channel<unknown, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown> {
+): Channel<never, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown> {
   if (queueSize < chunkSize) {
     const items = queue.toChunk()
     const result = items.isEmpty() ? Chunk.empty<Chunk<A>>() : Chunk.single(items)

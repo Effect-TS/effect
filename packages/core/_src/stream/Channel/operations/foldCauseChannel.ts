@@ -36,7 +36,7 @@ export function foldCauseChannel_<
     o: OutDone
   ) => Channel<Env2, InErr2, InElem2, InDone2, OutErr3, OutElem2, OutDone3>
 ): Channel<
-  Env & Env1 & Env2,
+  Env | Env1 | Env2,
   InErr & InErr1 & InErr2,
   InElem & InElem1 & InElem2,
   InDone & InDone1 & InDone2,
@@ -45,7 +45,7 @@ export function foldCauseChannel_<
   OutDone2 | OutDone3
 > {
   return new Fold<
-    Env & Env1 & Env2,
+    Env | Env1 | Env2,
     InErr & InErr1 & InErr2,
     InElem & InElem1 & InElem2,
     InDone & InDone1 & InDone2,
@@ -57,7 +57,7 @@ export function foldCauseChannel_<
   >(
     self,
     new ContinuationK<
-      Env & Env1 & Env2,
+      Env | Env1 | Env2,
       InErr & InErr1 & InErr2,
       InElem & InElem1 & InElem2,
       InDone & InDone1 & InDone2,

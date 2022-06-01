@@ -1,4 +1,4 @@
-function repeat<E, A>(self: STM<unknown, E, A>, n: number): STM<unknown, E, A> {
+function repeat<E, A>(self: STM<never, E, A>, n: number): STM<never, E, A> {
   if (n < 1) {
     return STM.die(`The value of "n" must be greater than 0, received: ${n}`)
   }
@@ -48,9 +48,9 @@ describe.concurrent("TSemaphore", () => {
 
       function acquireRelease(
         semaphore: TSemaphore,
-        acquire: (n: number) => STM<unknown, never, void>,
-        release: (n: number) => STM<unknown, never, void>
-      ): STM<unknown, never, Tuple<[number, number]>> {
+        acquire: (n: number) => STM<never, never, void>,
+        release: (n: number) => STM<never, never, void>
+      ): STM<never, never, Tuple<[number, number]>> {
         return STM.gen(function*(_) {
           yield* _(acquire(50))
 

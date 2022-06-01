@@ -13,7 +13,7 @@ import { beginningOfHour, endOfHour, nextHour } from "@effect/core/io/Schedule/o
  */
 export function hourOfDay(
   hour: number
-): Schedule<number, unknown, unknown, number> {
+): Schedule<number, never, unknown, number> {
   return makeWithState(0, (now, _, state) => {
     if (!Number.isInteger(hour) || hour < 0 || 23 < hour) {
       return Effect.die(

@@ -5,8 +5,8 @@
  */
 export function countSTM_<E, A>(
   self: TArray<A>,
-  f: (a: A) => STM<unknown, E, boolean>
-): STM<unknown, E, number> {
+  f: (a: A) => STM<never, E, boolean>
+): STM<never, E, number> {
   return self.reduceSTM(0, (n, a) => f(a).map((result) => (result ? n + 1 : n)))
 }
 

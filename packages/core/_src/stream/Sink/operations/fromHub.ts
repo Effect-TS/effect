@@ -3,9 +3,9 @@
  *
  * @tsplus static ets/Sink/Ops fromHub
  */
-export function fromHub<R, E, In>(
+export function fromHub<In>(
   hub: LazyArg<Hub<In>>,
   __tsplusTrace?: string
-): Sink<R, E, In, never, void> {
+): Sink<never, never, In, never, void> {
   return Sink.fromQueue(hub)
 }

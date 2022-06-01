@@ -9,9 +9,9 @@ export function provideServiceEffect_<R1, E1, R, E, A, T>(
   tag: Tag<T>,
   effect: Effect<R1, E1, T>,
   __tsplusTrace?: string
-): Effect<R1 & Erase<R, Has<T>>, E | E1, A> {
-  return Effect.environmentWithEffect((env: Env<R & R1>) =>
-    effect.flatMap((service) => self.provideEnvironment(env.add(tag, service)))
+): Effect<R1 | Exclude<R, T>, E | E1, A> {
+  return Effect.environmentWithEffect((env: Env<R1 | Exclude<R, T>>) =>
+    effect.flatMap((service) => self.provideEnvironment(env.add(tag, service) as Env<R | R1>))
   )
 }
 

@@ -16,7 +16,7 @@ export function foldEffect_<R, E, A, R2, E2, A2, R3, E3, A3>(
   failure: (e: E) => Effect<R2, E2, A2>,
   success: (a: A) => Effect<R3, E3, A3>,
   __tsplusTrace?: string
-): Effect<R & R2 & R3, E2 | E3, A2 | A3> {
+): Effect<R | R2 | R3, E2 | E3, A2 | A3> {
   return self.foldCauseEffect(
     (cause) => cause.failureOrCause<E>().fold(failure, Effect.failCauseNow),
     success

@@ -5,6 +5,6 @@
  */
 export function recurWhile<A>(
   f: Predicate<A>
-): Schedule<void, unknown, A, A> {
+): Schedule<void, never, A, A> {
   return Schedule.identity<A>().whileInput(f)
 }

@@ -77,7 +77,10 @@ describe.concurrent("Effect", () => {
     it("is identity if the function doesn't match", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(false))
-        .bind("result", ({ ref }) => ref.set(true).as(42).tapSome(Option.emptyOf))
+        .bind(
+          "result",
+          ({ ref }) => ref.set(true).as(42).tapSome((): Option<Effect<never, never, never>> => Option.emptyOf())
+        )
         .bind("effect", ({ ref }) => ref.get())
 
       const { effect, result } = await program.unsafeRunPromise()

@@ -3,6 +3,6 @@
  *
  * @tsplus static ets/TArray/Ops empty
  */
-export function empty<A>(): STM<unknown, never, TArray<A>> {
+export function empty<A>(): STM<never, never, TArray<A>> {
   return TArray.from<A>([])
 }

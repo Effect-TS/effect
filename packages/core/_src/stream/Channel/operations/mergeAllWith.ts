@@ -31,7 +31,7 @@ export function mergeAllWith_<
   bufferSize = 16,
   mergeStrategy: MergeStrategy = MergeStrategy.BackPressure
 ): Channel<
-  Env & Env1,
+  Env | Env1,
   InErr & InErr1,
   InElem & InElem1,
   InDone & InDone1,
@@ -62,7 +62,7 @@ export function mergeAllWith_<
         .bindValue(
           "evaluatePull",
           ({ errorSignal, lastDone, queue }) =>
-            (pull: Effect<Env & Env1, OutErr | OutErr1, Either<OutDone, OutElem>>) =>
+            (pull: Effect<Env | Env1, OutErr | OutErr1, Either<OutDone, OutElem>>) =>
               pull
                 .flatMap((either) =>
                   either.fold(
@@ -173,7 +173,7 @@ export function mergeAllWith_<
         .map(({ queue }) => queue)
     ).map((queue) => {
       const consumer: Channel<
-        Env & Env1,
+        Env | Env1,
         unknown,
         unknown,
         unknown,

@@ -6,6 +6,6 @@
 export function fail<E>(
   error: LazyArg<E>,
   __tsplusTrace?: string
-): Stream<unknown, E, never> {
+): Stream<never, E, never> {
   return Stream.fromEffect(Effect.fail(error))
 }

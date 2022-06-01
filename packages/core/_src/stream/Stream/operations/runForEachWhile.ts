@@ -8,7 +8,7 @@ export function runForEachWhile_<R, E, A, R2, E2, Z>(
   self: Stream<R, E, A>,
   f: (a: A) => Effect<R2, E2, boolean>,
   __tsplusTrace?: string
-): Effect<R & R2, E | E2, void> {
+): Effect<R | R2, E | E2, void> {
   return self.run(Sink.forEachWhile(f))
 }
 

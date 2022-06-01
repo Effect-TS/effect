@@ -93,7 +93,7 @@ export function transfer(
 export function permutation(
   tRef1: TRef<number>,
   tRef2: TRef<number>
-): STM<unknown, never, void> {
+): STM<never, never, void> {
   return STM.struct({
     a: tRef1.get(),
     b: tRef2.get()
@@ -104,15 +104,15 @@ export function permutation(
 
 export function chain(
   depth: number,
-  next: (_: STM<unknown, never, number>) => STM<unknown, never, number>
+  next: (_: STM<never, never, number>) => STM<never, never, number>
 ): Effect.UIO<number> {
   return chainLoop(depth, STM.succeed(0), next)
 }
 
 export function chainLoop(
   n: number,
-  acc: STM<unknown, never, number>,
-  next: (_: STM<unknown, never, number>) => STM<unknown, never, number>
+  acc: STM<never, never, number>,
+  next: (_: STM<never, never, number>) => STM<never, never, number>
 ): Effect.UIO<number> {
   return n <= 0
     ? acc.commit()

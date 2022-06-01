@@ -1,4 +1,4 @@
-export type USTM<A> = STM<unknown, never, A>
+export type USTM<A> = STM<never, never, A>
 
 export const STMSym = Symbol.for("@effect/core/stm/STM")
 export type STMSym = typeof STMSym
@@ -50,7 +50,7 @@ export type _A = typeof _A
  */
 export interface STM<R, E, A> {
   readonly [STMSym]: STMSym
-  readonly [_R]: (_: R) => void
+  readonly [_R]: () => R
   readonly [_E]: () => E
   readonly [_A]: () => A
 }
@@ -76,7 +76,7 @@ export interface STMAspects {}
 export function unifySTM<X extends STM<any, any, any>>(
   self: X
 ): STM<
-  [X] extends [{ [_R]: (_: infer R) => void }] ? R : never,
+  [X] extends [{ [_R]: () => infer R }] ? R : never,
   [X] extends [{ [_E]: () => infer E }] ? E : never,
   [X] extends [{ [_A]: () => infer A }] ? A : never
 > {
@@ -85,7 +85,7 @@ export function unifySTM<X extends STM<any, any, any>>(
 
 export class STMBase<R, E, A> implements STM<R, E, A> {
   readonly [STMSym]: STMSym = STMSym
-  readonly [_R]!: (_: R) => void
+  readonly [_R]!: () => R
   readonly [_E]!: () => E
   readonly [_A]!: () => A
 }

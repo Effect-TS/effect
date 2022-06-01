@@ -11,7 +11,7 @@ export function andThen_<State, Env, In, Out, State1, Env1, In1, Out2>(
   that: Schedule<State1, Env1, In1, Out2>
 ): Schedule<
   Tuple<[State, State1, boolean]>,
-  Env & Env1,
+  Env | Env1,
   In & In1,
   Out | Out2
 > {

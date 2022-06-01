@@ -18,7 +18,7 @@ export function mergeWith_<R, E, A, R2, E2, A2, A3>(
   right: (a2: A2) => A3,
   strategy: LazyArg<TerminationStrategy> = () => TerminationStrategy.Both,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A3> {
+): Stream<R | R2, E | E2, A3> {
   return new StreamInternal(
     Channel.succeed(strategy).flatMap((strategy) => {
       const leftStream = self.map(left)
@@ -27,8 +27,8 @@ export function mergeWith_<R, E, A, R2, E2, A2, A3>(
       concreteStream(rightStream)
       return leftStream.channel.mergeWith(
         rightStream.channel,
-        handler<R & R2, E | E2>(strategy._tag === "Either" || strategy._tag === "Left"),
-        handler<R & R2, E | E2>(strategy._tag === "Either" || strategy._tag === "Right")
+        handler<R | R2, E | E2>(strategy._tag === "Either" || strategy._tag === "Left"),
+        handler<R | R2, E | E2>(strategy._tag === "Either" || strategy._tag === "Right")
       )
     })
   )
@@ -49,8 +49,9 @@ function handler<R, E>(terminate: boolean) {
   return (
     exit: Exit<E, unknown>,
     __tsplusTrace?: string
-  ): MergeDecision<R, E, unknown, E, unknown> =>
-    terminate || !exit.isSuccess()
+  ): MergeDecision<R, E, unknown, E, unknown> => {
+    return terminate || !exit.isSuccess()
       ? MergeDecision.done(Effect.done(exit))
       : MergeDecision.await((exit) => Effect.done(exit))
+  }
 }

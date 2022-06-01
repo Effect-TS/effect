@@ -6,8 +6,8 @@
 export function reduceSTM_<E, A, Z>(
   self: TArray<A>,
   zero: Z,
-  f: (z: Z, a: A) => STM<unknown, E, Z>
-): STM<unknown, E, Z> {
+  f: (z: Z, a: A) => STM<never, E, Z>
+): STM<never, E, Z> {
   return self.toChunk().flatMap((as) => STM.reduce(as, zero, f))
 }
 

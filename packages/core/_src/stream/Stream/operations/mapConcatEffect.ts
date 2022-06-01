@@ -8,7 +8,7 @@ export function mapConcatEffect_<R, E, A, R2, E2, A2>(
   self: Stream<R, E, A>,
   f: (a: A) => Effect<R2, E2, Collection<A2>>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A2> {
+): Stream<R | R2, E | E2, A2> {
   return self.mapEffect((a) => f(a).map(Chunk.from)).mapConcat(identity)
 }
 

@@ -11,7 +11,7 @@ export function summarized_<R, E, R1, E1, In, L, Z, B, C>(
   summary: LazyArg<Effect<R1, E1, B>>,
   f: (x: B, y: B) => C,
   __tsplusTrace?: string
-): Sink<R & R1, E | E1, In, L, Tuple<[Z, C]>> {
+): Sink<R | R1, E | E1, In, L, Tuple<[Z, C]>> {
   return new SinkInternal(
     Channel.unwrap(
       Effect.succeed(summary).map((summary) =>

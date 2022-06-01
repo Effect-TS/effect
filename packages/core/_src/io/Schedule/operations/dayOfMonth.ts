@@ -15,7 +15,7 @@ import { beginningOfDay, endOfDay, nextDayOfMonth } from "@effect/core/io/Schedu
  */
 export function dayOfMonth(
   day: number
-): Schedule<number, unknown, unknown, number> {
+): Schedule<number, never, unknown, number> {
   return makeWithState(0, (now, _, state) => {
     if (!Number.isInteger(day) || day < 1 || 31 < day) {
       return Effect.die(

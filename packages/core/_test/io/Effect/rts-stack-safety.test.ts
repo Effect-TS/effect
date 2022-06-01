@@ -51,7 +51,7 @@ describe.concurrent("Effect", () => {
 
     it("deep async absolve/attempt is identity", async () => {
       const program = Chunk.range(0, 1000).reduce(
-        Effect.async((cb) => {
+        Effect.async<never, unknown, unknown>((cb) => {
           cb(Effect.succeed(42))
         }),
         (acc, _) => Effect.absolve(acc.either())

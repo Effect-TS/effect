@@ -9,6 +9,6 @@
 export function service<T>(
   tag: Tag<T>,
   __tsplusTrace?: string
-): Effect<Has<T>, never, T> {
+): Effect<T, never, T> {
   return Effect.serviceWithEffect(tag)(Effect.succeedNow)
 }

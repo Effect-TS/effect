@@ -11,7 +11,7 @@ export function zipWithPar_<R, E, A, R2, E2, A2, B>(
   that: LazyArg<Effect<R2, E2, A2>>,
   f: (a: A, b: A2) => B,
   __tsplusTrace?: string
-): Effect<R & R2, E | E2, B> {
+): Effect<R | R2, E | E2, B> {
   const g = (b: A2, a: A) => f(a, b)
   return Effect.transplant((graft) =>
     Effect.descriptorWith((d) =>
@@ -39,7 +39,7 @@ function coordinate<E, B, X, Y>(
   leftWinner: boolean,
   winner: Fiber<E, X>,
   loser: Fiber<E, Y>
-): Effect<unknown, E, B> {
+): Effect<never, E, B> {
   return winner.await().flatMap((winnerExit) =>
     winnerExit.fold(
       (winnerCause) =>

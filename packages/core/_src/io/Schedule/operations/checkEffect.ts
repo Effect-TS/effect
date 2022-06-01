@@ -12,7 +12,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
 export function checkEffect_<State, Env, In, Out, Env1>(
   self: Schedule<State, Env, In, Out>,
   test: (input: In, output: Out) => Effect.RIO<Env1, boolean>
-): Schedule<State, Env & Env1, In, Out> {
+): Schedule<State, Env | Env1, In, Out> {
   return makeWithState(self._initial, (now, input, state) =>
     self
       ._step(now, input, state)

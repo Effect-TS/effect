@@ -21,7 +21,7 @@ export function repeatElementsWith_<R, E, A, S, R2, B, C1, C2>(
   f: (a: A) => C1,
   g: (b: B) => C2,
   __tsplusTrace?: string
-): Stream<R & R2, E, C1 | C2> {
+): Stream<R | R2, E, C1 | C2> {
   concreteStream(self)
   return new StreamInternal(
     self.channel >>
@@ -30,7 +30,7 @@ export function repeatElementsWith_<R, E, A, S, R2, B, C1, C2>(
           .driver()
           .map((driver) => {
             const loop: Channel<
-              R & R2,
+              R | R2,
               E,
               Chunk<A>,
               unknown,
@@ -66,13 +66,13 @@ export function repeatElementsWith_<R, E, A, S, R2, B, C1, C2>(
 export const repeatElementsWith = Pipeable(repeatElementsWith_)
 
 function feed<R, E, A, R2, B, C1, C2>(
-  loop: Channel<R & R2, E, Chunk<A>, unknown, E, Chunk<C1 | C2>, void>,
+  loop: Channel<R | R2, E, Chunk<A>, unknown, E, Chunk<C1 | C2>, void>,
   driver: Driver<unknown, R2, unknown, B>,
   f: (a: A) => C1,
   g: (b: B) => C2,
   input: Chunk<A>,
   __tsplusTrace?: string
-): Channel<R & R2, E, Chunk<A>, unknown, E, Chunk<C1 | C2>, void> {
+): Channel<R | R2, E, Chunk<A>, unknown, E, Chunk<C1 | C2>, void> {
   return input.head.fold(
     loop,
     (a) =>
@@ -82,14 +82,14 @@ function feed<R, E, A, R2, B, C1, C2>(
 }
 
 function step<R, E, A, R2, B, C1, C2>(
-  loop: Channel<R & R2, E, Chunk<A>, unknown, E, Chunk<C1 | C2>, void>,
+  loop: Channel<R | R2, E, Chunk<A>, unknown, E, Chunk<C1 | C2>, void>,
   driver: Driver<unknown, R2, unknown, B>,
   f: (a: A) => C1,
   g: (b: B) => C2,
   input: Chunk<A>,
   value: A,
   __tsplusTrace?: string
-): Channel<R & R2, E, Chunk<A>, unknown, E, Chunk<C1 | C2>, void> {
+): Channel<R | R2, E, Chunk<A>, unknown, E, Chunk<C1 | C2>, void> {
   const advance = driver
     .next(value)
     .as(
@@ -97,9 +97,9 @@ function step<R, E, A, R2, B, C1, C2>(
         step<R, E, A, R2, B, C1, C2>(loop, driver, f, g, input, value)
     )
   const reset: Effect<
-    R & R2,
+    R | R2,
     never,
-    Channel<R & R2, E, Chunk<A>, unknown, E, Chunk<C1 | C2>, void>
+    Channel<R | R2, E, Chunk<A>, unknown, E, Chunk<C1 | C2>, void>
   > = driver.last
     .orDie()
     .tap(() => driver.reset)

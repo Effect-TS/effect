@@ -10,7 +10,7 @@ export function provideEnvironment_<R, E, A>(
   self: Stream<R, E, A>,
   env: LazyArg<Env<R>>,
   __tsplusTrace?: string
-): Stream<unknown, E, A> {
+): Stream<never, E, A> {
   concreteStream(self)
   return new StreamInternal(self.channel.provideEnvironment(env))
 }

@@ -19,8 +19,8 @@ export function ensuringWith_<
 >(
   channel: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   finalizer: (e: Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>
-): Channel<Env & Env2, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  return new Ensuring<Env & Env2, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
+): Channel<Env | Env2, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+  return new Ensuring<Env | Env2, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     channel,
     finalizer
   )

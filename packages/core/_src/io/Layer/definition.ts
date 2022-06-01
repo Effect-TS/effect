@@ -30,9 +30,9 @@ export type _ROut = typeof _ROut
  * @tsplus type ets/Layer
  */
 export interface Layer<RIn, E, ROut> {
-  readonly [_RIn]: (_: RIn) => void
+  readonly [_RIn]: () => RIn
   readonly [_E]: () => E
-  readonly [_ROut]: () => ROut
+  readonly [_ROut]: (_: ROut) => void
 
   readonly [LayerTypeId]: LayerTypeId
 }
@@ -53,7 +53,7 @@ export const Layer: LayerOps = {
 export interface LayerAspects {}
 
 export abstract class LayerAbstract<RIn, E, ROut> implements Layer<RIn, E, ROut> {
-  readonly [_RIn]!: (_: RIn) => void
+  readonly [_RIn]!: () => RIn
   readonly [_E]!: () => E
   readonly [_ROut]!: () => ROut
   readonly [LayerTypeId]: LayerTypeId = LayerTypeId
@@ -71,16 +71,16 @@ export type Instruction =
 
 export class ILayerApply<RIn, E, ROut> implements Layer<RIn, E, ROut> {
   readonly _tag = "LayerApply"
-  readonly [_RIn]!: (_: RIn) => void
+  readonly [_RIn]!: () => RIn
   readonly [_E]!: () => E
   readonly [_ROut]!: () => ROut
   readonly [LayerTypeId]: LayerTypeId = LayerTypeId
   constructor(readonly self: Effect<RIn, E, Env<ROut>>) {}
 }
 
-export class ILayerExtendScope<RIn, E, ROut> implements Layer<RIn & Has<Scope>, E, ROut> {
+export class ILayerExtendScope<RIn, E, ROut> implements Layer<RIn | Scope, E, ROut> {
   readonly _tag = "LayerExtendScope"
-  readonly [_RIn]!: (_: RIn & Has<Scope>) => void
+  readonly [_RIn]!: () => RIn | Scope
   readonly [_E]!: () => E
   readonly [_ROut]!: () => ROut
   readonly [LayerTypeId]: LayerTypeId = LayerTypeId
@@ -88,10 +88,10 @@ export class ILayerExtendScope<RIn, E, ROut> implements Layer<RIn & Has<Scope>, 
 }
 
 export class ILayerFold<RIn, E, ROut, RIn2, E2, ROut2, RIn3, E3, ROut3>
-  implements Layer<RIn & RIn2 & RIn3, E2 | E3, ROut2 | ROut3>
+  implements Layer<RIn | RIn2 | RIn3, E2 | E3, ROut2 | ROut3>
 {
   readonly _tag = "LayerFold"
-  readonly [_RIn]!: (_: RIn & RIn2 & RIn3) => void
+  readonly [_RIn]!: () => RIn | RIn2 | RIn3
   readonly [_E]!: () => E2 | E3
   readonly [_ROut]!: () => ROut2 | ROut3
   readonly [LayerTypeId]: LayerTypeId = LayerTypeId
@@ -104,24 +104,24 @@ export class ILayerFold<RIn, E, ROut, RIn2, E2, ROut2, RIn3, E3, ROut3>
 
 export class ILayerFresh<RIn, E, ROut> implements Layer<RIn, E, ROut> {
   readonly _tag = "LayerFresh"
-  readonly [_RIn]!: (_: RIn) => void
+  readonly [_RIn]!: () => RIn
   readonly [_E]!: () => E
   readonly [_ROut]!: () => ROut
   readonly [LayerTypeId]: LayerTypeId = LayerTypeId
   constructor(readonly self: Layer<RIn, E, ROut>) {}
 }
 
-export class ILayerScoped<RIn, E, ROut> extends LayerAbstract<RIn, E, ROut> {
+export class ILayerScoped<RIn, E, ROut> extends LayerAbstract<Exclude<RIn, Scope>, E, ROut> {
   readonly _tag = "LayerScoped"
 
-  constructor(readonly self: Effect<RIn & Has<Scope>, E, Env<ROut>>) {
+  constructor(readonly self: Effect<RIn, E, Env<ROut>>) {
     super()
   }
 }
 
 export class ILayerSuspend<RIn, E, ROut> implements Layer<RIn, E, ROut> {
   readonly _tag = "LayerSuspend"
-  readonly [_RIn]!: (_: RIn) => void
+  readonly [_RIn]!: () => RIn
   readonly [_E]!: () => E
   readonly [_ROut]!: () => ROut
   readonly [LayerTypeId]: LayerTypeId = LayerTypeId
@@ -130,7 +130,7 @@ export class ILayerSuspend<RIn, E, ROut> implements Layer<RIn, E, ROut> {
 
 export class ILayerTo<RIn, E, ROut, E1, ROut1> implements Layer<RIn, E | E1, ROut1> {
   readonly _tag = "LayerTo"
-  readonly [_RIn]!: (_: RIn) => void
+  readonly [_RIn]!: () => RIn
   readonly [_E]!: () => E | E1
   readonly [_ROut]!: () => ROut1
   readonly [LayerTypeId]: LayerTypeId = LayerTypeId
@@ -148,9 +148,9 @@ export class ILayerZipWithPar<
   E1,
   ROut2,
   ROut3
-> implements Layer<RIn & RIn1, E | E1, ROut3> {
+> implements Layer<RIn | RIn1, E | E1, ROut3> {
   readonly _tag = "LayerZipWithPar"
-  readonly [_RIn]!: (_: RIn & RIn1) => void
+  readonly [_RIn]!: () => RIn | RIn1
   readonly [_E]!: () => E | E1
   readonly [_ROut]!: () => ROut3
   readonly [LayerTypeId]: LayerTypeId = LayerTypeId

@@ -1,5 +1,3 @@
-import type { HKT } from "@effect/core/prelude/HKT"
-
 export const EffectURI = "Effect"
 export type EffectURI = typeof EffectURI
 
@@ -50,13 +48,9 @@ export type _W = typeof _W
  */
 export interface Effect<R, E, A> {
   readonly [_U]: EffectURI
-  readonly [_R]: (_: R) => void
+  readonly [_R]: () => R
   readonly [_E]: () => E
   readonly [_A]: () => A
-
-  readonly [_S1]: (_: unknown) => void
-  readonly [_S2]: () => unknown
-  readonly [_W]: () => unknown
 }
 
 /**
@@ -65,7 +59,7 @@ export interface Effect<R, E, A> {
 export function unifyEffect<X extends Effect<any, any, any>>(
   self: X
 ): Effect<
-  [X] extends [{ [_R]: (_: infer R) => void }] ? R : never,
+  [X] extends [{ [_R]: () => infer R }] ? R : never,
   [X] extends [{ [_E]: () => infer E }] ? E : never,
   [X] extends [{ [_A]: () => infer A }] ? A : never
 > {
@@ -98,31 +92,23 @@ export const Effect: EffectOps = {
 export interface EffectAspects {}
 
 export namespace Effect {
-  export type UIO<A> = Effect<unknown, never, A>
-  export type IO<E, A> = Effect<unknown, E, A>
+  export type UIO<A> = Effect<never, never, A>
+  export type IO<E, A> = Effect<never, E, A>
   export type RIO<R, A> = Effect<R, never, A>
   export interface Error<E, A> {
     readonly _tag: "EffectError"
     readonly exit: Exit<E, A>
     readonly trace?: string
   }
+  export type Success<T extends Effect<any, any, any>> = [T] extends [Effect<infer R, infer E, infer A>] ? A : never
 }
 
 export abstract class Base<R, E, A> implements Effect<R, E, A> {
   readonly [_U]!: EffectURI
-  readonly [_R]!: (_: R) => void
+  readonly [_R]!: () => R
   readonly [_E]!: () => E
   readonly [_A]!: () => A
-
-  readonly [_S1]!: (_: unknown) => void
-  readonly [_S2]!: () => unknown
-  readonly [_W]!: () => unknown
-
   abstract unsafeLog(): string
-}
-
-export interface EffectF extends HKT {
-  type: Effect<this["R"], this["E"], this["A"]>
 }
 
 export type Canceler<R> = Effect.RIO<R, void>

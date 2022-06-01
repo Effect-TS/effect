@@ -12,7 +12,7 @@ export function raceWith_<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   leftDone: (exit: Exit<E, A>, fiber: Fiber<E1, A1>) => Effect<R2, E2, A2>,
   rightDone: (exit: Exit<E1, A1>, fiber: Fiber<E, A>) => Effect<R3, E3, A3>,
   __tsplusTrace?: string
-): Effect<R & R1 & R2 & R3, E2 | E3, A2 | A3> {
+): Effect<R | R1 | R2 | R3, E2 | E3, A2 | A3> {
   return new IRaceWith(() => self, that, (winner, loser) =>
     winner.await().flatMap((exit) => {
       switch (exit._tag) {

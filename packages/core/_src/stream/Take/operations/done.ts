@@ -1,7 +1,7 @@
 import { concreteTake } from "@effect/core/stream/Take/operations/_internal/TakeInternal"
 
 /**
- * Transforms `Take<E, A>` to an `Effect<unknown, Option<E>, Chunk<A>>`.
+ * Transforms `Take<E, A>` to an `Effect<never, Option<E>, Chunk<A>>`.
  *
  * @tsplus fluent ets/Take done
  */

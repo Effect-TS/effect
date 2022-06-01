@@ -20,7 +20,7 @@ export function fixed(
   interval: LazyArg<Duration>
 ): Schedule<
   Tuple<[Option<Tuple<[number, number]>>, number]>,
-  unknown,
+  never,
   unknown,
   number
 > {

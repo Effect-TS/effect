@@ -11,7 +11,7 @@ export function mergeRight_<R, E, A, R2, E2, A2>(
   that: LazyArg<Stream<R2, E2, A2>>,
   strategy: LazyArg<TerminationStrategy> = () => TerminationStrategy.Both,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A2> {
+): Stream<R | R2, E | E2, A2> {
   return self.drain().merge(that, strategy)
 }
 

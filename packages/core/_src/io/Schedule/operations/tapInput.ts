@@ -10,7 +10,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
 export function tapInput_<State, Env, In, Out, Env1, In1, X>(
   self: Schedule<State, Env, In, Out>,
   f: (in1: In1) => Effect.RIO<Env1, X>
-): Schedule<State, Env & Env1, In & In1, Out> {
+): Schedule<State, Env | Env1, In & In1, Out> {
   return makeWithState(
     self._initial,
     (now, input, state) => f(input) > self._step(now, input, state)

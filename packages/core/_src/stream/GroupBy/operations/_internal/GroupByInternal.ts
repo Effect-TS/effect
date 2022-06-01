@@ -22,9 +22,9 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
    * arbitrary order.
    */
   apply<R1, E1, A1>(
-    f: (k: K, stream: Stream<unknown, E, V>) => Stream<R1, E1, A1>,
+    f: (k: K, stream: Stream<never, E, V>) => Stream<R1, E1, A1>,
     __tsplusTrace?: string
-  ): Stream<R & R1, E | E1, A1> {
+  ): Stream<R | R1, E | E1, A1> {
     return this.grouped().flatMapPar(
       Number.MAX_SAFE_INTEGER,
       ({ tuple: [key, queue] }) => f(key, Stream.fromQueueWithShutdown(queue).flattenExitOption()),

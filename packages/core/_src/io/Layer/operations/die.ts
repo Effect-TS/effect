@@ -3,6 +3,6 @@
  *
  * @tsplus static ets/Layer/Ops die
  */
-export function die(defect: LazyArg<unknown>): Layer<unknown, never, never> {
+export function die(defect: LazyArg<unknown>): Layer<never, never, unknown> {
   return Layer.failCause(Cause.die(defect()))
 }

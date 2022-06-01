@@ -8,7 +8,7 @@ export function logAnnotate(
   key: LazyArg<string>,
   value: LazyArg<string>,
   __tsplusTrace?: string
-): Stream<unknown, never, void> {
+): Stream<never, never, void> {
   return Stream.scoped(
     FiberRef.currentLogAnnotations.value
       .get()

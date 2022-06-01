@@ -10,6 +10,6 @@ export function cond<E, A>(
   predicate: LazyArg<boolean>,
   result: LazyArg<A>,
   error: LazyArg<E>
-): STM<unknown, E, A> {
+): STM<never, E, A> {
   return STM.suspend(() => (predicate() ? STM.succeed(result) : STM.fail(error)))
 }

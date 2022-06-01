@@ -5,7 +5,7 @@ import { constVoid } from "@tsplus/stdlib/data/Function"
  */
 export function mkString(
   __tsplusTrace?: string
-): Sink<unknown, never, unknown, never, string> {
+): Sink<never, never, unknown, never, string> {
   return Sink.suspend(() => {
     const strings: Array<string> = []
     return Sink.foldLeftChunks(constVoid, (_, elems) =>

@@ -20,7 +20,7 @@ export function race_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   that: LazyArg<Effect<R2, E2, A2>>,
   __tsplusTrace?: string
-): Effect<R & R2, E | E2, A | A2> {
+): Effect<R | R2, E | E2, A | A2> {
   return Effect.descriptorWith((descriptor) => {
     const parentFiberId = descriptor.id
     function maybeDisconnect<R, E, A>(io: LazyArg<Effect<R, E, A>>) {
@@ -77,7 +77,7 @@ export function raceEither_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   that: LazyArg<Effect<R2, E2, A2>>,
   __tsplusTrace?: string
-): Effect<R & R2, E | E2, Either<A, A2>> {
+): Effect<R | R2, E | E2, Either<A, A2>> {
   return self.map(Either.left).race(that().map(Either.right))
 }
 
@@ -111,7 +111,7 @@ export function raceFirst_<R, R2, E, E2, A, A2>(
   self: Effect<R, E, A>,
   that: LazyArg<Effect<R2, E2, A2>>,
   __tsplusTrace?: string
-): Effect<R & R2, E2 | E, A2 | A> {
+): Effect<R | R2, E2 | E, A2 | A> {
   return self
     .exit()
     .race(that().exit())

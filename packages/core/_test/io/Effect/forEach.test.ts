@@ -560,7 +560,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("empty input", async () => {
-      const program = Effect.forkAll<unknown, never, List<Effect.UIO<number>>>(List.empty())
+      const program = Effect.forkAll<never, never, List<Effect.UIO<number>>>(List.empty())
         .flatMap((fiber) => fiber.join())
 
       const result = await program.unsafeRunPromise()

@@ -1,7 +1,7 @@
 describe.concurrent("Stream", () => {
   describe.concurrent("peel", () => {
     it("simple example", async () => {
-      const sink: Sink<unknown, never, number, number, Chunk<number>> = Sink.take(3)
+      const sink: Sink<never, never, number, number, Chunk<number>> = Sink.take(3)
       const program = Effect.scoped(
         Stream.fromChunks(Chunk(1, 2, 3), Chunk(4, 5, 6))
           .peel(sink)

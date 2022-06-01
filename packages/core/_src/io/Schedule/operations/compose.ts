@@ -15,7 +15,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
 export function compose_<State, Env, In, Out, State1, Env1, Out2>(
   self: Schedule<State, Env, In, Out>,
   that: Schedule<State1, Env1, Out, Out2>
-): Schedule<Tuple<[State, State1]>, Env & Env1, In, Out2> {
+): Schedule<Tuple<[State, State1]>, Env | Env1, In, Out2> {
   return makeWithState(Tuple(self._initial, that._initial), (now, input, state) =>
     self
       ._step(now, input, state.get(0))

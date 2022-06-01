@@ -26,7 +26,10 @@ describe.concurrent("Effect", () => {
 
     it("asyncEffect is interruptible", async () => {
       const program = Effect.Do()
-        .bind("fiber", () => Effect.asyncEffect(() => Effect.never).fork())
+        .bind(
+          "fiber",
+          () => Effect.asyncEffect<never, unknown, unknown, never, never, never>(() => Effect.never).fork()
+        )
         .flatMap(({ fiber }) => fiber.interrupt())
         .map(() => 42)
 
@@ -37,7 +40,7 @@ describe.concurrent("Effect", () => {
 
     it("async is interruptible", async () => {
       const program = Effect.Do()
-        .bind("fiber", () => Effect.async(constVoid).fork())
+        .bind("fiber", () => Effect.async<never, never, void>(constVoid).fork())
         .flatMap(({ fiber }) => fiber.interrupt())
         .map(() => 42)
 

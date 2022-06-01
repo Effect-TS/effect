@@ -3,6 +3,6 @@
  *
  * @tsplus fluent ets/TSemaphore release
  */
-export function release(self: TSemaphore): STM<unknown, never, void> {
+export function release(self: TSemaphore): STM<never, never, void> {
   return self.releaseN(1)
 }

@@ -19,7 +19,7 @@ export function dropRight_<R, E, A>(
   }
   return Stream.succeed(new RingBufferNew<A>(n)).flatMap((queue) => {
     const reader: Channel<
-      unknown,
+      never,
       E,
       Chunk<A>,
       unknown,

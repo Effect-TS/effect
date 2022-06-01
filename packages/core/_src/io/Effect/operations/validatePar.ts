@@ -8,7 +8,7 @@ export function validateParNow_<R, E, A, R1, E1, B>(
   self: Effect<R, E, A>,
   that: LazyArg<Effect<R1, E1, B>>,
   __tsplusTrace?: string
-): Effect<R & R1, E | E1, Tuple<[A, B]>> {
+): Effect<R | R1, E | E1, Tuple<[A, B]>> {
   return self.validateWithPar(that, (a, b) => Tuple(a, b))
 }
 

@@ -37,7 +37,7 @@ describe.concurrent("TArray", () => {
     })
 
     it("returns effect failure", async () => {
-      function failInTheMiddle(acc: number, n: number): STM<unknown, Error, number> {
+      function failInTheMiddle(acc: number, n: number): STM<never, Error, number> {
         return acc === N / 2 ? STM.fail(boom) : STM.succeed(acc + n)
       }
 

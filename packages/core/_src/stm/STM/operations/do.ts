@@ -8,7 +8,7 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
   f: (_: K) => STM<R, E, A>
 ): STM<
-  R & R2,
+  R | R2,
   E | E2,
   MergeRecord<
     K,
@@ -43,7 +43,7 @@ export function bind<R, E, A, K, N extends string>(
   return <R2, E2>(
     self: STM<R2, E2, K>
   ): STM<
-    R & R2,
+    R | R2,
     E | E2,
     MergeRecord<
       K,
@@ -111,6 +111,6 @@ export function bindValue<A, K, N extends string>(
 /**
  * @tsplus static ets/STM/Ops Do
  */
-export function Do(): STM<unknown, never, {}> {
+export function Do(): STM<never, never, {}> {
   return STM.succeedNow({})
 }

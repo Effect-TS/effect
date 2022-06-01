@@ -7,5 +7,5 @@
 export function serviceWithChannel<T>(tag: Tag<T>) {
   return <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     f: (resource: T) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-  ): Channel<Env & Has<T>, InErr, InElem, InDone, OutErr, OutElem, OutDone> => Channel.service(tag).flatMap(f)
+  ): Channel<Env | T, InErr, InElem, InDone, OutErr, OutElem, OutDone> => Channel.service(tag).flatMap(f)
 }

@@ -12,7 +12,7 @@ export function fromQueue<A>(
   queue: LazyArg<Dequeue<A>>,
   maxChunkSize = DEFAULT_CHUNK_SIZE,
   __tsplusTrace?: string
-): Stream<unknown, never, A> {
+): Stream<never, never, A> {
   return Stream.repeatEffectChunkOption(() => {
     const queue0 = queue()
     return (queue0 as Queue<A>)

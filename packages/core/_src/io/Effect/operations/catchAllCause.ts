@@ -10,7 +10,7 @@ export function catchAllCause_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   f: (cause: Cause<E>) => Effect<R2, E2, A2>,
   __tsplusTrace?: string
-): Effect<R & R2, E2, A | A2> {
+): Effect<R | R2, E2, A | A2> {
   return self.foldCauseEffect(f, Effect.succeedNow)
 }
 

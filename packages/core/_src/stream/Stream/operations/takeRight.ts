@@ -19,7 +19,7 @@ export function takeRight_<R, E, A>(
     Channel.unwrap(
       Effect.succeed(new RingBufferNew<A>(n)).map((queue) => {
         const reader: Channel<
-          unknown,
+          never,
           E,
           Chunk<A>,
           unknown,

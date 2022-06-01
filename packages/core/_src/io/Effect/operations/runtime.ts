@@ -30,29 +30,37 @@ export const defaultRuntimeConfig: RuntimeConfig = RuntimeConfig({
   maxOp: 2048
 })
 
-export const defaultRuntime = new Runtime(Env.empty, defaultRuntimeConfig)
+export const defaultRuntime = new Runtime<never>(
+  Env.empty,
+  defaultRuntimeConfig
+)
 
 /**
  * @tsplus fluent ets/Effect unsafeRunPromise
+ * @tsplus static ets/Effect/Aspects unsafeRunPromise
  */
 export const unsafeRunPromise = defaultRuntime.unsafeRunPromise
 
 /**
  * @tsplus fluent ets/Effect unsafeRunAsync
+ * @tsplus static ets/Effect/Aspects unsafeRunAsync
  */
 export const unsafeRunAsync = defaultRuntime.unsafeRunAsync
 
 /**
  * @tsplus fluent ets/Effect unsafeRunAsyncWith
+ * @tsplus static ets/Effect/Aspects unsafeRunAsyncWith
  */
 export const unsafeRunAsyncWith = defaultRuntime.unsafeRunAsyncWith
 
 /**
  * @tsplus fluent ets/Effect unsafeRunPromiseExit
+ * @tsplus static ets/Effect/Aspects unsafeRunPromiseExit
  */
 export const unsafeRunPromiseExit = defaultRuntime.unsafeRunPromiseExit
 
 /**
  * @tsplus fluent ets/Effect unsafeRunWith
+ * @tsplus static ets/Effect/Aspects unsafeRunWith
  */
 export const unsafeRunWith = defaultRuntime.unsafeRunWith

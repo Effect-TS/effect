@@ -25,7 +25,7 @@ export function concatMap_<
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone2>,
   f: (o: OutElem) => Channel<Env2, InErr2, InElem2, InDone2, OutErr2, OutElem2, OutDone>
 ): Channel<
-  Env & Env2,
+  Env | Env2,
   InErr & InErr2,
   InElem & InElem2,
   InDone & InDone2,

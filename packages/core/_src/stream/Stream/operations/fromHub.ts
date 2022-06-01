@@ -12,6 +12,6 @@ export function fromHub<A>(
   hub: LazyArg<Hub<A>>,
   maxChunkSize = DEFAULT_CHUNK_SIZE,
   __tsplusTrace?: string
-): Stream<unknown, never, A> {
+): Stream<never, never, A> {
   return Stream.scoped(hub().subscribe).flatMap((queue) => Stream.fromQueue(queue, maxChunkSize))
 }

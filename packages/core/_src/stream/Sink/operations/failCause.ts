@@ -8,6 +8,6 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
 export function failCause<E>(
   cause: LazyArg<Cause<E>>,
   __tsplusTrace?: string
-): Sink<unknown, E, unknown, never, never> {
+): Sink<never, E, unknown, never, never> {
   return new SinkInternal(Channel.failCause(cause))
 }

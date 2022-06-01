@@ -6,9 +6,9 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
 export function dropWhile<In>(
   p: Predicate<In>,
   __tsplusTrace?: string
-): Sink<unknown, never, In, In, unknown> {
+): Sink<never, never, In, In, unknown> {
   const loop: Channel<
-    unknown,
+    never,
     never,
     Chunk<In>,
     unknown,

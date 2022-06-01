@@ -16,7 +16,7 @@ export function tuple<T extends NonEmptyArraySTM>(
     0: STM<any, any, any>
   }
 ): STM<
-  [T[number]] extends [{ [_R]: (_: infer R) => void }] ? R : never,
+  [T[number]] extends [{ [_R]: () => infer R }] ? R : never,
   [T[number]] extends [{ [_E]: () => infer E }] ? E : never,
   ForcedTuple<TupleA<T>>
 > {

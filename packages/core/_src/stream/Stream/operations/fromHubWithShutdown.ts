@@ -14,6 +14,6 @@ export function fromHubWithShutdown<A>(
   hub: LazyArg<Hub<A>>,
   maxChunkSize = DEFAULT_CHUNK_SIZE,
   __tsplusTrace?: string
-): Stream<unknown, never, A> {
+): Stream<never, never, A> {
   return Stream.succeed(hub).flatMap((hub) => Stream.fromHub(hub, maxChunkSize).ensuring(hub.shutdown))
 }

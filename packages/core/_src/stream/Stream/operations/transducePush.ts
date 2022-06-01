@@ -8,16 +8,16 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 export function transducePush<R2, R3, E2, In, Out>(
   push: LazyArg<
     Effect<
-      R2 & Has<Scope>,
+      R2 | Scope,
       never,
       (input: Option<Chunk<In>>) => Effect<R3, E2, Chunk<Out>>
     >
   >,
   __tsplusTrace?: string
 ) {
-  return <R, E>(stream: Stream<R, E, In>): Stream<R & R2 & R3, E | E2, Out> => {
+  return <R, E>(stream: Stream<R, E, In>): Stream<R | R2 | R3, E | E2, Out> => {
     const channel: Channel<
-      R & R2 & R3,
+      R | R2 | R3,
       E,
       Chunk<In>,
       unknown,

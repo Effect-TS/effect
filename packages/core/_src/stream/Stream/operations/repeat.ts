@@ -10,7 +10,7 @@ export function repeatNow_<R, E, A, S, R2, B>(
   self: Stream<R, E, A>,
   schedule: LazyArg<Schedule<S, R2, unknown, B>>,
   __tsplusTrace?: string
-): Stream<R & R2, E, A> {
+): Stream<R | R2, E, A> {
   return self.repeatEither(schedule).collectRight()
 }
 
@@ -30,7 +30,7 @@ export const repeatNow = Pipeable(repeatNow_)
 export function repeat<A>(
   a: LazyArg<A>,
   __tsplusTrace?: string
-): Stream<unknown, never, A> {
+): Stream<never, never, A> {
   return new StreamInternal(
     Channel.succeed(a).flatMap((a) => Channel.write(Chunk.single(a)).repeated())
   )

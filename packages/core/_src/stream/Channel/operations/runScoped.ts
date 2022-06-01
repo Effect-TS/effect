@@ -9,7 +9,7 @@ import { concreteChannelState } from "@effect/core/stream/Channel/ChannelState"
  */
 export function runScoped<Env, InErr, InDone, OutErr, OutDone>(
   self: Channel<Env, InErr, unknown, InDone, OutErr, never, OutDone>
-): Effect<Env & Has<Scope>, OutErr, OutDone> {
+): Effect<Env | Scope, OutErr, OutDone> {
   return Effect.acquireReleaseExit(
     Effect.succeed(new ChannelExecutor(() => self, undefined, identity)),
     (exec, exit) => {

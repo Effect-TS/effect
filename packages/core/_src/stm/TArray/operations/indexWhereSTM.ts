@@ -5,8 +5,8 @@
  */
 export function indexWhereSTM_<E, A>(
   self: TArray<A>,
-  f: (a: A) => STM<unknown, E, boolean>
-): STM<unknown, E, number> {
+  f: (a: A) => STM<never, E, boolean>
+): STM<never, E, number> {
   return self.indexWhereFromSTM(f, 0)
 }
 

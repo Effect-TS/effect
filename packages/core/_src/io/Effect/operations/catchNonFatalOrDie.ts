@@ -7,9 +7,9 @@ export function catchNonFatalOrDie_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
   f: (e: E) => Effect<R2, E2, A2>,
   __tsplusTrace?: string
-): Effect<R & R2, E | E2, A | A2> {
+): Effect<R | R2, E | E2, A | A2> {
   return self.foldEffect(
-    (e) => Effect.runtime().flatMap((runtime) => runtime.runtimeConfig.value.fatal(e) ? Effect.dieNow(e) : f(e)),
+    (e) => Effect.runtime<never>().flatMap((runtime) => runtime.runtimeConfig.value.fatal(e) ? Effect.dieNow(e) : f(e)),
     Effect.succeedNow
   )
 }

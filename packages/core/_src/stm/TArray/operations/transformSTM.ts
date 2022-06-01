@@ -7,8 +7,8 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
  */
 export function transformSTM_<E, A>(
   self: TArray<A>,
-  f: (a: A) => STM<unknown, E, A>
-): STM<unknown, E, void> {
+  f: (a: A) => STM<never, E, A>
+): STM<never, E, void> {
   concreteTArray(self)
   return STM.forEach(self.chunk, (tref) => tref.get().flatMap(f)).flatMap((newData) =>
     STM.Effect((journal) => {

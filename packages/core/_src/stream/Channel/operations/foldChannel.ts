@@ -32,7 +32,7 @@ export function foldChannel_<
     oErr: OutDone
   ) => Channel<Env2, InErr2, InElem2, InDone2, OutErr2, OutElem2, OutDone2>
 ): Channel<
-  Env & Env1 & Env2,
+  Env | Env1 | Env2,
   InErr & InErr1 & InErr2,
   InElem & InElem1 & InElem2,
   InDone & InDone1 & InDone2,

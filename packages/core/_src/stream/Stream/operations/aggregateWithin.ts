@@ -11,7 +11,7 @@ export function aggregateWithin_<R, E, A, R2, E2, A2, S, R3, B, C>(
   sink: LazyArg<Sink<R2, E2, A | A2, A2, B>>,
   schedule: LazyArg<Schedule<S, R3, Option<B>, C>>,
   __tsplusTrace?: string
-): Stream<R & R2 & R3, E | E2, B> {
+): Stream<R | R2 | R3, E | E2, B> {
   return self.aggregateWithinEither(sink, schedule).collectRight()
 }
 

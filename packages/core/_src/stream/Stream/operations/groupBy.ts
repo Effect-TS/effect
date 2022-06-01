@@ -8,7 +8,7 @@ export function groupBy_<R, R2, E, E2, A, K, V>(
   f: (a: A) => Effect<R2, E2, Tuple<[K, V]>>,
   buffer = 16,
   __tsplusTrace?: string
-): GroupBy<R & R2, E | E2, K, V, A> {
+): GroupBy<R | R2, E | E2, K, V, A> {
   return GroupBy(self, f, buffer)
 }
 

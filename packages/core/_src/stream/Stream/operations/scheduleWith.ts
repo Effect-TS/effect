@@ -14,7 +14,7 @@ export function scheduleWith_<R, E, A, S, R2, B, C>(
   f: (a: A) => C,
   g: (b: B) => C,
   __tsplusTrace?: string
-): Stream<R & R2, E, C> {
+): Stream<R | R2, E, C> {
   concreteStream(self)
   return new StreamInternal(
     Channel.fromEffect(schedule().driver()).flatMap(
@@ -38,7 +38,7 @@ function loop<R, R2, E, A, B, C>(
   f: (a: A) => C,
   g: (b: B) => C,
   index: number
-): Channel<R & R2, E, Chunk<A>, unknown, E, Chunk<C>, unknown> {
+): Channel<R | R2, E, Chunk<A>, unknown, E, Chunk<C>, unknown> {
   if (index < chunk.length) {
     return Channel.unwrap(() => {
       const a = chunk.unsafeGet(index)

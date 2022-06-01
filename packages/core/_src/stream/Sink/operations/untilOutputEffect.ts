@@ -9,13 +9,13 @@ export function untilOutputEffect_<R, E, R2, E2, In, L extends In, Z>(
   self: Sink<R, E, In, L, Z>,
   f: (z: Z) => Effect<R2, E2, boolean>,
   __tsplusTrace?: string
-): Sink<R & R2, E | E2, In, L, Option<Z>> {
+): Sink<R | R2, E | E2, In, L, Option<Z>> {
   concreteSink(self)
   return new SinkInternal(
     Channel.fromEffect(Ref.make(Chunk.empty<In>()).zip(Ref.make(false))).flatMap(
       ({ tuple: [leftoversRef, upstreamDoneRef] }) => {
         const upstreamMarker: Channel<
-          unknown,
+          never,
           never,
           Chunk<In>,
           unknown,
@@ -29,7 +29,7 @@ export function untilOutputEffect_<R, E, R2, E2, In, L extends In, Z>(
         )
 
         const loop: Channel<
-          R & R2,
+          R | R2,
           never,
           Chunk<In>,
           unknown,

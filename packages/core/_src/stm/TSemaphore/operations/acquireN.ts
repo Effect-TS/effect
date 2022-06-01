@@ -6,7 +6,7 @@ import { concreteTSemaphore } from "@effect/core/stm/TSemaphore/operations/_inte
  *
  * @tsplus fluent ets/TSemaphore acquireN
  */
-export function acquireN_(self: TSemaphore, n: number): STM<unknown, never, void> {
+export function acquireN_(self: TSemaphore, n: number): STM<never, never, void> {
   concreteTSemaphore(self)
   return new STMEffect((journal) => {
     if (n < 0) {

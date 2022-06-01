@@ -16,7 +16,7 @@ export function repeatOrElseEither_<S, R, E, A, R1, B, R2, E2, C>(
   schedule: LazyArg<Schedule<S, R1, A, B>>,
   orElse: (e: E, option: Option<B>) => Effect<R2, E2, C>,
   __tsplusTrace?: string
-): Effect<R & R1 & R2, E2, Either<C, B>> {
+): Effect<R | R1 | R2, E2, Either<C, B>> {
   return Effect.suspendSucceed(() => {
     const schedule0 = schedule()
     return schedule0.driver().flatMap((driver) =>
@@ -43,8 +43,8 @@ export function repeatOrElseEither<S, R1, A, B, E, R2, E2, C>(
   schedule: LazyArg<Schedule<S, R1, A, B>>,
   orElse: (e: E, option: Option<B>) => Effect<R2, E2, C>,
   __tsplusTrace?: string
-): <R>(self: Effect<R, E, A>) => Effect<R & R1 & R2, E2, Either<C, B>> {
-  return <R>(self: Effect<R, E, A>): Effect<R & R1 & R2, E2, Either<C, B>> => self.repeatOrElseEither(schedule, orElse)
+): <R>(self: Effect<R, E, A>) => Effect<R | R1 | R2, E2, Either<C, B>> {
+  return <R>(self: Effect<R, E, A>): Effect<R | R1 | R2, E2, Either<C, B>> => self.repeatOrElseEither(schedule, orElse)
 }
 
 function repeatOrElseEitherLoop<R, E, A, R1, B, R2, E2, C>(
@@ -52,7 +52,7 @@ function repeatOrElseEitherLoop<R, E, A, R1, B, R2, E2, C>(
   driver: Driver<unknown, R1, A, B>,
   orElse: (e: E, option: Option<B>) => Effect<R2, E2, C>,
   value: A
-): Effect<R & R1 & R2, E2, Either<C, B>> {
+): Effect<R | R1 | R2, E2, Either<C, B>> {
   return driver.next(value).foldEffect(
     () => driver.last.orDie().map(Either.right),
     (b) =>

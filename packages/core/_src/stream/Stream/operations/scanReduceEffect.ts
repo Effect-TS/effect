@@ -8,7 +8,7 @@ export function scanReduceEffect_<R, E, A, R2, E2, A2 extends A>(
   self: Stream<R, E, A>,
   f: (a2: A2, a: A) => Effect<R2, E2, A2>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A2> {
+): Stream<R | R2, E | E2, A2> {
   return self.mapAccumEffect(
     Option.emptyOf<A2>(),
     (option: Option<A2>, a) =>

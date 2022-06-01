@@ -70,7 +70,7 @@ export const ChannelState: ChannelStateOps = {}
 export function unifyChannelState<X extends ChannelState<any, any>>(
   self: X
 ): ChannelState<
-  [X] extends [{ [_R]: (_: infer R) => void }] ? R : never,
+  [X] extends [{ [_R]: () => infer R }] ? R : never,
   [X] extends [{ [_E]: () => infer E }] ? E : never
 > {
   return self

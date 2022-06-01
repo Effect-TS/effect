@@ -30,18 +30,18 @@ export function peel_<R, E extends E2, A extends A2, R2, E2, A2, Z>(
   self: Stream<R, E, A>,
   sink: LazyArg<Sink<R2, E2, A2, A2, Z>>,
   __tsplusTrace?: string
-): Effect<R & R2 & Has<Scope>, E | E2, Tuple<[Z, Stream<unknown, E, A2>]>> {
+): Effect<R | R2 | Scope, E | E2, Tuple<[Z, Stream<never, E, A2>]>> {
   return Effect.Do()
     .bind("deferred", () => Deferred.make<E | E2, Z>())
     .bind("handoff", () => Handoff.make<Signal<E, A2>>())
     .map(({ deferred, handoff }) => {
-      const consumer: Sink<R & R2, E2, A2, A2, void> = sink()
+      const consumer: Sink<R | R2, E2, A2, A2, void> = sink()
         .exposeLeftover()
         .foldSink(
           (e) => Sink.fromEffect(deferred.fail(e)) > Sink.fail(e),
           ({ tuple: [z1, leftovers] }) => {
             const loop: Channel<
-              unknown,
+              never,
               E,
               Chunk<A2>,
               unknown,
@@ -64,7 +64,7 @@ export function peel_<R, E extends E2, A extends A2, R2, E2, A2, Z>(
         )
 
       const producer: Channel<
-        unknown,
+        never,
         unknown,
         unknown,
         unknown,

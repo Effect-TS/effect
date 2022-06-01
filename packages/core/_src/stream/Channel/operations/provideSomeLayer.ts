@@ -18,7 +18,7 @@ export function provideSomeLayer_<
 >(
   self: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
   layer: LazyArg<Layer<R0, OutErr2, R2>>
-): Channel<R0 & Erase<R, R2>, InErr, InElem, InDone, OutErr | OutErr2, OutElem, OutDone> {
+): Channel<R0 | Exclude<R, R2>, InErr, InElem, InDone, OutErr | OutErr2, OutElem, OutDone> {
   return self.provideLayer(Layer.environment<R0>() + layer())
 }
 

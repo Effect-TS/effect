@@ -12,7 +12,7 @@ export function broadcastedQueues_<R, E, A>(
   n: number,
   maximumLag: number,
   __tsplusTrace?: string
-): Effect<R & Has<Scope>, never, Chunk<Dequeue<Take<E, A>>>> {
+): Effect<R | Scope, never, Chunk<Dequeue<Take<E, A>>>> {
   return Effect.Do()
     .bind("hub", () => Hub.bounded<Take<E, A>>(maximumLag))
     .bind("queues", ({ hub }) => Effect.collectAll(Chunk.fill(n, () => hub.subscribe)))

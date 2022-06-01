@@ -4,7 +4,7 @@
  *
  * @tsplus static ets/STM/Ops dieMessage
  */
-export function dieMessage(message: LazyArg<string>): STM<unknown, never, never> {
+export function dieMessage(message: LazyArg<string>): STM<never, never, never> {
   return STM.succeed(() => {
     throw new RuntimeError(message())
   })

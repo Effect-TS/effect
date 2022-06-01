@@ -6,7 +6,7 @@
 export function fromChunkQueue<A>(
   queue: LazyArg<Dequeue<Chunk<A>>>,
   __tsplusTrace?: string
-): Stream<unknown, never, A> {
+): Stream<never, never, A> {
   return Stream.repeatEffectChunkOption(() => {
     const queue0 = queue()
     return queue0.take.catchAllCause((cause) =>

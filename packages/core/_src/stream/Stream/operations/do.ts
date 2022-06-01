@@ -5,7 +5,7 @@ export function bind_<R, E, R2, E2, A, K, N extends string>(
   self: Stream<R, E, K>,
   tag: Exclude<N, keyof K>,
   f: (_: K) => Stream<R2, E2, A>
-): Stream<R & R2, E | E2, K & { [k in N]: A }> {
+): Stream<R | R2, E | E2, K & { [k in N]: A }> {
   return self.flatMap((k) => f(k).map((a): K & { [k in N]: A } => ({ ...k, [tag]: a } as any)))
 }
 
@@ -33,6 +33,6 @@ export const bindValue = Pipeable(bindValue_)
 /**
  * @tsplus static ets/Stream/Ops Do
  */
-export function Do(__tsplusTrace?: string): Stream<unknown, never, {}> {
+export function Do(__tsplusTrace?: string): Stream<never, never, {}> {
   return Stream.fromEffect(Effect.succeedNow({}))
 }

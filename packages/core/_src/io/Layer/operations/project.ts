@@ -5,12 +5,12 @@
  * @tsplus fluent ets/Layer project
  */
 export function project_<RIn, E, ROut, A, B>(
-  self: Layer<RIn, E, ROut & Has<A>>,
+  self: Layer<RIn, E, ROut | A>,
   tagA: Tag<A>,
   tagB: Tag<B>,
   f: (a: A) => B
-): Layer<RIn, E, Has<B>> {
-  return self.map((environment) => Env(tagB, f(environment.get(tagA))))
+): Layer<RIn, E, B> {
+  return self.map((environment) => Env(tagB, f(environment.unsafeGet(tagA))))
 }
 
 /**

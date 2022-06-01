@@ -4,9 +4,9 @@
 export function fromHubManaged<Err, Done, Elem>(
   hub: Hub<Either<Exit<Err, Done>, Elem>>
 ): Effect<
-  Has<Scope>,
+  Scope,
   never,
-  Channel<unknown, unknown, unknown, unknown, Err, Elem, Done>
+  Channel<never, unknown, unknown, unknown, Err, Elem, Done>
 > {
   return hub.subscribe.map((queue) => Channel.fromQueue(queue))
 }

@@ -5,6 +5,6 @@ import { SucceedNow } from "@effect/core/stream/Channel/definition/primitives"
  */
 export function succeedNow<OutDone>(
   result: OutDone
-): Channel<unknown, unknown, unknown, unknown, never, never, OutDone> {
+): Channel<never, unknown, unknown, unknown, never, never, OutDone> {
   return new SucceedNow(result)
 }

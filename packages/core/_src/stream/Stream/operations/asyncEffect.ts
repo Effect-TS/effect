@@ -43,7 +43,7 @@ export function asyncEffect<R, E, A, Z>(
         )
         .map(({ output }) => {
           const loop: Channel<
-            unknown,
+            never,
             unknown,
             unknown,
             unknown,

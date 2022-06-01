@@ -8,7 +8,7 @@ export function retryUntilEffect_<R, R1, E, A>(
   self: Effect<R, E, A>,
   f: (e: E) => Effect.RIO<R1, boolean>,
   __tsplusTrace?: string
-): Effect<R & R1, E, A> {
+): Effect<R | R1, E, A> {
   return self.catchAll((e) => f(e).flatMap((b) => b ? Effect.fail(e) : Effect.yieldNow > self.retryUntilEffect(f)))
 }
 

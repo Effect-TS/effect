@@ -9,7 +9,7 @@ export function tuple<SN extends readonly Stream<any, any, any>[]>(
     readonly 1: Stream<any, any, any>
   }
 ): Stream<
-  [SN[number]] extends [{ [_R]: (_: infer R) => void }] ? R : never,
+  [SN[number]] extends [{ [_R]: () => infer R }] ? R : never,
   [SN[number]] extends [{ [_E]: () => infer E }] ? E : never,
   Tuple<
     {

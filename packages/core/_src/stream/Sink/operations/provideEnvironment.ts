@@ -10,7 +10,7 @@ export function provideEnvironment_<R, E, In, L, Z>(
   self: Sink<R, E, In, L, Z>,
   env: LazyArg<Env<R>>,
   __tsplusTrace?: string
-): Sink<unknown, E, In, L, Z> {
+): Sink<never, E, In, L, Z> {
   concreteSink(self)
   return new SinkInternal(self.channel.provideEnvironment(env))
 }

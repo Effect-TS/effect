@@ -8,7 +8,7 @@ export function withPermitsScoped_(
   self: TSemaphore,
   permits: number,
   __tsplusTrace?: string
-): Effect<Has<Scope>, never, void> {
+): Effect<Scope, never, void> {
   return Effect.acquireReleaseInterruptible(
     self.acquireN(permits).commit(),
     self.releaseN(permits).commit()

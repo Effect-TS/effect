@@ -10,7 +10,7 @@ export function flatMap_<R, E, A, R2, E2, B>(
   self: Stream<R, E, A>,
   f: (a: A) => Stream<R2, E2, B>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, B> {
+): Stream<R | R2, E | E2, B> {
   concreteStream(self)
   return new StreamInternal(
     self.channel.concatMap((as) =>

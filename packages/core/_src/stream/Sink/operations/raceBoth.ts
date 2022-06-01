@@ -11,15 +11,15 @@ export function raceBoth_<R, R1, E, E1, In, In1, L, L1, Z, Z1>(
   that: LazyArg<Sink<R1, E1, In1, L1, Z1>>,
   capacity = 16,
   __tsplusTrace?: string
-): Sink<R & R1, E | E1, In & In1, L | L1, Either<Z, Z1>> {
+): Sink<R | R1, E | E1, In & In1, L | L1, Either<Z, Z1>> {
   return self.raceWith(
     that,
     (selfDone) =>
-      MergeDecision.done<R & R1, E | E1, Either<Z, Z1>>(
+      MergeDecision.done<R | R1, E | E1, Either<Z, Z1>>(
         Effect.done(selfDone).map(Either.left)
       ),
     (thatDone) =>
-      MergeDecision.done<R & R1, E | E1, Either<Z, Z1>>(
+      MergeDecision.done<R | R1, E | E1, Either<Z, Z1>>(
         Effect.done(thatDone).map(Either.right)
       ),
     capacity

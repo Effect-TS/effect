@@ -36,7 +36,7 @@ export function concatMapWith_<
   g: (o: OutDone, o1: OutDone) => OutDone,
   h: (o: OutDone, o2: OutDone2) => OutDone3
 ): Channel<
-  Env & Env2,
+  Env | Env2,
   InErr & InErr2,
   InElem & InElem2,
   InDone & InDone2,
@@ -45,7 +45,7 @@ export function concatMapWith_<
   OutDone3
 > {
   return new ConcatAll<
-    Env & Env2,
+    Env | Env2,
     InErr & InErr2,
     InElem & InElem2,
     InDone & InDone2,

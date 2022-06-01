@@ -8,7 +8,7 @@ export function scheduleEither_<R, E, A, S, R2, B>(
   self: Stream<R, E, A>,
   schedule: LazyArg<Schedule<S, R2, A, B>>,
   __tsplusTrace?: string
-): Stream<R & R2, E, Either<B, A>> {
+): Stream<R | R2, E, Either<B, A>> {
   return self.scheduleWith(
     schedule,
     (a) => Either.rightW(a),

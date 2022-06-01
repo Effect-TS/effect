@@ -4,12 +4,15 @@
  *
  * @tsplus fluent ets/Effect provideSomeLayer
  */
-export function provideSomeLayer_<R, E, A, R1 extends Spreadable, E1, A1 extends Spreadable>(
+export function provideSomeLayer_<R, E, A, R1, E1, A1>(
   self: Effect<R, E, A>,
   layer: Layer<R1, E1, A1>,
   __tsplusTrace?: string
-): Effect<R1 & Erase<R, A1>, E | E1, A> {
-  return self.provideLayer(Layer.environment<R1>() + layer)
+): Effect<R1 | Exclude<R, A1>, E | E1, A> {
+  // @ts-expect-error
+  return self.provideLayer(
+    Layer.environment<Exclude<R, A1>>() + layer
+  )
 }
 
 /**

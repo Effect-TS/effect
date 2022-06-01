@@ -7,8 +7,8 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
  */
 export function findSTM_<E, A>(
   self: TArray<A>,
-  f: (a: A) => STM<unknown, E, boolean>
-): STM<unknown, E, Option<A>> {
+  f: (a: A) => STM<never, E, boolean>
+): STM<never, E, Option<A>> {
   concreteTArray(self)
   const init = Tuple(Option.emptyOf<A>(), 0)
   const cont = (s: Tuple<[Option<A>, number]>) => s.get(0).isNone() && s.get(1) < self.chunk.length

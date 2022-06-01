@@ -6,7 +6,7 @@
 export function log(
   message: LazyArg<string>,
   __tsplusTrace?: string
-): Sink<unknown, never, unknown, unknown, void> {
+): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.log(message))
 }
 
@@ -18,7 +18,7 @@ export function log(
 export function logDebug(
   message: LazyArg<string>,
   __tsplusTrace?: string
-): Sink<unknown, never, unknown, unknown, void> {
+): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logDebug(message))
 }
 
@@ -30,7 +30,7 @@ export function logDebug(
 export function logError(
   message: LazyArg<string>,
   __tsplusTrace?: string
-): Sink<unknown, never, unknown, unknown, void> {
+): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logError(message))
 }
 
@@ -42,7 +42,7 @@ export function logError(
 export function logErrorCause(
   cause: LazyArg<Cause<unknown>>,
   __tsplusTrace?: string
-): Sink<unknown, never, unknown, unknown, void> {
+): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logErrorCause(cause))
 }
 
@@ -54,7 +54,7 @@ export function logErrorCause(
 export function logFatal(
   message: LazyArg<string>,
   __tsplusTrace?: string
-): Sink<unknown, never, unknown, unknown, void> {
+): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logFatal(message))
 }
 
@@ -66,7 +66,7 @@ export function logFatal(
 export function logInfo(
   message: LazyArg<string>,
   __tsplusTrace?: string
-): Sink<unknown, never, unknown, unknown, void> {
+): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logInfo(message))
 }
 
@@ -78,7 +78,7 @@ export function logInfo(
 export function logTrace(
   message: LazyArg<string>,
   __tsplusTrace?: string
-): Sink<unknown, never, unknown, unknown, void> {
+): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logTrace(message))
 }
 
@@ -90,7 +90,7 @@ export function logTrace(
 export function logWarning(
   message: LazyArg<string>,
   __tsplusTrace?: string
-): Sink<unknown, never, unknown, unknown, void> {
+): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logWarning(message))
 }
 
@@ -156,6 +156,6 @@ export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
  */
 export function logAnnotations(
   __tsplusTrace?: string
-): Sink<unknown, never, unknown, unknown, ImmutableMap<string, string>> {
+): Sink<never, never, unknown, unknown, ImmutableMap<string, string>> {
   return Sink.fromEffect(FiberRef.currentLogAnnotations.value.get())
 }

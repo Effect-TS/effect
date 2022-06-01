@@ -23,15 +23,18 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("release", () => Deferred.make<never, number>())
         .bind("acquire", () => Deferred.make<never, void>())
-        .bindValue("task", ({ acquire, release }) =>
-          Effect.asyncEffect((cb) =>
-            // This will never complete because the callback is never invoked
-            Effect.acquireUseRelease(
-              acquire.succeed(undefined),
-              () => Effect.never,
-              () => release.succeed(42).asUnit()
+        .bindValue(
+          "task",
+          ({ acquire, release }) =>
+            Effect.asyncEffect<never, unknown, unknown, never, unknown, unknown>((cb) =>
+              // This will never complete because the callback is never invoked
+              Effect.acquireUseRelease(
+                acquire.succeed(undefined),
+                () => Effect.never,
+                () => release.succeed(42).asUnit()
+              )
             )
-          ))
+        )
         .bind("fiber", ({ task }) => task.fork())
         .tap(({ acquire }) => acquire.await())
         .tap(({ fiber }) => fiber.interrupt())

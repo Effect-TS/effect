@@ -7,8 +7,8 @@
  * @tsplus fluent ets/Effect scoped
  */
 export function scoped<R, E, A>(
-  effect: LazyArg<Effect<R & Has<Scope>, E, A>>,
+  effect: LazyArg<Effect<R, E, A>>,
   __tsplusTrace?: string
-): Effect<R, E, A> {
+): Effect<Exclude<R, Scope>, E, A> {
   return Scope.make.flatMap((scope) => scope.use(effect))
 }

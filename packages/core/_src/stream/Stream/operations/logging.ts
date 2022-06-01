@@ -6,7 +6,7 @@
 export function log(
   message: LazyArg<string>,
   __tsplusTrace?: string
-): Stream<unknown, never, void> {
+): Stream<never, never, void> {
   return Stream.fromEffect(Effect.log(message))
 }
 
@@ -16,7 +16,7 @@ export function log(
 export function logDebug(
   message: LazyArg<string>,
   __tsplusTrace?: string
-): Stream<unknown, never, void> {
+): Stream<never, never, void> {
   return Stream.fromEffect(Effect.logDebug(message))
 }
 
@@ -26,7 +26,7 @@ export function logDebug(
 export function logError(
   message: LazyArg<string>,
   __tsplusTrace?: string
-): Stream<unknown, never, void> {
+): Stream<never, never, void> {
   return Stream.fromEffect(Effect.logError(message))
 }
 
@@ -36,7 +36,7 @@ export function logError(
 export function logErrorCause<E>(
   cause: LazyArg<Cause<E>>,
   __tsplusTrace?: string
-): Stream<unknown, never, void> {
+): Stream<never, never, void> {
   return Stream.fromEffect(Effect.logErrorCause(cause))
 }
 
@@ -46,7 +46,7 @@ export function logErrorCause<E>(
 export function logFatal(
   message: LazyArg<string>,
   __tsplusTrace?: string
-): Stream<unknown, never, void> {
+): Stream<never, never, void> {
   return Stream.fromEffect(Effect.logFatal(message))
 }
 
@@ -56,7 +56,7 @@ export function logFatal(
 export function logInfo(
   message: LazyArg<string>,
   __tsplusTrace?: string
-): Stream<unknown, never, void> {
+): Stream<never, never, void> {
   return Stream.fromEffect(Effect.logInfo(message))
 }
 
@@ -66,7 +66,7 @@ export function logInfo(
 export function logWarning(
   message: LazyArg<string>,
   __tsplusTrace?: string
-): Stream<unknown, never, void> {
+): Stream<never, never, void> {
   return Stream.fromEffect(Effect.logWarning(message))
 }
 
@@ -76,7 +76,7 @@ export function logWarning(
 export function logTrace(
   message: LazyArg<string>,
   __tsplusTrace?: string
-): Stream<unknown, never, void> {
+): Stream<never, never, void> {
   return Stream.fromEffect(Effect.logTrace(message))
 }
 
@@ -86,7 +86,7 @@ export function logTrace(
 export function logLevel(
   level: LazyArg<LogLevel>,
   __tsplusTrace?: string
-): Stream<unknown, never, void> {
+): Stream<never, never, void> {
   return Stream.scoped(FiberRef.currentLogLevel.value.locallyScoped(level()))
 }
 
@@ -96,7 +96,7 @@ export function logLevel(
 export function logSpan(
   label: LazyArg<string>,
   __tsplusTrace?: string
-): Stream<unknown, never, void> {
+): Stream<never, never, void> {
   return Stream.scoped(
     FiberRef.currentLogSpan.value.get().flatMap((stack) => {
       const now = Date.now()

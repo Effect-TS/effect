@@ -6,7 +6,7 @@
 export function retry_<RIn, E, ROut, S, RIn1, X>(
   self: Layer<RIn, E, ROut>,
   schedule: LazyArg<Schedule<S, RIn1, E, X>>
-): Layer<RIn & RIn1, E, ROut> {
+): Layer<RIn | RIn1, E, ROut> {
   return Layer.suspend(() => {
     const schedule0 = schedule()
     const stateTag = Tag<UpdateState<S>>()
@@ -29,7 +29,7 @@ function loop<S, RIn, E, ROut, RIn1, X>(
   schedule: Schedule<S, RIn1, E, X>,
   stateTag: Tag<UpdateState<S>>,
   s: S
-): Layer<RIn & RIn1, E, ROut> {
+): Layer<RIn | RIn1, E, ROut> {
   return self.catchAll((e) =>
     update(schedule, stateTag, e, s).flatMap((env) => loop(self, schedule, stateTag, env.get(stateTag).state).fresh())
   )
@@ -44,7 +44,7 @@ function update<S, RIn, E, X>(
   stateTag: Tag<UpdateState<S>>,
   e: E,
   s: S
-): Layer<RIn, E, Has<UpdateState<S>>> {
+): Layer<RIn, E, UpdateState<S>> {
   return Layer.fromEffect(stateTag)(
     Clock.currentTime.flatMap((now) =>
       schedule._step(now, e, s).flatMap(({ tuple: [state, _, decision] }) =>

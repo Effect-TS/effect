@@ -11,7 +11,7 @@ export function paginateChunk<S, A>(
   s: LazyArg<S>,
   f: (s: S) => Tuple<[Chunk<A>, Option<S>]>,
   __tsplusTrace?: string
-): Stream<unknown, never, A> {
+): Stream<never, never, A> {
   return new StreamInternal(Channel.suspend(loop(s, f)))
 }
 
@@ -19,7 +19,7 @@ function loop<S, A>(
   s: LazyArg<S>,
   f: (s: S) => Tuple<[Chunk<A>, Option<S>]>,
   __tsplusTrace?: string
-): Channel<unknown, unknown, unknown, unknown, never, Chunk<A>, unknown> {
+): Channel<never, unknown, unknown, unknown, never, Chunk<A>, unknown> {
   const {
     tuple: [as, maybeS]
   } = f(s())

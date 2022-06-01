@@ -7,7 +7,7 @@ export function timedWith_<R, E, A, R1, E1>(
   self: Effect<R, E, A>,
   milliseconds: LazyArg<Effect<R1, E1, number>>,
   __tsplusTrace?: string
-): Effect<R & R1, E | E1, Tuple<[Duration, A]>> {
+): Effect<R | R1, E | E1, Tuple<[Duration, A]>> {
   return self.summarized(milliseconds, (start, end) => new Duration(end - start))
 }
 

@@ -11,7 +11,7 @@ export function run_<R, E, A, R2, E2, Z>(
   self: Stream<R, E, A>,
   sink: LazyArg<Sink<R2, E2, A, unknown, Z>>,
   __tsplusTrace?: string
-): Effect<R & R2, E | E2, Z> {
+): Effect<R | R2, E | E2, Z> {
   concreteStream(self)
   return self.channel
     .pipeToOrFail(() => {

@@ -88,7 +88,7 @@ class Rechunker<A> {
 
   emitIfNotEmpty(
     __tsplusTrace?: string
-  ): Channel<unknown, unknown, unknown, unknown, never, Chunk<A>, void> {
+  ): Channel<never, unknown, unknown, unknown, never, Chunk<A>, void> {
     if (this.pos !== 0) {
       return Channel.write(this.builder.build())
     } else {

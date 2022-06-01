@@ -8,7 +8,7 @@ export function make<A>(
   fork: (a: A) => A = identity,
   join: (left: A, right: A) => A = (_, a) => a,
   __tsplusTrace?: string
-): Effect<Has<Scope>, never, FiberRef<A, (a: A) => A>> {
+): Effect<Scope, never, FiberRef<A, (a: A) => A>> {
   return FiberRef.makeWith(
     FiberRef.unsafeMake(initial, fork, join)
   )

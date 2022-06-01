@@ -18,7 +18,7 @@ function next<E>(
   leftover: Option<string>,
   wasSplitCRLF: boolean,
   __tsplusTrace?: string
-): Channel<unknown, E, Chunk<string>, unknown, E, Chunk<string>, unknown> {
+): Channel<never, E, Chunk<string>, unknown, E, Chunk<string>, unknown> {
   return Channel.readWithCause(
     (incomingChunk: Chunk<string>) => {
       const buffer = Chunk.builder<string>()

@@ -15,7 +15,7 @@ export function bothInOut_<State, Env, In, Out, State1, Env1, In2, Out2>(
   that: Schedule<State1, Env1, In2, Out2>
 ): Schedule<
   Tuple<[State, State1]>,
-  Env & Env1,
+  Env | Env1,
   Tuple<[In, In2]>,
   Tuple<[Out, Out2]>
 > {

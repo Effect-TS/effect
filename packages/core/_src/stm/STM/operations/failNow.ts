@@ -5,7 +5,7 @@ import { STMEffect, STMFailException } from "@effect/core/stm/STM/definition/pri
  *
  * @tsplus static ets/STM/Ops failNow
  */
-export function failNow<E>(e: E): STM<unknown, E, never> {
+export function failNow<E>(e: E): STM<never, E, never> {
   return new STMEffect(() => {
     throw new STMFailException(e)
   })

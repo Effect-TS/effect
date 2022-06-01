@@ -42,7 +42,7 @@ describe.concurrent("STM", () => {
       const zeroElement = 42
       const nonZero = 43
       const program = STM.mergeAll(
-        List.empty<STM<unknown, never, number>>(),
+        List.empty<STM<never, never, number>>(),
         zeroElement,
         () => nonZero
       ).commit()
@@ -91,7 +91,7 @@ describe.concurrent("STM", () => {
     it("should handle an empty iterable", async () => {
       const program = STM.reduceAll(
         STM.succeed(1),
-        List.empty<STM<unknown, never, number>>(),
+        List.empty<STM<never, never, number>>(),
         (acc, a) => acc + a
       ).commit()
 

@@ -12,7 +12,7 @@ export function crossWith_<R, E, A, R2, E2, B, C>(
   that: LazyArg<Stream<R2, E2, B>>,
   f: (a: A, b: B) => C,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, C> {
+): Stream<R | R2, E | E2, C> {
   return self.flatMap((a) => that().map((b) => f(a, b)))
 }
 

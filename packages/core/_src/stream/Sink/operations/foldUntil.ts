@@ -11,7 +11,7 @@ export function foldUntil<In, S>(
   max: number,
   f: (s: S, input: In) => S,
   __tsplusTrace?: string
-): Sink<unknown, never, In, In, S> {
+): Sink<never, never, In, In, S> {
   return Sink.fold(
     Tuple(z(), 0),
     (tuple) => tuple.get(1) < max,

@@ -6,6 +6,6 @@
  */
 export function succeed<A>(
   a: LazyArg<A>
-): Schedule<number, unknown, unknown, A> {
+): Schedule<number, never, unknown, A> {
   return Schedule.forever.map(a)
 }

@@ -105,7 +105,7 @@ describe.concurrent("Stream", () => {
 
     it("dies if the given partial function throws an exception", async () => {
       const error = new RuntimeError("boom")
-      const program = Stream.whenCase(undefined, () => {
+      const program = Stream.whenCase(undefined, (): Option<Stream<never, unknown, unknown>> => {
         throw error
       }).runCollect()
 
@@ -152,7 +152,7 @@ describe.concurrent("Stream", () => {
 
     it("dies if the given partial function throws an exception", async () => {
       const error = new RuntimeError("boom")
-      const program = Stream.whenCaseEffect(Effect.unit, () => {
+      const program = Stream.whenCaseEffect(Effect.unit, (): Option<Stream<never, unknown, unknown>> => {
         throw error
       }).runCollect()
 

@@ -25,7 +25,7 @@ export class SubscriptionRef<A> implements Ref.Synchronized<A> {
     return this.ref.get()
   }
 
-  get changes(): Stream<unknown, never, A> {
+  get changes(): Stream<never, never, A> {
     return Stream.unwrapScoped(
       this.ref.modifyEffect((a) => Stream.fromHubScoped(this.hub).map((stream) => Tuple(Stream(a) + stream, a)))
     )

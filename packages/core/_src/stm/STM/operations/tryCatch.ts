@@ -7,7 +7,7 @@
 export function tryCatch<E, A>(
   attempt: LazyArg<A>,
   onThrow: (u: unknown) => E
-): STM<unknown, E, A> {
+): STM<never, E, A> {
   return STM.suspend(() => {
     try {
       return STM.succeed(attempt)

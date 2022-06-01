@@ -9,8 +9,8 @@ import { STMOnSuccess } from "@effect/core/stm/STM/definition/primitives"
 export function flatMap_<R, E, A, R1, E1, B>(
   self: STM<R, E, A>,
   f: (a: A) => STM<R1, E1, B>
-): STM<R1 & R, E | E1, B> {
-  return new STMOnSuccess<R1 & R, E | E1, A, B>(self, f)
+): STM<R1 | R, E | E1, B> {
+  return new STMOnSuccess<R1 | R, E | E1, A, B>(self, f)
 }
 
 /**

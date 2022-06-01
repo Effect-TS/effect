@@ -28,7 +28,7 @@ function accumulator<E, A, S, A1>(
   current: S,
   f: (s: S, a: A) => Tuple<[S, A1]>,
   __tsplusTrace?: string
-): Channel<unknown, E, Chunk<A>, unknown, E, Chunk<A1>, void> {
+): Channel<never, E, Chunk<A>, unknown, E, Chunk<A1>, void> {
   return Channel.readWith(
     (input: Chunk<A>) => {
       const {

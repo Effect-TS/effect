@@ -18,7 +18,7 @@ describe.concurrent("Stream", () => {
 
     it("serviceWithStream", async () => {
       interface ServiceWithStream {
-        readonly live: Stream<unknown, never, number>
+        readonly live: Stream<never, never, number>
       }
 
       const ServiceWithStream = Tag<ServiceWithStream>()

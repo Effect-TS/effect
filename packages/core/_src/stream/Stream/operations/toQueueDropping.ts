@@ -8,7 +8,7 @@ export function toQueueDropping_<R, E, A>(
   self: Stream<R, E, A>,
   capacity = 2,
   __tsplusTrace?: string
-): Effect<R & Has<Scope>, never, Dequeue<Take<E, A>>> {
+): Effect<R | Scope, never, Dequeue<Take<E, A>>> {
   return Effect.acquireRelease(
     Queue.dropping<Take<E, A>>(capacity),
     (queue) => queue.shutdown

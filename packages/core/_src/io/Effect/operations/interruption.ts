@@ -199,7 +199,7 @@ export function onInterrupt_<R, E, A, R2, X>(
   self: Effect<R, E, A>,
   cleanup: (interruptors: HashSet<FiberId>) => Effect<R2, never, X>,
   __tsplusTrace?: string
-): Effect<R & R2, E, A> {
+): Effect<R | R2, E, A> {
   return Effect.uninterruptibleMask(({ restore }) =>
     restore(self).foldCauseEffect(
       (cause) =>
@@ -229,7 +229,7 @@ export function onInterruptPolymorphic_<R, E, A, R2, E2, X>(
   self: Effect<R, E, A>,
   cleanup: (interruptors: HashSet<FiberId>) => Effect<R2, E2, X>,
   __tsplusTrace?: string
-): Effect<R & R2, E | E2, A> {
+): Effect<R | R2, E | E2, A> {
   return Effect.uninterruptibleMask(({ restore }) =>
     restore(self).foldCauseEffect(
       (cause) =>

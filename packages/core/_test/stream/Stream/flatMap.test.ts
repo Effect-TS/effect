@@ -3,7 +3,7 @@ import { constFalse, constVoid, identity } from "@tsplus/stdlib/data/Function"
 describe.concurrent("Stream", () => {
   describe.concurrent("flatMap", () => {
     it("deep flatMap stack safety", async () => {
-      function fib(n: number): Stream<unknown, never, number> {
+      function fib(n: number): Stream<never, never, number> {
         return n <= 1
           ? Stream.succeed(n)
           : fib(n - 1).flatMap((a) => fib(n - 2).flatMap((b) => Stream.succeed(a + b)))

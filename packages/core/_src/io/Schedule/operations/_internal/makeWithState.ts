@@ -3,7 +3,7 @@ import { _Env, _In, _Out, _State, ScheduleSym } from "@effect/core/io/Schedule/d
 
 export class ScheduleWithStateInternal<State, Env, In, Out> {
   readonly [ScheduleSym]: ScheduleSym = ScheduleSym
-  readonly [_Env]!: (_: Env) => void
+  readonly [_Env]!: () => Env
   readonly [_In]!: (_: In) => void
   readonly [_Out]!: () => Out
   readonly [_State]!: State

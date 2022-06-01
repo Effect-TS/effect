@@ -15,7 +15,7 @@ export function interruptWhen_<R, E, A, R2, E2, Z>(
   self: Stream<R, E, A>,
   effect: LazyArg<Effect<R2, E2, Z>>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, A> {
+): Stream<R | R2, E | E2, A> {
   concreteStream(self)
   return new StreamInternal(self.channel.interruptWhen(effect))
 }

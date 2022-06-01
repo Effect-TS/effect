@@ -6,7 +6,7 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
  * @tsplus index ets/TArray
  * @tsplus fluent ets/TArray get
  */
-export function get_<A>(self: TArray<A>, index: number): STM<unknown, never, A> {
+export function get_<A>(self: TArray<A>, index: number): STM<never, never, A> {
   concreteTArray(self)
   if (!Number.isInteger(index) || index < 0 || index >= self.chunk.length) {
     return STM.die(new IndexOutOfBounds(index, 0, self.chunk.length))

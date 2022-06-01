@@ -9,7 +9,7 @@ export function mapEffect_<R, E, A, R1, E1, B>(
   self: Stream<R, E, A>,
   f: (a: A) => Effect<R1, E1, B>,
   __tsplusTrace?: string
-): Stream<R & R1, E | E1, B> {
+): Stream<R | R1, E | E1, B> {
   concreteStream(self)
   return new StreamInternal(
     self.channel >> loop(Chunk.empty<A>()[Symbol.iterator](), f)
@@ -23,10 +23,10 @@ export function mapEffect_<R, E, A, R1, E1, B>(
  */
 export const mapEffect = Pipeable(mapEffect_)
 
-function loop<R, E, A, R1, E1, A1>(
+function loop<E, A, R1, E1, A1>(
   chunkIterator: Iterator<A>,
   f: (a: A) => Effect<R1, E1, A1>
-): Channel<R & R1, E, Chunk<A>, unknown, E | E1, Chunk<A1>, unknown> {
+): Channel<R1, E, Chunk<A>, unknown, E | E1, Chunk<A1>, unknown> {
   const next = chunkIterator.next()
   if (next.done) {
     return Channel.readWithCause(
@@ -39,7 +39,7 @@ function loop<R, E, A, R1, E1, A1>(
       f(next.value).map(
         a1 =>
           Channel.write(Chunk.single(a1)) >
-            loop<R, E, A, R1, E1, A1>(chunkIterator, f)
+            loop<E, A, R1, E1, A1>(chunkIterator, f)
       )
     )
   }

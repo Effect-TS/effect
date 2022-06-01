@@ -8,9 +8,9 @@ import { concreteGroupBy } from "@effect/core/stream/GroupBy/operations/_interna
  */
 export function mergeGroupBy_<R, E, K, V, A, R1, E1, A1>(
   self: GroupBy<R, E, K, V, A>,
-  f: (k: K, stream: Stream<unknown, E, V>) => Stream<R1, E1, A1>,
+  f: (k: K, stream: Stream<never, E, V>) => Stream<R1, E1, A1>,
   __tsplusTrace?: string
-): Stream<R & R1, E | E1, A1> {
+): Stream<R | R1, E | E1, A1> {
   concreteGroupBy(self)
   return self.apply(f)
 }

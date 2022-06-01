@@ -10,7 +10,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
 export function provideEnvironment_<State, R, In, Out>(
   self: Schedule<State, R, In, Out>,
   environment: LazyArg<Env<R>>
-): Schedule<State, unknown, In, Out> {
+): Schedule<State, never, In, Out> {
   return makeWithState(
     self._initial,
     (now, input, state) => self._step(now, input, state).provideEnvironment(environment)

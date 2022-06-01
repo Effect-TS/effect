@@ -12,7 +12,7 @@ export function concat_<R, E, A, R1, E1, A1>(
   self: Stream<R, E, A>,
   that: LazyArg<Stream<R1, E1, A1>>,
   __tsplusTrace?: string
-): Stream<R & R1, E | E1, A | A1> {
+): Stream<R | R1, E | E1, A | A1> {
   concreteStream(self)
   return new StreamInternal(
     self.channel.zipRight(() => {

@@ -6,6 +6,6 @@
  *
  * @tsplus static ets/STM/Ops service
  */
-export function service<T>(tag: Tag<T>): STM<Has<T>, never, T> {
-  return STM.environmentWith((env) => env.get(tag))
+export function service<T>(tag: Tag<T>): STM<T, never, T> {
+  return STM.environmentWith((env) => env.unsafeGet(tag))
 }

@@ -9,7 +9,7 @@ export function provideService_<R, E, A, T>(
   tag: Tag<T>,
   resource: LazyArg<T>,
   __tsplusTrace?: string
-): Effect<Erase<R, Has<T>>, E, A> {
+): Effect<Exclude<R, T>, E, A> {
   return self.provideServiceEffect(tag, Effect.succeed(resource))
 }
 

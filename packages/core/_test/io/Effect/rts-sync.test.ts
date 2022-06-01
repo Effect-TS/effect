@@ -44,7 +44,7 @@ describe.concurrent("Effect", () => {
 
     it("suspendSucceed must not catch throwable", async () => {
       const error = new Error("woops")
-      const program = Effect.suspendSucceed(() => {
+      const program = Effect.suspendSucceed<never, unknown, unknown>(() => {
         throw error
       })
         .sandbox()
@@ -58,7 +58,7 @@ describe.concurrent("Effect", () => {
 
     it("suspend must catch throwable", async () => {
       const error = new Error("woops")
-      const program = Effect.suspend(() => {
+      const program = Effect.suspend<never, unknown, unknown>(() => {
         throw error
       }).either()
 
@@ -69,7 +69,7 @@ describe.concurrent("Effect", () => {
 
     it("suspendWith must catch throwable", async () => {
       const error = new Error("woops")
-      const program = Effect.suspendWith(() => {
+      const program = Effect.suspendWith<never, unknown>(() => {
         throw error
       }).either()
 
@@ -92,7 +92,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("effect, bind, map", async () => {
-      function fibEffect(n: number): Effect<unknown, unknown, number> {
+      function fibEffect(n: number): Effect<never, unknown, number> {
         if (n <= 1) {
           return Effect.attempt(n)
         }
@@ -105,7 +105,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("effect, bind, map, redeem", async () => {
-      function fibEffect(n: number): Effect<unknown, unknown, number> {
+      function fibEffect(n: number): Effect<never, unknown, number> {
         if (n <= 1) {
           return Effect.attempt(() => {
             throw ExampleError
@@ -120,7 +120,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("sync effect", async () => {
-      function sumEffect(n: number): Effect<unknown, unknown, number> {
+      function sumEffect(n: number): Effect<never, unknown, number> {
         if (n < 0) {
           return Effect.succeed(0)
         }

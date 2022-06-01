@@ -10,9 +10,9 @@ export function contramapChunksEffect_<R, E, R2, E2, In, In1, L, Z>(
   self: Sink<R, E, In, L, Z>,
   f: (input: Chunk<In1>) => Effect<R2, E2, Chunk<In>>,
   __tsplusTrace?: string
-): Sink<R & R2, E | E2, In1, L, Z> {
+): Sink<R | R2, E | E2, In1, L, Z> {
   const loop: Channel<
-    R & R2,
+    R | R2,
     never,
     Chunk<In1>,
     unknown,

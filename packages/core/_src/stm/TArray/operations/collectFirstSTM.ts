@@ -6,13 +6,13 @@
  */
 export function collectFirstSTM_<A, E, B>(
   self: TArray<A>,
-  pf: (a: A) => Option<STM<unknown, E, B>>
-): STM<unknown, E, Option<B>> {
+  pf: (a: A) => Option<STM<never, E, B>>
+): STM<never, E, Option<B>> {
   return self
     .find((a) => pf(a).isSome())
     .flatMap((option) =>
       option.fold(
-        (): STM<unknown, E, Option<B>> => STM.none,
+        (): STM<never, E, Option<B>> => STM.none,
         (a) =>
           pf(a)
             .map((stm) => stm.map(Option.some))

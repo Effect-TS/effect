@@ -18,7 +18,7 @@ export function withDuration<R, E, In, L, Z>(
  */
 export function timed(
   __tsplusTrace?: string
-): Sink<unknown, never, unknown, never, Duration> {
+): Sink<never, never, unknown, never, Duration> {
   return Sink.drain()
     .timed()
     .map((tuple) => tuple.get(1))

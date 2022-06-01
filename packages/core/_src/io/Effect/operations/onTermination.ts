@@ -8,7 +8,7 @@ export function onTermination_<R, E, A, R2, X>(
   self: Effect<R, E, A>,
   cleanup: (cause: Cause<never>) => Effect.RIO<R2, X>,
   __tsplusTrace?: string
-): Effect<R & R2, E, A> {
+): Effect<R | R2, E, A> {
   return Effect.acquireUseReleaseExit(
     Effect.unit,
     () => self,

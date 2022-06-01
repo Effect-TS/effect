@@ -84,7 +84,7 @@ export class Read<
 // -----------------------------------------------------------------------------
 
 export class SucceedNow<OutDone> extends ChannelBase<
-  unknown,
+  never,
   unknown,
   unknown,
   unknown,
@@ -103,7 +103,7 @@ export class SucceedNow<OutDone> extends ChannelBase<
 // -----------------------------------------------------------------------------
 
 export class Fail<OutErr> extends ChannelBase<
-  unknown,
+  never,
   unknown,
   unknown,
   unknown,
@@ -141,7 +141,7 @@ export class FromEffect<Env, OutErr, OutDone> extends ChannelBase<
 // -----------------------------------------------------------------------------
 
 export class Emit<OutElem, OutDone> extends ChannelBase<
-  unknown,
+  never,
   unknown,
   unknown,
   unknown,
@@ -160,7 +160,7 @@ export class Emit<OutElem, OutDone> extends ChannelBase<
 // -----------------------------------------------------------------------------
 
 export class Succeed<OutDone> extends ChannelBase<
-  unknown,
+  never,
   unknown,
   unknown,
   unknown,
@@ -342,7 +342,7 @@ export class Provide<
   OutErr,
   OutElem,
   OutDone
-> extends ChannelBase<unknown, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+> extends ChannelBase<never, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
   readonly _tag = "Provide"
   constructor(
     readonly env: Lazy<Env<R>>,
@@ -391,7 +391,7 @@ export abstract class Continuation<
   OutDone,
   OutDone2
 > {
-  readonly [_Env]!: (_: Env) => void
+  readonly [_Env]!: () => Env
   readonly [_InErr]!: (_: InErr) => void
   readonly [_InElem]!: (_: InElem) => void
   readonly [_InDone]!: (_: InDone) => void

@@ -16,7 +16,7 @@ export function zipWithNext<R, E, A>(
 function process<E, A>(
   last: Option<A>,
   __tsplusTrace?: string
-): Channel<unknown, E, Chunk<A>, unknown, E, Chunk<Tuple<[A, Option<A>]>>, void> {
+): Channel<never, E, Chunk<A>, unknown, E, Chunk<Tuple<[A, Option<A>]>>, void> {
   return Channel.readWith(
     (input: Chunk<A>) => {
       const {

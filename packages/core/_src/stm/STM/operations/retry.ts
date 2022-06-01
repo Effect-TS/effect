@@ -6,6 +6,6 @@ import { STMEffect, STMRetryException } from "@effect/core/stm/STM/definition/pr
  *
  * @tsplus static ets/STM/Ops retry
  */
-export const retry: STM<unknown, never, never> = new STMEffect(() => {
+export const retry: STM<never, never, never> = new STMEffect(() => {
   throw new STMRetryException()
 })

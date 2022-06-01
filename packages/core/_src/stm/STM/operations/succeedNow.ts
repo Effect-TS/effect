@@ -5,6 +5,6 @@ import { STMSucceedNow } from "@effect/core/stm/STM/definition/primitives"
  *
  * @tsplus static ets/STM/Ops succeedNow
  */
-export function succeedNow<A>(a: A): STM<unknown, never, A> {
+export function succeedNow<A>(a: A): STM<never, never, A> {
   return new STMSucceedNow(a)
 }

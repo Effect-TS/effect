@@ -15,7 +15,7 @@ export function branchAfter_<R, E, A, R2, E2, B>(
   n: number,
   f: (output: Chunk<A>) => Pipeline<R, E, A, R2, E2, B>,
   __tsplusTrace?: string
-): Stream<R & R2, E | E2, B> {
+): Stream<R | R2, E | E2, B> {
   concreteStream(self)
   return new StreamInternal(
     Channel.suspend(self.channel >> collecting(Chunk.empty<A>(), n, f))
@@ -35,7 +35,7 @@ function collecting<R, E, A, R2, E2, B>(
   n: number,
   f: (output: Chunk<A>) => Pipeline<R, E, A, R2, E2, B>,
   __tsplusTrace?: string
-): Channel<R & R2, E, Chunk<A>, unknown, E | E2, Chunk<B>, unknown> {
+): Channel<R | R2, E, Chunk<A>, unknown, E | E2, Chunk<B>, unknown> {
   return Channel.readWithCause(
     (chunk: Chunk<A>) => {
       const newBuffer = buffer + chunk
@@ -65,7 +65,7 @@ function collecting<R, E, A, R2, E2, B>(
 
 function emitting<R, E, A, R2, E2, B>(
   pipeline: Pipeline<R, E, A, R2, E2, B>
-): Channel<R & R2, E, Chunk<A>, unknown, E | E2, Chunk<B>, unknown> {
+): Channel<R | R2, E, Chunk<A>, unknown, E | E2, Chunk<B>, unknown> {
   return Channel.readWithCause(
     (chunk: Chunk<A>) => {
       const stream = pipeline(Stream.fromChunk(chunk))

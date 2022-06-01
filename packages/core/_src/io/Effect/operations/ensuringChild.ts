@@ -9,7 +9,7 @@ export function ensuringChild_<R, E, A, R2, X>(
   self: Effect<R, E, A>,
   f: (_: Fiber<any, Chunk<unknown>>) => Effect.RIO<R2, X>,
   __tsplusTrace?: string
-): Effect<R & R2, E, A> {
+): Effect<R | R2, E, A> {
   return self.ensuringChildren((children) => f(Fiber.collectAll(children)))
 }
 

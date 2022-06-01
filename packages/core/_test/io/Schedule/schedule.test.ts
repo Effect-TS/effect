@@ -2,7 +2,7 @@
  * A function that increments ref each time it is called. It always fails,
  * with the incremented value in error.
  */
-function alwaysFail(ref: Ref<number>): Effect<unknown, string, number> {
+function alwaysFail(ref: Ref<number>): Effect<never, string, number> {
   return ref.updateAndGet((n) => n + 1).flatMap((n) => Effect.fail(`Error: ${n}`))
 }
 
@@ -34,7 +34,7 @@ function alwaysFail(ref: Ref<number>): Effect<unknown, string, number> {
 //   return Ref.make(0).flatMap((ref) => ref.updateAndGet((n) => n + 1).repeat(schedule));
 // }
 
-// function run<R, E, A>(effect: Effect<R, E, A>): Effect<Has<TestClock> & R, E, A> {
+// function run<R, E, A>(effect: Effect<R, E, A>): Effect<TestClock & R, E, A> {
 //   return effect
 //     .fork()
 //     .tap(() => Effect.serviceWith(HasTestClock)((testClock) => testClock.adjust(new Duration(Number.MAX_SAFE_INTEGER))))
@@ -47,13 +47,13 @@ function alwaysFail(ref: Ref<number>): Effect<unknown, string, number> {
 // export function runCollect<State, Env, In, Out>(
 //   schedule: Schedule.WithState<State, Env, In, Out>,
 //   input: Iterable<In>
-// ): Effect<Has<TestClock> & Env, never, Chunk<Out>> {
+// ): Effect<TestClock & Env, never, Chunk<Out>> {
 //   return run(
 //     schedule.driver().flatMap((driver) => {
 //       function loop(
 //         input: List<In>,
 //         acc: Chunk<Out>
-//       ): Effect<Has<TestClock> & Env, never, Chunk<Out>> {
+//       ): Effect<TestClock & Env, never, Chunk<Out>> {
 //         if (input.length() === 0) {
 //           return Effect.succeed(acc);
 //         }

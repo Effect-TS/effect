@@ -6,8 +6,8 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  * @tsplus static ets/Stream/Ops scoped
  */
 export function scoped<R, E, A>(
-  effect: LazyArg<Effect<R & Has<Scope>, E, A>>,
+  effect: LazyArg<Effect<R, E, A>>,
   __tsplusTrace?: string
-): Stream<R, E, A> {
+): Stream<Exclude<R, Scope>, E, A> {
   return new StreamInternal(Channel.scoped(effect().map(Chunk.single)))
 }

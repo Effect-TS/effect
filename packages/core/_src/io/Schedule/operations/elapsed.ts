@@ -10,7 +10,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  */
 export const elapsed: Schedule<
   Option<number>,
-  unknown,
+  never,
   unknown,
   Duration
 > = makeWithState(Option.emptyOf(), (now, _, state) =>

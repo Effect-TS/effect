@@ -27,7 +27,7 @@ export function mergeMap_<
   bufferSize = 16,
   mergeStrategy: MergeStrategy = MergeStrategy.BackPressure
 ): Channel<
-  Env & Env1,
+  Env | Env1,
   InErr & InErr1,
   InElem & InElem1,
   InDone & InDone1,

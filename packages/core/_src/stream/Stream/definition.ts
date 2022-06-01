@@ -31,15 +31,15 @@ export type _A = typeof _A
  */
 export interface Stream<R, E, A> {
   readonly [StreamSym]: StreamSym
-  readonly [_R]: (_: R) => void
+  readonly [_R]: () => R
   readonly [_E]: () => E
   readonly [_A]: () => A
 }
 
 export declare namespace Stream {
-  export type IO<E, A> = Stream<unknown, E, A>
+  export type IO<E, A> = Stream<never, E, A>
   export type RIO<R, A> = Stream<R, never, A>
-  export type UIO<A> = Stream<unknown, never, A>
+  export type UIO<A> = Stream<never, never, A>
 }
 
 /**

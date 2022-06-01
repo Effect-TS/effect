@@ -6,6 +6,6 @@
 export function done<E, A>(
   exit: LazyArg<Exit<E, A>>,
   __tsplusTrace?: string
-): Stream<unknown, E, A> {
+): Stream<never, E, A> {
   return Stream.fromEffect(Effect.done(exit))
 }

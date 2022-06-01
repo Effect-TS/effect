@@ -6,8 +6,8 @@
  */
 export function reduceOptionSTM_<E, A>(
   self: TArray<A>,
-  f: (x: A, y: A) => STM<unknown, E, A>
-): STM<unknown, E, Option<A>> {
+  f: (x: A, y: A) => STM<never, E, A>
+): STM<never, E, Option<A>> {
   return self.reduceSTM(Option.emptyOf<A>(), (acc, a) => acc.fold(STM.some(a), (acc) => f(acc, a).map(Option.some)))
 }
 

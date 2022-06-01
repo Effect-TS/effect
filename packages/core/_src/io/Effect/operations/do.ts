@@ -9,7 +9,7 @@ export function bind_<R2, E2, R, E, A, K, N extends string>(
   f: (_: K) => Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<
-  R & R2,
+  R | R2,
   E | E2,
   MergeRecord<
     K,
@@ -45,7 +45,7 @@ export function bind<R, E, A, K, N extends string>(
   return <R2, E2>(
     self: Effect<R2, E2, K>
   ): Effect<
-    R & R2,
+    R | R2,
     E | E2,
     MergeRecord<
       K,
@@ -115,6 +115,6 @@ export function bindValue<A, K, N extends string>(
 /**
  * @tsplus static ets/Effect/Ops Do
  */
-export function Do(): Effect<unknown, never, {}> {
+export function Do(): Effect<never, never, {}> {
   return Effect.succeedNow({})
 }
