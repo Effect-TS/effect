@@ -1,18 +1,18 @@
 type Task = Lazy<void>
 const scheduled = {
   running: false,
-  tasks: [] as Task[]
+  tasks: new DoublyLinkedList<Task>()
 }
 function starveInternal(depth: number) {
   const toRun = scheduled.tasks
-  scheduled.tasks = []
-  for (let i = 0; i < toRun.length; i++) {
-    toRun[i]!()
-  }
-  if (scheduled.tasks.length > 0) {
-    starve(depth)
-  } else {
+  scheduled.tasks = new DoublyLinkedList()
+  toRun.forEach((task) => {
+    task()
+  })
+  if (scheduled.tasks.isEmpty) {
     scheduled.running = false
+  } else {
+    starve(depth)
   }
 }
 function starve(depth = 0) {
@@ -23,7 +23,7 @@ function starve(depth = 0) {
   }
 }
 export function scheduleTask(task: Task) {
-  scheduled.tasks.push(task)
+  scheduled.tasks.add(task)
   if (!scheduled.running) {
     scheduled.running = true
     starve()
