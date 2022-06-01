@@ -8,7 +8,7 @@ export const defaultRandom = LazyValue.make(() => new LiveRandom((Math.random() 
 /**
  * @tsplus static ets/Random/Ops live
  */
-export const live = Layer.fromValue(Random.Tag)(defaultRandom.value)
+export const live = Layer.fromValue(Random.Tag, defaultRandom.value)
 
 export class LiveRandom implements Random {
   readonly [RandomSym]: RandomSym = RandomSym

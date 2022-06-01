@@ -45,7 +45,8 @@ function update<S, RIn, E, X>(
   e: E,
   s: S
 ): Layer<RIn, E, UpdateState<S>> {
-  return Layer.fromEffect(stateTag)(
+  return Layer.fromEffect(
+    stateTag,
     Clock.currentTime.flatMap((now) =>
       schedule._step(now, e, s).flatMap(({ tuple: [state, _, decision] }) =>
         decision._tag === "Done"

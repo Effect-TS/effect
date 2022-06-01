@@ -31,7 +31,7 @@ describe.concurrent("Layer", () => {
       const program = Effect.scoped(
         Effect.Do()
           .bindValue("m", () => new Service1())
-          .bindValue("layer", ({ m }) => Layer.fromValue(Service1Tag)(m))
+          .bindValue("layer", ({ m }) => Layer.fromValue(Service1Tag, m))
           .bindValue("env", ({ layer }) => (layer + layer + layer).build())
           .bind("m1", ({ env }) => env.flatMap((_) => Effect.attempt(_.get(Service1Tag))))
       )

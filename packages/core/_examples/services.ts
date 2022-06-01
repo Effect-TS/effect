@@ -1,17 +1,17 @@
-export const makeLiveSystem = Do(($) => {
-  return $(Effect.succeed({
+export const makeLiveSystem = () => {
+  return {
     now: Effect.succeed(new Date())
-  }))
-})
-export interface System extends Effect.Success<typeof makeLiveSystem> {}
+  }
+}
+export interface System extends ReturnType<typeof makeLiveSystem> {}
 export const System = Service.Tag<System>()
-export const SystemLive = makeLiveSystem.toLayer(System)
+export const SystemLive = Layer.fromValue(System, makeLiveSystem)
 
 export const makeLiveCounter = Do(($) => {
-  let count = 0
-  return $(Effect.succeed({
-    get: Effect.succeed(count++)
-  }))
+  const countRef = $(Ref.make(0))
+  return {
+    get: countRef.updateAndGet((count) => count + 1)
+  }
 })
 export interface Counter extends Effect.Success<typeof makeLiveCounter> {}
 export const Counter = Service.Tag<Counter>()
@@ -20,12 +20,12 @@ export const CounterLive = makeLiveCounter.toLayer(Counter)
 export const makeLiveLogger = Do(($) => {
   const sys = $(Effect.service(System))
   const cnt = $(Effect.service(Counter))
-  return $(Effect.succeed({
+  return {
     info: (message: string) =>
       sys.now.zip(cnt.get).flatMap(({ tuple: [now, i] }) =>
         Effect.succeed(console.log(`[${now.toISOString()} - ${i}]: ${message}`))
       )
-  }))
+  }
 })
 export interface Logger extends Effect.Success<typeof makeLiveLogger> {}
 export const Logger = Service.Tag<Logger>()
