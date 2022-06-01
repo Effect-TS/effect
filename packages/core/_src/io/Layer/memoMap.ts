@@ -117,7 +117,7 @@ export function build<RIn, E, ROut>(
   self: Layer<RIn, E, ROut>,
   __tsplusTrace?: string
 ): Effect<RIn | Scope, E, Env<ROut>> {
-  return Effect.serviceWithEffect(Scope.Tag)((scope) => self.buildWithScope(scope))
+  return Effect.serviceWithEffect(Scope.Tag, (scope) => self.buildWithScope(scope))
 }
 
 /**

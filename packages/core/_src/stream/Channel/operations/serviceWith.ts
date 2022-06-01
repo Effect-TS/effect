@@ -3,8 +3,9 @@
  *
  * @tsplus static ets/Channel/Ops serviceWith
  */
-export function serviceWith<T>(tag: Tag<T>) {
-  return <OutDone>(
-    f: (resource: T) => OutDone
-  ): Channel<T, unknown, unknown, unknown, never, never, OutDone> => Channel.service(tag).map(f)
+export function serviceWith<T, OutDone>(
+  tag: Tag<T>,
+  f: (resource: T) => OutDone
+): Channel<T, unknown, unknown, unknown, never, never, OutDone> {
+  return Channel.service(tag).map(f)
 }

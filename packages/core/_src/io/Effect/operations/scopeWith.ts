@@ -7,5 +7,5 @@ export function scopeWith<R, E, A>(
   f: (scope: Scope) => Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R | Scope, E, A> {
-  return Effect.serviceWithEffect(Scope.Tag)(f)
+  return Effect.serviceWithEffect(Scope.Tag, f)
 }
