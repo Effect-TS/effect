@@ -53,15 +53,15 @@ export function deriveLifted<T>(
     const ret = {} as any
 
     for (const k of functions) {
-      ret[k] = (...args: any[]) => Effect.serviceWithEffect(S)((h) => (h[k] as any)(...args))
+      ret[k] = (...args: any[]) => Effect.serviceWithEffect(S, (h) => (h[k] as any)(...args))
     }
 
     for (const k of constants) {
-      ret[k] = Effect.serviceWithEffect(S)((h) => h[k] as any)
+      ret[k] = Effect.serviceWithEffect(S, (h) => h[k] as any)
     }
 
     for (const k of values) {
-      ret[k] = Effect.serviceWith(S)((h) => h[k])
+      ret[k] = Effect.serviceWith(S, (h) => h[k])
     }
 
     return ret as any
@@ -85,7 +85,7 @@ export function deriveAccessEffect<T>(
     const ret = {} as any
 
     for (const k of generics) {
-      ret[k] = (f: any, trace?: string) => Effect.serviceWithEffect(S)((h) => f(h[k]), trace)
+      ret[k] = (f: any, trace?: string) => Effect.serviceWithEffect(S, (h) => f(h[k]), trace)
     }
 
     return ret as any
@@ -109,7 +109,7 @@ export function deriveAccess<T>(
     const ret = {} as any
 
     for (const k of generics) {
-      ret[k] = (f: any, trace?: string) => Effect.serviceWith(S)((h) => f(h[k]), trace)
+      ret[k] = (f: any, trace?: string) => Effect.serviceWith(S, (h) => f(h[k]), trace)
     }
 
     return ret as any

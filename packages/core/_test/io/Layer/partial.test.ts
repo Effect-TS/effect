@@ -47,7 +47,7 @@ describe.concurrent("Layer", () => {
       const needsString = provideNumberRef >> fooBuilder
       const layer = provideString >> needsString
 
-      const program = Effect.serviceWithEffect(FooTag)((_) => _.get).provideLayer(
+      const program = Effect.serviceWithEffect(FooTag, (_) => _.get).provideLayer(
         layer
       )
 
@@ -82,9 +82,9 @@ describe.concurrent("Layer", () => {
       const needsString = provideNumberRef > fooBuilder
       const layer = provideString > needsString
 
-      const program = Effect.serviceWithEffect(FooTag)((_) => _.get)
+      const program = Effect.serviceWithEffect(FooTag, (_) => _.get)
         .flatMap(({ tuple: [i1, s] }) =>
-          Effect.serviceWithEffect(NumberRefTag)((ref) => ref.get()).map((i2) => Tuple(i1, i2, s))
+          Effect.serviceWithEffect(NumberRefTag, (ref) => ref.get()).map((i2) => Tuple(i1, i2, s))
         )
         .provideLayer(layer)
 

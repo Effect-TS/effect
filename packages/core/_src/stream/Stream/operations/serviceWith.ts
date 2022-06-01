@@ -3,7 +3,6 @@
  *
  * @tsplus static ets/Stream/Ops serviceWith
  */
-export function serviceWith<T>(tag: Tag<T>) {
-  return <A>(f: (resource: T) => A, __tsplusTrace?: string): Stream<T, never, A> =>
-    Stream.fromEffect(Effect.serviceWith(tag)(f))
+export function serviceWith<T, A>(tag: Tag<T>, f: (resource: T) => A, __tsplusTrace?: string): Stream<T, never, A> {
+  return Stream.fromEffect(Effect.serviceWith(tag, f))
 }

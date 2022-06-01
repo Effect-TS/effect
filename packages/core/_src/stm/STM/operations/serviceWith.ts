@@ -6,6 +6,6 @@
  *
  * @tsplus static ets/STM/Ops serviceWith
  */
-export function serviceWith<T>(tag: Tag<T>) {
-  return <A>(f: (a: T) => A): STM<T, never, A> => STM.serviceWithSTM(tag)((a) => STM.succeedNow(f(a)))
+export function serviceWith<T, A>(tag: Tag<T>, f: (a: T) => A): STM<T, never, A> {
+  return STM.serviceWithSTM(tag)((a) => STM.succeedNow(f(a)))
 }

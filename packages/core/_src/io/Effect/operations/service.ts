@@ -10,5 +10,5 @@ export function service<T>(
   tag: Tag<T>,
   __tsplusTrace?: string
 ): Effect<T, never, T> {
-  return Effect.serviceWithEffect(tag)(Effect.succeedNow)
+  return Effect.serviceWithEffect(tag, Effect.succeedNow)
 }

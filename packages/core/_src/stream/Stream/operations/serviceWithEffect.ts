@@ -8,5 +8,5 @@ export function serviceWithEffect<T>(tag: Tag<T>) {
   return <R, E, A>(
     f: (resource: T) => Effect<R, E, A>,
     __tsplusTrace?: string
-  ): Stream<R | T, E, A> => Stream.fromEffect(Effect.serviceWithEffect(tag)(f))
+  ): Stream<R | T, E, A> => Stream.fromEffect(Effect.serviceWithEffect(tag, f))
 }
