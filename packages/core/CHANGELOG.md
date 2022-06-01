@@ -1,5 +1,21 @@
 # @effect/core
 
+## 0.0.3
+
+### Patch Changes
+
+- [#1209](https://github.com/Effect-TS/core/pull/1209) [`0285962b7`](https://github.com/Effect-TS/core/commit/0285962b727fb6fcf0b56e97e5a3eb59f455e512) Thanks [@IMax153](https://github.com/IMax153)! - death to semicolons
+
+* [#1218](https://github.com/Effect-TS/core/pull/1218) [`f079f691f`](https://github.com/Effect-TS/core/commit/f079f691f2e7f16c40135c46538d845164bc6274) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Fix provide function signatures
+
+- [#1222](https://github.com/Effect-TS/core/pull/1222) [`8e7eb01a9`](https://github.com/Effect-TS/core/commit/8e7eb01a9563805851193abdcfb8ec5cf162ada0) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Improve Layer Constructors
+
+* [#1221](https://github.com/Effect-TS/core/pull/1221) [`be705d521`](https://github.com/Effect-TS/core/commit/be705d521dad4de675b13cc48c7183e59f176ce3) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Depth based loop detection in Scheduler
+
+- [#1222](https://github.com/Effect-TS/core/pull/1222) [`e67699a96`](https://github.com/Effect-TS/core/commit/e67699a96174ea35540ec48c72e989a5f418c904) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Improve serviceWith signatures
+
+* [#1222](https://github.com/Effect-TS/core/pull/1222) [`b5014f860`](https://github.com/Effect-TS/core/commit/b5014f860148dc9fff213e77b0c48f57853e19d4) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Has Has Died
+
 ## 0.0.2
 
 ### Patch Changes
