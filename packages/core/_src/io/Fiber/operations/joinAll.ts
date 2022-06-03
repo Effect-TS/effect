@@ -5,8 +5,8 @@
  *
  * @tsplus static ets/Fiber/Ops joinAll
  */
-export function joinAll<E>(
-  fibers: Collection<Fiber<E, any>>,
+export function joinAll<E, A>(
+  fibers: Collection<Fiber<E, A>>,
   __tsplusTrace?: string
 ): Effect.IO<E, void> {
   return Fiber.collectAll(fibers).join().asUnit()

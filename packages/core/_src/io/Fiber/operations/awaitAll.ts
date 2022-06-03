@@ -3,8 +3,8 @@
  *
  * @tsplus static ets/Fiber/Ops awaitAll
  */
-export function awaitAll(
-  fibers: Collection<Fiber<any, any>>,
+export function awaitAll<E, A>(
+  fibers: Collection<Fiber<E, A>>,
   __tsplusTrace?: string
 ): Effect.UIO<void> {
   return Fiber.collectAll(fibers).await().asUnit()
