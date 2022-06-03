@@ -878,22 +878,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsplus/stdlib-global@npm:^0.0.39":
-  version: 0.0.39
-  resolution: "@tsplus/stdlib-global@npm:0.0.39"
+"@tsplus/stdlib-global@npm:^0.0.40":
+  version: 0.0.40
+  resolution: "@tsplus/stdlib-global@npm:0.0.40"
   peerDependencies:
-    "@tsplus/stdlib": ^0.0.74
+    "@tsplus/stdlib": ^0.0.75
   peerDependenciesMeta:
     "@tsplus/stdlib":
       optional: true
-  checksum: f4d3c832f4f04d05b163200779cb3fbc1f7d6ddefb798b104f7dc831dce1d650e7954e0012f47562956a8b9c3ad464ba2bd7849e465a3b280a49443e1e36838a
+  checksum: de42fff771407680c51d2f3428d05a11af95d2835e34fcedd7a0fae3377ed285e15042638c5f03f4437743b89d5bfb36d35063ebbacb2408a7c093e4a0e94512
   languageName: node
   linkType: hard
 
-"@tsplus/stdlib@npm:0.0.74":
-  version: 0.0.74
-  resolution: "@tsplus/stdlib@npm:0.0.74"
-  checksum: bc20bc5cdd7ca6dcf9b1630c32ce0938a5d70f41c810746cc4d46e073eaec64f0d7db5ae68d53e798423991735a6730266712440edd59df88076a67c33c4fa9f
+"@tsplus/stdlib@npm:0.0.75":
+  version: 0.0.75
+  resolution: "@tsplus/stdlib@npm:0.0.75"
+  checksum: 4452c425e91548554ee8746c39d9756650651f189cd3a86f1318438d8a8b19a68786cc5bfa2650e55371cc57a94c00709f7b5674cffa2516ed6caf0316b22150
   languageName: node
   linkType: hard
 
@@ -2568,8 +2568,8 @@ __metadata:
     "@effect-ts/core": ^0.60.1
     "@repo-tooling/eslint-plugin-dprint": ^0.0.4
     "@tsplus/installer": 0.0.108
-    "@tsplus/stdlib": 0.0.74
-    "@tsplus/stdlib-global": ^0.0.39
+    "@tsplus/stdlib": 0.0.75
+    "@tsplus/stdlib-global": ^0.0.40
     "@types/node": ^17.0.38
     "@types/rimraf": ^3.0.2
     "@typescript-eslint/eslint-plugin": ^5.27.0

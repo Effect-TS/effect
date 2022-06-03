@@ -21,6 +21,7 @@ import { Exited } from "@effect/core/io/Scope/ReleaseMap/_internal/State"
  * the results, see `forEachDiscard` for a more efficient implementation.
  *
  * @tsplus static ets/Effect/Ops forEach
+ * @tsplus fluent Collection mapEffect
  */
 export function forEach<A, R, E, B>(
   as: LazyArg<Collection<A>>,
@@ -46,6 +47,7 @@ export function forEach<A, R, E, B>(
  * of the current element being iterated over.
  *
  * @tsplus static ets/Effect/Ops forEachWithIndex
+ * @tsplus fluent Collection mapEffectWithIndex
  */
 export function forEachWithIndex<A, R, E, B>(
   as: LazyArg<Collection<A>>,
@@ -75,6 +77,7 @@ export function forEachWithIndex<A, R, E, B>(
  * the list of results.
  *
  * @tsplus static ets/Effect/Ops forEachDiscard
+ * @tsplus fluent Collection mapEffectDiscard
  */
 export function forEachDiscard<R, E, A, X>(
   as: LazyArg<Collection<A>>,
@@ -103,6 +106,7 @@ function forEachDiscardLoop<R, E, A, X>(
  * For a sequential version of this method, see `forEach`.
  *
  * @tsplus static ets/Effect/Ops forEachPar
+ * @tsplus fluent Collection mapEffectPar
  */
 export function forEachPar<R, E, A, B>(
   as: LazyArg<Collection<A>>,
@@ -207,6 +211,7 @@ function forEachParN<R, E, A, B>(
  * of the current element being iterated over.
  *
  * @tsplus static ets/Effect/Ops forEachParWithIndex
+ * @tsplus fluent Collection mapEffectParWithIndex
  */
 export function forEachParWithIndex<R, E, A, B>(
   as: LazyArg<Collection<A>>,
@@ -243,6 +248,7 @@ export function forEachParWithIndex<R, E, A, B>(
  * on any failure.
  *
  * @tsplus static ets/Effect/Ops forEachParDiscard
+ * @tsplus fluent Collection mapEffectDiscard
  */
 export function forEachParDiscard<R, E, A, X>(
   as: LazyArg<Collection<A>>,
@@ -354,6 +360,7 @@ function forEachParNDiscard<R, E, A, X>(
  * the result in a new `Chunk<B>` using the specified execution strategy.
  *
  * @tsplus static ets/Effect/Ops forEachExec
+ * @tsplus fluent Collection mapEffectExec
  */
 export function forEachExec<R, E, A, B>(
   as: LazyArg<Collection<A>>,
@@ -385,6 +392,7 @@ export function forEachExec<R, E, A, B>(
  * results. For a parallel version, see `collectAllPar`.
  *
  * @tsplus static ets/Effect/Ops collectAll
+ * @tsplus fluent Collection collectAllEffect
  */
 export function collectAll<R, E, A>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
@@ -402,6 +410,7 @@ export function collectAll<R, E, A>(
  * results. For a sequential version, see `collectAll`.
  *
  * @tsplus static ets/Effect/Ops collectAllPar
+ * @tsplus fluent Collection collectAllEffectPar
  */
 export function collectAllPar<R, E, A>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
@@ -419,6 +428,7 @@ export function collectAllPar<R, E, A>(
  * results. For a parallel version, see `collectAllParDiscard`.
  *
  * @tsplus static ets/Effect/Ops collectAllDiscard
+ * @tsplus fluent Collection collectAllEffectDiscard
  */
 export function collectAllDiscard<R, E, A>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
@@ -436,6 +446,7 @@ export function collectAllDiscard<R, E, A>(
  * results. For a sequential version, see `collectAllDiscard`.
  *
  * @tsplus static ets/Effect/Ops collectAllParDiscard
+ * @tsplus fluent Collection collectAllEffectParDiscard
  */
 export function collectAllParDiscard<R, E, A>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
@@ -453,6 +464,7 @@ export function collectAllParDiscard<R, E, A>(
  * the results with given partial function.
  *
  * @tsplus static ets/Effect/Ops collectAllWith
+ * @tsplus fluent Collection collectAllEffectWith
  */
 export function collectAllWith<R, E, A, B>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
@@ -471,6 +483,7 @@ export function collectAllWith<R, E, A, B>(
  * the results with given partial function.
  *
  * @tsplus static ets/Effect/Ops collectAllWithPar
+ * @tsplus fluent Collection collectAllEffectWithPar
  */
 export function collectAllWithPar<R, E, A, B>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
@@ -488,6 +501,7 @@ export function collectAllWithPar<R, E, A, B>(
  * Evaluate and run each effect in the structure and collect discarding failed ones.
  *
  * @tsplus static ets/Effect/Ops collectAllSuccesses
+ * @tsplus fluent Collection collectAllEffectSuccesses
  */
 export function collectAllSuccesses<R, E, A>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
@@ -507,6 +521,7 @@ export function collectAllSuccesses<R, E, A>(
  * Evaluate and run each effect in the structure in parallel, and collect discarding failed ones.
  *
  * @tsplus static ets/Effect/Ops collectAllSuccessesPar
+ * @tsplus fluent Collection collectAllEffectSuccessesPar
  */
 export function collectAllSuccessesPar<R, E, A>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
@@ -516,34 +531,6 @@ export function collectAllSuccessesPar<R, E, A>(
     as().map((effect) => effect.exit()),
     (exit) => (exit._tag === "Success" ? Option.some(exit.value) : Option.none)
   )
-}
-
-// -----------------------------------------------------------------------------
-// Fiber
-// -----------------------------------------------------------------------------
-
-/**
- * Joins all fibers, awaiting their _successful_ completion.
- * Attempting to join a fiber that has erred will result in
- * a catchable error, _if_ that error does not result from interruption.
- */
-export function fiberJoinAll<E, A>(
-  as: LazyArg<Collection<Fiber<E, A>>>,
-  __tsplusTrace?: string
-): Effect<never, E, Chunk<A>> {
-  return fiberWaitAll(as)
-    .flatMap((exit) => Effect.done(exit))
-    .tap(() => Effect.forEach(as, (fiber) => fiber.inheritRefs()))
-}
-
-/**
- * Awaits on all fibers to be completed, successfully or not.
- */
-export function fiberWaitAll<E, A>(
-  as: LazyArg<Collection<Fiber<E, A>>>,
-  __tsplusTrace?: string
-): Effect.RIO<never, Exit<E, Chunk<A>>> {
-  return Effect.forEachPar(as, (fiber) => fiber.await().flatMap((exit) => Effect.done(exit))).exit()
 }
 
 // -----------------------------------------------------------------------------
