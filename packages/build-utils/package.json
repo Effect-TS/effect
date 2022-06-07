@@ -1,6 +1,6 @@
 {
   "name": "@effect-ts/build-utils",
-  "version": "0.40.2",
+  "version": "0.40.3",
   "license": "MIT",
   "repository": "https://github.com/Effect-TS/core.git",
   "homepage": "https://www.matechs.com",
@@ -28,7 +28,7 @@
     "picocolors": "^1.0.0"
   },
   "devDependencies": {
-    "@effect-ts/core": "^0.60.1"
+    "@effect-ts/core": "^0.60.2"
   },
   "bin": "./build-utils"
 }

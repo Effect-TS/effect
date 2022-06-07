@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.57.2](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.57.1...@effect-ts/system@0.57.2) (2022-06-07)
+
+**Note:** Version bump only for package @effect-ts/system
+
+
+
+
+
 ## [0.57.1](https://github.com/Effect-TS/core/compare/@effect-ts/system@0.57.0...@effect-ts/system@0.57.1) (2022-04-26)
 
 
