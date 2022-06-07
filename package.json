@@ -27,6 +27,7 @@
     "commit": "cz",
     "ets:rimraf": "cd $INIT_CWD && rimraf",
     "ets:tsc": "cd $INIT_CWD && tsc",
+    "ets:cpx": "cd $INIT_CWD && cpx",
     "ets:eslint": "cd $INIT_CWD && eslint",
     "ets:prettier": "cd $INIT_CWD && prettier",
     "ets:concurrently": "cd $INIT_CWD && concurrently",

@@ -6,7 +6,7 @@
   "homepage": "https://www.matechs.com",
   "scripts": {
     "clean": "yarn ets:rimraf build tsbuildinfo",
-    "build:lib": "yarn ets:tsc --build tsconfig.build.json && yarn ets:ts-node ../../scripts/package-build.ts && cpx bin/* build",
+    "build:lib": "yarn ets:tsc --build tsconfig.build.json && yarn ets:ts-node ../../scripts/package-build.ts && yarn ets:cpx bin/* build",
     "build": "yarn run build:lib && yarn run prettier:lib",
     "lint": "yarn ets:eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
