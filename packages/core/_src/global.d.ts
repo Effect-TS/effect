@@ -243,6 +243,10 @@ import { STM, USTM } from "@effect/core/stm/STM/definition/base"
 /**
  * @tsplus global
  */
+import { TMap } from "@effect/core/stm/TMap/definition"
+/**
+ * @tsplus global
+ */
 import { TArray } from "@effect/core/stm/TArray/definition"
 /**
  * @tsplus global
