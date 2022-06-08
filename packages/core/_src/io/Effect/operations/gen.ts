@@ -11,7 +11,7 @@ export const _GenA = Symbol.for("@effect/core/io/Effect/Gen/A")
 export type _GenA = typeof _GenA
 
 export class GenEffect<R, E, A> {
-  readonly [_GenR]!: (_R: R) => void
+  readonly [_GenR]!: () => R
   readonly [_GenE]!: () => E
   readonly [_GenA]!: () => A
 
