@@ -1,5 +1,13 @@
 # @effect/core
 
+## 0.0.4
+
+### Patch Changes
+
+- [#1223](https://github.com/Effect-TS/core/pull/1223) [`212808701`](https://github.com/Effect-TS/core/commit/2128087016bd77d5ca8ce0709cd60b709d707f80) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Fix forEachEffect\_ signature
+
+* [`a23798bc7`](https://github.com/Effect-TS/core/commit/a23798bc703c50965d1929227acd9c7aec556811) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Fix Effect.gen
+
 ## 0.0.3
 
 ### Patch Changes
