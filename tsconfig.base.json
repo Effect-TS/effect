@@ -58,5 +58,8 @@
         "node_modules",
         "build",
         "lib"
+    ],
+    "files": [
+        "./packages/core/_src/global.d.ts"
     ]
 }
