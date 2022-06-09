@@ -82,22 +82,29 @@ function pull<A, A2, A3>(
   ): Effect<R | R2, never, Exit<Option<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>> => {
     switch (state._tag) {
       case "PullBoth": {
-        return pullLeft.zipPar(pullRight).foldEffect(
-          (err) => Effect.succeedNow(Exit.fail(err)),
-          ({ tuple: [leftChunk, rightChunk] }) => {
-            if (leftChunk.isEmpty() && rightChunk.isEmpty()) {
-              return pull(f)(new PullBoth(), pullLeft, pullRight)
-            } else if (leftChunk.isEmpty()) {
-              return pull(f)(new PullLeft(rightChunk), pullLeft, pullRight)
-            } else if (rightChunk.isEmpty()) {
-              return pull(f)(new PullRight(leftChunk), pullLeft, pullRight)
-            } else {
-              return Effect.succeedNow(
-                Exit.succeed(zipWithChunksInternal(leftChunk, rightChunk, f))
-              )
+        return pullLeft.unsome()
+          .zipPar(pullRight.unsome())
+          .foldEffect(
+            (err) => Effect.succeedNow(Exit.fail(Option.some(err))),
+            ({ tuple: [left, right] }) => {
+              if (left.isSome() && right.isSome()) {
+                const leftChunk = left.value
+                const rightChunk = right.value
+                if (leftChunk.isEmpty() && rightChunk.isEmpty()) {
+                  return pull(f)(new PullBoth(), pullLeft, pullRight)
+                } else if (leftChunk.isEmpty()) {
+                  return pull(f)(new PullLeft(rightChunk), pullLeft, pullRight)
+                } else if (rightChunk.isEmpty()) {
+                  return pull(f)(new PullRight(leftChunk), pullLeft, pullRight)
+                } else {
+                  return Effect.succeedNow(
+                    Exit.succeed(zipWithChunksInternal(leftChunk, rightChunk, f))
+                  )
+                }
+              }
+              return Effect.succeedNow(Exit.fail(Option.none))
             }
-          }
-        )
+          )
       }
       case "PullLeft": {
         return pullLeft.foldEffect(
