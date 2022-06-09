@@ -4,7 +4,10 @@
  *
  * @tsplus static ets/Stream/Ops serviceWithStream
  */
-export function serviceWithStream<T>(tag: Tag<T>) {
-  return <R, E, A>(f: (resource: T) => Stream<R, E, A>, __tsplusTrace?: string): Stream<R | T, E, A> =>
-    Stream.service(tag).flatMap(f)
+export function serviceWithStream<T, R, E, A>(
+  tag: Tag<T>,
+  f: (resource: T) => Stream<R, E, A>,
+  __tsplusTrace?: string
+): Stream<R | T, E, A> {
+  return Stream.service(tag).flatMap(f)
 }

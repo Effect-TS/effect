@@ -1,19 +1,10 @@
 /**
  * @tsplus type ets/Stream/SinkEndReason
  */
-export type SinkEndReason<C> = SinkEnd | ScheduleTimeout | ScheduleEnd<C> | UpstreamEnd
+export type SinkEndReason = ScheduleEnd | UpstreamEnd
 
-export interface SinkEnd {
-  readonly _tag: "SinkEnd"
-}
-
-export interface ScheduleTimeout {
-  readonly _tag: "ScheduleTimeout"
-}
-
-export interface ScheduleEnd<C> {
+export interface ScheduleEnd {
   readonly _tag: "ScheduleEnd"
-  readonly c: C
 }
 
 export interface UpstreamEnd {
@@ -27,41 +18,15 @@ export interface SinkEndReasonOps {}
 export const SinkEndReason: SinkEndReasonOps = {}
 
 /**
- * @tsplus unify ets/Stream/SinkEndReason
- */
-export function unifySinkEndReason<X extends SinkEndReason<any>>(
-  self: X
-): SinkEndReason<[X] extends [SinkEndReason<infer AX>] ? AX : never> {
-  return self
-}
-
-/**
- * @tsplus static ets/Stream/SinkEndReason/Ops SinkEnd
- */
-export const sinkEnd: SinkEndReason<never> = {
-  _tag: "SinkEnd"
-}
-
-/**
- * @tsplus static ets/Stream/SinkEndReason/Ops ScheduleTimeout
- */
-export const scheduleTimeout: SinkEndReason<never> = {
-  _tag: "ScheduleTimeout"
-}
-
-/**
  * @tsplus static ets/Stream/SinkEndReason/Ops ScheduleEnd
  */
-export function scheduleEnd<C>(c: C): SinkEndReason<C> {
-  return {
-    _tag: "ScheduleEnd",
-    c
-  }
+export const scheduleEnd: SinkEndReason = {
+  _tag: "ScheduleEnd"
 }
 
 /**
  * @tsplus static ets/Stream/SinkEndReason/Ops UpstreamEnd
  */
-export const upstreamEnd: SinkEndReason<never> = {
+export const upstreamEnd: SinkEndReason = {
   _tag: "UpstreamEnd"
 }

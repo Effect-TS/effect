@@ -4,9 +4,10 @@
  *
  * @tsplus static ets/Stream/Ops serviceWithEffect
  */
-export function serviceWithEffect<T>(tag: Tag<T>) {
-  return <R, E, A>(
-    f: (resource: T) => Effect<R, E, A>,
-    __tsplusTrace?: string
-  ): Stream<R | T, E, A> => Stream.fromEffect(Effect.serviceWithEffect(tag, f))
+export function serviceWithEffect<T, R, E, A>(
+  tag: Tag<T>,
+  f: (resource: T) => Effect<R, E, A>,
+  __tsplusTrace?: string
+): Stream<R | T, E, A> {
+  return Stream.fromEffect(Effect.serviceWithEffect(tag, f))
 }

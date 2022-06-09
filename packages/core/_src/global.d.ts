@@ -2,7 +2,7 @@
  * Ensure types are in scope
  */
 import "@effect/core"
-import "@tsplus/stdlib-global"
+import "@tsplus/stdlib/global"
 
 // =============================================================================
 // @tsplus/stdlib

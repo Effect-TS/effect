@@ -16,7 +16,7 @@ class Previous<A> {
 
 class Current<E, A> {
   readonly _tag = "Current"
-  constructor(readonly fiber: Fiber<E, HandoffSignal<void, E, A>>) {}
+  constructor(readonly fiber: Fiber<E, HandoffSignal<E, A>>) {}
 }
 
 /**
@@ -42,7 +42,7 @@ export function debounce_<R, E, A>(
     Effect.transplant((grafter) =>
       Effect.Do()
         .bind("duration", () => Effect.succeed(duration))
-        .bind("handoff", () => Handoff.make<HandoffSignal<void, E, A>>())
+        .bind("handoff", () => Handoff.make<HandoffSignal<E, A>>())
         .map(({ duration, handoff }) => {
           function enqueue(last: Chunk<A>, __tsplusTrace?: string) {
             return grafter(Clock.sleep(duration).as(last).fork()).map((fiber) => consumer(new Previous(fiber)))

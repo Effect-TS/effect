@@ -16,9 +16,9 @@ export function and_<
   ROut2
 >(
   self: Layer<RIn, E, ROut>,
-  that: Layer<RIn2, E2, ROut2>
+  that: LazyArg<Layer<RIn2, E2, ROut2>>
 ): Layer<RIn | RIn2, E | E2, ROut | ROut2> {
-  return new ILayerZipWithPar(self, that, (a, b) => a.merge(b))
+  return Layer.suspend(new ILayerZipWithPar(self, that(), (a, b) => a.merge(b)))
 }
 
 /**

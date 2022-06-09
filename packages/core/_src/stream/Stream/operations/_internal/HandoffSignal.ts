@@ -1,6 +1,6 @@
 import type { SinkEndReason } from "@effect/core/stream/Stream/SinkEndReason"
 
-export type HandoffSignal<C, E, A> = Emit<A> | Halt<E> | End<C>
+export type HandoffSignal<E, A> = Emit<A> | Halt<E> | End
 
 export class Emit<A> {
   readonly _tag = "Emit"
@@ -12,9 +12,9 @@ export class Halt<E> {
   constructor(readonly error: Cause<E>) {}
 }
 
-export class End<C> {
+export class End {
   readonly _tag = "End"
-  constructor(readonly reason: SinkEndReason<C>) {}
+  constructor(readonly reason: SinkEndReason) {}
 }
 
 /**
@@ -26,20 +26,20 @@ export const HandoffSignal: HandoffSignalOps = {}
 /**
  * @tsplus static ets/Stream/HandoffSignal/Ops Emit
  */
-export function emit<A>(elements: Chunk<A>): HandoffSignal<never, never, A> {
+export function emit<A>(elements: Chunk<A>): HandoffSignal<never, A> {
   return new Emit<A>(elements)
 }
 
 /**
  * @tsplus static ets/Stream/HandoffSignal/Ops Halt
  */
-export function halt<E>(error: Cause<E>): HandoffSignal<never, E, never> {
+export function halt<E>(error: Cause<E>): HandoffSignal<E, never> {
   return new Halt(error)
 }
 
 /**
  * @tsplus static ets/Stream/HandoffSignal/Ops End
  */
-export function end<C>(reason: SinkEndReason<C>): HandoffSignal<C, never, never> {
+export function end<C>(reason: SinkEndReason): HandoffSignal<never, never> {
   return new End(reason)
 }

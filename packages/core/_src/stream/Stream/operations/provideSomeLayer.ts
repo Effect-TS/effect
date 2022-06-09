@@ -6,11 +6,10 @@
  */
 export function provideSomeLayer_<R, E, A, R1, E1, A1>(
   self: Stream<R, E, A>,
-  layer: Layer<R1, E1, A1>,
+  layer: LazyArg<Layer<R1, E1, A1>>,
   __tsplusTrace?: string
 ): Stream<R1 | Exclude<R, A1>, E | E1, A> {
-  // @ts-expect-error
-  return self.provideLayer(Layer.environment<R1>().and(layer))
+  return (self as Stream<R1 | A1, E, A>).provideLayer(Layer.environment<R1>().and(layer))
 }
 
 /**

@@ -7,7 +7,7 @@ describe.concurrent("Stream", () => {
 
       const ServiceWithEffect = Tag<ServiceWithEffect>()
 
-      const program = Stream.serviceWithEffect(ServiceWithEffect)((_) => _.live)
+      const program = Stream.serviceWithEffect(ServiceWithEffect, (_) => _.live)
         .provideSomeLayer(Layer.succeed(ServiceWithEffect)({ live: Effect.succeed(10) }))
         .runCollect()
 
@@ -23,7 +23,7 @@ describe.concurrent("Stream", () => {
 
       const ServiceWithStream = Tag<ServiceWithStream>()
 
-      const program = Stream.serviceWithStream(ServiceWithStream)((_) => _.live)
+      const program = Stream.serviceWithStream(ServiceWithStream, (_) => _.live)
         .provideSomeLayer(
           Layer.succeed(ServiceWithStream)({ live: Stream.fromCollection(Chunk.range(0, 10)) })
         )

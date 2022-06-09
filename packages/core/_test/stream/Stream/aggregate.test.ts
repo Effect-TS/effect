@@ -176,8 +176,7 @@ describe.concurrent("Stream", () => {
       assert.isTrue(
         result == Chunk(
           Either.right(List(2, 1, 1, 1, 1)),
-          Either.right(List(2)),
-          Either.right(List.empty())
+          Either.right(List(2))
         )
       )
     })
