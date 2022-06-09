@@ -76,7 +76,23 @@ export function aggregateWithinEither_<R, E, A, R2, E2, A2, S, R3, B, C>(
                 return Channel.failCause(signal.error)
               }
               case "End": {
-                return Channel.fromEffect(sinkEndReason.set(signal.reason))
+                return (
+                  signal.reason._tag === "ScheduleEnd" ?
+                    consumed.get().map((p) =>
+                      p ?
+                        Channel.fromEffect(sinkEndReason.set(SinkEndReason.ScheduleEnd)) :
+                        Channel.fromEffect(sinkEndReason.set(SinkEndReason.ScheduleEnd)) > handoffConsumer
+                    ) :
+                    Channel.fromEffect(sinkEndReason.set(signal.reason))
+                ) as Channel<
+                  never,
+                  unknown,
+                  unknown,
+                  unknown,
+                  E | E2,
+                  Chunk<A | A2>,
+                  void
+                >
               }
             }
           })

@@ -620,7 +620,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/core@*, @effect/core@workspace:packages/core":
+"@effect/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@effect/core@workspace:packages/core"
   peerDependencies:
@@ -878,7 +878,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsplus/stdlib@npm:*, @tsplus/stdlib@npm:0.1.1":
+"@tsplus/stdlib@npm:0.1.1":
   version: 0.1.1
   resolution: "@tsplus/stdlib@npm:0.1.1"
   checksum: c7dba1750c2b3621beaad30076e7933daedbc20760436ec224e7f2668c082ac04c4720d6145a7088ab2dbb915cbfb962a3411a46c0d46f1b5c34a65df86c2967
