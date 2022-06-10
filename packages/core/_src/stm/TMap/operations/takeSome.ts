@@ -41,7 +41,7 @@ export function takeSome_<K, V, A>(
 
         buckets.chunk.unsafeGet(i)!.unsafeSet(newBucket, journal)
       } else {
-        newSize += bucket.length()
+        newSize += bucket.length
       }
 
       i += 1

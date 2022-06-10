@@ -19,7 +19,7 @@ export const defaultLogger: Logger<string, string> = {
       // output = output + ` cause="${cause.prettyPrint()}"`
     }
 
-    if (spans.length() > 0) {
+    if (spans.length > 0) {
       output = output + " "
 
       let first = true

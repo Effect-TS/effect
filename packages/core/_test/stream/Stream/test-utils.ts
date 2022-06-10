@@ -40,7 +40,7 @@ export function chunkCoordination<A>(
     .bind("ps", () => Queue.unbounded<void>())
     .bind("ref", () =>
       Ref.make<List<List<Exit<Option<never>, Chunk<A>>>>>(
-        List.from(chunks.take(chunks.length() - 1)).map((chunk) => List(Exit.succeed(chunk))).concat(
+        List.from(chunks.take(chunks.length - 1)).map((chunk) => List(Exit.succeed(chunk))).concat(
           chunks.last().fold(List.empty(), (chunk) => List(List(Exit.succeed(chunk), Exit.fail(Option.none))))
         )
       ))

@@ -341,7 +341,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result.length(), 2)
+      assert.strictEqual(result.length, 2)
       assert.isTrue(
         result.reduce(
           true,

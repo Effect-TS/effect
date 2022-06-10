@@ -5,7 +5,7 @@ describe.concurrent("TArray", () => {
     it("should get the length of the array", async () => {
       const program = makeStair(n)
         .commit()
-        .map((tArray) => tArray.length())
+        .map((tArray) => tArray.length)
 
       const result = await program.unsafeRunPromise()
 

@@ -587,7 +587,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     v: Exit<E, A>,
     observers: List<Callback<never, Exit<E, A>>>
   ): void {
-    if (observers.length() > 0) {
+    if (observers.length > 0) {
       const result = Exit.succeed(v)
       observers.forEach((k) => k(result))
     }
