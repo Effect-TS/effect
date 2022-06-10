@@ -22,7 +22,7 @@ export function partitionEither_<R, E, A, R2, E2, A2, A3>(
         () => Effect.succeedNow((_) => _ === 1)
       ))
     .flatMap((dequeues) => {
-      if (dequeues.length() === 2) {
+      if (dequeues.length === 2) {
         return Effect.succeedNow(
           Tuple(
             Stream.fromQueueWithShutdown(dequeues.unsafeHead()!)
@@ -35,7 +35,7 @@ export function partitionEither_<R, E, A, R2, E2, A2, A3>(
         )
       }
       return Effect.dieMessage(
-        `Stream.partitionEither: expected two streams but received: ${dequeues.length()}`
+        `Stream.partitionEither: expected two streams but received: ${dequeues.length}`
       )
     })
 }

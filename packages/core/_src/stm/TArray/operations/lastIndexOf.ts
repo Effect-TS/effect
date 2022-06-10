@@ -6,7 +6,7 @@
  */
 export function lastIndexOf_<A>(self: TArray<A>, equivalence: Equivalence<A>) {
   return (a: A): USTM<number> => {
-    return self.lastIndexOfFrom(equivalence)(a, self.length() - 1)
+    return self.lastIndexOfFrom(equivalence)(a, self.length - 1)
   }
 }
 

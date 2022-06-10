@@ -91,7 +91,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     conts: List<ErasedContinuation<R>>,
     exit: Exit<unknown, unknown>
   ): Effect<R, never, Exit<never, unknown>> {
-    while (conts.length() !== 0) {
+    while (conts.length !== 0) {
       const head = conts.unsafeHead()!
       concreteContinuation(head)
       if (head._tag === "ContinuationK") {
@@ -122,7 +122,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     stack: List<ErasedContinuation<R>>,
     builder: ListBuffer<ContinuationFinalizer<R, unknown, unknown>>
   ): List<ErasedContinuation<R>> {
-    while (stack.length() > 0) {
+    while (stack.length > 0) {
       const head = stack.unsafeHead()!
       concreteContinuation(head)
       if (head._tag === "ContinuationK") {
@@ -447,7 +447,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   }
 
   private doneSucceed(z: unknown): ChannelState<R, unknown> | undefined {
-    if (this.doneStack.length() === 0) {
+    if (this.doneStack.length === 0) {
       this.done = Exit.succeed(z)
       this.currentChannel = undefined
       return ChannelState.Done
@@ -464,7 +464,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 
     const finalizers = this.popNextFinalizers()
 
-    if (this.doneStack.length() === 0) {
+    if (this.doneStack.length === 0) {
       this.doneStack = finalizers
       this.done = Exit.succeed(z)
       this.currentChannel = undefined
@@ -486,7 +486,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   }
 
   doneHalt(cause: Cause<unknown>): ChannelState<R, unknown> | undefined {
-    if (this.doneStack.length() === 0) {
+    if (this.doneStack.length === 0) {
       this.done = Exit.failCause(cause)
       this.currentChannel = undefined
       return ChannelState.Done
@@ -503,7 +503,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 
     const finalizers = this.popNextFinalizers()
 
-    if (this.doneStack.length() === 0) {
+    if (this.doneStack.length === 0) {
       this.doneStack = finalizers
       this.done = Exit.failCause(cause)
       this.currentChannel = undefined
@@ -577,7 +577,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
   ): Effect.RIO<R, unknown> | undefined {
-    return finalizers.length() === 0
+    return finalizers.length === 0
       ? undefined
       : Effect.forEach(finalizers, (f) => f(exit).exit())
         .map((results) => {

@@ -531,7 +531,7 @@ function stepLoop<A>(
     realCause(cause)
     switch (cause._tag) {
       case "Empty": {
-        if (stack.length() === 0) {
+        if (stack.length === 0) {
           return Tuple(parallel, sequential)
         } else {
           cause = stack.unsafeHead()!
@@ -578,7 +578,7 @@ function stepLoop<A>(
         break
       }
       default: {
-        if (stack.length() === 0) {
+        if (stack.length === 0) {
           return Tuple(parallel.add(cause), sequential)
         } else {
           parallel = parallel.add(cause)
@@ -619,7 +619,7 @@ function flattenCauseLoop<A>(
       }
     )
     const updated = parallel.size > 0 ? flattened.prepend(parallel) : flattened
-    if (sequential.length() === 0) {
+    if (sequential.length === 0) {
       return updated.reverse()
     } else {
       causes = sequential
@@ -640,7 +640,7 @@ function flattenCause<E>(self: Cause<E>): List<HashSet<Cause<E>>> {
 
 function hashCode<E>(self: Cause<E>): number {
   const flat = flattenCause(self)
-  const size = flat.length()
+  const size = flat.length
   let head
   if (size === 0) {
     return _emptyHash

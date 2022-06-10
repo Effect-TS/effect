@@ -13,7 +13,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result.length(), 5)
+      assert.strictEqual(result.length, 5)
     })
   })
 })
