@@ -5,10 +5,6 @@ export class InternalTArray<A> implements TArray<A> {
   readonly [_A]!: () => A
 
   constructor(readonly chunk: Chunk<TRef<A>>) {}
-
-  [Symbol.iterator](): Iterator<TRef<A>> {
-    return this.chunk[Symbol.iterator]()
-  }
 }
 
 /**

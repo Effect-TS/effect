@@ -7,7 +7,7 @@ export type _A = typeof _A
 /**
  * @tsplus type ets/TArray
  */
-export interface TArray<A> extends Collection<TRef<A>> {
+export interface TArray<A> {
   readonly [TArraySym]: TArraySym
   readonly [_A]: () => A
 }
