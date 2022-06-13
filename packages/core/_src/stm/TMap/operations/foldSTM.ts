@@ -9,7 +9,7 @@ export function foldSTM_<K, V, R, E, A>(
   zero: A,
   op: (a: A, kv: Tuple<[K, V]>) => STM<R, E, A>
 ): STM<R, E, A> {
-  return self.toChunk().flatMap((_) => STM.reduce(_, zero, op))
+  return self.toChunk.flatMap((_) => STM.reduce(_, zero, op))
 }
 
 /**

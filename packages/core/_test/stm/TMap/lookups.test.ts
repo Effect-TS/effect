@@ -44,7 +44,7 @@ describe.concurrent("TMap", () => {
     })
     it("collect all elements", async () => {
       const tx = TMap.make(Tuple.make("a", 1), Tuple.make("b", 2), Tuple.make("c", 3)).flatMap((_) =>
-        _.toList().map((_) =>
+        _.toList.map((_) =>
           hasSameElements(
             _,
             Equivalence.tuple(Equivalence.string, Equivalence.number),
@@ -58,7 +58,7 @@ describe.concurrent("TMap", () => {
     })
     it("collect all keys", async () => {
       const tx = TMap.make(Tuple.make("a", 1), Tuple.make("b", 2), Tuple.make("c", 3)).flatMap((_) =>
-        _.keys().map((_) =>
+        _.keys.map((_) =>
           hasSameElements(
             _,
             Equivalence.string,
@@ -72,7 +72,7 @@ describe.concurrent("TMap", () => {
     })
     it("collect all values", async () => {
       const tx = TMap.make(Tuple.make("a", 1), Tuple.make("b", 2), Tuple.make("c", 3)).flatMap((_) =>
-        _.values().map((_) =>
+        _.values.map((_) =>
           hasSameElements(
             _,
             Equivalence.number,

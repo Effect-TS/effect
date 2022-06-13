@@ -65,7 +65,7 @@ describe.concurrent("TMap", () => {
 
         $(STM.collectAll(expected.map((i) => tmap.put(i.get(0), i.get(1)))))
 
-        const e = $(tmap.toList())
+        const e = $(tmap.toList)
 
         return hasSameElements(e, Equivalence(Equals.equals), expected)
       })
@@ -81,7 +81,7 @@ describe.concurrent("TMap", () => {
         $(tmap.putIfAbsent("b", 2))
         $(tmap.putIfAbsent("a", 10))
 
-        const e = $(tmap.toList())
+        const e = $(tmap.toList)
 
         return hasSameElements(e, Equivalence(Equals.equals), expected)
       })

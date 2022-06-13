@@ -11,7 +11,7 @@ export function transformSTM_<K, V, R, E>(
   f: (kv: Tuple<[K, V]>) => STM<R, E, Tuple<[K, V]>>
 ): STM<R, E, void> {
   concreteTMap(self)
-  return self.toChunk().flatMap((data) => STM.forEach(data, f)).flatMap((newData) =>
+  return self.toChunk.flatMap((data) => STM.forEach(data, f)).flatMap((newData) =>
     STM.Effect((journal) => {
       const buckets = self.tBuckets.unsafeGet(journal)
 

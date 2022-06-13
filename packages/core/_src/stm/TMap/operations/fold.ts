@@ -6,7 +6,7 @@ import { concreteTMap } from "@effect/core/stm/TMap/operations/_internal/Interna
  *
  * @tsplus fluent ets/TMap fold
  */
-export function fold_<K, V, A>(self: TMap<K, V>, zero: A, op: (a: A, kv: Tuple<[K, V]>) => A): USTM<A> {
+export function fold_<K, V, A>(self: TMap<K, V>, zero: A, op: (acc: A, kv: Tuple<[K, V]>) => A): USTM<A> {
   concreteTMap(self)
   return STM.Effect((journal) => {
     const buckets = self.tBuckets.unsafeGet(journal)
