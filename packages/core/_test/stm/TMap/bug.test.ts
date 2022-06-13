@@ -8,7 +8,7 @@ describe.concurrent("TMap", () => {
           Effect.forEachDiscard(keys, (k) =>
             Do((_$) => {
               $(map.delete(k).commit().fork())
-              $(map.toChunk().commit())
+              $(map.toChunk.commit())
             })).exit()
         )
 

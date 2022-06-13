@@ -263,6 +263,10 @@ import { TQueue } from "@effect/core/stm/TQueue/definition"
 /**
  * @tsplus global
  */
+import { TSet } from "@effect/core/stm/TSet/definition"
+/**
+ * @tsplus global
+ */
 import { TRef } from "@effect/core/stm/TRef/definition"
 /**
  * @tsplus global

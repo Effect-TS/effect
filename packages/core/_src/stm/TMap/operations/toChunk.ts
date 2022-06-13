@@ -4,9 +4,9 @@ import { concreteTMap } from "@effect/core/stm/TMap/operations/_internal/Interna
 /**
  * Collects all bindings into a chunk.
  *
- * @tsplus fluent ets/TMap toChunk
+ * @tsplus getter ets/TMap toChunk
  */
-export function toChunk<K, V, A>(
+export function toChunk<K, V>(
   self: TMap<K, V>
 ): USTM<Chunk<Tuple<[K, V]>>> {
   concreteTMap(self)

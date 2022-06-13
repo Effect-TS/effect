@@ -1,5 +1,4 @@
 import { HashContainer, hasSameElements } from "@effect/core/test/stm/TMap/test-utils"
-import { Tuple } from "@tsplus/stdlib/data/Tuple"
 
 describe.concurrent("TMap", () => {
   describe.concurrent("transformations", () => {
@@ -7,7 +6,7 @@ describe.concurrent("TMap", () => {
       const elems = List(Tuple("a", 1), Tuple("b", 2))
       const tx = Do(($) => {
         const tmap = $(TMap.fromIterable(elems))
-        const size = $(tmap.size())
+        const size = $(tmap.size)
 
         return size === 2
       })
@@ -19,7 +18,7 @@ describe.concurrent("TMap", () => {
       const elems = List(Tuple("a", 1), Tuple("b", 2))
       const tx = Do(($) => {
         const tmap = $(TMap.fromIterable(elems))
-        const list = $(tmap.toList())
+        const list = $(tmap.toList)
 
         return hasSameElements(list, Equivalence.tuple(Equivalence.string, Equivalence.number), elems)
       })
@@ -27,11 +26,11 @@ describe.concurrent("TMap", () => {
 
       assert.isTrue(result)
     })
-    it("toList", async () => {
+    it("toChunk", async () => {
       const elems = List(Tuple("a", 1), Tuple("b", 2))
       const tx = Do(($) => {
         const tmap = $(TMap.fromIterable(elems))
-        const chunk = $(tmap.toChunk())
+        const chunk = $(tmap.toChunk)
 
         return hasSameElements(chunk.asList(), Equivalence.tuple(Equivalence.string, Equivalence.number), elems)
       })
@@ -43,7 +42,7 @@ describe.concurrent("TMap", () => {
       const elems = new Map<string, number>([["a", 1], ["b", 2]])
       const tx = Do(($) => {
         const tmap = $(TMap.fromIterable(Chunk.from(elems).map(Tuple.fromNative)))
-        const map = $(tmap.toMap().map(Chunk.from).map((_) => _.map(Tuple.fromNative)))
+        const map = $(tmap.toMap.map(Chunk.from).map((_) => _.map(Tuple.fromNative)))
 
         return hasSameElements(
           map,
@@ -73,7 +72,7 @@ describe.concurrent("TMap", () => {
 
         $(tmap.transform((kv) => Tuple(kv.get(0).replaceAll("a", "b"), kv.get(1) * 2)))
 
-        const res = $(tmap.toList())
+        const res = $(tmap.toList)
 
         return hasSameElements(
           res,
@@ -93,7 +92,7 @@ describe.concurrent("TMap", () => {
 
         $(tmap.transform((kv) => Tuple(new HashContainer(kv.get(0).i * -2), kv.get(1) * 2)))
 
-        const res = $(tmap.toList())
+        const res = $(tmap.toList)
 
         return hasSameElements(
           res,
@@ -111,7 +110,7 @@ describe.concurrent("TMap", () => {
 
         $(tmap.transform((kv) => Tuple("key", kv.get(1) * 2)))
 
-        const res = $(tmap.toList())
+        const res = $(tmap.toList)
 
         return hasSameElements(res, Equivalence.tuple(Equivalence.string, Equivalence.number), List(Tuple("key", 6)))
       })
@@ -125,7 +124,7 @@ describe.concurrent("TMap", () => {
 
         $(tmap.transformSTM((kv) => STM.succeed(Tuple(kv.get(0).replaceAll("a", "b"), kv.get(1) * 2))))
 
-        const res = $(tmap.toList())
+        const res = $(tmap.toList)
 
         return hasSameElements(
           res,
@@ -143,7 +142,7 @@ describe.concurrent("TMap", () => {
 
         $(tmap.transformSTM((kv) => STM.succeed(Tuple("key", kv.get(1) * 2))))
 
-        const res = $(tmap.toList())
+        const res = $(tmap.toList)
 
         return hasSameElements(res, Equivalence.tuple(Equivalence.string, Equivalence.number), List(Tuple("key", 6)))
       })
@@ -157,7 +156,7 @@ describe.concurrent("TMap", () => {
 
         $(tmap.transformValues((v) => v * 2))
 
-        const res = $(tmap.toList())
+        const res = $(tmap.toList)
 
         return hasSameElements(
           res,
@@ -193,7 +192,7 @@ describe.concurrent("TMap", () => {
 
         $(tmap.transformValuesSTM((v) => STM.succeed(v * 2)))
 
-        const res = $(tmap.toList())
+        const res = $(tmap.toList)
 
         return hasSameElements(
           res,
@@ -214,7 +213,7 @@ describe.concurrent("TMap", () => {
         $(tmap.updateWith("c", (v) => Option.some(3)))
         $(tmap.updateWith("d", (v) => Option.none))
 
-        const res = $(tmap.toMap().map(Chunk.from).map((_) => _.map(Tuple.fromNative)))
+        const res = $(tmap.toMap.map(Chunk.from).map((_) => _.map(Tuple.fromNative)))
 
         return hasSameElements(
           res,
