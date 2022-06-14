@@ -2,7 +2,7 @@ import { STMInterruptException } from "@effect/core/stm/STM"
 import { concreteTQueue } from "@effect/core/stm/TQueue/operations/_internal/InternalTQueue"
 
 /**
- * Checks if the queue is at capacity.
+ * The current number of values in the queue.
  *
  * @tsplus getter ets/TQueue size
  */

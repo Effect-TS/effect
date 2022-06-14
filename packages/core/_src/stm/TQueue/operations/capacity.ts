@@ -1,7 +1,7 @@
 import { concreteTQueue } from "@effect/core/stm/TQueue/operations/_internal/InternalTQueue"
 
 /**
- * Checks if the queue is at capacity.
+ * The maximum capacity of the queue.
  *
  * @tsplus getter ets/TQueue capacity
  */
