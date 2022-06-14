@@ -20,7 +20,7 @@ export function utfEncodeFor(
           unknown
         > = Channel.readWith(
           (received: Chunk<string>) => {
-            if (received.isEmpty()) {
+            if (received.isEmpty) {
               return transform
             }
             const bytes = received.reduce(Chunk.empty<number>(), (acc, string) => {

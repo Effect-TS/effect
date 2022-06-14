@@ -6,23 +6,23 @@ describe.concurrent("TPriorityQueue", () => {
     it("isEmpty", async () => {
       const program = TPriorityQueue.empty<Event>(eventOrd)
         .tap((queue) => queue.offerAll(as))
-        .flatMap((queue) => queue.isEmpty())
+        .flatMap((queue) => queue.isEmpty)
         .commit()
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result === as.isEmpty())
+      assert.isTrue(result === as.isEmpty)
     })
 
     it("isNonEmpty", async () => {
       const program = TPriorityQueue.empty<Event>(eventOrd)
         .tap((queue) => queue.offerAll(as))
-        .flatMap((queue) => queue.isNonEmpty())
+        .flatMap((queue) => queue.isNonEmpty)
         .commit()
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result === as.isNonEmpty())
+      assert.isTrue(result === as.isNonEmpty)
     })
   })
 })

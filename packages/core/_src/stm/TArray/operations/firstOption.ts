@@ -7,7 +7,7 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
  */
 export function firstOption<A>(self: TArray<A>): USTM<Option<A>> {
   concreteTArray(self)
-  return self.chunk.isEmpty()
+  return self.chunk.isEmpty
     ? STM.succeedNow(Option.none)
-    : self.chunk.unsafeHead()!.get().map(Option.some)
+    : self.chunk.unsafeHead!.get.map(Option.some)
 }

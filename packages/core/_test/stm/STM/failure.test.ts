@@ -4,7 +4,7 @@ describe.concurrent("STM", () => {
       const program = Effect.Do()
         .bind("tRef", () => TRef.makeCommit(0))
         .bind("either", ({ tRef }) => (tRef.update((n) => n + 10) > STM.fail("error")).commit().either())
-        .bind("value", ({ tRef }) => tRef.get().commit())
+        .bind("value", ({ tRef }) => tRef.get.commit())
 
       const { either, value } = await program.unsafeRunPromise()
 
@@ -16,7 +16,7 @@ describe.concurrent("STM", () => {
       const program = Effect.Do()
         .bind("tRef", () => TRef.makeCommit(0))
         .bind("either", ({ tRef }) => (tRef.update((n) => n + 10) > STM.fail("error")).commit().ignore())
-        .bind("value", ({ tRef }) => tRef.get().commit())
+        .bind("value", ({ tRef }) => tRef.get.commit())
 
       const { either, value } = await program.unsafeRunPromise()
 

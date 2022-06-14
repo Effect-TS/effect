@@ -15,7 +15,7 @@ export function orElse_<E, E1, A, A1>(
   that: Fiber<E1, A1>
 ): Fiber<E | E1, A | A1> {
   return makeSynthetic<E | E1, A | A1>({
-    id: self.id().getOrElse(that.id()),
+    id: self.id.getOrElse(that.id),
     await: self
       .await()
       .zipWith(that.await(), (e1, e2) => (e1._tag === "Success" ? e1 : e2)),

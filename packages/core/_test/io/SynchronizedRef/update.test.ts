@@ -21,7 +21,7 @@ describe.concurrent("SynchronizedRef", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(failure))
+      assert.isTrue(result.untraced == Exit.fail(failure))
     })
   })
 
@@ -70,7 +70,7 @@ describe.concurrent("SynchronizedRef", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(failure))
+      assert.isTrue(result.untraced == Exit.fail(failure))
     })
   })
 })

@@ -45,7 +45,7 @@ describe.concurrent("Queue", () => {
       const { orders1, v1, v2 } = await program.unsafeRunPromise()
 
       assert.isTrue(v1 == orders1)
-      assert.isTrue(v2.isEmpty())
+      assert.isTrue(v2.isEmpty)
     })
 
     it("with takeAll and back pressure, check ordering", async () => {

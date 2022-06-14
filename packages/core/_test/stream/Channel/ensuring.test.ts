@@ -9,7 +9,7 @@ describe("Channel", () => {
           .ensuring(event("Release11"))
           .ensuring(event("Release12")) >
           Channel.fromEffect(event("Acquire2")).ensuring(event("Release2"))
-        return channel.runDrain() > events.get()
+        return channel.runDrain > events.get()
       })
 
       const result = await program.unsafeRunPromise()
@@ -28,7 +28,7 @@ describe("Channel", () => {
         ).ensuring(event("ReleaseOuter"))
 
         return Effect.scoped(
-          channel.toPull().flatMap((pull) => pull.exit() > events.get())
+          channel.toPull.flatMap((pull) => pull.exit() > events.get())
         ).flatMap((eventsInManaged) =>
           events
             .get()
@@ -71,7 +71,7 @@ describe("Channel", () => {
           .concatMap((i) => Channel.write(new Second(i)).ensuring(event("Second write")))
           .ensuring(event("Second concatMap"))
 
-        return conduit.runCollect().zipFlatten(events.get())
+        return conduit.runCollect.zipFlatten(events.get())
       })
 
       const {
@@ -111,7 +111,7 @@ describe("Channel", () => {
           Channel.writeAll(1, 2)
             .mapOutEffect((n) => push(`pulled ${n}`).as(n))
             .concatMap((n) => Channel.write(n).ensuring(push(`close ${n}`)))
-            .runDrain()
+            .runDrain
         )
         .flatMap(({ effects }) => effects.get())
 

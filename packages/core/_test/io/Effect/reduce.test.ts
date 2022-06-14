@@ -15,7 +15,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("fail"))
+      assert.isTrue(result.untraced == Exit.fail("fail"))
     })
 
     it("run sequentially from left to right", async () => {
@@ -28,7 +28,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == list.reverse())
+      assert.isTrue(result == list.reverse)
     })
   })
 
@@ -46,7 +46,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("fail"))
+      assert.isTrue(result.untraced == Exit.fail("fail"))
     })
 
     it("run sequentially from right to left", async () => {
@@ -99,7 +99,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(1))
+      assert.isTrue(result.untraced == Exit.fail(1))
     })
 
     it("return error if it exists in list", async () => {
@@ -109,7 +109,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(1))
+      assert.isTrue(result.untraced == Exit.fail(1))
     })
   })
 })

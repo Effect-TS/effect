@@ -7,7 +7,7 @@ describe.concurrent("STM", () => {
         .bind("ref", () => TRef.makeCommit(0))
         .bind("fiber", ({ ref }) => Effect.forkAll(Chunk.fill(10, () => incrementRefN(99, ref))))
         .tap(({ fiber }) => fiber.join())
-        .flatMap(({ ref }) => ref.get().commit())
+        .flatMap(({ ref }) => ref.get.commit())
 
       const result = await program.unsafeRunPromise()
 
@@ -22,7 +22,7 @@ describe.concurrent("STM", () => {
             Chunk.fill(10, () => compute3RefN(99, refs.get(0), refs.get(1), refs.get(2)))
           ))
         .tap(({ fiber }) => fiber.join())
-        .flatMap(({ refs }) => refs.get(2).get().commit())
+        .flatMap(({ refs }) => refs.get(2).get.commit())
 
       const result = await program.unsafeRunPromise()
 

@@ -107,7 +107,7 @@ describe.concurrent("Sink", () => {
       assert.isTrue(result1 == Exit.succeed(Tuple(Chunk(0), List.empty())))
       assert.isTrue(result2 == Exit.succeed(Tuple(Chunk(30), List(1))))
       assert.isTrue(result3 == Exit.succeed(Tuple(Chunk(30), List(2, 1))))
-      assert.isTrue(result4.untraced() == Exit.fail("ouch"))
+      assert.isTrue(result4.untraced == Exit.fail("ouch"))
     })
 
     describe.concurrent("foldLeftEffect", () => {
@@ -118,7 +118,7 @@ describe.concurrent("Sink", () => {
             .exit(),
           foldResult: Stream(1, 2, 3)
             .runFold<never, never, number, List<number>>(List.empty<number>(), (acc, el) => acc.prepend(el))
-            .map((list) => list.reverse().reduce("", (s, n) => s + n))
+            .map((list) => list.reverse.reduce("", (s, n) => s + n))
             .exit()
         })
 
@@ -167,7 +167,7 @@ describe.concurrent("Sink", () => {
             (acc, el) => acc.prepend(el)
           )
         )
-        .map((list) => list.reverse())
+        .map((list) => list.reverse)
         .runCollect()
 
       const result = await program.unsafeRunPromise()
@@ -193,7 +193,7 @@ describe.concurrent("Sink", () => {
             (acc, el) => acc.prepend(el)
           )
         )
-        .map((list) => list.reverse())
+        .map((list) => list.reverse)
         .runCollect()
 
       const result = await program.unsafeRunPromise()
@@ -236,7 +236,7 @@ describe.concurrent("Sink", () => {
             (acc: List<number>, el) => Effect.succeed(acc.prepend(el))
           )
         )
-        .map((list: List<number>) => list.reverse())
+        .map((list: List<number>) => list.reverse)
         .runCollect()
 
       const result = await program.unsafeRunPromise()
@@ -262,7 +262,7 @@ describe.concurrent("Sink", () => {
             (acc: List<number>, el) => Effect.succeedNow(acc.prepend(el))
           )
         )
-        .map((list) => list.reverse())
+        .map((list) => list.reverse)
         .runCollect()
 
       const result = await program.unsafeRunPromise()

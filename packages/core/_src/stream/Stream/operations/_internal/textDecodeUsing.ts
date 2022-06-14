@@ -16,7 +16,7 @@ function transform<R, E>(
 ): Channel<R, E, Chunk<number>, unknown, E, Chunk<string>, unknown> {
   return Channel.readWith(
     (received: Chunk<number>) =>
-      received.isEmpty()
+      received.isEmpty
         ? transform(charset)
         : Channel.write(stringChunkFrom(received, charset)),
     (err) => Channel.fail(err),

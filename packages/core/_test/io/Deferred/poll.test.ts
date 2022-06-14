@@ -35,7 +35,7 @@ describe.concurrent("Promise", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.isInterrupted())
+      assert.isTrue(result.isInterrupted)
     })
   })
 })

@@ -20,7 +20,7 @@ describe.concurrent("Channel", () => {
         .catchAll(() => Channel.succeedNow(4))
         .flatMap((i) => Channel.write(new Whatever(i)))
       const conduit = left >> (right > right > right > right)
-      const program = conduit.runCollect()
+      const program = conduit.runCollect
 
       const {
         tuple: [chunk, _]
@@ -58,7 +58,7 @@ describe.concurrent("Channel", () => {
         ((Channel.writeAll(1, 2) >> mapper((i: number) => i)) >>
           mapper((i: number) => List(i, i)).concatMap((list) => Channel.writeAll(...list).as(undefined))) >>
         effect
-      ).runCollect()
+      ).runCollect
 
       const {
         tuple: [chunk, result]
@@ -107,7 +107,7 @@ describe.concurrent("Channel", () => {
           const conduit = intProducer >>
             (readIntsN(2) >> sum("left", 0) > readIntsN(2) >> sum("right", 0))
 
-          return conduit.run()
+          return conduit.run
         })
         .flatMap((ref) => ref.get())
 
@@ -132,7 +132,7 @@ describe.concurrent("Channel", () => {
 
           const right = (read > read).catchAll(() => Channel.unit)
 
-          return (left >> right).runDrain()
+          return (left >> right).runDrain
         })
         .flatMap((ref) => ref.get())
 

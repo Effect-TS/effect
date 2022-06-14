@@ -19,7 +19,7 @@ export function findLastSTM_<E, A>(
     const index = s.get(1)
     return self.chunk
       .unsafeGet(index)!
-      .get()
+      .get
       .flatMap((a) => f(a).map((result) => Tuple(result ? Option.some(a) : Option.none, index - 1)))
   }).map((tuple) => tuple.get(0))
 }

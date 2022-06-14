@@ -10,7 +10,7 @@ export function transformSTM_<E, A>(
   f: (a: A) => STM<never, E, A>
 ): STM<never, E, void> {
   concreteTArray(self)
-  return STM.forEach(self.chunk, (tref) => tref.get().flatMap(f)).flatMap((newData) =>
+  return STM.forEach(self.chunk, (tref) => tref.get.flatMap(f)).flatMap((newData) =>
     STM.Effect((journal) => {
       for (let i = 0; i < newData.length; i++) {
         const value = newData.unsafeGet(i)!

@@ -3,7 +3,7 @@
  * This function may only be called if the terminal value of this channel is
  * another channel of compatible types.
  *
- * @tsplus fluent ets/Channel flatten
+ * @tsplus getter ets/Channel flatten
  */
 export function flatten<
   Env,

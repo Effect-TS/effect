@@ -19,7 +19,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == chunks.flatten())
+      assert.isTrue(result == chunks.flatten)
     })
 
     it("discards empty chunks", async () => {
@@ -76,7 +76,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty())
+      assert.isTrue(result.isEmpty)
     })
   })
 

@@ -10,7 +10,7 @@ export function offerAll_<A>(self: TPriorityQueue<A>, values: LazyArg<Collection
   return self.map
     .getAndUpdate((sa) =>
       values().reduce(
-        SortedMap.empty<A, Chunk<A>>(sa.getOrd()),
+        SortedMap.empty<A, Chunk<A>>(sa.getOrd),
         (map, a) => map.set(a, Chunk.single(a))
       )
     )

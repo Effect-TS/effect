@@ -58,11 +58,11 @@ function zipWithChunksInternal<A, A2, A3>(
   } = f(leftChunk, rightChunk)
   return either.fold(
     (leftChunk) =>
-      leftChunk.isEmpty()
+      leftChunk.isEmpty
         ? Tuple(out, new PullBoth())
         : Tuple(out, new PullRight(leftChunk)),
     (rightChunk) =>
-      rightChunk.isEmpty()
+      rightChunk.isEmpty
         ? Tuple(out, new PullBoth())
         : Tuple(out, new PullLeft(rightChunk))
   )
@@ -90,11 +90,11 @@ function pull<A, A2, A3>(
               if (left.isSome() && right.isSome()) {
                 const leftChunk = left.value
                 const rightChunk = right.value
-                if (leftChunk.isEmpty() && rightChunk.isEmpty()) {
+                if (leftChunk.isEmpty && rightChunk.isEmpty) {
                   return pull(f)(new PullBoth(), pullLeft, pullRight)
-                } else if (leftChunk.isEmpty()) {
+                } else if (leftChunk.isEmpty) {
                   return pull(f)(new PullLeft(rightChunk), pullLeft, pullRight)
-                } else if (rightChunk.isEmpty()) {
+                } else if (rightChunk.isEmpty) {
                   return pull(f)(new PullRight(leftChunk), pullLeft, pullRight)
                 } else {
                   return Effect.succeedNow(
@@ -110,9 +110,9 @@ function pull<A, A2, A3>(
         return pullLeft.foldEffect(
           (err) => Effect.succeedNow(Exit.fail(err)),
           (leftChunk) =>
-            leftChunk.isEmpty()
+            leftChunk.isEmpty
               ? pull(f)(new PullLeft(state.rightChunk), pullLeft, pullRight)
-              : state.rightChunk.isEmpty()
+              : state.rightChunk.isEmpty
               ? pull(f)(new PullRight(leftChunk), pullLeft, pullRight)
               : Effect.succeedNow(
                 Exit.succeed(zipWithChunksInternal(leftChunk, state.rightChunk, f))
@@ -123,9 +123,9 @@ function pull<A, A2, A3>(
         return pullRight.foldEffect(
           (err) => Effect.succeedNow(Exit.fail(err)),
           (rightChunk) =>
-            rightChunk.isEmpty()
+            rightChunk.isEmpty
               ? pull(f)(new PullRight(state.leftChunk), pullLeft, pullRight)
-              : state.leftChunk.isEmpty()
+              : state.leftChunk.isEmpty
               ? pull(f)(new PullLeft(rightChunk), pullLeft, pullRight)
               : Effect.succeedNow(
                 Exit.succeed(zipWithChunksInternal(state.leftChunk, rightChunk, f))

@@ -27,7 +27,7 @@ export function foldSink_<
 ): Sink<R | R1 | R2, E1 | E2, In1 & In2, L1 | L2, Z1 | Z2> {
   concreteSink(self)
   return new SinkInternal(
-    self.channel.doneCollect().foldChannel(
+    self.channel.doneCollect.foldChannel(
       (err) => {
         const result = failure(err)
         concreteSink(result)
@@ -36,7 +36,7 @@ export function foldSink_<
       ({ tuple: [leftovers, z] }) =>
         Channel.suspend(() => {
           const leftoversRef = new AtomicReference(
-            leftovers.filter((chunk): chunk is Chunk<L1 | L2> => chunk.isNonEmpty())
+            leftovers.filter((chunk): chunk is Chunk<L1 | L2> => chunk.isNonEmpty)
           )
           const refReader = Channel.succeed(
             leftoversRef.getAndSet(Chunk.empty())
@@ -49,7 +49,7 @@ export function foldSink_<
           })
 
           return continuationSink
-            .doneCollect()
+            .doneCollect
             .flatMap(
               ({ tuple: [newLeftovers, z1] }) =>
                 Channel.succeed(leftoversRef.get).flatMap((chunk) => Channel.writeChunk(chunk)) >

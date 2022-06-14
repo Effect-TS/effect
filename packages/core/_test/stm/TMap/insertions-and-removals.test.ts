@@ -59,7 +59,7 @@ describe.concurrent("TMap", () => {
       assert.isTrue(result)
     })
     it("add many keys with negative hash codes", async () => {
-      const expected = Chunk.fill(1000, (i) => Tuple(new HashContainer(-i), i)).asList()
+      const expected = Chunk.fill(1000, (i) => Tuple(new HashContainer(-i), i)).toList
       const tx = Do(($) => {
         const tmap = $(TMap.empty<HashContainer, number>())
 

@@ -17,7 +17,7 @@ describe.concurrent("Effect", () => {
             exactlyOnce(1, (_) => _.continueOrFail("value was not 0", (v) => v === 0 ? Option.some(v) : Option.none))
               .sandbox()
               .either()
-              .map((either) => either.mapLeft((cause) => cause.failureOrCause()))
+              .map((either) => either.mapLeft((cause) => cause.failureOrCause))
         )
 
       const { badCase, goodCase } = await program.unsafeRunPromise()
@@ -51,7 +51,7 @@ describe.concurrent("Effect", () => {
                   Option.none))
               .sandbox()
               .either()
-              .map((either) => either.mapLeft((cause) => cause.failureOrCause()))
+              .map((either) => either.mapLeft((cause) => cause.failureOrCause))
         )
         .bind(
           "badCase",
@@ -63,7 +63,7 @@ describe.concurrent("Effect", () => {
             )
               .sandbox()
               .either()
-              .map((either) => either.mapLeft((cause) => cause.failureOrCause()))
+              .map((either) => either.mapLeft((cause) => cause.failureOrCause))
         )
 
       const { badCase, goodCase, partialBadCase } = await program.unsafeRunPromise()

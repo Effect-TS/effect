@@ -15,7 +15,7 @@ export function repeatOrElse_<S, R, E, A, R1, B, R2, E2>(
   orElse: (e: E, option: Option<B>) => Effect<R2, E2, B>,
   __tsplusTrace?: string
 ): Effect<R | R1 | R2, E2, B> {
-  return self.repeatOrElseEither(schedule, orElse).map((either) => either.merge())
+  return self.repeatOrElseEither(schedule, orElse).map((either) => either.merge)
 }
 
 /**

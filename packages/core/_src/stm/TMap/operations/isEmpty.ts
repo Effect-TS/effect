@@ -7,5 +7,5 @@ import { concreteTMap } from "@effect/core/stm/TMap/operations/_internal/Interna
  */
 export function isEmpty<K, V>(self: TMap<K, V>): USTM<boolean> {
   concreteTMap(self)
-  return self.tSize.get().map((_) => Equals.equals(_, 0))
+  return self.tSize.get.map((_) => Equals.equals(_, 0))
 }

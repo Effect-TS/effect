@@ -18,7 +18,7 @@ export function joinFiberRefs(self: FiberRefs, that: FiberRefs): FiberRefs {
         Tuple(values.head, List.empty<unknown>()),
         ({ tuple: [oldValue, patches] }, newValue) =>
           Tuple(newValue, List.cons(fiberRef.diff(oldValue, newValue), patches))
-      ).get(1).reverse()
+      ).get(1).reverse
 
       if (patches.isNil()) {
         return parentFiberRefs
@@ -52,10 +52,10 @@ function combine<A, P>(
   childStack: List.NonEmpty<Tuple<[FiberId.Runtime, A]>>
 ): List.NonEmpty<A> {
   return combineLoop(
-    parentStack.reverse(),
-    childStack.reverse(),
-    fiberRef.initial(),
-    fiberRef.initial()
+    parentStack.reverse,
+    childStack.reverse,
+    fiberRef.initial,
+    fiberRef.initial
   )
 }
 

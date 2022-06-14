@@ -18,7 +18,7 @@ export function dropWhile<In>(
   > = Channel.readWith(
     (chunk: Chunk<In>) => {
       const leftover = chunk.dropWhile(p)
-      const more = leftover.isEmpty()
+      const more = leftover.isEmpty
       return more
         ? loop
         : Channel.write(leftover) > Channel.identity<never, Chunk<In>, unknown>()

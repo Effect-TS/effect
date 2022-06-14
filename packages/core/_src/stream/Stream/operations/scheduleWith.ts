@@ -17,7 +17,7 @@ export function scheduleWith_<R, E, A, S, R2, B, C>(
 ): Stream<R | R2, E, C> {
   concreteStream(self)
   return new StreamInternal(
-    Channel.fromEffect(schedule().driver()).flatMap(
+    Channel.fromEffect(schedule().driver).flatMap(
       (driver) => self.channel >> loop<R, R2, E, A, B, C>(driver, Chunk.empty<A>(), f, g, 0)
     )
   )

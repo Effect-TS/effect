@@ -8,7 +8,7 @@ export function reduceSTM_<E, A, Z>(
   zero: Z,
   f: (z: Z, a: A) => STM<never, E, Z>
 ): STM<never, E, Z> {
-  return self.toChunk().flatMap((as) => STM.reduce(as, zero, f))
+  return self.toChunk.flatMap((as) => STM.reduce(as, zero, f))
 }
 
 /**

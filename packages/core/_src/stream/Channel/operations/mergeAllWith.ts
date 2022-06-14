@@ -58,7 +58,7 @@ export function mergeAllWith_<
         .bind("lastDone", () => Ref.make<Option<OutDone>>(Option.none))
         .bind("errorSignal", () => Deferred.make<never, void>())
         .bind("permits", () => Semaphore.make(n))
-        .bind("pull", () => channels.toPull())
+        .bind("pull", () => channels.toPull)
         .bindValue(
           "evaluatePull",
           ({ errorSignal, lastDone, queue }) =>
@@ -120,7 +120,7 @@ export function mergeAllWith_<
                             .bindValue("raceIOs", () =>
                               Effect.scoped(
                                 channel
-                                  .toPull()
+                                  .toPull
                                   .flatMap((pull) => evaluatePull(pull).race(errorSignal.await()))
                               ))
                             .tap(({ latch, raceIOs }) =>
@@ -147,7 +147,7 @@ export function mergeAllWith_<
                             .bindValue("raceIOs", ({ canceler }) =>
                               Effect.scoped(
                                 channel
-                                  .toPull()
+                                  .toPull
                                   .flatMap((pull) =>
                                     evaluatePull(pull)
                                       .race(errorSignal.await())

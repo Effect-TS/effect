@@ -11,5 +11,5 @@ export function drain<R, E, A>(
   __tsplusTrace?: string
 ): Stream<R, E, never> {
   concreteStream(self)
-  return new StreamInternal(self.channel.drain())
+  return new StreamInternal(self.channel.drain)
 }

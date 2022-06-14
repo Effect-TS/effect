@@ -92,14 +92,14 @@ export function initial<E, A>(): FiberState<E, A> {
 }
 
 /**
- * @tsplus fluent ets/Fiber/State isInterrupting
+ * @tsplus getter ets/Fiber/State isInterrupting
  */
 export function isInterrupting<E, A>(self: FiberState<E, A>): boolean {
-  return self.status.isInterrupting()
+  return self.status.isInterrupting
 }
 
 /**
- * @tsplus fluent ets/Fiber/State interruptorsCause
+ * @tsplus getter ets/Fiber/State interruptorsCause
  */
 export function interruptorsCause<E, A>(state: FiberState<E, A>): Cause<never> {
   return state.interruptors.reduce(

@@ -17,7 +17,7 @@ export function scheduleFrom_<R, E, A, S, R1, A1>(
   return Effect.suspendSucceed(() => {
     const schedule0 = schedule()
     const value = a()
-    return schedule0.driver().flatMap(scheduleFromLoop(self, value))
+    return schedule0.driver.flatMap(scheduleFromLoop(self, value))
   })
 }
 

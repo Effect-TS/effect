@@ -1,7 +1,7 @@
 /**
  * Determines if the `Cause` is traced.
  *
- * @tsplus fluent ets/Cause isTraced
+ * @tsplus getter ets/Cause isTraced
  */
 export function isTraced<E>(self: Cause<E>): boolean {
   return self

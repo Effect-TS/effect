@@ -4,7 +4,7 @@
  * @tsplus fluent ets/TSet intersect
  */
 export function intersect_<A>(self: TSet<A>, other: TSet<A>): USTM<void> {
-  return other.toSet.flatMap(vals => self.retainIfDiscard((_) => vals.has(_)))
+  return other.toHashSet.flatMap(vals => self.retainIfDiscard((_) => vals.has(_)))
 }
 
 /**

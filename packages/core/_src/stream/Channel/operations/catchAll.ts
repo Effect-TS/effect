@@ -35,7 +35,7 @@ export function catchAll_<
   OutDone | OutDone1
 > {
   return self.catchAllCause((cause) =>
-    cause.failureOrCause().fold(
+    cause.failureOrCause.fold(
       (outErr) => f(outErr),
       (cause) => Channel.failCause(cause)
     )

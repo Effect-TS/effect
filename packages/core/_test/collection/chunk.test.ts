@@ -104,6 +104,6 @@ describe("Chunk", () => {
       .findEffect((a) => Effect.fail("Error"))
       .unsafeRunPromiseExit()
 
-    assert.isTrue(result.untraced() == Exit.fail("Error"))
+    assert.isTrue(result.untraced == Exit.fail("Error"))
   })
 })

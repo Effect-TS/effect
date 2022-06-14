@@ -11,7 +11,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.flatten() == Chunk(1, 1, 1, 1))
+      assert.isTrue(result.flatten == Chunk(1, 1, 1, 1))
       assert.isTrue(result.forAll((list) => list.length <= 3))
     })
 
@@ -21,7 +21,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(error))
+      assert.isTrue(result.untraced == Exit.die(error))
     })
 
     it("error propagation 2", async () => {
@@ -32,7 +32,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(error))
+      assert.isTrue(result.untraced == Exit.die(error))
     })
 
     it("interruption propagation 1", async () => {
@@ -86,7 +86,7 @@ describe.concurrent("Stream", () => {
             (acc, el) => acc.prepend(el)
           )
         )
-        .map((list) => list.reverse())
+        .map((list) => list.reverse)
         .runCollect()
         .map((chunk) => List.from(chunk).flatten())
 
@@ -192,7 +192,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(error))
+      assert.isTrue(result.untraced == Exit.die(error))
     })
 
     it("error propagation 2", async () => {
@@ -206,7 +206,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(error))
+      assert.isTrue(result.untraced == Exit.die(error))
     })
 
     it("interruption propagation 1", async () => {
@@ -266,7 +266,7 @@ describe.concurrent("Stream", () => {
             (_, n: number) => n,
             4,
             (acc, el) => acc.prepend(el)
-          ).map((list) => list.reverse()),
+          ).map((list) => list.reverse),
           Schedule.spaced((100).millis)
         )
         .collect((either) => either.isRight() ? Option.some(either.right) : Option.none)

@@ -18,6 +18,6 @@ export function fromQueue<A>(
     return (queue0 as Queue<A>)
       .takeBetween(1, maxChunkSize)
       .map(Chunk.from)
-      .catchAllCause((cause) => queue0.isShutdown && cause.isInterrupted() ? Pull.end : Pull.failCause(cause))
+      .catchAllCause((cause) => queue0.isShutdown && cause.isInterrupted ? Pull.end : Pull.failCause(cause))
   })
 }

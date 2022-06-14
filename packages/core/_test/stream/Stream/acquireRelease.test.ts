@@ -75,11 +75,11 @@ describe.concurrent("Stream", () => {
           .flatMap((ref) => Stream.succeed(ref))
           .flatMap((ref) => Stream.fromEffect(ref.get()))
           .runCollect()
-          .map((chunk) => chunk.unsafeHead()),
+          .map((chunk) => chunk.unsafeHead),
         rightAssoc: Stream.acquireRelease(Ref.make(true), (ref) => ref.set(false))
           .flatMap((ref) => Stream.succeed(ref).flatMap((ref) => Stream.fromEffect(ref.get())))
           .runCollect()
-          .map((chunk) => chunk.unsafeHead())
+          .map((chunk) => chunk.unsafeHead)
       })
 
       const { leftAssoc, rightAssoc } = await program.unsafeRunPromise()
@@ -93,7 +93,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.isFailure() && result.cause.isDie())
+      assert.isTrue(result.isFailure() && result.cause.isDie)
     })
   })
 })

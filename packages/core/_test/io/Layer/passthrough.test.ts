@@ -15,7 +15,7 @@ describe.concurrent("Layer", () => {
         value: _.value.toString()
       }))
 
-      const live = Layer.fromValue(NumberTag, { value: 1 }) >> layer.passthrough()
+      const live = Layer.fromValue(NumberTag, { value: 1 }) >> layer.passthrough
 
       const program = Effect.Do()
         .bind("i", () => Effect.service(NumberTag))

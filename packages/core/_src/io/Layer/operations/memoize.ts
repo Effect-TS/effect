@@ -4,7 +4,7 @@ import { ILayerScoped } from "@effect/core/io/Layer/definition"
  * Returns a scoped effect that, if evaluated, will return the lazily computed
  * result of this layer.
  *
- * @tsplus fluent ets/Layer memoize
+ * @tsplus getter ets/Layer memoize
  */
 export function memoize<RIn, E, ROut>(
   self: Layer<RIn, E, ROut>

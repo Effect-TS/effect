@@ -113,7 +113,7 @@ describe.concurrent("Stream", () => {
   //                      .collectWhileSuccess
   //                      .interruptAfter(5.seconds)
   //                      .tap(_ => c.proceed)
-  //                      .runCollect
+  //                      .runCollect()
   //                      .fork
   //           _      <- c.offer *> TestClock.adjust(3.seconds) *> c.awaitNext
   //           _      <- c.offer *> TestClock.adjust(3.seconds) *> c.awaitNext
@@ -126,7 +126,7 @@ describe.concurrent("Stream", () => {
   //   test("interrupts before first chunk") {
   //     for {
   //       queue  <- Queue.unbounded[Int]
-  //       fiber  <- ZStream.fromQueue(queue).interruptAfter(5.seconds).runCollect.fork
+  //       fiber  <- ZStream.fromQueue(queue).interruptAfter(5.seconds).runCollect().fork
   //       _      <- TestClock.adjust(6.seconds)
   //       _      <- queue.offer(1)
   //       result <- fiber.join

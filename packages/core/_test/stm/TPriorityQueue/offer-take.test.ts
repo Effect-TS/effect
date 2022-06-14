@@ -5,7 +5,7 @@ describe.concurrent("TPriorityQueue", () => {
   it("offerAll and takeAll", async () => {
     const program = TPriorityQueue.empty<Event>(eventOrd)
       .tap((queue) => queue.offerAll(as))
-      .flatMap((queue) => queue.takeAll())
+      .flatMap((queue) => queue.takeAll)
       .commit()
 
     const result = await program.unsafeRunPromise()

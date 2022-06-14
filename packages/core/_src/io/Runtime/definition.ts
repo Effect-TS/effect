@@ -34,16 +34,16 @@ export class Runtime<R> {
     if (supervisor !== Supervisor.none) {
       supervisor.unsafeOnStart(this.environment, effect, Option.none, context)
 
-      context.unsafeOnDone((exit) => supervisor.unsafeOnEnd(exit.flatten(), context))
+      context.unsafeOnDone((exit) => supervisor.unsafeOnEnd(exit.flatten, context))
     }
 
     context.nextEffect = effect
     context.run()
     context.unsafeOnDone((exit) => {
-      k(exit.flatten())
+      k(exit.flatten)
     })
 
-    return (id) => (k) => this.unsafeRunAsyncWith(context._interruptAs(id), (exit) => k(exit.flatten()))
+    return (id) => (k) => this.unsafeRunAsyncWith(context._interruptAs(id), (exit) => k(exit.flatten))
   }
 
   /**

@@ -8,7 +8,7 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
 export function takeUpTo_<A>(self: TPriorityQueue<A>, n: number): USTM<Chunk<A>> {
   concreteTPriorityQueue(self)
   return self.map.modify((map) => {
-    const entries = map.entries()
+    const entries = map.entries
     const builder = Chunk.builder<Chunk<A>>()
     let updated = map
     let e: IteratorResult<Tuple<[A, Chunk<A>]>>
@@ -20,7 +20,7 @@ export function takeUpTo_<A>(self: TPriorityQueue<A>, n: number): USTM<Chunk<A>>
 
       builder.append(l)
 
-      if (r.isEmpty()) {
+      if (r.isEmpty) {
         updated = map.remove(a)
       } else {
         updated = map.set(a, r)
@@ -29,7 +29,7 @@ export function takeUpTo_<A>(self: TPriorityQueue<A>, n: number): USTM<Chunk<A>>
       i += l.size
     }
 
-    return Tuple(builder.build().flatten(), updated)
+    return Tuple(builder.build().flatten, updated)
   })
 }
 

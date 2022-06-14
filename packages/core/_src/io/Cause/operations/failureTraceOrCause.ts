@@ -3,7 +3,7 @@
  * if there are no checked errors return the rest of the `Cause` that is known
  * to contain only `Die` or `Interrupt` causes.
  *
- * @tsplus fluent ets/Cause failureTraceOrCause
+ * @tsplus getter ets/Cause failureTraceOrCause
  */
 export function failureTraceOrCause<E>(
   self: Cause<E>

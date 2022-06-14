@@ -32,7 +32,7 @@ describe.concurrent("TMap", () => {
         const tmap = $(TMap.fromIterable(elems))
         const chunk = $(tmap.toChunk)
 
-        return hasSameElements(chunk.asList(), Equivalence.tuple(Equivalence.string, Equivalence.number), elems)
+        return hasSameElements(chunk.toList, Equivalence.tuple(Equivalence.string, Equivalence.number), elems)
       })
       const result = await tx.commit().unsafeRunPromise()
 

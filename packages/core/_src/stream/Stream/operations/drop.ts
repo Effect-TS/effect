@@ -28,7 +28,7 @@ function loop<R, E, A>(
     (chunk: Chunk<A>) => {
       const dropped = chunk.drop(r)
       const leftover = Math.max(0, r - chunk.length)
-      const more = chunk.isEmpty() || leftover > 0
+      const more = chunk.isEmpty || leftover > 0
       return more
         ? loop<R, E, A>(leftover)
         : Channel.write(dropped) > Channel.identity<E, Chunk<A>, unknown>()

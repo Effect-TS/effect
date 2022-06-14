@@ -6,11 +6,11 @@ describe.concurrent("Stream", () => {
           .toQueue(1)
           .flatMap((queue) =>
             Stream.fromQueue(queue)
-              .map((take) => take.exit())
+              .map((take) => take.exit)
               .flattenExitOption()
               .runCollect()
           )
-          .map((chunk) => chunk.flatten())
+          .map((chunk) => chunk.flatten)
       )
 
       const result = await program.unsafeRunPromise()
@@ -23,7 +23,7 @@ describe.concurrent("Stream", () => {
       const program = Effect.scoped(
         (Stream.range(0, 10) + Stream.fail(error)).toQueue(1).flatMap((queue) =>
           Stream.fromQueue(queue)
-            .map((take) => take.exit())
+            .map((take) => take.exit)
             .flattenExitOption()
             .runCollect()
         )
@@ -31,7 +31,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(error))
+      assert.isTrue(result.untraced == Exit.fail(error))
     })
   })
 
@@ -42,7 +42,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.asImmutableArray() == lists.flatten().asImmutableArray())
+      assert.isTrue(result.toImmutableArray == lists.flatten().toImmutableArray)
     })
   })
 
@@ -82,7 +82,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty())
+      assert.isTrue(result.isEmpty)
     })
 
     it("work with empty streams", async () => {
@@ -92,7 +92,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty())
+      assert.isTrue(result.isEmpty)
     })
   })
 })

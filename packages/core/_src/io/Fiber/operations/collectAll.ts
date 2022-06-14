@@ -8,9 +8,9 @@ import { makeSynthetic } from "@effect/core/io/Fiber/definition"
  */
 export function collectAll<E, A>(fibers: Collection<Fiber<E, A>>): Fiber<E, Chunk<A>> {
   return makeSynthetic({
-    id: fibers.reduce(FiberId.none, (id, fiber) => id + fiber.id()),
+    id: fibers.reduce(FiberId.none, (id, fiber) => id + fiber.id),
     await: Effect.forEachPar(fibers, (fiber) => fiber.await().flatMap((_) => Effect.done(_))).exit(),
-    children: Effect.forEachPar(fibers, (fiber) => fiber.children()).map((_) => _.flatten()),
+    children: Effect.forEachPar(fibers, (fiber) => fiber.children()).map((_) => _.flatten),
     inheritRefs: Effect.forEachDiscard(fibers, (fiber) => fiber.inheritRefs()),
     poll: Effect.forEach(fibers, (fiber) => fiber.poll()).map((chunk) =>
       chunk.reduceRight(

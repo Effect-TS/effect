@@ -9,7 +9,7 @@ import type { ChunkBuilder } from "@tsplus/stdlib/collections/Chunk"
  * output into an in- memory chunk, it is not safe to call this method on
  * channels that output a large or unbounded number of values.
  *
- * @tsplus fluent ets/Channel doneCollect
+ * @tsplus getter ets/Channel doneCollect
  */
 export function doneCollect<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>

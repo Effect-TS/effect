@@ -3,9 +3,9 @@ import { concreteTSemaphore } from "@effect/core/stm/TSemaphore/operations/_inte
 /**
  * Returns the number of available permits in a transactional context.
  *
- * @tsplus fluent ets/TSemaphore available
+ * @tsplus getter ets/TSemaphore available
  */
 export function available(self: TSemaphore): STM<never, never, number> {
   concreteTSemaphore(self)
-  return self.permits.get()
+  return self.permits.get
 }

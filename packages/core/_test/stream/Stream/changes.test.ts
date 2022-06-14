@@ -7,8 +7,8 @@ describe.concurrent("Stream", () => {
         expected: stream.runCollect().map((as) =>
           as
             .reduce<number, List<number>>(List.empty(), (list, n) =>
-              list.isNil() || list.unsafeHead() !== n ? list.prepend(n) : list)
-            .reverse()
+              list.isNil() || list.unsafeHead !== n ? list.prepend(n) : list)
+            .reverse
         )
       })
 
@@ -29,8 +29,8 @@ describe.concurrent("Stream", () => {
         expected: stream.runCollect().map((as) =>
           as
             .reduce<number, List<number>>(List.empty(), (list, n) =>
-              list.isNil() || list.unsafeHead() !== n ? list.prepend(n) : list)
-            .reverse()
+              list.isNil() || list.unsafeHead !== n ? list.prepend(n) : list)
+            .reverse
         )
       })
 

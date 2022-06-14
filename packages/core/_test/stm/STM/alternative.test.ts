@@ -6,7 +6,7 @@ describe.concurrent("STM", () => {
         .bindValue("left", ({ tRef }) => tRef.update((n) => n + 100) > STM.retry)
         .bindValue("right", ({ tRef }) => tRef.update((n) => n + 200))
         .tap(({ left, right }) => (left | right).commit())
-        .flatMap(({ tRef }) => tRef.get().commit())
+        .flatMap(({ tRef }) => tRef.get.commit())
 
       const result = await program.unsafeRunPromise()
 
@@ -19,7 +19,7 @@ describe.concurrent("STM", () => {
         .bindValue("left", ({ tRef }) => tRef.update((n) => n + 100) > STM.fail("boom"))
         .bindValue("right", ({ tRef }) => tRef.update((n) => n + 200))
         .tap(({ left, right }) => (left | right).commit())
-        .flatMap(({ tRef }) => tRef.get().commit())
+        .flatMap(({ tRef }) => tRef.get.commit())
 
       const result = await program.unsafeRunPromise()
 
@@ -31,7 +31,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("right"))
+      assert.isTrue(result.untraced == Exit.fail("right"))
     })
   })
 
@@ -61,7 +61,7 @@ describe.concurrent("STM", () => {
     })
 
     it("fails with the specified error once left retries", async () => {
-      const program = STM.retry.orElseFail(false).either().commit()
+      const program = STM.retry.orElseFail(false).either.commit()
 
       const result = await program.unsafeRunPromise()
 
@@ -69,7 +69,7 @@ describe.concurrent("STM", () => {
     })
 
     it("fails with the specified error once left fails", async () => {
-      const program = STM.fail(true).orElseFail(false).either().commit()
+      const program = STM.fail(true).orElseFail(false).either.commit()
 
       const result = await program.unsafeRunPromise()
 
@@ -123,7 +123,7 @@ describe.concurrent("STM", () => {
     it("retries left after right retries", async () => {
       const program = Effect.Do()
         .bind("tRef", () => TRef.makeCommit(0))
-        .bindValue("left", ({ tRef }) => tRef.get().flatMap((n) => STM.check(n > 500).as("left")))
+        .bindValue("left", ({ tRef }) => tRef.get.flatMap((n) => STM.check(n > 500).as("left")))
         .bindValue("right", () => STM.retry)
         .bindValue("updater", ({ tRef }) =>
           tRef
@@ -142,7 +142,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("left"))
+      assert.isTrue(result.untraced == Exit.fail("left"))
     })
 
     it("fails if right fails", async () => {
@@ -150,7 +150,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("right"))
+      assert.isTrue(result.untraced == Exit.fail("right"))
     })
   })
 })

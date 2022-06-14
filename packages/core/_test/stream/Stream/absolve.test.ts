@@ -20,7 +20,7 @@ describe.concurrent("Stream", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail("ouch"))
+        assert.isTrue(result.untraced == Exit.fail("ouch"))
       })
 
       it("round trip #1", async () => {
@@ -44,8 +44,8 @@ describe.concurrent("Stream", () => {
 
         const { res1, res2 } = await program.unsafeRunPromise()
 
-        assert.isTrue(res1.untraced() == Exit.fail("ouch"))
-        assert.isTrue(res2.untraced() == Exit.fail("ouch"))
+        assert.isTrue(res1.untraced == Exit.fail("ouch"))
+        assert.isTrue(res2.untraced == Exit.fail("ouch"))
       })
     })
   })

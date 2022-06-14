@@ -1,5 +1,4 @@
 /**
- * @internal
  * @tsplus fluent ets/TQueue takeRemainder
  */
 export function takeRemainder_<A>(self: TQueue<A>, min: number, max: number, acc: Chunk<A>): USTM<Chunk<A>> {

@@ -10,7 +10,7 @@ export function mapError_<R, E, A, E2>(
   __tsplusTrace?: string
 ): Effect<R, E2, A> {
   return self.foldCauseEffect(
-    (cause) => cause.failureOrCause().fold((e) => Effect.failNow(f(e)), Effect.failCauseNow),
+    (cause) => cause.failureOrCause.fold((e) => Effect.failNow(f(e)), Effect.failCauseNow),
     Effect.succeedNow
   )
 }

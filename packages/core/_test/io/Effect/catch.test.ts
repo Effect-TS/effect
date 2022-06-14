@@ -8,7 +8,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.succeed(message))
+      assert.isTrue(result.untraced == Exit.succeed(message))
     })
   })
 
@@ -30,7 +30,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(error))
+      assert.isTrue(result.untraced == Exit.fail(error))
     })
 
     it("leaves values", async () => {
@@ -66,7 +66,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(error))
+      assert.isTrue(result.untraced == Exit.die(error))
     })
 
     it("leaves errors", async () => {
@@ -79,7 +79,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(error))
+      assert.isTrue(result.untraced == Exit.fail(error))
     })
 
     it("leaves values", async () => {

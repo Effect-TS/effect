@@ -47,7 +47,7 @@ describe("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("fail"))
+      assert.isTrue(result.untraced == Exit.fail("fail"))
     })
   })
 
@@ -69,7 +69,7 @@ describe("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("fail"))
+      assert.isTrue(result.untraced == Exit.fail("fail"))
     })
   })
 

@@ -9,7 +9,7 @@ export function find_<E, Z>(
   self: Cause<E>,
   f: (cause: Cause<E>) => Option<Z>
 ): Option<Z> {
-  return findSafe(self, f).run()
+  return findSafe(self, f).run
 }
 
 /**

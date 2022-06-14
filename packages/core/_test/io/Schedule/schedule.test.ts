@@ -13,7 +13,7 @@ function alwaysFail(ref: Ref<number>): Effect<never, string, number> {
 //     .bind("now", () => Effect.succeed(Date.now()))
 //     .bindValue("input", () => Chunk(1, 2, 3, 4, 5))
 //     .bind("actual", ({ input, now }) => schedule.run(now, input))
-//     .bind("expected", ({ input, now }) => schedule.delays().run(now, input))
+//     .bind("expected", ({ input, now }) => schedule.delays.run(now, input))
 //     .map(({ actual, expected }) => Tuple(actual, expected))
 // }
 
@@ -24,7 +24,7 @@ function alwaysFail(ref: Ref<number>): Effect<never, string, number> {
 //     .bind("now", () => Effect.succeed(Date.now()))
 //     .bindValue("input", () => Chunk(1, 2, 3, 4, 5))
 //     .bind("actual", ({ input, now }) => schedule.run(now, input))
-//     .bind("expected", ({ input, now }) => schedule.repetitions().run(now, input))
+//     .bind("expected", ({ input, now }) => schedule.repetitions.run(now, input))
 //     .map(({ actual, expected }) => Tuple(actual, expected))
 // }
 
@@ -57,8 +57,8 @@ function alwaysFail(ref: Ref<number>): Effect<never, string, number> {
 //         if (input.length() === 0) {
 //           return Effect.succeed(acc);
 //         }
-//         const head = input.unsafeHead()!;
-//         const tail = input.length() === 1 ? List.nil() : input.unsafeTail()!;
+//         const head = input.unsafeHead!;
+//         const tail = input.length() === 1 ? List.nil() : input.unsafeTail!;
 //         return driver.next(head).foldEffect(
 //           () =>
 //             driver.last.fold(
@@ -182,7 +182,7 @@ describe.concurrent("Schedule", () => {
 
       // const result = await program.unsafeRunPromise();
 
-      // assert.isTrue(result.isEmpty());
+      // assert.isTrue(result.isEmpty);
     })
 
     it.skip("until the effectful condition f fails", async () => {

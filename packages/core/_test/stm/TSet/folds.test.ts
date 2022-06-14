@@ -1,5 +1,3 @@
-import { hasSameElements } from "@effect/core/test/stm/TSet/test-utils"
-
 describe.concurrent("TSet", () => {
   describe.concurrent("folds", () => {
     it("fold on non-empty set", async () => {
@@ -47,12 +45,12 @@ describe.concurrent("TSet", () => {
       assert.isTrue(result)
     })
     it("toSet", async () => {
-      const elems = new Set([1, 2, 3])
+      const elems = HashSet([1, 2, 3])
       const tx = Do(($) => {
         const tset = $(TSet.fromIterable(elems))
-        const res = $(tset.toSet)
+        const res = $(tset.toHashSet)
 
-        return hasSameElements(res, Equivalence.number, elems)
+        return res == elems
       })
       const result = await tx.commit().unsafeRunPromise()
 

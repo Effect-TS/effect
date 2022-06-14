@@ -3,4 +3,4 @@
  *
  * @tsplus static ets/Schedule/Ops once
  */
-export const once: Schedule<number, never, unknown, void> = Schedule.recurs(1).asUnit()
+export const once: Schedule<number, never, unknown, void> = Schedule.recurs(1).asUnit

@@ -91,7 +91,7 @@ export class MemoMap {
                     ),
                   (e: Exit<unknown, unknown>) => finalizerRef.get().flatMap((fin) => fin(e))
                 ))
-              .map(({ memoized, resource }) => Tuple(resource, layer.isFresh() ? map : map.set(layer, memoized)))
+              .map(({ memoized, resource }) => Tuple(resource, layer.isFresh ? map : map.set(layer, memoized)))
           }
         }
       }).flatten()
@@ -198,7 +198,7 @@ export function withScope<RIn, E, ROut>(
 /**
  * Returns whether this layer is a fresh version that will not be shared.
  *
- * @tsplus fluent ets/Layer isFresh
+ * @tsplus getter ets/Layer isFresh
  */
 export function isFresh<R, E, A>(self: Layer<R, E, A>): boolean {
   return instruction(self)._tag === "LayerFresh"

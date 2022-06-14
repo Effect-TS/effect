@@ -189,8 +189,8 @@ describe.concurrent("Stream", () => {
       const result = await program.unsafeRunPromise()
 
       assert.deepEqual(
-        result.asImmutableArray().array,
-        (result.asImmutableArray().array as Array<number>).sort()
+        result.toImmutableArray.array,
+        (result.toImmutableArray.array as Array<number>).sort()
       )
     })
 
@@ -235,7 +235,7 @@ describe.concurrent("Stream", () => {
         .mapEffectPar(8, () => Effect.succeed(1).repeatN(200))
         .runDrain()
         .exit()
-        .map(exit => exit.isInterrupted())
+        .map(exit => exit.isInterrupted)
 
       const result = await program.unsafeRunPromise()
       await deferred.succeed(undefined).unsafeRunPromise()
@@ -263,7 +263,7 @@ describe.concurrent("Stream", () => {
       const { count, result } = await program.unsafeRunPromise()
 
       assert.strictEqual(count, 2)
-      assert.isTrue(result.untraced() == Exit.fail("boom"))
+      assert.isTrue(result.untraced == Exit.fail("boom"))
     })
 
     it("propagates correct error with subsequent mapEffectPar call (ZIO issue #4514)", async () => {
@@ -289,7 +289,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.untraced() == Exit.fail("boom"))
+      assert.isTrue(result.untraced == Exit.fail("boom"))
     })
   })
 
@@ -301,7 +301,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("fail"))
+      assert.isTrue(result.untraced == Exit.fail("fail"))
     })
   })
 })

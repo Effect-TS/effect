@@ -7,7 +7,7 @@ describe.concurrent("Fiber", () => {
 
       assert.isTrue(
         result.isFailure() &&
-          (result.cause.failures().head() == Option.some("fail"))
+          (result.cause.failures.head == Option.some("fail"))
       )
     })
 
@@ -18,7 +18,7 @@ describe.concurrent("Fiber", () => {
 
       assert.isTrue(
         result.isFailure() &&
-          (result.cause.failures().head() == Option.some("fail"))
+          (result.cause.failures.head == Option.some("fail"))
       )
     })
 

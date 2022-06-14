@@ -2,7 +2,7 @@
  * Converts a `STM<R, Either<B, E>, A>` into a `STM<R, E, Either<B, A>>`.
  * The inverse of `right`.
  *
- * @tsplus fluent ets/STM unright
+ * @tsplus getter ets/STM unright
  */
 export function unright<R, B, E, A>(
   self: STM<R, Either<B, E>, A>

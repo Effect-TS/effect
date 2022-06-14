@@ -10,7 +10,7 @@ export function validateParDiscard<R, E, A, X>(
   __tsplusTrace?: string
 ): Effect<R, Chunk<E>, void> {
   return Effect.partitionPar(as, f).flatMap(({ tuple: [es, _] }) =>
-    es.isEmpty()
+    es.isEmpty
       ? Effect.unit
       : Effect.fail(es)
   )

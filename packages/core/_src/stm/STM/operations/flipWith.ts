@@ -7,7 +7,7 @@ export function flipWith_<R, E, A, R2, E2, A2>(
   self: STM<R, E, A>,
   f: (stm: STM<R, A, E>) => STM<R2, A2, E2>
 ) {
-  return f(self.flip()).flip()
+  return f(self.flip).flip
 }
 
 /**

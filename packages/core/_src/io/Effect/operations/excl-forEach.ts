@@ -186,7 +186,7 @@ function forEachParN<R, E, A, B>(
     return Effect.succeed(new Array<B>(size)).flatMap((array) =>
       makeBoundedQueue<Tuple<[A, number]>>(size).flatMap((queue) =>
         queue
-          .offerAll(as0.zipWithIndex())
+          .offerAll(as0.zipWithIndex)
           .flatMap(() =>
             forEachParUnboundedDiscard(worker(queue, array).replicate(n), identity).map(
               () => Chunk.from(array)
@@ -297,10 +297,10 @@ function forEachParUnboundedDiscard<R, E, A, X>(
                 const collected = Exit.collectAllPar(exits)
                 if (collected._tag === "Some" && collected.value._tag === "Failure") {
                   return Effect.failCause(
-                    Cause.both(cause.stripFailures(), collected.value.cause)
+                    Cause.both(cause.stripFailures, collected.value.cause)
                   )
                 }
-                return Effect.failCause(cause.stripFailures())
+                return Effect.failCause(cause.stripFailures)
               }
             ),
           (_) => Effect.forEachDiscard(fibers, (fiber) => fiber.inheritRefs())
@@ -733,7 +733,7 @@ export class UnsafeCreate<A> implements Queue<A> {
         unsafeCompleteDeferred(taker, item)
       })
 
-      if (remaining.isEmpty()) {
+      if (remaining.isEmpty) {
         return Effect.succeedNow(true)
       }
 
@@ -742,7 +742,7 @@ export class UnsafeCreate<A> implements Queue<A> {
 
       unsafeCompleteTakers(this.strategy, this.queue, this.takers)
 
-      return surplus.isEmpty()
+      return surplus.isEmpty
         ? Effect.succeedNow(true)
         : this.strategy.handleSurplus(
           surplus,

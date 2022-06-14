@@ -1,7 +1,7 @@
 /**
  * Converts an option on errors into an option on values.
  *
- * @tsplus fluent ets/STM unsome
+ * @tsplus getter ets/STM unsome
  */
 export function unsome<R, E, A>(self: STM<R, Option<E>, A>): STM<R, E, Option<A>> {
   return self.foldSTM(

@@ -7,5 +7,5 @@ import { concreteSemaphore } from "@effect/core/io/Semaphore/operations/_interna
  */
 export function available(self: Semaphore, __tsplusTrace?: string): Effect.UIO<number> {
   concreteSemaphore(self)
-  return self.semaphore.available().commit()
+  return self.semaphore.available.commit()
 }

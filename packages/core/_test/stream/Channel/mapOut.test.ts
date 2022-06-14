@@ -3,7 +3,7 @@ describe("Channel", () => {
     it("simple", async () => {
       const program = Channel.writeAll(1, 2, 3)
         .mapOut((n) => n + 1)
-        .runCollect()
+        .runCollect
 
       const {
         tuple: [chunk, z]
@@ -17,7 +17,7 @@ describe("Channel", () => {
       const program = Channel.write(1)
         .mapOut((n) => n.toString())
         .flatMap(() => Channel.write("x"))
-        .runCollect()
+        .runCollect
         .map((tuple) => tuple.get(0))
 
       const result = await program.unsafeRunPromise()

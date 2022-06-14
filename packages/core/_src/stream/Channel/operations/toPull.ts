@@ -5,7 +5,7 @@ import { concreteChannelState } from "@effect/core/stream/Channel/ChannelState"
 /**
  * Interpret a `Channel` to a managed pull.
  *
- * @tsplus fluent ets/Channel toPull
+ * @tsplus getter ets/Channel toPull
  */
 export function toPull<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>

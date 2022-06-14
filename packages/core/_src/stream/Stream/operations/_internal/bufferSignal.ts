@@ -11,7 +11,7 @@ export function bufferSignal<R, E, A>(
       .bind("start", () => Deferred.make<never, void>())
       .tap(({ start }) => start.succeed(undefined))
       .bind("ref", ({ start }) => Ref.make(start))
-      .tap(({ queue, ref }) => (channel() >> producer<E, A>(queue, ref)).runScoped().fork())
+      .tap(({ queue, ref }) => (channel() >> producer<E, A>(queue, ref)).runScoped.fork())
       .map(({ queue }) => consumer<E, A>(queue))
   )
 }

@@ -16,8 +16,8 @@ export function runScoped_<R, E, A, R2, E2, B>(
       concreteSink(sink0)
       return sink0.channel
     })
-    .drain()
-    .runScoped()
+    .drain
+    .runScoped
 }
 
 /**

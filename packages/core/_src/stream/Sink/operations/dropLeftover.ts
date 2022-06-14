@@ -8,5 +8,5 @@ export function dropLeftover<R, E, In, L, Z>(
   __tsplusTrace?: string
 ): Sink<R, E, In, never, Z> {
   concreteSink(self)
-  return new SinkInternal(self.channel.drain())
+  return new SinkInternal(self.channel.drain)
 }

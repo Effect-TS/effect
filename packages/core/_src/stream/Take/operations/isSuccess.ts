@@ -3,7 +3,7 @@ import { concreteTake } from "@effect/core/stream/Take/operations/_internal/Take
 /**
  * Checks if this `Take` is a success.
  *
- * @tsplus fluent ets/Take isSuccess
+ * @tsplus getter ets/Take isSuccess
  */
 export function isSuccess<E, A>(self: Take<E, A>): boolean {
   concreteTake(self)

@@ -34,7 +34,7 @@ describe.concurrent("Sink", () => {
         tuple: [head, count]
       } = await program.unsafeRunPromise()
 
-      assert.isTrue(head == chunks.flatten().head)
+      assert.isTrue(head == chunks.flatten.head)
       assert.strictEqual(count + head.fold(0, () => 1), chunks.map((chunk) => chunk.size).reduce(0, (a, b) => a + b))
     })
 

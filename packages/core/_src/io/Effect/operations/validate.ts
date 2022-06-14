@@ -35,7 +35,7 @@ export function validate<R, E, A, B>(
   __tsplusTrace?: string
 ): Effect<R, Chunk<E>, Chunk<B>> {
   return Effect.partition(as, f).flatMap(({ tuple: [es, bs] }) =>
-    es.isEmpty()
+    es.isEmpty
       ? Effect.succeedNow(Chunk.from(bs))
       : Effect.fail(es)
   )

@@ -28,7 +28,7 @@ function reader<S, In>(
         const {
           tuple: [nextS, leftovers]
         } = foldChunkSplit(z, chunk, cont, f)
-        return leftovers.isNonEmpty()
+        return leftovers.isNonEmpty
           ? Channel.write(leftovers).as(nextS)
           : reader<S, In>(nextS, cont, f)
       },

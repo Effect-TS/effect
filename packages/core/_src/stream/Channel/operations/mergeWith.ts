@@ -56,8 +56,8 @@ export function mergeWith_<
         InDone & InDone1
       >())
     .bindValue("queueReader", ({ input }) => Channel.fromInput(input))
-    .bind("pullL", ({ queueReader }) => (queueReader >> self).toPull())
-    .bind("pullR", ({ queueReader }) => (queueReader >> that()).toPull())
+    .bind("pullL", ({ queueReader }) => (queueReader >> self).toPull)
+    .bind("pullR", ({ queueReader }) => (queueReader >> that()).toPull)
     .map(({ input, pullL, pullR }) => {
       type State = MergeState<
         Env | Env1,

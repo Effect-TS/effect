@@ -37,7 +37,7 @@ export function aggregateWithinEither_<R, E, A, R2, E2, A2, S, R3, B, C>(
       Handoff.make<Signal>(),
       Ref.make<EndReason>(SinkEndReason.ScheduleEnd),
       Ref.make(Chunk.empty<A2>()),
-      schedule().driver(),
+      schedule().driver,
       Ref.make(false)
     )
   ).flatMap(({ tuple: [handoff, sinkEndReason, sinkLeftovers, scheduleDriver, consumed] }) => {
@@ -65,7 +65,7 @@ export function aggregateWithinEither_<R, E, A, R2, E2, A2, S, R3, B, C>(
       void
     > = Channel.unwrap(
       sinkLeftovers.getAndSet(Chunk.empty<A | A2>()).flatMap((leftovers) =>
-        leftovers.isNonEmpty()
+        leftovers.isNonEmpty
           ? consumed.set(true).zipRight(Effect.succeed(Channel.write(leftovers) > handoffConsumer))
           : handoff.take().map((signal) => {
             switch (signal._tag) {
@@ -103,8 +103,8 @@ export function aggregateWithinEither_<R, E, A, R2, E2, A2, S, R3, B, C>(
     concreteStream(self)
     concreteSink(sink0)
     const stream = Do(($) => {
-      $((self.channel >> handoffProducer).runScoped().forkScoped())
-      const sinkFiber = $(handoffConsumer.pipeToOrFail(sink0.channel).doneCollect().runScoped().forkScoped())
+      $((self.channel >> handoffProducer).runScoped.forkScoped())
+      const sinkFiber = $(handoffConsumer.pipeToOrFail(sink0.channel).doneCollect.runScoped.forkScoped())
       const scheduleFiber = $(timeout(scheduleDriver, Option.none).forkScoped())
       return new StreamInternal(
         scheduledAggregator(
@@ -175,7 +175,7 @@ function handleSide<S, R, R2, E, A, A2, B, C>(
   unknown
 > {
   return Channel.unwrap(
-    sinkLeftovers.set(leftovers.flatten()) >
+    sinkLeftovers.set(leftovers.flatten) >
       sinkEndReason.get().map((reason) => {
         switch (reason._tag) {
           case "ScheduleEnd": {
@@ -252,8 +252,8 @@ function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
   const forkSink = consumed.set(false).zipRight(
     handoffConsumer
       .pipeToOrFail(sink.channel)
-      .doneCollect()
-      .runScoped()
+      .doneCollect
+      .runScoped
       .forkScoped()
   )
 
@@ -282,7 +282,7 @@ function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
         (scheduleExit, sinkFiber) =>
           Effect.done(scheduleExit).foldCauseEffect(
             (cause) =>
-              cause.failureOrCause().fold(
+              cause.failureOrCause.fold(
                 () =>
                   handoff.offer(HandoffSignal.End(SinkEndReason.ScheduleEnd)).forkDaemon()
                     .zipRight(

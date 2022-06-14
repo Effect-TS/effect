@@ -23,7 +23,7 @@ describe.concurrent("Queue", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty())
+      assert.isTrue(result.isEmpty)
     })
 
     it("returns an empty list if boundaries are negative", async () => {
@@ -36,7 +36,7 @@ describe.concurrent("Queue", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty())
+      assert.isTrue(result.isEmpty)
     })
 
     it("blocks until a required minimum of elements is collected", async () => {

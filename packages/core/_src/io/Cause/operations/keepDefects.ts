@@ -4,7 +4,7 @@ import { Both, Die, Stackless, Then } from "@effect/core/io/Cause/definition"
  * Remove all `Fail` and `Interrupt` nodes from this `Cause`, return only
  * `Die` cause/finalizer defects.
  *
- * @tsplus fluent ets/Cause keepDefects
+ * @tsplus getter ets/Cause keepDefects
  */
 export function keepDefects<E>(self: Cause<E>): Option<Cause<never>> {
   return self.fold<E, Option<Cause<never>>>(

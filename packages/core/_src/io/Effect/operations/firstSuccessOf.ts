@@ -13,8 +13,8 @@ export function firstSuccessOf<R, E, A>(
     if (chunk.length <= 0) {
       return Effect.die(new IllegalArgumentException(`received empty collection of effects`))
     }
-    const head = chunk.unsafeHead()!
-    const tail = chunk.length === 1 ? Chunk.empty<Effect<R, E, A>>() : chunk.unsafeTail()!
+    const head = chunk.unsafeHead!
+    const tail = chunk.length === 1 ? Chunk.empty<Effect<R, E, A>>() : chunk.unsafeTail!
     return tail.reduce(head, (b, a) => b | a)
   })
 }

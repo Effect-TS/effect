@@ -1,5 +1,5 @@
 /**
- * @tsplus fluent ets/RuntimeConfig superviseOperations
+ * @tsplus getter ets/RuntimeConfig superviseOperations
  * @tsplus static ets/RuntimeConfig/Aspects superviseOperations
  */
 export function superviseOperations(self: RuntimeConfig): RuntimeConfig {

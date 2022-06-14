@@ -11,7 +11,7 @@ describe.concurrent("Effect", () => {
 
       const { effect, result } = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isFailure() && result.cause.dieOption().isSome())
+      assert.isTrue(result.isFailure() && result.cause.dieOption.isSome())
       assert.isTrue(effect)
     })
   })
@@ -28,7 +28,7 @@ describe.concurrent("Effect", () => {
 
       const { effect, result } = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isFailure() && result.cause.dieOption().isSome())
+      assert.isTrue(result.isFailure() && result.cause.dieOption.isSome())
       assert.isTrue(effect)
     })
   })

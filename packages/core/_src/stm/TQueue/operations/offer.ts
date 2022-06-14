@@ -26,7 +26,7 @@ export function offer_<A>(self: TQueue<A>, a: A): USTM<boolean> {
       case TQueue.Dropping:
         return false
       case TQueue.Sliding: {
-        const dequeue = queue.dequeue()
+        const dequeue = queue.dequeue
 
         if (dequeue.isSome()) {
           self.ref.unsafeSet(queue.append(a), journal)

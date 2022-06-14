@@ -4,7 +4,7 @@ describe.concurrent("STM", () => {
   describe.concurrent("Using `STM.atomically` to perform different computations and call:", () => {
     describe.concurrent("absolve to convert", () => {
       it("a successful Right computation into the success channel", async () => {
-        const program = STM.succeed(Either.right(42)).absolve().commit()
+        const program = STM.succeed(Either.right(42)).absolve.commit()
 
         const result = await program.unsafeRunPromise()
 
@@ -12,11 +12,11 @@ describe.concurrent("STM", () => {
       })
 
       it("a successful Left computation into the error channel", async () => {
-        const program = STM.succeed(Either.left("oh no!")).absolve().commit()
+        const program = STM.succeed(Either.left("oh no!")).absolve.commit()
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail("oh no!"))
+        assert.isTrue(result.untraced == Exit.fail("oh no!"))
       })
     })
 
@@ -56,7 +56,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail("Error2"))
+        assert.isTrue(result.untraced == Exit.fail("Error2"))
       })
     })
 
@@ -80,7 +80,7 @@ describe.concurrent("STM", () => {
 
     describe.concurrent("either to convert", () => {
       it("a successful computation into Right(a)", async () => {
-        const program = STM.succeed(42).either().commit()
+        const program = STM.succeed(42).either.commit()
 
         const result = await program.unsafeRunPromise()
 
@@ -88,7 +88,7 @@ describe.concurrent("STM", () => {
       })
 
       it("a failed computation into Left(e)", async () => {
-        const program = STM.fail("oh no!").either().commit()
+        const program = STM.fail("oh no!").either.commit()
 
         const result = await program.unsafeRunPromise()
 
@@ -99,12 +99,12 @@ describe.concurrent("STM", () => {
     it("eventually succeeds", async () => {
       function stm(ref: TRef<number>): STM<never, string, number> {
         return ref
-          .get()
+          .get
           .flatMap((n) => n < 10 ? ref.update((n) => n + 1) > STM.fail("ouch") : STM.succeed(n))
       }
 
       const program = TRef.make(0)
-        .flatMap((ref) => stm(ref).eventually())
+        .flatMap((ref) => stm(ref).eventually)
         .commit()
 
       const result = await program.unsafeRunPromise()
@@ -117,7 +117,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("bye bye world"))
+      assert.isTrue(result.untraced == Exit.fail("bye bye world"))
     })
 
     it("filter filters a collection using an effectual predicate", async () => {
@@ -127,7 +127,7 @@ describe.concurrent("STM", () => {
           "results",
           ({ ref }) => STM.filter([2, 4, 6, 3, 5, 6], (n) => ref.update((chunk) => chunk.append(n)).as(n % 2 === 0))
         )
-        .bind("effects", ({ ref }) => ref.get())
+        .bind("effects", ({ ref }) => ref.get)
         .commit()
 
       const { effects, results } = await program.unsafeRunPromise()
@@ -143,7 +143,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(ExampleError))
+      assert.isTrue(result.untraced == Exit.die(ExampleError))
     })
 
     it("filterOrDieMessage dies with message when predicate fails ", async () => {
@@ -220,7 +220,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail(ExampleError))
+        assert.isTrue(result.untraced == Exit.fail(ExampleError))
       })
     })
 
@@ -231,7 +231,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(ExampleError))
+      assert.isTrue(result.untraced == Exit.fail(ExampleError))
     })
 
     it("flatMapError to flatMap from one error to another", async () => {
@@ -241,12 +241,12 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("log: -1"))
+      assert.isTrue(result.untraced == Exit.fail("log: -1"))
     })
 
     it("flatten", async () => {
       const program = STM.Do()
-        .bind("result1", () => STM.succeed(STM.succeed("test")).flatten())
+        .bind("result1", () => STM.succeed(STM.succeed("test")).flatten)
         .bind("result2", () => STM.flatten(STM.succeed(STM.succeed("test"))))
         .commit()
 
@@ -264,7 +264,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail("oh no!"))
+        assert.isTrue(result.untraced == Exit.fail("oh no!"))
       })
 
       it("with no error and default to value", async () => {
@@ -274,7 +274,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail("default error"))
+        assert.isTrue(result.untraced == Exit.fail("default error"))
       })
     })
 
@@ -324,7 +324,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail("fail"))
+        assert.isTrue(result.untraced == Exit.fail("fail"))
       })
 
       it("run sequentially from left to right", async () => {
@@ -333,7 +333,7 @@ describe.concurrent("STM", () => {
           List.empty<number>(),
           (acc: List<number>, n) => STM.succeed(acc.prepend(n))
         )
-          .map((list: List<number>) => list.reverse())
+          .map((list: List<number>) => list.reverse)
           .commit()
 
         const result = await program.unsafeRunPromise()
@@ -356,7 +356,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail("fail"))
+        assert.isTrue(result.untraced == Exit.fail("fail"))
       })
 
       it("run sequentially from right to left", async () => {
@@ -365,7 +365,7 @@ describe.concurrent("STM", () => {
           List.empty<number>(),
           (n, acc: List<number>) => STM.succeed(acc.prepend(n))
         )
-          .map((list: List<number>) => list.reverse())
+          .map((list: List<number>) => list.reverse)
           .commit()
 
         const result = await program.unsafeRunPromise()
@@ -388,7 +388,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail(Option.none))
+        assert.isTrue(result.untraced == Exit.fail(Option.none))
       })
 
       it("returns the Error around Some", async () => {
@@ -398,7 +398,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail(Option.some("my error")))
+        assert.isTrue(result.untraced == Exit.fail(Option.some("my error")))
       })
     })
 
@@ -442,7 +442,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail(Either.right("right")))
+        assert.isTrue(result.untraced == Exit.fail(Either.right("right")))
       })
 
       it("on failure", async () => {
@@ -450,7 +450,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail(Either.left("fail")))
+        assert.isTrue(result.untraced == Exit.fail(Either.left("fail")))
       })
 
       it("lifting a value", async () => {
@@ -486,7 +486,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail("-1 as string"))
+        assert.isTrue(result.untraced == Exit.fail("-1 as string"))
       })
     })
 
@@ -497,12 +497,12 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("oh no!"))
+      assert.isTrue(result.untraced == Exit.fail("oh no!"))
     })
 
     describe.concurrent("merge", () => {
       it("on error with same type", async () => {
-        const program = STM.fromEither<number, number>(Either.left(1)).merge().commit()
+        const program = STM.fromEither<number, number>(Either.left(1)).merge.commit()
 
         const result = await program.unsafeRunPromise()
 
@@ -510,7 +510,7 @@ describe.concurrent("STM", () => {
       })
 
       it("when having a successful value", async () => {
-        const program = STM.fromEither<number, number>(Either.right(1)).merge().commit()
+        const program = STM.fromEither<number, number>(Either.right(1)).merge.commit()
 
         const result = await program.unsafeRunPromise()
 
@@ -520,7 +520,7 @@ describe.concurrent("STM", () => {
 
     describe.concurrent("none", () => {
       it("when A is None", async () => {
-        const program = STM.succeed(Option.none).noneOrFail().commit()
+        const program = STM.succeed(Option.none).noneOrFail.commit()
 
         const result = await program.unsafeRunPromise()
 
@@ -528,19 +528,19 @@ describe.concurrent("STM", () => {
       })
 
       it("when Error", async () => {
-        const program = STM.fail(ExampleError).noneOrFail().commit()
+        const program = STM.fail(ExampleError).noneOrFail.commit()
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail(Option.some(ExampleError)))
+        assert.isTrue(result.untraced == Exit.fail(Option.some(ExampleError)))
       })
 
       it("when A is Some(a)", async () => {
-        const program = STM.succeed(Option.some(1)).noneOrFail().commit()
+        const program = STM.succeed(Option.some(1)).noneOrFail.commit()
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail(Option.none))
+        assert.isTrue(result.untraced == Exit.fail(Option.none))
       })
 
       it("lifting a value", async () => {
@@ -554,7 +554,7 @@ describe.concurrent("STM", () => {
 
     describe.concurrent("option to convert:", () => {
       it("a successful computation into Some(a)", async () => {
-        const program = STM.succeed(42).option().commit()
+        const program = STM.succeed(42).option.commit()
 
         const result = await program.unsafeRunPromise()
 
@@ -562,7 +562,7 @@ describe.concurrent("STM", () => {
       })
 
       it("a failed computation into None", async () => {
-        const program = STM.fail("oh no!").option().commit()
+        const program = STM.fail("oh no!").option.commit()
 
         const result = await program.unsafeRunPromise()
 
@@ -575,17 +575,17 @@ describe.concurrent("STM", () => {
         const program = STM.fromEither<Option<string>, number>(
           Either.left(Option.some("my error"))
         )
-          .unsome()
+          .unsome
           .commit()
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail("my error"))
+        assert.isTrue(result.untraced == Exit.fail("my error"))
       })
 
       it("a None in E into None in A", async () => {
         const program = STM.fromEither<Option<string>, number>(Either.left(Option.none))
-          .unsome()
+          .unsome
           .commit()
 
         const result = await program.unsafeRunPromise()
@@ -595,7 +595,7 @@ describe.concurrent("STM", () => {
 
       it("no error", async () => {
         const program = STM.fromEither<Option<string>, number>(Either.right(42))
-          .unsome()
+          .unsome
           .commit()
 
         const result = await program.unsafeRunPromise()
@@ -609,16 +609,16 @@ describe.concurrent("STM", () => {
         const program = STM.fail(() => {
           throw ExampleError
         })
-          .orDie()
+          .orDie
           .commit()
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.die(ExampleError))
+        assert.isTrue(result.untraced == Exit.die(ExampleError))
       })
 
       it("when succeed should keep going", async () => {
-        const program = STM.succeed(1).orDie().commit()
+        const program = STM.succeed(1).orDie.commit()
 
         const result = await program.unsafeRunPromise()
 
@@ -662,7 +662,7 @@ describe.concurrent("STM", () => {
           tuple: [left, right]
         } = await program.unsafeRunPromise()
 
-        assert.isTrue(left.isEmpty())
+        assert.isTrue(left.isEmpty)
         assert.isTrue(right == input)
       })
 
@@ -675,7 +675,7 @@ describe.concurrent("STM", () => {
         } = await program.unsafeRunPromise()
 
         assert.isTrue(left == input)
-        assert.isTrue(right.isEmpty())
+        assert.isTrue(right.isEmpty)
       })
 
       it("collects failures and successes", async () => {
@@ -695,7 +695,7 @@ describe.concurrent("STM", () => {
         const program = STM.Do()
           .bind("ref", () => TRef.make<List<number>>(List.empty()))
           .tap(({ ref }) => STM.partition(input, (n) => ref.update((list) => list.prepend(n))))
-          .flatMap(({ ref }) => ref.get().map((list) => list.reverse()))
+          .flatMap(({ ref }) => ref.get.map((list) => list.reverse))
           .commit()
 
         const result = await program.unsafeRunPromise()
@@ -722,7 +722,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail("partial failed"))
+        assert.isTrue(result.untraced == Exit.fail("partial failed"))
       })
     })
 
@@ -744,7 +744,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail("partial failed"))
+        assert.isTrue(result.untraced == Exit.fail("partial failed"))
       })
     })
 
@@ -754,7 +754,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromise()
 
-        assert.isTrue(result.isEmpty())
+        assert.isTrue(result.isEmpty)
       })
 
       it("negative", async () => {
@@ -762,7 +762,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromise()
 
-        assert.isTrue(result.isEmpty())
+        assert.isTrue(result.isEmpty)
       })
 
       it("positive", async () => {
@@ -788,7 +788,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail(Either.left("left")))
+        assert.isTrue(result.untraced == Exit.fail(Either.left("left")))
       })
 
       it("on failure", async () => {
@@ -796,7 +796,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail(Either.right("fail")))
+        assert.isTrue(result.untraced == Exit.fail(Either.right("fail")))
       })
 
       it("lifting a value", async () => {
@@ -822,7 +822,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced() == Exit.fail(Option.none))
+        assert.isTrue(result.untraced == Exit.fail(Option.none))
       })
 
       it("fails when given an exception", async () => {
@@ -952,7 +952,7 @@ describe.concurrent("STM", () => {
 
     describe.concurrent("someOrFailException", () => {
       it("extracts the optional value", async () => {
-        const program = STM.succeed(Option.some(42)).someOrFailException().commit()
+        const program = STM.succeed(Option.some(42)).someOrFailException.commit()
 
         const result = await program.unsafeRunPromise()
 
@@ -960,7 +960,7 @@ describe.concurrent("STM", () => {
       })
 
       it("fails when given a None", async () => {
-        const program = STM.succeed(Option.none).someOrFailException().commit()
+        const program = STM.succeed(Option.none).someOrFailException.commit()
 
         const result = await program.unsafeRunPromiseExit()
 

@@ -13,8 +13,8 @@ describe.concurrent("Sink", () => {
         tuple: [chunk, leftover]
       } = await program.unsafeRunPromise()
 
-      assert.isTrue(chunk == chunks.flatten().take(n))
-      assert.isTrue(leftover == chunks.flatten().drop(n))
+      assert.isTrue(chunk == chunks.flatten.take(n))
+      assert.isTrue(leftover == chunks.flatten.drop(n))
     })
   })
 })

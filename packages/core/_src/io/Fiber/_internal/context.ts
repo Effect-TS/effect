@@ -98,7 +98,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     this.interruptStatus = interruptStatus
     if (this.trackMetrics) {
       fibersStarted.value.unsafeUpdate(1, HashSet.empty())
-      fiberForkLocations.value.unsafeUpdate(this._location.stringify(), HashSet.empty())
+      fiberForkLocations.value.unsafeUpdate(this._location.stringify, HashSet.empty())
     }
   }
 
@@ -495,7 +495,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   get unsafeIsInterrupting(): boolean {
-    return this.state.get.isInterrupting()
+    return this.state.get.isInterrupting
   }
 
   get unsafeShouldInterrupt(): boolean {
@@ -513,7 +513,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   unsafeGetRef<A, P>(fiberRef: FiberRef<A, P>): A {
     return this.fiberRefLocals.get(fiberRef)
       .map((stack) => stack.head.get(1) as A)
-      .getOrElse(fiberRef.initial())
+      .getOrElse(fiberRef.initial)
   }
 
   unsafeGetRefs(fiberRefLocals: FiberRefLocals): ImmutableMap<FiberRef<unknown, unknown>, unknown> {
@@ -521,7 +521,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     for (const { tuple: [fiberRef, stack] } of fiberRefLocals) {
       refs.push(Tuple(fiberRef, stack.head.get(1)))
     }
-    return ImmutableMap.from(...refs)
+    return ImmutableMap.from(refs)
   }
 
   unsafeSetRef<A, P>(fiberRef: FiberRef<A, P>, value: A): void {
@@ -597,7 +597,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     if (exit._tag === "Failure") {
       try {
         this.unsafeLogWith(
-          () => `Fiber ${this.fiberId.threadName()} did not handle an error`,
+          () => `Fiber ${this.fiberId.threadName} did not handle an error`,
           () => exit.cause,
           Option.some(LogLevel.Debug),
           null,
@@ -615,7 +615,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   private unsafeAddSuppressed(cause: Cause<never>): void {
-    if (!cause.isEmpty()) {
+    if (!cause.isEmpty) {
       const oldState = this.state.get
 
       if (oldState._tag === "Executing") {
@@ -649,14 +649,14 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
         this.state.set(newState)
 
-        const interruptorsCause = oldState.interruptorsCause()
+        const interruptorsCause = oldState.interruptorsCause
 
         return oldState.suppressed.contains(interruptorsCause)
           ? oldState.suppressed
           : oldState.suppressed + interruptorsCause
       }
       case "Done": {
-        return oldState.interruptorsCause()
+        return oldState.interruptorsCause
       }
     }
   }
@@ -727,7 +727,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       this.state.set(newState)
     } else {
       throw new IllegalStateException(
-        `Fiber ${this.fiberId.threadName()} is not running`
+        `Fiber ${this.fiberId.threadName} is not running`
       )
     }
   }
@@ -864,7 +864,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           return instruction(oldState.mailbox.zipRight(Effect.done(exit)))
         } else if (this.childFibers.size === 0) {
           // The mailbox is empty and the _children are shut down
-          const interruptorsCause = oldState.interruptorsCause()
+          const interruptorsCause = oldState.interruptorsCause
 
           const newExit = interruptorsCause === Cause.empty
             ? exit
@@ -992,11 +992,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     > = []
 
     for (const { tuple: [fiberRef, stack] } of this.fiberRefLocals) {
-      const value = fiberRef.patch(fiberRef.fork())(stack.head.get(1))
+      const value = fiberRef.patch(fiberRef.fork)(stack.head.get(1))
       childFiberRefLocalEntries.push(Tuple(fiberRef, stack.prepend(Tuple(childId, value))))
     }
 
-    const childFiberRefLocals: FiberRefLocals = ImmutableMap.from(...childFiberRefLocalEntries)
+    const childFiberRefLocals: FiberRefLocals = ImmutableMap.from(childFiberRefLocalEntries)
 
     const parentScope = forkScope.orElse(this.unsafeGetRef(FiberRef.forkScopeOverride.value)).getOrElse(this._scope)
 
@@ -1018,7 +1018,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         childContext
       )
 
-      childContext.unsafeOnDone((exit) => this.runtimeConfig.value.supervisor.unsafeOnEnd(exit.flatten(), childContext))
+      childContext.unsafeOnDone((exit) => this.runtimeConfig.value.supervisor.unsafeOnEnd(exit.flatten, childContext))
     }
 
     const childEffect = !parentScope.unsafeAdd(this.runtimeConfig, childContext)
@@ -1156,7 +1156,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                   case "Fail": {
                     const cause = current.cause()
-                    const tracedCause = cause.isTraced()
+                    const tracedCause = cause.isTraced
                       ? cause
                       : cause.traced(
                         this.unsafeCaptureTrace([TraceElement.parse(current.trace)])
@@ -1170,7 +1170,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                       // because they might not be typed correctly. Instead, we
                       // strip the typed failures, and return the remainders and
                       // the interruption.
-                        tracedCause.stripFailures()
+                        tracedCause.stripFailures
                       : tracedCause
                     const suppressed = this.unsafeClearSuppressed()
                     const fullCause = strippedCause.contains(suppressed)

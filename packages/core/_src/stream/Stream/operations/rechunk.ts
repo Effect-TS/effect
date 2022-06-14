@@ -50,7 +50,7 @@ function process<R, E, A>(
         }
 
         return (
-          Channel.writeAll(...chunks.reverse()) > process<R, E, A>(rechunker, target)
+          Channel.writeAll(...chunks.reverse) > process<R, E, A>(rechunker, target)
         )
       }
       return process(rechunker, target)

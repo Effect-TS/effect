@@ -33,7 +33,7 @@ export function asyncEffect<R, E, A, Z>(
                 )
               } catch (e: unknown) {
                 if (isFiberFailure(e)) {
-                  if (!e.cause.isInterrupted()) {
+                  if (!e.cause.isInterrupted) {
                     throw e
                   }
                 }

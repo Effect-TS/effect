@@ -34,11 +34,11 @@ export class BoundedHubSingle<A> implements AtomicHub<A> {
   publishAll(as: Collection<A>): Chunk<A> {
     const list = Chunk.from(as)
 
-    if (list.isEmpty()) {
+    if (list.isEmpty) {
       return Chunk.empty()
     }
 
-    if (this.publish(list.unsafeHead()!)) {
+    if (this.publish(list.unsafeHead!)) {
       return list.drop(1)
     } else {
       return list

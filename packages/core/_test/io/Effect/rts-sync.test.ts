@@ -49,7 +49,7 @@ describe.concurrent("Effect", () => {
       })
         .sandbox()
         .either()
-        .map((either) => either.mapLeft((cause) => cause.untraced()))
+        .map((either) => either.mapLeft((cause) => cause.untraced))
 
       const result = await program.unsafeRunPromise()
 

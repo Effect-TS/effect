@@ -11,7 +11,7 @@ describe.concurrent("STM", () => {
             (n) => n - 1
           )(() => STM.retry.orTry(tRef.getAndUpdate((n) => n + 1)))
         )
-        .flatMap((tRef) => tRef.get())
+        .flatMap((tRef) => tRef.get)
         .commit()
 
       const result = await program.unsafeRunPromise()
@@ -98,7 +98,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(10000))
+      assert.isTrue(result.untraced == Exit.fail(10000))
     })
 
     it("long orElse chains", async () => {
@@ -110,7 +110,7 @@ describe.concurrent("STM", () => {
             (n) => n - 1
           )(() => STM.retry | tRef.getAndUpdate((n) => n + 1))
         )
-        .flatMap((tRef) => tRef.get())
+        .flatMap((tRef) => tRef.get)
         .commit()
 
       const result = await program.unsafeRunPromise()

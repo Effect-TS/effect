@@ -130,7 +130,7 @@ export class Empty implements Cause<never>, Equals {
   }
 
   [Equals.sym](that: unknown): boolean {
-    return isCause(that) && this.__equalsSafe(that).run()
+    return isCause(that) && this.__equalsSafe(that).run
   }
 
   __equalsSafe(that: Cause<unknown>): Eval<boolean> {
@@ -172,7 +172,7 @@ export class Fail<E> implements Cause<E>, Equals {
   }
 
   [Equals.sym](that: unknown): boolean {
-    return isCause(that) && this.__equalsSafe(that).run()
+    return isCause(that) && this.__equalsSafe(that).run
   }
 
   __equalsSafe(that: Cause<unknown>): Eval<boolean> {
@@ -208,7 +208,7 @@ export class Die implements Cause<never>, Equals {
   }
 
   [Equals.sym](that: unknown): boolean {
-    return isCause(that) && this.__equalsSafe(that).run()
+    return isCause(that) && this.__equalsSafe(that).run
   }
 
   __equalsSafe(that: Cause<unknown>): Eval<boolean> {
@@ -244,7 +244,7 @@ export class Interrupt implements Cause<never>, Equals {
   }
 
   [Equals.sym](that: unknown): boolean {
-    return isCause(that) && this.__equalsSafe(that).run()
+    return isCause(that) && this.__equalsSafe(that).run
   }
 
   __equalsSafe(that: Cause<unknown>): Eval<boolean> {
@@ -280,7 +280,7 @@ export class Stackless<E> implements Cause<E>, Equals {
   }
 
   [Equals.sym](that: unknown): boolean {
-    return isCause(that) && this.__equalsSafe(that).run()
+    return isCause(that) && this.__equalsSafe(that).run
   }
 
   __equalsSafe(that: Cause<unknown>): Eval<boolean> {
@@ -305,7 +305,7 @@ export class Then<E> implements Cause<E>, Equals {
   }
 
   [Equals.sym](that: unknown): boolean {
-    return isCause(that) && this.__equalsSafe(that).run()
+    return isCause(that) && this.__equalsSafe(that).run
   }
 
   __equalsSafe(that: Cause<unknown>): Eval<boolean> {
@@ -356,7 +356,7 @@ export class Both<E> implements Cause<E>, Equals {
   }
 
   [Equals.sym](that: unknown): boolean {
-    return isCause(that) && this.__equalsSafe(that).run()
+    return isCause(that) && this.__equalsSafe(that).run
   }
 
   __equalsSafe(that: Cause<unknown>): Eval<boolean> {
@@ -471,7 +471,7 @@ export function isCause(self: unknown): self is Cause<unknown> {
 /**
  * Determines if the `Cause` is empty.
  *
- * @tsplus fluent ets/Cause isEmpty
+ * @tsplus getter ets/Cause isEmpty
  */
 export function isEmpty<E>(cause: Cause<E>): boolean {
   if (isEmptyType(cause) || (isStacklessType(cause) && isEmptyType(cause.cause))) {
@@ -534,8 +534,8 @@ function stepLoop<A>(
         if (stack.length === 0) {
           return Tuple(parallel, sequential)
         } else {
-          cause = stack.unsafeHead()!
-          const tail = stack.unsafeTail()
+          cause = stack.unsafeHead!
+          const tail = stack.unsafeTail
           stack = tail == null ? List.nil() : tail
         }
         break
@@ -582,8 +582,8 @@ function stepLoop<A>(
           return Tuple(parallel.add(cause), sequential)
         } else {
           parallel = parallel.add(cause)
-          cause = stack.unsafeHead()!
-          const tail = stack.unsafeTail()
+          cause = stack.unsafeHead!
+          const tail = stack.unsafeTail
           stack = tail == null ? List.nil() : tail
           break
         }
@@ -610,7 +610,7 @@ function flattenCauseLoop<A>(
     const {
       tuple: [parallel, sequential]
     } = causes.reduce(
-      Tuple(HashSet<Cause<A>>(), List.empty<Cause<A>>()),
+      Tuple(HashSet.empty<Cause<A>>(), List.empty<Cause<A>>()),
       ({ tuple: [parallel, sequential] }, cause) => {
         const {
           tuple: [set, seq]
@@ -620,7 +620,7 @@ function flattenCauseLoop<A>(
     )
     const updated = parallel.size > 0 ? flattened.prepend(parallel) : flattened
     if (sequential.length === 0) {
-      return updated.reverse()
+      return updated.reverse
     } else {
       causes = sequential
       flattened = updated
@@ -644,8 +644,8 @@ function hashCode<E>(self: Cause<E>): number {
   let head
   if (size === 0) {
     return _emptyHash
-  } else if (size === 1 && (head = flat.unsafeHead()!) && head.size === 1) {
-    return List.from(head).unsafeHead()![Hash.sym]()
+  } else if (size === 1 && (head = flat.unsafeHead!) && head.size === 1) {
+    return List.from(head).unsafeHead![Hash.sym]()
   } else {
     return flat[Hash.sym]()
   }

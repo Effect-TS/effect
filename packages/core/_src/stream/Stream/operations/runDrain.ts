@@ -7,5 +7,5 @@ export function runDrain<R, E, A>(
   self: Stream<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, void> {
-  return self.run(Sink.drain())
+  return self.run(Sink.drain)
 }

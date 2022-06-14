@@ -59,17 +59,17 @@ function loop<R, E, In, L extends In, Z, S>(
   __tsplusTrace?: string
 ): Channel<R, never, Chunk<In>, unknown, E, Chunk<L>, S> {
   concreteSink(self)
-  return self.channel.doneCollect().foldChannel(
+  return self.channel.doneCollect.foldChannel(
     (err) => Channel.fail(err),
     ({ tuple: [leftovers, doneValue] }) =>
       p(doneValue)
-        ? Channel.fromEffect(leftoversRef.set(leftovers.flatten())) >
+        ? Channel.fromEffect(leftoversRef.set(leftovers.flatten)) >
           Channel.fromEffect(upstreamDoneRef.get()).flatMap((upstreamDone) => {
             const accumulatedResult = f(currentResult, doneValue)
             return upstreamDone
-              ? Channel.write(leftovers.flatten()).as(accumulatedResult)
+              ? Channel.write(leftovers.flatten).as(accumulatedResult)
               : loop(self, leftoversRef, upstreamDoneRef, accumulatedResult, p, f)
           })
-        : Channel.write(leftovers.flatten()).as(currentResult)
+        : Channel.write(leftovers.flatten).as(currentResult)
   )
 }

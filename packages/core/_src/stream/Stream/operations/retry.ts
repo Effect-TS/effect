@@ -18,7 +18,7 @@ export function retry_<R, E, A, S, R2, Z>(
 ): Stream<R | R2, E, A> {
   return Stream.unwrap(
     schedule()
-      .driver()
+      .driver
       .map((driver) => {
         const loop: Stream<R | R2, E, A> = self.catchAll((e) =>
           Stream.unwrap(

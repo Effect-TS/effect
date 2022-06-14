@@ -27,7 +27,7 @@ export function repeatElementsWith_<R, E, A, S, R2, B, C1, C2>(
     self.channel >>
       Channel.unwrap(
         schedule()
-          .driver()
+          .driver
           .map((driver) => {
             const loop: Channel<
               R | R2,

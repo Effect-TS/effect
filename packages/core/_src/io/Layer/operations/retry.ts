@@ -31,7 +31,7 @@ function loop<S, RIn, E, ROut, RIn1, X>(
   s: S
 ): Layer<RIn | RIn1, E, ROut> {
   return self.catchAll((e) =>
-    update(schedule, stateTag, e, s).flatMap((env) => loop(self, schedule, stateTag, env.get(stateTag).state).fresh())
+    update(schedule, stateTag, e, s).flatMap((env) => loop(self, schedule, stateTag, env.get(stateTag).state).fresh)
   )
 }
 

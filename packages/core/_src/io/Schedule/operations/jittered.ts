@@ -40,8 +40,8 @@ export const jittered = Pipeable(jittered_)
  * The new interval size is between `min * old interval size` and `max * old
  * interval size`.
  *
- * @tsplus fluent ets/Schedule jitteredDefault
- * @tsplus fluent ets/Schedule/WithState jitteredDefault
+ * @tsplus getter ets/Schedule jitteredDefault
+ * @tsplus getter ets/Schedule/WithState jitteredDefault
  */
 export function jitteredDefault<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>

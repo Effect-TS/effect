@@ -4,7 +4,7 @@ import { Driver } from "@effect/core/io/Schedule/Driver"
  * Returns a driver that can be used to step the schedule, appropriately
  * handling sleeping.
  *
- * @tsplus fluent ets/Schedule driver
+ * @tsplus getter ets/Schedule driver
  * @tsplus fluent ets/Schedule/WithState driver
  */
 export function driver<State, Env, In, Out>(

@@ -5,12 +5,12 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
  * Peeks at the first value in the queue without removing it, retrying until a
  * value is in the queue.
  *
- * @tsplus fluent ets/TPriorityQueue peek
+ * @tsplus getter ets/TPriorityQueue peek
  */
 export function peek<A>(self: TPriorityQueue<A>): USTM<A> {
   return STM.Effect((journal) => {
     concreteTPriorityQueue(self)
-    const result = self.map.unsafeGet(journal).headOption()
+    const result = self.map.unsafeGet(journal).headOption
       .map((tuple) => tuple.get(1))
       .flatMap((chunk) => chunk.head)
 

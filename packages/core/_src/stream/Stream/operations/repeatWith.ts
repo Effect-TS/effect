@@ -16,7 +16,7 @@ export function repeatWith_<R, E, A, S, R2, B, C1, C2>(
   __tsplusTrace?: string
 ): Stream<R | R2, E, C1 | C2> {
   return new StreamInternal(
-    Channel.fromEffect(schedule().driver()).flatMap((driver) => {
+    Channel.fromEffect(schedule().driver).flatMap((driver) => {
       const scheduleOutput = driver.last.orDie().map(g)
       const stream = self.map(f)
       concreteStream(stream)

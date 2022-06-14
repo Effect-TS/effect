@@ -98,17 +98,17 @@ export function max_(self: Interval, that: Interval): Interval {
 export const max = Pipeable(max_)
 
 /**
- * @tsplus fluent ets/Schedule/Interval isEmpty
+ * @tsplus getter ets/Schedule/Interval isEmpty
  */
 export function isEmpty(self: Interval): boolean {
   return self.startMillis >= self.endMillis
 }
 
 /**
- * @tsplus fluent ets/Schedule/Interval isNonEmpty
+ * @tsplus getter ets/Schedule/Interval isNonEmpty
  */
 export function isNonEmpty(self: Interval): boolean {
-  return !self.isEmpty()
+  return !self.isEmpty
 }
 
 /**

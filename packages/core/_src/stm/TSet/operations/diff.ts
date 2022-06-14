@@ -4,7 +4,7 @@
  * @tsplus fluent ets/TSet diff
  */
 export function diff_<A>(self: TSet<A>, other: TSet<A>): USTM<void> {
-  return other.toSet.flatMap(vals => self.removeIfDiscard((_) => vals.has(_)))
+  return other.toHashSet.flatMap(vals => self.removeIfDiscard((_) => vals.has(_)))
 }
 
 /**

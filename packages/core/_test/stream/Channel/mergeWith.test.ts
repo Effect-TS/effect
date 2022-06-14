@@ -9,7 +9,7 @@ describe.concurrent("Channel", () => {
           (exit) => MergeDecision.awaitConst(Effect.done(exit)),
           (exit) => MergeDecision.awaitConst(Effect.done(exit))
         )
-        .runCollect()
+        .runCollect
 
       const {
         tuple: [chunk, _]
@@ -33,7 +33,7 @@ describe.concurrent("Channel", () => {
           (exit) => MergeDecision.await((exit2) => Effect.done(exit.zip(exit2))),
           (exit2) => MergeDecision.await((exit) => Effect.done(exit.zip(exit2)))
         )
-        .runCollect()
+        .runCollect
 
       const {
         tuple: [chunk, result]
@@ -53,11 +53,11 @@ describe.concurrent("Channel", () => {
           (exit) => MergeDecision.await((exit2) => Effect.done(exit).flip().zip(Effect.done(exit2).flip()).flip()),
           (exit2) => MergeDecision.await((exit) => Effect.done(exit).flip().zip(Effect.done(exit2).flip()).flip())
         )
-        .runDrain()
+        .runDrain
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(Tuple("boom", true)))
+      assert.isTrue(result.untraced == Exit.fail(Tuple("boom", true)))
     })
 
     it("interrupts losing side", async () => {
@@ -78,7 +78,7 @@ describe.concurrent("Channel", () => {
                   .flatMap((b) => (b ? Effect.unit : Effect.fail(undefined)))
               )
           )
-          return merged.runDrain()
+          return merged.runDrain
         })
       )
 

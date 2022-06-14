@@ -12,7 +12,7 @@ export function tapBoth_<R, E, A, R2, E2, X, R3, E3, X1>(
 ): Effect<R | R2 | R3, E | E2 | E3, A> {
   return self.foldCauseEffect(
     (cause) =>
-      cause.failureOrCause().fold(
+      cause.failureOrCause.fold(
         (e) => f(e).zipRight(Effect.failCauseNow(cause)),
         () => Effect.failCauseNow(cause)
       ),

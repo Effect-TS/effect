@@ -36,17 +36,17 @@ export function untilOutputEffect_<R, E, R2, E2, In, L extends In, Z>(
           E | E2,
           Chunk<L>,
           Option<Z>
-        > = self.channel.doneCollect().foldChannel(
+        > = self.channel.doneCollect.foldChannel(
           (err) => Channel.fail(err),
           ({ tuple: [leftovers, doneValue] }) =>
             Channel.fromEffect(f(doneValue)).flatMap(
               (satisfied) =>
-                Channel.fromEffect(leftoversRef.set(leftovers.flatten())) >
+                Channel.fromEffect(leftoversRef.set(leftovers.flatten)) >
                   Channel.fromEffect(upstreamDoneRef.get()).flatMap((upstreamDone) =>
                     satisfied
-                      ? Channel.write(leftovers.flatten()).as(Option.some(doneValue))
+                      ? Channel.write(leftovers.flatten).as(Option.some(doneValue))
                       : upstreamDone
-                      ? Channel.write(leftovers.flatten()).as(Option.none)
+                      ? Channel.write(leftovers.flatten).as(Option.none)
                       : loop
                   )
             )

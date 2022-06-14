@@ -74,7 +74,7 @@ describe.concurrent("Metrics", () => {
 
       const { r0, r1, r2 } = await program.unsafeRunPromise()
 
-      assert.isTrue(r0.occurrences.isEmpty())
+      assert.isTrue(r0.occurrences.isEmpty)
       assert.isTrue(r1.occurrences == HashMap(Tuple("hello", 2)))
       assert.isTrue(r2.occurrences == HashMap(Tuple("world", 1)))
     })

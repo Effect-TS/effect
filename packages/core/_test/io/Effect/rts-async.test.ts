@@ -178,7 +178,7 @@ describe.concurrent("Effect", () => {
         .exit()
         .map((exit) =>
           exit.fold(
-            (cause) => cause.defects().head().map((e) => (e as Error).message),
+            (cause) => cause.defects.head.map((e) => (e as Error).message),
             () => Option.none
           )
         )

@@ -15,7 +15,7 @@ export function takeUntil_<R, E, A>(
     (chunk: Chunk<A>) => {
       const taken = chunk.takeWhile((a) => !f(a))
       const last = chunk.drop(taken.length).take(1)
-      return last.isEmpty() ? Channel.write(taken) > loop : Channel.write(taken + last)
+      return last.isEmpty ? Channel.write(taken) > loop : Channel.write(taken + last)
     },
     (err) => Channel.fail(err),
     (done) => Channel.succeed(done)

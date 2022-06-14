@@ -3,13 +3,13 @@ describe.concurrent("Channel", () => {
     it("map", async () => {
       const program = Channel.succeed(1)
         .map((n) => n + 1)
-        .runCollect()
+        .runCollect
 
       const {
         tuple: [chunk, z]
       } = await program.unsafeRunPromise()
 
-      assert.isTrue(chunk.isEmpty())
+      assert.isTrue(chunk.isEmpty)
       assert.strictEqual(z, 2)
     })
   })

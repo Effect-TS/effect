@@ -117,7 +117,7 @@ export function statusSuspended(
 }
 
 /**
- * @tsplus fluent ets/Fiber/Status isInterrupting
+ * @tsplus getter ets/Fiber/Status isInterrupting
  */
 export function isInterrupting(self: FiberStatus): boolean {
   switch (self._tag) {

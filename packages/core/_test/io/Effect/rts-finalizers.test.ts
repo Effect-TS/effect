@@ -13,7 +13,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(ExampleError))
+      assert.isTrue(result.untraced == Exit.fail(ExampleError))
       assert.isTrue(finalized)
     })
 
@@ -27,7 +27,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(ExampleError))
+      assert.isTrue(result.untraced == Exit.fail(ExampleError))
       assert.isTrue(finalized)
     })
 
@@ -38,7 +38,7 @@ describe.concurrent("Effect", () => {
         .ensuring(Effect.die(e3))
         .sandbox()
         .flip()
-        .map((cause) => cause.untraced())
+        .map((cause) => cause.untraced)
 
       const result = await program.unsafeRunPromise()
 
@@ -67,7 +67,7 @@ describe.concurrent("Effect", () => {
       assert.isFalse(reported && reported.isSuccess())
     })
 
-    it("acquireUseRelease exit is usage result", async () => {
+    it("acquireUseRelease exit() is usage result", async () => {
       const program = Effect.acquireUseRelease(
         Effect.unit,
         () => Effect.succeed(42),
@@ -88,7 +88,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(ExampleError))
+      assert.isTrue(result.untraced == Exit.fail(ExampleError))
     })
 
     it("error in just release", async () => {
@@ -100,7 +100,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(ExampleError))
+      assert.isTrue(result.untraced == Exit.die(ExampleError))
     })
 
     it("error in just usage", async () => {
@@ -112,7 +112,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(ExampleError))
+      assert.isTrue(result.untraced == Exit.fail(ExampleError))
     })
 
     it("rethrown caught error in acquisition", async () => {
@@ -138,7 +138,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(ExampleError))
+      assert.isTrue(result.untraced == Exit.die(ExampleError))
     })
 
     it("rethrown caught error in usage", async () => {
@@ -152,7 +152,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(ExampleError))
+      assert.isTrue(result.untraced == Exit.fail(ExampleError))
     })
 
     it("test eval of async fail", async () => {
@@ -167,16 +167,16 @@ describe.concurrent("Effect", () => {
         asyncUnit<never>()
       )
       const program = Effect.Do()
-        .bind("a1", () => io1.exit().map((exit) => exit.untraced()))
-        .bind("a2", () => io2.exit().map((exit) => exit.untraced()))
+        .bind("a1", () => io1.exit().map((exit) => exit.untraced))
+        .bind("a2", () => io2.exit().map((exit) => exit.untraced))
         .bind("a3", () =>
           Effect.absolve(io1.either())
             .exit()
-            .map((exit) => exit.untraced()))
+            .map((exit) => exit.untraced))
         .bind("a4", () =>
           Effect.absolve(io2.either())
             .exit()
-            .map((exit) => exit.untraced()))
+            .map((exit) => exit.untraced))
 
       const { a1, a2, a3, a4 } = await program.unsafeRunPromise()
 

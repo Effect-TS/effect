@@ -11,7 +11,7 @@ export function foldLayer_<R, E, A, R2, E2, A2, R3, E3, A3>(
   success: (a: Env<A>) => Layer<R3, E3, A3>
 ): Layer<R | R2 | R3, E2 | E3, A2 & A3> {
   return self.foldCauseLayer(
-    (cause) => cause.failureOrCause().fold(failure, (cause) => Layer.failCause(cause)),
+    (cause) => cause.failureOrCause.fold(failure, (cause) => Layer.failCause(cause)),
     success
   )
 }

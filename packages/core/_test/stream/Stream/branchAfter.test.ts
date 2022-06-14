@@ -10,7 +10,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isNonEmpty())
+      assert.isTrue(result.isNonEmpty)
     })
 
     it("emits data if less than n are collected", async () => {

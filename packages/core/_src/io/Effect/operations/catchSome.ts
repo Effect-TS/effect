@@ -11,7 +11,7 @@ export function catchSome_<R, E, A, R2, E2, A2>(
   return self.foldCauseEffect(
     (cause): Effect<R2, E | E2, A2> =>
       cause
-        .failureOrCause()
+        .failureOrCause
         .fold((x) => f(x).getOrElse(Effect.failCauseNow(cause)), Effect.failCauseNow),
     Effect.succeedNow
   )

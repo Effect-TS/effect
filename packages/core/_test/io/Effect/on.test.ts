@@ -24,7 +24,7 @@ describe.concurrent("Effect", () => {
         .tap((ref) =>
           Effect.die(new RuntimeError())
             .onExit((exit) =>
-              exit._tag === "Failure" && exit.cause.isDie()
+              exit._tag === "Failure" && exit.cause.isDie
                 ? ref.set(true)
                 : Effect.unit
             )
@@ -45,7 +45,7 @@ describe.concurrent("Effect", () => {
         .bind("fiber", ({ latch1, latch2 }) =>
           (latch1.succeed(undefined) > Effect.never)
             .onExit((exit) =>
-              exit.isFailure() && exit.cause.isInterrupted()
+              exit.isFailure() && exit.cause.isInterrupted
                 ? latch2.succeed(undefined)
                 : Effect.unit
             )

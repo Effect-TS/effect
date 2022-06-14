@@ -6,7 +6,7 @@ export function bufferChunk<InElem, InErr, InDone>(
 ): Channel<never, InErr, Chunk<InElem>, InDone, InErr, Chunk<InElem>, InDone> {
   return Channel.buffer<Chunk<InElem>, InErr, InDone>(
     Chunk.empty<InElem>(),
-    (chunk) => chunk.isEmpty(),
+    (chunk) => chunk.isEmpty,
     ref
   )
 }

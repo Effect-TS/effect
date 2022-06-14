@@ -3,7 +3,7 @@ import { realCause } from "@effect/core/io/Cause/definition"
 /**
  * Grabs a list of execution traces from the cause.
  *
- * @tsplus fluent ets/Cause traces
+ * @tsplus getter ets/Cause traces
  */
 export function traces<E>(self: Cause<E>): List<Trace> {
   return self
@@ -20,5 +20,5 @@ export function traces<E>(self: Cause<E>): List<Trace> {
           return Option.some(acc)
       }
     })
-    .reverse()
+    .reverse
 }
