@@ -259,6 +259,10 @@ import { TPriorityQueue } from "@effect/core/stm/TPriorityQueue/definition"
 /**
  * @tsplus global
  */
+import { THub } from "@effect/core/stm/THub/definition"
+/**
+ * @tsplus global
+ */
 import { TQueue } from "@effect/core/stm/TQueue/definition"
 /**
  * @tsplus global
