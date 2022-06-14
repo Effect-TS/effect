@@ -4,7 +4,7 @@ describe.concurrent("TPriorityQueue", () => {
   describe.concurrent("toChunk", () => {
     it("toChunk", async () => {
       const program = TPriorityQueue.from(eventOrd)(as)
-        .flatMap((queue) => queue.toChunk())
+        .flatMap((queue) => queue.toChunk)
         .commit()
 
       const result = await program.unsafeRunPromise()

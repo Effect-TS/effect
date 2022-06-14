@@ -92,13 +92,13 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     exit: Exit<unknown, unknown>
   ): Effect<R, never, Exit<never, unknown>> {
     while (conts.length !== 0) {
-      const head = conts.unsafeHead()!
+      const head = conts.unsafeHead!
       concreteContinuation(head)
       if (head._tag === "ContinuationK") {
-        conts = conts.unsafeTail() ?? List.empty()
+        conts = conts.unsafeTail ?? List.empty()
       } else {
         acc = acc > head.finalizer(exit).exit()
-        conts = conts.unsafeTail() ?? List.empty()
+        conts = conts.unsafeTail ?? List.empty()
       }
     }
     return acc
@@ -123,13 +123,13 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     builder: ListBuffer<ContinuationFinalizer<R, unknown, unknown>>
   ): List<ErasedContinuation<R>> {
     while (stack.length > 0) {
-      const head = stack.unsafeHead()!
+      const head = stack.unsafeHead!
       concreteContinuation(head)
       if (head._tag === "ContinuationK") {
         return stack
       }
       builder.append(head)
-      stack = stack.unsafeTail() ?? List.empty()
+      stack = stack.unsafeTail ?? List.empty()
     }
     return List.empty()
   }
@@ -453,11 +453,11 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
       return ChannelState.Done
     }
 
-    const head = this.doneStack.unsafeHead()!
+    const head = this.doneStack.unsafeHead!
     concreteContinuation(head)
 
     if (head._tag === "ContinuationK") {
-      this.doneStack = this.doneStack.unsafeTail() ?? List.empty()
+      this.doneStack = this.doneStack.unsafeTail ?? List.empty()
       this.currentChannel = head.onSuccess(z)
       return undefined
     }
@@ -492,11 +492,11 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
       return ChannelState.Done
     }
 
-    const head = this.doneStack.unsafeHead()!
+    const head = this.doneStack.unsafeHead!
     concreteContinuation(head)
 
     if (head._tag === "ContinuationK") {
-      this.doneStack = this.doneStack.unsafeTail() ?? List.empty()
+      this.doneStack = this.doneStack.unsafeTail ?? List.empty()
       this.currentChannel = head.onHalt(cause)
       return undefined
     }
@@ -817,7 +817,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     self: PullFromUpstream<R>
   ): ChannelState<R, unknown> | undefined {
     return self.activeChildExecutors
-      .dequeue()
+      .dequeue
       .fold(this.performPullFromUpstream(self), ({ tuple: [activeChild, rest] }) => {
         const parentSubexecutor = Subexecutor.PullFromUpstream(
           self.upstreamExecutor,
@@ -849,7 +849,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   private drainChildExecutors(
     self: DrainChildExecutors<R>
   ): ChannelState<R, unknown> | undefined {
-    return self.activeChildExecutors.dequeue().fold(
+    return self.activeChildExecutors.dequeue.fold(
       () => {
         const lastClose = this.closeLastSubstream
         if (lastClose != null) {

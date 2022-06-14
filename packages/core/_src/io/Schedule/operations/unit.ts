@@ -1,8 +1,8 @@
 /**
  * Returns a new schedule that maps the output of this schedule to unit.
  *
- * @tsplus fluent ets/Schedule asUnit
- * @tsplus fluent ets/Schedule/WithState asUnit
+ * @tsplus getter ets/Schedule asUnit
+ * @tsplus getter ets/Schedule/WithState asUnit
  */
 export function asUnit<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>

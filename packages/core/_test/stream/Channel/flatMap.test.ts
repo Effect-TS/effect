@@ -6,13 +6,13 @@ describe.concurrent("Channel", () => {
         .bind("y", ({ x }) => Channel.succeed(x * 2))
         .bind("z", ({ x, y }) => Channel.succeed(x + y))
         .map(({ x, y, z }) => x + y + z)
-        .runCollect()
+        .runCollect
 
       const {
         tuple: [chunk, z]
       } = await program.unsafeRunPromise()
 
-      assert.isTrue(chunk.isEmpty())
+      assert.isTrue(chunk.isEmpty)
       assert.strictEqual(z, 6)
     })
 
@@ -20,11 +20,11 @@ describe.concurrent("Channel", () => {
       const program = Channel.write(Chunk(1, 2))
         .concatMap((chunk) => Channel.writeAll(chunk))
         .zipRight(Channel.fail("hello"))
-        .runDrain()
+        .runDrain
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("hello"))
+      assert.isTrue(result.untraced == Exit.fail("hello"))
     })
   })
 })

@@ -6,7 +6,7 @@ describe.concurrent("Channel", () => {
         .bind("ref", () => Ref.make<Exit<unknown, unknown>>(Exit.unit))
         .tap(({ deferred, ref }) =>
           Channel.fromEffect(deferred.succeed(undefined) > Effect.never)
-            .runDrain()
+            .runDrain
             .onExit((exit) => ref.set(exit))
             .raceEither(deferred.await())
         )
@@ -14,7 +14,7 @@ describe.concurrent("Channel", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isInterrupted())
+      assert.isTrue(result.isInterrupted)
     })
   })
 })

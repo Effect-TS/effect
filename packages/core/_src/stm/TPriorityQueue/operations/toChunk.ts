@@ -3,7 +3,7 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
 /**
  * Collects all values into a chunk.
  *
- * @tsplus fluent ets/TPriorityQueue toChunk
+ * @tsplus getter ets/TPriorityQueue toChunk
  */
 export function toChunk<A>(self: TPriorityQueue<A>): USTM<Chunk<A>> {
   concreteTPriorityQueue(self)
@@ -12,6 +12,6 @@ export function toChunk<A>(self: TPriorityQueue<A>): USTM<Chunk<A>> {
     for (const { tuple: [, as] } of sortedMap) {
       builder.append(as)
     }
-    return Tuple(builder.build().flatten(), sortedMap)
+    return Tuple(builder.build().flatten, sortedMap)
   })
 }

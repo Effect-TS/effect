@@ -29,7 +29,7 @@ export function asyncScoped<R, E, A>(
             runtime.unsafeRunPromise(Take.fromPull(k).flatMap((take) => output.offer(take)))
           } catch (e: unknown) {
             if (isFiberFailure(e)) {
-              if (!e.cause.isInterrupted()) {
+              if (!e.cause.isInterrupted) {
                 throw e
               }
             }

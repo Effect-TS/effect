@@ -21,7 +21,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isFailure() && result.cause.isInterruptedOnly())
+      assert.isTrue(result.isFailure() && result.cause.isInterruptedOnly)
     })
 
     it("asyncEffect is interruptible", async () => {
@@ -104,7 +104,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isInterrupted())
+      assert.isTrue(result.isInterrupted)
     })
 
     it("acquireUseReleaseExit use is interruptible", async () => {
@@ -179,7 +179,7 @@ describe.concurrent("Effect", () => {
 
       const { result } = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isInterrupted())
+      assert.isTrue(result.isInterrupted)
     })
 
     it("acquireUseReleaseExit disconnect acquire returns immediately on interrupt", async () => {
@@ -201,7 +201,7 @@ describe.concurrent("Effect", () => {
 
       const { result } = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isInterrupted())
+      assert.isTrue(result.isInterrupted)
     })
 
     it("acquireUseRelease disconnect use is interruptible", async () => {
@@ -216,7 +216,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isInterrupted())
+      assert.isTrue(result.isInterrupted)
     })
 
     it("acquireUseReleaseExit disconnect use is interruptible", async () => {
@@ -316,7 +316,7 @@ describe.concurrent("Effect", () => {
 
     it("interrupted cause persists after catching", async () => {
       function process(list: List<Exit<never, any>>): List<Exit<never, any>> {
-        return list.map((exit) => exit.mapErrorCause((cause) => cause.untraced()))
+        return list.map((exit) => exit.mapErrorCause((cause) => cause.untraced))
       }
 
       const program = Effect.Do()
@@ -345,7 +345,7 @@ describe.concurrent("Effect", () => {
       assert.isTrue(
         result.reduce(
           true,
-          (acc, curr) => acc && curr.isFailure() && curr.cause.isInterruptedOnly()
+          (acc, curr) => acc && curr.isFailure() && curr.cause.isInterruptedOnly
         )
       )
     })
@@ -397,7 +397,7 @@ describe.concurrent("Effect", () => {
           withLatch((release) =>
             (release > Effect.never.interruptible())
               .foldCauseEffect(
-                (cause) => recovered.set(cause.isInterrupted()),
+                (cause) => recovered.set(cause.isInterrupted),
                 () => recovered.set(false)
               )
               .uninterruptible()
@@ -421,7 +421,7 @@ describe.concurrent("Effect", () => {
               .either()
               .flatMap((either) =>
                 recovered.set(
-                  Option.some(either.mapLeft((cause) => cause.isInterrupted()))
+                  Option.some(either.mapLeft((cause) => cause.isInterrupted))
                 )
               )
               .uninterruptible()
@@ -442,7 +442,7 @@ describe.concurrent("Effect", () => {
           withLatch((release) =>
             (release > Effect.never.interruptible())
               .exit()
-              .flatMap((exit) => recovered.set(Option.some(exit.isInterrupted())))
+              .flatMap((exit) => recovered.set(Option.some(exit.isInterrupted)))
               .uninterruptible()
               .fork()
           ))
@@ -543,7 +543,7 @@ describe.concurrent("Effect", () => {
       await awaiter1.succeed(undefined).unsafeRunPromise()
       await awaiter2.succeed(undefined).unsafeRunPromise()
 
-      assert.isTrue(result.isInterrupted())
+      assert.isTrue(result.isInterrupted)
     })
 
     it("disconnected effect that is then interrupted eventually performs interruption", async () => {
@@ -575,11 +575,11 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      const isInterruptedOnly = result.isFailure() && result.cause.isInterruptedOnly()
+      const isInterruptedOnly = result.isFailure() && result.cause.isInterruptedOnly
       if (isInterruptedOnly) {
         assert.isTrue(isInterruptedOnly)
       } else {
-        assert.isTrue(result.untraced() == Exit.fail("foo"))
+        assert.isTrue(result.untraced == Exit.fail("foo"))
       }
     })
 

@@ -52,7 +52,7 @@ describe.concurrent("Stream", () => {
       //     queue2 <- Queue.unbounded[Int]
       //     stream1 = ZStream.fromQueue(queue1)
       //     stream2 = ZStream.fromQueue(queue2)
-      //     fiber  <- stream1.mergeTerminateLeft(stream2).runCollect.fork
+      //     fiber  <- stream1.mergeTerminateLeft(stream2).runCollect().fork
       //     _      <- queue1.offer(1) *> TestClock.adjust(1.second)
       //     _      <- queue1.offer(2) *> TestClock.adjust(1.second)
       //     _      <- queue1.shutdown *> TestClock.adjust(1.second)
@@ -82,7 +82,7 @@ describe.concurrent("Stream", () => {
       //   queue2 <- Queue.unbounded[Int]
       //   stream1 = ZStream.fromQueue(queue1)
       //   stream2 = ZStream.fromQueue(queue2)
-      //   fiber  <- stream1.mergeTerminateRight(stream2).runCollect.fork
+      //   fiber  <- stream1.mergeTerminateRight(stream2).runCollect().fork
       //   _      <- queue2.offer(2) *> TestClock.adjust(1.second)
       //   _      <- queue2.offer(3) *> TestClock.adjust(1.second)
       //   _      <- queue2.shutdown *> TestClock.adjust(1.second)
@@ -100,7 +100,7 @@ describe.concurrent("Stream", () => {
       //   queue2 <- Queue.unbounded[Int]
       //   stream1 = ZStream.fromQueue(queue1)
       //   stream2 = ZStream.fromQueue(queue2)
-      //   fiber  <- stream1.mergeTerminateEither(stream2).runCollect.fork
+      //   fiber  <- stream1.mergeTerminateEither(stream2).runCollect().fork
       //   _      <- queue1.shutdown
       //   _      <- TestClock.adjust(1.second)
       //   _      <- queue2.offer(1)

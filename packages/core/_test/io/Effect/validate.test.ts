@@ -33,7 +33,7 @@ describe.concurrent("Effect", () => {
       const result = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result.mapLeft((cause) => cause.untraced()) ==
+        result.mapLeft((cause) => cause.untraced) ==
           Either.left(Cause.fail(2))
       )
     })
@@ -44,7 +44,7 @@ describe.concurrent("Effect", () => {
       const result = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result.mapLeft((cause) => cause.untraced()) ==
+        result.mapLeft((cause) => cause.untraced) ==
           Either.left(Cause.fail(1) + Cause.fail(2))
       )
     })

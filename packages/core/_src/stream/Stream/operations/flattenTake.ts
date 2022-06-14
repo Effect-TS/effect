@@ -8,8 +8,8 @@ export function flattenTake<R, E, E2, A>(
   self: Stream<R, E, Take<E2, A>>,
   __tsplusTrace?: string
 ): Stream<R, E | E2, A> {
-  return self
-    .map((take) => take.exit<E | E2, A>())
-    .flattenExitOption()
+  return (self
+    .map((take) => take.exit as Exit<Option<E | E2>, A>)
+    .flattenExitOption() as Stream<R, E | E2, Chunk<A>>)
     .unchunks()
 }

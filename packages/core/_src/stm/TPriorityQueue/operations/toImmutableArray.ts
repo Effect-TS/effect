@@ -3,12 +3,12 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
 /**
  * Collects all values into an array.
  *
- * @tsplus fluent ets/TPriorityQueue toImmutableArray
+ * @tsplus getter ets/TPriorityQueue toImmutableArray
  */
 export function toArray<A>(self: TPriorityQueue<A>): USTM<ImmutableArray<A>> {
   concreteTPriorityQueue(self)
   return self.map.modify((map) => {
-    const entries = map.entries()
+    const entries = map.entries
     const result: A[] = []
     let e: IteratorResult<Tuple<[A, Chunk<A>]>>
     while (!(e = entries.next()).done) {

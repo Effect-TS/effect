@@ -18,7 +18,7 @@ describe.concurrent("Deferred", () => {
         .bind("ref", () => Ref.make(Chunk.from(["first error", "second error"])))
         .bind("success", ({ deferred, ref }) =>
           deferred.complete(
-            ref.modify((as) => Tuple(as.unsafeHead(), as.unsafeTail())).flip()
+            ref.modify((as) => Tuple(as.unsafeHead, as.unsafeTail)).flip()
           ))
         .bind("v1", ({ deferred }) => deferred.await().exit())
         .bind("v2", ({ deferred }) => deferred.await().exit())
@@ -36,7 +36,7 @@ describe.concurrent("Deferred", () => {
         .bind("ref", () => Ref.make(Chunk.from(["first error", "second error"])))
         .bind("success", ({ deferred, ref }) =>
           deferred.completeWith(
-            ref.modify((as) => Tuple(as.unsafeHead(), as.unsafeTail())).flip()
+            ref.modify((as) => Tuple(as.unsafeHead, as.unsafeTail)).flip()
           ))
         .bind("v1", ({ deferred }) => deferred.await().exit())
         .bind("v2", ({ deferred }) => deferred.await().exit())

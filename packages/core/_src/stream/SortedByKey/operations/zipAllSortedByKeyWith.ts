@@ -95,11 +95,11 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
                   const leftChunk = a.value
                   const rightChunk = b.value
 
-                  if (leftChunk.isEmpty() && rightChunk.isEmpty()) {
+                  if (leftChunk.isEmpty && rightChunk.isEmpty) {
                     return pull(new PullBoth(), pullLeft, pullRight)
-                  } else if (leftChunk.isEmpty()) {
+                  } else if (leftChunk.isEmpty) {
                     return pull(new PullLeft(rightChunk), pullLeft, pullRight)
-                  } else if (rightChunk.isEmpty()) {
+                  } else if (rightChunk.isEmpty) {
                     return pull(new PullRight(leftChunk), pullLeft, pullRight)
                   } else {
                     return Effect.succeedNow(
@@ -109,7 +109,7 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
                 } else if (a.isSome()) {
                   const leftChunk = a.value
 
-                  return leftChunk.isEmpty()
+                  return leftChunk.isEmpty
                     ? pull(new DrainLeft(), pullLeft, pullRight)
                     : Effect.succeedNow(
                       Exit.succeed(
@@ -122,7 +122,7 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
                 } else if (b.isSome()) {
                   const rightChunk = b.value
 
-                  return rightChunk.isEmpty()
+                  return rightChunk.isEmpty
                     ? pull(new DrainLeft(), pullLeft, pullRight)
                     : Effect.succeedNow(
                       Exit.succeed(
@@ -160,7 +160,7 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
                 (e) => Effect.succeedNow(Exit.fail(Option.some(e)))
               ),
             (leftChunk) =>
-              leftChunk.isEmpty()
+              leftChunk.isEmpty
                 ? pull(new PullLeft(rightChunk), pullLeft, pullRight)
                 : Effect.succeedNow(
                   Exit.succeed(mergeSortedByKeyChunk(leftChunk, rightChunk))
@@ -189,7 +189,7 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
                 (e) => Effect.succeedNow(Exit.fail(Option.some(e)))
               ),
             (rightChunk) =>
-              rightChunk.isEmpty()
+              rightChunk.isEmpty
                 ? pull(new PullRight(leftChunk), pullLeft, pullRight)
                 : Effect.succeedNow(
                   Exit.succeed(mergeSortedByKeyChunk(leftChunk, rightChunk))

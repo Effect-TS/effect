@@ -331,7 +331,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("uh oh"))
+      assert.isTrue(result.untraced == Exit.fail("uh oh"))
     })
 
     it("timeout of terminate", async () => {
@@ -339,7 +339,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(ExampleError))
+      assert.isTrue(result.untraced == Exit.die(ExampleError))
     })
   })
 })

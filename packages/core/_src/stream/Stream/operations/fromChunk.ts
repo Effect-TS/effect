@@ -10,6 +10,6 @@ export function fromChunk<A>(
   __tsplusTrace?: string
 ): Stream<never, never, A> {
   return new StreamInternal(
-    Channel.succeed(chunk).flatMap((chunk) => chunk.isEmpty() ? Channel.unit : Channel.write(chunk))
+    Channel.succeed(chunk).flatMap((chunk) => chunk.isEmpty ? Channel.unit : Channel.write(chunk))
   )
 }

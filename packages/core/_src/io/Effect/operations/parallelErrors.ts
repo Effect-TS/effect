@@ -9,7 +9,7 @@ export function parallelErrors<R, E, A>(
 ): Effect<R, Chunk<E>, A> {
   return self
     .foldCauseEffect((cause) => {
-      const errors = Chunk.from(cause.failures())
+      const errors = Chunk.from(cause.failures)
       return errors.length === 0
         ? Effect.failCauseNow(cause as Cause<never>)
         : Effect.failNow(errors)

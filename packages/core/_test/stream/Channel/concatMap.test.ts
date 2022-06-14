@@ -8,7 +8,7 @@ describe.concurrent("Channel", () => {
     it("plain", async () => {
       const program = Channel.writeAll(1, 2, 3)
         .concatMap((i) => Channel.writeAll(i, i))
-        .runCollect()
+        .runCollect
 
       const {
         tuple: [chunk, _]
@@ -23,7 +23,7 @@ describe.concurrent("Channel", () => {
         .mapOut((i) => new First(i))
         .concatMap((i) => Channel.writeAll(i, i))
         .mapOut((i) => new Second(i))
-        .runCollect()
+        .runCollect
 
       const {
         tuple: [chunk, _]
@@ -49,7 +49,7 @@ describe.concurrent("Channel", () => {
       const readers = Channel.writeAll(undefined, undefined).concatMap(
         () => reader > reader
       )
-      const program = (source >> readers).runCollect()
+      const program = (source >> readers).runCollect
 
       const {
         tuple: [chunk, _]
@@ -61,11 +61,11 @@ describe.concurrent("Channel", () => {
     it("downstream failure", async () => {
       const program = Channel.write(0)
         .concatMap(() => Channel.fail("error"))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("error"))
+      assert.isTrue(result.untraced == Exit.fail("error"))
     })
 
     it("upstream acquireReleaseOut + downstream failure", async () => {
@@ -74,7 +74,7 @@ describe.concurrent("Channel", () => {
 
         const conduit = Channel.acquireUseReleaseOut(event("Acquired"), () => event("Released"))
           .concatMap(() => Channel.fail("error"))
-          .runDrain()
+          .runDrain
           .exit()
 
         return conduit.zip(events.get())
@@ -84,7 +84,7 @@ describe.concurrent("Channel", () => {
         tuple: [exit, events]
       } = await program.unsafeRunPromise()
 
-      assert.isTrue(exit.untraced() == Exit.fail("error"))
+      assert.isTrue(exit.untraced == Exit.fail("error"))
       assert.isTrue(events == Chunk("Acquired", "Released"))
     })
 
@@ -92,33 +92,33 @@ describe.concurrent("Channel", () => {
       const program = Channel.write(undefined)
         .concatMap(() => Channel.write(Channel.fail("error")))
         .concatMap((e) => e)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("error"))
+      assert.isTrue(result.untraced == Exit.fail("error"))
     })
 
     it("concatMap with failure then flatMap", async () => {
       const program = Channel.write(undefined)
         .concatMap(() => Channel.fail("error"))
         .flatMap(() => Channel.write(undefined))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("error"))
+      assert.isTrue(result.untraced == Exit.fail("error"))
     })
 
     it("multiple concatMaps with failure in first and catchAll in second", async () => {
       const program = Channel.write(undefined)
         .concatMap(() => Channel.write(Channel.fail("error")))
         .concatMap((e) => e.catchAllCause(() => Channel.fail("error2")))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("error2"))
+      assert.isTrue(result.untraced == Exit.fail("error2"))
     })
 
     it("done value combination", async () => {
@@ -129,7 +129,7 @@ describe.concurrent("Channel", () => {
           (a: List<string>, b) => a + b,
           (a, b) => Tuple(a, b)
         )
-        .runCollect()
+        .runCollect
 
       const {
         tuple: [
@@ -176,8 +176,8 @@ describe.concurrent("Channel", () => {
               () => ChildExecutorDecision.Continue
             )
         )
-        .runCollect()
-        .map((tuple) => tuple.get(0).compact())
+        .runCollect
+        .map((tuple) => tuple.get(0).compact)
 
       const result = await program.unsafeRunPromise()
 
@@ -225,8 +225,8 @@ describe.concurrent("Channel", () => {
               () => ChildExecutorDecision.Continue
             )
         )
-        .runCollect()
-        .map((tuple) => tuple.get(0).compact())
+        .runCollect
+        .map((tuple) => tuple.get(0).compact)
 
       const result = await program.unsafeRunPromise()
 

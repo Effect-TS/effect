@@ -71,7 +71,7 @@ function lookingForBom<R, E>(
     },
     (err) => Channel.fail(err),
     () => {
-      if (buffer.isEmpty()) {
+      if (buffer.isEmpty) {
         return Channel.unit
       }
       const {

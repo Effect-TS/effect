@@ -19,10 +19,10 @@ describe.concurrent("orElse", () => {
 
       const { both, fail, plain, then } = await program.unsafeRunPromise()
 
-      assert.isTrue(plain.untraced() == Exit.die(error))
-      assert.isTrue(both.untraced() == Exit.die(error))
-      assert.isTrue(then.untraced() == Exit.die(error))
-      assert.isTrue(fail.untraced() == Exit.succeed(undefined))
+      assert.isTrue(plain.untraced == Exit.die(error))
+      assert.isTrue(both.untraced == Exit.die(error))
+      assert.isTrue(then.untraced == Exit.die(error))
+      assert.isTrue(fail.untraced == Exit.succeed(undefined))
     })
 
     it("left failed and right died with kept cause", async () => {
@@ -58,16 +58,16 @@ describe.concurrent("orElse", () => {
     //   val smallInts = Gen.int(0, 100)
     //   val causes    = Gen.causes(smallInts, Gen.throwable)
     //   val successes = Gen.successes(smallInts)
-    //   val exits     = Gen.either(causes, successes).map(_.fold(Exit.failCause, Exit.succeed))
-    //   check(exits, exits, exits) { (exit1, exit2, exit3) =>
-    //     val zio1  = ZIO.done(exit1)
-    //     val zio2  = ZIO.done(exit2)
-    //     val zio3  = ZIO.done(exit3)
+    //   val exits     = Gen.either()(causes, successes).map(_.fold(Exit.failCause, Exit.succeed))
+    //   check(exits, exits, exits) { (exit()1, exit()2, exit()3) =>
+    //     val zio1  = ZIO.done(exit()1)
+    //     val zio2  = ZIO.done(exit()2)
+    //     val zio3  = ZIO.done(exit()3)
     //     val left  = (zio1 orElse zio2) orElse zio3
     //     val right = zio1 orElse (zio2 orElse zio3)
     //     for {
-    //       left  <- left.exit
-    //       right <- right.exit
+    //       left  <- left.exit()
+    //       right <- right.exit()
     //     } yield assert(left)(equalTo(right))
     //   }
     // })
@@ -107,7 +107,7 @@ describe.concurrent("orElse", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(Option.some("fail")))
+      assert.isTrue(result.untraced == Exit.fail(Option.some("fail")))
     })
 
     it("produces the value of the specified effect if it fails with none", async () => {

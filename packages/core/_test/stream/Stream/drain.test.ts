@@ -14,7 +14,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.reverse() == List.from(Chunk.range(0, 9)))
+      assert.isTrue(result.reverse == List.from(Chunk.range(0, 9)))
     })
 
     it("isn't too eager", async () => {
@@ -69,7 +69,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("boom"))
+      assert.isTrue(result.untraced == Exit.fail("boom"))
     })
 
     it("fails the foreground stream if the background fails with a defect", async () => {
@@ -78,7 +78,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(error))
+      assert.isTrue(result.untraced == Exit.die(error))
     })
   })
 })

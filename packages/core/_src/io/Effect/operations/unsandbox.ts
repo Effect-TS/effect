@@ -7,5 +7,5 @@
  * @tsplus fluent ets/Effect unsandbox
  */
 export function unsandbox<R, E, A>(self: Effect<R, Cause<E>, A>, __tsplusTrace?: string) {
-  return self.mapErrorCause((cause) => cause.flatten())
+  return self.mapErrorCause((cause) => cause.flatten)
 }

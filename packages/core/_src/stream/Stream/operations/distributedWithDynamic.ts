@@ -57,12 +57,12 @@ export function distributedWithDynamic_<R, E, A, Z>(
                         .map(({ id, queue }) => Tuple(id, queue))
                     )
                   )
-                  .bind("queues", () => queuesRef.get().map((map) => map.values()))
+                  .bind("queues", () => queuesRef.get().map((map) => map.values))
                   .tap(({ queues }) =>
                     Effect.forEach(queues, (queue) =>
                       queue
                         .offer(endTake)
-                        .catchSomeCause((cause) => cause.isInterrupted() ? Option.some(Effect.unit) : Option.none))
+                        .catchSomeCause((cause) => cause.isInterrupted ? Option.some(Effect.unit) : Option.none))
                   )
                   .tap(() => done(endTake))
                   .asUnit()
@@ -107,7 +107,7 @@ function offer<E, A>(
             (cause) =>
               // Ignore all downstream queues that were shut down and remove
               // them later
-              cause.isInterrupted()
+              cause.isInterrupted
                 ? Effect.succeedNow(acc.prepend(id))
                 : Effect.failCause(cause),
             () => Effect.succeedNow(acc)

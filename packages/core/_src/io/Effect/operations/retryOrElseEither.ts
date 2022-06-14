@@ -16,7 +16,7 @@ export function retryOrElseEither_<R, E, A, S, R1, A1, R2, E2, A2>(
 ): Effect<R | R1 | R2, E | E2, Either<A2, A>> {
   return Effect.suspendSucceed(() => {
     const schedule = policy()
-    return schedule.driver().flatMap((driver) => retryOrElseEitherLoop(self, driver, orElse))
+    return schedule.driver.flatMap((driver) => retryOrElseEitherLoop(self, driver, orElse))
   })
 }
 

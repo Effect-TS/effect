@@ -4,7 +4,7 @@ describe.concurrent("TPriorityQueue", () => {
   describe.concurrent("take", () => {
     it("take", async () => {
       const program = TPriorityQueue.from(eventOrd)(as)
-        .flatMap((queue) => STM.collectAll(queue.take().replicate(as.size)))
+        .flatMap((queue) => STM.collectAll(queue.take.replicate(as.size)))
         .commit()
 
       const result = await program.unsafeRunPromise()
@@ -17,7 +17,7 @@ describe.concurrent("TPriorityQueue", () => {
         .flatMap((queue) =>
           STM.struct({
             left: queue.takeUpTo(1),
-            right: queue.takeAll()
+            right: queue.takeAll
           })
         )
         .commit()

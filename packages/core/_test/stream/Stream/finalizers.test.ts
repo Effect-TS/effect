@@ -15,7 +15,7 @@ describe.concurrent("Stream", () => {
       const result = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result.reverse() == List(
+        result.reverse == List(
           "acquire",
           "use",
           "release",
@@ -44,7 +44,7 @@ describe.concurrent("Stream", () => {
       const result = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result.reverse() == List(
+        result.reverse == List(
           "Acquire",
           "Use",
           "Release",

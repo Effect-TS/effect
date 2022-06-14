@@ -132,7 +132,7 @@ class UnsafeMakeHubImplementation<A> implements Hub<A> {
 
       this.strategy.unsafeCompleteSubscribers(this.hub, this.subscribers)
 
-      if (surplus.isEmpty()) {
+      if (surplus.isEmpty) {
         return Effect.succeedNow(true)
       }
 

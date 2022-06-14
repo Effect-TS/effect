@@ -30,7 +30,7 @@ function dropWhileInternal<E, A>(
   return Channel.readWith(
     (chunk: Chunk<A>) => {
       const out = chunk.dropWhile(f)
-      return out.isEmpty()
+      return out.isEmpty
         ? dropWhileInternal<E, A>(f)
         : Channel.write(out) > Channel.identity<E, Chunk<A>, unknown>()
     },

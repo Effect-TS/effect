@@ -44,7 +44,7 @@ export function transduce_<R, E, A, R2, E2, Z>(
       > = Channel.suspend(() => {
         const leftover = leftovers.get
 
-        if (leftover.isEmpty()) {
+        if (leftover.isEmpty) {
           return Channel.readWith(
             (chunk: Chunk<A>) => Channel.write(chunk) > buffer,
             (err) => Channel.fail(err),
@@ -65,11 +65,11 @@ export function transduce_<R, E, A, R2, E2, Z>(
         E | E2,
         Chunk<Z>,
         void
-      > = sink0.channel.doneCollect().flatMap(({ tuple: [leftover, z] }) =>
+      > = sink0.channel.doneCollect.flatMap(({ tuple: [leftover, z] }) =>
         Channel.succeed(
           Tuple(upstreamDone.get, concatAndGet(leftovers, leftover))
         ).flatMap(({ tuple: [done, newLeftovers] }) => {
-          const nextChannel = done && newLeftovers.isEmpty() ? Channel.unit : transducer
+          const nextChannel = done && newLeftovers.isEmpty ? Channel.unit : transducer
           return Channel.write(Chunk.single(z)) > nextChannel
         })
       )
@@ -93,7 +93,7 @@ function concatAndGet<A>(
   __tsplusTrace?: string
 ): Chunk<Chunk<A>> {
   const ls = leftovers.get
-  const concat = ls + chunk.filter((c) => c.isNonEmpty())
+  const concat = ls + chunk.filter((c) => c.isNonEmpty)
   leftovers.set(concat)
   return concat
 }

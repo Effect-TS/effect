@@ -52,7 +52,7 @@ describe.concurrent("Effect", () => {
             (n) => n + 1
           )((n) => ref.update((list) => list.prepend(n)))
         )
-        .flatMap(({ ref }) => ref.get().map((list) => list.reverse()))
+        .flatMap(({ ref }) => ref.get().map((list) => list.reverse))
 
       const result = await program.unsafeRunPromise()
 
@@ -82,7 +82,7 @@ describe.concurrent("Effect", () => {
             (n) => n + 1
           )((n) => ref.update((list) => list.prepend(n)))
         )
-        .flatMap((ref) => ref.get().map((list) => list.reverse()))
+        .flatMap((ref) => ref.get().map((list) => list.reverse))
 
       const result = await program.unsafeRunPromise()
 
@@ -96,7 +96,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty())
+      assert.isTrue(result.isEmpty)
     })
 
     it("negative", async () => {
@@ -104,7 +104,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty())
+      assert.isTrue(result.isEmpty)
     })
 
     it("positive", async () => {
@@ -135,7 +135,7 @@ describe.concurrent("Effect", () => {
             list,
             (s) => ref.update((list) => list.prepend(s)) > Effect.succeed(Number.parseInt(s))
           ))
-        .bind("effects", ({ ref }) => ref.get().map((list) => list.reverse()))
+        .bind("effects", ({ ref }) => ref.get().map((list) => list.reverse))
 
       const { effects, result } = await program.unsafeRunPromise()
 
@@ -167,7 +167,7 @@ describe.concurrent("Effect", () => {
       const list = List(1, 2, 3, 4, 5)
       const program = Ref.make<List<number>>(List.empty())
         .tap((ref) => Effect.forEachDiscard(list, (n) => ref.update((list) => list.prepend(n))))
-        .flatMap((ref) => ref.get().map((list) => list.reverse()))
+        .flatMap((ref) => ref.get().map((list) => list.reverse))
 
       const result = await program.unsafeRunPromise()
 
@@ -283,7 +283,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.isFailure() && result.cause.dieOption().isSome())
+      assert.isTrue(result.isFailure() && result.cause.dieOption.isSome())
     })
 
     it("runs a task that is interrupted", async () => {
@@ -291,7 +291,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.isInterrupted())
+      assert.isTrue(result.isInterrupted)
     })
 
     it("runs a task that throws an unsuspended exception", async () => {
@@ -482,7 +482,7 @@ describe.concurrent("Effect", () => {
         .bind("trigger", () => Deferred.make<never, void>())
         .flatMap(({ started, trigger }) =>
           Effect.forEachParDiscard(Chunk.range(1, 3), (n) => task(started, trigger, n).uninterruptible()).foldCause(
-            (cause) => cause.failures(),
+            (cause) => cause.failures,
             () => List.empty<number>()
           )
         )
@@ -496,7 +496,7 @@ describe.concurrent("Effect", () => {
       const list = List(1, 2, 3, 4, 5)
       const program = Ref.make<List<number>>(List.empty())
         .tap((ref) => Effect.forEachParDiscard(list, (n) => ref.update((list) => list.prepend(n))))
-        .flatMap((ref) => ref.get().map((list) => list.reverse()))
+        .flatMap((ref) => ref.get().map((list) => list.reverse))
 
       const result = await program.unsafeRunPromise()
 
@@ -507,7 +507,7 @@ describe.concurrent("Effect", () => {
       const list = Chunk(1, 2, 3, 4, 5)
       const program = Ref.make<List<number>>(List.empty())
         .tap((ref) => Effect.forEachParDiscard(list, (n) => ref.update((list) => list.prepend(n))))
-        .flatMap((ref) => ref.get().map((list) => list.reverse()))
+        .flatMap((ref) => ref.get().map((list) => list.reverse))
 
       const result = await program.unsafeRunPromise()
 
@@ -530,7 +530,7 @@ describe.concurrent("Effect", () => {
       const list = List(1, 2, 3, 4, 5)
       const program = Ref.make<List<number>>(List.empty())
         .tap((ref) => Effect.forEachParDiscard(list, (n) => ref.update((list) => list.prepend(n))).withParallelism(2))
-        .flatMap((ref) => ref.get().map((list) => list.reverse()))
+        .flatMap((ref) => ref.get().map((list) => list.reverse))
 
       const result = await program.unsafeRunPromise()
 
@@ -565,7 +565,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty())
+      assert.isTrue(result.isEmpty)
     })
 
     it("propagate failures", async () => {
@@ -590,16 +590,16 @@ describe.concurrent("Effect", () => {
         .bind("fiber1", () => Effect.forkAll(List(die)))
         .bind("fiber2", () => Effect.forkAll(List(die, Effect.succeed(42))))
         .bind("fiber3", () => Effect.forkAll(List(die, Effect.succeed(42), Effect.never)))
-        .bind("result1", ({ fiber1 }) => joinDefect(fiber1).map((cause) => cause.untraced()))
-        .bind("result2", ({ fiber2 }) => joinDefect(fiber2).map((cause) => cause.untraced()))
-        .bind("result3", ({ fiber3 }) => joinDefect(fiber3).map((cause) => cause.untraced()))
+        .bind("result1", ({ fiber1 }) => joinDefect(fiber1).map((cause) => cause.untraced))
+        .bind("result2", ({ fiber2 }) => joinDefect(fiber2).map((cause) => cause.untraced))
+        .bind("result3", ({ fiber3 }) => joinDefect(fiber3).map((cause) => cause.untraced))
 
       const { result1, result2, result3 } = await program.unsafeRunPromise()
 
-      assert.isTrue(result1.dieOption() == Option.some(boom))
-      assert.isTrue(result2.dieOption() == Option.some(boom))
-      assert.isTrue(result3.dieOption() == Option.some(boom))
-      assert.isTrue(result3.isInterrupted())
+      assert.isTrue(result1.dieOption == Option.some(boom))
+      assert.isTrue(result2.dieOption == Option.some(boom))
+      assert.isTrue(result3.dieOption == Option.some(boom))
+      assert.isTrue(result3.isInterrupted)
     })
 
     it("infers correctly", async () => {

@@ -28,8 +28,8 @@ export function runIntoQueueScoped_<R, E extends E1, A, E1>(
   return Effect.succeed(queue).flatMap((queue) =>
     (self.channel >> writer)
       .mapOutEffect((take) => queue.offer(take))
-      .drain()
-      .runScoped()
+      .drain
+      .runScoped
       .asUnit()
   )
 }

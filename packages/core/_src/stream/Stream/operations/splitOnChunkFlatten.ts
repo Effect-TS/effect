@@ -51,7 +51,7 @@ function next<R, E, A>(
             }
             return Tuple(concatenated, delimiterCursor + 1)
           }
-          return Tuple(concatenated, a === delimiter.unsafeHead() ? 1 : 0)
+          return Tuple(concatenated, a === delimiter.unsafeHead ? 1 : 0)
         }
       )
 
@@ -59,7 +59,7 @@ function next<R, E, A>(
         Channel.writeChunk(buffer.build()) >
           next<R, E, A>(
             delimiter,
-            carry.isNonEmpty() ? Option.some(carry) : Option.none,
+            carry.isNonEmpty ? Option.some(carry) : Option.none,
             delimiterCursor
           )
       )

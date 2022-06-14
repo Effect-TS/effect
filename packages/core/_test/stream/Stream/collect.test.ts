@@ -104,7 +104,7 @@ describe.concurrent("Stream", () => {
       const stream = Stream(Option.some(1), Option.none, Option.some(2))
       const program = Effect.struct({
         actual: stream.collectSome().runCollect(),
-        expected: stream.runCollect().map((chunk) => chunk.compact())
+        expected: stream.runCollect().map((chunk) => chunk.compact)
       })
 
       const { actual, expected } = await program.unsafeRunPromise()

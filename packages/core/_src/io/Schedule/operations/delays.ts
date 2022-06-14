@@ -4,8 +4,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
 /**
  * Returns a new schedule that outputs the delay between each occurence.
  *
- * @tsplus fluent ets/Schedule delays
- * @tsplus fluent ets/Schedule/WithState delays
+ * @tsplus getter ets/Schedule delays
+ * @tsplus getter ets/Schedule/WithState delays
  */
 export function delays<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>

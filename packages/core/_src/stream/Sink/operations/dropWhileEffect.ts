@@ -21,7 +21,7 @@ export function dropWhileEffect<R, E, In>(
         input
           .dropWhileEffect(p)
           .map((leftover) =>
-            leftover.isEmpty()
+            leftover.isEmpty
               ? loop
               : Channel.write(leftover) > Channel.identity<E, Chunk<In>, unknown>()
           )

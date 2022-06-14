@@ -3,7 +3,7 @@ describe.concurrent("STM", () => {
     it("when true", async () => {
       const program = TRef.make(false)
         .commit()
-        .flatMap((tRef) => (STM.when(true, tRef.set(true)) > tRef.get()).commit())
+        .flatMap((tRef) => (STM.when(true, tRef.set(true)) > tRef.get).commit())
 
       const result = await program.unsafeRunPromise()
 
@@ -13,7 +13,7 @@ describe.concurrent("STM", () => {
     it("when false", async () => {
       const program = TRef.make(false)
         .commit()
-        .flatMap((tRef) => (STM.when(false, tRef.set(true)) > tRef.get()).commit())
+        .flatMap((tRef) => (STM.when(false, tRef.set(true)) > tRef.get).commit())
 
       const result = await program.unsafeRunPromise()
 
@@ -26,9 +26,9 @@ describe.concurrent("STM", () => {
         .flatMap((tRef) =>
           (
             STM.whenSTM(
-              tRef.get().map((n) => n === 0),
+              tRef.get.map((n) => n === 0),
               tRef.update((n) => n + 1)
-            ) > tRef.get()
+            ) > tRef.get
           ).commit()
         )
 
@@ -43,9 +43,9 @@ describe.concurrent("STM", () => {
         .flatMap((tRef) =>
           (
             STM.whenSTM(
-              tRef.get().map((n) => n !== 0),
+              tRef.get.map((n) => n !== 0),
               tRef.update((n) => n + 1)
-            ) > tRef.get()
+            ) > tRef.get
           ).commit()
         )
 
@@ -63,11 +63,11 @@ describe.concurrent("STM", () => {
             (option) => option._tag === "Some" ? Option.some(tRef.set(true)) : Option.none
           )
         )
-        .bind("result1", ({ tRef }) => tRef.get())
+        .bind("result1", ({ tRef }) => tRef.get)
         .tap(({ tRef }) =>
           STM.whenCase(Option.some(0), (option) => option._tag === "Some" ? Option.some(tRef.set(true)) : Option.none)
         )
-        .bind("result2", ({ tRef }) => tRef.get())
+        .bind("result2", ({ tRef }) => tRef.get)
         .commit()
 
       const { result1, result2 } = await program.unsafeRunPromise()
@@ -85,14 +85,14 @@ describe.concurrent("STM", () => {
             (option) => option._tag === "Some" ? Option.some(tRef.set(true)) : Option.none
           )
         )
-        .bind("result1", ({ tRef }) => tRef.get())
+        .bind("result1", ({ tRef }) => tRef.get)
         .tap(({ tRef }) =>
           STM.whenCaseSTM(
             STM.succeed(Option.some(0)),
             (option) => option._tag === "Some" ? Option.some(tRef.set(true)) : Option.none
           )
         )
-        .bind("result2", ({ tRef }) => tRef.get())
+        .bind("result2", ({ tRef }) => tRef.get)
         .commit()
 
       const { result1, result2 } = await program.unsafeRunPromise()

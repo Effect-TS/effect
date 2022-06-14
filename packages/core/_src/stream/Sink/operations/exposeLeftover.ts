@@ -10,7 +10,7 @@ export function exposeLeftover<R, E, In, L, Z>(
   concreteSink(self)
   return new SinkInternal(
     self.channel
-      .doneCollect()
-      .map(({ tuple: [chunks, z] }) => Tuple(z, chunks.flatten()))
+      .doneCollect
+      .map(({ tuple: [chunks, z] }) => Tuple(z, chunks.flatten))
   )
 }

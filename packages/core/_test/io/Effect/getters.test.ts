@@ -51,7 +51,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(Either.right("right")))
+      assert.isTrue(result.untraced == Exit.fail(Either.right("right")))
     })
 
     it("on failure", async () => {
@@ -59,7 +59,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(Either.left("fail")))
+      assert.isTrue(result.untraced == Exit.fail(Either.left("fail")))
     })
   })
 
@@ -77,7 +77,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(Either.left("left")))
+      assert.isTrue(result.untraced == Exit.fail(Either.left("left")))
     })
 
     it("on failure", async () => {
@@ -85,7 +85,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(Either.right("fail")))
+      assert.isTrue(result.untraced == Exit.fail(Either.right("fail")))
     })
   })
 
@@ -103,7 +103,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(Option.none))
+      assert.isTrue(result.untraced == Exit.fail(Option.none))
     })
 
     it("fails when given an exception", async () => {
@@ -112,7 +112,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(Option.some(error)))
+      assert.isTrue(result.untraced == Exit.fail(Option.some(error)))
     })
   })
 
@@ -122,7 +122,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(Option.none))
+      assert.isTrue(result.untraced == Exit.fail(Option.none))
     })
 
     it("on None succeeds with undefined", async () => {
@@ -139,7 +139,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(Option.some(error)))
+      assert.isTrue(result.untraced == Exit.fail(Option.some(error)))
     })
   })
 
@@ -203,7 +203,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(ExampleError))
+      assert.isTrue(result.untraced == Exit.fail(ExampleError))
     })
   })
 
@@ -231,7 +231,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(ExampleError))
+      assert.isTrue(result.untraced == Exit.fail(ExampleError))
     })
   })
 
@@ -249,7 +249,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(ExampleError))
+      assert.isTrue(result.untraced == Exit.fail(ExampleError))
     })
   })
 
@@ -295,7 +295,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(ExampleError))
+      assert.isTrue(result.untraced == Exit.die(ExampleError))
     })
 
     it("catch throwable after sandboxing", async () => {
@@ -313,7 +313,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("error"))
+      assert.isTrue(result.untraced == Exit.fail("error"))
     })
 
     it("succeeds with None given None error", async () => {
@@ -378,7 +378,7 @@ describe.concurrent("Effect", () => {
 
       const { actual, expected } = await program.unsafeRunPromise()
 
-      assert.isTrue(actual.untraced() == expected.untraced())
+      assert.isTrue(actual.untraced == expected.untraced)
     })
 
     it("should handle successes with left", async () => {
@@ -389,7 +389,7 @@ describe.concurrent("Effect", () => {
 
       const { actual, expected } = await program.unsafeRunPromise()
 
-      assert.isTrue(actual.untraced() == expected.untraced())
+      assert.isTrue(actual.untraced == expected.untraced)
     })
 
     it("should handle failures", async () => {
@@ -400,7 +400,7 @@ describe.concurrent("Effect", () => {
 
       const { actual, expected } = await program.unsafeRunPromise()
 
-      assert.isTrue(actual.untraced() == expected.untraced())
+      assert.isTrue(actual.untraced == expected.untraced)
     })
   })
 
@@ -413,7 +413,7 @@ describe.concurrent("Effect", () => {
 
       const { actual, expected } = await program.unsafeRunPromise()
 
-      assert.isTrue(actual.untraced() == expected.untraced())
+      assert.isTrue(actual.untraced == expected.untraced)
     })
 
     it("should handle successes with left", async () => {
@@ -424,7 +424,7 @@ describe.concurrent("Effect", () => {
 
       const { actual, expected } = await program.unsafeRunPromise()
 
-      assert.isTrue(actual.untraced() == expected.untraced())
+      assert.isTrue(actual.untraced == expected.untraced)
     })
 
     it("should handle failures", async () => {
@@ -435,7 +435,7 @@ describe.concurrent("Effect", () => {
 
       const { actual, expected } = await program.unsafeRunPromise()
 
-      assert.isTrue(actual.untraced() == expected.untraced())
+      assert.isTrue(actual.untraced == expected.untraced)
     })
   })
 })

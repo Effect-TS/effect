@@ -34,11 +34,11 @@ describe.concurrent("Sink", () => {
     it("fails if upstream fails", async () => {
       const program = Stream(1)
         .mapEffect(() => Effect.fail("boom"))
-        .run(Sink.drain())
+        .run(Sink.drain)
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail("boom"))
+      assert.isTrue(result.untraced == Exit.fail("boom"))
     })
   })
 
@@ -80,7 +80,7 @@ describe.concurrent("Sink", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.asImmutableArray() == ImmutableArray(1, 2, 3, 4))
+      assert.isTrue(result.toImmutableArray == ImmutableArray(1, 2, 3, 4))
     })
   })
 
@@ -254,7 +254,7 @@ describe.concurrent("Sink", () => {
         List.empty<number>(),
         (option) => option.fold(constTrue, (n) => n < 5),
         (acc: List<number>, a) => (a.isSome() ? acc.prepend(a.value) : acc)
-      ).map((list: List<number>) => list.reverse())
+      ).map((list: List<number>) => list.reverse)
       const stream = Stream.fromChunk(Chunk.range(1, 100))
       const program = (stream + stream).rechunk(3).run(sink)
 
@@ -266,7 +266,7 @@ describe.concurrent("Sink", () => {
 
   describe.concurrent("head", () => {
     it("should return the first element", async () => {
-      const program = Stream.fromChunks(Chunk(1, 2), Chunk(3, 4)).run(Sink.head())
+      const program = Stream.fromChunks(Chunk(1, 2), Chunk(3, 4)).run(Sink.head)
 
       const result = await program.unsafeRunPromise()
 
@@ -274,7 +274,7 @@ describe.concurrent("Sink", () => {
     })
 
     it("should return None for the empty stream", async () => {
-      const program = Stream.empty.run(Sink.head())
+      const program = Stream.empty.run(Sink.head)
 
       const result = await program.unsafeRunPromise()
 

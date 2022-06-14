@@ -18,7 +18,7 @@ describe.concurrent("STM", () => {
       const program = Effect.Do()
         .bind("iterable", () => Effect.succeed(Chunk.range(1, 100).map((n) => TRef.make(n))))
         .bind("tRefs", ({ iterable }) => STM.collectAll(iterable).commit())
-        .flatMap(({ tRefs }) => Effect.forEachPar(tRefs, (tRef) => tRef.get().commit()))
+        .flatMap(({ tRefs }) => Effect.forEachPar(tRefs, (tRef) => tRef.get.commit()))
 
       const result = await program.unsafeRunPromise()
 
@@ -29,7 +29,7 @@ describe.concurrent("STM", () => {
       const program = Effect.Do()
         .bind("iterable", () => Effect.succeed(Chunk.range(1, 100).map((n) => TRef.make(n))))
         .bind("tRefs", ({ iterable }) => STM.collectAll(Chunk.from(iterable)).commit())
-        .flatMap(({ tRefs }) => Effect.forEachPar(tRefs, (tRef) => tRef.get().commit()))
+        .flatMap(({ tRefs }) => Effect.forEachPar(tRefs, (tRef) => tRef.get.commit()))
 
       const result = await program.unsafeRunPromise()
 
@@ -72,7 +72,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(1))
+      assert.isTrue(result.untraced == Exit.fail(1))
     })
   })
   describe.concurrent("reduceAll", () => {

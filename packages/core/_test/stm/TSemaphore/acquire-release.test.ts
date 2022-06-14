@@ -13,7 +13,7 @@ describe.concurrent("TSemaphore", () => {
     it("acquiring and releasing a permit should not change the availability", async () => {
       const program = TSemaphore.make(10)
         .flatMap(
-          (semaphore) => semaphore.acquire() > semaphore.release() > semaphore.available()
+          (semaphore) => semaphore.acquire > semaphore.release > semaphore.available
         )
         .commit()
 
@@ -30,9 +30,9 @@ describe.concurrent("TSemaphore", () => {
       const program = TSemaphore.make(capacity)
         .flatMap(
           (semaphore) =>
-            repeat(semaphore.acquire(), acquire) >
-              repeat(semaphore.release(), release) >
-              semaphore.available()
+            repeat(semaphore.acquire, acquire) >
+              repeat(semaphore.release, release) >
+              semaphore.available
         )
         .commit()
 
@@ -54,11 +54,11 @@ describe.concurrent("TSemaphore", () => {
         return STM.gen(function*(_) {
           yield* _(acquire(50))
 
-          const usedCapacity = yield* _(semaphore.available())
+          const usedCapacity = yield* _(semaphore.available)
 
           yield* _(release(capacity))
 
-          const freeCapacity = yield* _(semaphore.available())
+          const freeCapacity = yield* _(semaphore.available)
 
           return Tuple(usedCapacity, freeCapacity)
         })
@@ -73,8 +73,8 @@ describe.concurrent("TSemaphore", () => {
         )
         const acquireReleaseRep = acquireRelease(
           semaphore,
-          (n) => repeat(semaphore.acquire(), n),
-          (n) => repeat(semaphore.release(), n)
+          (n) => repeat(semaphore.acquire, n),
+          (n) => repeat(semaphore.release, n)
         )
         const resN = yield* _(acquireReleaseN)
         const resRep = yield* _(acquireReleaseRep)
@@ -102,7 +102,7 @@ describe.concurrent("TSemaphore", () => {
         .bind("fiber", ({ effect }) => effect.fork())
         .tap(({ deferred }) => deferred.await())
         .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ semaphore }) => semaphore.available().commit())
+        .flatMap(({ semaphore }) => semaphore.available.commit())
 
       const result = await program.unsafeRunPromise()
 
@@ -120,7 +120,7 @@ describe.concurrent("TSemaphore", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.isInterrupted())
+      assert.isTrue(result.isInterrupted)
       assert.isTrue(called.mock.calls.length === 0)
     })
   })

@@ -111,7 +111,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
         .modify((state) => {
           switch (state._typeId) {
             case EmitTypeId: {
-              const dequeued = state.notifyConsumers.dequeue()
+              const dequeued = state.notifyConsumers.dequeue
 
               if (dequeued._tag === "Some") {
                 const {

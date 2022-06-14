@@ -45,7 +45,7 @@ describe.concurrent("Stream", () => {
       //     ZStream
       //       .fromZIO(Clock.instant.flatMap(time => times.update(time +: _)))
       //       .flatMap(_ => ZStream.fail(None))
-      //   streamFib <- stream.retry(Schedule.exponential(1.second)).take(3).runDrain.fork
+      //   streamFib <- stream.retry(Schedule.exponential(1.second)).take(3).runDrain().fork
       //   _         <- TestClock.adjust(1.second)
       //   _         <- TestClock.adjust(2.second)
       //   _         <- streamFib.interrupt
@@ -68,7 +68,7 @@ describe.concurrent("Stream", () => {
       //     streamFib <- stream
       //                    .retry(Schedule.exponential(1.second))
       //                    .take(2)
-      //                    .runDrain
+      //                    .runDrain()
       //                    .fork
       //     _       <- TestClock.adjust(1.second)
       //     _       <- TestClock.adjust(2.second)

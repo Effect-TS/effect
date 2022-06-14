@@ -149,7 +149,7 @@ export function debounce_<R, E, A>(
           concreteStream(self)
 
           return (
-            Stream.scoped((self.channel >> producer).runScoped().fork()) >
+            Stream.scoped((self.channel >> producer).runScoped.fork()) >
               new StreamInternal(consumer(new NotStarted()))
           )
         })

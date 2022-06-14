@@ -22,7 +22,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.reverse() == List("acquire outer", "release outer"))
+      assert.isTrue(result.reverse == List("acquire outer", "release outer"))
     })
   })
 })

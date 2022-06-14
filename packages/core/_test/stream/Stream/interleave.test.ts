@@ -15,16 +15,16 @@ describe.concurrent("Stream", () => {
         .map((hd) => {
           if (hd) {
             return s1.length > 0
-              ? interleave(b.unsafeTail(), s1.unsafeTail(), s2).prepend(s1.unsafeHead())
-              : s2.isEmpty()
+              ? interleave(b.unsafeTail, s1.unsafeTail, s2).prepend(s1.unsafeHead)
+              : s2.isEmpty
               ? Chunk.empty<number>()
-              : interleave(b.unsafeTail(), Chunk.empty(), s2)
+              : interleave(b.unsafeTail, Chunk.empty(), s2)
           }
           return s2.length > 0
-            ? interleave(b.unsafeTail(), s1, s2.unsafeTail()).prepend(s2.unsafeHead())
-            : s1.isEmpty()
+            ? interleave(b.unsafeTail, s1, s2.unsafeTail).prepend(s2.unsafeHead)
+            : s1.isEmpty
             ? Chunk.empty<number>()
-            : interleave(b.unsafeTail(), s1, Chunk.empty())
+            : interleave(b.unsafeTail, s1, Chunk.empty())
         })
         .getOrElse(Chunk.empty())
     }

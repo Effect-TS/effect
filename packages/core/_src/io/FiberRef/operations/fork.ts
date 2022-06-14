@@ -4,7 +4,7 @@ import { concreteFiberRef } from "@effect/core/io/FiberRef/operations/_internal/
  * The initial patch that is applied to the value of the `FiberRef` when a new
  * fiber is forked.
  *
- * @tsplus fluent ets/FiberRef fork
+ * @tsplus getter ets/FiberRef fork
  */
 export function fork_<Value, Patch>(self: FiberRef<Value, Patch>): Patch {
   concreteFiberRef(self)

@@ -38,7 +38,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == chunks.flatten())
+      assert.isTrue(result == chunks.flatten)
     })
   })
 })

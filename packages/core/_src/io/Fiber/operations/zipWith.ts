@@ -14,7 +14,7 @@ export function zipWith_<E, E1, A, B, C>(
   f: (a: A, b: B) => C
 ): Fiber<E | E1, C> {
   return makeSynthetic({
-    id: self.id().getOrElse(that.id()),
+    id: self.id.getOrElse(that.id),
     await: self
       .await()
       .flatMap((exit) => Effect.done(exit))

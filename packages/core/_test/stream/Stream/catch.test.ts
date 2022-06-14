@@ -74,7 +74,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.flatten() == Chunk(1, 2, 3))
+      assert.isTrue(result.flatten == Chunk(1, 2, 3))
     })
 
     it("propagates the right exit value to the failing stream (ZIO issue #3609)", async () => {
@@ -90,7 +90,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.untraced() == Exit.fail("boom"))
+      assert.isTrue(result.untraced == Exit.fail("boom"))
     })
   })
 
@@ -134,7 +134,7 @@ describe.concurrent("Stream", () => {
 
     it("halts stream when partial function does not match", async () => {
       const program = (Stream(1, 2) + Stream.fail("boom"))
-        .catchSomeCause((cause) => cause.isEmpty() ? Option.some(Stream(3, 4)) : Option.none)
+        .catchSomeCause((cause) => cause.isEmpty ? Option.some(Stream(3, 4)) : Option.none)
         .runCollect()
         .either()
 
@@ -158,7 +158,7 @@ describe.concurrent("Stream", () => {
       const { called, exit } = await program.unsafeRunPromise()
 
       assert.isTrue(called)
-      assert.isTrue(exit.untraced() == Exit.fail("boom"))
+      assert.isTrue(exit.untraced == Exit.fail("boom"))
     })
   })
 })

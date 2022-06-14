@@ -6,7 +6,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(input))
+      assert.isTrue(result.untraced == Exit.fail(input))
     })
 
     it("accumulate errors and ignore successes", async () => {
@@ -15,7 +15,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(Chunk(1, 3, 5, 7, 9)))
+      assert.isTrue(result.untraced == Exit.fail(Chunk(1, 3, 5, 7, 9)))
     })
 
     it("accumulate successes", async () => {
@@ -37,7 +37,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(input))
+      assert.isTrue(result.untraced == Exit.fail(input))
     })
 
     it("runs sequentially and short circuits on first success validation", async () => {
@@ -49,7 +49,7 @@ describe.concurrent("STM", () => {
             input,
             (n) => counter.update((_) => _ + 1) > (n === 6 ? STM.succeed(n) : STM.fail(n))
           ))
-        .bind("count", ({ counter }) => counter.get())
+        .bind("count", ({ counter }) => counter.get)
         .commit()
 
       const { count, result } = await program.unsafeRunPromise()
@@ -65,7 +65,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(input))
+      assert.isTrue(result.untraced == Exit.fail(input))
     })
   })
 })

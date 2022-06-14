@@ -24,7 +24,7 @@ export function fold_<E, Z>(
     onThenCause,
     onBothCause,
     onStacklessCause
-  ).run()
+  ).run
 }
 
 /**

@@ -16,6 +16,6 @@ export function peekOption<A>(self: TQueue<A>): USTM<Option<A>> {
       throw new STMInterruptException(fiberId)
     }
 
-    return queue.head()
+    return queue.head
   })
 }

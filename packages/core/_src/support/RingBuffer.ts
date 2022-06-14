@@ -32,6 +32,6 @@ export class RingBuffer<T> {
   }
 
   toChunkReversed(): Chunk<T> {
-    return Chunk.from(this.toChunk().reverse())
+    return Chunk.from(this.toChunk().reverse)
   }
 }

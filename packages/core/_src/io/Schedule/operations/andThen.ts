@@ -15,7 +15,7 @@ export function andThen_<State, Env, In, Out, State1, Env1, In1, Out2>(
   In & In1,
   Out | Out2
 > {
-  return self.andThenEither(that).map((either) => either.merge())
+  return self.andThenEither(that).map((either) => either.merge)
 }
 
 /**

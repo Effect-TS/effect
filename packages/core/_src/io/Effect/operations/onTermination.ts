@@ -14,7 +14,7 @@ export function onTermination_<R, E, A, R2, X>(
     () => self,
     (_, exit) =>
       exit._tag === "Failure"
-        ? exit.cause.failureOrCause().fold(() => Effect.unit, cleanup)
+        ? exit.cause.failureOrCause.fold(() => Effect.unit, cleanup)
         : Effect.unit
   )
 }

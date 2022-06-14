@@ -9,7 +9,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(message))
+      assert.isTrue(result.untraced == Exit.fail(message))
     })
 
     it("leaves the rest", async () => {
@@ -19,7 +19,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(error))
+      assert.isTrue(result.untraced == Exit.die(error))
     })
   })
 
@@ -34,7 +34,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(message))
+      assert.isTrue(result.untraced == Exit.fail(message))
     })
 
     it("leaves the rest", async () => {
@@ -47,7 +47,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(error))
+      assert.isTrue(result.untraced == Exit.die(error))
     })
 
     it("uses the specified function to convert the `E` into an `E1`", async () => {
@@ -59,7 +59,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(Option.none))
+      assert.isTrue(result.untraced == Exit.fail(Option.none))
     })
   })
 })

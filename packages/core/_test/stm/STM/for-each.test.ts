@@ -5,7 +5,7 @@ describe.concurrent("STM", () => {
       const program = Effect.Do()
         .bind("tRef", () => TRef.makeCommit(0))
         .tap(({ tRef }) => STM.forEach(list, (n) => tRef.update((_) => _ + n)).commit())
-        .flatMap(({ tRef }) => tRef.get().commit())
+        .flatMap(({ tRef }) => tRef.get.commit())
 
       const result = await program.unsafeRunPromise()
 
@@ -17,7 +17,7 @@ describe.concurrent("STM", () => {
       const program = Effect.Do()
         .bind("tRef", () => TRef.makeCommit(0))
         .tap(({ tRef }) => STM.forEach(chunk, (n) => tRef.update((_) => _ + n)).commit())
-        .flatMap(({ tRef }) => tRef.get().commit())
+        .flatMap(({ tRef }) => tRef.get.commit())
 
       const result = await program.unsafeRunPromise()
 
@@ -31,7 +31,7 @@ describe.concurrent("STM", () => {
       const program = Effect.Do()
         .bind("tRef", () => TRef.makeCommit(Chunk.empty<number>()))
         .tap(({ tRef }) => STM.forEach(input, (n) => tRef.update((chunk) => chunk.append(n))).commit())
-        .flatMap(({ tRef }) => tRef.get().commit())
+        .flatMap(({ tRef }) => tRef.get.commit())
 
       const result = await program.unsafeRunPromise()
 
@@ -43,7 +43,7 @@ describe.concurrent("STM", () => {
       const program = Effect.Do()
         .bind("tRef", () => TRef.makeCommit<List<number>>(List.empty()))
         .tap(({ tRef }) => STM.forEach(input, (n) => tRef.update((list) => list.prepend(n))).commit())
-        .flatMap(({ tRef }) => tRef.get().map((list) => list.reverse()).commit())
+        .flatMap(({ tRef }) => tRef.get.map((list) => list.reverse).commit())
 
       const result = await program.unsafeRunPromise()
 
@@ -127,7 +127,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(1))
+      assert.isTrue(result.untraced == Exit.fail(1))
     })
   })
 })

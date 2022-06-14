@@ -10,10 +10,10 @@ describe.concurrent("STM", () => {
           .bind("tref2", () => TRef.makeCommit("failed!"))
           .flatMap(({ tref1, tref2 }) =>
             tref1
-              .get()
+              .get
               .tap((n) => STM.check(n > 0))
               .tap(() => tref2.set("succeeded!"))
-              .flatMap(() => tref2.get())
+              .flatMap(() => tref2.get)
               .commit()
           )
 
@@ -27,11 +27,11 @@ describe.concurrent("STM", () => {
           .bind("tref", () => TRef.makeCommit(42))
           .bind("join", ({ tref }) =>
             tref
-              .get()
+              .get
               .retryUntil((n) => n === 42)
               .commit())
           .tap(({ tref }) => tref.set(9).commit())
-          .bind("value", ({ tref }) => tref.get().commit())
+          .bind("value", ({ tref }) => tref.get.commit())
 
         const { join, value } = await program.unsafeRunPromise()
 
@@ -49,18 +49,18 @@ describe.concurrent("STM", () => {
             (
               STM.atomically(
                 STM.Do()
-                  .bind("v1", () => tref1.get())
+                  .bind("v1", () => tref1.get)
                   .tap(() => STM.succeed(barrier.open()))
                   .tap(({ v1 }) => STM.check(v1 > 42))
                   .tap(() => tref2.set("succeeded!"))
-                  .flatMap(() => tref2.get())
+                  .flatMap(() => tref2.get)
               ) < done.succeed(undefined)
             ).fork())
           .tap(() => barrier.await())
-          .bind("oldValue", ({ tref2 }) => tref2.get().commit())
+          .bind("oldValue", ({ tref2 }) => tref2.get.commit())
           .tap(({ tref1 }) => tref1.set(43).commit())
           .tap(({ done }) => done.await())
-          .bind("newValue", ({ tref2 }) => tref2.get().commit())
+          .bind("newValue", ({ tref2 }) => tref2.get.commit())
           .bind("join", ({ fiber }) => fiber.join())
 
         const { join, newValue, oldValue } = await program.unsafeRunPromise()
@@ -79,12 +79,12 @@ describe.concurrent("STM", () => {
           .tap(({ sender }) => sender.update((n) => n + 100).commit())
           .tap(({ sender }) =>
             sender
-              .get()
+              .get
               .retryUntil((n) => n === 50)
               .commit()
           )
-          .bind("senderValue", ({ sender }) => sender.get().commit())
-          .bind("receiverValue", ({ receiver }) => receiver.get().commit())
+          .bind("senderValue", ({ sender }) => sender.get.commit())
+          .bind("receiverValue", ({ receiver }) => receiver.get.commit())
 
         const { receiverValue, senderValue } = await program.unsafeRunPromise()
 
@@ -103,8 +103,8 @@ describe.concurrent("STM", () => {
           .bind("fiber", ({ toReceiver, toSender }) => Effect.forkAll(Chunk.fill(10, () => toReceiver > toSender)))
           .tap(({ sender }) => sender.update((n) => n + 50).commit())
           .tap(({ fiber }) => fiber.join())
-          .bind("senderValue", ({ sender }) => sender.get().commit())
-          .bind("receiverValue", ({ receiver }) => receiver.get().commit())
+          .bind("senderValue", ({ sender }) => sender.get.commit())
+          .bind("receiverValue", ({ receiver }) => receiver.get.commit())
 
         const { receiverValue, senderValue } = await program.unsafeRunPromise()
 
@@ -123,8 +123,8 @@ describe.concurrent("STM", () => {
           .tap(({ sender }) => sender.update((n) => n + 50).commit())
           .tap(({ fiber1 }) => fiber1.join())
           .tap(({ fiber2 }) => fiber2.join())
-          .bind("senderValue", ({ sender }) => sender.get().commit())
-          .bind("receiverValue", ({ receiver }) => receiver.get().commit())
+          .bind("senderValue", ({ sender }) => sender.get.commit())
+          .bind("receiverValue", ({ receiver }) => receiver.get.commit())
 
         const { receiverValue, senderValue } = await program.unsafeRunPromise()
 
@@ -141,8 +141,8 @@ describe.concurrent("STM", () => {
           .bind("fiber", ({ toReceiver, toSender }) => toReceiver.zipPar(toSender).fork())
           .tap(({ sender }) => sender.update((n) => n + 50).commit())
           .tap(({ fiber }) => fiber.join())
-          .bind("senderValue", ({ sender }) => sender.get().commit())
-          .bind("receiverValue", ({ receiver }) => receiver.get().commit())
+          .bind("senderValue", ({ sender }) => sender.get.commit())
+          .bind("receiverValue", ({ receiver }) => receiver.get.commit())
 
         const { receiverValue, senderValue } = await program.unsafeRunPromise()
 
@@ -158,14 +158,14 @@ describe.concurrent("STM", () => {
           Effect.forkAll(
             Chunk.range(0, 20).map((i) =>
               tRef
-                .get()
+                .get
                 .flatMap((v) => STM.check(v === i))
                 .zipRight(tRef.update((n) => n + 1).map(constVoid))
                 .commit()
             )
           ))
         .tap(({ fiber }) => fiber.join())
-        .flatMap(({ tRef }) => tRef.get().commit())
+        .flatMap(({ tRef }) => tRef.get.commit())
 
       const result = await program.unsafeRunPromise()
 
@@ -179,7 +179,7 @@ describe.concurrent("STM", () => {
           .bind("tRef", () => TRef.makeCommit(0))
           .bind("fiber", ({ tRef }) =>
             tRef
-              .get()
+              .get
               .tap(() => STM.succeed(barrier.open()))
               .tap((v) => STM.check(v > 0))
               .tap(() => tRef.update((n) => 10 / n))
@@ -189,7 +189,7 @@ describe.concurrent("STM", () => {
           .tap(() => barrier.await())
           .tap(({ fiber }) => fiber.interrupt())
           .tap(({ tRef }) => tRef.set(10).commit())
-          .flatMap(({ tRef }) => Effect.sleep((10).millis) > tRef.get().commit())
+          .flatMap(({ tRef }) => Effect.sleep((10).millis) > tRef.get.commit())
 
         const result = await program.unsafeRunPromise()
 
@@ -204,7 +204,7 @@ describe.concurrent("STM", () => {
             Effect.forkAll(
               Chunk.fill(100, () =>
                 tRef
-                  .get()
+                  .get
                   .tap(() => STM.succeed(barrier.open()))
                   .tap((v) => STM.check(v < 0))
                   .tap(() => tRef.set(10))
@@ -213,7 +213,7 @@ describe.concurrent("STM", () => {
           .tap(() => barrier.await())
           .tap(({ fiber }) => fiber.interrupt())
           .tap(({ tRef }) => tRef.set(-1).commit())
-          .flatMap(({ tRef }) => Effect.sleep((10).millis) > tRef.get().commit())
+          .flatMap(({ tRef }) => Effect.sleep((10).millis) > tRef.get.commit())
 
         const result = await program.unsafeRunPromise()
 
@@ -226,7 +226,7 @@ describe.concurrent("STM", () => {
           .bind("tRef", () => TRef.makeCommit(1))
           .bind("fiber", ({ tRef }) =>
             tRef
-              .get()
+              .get
               .flatMap((n) => STM.check(n === 0))
               .commit()
               .fork())
@@ -236,7 +236,7 @@ describe.concurrent("STM", () => {
         const { observe, selfId } = await program.unsafeRunPromise()
 
         assert.isTrue(
-          observe.mapLeft((cause) => cause.untraced()) ==
+          observe.mapLeft((cause) => cause.untraced) ==
             Either.left(Cause.interrupt(selfId))
         )
       })

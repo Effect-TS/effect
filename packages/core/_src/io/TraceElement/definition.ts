@@ -112,7 +112,7 @@ export function parse(trace?: string): TraceElement {
 }
 
 /**
- * @tsplus fluent ets/TraceElement stringify
+ * @tsplus getter ets/TraceElement stringify
  */
 export function stringify(self: TraceElement): string {
   switch (self._tag) {

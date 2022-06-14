@@ -41,7 +41,7 @@ function allocate<K, V>(capacity: number, data: List<Tuple<[K, V]>>): USTM<TMap<
  */
 export function fromIterable<K, V>(data0: Collection<Tuple<[K, V]>>): USTM<TMap<K, V>> {
   return STM.suspend(() => {
-    const data = data0.asList()
+    const data = data0.toList()
     const size = data.length
     const capacity = size < INITIAL_CAPACITY ? INITIAL_CAPACITY : nextPowerOfTwo(size)
 

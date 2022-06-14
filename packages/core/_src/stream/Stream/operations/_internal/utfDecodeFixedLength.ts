@@ -36,7 +36,7 @@ function readThenTransduce<R, E>(
       )
     },
     (err) => Channel.fail(err),
-    () => buffer.isEmpty() ? Channel.unit : Channel.write(stringChunkFrom(buffer, charset))
+    () => buffer.isEmpty ? Channel.unit : Channel.write(stringChunkFrom(buffer, charset))
   )
 }
 
@@ -58,5 +58,5 @@ function process(
     } = bytes.splitAt(bytes.length - remainder)
     return Tuple(stringChunkFrom(fullChunk, charset), rest)
   }
-  return Tuple(emptyStringChunk, bytes.materialize())
+  return Tuple(emptyStringChunk, bytes.materialize)
 }

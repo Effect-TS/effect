@@ -9,7 +9,7 @@ describe.concurrent("STM", () => {
             .commit()
             .provideEnvironment(Env(STMEnv.Tag, env))
         )
-        .flatMap((env) => env.ref.get().commit())
+        .flatMap((env) => env.ref.get.commit())
 
       const result = await program.unsafeRunPromise()
 
@@ -23,7 +23,7 @@ describe.concurrent("STM", () => {
             .provideEnvironment(Env(STMEnv.Tag, env))
             .commit()
         )
-        .flatMap((env) => env.ref.get().commit())
+        .flatMap((env) => env.ref.get.commit())
 
       const result = await program.unsafeRunPromise()
 
@@ -36,8 +36,8 @@ describe.concurrent("STM", () => {
       const program = STM.Do()
         .bind("refA", () => TRef.make(10))
         .bind("refB", () => TRef.make(0))
-        .bind("a", ({ refA, refB }) => refA.get().tap((n) => refB.set(n + 1)))
-        .bind("b", ({ refB }) => refB.get())
+        .bind("a", ({ refA, refB }) => refA.get.tap((n) => refB.set(n + 1)))
+        .bind("b", ({ refB }) => refB.get)
         .commit()
 
       const { a, b } = await program.unsafeRunPromise()

@@ -203,8 +203,8 @@ export function onInterrupt_<R, E, A, R2, X>(
   return Effect.uninterruptibleMask(({ restore }) =>
     restore(self).foldCauseEffect(
       (cause) =>
-        cause.isInterrupted()
-          ? cleanup(cause.interruptors()) > Effect.failCauseNow(cause)
+        cause.isInterrupted
+          ? cleanup(cause.interruptors) > Effect.failCauseNow(cause)
           : Effect.failCauseNow(cause),
       Effect.succeedNow
     )
@@ -233,8 +233,8 @@ export function onInterruptPolymorphic_<R, E, A, R2, E2, X>(
   return Effect.uninterruptibleMask(({ restore }) =>
     restore(self).foldCauseEffect(
       (cause) =>
-        cause.isInterrupted()
-          ? cleanup(cause.interruptors()).foldCauseEffect(
+        cause.isInterrupted
+          ? cleanup(cause.interruptors).foldCauseEffect(
             (_) => Effect.failCauseNow(_),
             () => Effect.failCauseNow(cause)
           )

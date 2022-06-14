@@ -12,7 +12,7 @@ describe("Channel", () => {
               (started.succeed(undefined) > latch.await()).onInterrupt(() => interrupted.set(true))
             )
               .interruptWhenDeferred(halt)
-              .runDrain()
+              .runDrain
               .fork())
           .tap(({ halt, started }) => started.await() > halt.succeed(undefined))
           .tap(({ fiber }) => fiber.await())
@@ -29,7 +29,7 @@ describe("Channel", () => {
           .flatMap((deferred) =>
             (Channel.write(1) > Channel.fromEffect(Effect.never))
               .interruptWhen(deferred.await())
-              .runDrain()
+              .runDrain
               .either()
           )
 
@@ -51,7 +51,7 @@ describe("Channel", () => {
               (started.succeed(undefined) > latch.await()).onInterrupt(() => interrupted.set(true))
             )
               .interruptWhen(halt.await())
-              .runDrain()
+              .runDrain
               .fork())
           .tap(({ halt, started }) => started.await() > halt.succeed(undefined))
           .tap(({ fiber }) => fiber.await())
@@ -68,7 +68,7 @@ describe("Channel", () => {
           .flatMap((deferred) =>
             Channel.fromEffect(Effect.never)
               .interruptWhen(deferred.await())
-              .runDrain()
+              .runDrain
               .either()
           )
 

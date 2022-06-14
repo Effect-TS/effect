@@ -19,7 +19,7 @@ describe.concurrent("Channel", () => {
 
               return (refReader(source) >> twoWriters)
                 .mapEffect(() => dest.get())
-                .run()
+                .run
                 .map((result) => {
                   let missing = HashSet.from(data)
                   let surplus = HashSet.from(result)
@@ -61,7 +61,7 @@ describe.concurrent("Channel", () => {
 
               return (refReader(source) >> twoWriters)
                 .mapEffect(() => dest.get())
-                .run()
+                .run
                 .map((result) => {
                   const expected = HashSet.from(data.map(f))
                   let missing = HashSet.from(expected)

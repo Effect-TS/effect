@@ -4,7 +4,7 @@ import { realFiberId } from "@effect/core/io/FiberId/definition"
  * Convert a `FiberId` into an `Option<FiberId>`.
  */
 export function toOption(self: FiberId): Option<FiberId> {
-  return toOptionSafe(self).run()
+  return toOptionSafe(self).run
 }
 
 function toOptionSafe(self: FiberId): Eval<Option<FiberId>> {
@@ -17,7 +17,7 @@ function toOptionSafe(self: FiberId): Eval<Option<FiberId>> {
       return Eval.succeed(Option.some(self))
     }
     case "Composite": {
-      let base = Eval.succeed(HashSet<FiberId>())
+      let base = Eval.succeed(HashSet.empty<FiberId>())
       for (const fiberId of self.fiberIds) {
         base = base.zipWith(
           Eval.suspend(toOptionSafe(fiberId)),

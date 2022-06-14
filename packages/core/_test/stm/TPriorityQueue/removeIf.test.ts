@@ -5,7 +5,7 @@ describe.concurrent("TPriorityQueue", () => {
     it("removeIf", async () => {
       const program = TPriorityQueue.from(eventOrd)(as)
         .tap((queue) => queue.removeIf(eventPredicate))
-        .flatMap((queue) => queue.toChunk())
+        .flatMap((queue) => queue.toChunk)
         .commit()
 
       const result = await program.unsafeRunPromise()

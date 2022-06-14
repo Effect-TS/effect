@@ -141,7 +141,7 @@ describe.concurrent("Stream", () => {
       const { cancelled, result } = await program.unsafeRunPromise()
 
       assert.isTrue(cancelled)
-      assert.isTrue(result.untraced() == Exit.die(error))
+      assert.isTrue(result.untraced == Exit.die(error))
     })
 
     it("outer defects interrupt all fibers", async () => {
@@ -165,7 +165,7 @@ describe.concurrent("Stream", () => {
       const { cancelled, result } = await program.unsafeRunPromise()
 
       assert.isTrue(cancelled)
-      assert.isTrue(result.untraced() == Exit.die(error))
+      assert.isTrue(result.untraced == Exit.die(error))
     })
 
     it("finalizer ordering", async () => {

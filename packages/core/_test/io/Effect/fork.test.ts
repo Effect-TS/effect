@@ -7,7 +7,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isInterrupted())
+      assert.isTrue(result.isInterrupted)
     })
 
     it("propagates interruption with zip of defect", async () => {
@@ -21,12 +21,12 @@ describe.concurrent("Effect", () => {
         .flatMap(({ fiber }) =>
           fiber
             .interrupt()
-            .map((exit) => exit.mapErrorCause((cause) => cause.untraced()))
+            .map((exit) => exit.mapErrorCause((cause) => cause.untraced))
         )
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isInterrupted())
+      assert.isTrue(result.isInterrupted)
     })
   })
 

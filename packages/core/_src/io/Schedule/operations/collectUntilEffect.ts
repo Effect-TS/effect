@@ -7,5 +7,5 @@
 export function collectUntilEffect<Env, A>(
   f: (a: A) => Effect.RIO<Env, boolean>
 ): Schedule<Tuple<[void, Chunk<A>]>, Env, A, Chunk<A>> {
-  return Schedule.recurUntilEffect(f).collectAll()
+  return Schedule.recurUntilEffect(f).collectAll
 }

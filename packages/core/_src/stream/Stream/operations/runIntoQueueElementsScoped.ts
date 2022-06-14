@@ -39,8 +39,8 @@ export function runIntoQueueElementsScoped_<R, E extends E1, A, E1>(
   concreteStream(self)
   return (self.channel >> writer)
     .mapOutEffect((take) => queue().offer(take))
-    .drain()
-    .runScoped()
+    .drain
+    .runScoped
     .asUnit()
 }
 

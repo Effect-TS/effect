@@ -39,7 +39,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.untraced() == Exit.fail("boom"))
+      assert.isTrue(result.untraced == Exit.fail("boom"))
     })
   })
 
@@ -263,7 +263,7 @@ describe.concurrent("Stream", () => {
       //   streamFiber <- ZStream
       //                    .repeatZIOWithSchedule(effect, schedule)
       //                    .tap(_ => collected.update(_ + 1))
-      //                    .runDrain
+      //                    .runDrain()
       //                    .fork
       //   _                      <- TestClock.adjust(0.seconds)
       //   nrCollectedImmediately <- collected.get

@@ -52,7 +52,7 @@ function collecting<R, E, A, R2, E2, B>(
     },
     (cause) => Channel.failCause(cause),
     () => {
-      if (buffer.isEmpty()) {
+      if (buffer.isEmpty) {
         return Channel.unit
       }
       const pipeline = f(buffer)

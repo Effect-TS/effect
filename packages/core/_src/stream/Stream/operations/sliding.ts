@@ -44,7 +44,7 @@ function reader<E, A>(
   return Channel.readWithCause(
     (input: Chunk<A>) =>
       Channel.write(
-        input.zipWithIndex().collect(({ tuple: [a, index] }) => {
+        input.zipWithIndex.collect(({ tuple: [a, index] }) => {
           queue.put(a)
 
           const currentIndex = queueSize + index + 1
@@ -76,7 +76,7 @@ function emitOnStreamEnd<E, A>(
 ): Channel<never, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown> {
   if (queueSize < chunkSize) {
     const items = queue.toChunk()
-    const result = items.isEmpty() ? Chunk.empty<Chunk<A>>() : Chunk.single(items)
+    const result = items.isEmpty ? Chunk.empty<Chunk<A>>() : Chunk.single(items)
     return Channel.write(result) > channelEnd
   }
 
@@ -88,7 +88,7 @@ function emitOnStreamEnd<E, A>(
 
   const leftovers = queueSize - (lastEmitIndex - chunkSize + stepSize)
   const lastItems = queue.toChunk().takeRight(leftovers)
-  const result = lastItems.isEmpty() ? Chunk.empty<Chunk<A>>() : Chunk.single(lastItems)
+  const result = lastItems.isEmpty ? Chunk.empty<Chunk<A>>() : Chunk.single(lastItems)
 
   return Channel.write(result) > channelEnd
 }

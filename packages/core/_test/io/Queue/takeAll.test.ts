@@ -25,8 +25,8 @@ describe.concurrent("Queue", () => {
 
       const { v1, v2 } = await program.unsafeRunPromise()
 
-      assert.isTrue(v1.isEmpty())
-      assert.isTrue(v2.isEmpty())
+      assert.isTrue(v1.isEmpty)
+      assert.isTrue(v2.isEmpty)
     })
 
     it("does not return more than the queue size", async () => {

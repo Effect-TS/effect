@@ -1,8 +1,8 @@
 /**
  * Returns a new schedule that collects the outputs of this one into a chunk.
  *
- * @tsplus fluent ets/Schedule collectAll
- * @tsplus fluent ets/Schedule/WithState collectAll
+ * @tsplus getter ets/Schedule collectAll
+ * @tsplus getter ets/Schedule/WithState collectAll
  */
 export function collectAllFrom<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>

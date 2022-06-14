@@ -30,7 +30,7 @@ function splitInternal<R, E, A>(
   const {
     tuple: [chunk, remaining]
   } = (leftovers + input).splitWhere(f)
-  return chunk.isEmpty() || remaining.isEmpty()
+  return chunk.isEmpty || remaining.isEmpty
     ? loop<R, E, A>(chunk + remaining.drop(1), f)
     : Channel.write(Chunk.single(chunk)) >
       splitInternal<R, E, A>(Chunk.empty<A>(), remaining.drop(1), f)
@@ -45,7 +45,7 @@ function loop<R, E, A>(
     (input: Chunk<A>) => splitInternal<R, E, A>(leftovers, input, f),
     (err) => Channel.fail(err),
     () =>
-      leftovers.isEmpty()
+      leftovers.isEmpty
         ? Channel.unit
         : leftovers.find(f).isNone()
         ? Channel.write(Chunk.single(leftovers)) > Channel.unit

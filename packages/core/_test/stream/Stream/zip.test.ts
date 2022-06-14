@@ -16,7 +16,7 @@ describe.concurrent("Stream", () => {
       //       map.get(k).fold(map + (k -> v))(v1 => map + (k -> (v + v1)))
       //     }
       //   }.sorted
-      //   assertM(actual.runCollect)(equalTo(expected))
+      //   assertM(actual.runCollect())(equalTo(expected))
       // }
     })
   })
@@ -37,7 +37,7 @@ describe.concurrent("Stream", () => {
       const left = Chunk(Chunk(1, 2), Chunk(3, 4), Chunk(5))
       const right = Chunk(Chunk(6, 7), Chunk(8, 9), Chunk(10))
       const program = Effect.struct({
-        chunkResult: Effect.succeed(left.flatten().zip(right.flatten())),
+        chunkResult: Effect.succeed(left.flatten.zip(right.flatten)),
         streamResult: Stream.fromChunks(...left)
           .zip(Stream.fromChunks(...right))
           .runCollect()
@@ -74,7 +74,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(error))
+      assert.isTrue(result.untraced == Exit.die(error))
     })
   })
 
@@ -101,8 +101,8 @@ describe.concurrent("Stream", () => {
         .runCollect()
 
       const result = await program.unsafeRunPromise()
-      const expected = left.flatten().zipAllWith(
-        right.flatten(),
+      const expected = left.flatten.zipAllWith(
+        right.flatten,
         (a, b) => Tuple(Option.some(a), Option.some(b)),
         (a) => Tuple(Option.some(a), Option.none),
         (b) => Tuple(Option.none, Option.some(b))
@@ -117,7 +117,7 @@ describe.concurrent("Stream", () => {
       const stream = Stream.range(0, 5)
       const program = Effect.struct({
         streamResult: stream.zipWithIndex().runCollect(),
-        chunkResult: stream.runCollect().map((chunk) => chunk.zipWithIndex())
+        chunkResult: stream.runCollect().map((chunk) => chunk.zipWithIndex)
       })
 
       const { chunkResult, streamResult } = await program.unsafeRunPromise()
@@ -144,13 +144,13 @@ describe.concurrent("Stream", () => {
           out.take
             .flatMap((take) => take.done())
             .replicateEffect(2)
-            .map((chunk) => chunk.flatten()))
+            .map((chunk) => chunk.flatten))
         .tap(({ left }) => left.offerAll(Chunk(Chunk.single(1), Chunk.single(2))))
         .bind("chunk2", ({ out }) =>
           out.take
             .flatMap((take) => take.done())
             .replicateEffect(2)
-            .map((chunk) => chunk.flatten()))
+            .map((chunk) => chunk.flatten))
 
       const { chunk1, chunk2 } = await program.unsafeRunPromise()
 
@@ -210,7 +210,7 @@ describe.concurrent("Stream", () => {
       // } yield ZStream.fromChunks(chunks: _*)
       // check(genSortedStream, genSortedStream) { (left, right) =>
       //   for {
-      //     out <- left.zipWithLatest(right)(_ + _).runCollect
+      //     out <- left.zipWithLatest(right)(_ + _).runCollect()
       //   } yield assert(out)(isSorted)
       // }
     })
@@ -256,7 +256,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty())
+      assert.isTrue(result.isEmpty)
     })
 
     it("should output same values as zipping with tail plus last element", async () => {
@@ -313,7 +313,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty())
+      assert.isTrue(result.isEmpty)
     })
 
     it("should output same values as first element plus zipping with init", async () => {

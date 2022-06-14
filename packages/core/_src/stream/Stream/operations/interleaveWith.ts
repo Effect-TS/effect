@@ -25,14 +25,14 @@ export function interleaveWith_<R, E, A, R2, E2, A2, R3, E3>(
         .bind("right", () => Handoff.make<Take<E | E2 | E3, A | A2>>())
         .tap(({ left }) =>
           (self.channel.concatMap(Channel.writeChunk) >> producer(left))
-            .runScoped()
+            .runScoped
             .fork()
         )
         .tap(({ right }) => {
           const that0 = that()
           concreteStream(that0)
           return (that0.channel.concatMap(Channel.writeChunk) >> producer(right))
-            .runScoped()
+            .runScoped
             .fork()
         })
         .map(({ left, right }) => {

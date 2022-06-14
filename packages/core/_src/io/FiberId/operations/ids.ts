@@ -6,7 +6,7 @@ import { realFiberId } from "@effect/core/io/FiberId/definition"
  * @tsplus getter ets/FiberId ids
  */
 export function ids(self: FiberId): HashSet<number> {
-  return idsSafe(self).run()
+  return idsSafe(self).run
 }
 
 function idsSafe(self: FiberId): Eval<HashSet<number>> {
@@ -19,7 +19,7 @@ function idsSafe(self: FiberId): Eval<HashSet<number>> {
       return Eval.succeed(HashSet.from([self.id]))
     }
     case "Composite": {
-      let base = Eval.succeed(HashSet<number>())
+      let base = Eval.succeed(HashSet.empty<number>())
       for (const fiberId of self.fiberIds) {
         base = Eval.suspend(idsSafe(fiberId)).zipWith(base, (a, b) => a.union(b))
       }

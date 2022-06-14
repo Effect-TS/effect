@@ -42,7 +42,7 @@ function accumulator<A, R2, E2, A2, S>(
           return Effect.reduce(chunk, s, (s, a) => f(s, a).flatMap(({ tuple: [s, a2] }) => emit(a2).as(s))).fold(
             (failure) => {
               const partialResult = outputChunk.build()
-              return partialResult.isNonEmpty()
+              return partialResult.isNonEmpty
                 ? Channel.write(partialResult) > Channel.fail(failure)
                 : Channel.fail(failure)
             },

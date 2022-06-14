@@ -30,12 +30,12 @@ export function combineChunks_<R, E, A, R2, E2, A2, S, A3>(
         .bind("latchR", () => Handoff.make<void>())
         .tap(({ latchL, left }) => {
           concreteStream(self)
-          return (self.channel >> producer(left, latchL)).runScoped().fork()
+          return (self.channel >> producer(left, latchL)).runScoped.fork()
         })
         .tap(({ latchR, right }) => {
           const that0 = that()
           concreteStream(that0)
-          return (that0.channel >> producer(right, latchR)).runScoped().fork()
+          return (that0.channel >> producer(right, latchR)).runScoped.fork()
         })
         .bindValue(
           "pullLeft",

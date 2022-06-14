@@ -12,7 +12,7 @@ export function mapEffect_<E, E1, A, B>(
   __tsplusTrace?: string
 ): Fiber<E | E1, B> {
   return makeSynthetic({
-    id: self.id(),
+    id: self.id,
     await: self.await().flatMap((_) => _.forEach(f)),
     children: self.children(),
     inheritRefs: self.inheritRefs(),

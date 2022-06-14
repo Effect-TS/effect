@@ -19,7 +19,7 @@ describe.concurrent("Queue", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty())
+      assert.isTrue(result.isEmpty)
     })
 
     it("should handle an empty queue with max higher than queue size", async () => {
@@ -27,7 +27,7 @@ describe.concurrent("Queue", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty())
+      assert.isTrue(result.isEmpty)
     })
 
     it("should leave behind elements if necessary", async () => {
@@ -69,7 +69,7 @@ describe.concurrent("Queue", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty())
+      assert.isTrue(result.isEmpty)
     })
 
     it("should handle taking up to -1 items", async () => {
@@ -83,7 +83,7 @@ describe.concurrent("Queue", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty())
+      assert.isTrue(result.isEmpty)
     })
 
     it("should handle taking up to Number.MAX_SAFE_INTEGER items", async () => {

@@ -12,7 +12,7 @@ export function collectAll<E, A>(
           el,
           (list, a) => list.prepend(a),
           (e1, e2) => e1 + e2
-        )).map((list) => list.reverse())
+        )).map((list) => list.reverse)
     )
   }
   return Option.none

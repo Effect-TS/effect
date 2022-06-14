@@ -26,7 +26,7 @@ describe.concurrent("Stream", () => {
       //       _.toLowerCase,
       //       identity
       //     )
-      //     .runCollect
+      //     .runCollect()
       // )(equalTo(Chunk("a", "b", "c", "Done", "a", "b", "c", "Done")))
     })
   })
@@ -37,7 +37,7 @@ describe.concurrent("Stream", () => {
       //   assertM(
       //     ZStream("A", "B", "C")
       //       .scheduleEither(Schedule.recurs(2) *> Schedule.fromFunction((_) => "!"))
-      //       .runCollect
+      //       .runCollect()
       //   )(equalTo(Chunk(Right("A"), Right("B"), Right("C"), Left("!"))))
     })
   })

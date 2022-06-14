@@ -5,7 +5,7 @@ describe("Channel", () => {
     it("simple provide", async () => {
       const program = Channel.fromEffect(Effect.service(NumberService))
         .provideService(NumberService, new NumberServiceImpl(100))
-        .run()
+        .run
 
       const result = await program.unsafeRunPromise()
 
@@ -21,7 +21,7 @@ describe("Channel", () => {
             new NumberServiceImpl(200)
           )
         )
-        .run()
+        .run
 
       const result = await program.unsafeRunPromise()
 
@@ -30,7 +30,7 @@ describe("Channel", () => {
 
     it("concatMap(provide).provide", async () => {
       const program = Channel.fromEffect(Effect.service(NumberService))
-        .emitCollect()
+        .emitCollect
         .mapOut((tuple) => tuple.get(1))
         .concatMap((n) =>
           Channel.fromEffect(Effect.service(NumberService).map((m) => Tuple(n, m)))
@@ -38,7 +38,7 @@ describe("Channel", () => {
             .flatMap((tuple) => Channel.write(tuple))
         )
         .provideService(NumberService, new NumberServiceImpl(100))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -54,7 +54,7 @@ describe("Channel", () => {
             Env(NumberService, { n: 2 })
           ))
         .bind("v3", () => Channel.fromEffect(Effect.service(NumberService)))
-        .runDrain()
+        .runDrain
         .provideEnvironment(Env(NumberService, { n: 4 }))
 
       const { v1, v2, v3 } = await program.unsafeRunPromise()

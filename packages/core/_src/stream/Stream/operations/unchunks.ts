@@ -8,5 +8,5 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  */
 export function unchunks<R, E, A>(self: Stream<R, E, Chunk<A>>, __tsplusTrace?: string): Stream<R, E, A> {
   concreteStream(self)
-  return new StreamInternal(self.channel.mapOut((chunk) => chunk.flatten()))
+  return new StreamInternal(self.channel.mapOut((chunk) => chunk.flatten))
 }

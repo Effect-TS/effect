@@ -214,12 +214,12 @@ function calculateQuantiles(
   // The number of samples examined
   const sampleCount = sortedSamples.length
 
-  if (sortedQuantiles.isEmpty()) {
+  if (sortedQuantiles.isEmpty) {
     return Chunk.empty()
   }
 
-  const head = sortedQuantiles.unsafeHead()
-  const tail = sortedQuantiles.unsafeTail()
+  const head = sortedQuantiles.unsafeHead
+  const tail = sortedQuantiles.unsafeTail
   const resolved = tail.reduce(
     Chunk.single(
       resolveQuantile(
@@ -232,7 +232,7 @@ function calculateQuantiles(
       )
     ),
     (acc, quantile) => {
-      const h = acc.unsafeHead()
+      const h = acc.unsafeHead
       return acc.append(
         resolveQuantile(
           error,
@@ -261,7 +261,7 @@ function resolveQuantile(
   rest: Chunk<number>
 ): ResolvedQuantile {
   // If the remaining list of samples is empty, there is nothing more to resolve
-  if (rest.isEmpty()) {
+  if (rest.isEmpty) {
     return new ResolvedQuantile(quantile, Option.none, consumed, Chunk.empty())
   }
   // If the quantile is the 100% quantile, we can take the maximum of all the
@@ -269,14 +269,14 @@ function resolveQuantile(
   if (quantile === 1) {
     return new ResolvedQuantile(
       quantile,
-      Option.some(rest.unsafeLast()),
+      Option.some(rest.unsafeLast),
       consumed + rest.length,
       Chunk.empty()
     )
   }
   // Split into two chunks - the first chunk contains all elements of the same
   // value as the chunk head
-  const sameHead = rest.splitWhere((n) => n > rest.unsafeHead())
+  const sameHead = rest.splitWhere((n) => n > rest.unsafeHead)
   // How many elements do we want to accept for this quantile
   const desired = quantile * sampleCount
   // The error margin
@@ -292,7 +292,7 @@ function resolveQuantile(
     return resolveQuantile(
       error,
       sampleCount,
-      rest.head(),
+      rest.head,
       candConsumed,
       quantile,
       sameHead.get(1)
@@ -312,7 +312,7 @@ function resolveQuantile(
       return resolveQuantile(
         error,
         sampleCount,
-        rest.head(),
+        rest.head,
         candConsumed,
         quantile,
         sameHead.get(1)
@@ -324,7 +324,7 @@ function resolveQuantile(
         return resolveQuantile(
           error,
           sampleCount,
-          rest.head(),
+          rest.head,
           candConsumed,
           quantile,
           sameHead.get(1)

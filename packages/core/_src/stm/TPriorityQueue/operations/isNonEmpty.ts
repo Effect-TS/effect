@@ -3,9 +3,9 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
 /**
  * Checks whether the queue is not empty.
  *
- * @tsplus fluent ets/TPriorityQueue isNonEmpty
+ * @tsplus getter ets/TPriorityQueue isNonEmpty
  */
 export function isNonEmpty<A>(self: TPriorityQueue<A>): USTM<boolean> {
   concreteTPriorityQueue(self)
-  return self.map.get().map((map) => map.isNonEmpty())
+  return self.map.get.map((map) => map.isNonEmpty)
 }

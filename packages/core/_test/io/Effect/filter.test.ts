@@ -10,7 +10,7 @@ describe.concurrent("Effect", () => {
           "results",
           ({ ref }) => Effect.filter(chunk, (n) => ref.update((c) => c.prepend(n)).as(n % 2 === 0))
         )
-        .bind("effects", ({ ref }) => ref.get().map((c) => c.reverse()))
+        .bind("effects", ({ ref }) => ref.get().map((c) => c.reverse))
 
       const { effects, results } = await program.unsafeRunPromise()
 
@@ -28,7 +28,7 @@ describe.concurrent("Effect", () => {
           "results",
           ({ ref }) => Effect.filterNot(chunk, (n) => ref.update((c) => c.prepend(n)).as(n % 2 === 0))
         )
-        .bind("effects", ({ ref }) => ref.get().map((c) => c.reverse()))
+        .bind("effects", ({ ref }) => ref.get().map((c) => c.reverse))
 
       const { effects, results } = await program.unsafeRunPromise()
 
@@ -78,7 +78,7 @@ describe.concurrent("Effect", () => {
             ))
             .sandbox()
             .either()
-            .map((either) => either.mapLeft((cause) => cause.failureOrCause())))
+            .map((either) => either.mapLeft((cause) => cause.failureOrCause)))
 
       const { badCase, goodCase } = await program.unsafeRunPromise()
 
@@ -98,7 +98,7 @@ describe.concurrent("Effect", () => {
           exactlyOnce(1, (_) => _.filterOrElse((n) => n === 0, Effect.fail("predicate failed!")))
             .sandbox()
             .either()
-            .map((either) => either.mapLeft((cause) => cause.failureOrCause())))
+            .map((either) => either.mapLeft((cause) => cause.failureOrCause)))
 
       const { badCase, goodCase } = await program.unsafeRunPromise()
 
@@ -118,7 +118,7 @@ describe.concurrent("Effect", () => {
           exactlyOnce(1, (_) => _.filterOrFail((n) => n === 0, "predicate failed!"))
             .sandbox()
             .either()
-            .map((either) => either.mapLeft((cause) => cause.failureOrCause())))
+            .map((either) => either.mapLeft((cause) => cause.failureOrCause)))
 
       const { badCase, goodCase } = await program.unsafeRunPromise()
 

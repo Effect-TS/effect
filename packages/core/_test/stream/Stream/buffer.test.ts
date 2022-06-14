@@ -11,7 +11,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == chunk.flatten())
+      assert.isTrue(result == chunk.flatten)
     })
 
     it("buffer the stream with error", async () => {
@@ -20,7 +20,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(error))
+      assert.isTrue(result.untraced == Exit.fail(error))
     })
 
     it("fast producer progress independently", async () => {
@@ -42,7 +42,7 @@ describe.concurrent("Stream", () => {
       const { chunk, list } = await program.unsafeRunPromise()
 
       assert.isTrue(chunk == Chunk(1, 2))
-      assert.isTrue(list.reverse() == List(1, 2, 3, 4))
+      assert.isTrue(list.reverse == List(1, 2, 3, 4))
     })
   })
 
@@ -59,7 +59,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(error))
+      assert.isTrue(result.untraced == Exit.fail(error))
     })
 
     it("fast producer progress independently", async () => {
@@ -133,7 +133,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(error))
+      assert.isTrue(result.untraced == Exit.fail(error))
     })
 
     it("fast producer progress independently", async () => {
@@ -207,7 +207,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(error))
+      assert.isTrue(result.untraced == Exit.fail(error))
     })
 
     it("fast producer progress independently", async () => {
@@ -230,7 +230,7 @@ describe.concurrent("Stream", () => {
       const { chunk, list } = await program.unsafeRunPromise()
 
       assert.isTrue(chunk == Chunk(1, 2))
-      assert.isTrue(list == List.from(Chunk.range(1, 999)).reverse())
+      assert.isTrue(list == List.from(Chunk.range(1, 999)).reverse)
     })
   })
 
@@ -248,7 +248,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == chunk.flatten())
+      assert.isTrue(result == chunk.flatten)
     })
 
     it("bufferChunks the stream with error", async () => {
@@ -259,7 +259,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.fail(error))
+      assert.isTrue(result.untraced == Exit.fail(error))
     })
 
     it("fast producer progress independently", async () => {
@@ -281,7 +281,7 @@ describe.concurrent("Stream", () => {
       const { chunk, list } = await program.unsafeRunPromise()
 
       assert.isTrue(chunk == Chunk(1, 2))
-      assert.isTrue(list.reverse() == List(1, 2, 3, 4))
+      assert.isTrue(list.reverse == List(1, 2, 3, 4))
     })
   })
 })

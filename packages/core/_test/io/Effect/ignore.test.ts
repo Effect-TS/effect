@@ -23,7 +23,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced() == Exit.die(ExampleError))
+      assert.isTrue(result.untraced == Exit.die(ExampleError))
     })
   })
 })

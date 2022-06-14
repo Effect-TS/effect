@@ -19,7 +19,7 @@ export function repeatOrElseEither_<S, R, E, A, R1, B, R2, E2, C>(
 ): Effect<R | R1 | R2, E2, Either<C, B>> {
   return Effect.suspendSucceed(() => {
     const schedule0 = schedule()
-    return schedule0.driver().flatMap((driver) =>
+    return schedule0.driver.flatMap((driver) =>
       self.foldEffect(
         (e) => orElse(e, Option.none).map(Either.left),
         (a) => repeatOrElseEitherLoop(self, driver, orElse, a)

@@ -11,7 +11,7 @@ export function whenCase<R, E, A, B>(
 ): STM<R, E, Option<B>> {
   return STM.suspend(
     pf(a())
-      .map((effect) => effect.asSome())
+      .map((effect) => effect.asSome)
       .getOrElse(STM.none)
   )
 }

@@ -45,7 +45,7 @@ function go<S, In>(
         tuple: [nextS, nextCost, nextDirty, leftovers]
       } = fold(chunk, s, costFn, decompose, f, dirty, cost, max, 0)
 
-      if (leftovers.isNonEmpty()) {
+      if (leftovers.isNonEmpty) {
         return Channel.write(leftovers) > Channel.succeedNow(nextS)
       }
 

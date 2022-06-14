@@ -8,7 +8,7 @@ export function toPull<R, E, A>(
   __tsplusTrace?: string
 ): Effect<R | Scope, never, Effect<R, Option<E>, Chunk<A>>> {
   concreteStream(self)
-  return self.channel.toPull().map((pull) =>
+  return self.channel.toPull.map((pull) =>
     pull.mapError(Option.some).flatMap((either) =>
       either.fold(
         () => Effect.fail(Option.none),

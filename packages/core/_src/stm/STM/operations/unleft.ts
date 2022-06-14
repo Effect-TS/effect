@@ -2,7 +2,7 @@
  * Converts a `STM<R, Either<E, B>, A>` into a `STM<R, E, Either<A, B>>`.
  * The inverse of `left`.
  *
- * @tsplus fluent ets/STM unleft
+ * @tsplus getter ets/STM unleft
  */
 export function unleft<R, E, B, A>(
   self: STM<R, Either<E, B>, A>

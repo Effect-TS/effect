@@ -16,7 +16,7 @@ describe.concurrent("Effect", () => {
         )
           .sandbox()
           .either()
-          .map((either) => either.mapLeft((cause) => cause.failureOrCause()))
+          .map((either) => either.mapLeft((cause) => cause.failureOrCause))
       })
 
       const { badCase, goodCase } = await program.unsafeRunPromise()
@@ -41,14 +41,14 @@ describe.concurrent("Effect", () => {
         )
           .sandbox()
           .either()
-          .map((either) => either.mapLeft((cause) => cause.failureOrCause())),
+          .map((either) => either.mapLeft((cause) => cause.failureOrCause)),
         badCase: exactlyOnce(
           1,
           (effect) => effect.rejectEffect((n) => n !== 0 ? Option.some(Effect.fail("partial failed!")) : Option.none)
         )
           .sandbox()
           .either()
-          .map((either) => either.mapLeft((cause) => cause.failureOrCause()))
+          .map((either) => either.mapLeft((cause) => cause.failureOrCause))
       })
 
       const { badCase, goodCase, partialBadCase } = await program.unsafeRunPromise()

@@ -5,8 +5,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * Returns a new schedule that loops this one continuously, resetting the
  * state when this schedule is done.
  *
- * @tsplus fluent ets/Schedule forever
- * @tsplus fluent ets/Schedule/WithState forever
+ * @tsplus getter ets/Schedule forever
+ * @tsplus getter ets/Schedule/WithState forever
  */
 export function forever<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>

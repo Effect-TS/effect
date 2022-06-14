@@ -11,7 +11,7 @@ export function catchSomeTrace_<R, E, A, R2, E2, A2>(
   return self.foldCauseEffect(
     (cause): Effect<R2, E | E2, A2> =>
       cause
-        .failureTraceOrCause()
+        .failureTraceOrCause
         .fold(
           (tuple) => f(tuple).getOrElse(Effect.failCauseNow(cause)),
           Effect.failCauseNow

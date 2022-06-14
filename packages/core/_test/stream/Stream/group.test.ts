@@ -2,7 +2,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("groupBy", () => {
     it("values", async () => {
       const words = Chunk.fill(10, () => Chunk.range(0, 10))
-        .flatten()
+        .flatten
         .map((n) => n.toString())
       const program = Stream.fromCollection(words)
         .groupByKey(identity, 8192)
@@ -20,7 +20,7 @@ describe.concurrent("Stream", () => {
 
     it("first", async () => {
       const words = Chunk.fill(10, () => Chunk.range(0, 10))
-        .flatten()
+        .flatten
         .map((n) => n.toString())
       const program = Stream.fromCollection(words)
         .groupByKey(identity, 1050)
@@ -38,7 +38,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("filter", async () => {
-      const words = Chunk.fill(10, () => Chunk.range(0, 10)).flatten()
+      const words = Chunk.fill(10, () => Chunk.range(0, 10)).flatten
       const program = Stream.fromCollection(words)
         .groupByKey(identity, 1050)
         .filter((n) => n <= 5)
@@ -95,7 +95,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty())
+      assert.isTrue(result.isEmpty)
     })
 
     it("is equivalent to Chunk#grouped", async () => {
@@ -141,7 +141,7 @@ describe.concurrent("Stream", () => {
   //         .tap(_ => c.proceed)
 
   //       assertM(for {
-  //         f      <- stream.runCollect.fork
+  //         f      <- stream.runCollect().fork
   //         _      <- c.offer *> TestClock.adjust(2.seconds) *> c.awaitNext
   //         _      <- c.offer *> TestClock.adjust(2.seconds) *> c.awaitNext
   //         _      <- c.offer
@@ -201,7 +201,7 @@ describe.concurrent("Stream", () => {
   //   })
 
   //   it("group immediately when chunk size is reached", async () => {
-  //     assertM(ZStream(1, 2, 3, 4).groupedWithin(2, 10.seconds).runCollect)(
+  //     assertM(ZStream(1, 2, 3, 4).groupedWithin(2, 10.seconds).runCollect())(
   //       equalTo(Chunk(Chunk(1, 2), Chunk(3, 4), Chunk()))
   //     )
   //   })

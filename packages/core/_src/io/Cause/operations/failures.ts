@@ -1,7 +1,7 @@
 /**
  * Produces a list of all recoverable errors `E` in the `Cause`.
  *
- * @tsplus fluent ets/Cause failures
+ * @tsplus getter ets/Cause failures
  */
 export function failures<E>(self: Cause<E>): List<E> {
   return self
@@ -9,5 +9,5 @@ export function failures<E>(self: Cause<E>): List<E> {
       List.empty<E>(),
       (acc, curr) => curr.isFailType() ? Option.some(acc.prepend(curr.value)) : Option.some(acc)
     )
-    .reverse()
+    .reverse
 }

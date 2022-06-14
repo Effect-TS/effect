@@ -3,7 +3,7 @@ import { concreteFiberRefs } from "@effect/core/io/FiberRefs/operations/_interna
 /**
  * Returns a set of each `FiberRef` in this collection.
  *
- * @tsplus fluent ets/FiberRefs fiberRefs
+ * @tsplus getter ets/FiberRefs fiberRefs
  */
 export function fiberRefs(self: FiberRefs): HashSet<FiberRef<unknown, unknown>> {
   concreteFiberRefs(self)

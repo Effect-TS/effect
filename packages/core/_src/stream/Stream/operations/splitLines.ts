@@ -37,7 +37,7 @@ function next<E>(
           const {
             tuple: [sliceStart, _, midCRLF]
           } = Chunk.from(concatenated)
-            .zipWithIndex()
+            .zipWithIndex
             .drop(continueFrom)
             .reduce(
               Tuple(0, false, inCRLF),

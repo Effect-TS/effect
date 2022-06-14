@@ -19,8 +19,8 @@ describe.concurrent("Queue", () => {
 
       const { resNegative, resZero } = await program.unsafeRunPromise()
 
-      assert.isTrue(resNegative.isEmpty())
-      assert.isTrue(resZero.isEmpty())
+      assert.isTrue(resNegative.isEmpty)
+      assert.isTrue(resZero.isEmpty)
     })
 
     it("blocks until the required number of elements is available", async () => {

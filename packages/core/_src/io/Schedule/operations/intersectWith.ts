@@ -86,7 +86,7 @@ function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
 > {
   const combined = f(lInterval, rInterval)
 
-  if (combined.isNonEmpty()) {
+  if (combined.isNonEmpty) {
     return Effect.succeedNow(
       Tuple(
         Tuple(lState, rState),

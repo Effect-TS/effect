@@ -33,7 +33,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isEmpty())
+      assert.isTrue(result.isEmpty)
     })
   })
 
@@ -60,7 +60,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.flatten() == bytes)
+      assert.isTrue(result.flatten == bytes)
     })
 
     it("handles leftovers", async () => {

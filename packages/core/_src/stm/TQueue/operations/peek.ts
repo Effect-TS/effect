@@ -16,7 +16,7 @@ export function peek<A>(self: TQueue<A>): USTM<A> {
       throw new STMInterruptException(fiberId)
     }
 
-    const first = queue.head()
+    const first = queue.head
 
     if (first.isSome()) {
       return first.value

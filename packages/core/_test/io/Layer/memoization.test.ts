@@ -6,7 +6,7 @@ describe.concurrent("Layer", () => {
     it("memoizes acquisition of resources", async () => {
       const program = Effect.Do()
         .bind("ref", () => makeRef())
-        .bindValue("memoized", ({ ref }) => makeLayer1(ref).memoize())
+        .bindValue("memoized", ({ ref }) => makeLayer1(ref).memoize)
         .tap(({ memoized }) =>
           Effect.scoped(
             memoized.flatMap((layer) =>

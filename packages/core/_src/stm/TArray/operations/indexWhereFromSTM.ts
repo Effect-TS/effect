@@ -34,7 +34,7 @@ function forIndex<E, A>(
   return index < self.chunk.length
     ? self.chunk
       .unsafeGet(index)!
-      .get()
+      .get
       .flatMap(f)
       .flatMap((result) => result ? STM.succeedNow(index) : forIndex(self, index + 1, f))
     : STM.succeedNow(-1)

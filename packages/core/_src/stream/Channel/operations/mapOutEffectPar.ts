@@ -32,7 +32,7 @@ export function mapOutEffectPar_<
           ))
         .bind("errorSignal", () => Deferred.make<OutErr1, never>())
         .bind("permits", () => Semaphore.make(n))
-        .bind("pull", () => self.toPull())
+        .bind("pull", () => self.toPull)
         .tap(({ errorSignal, permits, pull, queue }) =>
           pull
             .foldCauseEffect(

@@ -1,5 +1,5 @@
 /**
- * @tsplus fluent ets/RuntimeConfig enableCurrentFiber
+ * @tsplus getter ets/RuntimeConfig enableCurrentFiber
  * @tsplus static ets/RuntimeConfig/Aspects enableCurrentFiber
  */
 export function enableCurrentFiber(self: RuntimeConfig): RuntimeConfig {

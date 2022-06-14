@@ -32,9 +32,9 @@ export function makeSTMEnv(n: number): Effect.UIO<STMEnv> {
 export function incrementRefN(n: number, ref: TRef<number>): Effect.UIO<number> {
   return STM.atomically(
     ref
-      .get()
+      .get
       .tap((value) => ref.set(value + 1))
-      .tap(() => ref.get())
+      .tap(() => ref.get)
   ).repeatN(n)
 }
 
@@ -46,10 +46,10 @@ export function compute3RefN(
 ): Effect.UIO<number> {
   return STM.atomically(
     STM.Do()
-      .bind("value1", () => ref1.get())
-      .bind("value2", () => ref2.get())
+      .bind("value1", () => ref1.get)
+      .bind("value2", () => ref2.get)
       .tap(({ value1, value2 }) => ref3.set(value1 + value2))
-      .bind("value3", () => ref3.get())
+      .bind("value3", () => ref3.get)
       .tap(({ value1 }) => ref1.set(value1 - 1))
       .tap(({ value2 }) => ref2.set(value2 + 1))
       .map(({ value3 }) => value3)
@@ -82,11 +82,11 @@ export function transfer(
 ): Effect.UIO<number> {
   return STM.atomically(
     sender
-      .get()
+      .get
       .tap((balance) => STM.check(balance >= much))
       .tap(() => receiver.update((n) => n + much))
       .tap(() => sender.update((n) => n - much))
-      .zipRight(receiver.get())
+      .zipRight(receiver.get)
   )
 }
 
@@ -95,8 +95,8 @@ export function permutation(
   tRef2: TRef<number>
 ): STM<never, never, void> {
   return STM.struct({
-    a: tRef1.get(),
-    b: tRef2.get()
+    a: tRef1.get,
+    b: tRef2.get
   })
     .flatMap(({ a, b }) => tRef1.set(b) > tRef2.set(a))
     .map(constVoid)

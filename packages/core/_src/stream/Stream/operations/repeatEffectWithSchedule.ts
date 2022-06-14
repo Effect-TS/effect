@@ -11,7 +11,7 @@ export function repeatEffectWithSchedule<S, R, E, A>(
 ): Stream<R, E, A> {
   return Stream.succeed(Tuple(effect(), schedule())).flatMap(
     ({ tuple: [effect, schedule] }) =>
-      Stream.fromEffect(effect.zip(schedule.driver())).flatMap(
+      Stream.fromEffect(effect.zip(schedule.driver)).flatMap(
         ({ tuple: [a, driver] }) =>
           Stream.succeed(a) +
           Stream.unfoldEffect(a, (a) =>

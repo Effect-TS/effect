@@ -36,7 +36,7 @@ export function readWith<
 > {
   return Channel.readWithCause(
     input,
-    (cause) => cause.failureOrCause().fold(error, (cause) => Channel.failCause(cause)),
+    (cause) => cause.failureOrCause.fold(error, (cause) => Channel.failCause(cause)),
     done
   )
 }

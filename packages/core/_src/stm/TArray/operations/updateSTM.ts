@@ -13,7 +13,7 @@ export function updateSTM_<E, A>(
   concreteTArray(self)
   if (0 <= index && index < self.chunk.length) {
     return STM.Do()
-      .bind("currentVal", () => self.chunk.unsafeGet(index)!.get())
+      .bind("currentVal", () => self.chunk.unsafeGet(index)!.get)
       .bind("newVal", ({ currentVal }) => f(currentVal))
       .flatMap(({ newVal }) => self.chunk.unsafeGet(index)!.set(newVal))
   } else {

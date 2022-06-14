@@ -7,7 +7,7 @@ export function unless_<R, E, A>(
   self: STM<R, E, A>,
   predicate: LazyArg<boolean>
 ): STM<R, E, Option<A>> {
-  return STM.suspend(predicate() ? STM.none : self.asSome())
+  return STM.suspend(predicate() ? STM.none : self.asSome)
 }
 
 /**

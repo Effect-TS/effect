@@ -10,13 +10,13 @@ describe.concurrent("Effect", () => {
   })
 
   describe.concurrent("zipPar", () => {
-    it("does not swallow exit causes of loser", async () => {
+    it("does not swallow exit() causes of loser", async () => {
       const program = Effect.interrupt.zipPar(Effect.interrupt)
 
       const result = await program.unsafeRunPromiseExit()
 
       assert.isTrue(
-        result.causeOption().map((cause) => cause.interruptors().size > 0)
+        result.causeOption.map((cause) => cause.interruptors.size > 0)
           == Option.some(true)
       )
     })
@@ -26,7 +26,7 @@ describe.concurrent("Effect", () => {
         .zipPar(Effect.succeed(1))
         .sandbox()
         .either()
-        .map((either) => either.mapLeft((cause) => cause.isInterrupted()))
+        .map((either) => either.mapLeft((cause) => cause.isInterrupted))
 
       const result = await program.unsafeRunPromise()
 
@@ -81,7 +81,7 @@ describe.concurrent("Effect", () => {
       const { interrupted, leftResult, rightResult } = await program.unsafeRunPromise()
 
       assert.isFalse(interrupted)
-      assert.isTrue(leftResult.untraced() == Exit.succeed("foo"))
+      assert.isTrue(leftResult.untraced == Exit.succeed("foo"))
       assert.strictEqual(rightResult, 42)
     })
   })

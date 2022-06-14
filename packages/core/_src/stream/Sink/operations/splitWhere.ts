@@ -17,10 +17,10 @@ export function splitWhere_<R, E, In, In1, L extends In1, Z>(
     Channel.fromEffect(Ref.make(Chunk.empty<In & In1>())).flatMap((ref) =>
       splitter<E, In & In1>(false, ref, f)
         .pipeToOrFail(self.channel)
-        .doneCollect()
+        .doneCollect
         .flatMap(({ tuple: [leftovers, z] }) =>
           Channel.fromEffect(ref.get()).flatMap(
-            (leftover) => Channel.write(leftover + leftovers.flatten()) > Channel.succeed(z)
+            (leftover) => Channel.write(leftover + leftovers.flatten) > Channel.succeed(z)
           )
         )
     )
@@ -43,7 +43,7 @@ function splitter<E, A>(
 ): Channel<never, never, Chunk<A>, unknown, E, Chunk<A>, unknown> {
   return Channel.readWithCause(
     (input: Chunk<A>) => {
-      if (input.isEmpty()) {
+      if (input.isEmpty) {
         return splitter(written, leftovers, f)
       }
       if (written) {

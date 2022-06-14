@@ -37,7 +37,7 @@ export function combine_<R, E, A, R2, E2, A2, S, A3>(
             self.channel.concatMap((chunk) => Channel.writeChunk(chunk)) >>
             producer(left, latchL)
           )
-            .runScoped()
+            .runScoped
             .fork()
         })
         .tap(({ latchR, right }) => {
@@ -47,7 +47,7 @@ export function combine_<R, E, A, R2, E2, A2, S, A3>(
             that0.channel.concatMap((chunk) => Channel.writeChunk(chunk)) >>
             producer(right, latchR)
           )
-            .runScoped()
+            .runScoped
             .fork()
         })
         .bindValue(
