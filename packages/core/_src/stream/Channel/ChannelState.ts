@@ -140,5 +140,5 @@ export function effectOrUndefinedIgnored<R, E>(
   __tsplusTrace?: string
 ): Effect<R, never, void> | undefined {
   concreteChannelState(self)
-  return self._tag === "Effect" ? self.effect.ignore().asUnit() : undefined
+  return self._tag === "Effect" ? self.effect.ignore().unit() : undefined
 }

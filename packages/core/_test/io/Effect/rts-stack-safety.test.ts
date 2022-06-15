@@ -13,7 +13,7 @@ describe.concurrent("Effect", () => {
     it("deep attempt", async () => {
       const program = Chunk.range(0, 10000).reduce(
         Effect.attempt<void>(undefined).foldEffect(Effect.dieNow, Effect.succeedNow),
-        (acc, _) => acc.foldEffect(Effect.dieNow, Effect.succeedNow).either().asUnit()
+        (acc, _) => acc.foldEffect(Effect.dieNow, Effect.succeedNow).either().unit()
       )
 
       const result = await program.unsafeRunPromise()

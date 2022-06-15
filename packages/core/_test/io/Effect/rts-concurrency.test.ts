@@ -31,7 +31,7 @@ describe.concurrent("Effect", () => {
               Effect.acquireUseRelease(
                 acquire.succeed(undefined),
                 () => Effect.never,
-                () => release.succeed(42).asUnit()
+                () => release.succeed(42).unit()
               )
             )
         )

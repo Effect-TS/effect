@@ -9,5 +9,5 @@ export function joinAll<E>(
   fibers: Collection<Fiber<E, any>>,
   __tsplusTrace?: string
 ): Effect.IO<E, void> {
-  return Fiber.collectAll(fibers).join().asUnit()
+  return Fiber.collectAll(fibers).join().unit()
 }

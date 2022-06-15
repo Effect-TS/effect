@@ -14,7 +14,7 @@ export function onDoneCause_<R, E, A, R1, X1, R2, X2>(
         (s) => restore(success(s))
       )
       .forkDaemon()
-      .asUnit()
+      .unit()
   )
 }
 

@@ -80,7 +80,7 @@ export function mergeAllWith_<
                 .catchAllCause(
                   (cause) =>
                     queue.offer(Effect.failCause(cause)) >
-                      errorSignal.succeed(undefined).asUnit()
+                      errorSignal.succeed(undefined).unit()
                 )
         )
         .tap(

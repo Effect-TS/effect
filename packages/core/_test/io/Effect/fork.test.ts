@@ -33,7 +33,7 @@ describe.concurrent("Effect", () => {
   describe.concurrent("forkWithErrorHandler", () => {
     it("calls provided function when task fails", async () => {
       const program = Deferred.make<never, void>()
-        .tap((deferred) => Effect.fail(undefined).forkWithErrorHandler((e) => deferred.succeed(e).asUnit()))
+        .tap((deferred) => Effect.fail(undefined).forkWithErrorHandler((e) => deferred.succeed(e).unit()))
         .flatMap((deferred) => deferred.await())
         .map(constTrue)
 

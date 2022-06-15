@@ -18,10 +18,10 @@ export function makeWith(
           .tap(({ finalizer, scope }) => scope.addFinalizerExit(finalizer))
           .map(({ scope }) => scope)
           .uninterruptible(),
-        (finalizer) => releaseMap.add(finalizer).asUnit(),
+        (finalizer) => releaseMap.add(finalizer).unit(),
         (exit) =>
           Effect.suspendSucceed(
-            releaseMap.releaseAll(exit(), executionStrategy()).asUnit()
+            releaseMap.releaseAll(exit(), executionStrategy()).unit()
           )
       )
   )

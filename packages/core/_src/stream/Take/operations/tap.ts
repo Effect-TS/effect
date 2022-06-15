@@ -10,7 +10,7 @@ export function tap_<R, E, E1, A>(
   f: (chunk: Chunk<A>) => Effect<R, E1, any>
 ): Effect<R, E1, void> {
   concreteTake(self)
-  return self._exit.forEach(f).asUnit()
+  return self._exit.forEach(f).unit()
 }
 
 /**

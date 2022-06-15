@@ -13,3 +13,12 @@ export const unit: Effect.UIO<void> = Effect.succeedNow(undefined)
 export function unitTraced(__tsplusTrace?: string): Effect.UIO<void> {
   return Effect.succeedNow(undefined)
 }
+
+/**
+ * Ignores the result of the effect replacing it with a void
+ *
+ * @tsplus fluent ets/Effect unit
+ */
+export function unit_<R, E, X>(self: Effect<R, E, X>, __tsplusTrace?: string): Effect<R, E, void> {
+  return self > Effect.unit
+}

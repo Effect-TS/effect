@@ -615,7 +615,7 @@ describe.concurrent("Effect", () => {
         .bind("fiber", ({ latch1, latch2, ref }) =>
           Effect.acquireUseRelease(
             latch1.succeed(undefined),
-            () => latch2.await() > Effect.sleep((10).millis) > ref.set(true).asUnit(),
+            () => latch2.await() > Effect.sleep((10).millis) > ref.set(true).unit(),
             () => Effect.unit
           )
             .uninterruptible()
@@ -637,7 +637,7 @@ describe.concurrent("Effect", () => {
           "fiber",
           ({ ref }) =>
             withLatch((release) =>
-              (release > Effect.sleep((10).millis) > ref.set(true).asUnit())
+              (release > Effect.sleep((10).millis) > ref.set(true).unit())
                 .uninterruptible()
                 .fork()
             )

@@ -2,7 +2,7 @@
  * Applies the function `f` to each element of the `Collection<A>` and runs
  * produced effects sequentially.
  *
- * Equivalent to `asUnit(forEach(as, f))`, but without the cost of building
+ * Equivalent to `unit(forEach(as, f))`, but without the cost of building
  * the list of results.
  *
  * @tsplus static ets/STM/Ops forEachDiscard

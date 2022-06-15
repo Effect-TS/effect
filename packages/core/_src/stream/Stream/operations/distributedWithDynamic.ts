@@ -65,7 +65,7 @@ export function distributedWithDynamic_<R, E, A, Z>(
                         .catchSomeCause((cause) => cause.isInterrupted ? Option.some(Effect.unit) : Option.none))
                   )
                   .tap(() => done(endTake))
-                  .asUnit()
+                  .unit()
               )
         )
         .tap(({ finalize }) =>

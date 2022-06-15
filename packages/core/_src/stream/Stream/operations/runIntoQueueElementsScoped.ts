@@ -41,7 +41,7 @@ export function runIntoQueueElementsScoped_<R, E extends E1, A, E1>(
     .mapOutEffect((take) => queue().offer(take))
     .drain
     .runScoped
-    .asUnit()
+    .unit()
 }
 
 /**

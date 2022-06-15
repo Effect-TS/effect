@@ -8,7 +8,7 @@ describe.concurrent("TArray", () => {
         .bind("tArray", () => makeTArray(n, 1).commit())
         .bind("fiber", ({ tArray, tRef }) =>
           tArray
-            .forEach((i) => tRef.update((j) => i + j).asUnit)
+            .forEach((i) => tRef.update((j) => i + j).unit)
             .commit()
             .fork())
         .bind("value", ({ tRef }) => tRef.get.commit())

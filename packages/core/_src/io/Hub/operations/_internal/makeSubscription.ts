@@ -84,7 +84,7 @@ class UnsafeMakeSubscriptionImplementation<A> implements Dequeue<A> {
       Effect.forEachPar(unsafePollAll(this.pollers), (deferred) => deferred.interruptAs(fiberId)) >
         Effect.succeed(this.subscription.unsubscribe()) >
         Effect.succeed(this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers))
-    ).asUnit()
+    ).unit()
   }).uninterruptible()
 
   offer(_: never, __tsplusTrace?: string): Effect.UIO<boolean> {

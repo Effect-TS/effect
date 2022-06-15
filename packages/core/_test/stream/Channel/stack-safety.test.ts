@@ -18,7 +18,7 @@ describe("Channel", () => {
       const N = 10_000
 
       const program = Chunk.range(1, N)
-        .reduce(Channel.write<number>(1), (channel, n) => channel.concatMap(() => Channel.write(n)).asUnit)
+        .reduce(Channel.write<number>(1), (channel, n) => channel.concatMap(() => Channel.write(n)).unit)
         .runCollect
 
       const {

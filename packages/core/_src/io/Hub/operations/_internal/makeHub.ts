@@ -83,7 +83,7 @@ class UnsafeMakeHubImplementation<A> implements Hub<A> {
       return Effect.whenEffect(
         shutdownHook.succeed(undefined),
         scope.close(Exit.interrupt(fiberId)) > strategy.shutdown
-      ).asUnit()
+      ).unit()
     }).uninterruptible()
 
     this.isShutdown = Effect.succeed(shutdownFlag.get)
