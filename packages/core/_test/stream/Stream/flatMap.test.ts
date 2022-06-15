@@ -174,7 +174,7 @@ describe.concurrent("Stream", () => {
             .flatMap(() => inner)
             .runDrain()
             .either()
-            .asUnit()
+            .unit()
         )
         .flatMap(({ ref }) => ref.get())
 

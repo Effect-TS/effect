@@ -53,7 +53,7 @@ function arbiter<E, E1, A, A1>(
     return exit.foldEffect(
       (e) =>
         fails
-          .modify((c) => Tuple(c === 0 ? promise.failCause(e).asUnit() : Effect.unit, c - 1))
+          .modify((c) => Tuple(c === 0 ? promise.failCause(e).unit() : Effect.unit, c - 1))
           .flatten(),
       (a) =>
         promise

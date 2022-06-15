@@ -13,7 +13,7 @@ export function locallyScoped_<A, P>(
   return Effect.acquireRelease(
     self.get().flatMap((old) => self.set(value).as(old)),
     (a) => self.set(a)
-  ).asUnit()
+  ).unit()
 }
 
 /**

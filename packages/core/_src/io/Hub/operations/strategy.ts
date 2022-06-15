@@ -166,7 +166,7 @@ export class BackPressure<A> extends BaseStrategy<A> {
           ([_, deferred, last]) => last ? deferred.interruptAs(fiberId) : Effect.unit
         )
       )
-      .asUnit()
+      .unit()
   }
 
   unsafeOnHubEmptySpace(

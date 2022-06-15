@@ -15,7 +15,7 @@ describe.concurrent("FiberRef", () => {
         .bind("latch", () => Deferred.make<never, void>())
         .bindValue(
           "winner",
-          ({ fiberRef, latch }) => fiberRef.set(update1) > latch.succeed(undefined).asUnit()
+          ({ fiberRef, latch }) => fiberRef.set(update1) > latch.succeed(undefined).unit()
         )
         .bindValue(
           "loser",
