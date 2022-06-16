@@ -14,5 +14,5 @@ export function acquireRelease<R, E, A, R2, X>(
   release: (a: A) => Effect.RIO<R2, X>,
   __tsplusTrace?: string
 ): Effect<R | R2 | Scope, E, A> {
-  return Effect.acquireReleaseExit(acquire, (a, _) => release(a))
+  return Effect.acquireReleaseExit(acquire, (a, _) => release(a), __tsplusTrace)
 }
