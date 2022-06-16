@@ -67,6 +67,10 @@ import { TDeferred } from "@effect/core/stm/TDeferred/definition"
 /**
  * @tsplus global
  */
+import { TReentrantLock } from "@effect/core/stm/TReentrantLock/definition"
+/**
+ * @tsplus global
+ */
 import { Effect } from "@effect/core/io/Effect/definition"
 /**
  * @tsplus global

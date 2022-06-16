@@ -1,13 +1,14 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-      "outDir": "build/esm",
-      "declarationDir": "build/dts",
-      "tsBuildInfoFile": "build/tsbuildinfo/esm.tsbuildinfo",
-      "tsPlusConfig": "../../tsplus.config.json",
-      "rootDir": "_src"
-  },
-  "include": [
-      "_src/**/*.ts"
-  ]
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "outDir": "build/esm",
+        "declarationDir": "build/dts",
+        "tsBuildInfoFile": "build/tsbuildinfo/esm.tsbuildinfo",
+        "tsPlusConfig": "../../tsplus.config.json",
+        "rootDir": "_src"
+    },
+    "include": [
+        "_src/**/*.ts",
+        "_src/stm/STM/operations/collectSTMts"
+    ]
 }
