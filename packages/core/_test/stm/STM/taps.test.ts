@@ -46,42 +46,51 @@ describe.concurrent("STM", () => {
       assert.strictEqual(b, 11)
     })
 
-    // TODO: implement after TPromise
     it("tapBoth applies the success function to success values while keeping the effect intact", async () => {
-      // val tx =
-      //   for {
-      //     tapSuccess    <- TPromise.make[Nothing, Int]
-      //     tapError      <- TPromise.make[Nothing, String]
-      //     succeededSTM   = ZSTM.succeed(42): STM[String, Int]
-      //     result        <- succeededSTM.tapBoth(e => tapError.succeed(e), a => tapSuccess.succeed(a))
-      //     tappedSuccess <- tapSuccess.await
-      //   } yield (result, tappedSuccess)
-      // assertM(tx.commit)(equalTo((42, 42)))
+      const tx = Do(($) => {
+        const tapSuccess = $(TDeferred.make<never, number>())
+        const tapError = $(TDeferred.make<never, string>())
+        const succeededSTM = STM.succeed(42)
+        const result = $(succeededSTM.tapBoth(e => tapError.succeed(e), a => tapSuccess.succeed(a)))
+        const tappedSuccess = $(tapSuccess.await)
+
+        return result === 42 && tappedSuccess === 42
+      }).commit()
+
+      const result = await tx.unsafeRunPromise()
+
+      assert.isTrue(result)
     })
 
-    // TODO: implement after TPromise
     it("tapBoth applies the function to error and successful values while keeping the effect itself on error", async () => {
-      // val tx =
-      //   for {
-      //     tapSuccess  <- TPromise.make[Nothing, Int]
-      //     tapError    <- TPromise.make[Nothing, String]
-      //     succeededSTM = ZSTM.fail("error"): STM[String, Int]
-      //     result      <- succeededSTM.tapBoth(e => tapError.succeed(e), a => tapSuccess.succeed(a)).either
-      //     tappedError <- tapError.await
-      //   } yield (result, tappedError)
-      // assertM(tx.commit)(equalTo((Left("error"), "error")))
+      const tx = Do(($) => {
+        const tapSuccess = $(TDeferred.make<never, number>())
+        const tapError = $(TDeferred.make<never, string>())
+        const succeededSTM: STM<never, string, number> = STM.fail("error")
+        const result = $(succeededSTM.tapBoth(e => tapError.succeed(e), a => tapSuccess.succeed(a)).either)
+        const tappedError = $(tapError.await)
+
+        return result == Either.left("error") && tappedError === "error"
+      }).commit()
+
+      const result = await tx.unsafeRunPromise()
+
+      assert.isTrue(result)
     })
 
-    // TODO: implement after TPromise
-    it("tapError should apply the transactional function to the error result while keeping the effect itself", async () => {
-      // val tx =
-      //   for {
-      //     errorRef    <- TPromise.make[Nothing, String]
-      //     failedStm    = ZSTM.fail("error") *> ZSTM.succeed(0)
-      //     result      <- failedStm.tapError(e => errorRef.succeed(e)).either
-      //     tappedError <- errorRef.await
-      //   } yield (result, tappedError)
-      // assertM(tx.commit)(equalTo((Left("error"), "error")))
-    })
+    // it("tapError should apply the transactional function to the error result while keeping the effect itself", async () => {
+    //   const tx = Do(($) => {
+    //     const errorRef = $(TDeferred.make<never, string>())
+    //     const failedStm = STM.fail("error") > STM.succeed(0)
+    //     const result = $(failedStm.tapError((e) => errorRef.succeed(e).either))
+    //     const tappedError = $(errorRef.await)
+
+    //     return result == Either.left("error") && tappedError === "error"
+    //   }).commit()
+
+    //   const result = await tx.unsafeRunPromise()
+
+    //   assert.isTrue(result)
+    // })
   })
 })
