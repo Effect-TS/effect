@@ -63,6 +63,10 @@ import { Deferred } from "@effect/core/io/Deferred/definition"
 /**
  * @tsplus global
  */
+import { TDeferred } from "@effect/core/stm/TDeferred/definition"
+/**
+ * @tsplus global
+ */
 import { Effect } from "@effect/core/io/Effect/definition"
 /**
  * @tsplus global
