@@ -8,7 +8,6 @@
         "rootDir": "_src"
     },
     "include": [
-        "_src/**/*.ts",
-        "_src/stm/STM/operations/collectSTMts"
+        "_src/**/*.ts"
     ]
 }
