@@ -36,7 +36,7 @@
     "@effect-ts/build-utils": "0.40.3",
     "@effect-ts/core": "^0.60.2",
     "@repo-tooling/eslint-plugin-dprint": "^0.0.4",
-    "@tsplus/installer": "0.0.111",
+    "@tsplus/installer": "0.0.112",
     "@tsplus/stdlib": "0.1.6",
     "@types/node": "^17.0.43",
     "@types/rimraf": "^3.0.2",
