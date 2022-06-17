@@ -40,7 +40,7 @@ export class LiveRandom implements Random {
     high: number,
     __tsplusTrace?: string
   ): Effect.UIO<number> {
-    return Effect.succeed(() => this.PRNG.integer(1 + high - low) + low)
+    return Effect.succeed(() => this.PRNG.integer(high - low) + low)
   }
 
   shuffle<A>(
