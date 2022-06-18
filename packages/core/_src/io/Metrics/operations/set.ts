@@ -1,7 +1,11 @@
 /**
  * @tsplus fluent ets/Metrics/Metric set
  */
-export function set_<In>(self: Metric.Gauge<In>, value: LazyArg<In>, __tsplusTrace?: string): Effect.UIO<void> {
+export function set_<In>(
+  self: Metric.Gauge<In>,
+  value: LazyArg<In>,
+  __tsplusTrace?: string
+): Effect<never, never, void> {
   return self.update(value)
 }
 

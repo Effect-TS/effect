@@ -7,6 +7,6 @@
 export function forkAll<R, E, A>(
   effects: Collection<Effect<R, E, A>>,
   __tsplusTrace?: string
-): Effect.RIO<R, Fiber<E, Chunk<A>>> {
+): Effect<R, never, Fiber<E, Chunk<A>>> {
   return Effect.forEach(effects, (effect) => effect.fork()).map((chunk) => Fiber.collectAll(chunk))
 }

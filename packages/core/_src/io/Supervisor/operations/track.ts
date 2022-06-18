@@ -5,7 +5,7 @@
  */
 export function track(
   __tsplusTrace?: string
-): Effect.UIO<Supervisor<Chunk<Fiber.Runtime<any, any>>>> {
+): Effect<never, never, Supervisor<Chunk<Fiber.Runtime<any, any>>>> {
   return Effect.succeed(unsafeTrack)
 }
 

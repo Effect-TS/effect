@@ -8,7 +8,7 @@ export function orDieWith_<R, E, A>(
   self: Effect<R, E, A>,
   f: (e: E) => unknown,
   __tsplusTrace?: string
-): Effect.RIO<R, A> {
+): Effect<R, never, A> {
   return self.foldEffect((e) => Effect.dieNow(f(e)), Effect.succeedNow)
 }
 

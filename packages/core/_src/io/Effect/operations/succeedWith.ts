@@ -9,6 +9,6 @@ import { ISucceedWith } from "@effect/core/io/Effect/definition/primitives"
 export function succeedWith<A>(
   f: (runtimeConfig: RuntimeConfig, fiberId: FiberId) => A,
   __tsplusTrace?: string
-): Effect.UIO<A> {
+): Effect<never, never, A> {
   return new ISucceedWith(f, __tsplusTrace)
 }

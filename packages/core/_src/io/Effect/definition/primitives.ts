@@ -122,7 +122,7 @@ export class IAsync<R, E, A> extends Base<R, E, A> {
   constructor(
     readonly register: (
       cb: (_: Effect<R, E, A>) => void
-    ) => Either<Effect.RIO<R, void>, Effect<R, E, A>>,
+    ) => Either<Effect<R, never, void>, Effect<R, E, A>>,
     readonly blockingOn: Lazy<FiberId>,
     readonly trace?: string
   ) {

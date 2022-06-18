@@ -8,7 +8,7 @@ export function interruptAs_<E, A>(
   self: Deferred<E, A>,
   fiberId: LazyArg<FiberId>,
   __tsplusTrace?: string
-): Effect.UIO<boolean> {
+): Effect<never, never, boolean> {
   return self.completeWith(Effect.interruptAs(fiberId))
 }
 

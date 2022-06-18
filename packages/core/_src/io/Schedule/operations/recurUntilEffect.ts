@@ -4,7 +4,7 @@
  * @tsplus static ets/Schedule/Ops recurUntilEffect
  */
 export function recurUntilEffect<Env, A>(
-  f: (a: A) => Effect.RIO<Env, boolean>
+  f: (a: A) => Effect<Env, never, boolean>
 ): Schedule<void, Env, A, A> {
   return Schedule.identity<A>().untilInputEffect(f)
 }

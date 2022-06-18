@@ -13,7 +13,7 @@ export function acquireUseRelease<
 >(
   acquire: Effect<Env, OutErr, Acquired>,
   use: (a: Acquired) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone>,
-  release: (a: Acquired) => Effect.RIO<Env, any>
+  release: (a: Acquired) => Effect<Env, never, any>
 ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone> {
   return Channel.acquireUseReleaseExit(acquire, use, (a, _) => release(a))
 }

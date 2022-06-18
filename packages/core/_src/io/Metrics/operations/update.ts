@@ -9,7 +9,7 @@ export function update_<Type, In, Out>(
   self: Metric<Type, In, Out>,
   input: LazyArg<In>,
   __tsplusTrace?: string
-): Effect.UIO<void> {
+): Effect<never, never, void> {
   return Effect.succeed(self.unsafeUpdate(input(), HashSet.empty()))
 }
 

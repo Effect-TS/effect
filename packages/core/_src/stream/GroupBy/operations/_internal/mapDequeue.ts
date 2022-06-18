@@ -12,19 +12,19 @@ class MapDequeueImplementation<A, B> implements Dequeue<B> {
 
   capacity: number = this.dequeue.capacity
 
-  size: Effect.UIO<number> = this.dequeue.size
+  size: Effect<never, never, number> = this.dequeue.size
 
-  awaitShutdown: Effect.UIO<void> = this.dequeue.awaitShutdown
+  awaitShutdown: Effect<never, never, void> = this.dequeue.awaitShutdown
 
-  shutdown: Effect.UIO<void> = this.dequeue.shutdown
+  shutdown: Effect<never, never, void> = this.dequeue.shutdown
 
-  isShutdown: Effect.UIO<boolean> = this.dequeue.isShutdown
+  isShutdown: Effect<never, never, boolean> = this.dequeue.isShutdown
 
-  take: Effect.UIO<B> = this.dequeue.take.map((a) => this.f(a))
+  take: Effect<never, never, B> = this.dequeue.take.map((a) => this.f(a))
 
-  takeAll: Effect.UIO<Chunk<B>> = this.dequeue.takeAll.map((chunk) => chunk.map((a) => this.f(a)))
+  takeAll: Effect<never, never, Chunk<B>> = this.dequeue.takeAll.map((chunk) => chunk.map((a) => this.f(a)))
 
-  takeUpTo(max: number, __tsplusTrace?: string): Effect.UIO<Chunk<B>> {
+  takeUpTo(max: number, __tsplusTrace?: string): Effect<never, never, Chunk<B>> {
     return this.dequeue.takeUpTo(max).map((chunk) => chunk.map((a) => this.f(a)))
   }
 }

@@ -5,7 +5,7 @@ import { concreteSemaphore } from "@effect/core/io/Semaphore/operations/_interna
  *
  * @tsplus fluent ets/Semaphore available
  */
-export function available(self: Semaphore, __tsplusTrace?: string): Effect.UIO<number> {
+export function available(self: Semaphore, __tsplusTrace?: string): Effect<never, never, number> {
   concreteSemaphore(self)
   return self.semaphore.available.commit()
 }

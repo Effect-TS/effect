@@ -11,7 +11,7 @@ export function modify_<A, B>(
   self: Ref<A>,
   f: (a: A) => Tuple<[B, A]>,
   __tsplusTrace?: string
-): Effect.UIO<B> {
+): Effect<never, never, B> {
   concreteRef(self)
   return Effect.succeed(() => {
     const v = self.value.get

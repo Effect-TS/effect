@@ -9,7 +9,7 @@ export function updateSome_<A>(
   self: SynchronizedRef<A>,
   pf: (a: A) => Maybe<A>,
   __tsplusTrace?: string
-): Effect.UIO<void> {
+): Effect<never, never, void> {
   return self.modify((v) => Tuple(undefined, pf(v).getOrElse(v)))
 }
 

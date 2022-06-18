@@ -35,7 +35,7 @@ export class Executing<E, A> {
     readonly suppressed: Cause<never>,
     readonly interruptors: HashSet<FiberId>,
     readonly asyncCanceler: CancelerState,
-    readonly mailbox: Effect.UIO<unknown> | undefined
+    readonly mailbox: Effect<never, never, unknown> | undefined
   ) {}
 }
 
@@ -58,7 +58,7 @@ export function executing<E, A>(
   suppressed: Cause<never>,
   interruptors: HashSet<FiberId>,
   asyncCanceler: CancelerState,
-  mailbox: Effect.UIO<unknown> | undefined
+  mailbox: Effect<never, never, unknown> | undefined
 ): FiberState<E, A> {
   return new Executing(
     status,

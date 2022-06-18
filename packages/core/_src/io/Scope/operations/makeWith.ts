@@ -8,7 +8,7 @@ import { CloseableScopeInternal } from "@effect/core/io/Scope/operations/_intern
  */
 export function makeWith(
   executionStrategy: LazyArg<ExecutionStrategy>
-): Effect.UIO<Scope.Closeable> {
+): Effect<never, never, Scope.Closeable> {
   return ReleaseMap.make.map(
     (releaseMap) =>
       new CloseableScopeInternal(

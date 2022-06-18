@@ -9,6 +9,6 @@
 export function interruptFork<E, A>(
   self: Fiber<E, A>,
   __tsplusTrace?: string
-): Effect.UIO<void> {
+): Effect<never, never, void> {
   return self.interrupt().forkDaemon().unit()
 }

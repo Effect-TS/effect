@@ -5,6 +5,6 @@
  *
  * @tsplus static ets/Effect/Ops die
  */
-export function die<A>(f: LazyArg<A>, __tsplusTrace?: string): Effect.UIO<never> {
+export function die<A>(f: LazyArg<A>, __tsplusTrace?: string): Effect<never, never, never> {
   return Effect.failCause(Cause.die(f(), Trace.none))
 }

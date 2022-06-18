@@ -2,10 +2,10 @@
  * Producer-side view of `SingleProducerAsyncInput` for variance purposes.
  */
 export interface AsyncInputProducer<Err, Elem, Done> {
-  readonly emit: (el: Elem) => Effect.UIO<unknown>
-  readonly done: (a: Done) => Effect.UIO<unknown>
-  readonly error: (cause: Cause<Err>) => Effect.UIO<unknown>
-  readonly awaitRead: Effect.UIO<unknown>
+  readonly emit: (el: Elem) => Effect<never, never, unknown>
+  readonly done: (a: Done) => Effect<never, never, unknown>
+  readonly error: (cause: Cause<Err>) => Effect<never, never, unknown>
+  readonly awaitRead: Effect<never, never, unknown>
 }
 
 /**
@@ -16,7 +16,7 @@ export interface AsyncInputConsumer<Err, Elem, Done> {
     onError: (cause: Cause<Err>) => A,
     onElement: (element: Elem) => A,
     onDone: (done: Done) => A
-  ) => Effect.UIO<A>
+  ) => Effect<never, never, A>
 }
 
 export type State<Err, Elem, Done> =
@@ -83,7 +83,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
 {
   constructor(readonly ref: Ref<State<Err, Elem, Done>>) {}
 
-  get take(): Effect.UIO<Exit<Either<Err, Done>, Elem>> {
+  get take(): Effect<never, never, Exit<Either<Err, Done>, Elem>> {
     return this.takeWith<Exit<Either<Err, Done>, Elem>>(
       (cause) => Exit.failCause(cause.map(Either.left)),
       (element) => Exit.succeed(element),
@@ -91,11 +91,11 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
     )
   }
 
-  get close(): Effect.UIO<unknown> {
+  get close(): Effect<never, never, unknown> {
     return Effect.fiberId.flatMap((fiberId) => this.error(Cause.interrupt(fiberId)))
   }
 
-  get awaitRead(): Effect.UIO<unknown> {
+  get awaitRead(): Effect<never, never, unknown> {
     return this.ref
       .modify((state) =>
         state._typeId === EmptyTypeId
@@ -105,7 +105,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
       .flatten()
   }
 
-  emit(el: Elem): Effect.UIO<unknown> {
+  emit(el: Elem): Effect<never, never, unknown> {
     return Deferred.make<never, void>().flatMap((deferred) =>
       this.ref
         .modify((state) => {
@@ -143,7 +143,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
     )
   }
 
-  done(a: Done): Effect.UIO<unknown> {
+  done(a: Done): Effect<never, never, unknown> {
     return this.ref
       .modify((state) => {
         switch (state._typeId) {
@@ -167,7 +167,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
       .flatten()
   }
 
-  error(cause: Cause<Err>): Effect.UIO<unknown> {
+  error(cause: Cause<Err>): Effect<never, never, unknown> {
     return this.ref
       .modify((state) => {
         switch (state._typeId) {
@@ -195,7 +195,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
     onError: (cause: Cause<Err>) => X,
     onElement: (element: Elem) => X,
     onDone: (done: Done) => X
-  ): Effect.UIO<X> {
+  ): Effect<never, never, X> {
     return Deferred.make<Err, Either<Done, Elem>>().flatMap((deferred) =>
       this.ref
         .modify((state) => {
@@ -235,9 +235,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
  *
  * @tsplus static ets/Channel/SingleProducerAsyncInput/Ops make
  */
-export function make<Err, Elem, Done>(): Effect.UIO<
-  SingleProducerAsyncInput<Err, Elem, Done>
-> {
+export function make<Err, Elem, Done>(): Effect<never, never, SingleProducerAsyncInput<Err, Elem, Done>> {
   return Deferred.make<never, void>()
     .flatMap((deferred) => Ref.make<State<Err, Elem, Done>>(new StateEmpty(deferred)))
     .map((ref) => new SingleProducerAsyncInput(ref))

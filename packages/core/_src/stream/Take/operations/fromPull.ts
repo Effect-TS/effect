@@ -5,7 +5,7 @@
  *
  * @tsplus static ets/Take/Ops fromPull
  */
-export function fromPull<R, E, A>(pull: Pull<R, E, A>): Effect.RIO<R, Take<E, A>> {
+export function fromPull<R, E, A>(pull: Pull<R, E, A>): Effect<R, never, Take<E, A>> {
   return pull.foldCause(
     (cause) => Cause.flipCauseMaybe(cause).fold(() => Take.end, Take.failCause),
     Take.chunk

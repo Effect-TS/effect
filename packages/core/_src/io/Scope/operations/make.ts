@@ -5,4 +5,4 @@
  *
  * @tsplus static ets/Scope/Ops make
  */
-export const make: Effect.UIO<Scope.Closeable> = Scope.makeWith(ExecutionStrategy.Sequential)
+export const make: Effect<never, never, Scope.Closeable> = Scope.makeWith(ExecutionStrategy.Sequential)

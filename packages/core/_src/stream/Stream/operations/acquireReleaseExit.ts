@@ -7,7 +7,7 @@
  */
 export function acquireReleaseExit<R, E, A, R2, Z>(
   acquire: LazyArg<Effect<R, E, A>>,
-  release: (a: A, exit: Exit<unknown, unknown>) => Effect.RIO<R2, Z>,
+  release: (a: A, exit: Exit<unknown, unknown>) => Effect<R2, never, Z>,
   __tsplusTrace?: string
 ): Stream<R | R2, E, A> {
   return Stream.scoped(Effect.acquireReleaseExit(acquire, release))

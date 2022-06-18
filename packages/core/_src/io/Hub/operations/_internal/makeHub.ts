@@ -9,7 +9,7 @@ import { _In, _Out, QueueSym } from "@effect/core/io/Queue/definition"
 /**
  * Creates a hub with the specified strategy.
  */
-export function makeHub<A>(hub: AtomicHub<A>, strategy: Strategy<A>): Effect.UIO<Hub<A>> {
+export function makeHub<A>(hub: AtomicHub<A>, strategy: Strategy<A>): Effect<never, never, Hub<A>> {
   return Scope.make.flatMap((scope) =>
     Deferred.make<never, void>().map((deferred) =>
       unsafeMakeHub(
@@ -52,13 +52,13 @@ class UnsafeMakeHubImplementation<A> implements Hub<A> {
 
   capacity: number
 
-  size: Effect.UIO<number>
+  size: Effect<never, never, number>
 
-  awaitShutdown: Effect.UIO<void>
+  awaitShutdown: Effect<never, never, void>
 
-  shutdown: Effect.UIO<void>
+  shutdown: Effect<never, never, void>
 
-  isShutdown: Effect.UIO<boolean>
+  isShutdown: Effect<never, never, boolean>
 
   subscribe: Effect<Scope, never, Dequeue<A>>
 
@@ -94,15 +94,15 @@ class UnsafeMakeHubImplementation<A> implements Hub<A> {
     )
   }
 
-  offer(a: A, __tsplusTrace?: string): Effect.UIO<boolean> {
+  offer(a: A, __tsplusTrace?: string): Effect<never, never, boolean> {
     return this.publish(a)
   }
 
-  offerAll(as: Collection<A>, __tsplusTrace?: string): Effect.UIO<boolean> {
+  offerAll(as: Collection<A>, __tsplusTrace?: string): Effect<never, never, boolean> {
     return this.publishAll(as)
   }
 
-  publish(a: A, __tsplusTrace?: string): Effect.UIO<boolean> {
+  publish(a: A, __tsplusTrace?: string): Effect<never, never, boolean> {
     return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
         return Effect.interrupt
@@ -122,7 +122,7 @@ class UnsafeMakeHubImplementation<A> implements Hub<A> {
     })
   }
 
-  publishAll(as: Collection<A>, __tsplusTrace?: string): Effect.UIO<boolean> {
+  publishAll(as: Collection<A>, __tsplusTrace?: string): Effect<never, never, boolean> {
     return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
         return Effect.interrupt

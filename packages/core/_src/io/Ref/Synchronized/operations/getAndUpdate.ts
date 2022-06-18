@@ -8,7 +8,7 @@ export function getAndUpdate_<A>(
   self: SynchronizedRef<A>,
   f: (a: A) => A,
   __tsplusTrace?: string
-): Effect.UIO<A> {
+): Effect<never, never, A> {
   return self.modify(v => Tuple(v, f(v)))
 }
 

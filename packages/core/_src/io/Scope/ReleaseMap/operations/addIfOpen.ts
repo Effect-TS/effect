@@ -14,7 +14,7 @@ export function addIfOpen_(
   self: ReleaseMap,
   finalizer: Scope.Finalizer,
   __tsplusTrace?: string
-): Effect.UIO<Maybe<number>> {
+): Effect<never, never, Maybe<number>> {
   return self.ref
     .modify((s) => {
       switch (s._tag) {

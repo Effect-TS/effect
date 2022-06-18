@@ -10,7 +10,7 @@ import { realFiber } from "@effect/core/io/Fiber/definition"
 export function poll<E, A>(
   self: Fiber<E, A>,
   __tsplusTrace?: string
-): Effect.UIO<Maybe<Exit<E, A>>> {
+): Effect<never, never, Maybe<Exit<E, A>>> {
   realFiber(self)
   return self._poll
 }

@@ -7,7 +7,7 @@
  */
 export function delayedEffect_<State, Env, In, Out, Env1>(
   self: Schedule<State, Env, In, Out>,
-  f: (duration: Duration) => Effect.RIO<Env1, Duration>
+  f: (duration: Duration) => Effect<Env1, never, Duration>
 ): Schedule<State, Env | Env1, In, Out> {
   return self.modifyDelayEffect((_, delay) => f(delay))
 }

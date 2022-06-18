@@ -6,7 +6,7 @@ import { concreteSemaphore } from "@effect/core/io/Semaphore/operations/_interna
  *
  * @tsplus getter ets/Semaphore withPermitScoped
  */
-export function withPermitScoped(self: Semaphore, __tsplusTrace?: string): Effect.RIO<Scope, void> {
+export function withPermitScoped(self: Semaphore, __tsplusTrace?: string): Effect<Scope, never, void> {
   concreteSemaphore(self)
   return self.semaphore.withPermitScoped()
 }

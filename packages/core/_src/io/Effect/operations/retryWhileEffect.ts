@@ -6,7 +6,7 @@
  */
 export function retryWhileEffect_<R, R1, E, A>(
   self: Effect<R, E, A>,
-  f: (e: E) => Effect.RIO<R1, boolean>,
+  f: (e: E) => Effect<R1, never, boolean>,
   __tsplusTrace?: string
 ): Effect<R | R1, E, A> {
   return self.retryUntilEffect((e) => f(e).negate())

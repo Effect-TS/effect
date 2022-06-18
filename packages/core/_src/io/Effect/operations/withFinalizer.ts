@@ -7,7 +7,7 @@
  */
 export function withFinalizer_<R, R2, E, A, X>(
   self: Effect<R, E, A>,
-  finalizer: LazyArg<Effect.RIO<R2, X>>,
+  finalizer: LazyArg<Effect<R2, never, X>>,
   __tsplusTrace?: string
 ): Effect<R | R2 | Scope, E, A> {
   return self.withFinalizerExit(finalizer)

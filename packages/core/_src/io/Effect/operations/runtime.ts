@@ -5,7 +5,7 @@
  *
  * @tsplus static ets/Effect/Ops runtime
  */
-export function runtime<R>(__tsplusTrace?: string): Effect.RIO<R, Runtime<R>> {
+export function runtime<R>(__tsplusTrace?: string): Effect<R, never, Runtime<R>> {
   return Effect.environment<R>().flatMap(
     (env) => Effect.runtimeConfig.map((config) => new Runtime(env, config)),
     __tsplusTrace

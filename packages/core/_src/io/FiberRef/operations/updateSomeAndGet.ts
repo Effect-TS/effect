@@ -9,7 +9,7 @@ export function updateSomeAndGet_<A, P>(
   self: FiberRef<A, P>,
   pf: (a: A) => Maybe<A>,
   __tsplusTrace?: string
-): Effect.UIO<A> {
+): Effect<never, never, A> {
   return self.modify((v) => {
     const result = pf(v).getOrElse(v)
     return Tuple(result, result)

@@ -6,7 +6,7 @@
  */
 export function ensuringChildren_<R, E, A, R1, X>(
   self: Effect<R, E, A>,
-  children: (_: Chunk<Fiber.Runtime<any, any>>) => Effect.RIO<R1, X>,
+  children: (_: Chunk<Fiber.Runtime<any, any>>) => Effect<R1, never, X>,
   __tsplusTrace?: string
 ): Effect<R | R1, E, A> {
   return Supervisor.track().flatMap((supervisor) =>

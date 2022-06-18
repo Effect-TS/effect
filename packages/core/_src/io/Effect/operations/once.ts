@@ -7,6 +7,6 @@
 export function once<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
-): Effect.UIO<Effect<R, E, void>> {
+): Effect<never, never, Effect<R, E, void>> {
   return Ref.make(true).map((ref) => Effect.whenEffect(ref.getAndSet(false), self).unit())
 }

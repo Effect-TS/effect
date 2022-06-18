@@ -7,7 +7,7 @@ import { concreteScope } from "@effect/core/io/Scope/operations/_internal/ScopeI
  * @tsplus fluent ets/Scope addFinalizerExit
  * @tsplus fluent ets/Scope/Closeable addFinalizerExit
  */
-export function addFinalizerExit_(self: Scope, finalizer: Scope.Finalizer): Effect.UIO<void> {
+export function addFinalizerExit_(self: Scope, finalizer: Scope.Finalizer): Effect<never, never, void> {
   concreteScope(self)
   return self._addFinalizerExit(finalizer)
 }

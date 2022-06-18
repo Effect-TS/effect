@@ -4,6 +4,6 @@
  *
  * @tsplus static ets/TSemaphore/Ops makeCommit
  */
-export function makeCommit(permits: number, __tsplusTrace?: string): Effect.UIO<TSemaphore> {
+export function makeCommit(permits: number, __tsplusTrace?: string): Effect<never, never, TSemaphore> {
   return TSemaphore.make(permits).commit()
 }

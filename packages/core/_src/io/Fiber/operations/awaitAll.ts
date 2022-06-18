@@ -6,6 +6,6 @@
 export function awaitAll(
   fibers: Collection<Fiber<any, any>>,
   __tsplusTrace?: string
-): Effect.UIO<void> {
+): Effect<never, never, void> {
   return Fiber.collectAll(fibers).await().unit()
 }

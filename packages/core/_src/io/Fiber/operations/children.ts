@@ -9,7 +9,7 @@ import { realFiber } from "@effect/core/io/Fiber/definition"
 export function children<E, A>(
   self: Fiber<E, A>,
   __tsplusTrace?: string
-): Effect.UIO<Chunk<Fiber.Runtime<any, any>>> {
+): Effect<never, never, Chunk<Fiber.Runtime<any, any>>> {
   realFiber(self)
   return self._children
 }

@@ -7,6 +7,6 @@ import { ISucceed } from "@effect/core/io/Effect/definition/primitives"
  * @tsplus static ets/Effect/Ops __call
  * @tsplus static ets/Effect/Ops succeed
  */
-export function succeed<A>(f: LazyArg<A>, __tsplusTrace?: string): Effect.UIO<A> {
+export function succeed<A>(f: LazyArg<A>, __tsplusTrace?: string): Effect<never, never, A> {
   return new ISucceed(f, __tsplusTrace)
 }

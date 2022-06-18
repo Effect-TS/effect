@@ -4,7 +4,7 @@
  *
  * @tsplus static ets/Effect/Ops parallelism
  */
-export function parallelism(__tsplusTrace?: string): Effect.UIO<Maybe<number>> {
+export function parallelism(__tsplusTrace?: string): Effect<never, never, Maybe<number>> {
   return FiberRef.currentParallelism.value.get()
 }
 

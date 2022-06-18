@@ -13,7 +13,7 @@ import { Strategy } from "@effect/core/io/Hub/operations/strategy"
 export function dropping<A>(
   requestedCapacity: number,
   __tsplusTrace?: string
-): Effect.UIO<Hub<A>> {
+): Effect<never, never, Hub<A>> {
   return Effect.succeed(makeBounded<A>(requestedCapacity)).flatMap((atomicHub) =>
     makeHub(atomicHub, Strategy.Dropping())
   )

@@ -5,6 +5,6 @@ import { ITrace } from "@effect/core/io/Effect/definition/primitives"
  *
  * @tsplus static ets/Effect/Ops trace
  */
-export function trace(__tsplusTrace?: string): Effect.UIO<Trace> {
+export function trace(__tsplusTrace?: string): Effect<never, never, Trace> {
   return new ITrace(__tsplusTrace)
 }

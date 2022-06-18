@@ -10,7 +10,7 @@ export function fold_<R, E, A, A2, A3>(
   failure: (e: E) => A2,
   success: (a: A) => A3,
   __tsplusTrace?: string
-): Effect.RIO<R, A2 | A3> {
+): Effect<R, never, A2 | A3> {
   return self.foldEffect(
     (e) => Effect.succeedNow(failure(e)),
     (a) => Effect.succeedNow(success(a))

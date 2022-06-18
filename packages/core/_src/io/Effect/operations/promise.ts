@@ -45,7 +45,7 @@ export function tryPromise<A>(
 export function promise<A>(
   promise: LazyArg<Promise<A>>,
   __tsplusTrace?: string
-): Effect.UIO<A> {
+): Effect<never, never, A> {
   return Effect.succeed(promise).flatMap((promise) =>
     Effect.async<never, never, A>((resolve) => {
       promise

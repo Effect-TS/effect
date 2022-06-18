@@ -6,7 +6,7 @@
  */
 export function repeatWhileEffect_<R, R1, E, A>(
   self: Effect<R, E, A>,
-  f: (a: A) => Effect.RIO<R1, boolean>,
+  f: (a: A) => Effect<R1, never, boolean>,
   __tsplusTrace?: string
 ): Effect<R | R1, E, A> {
   return self.repeatUntilEffect((a) => f(a).negate())

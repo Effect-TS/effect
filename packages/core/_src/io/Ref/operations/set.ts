@@ -6,7 +6,7 @@ import { concreteRef } from "@effect/core/io/Ref/operations/_internal/RefInterna
  *
  * @tsplus fluent ets/Ref set
  */
-export function set_<A>(self: Ref<A>, value: A, __tsplusTrace?: string): Effect.UIO<void> {
+export function set_<A>(self: Ref<A>, value: A, __tsplusTrace?: string): Effect<never, never, void> {
   concreteRef(self)
   return Effect.succeed(self.value.set(value))
 }

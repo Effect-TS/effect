@@ -7,6 +7,6 @@
 export function interrupt<E, A>(
   self: Deferred<E, A>,
   __tsplusTrace?: string
-): Effect.UIO<boolean> {
+): Effect<never, never, boolean> {
   return Effect.fiberId.flatMap((id) => self.completeWith(Effect.interruptAs(id)))
 }

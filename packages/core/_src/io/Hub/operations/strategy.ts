@@ -20,12 +20,12 @@ export interface Strategy<A> {
     subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
     as: Collection<A>,
     isShutdown: AtomicBoolean
-  ) => Effect.UIO<boolean>
+  ) => Effect<never, never, boolean>
 
   /**
    * Describes any finalization logic associated with this strategy.
    */
-  readonly shutdown: Effect.UIO<void>
+  readonly shutdown: Effect<never, never, void>
 
   /**
    * Describes how subscribers should signal to publishers waiting for space
@@ -70,9 +70,9 @@ abstract class BaseStrategy<A> implements Strategy<A> {
     subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
     as: Collection<A>,
     isShutdown: AtomicBoolean
-  ): Effect.UIO<boolean>
+  ): Effect<never, never, boolean>
 
-  abstract shutdown: Effect.UIO<void>
+  abstract shutdown: Effect<never, never, void>
 
   abstract unsafeOnHubEmptySpace(
     hub: AtomicHub<A>,
@@ -142,7 +142,7 @@ export class BackPressure<A> extends BaseStrategy<A> {
     subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
     as: Collection<A>,
     isShutdown: AtomicBoolean
-  ): Effect.UIO<boolean> {
+  ): Effect<never, never, boolean> {
     return Effect.suspendSucceedWith((_, fiberId) => {
       const deferred: Deferred<never, boolean> = Deferred.unsafeMake<never, boolean>(fiberId)
 
@@ -156,7 +156,7 @@ export class BackPressure<A> extends BaseStrategy<A> {
     })
   }
 
-  get shutdown(): Effect.UIO<void> {
+  get shutdown(): Effect<never, never, void> {
     return Effect.Do()
       .bind("fiberId", () => Effect.fiberId)
       .bind("publishers", () => Effect.succeed(unsafePollAllQueue(this.publishers)))
@@ -232,11 +232,11 @@ export class Dropping<A> extends BaseStrategy<A> {
     _subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
     _as: Collection<A>,
     _isShutdown: AtomicBoolean
-  ): Effect.UIO<boolean> {
+  ): Effect<never, never, boolean> {
     return Effect.succeed(false)
   }
 
-  shutdown: Effect.UIO<void> = Effect.unit
+  shutdown: Effect<never, never, void> = Effect.unit
 
   unsafeOnHubEmptySpace(
     _hub: AtomicHub<A>,
@@ -278,7 +278,7 @@ export class Sliding<A> extends BaseStrategy<A> {
     subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
     as: Collection<A>,
     _isShutdown: AtomicBoolean
-  ): Effect.UIO<boolean> {
+  ): Effect<never, never, boolean> {
     return Effect.succeed(() => {
       this.unsafeSlidingPublish(hub, as)
       this.unsafeCompleteSubscribers(hub, subscribers)
@@ -286,7 +286,7 @@ export class Sliding<A> extends BaseStrategy<A> {
     })
   }
 
-  shutdown: Effect.UIO<void> = Effect.unit
+  shutdown: Effect<never, never, void> = Effect.unit
 
   unsafeOnHubEmptySpace(
     _hub: AtomicHub<A>,

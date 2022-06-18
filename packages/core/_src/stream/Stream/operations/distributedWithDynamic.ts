@@ -15,10 +15,10 @@ const distributedWithDynamicId = new AtomicNumber(0)
 export function distributedWithDynamic_<R, E, A, Z>(
   self: Stream<R, E, A>,
   maximumLag: number,
-  decide: (a: A) => Effect.UIO<(key: UniqueKey) => boolean>,
-  done: (exit: Exit<Maybe<E>, never>) => Effect.UIO<Z> = () => Effect.unit as Effect.UIO<Z>,
+  decide: (a: A) => Effect<never, never, (key: UniqueKey) => boolean>,
+  done: (exit: Exit<Maybe<E>, never>) => Effect<never, never, Z> = () => Effect.unit as Effect<never, never, Z>,
   __tsplusTrace?: string
-): Effect<R | Scope, never, Effect.UIO<Tuple<[UniqueKey, Dequeue<Exit<Maybe<E>, A>>]>>> {
+): Effect<R | Scope, never, Effect<never, never, Tuple<[UniqueKey, Dequeue<Exit<Maybe<E>, A>>]>>> {
   return Effect.Do()
     .bind("queuesRef", () =>
       Effect.acquireRelease(
@@ -32,7 +32,7 @@ export function distributedWithDynamic_<R, E, A, Z>(
       Effect.Do()
         .bind("queuesLock", () => Semaphore.make(1))
         .bind("newQueue", () =>
-          Ref.make<Effect.UIO<Tuple<[UniqueKey, Queue<Exit<Maybe<E>, A>>]>>>(
+          Ref.make<Effect<never, never, Tuple<[UniqueKey, Queue<Exit<Maybe<E>, A>>]>>>(
             Effect.Do()
               .bind("queue", () => Queue.bounded<Exit<Maybe<E>, A>>(maximumLag))
               .bind("id", () => Effect.succeed(distributedWithDynamicId.incrementAndGet()))
@@ -93,7 +93,7 @@ export const distributedWithDynamic = Pipeable(distributedWithDynamic_)
 
 function offer<E, A>(
   ref: Ref<HashMap<UniqueKey, Queue<Exit<Maybe<E>, A>>>>,
-  decide: (a: A) => Effect.UIO<(key: UniqueKey) => boolean>,
+  decide: (a: A) => Effect<never, never, (key: UniqueKey) => boolean>,
   a: A,
   __tsplusTrace?: string
 ): Effect<never, E, void> {

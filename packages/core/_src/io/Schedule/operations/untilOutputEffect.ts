@@ -7,7 +7,7 @@
  */
 export function untilOutputEffect_<State, Env, In, Out, Env1>(
   self: Schedule<State, Env, In, Out>,
-  f: (out: Out) => Effect.RIO<Env1, boolean>
+  f: (out: Out) => Effect<Env1, never, boolean>
 ): Schedule<State, Env | Env1, In, Out> {
   return self.checkEffect((_, out) => f(out).negate())
 }

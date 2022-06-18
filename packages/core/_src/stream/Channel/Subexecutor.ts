@@ -14,7 +14,7 @@ export interface Subexecutor<R> {
   readonly close: (
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
-  ) => Effect.RIO<R, unknown> | undefined
+  ) => Effect<R, never, unknown> | undefined
   readonly enqueuePullFromChild: (child: PullFromChild<R>) => Subexecutor<R>
 }
 
@@ -47,13 +47,13 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
   close(
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
-  ): Effect.RIO<R, unknown> | undefined {
+  ): Effect<R, never, unknown> | undefined {
     const fin1 = this.upstreamExecutor.close(exit)
     const fins = this.activeChildExecutors
       .map((child) => (child != null ? child.childExecutor.close(exit) : undefined))
       .append(fin1)
     const result = fins.reduce(
-      undefined as Effect.RIO<R, Exit<unknown, unknown>> | undefined,
+      undefined as Effect<R, never, Exit<unknown, unknown>> | undefined,
       (acc, next) => {
         if (acc != null && next != null) {
           return acc.zipWith(next.exit(), (a, b) => a > b)
@@ -66,7 +66,7 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
         }
       }
     )
-    return result == null ? result : result.flatMap((exit) => Effect.done(exit)) as Effect.RIO<R, unknown>
+    return result == null ? result : result.flatMap((exit) => Effect.done(exit)) as Effect<R, never, unknown>
   }
 
   enqueuePullFromChild(child: PullFromChild<R>): Subexecutor<R> {
@@ -101,7 +101,7 @@ export class PullFromChild<R> implements Subexecutor<R> {
   close(
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
-  ): Effect.RIO<R, unknown> | undefined {
+  ): Effect<R, never, unknown> | undefined {
     const fin1 = this.childExecutor.close(exit)
     const fin2 = this.parentSubexecutor.close(exit)
 
@@ -142,14 +142,14 @@ export class DrainChildExecutors<R> implements Subexecutor<R> {
   close(
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
-  ): Effect.RIO<R, unknown> | undefined {
+  ): Effect<R, never, unknown> | undefined {
     const fin1 = this.upstreamExecutor.close(exit)
     const fins = this.activeChildExecutors
       .map((child) => (child != null ? child.childExecutor.close(exit) : undefined))
       .append(fin1)
 
     return fins.reduce(
-      undefined as Effect.RIO<R, Exit<unknown, unknown>> | undefined,
+      undefined as Effect<R, never, Exit<unknown, unknown>> | undefined,
       (acc, next) => {
         if (acc != null && next != null) {
           return acc.zipWith(next.exit(), (a, b) => a > b)
@@ -187,7 +187,7 @@ export class Emit<R> implements Subexecutor<R> {
   close(
     exit: Exit<unknown, unknown>,
     __tsplusTrace?: string
-  ): Effect.RIO<R, unknown> | undefined {
+  ): Effect<R, never, unknown> | undefined {
     return this.next.close(exit)
   }
 
