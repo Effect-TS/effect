@@ -6,9 +6,9 @@ export class CloseableScopeInternal implements Scope.Closeable {
   readonly [CloseableScopeSym]: CloseableScopeSym = CloseableScopeSym
 
   constructor(
-    readonly _fork: Effect.UIO<Scope.Closeable>,
-    readonly _addFinalizerExit: (finalizer: Scope.Finalizer) => Effect.UIO<void>,
-    readonly _close: (exit: LazyArg<Exit<unknown, unknown>>) => Effect.UIO<void>
+    readonly _fork: Effect<never, never, Scope.Closeable>,
+    readonly _addFinalizerExit: (finalizer: Scope.Finalizer) => Effect<never, never, void>,
+    readonly _close: (exit: LazyArg<Exit<unknown, unknown>>) => Effect<never, never, void>
   ) {}
 }
 

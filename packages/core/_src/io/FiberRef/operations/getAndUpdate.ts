@@ -8,7 +8,7 @@ export function getAndUpdate_<A, P>(
   self: FiberRef<A, P>,
   f: (a: A) => A,
   __tsplusTrace?: string
-): Effect.UIO<A> {
+): Effect<never, never, A> {
   return self.modify((v) => Tuple(v, f(v)))
 }
 

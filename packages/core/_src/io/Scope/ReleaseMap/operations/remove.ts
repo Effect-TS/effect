@@ -8,7 +8,7 @@ export function remove_(
   self: ReleaseMap,
   key: number,
   __tsplusTrace?: string
-): Effect.UIO<Maybe<Scope.Finalizer>> {
+): Effect<never, never, Maybe<Scope.Finalizer>> {
   return self.ref.modify((s) => {
     switch (s._tag) {
       case "Exited": {

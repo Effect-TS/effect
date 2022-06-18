@@ -6,6 +6,6 @@
 export function isSuccess<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
-): Effect.RIO<R, boolean> {
+): Effect<R, never, boolean> {
   return self.fold(() => false, () => true)
 }

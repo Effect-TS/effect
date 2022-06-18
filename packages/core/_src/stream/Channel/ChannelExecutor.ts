@@ -58,7 +58,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 
   private emitted: unknown | undefined = undefined
 
-  private inProgressFinalizer: Effect.RIO<R, unknown> | undefined = undefined
+  private inProgressFinalizer: Effect<R, never, unknown> | undefined = undefined
 
   private input: ErasedExecutor<R> | undefined = undefined
 
@@ -66,12 +66,12 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 
   private cancelled: Exit<OutErr, OutDone> | undefined = undefined
 
-  private closeLastSubstream: Effect.RIO<R, unknown> | undefined = undefined
+  private closeLastSubstream: Effect<R, never, unknown> | undefined = undefined
 
   constructor(
     initialChannel: Lazy<Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>>,
     private providedEnv: Env<unknown> | undefined,
-    private executeCloseLastSubstream: (_: Effect.RIO<R, unknown>) => Effect.RIO<R, unknown>
+    private executeCloseLastSubstream: (_: Effect<R, never, unknown>) => Effect.RIO<R, unknown>
   ) {
     this.currentChannel = initialChannel() as ErasedChannel<R>
   }

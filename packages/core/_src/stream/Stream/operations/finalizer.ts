@@ -5,7 +5,7 @@
  * @tsplus static ets/Stream/Ops finalizer
  */
 export function finalizer<R, Z>(
-  finalizer: LazyArg<Effect.RIO<R, Z>>,
+  finalizer: LazyArg<Effect<R, never, Z>>,
   __tsplusTrace?: string
 ): Stream<R, never, void> {
   return Stream.acquireRelease(Effect.unit, finalizer)

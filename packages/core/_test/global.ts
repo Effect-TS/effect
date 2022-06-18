@@ -1,3 +1,5 @@
+import "@effect/core/global"
+
 /**
  * @tsplus global
  */

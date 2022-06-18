@@ -10,7 +10,7 @@ export function set_<A>(
   self: SynchronizedRef<A>,
   value: A,
   __tsplusTrace?: string
-): Effect.UIO<void> {
+): Effect<never, never, void> {
   concreteSynchronizedRef(self)
   return self.semaphore.withPermit(self.ref.set(value))
 }

@@ -13,7 +13,7 @@ import { Strategy } from "@effect/core/io/Queue/operations/strategy"
 export function dropping<A>(
   requestedCapacity: number,
   __tsplusTrace?: string
-): Effect.UIO<Queue<A>> {
+): Effect<never, never, Queue<A>> {
   return Effect.succeed(MutableQueue.bounded<A>(requestedCapacity)).flatMap((queue) =>
     Queue.create(queue, Strategy.Dropping())
   )

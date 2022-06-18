@@ -10,7 +10,7 @@ export function updateAll_(
   self: ReleaseMap,
   f: (finalizer: Scope.Finalizer) => Scope.Finalizer,
   __tsplusTrace?: string
-): Effect.UIO<void> {
+): Effect<never, never, void> {
   return self.ref.update((state) => {
     switch (state._tag) {
       case "Exited": {

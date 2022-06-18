@@ -7,7 +7,7 @@ export function succeed_<E, A>(
   self: Deferred<E, A>,
   value: LazyArg<A>,
   __tsplusTrace?: string
-): Effect.UIO<boolean> {
+): Effect<never, never, boolean> {
   return self.completeWith(Effect.succeed(value))
 }
 

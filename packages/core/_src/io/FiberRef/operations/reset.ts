@@ -3,6 +3,6 @@
  *
  * @tsplus fluent ets/FiberRef reset
  */
-export function reset<A, P>(self: FiberRef<A, P>, __tsplusTrace?: string): Effect.UIO<void> {
+export function reset<A, P>(self: FiberRef<A, P>, __tsplusTrace?: string): Effect<never, never, void> {
   return self.set(self.initial)
 }

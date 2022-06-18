@@ -9,7 +9,7 @@ export function mapFiber_<E, E1, A, B>(
   self: Fiber<E, A>,
   f: (a: A) => Fiber<E1, B>,
   __tsplusTrace?: string
-): Effect.UIO<Fiber<E | E1, B>> {
+): Effect<never, never, Fiber<E | E1, B>> {
   return self.await().map((exit) =>
     exit.fold(
       (cause): Fiber<E | E1, B> => Fiber.failCause(cause),

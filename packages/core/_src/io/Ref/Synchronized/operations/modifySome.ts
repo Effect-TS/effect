@@ -11,7 +11,7 @@ export function modifySome_<A, B>(
   def: B,
   pf: (a: A) => Maybe<Tuple<[B, A]>>,
   __tsplusTrace?: string
-): Effect.UIO<B> {
+): Effect<never, never, B> {
   return self.modify((v) => pf(v).getOrElse(Tuple(def, v)))
 }
 

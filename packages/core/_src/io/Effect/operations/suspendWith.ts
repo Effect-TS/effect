@@ -6,7 +6,7 @@
  * @tsplus static ets/Effect/Ops suspendWith
  */
 export function suspendWith<R, A>(
-  f: (runtimeConfig: RuntimeConfig, fiberId: FiberId) => Effect.RIO<R, A>,
+  f: (runtimeConfig: RuntimeConfig, fiberId: FiberId) => Effect<R, never, A>,
   __tsplusTrace?: string
 ): Effect.RIO<R, A> {
   return Effect.suspendSucceedWith((runtimeConfig, fiberId) => {

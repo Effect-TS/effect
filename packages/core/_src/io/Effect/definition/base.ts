@@ -111,4 +111,4 @@ export abstract class Base<R, E, A> implements Effect<R, E, A> {
   abstract unsafeLog(): string
 }
 
-export type Canceler<R> = Effect.RIO<R, void>
+export type Canceler<R> = Effect<R, never, void>

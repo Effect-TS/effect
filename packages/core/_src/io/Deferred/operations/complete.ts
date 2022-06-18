@@ -11,7 +11,7 @@ export function complete_<E, A>(
   self: Deferred<E, A>,
   effect: Effect.IO<E, A>,
   __tsplusTrace?: string
-): Effect.UIO<boolean> {
+): Effect<never, never, boolean> {
   return effect.intoDeferred(self)
 }
 

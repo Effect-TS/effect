@@ -3,4 +3,4 @@
  *
  * @tsplus static ets/Effect/Ops none
  */
-export const succeedNone: Effect.UIO<Maybe<never>> = Effect.succeed(Maybe.none)
+export const succeedNone: Effect<never, never, Maybe<never>> = Effect.succeed(Maybe.none)

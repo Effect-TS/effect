@@ -7,7 +7,7 @@ export function set_<A, P>(
   self: FiberRef<A, P>,
   value: A,
   __tsplusTrace?: string
-): Effect.UIO<void> {
+): Effect<never, never, void> {
   return self.modify(() => Tuple(undefined, value))
 }
 

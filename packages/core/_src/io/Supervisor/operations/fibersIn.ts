@@ -5,7 +5,7 @@
  */
 export function fibersIn(
   ref: AtomicReference<SortedSet<Fiber.Runtime<any, any>>>
-): Effect.UIO<Supervisor<SortedSet<Fiber.Runtime<any, any>>>> {
+): Effect<never, never, Supervisor<SortedSet<Fiber.Runtime<any, any>>>> {
   return Effect.succeed(
     new Supervisor(
       Effect.succeed(() => ref.get),

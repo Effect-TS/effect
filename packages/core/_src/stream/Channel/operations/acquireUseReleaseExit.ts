@@ -13,10 +13,10 @@ export function acquireUseReleaseExit<
 >(
   acquire: LazyArg<Effect<Env, OutErr, Acquired>>,
   use: (a: Acquired) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone>,
-  release: (a: Acquired, exit: Exit<OutErr, OutDone>) => Effect.RIO<Env, any>
+  release: (a: Acquired, exit: Exit<OutErr, OutDone>) => Effect<Env, never, any>
 ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone> {
   return Channel.fromEffect(
-    Ref.make<(exit: Exit<OutErr, OutDone>) => Effect.RIO<Env, any>>((_) => Effect.unit)
+    Ref.make<(exit: Exit<OutErr, OutDone>) => Effect<Env, never, any>>((_) => Effect.unit)
   ).flatMap((ref) =>
     Channel.fromEffect(
       acquire()

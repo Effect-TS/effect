@@ -3,4 +3,4 @@
  *
  * @tsplus static ets/Effect/Ops clock
  */
-export const clock: Effect.UIO<Clock> = Effect.clockWith(Effect.succeedNow)
+export const clock: Effect<never, never, Clock> = Effect.clockWith(Effect.succeedNow)

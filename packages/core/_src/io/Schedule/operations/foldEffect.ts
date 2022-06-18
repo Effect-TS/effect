@@ -10,7 +10,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
 export function foldEffect_<State, Env, In, Out, Env1, Z>(
   self: Schedule<State, Env, In, Out>,
   z: Z,
-  f: (z: Z, out: Out) => Effect.RIO<Env1, Z>
+  f: (z: Z, out: Out) => Effect<Env1, never, Z>
 ): Schedule<Tuple<[State, Z]>, Env | Env1, In, Z> {
   return makeWithState(Tuple(self._initial, z), (now, input, { tuple: [s, z] }) =>
     self

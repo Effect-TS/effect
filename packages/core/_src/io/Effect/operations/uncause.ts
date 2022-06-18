@@ -8,7 +8,7 @@
  * @tsplus fluent ets/Effect uncause
  */
 export function uncause<R, E>(
-  self: Effect.RIO<R, Cause<E>>,
+  self: Effect<R, never, Cause<E>>,
   __tsplusTrace?: string
 ): Effect<R, E, void> {
   return self.flatMap((cause) => cause.isEmpty ? Effect.unit : Effect.failCauseNow(cause))

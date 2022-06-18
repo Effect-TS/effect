@@ -21,7 +21,7 @@ export class SubscriptionRef<A> implements Ref.Synchronized<A> {
 
   constructor(public ref: Ref.Synchronized<A>, public hub: Hub<A>) {}
 
-  get get(): Effect.UIO<A> {
+  get get(): Effect<never, never, A> {
     return this.ref.get()
   }
 
@@ -31,11 +31,11 @@ export class SubscriptionRef<A> implements Ref.Synchronized<A> {
     )
   }
 
-  set(a: A, __tsplusTrace?: string): Effect.UIO<void> {
+  set(a: A, __tsplusTrace?: string): Effect<never, never, void> {
     return this.ref.set(a)
   }
 
-  modify<B>(f: (a: A) => Tuple<[B, A]>, __tsplusTrace?: string | undefined): Effect.UIO<B> {
+  modify<B>(f: (a: A) => Tuple<[B, A]>, __tsplusTrace?: string | undefined): Effect<never, never, B> {
     concreteSynchronizedRef(this.ref)
     return this.ref.semaphore.withPermit(
       this.modifyEffect((a) => Effect.succeedNow(f(a)))

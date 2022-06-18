@@ -1,17 +1,16 @@
 /**
- * Ensure types are in scope
+ * @tsplus global
  */
 import "@effect/core"
+/**
+ * @tsplus global
+ */
 import "@tsplus/stdlib/global"
 
 // =============================================================================
 // @tsplus/stdlib
 // =============================================================================
 
-/**
- * @tsplus global
- */
-import { Has } from "@tsplus/stdlib/service/Has"
 /**
  * @tsplus global
  */
@@ -76,10 +75,6 @@ import { TReentrantLock } from "@effect/core/stm/TReentrantLock/definition"
  * @tsplus global
  */
 import { Effect } from "@effect/core/io/Effect/definition"
-/**
- * @tsplus global
- */
-import { FiberRefs } from "@effect/core/io/Effect/operations/fiberRefs"
 /**
  * @tsplus global
  */
@@ -240,14 +235,6 @@ import { Trace } from "@effect/core/io/Trace/definition"
  * @tsplus global
  */
 import { TraceElement } from "@effect/core/io/TraceElement/definition"
-/**
- * @tsplus global
- */
-import { Sync } from "@effect/core/io-light/Sync/definition"
-/**
- * @tsplus global
- */
-import { XPure } from "@effect/core/io-light/XPure/definition/base"
 /**
  * @tsplus global
  */

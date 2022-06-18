@@ -5,7 +5,7 @@
  * @tsplus static ets/Schedule/Ops collectWhileEffect
  */
 export function collectWhileEffect<Env, A>(
-  f: (a: A) => Effect.RIO<Env, boolean>
+  f: (a: A) => Effect<Env, never, boolean>
 ): Schedule<Tuple<[void, Chunk<A>]>, Env, A, Chunk<A>> {
   return Schedule.recurWhileEffect(f).collectAll
 }

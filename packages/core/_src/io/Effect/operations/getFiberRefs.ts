@@ -6,7 +6,7 @@ import { IFiberRefModifyAll } from "@effect/core/io/Effect/definition/primitives
  *
  * @tsplus static ets/Effect/Ops getFiberRefs
  */
-export function getFiberRefs(__tsplusTrace?: string): Effect.UIO<FiberRefs> {
+export function getFiberRefs(__tsplusTrace?: string): Effect<never, never, FiberRefs> {
   return new IFiberRefModifyAll(
     (_, fiberRefs) => Tuple(fiberRefs, fiberRefs),
     __tsplusTrace

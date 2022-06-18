@@ -3,6 +3,6 @@
  *
  * @tsplus static ets/Effect/Ops descriptor
  */
-export const descriptor: Effect.UIO<Fiber.Descriptor> = Effect.descriptorWith(
+export const descriptor: Effect<never, never, Fiber.Descriptor> = Effect.descriptorWith(
   Effect.succeedNow
 )

@@ -19,7 +19,7 @@ export function completeWith_<E, A>(
   self: Deferred<E, A>,
   effect: Effect.IO<E, A>,
   __tsplusTrace?: string
-): Effect.UIO<boolean> {
+): Effect<never, never, boolean> {
   concreteDeferred(self)
   return Effect.succeed(() => {
     const state = self.state.get

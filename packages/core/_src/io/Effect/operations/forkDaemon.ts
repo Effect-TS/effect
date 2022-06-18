@@ -10,7 +10,7 @@ import { IFork } from "@effect/core/io/Effect/definition/primitives"
 export function forkDaemon<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
-): Effect.RIO<R, Fiber.Runtime<E, A>> {
+): Effect<R, never, Fiber.Runtime<E, A>> {
   return Effect.suspendSucceed(
     new IFork(self, () => Maybe.some(FiberScope.global.value), __tsplusTrace)
   )

@@ -49,8 +49,6 @@
   "config": {
     "side": [],
     "modules": [],
-    "global": [
-      "_src/global.d.ts"
-    ]
+    "global": []
   }
 }

@@ -5,6 +5,6 @@
  *
  * @tsplus static ets/Effect/Ops dieNow
  */
-export function dieNow(defect: unknown, __tsplusTrace?: string): Effect.UIO<never> {
+export function dieNow(defect: unknown, __tsplusTrace?: string): Effect<never, never, never> {
   return Effect.failCause(Cause.die(defect, Trace.none))
 }

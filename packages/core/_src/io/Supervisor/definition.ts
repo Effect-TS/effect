@@ -16,7 +16,7 @@ export class Supervisor<A> {
      * supervisor. This value may change over time, reflecting what the
      * supervisor produces as it supervises fibers.
      */
-    readonly value: Effect.UIO<A>,
+    readonly value: Effect<never, never, A>,
     readonly unsafeOnStart: <R, E, A>(
       environment: Env<R>,
       effect: Effect<R, E, A>,

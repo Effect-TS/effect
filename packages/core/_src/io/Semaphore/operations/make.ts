@@ -5,6 +5,6 @@ import { SemaphoreInternal } from "@effect/core/io/Semaphore/operations/_interna
  *
  * @tsplus static ets/Semaphore/Ops make
  */
-export function make(permits: number, __tsplusTrace?: string): Effect.UIO<Semaphore> {
+export function make(permits: number, __tsplusTrace?: string): Effect<never, never, Semaphore> {
   return TSemaphore.makeCommit(permits).map((semaphore) => new SemaphoreInternal(semaphore))
 }

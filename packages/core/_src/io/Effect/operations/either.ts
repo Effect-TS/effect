@@ -13,7 +13,7 @@
 export function either<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
-): Effect.RIO<R, Either<E, A>> {
+): Effect<R, never, Either<E, A>> {
   return self.foldEffect(
     (e) => Effect.succeedNow(Either.left(e)),
     (a) => Effect.succeedNow(Either.right(a))

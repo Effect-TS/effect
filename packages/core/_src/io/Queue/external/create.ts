@@ -12,4 +12,4 @@ export const create: <A>(
   queue: MutableQueue<A>,
   strategy: Strategy<A>,
   __tsplusTrace?: string | undefined
-) => Effect.UIO<Queue<A>> = createQueue
+) => Effect<never, never, Queue<A>> = createQueue

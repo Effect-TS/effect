@@ -6,12 +6,15 @@ export type RandomSym = typeof RandomSym
  */
 export interface Random {
   readonly [RandomSym]: RandomSym
-  readonly next: Effect.UIO<number>
-  readonly nextBoolean: Effect.UIO<boolean>
-  readonly nextInt: Effect.UIO<number>
-  readonly nextRange: (low: number, high: number, __tsplusTrace?: string) => Effect.UIO<number>
-  readonly nextIntBetween: (low: number, high: number, __tsplusTrace?: string) => Effect.UIO<number>
-  readonly shuffle: <A>(collection: LazyArg<Collection<A>>, __tsplusTrace?: string) => Effect.UIO<Collection<A>>
+  readonly next: Effect<never, never, number>
+  readonly nextBoolean: Effect<never, never, boolean>
+  readonly nextInt: Effect<never, never, number>
+  readonly nextRange: (low: number, high: number, __tsplusTrace?: string) => Effect<never, never, number>
+  readonly nextIntBetween: (low: number, high: number, __tsplusTrace?: string) => Effect<never, never, number>
+  readonly shuffle: <A>(
+    collection: LazyArg<Collection<A>>,
+    __tsplusTrace?: string
+  ) => Effect<never, never, Collection<A>>
 }
 
 /**

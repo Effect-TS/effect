@@ -9,13 +9,13 @@ export type ClockSym = typeof ClockSym
 export interface Clock {
   readonly [ClockSym]: ClockSym
 
-  readonly currentTime: Effect.UIO<number>
+  readonly currentTime: Effect<never, never, number>
 
   readonly unsafeCurrentTime: number
 
-  readonly scheduler: Effect.UIO<Clock.Scheduler>
+  readonly scheduler: Effect<never, never, Clock.Scheduler>
 
-  readonly sleep: (duration: LazyArg<Duration>, __tsplusTrace?: string) => Effect.UIO<void>
+  readonly sleep: (duration: LazyArg<Duration>, __tsplusTrace?: string) => Effect<never, never, void>
 }
 
 /**

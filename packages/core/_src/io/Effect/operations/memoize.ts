@@ -7,7 +7,7 @@
 export function memoize<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
-): Effect.UIO<Effect<R, E, A>> {
+): Effect<never, never, Effect<R, E, A>> {
   return Do(($) => {
     const deferred = $(Deferred.make<E, A>())
     const complete = $(self.intoDeferred(deferred).once())

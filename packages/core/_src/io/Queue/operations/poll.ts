@@ -3,6 +3,6 @@
  *
  * @tsplus fluent ets/Queue poll
  */
-export function poll<A>(self: Queue<A>, __tsplusTrace?: string): Effect.UIO<Maybe<A>> {
+export function poll<A>(self: Queue<A>, __tsplusTrace?: string): Effect<never, never, Maybe<A>> {
   return self.takeUpTo(1).map((chunk) => chunk.head)
 }

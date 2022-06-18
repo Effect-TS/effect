@@ -3,6 +3,6 @@
  *
  * @tsplus static ets/Effect/Ops runtimeConfig
  */
-export const runtimeConfig: Effect.UIO<RuntimeConfig> = Effect.suspendSucceedWith(
+export const runtimeConfig: Effect<never, never, RuntimeConfig> = Effect.suspendSucceedWith(
   (runtimeConfig, _) => Effect.succeedNow(runtimeConfig)
 )

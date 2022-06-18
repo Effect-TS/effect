@@ -49,7 +49,7 @@ function arbiter<E, E1, A, A1>(
   promise: Deferred<E | E1, Tuple<[A | A1, Fiber<E | E1, A | A1>]>>,
   fails: Ref<number>
 ) {
-  return (exit: Exit<E, A | A1>): Effect.RIO<never, void> => {
+  return (exit: Exit<E, A | A1>): Effect<never, never, void> => {
     return exit.foldEffect(
       (e) =>
         fails

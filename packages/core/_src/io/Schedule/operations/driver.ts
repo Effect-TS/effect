@@ -9,15 +9,15 @@ import { Driver } from "@effect/core/io/Schedule/Driver"
  */
 export function driver<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>
-): Effect.UIO<Driver<State, Env, In, Out>> {
+): Effect<never, never, Driver<State, Env, In, Out>> {
   return Ref.make<Tuple<[Maybe<Out>, State]>>(Tuple(Maybe.none, self._initial)).map((ref) => {
     const last: Effect.IO<NoSuchElement, Out> = ref.get().flatMap(({ tuple: [element, _] }) =>
       element.fold(Effect.fail(new NoSuchElement()), (out) => Effect.succeed(out))
     )
 
-    const reset: Effect.UIO<void> = ref.set(Tuple(Maybe.none, self._initial))
+    const reset: Effect<never, never, void> = ref.set(Tuple(Maybe.none, self._initial))
 
-    const state: Effect.UIO<State> = ref.get().map((tuple) => tuple.get(1))
+    const state: Effect<never, never, State> = ref.get().map((tuple) => tuple.get(1))
 
     return new Driver(next(self, ref), last, reset, state)
   })

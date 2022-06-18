@@ -10,7 +10,7 @@ import { realFiber } from "@effect/core/io/Fiber/definition"
 export function inheritRefs<E, A>(
   self: Fiber<E, A>,
   __tsplusTrace?: string
-): Effect.UIO<void> {
+): Effect<never, never, void> {
   realFiber(self)
   return self._inheritRefs
 }

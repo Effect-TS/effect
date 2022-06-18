@@ -4,6 +4,6 @@
  *
  * @tsplus static ets/Fiber/Ops roots
  */
-export const roots: Effect.UIO<Chunk<Fiber.Runtime<any, any>>> = Effect.succeed(() =>
+export const roots: Effect<never, never, Chunk<Fiber.Runtime<any, any>>> = Effect.succeed(() =>
   Chunk.from(FiberScope._roots.value)
 )

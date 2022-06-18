@@ -6,6 +6,6 @@
 export function interruptAll(
   fibers: Collection<Fiber<any, any>>,
   __tsplusTrace?: string
-): Effect.UIO<void> {
+): Effect<never, never, void> {
   return Effect.fiberId.flatMap((fiberId) => Fiber.interruptAllAs(fibers, fiberId))
 }

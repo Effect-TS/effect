@@ -9,7 +9,7 @@ export function takeN_<A>(
   self: Queue<A>,
   n: number,
   __tsplusTrace?: string
-): Effect.UIO<Chunk<A>> {
+): Effect<never, never, Chunk<A>> {
   return self.takeBetween(n, n)
 }
 

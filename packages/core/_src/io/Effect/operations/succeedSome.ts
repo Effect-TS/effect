@@ -3,6 +3,6 @@
  *
  * @tsplus static ets/Effect/Ops some
  */
-export function succeedSome<A>(value: LazyArg<A>, __tsplusTrace?: string): Effect.UIO<Maybe<A>> {
+export function succeedSome<A>(value: LazyArg<A>, __tsplusTrace?: string): Effect<never, never, Maybe<A>> {
   return Effect.succeed(Maybe.some(value()))
 }
