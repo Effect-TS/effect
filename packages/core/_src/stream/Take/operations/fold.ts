@@ -15,7 +15,7 @@ export function fold_<E, A, Z>(
 ): Z {
   concreteTake(self)
   return self._exit.fold(
-    (cause) => Cause.flipCauseOption(cause).fold(() => end, error),
+    (cause) => Cause.flipCauseMaybe(cause).fold(() => end, error),
     value
   )
 }

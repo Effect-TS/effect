@@ -10,7 +10,7 @@ describe.concurrent("TMap", () => {
 
         const e = $(tmap.get("a"))
 
-        return e == Option.some(1)
+        return e == Maybe.some(1)
       })
       const result = await tx.commit().unsafeRunPromise()
 
@@ -24,7 +24,7 @@ describe.concurrent("TMap", () => {
 
         const e = $(tmap.get("a"))
 
-        return e == Option.some(10)
+        return e == Maybe.some(10)
       })
       const result = await tx.commit().unsafeRunPromise()
 

@@ -105,8 +105,8 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.failures() == List("use failed"))
-      assert.isTrue(result.defects() == List(releaseDied))
+      assert.isTrue(result.failures == List("use failed"))
+      assert.isTrue(result.defects == List(releaseDied))
     })
 
     it("happy path + disconnect", async () => {
@@ -146,8 +146,8 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.failures() == List("use failed"))
-      assert.isTrue(result.defects() == List(releaseDied))
+      assert.isTrue(result.failures == List("use failed"))
+      assert.isTrue(result.defects == List(releaseDied))
     })
 
     it("beast mode error handling + disconnect", async () => {
@@ -173,7 +173,7 @@ describe.concurrent("Effect", () => {
 
       const { cause, released } = await program.unsafeRunPromise()
 
-      assert.isTrue(cause.defects() == List(releaseDied))
+      assert.isTrue(cause.defects == List(releaseDied))
       assert.isTrue(released)
     })
   })

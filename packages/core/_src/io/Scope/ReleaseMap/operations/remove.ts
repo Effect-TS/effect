@@ -8,15 +8,15 @@ export function remove_(
   self: ReleaseMap,
   key: number,
   __tsplusTrace?: string
-): Effect.UIO<Option<Scope.Finalizer>> {
+): Effect.UIO<Maybe<Scope.Finalizer>> {
   return self.ref.modify((s) => {
     switch (s._tag) {
       case "Exited": {
-        return Tuple(Option.none, new Exited(s.nextKey, s.exit, s.update))
+        return Tuple(Maybe.none, new Exited(s.nextKey, s.exit, s.update))
       }
       case "Running": {
         const finalizers = s.finalizers()
-        const finalizer = Option.fromNullable(finalizers.get(key))
+        const finalizer = Maybe.fromNullable(finalizers.get(key))
         finalizers.delete(key)
         return Tuple(finalizer, new Running(s.nextKey, finalizers, s.update))
       }

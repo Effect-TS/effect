@@ -13,7 +13,7 @@ export function changesWithEffect_<R, E, A, R2, E2>(
   __tsplusTrace?: string
 ): Stream<R | R2, E | E2, A> {
   concreteStream(self)
-  return new StreamInternal(self.channel >> writer<R, E, A, R2, E2>(Option.none, f))
+  return new StreamInternal(self.channel >> writer<R, E, A, R2, E2>(Maybe.none, f))
 }
 
 /**
@@ -26,7 +26,7 @@ export function changesWithEffect_<R, E, A, R2, E2>(
 export const changesWithEffect = Pipeable(changesWithEffect_)
 
 function writer<R, E, A, R2, E2>(
-  last: Option<A>,
+  last: Maybe<A>,
   f: (x: A, y: A) => Effect<R2, E2, boolean>
 ): Channel<R | R2, E | E2, Chunk<A>, unknown, E | E2, Chunk<A>, void> {
   return Channel.readWithCause(
@@ -36,8 +36,8 @@ function writer<R, E, A, R2, E2>(
           Tuple(last, Chunk.empty<A>()),
           ({ tuple: [option, as] }, a) =>
             option.fold(
-              Effect.succeedNow(Tuple(Option.some(a), as.append(a))),
-              (value) => f(value, a).map((b) => b ? Tuple(Option.some(a), as) : Tuple(Option.some(a), as.append(a)))
+              Effect.succeedNow(Tuple(Maybe.some(a), as.append(a))),
+              (value) => f(value, a).map((b) => b ? Tuple(Maybe.some(a), as) : Tuple(Maybe.some(a), as.append(a)))
             )
         )
       ).flatMap(

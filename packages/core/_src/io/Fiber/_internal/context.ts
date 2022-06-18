@@ -146,7 +146,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     })
   }
 
-  get _poll(): Effect<never, never, Option<Exit<E, A>>> {
+  get _poll(): Effect<never, never, Maybe<Exit<E, A>>> {
     return Effect.succeed(this.unsafePoll())
   }
 
@@ -251,7 +251,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   unsafeLogWith(
     message: Lazy<string>,
     cause: Lazy<Cause<unknown>>,
-    overrideLogLevel: Option<LogLevel>,
+    overrideLogLevel: Maybe<LogLevel>,
     overrideRef1: FiberRef<unknown, unknown> | null = null,
     overrideValue1: unknown = null,
     trace?: string
@@ -599,7 +599,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         this.unsafeLogWith(
           () => `Fiber ${this.fiberId.threadName} did not handle an error`,
           () => exit.cause,
-          Option.some(LogLevel.Debug),
+          Maybe.some(LogLevel.Debug),
           null,
           null,
           trace
@@ -665,9 +665,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return this.unsafeEvalOn(Effect.succeed(this.childFibers.add(child)))
   }
 
-  unsafePoll(): Option<Exit<E, A>> {
+  unsafePoll(): Maybe<Exit<E, A>> {
     const state = this.state.get
-    return state._tag === "Done" ? Option.some(state.value) : Option.none
+    return state._tag === "Done" ? Maybe.some(state.value) : Maybe.none
   }
 
   // ---------------------------------------------------------------------------
@@ -980,7 +980,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   unsafeFork(
     effect: Instruction,
     trace: TraceElement,
-    forkScope: Option<FiberScope> = Option.none
+    forkScope: Maybe<FiberScope> = Maybe.none
   ): FiberContext<any, any> {
     const childId = FiberId.unsafeMake(trace)
 
@@ -1014,7 +1014,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       this.runtimeConfig.value.supervisor.unsafeOnStart(
         this.unsafeGetRef(FiberRef.currentEnvironment.value),
         effect,
-        Option.some(this),
+        Maybe.some(this),
         childContext
       )
 
@@ -1421,7 +1421,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     this.unsafeSetRef(
                       FiberRef.forkScopeOverride.value,
-                      current.forkScope()
+                      current.forkScope
                     )
 
                     this.unsafeAddFinalizer(

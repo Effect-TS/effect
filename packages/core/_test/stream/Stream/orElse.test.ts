@@ -40,7 +40,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("orElseOptional", () => {
     it("simple example", async () => {
-      const stream1 = Stream.succeed(1) + Stream.fail(Option.none)
+      const stream1 = Stream.succeed(1) + Stream.fail(Maybe.none)
       const stream2 = Stream.succeed(2)
       const program = stream1
         .orElseOptional(stream2)
@@ -54,7 +54,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("orElseSucceed", () => {
     it("simple example", async () => {
-      const stream = Stream.succeed(1) + Stream.fail(Option.none)
+      const stream = Stream.succeed(1) + Stream.fail(Maybe.none)
       const program = stream
         .orElseSucceed(2)
         .runCollect()

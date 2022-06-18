@@ -6,9 +6,9 @@ export function read<In>(): Channel<
   unknown,
   In,
   unknown,
-  Option<never>,
+  Maybe<never>,
   never,
   In
 > {
-  return Channel.readOrFail(Option.none)
+  return Channel.readOrFail(Maybe.none)
 }

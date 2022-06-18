@@ -6,7 +6,7 @@
  */
 export function continueOrRetrySTM_<R, E, A, R2, E2, A2>(
   self: STM<R, E, A>,
-  pf: (a: A) => Option<STM<R2, E2, A2>>
+  pf: (a: A) => Maybe<STM<R2, E2, A2>>
 ): STM<R2 | R, E | E2, A2> {
   return self.flatMap((a): STM<R2, E2, A2> => pf(a).getOrElse(STM.retry))
 }

@@ -4,7 +4,7 @@
  * @tsplus fluent ets/STM someOrElse
  */
 export function someOrElse_<R, E, A, B>(
-  self: STM<R, E, Option<A>>,
+  self: STM<R, E, Maybe<A>>,
   orElse: LazyArg<B>
 ): STM<R, E, A | B> {
   return self.map((option) => option.getOrElse(orElse))

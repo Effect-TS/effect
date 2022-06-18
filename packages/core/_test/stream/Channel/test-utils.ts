@@ -81,9 +81,9 @@ export function refReader<A>(
   return Channel.fromEffect(
     ref.modify((list) => {
       if (list.isNil()) {
-        return Tuple(Option.none, List.empty<A>())
+        return Tuple(Maybe.none, List.empty<A>())
       }
-      return Tuple(Option.some(list.head), list.tail)
+      return Tuple(Maybe.some(list.head), list.tail)
     })
   ).flatMap((option) =>
     option.fold(Channel.unit, (i) => Channel.write(i) > refReader(ref)) as Channel<

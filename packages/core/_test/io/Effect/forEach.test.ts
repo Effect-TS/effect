@@ -189,25 +189,25 @@ describe.concurrent("Effect", () => {
     })
   })
 
-  describe.concurrent("forEach for Option", () => {
+  describe.concurrent("forEach for Maybe", () => {
     it("succeeds with None given None", async () => {
-      const program = Effect.forEachOption(Option.emptyOf<string>(), (s) => Effect.succeed(s.length))
+      const program = Effect.forEachMaybe(Maybe.emptyOf<string>(), (s) => Effect.succeed(s.length))
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("succeeds with Some given Some", async () => {
-      const program = Effect.forEachOption(Option.some("success"), (s) => Effect.succeed(s.length))
+      const program = Effect.forEachMaybe(Maybe.some("success"), (s) => Effect.succeed(s.length))
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(7))
+      assert.isTrue(result == Maybe.some(7))
     })
 
     it("fails if the optional effect fails", async () => {
-      const program = Effect.forEachOption(Option.some("help"), (s) =>
+      const program = Effect.forEachMaybe(Maybe.some("help"), (s) =>
         Effect.succeed(() => {
           const n = Number.parseInt(s)
           if (Number.isNaN(n)) {
@@ -283,7 +283,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.isFailure() && result.cause.dieOption.isSome())
+      assert.isTrue(result.isFailure() && result.cause.dieMaybe.isSome())
     })
 
     it("runs a task that is interrupted", async () => {
@@ -596,9 +596,9 @@ describe.concurrent("Effect", () => {
 
       const { result1, result2, result3 } = await program.unsafeRunPromise()
 
-      assert.isTrue(result1.dieOption == Option.some(boom))
-      assert.isTrue(result2.dieOption == Option.some(boom))
-      assert.isTrue(result3.dieOption == Option.some(boom))
+      assert.isTrue(result1.dieMaybe == Maybe.some(boom))
+      assert.isTrue(result2.dieMaybe == Maybe.some(boom))
+      assert.isTrue(result3.dieMaybe == Maybe.some(boom))
       assert.isTrue(result3.isInterrupted)
     })
 

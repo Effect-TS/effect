@@ -3,9 +3,9 @@
  *
  * @tsplus getter ets/STM some
  */
-export function some<R, E, A>(self: STM<R, E, Option<A>>): STM<R, Option<E>, A> {
+export function some<R, E, A>(self: STM<R, E, Maybe<A>>): STM<R, Maybe<E>, A> {
   return self.foldSTM(
-    (e) => STM.fail(Option.some(e)),
-    (option) => option.fold(STM.fail(Option.none), STM.succeedNow)
+    (e) => STM.fail(Maybe.some(e)),
+    (option) => option.fold(STM.fail(Maybe.none), STM.succeedNow)
   )
 }

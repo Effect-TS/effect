@@ -9,7 +9,7 @@
  * @tsplus static ets/Effect/Ops asyncMaybe
  */
 export function asyncMaybe<R, E, A>(
-  register: (callback: (_: Effect<R, E, A>) => void) => Option<Effect<R, E, A>>,
+  register: (callback: (_: Effect<R, E, A>) => void) => Maybe<Effect<R, E, A>>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
   return asyncMaybeBlockingOn(register, FiberId.none)
@@ -29,7 +29,7 @@ export function asyncMaybe<R, E, A>(
  * @tsplus static ets/Effect/Ops asyncMaybeBlockingOn
  */
 export function asyncMaybeBlockingOn<R, E, A>(
-  register: (callback: (_: Effect<R, E, A>) => void) => Option<Effect<R, E, A>>,
+  register: (callback: (_: Effect<R, E, A>) => void) => Maybe<Effect<R, E, A>>,
   blockingOn: FiberId,
   __tsplusTrace?: string
 ): Effect<R, E, A> {

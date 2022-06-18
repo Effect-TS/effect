@@ -9,7 +9,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left(Option.none))
+      assert.isTrue(result == Either.left(Maybe.none))
     })
   })
 
@@ -29,20 +29,20 @@ describe.concurrent("Stream", () => {
   describe.concurrent("some", () => {
     it("simple example", async () => {
       const program = (
-        Stream.succeed(Option.some(1)) + Stream.succeed(Option.none)
+        Stream.succeed(Maybe.some(1)) + Stream.succeed(Maybe.none)
       ).some
         .runCollect()
         .either()
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left(Option.none))
+      assert.isTrue(result == Either.left(Maybe.none))
     })
   })
 
   describe.concurrent("someOrElse", () => {
     it("simple example", async () => {
-      const program = (Stream.succeed(Option.some(1)) + Stream.succeed(Option.none))
+      const program = (Stream.succeed(Maybe.some(1)) + Stream.succeed(Maybe.none))
         .someOrElse(-1)
         .runCollect()
 
@@ -54,7 +54,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("someOrFail", () => {
     it("simple example", async () => {
-      const program = (Stream.succeed(Option.some(1)) + Stream.succeed(Option.none))
+      const program = (Stream.succeed(Maybe.some(1)) + Stream.succeed(Maybe.none))
         .someOrFail(-1)
         .runCollect()
         .either()

@@ -21,7 +21,7 @@ export class MemoMap {
   ): Effect<RIn, E, Env<ROut>> {
     return Effect.succeed(scope).flatMap((scope) =>
       this.ref.modifyEffect((map) => {
-        const inMap = Option.fromNullable(map.get(layer))
+        const inMap = Maybe.fromNullable(map.get(layer))
 
         switch (inMap._tag) {
           case "Some": {

@@ -3,4 +3,4 @@
  *
  * @tsplus static ets/STM/Ops none
  */
-export const succeedNone: USTM<Option<never>> = STM.succeed(Option.none)
+export const succeedNone: USTM<Maybe<never>> = STM.succeed(Maybe.none)

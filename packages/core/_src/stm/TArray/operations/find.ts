@@ -8,18 +8,18 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
 export function find_<A>(
   self: TArray<A>,
   p: Predicate<A>
-): STM<never, never, Option<A>> {
+): STM<never, never, Maybe<A>> {
   return STM.Effect((journal) => {
     let i = 0
     concreteTArray(self)
     while (i < self.chunk.length) {
       const a = self.chunk.unsafeGet(i)!.unsafeGet(journal)
       if (p(a)) {
-        return Option.some(a)
+        return Maybe.some(a)
       }
       i++
     }
-    return Option.none
+    return Maybe.none
   })
 }
 

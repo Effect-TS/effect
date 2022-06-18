@@ -11,7 +11,7 @@ export function groupAdjacentBy_<R, E, A, K>(
   __tsplusTrace?: string
 ) {
   concreteStream(self)
-  return new StreamInternal(self.channel >> chunkAdjacent<E, A, K>(Option.none, f))
+  return new StreamInternal(self.channel >> chunkAdjacent<E, A, K>(Maybe.none, f))
 }
 
 /**
@@ -22,7 +22,7 @@ export function groupAdjacentBy_<R, E, A, K>(
 export const groupAdjacentBy = Pipeable(groupAdjacentBy_)
 
 function chunkAdjacent<E, A, K>(
-  buffer: Option<Tuple<[K, Chunk<A>]>>,
+  buffer: Maybe<Tuple<[K, Chunk<A>]>>,
   f: (a: A) => K,
   __tsplusTrace?: string
 ): Channel<never, E, Chunk<A>, unknown, E, Chunk<Tuple<[K, Chunk<A>]>>, unknown> {
@@ -40,23 +40,23 @@ function chunkAdjacent<E, A, K>(
 
 function go<A, K>(
   input: Chunk<A>,
-  state: Option<Tuple<[K, Chunk<A>]>>,
+  state: Maybe<Tuple<[K, Chunk<A>]>>,
   f: (a: A) => K,
   __tsplusTrace?: string
-): Tuple<[Chunk<Tuple<[K, Chunk<A>]>>, Option<Tuple<[K, Chunk<A>]>>]> {
+): Tuple<[Chunk<Tuple<[K, Chunk<A>]>>, Maybe<Tuple<[K, Chunk<A>]>>]> {
   return input.reduce(
     Tuple(Chunk.empty<Tuple<[K, Chunk<A>]>>(), state),
     ({ tuple: [os, o] }, a) =>
-      o.fold(Tuple(os, Option.some(Tuple(f(a), Chunk.single(a)))), (agg) => {
+      o.fold(Tuple(os, Maybe.some(Tuple(f(a), Chunk.single(a)))), (agg) => {
         const k2 = f(a)
         const {
           tuple: [k, aggregated]
         } = agg
 
         if (k === k2) {
-          return Tuple(os, Option.some(Tuple(k, aggregated.append(a))))
+          return Tuple(os, Maybe.some(Tuple(k, aggregated.append(a))))
         } else {
-          return Tuple(os.append(agg), Option.some(Tuple(k2, Chunk.single(a))))
+          return Tuple(os.append(agg), Maybe.some(Tuple(k2, Chunk.single(a))))
         }
       })
   )

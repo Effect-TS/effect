@@ -57,7 +57,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left(Option.none))
+      assert.isTrue(result == Either.left(Maybe.none))
     })
 
     it("on failure", async () => {
@@ -65,7 +65,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left(Option.some("fail")))
+      assert.isTrue(result == Either.left(Maybe.some("fail")))
     })
   })
 })

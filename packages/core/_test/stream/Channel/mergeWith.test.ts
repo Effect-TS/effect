@@ -21,11 +21,11 @@ describe.concurrent("Channel", () => {
     it("merge with different types", async () => {
       const left = Channel.write(1) >
         Channel.fromEffect(
-          Effect.attempt("whatever").refineOrDie((e) => e instanceof RuntimeError ? Option.some(e) : Option.none)
+          Effect.attempt("whatever").refineOrDie((e) => e instanceof RuntimeError ? Maybe.some(e) : Maybe.none)
         )
       const right = Channel.write(2) >
         Channel.fromEffect(
-          Effect.attempt(true).refineOrDie((e) => e instanceof IllegalStateException ? Option.some(e) : Option.none)
+          Effect.attempt(true).refineOrDie((e) => e instanceof IllegalStateException ? Maybe.some(e) : Maybe.none)
         )
       const program = left
         .mergeWith(

@@ -49,8 +49,8 @@ describe.concurrent("Effect", () => {
       const program = Effect.die(new IllegalArgumentException(message)).catchSomeDefect(
         (e) =>
           e instanceof IllegalArgumentException
-            ? Option.some(Effect.succeed(e.message))
-            : Option.none
+            ? Maybe.some(Effect.succeed(e.message))
+            : Maybe.none
       )
 
       const result = await program.unsafeRunPromise()
@@ -61,7 +61,7 @@ describe.concurrent("Effect", () => {
     it("leaves the rest", async () => {
       const error = new IllegalArgumentException("division by zero")
       const program = Effect.die(error).catchSomeDefect((e) =>
-        e instanceof RuntimeError ? Option.some(Effect.succeed(e.message)) : Option.none
+        e instanceof RuntimeError ? Maybe.some(Effect.succeed(e.message)) : Maybe.none
       )
 
       const result = await program.unsafeRunPromiseExit()
@@ -73,8 +73,8 @@ describe.concurrent("Effect", () => {
       const error = new IllegalArgumentException("division by zero")
       const program = Effect.fail(error).catchSomeDefect((e) =>
         e instanceof IllegalArgumentException
-          ? Option.some(Effect.succeed(e.message))
-          : Option.none
+          ? Maybe.some(Effect.succeed(e.message))
+          : Maybe.none
       )
 
       const result = await program.unsafeRunPromiseExit()
@@ -86,8 +86,8 @@ describe.concurrent("Effect", () => {
       const error = new IllegalArgumentException("division by zero")
       const program = Effect.succeed(error).catchSomeDefect((e) =>
         e instanceof IllegalArgumentException
-          ? Option.some(Effect.succeed(e.message))
-          : Option.none
+          ? Maybe.some(Effect.succeed(e.message))
+          : Maybe.none
       )
 
       const result = await program.unsafeRunPromise()

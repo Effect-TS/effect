@@ -10,7 +10,7 @@ import { isFiberFailure } from "@effect/core/io/Cause/errors"
  */
 export function asyncScoped<R, E, A>(
   register: (
-    f: (effect: Effect<R, Option<E>, Chunk<A>>) => void
+    f: (effect: Effect<R, Maybe<E>, Chunk<A>>) => void
   ) => Effect<R | Scope, E, unknown>,
   outputBuffer = 16,
   __tsplusTrace?: string
@@ -48,5 +48,5 @@ export function asyncScoped<R, E, A>(
                 .onError(() => done.set(true) > output.shutdown)
           )
       )
-  ).flatMap((pull) => Stream.repeatEffectChunkOption(pull))
+  ).flatMap((pull) => Stream.repeatEffectChunkMaybe(pull))
 }

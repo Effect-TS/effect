@@ -4,7 +4,7 @@
  * @tsplus fluent ets/STM someOrFail
  */
 export function someOrFail_<R, E, A, E2>(
-  self: STM<R, E, Option<A>>,
+  self: STM<R, E, Maybe<A>>,
   orFail: LazyArg<E2>
 ): STM<R, E | E2, A> {
   return self.flatMap((option) => option.fold(STM.succeed(orFail).flatMap(STM.failNow), STM.succeedNow))

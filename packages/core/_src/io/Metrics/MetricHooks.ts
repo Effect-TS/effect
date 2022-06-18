@@ -133,7 +133,7 @@ export function summary(key: MetricKey.Summary): MetricHook.Summary {
   let max = Number.MIN_VALUE
 
   // Just before the snapshot we filter out all values older than maxAge
-  const snapshot = (now: number): Chunk<Tuple<[number, Option<number>]>> => {
+  const snapshot = (now: number): Chunk<Tuple<[number, Maybe<number>]>> => {
     const builder = Chunk.builder<number>()
     // If the buffer is not full yet it contains valid items at the 0..last
     // indices and null values at the rest of the positions.
@@ -194,7 +194,7 @@ export class ResolvedQuantile {
      * `Some<number>` if a value for the quantile could be found, otherwise
      * `None`.
      */
-    readonly value: Option<number>,
+    readonly value: Maybe<number>,
     /**
      * How many samples have been consumed prior to this quantile.
      */
@@ -210,7 +210,7 @@ function calculateQuantiles(
   error: number,
   sortedQuantiles: Chunk<number>,
   sortedSamples: Chunk<number>
-): Chunk<Tuple<[number, Option<number>]>> {
+): Chunk<Tuple<[number, Maybe<number>]>> {
   // The number of samples examined
   const sampleCount = sortedSamples.length
 
@@ -225,7 +225,7 @@ function calculateQuantiles(
       resolveQuantile(
         error,
         sampleCount,
-        Option.none,
+        Maybe.none,
         0,
         head,
         sortedSamples
@@ -255,21 +255,21 @@ function calculateQuantiles(
 function resolveQuantile(
   error: number,
   sampleCount: number,
-  current: Option<number>,
+  current: Maybe<number>,
   consumed: number,
   quantile: number,
   rest: Chunk<number>
 ): ResolvedQuantile {
   // If the remaining list of samples is empty, there is nothing more to resolve
   if (rest.isEmpty) {
-    return new ResolvedQuantile(quantile, Option.none, consumed, Chunk.empty())
+    return new ResolvedQuantile(quantile, Maybe.none, consumed, Chunk.empty())
   }
   // If the quantile is the 100% quantile, we can take the maximum of all the
   // remaining values as the result
   if (quantile === 1) {
     return new ResolvedQuantile(
       quantile,
-      Option.some(rest.unsafeLast),
+      Maybe.some(rest.unsafeLast),
       consumed + rest.length,
       Chunk.empty()
     )
@@ -332,7 +332,7 @@ function resolveQuantile(
       }
       return new ResolvedQuantile(
         quantile,
-        Option.some(current.value),
+        Maybe.some(current.value),
         consumed,
         rest
       )

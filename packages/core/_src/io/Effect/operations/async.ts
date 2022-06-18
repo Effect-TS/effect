@@ -35,6 +35,6 @@ export function asyncBlockingOn<R, E, A>(
 ): Effect<R, E, A> {
   return Effect.asyncMaybeBlockingOn((cb) => {
     register(cb)
-    return Option.none
+    return Maybe.none
   }, blockingOn)
 }

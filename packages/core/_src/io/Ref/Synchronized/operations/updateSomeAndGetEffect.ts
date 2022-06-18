@@ -7,7 +7,7 @@
  */
 export function updateSomeAndGetEffect_<R, E, A>(
   self: SynchronizedRef<A>,
-  pf: (a: A) => Option<Effect<R, E, A>>,
+  pf: (a: A) => Maybe<Effect<R, E, A>>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
   return self.modifyEffect((v) =>

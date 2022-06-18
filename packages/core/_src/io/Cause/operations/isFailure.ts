@@ -4,5 +4,5 @@
  * @tsplus getter ets/Cause isFailure
  */
 export function isFailure<E>(self: Cause<E>): boolean {
-  return self.failureOption.isSome()
+  return self.failureMaybe.isSome()
 }

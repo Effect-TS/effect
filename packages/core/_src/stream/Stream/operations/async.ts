@@ -14,7 +14,7 @@ export function _async<R, E, A>(
 ): Stream<R, E, A> {
   return Stream.asyncMaybe((callback) => {
     register(callback)
-    return Option.none
+    return Maybe.none
   }, outputBuffer)
 }
 

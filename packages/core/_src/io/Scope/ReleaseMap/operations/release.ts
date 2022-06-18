@@ -20,7 +20,7 @@ export function release_(
         }
         case "Running": {
           const finalizers = s.finalizers()
-          const finalizer = Option.fromNullable(finalizers.get(key))
+          const finalizer = Maybe.fromNullable(finalizers.get(key))
           finalizers.delete(key)
           return Tuple(
             finalizer.fold(

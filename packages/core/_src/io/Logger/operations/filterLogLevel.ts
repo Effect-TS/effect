@@ -7,11 +7,11 @@
 export function filterLogLevel_<Message, Output>(
   self: Logger<Message, Output>,
   f: (logLevel: LogLevel) => boolean
-): Logger<Message, Option<Output>> {
+): Logger<Message, Maybe<Output>> {
   return {
     apply: (trace, fiberId, logLevel, message, cause, context, spans, annotations) => {
       return f(logLevel)
-        ? Option.some(
+        ? Maybe.some(
           self.apply(
             trace,
             fiberId,
@@ -23,7 +23,7 @@ export function filterLogLevel_<Message, Output>(
             annotations
           )
         )
-        : Option.none
+        : Maybe.none
     }
   }
 }

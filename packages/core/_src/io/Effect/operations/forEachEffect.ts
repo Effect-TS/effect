@@ -8,10 +8,10 @@ export function forEachEffect_<R, E, A, R1, E1, B>(
   self: Effect<R, E, A>,
   f: (a: A) => Effect<R1, E1, B>,
   __tsplusTrace?: string
-): Effect<R | R1, E1, Option<B>> {
+): Effect<R | R1, E1, Maybe<B>> {
   return self.foldCauseEffect(
     () => Effect.none,
-    (a) => f(a).map(Option.some)
+    (a) => f(a).map(Maybe.some)
   )
 }
 

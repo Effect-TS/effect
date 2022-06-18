@@ -7,7 +7,7 @@ export function contains_<E, E1>(self: Cause<E>, that: Cause<E1>): boolean {
   if ((self as Cause<E | E1>) === that) {
     return true
   }
-  return self.foldLeft<E, boolean>(false, (acc, cause) => Option.some(acc || Equals.equals(cause, that)))
+  return self.foldLeft<E, boolean>(false, (acc, cause) => Maybe.some(acc || Equals.equals(cause, that)))
 }
 
 /**

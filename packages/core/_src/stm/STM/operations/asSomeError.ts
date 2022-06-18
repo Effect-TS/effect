@@ -3,6 +3,6 @@
  *
  * @tsplus getter ets/STM asSomeError
  */
-export function asSomeError<R, E, A>(self: STM<R, E, A>): STM<R, Option<E>, A> {
-  return self.mapError(Option.some)
+export function asSomeError<R, E, A>(self: STM<R, E, A>): STM<R, Maybe<E>, A> {
+  return self.mapError(Maybe.some)
 }

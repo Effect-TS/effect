@@ -6,5 +6,5 @@ import { TakeInternal } from "@effect/core/stream/Take/operations/_internal/Take
  * @tsplus static ets/Take/Ops fail
  */
 export function fail<E>(e: E): Take<E, never> {
-  return new TakeInternal(Exit.fail(Option.some(e)))
+  return new TakeInternal(Exit.fail(Maybe.some(e)))
 }

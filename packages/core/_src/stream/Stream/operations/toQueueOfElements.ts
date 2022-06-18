@@ -8,9 +8,9 @@ export function toQueueOfElements_<R, E, A>(
   self: Stream<R, E, A>,
   capacity = 2,
   __tsplusTrace?: string
-): Effect<R | Scope, never, Dequeue<Exit<Option<E>, A>>> {
+): Effect<R | Scope, never, Dequeue<Exit<Maybe<E>, A>>> {
   return Effect.acquireRelease(
-    Queue.bounded<Exit<Option<E>, A>>(capacity),
+    Queue.bounded<Exit<Maybe<E>, A>>(capacity),
     (queue) => queue.shutdown
   ).tap((queue) => self.runIntoQueueElementsScoped(queue).fork())
 }

@@ -6,7 +6,7 @@
  */
 export function unfoldEffect<A, R, E, S>(
   s: S,
-  f: (s: S) => Effect<R, E, Option<Tuple<[A, S]>>>,
+  f: (s: S) => Effect<R, E, Maybe<Tuple<[A, S]>>>,
   __tsplusTrace?: string
 ): Effect<R, E, Chunk<A>> {
   return loop(s, f, Chunk.empty())
@@ -14,7 +14,7 @@ export function unfoldEffect<A, R, E, S>(
 
 function loop<A, R, E, S>(
   s: S,
-  f: (s: S) => Effect<R, E, Option<Tuple<[A, S]>>>,
+  f: (s: S) => Effect<R, E, Maybe<Tuple<[A, S]>>>,
   builder: Chunk<A>,
   __tsplusTrace?: string
 ): Effect<R, E, Chunk<A>> {

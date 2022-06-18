@@ -16,9 +16,9 @@ export function combineChunks_<R, E, A, R2, E2, A2, S, A3>(
   s: LazyArg<S>,
   f: (
     s: S,
-    pullLeft: Effect<R, Option<E>, Chunk<A>>,
-    pullRight: Effect<R2, Option<E2>, Chunk<A2>>
-  ) => Effect<R | R2, never, Exit<Option<E | E2>, Tuple<[Chunk<A3>, S]>>>,
+    pullLeft: Effect<R, Maybe<E>, Chunk<A>>,
+    pullRight: Effect<R2, Maybe<E2>, Chunk<A2>>
+  ) => Effect<R | R2, never, Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, S]>>>,
   __tsplusTrace?: string
 ): Stream<R | R2, E | E2, A3> {
   return new StreamInternal(

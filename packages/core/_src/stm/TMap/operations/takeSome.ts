@@ -8,10 +8,10 @@ import { concreteTMap } from "@effect/core/stm/TMap/operations/_internal/Interna
  */
 export function takeSome_<K, V, A>(
   self: TMap<K, V>,
-  pf: (kv: Tuple<[K, V]>) => Option<A>
+  pf: (kv: Tuple<[K, V]>) => Maybe<A>
 ): USTM<Chunk<A>> { // todo: rewrite to NonEmptyChunk<A>
   concreteTMap(self)
-  return STM.Effect<never, Option<Chunk<A>>>((journal) => {
+  return STM.Effect<never, Maybe<Chunk<A>>>((journal) => {
     const buckets = self.tBuckets.unsafeGet(journal)
     const chunkBuilder = Chunk.builder<A>()
 
@@ -49,7 +49,7 @@ export function takeSome_<K, V, A>(
 
     self.tSize.unsafeSet(newSize, journal)
 
-    return Option.fromPredicate(chunkBuilder.build(), (_) => _.size > 0)
+    return Maybe.fromPredicate(chunkBuilder.build(), (_) => _.size > 0)
   })
     .continueOrRetry(identity)
 }

@@ -74,7 +74,7 @@ describe.concurrent("TQueue", () => {
 
         const ans = $(tq.poll)
 
-        return ans == Option.some(1)
+        return ans == Maybe.some(1)
       }).commit()
 
       const result = await tx.unsafeRunPromise()

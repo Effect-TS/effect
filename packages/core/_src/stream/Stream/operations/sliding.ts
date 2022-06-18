@@ -50,8 +50,8 @@ function reader<E, A>(
           const currentIndex = queueSize + index + 1
 
           return currentIndex < chunkSize || (currentIndex - chunkSize) % stepSize > 0
-            ? Option.none
-            : Option.some(queue.toChunk())
+            ? Maybe.none
+            : Maybe.some(queue.toChunk())
         })
       ) > reader<E, A>(chunkSize, stepSize, queue, queueSize + input.length),
     (cause) =>

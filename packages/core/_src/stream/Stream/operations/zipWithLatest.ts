@@ -20,7 +20,7 @@ export function zipWithLatest_<R, E, A, R2, E2, A2, A3>(
       .bind("left", () => self.toPull().map(pullNonEmpty))
       .bind("right", () => that().toPull().map(pullNonEmpty))
       .flatMap(({ left, right }) =>
-        Stream.fromEffectOption(
+        Stream.fromEffectMaybe(
           left.raceWith(
             right,
             (leftDone, rightFiber) =>
@@ -39,8 +39,8 @@ export function zipWithLatest_<R, E, A, R2, E2, A2, A3>(
                     ? r.map((a2) => f(l.unsafeGet(l.size - 1), a2))
                     : l.map((a) => f(a, r.unsafeGet(r.size - 1)))
                 ) +
-                Stream.repeatEffectOption(left)
-                  .mergeEither(Stream.repeatEffectOption(right))
+                Stream.repeatEffectMaybe(left)
+                  .mergeEither(Stream.repeatEffectMaybe(right))
                   .mapEffect((either) =>
                     either.fold(
                       (leftChunk) =>
@@ -81,8 +81,8 @@ export function zipWithLatest_<R, E, A, R2, E2, A2, A3>(
 export const zipWithLatest = Pipeable(zipWithLatest_)
 
 function pullNonEmpty<R, E, A>(
-  pull: Effect<R, Option<E>, Chunk<A>>,
+  pull: Effect<R, Maybe<E>, Chunk<A>>,
   __tsplusTrace?: string
-): Effect<R, Option<E>, Chunk<A>> {
+): Effect<R, Maybe<E>, Chunk<A>> {
   return pull.flatMap((chunk) => chunk.isEmpty ? pullNonEmpty(pull) : Effect.succeedNow(chunk))
 }

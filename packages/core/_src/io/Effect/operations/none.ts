@@ -4,11 +4,11 @@
  * @tsplus getter ets/Effect none
  */
 export function none<R, E, A>(
-  self: Effect<R, E, Option<A>>,
+  self: Effect<R, E, Maybe<A>>,
   __tsplusTrace?: string
-): Effect<R, Option<E>, void> {
+): Effect<R, Maybe<E>, void> {
   return self.foldEffect(
-    (e) => Effect.fail(Option.some(e)),
-    (option) => option.fold(Effect.succeedNow(undefined), () => Effect.fail(Option.none))
+    (e) => Effect.fail(Maybe.some(e)),
+    (option) => option.fold(Effect.succeedNow(undefined), () => Effect.fail(Maybe.none))
   )
 }

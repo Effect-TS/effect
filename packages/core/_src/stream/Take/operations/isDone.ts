@@ -7,5 +7,5 @@ import { concreteTake } from "@effect/core/stream/Take/operations/_internal/Take
  */
 export function isDone<E, A>(self: Take<E, A>): boolean {
   concreteTake(self)
-  return self._exit.fold((cause) => Cause.flipCauseOption(cause).isNone(), () => false)
+  return self._exit.fold((cause) => Cause.flipCauseMaybe(cause).isNone(), () => false)
 }

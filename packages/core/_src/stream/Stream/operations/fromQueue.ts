@@ -13,7 +13,7 @@ export function fromQueue<A>(
   maxChunkSize = DEFAULT_CHUNK_SIZE,
   __tsplusTrace?: string
 ): Stream<never, never, A> {
-  return Stream.repeatEffectChunkOption(() => {
+  return Stream.repeatEffectChunkMaybe(() => {
     const queue0 = queue()
     return (queue0 as Queue<A>)
       .takeBetween(1, maxChunkSize)

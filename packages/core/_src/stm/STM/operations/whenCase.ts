@@ -6,9 +6,9 @@
  */
 export function whenCase<R, E, A, B>(
   a: LazyArg<A>,
-  pf: (a: A) => Option<STM<R, E, B>>,
+  pf: (a: A) => Maybe<STM<R, E, B>>,
   __tsplusTrace?: string
-): STM<R, E, Option<B>> {
+): STM<R, E, Maybe<B>> {
   return STM.suspend(
     pf(a())
       .map((effect) => effect.asSome)

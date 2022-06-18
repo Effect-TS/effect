@@ -180,7 +180,7 @@ describe.concurrent("TMap", () => {
 
         const res = $(tmap.get("a").commit())
 
-        return res == Option.some(2000)
+        return res == Maybe.some(2000)
       })
       const result = await tx.unsafeRunPromise()
 
@@ -209,9 +209,9 @@ describe.concurrent("TMap", () => {
         const tmap = $(TMap.make(Tuple("a", 1), Tuple("b", 2)))
 
         $(tmap.updateWith("a", (v) => v.map((_) => _ + 1)))
-        $(tmap.updateWith("b", (v) => Option.none))
-        $(tmap.updateWith("c", (v) => Option.some(3)))
-        $(tmap.updateWith("d", (v) => Option.none))
+        $(tmap.updateWith("b", (v) => Maybe.none))
+        $(tmap.updateWith("c", (v) => Maybe.some(3)))
+        $(tmap.updateWith("d", (v) => Maybe.none))
 
         const res = $(tmap.toMap.map(Chunk.from).map((_) => _.map(Tuple.fromNative)))
 

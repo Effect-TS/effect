@@ -7,5 +7,5 @@ export function fromEffect<R, E, A>(
   effect: LazyArg<Effect<R, E, A>>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  return Stream.fromEffectOption(effect().mapError(Option.some))
+  return Stream.fromEffectMaybe(effect().mapError(Maybe.some))
 }

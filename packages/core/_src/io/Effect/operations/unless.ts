@@ -7,7 +7,7 @@ export function unless_<R, E, A>(
   self: Effect<R, E, A>,
   predicate: LazyArg<boolean>,
   __tsplusTrace?: string
-): Effect<R, E, Option<A>> {
+): Effect<R, E, Maybe<A>> {
   return Effect.suspendSucceed(predicate() ? Effect.none : self.asSome())
 }
 

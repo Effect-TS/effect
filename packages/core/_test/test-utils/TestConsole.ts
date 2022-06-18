@@ -127,7 +127,7 @@ export function makeTestConsole(
       consoleState
         .get()
         .flatMap((state) =>
-          Effect.fromOption(state.input.head).orElseFail(
+          Effect.fromMaybe(state.input.head).orElseFail(
             new TestConsoleError("There is no more input left to read")
           )
         ),

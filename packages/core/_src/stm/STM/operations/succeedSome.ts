@@ -3,6 +3,6 @@
  *
  * @tsplus static ets/STM/Ops some
  */
-export function succeedSome<A>(a: A): USTM<Option<A>> {
-  return STM.succeed(Option.some(a))
+export function succeedSome<A>(a: A): USTM<Maybe<A>> {
+  return STM.succeed(Maybe.some(a))
 }

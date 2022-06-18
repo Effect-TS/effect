@@ -1,11 +1,11 @@
 /**
- * Lifts an `Option` into an `Effect`. If the option is not defined, fail with
+ * Lifts an `Maybe` into an `Effect`. If the option is not defined, fail with
  * the specified `e` value.
  *
  * @tsplus static ets/Effect/Ops getOrFailWith
  */
 export function getOrFailWith<E, A>(
-  option: LazyArg<Option<A>>,
+  option: LazyArg<Maybe<A>>,
   e: LazyArg<E>,
   __tsplusTrace?: string
 ): Effect.IO<E, A> {

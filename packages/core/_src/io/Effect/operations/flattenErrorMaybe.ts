@@ -1,10 +1,10 @@
 /**
  * Unwraps the optional error, defaulting to the provided value.
  *
- * @tsplus fluent ets/Effect flattenErrorOption
+ * @tsplus fluent ets/Effect flattenErrorMaybe
  */
-export function flattenErrorOption_<R, E, E1, A>(
-  self: Effect<R, Option<E>, A>,
+export function flattenErrorMaybe_<R, E, E1, A>(
+  self: Effect<R, Maybe<E>, A>,
   def: LazyArg<E1>,
   __tsplusTrace?: string
 ): Effect<R, E | E1, A> {
@@ -14,6 +14,6 @@ export function flattenErrorOption_<R, E, E1, A>(
 /**
  * Unwraps the optional error, defaulting to the provided value.
  *
- * @tsplus static ets/Effect/Aspects flattenErrorOption
+ * @tsplus static ets/Effect/Aspects flattenErrorMaybe
  */
-export const flattenErrorOption = Pipeable(flattenErrorOption_)
+export const flattenErrorMaybe = Pipeable(flattenErrorMaybe_)

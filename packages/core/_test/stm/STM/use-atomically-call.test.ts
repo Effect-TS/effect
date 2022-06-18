@@ -37,7 +37,7 @@ describe.concurrent("STM", () => {
         const program = (
           STM.fail<ErrorTest>("Error1") > STM.succeed("everything is fine")
         )
-          .catchSome((e) => e === "Error1" ? Option.some(STM.succeed("gotcha")) : Option.none)
+          .catchSome((e) => e === "Error1" ? Maybe.some(STM.succeed("gotcha")) : Maybe.none)
           .commit()
 
         const result = await program.unsafeRunPromise()
@@ -51,7 +51,7 @@ describe.concurrent("STM", () => {
         const program = (
           STM.fail<ErrorTest>("Error2") > STM.succeed("everything is fine")
         )
-          .catchSome((e) => e === "Error1" ? Option.some(STM.succeed("gotcha")) : Option.none)
+          .catchSome((e) => e === "Error1" ? Maybe.some(STM.succeed("gotcha")) : Maybe.none)
           .commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -256,10 +256,10 @@ describe.concurrent("STM", () => {
       assert.isTrue(result1 === result2)
     })
 
-    describe.concurrent("flattenErrorOption", () => {
+    describe.concurrent("flattenErrorMaybe", () => {
       it("with an existing error and return it", async () => {
-        const program = STM.fail(Option.some("oh no!"))
-          .flattenErrorOption("default error")
+        const program = STM.fail(Maybe.some("oh no!"))
+          .flattenErrorMaybe("default error")
           .commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -268,8 +268,8 @@ describe.concurrent("STM", () => {
       })
 
       it("with no error and default to value", async () => {
-        const program = STM.fail(Option.none)
-          .flattenErrorOption("default error")
+        const program = STM.fail(Maybe.none)
+          .flattenErrorMaybe("default error")
           .commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -388,7 +388,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail(Option.none))
+        assert.isTrue(result.untraced == Exit.fail(Maybe.none))
       })
 
       it("returns the Error around Some", async () => {
@@ -398,7 +398,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail(Option.some("my error")))
+        assert.isTrue(result.untraced == Exit.fail(Maybe.some("my error")))
       })
     })
 
@@ -520,7 +520,7 @@ describe.concurrent("STM", () => {
 
     describe.concurrent("none", () => {
       it("when A is None", async () => {
-        const program = STM.succeed(Option.none).noneOrFail.commit()
+        const program = STM.succeed(Maybe.none).noneOrFail.commit()
 
         const result = await program.unsafeRunPromise()
 
@@ -532,15 +532,15 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail(Option.some(ExampleError)))
+        assert.isTrue(result.untraced == Exit.fail(Maybe.some(ExampleError)))
       })
 
       it("when A is Some(a)", async () => {
-        const program = STM.succeed(Option.some(1)).noneOrFail.commit()
+        const program = STM.succeed(Maybe.some(1)).noneOrFail.commit()
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail(Option.none))
+        assert.isTrue(result.untraced == Exit.fail(Maybe.none))
       })
 
       it("lifting a value", async () => {
@@ -548,7 +548,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromise()
 
-        assert.isTrue(result == Option.none)
+        assert.isTrue(result == Maybe.none)
       })
     })
 
@@ -558,7 +558,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromise()
 
-        assert.isTrue(result == Option.some(42))
+        assert.isTrue(result == Maybe.some(42))
       })
 
       it("a failed computation into None", async () => {
@@ -566,14 +566,14 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromise()
 
-        assert.isTrue(result == Option.none)
+        assert.isTrue(result == Maybe.none)
       })
     })
 
     describe.concurrent("optional to convert:", () => {
       it("a Some(e) in E to a e in E", async () => {
-        const program = STM.fromEither<Option<string>, number>(
-          Either.left(Option.some("my error"))
+        const program = STM.fromEither<Maybe<string>, number>(
+          Either.left(Maybe.some("my error"))
         )
           .unsome
           .commit()
@@ -584,23 +584,23 @@ describe.concurrent("STM", () => {
       })
 
       it("a None in E into None in A", async () => {
-        const program = STM.fromEither<Option<string>, number>(Either.left(Option.none))
+        const program = STM.fromEither<Maybe<string>, number>(Either.left(Maybe.none))
           .unsome
           .commit()
 
         const result = await program.unsafeRunPromise()
 
-        assert.isTrue(result == Option.none)
+        assert.isTrue(result == Maybe.none)
       })
 
       it("no error", async () => {
-        const program = STM.fromEither<Option<string>, number>(Either.right(42))
+        const program = STM.fromEither<Maybe<string>, number>(Either.right(42))
           .unsome
           .commit()
 
         const result = await program.unsafeRunPromise()
 
-        assert.isTrue(result == Option.some(42))
+        assert.isTrue(result == Maybe.some(42))
       })
     })
 
@@ -707,7 +707,7 @@ describe.concurrent("STM", () => {
     describe.concurrent("reject", () => {
       it("returns failure ignoring value", async () => {
         const program = STM.succeed(0)
-          .reject((n) => (n !== 0 ? Option.some("partial failed") : Option.none))
+          .reject((n) => (n !== 0 ? Maybe.some("partial failed") : Maybe.none))
           .commit()
 
         const result = await program.unsafeRunPromise()
@@ -717,7 +717,7 @@ describe.concurrent("STM", () => {
 
       it("returns failure ignoring value", async () => {
         const program = STM.succeed(1)
-          .reject((n) => (n !== 0 ? Option.some("partial failed") : Option.none))
+          .reject((n) => (n !== 0 ? Maybe.some("partial failed") : Maybe.none))
           .commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -729,7 +729,7 @@ describe.concurrent("STM", () => {
     describe.concurrent("rejectSTM", () => {
       it("doesnt collect value", async () => {
         const program = STM.succeed(0)
-          .rejectSTM((n) => n !== 0 ? Option.some(STM.succeed("partial failed")) : Option.none)
+          .rejectSTM((n) => n !== 0 ? Maybe.some(STM.succeed("partial failed")) : Maybe.none)
           .commit()
 
         const result = await program.unsafeRunPromise()
@@ -739,7 +739,7 @@ describe.concurrent("STM", () => {
 
       it("returns failure ignoring value", async () => {
         const program = STM.succeed(1)
-          .rejectSTM((n) => n !== 0 ? Option.some(STM.succeed("partial failed")) : Option.none)
+          .rejectSTM((n) => n !== 0 ? Maybe.some(STM.succeed("partial failed")) : Maybe.none)
           .commit()
 
         const result = await program.unsafeRunPromiseExit()
@@ -810,7 +810,7 @@ describe.concurrent("STM", () => {
 
     describe.concurrent("some", () => {
       it("extracts the value from Some", async () => {
-        const program = STM.succeed(Option.some(1)).some.commit()
+        const program = STM.succeed(Maybe.some(1)).some.commit()
 
         const result = await program.unsafeRunPromise()
 
@@ -818,11 +818,11 @@ describe.concurrent("STM", () => {
       })
 
       it("fails on None", async () => {
-        const program = STM.succeed(Option.none).some.commit()
+        const program = STM.succeed(Maybe.none).some.commit()
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail(Option.none))
+        assert.isTrue(result.untraced == Exit.fail(Maybe.none))
       })
 
       it("fails when given an exception", async () => {
@@ -844,13 +844,13 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromise()
 
-        assert.isTrue(result == Option.some(42))
+        assert.isTrue(result == Maybe.some(42))
       })
     })
 
     describe.concurrent("someOrElse", () => {
       it("extracts the value from Some", async () => {
-        const program = STM.succeed(Option.some(1)).someOrElse(42).commit()
+        const program = STM.succeed(Maybe.some(1)).someOrElse(42).commit()
 
         const result = await program.unsafeRunPromise()
 
@@ -858,7 +858,7 @@ describe.concurrent("STM", () => {
       })
 
       it("falls back to the default value if None", async () => {
-        const program = STM.succeed(Option.none).someOrElse(42).commit()
+        const program = STM.succeed(Maybe.none).someOrElse(42).commit()
 
         const result = await program.unsafeRunPromise()
 
@@ -881,7 +881,7 @@ describe.concurrent("STM", () => {
 
     describe.concurrent("someOrElseSTM", () => {
       it("extracts the value from Some", async () => {
-        const program = STM.succeed(Option.some(1))
+        const program = STM.succeed(Maybe.some(1))
           .someOrElseSTM(STM.succeed(42))
           .commit()
 
@@ -891,7 +891,7 @@ describe.concurrent("STM", () => {
       })
 
       it("falls back to the default value if None", async () => {
-        const program = STM.succeed(Option.none).someOrElseSTM(STM.succeed(42)).commit()
+        const program = STM.succeed(Maybe.none).someOrElseSTM(STM.succeed(42)).commit()
 
         const result = await program.unsafeRunPromise()
 
@@ -914,7 +914,7 @@ describe.concurrent("STM", () => {
 
     describe.concurrent("someOrFail", () => {
       it("extracts the value from Some", async () => {
-        const program = STM.succeed(Option.some(1)).someOrFail(ExampleError).commit()
+        const program = STM.succeed(Maybe.some(1)).someOrFail(ExampleError).commit()
 
         const result = await program.unsafeRunPromise()
 
@@ -922,7 +922,7 @@ describe.concurrent("STM", () => {
       })
 
       it("fails on None", async () => {
-        const program = STM.succeed(Option.none).someOrFail(ExampleError).commit()
+        const program = STM.succeed(Maybe.none).someOrFail(ExampleError).commit()
 
         const result = await program.unsafeRunPromiseExit()
 
@@ -952,7 +952,7 @@ describe.concurrent("STM", () => {
 
     describe.concurrent("someOrFailException", () => {
       it("extracts the optional value", async () => {
-        const program = STM.succeed(Option.some(42)).someOrFailException.commit()
+        const program = STM.succeed(Maybe.some(42)).someOrFailException.commit()
 
         const result = await program.unsafeRunPromise()
 
@@ -960,7 +960,7 @@ describe.concurrent("STM", () => {
       })
 
       it("fails when given a None", async () => {
-        const program = STM.succeed(Option.none).someOrFailException.commit()
+        const program = STM.succeed(Maybe.none).someOrFailException.commit()
 
         const result = await program.unsafeRunPromiseExit()
 

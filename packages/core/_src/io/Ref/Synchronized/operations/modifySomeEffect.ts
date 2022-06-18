@@ -9,7 +9,7 @@
 export function modifySomeEffect_<R, E, A, B>(
   self: SynchronizedRef<A>,
   def: B,
-  pf: (a: A) => Option<Effect<R, E, Tuple<[B, A]>>>,
+  pf: (a: A) => Maybe<Effect<R, E, Tuple<[B, A]>>>,
   __tsplusTrace?: string
 ): Effect<R, E, B> {
   return self.modifyEffect((v) => pf(v).getOrElse(Effect.succeedNow(Tuple(def, v))))

@@ -5,7 +5,7 @@
  */
 export function unrefine_<R, E, A, E1>(
   self: Effect<R, E, A>,
-  pf: (u: unknown) => Option<E1>,
+  pf: (u: unknown) => Maybe<E1>,
   __tsplusTrace?: string
 ) {
   return self.unrefineWith(pf, identity)

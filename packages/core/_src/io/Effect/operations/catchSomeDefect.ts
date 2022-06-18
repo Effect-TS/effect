@@ -10,7 +10,7 @@
  */
 export function catchSomeDefect_<R, E, A, R2, E2, A2>(
   self: Effect<R, E, A>,
-  pf: (_: unknown) => Option<Effect<R2, E2, A2>>,
+  pf: (_: unknown) => Maybe<Effect<R2, E2, A2>>,
   __tsplusTrace?: string
 ): Effect<R | R2, E | E2, A | A2> {
   return self

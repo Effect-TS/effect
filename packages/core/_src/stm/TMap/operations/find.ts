@@ -4,8 +4,8 @@
  *
  * @tsplus fluent ets/TMap find
  */
-export function find_<K, V, A>(self: TMap<K, V>, pf: (kv: Tuple<[K, V]>) => Option<A>): USTM<Option<A>> {
-  return self.findSTM((kv) => pf(kv).fold(STM.fail(Option.none), STM.succeedNow))
+export function find_<K, V, A>(self: TMap<K, V>, pf: (kv: Tuple<[K, V]>) => Maybe<A>): USTM<Maybe<A>> {
+  return self.findSTM((kv) => pf(kv).fold(STM.fail(Maybe.none), STM.succeedNow))
 }
 
 /**

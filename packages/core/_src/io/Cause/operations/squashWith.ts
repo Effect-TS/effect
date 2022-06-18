@@ -6,11 +6,11 @@
  */
 export function squashWith_<E>(self: Cause<E>, f: (e: E) => unknown): unknown {
   return self
-    .failureOption
+    .failureMaybe
     .map(f)
     .getOrElse(() => {
       if (self.isInterrupted) {
-        const fibers = self.interruptors.flatMap((fiberId) => fiberId.ids().map((n) => `#${n}`)).reduce(
+        const fibers = self.interruptors.flatMap((fiberId) => fiberId.ids.map((n) => `#${n}`)).reduce(
           "",
           (acc, id) => `${acc}, ${id}`
         )

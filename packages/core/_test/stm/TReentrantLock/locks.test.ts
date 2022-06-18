@@ -1,5 +1,5 @@
-const pollSchedule = <E, A>(): Schedule<Tuple<[number, void]>, never, Option<Exit<E, A>>, Option<Exit<E, A>>> =>
-  (Schedule.recurs(100) > Schedule.identity<Option<Exit<E, A>>>()).whileOutput((_) => _.isNone())
+const pollSchedule = <E, A>(): Schedule<Tuple<[number, void]>, never, Maybe<Exit<E, A>>, Maybe<Exit<E, A>>> =>
+  (Schedule.recurs(100) > Schedule.identity<Maybe<Exit<E, A>>>()).whileOutput((_) => _.isNone())
 
 describe.concurrent("TReentrantLock", () => {
   describe.concurrent("locks", () => {

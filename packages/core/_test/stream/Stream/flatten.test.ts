@@ -1,5 +1,5 @@
 describe.concurrent("Stream", () => {
-  describe.concurrent("flattenExitOption", () => {
+  describe.concurrent("flattenExitMaybe", () => {
     it("happy path", async () => {
       const program = Effect.scoped(
         Stream.range(0, 10)
@@ -7,7 +7,7 @@ describe.concurrent("Stream", () => {
           .flatMap((queue) =>
             Stream.fromQueue(queue)
               .map((take) => take.exit)
-              .flattenExitOption()
+              .flattenExitMaybe()
               .runCollect()
           )
           .map((chunk) => chunk.flatten)
@@ -24,7 +24,7 @@ describe.concurrent("Stream", () => {
         (Stream.range(0, 10) + Stream.fail(error)).toQueue(1).flatMap((queue) =>
           Stream.fromQueue(queue)
             .map((take) => take.exit)
-            .flattenExitOption()
+            .flattenExitMaybe()
             .runCollect()
         )
       )

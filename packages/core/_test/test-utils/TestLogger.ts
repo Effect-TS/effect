@@ -139,6 +139,6 @@ export const defaultTestLogger: Layer<never, never, TestLogger<string, void>> = 
 export const logOutput: Effect.UIO<ImmutableArray<LogEntry>> = Effect.runtimeConfig.flatMap(
   (runtimeConfig) =>
     runtimeConfig.value.loggers.toList.head.flatMap((logger) =>
-      isTestLogger(logger) ? Option.some(logger.logOutput) : Option.none
+      isTestLogger(logger) ? Maybe.some(logger.logOutput) : Maybe.none
     ).getOrElse(Effect.dieMessage("Defect: TestLogger is missing"))
 )

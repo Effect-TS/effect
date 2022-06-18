@@ -156,7 +156,7 @@ export class SummaryState extends BaseMetricState<MetricKeyType.Summary> {
 
   constructor(
     readonly error: number,
-    readonly quantiles: Chunk<Tuple<[number, Option<number>]>>,
+    readonly quantiles: Chunk<Tuple<[number, Maybe<number>]>>,
     readonly count: number,
     readonly min: number,
     readonly max: number,
@@ -234,7 +234,7 @@ export function histogram(
  */
 export function summary(
   error: number,
-  quantiles: Chunk<Tuple<[number, Option<number>]>>,
+  quantiles: Chunk<Tuple<[number, Maybe<number>]>>,
   count: number,
   min: number,
   max: number,

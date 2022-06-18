@@ -6,7 +6,7 @@
 export function zipWithPreviousAndNext<R, E, A>(
   self: Stream<R, E, A>,
   __tsplusTrace?: string
-): Stream<R, E, Tuple<[Option<A>, A, Option<A>]>> {
+): Stream<R, E, Tuple<[Maybe<A>, A, Maybe<A>]>> {
   return self
     .zipWithPrevious()
     .zipWithNext()

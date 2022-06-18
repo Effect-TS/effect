@@ -8,11 +8,11 @@ import { concreteTMap } from "@effect/core/stm/TMap/operations/_internal/Interna
  */
 export function takeFirst_<K, V, A>(
   self: TMap<K, V>,
-  pf: (kv: Tuple<[K, V]>) => Option<A>
+  pf: (kv: Tuple<[K, V]>) => Maybe<A>
 ): USTM<A> {
   concreteTMap(self)
-  return STM.Effect<never, Option<A>>((journal) => {
-    let result: Option<A> = Option.none
+  return STM.Effect<never, Maybe<A>>((journal) => {
+    let result: Maybe<A> = Maybe.none
 
     const size = self.tSize.unsafeGet(journal)
     const buckets = self.tBuckets.unsafeGet(journal)

@@ -9,7 +9,7 @@ export function untilOutputEffect_<R, E, R2, E2, In, L extends In, Z>(
   self: Sink<R, E, In, L, Z>,
   f: (z: Z) => Effect<R2, E2, boolean>,
   __tsplusTrace?: string
-): Sink<R | R2, E | E2, In, L, Option<Z>> {
+): Sink<R | R2, E | E2, In, L, Maybe<Z>> {
   concreteSink(self)
   return new SinkInternal(
     Channel.fromEffect(Ref.make(Chunk.empty<In>()).zip(Ref.make(false))).flatMap(
@@ -35,7 +35,7 @@ export function untilOutputEffect_<R, E, R2, E2, In, L extends In, Z>(
           unknown,
           E | E2,
           Chunk<L>,
-          Option<Z>
+          Maybe<Z>
         > = self.channel.doneCollect.foldChannel(
           (err) => Channel.fail(err),
           ({ tuple: [leftovers, doneValue] }) =>
@@ -44,9 +44,9 @@ export function untilOutputEffect_<R, E, R2, E2, In, L extends In, Z>(
                 Channel.fromEffect(leftoversRef.set(leftovers.flatten)) >
                   Channel.fromEffect(upstreamDoneRef.get()).flatMap((upstreamDone) =>
                     satisfied
-                      ? Channel.write(leftovers.flatten).as(Option.some(doneValue))
+                      ? Channel.write(leftovers.flatten).as(Maybe.some(doneValue))
                       : upstreamDone
-                      ? Channel.write(leftovers.flatten).as(Option.none)
+                      ? Channel.write(leftovers.flatten).as(Maybe.none)
                       : loop
                   )
             )

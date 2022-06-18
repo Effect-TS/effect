@@ -35,8 +35,8 @@ describe.concurrent("SynchronizedRef", () => {
         .bind("r1", ({ ref }) =>
           ref.modifySomeEffect("state doesn't change", (state) =>
             state.isClosed()
-              ? Option.some(Effect.succeed(Tuple("changed", State.Changed)))
-              : Option.none))
+              ? Maybe.some(Effect.succeed(Tuple("changed", State.Changed)))
+              : Maybe.none))
         .bind("v1", ({ ref }) => ref.get())
 
       const { r1, v1 } = await program.unsafeRunPromise()
@@ -51,16 +51,16 @@ describe.concurrent("SynchronizedRef", () => {
         .bind("r1", ({ ref }) =>
           ref.modifySomeEffect("state doesn't change", (state) =>
             state.isActive()
-              ? Option.some(Effect.succeed(Tuple("changed", State.Changed)))
-              : Option.none))
+              ? Maybe.some(Effect.succeed(Tuple("changed", State.Changed)))
+              : Maybe.none))
         .bind("v1", ({ ref }) => ref.get())
         .bind("r2", ({ ref }) =>
           ref.modifySomeEffect("state doesn't change", (state) =>
             state.isActive()
-              ? Option.some(Effect.succeed(Tuple("changed", State.Changed)))
+              ? Maybe.some(Effect.succeed(Tuple("changed", State.Changed)))
               : state.isChanged()
-              ? Option.some(Effect.succeed(Tuple("closed", State.Closed)))
-              : Option.none))
+              ? Maybe.some(Effect.succeed(Tuple("closed", State.Closed)))
+              : Maybe.none))
         .bind("v2", ({ ref }) => ref.get())
 
       const { r1, r2, v1, v2 } = await program.unsafeRunPromise()
@@ -77,7 +77,7 @@ describe.concurrent("SynchronizedRef", () => {
         .bind("r", ({ ref }) =>
           ref
             .modifySomeEffect("state doesn't change", (state) =>
-              state.isClosed() ? Option.some(Effect.fail(failure)) : Option.none)
+              state.isClosed() ? Maybe.some(Effect.fail(failure)) : Maybe.none)
             .orDieWith(() =>
               new Error()
             ))
@@ -93,7 +93,7 @@ describe.concurrent("SynchronizedRef", () => {
       const program = SynchronizedRef.make<State>(State.Active).flatMap((ref) =>
         ref.modifySomeEffect(
           "state doesn't change",
-          (state) => state.isActive() ? Option.some(Effect.fail(failure)) : Option.none
+          (state) => state.isActive() ? Maybe.some(Effect.fail(failure)) : Maybe.none
         )
       )
 
@@ -106,13 +106,13 @@ describe.concurrent("SynchronizedRef", () => {
       const program = SynchronizedRef.make<State>(State.Active).flatMap((ref) =>
         ref.modifySomeEffect(
           "state doesn't change",
-          (state) => state.isActive() ? Option.some(Effect.dieMessage(fatalError)) : Option.none
+          (state) => state.isActive() ? Maybe.some(Effect.dieMessage(fatalError)) : Maybe.none
         )
       )
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.isFailure() && result.cause.dieOption.isSome())
+      assert.isTrue(result.isFailure() && result.cause.dieMaybe.isSome())
     })
   })
 })

@@ -16,7 +16,7 @@ export class Driver<State, Env, In, Out> {
   readonly [_State]!: unknown
 
   constructor(
-    readonly next: (input: In) => Effect<Env, Option<never>, Out>,
+    readonly next: (input: In) => Effect<Env, Maybe<never>, Out>,
     readonly last: Effect.IO<NoSuchElement, Out>,
     readonly reset: Effect.UIO<void>,
     readonly state: Effect.UIO<State>
@@ -27,7 +27,7 @@ export class Driver<State, Env, In, Out> {
  * @tsplus static ets/Schedule/Driver/Ops __call
  */
 export function make<State, Env, In, Out>(
-  next: (input: In) => Effect<Env, Option<never>, Out>,
+  next: (input: In) => Effect<Env, Maybe<never>, Out>,
   last: Effect.IO<NoSuchElement, Out>,
   reset: Effect.UIO<void>,
   state: Effect.UIO<State>

@@ -939,10 +939,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsplus/stdlib@npm:0.1.6":
-  version: 0.1.6
-  resolution: "@tsplus/stdlib@npm:0.1.6"
-  checksum: 6954d1ec2111fb60e305013a881a6500adefd44fd084956d2409dd348fa18255135d01aa90af5fa017c7b6c9ca07ffb2c3a5c0fa9d3557b711ab3edc989bbd28
+"@tsplus/stdlib@npm:0.1.8":
+  version: 0.1.8
+  resolution: "@tsplus/stdlib@npm:0.1.8"
+  checksum: aedfe63d74babd1ec353c9633df715b20d000b4c65b60af4830508d2c0fe82b1a99b5f30c75e9b0045997efb5dfea1cb3999b4db7e45ae5011e51d387581c2bb
   languageName: node
   linkType: hard
 
@@ -2704,7 +2704,7 @@ __metadata:
     "@effect-ts/core": ^0.60.2
     "@repo-tooling/eslint-plugin-dprint": ^0.0.4
     "@tsplus/installer": 0.0.114
-    "@tsplus/stdlib": 0.1.6
+    "@tsplus/stdlib": 0.1.8
     "@types/node": ^18.0.0
     "@types/rimraf": ^3.0.2
     "@typescript-eslint/eslint-plugin": ^5.28.0

@@ -6,7 +6,7 @@
  */
 export function findAllSTM_<K, V, R, E, A>(
   self: TMap<K, V>,
-  pf: (kv: Tuple<[K, V]>) => STM<R, Option<E>, A>
+  pf: (kv: Tuple<[K, V]>) => STM<R, Maybe<E>, A>
 ): STM<R, E, Chunk<A>> {
   return self.foldSTM(
     Chunk.empty<A>(),

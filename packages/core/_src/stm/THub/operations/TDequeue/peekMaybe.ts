@@ -5,9 +5,9 @@ import { concreteTDequeue } from "@effect/core/stm/THub/operations/_internal/Int
  * Views the next element in the queue without removing it, returning `None`
  * if the queue is empty.
  *
- * @tsplus getter ets/THub/TDequeue peekOption
+ * @tsplus getter ets/THub/TDequeue peekMaybe
  */
-export function peekOption<A>(self: THub.TDequeue<A>): USTM<Option<A>> {
+export function peekMaybe<A>(self: THub.TDequeue<A>): USTM<Maybe<A>> {
   concreteTDequeue(self)
   return STM.Effect((journal, fiberId) => {
     let currentSubscriberHead = self.subscriberHead.unsafeGet(journal)
@@ -16,21 +16,21 @@ export function peekOption<A>(self: THub.TDequeue<A>): USTM<Option<A>> {
       throw new STMInterruptException(fiberId)
     }
 
-    let a: Option<A> = Option.none
+    let a: Maybe<A> = Maybe.none
     let loop = true
 
     while (loop) {
       const node = currentSubscriberHead.unsafeGet(journal)
 
       if (node == null) {
-        a = Option.none
+        a = Maybe.none
         loop = false
       } else {
         const head = node.head
         const tail = node.tail
 
         if (head != null) {
-          a = Option.some(node.head)
+          a = Maybe.some(node.head)
           loop = false
         } else {
           currentSubscriberHead = tail

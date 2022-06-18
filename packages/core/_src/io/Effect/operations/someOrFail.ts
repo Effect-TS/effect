@@ -4,7 +4,7 @@
  * @tsplus fluent ets/Effect someOrFail
  */
 export function someOrFail_<R, E, A, E2>(
-  self: Effect<R, E, Option<A>>,
+  self: Effect<R, E, Maybe<A>>,
   orFail: LazyArg<E2>,
   __tsplusTrace?: string
 ): Effect<R, E | E2, A> {

@@ -29,7 +29,7 @@ function adapter(_: any, __?: any, ___?: any) {
       __
     )
   }
-  if (Option.isOption(_)) {
+  if (Maybe.isMaybe(_)) {
     if (__ && typeof __ === "function") {
       return new GenEffect(
         _._tag === "None" ? Effect.fail(() => __()) : Effect.succeed(() => _.value),
@@ -46,12 +46,12 @@ function adapter(_: any, __?: any, ___?: any) {
 
 export interface Adapter {
   <A>(_: Tag<A>, __tsplusTrace?: string): GenEffect<A, never, A>
-  <E, A>(_: Option<A>, onNone: () => E, __tsplusTrace?: string): GenEffect<
+  <E, A>(_: Maybe<A>, onNone: () => E, __tsplusTrace?: string): GenEffect<
     unknown,
     E,
     A
   >
-  <A>(_: Option<A>, __tsplusTrace?: string): GenEffect<
+  <A>(_: Maybe<A>, __tsplusTrace?: string): GenEffect<
     unknown,
     NoSuchElement,
     A

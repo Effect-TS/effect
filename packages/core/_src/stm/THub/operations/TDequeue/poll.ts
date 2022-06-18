@@ -4,6 +4,6 @@
  *
  * @tsplus getter ets/THub/TDequeue poll
  */
-export function poll<A>(self: THub.TDequeue<A>): USTM<Option<A>> {
+export function poll<A>(self: THub.TDequeue<A>): USTM<Maybe<A>> {
   return self.takeUpTo(1).map((_) => _.head)
 }

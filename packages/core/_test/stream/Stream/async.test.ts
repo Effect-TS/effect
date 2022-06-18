@@ -19,8 +19,8 @@ describe.concurrent("Stream", () => {
   describe.concurrent("asyncMaybe", () => {
     it("signal end stream", async () => {
       const program = Stream.asyncMaybe<never, never, number>((emit) => {
-        emit(Effect.fail(Option.none))
-        return Option.none
+        emit(Effect.fail(Maybe.none))
+        return Maybe.none
       }).runCollect()
 
       const result = await program.unsafeRunPromise()
@@ -30,7 +30,7 @@ describe.concurrent("Stream", () => {
 
     it("Some", async () => {
       const chunk = Chunk(1, 2, 3, 4, 5)
-      const program = Stream.asyncMaybe<never, never, number>(() => Option.some(Stream.fromChunk(chunk)))
+      const program = Stream.asyncMaybe<never, never, number>(() => Maybe.some(Stream.fromChunk(chunk)))
         .runCollect()
 
       const result = await program.unsafeRunPromise()
@@ -44,7 +44,7 @@ describe.concurrent("Stream", () => {
         chunk.forEach((n) => {
           emit(Effect.succeed(Chunk.single(n)))
         })
-        return Option.none
+        return Maybe.none
       })
         .take(chunk.size)
         .runCollect()
@@ -65,9 +65,9 @@ describe.concurrent("Stream", () => {
     //           Chunk.range(0, 7).forEach((n) => {
     //             emit(refCount.set(n) > Effect.succeed(Chunk.single(1)))
     //           })
-    //           emit(refDone.set(true) > Effect.fail(Option.none))
+    //           emit(refDone.set(true) > Effect.fail(Maybe.none))
     //         })
-    //         return Option.none
+    //         return Maybe.none
     //       }, 5)
     //     )
     //     .bind("run", ({ stream }) => stream.run(Sink.take(1) > Sink.never).fork())
@@ -108,7 +108,7 @@ describe.concurrent("Stream", () => {
 
     it("signal end stream", async () => {
       const program = Stream.asyncEffect<never, never, number, void>((emit) => {
-        emit(Effect.fail(Option.none))
+        emit(Effect.fail(Maybe.none))
         return Effect.unit
       }).runCollect()
 
@@ -131,7 +131,7 @@ describe.concurrent("Stream", () => {
     //           })
     //         }, 10)
     //         const t2 = setTimeout(() => {
-    //           emit(refDone.set(true) > Effect.fail(Option.none))
+    //           emit(refDone.set(true) > Effect.fail(Maybe.none))
     //         }, 100)
     //         return Effect.succeed(() => {
     //           clearTimeout(t1)
@@ -178,7 +178,7 @@ describe.concurrent("Stream", () => {
 
     it("asyncManaged signal end stream", async () => {
       const program = Stream.asyncScoped<never, never, number>((cb) => {
-        cb(Effect.fail(Option.none))
+        cb(Effect.fail(Maybe.none))
         return Effect.unit
       }).runCollect()
 

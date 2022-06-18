@@ -95,7 +95,7 @@ describe.concurrent("Effect", () => {
       const { result, unexpected } = await program.unsafeRunPromise()
 
       assert.isTrue(unexpected == List.empty())
-      assert.isTrue(result == Option.none) // the timeout should happen
+      assert.isTrue(result == Maybe.none) // the timeout should happen
     })
 
     it("asyncMaybe should not resume fiber twice after synchronous result", async () => {
@@ -109,7 +109,7 @@ describe.concurrent("Effect", () => {
               step.await() >
                 Effect.succeed(cb(unexpectedPlace.update((list) => list.prepend(1))))
             )
-            return Option.some(Effect.unit)
+            return Maybe.some(Effect.unit)
           })
             .flatMap(() =>
               Effect.async<never, never, void>(() => {
@@ -126,7 +126,7 @@ describe.concurrent("Effect", () => {
       const { result, unexpected } = await program.unsafeRunPromise()
 
       assert.isTrue(unexpected == List.empty())
-      assert.isTrue(result == Option.none) // timeout should happen
+      assert.isTrue(result == Maybe.none) // timeout should happen
     })
 
     it("sleep 0 must return", async () => {
@@ -179,13 +179,13 @@ describe.concurrent("Effect", () => {
         .map((exit) =>
           exit.fold(
             (cause) => cause.defects.head.map((e) => (e as Error).message),
-            () => Option.none
+            () => Maybe.none
           )
         )
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some("ouch"))
+      assert.isTrue(result == Maybe.some("ouch"))
     })
   })
 })

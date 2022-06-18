@@ -9,7 +9,7 @@ import { realCause } from "@effect/core/io/Cause/definition"
 export function foldLeft_<E, Z>(
   self: Cause<E>,
   initial: Z,
-  f: (z: Z, cause: Cause<E>) => Option<Z>
+  f: (z: Z, cause: Cause<E>) => Maybe<Z>
 ): Z {
   let acc: Z = initial
   realCause(self)

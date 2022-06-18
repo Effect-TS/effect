@@ -7,8 +7,8 @@ import { realCause } from "@effect/core/io/Cause/definition"
  */
 export function find_<E, Z>(
   self: Cause<E>,
-  f: (cause: Cause<E>) => Option<Z>
-): Option<Z> {
+  f: (cause: Cause<E>) => Maybe<Z>
+): Maybe<Z> {
   return findSafe(self, f).run
 }
 
@@ -21,8 +21,8 @@ export const find = Pipeable(find_)
 
 function findSafe<E, Z>(
   self: Cause<E>,
-  f: (cause: Cause<E>) => Option<Z>
-): Eval<Option<Z>> {
+  f: (cause: Cause<E>) => Maybe<Z>
+): Eval<Maybe<Z>> {
   const result = f(self)
   if (result._tag === "Some") {
     return Eval.succeed(result)
@@ -33,7 +33,7 @@ function findSafe<E, Z>(
     case "Then":
       return Eval.suspend(findSafe(self.left, f)).flatMap((leftResult) =>
         leftResult._tag === "Some" ? Eval.succeedNow(leftResult) : findSafe(self.right, f)
-      ) as Eval<Option<Z>>
+      ) as Eval<Maybe<Z>>
     case "Stackless": {
       return Eval.suspend(findSafe(self.cause, f))
     }

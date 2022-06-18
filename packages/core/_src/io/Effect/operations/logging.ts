@@ -1,11 +1,11 @@
 import { ILogged } from "@effect/core/io/Effect/definition/primitives"
 
-const someFatal = Option.some(LogLevel.Fatal)
-const someError = Option.some(LogLevel.Error)
-const someWarning = Option.some(LogLevel.Warning)
-const someTrace = Option.some(LogLevel.Trace)
-const someInfo = Option.some(LogLevel.Info)
-const someDebug = Option.some(LogLevel.Debug)
+const someFatal = Maybe.some(LogLevel.Fatal)
+const someError = Maybe.some(LogLevel.Error)
+const someWarning = Maybe.some(LogLevel.Warning)
+const someTrace = Maybe.some(LogLevel.Trace)
+const someInfo = Maybe.some(LogLevel.Info)
+const someDebug = Maybe.some(LogLevel.Debug)
 
 /**
  * Logs the specified message at the current log level.
@@ -13,7 +13,7 @@ const someDebug = Option.some(LogLevel.Debug)
  * @tsplus static ets/Effect/Ops log
  */
 export function log(message: LazyArg<string>, __tsplusTrace?: string): Effect.UIO<void> {
-  return new ILogged(message, () => Cause.empty, Option.none, null, null, __tsplusTrace)
+  return new ILogged(message, () => Cause.empty, Maybe.none, null, null, __tsplusTrace)
 }
 
 /**

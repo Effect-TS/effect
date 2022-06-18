@@ -17,7 +17,7 @@ export function repeatEffectWithSchedule<S, R, E, A>(
           Stream.unfoldEffect(a, (a) =>
             driver.next(a).foldEffect(
               (e) => Effect.succeed(e),
-              () => effect.map((nextA) => Option.some(Tuple(nextA, nextA)))
+              () => effect.map((nextA) => Maybe.some(Tuple(nextA, nextA)))
             ))
       )
   )

@@ -58,7 +58,7 @@ export function concatMapWith_<
   >(
     g,
     h,
-    () => UpstreamPullStrategy.PullAfterNext(Option.none),
+    () => UpstreamPullStrategy.PullAfterNext(Maybe.none),
     () => ChildExecutorDecision.Continue,
     () => self,
     f

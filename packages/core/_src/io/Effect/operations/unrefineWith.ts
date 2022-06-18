@@ -6,14 +6,14 @@
  */
 export function unrefineWith_<R, E, E1, E2, A>(
   self: Effect<R, E, A>,
-  pf: (u: unknown) => Option<E1>,
+  pf: (u: unknown) => Maybe<E1>,
   f: (e: E) => E2,
   __tsplusTrace?: string
 ) {
   return self.catchAllCause(
     (cause): Effect<R, E1 | E2, A> =>
       cause
-        .find((c) => (c.isDieType() ? pf(c.value) : Option.none))
+        .find((c) => (c.isDieType() ? pf(c.value) : Maybe.none))
         .fold(Effect.failCauseNow(cause.map(f)), Effect.failNow)
   )
 }

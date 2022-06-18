@@ -9,8 +9,8 @@ describe.concurrent("Effect", () => {
   describe.concurrent("absorbWith", () => {
     test("on fail", () =>
       Do(($) => {
-        const result = $(ExampleErrorFail.absorbWith(Option.some).exit())
-        assert.isTrue(result.untraced == Exit.fail(Option.some(ExampleError)))
+        const result = $(ExampleErrorFail.absorbWith(Maybe.some).exit())
+        assert.isTrue(result.untraced == Exit.fail(Maybe.some(ExampleError)))
       }))
 
     test("on die", () =>

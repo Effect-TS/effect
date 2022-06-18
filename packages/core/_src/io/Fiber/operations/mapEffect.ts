@@ -18,8 +18,8 @@ export function mapEffect_<E, E1, A, B>(
     inheritRefs: self.inheritRefs(),
     poll: self.poll().flatMap((_) =>
       _.fold(
-        () => Effect.succeedNow(Option.none),
-        (exit) => exit.forEach(f).map(Option.some)
+        () => Effect.succeedNow(Maybe.none),
+        (exit) => exit.forEach(f).map(Maybe.some)
       )
     ),
     interruptAs: (id) => self.interruptAs(id).flatMap((exit) => exit.forEach(f))

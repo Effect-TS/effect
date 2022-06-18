@@ -13,7 +13,7 @@ export function cachedInvalidate_<R, E, A>(
 ): Effect.RIO<R, Tuple<[Effect.IO<E, A>, Effect.UIO<void>]>> {
   return Do(($) => {
     const environment = $(Effect.environment<R>())
-    const cache = $(SynchronizedRef.make<Option<Tuple<[number, Deferred<E, A>]>>>(Option.none))
+    const cache = $(SynchronizedRef.make<Maybe<Tuple<[number, Deferred<E, A>]>>>(Maybe.none))
     return Tuple(get(self, timeToLive, cache).provideEnvironment(environment), invalidate(cache))
   })
 }
@@ -32,29 +32,29 @@ function compute<R, E, A>(
   self: Effect<R, E, A>,
   timeToLive: Duration,
   start: number
-): Effect<R, never, Option<Tuple<[number, Deferred<E, A>]>>> {
+): Effect<R, never, Maybe<Tuple<[number, Deferred<E, A>]>>> {
   return Do(($) => {
     const deferred = $(Deferred.make<E, A>())
     $(self.intoDeferred(deferred))
-    return Option.some(Tuple(start + timeToLive.millis, deferred))
+    return Maybe.some(Tuple(start + timeToLive.millis, deferred))
   })
 }
 
 function get<R, E, A>(
   self: Effect<R, E, A>,
   timeToLive: Duration,
-  cache: SynchronizedRef<Option<Tuple<[number, Deferred<E, A>]>>>
+  cache: SynchronizedRef<Maybe<Tuple<[number, Deferred<E, A>]>>>
 ): Effect<R, E, A> {
   return Effect.uninterruptibleMask(({ restore }) =>
     Clock.currentTime.flatMap((time) =>
       cache
         .updateSomeAndGetEffect((_) =>
           _.fold(
-            () => Option.some(compute(self, timeToLive, time)),
+            () => Maybe.some(compute(self, timeToLive, time)),
             ({ tuple: [end] }) =>
               end - time <= 0
-                ? Option.some(compute(self, timeToLive, time))
-                : Option.none
+                ? Maybe.some(compute(self, timeToLive, time))
+                : Maybe.none
           )
         )
         .flatMap((a) => a._tag === "None" ? Effect.die("Bug") : restore(a.value.get(1).await()))
@@ -63,7 +63,7 @@ function get<R, E, A>(
 }
 
 function invalidate<E, A>(
-  cache: SynchronizedRef<Option<Tuple<[number, Deferred<E, A>]>>>
+  cache: SynchronizedRef<Maybe<Tuple<[number, Deferred<E, A>]>>>
 ): Effect.UIO<void> {
-  return cache.set(Option.none)
+  return cache.set(Maybe.none)
 }

@@ -17,7 +17,7 @@ export function foldEffect_<R, R1, R2, E, E1, E2, E3, A, Z>(
 ): Effect<R | R1 | R2, E1 | E2 | E3, Z> {
   concreteTake(self)
   return self._exit.foldEffect(
-    (cause): Effect<R | R1, E1 | E2, Z> => Cause.flipCauseOption(cause).fold(() => end, error),
+    (cause): Effect<R | R1, E1 | E2, Z> => Cause.flipCauseMaybe(cause).fold(() => end, error),
     value
   )
 }

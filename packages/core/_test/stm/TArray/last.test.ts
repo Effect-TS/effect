@@ -75,25 +75,25 @@ describe.concurrent("TArray", () => {
     })
   })
 
-  describe.concurrent("lastOption", () => {
+  describe.concurrent("lastMaybe", () => {
     it("retrieves the last entry", async () => {
       const program = makeStair(n)
         .commit()
-        .flatMap((tArray) => tArray.lastOption.commit())
+        .flatMap((tArray) => tArray.lastMaybe.commit())
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(n))
+      assert.isTrue(result == Maybe.some(n))
     })
 
     it("is none for an empty array", async () => {
       const program = TArray.empty<number>()
         .commit()
-        .flatMap((tArray) => tArray.lastOption.commit())
+        .flatMap((tArray) => tArray.lastMaybe.commit())
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
   })
 })

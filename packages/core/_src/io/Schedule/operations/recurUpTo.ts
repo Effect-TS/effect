@@ -5,6 +5,6 @@
  */
 export function recurUpTo(
   duration: Duration
-): Schedule<Option<number>, never, unknown, Duration> {
+): Schedule<Maybe<number>, never, unknown, Duration> {
   return Schedule.elapsed.whileOutput((_) => _ < duration)
 }

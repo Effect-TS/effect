@@ -6,6 +6,6 @@
  */
 export function isInterruptedOnly<E>(self: Cause<E>): boolean {
   return self
-    .find((cause) => cause.isDieType() || cause.isFailType() ? Option.some(false) : Option.none)
+    .find((cause) => cause.isDieType() || cause.isFailType() ? Maybe.some(false) : Maybe.none)
     .getOrElse(true)
 }

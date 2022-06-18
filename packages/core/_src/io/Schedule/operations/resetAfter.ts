@@ -8,7 +8,7 @@
 export function resetAfter_<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>,
   duration: Duration
-): Schedule<Tuple<[State, Option<number>]>, Env, In, Out> {
+): Schedule<Tuple<[State, Maybe<number>]>, Env, In, Out> {
   return self
     .zip(Schedule.elapsed)
     .resetWhen(({ tuple: [, _] }) => (_ as Duration) >= duration)

@@ -6,8 +6,8 @@
  */
 export function collectFirst_<A, B>(
   self: TArray<A>,
-  pf: (a: A) => Option<B>
-): USTM<Option<B>> {
+  pf: (a: A) => Maybe<B>
+): USTM<Maybe<B>> {
   return self.find((a) => pf(a).isSome()).map((option) => option.flatMap(pf))
 }
 

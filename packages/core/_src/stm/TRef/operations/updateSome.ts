@@ -3,7 +3,7 @@
  *
  * @tsplus fluent ets/TRef updateSome
  */
-export function updateSome_<A>(self: TRef<A>, pf: (a: A) => Option<A>): USTM<void> {
+export function updateSome_<A>(self: TRef<A>, pf: (a: A) => Maybe<A>): USTM<void> {
   return self.update((a) => pf(a).getOrElse(a))
 }
 

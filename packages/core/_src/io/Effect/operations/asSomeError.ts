@@ -6,6 +6,6 @@
 export function asSomeError<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
-): Effect<R, Option<E>, A> {
-  return self.mapError(Option.some)
+): Effect<R, Maybe<E>, A> {
+  return self.mapError(Maybe.some)
 }

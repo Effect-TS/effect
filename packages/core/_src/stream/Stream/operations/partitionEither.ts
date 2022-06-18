@@ -26,10 +26,10 @@ export function partitionEither_<R, E, A, R2, E2, A2, A3>(
         return Effect.succeedNow(
           Tuple(
             Stream.fromQueueWithShutdown(dequeues.unsafeHead!)
-              .flattenExitOption()
+              .flattenExitMaybe()
               .collectLeft(),
             Stream.fromQueueWithShutdown(dequeues.unsafeLast!)
-              .flattenExitOption()
+              .flattenExitMaybe()
               .collectRight()
           )
         )

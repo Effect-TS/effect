@@ -32,7 +32,7 @@ export class Runtime<R> {
     FiberScope.global.value.unsafeAdd(this.runtimeConfig, context)
 
     if (supervisor !== Supervisor.none) {
-      supervisor.unsafeOnStart(this.environment, effect, Option.none, context)
+      supervisor.unsafeOnStart(this.environment, effect, Maybe.none, context)
 
       context.unsafeOnDone((exit) => supervisor.unsafeOnEnd(exit.flatten, context))
     }

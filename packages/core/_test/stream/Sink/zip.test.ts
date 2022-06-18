@@ -7,7 +7,7 @@ describe("Sink", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.get(0) == Option.some(1))
+      assert.isTrue(result.get(0) == Maybe.some(1))
       assert.strictEqual(result.get(1), "hello")
     })
   })
@@ -28,7 +28,7 @@ describe("Sink", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(1))
+      assert.isTrue(result == Maybe.some(1))
     })
   })
 
@@ -52,7 +52,7 @@ describe("Sink", () => {
           () =>
             Chunk.unfoldEffect(
               0,
-              (n) => Random.nextIntBetween(0, 10).map((i) => n <= 20 ? Option.some(Tuple(i, n + 1)) : Option.none)
+              (n) => Random.nextIntBetween(0, 10).map((i) => n <= 20 ? Maybe.some(Tuple(i, n + 1)) : Maybe.none)
             )
         )
         .bind("success1", () => Random.nextBoolean)

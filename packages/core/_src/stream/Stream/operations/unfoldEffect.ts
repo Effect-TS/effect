@@ -6,7 +6,7 @@
  */
 export function unfoldEffect<S, R, E, A>(
   s: LazyArg<S>,
-  f: (s: S) => Effect<R, E, Option<Tuple<[A, S]>>>
+  f: (s: S) => Effect<R, E, Maybe<Tuple<[A, S]>>>
 ): Stream<R, E, A> {
   return Stream.unfoldChunkEffect<S, R, E, A>(
     s,

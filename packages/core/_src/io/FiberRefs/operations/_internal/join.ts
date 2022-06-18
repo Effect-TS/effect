@@ -24,16 +24,16 @@ export function joinFiberRefs(self: FiberRefs, that: FiberRefs): FiberRefs {
         return parentFiberRefs
       }
 
-      let newStack: Option<List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>>
+      let newStack: Maybe<List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>>
       if (parentStack.isNil()) {
-        newStack = Option.none
+        newStack = Maybe.none
       } else {
         const patch = patches.tail.reduce(patches.head, (a, b) => fiberRef.combine(a, b))
 
         const { tuple: [fiberId, oldValue] } = parentStack.head
         const tail = parentStack.tail
 
-        newStack = Option.some(List.cons(Tuple(fiberId, fiberRef.patch(patch)(oldValue)), tail))
+        newStack = Maybe.some(List.cons(Tuple(fiberId, fiberRef.patch(patch)(oldValue)), tail))
       }
 
       return newStack.fold(

@@ -8,7 +8,7 @@ import { ArrTypeId, Chunk, concreteChunk, SingletonTypeId } from "@tsplus/stdlib
  */
 export function collectEffect_<A, R, E, B>(
   self: Chunk<A>,
-  f: (a: A) => Option<Effect<R, E, B>>,
+  f: (a: A) => Maybe<Effect<R, E, B>>,
   __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
   concreteChunk(self)

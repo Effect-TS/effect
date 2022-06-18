@@ -4,7 +4,7 @@
  *
  * @tsplus static ets/Effect/Ops parallelism
  */
-export function parallelism(__tsplusTrace?: string): Effect.UIO<Option<number>> {
+export function parallelism(__tsplusTrace?: string): Effect.UIO<Maybe<number>> {
   return FiberRef.currentParallelism.value.get()
 }
 
@@ -15,7 +15,7 @@ export function parallelism(__tsplusTrace?: string): Effect.UIO<Option<number>> 
  * @tsplus static ets/Effect/Ops parallelismWith
  */
 export function parallelismWith<R, E, A>(
-  f: (parallelism: Option<number>) => Effect<R, E, A>,
+  f: (parallelism: Maybe<number>) => Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
   return FiberRef.currentParallelism.value.getWith(f)
@@ -33,7 +33,7 @@ export function withParallelism_<R, E, A>(
   __tsplusTrace?: string
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(
-    self.apply(FiberRef.currentParallelism.value.locally(Option.some(n)))
+    self.apply(FiberRef.currentParallelism.value.locally(Maybe.some(n)))
   )
 }
 
@@ -56,6 +56,6 @@ export function withParallelismUnbounded<R, E, A>(
   __tsplusTrace?: string
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(
-    self.apply(FiberRef.currentParallelism.value.locally(Option.none))
+    self.apply(FiberRef.currentParallelism.value.locally(Maybe.none))
   )
 }

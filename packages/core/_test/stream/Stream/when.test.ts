@@ -69,8 +69,8 @@ describe.concurrent("Stream", () => {
   describe.concurrent("whenCase", () => {
     it("returns the resulting stream if the given partial function is defined for the given value", async () => {
       const program = Stream.whenCase(
-        Option.some(5),
-        (n: Option<number>) => n.isSome() ? Option.some(Stream(n.value)) : Option.none
+        Maybe.some(5),
+        (n: Maybe<number>) => n.isSome() ? Maybe.some(Stream(n.value)) : Maybe.none
       ).runCollect()
 
       const result = await program.unsafeRunPromise()
@@ -80,8 +80,8 @@ describe.concurrent("Stream", () => {
 
     it("returns an empty stream if the given partial function is not defined for the given value", async () => {
       const program = Stream.whenCase(
-        Option.none,
-        (n: Option<number>) => n.isSome() ? Option.some(Stream(n)) : Option.none
+        Maybe.none,
+        (n: Maybe<number>) => n.isSome() ? Maybe.some(Stream(n)) : Maybe.none
       ).runCollect()
 
       const result = await program.unsafeRunPromise()
@@ -95,7 +95,7 @@ describe.concurrent("Stream", () => {
         () => {
           throw error
         },
-        (n: Option<number>) => (n.isSome() ? Option.some(Stream(n.value)) : Option.none)
+        (n: Maybe<number>) => (n.isSome() ? Maybe.some(Stream(n.value)) : Maybe.none)
       ).runCollect()
 
       const result = await program.unsafeRunPromiseExit()
@@ -105,7 +105,7 @@ describe.concurrent("Stream", () => {
 
     it("dies if the given partial function throws an exception", async () => {
       const error = new RuntimeError("boom")
-      const program = Stream.whenCase(undefined, (): Option<Stream<never, unknown, unknown>> => {
+      const program = Stream.whenCase(undefined, (): Maybe<Stream<never, unknown, unknown>> => {
         throw error
       }).runCollect()
 
@@ -118,8 +118,8 @@ describe.concurrent("Stream", () => {
   describe.concurrent("whenCaseEffect", () => {
     it("returns the resulting stream if the given partial function is defined for the given effectful value", async () => {
       const program = Stream.whenCaseEffect(
-        Effect.succeed(Option.some(5)),
-        (n: Option<number>) => (n.isSome() ? Option.some(Stream(n.value)) : Option.none)
+        Effect.succeed(Maybe.some(5)),
+        (n: Maybe<number>) => (n.isSome() ? Maybe.some(Stream(n.value)) : Maybe.none)
       ).runCollect()
 
       const result = await program.unsafeRunPromise()
@@ -130,7 +130,7 @@ describe.concurrent("Stream", () => {
     it("returns an empty stream if the given partial function is not defined for the given effectful value", async () => {
       const program = Stream.whenCaseEffect(
         Effect.none,
-        (n: Option<number>) => n.isSome() ? Option.some(Stream(n.value)) : Option.none
+        (n: Maybe<number>) => n.isSome() ? Maybe.some(Stream(n.value)) : Maybe.none
       ).runCollect()
 
       const result = await program.unsafeRunPromise()
@@ -142,7 +142,7 @@ describe.concurrent("Stream", () => {
       const error = new RuntimeError("boom")
       const program = Stream.whenCaseEffect(
         Effect.fail(error),
-        (n: Option<number>) => n.isSome() ? Option.some(Stream(n)) : Option.none
+        (n: Maybe<number>) => n.isSome() ? Maybe.some(Stream(n)) : Maybe.none
       ).runCollect()
 
       const result = await program.unsafeRunPromiseExit()
@@ -152,7 +152,7 @@ describe.concurrent("Stream", () => {
 
     it("dies if the given partial function throws an exception", async () => {
       const error = new RuntimeError("boom")
-      const program = Stream.whenCaseEffect(Effect.unit, (): Option<Stream<never, unknown, unknown>> => {
+      const program = Stream.whenCaseEffect(Effect.unit, (): Maybe<Stream<never, unknown, unknown>> => {
         throw error
       }).runCollect()
 

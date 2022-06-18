@@ -6,10 +6,10 @@
  * @tsplus fluent ets/STM orElseOptional
  */
 export function orElseOptional_<R, E, A, R1, E1, A1>(
-  self: STM<R, Option<E>, A>,
-  that: LazyArg<STM<R1, Option<E1>, A1>>
-): STM<R | R1, Option<E | E1>, A | A1> {
-  return self.catchAll((option) => option.fold(that, (e) => STM.fail(Option.some<E | E1>(e))))
+  self: STM<R, Maybe<E>, A>,
+  that: LazyArg<STM<R1, Maybe<E1>, A1>>
+): STM<R | R1, Maybe<E | E1>, A | A1> {
+  return self.catchAll((option) => option.fold(that, (e) => STM.fail(Maybe.some<E | E1>(e))))
 }
 
 /**

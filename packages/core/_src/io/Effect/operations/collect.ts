@@ -6,7 +6,7 @@
  */
 export function collect<A, R, E, B>(
   as: LazyArg<Collection<A>>,
-  f: (a: A) => Effect<R, Option<E>, B>,
+  f: (a: A) => Effect<R, Maybe<E>, B>,
   __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
   return Effect.forEach(as, (a) => f(a).unsome()).map((chunk) => chunk.compact)

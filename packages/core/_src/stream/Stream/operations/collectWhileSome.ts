@@ -4,8 +4,8 @@
  * @tsplus fluent ets/Stream collectWhileSome
  */
 export function collectWhileSome<R, E, L, A>(
-  self: Stream<R, E, Option<A>>,
+  self: Stream<R, E, Maybe<A>>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  return self.collectWhile((option) => option.isSome() ? Option.some(option.value) : Option.none)
+  return self.collectWhile((option) => option.isSome() ? Maybe.some(option.value) : Maybe.none)
 }

@@ -164,7 +164,7 @@ export class IFork<R, E, A> extends Base<R, never, Fiber.Runtime<E, A>> {
 
   constructor(
     readonly effect: Effect<R, E, A>,
-    readonly scope: Lazy<Option<FiberScope>>,
+    readonly scope: Lazy<Maybe<FiberScope>>,
     readonly trace?: string
   ) {
     super()
@@ -388,7 +388,7 @@ export class IOverrideForkScope<R, E, A> extends Base<R, E, A> {
 
   constructor(
     readonly effect: Effect<R, E, A>,
-    readonly forkScope: Option<FiberScope>,
+    readonly forkScope: Maybe<FiberScope>,
     readonly trace?: string
   ) {
     super()
@@ -421,7 +421,7 @@ export class ILogged<A> extends Base<never, never, void> {
   constructor(
     readonly message: Lazy<A>,
     readonly cause: Lazy<Cause<unknown>>,
-    readonly overrideLogLevel: Option<LogLevel> = Option.none,
+    readonly overrideLogLevel: Maybe<LogLevel> = Maybe.none,
     readonly overrideRef1: FiberRef<unknown, unknown> | null = null,
     readonly overrideValue1: unknown = null,
     readonly trace?: string

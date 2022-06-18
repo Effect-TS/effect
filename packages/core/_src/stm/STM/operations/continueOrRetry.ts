@@ -6,7 +6,7 @@
  */
 export function continueOrRetry_<R, E, A, A2>(
   self: STM<R, E, A>,
-  pf: (a: A) => Option<A2>
+  pf: (a: A) => Maybe<A2>
 ): STM<R, E, A2> {
   return self.continueOrRetrySTM((x) => pf(x).map(STM.succeedNow))
 }

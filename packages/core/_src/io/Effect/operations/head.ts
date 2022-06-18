@@ -7,9 +7,9 @@
 export function head<R, E, A>(
   self: Effect<R, E, Collection<A>>,
   __tsplusTrace?: string
-): Effect<R, Option<E>, A> {
+): Effect<R, Maybe<E>, A> {
   return self.foldEffect(
-    (e) => Effect.fail(Option.some(e)),
-    (collection) => Chunk.from(collection).head.fold(Effect.fail(Option.none), Effect.succeedNow)
+    (e) => Effect.fail(Maybe.some(e)),
+    (collection) => Chunk.from(collection).head.fold(Effect.fail(Maybe.none), Effect.succeedNow)
   )
 }

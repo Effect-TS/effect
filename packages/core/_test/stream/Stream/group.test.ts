@@ -6,13 +6,13 @@ describe.concurrent("Stream", () => {
         .map((n) => n.toString())
       const program = Stream.fromCollection(words)
         .groupByKey(identity, 8192)
-        .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect().map((c) => Tuple(k, c.size).toNative())))
+        .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect().map((c) => Tuple(k, c.size).toNative)))
         .runCollect()
         .map((chunk) => new Map([...chunk]))
 
       const result = await program.unsafeRunPromise()
       const expected = new Map([
-        ...Chunk.range(0, 10).map((n) => Tuple(n.toString(), 10).toNative())
+        ...Chunk.range(0, 10).map((n) => Tuple(n.toString(), 10).toNative)
       ])
 
       assert.deepStrictEqual(result, expected)
@@ -25,13 +25,13 @@ describe.concurrent("Stream", () => {
       const program = Stream.fromCollection(words)
         .groupByKey(identity, 1050)
         .first(2)
-        .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect().map((c) => Tuple(k, c.size).toNative())))
+        .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect().map((c) => Tuple(k, c.size).toNative)))
         .runCollect()
         .map((chunk) => new Map([...chunk]))
 
       const result = await program.unsafeRunPromise()
       const expected = new Map([
-        ...Chunk.range(0, 1).map((n) => Tuple(n.toString(), 10).toNative())
+        ...Chunk.range(0, 1).map((n) => Tuple(n.toString(), 10).toNative)
       ])
 
       assert.deepStrictEqual(result, expected)
@@ -42,13 +42,13 @@ describe.concurrent("Stream", () => {
       const program = Stream.fromCollection(words)
         .groupByKey(identity, 1050)
         .filter((n) => n <= 5)
-        .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect().map((c) => Tuple(k, c.size).toNative())))
+        .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect().map((c) => Tuple(k, c.size).toNative)))
         .runCollect()
         .map((chunk) => new Map([...chunk]))
 
       const result = await program.unsafeRunPromise()
       const expected = new Map([
-        ...Chunk.range(0, 5).map((n) => Tuple(n, 10).toNative())
+        ...Chunk.range(0, 5).map((n) => Tuple(n, 10).toNative)
       ])
 
       assert.deepStrictEqual(result, expected)

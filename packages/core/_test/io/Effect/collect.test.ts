@@ -50,12 +50,12 @@ describe.concurrent("Effect", () => {
     it("collects the first value for which the effectual function returns Some", async () => {
       const program = Effect.collectFirst(
         Chunk.range(0, 10),
-        (n) => n > 5 ? Effect.succeed(Option.some(n)) : Effect.succeed(Option.none)
+        (n) => n > 5 ? Effect.succeed(Maybe.some(n)) : Effect.succeed(Maybe.none)
       )
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(6))
+      assert.isTrue(result == Maybe.some(6))
     })
   })
 })

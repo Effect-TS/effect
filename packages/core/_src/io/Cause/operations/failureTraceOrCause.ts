@@ -9,6 +9,6 @@ export function failureTraceOrCause<E>(
   self: Cause<E>
 ): Either<Tuple<[E, Trace]>, Cause<never>> {
   return self
-    .failureTraceOption()
+    .failureTraceMaybe
     .fold(() => Either.right(self as Cause<never>), Either.left)
 }

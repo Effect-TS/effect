@@ -4,7 +4,7 @@ export class InternalTDeferred<E, A> implements TDeferred<E, A> {
   readonly [TDeferredSym]: TDeferredSym = TDeferredSym
   readonly [_E]!: () => E
   readonly [_A]!: () => A
-  constructor(readonly ref: TRef<Option<Either<E, A>>>) {}
+  constructor(readonly ref: TRef<Maybe<Either<E, A>>>) {}
 }
 
 /**

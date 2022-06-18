@@ -269,7 +269,7 @@ describe.concurrent("Stream", () => {
           ).map((list) => list.reverse),
           Schedule.spaced((100).millis)
         )
-        .collect((either) => either.isRight() ? Option.some(either.right) : Option.none)
+        .collect((either) => either.isRight() ? Maybe.some(either.right) : Maybe.none)
         .runCollect()
         .map((chunk) => List.from(chunk).flatten())
 

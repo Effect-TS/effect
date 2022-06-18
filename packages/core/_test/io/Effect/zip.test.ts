@@ -16,8 +16,8 @@ describe.concurrent("Effect", () => {
       const result = await program.unsafeRunPromiseExit()
 
       assert.isTrue(
-        result.causeOption.map((cause) => cause.interruptors.size > 0)
-          == Option.some(true)
+        result.causeMaybe.map((cause) => cause.interruptors.size > 0)
+          == Maybe.some(true)
       )
     })
 

@@ -31,27 +31,27 @@ describe.concurrent("TQueue", () => {
 
       assert.isTrue(result)
     })
-    it("peekOption value", async () => {
+    it("peekMaybe value", async () => {
       const tx = Do(($) => {
         const tq = $(TQueue.unbounded<number>())
 
         $(tq.offerAll(List(1, 2, 3, 4, 5)))
 
-        const next = $(tq.peekOption)
+        const next = $(tq.peekMaybe)
         const size = $(tq.size)
 
-        return next == Option.some(1) && size === 5
+        return next == Maybe.some(1) && size === 5
       }).commit()
 
       const result = await tx.unsafeRunPromise()
 
       assert.isTrue(result)
     })
-    it("peekOption empty queue", async () => {
+    it("peekMaybe empty queue", async () => {
       const tx = Do(($) => {
         const tq = $(TQueue.unbounded())
 
-        const next = $(tq.peekOption)
+        const next = $(tq.peekMaybe)
 
         return next.isNone()
       }).commit()

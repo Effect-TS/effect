@@ -6,15 +6,15 @@
  */
 export function collectFirst<R, E, A, B>(
   as: LazyArg<Collection<A>>,
-  f: (a: A) => STM<R, E, Option<B>>
-): STM<R, E, Option<B>> {
+  f: (a: A) => STM<R, E, Maybe<B>>
+): STM<R, E, Maybe<B>> {
   return STM.succeed(as).flatMap((Collection) => loop(Collection[Symbol.iterator](), f))
 }
 
 function loop<R, E, A, B>(
   iterator: Iterator<A, any, undefined>,
-  f: (a: A) => STM<R, E, Option<B>>
-): STM<R, E, Option<B>> {
+  f: (a: A) => STM<R, E, Maybe<B>>
+): STM<R, E, Maybe<B>> {
   const next = iterator.next()
   return next.done
     ? STM.none

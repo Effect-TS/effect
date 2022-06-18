@@ -19,16 +19,16 @@ export function combine_<R, E, A, R2, E2, A2, S, A3>(
   s: LazyArg<S>,
   f: (
     s: S,
-    pullLeft: Effect<R, Option<E>, A>,
-    pullRight: Effect<R2, Option<E2>, A2>
-  ) => Effect<R | R2, never, Exit<Option<E | E2>, Tuple<[A3, S]>>>,
+    pullLeft: Effect<R, Maybe<E>, A>,
+    pullRight: Effect<R2, Maybe<E2>, A2>
+  ) => Effect<R | R2, never, Exit<Maybe<E | E2>, Tuple<[A3, S]>>>,
   __tsplusTrace?: string
 ): Stream<R | R2, E | E2, A3> {
   return new StreamInternal(
     Channel.unwrapScoped(
       Effect.Do()
-        .bind("left", () => Handoff.make<Exit<Option<E>, A>>())
-        .bind("right", () => Handoff.make<Exit<Option<E2>, A2>>())
+        .bind("left", () => Handoff.make<Exit<Maybe<E>, A>>())
+        .bind("right", () => Handoff.make<Exit<Maybe<E2>, A2>>())
         .bind("latchL", () => Handoff.make<void>())
         .bind("latchR", () => Handoff.make<void>())
         .tap(({ latchL, left }) => {
@@ -84,7 +84,7 @@ export function combine_<R, E, A, R2, E2, A2, S, A3>(
 export const combine = Pipeable(combine_)
 
 function producer<Err, Elem>(
-  handoff: Handoff<Exit<Option<Err>, Elem>>,
+  handoff: Handoff<Exit<Maybe<Err>, Elem>>,
   latch: Handoff<void>,
   __tsplusTrace?: string
 ): Channel<never, Err, Elem, unknown, never, never, unknown> {
@@ -94,9 +94,9 @@ function producer<Err, Elem>(
         (value) =>
           Channel.fromEffect(handoff.offer(Exit.succeed(value))) >
             producer(handoff, latch),
-        (cause) => Channel.fromEffect(handoff.offer(Exit.failCause(cause.map(Option.some)))),
+        (cause) => Channel.fromEffect(handoff.offer(Exit.failCause(cause.map(Maybe.some)))),
         () =>
-          Channel.fromEffect(handoff.offer(Exit.fail(Option.none))) >
+          Channel.fromEffect(handoff.offer(Exit.fail(Maybe.none))) >
             producer(handoff, latch)
       )
   )

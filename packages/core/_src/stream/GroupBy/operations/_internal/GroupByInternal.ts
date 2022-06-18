@@ -27,20 +27,20 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
   ): Stream<R | R1, E | E1, A1> {
     return this.grouped().flatMapPar(
       Number.MAX_SAFE_INTEGER,
-      ({ tuple: [key, queue] }) => f(key, Stream.fromQueueWithShutdown(queue).flattenExitOption()),
+      ({ tuple: [key, queue] }) => f(key, Stream.fromQueueWithShutdown(queue).flattenExitMaybe()),
       this.buffer
     )
   }
 
   grouped(
     __tsplusTrace?: string
-  ): Stream<R, E, Tuple<[K, Dequeue<Exit<Option<E>, V>>]>> {
+  ): Stream<R, E, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>> {
     return Stream.unwrapScoped(
       Effect.Do()
         .bind("decider", () => Deferred.make<never, (k: K, v: V) => Effect.UIO<Predicate<UniqueKey>>>())
         .bind("out", () =>
           Effect.acquireRelease(
-            Queue.bounded<Exit<Option<E>, Tuple<[K, Dequeue<Exit<Option<E>, V>>]>>>(
+            Queue.bounded<Exit<Maybe<E>, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>>>(
               this.buffer
             ),
             (queue) => queue.shutdown
@@ -79,7 +79,7 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
                   )
           )
         )
-        .map(({ out }) => Stream.fromQueueWithShutdown(out).flattenExitOption())
+        .map(({ out }) => Stream.fromQueueWithShutdown(out).flattenExitMaybe())
     )
   }
 
@@ -119,7 +119,7 @@ export class FirstInternal<R, E, K, V, A> extends GroupByInternal<R, E, K, V, A>
 
   grouped(
     __tsplusTrace?: string
-  ): Stream<R, E, Tuple<[K, Dequeue<Exit<Option<E>, V>>]>> {
+  ): Stream<R, E, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>> {
     return super
       .grouped()
       .zipWithIndex()
@@ -152,7 +152,7 @@ export class FilterInternal<R, E, K, V, A> extends GroupByInternal<R, E, K, V, A
 
   grouped(
     __tsplusTrace?: string
-  ): Stream<R, E, Tuple<[K, Dequeue<Exit<Option<E>, V>>]>> {
+  ): Stream<R, E, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>> {
     return super.grouped().filterEffect((elem) => {
       const {
         tuple: [k, queue]

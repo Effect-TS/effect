@@ -8,15 +8,15 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
 export function findLast_<A>(
   self: TArray<A>,
   f: Predicate<A>
-): STM<never, never, Option<A>> {
+): STM<never, never, Maybe<A>> {
   return STM.Effect((journal) => {
     concreteTArray(self)
     let i = self.chunk.length - 1
-    let res = Option.emptyOf<A>()
+    let res = Maybe.emptyOf<A>()
     while (res.isNone() && i >= 0) {
       const a = self.chunk.unsafeGet(i)!.unsafeGet(journal)
       if (f(a)) {
-        res = Option.some(a)
+        res = Maybe.some(a)
       }
       i = i - 1
     }

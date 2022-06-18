@@ -24,7 +24,7 @@ export function orElse_<E, E1, A, A1>(
     interruptAs: (id) => self.interruptAs(id) > that.interruptAs(id),
     poll: self
       .poll()
-      .zipWith(that.poll(), (o1, o2) => o1.fold(Option.none, (_) => (_._tag === "Success" ? o1 : o2)))
+      .zipWith(that.poll(), (o1, o2) => o1.fold(Maybe.none, (_) => (_._tag === "Success" ? o1 : o2)))
   })
 }
 

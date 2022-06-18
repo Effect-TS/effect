@@ -4,8 +4,8 @@
  * @tsplus fluent ets/Stream collectSome
  */
 export function collectSome<R, E, A>(
-  self: Stream<R, E, Option<A>>,
+  self: Stream<R, E, Maybe<A>>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  return self.collect((option) => option.isSome() ? Option.some(option.value) : Option.none)
+  return self.collect((option) => option.isSome() ? Maybe.some(option.value) : Maybe.none)
 }

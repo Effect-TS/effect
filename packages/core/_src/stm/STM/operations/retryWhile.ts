@@ -8,7 +8,7 @@ export function retryWhile_<R, E, A>(
   self: STM<R, E, A>,
   f: Predicate<A>
 ): STM<R, E, A> {
-  return self.continueOrRetry((a) => (f(a) ? Option.none : Option.some(a)))
+  return self.continueOrRetry((a) => (f(a) ? Maybe.none : Maybe.some(a)))
 }
 
 /**

@@ -8,28 +8,28 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 export function zipWithNext<R, E, A>(
   self: Stream<R, E, A>,
   __tsplusTrace?: string
-): Stream<R, E, Tuple<[A, Option<A>]>> {
+): Stream<R, E, Tuple<[A, Maybe<A>]>> {
   concreteStream(self)
-  return new StreamInternal(self.channel >> process<E, A>(Option.none))
+  return new StreamInternal(self.channel >> process<E, A>(Maybe.none))
 }
 
 function process<E, A>(
-  last: Option<A>,
+  last: Maybe<A>,
   __tsplusTrace?: string
-): Channel<never, E, Chunk<A>, unknown, E, Chunk<Tuple<[A, Option<A>]>>, void> {
+): Channel<never, E, Chunk<A>, unknown, E, Chunk<Tuple<[A, Maybe<A>]>>, void> {
   return Channel.readWith(
     (input: Chunk<A>) => {
       const {
         tuple: [newLast, chunk]
       } = input.mapAccum(last, (prev, curr) =>
         Tuple(
-          Option.some(curr),
+          Maybe.some(curr),
           prev.map((a) => Tuple(a, curr))
         ))
       const out = chunk.collect((option) =>
         option.isSome()
-          ? Option.some(Tuple(option.value.get(0), Option.some(option.value.get(1))))
-          : Option.none
+          ? Maybe.some(Tuple(option.value.get(0), Maybe.some(option.value.get(1))))
+          : Maybe.none
       )
       return Channel.write(out) > process<E, A>(newLast)
     },
@@ -37,7 +37,7 @@ function process<E, A>(
     () =>
       last.fold(
         Channel.unit,
-        (a) => Channel.write(Chunk.single(Tuple(a, Option.none))) > Channel.unit
+        (a) => Channel.write(Chunk.single(Tuple(a, Maybe.none))) > Channel.unit
       )
   )
 }

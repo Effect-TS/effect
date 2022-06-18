@@ -6,13 +6,13 @@ describe.concurrent("Effect", () => {
       const program = Effect.struct({
         goodCase: exactlyOnce(
           0,
-          (effect) => effect.reject((n) => (n !== 0 ? Option.some("partial failed!") : Option.none))
+          (effect) => effect.reject((n) => (n !== 0 ? Maybe.some("partial failed!") : Maybe.none))
         )
           .sandbox()
           .either(),
         badCase: exactlyOnce(
           1,
-          (effect) => effect.reject((n) => (n !== 0 ? Option.some("partial failed!") : Option.none))
+          (effect) => effect.reject((n) => (n !== 0 ? Maybe.some("partial failed!") : Maybe.none))
         )
           .sandbox()
           .either()
@@ -31,20 +31,20 @@ describe.concurrent("Effect", () => {
       const program = Effect.struct({
         goodCase: exactlyOnce(
           0,
-          (effect) => effect.rejectEffect((n) => n !== 0 ? Option.some(Effect.succeed("partial failed!")) : Option.none)
+          (effect) => effect.rejectEffect((n) => n !== 0 ? Maybe.some(Effect.succeed("partial failed!")) : Maybe.none)
         )
           .sandbox()
           .either(),
         partialBadCase: exactlyOnce(
           0,
-          (effect) => effect.rejectEffect((n) => n !== 0 ? Option.some(Effect.fail("partial failed!")) : Option.none)
+          (effect) => effect.rejectEffect((n) => n !== 0 ? Maybe.some(Effect.fail("partial failed!")) : Maybe.none)
         )
           .sandbox()
           .either()
           .map((either) => either.mapLeft((cause) => cause.failureOrCause)),
         badCase: exactlyOnce(
           1,
-          (effect) => effect.rejectEffect((n) => n !== 0 ? Option.some(Effect.fail("partial failed!")) : Option.none)
+          (effect) => effect.rejectEffect((n) => n !== 0 ? Maybe.some(Effect.fail("partial failed!")) : Maybe.none)
         )
           .sandbox()
           .either()

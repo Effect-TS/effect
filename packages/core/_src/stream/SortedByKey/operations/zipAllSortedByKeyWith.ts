@@ -54,12 +54,12 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
   ): Stream<R | R2, E | E2, Tuple<[K, C1 | C2 | C3]>> => {
     const pull = (
       state: State<K, A, B>,
-      pullLeft: Effect<R, Option<E>, Chunk<Tuple<[K, A]>>>,
-      pullRight: Effect<R2, Option<E2>, Chunk<Tuple<[K, B]>>>
+      pullLeft: Effect<R, Maybe<E>, Chunk<Tuple<[K, A]>>>,
+      pullRight: Effect<R2, Maybe<E2>, Chunk<Tuple<[K, B]>>>
     ): Effect<
       R | R2,
       never,
-      Exit<Option<E | E2>, Tuple<[Chunk<Tuple<[K, C1 | C2 | C3]>>, State<K, A, B>]>>
+      Exit<Maybe<E | E2>, Tuple<[Chunk<Tuple<[K, C1 | C2 | C3]>>, State<K, A, B>]>>
     > => {
       switch (state._tag) {
         case "DrainLeft":
@@ -89,7 +89,7 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
             .unsome()
             .zipPar(pullRight.unsome())
             .foldEffect(
-              (e) => Effect.succeedNow(Exit.fail(Option.some(e))),
+              (e) => Effect.succeedNow(Exit.fail(Maybe.some(e))),
               ({ tuple: [a, b] }) => {
                 if (a.isSome() && b.isSome()) {
                   const leftChunk = a.value
@@ -133,7 +133,7 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
                       )
                     )
                 } else {
-                  return Effect.succeedNow(Exit.fail(Option.none))
+                  return Effect.succeedNow(Exit.fail(Maybe.none))
                 }
               }
             )
@@ -147,7 +147,7 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
                 (): Effect<
                   never,
                   never,
-                  Exit<Option<E>, Tuple<[Chunk<Tuple<[K, C2]>>, DrainRight]>>
+                  Exit<Maybe<E>, Tuple<[Chunk<Tuple<[K, C2]>>, DrainRight]>>
                 > =>
                   Effect.succeedNow(
                     Exit.succeed(
@@ -157,7 +157,7 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
                       )
                     )
                   ),
-                (e) => Effect.succeedNow(Exit.fail(Option.some(e)))
+                (e) => Effect.succeedNow(Exit.fail(Maybe.some(e)))
               ),
             (leftChunk) =>
               leftChunk.isEmpty
@@ -176,7 +176,7 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
                 (): Effect<
                   never,
                   never,
-                  Exit<Option<E2>, Tuple<[Chunk<Tuple<[K, C1]>>, DrainLeft]>>
+                  Exit<Maybe<E2>, Tuple<[Chunk<Tuple<[K, C1]>>, DrainLeft]>>
                 > =>
                   Effect.succeedNow(
                     Exit.succeed(
@@ -186,7 +186,7 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
                       )
                     )
                   ),
-                (e) => Effect.succeedNow(Exit.fail(Option.some(e)))
+                (e) => Effect.succeedNow(Exit.fail(Maybe.some(e)))
               ),
             (rightChunk) =>
               rightChunk.isEmpty

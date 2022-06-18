@@ -7,7 +7,7 @@
 export function modifySome_<A, B>(
   self: TRef<A>,
   def: B,
-  pf: (a: A) => Option<Tuple<[B, A]>>
+  pf: (a: A) => Maybe<Tuple<[B, A]>>
 ): USTM<B> {
   return self.modify((a) => pf(a).getOrElse(Tuple(def, a)))
 }

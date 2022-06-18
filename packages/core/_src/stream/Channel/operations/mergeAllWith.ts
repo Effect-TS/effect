@@ -55,7 +55,7 @@ export function mergeAllWith_<
             Queue.unbounded<Deferred<never, void>>(),
             (queue) => queue.shutdown
           ))
-        .bind("lastDone", () => Ref.make<Option<OutDone>>(Option.none))
+        .bind("lastDone", () => Ref.make<Maybe<OutDone>>(Maybe.none))
         .bind("errorSignal", () => Deferred.make<never, void>())
         .bind("permits", () => Semaphore.make(n))
         .bind("pull", () => channels.toPull)
@@ -66,16 +66,14 @@ export function mergeAllWith_<
               pull
                 .flatMap((either) =>
                   either.fold(
-                    (done) => Effect.succeed(Option.some(done)),
-                    (out) => queue.offer(Effect.succeedNow(Either.right(out))).as(Option.none)
+                    (done) => Effect.succeed(Maybe.some(done)),
+                    (out) => queue.offer(Effect.succeedNow(Either.right(out))).as(Maybe.none)
                   )
                 )
                 .repeatUntil((option) => option.isSome())
                 .flatMap((option) =>
                   option.fold(Effect.unit, (outDone) =>
-                    lastDone.update((_) =>
-                      _.fold(Option.some(outDone), (lastDone) => Option.some(f(lastDone, outDone)))
-                    ))
+                    lastDone.update((_) => _.fold(Maybe.some(outDone), (lastDone) => Maybe.some(f(lastDone, outDone)))))
                 )
                 .catchAllCause(
                   (cause) =>
@@ -88,7 +86,9 @@ export function mergeAllWith_<
             pull
               .foldCauseEffect(
                 (cause) =>
-                  getChildren.flatMap((fibers) => Fiber.interruptAll(fibers)) >
+                  getChildren.flatMap((fibers) =>
+                    Fiber.interruptAll(fibers)
+                  ) >
                     queue.offer(Effect.failCause(cause)).as(false),
                 (either) =>
                   either.fold(

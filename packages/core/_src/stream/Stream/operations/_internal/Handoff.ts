@@ -80,17 +80,17 @@ export function take<A>(self: Handoff<A>, __tsplusTrace?: string): Effect.UIO<A>
 /**
  * @tsplus fluent ets/Stream/Handoff poll
  */
-export function poll<A>(self: Handoff<A>, __tsplusTrace?: string): Effect.UIO<Option<A>> {
+export function poll<A>(self: Handoff<A>, __tsplusTrace?: string): Effect.UIO<Maybe<A>> {
   return Deferred.make<never, void>().flatMap((deferred) =>
     self.ref
       .modify((state) => {
         switch (state._tag) {
           case "Empty": {
-            return Tuple(Effect.succeedNow(Option.none), state)
+            return Tuple(Effect.succeedNow(Maybe.none), state)
           }
           case "Full": {
             return Tuple(
-              state.notifyProducer.succeed(undefined).as(Option.some(state.value)),
+              state.notifyProducer.succeed(undefined).as(Maybe.some(state.value)),
               new Empty(deferred)
             )
           }

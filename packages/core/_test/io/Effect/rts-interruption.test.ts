@@ -413,7 +413,7 @@ describe.concurrent("Effect", () => {
 
     it("sandbox of interruptible", async () => {
       const program = Effect.Do()
-        .bind("recovered", () => Ref.make(Option.emptyOf<Either<boolean, any>>()))
+        .bind("recovered", () => Ref.make(Maybe.emptyOf<Either<boolean, any>>()))
         .bind("fiber", ({ recovered }) =>
           withLatch((release) =>
             (release > Effect.never.interruptible())
@@ -421,7 +421,7 @@ describe.concurrent("Effect", () => {
               .either()
               .flatMap((either) =>
                 recovered.set(
-                  Option.some(either.mapLeft((cause) => cause.isInterrupted))
+                  Maybe.some(either.mapLeft((cause) => cause.isInterrupted))
                 )
               )
               .uninterruptible()
@@ -432,17 +432,17 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(Either.left(true)))
+      assert.isTrue(result == Maybe.some(Either.left(true)))
     })
 
     it("run of interruptible", async () => {
       const program = Effect.Do()
-        .bind("recovered", () => Ref.make(Option.emptyOf<boolean>()))
+        .bind("recovered", () => Ref.make(Maybe.emptyOf<boolean>()))
         .bind("fiber", ({ recovered }) =>
           withLatch((release) =>
             (release > Effect.never.interruptible())
               .exit()
-              .flatMap((exit) => recovered.set(Option.some(exit.isInterrupted)))
+              .flatMap((exit) => recovered.set(Maybe.some(exit.isInterrupted)))
               .uninterruptible()
               .fork()
           ))
@@ -451,7 +451,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(true))
+      assert.isTrue(result == Maybe.some(true))
     })
 
     it("alternating interruptibility", async () => {

@@ -4,10 +4,10 @@
  * @tsplus getter ets/STM noneOrFail
  */
 export function noneOrFail<R, E, A, B>(
-  self: STM<R, E, Option<A>>
-): STM<R, Option<E>, void> {
+  self: STM<R, E, Maybe<A>>
+): STM<R, Maybe<E>, void> {
   return self.foldSTM(
-    (e) => STM.fail(Option.some(e)),
-    (option) => option.fold(STM.unit, () => STM.fail(Option.none))
+    (e) => STM.fail(Maybe.some(e)),
+    (option) => option.fold(STM.unit, () => STM.fail(Maybe.none))
   )
 }
