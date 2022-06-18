@@ -1,6 +1,6 @@
 {
   "name": "@effect/core",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "type": "module",
   "license": "MIT",
   "repository": "https://github.com/Effect-TS/core.git",
