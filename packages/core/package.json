@@ -40,13 +40,8 @@
       "import": "./build/esm/*.js"
     }
   },
-  "peerDependencies": {
-    "@tsplus/stdlib": "^0.0.50"
-  },
-  "peerDependenciesMeta": {
-    "@tsplus/stdlib": {
-      "optional": true
-    }
+  "dependencies": {
+    "@tsplus/stdlib": "*"
   },
   "tsplus": {
     "typeDir": "./build/dts"

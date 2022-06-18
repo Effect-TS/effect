@@ -684,11 +684,8 @@ __metadata:
 "@effect/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@effect/core@workspace:packages/core"
-  peerDependencies:
-    "@tsplus/stdlib": ^0.0.50
-  peerDependenciesMeta:
-    "@tsplus/stdlib":
-      optional: true
+  dependencies:
+    "@tsplus/stdlib": "*"
   languageName: unknown
   linkType: soft
 
@@ -939,7 +936,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsplus/stdlib@npm:0.1.8":
+"@tsplus/stdlib@npm:*, @tsplus/stdlib@npm:0.1.8":
   version: 0.1.8
   resolution: "@tsplus/stdlib@npm:0.1.8"
   checksum: aedfe63d74babd1ec353c9633df715b20d000b4c65b60af4830508d2c0fe82b1a99b5f30c75e9b0045997efb5dfea1cb3999b4db7e45ae5011e51d387581c2bb
