@@ -32,7 +32,7 @@ function reader<S, In>(
           ? Channel.write(leftovers).as(nextS)
           : reader<S, In>(nextS, cont, f)
       },
-      (err) => Channel.fail(err),
+      (err) => Channel.fail(() => err),
       () => Channel.succeedNow(z)
     )
 }

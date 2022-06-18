@@ -55,7 +55,7 @@ function go<S, In>(
 
       return go(nextS, costFn, decompose, f, nextDirty, nextCost, max)
     },
-    (err) => Channel.fail(err),
+    (err) => Channel.fail(() => err),
     () => Channel.succeedNow(s)
   )
 }

@@ -18,7 +18,7 @@ export function drain(
     void
   > = Channel.readWith(
     () => loop,
-    (err) => Channel.fail(err),
+    (err) => Channel.fail(() => err),
     () => Channel.unit
   )
   return new SinkInternal(loop)

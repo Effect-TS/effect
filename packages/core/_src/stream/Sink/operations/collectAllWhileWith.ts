@@ -28,7 +28,7 @@ export function collectAllWhileWith_<R, E, In, L extends In, Z, S>(
           unknown
         > = Channel.readWith(
           (chunk: Chunk<In>) => Channel.write(chunk) > upstreamMarker,
-          (err) => Channel.fail(err),
+          (err) => Channel.fail(() => err),
           (x) => Channel.fromEffect(upstreamDoneRef.set(true)).as(x)
         )
         return (

@@ -30,7 +30,7 @@ function pull<R, E, In, L, Z>(
           ),
         () => pull(push)
       ),
-    (err) => Channel.fail(err),
+    (err) => Channel.fail(() => err),
     () =>
       Channel.fromEffect(push(Option.none)).foldChannel(
         ({ tuple: [either, leftovers] }) =>

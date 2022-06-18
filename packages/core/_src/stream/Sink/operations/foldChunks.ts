@@ -29,7 +29,7 @@ function reader<S, In>(
         const nextS = f(z, chunk)
         return reader(nextS, cont, f)
       },
-      (err) => Channel.fail(err),
+      (err) => Channel.fail(() => err),
       () => Channel.succeedNow(z)
     )
     : Channel.succeedNow(z)

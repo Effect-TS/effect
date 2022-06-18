@@ -924,9 +924,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsplus/installer@npm:0.0.112":
-  version: 0.0.112
-  resolution: "@tsplus/installer@npm:0.0.112"
+"@tsplus/installer@npm:0.0.114":
+  version: 0.0.114
+  resolution: "@tsplus/installer@npm:0.0.114"
   dependencies:
     mkdirp: ^1.0.4
     rimraf: ^3.0.2
@@ -935,7 +935,7 @@ __metadata:
     zlib: ^1.0.5
   bin:
     tsplus-install: bin/tsplus-install
-  checksum: a60937d61f34526d053c1cb4ffac8b321d9a4ff9f35ae97bb760ab2a66c799f72756ecf9d50e996fdb3e93b3c810eb7b3709ecccd986e614a9a8fce22e335fc9
+  checksum: 68f35ee226a7e193e210969b46876e28cdcc98bb5d7bb2594f14ccad2be77d387428d2d61a7d2d0a078c6b883a9b14ab1217b167652cbd2fe8a90667a8542aeb
   languageName: node
   linkType: hard
 
@@ -1048,10 +1048,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^17.0.43":
-  version: 17.0.43
-  resolution: "@types/node@npm:17.0.43"
-  checksum: 7fd84b1e37dc406c1c73a1461ccd6a1a38a5a335563788dd25e0aa75476d6948f815d0e9e4c2201f785a36a72269e6aaf0d851ca75c1e44b92e3a9d504e04a1e
+"@types/node@npm:^18.0.0":
+  version: 18.0.0
+  resolution: "@types/node@npm:18.0.0"
+  checksum: aab2b325727a2599f6d25ebe0dedf58c40fb66a51ce4ca9c0226ceb70fcda2d3afccdca29db5942eb48b158ee8585a274a1e3750c718bbd5399d7f41d62dfdcc
   languageName: node
   linkType: hard
 
@@ -2703,9 +2703,9 @@ __metadata:
     "@effect-ts/build-utils": 0.40.3
     "@effect-ts/core": ^0.60.2
     "@repo-tooling/eslint-plugin-dprint": ^0.0.4
-    "@tsplus/installer": 0.0.112
+    "@tsplus/installer": 0.0.114
     "@tsplus/stdlib": 0.1.6
-    "@types/node": ^17.0.43
+    "@types/node": ^18.0.0
     "@types/rimraf": ^3.0.2
     "@typescript-eslint/eslint-plugin": ^5.28.0
     "@typescript-eslint/parser": ^5.28.0
@@ -2714,7 +2714,7 @@ __metadata:
     c8: ^7.11.3
     concurrently: ^7.2.2
     cpx: ^1.5.0
-    eslint: ^8.17.0
+    eslint: ^8.18.0
     eslint-import-resolver-typescript: ^2.7.1
     eslint-plugin-codegen: 0.16.1
     eslint-plugin-import: ^2.26.0
@@ -2723,7 +2723,7 @@ __metadata:
     madge: ^5.0.1
     picocolors: ^1.0.0
     rimraf: ^3.0.2
-    typescript: ^4.7.3
+    typescript: ^4.7.4
     ultra-runner: ^3.10.5
     vite: ^2.9.12
     vitest: 0.15.1
@@ -3298,7 +3298,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint@npm:^8.0.0, eslint@npm:^8.17.0":
+"eslint@npm:^8.0.0":
   version: 8.17.0
   resolution: "eslint@npm:8.17.0"
   dependencies:
@@ -3340,6 +3340,51 @@ __metadata:
   bin:
     eslint: bin/eslint.js
   checksum: b484c96681c6b19f5b437f664623f1cd310d3ee9be88400d8450e086e664cd968a9dc202f0b0678578fd50e7a445b92586efe8c787de5073ff2f83213b00bb7b
+  languageName: node
+  linkType: hard
+
+"eslint@npm:^8.18.0":
+  version: 8.18.0
+  resolution: "eslint@npm:8.18.0"
+  dependencies:
+    "@eslint/eslintrc": ^1.3.0
+    "@humanwhocodes/config-array": ^0.9.2
+    ajv: ^6.10.0
+    chalk: ^4.0.0
+    cross-spawn: ^7.0.2
+    debug: ^4.3.2
+    doctrine: ^3.0.0
+    escape-string-regexp: ^4.0.0
+    eslint-scope: ^7.1.1
+    eslint-utils: ^3.0.0
+    eslint-visitor-keys: ^3.3.0
+    espree: ^9.3.2
+    esquery: ^1.4.0
+    esutils: ^2.0.2
+    fast-deep-equal: ^3.1.3
+    file-entry-cache: ^6.0.1
+    functional-red-black-tree: ^1.0.1
+    glob-parent: ^6.0.1
+    globals: ^13.15.0
+    ignore: ^5.2.0
+    import-fresh: ^3.0.0
+    imurmurhash: ^0.1.4
+    is-glob: ^4.0.0
+    js-yaml: ^4.1.0
+    json-stable-stringify-without-jsonify: ^1.0.1
+    levn: ^0.4.1
+    lodash.merge: ^4.6.2
+    minimatch: ^3.1.2
+    natural-compare: ^1.4.0
+    optionator: ^0.9.1
+    regexpp: ^3.2.0
+    strip-ansi: ^6.0.1
+    strip-json-comments: ^3.1.0
+    text-table: ^0.2.0
+    v8-compile-cache: ^2.0.3
+  bin:
+    eslint: bin/eslint.js
+  checksum: d9b4b7488a9cee97608343cbb5ac652d3f316436f95ef0800cd9497c1c6f877b655a3275817989c02f1ff0d5dfd1959c5092af9251c7e3fcf60659da37752a10
   languageName: node
   linkType: hard
 
@@ -7606,13 +7651,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^4.7.3":
-  version: 4.7.3
-  resolution: "typescript@npm:4.7.3"
+"typescript@npm:^4.7.4":
+  version: 4.7.4
+  resolution: "typescript@npm:4.7.4"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: fd13a1ce53790a36bb8350e1f5e5e384b5f6cb9b0635114a6d01d49cb99916abdcfbc13c7521cdae2f2d3f6d8bc4a8ae7625edf645a04ee940588cd5e7597b2f
+  checksum: 5750181b1cd7e6482c4195825547e70f944114fb47e58e4aa7553e62f11b3f3173766aef9c281783edfd881f7b8299cf35e3ca8caebe73d8464528c907a164df
   languageName: node
   linkType: hard
 
@@ -7626,13 +7671,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@^4.7.3#~builtin<compat/typescript>":
-  version: 4.7.3
-  resolution: "typescript@patch:typescript@npm%3A4.7.3#~builtin<compat/typescript>::version=4.7.3&hash=7ad353"
+"typescript@patch:typescript@^4.7.4#~builtin<compat/typescript>":
+  version: 4.7.4
+  resolution: "typescript@patch:typescript@npm%3A4.7.4#~builtin<compat/typescript>::version=4.7.4&hash=7ad353"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: 137d18a77f52254a284960b16ab53d0619f57b69b5d585804b8413f798a1175ce3e774fb95e6a101868577aafe357d8fcfc9171f0dc9fc0c210e9ae59d107cc0
+  checksum: 9096d8f6c16cb80ef3bf96fcbbd055bf1c4a43bd14f3b7be45a9fbe7ada46ec977f604d5feed3263b4f2aa7d4c7477ce5f9cd87de0d6feedec69a983f3a4f93e
   languageName: node
   linkType: hard
 
