@@ -23,7 +23,7 @@ export function dropWhile<In>(
         ? loop
         : Channel.write(leftover) > Channel.identity<never, Chunk<In>, unknown>()
     },
-    (err) => Channel.fail(err),
+    (err) => Channel.fail(() => err),
     () => Channel.unit
   )
   return new SinkInternal(loop)

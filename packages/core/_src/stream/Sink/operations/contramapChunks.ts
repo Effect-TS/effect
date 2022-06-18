@@ -20,7 +20,7 @@ export function contramapChunks_<R, E, In, In1, L, Z>(
     unknown
   > = Channel.readWith(
     (chunk: Chunk<In1>) => Channel.write(f(chunk)) > loop,
-    (err) => Channel.fail(err),
+    (err) => Channel.fail(() => err),
     (done) => Channel.succeed(done)
   )
   concreteSink(self)

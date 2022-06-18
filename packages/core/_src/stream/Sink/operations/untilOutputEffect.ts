@@ -24,7 +24,7 @@ export function untilOutputEffect_<R, E, R2, E2, In, L extends In, Z>(
           unknown
         > = Channel.readWith(
           (chunk: Chunk<In>) => Channel.write(chunk) > upstreamMarker,
-          (err) => Channel.fail(err),
+          (err) => Channel.fail(() => err),
           (done) => Channel.fromEffect(upstreamDoneRef.set(true)).as(done)
         )
 
