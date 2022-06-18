@@ -27,7 +27,7 @@ describe.concurrent("Sink", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(Chunk(5, 6, 7, 8)))
+      assert.isTrue(result == Maybe.some(Chunk(5, 6, 7, 8)))
     })
 
     it("empty stream terminates with none", async () => {
@@ -37,7 +37,7 @@ describe.concurrent("Sink", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("unsatisfied condition terminates with none", async () => {
@@ -47,7 +47,7 @@ describe.concurrent("Sink", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
   })
 })

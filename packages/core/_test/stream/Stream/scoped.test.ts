@@ -20,8 +20,8 @@ describe.concurrent("Stream", () => {
 
       const { interruptible, uninterruptible } = await program.unsafeRunPromise()
 
-      assert.isTrue(interruptible == Option.some(InterruptStatus.Interruptible))
-      assert.isTrue(uninterruptible == Option.some(InterruptStatus.Uninterruptible))
+      assert.isTrue(interruptible == Maybe.some(InterruptStatus.Interruptible))
+      assert.isTrue(uninterruptible == Maybe.some(InterruptStatus.Uninterruptible))
     })
   })
 })

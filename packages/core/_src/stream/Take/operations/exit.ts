@@ -3,7 +3,7 @@ import { concreteTake } from "@effect/core/stream/Take/operations/_internal/Take
 /**
  * @tsplus getter ets/Take exit
  */
-export function exit<E, A>(self: Take<E, A>): Exit<Option<E>, Chunk<A>> {
+export function exit<E, A>(self: Take<E, A>): Exit<Maybe<E>, Chunk<A>> {
   concreteTake(self)
   return self._exit
 }

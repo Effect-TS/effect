@@ -59,13 +59,13 @@ describe.concurrent("STM", () => {
         .bind("tRef", () => TRef.make(false))
         .tap(({ tRef }) =>
           STM.whenCase(
-            Option.emptyOf<number>(),
-            (option) => option._tag === "Some" ? Option.some(tRef.set(true)) : Option.none
+            Maybe.emptyOf<number>(),
+            (option) => option._tag === "Some" ? Maybe.some(tRef.set(true)) : Maybe.none
           )
         )
         .bind("result1", ({ tRef }) => tRef.get)
         .tap(({ tRef }) =>
-          STM.whenCase(Option.some(0), (option) => option._tag === "Some" ? Option.some(tRef.set(true)) : Option.none)
+          STM.whenCase(Maybe.some(0), (option) => option._tag === "Some" ? Maybe.some(tRef.set(true)) : Maybe.none)
         )
         .bind("result2", ({ tRef }) => tRef.get)
         .commit()
@@ -81,15 +81,15 @@ describe.concurrent("STM", () => {
         .bind("tRef", () => TRef.make(false))
         .tap(({ tRef }) =>
           STM.whenCaseSTM(
-            STM.succeed(Option.emptyOf<number>()),
-            (option) => option._tag === "Some" ? Option.some(tRef.set(true)) : Option.none
+            STM.succeed(Maybe.emptyOf<number>()),
+            (option) => option._tag === "Some" ? Maybe.some(tRef.set(true)) : Maybe.none
           )
         )
         .bind("result1", ({ tRef }) => tRef.get)
         .tap(({ tRef }) =>
           STM.whenCaseSTM(
-            STM.succeed(Option.some(0)),
-            (option) => option._tag === "Some" ? Option.some(tRef.set(true)) : Option.none
+            STM.succeed(Maybe.some(0)),
+            (option) => option._tag === "Some" ? Maybe.some(tRef.set(true)) : Maybe.none
           )
         )
         .bind("result2", ({ tRef }) => tRef.get)

@@ -9,17 +9,17 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * @tsplus static ets/Schedule/Ops elapsed
  */
 export const elapsed: Schedule<
-  Option<number>,
+  Maybe<number>,
   never,
   unknown,
   Duration
-> = makeWithState(Option.emptyOf(), (now, _, state) =>
+> = makeWithState(Maybe.emptyOf(), (now, _, state) =>
   Effect.succeed(
     state.fold(
-      () => Tuple(Option.some(now), (0).millis, Decision.Continue(Interval.after(now))),
+      () => Tuple(Maybe.some(now), (0).millis, Decision.Continue(Interval.after(now))),
       (start) =>
         Tuple(
-          Option.some(start),
+          Maybe.some(start),
           new Duration(now - start),
           Decision.Continue(Interval.after(now))
         )

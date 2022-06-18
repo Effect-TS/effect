@@ -19,19 +19,19 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
 export function fixed(
   interval: LazyArg<Duration>
 ): Schedule<
-  Tuple<[Option<Tuple<[number, number]>>, number]>,
+  Tuple<[Maybe<Tuple<[number, number]>>, number]>,
   never,
   unknown,
   number
 > {
-  return makeWithState(Tuple(Option.emptyOf(), 0), (now, _, { tuple: [option, n] }) =>
+  return makeWithState(Tuple(Maybe.emptyOf(), 0), (now, _, { tuple: [option, n] }) =>
     Effect.succeed(() => {
       const interval0 = interval()
       const intervalMillis = interval0.millis
       return option.fold(
         () =>
           Tuple(
-            Tuple(Option.some(Tuple(now, now + intervalMillis)), n + 1),
+            Tuple(Maybe.some(Tuple(now, now + intervalMillis)), n + 1),
             n,
             Decision.Continue(Interval.after(now + intervalMillis))
           ),
@@ -43,7 +43,7 @@ export function fixed(
           const sleepTime = boundary == (0).millis ? interval0 : boundary
           const nextRun = runningBehind ? now : now + sleepTime.millis
           return Tuple(
-            Tuple(Option.some(Tuple(startMillis, nextRun)), n + 1),
+            Tuple(Maybe.some(Tuple(startMillis, nextRun)), n + 1),
             n,
             Decision.Continue(Interval.after(nextRun))
           )

@@ -7,7 +7,7 @@
  */
 export function getAndUpdateSome_<A>(
   self: SynchronizedRef<A>,
-  pf: (a: A) => Option<A>,
+  pf: (a: A) => Maybe<A>,
   __tsplusTrace?: string
 ): Effect.UIO<A> {
   return self.modify(v => Tuple(v, pf(v).getOrElse(v)))

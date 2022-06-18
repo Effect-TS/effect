@@ -6,7 +6,7 @@
  */
 export function refineOrDieWith_<R, A, E, E1>(
   self: STM<R, E, A>,
-  pf: (e: E) => Option<E1>,
+  pf: (e: E) => Maybe<E1>,
   f: (e: E) => unknown
 ) {
   return self.catchAll((e) =>

@@ -29,8 +29,8 @@ export function timeoutTo_<R, E, A, R2, E2, A2>(
     .timeoutFailCause(Cause.die(new StreamTimeoutError()), duration)
     .catchSomeCause((cause) =>
       cause.isDieType() && isStreamTimeoutError(cause.value)
-        ? Option.some(that())
-        : Option.none
+        ? Maybe.some(that())
+        : Maybe.none
     )
 }
 

@@ -87,10 +87,10 @@ function pull<A, A2, A3>(
 ) {
   return <R, E, R2, E2>(
     state: State<A, A2>,
-    pullLeft: Effect<R, Option<E>, Chunk<A>>,
-    pullRight: Effect<R2, Option<E2>, Chunk<A2>>,
+    pullLeft: Effect<R, Maybe<E>, Chunk<A>>,
+    pullRight: Effect<R2, Maybe<E2>, Chunk<A2>>,
     __tsplusTrace?: string
-  ): Effect<R | R2, never, Exit<Option<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>> => {
+  ): Effect<R | R2, never, Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>> => {
     switch (state._tag) {
       case "DrainLeft": {
         return pullLeft.foldEffect(
@@ -112,7 +112,7 @@ function pull<A, A2, A3>(
           .unsome()
           .zipPar(pullRight.unsome())
           .foldEffect(
-            (err) => Effect.succeedNow(Exit.fail(Option.some(err))),
+            (err) => Effect.succeedNow(Exit.fail(Maybe.some(err))),
             ({ tuple: [l, r] }) => {
               if (l._tag === "Some" && r._tag === "Some") {
                 const leftChunk = l.value
@@ -145,7 +145,7 @@ function pull<A, A2, A3>(
                   Exit.succeed(Tuple(r.value.map(right), new DrainRight()))
                 )
               } else {
-                return Effect.succeedNow(Exit.fail(Option.none))
+                return Effect.succeedNow(Exit.fail(Maybe.none))
               }
             }
           )
@@ -154,12 +154,12 @@ function pull<A, A2, A3>(
         return pullLeft.foldEffect(
           (option) =>
             option.fold(
-              Effect.succeedNow<Exit<Option<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(
+              Effect.succeedNow<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(
                 Exit.succeed(Tuple(state.rightChunk.map(right), new DrainRight()))
               ),
               (err) =>
-                Effect.succeedNow<Exit<Option<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(
-                  Exit.fail(Option.some(err))
+                Effect.succeedNow<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(
+                  Exit.fail(Maybe.some(err))
                 )
             ),
           (leftChunk) =>
@@ -180,11 +180,11 @@ function pull<A, A2, A3>(
         return pullRight.foldEffect(
           (option) =>
             option.fold(
-              Effect.succeedNow<Exit<Option<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(
+              Effect.succeedNow<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(
                 Exit.succeed(Tuple(state.leftChunk.map(left), new DrainLeft()))
               ),
               (err) =>
-                Effect.succeedNow<Exit<Option<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(Exit.fail(Option.some(err)))
+                Effect.succeedNow<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(Exit.fail(Maybe.some(err)))
             ),
           (rightChunk) =>
             rightChunk.isEmpty

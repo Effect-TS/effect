@@ -6,7 +6,7 @@
  */
 export function whenCase<R, E, A, A1>(
   a: LazyArg<A>,
-  pf: (a: A) => Option<Stream<R, E, A1>>,
+  pf: (a: A) => Maybe<Stream<R, E, A1>>,
   __tsplusTrace?: string
 ): Stream<R, E, A1> {
   return Stream.whenCaseEffect(Effect.succeed(a), pf)

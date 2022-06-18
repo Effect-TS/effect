@@ -9,7 +9,7 @@ describe.concurrent("Sink", () => {
           () =>
             Chunk.unfoldEffect(
               0,
-              (n) => Random.nextIntBetween(0, 10).map((i) => n <= 20 ? Option.some(Tuple(i, n + 1)) : Option.none)
+              (n) => Random.nextIntBetween(0, 10).map((i) => n <= 20 ? Maybe.some(Tuple(i, n + 1)) : Maybe.none)
             )
         )
         .bind("success1", () => Random.nextBoolean)

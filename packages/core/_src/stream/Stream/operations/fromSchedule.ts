@@ -12,6 +12,6 @@ export function fromSchedule<S, R, A>(
   return Stream.unwrap(
     schedule()
       .driver
-      .map((driver) => Stream.repeatEffectOption(driver.next(undefined)))
+      .map((driver) => Stream.repeatEffectMaybe(driver.next(undefined)))
   )
 }

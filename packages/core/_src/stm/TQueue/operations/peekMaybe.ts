@@ -5,9 +5,9 @@ import { concreteTQueue } from "@effect/core/stm/TQueue/operations/_internal/Int
  * Views the next element in the queue without removing it, returning `None`
  * if the queue is empty.
  *
- * @tsplus getter ets/TQueue peekOption
+ * @tsplus getter ets/TQueue peekMaybe
  */
-export function peekOption<A>(self: TQueue<A>): USTM<Option<A>> {
+export function peekMaybe<A>(self: TQueue<A>): USTM<Maybe<A>> {
   concreteTQueue(self)
   return STM.Effect((journal, fiberId) => {
     const queue = self.ref.unsafeGet(journal)

@@ -12,7 +12,7 @@ describe("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some("test"))
+      assert.isTrue(result == Maybe.some("test"))
     })
   })
 
@@ -25,7 +25,7 @@ describe("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some("test"))
+      assert.isTrue(result == Maybe.some("test"))
     })
   })
 
@@ -81,7 +81,7 @@ describe("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(new NumberServiceImpl(10)))
+      assert.isTrue(result == Maybe.some(new NumberServiceImpl(10)))
     })
   })
 })

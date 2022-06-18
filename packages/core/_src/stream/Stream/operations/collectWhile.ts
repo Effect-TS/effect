@@ -8,7 +8,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  */
 export function collectWhile_<R, E, A, A1>(
   self: Stream<R, E, A>,
-  pf: (a: A) => Option<A1>,
+  pf: (a: A) => Maybe<A1>,
   __tsplusTrace?: string
 ): Stream<R, E, A1> {
   const loop: Channel<

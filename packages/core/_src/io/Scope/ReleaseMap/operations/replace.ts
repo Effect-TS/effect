@@ -12,19 +12,19 @@ export function replace_(
   key: number,
   finalizer: Scope.Finalizer,
   __tsplusTrace?: string
-): Effect.UIO<Option<Scope.Finalizer>> {
+): Effect.UIO<Maybe<Scope.Finalizer>> {
   return self.ref
     .modify((s) => {
       switch (s._tag) {
         case "Exited": {
           return Tuple(
-            finalizer(s.exit).map(() => Option.none),
+            finalizer(s.exit).map(() => Maybe.none),
             new Exited(s.nextKey, s.exit, s.update)
           )
         }
         case "Running": {
           const finalizers = s.finalizers()
-          const oldFinalizer = Option.fromNullable(finalizers.get(key))
+          const oldFinalizer = Maybe.fromNullable(finalizers.get(key))
           const newFinalizers = finalizers.set(key, finalizer)
           return Tuple(
             Effect.succeed(oldFinalizer),

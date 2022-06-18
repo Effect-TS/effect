@@ -76,16 +76,16 @@ function pull<A, A2, A3>(
 ) {
   return <R, R2, E, E2>(
     state: State<A, A2>,
-    pullLeft: Effect<R, Option<E>, Chunk<A>>,
-    pullRight: Effect<R2, Option<E2>, Chunk<A2>>,
+    pullLeft: Effect<R, Maybe<E>, Chunk<A>>,
+    pullRight: Effect<R2, Maybe<E2>, Chunk<A2>>,
     __tsplusTrace?: string
-  ): Effect<R | R2, never, Exit<Option<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>> => {
+  ): Effect<R | R2, never, Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>> => {
     switch (state._tag) {
       case "PullBoth": {
         return pullLeft.unsome()
           .zipPar(pullRight.unsome())
           .foldEffect(
-            (err) => Effect.succeedNow(Exit.fail(Option.some(err))),
+            (err) => Effect.succeedNow(Exit.fail(Maybe.some(err))),
             ({ tuple: [left, right] }) => {
               if (left.isSome() && right.isSome()) {
                 const leftChunk = left.value
@@ -102,7 +102,7 @@ function pull<A, A2, A3>(
                   )
                 }
               }
-              return Effect.succeedNow(Exit.fail(Option.none))
+              return Effect.succeedNow(Exit.fail(Maybe.none))
             }
           )
       }

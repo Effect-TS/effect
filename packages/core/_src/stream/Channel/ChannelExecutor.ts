@@ -661,7 +661,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     upstreamFinished: boolean,
     queue: ImmutableQueue<PullFromChild<R> | undefined>,
     strategy: UpstreamPullStrategy<unknown>
-  ): Tuple<[Option<unknown>, ImmutableQueue<PullFromChild<R> | undefined>]> {
+  ): Tuple<[Maybe<unknown>, ImmutableQueue<PullFromChild<R> | undefined>]> {
     switch (strategy._tag) {
       case "PullAfterNext": {
         return Tuple(

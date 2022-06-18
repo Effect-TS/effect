@@ -3,11 +3,11 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
 /**
  * The last entry in the array, if it exists.
  *
- * @tsplus getter ets/TArray lastOption
+ * @tsplus getter ets/TArray lastMaybe
  */
-export function lastOption<A>(self: TArray<A>): USTM<Option<A>> {
+export function lastMaybe<A>(self: TArray<A>): USTM<Maybe<A>> {
   concreteTArray(self)
   return self.chunk.isEmpty
-    ? STM.succeedNow(Option.none)
-    : self.chunk.unsafeLast!.get.map(Option.some)
+    ? STM.succeedNow(Maybe.none)
+    : self.chunk.unsafeLast!.get.map(Maybe.some)
 }

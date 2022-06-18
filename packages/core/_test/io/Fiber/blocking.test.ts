@@ -10,8 +10,8 @@ describe.concurrent("Fiber", () => {
               () => undefined,
               (status) =>
                 status._tag === "Suspended"
-                  ? Option.some(status.blockingOn)
-                  : Option.none
+                  ? Maybe.some(status.blockingOn)
+                  : Maybe.none
             )
             .eventually())
 

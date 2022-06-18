@@ -9,25 +9,25 @@ describe.concurrent("TArray", () => {
           tArray
             .collectFirst((option) =>
               option.isSome() && option.value > 2
-                ? Option.some(option.value.toString())
-                : Option.none
+                ? Maybe.some(option.value.toString())
+                : Maybe.none
             )
             .commit()
         )
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some("4"))
+      assert.isTrue(result == Maybe.some("4"))
     })
 
     it("succeeds for empty", async () => {
-      const program = makeTArray(0, Option.emptyOf<number>())
+      const program = makeTArray(0, Maybe.emptyOf<number>())
         .commit()
-        .flatMap((tArray) => tArray.collectFirst((option) => Option.some(option)).commit())
+        .flatMap((tArray) => tArray.collectFirst((option) => Maybe.some(option)).commit())
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("fails to find absent", async () => {
@@ -37,15 +37,15 @@ describe.concurrent("TArray", () => {
           tArray
             .collectFirst((option) =>
               option.isSome() && option.value > n
-                ? Option.some(option.value.toString())
-                : Option.none
+                ? Maybe.some(option.value.toString())
+                : Maybe.none
             )
             .commit()
         )
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("is atomic", async () => {
@@ -55,19 +55,19 @@ describe.concurrent("TArray", () => {
           tArray
             .collectFirst((option) =>
               option.isSome() && option.value % largePrime === 0
-                ? Option.some(option.value.toString())
-                : Option.none
+                ? Maybe.some(option.value.toString())
+                : Maybe.none
             )
             .commit()
             .fork())
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => Option.some(1))).commit())
+        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => Maybe.some(1))).commit())
         .flatMap(({ findFiber }) => findFiber.join())
 
       const result = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result == Option.some(largePrime.toString()) ||
-          result == Option.none
+        result == Maybe.some(largePrime.toString()) ||
+          result == Maybe.none
       )
     })
   })
@@ -80,25 +80,25 @@ describe.concurrent("TArray", () => {
           tArray
             .collectFirstSTM((option) =>
               option.isSome() && option.value > 2
-                ? Option.some(STM.succeed(option.value.toString()))
-                : Option.none
+                ? Maybe.some(STM.succeed(option.value.toString()))
+                : Maybe.none
             )
             .commit()
         )
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some("4"))
+      assert.isTrue(result == Maybe.some("4"))
     })
 
     it("succeeds for empty", async () => {
-      const program = makeTArray(0, Option.emptyOf<number>())
+      const program = makeTArray(0, Maybe.emptyOf<number>())
         .commit()
-        .flatMap((tArray) => tArray.collectFirstSTM((option) => Option.some(STM.succeed(option))).commit())
+        .flatMap((tArray) => tArray.collectFirstSTM((option) => Maybe.some(STM.succeed(option))).commit())
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("fails to find absent", async () => {
@@ -108,15 +108,15 @@ describe.concurrent("TArray", () => {
           tArray
             .collectFirstSTM((option) =>
               option.isSome() && option.value > n
-                ? Option.some(STM.succeed(option.value.toString()))
-                : Option.none
+                ? Maybe.some(STM.succeed(option.value.toString()))
+                : Maybe.none
             )
             .commit()
         )
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("is atomic", async () => {
@@ -126,19 +126,19 @@ describe.concurrent("TArray", () => {
           tArray
             .collectFirstSTM((option) =>
               option.isSome() && option.value % largePrime === 0
-                ? Option.some(STM.succeed(option.value.toString()))
-                : Option.none
+                ? Maybe.some(STM.succeed(option.value.toString()))
+                : Maybe.none
             )
             .commit()
             .fork())
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => Option.some(1))).commit())
+        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => Maybe.some(1))).commit())
         .flatMap(({ findFiber }) => findFiber.join())
 
       const result = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result == Option.some(largePrime.toString()) ||
-          result == Option.none
+        result == Maybe.some(largePrime.toString()) ||
+          result == Maybe.none
       )
     })
 
@@ -149,8 +149,8 @@ describe.concurrent("TArray", () => {
           tArray
             .collectFirstSTM((option) =>
               option.fold(
-                Option.some(STM.fail(boom)),
-                (i) => i > 2 ? Option.some(STM.succeed(i.toString)) : Option.none
+                Maybe.some(STM.fail(boom)),
+                (i) => i > 2 ? Maybe.some(STM.succeed(i.toString)) : Maybe.none
               )
             )
             .commit()
@@ -169,17 +169,17 @@ describe.concurrent("TArray", () => {
           tArray
             .collectFirstSTM((option) =>
               option.isSome() && option.value > 2
-                ? Option.some(STM.succeed(option.value.toString()))
+                ? Maybe.some(STM.succeed(option.value.toString()))
                 : option.isSome() && option.value === 7
-                ? Option.some(STM.fail(boom))
-                : Option.none
+                ? Maybe.some(STM.fail(boom))
+                : Maybe.none
             )
             .commit()
         )
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some("4"))
+      assert.isTrue(result == Maybe.some("4"))
     })
   })
 })

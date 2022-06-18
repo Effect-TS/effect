@@ -29,7 +29,7 @@ export function buffer_<R, E, A>(
         void
       > = Channel.fromEffect(queue.take).flatMap((exit) =>
         exit.fold(
-          (cause) => Cause.flipCauseOption<E>(cause).fold(() => Channel.unit, (cause) => Channel.failCause(cause)),
+          (cause) => Cause.flipCauseMaybe<E>(cause).fold(() => Channel.unit, (cause) => Channel.failCause(cause)),
           (a) => Channel.write(Chunk.single(a)) > process
         )
       )

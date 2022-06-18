@@ -17,22 +17,22 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  */
 export function windowed(
   interval: Duration
-): Schedule<Tuple<[Option<number>, number]>, never, unknown, number> {
+): Schedule<Tuple<[Maybe<number>, number]>, never, unknown, number> {
   const millis = interval.millis
   return makeWithState(
-    Tuple(Option.emptyOf(), 0),
+    Tuple(Maybe.emptyOf(), 0),
     (now, input, { tuple: [option, n] }) =>
       Effect.succeed(
         option.fold(
           () =>
             Tuple(
-              Tuple(Option.some(now), n + 1),
+              Tuple(Maybe.some(now), n + 1),
               n,
               Decision.Continue(Interval.after(now + millis))
             ),
           (startMillis) =>
             Tuple(
-              Tuple(Option.some(startMillis), n + 1),
+              Tuple(Maybe.some(startMillis), n + 1),
               n,
               Decision.Continue(
                 Interval.after(now + (millis - ((now - startMillis) % millis)))

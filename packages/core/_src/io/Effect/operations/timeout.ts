@@ -20,8 +20,8 @@ export function timeout_<R, E, E1, A>(
   self: Effect<R, E, A>,
   duration: LazyArg<Duration>,
   __tsplusTrace?: string
-): Effect<R, E, Option<A>> {
-  return self.timeoutTo(Option.none, Option.some, duration)
+): Effect<R, E, Maybe<A>> {
+  return self.timeoutTo(Maybe.none, Maybe.some, duration)
 }
 
 /**

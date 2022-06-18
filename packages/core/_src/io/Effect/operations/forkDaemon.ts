@@ -12,6 +12,6 @@ export function forkDaemon<R, E, A>(
   __tsplusTrace?: string
 ): Effect.RIO<R, Fiber.Runtime<E, A>> {
   return Effect.suspendSucceed(
-    new IFork(self, () => Option.some(FiberScope.global.value), __tsplusTrace)
+    new IFork(self, () => Maybe.some(FiberScope.global.value), __tsplusTrace)
   )
 }

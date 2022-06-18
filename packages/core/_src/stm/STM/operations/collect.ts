@@ -6,7 +6,7 @@
  */
 export function collect_<R, E, A, B>(
   as: LazyArg<Collection<A>>,
-  f: (a: A) => STM<R, Option<E>, B>
+  f: (a: A) => STM<R, Maybe<E>, B>
 ): STM<R, E, Chunk<B>> {
   return STM.forEach(as, (a) => f(a).unsome).map((chunk) => chunk.compact)
 }
@@ -18,7 +18,7 @@ export function collect_<R, E, A, B>(
  */
 export function collect<R, E, A, B>(
   self: STM<R, E, A>,
-  pf: (a: A) => Option<B>
+  pf: (a: A) => Maybe<B>
 ): STM<R, E, B> {
   return self.collectSTM((_) => STM.succeedNow(pf(_)))
 }

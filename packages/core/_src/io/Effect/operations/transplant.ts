@@ -22,7 +22,7 @@ export function transplant<R, E, A>(
     new IGetForkScope((scope) =>
       f((effect, __tsplusTrace) =>
         Effect.suspendSucceed(
-          new IOverrideForkScope(effect(), Option.some(scope), __tsplusTrace)
+          new IOverrideForkScope(effect(), Maybe.some(scope), __tsplusTrace)
         )
       )
     )

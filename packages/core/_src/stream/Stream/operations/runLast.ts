@@ -7,6 +7,6 @@
 export function runLast<R, E, A>(
   self: Stream<R, E, A>,
   __tsplusTrace?: string
-): Effect<R, E, Option<A>> {
+): Effect<R, E, Maybe<A>> {
   return self.run(Sink.last())
 }

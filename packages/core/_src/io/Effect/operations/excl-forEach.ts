@@ -456,7 +456,7 @@ export function collectAllParDiscard<R, E, A>(
  */
 export function collectAllWith<R, E, A, B>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
-  pf: (a: A) => Option<B>,
+  pf: (a: A) => Maybe<B>,
   __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
   return Effect.collectAll(as).map((chunk) => chunk.collect(pf))
@@ -474,7 +474,7 @@ export function collectAllWith<R, E, A, B>(
  */
 export function collectAllWithPar<R, E, A, B>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
-  pf: (a: A) => Option<B>,
+  pf: (a: A) => Maybe<B>,
   __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
   return Effect.collectAllPar(as).map((chunk) => chunk.collect(pf))
@@ -495,7 +495,7 @@ export function collectAllSuccesses<R, E, A>(
 ): Effect<R, never, Chunk<A>> {
   return Effect.collectAllWith(
     as().map((effect) => effect.exit()),
-    (exit) => (exit._tag === "Success" ? Option.some(exit.value) : Option.none)
+    (exit) => (exit._tag === "Success" ? Maybe.some(exit.value) : Maybe.none)
   )
 }
 
@@ -514,7 +514,7 @@ export function collectAllSuccessesPar<R, E, A>(
 ): Effect<R, never, Chunk<A>> {
   return Effect.collectAllWithPar(
     as().map((effect) => effect.exit()),
-    (exit) => (exit._tag === "Success" ? Option.some(exit.value) : Option.none)
+    (exit) => (exit._tag === "Success" ? Maybe.some(exit.value) : Maybe.none)
   )
 }
 

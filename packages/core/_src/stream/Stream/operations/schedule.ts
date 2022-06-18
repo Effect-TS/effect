@@ -10,7 +10,7 @@ export function schedule_<R, E, A, S, R2, B>(
 ): Stream<R | R2, E, A> {
   return self
     .scheduleEither(schedule)
-    .collect((either) => (either.isRight() ? Option.some(either.right) : Option.none))
+    .collect((either) => (either.isRight() ? Maybe.some(either.right) : Maybe.none))
 }
 
 /**

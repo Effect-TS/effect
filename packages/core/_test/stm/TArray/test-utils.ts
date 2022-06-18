@@ -11,9 +11,9 @@ export function makeStair(n: number): STM<never, never, TArray<number>> {
   return TArray.from(Chunk.range(1, n))
 }
 
-export function makeStairWithHoles(n: number): STM<never, never, TArray<Option<number>>> {
+export function makeStairWithHoles(n: number): STM<never, never, TArray<Maybe<number>>> {
   return TArray.from(
-    Chunk.range(1, n).map((i) => i % 3 === 0 ? Option.emptyOf<number>() : Option.some(i))
+    Chunk.range(1, n).map((i) => i % 3 === 0 ? Maybe.emptyOf<number>() : Maybe.some(i))
   )
 }
 

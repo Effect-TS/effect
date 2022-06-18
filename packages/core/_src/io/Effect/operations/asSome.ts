@@ -6,6 +6,6 @@
 export function asSome<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
-): Effect<R, E, Option<A>> {
-  return self.map(Option.some)
+): Effect<R, E, Maybe<A>> {
+  return self.map(Maybe.some)
 }

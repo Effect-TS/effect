@@ -3,12 +3,12 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
 /**
  * Atomically reduce the array, if non-empty, by a binary operator.
  *
- * @tsplus fluent ets/TArray reduceOption
+ * @tsplus fluent ets/TArray reduceMaybe
  */
-export function reduceOption_<A>(
+export function reduceMaybe_<A>(
   self: TArray<A>,
   f: (x: A, y: A) => A
-): USTM<Option<A>> {
+): USTM<Maybe<A>> {
   return STM.Effect((journal) => {
     let i = 0
     let result: A | undefined = undefined
@@ -18,13 +18,13 @@ export function reduceOption_<A>(
       result = result == null ? a : f(a, result)
       i = i + 1
     }
-    return Option.fromNullable(result)
+    return Maybe.fromNullable(result)
   })
 }
 
 /**
  * Atomically reduce the array, if non-empty, by a binary operator.
  *
- * @tsplus static ets/TArray/Aspects reduceOption
+ * @tsplus static ets/TArray/Aspects reduceMaybe
  */
-export const reduceOption = Pipeable(reduceOption_)
+export const reduceMaybe = Pipeable(reduceMaybe_)

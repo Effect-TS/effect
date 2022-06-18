@@ -13,7 +13,7 @@ export function distributedWith_<R, E, A>(
   maximumLag: number,
   decide: (a: A) => Effect.UIO<Predicate<number>>,
   __tsplusTrace?: string
-): Effect<R | Scope, never, List<Dequeue<Exit<Option<E>, A>>>> {
+): Effect<R | Scope, never, List<Dequeue<Exit<Maybe<E>, A>>>> {
   return Deferred.make<never, (a: A) => Effect.UIO<Predicate<UniqueKey>>>().flatMap((deferred) =>
     self
       .distributedWithDynamic(
@@ -30,7 +30,7 @@ export function distributedWith_<R, E, A>(
           } = entries.reduceRight(
             Tuple(
               HashMap.empty<UniqueKey, number>(),
-              List.empty<Dequeue<Exit<Option<E>, A>>>()
+              List.empty<Dequeue<Exit<Maybe<E>, A>>>()
             ),
             ({ tuple: [mapping, queue] }, { tuple: [mappings, queues] }) =>
               Tuple(mappings.set(mapping.get(0), mapping.get(1)), queues.prepend(queue))

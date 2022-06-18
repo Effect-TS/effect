@@ -1,10 +1,10 @@
 /**
  * Unwraps the optional error, defaulting to the provided value.
  *
- * @tsplus fluent ets/STM flattenErrorOption
+ * @tsplus fluent ets/STM flattenErrorMaybe
  */
-export function flattenErrorOption_<R, E, A, E2>(
-  self: STM<R, Option<E>, A>,
+export function flattenErrorMaybe_<R, E, A, E2>(
+  self: STM<R, Maybe<E>, A>,
   def: LazyArg<E2>
 ): STM<R, E | E2, A> {
   return self.mapError((option) => option.fold(def, identity))
@@ -13,6 +13,6 @@ export function flattenErrorOption_<R, E, A, E2>(
 /**
  * Unwraps the optional error, defaulting to the provided value.
  *
- * @tsplus static ets/STM/Aspects flattenErrorOption
+ * @tsplus static ets/STM/Aspects flattenErrorMaybe
  */
-export const flattenErrorOption = Pipeable(flattenErrorOption_)
+export const flattenErrorMaybe = Pipeable(flattenErrorMaybe_)

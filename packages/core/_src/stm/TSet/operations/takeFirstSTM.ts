@@ -5,7 +5,7 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
  *
  * @tsplus fluent ets/TSet takeFirstSTM
  */
-export function takeFirstSTM_<A, B, R, E>(self: TSet<A>, pf: (a: A) => STM<R, Option<E>, B>): STM<R, E, B> {
+export function takeFirstSTM_<A, B, R, E>(self: TSet<A>, pf: (a: A) => STM<R, Maybe<E>, B>): STM<R, E, B> {
   concreteTSet(self)
   return self.tmap.takeFirstSTM((kv) => pf(kv.get(0)))
 }

@@ -2,10 +2,10 @@ import { _In, _Out, QueueSym } from "@effect/core/io/Queue"
 import { constVoid } from "@tsplus/stdlib/data/Function"
 
 export function findSink<A>(a: A): Sink<never, void, A, A, A> {
-  return Sink.fold<A, Option<A>>(
-    Option.none,
+  return Sink.fold<A, Maybe<A>>(
+    Maybe.none,
     (option) => option.isNone(),
-    (_, v) => (a === v ? Option.some(a) : Option.none)
+    (_, v) => (a === v ? Maybe.some(a) : Maybe.none)
   ).mapEffect((option) => option.fold(Effect.fail(constVoid), Effect.succeedNow))
 }
 

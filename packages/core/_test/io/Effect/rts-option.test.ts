@@ -5,7 +5,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(42))
+      assert.isTrue(result == Maybe.some(42))
     })
 
     it("using the none value", async () => {
@@ -13,7 +13,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
   })
 })

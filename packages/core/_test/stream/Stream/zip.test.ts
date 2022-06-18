@@ -52,7 +52,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("zipWith", () => {
     it("prioritizes failure", async () => {
       const program = Stream.never
-        .zipWith(Stream.fail("ouch"), () => Option.none)
+        .zipWith(Stream.fail("ouch"), () => Maybe.none)
         .runCollect()
         .either()
 
@@ -81,7 +81,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("zipAll", () => {
     it("prioritizes failure", async () => {
       const program = Stream.never
-        .zipAll(Stream.fail("ouch"), Option.none, Option.none)
+        .zipAll(Stream.fail("ouch"), Maybe.none, Maybe.none)
         .runCollect()
         .either()
 
@@ -96,16 +96,16 @@ describe.concurrent("Stream", () => {
       const left = Chunk(Chunk(1, 2), Chunk(3, 4), Chunk(5))
       const right = Chunk(Chunk(6, 7), Chunk(8, 9), Chunk(10))
       const program = Stream.fromChunks(...left)
-        .map(Option.some)
-        .zipAll(Stream.fromChunks(...right).map(Option.some), Option.none, Option.none)
+        .map(Maybe.some)
+        .zipAll(Stream.fromChunks(...right).map(Maybe.some), Maybe.none, Maybe.none)
         .runCollect()
 
       const result = await program.unsafeRunPromise()
       const expected = left.flatten.zipAllWith(
         right.flatten,
-        (a, b) => Tuple(Option.some(a), Option.some(b)),
-        (a) => Tuple(Option.some(a), Option.none),
-        (b) => Tuple(Option.none, Option.some(b))
+        (a, b) => Tuple(Maybe.some(a), Maybe.some(b)),
+        (a) => Tuple(Maybe.some(a), Maybe.none),
+        (b) => Tuple(Maybe.none, Maybe.some(b))
       )
 
       assert.isTrue(result == expected)
@@ -189,7 +189,7 @@ describe.concurrent("Stream", () => {
     it("handle empty pulls properly - 2", async () => {
       const program = Stream.unfold(
         0,
-        (n) => Option.some(Tuple(n < 3 ? Chunk.empty<number>() : Chunk.single(2), n + 1))
+        (n) => Maybe.some(Tuple(n < 3 ? Chunk.empty<number>() : Chunk.single(2), n + 1))
       )
         .unchunks()
         .forever()
@@ -224,9 +224,9 @@ describe.concurrent("Stream", () => {
 
       assert.isTrue(
         result == Chunk(
-          Tuple(1, Option.some(2)),
-          Tuple(2, Option.some(3)),
-          Tuple(3, Option.none)
+          Tuple(1, Maybe.some(2)),
+          Tuple(2, Maybe.some(3)),
+          Tuple(3, Maybe.none)
         )
       )
     })
@@ -244,9 +244,9 @@ describe.concurrent("Stream", () => {
 
       assert.isTrue(
         result == Chunk(
-          Tuple(1, Option.some(2)),
-          Tuple(2, Option.some(3)),
-          Tuple(3, Option.none)
+          Tuple(1, Maybe.some(2)),
+          Tuple(2, Maybe.some(3)),
+          Tuple(3, Maybe.none)
         )
       )
     })
@@ -264,7 +264,7 @@ describe.concurrent("Stream", () => {
       const stream = Stream.fromChunks(...chunks)
       const program = Effect.struct({
         result0: stream.zipWithNext().runCollect(),
-        result1: stream.zipAll(stream.drop(1).map(Option.some), 0, Option.none).runCollect()
+        result1: stream.zipAll(stream.drop(1).map(Maybe.some), 0, Maybe.none).runCollect()
       })
 
       const { result0, result1 } = await program.unsafeRunPromise()
@@ -281,9 +281,9 @@ describe.concurrent("Stream", () => {
 
       assert.isTrue(
         result == Chunk(
-          Tuple(Option.none, 1),
-          Tuple(Option.some(1), 2),
-          Tuple(Option.some(2), 3)
+          Tuple(Maybe.none, 1),
+          Tuple(Maybe.some(1), 2),
+          Tuple(Maybe.some(2), 3)
         )
       )
     })
@@ -301,9 +301,9 @@ describe.concurrent("Stream", () => {
 
       assert.isTrue(
         result == Chunk(
-          Tuple(Option.none, 1),
-          Tuple(Option.some(1), 2),
-          Tuple(Option.some(2), 3)
+          Tuple(Maybe.none, 1),
+          Tuple(Maybe.some(1), 2),
+          Tuple(Maybe.some(2), 3)
         )
       )
     })
@@ -321,7 +321,7 @@ describe.concurrent("Stream", () => {
       const stream = Stream.fromChunks(...chunks)
       const program = Effect.struct({
         result0: stream.zipWithPrevious().runCollect(),
-        result1: (Stream(Option.none) + stream.map(Option.some)).zip(stream).runCollect()
+        result1: (Stream(Maybe.none) + stream.map(Maybe.some)).zip(stream).runCollect()
       })
 
       const { result0, result1 } = await program.unsafeRunPromise()
@@ -338,9 +338,9 @@ describe.concurrent("Stream", () => {
 
       assert.isTrue(
         result == Chunk(
-          Tuple(Option.none, 1, Option.some(2)),
-          Tuple(Option.some(1), 2, Option.some(3)),
-          Tuple(Option.some(2), 3, Option.none)
+          Tuple(Maybe.none, 1, Maybe.some(2)),
+          Tuple(Maybe.some(1), 2, Maybe.some(3)),
+          Tuple(Maybe.some(2), 3, Maybe.none)
         )
       )
     })
@@ -350,9 +350,9 @@ describe.concurrent("Stream", () => {
       const stream = Stream.fromChunks(...chunks)
       const program = Effect.struct({
         result0: stream.zipWithPreviousAndNext().runCollect(),
-        result1: (Stream(Option.none) + stream.map(Option.some))
+        result1: (Stream(Maybe.none) + stream.map(Maybe.some))
           .zipFlatten(stream)
-          .zipFlatten(stream.drop(1).map(Option.some) + Stream(Option.none))
+          .zipFlatten(stream.drop(1).map(Maybe.some) + Stream(Maybe.none))
           .runCollect()
       })
 

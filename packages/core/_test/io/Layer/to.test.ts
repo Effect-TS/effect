@@ -40,12 +40,12 @@ describe.concurrent("Layer", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result[0] == Option.some(acquire1))
+      assert.isTrue(result[0] == Maybe.some(acquire1))
       assert.isTrue(result.drop(1).take(2).find((s) => s === acquire2).isSome())
       assert.isTrue(result.drop(1).take(2).find((s) => s === acquire3).isSome())
       assert.isTrue(result.drop(3).take(2).find((s) => s === release2).isSome())
       assert.isTrue(result.drop(3).take(2).find((s) => s === release3).isSome())
-      assert.isTrue(result[5] == Option.some(release1))
+      assert.isTrue(result[5] == Maybe.some(release1))
     })
 
     it("finalizers with to", async () => {

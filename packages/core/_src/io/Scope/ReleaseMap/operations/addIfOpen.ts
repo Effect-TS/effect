@@ -14,20 +14,20 @@ export function addIfOpen_(
   self: ReleaseMap,
   finalizer: Scope.Finalizer,
   __tsplusTrace?: string
-): Effect.UIO<Option<number>> {
+): Effect.UIO<Maybe<number>> {
   return self.ref
     .modify((s) => {
       switch (s._tag) {
         case "Exited": {
           return Tuple(
-            finalizer(s.exit).map(() => Option.none),
+            finalizer(s.exit).map(() => Maybe.none),
             new Exited(next(s.nextKey), s.exit, s.update)
           )
         }
         case "Running": {
           const finalizers = s.finalizers().set(s.nextKey, finalizer)
           return Tuple(
-            Effect.succeed(() => Option.some(s.nextKey)),
+            Effect.succeed(() => Maybe.some(s.nextKey)),
             new Running(next(s.nextKey), finalizers, s.update)
           )
         }

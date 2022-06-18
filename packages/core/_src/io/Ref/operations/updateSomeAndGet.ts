@@ -7,7 +7,7 @@
  */
 export function updateSomeAndGet_<A>(
   self: Ref<A>,
-  pf: (a: A) => Option<A>,
+  pf: (a: A) => Maybe<A>,
   __tsplusTrace?: string
 ): Effect.UIO<A> {
   return self.modify((v) => {

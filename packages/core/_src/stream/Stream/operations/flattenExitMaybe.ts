@@ -9,22 +9,22 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * stream.mapEffect((exit) => Effect.done(exit))
  * ```
  *
- * @tsplus fluent ets/Stream flattenExitOption
+ * @tsplus fluent ets/Stream flattenExitMaybe
  */
-export function flattenExitOption<R, E, A>(
-  self: Stream<R, E, Exit<Option<E>, A>>,
+export function flattenExitMaybe<R, E, A>(
+  self: Stream<R, E, Exit<Maybe<E>, A>>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
   const process: Channel<
     R,
     E,
-    Chunk<Exit<Option<E>, A>>,
+    Chunk<Exit<Maybe<E>, A>>,
     unknown,
     E,
     Chunk<A>,
     unknown
   > = Channel.readWithCause(
-    (chunk: Chunk<Exit<Option<E>, A>>) => processChunk(chunk, process),
+    (chunk: Chunk<Exit<Maybe<E>, A>>) => processChunk(chunk, process),
     (cause) => Channel.failCause(cause),
     () => Channel.unit
   )
@@ -33,20 +33,20 @@ export function flattenExitOption<R, E, A>(
 }
 
 function processChunk<R, E, A>(
-  chunk: Chunk<Exit<Option<E>, A>>,
-  cont: Channel<R, E, Chunk<Exit<Option<E>, A>>, unknown, E, Chunk<A>, unknown>
-): Channel<R, E, Chunk<Exit<Option<E>, A>>, unknown, E, Chunk<A>, unknown> {
+  chunk: Chunk<Exit<Maybe<E>, A>>,
+  cont: Channel<R, E, Chunk<Exit<Maybe<E>, A>>, unknown, E, Chunk<A>, unknown>
+): Channel<R, E, Chunk<Exit<Maybe<E>, A>>, unknown, E, Chunk<A>, unknown> {
   const {
     tuple: [toEmit, rest]
   } = chunk.splitWhere((exit) => !exit.isSuccess())
   const next = rest.head.fold(cont, (exit) =>
     exit.fold(
-      (cause) => Cause.flipCauseOption(cause).fold(Channel.unit, (cause) => Channel.failCause(cause)),
+      (cause) => Cause.flipCauseMaybe(cause).fold(Channel.unit, (cause) => Channel.failCause(cause)),
       () => Channel.unit
     ))
   return (
     Channel.write(
-      toEmit.collect((exit) => exit.isSuccess() ? Option.some(exit.value) : Option.none)
+      toEmit.collect((exit) => exit.isSuccess() ? Maybe.some(exit.value) : Maybe.none)
     ) > next
   )
 }

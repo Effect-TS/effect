@@ -91,7 +91,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("some", () => {
     it("extracts the value from Some", async () => {
-      const program = Effect.succeed(Option.some(1)).some
+      const program = Effect.succeed(Maybe.some(1)).some
 
       const result = await program.unsafeRunPromise()
 
@@ -99,11 +99,11 @@ describe.concurrent("Effect", () => {
     })
 
     it("fails on None", async () => {
-      const program = Effect.succeed(Option.none).some
+      const program = Effect.succeed(Maybe.none).some
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(Option.none))
+      assert.isTrue(result.untraced == Exit.fail(Maybe.none))
     })
 
     it("fails when given an exception", async () => {
@@ -112,21 +112,21 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(Option.some(error)))
+      assert.isTrue(result.untraced == Exit.fail(Maybe.some(error)))
     })
   })
 
   describe.concurrent("none", () => {
     it("on Some fails with None", async () => {
-      const program = Effect.succeed(Option.some(1)).none
+      const program = Effect.succeed(Maybe.some(1)).none
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(Option.none))
+      assert.isTrue(result.untraced == Exit.fail(Maybe.none))
     })
 
     it("on None succeeds with undefined", async () => {
-      const program = Effect.succeed(Option.none).none
+      const program = Effect.succeed(Maybe.none).none
 
       const result = await program.unsafeRunPromise()
 
@@ -139,13 +139,13 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(Option.some(error)))
+      assert.isTrue(result.untraced == Exit.fail(Maybe.some(error)))
     })
   })
 
   describe.concurrent("noneOrFail", () => {
     it("on None succeeds with Unit", async () => {
-      const program = Effect.noneOrFail(Option.none)
+      const program = Effect.noneOrFail(Maybe.none)
 
       const result = await program.unsafeRunPromise()
 
@@ -153,7 +153,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("on Some fails", async () => {
-      const program = Effect.noneOrFail(Option.some("some")).catchAll(Effect.succeedNow)
+      const program = Effect.noneOrFail(Maybe.some("some")).catchAll(Effect.succeedNow)
 
       const result = await program.unsafeRunPromise()
 
@@ -163,7 +163,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("noneOrFailWith", () => {
     it("on None succeeds with Unit", async () => {
-      const program = Effect.noneOrFailWith(Option.none, identity)
+      const program = Effect.noneOrFailWith(Maybe.none, identity)
 
       const result = await program.unsafeRunPromise()
 
@@ -171,7 +171,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("on Some fails", async () => {
-      const program = Effect.noneOrFailWith(Option.some("some"), (s) => s + s).catchAll(
+      const program = Effect.noneOrFailWith(Maybe.some("some"), (s) => s + s).catchAll(
         Effect.succeedNow
       )
 
@@ -183,7 +183,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("someOrElse", () => {
     it("extracts the value from Some", async () => {
-      const program = Effect.succeed(Option.some(1)).someOrElse(42)
+      const program = Effect.succeed(Maybe.some(1)).someOrElse(42)
 
       const result = await program.unsafeRunPromise()
 
@@ -191,7 +191,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("falls back to the default value if None", async () => {
-      const program = Effect.succeed(Option.none).someOrElse(42)
+      const program = Effect.succeed(Maybe.none).someOrElse(42)
 
       const result = await program.unsafeRunPromise()
 
@@ -209,7 +209,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("someOrElseEffect", () => {
     it("extracts the value from Some", async () => {
-      const program = Effect.succeed(Option.some(1)).someOrElseEffect(
+      const program = Effect.succeed(Maybe.some(1)).someOrElseEffect(
         Effect.succeed(42)
       )
 
@@ -219,7 +219,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("falls back to the default effect if None", async () => {
-      const program = Effect.succeed(Option.none).someOrElseEffect(Effect.succeed(42))
+      const program = Effect.succeed(Maybe.none).someOrElseEffect(Effect.succeed(42))
 
       const result = await program.unsafeRunPromise()
 
@@ -237,7 +237,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("someOrFail", () => {
     it("extracts the optional value", async () => {
-      const program = Effect.succeed(Option.some(42)).someOrFail(ExampleError)
+      const program = Effect.succeed(Maybe.some(42)).someOrFail(ExampleError)
 
       const result = await program.unsafeRunPromise()
 
@@ -245,7 +245,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("fails when given a None", async () => {
-      const program = Effect.succeed(Option.none).someOrFail(ExampleError)
+      const program = Effect.succeed(Maybe.none).someOrFail(ExampleError)
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -255,7 +255,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("getOrFailDiscard", () => {
     it("basic option test", async () => {
-      const program = Effect.getOrFailDiscard(Option.some("foo"))
+      const program = Effect.getOrFailDiscard(Maybe.some("foo"))
 
       const result = await program.unsafeRunPromise()
 
@@ -263,9 +263,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("side effect unit in option test", async () => {
-      const program = Effect.getOrFailDiscard(Option.none).catchAll(() =>
-        Effect.succeed("controlling unit side-effect")
-      )
+      const program = Effect.getOrFailDiscard(Maybe.none).catchAll(() => Effect.succeed("controlling unit side-effect"))
 
       const result = await program.unsafeRunPromise()
 
@@ -279,7 +277,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(11))
+      assert.isTrue(result == Maybe.some(11))
     })
 
     it("return failure as None", async () => {
@@ -287,7 +285,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("not catch throwable", async () => {
@@ -303,13 +301,13 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
   })
 
   describe.concurrent("unsome", () => {
     it("fails when given Some error", async () => {
-      const program = Effect.fail(Option.some("error")).unsome()
+      const program = Effect.fail(Maybe.some("error")).unsome()
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -317,11 +315,11 @@ describe.concurrent("Effect", () => {
     })
 
     it("succeeds with None given None error", async () => {
-      const program = Effect.fail(Option.none).unsome()
+      const program = Effect.fail(Maybe.none).unsome()
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("succeeds with Some given a value", async () => {
@@ -329,13 +327,13 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(1))
+      assert.isTrue(result == Maybe.some(1))
     })
   })
 
   describe.concurrent("getOrFail", () => {
     it("make a task from a defined option", async () => {
-      const program = Effect.getOrFail(Option.some(1))
+      const program = Effect.getOrFail(Maybe.some(1))
 
       const result = await program.unsafeRunPromise()
 
@@ -343,7 +341,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("make a task from an empty option", async () => {
-      const program = Effect.getOrFail(Option.none)
+      const program = Effect.getOrFail(Maybe.none)
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -361,7 +359,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("fails when given a None", async () => {
-      const program = Effect.succeed(Option.none).someOrFailException()
+      const program = Effect.succeed(Maybe.none).someOrFailException()
 
       const result = await program.unsafeRunPromiseExit()
 

@@ -53,9 +53,9 @@ describe.concurrent("Stream", () => {
     })
   })
 
-  describe.concurrent("repeatEffectOption", () => {
+  describe.concurrent("repeatEffectMaybe", () => {
     it("emit elements", async () => {
-      const program = Stream.repeatEffectOption(Effect.succeed(1)).take(2).runCollect()
+      const program = Stream.repeatEffectMaybe(Effect.succeed(1)).take(2).runCollect()
 
       const result = await program.unsafeRunPromise()
 
@@ -68,8 +68,8 @@ describe.concurrent("Stream", () => {
         .bindValue("effect", ({ ref }) =>
           ref
             .updateAndGet((n) => n + 1)
-            .flatMap((n) => (n >= 5 ? Effect.fail(Option.none) : Effect.succeed(n))))
-        .flatMap(({ effect }) => Stream.repeatEffectOption(effect).take(10).runCollect())
+            .flatMap((n) => (n >= 5 ? Effect.fail(Maybe.none) : Effect.succeed(n))))
+        .flatMap(({ effect }) => Stream.repeatEffectMaybe(effect).take(10).runCollect())
 
       const result = await program.unsafeRunPromise()
 
@@ -81,8 +81,8 @@ describe.concurrent("Stream", () => {
         .bind("ref", () => Ref.make(0))
         .tap(({ ref }) =>
           Effect.scoped(
-            Stream.repeatEffectOption(
-              ref.getAndUpdate((n) => n + 1) > Effect.fail(Option.none)
+            Stream.repeatEffectMaybe(
+              ref.getAndUpdate((n) => n + 1) > Effect.fail(Maybe.none)
             )
               .toPull()
               .flatMap((pull) => pull.ignore() > pull.ignore())

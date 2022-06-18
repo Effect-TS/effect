@@ -13,11 +13,11 @@ describe.concurrent("Effect", () => {
     it("error in sync effect", async () => {
       const program = Effect.attempt(() => {
         throw ExampleError
-      }).fold(Option.some, Option.emptyOf)
+      }).fold(Maybe.some, Maybe.emptyOf)
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(ExampleError))
+      assert.isTrue(result == Maybe.some(ExampleError))
     })
 
     it("attempt . fail", async () => {
@@ -66,11 +66,11 @@ describe.concurrent("Effect", () => {
         throw ExampleError
       })
         .sandbox()
-        .fold((cause) => Option.some(cause.untraced), Option.emptyOf)
+        .fold((cause) => Maybe.some(cause.untraced), Maybe.emptyOf)
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(Cause.die(ExampleError)))
+      assert.isTrue(result == Maybe.some(Cause.die(ExampleError)))
     })
 
     it("catch sandbox terminate", async () => {
@@ -218,7 +218,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("timeout in uninterruptible region", async () => {
@@ -226,7 +226,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(undefined))
+      assert.isTrue(result == Maybe.some(undefined))
     })
 
     it("catchAllCause", async () => {

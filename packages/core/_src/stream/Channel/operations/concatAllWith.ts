@@ -59,7 +59,7 @@ export function concatAllWith<
   >(
     f,
     g,
-    () => UpstreamPullStrategy.PullAfterNext(Option.none),
+    () => UpstreamPullStrategy.PullAfterNext(Maybe.none),
     () => ChildExecutorDecision.Continue,
     channels,
     identity

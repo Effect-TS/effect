@@ -6,7 +6,7 @@
  * @tsplus getter ets/Cause failureOrCause
  */
 export function failureOrCause<E>(self: Cause<E>): Either<E, Cause<never>> {
-  return self.failureOption.fold(
+  return self.failureMaybe.fold(
     () => Either.right(self as Cause<never>), // no E inside this cause, can safely cast
     Either.left
   )

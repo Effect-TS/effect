@@ -10,7 +10,7 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
 export function peek<A>(self: TPriorityQueue<A>): USTM<A> {
   return STM.Effect((journal) => {
     concreteTPriorityQueue(self)
-    const result = self.map.unsafeGet(journal).headOption
+    const result = self.map.unsafeGet(journal).headMaybe
       .map((tuple) => tuple.get(1))
       .flatMap((chunk) => chunk.head)
 

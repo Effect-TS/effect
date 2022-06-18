@@ -5,7 +5,7 @@ describe.concurrent("Queue", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("poll on queue just emptied", async () => {
@@ -18,7 +18,7 @@ describe.concurrent("Queue", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("multiple polls", async () => {
@@ -33,10 +33,10 @@ describe.concurrent("Queue", () => {
 
       const { t1, t2, t3, t4 } = await program.unsafeRunPromise()
 
-      assert.isTrue(t1 == Option.some(1))
-      assert.isTrue(t2 == Option.some(2))
-      assert.isTrue(t3 == Option.none)
-      assert.isTrue(t4 == Option.none)
+      assert.isTrue(t1 == Maybe.some(1))
+      assert.isTrue(t2 == Maybe.some(2))
+      assert.isTrue(t3 == Maybe.none)
+      assert.isTrue(t4 == Maybe.none)
     })
   })
 })

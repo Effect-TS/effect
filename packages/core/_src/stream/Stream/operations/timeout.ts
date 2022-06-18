@@ -10,7 +10,7 @@ export function timeout_<R, E, A>(
 ): Stream<R, E, A> {
   return Stream.succeed(duration).flatMap((duration) =>
     Stream.fromPull(
-      self.toPull().map((pull) => pull.timeoutFail(Option.none, duration))
+      self.toPull().map((pull) => pull.timeoutFail(Maybe.none, duration))
     )
   )
 }

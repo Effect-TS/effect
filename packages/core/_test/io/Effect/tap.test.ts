@@ -11,7 +11,7 @@ describe.concurrent("Effect", () => {
 
       const { effect, result } = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isFailure() && result.cause.dieOption.isSome())
+      assert.isTrue(result.isFailure() && result.cause.dieMaybe.isSome())
       assert.isTrue(effect)
     })
   })
@@ -28,7 +28,7 @@ describe.concurrent("Effect", () => {
 
       const { effect, result } = await program.unsafeRunPromise()
 
-      assert.isTrue(result.isFailure() && result.cause.dieOption.isSome())
+      assert.isTrue(result.isFailure() && result.cause.dieMaybe.isSome())
       assert.isTrue(effect)
     })
   })
@@ -79,7 +79,7 @@ describe.concurrent("Effect", () => {
         .bind("ref", () => Ref.make(false))
         .bind(
           "result",
-          ({ ref }) => ref.set(true).as(42).tapSome((): Option<Effect<never, never, never>> => Option.emptyOf())
+          ({ ref }) => ref.set(true).as(42).tapSome((): Maybe<Effect<never, never, never>> => Maybe.emptyOf())
         )
         .bind("effect", ({ ref }) => ref.get())
 
@@ -96,7 +96,7 @@ describe.concurrent("Effect", () => {
           ref
             .set(10)
             .as(42)
-            .tapSome((n) => Option.some(ref.set(n))))
+            .tapSome((n) => Maybe.some(ref.set(n))))
         .bind("effect", ({ ref }) => ref.get())
 
       const { effect, result } = await program.unsafeRunPromise()

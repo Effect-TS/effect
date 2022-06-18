@@ -135,10 +135,10 @@ export function size(self: Interval): Duration {
 /**
  * @tsplus fluent ets/Schedule/Interval union
  */
-export function union_(self: Interval, that: Interval): Option<Interval> {
+export function union_(self: Interval, that: Interval): Maybe<Interval> {
   const start = Ord.number.max(self.startMillis, that.startMillis)
   const end = Ord.number.min(self.endMillis, that.endMillis)
-  return start < end ? Option.none : Option.some(Interval(start, end))
+  return start < end ? Maybe.none : Maybe.some(Interval(start, end))
 }
 
 /**

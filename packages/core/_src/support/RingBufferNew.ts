@@ -7,8 +7,8 @@ export class RingBufferNew<A> {
     this.array = Array.from({ length: capacity }, (_) => null)
   }
 
-  head(): Option<A> {
-    return Option(this.array[this.current])
+  head(): Maybe<A> {
+    return Maybe(this.array[this.current])
   }
 
   lastorNull(): A | null {

@@ -6,9 +6,9 @@
  */
 export function whenCase<R, E, A, B>(
   a: LazyArg<A>,
-  pf: (a: A) => Option<Effect<R, E, B>>,
+  pf: (a: A) => Maybe<Effect<R, E, B>>,
   __tsplusTrace?: string
-): Effect<R, E, Option<B>> {
+): Effect<R, E, Maybe<B>> {
   return Effect.suspendSucceed(
     pf(a())
       .map((effect) => effect.asSome())

@@ -2,7 +2,7 @@
  * @tsplus type ets/Stream/Emit
  */
 export interface Emit<R, E, A, B> extends EmitOps<R, E, A, B> {
-  (f: Effect<R, Option<E>, Chunk<A>>): Promise<B>
+  (f: Effect<R, Maybe<E>, Chunk<A>>): Promise<B>
 }
 
 /**
@@ -71,7 +71,7 @@ export interface EmitOps<R, E, A, B> {
  * @tsplus static ets/Stream/Emit/Ops __call
  */
 export function apply<R, E, A, B>(
-  fn: (f: Effect<R, Option<E>, Chunk<A>>) => Promise<B>
+  fn: (f: Effect<R, Maybe<E>, Chunk<A>>) => Promise<B>
 ): Emit<R, E, A, B> {
   const ops: EmitOps<R, E, A, B> = {
     chunk(this: Emit<R, E, A, B>, as: Chunk<A>, __tsplusTrace?: string) {
@@ -87,22 +87,22 @@ export function apply<R, E, A, B>(
       return this(
         Effect.done(
           exit.mapBoth(
-            (e) => Option.some(e),
+            (e) => Maybe.some(e),
             (a) => Chunk.single(a)
           )
         )
       )
     },
     end(this: Emit<R, E, A, B>, __tsplusTrace?: string) {
-      return this(Effect.fail(Option.none))
+      return this(Effect.fail(Maybe.none))
     },
     fail(this: Emit<R, E, A, B>, e: E, __tsplusTrace?: string) {
-      return this(Effect.fail(Option.some(e)))
+      return this(Effect.fail(Maybe.some(e)))
     },
     fromEffect(this: Emit<R, E, A, B>, io: Effect<R, E, A>, __tsplusTrace?: string) {
       return this(
         io.mapBoth(
-          (e) => Option.some(e),
+          (e) => Maybe.some(e),
           (a) => Chunk.single(a)
         )
       )
@@ -112,10 +112,10 @@ export function apply<R, E, A, B>(
       io: Effect<R, E, Chunk<A>>,
       __tsplusTrace?: string
     ) {
-      return this(io.mapError((e) => Option.some(e)))
+      return this(io.mapError((e) => Maybe.some(e)))
     },
     halt(this: Emit<R, E, A, B>, cause: Cause<E>, __tsplusTrace?: string) {
-      return this(Effect.failCause(cause.map((e) => Option.some(e))))
+      return this(Effect.failCause(cause.map((e) => Maybe.some(e))))
     },
     single(this: Emit<R, E, A, B>, a: A, __tsplusTrace?: string) {
       return this(Effect.succeedNow(Chunk.single(a)))

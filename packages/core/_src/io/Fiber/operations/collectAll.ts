@@ -14,14 +14,14 @@ export function collectAll<E, A>(fibers: Collection<Fiber<E, A>>): Fiber<E, Chun
     inheritRefs: Effect.forEachDiscard(fibers, (fiber) => fiber.inheritRefs()),
     poll: Effect.forEach(fibers, (fiber) => fiber.poll()).map((chunk) =>
       chunk.reduceRight(
-        Option.some(Exit.succeed(Chunk.empty()) as Exit<E, Chunk<A>>),
+        Maybe.some(Exit.succeed(Chunk.empty()) as Exit<E, Chunk<A>>),
         (a, b) =>
           a.fold(
-            () => Option.none,
+            () => Maybe.none,
             (ra) =>
               b.fold(
-                () => Option.none,
-                (rb) => Option.some(ra.zipWith(rb, (_a, _b) => _b.prepend(_a), Cause.both))
+                () => Maybe.none,
+                (rb) => Maybe.some(ra.zipWith(rb, (_a, _b) => _b.prepend(_a), Cause.both))
               )
           )
       )

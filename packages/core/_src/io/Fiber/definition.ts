@@ -113,7 +113,7 @@ export interface BaseFiber<E, A> extends Fiber<E, A> {
    * Tentatively observes the fiber, but returns immediately if it is not
    * already done.
    */
-  readonly _poll: Effect.UIO<Option<Exit<E, A>>>
+  readonly _poll: Effect.UIO<Maybe<Exit<E, A>>>
 
   /**
    * Interrupts the fiber as if interrupted from the specified fiber. If the
@@ -187,7 +187,7 @@ export class SyntheticFiber<E, A> implements BaseFiber<E, A> {
     readonly _await: Effect.UIO<Exit<E, A>>,
     readonly _children: Effect.UIO<Chunk<Fiber.Runtime<any, any>>>,
     readonly _inheritRefs: Effect.UIO<void>,
-    readonly _poll: Effect.UIO<Option<Exit<E, A>>>,
+    readonly _poll: Effect.UIO<Maybe<Exit<E, A>>>,
     readonly _interruptAs: (fiberId: FiberId) => Effect.UIO<Exit<E, A>>
   ) {}
 }
@@ -197,7 +197,7 @@ export function makeSynthetic<E, A>(_: {
   readonly await: Effect.UIO<Exit<E, A>>
   readonly children: Effect.UIO<Chunk<Fiber.Runtime<any, any>>>
   readonly inheritRefs: Effect.UIO<void>
-  readonly poll: Effect.UIO<Option<Exit<E, A>>>
+  readonly poll: Effect.UIO<Maybe<Exit<E, A>>>
   readonly interruptAs: (fiberId: FiberId) => Effect.UIO<Exit<E, A>>
 }): Fiber<E, A> {
   return new SyntheticFiber(

@@ -4,8 +4,8 @@
  *
  * @tsplus fluent ets/TMap findAll
  */
-export function findAll_<K, V, A>(self: TMap<K, V>, pf: (kv: Tuple<[K, V]>) => Option<A>): USTM<Chunk<A>> {
-  return self.findAllSTM((kv) => pf(kv).fold(STM.fail(Option.none), STM.succeedNow))
+export function findAll_<K, V, A>(self: TMap<K, V>, pf: (kv: Tuple<[K, V]>) => Maybe<A>): USTM<Chunk<A>> {
+  return self.findAllSTM((kv) => pf(kv).fold(STM.fail(Maybe.none), STM.succeedNow))
 }
 
 /**

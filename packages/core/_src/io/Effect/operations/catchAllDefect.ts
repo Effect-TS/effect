@@ -13,7 +13,7 @@ export function catchAllDefect_<R, E, A, R2, E2, A2>(
   f: (defect: unknown) => Effect<R2, E2, A2>,
   __tsplusTrace?: string
 ): Effect<R | R2, E | E2, A | A2> {
-  return self.catchSomeDefect((d) => Option.some(f(d)))
+  return self.catchSomeDefect((d) => Maybe.some(f(d)))
 }
 
 /**

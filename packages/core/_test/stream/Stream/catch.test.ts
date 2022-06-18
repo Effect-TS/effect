@@ -97,7 +97,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("catchSome", () => {
     it("recovery from some errors", async () => {
       const program = (Stream(1, 2) + Stream.fail("boom"))
-        .catchSome((s) => (s === "boom" ? Option.some(Stream(3, 4)) : Option.none))
+        .catchSome((s) => (s === "boom" ? Maybe.some(Stream(3, 4)) : Maybe.none))
         .runCollect()
 
       const result = await program.unsafeRunPromise()
@@ -107,7 +107,7 @@ describe.concurrent("Stream", () => {
 
     it("fails stream when partial function does not match", async () => {
       const program = (Stream(1, 2) + Stream.fail("boom"))
-        .catchSome((s) => (s === "boomer" ? Option.some(Stream(3, 4)) : Option.none))
+        .catchSome((s) => (s === "boomer" ? Maybe.some(Stream(3, 4)) : Maybe.none))
         .runCollect()
         .either()
 
@@ -122,8 +122,8 @@ describe.concurrent("Stream", () => {
       const program = (Stream(1, 2) + Stream.failCause(Cause.fail("boom")))
         .catchSomeCause((cause) =>
           cause.isFailType() && cause.value === "boom"
-            ? Option.some(Stream(3, 4))
-            : Option.none
+            ? Maybe.some(Stream(3, 4))
+            : Maybe.none
         )
         .runCollect()
 
@@ -134,7 +134,7 @@ describe.concurrent("Stream", () => {
 
     it("halts stream when partial function does not match", async () => {
       const program = (Stream(1, 2) + Stream.fail("boom"))
-        .catchSomeCause((cause) => cause.isEmpty ? Option.some(Stream(3, 4)) : Option.none)
+        .catchSomeCause((cause) => cause.isEmpty ? Maybe.some(Stream(3, 4)) : Maybe.none)
         .runCollect()
         .either()
 

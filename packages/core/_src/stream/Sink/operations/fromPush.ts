@@ -9,7 +9,7 @@ export function fromPush<R, E, In, L, Z>(
   push: Effect<
     R | Scope,
     never,
-    (input: Option<Chunk<In>>) => Effect<R, Tuple<[Either<E, Z>, Chunk<L>]>, void>
+    (input: Maybe<Chunk<In>>) => Effect<R, Tuple<[Either<E, Z>, Chunk<L>]>, void>
   >,
   __tsplusTrace?: string
 ): Sink<R, E, In, L, Z> {
@@ -17,12 +17,12 @@ export function fromPush<R, E, In, L, Z>(
 }
 
 function pull<R, E, In, L, Z>(
-  push: (option: Option<Chunk<In>>) => Effect<R, Tuple<[Either<E, Z>, Chunk<L>]>, void>,
+  push: (option: Maybe<Chunk<In>>) => Effect<R, Tuple<[Either<E, Z>, Chunk<L>]>, void>,
   __tsplusTrace?: string
 ): Channel<R, never, Chunk<In>, unknown, E, Chunk<L>, Z> {
   return Channel.readWith(
     (input: Chunk<In>) =>
-      Channel.fromEffect(push(Option.some(input))).foldChannel(
+      Channel.fromEffect(push(Maybe.some(input))).foldChannel(
         ({ tuple: [either, leftovers] }) =>
           either.fold(
             (e) => Channel.write(leftovers) > Channel.fail(e),
@@ -32,7 +32,7 @@ function pull<R, E, In, L, Z>(
       ),
     (err) => Channel.fail(() => err),
     () =>
-      Channel.fromEffect(push(Option.none)).foldChannel(
+      Channel.fromEffect(push(Maybe.none)).foldChannel(
         ({ tuple: [either, leftovers] }) =>
           either.fold(
             (e) => Channel.write(leftovers) > Channel.fail(e),

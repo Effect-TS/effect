@@ -2,11 +2,11 @@
  * A schedule that recurs for until the input value becomes applicable to
  * partial function and then map that value with given function.
  *
- * @tsplus static ets/Schedule/Ops recurUntilOption
+ * @tsplus static ets/Schedule/Ops recurUntilMaybe
  */
-export function recurUntilOption<A, B>(
-  pf: (a: A) => Option<B>
-): Schedule<void, never, A, Option<B>> {
+export function recurUntilMaybe<A, B>(
+  pf: (a: A) => Maybe<B>
+): Schedule<void, never, A, Maybe<B>> {
   return Schedule.identity<A>()
     .map(pf)
     .untilOutput((_) => _.isSome())

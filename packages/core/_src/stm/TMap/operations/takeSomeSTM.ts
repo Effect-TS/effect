@@ -5,10 +5,10 @@
  */
 export function takeSomeSTM_<K, V, R, E, A>(
   self: TMap<K, V>,
-  pf: (kv: Tuple<[K, V]>) => STM<R, Option<E>, A>
+  pf: (kv: Tuple<[K, V]>) => STM<R, Maybe<E>, A>
 ): STM<R, E, Chunk<A>> { // todo: rewrite to STM<R, E, NonEmptyChunk<A>>
   return self.findAllSTM((kv) => pf(kv).map((a) => Tuple(kv.get(0), a))).map(Chunk.from).continueOrRetry((_) =>
-    Option.fromPredicate(_, (c) => c.size > 0)
+    Maybe.fromPredicate(_, (c) => c.size > 0)
   ).flatMap((both) => self.deleteAll(both.map((_) => _.get(0))).as(both.map((_) => _.get(1))))
 }
 

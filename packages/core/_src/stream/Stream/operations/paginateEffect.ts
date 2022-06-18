@@ -7,7 +7,7 @@
  */
 export function paginateEffect<S, R, E, A>(
   s: LazyArg<S>,
-  f: (s: S) => Effect<R, E, Tuple<[A, Option<S>]>>,
+  f: (s: S) => Effect<R, E, Tuple<[A, Maybe<S>]>>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
   return Stream.paginateChunkEffect(s, (s) => f(s).map(({ tuple: [a, s] }) => Tuple(Chunk.single(a), s)))

@@ -23,7 +23,7 @@ describe.concurrent("Ref", () => {
       const program = Ref.make<State>(State.Active).flatMap((ref) =>
         ref.modifySome(
           "state doesn't change",
-          (state) => state.isClosed() ? Option.some(Tuple("active", State.Active)) : Option.none
+          (state) => state.isClosed() ? Maybe.some(Tuple("active", State.Active)) : Maybe.none
         )
       )
 
@@ -38,15 +38,15 @@ describe.concurrent("Ref", () => {
         .bind("v1", ({ ref }) =>
           ref.modifySome("doesn't change the state", (state) =>
             state.isActive()
-              ? Option.some(Tuple("changed", State.Changed))
-              : Option.none))
+              ? Maybe.some(Tuple("changed", State.Changed))
+              : Maybe.none))
         .bind("v2", ({ ref }) =>
           ref.modifySome("doesn't change the state", (state) =>
             state.isActive()
-              ? Option.some(Tuple("changed", State.Changed))
+              ? Maybe.some(Tuple("changed", State.Changed))
               : state.isChanged()
-              ? Option.some(Tuple("closed", State.Closed))
-              : Option.none))
+              ? Maybe.some(Tuple("closed", State.Closed))
+              : Maybe.none))
 
       const { v1, v2 } = await program.unsafeRunPromise()
 

@@ -7,6 +7,6 @@
 export function interruptors<E>(self: Cause<E>): HashSet<FiberId> {
   return self.foldLeft(
     HashSet.empty<FiberId>(),
-    (acc, curr) => curr.isInterruptType() ? Option.some(acc.add(curr.fiberId)) : Option.some(acc)
+    (acc, curr) => curr.isInterruptType() ? Maybe.some(acc.add(curr.fiberId)) : Maybe.some(acc)
   )
 }

@@ -101,17 +101,17 @@ describe.concurrent("orElse", () => {
     })
 
     it("produces the value of this effect if it fails with some error", async () => {
-      const program = Effect.fail(Option.some("fail")).orElseOptional(
+      const program = Effect.fail(Maybe.some("fail")).orElseOptional(
         Effect.succeed("orElse")
       )
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(Option.some("fail")))
+      assert.isTrue(result.untraced == Exit.fail(Maybe.some("fail")))
     })
 
     it("produces the value of the specified effect if it fails with none", async () => {
-      const program = Effect.fail(Option.none).orElseOptional(Effect.succeed("orElse"))
+      const program = Effect.fail(Maybe.none).orElseOptional(Effect.succeed("orElse"))
 
       const result = await program.unsafeRunPromise()
 

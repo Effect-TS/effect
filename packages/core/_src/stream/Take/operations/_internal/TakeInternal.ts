@@ -5,7 +5,7 @@ export class TakeInternal<E, A> implements Take<E, A> {
   readonly [_E]!: () => E
   readonly [_A]!: () => A
 
-  constructor(readonly _exit: Exit<Option<E>, Chunk<A>>) {}
+  constructor(readonly _exit: Exit<Maybe<E>, Chunk<A>>) {}
 
   [Hash.sym](): number {
     return this._exit[Hash.sym]()

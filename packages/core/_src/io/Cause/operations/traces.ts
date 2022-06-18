@@ -11,13 +11,13 @@ export function traces<E>(self: Cause<E>): List<Trace> {
       realCause(curr)
       switch (curr._tag) {
         case "Die":
-          return Option.some(acc.prepend(curr.trace))
+          return Maybe.some(acc.prepend(curr.trace))
         case "Fail":
-          return Option.some(acc.prepend(curr.trace))
+          return Maybe.some(acc.prepend(curr.trace))
         case "Interrupt":
-          return Option.some(acc.prepend(curr.trace))
+          return Maybe.some(acc.prepend(curr.trace))
         default:
-          return Option.some(acc)
+          return Maybe.some(acc)
       }
     })
     .reverse

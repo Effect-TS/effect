@@ -6,7 +6,7 @@
  */
 export function reject_<R, E, A, E1>(
   self: STM<R, E, A>,
-  pf: (a: A) => Option<E1>
+  pf: (a: A) => Maybe<E1>
 ): STM<R, E | E1, A> {
   return self.rejectSTM((a) => pf(a).map(STM.failNow))
 }

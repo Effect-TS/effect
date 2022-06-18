@@ -36,7 +36,7 @@ describe.concurrent("Stream", () => {
         result == Chunk(
           Either.right(Chunk(1)),
           Either.right(Chunk(2)),
-          Either.left(Option.none)
+          Either.left(Maybe.none)
         )
       )
     })
@@ -52,9 +52,9 @@ describe.concurrent("Stream", () => {
     })
   })
 
-  describe.concurrent("fromEffectOption", () => {
+  describe.concurrent("fromEffectMaybe", () => {
     it("emit one element with success", async () => {
-      const program = Stream.fromEffectOption(Effect.succeed(5)).runCollect()
+      const program = Stream.fromEffectMaybe(Effect.succeed(5)).runCollect()
 
       const result = await program.unsafeRunPromise()
 
@@ -62,7 +62,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("emit one element with failure", async () => {
-      const program = Stream.fromEffectOption(Effect.fail(Option.some(5)))
+      const program = Stream.fromEffectMaybe(Effect.fail(Maybe.some(5)))
         .runCollect()
         .either()
 
@@ -72,7 +72,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("do not emit any element", async () => {
-      const program = Stream.fromEffectOption(Effect.fail(Option.none)).runCollect()
+      const program = Stream.fromEffectMaybe(Effect.fail(Maybe.none)).runCollect()
 
       const result = await program.unsafeRunPromise()
 

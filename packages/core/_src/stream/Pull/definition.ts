@@ -1,7 +1,7 @@
 /**
  * @tsplus type ets/Pull
  */
-export type Pull<R, E, A> = Effect<R, Option<E>, Chunk<A>>
+export type Pull<R, E, A> = Effect<R, Maybe<E>, Chunk<A>>
 
 /**
  * @tsplus type ets/Pull/Ops

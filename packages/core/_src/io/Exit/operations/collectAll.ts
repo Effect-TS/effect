@@ -3,10 +3,10 @@
  */
 export function collectAll<E, A>(
   exits: Collection<Exit<E, A>>
-): Option<Exit<E, List<A>>> {
+): Maybe<Exit<E, List<A>>> {
   const head = exits[Symbol.iterator]().next()
   if (!head.done && head.value) {
-    return Option.some(
+    return Maybe.some(
       exits.skip(1).reduce(head.value.map((a) => List(a)), (acc, el) =>
         acc.zipWith(
           el,
@@ -15,5 +15,5 @@ export function collectAll<E, A>(
         )).map((list) => list.reverse)
     )
   }
-  return Option.none
+  return Maybe.none
 }

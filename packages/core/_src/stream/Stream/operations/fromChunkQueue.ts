@@ -7,7 +7,7 @@ export function fromChunkQueue<A>(
   queue: LazyArg<Dequeue<Chunk<A>>>,
   __tsplusTrace?: string
 ): Stream<never, never, A> {
-  return Stream.repeatEffectChunkOption(() => {
+  return Stream.repeatEffectChunkMaybe(() => {
     const queue0 = queue()
     return queue0.take.catchAllCause((cause) =>
       queue0.isShutdown.flatMap((isShutdown) => isShutdown && cause.isInterrupted ? Pull.end : Pull.failCause(cause))

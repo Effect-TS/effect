@@ -10,7 +10,7 @@ export function findEffect_<R, E, A>(
   self: Chunk<A>,
   f: (a: A) => Effect<R, E, boolean>,
   __tsplusTrace?: string
-): Effect<R, E, Option<A>> {
+): Effect<R, E, Maybe<A>> {
   return Effect.suspendSucceed(() => {
     const iterator = concreteChunkId(self)._arrayLikeIterator()
     let next: IteratorResult<IterableArrayLike<A>, any>
@@ -19,15 +19,15 @@ export function findEffect_<R, E, A>(
       array: IterableArrayLike<A>,
       i: number,
       length: number
-    ): Effect<R, E, Option<A>> => {
+    ): Effect<R, E, Maybe<A>> => {
       if (i < length) {
         const a = array[i]!
 
-        return f(a).flatMap((r) => r ? Effect.succeedNow(Option.some(a)) : loop(iterator, array, i + 1, length))
+        return f(a).flatMap((r) => r ? Effect.succeedNow(Maybe.some(a)) : loop(iterator, array, i + 1, length))
       } else if (!(next = iterator.next()).done) {
         return loop(iterator, next.value, 0, next.value.length)
       } else {
-        return Effect.succeedNow(Option.none)
+        return Effect.succeedNow(Maybe.none)
       }
     }
 
@@ -36,7 +36,7 @@ export function findEffect_<R, E, A>(
     if (!next.done) {
       return loop(iterator, next.value, 0, next.value.length)
     } else {
-      return Effect.succeedNow(Option.none)
+      return Effect.succeedNow(Maybe.none)
     }
   })
 }

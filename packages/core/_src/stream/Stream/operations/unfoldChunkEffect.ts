@@ -8,14 +8,14 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  */
 export function unfoldChunkEffect<S, R, E, A>(
   s: LazyArg<S>,
-  f: (s: S) => Effect<R, E, Option<Tuple<[Chunk<A>, S]>>>
+  f: (s: S) => Effect<R, E, Maybe<Tuple<[Chunk<A>, S]>>>
 ): Stream<R, E, A> {
   return new StreamInternal(loop(s, f))
 }
 
 function loop<S, R, E, A>(
   s: LazyArg<S>,
-  f: (s: S) => Effect<R, E, Option<Tuple<[Chunk<A>, S]>>>
+  f: (s: S) => Effect<R, E, Maybe<Tuple<[Chunk<A>, S]>>>
 ): Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown> {
   return Channel.unwrap(
     f(s()).map((option) => option.fold(Channel.unit, ({ tuple: [as, s] }) => Channel.write(as) > loop(s, f)))

@@ -5,7 +5,7 @@ describe.concurrent("Stream", () => {
         .bind("ref", () => Ref.make(0))
         .bindValue(
           "stream",
-          ({ ref }) => Stream.fromEffect(ref.getAndUpdate((n) => n + 1)) + Stream.fail(Option.none)
+          ({ ref }) => Stream.fromEffect(ref.getAndUpdate((n) => n + 1)) + Stream.fail(Maybe.none)
         )
         .flatMap(({ stream }) => stream.retry(Schedule.forever).take(2).runCollect())
 
@@ -20,7 +20,7 @@ describe.concurrent("Stream", () => {
         .bindValue("stream", ({ ref }) =>
           Stream.unwrapScoped(
             Effect.addFinalizer(ref.getAndUpdate((n) => n + 1)).as(
-              Stream.fromEffect(ref.get()) + Stream.fail(Option.none)
+              Stream.fromEffect(ref.get()) + Stream.fail(Maybe.none)
             )
           ))
         .flatMap(({ stream }) => stream.retry(Schedule.forever).take(2).runCollect())
@@ -36,7 +36,7 @@ describe.concurrent("Stream", () => {
       // .bind("times", () => Ref.make(List.empty<number>()))
       // .bindValue("stream", ({ times }) =>
       //   Stream.fromEffect(Clock.currentTime.flatMap((time) => times.update((list) => list.prepend(time))))
-      //   .flatMap(() => Stream.fail(Option.none))
+      //   .flatMap(() => Stream.fail(Maybe.none))
       // )
       // .bind("fiber", ({ stream }) => stream.retry(Schedule.exponential(Duration(10)).take(3).runDrain().fork()))
       // for {

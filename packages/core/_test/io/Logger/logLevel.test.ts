@@ -11,8 +11,8 @@ describe.concurrent("Logger", () => {
       const result = await program.unsafeRunPromise()
 
       assert.strictEqual(result.array.length, 1)
-      assert.isTrue(result[0].map((_) => _.message()) == Option.some("It's alive"))
-      assert.isTrue(result[0].map((_) => _.logLevel) == Option.some(LogLevel.Warning))
+      assert.isTrue(result[0].map((_) => _.message()) == Maybe.some("It's alive"))
+      assert.isTrue(result[0].map((_) => _.logLevel) == Maybe.some(LogLevel.Warning))
     })
 
     it("log at a different log level", async () => {
@@ -23,8 +23,8 @@ describe.concurrent("Logger", () => {
       const result = await program.unsafeRunPromise()
 
       assert.strictEqual(result.array.length, 1)
-      assert.isTrue(result[0].map((_) => _.message()) == Option.some("It's alive"))
-      assert.isTrue(result[0].map((_) => _.logLevel) == Option.some(LogLevel.Warning))
+      assert.isTrue(result[0].map((_) => _.message()) == Maybe.some("It's alive"))
+      assert.isTrue(result[0].map((_) => _.logLevel) == Maybe.some(LogLevel.Warning))
     })
   })
 })

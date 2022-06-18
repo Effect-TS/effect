@@ -8,5 +8,5 @@ export function repeatEffect<R, E, A>(
   effect: LazyArg<Effect<R, E, A>>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  return Stream.repeatEffectOption(effect().mapError(Option.some))
+  return Stream.repeatEffectMaybe(effect().mapError(Maybe.some))
 }

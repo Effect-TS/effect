@@ -8,7 +8,7 @@ import { concreteStream } from "@effect/core/stream/Stream/operations/_internal/
  */
 export function runIntoQueueElementsScoped_<R, E extends E1, A, E1>(
   self: Stream<R, E, A>,
-  queue: LazyArg<Enqueue<Exit<Option<E1>, A>>>,
+  queue: LazyArg<Enqueue<Exit<Maybe<E1>, A>>>,
   __tsplusTrace?: string
 ): Effect<R | Scope, E | E1, void> {
   const writer: Channel<
@@ -17,7 +17,7 @@ export function runIntoQueueElementsScoped_<R, E extends E1, A, E1>(
     Chunk<A>,
     unknown,
     E,
-    Exit<Option<E | E1>, A>,
+    Exit<Maybe<E | E1>, A>,
     unknown
   > = Channel.readWith(
     (input: Chunk<A>) =>
@@ -28,13 +28,13 @@ export function runIntoQueueElementsScoped_<R, E extends E1, A, E1>(
           Chunk<A>,
           unknown,
           E,
-          Exit<Option<E | E1>, A>,
+          Exit<Maybe<E | E1>, A>,
           unknown
         >,
         (channel, a) => channel > Channel.write(Exit.succeed(a))
       ) > writer,
-    (err) => Channel.write(Exit.fail(Option.some(err))),
-    () => Channel.write(Exit.fail(Option.none))
+    (err) => Channel.write(Exit.fail(Maybe.some(err))),
+    () => Channel.write(Exit.fail(Maybe.none))
   )
   concreteStream(self)
   return (self.channel >> writer)

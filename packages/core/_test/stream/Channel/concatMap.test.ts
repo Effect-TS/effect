@@ -150,23 +150,23 @@ describe.concurrent("Channel", () => {
         .concatMapWithCustom(
           (x) =>
             Channel.writeAll(
-              Option.some(Tuple(x, 1)),
-              Option.none,
-              Option.some(Tuple(x, 2)),
-              Option.none,
-              Option.some(Tuple(x, 3)),
-              Option.none,
-              Option.some(Tuple(x, 4))
+              Maybe.some(Tuple(x, 1)),
+              Maybe.none,
+              Maybe.some(Tuple(x, 2)),
+              Maybe.none,
+              Maybe.some(Tuple(x, 3)),
+              Maybe.none,
+              Maybe.some(Tuple(x, 4))
             ),
           constVoid,
           constVoid,
           (pullRequest) => {
             switch (pullRequest._tag) {
               case "Pulled": {
-                return UpstreamPullStrategy.PullAfterNext(Option.none)
+                return UpstreamPullStrategy.PullAfterNext(Maybe.none)
               }
               case "NoUpstream": {
-                return UpstreamPullStrategy.PullAfterAllEnqueued(Option.none)
+                return UpstreamPullStrategy.PullAfterAllEnqueued(Maybe.none)
               }
             }
           },
@@ -208,17 +208,17 @@ describe.concurrent("Channel", () => {
         .concatMapWithCustom(
           (x) =>
             Channel.writeAll(
-              Option.some(Tuple(x, 1)),
-              Option.none,
-              Option.some(Tuple(x, 2)),
-              Option.none,
-              Option.some(Tuple(x, 3)),
-              Option.none,
-              Option.some(Tuple(x, 4))
+              Maybe.some(Tuple(x, 1)),
+              Maybe.none,
+              Maybe.some(Tuple(x, 2)),
+              Maybe.none,
+              Maybe.some(Tuple(x, 3)),
+              Maybe.none,
+              Maybe.some(Tuple(x, 4))
             ),
           constVoid,
           constVoid,
-          () => UpstreamPullStrategy.PullAfterAllEnqueued(Option.none),
+          () => UpstreamPullStrategy.PullAfterAllEnqueued(Maybe.none),
           (element) =>
             element.fold(
               ChildExecutorDecision.Yield,

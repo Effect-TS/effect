@@ -10,11 +10,11 @@ export function scanReduceEffect_<R, E, A, R2, E2, A2 extends A>(
   __tsplusTrace?: string
 ): Stream<R | R2, E | E2, A2> {
   return self.mapAccumEffect(
-    Option.emptyOf<A2>(),
-    (option: Option<A2>, a) =>
+    Maybe.emptyOf<A2>(),
+    (option: Maybe<A2>, a) =>
       option.fold(
-        Effect.succeedNow(Tuple(Option.some(a as A2), a as A2)),
-        (a2) => f(a2, a).map((a2) => Tuple(Option.some(a2), a2))
+        Effect.succeedNow(Tuple(Maybe.some(a as A2), a as A2)),
+        (a2) => f(a2, a).map((a2) => Tuple(Maybe.some(a2), a2))
       )
   )
 }

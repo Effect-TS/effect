@@ -6,8 +6,8 @@
 export function when<R, E, A>(
   predicate: LazyArg<boolean>,
   effect: STM<R, E, A>
-): STM<R, E, Option<A>> {
+): STM<R, E, Maybe<A>> {
   return STM.suspend(
-    predicate() ? effect.map(Option.some) : STM.succeedNow(Option.none)
+    predicate() ? effect.map(Maybe.some) : STM.succeedNow(Maybe.none)
   )
 }

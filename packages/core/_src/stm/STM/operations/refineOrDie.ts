@@ -5,7 +5,7 @@
  */
 export function refineOrDie_<R, A, E, E1>(
   self: STM<R, E, A>,
-  pf: (e: E) => Option<E1>
+  pf: (e: E) => Maybe<E1>
 ) {
   return self.refineOrDieWith(pf, identity)
 }

@@ -7,7 +7,7 @@ describe.concurrent("Sink", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(1))
+      assert.isTrue(result == Maybe.some(1))
     })
 
     it("empty input", async () => {
@@ -17,7 +17,7 @@ describe.concurrent("Sink", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("with leftovers", async () => {

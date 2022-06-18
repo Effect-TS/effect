@@ -10,7 +10,7 @@ describe.concurrent("TArray", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(5))
+      assert.isTrue(result == Maybe.some(5))
     })
 
     it("succeeds for empty", async () => {
@@ -20,7 +20,7 @@ describe.concurrent("TArray", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("fails to find absent", async () => {
@@ -30,7 +30,7 @@ describe.concurrent("TArray", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("is atomic", async () => {
@@ -47,8 +47,8 @@ describe.concurrent("TArray", () => {
       const result = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result == Option.some(largePrime) ||
-          result == Option.none
+        result == Maybe.some(largePrime) ||
+          result == Maybe.none
       )
     })
   })
@@ -61,7 +61,7 @@ describe.concurrent("TArray", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(5))
+      assert.isTrue(result == Maybe.some(5))
     })
 
     it("succeeds for empty", async () => {
@@ -71,7 +71,7 @@ describe.concurrent("TArray", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("fails to find absent", async () => {
@@ -81,7 +81,7 @@ describe.concurrent("TArray", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("is atomic", async () => {
@@ -98,8 +98,8 @@ describe.concurrent("TArray", () => {
       const result = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result == Option.some(largePrime) ||
-          result == Option.none
+        result == Maybe.some(largePrime) ||
+          result == Maybe.none
       )
     })
 
@@ -129,7 +129,7 @@ describe.concurrent("TArray", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(5))
+      assert.isTrue(result == Maybe.some(5))
     })
   })
 
@@ -141,7 +141,7 @@ describe.concurrent("TArray", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(10))
+      assert.isTrue(result == Maybe.some(10))
     })
 
     it("succeeds for empty", async () => {
@@ -151,7 +151,7 @@ describe.concurrent("TArray", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("fails to find absent", async () => {
@@ -161,7 +161,7 @@ describe.concurrent("TArray", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("is atomic", async () => {
@@ -178,8 +178,8 @@ describe.concurrent("TArray", () => {
       const result = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result == Option.some(largePrime * 4) ||
-          result == Option.none
+        result == Maybe.some(largePrime * 4) ||
+          result == Maybe.none
       )
     })
   })
@@ -192,7 +192,7 @@ describe.concurrent("TArray", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(10))
+      assert.isTrue(result == Maybe.some(10))
     })
 
     it("succeeds for empty", async () => {
@@ -202,7 +202,7 @@ describe.concurrent("TArray", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("fails to find absent", async () => {
@@ -212,7 +212,7 @@ describe.concurrent("TArray", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("is atomic", async () => {
@@ -229,8 +229,8 @@ describe.concurrent("TArray", () => {
       const result = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result == Option.some(largePrime * 4) ||
-          result == Option.none
+        result == Maybe.some(largePrime * 4) ||
+          result == Maybe.none
       )
     })
 
@@ -245,7 +245,7 @@ describe.concurrent("TArray", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(7))
+      assert.isTrue(result == Maybe.some(7))
     })
 
     it("fails on errors after result found", async () => {

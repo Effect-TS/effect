@@ -3,9 +3,7 @@ describe.concurrent("Effect", () => {
     it("converts some fiber failures into errors", async () => {
       const message = "division by zero"
       const defect = Effect.die(new IllegalArgumentException(message))
-      const program = defect.unrefine((u) =>
-        u instanceof IllegalArgumentException ? Option.some(u.message) : Option.none
-      )
+      const program = defect.unrefine((u) => u instanceof IllegalArgumentException ? Maybe.some(u.message) : Maybe.none)
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -15,7 +13,7 @@ describe.concurrent("Effect", () => {
     it("leaves the rest", async () => {
       const error = new IllegalArgumentException("division by zero")
       const defect = Effect.die(error)
-      const program = defect.unrefine((u) => u instanceof RuntimeError ? Option.some(u.message) : Option.none)
+      const program = defect.unrefine((u) => u instanceof RuntimeError ? Maybe.some(u.message) : Maybe.none)
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -28,8 +26,8 @@ describe.concurrent("Effect", () => {
       const message = "division by zero"
       const defect = Effect.die(new IllegalArgumentException(message))
       const program = defect.unrefineWith(
-        (u) => u instanceof IllegalArgumentException ? Option.some(u.message) : Option.none,
-        () => Option.none
+        (u) => u instanceof IllegalArgumentException ? Maybe.some(u.message) : Maybe.none,
+        () => Maybe.none
       )
 
       const result = await program.unsafeRunPromiseExit()
@@ -41,8 +39,8 @@ describe.concurrent("Effect", () => {
       const error = new IllegalArgumentException("division by zero")
       const defect = Effect.die(error)
       const program = defect.unrefineWith(
-        (u) => (u instanceof RuntimeError ? Option.some(u.message) : Option.none),
-        () => Option.none
+        (u) => (u instanceof RuntimeError ? Maybe.some(u.message) : Maybe.none),
+        () => Maybe.none
       )
 
       const result = await program.unsafeRunPromiseExit()
@@ -53,13 +51,13 @@ describe.concurrent("Effect", () => {
     it("uses the specified function to convert the `E` into an `E1`", async () => {
       const failure = Effect.fail("fail")
       const program = failure.unrefineWith(
-        (u) => u instanceof IllegalArgumentException ? Option.some(u.message) : Option.none,
-        () => Option.none
+        (u) => u instanceof IllegalArgumentException ? Maybe.some(u.message) : Maybe.none,
+        () => Maybe.none
       )
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(Option.none))
+      assert.isTrue(result.untraced == Exit.fail(Maybe.none))
     })
   })
 })

@@ -6,7 +6,7 @@ import { concreteTMap } from "@effect/core/stm/TMap/operations/_internal/Interna
  *
  * @tsplus fluent ets/TMap get
  */
-export function get_<K, V>(self: TMap<K, V>, k: K): USTM<Option<V>> {
+export function get_<K, V>(self: TMap<K, V>, k: K): USTM<Maybe<V>> {
   concreteTMap(self)
   return STM.Effect((journal) => {
     const buckets = self.tBuckets.unsafeGet(journal)

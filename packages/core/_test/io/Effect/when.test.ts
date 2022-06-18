@@ -21,16 +21,16 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("whenCase", () => {
     it("executes correct branch only", async () => {
-      const v1 = Option.emptyOf<number>()
-      const v2 = Option.some(0)
+      const v1 = Maybe.emptyOf<number>()
+      const v2 = Maybe.some(0)
       const program = Effect.Do()
         .bind("ref", () => Ref.make(false))
         .tap(({ ref }) =>
-          Effect.whenCase(v1, (option) => option._tag === "Some" ? Option.some(ref.set(true)) : Option.none)
+          Effect.whenCase(v1, (option) => option._tag === "Some" ? Maybe.some(ref.set(true)) : Maybe.none)
         )
         .bind("res1", ({ ref }) => ref.get())
         .tap(({ ref }) =>
-          Effect.whenCase(v2, (option) => option._tag === "Some" ? Option.some(ref.set(true)) : Option.none)
+          Effect.whenCase(v2, (option) => option._tag === "Some" ? Maybe.some(ref.set(true)) : Maybe.none)
         )
         .bind("res2", ({ ref }) => ref.get())
 
@@ -43,21 +43,21 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("whenCaseEffect", () => {
     it("executes condition effect and correct branch", async () => {
-      const v1 = Option.emptyOf<number>()
-      const v2 = Option.some(0)
+      const v1 = Maybe.emptyOf<number>()
+      const v2 = Maybe.some(0)
       const program = Effect.Do()
         .bind("ref", () => Ref.make(false))
         .tap(({ ref }) =>
           Effect.whenCaseEffect(
             Effect.succeed(v1),
-            (option) => option._tag === "Some" ? Option.some(ref.set(true)) : Option.none
+            (option) => option._tag === "Some" ? Maybe.some(ref.set(true)) : Maybe.none
           )
         )
         .bind("res1", ({ ref }) => ref.get())
         .tap(({ ref }) =>
           Effect.whenCaseEffect(
             Effect.succeed(v2),
-            (option) => option._tag === "Some" ? Option.some(ref.set(true)) : Option.none
+            (option) => option._tag === "Some" ? Maybe.some(ref.set(true)) : Maybe.none
           )
         )
         .bind("res2", ({ ref }) => ref.get())

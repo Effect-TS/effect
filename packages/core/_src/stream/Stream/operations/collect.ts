@@ -7,7 +7,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  */
 export function collect_<R, E, A, B>(
   self: Stream<R, E, A>,
-  pf: (a: A) => Option<B>,
+  pf: (a: A) => Maybe<B>,
   __tsplusTrace?: string
 ): Stream<R, E, B> {
   concreteStream(self)

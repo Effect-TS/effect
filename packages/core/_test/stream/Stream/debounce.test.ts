@@ -63,14 +63,14 @@ describe("Stream", () => {
     })
 
     it("should fail immediately", async () => {
-      const program = Stream.fromEffect(Effect.fail(Option.none))
+      const program = Stream.fromEffect(Effect.fail(Maybe.none))
         .debounce((100_000_000).millis)
         .runCollect()
         .either()
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Either.left(Option.none))
+      assert.isTrue(result == Either.left(Maybe.none))
     })
 
     it("should work with empty streams", async () => {
@@ -97,7 +97,7 @@ describe("Stream", () => {
       //     fib <- ZStream
       //              .fromQueue(c.queue)
       //              .tap(_ => c.proceed)
-      //              .flatMap(ex => ZStream.fromZIOOption(ZIO.done(ex)))
+      //              .flatMap(ex => ZStream.fromZIOMaybe(ZIO.done(ex)))
       //              .flattenChunks
       //              .debounce(200.millis)
       //              .interruptWhen(ZIO.never)

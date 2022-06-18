@@ -29,7 +29,7 @@ describe.concurrent("Ref", () => {
   describe.concurrent("updateSome", () => {
     it("simple", async () => {
       const program = Ref.make<State>(State.Active)
-        .tap((ref) => ref.updateSome((state) => state.isClosed() ? Option.some(State.Changed) : Option.none))
+        .tap((ref) => ref.updateSome((state) => state.isClosed() ? Maybe.some(State.Changed) : Maybe.none))
         .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
@@ -40,15 +40,15 @@ describe.concurrent("Ref", () => {
     it("twice", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make<State>(State.Active))
-        .tap(({ ref }) => ref.updateSome((state) => state.isActive() ? Option.some(State.Changed) : Option.none))
+        .tap(({ ref }) => ref.updateSome((state) => state.isActive() ? Maybe.some(State.Changed) : Maybe.none))
         .bind("v1", ({ ref }) => ref.get())
         .tap(({ ref }) =>
           ref.updateSome((state) =>
             state.isActive()
-              ? Option.some(State.Changed)
+              ? Maybe.some(State.Changed)
               : state.isChanged()
-              ? Option.some(State.Closed)
-              : Option.none
+              ? Maybe.some(State.Closed)
+              : Maybe.none
           )
         )
         .bind("v2", ({ ref }) => ref.get())
@@ -63,7 +63,7 @@ describe.concurrent("Ref", () => {
   describe.concurrent("updateSomeAndGet", () => {
     it("simple", async () => {
       const program = Ref.make<State>(State.Active).flatMap((ref) =>
-        ref.updateSomeAndGet((state) => state.isClosed() ? Option.some(State.Changed) : Option.none)
+        ref.updateSomeAndGet((state) => state.isClosed() ? Maybe.some(State.Changed) : Maybe.none)
       )
 
       const result = await program.unsafeRunPromise()
@@ -76,15 +76,15 @@ describe.concurrent("Ref", () => {
         .bind("ref", () => Ref.make<State>(State.Active))
         .bind(
           "v1",
-          ({ ref }) => ref.updateSomeAndGet((state) => state.isActive() ? Option.some(State.Changed) : Option.none)
+          ({ ref }) => ref.updateSomeAndGet((state) => state.isActive() ? Maybe.some(State.Changed) : Maybe.none)
         )
         .bind("v2", ({ ref }) =>
           ref.updateSomeAndGet((state) =>
             state.isActive()
-              ? Option.some(State.Changed)
+              ? Maybe.some(State.Changed)
               : state.isChanged()
-              ? Option.some(State.Closed)
-              : Option.none
+              ? Maybe.some(State.Closed)
+              : Maybe.none
           ))
 
       const { v1, v2 } = await program.unsafeRunPromise()

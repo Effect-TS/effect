@@ -5,6 +5,6 @@
  */
 export function isInterrupted<E>(self: Cause<E>): boolean {
   return self
-    .find((cause) => (cause.isInterruptType() ? Option.some(undefined) : Option.none))
+    .find((cause) => (cause.isInterruptType() ? Maybe.some(undefined) : Maybe.none))
     .isSome()
 }

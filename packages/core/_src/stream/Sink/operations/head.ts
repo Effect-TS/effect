@@ -5,10 +5,10 @@
  */
 export function head<In>(
   __tsplusTrace?: string
-): Sink<never, never, In, In, Option<In>> {
+): Sink<never, never, In, In, Maybe<In>> {
   return Sink.fold(
-    Option.emptyOf<In>(),
-    (option: Option<In>) => option.isNone(),
-    (option: Option<In>, input) => (option.isSome() ? option : Option.some(input))
+    Maybe.emptyOf<In>(),
+    (option: Maybe<In>) => option.isNone(),
+    (option: Maybe<In>, input) => (option.isSome() ? option : Maybe.some(input))
   )
 }

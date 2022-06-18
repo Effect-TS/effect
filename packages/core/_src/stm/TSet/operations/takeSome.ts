@@ -5,7 +5,7 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
  *
  * @tsplus fluent ets/TSet takeSome
  */
-export function takeSome_<A, B>(self: TSet<A>, pf: (a: A) => Option<B>): USTM<Chunk<B>> {
+export function takeSome_<A, B>(self: TSet<A>, pf: (a: A) => Maybe<B>): USTM<Chunk<B>> {
   concreteTSet(self)
   return self.tmap.takeSome((kv) => pf(kv.get(0)))
 }

@@ -16,7 +16,7 @@ export function adjust_(self: TReentrantLock.ReadLock, fiberId: FiberId, adjust:
   }
 
   return TReentrantLock.ReadLock(
-    newTotal === 0 ? self.readers.remove(fiberId) : self.readers.modify(fiberId, (_) => Option.some(newTotal))
+    newTotal === 0 ? self.readers.remove(fiberId) : self.readers.modify(fiberId, (_) => Maybe.some(newTotal))
   )
 }
 

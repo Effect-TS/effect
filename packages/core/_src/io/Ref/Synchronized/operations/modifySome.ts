@@ -9,7 +9,7 @@
 export function modifySome_<A, B>(
   self: SynchronizedRef<A>,
   def: B,
-  pf: (a: A) => Option<Tuple<[B, A]>>,
+  pf: (a: A) => Maybe<Tuple<[B, A]>>,
   __tsplusTrace?: string
 ): Effect.UIO<B> {
   return self.modify((v) => pf(v).getOrElse(Tuple(def, v)))

@@ -9,12 +9,12 @@ import type { Emit } from "@effect/core/stream/Stream/Emit"
  * @tsplus static ets/Stream/Ops asyncMaybe
  */
 export function asyncMaybe<R, E, A>(
-  register: (emit: Emit<R, E, A, void>) => Option<Stream<R, E, A>>,
+  register: (emit: Emit<R, E, A, void>) => Maybe<Stream<R, E, A>>,
   outputBuffer = 16,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
   return Stream.asyncInterrupt(
-    (emit) => Either.fromOption(register(emit), Effect.unit),
+    (emit) => Either.fromMaybe(register(emit), Effect.unit),
     outputBuffer
   )
 }

@@ -9,16 +9,16 @@ import { concreteDeferred } from "@effect/core/io/Deferred/operations/_internal/
 export function poll<E, A>(
   self: Deferred<E, A>,
   __tsplusTrace?: string
-): Effect.UIO<Option<Effect.IO<E, A>>> {
+): Effect.UIO<Maybe<Effect.IO<E, A>>> {
   return Effect.succeed(() => {
     concreteDeferred(self)
     const state = self.state.get
     switch (state._tag) {
       case "Pending": {
-        return Option.none
+        return Maybe.none
       }
       case "Done": {
-        return Option.some(state.value)
+        return Maybe.some(state.value)
       }
     }
   })

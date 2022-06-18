@@ -3,11 +3,11 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
 /**
  * The first entry of the array, if it exists.
  *
- * @tsplus getter ets/TArray firstOption
+ * @tsplus getter ets/TArray firstMaybe
  */
-export function firstOption<A>(self: TArray<A>): USTM<Option<A>> {
+export function firstMaybe<A>(self: TArray<A>): USTM<Maybe<A>> {
   concreteTArray(self)
   return self.chunk.isEmpty
-    ? STM.succeedNow(Option.none)
-    : self.chunk.unsafeHead!.get.map(Option.some)
+    ? STM.succeedNow(Maybe.none)
+    : self.chunk.unsafeHead!.get.map(Maybe.some)
 }

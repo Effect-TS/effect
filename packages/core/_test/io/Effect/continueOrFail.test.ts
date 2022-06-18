@@ -7,14 +7,14 @@ describe.concurrent("Effect", () => {
         .bind(
           "goodCase",
           () =>
-            exactlyOnce(0, (_) => _.continueOrFail("value was not 0", (v) => v === 0 ? Option.some(v) : Option.none))
+            exactlyOnce(0, (_) => _.continueOrFail("value was not 0", (v) => v === 0 ? Maybe.some(v) : Maybe.none))
               .sandbox()
               .either()
         )
         .bind(
           "badCase",
           () =>
-            exactlyOnce(1, (_) => _.continueOrFail("value was not 0", (v) => v === 0 ? Option.some(v) : Option.none))
+            exactlyOnce(1, (_) => _.continueOrFail("value was not 0", (v) => v === 0 ? Maybe.some(v) : Maybe.none))
               .sandbox()
               .either()
               .map((either) => either.mapLeft((cause) => cause.failureOrCause))
@@ -36,7 +36,7 @@ describe.concurrent("Effect", () => {
             exactlyOnce(
               0,
               (_) =>
-                _.continueOrFailEffect("value was not 0", (v) => v === 0 ? Option.some(Effect.succeed(v)) : Option.none)
+                _.continueOrFailEffect("value was not 0", (v) => v === 0 ? Maybe.some(Effect.succeed(v)) : Maybe.none)
             )
               .sandbox()
               .either()
@@ -47,8 +47,8 @@ describe.concurrent("Effect", () => {
             exactlyOnce(0, (_) =>
               _.continueOrFailEffect("predicate failed!", (n) =>
                 n === 0 ?
-                  Option.some(Effect.fail("partial failed!")) :
-                  Option.none))
+                  Maybe.some(Effect.fail("partial failed!")) :
+                  Maybe.none))
               .sandbox()
               .either()
               .map((either) => either.mapLeft((cause) => cause.failureOrCause))
@@ -59,7 +59,7 @@ describe.concurrent("Effect", () => {
             exactlyOnce(
               1,
               (_) =>
-                _.continueOrFailEffect("value was not 0", (v) => v === 0 ? Option.some(Effect.succeed(v)) : Option.none)
+                _.continueOrFailEffect("value was not 0", (v) => v === 0 ? Maybe.some(Effect.succeed(v)) : Maybe.none)
             )
               .sandbox()
               .either()

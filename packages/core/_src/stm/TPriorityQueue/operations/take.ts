@@ -11,10 +11,10 @@ export function take<A>(self: TPriorityQueue<A>): USTM<A> {
     concreteTPriorityQueue(self)
     const map = self.map.unsafeGet(journal)
 
-    const result = map.headOption.flatMap((tuple) => {
+    const result = map.headMaybe.flatMap((tuple) => {
       const a = tuple
         .get(1)
-        .tail.flatMap((c) => Option.fromPredicate(c, (_) => _.isNonEmpty))
+        .tail.flatMap((c) => Maybe.fromPredicate(c, (_) => _.isNonEmpty))
       const k = tuple.get(0)
 
       self.map.unsafeSet(

@@ -27,5 +27,5 @@ export function fork<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect.RIO<R, Fiber.Runtime<E, A>> {
-  return new IFork(self, () => Option.none, __tsplusTrace)
+  return new IFork(self, () => Maybe.none, __tsplusTrace)
 }

@@ -11,11 +11,11 @@ export function splitLines<R, E>(
   __tsplusTrace?: string
 ): Stream<R, E, string> {
   concreteStream(self)
-  return new StreamInternal(self.channel >> next<E>(Option.none, false))
+  return new StreamInternal(self.channel >> next<E>(Maybe.none, false))
 }
 
 function next<E>(
-  leftover: Option<string>,
+  leftover: Maybe<string>,
   wasSplitCRLF: boolean,
   __tsplusTrace?: string
 ): Channel<never, E, Chunk<string>, unknown, E, Chunk<string>, unknown> {
@@ -81,7 +81,7 @@ function next<E>(
 
       return (
         Channel.write(buffer.build()) >
-          next<E>(carry.length > 0 ? Option.some(carry) : Option.none, inCRLF)
+          next<E>(carry.length > 0 ? Maybe.some(carry) : Maybe.none, inCRLF)
       )
     },
     (cause) =>

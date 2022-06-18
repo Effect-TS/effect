@@ -244,7 +244,7 @@ describe.concurrent("STM", () => {
 
     it("Using `continueOrRetry` filter and map simultaneously the value produced by the transaction", async () => {
       const program = STM.succeed(Chunk.range(1, 20))
-        .continueOrRetry((chunk) => chunk.forAll((n) => n > 0) ? Option.some("positive") : Option.none)
+        .continueOrRetry((chunk) => chunk.forAll((n) => n > 0) ? Maybe.some("positive") : Maybe.none)
         .commit()
 
       const result = await program.unsafeRunPromise()
@@ -254,7 +254,7 @@ describe.concurrent("STM", () => {
 
     it("Using `continueOrRetrySTM` filter and map simultaneously the value produced by the transaction", async () => {
       const program = STM.succeed(Chunk.range(1, 20))
-        .continueOrRetrySTM((chunk) => chunk.forAll((n) => n > 0) ? Option.some(STM.succeed("positive")) : Option.none)
+        .continueOrRetrySTM((chunk) => chunk.forAll((n) => n > 0) ? Maybe.some(STM.succeed("positive")) : Maybe.none)
         .commit()
 
       const result = await program.unsafeRunPromise()

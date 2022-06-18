@@ -3,7 +3,7 @@ describe("Chunk", () => {
     const chunk = Chunk(0, 1, 2, 3)
 
     const result = await chunk
-      .collectEffect((n) => (n >= 2 ? Option.some(Effect.succeed(n)) : Option.none))
+      .collectEffect((n) => (n >= 2 ? Maybe.some(Effect.succeed(n)) : Maybe.none))
       .unsafeRunPromise()
 
     assert.isTrue(result == Chunk(2, 3))

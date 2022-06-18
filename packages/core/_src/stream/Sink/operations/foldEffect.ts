@@ -41,7 +41,7 @@ function foldChunkSplitEffect<R, E, S, In>(
   cont: Predicate<S>,
   f: (s: S, input: In) => Effect<R, E, S>,
   __tsplusTrace?: string
-): Effect<R, E, Tuple<[S, Option<Chunk<In>>]>> {
+): Effect<R, E, Tuple<[S, Maybe<Chunk<In>>]>> {
   return foldEffectInternal(z, chunk, cont, f, 0, chunk.length)
 }
 
@@ -53,13 +53,13 @@ function foldEffectInternal<R, E, S, In>(
   index: number,
   length: number,
   __tsplusTrace?: string
-): Effect<R, E, Tuple<[S, Option<Chunk<In>>]>> {
+): Effect<R, E, Tuple<[S, Maybe<Chunk<In>>]>> {
   if (index === length) {
-    return Effect.succeed(Tuple(z, Option.none))
+    return Effect.succeed(Tuple(z, Maybe.none))
   }
   return f(z, chunk.unsafeGet(index)).flatMap((z1) =>
     cont(z1)
       ? foldEffectInternal<R, E, S, In>(z1, chunk, cont, f, index + 1, length)
-      : Effect.succeed(Tuple(z1, Option.some(chunk.drop(index + 1))))
+      : Effect.succeed(Tuple(z1, Maybe.some(chunk.drop(index + 1))))
   )
 }

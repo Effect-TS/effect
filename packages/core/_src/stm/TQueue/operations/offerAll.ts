@@ -9,7 +9,7 @@ import { concreteTQueue } from "@effect/core/stm/TQueue/operations/_internal/Int
  */
 export function offerAll_<A>(self: TQueue<A>, as0: Collection<A>): USTM<boolean> {
   concreteTQueue(self)
-  const as = as0.toList()
+  const as = as0.toList
   return STM.Effect((journal, fiberId) => {
     const queue = self.ref.unsafeGet(journal)
 
@@ -31,7 +31,7 @@ export function offerAll_<A>(self: TQueue<A>, as0: Collection<A>): USTM<boolean>
         return false
       }
       case TQueue.Sliding: {
-        const forQueue = as.take(self.capacity).toList()
+        const forQueue = as.take(self.capacity).toList
         const toDrop = queue.size + forQueue.length - self.capacity
         self.ref.unsafeSet(queue.drop(toDrop).appendAll(forQueue), journal)
         return true

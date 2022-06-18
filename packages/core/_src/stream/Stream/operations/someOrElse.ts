@@ -4,7 +4,7 @@
  * @tsplus fluent ets/Stream someOrElse
  */
 export function someOrElse_<R, E, A, A2>(
-  self: Stream<R, E, Option<A>>,
+  self: Stream<R, E, Maybe<A>>,
   def: LazyArg<A2>,
   __tsplusTrace?: string
 ): Stream<R, E, A | A2> {

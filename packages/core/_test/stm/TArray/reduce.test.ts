@@ -51,35 +51,35 @@ describe.concurrent("TArray", () => {
     })
   })
 
-  describe.concurrent("reduceOption", () => {
+  describe.concurrent("reduceMaybe", () => {
     it("reduces correctly", async () => {
       const program = makeStair(n)
         .commit()
-        .flatMap((tArray) => tArray.reduceOption((a, b) => a + b).commit())
+        .flatMap((tArray) => tArray.reduceMaybe((a, b) => a + b).commit())
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some((n * (n + 1)) / 2))
+      assert.isTrue(result == Maybe.some((n * (n + 1)) / 2))
     })
 
     it("returns single entry", async () => {
       const program = makeTArray(1, 1)
         .commit()
-        .flatMap((tArray) => tArray.reduceOption((a, b) => a + b).commit())
+        .flatMap((tArray) => tArray.reduceMaybe((a, b) => a + b).commit())
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(1))
+      assert.isTrue(result == Maybe.some(1))
     })
 
     it("returns None for an empty array", async () => {
       const program = TArray.empty<number>()
         .commit()
-        .flatMap((tArray) => tArray.reduceOption((a, b) => a + b).commit())
+        .flatMap((tArray) => tArray.reduceMaybe((a, b) => a + b).commit())
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("is atomic", async () => {
@@ -87,7 +87,7 @@ describe.concurrent("TArray", () => {
         .bind("tArray", () => makeStair(N).commit())
         .bind("findFiber", ({ tArray }) =>
           tArray
-            .reduceOption((a, b) => a + b)
+            .reduceMaybe((a, b) => a + b)
             .commit()
             .fork())
         .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => 1)).commit())
@@ -99,35 +99,35 @@ describe.concurrent("TArray", () => {
     })
   })
 
-  describe.concurrent("reduceOptionSTM", () => {
+  describe.concurrent("reduceMaybeSTM", () => {
     it("reduces correctly", async () => {
       const program = makeStair(n)
         .commit()
-        .flatMap((tArray) => tArray.reduceOptionSTM((a, b) => STM.succeed(a + b)).commit())
+        .flatMap((tArray) => tArray.reduceMaybeSTM((a, b) => STM.succeed(a + b)).commit())
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some((n * (n + 1)) / 2))
+      assert.isTrue(result == Maybe.some((n * (n + 1)) / 2))
     })
 
     it("returns single entry", async () => {
       const program = makeTArray(1, 1)
         .commit()
-        .flatMap((tArray) => tArray.reduceOptionSTM((a, b) => STM.succeed(a + b)).commit())
+        .flatMap((tArray) => tArray.reduceMaybeSTM((a, b) => STM.succeed(a + b)).commit())
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(1))
+      assert.isTrue(result == Maybe.some(1))
     })
 
     it("returns None for an empty array", async () => {
       const program = TArray.empty<number>()
         .commit()
-        .flatMap((tArray) => tArray.reduceOptionSTM((a, b) => STM.succeed(a + b)).commit())
+        .flatMap((tArray) => tArray.reduceMaybeSTM((a, b) => STM.succeed(a + b)).commit())
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("is atomic", async () => {
@@ -135,7 +135,7 @@ describe.concurrent("TArray", () => {
         .bind("tArray", () => makeStair(N).commit())
         .bind("findFiber", ({ tArray }) =>
           tArray
-            .reduceOptionSTM((a, b) => STM.succeed(a + b))
+            .reduceMaybeSTM((a, b) => STM.succeed(a + b))
             .commit()
             .fork())
         .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => 1)).commit())
@@ -151,7 +151,7 @@ describe.concurrent("TArray", () => {
         .commit()
         .flatMap((tArray) =>
           tArray
-            .reduceOptionSTM((a, b) => (b === 4 ? STM.fail(boom) : STM.succeed(a + b)))
+            .reduceMaybeSTM((a, b) => (b === 4 ? STM.fail(boom) : STM.succeed(a + b)))
             .commit()
             .flip()
         )

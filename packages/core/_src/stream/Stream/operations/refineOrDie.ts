@@ -5,7 +5,7 @@
  */
 export function refineOrDie_<R, E, E2, A>(
   self: Stream<R, E, A>,
-  pf: (e: E) => Option<E2>,
+  pf: (e: E) => Maybe<E2>,
   __tsplusTrace?: string
 ): Stream<R, E2, A> {
   return self.refineOrDieWith(pf, identity)

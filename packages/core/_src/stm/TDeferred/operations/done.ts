@@ -6,7 +6,7 @@ import { concreteTDeferred } from "@effect/core/stm/TDeferred/operations/_intern
 export function done_<E, A>(self: TDeferred<E, A>, v: Either<E, A>): USTM<boolean> {
   concreteTDeferred(self)
   return self.ref.get.flatMap((_) =>
-    _.isSome() ? STM.succeedNow(false) : self.ref.set(Option.some(v)) > STM.succeedNow(true)
+    _.isSome() ? STM.succeedNow(false) : self.ref.set(Maybe.some(v)) > STM.succeedNow(true)
   )
 }
 

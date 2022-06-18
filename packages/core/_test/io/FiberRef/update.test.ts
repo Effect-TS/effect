@@ -20,7 +20,7 @@ describe.concurrent("FiberRef", () => {
     it("changes value", async () => {
       const program = Effect.Do()
         .bind("fiberRef", () => FiberRef.make(initial))
-        .bind("value1", ({ fiberRef }) => fiberRef.updateSomeAndGet(() => Option.some(update)))
+        .bind("value1", ({ fiberRef }) => fiberRef.updateSomeAndGet(() => Maybe.some(update)))
         .bind("value2", ({ fiberRef }) => fiberRef.get())
 
       const { value1, value2 } = await Effect.scoped(program).unsafeRunPromise()
@@ -32,7 +32,7 @@ describe.concurrent("FiberRef", () => {
     it("does not change value", async () => {
       const program = Effect.Do()
         .bind("fiberRef", () => FiberRef.make(initial))
-        .bind("value1", ({ fiberRef }) => fiberRef.updateSomeAndGet(() => Option.none))
+        .bind("value1", ({ fiberRef }) => fiberRef.updateSomeAndGet(() => Maybe.none))
         .bind("value2", ({ fiberRef }) => fiberRef.get())
 
       const { value1, value2 } = await Effect.scoped(program).unsafeRunPromise()

@@ -6,17 +6,17 @@
  */
 export function collectFirst<R, E, A, B>(
   as: LazyArg<Collection<A>>,
-  f: (a: A) => Effect<R, E, Option<B>>,
+  f: (a: A) => Effect<R, E, Maybe<B>>,
   __tsplusTrace?: string
-): Effect<R, E, Option<B>> {
+): Effect<R, E, Maybe<B>> {
   return Effect.succeed(as).flatMap((Collection) => loop(Collection[Symbol.iterator](), f))
 }
 
 function loop<R, E, A, B>(
   iterator: Iterator<A, any, undefined>,
-  f: (a: A) => Effect<R, E, Option<B>>,
+  f: (a: A) => Effect<R, E, Maybe<B>>,
   __tsplusTrace?: string
-): Effect<R, E, Option<B>> {
+): Effect<R, E, Maybe<B>> {
   const next = iterator.next()
   return next.done
     ? Effect.none

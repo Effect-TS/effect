@@ -28,7 +28,7 @@ describe.concurrent("STM", () => {
     })
 
     it("long collect chains", async () => {
-      const program = chain(10000, (stm) => stm.continueOrRetry((n) => Option.some(n + 1)))
+      const program = chain(10000, (stm) => stm.continueOrRetry((n) => Maybe.some(n + 1)))
 
       const result = await program.unsafeRunPromise()
 
@@ -36,7 +36,7 @@ describe.concurrent("STM", () => {
     })
 
     it("long collectSTM chains", async () => {
-      const program = chain(10000, (stm) => stm.continueOrRetrySTM((n) => Option.some(STM.succeed(n + 1))))
+      const program = chain(10000, (stm) => stm.continueOrRetrySTM((n) => Maybe.some(STM.succeed(n + 1))))
 
       const result = await program.unsafeRunPromise()
 

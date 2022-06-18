@@ -9,7 +9,7 @@
 export function modifySome_<A, B, P>(
   self: FiberRef<A, P>,
   def: B,
-  f: (a: A) => Option<Tuple<[B, A]>>,
+  f: (a: A) => Maybe<Tuple<[B, A]>>,
   __tsplusTrace?: string
 ): Effect.UIO<B> {
   return self.modify((v) => f(v).getOrElse(Tuple(def, v)))

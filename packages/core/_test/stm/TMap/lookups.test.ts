@@ -4,7 +4,7 @@ describe.concurrent("TMap", () => {
   describe.concurrent("lookups", () => {
     it("get existing element", async () => {
       const tx = TMap.make(Tuple.make("a", 1), Tuple.make("b", 2)).flatMap((_) => _.get("a")).map((_) =>
-        _ == Option.some(1)
+        _ == Maybe.some(1)
       )
       const result = await tx.commit().unsafeRunPromise()
 

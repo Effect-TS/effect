@@ -10,10 +10,10 @@
 export function updateWith_<K, V, R, E>(
   self: TMap<K, V>,
   k: K,
-  f: (v: Option<V>) => Option<V>
-): USTM<Option<V>> {
+  f: (v: Maybe<V>) => Maybe<V>
+): USTM<Maybe<V>> {
   return self.get(k).flatMap((_) =>
-    f(_).fold(self.delete(k).as(Option.emptyOf<V>()), (v) => self.put(k, v).as(Option.some(v)))
+    f(_).fold(self.delete(k).as(Maybe.emptyOf<V>()), (v) => self.put(k, v).as(Maybe.some(v)))
   )
 }
 

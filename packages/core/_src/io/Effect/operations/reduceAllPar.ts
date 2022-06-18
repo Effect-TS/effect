@@ -11,11 +11,11 @@ export function reduceAllPar<R, E, A>(
   __tsplusTrace?: string
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(
-    Effect.mergeAllPar<R, E, A, Option<A>>(
+    Effect.mergeAllPar<R, E, A, Maybe<A>>(
       Collection.of(a()).concat(as()),
-      Option.none,
+      Maybe.none,
       (acc, elem) =>
-        Option.some(
+        Maybe.some(
           acc.fold(
             () => elem,
             (a) => f(a, elem)

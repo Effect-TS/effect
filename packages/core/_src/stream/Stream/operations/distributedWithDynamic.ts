@@ -16,13 +16,13 @@ export function distributedWithDynamic_<R, E, A, Z>(
   self: Stream<R, E, A>,
   maximumLag: number,
   decide: (a: A) => Effect.UIO<(key: UniqueKey) => boolean>,
-  done: (exit: Exit<Option<E>, never>) => Effect.UIO<Z> = () => Effect.unit as Effect.UIO<Z>,
+  done: (exit: Exit<Maybe<E>, never>) => Effect.UIO<Z> = () => Effect.unit as Effect.UIO<Z>,
   __tsplusTrace?: string
-): Effect<R | Scope, never, Effect.UIO<Tuple<[UniqueKey, Dequeue<Exit<Option<E>, A>>]>>> {
+): Effect<R | Scope, never, Effect.UIO<Tuple<[UniqueKey, Dequeue<Exit<Maybe<E>, A>>]>>> {
   return Effect.Do()
     .bind("queuesRef", () =>
       Effect.acquireRelease(
-        Ref.make<HashMap<UniqueKey, Queue<Exit<Option<E>, A>>>>(HashMap.empty()),
+        Ref.make<HashMap<UniqueKey, Queue<Exit<Maybe<E>, A>>>>(HashMap.empty()),
         (map) =>
           map
             .get()
@@ -32,9 +32,9 @@ export function distributedWithDynamic_<R, E, A, Z>(
       Effect.Do()
         .bind("queuesLock", () => Semaphore.make(1))
         .bind("newQueue", () =>
-          Ref.make<Effect.UIO<Tuple<[UniqueKey, Queue<Exit<Option<E>, A>>]>>>(
+          Ref.make<Effect.UIO<Tuple<[UniqueKey, Queue<Exit<Maybe<E>, A>>]>>>(
             Effect.Do()
-              .bind("queue", () => Queue.bounded<Exit<Option<E>, A>>(maximumLag))
+              .bind("queue", () => Queue.bounded<Exit<Maybe<E>, A>>(maximumLag))
               .bind("id", () => Effect.succeed(distributedWithDynamicId.incrementAndGet()))
               .tap(({ id, queue }) => queuesRef.update((map) => map.set(id, queue)))
               .map(({ id, queue }) => Tuple(id, queue))
@@ -42,7 +42,7 @@ export function distributedWithDynamic_<R, E, A, Z>(
         .bindValue(
           "finalize",
           ({ newQueue, queuesLock }) =>
-            (endTake: Exit<Option<E>, never>) =>
+            (endTake: Exit<Maybe<E>, never>) =>
               // Make sure that no queues are currently being added
               queuesLock.withPermit(
                 Effect.Do()
@@ -50,7 +50,7 @@ export function distributedWithDynamic_<R, E, A, Z>(
                     // All newly created queues should end immediately
                     newQueue.set(
                       Effect.Do()
-                        .bind("queue", () => Queue.bounded<Exit<Option<E>, A>>(1))
+                        .bind("queue", () => Queue.bounded<Exit<Maybe<E>, A>>(1))
                         .tap(({ queue }) => queue.offer(endTake))
                         .bind("id", () => Effect.succeed(distributedWithDynamicId.incrementAndGet()))
                         .tap(({ id, queue }) => queuesRef.update((map) => map.set(id, queue)))
@@ -62,7 +62,7 @@ export function distributedWithDynamic_<R, E, A, Z>(
                     Effect.forEach(queues, (queue) =>
                       queue
                         .offer(endTake)
-                        .catchSomeCause((cause) => cause.isInterrupted ? Option.some(Effect.unit) : Option.none))
+                        .catchSomeCause((cause) => cause.isInterrupted ? Maybe.some(Effect.unit) : Maybe.none))
                   )
                   .tap(() => done(endTake))
                   .unit()
@@ -72,8 +72,8 @@ export function distributedWithDynamic_<R, E, A, Z>(
           self
             .runForEachScoped((a) => offer(queuesRef, decide, a))
             .foldCauseEffect(
-              (cause) => finalize(Exit.failCause(cause.map(Option.some))),
-              () => finalize(Exit.fail(Option.none))
+              (cause) => finalize(Exit.failCause(cause.map(Maybe.some))),
+              () => finalize(Exit.fail(Maybe.none))
             )
             .fork()
         )
@@ -92,7 +92,7 @@ export function distributedWithDynamic_<R, E, A, Z>(
 export const distributedWithDynamic = Pipeable(distributedWithDynamic_)
 
 function offer<E, A>(
-  ref: Ref<HashMap<UniqueKey, Queue<Exit<Option<E>, A>>>>,
+  ref: Ref<HashMap<UniqueKey, Queue<Exit<Maybe<E>, A>>>>,
   decide: (a: A) => Effect.UIO<(key: UniqueKey) => boolean>,
   a: A,
   __tsplusTrace?: string

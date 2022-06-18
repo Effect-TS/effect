@@ -26,7 +26,7 @@ export function isNumberService(u: unknown): u is NumberService {
 }
 
 export interface ChunkCoordination<A> {
-  readonly queue: Queue<Exit<Option<never>, Chunk<A>>>
+  readonly queue: Queue<Exit<Maybe<never>, Chunk<A>>>
   readonly offer: Effect.UIO<boolean>
   readonly proceed: Effect.UIO<void>
   readonly awaitNext: Effect.UIO<void>
@@ -36,12 +36,12 @@ export function chunkCoordination<A>(
   chunks: List<Chunk<A>>
 ): Effect.UIO<ChunkCoordination<A>> {
   return Effect.Do()
-    .bind("queue", () => Queue.unbounded<Exit<Option<never>, Chunk<A>>>())
+    .bind("queue", () => Queue.unbounded<Exit<Maybe<never>, Chunk<A>>>())
     .bind("ps", () => Queue.unbounded<void>())
     .bind("ref", () =>
-      Ref.make<List<List<Exit<Option<never>, Chunk<A>>>>>(
+      Ref.make<List<List<Exit<Maybe<never>, Chunk<A>>>>>(
         List.from(chunks.take(chunks.length - 1)).map((chunk) => List(Exit.succeed(chunk))).concat(
-          chunks.last().fold(List.empty(), (chunk) => List(List(Exit.succeed(chunk), Exit.fail(Option.none))))
+          chunks.last.fold(List.empty(), (chunk) => List(List(Exit.succeed(chunk), Exit.fail(Maybe.none))))
         )
       ))
     .map(({ ps, queue, ref }) => ({

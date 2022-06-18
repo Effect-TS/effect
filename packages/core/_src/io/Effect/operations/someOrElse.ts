@@ -4,7 +4,7 @@
  * @tsplus fluent ets/Effect someOrElse
  */
 export function someOrElse_<R, E, A, B>(
-  self: Effect<R, E, Option<A>>,
+  self: Effect<R, E, Maybe<A>>,
   orElse: LazyArg<B>,
   __tsplusTrace?: string
 ): Effect<R, E, A | B> {

@@ -8,7 +8,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  */
 export function refineOrDieWith_<R, E, E2, A>(
   self: Stream<R, E, A>,
-  pf: (e: E) => Option<E2>,
+  pf: (e: E) => Maybe<E2>,
   f: (e: E) => unknown,
   __tsplusTrace?: string
 ): Stream<R, E2, A> {

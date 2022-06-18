@@ -7,7 +7,7 @@
 export function continueOrFail_<R, E, E1, A, A2>(
   self: STM<R, E, A>,
   e: LazyArg<E1>,
-  pf: (a: A) => Option<A2>
+  pf: (a: A) => Maybe<A2>
 ) {
   return self.continueOrFailSTM(e, (x) => pf(x).map(STM.succeedNow))
 }

@@ -13,7 +13,7 @@ export function changesWith_<R, E, A>(
   __tsplusTrace?: string
 ): Stream<R, E, A> {
   concreteStream(self)
-  return new StreamInternal(self.channel >> writer<R, E, A>(Option.none, f))
+  return new StreamInternal(self.channel >> writer<R, E, A>(Maybe.none, f))
 }
 
 /**
@@ -26,7 +26,7 @@ export function changesWith_<R, E, A>(
 export const changesWith = Pipeable(changesWith_)
 
 function writer<R, E, A>(
-  last: Option<A>,
+  last: Maybe<A>,
   f: (x: A, y: A) => boolean
 ): Channel<R, E, Chunk<A>, unknown, E, Chunk<A>, void> {
   return Channel.readWithCause(
@@ -37,8 +37,8 @@ function writer<R, E, A>(
         Tuple(last, Chunk.empty<A>()),
         ({ tuple: [option, as] }, a) =>
           option.isSome() && f(option.value, a)
-            ? Tuple(Option.some(a), as)
-            : Tuple(Option.some(a), as.append(a))
+            ? Tuple(Maybe.some(a), as)
+            : Tuple(Maybe.some(a), as.append(a))
       )
       return Channel.write(newChunk) > writer<R, E, A>(newLast, f)
     },

@@ -13,7 +13,7 @@ export function splitOnChunkFlatten_<R, E, A>(
 ): Stream<R, E, A> {
   concreteStream(self)
   return Stream.succeed(delimiter).flatMap(
-    (delimiter) => new StreamInternal(self.channel >> next<R, E, A>(delimiter, Option.none, 0))
+    (delimiter) => new StreamInternal(self.channel >> next<R, E, A>(delimiter, Maybe.none, 0))
   )
 }
 
@@ -27,7 +27,7 @@ export const splitOnChunkFlatten = Pipeable(splitOnChunkFlatten_)
 
 function next<R, E, A>(
   delimiter: Chunk<A>,
-  leftover: Option<Chunk<A>>,
+  leftover: Maybe<Chunk<A>>,
   delimiterIndex: number,
   __tsplusTrace?: string
 ): Channel<R, E, Chunk<A>, unknown, E, Chunk<A>, unknown> {
@@ -59,7 +59,7 @@ function next<R, E, A>(
         Channel.writeChunk(buffer.build()) >
           next<R, E, A>(
             delimiter,
-            carry.isNonEmpty ? Option.some(carry) : Option.none,
+            carry.isNonEmpty ? Maybe.some(carry) : Maybe.none,
             delimiterCursor
           )
       )

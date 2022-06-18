@@ -6,7 +6,7 @@
  */
 export function reject_<R, E, A, E1>(
   self: Effect<R, E, A>,
-  pf: (a: A) => Option<E1>,
+  pf: (a: A) => Maybe<E1>,
   __tsplusTrace?: string
 ): Effect<R, E | E1, A> {
   return self.rejectEffect((a) => pf(a).map(Effect.failNow))

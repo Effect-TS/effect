@@ -5,7 +5,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(1))
+      assert.isTrue(result == Maybe.some(1))
     })
 
     it("empty stream", async () => {
@@ -13,7 +13,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
 
     it("pulls up to the first non-empty chunk", async () => {
@@ -32,7 +32,7 @@ describe.concurrent("Stream", () => {
 
       const { head, result } = await program.unsafeRunPromise()
 
-      assert.isTrue(head == Option.some(1))
+      assert.isTrue(head == Maybe.some(1))
       assert.isTrue(result == Chunk(2, 1))
     })
   })
@@ -43,7 +43,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.some(4))
+      assert.isTrue(result == Maybe.some(4))
     })
 
     it("empty stream", async () => {
@@ -51,7 +51,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Option.none)
+      assert.isTrue(result == Maybe.none)
     })
   })
 

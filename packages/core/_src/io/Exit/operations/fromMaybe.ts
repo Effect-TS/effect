@@ -1,7 +1,7 @@
 /**
- * @tsplus static ets/Exit/Ops fromOption
+ * @tsplus static ets/Exit/Ops fromMaybe
  */
-export function fromOption<A>(option: Option<A>): Exit<void, A> {
+export function fromMaybe<A>(option: Maybe<A>): Exit<void, A> {
   switch (option._tag) {
     case "None":
       return Exit.fail(undefined)
