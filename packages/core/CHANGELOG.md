@@ -1,5 +1,43 @@
 # @effect/core
 
+## 0.0.5
+
+### Patch Changes
+
+- [#1232](https://github.com/Effect-TS/core/pull/1232) [`06b0c741e`](https://github.com/Effect-TS/core/commit/06b0c741e171ddbe612d5b4d2902734407d259f7) Thanks [@wesselvdv](https://github.com/wesselvdv)! - Replace fluent with getter where applicable
+
+* [#1233](https://github.com/Effect-TS/core/pull/1233) [`d3e9fac8f`](https://github.com/Effect-TS/core/commit/d3e9fac8f7c53cc0815891b1e70e3a1625ea4946) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Rename Option to Maybe
+
+- [#1232](https://github.com/Effect-TS/core/pull/1232) [`d1e2e5b89`](https://github.com/Effect-TS/core/commit/d1e2e5b895f274b5a3d4c252525c6a05d96048d3) Thanks [@wesselvdv](https://github.com/wesselvdv)! - remove TArray Collection extend
+
+* [#1232](https://github.com/Effect-TS/core/pull/1232) [`7523ae1dd`](https://github.com/Effect-TS/core/commit/7523ae1dd193e25c7846ac29dbd394a6134a7e2c) Thanks [@wesselvdv](https://github.com/wesselvdv)! - Add TRandom implementation
+
+- [#1233](https://github.com/Effect-TS/core/pull/1233) [`74f2726d0`](https://github.com/Effect-TS/core/commit/74f2726d0cefa2c07ee139985fb6bec522736bec) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Kill Effect Aliases
+
+* [#1232](https://github.com/Effect-TS/core/pull/1232) [`43e327ddc`](https://github.com/Effect-TS/core/commit/43e327ddce81e65cb166a8ee45e4f4a1ccfccf4c) Thanks [@wesselvdv](https://github.com/wesselvdv)! - Rename various asUnit to unit
+
+- [#1232](https://github.com/Effect-TS/core/pull/1232) [`2d65d5ba8`](https://github.com/Effect-TS/core/commit/2d65d5ba8926b3fa66bb5755006c090d5b81ce0b) Thanks [@wesselvdv](https://github.com/wesselvdv)! - Add implementation for TReentrantLock
+
+* [#1232](https://github.com/Effect-TS/core/pull/1232) [`45d79b13d`](https://github.com/Effect-TS/core/commit/45d79b13d3c1a61d16b8aff57c3274fa217b9574) Thanks [@wesselvdv](https://github.com/wesselvdv)! - Add collect & collectSTM for STM
+
+- [#1232](https://github.com/Effect-TS/core/pull/1232) [`981a7496b`](https://github.com/Effect-TS/core/commit/981a7496b59895e6cf764563dc91495cbe1c7746) Thanks [@wesselvdv](https://github.com/wesselvdv)! - Fix missing tsplustrace pass allow in Effect.acquireReleaseExit
+
+* [#1232](https://github.com/Effect-TS/core/pull/1232) [`724ae7101`](https://github.com/Effect-TS/core/commit/724ae710182cdabe3bff6d19bcc527830e29f936) Thanks [@wesselvdv](https://github.com/wesselvdv)! - Make Random.nextIntBetween upper bound exclusive
+
+- [#1231](https://github.com/Effect-TS/core/pull/1231) [`801ed8cf1`](https://github.com/Effect-TS/core/commit/801ed8cf11770d193a6dcd5d1c3d6ec7fefb6c72) Thanks [@wesselvdv](https://github.com/wesselvdv)! - Add TQueue implementation
+
+* [#1229](https://github.com/Effect-TS/core/pull/1229) [`950b69e61`](https://github.com/Effect-TS/core/commit/950b69e61df25ee0212be1df27615cf07e6bc6d1) Thanks [@IMax153](https://github.com/IMax153)! - fix Stream.peel and Stream.aggregateWithinEither
+
+- [#1232](https://github.com/Effect-TS/core/pull/1232) [`a960afdb2`](https://github.com/Effect-TS/core/commit/a960afdb2e7ecc67f5860158744ea8c1b2761cb8) Thanks [@wesselvdv](https://github.com/wesselvdv)! - Add THub implementation
+
+* [#1232](https://github.com/Effect-TS/core/pull/1232) [`a9439ebdd`](https://github.com/Effect-TS/core/commit/a9439ebddc869c547a9363587166724ade088f89) Thanks [@wesselvdv](https://github.com/wesselvdv)! - Add TDeferred implementation
+
+- [#1229](https://github.com/Effect-TS/core/pull/1229) [`a9956827f`](https://github.com/Effect-TS/core/commit/a9956827f5ff382723c428e8988e50ddf0d67ade) Thanks [@IMax153](https://github.com/IMax153)! - fix issue with Stream.zipWith
+
+* [#1232](https://github.com/Effect-TS/core/pull/1232) [`23506e63e`](https://github.com/Effect-TS/core/commit/23506e63eb3f629a90fa1d5309e91a470e451fbb) Thanks [@wesselvdv](https://github.com/wesselvdv)! - Add TSet implementation
+
+- [#1231](https://github.com/Effect-TS/core/pull/1231) [`dceb8c91b`](https://github.com/Effect-TS/core/commit/dceb8c91b81473c1211f6adb8a61b54d5b9fe8bf) Thanks [@wesselvdv](https://github.com/wesselvdv)! - remove parenthesis on length and size getters
+
 ## 0.0.4
 
 ### Patch Changes
