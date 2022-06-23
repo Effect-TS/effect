@@ -9,7 +9,7 @@ export function make<A>(
 ): Effect<never, never, SubscriptionRef<A>> {
   return Effect.suspendSucceed(
     Effect.struct({
-      ref: SynchronizedRef.make(value),
+      ref: Ref.Synchronized.make(value),
       hub: Hub.unbounded<A>()
     }).map(({ hub, ref }) => new SubscriptionRef(ref, hub))
   )

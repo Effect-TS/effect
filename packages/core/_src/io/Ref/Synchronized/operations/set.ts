@@ -7,7 +7,7 @@ import { concreteSynchronizedRef } from "@effect/core/io/Ref/Synchronized/operat
  * @tsplus fluent ets/Ref/Synchronized set
  */
 export function set_<A>(
-  self: SynchronizedRef<A>,
+  self: Ref.Synchronized<A>,
   value: A,
   __tsplusTrace?: string
 ): Effect<never, never, void> {

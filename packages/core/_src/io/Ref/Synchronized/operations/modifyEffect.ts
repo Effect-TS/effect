@@ -8,7 +8,7 @@ import { concreteSynchronizedRef } from "@effect/core/io/Ref/Synchronized/operat
  * @tsplus fluent ets/Ref/Synchronized modifyEffect
  */
 export function modifyEffect_<R, E, A, B>(
-  self: SynchronizedRef<A>,
+  self: Ref.Synchronized<A>,
   f: (a: A) => Effect<R, E, Tuple<[B, A]>>,
   __tsplusTrace?: string
 ): Effect<R, E, B> {

@@ -182,10 +182,6 @@ import { Ref } from "@effect/core/io/Ref/definition"
 /**
  * @tsplus global
  */
-import { SynchronizedRef } from "@effect/core/io/Ref/Synchronized/definition"
-/**
- * @tsplus global
- */
 import { Runtime } from "@effect/core/io/Runtime/definition"
 /**
  * @tsplus global

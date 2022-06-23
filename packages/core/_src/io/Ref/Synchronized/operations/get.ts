@@ -5,7 +5,7 @@ import { concreteSynchronizedRef } from "@effect/core/io/Ref/Synchronized/operat
  *
  * @tsplus fluent ets/Ref/Synchronized get
  */
-export function get<A>(self: SynchronizedRef<A>, __tsplusTrace?: string): Effect<never, never, A> {
+export function get<A>(self: Ref.Synchronized<A>, __tsplusTrace?: string): Effect<never, never, A> {
   concreteSynchronizedRef(self)
   return self.ref.get()
 }

@@ -6,7 +6,7 @@
  * @tsplus fluent ets/Ref/Synchronized updateSome
  */
 export function updateSome_<A>(
-  self: SynchronizedRef<A>,
+  self: Ref.Synchronized<A>,
   pf: (a: A) => Maybe<A>,
   __tsplusTrace?: string
 ): Effect<never, never, void> {

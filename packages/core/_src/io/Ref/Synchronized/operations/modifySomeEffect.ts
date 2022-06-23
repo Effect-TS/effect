@@ -7,7 +7,7 @@
  * @tsplus fluent ets/Ref/Synchronized modifySomeEffect
  */
 export function modifySomeEffect_<R, E, A, B>(
-  self: SynchronizedRef<A>,
+  self: Ref.Synchronized<A>,
   def: B,
   pf: (a: A) => Maybe<Effect<R, E, Tuple<[B, A]>>>,
   __tsplusTrace?: string

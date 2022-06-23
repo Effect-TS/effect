@@ -4,7 +4,7 @@
  * @tsplus fluent ets/Ref/Synchronized updateEffect
  */
 export function updateEffect_<R, E, A>(
-  self: SynchronizedRef<A>,
+  self: Ref.Synchronized<A>,
   f: (a: A) => Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, void> {

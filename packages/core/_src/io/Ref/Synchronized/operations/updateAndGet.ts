@@ -5,7 +5,7 @@
  * @tsplus fluent ets/Ref/Synchronized updateAndGet
  */
 export function updateAndGet_<A>(
-  self: SynchronizedRef<A>,
+  self: Ref.Synchronized<A>,
   f: (a: A) => A,
   __tsplusTrace?: string
 ): Effect<never, never, A> {

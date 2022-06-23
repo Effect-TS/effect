@@ -1,3 +1,5 @@
+import type { SynchronizedRef, SynchronizedRefOps } from "@effect/core/io/Ref/Synchronized"
+
 export const RefSym = Symbol.for("@effect/core/io/Ref")
 export type RefSym = typeof RefSym
 
@@ -31,7 +33,7 @@ export interface Ref<A> {
 }
 
 export declare namespace Ref {
-  type Synchronized<A> = SynchronizedRef<A>
+  export interface Synchronized<A> extends SynchronizedRef<A> {}
 }
 
 /**
@@ -39,9 +41,11 @@ export declare namespace Ref {
  */
 export interface RefOps {
   $: RefAspects
+  Synchronized: SynchronizedRefOps
 }
 export const Ref: RefOps = {
-  $: {}
+  $: {},
+  Synchronized: {}
 }
 
 /**
