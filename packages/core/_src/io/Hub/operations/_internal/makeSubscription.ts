@@ -4,7 +4,8 @@ import { unsafePollAllSubscription } from "@effect/core/io/Hub/operations/_inter
 import { unsafePollN } from "@effect/core/io/Hub/operations/_internal/unsafePollN"
 import { unsafeRemove } from "@effect/core/io/Hub/operations/_internal/unsafeRemove"
 import type { Strategy } from "@effect/core/io/Hub/operations/strategy"
-import { _In, _Out, QueueSym } from "@effect/core/io/Queue/definition"
+import type { AbstractQueue } from "@effect/core/io/Queue/definition"
+import { _In, _Out, QueueProto } from "@effect/core/io/Queue/definition"
 import { unsafePollAll } from "@effect/core/io/Queue/operations/_internal/unsafePollAll"
 
 /**
@@ -40,117 +41,71 @@ export function unsafeMakeSubscription<A>(
   shutdownFlag: AtomicBoolean,
   strategy: Strategy<A>
 ): Dequeue<A> {
-  return new UnsafeMakeSubscriptionImplementation(
-    hub,
-    subscribers,
-    subscription,
-    pollers,
-    shutdownHook,
-    shutdownFlag,
-    strategy
-  )
-}
-
-class UnsafeMakeSubscriptionImplementation<A> implements Dequeue<A> {
-  readonly [QueueSym]: QueueSym = QueueSym
-  readonly [_Out]!: () => A
-
-  constructor(
-    private hub: AtomicHub<A>,
-    private subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
-    private subscription: Subscription<A>,
-    private pollers: MutableQueue<Deferred<never, A>>,
-    private shutdownHook: Deferred<never, void>,
-    private shutdownFlag: AtomicBoolean,
-    private strategy: Strategy<A>
-  ) {}
-
-  capacity: number = this.hub.capacity
-
-  size: Effect<never, never, number> = Effect.suspendSucceed(
-    this.shutdownFlag.get
-      ? Effect.interrupt
-      : Effect.succeedNow(this.subscription.size())
-  )
-
-  awaitShutdown: Effect<never, never, void> = this.shutdownHook.await()
-
-  isShutdown: Effect<never, never, boolean> = Effect.succeed(this.shutdownFlag.get)
-
-  shutdown: Effect<never, never, void> = Effect.suspendSucceedWith((_, fiberId) => {
-    this.shutdownFlag.set(true)
-    return Effect.whenEffect(
-      this.shutdownHook.succeed(undefined),
-      Effect.forEachPar(unsafePollAll(this.pollers), (deferred) => deferred.interruptAs(fiberId)) >
-        Effect.succeed(this.subscription.unsubscribe()) >
-        Effect.succeed(this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers))
-    ).unit()
-  }).uninterruptible()
-
-  offer(_: never, __tsplusTrace?: string): Effect<never, never, boolean> {
-    return Effect.succeedNow(false)
-  }
-
-  offerAll(_: Collection<never>, __tsplusTrace?: string): Effect<never, never, boolean> {
-    return Effect.succeedNow(false)
-  }
-
-  take: Effect<never, never, A> = Effect.suspendSucceedWith((_, fiberId) => {
-    if (this.shutdownFlag.get) {
-      return Effect.interrupt
-    }
-
-    const message = this.pollers.isEmpty
-      ? this.subscription.poll(EmptyMutableQueue)
-      : EmptyMutableQueue
-
-    if (message === EmptyMutableQueue) {
-      const deferred = Deferred.unsafeMake<never, A>(fiberId)
-
-      return Effect.suspendSucceed(() => {
-        this.pollers.offer(deferred)
-
-        this.subscribers.add(Tuple(this.subscription, this.pollers))
-        this.strategy.unsafeCompletePollers(
-          this.hub,
-          this.subscribers,
-          this.subscription,
-          this.pollers
-        )
-        return this.shutdownFlag.get ? Effect.interrupt : deferred.await()
-      }).onInterrupt(() => Effect.succeed(unsafeRemove(this.pollers, deferred)))
-    } else {
-      this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
-      return Effect.succeedNow(message)
-    }
-  })
-
-  takeAll: Effect<never, never, Chunk<A>> = Effect.suspendSucceed(() => {
-    if (this.shutdownFlag.get) {
-      return Effect.interrupt
-    }
-
-    const as = this.pollers.isEmpty
-      ? unsafePollAllSubscription(this.subscription)
-      : Chunk.empty<A>()
-
-    this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
-
-    return Effect.succeedNow(as)
-  })
-
-  takeUpTo(n: number): Effect<never, never, Chunk<A>> {
-    return Effect.suspendSucceed(() => {
-      if (this.shutdownFlag.get) {
+  const base: AbstractQueue<Dequeue<A>, typeof QueueProto> = {
+    capacity: hub.capacity,
+    size: Effect.suspendSucceed(
+      shutdownFlag.get
+        ? Effect.interrupt
+        : Effect.succeedNow(subscription.size())
+    ),
+    awaitShutdown: shutdownHook.await(),
+    shutdown: Effect.suspendSucceedWith((_, fiberId) => {
+      shutdownFlag.set(true)
+      return Effect.whenEffect(
+        shutdownHook.succeed(undefined),
+        Effect.forEachPar(unsafePollAll(pollers), (deferred) => deferred.interruptAs(fiberId)) >
+          Effect.succeed(subscription.unsubscribe()) >
+          Effect.succeed(strategy.unsafeOnHubEmptySpace(hub, subscribers))
+      ).unit()
+    }).uninterruptible(),
+    isShutdown: Effect.succeed(shutdownFlag.get),
+    take: Effect.suspendSucceedWith((_, fiberId) => {
+      if (shutdownFlag.get) {
         return Effect.interrupt
       }
-
-      const as = this.pollers.isEmpty
-        ? unsafePollN(this.subscription, n)
+      const message = pollers.isEmpty
+        ? subscription.poll(EmptyMutableQueue)
+        : EmptyMutableQueue
+      if (message === EmptyMutableQueue) {
+        const deferred = Deferred.unsafeMake<never, A>(fiberId)
+        return Effect.suspendSucceed(() => {
+          pollers.offer(deferred)
+          subscribers.add(Tuple(subscription, pollers))
+          strategy.unsafeCompletePollers(
+            hub,
+            subscribers,
+            subscription,
+            pollers
+          )
+          return shutdownFlag.get ? Effect.interrupt : deferred.await()
+        }).onInterrupt(() => Effect.succeed(unsafeRemove(pollers, deferred)))
+      } else {
+        strategy.unsafeOnHubEmptySpace(hub, subscribers)
+        return Effect.succeedNow(message)
+      }
+    }),
+    takeAll: Effect.suspendSucceed(() => {
+      if (shutdownFlag.get) {
+        return Effect.interrupt
+      }
+      const as = pollers.isEmpty
+        ? unsafePollAllSubscription(subscription)
         : Chunk.empty<A>()
-
-      this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
+      strategy.unsafeOnHubEmptySpace(hub, subscribers)
       return Effect.succeedNow(as)
-    })
+    }),
+    takeUpTo(max: number, __tsplusTrace?: string) {
+      return Effect.suspendSucceed(() => {
+        if (shutdownFlag.get) {
+          return Effect.interrupt
+        }
+        const as = pollers.isEmpty
+          ? unsafePollN(subscription, max)
+          : Chunk.empty<A>()
+        strategy.unsafeOnHubEmptySpace(hub, subscribers)
+        return Effect.succeedNow(as)
+      })
+    }
   }
+  return Object.assign(Object.create(QueueProto), base)
 }

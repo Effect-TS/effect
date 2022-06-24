@@ -1,4 +1,5 @@
-import { _In, _Out, QueueSym } from "@effect/core/io/Queue"
+import type { AbstractQueue } from "@effect/core/io/Queue"
+import { QueueProto } from "@effect/core/io/Queue"
 import { constVoid } from "@tsplus/stdlib/data/Function"
 
 export function findSink<A>(a: A): Sink<never, void, A, A, A> {
@@ -48,43 +49,20 @@ export function zipParLaw<A, B, C, E>(
 }
 
 export function createQueueSpy<A>(queue: Queue<A>): Queue<A> {
-  return new QueueSpyImplementation(queue)
-}
-
-class QueueSpyImplementation<A> implements Queue<A> {
-  readonly [QueueSym]: QueueSym = QueueSym
-  readonly [_In]!: (_: A) => void
-  readonly [_Out]!: () => A
-
-  #isShutdown = false
-
-  constructor(readonly queue: Queue<A>) {}
-
-  awaitShutdown: Effect.UIO<void> = this.queue.awaitShutdown
-
-  capacity: number = this.queue.capacity
-
-  isShutdown: Effect.UIO<boolean> = Effect.succeed(this.#isShutdown)
-
-  offer(a: A): Effect<never, never, boolean> {
-    return this.queue.offer(a)
+  let isShutdown = false
+  const base: AbstractQueue<Queue<A>, typeof QueueProto> = {
+    capacity: queue.capacity,
+    size: queue.size,
+    awaitShutdown: queue.awaitShutdown,
+    shutdown: Effect.succeed(() => {
+      isShutdown = true
+    }),
+    isShutdown: Effect.succeed(isShutdown),
+    take: queue.take,
+    takeAll: queue.takeAll,
+    takeUpTo: queue.takeUpTo,
+    offer: queue.offer,
+    offerAll: queue.offerAll
   }
-
-  offerAll(as: Collection<A>): Effect<never, never, boolean> {
-    return this.queue.offerAll(as)
-  }
-
-  shutdown: Effect.UIO<void> = Effect.succeed(() => {
-    this.#isShutdown = true
-  })
-
-  size: Effect.UIO<number> = this.queue.size
-
-  take: Effect<never, never, A> = this.queue.take
-
-  takeAll: Effect<never, never, Chunk<A>> = this.queue.takeAll
-
-  takeUpTo(n: number): Effect<never, never, Chunk<A>> {
-    return this.queue.takeUpTo(n)
-  }
+  return Object.assign(Object.create(QueueProto), base)
 }
