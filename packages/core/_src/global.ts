@@ -170,15 +170,7 @@ import { MetricKeyType } from "@effect/core/io/Metrics/MetricKeyType"
 /**
  * @tsplus global
  */
-import { Dequeue } from "@effect/core/io/Queue/definition/Dequeue"
-/**
- * @tsplus global
- */
-import { Enqueue } from "@effect/core/io/Queue/definition/Enqueue"
-/**
- * @tsplus global
- */
-import { Queue } from "@effect/core/io/Queue/definition/Queue"
+import { Dequeue, Enqueue, Queue } from "@effect/core/io/Queue/definition/common"
 /**
  * @tsplus global
  */

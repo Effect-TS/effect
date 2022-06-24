@@ -1,4 +1,5 @@
-import { _In, _Out, QueueSym } from "@effect/core/io/Queue/definition"
+import type { AbstractQueue } from "@effect/core/io/Queue/definition"
+import { _In, _Out, QueueProto } from "@effect/core/io/Queue/definition"
 import { unsafeCompleteDeferred } from "@effect/core/io/Queue/operations/_internal/unsafeCompleteDeferred"
 import { unsafeCompleteTakers } from "@effect/core/io/Queue/operations/_internal/unsafeCompleteTakers"
 import { unsafeOfferAll } from "@effect/core/io/Queue/operations/_internal/unsafeOfferAll"
@@ -634,173 +635,133 @@ export function unsafeCreateQueue<A>(
   shutdownFlag: AtomicBoolean,
   strategy: Strategy<A>
 ): Queue<A> {
-  return new UnsafeCreate(queue, takers, shutdownHook, shutdownFlag, strategy)
-}
-
-export class UnsafeCreate<A> implements Queue<A> {
-  readonly [QueueSym]: QueueSym = QueueSym
-  readonly [_In]!: (_: A) => void
-  readonly [_Out]!: () => A
-
-  constructor(
-    readonly queue: MutableQueue<A>,
-    readonly takers: MutableQueue<Deferred<never, A>>,
-    readonly shutdownHook: Deferred<never, void>,
-    readonly shutdownFlag: AtomicBoolean,
-    readonly strategy: Strategy<A>
-  ) {}
-
-  capacity: number = this.queue.capacity
-
-  size: Effect<never, never, number> = Effect.suspendSucceed(
-    this.shutdownFlag.get
-      ? Effect.interrupt
-      : Effect.succeedNow(
-        this.queue.size - this.takers.size + this.strategy.surplusSize
-      )
-  )
-
-  awaitShutdown: Effect<never, never, void> = this.shutdownHook.await()
-
-  isShutdown: Effect<never, never, boolean> = Effect.succeed(this.shutdownFlag.get)
-
-  shutdown: Effect<never, never, void> = Effect.suspendSucceedWith((_, fiberId) => {
-    this.shutdownFlag.set(true)
-
-    return Effect.whenEffect(
-      this.shutdownHook.succeed(undefined),
-      Effect.forEachParDiscard(unsafePollAll(this.takers), (deferred) => deferred.interruptAs(fiberId)) >
-        this.strategy.shutdown
-    ).unit()
-  }).uninterruptible()
-
-  offer(a: A, __tsplusTrace?: string): Effect<never, never, boolean> {
-    return Effect.suspendSucceed(() => {
-      if (this.shutdownFlag.get) {
-        return Effect.interrupt
-      }
-
-      let noRemaining: boolean
-      if (this.queue.isEmpty) {
-        const taker = this.takers.poll(EmptyMutableQueue)
-
-        if (taker !== EmptyMutableQueue) {
-          unsafeCompleteDeferred(taker, a)
-          noRemaining = true
+  const base: AbstractQueue<Queue<A>, typeof QueueProto> = {
+    capacity: queue.capacity,
+    size: Effect.suspendSucceed(
+      shutdownFlag.get
+        ? Effect.interrupt
+        : Effect.succeedNow(
+          queue.size - takers.size + strategy.surplusSize
+        )
+    ),
+    awaitShutdown: shutdownHook.await(),
+    isShutdown: Effect.succeed(shutdownFlag.get),
+    shutdown: Effect.suspendSucceedWith((_, fiberId) => {
+      shutdownFlag.set(true)
+      return Effect.whenEffect(
+        shutdownHook.succeed(undefined),
+        Effect.forEachParDiscard(unsafePollAll(takers), (deferred) => deferred.interruptAs(fiberId)) >
+          strategy.shutdown
+      ).unit()
+    }).uninterruptible(),
+    offer: (a, __tsplusTrace) =>
+      Effect.suspendSucceed(() => {
+        if (shutdownFlag.get) {
+          return Effect.interrupt
+        }
+        let noRemaining: boolean
+        if (queue.isEmpty) {
+          const taker = takers.poll(EmptyMutableQueue)
+          if (taker !== EmptyMutableQueue) {
+            unsafeCompleteDeferred(taker, a)
+            noRemaining = true
+          } else {
+            noRemaining = false
+          }
         } else {
           noRemaining = false
         }
-      } else {
-        noRemaining = false
-      }
-
-      if (noRemaining) {
-        return Effect.succeedNow(true)
-      }
-
-      // Not enough takers, offer to the queue
-      const succeeded = this.queue.offer(a)
-
-      unsafeCompleteTakers(this.strategy, this.queue, this.takers)
-
-      return succeeded
-        ? Effect.succeedNow(true)
-        : this.strategy.handleSurplus(
-          Chunk.single(a),
-          this.queue,
-          this.takers,
-          this.shutdownFlag
-        )
-    })
-  }
-
-  offerAll(as: Collection<A>, __tsplusTrace?: string): Effect<never, never, boolean> {
-    return Effect.suspendSucceed(() => {
-      if (this.shutdownFlag.get) {
+        if (noRemaining) {
+          return Effect.succeedNow(true)
+        }
+        // Not enough takers, offer to the queue
+        const succeeded = queue.offer(a)
+        unsafeCompleteTakers(strategy, queue, takers)
+        return succeeded
+          ? Effect.succeedNow(true)
+          : strategy.handleSurplus(
+            Chunk.single(a),
+            queue,
+            takers,
+            shutdownFlag
+          )
+      }),
+    offerAll(as: Collection<A>, __tsplusTrace?: string): Effect<never, never, boolean> {
+      return Effect.suspendSucceed(() => {
+        if (shutdownFlag.get) {
+          return Effect.interrupt
+        }
+        const as0 = Chunk.from(as)
+        const pTakers = queue.isEmpty
+          ? unsafePollN(takers, as0.size)
+          : Chunk.empty<Deferred<never, A>>()
+        const {
+          tuple: [forTakers, remaining]
+        } = as0.splitAt(pTakers.size)
+        pTakers.zip(forTakers).forEach(({ tuple: [taker, item] }) => {
+          unsafeCompleteDeferred(taker, item)
+        })
+        if (remaining.isEmpty) {
+          return Effect.succeedNow(true)
+        }
+        // Not enough takers, offer to the queue
+        const surplus = unsafeOfferAll(queue, remaining)
+        unsafeCompleteTakers(strategy, queue, takers)
+        return surplus.isEmpty
+          ? Effect.succeedNow(true)
+          : strategy.handleSurplus(
+            surplus,
+            queue,
+            takers,
+            shutdownFlag
+          )
+      })
+    },
+    take: Effect.suspendSucceedWith((_, fiberId) => {
+      if (shutdownFlag.get) {
         return Effect.interrupt
       }
-
-      const as0 = Chunk.from(as)
-
-      const pTakers = this.queue.isEmpty
-        ? unsafePollN(this.takers, as0.size)
-        : Chunk.empty<Deferred<never, A>>()
-      const {
-        tuple: [forTakers, remaining]
-      } = as0.splitAt(pTakers.size)
-
-      pTakers.zip(forTakers).forEach(({ tuple: [taker, item] }) => {
-        unsafeCompleteDeferred(taker, item)
-      })
-
-      if (remaining.isEmpty) {
-        return Effect.succeedNow(true)
+      const item = queue.poll(EmptyMutableQueue)
+      if (item !== EmptyMutableQueue) {
+        strategy.unsafeOnQueueEmptySpace(queue, takers)
+        return Effect.succeedNow(item)
+      } else {
+        // Add the deferred to takers, then:
+        // - Try to take again in case a value was added since
+        // - Wait for the deferred to be completed
+        // - Clean up resources in case of interruption
+        const deferred = Deferred.unsafeMake<never, A>(fiberId)
+        return Effect.suspendSucceed(() => {
+          takers.offer(deferred)
+          unsafeCompleteTakers(strategy, queue, takers)
+          return shutdownFlag.get ? Effect.interrupt : deferred.await()
+        }).onInterrupt(() => {
+          return Effect.succeed(unsafeRemove(takers, deferred))
+        })
       }
-
-      // Not enough takers, offer to the queue
-      const surplus = unsafeOfferAll(this.queue, remaining)
-
-      unsafeCompleteTakers(this.strategy, this.queue, this.takers)
-
-      return surplus.isEmpty
-        ? Effect.succeedNow(true)
-        : this.strategy.handleSurplus(
-          surplus,
-          this.queue,
-          this.takers,
-          this.shutdownFlag
-        )
-    })
-  }
-
-  take: Effect<never, never, A> = Effect.suspendSucceedWith((_, fiberId) => {
-    if (this.shutdownFlag.get) {
-      return Effect.interrupt
-    }
-
-    const item = this.queue.poll(EmptyMutableQueue)
-
-    if (item !== EmptyMutableQueue) {
-      this.strategy.unsafeOnQueueEmptySpace(this.queue, this.takers)
-      return Effect.succeedNow(item)
-    } else {
-      // Add the deferred to takers, then:
-      // - Try to take again in case a value was added since
-      // - Wait for the deferred to be completed
-      // - Clean up resources in case of interruption
-      const deferred = Deferred.unsafeMake<never, A>(fiberId)
-
-      return Effect.suspendSucceed(() => {
-        this.takers.offer(deferred)
-        unsafeCompleteTakers(this.strategy, this.queue, this.takers)
-        return this.shutdownFlag.get ? Effect.interrupt : deferred.await()
-      }).onInterrupt(() => {
-        return Effect.succeed(unsafeRemove(this.takers, deferred))
-      })
-    }
-  })
-
-  takeAll: Effect<never, never, Chunk<A>> = Effect.suspendSucceed(() =>
-    this.shutdownFlag.get
-      ? Effect.interrupt
-      : Effect.succeed(() => {
-        const as = unsafePollAll(this.queue)
-        this.strategy.unsafeOnQueueEmptySpace(this.queue, this.takers)
-        return as
-      })
-  )
-
-  takeUpTo(n: number, __tsplusTrace?: string): Effect<never, never, Chunk<A>> {
-    return Effect.suspendSucceed(() =>
-      this.shutdownFlag.get
+    }),
+    takeAll: Effect.suspendSucceed(() =>
+      shutdownFlag.get
         ? Effect.interrupt
         : Effect.succeed(() => {
-          const as = unsafePollN(this.queue, n)
-          this.strategy.unsafeOnQueueEmptySpace(this.queue, this.takers)
+          const as = unsafePollAll(queue)
+          strategy.unsafeOnQueueEmptySpace(queue, takers)
           return as
         })
-    )
+    ),
+    takeUpTo: (n: number, __tsplusTrace?: string) => {
+      return Effect.suspendSucceed(() =>
+        shutdownFlag.get
+          ? Effect.interrupt
+          : Effect.succeed(() => {
+            const as = unsafePollN(queue, n)
+            strategy.unsafeOnQueueEmptySpace(queue, takers)
+            return as
+          })
+      )
+    }
   }
+  return Object.assign(Object.create(QueueProto), base)
 }
 
 export function makeBackPressureStrategy<A>() {

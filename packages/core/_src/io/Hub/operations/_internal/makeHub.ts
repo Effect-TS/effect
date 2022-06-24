@@ -1,10 +1,10 @@
-import { HubSym } from "@effect/core/io/Hub/definition"
 import type { AtomicHub } from "@effect/core/io/Hub/operations/_internal/AtomicHub"
 import { makeSubscription } from "@effect/core/io/Hub/operations/_internal/makeSubscription"
 import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription"
 import { unsafePublishAll } from "@effect/core/io/Hub/operations/_internal/unsafePublishAll"
 import type { Strategy } from "@effect/core/io/Hub/operations/strategy"
-import { _In, _Out, QueueSym } from "@effect/core/io/Queue/definition"
+import type { AbstractQueue } from "@effect/core/io/Queue/definition"
+import { QueueProto } from "@effect/core/io/Queue/definition"
 
 /**
  * Creates a hub with the specified strategy.
@@ -35,113 +35,67 @@ export function unsafeMakeHub<A>(
   shutdownFlag: AtomicBoolean,
   strategy: Strategy<A>
 ): Hub<A> {
-  return new UnsafeMakeHubImplementation(
-    hub,
-    subscribers,
-    scope,
-    shutdownHook,
-    shutdownFlag,
-    strategy
-  )
-}
-
-class UnsafeMakeHubImplementation<A> implements Hub<A> {
-  readonly [HubSym]: HubSym = HubSym
-  readonly [QueueSym]: QueueSym = QueueSym
-  readonly [_In]!: (_: A) => void
-
-  capacity: number
-
-  size: Effect<never, never, number>
-
-  awaitShutdown: Effect<never, never, void>
-
-  shutdown: Effect<never, never, void>
-
-  isShutdown: Effect<never, never, boolean>
-
-  subscribe: Effect<Scope, never, Dequeue<A>>
-
-  constructor(
-    private hub: AtomicHub<A>,
-    private subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
-    scope: Scope.Closeable,
-    shutdownHook: Deferred<never, void>,
-    private shutdownFlag: AtomicBoolean,
-    private strategy: Strategy<A>
-  ) {
-    this.capacity = hub.capacity
-
-    this.size = Effect.suspendSucceed(
+  const base: AbstractQueue<Hub<A>, typeof QueueProto> = {
+    capacity: hub.capacity,
+    size: Effect.suspendSucceed(
       shutdownFlag.get ? Effect.interrupt : Effect.succeed(hub.size())
-    )
-
-    this.awaitShutdown = shutdownHook.await()
-
-    this.shutdown = Effect.suspendSucceedWith((_, fiberId) => {
+    ),
+    awaitShutdown: shutdownHook.await(),
+    shutdown: Effect.suspendSucceedWith((_, fiberId) => {
       shutdownFlag.set(true)
       return Effect.whenEffect(
         shutdownHook.succeed(undefined),
         scope.close(Exit.interrupt(fiberId)) > strategy.shutdown
       ).unit()
-    }).uninterruptible()
-
-    this.isShutdown = Effect.succeed(shutdownFlag.get)
-
-    this.subscribe = Effect.acquireRelease(
+    }).uninterruptible(),
+    isShutdown: Effect.succeed(shutdownFlag.get),
+    subscribe: Effect.acquireRelease(
       makeSubscription(hub, subscribers, strategy).tap((dequeue) => scope.addFinalizer(dequeue.shutdown)),
       (dequeue) => dequeue.shutdown
-    )
+    ),
+    offer(a: A, __tsplusTrace?: string): Effect<never, never, boolean> {
+      return this.publish(a)
+    },
+    offerAll(as: Collection<A>, __tsplusTrace?: string): Effect<never, never, boolean> {
+      return this.publishAll(as)
+    },
+    publish(a: A, __tsplusTrace?: string) {
+      return Effect.suspendSucceed(() => {
+        if (shutdownFlag.get) {
+          return Effect.interrupt
+        }
+
+        if (hub.publish(a)) {
+          strategy.unsafeCompleteSubscribers(hub, subscribers)
+          return Effect.succeedNow(true)
+        }
+
+        return strategy.handleSurplus(
+          hub,
+          subscribers,
+          Chunk.single(a),
+          shutdownFlag
+        )
+      })
+    },
+    publishAll(as: Collection<A>, __tsplusTrace?: string): Effect<never, never, boolean> {
+      return Effect.suspendSucceed(() => {
+        if (shutdownFlag.get) {
+          return Effect.interrupt
+        }
+        const surplus = unsafePublishAll(hub, as)
+        strategy.unsafeCompleteSubscribers(hub, subscribers)
+        if (surplus.isEmpty) {
+          return Effect.succeedNow(true)
+        }
+        return strategy.handleSurplus(
+          hub,
+          subscribers,
+          surplus,
+          shutdownFlag
+        )
+      })
+    }
   }
-
-  offer(a: A, __tsplusTrace?: string): Effect<never, never, boolean> {
-    return this.publish(a)
-  }
-
-  offerAll(as: Collection<A>, __tsplusTrace?: string): Effect<never, never, boolean> {
-    return this.publishAll(as)
-  }
-
-  publish(a: A, __tsplusTrace?: string): Effect<never, never, boolean> {
-    return Effect.suspendSucceed(() => {
-      if (this.shutdownFlag.get) {
-        return Effect.interrupt
-      }
-
-      if (this.hub.publish(a)) {
-        this.strategy.unsafeCompleteSubscribers(this.hub, this.subscribers)
-        return Effect.succeedNow(true)
-      }
-
-      return this.strategy.handleSurplus(
-        this.hub,
-        this.subscribers,
-        Chunk.single(a),
-        this.shutdownFlag
-      )
-    })
-  }
-
-  publishAll(as: Collection<A>, __tsplusTrace?: string): Effect<never, never, boolean> {
-    return Effect.suspendSucceed(() => {
-      if (this.shutdownFlag.get) {
-        return Effect.interrupt
-      }
-
-      const surplus = unsafePublishAll(this.hub, as)
-
-      this.strategy.unsafeCompleteSubscribers(this.hub, this.subscribers)
-
-      if (surplus.isEmpty) {
-        return Effect.succeedNow(true)
-      }
-
-      return this.strategy.handleSurplus(
-        this.hub,
-        this.subscribers,
-        surplus,
-        this.shutdownFlag
-      )
-    })
-  }
+  return Object.assign(Object.create(QueueProto), base)
 }
