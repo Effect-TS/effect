@@ -1,3 +1,5 @@
+import { DeferredState } from "@effect/core/io/Deferred/_internal/DeferredState"
+
 export const DeferredSym = Symbol.for("@effect/core/io/Deferred")
 export type DeferredSym = typeof DeferredSym
 
@@ -18,11 +20,12 @@ export type _A = typeof _A
  *
  * @tsplus type ets/Deferred
  */
-export interface Deferred<E, A> {
-  readonly [DeferredSym]: DeferredSym
-  readonly [_E]: () => E
-  readonly [_A]: () => A
-}
+export interface Deferred<E, A> extends DeferredInternal<E, A> {}
+
+/**
+ * @tsplus type ets/Deferred/Aspects
+ */
+export interface DeferredAspects {}
 
 /**
  * @tsplus type ets/Deferred/Ops
@@ -30,11 +33,214 @@ export interface Deferred<E, A> {
 export interface DeferredOps {
   $: DeferredAspects
 }
+
 export const Deferred: DeferredOps = {
   $: {}
 }
 
-/**
- * @tsplus type ets/Deferred/Aspects
- */
-export interface DeferredAspects {}
+function interruptJoiner<E, A>(
+  self: Deferred<E, A>,
+  joiner: (a: Effect.IO<E, A>) => void,
+  __tsplusTrace?: string
+): Effect<never, never, void> {
+  return Effect.succeed(() => {
+    const state = self.state.get
+    if (state._tag === "Pending") {
+      self.state.set(DeferredState.pending(state.joiners.filter((j) => j !== joiner)))
+    }
+  })
+}
+
+export class DeferredInternal<E, A> {
+  readonly [DeferredSym]: DeferredSym = DeferredSym
+  readonly [_E]!: () => E
+  readonly [_A]!: () => A
+
+  constructor(
+    readonly state: AtomicReference<DeferredState<E, A>>,
+    readonly blockingOn: FiberId
+  ) {}
+
+  /**
+   * Retrieves the value of the promise, suspending the fiber running the action
+   * until the result is available.
+   */
+  await<E, A>(this: Deferred<E, A>, __tsplusTrace?: string | undefined): Effect<never, E, A> {
+    return Effect.asyncInterruptBlockingOn((k) => {
+      const state = this.state.get
+
+      switch (state._tag) {
+        case "Done": {
+          return Either.right(state.value)
+        }
+        case "Pending": {
+          this.state.set(DeferredState.pending([k, ...state.joiners]))
+          return Either.left(interruptJoiner(this, k))
+        }
+      }
+    }, this.blockingOn)
+  }
+
+  /**
+   * Completes the deferred with the result of the specified effect. If the
+   * deferred has already been completed, the method will produce false.
+   *
+   * Note that `Deferred.completeWith` will be much faster, so consider using
+   * that if you do not need to memoize the result of the specified effect.
+   */
+  complete<E, A>(
+    this: Deferred<E, A>,
+    effect: Effect<never, E, A>,
+    __tsplusTrace?: string | undefined
+  ): Effect<never, never, boolean> {
+    return effect.intoDeferred(this)
+  }
+
+  /**
+   * Completes the deferred with the result of the specified effect. If the
+   * deferred has already been completed, the method will produce false.
+   *
+   * Note that `Deferred.completeWith` will be much faster, so consider using
+   * that if you do not need to memoize the result of the specified effect.
+   */
+  completeWith<E, A>(
+    this: Deferred<E, A>,
+    effect: Effect<never, E, A>,
+    __tsplusTrace?: string | undefined
+  ): Effect<never, never, boolean> {
+    return Effect.succeed(() => {
+      const state = this.state.get
+      switch (state._tag) {
+        case "Done": {
+          return false
+        }
+        case "Pending": {
+          this.state.set(DeferredState.done(effect))
+          state.joiners.forEach((f) => {
+            f(effect)
+          })
+          return true
+        }
+      }
+    })
+  }
+
+  /**
+   * Kills the promise with the specified error, which will be propagated to all
+   * fibers waiting on the value of the promise.
+   */
+  die<E, A>(
+    this: Deferred<E, A>,
+    defect: LazyArg<unknown>,
+    __tsplusTrace?: string | undefined
+  ): Effect<never, never, boolean> {
+    return this.completeWith(Effect.die(defect))
+  }
+
+  /**
+   * Exits the deferred with the specified exit, which will be propagated to all
+   * fibers waiting on the value of the deferred.
+   */
+  done<E, A>(
+    this: Deferred<E, A>,
+    exit: LazyArg<Exit<E, A>>,
+    __tsplusTrace?: string | undefined
+  ): Effect<never, never, boolean> {
+    return this.completeWith(Effect.done(exit))
+  }
+
+  /**
+   * Fails the deferred with the specified error, which will be propagated to all
+   * fibers waiting on the value of the deferred.
+   */
+  fail<E, A>(this: Deferred<E, A>, e: LazyArg<E>, __tsplusTrace?: string | undefined): Effect<never, never, boolean> {
+    return this.completeWith(Effect.fail(e), __tsplusTrace)
+  }
+
+  /**
+   * Fails the deferred with the specified cause, which will be propagated to all
+   * fibers waiting on the value of the deferred.
+   */
+  failCause<E, A>(
+    this: Deferred<E, A>,
+    cause: LazyArg<Cause<E>>,
+    __tsplusTrace?: string | undefined
+  ): Effect<never, never, boolean> {
+    return this.completeWith(Effect.failCause(cause))
+  }
+
+  /**
+   * Completes the deferred with interruption. This will interrupt all fibers
+   * waiting on the value of the deferred as by the fiber calling this method.
+   */
+  interrupt<E, A>(this: Deferred<E, A>, __tsplusTrace?: string | undefined): Effect<never, never, boolean> {
+    return Effect.fiberId.flatMap((id) => this.completeWith(Effect.interruptAs(id)))
+  }
+
+  /**
+   * Completes the deferred with interruption. This will interrupt all fibers
+   * waiting on the value of the deferred as by the fiber calling this method.
+   */
+  interruptAs<E, A>(
+    this: Deferred<E, A>,
+    fiberId: LazyArg<FiberId>,
+    __tsplusTrace?: string | undefined
+  ): Effect<never, never, boolean> {
+    return this.completeWith(Effect.interruptAs(fiberId))
+  }
+
+  /**
+   * Checks for completion of this `Promise`. Produces true if this promise has
+   * already been completed with a value or an error and false otherwise.
+   */
+  isDone<E, A>(this: Deferred<E, A>, __tsplusTrace?: string | undefined): Effect<never, never, boolean> {
+    return Effect.succeed(this.state.get._tag === "Done")
+  }
+
+  /**
+   * Checks for completion of this `Deferred`. Returns the result effect if this
+   * deferred has already been completed or a `None` otherwise.
+   */
+  poll<E, A>(
+    this: Deferred<E, A>,
+    __tsplusTrace?: string | undefined
+  ): Effect<never, never, Maybe<Effect<never, E, A>>> {
+    return Effect.succeed(() => {
+      const state = this.state.get
+      switch (state._tag) {
+        case "Pending": {
+          return Maybe.none
+        }
+        case "Done": {
+          return Maybe.some(state.value)
+        }
+      }
+    })
+  }
+
+  /**
+   * Completes the deferred with the specified value.
+   */
+  succeed<E, A>(
+    this: Deferred<E, A>,
+    value: LazyArg<A>,
+    __tsplusTrace?: string | undefined
+  ): Effect<never, never, boolean> {
+    return this.completeWith(Effect.succeed(value))
+  }
+
+  /**
+   * Unsafe version of `done`.
+   */
+  unsafeDone<E, A>(this: Deferred<E, A>, effect: Effect<never, E, A>): void {
+    const state = this.state.get
+    if (state._tag === "Pending") {
+      this.state.set(DeferredState.done(effect))
+      Array.from(state.joiners)
+        .reverse()
+        .forEach((f) => {
+          f(effect)
+        })
+    }
+  }
+}
