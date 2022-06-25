@@ -1,6 +1,9 @@
-import type { AbstractQueue } from "@effect/core/io/Queue"
-import { QueueProto } from "@effect/core/io/Queue"
+import { Effect } from "@effect/core/io/Effect"
+import { _In, _Out, QueueSym } from "@effect/core/io/Queue"
+import type { Chunk } from "@tsplus/stdlib/collections/Chunk"
+import type { Collection } from "@tsplus/stdlib/collections/Collection"
 import { constVoid } from "@tsplus/stdlib/data/Function"
+import { Maybe } from "@tsplus/stdlib/data/Maybe"
 
 export function findSink<A>(a: A): Sink<never, void, A, A, A> {
   return Sink.fold<A, Maybe<A>>(
@@ -49,20 +52,70 @@ export function zipParLaw<A, B, C, E>(
 }
 
 export function createQueueSpy<A>(queue: Queue<A>): Queue<A> {
-  let isShutdown = false
-  const base: AbstractQueue<Queue<A>, typeof QueueProto> = {
-    capacity: queue.capacity,
-    size: queue.size,
-    awaitShutdown: queue.awaitShutdown,
-    shutdown: Effect.succeed(() => {
-      isShutdown = true
-    }),
-    isShutdown: Effect.succeed(isShutdown),
-    take: queue.take,
-    takeAll: queue.takeAll,
-    takeUpTo: queue.takeUpTo,
-    offer: queue.offer,
-    offerAll: queue.offerAll
+  return new Spy(queue)
+}
+
+class Spy<A> implements Queue<A> {
+  private isShutdownInternal = false
+  constructor(readonly queue: Queue<A>) {}
+
+  get [_In](): (_: A) => void {
+    throw new Error("Method not implemented.")
   }
-  return Object.assign(Object.create(QueueProto), base)
+
+  get [QueueSym](): QueueSym {
+    return this.queue[QueueSym]
+  }
+
+  get [_Out](): () => A {
+    throw new Error("Method not implemented.")
+  }
+
+  offer(a: A, __tsplusTrace?: string | undefined) {
+    return this.queue.offer(a)
+  }
+  offerAll(as: Collection<A>, __tsplusTrace?: string | undefined) {
+    return this.queue.offerAll(as)
+  }
+  get capacity(): number {
+    return this.queue.capacity
+  }
+  get size(): Effect<never, never, number> {
+    return this.queue.size
+  }
+  get awaitShutdown(): Effect<never, never, void> {
+    return this.queue.awaitShutdown
+  }
+  get isShutdown(): Effect<never, never, boolean> {
+    return Effect.succeed(this.isShutdownInternal)
+  }
+  get shutdown(): Effect<never, never, void> {
+    return Effect.succeed(() => {
+      this.isShutdownInternal = true
+    })
+  }
+  isFull(__tsplusTrace?: string | undefined): Effect<never, never, boolean> {
+    return this.queue.isFull()
+  }
+  isEmpty(__tsplusTrace?: string | undefined): Effect<never, never, boolean> {
+    return this.queue.isEmpty()
+  }
+  get take(): Effect<never, never, A> {
+    return this.queue.take
+  }
+  get takeAll(): Effect<never, never, Chunk<A>> {
+    return this.queue.takeAll
+  }
+  takeUpTo(max: number, __tsplusTrace?: string | undefined): Effect<never, never, Chunk<A>> {
+    return this.queue.takeUpTo(max)
+  }
+  takeBetween(min: number, max: number): Effect<never, never, Chunk<A>> {
+    return this.queue.takeBetween(min, max)
+  }
+  takeN(n: number, __tsplusTrace?: string | undefined): Effect<never, never, Chunk<A>> {
+    return this.queue.takeN(n)
+  }
+  poll(__tsplusTrace?: string | undefined): Effect<never, never, Maybe<A>> {
+    return this.queue.poll()
+  }
 }

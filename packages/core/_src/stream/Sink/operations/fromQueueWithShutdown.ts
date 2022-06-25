@@ -9,8 +9,6 @@ export function fromQueueWithShutdown<In>(
   __tsplusTrace?: string
 ): Sink<never, never, In, never, void> {
   return Sink.unwrapScoped(
-    Effect.acquireRelease(Effect.succeed(queue), (queue) => queue.shutdown).map(
-      (queue) => Sink.fromQueue(queue)
-    )
+    Effect.acquireRelease(Effect.succeed(queue), (q) => q.shutdown).map((q) => Sink.fromQueue(q))
   )
 }

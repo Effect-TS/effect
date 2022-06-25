@@ -1,15 +1,14 @@
-import { _Out } from "@effect/core/io/Queue/definition/symbols"
-import type { _In } from "@effect/core/io/Queue/definition/symbols"
+import { _In, _Out } from "@effect/core/io/Queue/definition/symbols"
 
 export interface Enqueue<A> extends CommonQueue<A> {
   /**
    * Internal Variance Marker
    */
-  readonly [_In]: (_: A) => void
+  get [_In](): (_: A) => void
   /**
    * Places one value in the queue.
    */
-  readonly offer: (a: A, __tsplusTrace?: string) => Effect<never, never, boolean>
+  offer(this: this, a: A, __tsplusTrace?: string): Effect<never, never, boolean>
   /**
    * For Bounded Queue: uses the `BackPressure` Strategy, places the values in
    * the queue and always returns true. If the queue has reached capacity, then
@@ -25,7 +24,7 @@ export interface Enqueue<A> extends CommonQueue<A> {
    * For Dropping Queue: uses `Dropping` Strategy, It places the values in the
    * queue but if there is no room it will not enqueue them and return false.
    */
-  readonly offerAll: (as: Collection<A>, __tsplusTrace?: string) => Effect<never, never, boolean>
+  offerAll(this: this, as: Collection<A>, __tsplusTrace?: string): Effect<never, never, boolean>
 }
 
 export const QueueSym = Symbol.for("@effect/core/io/Queue")
@@ -64,11 +63,11 @@ export interface CommonQueue<A> {
   /**
    * Checks whether the queue is currently full.
    */
-  isFull(this: Enqueue<A> | Dequeue<A>, __tsplusTrace?: string): Effect<never, never, boolean>
+  isFull(this: this, __tsplusTrace?: string): Effect<never, never, boolean>
   /**
    * Checks whether the queue is currently empty.
    */
-  isEmpty(this: Enqueue<A> | Dequeue<A>, __tsplusTrace?: string): Effect<never, never, boolean>
+  isEmpty(this: this, __tsplusTrace?: string): Effect<never, never, boolean>
 }
 
 export interface Dequeue<A> extends CommonQueue<A> {
@@ -89,23 +88,23 @@ export interface Dequeue<A> extends CommonQueue<A> {
   /**
    * Takes up to max number of values from the queue.
    */
-  takeUpTo(this: Dequeue<A>, max: number, __tsplusTrace?: string): Effect<never, never, Chunk<A>>
+  takeUpTo(this: this, max: number, __tsplusTrace?: string): Effect<never, never, Chunk<A>>
   /**
    * Takes a number of elements from the queue between the specified minimum and
    * maximum. If there are fewer than the minimum number of elements available,
    * suspends until at least the minimum number of elements have been collected.
    */
-  takeBetween(this: Dequeue<A>, min: number, max: number): Effect<never, never, Chunk<A>>
+  takeBetween(this: this, min: number, max: number): Effect<never, never, Chunk<A>>
   /**
    * Takes the specified number of elements from the queue. If there are fewer
    * than the specified number of elements available, it suspends until they
    * become available.
    */
-  takeN(this: Dequeue<A>, n: number, __tsplusTrace?: string): Effect<never, never, Chunk<A>>
+  takeN(this: this, n: number, __tsplusTrace?: string): Effect<never, never, Chunk<A>>
   /**
    * Take the head option of values in the queue.
    */
-  poll(this: Dequeue<A>, __tsplusTrace?: string): Effect<never, never, Maybe<A>>
+  poll(this: this, __tsplusTrace?: string): Effect<never, never, Maybe<A>>
 }
 
 export const CommonProto = {
