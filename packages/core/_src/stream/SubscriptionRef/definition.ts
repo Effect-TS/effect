@@ -1,51 +1,37 @@
-import { _A, RefSym } from "@effect/core/io/Ref/definition"
-import { SynchronizedRefSym } from "@effect/core/io/Ref/Synchronized/definition"
-import { concreteSynchronizedRef } from "@effect/core/io/Ref/Synchronized/operations/_internal/SynchronizedRefInternal"
+import { _A } from "@effect/core/io/Ref/definition"
 
 export const SubscriptionRefSym = Symbol.for("@effect/core/stream/SubscriptionRef")
 export type SubscriptionRefSym = typeof SubscriptionRefSym
 
 /**
- * A `SubscriptionRef<A>` contains a `Ref.Synchronized` with a value of type `A`
- * and a `Stream` that can be subscribed to in order to receive the current
- * value as well as all changes to the value.
+ * A `SubscriptionRef[A]` is a `Ref` that can be subscribed to in order to
+ * receive the current value as well as all changes to the value.
  *
  * @tsplus type ets/SubscriptionRef
- * @tsplus companion ets/SubscriptionRef/Ops
  */
-export class SubscriptionRef<A> implements Ref.Synchronized<A> {
-  readonly [SubscriptionRefSym]: SubscriptionRefSym = SubscriptionRefSym
-  readonly [SynchronizedRefSym]: SynchronizedRefSym = SynchronizedRefSym
-  readonly [RefSym]: RefSym = RefSym
-  readonly [_A]!: () => A
-
-  constructor(public ref: Ref.Synchronized<A>, public hub: Hub<A>) {}
-
-  get get(): Effect<never, never, A> {
-    return this.ref.get()
-  }
-
-  get changes(): Stream<never, never, A> {
-    return Stream.unwrapScoped(
-      this.ref.modifyEffect((a) => Stream.fromHubScoped(this.hub).map((stream) => Tuple(Stream(a) + stream, a)))
-    )
-  }
-
-  set(a: A, __tsplusTrace?: string): Effect<never, never, void> {
-    return this.ref.set(a)
-  }
-
-  modify<B>(f: (a: A) => Tuple<[B, A]>, __tsplusTrace?: string | undefined): Effect<never, never, B> {
-    concreteSynchronizedRef(this.ref)
-    return this.ref.semaphore.withPermit(
-      this.modifyEffect((a) => Effect.succeedNow(f(a)))
-    )
-  }
-
-  modifyEffect<R, E, B>(
-    f: (a: A) => Effect<R, E, Tuple<[B, A]>>,
-    __tsplusTrace?: string
-  ): Effect<R, E, B> {
-    return this.ref.modifyEffect((a) => f(a).tap(({ tuple: [_, a] }) => this.hub.publish(a)))
-  }
+export interface SubscriptionRef<A> extends Ref.Synchronized<A> {
+  /**
+   * Internal Discriminator
+   */
+  readonly [SubscriptionRefSym]: SubscriptionRefSym
+  /**
+   * A stream containing the current value of the `Ref` as well as all changes
+   * to that value.
+   */
+  get changes(): Stream.UIO<A>
 }
+
+/**
+ * @tsplus type ets/SubscriptionRef/Ops
+ */
+export interface SubscriptionRefOps {
+  $: SubscriptionRefAspects
+}
+export const SubscriptionRef: SubscriptionRefOps = {
+  $: {}
+}
+
+/**
+ * @tsplus type ets/SubscriptionRef/Aspects
+ */
+export interface SubscriptionRefAspects {}
