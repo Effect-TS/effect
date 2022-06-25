@@ -1,5 +1,5 @@
-import { DeferredInternal } from "@effect/core/io/Deferred/operations/_internal/DeferredInternal"
-import { DeferredState } from "@effect/core/io/Deferred/operations/_internal/DeferredState"
+import { DeferredState } from "@effect/core/io/Deferred/_internal/DeferredState"
+import { DeferredInternal } from "@effect/core/io/Deferred/definition"
 
 /**
  * Unsafely makes a new `Deferred`.
