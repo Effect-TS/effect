@@ -13,7 +13,7 @@ export function cachedInvalidate_<R, E, A>(
 ): Effect<R, never, Tuple<[Effect<never, E, A>, Effect<never, never, void>]>> {
   return Do(($) => {
     const environment = $(Effect.environment<R>())
-    const cache = $(SynchronizedRef.make<Maybe<Tuple<[number, Deferred<E, A>]>>>(Maybe.none))
+    const cache = $(Ref.Synchronized.make<Maybe<Tuple<[number, Deferred<E, A>]>>>(Maybe.none))
     return Tuple(get(self, timeToLive, cache).provideEnvironment(environment), invalidate(cache))
   })
 }
@@ -43,7 +43,7 @@ function compute<R, E, A>(
 function get<R, E, A>(
   self: Effect<R, E, A>,
   timeToLive: Duration,
-  cache: SynchronizedRef<Maybe<Tuple<[number, Deferred<E, A>]>>>
+  cache: Ref.Synchronized<Maybe<Tuple<[number, Deferred<E, A>]>>>
 ): Effect<R, E, A> {
   return Effect.uninterruptibleMask(({ restore }) =>
     Clock.currentTime.flatMap((time) =>
@@ -63,7 +63,7 @@ function get<R, E, A>(
 }
 
 function invalidate<E, A>(
-  cache: SynchronizedRef<Maybe<Tuple<[number, Deferred<E, A>]>>>
+  cache: Ref.Synchronized<Maybe<Tuple<[number, Deferred<E, A>]>>>
 ): Effect<never, never, void> {
   return cache.set(Maybe.none)
 }

@@ -7,7 +7,7 @@ const failure = "failure"
 describe.concurrent("SynchronizedRef", () => {
   describe.concurrent("simple", () => {
     it("get", async () => {
-      const program = SynchronizedRef.make(current).flatMap((ref) => ref.get())
+      const program = Ref.Synchronized.make(current).flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
 
@@ -18,7 +18,7 @@ describe.concurrent("SynchronizedRef", () => {
   describe.concurrent("getAndUpdateEffect", () => {
     it("happy path", async () => {
       const program = Effect.Do()
-        .bind("ref", () => SynchronizedRef.make(current))
+        .bind("ref", () => Ref.Synchronized.make(current))
         .bind("v1", ({ ref }) => ref.getAndUpdateEffect(() => Effect.succeed(update)))
         .bind("v2", ({ ref }) => ref.get())
 
@@ -29,7 +29,9 @@ describe.concurrent("SynchronizedRef", () => {
     })
 
     it("with failure", async () => {
-      const program = SynchronizedRef.make(current).flatMap((ref) => ref.getAndUpdateEffect(() => Effect.fail(failure)))
+      const program = Ref.Synchronized.make(current).flatMap((ref) =>
+        ref.getAndUpdateEffect(() => Effect.fail(failure))
+      )
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -40,7 +42,7 @@ describe.concurrent("SynchronizedRef", () => {
   describe.concurrent("getAndUpdateSomeEffect", () => {
     it("happy path", async () => {
       const program = Effect.Do()
-        .bind("ref", () => SynchronizedRef.make<State>(State.Active))
+        .bind("ref", () => Ref.Synchronized.make<State>(State.Active))
         .bind(
           "v1",
           ({ ref }) =>
@@ -58,7 +60,7 @@ describe.concurrent("SynchronizedRef", () => {
 
     it("twice", async () => {
       const program = Effect.Do()
-        .bind("ref", () => SynchronizedRef.make<State>(State.Active))
+        .bind("ref", () => Ref.Synchronized.make<State>(State.Active))
         .bind(
           "v1",
           ({ ref }) =>
@@ -84,7 +86,7 @@ describe.concurrent("SynchronizedRef", () => {
     })
 
     it("with failure", async () => {
-      const program = SynchronizedRef.make<State>(State.Active).flatMap((ref) =>
+      const program = Ref.Synchronized.make<State>(State.Active).flatMap((ref) =>
         ref.getAndUpdateSomeEffect((state) => state.isActive() ? Maybe.some(Effect.fail(failure)) : Maybe.none)
       )
 
@@ -95,11 +97,11 @@ describe.concurrent("SynchronizedRef", () => {
 
     it("interrupt parent fiber and update", async () => {
       const program = Effect.Do()
-        .bind("deferred", () => Deferred.make<never, SynchronizedRef<State>>())
+        .bind("deferred", () => Deferred.make<never, Ref.Synchronized<State>>())
         .bind("latch", () => Deferred.make<never, void>())
         .bindValue(
           "makeAndWait",
-          ({ deferred, latch }) => deferred.complete(SynchronizedRef.make<State>(State.Active)) > latch.await()
+          ({ deferred, latch }) => deferred.complete(Ref.Synchronized.make<State>(State.Active)) > latch.await()
         )
         .bind("fiber", ({ makeAndWait }) => makeAndWait.fork())
         .bind("ref", ({ deferred }) => deferred.await())

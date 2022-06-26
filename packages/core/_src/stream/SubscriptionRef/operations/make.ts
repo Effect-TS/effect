@@ -1,7 +1,12 @@
+import {
+  SubscriptionRefInternal
+} from "@effect/core/stream/SubscriptionRef/operations/_internal/SubscriptionRefInternal"
+
 /**
  * Creates a new `SubscriptionRef` with the specified value.
  *
  * @tsplus static ets/SubscriptionRef/Ops make
+ * @tsplus static ets/SubscriptionRef/Ops __call
  */
 export function make<A>(
   value: LazyArg<A>,
@@ -9,8 +14,13 @@ export function make<A>(
 ): Effect<never, never, SubscriptionRef<A>> {
   return Effect.suspendSucceed(
     Effect.struct({
-      ref: SynchronizedRef.make(value),
+      ref: Ref.Synchronized.make(value),
       hub: Hub.unbounded<A>()
-    }).map(({ hub, ref }) => new SubscriptionRef(ref, hub))
+    }).map(({ hub, ref }) =>
+      Object.setPrototypeOf({
+        ref,
+        hub
+      }, SubscriptionRefInternal)
+    )
   )
 }

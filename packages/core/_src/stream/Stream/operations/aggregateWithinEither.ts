@@ -36,7 +36,7 @@ export function aggregateWithinEither_<R, E, A, R2, E2, A2, S, R3, B, C>(
     Effect.tuple(
       Handoff.make<Signal>(),
       Ref.make<EndReason>(SinkEndReason.ScheduleEnd),
-      Ref.make(Chunk.empty<A2>()),
+      Ref.make(Chunk.empty<A | A2>()),
       schedule().driver,
       Ref.make(false)
     )
@@ -155,7 +155,7 @@ function handleSide<S, R, R2, E, A, A2, B, C>(
   sink: SinkInternal<R, E, A | A2, A2, B>,
   handoff: Handoff<HandoffSignal<E, A>>,
   sinkEndReason: Ref<SinkEndReason>,
-  sinkLeftovers: Ref<Chunk<A2>>,
+  sinkLeftovers: Ref<Chunk<A | A2>>,
   scheduleDriver: Driver<S, R2, Maybe<B>, C>,
   consumed: Ref<boolean>,
   handoffProducer: Channel<never, E, Chunk<A>, unknown, never, never, unknown>,

@@ -5,7 +5,7 @@ import { instruction } from "@effect/core/io/Layer/definition"
  */
 export class MemoMap {
   constructor(
-    readonly ref: SynchronizedRef<
+    readonly ref: Ref.Synchronized<
       Map<Layer<any, any, any>, Tuple<[Effect.IO<any, any>, Scope.Finalizer]>>
     >
   ) {}
@@ -40,9 +40,9 @@ export class MemoMap {
           }
           case "None": {
             return Effect.Do()
-              .bind("observers", () => SynchronizedRef.make(0))
+              .bind("observers", () => Ref.Synchronized.make(0))
               .bind("deferred", () => Deferred.make<E, Env<ROut>>())
-              .bind("finalizerRef", () => SynchronizedRef.make<Scope.Finalizer>(() => () => Effect.unit))
+              .bind("finalizerRef", () => Ref.Synchronized.make<Scope.Finalizer>(() => () => Effect.unit))
               .bindValue("resource", ({ deferred, finalizerRef, observers }) =>
                 Effect.uninterruptibleMask(({ restore }) =>
                   Effect.Do()
@@ -103,7 +103,7 @@ export class MemoMap {
  * Creates an empty `MemoMap`.
  */
 export function makeMemoMap(): Effect.UIO<MemoMap> {
-  return SynchronizedRef.make<
+  return Ref.Synchronized.make<
     Map<Layer<any, any, any>, Tuple<[Effect.IO<any, any>, Scope.Finalizer]>>
   >(new Map()).flatMap((r) => Effect.succeed(new MemoMap(r)))
 }

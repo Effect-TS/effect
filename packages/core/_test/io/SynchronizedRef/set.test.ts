@@ -4,7 +4,7 @@ const update = "new value"
 describe.concurrent("SynchronizedRef", () => {
   describe.concurrent("set", () => {
     it("simple", async () => {
-      const program = SynchronizedRef.make(current)
+      const program = Ref.Synchronized.make(current)
         .tap((ref) => ref.set(update))
         .flatMap((ref) => ref.get())
 

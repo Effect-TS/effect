@@ -7,7 +7,7 @@ export function memoizeF<R, E, A, B>(
   f: (a: A) => Effect<R, E, B>,
   __tsplusTrace?: string
 ): Effect<never, never, (a: A) => Effect<R, E, B>> {
-  return SynchronizedRef.make(new Map<A, Deferred<E, B>>()).map(
+  return Ref.Synchronized.make(new Map<A, Deferred<E, B>>()).map(
     (ref) =>
       (a: A) =>
         ref.modifyEffect((map) => {

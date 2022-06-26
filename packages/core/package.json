@@ -41,7 +41,7 @@
     }
   },
   "dependencies": {
-    "@tsplus/stdlib": "*"
+    "@tsplus/stdlib": "^0.2.1"
   },
   "tsplus": {
     "typeDir": "./build/dts"
