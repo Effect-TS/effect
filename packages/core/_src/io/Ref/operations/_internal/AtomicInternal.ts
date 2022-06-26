@@ -11,43 +11,36 @@ export class UnsafeAPI<A> {
 
   getAndSet(a: A): A {
     const current = this.value.get
-
-    this.value.compareAndSet(current, a)
-
+    this.value.set(a)
     return current
   }
 
   getAndUpdate(f: (a: A) => A): A {
     const current = this.value.get
-
-    this.value.compareAndSet(current, f(current))
-
+    this.value.set(f(current))
     return current
   }
 
   getAndUpdateSome(pf: (a: A) => Maybe<A>): A {
     const current = this.value.get
-
-    this.value.compareAndSet(current, pf(current).getOrElse(current))
-
+    const opt = pf(current)
+    if (opt.isSome()) {
+      this.value.set(opt.value)
+    }
     return current
   }
 
   modify<B>(f: (a: A) => Tuple<[B, A]>): B {
     const current = this.value.get
-    const tuple = f(current)
-
-    this.value.compareAndSet(current, tuple.get(1))
-
-    return tuple.get(0)
+    const { tuple: [b, a] } = f(current)
+    this.value.set(a)
+    return b
   }
 
   modifySome<B>(fallback: B, pf: (a: A) => Maybe<Tuple<[B, A]>>): B {
     const current = this.value.get
     const tuple = pf(current).getOrElse(Tuple(fallback, current))
-
-    this.value.compareAndSet(current, tuple.get(1))
-
+    this.value.set(tuple.get(1))
     return tuple.get(0)
   }
 
@@ -61,32 +54,32 @@ export class UnsafeAPI<A> {
 
   update(f: (a: A) => A): void {
     const current = this.value.get
-
-    this.value.compareAndSet(current, f(current))
+    this.value.set(f(current))
   }
 
   updateAndGet(f: (a: A) => A): A {
     const current = this.value.get
     const next = f(current)
-
-    this.value.compareAndSet(current, next)
-
+    this.value.set(next)
     return next
   }
 
   updateSome(pf: (a: A) => Maybe<A>): void {
     const current = this.value.get
-
-    this.value.compareAndSet(current, pf(current).getOrElse(current))
+    const opt = pf(current)
+    if (opt.isSome()) {
+      this.value.set(opt.value)
+    }
   }
 
   updateSomeAndGet(pf: (a: A) => Maybe<A>): A {
     const current = this.value.get
-    const next = pf(current).getOrElse(current)
-
-    this.value.compareAndSet(current, next)
-
-    return next
+    const next = pf(current)
+    if (next.isSome()) {
+      this.value.set(next.value)
+      return next.value
+    }
+    return current
   }
 }
 

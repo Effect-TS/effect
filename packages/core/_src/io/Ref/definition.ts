@@ -126,6 +126,7 @@ export declare namespace Ref {
       f: (a: A) => Effect<R, E, Tuple<[B, A]>>,
       __tsplusTrace?: string
     ): Effect<R, E, B>
+
     /**
      * Atomically modifies the `Ref.Synchronized` with the specified function,
      * returning the value immediately before modification.
@@ -135,6 +136,7 @@ export declare namespace Ref {
       f: (a: A) => Effect<R, E, A>,
       __tsplusTrace?: string
     ): Effect<R, E, A>
+
     /**
      * Atomically modifies the `Ref.Synchronized` with the specified partial
      * function, returning the value immediately before modification. If the
@@ -145,6 +147,7 @@ export declare namespace Ref {
       pf: (a: A) => Maybe<Effect<R, E, A>>,
       __tsplusTrace?: string
     ): Effect<R, E, A>
+
     /**
      * Atomically modifies the `Ref.Synchronized` with the specified function,
      * which computes a return value for the modification if the function is
@@ -157,10 +160,12 @@ export declare namespace Ref {
       pf: (a: A) => Maybe<Effect<R, E, Tuple<[B, A]>>>,
       __tsplusTrace?: string
     ): Effect<R, E, B>
+
     /**
      * Atomically modifies the `Ref.Synchronized` with the specified function.
      */
     updateEffect<R, E>(this: this, f: (a: A) => Effect<R, E, A>, __tsplusTrace?: string): Effect<R, E, void>
+
     /**
      * Atomically modifies the `Ref.Synchronized` with the specified function,
      * returning the value immediately after modification.
