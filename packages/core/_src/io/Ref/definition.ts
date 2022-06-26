@@ -114,6 +114,7 @@ export interface Ref<A> {
    */
   updateSomeAndGet(this: this, pf: (a: A) => Maybe<A>, __tsplusTrace?: string): Effect.UIO<A>
 }
+
 export declare namespace Ref {
   export interface Synchronized<A> extends Ref<A> {
     /**
@@ -204,30 +205,17 @@ export declare namespace Ref {
  * @tsplus type ets/Ref/Synchronized/Ops
  */
 export interface SynchronizedOps {
-  $: SynchronizedAspects
-}
-export const Synchronized: SynchronizedOps = {
-  $: {}
 }
 
-/**
- * @tsplus type ets/Ref/Synchronized/Aspects
- */
-export interface SynchronizedAspects {}
+export const Synchronized: SynchronizedOps = {}
 
 /**
  * @tsplus type ets/Ref/Ops
  */
 export interface RefOps {
-  $: RefAspects
   Synchronized: SynchronizedOps
 }
+
 export const Ref: RefOps = {
-  $: {},
   Synchronized
 }
-
-/**
- * @tsplus type ets/Ref/Aspects
- */
-export interface RefAspects {}

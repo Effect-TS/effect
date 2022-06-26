@@ -10,9 +10,6 @@ export interface SubscriptionRefInternal<A> extends Ref.Synchronized<A> {
 
 export const SubscriptionRefInternal = {
   ...SynchronizedInternal,
-  /**
-   * Internal Discriminators
-   */
   get [RefSym](): RefSym {
     return RefSym
   },
@@ -41,17 +38,9 @@ export const SubscriptionRefInternal = {
   ): Effect<R, E, B> {
     return this.ref.modifyEffect(a => f(a).tap((tp) => this.hub.publish(tp.get(1))))
   },
-  /**
-   * Writes a new value to the `Ref`, with a guarantee of immediate
-   * consistency (at some cost to performance).
-   */
   set<A>(this: SubscriptionRefInternal<A>, a: A, __tsplusTrace?: string): Effect.UIO<void> {
     return this.ref.set(a)
   },
-  /**
-   * Writes a new value to the `Ref` without providing a guarantee of
-   * immediate consistency.
-   */
   setAsync<A>(this: SubscriptionRefInternal<A>, a: A, __tsplusTrace?: string): Effect.UIO<void> {
     return this.ref.setAsync(a)
   }

@@ -14,6 +14,7 @@ export interface SubscriptionRef<A> extends Ref.Synchronized<A> {
    * Internal Discriminator
    */
   readonly [SubscriptionRefSym]: SubscriptionRefSym
+
   /**
    * A stream containing the current value of the `Ref` as well as all changes
    * to that value.
@@ -25,13 +26,6 @@ export interface SubscriptionRef<A> extends Ref.Synchronized<A> {
  * @tsplus type ets/SubscriptionRef/Ops
  */
 export interface SubscriptionRefOps {
-  $: SubscriptionRefAspects
-}
-export const SubscriptionRef: SubscriptionRefOps = {
-  $: {}
 }
 
-/**
- * @tsplus type ets/SubscriptionRef/Aspects
- */
-export interface SubscriptionRefAspects {}
+export const SubscriptionRef: SubscriptionRefOps = {}
