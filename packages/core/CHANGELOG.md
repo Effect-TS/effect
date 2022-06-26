@@ -1,5 +1,17 @@
 # @effect/core
 
+## 0.0.6
+
+### Patch Changes
+
+- [#1237](https://github.com/Effect-TS/core/pull/1237) [`95ea9ed46`](https://github.com/Effect-TS/core/commit/95ea9ed46d5e44c0c80f4e17c3b2919ed7883686) Thanks [@wesselvdv](https://github.com/wesselvdv)! - fix Ref, Ref.Synchronized and SubscriptionRef inheritance
+
+* [#1239](https://github.com/Effect-TS/core/pull/1239) [`afa72ba04`](https://github.com/Effect-TS/core/commit/afa72ba0481c28d1f24c2ef7454e27ab67aaa902) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Use Fluent Style for Queue and Hub
+
+- [#1237](https://github.com/Effect-TS/core/pull/1237) [`95ea9ed46`](https://github.com/Effect-TS/core/commit/95ea9ed46d5e44c0c80f4e17c3b2919ed7883686) Thanks [@wesselvdv](https://github.com/wesselvdv)! - Rename RefSynchronized to Ref.Synchronized
+
+* [#1242](https://github.com/Effect-TS/core/pull/1242) [`d96f91c72`](https://github.com/Effect-TS/core/commit/d96f91c7296ad80cb204f8b2553fff7f823f1491) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Adopt fluent style in Deferred
+
 ## 0.0.5
 
 ### Patch Changes
