@@ -13,7 +13,7 @@ export function unsafeMake<A>(value: A): Ref<A> {
 /**
  * @tsplus static ets/Ref/Synchronized/Ops unsafeMake
  */
-export function unsafeMakeSynchronizedRef<A>(initial: A): Ref.Synchronized<A> {
+export function unsafeMakeSynchronized<A>(initial: A): Ref.Synchronized<A> {
   return Object.setPrototypeOf({
     ref: Ref.unsafeMake<A>(initial),
     semaphore: Semaphore.unsafeMake(1)
