@@ -1,5 +1,11 @@
 # @effect/core
 
+## 0.0.7
+
+### Patch Changes
+
+- [#1244](https://github.com/Effect-TS/core/pull/1244) [`ae839b27c`](https://github.com/Effect-TS/core/commit/ae839b27c17a410a574fc54353d362a361ae695b) Thanks [@wesselvdv](https://github.com/wesselvdv)! - Add unsafeMake for Ref.Synchronized, Semaphore and TSemaphore
+
 ## 0.0.6
 
 ### Patch Changes
