@@ -3,7 +3,7 @@
  * two delays (similar to the fibonacci sequence). Returns the current
  * duration between recurrences.
  *
- * @tsplus static ets/Schedule/Ops fibonacci
+ * @tsplus static effect/core/io/Schedule.Ops fibonacci
  */
 export function fibonacci(
   one: Duration

@@ -9,7 +9,7 @@ export type TupleA<T extends NonEmptyArrayEffect> = {
 /**
  * Like `forEach` + `identity` with a tuple type.
  *
- * @tsplus static ets/Effect/Ops tuple
+ * @tsplus static effect/core/io/Effect.Ops tuple
  */
 export function tuple<T extends NonEmptyArrayEffect>(
   ...t: T & {
@@ -26,7 +26,7 @@ export function tuple<T extends NonEmptyArrayEffect>(
 /**
  * Like tuple but parallel, same as `forEachPar` + `identity` with a tuple type.
  *
- * @tsplus static ets/Effect/Ops tuplePar
+ * @tsplus static effect/core/io/Effect.Ops tuplePar
  */
 export function tuplePar<T extends NonEmptyArrayEffect>(
   ...t: T & {

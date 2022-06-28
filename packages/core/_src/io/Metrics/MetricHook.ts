@@ -1,5 +1,5 @@
 /**
- * @tsplus type ets/Metrics/MetricHook
+ * @tsplus type effect/core/io/Metrics/MetricHook
  */
 export interface MetricHook<In, Out> {
   readonly update: (input: In) => void
@@ -7,7 +7,7 @@ export interface MetricHook<In, Out> {
 }
 
 /**
- * @tsplus type ets/Metrics/MetricHook/Ops
+ * @tsplus type effect/core/io/Metrics/MetricHook.Ops
  */
 export interface MetricHookOps {}
 export const MetricHook: MetricHookOps = {}
@@ -24,7 +24,7 @@ export declare namespace MetricHook {
 }
 
 /**
- * @tsplus static ets/Metrics/MetricHook/Ops __call
+ * @tsplus static effect/core/io/Metrics/MetricHook.Ops __call
  */
 export function make<In, Out>(
   update: (input: In) => void,
@@ -37,17 +37,17 @@ export function make<In, Out>(
 }
 
 /**
- * @tsplus fluent ets/Metrics/MetricHook onUpdate
+ * @tsplus static effect/core/io/Metrics/MetricHook.Aspects onUpdate
+ * @tsplus pipeable effect/core/io/Metrics/MetricHook onUpdate
  */
 export function onUpdate<In, Out>(
-  self: MetricHook<In, Out>,
   f: (input: In) => void
-): MetricHook<In, Out> {
-  return {
+) {
+  return (self: MetricHook<In, Out>): MetricHook<In, Out> => ({
     update: (input) => {
       self.update(input)
       return f(input)
     },
     get: self.get
-  }
+  })
 }

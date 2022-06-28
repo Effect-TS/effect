@@ -1,15 +1,12 @@
 /**
  * Maps the value produced by the effect.
  *
- * @tsplus fluent ets/STM map
+ * @tsplus static effect/core/stm/STM.Aspects map
+ * @tsplus pipeable effect/core/stm/STM map
  */
-export function map_<R, E, A, B>(self: STM<R, E, A>, f: (a: A) => B): STM<R, E, B> {
-  return self.flatMap((a) => STM.succeedNow(f(a)))
+export function map<A, B>(f: (a: A) => B) {
+  return <R, E>(self: STM<R, E, A>): STM<R, E, B> =>
+    self.flatMap(
+      (a) => STM.succeedNow(f(a))
+    )
 }
-
-/**
- * Maps the value produced by the effect.
- *
- * @tsplus static ets/STM/Aspects map
- */
-export const map = Pipeable(map_)

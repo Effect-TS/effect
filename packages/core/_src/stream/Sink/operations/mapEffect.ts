@@ -3,20 +3,15 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
 /**
  * Effectfully transforms this sink's result.
  *
- * @tsplus fluent ets/Sink mapEffect
+ * @tsplus static effect/core/stream/Sink.Aspects mapEffect
+ * @tsplus pipeable effect/core/stream/Sink mapEffect
  */
-export function mapEffect_<R, E, R2, E2, In, L, Z, Z2>(
-  self: Sink<R, E, In, L, Z>,
+export function mapEffect<R2, E2, Z, Z2>(
   f: (z: Z) => Effect<R2, E2, Z2>,
   __tsplusTrace?: string
-): Sink<R | R2, E | E2, In, L, Z2> {
-  concreteSink(self)
-  return new SinkInternal(self.channel.mapEffect(f))
+) {
+  return <R, E, In, L>(self: Sink<R, E, In, L, Z>): Sink<R | R2, E | E2, In, L, Z2> => {
+    concreteSink(self)
+    return new SinkInternal(self.channel.mapEffect(f))
+  }
 }
-
-/**
- * Effectfully transforms this sink's result.
- *
- * @tsplus static ets/Sink/Aspects mapEffect
- */
-export const mapEffect = Pipeable(mapEffect_)

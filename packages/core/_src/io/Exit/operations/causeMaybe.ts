@@ -1,7 +1,7 @@
 /**
  * Returns an option of the cause of failure.
  *
- * @tsplus getter ets/Exit causeMaybe
+ * @tsplus getter effect/core/io/Exit causeMaybe
  */
 export function causeMaybe<E, A>(self: Exit<E, A>): Maybe<Cause<E>> {
   switch (self._tag) {

@@ -1,7 +1,7 @@
 /**
  * Accesses the environment of the stream in the context of a stream.
  *
- * @tsplus static ets/Stream/Ops environmentWithStream
+ * @tsplus static effect/core/stream/Stream.Ops environmentWithStream
  */
 export function environmentWithStream<R0, R, E, A>(
   f: (env: Env<R0>) => Stream<R, E, A>,

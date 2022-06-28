@@ -4,7 +4,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * A sink that executes the provided effectful function for every element fed
  * to it.
  *
- * @tsplus static ets/Sink/Ops forEach
+ * @tsplus static effect/core/stream/Sink.Ops forEach
  */
 export function forEach<R, E, In, Z>(
   f: (input: In) => Effect<R, E, Z>,

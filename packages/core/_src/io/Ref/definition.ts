@@ -26,7 +26,7 @@ export type _A = typeof _A
  * concurrent access. If you do need to use a mutable value `Ref.Synchronized`
  * will guarantee that access to the value is properly synchronized.
  *
- * @tsplus type ets/Ref
+ * @tsplus type effect/core/io/Ref
  */
 export interface Ref<A> {
   /**
@@ -202,15 +202,14 @@ export declare namespace Ref {
 }
 
 /**
- * @tsplus type ets/Ref/Synchronized/Ops
+ * @tsplus type effect/core/io/Ref/Synchronized.Ops
  */
-export interface SynchronizedOps {
-}
+export interface SynchronizedOps {}
 
 export const Synchronized: SynchronizedOps = {}
 
 /**
- * @tsplus type ets/Ref/Ops
+ * @tsplus type effect/core/io/Ref.Ops
  */
 export interface RefOps {
   Synchronized: SynchronizedOps

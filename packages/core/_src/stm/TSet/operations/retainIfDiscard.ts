@@ -3,16 +3,12 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
 /**
  * retains elements matching predicate.
  *
- * @tsplus fluent ets/TSet retainIfDiscard
+ * @tsplus static effect/core/stm/TSet.Aspects retainIfDiscard
+ * @tsplus pipeable effect/core/stm/TSet retainIfDiscard
  */
-export function retainIfDiscard_<A>(self: TSet<A>, p: (a: A) => boolean): USTM<void> {
-  concreteTSet(self)
-  return self.tmap.retainIfDiscard((kv) => p(kv.get(0)))
+export function retainIfDiscard<A>(p: Predicate<A>) {
+  return (self: TSet<A>): STM<never, never, void> => {
+    concreteTSet(self)
+    return self.tmap.retainIfDiscard((kv) => p(kv.get(0)))
+  }
 }
-
-/**
- * retains elements matching predicate.
- *
- * @tsplus static ets/TSet/Aspects retainIfDiscard
- */
-export const retainIfDiscard = Pipeable(retainIfDiscard_)

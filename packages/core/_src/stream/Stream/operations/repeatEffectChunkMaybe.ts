@@ -2,7 +2,7 @@
  * Creates a stream from an effect producing chunks of `A` values until it
  * fails with `None`.
  *
- * @tsplus static ets/Stream/Ops repeatEffectChunkMaybe
+ * @tsplus static effect/core/stream/Stream.Ops repeatEffectChunkMaybe
  */
 export function repeatEffectChunkMaybe<R, E, A>(
   effect: LazyArg<Effect<R, Maybe<E>, Chunk<A>>>,

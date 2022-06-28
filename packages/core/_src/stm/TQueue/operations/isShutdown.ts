@@ -3,7 +3,7 @@ import { concreteTQueue } from "@effect/core/stm/TQueue/operations/_internal/Int
 /**
  * Checks whether the queue is shut down.
  *
- * @tsplus getter ets/TQueue isShutdown
+ * @tsplus getter effect/core/stm/TQueue isShutdown
  */
 export function isShutdown<A>(self: TQueue<A>): USTM<boolean> {
   concreteTQueue(self)

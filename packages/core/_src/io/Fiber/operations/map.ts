@@ -1,16 +1,14 @@
 /**
  * Maps over the value the Fiber computes.
  *
- * @tsplus fluent ets/Fiber map
- * @tsplus fluent ets/RuntimeFiber map
+ * @tsplus static effect/core/io/Fiber.Aspects map
+ * @tsplus static effect/core/io/RuntimeFiber.Aspects map
+ * @tsplus pipeable effect/core/io/Fiber map
+ * @tsplus pipeable effect/core/io/RuntimeFiber map
  */
-export function map_<E, A, B>(self: Fiber<E, A>, f: (a: A) => B): Fiber<E, B> {
-  return self.mapEffect((a) => Effect.succeedNow(f(a)))
+export function map<A, B>(f: (a: A) => B) {
+  return <E>(self: Fiber<E, A>): Fiber<E, B> =>
+    self.mapEffect(
+      (a) => Effect.succeedNow(f(a))
+    )
 }
-
-/**
- * Maps over the value the Fiber computes.
- *
- * @tsplus static ets/Fiber/Aspects map
- */
-export const map = Pipeable(map_)

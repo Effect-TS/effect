@@ -5,7 +5,7 @@ export const _A = Symbol.for("@effect/core/stm/TPriorityQueue/A")
 export type _A = typeof _A
 
 /**
- * @tsplus type ets/TPriorityQueue
+ * @tsplus type effect/core/stm/TPriorityQueue
  */
 export interface TPriorityQueue<A> {
   readonly [TPriorityQueueSym]: TPriorityQueueSym
@@ -13,7 +13,7 @@ export interface TPriorityQueue<A> {
 }
 
 /**
- * @tsplus type ets/TPriorityQueue/Ops
+ * @tsplus type effect/core/stm/TPriorityQueue.Ops
  */
 export interface TPriorityQueueOps {
   $: TPriorityQueueAspects
@@ -23,6 +23,6 @@ export const TPriorityQueue: TPriorityQueueOps = {
 }
 
 /**
- * @tsplus type ets/TPriorityQueue/Aspects
+ * @tsplus type effect/core/stm/TPriorityQueue.Aspects
  */
 export interface TPriorityQueueAspects {}

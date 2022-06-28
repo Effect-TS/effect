@@ -12,7 +12,7 @@ import { IAsync } from "@effect/core/io/Effect/definition/primitives"
  * function `Effect<R, E, A> => void` must not be called. Otherwise the callback
  * function must be called at most once.
  *
- * @tsplus static ets/Effect/Ops asyncInterrupt
+ * @tsplus static effect/core/io/Effect.Ops asyncInterrupt
  */
 export function asyncInterrupt<R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void) => Either<Effect<R, never, void>, Effect<R, E, A>>,
@@ -36,7 +36,7 @@ export function asyncInterrupt<R, E, A>(
  * The list of fibers, that may complete the async callback, is used to
  * provide better diagnostics.
  *
- * @tsplus static ets/Effect/Ops asyncInterruptBlockingOn
+ * @tsplus static effect/core/io/Effect.Ops asyncInterruptBlockingOn
  */
 export function asyncInterruptBlockingOn<R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void) => Either<Effect<R, never, void>, Effect<R, E, A>>,

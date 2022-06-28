@@ -11,7 +11,7 @@
  * return s
  * ```
  *
- * @tsplus static ets/Effect/Ops iterate
+ * @tsplus static effect/core/io/Effect.Ops iterate
  */
 export function iterate<Z>(initial: LazyArg<Z>, cont: (z: Z) => boolean) {
   return <R, E>(

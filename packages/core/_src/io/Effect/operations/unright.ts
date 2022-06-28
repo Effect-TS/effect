@@ -2,7 +2,7 @@
  * Converts a `Effect<R, Either<B, E>, A>` into a `Effect<R, E, Either<B, A>>`.
  * The inverse of `right`.
  *
- * @tsplus fluent ets/Effect unright
+ * @tsplus getter effect/core/io/Effect unright
  */
 export function unright<R, B, E, A>(
   self: Effect<R, Either<B, E>, A>,

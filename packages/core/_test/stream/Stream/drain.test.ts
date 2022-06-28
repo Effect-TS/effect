@@ -7,8 +7,8 @@ describe.concurrent("Stream", () => {
         .tap((ref) =>
           Stream.range(0, 10)
             .mapEffect((n) => ref.update((list) => list.prepend(n)))
-            .drain()
-            .runDrain()
+            .drain
+            .runDrain
         )
         .flatMap((ref) => ref.get())
 
@@ -20,7 +20,7 @@ describe.concurrent("Stream", () => {
     it("isn't too eager", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
-        .bind("res", ({ ref }) => (Stream(1).tap((n) => ref.set(n)) + Stream.fail("fail")).runDrain().either())
+        .bind("res", ({ ref }) => (Stream(1).tap((n) => ref.set(n)) + Stream.fail("fail")).runDrain.either)
         .bind("refRes", ({ ref }) => ref.get())
 
       const { refRes, res } = await program.unsafeRunPromise()
@@ -35,7 +35,7 @@ describe.concurrent("Stream", () => {
       const program = Deferred.make<never, void>().flatMap((latch) =>
         Stream.fromEffect(latch.await())
           .drainFork(Stream.fromEffect(latch.succeed(undefined)))
-          .runDrain()
+          .runDrain
           .map(constTrue)
       )
 
@@ -49,13 +49,13 @@ describe.concurrent("Stream", () => {
         .bind("backgroundInterrupted", () => Ref.make(constFalse))
         .bind("latch", () => Deferred.make<never, void>())
         .tap(({ backgroundInterrupted, latch }) =>
-          (Stream(1, 2, 3) + Stream.fromEffect(latch.await()).drain())
+          (Stream(1, 2, 3) + Stream.fromEffect(latch.await()).drain)
             .drainFork(
               Stream.fromEffect(
                 (latch.succeed(undefined) > Effect.never).onInterrupt(() => backgroundInterrupted.set(true))
               )
             )
-            .runDrain()
+            .runDrain
         )
         .flatMap(({ backgroundInterrupted }) => backgroundInterrupted.get())
 
@@ -65,7 +65,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("fails the foreground stream if the background fails with a typed error", async () => {
-      const program = Stream.never.drainFork(Stream.fail("boom")).runDrain()
+      const program = Stream.never.drainFork(Stream.fail("boom")).runDrain
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -74,7 +74,7 @@ describe.concurrent("Stream", () => {
 
     it("fails the foreground stream if the background fails with a defect", async () => {
       const error = new RuntimeError("boom")
-      const program = Stream.never.drainFork(Stream.die(error)).runDrain()
+      const program = Stream.never.drainFork(Stream.die(error)).runDrain
 
       const result = await program.unsafeRunPromiseExit()
 

@@ -7,7 +7,7 @@ describe.concurrent("Metrics", () => {
 
       const program = Effect.succeed(1) / gauge >
         Effect.succeed(3) / gauge >
-        gauge.value()
+        gauge.value
 
       const result = await program.unsafeRunPromise()
 
@@ -17,7 +17,7 @@ describe.concurrent("Metrics", () => {
     it("direct set", async () => {
       const gauge = Metric.gauge("g2").taggedWithLabels(labels)
 
-      const program = gauge.set(1) > gauge.set(3) > gauge.value()
+      const program = gauge.set(1) > gauge.set(3) > gauge.value
 
       const result = await program.unsafeRunPromise()
 
@@ -29,7 +29,7 @@ describe.concurrent("Metrics", () => {
 
       const program = Effect.succeed(1) / gauge >
         Effect.succeed(3) / gauge >
-        gauge.value()
+        gauge.value
 
       const result = await program.unsafeRunPromise()
 
@@ -43,7 +43,7 @@ describe.concurrent("Metrics", () => {
       const program = Effect.succeed("hello") / gauge >
         Effect.succeed("!") / gauge >
         Effect.succeed("!") / gauge >
-        base.tagged("dyn", "!").value()
+        base.tagged("dyn", "!").value
 
       const result = await program.unsafeRunPromise()
 

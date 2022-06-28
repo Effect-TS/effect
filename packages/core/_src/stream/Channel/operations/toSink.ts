@@ -1,7 +1,8 @@
 import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
- * @tsplus fluent ets/Channel toSink
+ * @tsplus getter effect/core/stream/Channel toSink
+ * @tsplus static effect/core/stream/Channel.Ops toSink
  */
 export function toSink<Env, InErr, InElem, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, Chunk<InElem>, unknown, OutErr, Chunk<OutElem>, OutDone>,

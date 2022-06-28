@@ -3,25 +3,20 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 /**
  * Effectfully filters the elements emitted by this stream.
  *
- * @tsplus fluent ets/Stream filterEffect
+ * @tsplus static effect/core/stream/Stream.Aspects filterEffect
+ * @tsplus pipeable effect/core/stream/Stream filterEffect
  */
-export function filterEffect_<R, E, A, R1, E1>(
-  self: Stream<R, E, A>,
+export function filterEffect<A, R1, E1>(
   f: (a: A) => Effect<R1, E1, boolean>,
   __tsplusTrace?: string
-): Stream<R | R1, E | E1, A> {
-  concreteStream(self)
-  return new StreamInternal(
-    self.channel >> loop(Chunk.empty<A>()[Symbol.iterator](), f)
-  )
+) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R | R1, E | E1, A> => {
+    concreteStream(self)
+    return new StreamInternal(
+      self.channel >> loop(Chunk.empty<A>()[Symbol.iterator](), f)
+    )
+  }
 }
-
-/**
- * Effectfully filters the elements emitted by this stream.
- *
- * @tsplus static ets/Stream/Aspects filterEffect
- */
-export const filterEffect = Pipeable(filterEffect_)
 
 function loop<E, A, R1, E1>(
   chunkIterator: Iterator<A>,

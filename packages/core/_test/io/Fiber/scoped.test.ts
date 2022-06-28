@@ -11,10 +11,10 @@ describe.concurrent("Fiber", () => {
               release > Effect.unit,
               Effect.never,
               ref.set(true)
-            ).fork()
+            ).fork
           ))
-        .tap(({ fiber }) => Effect.scoped(fiber.scoped()))
-        .tap(({ fiber }) => fiber.await())
+        .tap(({ fiber }) => Effect.scoped(fiber.scoped))
+        .tap(({ fiber }) => fiber.await)
         .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()

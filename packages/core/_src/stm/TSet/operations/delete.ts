@@ -3,18 +3,14 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
 /**
  * Removes binding for given key.
  *
- * @tsplus fluent ets/TSet delete
+ * @tsplus static effect/core/stm/TSet.Aspects delete
+ * @tsplus pipeable effect/core/stm/TSet delete
  */
-export function delete_<A>(self: TSet<A>, a: A): USTM<void> {
-  concreteTSet(self)
-  return self.tmap.delete(a)
+export function _delete<A>(value: A) {
+  return (self: TSet<A>): STM<never, never, void> => {
+    concreteTSet(self)
+    return self.tmap.delete(value)
+  }
 }
-
-/**
- * Removes binding for given key.
- *
- * @tsplus static ets/TSet/Aspects delete
- */
-export const _delete = Pipeable(delete_)
 
 export { _delete as delete }

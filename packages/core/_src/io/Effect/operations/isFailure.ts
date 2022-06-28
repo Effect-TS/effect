@@ -1,11 +1,13 @@
+import { constFalse, constTrue } from "@tsplus/stdlib/data/Function"
+
 /**
  * Returns whether this effect is a failure.
  *
- * @tsplus fluent ets/Effect isFailure
+ * @tsplus getter effect/core/io/Effect isFailure
  */
 export function isFailure<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, never, boolean> {
-  return self.fold(() => true, () => false)
+  return self.fold(constTrue, constFalse)
 }

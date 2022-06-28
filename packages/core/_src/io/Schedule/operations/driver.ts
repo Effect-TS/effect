@@ -4,14 +4,13 @@ import { Driver } from "@effect/core/io/Schedule/Driver"
  * Returns a driver that can be used to step the schedule, appropriately
  * handling sleeping.
  *
- * @tsplus getter ets/Schedule driver
- * @tsplus fluent ets/Schedule/WithState driver
+ * @tsplus getter effect/core/io/Schedule driver
  */
 export function driver<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>
 ): Effect<never, never, Driver<State, Env, In, Out>> {
   return Ref.make<Tuple<[Maybe<Out>, State]>>(Tuple(Maybe.none, self._initial)).map((ref) => {
-    const last: Effect.IO<NoSuchElement, Out> = ref.get().flatMap(({ tuple: [element, _] }) =>
+    const last: Effect<never, NoSuchElement, Out> = ref.get().flatMap(({ tuple: [element, _] }) =>
       element.fold(Effect.fail(new NoSuchElement()), (out) => Effect.succeed(out))
     )
 

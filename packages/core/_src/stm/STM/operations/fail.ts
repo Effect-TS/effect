@@ -3,7 +3,7 @@ import { STMEffect, STMFailException } from "@effect/core/stm/STM/definition/pri
 /**
  * Returns a value that models failure in the transaction.
  *
- * @tsplus static ets/STM/Ops fail
+ * @tsplus static effect/core/stm/STM.Ops fail
  */
 export function fail<E>(e: LazyArg<E>): STM<never, E, never> {
   return new STMEffect(() => {

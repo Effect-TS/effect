@@ -3,7 +3,7 @@
  * effect. The scoped effect describes subscribing to receive messages from
  * the hub while the stream describes taking messages from the hub.
  *
- * @tsplus static ets/Stream/Ops fromChunkHubScoped
+ * @tsplus static effect/core/stream/Stream.Ops fromChunkHubScoped
  */
 export function fromChunkHubScoped<A>(
   hub: LazyArg<Hub<Chunk<A>>>,

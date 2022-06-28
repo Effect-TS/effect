@@ -8,7 +8,7 @@ export const _V = Symbol.for("@effect/core/stm/TMap/V")
 export type _V = typeof _V
 
 /**
- * @tsplus type ets/TMap
+ * @tsplus type effect/core/stm/TMap
  */
 export interface TMap<K, V> {
   readonly [TMapSym]: TMapSym
@@ -17,7 +17,7 @@ export interface TMap<K, V> {
 }
 
 /**
- * @tsplus type ets/TMap/Ops
+ * @tsplus type effect/core/stm/TMap.Ops
  */
 export interface TMapOps {
   $: TMapAspects
@@ -27,6 +27,6 @@ export const TMap: TMapOps = {
 }
 
 /**
- * @tsplus type ets/TMap/Aspects
+ * @tsplus type effect/core/stm/TMap.Aspects
  */
 export interface TMapAspects {}

@@ -3,7 +3,7 @@
  *
  * Guarantees that fiber data is properly restored via `acquireRelease`.
  *
- * @tsplus fluent ets/FiberRef locallyWith
+ * @tsplus fluent effect/core/io/FiberRef locallyWith
  */
 export function locallyWith_<A, P>(self: FiberRef<A, P>, f: (a: A) => A, __tsplusTrace?: string) {
   return <R, E, B>(effect: Effect<R, E, B>): Effect<R, E, B> => self.getWith((a) => effect.apply(self.locally(f(a))))
@@ -14,6 +14,6 @@ export function locallyWith_<A, P>(self: FiberRef<A, P>, f: (a: A) => A, __tsplu
  *
  * Guarantees that fiber data is properly restored via `acquireRelease`.
  *
- * @tsplus static ets/FiberRef/Aspects locallyWith
+ * @tsplus static effect/core/io/FiberRef.Aspects locallyWith
  */
 export const locallyWith = Pipeable(locallyWith_)

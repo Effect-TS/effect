@@ -2,20 +2,11 @@
  * Returns a new schedule with the specified effectfully computed delay added
  * before the start of each interval produced by this schedule.
  *
- * @tsplus fluent ets/Schedule delayed
- * @tsplus fluent ets/Schedule/WithState delayed
+ * @tsplus static effect/core/io/Schedule.Aspects delayed
+ * @tsplus pipeable effect/core/io/Schedule delayed
  */
-export function delayed_<State, Env, In, Out>(
-  self: Schedule<State, Env, In, Out>,
-  f: (duration: Duration) => Duration
-): Schedule<State, Env, In, Out> {
-  return self.delayedEffect((duration) => Effect.succeed(f(duration)))
+export function delayed(f: (duration: Duration) => Duration) {
+  return <State, Env, In, Out>(
+    self: Schedule<State, Env, In, Out>
+  ): Schedule<State, Env, In, Out> => self.delayedEffect((duration) => Effect.succeed(f(duration)))
 }
-
-/**
- * Returns a new schedule with the specified effectfully computed delay added
- * before the start of each interval produced by this schedule.
- *
- * @tsplus static ets/Schedule/Aspects delayed
- */
-export const delayed = Pipeable(delayed_)

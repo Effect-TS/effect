@@ -3,7 +3,7 @@
  * will simply passthrough its input as output. However, when the buffer is
  * non-empty, the value inside the buffer will be passed along as output.
  *
- * @tsplus static ets/Channel/Ops buffer
+ * @tsplus static effect/core/stream/Channel.Ops buffer
  */
 export function buffer<InElem, InErr, InDone>(
   empty: InElem,

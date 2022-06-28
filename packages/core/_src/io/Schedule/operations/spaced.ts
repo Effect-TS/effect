@@ -2,10 +2,10 @@
  * Returns a schedule that recurs continuously, each repetition spaced the
  * specified duration from the last run.
  *
- * @tsplus static ets/Schedule/Ops spaced
+ * @tsplus static effect/core/io/Schedule.Ops spaced
  */
 export function spaced(
   duration: LazyArg<Duration>
 ): Schedule<number, never, unknown, number> {
-  return Schedule.forever.addDelay(duration)
+  return Schedule.repeatForever.addDelay(duration)
 }

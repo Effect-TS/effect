@@ -1,7 +1,7 @@
 /**
  * Lifts an `Either` into an `Effect` value.
  *
- * @tsplus static ets/Effect/Ops fromEither
+ * @tsplus static effect/core/io/Effect.Ops fromEither
  */
 export function fromEither<E, A>(
   either: LazyArg<Either<E, A>>,

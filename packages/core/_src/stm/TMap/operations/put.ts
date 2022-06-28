@@ -42,41 +42,37 @@ function resize<K, V>(self: TMap<K, V>, journal: Journal, buckets: TArray<List<T
 /**
  * Stores new binding into the map.
  *
- * @tsplus fluent ets/TMap put
+ * @tsplus static effect/core/stm/TMap.Aspects put
+ * @tsplus pipeable effect/core/stm/TMap put
  */
-export function put_<K, V>(self: TMap<K, V>, k: K, v: V): USTM<void> {
-  concreteTMap(self)
-  return STM.Effect((journal) => {
-    const buckets = self.tBuckets.unsafeGet(journal)
+export function put<K, V>(k: K, v: V) {
+  return (self: TMap<K, V>): STM<never, never, void> => {
+    concreteTMap(self)
+    return STM.Effect((journal) => {
+      const buckets = self.tBuckets.unsafeGet(journal)
 
-    concreteTArray(buckets)
+      concreteTArray(buckets)
 
-    const capacity = buckets.chunk.length
-    const idx = TMap.indexOf(k, capacity)
-    const bucket = buckets.chunk.unsafeGet(idx)!.unsafeGet(journal)
-    const shouldUpdate = bucket.exists((_) => Equals.equals(_.get(0), k))
+      const capacity = buckets.chunk.length
+      const idx = TMap.indexOf(k, capacity)
+      const bucket = buckets.chunk.unsafeGet(idx)!.unsafeGet(journal)
+      const shouldUpdate = bucket.exists((_) => Equals.equals(_.get(0), k))
 
-    if (shouldUpdate) {
-      const newBucket = bucket.map((kv) => Equals.equals(kv.get(0), k) ? Tuple(k, v) : kv)
-      buckets.chunk.unsafeGet(idx)!.unsafeSet(newBucket, journal)
-    } else {
-      const newSize = self.tSize.unsafeGet(journal) + 1
-
-      self.tSize.unsafeSet(newSize, journal)
-
-      if (capacity * LOAD_FACTOR < newSize) {
-        resize(self, journal, buckets, k, v)
-      } else {
-        const newBucket = List.cons(Tuple(k, v), bucket)
+      if (shouldUpdate) {
+        const newBucket = bucket.map((kv) => Equals.equals(kv.get(0), k) ? Tuple(k, v) : kv)
         buckets.chunk.unsafeGet(idx)!.unsafeSet(newBucket, journal)
-      }
-    }
-  })
-}
+      } else {
+        const newSize = self.tSize.unsafeGet(journal) + 1
 
-/**
- * Stores new binding into the map.
- *
- * @tsplus static ets/TMap/Aspects put
- */
-export const put = Pipeable(put_)
+        self.tSize.unsafeSet(newSize, journal)
+
+        if (capacity * LOAD_FACTOR < newSize) {
+          resize(self, journal, buckets, k, v)
+        } else {
+          const newBucket = List.cons(Tuple(k, v), bucket)
+          buckets.chunk.unsafeGet(idx)!.unsafeSet(newBucket, journal)
+        }
+      }
+    })
+  }
+}

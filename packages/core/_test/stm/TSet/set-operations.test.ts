@@ -13,10 +13,11 @@ describe.concurrent("TSet", () => {
 
         return hasSameElements(res, Equivalence.number, List(2, 3))
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("intersect", async () => {
       const tx = Do(($) => {
         const tset1 = $(TSet.make(1, 2, 3))
@@ -28,10 +29,11 @@ describe.concurrent("TSet", () => {
 
         return hasSameElements(res, Equivalence.number, List(1))
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("union", async () => {
       const tx = Do(($) => {
         const tset1 = $(TSet.make(1, 2, 3))
@@ -43,7 +45,7 @@ describe.concurrent("TSet", () => {
 
         return hasSameElements(res, Equivalence.number, List(1, 2, 3, 4, 5))
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })

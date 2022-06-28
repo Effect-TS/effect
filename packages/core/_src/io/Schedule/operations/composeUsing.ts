@@ -1,21 +1,14 @@
 /**
  * A backwards version of `compose`.
  *
- * @tsplus operator ets/Schedule <<
- * @tsplus operator ets/Schedule/WithState <<
- * @tsplus fluent ets/Schedule composeUsing
- * @tsplus fluent ets/Schedule/WithState composeUsing
+ * @tsplus pipeable-operator effect/core/io/Schedule <<
+ * @tsplus static effect/core/io/Schedule.Aspects composeUsing
+ * @tsplus pipeable effect/core/io/Schedule composeUsing
  */
-export function composeUsing_<State, Env, In, Out, State1, Env1, In2>(
-  self: Schedule<State, Env, In, Out>,
+export function composeUsing<State1, Env1, In2, In>(
   that: Schedule<State1, Env1, In2, In>
-): Schedule<Tuple<[State1, State]>, Env | Env1, In2, Out> {
-  return that >> self
+) {
+  return <State, Env, Out>(
+    self: Schedule<State, Env, In, Out>
+  ): Schedule<Tuple<[State1, State]>, Env | Env1, In2, Out> => that >> self
 }
-
-/**
- * A backwards version of `compose`.
- *
- * @tsplus static ets/Schedule/Aspects composeUsing
- */
-export const composeUsing = Pipeable(composeUsing_)

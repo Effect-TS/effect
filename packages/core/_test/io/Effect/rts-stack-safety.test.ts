@@ -13,7 +13,7 @@ describe.concurrent("Effect", () => {
     it("deep attempt", async () => {
       const program = Chunk.range(0, 10000).reduce(
         Effect.attempt<void>(undefined).foldEffect(Effect.dieNow, Effect.succeedNow),
-        (acc, _) => acc.foldEffect(Effect.dieNow, Effect.succeedNow).either().unit()
+        (acc, _) => acc.foldEffect(Effect.dieNow, Effect.succeedNow).either.unit
       )
 
       const result = await program.unsafeRunPromise()
@@ -26,7 +26,7 @@ describe.concurrent("Effect", () => {
         n: number,
         a: BigInt = BigInt("0"),
         b: BigInt = BigInt("1")
-      ): Effect.IO<Error, BigInt> {
+      ): Effect<never, Error, BigInt> {
         return Effect.succeed(() => ((a as any) + (b as any)) as BigInt).flatMap((b2) =>
           n > 0 ? fib(n - 1, b, b2) : Effect.succeed(b2)
         )
@@ -42,7 +42,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("deep absolve/attempt is identity", async () => {
-      const program = Chunk.range(0, 1000).reduce(Effect.succeed(42), (acc, _) => Effect.absolve(acc.either()))
+      const program = Chunk.range(0, 1000).reduce(Effect.succeed(42), (acc, _) => Effect.absolve(acc.either))
 
       const result = await program.unsafeRunPromise()
 
@@ -54,7 +54,7 @@ describe.concurrent("Effect", () => {
         Effect.async<never, unknown, unknown>((cb) => {
           cb(Effect.succeed(42))
         }),
-        (acc, _) => Effect.absolve(acc.either())
+        (acc, _) => Effect.absolve(acc.either)
       )
 
       const result = await program.unsafeRunPromise()

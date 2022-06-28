@@ -1,27 +1,18 @@
 /**
- * @tsplus fluent ets/Channel contramapEffect
+ * @tsplus static effect/core/stream/Channel.Aspects contramapEffect
+ * @tsplus pipeable effect/core/stream/Channel contramapEffect
  */
-export function contramapEffect_<
-  Env,
+export function contramapEffect<
   Env1,
   InErr,
-  InElem,
   InDone0,
-  InDone,
-  OutErr,
-  OutElem,
-  OutDone
->(
-  self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  f: (i: InDone0) => Effect<Env1, InErr, InDone>
-): Channel<Env1 | Env, InErr, InElem, InDone0, OutErr, OutElem, OutDone> {
-  return contramapMReader<Env1, InErr, InElem, InDone0, InDone>(f) >> self
+  InDone
+>(f: (i: InDone0) => Effect<Env1, InErr, InDone>) {
+  return <Env, InElem, OutErr, OutElem, OutDone>(
+    self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+  ): Channel<Env1 | Env, InErr, InElem, InDone0, OutErr, OutElem, OutDone> =>
+    contramapMReader<Env1, InErr, InElem, InDone0, InDone>(f) >> self
 }
-
-/**
- * @tsplus static ets/Channel/Aspects contramapEffect
- */
-export const contramapEffect = Pipeable(contramapEffect_)
 
 function contramapMReader<Env1, InErr, InElem, InDone0, InDone>(
   f: (i: InDone0) => Effect<Env1, InErr, InDone>

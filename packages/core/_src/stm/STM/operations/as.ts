@@ -1,15 +1,9 @@
 /**
  * Maps the success value of this effect to the specified constant value.
  *
- * @tsplus fluent ets/STM as
+ * @tsplus static effect/core/stm/STM.Aspects as
+ * @tsplus pipeable effect/core/stm/STM as
  */
-export function as_<R, E, A, B>(self: STM<R, E, A>, b: LazyArg<B>): STM<R, E, B> {
-  return self.map(b)
+export function as<B>(b: LazyArg<B>) {
+  return <R, E, A>(self: STM<R, E, A>): STM<R, E, B> => self.map(b)
 }
-
-/**
- * Maps the success value of this effect to the specified constant value.
- *
- * @tsplus static ets/STM/Aspects as
- */
-export const as = Pipeable(as_)

@@ -1,15 +1,12 @@
 /**
  * Atomically compute the greatest element in the array, if it exists.
  *
- * @tsplus fluent ets/TArray maxMaybe
+ * @tsplus static effect/core/stm/TArray.Aspects maxMaybe
+ * @tsplus pipeable effect/core/stm/TArray maxMaybe
  */
-export function maxMaybe_<A>(self: TArray<A>, ord: Ord<A>): USTM<Maybe<A>> {
-  return self.reduceMaybe((acc, a) => (ord.gt(a, acc) ? a : acc))
+export function maxMaybe_<A>(ord: Ord<A>) {
+  return (self: TArray<A>): STM<never, never, Maybe<A>> =>
+    self.reduceMaybe(
+      (acc, a) => (ord.gt(a, acc) ? a : acc)
+    )
 }
-
-/**
- * Atomically compute the greatest element in the array, if it exists.
- *
- * @tsplus static ets/TArray/Aspects maxMaybe
- */
-export const maxMaybe = Pipeable(maxMaybe_)

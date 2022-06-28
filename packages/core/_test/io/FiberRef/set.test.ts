@@ -17,7 +17,7 @@ describe.concurrent("FiberRef", () => {
       const program = Effect.Do()
         .bind("fiberRef", () => FiberRef.make(initial))
         .bind("deferred", () => Deferred.make<never, void>())
-        .tap(({ deferred, fiberRef }) => fiberRef.set(update).zipRight(deferred.succeed(undefined)).fork())
+        .tap(({ deferred, fiberRef }) => fiberRef.set(update).zipRight(deferred.succeed(undefined)).fork)
         .tap(({ deferred }) => deferred.await())
         .flatMap(({ fiberRef }) => fiberRef.get())
 

@@ -4,8 +4,8 @@ describe.concurrent("STM", () => {
       const list = List(1, 2, 3, 4, 5)
       const program = Effect.Do()
         .bind("tRef", () => TRef.makeCommit(0))
-        .tap(({ tRef }) => STM.forEach(list, (n) => tRef.update((_) => _ + n)).commit())
-        .flatMap(({ tRef }) => tRef.get.commit())
+        .tap(({ tRef }) => STM.forEach(list, (n) => tRef.update((_) => _ + n)).commit)
+        .flatMap(({ tRef }) => tRef.get.commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -16,8 +16,8 @@ describe.concurrent("STM", () => {
       const chunk = Chunk(1, 2, 3, 4, 5)
       const program = Effect.Do()
         .bind("tRef", () => TRef.makeCommit(0))
-        .tap(({ tRef }) => STM.forEach(chunk, (n) => tRef.update((_) => _ + n)).commit())
-        .flatMap(({ tRef }) => tRef.get.commit())
+        .tap(({ tRef }) => STM.forEach(chunk, (n) => tRef.update((_) => _ + n)).commit)
+        .flatMap(({ tRef }) => tRef.get.commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -30,8 +30,8 @@ describe.concurrent("STM", () => {
       const input = Chunk(1, 2, 3, 4, 5)
       const program = Effect.Do()
         .bind("tRef", () => TRef.makeCommit(Chunk.empty<number>()))
-        .tap(({ tRef }) => STM.forEach(input, (n) => tRef.update((chunk) => chunk.append(n))).commit())
-        .flatMap(({ tRef }) => tRef.get.commit())
+        .tap(({ tRef }) => STM.forEach(input, (n) => tRef.update((chunk) => chunk.append(n))).commit)
+        .flatMap(({ tRef }) => tRef.get.commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -42,8 +42,8 @@ describe.concurrent("STM", () => {
       const input = List(1, 2, 3, 4, 5)
       const program = Effect.Do()
         .bind("tRef", () => TRef.makeCommit<List<number>>(List.empty()))
-        .tap(({ tRef }) => STM.forEach(input, (n) => tRef.update((list) => list.prepend(n))).commit())
-        .flatMap(({ tRef }) => tRef.get.map((list) => list.reverse).commit())
+        .tap(({ tRef }) => STM.forEach(input, (n) => tRef.update((list) => list.prepend(n))).commit)
+        .flatMap(({ tRef }) => tRef.get.map((list) => list.reverse).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -71,7 +71,7 @@ describe.concurrent("STM", () => {
         STM.succeed(1),
         List(2, 3, 4).map(STM.succeedNow),
         (acc, a) => acc + a
-      ).commit()
+      ).commit
 
       const result = await program.unsafeRunPromise()
 
@@ -83,7 +83,7 @@ describe.concurrent("STM", () => {
         STM.succeed(1),
         List.empty<STM<never, never, number>>(),
         (acc, a) => acc + a
-      ).commit()
+      ).commit
 
       const result = await program.unsafeRunPromise()
 
@@ -99,7 +99,7 @@ describe.concurrent("STM", () => {
         List.empty<STM<never, never, number>>(),
         zeroElement,
         () => nonZero
-      ).commit()
+      ).commit
 
       const result = await program.unsafeRunPromise()
 
@@ -111,7 +111,7 @@ describe.concurrent("STM", () => {
         List(3, 5, 7).map(STM.succeedNow),
         1,
         (a, b) => a + b
-      ).commit()
+      ).commit
 
       const result = await program.unsafeRunPromise()
 
@@ -123,7 +123,7 @@ describe.concurrent("STM", () => {
         List(STM.unit, STM.fail(1)),
         undefined,
         () => undefined
-      ).commit()
+      ).commit
 
       const result = await program.unsafeRunPromiseExit()
 

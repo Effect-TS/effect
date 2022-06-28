@@ -1,7 +1,7 @@
 /**
  * Converts an option on errors into an option on values.
  *
- * @tsplus fluent ets/Effect unsome
+ * @tsplus getter effect/core/io/Effect unsome
  */
 export function unsome<R, E, A>(
   self: Effect<R, Maybe<E>, A>,

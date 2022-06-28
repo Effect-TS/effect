@@ -4,7 +4,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * Converts this stream to a stream that executes its effects but emits no
  * elements. Useful for sequencing effects using streams.
  *
- * @tsplus fluent ets/Stream drain
+ * @tsplus getter effect/core/stream/Stream drain
  */
 export function drain<R, E, A>(
   self: Stream<R, E, A>,

@@ -5,9 +5,9 @@ describe.concurrent("Queue", () => {
     it("take interruption", async () => {
       const program = Effect.Do()
         .bind("queue", () => Queue.bounded<number>(100))
-        .bind("fiber", ({ queue }) => queue.take.fork())
+        .bind("fiber", ({ queue }) => queue.take.fork)
         .tap(({ queue }) => waitForSize(queue, -1))
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ queue }) => queue.size)
 
       const result = await program.unsafeRunPromise()
@@ -20,9 +20,9 @@ describe.concurrent("Queue", () => {
         .bind("queue", () => Queue.bounded<number>(2))
         .tap(({ queue }) => queue.offer(1))
         .tap(({ queue }) => queue.offer(1))
-        .bind("fiber", ({ queue }) => queue.offer(1).fork())
+        .bind("fiber", ({ queue }) => queue.offer(1).fork)
         .tap(({ queue }) => waitForSize(queue, 3))
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ queue }) => queue.size)
 
       const result = await program.unsafeRunPromise()

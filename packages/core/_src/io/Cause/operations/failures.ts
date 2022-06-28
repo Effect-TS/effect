@@ -1,7 +1,7 @@
 /**
  * Produces a list of all recoverable errors `E` in the `Cause`.
  *
- * @tsplus getter ets/Cause failures
+ * @tsplus getter effect/core/io/Cause failures
  */
 export function failures<E>(self: Cause<E>): List<E> {
   return self

@@ -1,5 +1,5 @@
 /**
- * @tsplus type ets/Stream/SinkEndReason
+ * @tsplus type effect/core/stream/Stream/SinkEndReason
  */
 export type SinkEndReason = ScheduleEnd | UpstreamEnd
 
@@ -12,20 +12,20 @@ export interface UpstreamEnd {
 }
 
 /**
- * @tsplus type ets/Stream/SinkEndReason/Ops
+ * @tsplus type effect/core/stream/Stream/SinkEndReason.Ops
  */
 export interface SinkEndReasonOps {}
 export const SinkEndReason: SinkEndReasonOps = {}
 
 /**
- * @tsplus static ets/Stream/SinkEndReason/Ops ScheduleEnd
+ * @tsplus static effect/core/stream/Stream/SinkEndReason.Ops ScheduleEnd
  */
 export const scheduleEnd: SinkEndReason = {
   _tag: "ScheduleEnd"
 }
 
 /**
- * @tsplus static ets/Stream/SinkEndReason/Ops UpstreamEnd
+ * @tsplus static effect/core/stream/Stream/SinkEndReason.Ops UpstreamEnd
  */
 export const upstreamEnd: SinkEndReason = {
   _tag: "UpstreamEnd"

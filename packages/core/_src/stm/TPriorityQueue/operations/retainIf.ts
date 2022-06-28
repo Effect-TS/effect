@@ -3,16 +3,12 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
 /**
  * Retains only elements from the queue matching the specified predicate.
  *
- * @tsplus fluent ets/TPriorityQueue retainIf
+ * @tsplus static effect/core/stm/TPriorityQueue.Aspects retainIf
+ * @tsplus pipeable effect/core/stm/TPriorityQueue retainIf
  */
-export function retainIf_<A>(self: TPriorityQueue<A>, f: Predicate<A>): USTM<void> {
-  concreteTPriorityQueue(self)
-  return self.map.update((map) => map.map((chunk) => chunk.filter(f)))
+export function retainIf<A>(f: Predicate<A>) {
+  return (self: TPriorityQueue<A>): STM<never, never, void> => {
+    concreteTPriorityQueue(self)
+    return self.map.update((map) => map.map((chunk) => chunk.filter(f)))
+  }
 }
-
-/**
- * Retains only elements from the queue matching the specified predicate.
- *
- * @tsplus static ets/TPriorityQueue/Aspects retainIf
- */
-export const retainIf = Pipeable(retainIf_)

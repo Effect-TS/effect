@@ -5,7 +5,7 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
  * Peeks at the first value in the queue without removing it, retrying until a
  * value is in the queue.
  *
- * @tsplus getter ets/TPriorityQueue peek
+ * @tsplus getter effect/core/stm/TPriorityQueue peek
  */
 export function peek<A>(self: TPriorityQueue<A>): USTM<A> {
   return STM.Effect((journal) => {

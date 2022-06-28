@@ -9,7 +9,7 @@ describe.concurrent("Sink", () => {
         Chunk.empty()
       )
         .transduce(sink)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -38,7 +38,7 @@ describe.concurrent("Sink", () => {
         Chunk.empty()
       )
         .transduce(sink)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 

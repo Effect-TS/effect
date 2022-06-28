@@ -1,7 +1,7 @@
 import { findSink, zipParLaw } from "@effect/core/test/stream/Sink/test-utils"
 
-describe("Sink", () => {
-  describe("zip", () => {
+describe.concurrent("Sink", () => {
+  describe.concurrent("zip", () => {
     it("should return the value of both sinks", async () => {
       const program = Stream(1, 2, 3).run(Sink.head().zip(Sink.succeed("hello")))
 
@@ -12,7 +12,7 @@ describe("Sink", () => {
     })
   })
 
-  describe("zipRight", () => {
+  describe.concurrent("zipRight", () => {
     it("should return the value of the right sink", async () => {
       const program = Stream(1, 2, 3).run(Sink.head() > Sink.succeed("hello"))
 
@@ -22,7 +22,7 @@ describe("Sink", () => {
     })
   })
 
-  describe("zipLeft", () => {
+  describe.concurrent("zipLeft", () => {
     it("should return the value of the left sink", async () => {
       const program = Stream(1, 2, 3).run(Sink.head() < Sink.succeed("hello"))
 
@@ -32,7 +32,7 @@ describe("Sink", () => {
     })
   })
 
-  describe("zipWith", () => {
+  describe.concurrent("zipWith", () => {
     it("should use the specified function to zip the sink values", async () => {
       const program = Stream(1, 2, 3).run(
         Sink.head().zipWith(Sink.succeed("hello"), (option, s) => option.fold(s, (a) => s + 1))
@@ -44,7 +44,7 @@ describe("Sink", () => {
     })
   })
 
-  describe("zipWithPar", () => {
+  describe.concurrent("zipWithPar", () => {
     it("coherence", async () => {
       const program = Effect.Do()
         .bind(

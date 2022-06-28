@@ -4,40 +4,31 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * If this stream is empty, produce the specified element or chunk of elements,
  * or switch to the specified stream.
  *
- * @tsplus fluent ets/Stream defaultIfEmpty
+ * @tsplus static effect/core/stream/Stream.Aspects defaultIfEmpty
+ * @tsplus pipeable effect/core/stream/Stream defaultIfEmpty
  */
-export function defaultIfEmpty_<R, R1, E, E1, A, A1>(
-  self: Stream<R, E, A>,
+export function defaultIfEmpty<R1, E1, A1>(
   stream: Stream<R1, E1, A1>
-): Stream<R | R1, E | E1, A | A1>
-export function defaultIfEmpty_<R, E, A, A1>(
-  self: Stream<R, E, A>,
+): <R, E, A>(self: Stream<R, E, A>) => Stream<R | R1, E | E1, A | A1>
+export function defaultIfEmpty<A1>(
   chunk: Chunk<A1>
-): Stream<R, E, A | A1>
-export function defaultIfEmpty_<R, E, A, A1>(
-  self: Stream<R, E, A>,
-  a: A1
-): Stream<R, E, A | A1>
-export function defaultIfEmpty_<R, E, E1, A, A1>(
-  self: Stream<R, E, A>,
+): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A | A1>
+export function defaultIfEmpty<A1>(
+  value: A1
+): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A | A1>
+export function defaultIfEmpty<R, E, E1, A, A1>(
   emptyValue: A1 | Chunk<A1> | Stream<never, E1, A1>
-): Stream<R, E | E1, A | A1> {
-  if (Chunk.isChunk(emptyValue)) {
-    return defaultIfEmptyChunk(self, emptyValue)
+) {
+  return (self: Stream<R, E, A>): Stream<R, E | E1, A | A1> => {
+    if (Chunk.isChunk(emptyValue)) {
+      return defaultIfEmptyChunk(self, emptyValue)
+    }
+    if (Stream.isStream(emptyValue)) {
+      return defaultIfEmptyStream(self, emptyValue)
+    }
+    return defaultIfEmptyValue(self, emptyValue)
   }
-  if (Stream.isStream(emptyValue)) {
-    return defaultIfEmptyStream(self, emptyValue)
-  }
-  return defaultIfEmptyValue(self, emptyValue)
 }
-
-/**
- * If this stream is empty, produce the specified element or chunk of elements,
- * or switch to the specified stream.
- *
- * @tsplus static ets/Stream/Aspects defaultIfEmpty
- */
-export const defaultIfEmpty = Pipeable(defaultIfEmpty_)
 
 /**
  * Produces the specified element if this stream is empty.

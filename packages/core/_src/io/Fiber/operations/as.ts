@@ -1,16 +1,11 @@
 /**
  * Maps the output of this fiber to the specified constant value.
  *
- * @tsplus fluent ets/Fiber as
- * @tsplus fluent ets/RuntimeFiber as
+ * @tsplus static effect/core/io/Fiber.Aspects as
+ * @tsplus static effect/core/io/RuntimeFiber.Aspects as
+ * @tsplus pipeable effect/core/io/Fiber as
+ * @tsplus pipeable effect/core/io/RuntimeFiber as
  */
-export function as_<E, A, B>(self: Fiber<E, A>, b: LazyArg<B>): Fiber<E, B> {
-  return self.map(b)
+export function as<B>(b: LazyArg<B>) {
+  return <E, A>(self: Fiber<E, A>): Fiber<E, B> => self.map(b)
 }
-
-/**
- * Maps the output of this fiber to the specified constant value.
- *
- * @tsplus static ets/Fiber/Aspects as
- */
-export const as = Pipeable(as_)

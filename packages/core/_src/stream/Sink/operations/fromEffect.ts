@@ -3,7 +3,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
 /**
  * Creates a single-value sink produced from an effect.
  *
- * @tsplus static ets/Sink/Ops fromEffect
+ * @tsplus static effect/core/stream/Sink.Ops fromEffect
  */
 export function fromEffect<R, E, Z>(
   effect: LazyArg<Effect<R, E, Z>>,

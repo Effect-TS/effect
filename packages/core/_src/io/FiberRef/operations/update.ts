@@ -1,7 +1,7 @@
 /**
  * Atomically modifies the `FiberRef` with the specified function.
  *
- * @tsplus fluent ets/FiberRef update
+ * @tsplus fluent effect/core/io/FiberRef update
  */
 export function update_<A, P>(
   self: FiberRef<A, P>,
@@ -14,6 +14,6 @@ export function update_<A, P>(
 /**
  * Atomically modifies the `FiberRef` with the specified function.
  *
- * @tsplus static ets/FiberRef/Aspects update
+ * @tsplus static effect/core/io/FiberRef.Aspects update
  */
 export const update = Pipeable(update_)

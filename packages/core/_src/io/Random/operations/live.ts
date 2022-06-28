@@ -1,12 +1,12 @@
 import { RandomSym } from "@effect/core/io/Random/definition"
 
 /**
- * @tsplus static ets/Random/Ops default
+ * @tsplus static effect/core/io/Random.Ops default
  */
 export const defaultRandom = LazyValue.make(() => new LiveRandom((Math.random() * 4294967296) >>> 0))
 
 /**
- * @tsplus static ets/Random/Ops live
+ * @tsplus static effect/core/io/Random.Ops live
  */
 export const live = Layer.fromValue(Random.Tag, defaultRandom.value)
 

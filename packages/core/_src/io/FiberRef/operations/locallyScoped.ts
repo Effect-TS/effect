@@ -3,7 +3,7 @@
  * fiber to the specified value as its `acquire` action and restores it to its
  * original value as its `release` action.
  *
- * @tsplus fluent ets/FiberRef locallyScoped
+ * @tsplus fluent effect/core/io/FiberRef locallyScoped
  */
 export function locallyScoped_<A, P>(
   self: FiberRef<A, P>,
@@ -13,7 +13,7 @@ export function locallyScoped_<A, P>(
   return Effect.acquireRelease(
     self.get().flatMap((old) => self.set(value).as(old)),
     (a) => self.set(a)
-  ).unit()
+  ).unit
 }
 
 /**
@@ -21,6 +21,6 @@ export function locallyScoped_<A, P>(
  * fiber to the specified value as its `acquire` action and restores it to its
  * original value as its `release` action.
  *
- * @tsplus static ets/FiberRef/Aspects locallyScoped
+ * @tsplus static effect/core/io/FiberRef.Aspects locallyScoped
  */
 export const locallyScoped = Pipeable(locallyScoped_)

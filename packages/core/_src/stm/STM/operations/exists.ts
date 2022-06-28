@@ -2,7 +2,7 @@
  * Determines whether any element of the `Collection<A>` satisfies the effectual
  * predicate `f`.
  *
- * @tsplus static ets/STM/Ops exists
+ * @tsplus static effect/core/stm/STM.Ops exists
  */
 export function exists<R, E, A>(
   as: LazyArg<Collection<A>>,

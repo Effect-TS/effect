@@ -2,21 +2,13 @@
  * Transforms both inputs and result of this sink using the provided
  * functions.
  *
- * @tsplus fluent ets/Sink dimap
+ * @tsplus static effect/core/stream/Sink.Aspects dimap
+ * @tsplus pipeable effect/core/stream/Sink.Aspects dimap
  */
-export function dimap_<R, E, In, In1, L, Z, Z1>(
-  self: Sink<R, E, In, L, Z>,
+export function dimap<In, In1, Z, Z1>(
   f: (input: In1) => In,
   g: (z: Z) => Z1,
   __tsplusTrace?: string
-): Sink<R, E, In1, L, Z1> {
-  return self.contramap(f).map(g)
+) {
+  return <R, E, L>(self: Sink<R, E, In, L, Z>): Sink<R, E, In1, L, Z1> => self.contramap(f).map(g)
 }
-
-/**
- * Transforms both inputs and result of this sink using the provided
- * functions.
- *
- * @tsplus static ets/Sink/Aspects dimap
- */
-export const dimap = Pipeable(dimap_)

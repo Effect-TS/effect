@@ -1,5 +1,5 @@
-describe("Channel", () => {
-  describe("stack safety", () => {
+describe.concurrent("Channel", () => {
+  describe.concurrent("stack safety", () => {
     it("mapOut is stack safe", async () => {
       const N = 10_000
 

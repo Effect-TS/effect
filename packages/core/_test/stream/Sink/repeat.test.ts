@@ -8,7 +8,7 @@ describe.concurrent("Sink", () => {
         Chunk(6, 7),
         Chunk(8, 9)
       )
-        .run(Sink.take<number>(3).repeat())
+        .run(Sink.take<number>(3).repeat)
 
       const result = await program.unsafeRunPromise()
 
@@ -31,7 +31,7 @@ describe.concurrent("Sink", () => {
         Chunk(8, 9)
       ).run(
         Sink.sum()
-          .repeat()
+          .repeat
           .map((chunk) => chunk.reduce(0, (a, b) => a + b))
       )
 
@@ -42,8 +42,8 @@ describe.concurrent("Sink", () => {
 
     it("handles errors", async () => {
       const program = Stream.fromChunks(Chunk(1, 2))
-        .run(Sink.fail(undefined).repeat())
-        .either()
+        .run(Sink.fail(undefined).repeat)
+        .either
 
       const result = await program.unsafeRunPromise()
 

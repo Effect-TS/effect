@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Logger/Ops default
+ * @tsplus static effect/core/io/Logger.Ops default
  */
 export const defaultLogger: Logger<string, string> = {
   apply: (trace, fiberId, logLevel, message, cause0, context, spans, annotations) => {

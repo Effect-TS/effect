@@ -2,7 +2,7 @@
  * Runs the stream to completion and yields the first value emitted by it,
  * discarding the rest of the elements.
  *
- * @tsplus fluent ets/Stream runHead
+ * @tsplus getter effect/core/stream/Stream runHead
  */
 export function runHead<R, E, A>(
   self: Stream<R, E, A>,

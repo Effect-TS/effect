@@ -5,36 +5,26 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
  * consumes elements until an element after the first satisfies the specified
  * predicate.
  *
- * @tsplus fluent ets/Sink splitWhere
+ * @tsplus static effect/core/stream/Sink.Aspects splitWhere
+ * @tsplus pipeable effect/core/stream/Sink splitWhere
  */
-export function splitWhere_<R, E, In, In1, L extends In1, Z>(
-  self: Sink<R, E, In, L, Z>,
-  f: Predicate<In1>,
-  __tsplusTrace?: string
-): Sink<R, E, In & In1, In1, Z> {
-  concreteSink(self)
-  return new SinkInternal(
-    Channel.fromEffect(Ref.make(Chunk.empty<In & In1>())).flatMap((ref) =>
-      splitter<E, In & In1>(false, ref, f)
-        .pipeToOrFail(self.channel)
-        .doneCollect
-        .flatMap(({ tuple: [leftovers, z] }) =>
-          Channel.fromEffect(ref.get()).flatMap(
-            (leftover) => Channel.write(leftover + leftovers.flatten) > Channel.succeed(z)
+export function splitWhere<In1>(f: Predicate<In1>, __tsplusTrace?: string) {
+  return <R, E, In, L extends In1, Z>(self: Sink<R, E, In, L, Z>): Sink<R, E, In & In1, In1, Z> => {
+    concreteSink(self)
+    return new SinkInternal(
+      Channel.fromEffect(Ref.make(Chunk.empty<In & In1>())).flatMap((ref) =>
+        splitter<E, In & In1>(false, ref, f)
+          .pipeToOrFail(self.channel)
+          .doneCollect
+          .flatMap(({ tuple: [leftovers, z] }) =>
+            Channel.fromEffect(ref.get()).flatMap(
+              (leftover) => Channel.write(leftover + leftovers.flatten) > Channel.succeed(z)
+            )
           )
-        )
+      )
     )
-  )
+  }
 }
-
-/**
- * Splits the sink on the specified predicate, returning a new sink that
- * consumes elements until an element after the first satisfies the specified
- * predicate.
- *
- * @tsplus static ets/Sink/Aspects splitWhere
- */
-export const splitWhere = Pipeable(splitWhere_)
 
 function splitter<E, A>(
   written: boolean,

@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/FiberRef/Ops currentLogAnnotations
+ * @tsplus static effect/core/io/FiberRef.Ops currentLogAnnotations
  */
 export const currentLogAnnotations: LazyValue<
   FiberRef<

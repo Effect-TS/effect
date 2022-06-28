@@ -8,11 +8,11 @@ describe.concurrent("Stream", () => {
       const stream3 = Stream.fromChunk(Chunk(1)) + Stream.fromChunk(Chunk(2)) + Stream(3, 4, 5)
 
       const program = Effect.struct({
-        result1: Stream(1, 2, 3, 4, 5).sliding(2).runCollect(),
-        result2: stream0.sliding(2).runCollect(),
-        result3: stream1.sliding(2).runCollect(),
-        result4: stream2.sliding(2).runCollect(),
-        result5: stream3.sliding(2).runCollect()
+        result1: Stream(1, 2, 3, 4, 5).sliding(2).runCollect,
+        result2: stream0.sliding(2).runCollect,
+        result3: stream1.sliding(2).runCollect,
+        result4: stream2.sliding(2).runCollect,
+        result5: stream3.sliding(2).runCollect
       })
 
       const { result1, result2, result3, result4, result5 } = await program.unsafeRunPromise()
@@ -25,7 +25,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("returns all elements if chunkSize is greater than the size of the stream", async () => {
-      const program = Stream(1, 2, 3, 4, 5).sliding(6).runCollect()
+      const program = Stream(1, 2, 3, 4, 5).sliding(6).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -36,8 +36,8 @@ describe.concurrent("Stream", () => {
       const chunkSize = 10
       const stream = Stream.range(0, 100)
       const program = Effect.struct({
-        sliding: stream.sliding(chunkSize, chunkSize).runCollect(),
-        grouped: stream.grouped(chunkSize).runCollect()
+        sliding: stream.sliding(chunkSize, chunkSize).runCollect,
+        grouped: stream.grouped(chunkSize).runCollect
       })
 
       const { grouped, sliding } = await program.unsafeRunPromise()
@@ -48,8 +48,8 @@ describe.concurrent("Stream", () => {
     it("fails if upstream produces an error", async () => {
       const program = (Stream(1, 2, 3) + Stream.fail("ouch") + Stream(4, 5))
         .sliding(2)
-        .runCollect()
-        .either()
+        .runCollect
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -57,7 +57,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("should return empty chunk when stream is empty", async () => {
-      const program = Stream.empty.sliding(2).runCollect()
+      const program = Stream.empty.sliding(2).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -72,8 +72,8 @@ describe.concurrent("Stream", () => {
         .bind("either", ({ ref, stream }) =>
           stream
             .mapEffect((chunk) => ref.update((_) => _.append(chunk)))
-            .runCollect()
-            .either())
+            .runCollect
+            .either)
         .bind("result", ({ ref }) => ref.get())
 
       const { either, result } = await program.unsafeRunPromise()

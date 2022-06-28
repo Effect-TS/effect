@@ -1,7 +1,7 @@
 /**
  * Unearth the unchecked failure of the effect (opposite of `orDie`).
  *
- * @tsplus fluent ets/Effect resurrect
+ * @tsplus getter effect/core/io/Effect resurrect
  */
 export function resurrect<R, E, A>(
   self: Effect<R, E, A>,

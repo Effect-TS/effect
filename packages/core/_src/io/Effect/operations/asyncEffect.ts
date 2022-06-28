@@ -2,7 +2,7 @@
  * Imports an asynchronous effect into a pure `Effect` value. This formulation
  * is necessary when the effect is itself expressed in terms of an `Effect`.
  *
- * @tsplus static ets/Effect/Ops asyncEffect
+ * @tsplus static effect/core/io/Effect.Ops asyncEffect
  */
 export function asyncEffect<R, E, A, R2, E2, X>(
   register: (callback: (_: Effect<R, E, A>) => void) => Effect<R2, E2, X>,
@@ -16,7 +16,9 @@ export function asyncEffect<R, E, A, R2, E2, X>(
         restore(
           register((k) => runtime.unsafeRunAsync(k.intoDeferred(deferred)))
             .catchAllCause((cause) => deferred.failCause(cause as Cause<E | E2>))
-        ).fork() > restore(deferred.await())
+        )
+          .fork
+          .zipRight(restore(deferred.await()))
       )
     )
   })

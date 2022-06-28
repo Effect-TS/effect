@@ -3,7 +3,7 @@ import { Fail } from "@effect/core/stream/Channel/definition/primitives"
 /**
  * Halt a channel with the specified error.
  *
- * @tsplus static ets/Channel/Ops fail
+ * @tsplus static effect/core/stream/Channel.Ops fail
  */
 export function fail<E>(
   e: LazyArg<E>

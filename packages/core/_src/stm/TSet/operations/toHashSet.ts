@@ -3,9 +3,9 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
 /**
  * Collects all elements into a hash set.
  *
- * @tsplus getter ets/TSet toHashSet
+ * @tsplus getter effect/core/stm/TSet toHashSet
  */
-export function toHashSet_<A>(self: TSet<A>): USTM<HashSet<A>> {
+export function toHashSet<A>(self: TSet<A>): USTM<HashSet<A>> {
   concreteTSet(self)
   return self.toList.map((_) => _.toHashSet)
 }

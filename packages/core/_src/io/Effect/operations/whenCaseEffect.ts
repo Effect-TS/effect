@@ -2,7 +2,7 @@
  * Runs an effect when the supplied partial function matches for the given
  * value, otherwise does nothing.
  *
- * @tsplus static ets/Effect/Ops whenCaseEffect
+ * @tsplus static effect/core/io/Effect.Ops whenCaseEffect
  */
 export function whenCaseEffect<R, E, A, R1, E1, B>(
   a: LazyArg<Effect<R, E, A>>,

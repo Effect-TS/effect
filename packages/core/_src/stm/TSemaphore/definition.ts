@@ -28,14 +28,14 @@ export type TSemaphoreSym = typeof TSemaphoreSym
  * semaphores transactionally and later releasing them transactionally to safely
  * synchronize on access to two different mutable variables.
  *
- * @tsplus type ets/TSemaphore
+ * @tsplus type effect/core/stm/TSemaphore
  */
 export interface TSemaphore {
   readonly [TSemaphoreSym]: TSemaphoreSym
 }
 
 /**
- * @tsplus type ets/TSemaphore/Ops
+ * @tsplus type effect/core/stm/TSemaphore.Ops
  */
 export interface TSemaphoreOps {
   $: TSemaphoreAspects
@@ -45,6 +45,6 @@ export const TSemaphore: TSemaphoreOps = {
 }
 
 /**
- * @tsplus type ets/TSemaphore/Aspects
+ * @tsplus type effect/core/stm/TSemaphore,Aspects
  */
 export interface TSemaphoreAspects {}

@@ -4,7 +4,7 @@ describe.concurrent("Stream", () => {
       const stream = Stream.fromCollection(Chunk.empty<number>())
         .partitionEither((i) => Effect.succeedNow(i % 2 === 0 ? Either.left(i) : Either.right(i)))
         .map(({ tuple: [evens, odds] }) => evens.mergeEither(odds))
-        .flatMap((stream) => stream.runCollect())
+        .flatMap((stream) => stream.runCollect)
       const program = Effect.collectAll(
         Chunk.range(0, 50).map(() => Effect.scoped(stream))
       ).map(() => 0)
@@ -24,8 +24,8 @@ describe.concurrent("Stream", () => {
           )
           .flatMap(({ tuple: [evens, odds] }) =>
             Effect.struct({
-              evens: evens.runCollect(),
-              odds: odds.runCollect()
+              evens: evens.runCollect,
+              odds: odds.runCollect
             })
           )
       )
@@ -46,8 +46,8 @@ describe.concurrent("Stream", () => {
           )
           .flatMap(({ tuple: [evens, odds] }) =>
             Effect.struct({
-              evens: evens.runCollect().either(),
-              odds: odds.runCollect().either()
+              evens: evens.runCollect.either,
+              odds: odds.runCollect.either
             })
           )
       )
@@ -79,12 +79,12 @@ describe.concurrent("Stream", () => {
                       ref.update((list) => list.prepend(i)) >
                         Effect.when(i === 2, latch.succeed(undefined))
                   )
-                  .runDrain()
-                  .fork())
+                  .runDrain
+                  .fork)
               .tap(({ latch }) => latch.await())
               .bind("snapshot1", ({ ref }) => ref.get())
-              .bind("other", () => odds.runCollect())
-              .tap(({ fiber }) => fiber.await())
+              .bind("other", () => odds.runCollect)
+              .tap(({ fiber }) => fiber.await)
               .bind("snapshot2", ({ ref }) => ref.get())
           )
       )

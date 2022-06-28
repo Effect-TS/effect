@@ -5,7 +5,7 @@
  *
  * The callback function `Effect<R, E, A> => any` must be called at most once.
  *
- * @tsplus static ets/Effect/Ops async
+ * @tsplus static effect/core/io/Effect.Ops async
  */
 export function _async<R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void) => void,
@@ -26,7 +26,7 @@ export { _async as async }
  * The list of fibers, that may complete the async callback, is used to
  * provide better diagnostics.
  *
- * @tsplus static ets/Effect/Ops asyncBlockingOn
+ * @tsplus static effect/core/io/Effect.Ops asyncBlockingOn
  */
 export function asyncBlockingOn<R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void) => void,

@@ -4,7 +4,7 @@ import { realFiberId } from "@effect/core/io/FiberId/definition"
 /**
  * Determines if the `FiberId` is a `None`.
  *
- * @tsplus fluent ets/FiberId isNone
+ * @tsplus fluent effect/core/io/FiberId isNone
  */
 export function isNone(self: FiberId): self is None {
   return isNoneSafe(self).run

@@ -6,8 +6,8 @@ describe.concurrent("Stream", () => {
         .map((n) => n.toString())
       const program = Stream.fromCollection(words)
         .groupByKey(identity, 8192)
-        .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect().map((c) => Tuple(k, c.size).toNative)))
-        .runCollect()
+        .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size).toNative)))
+        .runCollect
         .map((chunk) => new Map([...chunk]))
 
       const result = await program.unsafeRunPromise()
@@ -25,8 +25,8 @@ describe.concurrent("Stream", () => {
       const program = Stream.fromCollection(words)
         .groupByKey(identity, 1050)
         .first(2)
-        .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect().map((c) => Tuple(k, c.size).toNative)))
-        .runCollect()
+        .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size).toNative)))
+        .runCollect
         .map((chunk) => new Map([...chunk]))
 
       const result = await program.unsafeRunPromise()
@@ -42,8 +42,8 @@ describe.concurrent("Stream", () => {
       const program = Stream.fromCollection(words)
         .groupByKey(identity, 1050)
         .filter((n) => n <= 5)
-        .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect().map((c) => Tuple(k, c.size).toNative)))
-        .runCollect()
+        .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size).toNative)))
+        .runCollect
         .map((chunk) => new Map([...chunk]))
 
       const result = await program.unsafeRunPromise()
@@ -58,9 +58,9 @@ describe.concurrent("Stream", () => {
       const words = Chunk("abc", "test", "test", "foo")
       const program = (Stream.fromCollection(words) + Stream.fail("boom"))
         .groupByKey(identity)
-        .mergeGroupBy((_, s) => s.drain())
-        .runCollect()
-        .either()
+        .mergeGroupBy((_, s) => s.drain)
+        .runCollect
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -72,7 +72,7 @@ describe.concurrent("Stream", () => {
     it("sanity", async () => {
       const program = Stream(1, 2, 3, 4, 5)
         .grouped(2)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -83,7 +83,7 @@ describe.concurrent("Stream", () => {
       const program = Stream.range(0, 100)
         .grouped(10)
         .map((chunk) => chunk.size)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -91,7 +91,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("doesn't emit empty chunks", async () => {
-      const program = Stream.fromCollection(Chunk.empty<number>()).grouped(5).runCollect()
+      const program = Stream.fromCollection(Chunk.empty<number>()).grouped(5).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -101,8 +101,8 @@ describe.concurrent("Stream", () => {
     it("is equivalent to Chunk#grouped", async () => {
       const stream = Stream.range(1, 10)
       const program = Effect.Do()
-        .bind("result1", () => stream.grouped(2).runCollect())
-        .bind("partial", () => stream.runCollect())
+        .bind("result1", () => stream.grouped(2).runCollect)
+        .bind("partial", () => stream.runCollect)
         .bindValue("result2", ({ partial }) => partial.grouped(2))
 
       const { result1, result2 } = await program.unsafeRunPromise()
@@ -118,8 +118,8 @@ describe.concurrent("Stream", () => {
         .bind("either", ({ ref, stream }) =>
           stream
             .mapEffect((chunk) => ref.update((cs) => cs.append(chunk)))
-            .runCollect()
-            .either())
+            .runCollect
+            .either)
         .bind("result", ({ ref }) => ref.get())
 
       const { either, result } = await program.unsafeRunPromise()
@@ -141,7 +141,7 @@ describe.concurrent("Stream", () => {
   //         .tap(_ => c.proceed)
 
   //       assertM(for {
-  //         f      <- stream.runCollect().fork
+  //         f      <- stream.runCollect.fork
   //         _      <- c.offer *> TestClock.adjust(2.seconds) *> c.awaitNext
   //         _      <- c.offer *> TestClock.adjust(2.seconds) *> c.awaitNext
   //         _      <- c.offer
@@ -201,7 +201,7 @@ describe.concurrent("Stream", () => {
   //   })
 
   //   it("group immediately when chunk size is reached", async () => {
-  //     assertM(ZStream(1, 2, 3, 4).groupedWithin(2, 10.seconds).runCollect())(
+  //     assertM(ZStream(1, 2, 3, 4).groupedWithin(2, 10.seconds).runCollect)(
   //       equalTo(Chunk(Chunk(1, 2), Chunk(3, 4), Chunk()))
   //     )
   //   })

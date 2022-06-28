@@ -89,7 +89,7 @@ export class STMFailException<E> {
 }
 
 /**
- * @tsplus static ets/STM/Ops isFailException
+ * @tsplus static effect/core/stm/STM.Ops isFailException
  */
 export function isFailException(u: unknown): u is STMFailException<unknown> {
   return typeof u === "object" && u != null && STMFailExceptionSym in u
@@ -104,7 +104,7 @@ export class STMDieException<E> {
 }
 
 /**
- * @tsplus static ets/STM/Ops isDieException
+ * @tsplus static effect/core/stm/STM.Ops isDieException
  */
 export function isDieException(u: unknown): u is STMDieException<unknown> {
   return typeof u === "object" && u != null && STMDieExceptionSym in u
@@ -119,7 +119,7 @@ export class STMInterruptException {
 }
 
 /**
- * @tsplus static ets/STM/Ops isInterruptException
+ * @tsplus static effect/core/stm/STM.Ops isInterruptException
  */
 export function isInterruptException(u: unknown): u is STMInterruptException {
   return typeof u === "object" && u != null && STMInterruptExceptionSym in u
@@ -133,7 +133,7 @@ export class STMRetryException {
 }
 
 /**
- * @tsplus static ets/STM/Ops isRetryException
+ * @tsplus static effect/core/stm/STM.Ops isRetryException
  */
 export function isRetryException(u: unknown): u is STMRetryException {
   return typeof u === "object" && u != null && STMRetryExceptionSym in u

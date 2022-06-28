@@ -3,23 +3,15 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 /**
  * Splits elements based on a predicate.
  *
- * @tsplus fluent ets/Stream split
+ * @tsplus static effect/core/stream/Stream.Aspects split
+ * @tsplus pipeable effect/core/stream/Stream split
  */
-export function split_<R, E, A>(
-  self: Stream<R, E, A>,
-  f: Predicate<A>,
-  __tsplusTrace?: string
-): Stream<R, E, Chunk<A>> {
-  concreteStream(self)
-  return new StreamInternal(self.channel >> loop<R, E, A>(Chunk.empty(), f))
+export function split<A>(f: Predicate<A>, __tsplusTrace?: string) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R, E, Chunk<A>> => {
+    concreteStream(self)
+    return new StreamInternal(self.channel >> loop<R, E, A>(Chunk.empty(), f))
+  }
 }
-
-/**
- * Splits elements based on a predicate.
- *
- * @tsplus static ets/Stream/Aspects split
- */
-export const split = Pipeable(split_)
 
 function splitInternal<R, E, A>(
   leftovers: Chunk<A>,

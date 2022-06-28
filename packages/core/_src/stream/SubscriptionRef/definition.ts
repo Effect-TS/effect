@@ -4,10 +4,10 @@ export const SubscriptionRefSym = Symbol.for("@effect/core/stream/SubscriptionRe
 export type SubscriptionRefSym = typeof SubscriptionRefSym
 
 /**
- * A `SubscriptionRef[A]` is a `Ref` that can be subscribed to in order to
+ * A `SubscriptionRef<A>` is a `Ref` that can be subscribed to in order to
  * receive the current value as well as all changes to the value.
  *
- * @tsplus type ets/SubscriptionRef
+ * @tsplus type effect/core/stream/SubscriptionRef
  */
 export interface SubscriptionRef<A> extends Ref.Synchronized<A> {
   /**
@@ -23,7 +23,7 @@ export interface SubscriptionRef<A> extends Ref.Synchronized<A> {
 }
 
 /**
- * @tsplus type ets/SubscriptionRef/Ops
+ * @tsplus type effect/core/stream/SubscriptionRef.Ops
  */
 export interface SubscriptionRefOps {
 }

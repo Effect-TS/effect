@@ -3,7 +3,7 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
 /**
  * Checks whether the queue is not empty.
  *
- * @tsplus getter ets/TPriorityQueue isNonEmpty
+ * @tsplus getter effect/core/stm/TPriorityQueue isNonEmpty
  */
 export function isNonEmpty<A>(self: TPriorityQueue<A>): USTM<boolean> {
   concreteTPriorityQueue(self)

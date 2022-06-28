@@ -1,7 +1,7 @@
 /**
  * Runs `onTrue` if the result of `self` is `true` and `onFalse` otherwise.
  *
- * @tsplus static ets/Effect/Ops ifEffect
+ * @tsplus static effect/core/io/Effect.Ops ifEffect
  */
 export function ifEffect<R, R1, R2, E, E1, E2, A, A1>(
   b: LazyArg<Effect<R, E, boolean>>,

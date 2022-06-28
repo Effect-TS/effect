@@ -6,8 +6,8 @@ describe.concurrent("FiberRef", () => {
     it("its value is inherited on join", async () => {
       const program = Effect.Do()
         .bind("fiberRef", () => FiberRef.make(initial))
-        .bind("child", ({ fiberRef }) => fiberRef.set(update).fork())
-        .tap(({ child }) => child.join())
+        .bind("child", ({ fiberRef }) => fiberRef.set(update).fork)
+        .tap(({ child }) => child.join)
         .flatMap(({ fiberRef }) => fiberRef.get())
 
       const result = await Effect.scoped(program).unsafeRunPromise()
@@ -17,8 +17,8 @@ describe.concurrent("FiberRef", () => {
 
     it("initial value is always available", async () => {
       const program = Effect.Do()
-        .bind("child", () => FiberRef.make(initial).fork())
-        .bind("fiberRef", ({ child }) => child.await().flatMap((_) => Effect.done(_)))
+        .bind("child", () => FiberRef.make(initial).fork)
+        .bind("fiberRef", ({ child }) => child.await.flatMap((_) => Effect.done(_)))
         .flatMap(({ fiberRef }) => fiberRef.get())
 
       const result = await Effect.scoped(program).unsafeRunPromise()
@@ -35,8 +35,8 @@ describe.concurrent("FiberRef", () => {
 
       const program = Effect.Do()
         .bind("fiberRef", () => FiberRef.make(0, increment))
-        .bind("child", () => Effect.unit.fork())
-        .tap(({ child }) => child.join())
+        .bind("child", () => Effect.unit.fork)
+        .tap(({ child }) => child.join)
         .flatMap(({ fiberRef }) => fiberRef.get())
 
       const result = await Effect.scoped(program).unsafeRunPromise()
@@ -53,10 +53,10 @@ describe.concurrent("FiberRef", () => {
         .bind("fiberRef", () => FiberRef.make(0, increment))
         .bind("child", () =>
           Effect.unit
-            .fork()
-            .flatMap((fiber) => fiber.join())
-            .fork())
-        .tap(({ child }) => child.join())
+            .fork
+            .flatMap((fiber) => fiber.join)
+            .fork)
+        .tap(({ child }) => child.join)
         .flatMap(({ fiberRef }) => fiberRef.get())
 
       const result = await Effect.scoped(program).unsafeRunPromise()
@@ -69,8 +69,8 @@ describe.concurrent("FiberRef", () => {
     it("join function is applied on join - 1", async () => {
       const program = Effect.Do()
         .bind("fiberRef", () => FiberRef.make(0, identity, Math.max))
-        .bind("child", ({ fiberRef }) => fiberRef.update((_) => _ + 1).fork())
-        .tap(({ child }) => child.join())
+        .bind("child", ({ fiberRef }) => fiberRef.update((_) => _ + 1).fork)
+        .tap(({ child }) => child.join)
         .flatMap(({ fiberRef }) => fiberRef.get())
 
       const result = await Effect.scoped(program).unsafeRunPromise()
@@ -81,9 +81,9 @@ describe.concurrent("FiberRef", () => {
     it("join function is applied on join - 2", async () => {
       const program = Effect.Do()
         .bind("fiberRef", () => FiberRef.make(0, identity, Math.max))
-        .bind("child", ({ fiberRef }) => fiberRef.update((_) => _ + 1).fork())
+        .bind("child", ({ fiberRef }) => fiberRef.update((_) => _ + 1).fork)
         .tap(({ fiberRef }) => fiberRef.update((_) => _ + 2))
-        .tap(({ child }) => child.join())
+        .tap(({ child }) => child.join)
         .flatMap(({ fiberRef }) => fiberRef.get())
 
       const result = await Effect.scoped(program).unsafeRunPromise()

@@ -3,7 +3,7 @@ import { SynchronizedInternal } from "@effect/core/io/Ref/operations/_internal/S
 /**
  * Creates a new `Ref` with the specified value.
  *
- * @tsplus static ets/Ref/Ops make
+ * @tsplus static effect/core/io/Ref.Ops make
  */
 export function makeRef<A>(value: LazyArg<A>, __tsplusTrace?: string): Effect<never, never, Ref<A>> {
   return Effect.succeed(Ref.unsafeMake(value()))
@@ -12,8 +12,8 @@ export function makeRef<A>(value: LazyArg<A>, __tsplusTrace?: string): Effect<ne
 /**
  * Creates a new `Ref.Synchronized` with the specified value.
  *
- * @tsplus static ets/Ref/Synchronized/Ops make
- * @tsplus static ets/Ref/Synchronized/Ops __call
+ * @tsplus static effect/core/io/Ref/Synchronized.Ops make
+ * @tsplus static effect/core/io/Ref/Synchronized.Ops __call
  */
 export function makeSynchronized<A>(
   value: LazyArg<A>,

@@ -2,22 +2,15 @@
  * Returns a new schedule that chooses between two schedules with a common
  * output.
  *
- * @tsplus operator ets/Schedule ||
- * @tsplus operator ets/Schedule/WithState ||
- * @tsplus fluent ets/Schedule chooseMerge
- * @tsplus fluent ets/Schedule/WithState chooseMerge
+ * @tsplus pipeable-operator effect/core/io/Schedule ||
+ * @tsplus static effect/core/io/Schedule.Aspects chooseMerge
+ * @tsplus pipeable effect/core/io/Schedule chooseMerge
  */
-export function chooseMerge_<State, Env, In, Out, State1, Env1, In2, Out2>(
-  self: Schedule<State, Env, In, Out>,
+export function chooseMerge<State1, Env1, In2, Out2>(
   that: Schedule<State1, Env1, In2, Out2>
-): Schedule<Tuple<[State, State1]>, Env | Env1, Either<In, In2>, Out | Out2> {
-  return (self + that).map((either) => either.merge)
+) {
+  return <State, Env, In, Out>(
+    self: Schedule<State, Env, In, Out>
+  ): Schedule<Tuple<[State, State1]>, Env | Env1, Either<In, In2>, Out | Out2> =>
+    (self + that).map((either) => either.merge)
 }
-
-/**
- * Returns a new schedule that chooses between two schedules with a common
- * output.
- *
- * @tsplus static ets/Schedule/Aspects chooseMerge
- */
-export const chooseMerge = Pipeable(chooseMerge_)

@@ -1,12 +1,14 @@
+import { constVoid } from "@tsplus/stdlib/data/Function"
+
 /**
- * @tsplus static ets/Channel/Ops unit
+ * @tsplus static effect/core/stream/Channel.Ops unit
  */
-export const unit: Channel<never, unknown, unknown, unknown, never, never, void> = Channel.succeed(() => undefined)
+export const unit: Channel<never, unknown, unknown, unknown, never, never, void> = Channel.succeed(constVoid)
 
 /**
  * Ignores the result of the effect replacing it with a void
  *
- * @tsplus getter ets/Channel unit
+ * @tsplus getter effect/core/stream/Channel unit
  */
 export function unit_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>

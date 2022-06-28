@@ -50,8 +50,8 @@ describe.concurrent("Channel", () => {
       const program = left
         .mergeWith(
           right,
-          (exit) => MergeDecision.await((exit2) => Effect.done(exit).flip().zip(Effect.done(exit2).flip()).flip()),
-          (exit2) => MergeDecision.await((exit) => Effect.done(exit).flip().zip(Effect.done(exit2).flip()).flip())
+          (exit) => MergeDecision.await((exit2) => Effect.done(exit).flip.zip(Effect.done(exit2).flip).flip),
+          (exit2) => MergeDecision.await((exit) => Effect.done(exit).flip.zip(Effect.done(exit2).flip).flip)
         )
         .runDrain
 

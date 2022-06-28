@@ -1,7 +1,7 @@
 import { unsafeCompleteTakers } from "@effect/core/io/Queue/operations/_internal/unsafeCompleteTakers"
 
 /**
- * @tsplus type ets/QueueStrategy
+ * @tsplus type effect/core/io/Queue/Strategy
  */
 export interface Strategy<A> {
   readonly handleSurplus: (
@@ -23,7 +23,7 @@ export interface Strategy<A> {
 }
 
 /**
- * @tsplus type ets/QueueStrategy/Ops
+ * @tsplus type effect/core/io/Queue/Strategy.Ops
  */
 export interface StrategyOps {}
 export const Strategy: StrategyOps = {}
@@ -98,14 +98,14 @@ export class SlidingStrategy<A> implements Strategy<A> {
 }
 
 /**
- * @tsplus static ets/QueueStrategy/Ops Sliding
+ * @tsplus static effect/core/io/Queue/Strategy.Ops Sliding
  */
 export function slidingStrategy<A>() {
   return new SlidingStrategy<A>()
 }
 
 /**
- * @tsplus static ets/QueueStrategy/Ops Dropping
+ * @tsplus static effect/core/io/Queue/Strategy.Ops Dropping
  */
 export function dropppingStrategy<A>() {
   return new DroppingStrategy<A>()

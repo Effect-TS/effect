@@ -38,28 +38,28 @@ export class PullRight<K, A> {
  * constant space but the caller is responsible for ensuring that the
  * streams are sorted by distinct keys.
  *
- * @tsplus fluent ets/SortedByKey zipAllSortedByKeyWith
- * @tsplus fluent ets/Stream zipAllSortedByKeyWith
+ * @tsplus static effect/core/stream/SortedByKey.Aspects zipAllSortedByKeyWith
+ * @tsplus pipeable effect/core/stream/SortedByKey zipAllSortedByKeyWith
+ * @tsplus static effect/core/stream/Stream.Aspects zipAllSortedByKeyWith
+ * @tsplus pipeable effect/core/stream/Stream zipAllSortedByKeyWith
  */
-export function zipAllSortedByKeyWith_<R, E, K, A>(
-  self: SortedByKey<R, E, K, A>,
-  ord: Ord<K>
+export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
+  ord: Ord<K>,
+  that: LazyArg<SortedByKey<R2, E2, K, A2>>,
+  left: (a: A) => C1,
+  right: (b: A2) => C2,
+  both: (a: A, b: A2) => C3,
+  __tsplusTrace?: string
 ) {
-  return <R2, E2, B, C1, C2, C3>(
-    that: LazyArg<SortedByKey<R2, E2, K, B>>,
-    left: (a: A) => C1,
-    right: (b: B) => C2,
-    both: (a: A, b: B) => C3,
-    __tsplusTrace?: string
-  ): Stream<R | R2, E | E2, Tuple<[K, C1 | C2 | C3]>> => {
+  return <R, E>(self: SortedByKey<R, E, K, A>): Stream<R | R2, E | E2, Tuple<[K, C1 | C2 | C3]>> => {
     const pull = (
-      state: State<K, A, B>,
+      state: State<K, A, A2>,
       pullLeft: Effect<R, Maybe<E>, Chunk<Tuple<[K, A]>>>,
-      pullRight: Effect<R2, Maybe<E2>, Chunk<Tuple<[K, B]>>>
+      pullRight: Effect<R2, Maybe<E2>, Chunk<Tuple<[K, A2]>>>
     ): Effect<
       R | R2,
       never,
-      Exit<Maybe<E | E2>, Tuple<[Chunk<Tuple<[K, C1 | C2 | C3]>>, State<K, A, B>]>>
+      Exit<Maybe<E | E2>, Tuple<[Chunk<Tuple<[K, C1 | C2 | C3]>>, State<K, A, A2>]>>
     > => {
       switch (state._tag) {
         case "DrainLeft":
@@ -86,8 +86,8 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
           )
         case "PullBoth": {
           return pullLeft
-            .unsome()
-            .zipPar(pullRight.unsome())
+            .unsome
+            .zipPar(pullRight.unsome)
             .foldEffect(
               (e) => Effect.succeedNow(Exit.fail(Maybe.some(e))),
               ({ tuple: [a, b] }) => {
@@ -201,10 +201,10 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
 
     function mergeSortedByKeyChunk(
       leftChunk: Chunk<Tuple<[K, A]>>,
-      rightChunk: Chunk<Tuple<[K, B]>>
-    ): Tuple<[Chunk<Tuple<[K, C1 | C2 | C3]>>, State<K, A, B>]> {
+      rightChunk: Chunk<Tuple<[K, A2]>>
+    ): Tuple<[Chunk<Tuple<[K, C1 | C2 | C3]>>, State<K, A, A2>]> {
       const builder = Chunk.builder<Tuple<[K, C1 | C2 | C3]>>()
-      let state: State<K, A, B> | undefined
+      let state: State<K, A, A2> | undefined
       let leftIndex = 0
       let rightIndex = 0
       let leftTuple = leftChunk.unsafeGet(leftIndex)
@@ -251,7 +251,7 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
             k1 = leftTuple.get(0)
             a = leftTuple.get(1)
           } else {
-            const rightBuilder = Chunk.builder<Tuple<[K, B]>>()
+            const rightBuilder = Chunk.builder<Tuple<[K, A2]>>()
             rightBuilder.append(rightTuple)
 
             while (hasNext(rightChunk, rightIndex)) {
@@ -291,18 +291,3 @@ export function zipAllSortedByKeyWith_<R, E, K, A>(
     return self.combineChunks(that, new PullBoth(), pull)
   }
 }
-
-/**
- * Zips this stream that is sorted by distinct keys and the specified stream
- * that is sorted by distinct keys to produce a new stream that is sorted by
- * distinct keys. Uses the functions `left`, `right`, and `both` to handle
- * the cases where a key and value exist in this stream, that stream, or
- * both streams.
- *
- * This allows zipping potentially unbounded streams of data by key in
- * constant space but the caller is responsible for ensuring that the
- * streams are sorted by distinct keys.
- *
- * @tsplus static ets/SortedByKey/Aspects zipAllSortedByKeyWith
- */
-export const zipAllSortedByKeyWith = Pipeable(zipAllSortedByKeyWith_)

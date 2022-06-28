@@ -2,16 +2,9 @@
  * Atomically transforms the set into the union of itself and the provided
  * set.
  *
- * @tsplus fluent ets/TSet union
+ * @tsplus static effect/core/stm/TSet.Aspects union
+ * @tsplus pipeable effect/core/stm/TSet union
  */
-export function union_<A>(self: TSet<A>, other: TSet<A>): USTM<void> {
-  return other.foreach((_) => self.put(_))
+export function union<A>(other: TSet<A>) {
+  return (self: TSet<A>): STM<never, never, void> => other.forEach((_) => self.put(_))
 }
-
-/**
- * Atomically transforms the set into the union of itself and the provided
- * set.
- *
- * @tsplus static ets/TSet/Aspects union
- */
-export const union = Pipeable(union_)

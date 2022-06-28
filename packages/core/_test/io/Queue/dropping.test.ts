@@ -41,10 +41,10 @@ describe.concurrent("Queue", () => {
       const program = Effect.Do()
         .bind("queue", () => Queue.dropping<number>(2))
         .bindValue("iter", () => Chunk.range(1, 4))
-        .bind("fiber", ({ queue }) => queue.take.fork())
+        .bind("fiber", ({ queue }) => queue.take.fork)
         .tap(({ queue }) => waitForSize(queue, -1))
         .bind("oa", ({ iter, queue }) => queue.offerAll(iter))
-        .bind("j", ({ fiber }) => fiber.join())
+        .bind("j", ({ fiber }) => fiber.join)
 
       const { j, oa } = await program.unsafeRunPromise()
 

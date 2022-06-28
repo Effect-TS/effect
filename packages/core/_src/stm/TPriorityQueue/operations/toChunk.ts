@@ -3,7 +3,7 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
 /**
  * Collects all values into a chunk.
  *
- * @tsplus getter ets/TPriorityQueue toChunk
+ * @tsplus getter effect/core/stm/TPriorityQueue toChunk
  */
 export function toChunk<A>(self: TPriorityQueue<A>): USTM<Chunk<A>> {
   concreteTPriorityQueue(self)

@@ -3,9 +3,9 @@ import { concreteTDequeue } from "@effect/core/stm/THub/operations/_internal/Int
 /**
  * Checks whether the queue is shut down.
  *
- * @tsplus getter ets/THub/TDequeue isShutdown
+ * @tsplus getter effect/core/stm/THub/TDequeue isShutdown
  */
-export function isShutdown<A>(self: THub.TDequeue<A>): USTM<boolean> {
+export function isShutdown<A>(self: THub.TDequeue<A>): STM<never, never, boolean> {
   concreteTDequeue(self)
   return STM.Effect((journal) => {
     const currentSubscriberHead = self.subscriberHead.unsafeGet(journal)

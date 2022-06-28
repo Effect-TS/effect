@@ -2,19 +2,12 @@
  * Fail with the returned value if the `PartialFunction` matches, otherwise
  * continue with our held value.
  *
- * @tsplus fluent ets/STM reject
+ * @tsplus static effect/core/stm/STM.Aspects reject
+ * @tsplus pipeable effect/core/stm/STM reject
  */
-export function reject_<R, E, A, E1>(
-  self: STM<R, E, A>,
-  pf: (a: A) => Maybe<E1>
-): STM<R, E | E1, A> {
-  return self.rejectSTM((a) => pf(a).map(STM.failNow))
+export function reject<A, E1>(pf: (a: A) => Maybe<E1>) {
+  return <R, E>(self: STM<R, E, A>): STM<R, E | E1, A> =>
+    self.rejectSTM(
+      (a) => pf(a).map(STM.failNow)
+    )
 }
-
-/**
- * Fail with the returned value if the `PartialFunction` matches, otherwise
- * continue with our held value.
- *
- * @tsplus static ets/STM/Aspects reject
- */
-export const reject = Pipeable(reject_)

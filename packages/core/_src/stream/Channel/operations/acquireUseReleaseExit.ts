@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Channel/Ops acquireUseReleaseExit
+ * @tsplus static effect/core/stream/Channel.Ops acquireUseReleaseExit
  */
 export function acquireUseReleaseExit<
   Env,
@@ -21,7 +21,7 @@ export function acquireUseReleaseExit<
     Channel.fromEffect(
       acquire()
         .tap((a) => ref.set((exit) => release(a, exit)))
-        .uninterruptible()
+        .uninterruptible
     )
       .flatMap(use)
       .ensuringWith((exit) => ref.get().flatMap((f) => f(exit)))

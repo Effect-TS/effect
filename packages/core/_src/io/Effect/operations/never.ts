@@ -5,7 +5,7 @@ const MAX_SET_TIMEOUT_VALUE = 2 ** 31 - 1
  * Returns a effect that will never produce anything. The moral equivalent of
  * `while(true) {}`, only without the wasted CPU cycles.
  *
- * @tsplus static ets/Effect/Ops never
+ * @tsplus static effect/core/io/Effect.Ops never
  */
 export const never: Effect<never, never, never> = Effect.asyncInterrupt<never, never, never>(() => {
   const interval = setInterval(() => {

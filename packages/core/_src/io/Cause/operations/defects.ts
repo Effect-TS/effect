@@ -1,7 +1,7 @@
 /**
  * Extracts a list of non-recoverable errors from the `Cause`.
  *
- * @tsplus getter ets/Cause defects
+ * @tsplus getter effect/core/io/Cause defects
  */
 export function defects<E>(self: Cause<E>): List<unknown> {
   return self

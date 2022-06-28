@@ -2,7 +2,7 @@ export const RuntimeConfigFlagSym = Symbol.for("@effect/core/io/RuntimeConfig/Fl
 export type RuntimeConfigFlagSym = typeof RuntimeConfigFlagSym
 
 /**
- * @tsplus type ets/RuntimeConfigFlag
+ * @tsplus type effect/core/io/RuntimeConfig/RuntimeConfigFlag
  */
 export type RuntimeConfigFlag =
   | EnableCurrentFiber
@@ -12,7 +12,7 @@ export type RuntimeConfigFlag =
   | EnableFiberRoots
 
 /**
- * @tsplus type ets/RuntimeConfigFlag/Ops
+ * @tsplus type effect/core/io/RuntimeConfig/RuntimeConfigFlag.Ops
  */
 export interface RuntimeConfigFlagOps {}
 export const RuntimeConfigFlag: RuntimeConfigFlagOps = {}
@@ -88,32 +88,32 @@ export class EnableFiberRoots implements Equals {
 }
 
 /**
- * @tsplus static ets/RuntimeConfigFlag/Ops EnableCurrentFiber
+ * @tsplus static effect/core/io/RuntimeConfig/RuntimeConfigFlag.Ops EnableCurrentFiber
  */
 export const enableCurrentFiber: RuntimeConfigFlag = new EnableCurrentFiber()
 
 /**
- * @tsplus static ets/RuntimeConfigFlag/Ops LogRuntime
+ * @tsplus static effect/core/io/RuntimeConfig/RuntimeConfigFlag.Ops LogRuntime
  */
 export const logRuntime: RuntimeConfigFlag = new LogRuntime()
 
 /**
- * @tsplus static ets/RuntimeConfigFlag/Ops SuperviseOperations
+ * @tsplus static effect/core/io/RuntimeConfig/RuntimeConfigFlag.Ops SuperviseOperations
  */
 export const superviseOperations: RuntimeConfigFlag = new SuperviseOperations()
 
 /**
- * @tsplus static ets/RuntimeConfigFlag/Ops TrackRuntimeMetrics
+ * @tsplus static effect/core/io/RuntimeConfig/RuntimeConfigFlag.Ops TrackRuntimeMetrics
  */
 export const trackRuntimeMetrics: RuntimeConfigFlag = new TrackRuntimeMetrics()
 
 /**
- * @tsplus static ets/RuntimeConfigFlag/Ops EnableFiberRoots
+ * @tsplus static effect/core/io/RuntimeConfig/RuntimeConfigFlag.Ops EnableFiberRoots
  */
 export const enableFiberRoots: RuntimeConfigFlag = new EnableFiberRoots()
 
 /**
- * @tsplus static ets/RuntimeConfigFlag/Ops isRuntimeConfigFlag
+ * @tsplus static effect/core/io/RuntimeConfig/RuntimeConfigFlag.Ops isRuntimeConfigFlag
  */
 export function isRuntimeConfigFlag(self: unknown): self is RuntimeConfigFlag {
   return typeof self === "object" && self != null && RuntimeConfigFlagSym in self

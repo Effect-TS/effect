@@ -2,7 +2,7 @@
  * A more powerful variant of `addFinalizer` that allows the finalizer to
  * depend on the `Exit` value that the scope is closed with.
  *
- * @tsplus static ets/Effect/Ops addFinalizerExit
+ * @tsplus static effect/core/io/Effect.Ops addFinalizerExit
  */
 export function addFinalizerExit<R, X>(
   finalizer: (exit: Exit<unknown, unknown>) => Effect<R, never, X>,

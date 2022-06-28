@@ -19,7 +19,7 @@ describe.concurrent("Effect", () => {
 
     it("fail on error", async () => {
       let finalized = false
-      const program = Effect.fail(ExampleError).onError((cause) =>
+      const program = Effect.fail(ExampleError).onError(() =>
         Effect.succeed(() => {
           finalized = true
         })
@@ -36,8 +36,8 @@ describe.concurrent("Effect", () => {
       const e3 = new Error("e3")
       const program = ExampleErrorFail.ensuring(Effect.die(e2))
         .ensuring(Effect.die(e3))
-        .sandbox()
-        .flip()
+        .sandbox
+        .flip
         .map((cause) => cause.untraced)
 
       const result = await program.unsafeRunPromise()
@@ -51,9 +51,9 @@ describe.concurrent("Effect", () => {
       let reported: Exit<never, number> | undefined
       const program = Effect.succeed(42)
         .ensuring(Effect.die(ExampleError))
-        .fork()
+        .fork
         .flatMap((fiber) =>
-          fiber.await().flatMap((e) =>
+          fiber.await.flatMap((e) =>
             Effect.succeed(() => {
               reported = e
             })
@@ -121,8 +121,8 @@ describe.concurrent("Effect", () => {
           ExampleErrorFail,
           () => Effect.unit,
           () => Effect.unit
-        ).either()
-      ).flip()
+        ).either
+      ).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -147,7 +147,7 @@ describe.concurrent("Effect", () => {
           Effect.unit,
           ExampleErrorFail,
           Effect.unit
-        ).either()
+        ).either
       )
 
       const result = await program.unsafeRunPromiseExit()
@@ -167,15 +167,15 @@ describe.concurrent("Effect", () => {
         asyncUnit<never>()
       )
       const program = Effect.Do()
-        .bind("a1", () => io1.exit().map((exit) => exit.untraced))
-        .bind("a2", () => io2.exit().map((exit) => exit.untraced))
+        .bind("a1", () => io1.exit.map((exit) => exit.untraced))
+        .bind("a2", () => io2.exit.map((exit) => exit.untraced))
         .bind("a3", () =>
-          Effect.absolve(io1.either())
-            .exit()
+          Effect.absolve(io1.either)
+            .exit
             .map((exit) => exit.untraced))
         .bind("a4", () =>
-          Effect.absolve(io2.either())
-            .exit()
+          Effect.absolve(io2.either)
+            .exit
             .map((exit) => exit.untraced))
 
       const { a1, a2, a3, a4 } = await program.unsafeRunPromise()
@@ -203,11 +203,11 @@ describe.concurrent("Effect", () => {
             ),
             () => Effect.unit,
             () => log("start 2") > Effect.sleep((10).millis) > log("release 2")
-          ).fork())
+          ).fork)
         .tap(({ ref }) =>
           (ref.get() < Effect.sleep((1).millis)).repeatUntil((list) => list.find((s) => s === "start 1").isSome())
         )
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .tap(({ ref }) =>
           (ref.get() < Effect.sleep((1).millis)).repeatUntil((list) => list.find((s) => s === "release 2").isSome())
         )
@@ -229,9 +229,9 @@ describe.concurrent("Effect", () => {
         .bind("fiber", ({ deferred1, deferred2, ref }) =>
           (deferred1.succeed(undefined) > deferred2.await())
             .ensuring(ref.set(true) > Effect.sleep((10).millis))
-            .fork())
+            .fork)
         .tap(({ deferred1 }) => deferred1.await())
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()

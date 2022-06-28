@@ -23,7 +23,7 @@ export const SummaryKeySym = Symbol.for("@effect/core/io/Metric/MetricKeyType/Su
 export type SummaryKeySym = typeof SummaryKeySym
 
 /**
- * @tsplus type ets/Metrics/MetricKeyType
+ * @tsplus type effect/core/io/Metrics/MetricKeyType
  */
 export interface MetricKeyType<In, Out> extends Equals {
   readonly [MetricKeyTypeSym]: MetricKeyTypeSym
@@ -54,7 +54,7 @@ export class CounterKey extends BaseMetricKeyType<number, MetricState.Counter> {
   readonly [CounterKeySym]: CounterKeySym = CounterKeySym;
 
   [Hash.sym](): number {
-    return Hash.string("ets/Metrics/MetricKeyType/Counter")
+    return Hash.string("effect/core/io/Metrics/MetricKeyType/Counter")
   }
 
   [Equals.sym](u: unknown): boolean {
@@ -66,7 +66,7 @@ export class GaugeKey extends BaseMetricKeyType<number, MetricState.Gauge> {
   readonly [GaugeKeySym]: GaugeKeySym = GaugeKeySym;
 
   [Hash.sym](): number {
-    return Hash.string("ets/Metrics/MetricKeyType/Gauge")
+    return Hash.string("effect/core/io/Metrics/MetricKeyType/Gauge")
   }
 
   [Equals.sym](u: unknown): boolean {
@@ -78,7 +78,7 @@ export class FrequencyKey extends BaseMetricKeyType<string, MetricState.Frequenc
   readonly [FrequencyKeySym]: FrequencyKeySym = FrequencyKeySym;
 
   [Hash.sym](): number {
-    return Hash.string("ets/Metrics/MetricKeyType/Frequency")
+    return Hash.string("effect/core/io/Metrics/MetricKeyType/Frequency")
   }
 
   [Equals.sym](u: unknown): boolean {
@@ -95,7 +95,7 @@ export class HistogramKey extends BaseMetricKeyType<number, MetricState.Histogra
 
   [Hash.sym](): number {
     return Hash.combine(
-      Hash.string("ets/Metrics/MetricKeyType/Histogram"),
+      Hash.string("effect/core/io/Metrics/MetricKeyType/Histogram"),
       Hash.unknown(this.boundaries)
     )
   }
@@ -119,7 +119,7 @@ export class SummaryKey extends BaseMetricKeyType<Tuple<[number, number]>, Metri
 
   [Hash.sym](): number {
     return Hash.combine(
-      Hash.string("ets/Metrics/MetricKeyType/Summary"),
+      Hash.string("effect/core/io/Metrics/MetricKeyType/Summary"),
       Hash.combine(
         Hash.unknown(this.maxAge),
         Hash.combine(
@@ -140,35 +140,35 @@ export class SummaryKey extends BaseMetricKeyType<Tuple<[number, number]>, Metri
 }
 
 /**
- * @tsplus type ets/Metrics/MetricKeyType/Ops
+ * @tsplus type effect/core/io/Metrics/MetricKeyType.Ops
  */
 export interface MetricKeyTypeOps {}
 export const MetricKeyType: MetricKeyTypeOps = {}
 
 /**
- * @tsplus static ets/Metrics/MetricKeyType/Ops Counter
+ * @tsplus static effect/core/io/Metrics/MetricKeyType.Ops Counter
  */
 export const counter: MetricKeyType.Counter = new CounterKey()
 
 /**
- * @tsplus static ets/Metrics/MetricKeyType/Ops Frequency
+ * @tsplus static effect/core/io/Metrics/MetricKeyType.Ops Frequency
  */
 export const frequency: MetricKeyType.Frequency = new FrequencyKey()
 
 /**
- * @tsplus static ets/Metrics/MetricKeyType/Ops Gauge
+ * @tsplus static effect/core/io/Metrics/MetricKeyType.Ops Gauge
  */
 export const gauge: MetricKeyType.Gauge = new GaugeKey()
 
 /**
- * @tsplus static ets/Metrics/MetricKeyType/Ops Histogram
+ * @tsplus static effect/core/io/Metrics/MetricKeyType.Ops Histogram
  */
 export function histogram(boundaries: Metric.Histogram.Boundaries): MetricKeyType.Histogram {
   return new HistogramKey(boundaries)
 }
 
 /**
- * @tsplus static ets/Metrics/MetricKeyType/Ops Summary
+ * @tsplus static effect/core/io/Metrics/MetricKeyType.Ops Summary
  */
 export function summary(
   maxAge: Duration,
@@ -180,42 +180,42 @@ export function summary(
 }
 
 /**
- * @tsplus static ets/Metrics/MetricKeyType/Ops isMetricKeyType
+ * @tsplus static effect/core/io/Metrics/MetricKeyType.Ops isMetricKeyType
  */
 export function isMetricKeyType(u: unknown): u is MetricKeyType<unknown, unknown> {
   return typeof u === "object" && u != null && MetricKeyTypeSym in u
 }
 
 /**
- * @tsplus static ets/Metrics/MetricKeyType/Ops isCounterKey
+ * @tsplus static effect/core/io/Metrics/MetricKeyType.Ops isCounterKey
  */
 export function isCounterKey(u: unknown): u is CounterKey {
   return typeof u === "object" && u != null && CounterKeySym in u
 }
 
 /**
- * @tsplus static ets/Metrics/MetricKeyType/Ops isGaugeKey
+ * @tsplus static effect/core/io/Metrics/MetricKeyType.Ops isGaugeKey
  */
 export function isGaugeKey(u: unknown): u is GaugeKey {
   return typeof u === "object" && u != null && GaugeKeySym in u
 }
 
 /**
- * @tsplus static ets/Metrics/MetricKeyType/Ops isFrequencyKey
+ * @tsplus static effect/core/io/Metrics/MetricKeyType.Ops isFrequencyKey
  */
 export function isFrequencyKey(u: unknown): u is FrequencyKey {
   return typeof u === "object" && u != null && FrequencyKeySym in u
 }
 
 /**
- * @tsplus static ets/Metrics/MetricKeyType/Ops isHistogramKey
+ * @tsplus static effect/core/io/Metrics/MetricKeyType.Ops isHistogramKey
  */
 export function isHistogramKey(u: unknown): u is HistogramKey {
   return typeof u === "object" && u != null && HistogramKeySym in u
 }
 
 /**
- * @tsplus static ets/Metrics/MetricKeyType/Ops isSummaryKey
+ * @tsplus static effect/core/io/Metrics/MetricKeyType.Ops isSummaryKey
  */
 export function isSummaryKey(u: unknown): u is SummaryKey {
   return typeof u === "object" && u != null && SummaryKeySym in u

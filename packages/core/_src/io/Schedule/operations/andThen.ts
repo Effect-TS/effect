@@ -1,26 +1,17 @@
 /**
  * The same as `andThenEither`, but merges the output.
  *
- * @tsplus operator ets/Schedule /
- * @tsplus operator ets/Schedule/WithState /
- * @tsplus fluent ets/Schedule andThen
- * @tsplus fluent ets/Schedule/WithState andThen
+ * @tsplus pipeable-operator effect/core/io/Schedule /
+ * @tsplus static effect/core/io/Schedule.Aspects andThen
+ * @tsplus pipeable effect/core/io/Schedule andThen
  */
-export function andThen_<State, Env, In, Out, State1, Env1, In1, Out2>(
-  self: Schedule<State, Env, In, Out>,
+export function andThen<State1, Env1, In1, Out2>(
   that: Schedule<State1, Env1, In1, Out2>
-): Schedule<
-  Tuple<[State, State1, boolean]>,
-  Env | Env1,
-  In & In1,
-  Out | Out2
-> {
-  return self.andThenEither(that).map((either) => either.merge)
+) {
+  return <State, Env, In, Out>(self: Schedule<State, Env, In, Out>): Schedule<
+    Tuple<[State, State1, boolean]>,
+    Env | Env1,
+    In & In1,
+    Out | Out2
+  > => self.andThenEither(that).map((either) => either.merge)
 }
-
-/**
- * The same as `andThenEither`, but merges the output.
- *
- * @tsplus static ets/Schedule/Aspects andThen
- */
-export const andThen = Pipeable(andThen_)

@@ -12,7 +12,7 @@ describe.concurrent("TSet", () => {
 
         return hasSameElements(res, Equivalence.number, List(1))
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
@@ -26,7 +26,7 @@ describe.concurrent("TSet", () => {
 
         return hasSameElements(res, Equivalence.number, List(1))
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
@@ -40,7 +40,7 @@ describe.concurrent("TSet", () => {
 
         return hasSameElements(res, Equivalence.number, List(2))
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
@@ -54,7 +54,7 @@ describe.concurrent("TSet", () => {
 
         return hasSameElements(res, Equivalence.number, List(1, 2))
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })

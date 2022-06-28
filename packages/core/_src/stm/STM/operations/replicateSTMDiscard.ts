@@ -2,19 +2,9 @@
  * Performs this transaction the specified number of times, discarding the
  * results.
  *
- * @tsplus fluent ets/STM replicateSTMDiscard
+ * @tsplus static effect/core/stm/STM.Aspects replicateSTMDiscard
+ * @tsplus pipeable effect/core/stm/STM replicateSTMDiscard
  */
-export function replicateSTMDiscard_<R, E, A>(
-  self: STM<R, E, A>,
-  n: number
-): STM<R, E, void> {
-  return STM.collectAllDiscard(self.replicate(n))
+export function replicateSTMDiscard(n: number) {
+  return <R, E, A>(self: STM<R, E, A>): STM<R, E, void> => STM.collectAllDiscard(self.replicate(n))
 }
-
-/**
- * Performs this transaction the specified number of times, discarding the
- * results.
- *
- * @tsplus static ets/STM/Aspects replicateSTMDiscard
- */
-export const replicateSTMDiscard = Pipeable(replicateSTMDiscard_)

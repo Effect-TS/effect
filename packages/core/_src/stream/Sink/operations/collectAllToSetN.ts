@@ -1,7 +1,7 @@
 /**
  * A sink that collects first `n` distinct inputs into a set.
  *
- * @tsplus static ets/Sink/Ops collectAllToSetN
+ * @tsplus static effect/core/stream/Sink.Ops collectAllToSetN
  */
 export function collectAllToSetN<In>(
   n: number

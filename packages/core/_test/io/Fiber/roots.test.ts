@@ -10,14 +10,14 @@ describe.concurrent("Fiber", () => {
       }
 
       const rootsTest = Effect.Do()
-        .bind("fiber1", () => Effect.never.forkDaemon())
-        .bind("fiber2", () => Effect.never.forkDaemon())
+        .bind("fiber1", () => Effect.never.forkDaemon)
+        .bind("fiber2", () => Effect.never.forkDaemon)
         .tap(({ fiber1, fiber2 }) =>
           rootContains(fiber1)
             .zipWith(rootContains(fiber2), (b1, b2) => b1 && b2)
             .repeatUntil(identity)
         )
-        .tap(({ fiber1, fiber2 }) => fiber1.interrupt().zipRight(fiber2.interrupt()))
+        .tap(({ fiber1, fiber2 }) => fiber1.interrupt.zipRight(fiber2.interrupt))
         .map(constTrue)
 
       // Since `rootsTest` has a potentially infinite loop (T.never + T.repeatUntil),

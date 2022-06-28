@@ -2,11 +2,11 @@
  * Returns an effect that ignores errors and runs repeatedly until it
  * eventually succeeds.
  *
- * @tsplus fluent ets/Effect eventually
+ * @tsplus getter effect/core/io/Effect eventually
  */
 export function eventually<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, never, A> {
-  return self | (Effect.yieldNow > self.eventually())
+  return self.orElse(Effect.yieldNow.zipRight(self.eventually))
 }

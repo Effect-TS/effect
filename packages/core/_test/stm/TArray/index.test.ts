@@ -5,8 +5,8 @@ describe.concurrent("TArray", () => {
   describe.concurrent("index", () => {
     it("valid index", async () => {
       const program = makeTArray(1, 42)
-        .flatMap((array) => array[0])
-        .commit()
+        .flatMap((array) => array.get(0))
+        .commit
 
       const result = await program.unsafeRunPromise()
 
@@ -15,8 +15,8 @@ describe.concurrent("TArray", () => {
 
     it("dies with ArrayIndexOutOfBounds when index is out of bounds", async () => {
       const program = makeTArray(1, 42)
-        .flatMap((array) => array[-1])
-        .commit()
+        .flatMap((array) => array.get(-1))
+        .commit
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -34,8 +34,8 @@ describe.concurrent("TArray", () => {
   describe.concurrent("indexOf", () => {
     it("correct index if in array", async () => {
       const program = makeRepeats(3, 3)
-        .commit()
-        .flatMap((tArray) => tArray.indexOf(Equivalence.number)(2).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexOf(Equivalence.number, 2).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -44,8 +44,8 @@ describe.concurrent("TArray", () => {
 
     it("-1 for empty", async () => {
       const program = TArray.empty<number>()
-        .commit()
-        .flatMap((tArray) => tArray.indexOf(Equivalence.number)(1).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexOf(Equivalence.number, 1).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -54,8 +54,8 @@ describe.concurrent("TArray", () => {
 
     it("-1 for absent", async () => {
       const program = makeRepeats(3, 3)
-        .commit()
-        .flatMap((tArray) => tArray.indexOf(Equivalence.number)(4).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexOf(Equivalence.number, 4).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -66,8 +66,8 @@ describe.concurrent("TArray", () => {
   describe.concurrent("indexOfFrom", () => {
     it("correct index if in array, with offset", async () => {
       const program = makeRepeats(3, 3)
-        .commit()
-        .flatMap((tArray) => tArray.indexOfFrom(Equivalence.number)(2, 2).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexOfFrom(Equivalence.number, 2, 2).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -76,8 +76,8 @@ describe.concurrent("TArray", () => {
 
     it("-1 if absent after offset", async () => {
       const program = makeRepeats(3, 3)
-        .commit()
-        .flatMap((tArray) => tArray.indexOfFrom(Equivalence.number)(1, 7).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexOfFrom(Equivalence.number, 1, 7).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -86,8 +86,8 @@ describe.concurrent("TArray", () => {
 
     it("-1 for negative offset", async () => {
       const program = makeRepeats(3, 3)
-        .commit()
-        .flatMap((tArray) => tArray.indexOfFrom(Equivalence.number)(2, -1).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexOfFrom(Equivalence.number, 2, -1).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -96,8 +96,8 @@ describe.concurrent("TArray", () => {
 
     it("-1 for too high offset", async () => {
       const program = makeRepeats(3, 3)
-        .commit()
-        .flatMap((tArray) => tArray.indexOfFrom(Equivalence.number)(2, 9).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexOfFrom(Equivalence.number, 2, 9).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -108,8 +108,8 @@ describe.concurrent("TArray", () => {
   describe.concurrent("indexWhere", () => {
     it("determines the correct index", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.indexWhere((n) => n % 5 === 0).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexWhere((n) => n % 5 === 0).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -118,8 +118,8 @@ describe.concurrent("TArray", () => {
 
     it("-1 for empty array", async () => {
       const program = TArray.empty<number>()
-        .commit()
-        .flatMap((tArray) => tArray.indexWhere(constTrue).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexWhere(constTrue).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -128,8 +128,8 @@ describe.concurrent("TArray", () => {
 
     it("-1 for absent", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.indexWhere((_) => _ > n).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexWhere((_) => _ > n).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -138,14 +138,14 @@ describe.concurrent("TArray", () => {
 
     it("is atomic", async () => {
       const program = Effect.Do()
-        .bind("tArray", () => makeStair(N).commit())
+        .bind("tArray", () => makeStair(N).commit)
         .bind("findFiber", ({ tArray }) =>
           tArray
             .indexWhere((n) => n % largePrime === 0)
-            .commit()
-            .fork())
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => 1)).commit())
-        .flatMap(({ findFiber }) => findFiber.join())
+            .commit
+            .fork)
+        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => 1)).commit)
+        .flatMap(({ findFiber }) => findFiber.join)
 
       const result = await program.unsafeRunPromise()
 
@@ -156,8 +156,8 @@ describe.concurrent("TArray", () => {
   describe.concurrent("indexWhereSTM", () => {
     it("determines the correct index", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.indexWhereSTM((n) => STM.succeed(n % 5 === 0)).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexWhereSTM((n) => STM.succeed(n % 5 === 0)).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -166,8 +166,8 @@ describe.concurrent("TArray", () => {
 
     it("-1 for empty array", async () => {
       const program = TArray.empty<number>()
-        .commit()
-        .flatMap((tArray) => tArray.indexWhereSTM(() => STM.succeed(constTrue)).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexWhereSTM(() => STM.succeed(constTrue)).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -176,8 +176,8 @@ describe.concurrent("TArray", () => {
 
     it("-1 for absent", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.indexWhereSTM((_) => STM.succeed(_ > n)).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexWhereSTM((_) => STM.succeed(_ > n)).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -186,14 +186,14 @@ describe.concurrent("TArray", () => {
 
     it("is atomic", async () => {
       const program = Effect.Do()
-        .bind("tArray", () => makeStair(N).commit())
+        .bind("tArray", () => makeStair(N).commit)
         .bind("findFiber", ({ tArray }) =>
           tArray
             .indexWhereSTM((n) => STM.succeed(n % largePrime === 0))
-            .commit()
-            .fork())
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => 1)).commit())
-        .flatMap(({ findFiber }) => findFiber.join())
+            .commit
+            .fork)
+        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => 1)).commit)
+        .flatMap(({ findFiber }) => findFiber.join)
 
       const result = await program.unsafeRunPromise()
 
@@ -202,12 +202,12 @@ describe.concurrent("TArray", () => {
 
     it("fails on errors before result found", async () => {
       const program = makeStair(n)
-        .commit()
+        .commit
         .flatMap((tArray) =>
           tArray
             .indexWhereSTM((n) => (n === 4 ? STM.fail(boom) : STM.succeed(n % 5 === 0)))
-            .commit()
-            .flip()
+            .commit
+            .flip
         )
 
       const result = await program.unsafeRunPromise()
@@ -217,11 +217,11 @@ describe.concurrent("TArray", () => {
 
     it("succeeds on errors after result found", async () => {
       const program = makeStair(n)
-        .commit()
+        .commit
         .flatMap((tArray) =>
           tArray
             .indexWhereSTM((n) => (n === 6 ? STM.fail(boom) : STM.succeed(n % 5 === 0)))
-            .commit()
+            .commit
         )
 
       const result = await program.unsafeRunPromise()
@@ -233,8 +233,8 @@ describe.concurrent("TArray", () => {
   describe.concurrent("indexWhereFrom", () => {
     it("correct index if in array, with offset", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.indexWhereFrom((n) => n % 2 === 0, 5).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexWhereFrom((n) => n % 2 === 0, 5).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -243,8 +243,8 @@ describe.concurrent("TArray", () => {
 
     it("-1 if absent after offset", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.indexWhereFrom((n) => n % 7 === 0, 7).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexWhereFrom((n) => n % 7 === 0, 7).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -253,8 +253,8 @@ describe.concurrent("TArray", () => {
 
     it("-1 for negative offset", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.indexWhereFrom(constTrue, -1).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexWhereFrom(constTrue, -1).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -263,8 +263,8 @@ describe.concurrent("TArray", () => {
 
     it("-1 for too high offset", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.indexWhereFrom(constTrue, n + 1).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexWhereFrom(constTrue, n + 1).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -275,8 +275,8 @@ describe.concurrent("TArray", () => {
   describe.concurrent("indexWhereFromSTM", () => {
     it("correct index if in array, with offset", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.indexWhereFromSTM((n) => STM.succeed(n % 2 === 0), 5).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexWhereFromSTM((n) => STM.succeed(n % 2 === 0), 5).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -285,8 +285,8 @@ describe.concurrent("TArray", () => {
 
     it("-1 if absent after offset", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.indexWhereFromSTM((n) => STM.succeed(n % 7 === 0), 7).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexWhereFromSTM((n) => STM.succeed(n % 7 === 0), 7).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -295,8 +295,8 @@ describe.concurrent("TArray", () => {
 
     it("-1 for negative offset", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.indexWhereFromSTM(() => STM.succeed(constTrue), -1).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexWhereFromSTM(() => STM.succeed(constTrue), -1).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -305,8 +305,8 @@ describe.concurrent("TArray", () => {
 
     it("-1 for too high offset", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.indexWhereFromSTM(() => STM.succeed(constTrue), n + 1).commit())
+        .commit
+        .flatMap((tArray) => tArray.indexWhereFromSTM(() => STM.succeed(constTrue), n + 1).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -315,14 +315,14 @@ describe.concurrent("TArray", () => {
 
     it("succeeds when error excluded by offset", async () => {
       const program = makeStair(n)
-        .commit()
+        .commit
         .flatMap((tArray) =>
           tArray
             .indexWhereFromSTM(
               (n) => (n === 1 ? STM.fail(boom) : STM.succeed(n % 5 === 0)),
               2
             )
-            .commit()
+            .commit
         )
 
       const result = await program.unsafeRunPromise()

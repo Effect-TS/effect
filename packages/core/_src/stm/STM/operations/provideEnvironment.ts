@@ -2,19 +2,9 @@
  * Provides the transaction its required environment, which eliminates
  * its dependency on `R`.
  *
- * @tsplus fluent ets/STM provideEnvironment
+ * @tsplus static effect/core/stm/STM.Aspects provideEnvironment
+ * @tsplus pipeable effect/core/stm/STM provideEnvironment
  */
-export function provideEnvironment_<R, E, A>(
-  self: STM<R, E, A>,
-  env: LazyArg<Env<R>>
-): STM<never, E, A> {
-  return self.provideSomeEnvironment(env)
+export function provideEnvironment<R>(env: LazyArg<Env<R>>) {
+  return <E, A>(self: STM<R, E, A>): STM<never, E, A> => self.provideSomeEnvironment(env)
 }
-
-/**
- * Provides the transaction its required environment, which eliminates
- * its dependency on `R`.
- *
- * @tsplus static ets/STM/Aspects provideEnvironment
- */
-export const provideEnvironment = Pipeable(provideEnvironment_)

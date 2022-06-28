@@ -6,7 +6,7 @@ describe.concurrent("Layer", () => {
       const program = Effect.Do()
         .bind("ref", () => makeRef())
         .bindValue("layer", ({ ref }) => makeLayer1(ref))
-        .bindValue("env", ({ layer }) => (layer + layer.fresh).build())
+        .bindValue("env", ({ layer }) => (layer + layer.fresh).build)
         .tap(({ env }) => Effect.scoped(env))
         .flatMap(({ ref }) => ref.get())
 
@@ -19,7 +19,7 @@ describe.concurrent("Layer", () => {
       const program = Effect.Do()
         .bind("ref", () => makeRef())
         .bindValue("layer", ({ ref }) => makeLayer1(ref))
-        .bindValue("env", ({ layer }) => (layer >> layer.fresh).build())
+        .bindValue("env", ({ layer }) => (layer >> layer.fresh).build)
         .tap(({ env }) => Effect.scoped(env))
         .flatMap(({ ref }) => ref.get())
 
@@ -32,7 +32,7 @@ describe.concurrent("Layer", () => {
       const program = Effect.Do()
         .bind("ref", () => makeRef())
         .bindValue("layer", ({ ref }) => makeLayer1(ref))
-        .bindValue("env", ({ layer }) => (layer + layer + (layer + layer).fresh).build())
+        .bindValue("env", ({ layer }) => (layer + layer + (layer + layer).fresh).build)
         .tap(({ env }) => Effect.scoped(env))
         .flatMap(({ ref }) => ref.get())
 
@@ -49,7 +49,7 @@ describe.concurrent("Layer", () => {
         .bindValue("layer3", ({ ref }) => makeLayer3(ref))
         .bindValue(
           "env",
-          ({ layer1, layer2, layer3 }) => (layer1.fresh >> (layer2 + (layer1 >> layer3).fresh)).build()
+          ({ layer1, layer2, layer3 }) => (layer1.fresh >> (layer2 + (layer1 >> layer3).fresh)).build
         )
         .tap(({ env }) => Effect.scoped(env))
         .flatMap(({ ref }) => ref.get())

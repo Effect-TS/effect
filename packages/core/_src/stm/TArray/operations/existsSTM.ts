@@ -2,19 +2,9 @@
  * Determine if the array contains a value satisfying a transactional
  * predicate.
  *
- * @tsplus fluent ets/TArray existsSTM
+ * @tsplus static effect/core/stm/TArray.Aspects existsSTM
+ * @tsplus pipeable effect/core/stm/TArray existsSTM
  */
-export function existsSTM_<E, A>(
-  self: TArray<A>,
-  f: (a: A) => STM<never, E, boolean>
-): STM<never, E, boolean> {
-  return self.countSTM(f).map((n) => n > 0)
+export function existsSTM<E, A>(f: (a: A) => STM<never, E, boolean>) {
+  return (self: TArray<A>): STM<never, E, boolean> => self.countSTM(f).map((n) => n > 0)
 }
-
-/**
- * Determine if the array contains a value satisfying a transactional
- * predicate.
- *
- * @tsplus static ets/TArray/Aspects existsSTM
- */
-export const existsSTM = Pipeable(existsSTM_)

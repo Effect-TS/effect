@@ -5,11 +5,11 @@ describe.concurrent("Effect", () => {
       const success = Effect.succeed(100)
       const program = Effect.Do()
         .bind("message", () =>
-          failure.unsandbox().foldEffect(
+          failure.unsandbox.foldEffect(
             (e) => Effect.succeed(e.message),
             () => Effect.succeed("unexpected")
           ))
-        .bind("result", () => success.unsandbox())
+        .bind("result", () => success.unsandbox)
 
       const { message, result } = await program.unsafeRunPromise()
 
@@ -24,9 +24,9 @@ describe.concurrent("Effect", () => {
       const c = Cause.fail("oh no")
       const program = cause(
         Effect.failCause(c)
-          .sandbox()
+          .sandbox
           .mapErrorCause((e) => e.untraced)
-          .unsandbox()
+          .unsandbox
       )
 
       const result = await program.unsafeRunPromise()

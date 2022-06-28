@@ -6,7 +6,7 @@ import { ILayerExtendScope } from "@effect/core/io/Layer/definition"
  * that effect completes execution but instead when the scope the resulting
  * effect depends on is closed.
  *
- * @tsplus fluent ets/Layer extendScope
+ * @tsplus getter effect/core/io/Layer extendScope
  */
 export function extendScope<RIn, E, ROut>(
   self: Layer<RIn, E, ROut>,

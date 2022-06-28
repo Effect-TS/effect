@@ -1,7 +1,7 @@
 /**
  * Returns a new effect where boolean value of this effect is negated.
  *
- * @tsplus fluent ets/STM negate
+ * @tsplus getter effect/core/stm/STM negate
  */
 export function negate<R, E>(
   self: STM<R, E, boolean>,

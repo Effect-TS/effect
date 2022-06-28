@@ -2,7 +2,7 @@
  * Atomically modifies the `FiberRef` with the specified partial function.
  * If the function is undefined on the current value it doesn't change it.
  *
- * @tsplus fluent ets/FiberRef updateSome
+ * @tsplus fluent effect/core/io/FiberRef updateSome
  */
 export function updateSome_<A, P>(
   self: FiberRef<A, P>,
@@ -16,6 +16,6 @@ export function updateSome_<A, P>(
  * Atomically modifies the `FiberRef` with the specified partial function.
  * If the function is undefined on the current value it doesn't change it.
  *
- * @tsplus static ets/FiberRef/Aspects updateSome
+ * @tsplus static effect/core/io/FiberRef.Aspects updateSome
  */
 export const updateSome = Pipeable(updateSome_)

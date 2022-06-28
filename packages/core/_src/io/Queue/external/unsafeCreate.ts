@@ -4,7 +4,7 @@ import type { Strategy } from "@effect/core/io/Queue/operations/strategy"
 /**
  * Unsafely creates a new `Queue` using the provided `Strategy`.
  *
- * @tsplus static ets/Queue/Ops unsafeCreate
+ * @tsplus static effect/core/io/Queue.Ops unsafeCreate
  */
 export const unsafeCreate: <A>(
   queue: MutableQueue<A>,

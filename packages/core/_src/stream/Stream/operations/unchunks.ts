@@ -4,7 +4,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * Takes a stream that emits chunks of values and submerges the chunks into the
  * structure of the stream, effectively "flattening" the chunks into the stream.
  *
- * @tsplus fluent ets/Stream unchunks
+ * @tsplus getter effect/core/stream/Stream unchunks
  */
 export function unchunks<R, E, A>(self: Stream<R, E, Chunk<A>>, __tsplusTrace?: string): Stream<R, E, A> {
   concreteStream(self)

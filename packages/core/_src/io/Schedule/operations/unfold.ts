@@ -6,7 +6,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * Unfolds a schedule that repeats one time from the specified state and
  * iterator.
  *
- * @tsplus static ets/Schedule/Ops unfold
+ * @tsplus static effect/core/io/Schedule.Ops unfold
  */
 export function unfold<A>(
   initial: A,

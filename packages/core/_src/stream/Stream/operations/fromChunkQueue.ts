@@ -1,7 +1,7 @@
 /**
  * Creates a stream from a queue of values.
  *
- * @tsplus static ets/Stream/Ops fromChunkQueue
+ * @tsplus static effect/core/stream/Stream.Ops fromChunkQueue
  */
 export function fromChunkQueue<A>(
   queue: LazyArg<Dequeue<Chunk<A>>>,

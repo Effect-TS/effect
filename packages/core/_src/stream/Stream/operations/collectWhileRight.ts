@@ -1,7 +1,7 @@
 /**
  * Terminates the stream when encountering the first `Left`.
  *
- * @tsplus fluent ets/Stream collectWhileRight
+ * @tsplus getter effect/core/stream/Stream collectWhileRight
  */
 export function collectWhileRight<R, E, L, A>(
   self: Stream<R, E, Either<L, A>>,

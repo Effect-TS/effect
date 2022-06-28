@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Exit/Ops fromEither
+ * @tsplus static effect/core/io/Exit.Ops fromEither
  */
 export function fromEither<E, A>(e: Either<E, A>): Exit<E, A> {
   switch (e._tag) {

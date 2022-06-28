@@ -9,7 +9,7 @@ export type TupleA<T extends NonEmptyArraySTM> = {
 /**
  * Like `forEach` + `identity` with a tuple type.
  *
- * @tsplus static ets/STM/Ops tuple
+ * @tsplus static effect/core/stm/STM.Ops tuple
  */
 export function tuple<T extends NonEmptyArraySTM>(
   ...t: T & {

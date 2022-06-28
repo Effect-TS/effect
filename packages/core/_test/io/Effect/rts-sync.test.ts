@@ -47,8 +47,8 @@ describe.concurrent("Effect", () => {
       const program = Effect.suspendSucceed<never, unknown, unknown>(() => {
         throw error
       })
-        .sandbox()
-        .either()
+        .sandbox
+        .either
         .map((either) => either.mapLeft((cause) => cause.untraced))
 
       const result = await program.unsafeRunPromise()
@@ -60,7 +60,7 @@ describe.concurrent("Effect", () => {
       const error = new Error("woops")
       const program = Effect.suspend<never, unknown, unknown>(() => {
         throw error
-      }).either()
+      }).either
 
       const result = await program.unsafeRunPromise()
 
@@ -71,7 +71,7 @@ describe.concurrent("Effect", () => {
       const error = new Error("woops")
       const program = Effect.suspendWith<never, unknown>(() => {
         throw error
-      }).either()
+      }).either
 
       const result = await program.unsafeRunPromise()
 
@@ -161,7 +161,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("flip must make error into value", async () => {
-      const program = Effect.fail(ExampleError).flip()
+      const program = Effect.fail(ExampleError).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -169,7 +169,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("flip must make value into error", async () => {
-      const program = Effect.succeed(42).flip().either()
+      const program = Effect.succeed(42).flip.either
 
       const result = await program.unsafeRunPromise()
 
@@ -177,7 +177,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("flipping twice returns the identical value", async () => {
-      const program = Effect.succeed(42).flip().flip()
+      const program = Effect.succeed(42).flip.flip
 
       const result = await program.unsafeRunPromise()
 

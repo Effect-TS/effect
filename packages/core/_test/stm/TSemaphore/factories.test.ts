@@ -3,7 +3,7 @@ describe.concurrent("TSemaphore", () => {
     it("make", async () => {
       const program = TSemaphore.make(10)
         .flatMap((semaphore) => semaphore.available)
-        .commit()
+        .commit
 
       const result = await program.unsafeRunPromise()
 

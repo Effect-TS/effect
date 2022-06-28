@@ -1,7 +1,7 @@
 /**
  * Creates a new supervisor that tracks children in a set.
  *
- * @tsplus static ets/Supervisor/Ops track
+ * @tsplus static effect/core/io/Supervisor.Ops track
  */
 export function track(
   __tsplusTrace?: string
@@ -13,7 +13,7 @@ export function track(
 const MAX_SET_INTERVAL_VALUE = 2 ** 31 - 1
 
 /**
- * @tsplus static ets/Supervisor/Ops unsafeTrack
+ * @tsplus static effect/core/io/Supervisor.Ops unsafeTrack
  */
 export function unsafeTrack(): Supervisor<Chunk<Fiber.Runtime<any, any>>> {
   const set = new Set<Fiber.Runtime<any, any>>()

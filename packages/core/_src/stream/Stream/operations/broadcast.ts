@@ -3,24 +3,12 @@
  * as this stream. The driver stream will only ever advance the `maximumLag`
  * chunks before the slowest downstream stream.
  *
- * @tsplus fluent ets/Stream broadcast
+ * @tsplus static effect/core/stream/Stream.Aspects broadcast
+ * @tsplus pipeable effect/core/stream/Stream broadcast
  */
-export function broadcast_<R, E, A>(
-  self: Stream<R, E, A>,
-  n: number,
-  maximumLag: number,
-  __tsplusTrace?: string
-): Effect<R | Scope, never, Chunk<Stream<never, E, A>>> {
-  return self
-    .broadcastedQueues(n, maximumLag)
-    .map((chunk) => chunk.map((queue) => Stream.fromQueueWithShutdown(queue).flattenTake()))
+export function broadcast(n: number, maximumLag: number, __tsplusTrace?: string) {
+  return <R, E, A>(self: Stream<R, E, A>): Effect<R | Scope, never, Chunk<Stream<never, E, A>>> =>
+    self
+      .broadcastedQueues(n, maximumLag)
+      .map((chunk) => chunk.map((queue) => Stream.fromQueueWithShutdown(queue).flattenTake))
 }
-
-/**
- * Fan out the stream, producing a list of streams that have the same elements
- * as this stream. The driver stream will only ever advance the `maximumLag`
- * chunks before the slowest downstream stream.
- *
- * @tsplus static ets/Stream/Aspects broadcast
- */
-export const broadcast = Pipeable(broadcast_)

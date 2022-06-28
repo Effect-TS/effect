@@ -18,7 +18,7 @@ describe.concurrent("Layer", () => {
       const program = Effect.Do()
         .bind("ref", () => makeRef())
         .bindValue("layer", ({ ref }) => makeLayer1(ref))
-        .bindValue("env", ({ layer }) => (layer + layer).build())
+        .bindValue("env", ({ layer }) => (layer + layer).build)
         .tap(({ env }) => Effect.scoped(env))
         .bind("actual", ({ ref }) => ref.get())
 
@@ -32,7 +32,7 @@ describe.concurrent("Layer", () => {
         Effect.Do()
           .bindValue("m", () => new Service1())
           .bindValue("layer", ({ m }) => Layer.fromValue(Service1Tag, m))
-          .bindValue("env", ({ layer }) => (layer + layer + layer).build())
+          .bindValue("env", ({ layer }) => (layer + layer + layer).build)
           .bind("m1", ({ env }) => env.flatMap((_) => Effect.attempt(_.get(Service1Tag))))
       )
 
@@ -46,7 +46,7 @@ describe.concurrent("Layer", () => {
         .bind("ref", () => makeRef())
         .bindValue("layer1", ({ ref }) => makeLayer1(ref))
         .bindValue("layer2", ({ ref }) => makeLayer2(ref))
-        .bindValue("env", ({ layer1, layer2 }) => (layer1 + layer2).build())
+        .bindValue("env", ({ layer1, layer2 }) => (layer1 + layer2).build)
         .tap(({ env }) => Effect.scoped(env))
         .flatMap(({ ref }) => ref.get())
 

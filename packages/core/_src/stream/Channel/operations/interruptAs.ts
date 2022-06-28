@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Channel/Ops interruptAs
+ * @tsplus static effect/core/stream/Channel.Ops interruptAs
  */
 export function interruptAs(
   fiberId: FiberId

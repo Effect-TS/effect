@@ -3,7 +3,7 @@ import { concreteTHub } from "@effect/core/stm/THub/operations/_internal/Interna
 /**
  * The maximum capacity of the hub.
  *
- * @tsplus getter ets/THub capacity
+ * @tsplus getter effect/core/stm/THub capacity
  */
 export function capacity<A>(
   self: THub<A>

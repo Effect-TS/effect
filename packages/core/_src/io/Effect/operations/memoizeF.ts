@@ -1,7 +1,7 @@
 /**
  * Returns a memoized version of the specified effectual function.
  *
- * @tsplus static ets/Effect/Ops memoize
+ * @tsplus static effect/core/io/Effect.Ops memoize
  */
 export function memoizeF<R, E, A, B>(
   f: (a: A) => Effect<R, E, B>,
@@ -14,7 +14,7 @@ export function memoizeF<R, E, A, B>(
           const result = Maybe.fromNullable(map.get(a))
           return result.fold(
             Deferred.make<E, B>()
-              .tap((deferred) => f(a).intoDeferred(deferred).fork())
+              .tap((deferred) => f(a).intoDeferred(deferred).fork)
               .map((deferred) => Tuple(deferred, map.set(a, deferred))),
             (deferred) => Effect.succeedNow(Tuple(deferred, map))
           )

@@ -4,24 +4,15 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * Re-chunks the elements of the stream into chunks of `n` elements each. The
  * last chunk might contain less than `n` elements.
  *
- * @tsplus fluent ets/Stream rechunk
+ * @tsplus static effect/core/stream/Stream.Aspects rechunk
+ * @tsplus pipeable effect/core/stream/Stream rechunk
  */
-export function rechunk_<R, E, A>(
-  self: Stream<R, E, A>,
-  n: number,
-  __tsplusTrace?: string
-): Stream<R, E, A> {
-  concreteStream(self)
-  return new StreamInternal(self.channel >> process<R, E, A>(new Rechunker(n), n))
+export function rechunk(n: number, __tsplusTrace?: string) {
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => {
+    concreteStream(self)
+    return new StreamInternal(self.channel >> process<R, E, A>(new Rechunker(n), n))
+  }
 }
-
-/**
- * Re-chunks the elements of the stream into chunks of `n` elements each. The
- * last chunk might contain less than `n` elements.
- *
- * @tsplus static ets/Stream/Aspects rechunk
- */
-export const rechunk = Pipeable(rechunk_)
 
 function process<R, E, A>(
   rechunker: Rechunker<A>,

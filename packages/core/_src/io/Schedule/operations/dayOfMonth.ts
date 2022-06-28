@@ -11,7 +11,7 @@ import { beginningOfDay, endOfDay, nextDayOfMonth } from "@effect/core/io/Schedu
  *
  * NOTE: `day` parameter is validated lazily. Must be in range 1...31.
  *
- * @tsplus static ets/Schedule dayOfMonth
+ * @tsplus static effect/core/io/Schedule.Ops dayOfMonth
  */
 export function dayOfMonth(
   day: number

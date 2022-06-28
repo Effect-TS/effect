@@ -3,8 +3,7 @@
  * side of an `Either` input, allowing propagating some type `X` through this
  * channel on demand.
  *
- * @tsplus getter ets/Schedule left
- * @tsplus getter ets/Schedule/WithState left
+ * @tsplus getter effect/core/io/Schedule left
  */
 export function left<State, Env, In, Out, X>(
   self: Schedule<State, Env, In, Out>

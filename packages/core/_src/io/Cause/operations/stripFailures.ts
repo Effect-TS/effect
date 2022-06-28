@@ -3,7 +3,7 @@ import { Both, Cause, Die, Interrupt, Stackless, Then } from "@effect/core/io/Ca
 /**
  * Discards all typed failures kept on this `Cause`.
  *
- * @tsplus getter ets/Cause stripFailures
+ * @tsplus getter effect/core/io/Cause stripFailures
  */
 export function stripFailures<E>(self: Cause<E>): Cause<never> {
   return self.fold(

@@ -2,7 +2,7 @@
  * Determines whether all elements of the `Collection<A>` satisfies the effectual
  * predicate `f`.
  *
- * @tsplus static ets/STM/Ops forAll
+ * @tsplus static effect/core/stm/STM.Ops forAll
  */
 export function forAll<R, E, A>(
   as: LazyArg<Collection<A>>,

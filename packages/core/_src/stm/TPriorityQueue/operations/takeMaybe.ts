@@ -4,7 +4,7 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
  * Takes a value from the queue, returning `None` if there is not a value in
  * the queue.
  *
- * @tsplus getter ets/TPriorityQueue takeMaybe
+ * @tsplus getter effect/core/stm/TPriorityQueue takeMaybe
  */
 export function takeMaybe<A>(self: TPriorityQueue<A>): USTM<Maybe<A>> {
   return STM.Effect((journal) => {

@@ -6,7 +6,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * A schedule that can recur one time, the specified amount of time into the
  * future.
  *
- * @tsplus static ets/Schedule/Ops duration
+ * @tsplus static effect/core/io/Schedule.Ops duration
  */
 export function duration(
   duration: Duration

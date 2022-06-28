@@ -3,7 +3,7 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
 /**
  * Collects all values into an array.
  *
- * @tsplus getter ets/TPriorityQueue toImmutableArray
+ * @tsplus getter effect/core/stm/TPriorityQueue toImmutableArray
  */
 export function toArray<A>(self: TPriorityQueue<A>): USTM<ImmutableArray<A>> {
   concreteTPriorityQueue(self)

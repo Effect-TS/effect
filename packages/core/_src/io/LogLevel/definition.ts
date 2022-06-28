@@ -4,19 +4,19 @@
  * importance) of individual log statements, as well as to enable tuning
  * verbosity of log output.
  *
- * @tsplus type ets/LogLevel
- *
  * @param ordinal
  *   The priority of the log message. Larger values indicate higher priority.
  * @param label
  *   A label associated with the log level.
  * @param syslog
  *   The syslog severity level of the log level.
+ *
+ * @tsplus type effect/core/io/LogLevel
  */
 export type LogLevel = All | Fatal | Error | Warning | Info | Debug | Trace | None
 
 /**
- * @tsplus type ets/LogLevel/Ops
+ * @tsplus type effect/core/io/LogLevel.Ops
  */
 export interface LogLevelOps {
   $: LogLevelAspects
@@ -26,7 +26,7 @@ export const LogLevel: LogLevelOps = {
 }
 
 /**
- * @tsplus type ets/LogLevel/Aspects
+ * @tsplus type effect/core/io/LogLevel.Aspects
  */
 export interface LogLevelAspects {}
 
@@ -86,12 +86,8 @@ export interface None {
   readonly ordinal: number
 }
 
-// -----------------------------------------------------------------------------
-// Constructors
-// -----------------------------------------------------------------------------
-
 /**
- * @tsplus static ets/LogLevel/Ops All
+ * @tsplus static effect/core/io/LogLevel.Ops All
  */
 export const All: LogLevel = {
   _tag: "All",
@@ -101,7 +97,7 @@ export const All: LogLevel = {
 }
 
 /**
- * @tsplus static ets/LogLevel/Ops Fatal
+ * @tsplus static effect/core/io/LogLevel.Ops Fatal
  */
 export const Fatal: LogLevel = {
   _tag: "Fatal",
@@ -111,7 +107,7 @@ export const Fatal: LogLevel = {
 }
 
 /**
- * @tsplus static ets/LogLevel/Ops Error
+ * @tsplus static effect/core/io/LogLevel.Ops Error
  */
 export const Error: LogLevel = {
   _tag: "Error",
@@ -121,7 +117,7 @@ export const Error: LogLevel = {
 }
 
 /**
- * @tsplus static ets/LogLevel/Ops Warning
+ * @tsplus static effect/core/io/LogLevel.Ops Warning
  */
 export const Warning: LogLevel = {
   _tag: "Warning",
@@ -131,7 +127,7 @@ export const Warning: LogLevel = {
 }
 
 /**
- * @tsplus static ets/LogLevel/Ops Info
+ * @tsplus static effect/core/io/LogLevel.Ops Info
  */
 export const Info: LogLevel = {
   _tag: "Info",
@@ -141,7 +137,7 @@ export const Info: LogLevel = {
 }
 
 /**
- * @tsplus static ets/LogLevel/Ops Debug
+ * @tsplus static effect/core/io/LogLevel.Ops Debug
  */
 export const Debug: LogLevel = {
   _tag: "Debug",
@@ -151,7 +147,7 @@ export const Debug: LogLevel = {
 }
 
 /**
- * @tsplus static ets/LogLevel/Ops Trace
+ * @tsplus static effect/core/io/LogLevel.Ops Trace
  */
 export const Trace: LogLevel = {
   _tag: "Trace",
@@ -161,7 +157,7 @@ export const Trace: LogLevel = {
 }
 
 /**
- * @tsplus static ets/LogLevel/Ops None
+ * @tsplus static effect/core/io/LogLevel.Ops None
  */
 export const None: LogLevel = {
   _tag: "None",

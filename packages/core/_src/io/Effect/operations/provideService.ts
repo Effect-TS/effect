@@ -2,21 +2,14 @@
  * Provides the effect with the single service it requires. If the effect
  * requires more than one service use `provideEnvironment` instead.
  *
- * @tsplus fluent ets/Effect provideService
+ * @tsplus static effect/core/io/Effect.Aspects provideService
+ * @tsplus pipeable effect/core/io/Effect provideService
  */
-export function provideService_<R, E, A, T>(
-  self: Effect<R, E, A>,
+export function provideService<T>(
   tag: Tag<T>,
   resource: LazyArg<T>,
   __tsplusTrace?: string
-): Effect<Exclude<R, T>, E, A> {
-  return self.provideServiceEffect(tag, Effect.succeed(resource))
+) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<Exclude<R, T>, E, A> =>
+    self.provideServiceEffect(tag, Effect.succeed(resource))
 }
-
-/**
- * Provides the effect with the single service it requires. If the effect
- * requires more than one service use `provideEnvironment` instead.
- *
- * @tsplus static ets/Effect/Aspects provideService
- */
-export const provideService = Pipeable(provideService_)

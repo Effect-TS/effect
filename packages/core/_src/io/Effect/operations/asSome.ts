@@ -1,7 +1,7 @@
 /**
  * Maps the success value of this effect to an optional value.
  *
- * @tsplus fluent ets/Effect asSome
+ * @tsplus getter effect/core/io/Effect asSome
  */
 export function asSome<R, E, A>(
   self: Effect<R, E, A>,

@@ -31,21 +31,22 @@ class Current<E, A> {
  * @example A search engine may only want to initiate a search after a user has
  * paused typing so as to not prematurely recommend results.
  *
- * @tsplus fluent ets/Stream debounce
+ * @tsplus static effect/core/stream/Stream.Aspects debounce
+ * @tsplus pipeable effect/core/stream/Stream debounce
  */
-export function debounce_<R, E, A>(
-  self: Stream<R, E, A>,
-  duration: LazyArg<Duration>,
+export function debounce<R, E, A>(
+  duration0: LazyArg<Duration>,
   __tsplusTrace?: string
-): Stream<R, E, A> {
-  return Stream.unwrap(
-    Effect.transplant((grafter) =>
-      Effect.Do()
-        .bind("duration", () => Effect.succeed(duration))
-        .bind("handoff", () => Handoff.make<HandoffSignal<E, A>>())
-        .map(({ duration, handoff }) => {
+) {
+  return (self: Stream<R, E, A>): Stream<R, E, A> =>
+    Stream.unwrap(
+      Effect.transplant((grafter) =>
+        Do(($) => {
+          const duration = $(Effect.succeed(duration0))
+          const handoff = $(Handoff.make<HandoffSignal<E, A>>())
+
           function enqueue(last: Chunk<A>, __tsplusTrace?: string) {
-            return grafter(Clock.sleep(duration).as(last).fork()).map((fiber) => consumer(new Previous(fiber)))
+            return grafter(Clock.sleep(duration).as(last).fork).map((fiber) => consumer(new Previous(fiber)))
           }
 
           const producer: Channel<
@@ -79,7 +80,7 @@ export function debounce_<R, E, A>(
             return Channel.unwrap(() => {
               switch (state._tag) {
                 case "NotStarted": {
-                  return handoff.take().map((signal) => {
+                  return handoff.take.map((signal) => {
                     switch (signal._tag) {
                       case "Emit": {
                         return Channel.unwrap(enqueue(signal.elements))
@@ -94,7 +95,7 @@ export function debounce_<R, E, A>(
                   })
                 }
                 case "Current": {
-                  return state.fiber.join().map((signal) => {
+                  return state.fiber.join.map((signal) => {
                     switch (signal._tag) {
                       case "Emit": {
                         return Channel.unwrap(enqueue(signal.elements))
@@ -109,11 +110,11 @@ export function debounce_<R, E, A>(
                   })
                 }
                 case "Previous": {
-                  return state.fiber.join().raceWith(
-                    handoff.take(),
+                  return state.fiber.join.raceWith(
+                    handoff.take,
                     (exit, current) =>
                       exit.fold(
-                        (cause) => current.interrupt().as(Channel.failCause(cause)),
+                        (cause) => current.interrupt.as(Channel.failCause(cause)),
                         (chunk) =>
                           Effect.succeedNow(
                             Channel.write(chunk) > consumer(new Current(current))
@@ -121,20 +122,18 @@ export function debounce_<R, E, A>(
                       ),
                     (exit, previous) =>
                       exit.fold(
-                        (cause) => previous.interrupt().as(Channel.failCause(cause)),
+                        (cause) => previous.interrupt.as(Channel.failCause(cause)),
                         (signal) => {
                           switch (signal._tag) {
                             case "Emit": {
-                              return previous.interrupt() > enqueue(signal.elements)
+                              return previous.interrupt > enqueue(signal.elements)
                             }
                             case "Halt": {
-                              return previous
-                                .interrupt()
-                                .as(Channel.failCause(signal.error))
+                              return previous.interrupt.as(Channel.failCause(signal.error))
                             }
                             case "End": {
                               return previous
-                                .join()
+                                .join
                                 .map((chunk) => Channel.write(chunk) > Channel.unit)
                             }
                           }
@@ -149,26 +148,10 @@ export function debounce_<R, E, A>(
           concreteStream(self)
 
           return (
-            Stream.scoped((self.channel >> producer).runScoped.fork()) >
+            Stream.scoped((self.channel >> producer).runScoped.fork) >
               new StreamInternal(consumer(new NotStarted()))
           )
         })
+      )
     )
-  )
 }
-
-/**
- * Delays the emission of values by holding new values for a set duration. If
- * no new values arrive during that time the value is emitted, however if a
- * new value is received during the holding period the previous value is
- * discarded and the process is repeated with the new value.
- *
- * This operator is useful if you have a stream of "bursty" events which
- * eventually settle down and you only need the final event of the burst.
- *
- * @example A search engine may only want to initiate a search after a user has
- * paused typing so as to not prematurely recommend results.
- *
- * @tsplus static ets/Stream/Aspects debounce
- */
-export const debounce = Pipeable(debounce_)

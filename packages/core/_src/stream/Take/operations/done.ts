@@ -3,12 +3,12 @@ import { concreteTake } from "@effect/core/stream/Take/operations/_internal/Take
 /**
  * Transforms `Take<E, A>` to an `Effect<never, Maybe<E>, Chunk<A>>`.
  *
- * @tsplus fluent ets/Take done
+ * @tsplus getter effect/core/stream/Take done
  */
 export function done<E, A>(
   self: Take<E, A>,
   __tsplusTrace?: string
-): Effect.IO<Maybe<E>, Chunk<A>> {
+): Effect<never, Maybe<E>, Chunk<A>> {
   concreteTake(self)
   return Effect.done(self._exit)
 }

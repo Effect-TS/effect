@@ -1,7 +1,7 @@
 /**
  * Creates a single-valued pure stream.
  *
- * @tsplus static ets/Stream/Ops succeed
+ * @tsplus static effect/core/stream/Stream.Ops succeed
  */
 export function succeed<A>(
   a: LazyArg<A>,

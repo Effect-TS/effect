@@ -3,7 +3,7 @@ import { STMDieException, STMEffect } from "@effect/core/stm/STM/definition/prim
 /**
  * Kills the fiber running the effect.
  *
- * @tsplus static ets/STM/Ops die
+ * @tsplus static effect/core/stm/STM.Ops die
  */
 export function die(u: LazyArg<unknown>): STM<never, never, never> {
   return new STMEffect(() => {

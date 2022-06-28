@@ -1,11 +1,7 @@
 /**
- * @tsplus fluent ets/THub offer
+ * @tsplus static effect/core/stm/THub.Aspects offer
+ * @tsplus pipeable effect/core/stm/THub offer
  */
-export function offer_<A>(self: THub<A>, a: A): USTM<boolean> {
-  return self.publish(a)
+export function offer<A>(value: A) {
+  return (self: THub<A>): STM<never, never, boolean> => self.publish(value)
 }
-
-/**
- * @tsplus static ets/THub/Aspects offer
- */
-export const offer = Pipeable(offer_)

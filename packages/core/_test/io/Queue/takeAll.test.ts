@@ -38,7 +38,7 @@ describe.concurrent("Queue", () => {
             .map((n) => queue.offer(n))
             .reduce(Effect.succeed(false), (acc, curr) => acc > curr)
         )
-        .tap(({ queue }) => queue.offer(5).fork())
+        .tap(({ queue }) => queue.offer(5).fork)
         .tap(({ queue }) => waitForSize(queue, 5))
         .bind("v1", ({ queue }) => queue.takeAll)
         .bind("v2", ({ queue }) => queue.take)

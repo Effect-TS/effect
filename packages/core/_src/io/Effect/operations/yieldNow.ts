@@ -5,6 +5,6 @@ import { IYield } from "@effect/core/io/Effect/definition/primitives"
  * stack. Manual use of this method can improve fairness, at the cost of
  * overhead.
  *
- * @tsplus static ets/Effect/Ops yieldNow
+ * @tsplus static effect/core/io/Effect.Ops yieldNow
  */
 export const yieldNow: Effect<never, never, void> = new IYield()

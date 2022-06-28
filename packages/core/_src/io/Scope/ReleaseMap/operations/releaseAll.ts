@@ -5,15 +5,15 @@ import { releaseMapReleaseAll } from "@effect/core/io/Effect/operations/excl-for
  * execution strategy. After this action finishes, any finalizers added to
  * this scope will be run immediately.
  *
- * @tsplus fluent ets/ReleaseMap releaseAll
+ * @tsplus static effect/core/io/ReleaseMap.Aspects releaseAll
+ * @tsplus pipeable effect/core/io/ReleaseMap releaseAll
  */
-export const releaseAll_ = releaseMapReleaseAll
-
-/**
- * Runs the finalizers associated with this scope using the specified
- * execution strategy. After this action finishes, any finalizers added to
- * this scope will be run immediately.
- *
- * @tsplus static ets/ReleaseMap/Aspects releaseAll
- */
-export const releaseAll = Pipeable(releaseAll_)
+export function releaseAll(
+  ex: Exit<unknown, unknown>,
+  execStrategy: ExecutionStrategy,
+  __tsplusTrace?: string
+) {
+  return (self: ReleaseMap): Effect<never, never, unknown> => {
+    return releaseMapReleaseAll(self, ex, execStrategy)
+  }
+}

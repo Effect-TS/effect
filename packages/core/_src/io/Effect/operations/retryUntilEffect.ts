@@ -2,20 +2,19 @@
  * Retries this effect until its error satisfies the specified effectful
  * predicate.
  *
- * @tsplus fluent ets/Effect retryUntilEffect
+ * @tsplus static effect/core/io/Effect.Aspects retryUntilEffect
+ * @tsplus pipeable effect/core/io/Effect retryUntilEffect
  */
-export function retryUntilEffect_<R, R1, E, A>(
-  self: Effect<R, E, A>,
+export function retryUntilEffect<R1, E>(
   f: (e: E) => Effect<R1, never, boolean>,
   __tsplusTrace?: string
-): Effect<R | R1, E, A> {
-  return self.catchAll((e) => f(e).flatMap((b) => b ? Effect.fail(e) : Effect.yieldNow > self.retryUntilEffect(f)))
+) {
+  return <R, A>(self: Effect<R, E, A>): Effect<R | R1, E, A> =>
+    self.catchAll((e) =>
+      f(e).flatMap((b) =>
+        b ?
+          Effect.fail(e) :
+          Effect.yieldNow > self.retryUntilEffect(f)
+      )
+    )
 }
-
-/**
- * Retries this effect until its error satisfies the specified effectful
- * predicate.
- *
- * @tsplus static ets/Effect/Aspects retryUntilEffect
- */
-export const retryUntilEffect = Pipeable(retryUntilEffect_)

@@ -3,19 +3,15 @@ import { concreteTake } from "@effect/core/stream/Take/operations/_internal/Take
 /**
  * Returns an effect that effectfully "peeks" at the success of this take.
  *
- * @tsplus fluent ets/Take tap
+ * @tsplus static effect/core/stream/Take.Aspects tap
+ * @tsplus pipeable effect/core/stream/Take tap
  */
-export function tap_<R, E, E1, A>(
-  self: Take<E, A>,
-  f: (chunk: Chunk<A>) => Effect<R, E1, any>
-): Effect<R, E1, void> {
-  concreteTake(self)
-  return self._exit.forEach(f).unit()
+export function tap<A, R, E, E1, X>(
+  f: (chunk: Chunk<A>) => Effect<R, E1, X>,
+  __tsplusTrace?: string
+) {
+  return (self: Take<E, A>): Effect<R, E1, void> => {
+    concreteTake(self)
+    return self._exit.forEach(f).unit
+  }
 }
-
-/**
- * Returns an effect that effectfully "peeks" at the success of this take.
- *
- * @tsplus static ets/Take/Aspects tap
- */
-export const tap = Pipeable(tap_)

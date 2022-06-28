@@ -3,9 +3,9 @@ import { InternalTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
 /**
  * Constructs a new empty `TPriorityQueue` with the specified `Ordering`.
  *
- * @tsplus static ets/TPriorityQueue/Ops empty
+ * @tsplus static effect/core/stm/TPriorityQueue.Ops empty
  */
-export function empty<A>(ord: Ord<A>): USTM<TPriorityQueue<A>> {
+export function empty<A>(ord: Ord<A>): STM<never, never, TPriorityQueue<A>> {
   return TRef.make(SortedMap.empty<A, Chunk<A>>(ord)).map(
     (map) => new InternalTPriorityQueue(map)
   )

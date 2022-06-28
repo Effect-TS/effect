@@ -3,7 +3,7 @@ import { concreteTDequeue } from "@effect/core/stm/THub/operations/_internal/Int
 /**
  *  The maximum capacity of the queue.
  *
- * @tsplus getter ets/THub/TDequeue capacity
+ * @tsplus getter effect/core/stm/THub/TDequeue capacity
  */
 export function capacity<A>(
   self: THub.TDequeue<A>

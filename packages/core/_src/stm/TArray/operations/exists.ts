@@ -1,15 +1,12 @@
 /**
  * Determine if the array contains a value satisfying a predicate.
  *
- * @tsplus fluent ets/TArray exists
+ * @tsplus static effect/core/stm/TArray.Aspects exists
+ * @tsplus pipeable effect/core/stm/TArray exists
  */
-export function exists_<A>(self: TArray<A>, f: Predicate<A>): USTM<boolean> {
-  return self.find(f).map((option) => option.isSome())
+export function exists<A>(f: Predicate<A>) {
+  return (self: TArray<A>): STM<never, never, boolean> =>
+    self
+      .find(f)
+      .map((option) => option.isSome())
 }
-
-/**
- * Determine if the array contains a value satisfying a predicate.
- *
- * @tsplus static ets/TArray/Aspects exists
- */
-export const exists = Pipeable(exists_)

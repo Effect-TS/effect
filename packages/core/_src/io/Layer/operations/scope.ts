@@ -4,7 +4,7 @@
  * interruption. This can be used to close a scope when providing a layer to a
  * workflow.
  *
- * @tsplus static ets/Layer/Ops scope
+ * @tsplus static effect/core/io/Layer.Ops scope
  */
 export const scope: Layer<never, never, Scope.Closeable> = Layer.scopedEnvironment(
   Effect.acquireReleaseExit(

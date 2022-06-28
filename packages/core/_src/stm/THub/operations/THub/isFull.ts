@@ -3,7 +3,7 @@ import { concreteTHub } from "@effect/core/stm/THub/operations/_internal/Interna
 /**
  * Checks if the hub is at capacity.
  *
- * @tsplus getter ets/THub isFull
+ * @tsplus getter effect/core/stm/THub isFull
  */
 export function isFull<A>(self: THub<A>): USTM<boolean> {
   concreteTHub(self)

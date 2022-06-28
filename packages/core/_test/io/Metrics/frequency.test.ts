@@ -8,7 +8,7 @@ describe.concurrent("Metrics", () => {
       const program = Effect.succeed("hello") / frequency >
         Effect.succeed("hello") / frequency >
         Effect.succeed("world") / frequency >
-        frequency.value()
+        frequency.value
 
       const result = await program.unsafeRunPromise()
 
@@ -26,7 +26,7 @@ describe.concurrent("Metrics", () => {
       const program = frequency.update("hello") >
         frequency.update("hello") >
         frequency.update("world") >
-        frequency.value()
+        frequency.value
 
       const result = await program.unsafeRunPromise()
 
@@ -47,7 +47,7 @@ describe.concurrent("Metrics", () => {
       const program = Effect.succeed(1) / frequency >
         Effect.succeed(1) / frequency >
         Effect.succeed(100) / frequency >
-        frequency.value()
+        frequency.value
 
       const result = await program.unsafeRunPromise()
 
@@ -67,9 +67,9 @@ describe.concurrent("Metrics", () => {
         Effect.succeed("hello") / frequency >
         Effect.succeed("world") / frequency >
         Effect.struct({
-          r0: base.value(),
-          r1: base.tagged("dyn", "hello").value(),
-          r2: base.tagged("dyn", "world").value()
+          r0: base.value,
+          r1: base.tagged("dyn", "hello").value,
+          r2: base.tagged("dyn", "world").value
         })
 
       const { r0, r1, r2 } = await program.unsafeRunPromise()

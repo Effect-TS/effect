@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Channel/Ops bufferChunk
+ * @tsplus static effect/core/stream/Channel.Ops bufferChunk
  */
 export function bufferChunk<InElem, InErr, InDone>(
   ref: Ref<Chunk<InElem>>

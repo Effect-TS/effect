@@ -3,9 +3,9 @@ import { concreteSemaphore } from "@effect/core/io/Semaphore/operations/_interna
 /**
  * Returns the number of available permits.
  *
- * @tsplus fluent ets/Semaphore available
+ * @tsplus getter effect/core/io/Semaphore available
  */
 export function available(self: Semaphore, __tsplusTrace?: string): Effect<never, never, number> {
   concreteSemaphore(self)
-  return self.semaphore.available.commit()
+  return self.semaphore.available.commit
 }

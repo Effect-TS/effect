@@ -1,7 +1,7 @@
 /**
  * Replicates the given effect `n` times.
  *
- * @tsplus static ets/STM/Ops replicate
+ * @tsplus static effect/core/stm/STM.Ops replicate
  */
 export function replicate<R, E, A>(
   n: number,
@@ -13,18 +13,9 @@ export function replicate<R, E, A>(
 /**
  * Replicates the given effect `n` times.
  *
- * @tsplus fluent ets/STM replicate
+ * @tsplus static effect/core/stm/STM.Aspects replicate
+ * @tsplus pipeable effect/core/stm/STM replicate
  */
-export function replicateNow_<R, E, A>(
-  self: STM<R, E, A>,
-  n: number
-): Chunk<STM<R, E, A>> {
-  return replicate(n, self)
+export function replicateNow(n: number) {
+  return <R, E, A>(self: STM<R, E, A>): Chunk<STM<R, E, A>> => replicate(n, self)
 }
-
-/**
- * Replicates the given effect `n` times.
- *
- * @tsplus static ets/STM/Aspects replicate
- */
-export const replicateNow = Pipeable(replicateNow_)

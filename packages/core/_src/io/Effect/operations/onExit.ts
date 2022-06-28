@@ -2,24 +2,17 @@
  * Ensures that a cleanup functions runs, whether this effect succeeds, fails,
  * or is interrupted.
  *
- * @tsplus fluent ets/Effect onExit
+ * @tsplus static effect/core/io/Effect.Aspects onExit
+ * @tsplus pipeable effect/core/io/Effect onExit
  */
-export function onExit_<R, E, A, R2, X>(
-  self: Effect<R, E, A>,
+export function onExit<E, A, R2, X>(
   cleanup: (exit: Exit<E, A>) => Effect<R2, never, X>,
   __tsplusTrace?: string
-): Effect<R | R2, E, A> {
-  return Effect.acquireUseReleaseExit(
-    Effect.unit,
-    () => self,
-    (_, exit) => cleanup(exit)
-  )
+) {
+  return <R>(self: Effect<R, E, A>): Effect<R | R2, E, A> =>
+    Effect.acquireUseReleaseExit(
+      Effect.unit,
+      () => self,
+      (_, exit) => cleanup(exit)
+    )
 }
-
-/**
- * Ensures that a cleanup functions runs, whether this effect succeeds, fails,
- * or is interrupted.
- *
- * @tsplus static ets/Effect/Aspects onExit
- */
-export const onExit = Pipeable(onExit_)

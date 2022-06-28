@@ -51,7 +51,7 @@ export function chunkCoordination<A>(
           ? Tuple(List.nil(), List.nil())
           : Tuple(list.head, list.tail)
       ).flatMap((list) => queue.offerAll(list)),
-      proceed: ps.offer(undefined).unit(),
+      proceed: ps.offer(undefined).unit,
       awaitNext: ps.take
     }))
 }

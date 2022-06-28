@@ -2,7 +2,7 @@
  * Filters the collection using the specified effectual predicate, removing
  * all elements that satisfy the predicate.
  *
- * @tsplus static ets/Effect/Ops filterNot
+ * @tsplus static effect/core/io/Effect.Ops filterNot
  */
 export function filterNot<A, R, E>(
   as: Collection<A>,

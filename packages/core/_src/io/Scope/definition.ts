@@ -15,21 +15,21 @@ export declare namespace Scope {
  * to the scope, and `close`, which closes a scope and runs all finalizers that
  * have been added to the scope.
  *
- * @tsplus type ets/Scope
+ * @tsplus type effect/core/io/Scope
  */
 export interface Scope {
   readonly [ScopeSym]: ScopeSym
 }
 
 /**
- * @tsplus type ets/Scope/Closeable
+ * @tsplus type effect/core/io/Scope/Closeable
  */
 export interface CloseableScope extends Scope {
   readonly [CloseableScopeSym]: CloseableScopeSym
 }
 
 /**
- * @tsplus type ets/Scope/Ops
+ * @tsplus type effect/core/io/Scope.Ops
  */
 export interface ScopeOps {
   $: ScopeAspects
@@ -41,6 +41,6 @@ export const Scope: ScopeOps = {
 }
 
 /**
- * @tsplus type ets/Scope/Aspects
+ * @tsplus type effect/core/io/Scope.Aspects
  */
 export interface ScopeAspects {}

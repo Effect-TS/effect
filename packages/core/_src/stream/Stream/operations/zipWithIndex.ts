@@ -1,7 +1,7 @@
 /**
  * Zips this stream together with the index of elements.
  *
- * @tsplus fluent ets/Stream zipWithIndex
+ * @tsplus getter effect/core/stream/Stream zipWithIndex
  */
 export function zipWithIndex_<R, E, A>(
   self: Stream<R, E, A>,

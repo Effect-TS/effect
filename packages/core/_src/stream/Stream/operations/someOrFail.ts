@@ -1,19 +1,10 @@
 /**
  * Extracts the optional value, or fails with the given error 'e'.
  *
- * @tsplus fluent ets/Stream someOrFail
+ * @tsplus static effect/core/stream/Stream.Aspects someOrFail
+ * @tsplus pipeable effect/core/stream/Stream someOrFail
  */
-export function someOrFail_<R, E, E2, A>(
-  self: Stream<R, E, Maybe<A>>,
-  e: LazyArg<E2>,
-  __tsplusTrace?: string
-): Stream<R, E | E2, A> {
-  return self.mapEffect((option) => option.fold(Effect.fail(e), Effect.succeedNow))
+export function someOrFail<E2>(e: LazyArg<E2>, __tsplusTrace?: string) {
+  return <R, E, A>(self: Stream<R, E, Maybe<A>>): Stream<R, E | E2, A> =>
+    self.mapEffect((option) => option.fold(Effect.fail(e), Effect.succeedNow))
 }
-
-/**
- * Extracts the optional value, or fails with the given error 'e'.
- *
- * @tsplus static ets/Stream/Aspects someOrFail
- */
-export const someOrFail = Pipeable(someOrFail_)

@@ -1,8 +1,8 @@
 /**
- * @tsplus fluent ets/RuntimeConfig copy
+ * @tsplus static effect/core/io/RuntimeConfig.Aspects copy
+ * @tsplus pipeable effect/core/io/RuntimeConfig copy
  */
-export function copy_(
-  self: RuntimeConfig,
+export function copy(
   params: Partial<{
     readonly fatal: (defect: unknown) => boolean
     readonly reportFatal: (defect: unknown) => void
@@ -11,11 +11,6 @@ export function copy_(
     readonly flags: RuntimeConfigFlags
     readonly maxOp: number
   }>
-): RuntimeConfig {
-  return RuntimeConfig({ ...self.value, ...params })
+) {
+  return (self: RuntimeConfig): RuntimeConfig => RuntimeConfig({ ...self.value, ...params })
 }
-
-/**
- * @tsplus static ets/RuntimeConfig/Aspects copy
- */
-export const copy = Pipeable(copy_)

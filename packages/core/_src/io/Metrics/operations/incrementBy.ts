@@ -1,15 +1,7 @@
 /**
- * @tsplus fluent ets/Metrics/Metric incrementBy
+ * @tsplus static effect/core/io/Metrics/Metric.Aspects incrementBy
+ * @tsplus pipeable effect/core/io/Metrics/Metric incrementBy
  */
-export function incrementBy_(
-  self: Metric.Counter<number>,
-  amount: LazyArg<number>,
-  __tsplusTrace?: string
-): Effect<never, never, void> {
-  return self.update(amount)
+export function incrementBy(amount: LazyArg<number>, __tsplusTrace?: string) {
+  return (self: Metric.Counter<number>): Effect<never, never, void> => self.update(amount)
 }
-
-/**
- * @tsplus static ets/Metrics/Metric/Aspects incrementBy
- */
-export const incrementBy = Pipeable(incrementBy_)

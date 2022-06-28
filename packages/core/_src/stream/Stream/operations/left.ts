@@ -1,7 +1,7 @@
 /**
  * Fails with the error `None` if value is `Right`.
  *
- * @tsplus getter ets/Stream left
+ * @tsplus getter effect/core/stream/Stream left
  */
 export function left<R, E, A1, A2>(
   self: Stream<R, E, Either<A1, A2>>,

@@ -1,11 +1,9 @@
 /**
- * @tsplus fluent ets/Logger map
+ * @tsplus static effect/core/io/Logger.Aspects map
+ * @tsplus pipeable effect/core/io/Logger map
  */
-export function map_<Message, Output, B>(
-  self: Logger<Message, Output>,
-  f: (output: Output) => B
-): Logger<Message, B> {
-  return {
+export function map<Output, B>(f: (output: Output) => B) {
+  return <Message>(self: Logger<Message, Output>): Logger<Message, B> => ({
     apply: (trace, fiberId, logLevel, message, cause, context, spans, annotations) =>
       f(
         self.apply(
@@ -19,10 +17,5 @@ export function map_<Message, Output, B>(
           annotations
         )
       )
-  }
+  })
 }
-
-/**
- * @tsplus static ets/Logger/Aspects map
- */
-export const map = Pipeable(map_)

@@ -2,7 +2,7 @@ export const RandomSym = Symbol.for("@effect/core/io/Random")
 export type RandomSym = typeof RandomSym
 
 /**
- * @tsplus type ets/Random
+ * @tsplus type effect/core/io/Random
  */
 export interface Random {
   readonly [RandomSym]: RandomSym
@@ -18,7 +18,7 @@ export interface Random {
 }
 
 /**
- * @tsplus type ets/Random/Ops
+ * @tsplus type effect/core/io/Random.Ops
  */
 export interface RandomOps {
   $: RandomAspects
@@ -30,6 +30,6 @@ export const Random: RandomOps = {
 }
 
 /**
- * @tsplus type ets/Random/Aspects
+ * @tsplus type effect/core/io/Random.Aspects
  */
 export interface RandomAspects {}

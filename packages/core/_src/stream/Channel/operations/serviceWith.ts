@@ -1,7 +1,7 @@
 /**
  * Accesses the specified service in the environment of the channel.
  *
- * @tsplus static ets/Channel/Ops serviceWith
+ * @tsplus static effect/core/stream/Channel.Ops serviceWith
  */
 export function serviceWith<T, OutDone>(
   tag: Tag<T>,

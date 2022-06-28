@@ -1,7 +1,7 @@
 /**
  * Creates a sink halting with the specified defect.
  *
- * @tsplus static ets/Sink/Ops die
+ * @tsplus static effect/core/stream/Sink.Ops die
  */
 export function die(
   defect: LazyArg<unknown>,

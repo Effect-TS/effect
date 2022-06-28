@@ -5,10 +5,9 @@ import { TRefInternal } from "@effect/core/stm/TRef/operations/_internal/TRefInt
 /**
  * Unsafely makes a new `TRef` that is initialized to the specified value.
  *
- * @tsplus static ets/TRef/Ops unsafeMake
+ * @tsplus static effect/core/stm/TRef.Ops unsafeMake
  */
-export function unsafeMake<A>(a: A): TRef<A> {
-  const value = a
+export function unsafeMake<A>(value: A): TRef<A> {
   const versioned = new Versioned(value)
   const todo = new AtomicReference(emptyTodoMap)
   return new TRefInternal(versioned, todo)

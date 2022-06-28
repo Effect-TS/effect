@@ -1,12 +1,12 @@
 import type { Journal } from "@effect/core/stm/STM/Journal"
 
 /**
- * @tsplus type ets/TryCommit
+ * @tsplus type effect/core/stm/STM/TryCommit
  */
 export type TryCommit<E, A> = Done<E, A> | Suspend
 
 /**
- * @tsplus type ets/TryCommit/Ops
+ * @tsplus type effect/core/stm/STM/TryCommit.Ops
  */
 export interface TryCommitOps {}
 export const TryCommit: TryCommitOps = {}
@@ -33,14 +33,14 @@ export class Suspend {
 }
 
 /**
- * @tsplus static ets/TryCommit/Ops done
+ * @tsplus static effect/core/stm/STM/TryCommit.Ops done
  */
 export function done<E, A>(exit: Exit<E, A>): TryCommit<E, A> {
   return new Done(exit)
 }
 
 /**
- * @tsplus static ets/TryCommit/Ops suspend
+ * @tsplus static effect/core/stm/STM/TryCommit.Ops suspend
  */
 export function suspend(journal: Journal): TryCommit<never, never> {
   return new Suspend(journal)

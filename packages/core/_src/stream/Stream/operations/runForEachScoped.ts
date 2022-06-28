@@ -2,20 +2,12 @@
  * Like `Stream.forEach`, but returns an `Effect` so the finalization
  * order can be controlled.
  *
- * @tsplus fluent ets/Stream runForEachScoped
+ * @tsplus static effect/core/stream/Stream.Aspects runForEachScoped
+ * @tsplus pipeable effect/core/stream/Stream runForEachScoped
  */
-export function runForEachScoped_<R, E, A, R1, E1, Z>(
-  self: Stream<R, E, A>,
+export function runForEachScoped<A, R1, E1, Z>(
   f: (a: A) => Effect<R1, E1, Z>,
   __tsplusTrace?: string
-): Effect<R | R1 | Scope, E | E1, void> {
-  return self.runScoped(Sink.forEach(f))
+) {
+  return <R, E>(self: Stream<R, E, A>): Effect<R | R1 | Scope, E | E1, void> => self.runScoped(Sink.forEach(f))
 }
-
-/**
- * Like `Stream.forEach`, but returns an `Effect` so the finalization
- * order can be controlled.
- *
- * @tsplus static ets/Stream/Aspects runForEachScoped
- */
-export const runForEachScoped = Pipeable(runForEachScoped_)

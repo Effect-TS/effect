@@ -1,7 +1,7 @@
 import { InternalReadLock } from "@effect/core/stm/TReentrantLock/operations/_internal/InternalReadLock"
 
 /**
- * @tsplus static ets/TReentrantLock/ReadLock/Ops __call
+ * @tsplus static effect/core/stm/TReentrantLock/ReadLock.Ops __call
  */
 export function make(
   readers: HashMap<FiberId, number>

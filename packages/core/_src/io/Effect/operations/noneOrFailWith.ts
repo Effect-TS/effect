@@ -3,12 +3,12 @@
  * `undefined`. If the option is defined it fails with an error adapted with
  * the specified function.
  *
- * @tsplus static ets/Effect/Ops noneOrFailWith
+ * @tsplus static effect/core/io/Effect.Ops noneOrFailWith
  */
 export function noneOrFailWith<E, A>(
   option: LazyArg<Maybe<A>>,
   f: (a: A) => E,
   __tsplusTrace?: string
-): Effect.IO<E, void> {
-  return Effect.getOrFailDiscard(option).flip().mapError(f)
+): Effect<never, E, void> {
+  return Effect.getOrFailDiscard(option).flip.mapError(f)
 }

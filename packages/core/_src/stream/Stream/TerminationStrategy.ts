@@ -1,5 +1,5 @@
 /**
- * @tsplus type ets/Stream/TerminationStrategy
+ * @tsplus type effect/core/stream/Stream/TerminationStrategy
  */
 export type TerminationStrategy = Left | Right | Both | Either
 
@@ -20,34 +20,34 @@ export interface Either {
 }
 
 /**
- * @tsplus type ets/Stream/TerminationStrategy/Ops
+ * @tsplus type effect/core/stream/Stream/TerminationStrategy.Ops
  */
 export interface TerminationStrategyOps {}
 export const TerminationStrategy: TerminationStrategyOps = {}
 
 /**
- * @tsplus static ets/Stream/TerminationStrategy/Ops Left
+ * @tsplus static effect/core/stream/Stream/TerminationStrategy.Ops Left
  */
 export const left: TerminationStrategy = {
   _tag: "Left"
 }
 
 /**
- * @tsplus static ets/Stream/TerminationStrategy/Ops Right
+ * @tsplus static effect/core/stream/Stream/TerminationStrategy.Ops Right
  */
 export const right: TerminationStrategy = {
   _tag: "Right"
 }
 
 /**
- * @tsplus static ets/Stream/TerminationStrategy/Ops Both
+ * @tsplus static effect/core/stream/Stream/TerminationStrategy.Ops Both
  */
 export const both: TerminationStrategy = {
   _tag: "Both"
 }
 
 /**
- * @tsplus static ets/Stream/TerminationStrategy/Ops Either
+ * @tsplus static effect/core/stream/Stream/TerminationStrategy.Ops Either
  */
 export const either: TerminationStrategy = {
   _tag: "Either"

@@ -4,40 +4,34 @@ import { concreteStream } from "@effect/core/stream/Stream/operations/_internal/
  * Like `Stream.runIntoQueue`, but provides the result as a scoped effect to
  * allow for scope composition.
  *
- * @tsplus fluent ets/Stream runIntoQueueScoped
+ * @tsplus static effect/core/stream/Stream.Aspects runIntoQueueScoped
+ * @tsplus pipeable effect/core/stream/Stream runIntoQueueScoped
  */
-export function runIntoQueueScoped_<R, E extends E1, A, E1>(
-  self: Stream<R, E, A>,
+export function runIntoQueueScoped<E1, A>(
   queue: LazyArg<Enqueue<Take<E1, A>>>,
   __tsplusTrace?: string
-): Effect<R | Scope, E | E1, void> {
-  const writer: Channel<
-    R,
-    E,
-    Chunk<A>,
-    unknown,
-    E,
-    Take<E | E1, A>,
-    unknown
-  > = Channel.readWithCause(
-    (input: Chunk<A>) => Channel.write(Take.chunk(input)) > writer,
-    (cause) => Channel.write(Take.failCause(cause)),
-    () => Channel.write(Take.end)
-  )
-  concreteStream(self)
-  return Effect.succeed(queue).flatMap((queue) =>
-    (self.channel >> writer)
-      .mapOutEffect((take) => queue.offer(take))
-      .drain
-      .runScoped
-      .unit()
-  )
+) {
+  return <R, E extends E1>(self: Stream<R, E, A>): Effect<R | Scope, E | E1, void> => {
+    const writer: Channel<
+      R,
+      E,
+      Chunk<A>,
+      unknown,
+      E,
+      Take<E | E1, A>,
+      unknown
+    > = Channel.readWithCause(
+      (input: Chunk<A>) => Channel.write(Take.chunk(input)) > writer,
+      (cause) => Channel.write(Take.failCause(cause)),
+      () => Channel.write(Take.end)
+    )
+    concreteStream(self)
+    return Effect.succeed(queue).flatMap((queue) =>
+      (self.channel >> writer)
+        .mapOutEffect((take) => queue.offer(take))
+        .drain
+        .runScoped
+        .unit
+    )
+  }
 }
-
-/**
- * Like `Stream.runIntoQueue`, but provides the result as a scoped effect to
- * allow for scope composition.
- *
- * @tsplus static ets/Stream/Aspects runIntoQueueScoped
- */
-export const runIntoQueueScoped = Pipeable(runIntoQueueScoped_)

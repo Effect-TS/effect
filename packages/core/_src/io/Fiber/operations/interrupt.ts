@@ -3,8 +3,8 @@
  * fiber has already exited, the returned effect will resume immediately.
  * Otherwise, the effect will resume when the fiber exits.
  *
- * @tsplus fluent ets/Fiber interrupt
- * @tsplus fluent ets/RuntimeFiber interrupt
+ * @tsplus getter effect/core/io/Fiber interrupt
+ * @tsplus getter effect/core/io/RuntimeFiber interrupt
  */
 export function interrupt<E, A>(
   self: Fiber<E, A>,

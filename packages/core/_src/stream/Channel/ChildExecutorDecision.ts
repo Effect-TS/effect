@@ -1,5 +1,5 @@
 /**
- * @tsplus type ets/Channel/ChildExecutorDecision
+ * @tsplus type effect/core/stream/Channel/ChildExecutorDecision
  */
 export type ChildExecutorDecision = Continue | Close | Yield
 
@@ -17,27 +17,27 @@ export class Yield {
 }
 
 /**
- * @tsplus type ets/Channel/ChildExecutorDecision/Ops
+ * @tsplus type effect/core/stream/Channel/ChildExecutorDecision.Ops
  */
 export interface ChildExecutorDecisionOps {}
 export const ChildExecutorDecision: ChildExecutorDecisionOps = {}
 
 /**
- * @tsplus static ets/Channel/ChildExecutorDecision/Ops Continue
+ * @tsplus static effect/core/stream/Channel/ChildExecutorDecision.Ops Continue
  */
 export const _continue: ChildExecutorDecision = new Continue()
 
 export { _continue as continue }
 
 /**
- * @tsplus static ets/Channel/ChildExecutorDecision/Ops Close
+ * @tsplus static effect/core/stream/Channel/ChildExecutorDecision.Ops Close
  */
 export function close(value: unknown): ChildExecutorDecision {
   return new Close(value)
 }
 
 /**
- * @tsplus static ets/Channel/ChildExecutorDecision/Ops Yield
+ * @tsplus static effect/core/stream/Channel/ChildExecutorDecision.Ops Yield
  */
 export const _yield: ChildExecutorDecision = new Yield()
 

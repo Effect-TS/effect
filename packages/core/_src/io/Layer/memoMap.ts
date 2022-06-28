@@ -1,4 +1,5 @@
 import { instruction } from "@effect/core/io/Layer/definition"
+import { constant } from "@tsplus/stdlib/data/Function"
 
 /**
  * A `MemoMap` memoizes layers.
@@ -39,62 +40,60 @@ export class MemoMap {
             return Effect.succeed(Tuple(cached, map))
           }
           case "None": {
-            return Effect.Do()
-              .bind("observers", () => Ref.Synchronized.make(0))
-              .bind("deferred", () => Deferred.make<E, Env<ROut>>())
-              .bind("finalizerRef", () => Ref.Synchronized.make<Scope.Finalizer>(() => () => Effect.unit))
-              .bindValue("resource", ({ deferred, finalizerRef, observers }) =>
-                Effect.uninterruptibleMask(({ restore }) =>
-                  Effect.Do()
-                    .bindValue("outerScope", () =>
-                      scope)
-                    .bind("innerScope", () => Scope.make)
-                    .flatMap(({ innerScope, outerScope }) =>
-                      restore(layer.withScope(innerScope).flatMap((f) => f(this)))
-                        .exit()
-                        .flatMap((exit) => {
-                          switch (exit._tag) {
-                            case "Failure": {
-                              return (
-                                deferred.failCause(exit.cause) >
-                                  innerScope.close(exit) >
-                                  Effect.failCause(exit.cause)
-                              )
-                            }
-                            case "Success": {
-                              return finalizerRef.set((exit) =>
-                                Effect.whenEffect(
-                                  observers.modify((n) => Tuple(n === 1, n - 1)),
-                                  innerScope.close(exit)
-                                )
-                              )
-                                .zipRight(observers.update((n) => n + 1))
-                                .zipRight(
-                                  outerScope.addFinalizerExit((e) => finalizerRef.get().flatMap((fin) => fin(e)))
-                                )
-                                .zipRight(deferred.succeed(exit.value))
-                                .as(exit.value)
-                            }
+            return Do(($) => {
+              const observers = $(Ref.Synchronized.make(0))
+              const deferred = $(Deferred.make<E, Env<ROut>>())
+              const finalizerRef = $(Ref.Synchronized.make<Scope.Finalizer>(() => constant(Effect.unit)))
+              const resource = Effect.uninterruptibleMask(({ restore }) =>
+                Effect.Do()
+                  .bindValue("outerScope", () => scope)
+                  .bind("innerScope", () => Scope.make)
+                  .flatMap(({ innerScope, outerScope }) =>
+                    restore(layer.withScope(innerScope).flatMap((f) => f(this)))
+                      .exit
+                      .flatMap((exit) => {
+                        switch (exit._tag) {
+                          case "Failure": {
+                            return (
+                              deferred.failCause(exit.cause) >
+                                innerScope.close(exit) >
+                                Effect.failCause(exit.cause)
+                            )
                           }
-                        })
+                          case "Success": {
+                            return finalizerRef.set((exit) =>
+                              Effect.whenEffect(
+                                observers.modify((n) => Tuple(n === 1, n - 1)),
+                                innerScope.close(exit)
+                              )
+                            )
+                              .zipRight(observers.update((n) => n + 1))
+                              .zipRight(
+                                outerScope.addFinalizerExit((e) => finalizerRef.get().flatMap((fin) => fin(e)))
+                              )
+                              .zipRight(deferred.succeed(exit.value))
+                              .as(exit.value)
+                          }
+                        }
+                      })
+                  )
+              )
+              const memoized = Tuple(
+                deferred
+                  .await()
+                  .onExit((exit) =>
+                    exit.fold(
+                      () => Effect.unit,
+                      () => observers.update((n) => n + 1)
                     )
-                ))
-              .bindValue("memoized", ({ deferred, finalizerRef, observers }) =>
-                Tuple(
-                  deferred.await()
-                    .onExit((exit) =>
-                      exit.fold(
-                        () =>
-                          Effect.unit,
-                        () => observers.update((n) => n + 1)
-                      )
-                    ),
-                  (e: Exit<unknown, unknown>) => finalizerRef.get().flatMap((fin) => fin(e))
-                ))
-              .map(({ memoized, resource }) => Tuple(resource, layer.isFresh ? map : map.set(layer, memoized)))
+                  ),
+                (e: Exit<unknown, unknown>) => finalizerRef.get().flatMap((fin) => fin(e))
+              )
+              return Tuple(resource, layer.isFresh ? map : map.set(layer, memoized))
+            })
           }
         }
-      }).flatten()
+      }).flatten
     )
   }
 }
@@ -102,7 +101,7 @@ export class MemoMap {
 /**
  * Creates an empty `MemoMap`.
  */
-export function makeMemoMap(): Effect.UIO<MemoMap> {
+export function makeMemoMap(): Effect<never, never, MemoMap> {
   return Ref.Synchronized.make<
     Map<Layer<any, any, any>, Tuple<[Effect.IO<any, any>, Scope.Finalizer]>>
   >(new Map()).flatMap((r) => Effect.succeed(new MemoMap(r)))
@@ -111,7 +110,7 @@ export function makeMemoMap(): Effect.UIO<MemoMap> {
 /**
  * Builds a layer into a scoped value.
  *
- * @tsplus fluent ets/Layer build
+ * @tsplus getter effect/core/io/Layer build
  */
 export function build<RIn, E, ROut>(
   self: Layer<RIn, E, ROut>,
@@ -127,78 +126,75 @@ export function build<RIn, E, ROut>(
  * the services output by the layer exceed the lifetime of the effect the
  * layer is provided to.
  *
- * @tsplus fluent ets/Layer buildWithScope
+ * @tsplus static effect/core/io/Layer.Aspects buildWithScope
+ * @tsplus pipeable effect/core/io/Layer buildWithScope
  */
-export function buildWithScope<RIn, E, ROut>(
-  self: Layer<RIn, E, ROut>,
-  scope: LazyArg<Scope>,
-  __tsplusTrace?: string
-): Effect<RIn, E, Env<ROut>> {
-  return Effect.Do()
-    .bind("memoMap", () => makeMemoMap())
-    .bind("run", () => self.withScope(scope))
-    .flatMap(({ memoMap, run }) => run(memoMap))
+export function buildWithScope(scope: LazyArg<Scope>, __tsplusTrace?: string) {
+  return <RIn, E, ROut>(self: Layer<RIn, E, ROut>): Effect<RIn, E, Env<ROut>> =>
+    Do(($) => {
+      const memoMap = $(makeMemoMap())
+      const run = $(self.withScope(scope))
+      return $(run(memoMap))
+    })
 }
 
 /**
- * @tsplus fluent ets/Layer withScope
+ * @tsplus static effect/core/io/Layer.Aspects withScope
+ * @tsplus pipeable effect/core/io/Layer withScope
  */
-export function withScope<RIn, E, ROut>(
-  self: Layer<RIn, E, ROut>,
-  scope: LazyArg<Scope>,
-  __tsplusTrace?: string
-): Effect<never, never, (_: MemoMap) => Effect<RIn, E, Env<ROut>>> {
-  return Match.tag(instruction(self), {
-    LayerApply: (_) => Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((memoMap: MemoMap) => _.self),
-    LayerExtendScope: (_) =>
-      Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((memoMap: MemoMap) =>
-        Effect.scopeWith((scope) => memoMap.getOrElseMemoize(_.self, scope))
-      ),
-    LayerFold: (_) =>
-      Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
-        (memoMap: MemoMap) =>
-          memoMap.getOrElseMemoize(_.self, scope).foldCauseEffect(
-            (e) => memoMap.getOrElseMemoize(_.failure(e), scope),
-            (r) => memoMap.getOrElseMemoize(_.success(r), scope)
-          )
-      ),
-    LayerFresh: (_) =>
-      Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
-        (__: MemoMap) => _.self.buildWithScope(scope)
-      ),
-    LayerScoped: (_) =>
-      Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
-        (__: MemoMap) => scope().extend(_.self)
-      ),
-    LayerSuspend: (_) =>
-      Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
-        (memoMap: MemoMap) => memoMap.getOrElseMemoize(_.self(), scope)
-      ),
-    LayerTo: (_) =>
-      Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
-        (memoMap: MemoMap) =>
-          memoMap
-            .getOrElseMemoize(_.self, scope)
-            .flatMap((r) =>
-              memoMap
-                .getOrElseMemoize(_.that, scope)
-                .provideEnvironment(r, __tsplusTrace)
+export function withScope(scope: LazyArg<Scope>, __tsplusTrace?: string) {
+  return <RIn, E, ROut>(self: Layer<RIn, E, ROut>): Effect<never, never, (_: MemoMap) => Effect<RIn, E, Env<ROut>>> =>
+    Match.tag(instruction(self), {
+      LayerApply: (_) => Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((memoMap: MemoMap) => _.self),
+      LayerExtendScope: (_) =>
+        Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((memoMap: MemoMap) =>
+          Effect.scopeWith((scope) => memoMap.getOrElseMemoize(_.self, scope))
+        ),
+      LayerFold: (_) =>
+        Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
+          (memoMap: MemoMap) =>
+            memoMap.getOrElseMemoize(_.self, scope).foldCauseEffect(
+              (e) => memoMap.getOrElseMemoize(_.failure(e), scope),
+              (r) => memoMap.getOrElseMemoize(_.success(r), scope)
             )
-      ),
-    LayerZipWithPar: (_) =>
-      Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
-        (memoMap: MemoMap) =>
-          memoMap
-            .getOrElseMemoize(_.self, scope)
-            .zipWithPar(memoMap.getOrElseMemoize(_.that, scope), _.f)
-      )
-  })
+        ),
+      LayerFresh: (_) =>
+        Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
+          (__: MemoMap) => _.self.buildWithScope(scope)
+        ),
+      LayerScoped: (_) =>
+        Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
+          (__: MemoMap) => scope().extend(_.self)
+        ),
+      LayerSuspend: (_) =>
+        Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
+          (memoMap: MemoMap) => memoMap.getOrElseMemoize(_.self(), scope)
+        ),
+      LayerTo: (_) =>
+        Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
+          (memoMap: MemoMap) =>
+            memoMap
+              .getOrElseMemoize(_.self, scope)
+              .flatMap((r) =>
+                memoMap
+                  .getOrElseMemoize(_.that, scope)
+                  .provideEnvironment(r, __tsplusTrace)
+              )
+        ),
+      LayerZipWithPar: (_) =>
+        Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
+          (memoMap: MemoMap) =>
+            memoMap
+              .getOrElseMemoize(_.self, scope)
+              .zipWithPar(memoMap.getOrElseMemoize(_.that, scope), _.f)
+        )
+    })
 }
 
 /**
  * Returns whether this layer is a fresh version that will not be shared.
  *
- * @tsplus getter ets/Layer isFresh
+ * @tsplus getter effect/core/io/Layer isFresh
  */
 export function isFresh<R, E, A>(self: Layer<R, E, A>): boolean {
   return instruction(self)._tag === "LayerFresh"

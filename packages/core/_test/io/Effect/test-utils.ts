@@ -14,13 +14,13 @@ export interface NumberService {
 
 export const NumberService = Tag<NumberService>()
 
-export function asyncExampleError<A>(): Effect.IO<unknown, A> {
+export function asyncExampleError<A>(): Effect<never, unknown, A> {
   return Effect.async((cb) => {
     cb(Effect.fail(ExampleError))
   })
 }
 
-export function asyncUnit<E>(): Effect.IO<E, void> {
+export function asyncUnit<E>(): Effect<never, E, void> {
   return Effect.async((cb) => {
     cb(Effect.unit)
   })
@@ -53,19 +53,20 @@ export function fib(n: number): number {
   return fib(n - 1) + fib(n - 2)
 }
 
-export function concurrentFib(n: number): Effect.UIO<number> {
+export function concurrentFib(n: number): Effect<never, never, number> {
   if (n <= 1) {
     return Effect.succeed(n)
   }
-  return Effect.Do()
-    .bind("fiber1", () => concurrentFib(n - 1).fork())
-    .bind("fiber2", () => concurrentFib(n - 2).fork())
-    .bind("v1", ({ fiber1 }) => fiber1.join())
-    .bind("v2", ({ fiber2 }) => fiber2.join())
-    .map(({ v1, v2 }) => v1 + v2)
+  return Do(($) => {
+    const fiber1 = $(concurrentFib(n - 1).fork)
+    const fiber2 = $(concurrentFib(n - 2).fork)
+    const v1 = $(fiber1.join)
+    const v2 = $(fiber2.join)
+    return v1 + v2
+  })
 }
 
-export function deepErrorEffect(n: number): Effect.IO<unknown, void> {
+export function deepErrorEffect(n: number): Effect<never, unknown, void> {
   if (n === 0) {
     return Effect.attempt(() => {
       throw ExampleError
@@ -74,15 +75,15 @@ export function deepErrorEffect(n: number): Effect.IO<unknown, void> {
   return Effect.unit > deepErrorEffect(n - 1)
 }
 
-export function deepErrorFail(n: number): Effect.IO<unknown, void> {
+export function deepErrorFail(n: number): Effect<never, unknown, void> {
   if (n === 0) {
     return Effect.fail(ExampleError)
   }
   return Effect.unit > deepErrorFail(n - 1)
 }
 
-export function deepMapEffect(n: number): Effect.UIO<number> {
-  function loop(n: number, acc: Effect.UIO<number>): Effect.UIO<number> {
+export function deepMapEffect(n: number): Effect<never, never, number> {
+  function loop(n: number, acc: Effect<never, never, number>): Effect<never, never, number> {
     if (n <= 0) {
       return acc
     }

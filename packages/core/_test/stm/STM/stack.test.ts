@@ -12,7 +12,7 @@ describe.concurrent("STM", () => {
           )(() => STM.retry.orTry(tRef.getAndUpdate((n) => n + 1)))
         )
         .flatMap((tRef) => tRef.get)
-        .commit()
+        .commit
 
       const result = await program.unsafeRunPromise()
 
@@ -76,16 +76,16 @@ describe.concurrent("STM", () => {
     })
 
     it("long mapError chains", async () => {
-      function chainError(depth: number): Effect.IO<number, never> {
+      function chainError(depth: number): Effect<never, number, never> {
         return chainErrorLoop(depth, STM.fail(0))
       }
 
       function chainErrorLoop(
         n: number,
         acc: STM<never, number, never>
-      ): Effect.IO<number, never> {
+      ): Effect<never, number, never> {
         return n <= 0
-          ? acc.commit()
+          ? acc.commit
           : Effect.suspendSucceed(
             chainErrorLoop(
               n - 1,
@@ -111,7 +111,7 @@ describe.concurrent("STM", () => {
           )(() => STM.retry | tRef.getAndUpdate((n) => n + 1))
         )
         .flatMap((tRef) => tRef.get)
-        .commit()
+        .commit
 
       const result = await program.unsafeRunPromise()
 

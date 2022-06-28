@@ -3,20 +3,15 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 /**
  * Effectfully transforms the chunks emitted by this stream.
  *
- * @tsplus fluent ets/Stream mapChunksEffect
+ * @tsplus static effect/core/stream/Stream.Aspects mapChunksEffect
+ * @tsplus pipeable effect/core/stream/Stream mapChunksEffect
  */
-export function mapChunksEffect_<R, E, A, R2, E2, A2>(
-  self: Stream<R, E, A>,
+export function mapChunksEffect<A, R2, E2, A2>(
   f: (chunk: Chunk<A>) => Effect<R2, E2, Chunk<A2>>,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, A2> {
-  concreteStream(self)
-  return new StreamInternal(self.channel.mapOutEffect(f))
+) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A2> => {
+    concreteStream(self)
+    return new StreamInternal(self.channel.mapOutEffect(f))
+  }
 }
-
-/**
- * Effectfully transforms the chunks emitted by this stream.
- *
- * @tsplus static ets/Stream/Aspects mapChunksEffect
- */
-export const mapChunksEffect = Pipeable(mapChunksEffect_)

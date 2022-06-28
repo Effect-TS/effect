@@ -6,7 +6,7 @@ export { createQueue } from "@effect/core/io/Effect/operations/excl-forEach"
 /**
  * Creates a new `Queue` using the provided `Strategy`.
  *
- * @tsplus static ets/Queue/Ops create
+ * @tsplus static effect/core/io/Queue.Ops create
  */
 export const create: <A>(
   queue: MutableQueue<A>,

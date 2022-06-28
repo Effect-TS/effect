@@ -7,7 +7,7 @@ describe.concurrent("TPriorityQueue", () => {
       const program = TPriorityQueue.empty<Event>(eventOrd)
         .tap((queue) => queue.offerAll(as))
         .flatMap((queue) => queue.isEmpty)
-        .commit()
+        .commit
 
       const result = await program.unsafeRunPromise()
 
@@ -18,7 +18,7 @@ describe.concurrent("TPriorityQueue", () => {
       const program = TPriorityQueue.empty<Event>(eventOrd)
         .tap((queue) => queue.offerAll(as))
         .flatMap((queue) => queue.isNonEmpty)
-        .commit()
+        .commit
 
       const result = await program.unsafeRunPromise()
 

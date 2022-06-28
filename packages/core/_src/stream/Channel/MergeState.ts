@@ -1,5 +1,5 @@
 /**
- * @tsplus type ets/Channel/MergeState
+ * @tsplus type effect/core/stream/Channel/MergeState
  */
 export type MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2> =
   | BothRunning<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>
@@ -28,13 +28,13 @@ export class RightDone<Env, Err, _Err1, Err2, _Elem, Done, _Done1, Done2> {
 }
 
 /**
- * @tsplus type ets/Channel/MergeState/Ops
+ * @tsplus type effect/core/stream/Channel/MergeState.Ops
  */
 export interface MergeStateOps {}
 export const MergeState: MergeStateOps = {}
 
 /**
- * @tsplus static ets/Channel/MergeState/Ops BothRunning
+ * @tsplus static effect/core/stream/Channel/MergeState.Ops BothRunning
  */
 export function bothRunning<_Env, Err, Err1, _Err2, Elem, Done, Done1, _Done2>(
   left: Fiber<Err, Either<Done, Elem>>,
@@ -44,7 +44,7 @@ export function bothRunning<_Env, Err, Err1, _Err2, Elem, Done, Done1, _Done2>(
 }
 
 /**
- * @tsplus static ets/Channel/MergeState/Ops LeftDone
+ * @tsplus static effect/core/stream/Channel/MergeState.Ops LeftDone
  */
 export function leftDone<Env, _Err, Err1, Err2, _Elem, _Done, Done1, Done2>(
   f: (exit: Exit<Err1, Done1>) => Effect<Env, Err2, Done2>
@@ -53,7 +53,7 @@ export function leftDone<Env, _Err, Err1, Err2, _Elem, _Done, Done1, Done2>(
 }
 
 /**
- * @tsplus static ets/Channel/MergeState/Ops RightDone
+ * @tsplus static effect/core/stream/Channel/MergeState.Ops RightDone
  */
 export function rightDone<Env, Err, _Err1, Err2, _Elem, Done, _Done1, Done2>(
   f: (ex: Exit<Err, Done>) => Effect<Env, Err2, Done2>

@@ -1,7 +1,7 @@
 /**
  * Terminates the stream when encountering the first `None`.
  *
- * @tsplus fluent ets/Stream collectWhileSome
+ * @tsplus getter effect/core/stream/Stream collectWhileSome
  */
 export function collectWhileSome<R, E, L, A>(
   self: Stream<R, E, Maybe<A>>,

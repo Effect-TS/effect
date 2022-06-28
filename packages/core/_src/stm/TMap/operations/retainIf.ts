@@ -1,15 +1,9 @@
 /**
  * Retains bindings matching predicate and returns removed bindings.
  *
- * @tsplus fluent ets/TMap retainIf
+ * @tsplus static effect/core/stm/TMap.Aspects retainIf
+ * @tsplus pipeable effect/core/stm/TMap retainIf
  */
-export function retainIf_<K, V>(self: TMap<K, V>, f: (kv: Tuple<[K, V]>) => boolean): USTM<Chunk<Tuple<[K, V]>>> {
-  return self.removeIf((_) => !f(_))
+export function retainIf<K, V>(f: (kv: Tuple<[K, V]>) => boolean) {
+  return (self: TMap<K, V>): STM<never, never, Chunk<Tuple<[K, V]>>> => self.removeIf((_) => !f(_))
 }
-
-/**
- * Retains bindings matching predicate and returns removed bindings.
- *
- * @tsplus static ets/TMap/Aspects retainIf
- */
-export const retainIf = Pipeable(retainIf_)

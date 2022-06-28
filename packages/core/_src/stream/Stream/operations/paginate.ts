@@ -3,7 +3,7 @@
  * the unfolding of the state. This is useful for embedding paginated APIs,
  * hence the name.
  *
- * @tsplus static ets/Stream/Ops paginate
+ * @tsplus static effect/core/stream/Stream.Ops paginate
  */
 export function paginate<S, A>(
   s: LazyArg<S>,

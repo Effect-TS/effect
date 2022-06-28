@@ -5,7 +5,7 @@ import { concreteChannelState } from "@effect/core/stream/Channel/ChannelState"
 /**
  * Runs a channel until the end is received.
  *
- * @tsplus getter ets/Channel runScoped
+ * @tsplus getter effect/core/stream/Channel runScoped
  */
 export function runScoped<Env, InErr, InDone, OutErr, OutDone>(
   self: Channel<Env, InErr, unknown, InDone, OutErr, never, OutDone>

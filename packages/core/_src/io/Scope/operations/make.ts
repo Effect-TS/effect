@@ -3,6 +3,6 @@
  * the reverse of the order in which they were added when this scope is
  * closed.
  *
- * @tsplus static ets/Scope/Ops make
+ * @tsplus static effect/core/io/Scope.Ops make
  */
 export const make: Effect<never, never, Scope.Closeable> = Scope.makeWith(ExecutionStrategy.Sequential)

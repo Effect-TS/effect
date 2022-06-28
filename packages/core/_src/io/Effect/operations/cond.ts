@@ -4,13 +4,13 @@
  *
  * For effectful conditionals, see `ifEffect`.
  *
- * @tsplus static ets/Effect/Ops cond
+ * @tsplus static effect/core/io/Effect.Ops cond
  */
 export function cond<E, A>(
   predicate: LazyArg<boolean>,
   result: LazyArg<A>,
   error: LazyArg<E>,
   __tsplusTrace?: string
-): Effect.IO<E, A> {
+): Effect<never, E, A> {
   return Effect.suspendSucceed(() => predicate() ? Effect.succeed(result) : Effect.fail(error))
 }

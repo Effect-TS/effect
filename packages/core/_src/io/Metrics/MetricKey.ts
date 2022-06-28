@@ -8,8 +8,8 @@ export type MetricKeySym = typeof MetricKeySym
  * boundaries of a histogram. In this way, it is impossible to ever create
  * different metrics with conflicting keys.
  *
- * @tsplus type ets/Metrics/MetricKey
- * @tsplus companion ets/Metrics/MetricKey/Ops
+ * @tsplus type effect/core/io/Metrics/MetricKey
+ * @tsplus companion effect/core/io/Metrics/MetricKey.Ops
  */
 export class MetricKey<Type> implements Equals {
   readonly [MetricKeySym]: MetricKeySym = MetricKeySym
@@ -48,7 +48,7 @@ export declare namespace MetricKey {
 /**
  * Creates a metric key for a counter, with the specified name.
  *
- * @tsplus static ets/Metrics/MetricKey/Ops Counter
+ * @tsplus static effect/core/io/Metrics/MetricKey.Ops Counter
  */
 export function counter(name: string): MetricKey.Counter {
   return new MetricKey(name, MetricKeyType.Counter)
@@ -57,7 +57,7 @@ export function counter(name: string): MetricKey.Counter {
 /**
  * Creates a metric key for a gauge, with the specified name.
  *
- * @tsplus static ets/Metrics/MetricKey/Ops Gauge
+ * @tsplus static effect/core/io/Metrics/MetricKey.Ops Gauge
  */
 export function gauge(name: string): MetricKey.Gauge {
   return new MetricKey(name, MetricKeyType.Gauge)
@@ -67,7 +67,7 @@ export function gauge(name: string): MetricKey.Gauge {
  * Creates a metric key for a categorical frequency table, with the specified
  * name.
  *
- * @tsplus static ets/Metrics/MetricKey/Ops Frequency
+ * @tsplus static effect/core/io/Metrics/MetricKey.Ops Frequency
  */
 export function frequency(name: string): MetricKey.Frequency {
   return new MetricKey(name, MetricKeyType.Frequency)
@@ -76,7 +76,7 @@ export function frequency(name: string): MetricKey.Frequency {
 /**
  * Creates a metric key for a histogram, with the specified name and boundaries.
  *
- * @tsplus static ets/Metrics/MetricKey/Ops Histogram
+ * @tsplus static effect/core/io/Metrics/MetricKey.Ops Histogram
  */
 export function histogram(name: string, boundaries: Metric.Histogram.Boundaries): MetricKey.Histogram {
   return new MetricKey(name, MetricKeyType.Histogram(boundaries))
@@ -86,7 +86,7 @@ export function histogram(name: string, boundaries: Metric.Histogram.Boundaries)
  * Creates a metric key for a histogram, with the specified name, maxAge,
  * maxSize, error, and quantiles.
  *
- * @tsplus static ets/Metrics/MetricKey/Ops Summary
+ * @tsplus static effect/core/io/Metrics/MetricKey.Ops Summary
  */
 export function summary(
   name: string,
@@ -101,32 +101,41 @@ export function summary(
 /**
  * Returns a new `MetricKey` with the specified tag appended.
  *
- * @tsplus fluent ets/Metrics/MetricKey tagged
+ * @tsplus static effect/core/io/Metrics/MetricKey.Aspects tagged
+ * @tsplus pipeable effect/core/io/Metrics/MetricKey tagged
  */
-export function tagged<Type>(self: MetricKey<Type>, key: string, value: string): MetricKey<Type> {
-  return self.taggedWithLabelSet(HashSet(MetricLabel(key, value)))
+export function tagged(key: string, value: string) {
+  return <Type>(self: MetricKey<Type>): MetricKey<Type> =>
+    self.taggedWithLabelSet(
+      HashSet(MetricLabel(key, value))
+    )
 }
 
 /**
  * Returns a new `MetricKey` with the specified tags appended.
  *
- * @tsplus fluent ets/Metrics/MetricKey taggedWithLabels
+ * @tsplus static effect/core/io/Metrics/MetricKey.Aspects taggedWithLabels
+ * @tsplus pipeable effect/core/io/Metrics/MetricKey taggedWithLabels
  */
-export function taggedWithLabels<Type>(self: MetricKey<Type>, extraTags: Collection<MetricLabel>): MetricKey<Type> {
-  return self.taggedWithLabelSet(HashSet.from(extraTags))
+export function taggedWithLabels(extraTags: Collection<MetricLabel>) {
+  return <Type>(self: MetricKey<Type>): MetricKey<Type> => self.taggedWithLabelSet(HashSet.from(extraTags))
 }
 
 /**
  * Returns a new `MetricKey` with the specified tags appended.
  *
- * @tsplus fluent ets/Metrics/MetricKey taggedWithLabelSet
+ * @tsplus static effect/core/io/Metrics/MetricKey.Aspects taggedWithLabelSet
+ * @tsplus pipeable effect/core/io/Metrics/MetricKey taggedWithLabelSet
  */
-export function taggedWithLabelSet<Type>(self: MetricKey<Type>, extraTags: HashSet<MetricLabel>): MetricKey<Type> {
-  return extraTags.size === 0 ? self : new MetricKey(self.name, self.keyType, self.tags.union(extraTags))
+export function taggedWithLabelSet(extraTags: HashSet<MetricLabel>) {
+  return <Type>(self: MetricKey<Type>): MetricKey<Type> =>
+    extraTags.size === 0 ?
+      self :
+      new MetricKey(self.name, self.keyType, self.tags.union(extraTags))
 }
 
 /**
- * @tsplus static ets/Metrics/MetricKey/Ops isMetricKey
+ * @tsplus static effect/core/io/Metrics/MetricKey.Ops isMetricKey
  */
 export function isMetricKey(u: unknown): u is MetricKey<unknown> {
   return typeof u === "object" && u != null && MetricKeySym in u

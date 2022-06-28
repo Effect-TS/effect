@@ -4,23 +4,17 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * Returns a new schedule that deals with a narrower class of inputs than this
  * schedule.
  *
- * @tsplus fluent ets/Schedule contramapEffect
- * @tsplus fluent ets/Schedule/WithState contramapEffect
+ * @tsplus static effect/core/io/Schedule.Aspects contramapEffect
+ * @tsplus pipeable effect/core/io/Schedule contramapEffect
  */
-export function contramapEffect_<State, Env, In, Out, Env1, In2>(
-  self: Schedule<State, Env, In, Out>,
+export function contramapEffect<In, Env1, In2>(
   f: (in2: In2) => Effect<Env1, never, In>
-): Schedule<State, Env | Env1, In2, Out> {
-  return makeWithState(
-    self._initial,
-    (now, input2, state) => f(input2).flatMap((input) => self._step(now, input, state))
-  )
+) {
+  return <State, Env, Out>(
+    self: Schedule<State, Env, In, Out>
+  ): Schedule<State, Env | Env1, In2, Out> =>
+    makeWithState(
+      self._initial,
+      (now, input2, state) => f(input2).flatMap((input) => self._step(now, input, state))
+    )
 }
-
-/**
- * Returns a new schedule that deals with a narrower class of inputs than this
- * schedule.
- *
- * @tsplus static ets/Schedule/Aspects contramapEffect
- */
-export const contramapEffect = Pipeable(contramapEffect_)

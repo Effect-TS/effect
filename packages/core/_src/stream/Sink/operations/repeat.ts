@@ -1,7 +1,7 @@
 /**
  * Repeatedly runs the provided sink.
  *
- * @tsplus fluent ets/Sink repeat
+ * @tsplus getter effect/core/stream/Sink repeat
  */
 export function repeat<R, E, In, L extends In, Z>(
   self: Sink<R, E, In, L, Z>,

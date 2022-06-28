@@ -1,7 +1,7 @@
 /**
  * Creates a stream from an Collection collection of values.
  *
- * @tsplus static ets/Stream/Ops fromCollection
+ * @tsplus static effect/core/stream/Stream.Ops fromCollection
  */
 export function fromCollection<A>(
   as: LazyArg<Collection<A>>,

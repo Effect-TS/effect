@@ -5,23 +5,23 @@ describe.concurrent("THub", () => {
 
       const tx = Effect.forEach(as, (n) =>
         Do(($) => {
-          const promise1 = $(Deferred.make<never, void>())
-          const promise2 = $(Deferred.make<never, void>())
-          const hub = $(THub.bounded<number>(n).commit())
+          const deferred1 = $(Deferred.make<never, void>())
+          const deferred2 = $(Deferred.make<never, void>())
+          const hub = $(THub.bounded<number>(n).commit)
           const subscriber = $(
             Effect.scoped(
-              hub.subscribeScoped().flatMap((subscription) =>
-                promise1.succeed(undefined as void) > promise2.await() >
-                  Effect.forEach(as.take(n), () => subscription.take.commit())
+              hub.subscribeScoped.flatMap((subscription) =>
+                deferred1.succeed(undefined as void) > deferred2.await() >
+                  Effect.forEach(as.take(n), () => subscription.take.commit)
               )
-            ).fork()
+            ).fork
           )
 
-          $(promise1.await())
-          $(Effect.forEach(as.take(n), (a) => hub.publish(a).commit()))
-          $(promise2.succeed(undefined as void))
+          $(deferred1.await())
+          $(Effect.forEach(as.take(n), (a) => hub.publish(a).commit))
+          $(deferred2.succeed(undefined as void))
 
-          const values = $(subscriber.join())
+          const values = $(subscriber.join)
 
           return values == as.take(n)
         })).map(Chunk.$.forAll(identity))
@@ -35,34 +35,34 @@ describe.concurrent("THub", () => {
 
       const tx = Effect.forEach(as, (n) =>
         Do(($) => {
-          const promise1 = $(Deferred.make<never, void>())
-          const promise2 = $(Deferred.make<never, void>())
-          const promise3 = $(Deferred.make<never, void>())
-          const hub = $(THub.bounded<number>(n).commit())
+          const deferred1 = $(Deferred.make<never, void>())
+          const deferred2 = $(Deferred.make<never, void>())
+          const deferred3 = $(Deferred.make<never, void>())
+          const hub = $(THub.bounded<number>(n).commit)
           const subscriber1 = $(
             Effect.scoped(
-              hub.subscribeScoped().flatMap((subscription) =>
-                promise1.succeed(undefined as void) > promise3.await() >
-                  Effect.forEach(as.take(n), () => subscription.take.commit())
+              hub.subscribeScoped.flatMap((subscription) =>
+                deferred1.succeed(undefined as void) > deferred3.await() >
+                  Effect.forEach(as.take(n), () => subscription.take.commit)
               )
-            ).fork()
+            ).fork
           )
           const subscriber2 = $(
             Effect.scoped(
-              hub.subscribeScoped().flatMap((subscription) =>
-                promise2.succeed(undefined as void) > promise3.await() >
-                  Effect.forEach(as.take(n), () => subscription.take.commit())
+              hub.subscribeScoped.flatMap((subscription) =>
+                deferred2.succeed(undefined as void) > deferred3.await() >
+                  Effect.forEach(as.take(n), () => subscription.take.commit)
               )
-            ).fork()
+            ).fork
           )
 
-          $(promise1.await())
-          $(promise2.await())
-          $(Effect.forEach(as.take(n), (a) => hub.publish(a).commit()))
-          $(promise3.succeed(undefined as void))
+          $(deferred1.await())
+          $(deferred2.await())
+          $(Effect.forEach(as.take(n), (a) => hub.publish(a).commit))
+          $(deferred3.succeed(undefined as void))
 
-          const values1 = $(subscriber1.join())
-          const values2 = $(subscriber2.join())
+          const values1 = $(subscriber1.join)
+          const values2 = $(subscriber2.join)
 
           return values1 == as.take(n) && values2 == as.take(n)
         })).map(Chunk.$.forAll(identity))

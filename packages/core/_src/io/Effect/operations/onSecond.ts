@@ -3,8 +3,11 @@
  * passes the effect input `R` along unmodified as the first element
  * of the tuple.
  *
- * @tsplus fluent ets/Effect onSecond
+ * @tsplus getter effect/core/io/Effect onSecond
  */
-export function onSecond<R, E, A>(self: Effect<R, E, A>, __tsplusTrace?: string) {
+export function onSecond<R, E, A>(
+  self: Effect<R, E, A>,
+  __tsplusTrace?: string
+): Effect<R, E, Tuple<[Env<R>, A]>> {
   return Effect.environment<R>().zip(self)
 }

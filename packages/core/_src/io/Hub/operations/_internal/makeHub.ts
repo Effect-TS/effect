@@ -42,8 +42,8 @@ const HubProto: any = {
       return Effect.whenEffect(
         (this.shutdownHook as Deferred<never, void>).succeed(undefined),
         (this.scope as Scope.Closeable).close(Exit.interrupt(fiberId)) > (this.strategy as Strategy<unknown>).shutdown
-      ).unit()
-    }).uninterruptible()
+      ).unit
+    }).uninterruptible
   },
   get isShutdown() {
     return Effect.succeed((this.shutdownFlag as AtomicBoolean).get)

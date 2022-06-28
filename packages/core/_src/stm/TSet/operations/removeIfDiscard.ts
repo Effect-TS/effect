@@ -3,16 +3,12 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
 /**
  * Removes elements matching predicate.
  *
- * @tsplus fluent ets/TSet removeIfDiscard
+ * @tsplus static effect/core/stm/TSet.Aspects removeIfDiscard
+ * @tsplus pipeable effect/core/stm/TSet removeIfDiscard
  */
-export function removeIfDiscard_<A>(self: TSet<A>, p: (a: A) => boolean): USTM<void> {
-  concreteTSet(self)
-  return self.tmap.removeIfDiscard((kv) => p(kv.get(0)))
+export function removeIfDiscard<A>(p: Predicate<A>) {
+  return (self: TSet<A>): STM<never, never, void> => {
+    concreteTSet(self)
+    return self.tmap.removeIfDiscard((kv) => p(kv.get(0)))
+  }
 }
-
-/**
- * Removes elements matching predicate.
- *
- * @tsplus static ets/TSet/Aspects removeIfDiscard
- */
-export const removeIfDiscard = Pipeable(removeIfDiscard_)

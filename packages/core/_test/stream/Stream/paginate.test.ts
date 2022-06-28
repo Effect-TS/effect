@@ -6,7 +6,7 @@ describe.concurrent("Stream", () => {
         s,
         ({ tuple: [x, list] }) =>
           list.isNil() ? Tuple(x, Maybe.none) : Tuple(x, Maybe.some(Tuple(list.head, list.tail)))
-      ).runCollect()
+      ).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -23,7 +23,7 @@ describe.concurrent("Stream", () => {
           list.isNil() ?
             Effect.succeed(Tuple(x, Maybe.none)) :
             Effect.succeed(Tuple(x, Maybe.some(Tuple(list.head, list.tail))))
-      ).runCollect()
+      ).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -41,7 +41,7 @@ describe.concurrent("Stream", () => {
           list.isNil() ?
             Tuple(x, Maybe.none) :
             Tuple(x, Maybe.some(Tuple(Chunk.from(list.take(pageSize)), List.from(list.skip(pageSize)))))
-      ).runCollect()
+      ).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -58,7 +58,7 @@ describe.concurrent("Stream", () => {
         list.isNil() ?
           Effect.succeed(Tuple(x, Maybe.none)) :
           Effect.succeed(Tuple(x, Maybe.some(Tuple(Chunk.from(list.take(pageSize)), List.from(list.skip(pageSize))))))
-    ).runCollect()
+    ).runCollect
 
     const result = await program.unsafeRunPromise()
 

@@ -4,18 +4,13 @@ import type { AsyncInputProducer } from "@effect/core/stream/Channel/SingleProdu
 /**
  * Embed inputs from continuos pulling of a producer.
  *
- * @tsplus fluent ets/Channel embedInput
+ * @tsplus static effect/core/stream/Channel.Aspects embedInput
+ * @tsplus pipeable effect/core/stream/Channel embedInput
  */
-export function embedInput_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
-  self: Channel<Env, unknown, unknown, unknown, OutErr, OutElem, OutDone>,
+export function embedInput<InErr, InElem, InDone>(
   input: AsyncInputProducer<InErr, InElem, InDone>
-): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  return new Bridge(input, self)
+) {
+  return <Env, OutErr, OutElem, OutDone>(
+    self: Channel<Env, unknown, unknown, unknown, OutErr, OutElem, OutDone>
+  ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> => new Bridge(input, self)
 }
-
-/**
- * Embed inputs from continuos pulling of a producer.
- *
- * @tsplus static ets/Channel/Aspects embedInput
- */
-export const embedInput = Pipeable(embedInput_)

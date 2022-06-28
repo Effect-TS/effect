@@ -55,10 +55,10 @@ describe.concurrent("Effect", () => {
               release.succeed(undefined)
             )
           )
-            .disconnect()
-            .fork())
+            .disconnect
+            .fork)
         .tap(({ acquire }) => acquire.await())
-        .tap(({ fiber }) => fiber.interruptFork())
+        .tap(({ fiber }) => fiber.interruptFork)
         .flatMap(({ release }) => release.await())
 
       const result = await program.unsafeRunPromise()
@@ -87,9 +87,9 @@ describe.concurrent("Effect", () => {
                 })
               )
               .ensuring(unexpectedPlace.update((list) => list.prepend(2)))
-              .forkDaemon()
+              .forkDaemon
         )
-        .bind("result", ({ fork }) => fork.interrupt().timeout((1).seconds))
+        .bind("result", ({ fork }) => fork.interrupt.timeout((1).seconds))
         .bind("unexpected", ({ unexpectedPlace }) => unexpectedPlace.get())
 
       const { result, unexpected } = await program.unsafeRunPromise()
@@ -118,9 +118,9 @@ describe.concurrent("Effect", () => {
               })
             )
             .ensuring(unexpectedPlace.update((list) => list.prepend(2)))
-            .uninterruptible()
-            .forkDaemon())
-        .bind("result", ({ fork }) => fork.interrupt().timeout((1).seconds))
+            .uninterruptible
+            .forkDaemon)
+        .bind("result", ({ fork }) => fork.interrupt.timeout((1).seconds))
         .bind("unexpected", ({ unexpectedPlace }) => unexpectedPlace.get())
 
       const { result, unexpected } = await program.unsafeRunPromise()
@@ -161,8 +161,7 @@ describe.concurrent("Effect", () => {
         never,
         string,
         never
-      >((cb) => Effect.fail("ouch"))
-        .flip()
+      >((_) => Effect.fail("ouch")).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -175,7 +174,7 @@ describe.concurrent("Effect", () => {
           throw new Error("ouch")
         })
       )
-        .exit()
+        .exit
         .map((exit) =>
           exit.fold(
             (cause) => cause.defects.head.map((e) => (e as Error).message),

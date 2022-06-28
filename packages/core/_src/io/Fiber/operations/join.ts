@@ -5,9 +5,9 @@
  * "inner interruption" of this fiber, unlike interruption triggered by
  * another fiber, "inner interruption" can be caught and recovered.
  *
- * @tsplus fluent ets/Fiber join
- * @tsplus fluent ets/RuntimeFiber join
+ * @tsplus getter effect/core/io/Fiber join
+ * @tsplus getter effect/core/io/RuntimeFiber join
  */
-export function join<E, A>(self: Fiber<E, A>, __tsplusTrace?: string): Effect.IO<E, A> {
-  return self.await().flatMap((exit) => Effect.done(exit)) < self.inheritRefs()
+export function join<E, A>(self: Fiber<E, A>, __tsplusTrace?: string): Effect<never, E, A> {
+  return self.await.flatMap((exit) => Effect.done(exit)) < self.inheritRefs
 }

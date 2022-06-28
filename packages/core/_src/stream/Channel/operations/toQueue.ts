@@ -1,5 +1,6 @@
 /**
- * @tsplus static ets/Channel/Ops toQueue
+ * @tsplus getter effect/core/stream/Channel toQueue
+ * @tsplus static effect/core/stream/Channel.Ops toQueue
  */
 export function toQueue<Err, Done, Elem>(
   queue: LazyArg<Enqueue<Either<Exit<Err, Done>, Elem>>>

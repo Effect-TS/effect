@@ -14,10 +14,11 @@ describe.concurrent("TMap", () => {
             Equivalence.tuple(Equivalence.string, Equivalence.number).equals
           )
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("removeIfDiscard", async () => {
       const tx = Do(($) => {
         const tmap = $(TMap.make(Tuple("a", 1), Tuple("aa", 2), Tuple("aaa", 3)))
@@ -29,7 +30,7 @@ describe.concurrent("TMap", () => {
         return a === true && aa === false && aaa === true
       })
 
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })

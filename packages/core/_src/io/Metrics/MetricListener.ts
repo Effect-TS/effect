@@ -4,7 +4,7 @@ import type { _In } from "@effect/core/io/Metrics/MetricKeyType"
  * A `MetricListener` is capable of taking some action in response to a metric
  * being recorded, such as sending that metric to a third-party service.
  *
- * @tsplus type ets/Metrics/MetricListener
+ * @tsplus type effect/core/io/Metrics/MetricListener
  */
 export class MetricListener {
   constructor(

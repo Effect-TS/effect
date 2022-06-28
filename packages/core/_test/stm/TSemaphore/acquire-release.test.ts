@@ -15,7 +15,7 @@ describe.concurrent("TSemaphore", () => {
         .flatMap(
           (semaphore) => semaphore.acquire > semaphore.release > semaphore.available
         )
-        .commit()
+        .commit
 
       const result = await program.unsafeRunPromise()
 
@@ -34,7 +34,7 @@ describe.concurrent("TSemaphore", () => {
               repeat(semaphore.release, release) >
               semaphore.available
         )
-        .commit()
+        .commit
 
       const result = await program.unsafeRunPromise()
 
@@ -81,7 +81,7 @@ describe.concurrent("TSemaphore", () => {
         return { resN, resRep }
       })
 
-      const program = stm.commit()
+      const program = stm.commit
 
       const { resN, resRep } = await program.unsafeRunPromise()
 
@@ -94,15 +94,15 @@ describe.concurrent("TSemaphore", () => {
     it("withPermit automatically releases the permit if the effect is interrupted", async () => {
       const program = Effect.Do()
         .bind("deferred", () => Deferred.make<never, void>())
-        .bind("semaphore", () => TSemaphore.make(1).commit())
+        .bind("semaphore", () => TSemaphore.make(1).commit)
         .bindValue(
           "effect",
           ({ deferred, semaphore }) => deferred.succeed(undefined).apply(semaphore.withPermit) > Effect.never
         )
-        .bind("fiber", ({ effect }) => effect.fork())
+        .bind("fiber", ({ effect }) => effect.fork)
         .tap(({ deferred }) => deferred.await())
-        .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ semaphore }) => semaphore.available.commit())
+        .tap(({ fiber }) => fiber.interrupt)
+        .flatMap(({ semaphore }) => semaphore.available.commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -112,11 +112,11 @@ describe.concurrent("TSemaphore", () => {
     it("withPermit acquire is interruptible", async () => {
       const called = vi.fn()
       const program = Effect.Do()
-        .bind("semaphore", () => TSemaphore.make(0).commit())
+        .bind("semaphore", () => TSemaphore.make(0).commit)
         .bindValue("effect", ({ semaphore }) => Effect.succeed(() => called()).apply(semaphore.withPermit))
-        .bind("fiber", ({ effect }) => effect.fork())
-        .tap(({ fiber }) => fiber.interrupt())
-        .flatMap(({ fiber }) => fiber.join())
+        .bind("fiber", ({ effect }) => effect.fork)
+        .tap(({ fiber }) => fiber.interrupt)
+        .flatMap(({ fiber }) => fiber.join)
 
       const result = await program.unsafeRunPromiseExit()
 

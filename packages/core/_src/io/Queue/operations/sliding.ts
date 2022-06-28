@@ -9,7 +9,7 @@ import { Strategy } from "@effect/core/io/Queue/operations/strategy"
  * better performance by utilising an optimised version of the underlying
  * `RingBuffer`.
  *
- * @tsplus static ets/Queue/Ops sliding
+ * @tsplus static effect/core/io/Queue.Ops sliding
  */
 export function sliding<A>(
   requestedCapacity: number,

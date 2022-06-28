@@ -2,7 +2,7 @@
  * Creates a stream from an effect producing a value of type `A` which repeats
  * forever.
  *
- * @tsplus static ets/Stream/Ops repeatEffect
+ * @tsplus static effect/core/stream/Stream.Ops repeatEffect
  */
 export function repeatEffect<R, E, A>(
   effect: LazyArg<Effect<R, E, A>>,

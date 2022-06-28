@@ -2,7 +2,7 @@
  * The `InterruptStatus` of a fiber determines whether or not it can be
  * interrupted. The status can change over time in different regions.
  *
- * @tsplus type ets/InterruptStatus
+ * @tsplus type effect/core/io/InterruptStatus
  */
 export interface InterruptStatus extends Equals {
   readonly isInterruptible: boolean
@@ -11,7 +11,7 @@ export interface InterruptStatus extends Equals {
 }
 
 /**
- * @tsplus type ets/InterruptStatus/Ops
+ * @tsplus type effect/core/io/InterruptStatus.Ops
  */
 export interface InterruptStatusOps {
   $: InterruptStatusAspects
@@ -21,7 +21,7 @@ export const InterruptStatus: InterruptStatusOps = {
 }
 
 /**
- * @tsplus type ets/InterruptStatus/Aspects
+ * @tsplus type effect/core/io/InterruptStatus.Aspects
  */
 export interface InterruptStatusAspects {}
 
@@ -48,19 +48,19 @@ export class InterruptStatusImpl implements InterruptStatus {
 /**
  * Indicates the fiber can be interrupted right now.
  *
- * @tsplus static ets/InterruptStatus/Ops Interruptible
+ * @tsplus static effect/core/io/InterruptStatus.Ops Interruptible
  */
 export const Interruptible: InterruptStatus = new InterruptStatusImpl(true)
 
 /**
  * Indicates the fiber cannot be interrupted right now.
  *
- * @tsplus static ets/InterruptStatus/Ops Uninterruptible
+ * @tsplus static effect/core/io/InterruptStatus.Ops Uninterruptible
  */
 export const Uninterruptible: InterruptStatus = new InterruptStatusImpl(false)
 
 /**
- * @tsplus static ets/InterruptStatus/Ops fromBoolean
+ * @tsplus static effect/core/io/InterruptStatus.Ops fromBoolean
  */
 export function fromBoolean(b: boolean): InterruptStatus {
   return b ? Interruptible : Uninterruptible

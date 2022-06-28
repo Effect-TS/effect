@@ -12,7 +12,7 @@ export interface Grafter {
  * This can be used to "graft" deep grandchildren onto a higher-level scope,
  * effectively extending their lifespans into the parent scope.
  *
- * @tsplus static ets/Effect/Ops transplant
+ * @tsplus static effect/core/io/Effect.Ops transplant
  */
 export function transplant<R, E, A>(
   f: (grafter: Grafter) => Effect<R, E, A>,

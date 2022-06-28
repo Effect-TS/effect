@@ -1,7 +1,7 @@
 import { FiberRefInternal } from "@effect/core/io/FiberRef/operations/_internal/FiberRefInternal"
 
 /**
- * @tsplus static ets/FiberRef/Ops unsafeMakePatch
+ * @tsplus static effect/core/io/FiberRef.Ops unsafeMakePatch
  */
 export function unsafeMakePatch<Value, Patch>(
   initial: Value,

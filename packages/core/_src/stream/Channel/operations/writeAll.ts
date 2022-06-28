@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Channel/Ops writeAll
+ * @tsplus static effect/core/stream/Channel.Ops writeAll
  */
 export function writeAll<Out>(
   ...outs: Array<Out>

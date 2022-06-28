@@ -1,9 +1,9 @@
 import { MergeStrategy } from "@effect/core/stream/Channel/MergeStrategy"
 
 /**
- * @tsplus static ets/Channel/Ops mergeAll
+ * @tsplus static effect/core/stream/Channel.Ops mergeAll
  */
-export function mergeAll_<
+export function mergeAll<
   Env,
   Env1,
   InErr,
@@ -39,8 +39,3 @@ export function mergeAll_<
 > {
   return Channel.mergeAllWith(channels, n, () => undefined, bufferSize, mergeStrategy)
 }
-
-/**
- * @tsplus static ets/Channel/Aspects mergeAll
- */
-export const mergeAll = Pipeable(mergeAll_)

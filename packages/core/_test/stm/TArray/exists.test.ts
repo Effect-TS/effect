@@ -5,8 +5,8 @@ describe.concurrent("TArray", () => {
   describe.concurrent("exists", () => {
     it("detects satisfaction", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.exists((n) => n % 2 === 0).commit())
+        .commit
+        .flatMap((tArray) => tArray.exists((n) => n % 2 === 0).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -15,8 +15,8 @@ describe.concurrent("TArray", () => {
 
     it("detects lack of satisfaction", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.exists((n) => n % 11 === 0).commit())
+        .commit
+        .flatMap((tArray) => tArray.exists((n) => n % 11 === 0).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -25,8 +25,8 @@ describe.concurrent("TArray", () => {
 
     it("false for empty", async () => {
       const program = TArray.empty<number>()
-        .commit()
-        .flatMap((tArray) => tArray.exists(constTrue).commit())
+        .commit
+        .flatMap((tArray) => tArray.exists(constTrue).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -37,8 +37,8 @@ describe.concurrent("TArray", () => {
   describe.concurrent("existsSTM", () => {
     it("detects satisfaction", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.existsSTM((n) => STM.succeed(n % 2 === 0)).commit())
+        .commit
+        .flatMap((tArray) => tArray.existsSTM((n) => STM.succeed(n % 2 === 0)).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -47,8 +47,8 @@ describe.concurrent("TArray", () => {
 
     it("detects lack of satisfaction", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.existsSTM((n) => STM.succeed(n % 11 === 0)).commit())
+        .commit
+        .flatMap((tArray) => tArray.existsSTM((n) => STM.succeed(n % 11 === 0)).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -57,8 +57,8 @@ describe.concurrent("TArray", () => {
 
     it("false for empty", async () => {
       const program = TArray.empty<number>()
-        .commit()
-        .flatMap((tArray) => tArray.existsSTM(() => STM.succeed(constTrue)).commit())
+        .commit
+        .flatMap((tArray) => tArray.existsSTM(() => STM.succeed(constTrue)).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -67,12 +67,12 @@ describe.concurrent("TArray", () => {
 
     it("fails for errors before witness", async () => {
       const program = makeStair(n)
-        .commit()
+        .commit
         .flatMap((tArray) =>
           tArray
             .existsSTM((n) => (n === 4 ? STM.fail(boom) : STM.succeed(n === 5)))
-            .commit()
-            .flip()
+            .commit
+            .flip
         )
 
       const result = await program.unsafeRunPromise()
@@ -82,12 +82,12 @@ describe.concurrent("TArray", () => {
 
     it("fails for errors after witness", async () => {
       const program = makeStair(n)
-        .commit()
+        .commit
         .flatMap((tArray) =>
           tArray
             .existsSTM((n) => (n === 6 ? STM.fail(boom) : STM.succeed(n === 5)))
-            .commit()
-            .flip()
+            .commit
+            .flip
         )
 
       const result = await program.unsafeRunPromise()

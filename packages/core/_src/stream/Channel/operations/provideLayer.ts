@@ -1,29 +1,15 @@
 /**
  * Provides a layer to the channel, which translates it to another level.
  *
- * @tsplus fluent ets/Channel provideLayer
+ * @tsplus static effect/core/stream/Channel.Aspects provideLayer
+ * @tsplus pipeable effect/core/stream/Channel provideLayer
  */
-export function provideLayer_<
-  R0,
-  R,
-  InErr,
-  InElem,
-  InDone,
-  OutErr,
-  OutErr2,
-  OutElem,
-  OutDone
->(
-  self: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
+export function provideLayer<R0, R, OutErr2>(
   layer: LazyArg<Layer<R0, OutErr2, R>>,
   __tsplusTrace?: string
-): Channel<R0, InErr, InElem, InDone, OutErr | OutErr2, OutElem, OutDone> {
-  return Channel.unwrapScoped(layer().build().map((env) => self.provideEnvironment(env)))
+) {
+  return <InErr, InElem, InDone, OutErr, OutElem, OutDone>(
+    self: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+  ): Channel<R0, InErr, InElem, InDone, OutErr | OutErr2, OutElem, OutDone> =>
+    Channel.unwrapScoped(layer().build.map((env) => self.provideEnvironment(env)))
 }
-
-/**
- * Provides a layer to the channel, which translates it to another level.
- *
- * @tsplus static ets/Channel/Aspects provideLayer
- */
-export const provideLayer = Pipeable(provideLayer_)

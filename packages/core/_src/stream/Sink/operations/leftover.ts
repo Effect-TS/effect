@@ -1,7 +1,7 @@
 import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
- * @tsplus static ets/Sink/Ops leftover
+ * @tsplus static effect/core/stream/Sink.Ops leftover
  */
 export function leftover<L>(
   chunk: LazyArg<Chunk<L>>,

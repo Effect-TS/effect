@@ -1,7 +1,7 @@
 /**
  * Repeats the value using the provided schedule.
  *
- * @tsplus static ets/Stream/Ops repeatWithSchedule
+ * @tsplus static effect/core/stream/Stream.Ops repeatWithSchedule
  */
 export function repeatWithSchedule<S, R, A>(
   a: LazyArg<A>,

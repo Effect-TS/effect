@@ -18,20 +18,20 @@ export type _A = typeof _A
  * require the coordinated action of multiple fibers, and for building
  * higher-level concurrent or asynchronous structures.
  *
- * @tsplus type ets/Deferred
+ * @tsplus type effect/core/io/Deferred
  */
 export interface Deferred<E, A> extends DeferredInternal<E, A> {}
 
 /**
- * @tsplus type ets/Deferred/Aspects
+ * @tsplus type effect/core/io/Deferred.Aspects
  */
 export interface DeferredAspects {}
 
 /**
- * @tsplus type ets/Deferred/Ops
+ * @tsplus type effect/core/io/Deferred.Ops
  */
 export interface DeferredOps {
-  $: DeferredAspects
+  readonly $: DeferredAspects
 }
 
 export const Deferred: DeferredOps = {

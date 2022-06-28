@@ -1,21 +1,17 @@
 /**
  * Runs the specified workflow with a read lock.
  *
- * @tsplus fluent ets/TReentrantLock withReadLock
+ * @tsplus static effect/core/stm/TReentrantLock.Aspects withReadLock
+ * @tsplus pipeable effect/core/stm/TReentrantLock withReadLock
  */
-export function withReadLock_<R, E, A>(
-  self: TReentrantLock,
+export function withReadLock<R, E, A>(
   effect: Effect<R, E, A>,
   __tsplusTrace?: string
-): Effect<R, E, A> {
-  return Effect.uninterruptibleMask((_) =>
-    _.restore(self.acquireRead.commit()) > _.restore(effect).ensuring(self.releaseRead.commit(), __tsplusTrace)
-  )
+) {
+  return (self: TReentrantLock): Effect<R, E, A> =>
+    Effect.uninterruptibleMask((_) =>
+      _.restore(self.acquireRead.commit) > _.restore(effect).ensuring(
+        self.releaseRead.commit
+      )
+    )
 }
-
-/**
- * Runs the specified workflow with a read lock.
- *
- * @tsplus static ets/TReentrantLock/Aspects withReadLock
- */
-export const withReadLock = Pipeable(withReadLock_)

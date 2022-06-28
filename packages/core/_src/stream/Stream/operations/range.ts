@@ -5,7 +5,7 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  * Constructs a stream from a range of integers (lower bound included, upper
  * bound not included).
  *
- * @tsplus static ets/Stream/Ops range
+ * @tsplus static effect/core/stream/Stream.Ops range
  */
 export function range(
   min: number,

@@ -3,7 +3,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
 /**
  * Creates a sink halting with a specified cause.
  *
- * @tsplus static ets/Sink/Ops failCause
+ * @tsplus static effect/core/stream/Sink.Ops failCause
  */
 export function failCause<E>(
   cause: LazyArg<Cause<E>>,

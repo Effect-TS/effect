@@ -3,17 +3,9 @@
  * than the specified number of elements available, it retries until they
  * become available.
  *
- * @tsplus fluent ets/TQueue takeN
+ * @tsplus static effect/core/stm/TQueue.Aspects takeN
+ * @tsplus pipeable effect/core/stm/TQueue takeN
  */
-export function takeN_<A>(self: TQueue<A>, n: number): USTM<Chunk<A>> {
-  return self.takeBetween(n, n)
+export function takeN(n: number) {
+  return <A>(self: TQueue<A>): STM<never, never, Chunk<A>> => self.takeBetween(n, n)
 }
-
-/**
- * Takes the specified number of elements from the queue. If there are fewer
- * than the specified number of elements available, it retries until they
- * become available.
- *
- * @tsplus static ets/TQueue/Aspects takeN
- */
-export const takeN = Pipeable(takeN_)

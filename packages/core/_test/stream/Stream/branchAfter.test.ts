@@ -6,7 +6,7 @@ describe.concurrent("Stream", () => {
           1,
           (values) => (stream) => values.length === 0 ? Stream.empty : stream
         )
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -18,7 +18,7 @@ describe.concurrent("Stream", () => {
       const n = 6
       const program = Stream.fromChunk(data)
         .branchAfter(n, (c) => (stream) => stream.prepend(c))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 

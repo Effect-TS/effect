@@ -9,7 +9,7 @@ import { beginningOfHour, endOfHour, nextHour } from "@effect/core/io/Schedule/o
  *
  * NOTE: `hour` parameter is validated lazily. Must be in range 0...23.
  *
- * @tsplus static ets/Schedule hourOfDay
+ * @tsplus static effect/core/io/Schedule.Ops hourOfDay
  */
 export function hourOfDay(
   hour: number

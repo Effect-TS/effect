@@ -10,14 +10,10 @@ import { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullSt
  * merge the terminal values of all channels into the single terminal value of
  * the returned channel.
  *
- * @tsplus fluent ets/Channel concatMapWith
+ * @tsplus static effect/core/stream/Channel.Aspects concatMapWith
+ * @tsplus pipeable effect/core/stream/Channel concatMapWith
  */
-export function concatMapWith_<
-  Env,
-  InErr,
-  InElem,
-  InDone,
-  OutErr,
+export function concatMapWith<
   OutElem,
   OutElem2,
   OutDone,
@@ -29,50 +25,40 @@ export function concatMapWith_<
   InDone2,
   OutErr2
 >(
-  self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone2>,
   f: (
     o: OutElem
   ) => Channel<Env2, InErr2, InElem2, InDone2, OutErr2, OutElem2, OutDone>,
   g: (o: OutDone, o1: OutDone) => OutDone,
   h: (o: OutDone, o2: OutDone2) => OutDone3
-): Channel<
-  Env | Env2,
-  InErr & InErr2,
-  InElem & InElem2,
-  InDone & InDone2,
-  OutErr | OutErr2,
-  OutElem2,
-  OutDone3
-> {
-  return new ConcatAll<
+) {
+  return <Env, InErr, InElem, InDone, OutErr>(
+    self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone2>
+  ): Channel<
     Env | Env2,
     InErr & InErr2,
     InElem & InElem2,
     InDone & InDone2,
     OutErr | OutErr2,
     OutElem2,
-    OutDone3,
-    OutElem,
-    OutDone,
-    OutDone2
-  >(
-    g,
-    h,
-    () => UpstreamPullStrategy.PullAfterNext(Maybe.none),
-    () => ChildExecutorDecision.Continue,
-    () => self,
-    f
-  )
+    OutDone3
+  > =>
+    new ConcatAll<
+      Env | Env2,
+      InErr & InErr2,
+      InElem & InElem2,
+      InDone & InDone2,
+      OutErr | OutErr2,
+      OutElem2,
+      OutDone3,
+      OutElem,
+      OutDone,
+      OutDone2
+    >(
+      g,
+      h,
+      () => UpstreamPullStrategy.PullAfterNext(Maybe.none),
+      () => ChildExecutorDecision.Continue,
+      () => self,
+      f
+    )
 }
-
-/**
- * Returns a new channel whose outputs are fed to the specified factory
- * function, which creates new channels in response. These new channels are
- * sequentially concatenated together, and all their outputs appear as outputs
- * of the newly returned channel. The provided merging function is used to
- * merge the terminal values of all channels into the single terminal value of
- * the returned channel.
- *
- * @tsplus static ets/Channel/Aspects concatMapWith
- */
-export const concatMapWith = Pipeable(concatMapWith_)

@@ -1,5 +1,5 @@
 /**
- * @tsplus type ets/Metrics/MetricClient/Ops
+ * @tsplus type effect/core/io/Metrics/MetricClient.Ops
  */
 export interface MetricClientOps {}
 /**
@@ -23,7 +23,7 @@ export const MetricClient: MetricClientOps = {}
 /**
  * Unsafely installs the specified metric listener.
  *
- * @tsplus static ets/Metrics/MetricClient/Ops unsafeInstallListener
+ * @tsplus static effect/core/io/Metrics/MetricClient.Ops unsafeInstallListener
  */
 export function unsafeInstallListener(listener: MetricListener): void {
   Metric.registry.value.installListener(listener)
@@ -32,7 +32,7 @@ export function unsafeInstallListener(listener: MetricListener): void {
 /**
  * Unsafely removes the specified metric listener.
  *
- * @tsplus static ets/Metrics/MetricClient/Ops unsafeInstallListener
+ * @tsplus static effect/core/io/Metrics/MetricClient.Ops unsafeInstallListener
  */
 export function unsafeRemoveListener(listener: MetricListener): void {
   Metric.registry.value.removeListener(listener)
@@ -41,7 +41,7 @@ export function unsafeRemoveListener(listener: MetricListener): void {
 /**
  * Unsafely captures a snapshot of all metrics recorded by the application.
  *
- * @tsplus static ets/Metrics/MetricClient/Ops unsafeSnapshot
+ * @tsplus static effect/core/io/Metrics/MetricClient.Ops unsafeSnapshot
  */
 export function unsafeSnapshot(): HashSet<MetricPair.Untyped> {
   return Metric.registry.value.snapshot()

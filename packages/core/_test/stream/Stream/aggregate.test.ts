@@ -7,7 +7,7 @@ describe.concurrent("Stream", () => {
         .aggregate(
           Sink.foldUntil<number, Chunk<number>>(Chunk.empty<number>(), 3, (acc, el) => acc.prepend(el))
         )
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -17,7 +17,7 @@ describe.concurrent("Stream", () => {
 
     it("error propagation 1", async () => {
       const error = new RuntimeError("boom")
-      const program = Stream(1, 1, 1, 1).aggregate(Sink.die(error)).runCollect()
+      const program = Stream(1, 1, 1, 1).aggregate(Sink.die(error)).runCollect
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -28,7 +28,7 @@ describe.concurrent("Stream", () => {
       const error = new RuntimeError("boom")
       const program = Stream(1, 1, 1, 1)
         .aggregate(Sink.foldLeftEffect(List.empty(), () => Effect.die(error)))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -47,9 +47,9 @@ describe.concurrent("Stream", () => {
                 ? Effect.succeedNow(acc.prepend(el))
                 : (latch.succeed(undefined) > Effect.never).onInterrupt(() => cancelled.set(true)))
         )
-        .bind("fiber", ({ sink }) => Stream(1, 1, 2).aggregate(sink).runCollect().fork())
+        .bind("fiber", ({ sink }) => Stream(1, 1, 2).aggregate(sink).runCollect.fork)
         .tap(({ latch }) => latch.await())
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ cancelled }) => cancelled.get())
 
       const result = await program.unsafeRunPromise()
@@ -65,9 +65,9 @@ describe.concurrent("Stream", () => {
           Sink.fromEffect(
             (latch.succeed(undefined) > Effect.never).onInterrupt(() => cancelled.set(true))
           ))
-        .bind("fiber", ({ sink }) => Stream(1, 1, 2).aggregate(sink).runCollect().fork())
+        .bind("fiber", ({ sink }) => Stream(1, 1, 2).aggregate(sink).runCollect.fork)
         .tap(({ latch }) => latch.await())
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ cancelled }) => cancelled.get())
 
       const result = await program.unsafeRunPromise()
@@ -87,7 +87,7 @@ describe.concurrent("Stream", () => {
           )
         )
         .map((list) => list.reverse)
-        .runCollect()
+        .runCollect
         .map((chunk) => List.from(chunk).flatten())
 
       const result = await program.unsafeRunPromise()
@@ -98,7 +98,7 @@ describe.concurrent("Stream", () => {
     it("ZIO regression test issue 6395", async () => {
       const program = Stream(1, 2, 3)
         .aggregate(Sink.collectAllN<number>(2))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -115,9 +115,9 @@ describe.concurrent("Stream", () => {
             .tap((i) => Effect.when(i === 6, Effect.fail("boom")) > queue.offer(i))
             .aggregateWithin(
               Sink.foldUntil(undefined, 5, constVoid),
-              Schedule.forever
+              Schedule.repeatForever
             )
-            .runDrain()
+            .runDrain
             .catchAll(() => Effect.succeedNow(undefined))
         )
         .bind("value", ({ queue }) => queue.takeAll)
@@ -142,10 +142,10 @@ describe.concurrent("Stream", () => {
       //             .aggregateWithin(Sink.last(), Schedule.fixed((100).millis))
       //             .interruptWhen(deferred.await())
       //             .take(2)
-      //             .runCollect()
-      //             .fork())
+      //             .runCollect
+      //             .fork)
       //         .tap(() => (c.offer > Effect.sleep((50).millis) > c.awaitNext).repeatN(3))
-      //         .flatMap(({ fiber }) => fiber.join().map((chunk) => chunk.collect(identity)))
+      //         .flatMap(({ fiber }) => fiber.join.map((chunk) => chunk.collect(identity)))
       //   );
 
       //   const result = await program.unsafeRunPromise();
@@ -169,7 +169,7 @@ describe.concurrent("Stream", () => {
           ).map((tuple) => tuple.get(0)),
           Schedule.spaced((30).minutes)
         )
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -188,7 +188,7 @@ describe.concurrent("Stream", () => {
           Sink.die(error),
           Schedule.spaced((30).minutes)
         )
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -202,7 +202,7 @@ describe.concurrent("Stream", () => {
           Sink.foldLeftEffect(List.empty(), () => Effect.die(error)),
           Schedule.spaced((30).minutes)
         )
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -224,10 +224,10 @@ describe.concurrent("Stream", () => {
         .bind("fiber", ({ sink }) =>
           Stream(1, 1, 2)
             .aggregateWithinEither(sink, Schedule.spaced((30).minutes))
-            .runCollect()
-            .fork())
+            .runCollect
+            .fork)
         .tap(({ latch }) => latch.await())
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ cancelled }) => cancelled.get())
 
       const result = await program.unsafeRunPromise()
@@ -246,10 +246,10 @@ describe.concurrent("Stream", () => {
         .bind("fiber", ({ sink }) =>
           Stream(1, 1, 2)
             .aggregateWithinEither(sink, Schedule.spaced((30).minutes))
-            .runCollect()
-            .fork())
+            .runCollect
+            .fork)
         .tap(({ latch }) => latch.await())
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ cancelled }) => cancelled.get())
 
       const result = await program.unsafeRunPromise()
@@ -270,7 +270,7 @@ describe.concurrent("Stream", () => {
           Schedule.spaced((100).millis)
         )
         .collect((either) => either.isRight() ? Maybe.some(either.right) : Maybe.none)
-        .runCollect()
+        .runCollect
         .map((chunk) => List.from(chunk).flatten())
 
       const result = await program.unsafeRunPromise()

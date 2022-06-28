@@ -1,11 +1,7 @@
 /**
- * @tsplus fluent ets/TDeferred succeed
+ * @tsplus static effect/core/stm/TDeferred.Aspects succeed
+ * @tsplus pipeable effect/core/stm/TDeferred succeed
  */
-export function succeed_<E, A>(self: TDeferred<E, A>, a: A): USTM<boolean> {
-  return self.done(Either.right(a))
+export function succeed<A>(value: A) {
+  return <E>(self: TDeferred<E, A>): STM<never, never, boolean> => self.done(Either.right(value))
 }
-
-/**
- * @tsplus static ets/TDeferred/Aspects succeed
- */
-export const succeed = Pipeable(succeed_)

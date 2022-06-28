@@ -2,7 +2,7 @@
  * Runs an effect when the supplied partial function matches for the given
  * value, otherwise does nothing.
  *
- * @tsplus static ets/STM/Ops whenCaseSTM
+ * @tsplus static effect/core/stm/STM.Ops whenCaseSTM
  */
 export function whenCaseSTM<R, E, A, R1, E1, B>(
   a: LazyArg<STM<R, E, A>>,

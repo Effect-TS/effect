@@ -1,7 +1,7 @@
 /**
  * Runs the stream to a sink which sums elements, provided they are numbers.
  *
- * @tsplus fluent ets/Stream runSum
+ * @tsplus getter effect/core/stream/Stream runSum
  */
 export function runSum<R, E, A>(
   self: Stream<R, E, number>,

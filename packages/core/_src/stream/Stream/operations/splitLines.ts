@@ -4,7 +4,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * Splits strings on newlines. Handles both Windows newlines (`\r\n`) and UNIX
  * newlines (`\n`).
  *
- * @tsplus static ets/Stream/Ops splitLines
+ * @tsplus static effect/core/stream/Stream.Ops splitLines
  */
 export function splitLines<R, E>(
   self: Stream<R, E, string>,

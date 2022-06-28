@@ -2,20 +2,15 @@
  * Sequentially zips the this result with the specified result discarding the
  * second element of the tuple or else returns the failed `Cause`.
  *
- * @tsplus operator ets/Exit <
- * @tsplus fluent ets/Exit zipLeft
+ * @tsplus operator effect/core/io/Exit <
+ * @tsplus static effect/core/io/Exit.Aspects zipLeft
+ * @tsplus pipeable effect/core/io/Exit zipLeft
  */
-export function zipLeft_<E, E1, A, B>(
-  self: Exit<E, A>,
-  that: Exit<E1, B>
-): Exit<E | E1, A> {
-  return self.zipWith(that, (a, _) => a, Cause.then)
+export function zipLeft<E2, A2>(that: Exit<E2, A2>) {
+  return <E, A>(self: Exit<E, A>): Exit<E | E2, A> =>
+    self.zipWith(
+      that,
+      (a, _) => a,
+      Cause.then
+    )
 }
-
-/**
- * Sequentially zips the this result with the specified result discarding
- * the second element of the tuple or else returns the failed `Cause`.
- *
- * @tsplus static ets/Exit/Aspects zipLeft
- */
-export const zipLeft = Pipeable(zipLeft_)

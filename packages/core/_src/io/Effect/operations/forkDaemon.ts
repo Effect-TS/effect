@@ -5,7 +5,7 @@ import { IFork } from "@effect/core/io/Effect/definition/primitives"
  * new fiber is attached to the global scope, when the fiber executing the
  * returned effect terminates, the forked fiber will continue running.
  *
- * @tsplus fluent ets/Effect forkDaemon
+ * @tsplus getter effect/core/io/Effect forkDaemon
  */
 export function forkDaemon<R, E, A>(
   self: Effect<R, E, A>,

@@ -5,7 +5,7 @@
  *
  * This operation is the opposite of `cause`.
  *
- * @tsplus fluent ets/Effect uncause
+ * @tsplus getter effect/core/io/Effect uncause
  */
 export function uncause<R, E>(
   self: Effect<R, never, Cause<E>>,

@@ -1,15 +1,9 @@
 /**
  * Get the index of the first entry in the array matching a predicate.
  *
- * @tsplus fluent ets/TArray indexWhere
+ * @tsplus static effect/core/stm/TArray.Aspects indexWhere
+ * @tsplus pipeable effect/core/stm/TArray indexWhere
  */
-export function indexWhere_<A>(self: TArray<A>, f: Predicate<A>): USTM<number> {
-  return self.indexWhereFrom(f, 0)
+export function indexWhere<A>(f: Predicate<A>) {
+  return (self: TArray<A>): STM<never, never, number> => self.indexWhereFrom(f, 0)
 }
-
-/**
- * Get the index of the first entry in the array matching a predicate.
- *
- * @tsplus static ets/TArray/Aspects indexWhere
- */
-export const indexWhere = Pipeable(indexWhere_)

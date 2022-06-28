@@ -3,8 +3,8 @@ describe.concurrent("Stream", () => {
     describe.concurrent("absolve", () => {
       it("happy path", async () => {
         const program = Stream.fromCollection(Chunk(1, 2, 3).map(Either.right))
-          .absolve()
-          .runCollect()
+          .absolve
+          .runCollect
 
         const result = await program.unsafeRunPromise()
 
@@ -15,8 +15,8 @@ describe.concurrent("Stream", () => {
         const program = Stream.fromCollection(
           Chunk(1, 2, 3).map(Either.right) + Chunk(Either.left("ouch"))
         )
-          .absolve()
-          .runCollect()
+          .absolve
+          .runCollect
 
         const result = await program.unsafeRunPromiseExit()
 
@@ -27,8 +27,8 @@ describe.concurrent("Stream", () => {
         const xss = Stream.fromCollection(Chunk(1, 2, 3).map(Either.right))
         const stream = xss + Stream(Either.left(4)) + xss
         const program = Effect.Do()
-          .bind("res1", () => stream.runCollect())
-          .bind("res2", () => stream.absolve().either().runCollect())
+          .bind("res1", () => stream.runCollect)
+          .bind("res2", () => stream.absolve.either.runCollect)
 
         const { res1, res2 } = await program.unsafeRunPromise()
 
@@ -39,8 +39,8 @@ describe.concurrent("Stream", () => {
         const xss = Stream.fromCollection(Chunk(1, 2, 3))
         const stream = xss + Stream.fail("ouch")
         const program = Effect.Do()
-          .bind("res1", () => stream.runCollect().exit())
-          .bind("res2", () => stream.either().absolve().runCollect().exit())
+          .bind("res1", () => stream.runCollect.exit)
+          .bind("res2", () => stream.either.absolve.runCollect.exit)
 
         const { res1, res2 } = await program.unsafeRunPromise()
 

@@ -6,14 +6,14 @@ export type FiberRefsSym = typeof FiberRefsSym
  * This allows safely propagating `FiberRef` values across fiber boundaries, for
  * example between an asynchronous producer and consumer.
  *
- * @tsplus type ets/FiberRefs
+ * @tsplus type effect/core/io/FiberRefs
  */
 export interface FiberRefs {
   readonly [FiberRefsSym]: FiberRefsSym
 }
 
 /**
- * @tsplus type ets/FiberRefs/Ops
+ * @tsplus type effect/core/io/FiberRefs.Ops
  */
 export interface FiberRefsOps {
   $: FiberRefsAspects
@@ -23,6 +23,6 @@ export const FiberRefs: FiberRefsOps = {
 }
 
 /**
- * @tsplus type ets/FiberRefs/Aspects
+ * @tsplus type effect/core/io/FiberRefs.Aspects
  */
 export interface FiberRefsAspects {}

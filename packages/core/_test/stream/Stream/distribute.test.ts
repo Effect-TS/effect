@@ -8,14 +8,14 @@ describe.concurrent("Stream", () => {
           .distributedWithDynamic(1, () => Effect.succeedNow(constTrue))
           .flatMap((add) => {
             const subscribe = Stream.unwrap(
-              add.map(({ tuple: [_, queue] }) => Stream.fromQueue(queue).collectWhileSuccess())
+              add.map(({ tuple: [_, queue] }) => Stream.fromQueue(queue).collectWhileSuccess)
             )
 
             return Deferred.make<never, void>().flatMap(
               (onEnd) =>
-                subscribe.ensuring(onEnd.succeed(undefined)).runDrain().fork() >
+                subscribe.ensuring(onEnd.succeed(undefined)).runDrain.fork >
                   onEnd.await() >
-                  subscribe.runDrain() >
+                  subscribe.runDrain >
                   Effect.succeedNow(true)
             )
           })

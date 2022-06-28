@@ -3,7 +3,7 @@ import { utf8DecodeNoBom } from "@effect/core/stream/Stream/operations/_internal
 import { utfDecodeDetectingBom } from "@effect/core/stream/Stream/operations/_internal/utfDecodeDetectingBom"
 
 /**
- * @tsplus fluent ets/Stream utf8Decode
+ * @tsplus getter effect/core/stream/Stream utf8Decode
  */
 export function utf8Decode<R, E>(
   self: Stream<R, E, number>,

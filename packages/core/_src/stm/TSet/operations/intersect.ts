@@ -1,15 +1,10 @@
 /**
  * Removes elements from the set.
  *
- * @tsplus fluent ets/TSet intersect
+ * @tsplus static effect/core/stm/TSet.Aspects intersect
+ * @tsplus pipeable effect/core/stm/TSet intersect
  */
-export function intersect_<A>(self: TSet<A>, other: TSet<A>): USTM<void> {
-  return other.toHashSet.flatMap(vals => self.retainIfDiscard((_) => vals.has(_)))
+export function intersect<A>(other: TSet<A>) {
+  return (self: TSet<A>): STM<never, never, void> =>
+    other.toHashSet.flatMap(vals => self.retainIfDiscard((_) => vals.has(_)))
 }
-
-/**
- * Removes elements from the set.
- *
- * @tsplus static ets/TSet/Aspects intersect
- */
-export const intersect = Pipeable(intersect_)

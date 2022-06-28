@@ -6,7 +6,7 @@ import { isFiberFailure } from "@effect/core/io/Cause/errors"
  * resource. The optionality of the error type `E` can be used to signal the
  * end of the stream, by setting it to `None`.
  *
- * @tsplus static ets/Stream/Ops asyncScoped
+ * @tsplus static effect/core/stream/Stream.Ops asyncScoped
  */
 export function asyncScoped<R, E, A>(
   register: (
@@ -16,37 +16,32 @@ export function asyncScoped<R, E, A>(
   __tsplusTrace?: string
 ): Stream<R, E, A> {
   return Stream.scoped(
-    Effect.Do()
-      .bind("output", () =>
-        Effect.acquireRelease(
-          Queue.bounded<Take<E, A>>(outputBuffer),
-          (queue) => queue.shutdown
-        ))
-      .bind("runtime", () => Effect.runtime<R>())
-      .tap(({ output, runtime }) =>
-        register(async (k) => {
-          try {
-            runtime.unsafeRunPromise(Take.fromPull(k).flatMap((take) => output.offer(take)))
-          } catch (e: unknown) {
-            if (isFiberFailure(e)) {
-              if (!e.cause.isInterrupted) {
-                throw e
-              }
+    Do(($) => {
+      const output = $(
+        Effect.acquireRelease(Queue.bounded<Take<E, A>>(outputBuffer), (queue) => queue.shutdown)
+      )
+      const runtime = $(Effect.runtime<R>())
+      $(register(async (k) => {
+        try {
+          runtime.unsafeRunPromise(Take.fromPull(k).flatMap((take) => output.offer(take)))
+        } catch (e: unknown) {
+          if (isFiberFailure(e)) {
+            if (!e.cause.isInterrupted) {
+              throw e
             }
           }
-        })
-      )
-      .bind("done", () => Ref.make(false))
-      .map(({ done, output }) =>
-        done
-          .get()
-          .flatMap((isDone) =>
-            isDone
-              ? Pull.end
-              : output.take
-                .flatMap((take) => take.done())
-                .onError(() => done.set(true) > output.shutdown)
-          )
-      )
+        }
+      }))
+      const done = $(Ref.make(false))
+      return done
+        .get()
+        .flatMap((isDone) =>
+          isDone
+            ? Pull.end
+            : output.take
+              .flatMap((take) => take.done)
+              .onError(() => done.set(true) > output.shutdown)
+        )
+    })
   ).flatMap((pull) => Stream.repeatEffectChunkMaybe(pull))
 }

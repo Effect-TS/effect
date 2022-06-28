@@ -63,21 +63,25 @@ describe.concurrent("Effect", () => {
     it("returns checked failure from held value", async () => {
       const program = Effect.Do()
         .bind("goodCase", () =>
-          exactlyOnce(0, (_) =>
-            _.filterOrElseWith(
+          exactlyOnce(
+            0,
+            Effect.$.filterOrElseWith(
               (n) => n === 0,
               (n) => Effect.fail(`${n} was not 0`)
-            ))
-            .sandbox()
-            .either())
+            )
+          )
+            .sandbox
+            .either)
         .bind("badCase", () =>
-          exactlyOnce(1, (_) =>
-            _.filterOrElseWith(
+          exactlyOnce(
+            1,
+            Effect.$.filterOrElseWith(
               (n) => n === 0,
               (n) => Effect.fail(`${n} was not 0`)
-            ))
-            .sandbox()
-            .either()
+            )
+          )
+            .sandbox
+            .either
             .map((either) => either.mapLeft((cause) => cause.failureOrCause)))
 
       const { badCase, goodCase } = await program.unsafeRunPromise()
@@ -91,13 +95,13 @@ describe.concurrent("Effect", () => {
     it("returns checked failure ignoring value", async () => {
       const program = Effect.Do()
         .bind("goodCase", () =>
-          exactlyOnce(0, (_) => _.filterOrElse((n) => n === 0, Effect.fail("predicate failed!")))
-            .sandbox()
-            .either())
+          exactlyOnce(0, Effect.$.filterOrElse((n) => n === 0, Effect.fail("predicate failed!")))
+            .sandbox
+            .either)
         .bind("badCase", () =>
-          exactlyOnce(1, (_) => _.filterOrElse((n) => n === 0, Effect.fail("predicate failed!")))
-            .sandbox()
-            .either()
+          exactlyOnce(1, Effect.$.filterOrElse((n) => n === 0, Effect.fail("predicate failed!")))
+            .sandbox
+            .either
             .map((either) => either.mapLeft((cause) => cause.failureOrCause)))
 
       const { badCase, goodCase } = await program.unsafeRunPromise()
@@ -111,13 +115,13 @@ describe.concurrent("Effect", () => {
     it("returns failure ignoring value", async () => {
       const program = Effect.Do()
         .bind("goodCase", () =>
-          exactlyOnce(0, (_) => _.filterOrFail((n) => n === 0, "predicate failed!"))
-            .sandbox()
-            .either())
+          exactlyOnce(0, Effect.$.filterOrFail((n) => n === 0, "predicate failed!"))
+            .sandbox
+            .either)
         .bind("badCase", () =>
-          exactlyOnce(1, (_) => _.filterOrFail((n) => n === 0, "predicate failed!"))
-            .sandbox()
-            .either()
+          exactlyOnce(1, Effect.$.filterOrFail((n) => n === 0, "predicate failed!"))
+            .sandbox
+            .either
             .map((either) => either.mapLeft((cause) => cause.failureOrCause)))
 
       const { badCase, goodCase } = await program.unsafeRunPromise()

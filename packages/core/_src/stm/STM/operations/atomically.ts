@@ -3,7 +3,7 @@ import { State } from "@effect/core/stm/STM/State"
 import { TxnId } from "@effect/core/stm/STM/TxnId"
 
 /**
- * @tsplus static ets/STM/Ops atomically
+ * @tsplus static effect/core/stm/STM.Ops atomically
  */
 export function atomically<R, E, A>(
   self: STM<R, E, A>,

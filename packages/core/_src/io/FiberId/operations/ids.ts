@@ -3,7 +3,7 @@ import { realFiberId } from "@effect/core/io/FiberId/definition"
 /**
  * Get the set of identifiers for this `FiberId`.
  *
- * @tsplus getter ets/FiberId ids
+ * @tsplus getter effect/core/io/FiberId ids
  */
 export function ids(self: FiberId): HashSet<number> {
   return idsSafe(self).run

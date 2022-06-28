@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Exit/Ops fromMaybe
+ * @tsplus static effect/core/io/Exit.Ops fromMaybe
  */
 export function fromMaybe<A>(option: Maybe<A>): Exit<void, A> {
   switch (option._tag) {

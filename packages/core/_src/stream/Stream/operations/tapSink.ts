@@ -5,46 +5,39 @@ import { TerminationStrategy } from "@effect/core/stream/Stream/TerminationStrat
  * Sends all elements emitted by this stream to the specified sink in addition
  * to emitting them.
  *
- * @tsplus fluent ets/Stream tapSink
+ * @tsplus static effect/core/stream/Stream.Aspects tapSink
+ * @tsplus pipeable effect/core/stream/Stream tapSink
  */
-export function tapSink_<R, E, A, R2, E2, X, Z>(
-  self: Stream<R, E, A>,
+export function tapSink<R2, E2, A, X, Z>(
   sink: LazyArg<Sink<R2, E2, A, X, Z>>,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, A> {
-  return Stream.fromEffect(Queue.bounded<Take<E | E2, A>>(1)).flatMap((queue) => {
-    const right = Stream.fromQueueWithShutdown(queue, 1).flattenTake()
+) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> =>
+    Stream.fromEffect(Queue.bounded<Take<E | E2, A>>(1)).flatMap((queue) => {
+      const right = Stream.fromQueueWithShutdown(queue, 1).flattenTake
 
-    const loop: Channel<
-      R | R2,
-      E,
-      Chunk<A>,
-      unknown,
-      E2,
-      Chunk<A>,
-      unknown
-    > = Channel.readWithCause(
-      (chunk: Chunk<A>) =>
-        Channel.fromEffect(queue.offer(Take.chunk(chunk))) >
-          Channel.write(chunk) >
-          loop,
-      (cause) => Channel.fromEffect(queue.offer(Take.failCause(cause))),
-      () => Channel.fromEffect(queue.shutdown)
-    )
+      const loop: Channel<
+        R | R2,
+        E,
+        Chunk<A>,
+        unknown,
+        E2,
+        Chunk<A>,
+        unknown
+      > = Channel.readWithCause(
+        (chunk: Chunk<A>) =>
+          Channel.fromEffect(queue.offer(Take.chunk(chunk))) >
+            Channel.write(chunk) >
+            loop,
+        (cause) => Channel.fromEffect(queue.offer(Take.failCause(cause))),
+        () => Channel.fromEffect(queue.shutdown)
+      )
 
-    concreteStream(self)
+      concreteStream(self)
 
-    return (new StreamInternal(self.channel >> loop) as Stream<R | R2, E2, A>).merge(
-      Stream.execute(right.run(sink)),
-      () => TerminationStrategy.Both
-    )
-  })
+      return (new StreamInternal(self.channel >> loop) as Stream<R | R2, E2, A>).merge(
+        Stream.execute(right.run(sink)),
+        () => TerminationStrategy.Both
+      )
+    })
 }
-
-/**
- * Sends all elements emitted by this stream to the specified sink in addition
- * to emitting them.
- *
- * @tsplus static ets/Stream/Aspects tapSink
- */
-export const tapSink = Pipeable(tapSink_)

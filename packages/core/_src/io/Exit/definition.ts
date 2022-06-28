@@ -1,10 +1,10 @@
 /**
- * @tsplus type ets/Exit
+ * @tsplus type effect/core/io/Exit
  */
 export type Exit<E, A> = Success<A> | Failure<E>
 
 /**
- * @tsplus type ets/Exit/Ops
+ * @tsplus type effect/core/io/Exit.Ops
  */
 export interface ExitOps {
   $: ExitAspects
@@ -14,12 +14,12 @@ export const Exit: ExitOps = {
 }
 
 /**
- * @tsplus type ets/Exit/Aspects
+ * @tsplus type effect/core/io/Exit.Aspects
  */
 export interface ExitAspects {}
 
 /**
- * @tsplus type ets/Exit/Success
+ * @tsplus type effect/core/io/Exit/Success
  */
 export class Success<A> implements Equals {
   readonly _tag = "Success"
@@ -36,7 +36,7 @@ export class Success<A> implements Equals {
 }
 
 /**
- * @tsplus type ets/Exit/Failure
+ * @tsplus type effect/core/io/Exit/Failure
  */
 export class Failure<E> implements Equals {
   readonly _tag = "Failure"
@@ -53,9 +53,9 @@ export class Failure<E> implements Equals {
 }
 
 /**
- * @tsplus unify ets/Exit
- * @tsplus unify ets/Exit/Success
- * @tsplus unify ets/Exit/Failure
+ * @tsplus unify effect/core/io/Exit
+ * @tsplus unify effect/core/io/Exit/Success
+ * @tsplus unify effect/core/io/Exit/Failure
  */
 export function unifyExit<X extends Exit<any, any>>(
   self: X

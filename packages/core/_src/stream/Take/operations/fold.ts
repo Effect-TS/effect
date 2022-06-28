@@ -4,26 +4,20 @@ import { concreteTake } from "@effect/core/stream/Take/operations/_internal/Take
  * Folds over the failure cause, success value and end-of-stream marker to
  * yield a value.
  *
- * @tsplus fluent ets/Take fold
+ * @tsplus static effect/core/stream/Take.Aspects fold
+ * @tsplus pipeable effect/core/stream/Take fold
  */
-export function fold_<E, A, Z>(
-  self: Take<E, A>,
+export function fold<E, A, Z>(
   end: Z,
   error: (cause: Cause<E>) => Z,
   value: (chunk: Chunk<A>) => Z,
   __tsplusTrace?: string
-): Z {
-  concreteTake(self)
-  return self._exit.fold(
-    (cause) => Cause.flipCauseMaybe(cause).fold(() => end, error),
-    value
-  )
+) {
+  return (self: Take<E, A>): Z => {
+    concreteTake(self)
+    return self._exit.fold(
+      (cause) => Cause.flipCauseMaybe(cause).fold(() => end, error),
+      value
+    )
+  }
 }
-
-/**
- * Folds over the failure cause, success value and end-of-stream marker to
- * yield a value.
- *
- * @tsplus static ets/Take/Aspects fold
- */
-export const fold = Pipeable(fold_)

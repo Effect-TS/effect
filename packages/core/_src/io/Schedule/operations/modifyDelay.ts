@@ -2,20 +2,10 @@
  * Returns a new schedule that modifies the delay using the specified
  * function.
  *
- * @tsplus fluent ets/Schedule modifyDelay
- * @tsplus fluent ets/Schedule/WithState modifyDelay
+ * @tsplus static effect/core/io/Schedule.Aspects modifyDelay
+ * @tsplus pipeable effect/core/io/Schedule modifyDelay
  */
-export function modifyDelay_<State, Env, In, Out>(
-  self: Schedule<State, Env, In, Out>,
-  f: (out: Out, duration: Duration) => Duration
-): Schedule<State, Env, In, Out> {
-  return self.modifyDelayEffect((out, duration) => Effect.succeedNow(f(out, duration)))
+export function modifyDelay<Out>(f: (out: Out, duration: Duration) => Duration) {
+  return <State, Env, In>(self: Schedule<State, Env, In, Out>): Schedule<State, Env, In, Out> =>
+    self.modifyDelayEffect((out, duration) => Effect.succeedNow(f(out, duration)))
 }
-
-/**
- * Returns a new schedule that modifies the delay using the specified
- * function.
- *
- * @tsplus static ets/Schedule/Aspects modifyDelay
- */
-export const modifyDelay = Pipeable(modifyDelay_)

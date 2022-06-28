@@ -16,7 +16,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * The `foldWeightedDecomposeEffect` allows the decompose function to return a
  * `Effect` value, and consequently it allows the sink to fail.
  *
- * @tsplus static ets/Sink/Ops foldWeightedDecompose
+ * @tsplus static effect/core/stream/Sink.Ops foldWeightedDecompose
  */
 export function foldWeightedDecompose<S, In>(
   z: LazyArg<S>,

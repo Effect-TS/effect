@@ -14,11 +14,11 @@ describe.concurrent("Hub", () => {
                   deferred2.await() >
                   Effect.forEach(as, () => subscription.take)
             )
-          ).fork())
+          ).fork)
         .tap(({ deferred1 }) => deferred1.await())
         .tap(({ hub }) => Effect.forEach(as, (n) => hub.publish(n)))
         .tap(({ deferred2 }) => deferred2.succeed(undefined))
-        .flatMap(({ subscriber }) => subscriber.join())
+        .flatMap(({ subscriber }) => subscriber.join)
 
       const result = await program.unsafeRunPromise()
 
@@ -40,7 +40,7 @@ describe.concurrent("Hub", () => {
                   deferred3.await() >
                   Effect.forEach(as, () => subscription.take)
             )
-          ).fork())
+          ).fork)
         .bind("subscriber2", ({ deferred1, deferred2, deferred3, hub }) =>
           Effect.scoped(
             hub.subscribe.flatMap(
@@ -49,13 +49,13 @@ describe.concurrent("Hub", () => {
                   deferred3.await() >
                   Effect.forEach(as, () => subscription.take)
             )
-          ).fork())
+          ).fork)
         .tap(({ deferred1 }) => deferred1.await())
         .tap(({ deferred2 }) => deferred2.await())
         .tap(({ hub }) => Effect.forEach(as, (n) => hub.publish(n)))
         .tap(({ deferred3 }) => deferred3.succeed(undefined))
-        .bind("v1", ({ subscriber1 }) => subscriber1.join())
-        .bind("v2", ({ subscriber2 }) => subscriber2.join())
+        .bind("v1", ({ subscriber1 }) => subscriber1.join)
+        .bind("v2", ({ subscriber2 }) => subscriber2.join)
 
       const { v1, v2 } = await program.unsafeRunPromise()
 

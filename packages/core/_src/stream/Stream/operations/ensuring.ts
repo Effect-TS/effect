@@ -3,18 +3,15 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 /**
  * Executes the provided finalizer after this stream's finalizers run.
  *
- * @tsplus fluent ets/Stream ensuring
+ * @tsplus static effect/core/stream/Stream.Aspects ensuring
+ * @tsplus pipeable effect/core/stream/Stream ensuring
  */
-export function ensuring_<R, E, A, R1, Z>(
-  self: Stream<R, E, A>,
+export function ensuring<R1, Z>(
   finalizer: LazyArg<Effect<R1, never, Z>>,
   __tsplusTrace?: string
-): Stream<R | R1, E, A> {
-  concreteStream(self)
-  return new StreamInternal(self.channel.ensuring(finalizer))
+) {
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R | R1, E, A> => {
+    concreteStream(self)
+    return new StreamInternal(self.channel.ensuring(finalizer))
+  }
 }
-
-/**
- * Executes the provided finalizer after this stream's finalizers run.
- */
-export const ensuring = Pipeable(ensuring_)

@@ -28,8 +28,8 @@ describe.concurrent("Effect", () => {
                 ? ref.set(true)
                 : Effect.unit
             )
-            .sandbox()
-            .ignore()
+            .sandbox
+            .ignore
         )
         .flatMap((ref) => ref.get())
 
@@ -49,9 +49,9 @@ describe.concurrent("Effect", () => {
                 ? latch2.succeed(undefined)
                 : Effect.unit
             )
-            .fork())
+            .fork)
         .tap(({ latch1 }) => latch1.await())
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .tap(({ latch2 }) => latch2.await())
         .map(constTrue)
 

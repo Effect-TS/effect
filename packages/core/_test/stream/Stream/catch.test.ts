@@ -3,7 +3,7 @@ describe.concurrent("Stream", () => {
     it("happy path", async () => {
       const program = Stream(1, 2)
         .catchAllCause(() => Stream(3, 4))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -13,7 +13,7 @@ describe.concurrent("Stream", () => {
     it("recovery from errors", async () => {
       const program = (Stream(1, 2) + Stream.fail("boom"))
         .catchAllCause(() => Stream(3, 4))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -23,7 +23,7 @@ describe.concurrent("Stream", () => {
     it("recovery from defects", async () => {
       const program = (Stream(1, 2) + Stream.dieMessage("boom"))
         .catchAllCause(() => Stream(3, 4))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -44,8 +44,8 @@ describe.concurrent("Stream", () => {
         .tap(({ stream1, stream2 }) =>
           stream1
             .catchAllCause(() => stream2)
-            .runCollect()
-            .exit()
+            .runCollect
+            .exit
         )
         .flatMap(({ finalizers }) => finalizers.get())
 
@@ -67,9 +67,9 @@ describe.concurrent("Stream", () => {
         )
         .flatMap(({ finalizers, stream }) =>
           stream
-            .drain()
+            .drain
             .catchAllCause(() => Stream.fromEffect(finalizers.get()))
-            .runCollect()
+            .runCollect
         )
 
       const result = await program.unsafeRunPromise()
@@ -82,9 +82,9 @@ describe.concurrent("Stream", () => {
         .tap((ref) =>
           Stream.acquireReleaseExit(Effect.unit, (_, exit) => ref.set(exit))
             .flatMap(() => Stream.fail("boom"))
-            .either()
-            .runDrain()
-            .exit()
+            .either
+            .runDrain
+            .exit
         )
         .flatMap((ref) => ref.get())
 
@@ -98,7 +98,7 @@ describe.concurrent("Stream", () => {
     it("recovery from some errors", async () => {
       const program = (Stream(1, 2) + Stream.fail("boom"))
         .catchSome((s) => (s === "boom" ? Maybe.some(Stream(3, 4)) : Maybe.none))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -108,8 +108,8 @@ describe.concurrent("Stream", () => {
     it("fails stream when partial function does not match", async () => {
       const program = (Stream(1, 2) + Stream.fail("boom"))
         .catchSome((s) => (s === "boomer" ? Maybe.some(Stream(3, 4)) : Maybe.none))
-        .runCollect()
-        .either()
+        .runCollect
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -125,7 +125,7 @@ describe.concurrent("Stream", () => {
             ? Maybe.some(Stream(3, 4))
             : Maybe.none
         )
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -135,8 +135,8 @@ describe.concurrent("Stream", () => {
     it("halts stream when partial function does not match", async () => {
       const program = (Stream(1, 2) + Stream.fail("boom"))
         .catchSomeCause((cause) => cause.isEmpty ? Maybe.some(Stream(3, 4)) : Maybe.none)
-        .runCollect()
-        .either()
+        .runCollect
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -151,8 +151,8 @@ describe.concurrent("Stream", () => {
         .bind("exit", ({ ref }) =>
           Stream.fail("boom")
             .onError(() => ref.set(true))
-            .runDrain()
-            .exit())
+            .runDrain
+            .exit)
         .bind("called", ({ ref }) => ref.get())
 
       const { called, exit } = await program.unsafeRunPromise()

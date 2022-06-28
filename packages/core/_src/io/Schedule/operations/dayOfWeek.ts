@@ -10,7 +10,7 @@ import { beginningOfDay, endOfDay, nextDay } from "@effect/core/io/Schedule/oper
  * NOTE: `day` parameter is validated lazily. Must be in range 1 (Monday)...7
  * (Sunday).
  *
- * @tsplus static ets/Schedule dayOfWeek
+ * @tsplus static effect/core/io/Schedule.Ops dayOfWeek
  */
 export function dayOfWeek(
   day: number

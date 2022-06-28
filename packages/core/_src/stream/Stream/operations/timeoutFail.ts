@@ -2,21 +2,17 @@
  * Fails the stream with given cause if it does not produce a value after the
  * specified duration.
  *
- * @tsplus fluent ets/Stream timeoutFail
+ * @tsplus static effect/core/stream/Stream.Aspects timeoutFail
+ * @tsplus pipeable effect/core/stream/Stream timeoutFail
  */
-export function timeoutFail_<R, E, E2, A>(
-  self: Stream<R, E, A>,
+export function timeoutFail<E2>(
   e: LazyArg<E2>,
   duration: LazyArg<Duration>,
   __tsplusTrace?: string
-): Stream<R, E | E2, A> {
-  return self.timeoutTo(duration, Stream.fail(e))
+) {
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R, E | E2, A> =>
+    self.timeoutTo(
+      duration,
+      Stream.fail(e)
+    )
 }
-
-/**
- * Fails the stream with given cause if it does not produce a value after the
- * specified duration.
- *
- * @tsplus static ets/Stream/Aspects timeoutFail
- */
-export const timeoutFail = Pipeable(timeoutFail_)

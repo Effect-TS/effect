@@ -1,7 +1,7 @@
 /**
  * Makes a channel from a managed that returns a channel in case of success.
  *
- * @tsplus static ets/Channel/Ops unwrapScoped
+ * @tsplus static effect/core/stream/Channel.Ops unwrapScoped
  */
 export function unwrapScoped<
   R,

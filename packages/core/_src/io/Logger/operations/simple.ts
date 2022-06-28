@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Logger/Ops simple
+ * @tsplus static effect/core/io/Logger.Ops simple
  */
 export function simple<A, B>(log: (a: A) => B): Logger<A, B> {
   return {

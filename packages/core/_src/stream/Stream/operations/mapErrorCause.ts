@@ -3,20 +3,15 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 /**
  * Transforms the full causes of failures emitted by this stream.
  *
- * @tsplus fluent ets/Stream mapErrorCause
+ * @tsplus static effect/core/stream/Stream.Aspects mapErrorCause
+ * @tsplus pipeable effect/core/stream/Stream mapErrorCause
  */
-export function mapErrorCause_<R, E, E2, A>(
-  self: Stream<R, E, A>,
+export function mapErrorCause<E, E2>(
   f: (e: Cause<E>) => Cause<E2>,
   __tsplusTrace?: string
-): Stream<R, E2, A> {
-  concreteStream(self)
-  return new StreamInternal(self.channel.mapErrorCause(f))
+) {
+  return <R, A>(self: Stream<R, E, A>): Stream<R, E2, A> => {
+    concreteStream(self)
+    return new StreamInternal(self.channel.mapErrorCause(f))
+  }
 }
-
-/**
- * Transforms the full causes of failures emitted by this stream.
- *
- * @tsplus static ets/Stream/Aspects mapErrorCause
- */
-export const mapErrorCause = Pipeable(mapErrorCause_)

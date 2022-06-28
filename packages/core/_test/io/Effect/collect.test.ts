@@ -38,7 +38,7 @@ describe.concurrent("Effect", () => {
   describe.concurrent("collectAllParDiscard - parallelism", () => {
     it("preserves failures", async () => {
       const chunk = Chunk.fill(10, () => Effect.fail(new RuntimeError()))
-      const program = Effect.collectAllParDiscard(chunk).withParallelism(5).flip()
+      const program = Effect.collectAllParDiscard(chunk).withParallelism(5).flip
 
       const result = await program.unsafeRunPromise()
 

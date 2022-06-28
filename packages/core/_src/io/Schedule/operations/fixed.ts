@@ -14,7 +14,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * |---------action--------||action|-----|action|-----------|
  * ```
  *
- * @tsplus static ets/Schedule/Ops fixed
+ * @tsplus static effect/core/io/Schedule.Ops fixed
  */
 export function fixed(
   interval: LazyArg<Duration>

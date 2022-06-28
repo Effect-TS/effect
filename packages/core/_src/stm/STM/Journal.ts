@@ -90,8 +90,6 @@ export function execTodos(todos: Map<TxnId, Todo>) {
 
 /**
  * Runs all the todos.
- *
- * @tsplus fluent ets/Journal completeTodos
  */
 export function completeTodos<E, A>(
   exit: Exit<E, A>,
@@ -275,7 +273,7 @@ export function tryCommitAsync<R, E, A>(
   env: Env<R>
 ) {
   return (k: (_: Effect<R, E, A>) => unknown) => {
-    if (state.get.isRunning()) {
+    if (state.get.isRunning) {
       if (journal == null) {
         const v = tryCommit(fiberId, stm, state, env)
         switch (v._tag) {

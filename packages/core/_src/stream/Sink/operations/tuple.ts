@@ -1,7 +1,7 @@
 import type { _E, _In, _L, _R, _Z } from "@effect/core/stream/Sink/definition/symbols"
 
 /**
- * @tsplus static ets/Sink/Ops tuple
+ * @tsplus static effect/core/stream/Sink.Ops tuple
  */
 export function tuple<SN extends readonly Sink<any, any, any, any, any>[]>(
   ...[s1, s2, ...sinks]: SN & {

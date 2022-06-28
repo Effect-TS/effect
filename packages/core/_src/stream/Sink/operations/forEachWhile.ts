@@ -4,7 +4,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * A sink that executes the provided effectful function for every element fed
  * to it until `f` evaluates to `false`.
  *
- * @tsplus static ets/Sink/Ops forEachWhile
+ * @tsplus static effect/core/stream/Sink.Ops forEachWhile
  */
 export function forEachWhile<R, E, In>(
   f: (input: In) => Effect<R, E, boolean>,

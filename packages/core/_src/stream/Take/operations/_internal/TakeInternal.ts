@@ -21,7 +21,7 @@ export class TakeInternal<E, A> implements Take<E, A> {
 }
 
 /**
- * @tsplus static ets/Take/Ops isTake
+ * @tsplus static effect/core/stream/Take.Ops isTake
  */
 export function isTake(u: unknown): u is Take<unknown, unknown> {
   return typeof u === "object" && u != null && TakeSym in u

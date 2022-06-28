@@ -1,7 +1,7 @@
 /**
  * A stream that ends with the specified `Exit` value.
  *
- * @tsplus static ets/Stream/Ops done
+ * @tsplus static effect/core/stream/Stream.Ops done
  */
 export function done<E, A>(
   exit: LazyArg<Exit<E, A>>,

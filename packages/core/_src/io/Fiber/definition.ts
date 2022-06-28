@@ -18,7 +18,7 @@ export type _A = typeof _A
  * Fibers can be joined, yielding their result to other fibers, or interrupted,
  * which terminates the fiber, safely releasing all resources.
  *
- * @tsplus type ets/Fiber
+ * @tsplus type effect/core/io/Fiber
  */
 export interface Fiber<E, A> {
   readonly [FiberSym]: FiberSym
@@ -53,7 +53,7 @@ export declare namespace Fiber {
 }
 
 /**
- * @tsplus unify ets/Fiber
+ * @tsplus unify effect/core/io/Fiber
  */
 export function unifyFiber<X extends Fiber<any, any>>(
   self: X
@@ -65,7 +65,7 @@ export function unifyFiber<X extends Fiber<any, any>>(
 }
 
 /**
- * @tsplus type ets/Fiber/Ops
+ * @tsplus type effect/core/io/Fiber.Ops
  */
 export interface FiberOps {
   $: FiberAspects
@@ -75,7 +75,7 @@ export const Fiber: FiberOps = {
 }
 
 /**
- * @tsplus type ets/Fiber/Aspects
+ * @tsplus type effect/core/io/Fiber.Aspects
  */
 export interface FiberAspects {}
 
@@ -127,7 +127,7 @@ export interface BaseFiber<E, A> extends Fiber<E, A> {
  * A runtime fiber that is executing an effect. Runtime fibers have an
  * identity and a trace.
  *
- * @tsplus type ets/RuntimeFiber
+ * @tsplus type effect/core/io/Fiber/Runtime
  */
 export interface RuntimeFiber<E, A> extends BaseFiber<E, A> {
   readonly _tag: "RuntimeFiber"
@@ -173,7 +173,7 @@ export interface RuntimeFiber<E, A> extends BaseFiber<E, A> {
  * A synthetic fiber that is created from a pure value or that combines
  * existing fibers.
  *
- * @tsplus type ets/SyntheticFiber
+ * @tsplus type effect/core/io/Fiber/Synthetic
  */
 export class SyntheticFiber<E, A> implements BaseFiber<E, A> {
   readonly _tag = "SyntheticFiber"

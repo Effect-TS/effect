@@ -6,8 +6,8 @@
  * A `Supervisor<A>` is allowed to supervise the launching and termination of
  * fibers, producing some visible value of type `A` from the supervision.
  *
- * @tsplus type ets/Supervisor
- * @tsplus companion ets/Supervisor/Ops
+ * @tsplus type effect/core/io/Supervisor
+ * @tsplus companion effect/core/io/Supervisor.Ops
  */
 export class Supervisor<A> {
   constructor(

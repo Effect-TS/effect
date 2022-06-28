@@ -12,7 +12,7 @@ describe.concurrent("TSet", () => {
 
         return removed == Chunk("aaa", "a") && a === false && aa === true && aaa === false
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
@@ -28,7 +28,7 @@ describe.concurrent("TSet", () => {
 
         return a === false && aa === true && aaa === false
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
@@ -42,7 +42,7 @@ describe.concurrent("TSet", () => {
 
         return removed == Chunk("aa") && a === true && aa === false && aaa === true
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
@@ -58,7 +58,7 @@ describe.concurrent("TSet", () => {
 
         return a === true && aa === false && aaa === true
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
@@ -72,7 +72,7 @@ describe.concurrent("TSet", () => {
 
         return hasSameElements(res, Equivalence.number, List(2, 4, 6))
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
@@ -86,7 +86,7 @@ describe.concurrent("TSet", () => {
 
         return hasSameElements(res, Equivalence.number, List(1))
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
@@ -100,7 +100,7 @@ describe.concurrent("TSet", () => {
 
         return hasSameElements(res, Equivalence.number, List(2, 4, 6))
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
@@ -114,7 +114,7 @@ describe.concurrent("TSet", () => {
 
         return hasSameElements(res, Equivalence.number, List(1))
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })

@@ -2,7 +2,7 @@
  * Accesses the specified service in the environment of the stream in the
  * context of an effect.
  *
- * @tsplus static ets/Stream/Ops serviceWithEffect
+ * @tsplus static effect/core/stream/Stream.Ops serviceWithEffect
  */
 export function serviceWithEffect<T, R, E, A>(
   tag: Tag<T>,

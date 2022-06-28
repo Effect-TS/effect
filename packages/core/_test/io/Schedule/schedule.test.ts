@@ -38,7 +38,7 @@ function alwaysFail(ref: Ref<number>): Effect<never, string, number> {
 //   return effect
 //     .fork()
 //     .tap(() => Effect.serviceWith(HasTestClock)((testClock) => testClock.adjust(new Duration(Number.MAX_SAFE_INTEGER))))
-//     .flatMap((fiber) => fiber.join());
+//     .flatMap((fiber) => fiber.join);
 // }
 
 /**

@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Channel/Ops acquireUseRelease
+ * @tsplus static effect/core/stream/Channel.Ops acquireUseRelease
  */
 export function acquireUseRelease<
   Env,

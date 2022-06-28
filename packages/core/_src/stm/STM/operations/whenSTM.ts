@@ -1,7 +1,7 @@
 /**
  * The moral equivalent of `if (p) exp` when `p` has side-effects.
  *
- * @tsplus static ets/STM/Ops whenSTM
+ * @tsplus static effect/core/stm/STM.Ops whenSTM
  */
 export function whenSTM<R, E, R1, E1, A>(
   predicate: LazyArg<STM<R, E, boolean>>,

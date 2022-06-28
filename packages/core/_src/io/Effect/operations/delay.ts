@@ -2,20 +2,9 @@
  * Returns an effect that is delayed from this effect by the specified
  * `Duration`.
  *
- * @tsplus fluent ets/Effect delay
+ * @tsplus static effect/core/io/Effect.Aspects delay
+ * @tsplus pipeable effect/core/io/Effect delay
  */
-export function delay_<R, E, A>(
-  self: Effect<R, E, A>,
-  duration: Duration,
-  __tsplusTrace?: string
-): Effect<R, E, A> {
-  return Clock.sleep(duration) > self
+export function delay(duration: LazyArg<Duration>, __tsplusTrace?: string) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> => Clock.sleep(duration) > self
 }
-
-/**
- * Returns an effect that is delayed from this effect by the specified
- * `Duration`.
- *
- * @tsplus static ets/Effect/Aspects delay
- */
-export const delay = Pipeable(delay_)

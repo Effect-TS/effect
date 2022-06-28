@@ -3,7 +3,7 @@ describe.concurrent("Stream", () => {
     it("simple example", async () => {
       const program = Stream.iterate(1, (n) => n + 1)
         .take(10)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -73,7 +73,7 @@ describe.concurrent("Stream", () => {
         .bind("ref", () => Ref.make(true))
         .tap(({ ref }) =>
           (
-            Stream(true, true, false) + Stream.fromEffect(ref.set(false)).drain()
+            Stream(true, true, false) + Stream.fromEffect(ref.set(false)).drain
           ).runForEachWhile(Effect.succeedNow)
         )
         .flatMap(({ ref }) => ref.get())

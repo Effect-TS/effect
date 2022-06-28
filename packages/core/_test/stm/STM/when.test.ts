@@ -2,8 +2,8 @@ describe.concurrent("STM", () => {
   describe.concurrent("when combinators", () => {
     it("when true", async () => {
       const program = TRef.make(false)
-        .commit()
-        .flatMap((tRef) => (STM.when(true, tRef.set(true)) > tRef.get).commit())
+        .commit
+        .flatMap((tRef) => (STM.when(true, tRef.set(true)) > tRef.get).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -12,8 +12,8 @@ describe.concurrent("STM", () => {
 
     it("when false", async () => {
       const program = TRef.make(false)
-        .commit()
-        .flatMap((tRef) => (STM.when(false, tRef.set(true)) > tRef.get).commit())
+        .commit
+        .flatMap((tRef) => (STM.when(false, tRef.set(true)) > tRef.get).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -22,14 +22,14 @@ describe.concurrent("STM", () => {
 
     it("whenSTM true", async () => {
       const program = TRef.make(0)
-        .commit()
+        .commit
         .flatMap((tRef) =>
           (
             STM.whenSTM(
               tRef.get.map((n) => n === 0),
               tRef.update((n) => n + 1)
             ) > tRef.get
-          ).commit()
+          ).commit
         )
 
       const result = await program.unsafeRunPromise()
@@ -39,14 +39,14 @@ describe.concurrent("STM", () => {
 
     it("whenSTM false", async () => {
       const program = TRef.make(0)
-        .commit()
+        .commit
         .flatMap((tRef) =>
           (
             STM.whenSTM(
               tRef.get.map((n) => n !== 0),
               tRef.update((n) => n + 1)
             ) > tRef.get
-          ).commit()
+          ).commit
         )
 
       const result = await program.unsafeRunPromise()
@@ -68,7 +68,7 @@ describe.concurrent("STM", () => {
           STM.whenCase(Maybe.some(0), (option) => option._tag === "Some" ? Maybe.some(tRef.set(true)) : Maybe.none)
         )
         .bind("result2", ({ tRef }) => tRef.get)
-        .commit()
+        .commit
 
       const { result1, result2 } = await program.unsafeRunPromise()
 
@@ -93,7 +93,7 @@ describe.concurrent("STM", () => {
           )
         )
         .bind("result2", ({ tRef }) => tRef.get)
-        .commit()
+        .commit
 
       const { result1, result2 } = await program.unsafeRunPromise()
 

@@ -7,38 +7,29 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * to a `units + burst` threshold. The weight of each chunk is determined by
  * the `costFn` effectful function.
  *
- * @tsplus fluent ets/Stream throttleShapeEffect
+ * @tsplus static effect/core/stream/Stream.Aspects throttleShapeEffect
+ * @tsplus pipeable effect/core/stream/Stream throttleShapeEffect
  */
-export function throttleShapeEffect_<R, E, A, R2, E2>(
-  self: Stream<R, E, A>,
+export function throttleShapeEffect<A, R2, E2>(
   units: number,
   duration: LazyArg<Duration>,
   costFn: (input: Chunk<A>) => Effect<R2, E2, number>,
   burst = 0,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, A> {
-  concreteStream(self)
-  return new StreamInternal(
-    Channel.succeed(duration)
-      .zip(Channel.fromEffect(Clock.currentTime))
-      .flatMap(
-        ({ tuple: [duration, timestamp] }) =>
-          self.channel >>
-          loop<E, A, R2, E2>(units, duration, costFn, burst, units, timestamp)
-      )
-  )
+) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> => {
+    concreteStream(self)
+    return new StreamInternal(
+      Channel.succeed(duration)
+        .zip(Channel.fromEffect(Clock.currentTime))
+        .flatMap(
+          ({ tuple: [duration, timestamp] }) =>
+            self.channel >>
+            loop<E, A, R2, E2>(units, duration, costFn, burst, units, timestamp)
+        )
+    )
+  }
 }
-
-/**
- * Delays the chunks of this stream according to the given bandwidth
- * parameters using the token bucket algorithm. Allows for burst in the
- * processing of elements by allowing the token bucket to accumulate tokens up
- * to a `units + burst` threshold. The weight of each chunk is determined by
- * the `costFn` effectful function.
- *
- * @tsplus static ets/Stream/Aspects throttleShapeEffect
- */
-export const throttleShapeEffect = Pipeable(throttleShapeEffect_)
 
 function loop<E, A, R2, E2>(
   units: number,

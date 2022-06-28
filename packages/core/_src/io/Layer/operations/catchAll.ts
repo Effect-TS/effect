@@ -1,18 +1,12 @@
 /**
  * Recovers from all errors.
  *
- * @tsplus fluent ets/Layer catchAll
+ * @tsplus static effect/core/io/Layer.Aspects catchAll
+ * @tsplus pipeable effect/core/io/Layer catchAll
  */
-export function catchAll_<R, E, A, R2, E2, A2>(
-  self: Layer<R, E, A>,
+export function catchAll<E, R2, E2, A2>(
   handler: (e: E) => Layer<R2, E2, A2>
-): Layer<R | R2, E2, A & A2> {
-  return self.foldLayer(handler, (env) => Layer.succeedEnvironment(env))
+) {
+  return <R, A>(self: Layer<R, E, A>): Layer<R | R2, E2, A & A2> =>
+    self.foldLayer(handler, (env) => Layer.succeedEnvironment(env))
 }
-
-/**
- * Recovers from all errors.
- *
- * @tsplus static ets/Layer/Aspects catchAll
- */
-export const catchAll = Pipeable(catchAll_)

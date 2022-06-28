@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Metrics/Metric/Ops summaryTimestamp
+ * @tsplus static effect/core/io/Metrics/Metric.Ops summaryTimestamp
  */
 export function summaryTimestamp(
   name: string,

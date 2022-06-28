@@ -7,7 +7,7 @@ import { ISuspend } from "@effect/core/io/Effect/definition/primitives"
  * `flatten(succeed(effect))`. If you wonder if the effect throws
  * exceptions, do not use this method, use `suspend`.
  *
- * @tsplus static ets/Effect/Ops suspendSucceed
+ * @tsplus static effect/core/io/Effect.Ops suspendSucceed
  */
 export function suspendSucceed<R, E, A>(
   effect: LazyArg<Effect<R, E, A>>,

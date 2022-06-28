@@ -9,7 +9,7 @@ describe.concurrent("Metrics", () => {
 
       const program = Effect(1) / summary >
         Effect(3) / summary >
-        summary.value()
+        summary.value
 
       const result = await program.unsafeRunPromise()
 
@@ -24,7 +24,7 @@ describe.concurrent("Metrics", () => {
         .summary("s2", (1).minutes, 10, 0, Chunk(0, 1, 10))
         .taggedWithLabels(labels)
 
-      const program = summary.update(1) > summary.update(3) > summary.value()
+      const program = summary.update(1) > summary.update(3) > summary.value
 
       const result = await program.unsafeRunPromise()
 
@@ -42,7 +42,7 @@ describe.concurrent("Metrics", () => {
 
       const program = Effect.succeed("x") / summary >
         Effect.succeed("xyz") / summary >
-        summary.value()
+        summary.value
 
       const result = await program.unsafeRunPromise()
 
@@ -62,9 +62,9 @@ describe.concurrent("Metrics", () => {
       const program = Effect.succeed("x") / summary >
         Effect.succeed("xyz") / summary >
         Effect.struct({
-          r0: base.value(),
-          r1: base.tagged("dyn", "x").value(),
-          r2: base.tagged("dyn", "xyz").value()
+          r0: base.value,
+          r1: base.tagged("dyn", "x").value,
+          r2: base.tagged("dyn", "xyz").value
         })
 
       const { r0, r1, r2 } = await program.unsafeRunPromise()

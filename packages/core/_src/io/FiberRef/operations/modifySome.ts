@@ -4,7 +4,7 @@
  * defined in the current value otherwise it returns a default value. This
  * is a more powerful version of `updateSome`.
  *
- * @tsplus fluent ets/FiberRef modifySome
+ * @tsplus fluent effect/core/io/FiberRef modifySome
  */
 export function modifySome_<A, B, P>(
   self: FiberRef<A, P>,
@@ -21,6 +21,6 @@ export function modifySome_<A, B, P>(
  * defined in the current value otherwise it returns a default value. This
  * is a more powerful version of `updateSome`.
  *
- * @tsplus static ets/FiberRef/Aspects modifySome
+ * @tsplus static effect/core/io/FiberRef.Aspects modifySome
  */
 export const modifySome = Pipeable(modifySome_)

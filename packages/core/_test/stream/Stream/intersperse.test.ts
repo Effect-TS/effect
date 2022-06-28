@@ -1,7 +1,7 @@
 describe.concurrent("Stream", () => {
   describe.concurrent("intersperse", () => {
     it("several", async () => {
-      const program = Stream("1", "2", "3", "4").intersperse("@").runCollect()
+      const program = Stream("1", "2", "3", "4").intersperse("@").runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -11,7 +11,7 @@ describe.concurrent("Stream", () => {
     it("several with begin and end", async () => {
       const program = Stream("1", "2", "3", "4")
         .intersperseAffixes("[", "@", "]")
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -19,7 +19,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("single", async () => {
-      const program = Stream("1").intersperse("@").runCollect()
+      const program = Stream("1").intersperse("@").runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -27,7 +27,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("single with begin and end", async () => {
-      const program = Stream("1").intersperseAffixes("[", "@", "]").runCollect()
+      const program = Stream("1").intersperseAffixes("[", "@", "]").runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -41,11 +41,11 @@ describe.concurrent("Stream", () => {
         interspersed: stream
           .map((n) => n.toString())
           .intersperse("@")
-          .runCollect()
+          .runCollect
           .map((chunk) => chunk.join("")),
         regular: stream
           .map((n) => n.toString())
-          .runCollect()
+          .runCollect
           .map((chunk) => chunk.join("@"))
       })
 
@@ -61,11 +61,11 @@ describe.concurrent("Stream", () => {
         interspersed: stream
           .map((n) => n.toString())
           .intersperseAffixes("[", "@", "]")
-          .runCollect()
+          .runCollect
           .map((chunk) => chunk.join("")),
         regular: stream
           .map((n) => n.toString())
-          .runCollect()
+          .runCollect
           .map((chunk) => "[" + chunk.join("@") + "]")
       })
 
@@ -79,7 +79,7 @@ describe.concurrent("Stream", () => {
         .map((n) => n.toString())
         .take(4)
         .intersperse("@")
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -91,7 +91,7 @@ describe.concurrent("Stream", () => {
         .map((n) => n.toString())
         .intersperse("@")
         .take(4)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 

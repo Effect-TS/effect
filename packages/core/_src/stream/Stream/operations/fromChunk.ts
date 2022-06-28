@@ -3,7 +3,7 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
 /**
  * Creates a stream from a `Chunk` of values.
  *
- * @tsplus static ets/Stream/Ops fromChunk
+ * @tsplus static effect/core/stream/Stream.Ops fromChunk
  */
 export function fromChunk<A>(
   chunk: LazyArg<Chunk<A>>,

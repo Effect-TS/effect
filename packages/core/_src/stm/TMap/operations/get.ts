@@ -4,25 +4,21 @@ import { concreteTMap } from "@effect/core/stm/TMap/operations/_internal/Interna
 /**
  * Retrieves value associated with given key.
  *
- * @tsplus fluent ets/TMap get
+ * @tsplus static effect/core/stm/TMap.Aspects get
+ * @tsplus pipeable effect/core/stm/TMap get
  */
-export function get_<K, V>(self: TMap<K, V>, k: K): USTM<Maybe<V>> {
-  concreteTMap(self)
-  return STM.Effect((journal) => {
-    const buckets = self.tBuckets.unsafeGet(journal)
+export function get<K>(k: K) {
+  return <V>(self: TMap<K, V>): STM<never, never, Maybe<V>> => {
+    concreteTMap(self)
+    return STM.Effect((journal) => {
+      const buckets = self.tBuckets.unsafeGet(journal)
 
-    concreteTArray(buckets)
+      concreteTArray(buckets)
 
-    const idx = TMap.indexOf(k, buckets.chunk.length)
-    const bucket = buckets.chunk.unsafeGet(idx)!.unsafeGet(journal)
+      const idx = TMap.indexOf(k, buckets.chunk.length)
+      const bucket = buckets.chunk.unsafeGet(idx)!.unsafeGet(journal)
 
-    return bucket.find((_) => Equals.equals(_.get(0), k)).map((_) => _.get(1))
-  })
+      return bucket.find((_) => Equals.equals(_.get(0), k)).map((_) => _.get(1))
+    })
+  }
 }
-
-/**
- * Retrieves value associated with given key.
- *
- * @tsplus static ets/TMap/Aspects get
- */
-export const get = Pipeable(get_)

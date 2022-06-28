@@ -12,7 +12,7 @@ export type _A = typeof _A
  * values. A `Take` may be a failure cause `Cause<E>`, an chunk value `A` or an
  * end-of-stream marker.
  *
- * @tsplus type ets/Take
+ * @tsplus type effect/core/stream/Take
  */
 export interface Take<E, A> extends Equals {
   readonly [TakeSym]: TakeSym
@@ -21,7 +21,7 @@ export interface Take<E, A> extends Equals {
 }
 
 /**
- * @tsplus type ets/Take/Ops
+ * @tsplus type effect/core/stream/Take.Ops
  */
 export interface TakeOps {
   $: TakeAspects
@@ -31,6 +31,6 @@ export const Take: TakeOps = {
 }
 
 /**
- * @tsplus type ets/Take/Aspects
+ * @tsplus type effect/core/stream/Take.Aspects
  */
 export interface TakeAspects {}

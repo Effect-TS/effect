@@ -5,49 +5,42 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
  * `p`. The sink's results will be accumulated using the stepping function
  * `f`.
  *
- * @tsplus fluent ets/Sink collectAllWhileWith
+ * @tsplus static effect/core/stream/Sink.Aspects collectAllWhileWith
+ * @tsplus pipeable effect/core/stream/Sink collectAllWhileWith
  */
-export function collectAllWhileWith_<R, E, In, L extends In, Z, S>(
-  self: Sink<R, E, In, L, Z>,
+export function collectAllWhileWith<Z, S>(
   z: LazyArg<S>,
   p: Predicate<Z>,
   f: (s: S, z: Z) => S,
   __tsplusTrace?: string
-): Sink<R, E, In, L, S> {
-  concreteSink(self)
-  return new SinkInternal(
-    Channel.fromEffect(Ref.make(Chunk.empty<In>()).zip(Ref.make(false))).flatMap(
-      ({ tuple: [leftoversRef, upstreamDoneRef] }) => {
-        const upstreamMarker: Channel<
-          R,
-          never,
-          Chunk<In>,
-          unknown,
-          never,
-          Chunk<In>,
-          unknown
-        > = Channel.readWith(
-          (chunk: Chunk<In>) => Channel.write(chunk) > upstreamMarker,
-          (err) => Channel.fail(() => err),
-          (x) => Channel.fromEffect(upstreamDoneRef.set(true)).as(x)
-        )
-        return (
-          (upstreamMarker >> Channel.bufferChunk<In, never, unknown>(leftoversRef)) >>
-          loop(self, leftoversRef, upstreamDoneRef, z(), p, f)
-        )
-      }
+) {
+  return <R, E, In, L extends In>(self: Sink<R, E, In, L, Z>): Sink<R, E, In, L, S> => {
+    concreteSink(self)
+    return new SinkInternal(
+      Channel.fromEffect(Ref.make(Chunk.empty<In>()).zip(Ref.make(false))).flatMap(
+        ({ tuple: [leftoversRef, upstreamDoneRef] }) => {
+          const upstreamMarker: Channel<
+            R,
+            never,
+            Chunk<In>,
+            unknown,
+            never,
+            Chunk<In>,
+            unknown
+          > = Channel.readWith(
+            (chunk: Chunk<In>) => Channel.write(chunk) > upstreamMarker,
+            (err) => Channel.fail(() => err),
+            (x) => Channel.fromEffect(upstreamDoneRef.set(true)).as(x)
+          )
+          return (
+            (upstreamMarker >> Channel.bufferChunk<In, never, unknown>(leftoversRef)) >>
+            loop(self, leftoversRef, upstreamDoneRef, z(), p, f)
+          )
+        }
+      )
     )
-  )
+  }
 }
-
-/**
- * Repeatedly runs the sink for as long as its results satisfy the predicate
- * `p`. The sink's results will be accumulated using the stepping function
- * `f`.
- *
- * @tsplus static ets/Sink/Aspects collectAllWhileWith
- */
-export const collectAllWhileWith = Pipeable(collectAllWhileWith_)
 
 function loop<R, E, In, L extends In, Z, S>(
   self: Sink<R, E, In, L, Z>,

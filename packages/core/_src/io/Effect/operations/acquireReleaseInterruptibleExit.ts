@@ -3,8 +3,8 @@
  * `release` effect to depend on the `Exit` value specified when the scope
  * is closed.
  *
- * @tsplus static ets/Effect/Ops acquireReleaseInterruptibleExit
- * @tsplus fluent ets/Effect acquireReleaseInterruptibleExit
+ * @tsplus static effect/core/io/Effect.Ops acquireReleaseInterruptibleExit
+ * @tsplus fluent effect/core/io/Effect acquireReleaseInterruptibleExit
  */
 export function acquireReleaseInterruptibleExit<R, E, A, R2, X>(
   acquire: LazyArg<Effect<R, E, A>>,

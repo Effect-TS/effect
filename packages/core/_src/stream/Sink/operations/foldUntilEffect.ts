@@ -4,7 +4,7 @@
  *
  * Like `foldWeightedEffect`, but with a constant cost function of 1.
  *
- * @tsplus static ets/Sink/Ops foldUntilEffect
+ * @tsplus static effect/core/stream/Sink.Ops foldUntilEffect
  */
 export function foldUntilEffect<R, E, In, S>(
   z: LazyArg<S>,

@@ -1,7 +1,7 @@
 /**
  * Runs `onTrue` if the result of `self` is `true` and `onFalse` otherwise.
  *
- * @tsplus static ets/STM/Ops ifSTM
+ * @tsplus static effect/core/stm/STM.Ops ifSTM
  */
 export function ifSTM<R, R1, R2, E, E1, E2, A, A1>(
   b: LazyArg<STM<R, E, boolean>>,

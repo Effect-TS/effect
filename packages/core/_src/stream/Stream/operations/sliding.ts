@@ -4,35 +4,26 @@ import { RingBufferNew } from "@effect/core/support/RingBufferNew"
 /**
  * Emits a sliding window of `n` elements.
  *
- * @tsplus fluent ets/Stream sliding
+ * @tsplus static effect/core/stream/Stream.Aspects sliding
+ * @tsplus pipeable effect/core/stream/Stream sliding
  */
-export function sliding_<R, E, A>(
-  self: Stream<R, E, A>,
-  chunkSize: number,
-  stepSize = 1,
-  __tsplusTrace?: string
-): Stream<R, E, Chunk<A>> {
-  if (chunkSize <= 0 || stepSize <= 0) {
-    return Stream.die(
-      new IllegalArgumentException(
-        "Invalid bounds - `chunkSize` and `stepSize` must be greater than 0"
+export function sliding(chunkSize: number, stepSize = 1, __tsplusTrace?: string) {
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, Chunk<A>> => {
+    if (chunkSize <= 0 || stepSize <= 0) {
+      return Stream.die(
+        new IllegalArgumentException(
+          "Invalid bounds - `chunkSize` and `stepSize` must be greater than 0"
+        )
       )
-    )
+    }
+    return Stream.succeed(new RingBufferNew<A>(chunkSize)).flatMap((queue) => {
+      concreteStream(self)
+      return new StreamInternal(
+        self.channel >> reader<E, A>(chunkSize, stepSize, queue, 0)
+      )
+    })
   }
-  return Stream.succeed(new RingBufferNew<A>(chunkSize)).flatMap((queue) => {
-    concreteStream(self)
-    return new StreamInternal(
-      self.channel >> reader<E, A>(chunkSize, stepSize, queue, 0)
-    )
-  })
 }
-
-/**
- * Emits a sliding window of `n` elements.
- *
- * @tsplus static ets/Stream/Aspects sliding
- */
-export const sliding = Pipeable(sliding_)
 
 function reader<E, A>(
   chunkSize: number,

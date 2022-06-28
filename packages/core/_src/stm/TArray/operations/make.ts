@@ -1,7 +1,7 @@
 /**
  * Makes a new `TArray` that is initialized with specified values.
  *
- * @tsplus static ets/TArray/Ops __call
+ * @tsplus static effect/core/stm/TArray.Ops __call
  */
 export function make<ARGS extends any[]>(
   ...data: ARGS

@@ -3,7 +3,7 @@ import { ContinuationK, Read } from "@effect/core/stream/Channel/definition/prim
 /**
  * Reads an input and continue exposing both full error cause and completion.
  *
- * @tsplus static ets/Channel/Ops readWithCause
+ * @tsplus static effect/core/stream/Channel.Ops readWithCause
  */
 export function readWithCause<
   Env,

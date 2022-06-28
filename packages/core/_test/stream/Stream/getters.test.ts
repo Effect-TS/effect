@@ -4,8 +4,8 @@ describe.concurrent("Stream", () => {
       const program = (
         Stream.succeed(Either.right(1)) + Stream.succeed(Either.left(0))
       ).right
-        .runCollect()
-        .either()
+        .runCollect
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -17,8 +17,8 @@ describe.concurrent("Stream", () => {
     it("simple example", async () => {
       const program = (Stream.succeed(Either.right(1)) + Stream.succeed(Either.left(0)))
         .rightOrFail(-1)
-        .runCollect()
-        .either()
+        .runCollect
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -31,8 +31,8 @@ describe.concurrent("Stream", () => {
       const program = (
         Stream.succeed(Maybe.some(1)) + Stream.succeed(Maybe.none)
       ).some
-        .runCollect()
-        .either()
+        .runCollect
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -44,7 +44,7 @@ describe.concurrent("Stream", () => {
     it("simple example", async () => {
       const program = (Stream.succeed(Maybe.some(1)) + Stream.succeed(Maybe.none))
         .someOrElse(-1)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -56,8 +56,8 @@ describe.concurrent("Stream", () => {
     it("simple example", async () => {
       const program = (Stream.succeed(Maybe.some(1)) + Stream.succeed(Maybe.none))
         .someOrFail(-1)
-        .runCollect()
-        .either()
+        .runCollect
+        .either
 
       const result = await program.unsafeRunPromise()
 

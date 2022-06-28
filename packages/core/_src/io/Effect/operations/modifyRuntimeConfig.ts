@@ -2,20 +2,13 @@
  * A combinator that runs the specified effect with the runtime configuration
  * modified with the specified function.
  *
- * @tsplus fluent ets/Effect modifyRuntimeConfig
+ * @tsplus fluent effect/core/io/Effect.Aspects modifyRuntimeConfig
+ * @tsplus pipeable effect/core/io/Effect modifyRuntimeConfig
  */
-export function modifyRuntimeConfig_<R, E, A>(
-  self: Effect<R, E, A>,
+export function modifyRuntimeConfig(
   f: (runtimeConfig: RuntimeConfig) => RuntimeConfig,
   __tsplusTrace?: string
-): Effect<R, E, A> {
-  return Effect.runtimeConfig.flatMap((runtimeConfig) => self.withRuntimeConfig(f(runtimeConfig)))
+) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
+    Effect.runtimeConfig.flatMap((runtimeConfig) => self.withRuntimeConfig(f(runtimeConfig)))
 }
-
-/**
- * A combinator that runs the specified effect with the runtime configuration
- * modified with the specified function.
- *
- * @tsplus static ets/Effect/Aspects modifyRuntimeConfig
- */
-export const modifyRuntimeConfig = Pipeable(modifyRuntimeConfig_)

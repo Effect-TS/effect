@@ -4,7 +4,7 @@
  *
  * Like `foldWeighted`, but with a constant cost function of 1.
  *
- * @tsplus static ets/Sink/Ops foldUntil
+ * @tsplus static effect/core/stream/Sink.Ops foldUntil
  */
 export function foldUntil<In, S>(
   z: LazyArg<S>,

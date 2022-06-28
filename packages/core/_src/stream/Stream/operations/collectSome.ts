@@ -1,7 +1,7 @@
 /**
  * Filters any 'None' values.
  *
- * @tsplus fluent ets/Stream collectSome
+ * @tsplus getter effect/core/stream/Stream collectSome
  */
 export function collectSome<R, E, A>(
   self: Stream<R, E, Maybe<A>>,

@@ -1,7 +1,7 @@
 import { concreteGroupBy } from "@effect/core/stream/GroupBy/operations/_internal/GroupByInternal"
 
 /**
- * @tsplus fluent ets/GroupBy grouped
+ * @tsplus getter effect/core/stream/GroupBy grouped
  */
 export function grouped<R, E, K, V, A>(
   self: GroupBy<R, E, K, V, A>,

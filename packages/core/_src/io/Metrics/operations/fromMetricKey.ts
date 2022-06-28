@@ -1,7 +1,7 @@
 import type { _In, _Out } from "@effect/core/io/Metrics/MetricKeyType"
 
 /**
- * @tsplus static ets/Metrics/Metric/Ops fromMetricKey
+ * @tsplus static effect/core/io/Metrics/Metric.Ops fromMetricKey
  */
 export function fromMetricKey<Type extends MetricKeyType<any, any>>(
   key: MetricKey<Type>

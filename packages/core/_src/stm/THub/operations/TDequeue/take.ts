@@ -4,7 +4,7 @@ import { concreteTDequeue } from "@effect/core/stm/THub/operations/_internal/Int
 /**
  * Takes a value from the queue.
  *
- * @tsplus getter ets/THub/TDequeue take
+ * @tsplus getter effect/core/stm/THub/TDequeue take
  */
 export function take<A>(self: THub.TDequeue<A>): USTM<A> {
   concreteTDequeue(self)

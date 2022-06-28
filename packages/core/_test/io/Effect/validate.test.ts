@@ -2,7 +2,7 @@ describe.concurrent("Effect", () => {
   describe.concurrent("validate", () => {
     it("returns all errors if never valid", async () => {
       const chunk = Chunk.fill(10, () => 0)
-      const program = Effect.validate(chunk, Effect.failNow).flip()
+      const program = Effect.validate(chunk, Effect.failNow).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -11,7 +11,7 @@ describe.concurrent("Effect", () => {
 
     it("accumulate errors and ignore successes", async () => {
       const chunk = Chunk.range(0, 10)
-      const program = Effect.validate(chunk, (n) => n % 2 === 0 ? Effect.succeed(n) : Effect.fail(n)).flip()
+      const program = Effect.validate(chunk, (n) => n % 2 === 0 ? Effect.succeed(n) : Effect.fail(n)).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -28,8 +28,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("fails", async () => {
-      const program = Effect.succeed(1).validate(Effect.fail(2)).sandbox().either()
-
+      const program = Effect.succeed(1).validate(Effect.fail(2)).sandbox.either
       const result = await program.unsafeRunPromise()
 
       assert.isTrue(
@@ -39,7 +38,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("combines both cause", async () => {
-      const program = Effect.fail(1).validate(Effect.fail(2)).sandbox().either()
+      const program = Effect.fail(1).validate(Effect.fail(2)).sandbox.either
 
       const result = await program.unsafeRunPromise()
 
@@ -53,7 +52,7 @@ describe.concurrent("Effect", () => {
   describe.concurrent("validateDiscard", () => {
     it("returns all errors if never valid", async () => {
       const chunk = Chunk.fill(10, () => 0)
-      const program = Effect.validateDiscard(chunk, Effect.failNow).flip()
+      const program = Effect.validateDiscard(chunk, Effect.failNow).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -64,7 +63,7 @@ describe.concurrent("Effect", () => {
   describe.concurrent("validatePar", () => {
     it("returns all errors if never valid", async () => {
       const chunk = Chunk.fill(1000, () => 0)
-      const program = Effect.validatePar(chunk, Effect.failNow).flip()
+      const program = Effect.validatePar(chunk, Effect.failNow).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -73,7 +72,7 @@ describe.concurrent("Effect", () => {
 
     it("accumulate errors and ignore successes", async () => {
       const chunk = Chunk.range(0, 10)
-      const program = Effect.validatePar(chunk, (n) => n % 2 === 0 ? Effect.succeed(n) : Effect.fail(n)).flip()
+      const program = Effect.validatePar(chunk, (n) => n % 2 === 0 ? Effect.succeed(n) : Effect.fail(n)).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -93,7 +92,7 @@ describe.concurrent("Effect", () => {
   describe.concurrent("validateParDiscard", () => {
     it("returns all errors if never valid", async () => {
       const chunk = Chunk.fill(10, () => 0)
-      const program = Effect.validateParDiscard(chunk, Effect.failNow).flip()
+      const program = Effect.validateParDiscard(chunk, Effect.failNow).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -104,8 +103,7 @@ describe.concurrent("Effect", () => {
   describe.concurrent("validateFirst", () => {
     it("returns all errors if never valid", async () => {
       const chunk = Chunk.fill(10, () => 0)
-      const program = Effect.validateFirst(chunk, Effect.failNow)
-        .flip()
+      const program = Effect.validateFirst(chunk, Effect.failNow).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -113,7 +111,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("runs sequentially and short circuits on first success validation", async () => {
-      function f(n: number): Effect.IO<number, number> {
+      function f(n: number): Effect<never, number, number> {
         return n === 6 ? Effect.succeed(n) : Effect.fail(n)
       }
 
@@ -132,7 +130,7 @@ describe.concurrent("Effect", () => {
     it("returns errors in correct order", async () => {
       const list = List(2, 4, 6, 3, 5, 6)
       const program = Effect.validateFirst(list, Effect.failNow)
-        .flip()
+        .flip
 
       const result = await program.unsafeRunPromise()
 
@@ -144,7 +142,7 @@ describe.concurrent("Effect", () => {
     it("returns all errors if never valid", async () => {
       const chunk = Chunk.fill(1000, () => 0)
       const program = Effect.validateFirstPar(chunk, Effect.failNow)
-        .flip()
+        .flip
 
       const result = await program.unsafeRunPromise()
 
@@ -152,7 +150,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("returns success if valid", async () => {
-      function f(n: number): Effect.IO<number, number> {
+      function f(n: number): Effect<never, number, number> {
         return n === 6 ? Effect.succeed(n) : Effect.fail(n)
       }
 

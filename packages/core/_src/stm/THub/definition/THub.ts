@@ -18,12 +18,12 @@ export declare namespace THub {
  * A `THub` is a transactional queue. Offerors can offer values to the queue
  * and takers can take values from the queue.
  *
- * @tsplus type ets/THub
+ * @tsplus type effect/core/stm/THub
  */
 export interface THub<A> {}
 
 /**
- * @tsplus type ets/THub/Ops
+ * @tsplus type effect/core/stm/THub.Ops
  */
 export interface THubOps {
   $: THubAspects
@@ -37,7 +37,7 @@ export const THub: THubOps = {
 }
 
 /**
- * @tsplus type ets/THub/Aspects
+ * @tsplus type effect/core/stm/THub.Aspects
  */
 export interface THubAspects {}
 
@@ -54,21 +54,21 @@ export interface Sliding {
 }
 
 /**
- * @tsplus static ets/THub/Ops BackPressure
+ * @tsplus static effect/core/stm/THub.Ops BackPressure
  */
 export const BackPressure: THub.Strategy = {
   _tag: "BackPressure"
 }
 
 /**
- * @tsplus static ets/THub/Ops Dropping
+ * @tsplus static effect/core/stm/THub.Ops Dropping
  */
 export const Dropping: THub.Strategy = {
   _tag: "Dropping"
 }
 
 /**
- * @tsplus static ets/THub/Ops Sliding
+ * @tsplus static effect/core/stm/THub.Ops Sliding
  */
 export const Sliding: THub.Strategy = {
   _tag: "Sliding"

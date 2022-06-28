@@ -4,13 +4,13 @@ import { Tuple } from "@tsplus/stdlib/data/Tuple"
 import type { PCGRandomState } from "@tsplus/stdlib/utilities/RandomPCG"
 
 /**
- * @tsplus static ets/TRandom/Ops default
+ * @tsplus static effect/core/stm/TRandom.Ops default
  */
 export const defaultTRandom = LazyValue.make(() =>
-  TRef.make(new RandomPCG((Math.random() * 4294967296) >>> 0).getState()).map((_) => new LiveTRandom(_)).commit()
+  TRef.make(new RandomPCG((Math.random() * 4294967296) >>> 0).getState()).map((_) => new LiveTRandom(_)).commit
 )
 /**
- * @tsplus static ets/TRandom/Ops live
+ * @tsplus static effect/core/stm/TRandom.Ops live
  */
 export const live = Layer.fromEffect(TRandom.Tag, defaultTRandom.value)
 
@@ -86,23 +86,17 @@ function shuffleWith<A>(
   nextIntBounded: (n: number) => USTM<number>
 ): USTM<Chunk<A>> {
   const collection0 = Chunk.from(collection())
-
-  return STM.Do()
-    .bind("buffer", () => TArray.from(collection0))
-    .bindValue(
-      "swap",
-      ({ buffer }) =>
-        (i1: number, i2: number): USTM<void> =>
-          STM.Do().bind("tmp", () => buffer.get(i1)).tap(() => buffer.updateSTM(i1, (_) => buffer.get(i2))).tap((
-            { tmp }
-          ) => buffer.update(i2, (_) => tmp)).unit
-    )
-    .tap(({ swap }) => {
-      const ns: Array<number> = []
-      for (let i = collection0.length; i >= 2; i = i - 1) {
-        ns.push(i)
-      }
-      return STM.forEachDiscard(ns, (n) => nextIntBounded(n).flatMap((k) => swap(n - 1, k)))
-    })
-    .flatMap(({ buffer }) => buffer.toChunk)
+  return Do(($) => {
+    const buffer = $(TArray.from(collection0))
+    const swap = (i1: number, i2: number): USTM<void> =>
+      buffer.get(i1)
+        .tap(() => buffer.updateSTM(i1, (_) => buffer.get(i2)))
+        .tap((tmp) => buffer.update(i2, (_) => tmp)).unit
+    const ns: Array<number> = []
+    for (let i = collection0.length; i >= 2; i = i - 1) {
+      ns.push(i)
+    }
+    $(STM.forEachDiscard(ns, (n) => nextIntBounded(n).flatMap((k) => swap(n - 1, k))))
+    return $(buffer.toChunk)
+  })
 }

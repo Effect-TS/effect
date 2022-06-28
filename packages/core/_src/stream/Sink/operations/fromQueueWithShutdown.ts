@@ -2,7 +2,7 @@
  * Create a sink which enqueues each element into the specified queue. The
  * queue will be shutdown once the stream is closed.
  *
- * @tsplus static ets/Sink/Ops fromQueueWithShutdown
+ * @tsplus static effect/core/stream/Sink.Ops fromQueueWithShutdown
  */
 export function fromQueueWithShutdown<In>(
   queue: LazyArg<Enqueue<In>>,

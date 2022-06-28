@@ -6,7 +6,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * A schedule that occurs everywhere, which returns the total elapsed duration
  * since the first step.
  *
- * @tsplus static ets/Schedule/Ops elapsed
+ * @tsplus static effect/core/io/Schedule.Ops elapsed
  */
 export const elapsed: Schedule<
   Maybe<number>,

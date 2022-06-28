@@ -17,27 +17,20 @@ export function isStreamTimeoutError(u: unknown): u is StreamTimeoutError {
  * Switches the stream if it does not produce a value after the spcified
  * duration.
  *
- * @tsplus fluent ets/Stream timeoutTo
+ * @tsplus static effect/core/stream/Stream.Aspects timeoutTo
+ * @tsplus pipeable effect/core/stream/Stream timeoutTo
  */
-export function timeoutTo_<R, E, A, R2, E2, A2>(
-  self: Stream<R, E, A>,
+export function timeoutTo<R2, E2, A2>(
   duration: LazyArg<Duration>,
   that: LazyArg<Stream<R2, E2, A2>>,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, A | A2> {
-  return self
-    .timeoutFailCause(Cause.die(new StreamTimeoutError()), duration)
-    .catchSomeCause((cause) =>
-      cause.isDieType() && isStreamTimeoutError(cause.value)
-        ? Maybe.some(that())
-        : Maybe.none
-    )
+) {
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A | A2> =>
+    self
+      .timeoutFailCause(Cause.die(new StreamTimeoutError()), duration)
+      .catchSomeCause((cause) =>
+        cause.isDieType() && isStreamTimeoutError(cause.value)
+          ? Maybe.some(that())
+          : Maybe.none
+      )
 }
-
-/**
- * Switches the stream if it does not produce a value after the spcified
- * duration.
- *
- * @tsplus static ets/Stream/Aspects timeoutTo
- */
-export const timeoutTo = Pipeable(timeoutTo_)

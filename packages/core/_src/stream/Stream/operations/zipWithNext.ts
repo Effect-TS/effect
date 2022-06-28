@@ -3,7 +3,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 /**
  * Zips each element with the next element if present.
  *
- * @tsplus fluent ets/Stream zipWithNext
+ * @tsplus getter effect/core/stream/Stream zipWithNext
  */
 export function zipWithNext<R, E, A>(
   self: Stream<R, E, A>,

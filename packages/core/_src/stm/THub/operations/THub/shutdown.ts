@@ -3,7 +3,7 @@ import { concreteTHub } from "@effect/core/stm/THub/operations/_internal/Interna
 /**
  * Shuts down the hub.
  *
- * @tsplus getter ets/THub shutdown
+ * @tsplus getter effect/core/stm/THub shutdown
  */
 export function shutdown<A>(self: THub<A>): USTM<void> {
   concreteTHub(self)

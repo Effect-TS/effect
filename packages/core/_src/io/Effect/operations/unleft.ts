@@ -2,7 +2,7 @@
  * Converts a `Effect<R, Either<E, B>, A>` into a `Effect<R, E, Either<A, B>>`.
  * The inverse of `left`.
  *
- * @tsplus fluent ets/Effect unleft
+ * @tsplus getter effect/core/io/Effect unleft
  */
 export function unleft<R, E, B, A>(
   self: Effect<R, Either<E, B>, A>,

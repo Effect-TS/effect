@@ -2,7 +2,7 @@
  * Applies the function `f` to each element of the `Collection<A>` and
  * returns a transactional effect that produces a new `Chunk<B>`.
  *
- * @tsplus static ets/STM/Ops forEach
+ * @tsplus static effect/core/stm/STM.Ops forEach
  */
 export function forEach<A, R, E, B>(
   as: LazyArg<Collection<A>>,

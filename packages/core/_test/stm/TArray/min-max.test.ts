@@ -4,8 +4,8 @@ describe.concurrent("TArray", () => {
   describe.concurrent("maxMaybe", () => {
     it("computes correct maximum", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.maxMaybe(Ord.number).commit())
+        .commit
+        .flatMap((tArray) => tArray.maxMaybe(Ord.number).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -14,8 +14,8 @@ describe.concurrent("TArray", () => {
 
     it("returns none for an empty array", async () => {
       const program = TArray.empty<number>()
-        .commit()
-        .flatMap((tArray) => tArray.maxMaybe(Ord.number).commit())
+        .commit
+        .flatMap((tArray) => tArray.maxMaybe(Ord.number).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -26,8 +26,8 @@ describe.concurrent("TArray", () => {
   describe.concurrent("minMaybe", () => {
     it("computes correct minimum", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.minMaybe(Ord.number).commit())
+        .commit
+        .flatMap((tArray) => tArray.minMaybe(Ord.number).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -36,8 +36,8 @@ describe.concurrent("TArray", () => {
 
     it("returns none for an empty array", async () => {
       const program = TArray.empty<number>()
-        .commit()
-        .flatMap((tArray) => tArray.maxMaybe(Ord.number).commit())
+        .commit
+        .flatMap((tArray) => tArray.maxMaybe(Ord.number).commit)
 
       const result = await program.unsafeRunPromise()
 

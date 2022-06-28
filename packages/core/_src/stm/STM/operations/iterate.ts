@@ -11,7 +11,7 @@
  * return s
  * ```
  *
- * @tsplus static ets/STM/Ops iterate
+ * @tsplus static effect/core/stm/STM.Ops iterate
  */
 export function iterate<Z>(initial: LazyArg<Z>, cont: (z: Z) => boolean) {
   return <R, E>(body: (z: Z) => STM<R, E, Z>): STM<R, E, Z> => {

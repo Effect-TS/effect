@@ -1,50 +1,15 @@
 /**
  * Binds an effectful value in a `do` scope
  *
- * @tsplus fluent ets/Effect bind
+ * @tsplus static effect/core/io/Effect.Aspects bind
+ * @tsplus pipeable effect/core/io/Effect bind
  */
-export function bind_<R2, E2, R, E, A, K, N extends string>(
-  self: Effect<R2, E2, K>,
+export function bind<N extends string, K, R2, E2, A>(
   tag: Exclude<N, keyof K>,
-  f: (_: K) => Effect<R, E, A>,
-  __tsplusTrace?: string
-): Effect<
-  R | R2,
-  E | E2,
-  MergeRecord<
-    K,
-    {
-      [k in N]: A
-    }
-  >
-> {
-  return self.flatMap((k) =>
-    f(k).map(
-      (
-        a
-      ): MergeRecord<
-        K,
-        {
-          [k in N]: A
-        }
-      > => ({ ...k, [tag]: a } as any)
-    )
-  )
-}
-
-/**
- * Binds an effectful value in a `do` scope
- *
- * @ets_data_first bind_
- */
-export function bind<R, E, A, K, N extends string>(
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => Effect<R, E, A>,
+  f: (_: K) => Effect<R2, E2, A>,
   __tsplusTrace?: string
 ) {
-  return <R2, E2>(
-    self: Effect<R2, E2, K>
-  ): Effect<
+  return <R, E>(self: Effect<R, E, K>): Effect<
     R | R2,
     E | E2,
     MergeRecord<
@@ -53,67 +18,56 @@ export function bind<R, E, A, K, N extends string>(
         [k in N]: A
       }
     >
-  > => self.bind(tag, f)
+  > =>
+    self.flatMap((k) =>
+      f(k).map(
+        (
+          a
+        ): MergeRecord<
+          K,
+          {
+            [k in N]: A
+          }
+        > => ({ ...k, [tag]: a } as any)
+      )
+    )
 }
 
 /**
  * Like bind for values
  *
- * @tsplus fluent ets/Effect bindValue
+ * @tsplus static effect/core/io/Effect.Aspects bindValue
+ * @tsplus pipeable effect/core/io/Effect bindValue
  */
-export function bindValue_<R2, E2, A, K, N extends string>(
-  self: Effect<R2, E2, K>,
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => A,
-  __tsplusTrace?: string
-): Effect<
-  R2,
-  E2,
-  MergeRecord<
-    K,
-    {
-      [k in N]: A
-    }
-  >
-> {
-  return self.map(
-    (
-      k
-    ): MergeRecord<
-      K,
-      {
-        [k in N]: A
-      }
-    > => ({ ...k, [tag]: f(k) } as any)
-  )
-}
-
-/**
- * Like bind for values
- *
- * @ets_data_first bindValue_
- */
-export function bindValue<A, K, N extends string>(
+export function bindValue<N extends string, K, A>(
   tag: Exclude<N, keyof K>,
   f: (_: K) => A,
   __tsplusTrace?: string
 ) {
-  return <R2, E2>(
-    self: Effect<R2, E2, K>
-  ): Effect<
-    R2,
-    E2,
+  return <R, E>(self: Effect<R, E, K>): Effect<
+    R,
+    E,
     MergeRecord<
       K,
       {
         [k in N]: A
       }
     >
-  > => self.bindValue(tag, f)
+  > =>
+    self.map(
+      (
+        k
+      ): MergeRecord<
+        K,
+        {
+          [k in N]: A
+        }
+      > => ({ ...k, [tag]: f(k) } as any)
+    )
 }
 
 /**
- * @tsplus static ets/Effect/Ops Do
+ * @tsplus static effect/core/io/Effect.Ops Do
  */
 export function Do(): Effect<never, never, {}> {
   return Effect.succeedNow({})

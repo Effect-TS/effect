@@ -4,7 +4,7 @@
  *
  * For best performance use capacities that are powers of two.
  *
- * @tsplus static ets/TQueue/Ops sliding
+ * @tsplus static effect/core/stm/TQueue.Ops sliding
  */
 export function sliding<A>(
   requestedCapacity: number

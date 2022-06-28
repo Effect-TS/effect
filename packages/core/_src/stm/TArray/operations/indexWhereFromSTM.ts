@@ -4,26 +4,20 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
  * Starting at specified index, get the index of the next entry that matches a
  * transactional predicate.
  *
- * @tsplus fluent ets/TArray indexWhereFromSTM
+ * @tsplus static effect/core/stm/TArray.Aspects indexWhereFromSTM
+ * @tsplus pipeable effect/core/stm/TArray indexWhereFromSTM
  */
-export function indexWhereFromSTM_<E, A>(
-  self: TArray<A>,
+export function indexWhereFromSTM<E, A>(
   f: (a: A) => STM<never, E, boolean>,
   from: number
-): STM<never, E, number> {
-  if (from < 0) {
-    return STM.succeedNow(-1)
+) {
+  return (self: TArray<A>): STM<never, E, number> => {
+    if (from < 0) {
+      return STM.succeedNow(-1)
+    }
+    return forIndex(self, from, f)
   }
-  return forIndex(self, from, f)
 }
-
-/**
- * Starting at specified index, get the index of the next entry that matches a
- * transactional predicate.
- *
- * @tsplus static ets/TArray/Aspects indexWhereFromSTM
- */
-export const indexWhereFromSTM = Pipeable(indexWhereFromSTM_)
 
 function forIndex<E, A>(
   self: TArray<A>,

@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Channel/Ops succeedWith
+ * @tsplus static effect/core/stream/Channel.Ops succeedWith
  */
 export function succeedWith<R, Z>(
   f: (env: Env<R>) => Z

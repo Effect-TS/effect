@@ -2,24 +2,17 @@
  * A more powerful version of `fold` that allows recovering from any kind of
  * failure except interruptions.
  *
- * @tsplus fluent ets/Effect foldCause
+ * @tsplus static effect/core/io/Effect.Aspects foldCause
+ * @tsplus pipeable effect/core/io/Effect foldCause
  */
-export function foldCause_<R, E, A, A2, A3>(
-  self: Effect<R, E, A>,
+export function foldCause<E, A, A2, A3>(
   failure: (cause: Cause<E>) => A2,
   success: (a: A) => A3,
   __tsplusTrace?: string
-): Effect<R, never, A2 | A3> {
-  return self.foldCauseEffect(
-    (c) => Effect.succeedNow(failure(c)),
-    (a) => Effect.succeedNow(success(a))
-  )
+) {
+  return <R>(self: Effect<R, E, A>): Effect<R, never, A2 | A3> =>
+    self.foldCauseEffect(
+      (c) => Effect.succeedNow(failure(c)),
+      (a) => Effect.succeedNow(success(a))
+    )
 }
-
-/**
- * A more powerful version of `fold` that allows recovering from any kind of
- * failure except interruptions.
- *
- * @tsplus static ets/Effect/Aspects foldCause
- */
-export const foldCause = Pipeable(foldCause_)

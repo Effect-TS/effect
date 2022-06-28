@@ -2,7 +2,7 @@
  * Returns a successful effect with the head of the collection if the collection
  * is non-empty, or fails with the error `None` if the collection is empty.
  *
- * @tsplus getter ets/Effect head
+ * @tsplus getter effect/core/io/Effect head
  */
 export function head<R, E, A>(
   self: Effect<R, E, Collection<A>>,

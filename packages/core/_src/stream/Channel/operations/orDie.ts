@@ -1,14 +1,9 @@
 /**
- * @tsplus fluent ets/Channel orDie
+ * @tsplus static effect/core/stream/Channel.Aspects orDie
+ * @tsplus pipeable effect/core/stream/Channel orDie
  */
-export function orDie_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone, E>(
-  self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  error: LazyArg<E>
-): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  return self.orDieWith(error)
+export function orDie<E>(error: LazyArg<E>) {
+  return <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
+    self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+  ): Channel<Env, InErr, InElem, InDone, never, OutElem, OutDone> => self.orDieWith(error)
 }
-
-/**
- * @tsplus static ets/Channel/Aspects orDie
- */
-export const orDie = Pipeable(orDie_)

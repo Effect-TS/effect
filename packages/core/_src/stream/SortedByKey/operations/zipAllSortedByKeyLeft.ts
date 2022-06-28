@@ -8,30 +8,17 @@
  * constant space but the caller is responsible for ensuring that the
  * streams are sorted by distinct keys.
  *
- * @tsplus fluent ets/SortedByKey zipAllSortedByKeyLeft
- * @tsplus fluent ets/Stream zipAllSortedByKeyLeft
+ * @tsplus static effect/core/stream/SortedByKey.Aspects zipAllSortedByKeyLeft
+ * @tsplus pipeable effect/core/stream/SortedByKey zipAllSortedByKeyLeft
+ * @tsplus static effect/core/stream/Stream.Aspects zipAllSortedByKeyLeft
+ * @tsplus pipeable effect/core/stream/Stream zipAllSortedByKeyLeft
  */
-export function zipAllSortedByKeyLeft_<R, E, K, A>(
-  self: SortedByKey<R, E, K, A>,
-  ord: Ord<K>
+export function zipAllSortedByKeyLeft<K, R2, E2, A2, A>(
+  ord: Ord<K>,
+  that: LazyArg<SortedByKey<R2, E2, K, A2>>,
+  def: LazyArg<A>,
+  __tsplusTrace?: string
 ) {
-  return <R2, E2, B>(
-    that: LazyArg<SortedByKey<R2, E2, K, B>>,
-    def: LazyArg<A>,
-    __tsplusTrace?: string
-  ): Stream<R | R2, E | E2, Tuple<[K, A]>> => self.zipAllSortedByKeyWith(ord)(that, identity, def, (a, _) => a)
+  return <R, E>(self: SortedByKey<R, E, K, A>): Stream<R | R2, E | E2, Tuple<[K, A]>> =>
+    self.zipAllSortedByKeyWith(ord, that, identity, def, (a, _) => a)
 }
-
-/**
- * Zips this stream that is sorted by distinct keys and the specified stream
- * that is sorted by distinct keys to produce a new stream that is sorted by
- * distinct keys. Keeps only values from this stream, using the specified
- * value `default` to fill in missing values.
- *
- * This allows zipping potentially unbounded streams of data by key in
- * constant space but the caller is responsible for ensuring that the
- * streams are sorted by distinct keys.
- *
- * @tsplus static ets/SortedByKey/Aspects zipAllSortedByKeyLeft
- */
-export const zipAllSortedByKeyLeft = Pipeable(zipAllSortedByKeyLeft_)

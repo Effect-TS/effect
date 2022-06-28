@@ -1,7 +1,7 @@
 describe.concurrent("Stream", () => {
   describe.concurrent("runHead", () => {
     it("nonempty stream", async () => {
-      const program = Stream(1, 2, 3, 4).runHead()
+      const program = Stream(1, 2, 3, 4).runHead
 
       const result = await program.unsafeRunPromise()
 
@@ -9,7 +9,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("empty stream", async () => {
-      const program = Stream.empty.runHead()
+      const program = Stream.empty.runHead
 
       const result = await program.unsafeRunPromise()
 
@@ -21,13 +21,13 @@ describe.concurrent("Stream", () => {
         .bind("ref", () => Ref.make<List<number>>(List.empty()))
         .bind("head", ({ ref }) =>
           Stream(
-            Stream.fromEffect(ref.update((list) => list.prepend(1))).drain(),
-            Stream.fromEffect(ref.update((list) => list.prepend(2))).drain(),
+            Stream.fromEffect(ref.update((list) => list.prepend(1))).drain,
+            Stream.fromEffect(ref.update((list) => list.prepend(2))).drain,
             Stream(1),
             Stream.fromEffect(ref.update((list) => list.prepend(3)))
           )
-            .flatten()
-            .runHead())
+            .flatten
+            .runHead)
         .bind("result", ({ ref }) => ref.get())
 
       const { head, result } = await program.unsafeRunPromise()
@@ -39,7 +39,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("runLast", () => {
     it("nonempty stream", async () => {
-      const program = Stream(1, 2, 3, 4).runLast()
+      const program = Stream(1, 2, 3, 4).runLast
 
       const result = await program.unsafeRunPromise()
 
@@ -47,7 +47,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("empty stream", async () => {
-      const program = Stream.empty.runLast()
+      const program = Stream.empty.runLast
 
       const result = await program.unsafeRunPromise()
 

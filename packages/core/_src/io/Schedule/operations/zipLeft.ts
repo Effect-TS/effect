@@ -1,21 +1,16 @@
 /**
  * The same as `intersect` but ignores the right output.
  *
- * @tsplus operator ets/Schedule <
- * @tsplus operator ets/Schedule/WithState <
- * @tsplus fluent ets/Schedule zipLeft
- * @tsplus fluent ets/Schedule/WithState zipLeft
+ * @tsplus pipeable-operator effect/core/io/Schedule <
+ * @tsplus static effect/core/io/Schedule.Aspects zipLeft
+ * @tsplus pipeable effect/core/io/Schedule zipLeft
  */
-export function zipLeft_<State, Env, In, Out, State1, Env1, In1, Out2>(
-  self: Schedule<State, Env, In, Out>,
+export function zipLeft<State1, Env1, In1, Out2>(
   that: Schedule<State1, Env1, In1, Out2>
-): Schedule<Tuple<[State, State1]>, Env | Env1, In & In1, Out> {
-  return (self && that).map((out) => out.get(0) as Out)
+) {
+  return <State, Env, In, Out>(
+    self: Schedule<State, Env, In, Out>
+  ): Schedule<Tuple<[State, State1]>, Env | Env1, In & In1, Out> =>
+    (self && that)
+      .map((out) => out.get(0) as Out)
 }
-
-/**
- * The same as `intersect` but ignores the left output.
- *
- * @tsplus static ets/Schedule/Aspects zipLeft
- */
-export const zipLeft = Pipeable(zipLeft_)

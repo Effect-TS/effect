@@ -1,7 +1,7 @@
 import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
- * @tsplus fluent ets/Sink dropLeftover
+ * @tsplus getter effect/core/stream/Sink dropLeftover
  */
 export function dropLeftover<R, E, In, L, Z>(
   self: Sink<R, E, In, L, Z>,

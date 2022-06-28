@@ -128,7 +128,7 @@ describe.concurrent("Channel", () => {
               )
           )
 
-          const read = Channel.read<number>().mapEffect((i) => event(`Read ${i}`).unit())
+          const read = Channel.read<number>().mapEffect((i) => event(`Read ${i}`).unit)
 
           const right = (read > read).catchAll(() => Channel.unit)
 

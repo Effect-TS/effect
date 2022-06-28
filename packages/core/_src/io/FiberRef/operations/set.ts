@@ -1,7 +1,7 @@
 /**
  * Sets the value associated with the current fiber.
  *
- * @tsplus fluent ets/FiberRef set
+ * @tsplus fluent effect/core/io/FiberRef set
  */
 export function set_<A, P>(
   self: FiberRef<A, P>,
@@ -14,6 +14,6 @@ export function set_<A, P>(
 /**
  * Sets the value associated with the current fiber.
  *
- * @tsplus static ets/FiberRef/Aspects set
+ * @tsplus static effect/core/io/FiberRef.Aspects set
  */
 export const set = Pipeable(set_)

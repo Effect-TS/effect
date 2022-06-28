@@ -5,7 +5,7 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  * further than the unfolding of the state. This is useful for embedding
  * paginated APIs, hence the name.
  *
- * @tsplus static ets/Stream/Ops paginateChunk
+ * @tsplus static effect/core/stream/Stream.Ops paginateChunk
  */
 export function paginateChunk<S, A>(
   s: LazyArg<S>,

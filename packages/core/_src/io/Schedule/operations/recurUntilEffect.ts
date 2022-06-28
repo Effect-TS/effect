@@ -1,7 +1,7 @@
 /**
  * A schedule that recurs for until the predicate evaluates to true.
  *
- * @tsplus static ets/Schedule/Ops recurUntilEffect
+ * @tsplus static effect/core/io/Schedule.Ops recurUntilEffect
  */
 export function recurUntilEffect<Env, A>(
   f: (a: A) => Effect<Env, never, boolean>

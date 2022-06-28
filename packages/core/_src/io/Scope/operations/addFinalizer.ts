@@ -2,20 +2,13 @@
  * Adds a finalizer to this scope. The finalizer is guaranteed to be run when
  * the scope is closed.
  *
- * @tsplus fluent ets/Scope addFinalizer
- * @tsplus fluent ets/Scope/Closeable addFinalizer
+ * @tsplus static effect/core/io/Scope.Aspects addFinalizer
+ * @tsplus pipeable effect/core/io/Scope addFinalizer
+ * @tsplus pipeable effect/core/io/Scope/Closeable addFinalizer
  */
-export function addFinalizer_(
-  self: Scope,
-  finalizer: LazyArg<Effect<never, never, unknown>>
-): Effect<never, never, void> {
-  return self.addFinalizerExit(() => finalizer())
+export function addFinalizer(finalizer: LazyArg<Effect<never, never, unknown>>) {
+  return (self: Scope): Effect<never, never, void> =>
+    self.addFinalizerExit(
+      () => finalizer()
+    )
 }
-
-/**
- * Adds a finalizer to this scope. The finalizer is guaranteed to be run when
- * the scope is closed.
- *
- * @tsplus static ets/Scope/Aspects addFinalizer
- */
-export const addFinalizer = Pipeable(addFinalizer_)

@@ -4,7 +4,7 @@ import { concreteFiberRef } from "@effect/core/io/FiberRef/operations/_internal/
  * The initial patch that is applied to the value of the `FiberRef` when a new
  * fiber is forked.
  *
- * @tsplus getter ets/FiberRef fork
+ * @tsplus getter effect/core/io/FiberRef fork
  */
 export function fork_<Value, Patch>(self: FiberRef<Value, Patch>): Patch {
   concreteFiberRef(self)
@@ -15,6 +15,6 @@ export function fork_<Value, Patch>(self: FiberRef<Value, Patch>): Patch {
  * The initial patch that is applied to the value of the `FiberRef` when a new
  * fiber is forked.
  *
- * @tsplus static ets/FiberRef/Aspects fork
+ * @tsplus static effect/core/io/FiberRef.Aspects fork
  */
 export const fork = Pipeable(fork_)

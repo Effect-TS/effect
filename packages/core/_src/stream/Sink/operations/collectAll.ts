@@ -1,7 +1,7 @@
 import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
- * @tsplus static ets/Sink/Ops collectAll
+ * @tsplus static effect/core/stream/Sink.Ops collectAll
  */
 export function collectAll<In>(
   __tsplusTrace?: string

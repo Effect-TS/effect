@@ -19,9 +19,9 @@ describe.concurrent("Queue", () => {
     it("sequential take and offer", async () => {
       const program = Effect.Do()
         .bind("queue", () => Queue.bounded<string>(100))
-        .bind("fiber", ({ queue }) => queue.take.zipWith(queue.take, (a, b) => a + b).fork())
+        .bind("fiber", ({ queue }) => queue.take.zipWith(queue.take, (a, b) => a + b).fork)
         .tap(({ queue }) => queue.offer("don't ") > queue.offer("give up :D"))
-        .flatMap(({ fiber }) => fiber.join())
+        .flatMap(({ fiber }) => fiber.join)
 
       const result = await program.unsafeRunPromise()
 

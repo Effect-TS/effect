@@ -3,23 +3,15 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 /**
  * Drops the specified number of elements from this stream.
  *
- * @tsplus fluent ets/Stream drop
+ * @tsplus static effect/core/stream/Stream.Aspects drop
+ * @tsplus pipeable effect/core/stream/Stream drop
  */
-export function drop_<R, E, A>(
-  self: Stream<R, E, A>,
-  n: number,
-  __tsplusTrace?: string
-): Stream<R, E, A> {
-  concreteStream(self)
-  return new StreamInternal(self.channel >> loop<R, E, A>(n))
+export function drop(n: number, __tsplusTrace?: string) {
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => {
+    concreteStream(self)
+    return new StreamInternal(self.channel >> loop<R, E, A>(n))
+  }
 }
-
-/**
- * Drops the specified number of elements from this stream.
- *
- * @tsplus static ets/Stream/Aspects drop
- */
-export const drop = Pipeable(drop_)
 
 function loop<R, E, A>(
   r: number

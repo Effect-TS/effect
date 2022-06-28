@@ -1,7 +1,7 @@
 /**
  * A schedule that recurs once with the specified delay.
  *
- * @tsplus static ets/Schedule/Ops fromDuration
+ * @tsplus static effect/core/io/Schedule.Ops fromDuration
  */
 export function fromDuration(
   duration: Duration

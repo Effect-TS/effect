@@ -34,7 +34,7 @@ describe.concurrent("Layer", () => {
       const fedB = (Layer.succeed(ConfigTag)(new Config(1)) >> aLayer) >> bLayer
       const fedC = (Layer.succeed(ConfigTag)(new Config(2)) >> aLayer) >> cLayer
 
-      const program = Effect.scoped((fedB + fedC).build()).map((env) => Tuple(env.get(BTag), env.get(CTag)))
+      const program = Effect.scoped((fedB + fedC).build).map((env) => Tuple(env.get(BTag), env.get(CTag)))
 
       const result = await program.unsafeRunPromise()
 

@@ -5,8 +5,8 @@
  * succeeds. If `use` fails, then after release, the returned effect will fail
  * with the same error.
  *
- * @tsplus static ets/Effect/Ops acquireUseReleaseExit
- * @tsplus fluent ets/Effect acquireUseReleaseExit
+ * @tsplus static effect/core/io/Effect.Ops acquireUseReleaseExit
+ * @tsplus fluent effect/core/io/Effect acquireUseReleaseExit
  */
 export function acquireUseReleaseExit<R, E, A, R2, E2, A2, R3, X>(
   acquire: LazyArg<Effect<R, E, A>>,
@@ -17,7 +17,7 @@ export function acquireUseReleaseExit<R, E, A, R2, E2, A2, R3, X>(
   return Effect.uninterruptibleMask(({ restore }) =>
     acquire().flatMap((a) =>
       Effect.suspendSucceed(restore(use(a)))
-        .exit()
+        .exit
         .flatMap((exit) =>
           Effect.suspendSucceed(release(a, exit)).foldCauseEffect(
             (cause2) =>

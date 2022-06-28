@@ -4,34 +4,30 @@ import { concreteTMap } from "@effect/core/stm/TMap/operations/_internal/Interna
 /**
  * Atomically folds using a pure function.
  *
- * @tsplus fluent ets/TMap fold
+ * @tsplus static effect/core/stm/TMap.Aspects fold
+ * @tsplus pipeable effect/core/stm/TMap fold
  */
-export function fold_<K, V, A>(self: TMap<K, V>, zero: A, op: (acc: A, kv: Tuple<[K, V]>) => A): USTM<A> {
-  concreteTMap(self)
-  return STM.Effect((journal) => {
-    const buckets = self.tBuckets.unsafeGet(journal)
+export function fold<K, V, A>(zero: A, op: (acc: A, kv: Tuple<[K, V]>) => A) {
+  return (self: TMap<K, V>): STM<never, never, A> => {
+    concreteTMap(self)
+    return STM.Effect((journal) => {
+      const buckets = self.tBuckets.unsafeGet(journal)
 
-    concreteTArray(buckets)
+      concreteTArray(buckets)
 
-    let res = zero
-    let i = 0
+      let res = zero
+      let i = 0
 
-    while (i < buckets.chunk.length) {
-      const bucket = buckets.chunk.unsafeGet(i)
-      const items = bucket!.unsafeGet(journal)
+      while (i < buckets.chunk.length) {
+        const bucket = buckets.chunk.unsafeGet(i)
+        const items = bucket!.unsafeGet(journal)
 
-      res = items.reduce(res, op)
+        res = items.reduce(res, op)
 
-      i += 1
-    }
+        i += 1
+      }
 
-    return res
-  })
+      return res
+    })
+  }
 }
-
-/**
- * Atomically folds using a pure function.
- *
- * @tsplus static ets/TMap/Aspects fold
- */
-export const fold = Pipeable(fold_)

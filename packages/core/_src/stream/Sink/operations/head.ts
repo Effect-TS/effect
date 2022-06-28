@@ -1,7 +1,7 @@
 /**
  * Creates a sink containing the first value.
  *
- * @tsplus static ets/Sink/Ops head
+ * @tsplus static effect/core/stream/Sink.Ops head
  */
 export function head<In>(
   __tsplusTrace?: string

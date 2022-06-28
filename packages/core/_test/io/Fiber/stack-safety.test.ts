@@ -21,7 +21,7 @@ describe.concurrent("Fiber", () => {
     }, 20_000)
 
     it("collectAll", async () => {
-      const program = Fiber.collectAll(fibers).join().map(constTrue)
+      const program = Fiber.collectAll(fibers).join.map(constTrue)
 
       const result = await program.unsafeRunPromise()
 

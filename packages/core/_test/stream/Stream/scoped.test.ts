@@ -1,7 +1,7 @@
 describe.concurrent("Stream", () => {
   describe.concurrent("managed", () => {
     it("preserves failure of effect", async () => {
-      const program = Stream.scoped(Effect.fail("error")).runCollect().either()
+      const program = Stream.scoped(Effect.fail("error")).runCollect.either
 
       const result = await program.unsafeRunPromise()
 
@@ -12,10 +12,10 @@ describe.concurrent("Stream", () => {
       const program = Effect.struct({
         interruptible: Stream.scoped(
           Effect.suspendSucceed(Effect.checkInterruptible(Effect.succeedNow))
-        ).runHead(),
+        ).runHead,
         uninterruptible: Stream.scoped(
-          Effect.checkInterruptible(Effect.succeedNow).uninterruptible()
-        ).runHead()
+          Effect.checkInterruptible(Effect.succeedNow).uninterruptible
+        ).runHead
       })
 
       const { interruptible, uninterruptible } = await program.unsafeRunPromise()

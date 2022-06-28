@@ -2,7 +2,7 @@
  * Finds the result of applying an transactional partial function to the first
  * value in its domain.
  *
- * @tsplus fluent ets/TArray collectFirstSTM
+ * @tsplus fluent effect/core/stm/TArray collectFirstSTM
  */
 export function collectFirstSTM_<A, E, B>(
   self: TArray<A>,
@@ -25,6 +25,6 @@ export function collectFirstSTM_<A, E, B>(
  * Finds the result of applying an transactional partial function to the first
  * value in its domain.
  *
- * @tsplus static ets/TArray/Aspects collectFirstSTM
+ * @tsplus static effect/core/stm/TArray.Aspects collectFirstSTM
  */
 export const collectFirstSTM = Pipeable(collectFirstSTM_)

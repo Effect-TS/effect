@@ -177,7 +177,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     orElse: Effect<never, never, any>
   ): Effect<never, never, any> {
     return Effect.suspendSucceed(
-      this.unsafeEvalOn(effect) ? Effect.unit : orElse.unit()
+      this.unsafeEvalOn(effect) ? Effect.unit : orElse.unit
     )
   }
 

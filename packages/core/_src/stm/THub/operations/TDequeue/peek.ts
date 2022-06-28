@@ -5,9 +5,9 @@ import { concreteTDequeue } from "@effect/core/stm/THub/operations/_internal/Int
  * Views the next element in the queue without removing it, retrying if the
  * queue is empty.
  *
- * @tsplus getter ets/THub/TDequeue peek
+ * @tsplus getter effect/core/stm/THub/TDequeue peek
  */
-export function peek<A>(self: THub.TDequeue<A>): USTM<A> {
+export function peek<A>(self: THub.TDequeue<A>): STM<never, never, A> {
   concreteTDequeue(self)
   return STM.Effect((journal, fiberId) => {
     let currentSubscriberHead = self.subscriberHead.unsafeGet(journal)

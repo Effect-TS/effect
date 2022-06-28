@@ -6,7 +6,7 @@ describe.concurrent("Stream", () => {
       const program = Stream("1", "2", ",", "3", "4")
         .transduce(Sink.collectAllWhile((c: string) => /\d/.test(c)))
         .map((chunk) => chunk.join(""))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -22,7 +22,7 @@ describe.concurrent("Stream", () => {
             (a, b) => a + b
           )
         )
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -32,7 +32,7 @@ describe.concurrent("Stream", () => {
     it("with a sink that always signals more", async () => {
       const program = Stream(1, 2, 3)
         .transduce(Sink.fold(0, constTrue, (a, b) => a + b))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -41,7 +41,7 @@ describe.concurrent("Stream", () => {
 
     it("propagate managed error", async () => {
       const fail = "I'm such a failure!"
-      const program = Stream(1, 2, 3).transduce(Sink.fail(fail)).runCollect().either()
+      const program = Stream(1, 2, 3).transduce(Sink.fail(fail)).runCollect.either
 
       const result = await program.unsafeRunPromise()
 

@@ -1,7 +1,7 @@
 /**
  * Terminates the stream when encountering the first `Exit.Failure`.
  *
- * @tsplus fluent ets/Stream collectWhileSuccess
+ * @tsplus getter effect/core/stream/Stream collectWhileSuccess
  */
 export function collectWhileSuccess<R, E, L, A>(
   self: Stream<R, E, Exit<L, A>>,

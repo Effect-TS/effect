@@ -1,7 +1,7 @@
 import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/InternalTArray"
 
 /**
- * @tsplus getter ets/TArray length
+ * @tsplus getter effect/core/stm/TArray length
  */
 export function length<A>(self: TArray<A>, __tsplusTrace?: string): number {
   concreteTArray(self)

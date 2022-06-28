@@ -8,10 +8,10 @@ describe.concurrent("Stream", () => {
       //     Stream.range(1, 9)
       //       .schedule(Schedule.fixed(Duration(10)))
       //       .mapEffect((n) => Clock.currentTime.map((now) => Tuple(n, now - start)))
-      //       .runCollect()
+      //       .runCollect
       //       .fork()
       //   )
-      //   .flatMap(({ fiber }) => fiber.join())
+      //   .flatMap(({ fiber }) => fiber.join)
       // const result = await program.unsafeRunPromise()
       // expected = Chunk((1, 100L), (2, 200L), (3, 300L), (4, 400L), (5, 500L), (6, 600L), (7, 700L), (8, 800L))
     })
@@ -26,7 +26,7 @@ describe.concurrent("Stream", () => {
       //       _.toLowerCase,
       //       identity
       //     )
-      //     .runCollect()
+      //     .runCollect
       // )(equalTo(Chunk("a", "b", "c", "Done", "a", "b", "c", "Done")))
     })
   })
@@ -37,7 +37,7 @@ describe.concurrent("Stream", () => {
       //   assertM(
       //     ZStream("A", "B", "C")
       //       .scheduleEither(Schedule.recurs(2) *> Schedule.fromFunction((_) => "!"))
-      //       .runCollect()
+      //       .runCollect
       //   )(equalTo(Chunk(Right("A"), Right("B"), Right("C"), Left("!"))))
     })
   })

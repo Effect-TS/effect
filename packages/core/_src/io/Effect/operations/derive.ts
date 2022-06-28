@@ -36,7 +36,7 @@ export type DerivedLifted<
   }
 
 /**
- * @tsplus static ets/Effect/Ops deriveLifted
+ * @tsplus static effect/core/io/Effect.Ops deriveLifted
  */
 export function deriveLifted<T>(
   S: Tag<T>
@@ -76,7 +76,7 @@ export type DerivedAccessM<T, Gens extends keyof T> = {
 }
 
 /**
- * @tsplus static ets/Effect/Ops deriveAccessEffect
+ * @tsplus static effect/core/io/Effect.Ops deriveAccessEffect
  */
 export function deriveAccessEffect<T>(
   S: Tag<T>
@@ -100,7 +100,7 @@ export type DerivedAccess<T, Gens extends keyof T> = {
 }
 
 /**
- * @tsplus static ets/Effect/Ops deriveAccess
+ * @tsplus static effect/core/io/Effect.Ops deriveAccess
  */
 export function deriveAccess<T>(
   S: Tag<T>

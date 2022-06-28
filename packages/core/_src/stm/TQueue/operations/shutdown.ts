@@ -3,7 +3,7 @@ import { concreteTQueue } from "@effect/core/stm/TQueue/operations/_internal/Int
 /**
  * Shuts down the queue.
  *
- * @tsplus getter ets/TQueue shutdown
+ * @tsplus getter effect/core/stm/TQueue shutdown
  */
 export function shutdown<A>(self: TQueue<A>): USTM<void> {
   concreteTQueue(self)

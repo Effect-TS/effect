@@ -14,6 +14,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * |----------|----------|----------|----------|
  * |action------|sleep---|act|-sleep|action----|
  * ```
+ *
+ * @tsplus static effect/core/io/Schedule.Ops windowed
  */
 export function windowed(
   interval: Duration

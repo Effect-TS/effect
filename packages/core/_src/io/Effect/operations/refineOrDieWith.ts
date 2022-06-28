@@ -2,26 +2,19 @@
  * Keeps some of the errors, and terminates the fiber with the rest, using
  * the specified function to convert the `E` into a `Throwable`.
  *
- * @tsplus fluent ets/Effect refineOrDieWith
+ * @tsplus static effect/core/io/Effect.Aspects refineOrDieWith
+ * @tsplus pipeable effect/core/io/Effect refineOrDieWith
  */
-export function refineOrDieWith_<R, A, E, E1>(
-  self: Effect<R, E, A>,
+export function refineOrDieWith<E, E1>(
   pf: (e: E) => Maybe<E1>,
   f: (e: E) => unknown,
   __tsplusTrace?: string
 ) {
-  return self.catchAll((e) =>
-    pf(e).fold(
-      () => Effect.dieNow(f(e)),
-      (e1) => Effect.failNow(e1)
+  return <R, A>(self: Effect<R, E, A>): Effect<R, E1, A> =>
+    self.catchAll((e) =>
+      pf(e).fold(
+        () => Effect.dieNow(f(e)),
+        (e1) => Effect.failNow(e1)
+      )
     )
-  )
 }
-
-/**
- * Keeps some of the errors, and terminates the fiber with the rest, using
- * the specified function to convert the `E` into a `Throwable`.
- *
- * @tsplus static ets/Effect/Aspects refineOrDieWith
- */
-export const refineOrDieWith = Pipeable(refineOrDieWith_)

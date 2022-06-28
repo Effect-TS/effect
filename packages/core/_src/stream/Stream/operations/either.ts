@@ -5,7 +5,7 @@
  *
  * @note The stream will end as soon as the first error occurs.
  *
- * @tsplus fluent ets/Stream either
+ * @tsplus getter effect/core/stream/Stream either
  */
 export function either<R, E, A>(
   self: Stream<R, E, A>,

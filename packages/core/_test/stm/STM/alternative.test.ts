@@ -5,8 +5,8 @@ describe.concurrent("STM", () => {
         .bind("tRef", () => TRef.makeCommit(0))
         .bindValue("left", ({ tRef }) => tRef.update((n) => n + 100) > STM.retry)
         .bindValue("right", ({ tRef }) => tRef.update((n) => n + 200))
-        .tap(({ left, right }) => (left | right).commit())
-        .flatMap(({ tRef }) => tRef.get.commit())
+        .tap(({ left, right }) => (left | right).commit)
+        .flatMap(({ tRef }) => tRef.get.commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -18,8 +18,8 @@ describe.concurrent("STM", () => {
         .bind("tRef", () => TRef.makeCommit(0))
         .bindValue("left", ({ tRef }) => tRef.update((n) => n + 100) > STM.fail("boom"))
         .bindValue("right", ({ tRef }) => tRef.update((n) => n + 200))
-        .tap(({ left, right }) => (left | right).commit())
-        .flatMap(({ tRef }) => tRef.get.commit())
+        .tap(({ left, right }) => (left | right).commit)
+        .flatMap(({ tRef }) => tRef.get.commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -27,7 +27,7 @@ describe.concurrent("STM", () => {
     })
 
     it("fail if alternative fails", async () => {
-      const program = (STM.fail("left") | STM.fail("right")).commit()
+      const program = (STM.fail("left") | STM.fail("right")).commit
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -38,9 +38,9 @@ describe.concurrent("STM", () => {
   describe.concurrent("orElseEither", () => {
     it("returns result of the first successful transaction wrapped in either", async () => {
       const program = Effect.struct({
-        rightValue: STM.retry.orElseEither(STM.succeed(42)).commit(),
-        leftValue1: STM.succeed(1).orElseEither(STM.succeed("nope")).commit(),
-        leftValue2: STM.succeed(2).orElseEither(STM.retry).commit()
+        rightValue: STM.retry.orElseEither(STM.succeed(42)).commit,
+        leftValue1: STM.succeed(1).orElseEither(STM.succeed("nope")).commit,
+        leftValue2: STM.succeed(2).orElseEither(STM.retry).commit
       })
 
       const { leftValue1, leftValue2, rightValue } = await program.unsafeRunPromise()
@@ -53,7 +53,7 @@ describe.concurrent("STM", () => {
 
   describe.concurrent("orElseFail", () => {
     it("tries left first", async () => {
-      const program = STM.succeed(true).orElseFail(false).commit()
+      const program = STM.succeed(true).orElseFail(false).commit
 
       const result = await program.unsafeRunPromise()
 
@@ -61,7 +61,7 @@ describe.concurrent("STM", () => {
     })
 
     it("fails with the specified error once left retries", async () => {
-      const program = STM.retry.orElseFail(false).either.commit()
+      const program = STM.retry.orElseFail(false).either.commit
 
       const result = await program.unsafeRunPromise()
 
@@ -69,7 +69,7 @@ describe.concurrent("STM", () => {
     })
 
     it("fails with the specified error once left fails", async () => {
-      const program = STM.fail(true).orElseFail(false).either.commit()
+      const program = STM.fail(true).orElseFail(false).either.commit
 
       const result = await program.unsafeRunPromise()
 
@@ -79,7 +79,7 @@ describe.concurrent("STM", () => {
 
   describe.concurrent("orElseSucceed", () => {
     it("tries left first", async () => {
-      const program = STM.succeed(true).orElseSucceed(false).commit()
+      const program = STM.succeed(true).orElseSucceed(false).commit
 
       const result = await program.unsafeRunPromise()
 
@@ -87,7 +87,7 @@ describe.concurrent("STM", () => {
     })
 
     it("succeeds with the specified value if left retries", async () => {
-      const program = STM.retry.orElseSucceed(false).commit()
+      const program = STM.retry.orElseSucceed(false).commit
 
       const result = await program.unsafeRunPromise()
 
@@ -95,7 +95,7 @@ describe.concurrent("STM", () => {
     })
 
     it("succeeds with the specified value if left fails", async () => {
-      const program = STM.fail(true).orElseSucceed(false).commit()
+      const program = STM.fail(true).orElseSucceed(false).commit
 
       const result = await program.unsafeRunPromise()
 
@@ -105,7 +105,7 @@ describe.concurrent("STM", () => {
 
   describe.concurrent("alternative", () => {
     it("succeeds if left succeeds", async () => {
-      const program = STM.succeed("left").orTry(STM.succeed("right")).commit()
+      const program = STM.succeed("left").orTry(STM.succeed("right")).commit
 
       const result = await program.unsafeRunPromise()
 
@@ -113,7 +113,7 @@ describe.concurrent("STM", () => {
     })
 
     it("succeeds if right succeeds", async () => {
-      const program = STM.retry.orTry(STM.succeed("right")).commit()
+      const program = STM.retry.orTry(STM.succeed("right")).commit
 
       const result = await program.unsafeRunPromise()
 
@@ -128,9 +128,9 @@ describe.concurrent("STM", () => {
         .bindValue("updater", ({ tRef }) =>
           tRef
             .update((n) => n + 10)
-            .commit()
-            .forever())
-        .flatMap(({ left, right, updater }) => left.orTry(right).commit().race(updater))
+            .commit
+            .forever)
+        .flatMap(({ left, right, updater }) => left.orTry(right).commit.race(updater))
 
       const result = await program.unsafeRunPromise()
 
@@ -138,7 +138,7 @@ describe.concurrent("STM", () => {
     })
 
     it("fails if left fails", async () => {
-      const program = STM.fail("left").orTry(STM.succeed("right")).commit()
+      const program = STM.fail("left").orTry(STM.succeed("right")).commit
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -146,7 +146,7 @@ describe.concurrent("STM", () => {
     })
 
     it("fails if right fails", async () => {
-      const program = STM.retry.orTry(STM.fail("right")).commit()
+      const program = STM.retry.orTry(STM.fail("right")).commit
 
       const result = await program.unsafeRunPromiseExit()
 

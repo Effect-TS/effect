@@ -1,11 +1,10 @@
 /**
- * @tsplus fluent ets/RuntimeConfig addSupervisor
+ * @tsplus static effect/core/io/RuntimeConfig.Aspects addSupervisor
+ * @tsplus pipeable effect/core/io/RuntimeConfig addSupervisor
  */
-export function addSupervisor_<A>(self: RuntimeConfig, supervisor: Supervisor<A>): RuntimeConfig {
-  return self.copy({ supervisor: self.value.supervisor + supervisor })
+export function addSupervisor<A>(supervisor: Supervisor<A>) {
+  return (self: RuntimeConfig): RuntimeConfig =>
+    self.copy({
+      supervisor: self.value.supervisor + supervisor
+    })
 }
-
-/**
- * @tsplus static ets/RuntimeConfig/Aspects addSupervisor
- */
-export const addSupervisor = Pipeable(addSupervisor_)

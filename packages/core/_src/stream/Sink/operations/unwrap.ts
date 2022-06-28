@@ -3,7 +3,7 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
 /**
  * Creates a sink produced from an effect.
  *
- * @tsplus static ets/Sink/Ops unwrap
+ * @tsplus static effect/core/stream/Sink.Ops unwrap
  */
 export function unwrap<R, E, In, L, Z>(
   effect: LazyArg<Effect<R, E, Sink<R, E, In, L, Z>>>,

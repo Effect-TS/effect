@@ -2,19 +2,10 @@
  * Finds the result of applying a partial function to the first value in its
  * domain.
  *
- * @tsplus fluent ets/TArray collectFirst
+ * @tsplus static effect/core/stm/TArray.Aspects collectFirst
+ * @tsplus pipeable effect/core/stm/TArray collectFirst
  */
-export function collectFirst_<A, B>(
-  self: TArray<A>,
-  pf: (a: A) => Maybe<B>
-): USTM<Maybe<B>> {
-  return self.find((a) => pf(a).isSome()).map((option) => option.flatMap(pf))
+export function collectFirst<A, B>(pf: (a: A) => Maybe<B>) {
+  return (self: TArray<A>): STM<never, never, Maybe<B>> =>
+    self.find((a) => pf(a).isSome()).map((option) => option.flatMap(pf))
 }
-
-/**
- * Finds the result of applying a partial function to the first value in its
- * domain.
- *
- * @tsplus static ets/TArray/Aspects collectFirst
- */
-export const collectFirst = Pipeable(collectFirst_)

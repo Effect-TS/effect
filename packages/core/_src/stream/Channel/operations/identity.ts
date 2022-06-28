@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Channel/Ops identity
+ * @tsplus static effect/core/stream/Channel.Ops identity
  */
 export function identity<Err, Elem, Done>(): Channel<
   never,

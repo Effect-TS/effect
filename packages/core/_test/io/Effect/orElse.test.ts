@@ -4,18 +4,18 @@ describe.concurrent("orElse", () => {
       const error = new Error("died")
       const fiberId = FiberId(0, 123, TraceElement.empty)
       const program = Effect.Do()
-        .bind("plain", () => (Effect.die(error) | Effect.unit).exit())
+        .bind("plain", () => (Effect.die(error) | Effect.unit).exit)
         .bind("both", () =>
           (
             Effect.failCause(Cause.both(Cause.interrupt(fiberId), Cause.die(error))) |
             Effect.unit
-          ).exit())
+          ).exit)
         .bind("then", () =>
           (
             Effect.failCause(Cause.then(Cause.interrupt(fiberId), Cause.die(error))) |
             Effect.unit
-          ).exit())
-        .bind("fail", () => (Effect.fail(error) | Effect.unit).exit())
+          ).exit)
+        .bind("fail", () => (Effect.fail(error) | Effect.unit).exit)
 
       const { both, fail, plain, then } = await program.unsafeRunPromise()
 
@@ -83,7 +83,7 @@ describe.concurrent("orElse", () => {
     })
 
     it("otherwise fails with the specified error", async () => {
-      const program = Effect.fail(false).orElseFail(true).flip()
+      const program = Effect.fail(false).orElseFail(true).flip
 
       const result = await program.unsafeRunPromise()
 

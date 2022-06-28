@@ -3,7 +3,7 @@ import type { ChunkBuilder } from "@tsplus/stdlib/collections/Chunk/builder"
 /**
  * A sink that collects first `n` elements into a chunk.
  *
- * @tsplus static ets/Sink/Ops collectAllN
+ * @tsplus static effect/core/stream/Sink.Ops collectAllN
  */
 export function collectAllN<In>(
   n: number,

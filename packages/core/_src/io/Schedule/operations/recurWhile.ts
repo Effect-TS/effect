@@ -1,7 +1,7 @@
 /**
  * A schedule that recurs for as long as the predicate evaluates to true.
  *
- * @tsplus static ets/Schedule/Ops recurWhile
+ * @tsplus static effect/core/io/Schedule.Ops recurWhile
  */
 export function recurWhile<A>(
   f: Predicate<A>

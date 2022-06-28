@@ -1,11 +1,10 @@
 /**
- * @tsplus fluent ets/TDeferred fail
+ * @tsplus static effect/core/stm/TDeferred.Aspects fail
+ * @tsplus pipeable effect/core/stm/TDeferred fail
  */
-export function fail_<E, A>(self: TDeferred<E, A>, e: E): USTM<boolean> {
-  return self.done(Either.left(e))
+export function fail<E>(error: E) {
+  return <A>(self: TDeferred<E, A>): STM<never, never, boolean> =>
+    self.done(
+      Either.left(error)
+    )
 }
-
-/**
- * @tsplus static ets/TDeferred/Aspects fail
- */
-export const fail = Pipeable(fail_)

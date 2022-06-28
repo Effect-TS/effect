@@ -4,7 +4,7 @@ import { ILayerScoped } from "@effect/core/io/Layer/definition"
  * Constructs a layer from the specified scoped effect, which must return one
  * or more services.
  *
- * @tsplus static ets/Layer/Ops scopedEnvironment
+ * @tsplus static effect/core/io/Layer.Ops scopedEnvironment
  */
 export function scopedEnvironment<R, E, A>(
   effect: LazyArg<Effect<R, E, Env<A>>>,

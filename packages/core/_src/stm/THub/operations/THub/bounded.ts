@@ -3,7 +3,7 @@
  * messages until they have been taken by all subscribers, applying back
  * pressure to publishers if the hub is at capacity.
  *
- * @tsplus static ets/THub/Ops bounded
+ * @tsplus static effect/core/stm/THub.Ops bounded
  */
 export function bounded<A>(
   requestedCapacity: number

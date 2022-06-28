@@ -1,9 +1,5 @@
 import { ICheckInterrupt, IInterruptStatus } from "@effect/core/io/Effect/definition/primitives"
 
-// -----------------------------------------------------------------------------
-// Model
-// -----------------------------------------------------------------------------
-
 /**
  * Used to restore the inherited interruptibility
  */
@@ -40,7 +36,7 @@ export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
   ): Effect<R, E, A> => {
     return Effect.suspendSucceed(
       this.flag.isUninterruptible
-        ? effect().uninterruptible().disconnect().interruptible()
+        ? effect().uninterruptible.disconnect.interruptible
         : effect().interruptStatus(this.flag)
     )
   }
@@ -53,7 +49,7 @@ export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
 /**
  * Returns an effect that is interrupted by the current fiber
  *
- * @tsplus static ets/Effect/Ops interrupt
+ * @tsplus static effect/core/io/Effect.Ops interrupt
  */
 export const interrupt = Effect.fiberId.flatMap((fiberId) => Effect.interruptAs(fiberId))
 
@@ -63,25 +59,12 @@ export const interrupt = Effect.fiberId.flatMap((fiberId) => Effect.interruptAs(
  * the effect becomes uninterruptible. These changes are compositional, so
  * they only affect regions of the effect.
  *
- * @tsplus fluent ets/Effect interruptStatus
+ * @tsplus static effect/core/io/Effect.Aspects interruptStatus
+ * @tsplus pipeable effect/core/io/Effect interruptStatus
  */
-export function interruptStatus_<R, E, A>(
-  self: Effect<R, E, A>,
-  flag: LazyArg<InterruptStatus>,
-  __tsplusTrace?: string
-): Effect<R, E, A> {
-  return new IInterruptStatus(self, flag, __tsplusTrace)
+export function interruptStatus(flag: LazyArg<InterruptStatus>, __tsplusTrace?: string) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> => new IInterruptStatus(self, flag, __tsplusTrace)
 }
-
-/**
- * Switches the interrupt status for this effect. If `true` is used, then the
- * effect becomes interruptible (the default), while if `false` is used, then
- * the effect becomes uninterruptible. These changes are compositional, so
- * they only affect regions of the effect.
- *
- * @tsplus static ets/Effect/Aspects interruptStatus
- */
-export const interruptStatus = Pipeable(interruptStatus_)
 
 /**
  * Returns a new effect that performs the same operations as this effect, but
@@ -94,7 +77,7 @@ export const interruptStatus = Pipeable(interruptStatus_)
  * interrupted in unexpected places. Do not use this operator unless you know
  * exactly what you are doing. Instead, you should use `uninterruptibleMask`.
  *
- * @tsplus fluent ets/Effect interruptible
+ * @tsplus getter effect/core/io/Effect interruptible
  */
 export function interruptible<R, E, A>(
   self: Effect<R, E, A>,
@@ -111,7 +94,7 @@ export function interruptible<R, E, A>(
  * Uninterruptible effects may recover from all failure causes (including
  * interruption of an inner effect that has been made interruptible).
  *
- * @tsplus fluent ets/Effect uninterruptible
+ * @tsplus getter effect/core/io/Effect uninterruptible
  */
 export function uninterruptible<R, E, A>(
   self: Effect<R, E, A>,
@@ -124,7 +107,7 @@ export function uninterruptible<R, E, A>(
  * Checks the interrupt status, and produces the effect returned by the
  * specified callback.
  *
- * @tsplus static ets/Effect/Ops checkInterruptible
+ * @tsplus static effect/core/io/Effect.Ops checkInterruptible
  */
 export function checkInterruptible<R, E, A>(
   f: (interruptStatus: InterruptStatus) => Effect<R, E, A>,
@@ -138,13 +121,13 @@ export function checkInterruptible<R, E, A>(
  * be used to restore the inherited interruptibility from whatever region the
  * effect is composed into.
  *
- * @tsplus static ets/Effect/Ops interruptibleMask
+ * @tsplus static effect/core/io/Effect.Ops interruptibleMask
  */
 export function interruptibleMask<R, E, A>(
   f: (statusRestore: InterruptStatusRestore) => Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return checkInterruptible((flag) => f(new InterruptStatusRestoreImpl(flag)).interruptible())
+  return checkInterruptible((flag) => f(new InterruptStatusRestoreImpl(flag)).interruptible)
 }
 
 /**
@@ -152,13 +135,13 @@ export function interruptibleMask<R, E, A>(
  * be used to restore the inherited interruptibility from whatever region the
  * effect is composed into.
  *
- * @tsplus static ets/Effect/Ops uninterruptibleMask
+ * @tsplus static effect/core/io/Effect.Ops uninterruptibleMask
  */
 export function uninterruptibleMask<R, E, A>(
   f: (statusRestore: InterruptStatusRestore) => Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return checkInterruptible((flag) => f(new InterruptStatusRestoreImpl(flag)).uninterruptible())
+  return checkInterruptible((flag) => f(new InterruptStatusRestoreImpl(flag)).uninterruptible)
 }
 
 /**
@@ -174,17 +157,17 @@ export function uninterruptibleMask<R, E, A>(
  *
  * See timeout and race for other applications.
  *
- * @tsplus fluent ets/Effect disconnect
+ * @tsplus getter effect/core/io/Effect disconnect
  */
 export function disconnect<R, E, A>(
-  effect: Effect<R, E, A>,
+  self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
   return uninterruptibleMask(({ restore }) =>
     Do(($) => {
       const id = $(Effect.fiberId)
-      const fiber = $(restore(effect).forkDaemon())
-      return $(restore(fiber.join()).onInterrupt(() => fiber.interruptAs(id).forkDaemon()))
+      const fiber = $(restore(self).forkDaemon)
+      return $(restore(fiber.join).onInterrupt(() => fiber.interruptAs(id).forkDaemon))
     })
   )
 }
@@ -193,69 +176,55 @@ export function disconnect<R, E, A>(
  * Calls the specified function, and runs the effect it returns, if this
  * effect is interrupted.
  *
- * @tsplus fluent ets/Effect onInterrupt
+ * @tsplus static effect/core/io/Effect.Aspects onInterrupt
+ * @tsplus pipeable effect/core/io/Effect onInterrupt
  */
-export function onInterrupt_<R, E, A, R2, X>(
-  self: Effect<R, E, A>,
+export function onInterrupt<R2, X>(
   cleanup: (interruptors: HashSet<FiberId>) => Effect<R2, never, X>,
   __tsplusTrace?: string
-): Effect<R | R2, E, A> {
-  return Effect.uninterruptibleMask(({ restore }) =>
-    restore(self).foldCauseEffect(
-      (cause) =>
-        cause.isInterrupted
-          ? cleanup(cause.interruptors) > Effect.failCauseNow(cause)
-          : Effect.failCauseNow(cause),
-      Effect.succeedNow
+) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E, A> =>
+    Effect.uninterruptibleMask(({ restore }) =>
+      restore(self).foldCauseEffect(
+        (cause) =>
+          cause.isInterrupted
+            ? cleanup(cause.interruptors).zipRight(Effect.failCauseNow(cause))
+            : Effect.failCauseNow(cause),
+        Effect.succeedNow
+      )
     )
-  )
 }
-
-/**
- * Calls the specified function, and runs the effect it returns, if this
- * effect is interrupted.
- *
- * @tsplus static ets/Effect/Aspects onInterrupt
- */
-export const onInterrupt = Pipeable(onInterrupt_)
 
 /**
  * Calls the specified function, and runs the effect it returns, if this
  * effect is interrupted (allows for expanding error).
  *
- * @tsplus fluent ets/Effect onInterruptPolymorphic
+ * @tsplus static effect/core/io/Effect.Aspects onInterruptPolymorphic
+ * @tsplus pipeable effect/core/io/Effect onInterruptPolymorphic
  */
-export function onInterruptPolymorphic_<R, E, A, R2, E2, X>(
-  self: Effect<R, E, A>,
+export function onInterruptPolymorphic<R2, E2, X>(
   cleanup: (interruptors: HashSet<FiberId>) => Effect<R2, E2, X>,
   __tsplusTrace?: string
-): Effect<R | R2, E | E2, A> {
-  return Effect.uninterruptibleMask(({ restore }) =>
-    restore(self).foldCauseEffect(
-      (cause) =>
-        cause.isInterrupted
-          ? cleanup(cause.interruptors).foldCauseEffect(
-            (_) => Effect.failCauseNow(_),
-            () => Effect.failCauseNow(cause)
-          )
-          : Effect.failCauseNow(cause),
-      Effect.succeedNow
+) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, A> =>
+    Effect.uninterruptibleMask(({ restore }) =>
+      restore(self).foldCauseEffect(
+        (cause) =>
+          cause.isInterrupted
+            ? cleanup(cause.interruptors).foldCauseEffect(
+              (_) => Effect.failCauseNow(_),
+              () => Effect.failCauseNow(cause)
+            )
+            : Effect.failCauseNow(cause),
+        Effect.succeedNow
+      )
     )
-  )
 }
-
-/**
- * Calls the specified function, and runs the effect it returns, if this
- * effect is interrupted (allows for expanding error).
- *
- * @tsplus static ets/Effect/Aspects onInterruptPolymorphic
- */
-export const onInterruptPolymorphic = Pipeable(onInterruptPolymorphic_)
 
 /**
  * Returns an effect that is interrupted as if by the specified fiber.
  *
- * @tsplus static ets/Effect/Ops interruptAs
+ * @tsplus static effect/core/io/Effect.Ops interruptAs
  */
 export function interruptAs(fiberId: LazyArg<FiberId>, __tsplusTrace?: string) {
   return Effect.failCause(Cause.interrupt(fiberId()))

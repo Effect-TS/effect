@@ -5,25 +5,25 @@ export function resource(
   return ref
     .update((chunk) => chunk.append(Action.Acquire(id)))
     .as(id)
-    .uninterruptible()
+    .uninterruptible
     .ensuring(
       Effect.scopeWith((scope) => scope.addFinalizer(ref.update((chunk) => chunk.append(Action.Release(id)))))
     )
 }
 
 /**
- * @tsplus type ets/Test/Scope/Action
+ * @tsplus type effect/core/test/io/Scope/Action
  */
 export type Action = Acquire | Use | Release
 
 /**
- * @tsplus type ets/Test/Scope/ActionOps
+ * @tsplus type eeffect/core/test/io/Scope/Action.Ops
  */
 export interface ActionOps {}
 export const Action: ActionOps = {}
 
 /**
- * @tsplus type ets/Test/Scope/Action/Acquire
+ * @tsplus type effect/core/test/io/Scope/Action/Acquire
  */
 export class Acquire implements Equals {
   readonly _tag = "Acquire"
@@ -40,7 +40,7 @@ export class Acquire implements Equals {
 }
 
 /**
- * @tsplus type ets/Test/Scope/Action/Use
+ * @tsplus type effect/core/test/io/Scope/Action/Use
  */
 export class Use implements Equals {
   readonly _tag = "Use"
@@ -57,7 +57,7 @@ export class Use implements Equals {
 }
 
 /**
- * @tsplus type ets/Test/Scope/Action/Release
+ * @tsplus type effect/core/test/io/Scope/Action/Release
  */
 export class Release implements Equals {
   readonly _tag = "Release"
@@ -74,21 +74,21 @@ export class Release implements Equals {
 }
 
 /**
- * @tsplus static ets/Test/Scope/ActionOps Acquire
+ * @tsplus static eeffect/core/test/io/Scope/Action.Ops Acquire
  */
 export function acquire(id: number): Action {
   return new Acquire(id)
 }
 
 /**
- * @tsplus static ets/Test/Scope/ActionOps Use
+ * @tsplus static eeffect/core/test/io/Scope/Action.Ops Use
  */
 export function use(id: number): Action {
   return new Use(id)
 }
 
 /**
- * @tsplus static ets/Test/Scope/ActionOps Release
+ * @tsplus static eeffect/core/test/io/Scope/Action.Ops Release
  */
 export function release(id: number): Action {
   return new Release(id)

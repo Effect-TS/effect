@@ -29,12 +29,12 @@ export declare namespace TReentrantLock {
  * allows this structure to be composed into more complicated concurrent
  * structures that are consumed from effectful code.
  *
- * @tsplus type ets/TReentrantLock
+ * @tsplus type effect/core/stm/TReentrantLock
  */
 export interface TReentrantLock {}
 
 /**
- * @tsplus type ets/TReentrantLock/Ops
+ * @tsplus type effect/core/stm/TReentrantLock.Ops
  */
 export interface TReentrantLockOps {
   $: TReentrantLockAspects
@@ -48,6 +48,6 @@ export const TReentrantLock: TReentrantLockOps = {
 }
 
 /**
- * @tsplus type ets/TReentrantLock/Aspects
+ * @tsplus type effect/core/stm/TReentrantLock.Aspects
  */
 export interface TReentrantLockAspects {}

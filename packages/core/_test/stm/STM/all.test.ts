@@ -17,8 +17,8 @@ describe.concurrent("STM", () => {
     it("collects a list of transactional effects to a single transaction that produces a list of values", async () => {
       const program = Effect.Do()
         .bind("iterable", () => Effect.succeed(Chunk.range(1, 100).map((n) => TRef.make(n))))
-        .bind("tRefs", ({ iterable }) => STM.collectAll(iterable).commit())
-        .flatMap(({ tRefs }) => Effect.forEachPar(tRefs, (tRef) => tRef.get.commit()))
+        .bind("tRefs", ({ iterable }) => STM.collectAll(iterable).commit)
+        .flatMap(({ tRefs }) => Effect.forEachPar(tRefs, (tRef) => tRef.get.commit))
 
       const result = await program.unsafeRunPromise()
 
@@ -28,8 +28,8 @@ describe.concurrent("STM", () => {
     it("collects a chunk of transactional effects to a single transaction that produces a chunk of values", async () => {
       const program = Effect.Do()
         .bind("iterable", () => Effect.succeed(Chunk.range(1, 100).map((n) => TRef.make(n))))
-        .bind("tRefs", ({ iterable }) => STM.collectAll(Chunk.from(iterable)).commit())
-        .flatMap(({ tRefs }) => Effect.forEachPar(tRefs, (tRef) => tRef.get.commit()))
+        .bind("tRefs", ({ iterable }) => STM.collectAll(Chunk.from(iterable)).commit)
+        .flatMap(({ tRefs }) => Effect.forEachPar(tRefs, (tRef) => tRef.get.commit))
 
       const result = await program.unsafeRunPromise()
 
@@ -45,7 +45,7 @@ describe.concurrent("STM", () => {
         List.empty<STM<never, never, number>>(),
         zeroElement,
         () => nonZero
-      ).commit()
+      ).commit
 
       const result = await program.unsafeRunPromise()
 
@@ -57,7 +57,7 @@ describe.concurrent("STM", () => {
         List(3, 5, 7).map(STM.succeedNow),
         1,
         (a, b) => a + b
-      ).commit()
+      ).commit
 
       const result = await program.unsafeRunPromise()
 
@@ -68,7 +68,7 @@ describe.concurrent("STM", () => {
         List(STM.unit, STM.fail(1)),
         undefined,
         constVoid
-      ).commit()
+      ).commit
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -81,7 +81,7 @@ describe.concurrent("STM", () => {
         STM.succeed(1),
         List(2, 3, 4).map(STM.succeedNow),
         (acc, a) => acc + a
-      ).commit()
+      ).commit
 
       const result = await program.unsafeRunPromise()
 
@@ -93,7 +93,7 @@ describe.concurrent("STM", () => {
         STM.succeed(1),
         List.empty<STM<never, never, number>>(),
         (acc, a) => acc + a
-      ).commit()
+      ).commit
 
       const result = await program.unsafeRunPromise()
 

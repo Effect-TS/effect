@@ -3,25 +3,15 @@
  * translating the successful match into a failure, otherwise continue with
  * our held value.
  *
- * @tsplus fluent ets/STM rejectSTM
+ * @tsplus static effect/core/stm/STM.Aspects rejectSTM
+ * @tsplus pipeable effect/core/stm/STM rejectSTM
  */
-export function rejectSTM_<R, E, A, R1, E1>(
-  self: STM<R, E, A>,
-  pf: (a: A) => Maybe<STM<R1, E1, E1>>
-): STM<R | R1, E | E1, A> {
-  return self.flatMap((a) =>
-    pf(a).fold(
-      () => STM.succeedNow(a),
-      (effect) => effect.flatMap(STM.failNow)
+export function rejectSTM<A, R1, E1>(pf: (a: A) => Maybe<STM<R1, E1, E1>>) {
+  return <R, E>(self: STM<R, E, A>): STM<R | R1, E | E1, A> =>
+    self.flatMap((a) =>
+      pf(a).fold(
+        () => STM.succeedNow(a),
+        (effect) => effect.flatMap(STM.failNow)
+      )
     )
-  )
 }
-
-/**
- * Continue with the returned computation if the `PartialFunction` matches,
- * translating the successful match into a failure, otherwise continue with
- * our held value.
- *
- * @tsplus static ets/STM/Aspects rejectSTM
- */
-export const rejectSTM = Pipeable(rejectSTM_)

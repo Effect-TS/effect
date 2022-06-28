@@ -3,7 +3,7 @@ import { Emit } from "@effect/core/stream/Channel/definition/primitives"
 /**
  * Writes an output to the channel.
  *
- * @tsplus static ets/Channel/Ops write
+ * @tsplus static effect/core/stream/Channel.Ops write
  */
 export function write<OutElem>(
   out: LazyArg<OutElem>

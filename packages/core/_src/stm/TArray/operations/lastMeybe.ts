@@ -3,7 +3,7 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
 /**
  * The last entry in the array, if it exists.
  *
- * @tsplus getter ets/TArray lastMaybe
+ * @tsplus getter effect/core/stm/TArray lastMaybe
  */
 export function lastMaybe<A>(self: TArray<A>): USTM<Maybe<A>> {
   concreteTArray(self)

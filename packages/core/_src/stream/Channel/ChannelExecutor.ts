@@ -97,7 +97,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
       if (head._tag === "ContinuationK") {
         conts = conts.unsafeTail ?? List.empty()
       } else {
-        acc = acc > head.finalizer(exit).exit()
+        acc = acc > head.finalizer(exit).exit
         conts = conts.unsafeTail ?? List.empty()
       }
     }
@@ -183,12 +183,12 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     }
 
     return Effect.tuple(
-      this.ifNotNull(closeSubexecutors).exit(),
-      this.ifNotNull(runInProgressFinalizers).exit(),
-      this.ifNotNull(closeSelf).exit()
+      this.ifNotNull(closeSubexecutors).exit,
+      this.ifNotNull(runInProgressFinalizers).exit,
+      this.ifNotNull(closeSelf).exit
     )
       .map(({ tuple: [a, b, c] }) => a > b > c)
-      .uninterruptible()
+      .uninterruptible
       .flatMap((exit) => Effect.done(exit))
   }
 
@@ -263,15 +263,16 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
                     })
 
                   result = ChannelState.Effect(
-                    drainer.fork().flatMap((fiber) =>
+                    drainer.fork.flatMap((fiber) =>
                       Effect.succeed(() =>
                         this.addFinalizer(
                           (exit) =>
-                            fiber.interrupt() >
+                            fiber.interrupt.zipRight(
                               Effect.suspendSucceed(() => {
                                 const effect = this.restorePipe(exit, inputExecutor)
                                 return effect != null ? effect : Effect.unit
                               })
+                            )
                         )
                       )
                     )
@@ -481,7 +482,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     return ChannelState.Effect(
       finalizerEffect
         .ensuring(Effect.succeed(this.clearInProgressFinalizer()))
-        .uninterruptible() > Effect.succeed(this.doneSucceed(z))
+        .uninterruptible > Effect.succeed(this.doneSucceed(z))
     )
   }
 
@@ -520,7 +521,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     return ChannelState.Effect(
       finalizerEffect
         .ensuring(Effect.succeed(this.clearInProgressFinalizer()))
-        .uninterruptible()
+        .uninterruptible
         .zipRight(Effect.succeed(this.doneHalt(cause)))
     )
   }
@@ -579,7 +580,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ): Effect.RIO<R, unknown> | undefined {
     return finalizers.length === 0
       ? undefined
-      : Effect.forEach(finalizers, (f) => f(exit).exit())
+      : Effect.forEach(finalizers, (f) => f(exit).exit)
         .map((results) => {
           const result = Exit.collectAll(results)
           if (result._tag === "Some") {

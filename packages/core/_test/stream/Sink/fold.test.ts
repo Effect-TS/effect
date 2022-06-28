@@ -5,7 +5,7 @@ describe.concurrent("Sink", () => {
     it("empty", async () => {
       const program = Stream.empty
         .transduce(Sink.fold<number, number>(0, constTrue, (a, b) => a + b))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -54,7 +54,7 @@ describe.concurrent("Sink", () => {
       const program = Effect.struct({
         xs: Stream(1, 2, 3, 4).run(Sink.foldLeft<number, string>("", (s, n) => s + n)),
         ys: Stream(1, 2, 3, 4)
-          .runCollect()
+          .runCollect
           .map((chunk) => chunk.reduce("", (s, n) => s + n))
       })
 
@@ -68,7 +68,7 @@ describe.concurrent("Sink", () => {
     it("empty", async () => {
       const program = Stream.empty
         .transduce(Sink.foldEffect<never, never, number, number>(0, constTrue, (a, b) => Effect.succeed(a + b)))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -93,10 +93,10 @@ describe.concurrent("Sink", () => {
                   (_, a) => effects.update((list) => list.prepend(a)) > Effect.succeed(30)
                 )
               )
-              .runCollect())
+              .runCollect)
           .bind("result", ({ effects }) => effects.get())
           .map(({ exit, result }) => Tuple(exit, result))
-          .exit()
+          .exit
       }
 
       const result1 = await run(empty).unsafeRunPromise()
@@ -115,11 +115,11 @@ describe.concurrent("Sink", () => {
         const program = Effect.struct({
           sinkResult: Stream(1, 2, 3)
             .run(Sink.foldLeftEffect<never, never, number, string>("", (s, n) => Effect.succeed(s + n)))
-            .exit(),
+            .exit,
           foldResult: Stream(1, 2, 3)
-            .runFold<never, never, number, List<number>>(List.empty<number>(), (acc, el) => acc.prepend(el))
+            .runFold(List.empty<number>(), (acc, el) => acc.prepend(el))
             .map((list) => list.reverse.reduce("", (s, n) => s + n))
-            .exit()
+            .exit
         })
 
         const { foldResult, sinkResult } = await program.unsafeRunPromise()
@@ -134,7 +134,7 @@ describe.concurrent("Sink", () => {
     it("should fold until the predicate is satisfied", async () => {
       const program = Stream(1, 1, 1, 1, 1, 1)
         .transduce(Sink.foldUntil<number, number>(0, 3, (n, a) => n + a))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -148,7 +148,7 @@ describe.concurrent("Sink", () => {
         .transduce(
           Sink.foldUntilEffect<never, never, number, number>(0, 3, (n, a) => Effect.succeedNow(n + a))
         )
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -168,7 +168,7 @@ describe.concurrent("Sink", () => {
           )
         )
         .map((list) => list.reverse)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -194,7 +194,7 @@ describe.concurrent("Sink", () => {
           )
         )
         .map((list) => list.reverse)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -217,7 +217,7 @@ describe.concurrent("Sink", () => {
             (a, b) => a + b
           )
         )
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -237,7 +237,7 @@ describe.concurrent("Sink", () => {
           )
         )
         .map((list: List<number>) => list.reverse)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -253,9 +253,9 @@ describe.concurrent("Sink", () => {
   describe.concurrent("foldWeightedDecompose", () => {
     it("simple example", async () => {
       const program = Stream(1, 5, 1)
-        .transduce<never, never, number, never, never, List<number>>(
+        .transduce(
           Sink.foldWeightedDecomposeEffect(
-            List.empty(),
+            List.empty<number>(),
             (_, i) => Effect.succeedNow(i),
             4,
             (i) => Effect.succeedNow(i > 1 ? Chunk(i - 1, 1) : Chunk(1)),
@@ -263,7 +263,7 @@ describe.concurrent("Sink", () => {
           )
         )
         .map((list) => list.reverse)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -286,7 +286,7 @@ describe.concurrent("Sink", () => {
             (a, b) => Effect.succeedNow(a + b)
           )
         )
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 

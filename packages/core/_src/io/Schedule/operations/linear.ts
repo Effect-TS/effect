@@ -3,10 +3,10 @@
  * given by `base * n` where `n` is the number of repetitions so far. Returns
  * the current duration between recurrences.
  *
- * @tsplus static ets/Schedule/Ops linear
+ * @tsplus static effect/core/io/Schedule.Ops linear
  */
 export function linear(
   base: Duration
 ): Schedule<number, never, unknown, Duration> {
-  return Schedule.delayed(Schedule.forever.map((i) => new Duration(base.millis * (i + 1))))
+  return Schedule.delayed(Schedule.repeatForever.map((i) => new Duration(base.millis * (i + 1))))
 }

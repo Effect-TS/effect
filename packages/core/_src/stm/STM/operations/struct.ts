@@ -3,7 +3,7 @@ import type { _E, _R } from "@effect/core/stm/STM/definition/base"
 /**
  * Applicative structure.
  *
- * @tsplus static ets/STM/Ops struct
+ * @tsplus static effect/core/stm/STM.Ops struct
  */
 export function struct<NER extends Record<string, STM<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, STM<any, any, any>>,

@@ -4,6 +4,6 @@ import { makeBackPressureStrategy } from "@effect/core/io/Effect/operations/excl
 export { BackPressureStrategy } from "@effect/core/io/Effect/operations/excl-forEach"
 
 /**
- * @tsplus static ets/QueueStrategy/Ops BackPressure
+ * @tsplus static effect/core/io/Queue/Strategy.Ops BackPressure
  */
 export const backPressureStrategy: <A>() => BackPressureStrategy<A> = makeBackPressureStrategy

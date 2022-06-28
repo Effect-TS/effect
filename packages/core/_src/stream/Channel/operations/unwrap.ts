@@ -1,7 +1,7 @@
 /**
  * Makes a channel from an effect that returns a channel in case of success.
  *
- * @tsplus static ets/Channel/Ops unwrap
+ * @tsplus static effect/core/stream/Channel.Ops unwrap
  */
 export function unwrap<R, E, R2, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   channel: LazyArg<

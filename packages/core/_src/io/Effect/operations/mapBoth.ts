@@ -2,24 +2,17 @@
  * Returns an effect whose failure and success channels have been mapped by
  * the specified pair of functions, `f` and `g`.
  *
- * @tsplus fluent ets/Effect mapBoth
+ * @tsplus static effect/core/io/Effect.Aspects mapBoth
+ * @tsplus pipeable effect/core/io/Effect mapBoth
  */
-export function mapBoth_<R, E, A, E2, B>(
-  self: Effect<R, E, A>,
+export function mapBoth<E, A, E2, A2>(
   f: (e: E) => E2,
-  g: (a: A) => B,
+  g: (a: A) => A2,
   __tsplusTrace?: string
-): Effect<R, E2, B> {
-  return self.foldEffect(
-    (e) => Effect.failNow(f(e)),
-    (a) => Effect.succeedNow(g(a))
-  )
+) {
+  return <R>(self: Effect<R, E, A>): Effect<R, E2, A2> =>
+    self.foldEffect(
+      (e) => Effect.failNow(f(e)),
+      (a) => Effect.succeedNow(g(a))
+    )
 }
-
-/**
- * Returns an effect whose failure and success channels have been mapped by
- * the specified pair of functions, `f` and `g`.
- *
- * @tsplus static ets/Effect/Aspects mapBoth
- */
-export const mapBoth = Pipeable(mapBoth_)

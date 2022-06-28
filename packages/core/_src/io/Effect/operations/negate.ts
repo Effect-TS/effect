@@ -1,7 +1,7 @@
 /**
  * Returns a new effect where boolean value of this effect is negated.
  *
- * @tsplus fluent ets/Effect negate
+ * @tsplus getter effect/core/io/Effect negate
  */
 export function negate<R, E>(
   self: Effect<R, E, boolean>,

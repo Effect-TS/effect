@@ -8,7 +8,7 @@ import { utfDecodeDetectingBom } from "@effect/core/stream/Stream/operations/_in
  * Determines the right encoder to use based on the Byte Order Mark (BOM). If it
  * doesn't detect one, it defaults to utf8Decode.
  *
- * @tsplus fluent ets/Stream utfDecode
+ * @tsplus getter effect/core/stream/Stream utfDecode
  */
 export function utfDecode<R, E>(
   self: Stream<R, E, number>,

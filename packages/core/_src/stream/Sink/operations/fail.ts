@@ -3,7 +3,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
 /**
  * A sink that always fails with the specified error.
  *
- * @tsplus static ets/Sink/Ops fail
+ * @tsplus static effect/core/stream/Sink.Ops fail
  */
 export function fail<E>(
   e: LazyArg<E>,

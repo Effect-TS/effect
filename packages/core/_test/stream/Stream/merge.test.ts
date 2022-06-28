@@ -5,7 +5,7 @@ describe.concurrent("Stream", () => {
     it("short circuiting", async () => {
       const program = Stream.mergeAll(2)(Stream.never, Stream(1))
         .take(1)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -18,11 +18,11 @@ describe.concurrent("Stream", () => {
       const program = Effect.struct({
         mergedStream: stream1
           .merge(stream2)
-          .runCollect()
+          .runCollect
           .map((chunk) => Chunk.from(new Set(chunk))),
         mergedChunks: stream1
-          .runCollect()
-          .zipWith(stream2.runCollect(), (c1, c2) => c1 + c2)
+          .runCollect
+          .zipWith(stream2.runCollect, (c1, c2) => c1 + c2)
           .map((chunk) => Chunk.from(new Set(chunk)))
       })
 
@@ -34,8 +34,8 @@ describe.concurrent("Stream", () => {
     it("fail as soon as one stream fails", async () => {
       const program = Stream(1, 2, 3)
         .merge(Stream.fail(undefined))
-        .runCollect()
-        .exit()
+        .runCollect
+        .exit
         .map((exit) => exit.isSuccess())
 
       const result = await program.unsafeRunPromise()
@@ -52,7 +52,7 @@ describe.concurrent("Stream", () => {
       //     queue2 <- Queue.unbounded[Int]
       //     stream1 = ZStream.fromQueue(queue1)
       //     stream2 = ZStream.fromQueue(queue2)
-      //     fiber  <- stream1.mergeTerminateLeft(stream2).runCollect().fork
+      //     fiber  <- stream1.mergeTerminateLeft(stream2).runCollect.fork
       //     _      <- queue1.offer(1) *> TestClock.adjust(1.second)
       //     _      <- queue1.offer(2) *> TestClock.adjust(1.second)
       //     _      <- queue1.shutdown *> TestClock.adjust(1.second)
@@ -66,7 +66,7 @@ describe.concurrent("Stream", () => {
       const stream2 = Stream.fromEffect(Effect.sleep((5).seconds).as(4))
       const program = stream1
         .mergeTerminateLeft(stream2)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -82,7 +82,7 @@ describe.concurrent("Stream", () => {
       //   queue2 <- Queue.unbounded[Int]
       //   stream1 = ZStream.fromQueue(queue1)
       //   stream2 = ZStream.fromQueue(queue2)
-      //   fiber  <- stream1.mergeTerminateRight(stream2).runCollect().fork
+      //   fiber  <- stream1.mergeTerminateRight(stream2).runCollect.fork
       //   _      <- queue2.offer(2) *> TestClock.adjust(1.second)
       //   _      <- queue2.offer(3) *> TestClock.adjust(1.second)
       //   _      <- queue2.shutdown *> TestClock.adjust(1.second)
@@ -100,7 +100,7 @@ describe.concurrent("Stream", () => {
       //   queue2 <- Queue.unbounded[Int]
       //   stream1 = ZStream.fromQueue(queue1)
       //   stream2 = ZStream.fromQueue(queue2)
-      //   fiber  <- stream1.mergeTerminateEither(stream2).runCollect().fork
+      //   fiber  <- stream1.mergeTerminateEither(stream2).runCollect.fork
       //   _      <- queue1.shutdown
       //   _      <- TestClock.adjust(1.second)
       //   _      <- queue2.offer(1)
@@ -115,8 +115,8 @@ describe.concurrent("Stream", () => {
       const stream2 = Stream.fail("ouch")
       const program = stream1
         .mergeWith(stream2, constVoid, constVoid)
-        .runCollect()
-        .either()
+        .runCollect
+        .either
 
       const result = await program.unsafeRunPromise()
 

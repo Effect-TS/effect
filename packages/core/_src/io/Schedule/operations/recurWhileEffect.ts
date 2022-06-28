@@ -2,7 +2,7 @@
  * A schedule that recurs for as long as the effectful predicate evaluates to
  * true.
  *
- * @tsplus static ets/Schedule/Ops recurWhileEffect
+ * @tsplus static effect/core/io/Schedule.Ops recurWhileEffect
  */
 export function recurWhileEffect<Env, A>(
   f: (a: A) => Effect<Env, never, boolean>

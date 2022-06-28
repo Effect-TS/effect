@@ -1,4 +1,4 @@
 /**
- * @tsplus static ets/Pull/Ops end
+ * @tsplus static effect/core/stream/Pull.Ops end
  */
-export const end: Effect.IO<Maybe<never>, never> = Effect.fail(Maybe.none)
+export const end: Effect<never, Maybe<never>, never> = Effect.fail(Maybe.none)

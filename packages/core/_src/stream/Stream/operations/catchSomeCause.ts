@@ -3,23 +3,15 @@
  * one fails with some errors. Allows recovery from all causes of failure,
  * including interruption if the stream is uninterruptible.
  *
- * @tsplus fluent ets/Stream catchSomeCause
+ * @tsplus static effect/core/stream/Stream.Aspects catchSomeCause
+ * @tsplus pipeable effect/core/stream/Stream catchSomeCause
  */
-export function catchSomeCause_<R, E, A, R2, E2, A2>(
-  self: Stream<R, E, A>,
+export function catchSomeCause<E, R2, E2, A2>(
   pf: (cause: Cause<E>) => Maybe<Stream<R2, E2, A2>>,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, A | A2> {
-  return self.catchAllCause(
-    (cause): Stream<R2, E | E2, A2> => pf(cause).getOrElse(Stream.failCause(cause))
-  )
+) {
+  return <R, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A | A2> =>
+    self.catchAllCause(
+      (cause): Stream<R2, E | E2, A2> => pf(cause).getOrElse(Stream.failCause(cause))
+    )
 }
-
-/**
- * Switches over to the stream produced by the provided function in case this
- * one fails with some errors. Allows recovery from all causes of failure,
- * including interruption if the stream is uninterruptible.
- *
- * @tsplus static ets/Stream/Aspects catchSomeCause
- */
-export const catchSomeCause = Pipeable(catchSomeCause_)

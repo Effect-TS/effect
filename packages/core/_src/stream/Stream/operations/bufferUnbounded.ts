@@ -4,13 +4,13 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  * Allows a faster producer to progress independently of a slower consumer by
  * buffering chunks into an unbounded queue.
  *
- * @tsplus fluent ets/Stream bufferUnbounded
+ * @tsplus getter effect/core/stream/Stream bufferUnbounded
  */
-export function bufferUnbounded_<R, E, A>(
+export function bufferUnbounded<R, E, A>(
   self: Stream<R, E, A>,
   __tsplusTrace?: string
 ): Stream<R, E, A> {
-  const queue = self.toQueueUnbounded()
+  const queue = self.toQueueUnbounded
   return new StreamInternal(
     Channel.unwrapScoped(queue.map((queue) => {
       const process: Channel<
@@ -32,11 +32,3 @@ export function bufferUnbounded_<R, E, A>(
     }))
   )
 }
-
-/**
- * Allows a faster producer to progress independently of a slower consumer by
- * buffering chunks into an unbounded queue.
- *
- * @tsplus static ets/Stream/Aspects bufferUnbounded
- */
-export const bufferUnbounded = Pipeable(bufferUnbounded_)

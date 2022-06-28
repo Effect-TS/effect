@@ -7,7 +7,7 @@ describe.concurrent("Stream", () => {
         Chunk.empty<number>(),
         Chunk(6, 7)
       )
-      const program = Stream.fromChunks(...chunk).buffer(2).runCollect()
+      const program = Stream.fromChunks(...chunk).buffer(2).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -16,7 +16,7 @@ describe.concurrent("Stream", () => {
 
     it("buffer the stream with error", async () => {
       const error = new RuntimeError("boom")
-      const program = (Stream.range(0, 10) + Stream.fail(error)).buffer(2).runCollect()
+      const program = (Stream.range(0, 10) + Stream.fail(error)).buffer(2).runCollect
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -35,7 +35,7 @@ describe.concurrent("Stream", () => {
                   Effect.when(n === 4, latch.succeed(undefined))
             )
             .buffer(2))
-        .bind("chunk", ({ stream }) => stream.take(2).runCollect())
+        .bind("chunk", ({ stream }) => stream.take(2).runCollect)
         .tap(({ latch }) => latch.await())
         .bind("list", ({ ref }) => ref.get())
 
@@ -55,7 +55,7 @@ describe.concurrent("Stream", () => {
         Stream.range(1001, 2000)
       )
         .bufferDropping(2)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -89,7 +89,7 @@ describe.concurrent("Stream", () => {
         .bindValue("stream", ({ stream1, stream2, stream3 }) => (stream1 + stream2 + stream3).bufferDropping(8))
         .flatMap(({ latch1, latch2, latch3, latch4, ref, stream }) =>
           Effect.scoped(
-            stream.toPull().flatMap((as) =>
+            stream.toPull.flatMap((as) =>
               Effect.Do()
                 .bind("zero", () => as)
                 .tap(() => latch1.succeed(undefined))
@@ -129,7 +129,7 @@ describe.concurrent("Stream", () => {
         Stream.range(1001, 2000)
       )
         .bufferSliding(2)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -158,7 +158,7 @@ describe.concurrent("Stream", () => {
         .bindValue("stream", ({ stream1, stream2, stream3 }) => (stream1 + stream2 + stream3).bufferSliding(8))
         .flatMap(({ latch1, latch2, latch3, latch4, ref, stream }) =>
           Effect.scoped(
-            stream.toPull().flatMap((as) =>
+            stream.toPull.flatMap((as) =>
               Effect.Do()
                 .bind("zero", () => as)
                 .tap(() => latch1.succeed(undefined))
@@ -192,7 +192,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("bufferUnbounded", () => {
     it("buffer the stream", async () => {
       const chunk = Chunk(1, 2, 3, 4, 5)
-      const program = Stream.fromCollection(chunk).bufferUnbounded().runCollect()
+      const program = Stream.fromCollection(chunk).bufferUnbounded.runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -202,8 +202,8 @@ describe.concurrent("Stream", () => {
     it("buffer the stream with error", async () => {
       const error = new RuntimeError("boom")
       const program = (Stream.range(0, 10) + Stream.fail(error))
-        .bufferUnbounded()
-        .runCollect()
+        .bufferUnbounded
+        .runCollect
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -222,8 +222,8 @@ describe.concurrent("Stream", () => {
                   Effect.when(i === 999, latch.succeed(undefined))
             )
             .rechunk(1000)
-            .bufferUnbounded())
-        .bind("chunk", ({ stream }) => stream.take(2).runCollect())
+            .bufferUnbounded)
+        .bind("chunk", ({ stream }) => stream.take(2).runCollect)
         .tap(({ latch }) => latch.await())
         .bind("list", ({ ref }) => ref.get())
 
@@ -244,7 +244,7 @@ describe.concurrent("Stream", () => {
       )
       const program = Stream.fromChunks(...chunk)
         .bufferChunks(2)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -255,7 +255,7 @@ describe.concurrent("Stream", () => {
       const error = new RuntimeError("boom")
       const program = (Stream.range(0, 10) + Stream.fail(error))
         .bufferChunks(2)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -274,7 +274,7 @@ describe.concurrent("Stream", () => {
                   Effect.when(n === 4, latch.succeed(undefined))
             )
             .bufferChunks(2))
-        .bind("chunk", ({ stream }) => stream.take(2).runCollect())
+        .bind("chunk", ({ stream }) => stream.take(2).runCollect)
         .tap(({ latch }) => latch.await())
         .bind("list", ({ ref }) => ref.get())
 

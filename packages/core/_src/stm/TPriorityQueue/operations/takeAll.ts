@@ -3,7 +3,7 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
 /**
  * Takes all values from the queue.
  *
- * @tsplus getter ets/TPriorityQueue takeAll
+ * @tsplus getter effect/core/stm/TPriorityQueue takeAll
  */
 export function takeAll<A>(self: TPriorityQueue<A>): USTM<Chunk<A>> {
   concreteTPriorityQueue(self)

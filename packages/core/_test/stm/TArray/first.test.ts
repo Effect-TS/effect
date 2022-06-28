@@ -4,8 +4,8 @@ describe.concurrent("TArray", () => {
   describe.concurrent("firstMaybe", () => {
     it("retrieves the first item", async () => {
       const program = makeStair(n)
-        .commit()
-        .flatMap((tArray) => tArray.firstMaybe.commit())
+        .commit
+        .flatMap((tArray) => tArray.firstMaybe.commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -14,8 +14,8 @@ describe.concurrent("TArray", () => {
 
     it("is none for an empty array", async () => {
       const program = TArray.empty<number>()
-        .commit()
-        .flatMap((tArray) => tArray.firstMaybe.commit())
+        .commit
+        .flatMap((tArray) => tArray.firstMaybe.commit)
 
       const result = await program.unsafeRunPromise()
 

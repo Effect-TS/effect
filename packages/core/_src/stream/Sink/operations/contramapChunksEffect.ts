@@ -4,34 +4,28 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
  * Effectfully transforms this sink's input chunks. `f` must preserve
  * chunking-invariance.
  *
- * @tsplus fluent ets/Sink contramapChunksEffect
+ * @tsplus static effect/core/stream/Sink.Aspects contramapChunksEffect
+ * @tsplus pipeable effect/core/stream/Sink contramapChunksEffect
  */
-export function contramapChunksEffect_<R, E, R2, E2, In, In1, L, Z>(
-  self: Sink<R, E, In, L, Z>,
-  f: (input: Chunk<In1>) => Effect<R2, E2, Chunk<In>>,
+export function contramapChunksEffect<In0, R2, E2, In2>(
+  f: (input: Chunk<In0>) => Effect<R2, E2, Chunk<In2>>,
   __tsplusTrace?: string
-): Sink<R | R2, E | E2, In1, L, Z> {
-  const loop: Channel<
-    R | R2,
-    never,
-    Chunk<In1>,
-    unknown,
-    E | E2,
-    Chunk<In>,
-    unknown
-  > = Channel.readWith(
-    (chunk: Chunk<In1>) => Channel.fromEffect(f(chunk)).flatMap((chunk) => Channel.write(chunk)) > loop,
-    (err) => Channel.fail(() => err),
-    (done) => Channel.succeed(done)
-  )
-  concreteSink(self)
-  return new SinkInternal(loop.pipeToOrFail(self.channel))
+) {
+  return <R, E, L, Z>(self: Sink<R, E, In2, L, Z>): Sink<R | R2, E | E2, In0, L, Z> => {
+    const loop: Channel<
+      R | R2,
+      never,
+      Chunk<In0>,
+      unknown,
+      E | E2,
+      Chunk<In2>,
+      unknown
+    > = Channel.readWith(
+      (chunk: Chunk<In0>) => Channel.fromEffect(f(chunk)).flatMap((chunk) => Channel.write(chunk)) > loop,
+      (err) => Channel.fail(() => err),
+      (done) => Channel.succeed(done)
+    )
+    concreteSink(self)
+    return new SinkInternal(loop.pipeToOrFail(self.channel))
+  }
 }
-
-/**
- * Effectfully transforms this sink's input chunks. `f` must preserve
- * chunking-invariance.
- *
- * @tsplus static ets/Sink/Aspects contramapChunksEffect
- */
-export const contramapChunksEffect = Pipeable(contramapChunksEffect_)

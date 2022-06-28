@@ -7,7 +7,7 @@ export const SubexecutorSym = Symbol.for("@effect/core/stream/Channel/Subexecuto
 export type SubexecutorSym = typeof SubexecutorSym
 
 /**
- * @tsplus type ets/Channel/Subexecutor
+ * @tsplus type effect/core/stream/Channel/Subexecutor
  */
 export interface Subexecutor<R> {
   readonly [SubexecutorSym]: SubexecutorSym
@@ -19,7 +19,7 @@ export interface Subexecutor<R> {
 }
 
 /**
- * @tsplus type ets/Channel/Subexecutor/Ops
+ * @tsplus type effect/core/stream/Channel/Subexecutor.Ops
  */
 export interface SubexecutorOps {}
 export const Subexecutor: SubexecutorOps = {}
@@ -56,11 +56,11 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
       undefined as Effect<R, never, Exit<unknown, unknown>> | undefined,
       (acc, next) => {
         if (acc != null && next != null) {
-          return acc.zipWith(next.exit(), (a, b) => a > b)
+          return acc.zipWith(next.exit, (a, b) => a > b)
         } else if (acc != null) {
           return acc
         } else if (next != null) {
-          return next.exit()
+          return next.exit
         } else {
           return undefined
         }
@@ -107,8 +107,8 @@ export class PullFromChild<R> implements Subexecutor<R> {
 
     if (fin1 != null && fin2 != null) {
       return fin1
-        .exit()
-        .zipWith(fin2.exit(), (a, b) => a > b)
+        .exit
+        .zipWith(fin2.exit, (a, b) => a > b)
         .flatMap((exit) => Effect.done(exit))
     } else if (fin1 != null) {
       return fin1
@@ -152,11 +152,11 @@ export class DrainChildExecutors<R> implements Subexecutor<R> {
       undefined as Effect<R, never, Exit<unknown, unknown>> | undefined,
       (acc, next) => {
         if (acc != null && next != null) {
-          return acc.zipWith(next.exit(), (a, b) => a > b)
+          return acc.zipWith(next.exit, (a, b) => a > b)
         } else if (acc != null) {
           return acc
         } else if (next != null) {
-          return next.exit()
+          return next.exit
         } else {
           return undefined
         }
@@ -211,7 +211,7 @@ export function concreteSubexecutor<R>(
 }
 
 /**
- * @tsplus static ets/Channel/Subexecutor/Ops PullFromUpstream
+ * @tsplus static effect/core/stream/Channel/Subexecutor.Ops PullFromUpstream
  */
 export function pullFromUpstream<R>(
   upstreamExecutor: ErasedExecutor<R>,
@@ -236,7 +236,7 @@ export function pullFromUpstream<R>(
 }
 
 /**
- * @tsplus static ets/Channel/Subexecutor/Ops PullFromChild
+ * @tsplus static effect/core/stream/Channel/Subexecutor.Ops PullFromChild
  */
 export function pullFromChild<R>(
   childExecutor: ErasedExecutor<R>,
@@ -247,7 +247,7 @@ export function pullFromChild<R>(
 }
 
 /**
- * @tsplus static ets/Channel/Subexecutor/Ops DrainChildExecutors
+ * @tsplus static effect/core/stream/Channel/Subexecutor.Ops DrainChildExecutors
  */
 export function drainChildExecutors<R>(
   upstreamExecutor: ErasedExecutor<R>,
@@ -270,7 +270,7 @@ export function drainChildExecutors<R>(
 }
 
 /**
- * @tsplus static ets/Channel/Subexecutor/Ops Emit
+ * @tsplus static effect/core/stream/Channel/Subexecutor.Ops Emit
  */
 export function emit<R>(value: unknown, next: Subexecutor<R>): Subexecutor<R> {
   return new Emit(value, next)

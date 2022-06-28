@@ -2,21 +2,13 @@
  * Returns a stream whose failure and success channels have been mapped by the
  * specified pair of functions, `f` and `g`.
  *
- * @tsplus fluent ets/Stream mapBoth
+ * @tsplus static effect/core/stream/Stream.Aspects mapBoth
+ * @tsplus pipeable effect/core/stream/Stream mapBoth
  */
-export function mapBoth_<R, E, E2, A, A2>(
-  self: Stream<R, E, A>,
+export function mapBoth<E, E2, A, A2>(
   f: (e: E) => E2,
   g: (a: A) => A2,
   __tsplusTrace?: string
-): Stream<R, E2, A2> {
-  return self.mapError(f).map(g)
+) {
+  return <R>(self: Stream<R, E, A>): Stream<R, E2, A2> => self.mapError(f).map(g)
 }
-
-/**
- * Returns a stream whose failure and success channels have been mapped by the
- * specified pair of functions, `f` and `g`.
- *
- * @tsplus static ets/Stream/Aspects mapBoth
- */
-export const mapBoth = Pipeable(mapBoth_)

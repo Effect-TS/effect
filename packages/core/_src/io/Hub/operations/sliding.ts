@@ -8,7 +8,7 @@ import { Strategy } from "@effect/core/io/Hub/operations/strategy"
  *
  * For best performance use capacities that are powers of two.
  *
- * @tsplus static ets/Hub/Ops sliding
+ * @tsplus static effect/core/io/Hub.Ops sliding
  */
 export function sliding<A>(
   requestedCapacity: number,

@@ -3,13 +3,13 @@ describe.concurrent("TMap", () => {
     it("avoid NullPointerException caused by race condition", async () => {
       const tx = Do(($) => {
         const keys = $(Effect.succeed(Chunk.fill(10, identity)))
-        const map = $(TMap.fromIterable(keys.zipWithIndex).commit())
+        const map = $(TMap.fromIterable(keys.zipWithIndex).commit)
         const exit = $(
           Effect.forEachDiscard(keys, (k) =>
             Do((_$) => {
-              $(map.delete(k).commit().fork())
-              $(map.toChunk.commit())
-            })).exit()
+              $(map.delete(k).commit.fork)
+              $(map.toChunk.commit)
+            })).exit
         )
 
         return exit.isSuccess()

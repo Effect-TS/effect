@@ -2,7 +2,7 @@ describe.concurrent("Stream", () => {
   it("interleave", async () => {
     const stream1 = Stream(2, 3)
     const stream2 = Stream(5, 6, 7)
-    const program = stream1.interleave(stream2).runCollect()
+    const program = stream1.interleave(stream2).runCollect
 
     const result = await program.unsafeRunPromise()
 
@@ -33,10 +33,10 @@ describe.concurrent("Stream", () => {
     const stream1 = Stream(1, 2, 3, 4, 5)
     const stream2 = Stream(6, 7, 8, 9, 10)
     const program = Effect.struct({
-      interleavedStream: stream1.interleaveWith(stream2, booleanStream).runCollect(),
-      b: booleanStream.runCollect(),
-      s1: stream1.runCollect(),
-      s2: stream2.runCollect()
+      interleavedStream: stream1.interleaveWith(stream2, booleanStream).runCollect,
+      b: booleanStream.runCollect,
+      s1: stream1.runCollect,
+      s2: stream2.runCollect
     })
 
     const { b, interleavedStream, s1, s2 } = await program.unsafeRunPromise()

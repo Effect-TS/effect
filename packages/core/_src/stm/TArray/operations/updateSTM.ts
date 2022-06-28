@@ -3,27 +3,20 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
 /**
  * Atomically updates element in the array with given transactional effect.
  *
- * @tsplus fluent ets/TArray updateSTM
+ * @tsplus static effect/core/stm/TArray.Aspects updateSTM
+ * @tsplus pipeable effect/core/stm/TArray updateSTM
  */
-export function updateSTM_<E, A>(
-  self: TArray<A>,
-  index: number,
-  f: (a: A) => STM<never, E, A>
-): STM<never, E, void> {
-  concreteTArray(self)
-  if (0 <= index && index < self.chunk.length) {
-    return STM.Do()
-      .bind("currentVal", () => self.chunk.unsafeGet(index)!.get)
-      .bind("newVal", ({ currentVal }) => f(currentVal))
-      .flatMap(({ newVal }) => self.chunk.unsafeGet(index)!.set(newVal))
-  } else {
-    return STM.die(new IndexOutOfBounds(index, 0, self.chunk.length))
+export function updateSTM<E, A>(index: number, f: (a: A) => STM<never, E, A>) {
+  return (self: TArray<A>): STM<never, E, void> => {
+    concreteTArray(self)
+    if (0 <= index && index < self.chunk.length) {
+      return Do(($) => {
+        const currentVal = $(self.chunk.unsafeGet(index)!.get)
+        const newVal = $(f(currentVal))
+        return $(self.chunk.unsafeGet(index)!.set(newVal))
+      })
+    } else {
+      return STM.die(new IndexOutOfBounds(index, 0, self.chunk.length))
+    }
   }
 }
-
-/**
- * Atomically updates element in the array with given transactional effect.
- *
- * @tsplus static ets/TArray/Aspects updateSTM
- */
-export const updateSTM = Pipeable(updateSTM_)

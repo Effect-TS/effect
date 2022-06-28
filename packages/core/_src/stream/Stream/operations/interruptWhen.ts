@@ -9,26 +9,15 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * If the effect completes with a failure before the stream completes, the
  * returned stream will emit that failure.
  *
- * @tsplus fluent ets/Stream interruptWhen
+ * @tsplus static effect/core/stream/Stream.Aspects interruptWhen
+ * @tsplus pipeable effect/core/stream/Stream interruptWhen
  */
-export function interruptWhen_<R, E, A, R2, E2, Z>(
-  self: Stream<R, E, A>,
+export function interruptWhen<R2, E2, Z>(
   effect: LazyArg<Effect<R2, E2, Z>>,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, A> {
-  concreteStream(self)
-  return new StreamInternal(self.channel.interruptWhen(effect))
+) {
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> => {
+    concreteStream(self)
+    return new StreamInternal(self.channel.interruptWhen(effect))
+  }
 }
-
-/**
- * Interrupts the evaluation of this stream when the provided effect completes.
- * The given effect will be forked as part of this stream, and its success will
- * be discarded. This combinator will also interrupt any in-progress element
- * being pulled from upstream.
- *
- * If the effect completes with a failure before the stream completes, the
- * returned stream will emit that failure.
- *
- * @tsplus static ets/Stream/Aspects interruptWhen
- */
-export const interruptWhen = Pipeable(interruptWhen_)

@@ -2,7 +2,7 @@ export const FiberIdSym = Symbol.for("@effect/core/io/FiberId")
 export type FiberIdSym = typeof FiberIdSym
 
 /**
- * @tsplus type ets/FiberId
+ * @tsplus type effect/core/io/FiberId
  */
 export interface FiberId extends Equals {
   readonly [FiberIdSym]: FiberIdSym
@@ -13,7 +13,7 @@ export declare namespace FiberId {
 }
 
 /**
- * @tsplus type ets/FiberId/Ops
+ * @tsplus type effect/core/io/FiberId.Ops
  */
 export interface FiberIdOps {
   $: FiberIdAspects
@@ -23,7 +23,7 @@ export const FiberId: FiberIdOps = {
 }
 
 /**
- * @tsplus type ets/FiberId/Aspects
+ * @tsplus type effect/core/io/FiberId.Aspects
  */
 export interface FiberIdAspects {}
 
@@ -110,7 +110,7 @@ export class CompositeFiberId implements FiberId, Equals {
 /**
  * Checks if the specified unknown value is a `FiberId`.
  *
- * @tsplus static ets/FiberId/Ops isFiberId
+ * @tsplus static effect/core/io/FiberId.Ops isFiberId
  */
 export function isFiberId(self: unknown): self is FiberId {
   return typeof self === "object" && self != null && FiberIdSym in self

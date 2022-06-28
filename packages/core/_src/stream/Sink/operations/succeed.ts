@@ -3,7 +3,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
 /**
  * A sink that immediately ends with the specified value.
  *
- * @tsplus static ets/Sink/Ops succeed
+ * @tsplus static effect/core/stream/Sink.Ops succeed
  */
 export function succeed<Z>(
   z: LazyArg<Z>,

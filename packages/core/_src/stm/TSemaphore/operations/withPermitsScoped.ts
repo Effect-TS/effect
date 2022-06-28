@@ -2,23 +2,13 @@
  * Returns a scoped effect that describes acquiring the specified number of
  * permits and releasing them when the scope is closed.
  *
- * @tsplus fluent ets/TSemaphore withPermitsScoped
+ * @tsplus static effect/core/stm/TSemaphore.Aspects withPermitsScoped
+ * @tsplus pipeable effect/core/stm/TSemaphore withPermitsScoped
  */
-export function withPermitsScoped_(
-  self: TSemaphore,
-  permits: number,
-  __tsplusTrace?: string
-): Effect<Scope, never, void> {
-  return Effect.acquireReleaseInterruptible(
-    self.acquireN(permits).commit(),
-    self.releaseN(permits).commit()
-  )
+export function withPermitsScoped(permits: number, __tsplusTrace?: string) {
+  return (self: TSemaphore): Effect<Scope, never, void> =>
+    Effect.acquireReleaseInterruptible(
+      self.acquireN(permits).commit,
+      self.releaseN(permits).commit
+    )
 }
-
-/**
- * Returns a scoped effect that describes acquiring the specified number of
- * permits and releasing them when the scope is closed.
- *
- * @tsplus static ets/TSemaphore/Aspects withPermitsScoped
- */
-export const withPermitsScoped = Pipeable(withPermitsScoped_)

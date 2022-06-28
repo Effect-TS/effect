@@ -4,7 +4,7 @@ export const SinkSym = Symbol.for("@effect/core/stream/Sink")
 export type SinkSym = typeof SinkSym
 
 /**
- * @tsplus type ets/Sink
+ * @tsplus type effect/core/stream/Sink
  */
 export interface Sink<R, E, In, L, Z> {
   readonly [SinkSym]: SinkSym
@@ -16,7 +16,7 @@ export interface Sink<R, E, In, L, Z> {
 }
 
 /**
- * @tsplus type ets/Sink/Ops
+ * @tsplus type effect/core/stream/Sink.Ops
  */
 export interface SinkOps {
   $: SinkAspects
@@ -26,6 +26,6 @@ export const Sink: SinkOps = {
 }
 
 /**
- * @tsplus type ets/Sink/Aspects
+ * @tsplus type effect/core/stream/Sink.Aspects
  */
 export interface SinkAspects {}

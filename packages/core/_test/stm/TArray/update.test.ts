@@ -4,8 +4,8 @@ describe.concurrent("TArray", () => {
   describe.concurrent("update", () => {
     it("happy-path", async () => {
       const program = makeTArray(1, 42)
-        .commit()
-        .flatMap((tArray) => (tArray.update(0, (n) => -n) > valuesOf(tArray)).commit())
+        .commit
+        .flatMap((tArray) => (tArray.update(0, (n) => -n) > valuesOf(tArray)).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -14,8 +14,8 @@ describe.concurrent("TArray", () => {
 
     it("dies with ArrayIndexOutOfBounds when index is out of bounds", async () => {
       const program = makeTArray(1, 42)
-        .commit()
-        .flatMap((tArray) => tArray.update(-1, identity).commit())
+        .commit
+        .flatMap((tArray) => tArray.update(-1, identity).commit)
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -33,8 +33,8 @@ describe.concurrent("TArray", () => {
   describe.concurrent("updateSTM", () => {
     it("happy-path", async () => {
       const program = makeTArray(1, 42)
-        .commit()
-        .flatMap((tArray) => (tArray.updateSTM(0, (n) => STM.succeed(-n)) > valuesOf(tArray)).commit())
+        .commit
+        .flatMap((tArray) => (tArray.updateSTM(0, (n) => STM.succeed(-n)) > valuesOf(tArray)).commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -43,8 +43,8 @@ describe.concurrent("TArray", () => {
 
     it("dies with ArrayIndexOutOfBounds when index is out of bounds", async () => {
       const program = makeTArray(1, 42)
-        .commit()
-        .flatMap((tArray) => tArray.updateSTM(-1, STM.succeedNow).commit())
+        .commit
+        .flatMap((tArray) => tArray.updateSTM(-1, STM.succeedNow).commit)
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -60,12 +60,12 @@ describe.concurrent("TArray", () => {
 
     it("failure", async () => {
       const program = makeTArray(1, 42)
-        .commit()
+        .commit
         .flatMap((tArray) =>
           tArray
             .updateSTM(0, () => STM.fail(boom))
-            .commit()
-            .flip()
+            .commit
+            .flip
         )
 
       const result = await program.unsafeRunPromise()

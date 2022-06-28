@@ -3,16 +3,12 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
 /**
  * Stores new element in the set.
  *
- * @tsplus fluent ets/TSet put
+ * @tsplus static effect/core/stm/TSet.Aspects put
+ * @tsplus pipeable effect/core/stm/TSet put
  */
-export function put_<A>(self: TSet<A>, a: A): USTM<void> {
-  concreteTSet(self)
-  return self.tmap.put(a, undefined as void)
+export function put<A>(value: A) {
+  return (self: TSet<A>): STM<never, never, void> => {
+    concreteTSet(self)
+    return self.tmap.put(value, undefined as void)
+  }
 }
-
-/**
- * Stores new element in the set.
- *
- * @tsplus static ets/TSet/Aspects put
- */
-export const put = Pipeable(put_)

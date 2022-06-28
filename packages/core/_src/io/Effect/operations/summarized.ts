@@ -3,29 +3,21 @@
  * then combining the values to produce a summary, together with the result of
  * execution.
  *
- * @tsplus fluent ets/Effect summarized
+ * @tsplus static effect/core/io/Effect.Aspects summarized
+ * @tsplus pipeable effect/core/io/Effect summarized
  */
-export function summarized_<R, E, A, R2, E2, B, C>(
-  self: Effect<R, E, A>,
+export function summarized<R2, E2, B, C>(
   summary: LazyArg<Effect<R2, E2, B>>,
   f: (start: B, end: B) => C,
   __tsplusTrace?: string
-): Effect<R | R2, E | E2, Tuple<[C, A]>> {
-  return Effect.succeed(summary).flatMap((summary) =>
-    Do(($) => {
-      const start = $(summary)
-      const value = $(self)
-      const end = $(summary)
-      return Tuple(f(start, end), value)
-    })
-  )
+) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, Tuple<[C, A]>> =>
+    Effect.succeed(summary).flatMap((summary) =>
+      Do(($) => {
+        const start = $(summary)
+        const value = $(self)
+        const end = $(summary)
+        return Tuple(f(start, end), value)
+      })
+    )
 }
-
-/**
- * Summarizes a effect by computing some value before and after execution, and
- * then combining the values to produce a summary, together with the result of
- * execution.
- *
- * @tsplus static ets/Effect/Aspects summarized
- */
-export const summarized = Pipeable(summarized_)

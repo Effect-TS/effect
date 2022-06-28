@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/FiberRef/Ops makeWith
+ * @tsplus static effect/core/io/FiberRef.Ops makeWith
  */
 export function makeWith<Value, Patch>(
   ref: LazyArg<FiberRef<Value, Patch>>,

@@ -6,8 +6,8 @@ describe.concurrent("Stream", () => {
       const n = 2
       const stream = Stream(1, 2, 3, 4, 5)
       const program = Effect.struct({
-        actual: stream.drop(n).runCollect(),
-        expected: stream.runCollect().map((chunk) => chunk.drop(n))
+        actual: stream.drop(n).runCollect,
+        expected: stream.runCollect.map((chunk) => chunk.drop(n))
       })
 
       const { actual, expected } = await program.unsafeRunPromise()
@@ -16,7 +16,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("doesn't swallow errors", async () => {
-      const program = (Stream.fail("ouch") + Stream(1)).drop(1).runDrain().either()
+      const program = (Stream.fail("ouch") + Stream(1)).drop(1).runDrain.either
 
       const result = await program.unsafeRunPromise()
 
@@ -29,8 +29,8 @@ describe.concurrent("Stream", () => {
       const n = 2
       const stream = Stream(1, 2, 3, 4, 5)
       const program = Effect.struct({
-        actual: stream.dropRight(n).runCollect(),
-        expected: stream.runCollect().map((chunk) => chunk.dropRight(n))
+        actual: stream.dropRight(n).runCollect,
+        expected: stream.runCollect.map((chunk) => chunk.dropRight(n))
       })
 
       const { actual, expected } = await program.unsafeRunPromise()
@@ -39,7 +39,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("doesn't swallow errors", async () => {
-      const program = (Stream(1) + Stream.fail("ouch")).dropRight(1).runDrain().either()
+      const program = (Stream(1) + Stream.fail("ouch")).dropRight(1).runDrain.either
 
       const result = await program.unsafeRunPromise()
 
@@ -52,8 +52,8 @@ describe.concurrent("Stream", () => {
       const p = (n: number) => n >= 3
       const stream = Stream(1, 2, 3, 4, 5)
       const program = Effect.struct({
-        actual: stream.dropUntil(p).runCollect(),
-        expected: stream.runCollect().map((chunk) => chunk.dropWhile((n) => !p(n)).drop(1))
+        actual: stream.dropUntil(p).runCollect,
+        expected: stream.runCollect.map((chunk) => chunk.dropWhile((n) => !p(n)).drop(1))
       })
 
       const { actual, expected } = await program.unsafeRunPromise()
@@ -67,8 +67,8 @@ describe.concurrent("Stream", () => {
       const p = (n: number) => n >= 3
       const stream = Stream(1, 2, 3, 4, 5)
       const program = Effect.struct({
-        actual: stream.dropWhile(p).runCollect(),
-        expected: stream.runCollect().map((chunk) => chunk.dropWhile(p))
+        actual: stream.dropWhile(p).runCollect,
+        expected: stream.runCollect.map((chunk) => chunk.dropWhile(p))
       })
 
       const { actual, expected } = await program.unsafeRunPromise()
@@ -80,8 +80,8 @@ describe.concurrent("Stream", () => {
       const program = (Stream(1) + Stream.fail("ouch"))
         .take(1)
         .dropWhile(constTrue)
-        .runDrain()
-        .either()
+        .runDrain
+        .either
 
       const result = await program.unsafeRunPromise()
 

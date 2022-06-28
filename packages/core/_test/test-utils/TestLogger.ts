@@ -8,7 +8,7 @@ export type TestLoggerId = typeof TestLoggerId
  * can be accessed using the `logOutput` operator. This makes it easy to write
  * tests to verify that expected messages are being logged.
  *
- * @tsplus type ets/TestLogger
+ * @tsplus type effect/core/test/TestLogger
  */
 export interface TestLogger<Message, Output> extends Logger<Message, Output> {
   readonly [TestLoggerId]: TestLoggerId
@@ -16,7 +16,7 @@ export interface TestLogger<Message, Output> extends Logger<Message, Output> {
 }
 
 /**
- * @tsplus type ets/TestLogger/Ops
+ * @tsplus type effect/core/test/TestLogger.Ops
  */
 export interface TestLoggerOps {
   Tag: Service.Tag<TestLogger<string, void>>
@@ -26,7 +26,7 @@ export const TestLogger: TestLoggerOps = {
 }
 
 /**
- * @tsplus unify ets/Logger
+ * @tsplus unify effect/core/test/TestLogger
  */
 export function unifyLogger<X extends TestLogger<any, any>>(
   self: X
@@ -38,7 +38,7 @@ export function unifyLogger<X extends TestLogger<any, any>>(
 }
 
 /**
- * @tsplus static ets/TestLogger/Ops isTestLogger
+ * @tsplus static effect/core/test/TestLogger.Ops isTestLogger
  */
 export function isTestLogger(u: unknown): u is TestLogger<unknown, unknown> {
   return typeof u === "object" && u != null && TestLoggerId in u
@@ -75,7 +75,7 @@ export class LogEntry {
 }
 
 /**
- * @tsplus static ets/TestLogger/Ops make
+ * @tsplus static effect/core/test/TestLogger.Ops make
  */
 export const makeTestLogger: Effect.UIO<TestLogger<string, void>> = Effect.succeed(() => {
   const logOutput = new AtomicReference<ImmutableArray<LogEntry>>(ImmutableArray.empty())
@@ -115,7 +115,7 @@ export const makeTestLogger: Effect.UIO<TestLogger<string, void>> = Effect.succe
  * A layer which constructs a new `TestLogger` and runs the effect it is
  * provided to with the `RuntimeConfig` updated to add the `TestLogger`.
  *
- * @tsplus static ets/TestLogger/Ops default
+ * @tsplus static effect/core/test/TestLogger.Ops default
  */
 export const defaultTestLogger: Layer<never, never, TestLogger<string, void>> = Layer.scoped(
   TestLogger.Tag,
@@ -134,7 +134,7 @@ export const defaultTestLogger: Layer<never, never, TestLogger<string, void>> = 
 /**
  * Accesses the contents of the current test logger.
  *
- * @tsplus static ets/TestLogger/Ops logOutput
+ * @tsplus static effect/core/test/TestLogger.Ops logOutput
  */
 export const logOutput: Effect.UIO<ImmutableArray<LogEntry>> = Effect.runtimeConfig.flatMap(
   (runtimeConfig) =>

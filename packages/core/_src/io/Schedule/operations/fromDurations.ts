@@ -7,7 +7,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * each time for the length of the specified duration. Returns the length of
  * the current duration between recurrences.
  *
- * @tsplus static ets/Schedule/Ops fromDurations
+ * @tsplus static effect/core/io/Schedule.Ops fromDurations
  */
 export function fromDurations(
   duration: Duration,

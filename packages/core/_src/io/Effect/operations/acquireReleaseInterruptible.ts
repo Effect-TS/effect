@@ -6,8 +6,8 @@
  * what finalization, if any, needs to be performed (e.g. by examining in
  * memory state).
  *
- * @tsplus static ets/Effect/Ops acquireReleaseInterruptible
- * @tsplus fluent ets/Effect acquireReleaseInterruptible
+ * @tsplus static effect/core/io/Effect.Ops acquireReleaseInterruptible
+ * @tsplus fluent effect/core/io/Effect acquireReleaseInterruptible
  */
 export function acquireReleaseInterruptible<R, E, A, R2, X>(
   acquire: LazyArg<Effect<R, E, A>>,

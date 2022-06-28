@@ -10,10 +10,11 @@ describe.concurrent("TMap", () => {
 
         return size === 2
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("toList", async () => {
       const elems = List(Tuple("a", 1), Tuple("b", 2))
       const tx = Do(($) => {
@@ -22,10 +23,11 @@ describe.concurrent("TMap", () => {
 
         return hasSameElements(list, Equivalence.tuple(Equivalence.string, Equivalence.number), elems)
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("toChunk", async () => {
       const elems = List(Tuple("a", 1), Tuple("b", 2))
       const tx = Do(($) => {
@@ -34,10 +36,11 @@ describe.concurrent("TMap", () => {
 
         return hasSameElements(chunk.toList, Equivalence.tuple(Equivalence.string, Equivalence.number), elems)
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("toMap", async () => {
       const elems = new Map<string, number>([["a", 1], ["b", 2]])
       const tx = Do(($) => {
@@ -50,10 +53,11 @@ describe.concurrent("TMap", () => {
           Chunk.from(elems).map(Tuple.fromNative)
         )
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("merge", async () => {
       const tx = Do(($) => {
         const tmap = $(TMap.make(Tuple("a", 1)))
@@ -62,10 +66,11 @@ describe.concurrent("TMap", () => {
 
         return a === 3 && b === 2
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("transform", async () => {
       const tx = Do(($) => {
         const tmap = $(TMap.make(Tuple("a", 1), Tuple("aa", 2), Tuple("aaa", 3)))
@@ -80,10 +85,11 @@ describe.concurrent("TMap", () => {
           List(Tuple("b", 2), Tuple("bb", 4), Tuple("bbb", 6))
         )
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("transform with keys with negative hash codes", async () => {
       const tx = Do(($) => {
         const tmap = $(
@@ -100,10 +106,11 @@ describe.concurrent("TMap", () => {
           List(Tuple(new HashContainer(2), 2), Tuple(new HashContainer(4), 4), Tuple(new HashContainer(6), 6))
         )
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("transform and shrink", async () => {
       const tx = Do(($) => {
         const tmap = $(TMap.make(Tuple("a", 1), Tuple("aa", 2), Tuple("aaa", 3)))
@@ -114,10 +121,11 @@ describe.concurrent("TMap", () => {
 
         return hasSameElements(res, Equivalence.tuple(Equivalence.string, Equivalence.number), List(Tuple("key", 6)))
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("transformSTM", async () => {
       const tx = Do(($) => {
         const tmap = $(TMap.make(Tuple("a", 1), Tuple("aa", 2), Tuple("aaa", 3)))
@@ -132,10 +140,11 @@ describe.concurrent("TMap", () => {
           List(Tuple("b", 2), Tuple("bb", 4), Tuple("bbb", 6))
         )
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("transformSTM and shrink", async () => {
       const tx = Do(($) => {
         const tmap = $(TMap.make(Tuple("a", 1), Tuple("aa", 2), Tuple("aaa", 3)))
@@ -146,10 +155,11 @@ describe.concurrent("TMap", () => {
 
         return hasSameElements(res, Equivalence.tuple(Equivalence.string, Equivalence.number), List(Tuple("key", 6)))
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("transformValues", async () => {
       const tx = Do(($) => {
         const tmap = $(TMap.make(Tuple("a", 1), Tuple("aa", 2), Tuple("aaa", 3)))
@@ -164,21 +174,22 @@ describe.concurrent("TMap", () => {
           List(Tuple("a", 2), Tuple("aa", 4), Tuple("aaa", 6))
         )
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("parallel value transformation", async () => {
       const tx = Do(($) => {
-        const tmap = $(TMap.make(Tuple("a", 0)).commit())
+        const tmap = $(TMap.make(Tuple("a", 0)).commit)
 
-        const transformation = tmap.transformValues((v) => v + 1).commit().repeatN(999)
+        const transformation = tmap.transformValues((v) => v + 1).commit.repeatN(999)
 
         const n = 2
 
         $(Effect.collectAllParDiscard(Chunk.fill(n, () => transformation)))
 
-        const res = $(tmap.get("a").commit())
+        const res = $(tmap.get("a").commit)
 
         return res == Maybe.some(2000)
       })
@@ -186,6 +197,7 @@ describe.concurrent("TMap", () => {
 
       assert.isTrue(result)
     })
+
     it("transformValuesSTM", async () => {
       const tx = Do(($) => {
         const tmap = $(TMap.make(Tuple("a", 1), Tuple("aa", 2), Tuple("aaa", 3)))
@@ -200,10 +212,11 @@ describe.concurrent("TMap", () => {
           List(Tuple("a", 2), Tuple("aa", 4), Tuple("aaa", 6))
         )
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("updateWith", async () => {
       const tx = Do(($) => {
         const tmap = $(TMap.make(Tuple("a", 1), Tuple("b", 2)))
@@ -221,7 +234,7 @@ describe.concurrent("TMap", () => {
           Chunk.from(new Map([["a", 2], ["c", 3]])).map(Tuple.fromNative)
         )
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })

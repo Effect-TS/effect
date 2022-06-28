@@ -10,86 +10,76 @@ const distributedWithDynamicId = new AtomicNumber(0)
  * also shutdown queues manually. In this case the driver will continue but no
  * longer backpressure on them.
  *
- * @tsplus fluent ets/Stream distributedWithDynamic
+ * @tsplus static effect/core/stream/Stream.Aspects distributedWithDynamic
+ * @tsplus pipeable effect/core/stream/Stream distributedWithDynamic
  */
-export function distributedWithDynamic_<R, E, A, Z>(
-  self: Stream<R, E, A>,
+export function distributedWithDynamic<A, E, Z>(
   maximumLag: number,
   decide: (a: A) => Effect<never, never, (key: UniqueKey) => boolean>,
   done: (exit: Exit<Maybe<E>, never>) => Effect<never, never, Z> = () => Effect.unit as Effect<never, never, Z>,
   __tsplusTrace?: string
-): Effect<R | Scope, never, Effect<never, never, Tuple<[UniqueKey, Dequeue<Exit<Maybe<E>, A>>]>>> {
-  return Effect.Do()
-    .bind("queuesRef", () =>
-      Effect.acquireRelease(
+) {
+  return <R>(
+    self: Stream<R, E, A>
+  ): Effect<R | Scope, never, Effect<never, never, Tuple<[UniqueKey, Dequeue<Exit<Maybe<E>, A>>]>>> =>
+    Do(($) => {
+      const queuesRef = $(Effect.acquireRelease(
         Ref.make<HashMap<UniqueKey, Queue<Exit<Maybe<E>, A>>>>(HashMap.empty()),
         (map) =>
           map
             .get()
             .flatMap((queues) => Effect.forEach(queues, ({ tuple: [, queue] }) => queue.shutdown))
       ))
-    .bind("add", ({ queuesRef }) =>
-      Effect.Do()
-        .bind("queuesLock", () => Semaphore.make(1))
-        .bind("newQueue", () =>
-          Ref.make<Effect<never, never, Tuple<[UniqueKey, Queue<Exit<Maybe<E>, A>>]>>>(
+      const add = $(
+        Do(($) => {
+          const queuesLock = $(Semaphore.make(1))
+          const newQueue = $(Ref.make<Effect<never, never, Tuple<[UniqueKey, Queue<Exit<Maybe<E>, A>>]>>>(
             Effect.Do()
               .bind("queue", () => Queue.bounded<Exit<Maybe<E>, A>>(maximumLag))
               .bind("id", () => Effect.succeed(distributedWithDynamicId.incrementAndGet()))
               .tap(({ id, queue }) => queuesRef.update((map) => map.set(id, queue)))
               .map(({ id, queue }) => Tuple(id, queue))
           ))
-        .bindValue(
-          "finalize",
-          ({ newQueue, queuesLock }) =>
-            (endTake: Exit<Maybe<E>, never>) =>
-              // Make sure that no queues are currently being added
-              queuesLock.withPermit(
-                Effect.Do()
-                  .tap(() =>
-                    // All newly created queues should end immediately
-                    newQueue.set(
-                      Effect.Do()
-                        .bind("queue", () => Queue.bounded<Exit<Maybe<E>, A>>(1))
-                        .tap(({ queue }) => queue.offer(endTake))
-                        .bind("id", () => Effect.succeed(distributedWithDynamicId.incrementAndGet()))
-                        .tap(({ id, queue }) => queuesRef.update((map) => map.set(id, queue)))
-                        .map(({ id, queue }) => Tuple(id, queue))
-                    )
+          const finalize = (endTake: Exit<Maybe<E>, never>) =>
+            // Make sure that no queues are currently being added
+            queuesLock.withPermit(
+              Effect.Do()
+                .tap(() =>
+                  // All newly created queues should end immediately
+                  newQueue.set(
+                    Effect.Do()
+                      .bind("queue", () => Queue.bounded<Exit<Maybe<E>, A>>(1))
+                      .tap(({ queue }) => queue.offer(endTake))
+                      .bind("id", () => Effect.succeed(distributedWithDynamicId.incrementAndGet()))
+                      .tap(({ id, queue }) => queuesRef.update((map) => map.set(id, queue)))
+                      .map(({ id, queue }) => Tuple(id, queue))
                   )
-                  .bind("queues", () => queuesRef.get().map((map) => map.values))
-                  .tap(({ queues }) =>
-                    Effect.forEach(queues, (queue) =>
-                      queue
-                        .offer(endTake)
-                        .catchSomeCause((cause) => cause.isInterrupted ? Maybe.some(Effect.unit) : Maybe.none))
-                  )
-                  .tap(() => done(endTake))
-                  .unit()
-              )
-        )
-        .tap(({ finalize }) =>
-          self
-            .runForEachScoped((a) => offer(queuesRef, decide, a))
-            .foldCauseEffect(
-              (cause) => finalize(Exit.failCause(cause.map(Maybe.some))),
-              () => finalize(Exit.fail(Maybe.none))
+                )
+                .bind("queues", () => queuesRef.get().map((map) => map.values))
+                .tap(({ queues }) =>
+                  Effect.forEach(queues, (queue) =>
+                    queue
+                      .offer(endTake)
+                      .catchSomeCause((cause) => cause.isInterrupted ? Maybe.some(Effect.unit) : Maybe.none))
+                )
+                .tap(() => done(endTake))
+                .unit
             )
-            .fork()
-        )
-        .map(({ newQueue, queuesLock }) => queuesLock.withPermit(newQueue.get().flatten())))
-    .map(({ add }) => add)
+          $(
+            self
+              .runForEachScoped((a) => offer(queuesRef, decide, a))
+              .foldCauseEffect(
+                (cause) => finalize(Exit.failCause(cause.map(Maybe.some))),
+                () => finalize(Exit.fail(Maybe.none))
+              )
+              .fork
+          )
+          return queuesLock.withPermit(newQueue.get().flatten)
+        })
+      )
+      return add
+    })
 }
-
-/**
- * More powerful version of `Stream.distributedWith`. This returns a function
- * that will produce new queues and corresponding indices. You can also provide
- * a function that will be executed after the final events are enqueued in all
- * queues. Shutdown of the queues is handled by the driver. Downstream users can
- * also shutdown queues manually. In this case the driver will continue but no
- * longer backpressure on them.
- */
-export const distributedWithDynamic = Pipeable(distributedWithDynamic_)
 
 function offer<E, A>(
   ref: Ref<HashMap<UniqueKey, Queue<Exit<Maybe<E>, A>>>>,
@@ -97,10 +87,10 @@ function offer<E, A>(
   a: A,
   __tsplusTrace?: string
 ): Effect<never, E, void> {
-  return Effect.Do()
-    .bind("shouldProcess", () => decide(a))
-    .bind("queues", () => ref.get())
-    .tap(({ queues, shouldProcess }) =>
+  return Do(($) => {
+    const shouldProcess = $(decide(a))
+    const queues = $(ref.get())
+    $(
       Effect.reduce(queues, List.empty<UniqueKey>(), (acc: List<UniqueKey>, { tuple: [id, queue] }) =>
         shouldProcess(id)
           ? queue.offer(Exit.succeed(a)).foldCauseEffect(
@@ -115,4 +105,5 @@ function offer<E, A>(
           : Effect.succeedNow(acc)).flatMap((ids) =>
           ids.isNil() ? Effect.unit : ref.update((map) => map.removeMany(ids)))
     )
+  }).unit
 }

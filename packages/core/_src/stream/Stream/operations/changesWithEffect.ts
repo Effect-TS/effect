@@ -5,25 +5,18 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * previous element emitted, using the specified effectual function to
  * determine whether two elements are equal.
  *
- * @tsplus fluent ets/Stream changesWithEffect
+ * @tsplus static effect/core/stream/Stream.Aspects changesWithEffect
+ * @tsplus pipeable effect/core/stream/Stream changesWithEffect
  */
-export function changesWithEffect_<R, E, A, R2, E2>(
-  self: Stream<R, E, A>,
+export function changesWithEffect<A, R2, E2>(
   f: (x: A, y: A) => Effect<R2, E2, boolean>,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, A> {
-  concreteStream(self)
-  return new StreamInternal(self.channel >> writer<R, E, A, R2, E2>(Maybe.none, f))
+) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> => {
+    concreteStream(self)
+    return new StreamInternal(self.channel >> writer<R, E, A, R2, E2>(Maybe.none, f))
+  }
 }
-
-/**
- * Returns a new stream that only emits elements that are not equal to the
- * previous element emitted, using the specified effectual function to
- * determine whether two elements are equal.
- *
- * @tsplus static ets/Stream/Aspects changesWithEffect
- */
-export const changesWithEffect = Pipeable(changesWithEffect_)
 
 function writer<R, E, A, R2, E2>(
   last: Maybe<A>,

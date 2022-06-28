@@ -1,7 +1,7 @@
 /**
  * Accesses the environment of the stream.
  *
- * @tsplus static ets/Stream/Ops environmentWith
+ * @tsplus static effect/core/stream/Stream.Ops environmentWith
  */
 export function environmentWith<R, A>(
   f: (env: Env<R>) => A,

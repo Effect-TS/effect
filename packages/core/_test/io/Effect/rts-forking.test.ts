@@ -8,8 +8,8 @@ describe.concurrent("Effect", () => {
           (
             Effect.checkInterruptible(
               (interruptStatus) => ref.set(interruptStatus) > latch.succeed(undefined)
-            ).fork() > latch.await()
-          ).uninterruptible()
+            ).fork > latch.await()
+          ).uninterruptible
         )
         .flatMap(({ ref }) => ref.get())
 

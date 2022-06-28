@@ -8,7 +8,7 @@ export const _A = Symbol.for("@effect/core/stm/TDeferred/A")
 export type _A = typeof _A
 
 /**
- * @tsplus type ets/TDeferred
+ * @tsplus type effect/core/stm/TDeferred
  */
 export interface TDeferred<E, A> {
   readonly [TDeferredSym]: TDeferredSym
@@ -17,7 +17,7 @@ export interface TDeferred<E, A> {
 }
 
 /**
- * @tsplus type ets/TDeferred/Ops
+ * @tsplus type effect/core/stm/TDeferred.Ops
  */
 export interface TDeferredOps {
   $: TDeferredAspects
@@ -27,6 +27,6 @@ export const TDeferred: TDeferredOps = {
 }
 
 /**
- * @tsplus type ets/TDeferred/Aspects
+ * @tsplus type effect/core/stm/TDeferred.Aspects
  */
 export interface TDeferredAspects {}

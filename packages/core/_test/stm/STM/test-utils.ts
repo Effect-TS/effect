@@ -6,14 +6,14 @@ export const STMEnvId = Symbol.for("@effect/core/test/stm/STMEnv")
 export type STMEnvId = typeof STMEnvId
 
 /**
- * @tsplus type ets/STMTestEnv
+ * @tsplus type effect/core/test/stm/STM/STMEnv
  */
 export interface STMEnv {
   readonly ref: TRef<number>
 }
 
 /**
- * @tsplus type ets/STMTestEnvOps
+ * @tsplus type effect/core/test/stm/STM/STMEnv.Ops
  */
 export interface STMEnvOps {
   Tag: Tag<STMEnv>
@@ -23,7 +23,7 @@ export const STMEnv: STMEnvOps = {
 }
 
 /**
- * @tsplus static ets/STMTestEnvOps make
+ * @tsplus static effect/core/test/stm/STM/STMEnv.Ops make
  */
 export function makeSTMEnv(n: number): Effect.UIO<STMEnv> {
   return TRef.makeCommit(n).map((ref) => ({ ref }))
@@ -71,7 +71,7 @@ export class UnpureBarrier {
         }
         throw new Error()
       })
-    ).eventually()
+    ).eventually
   }
 }
 
@@ -115,6 +115,6 @@ export function chainLoop(
   next: (_: STM<never, never, number>) => STM<never, never, number>
 ): Effect.UIO<number> {
   return n <= 0
-    ? acc.commit()
+    ? acc.commit
     : Effect.suspendSucceed(chainLoop(n - 1, next(acc), next))
 }

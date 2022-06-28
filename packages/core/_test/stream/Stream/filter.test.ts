@@ -1,13 +1,13 @@
 import { constTrue } from "@tsplus/stdlib/data/Function"
 
-describe("Stream", () => {
-  describe("filter", () => {
+describe.concurrent("Stream", () => {
+  describe.concurrent("filter", () => {
     it("simple example", async () => {
       const p = (n: number) => n % 2 === 0
       const stream = Stream(1, 2, 3, 4, 5, 6)
       const program = Effect.struct({
-        actual: stream.filter(p).runCollect(),
-        expected: stream.runCollect().map((chunk) => chunk.filter(p))
+        actual: stream.filter(p).runCollect,
+        expected: stream.runCollect.map((chunk) => chunk.filter(p))
       })
 
       const { actual, expected } = await program.unsafeRunPromise()
@@ -16,13 +16,13 @@ describe("Stream", () => {
     })
   })
 
-  describe("filterEffect", () => {
+  describe.concurrent("filterEffect", () => {
     it("simple example", async () => {
       const p = (n: number) => Effect.succeed(n % 2 === 0)
       const stream = Stream(1, 2, 3, 4, 5, 6)
       const program = Effect.struct({
-        actual: stream.filterEffect(p).runCollect(),
-        expected: stream.runCollect().flatMap((chunk) => chunk.filterEffect(p))
+        actual: stream.filterEffect(p).runCollect,
+        expected: stream.runCollect.flatMap((chunk) => chunk.filterEffect(p))
       })
 
       const { actual, expected } = await program.unsafeRunPromise()
@@ -33,8 +33,8 @@ describe("Stream", () => {
     it("laziness on chunks", async () => {
       const program = Stream(1, 2, 3, 4)
         .filterEffect((n) => n === 3 ? Effect.fail("boom") : Effect.succeed(constTrue))
-        .either()
-        .runCollect()
+        .either
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -58,7 +58,7 @@ describe("Stream", () => {
           builder.append(n)
           return n
         })
-        .runDrain()
+        .runDrain
 
       await program.unsafeRunPromise()
 

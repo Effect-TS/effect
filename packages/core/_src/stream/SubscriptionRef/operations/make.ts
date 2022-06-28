@@ -5,8 +5,8 @@ import {
 /**
  * Creates a new `SubscriptionRef` with the specified value.
  *
- * @tsplus static ets/SubscriptionRef/Ops make
- * @tsplus static ets/SubscriptionRef/Ops __call
+ * @tsplus static effect/core/stream/SubscriptionRef.Ops make
+ * @tsplus static effect/core/stream/SubscriptionRef.Ops __call
  */
 export function make<A>(
   value: LazyArg<A>,

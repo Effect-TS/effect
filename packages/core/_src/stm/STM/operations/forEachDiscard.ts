@@ -5,7 +5,7 @@
  * Equivalent to `unit(forEach(as, f))`, but without the cost of building
  * the list of results.
  *
- * @tsplus static ets/STM/Ops forEachDiscard
+ * @tsplus static effect/core/stm/STM.Ops forEachDiscard
  */
 export function forEachDiscard<R, E, A, X>(
   as: LazyArg<Collection<A>>,

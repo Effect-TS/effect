@@ -1,22 +1,12 @@
 /**
  * Retries this effect the specified number of times.
  *
- * @tsplus fluent ets/Effect retryN
+ * @tsplus static effect/core/io/Effect.Aspects retryN
+ * @tsplus pipeable effect/core/io/Effect retryN
  */
-export function retryN_<R, E, A>(
-  self: Effect<R, E, A>,
-  n: number,
-  __tsplusTrace?: string
-): Effect<R, E, A> {
-  return Effect.suspendSucceed(retryNLoop(self, n))
+export function retryN(n: number, __tsplusTrace?: string) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> => Effect.suspendSucceed(retryNLoop(self, n))
 }
-
-/**
- * Retries this effect the specified number of times.
- *
- * @tsplus static ets/Effect/Aspects retryN
- */
-export const retryN = Pipeable(retryN_)
 
 function retryNLoop<R, E, A>(
   self: Effect<R, E, A>,

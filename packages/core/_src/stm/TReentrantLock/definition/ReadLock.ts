@@ -9,12 +9,12 @@ export type ReadLockSym = typeof ReadLockSym
  * to number of read locks acquired by the fiber. This level of detail permits
  * upgrading a read lock to a write lock.
  *
- * @tsplus type ets/TReentrantLock/ReadLock
+ * @tsplus type effect/core/stm/TReentrantLock/ReadLock
  */
 export interface ReadLock extends Lock {}
 
 /**
- * @tsplus type ets/TReentrantLock/ReadLock/Ops
+ * @tsplus type effect/core/stm/TReentrantLock/ReadLock.Ops
  */
 export interface ReadLockOps {
   $: ReadLockAspects
@@ -24,6 +24,6 @@ export const ReadLockOps: ReadLockOps = {
 }
 
 /**
- * @tsplus type ets/TReentrantLock/ReadLock/Aspects
+ * @tsplus type effect/core/stm/TReentrantLock/ReadLock.Aspects
  */
 export interface ReadLockAspects {}

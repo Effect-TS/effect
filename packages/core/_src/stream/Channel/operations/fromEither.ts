@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Channel/Ops fromEither
+ * @tsplus static effect/core/stream/Channel.Ops fromEither
  */
 export function fromEither<E, A>(
   either: LazyArg<Either<E, A>>

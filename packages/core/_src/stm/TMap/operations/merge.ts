@@ -2,22 +2,16 @@
  * merges the key/value pair matching the specified predicate, and uses the
  * provided function to extract a value out of it.
  *
- * @tsplus fluent ets/TMap merge
+ * @tsplus static effect/core/stm/TMap.Aspects merge
+ * @tsplus pipeable effect/core/stm/TMap merge
  */
-export function merge_<K, V>(self: TMap<K, V>, k: K, v: V, f: (values: Tuple<[V, V]>) => V): USTM<V> {
-  return self.get(k).flatMap((_) =>
-    _.fold(self.put(k, v).as(v), (v0) => {
-      const v1 = f(Tuple(v0, v))
+export function merge_<K, V>(k: K, v: V, f: (values: Tuple<[V, V]>) => V) {
+  return (self: TMap<K, V>): STM<never, never, V> =>
+    self.get(k).flatMap((_) =>
+      _.fold(self.put(k, v).as(v), (v0) => {
+        const v1 = f(Tuple(v0, v))
 
-      return self.put(k, v1).as(v1)
-    })
-  )
+        return self.put(k, v1).as(v1)
+      })
+    )
 }
-
-/**
- * merges the key/value pair matching the specified predicate, and uses the
- * provided function to extract a value out of it.
- *
- * @tsplus static ets/TMap/Aspects merge
- */
-export const merge = Pipeable(merge_)

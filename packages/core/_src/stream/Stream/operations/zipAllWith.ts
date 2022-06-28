@@ -31,33 +31,23 @@ class PullRight<A> {
  * The functions `left` and `right` will be used if the streams have different
  * lengths and one of the streams has ended before the other.
  *
- * @tsplus fluent ets/Stream zipAllWith
+ * @tsplus static effect/core/stream/Stream.Aspects zipAllWith
+ * @tsplus pipeable effect/core/stream/Stream zipAllWith
  */
-export function zipAllWith_<R, E, A, R2, E2, A2, A3>(
-  self: Stream<R, E, A>,
+export function zipAllWith<R2, E2, A2, A, A3>(
   that: LazyArg<Stream<R2, E2, A2>>,
   left: (a: A) => A3,
   right: (a2: A2) => A3,
   both: (a: A, a2: A2) => A3,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, A3> {
-  return self.combineChunks(
-    that,
-    (): State<A, A2> => new PullBoth(),
-    pull(left, right, both)
-  )
+) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A3> =>
+    self.combineChunks(
+      that,
+      (): State<A, A2> => new PullBoth(),
+      pull(left, right, both)
+    )
 }
-
-/**
- * Zips this stream with another point-wise. The provided functions will be
- * used to create elements for the composed stream.
- *
- * The functions `left` and `right` will be used if the streams have different
- * lengths and one of the streams has ended before the other.
- *
- * @tsplus static ets/Stream/Aspects zipAllWith
- */
-export const zipAllWith = Pipeable(zipAllWith_)
 
 function zipWithChunks<A, A2, A3>(
   leftChunk: Chunk<A>,
@@ -109,8 +99,8 @@ function pull<A, A2, A3>(
       }
       case "PullBoth": {
         return pullLeft
-          .unsome()
-          .zipPar(pullRight.unsome())
+          .unsome
+          .zipPar(pullRight.unsome)
           .foldEffect(
             (err) => Effect.succeedNow(Exit.fail(Maybe.some(err))),
             ({ tuple: [l, r] }) => {

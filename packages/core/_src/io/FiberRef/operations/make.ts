@@ -1,7 +1,7 @@
 /**
  * Creates a new `FiberRef` with given initial value.
  *
- * @tsplus static ets/FiberRef/Ops make
+ * @tsplus static effect/core/io/FiberRef.Ops make
  */
 export function make<A>(
   initial: A,

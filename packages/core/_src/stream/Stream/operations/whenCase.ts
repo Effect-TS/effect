@@ -2,7 +2,7 @@
  * Returns the resulting stream when the given partial function is defined
  * for the given value, otherwise returns an empty stream.
  *
- * @tsplus static ets/Stream/Ops whenCase
+ * @tsplus static effect/core/stream/Stream.Ops whenCase
  */
 export function whenCase<R, E, A, A1>(
   a: LazyArg<A>,

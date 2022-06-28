@@ -3,7 +3,7 @@
  * the old value. If the function is `None` for the current value it doesn't
  * change it.
  *
- * @tsplus fluent ets/FiberRef getAndUpdateSome
+ * @tsplus fluent effect/core/io/FiberRef getAndUpdateSome
  */
 export function getAndUpdateSome_<A, P>(
   self: FiberRef<A, P>,
@@ -18,6 +18,6 @@ export function getAndUpdateSome_<A, P>(
  * the old value. If the function is `None` for the current value it doesn't
  * change it.
  *
- * @tsplus static ets/FiberRef/Aspects getAndUpdateSome
+ * @tsplus static effect/core/io/FiberRef.Aspects getAndUpdateSome
  */
 export const getAndUpdateSome = Pipeable(getAndUpdateSome_)

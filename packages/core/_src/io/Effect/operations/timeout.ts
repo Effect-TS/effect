@@ -14,32 +14,9 @@
  * timeout, resulting in earliest possible return, before an underlying effect
  * has been successfully interrupted.
  *
- * @tsplus fluent ets/Effect timeout
+ * @tsplus static effect/core/io/Effect.Aspects timeout
+ * @tsplus pipeable effect/core/io/Effect timeout
  */
-export function timeout_<R, E, E1, A>(
-  self: Effect<R, E, A>,
-  duration: LazyArg<Duration>,
-  __tsplusTrace?: string
-): Effect<R, E, Maybe<A>> {
-  return self.timeoutTo(Maybe.none, Maybe.some, duration)
+export function timeout(duration: LazyArg<Duration>, __tsplusTrace?: string) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, Maybe<A>> => self.timeoutTo(Maybe.none, Maybe.some, duration)
 }
-
-/**
- * Returns an effect that will timeout this effect, returning `None` if the
- * timeout elapses before the effect has produced a value; and returning
- * `Some` of the produced value otherwise.
- *
- * If the timeout elapses without producing a value, the running effect will
- * be safely interrupted.
- *
- * WARNING: The effect returned by this method will not itself return until
- * the underlying effect is actually interrupted. This leads to more
- * predictable resource utilization. If early return is desired, then instead
- * of using `effect.timeout(d)`, use `effect.disconnect.timeout(d)`, which
- * first disconnects the effect's interruption signal before performing the
- * timeout, resulting in earliest possible return, before an underlying effect
- * has been successfully interrupted.
- *
- * @tsplus static ets/Effect/Aspects timeout
- */
-export const timeout = Pipeable(timeout_)

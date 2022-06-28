@@ -3,7 +3,7 @@ import { constTrue } from "@tsplus/stdlib/data/Function"
 describe.concurrent("Effect", () => {
   describe.concurrent("fork", () => {
     it("propagates interruption", async () => {
-      const program = Effect.never.fork().flatMap((fiber) => fiber.interrupt())
+      const program = Effect.never.fork.flatMap((fiber) => fiber.interrupt)
 
       const result = await program.unsafeRunPromise()
 
@@ -16,11 +16,11 @@ describe.concurrent("Effect", () => {
         .bind("fiber", ({ latch }) =>
           (latch.succeed(undefined) > Effect.die(new Error()))
             .zipPar(Effect.never)
-            .fork())
+            .fork)
         .tap(({ latch }) => latch.await())
         .flatMap(({ fiber }) =>
           fiber
-            .interrupt()
+            .interrupt
             .map((exit) => exit.mapErrorCause((cause) => cause.untraced))
         )
 
@@ -33,7 +33,7 @@ describe.concurrent("Effect", () => {
   describe.concurrent("forkWithErrorHandler", () => {
     it("calls provided function when task fails", async () => {
       const program = Deferred.make<never, void>()
-        .tap((deferred) => Effect.fail(undefined).forkWithErrorHandler((e) => deferred.succeed(e).unit()))
+        .tap((deferred) => Effect.fail(undefined).forkWithErrorHandler((e) => deferred.succeed(e).unit))
         .flatMap((deferred) => deferred.await())
         .map(constTrue)
 
@@ -45,7 +45,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("head", () => {
     it("on non empty list", async () => {
-      const program = Effect.succeed(List(1, 2, 3)).head.either()
+      const program = Effect.succeed(List(1, 2, 3)).head.either
 
       const result = await program.unsafeRunPromise()
 
@@ -53,7 +53,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("on empty list", async () => {
-      const program = Effect.succeed(List.empty<number>()).head.either()
+      const program = Effect.succeed(List.empty<number>()).head.either
 
       const result = await program.unsafeRunPromise()
 
@@ -61,7 +61,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("on failure", async () => {
-      const program = Effect.fail("fail").head.either()
+      const program = Effect.fail("fail").head.either
 
       const result = await program.unsafeRunPromise()
 
