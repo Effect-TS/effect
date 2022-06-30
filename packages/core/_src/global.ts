@@ -39,6 +39,11 @@ import { CountdownLatch } from "@effect/core/concurrent/CountdownLatch/definitio
 /**
  * @tsplus global
  */
+import { CyclicBarrier } from "@effect/core/concurrent/CyclicBarrier/definition"
+
+/**
+ * @tsplus global
+ */
 import { Cause } from "@effect/core/io/Cause/definition"
 /**
  * @tsplus global
