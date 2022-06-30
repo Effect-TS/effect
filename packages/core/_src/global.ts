@@ -35,6 +35,10 @@ import { EmptyMutableQueue } from "@tsplus/stdlib/collections/mutable/MutableQue
 /**
  * @tsplus global
  */
+import { CountdownLatch } from "@effect/core/concurrent/CountdownLatch/definition"
+/**
+ * @tsplus global
+ */
 import { Cause } from "@effect/core/io/Cause/definition"
 /**
  * @tsplus global
