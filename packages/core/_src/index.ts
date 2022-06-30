@@ -1,4 +1,5 @@
 export * as chunk from "@effect/core/collection/Chunk"
+export * as countdownLatch from "@effect/core/concurrent/CountdownLatch"
 export * as cause from "@effect/core/io/Cause"
 export * as clock from "@effect/core/io/Clock"
 export * as defaultEnv from "@effect/core/io/DefaultEnv"
