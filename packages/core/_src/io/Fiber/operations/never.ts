@@ -3,7 +3,7 @@ import { makeSynthetic } from "@effect/core/io/Fiber/definition"
 /**
  * A fiber that never fails or succeeds.
  *
- * @tsplus static ets/Fiber/Ops never
+ * @tsplus static effect/core/io/Fiber.Ops never
  */
 export const never: Fiber<never, never> = makeSynthetic({
   id: FiberId.none,

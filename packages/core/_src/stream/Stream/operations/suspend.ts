@@ -3,7 +3,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 /**
  * Returns a lazily constructed stream.
  *
- * @tsplus static ets/Stream/Ops suspend
+ * @tsplus static effect/core/stream/Stream.Ops suspend
  */
 export function suspend<R, E, A>(
   stream: LazyArg<Stream<R, E, A>>,

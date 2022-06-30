@@ -5,7 +5,7 @@
  * Equivalent to `collectAll(i).unit`, but without the cost of building the
  * list of results.
  *
- * @tsplus static ets/STM/Ops collectAllDiscard
+ * @tsplus static effect/core/stm/STM.Ops collectAllDiscard
  */
 export function collectAllDiscard<R, E, A>(
   as: LazyArg<Collection<STM<R, E, A>>>

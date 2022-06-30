@@ -6,7 +6,7 @@ export type HubSym = typeof HubSym
  * messages of type `A` and subscribers can subscribe to take messages of type
  * `A`.
  *
- * @tsplus type ets/Hub
+ * @tsplus type effect/core/io/Hub
  */
 export interface Hub<A> extends Enqueue<A> {
   readonly [HubSym]: HubSym
@@ -32,7 +32,7 @@ export interface Hub<A> extends Enqueue<A> {
 }
 
 /**
- * @tsplus type ets/Hub/Ops
+ * @tsplus type effect/core/io/Hub.Ops
  */
 export interface HubOps {
   $: HubAspects
@@ -42,6 +42,6 @@ export const Hub: HubOps = {
 }
 
 /**
- * @tsplus type ets/Hub/Aspects
+ * @tsplus type effect/core/io/Hub.Aspects
  */
 export interface HubAspects {}

@@ -15,9 +15,9 @@ describe.concurrent("Stream", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make<List<string>>(List.empty()))
         .bind("deferred", () => Deferred.make<never, void>())
-        .bind("fiber", ({ deferred, ref }) => stream(ref, deferred).runDrain().fork())
+        .bind("fiber", ({ deferred, ref }) => stream(ref, deferred).runDrain.fork)
         .tap(({ deferred }) => deferred.await())
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()

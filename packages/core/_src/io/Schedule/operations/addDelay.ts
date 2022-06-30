@@ -2,20 +2,10 @@
  * Returns a new schedule with the given delay added to every interval defined
  * by this schedule.
  *
- * @tsplus fluent ets/Schedule addDelay
- * @tsplus fluent ets/Schedule/WithState addDelay
+ * @tsplus static effect/core/io/Schedule.Aspects addDelay
+ * @tsplus pipeable effect/core/io/Schedule addDelay
  */
-export function addDelay_<State, Env, In, Out>(
-  self: Schedule<State, Env, In, Out>,
-  f: (out: Out) => Duration
-): Schedule<State, Env, In, Out> {
-  return self.addDelayEffect((out) => Effect.succeed(f(out)))
+export function addDelay<Out>(f: (out: Out) => Duration) {
+  return <State, Env, In>(self: Schedule<State, Env, In, Out>): Schedule<State, Env, In, Out> =>
+    self.addDelayEffect((out) => Effect.succeed(f(out)))
 }
-
-/**
- * Returns a new schedule with the given delay added to every interval defined
- * by this schedule.
- *
- * @tsplus static ets/Schedule/Aspects addDelay
- */
-export const addDelay = Pipeable(addDelay_)

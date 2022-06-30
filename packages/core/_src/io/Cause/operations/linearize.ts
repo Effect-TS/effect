@@ -4,7 +4,7 @@ import { Die, Fail, Interrupt, Stackless } from "@effect/core/io/Cause/definitio
  * Linearizes this cause to a set of parallel causes where each parallel cause
  * contains a linear sequence of failures.
  *
- * @tsplus getter ets/Cause linearize
+ * @tsplus getter effect/core/io/Cause linearize
  */
 export function linearize<E>(self: Cause<E>): HashSet<Cause<E>> {
   return self.fold(

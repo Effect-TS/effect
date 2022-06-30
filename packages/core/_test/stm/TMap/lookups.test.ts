@@ -6,42 +6,48 @@ describe.concurrent("TMap", () => {
       const tx = TMap.make(Tuple.make("a", 1), Tuple.make("b", 2)).flatMap((_) => _.get("a")).map((_) =>
         _ == Maybe.some(1)
       )
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("get non-existing element", async () => {
       const tx = TMap.empty<string, number>().flatMap((_) => _.get("a")).map((_) => _.isNone())
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("getOrElse existing element", async () => {
       const tx = TMap.make(Tuple.make("a", 1), Tuple.make("b", 2)).flatMap((_) => _.getOrElse("a", 10)).map((_) =>
         _ === 1
       )
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("getOrElse non-existing element", async () => {
       const tx = TMap.empty<string, number>().flatMap((_) => _.getOrElse("a", 10)).map((_) => _ === 10)
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("contains existing element", async () => {
       const tx = TMap.make(Tuple.make("a", 1), Tuple.make("b", 2)).flatMap((_) => _.contains("a"))
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("contains non-existing element", async () => {
       const tx = TMap.empty().flatMap((_) => _.contains("a"))
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isFalse(result)
     })
+
     it("collect all elements", async () => {
       const tx = TMap.make(Tuple.make("a", 1), Tuple.make("b", 2), Tuple.make("c", 3)).flatMap((_) =>
         _.toList.map((_) =>
@@ -52,10 +58,11 @@ describe.concurrent("TMap", () => {
           )
         )
       )
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("collect all keys", async () => {
       const tx = TMap.make(Tuple.make("a", 1), Tuple.make("b", 2), Tuple.make("c", 3)).flatMap((_) =>
         _.keys.map((_) =>
@@ -66,10 +73,11 @@ describe.concurrent("TMap", () => {
           )
         )
       )
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("collect all values", async () => {
       const tx = TMap.make(Tuple.make("a", 1), Tuple.make("b", 2), Tuple.make("c", 3)).flatMap((_) =>
         _.values.map((_) =>
@@ -80,7 +88,7 @@ describe.concurrent("TMap", () => {
           )
         )
       )
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })

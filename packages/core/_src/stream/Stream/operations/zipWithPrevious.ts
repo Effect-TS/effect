@@ -2,7 +2,7 @@
  * Zips each element with the previous element. Initially accompanied by
  * `None`.
  *
- * @tsplus fluent ets/Stream zipWithPrevious
+ * @tsplus getter effect/core/stream/Stream zipWithPrevious
  */
 export function zipWithPrevious<R, E, A>(
   self: Stream<R, E, A>,

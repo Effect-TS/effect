@@ -3,8 +3,8 @@
  * element and wait for it to be taken, and allows a consumer to wait for an
  * element to be available.
  *
- * @tsplus type ets/Stream/Handoff
- * @tsplus companion ets/Stream/Handoff/Ops
+ * @tsplus type effect/core/stream/Stream/Handoff
+ * @tsplus companion effect/core/stream/Stream/Handoff.Ops
  */
 export class Handoff<A> {
   constructor(readonly ref: Ref<HandoffState<A>>) {}
@@ -23,7 +23,7 @@ export class Full<A> {
 }
 
 /**
- * @tsplus static ets/Stream/Handoff/Ops make
+ * @tsplus static effect/core/stream/Stream/Handoff.Ops make
  */
 export function make<A>(__tsplusTrace?: string): Effect<never, never, Handoff<A>> {
   return Deferred.make<never, void>()
@@ -32,30 +32,32 @@ export function make<A>(__tsplusTrace?: string): Effect<never, never, Handoff<A>
 }
 
 /**
- * @tsplus fluent ets/Stream/Handoff offer
+ * @tsplus static effect/core/stream/Stream/Handoff.Aspects offer
+ * @tsplus pipeable effect/core/stream/Stream/Handoff offer
  */
-export function offer<A>(self: Handoff<A>, a: A, __tsplusTrace?: string): Effect<never, never, void> {
-  return Deferred.make<never, void>().flatMap((deferred) =>
-    self.ref
-      .modify((state) => {
-        switch (state._tag) {
-          case "Empty": {
-            return Tuple(
-              state.notifyConsumer.succeed(undefined) > deferred.await(),
-              new Full(a, deferred)
-            )
+export function offer<A>(value: A, __tsplusTrace?: string) {
+  return (self: Handoff<A>): Effect<never, never, void> =>
+    Deferred.make<never, void>().flatMap((deferred) =>
+      self.ref
+        .modify((state) => {
+          switch (state._tag) {
+            case "Empty": {
+              return Tuple(
+                state.notifyConsumer.succeed(undefined) > deferred.await(),
+                new Full(value, deferred)
+              )
+            }
+            case "Full": {
+              return Tuple(state.notifyProducer.await() > self.offer(value), state)
+            }
           }
-          case "Full": {
-            return Tuple(state.notifyProducer.await() > self.offer(a), state)
-          }
-        }
-      })
-      .flatten()
-  )
+        })
+        .flatten
+    )
 }
 
 /**
- * @tsplus fluent ets/Stream/Handoff take
+ * @tsplus getter effect/core/stream/Stream/Handoff take
  */
 export function take<A>(self: Handoff<A>, __tsplusTrace?: string): Effect<never, never, A> {
   return Deferred.make<never, void>().flatMap((deferred) =>
@@ -63,7 +65,7 @@ export function take<A>(self: Handoff<A>, __tsplusTrace?: string): Effect<never,
       .modify((state) => {
         switch (state._tag) {
           case "Empty": {
-            return Tuple(state.notifyConsumer.await() > self.take(), state)
+            return Tuple(state.notifyConsumer.await() > self.take, state)
           }
           case "Full": {
             return Tuple(
@@ -73,12 +75,12 @@ export function take<A>(self: Handoff<A>, __tsplusTrace?: string): Effect<never,
           }
         }
       })
-      .flatten()
+      .flatten
   )
 }
 
 /**
- * @tsplus fluent ets/Stream/Handoff poll
+ * @tsplus getter effect/core/stream/Stream/Handoff poll
  */
 export function poll<A>(self: Handoff<A>, __tsplusTrace?: string): Effect<never, never, Maybe<A>> {
   return Deferred.make<never, void>().flatMap((deferred) =>
@@ -96,6 +98,6 @@ export function poll<A>(self: Handoff<A>, __tsplusTrace?: string): Effect<never,
           }
         }
       })
-      .flatten()
+      .flatten
   )
 }

@@ -3,7 +3,7 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
 /**
  * The first entry of the array, if it exists.
  *
- * @tsplus getter ets/TArray firstMaybe
+ * @tsplus getter effect/core/stm/TArray firstMaybe
  */
 export function firstMaybe<A>(self: TArray<A>): USTM<Maybe<A>> {
   concreteTArray(self)

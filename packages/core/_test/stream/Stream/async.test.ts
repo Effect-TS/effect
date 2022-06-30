@@ -8,7 +8,7 @@ describe.concurrent("Stream", () => {
         })
       })
         .take(chunk.size)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -21,7 +21,7 @@ describe.concurrent("Stream", () => {
       const program = Stream.asyncMaybe<never, never, number>((emit) => {
         emit(Effect.fail(Maybe.none))
         return Maybe.none
-      }).runCollect()
+      }).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -31,7 +31,7 @@ describe.concurrent("Stream", () => {
     it("Some", async () => {
       const chunk = Chunk(1, 2, 3, 4, 5)
       const program = Stream.asyncMaybe<never, never, number>(() => Maybe.some(Stream.fromChunk(chunk)))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -47,7 +47,7 @@ describe.concurrent("Stream", () => {
         return Maybe.none
       })
         .take(chunk.size)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -70,7 +70,7 @@ describe.concurrent("Stream", () => {
     //         return Maybe.none
     //       }, 5)
     //     )
-    //     .bind("run", ({ stream }) => stream.run(Sink.take(1) > Sink.never).fork())
+    //     .bind("run", ({ stream }) => stream.run(Sink.take(1) > Sink.never).fork)
     //     .tap(({ refCount }) =>
     //       refCount.get().repeat(Schedule.recurWhile((n) => n !== 7))
     //     )
@@ -96,10 +96,10 @@ describe.concurrent("Stream", () => {
             return latch.succeed(undefined) > Effect.unit
           })
             .take(chunk.size)
-            .runCollect()
-            .fork())
+            .runCollect
+            .fork)
         .tap(({ latch }) => latch.await())
-        .flatMap(({ fiber }) => fiber.join())
+        .flatMap(({ fiber }) => fiber.join)
 
       const result = await program.unsafeRunPromise()
 
@@ -110,7 +110,7 @@ describe.concurrent("Stream", () => {
       const program = Stream.asyncEffect<never, never, number, void>((emit) => {
         emit(Effect.fail(Maybe.none))
         return Effect.unit
-      }).runCollect()
+      }).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -140,7 +140,7 @@ describe.concurrent("Stream", () => {
     //       }, 5)
     //     )
     //     .bind("run", ({ stream }) =>
-    //       stream.run(Sink.take(1) > Sink.fromEffect(deferred.await())).fork()
+    //       stream.run(Sink.take(1) > Sink.fromEffect(deferred.await())).fork
     //     )
     //     .tap(({ refCount }) => refCount.get.repeat(Schedule.recurWhile((n) => n !== 7)))
     //     .bind("isDone", ({ refDone }) => refDone.get)
@@ -167,9 +167,9 @@ describe.concurrent("Stream", () => {
           })
             .take(chunk.size)
             .run(Sink.collectAll<number>())
-            .fork())
+            .fork)
         .tap(({ latch }) => latch.await())
-        .flatMap(({ fiber }) => fiber.join())
+        .flatMap(({ fiber }) => fiber.join)
 
       const result = await program.unsafeRunPromise()
 
@@ -180,7 +180,7 @@ describe.concurrent("Stream", () => {
       const program = Stream.asyncScoped<never, never, number>((cb) => {
         cb(Effect.fail(Maybe.none))
         return Effect.unit
-      }).runCollect()
+      }).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -222,10 +222,10 @@ describe.concurrent("Stream", () => {
             return Either.left(cancelled.set(true))
           })
             .tap(() => latch.succeed(undefined))
-            .runDrain()
-            .fork())
+            .runDrain
+            .fork)
         .tap(({ latch }) => latch.await())
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ cancelled }) => cancelled.get())
 
       const result = await program.unsafeRunPromise()
@@ -236,7 +236,7 @@ describe.concurrent("Stream", () => {
     it("Right", async () => {
       const chunk = Chunk(1, 2, 3, 4, 5)
       const program = Stream.asyncInterrupt<never, never, number>(() => Either.right(Stream.fromChunk(chunk)))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -247,7 +247,7 @@ describe.concurrent("Stream", () => {
       const program = Stream.asyncInterrupt<never, never, number>((emit) => {
         emit.end()
         return Either.left(Effect.succeedNow(undefined))
-      }).runCollect()
+      }).runCollect
 
       const result = await program.unsafeRunPromise()
 

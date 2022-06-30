@@ -3,23 +3,15 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 /**
  * Creates a stream that groups on adjacent keys, calculated by function f.
  *
- * @tsplus fluent ets/Stream groupAdjacentBy
+ * @tsplus static effect/core/stream/Stream.Aspects groupAdjacentBy
+ * @tsplus pipeable effect/core/stream/Stream groupAdjacentBy
  */
-export function groupAdjacentBy_<R, E, A, K>(
-  self: Stream<R, E, A>,
-  f: (a: A) => K,
-  __tsplusTrace?: string
-) {
-  concreteStream(self)
-  return new StreamInternal(self.channel >> chunkAdjacent<E, A, K>(Maybe.none, f))
+export function groupAdjacentBy<A, K>(f: (a: A) => K, __tsplusTrace?: string) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R, E, Tuple<[K, Chunk<A>]>> => {
+    concreteStream(self)
+    return new StreamInternal(self.channel >> chunkAdjacent<E, A, K>(Maybe.none, f))
+  }
 }
-
-/**
- * Creates a stream that groups on adjacent keys, calculated by function f.
- *
- * @tsplus static ets/Stream/Aspects groupAdjacentBy
- */
-export const groupAdjacentBy = Pipeable(groupAdjacentBy_)
 
 function chunkAdjacent<E, A, K>(
   buffer: Maybe<Tuple<[K, Chunk<A>]>>,

@@ -1,7 +1,7 @@
 /**
  * Exposes all parallel errors in a single call.
  *
- * @tsplus fluent ets/Effect parallelErrors
+ * @tsplus getter effect/core/io/Effect parallelErrors
  */
 export function parallelErrors<R, E, A>(
   self: Effect<R, E, A>,

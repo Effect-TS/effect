@@ -9,8 +9,8 @@ describe.concurrent("Stream", () => {
         .bind("queue2", () => Queue.unbounded<Chunk<number>>())
         .tap(({ queue1 }) => queue1.offer(Chunk(1)))
         .tap(({ queue2 }) => queue2.offer(Chunk(2)))
-        .tap(({ queue1 }) => queue1.offer(Chunk(3)).fork())
-        .tap(({ queue2 }) => queue2.offer(Chunk(4)).fork())
+        .tap(({ queue1 }) => queue1.offer(Chunk(3)).fork)
+        .tap(({ queue2 }) => queue2.offer(Chunk(4)).fork)
         .bindValue("stream1", ({ queue1 }) => Stream.fromChunkQueue(queue1))
         .bindValue("stream2", ({ queue2 }) => Stream.fromChunkQueue(queue2))
         .bindValue("stream3", ({ deferred, stream1, stream2 }) =>
@@ -18,7 +18,7 @@ describe.concurrent("Stream", () => {
             .zipWithLatest(stream2, (a, b) => Tuple(a, b))
             .interruptWhen(deferred.await())
             .take(3))
-        .tap(({ stream3 }) => stream3.runDrain())
+        .tap(({ stream3 }) => stream3.runDrain)
         .map(constTrue)
 
       const result = await program.unsafeRunPromise()
@@ -37,10 +37,10 @@ describe.concurrent("Stream", () => {
             (started.succeed(undefined) > latch.await()).onInterrupt(() => interrupted.set(true))
           )
             .interruptWhen(halt.await())
-            .runDrain()
-            .fork())
+            .runDrain
+            .fork)
         .tap(({ halt, started }) => started.await() > halt.succeed(undefined))
-        .tap(({ fiber }) => fiber.await())
+        .tap(({ fiber }) => fiber.await)
         .flatMap(({ interrupted }) => interrupted.get())
 
       const result = await program.unsafeRunPromise()
@@ -55,8 +55,8 @@ describe.concurrent("Stream", () => {
         .flatMap(({ halt }) =>
           Stream.fromEffect(Effect.never)
             .interruptWhen(halt.await())
-            .runDrain()
-            .either()
+            .runDrain
+            .either
         )
 
       const result = await program.unsafeRunPromise()
@@ -73,8 +73,8 @@ describe.concurrent("Stream", () => {
         .bind("queue2", () => Queue.unbounded<Chunk<number>>())
         .tap(({ queue1 }) => queue1.offer(Chunk(1)))
         .tap(({ queue2 }) => queue2.offer(Chunk(2)))
-        .tap(({ queue1 }) => queue1.offer(Chunk(3)).fork())
-        .tap(({ queue2 }) => queue2.offer(Chunk(4)).fork())
+        .tap(({ queue1 }) => queue1.offer(Chunk(3)).fork)
+        .tap(({ queue2 }) => queue2.offer(Chunk(4)).fork)
         .bindValue("stream1", ({ queue1 }) => Stream.fromChunkQueue(queue1))
         .bindValue("stream2", ({ queue2 }) => Stream.fromChunkQueue(queue2))
         .bindValue("stream3", ({ deferred, stream1, stream2 }) =>
@@ -82,7 +82,7 @@ describe.concurrent("Stream", () => {
             .zipWithLatest(stream2, (a, b) => Tuple(a, b))
             .interruptWhenDeferred(deferred)
             .take(3))
-        .tap(({ stream3 }) => stream3.runDrain())
+        .tap(({ stream3 }) => stream3.runDrain)
         .map(constTrue)
 
       const result = await program.unsafeRunPromise()
@@ -94,7 +94,7 @@ describe.concurrent("Stream", () => {
       const program = Effect.Do()
         .bind("halt", () => Deferred.make<string, never>())
         .tap(({ halt }) => halt.fail("fail"))
-        .flatMap(({ halt }) => Stream.fromEffect(Effect.never).interruptWhenDeferred(halt).runDrain().either())
+        .flatMap(({ halt }) => Stream.fromEffect(Effect.never).interruptWhenDeferred(halt).runDrain.either)
 
       const result = await program.unsafeRunPromise()
 
@@ -113,7 +113,7 @@ describe.concurrent("Stream", () => {
   //                      .collectWhileSuccess
   //                      .interruptAfter(5.seconds)
   //                      .tap(_ => c.proceed)
-  //                      .runCollect()
+  //                      .runCollect
   //                      .fork
   //           _      <- c.offer *> TestClock.adjust(3.seconds) *> c.awaitNext
   //           _      <- c.offer *> TestClock.adjust(3.seconds) *> c.awaitNext
@@ -126,7 +126,7 @@ describe.concurrent("Stream", () => {
   //   test("interrupts before first chunk") {
   //     for {
   //       queue  <- Queue.unbounded[Int]
-  //       fiber  <- ZStream.fromQueue(queue).interruptAfter(5.seconds).runCollect().fork
+  //       fiber  <- ZStream.fromQueue(queue).interruptAfter(5.seconds).runCollect.fork
   //       _      <- TestClock.adjust(6.seconds)
   //       _      <- queue.offer(1)
   //       result <- fiber.join

@@ -27,7 +27,7 @@ export type _A = typeof _A
  * some adjustments for the multiple-valued nature of `Stream`). These aspects
  * allow for rich and expressive composition of streams.
  *
- * @tsplus type ets/Stream
+ * @tsplus type effect/core/stream/Stream
  */
 export interface Stream<R, E, A> {
   readonly [StreamSym]: StreamSym
@@ -43,7 +43,7 @@ export declare namespace Stream {
 }
 
 /**
- * @tsplus type ets/Stream/Ops
+ * @tsplus type effect/core/stream/Stream.Ops
  */
 export interface StreamOps {
   $: StreamAspects
@@ -53,7 +53,7 @@ export const Stream: StreamOps = {
 }
 
 /**
- * @tsplus type ets/Stream/Aspects
+ * @tsplus type effect/core/stream/Stream.Aspects
  */
 export interface StreamAspects {}
 
@@ -66,7 +66,7 @@ export const DEFAULT_CHUNK_SIZE = 4096
 /**
  * Determines if the provided `unknown` value is a `Stream`.
  *
- * @tsplus static ets/Stream/Ops isStream
+ * @tsplus static effect/core/stream/Stream.Ops isStream
  */
 export function isStream(u: unknown): u is Stream<unknown, unknown, unknown> {
   return typeof u === "object" && u != null && StreamSym in u

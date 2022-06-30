@@ -4,29 +4,18 @@
  * addition, returns an effect that can be used to invalidate the current
  * cached value before the `timeToLive` duration expires.
  *
- * @tsplus fluent ets/Effect cachedInvalidate
+ * @tsplus static effect/core/io/Effect.Aspects cachedInvalidate
+ * @tsplus pipeable effect/core/io/Effect cachedInvalidate
  */
-export function cachedInvalidate_<R, E, A>(
-  self: Effect<R, E, A>,
-  timeToLive: Duration,
-  __tsplusTrace?: string
-): Effect<R, never, Tuple<[Effect<never, E, A>, Effect<never, never, void>]>> {
-  return Do(($) => {
-    const environment = $(Effect.environment<R>())
-    const cache = $(Ref.Synchronized.make<Maybe<Tuple<[number, Deferred<E, A>]>>>(Maybe.none))
-    return Tuple(get(self, timeToLive, cache).provideEnvironment(environment), invalidate(cache))
-  })
+export function cachedInvalidate(timeToLive: LazyArg<Duration>, __tsplusTrace?: string) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, never, Tuple<[Effect<never, E, A>, Effect<never, never, void>]>> =>
+    Do(($) => {
+      const ttl = $(Effect.succeed(timeToLive))
+      const environment = $(Effect.environment<R>())
+      const cache = $(Ref.Synchronized.make<Maybe<Tuple<[number, Deferred<E, A>]>>>(Maybe.none))
+      return Tuple(get(self, ttl, cache).provideEnvironment(environment), invalidate(cache))
+    })
 }
-
-/**
- * Returns an effect that, if evaluated, will return the cached result of this
- * effect. Cached results will expire after `timeToLive` duration. In
- * addition, returns an effect that can be used to invalidate the current
- * cached value before the `timeToLive` duration expires.
- *
- * @tsplus static ets/Effect/Aspects cachedInvalidate
- */
-export const cachedInvalidate = Pipeable(cachedInvalidate_)
 
 function compute<R, E, A>(
   self: Effect<R, E, A>,

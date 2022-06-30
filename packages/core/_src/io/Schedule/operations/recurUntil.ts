@@ -1,7 +1,7 @@
 /**
  * A schedule that recurs for until the predicate evaluates to true.
  *
- * @tsplus static ets/Schedule/Ops recurUntil
+ * @tsplus static effect/core/io/Schedule.Ops recurUntil
  */
 export function recurUntil<A>(
   f: Predicate<A>

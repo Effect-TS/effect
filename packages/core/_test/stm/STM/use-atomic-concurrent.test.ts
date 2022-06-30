@@ -6,8 +6,8 @@ describe.concurrent("STM", () => {
       const program = Effect.Do()
         .bind("ref", () => TRef.makeCommit(0))
         .bind("fiber", ({ ref }) => Effect.forkAll(Chunk.fill(10, () => incrementRefN(99, ref))))
-        .tap(({ fiber }) => fiber.join())
-        .flatMap(({ ref }) => ref.get.commit())
+        .tap(({ fiber }) => fiber.join)
+        .flatMap(({ ref }) => ref.get.commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -21,8 +21,8 @@ describe.concurrent("STM", () => {
           Effect.forkAll(
             Chunk.fill(10, () => compute3RefN(99, refs.get(0), refs.get(1), refs.get(2)))
           ))
-        .tap(({ fiber }) => fiber.join())
-        .flatMap(({ refs }) => refs.get(2).get.commit())
+        .tap(({ fiber }) => fiber.join)
+        .flatMap(({ refs }) => refs.get(2).get.commit)
 
       const result = await program.unsafeRunPromise()
 

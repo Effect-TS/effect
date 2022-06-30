@@ -3,7 +3,7 @@ import { constFalse, constTrue } from "@tsplus/stdlib/data/Function"
 describe.concurrent("Stream", () => {
   describe.concurrent("timeout", () => {
     it("succeed", async () => {
-      const program = Stream.succeed(1).timeout(new Duration(Number.MAX_SAFE_INTEGER)).runCollect()
+      const program = Stream.succeed(1).timeout(new Duration(Number.MAX_SAFE_INTEGER)).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -14,7 +14,7 @@ describe.concurrent("Stream", () => {
       const program = Stream.range(0, 5)
         .tap(() => Effect.never)
         .timeout((0).millis)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -27,9 +27,9 @@ describe.concurrent("Stream", () => {
       const program = Stream.range(0, 5)
         .tap(() => Effect.never)
         .timeoutFail(constFalse, (0).millis)
-        .runDrain()
+        .runDrain
         .map(constTrue)
-        .either()
+        .either
         .map((either) => either.merge)
 
       const result = await program.unsafeRunPromise()
@@ -40,8 +40,8 @@ describe.concurrent("Stream", () => {
     it("fail", async () => {
       const program = Stream.fail("original")
         .timeoutFail("timeout", (15).minutes)
-        .runDrain()
-        .flip()
+        .runDrain
+        .flip
 
       const result = await program.unsafeRunPromise()
 
@@ -55,9 +55,9 @@ describe.concurrent("Stream", () => {
       const program = Stream.range(0, 5)
         .tap(() => Effect.never)
         .timeoutFailCause(Cause.die(error), (0).millis)
-        .runDrain()
-        .sandbox()
-        .either()
+        .runDrain
+        .sandbox
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -69,7 +69,7 @@ describe.concurrent("Stream", () => {
     it("succeed", async () => {
       const program = Stream.range(0, 5)
         .timeoutTo(new Duration(Number.MAX_SAFE_INTEGER), Stream.succeed(-1))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -87,7 +87,7 @@ describe.concurrent("Stream", () => {
       //                  .flattenChunks
       //                  .timeoutTo(2.seconds)(ZStream.succeed(4))
       //                  .tap(_ => c.proceed)
-      //                  .runCollect()
+      //                  .runCollect
       //                  .fork
       //       _      <- c.offer *> TestClock.adjust(1.seconds) *> c.awaitNext
       //       _      <- c.offer *> TestClock.adjust(3.seconds) *> c.awaitNext
@@ -105,7 +105,7 @@ describe.concurrent("Stream", () => {
       //   queue2 <- Queue.unbounded[Int]
       //   stream1 = ZStream.fromQueue(queue1)
       //   stream2 = ZStream.fromQueue(queue2)
-      //   fiber  <- stream1.timeoutTo(2.seconds)(stream2).runCollect().fork
+      //   fiber  <- stream1.timeoutTo(2.seconds)(stream2).runCollect.fork
       //   _      <- queue1.offer(1) *> TestClock.adjust(1.second)
       //   _      <- queue1.offer(2) *> TestClock.adjust(3.second)
       //   _      <- queue1.offer(3)

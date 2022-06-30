@@ -18,7 +18,7 @@ export function concreteNode<A>(
 }
 
 /**
- * @tsplus static ets/THub/Node/Ops __call
+ * @tsplus static effect/core/stm/THub/Node.Ops __call
  */
 export function make<A>(head: A, subscribers: number, tail: TRef<Node<A>>): Node<A> {
   return new InternalNode(head, subscribers, tail)

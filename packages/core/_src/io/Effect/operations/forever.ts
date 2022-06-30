@@ -1,11 +1,11 @@
 /**
  * Repeats this effect forever (until the first error).
  *
- * @tsplus fluent ets/Effect forever
+ * @tsplus getter effect/core/io/Effect forever
  */
 export function forever<R, E, A>(
-  effect: Effect<R, E, A>,
+  self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, E, never> {
-  return effect > Effect.yieldNow > forever(effect)
+  return self.zipRight(Effect.yieldNow).zipRight(self.forever)
 }

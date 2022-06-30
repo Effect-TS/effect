@@ -4,7 +4,7 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
 /**
  * Takes a value from the queue, retrying until a value is in the queue.
  *
- * @tsplus getter ets/TPriorityQueue take
+ * @tsplus getter effect/core/stm/TPriorityQueue take
  */
 export function take<A>(self: TPriorityQueue<A>): USTM<A> {
   return STM.Effect((journal) => {

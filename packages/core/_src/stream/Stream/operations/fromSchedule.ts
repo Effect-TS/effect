@@ -3,7 +3,7 @@
  * input. The stream will emit an element for each value output from the
  * schedule, continuing for as long as the schedule continues.
  *
- * @tsplus static ets/Stream/Ops fromSchedule
+ * @tsplus static effect/core/stream/Stream.Ops fromSchedule
  */
 export function fromSchedule<S, R, A>(
   schedule: LazyArg<Schedule<S, R, unknown, A>>,

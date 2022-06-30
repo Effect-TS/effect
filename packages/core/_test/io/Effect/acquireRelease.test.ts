@@ -23,7 +23,7 @@ describe.concurrent("Effect", () => {
           Effect.succeed(42).acquireUseRelease(
             (n) => Effect.succeed(n + 1),
             () => release.set(true)
-          ).disconnect())
+          ).disconnect)
         .bind("released", ({ release }) => release.get())
 
       const { released, result } = await program.unsafeRunPromise()
@@ -59,7 +59,7 @@ describe.concurrent("Effect", () => {
             Effect.succeed(42),
             Effect.succeed(0),
             release.set(true)
-          ).disconnect())
+          ).disconnect)
         .bind("released", ({ release }) => release.get())
 
       const { released, result } = await program.unsafeRunPromise()
@@ -78,7 +78,7 @@ describe.concurrent("Effect", () => {
             Effect.succeed(42),
             () => Effect.succeed(0),
             () => release.set(true)
-          ).disconnect())
+          ).disconnect)
         .bind("released", ({ release }) => release.get())
 
       const { released, result } = await program.unsafeRunPromise()
@@ -95,7 +95,7 @@ describe.concurrent("Effect", () => {
             Effect.succeed(42),
             () => Effect.fail("use failed"),
             () => Effect.die(releaseDied)
-          ).exit())
+          ).exit)
         .flatMap(({ exit }) =>
           exit.foldEffect(
             (cause) => Effect.succeed(cause),
@@ -117,7 +117,7 @@ describe.concurrent("Effect", () => {
             Effect.succeed(42),
             () => Effect.succeed(0),
             () => release.set(true)
-          ).disconnect())
+          ).disconnect)
         .bind("released", ({ release }) => release.get())
 
       const { released, result } = await program.unsafeRunPromise()
@@ -135,8 +135,8 @@ describe.concurrent("Effect", () => {
             () => Effect.fail("use failed"),
             () => Effect.die(releaseDied)
           )
-            .disconnect()
-            .exit())
+            .disconnect
+            .exit)
         .flatMap(({ exit }) =>
           exit.foldEffect(
             (cause) => Effect.succeed(cause),
@@ -162,8 +162,8 @@ describe.concurrent("Effect", () => {
             },
             () => release.set(true)
           )
-            .disconnect()
-            .exit())
+            .disconnect
+            .exit)
         .bind("cause", ({ exit }) =>
           exit.foldEffect(
             (cause) => Effect.succeed(cause),

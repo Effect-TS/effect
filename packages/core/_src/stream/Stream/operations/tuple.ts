@@ -1,7 +1,7 @@
 import type { _A, _E, _R } from "@effect/core/stream/Stream//definition"
 
 /**
- * @tsplus static ets/Stream/Ops tuple
+ * @tsplus static effect/core/stream/Stream.Ops tuple
  */
 export function tuple<SN extends readonly Stream<any, any, any>[]>(
   ...[s1, s2, ...streams]: SN & {

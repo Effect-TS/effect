@@ -1,5 +1,5 @@
-describe("Channel", () => {
-  describe("mapOut", () => {
+describe.concurrent("Channel", () => {
+  describe.concurrent("mapOut", () => {
     it("simple", async () => {
       const program = Channel.writeAll(1, 2, 3)
         .mapOut((n) => n + 1)

@@ -2,7 +2,7 @@
  * Reduces an `Collection<Effect<R, E, A>>` to a single `Effect<R, E, A>`, working
  * sequentially.
  *
- * @tsplus static ets/Effect/Ops reduceAll
+ * @tsplus static effect/core/io/Effect.Ops reduceAll
  */
 export function reduceAll<R, E, A>(
   a: LazyArg<Effect<R, E, A>>,

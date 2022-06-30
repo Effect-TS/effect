@@ -1,56 +1,44 @@
 describe.concurrent("Deferred", () => {
   describe.concurrent("complete", () => {
-    it("complete a deferred using succeed", async () => {
-      const program = Effect.Do()
-        .bind("deferred", () => Deferred.make<never, number>())
-        .bind("success", ({ deferred }) => deferred.succeed(32))
-        .bind("result", ({ deferred }) => deferred.await())
+    it("complete a deferred using succeed", () =>
+      Do(($) => {
+        const deferred = $(Deferred.make<never, number>())
+        const success = $(deferred.succeed(32))
+        const result = $(deferred.await())
+        assert.isTrue(success)
+        assert.strictEqual(result, 32)
+      }).unsafeRunPromise())
 
-      const { result, success } = await program.unsafeRunPromise()
+    it("complete a deferred using complete", () =>
+      Do(($) => {
+        const deferred = $(Deferred.make<never, number>())
+        const ref = $(Ref.make(13))
+        $(deferred.complete(ref.updateAndGet((n) => n + 1)))
+        const v1 = $(deferred.await())
+        const v2 = $(deferred.await())
+        assert.strictEqual(v1, 14)
+        assert.strictEqual(v2, 14)
+      }).unsafeRunPromise())
 
-      assert.isTrue(success)
-      assert.strictEqual(result, 32)
-    })
+    it("complete a deferred using completeWith", () =>
+      Do(($) => {
+        const deferred = $(Deferred.make<never, number>())
+        const ref = $(Ref.make(13))
+        $(deferred.completeWith(ref.updateAndGet((n) => n + 1)))
+        const v1 = $(deferred.await())
+        const v2 = $(deferred.await())
+        assert.strictEqual(v1, 14)
+        assert.strictEqual(v2, 15)
+      }).unsafeRunPromise())
 
-    it("complete a deferred using complete", async () => {
-      const program = Effect.Do()
-        .bind("deferred", () => Deferred.make<never, number>())
-        .bind("ref", () => Ref.make(13))
-        .tap(({ deferred, ref }) => deferred.complete(ref.updateAndGet((_) => _ + 1)))
-        .bind("v1", ({ deferred }) => deferred.await())
-        .bind("v2", ({ deferred }) => deferred.await())
-
-      const { v1, v2 } = await program.unsafeRunPromise()
-
-      assert.strictEqual(v1, 14)
-      assert.strictEqual(v2, 14)
-    })
-
-    it("complete a deferred using completeWith", async () => {
-      const program = Effect.Do()
-        .bind("deferred", () => Deferred.make<never, number>())
-        .bind("ref", () => Ref.make(13))
-        .tap(({ deferred, ref }) => deferred.completeWith(ref.updateAndGet((_) => _ + 1)))
-        .bind("v1", ({ deferred }) => deferred.await())
-        .bind("v2", ({ deferred }) => deferred.await())
-
-      const { v1, v2 } = await program.unsafeRunPromise()
-
-      assert.strictEqual(v1, 14)
-      assert.strictEqual(v2, 15)
-    })
-
-    it("complete a deferred twice", async () => {
-      const program = Effect.Do()
-        .bind("deferred", () => Deferred.make<string, number>())
-        .tap(({ deferred }) => deferred.succeed(1))
-        .bind("success", ({ deferred }) => deferred.complete(Effect.succeedNow(9)))
-        .bind("result", ({ deferred }) => deferred.await())
-
-      const { result, success } = await program.unsafeRunPromise()
-
-      assert.isFalse(success)
-      assert.strictEqual(result, 1)
-    })
+    it("complete a deferred twice", () =>
+      Do(($) => {
+        const deferred = $(Deferred.make<string, number>())
+        $(deferred.succeed(1))
+        const success = $(deferred.complete(Effect.succeedNow(9)))
+        const result = $(deferred.await())
+        assert.isFalse(success)
+        assert.strictEqual(result, 1)
+      }).unsafeRunPromise())
   })
 })

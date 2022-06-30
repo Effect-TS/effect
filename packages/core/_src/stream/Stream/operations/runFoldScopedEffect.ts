@@ -1,22 +1,17 @@
-/**
- * Executes an effectful fold over the stream of values. Returns a scoped
- * value that represents the scope of the stream.
- *
- * @tsplus fluent ets/Stream runFoldScopedEffect
- */
-export function runFoldScopedEffect_<R, E, A, R2, E2, S>(
-  self: Stream<R, E, A>,
-  s: LazyArg<S>,
-  f: (s: S, a: A) => Effect<R2, E2, S>,
-  __tsplusTrace?: string
-): Effect<R | R2 | Scope, E | E2, S> {
-  return self.runFoldWhileScopedEffect(s, () => true, f)
-}
+import { constTrue } from "@tsplus/stdlib/data/Function"
 
 /**
  * Executes an effectful fold over the stream of values. Returns a scoped
  * value that represents the scope of the stream.
  *
- * @tsplus static ets/Stream/Aspects runFoldScopedEffect
+ * @tsplus static effect/core/stream/Stream.Aspects runFoldScopedEffect
+ * @tsplus pipeable effect/core/stream/Stream runFoldScopedEffect
  */
-export const runFoldScopedEffect = Pipeable(runFoldScopedEffect_)
+export function runFoldScopedEffect<S, A, R2, E2>(
+  s: LazyArg<S>,
+  f: (s: S, a: A) => Effect<R2, E2, S>,
+  __tsplusTrace?: string
+) {
+  return <R, E>(self: Stream<R, E, A>): Effect<R | R2 | Scope, E | E2, S> =>
+    self.runFoldWhileScopedEffect(s, constTrue, f)
+}

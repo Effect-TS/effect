@@ -2,20 +2,10 @@
  * Performs this effect the specified number of times and collects the
  * results.
  *
- * @tsplus fluent ets/Effect replicateEffect
+ * @tsplus static effect/core/io/Effect.Aspects replicateEffect
+ * @tsplus pipeable effect/core/io/Effect replicateEffect
  */
-export function replicateEffect_<R, E, A>(
-  self: Effect<R, E, A>,
-  n: number,
-  __tsplusTrace?: string
-): Effect<R, E, Chunk<A>> {
-  return Effect.suspendSucceed(Effect.collectAll(self.replicate(n)))
+export function replicateEffect(n: number, __tsplusTrace?: string) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, Chunk<A>> =>
+    Effect.suspendSucceed(Effect.collectAll(self.replicate(n)))
 }
-
-/**
- * Performs this effect the specified number of times and collects the
- * results.
- *
- * @tsplus static ets/Effect/Aspects replicateEffect
- */
-export const replicateEffect = Pipeable(replicateEffect_)

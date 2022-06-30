@@ -2,6 +2,8 @@
  * Creates a timer metric, based on a histogram, which keeps track of
  * durations in milliseconds. The unit of time will automatically be added to
  * the metric as a tag (i.e. `"time_unit: milliseconds"`).
+ *
+ * @tsplus static effect/core/io/Metrics/Metric.Ops timer
  */
 export function timer(name: string): Metric<MetricKeyType.Histogram, Duration, MetricState.Histogram> {
   const boundaries = Metric.Histogram.Boundaries.exponential(1, 2, 100)

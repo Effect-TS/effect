@@ -4,24 +4,15 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * Creates a pipeline that drops elements while the specified predicate
  * evaluates to `true`.
  *
- * @tsplus fluent ets/Stream dropWhile
+ * @tsplus static effect/core/stream/Stream.Aspects dropWhile
+ * @tsplus pipeable effect/core/stream/Stream dropWhile
  */
-export function dropWhile_<R, E, A>(
-  self: Stream<R, E, A>,
-  f: Predicate<A>,
-  __tsplusTrace?: string
-): Stream<R, E, A> {
-  concreteStream(self)
-  return new StreamInternal(self.channel >> dropWhileInternal<E, A>(f))
+export function dropWhile<A>(f: Predicate<A>, __tsplusTrace?: string) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R, E, A> => {
+    concreteStream(self)
+    return new StreamInternal(self.channel >> dropWhileInternal<E, A>(f))
+  }
 }
-
-/**
- * Creates a pipeline that drops elements while the specified predicate
- * evaluates to `true`.
- *
- * @tsplus static ets/Stream/Aspects dropWhile
- */
-export const dropWhile = Pipeable(dropWhile_)
 
 function dropWhileInternal<E, A>(
   f: Predicate<A>,

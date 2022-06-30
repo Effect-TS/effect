@@ -5,7 +5,7 @@ import { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullSt
 /**
  * Concat sequentially a channel of channels.
  *
- * @tsplus static ets/Channel/Ops concatAllWith
+ * @tsplus static effect/core/stream/Channel.Ops concatAllWith
  */
 export function concatAllWith<
   Env,

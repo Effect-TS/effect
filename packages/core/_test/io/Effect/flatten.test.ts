@@ -3,7 +3,7 @@ describe.concurrent("Effect", () => {
     it("fluent/static method consistency", async () => {
       const effect = Effect.succeed(Effect.succeed("test"))
       const program = Effect.Do()
-        .bind("flatten1", () => effect.flatten())
+        .bind("flatten1", () => effect.flatten)
         .bind("flatten2", () => Effect.flatten(effect))
 
       const { flatten1, flatten2 } = await program.unsafeRunPromise()

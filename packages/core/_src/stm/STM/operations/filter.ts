@@ -1,7 +1,7 @@
 /**
  * Filters the collection using the specified effectual predicate.
  *
- * @tsplus static ets/STM/Ops filter
+ * @tsplus static effect/core/stm/STM.Ops filter
  */
 export function filter<A, R, E>(
   as: LazyArg<Collection<A>>,

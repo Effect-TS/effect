@@ -1,7 +1,7 @@
 /**
  * Makes a new `Deferred` to be completed by the fiber with the specified id.
  *
- * @tsplus static ets/Deferred/Ops makeAs
+ * @tsplus static effect/core/io/Deferred.Ops makeAs
  */
 export function makeAs<E, A>(
   fiberId: LazyArg<FiberId>,

@@ -1,19 +1,12 @@
 /**
  * Keeps some of the errors, and terminates the fiber with the rest
  *
- * @tsplus fluent ets/Effect refineOrDie
+ * @tsplus static effect/core/io/Effect.Aspects refineOrDie
+ * @tsplus pipeable effect/core/io/Effect refineOrDie
  */
-export function refineOrDie_<R, A, E, E1>(
-  self: Effect<R, E, A>,
+export function refineOrDie<E, E1>(
   pf: (e: E) => Maybe<E1>,
   __tsplusTrace?: string
 ) {
-  return self.refineOrDieWith(pf, identity)
+  return <R, A>(self: Effect<R, E, A>): Effect<R, E1, A> => self.refineOrDieWith(pf, identity)
 }
-
-/**
- * Keeps some of the errors, and terminates the fiber with the rest
- *
- * @tsplus static ets/Effect/Aspects refineOrDie
- */
-export const refineOrDie = Pipeable(refineOrDie_)

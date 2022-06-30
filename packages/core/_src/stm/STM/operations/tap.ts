@@ -1,18 +1,9 @@
 /**
  * "Peeks" at the success of transactional effect.
  *
- * @tsplus fluent ets/STM tap
+ * @tsplus static effect/core/stm/STM.Aspects tap
+ * @tsplus pipeable effect/core/stm/STM tap
  */
-export function tap_<R2, E2, A, R, E, X>(
-  self: STM<R2, E2, A>,
-  f: (a: A) => STM<R, E, X>
-) {
-  return self.flatMap((a: A) => f(a).map(() => a))
+export function tap<A, R2, E2, X>(f: (a: A) => STM<R2, E2, X>) {
+  return <R, E>(self: STM<R, E, A>): STM<R | R2, E | E2, A> => self.flatMap((a: A) => f(a).map(() => a))
 }
-
-/**
- * "Peeks" at the success of transactional effect.
- *
- * @tsplus static ets/STM/Aspects tap
- */
-export const tap = Pipeable(tap_)

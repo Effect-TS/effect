@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Channel/Ops fromMaybe
+ * @tsplus static effect/core/stream/Channel.Ops fromMaybe
  */
 export function fromMaybe<A>(
   option: LazyArg<Maybe<A>>

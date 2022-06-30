@@ -44,7 +44,7 @@ export type _W = typeof _W
  * To run an effect, you need a `Runtime`, which is capable of executing
  * effects.
  *
- * @tsplus type ets/Effect
+ * @tsplus type effect/core/io/Effect
  */
 export interface Effect<R, E, A> {
   readonly [_U]: EffectURI
@@ -54,7 +54,7 @@ export interface Effect<R, E, A> {
 }
 
 /**
- * @tsplus unify ets/Effect
+ * @tsplus unify effect/core/io/Effect
  */
 export function unifyEffect<X extends Effect<any, any, any>>(
   self: X
@@ -67,11 +67,11 @@ export function unifyEffect<X extends Effect<any, any, any>>(
 }
 
 /**
- * @tsplus type ets/Effect/Ops
+ * @tsplus type effect/core/io/Effect.Ops
  */
 export interface EffectOps {
-  $: EffectAspects
-  Error: {
+  readonly $: EffectAspects
+  readonly Error: {
     new<E, A>(exit: Exit<E, A>, __taPlusTrace?: string): Effect.Error<E, A>
   }
 }
@@ -87,7 +87,7 @@ export const Effect: EffectOps = {
 }
 
 /**
- * @tsplus type ets/Effect/Aspects
+ * @tsplus type effect/core/io/Effect.Aspects
  */
 export interface EffectAspects {}
 

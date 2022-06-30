@@ -6,7 +6,7 @@ describe.concurrent("Effect", () => {
         .bind("result", ({ ref }) =>
           Effect.dieMessage("die")
             .tapErrorCause(() => ref.set(true))
-            .exit())
+            .exit)
         .bind("effect", ({ ref }) => ref.get())
 
       const { effect, result } = await program.unsafeRunPromise()
@@ -23,7 +23,7 @@ describe.concurrent("Effect", () => {
         .bind("result", ({ ref }) =>
           Effect.dieMessage("die")
             .tapDefect(() => ref.set(true))
-            .exit())
+            .exit)
         .bind("effect", ({ ref }) => ref.get())
 
       const { effect, result } = await program.unsafeRunPromise()
@@ -44,7 +44,7 @@ describe.concurrent("Effect", () => {
                 () => ref.set(-1)
               )
             )
-            .exit()
+            .exit
         )
         .flatMap((ref) => ref.get())
 
@@ -63,7 +63,7 @@ describe.concurrent("Effect", () => {
                 (n) => ref.set(n)
               )
             )
-            .exit()
+            .exit
         )
         .flatMap((ref) => ref.get())
 

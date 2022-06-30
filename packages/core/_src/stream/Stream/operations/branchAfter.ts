@@ -8,27 +8,21 @@ interface Pipeline<R, E, A, R2, E2, B> {
  * Reads the first `n` values from the stream and uses them to choose the
  * pipeline that will be used for the remainder of the stream.
  *
- * @tsplus fluent ets/Stream branchAfter
+ * @tsplus static effect/core/stream/Stream.Aspects branchAfter
+ * @tsplus pipeable effect/core/stream/Stream branchAfter
  */
-export function branchAfter_<R, E, A, R2, E2, B>(
-  self: Stream<R, E, A>,
+export function branchAfter<R, E, A, R2, E2, B>(
   n: number,
   f: (output: Chunk<A>) => Pipeline<R, E, A, R2, E2, B>,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, B> {
-  concreteStream(self)
-  return new StreamInternal(
-    Channel.suspend(self.channel >> collecting(Chunk.empty<A>(), n, f))
-  )
+) {
+  return (self: Stream<R, E, A>): Stream<R | R2, E | E2, B> => {
+    concreteStream(self)
+    return new StreamInternal(
+      Channel.suspend(self.channel >> collecting(Chunk.empty<A>(), n, f))
+    )
+  }
 }
-
-/**
- * Reads the first `n` values from the stream and uses them to choose the
- * pipeline that will be used for the remainder of the stream.
- *
- * @tsplus static ets/Stream/Aspects branchAfter
- */
-export const branchAfter = Pipeable(branchAfter_)
 
 function collecting<R, E, A, R2, E2, B>(
   buffer: Chunk<A>,

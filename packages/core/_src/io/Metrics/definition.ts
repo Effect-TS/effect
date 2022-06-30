@@ -20,7 +20,7 @@ export type MetricSym = typeof MetricSym
  *   - Histograms
  *   - Summaries
  *
- * @tsplus type ets/Metrics/Metric
+ * @tsplus type effect/core/io/Metrics/Metric
  */
 export interface Metric<Type, In, Out> {
   readonly [MetricSym]: MetricSym
@@ -32,7 +32,7 @@ export interface Metric<Type, In, Out> {
 }
 
 /**
- * @tsplus type ets/Metrics/Metric/Ops
+ * @tsplus type effect/core/io/Metrics/Metric.Ops
  */
 export interface MetricOps {
   /**
@@ -72,24 +72,21 @@ export declare namespace Metric {
   export interface Summary<In> extends Metric<MetricKeyType.Summary, In, MetricState.Summary> {}
 
   export namespace Histogram {
-    /**
-     * @tsplus type ets/Metrics/Histogram/Boundaries
-     */
     export type Boundaries = HistogramBoundaries
   }
 }
 
 /**
- * @tsplus static ets/Metrics/Metric/Ops $
+ * @tsplus static effect/core/io/Metrics/Metric.Ops $
  */
 export const metricAspects: MetricAspects = {}
 
 /**
- * @tsplus static ets/Metrics/Metric/Ops Histogram
+ * @tsplus static effect/core/io/Metrics/Metric.Ops Histogram
  */
 export const histogramBoundaries: { readonly Boundaries: HistogramBoundariesOps } = { Boundaries: {} }
 
 /**
- * @tsplus type ets/Metrics/Metric/Aspects
+ * @tsplus type effect/core/io/Metrics/Metric.Aspects
  */
 export interface MetricAspects {}

@@ -20,8 +20,8 @@
  * `use` effect succeeds. If this fail-fast behavior is not desired, errors
  * produced by the `release` effect can be caught and ignored.
  *
- * @tsplus static ets/Effect/Ops acquireUseRelease
- * @tsplus fluent ets/Effect acquireUseRelease
+ * @tsplus static effect/core/io/Effect.Ops acquireUseRelease
+ * @tsplus fluent effect/core/io/Effect acquireUseRelease
  */
 export function acquireUseRelease<R, E, A, R2, E2, A2, R3, X>(
   acquire: LazyArg<Effect<R, E, A>>,

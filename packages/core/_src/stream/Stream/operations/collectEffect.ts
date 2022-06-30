@@ -3,25 +3,20 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 /**
  * Performs an effectful filter and map in a single step.
  *
- * @tsplus fluent ets/Stream collectEffect
+ * @tsplus static effect/core/stream/Stream.Aspects collectEffect
+ * @tsplus pipeable effect/core/stream/Stream collectEffect
  */
-export function collectEffect_<R, E, A, R2, E2, A2>(
-  self: Stream<R, E, A>,
+export function collectEffect<A, R2, E2, A2>(
   pf: (a: A) => Maybe<Effect<R2, E2, A2>>,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, A2> {
-  concreteStream(self)
-  return new StreamInternal(
-    self.channel >> loop(Chunk.empty<A>()[Symbol.iterator](), pf)
-  )
+) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A2> => {
+    concreteStream(self)
+    return new StreamInternal(
+      self.channel >> loop(Chunk.empty<A>()[Symbol.iterator](), pf)
+    )
+  }
 }
-
-/**
- * Performs an effectful filter and map in a single step.
- *
- * @tsplus static ets/Stream/Aspects collectEffect
- */
-export const collectEffect = Pipeable(collectEffect_)
 
 function loop<E, A, R1, E1, A1>(
   chunkIterator: Iterator<A>,

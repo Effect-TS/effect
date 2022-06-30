@@ -37,7 +37,7 @@ function allocate<K, V>(capacity: number, data: List<Tuple<[K, V]>>): USTM<TMap<
 /**
  * Retrieves value associated with given key.
  *
- * @tsplus static ets/TMap/Ops fromIterable
+ * @tsplus static effect/core/stm/TMap.Ops fromIterable
  */
 export function fromIterable<K, V>(data0: Collection<Tuple<[K, V]>>): USTM<TMap<K, V>> {
   return STM.suspend(() => {

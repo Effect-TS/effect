@@ -1,7 +1,7 @@
 import { FiberRefInternal } from "@effect/core/io/FiberRef/operations/_internal/FiberRefInternal"
 
 /**
- * @tsplus static ets/FiberRef/Ops unsafeMakeEnvironment
+ * @tsplus static effect/core/io/FiberRef.Ops unsafeMakeEnvironment
  */
 export function unsafeMakeEnvironment<A>(
   initial: Service.Env<A>

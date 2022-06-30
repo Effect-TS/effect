@@ -1,16 +1,14 @@
 /**
- * @tsplus fluent ets/Exit exists
+ * @tsplus static effect/core/io/Exit.Aspects exists
+ * @tsplus pipeable effect/core/io/Exit exists
  */
-export function exists_<E, A>(self: Exit<E, A>, f: Predicate<A>): boolean {
-  switch (self._tag) {
-    case "Failure":
-      return false
-    case "Success":
-      return f(self.value)
+export function exists<A>(f: Predicate<A>) {
+  return <E>(self: Exit<E, A>): boolean => {
+    switch (self._tag) {
+      case "Failure":
+        return false
+      case "Success":
+        return f(self.value)
+    }
   }
 }
-
-/**
- * @tsplus static ets/Exit/Aspects exists
- */
-export const exists = Pipeable(exists_)

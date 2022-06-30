@@ -1,5 +1,7 @@
+import { constVoid } from "@tsplus/stdlib/data/Function"
+
 /**
- * @tsplus static ets/Channel/Ops concatAll
+ * @tsplus static effect/core/stream/Channel.Ops concatAll
  */
 export function concatAll<Env, InErr, InElem, InDone, OutErr, OutElem>(
   channels: Channel<
@@ -12,5 +14,5 @@ export function concatAll<Env, InErr, InElem, InDone, OutErr, OutElem>(
     any
   >
 ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, any> {
-  return Channel.concatAllWith(channels, () => undefined, () => undefined)
+  return Channel.concatAllWith(channels, constVoid, constVoid)
 }

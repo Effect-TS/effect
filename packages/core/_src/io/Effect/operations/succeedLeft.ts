@@ -1,7 +1,7 @@
 /**
  * Returns an effect with the value on the left part.
  *
- * @tsplus static ets/Effect/Ops left
+ * @tsplus static effect/core/io/Effect.Ops left
  */
 export function succeedLeft<A>(
   value: LazyArg<A>,

@@ -2,7 +2,7 @@
  * Collects the first element of the `Collection<A?` for which the effectual
  * function `f` returns `Some`.
  *
- * @tsplus static ets/Effect/Ops collectFirst
+ * @tsplus static effect/core/io/Effect.Ops collectFirst
  */
 export function collectFirst<R, E, A, B>(
   as: LazyArg<Collection<A>>,

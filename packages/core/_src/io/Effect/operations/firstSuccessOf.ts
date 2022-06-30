@@ -2,7 +2,7 @@
  * Returns an effect that runs this effect and in case of failure, runs each
  * of the specified effects in order until one of them succeeds.
  *
- * @tsplus static ets/Effect/Ops firstSuccessOf
+ * @tsplus static effect/core/io/Effect.Ops firstSuccessOf
  */
 export function firstSuccessOf<R, E, A>(
   effects: Collection<Effect<R, E, A>>,

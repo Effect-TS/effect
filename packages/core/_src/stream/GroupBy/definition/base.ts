@@ -8,7 +8,7 @@ export type GroupBySym = typeof GroupBySym
  * be processed. Once this is applied all groups will be processed in parallel
  * and the results will be merged in arbitrary order.
  *
- * @tsplus type ets/GroupBy
+ * @tsplus type effect/core/stream/GroupBy
  */
 export interface GroupBy<R, E, K, V, A> {
   readonly [GroupBySym]: GroupBySym
@@ -20,7 +20,7 @@ export interface GroupBy<R, E, K, V, A> {
 }
 
 /**
- * @tsplus type ets/GroupBy/Ops
+ * @tsplus type effect/core/stream/GroupBy.Ops
  */
 export interface GroupByOps {
   $: GroupByAspects
@@ -30,7 +30,7 @@ export const GroupBy: GroupByOps = {
 }
 
 /**
- * @tsplus type ets/GroupBy/Aspects
+ * @tsplus type effect/core/stream/GroupBy.Aspects
  */
 export interface GroupByAspects {}
 

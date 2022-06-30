@@ -1,15 +1,9 @@
 /**
  * Removes all elements from the queue matching the specified predicate.
  *
- * @tsplus fluent ets/TPriorityQueue removeIf
+ * @tsplus static effect/core/stm/TPriorityQueue.Aspects removeIf
+ * @tsplus pipeable effect/core/stm/TPriorityQueue removeIf
  */
-export function removeIf_<A>(self: TPriorityQueue<A>, f: Predicate<A>): USTM<void> {
-  return self.retainIf((a) => !f(a))
+export function removeIf<A>(f: Predicate<A>) {
+  return (self: TPriorityQueue<A>): STM<never, never, void> => self.retainIf((a) => !f(a))
 }
-
-/**
- * Removes all elements from the queue matching the specified predicate.
- *
- * @tsplus static ets/TPriorityQueue/Aspects removeIf
- */
-export const removeIf = Pipeable(removeIf_)

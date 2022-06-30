@@ -46,7 +46,7 @@ export type _A = typeof _A
  * no race conditions from multiple threads STM provides greater benefits for
  * synchronization of Fibers and transactional data-types can be quite useful.
  *
- * @tsplus type ets/STM
+ * @tsplus type effect/core/stm/STM
  */
 export interface STM<R, E, A> {
   readonly [STMSym]: STMSym
@@ -56,7 +56,7 @@ export interface STM<R, E, A> {
 }
 
 /**
- * @tsplus type ets/STM/Ops
+ * @tsplus type effect/core/stm/STM.Ops
  */
 export interface STMOps {
   $: STMAspects
@@ -66,12 +66,12 @@ export const STM: STMOps = {
 }
 
 /**
- * @tsplus type ets/STM/Aspects
+ * @tsplus type effect/core/stm/STM.Aspects
  */
 export interface STMAspects {}
 
 /**
- * @tsplus unify ets/STM
+ * @tsplus unify effect/core/stm/STM
  */
 export function unifySTM<X extends STM<any, any, any>>(
   self: X

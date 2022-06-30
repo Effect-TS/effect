@@ -6,10 +6,10 @@ describe.concurrent("STM", () => {
       const program = STMEnv.make(0)
         .tap((env) =>
           STM.serviceWithSTM(STMEnv.Tag)((_) => _.ref.update((n) => n + 1))
-            .commit()
+            .commit
             .provideEnvironment(Env(STMEnv.Tag, env))
         )
-        .flatMap((env) => env.ref.get.commit())
+        .flatMap((env) => env.ref.get.commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -21,9 +21,9 @@ describe.concurrent("STM", () => {
         .tap((env) =>
           STM.serviceWithSTM(STMEnv.Tag)((_) => _.ref.update((n) => n + 1))
             .provideEnvironment(Env(STMEnv.Tag, env))
-            .commit()
+            .commit
         )
-        .flatMap((env) => env.ref.get.commit())
+        .flatMap((env) => env.ref.get.commit)
 
       const result = await program.unsafeRunPromise()
 
@@ -38,7 +38,7 @@ describe.concurrent("STM", () => {
         .bind("refB", () => TRef.make(0))
         .bind("a", ({ refA, refB }) => refA.get.tap((n) => refB.set(n + 1)))
         .bind("b", ({ refB }) => refB.get)
-        .commit()
+        .commit
 
       const { a, b } = await program.unsafeRunPromise()
 
@@ -50,12 +50,12 @@ describe.concurrent("STM", () => {
       const tx = Do(($) => {
         const tapSuccess = $(TDeferred.make<never, number>())
         const tapError = $(TDeferred.make<never, string>())
-        const succeededSTM = STM.succeed(42)
+        const succeededSTM: STM<never, string, number> = STM.succeed(42)
         const result = $(succeededSTM.tapBoth(e => tapError.succeed(e), a => tapSuccess.succeed(a)))
         const tappedSuccess = $(tapSuccess.await)
 
         return result === 42 && tappedSuccess === 42
-      }).commit()
+      }).commit
 
       const result = await tx.unsafeRunPromise()
 
@@ -71,7 +71,7 @@ describe.concurrent("STM", () => {
         const tappedError = $(tapError.await)
 
         return result == Either.left("error") && tappedError === "error"
-      }).commit()
+      }).commit
 
       const result = await tx.unsafeRunPromise()
 
@@ -86,7 +86,7 @@ describe.concurrent("STM", () => {
     //     const tappedError = $(errorRef.await)
 
     //     return result == Either.left("error") && tappedError === "error"
-    //   }).commit()
+    //   }).commit
 
     //   const result = await tx.unsafeRunPromise()
 

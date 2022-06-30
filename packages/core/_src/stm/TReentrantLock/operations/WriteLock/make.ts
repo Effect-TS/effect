@@ -1,7 +1,7 @@
 import { InternalWriteLock } from "@effect/core/stm/TReentrantLock/operations/_internal/InternalWriteLock"
 
 /**
- * @tsplus static ets/TReentrantLock/WriteLock/Ops __call
+ * @tsplus static effect/core/stm/TReentrantLock/WriteLock.Ops __call
  */
 export function make(
   writeLocks: number,

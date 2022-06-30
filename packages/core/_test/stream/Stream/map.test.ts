@@ -4,8 +4,8 @@ describe.concurrent("Stream", () => {
       const f = (n: number) => n.toString()
       const stream = Stream(1, 2, 3, 4, 5)
       const program = Effect.struct({
-        actual: stream.map(f).runCollect(),
-        expected: stream.runCollect().map(chunk => chunk.map(f))
+        actual: stream.map(f).runCollect,
+        expected: stream.runCollect.map(chunk => chunk.map(f))
       })
 
       const { actual, expected } = await program.unsafeRunPromise()
@@ -20,7 +20,7 @@ describe.concurrent("Stream", () => {
       const chunk = Chunk(1, 2, 3, 4, 5)
       const stream = Stream.fromCollection(chunk)
       const program = Effect.struct({
-        actual: stream.mapEffect(n => Effect.succeed(f(n))).runCollect(),
+        actual: stream.mapEffect(n => Effect.succeed(f(n))).runCollect,
         expected: Effect.forEach(chunk, n => Effect.succeed(f(n)))
       })
 
@@ -32,8 +32,8 @@ describe.concurrent("Stream", () => {
     it("laziness on chunks", async () => {
       const program = Stream(1, 2, 3)
         .mapEffect(n => (n === 3 ? Effect.fail("boom") : Effect.succeed(n)))
-        .either()
-        .runCollect()
+        .either
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -53,7 +53,7 @@ describe.concurrent("Stream", () => {
           builder.append(n)
           return n
         })
-        .runDrain()
+        .runDrain
 
       await program.unsafeRunPromise()
 
@@ -65,7 +65,7 @@ describe.concurrent("Stream", () => {
     it("simple example", async () => {
       const program = Stream(1, 1, 1)
         .mapAccum(0, (acc, el) => Tuple(acc + el, acc + el))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -77,7 +77,7 @@ describe.concurrent("Stream", () => {
     it("happy path", async () => {
       const program = Stream(1, 1, 1)
         .mapAccumEffect(0, (acc, el) => Effect.succeed(Tuple(acc + el, acc + el)))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -87,8 +87,8 @@ describe.concurrent("Stream", () => {
     it("error", async () => {
       const program = Stream(1, 1, 1)
         .mapAccumEffect(0, () => Effect.fail("ouch"))
-        .runCollect()
-        .either()
+        .runCollect
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -98,8 +98,8 @@ describe.concurrent("Stream", () => {
     it("laziness on chunks", async () => {
       const program = Stream(1, 2, 3)
         .mapAccumEffect(undefined, (_, el) => el === 3 ? Effect.fail("boom") : Effect.succeed(Tuple(undefined, el)))
-        .either()
-        .runCollect()
+        .either
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -114,8 +114,8 @@ describe.concurrent("Stream", () => {
       const f = (n: number) => Chunk(n)
       const stream = Stream(1, 2, 3, 4, 5)
       const program = Effect.struct({
-        actual: stream.mapConcatEffect(n => Effect.succeed(f(n))).runCollect(),
-        expected: stream.runCollect().map(chunk => chunk.flatMap(f))
+        actual: stream.mapConcatEffect(n => Effect.succeed(f(n))).runCollect,
+        expected: stream.runCollect.map(chunk => chunk.flatMap(f))
       })
 
       const { actual, expected } = await program.unsafeRunPromise()
@@ -126,8 +126,8 @@ describe.concurrent("Stream", () => {
     it("error", async () => {
       const program = Stream(1, 2, 3)
         .mapConcatEffect(() => Effect.fail("ouch"))
-        .runCollect()
-        .either()
+        .runCollect
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -139,8 +139,8 @@ describe.concurrent("Stream", () => {
     it("simple example", async () => {
       const program = Stream.fail("123")
         .mapError(s => Number.parseInt(s))
-        .runCollect()
-        .either()
+        .runCollect
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -152,8 +152,8 @@ describe.concurrent("Stream", () => {
     it("simple example", async () => {
       const program = Stream.fail("123")
         .mapErrorCause(cause => cause.map(s => Number.parseInt(s)))
-        .runCollect()
-        .either()
+        .runCollect
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -167,7 +167,7 @@ describe.concurrent("Stream", () => {
       const data = Chunk(1, 2, 3, 4, 5)
       const stream = Stream.fromChunk(data)
       const program = Effect.struct({
-        actual: stream.mapEffectPar(8, f).runCollect(),
+        actual: stream.mapEffectPar(8, f).runCollect,
         expected: Effect.forEachPar(data, f).withParallelism(8)
       })
 
@@ -182,7 +182,7 @@ describe.concurrent("Stream", () => {
         .tap(({ queue }) =>
           Stream.range(0, 9)
             .mapEffectPar(1, n => queue.offer(n))
-            .runDrain()
+            .runDrain
         )
         .flatMap(({ queue }) => queue.takeAll)
 
@@ -201,10 +201,10 @@ describe.concurrent("Stream", () => {
         .bind("fiber", ({ interrupted, latch }) =>
           Stream(undefined)
             .mapEffectPar(1, () => (latch.succeed(undefined) > Effect.never).onInterrupt(() => interrupted.set(true)))
-            .runDrain()
-            .fork())
+            .runDrain
+            .fork)
         .tap(({ latch }) => latch.await())
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ interrupted }) => interrupted.get())
 
       const result = await program.unsafeRunPromise()
@@ -217,10 +217,10 @@ describe.concurrent("Stream", () => {
       const program = Effect.struct({
         mapEffect: Stream.fromCollection(data)
           .mapEffect(Effect.succeedNow)
-          .runCollect(),
+          .runCollect,
         mapEffectPar: Stream.fromCollection(data)
           .mapEffectPar(8, Effect.succeedNow)
-          .runCollect()
+          .runCollect
       })
 
       const { mapEffect, mapEffectPar } = await program.unsafeRunPromise()
@@ -233,8 +233,8 @@ describe.concurrent("Stream", () => {
       const program = Stream.fromCollection(Chunk.range(0, 100))
         .interruptWhen(deferred.await())
         .mapEffectPar(8, () => Effect.succeed(1).repeatN(200))
-        .runDrain()
-        .exit()
+        .runDrain
+        .exit
         .map(exit => exit.isInterrupted)
 
       const result = await program.unsafeRunPromise()
@@ -256,8 +256,8 @@ describe.concurrent("Stream", () => {
                 : n === 2
                 ? (latch2.succeed(undefined) > Effect.never).onInterrupt(() => interrupted.update(n => n + 1))
                 : latch1.await() > latch2.await() > Effect.fail("boom"))
-            .runDrain()
-            .exit())
+            .runDrain
+            .exit)
         .bind("count", ({ interrupted }) => interrupted.get())
 
       const { count, result } = await program.unsafeRunPromise()
@@ -270,8 +270,8 @@ describe.concurrent("Stream", () => {
       const program = Stream.fromCollection(Chunk.range(1, 50))
         .mapEffectPar(20, i => i < 10 ? Effect.succeed(i) : Effect.fail("boom"))
         .mapEffectPar(20, Effect.succeedNow)
-        .runCollect()
-        .either()
+        .runCollect
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -283,9 +283,9 @@ describe.concurrent("Stream", () => {
         Stream(1, 2, 3, 4, 5, 6, 7, 8, 9, 10) + Stream.fail("boom")
       )
         .mapEffectPar(2, () => Effect.sleep((100).millis))
-        .runDrain()
-        .fork()
-        .flatMap(fiber => fiber.await())
+        .runDrain
+        .fork
+        .flatMap(fiber => fiber.await)
 
       const result = await program.unsafeRunPromise()
 
@@ -297,7 +297,7 @@ describe.concurrent("Stream", () => {
     it("mapping with failure is failure", async () => {
       const program = Stream.fromCollection(Chunk.range(0, 3))
         .mapEffectParUnordered(10, () => Effect.fail("fail"))
-        .runDrain()
+        .runDrain
 
       const result = await program.unsafeRunPromiseExit()
 

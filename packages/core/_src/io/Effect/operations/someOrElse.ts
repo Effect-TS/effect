@@ -1,19 +1,9 @@
 /**
  * Extracts the optional value, or returns the given 'orElse'.
  *
- * @tsplus fluent ets/Effect someOrElse
+ * @tsplus static effect/core/io/Effect.Aspect someOrElse
+ * @tsplus pipeable effect/core/io/Effect someOrElse
  */
-export function someOrElse_<R, E, A, B>(
-  self: Effect<R, E, Maybe<A>>,
-  orElse: LazyArg<B>,
-  __tsplusTrace?: string
-): Effect<R, E, A | B> {
-  return self.map((option) => option.getOrElse(orElse))
+export function someOrElse<B>(orElse: LazyArg<B>, __tsplusTrace?: string) {
+  return <R, E, A>(self: Effect<R, E, Maybe<A>>): Effect<R, E, A | B> => self.map((option) => option.getOrElse(orElse))
 }
-
-/**
- * Extracts the optional value, or returns the given 'orElse'.
- *
- * @tsplus static ets/Effect/Aspects someOrElse
- */
-export const someOrElse = Pipeable(someOrElse_)

@@ -8,7 +8,7 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  * optionality of the error type `E` can be used to signal the end of the
  * stream, by setting it to `None`.
  *
- * @tsplus static ets/Stream/Ops asyncEffect
+ * @tsplus static effect/core/stream/Stream.Ops asyncEffect
  */
 export function asyncEffect<R, E, A, Z>(
   register: (emit: Emit<R, E, A, void>) => Effect<R, E, Z>,
@@ -52,7 +52,7 @@ export function asyncEffect<R, E, A, Z>(
             void
           > = Channel.unwrap(
             output.take
-              .flatMap((take) => take.done())
+              .flatMap((take) => take.done)
               .fold(
                 (maybeError) =>
                   Channel.fromEffect(output.shutdown) >

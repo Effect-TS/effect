@@ -2,16 +2,10 @@
  * Finds all the key/value pairs matching the specified predicate, and uses
  * the provided function to extract values out them.
  *
- * @tsplus fluent ets/TMap findAll
+ * @tsplus static effect/core/stm/TMap.Aspects findAll
+ * @tsplus pipeable effect/core/stm/TMap findAll
  */
-export function findAll_<K, V, A>(self: TMap<K, V>, pf: (kv: Tuple<[K, V]>) => Maybe<A>): USTM<Chunk<A>> {
-  return self.findAllSTM((kv) => pf(kv).fold(STM.fail(Maybe.none), STM.succeedNow))
+export function findAll<K, V, A>(pf: (kv: Tuple<[K, V]>) => Maybe<A>) {
+  return (self: TMap<K, V>): STM<never, never, Chunk<A>> =>
+    self.findAllSTM((kv) => pf(kv).fold(STM.fail(Maybe.none), STM.succeedNow))
 }
-
-/**
- * Finds all the key/value pairs matching the specified predicate, and uses
- * the provided function to extract values out them.
- *
- * @tsplus static ets/TMap/Aspects findAll
- */
-export const findAll = Pipeable(findAll_)

@@ -1,7 +1,7 @@
 /**
  * Accesses the environment of the channel in the context of an effect.
  *
- * @tsplus static ets/Channel/Ops environmentWithEffect
+ * @tsplus static effect/core/stream/Channel.Ops environmentWithEffect
  */
 export function environmentWithEffect<R, R1, OutErr, OutDone>(
   f: (env: Env<R>) => Effect<R1, OutErr, OutDone>

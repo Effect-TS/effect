@@ -4,30 +4,21 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * Creates a pipeline that takes elements while the specified predicate
  * evaluates to `true`.
  *
- * @tsplus fluent ets/Stream takeWhile
+ * @tsplus static effect/core/stream/Stream.Aspects takeWhile
+ * @tsplus pipeable effect/core/stream/Stream takeWhile
  */
-export function takeWhile_<R, E, A>(
-  self: Stream<R, E, A>,
-  f: Predicate<A>,
-  __tsplusTrace?: string
-): Stream<R, E, A> {
-  const loop: Channel<R, E, Chunk<A>, unknown, E, Chunk<A>, unknown> = Channel.readWith(
-    (chunk: Chunk<A>) => {
-      const taken = chunk.takeWhile(f)
-      const more = taken.length === chunk.length
-      return more ? Channel.write(taken) > loop : Channel.write(taken)
-    },
-    (err) => Channel.fail(err),
-    (done) => Channel.succeed(done)
-  )
-  concreteStream(self)
-  return new StreamInternal(self.channel >> loop)
+export function takeWhile<A>(f: Predicate<A>, __tsplusTrace?: string) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R, E, A> => {
+    const loop: Channel<R, E, Chunk<A>, unknown, E, Chunk<A>, unknown> = Channel.readWith(
+      (chunk: Chunk<A>) => {
+        const taken = chunk.takeWhile(f)
+        const more = taken.length === chunk.length
+        return more ? Channel.write(taken) > loop : Channel.write(taken)
+      },
+      (err) => Channel.fail(err),
+      (done) => Channel.succeed(done)
+    )
+    concreteStream(self)
+    return new StreamInternal(self.channel >> loop)
+  }
 }
-
-/**
- * Creates a pipeline that takes elements while the specified predicate
- * evaluates to `true`.
- *
- * @tsplus static ets/Stream/Aspects takeWhile
- */
-export const takeWhile = Pipeable(takeWhile_)

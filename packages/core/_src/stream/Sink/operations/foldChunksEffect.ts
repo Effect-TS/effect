@@ -6,7 +6,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * initial value and at the end of processing of each chunk. `f` and `cont`
  * must preserve chunking-invariance.
  *
- * @tsplus static ets/Sink/Ops foldChunksEffect
+ * @tsplus static effect/core/stream/Sink.Ops foldChunksEffect
  */
 export function foldChunksEffect<R, E, S, In>(
   z: LazyArg<S>,

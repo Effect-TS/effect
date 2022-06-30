@@ -1,7 +1,7 @@
 /**
  * Constructs a layer from the specified scoped effect.
  *
- * @tsplus static ets/Layer/Ops scoped
+ * @tsplus static effect/core/io/Layer.Ops scoped
  */
 export function scoped<T, R, E, T1 extends T>(
   tag: Tag<T>,

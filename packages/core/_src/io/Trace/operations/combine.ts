@@ -1,14 +1,14 @@
 /**
  * Combine two `Trace`s.
  *
- * @tsplus operator ets/Trace +
- * @tsplus fluent ets/Trace combine
+ * @tsplus pipeable-operator effect/core/io/Trace +
+ * @tsplus static effect/core/io/Trace.Aspects combine
+ * @tsplus pipeable effect/core/io/Trace combine
  */
-export function combine_(self: Trace, that: Trace): Trace {
-  return Trace(self.fiberId + that.fiberId, self.stackTrace + that.stackTrace)
+export function combine(that: Trace) {
+  return (self: Trace): Trace =>
+    Trace(
+      self.fiberId + that.fiberId,
+      self.stackTrace + that.stackTrace
+    )
 }
-
-/**
- * Combine two `Trace`s.
- */
-export const combine = Pipeable(combine_)

@@ -42,7 +42,7 @@ describe.concurrent("Queue", () => {
     it("blocks until a required minimum of elements is collected", async () => {
       const program = Effect.Do()
         .bind("queue", () => Queue.bounded<number>(100))
-        .bindValue("updater", ({ queue }) => queue.offer(10).forever())
+        .bindValue("updater", ({ queue }) => queue.offer(10).forever)
         .bindValue("getter", ({ queue }) => queue.takeBetween(5, 10))
         .flatMap(({ getter, updater }) => getter.race(updater))
 
@@ -55,9 +55,9 @@ describe.concurrent("Queue", () => {
       const as = Chunk(-10, -7, -4, -1, 5, 10)
       const program = Effect.Do()
         .bind("queue", () => Queue.bounded<number>(100))
-        .bind("fiber", ({ queue }) => Effect.forEach(as, (n) => queue.offer(n)).fork())
+        .bind("fiber", ({ queue }) => Effect.forEach(as, (n) => queue.offer(n)).fork)
         .bind("bs", ({ queue }) => queue.takeBetween(as.size, as.size))
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
 
       const { bs } = await program.unsafeRunPromise()
 

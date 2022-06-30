@@ -1,7 +1,7 @@
 /**
  * Logs the specified message at the current log level.
  *
- * @tsplus static ets/Sink/Ops log
+ * @tsplus static effect/core/stream/Sink.Ops log
  */
 export function log(
   message: LazyArg<string>,
@@ -13,7 +13,7 @@ export function log(
 /**
  * Logs the specified message at the debug log level.
  *
- * @tsplus static ets/Sink/Ops logDebug
+ * @tsplus static effect/core/stream/Sink.Ops logDebug
  */
 export function logDebug(
   message: LazyArg<string>,
@@ -25,7 +25,7 @@ export function logDebug(
 /**
  * Logs the specified message at the error log level.
  *
- * @tsplus static ets/Sink/Ops logError
+ * @tsplus static effect/core/stream/Sink.Ops logError
  */
 export function logError(
   message: LazyArg<string>,
@@ -37,7 +37,7 @@ export function logError(
 /**
  * Logs the specified message at the error log level.
  *
- * @tsplus static ets/Sink/Ops logErrorCause
+ * @tsplus static effect/core/stream/Sink.Ops logErrorCause
  */
 export function logErrorCause(
   cause: LazyArg<Cause<unknown>>,
@@ -49,7 +49,7 @@ export function logErrorCause(
 /**
  * Logs the specified message at the fatal log level.
  *
- * @tsplus static ets/Sink/Ops logFatal
+ * @tsplus static effect/core/stream/Sink.Ops logFatal
  */
 export function logFatal(
   message: LazyArg<string>,
@@ -61,7 +61,7 @@ export function logFatal(
 /**
  * Logs the specified message at the info log level.
  *
- * @tsplus static ets/Sink/Ops logInfo
+ * @tsplus static effect/core/stream/Sink.Ops logInfo
  */
 export function logInfo(
   message: LazyArg<string>,
@@ -73,7 +73,7 @@ export function logInfo(
 /**
  * Logs the specified message at the trace log level.
  *
- * @tsplus static ets/Sink/Ops logTrace
+ * @tsplus static effect/core/stream/Sink.Ops logTrace
  */
 export function logTrace(
   message: LazyArg<string>,
@@ -85,7 +85,7 @@ export function logTrace(
 /**
  * Logs the specified message at the warning log level.
  *
- * @tsplus static ets/Sink/Ops logWarning
+ * @tsplus static effect/core/stream/Sink.Ops logWarning
  */
 export function logWarning(
   message: LazyArg<string>,
@@ -97,7 +97,7 @@ export function logWarning(
 /**
  * Sets the log level for streams composed after this.
  *
- * @tsplus static ets/Sink/Ops logLevel
+ * @tsplus static effect/core/stream/Sink.Ops logLevel
  */
 export function logLevel(level: LogLevel) {
   return <R, E, In, L, Z>(
@@ -109,7 +109,7 @@ export function logLevel(level: LogLevel) {
 /**
  * Adjusts the label for the logging span for streams composed after this.
  *
- * @tsplus static ets/Sink/Ops logSpan
+ * @tsplus static effect/core/stream/Sink.Ops logSpan
  */
 export function logSpan(label: LazyArg<string>) {
   return <R, E, In, L, Z>(
@@ -131,7 +131,7 @@ export function logSpan(label: LazyArg<string>) {
  * Annotates each log in streams composed after this with the specified log
  * annotation.
  *
- * @tsplus static ets/Sink/Ops logAnnotate
+ * @tsplus static effect/core/stream/Sink.Ops logAnnotate
  */
 export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
   return <R, E, In, L, Z>(
@@ -152,7 +152,7 @@ export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
 /**
  * Retrieves the log annotations associated with the current scope.
  *
- * @tsplus static ets/Sink/Ops logAnnotations
+ * @tsplus static effect/core/stream/Sink.Ops logAnnotations
  */
 export function logAnnotations(
   __tsplusTrace?: string

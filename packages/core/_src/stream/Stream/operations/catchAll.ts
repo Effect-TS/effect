@@ -2,20 +2,13 @@
  * Switches over to the stream produced by the provided function in case this
  * one fails with a typed error.
  *
- * @tsplus fluent ets/Stream catchAll
+ * @tsplus static effect/core/stream/Stream.Aspects catchAll
+ * @tsplus pipeable effect/core/stream/Stream catchAll
  */
-export function catchAll_<R, E, A, R2, E2, A2>(
-  self: Stream<R, E, A>,
+export function catchAll<E, R2, E2, A2>(
   f: (e: E) => Stream<R2, E2, A2>,
   __tsplusTrace?: string
-): Stream<R | R2, E2, A | A2> {
-  return self.catchAllCause((cause) => cause.failureOrCause.fold(f, (cause) => Stream.failCause(cause)))
+) {
+  return <R, A>(self: Stream<R, E, A>): Stream<R | R2, E2, A | A2> =>
+    self.catchAllCause((cause) => cause.failureOrCause.fold(f, (cause) => Stream.failCause(cause)))
 }
-
-/**
- * Switches over to the stream produced by the provided function in case this
- * one fails with a typed error.
- *
- * @tsplus static ets/Stream/Aspects catchAll
- */
-export const catchAll = Pipeable(catchAll_)

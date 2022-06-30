@@ -2,20 +2,13 @@
  * A more powerful variant of `withFinalizer` that allows the finalizer to
  * depend on the `Exit` value that the scope is closed with.
  *
- * @tsplus fluent ets/Effect withFinalizerExit
+ * @tsplus static effect/core/io/Effect.Aspects withFinalizerExit
+ * @tsplus pipeable effect/core/io/Effect withFinalizerExit
  */
-export function withFinalizerExit_<R, R2, E, A, X>(
-  self: Effect<R, E, A>,
+export function withFinalizerExit<R2, X>(
   finalizer: (exit: Exit<unknown, unknown>) => Effect<R2, never, X>,
   __tsplusTrace?: string
-): Effect<R | R2 | Scope, E, A> {
-  return Effect.acquireReleaseExit(self, (_, exit) => finalizer(exit))
+) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2 | Scope, E, A> =>
+    Effect.acquireReleaseExit(self, (_, exit) => finalizer(exit))
 }
-
-/**
- * A more powerful variant of `withFinalizer` that allows the finalizer to
- * depend on the `Exit` value that the scope is closed with.
- *
- * @tsplus static ets/Effect/Aspects withFinalizerExit
- */
-export const withFinalizerExit = Pipeable(withFinalizerExit_)

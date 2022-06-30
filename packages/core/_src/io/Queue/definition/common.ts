@@ -172,12 +172,12 @@ function takeRemainderLoop<A>(
  * A `Queue` is a lightweight, asynchronous queue into which values can be
  * enqueued and of which elements can be dequeued.
  *
- * @tsplus type ets/Queue
+ * @tsplus type effect/core/io/Queue
  */
 export interface Queue<A> extends Enqueue<A>, Dequeue<A> {}
 
 /**
- * @tsplus type ets/Queue/Ops
+ * @tsplus type effect/core/io/Queue.Ops
  */
 export interface QueueOps {
   $: QueueAspects
@@ -187,7 +187,7 @@ export const Queue: QueueOps = {
 }
 
 /**
- * @tsplus type ets/Queue/Aspects
+ * @tsplus type effect/core/io/Queue.Aspects
  */
 export interface QueueAspects {}
 

@@ -2,18 +2,18 @@ import { CancelerState } from "@effect/core/io/Fiber/_internal/cancelerState"
 import { FiberStatus } from "@effect/core/io/Fiber/status"
 
 /**
- * @tsplus type ets/Fiber/State
+ * @tsplus type effect/core/io/Fiber/State
  */
 export type FiberState<E, A> = Executing<E, A> | Done<E, A>
 
 /**
- * @tsplus type ets/Fiber/State/Ops
+ * @tsplus type effect/core/io/Fiber/State.Ops
  */
 export interface FiberStateOps {}
 export const FiberState: FiberStateOps = {}
 
 /**
- * @tsplus unify ets/Fiber/State
+ * @tsplus unify effect/core/io/Fiber/State
  */
 export function unifyFiberState<X extends FiberState<any, any>>(
   self: X
@@ -50,7 +50,7 @@ export class Done<E, A> {
 }
 
 /**
- * @tsplus static ets/Fiber/State/Ops Executing
+ * @tsplus static effect/core/io/Fiber/State.Ops Executing
  */
 export function executing<E, A>(
   status: FiberStatus,
@@ -71,14 +71,14 @@ export function executing<E, A>(
 }
 
 /**
- * @tsplus static ets/Fiber/State/Ops Done
+ * @tsplus static effect/core/io/Fiber/State.Ops Done
  */
 export function done<E, A>(value: Exit<E, A>): FiberState<E, A> {
   return new Done(value)
 }
 
 /**
- * @tsplus static ets/Fiber/State/Ops initial
+ * @tsplus static effect/core/io/Fiber/State.Ops initial
  */
 export function initial<E, A>(): FiberState<E, A> {
   return new Executing(
@@ -92,14 +92,14 @@ export function initial<E, A>(): FiberState<E, A> {
 }
 
 /**
- * @tsplus getter ets/Fiber/State isInterrupting
+ * @tsplus getter effect/core/io/Fiber/State isInterrupting
  */
 export function isInterrupting<E, A>(self: FiberState<E, A>): boolean {
   return self.status.isInterrupting
 }
 
 /**
- * @tsplus getter ets/Fiber/State interruptorsCause
+ * @tsplus getter effect/core/io/Fiber/State interruptorsCause
  */
 export function interruptorsCause<E, A>(state: FiberState<E, A>): Cause<never> {
   return state.interruptors.reduce(

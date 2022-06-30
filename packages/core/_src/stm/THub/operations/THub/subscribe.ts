@@ -1,7 +1,7 @@
 import { concreteTHub } from "@effect/core/stm/THub/operations/_internal/InternalTHub"
 
 /**
- * @tsplus getter ets/THub subscribe
+ * @tsplus getter effect/core/stm/THub subscribe
  */
 export function subscribe<A>(self: THub<A>): USTM<THub.TDequeue<A>> {
   concreteTHub(self)

@@ -10,7 +10,7 @@ const someDebug = Maybe.some(LogLevel.Debug)
 /**
  * Logs the specified message at the current log level.
  *
- * @tsplus static ets/Effect/Ops log
+ * @tsplus static effect/core/io/Effect.Ops log
  */
 export function log(message: LazyArg<string>, __tsplusTrace?: string): Effect<never, never, void> {
   return new ILogged(message, () => Cause.empty, Maybe.none, null, null, __tsplusTrace)
@@ -19,7 +19,7 @@ export function log(message: LazyArg<string>, __tsplusTrace?: string): Effect<ne
 /**
  * Logs the specified message at the debug log level.
  *
- * @tsplus static ets/Effect/Ops logDebug
+ * @tsplus static effect/core/io/Effect.Ops logDebug
  */
 export function logDebug(message: LazyArg<string>, __tsplusTrace?: string): Effect<never, never, void> {
   return new ILogged(message, () => Cause.empty, someDebug, null, null, __tsplusTrace)
@@ -28,7 +28,7 @@ export function logDebug(message: LazyArg<string>, __tsplusTrace?: string): Effe
 /**
  * Logs the specified cause at the debug log level.
  *
- * @tsplus static ets/Effect/Ops logDebugCause
+ * @tsplus static effect/core/io/Effect.Ops logDebugCause
  */
 export function logDebugCause<E>(
   cause: LazyArg<Cause<E>>,
@@ -40,7 +40,7 @@ export function logDebugCause<E>(
 /**
  * Logs the specified message and cause at the debug log level.
  *
- * @tsplus static ets/Effect/Ops logDebugCauseMessage
+ * @tsplus static effect/core/io/Effect.Ops logDebugCauseMessage
  */
 export function logDebugCauseMessage<E>(
   message: LazyArg<string>,
@@ -53,7 +53,7 @@ export function logDebugCauseMessage<E>(
 /**
  * Logs the specified message at the error log level.
  *
- * @tsplus static ets/Effect/Ops logError
+ * @tsplus static effect/core/io/Effect.Ops logError
  */
 export function logError(message: LazyArg<string>, __tsplusTrace?: string): Effect<never, never, void> {
   return new ILogged(message, () => Cause.empty, someError, null, null, __tsplusTrace)
@@ -62,7 +62,7 @@ export function logError(message: LazyArg<string>, __tsplusTrace?: string): Effe
 /**
  * Logs the specified cause at the error log level.
  *
- * @tsplus static ets/Effect/Ops logErrorCause
+ * @tsplus static effect/core/io/Effect.Ops logErrorCause
  */
 export function logErrorCause<E>(
   cause: LazyArg<Cause<E>>,
@@ -74,7 +74,7 @@ export function logErrorCause<E>(
 /**
  * Logs the specified message and cause at the error log level.
  *
- * @tsplus static ets/Effect/Ops logErrorCauseMessage
+ * @tsplus static effect/core/io/Effect.Ops logErrorCauseMessage
  */
 export function logErrorCauseMessage<E>(
   message: LazyArg<string>,
@@ -87,7 +87,7 @@ export function logErrorCauseMessage<E>(
 /**
  * Logs the specified message at the fatal log level.
  *
- * @tsplus static ets/Effect/Ops logFatal
+ * @tsplus static effect/core/io/Effect.Ops logFatal
  */
 export function logFatal(message: LazyArg<string>, __tsplusTrace?: string): Effect<never, never, void> {
   return new ILogged(message, () => Cause.empty, someFatal, null, null, __tsplusTrace)
@@ -96,7 +96,7 @@ export function logFatal(message: LazyArg<string>, __tsplusTrace?: string): Effe
 /**
  * Logs the specified cause at the fatal log level.
  *
- * @tsplus static ets/Effect/Ops logFatalCause
+ * @tsplus static effect/core/io/Effect.Ops logFatalCause
  */
 export function logFatalCause<E>(
   cause: LazyArg<Cause<E>>,
@@ -108,7 +108,7 @@ export function logFatalCause<E>(
 /**
  * Logs the specified message and cause at the fatal log level.
  *
- * @tsplus static ets/Effect/Ops logFatalCauseMessage
+ * @tsplus static effect/core/io/Effect.Ops logFatalCauseMessage
  */
 export function logFatalCauseMessage<E>(
   message: LazyArg<string>,
@@ -121,7 +121,7 @@ export function logFatalCauseMessage<E>(
 /**
  * Logs the specified message at the informational log level.
  *
- * @tsplus static ets/Effect/Ops logInfo
+ * @tsplus static effect/core/io/Effect.Ops logInfo
  */
 export function logInfo(message: LazyArg<string>, __tsplusTrace?: string): Effect<never, never, void> {
   return new ILogged(message, () => Cause.empty, someInfo, null, null, __tsplusTrace)
@@ -130,7 +130,7 @@ export function logInfo(message: LazyArg<string>, __tsplusTrace?: string): Effec
 /**
  * Logs the specified cause at the informational log level.
  *
- * @tsplus static ets/Effect/Ops logInfoCause
+ * @tsplus static effect/core/io/Effect.Ops logInfoCause
  */
 export function logInfoCause<E>(
   cause: LazyArg<Cause<E>>,
@@ -142,7 +142,7 @@ export function logInfoCause<E>(
 /**
  * Logs the specified message and cause at the informational log level.
  *
- * @tsplus static ets/Effect/Ops logInfoCauseMessage
+ * @tsplus static effect/core/io/Effect.Ops logInfoCauseMessage
  */
 export function logInfoCauseMessage<E>(
   message: LazyArg<string>,
@@ -155,7 +155,7 @@ export function logInfoCauseMessage<E>(
 /**
  * Logs the specified message at the warning log level.
  *
- * @tsplus static ets/Effect/Ops logWarning
+ * @tsplus static effect/core/io/Effect.Ops logWarning
  */
 export function logWarning(
   message: LazyArg<string>,
@@ -167,7 +167,7 @@ export function logWarning(
 /**
  * Logs the specified cause at the warning log level.
  *
- * @tsplus static ets/Effect/Ops logWarningCause
+ * @tsplus static effect/core/io/Effect.Ops logWarningCause
  */
 export function logWarningCause<E>(
   cause: LazyArg<Cause<E>>,
@@ -179,7 +179,7 @@ export function logWarningCause<E>(
 /**
  * Logs the specified message and cause at the warning log level.
  *
- * @tsplus static ets/Effect/Ops logWarningCauseMessage
+ * @tsplus static effect/core/io/Effect.Ops logWarningCauseMessage
  */
 export function logWarningCauseMessage<E>(
   message: LazyArg<string>,
@@ -192,7 +192,7 @@ export function logWarningCauseMessage<E>(
 /**
  * Logs the specified message at the trace log level.
  *
- * @tsplus static ets/Effect/Ops logTrace
+ * @tsplus static effect/core/io/Effect.Ops logTrace
  */
 export function logTrace(message: LazyArg<string>, __tsplusTrace?: string): Effect<never, never, void> {
   return new ILogged(message, () => Cause.empty, someTrace, null, null, __tsplusTrace)
@@ -201,7 +201,7 @@ export function logTrace(message: LazyArg<string>, __tsplusTrace?: string): Effe
 /**
  * Logs the specified cause at the trace log level.
  *
- * @tsplus static ets/Effect/Ops logTraceCause
+ * @tsplus static effect/core/io/Effect.Ops logTraceCause
  */
 export function logTraceCause<E>(
   cause: LazyArg<Cause<E>>,
@@ -213,7 +213,7 @@ export function logTraceCause<E>(
 /**
  * Logs the specified message and cause at the trace log level.
  *
- * @tsplus static ets/Effect/Ops logTraceCauseMessage
+ * @tsplus static effect/core/io/Effect.Ops logTraceCauseMessage
  */
 export function logTraceCauseMessage<E>(
   message: LazyArg<string>,
@@ -226,7 +226,7 @@ export function logTraceCauseMessage<E>(
 /**
  * Adjusts the label for the current logging span.
  *
- * @tsplus static ets/Effect/Ops logSpan
+ * @tsplus static effect/core/io/Effect.Ops logSpan
  */
 export function logSpan(label: LazyArg<string>) {
   return <R, E, A>(effect: Effect<R, E, A>, __tsplusTrace?: string): Effect<R, E, A> =>
@@ -244,7 +244,7 @@ export function logSpan(label: LazyArg<string>) {
 /**
  * Annotates each log in this effect with the specified log annotation.
  *
- * @tsplus static ets/Effect/Ops logAnnotate
+ * @tsplus static effect/core/io/Effect.Ops logAnnotate
  */
 export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
   return <R, E, A>(effect: Effect<R, E, A>, __tsplusTrace?: string): Effect<R, E, A> =>
@@ -264,7 +264,7 @@ export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
 /**
  * Retrieves the log annotations associated with the current scope.
  *
- * @tsplus static ets/Effect/Ops logAnnotations
+ * @tsplus static effect/core/io/Effect.Ops logAnnotations
  */
 export function logAnnotations(__tsplusTrace?: string): Effect<never, never, ImmutableMap<string, string>> {
   return FiberRef.currentLogAnnotations.value.get()
@@ -273,7 +273,7 @@ export function logAnnotations(__tsplusTrace?: string): Effect<never, never, Imm
 /**
  * An aspect that disables logging for the specified effect.
  *
- * @tsplus static ets/Effect/Ops disableLogging
+ * @tsplus static effect/core/io/Effect.Ops disableLogging
  */
 export function disableLogging<R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> {
   return Effect.runtimeConfig.flatMap((runtimeConfig) =>

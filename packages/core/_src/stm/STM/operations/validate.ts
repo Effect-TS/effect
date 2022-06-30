@@ -5,7 +5,7 @@
  * This combinator is lossy meaning that if there are errors all successes
  * will be lost. To retain all information please use `partition`.
  *
- * @tsplus static ets/STM/Ops validate
+ * @tsplus static effect/core/stm/STM.Ops validate
  */
 export function validate<R, E, A, B>(
   as: LazyArg<Collection<A>>,

@@ -1,19 +1,13 @@
 /**
  * Effectfully transforms this sink's input elements.
  *
- * @tsplus fluent ets/Sink contramapEffect
+ * @tsplus static effect/core/stream/Sink.Aspects contramapEffect
+ * @tsplus pipeable effect/core/stream/Sink contramapEffect
  */
-export function contramapEffect_<R, E, R2, E2, In, In1, L, Z>(
-  self: Sink<R, E, In, L, Z>,
-  f: (input: In1) => Effect<R2, E2, In>,
+export function contramapEffect<In0, R2, E2, In2>(
+  f: (input: In0) => Effect<R2, E2, In2>,
   __tsplusTrace?: string
-): Sink<R | R2, E | E2, In1, L, Z> {
-  return self.contramapChunksEffect((chunk) => chunk.mapEffect(f))
+) {
+  return <R, E, L, Z>(self: Sink<R, E, In2, L, Z>): Sink<R | R2, E | E2, In0, L, Z> =>
+    self.contramapChunksEffect((chunk) => chunk.mapEffect(f))
 }
-
-/**
- * Effectfully transforms this sink's input elements.
- *
- * @tsplus static ets/Sink/Aspects contramapEffect
- */
-export const contramapEffect = Pipeable(contramapEffect_)

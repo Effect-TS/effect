@@ -3,29 +3,21 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
 /**
  * Find the first element in the array matching a predicate.
  *
- * @tsplus fluent ets/TArray find
+ * @tsplus static effect/core/stm/TArray.Aspects find
+ * @tsplus pipeable effect/core/stm/TArray find
  */
-export function find_<A>(
-  self: TArray<A>,
-  p: Predicate<A>
-): STM<never, never, Maybe<A>> {
-  return STM.Effect((journal) => {
-    let i = 0
-    concreteTArray(self)
-    while (i < self.chunk.length) {
-      const a = self.chunk.unsafeGet(i)!.unsafeGet(journal)
-      if (p(a)) {
-        return Maybe.some(a)
+export function find<A>(p: Predicate<A>) {
+  return (self: TArray<A>): STM<never, never, Maybe<A>> =>
+    STM.Effect((journal) => {
+      let i = 0
+      concreteTArray(self)
+      while (i < self.chunk.length) {
+        const a = self.chunk.unsafeGet(i)!.unsafeGet(journal)
+        if (p(a)) {
+          return Maybe.some(a)
+        }
+        i++
       }
-      i++
-    }
-    return Maybe.none
-  })
+      return Maybe.none
+    })
 }
-
-/**
- * Find the first element in the array matching a predicate.
- *
- * @tsplus static ets/TArray/Aspects find
- */
-export const find = Pipeable(find_)

@@ -5,7 +5,7 @@ function hash<K>(k: K): number {
 
 /**
  * @internal
- * @tsplus static ets/TMap/Ops indexOf
+ * @tsplus static effect/core/stm/TMap.Ops indexOf
  */
 export function indexOf<K>(k: K, capacity: number): number {
   return hash(k) & (capacity - 1)

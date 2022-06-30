@@ -75,8 +75,8 @@ export class StateEmit<Err, Elem, Done> {
  *   - Trying to publish another emit/error/done after an error/done have
  *     already been published results in an interruption.
  *
- * @tsplus type ets/Channel/SingleProducerAsyncInput
- * @tsplus companion ets/Channel/SingleProducerAsyncInput/Ops
+ * @tsplus type effect/core/stream/Channel/SingleProducerAsyncInput
+ * @tsplus companion effect/core/stream/Channel/SingleProducerAsyncInput.Ops
  */
 export class SingleProducerAsyncInput<Err, Elem, Done>
   implements AsyncInputProducer<Err, Elem, Done>, AsyncInputConsumer<Err, Elem, Done>
@@ -102,7 +102,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
           ? Tuple(state.notifyProducer.await(), state)
           : Tuple(Effect.unit, state)
       )
-      .flatten()
+      .flatten
   }
 
   emit(el: Elem): Effect<never, never, unknown> {
@@ -139,7 +139,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
             }
           }
         })
-        .flatten()
+        .flatten
     )
   }
 
@@ -164,7 +164,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
           }
         }
       })
-      .flatten()
+      .flatten
   }
 
   error(cause: Cause<Err>): Effect<never, never, unknown> {
@@ -188,7 +188,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
           }
         }
       })
-      .flatten()
+      .flatten
   }
 
   takeWith<X>(
@@ -225,7 +225,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
             }
           }
         })
-        .flatten()
+        .flatten
     )
   }
 }
@@ -233,7 +233,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
 /**
  * Creates a `SingleProducerAsyncInput`.
  *
- * @tsplus static ets/Channel/SingleProducerAsyncInput/Ops make
+ * @tsplus static effect/core/stream/Channel/SingleProducerAsyncInput.Ops make
  */
 export function make<Err, Elem, Done>(): Effect<never, never, SingleProducerAsyncInput<Err, Elem, Done>> {
   return Deferred.make<never, void>()

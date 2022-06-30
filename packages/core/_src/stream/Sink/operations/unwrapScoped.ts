@@ -3,7 +3,7 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
 /**
  * Creates a sink produced from a scoped effect.
  *
- * @tsplus static ets/Sink/Ops unwrapScoped
+ * @tsplus static effect/core/stream/Sink.Ops unwrapScoped
  */
 export function unwrapScoped<R, E, In, L, Z>(
   effect: LazyArg<Effect<R | Scope, E, Sink<R, E, In, L, Z>>>,

@@ -1,7 +1,7 @@
 /**
  * A sink that counts the number of elements fed to it.
  *
- * @tsplus static ets/Sink/Ops count
+ * @tsplus static effect/core/stream/Sink.Ops count
  */
 export function count(
   __tsplusTrace?: string

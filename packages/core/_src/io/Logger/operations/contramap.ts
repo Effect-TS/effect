@@ -1,11 +1,9 @@
 /**
- * @tsplus fluent ets/Logger contramap
+ * @tsplus static effect/core/io/Logger.Aspects contramap
+ * @tsplus pipeable effect/core/io/Logger contramap
  */
-export function contramap_<Message, Output, Message1>(
-  self: Logger<Message, Output>,
-  f: (message: Message1) => Message
-): Logger<Message1, Output> {
-  return {
+export function contramap<Message, Message1>(f: (message: Message1) => Message) {
+  return <Output>(self: Logger<Message, Output>): Logger<Message1, Output> => ({
     apply: (trace, fiberId, logLevel, message, cause, context, spans, annotations) =>
       self.apply(
         trace,
@@ -17,12 +15,5 @@ export function contramap_<Message, Output, Message1>(
         spans,
         annotations
       )
-  }
-}
-
-/**
- * @tsplus type ets/Logger/Aspects contramap
- */
-export function contramap<Message1, Message>(f: (message: Message1) => Message) {
-  return <Output>(self: Logger<Message, Output>): Logger<Message1, Output> => self.contramap(f)
+  })
 }

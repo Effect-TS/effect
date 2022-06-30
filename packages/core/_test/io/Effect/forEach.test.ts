@@ -255,7 +255,7 @@ describe.concurrent("Effect", () => {
         Chunk.range(1, 10),
         (n) => n === 5 ? Effect.fail("boom") : Effect.succeed(n * 2)
       )
-        .flip()
+        .flip
 
       const result = await program.unsafeRunPromise()
 
@@ -268,7 +268,7 @@ describe.concurrent("Effect", () => {
           ? Effect.fail("boom1")
           : n === 8
           ? Effect.fail("boom2")
-          : Effect.succeed(n * 2)).flip()
+          : Effect.succeed(n * 2)).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -330,7 +330,7 @@ describe.concurrent("Effect", () => {
           Effect.forEachPar(
             List(Effect.never, deferred.succeed(undefined)),
             identity
-          ).fork()
+          ).fork
         )
         .flatMap((deferred) => deferred.await())
         .map(constTrue)
@@ -346,7 +346,7 @@ describe.concurrent("Effect", () => {
           Effect.forEachPar(
             List(Effect.never, deferred.succeed(undefined), Effect.never),
             identity
-          ).fork()
+          ).fork
         )
         .flatMap((deferred) => deferred.await())
         .map(constTrue)
@@ -358,7 +358,7 @@ describe.concurrent("Effect", () => {
 
     it("propagates error", async () => {
       const list = List(1, 2, 3, 4, 5, 6)
-      const program = Effect.forEachPar(list, (n) => n % 2 !== 0 ? Effect.succeed(n) : Effect.fail("not odd")).flip()
+      const program = Effect.forEachPar(list, (n) => n % 2 !== 0 ? Effect.succeed(n) : Effect.fail("not odd")).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -376,7 +376,7 @@ describe.concurrent("Effect", () => {
             Effect.fail("C"),
             (deferred.await() > ref.set(true)).as(1)
           ))
-        .bind("e", ({ actions }) => Effect.forEachPar(actions, identity).flip())
+        .bind("e", ({ actions }) => Effect.forEachPar(actions, identity).flip)
         .bind("v", ({ ref }) => ref.get())
 
       const { e, v } = await program.unsafeRunPromise()
@@ -388,8 +388,8 @@ describe.concurrent("Effect", () => {
     it("does not kill fiber when forked on the parent scope", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
-        .bind("fibers", ({ ref }) => Effect.forEachPar(Chunk.range(1, 100), (n) => ref.update((_) => _ + 1).fork()))
-        .tap(({ fibers }) => Effect.forEach(fibers, (fiber) => fiber.await()))
+        .bind("fibers", ({ ref }) => Effect.forEachPar(Chunk.range(1, 100), () => ref.update((_) => _ + 1).fork))
+        .tap(({ fibers }) => Effect.forEach(fibers, (fiber) => fiber.await))
         .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
@@ -425,7 +425,7 @@ describe.concurrent("Effect", () => {
         .tap((deferred) =>
           Effect.forEachPar(List(Effect.never, deferred.succeed(undefined)), identity)
             .withParallelism(2)
-            .fork()
+            .fork
         )
         .flatMap((deferred) => deferred.await())
         .map(constTrue)
@@ -439,7 +439,7 @@ describe.concurrent("Effect", () => {
       const list = List(1, 2, 3, 4, 5, 6)
       const program = Effect.forEachPar(list, (n) => n % 2 !== 0 ? Effect.succeed(n) : Effect.fail("not odd"))
         .withParallelism(4)
-        .either()
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -452,7 +452,7 @@ describe.concurrent("Effect", () => {
         Effect.succeed(1),
         Effect.fail("C")
       )
-      const program = Effect.forEachPar(actions, identity).withParallelism(4).either()
+      const program = Effect.forEachPar(actions, identity).withParallelism(4).either
 
       const result = await program.unsafeRunPromise()
 
@@ -466,7 +466,7 @@ describe.concurrent("Effect", () => {
         started: Ref<number>,
         trigger: Deferred<never, void>,
         n: number
-      ): Effect.IO<number, void> {
+      ): Effect<never, number, void> {
         return started
           .updateAndGet((n) => n + 1)
           .flatMap(
@@ -481,7 +481,7 @@ describe.concurrent("Effect", () => {
         .bind("started", () => Ref.make(0))
         .bind("trigger", () => Deferred.make<never, void>())
         .flatMap(({ started, trigger }) =>
-          Effect.forEachParDiscard(Chunk.range(1, 3), (n) => task(started, trigger, n).uninterruptible()).foldCause(
+          Effect.forEachParDiscard(Chunk.range(1, 3), (n) => task(started, trigger, n).uninterruptible).foldCause(
             (cause) => cause.failures,
             () => List.empty<number>()
           )
@@ -542,7 +542,7 @@ describe.concurrent("Effect", () => {
     it("returns the list of results in the same order", async () => {
       const list = List(1, 2, 3).map((n) => Effect.succeed(n))
       const program = Effect.forkAll(list)
-        .flatMap((fiber) => fiber.join())
+        .flatMap((fiber) => fiber.join)
 
       const result = await program.unsafeRunPromise()
 
@@ -552,7 +552,7 @@ describe.concurrent("Effect", () => {
     it("happy-path", async () => {
       const chunk = Chunk.range(1, 1000)
       const program = Effect.forkAll(chunk.map((n) => Effect.succeed(n)))
-        .flatMap((fiber) => fiber.join())
+        .flatMap((fiber) => fiber.join)
 
       const result = await program.unsafeRunPromise()
 
@@ -561,7 +561,7 @@ describe.concurrent("Effect", () => {
 
     it("empty input", async () => {
       const program = Effect.forkAll<never, never, List<Effect.UIO<number>>>(List.empty())
-        .flatMap((fiber) => fiber.join())
+        .flatMap((fiber) => fiber.join)
 
       const result = await program.unsafeRunPromise()
 
@@ -571,7 +571,7 @@ describe.concurrent("Effect", () => {
     it("propagate failures", async () => {
       const boom = new Error()
       const fail = Effect.fail(boom)
-      const program = Effect.forkAll(List(fail)).flatMap((fiber) => fiber.join().flip())
+      const program = Effect.forkAll(List(fail)).flatMap((fiber) => fiber.join.flip)
 
       const result = await program.unsafeRunPromise()
 
@@ -583,7 +583,7 @@ describe.concurrent("Effect", () => {
       const die = Effect.die(boom)
 
       function joinDefect(fiber: Fiber<never, unknown>) {
-        return fiber.join().sandbox().flip()
+        return fiber.join.sandbox.flip
       }
 
       const program = Effect.Do()
@@ -608,7 +608,7 @@ describe.concurrent("Effect", () => {
         .bindValue("worker", () => Effect.never)
         .bindValue("workers", ({ worker }) => Chunk.fill(4, () => worker))
         .bind("fiber", ({ workers }) => Effect.forkAll(workers))
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
@@ -619,10 +619,10 @@ describe.concurrent("Effect", () => {
     it("infers correctly with error type", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
-        .bindValue("worker", () => Effect.fail(new RuntimeError("fail")).forever())
+        .bindValue("worker", () => Effect.fail(new RuntimeError("fail")).forever)
         .bindValue("workers", ({ worker }) => Chunk.fill(4, () => worker))
         .bind("fiber", ({ workers }) => Effect.forkAll(workers))
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()

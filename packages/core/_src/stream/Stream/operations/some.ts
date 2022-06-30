@@ -1,7 +1,7 @@
 /**
  * Converts an option on values into an option on errors.
  *
- * @tsplus getter ets/Stream some
+ * @tsplus getter effect/core/stream/Stream some
  */
 export function some<R, E, A>(
   self: Stream<R, E, Maybe<A>>,

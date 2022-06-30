@@ -1,7 +1,7 @@
 /**
  * Reads an input and continue exposing both error and completion.
  *
- * @tsplus static ets/Channel/Ops readWith
+ * @tsplus static effect/core/stream/Channel.Ops readWith
  */
 export function readWith<
   Env,

@@ -2,7 +2,7 @@
  * Returns a scoped effect that describes acquiring a permit as the `acquire`
  * action and releasing it as the `release` action.
  *
- * @tsplus fluent ets/TSemaphore withPermitScoped
+ * @tsplus getter effect/core/stm/TSemaphore withPermitScoped
  */
 export function withPermitScoped(
   self: TSemaphore,

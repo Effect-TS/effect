@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Stream/Ops fromPull
+ * @tsplus static effect/core/stream/Stream.Ops fromPull
  */
 export function fromPull<R, E, A>(
   effect: LazyArg<Effect<R | Scope, never, Effect<R, Maybe<E>, Chunk<A>>>>,

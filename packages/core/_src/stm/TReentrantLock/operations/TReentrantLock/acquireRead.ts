@@ -3,7 +3,7 @@
  * holding a write lock. Succeeds with the number of read locks held by this
  * fiber.
  *
- * @tsplus getter ets/TReentrantLock acquireRead
+ * @tsplus getter effect/core/stm/TReentrantLock acquireRead
  */
 export function acquireRead(self: TReentrantLock): USTM<number> {
   return self.adjustRead(1)

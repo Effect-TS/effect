@@ -2,7 +2,7 @@
  * Annotates each log in streams composed after this with the specified log
  * annotation.
  *
- * @tsplus static ets/Stream/Ops logAnnotate
+ * @tsplus static effect/core/stream/Stream.Ops logAnnotate
  */
 export function logAnnotate(
   key: LazyArg<string>,

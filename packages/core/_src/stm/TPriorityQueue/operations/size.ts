@@ -3,7 +3,7 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
 /**
  * Returns the size of the queue.
  *
- * @tsplus getter ets/TPriorityQueue size
+ * @tsplus getter effect/core/stm/TPriorityQueue size
  */
 export function size<A>(self: TPriorityQueue<A>): USTM<number> {
   concreteTPriorityQueue(self)

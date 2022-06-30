@@ -1,7 +1,7 @@
 /**
  * Interrupts all fibers, awaiting their interruption.
  *
- * @tsplus static ets/Fiber/Ops interruptAll
+ * @tsplus static effect/core/io/Fiber.Ops interruptAll
  */
 export function interruptAll(
   fibers: Collection<Fiber<any, any>>,

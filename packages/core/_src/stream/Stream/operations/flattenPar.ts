@@ -3,13 +3,14 @@
  * concurrent merge. Up to `n` streams may be consumed in parallel and up to
  * `outputBuffer` elements may be buffered by this operator.
  *
- * @tsplus fluent ets/Stream flattenPar
+ * @tsplus static effect/core/stream/Stream.Aspects flattenPar
+ * @tsplus pipeable effect/core/stream/Stream flattenPar
  */
-export function flattenPar<R, E, A, R1, E1>(
-  self: Stream<R, E, Stream<R1, E1, A>>,
+export function flattenPar(
   n: number,
   outputBuffer = 16,
   __tsplusTrace?: string
-): Stream<R | R1, E | E1, A> {
-  return self.flatMapPar(n, identity, outputBuffer)
+) {
+  return <R, E, R1, E1, A>(self: Stream<R, E, Stream<R1, E1, A>>): Stream<R | R1, E | E1, A> =>
+    self.flatMapPar(n, identity, outputBuffer)
 }

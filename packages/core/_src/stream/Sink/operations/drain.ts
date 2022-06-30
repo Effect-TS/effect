@@ -3,7 +3,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
 /**
  * A sink that ignores its inputs.
  *
- * @tsplus static ets/Sink/Ops drain
+ * @tsplus static effect/core/stream/Sink.Ops drain
  */
 export function drain(
   __tsplusTrace?: string

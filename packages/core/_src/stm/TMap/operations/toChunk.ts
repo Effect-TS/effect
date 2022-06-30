@@ -4,7 +4,7 @@ import { concreteTMap } from "@effect/core/stm/TMap/operations/_internal/Interna
 /**
  * Collects all bindings into a chunk.
  *
- * @tsplus getter ets/TMap toChunk
+ * @tsplus getter effect/core/stm/TMap toChunk
  */
 export function toChunk<K, V>(
   self: TMap<K, V>

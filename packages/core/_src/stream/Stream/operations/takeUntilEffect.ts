@@ -4,26 +4,20 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * Takes all elements of the stream until the specified effectual predicate
  * evaluates to `true`.
  *
- * @tsplus fluent ets/Stream takeUntilEffect
+ * @tsplus static effect/core/stream/Stream.Aspects takeUntilEffect
+ * @tsplus pipeable effect/core/stream/Stream takeUntilEffect
  */
-export function takeUntilEffect_<R, E, A, R2, E2>(
-  self: Stream<R, E, A>,
+export function takeUntilEffect<A, R2, E2>(
   f: (a: A) => Effect<R2, E2, boolean>,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, A> {
-  concreteStream(self)
-  return new StreamInternal(
-    self.channel >> loop(Chunk.empty<A>()[Symbol.iterator](), f)
-  )
+) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> => {
+    concreteStream(self)
+    return new StreamInternal(
+      self.channel >> loop(Chunk.empty<A>()[Symbol.iterator](), f)
+    )
+  }
 }
-
-/**
- * Takes all elements of the stream until the specified effectual predicate
- * evaluates to `true`.
- *
- * @tsplus static ets/Stream/Aspects takeUntilEffect
- */
-export const takeUntilEffect = Pipeable(takeUntilEffect_)
 
 function loop<E, A, R1, E1>(
   chunkIterator: Iterator<A>,

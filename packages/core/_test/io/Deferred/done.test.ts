@@ -1,23 +1,19 @@
 describe.concurrent("Deferred", () => {
   describe.concurrent("isDone", () => {
-    it("when a deferred is completed", async () => {
-      const program = Deferred.make<string, number>()
-        .tap((deferred) => deferred.succeed(0))
-        .flatMap((deferred) => deferred.isDone())
+    it("when a deferred is completed", () =>
+      Do(($) => {
+        const deferred = $(Deferred.make<string, number>())
+        $(deferred.succeed(0))
+        const result = $(deferred.isDone())
+        assert.isTrue(result)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result)
-    })
-
-    it("when a deferred is failed", async () => {
-      const program = Deferred.make<string, number>()
-        .tap((deferred) => deferred.fail("failure"))
-        .flatMap((deferred) => deferred.isDone())
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result)
-    })
+    it("when a deferred is failed", () =>
+      Do(($) => {
+        const deferred = $(Deferred.make<string, number>())
+        $(deferred.fail("failure"))
+        const result = $(deferred.isDone())
+        assert.isTrue(result)
+      }).unsafeRunPromiseExit())
   })
 })

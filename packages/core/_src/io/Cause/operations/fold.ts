@@ -3,10 +3,10 @@ import { realCause } from "@effect/core/io/Cause/definition"
 /**
  * Folds over the cases of this cause with the specified functions.
  *
- * @tsplus fluent ets/Cause fold
+ * @tsplus static effect/core/io/Cause.Aspects fold
+ * @tsplus pipeable effect/core/io/Cause fold
  */
-export function fold_<E, Z>(
-  self: Cause<E>,
+export function fold<E, Z>(
   onEmptyCause: LazyArg<Z>,
   onFailCause: (e: E, trace: Trace) => Z,
   onDieCause: (e: unknown, trace: Trace) => Z,
@@ -14,25 +14,19 @@ export function fold_<E, Z>(
   onThenCause: (x: Z, y: Z) => Z,
   onBothCause: (x: Z, y: Z) => Z,
   onStacklessCause: (z: Z, stackless: boolean) => Z
-): Z {
-  return foldSafe(
-    self,
-    onEmptyCause,
-    onFailCause,
-    onDieCause,
-    onInterruptCause,
-    onThenCause,
-    onBothCause,
-    onStacklessCause
-  ).run
+) {
+  return (self: Cause<E>): Z =>
+    foldSafe(
+      self,
+      onEmptyCause,
+      onFailCause,
+      onDieCause,
+      onInterruptCause,
+      onThenCause,
+      onBothCause,
+      onStacklessCause
+    ).run
 }
-
-/**
- * Folds over the cases of this cause with the specified functions.
- *
- * @tsplus static ets/Cause/Aspects fold
- */
-export const fold = Pipeable(fold_)
 
 function foldSafe<E, Z>(
   self: Cause<E>,
@@ -46,15 +40,19 @@ function foldSafe<E, Z>(
 ): Eval<Z> {
   realCause(self)
   switch (self._tag) {
-    case "Empty":
+    case "Empty": {
       return Eval.succeed(onEmptyCause)
-    case "Fail":
+    }
+    case "Fail": {
       return Eval.succeed(onFailCause(self.value, self.trace))
-    case "Die":
+    }
+    case "Die": {
       return Eval.succeed(onDieCause(self.value, self.trace))
-    case "Interrupt":
+    }
+    case "Interrupt": {
       return Eval.succeed(onInterruptCause(self.fiberId, self.trace))
-    case "Both":
+    }
+    case "Both": {
       return Eval.suspend(
         foldSafe(
           self.left,
@@ -81,7 +79,8 @@ function foldSafe<E, Z>(
         ),
         (left, right) => onBothCause(left, right)
       )
-    case "Then":
+    }
+    case "Then": {
       return Eval.suspend(
         foldSafe(
           self.left,
@@ -108,7 +107,8 @@ function foldSafe<E, Z>(
         ),
         (left, right) => onThenCause(left, right)
       )
-    case "Stackless":
+    }
+    case "Stackless": {
       return Eval.suspend(
         foldSafe(
           self.cause,
@@ -121,5 +121,6 @@ function foldSafe<E, Z>(
           onStacklessCause
         )
       ).map((z) => onStacklessCause(z, self.stackless))
+    }
   }
 }

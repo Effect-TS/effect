@@ -3,7 +3,7 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
 /**
  * Checks if the array is empty.
  *
- * @tsplus getter ets/TArray isEmpty
+ * @tsplus getter effect/core/stm/TArray isEmpty
  */
 export function isEmpty<A>(self: TArray<A>): boolean {
   concreteTArray(self)

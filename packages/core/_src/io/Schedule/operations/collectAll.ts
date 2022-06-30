@@ -1,7 +1,7 @@
 /**
  * A schedule that recurs anywhere, collecting all inputs into a `Chunk`.
  *
- * @tsplus static ets/Schedule/Ops collectAll
+ * @tsplus static effect/core/io/Schedule.Ops collectAll
  */
 export function collectAll<A>(): Schedule<
   Tuple<[void, Chunk<A>]>,

@@ -1,7 +1,7 @@
 /**
  * Filters any `Exit.Failure` values.
  *
- * @tsplus fluent ets/Stream collectSuccess
+ * @tsplus getter effect/core/stream/Stream collectSuccess
  */
 export function collectSuccess<R, E, L, A>(
   self: Stream<R, E, Exit<L, A>>,

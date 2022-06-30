@@ -8,19 +8,19 @@ export type SemaphoreSym = typeof SemaphoreSym
  * in the acquiring fiber being suspended until the specified number of permits
  * become available.
  *
- * @tsplus type ets/Semaphore
+ * @tsplus type effect/core/io/Semaphore
  */
 export interface Semaphore {
   readonly [SemaphoreSym]: SemaphoreSym
 }
 
 /**
- * @tsplus type ets/Semaphore/Ops
+ * @tsplus type effect/core/io/Semaphore.Ops
  */
 export interface SemaphoreOps {}
 export const Semaphore: SemaphoreOps = {}
 
 /**
- * @tsplus type ets/Semaphore/Aspects
+ * @tsplus type effect/core/io/Semaphore.Aspects
  */
 export interface SemaphoreAspects {}

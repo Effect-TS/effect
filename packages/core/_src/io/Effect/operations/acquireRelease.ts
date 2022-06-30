@@ -6,8 +6,8 @@
  *
  * The `acquire` and `release` workflows will be run uninterruptibly.
  *
- * @tsplus static ets/Effect/Ops acquireRelease
- * @tsplus fluent ets/Effect acquireRelease
+ * @tsplus static effect/core/io/Effect.Ops acquireRelease
+ * @tsplus fluent effect/core/io/Effect acquireRelease
  */
 export function acquireRelease<R, E, A, R2, X>(
   acquire: LazyArg<Effect<R, E, A>>,

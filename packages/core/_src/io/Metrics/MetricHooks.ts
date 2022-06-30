@@ -1,11 +1,11 @@
 /**
- * @tsplus type ets/Metrics/MetricHooks/Ops
+ * @tsplus type effect/core/io/Metrics/MetricHooks.Ops
  */
 export interface MetricHooksOps {}
 export const MetricHooks: MetricHooksOps = {}
 
 /**
- * @tsplus static ets/Metrics/MetricHooks/Ops counter
+ * @tsplus static effect/core/io/Metrics/MetricHooks.Ops counter
  */
 export function counter(_key: MetricKey.Counter): MetricHook.Counter {
   let sum = 0
@@ -18,7 +18,7 @@ export function counter(_key: MetricKey.Counter): MetricHook.Counter {
 }
 
 /**
- * @tsplus static ets/Metrics/MetricHooks/Ops gauge
+ * @tsplus static effect/core/io/Metrics/MetricHooks.Ops gauge
  */
 export function gauge(_key: MetricKey.Gauge, startAt: number): MetricHook.Gauge {
   let value = startAt
@@ -31,7 +31,7 @@ export function gauge(_key: MetricKey.Gauge, startAt: number): MetricHook.Gauge 
 }
 
 /**
- * @tsplus static ets/Metrics/MetricHooks/Ops frequency
+ * @tsplus static effect/core/io/Metrics/MetricHooks.Ops frequency
  */
 export function frequency(_key: MetricKey.Frequency): MetricHook.Frequency {
   let count = 0
@@ -49,7 +49,7 @@ export function frequency(_key: MetricKey.Frequency): MetricHook.Frequency {
 }
 
 /**
- * @tsplus static ets/Metrics/MetricHooks/Ops histogram
+ * @tsplus static effect/core/io/Metrics/MetricHooks.Ops histogram
  */
 export function histogram(key: MetricKey.Histogram): MetricHook.Histogram {
   const bounds = key.keyType.boundaries.values
@@ -119,7 +119,7 @@ export function histogram(key: MetricKey.Histogram): MetricHook.Histogram {
 }
 
 /**
- * @tsplus static ets/Metrics/MetricHooks/Ops summary
+ * @tsplus static effect/core/io/Metrics/MetricHooks.Ops summary
  */
 export function summary(key: MetricKey.Summary): MetricHook.Summary {
   const { error, maxAge, maxSize, quantiles } = key.keyType

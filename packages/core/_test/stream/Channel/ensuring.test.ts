@@ -1,7 +1,7 @@
 import { First, Second } from "@effect/core/test/stream/Channel/test-utils"
 
-describe("Channel", () => {
-  describe("ensuring", () => {
+describe.concurrent("Channel", () => {
+  describe.concurrent("ensuring", () => {
     it("prompt closure between continuations", async () => {
       const program = Ref.make(Chunk.empty<string>()).flatMap((events) => {
         const event = (label: string) => events.update((chunk) => chunk.append(label))
@@ -28,7 +28,7 @@ describe("Channel", () => {
         ).ensuring(event("ReleaseOuter"))
 
         return Effect.scoped(
-          channel.toPull.flatMap((pull) => pull.exit() > events.get())
+          channel.toPull.flatMap((pull) => pull.exit > events.get())
         ).flatMap((eventsInManaged) =>
           events
             .get()

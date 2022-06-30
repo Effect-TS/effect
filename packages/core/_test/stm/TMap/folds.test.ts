@@ -7,10 +7,11 @@ describe.concurrent("TMap", () => {
 
         return res === 6
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("fold on empty map", async () => {
       const tx = Do(($) => {
         const tmap = $(TMap.empty<string, number>())
@@ -18,10 +19,11 @@ describe.concurrent("TMap", () => {
 
         return res === 0
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("foldSTM on non-empty map", async () => {
       const tx = Do(($) => {
         const tmap = $(TMap.make(Tuple("a", 1), Tuple("b", 2), Tuple("c", 3)))
@@ -29,10 +31,11 @@ describe.concurrent("TMap", () => {
 
         return res === 6
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
+
     it("foldSTM on empty map", async () => {
       const tx = Do(($) => {
         const tmap = $(TMap.empty<string, number>())
@@ -40,7 +43,7 @@ describe.concurrent("TMap", () => {
 
         return res === 0
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })

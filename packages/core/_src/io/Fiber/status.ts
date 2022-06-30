@@ -2,12 +2,12 @@ export const FiberStatusSym = Symbol.for("@effect/core/Fiber/FiberStatus")
 export type FiberStatusSym = typeof FiberStatusSym
 
 /**
- * @tsplus type ets/Fiber/Status
+ * @tsplus type effect/core/io/Fiber/Status
  */
 export type FiberStatus = Done | Running | Suspended
 
 /**
- * @tsplus type ets/Fiber/Status/Ops
+ * @tsplus type effect/core/io/Fiber/Status.Ops
  */
 export interface FiberStatusOps {}
 export const FiberStatus: FiberStatusOps = {}
@@ -85,26 +85,26 @@ export class Suspended implements Equals {
 }
 
 /**
- * @tsplus static ets/Fiber/Status/Ops isFiberStatus
+ * @tsplus static effect/core/io/Fiber/Status.Ops isFiberStatus
  */
 export function isFiberStatus(u: unknown): u is FiberStatus {
   return typeof u === "object" && u != null && FiberStatusSym in u
 }
 
 /**
- * @tsplus static ets/Fiber/Status/Ops Done
+ * @tsplus static effect/core/io/Fiber/Status.Ops Done
  */
 export const statusDone: FiberStatus = new Done()
 
 /**
- * @tsplus static ets/Fiber/Status/Ops Running
+ * @tsplus static effect/core/io/Fiber/Status.Ops Running
  */
 export function statusRunning(interrupting: boolean): FiberStatus {
   return new Running(interrupting)
 }
 
 /**
- * @tsplus static ets/Fiber/Status/Ops Suspended
+ * @tsplus static effect/core/io/Fiber/Status.Ops Suspended
  */
 export function statusSuspended(
   interrupting: boolean,
@@ -117,7 +117,7 @@ export function statusSuspended(
 }
 
 /**
- * @tsplus getter ets/Fiber/Status isInterrupting
+ * @tsplus getter effect/core/io/Fiber/Status isInterrupting
  */
 export function isInterrupting(self: FiberStatus): boolean {
   switch (self._tag) {
@@ -134,7 +134,7 @@ export function isInterrupting(self: FiberStatus): boolean {
 }
 
 /**
- * @tsplus fluent ets/Fiber/Status withInterrupting
+ * @tsplus fluent effect/core/io/Fiber/Status withInterrupting
  */
 export function withInterrupting(
   self: FiberStatus,

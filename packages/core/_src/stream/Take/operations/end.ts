@@ -3,6 +3,6 @@ import { TakeInternal } from "@effect/core/stream/Take/operations/_internal/Take
 /**
  * End-of-stream marker.
  *
- * @tsplus static ets/Take/Ops end
+ * @tsplus static effect/core/stream/Take.Ops end
  */
 export const end: Take<never, never> = new TakeInternal(Exit.fail(Maybe.none))

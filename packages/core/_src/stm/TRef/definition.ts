@@ -16,7 +16,7 @@ export type _A = typeof _A
  * than synchronization. These operations are not safe for mutable values that
  * do not support concurrent access.
  *
- * @tsplus type ets/TRef
+ * @tsplus type effect/core/stm/TRef
  */
 export interface TRef<A> {
   readonly [TRefSym]: TRefSym
@@ -24,7 +24,7 @@ export interface TRef<A> {
 }
 
 /**
- * @tsplus type ets/TRef/Ops
+ * @tsplus type effect/core/stm/TRef.Ops
  */
 export interface TRefOps {
   $: TRefAspects
@@ -34,6 +34,6 @@ export const TRef: TRefOps = {
 }
 
 /**
- * @tsplus type ets/TRef/Aspects
+ * @tsplus type effect/core/stm/TRef.Aspects
  */
 export interface TRefAspects {}

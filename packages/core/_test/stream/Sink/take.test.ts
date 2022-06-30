@@ -6,7 +6,7 @@ describe.concurrent("Sink", () => {
       const program = Effect.scoped(
         Stream.fromChunks(...chunks)
           .peel(Sink.take<number>(n))
-          .flatMap(({ tuple: [chunk, stream] }) => stream.runCollect().map((leftover) => Tuple(chunk, leftover)))
+          .flatMap(({ tuple: [chunk, stream] }) => stream.runCollect.map((leftover) => Tuple(chunk, leftover)))
       )
 
       const {

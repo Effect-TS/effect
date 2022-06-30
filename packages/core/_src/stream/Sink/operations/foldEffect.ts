@@ -4,7 +4,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * A sink that effectfully folds its inputs with the provided function,
  * termination predicate and initial state.
  *
- * @tsplus static ets/Sink/Ops foldEffect
+ * @tsplus static effect/core/stream/Sink.Ops foldEffect
  */
 export function foldEffect<R, E, In, S>(
   z: LazyArg<S>,

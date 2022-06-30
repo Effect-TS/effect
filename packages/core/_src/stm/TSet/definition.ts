@@ -5,7 +5,7 @@ export const _A = Symbol.for("@effect/core/stm/TSet/A")
 export type _A = typeof _A
 
 /**
- * @tsplus type ets/TSet
+ * @tsplus type effect/core/stm/TSet
  */
 export interface TSet<A> {
   readonly [TSetSym]: TSetSym
@@ -13,7 +13,7 @@ export interface TSet<A> {
 }
 
 /**
- * @tsplus type ets/TSet/Ops
+ * @tsplus type effect/core/stm/TSet.Ops
  */
 export interface TSetOps {
   $: TSetAspects
@@ -23,6 +23,6 @@ export const TSet: TSetOps = {
 }
 
 /**
- * @tsplus type ets/TSet/Aspects
+ * @tsplus type effect/core/stm/TSet.Aspects
  */
 export interface TSetAspects {}

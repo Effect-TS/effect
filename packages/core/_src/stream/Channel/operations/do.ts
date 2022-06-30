@@ -1,79 +1,64 @@
 /**
- * @tsplus fluent ets/Channel bind
+ * @tsplus static effect/core/stream/Channel.Aspects bind
+ * @tsplus pipeable effect/core/stream/Channel bind
  */
-export function bind_<
-  Env,
-  Env1,
-  InErr,
-  InErr1,
-  InElem,
-  InElem1,
-  InDone,
-  InDone1,
-  OutErr,
-  OutErr1,
-  OutElem,
-  OutElem1,
-  OutDone,
+export function bind<
+  N extends string,
   K,
-  N extends string
+  Env1,
+  InErr1,
+  InElem1,
+  InDone1,
+  OutErr1,
+  OutElem1,
+  OutDone
 >(
-  self: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, K>,
   tag: Exclude<N, keyof K>,
-  f: (_: K) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-): Channel<
-  Env | Env1,
-  InErr & InErr1,
-  InElem & InElem1,
-  InDone & InDone1,
-  OutErr | OutErr1,
-  OutElem | OutElem1,
-  K & { [k in N]: OutDone }
-> {
-  return self.flatMap((k) => f(k).map((a): K & { [k in N]: OutDone } => ({ ...k, [tag]: a } as any)))
+  f: (_: K) => Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone>
+) {
+  return <Env, InErr, InElem, InDone, OutErr, OutElem>(
+    self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, K>
+  ): Channel<
+    Env | Env1,
+    InErr & InErr1,
+    InElem & InElem1,
+    InDone & InDone1,
+    OutErr | OutErr1,
+    OutElem | OutElem1,
+    K & { [k in N]: OutDone }
+  > =>
+    self.flatMap(
+      (k) => f(k).map((a): K & { [k in N]: OutDone } => ({ ...k, [tag]: a } as any))
+    )
 }
 
 /**
- * @tsplus static ets/Channel/Aspects bind
+ * @tsplus static effect/core/stream/Channel.Aspects bindValue
+ * @tsplus pipeable effect/core/stream/Channel bindValue
  */
-export const bind = Pipeable(bind_)
-
-/**
- * @tsplus fluent ets/Channel bindValue
- */
-export function bindValue_<
-  Env1,
-  InErr1,
-  InElem1,
-  InDone1,
-  OutErr1,
-  OutElem1,
-  OutDone,
+export function bindValue<
+  N extends string,
   K,
-  N extends string
+  OutDone
 >(
-  self: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, K>,
   tag: Exclude<N, keyof K>,
   f: (_: K) => OutDone
-): Channel<
-  Env1,
-  InErr1,
-  InElem1,
-  InDone1,
-  OutErr1,
-  OutElem1,
-  K & { [k in N]: OutDone }
-> {
-  return self.map((k): K & { [k in N]: OutDone } => ({ ...k, [tag]: f(k) } as any))
+) {
+  return <Env, InErr, InElem, InDone, OutErr, OutElem>(
+    self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, K>
+  ): Channel<
+    Env,
+    InErr,
+    InElem,
+    InDone,
+    OutErr,
+    OutElem,
+    K & { [k in N]: OutDone }
+  > => self.map((k): K & { [k in N]: OutDone } => ({ ...k, [tag]: f(k) } as any))
 }
 
 /**
- * @tsplus static ets/Channel/Aspects bindValue
- */
-export const bindValue = Pipeable(bindValue_)
-
-/**
- * @tsplus static ets/Channel/Ops Do
+ * @tsplus static effect/core/stream/Channel.Ops Do
  */
 export function Do(): Channel<never, unknown, unknown, unknown, never, never, {}> {
   return Channel.fromEffect(Effect.succeedNow({}))

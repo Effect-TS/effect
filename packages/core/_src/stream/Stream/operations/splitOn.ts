@@ -1,26 +1,17 @@
 /**
  * Splits strings on a delimiter.
  *
- * @tsplus fluent ets/Stream splitOn
+ * @tsplus static effect/core/stream/Stream.Aspects splitOn
+ * @tsplus pipeable effect/core/stream/Stream splitOn
  */
-export function splitOn_<R, E>(
-  self: Stream<R, E, string>,
-  delimiter: LazyArg<string>,
-  __tsplusTrace?: string
-): Stream<R, E, string> {
-  return Stream.succeed(delimiter).flatMap((delimiter) =>
-    self
-      .map((s) => Chunk.from(s))
-      .unchunks()
-      .splitOnChunkFlatten(Chunk.from(delimiter))
-      .chunks()
-      .map((chunk) => chunk.join(""))
-  )
+export function splitOn(delimiter: LazyArg<string>, __tsplusTrace?: string) {
+  return <R, E>(self: Stream<R, E, string>): Stream<R, E, string> =>
+    Stream.succeed(delimiter).flatMap((delimiter) =>
+      self
+        .map((s) => Chunk.from(s))
+        .unchunks
+        .splitOnChunkFlatten(Chunk.from(delimiter))
+        .chunks
+        .map((chunk) => chunk.join(""))
+    )
 }
-
-/**
- * Splits strings on a delimiter.
- *
- * @tsplus static ets/Stream/Aspects splitOn
- */
-export const splitOn = Pipeable(splitOn_)

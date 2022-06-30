@@ -1,7 +1,7 @@
 /**
  * Create a sink which publishes each element to the specified hub.
  *
- * @tsplus static ets/Sink/Ops fromHub
+ * @tsplus static effect/core/stream/Sink.Ops fromHub
  */
 export function fromHub<In>(
   hub: LazyArg<Hub<In>>,

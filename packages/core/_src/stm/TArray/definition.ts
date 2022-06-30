@@ -5,7 +5,7 @@ export const _A = Symbol.for("@effect/core/stm/TArray/A")
 export type _A = typeof _A
 
 /**
- * @tsplus type ets/TArray
+ * @tsplus type effect/core/stm/TArray
  */
 export interface TArray<A> {
   readonly [TArraySym]: TArraySym
@@ -13,7 +13,7 @@ export interface TArray<A> {
 }
 
 /**
- * @tsplus type ets/TArray/Ops
+ * @tsplus type effect/core/stm/TArray.Ops
  */
 export interface TArrayOps {
   $: TArrayAspects
@@ -23,6 +23,6 @@ export const TArray: TArrayOps = {
 }
 
 /**
- * @tsplus type ets/TArray/Aspects
+ * @tsplus type effect/core/stm/TArray.Aspects
  */
 export interface TArrayAspects {}

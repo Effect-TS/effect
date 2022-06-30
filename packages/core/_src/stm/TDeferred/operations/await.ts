@@ -1,7 +1,7 @@
 import { concreteTDeferred } from "@effect/core/stm/TDeferred/operations/_internal/InternalTDeferred"
 
 /**
- * @tsplus getter ets/TDeferred await
+ * @tsplus getter effect/core/stm/TDeferred await
  */
 export function await_<E, A>(self: TDeferred<E, A>): STM<never, E, A> {
   concreteTDeferred(self)

@@ -2,7 +2,7 @@ describe.concurrent("STM", () => {
   describe.concurrent("validate", () => {
     it("returns all errors if never valid", async () => {
       const input = Chunk.fill(10, () => 0)
-      const program = STM.validate(input, STM.failNow).commit()
+      const program = STM.validate(input, STM.failNow).commit
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -11,7 +11,7 @@ describe.concurrent("STM", () => {
 
     it("accumulate errors and ignore successes", async () => {
       const input = Chunk.range(0, 9)
-      const program = STM.validate(input, (n) => n % 2 === 0 ? STM.succeed(n) : STM.fail(n)).commit()
+      const program = STM.validate(input, (n) => n % 2 === 0 ? STM.succeed(n) : STM.fail(n)).commit
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -21,7 +21,7 @@ describe.concurrent("STM", () => {
     it("accumulate successes", async () => {
       const input = Chunk.range(0, 9)
       const program = STM.validate(input, STM.succeedNow)
-        .commit()
+        .commit
 
       const result = await program.unsafeRunPromise()
 
@@ -33,7 +33,7 @@ describe.concurrent("STM", () => {
     it("returns all errors if never valid", async () => {
       const input = Chunk.fill(10, () => 0)
       const program = STM.validateFirst(input, STM.failNow)
-        .commit()
+        .commit
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -50,7 +50,7 @@ describe.concurrent("STM", () => {
             (n) => counter.update((_) => _ + 1) > (n === 6 ? STM.succeed(n) : STM.fail(n))
           ))
         .bind("count", ({ counter }) => counter.get)
-        .commit()
+        .commit
 
       const { count, result } = await program.unsafeRunPromise()
 
@@ -61,7 +61,7 @@ describe.concurrent("STM", () => {
     it("returns errors in correct order", async () => {
       const input = Chunk(2, 4, 6, 3, 5, 6)
       const program = STM.validateFirst(input, STM.failNow)
-        .commit()
+        .commit
 
       const result = await program.unsafeRunPromiseExit()
 

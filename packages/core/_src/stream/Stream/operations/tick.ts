@@ -1,12 +1,14 @@
+import { constVoid } from "@tsplus/stdlib/data/Function"
+
 /**
  * Returns a stream that emits `undefined` values spaced by the specified
  * duration.
  *
- * @tsplus static ets/Stream/Ops tick
+ * @tsplus static effect/core/stream/Stream.Ops tick
  */
 export function tick(
   interval: LazyArg<Duration>,
   __tsplusTrace?: string
 ): Stream<never, never, void> {
-  return Stream.repeatWithSchedule(() => undefined, Schedule.spaced(interval))
+  return Stream.repeatWithSchedule(constVoid, Schedule.spaced(interval))
 }

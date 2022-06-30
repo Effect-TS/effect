@@ -1,6 +1,6 @@
 /**
- * @tsplus static ets/LogLevel/Ops __call
- * @tsplus static ets/LogLevel/Ops locally
+ * @tsplus static effect/core/io/LogLevel.Ops __call
+ * @tsplus static effect/core/io/LogLevel.Ops locally
  */
 export function locally_(
   self: LogLevel,

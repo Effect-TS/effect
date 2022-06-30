@@ -8,12 +8,12 @@ export type WriteLockSym = typeof WriteLockSym
  * a write lock. The fiber has an identity, and may also have acquired a
  * certain number of read locks.
  *
- * @tsplus type ets/TReentrantLock/WriteLock
+ * @tsplus type effect/core/stm/TReentrantLock/WriteLock
  */
 export interface WriteLock extends Lock {}
 
 /**
- * @tsplus type ets/TReentrantLock/WriteLock/Ops
+ * @tsplus type effect/core/stm/TReentrantLock/WriteLock.Ops
  */
 export interface WriteLockOps {
   $: WriteLockAspects
@@ -23,6 +23,6 @@ export const WriteLockOps: WriteLockOps = {
 }
 
 /**
- * @tsplus type ets/TReentrantLock/WriteLock/Aspects
+ * @tsplus type effect/core/stm/TReentrantLock/WriteLock.Aspects
  */
 export interface WriteLockAspects {}

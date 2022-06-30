@@ -3,16 +3,16 @@ export interface TestConsole {
   /**
    * Writes the specified string to the output buffer.
    */
-  readonly print: (line: any, __tsplusTrace?: string) => Effect.IO<TestConsoleError, void>
+  readonly print: (line: any, __tsplusTrace?: string) => Effect<never, TestConsoleError, void>
   /**
    * Writes the specified string to the error buffer.
    */
-  readonly printError: (line: any, __tsplusTrace?: string) => Effect.IO<TestConsoleError, void>
+  readonly printError: (line: any, __tsplusTrace?: string) => Effect<never, TestConsoleError, void>
   /**
    * Writes the specified string to the output buffer followed by a newline
    * character.
    */
-  readonly printLine: (line: any, __tsplusTrace?: string) => Effect.IO<TestConsoleError, void>
+  readonly printLine: (line: any, __tsplusTrace?: string) => Effect<never, TestConsoleError, void>
   /**
    * Writes the specified string to the error buffer followed by a newline
    * character.
@@ -20,12 +20,12 @@ export interface TestConsole {
   readonly printLineError: (
     line: any,
     __tsplusTrace?: string
-  ) => Effect.IO<TestConsoleError, void>
+  ) => Effect<never, TestConsoleError, void>
   /**
    * Takes the first value from the input buffer, if one exists, or else fails
    * with an `EOFException`.
    */
-  readonly readLine: (__tsplusTrace?: string) => Effect.IO<TestConsoleError, void>
+  readonly readLine: (__tsplusTrace?: string) => Effect<never, TestConsoleError, void>
   /**
    * Writes the specified sequence of strings to the input buffer. The first
    * string in the sequence will be the first to be taken. These strings will
@@ -76,7 +76,7 @@ export interface TestConsole {
 }
 
 /**
- * @tsplus type ets/TestConsole/Ops
+ * @tsplus type effect/core/test/TestConsole.Ops
  */
 export interface TestConsoleOps {
   readonly Tag: Tag<TestConsole>

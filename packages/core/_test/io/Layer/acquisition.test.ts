@@ -14,10 +14,10 @@ describe.concurrent("Layer", () => {
               .map((bool) => Env(BoolTag, bool))
               .acquireRelease(() => Effect.unit)
           ))
-        .bindValue("env", ({ layer1, layer2 }) => (layer1 + layer2).build())
-        .bind("fiber", ({ env }) => Effect.scoped(env).forkDaemon())
+        .bindValue("env", ({ layer1, layer2 }) => (layer1 + layer2).build)
+        .bind("fiber", ({ env }) => Effect.scoped(env).forkDaemon)
         .tap(({ deferred }) => deferred.await())
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .map(constTrue)
 
       // Given the use of `Managed.never`, race the test against a 10 second
@@ -49,7 +49,7 @@ describe.concurrent("Layer", () => {
         .tap(({ layer }) =>
           Effect.scoped(
             layer
-              .build()
+              .build
               .flatMap((env) => env.get(ChunkTag).update((chunk) => chunk.append("test")))
           )
         )

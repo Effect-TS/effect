@@ -1,11 +1,7 @@
 /**
- * @tsplus fluent ets/RuntimeConfig setReportFatal
+ * @tsplus static effect/core/io/RuntimeConfig.Aspects setReportFatal
+ * @tsplus pipeable effect/core/io/RuntimeConfig setReportFatal
  */
-export function setReportFatal_(self: RuntimeConfig, reportFatal: (defect: unknown) => void): RuntimeConfig {
-  return self.copy({ reportFatal })
+export function setReportFatal(reportFatal: (defect: unknown) => void) {
+  return (self: RuntimeConfig): RuntimeConfig => self.copy({ reportFatal })
 }
-
-/**
- * @tsplus static ets/RuntimeConfig/Aspects enableCurrentFiber
- */
-export const setReportFatal = Pipeable(setReportFatal_)

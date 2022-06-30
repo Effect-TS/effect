@@ -2,7 +2,7 @@
  * "Zooms in" on the value in the `Left` side of an `Either`, moving the
  * possibility that the value is a `Right` to the error channel.
  *
- * @tsplus getter ets/STM left
+ * @tsplus getter effect/core/stm/STM left
  */
 export function left<R, E, A, B>(
   self: STM<R, E, Either<A, B>>

@@ -4,7 +4,7 @@ import { CloseableScopeInternal } from "@effect/core/io/Scope/operations/_intern
  * The global scope which is never closed. Finalizers added to this scope will
  * be immediately discarded and closing this scope has no effect.
  *
- * @tsplus static ets/Scope/Ops global
+ * @tsplus static effect/core/io/Scope.Ops global
  */
 export const global: LazyValue<Scope.Closeable> = LazyValue.make(
   () =>

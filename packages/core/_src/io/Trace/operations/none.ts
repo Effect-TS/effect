@@ -1,4 +1,4 @@
 /**
- * @tsplus static ets/Trace/Ops none
+ * @tsplus static effect/core/io/Trace.Ops none
  */
 export const none: Trace = Trace(FiberId.none, Chunk.empty())

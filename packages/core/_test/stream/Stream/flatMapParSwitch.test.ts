@@ -12,7 +12,7 @@ describe.concurrent("Stream", () => {
                 : Stream.scoped(semaphore.withPermitScoped).flatMap(
                   () => Stream.never
                 ))
-            .runDrain()
+            .runDrain
         )
         .flatMap(({ lastExecuted, semaphore }) => semaphore.withPermit(lastExecuted.get()))
 
@@ -35,7 +35,7 @@ describe.concurrent("Stream", () => {
                 : Stream.scoped(semaphore.withPermitScoped).flatMap(
                   () => Stream.never
                 ))
-            .runDrain()
+            .runDrain
         )
         .flatMap(({ lastExecuted, semaphore }) => semaphore.withPermits(4)(lastExecuted.get()))
 
@@ -48,7 +48,7 @@ describe.concurrent("Stream", () => {
       const program = Stream(Stream.never, Stream(1))
         .flatMapParSwitch(1, identity)
         .take(1)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -65,10 +65,10 @@ describe.concurrent("Stream", () => {
               Stream.fromEffect(
                 (latch.succeed(undefined) > Effect.never).onInterrupt(() => substreamCancelled.set(true))
               ))
-            .runDrain()
-            .fork())
+            .runDrain
+            .fork)
         .tap(({ latch }) => latch.await())
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ substreamCancelled }) => substreamCancelled.get())
 
       const result = await program.unsafeRunPromise()
@@ -88,8 +88,8 @@ describe.concurrent("Stream", () => {
             Stream.fromEffect(latch.await() > Effect.fail("ouch"))
           )
             .flatMapParSwitch(2, identity)
-            .runDrain()
-            .either())
+            .runDrain
+            .either)
         .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
 
       const { cancelled, result } = await program.unsafeRunPromise()
@@ -110,8 +110,8 @@ describe.concurrent("Stream", () => {
                 Stream.fromEffect(
                   (latch.succeed(undefined) > Effect.never).onInterrupt(() => substreamCancelled.set(true))
                 ))
-              .runDrain()
-              .either()
+              .runDrain
+              .either
         )
         .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
 
@@ -134,8 +134,8 @@ describe.concurrent("Stream", () => {
             Stream.fromEffect(latch.await() > Effect.die(error))
           )
             .flatMapPar(2, identity)
-            .runDrain()
-            .exit())
+            .runDrain
+            .exit)
         .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
 
       const { cancelled, result } = await program.unsafeRunPromise()
@@ -157,8 +157,8 @@ describe.concurrent("Stream", () => {
                 Stream.fromEffect(
                   (latch.succeed(undefined) > Effect.never).onInterrupt(() => substreamCancelled.set(true))
                 ))
-              .runDrain()
-              .exit()
+              .runDrain
+              .exit
         )
         .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
 
@@ -179,7 +179,7 @@ describe.concurrent("Stream", () => {
         .tap(({ inner, push }) =>
           Stream.acquireRelease(push("OuterAcquire").as(inner), () => push("OuterRelease"))
             .flatMapParSwitch(2, identity)
-            .runDrain()
+            .runDrain
         )
         .flatMap(({ effects }) => effects.get())
 

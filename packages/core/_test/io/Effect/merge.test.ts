@@ -3,10 +3,10 @@ import { constVoid } from "@tsplus/stdlib/data/Function"
 describe.concurrent("Effect", () => {
   describe.concurrent("merge", () => {
     it("on flipped result", async () => {
-      const effect: Effect.IO<number, number> = Effect.succeed(1)
+      const effect: Effect<never, number, number> = Effect.succeed(1)
       const program = Effect.struct({
-        a: effect.merge(),
-        b: effect.flip().merge()
+        a: effect.merge,
+        b: effect.flip.merge
       })
 
       const { a, b } = await program.unsafeRunPromise()

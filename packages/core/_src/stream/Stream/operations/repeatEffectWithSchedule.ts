@@ -2,7 +2,7 @@
  * Creates a stream from an effect producing a value of type `A`, which is
  * repeated using the specified schedule.
  *
- * @tsplus static ets/Stream/Ops repeatEffectWithSchedule
+ * @tsplus static effect/core/stream/Stream.Ops repeatEffectWithSchedule
  */
 export function repeatEffectWithSchedule<S, R, E, A>(
   effect: LazyArg<Effect<R, E, A>>,

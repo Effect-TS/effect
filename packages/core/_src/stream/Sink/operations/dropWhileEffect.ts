@@ -1,7 +1,7 @@
 import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
- * @tsplus static ets/Sink/Ops dropWhileEffect
+ * @tsplus static effect/core/stream/Sink.Ops dropWhileEffect
  */
 export function dropWhileEffect<R, E, In>(
   p: (input: In) => Effect<R, E, boolean>,

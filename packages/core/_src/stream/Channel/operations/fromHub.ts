@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Channel/Ops fromHub
+ * @tsplus static effect/core/stream/Channel.Ops fromHub
  */
 export function fromHub<Err, Done, Elem>(
   hub: LazyArg<Hub<Either<Exit<Err, Done>, Elem>>>

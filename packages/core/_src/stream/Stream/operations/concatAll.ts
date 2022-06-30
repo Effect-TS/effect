@@ -1,7 +1,7 @@
 /**
  * Concatenates all of the streams in the chunk to one stream.
  *
- * @tsplus static ets/Stream/Ops concatAll
+ * @tsplus static effect/core/stream/Stream.Ops concatAll
  */
 export function concatAll<R, E, A>(
   streams: LazyArg<Chunk<Stream<R, E, A>>>,

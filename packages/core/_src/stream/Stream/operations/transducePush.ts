@@ -3,7 +3,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 /**
  * Transduce a stream using a chunk processing function.
  *
- * @tsplus static ets/Stream/Ops transducePush
+ * @tsplus static effect/core/stream/Stream.Ops transducePush
  */
 export function transducePush<R2, R3, E2, In, Out>(
   push: LazyArg<

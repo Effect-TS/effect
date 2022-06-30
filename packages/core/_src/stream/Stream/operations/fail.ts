@@ -1,7 +1,7 @@
 /**
  * Returns a stream that always fails with the specified `error`.
  *
- * @tsplus static ets/Stream/Ops fail
+ * @tsplus static effect/core/stream/Stream.Ops fail
  */
 export function fail<E>(
   error: LazyArg<E>,

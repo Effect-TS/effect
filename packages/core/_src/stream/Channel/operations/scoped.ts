@@ -1,7 +1,7 @@
 /**
  * Use a scoped effect to emit an output element.
  *
- * @tsplus static ets/Channel/Ops scoped
+ * @tsplus static effect/core/stream/Channel.Ops scoped
  */
 export function scoped<R, E, A>(
   effect: LazyArg<Effect<R, E, A>>

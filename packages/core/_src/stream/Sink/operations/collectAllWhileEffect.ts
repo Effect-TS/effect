@@ -2,7 +2,7 @@
  * Accumulates incoming elements into a chunk as long as they verify effectful
  * predicate `p`.
  *
- * @tsplus static ets/Sink/Ops collectAllWhileEffect
+ * @tsplus static effect/core/stream/Sink.Ops collectAllWhileEffect
  */
 export function collectAllWhileEffect<R, E, In>(
   p: (input: In) => Effect<R, E, boolean>,

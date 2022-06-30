@@ -10,7 +10,7 @@ describe.concurrent("Stream", () => {
               Stream.fromCollection(chunk)
             )
         )
-        .bind("result", ({ stream }) => stream.runCollect())
+        .bind("result", ({ stream }) => stream.runCollect)
         .bind("released", ({ done }) => done.get())
 
       const { released, result } = await program.unsafeRunPromise()
@@ -29,7 +29,7 @@ describe.concurrent("Stream", () => {
               .flatMap((chunk) => Stream.fromCollection(chunk))
               .take(2)
         )
-        .bind("result", ({ stream }) => stream.runCollect())
+        .bind("result", ({ stream }) => stream.runCollect)
         .bind("released", ({ done }) => done.get())
 
       const { released, result } = await program.unsafeRunPromise()
@@ -45,7 +45,7 @@ describe.concurrent("Stream", () => {
           (
             Stream(1) + Stream.acquireRelease(acquired.set(true), () => Effect.unit)
           ).take(0))
-        .bind("result", ({ stream }) => stream.runDrain())
+        .bind("result", ({ stream }) => stream.runDrain)
         .flatMap(({ acquired }) => acquired.get())
 
       const result = await program.unsafeRunPromise()
@@ -59,8 +59,8 @@ describe.concurrent("Stream", () => {
         .tap(({ ref }) =>
           Stream.acquireRelease(Effect.unit, () => ref.set(true))
             .flatMap(() => Stream.fromEffect(Effect.dieMessage("boom")))
-            .runDrain()
-            .exit()
+            .runDrain
+            .exit
         )
         .flatMap(({ ref }) => ref.get())
 
@@ -74,11 +74,11 @@ describe.concurrent("Stream", () => {
         leftAssoc: Stream.acquireRelease(Ref.make(true), (ref) => ref.set(false))
           .flatMap((ref) => Stream.succeed(ref))
           .flatMap((ref) => Stream.fromEffect(ref.get()))
-          .runCollect()
+          .runCollect
           .map((chunk) => chunk.unsafeHead),
         rightAssoc: Stream.acquireRelease(Ref.make(true), (ref) => ref.set(false))
           .flatMap((ref) => Stream.succeed(ref).flatMap((ref) => Stream.fromEffect(ref.get())))
-          .runCollect()
+          .runCollect
           .map((chunk) => chunk.unsafeHead)
       })
 
@@ -89,7 +89,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("propagates errors", async () => {
-      const program = Stream.acquireRelease(Effect.unit, () => Effect.dieMessage("die")).runCollect()
+      const program = Stream.acquireRelease(Effect.unit, () => Effect.dieMessage("die")).runCollect
 
       const result = await program.unsafeRunPromiseExit()
 

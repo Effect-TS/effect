@@ -1,7 +1,7 @@
 /**
  * Requires the option produced by this value to be `None`.
  *
- * @tsplus getter ets/STM noneOrFail
+ * @tsplus getter effect/core/stm/STM noneOrFail
  */
 export function noneOrFail<R, E, A, B>(
   self: STM<R, E, Maybe<A>>

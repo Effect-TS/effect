@@ -40,7 +40,7 @@ export type _State = typeof _State
  * and the companion object for `Schedule` contains all common types of
  * schedules, both for performing retrying, as well as performing repetition.
  *
- * @tsplus type ets/Schedule
+ * @tsplus type effect/core/io/Schedule
  */
 export interface Schedule<State, Env, In, Out> {
   readonly [ScheduleSym]: ScheduleSym
@@ -59,7 +59,7 @@ export interface Schedule<State, Env, In, Out> {
 }
 
 /**
- * @tsplus type ets/Schedule/Ops
+ * @tsplus type effect/core/io/Schedule.Ops
  */
 export interface ScheduleOps {
   $: ScheduleAspects
@@ -69,6 +69,6 @@ export const Schedule: ScheduleOps = {
 }
 
 /**
- * @tsplus type ets/Schedule/Aspects
+ * @tsplus type effect/core/io/Schedule.Aspects
  */
 export interface ScheduleAspects {}

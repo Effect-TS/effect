@@ -1,15 +1,8 @@
 /**
- * @tsplus operator ets/RuntimeConfigFlags +
- * @tsplus fluent ets/RuntimeConfigFlags add
+ * @tsplus pipeable-operator effect/core/io/RuntimeConfig/RuntimeConfigFlags +
+ * @tsplus static effect/core/io/RuntimeConfig/RuntimeConfigFlags.Aspects add
+ * @tsplus pipeable effect/core/io/RuntimeConfig/RuntimeConfigFlags add
  */
-export function add_(
-  self: RuntimeConfigFlags,
-  flag: RuntimeConfigFlag
-): RuntimeConfigFlags {
-  return RuntimeConfigFlags(self.flags + flag)
+export function add(flag: RuntimeConfigFlag) {
+  return (self: RuntimeConfigFlags): RuntimeConfigFlags => RuntimeConfigFlags(self.flags + flag)
 }
-
-/**
- * @tsplus static ets/RuntimeConfigFlags/Aspects add
- */
-export const add = Pipeable(add_)

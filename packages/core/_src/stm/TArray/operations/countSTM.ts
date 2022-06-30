@@ -1,18 +1,10 @@
 /**
  * Count the values in the array matching a transactional predicate.
  *
- * @tsplus fluent ets/TArray countSTM
+ * @tsplus static effect/core/stm/TArray.Aspects countSTM
+ * @tsplus pipeable effect/core/stm/TArray countSTM
  */
-export function countSTM_<E, A>(
-  self: TArray<A>,
-  f: (a: A) => STM<never, E, boolean>
-): STM<never, E, number> {
-  return self.reduceSTM(0, (n, a) => f(a).map((result) => (result ? n + 1 : n)))
+export function countSTM<E, A>(f: (a: A) => STM<never, E, boolean>) {
+  return (self: TArray<A>): STM<never, E, number> =>
+    self.reduceSTM(0, (n, a) => f(a).map((result) => (result ? n + 1 : n)))
 }
-
-/**
- * Count the values in the array matching a transactional predicate.
- *
- * @tsplus static ets/TArray/Aspects countSTM
- */
-export const countSTM = Pipeable(countSTM_)

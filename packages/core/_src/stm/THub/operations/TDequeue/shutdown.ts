@@ -4,9 +4,9 @@ import { concreteTDequeue } from "@effect/core/stm/THub/operations/_internal/Int
  * Views the next element in the queue without removing it, retrying if the
  * queue is empty.
  *
- * @tsplus getter ets/THub/TDequeue shutdown
+ * @tsplus getter effect/core/stm/THub/TDequeue shutdown
  */
-export function shutdown<A>(self: THub.TDequeue<A>): USTM<void> {
+export function shutdown<A>(self: THub.TDequeue<A>): STM<never, never, void> {
   concreteTDequeue(self)
   return STM.Effect((journal) => {
     let currentSubscriberHead = self.subscriberHead.unsafeGet(journal)

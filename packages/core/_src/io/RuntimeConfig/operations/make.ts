@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/RuntimeConfig/Ops __call
+ * @tsplus static effect/core/io/RuntimeConfig.Ops __call
  */
 export function make(value: {
   readonly fatal: (defect: unknown) => boolean

@@ -3,16 +3,12 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
 /**
  * Atomically updates all elements using a pure function.
  *
- * @tsplus fluent ets/TSet transform
+ * @tsplus static effect/core/stm/TSet.Aspects transform
+ * @tsplus pipeable effect/core/stm/TSet transform
  */
-export function transform_<A>(self: TSet<A>, f: (a: A) => A): USTM<void> {
-  concreteTSet(self)
-  return self.tmap.transform((kv) => Tuple(f(kv.get(0)), kv.get(1)))
+export function transform<A>(f: (a: A) => A) {
+  return (self: TSet<A>): STM<never, never, void> => {
+    concreteTSet(self)
+    return self.tmap.transform((kv) => Tuple(f(kv.get(0)), kv.get(1)))
+  }
 }
-
-/**
- * Atomically updates all elements using a pure function.
- *
- * @tsplus static ets/TSet/Aspects transform
- */
-export const transform = Pipeable(transform_)

@@ -4,58 +4,51 @@ import { concreteTMap } from "@effect/core/stm/TMap/operations/_internal/Interna
 /**
  * Takes the first matching value, or retries until there is one.
  *
- * @tsplus fluent ets/TMap takeFirst
+ * @tsplus static effect/core/stm/TMap.Aspects takeFirst
+ * @tsplus pipeable effect/core/stm/TMap takeFirst
  */
-export function takeFirst_<K, V, A>(
-  self: TMap<K, V>,
-  pf: (kv: Tuple<[K, V]>) => Maybe<A>
-): USTM<A> {
-  concreteTMap(self)
-  return STM.Effect<never, Maybe<A>>((journal) => {
-    let result: Maybe<A> = Maybe.none
+export function takeFirst<K, V, A>(pf: (kv: Tuple<[K, V]>) => Maybe<A>) {
+  return (self: TMap<K, V>): STM<never, never, A> => {
+    concreteTMap(self)
+    return STM.Effect<never, Maybe<A>>((journal) => {
+      let result: Maybe<A> = Maybe.none
 
-    const size = self.tSize.unsafeGet(journal)
-    const buckets = self.tBuckets.unsafeGet(journal)
+      const size = self.tSize.unsafeGet(journal)
+      const buckets = self.tBuckets.unsafeGet(journal)
 
-    concreteTArray(buckets)
+      concreteTArray(buckets)
 
-    const capacity = buckets.chunk.length
+      const capacity = buckets.chunk.length
 
-    let i = 0
+      let i = 0
 
-    while (i < capacity && (result.isNone())) {
-      const bucket = buckets.chunk.unsafeGet(i)!.unsafeGet(journal)
-      const recreate = bucket.exists((_) => pf(_).isSome())
+      while (i < capacity && (result.isNone())) {
+        const bucket = buckets.chunk.unsafeGet(i)!.unsafeGet(journal)
+        const recreate = bucket.exists((_) => pf(_).isSome())
 
-      if (recreate) {
-        let newBucket = List.empty<Tuple<[K, V]>>()
+        if (recreate) {
+          let newBucket = List.empty<Tuple<[K, V]>>()
 
-        for (const pair of bucket) {
-          result = pf(pair)
-          if (result.isSome()) {
-            newBucket = newBucket.prepend(pair)
-            break
+          for (const pair of bucket) {
+            result = pf(pair)
+            if (result.isSome()) {
+              newBucket = newBucket.prepend(pair)
+              break
+            }
           }
+
+          buckets.chunk.unsafeGet(i)!.unsafeSet(newBucket, journal)
         }
 
-        buckets.chunk.unsafeGet(i)!.unsafeSet(newBucket, journal)
+        i += 1
       }
 
-      i += 1
-    }
+      if (result.isSome()) {
+        self.tSize.unsafeSet(size - 1, journal)
+      }
 
-    if (result.isSome()) {
-      self.tSize.unsafeSet(size - 1, journal)
-    }
-
-    return result
-  })
-    .continueOrRetry(identity)
+      return result
+    })
+      .continueOrRetry(identity)
+  }
 }
-
-/**
- * Takes the first matching value, or retries until there is one.
- *
- * @tsplus static ets/TMap/Aspects takeFirst
- */
-export const takeFirst = Pipeable(takeFirst_)

@@ -1,5 +1,5 @@
 /**
- * @tsplus type ets/Channel/UpstreamPullRequest
+ * @tsplus type effect/core/stream/Channel/UpstreamPullRequest
  */
 export type UpstreamPullRequest<A> = Pulled<A> | NoUpstream
 
@@ -14,13 +14,13 @@ export class NoUpstream {
 }
 
 /**
- * @tsplus type ets/Channel/UpstreamPullRequest/Ops
+ * @tsplus type effect/core/stream/Channel/UpstreamPullRequest.Ops
  */
 export interface UpstreamPullRequestOps {}
 export const UpstreamPullRequest: UpstreamPullRequestOps = {}
 
 /**
- * @tsplus unify ets/Channel/UpstreamPullRequest
+ * @tsplus unify effect/core/stream/Channel/UpstreamPullRequest
  */
 export function unifyUpstreamPullRequest<X extends UpstreamPullRequest<any>>(
   self: X
@@ -29,14 +29,14 @@ export function unifyUpstreamPullRequest<X extends UpstreamPullRequest<any>>(
 }
 
 /**
- * @tsplus static ets/Channel/UpstreamPullRequest/Ops Pulled
+ * @tsplus static effect/core/stream/Channel/UpstreamPullRequest.Ops Pulled
  */
 export function pulled<A>(value: A): UpstreamPullRequest<A> {
   return new Pulled(value)
 }
 
 /**
- * @tsplus static ets/Channel/UpstreamPullRequest/Ops NoUpstream
+ * @tsplus static effect/core/stream/Channel/UpstreamPullRequest.Ops NoUpstream
  */
 export function noUpstream(activeDownstreamCount: number): UpstreamPullRequest<never> {
   return new NoUpstream(activeDownstreamCount)

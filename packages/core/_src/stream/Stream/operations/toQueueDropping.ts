@@ -2,23 +2,13 @@
  * Converts the stream to a sliding scoped queue of chunks. After the scope is
  * closed, the queue will never again produce values and should be discarded.
  *
- * @tsplus fluent ets/Stream toQueueDropping
+ * @tsplus static effect/core/stream/Stream.Aspects toQueueDropping
+ * @tsplus pipeable effect/core/stream/Stream toQueueDropping
  */
-export function toQueueDropping_<R, E, A>(
-  self: Stream<R, E, A>,
-  capacity = 2,
-  __tsplusTrace?: string
-): Effect<R | Scope, never, Dequeue<Take<E, A>>> {
-  return Effect.acquireRelease(
-    Queue.dropping<Take<E, A>>(capacity),
-    (queue) => queue.shutdown
-  ).tap((queue) => self.runIntoQueueScoped(queue).fork())
+export function toQueueDropping(capacity = 2, __tsplusTrace?: string) {
+  return <R, E, A>(self: Stream<R, E, A>): Effect<R | Scope, never, Dequeue<Take<E, A>>> =>
+    Effect.acquireRelease(
+      Queue.dropping<Take<E, A>>(capacity),
+      (queue) => queue.shutdown
+    ).tap((queue) => self.runIntoQueueScoped(queue).fork)
 }
-
-/**
- * Converts the stream to a sliding scoped queue of chunks. After the scope is
- * closed, the queue will never again produce values and should be discarded.
- *
- * @tsplus static ets/Stream/Aspects toQueueDropping
- */
-export const toQueueDropping = Pipeable(toQueueDropping_)

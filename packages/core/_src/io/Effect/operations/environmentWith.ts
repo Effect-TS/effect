@@ -1,7 +1,7 @@
 /**
  * Accesses the environment of the effect.
  *
- * @tsplus static ets/Effect/Ops environmentWith
+ * @tsplus static effect/core/io/Effect.Ops environmentWith
  */
 export function environmentWith<R, A>(
   f: (env: Env<R>) => A,

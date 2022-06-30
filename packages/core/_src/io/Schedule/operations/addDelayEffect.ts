@@ -2,20 +2,12 @@
  * Returns a new schedule with the given effectfully computed delay added to
  * every interval defined by this schedule.
  *
- * @tsplus fluent ets/Schedule addDelayEffect
- * @tsplus fluent ets/Schedule/WithState addDelayEffect
+ * @tsplus static effect/core/io/Schedule.Aspects addDelayEffect
+ * @tsplus pipeable effect/core/io/Schedule addDelayEffect
  */
-export function addDelayEffect_<State, Env, In, Out, Env1>(
-  self: Schedule<State, Env, In, Out>,
+export function addDelayEffect<Out, Env1>(
   f: (out: Out) => Effect<Env1, never, Duration>
-): Schedule<State, Env | Env1, In, Out> {
-  return self.modifyDelayEffect((out, duration) => f(out).map((_) => duration + _))
+) {
+  return <State, Env, In>(self: Schedule<State, Env, In, Out>): Schedule<State, Env | Env1, In, Out> =>
+    self.modifyDelayEffect((out, duration) => f(out).map((_) => duration + _))
 }
-
-/**
- * Returns a new schedule with the given effectfully computed delay added to
- * every interval defined by this schedule.
- *
- * @tsplus static ets/Schedule/Aspects addDelayEffect
- */
-export const addDelayEffect = Pipeable(addDelayEffect_)

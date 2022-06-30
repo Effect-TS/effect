@@ -7,7 +7,7 @@ import { TRefInternal } from "@effect/core/stm/TRef/operations/_internal/TRefInt
 /**
  * Makes a new `TRef` that is initialized to the specified value.
  *
- * @tsplus static ets/TRef/Ops make
+ * @tsplus static effect/core/stm/TRef.Ops make
  */
 export function make<A>(a: LazyArg<A>): USTM<TRef<A>> {
   return new STMEffect((journal) => {

@@ -7,7 +7,7 @@ describe.concurrent("Stream", () => {
         Either.left(3)
       )
         .collect((either) => either.isRight() ? Maybe.some(either.right) : Maybe.none)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -23,7 +23,7 @@ describe.concurrent("Stream", () => {
         Either.left(3)
       )
         .collectEffect((either) => either.isRight() ? Maybe.some(Effect.succeed(either.right * 2)) : Maybe.none)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -40,7 +40,7 @@ describe.concurrent("Stream", () => {
             ? Maybe.some(Effect.succeed(either.right * 10))
             : Maybe.none
         )
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -53,8 +53,8 @@ describe.concurrent("Stream", () => {
         Chunk(Either.left(3), Either.right(4))
       )
         .collectEffect((either) => either.isRight() ? Maybe.some(Effect.fail("ouch")) : Maybe.none)
-        .runDrain()
-        .either()
+        .runDrain
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -64,8 +64,8 @@ describe.concurrent("Stream", () => {
     it("laziness on chunks", async () => {
       const program = Stream(1, 2, 3, 4)
         .collectEffect((n) => n === 3 ? Maybe.some(Effect.fail("boom")) : Maybe.some(Effect.succeed(n)))
-        .either()
-        .runCollect()
+        .either
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -89,7 +89,7 @@ describe.concurrent("Stream", () => {
           builder.append(n)
           return n
         })
-        .runDrain()
+        .runDrain
 
       await program.unsafeRunPromise()
 
@@ -103,8 +103,8 @@ describe.concurrent("Stream", () => {
     it("simple example", async () => {
       const stream = Stream(Maybe.some(1), Maybe.none, Maybe.some(2))
       const program = Effect.struct({
-        actual: stream.collectSome().runCollect(),
-        expected: stream.runCollect().map((chunk) => chunk.compact)
+        actual: stream.collectSome.runCollect,
+        expected: stream.runCollect.map((chunk) => chunk.compact)
       })
 
       const { actual, expected } = await program.unsafeRunPromise()
@@ -123,7 +123,7 @@ describe.concurrent("Stream", () => {
         Maybe.some(4)
       )
         .collectWhile(identity)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -133,8 +133,8 @@ describe.concurrent("Stream", () => {
     it("short circuits", async () => {
       const program = (Stream(Maybe.some(1)) + Stream.fail("ouch"))
         .collectWhile((option) => (option.isNone() ? Maybe.some(1) : Maybe.none))
-        .runDrain()
-        .either()
+        .runDrain
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -152,7 +152,7 @@ describe.concurrent("Stream", () => {
         Maybe.some(4)
       )
         .collectWhileEffect((option) => option.isSome() ? Maybe.some(Effect.succeed(option.value * 2)) : Maybe.none)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -162,8 +162,8 @@ describe.concurrent("Stream", () => {
     it("short circuits", async () => {
       const program = (Stream(Maybe.some(1)) + Stream.fail("ouch"))
         .collectWhileEffect((option) => option.isNone() ? Maybe.some(Effect.succeedNow(1)) : Maybe.none)
-        .runDrain()
-        .either()
+        .runDrain
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -179,8 +179,8 @@ describe.concurrent("Stream", () => {
         Maybe.some(4)
       )
         .collectWhileEffect((option) => option.isSome() ? Maybe.some(Effect.fail("ouch")) : Maybe.none)
-        .runDrain()
-        .either()
+        .runDrain
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -190,8 +190,8 @@ describe.concurrent("Stream", () => {
     it("laziness on chunks", async () => {
       const program = Stream(1, 2, 3, 4)
         .collectWhileEffect((n) => n === 3 ? Maybe.some(Effect.fail("boom")) : Maybe.some(Effect.succeed(n)))
-        .either()
-        .runCollect()
+        .either
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -215,7 +215,7 @@ describe.concurrent("Stream", () => {
           builder.append(n)
           return n
         })
-        .runDrain()
+        .runDrain
 
       await program.unsafeRunPromise()
 

@@ -22,7 +22,7 @@ const adapter = (_: any, __?: any) => {
 /**
  * Do simulation using Generators
  *
- * @tsplus static ets/STM/Ops gen
+ * @tsplus static effect/core/stm/STM.Ops gen
  */
 export function gen<Eff extends GenSTM<any, any, any>, AEff>(
   f: (i: { <R, E, A>(_: STM<R, E, A>): GenSTM<R, E, A> }) => Generator<Eff, AEff, any>

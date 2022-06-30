@@ -4,20 +4,13 @@ import { TerminationStrategy } from "@effect/core/stream/Stream//TerminationStra
  * Merges this stream and the specified stream together. New produced stream
  * will terminate when either stream terminates.
  *
- * @tsplus fluent ets/Stream mergeTerminateEither
+ * @tsplus static effect/core/stream/Stream.Aspects mergeTerminateEither
+ * @tsplus pipeable effect/core/stream/Stream mergeTerminateEither
  */
-export function mergeTerminateEither_<R, E, A, R2, E2, A2>(
-  self: Stream<R, E, A>,
+export function mergeTerminateEither<R2, E2, A2>(
   that: LazyArg<Stream<R2, E2, A2>>,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, A | A2> {
-  return self.merge(that, () => TerminationStrategy.Either)
+) {
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A | A2> =>
+    self.merge(that, () => TerminationStrategy.Either)
 }
-
-/**
- * Merges this stream and the specified stream together. New produced stream
- * will terminate when either stream terminates.
- *
- * @tsplus static ets/Stream/Aspects mergeTerminateEither
- */
-export const mergeTerminateEither = Pipeable(mergeTerminateEither_)

@@ -1,19 +1,12 @@
 /**
  * Runs the specified workflow with a lock.
  *
- * @tsplus fluent ets/TReentrantLock withLock
+ * @tsplus static effect/core/stm/TReentrantLock.Aspects withLock
+ * @tsplus pipeable effect/core/stm/TReentrantLock withLock
  */
-export function withLock_<R, E, A>(
-  self: TReentrantLock,
+export function withLock<R, E, A>(
   effect: Effect<R, E, A>,
   __tsplusTrace?: string
-): Effect<R, E, A> {
-  return self.withWriteLock(effect, __tsplusTrace)
+) {
+  return (self: TReentrantLock): Effect<R, E, A> => self.withWriteLock(effect)
 }
-
-/**
- * Runs the specified workflow with a write lock.
- *
- * @tsplus static ets/TReentrantLock/Aspects withLock
- */
-export const withLock = Pipeable(withLock_)

@@ -3,7 +3,7 @@ describe.concurrent("Stream", () => {
     it("free elements", async () => {
       const program = Stream(1, 2, 3, 4)
         .throttleEnforce(0, new Duration(Number.MAX_SAFE_INTEGER), () => 0)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -13,7 +13,7 @@ describe.concurrent("Stream", () => {
     it("no bandwidth", async () => {
       const program = Stream(1, 2, 3, 4)
         .throttleEnforce(0, new Duration(Number.MAX_SAFE_INTEGER), () => 1)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -25,7 +25,7 @@ describe.concurrent("Stream", () => {
     it("free elements", async () => {
       const program = Stream(1, 2, 3, 4)
         .throttleShape(1, new Duration(Number.MAX_SAFE_INTEGER), () => 0)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -37,7 +37,7 @@ describe.concurrent("Stream", () => {
         Effect.scoped(
           Stream.fromQueue(queue)
             .throttleShape(1, (30).millis, (chunk) => chunk.reduce(0, (a, b) => a + b))
-            .toPull()
+            .toPull
             .flatMap((pull) =>
               Effect.Do()
                 .tap(() => queue.offer(1))
@@ -69,7 +69,7 @@ describe.concurrent("Stream", () => {
           Effect.scoped(
             Stream.fromQueue(queue)
               .throttleShape(1, (0).millis, () => 100_000)
-              .toPull()
+              .toPull
               .flatMap((pull) =>
                 Effect.Do()
                   .tap(() => queue.offer(1))
@@ -101,7 +101,7 @@ describe.concurrent("Stream", () => {
               (chunk) => chunk.reduce(0, (a, b) => a + b),
               2
             )
-            .toPull()
+            .toPull
             .flatMap((pull) =>
               Effect.Do()
                 .tap(() => queue.offer(1))

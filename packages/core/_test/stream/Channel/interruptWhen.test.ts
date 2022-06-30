@@ -1,6 +1,6 @@
-describe("Channel", () => {
-  describe("interruptWhen", () => {
-    describe("deferred", () => {
+describe.concurrent("Channel", () => {
+  describe.concurrent("interruptWhen", () => {
+    describe.concurrent("deferred", () => {
       it("interrupts the current element", async () => {
         const program = Effect.Do()
           .bind("interrupted", () => Ref.make(false))
@@ -13,9 +13,9 @@ describe("Channel", () => {
             )
               .interruptWhenDeferred(halt)
               .runDrain
-              .fork())
+              .fork)
           .tap(({ halt, started }) => started.await() > halt.succeed(undefined))
-          .tap(({ fiber }) => fiber.await())
+          .tap(({ fiber }) => fiber.await)
           .flatMap(({ interrupted }) => interrupted.get())
 
         const result = await program.unsafeRunPromise()
@@ -30,7 +30,7 @@ describe("Channel", () => {
             (Channel.write(1) > Channel.fromEffect(Effect.never))
               .interruptWhen(deferred.await())
               .runDrain
-              .either()
+              .either
           )
 
         const result = await program.unsafeRunPromise()
@@ -39,7 +39,7 @@ describe("Channel", () => {
       })
     })
 
-    describe("io", () => {
+    describe.concurrent("io", () => {
       it("interrupts the current element", async () => {
         const program = Effect.Do()
           .bind("interrupted", () => Ref.make(false))
@@ -52,9 +52,9 @@ describe("Channel", () => {
             )
               .interruptWhen(halt.await())
               .runDrain
-              .fork())
+              .fork)
           .tap(({ halt, started }) => started.await() > halt.succeed(undefined))
-          .tap(({ fiber }) => fiber.await())
+          .tap(({ fiber }) => fiber.await)
           .flatMap(({ interrupted }) => interrupted.get())
 
         const result = await program.unsafeRunPromise()
@@ -69,7 +69,7 @@ describe("Channel", () => {
             Channel.fromEffect(Effect.never)
               .interruptWhen(deferred.await())
               .runDrain
-              .either()
+              .either
           )
 
         const result = await program.unsafeRunPromise()

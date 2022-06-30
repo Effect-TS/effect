@@ -6,35 +6,27 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * concurrently. Up to `bufferSize` elements of the produced streams may be
  * buffered in memory by this operator.
  *
- * @tsplus fluent ets/Stream flatMapPar
+ * @tsplus static effect/core/stream/Stream.Aspects flatMapPar
+ * @tsplus pipeable effect/core/stream/Stream flatMapPar
  */
-export function flatMapPar_<R, E, A, R2, E2, B>(
-  self: Stream<R, E, A>,
+export function flatMapPar<R2, E2, A, B>(
   n: number,
   f: (a: A) => Stream<R2, E2, B>,
   bufferSize = 16,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, B> {
-  concreteStream(self)
-  return new StreamInternal(
-    self.channel.concatMap(Channel.writeChunk).mergeMap(
-      n,
-      (a: A) => {
-        const stream = f(a)
-        concreteStream(stream)
-        return stream.channel
-      },
-      bufferSize
+) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, B> => {
+    concreteStream(self)
+    return new StreamInternal(
+      self.channel.concatMap(Channel.writeChunk).mergeMap(
+        n,
+        (a: A) => {
+          const stream = f(a)
+          concreteStream(stream)
+          return stream.channel
+        },
+        bufferSize
+      )
     )
-  )
+  }
 }
-
-/**
- * Maps each element of this stream to another stream and returns the
- * non-deterministic merge of those streams, executing up to `n` inner streams
- * concurrently. Up to `bufferSize` elements of the produced streams may be
- * buffered in memory by this operator.
- *
- * @tsplus static ets/Stream/Aspects flatMapPar
- */
-export const flatMapPar = Pipeable(flatMapPar_)

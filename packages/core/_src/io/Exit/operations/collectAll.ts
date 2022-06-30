@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Exit/Ops collectAll
+ * @tsplus static effect/core/io/Exit.Ops collectAll
  */
 export function collectAll<E, A>(
   exits: Collection<Exit<E, A>>

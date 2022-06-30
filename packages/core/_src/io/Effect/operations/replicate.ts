@@ -1,7 +1,7 @@
 /**
  * Replicates the given effect `n` times.
  *
- * @tsplus static ets/Effect/Ops replicate
+ * @tsplus static effect/core/io/Effect.Ops replicate
  */
 export function replicate<R, E, A>(
   n: number,
@@ -13,18 +13,9 @@ export function replicate<R, E, A>(
 /**
  * Replicates the given effect `n` times.
  *
- * @tsplus fluent ets/Effect replicate
+ * @tsplus static effect/core/io/Effect.Aspects replicate
+ * @tsplus pipeable effect/core/io/Effect replicate
  */
-export function replicateNow_<R, E, A>(
-  self: Effect<R, E, A>,
-  n: number
-): Chunk<Effect<R, E, A>> {
-  return replicate(n, self)
+export function replicateNow(n: number, __tsplusTrace?: string) {
+  return <R, E, A>(self: Effect<R, E, A>): Chunk<Effect<R, E, A>> => Effect.replicate(n, self)
 }
-
-/**
- * Replicates the given effect `n` times.
- *
- * @tsplus static ets/Effect/Aspects replicateNow
- */
-export const replicateNow = Pipeable(replicateNow_)

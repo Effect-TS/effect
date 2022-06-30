@@ -3,16 +3,12 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
 /**
  * Takes the first matching value, or retries until there is one.
  *
- * @tsplus fluent ets/TSet takeFirst
+ * @tsplus static effect/core/stm/TSet.Aspects takeFirst
+ * @tsplus pipeable effect/core/stm/TSet takeFirst
  */
-export function takeFirst_<A, B>(self: TSet<A>, pf: (a: A) => Maybe<B>): USTM<B> {
-  concreteTSet(self)
-  return self.tmap.takeFirst((kv) => pf(kv.get(0)))
+export function takeFirst<A, B>(pf: (a: A) => Maybe<B>) {
+  return (self: TSet<A>): STM<never, never, B> => {
+    concreteTSet(self)
+    return self.tmap.takeFirst((kv) => pf(kv.get(0)))
+  }
 }
-
-/**
- * Takes the first matching value, or retries until there is one.
- *
- * @tsplus static ets/TSet/Aspects takeFirst
- */
-export const takeFirst = Pipeable(takeFirst_)

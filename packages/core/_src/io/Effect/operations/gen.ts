@@ -65,7 +65,7 @@ export interface AdapterWithScope extends Adapter {
 }
 
 /**
- * @tsplus static ets/Effect/Ops genWithManaged
+ * @tsplus static effect/core/io/Effect.Ops genWithManaged
  */
 export function genScoped<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: AdapterWithScope) => Generator<Eff, AEff, any>,
@@ -105,7 +105,7 @@ export function genScoped<Eff extends GenEffect<any, any, any>, AEff>(
 }
 
 /**
- * @tsplus static ets/Effect/Ops gen
+ * @tsplus static effect/core/io/Effect.Ops gen
  */
 export function gen<Eff extends GenEffect<any, any, any>, AEff>(
   f: (i: Adapter) => Generator<Eff, AEff, any>,

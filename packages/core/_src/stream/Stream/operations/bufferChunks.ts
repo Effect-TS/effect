@@ -6,42 +6,31 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  *
  * Note: prefer capacities that are powers of 2 for better performance.
  *
- * @tsplus fluent ets/Stream bufferChunks
+ * @tsplus static effect/core/stream/Stream.Aspects bufferChunks
+ * @tsplus pipeable effect/core/stream/Stream bufferChunks
  */
-export function bufferChunks_<R, E, A>(
-  self: Stream<R, E, A>,
-  capacity: number,
-  __tsplusTrace?: string
-): Stream<R, E, A> {
-  const queue = self.toQueue(capacity)
-  return new StreamInternal(
-    Channel.unwrapScoped(queue.map((queue) => {
-      const process: Channel<
-        never,
-        unknown,
-        unknown,
-        unknown,
-        E,
-        Chunk<A>,
-        void
-      > = Channel.fromEffect(queue.take).flatMap((take) =>
-        take.fold(
-          Channel.unit,
-          (cause) => Channel.failCause(cause),
-          (a) => Channel.write(a) > process
+export function bufferChunks(capacity: number, __tsplusTrace?: string) {
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => {
+    const queue = self.toQueue(capacity)
+    return new StreamInternal(
+      Channel.unwrapScoped(queue.map((queue) => {
+        const process: Channel<
+          never,
+          unknown,
+          unknown,
+          unknown,
+          E,
+          Chunk<A>,
+          void
+        > = Channel.fromEffect(queue.take).flatMap((take) =>
+          take.fold(
+            Channel.unit,
+            (cause) => Channel.failCause(cause),
+            (a) => Channel.write(a) > process
+          )
         )
-      )
-      return process
-    }))
-  )
+        return process
+      }))
+    )
+  }
 }
-
-/**
- * Allows a faster producer to progress independently of a slower consumer by
- * buffering up to `capacity` chunks in a queue.
- *
- * Note: prefer capacities that are powers of 2 for better performance.
- *
- * @tsplus static ets/Stream/Aspects bufferChunks
- */
-export const bufferChunks = Pipeable(bufferChunks_)

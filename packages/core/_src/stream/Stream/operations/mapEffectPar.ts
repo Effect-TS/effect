@@ -8,31 +8,21 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @note This combinator destroys the chunking structure. It's recommended to use
  * rechunk afterwards.
  *
- * @tsplus fluent ets/Stream mapEffectPar
+ * @tsplus static effect/core/stream/Stream.Aspects mapEffectPar
+ * @tsplus pipeable effect/core/stream/Stream mapEffectPar
  */
-export function mapEffectPar_<R, E, A, R1, E1, B>(
-  self: Stream<R, E, A>,
+export function mapEffectPar<A, R1, E1, B>(
   n: number,
   f: (a: A) => Effect<R1, E1, B>,
   __tsplusTrace?: string
-): Stream<R | R1, E | E1, B> {
-  concreteStream(self)
-  return new StreamInternal(
-    self.channel
-      .concatMap(Channel.writeChunk)
-      .mapOutEffectPar(n, f)
-      .mapOut(Chunk.single)
-  )
+) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R | R1, E | E1, B> => {
+    concreteStream(self)
+    return new StreamInternal(
+      self.channel
+        .concatMap(Channel.writeChunk)
+        .mapOutEffectPar(n, f)
+        .mapOut(Chunk.single)
+    )
+  }
 }
-
-/**
- * Maps over elements of the stream with the specified effectful function,
- * executing up to `n` invocations of `f` concurrently. Transformed elements
- * will be emitted in the original order.
- *
- * @note This combinator destroys the chunking structure. It's recommended to use
- * rechunk afterwards.
- *
- * @tsplus static ets/Stream/Aspects mapEffectPar
- */
-export const mapEffectPar = Pipeable(mapEffectPar_)

@@ -3,7 +3,7 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
 /**
  * Accesses the environment of the sink in the context of a sink.
  *
- * @tsplus static ets/Sink/Ops environmentWithSink
+ * @tsplus static effect/core/stream/Sink.Ops environmentWithSink
  */
 export function environmentWithSink<R0, R, E, In, L, Z>(
   f: (env: Env<R0>) => Sink<R, E, In, L, Z>,

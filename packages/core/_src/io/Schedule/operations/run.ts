@@ -1,24 +1,13 @@
 /**
  * Runs a schedule using the provided inputs, and collects all outputs.
  *
- * @tsplus fluent ets/Schedule run
- * @tsplus fluent ets/Schedule/WithState run
+ * @tsplus static effect/core/io/Schedule.Aspects run
+ * @tsplus pipeable effect/core/io/Schedule run
  */
-export function run_<State, Env, In, Out>(
-  self: Schedule<State, Env, In, Out>,
-  now: number,
-  input: Collection<In>,
-  __tsplusTrace?: string
-): Effect<Env, never, Chunk<Out>> {
-  return runLoop(self, now, ListBuffer.from(input), self._initial, Chunk.empty<Out>())
+export function run<In>(now: number, input: Collection<In>, __tsplusTrace?: string) {
+  return <State, Env, Out>(self: Schedule<State, Env, In, Out>): Effect<Env, never, Chunk<Out>> =>
+    runLoop(self, now, ListBuffer.from(input), self._initial, Chunk.empty<Out>())
 }
-
-/**
- * Runs a schedule using the provided inputs, and collects all outputs.
- *
- * @tsplus static ets/Schedule/Aspects run
- */
-export const run = Pipeable(run_)
 
 function runLoop<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>,

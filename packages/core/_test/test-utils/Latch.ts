@@ -2,7 +2,7 @@ export function withLatch<R, E, A>(
   f: (release: Effect.UIO<void>) => Effect<R, E, A>
 ): Effect<R, E, A> {
   return Deferred.make<never, void>().flatMap(
-    (latch) => f(latch.succeed(undefined).unit()) < latch.await()
+    (latch) => f(latch.succeed(undefined).unit) < latch.await()
   )
 }
 
@@ -14,7 +14,7 @@ export function withLatchAwait<R, E, A>(
     .bind("latch", () => Deferred.make<never, void>())
     .bind("result", ({ latch, ref }) =>
       f(
-        latch.succeed(undefined).unit(),
+        latch.succeed(undefined).unit,
         Effect.uninterruptibleMask(
           ({ restore }) => ref.set(false) > restore(latch.await())
         )

@@ -7,7 +7,7 @@ import { concreteFiberRef } from "@effect/core/io/FiberRef/operations/_internal/
  * commutative then joining multiple fibers concurrently will result in
  * deterministic `FiberRef` values.
  *
- * @tsplus fluent ets/FiberRef combine
+ * @tsplus fluent effect/core/io/FiberRef combine
  */
 export function combine_<Value, Patch>(self: FiberRef<Value, Patch>, first: Patch, second: Patch): Patch {
   concreteFiberRef(self)
@@ -21,6 +21,6 @@ export function combine_<Value, Patch>(self: FiberRef<Value, Patch>, first: Patc
  * commutative then joining multiple fibers concurrently will result in
  * deterministic `FiberRef` values.
  *
- * @tsplus static ets/FiberRef/Aspects combine
+ * @tsplus static effect/core/io/FiberRef.Aspects combine
  */
 export const combine = Pipeable(combine_)

@@ -11,7 +11,7 @@ describe.concurrent("Sink", () => {
 
     it("error", async () => {
       const sink = Sink.fail("ouch").contramap((s: string) => Number.parseInt(s))
-      const program = Stream("1", "2", "3").run(sink).either()
+      const program = Stream("1", "2", "3").run(sink).either
 
       const result = await program.unsafeRunPromise()
 
@@ -33,7 +33,7 @@ describe.concurrent("Sink", () => {
 
     it("error", async () => {
       const sink = Sink.fail("ouch").contramapChunks((chunk: Chunk<string>) => chunk.map((s) => Number.parseInt(s)))
-      const program = Stream("1", "2", "3").run(sink).either()
+      const program = Stream("1", "2", "3").run(sink).either
 
       const result = await program.unsafeRunPromise()
 
@@ -53,7 +53,7 @@ describe.concurrent("Sink", () => {
 
     it("error", async () => {
       const sink = Sink.fail("ouch").contramapEffect((s: string) => Effect.attempt(Number.parseInt(s)))
-      const program = Stream("1", "2", "3").run(sink).either()
+      const program = Stream("1", "2", "3").run(sink).either
 
       const result = await program.unsafeRunPromise()
 
@@ -95,7 +95,7 @@ describe.concurrent("Sink", () => {
       const sink = Sink.fail("ouch").contramapChunksEffect((chunk: Chunk<string>) =>
         chunk.mapEffect((s) => Effect.attempt(Number.parseInt(s)))
       )
-      const program = Stream("1", "2", "3").run(sink).either()
+      const program = Stream("1", "2", "3").run(sink).either
 
       const result = await program.unsafeRunPromise()
 

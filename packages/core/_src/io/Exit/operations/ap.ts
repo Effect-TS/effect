@@ -1,15 +1,9 @@
 /**
  * Applicative's ap.
  *
- * @tsplus fluent ets/Exit ap
+ * @tsplus static effect/core/io/Exit.Aspects ap
+ * @tsplus pipeable effect/core/io/Exit ap
  */
-export function ap_<E, A, B>(fa: Exit<E, A>, fab: Exit<E, (a: A) => B>): Exit<E, B> {
-  return fab.flatMap((f) => fa.map((a) => f(a)))
+export function ap<E, A, B>(that: Exit<E, (a: A) => B>) {
+  return (self: Exit<E, A>): Exit<E, B> => that.flatMap((f) => self.map((a) => f(a)))
 }
-
-/**
- * Applicative's ap.
- *
- * @tsplus static ets/Exit/Aspects ap
- */
-export const ap = Pipeable(ap_)

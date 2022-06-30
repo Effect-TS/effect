@@ -7,8 +7,8 @@ const loseTimeAndCpu: Effect.UIO<void> = (
   Effect.yieldNow < Clock.sleep((1).millis)
 ).repeatN(100)
 
-describe("FiberRef", () => {
-  describe("race", () => {
+describe.concurrent("FiberRef", () => {
+  describe.concurrent("race", () => {
     it("its value is inherited after simple race", async () => {
       const program = Effect.Do()
         .bind("fiberRef", () => FiberRef.make(initial))
@@ -44,7 +44,7 @@ describe("FiberRef", () => {
         .bind("fiberRef", () => FiberRef.make(initial))
         .bindValue("loser1", ({ fiberRef }) => fiberRef.set(update1).zipRight(Effect.failNow("ups1")))
         .bindValue("loser2", ({ fiberRef }) => fiberRef.set(update2).zipRight(Effect.failNow("ups2")))
-        .tap(({ loser1, loser2 }) => loser1.race(loser2).ignore())
+        .tap(({ loser1, loser2 }) => loser1.race(loser2).ignore)
         .flatMap(({ fiberRef }) => fiberRef.get())
 
       const result = await Effect.scoped(program).unsafeRunPromise()

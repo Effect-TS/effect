@@ -8,15 +8,15 @@ describe.concurrent("Effect", () => {
           "goodCase",
           () =>
             exactlyOnce(0, (_) => _.continueOrFail("value was not 0", (v) => v === 0 ? Maybe.some(v) : Maybe.none))
-              .sandbox()
-              .either()
+              .sandbox
+              .either
         )
         .bind(
           "badCase",
           () =>
             exactlyOnce(1, (_) => _.continueOrFail("value was not 0", (v) => v === 0 ? Maybe.some(v) : Maybe.none))
-              .sandbox()
-              .either()
+              .sandbox
+              .either
               .map((either) => either.mapLeft((cause) => cause.failureOrCause))
         )
 
@@ -38,8 +38,8 @@ describe.concurrent("Effect", () => {
               (_) =>
                 _.continueOrFailEffect("value was not 0", (v) => v === 0 ? Maybe.some(Effect.succeed(v)) : Maybe.none)
             )
-              .sandbox()
-              .either()
+              .sandbox
+              .either
         )
         .bind(
           "partialBadCase",
@@ -49,8 +49,8 @@ describe.concurrent("Effect", () => {
                 n === 0 ?
                   Maybe.some(Effect.fail("partial failed!")) :
                   Maybe.none))
-              .sandbox()
-              .either()
+              .sandbox
+              .either
               .map((either) => either.mapLeft((cause) => cause.failureOrCause))
         )
         .bind(
@@ -61,8 +61,8 @@ describe.concurrent("Effect", () => {
               (_) =>
                 _.continueOrFailEffect("value was not 0", (v) => v === 0 ? Maybe.some(Effect.succeed(v)) : Maybe.none)
             )
-              .sandbox()
-              .either()
+              .sandbox
+              .either
               .map((either) => either.mapLeft((cause) => cause.failureOrCause))
         )
 

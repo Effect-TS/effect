@@ -2,7 +2,7 @@
  * Accumulates incoming elements into a chunk as long as they verify predicate
  * `p`.
  *
- * @tsplus static ets/Sink/Ops collectAllWhile
+ * @tsplus static effect/core/stream/Sink.Ops collectAllWhile
  */
 export function collectAllWhile<In>(
   p: Predicate<In>,

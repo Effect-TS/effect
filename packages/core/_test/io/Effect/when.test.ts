@@ -9,7 +9,7 @@ describe.concurrent("Effect", () => {
         .bind("v2", ({ ref }) => ref.get())
         .bindValue("failure", () => new Error("expected"))
         .tap(({ failure }) => Effect.when(false, Effect.fail(failure)))
-        .bind("failed", ({ failure }) => Effect.when(true, Effect.fail(failure)).either())
+        .bind("failed", ({ failure }) => Effect.when(true, Effect.fail(failure)).either)
 
       const { failed, failure, v1, v2 } = await program.unsafeRunPromise()
 
@@ -86,7 +86,7 @@ describe.concurrent("Effect", () => {
         .tap(({ conditionFalse, failure }) => Effect.whenEffect(conditionFalse, Effect.fail(failure)))
         .bind(
           "failed",
-          ({ conditionTrue, failure }) => Effect.whenEffect(conditionTrue, Effect.fail(failure)).either()
+          ({ conditionTrue, failure }) => Effect.whenEffect(conditionTrue, Effect.fail(failure)).either
         )
 
       const { c1, c2, failed, failure, v1, v2 } = await program.unsafeRunPromise()

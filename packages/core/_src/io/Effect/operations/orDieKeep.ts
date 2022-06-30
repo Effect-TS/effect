@@ -1,10 +1,10 @@
 /**
  * Converts all failures to unchecked exceptions.
  *
- * @tsplus fluent ets/Effect orDieKeep
+ * @tsplus getter effect/core/io/Effect orDieKeep
  */
-export function orDieKeep<R, E, A>(effect: Effect<R, E, A>, __tsplusTrace?: string) {
-  return effect.foldCauseEffect(
+export function orDieKeep<R, E, A>(self: Effect<R, E, A>, __tsplusTrace?: string) {
+  return self.foldCauseEffect(
     (cause) => Effect.failCauseNow(cause.flatMap(Cause.die)),
     Effect.succeedNow
   )

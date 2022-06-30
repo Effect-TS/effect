@@ -2,7 +2,7 @@
  * "Zooms in" on the value in the `Right` side of an `Either`, moving the
  * possibility that the value is a `Left` to the error channel.
  *
- * @tsplus getter ets/Effect right
+ * @tsplus getter effect/core/io/Effect right
  */
 export function right<R, E, A, B>(
   self: Effect<R, E, Either<A, B>>,

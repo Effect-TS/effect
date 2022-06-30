@@ -13,7 +13,7 @@ describe.concurrent("TQueue", () => {
         const three = $(tq.take)
 
         return List(one, two, three)
-      }).commit()
+      }).commit
 
       const result = await tx.unsafeRunPromise()
 
@@ -29,7 +29,7 @@ describe.concurrent("TQueue", () => {
         const size = $(tq.size)
 
         return size === 2 && ans == Chunk(1, 2, 3)
-      }).commit()
+      }).commit
 
       const result = await tx.unsafeRunPromise()
 
@@ -44,7 +44,7 @@ describe.concurrent("TQueue", () => {
         const ans = $(tq.takeAll)
 
         return ans == Chunk(1, 2, 3, 4, 5)
-      }).commit()
+      }).commit
 
       const result = await tx.unsafeRunPromise()
 
@@ -60,7 +60,7 @@ describe.concurrent("TQueue", () => {
         const size = $(tq.size)
 
         return size === 0 && ans == Chunk(1, 2, 3, 4, 5)
-      }).commit()
+      }).commit
 
       const result = await tx.unsafeRunPromise()
 
@@ -75,7 +75,7 @@ describe.concurrent("TQueue", () => {
         const ans = $(tq.poll)
 
         return ans == Maybe.some(1)
-      }).commit()
+      }).commit
 
       const result = await tx.unsafeRunPromise()
 
@@ -88,7 +88,7 @@ describe.concurrent("TQueue", () => {
         const ans = $(tq.poll)
 
         return ans.isNone()
-      }).commit()
+      }).commit
 
       const result = await tx.unsafeRunPromise()
 
@@ -104,7 +104,7 @@ describe.concurrent("TQueue", () => {
         const size = $(tq.size)
 
         return ans === 3 && size === 2
-      }).commit()
+      }).commit
 
       const result = await tx.unsafeRunPromise()
 

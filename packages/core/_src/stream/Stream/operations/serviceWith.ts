@@ -1,7 +1,7 @@
 /**
  * Accesses the specified service in the environment of the stream.
  *
- * @tsplus static ets/Stream/Ops serviceWith
+ * @tsplus static effect/core/stream/Stream.Ops serviceWith
  */
 export function serviceWith<T, A>(
   tag: Tag<T>,

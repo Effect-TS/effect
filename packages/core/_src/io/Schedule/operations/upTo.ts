@@ -1,19 +1,11 @@
 /**
  * A schedule that recurs during the given duration.
  *
- * @tsplus fluent ets/Schedule upTo
- * @tsplus fluent ets/Schedule/WithState upTo
+ * @tsplus static effect/core/io/Schedule.Aspects upTo
+ * @tsplus pipeable effect/core/io/Schedule upTo
  */
-export function upTo_<State, Env, In, Out>(
-  self: Schedule<State, Env, In, Out>,
-  duration: Duration
-): Schedule<Tuple<[State, Maybe<number>]>, Env, In, Out> {
-  return self < Schedule.upTo(duration)
+export function upTo(duration: Duration) {
+  return <State, Env, In, Out>(
+    self: Schedule<State, Env, In, Out>
+  ): Schedule<Tuple<[State, Maybe<number>]>, Env, In, Out> => self < Schedule.recurUpTo(duration)
 }
-
-/**
- * A schedule that recurs during the given duration.
- *
- * @tsplus static ets/Schedule/Aspects upTo
- */
-export const upTo = Pipeable(upTo_)

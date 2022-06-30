@@ -4,7 +4,7 @@ import { concreteTQueue } from "@effect/core/stm/TQueue/operations/_internal/Int
 /**
  * The current number of values in the queue.
  *
- * @tsplus getter ets/TQueue size
+ * @tsplus getter effect/core/stm/TQueue size
  */
 export function size<A>(self: TQueue<A>): USTM<number> {
   concreteTQueue(self)

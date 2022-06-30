@@ -10,43 +10,31 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  *
  * If the IO completes with a failure, the stream will emit that failure.
  *
- * @tsplus fluent ets/Stream haltWhen
+ * @tsplus static effect/core/stream/Stream.Aspects haltWhen
+ * @tsplus pipeable effect/core/stream/Stream haltWhen
  */
-export function haltWhen_<R, E, A, R2, E2, Z>(
-  self: Stream<R, E, A>,
+export function haltWhen<R2, E2, Z>(
   io: LazyArg<Effect<R2, E2, Z>>,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, A> {
-  concreteStream(self)
-  return new StreamInternal(
-    Channel.unwrapScoped(
-      io()
-        .forkScoped()
-        .map((fiber) => self.channel >> writer<R, E, A, R2, E2, Z>(fiber))
+) {
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> => {
+    concreteStream(self)
+    return new StreamInternal(
+      Channel.unwrapScoped(
+        io()
+          .forkScoped
+          .map((fiber) => self.channel >> writer<R, E, A, R2, E2, Z>(fiber))
+      )
     )
-  )
+  }
 }
-
-/**
- * Halts the evaluation of this stream when the provided IO completes. The
- * given IO will be forked as part of the returned stream, and its success
- * will be discarded.
- *
- * An element in the process of being pulled will not be interrupted when the
- * IO completes. See `interruptWhen` for this behavior.
- *
- * If the IO completes with a failure, the stream will emit that failure.
- *
- * @tsplus static ets/Stream/Aspects haltWhen
- */
-export const haltWhen = Pipeable(haltWhen_)
 
 function writer<R, E, A, R2, E2, Z>(
   fiber: Fiber<E2, Z>,
   __tsplusTrace?: string
 ): Channel<R | R2, E, Chunk<A>, unknown, E | E2, Chunk<A>, void> {
   return Channel.unwrap(
-    fiber.poll().map((option) =>
+    fiber.poll.map((option) =>
       option.fold(
         Channel.readWith(
           (input: Chunk<A>) => Channel.write(input) > writer<R, E, A, R2, E2, Z>(fiber),

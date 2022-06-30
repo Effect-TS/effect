@@ -3,7 +3,7 @@ describe.concurrent("Effect", () => {
     it("maps over both error and value channels", async () => {
       const program = Effect.fail(10)
         .mapBoth((n) => n.toString(), identity)
-        .either()
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -49,7 +49,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("negate", () => {
     it("on true returns false", async () => {
-      const program = Effect.succeed(true).negate()
+      const program = Effect.succeed(true).negate
 
       const result = await program.unsafeRunPromise()
 
@@ -57,7 +57,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("on false returns true", async () => {
-      const program = Effect.succeed(false).negate()
+      const program = Effect.succeed(false).negate
 
       const result = await program.unsafeRunPromise()
 

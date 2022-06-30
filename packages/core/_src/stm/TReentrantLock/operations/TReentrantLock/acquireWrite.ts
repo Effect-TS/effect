@@ -8,7 +8,7 @@ import { InternalWriteLock } from "@effect/core/stm/TReentrantLock/operations/_i
  * are holding read or write locks. Succeeds with the number of write locks
  * held by this fiber.
  *
- * @tsplus getter ets/TReentrantLock acquireWrite
+ * @tsplus getter effect/core/stm/TReentrantLock acquireWrite
  */
 export function acquireWrite(self: TReentrantLock): USTM<number> {
   concreteTReentrantLock(self)

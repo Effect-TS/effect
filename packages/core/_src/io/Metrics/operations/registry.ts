@@ -1,4 +1,4 @@
 /**
- * @tsplus static ets/Metrics/Metric/Ops registry
+ * @tsplus static effect/core/io/Metrics/Metric.Ops registry
  */
 export const metricRegistry: LazyValue<MetricRegistry> = LazyValue.make(() => new MetricRegistry())

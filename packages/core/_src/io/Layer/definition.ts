@@ -27,7 +27,7 @@ export type _ROut = typeof _ROut
  * Because of their excellent composition properties, layers are the idiomatic
  * way in Effect-TS to create services that depend on other services.
  *
- * @tsplus type ets/Layer
+ * @tsplus type effect/core/io/Layer
  */
 export interface Layer<RIn, E, ROut> {
   readonly [_RIn]: () => RIn
@@ -38,7 +38,7 @@ export interface Layer<RIn, E, ROut> {
 }
 
 /**
- * @tsplus type ets/Layer/Ops
+ * @tsplus type effect/core/io/Layer.Ops
  */
 export interface LayerOps {
   $: LayerAspects
@@ -48,7 +48,20 @@ export const Layer: LayerOps = {
 }
 
 /**
- * @tsplus type ets/Layer/Aspects
+ * @tsplus unify effect/core/io/Layer
+ */
+export function unifyLayer<X extends Layer<any, any, any>>(
+  self: X
+): Layer<
+  [X] extends [{ [_RIn]: () => infer RIn }] ? RIn : never,
+  [X] extends [{ [_E]: () => infer E }] ? E : never,
+  [X] extends [{ [_ROut]: (_: infer ROut) => void }] ? ROut : never
+> {
+  return self
+}
+
+/**
+ * @tsplus type effect/core/io/Layer.Aspects
  */
 export interface LayerAspects {}
 

@@ -4,7 +4,7 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
  * Returns a lazily constructed sink that may require effects for its
  * creation.
  *
- * @tsplus static ets/Sink/Ops suspend
+ * @tsplus static effect/core/stream/Sink.Ops suspend
  */
 export function suspend<R, E, In, L, Z>(
   sink: LazyArg<Sink<R, E, In, L, Z>>,

@@ -10,7 +10,7 @@ import { beginningOfMinute, endOfMinute, nextMinute } from "@effect/core/io/Sche
  *
  * NOTE: `minute` parameter is validated lazily. Must be in range 0...59.
  *
- * @tsplus static ets/Schedule minuteOfHour
+ * @tsplus static effect/core/io/Schedule.Ops minuteOfHour
  */
 export function minuteOfHour(
   minute: number

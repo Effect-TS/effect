@@ -12,13 +12,13 @@ describe.concurrent("TSet", () => {
           List(1, 2, 3)
         )
       )
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
     it("empty", async () => {
       const tx = TSet.empty().flatMap((_) => _.toList).map((_) => _.isNil())
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
@@ -31,7 +31,7 @@ describe.concurrent("TSet", () => {
             List(1, 2, 3)
           )
         )
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })

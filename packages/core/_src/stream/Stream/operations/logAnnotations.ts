@@ -1,7 +1,7 @@
 /**
  * Retrieves the log annotations associated with the current scope.
  *
- * @tsplus static ets/Stream/Ops logAnnotations
+ * @tsplus static effect/core/stream/Stream.Ops logAnnotations
  */
 export function logAnnotations(
   __tsplusTrace?: string

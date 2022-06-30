@@ -2,20 +2,12 @@
  * Retries this effect while its error satisfies the specified effectful
  * predicate.
  *
- * @tsplus fluent ets/Effect retryWhileEffect
+ * @tsplus static effect/core/io/Effect.Aspects retryWhileEffect
+ * @tsplus pipeable effect/core/io/Effect retryWhileEffect
  */
-export function retryWhileEffect_<R, R1, E, A>(
-  self: Effect<R, E, A>,
+export function retryWhileEffect<R1, E>(
   f: (e: E) => Effect<R1, never, boolean>,
   __tsplusTrace?: string
-): Effect<R | R1, E, A> {
-  return self.retryUntilEffect((e) => f(e).negate())
+) {
+  return <R, A>(self: Effect<R, E, A>): Effect<R | R1, E, A> => self.retryUntilEffect((e) => f(e).negate)
 }
-
-/**
- * Retries this effect while its error satisfies the specified effectful
- * predicate.
- *
- * @tsplus static ets/Effect/Aspects retryWhileEffect
- */
-export const retryWhileEffect = Pipeable(retryWhileEffect_)

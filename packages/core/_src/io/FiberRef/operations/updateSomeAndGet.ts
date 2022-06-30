@@ -3,7 +3,7 @@
  * If the function is undefined on the current value it returns the old
  * value without changing it.
  *
- * @tsplus fluent ets/FiberRef updateSomeAndGet
+ * @tsplus fluent effect/core/io/FiberRef updateSomeAndGet
  */
 export function updateSomeAndGet_<A, P>(
   self: FiberRef<A, P>,
@@ -21,6 +21,6 @@ export function updateSomeAndGet_<A, P>(
  * If the function is undefined on the current value it returns the old
  * value without changing it.
  *
- * @tsplus static ets/FiberRef/Aspects updateSomeAndGet
+ * @tsplus static effect/core/io/FiberRef.Aspects updateSomeAndGet
  */
 export const updateSomeAndGet = Pipeable(updateSomeAndGet_)

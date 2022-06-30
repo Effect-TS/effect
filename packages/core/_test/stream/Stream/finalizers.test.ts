@@ -8,7 +8,7 @@ describe.concurrent("Stream", () => {
           Stream.acquireRelease(log.update(event("acquire")), () => log.update(event("release")))
             .flatMap(() => Stream.fromEffect(log.update(event("use"))))
             .ensuring(log.update(event("ensuring")))
-            .runDrain()
+            .runDrain
         )
         .flatMap(({ log }) => log.get())
 
@@ -37,7 +37,7 @@ describe.concurrent("Stream", () => {
           Stream.acquireRelease(entry("Acquire"), () => entry("Release"))
             .flatMap(() => Stream.finalizer(entry("Use")))
             .ensuring(entry("Ensuring"))
-            .runDrain()
+            .runDrain
         )
         .flatMap(({ log }) => log.get())
 
@@ -59,7 +59,7 @@ describe.concurrent("Stream", () => {
         .tap(({ ref }) =>
           Effect.scoped(
             Stream.finalizer(ref.set(true))
-              .toPull()
+              .toPull
               .flatMap(() => Effect.unit)
           )
         )

@@ -1,7 +1,7 @@
 /**
  * Accesses the environment of the channel in the context of a channel.
  *
- * @tsplus static ets/Channel/Ops environmentWithChannel
+ * @tsplus static effect/core/stream/Channel.Ops environmentWithChannel
  */
 export function environmentWithChannel<
   R,

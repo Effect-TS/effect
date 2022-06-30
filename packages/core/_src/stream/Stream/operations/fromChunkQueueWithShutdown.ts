@@ -2,7 +2,7 @@
  * Creates a stream from a queue of values. The queue will be shutdown once
  * the stream is closed.
  *
- * @tsplus static ets/Stream/Ops fromChunkQueueWithShutdown
+ * @tsplus static effect/core/stream/Stream.Ops fromChunkQueueWithShutdown
  */
 export function fromChunkQueueWithShutdown<R, E, A>(
   queue: LazyArg<Dequeue<Chunk<A>>>,

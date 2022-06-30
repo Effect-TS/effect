@@ -138,10 +138,10 @@ describe.concurrent("Queue", () => {
             .map((n) => queue.offer(n))
             .reduce(Effect.succeed(false), (acc, curr) => acc > curr)
         )
-        .bind("fiber", ({ queue }) => queue.offer(5).fork())
+        .bind("fiber", ({ queue }) => queue.offer(5).fork)
         .tap(({ queue }) => waitForSize(queue, 5))
         .bind("result", ({ queue }) => queue.takeUpTo(5))
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
 
       const { result } = await program.unsafeRunPromise()
 

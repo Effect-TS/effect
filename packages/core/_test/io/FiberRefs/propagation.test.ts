@@ -1,4 +1,4 @@
-describe("FiberRefs", () => {
+describe.concurrent("FiberRefs", () => {
   it("propagate FiberRef values across fiber boundaries", async () => {
     const program = Effect.scoped(
       Effect.Do()
@@ -8,14 +8,14 @@ describe("FiberRefs", () => {
           fiberRef
             .set(true)
             .zipRight(Effect.getFiberRefs().flatMap((a) => queue.offer(a)))
-            .fork())
+            .fork)
         .bind(
           "consumer",
           ({ fiberRef, queue }) =>
-            queue.take.flatMap((fiberRefs) => Effect.setFiberRefs(fiberRefs)).zipRight(fiberRef.get()).fork()
+            queue.take.flatMap((fiberRefs) => Effect.setFiberRefs(fiberRefs)).zipRight(fiberRef.get()).fork
         )
-        .tap(({ producer }) => producer.join())
-        .flatMap(({ consumer }) => consumer.join())
+        .tap(({ producer }) => producer.join)
+        .flatMap(({ consumer }) => consumer.join)
     )
 
     const result = await program.unsafeRunPromise()

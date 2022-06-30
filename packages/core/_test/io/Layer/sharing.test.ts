@@ -21,7 +21,7 @@ describe.concurrent("Layer", () => {
         .bindValue("layer3", ({ ref }) => makeLayer3(ref))
         .bindValue(
           "env",
-          ({ layer1, layer2, layer3 }) => ((layer1.map(identity) >> layer2) + (layer1 >> layer3)).build()
+          ({ layer1, layer2, layer3 }) => ((layer1.map(identity) >> layer2) + (layer1 >> layer3)).build
         )
         .tap(({ env }) => Effect.scoped(env))
         .flatMap(({ ref }) => ref.get())
@@ -46,7 +46,7 @@ describe.concurrent("Layer", () => {
         .bindValue("layer3", ({ ref }) => makeLayer3(ref))
         .bindValue(
           "env",
-          ({ layer1, layer2, layer3 }) => ((layer1.mapError(identity) >> layer2) >> (layer1 >> layer3)).build()
+          ({ layer1, layer2, layer3 }) => ((layer1.mapError(identity) >> layer2) >> (layer1 >> layer3)).build
         )
         .tap(({ env }) => Effect.scoped(env))
         .flatMap(({ ref }) => ref.get())
@@ -69,7 +69,7 @@ describe.concurrent("Layer", () => {
         .bindValue("layer1", ({ ref }) => makeLayer1(ref))
         .bindValue("layer2", ({ ref }) => makeLayer2(ref))
         .bindValue("layer3", ({ ref }) => makeLayer3(ref))
-        .bindValue("env", ({ layer1, layer2, layer3 }) => ((layer1.orDie >> layer2) >> (layer1 >> layer3)).build())
+        .bindValue("env", ({ layer1, layer2, layer3 }) => ((layer1.orDie >> layer2) >> (layer1 >> layer3)).build)
         .tap(({ env }) => Effect.scoped(env))
         .flatMap(({ ref }) => ref.get())
 

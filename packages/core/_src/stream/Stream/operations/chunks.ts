@@ -4,7 +4,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * Exposes the underlying chunks of the stream as a stream of chunks of
  * elements.
  *
- * @tsplus fluent ets/Stream chunks
+ * @tsplus getter effect/core/stream/Stream chunks
  */
 export function chunks<R, E, A>(
   self: Stream<R, E, A>,

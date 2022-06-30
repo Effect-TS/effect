@@ -1,20 +1,13 @@
 /**
  * More powerful version of `Stream.groupByKey`.
  *
- * @tsplus fluent ets/Stream groupBy
+ * @tsplus static effect/core/stream/Stream.Aspects groupBy
+ * @tsplus pipeable effect/core/stream/Stream groupBy
  */
-export function groupBy_<R, R2, E, E2, A, K, V>(
-  self: Stream<R, E, A>,
+export function groupBy<A, R2, E2, K, V>(
   f: (a: A) => Effect<R2, E2, Tuple<[K, V]>>,
   buffer = 16,
   __tsplusTrace?: string
-): GroupBy<R | R2, E | E2, K, V, A> {
-  return GroupBy(self, f, buffer)
+) {
+  return <R, E>(self: Stream<R, E, A>): GroupBy<R | R2, E | E2, K, V, A> => GroupBy(self, f, buffer)
 }
-
-/**
- * More powerful version of `Stream.groupByKey`.
- *
- * @tsplus static ets/Stream/Aspects groupBy
- */
-export const groupBy = Pipeable(groupBy_)

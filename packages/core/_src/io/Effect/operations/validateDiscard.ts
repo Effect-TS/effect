@@ -2,7 +2,7 @@
  * Feeds elements of type `A` to `f` and accumulates all errors, discarding
  * the successes.
  *
- * @tsplus static ets/Effect/Ops validateDiscard
+ * @tsplus static effect/core/io/Effect.Ops validateDiscard
  */
 export function validateDiscard<R, E, A, X>(
   as: LazyArg<Collection<A>>,

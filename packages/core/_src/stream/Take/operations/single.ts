@@ -3,7 +3,7 @@ import { TakeInternal } from "@effect/core/stream/Take/operations/_internal/Take
 /**
  * Creates a `Take<never, A>` with a singleton chunk.
  *
- * @tsplus static ets/Take/Ops single
+ * @tsplus static effect/core/stream/Take.Ops single
  */
 export function single<A>(a: A): Take<never, A> {
   return new TakeInternal(Exit.succeed(Chunk.single(a)))

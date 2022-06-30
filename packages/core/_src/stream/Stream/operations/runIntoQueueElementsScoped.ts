@@ -4,50 +4,44 @@ import { concreteStream } from "@effect/core/stream/Stream/operations/_internal/
  * Like `Stream.runIntoQueue`, but provides the result as a scoped effect to
  * allow for scope composition.
  *
- * @tsplus fluent ets/Stream runIntoQueueElementsScoped
+ * @tsplus static effect/core/stream/Stream.Aspects runIntoQueueElementsScoped
+ * @tsplus pipeable effect/core/stream/Stream runIntoQueueElementsScoped
  */
-export function runIntoQueueElementsScoped_<R, E extends E1, A, E1>(
-  self: Stream<R, E, A>,
+export function runIntoQueueElementsScoped<E1, A>(
   queue: LazyArg<Enqueue<Exit<Maybe<E1>, A>>>,
   __tsplusTrace?: string
-): Effect<R | Scope, E | E1, void> {
-  const writer: Channel<
-    R,
-    E,
-    Chunk<A>,
-    unknown,
-    E,
-    Exit<Maybe<E | E1>, A>,
-    unknown
-  > = Channel.readWith(
-    (input: Chunk<A>) =>
-      input.reduce(
-        Channel.unit as Channel<
-          R,
-          E,
-          Chunk<A>,
-          unknown,
-          E,
-          Exit<Maybe<E | E1>, A>,
-          unknown
-        >,
-        (channel, a) => channel > Channel.write(Exit.succeed(a))
-      ) > writer,
-    (err) => Channel.write(Exit.fail(Maybe.some(err))),
-    () => Channel.write(Exit.fail(Maybe.none))
-  )
-  concreteStream(self)
-  return (self.channel >> writer)
-    .mapOutEffect((take) => queue().offer(take))
-    .drain
-    .runScoped
-    .unit()
+) {
+  return <R, E extends E1>(self: Stream<R, E, A>): Effect<R | Scope, E | E1, void> => {
+    const writer: Channel<
+      R,
+      E,
+      Chunk<A>,
+      unknown,
+      E,
+      Exit<Maybe<E | E1>, A>,
+      unknown
+    > = Channel.readWith(
+      (input: Chunk<A>) =>
+        input.reduce(
+          Channel.unit as Channel<
+            R,
+            E,
+            Chunk<A>,
+            unknown,
+            E,
+            Exit<Maybe<E | E1>, A>,
+            unknown
+          >,
+          (channel, a) => channel > Channel.write(Exit.succeed(a))
+        ) > writer,
+      (err) => Channel.write(Exit.fail(Maybe.some(err))),
+      () => Channel.write(Exit.fail(Maybe.none))
+    )
+    concreteStream(self)
+    return (self.channel >> writer)
+      .mapOutEffect((take) => queue().offer(take))
+      .drain
+      .runScoped
+      .unit
+  }
 }
-
-/**
- * Like `Stream.runIntoQueue`, but provides the result as a scoped effect to
- * allow for scope composition.
- *
- * @tsplus static ets/Stream/Aspects runIntoQueueElementsScoped
- */
-export const runIntoQueueElementsScoped = Pipeable(runIntoQueueElementsScoped_)

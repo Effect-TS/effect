@@ -1,5 +1,5 @@
 /**
- * @tsplus type ets/TReentrantLock/Lock
+ * @tsplus type effect/core/stm/TReentrantLock/Lock
  */
 export interface Lock {
   readonly readLocks: number

@@ -5,7 +5,7 @@
  *
  * For best performance use capacities that are powers of two.
  *
- * @tsplus static ets/TQueue/Ops bounded
+ * @tsplus static effect/core/stm/TQueue.Ops bounded
  */
 export function bounded<A>(
   requestedCapacity: number

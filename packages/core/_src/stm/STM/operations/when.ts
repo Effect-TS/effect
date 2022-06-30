@@ -1,7 +1,7 @@
 /**
  * The moral equivalent of `if (p) exp`.
  *
- * @tsplus static ets/STM/Ops when
+ * @tsplus static effect/core/stm/STM.Ops when
  */
 export function when<R, E, A>(
   predicate: LazyArg<boolean>,

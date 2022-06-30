@@ -1,7 +1,7 @@
 describe.concurrent("Effect", () => {
   describe.concurrent("timeout disconnect", () => {
     it("returns `Some` with the produced value if the effect completes before the timeout elapses", async () => {
-      const program = Effect.unit.disconnect().timeout((100).millis)
+      const program = Effect.unit.disconnect.timeout((100).millis)
 
       const result = await program.unsafeRunPromise()
 
@@ -12,12 +12,12 @@ describe.concurrent("Effect", () => {
       const deferred = Deferred.unsafeMake<never, void>(FiberId.none)
       const program = deferred
         .await()
-        .uninterruptible()
-        .disconnect()
+        .uninterruptible
+        .disconnect
         .timeout((10).millis)
-        .fork()
+        .fork
         .tap(() => Effect.sleep((100).millis))
-        .flatMap((fiber) => fiber.join())
+        .flatMap((fiber) => fiber.join)
 
       const result = await program.unsafeRunPromise()
       await deferred.succeed(undefined).unsafeRunPromise()

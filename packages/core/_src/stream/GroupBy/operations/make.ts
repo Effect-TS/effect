@@ -3,7 +3,7 @@ import { GroupByInternal } from "@effect/core/stream/GroupBy/operations/_interna
 /**
  * Constructs a new `GroupBy`.
  *
- * @tsplus static ets/GroupBy/Ops __call
+ * @tsplus static effect/core/stream/GroupBy.Ops __call
  */
 export function make<R, E, R2, E2, K, V, A>(
   stream: Stream<R, E, A>,

@@ -16,7 +16,7 @@ export type _Patch = typeof _Patch
  * fiber on join but you can specify your own logic for how values should be
  * merged.
  *
- * @tsplus type ets/FiberRef
+ * @tsplus type effect/core/io/FiberRef
  */
 export interface FiberRef<Value, Patch> {
   readonly [FiberRefSym]: FiberRefSym
@@ -35,7 +35,7 @@ export interface FiberRef<Value, Patch> {
 }
 
 /**
- * @tsplus type ets/FiberRef/Ops
+ * @tsplus type effect/core/io/FiberRef.Ops
  */
 export interface FiberRefOps {
   $: FiberRefAspects
@@ -45,6 +45,6 @@ export const FiberRef: FiberRefOps = {
 }
 
 /**
- * @tsplus type ets/FiberRef/Aspects
+ * @tsplus type effect/core/io/FiberRef.Aspects
  */
 export interface FiberRefAspects {}

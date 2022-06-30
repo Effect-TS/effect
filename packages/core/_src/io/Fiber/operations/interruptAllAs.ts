@@ -2,7 +2,7 @@
  * Interrupts all fibers as by the specified fiber, awaiting their
  * interruption.
  *
- * @tsplus static ets/Fiber/Ops interruptAllAs
+ * @tsplus static effect/core/io/Fiber.Ops interruptAllAs
  */
 export function interruptAllAs(
   fibers: Collection<Fiber<any, any>>,

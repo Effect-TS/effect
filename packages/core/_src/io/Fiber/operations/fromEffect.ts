@@ -1,11 +1,11 @@
 /**
  * Lifts an `Effect` into a `Fiber`.
  *
- * @tsplus static ets/Fiber/Ops fromEffect
+ * @tsplus static effect/core/io/Fiber.Ops fromEffect
  */
 export function fromEffect<E, A>(
-  effect: Effect.IO<E, A>,
+  effect: Effect<never, E, A>,
   __tsplusTrace?: string
 ): Effect<never, never, Fiber<E, A>> {
-  return effect.exit().map(Fiber.done)
+  return effect.exit.map(Fiber.done)
 }

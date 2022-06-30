@@ -1,7 +1,7 @@
 describe.concurrent("Fiber", () => {
   describe.concurrent("if one composed fiber fails then all must fail", () => {
     it("await", async () => {
-      const program = Fiber.fail("fail").zip(Fiber.never).await()
+      const program = Fiber.fail("fail").zip(Fiber.never).await
 
       const result = await program.unsafeRunPromise()
 
@@ -12,7 +12,7 @@ describe.concurrent("Fiber", () => {
     })
 
     it("join", async () => {
-      const program = Fiber.fail("fail").zip(Fiber.never).join()
+      const program = Fiber.fail("fail").zip(Fiber.never).join
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -35,7 +35,7 @@ describe.concurrent("Fiber", () => {
     it("joinAll", async () => {
       const program = Fiber.joinAll(
         Chunk.fill(100, () => Fiber.never).prepend(Fiber.fail("fail"))
-      ).exit()
+      ).exit
 
       const result = await program.unsafeRunPromise()
 
@@ -48,10 +48,9 @@ describe.concurrent("Fiber", () => {
         n: number,
         worker: (a: A) => Effect<R, E, void>
       ): Effect<R, E, void> {
-        const worker1 = queue.take.flatMap((a) => worker(a).uninterruptible()).forever()
-
+        const worker1 = queue.take.flatMap((a) => worker(a).uninterruptible).forever
         return Effect.forkAll(Chunk.fill(n, () => worker1))
-          .flatMap((fiber) => fiber.join())
+          .flatMap((fiber) => fiber.join)
           .zipRight(Effect.never)
       }
 
@@ -60,9 +59,9 @@ describe.concurrent("Fiber", () => {
         .tap(({ queue }) => queue.offerAll(Chunk.range(1, 100)))
         .bindValue(
           "worker",
-          ({ queue }) => (n: number) => n === 100 ? Effect.failNow("fail") : queue.offer(n).unit()
+          ({ queue }) => (n: number) => n === 100 ? Effect.failNow("fail") : queue.offer(n).unit
         )
-        .bind("exit", ({ queue, worker }) => shard(queue, 4, worker).exit())
+        .bind("exit", ({ queue, worker }) => shard(queue, 4, worker).exit)
         .tap(({ queue }) => queue.shutdown)
         .map(({ exit }) => exit)
 
@@ -75,21 +74,18 @@ describe.concurrent("Fiber", () => {
       const program = Effect.Do()
         .bind("latch1", () => Deferred.make<never, void>())
         .bind("latch2", () => Deferred.make<never, void>())
-        .bindValue("c", ({ latch2 }) =>
-          pipe(
-            Effect.never.interruptible().onInterrupt(() => latch2.succeed(undefined))
-          ))
+        .bindValue("c", ({ latch2 }) => Effect.never.interruptible.onInterrupt(() => latch2.succeed(undefined)))
         .bindValue("a", ({ c, latch1 }) =>
           latch1
             .succeed(undefined)
-            .zipRight(c.fork().fork())
-            .uninterruptible()
+            .zipRight(c.fork.fork)
+            .uninterruptible
             .zipRight(Effect.never))
-        .bind("fiber", ({ a }) => a.fork())
+        .bind("fiber", ({ a }) => a.fork)
         .tap(({ latch1 }) => latch1.await())
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .tap(({ latch2 }) => latch2.await())
-        .exit()
+        .exit
 
       const result = await program.unsafeRunPromise()
 

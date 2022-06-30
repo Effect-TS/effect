@@ -1,19 +1,9 @@
 /**
  * Atomically folds using a transactional function.
  *
- * @tsplus fluent ets/TArray reduceSTM
+ * @tsplus static effect/core/stm/TArray.Aspects reduceSTM
+ * @tsplus pipeable effect/core/stm/TArray reduceSTM
  */
-export function reduceSTM_<E, A, Z>(
-  self: TArray<A>,
-  zero: Z,
-  f: (z: Z, a: A) => STM<never, E, Z>
-): STM<never, E, Z> {
-  return self.toChunk.flatMap((as) => STM.reduce(as, zero, f))
+export function reduceSTM<E, A, Z>(zero: Z, f: (z: Z, a: A) => STM<never, E, Z>) {
+  return (self: TArray<A>): STM<never, E, Z> => self.toChunk.flatMap((as) => STM.reduce(as, zero, f))
 }
-
-/**
- * Atomically folds using a transactional function.
- *
- * @tsplus static ets/TArray/Aspects reduceSTM
- */
-export const reduceSTM = Pipeable(reduceSTM_)

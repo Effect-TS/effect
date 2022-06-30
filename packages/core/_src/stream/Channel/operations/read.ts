@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Channel/Ops read
+ * @tsplus static effect/core/stream/Channel.Ops read
  */
 export function read<In>(): Channel<
   never,

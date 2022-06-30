@@ -3,7 +3,7 @@ import type { _A, _E, _R } from "@effect/core/io/Effect/definition/base"
 /**
  * Applicative structure.
  *
- * @tsplus static ets/Effect/Ops struct
+ * @tsplus static effect/core/io/Effect.Ops struct
  */
 export function struct<NER extends Record<string, Effect<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> | Record<string, Effect<any, any, any>>,
@@ -30,7 +30,7 @@ export function struct<NER extends Record<string, Effect<any, any, any>>>(
 /**
  * Applicative structure processed in parallel.
  *
- * @tsplus static ets/Effect/Ops structPar
+ * @tsplus static effect/core/io/Effect.Ops structPar
  */
 export function structPar<NER extends Record<string, Effect<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> | Record<string, Effect<any, any, any>>,

@@ -3,7 +3,7 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
 /**
  * Creates a single-valued stream from a scoped resource.
  *
- * @tsplus static ets/Stream/Ops scoped
+ * @tsplus static effect/core/stream/Stream.Ops scoped
  */
 export function scoped<R, E, A>(
   effect: LazyArg<Effect<R, E, A>>,

@@ -14,7 +14,7 @@
  * A.reverse(as)
  * ```
  *
- * @tsplus static ets/STM/Ops loop
+ * @tsplus static effect/core/stm/STM.Ops loop
  */
 export function loop<Z>(
   initial: LazyArg<Z>,

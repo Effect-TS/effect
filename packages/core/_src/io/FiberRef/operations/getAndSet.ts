@@ -2,7 +2,7 @@
  * Atomically sets the value associated with the current fiber and returns
  * the old value.
  *
- * @tsplus fluent ets/FiberRef getAndSet
+ * @tsplus fluent effect/core/io/FiberRef getAndSet
  */
 export function getAndSet_<A, P>(
   self: FiberRef<A, P>,
@@ -16,6 +16,6 @@ export function getAndSet_<A, P>(
  * Atomically sets the value associated with the current fiber and returns
  * the old value.
  *
- * @tsplus static ets/FiberRef/Aspects getAndSet
+ * @tsplus static effect/core/io/FiberRef.Aspects getAndSet
  */
 export const getAndSet = Pipeable(getAndSet_)

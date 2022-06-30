@@ -7,7 +7,7 @@ describe.concurrent("Sink", () => {
             Sink.collectAll<number>().splitWhere((n: number) => n % 2 === 0)
           )
         )
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -21,7 +21,7 @@ describe.concurrent("Sink", () => {
             Sink.collectAll<number>().splitWhere((n: number) => n % 2 === 0)
           )
         )
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -35,7 +35,7 @@ describe.concurrent("Sink", () => {
             Sink.collectAll<number>().splitWhere((n: number) => n % 2 !== 0)
           )
         )
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 

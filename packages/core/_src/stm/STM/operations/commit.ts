@@ -1,7 +1,7 @@
 /**
  * Commits this transaction atomically.
  *
- * @tsplus fluent ets/STM commit
+ * @tsplus getter effect/core/stm/STM commit
  */
 export function commit<R, E, A>(
   self: STM<R, E, A>,

@@ -2,7 +2,7 @@
  * Returns the sink that executes this one and times its execution in
  * milliseconds.
  *
- * @tsplus fluent ets/Sink timed
+ * @tsplus getter effect/core/stream/Sink timed
  */
 export function withDuration<R, E, In, L, Z>(
   self: Sink<R, E, In, L, Z>,
@@ -14,12 +14,10 @@ export function withDuration<R, E, In, L, Z>(
 /**
  * Times the execution of a sink in milliseconds.
  *
- * @tsplus static ets/Sink/Aspects timed
+ * @tsplus static effect/core/stream/Sink.Aspects timed
  */
 export function timed(
   __tsplusTrace?: string
 ): Sink<never, never, unknown, never, Duration> {
-  return Sink.drain()
-    .timed()
-    .map((tuple) => tuple.get(1))
+  return Sink.drain().timed.map((tuple) => tuple.get(1))
 }

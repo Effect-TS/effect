@@ -2,20 +2,15 @@
  * Publishes elements of this stream to a hub. Stream failure and ending will
  * also be signalled.
  *
- * @tsplus fluent ets/Stream runIntoHub
+ * @tsplus static effect/core/stream/Stream.Aspects runIntoHub
+ * @tsplus pipeable effect/core/stream/Stream runIntoHub
  */
-export function runIntoHub_<R, E extends E1, A, E1>(
-  self: Stream<R, E, A>,
+export function runIntoHub<E1, A>(
   hub: LazyArg<Hub<Take<E1, A>>>,
   __tsplusTrace?: string
-): Effect<R, E | E1, void> {
-  return self.runIntoQueue(hub)
+) {
+  return <R, E extends E1>(self: Stream<R, E, A>): Effect<R, E | E1, void> =>
+    self.runIntoQueue(
+      hub
+    )
 }
-
-/**
- * Publishes elements of this stream to a hub. Stream failure and ending will
- * also be signalled.
- *
- * @tsplus static ets/Stream/Aspects runIntoHub
- */
-export const runIntoHub = Pipeable(runIntoHub_)

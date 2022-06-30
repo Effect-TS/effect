@@ -3,8 +3,8 @@ import { InternalTHub } from "@effect/core/stm/THub/operations/_internal/Interna
 /**
  * Creates a hub with the specified strategy.
  *
- * @tsplus static ets/THub/Ops make
- * @tsplus static ets/THub/Ops __call
+ * @tsplus static effect/core/stm/THub.Ops make
+ * @tsplus static effect/core/stm/THub.Ops __call
  */
 export function make<A>(
   requestedCapacity: number,

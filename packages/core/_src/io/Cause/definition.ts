@@ -5,10 +5,6 @@
 // - [ ] stripFailures
 // - [ ] stripSomeDefects
 
-// -----------------------------------------------------------------------------
-// Model
-// -----------------------------------------------------------------------------
-
 export const CauseSym = Symbol.for("@effect/core/io/Cause")
 export type CauseSym = typeof CauseSym
 
@@ -16,7 +12,7 @@ export const _E = Symbol.for("@effect/core/io/Cause/E")
 export type _E = typeof _E
 
 /**
- * @tsplus type ets/Cause
+ * @tsplus type effect/core/io/Cause
  */
 export interface Cause<E> extends Equals {
   readonly [CauseSym]: CauseSym
@@ -24,22 +20,18 @@ export interface Cause<E> extends Equals {
 }
 
 /**
- * @tsplus type ets/Cause/Ops
+ * @tsplus type effect/core/io/Cause.Ops
  */
-export interface CauseOps {
-  $: CauseAspects
-}
-export const Cause: CauseOps = {
-  $: {}
-}
+export interface CauseOps {}
+export const Cause: CauseOps = {}
 
 /**
- * @tsplus type ets/Cause/Aspects
+ * @tsplus type effect/core/io/Cause.Aspects
  */
 export interface CauseAspects {}
 
 /**
- * @tsplus unify ets/Cause
+ * @tsplus unify effect/core/io/Cause
  */
 export function unify<X extends Cause<any>>(
   self: X
@@ -64,7 +56,7 @@ export function realCause<E>(cause: Cause<E>): asserts cause is RealCause<E> {
 }
 
 /**
- * @tsplus fluent ets/Cause isEmptyType
+ * @tsplus fluent effect/core/io/Cause isEmptyType
  */
 export function isEmptyType<E>(cause: Cause<E>): cause is Empty {
   realCause(cause)
@@ -72,7 +64,7 @@ export function isEmptyType<E>(cause: Cause<E>): cause is Empty {
 }
 
 /**
- * @tsplus fluent ets/Cause isDieType
+ * @tsplus fluent effect/core/io/Cause isDieType
  */
 export function isDieType<E>(cause: Cause<E>): cause is Die {
   realCause(cause)
@@ -80,7 +72,7 @@ export function isDieType<E>(cause: Cause<E>): cause is Die {
 }
 
 /**
- * @tsplus fluent ets/Cause isFailType
+ * @tsplus fluent effect/core/io/Cause isFailType
  */
 export function isFailType<E>(cause: Cause<E>): cause is Fail<E> {
   realCause(cause)
@@ -88,7 +80,7 @@ export function isFailType<E>(cause: Cause<E>): cause is Fail<E> {
 }
 
 /**
- * @tsplus fluent ets/Cause isInterruptType
+ * @tsplus fluent effect/core/io/Cause isInterruptType
  */
 export function isInterruptType<E>(cause: Cause<E>): cause is Interrupt {
   realCause(cause)
@@ -96,7 +88,7 @@ export function isInterruptType<E>(cause: Cause<E>): cause is Interrupt {
 }
 
 /**
- * @tsplus fluent ets/Cause isStacklessType
+ * @tsplus fluent effect/core/io/Cause isStacklessType
  */
 export function isStacklessType<E>(cause: Cause<E>): cause is Stackless<E> {
   realCause(cause)
@@ -104,7 +96,7 @@ export function isStacklessType<E>(cause: Cause<E>): cause is Stackless<E> {
 }
 
 /**
- * @tsplus fluent ets/Cause isThenType
+ * @tsplus fluent effect/core/io/Cause isThenType
  */
 export function isThenType<E>(cause: Cause<E>): cause is Then<E> {
   realCause(cause)
@@ -112,7 +104,7 @@ export function isThenType<E>(cause: Cause<E>): cause is Then<E> {
 }
 
 /**
- * @tsplus fluent ets/Cause isBothType
+ * @tsplus fluent effect/core/io/Cause isBothType
  */
 export function isBothType<E>(cause: Cause<E>): cause is Both<E> {
   realCause(cause)
@@ -399,56 +391,56 @@ export class Both<E> implements Cause<E>, Equals {
 // -----------------------------------------------------------------------------
 
 /**
- * @tsplus static ets/Cause/Ops empty
+ * @tsplus static effect/core/io/Cause.Ops empty
  */
 export const empty: Cause<never> = new Empty()
 
 /**
- * @tsplus static ets/Cause/Ops die
+ * @tsplus static effect/core/io/Cause.Ops die
  */
 export function die(defect: unknown, trace: Trace = Trace.none): Cause<never> {
   return new Die(defect, trace)
 }
 
 /**
- * @tsplus static ets/Cause/Ops fail
+ * @tsplus static effect/core/io/Cause.Ops fail
  */
 export function fail<E>(error: E, trace: Trace = Trace.none): Cause<E> {
   return new Fail(error, trace)
 }
 
 /**
- * @tsplus static ets/Cause/Ops interrupt
+ * @tsplus static effect/core/io/Cause.Ops interrupt
  */
 export function interrupt(fiberId: FiberId, trace: Trace = Trace.none): Cause<never> {
   return new Interrupt(fiberId, trace)
 }
 
 /**
- * @tsplus static ets/Cause/Ops stack
+ * @tsplus static effect/core/io/Cause.Ops stack
  */
 export function stack<E>(cause: Cause<E>): Cause<E> {
   return new Stackless(cause, false)
 }
 
 /**
- * @tsplus static ets/Cause/Ops stackless
+ * @tsplus static effect/core/io/Cause.Ops stackless
  */
 export function stackless<E>(cause: Cause<E>): Cause<E> {
   return new Stackless(cause, true)
 }
 
 /**
- * @tsplus operator ets/Cause +
- * @tsplus static ets/Cause/Ops then
+ * @tsplus operator effect/core/io/Cause +
+ * @tsplus static effect/core/io/Cause.Ops then
  */
 export function combineSeq<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
   return isEmpty(left) ? right : isEmpty(right) ? left : new Then<E1 | E2>(left, right)
 }
 
 /**
- * @tsplus operator ets/Cause &
- * @tsplus static ets/Cause/Ops both
+ * @tsplus operator effect/core/io/Cause &
+ * @tsplus static effect/core/io/Cause.Ops both
  */
 export function combinePar<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
   // TODO(Mike/Max): discuss this, because ZIO does not flatten empty causes here
@@ -462,7 +454,7 @@ export function combinePar<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 
 /**
  * Determines if the provided value is a `Cause`.
  *
- * @tsplus fluent ets/Cause isCause
+ * @tsplus fluent effect/core/io/Cause isCause
  */
 export function isCause(self: unknown): self is Cause<unknown> {
   return typeof self === "object" && self != null && CauseSym in self
@@ -471,7 +463,7 @@ export function isCause(self: unknown): self is Cause<unknown> {
 /**
  * Determines if the `Cause` is empty.
  *
- * @tsplus getter ets/Cause isEmpty
+ * @tsplus getter effect/core/io/Cause isEmpty
  */
 export function isEmpty<E>(cause: Cause<E>): boolean {
   if (isEmptyType(cause) || (isStacklessType(cause) && isEmptyType(cause.cause))) {

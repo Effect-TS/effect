@@ -1,7 +1,7 @@
 /**
  * Creates a new supervisor that tracks children in a set.
  *
- * @tsplus static ets/Supervisor/Ops fibersIn
+ * @tsplus static effect/core/io/Supervisor.Ops fibersIn
  */
 export function fibersIn(
   ref: AtomicReference<SortedSet<Fiber.Runtime<any, any>>>

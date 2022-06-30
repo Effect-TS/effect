@@ -12,14 +12,14 @@ import {
 } from "@effect/core/test/io/Layer/test-utils"
 
 describe.concurrent("Layer", () => {
-  describe.concurrent("to (>)", () => {
+  describe.concurrent("to (>>)", () => {
     it("sharing", async () => {
       const expected = [acquire1, release1]
 
       const program = Effect.Do()
         .bind("ref", () => makeRef())
         .bindValue("layer", ({ ref }) => makeLayer1(ref))
-        .bindValue("env", ({ layer }) => (layer >> layer).build())
+        .bindValue("env", ({ layer }) => (layer >> layer).build)
         .tap(({ env }) => Effect.scoped(env))
         .bind("actual", ({ ref }) => ref.get())
 
@@ -34,7 +34,7 @@ describe.concurrent("Layer", () => {
         .bindValue("layer1", ({ ref }) => makeLayer1(ref))
         .bindValue("layer2", ({ ref }) => makeLayer2(ref))
         .bindValue("layer3", ({ ref }) => makeLayer3(ref))
-        .bindValue("env", ({ layer1, layer2, layer3 }) => ((layer1 >> layer2) + (layer1 >> layer3)).build())
+        .bindValue("env", ({ layer1, layer2, layer3 }) => ((layer1 >> layer2) + (layer1 >> layer3)).build)
         .tap(({ env }) => Effect.scoped(env))
         .flatMap(({ ref }) => ref.get())
 
@@ -53,7 +53,7 @@ describe.concurrent("Layer", () => {
         .bind("ref", () => makeRef())
         .bindValue("layer1", ({ ref }) => makeLayer1(ref))
         .bindValue("layer2", ({ ref }) => makeLayer2(ref))
-        .bindValue("env", ({ layer1, layer2 }) => (layer1 >> layer2).build())
+        .bindValue("env", ({ layer1, layer2 }) => (layer1 >> layer2).build)
         .tap(({ env }) => Effect.scoped(env))
         .flatMap(({ ref }) => ref.get())
 
@@ -68,7 +68,7 @@ describe.concurrent("Layer", () => {
         .bindValue("layer1", ({ ref }) => makeLayer1(ref))
         .bindValue("layer2", ({ ref }) => makeLayer2(ref))
         .bindValue("layer3", ({ ref }) => makeLayer3(ref))
-        .bindValue("env", ({ layer1, layer2, layer3 }) => ((layer1 >> layer2) >> layer3).build())
+        .bindValue("env", ({ layer1, layer2, layer3 }) => ((layer1 >> layer2) >> layer3).build)
         .tap(({ env }) => Effect.scoped(env))
         .flatMap(({ ref }) => ref.get())
 

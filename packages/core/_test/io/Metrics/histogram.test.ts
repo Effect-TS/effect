@@ -8,7 +8,7 @@ describe.concurrent("Metrics", () => {
 
       const program = Effect.succeed(1) / histogram >
         Effect.succeed(3) / histogram >
-        histogram.value()
+        histogram.value
 
       const result = await program.unsafeRunPromise()
 
@@ -22,7 +22,7 @@ describe.concurrent("Metrics", () => {
       const boundaries = Metric.Histogram.Boundaries.linear(0, 1, 10)
       const histogram = Metric.histogram("h2", boundaries).taggedWithLabels(labels)
 
-      const program = histogram.update(1) > histogram.update(3) > histogram.value()
+      const program = histogram.update(1) > histogram.update(3) > histogram.value
 
       const result = await program.unsafeRunPromise()
 
@@ -46,7 +46,7 @@ describe.concurrent("Metrics", () => {
         .tap(() => Clock.sleep((300).millis) / histogram.trackDuration)
         .bind("end", () => Effect.attempt(Date.now()))
         .bindValue("elapsed", ({ end, start }) => end - start)
-        .bind("state", () => histogram.value())
+        .bind("state", () => histogram.value)
 
       const { elapsed, state } = await program.unsafeRunPromise()
 
@@ -68,7 +68,7 @@ describe.concurrent("Metrics", () => {
 
       const program = Effect.succeed("x") / histogram >
         Effect.succeed("xyz") / histogram >
-        histogram.value()
+        histogram.value
 
       const result = await program.unsafeRunPromise()
 
@@ -89,9 +89,9 @@ describe.concurrent("Metrics", () => {
       const program = Effect.succeed("x") / histogram >
         Effect.succeed("xyz") / histogram >
         Effect.struct({
-          r0: base.value(),
-          r1: base.tagged("dyn", "x").value(),
-          r2: base.tagged("dyn", "xyz").value()
+          r0: base.value,
+          r1: base.tagged("dyn", "x").value,
+          r2: base.tagged("dyn", "xyz").value
         })
 
       const { r0, r1, r2 } = await program.unsafeRunPromise()

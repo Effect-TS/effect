@@ -4,7 +4,7 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
  * Peeks at the first value in the queue without removing it, returning `None`
  * if there is not a value in the queue.
  *
- * @tsplus getter ets/TPriorityQueue peekMaybe
+ * @tsplus getter effect/core/stm/TPriorityQueue peekMaybe
  */
 export function peekMaybe<A>(self: TPriorityQueue<A>): USTM<Maybe<A>> {
   concreteTPriorityQueue(self)

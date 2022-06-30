@@ -1,7 +1,7 @@
 /**
  * Determines if the `Exit` result is interrupted.
  *
- * @tsplus getter ets/Exit isInterrupted
+ * @tsplus getter effect/core/io/Exit isInterrupted
  */
 export function isInterrupted<E, A>(self: Exit<E, A>): boolean {
   switch (self._tag) {

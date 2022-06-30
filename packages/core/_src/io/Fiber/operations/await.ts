@@ -4,8 +4,8 @@ import { realFiber } from "@effect/core/io/Fiber/definition"
  * Awaits the fiber, which suspends the awaiting fiber until the result of the
  * fiber has been determined.
  *
- * @tsplus fluent ets/Fiber await
- * @tsplus fluent ets/RuntimeFiber await
+ * @tsplus getter effect/core/io/Fiber await
+ * @tsplus getter effect/core/io/RuntimeFiber await
  */
 export function _await<E, A>(
   self: Fiber<E, A>,

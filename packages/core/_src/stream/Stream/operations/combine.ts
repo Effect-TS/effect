@@ -11,10 +11,10 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * Where possible, prefer `Stream.combineChunks` for a more efficient
  * implementation.
  *
- * @tsplus fluent ets/Stream combine
+ * @tsplus static effect/core/stream/Stream.Aspects combine
+ * @tsplus pipeable effect/core/stream/Stream combine
  */
-export function combine_<R, E, A, R2, E2, A2, S, A3>(
-  self: Stream<R, E, A>,
+export function combine<R, E, A, R2, E2, A2, S, A3>(
   that: LazyArg<Stream<R2, E2, A2>>,
   s: LazyArg<S>,
   f: (
@@ -23,65 +23,38 @@ export function combine_<R, E, A, R2, E2, A2, S, A3>(
     pullRight: Effect<R2, Maybe<E2>, A2>
   ) => Effect<R | R2, never, Exit<Maybe<E | E2>, Tuple<[A3, S]>>>,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, A3> {
-  return new StreamInternal(
-    Channel.unwrapScoped(
-      Effect.Do()
-        .bind("left", () => Handoff.make<Exit<Maybe<E>, A>>())
-        .bind("right", () => Handoff.make<Exit<Maybe<E2>, A2>>())
-        .bind("latchL", () => Handoff.make<void>())
-        .bind("latchR", () => Handoff.make<void>())
-        .tap(({ latchL, left }) => {
+) {
+  return (self: Stream<R, E, A>): Stream<R | R2, E | E2, A3> =>
+    new StreamInternal(
+      Channel.unwrapScoped(
+        Do(($) => {
+          const left = $(Handoff.make<Exit<Maybe<E>, A>>())
+          const right = $(Handoff.make<Exit<Maybe<E2>, A2>>())
+          const latchL = $(Handoff.make<void>())
+          const latchR = $(Handoff.make<void>())
           concreteStream(self)
-          return (
-            self.channel.concatMap((chunk) => Channel.writeChunk(chunk)) >>
-            producer(left, latchL)
+          $(
+            (self.channel.concatMap((chunk) => Channel.writeChunk(chunk)) >> producer(left, latchL))
+              .runScoped
+              .fork
           )
-            .runScoped
-            .fork()
-        })
-        .tap(({ latchR, right }) => {
           const that0 = that()
           concreteStream(that0)
-          return (
-            that0.channel.concatMap((chunk) => Channel.writeChunk(chunk)) >>
-            producer(right, latchR)
+          $(
+            (that0.channel.concatMap((chunk) => Channel.writeChunk(chunk)) >> producer(right, latchR))
+              .runScoped
+              .fork
           )
-            .runScoped
-            .fork()
-        })
-        .bindValue(
-          "pullLeft",
-          ({ latchL, left }) => latchL.offer(undefined) > left.take().flatMap((exit) => Effect.done(exit))
-        )
-        .bindValue(
-          "pullRight",
-          ({ latchR, right }) => latchR.offer(undefined) > right.take().flatMap((exit) => Effect.done(exit))
-        )
-        .map(({ pullLeft, pullRight }) => {
+          const pullLeft = latchL.offer(undefined) > left.take.flatMap((exit) => Effect.done(exit))
+          const pullRight = latchR.offer(undefined) > right.take.flatMap((exit) => Effect.done(exit))
           const stream = Stream.unfoldEffect(s, (s) =>
-            f(s, pullLeft, pullRight)
-              .flatMap((exit) => Effect.done(exit).unsome()))
+            f(s, pullLeft, pullRight).flatMap((exit) => Effect.done(exit).unsome))
           concreteStream(stream)
           return stream.channel
         })
+      )
     )
-  )
 }
-
-/**
- * Combines the elements from this stream and the specified stream by
- * repeatedly applying the function `f` to extract an element using both sides
- * and conceptually "offer" it to the destination stream. `f` can maintain
- * some internal state to control the combining process, with the initial
- * state being specified by `s`.
- *
- * Where possible, prefer `Stream.combineChunks` for a more efficient
- * implementation.
- *
- * @tsplus static ets/Stream/Aspects combine
- */
-export const combine = Pipeable(combine_)
 
 function producer<Err, Elem>(
   handoff: Handoff<Exit<Maybe<Err>, Elem>>,
@@ -89,7 +62,7 @@ function producer<Err, Elem>(
   __tsplusTrace?: string
 ): Channel<never, Err, Elem, unknown, never, never, unknown> {
   return (
-    Channel.fromEffect(latch.take()) >
+    Channel.fromEffect(latch.take) >
       Channel.readWithCause(
         (value) =>
           Channel.fromEffect(handoff.offer(Exit.succeed(value))) >

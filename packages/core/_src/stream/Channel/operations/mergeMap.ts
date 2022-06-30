@@ -1,44 +1,24 @@
 import { MergeStrategy } from "@effect/core/stream/Channel/MergeStrategy"
 
 /**
- * @tsplus fluent ets/Channel mergeMap
+ * @tsplus static effect/core/stream/Channel.Aspects mergeMap
+ * @tsplus pipeable effect/core/stream/Channel mergeMap
  */
-export function mergeMap_<
-  Env,
-  InErr,
-  InElem,
-  InDone,
-  OutErr,
-  OutElem,
-  OutDone,
-  Env1,
-  InErr1,
-  InElem1,
-  InDone1,
-  OutErr1,
-  OutElem1,
-  Z
->(
-  self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
+export function mergeMap<OutElem, Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, Z>(
   n: number,
-  f: (
-    outElem: OutElem
-  ) => Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, Z>,
+  f: (outElem: OutElem) => Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, Z>,
   bufferSize = 16,
   mergeStrategy: MergeStrategy = MergeStrategy.BackPressure
-): Channel<
-  Env | Env1,
-  InErr & InErr1,
-  InElem & InElem1,
-  InDone & InDone1,
-  OutErr | OutErr1,
-  OutElem1,
-  unknown
-> {
-  return Channel.mergeAll(self.mapOut(f), n, bufferSize, mergeStrategy)
+) {
+  return <Env, InErr, InElem, InDone, OutErr, OutDone>(
+    self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+  ): Channel<
+    Env | Env1,
+    InErr & InErr1,
+    InElem & InElem1,
+    InDone & InDone1,
+    OutErr | OutErr1,
+    OutElem1,
+    unknown
+  > => Channel.mergeAll(self.mapOut(f), n, bufferSize, mergeStrategy)
 }
-
-/**
- * @tsplus static ets/Channel/Aspects mergeMap
- */
-export const mergeMap = Pipeable(mergeMap_)

@@ -3,7 +3,7 @@
  * using `Service.Env.Patch` to combine updates to the environment in a
  * compositional manner.
  *
- * @tsplus static ets/FiberRef/Ops makeEnvironment
+ * @tsplus static effect/core/io/FiberRef.Ops makeEnvironment
  */
 export function makeEnvironment<A>(
   initial: LazyArg<Service.Env<A>>,

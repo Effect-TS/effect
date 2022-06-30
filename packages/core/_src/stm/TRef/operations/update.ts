@@ -3,20 +3,15 @@ import { getOrMakeEntry } from "@effect/core/stm/TRef/operations/_internal/getOr
 /**
  * Updates the value of the variable.
  *
- * @tsplus fluent ets/TRef update
+ * @tsplus static effect/core/stm/TRef.Aspects update
+ * @tsplus pipeable effect/core/stm/TRef update
  */
-export function update_<A>(self: TRef<A>, f: (a: A) => A): USTM<void> {
-  return STM.Effect((journal) => {
-    const entry = getOrMakeEntry(self, journal)
-    const newValue = entry.use((_) => f(_.unsafeGet()))
-    entry.use((_) => _.unsafeSet(newValue))
-    return undefined
-  })
+export function update<A>(f: (a: A) => A) {
+  return (self: TRef<A>): STM<never, never, void> =>
+    STM.Effect((journal) => {
+      const entry = getOrMakeEntry(self, journal)
+      const newValue = entry.use((_) => f(_.unsafeGet()))
+      entry.use((_) => _.unsafeSet(newValue))
+      return undefined
+    })
 }
-
-/**
- * Updates the value of the variable.
- *
- * @tsplus static ets/TRef/Aspects update
- */
-export const update = Pipeable(update_)

@@ -4,21 +4,12 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
  * Provides the sink with its required environment, which eliminates its
  * dependency on `R`.
  *
- * @tsplus fluent ets/Sink provideEnvironment
+ * @tsplus static effect/core/stream/Sink.Aspects provideEnvironment
+ * @tsplus pipeable effect/core/stream/Sink provideEnvironment
  */
-export function provideEnvironment_<R, E, In, L, Z>(
-  self: Sink<R, E, In, L, Z>,
-  env: LazyArg<Env<R>>,
-  __tsplusTrace?: string
-): Sink<never, E, In, L, Z> {
-  concreteSink(self)
-  return new SinkInternal(self.channel.provideEnvironment(env))
+export function provideEnvironment<R>(env: LazyArg<Env<R>>, __tsplusTrace?: string) {
+  return <E, In, L, Z>(self: Sink<R, E, In, L, Z>): Sink<never, E, In, L, Z> => {
+    concreteSink(self)
+    return new SinkInternal(self.channel.provideEnvironment(env))
+  }
 }
-
-/**
- * Provides the sink with its required environment, which eliminates its
- * dependency on `R`.
- *
- * @tsplus static ets/Sink/Aspects provideEnvironment
- */
-export const provideEnvironment = Pipeable(provideEnvironment_)

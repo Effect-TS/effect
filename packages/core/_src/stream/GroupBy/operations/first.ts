@@ -3,19 +3,12 @@ import { concreteGroupBy } from "@effect/core/stream/GroupBy/operations/_interna
 /**
  * Only consider the first `n` groups found in the stream.
  *
- * @tsplus fluent ets/GroupBy first
+ * @tsplus static effect/core/stream/GroupBy.Aspects first
+ * @tsplus pipeable effect/core/stream/GroupBy first
  */
-export function first_<R, E, K, V, A>(
-  self: GroupBy<R, E, K, V, A>,
-  n: number
-): GroupBy<R, E, K, V, A> {
-  concreteGroupBy(self)
-  return self.first(n)
+export function first(n: number) {
+  return <R, E, K, V, A>(self: GroupBy<R, E, K, V, A>): GroupBy<R, E, K, V, A> => {
+    concreteGroupBy(self)
+    return self.first(n)
+  }
 }
-
-/**
- * Only consider the first `n` groups found in the stream.
- *
- * @tsplus static ets/GroupBy/Aspects first
- */
-export const first = Pipeable(first_)

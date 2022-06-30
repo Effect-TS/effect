@@ -2,7 +2,7 @@
  * Returns the specified stream if the specified effectful condition is
  * satisfied, otherwise returns an empty stream.
  *
- * @tsplus static ets/Stream/Ops whenEffect
+ * @tsplus static effect/core/stream/Stream.Ops whenEffect
  */
 export function whenEffect<R, E, R1, E1, A>(
   b: LazyArg<Effect<R, E, boolean>>,

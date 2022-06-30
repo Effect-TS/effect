@@ -1,32 +1,24 @@
 /**
  * Recovers from specified error.
  *
- * @tsplus fluent ets/Stream catchTag
+ * @tsplus static effect/core/stream/Stream.Aspects catchTag
+ * @tsplus pipeable effect/core/stream/Stream catchTag
  */
-export function catchTag_<
+export function catchTag<
   K extends E["_tag"] & string,
   E extends { _tag: string },
-  R,
-  A,
   R1,
   E1,
   A1
 >(
-  self: Stream<R, E, A>,
   k: K,
   f: (e: Extract<E, { _tag: K }>) => Stream<R1, E1, A1>
-): Stream<R | R1, Exclude<E, { _tag: K }> | E1, A | A1> {
-  return self.catchAll((e) => {
-    if ("_tag" in e && e["_tag"] === k) {
-      return f(e as any)
-    }
-    return Stream.fail(() => e as any)
-  })
+) {
+  return <R, A>(self: Stream<R, E, A>): Stream<R | R1, Exclude<E, { _tag: K }> | E1, A | A1> =>
+    self.catchAll((e) => {
+      if ("_tag" in e && e["_tag"] === k) {
+        return f(e as any)
+      }
+      return Stream.fail(() => e as any)
+    })
 }
-
-/**
- * Recovers from specified error.
- *
- * @tsplus static ets/Stream/Aspects catchTag
- */
-export const catchTag = Pipeable(catchTag_)

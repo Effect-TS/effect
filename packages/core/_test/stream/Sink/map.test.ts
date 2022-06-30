@@ -23,7 +23,7 @@ describe.concurrent("Sink", () => {
     it("should map errors", async () => {
       const program = Stream.range(1, 10)
         .run(Sink.fail("fail").mapError((s) => s + "!"))
-        .either()
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -45,7 +45,7 @@ describe.concurrent("Sink", () => {
     it("failure", async () => {
       const program = Stream.range(1, 10)
         .run(Sink.succeed(1).mapEffect(() => Effect.fail("fail")))
-        .flip()
+        .flip
 
       const result = await program.unsafeRunPromise()
 

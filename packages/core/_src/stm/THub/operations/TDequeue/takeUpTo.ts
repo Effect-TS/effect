@@ -4,53 +4,49 @@ import { concreteTDequeue } from "@effect/core/stm/THub/operations/_internal/Int
 /**
  * Takes up to the specified number of values from the queue.
  *
- * @tsplus fluent ets/THub/TDequeue takeUpTo
+ * @tsplus static effect/core/stm/THub/TDequeue.Aspects takeUpTo
+ * @tsplus pipeable effect/core/stm/THub/TDequeue takeUpTo
  */
-export function takeUpTo_<A>(self: THub.TDequeue<A>, max: number): USTM<Chunk<A>> {
-  concreteTDequeue(self)
-  return STM.Effect((journal, fiberId) => {
-    let currentSubscriberHead = self.subscriberHead.unsafeGet(journal)
+export function takeUpTo(max: number) {
+  return <A>(self: THub.TDequeue<A>): STM<never, never, Chunk<A>> => {
+    concreteTDequeue(self)
+    return STM.Effect((journal, fiberId) => {
+      let currentSubscriberHead = self.subscriberHead.unsafeGet(journal)
 
-    if (currentSubscriberHead == null) {
-      throw new STMInterruptException(fiberId)
-    }
-    const builder = Chunk.builder<A>()
-    let n = 0
-
-    while (n != max) {
-      const node = currentSubscriberHead.unsafeGet(journal)
-      if (node == null) {
-        n = max
-      } else {
-        const head = node.head
-        const tail = node.tail
-        if (head != null) {
-          const subscribers = node.subscribers
-          if (subscribers == 1) {
-            const size = self.hubSize.unsafeGet(journal)
-            const updatedNode = THub.Node(undefined, 0, node.tail)
-            currentSubscriberHead.unsafeSet(updatedNode, journal)
-            self.publisherHead.unsafeSet(tail, journal)
-            self.hubSize.unsafeSet(size - 1, journal)
-          } else {
-            const updatedNode = THub.Node(node.head, subscribers - 1, node.tail)
-            currentSubscriberHead.unsafeSet(updatedNode, journal)
-          }
-          builder.append(head)
-          n += 1
-        }
-        currentSubscriberHead = tail
+      if (currentSubscriberHead == null) {
+        throw new STMInterruptException(fiberId)
       }
-    }
-    self.subscriberHead.unsafeSet(currentSubscriberHead, journal)
+      const builder = Chunk.builder<A>()
+      let n = 0
 
-    return builder.build()
-  })
+      while (n != max) {
+        const node = currentSubscriberHead.unsafeGet(journal)
+        if (node == null) {
+          n = max
+        } else {
+          const head = node.head
+          const tail = node.tail
+          if (head != null) {
+            const subscribers = node.subscribers
+            if (subscribers == 1) {
+              const size = self.hubSize.unsafeGet(journal)
+              const updatedNode = THub.Node(undefined, 0, node.tail)
+              currentSubscriberHead.unsafeSet(updatedNode, journal)
+              self.publisherHead.unsafeSet(tail, journal)
+              self.hubSize.unsafeSet(size - 1, journal)
+            } else {
+              const updatedNode = THub.Node(node.head, subscribers - 1, node.tail)
+              currentSubscriberHead.unsafeSet(updatedNode, journal)
+            }
+            builder.append(head)
+            n += 1
+          }
+          currentSubscriberHead = tail
+        }
+      }
+      self.subscriberHead.unsafeSet(currentSubscriberHead, journal)
+
+      return builder.build()
+    })
+  }
 }
-
-/**
- * Takes up to the specified number of values from the queue.
- *
- * @tsplus static ets/THub/TDequeue/Aspects takeUpTo
- */
-export const takeUpTo = Pipeable(takeUpTo_)

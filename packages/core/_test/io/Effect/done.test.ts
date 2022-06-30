@@ -7,9 +7,9 @@ describe.concurrent("Effect", () => {
       const error = ExampleError
       const program = Effect.Do()
         .bind("completed", () => Effect.done(Exit.succeed(1)))
-        .bind("interrupted", () => Effect.done(Exit.interrupt(fiberId)).exit())
-        .bind("terminated", () => Effect.done(Exit.die(error)).exit())
-        .bind("failed", () => Effect.done(Exit.fail(error)).exit())
+        .bind("interrupted", () => Effect.done(Exit.interrupt(fiberId)).exit)
+        .bind("terminated", () => Effect.done(Exit.die(error)).exit)
+        .bind("failed", () => Effect.done(Exit.fail(error)).exit)
 
       const { completed, failed, interrupted, terminated } = await program.unsafeRunPromise()
 

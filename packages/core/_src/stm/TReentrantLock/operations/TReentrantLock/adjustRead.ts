@@ -4,38 +4,36 @@ import { concreteTReentrantLock } from "@effect/core/stm/TReentrantLock/operatio
 import { InternalWriteLock } from "@effect/core/stm/TReentrantLock/operations/_internal/InternalWriteLock"
 
 /**
- * @tsplus fluent ets/TReentrantLock adjustRead
+ * @tsplus static effect/core/stm/TReentrantLock.Aspects adjustRead
+ * @tsplus pipeable effect/core/stm/TReentrantLock adjustRead
  */
-export function adjustRead_(self: TReentrantLock, delta: number): USTM<number> {
-  concreteTReentrantLock(self)
-  return STM.Effect((journal, fiberId) => {
-    const lock = self.data.unsafeGet(journal)
+export function adjustRead(delta: number) {
+  return (self: TReentrantLock): STM<never, never, number> => {
+    concreteTReentrantLock(self)
+    return STM.Effect((journal, fiberId) => {
+      const lock = self.data.unsafeGet(journal)
 
-    if (lock instanceof InternalReadLock) {
-      const res = lock.adjust(fiberId, delta)
+      if (lock instanceof InternalReadLock) {
+        const res = lock.adjust(fiberId, delta)
 
-      self.data.unsafeSet(res, journal)
+        self.data.unsafeSet(res, journal)
 
-      return res.readLocksHeld(fiberId)
-    }
-
-    if (lock instanceof InternalWriteLock && lock.fiberId == fiberId) {
-      const newTotal = lock.readLocks + delta
-
-      if (newTotal < 0) {
-        throw new Error(`Defect: Fiber ${fiberId} releasing read locks it does not hold, newTotal: ${newTotal}`)
+        return res.readLocksHeld(fiberId)
       }
 
-      self.data.unsafeSet(TReentrantLock.WriteLock(lock.writeLocks, newTotal, fiberId), journal)
+      if (lock instanceof InternalWriteLock && lock.fiberId == fiberId) {
+        const newTotal = lock.readLocks + delta
 
-      return newTotal
-    }
+        if (newTotal < 0) {
+          throw new Error(`Defect: Fiber ${fiberId} releasing read locks it does not hold, newTotal: ${newTotal}`)
+        }
 
-    throw new STMRetryException()
-  })
+        self.data.unsafeSet(TReentrantLock.WriteLock(lock.writeLocks, newTotal, fiberId), journal)
+
+        return newTotal
+      }
+
+      throw new STMRetryException()
+    })
+  }
 }
-
-/**
- * @tsplus static ets/TReentrantLock/Aspects adjustRead
- */
-export const adjustRead = Pipeable(adjustRead_)

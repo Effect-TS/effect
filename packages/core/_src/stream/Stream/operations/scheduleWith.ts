@@ -6,31 +6,24 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * its output at the end (if `schedule` is finite). Uses the provided function
  * to align the stream and schedule outputs on the same type.
  *
- * @tsplus fluent ets/Stream scheduleWith
+ * @tsplus static effect/core/stream/Stream.Aspects scheduleWith
+ * @tsplus pipeable effect/core/stream/Stream scheduleWith
  */
-export function scheduleWith_<R, E, A, S, R2, B, C>(
-  self: Stream<R, E, A>,
+export function scheduleWith<S, R2, A, B, C>(
   schedule: LazyArg<Schedule<S, R2, A, B>>,
   f: (a: A) => C,
   g: (b: B) => C,
   __tsplusTrace?: string
-): Stream<R | R2, E, C> {
-  concreteStream(self)
-  return new StreamInternal(
-    Channel.fromEffect(schedule().driver).flatMap(
-      (driver) => self.channel >> loop<R, R2, E, A, B, C>(driver, Chunk.empty<A>(), f, g, 0)
+) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E, C> => {
+    concreteStream(self)
+    return new StreamInternal(
+      Channel.fromEffect(schedule().driver).flatMap(
+        (driver) => self.channel >> loop<R, R2, E, A, B, C>(driver, Chunk.empty<A>(), f, g, 0)
+      )
     )
-  )
+  }
 }
-
-/**
- * Schedules the output of the stream using the provided `schedule` and emits
- * its output at the end (if `schedule` is finite). Uses the provided function
- * to align the stream and schedule outputs on the same type.
- *
- * @tsplus static ets/Stream/Aspects scheduleWith
- */
-export const scheduleWith = Pipeable(scheduleWith_)
 
 function loop<R, R2, E, A, B, C>(
   driver: Driver<unknown, R2, A, B>,
@@ -45,7 +38,7 @@ function loop<R, R2, E, A, B, C>(
       return driver.next(a).foldEffect(
         () =>
           driver.last
-            .orDie()
+            .orDie
             .map(
               (b) =>
                 Channel.write(Chunk(f(a), g(b))) >

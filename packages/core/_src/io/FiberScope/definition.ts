@@ -5,12 +5,12 @@ import type { FiberContext } from "@effect/core/io/Fiber/_internal/context"
  * fiber can be retrieved using `Effect.descriptor`, and when forking fibers,
  * you can specify a custom scope to fork them on by using the `forkIn`.
  *
- * @tsplus type ets/FiberScope
+ * @tsplus type effect/core/io/FiberScope
  */
 export type FiberScope = Global | Local
 
 /**
- * @tsplus type ets/FiberScope/Ops
+ * @tsplus type effect/core/io/FiberScope.Ops
  */
 export interface FiberScopeOps {}
 export const FiberScope: FiberScopeOps = {}
@@ -55,29 +55,25 @@ export class Local implements CommonScope {
   }
 }
 
-// -----------------------------------------------------------------------------
-// Constructors
-// -----------------------------------------------------------------------------
-
 /**
  * The global scope. Anything forked onto the global scope is not supervised,
  * and will only terminate on its own accord (never from interruption of a
  * parent fiber, because there is no parent fiber).
  *
- * @tsplus static ets/FiberScope/Ops global
+ * @tsplus static effect/core/io/FiberScope.Ops global
  */
 export const globalScope = LazyValue.make(() => new Global())
 
 /**
  * Unsafely creats a new `Scope` from a `Fiber`.
  *
- * @tsplus static ets/FiberScope/Ops unsafeMake
+ * @tsplus static effect/core/io/FiberScope.Ops unsafeMake
  */
 export function unsafeMake(fiber: FiberContext<any, any>): FiberScope {
   return new Local(fiber.fiberId, fiber)
 }
 
 /**
- * @tsplus static ets/FiberScope/Ops _roots
+ * @tsplus static effect/core/io/FiberScope.Ops _roots
  */
 export const _roots = LazyValue.make(() => new Set<FiberContext<any, any>>())

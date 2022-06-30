@@ -2,7 +2,7 @@
  * Feeds elements of type `A` to `f` in parallel and accumulates all errors,
  * discarding the successes.
  *
- * @tsplus static ets/Effect/Ops validateParDiscard
+ * @tsplus static effect/core/io/Effect.Ops validateParDiscard
  */
 export function validateParDiscard<R, E, A, X>(
   as: LazyArg<Collection<A>>,

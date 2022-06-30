@@ -2,13 +2,13 @@
  * Create an `Effect` that when executed will construct `promise` and wait for
  * its result, errors will be handled using `onReject`.
  *
- * @tsplus static ets/Effect/Ops tryCatchPromise
+ * @tsplus static effect/core/io/Effect.Ops tryCatchPromise
  */
 export function tryCatchPromise<E, A>(
   promise: LazyArg<Promise<A>>,
   onReject: (reason: unknown) => E,
   __tsplusTrace?: string
-): Effect.IO<E, A> {
+): Effect<never, E, A> {
   return Effect.succeed(promise).flatMap((promise) =>
     Effect.async<never, E, A>((resolve) => {
       promise
@@ -22,12 +22,12 @@ export function tryCatchPromise<E, A>(
  * Create an `Effect` that when executed will construct `promise` and wait for
  * its result, errors will produce failure as `unknown`.
  *
- * @tsplus static ets/Effect/Ops tryPromise
+ * @tsplus static effect/core/io/Effect.Ops tryPromise
  */
 export function tryPromise<A>(
   promise: LazyArg<Promise<A>>,
   __tsplusTrace?: string
-): Effect.IO<unknown, A> {
+): Effect<never, unknown, A> {
   return Effect.succeed(promise).flatMap((promise) =>
     Effect.async<never, unknown, A>((resolve) => {
       promise
@@ -40,7 +40,7 @@ export function tryPromise<A>(
 /**
  * Like `tryPromise` but produces a defect in case of errors.
  *
- * @tsplus static ets/Effect/Ops promise
+ * @tsplus static effect/core/io/Effect.Ops promise
  */
 export function promise<A>(
   promise: LazyArg<Promise<A>>,

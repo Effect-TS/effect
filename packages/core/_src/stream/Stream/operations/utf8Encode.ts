@@ -1,7 +1,7 @@
 import { utfEncodeFor } from "@effect/core/stream/Stream/operations/_internal/utfEncodeFor"
 
 /**
- * @tsplus fluent ets/Stream utf8Encode
+ * @tsplus getter effect/core/stream/Stream utf8Encode
  */
 export function utf8Encode<R, E>(
   self: Stream<R, E, string>,

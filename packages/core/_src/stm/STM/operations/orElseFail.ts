@@ -2,19 +2,9 @@
  * Tries this effect first, and if it fails or retries, fails with the
  * specified error.
  *
- * @tsplus fluent ets/STM orElseFail
+ * @tsplus static effect/core/stm/STM.Aspects orElseFail
+ * @tsplus pipeable effect/core/stm/STM orElseFail
  */
-export function orElseFail_<R, E, E1, A>(
-  self: STM<R, E, A>,
-  e: LazyArg<E1>
-): STM<R, E | E1, A> {
-  return self | STM.fail(e)
+export function orElseFail<E1>(e: LazyArg<E1>) {
+  return <R, E, A>(self: STM<R, E, A>): STM<R, E | E1, A> => self | STM.fail(e)
 }
-
-/**
- * Tries this effect first, and if it fails or retries, fails with the
- * specified error.
- *
- * @tsplus static ets/STM/Aspects orElseFail
- */
-export const orElseFail = Pipeable(orElseFail_)

@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/Channel/Ops writeChunk
+ * @tsplus static effect/core/stream/Channel.Ops writeChunk
  */
 export function writeChunk<Out>(
   outs: Chunk<Out>

@@ -3,7 +3,7 @@
  * no checked errors return the rest of the `Cause` that is known to contain
  * only `Die` or `Interrupt` causes.
  *
- * @tsplus getter ets/Cause failureOrCause
+ * @tsplus getter effect/core/io/Cause failureOrCause
  */
 export function failureOrCause<E>(self: Cause<E>): Either<E, Cause<never>> {
   return self.failureMaybe.fold(

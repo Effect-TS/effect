@@ -3,7 +3,7 @@ import { RuntimeFiberId } from "@effect/core/io/FiberId/definition"
 const _fiberCounter = new AtomicNumber(0)
 
 /**
- * @tsplus static ets/FiberId/Ops __call
+ * @tsplus static effect/core/io/FiberId.Ops __call
  */
 export function make(
   id: number,
@@ -14,7 +14,7 @@ export function make(
 }
 
 /**
- * @tsplus static ets/FiberId/Ops unsafeMake
+ * @tsplus static effect/core/io/FiberId.Ops unsafeMake
  */
 export function unsafeMake(location: TraceElement): FiberId.Runtime {
   return new RuntimeFiberId(

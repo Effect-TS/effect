@@ -1,7 +1,7 @@
 /**
  * Maps the error value of this effect to a left value.
  *
- * @tsplus fluent ets/Effect asLeftError
+ * @tsplus getter effect/core/io/Effect asLeftError
  */
 export function asLeftError<R, E, A>(
   self: Effect<R, E, A>,

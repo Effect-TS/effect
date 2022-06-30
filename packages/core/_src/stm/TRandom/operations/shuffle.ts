@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/TRandom/Ops shuffle
+ * @tsplus static effect/core/stm/TRandom.Ops shuffle
  */
 export function shuffle<A>(
   collection: LazyArg<Collection<A>>

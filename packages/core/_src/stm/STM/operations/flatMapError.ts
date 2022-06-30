@@ -2,19 +2,12 @@
  * Creates a composite effect that represents this effect followed by another
  * one that may depend on the error produced by this one.
  *
- * @tsplus fluent ets/STM flatMapError
+ * @tsplus static effect/core/stm/STM.Aspects flatMapError
+ * @tsplus pipeable effect/core/stm/STM flatMapError
  */
-export function flatMapError_<R, E, A, R2, E2>(
-  self: STM<R, E, A>,
-  f: (e: E) => STM<R2, never, E2>
-) {
-  return self.flipWith((_) => _.flatMap(f))
+export function flatMapError<E, R2, E2>(f: (e: E) => STM<R2, never, E2>) {
+  return <R, A>(self: STM<R, E, A>): STM<R | R2, E2, A> =>
+    self.flipWith(
+      (_) => _.flatMap(f)
+    )
 }
-
-/**
- * Creates a composite effect that represents this effect followed by another
- * one that may depend on the error produced by this one.
- *
- * @tsplus static ets/STM/Aspects flatMapError
- */
-export const flatMapError = Pipeable(flatMapError_)

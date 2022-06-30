@@ -8,7 +8,7 @@ import { unsafePollAllQueue } from "@effect/core/io/Hub/operations/_internal/uns
  * A `Strategy<A>` describes the protocol for how publishers and subscribers
  * will communicate with each other through the hub.
  *
- * @tsplus type ets/Hub/Strategy
+ * @tsplus type effect/core/io/Hub/Strategy
  */
 export interface Strategy<A> {
   /**
@@ -59,7 +59,7 @@ export interface Strategy<A> {
 }
 
 /**
- * @tsplus type ets/Hub/StrategyOps
+ * @tsplus type effect/core/io/Hub/Strategy.Ops
  */
 export interface StrategyOps {}
 export const Strategy: StrategyOps = {}
@@ -166,7 +166,7 @@ export class BackPressure<A> extends BaseStrategy<A> {
           ([_, deferred, last]) => last ? deferred.interruptAs(fiberId) : Effect.unit
         )
       )
-      .unit()
+      .unit
   }
 
   unsafeOnHubEmptySpace(
@@ -297,21 +297,21 @@ export class Sliding<A> extends BaseStrategy<A> {
 }
 
 /**
- * @tsplus static ets/Hub/StrategyOps BackPressure
+ * @tsplus static effect/core/io/Hub/Strategy.Ops BackPressure
  */
 export function backPressureStrategy<A>(): Strategy<A> {
   return new BackPressure<A>()
 }
 
 /**
- * @tsplus static ets/Hub/StrategyOps Dropping
+ * @tsplus static effect/core/io/Hub/Strategy.Ops Dropping
  */
 export function droppingStrategy<A>(): Strategy<A> {
   return new Dropping<A>()
 }
 
 /**
- * @tsplus static ets/Hub/StrategyOps Sliding
+ * @tsplus static effect/core/io/Hub/Strategy.Ops Sliding
  */
 export function slidingStrategy<A>(): Strategy<A> {
   return new Sliding<A>()

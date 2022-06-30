@@ -5,8 +5,8 @@ describe.concurrent("Effect", () => {
   describe.concurrent("RTS concurrency correctness", () => {
     it("shallow fork/join identity", async () => {
       const program = Effect.succeed(42)
-        .fork()
-        .flatMap((fiber) => fiber.join())
+        .fork
+        .flatMap((fiber) => fiber.join)
 
       const result = await program.unsafeRunPromise()
 
@@ -31,13 +31,13 @@ describe.concurrent("Effect", () => {
               Effect.acquireUseRelease(
                 acquire.succeed(undefined),
                 () => Effect.never,
-                () => release.succeed(42).unit()
+                () => release.succeed(42).unit
               )
             )
         )
-        .bind("fiber", ({ task }) => task.fork())
+        .bind("fiber", ({ task }) => task.fork)
         .tap(({ acquire }) => acquire.await())
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ release }) => release.await())
 
       const result = await program.unsafeRunPromise()
@@ -52,10 +52,10 @@ describe.concurrent("Effect", () => {
 
       const program = Effect.Do()
         .bind("ref", () => Ref.make(false))
-        .bind("fiber1", ({ ref }) => child(ref).forkDaemon().fork())
-        .bind("fiber2", ({ fiber1 }) => fiber1.join())
+        .bind("fiber1", ({ ref }) => child(ref).forkDaemon.fork)
+        .bind("fiber2", ({ fiber1 }) => fiber1.join)
         .bind("result", ({ ref }) => ref.get())
-        .tap(({ fiber2 }) => fiber2.interrupt())
+        .tap(({ fiber2 }) => fiber2.interrupt)
 
       const { result } = await program.unsafeRunPromise()
 
@@ -76,9 +76,9 @@ describe.concurrent("Effect", () => {
         .bindValue("inc", ({ interruptionRef }) => interruptionRef.updateAndGet((n) => n + 1))
         .bindValue("left", ({ inc, latch1Start }) => plus1(latch1Start, inc))
         .bindValue("right", ({ inc, latch2Start }) => plus1(latch2Start, inc))
-        .bind("fiber", ({ left, right }) => left.race(right).fork())
+        .bind("fiber", ({ left, right }) => left.race(right).fork)
         .tap(
-          ({ fiber, latch1Start, latch2Start }) => latch1Start.await() > latch2Start.await() > fiber.interrupt()
+          ({ fiber, latch1Start, latch2Start }) => latch1Start.await() > latch2Start.await() > fiber.interrupt
         )
         .flatMap(({ interruptionRef }) => interruptionRef.get())
 
@@ -105,10 +105,10 @@ describe.concurrent("Effect", () => {
             () => Effect.never,
             () => deferred2.succeed(undefined)
           ))
-        .bind("fiber", ({ loser1, loser2 }) => loser1.race(loser2).forkDaemon())
+        .bind("fiber", ({ loser1, loser2 }) => loser1.race(loser2).forkDaemon)
         .tap(({ latch1 }) => latch1.await())
         .tap(({ latch2 }) => latch2.await())
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .bind("res1", ({ deferred1 }) => deferred1.await())
         .bind("res2", ({ deferred2 }) => deferred2.await())
 
@@ -120,7 +120,7 @@ describe.concurrent("Effect", () => {
 
     it("supervise fibers", async () => {
       function makeChild(n: number): Effect.UIO<Fiber<never, void>> {
-        return (Effect.sleep(new Duration(20 * n)) > Effect.never).fork()
+        return (Effect.sleep(new Duration(20 * n)) > Effect.never).fork
       }
 
       const program = Ref.make(0)
@@ -128,7 +128,7 @@ describe.concurrent("Effect", () => {
           (makeChild(1) > makeChild(2)).ensuringChildren((fs) =>
             fs.reduce(
               Effect.unit,
-              (acc, fiber) => acc > fiber.interrupt() > ref.update((n) => n + 1)
+              (acc, fiber) => acc > fiber.interrupt > ref.update((n) => n + 1)
             )
           )
         )
@@ -140,7 +140,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("race of fail with success", async () => {
-      const program = Effect.fail(42).race(Effect.succeed(24)).either()
+      const program = Effect.fail(42).race(Effect.succeed(24)).either
 
       const result = await program.unsafeRunPromise()
 
@@ -156,7 +156,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("race of fail with fail", async () => {
-      const program = Effect.fail(42).race(Effect.fail(24)).either()
+      const program = Effect.fail(42).race(Effect.fail(24)).either
 
       const result = await program.unsafeRunPromise()
 
@@ -173,7 +173,7 @@ describe.concurrent("Effect", () => {
 
     it("race in uninterruptible region", async () => {
       const deferred = Deferred.unsafeMake<never, void>(FiberId.none)
-      const program = Effect.unit.race(deferred.await()).uninterruptible()
+      const program = Effect.unit.race(deferred.await()).uninterruptible
 
       const result = await program.unsafeRunPromise()
       await deferred.succeed(undefined).unsafeRunPromise()
@@ -191,7 +191,7 @@ describe.concurrent("Effect", () => {
           ({ fibers, latch, ref }) =>
             Effect.uninterruptibleMask(({ restore }) =>
               restore(latch.await().onInterrupt(() => ref.update((n) => n + 1)))
-                .fork()
+                .fork
                 .tap((fiber) => fibers.update((set) => set.add(fiber)))
             )
         )
@@ -210,7 +210,7 @@ describe.concurrent("Effect", () => {
       const program = Effect.firstSuccessOf([
         Effect.fail(0),
         Effect.succeed(100)
-      ]).either()
+      ]).either
 
       const result = await program.unsafeRunPromise()
 
@@ -221,7 +221,7 @@ describe.concurrent("Effect", () => {
       const program = Effect.firstSuccessOf([
         Effect.fail(0).delay((10).millis),
         Effect.fail(101)
-      ]).either()
+      ]).either
 
       const result = await program.unsafeRunPromise()
 
@@ -232,7 +232,7 @@ describe.concurrent("Effect", () => {
       const program = Effect.firstSuccessOf([
         Effect.fail(0),
         Effect.succeed(102).delay((1).millis)
-      ]).either()
+      ]).either
 
       const result = await program.unsafeRunPromise()
 
@@ -274,7 +274,7 @@ describe.concurrent("Effect", () => {
             () => effect.succeed(42)
           ))
         .bindValue("race", ({ loser, winner }) => winner.raceFirst(loser))
-        .tap(({ race }) => race.either())
+        .tap(({ race }) => race.either)
         .flatMap(({ effect }) => effect.await())
 
       const result = await program.unsafeRunPromise()

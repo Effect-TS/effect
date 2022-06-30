@@ -29,7 +29,7 @@ describe.concurrent("Sink", () => {
             () => Effect.fail("fail") as Effect<never, string, boolean>
           )
         )
-        .flip()
+        .flip
 
       const result = await program.unsafeRunPromise()
 

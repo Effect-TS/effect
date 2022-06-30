@@ -2,20 +2,10 @@
  * Returns an effect that, if evaluated, will return the cached result of this
  * effect. Cached results will expire after `timeToLive` duration.
  *
- * @tsplus fluent ets/Effect cached
+ * @tsplus static effect/core/io/Effect.Aspects cached
+ * @tsplus pipeable effect/core/io/Effect cached
  */
-export function cached_<R, E, A>(
-  self: Effect<R, E, A>,
-  timeToLive: Duration,
-  __tsplusTrace?: string
-): Effect<R, never, Effect.IO<E, A>> {
-  return self.cachedInvalidate(timeToLive).map((tuple) => tuple.get(0))
+export function cached(timeToLive: LazyArg<Duration>, __tsplusTrace?: string) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, never, Effect<never, E, A>> =>
+    self.cachedInvalidate(timeToLive).map((tuple) => tuple.get(0))
 }
-
-/**
- * Returns an effect that, if evaluated, will return the cached result of this
- * effect. Cached results will expire after `timeToLive` duration.
- *
- * @tsplus static ets/Effect/Aspects cached
- */
-export const cached = Pipeable(cached_)

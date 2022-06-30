@@ -3,7 +3,7 @@
  * are written out by this channel. This method may only be called on channels
  * that output other channels.
  *
- * @tsplus getter ets/Channel concatOut
+ * @tsplus getter effect/core/stream/Channel concatOut
  */
 export function concatOut<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<

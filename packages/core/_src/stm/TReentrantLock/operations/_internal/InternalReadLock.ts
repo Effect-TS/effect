@@ -7,7 +7,7 @@ export class InternalReadLock implements TReentrantLock.ReadLock {
 
   readonly writeLocks = 0
 
-  writeLocksHeld(fiberId: FiberId): number {
+  writeLocksHeld(_fiberId: FiberId): number {
     return 0
   }
 

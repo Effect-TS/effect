@@ -4,7 +4,7 @@ import { concreteTQueue } from "@effect/core/stm/TQueue/operations/_internal/Int
 /**
  * takeAlls all the values from the queue.
  *
- * @tsplus getter ets/TQueue takeAll
+ * @tsplus getter effect/core/stm/TQueue takeAll
  */
 export function takeAll<A>(self: TQueue<A>): USTM<Chunk<A>> {
   concreteTQueue(self)

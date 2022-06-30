@@ -2,20 +2,13 @@
  * Returns a new schedule that continues for as long the specified effectful
  * predicate on the output evaluates to true.
  *
- * @tsplus fluent ets/Schedule whileOutputEffect
- * @tsplus fluent ets/Schedule/WithState whileOutputEffect
+ * @tsplus static effect/core/io/Schedule.Aspects whileOutputEffect
+ * @tsplus pipeable effect/core/io/Schedule whileOutputEffect
  */
-export function whileOutputEffect_<State, Env, In, Out, Env1>(
-  self: Schedule<State, Env, In, Out>,
+export function whileOutputEffect<Out, Env1>(
   f: (out: Out) => Effect<Env1, never, boolean>
-): Schedule<State, Env | Env1, In, Out> {
-  return self.checkEffect((_, out) => f(out))
+) {
+  return <State, Env, In>(
+    self: Schedule<State, Env, In, Out>
+  ): Schedule<State, Env | Env1, In, Out> => self.checkEffect((_, out) => f(out))
 }
-
-/**
- * Returns a new schedule that continues for as long the specified effectful
- * predicate on the output evaluates to true.
- *
- * @tsplus static ets/Schedule/Aspects whileOutputEffect
- */
-export const whileOutputEffect = Pipeable(whileOutputEffect_)

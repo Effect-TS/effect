@@ -5,7 +5,7 @@
  *
  * The hub will be shut down once the stream is closed.
  *
- * @tsplus static ets/Stream/Ops fromChunkHubScopedWithShutdown
+ * @tsplus static effect/core/stream/Stream.Ops fromChunkHubScopedWithShutdown
  */
 export function fromChunkHubScopedWithShutdown<A>(
   hub: LazyArg<Hub<Chunk<A>>>,

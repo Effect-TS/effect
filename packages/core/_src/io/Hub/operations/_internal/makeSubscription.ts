@@ -56,8 +56,8 @@ export function unsafeMakeSubscription<A>(
         Effect.forEachPar(unsafePollAll(pollers), (deferred) => deferred.interruptAs(fiberId)) >
           Effect.succeed(subscription.unsubscribe()) >
           Effect.succeed(strategy.unsafeOnHubEmptySpace(hub, subscribers))
-      ).unit()
-    }).uninterruptible(),
+      ).unit
+    }).uninterruptible,
     isShutdown: Effect.succeed(shutdownFlag.get),
     take: Effect.suspendSucceedWith((_, fiberId) => {
       if (shutdownFlag.get) {

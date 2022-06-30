@@ -1,7 +1,7 @@
 /**
  * Creates a stream by peeling off the "layers" of a value of type `S`.
  *
- * @tsplus static ets/Stream/Ops unfold
+ * @tsplus static effect/core/stream/Stream.Ops unfold
  */
 export function unfold<S, A>(
   s: LazyArg<S>,

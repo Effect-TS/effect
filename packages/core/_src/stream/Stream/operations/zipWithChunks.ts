@@ -20,29 +20,20 @@ class PullRight<A> {
  *
  * The new stream will end when one of the sides ends.
  *
- * @tsplus fluent ets/Stream zipWithChunks
+ * @tsplus static effect/core/stream/Stream.Aspects zipWithChunks
+ * @tsplus pipeable effect/core/stream/Stream zipWithChunks
  */
-export function zipWithChunks_<R, E, A, R2, E2, A2, A3>(
-  self: Stream<R, E, A>,
+export function zipWithChunks<R2, E2, A2, A, A3>(
   that: LazyArg<Stream<R2, E2, A2>>,
   f: (
     leftChunk: Chunk<A>,
     rightChunk: Chunk<A2>
   ) => Tuple<[Chunk<A3>, Either<Chunk<A>, Chunk<A2>>]>,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, A3> {
-  return self.combineChunks(that, (): State<A, A2> => new PullBoth(), pull(f))
+) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A3> =>
+    self.combineChunks(that, (): State<A, A2> => new PullBoth(), pull(f))
 }
-
-/**
- * Zips this stream with another point-wise and applies the function to the
- * paired elements.
- *
- * The new stream will end when one of the sides ends.
- *
- * @tsplus static ets/Stream/Aspects zipWithChunks
- */
-export const zipWithChunks = Pipeable(zipWithChunks_)
 
 function zipWithChunksInternal<A, A2, A3>(
   leftChunk: Chunk<A>,
@@ -82,8 +73,8 @@ function pull<A, A2, A3>(
   ): Effect<R | R2, never, Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>> => {
     switch (state._tag) {
       case "PullBoth": {
-        return pullLeft.unsome()
-          .zipPar(pullRight.unsome())
+        return pullLeft.unsome
+          .zipPar(pullRight.unsome)
           .foldEffect(
             (err) => Effect.succeedNow(Exit.fail(Maybe.some(err))),
             ({ tuple: [left, right] }) => {

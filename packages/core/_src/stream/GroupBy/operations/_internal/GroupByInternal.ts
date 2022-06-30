@@ -2,6 +2,7 @@ import type { GroupBy, UniqueKey } from "@effect/core/stream/GroupBy/definition/
 import { GroupBySym } from "@effect/core/stream/GroupBy/definition/base"
 import { _A, _E, _K, _R, _V } from "@effect/core/stream/GroupBy/definition/symbols"
 import { mapDequeue } from "@effect/core/stream/GroupBy/operations/_internal/mapDequeue"
+import { constFalse, constTrue } from "@tsplus/stdlib/data/Function"
 
 export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
   readonly [GroupBySym]: GroupBySym = GroupBySym
@@ -27,7 +28,7 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
   ): Stream<R | R1, E | E1, A1> {
     return this.grouped().flatMapPar(
       Number.MAX_SAFE_INTEGER,
-      ({ tuple: [key, queue] }) => f(key, Stream.fromQueueWithShutdown(queue).flattenExitMaybe()),
+      ({ tuple: [key, queue] }) => f(key, Stream.fromQueueWithShutdown(queue).flattenExitMaybe),
       this.buffer
     )
   }
@@ -79,7 +80,7 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
                   )
           )
         )
-        .map(({ out }) => Stream.fromQueueWithShutdown(out).flattenExitMaybe())
+        .map(({ out }) => Stream.fromQueueWithShutdown(out).flattenExitMaybe)
     )
   }
 
@@ -122,7 +123,7 @@ export class FirstInternal<R, E, K, V, A> extends GroupByInternal<R, E, K, V, A>
   ): Stream<R, E, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>> {
     return super
       .grouped()
-      .zipWithIndex()
+      .zipWithIndex
       .filterEffect((elem) => {
         const {
           tuple: [
@@ -133,8 +134,8 @@ export class FirstInternal<R, E, K, V, A> extends GroupByInternal<R, E, K, V, A>
           ]
         } = elem
         return i < this.n
-          ? Effect.succeedNow(elem).as(() => true)
-          : queue.shutdown.as(() => false)
+          ? Effect.succeedNow(elem).as(constTrue)
+          : queue.shutdown.as(constFalse)
       })
       .map((tuple) => tuple.get(0))
   }

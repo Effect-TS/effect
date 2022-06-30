@@ -68,7 +68,7 @@ export function refWriter<A>(
 ): Channel<never, unknown, A, unknown, never, never, void> {
   return Channel.readWith(
     (a: A) =>
-      Channel.fromEffect(ref.update((list) => list.prepend(a)).unit()) >
+      Channel.fromEffect(ref.update((list) => list.prepend(a)).unit) >
         refWriter(ref),
     () => Channel.unit,
     () => Channel.unit

@@ -5,7 +5,7 @@ describe.concurrent("Stream", () => {
         .bind("ref", () => Ref.make(0))
         .tap(({ ref }) =>
           Stream(1)
-            .forever()
+            .forever
             .runForEachWhile(() => ref.modify((sum) => Tuple(sum >= 9 ? false : true, sum + 1)))
         )
         .flatMap(({ ref }) => ref.get())

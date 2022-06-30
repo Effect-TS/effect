@@ -1,20 +1,16 @@
 /**
  * Retrieves the `A` if succeeded, or else returns the specified default `A`.
  *
- * @tsplus fluent ets/Exit getOrElse
+ * @tsplus static effect/core/io/Exit.Aspects getOrElse
+ * @tsplus pipeable effect/core/io/Exit getOrElse
  */
-export function getOrElse_<E, A>(self: Exit<E, A>, orElse: (cause: Cause<E>) => A): A {
-  switch (self._tag) {
-    case "Failure":
-      return orElse(self.cause)
-    case "Success":
-      return self.value
+export function getOrElse<E, A>(orElse: (cause: Cause<E>) => A) {
+  return (self: Exit<E, A>): A => {
+    switch (self._tag) {
+      case "Failure":
+        return orElse(self.cause)
+      case "Success":
+        return self.value
+    }
   }
 }
-
-/**
- * Retrieves the `A` if succeeded, or else returns the specified default `A`.
- *
- * @tsplus static ets/Exit/Aspects getOrElse
- */
-export const getOrElse = Pipeable(getOrElse_)

@@ -2,7 +2,7 @@
  * Merges an `Collection<STM<R, E, A>>` to a single `STM<R, E, B>`, working
  * sequentially.
  *
- * @tsplus static ets/STM/Ops mergeAll
+ * @tsplus static effect/core/stm/STM.Ops mergeAll
  */
 export function mergeAll<R, E, A, B>(
   as: LazyArg<Collection<STM<R, E, A>>>,

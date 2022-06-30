@@ -46,7 +46,7 @@ describe.concurrent("Sink", () => {
     it("respects the given limit", async () => {
       const program = Stream.fromChunk(Chunk(1, 2, 3, 4))
         .transduce(Sink.collectAllN(3))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -56,7 +56,7 @@ describe.concurrent("Sink", () => {
     it("produces empty trailing chunks", async () => {
       const program = Stream.fromChunk(Chunk(1, 2, 3, 4))
         .transduce(Sink.collectAllN(4))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -66,7 +66,7 @@ describe.concurrent("Sink", () => {
     it("handles empty input", async () => {
       const program = Stream.fromChunk(Chunk.empty<number>())
         .transduce(Sink.collectAllN(3))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -88,7 +88,7 @@ describe.concurrent("Sink", () => {
     it("respects the given limit", async () => {
       const program = Stream.fromChunks(Chunk(1, 2, 1), Chunk(2, 3, 3, 4))
         .transduce(Sink.collectAllToSetN<number>(3))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -98,7 +98,7 @@ describe.concurrent("Sink", () => {
     it("handles empty input", async () => {
       const program = Stream.fromChunk(Chunk.empty<number>())
         .transduce(Sink.collectAllToSetN<number>(3))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -137,7 +137,7 @@ describe.concurrent("Sink", () => {
             (a, b) => a + b
           )
         )
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -163,7 +163,7 @@ describe.concurrent("Sink", () => {
             (a, b) => a + b
           )
         )
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -179,7 +179,7 @@ describe.concurrent("Sink", () => {
             (a, b) => a + b
           )
         )
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -191,7 +191,7 @@ describe.concurrent("Sink", () => {
     it("should drop elements while the predicate holds true", async () => {
       const program = Stream(1, 2, 3, 4, 5, 1, 2, 3, 4, 5)
         .pipeThrough(Sink.dropWhile<number>((n) => n < 3))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -203,7 +203,7 @@ describe.concurrent("Sink", () => {
     it("happy path", async () => {
       const program = Stream(1, 2, 3, 4, 5, 1, 2, 3, 4, 5)
         .pipeThrough(Sink.dropWhileEffect((n) => Effect.succeed(n < 3)))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -213,8 +213,8 @@ describe.concurrent("Sink", () => {
     it("error", async () => {
       const program = (Stream(1, 2, 3) + Stream.fail("boom") + Stream(5, 1, 2, 3, 4, 5))
         .pipeThrough(Sink.dropWhileEffect((n) => Effect.succeed(n < 3)))
-        .either()
-        .runCollect()
+        .either
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -383,11 +383,11 @@ describe.concurrent("Sink", () => {
             hub.subscribe.flatMap(
               (s) => deferred1.succeed(undefined) > deferred2.await() > s.takeAll
             )
-          ).fork())
+          ).fork)
         .tap(({ deferred1 }) => deferred1.await())
         .tap(({ hub }) => Stream(1, 2, 3).run(Sink.fromHub(hub)))
         .tap(({ deferred2 }) => deferred2.succeed(undefined))
-        .flatMap(({ fiber }) => fiber.join())
+        .flatMap(({ fiber }) => fiber.join)
 
       const result = await program.unsafeRunPromise()
 

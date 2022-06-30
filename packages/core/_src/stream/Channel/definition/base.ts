@@ -36,7 +36,7 @@ export type ChannelSym = typeof ChannelSym
  *    channels, which are all concatenated together. The first channel and the
  *    function that makes the other channels can be composed into a channel.
  *
- * @tsplus type ets/Channel
+ * @tsplus type effect/core/stream/Channel
  */
 export interface Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
   readonly [ChannelSym]: ChannelSym
@@ -50,7 +50,7 @@ export interface Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
 }
 
 /**
- * @tsplus type ets/Channel/Ops
+ * @tsplus type effect/core/stream/Channel.Ops
  */
 export interface ChannelOps {
   $: ChannelAspects
@@ -60,12 +60,12 @@ export const Channel: ChannelOps = {
 }
 
 /**
- * @tsplus type ets/Channel/Aspects
+ * @tsplus type effect/core/stream/Channel.Aspects
  */
 export interface ChannelAspects {}
 
 /**
- * @tsplus unify ets/Channel
+ * @tsplus unify effect/core/stream/Channel
  */
 export function unifyChannel<X extends Channel<any, any, any, any, any, any, any>>(self: X): Channel<
   [X] extends [{ [_Env]: () => infer Env }] ? Env : never,

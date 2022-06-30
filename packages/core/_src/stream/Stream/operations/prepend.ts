@@ -3,20 +3,15 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 /**
  * Emits the provided chunk before emitting any other value.
  *
- * @tsplus fluent ets/Stream prepend
+ * @tsplus static effect/core/stream/Stream.Aspects prepend
+ * @tsplus pipeable effect/core/stream/Stream prepend
  */
-export function prepend_<R, E, A, A2>(
-  stream: Stream<R, E, A>,
+export function prepend<A2>(
   values: LazyArg<Chunk<A2>>,
   __tsplusTrace?: string
-): Stream<R, E, A | A2> {
-  concreteStream(stream)
-  return new StreamInternal(Channel.write(values) > stream.channel)
+) {
+  return <R, E, A>(stream: Stream<R, E, A>): Stream<R, E, A | A2> => {
+    concreteStream(stream)
+    return new StreamInternal(Channel.write(values) > stream.channel)
+  }
 }
-
-/**
- * Emits the provided chunk before emitting any other value.
- *
- * @tsplus static ets/Stream/Aspects prepend
- */
-export const prepend = Pipeable(prepend_)

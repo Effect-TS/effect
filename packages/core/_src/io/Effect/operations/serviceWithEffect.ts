@@ -5,7 +5,7 @@
  * Especially useful for creating "accessor" methods on services' companion
  * objects.
  *
- * @tsplus static ets/Effect/Ops serviceWithEffect
+ * @tsplus static effect/core/io/Effect.Ops serviceWithEffect
  */
 export function serviceWithEffect<T, R, E, A>(
   tag: Tag<T>,

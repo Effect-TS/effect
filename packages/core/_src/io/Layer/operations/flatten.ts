@@ -1,7 +1,7 @@
 /**
  * Flattens nested layers.
  *
- * @tsplus fluent ets/Layer flatten
+ * @tsplus fluent effect/core/io/Layer flatten
  */
 export function flatten<R, E, R2, E2, A>(
   self: Layer<R, E, Layer<R2, E2, A>>,

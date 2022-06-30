@@ -3,32 +3,27 @@ import { makeSynthetic } from "@effect/core/io/Fiber/definition"
 /**
  * Effectually maps over the value the fiber computes.
  *
- * @tsplus fluent ets/Fiber mapEffect
- * @tsplus fluent ets/RuntimeFiber mapEffect
+ * @tsplus static effect/core/io/Fiber.Aspects mapEffect
+ * @tsplus static effect/core/io/RuntimeFiber.Aspects mapEffect
+ * @tsplus pipeable effect/core/io/Fiber mapEffect
+ * @tsplus pipeable effect/core/io/RuntimeFiber mapEffect
  */
-export function mapEffect_<E, E1, A, B>(
-  self: Fiber<E, A>,
-  f: (a: A) => Effect.IO<E1, B>,
+export function mapEffect<A, E2, A2>(
+  f: (a: A) => Effect<never, E2, A2>,
   __tsplusTrace?: string
-): Fiber<E | E1, B> {
-  return makeSynthetic({
-    id: self.id,
-    await: self.await().flatMap((_) => _.forEach(f)),
-    children: self.children(),
-    inheritRefs: self.inheritRefs(),
-    poll: self.poll().flatMap((_) =>
-      _.fold(
-        () => Effect.succeedNow(Maybe.none),
-        (exit) => exit.forEach(f).map(Maybe.some)
-      )
-    ),
-    interruptAs: (id) => self.interruptAs(id).flatMap((exit) => exit.forEach(f))
-  })
+) {
+  return <E>(self: Fiber<E, A>): Fiber<E | E2, A2> =>
+    makeSynthetic({
+      id: self.id,
+      await: self.await.flatMap((_) => _.forEach(f)),
+      children: self.children,
+      inheritRefs: self.inheritRefs,
+      poll: self.poll.flatMap((_) =>
+        _.fold(
+          () => Effect.succeedNow(Maybe.none),
+          (exit) => exit.forEach(f).map(Maybe.some)
+        )
+      ),
+      interruptAs: (id) => self.interruptAs(id).flatMap((exit) => exit.forEach(f))
+    })
 }
-
-/**
- * Effectually maps over the value the fiber computes.
- *
- * @tsplus static ets/Fiber/Aspects mapEffect
- */
-export const mapEffect = Pipeable(mapEffect_)

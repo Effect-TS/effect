@@ -5,7 +5,7 @@ import { concreteTQueue } from "@effect/core/stm/TQueue/operations/_internal/Int
  * Views the next element in the queue without removing it, retrying if the
  * queue is empty.
  *
- * @tsplus getter ets/TQueue peek
+ * @tsplus getter effect/core/stm/TQueue peek
  */
 export function peek<A>(self: TQueue<A>): USTM<A> {
   concreteTQueue(self)

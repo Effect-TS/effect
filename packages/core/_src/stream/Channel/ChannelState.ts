@@ -10,7 +10,7 @@ export const _E = Symbol.for("@effect/core/stream/Channel/ChannelState/E")
 export type _E = typeof _E
 
 /**
- * @tsplus type ets/Channel/State
+ * @tsplus type effect/core/stream/Channel/State
  */
 export interface ChannelState<R, E> {
   readonly [ChannelStateSym]: ChannelStateSym
@@ -59,13 +59,13 @@ export class ChannelStateRead<R, E> extends ChannelStateBase<R, E> {
 }
 
 /**
- * @tsplus type ets/Channel/State/Ops
+ * @tsplus type effect/core/stream/Channel/State.Ops
  */
 export interface ChannelStateOps {}
 export const ChannelState: ChannelStateOps = {}
 
 /**
- * @tsplus unify ets/Channel/State
+ * @tsplus unify effect/core/stream/Channel/State
  */
 export function unifyChannelState<X extends ChannelState<any, any>>(
   self: X
@@ -91,17 +91,17 @@ export function concreteChannelState<R, E>(
 }
 
 /**
- * @tsplus static ets/Channel/State/Ops Done
+ * @tsplus static effect/core/stream/Channel/State.Ops Done
  */
 export const channelStateDone: ChannelState<unknown, never> = new ChannelStateDone()
 
 /**
- * @tsplus static ets/Channel/State/Ops Emit
+ * @tsplus static effect/core/stream/Channel/State.Ops Emit
  */
 export const channelStateEmit: ChannelState<unknown, never> = new ChannelStateEmit()
 
 /**
- * @tsplus static ets/Channel/State/Ops Effect
+ * @tsplus static effect/core/stream/Channel/State.Ops Effect
  */
 export function channelStateEffect<R, E>(
   effect: Effect<R, E, unknown>
@@ -110,7 +110,7 @@ export function channelStateEffect<R, E>(
 }
 
 /**
- * @tsplus static ets/Channel/State/Ops Read
+ * @tsplus static effect/core/stream/Channel/State.Ops Read
  */
 export function channelStateRead<R, _E>(
   upstream: ErasedExecutor<R>,
@@ -122,7 +122,7 @@ export function channelStateRead<R, _E>(
 }
 
 /**
- * @tsplus fluent ets/Channel/State effectOrUnit
+ * @tsplus fluent effect/core/stream/Channel/State effectOrUnit
  */
 export function effectOrUnit<R, E>(
   self: ChannelState<R, E>,
@@ -133,12 +133,12 @@ export function effectOrUnit<R, E>(
 }
 
 /**
- * @tsplus fluent ets/Channel/State effectOrUndefinedIgnored
+ * @tsplus fluent effect/core/stream/Channel/State effectOrUndefinedIgnored
  */
 export function effectOrUndefinedIgnored<R, E>(
   self: ChannelState<R, E>,
   __tsplusTrace?: string
 ): Effect<R, never, void> | undefined {
   concreteChannelState(self)
-  return self._tag === "Effect" ? self.effect.ignore().unit() : undefined
+  return self._tag === "Effect" ? self.effect.ignore.unit : undefined
 }

@@ -16,7 +16,7 @@ describe.concurrent("Stream", () => {
       //       map.get(k).fold(map + (k -> v))(v1 => map + (k -> (v + v1)))
       //     }
       //   }.sorted
-      //   assertM(actual.runCollect())(equalTo(expected))
+      //   assertM(actual.runCollect)(equalTo(expected))
       // }
     })
   })
@@ -26,7 +26,7 @@ describe.concurrent("Stream", () => {
       const left = Stream.fromChunks(Chunk(1, 2), Chunk(3, 4), Chunk(5)) +
         Stream.fail("nothing to see here")
       const right = Stream.fromChunks(Chunk("a", "b"), Chunk("c"))
-      const program = left.zip(right).runCollect()
+      const program = left.zip(right).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -40,7 +40,7 @@ describe.concurrent("Stream", () => {
         chunkResult: Effect.succeed(left.flatten.zip(right.flatten)),
         streamResult: Stream.fromChunks(...left)
           .zip(Stream.fromChunks(...right))
-          .runCollect()
+          .runCollect
       })
 
       const { chunkResult, streamResult } = await program.unsafeRunPromise()
@@ -53,8 +53,8 @@ describe.concurrent("Stream", () => {
     it("prioritizes failure", async () => {
       const program = Stream.never
         .zipWith(Stream.fail("ouch"), () => Maybe.none)
-        .runCollect()
-        .either()
+        .runCollect
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -70,7 +70,7 @@ describe.concurrent("Stream", () => {
           })
         )
         .zipWith(Stream(1), (a, b) => a + b)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -82,8 +82,8 @@ describe.concurrent("Stream", () => {
     it("prioritizes failure", async () => {
       const program = Stream.never
         .zipAll(Stream.fail("ouch"), Maybe.none, Maybe.none)
-        .runCollect()
-        .either()
+        .runCollect
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -98,7 +98,7 @@ describe.concurrent("Stream", () => {
       const program = Stream.fromChunks(...left)
         .map(Maybe.some)
         .zipAll(Stream.fromChunks(...right).map(Maybe.some), Maybe.none, Maybe.none)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
       const expected = left.flatten.zipAllWith(
@@ -116,8 +116,8 @@ describe.concurrent("Stream", () => {
     it("equivalence with Chunk.zipWithIndex", async () => {
       const stream = Stream.range(0, 5)
       const program = Effect.struct({
-        streamResult: stream.zipWithIndex().runCollect(),
-        chunkResult: stream.runCollect().map((chunk) => chunk.zipWithIndex)
+        streamResult: stream.zipWithIndex.runCollect,
+        chunkResult: stream.runCollect.map((chunk) => chunk.zipWithIndex)
       })
 
       const { chunkResult, streamResult } = await program.unsafeRunPromise()
@@ -136,19 +136,19 @@ describe.concurrent("Stream", () => {
           Stream.fromChunkQueue(left)
             .zipWithLatest(Stream.fromChunkQueue(right), (a, b) => Tuple(a, b))
             .runIntoQueue(out)
-            .fork()
+            .fork
         )
         .tap(({ left }) => left.offer(Chunk.single(0)))
         .tap(({ right }) => right.offerAll(Chunk(Chunk.single(0), Chunk.single(1))))
         .bind("chunk1", ({ out }) =>
           out.take
-            .flatMap((take) => take.done())
+            .flatMap((take) => take.done)
             .replicateEffect(2)
             .map((chunk) => chunk.flatten))
         .tap(({ left }) => left.offerAll(Chunk(Chunk.single(1), Chunk.single(2))))
         .bind("chunk2", ({ out }) =>
           out.take
-            .flatMap((take) => take.done())
+            .flatMap((take) => take.done)
             .replicateEffect(2)
             .map((chunk) => chunk.flatten))
 
@@ -175,11 +175,11 @@ describe.concurrent("Stream", () => {
               (_, n) => n
             )
             .take(3)
-            .runCollect()
-            .fork())
+            .runCollect
+            .fork)
         .tap(({ latch }) => latch.await())
         .tap(({ deferred }) => deferred.succeed(2))
-        .flatMap(({ fiber }) => fiber.join())
+        .flatMap(({ fiber }) => fiber.join)
 
       const result = await program.unsafeRunPromise()
 
@@ -191,11 +191,11 @@ describe.concurrent("Stream", () => {
         0,
         (n) => Maybe.some(Tuple(n < 3 ? Chunk.empty<number>() : Chunk.single(2), n + 1))
       )
-        .unchunks()
-        .forever()
-        .zipWithLatest(Stream(1).forever(), (_, n) => n)
+        .unchunks
+        .forever
+        .zipWithLatest(Stream(1).forever, (_, n) => n)
         .take(3)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -210,7 +210,7 @@ describe.concurrent("Stream", () => {
       // } yield ZStream.fromChunks(chunks: _*)
       // check(genSortedStream, genSortedStream) { (left, right) =>
       //   for {
-      //     out <- left.zipWithLatest(right)(_ + _).runCollect()
+      //     out <- left.zipWithLatest(right)(_ + _).runCollect
       //   } yield assert(out)(isSorted)
       // }
     })
@@ -218,7 +218,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("zipWithNext", () => {
     it("should zip with next element for a single chunk", async () => {
-      const program = Stream(1, 2, 3).zipWithNext().runCollect()
+      const program = Stream(1, 2, 3).zipWithNext.runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -237,8 +237,8 @@ describe.concurrent("Stream", () => {
         Chunk.single(2),
         Chunk.single(3)
       )
-        .zipWithNext()
-        .runCollect()
+        .zipWithNext
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -252,7 +252,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("should play well with empty streams", async () => {
-      const program = Stream.empty.zipWithNext().runCollect()
+      const program = Stream.empty.zipWithNext.runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -263,8 +263,8 @@ describe.concurrent("Stream", () => {
       const chunks = Chunk(Chunk(1, 2), Chunk(3, 4), Chunk(5, 6, 7), Chunk(8))
       const stream = Stream.fromChunks(...chunks)
       const program = Effect.struct({
-        result0: stream.zipWithNext().runCollect(),
-        result1: stream.zipAll(stream.drop(1).map(Maybe.some), 0, Maybe.none).runCollect()
+        result0: stream.zipWithNext.runCollect,
+        result1: stream.zipAll(stream.drop(1).map(Maybe.some), 0, Maybe.none).runCollect
       })
 
       const { result0, result1 } = await program.unsafeRunPromise()
@@ -275,7 +275,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("zipWithPrevious", () => {
     it("should zip with previous element for a single chunk", async () => {
-      const program = Stream(1, 2, 3).zipWithPrevious().runCollect()
+      const program = Stream(1, 2, 3).zipWithPrevious.runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -294,8 +294,8 @@ describe.concurrent("Stream", () => {
         Chunk.single(2),
         Chunk.single(3)
       )
-        .zipWithPrevious()
-        .runCollect()
+        .zipWithPrevious
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -309,7 +309,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("should play well with empty streams", async () => {
-      const program = Stream.empty.zipWithPrevious().runCollect()
+      const program = Stream.empty.zipWithPrevious.runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -320,8 +320,8 @@ describe.concurrent("Stream", () => {
       const chunks = Chunk(Chunk(1, 2), Chunk(3, 4), Chunk(5, 6, 7), Chunk(8))
       const stream = Stream.fromChunks(...chunks)
       const program = Effect.struct({
-        result0: stream.zipWithPrevious().runCollect(),
-        result1: (Stream(Maybe.none) + stream.map(Maybe.some)).zip(stream).runCollect()
+        result0: stream.zipWithPrevious.runCollect,
+        result1: (Stream(Maybe.none) + stream.map(Maybe.some)).zip(stream).runCollect
       })
 
       const { result0, result1 } = await program.unsafeRunPromise()
@@ -332,7 +332,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("zipWithPreviousAndNext", () => {
     it("succeed", async () => {
-      const program = Stream(1, 2, 3).zipWithPreviousAndNext().runCollect()
+      const program = Stream(1, 2, 3).zipWithPreviousAndNext.runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -349,11 +349,11 @@ describe.concurrent("Stream", () => {
       const chunks = Chunk(Chunk(1, 2), Chunk(3, 4), Chunk(5, 6, 7), Chunk(8))
       const stream = Stream.fromChunks(...chunks)
       const program = Effect.struct({
-        result0: stream.zipWithPreviousAndNext().runCollect(),
+        result0: stream.zipWithPreviousAndNext.runCollect,
         result1: (Stream(Maybe.none) + stream.map(Maybe.some))
           .zipFlatten(stream)
           .zipFlatten(stream.drop(1).map(Maybe.some) + Stream(Maybe.none))
-          .runCollect()
+          .runCollect
       })
 
       const { result0, result1 } = await program.unsafeRunPromise()
@@ -368,7 +368,7 @@ describe.concurrent("Stream", () => {
         Stream(1, 2, 3),
         Stream("a", "b", "c"),
         Stream(true, false, true)
-      ).runCollect()
+      ).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -386,7 +386,7 @@ describe.concurrent("Stream", () => {
         Stream(1, 2, 3),
         Stream("a", "b", "c"),
         Stream(true, false)
-      ).runCollect()
+      ).runCollect
 
       const result = await program.unsafeRunPromise()
 

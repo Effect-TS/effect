@@ -5,7 +5,7 @@ import { IFiberRefModify } from "@effect/core/io/Effect/definition/primitives"
  * computes a return value for the modification. This is a more powerful
  * version of `update`.
  *
- * @tsplus fluent ets/FiberRef modify
+ * @tsplus fluent effect/core/io/FiberRef modify
  */
 export function modify_<A, B, P>(
   self: FiberRef<A, P>,
@@ -20,6 +20,6 @@ export function modify_<A, B, P>(
  * computes a return value for the modification. This is a more powerful
  * version of `update`.
  *
- * @tsplus static ets/FiberRef/Aspects modify
+ * @tsplus static effect/core/io/FiberRef.Aspects modify
  */
 export const modify = Pipeable(modify_)

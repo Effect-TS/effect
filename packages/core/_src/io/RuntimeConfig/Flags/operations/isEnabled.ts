@@ -1,11 +1,7 @@
 /**
- * @tsplus fluent ets/RuntimeConfigFlags isEnabled
+ * @tsplus static effect/core/io/RuntimeConfig/RuntimeConfigFlags.Aspects isEnabled
+ * @tsplus pipeable effect/core/io/RuntimeConfig/RuntimeConfigFlags isEnabled
  */
-export function isEnabled_(self: RuntimeConfigFlags, flag: RuntimeConfigFlag): boolean {
-  return self.flags.has(flag)
+export function isEnabled(flag: RuntimeConfigFlag) {
+  return (self: RuntimeConfigFlags): boolean => self.flags.has(flag)
 }
-
-/**
- * @tsplus type ets/RuntimeConfigFlags/Aspects isEnabled
- */
-export const isEnabled = Pipeable(isEnabled_)

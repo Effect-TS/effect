@@ -1,7 +1,7 @@
 /**
  * Unwraps the optional success of this effect, but can fail with an None value.
  *
- * @tsplus getter ets/STM get
+ * @tsplus getter effect/core/stm/STM get
  */
 export function get<R, E, A>(self: STM<R, E, Maybe<A>>): STM<R, Maybe<E>, A> {
   return self.foldSTM(

@@ -2,16 +2,12 @@
  * Atomically evaluate the conjunction of a predicate across the members of
  * the array.
  *
- * @tsplus fluent ets/TArray forAll
+ * @tsplus static effect/core/stm/TArray.Aspects forAll
+ * @tsplus pipeable effect/core/stm/TArray forAll
  */
-export function forAll_<A>(self: TArray<A>, f: Predicate<A>): USTM<boolean> {
-  return self.exists((a) => !f(a)).negate()
+export function forAll<A>(f: Predicate<A>) {
+  return (self: TArray<A>): STM<never, never, boolean> =>
+    self.exists(
+      (a) => !f(a)
+    ).negate
 }
-
-/**
- * Atomically evaluate the conjunction of a predicate across the members of
- * the array.
- *
- * @tsplus static ets/TArray/Aspects forAll
- */
-export const forAll = Pipeable(forAll_)

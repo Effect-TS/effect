@@ -4,20 +4,10 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * Transforms the environment being provided to this schedule with the
  * specified function.
  *
- * @tsplus fluent ets/Schedule provideSomeEnvironment
- * @tsplus fluent ets/Schedule/WithState provideSomeEnvironment
+ * @tsplus static effect/core/io/Schedule.Aspects provideSomeEnvironment
+ * @tsplus pipeable effect/core/io/Schedule provideSomeEnvironment
  */
-export function provideSomeEnvironment_<State, R0, R, In, Out>(
-  self: Schedule<State, R, In, Out>,
-  f: (env0: Env<R0>) => Env<R>
-): Schedule<State, R0, In, Out> {
-  return makeWithState(self._initial, (now, input, state) => self._step(now, input, state).provideSomeEnvironment(f))
+export function provideSomeEnvironment<R0, R>(f: (env0: Env<R0>) => Env<R>) {
+  return <State, In, Out>(self: Schedule<State, R, In, Out>): Schedule<State, R0, In, Out> =>
+    makeWithState(self._initial, (now, input, state) => self._step(now, input, state).provideSomeEnvironment(f))
 }
-
-/**
- * Transforms the environment being provided to this schedule with the
- * specified function.
- *
- * @tsplus static ets/Schedule/Aspects provideSomeEnvironment
- */
-export const provideSomeEnvironment = Pipeable(provideSomeEnvironment_)

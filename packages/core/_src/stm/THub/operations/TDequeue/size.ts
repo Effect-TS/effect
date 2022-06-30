@@ -4,9 +4,9 @@ import { concreteTDequeue } from "@effect/core/stm/THub/operations/_internal/Int
 /**
  * The current number of values in the queue.
  *
- * @tsplus getter ets/THub/TDequeue size
+ * @tsplus getter effect/core/stm/THub/TDequeue size
  */
-export function size<A>(self: THub.TDequeue<A>): USTM<number> {
+export function size<A>(self: THub.TDequeue<A>): STM<never, never, number> {
   concreteTDequeue(self)
   return STM.Effect((journal, fiberId) => {
     let currentSubscriberHead = self.subscriberHead.unsafeGet(journal)

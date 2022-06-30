@@ -11,7 +11,7 @@ describe.concurrent("Effect", () => {
     it("returns last failure", async () => {
       const program = (Effect.sleep((100).millis) > Effect.fail(24))
         .raceAll(List(Effect.fail(25)))
-        .flip()
+        .flip
 
       const result = await program.unsafeRunPromise()
 

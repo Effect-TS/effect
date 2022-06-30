@@ -1,24 +1,9 @@
 /**
- * @tsplus fluent ets/Channel ensuring
+ * @tsplus static effect/core/stream/Channel.Aspects ensuring
+ * @tsplus pipeable effect/core/stream/Channel ensuring
  */
-export function ensuring_<
-  Env,
-  Env1,
-  InErr,
-  InElem,
-  InDone,
-  OutErr,
-  OutElem,
-  OutDone,
-  Z
->(
-  self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
-  finalizer: LazyArg<Effect<Env1, never, Z>>
-): Channel<Env | Env1, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  return self.ensuringWith(finalizer)
+export function ensuring<Env1, Z>(finalizer: LazyArg<Effect<Env1, never, Z>>) {
+  return <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
+    self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+  ): Channel<Env | Env1, InErr, InElem, InDone, OutErr, OutElem, OutDone> => self.ensuringWith(finalizer)
 }
-
-/**
- * @tsplus static ets/Channel/Aspects ensuring
- */
-export const ensuring = Pipeable(ensuring_)

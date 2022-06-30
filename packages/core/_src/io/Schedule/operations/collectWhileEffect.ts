@@ -2,7 +2,7 @@
  * A schedule that recurs as long as the effectful condition holds, collecting
  * all inputs into a list.
  *
- * @tsplus static ets/Schedule/Ops collectWhileEffect
+ * @tsplus static effect/core/io/Schedule.Ops collectWhileEffect
  */
 export function collectWhileEffect<Env, A>(
   f: (a: A) => Effect<Env, never, boolean>

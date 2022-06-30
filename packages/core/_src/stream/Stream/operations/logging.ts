@@ -1,7 +1,7 @@
 /**
  * Logs the specified message at the current log level.
  *
- * @tsplus static ets/Stream/Ops log
+ * @tsplus static effect/core/stream/Stream.Ops log
  */
 export function log(
   message: LazyArg<string>,
@@ -12,6 +12,8 @@ export function log(
 
 /**
  * Logs the specified message at the debug log level.
+ *
+ * @tsplus static effect/core/stream/Stream.Ops logDebug
  */
 export function logDebug(
   message: LazyArg<string>,
@@ -22,6 +24,8 @@ export function logDebug(
 
 /**
  * Logs the specified message at the error log level.
+ *
+ * @tsplus static effect/core/stream/Stream.Ops logError
  */
 export function logError(
   message: LazyArg<string>,
@@ -32,6 +36,8 @@ export function logError(
 
 /**
  * Logs the specified cause as an error.
+ *
+ * @tsplus static effect/core/stream/Stream.Ops logErrorCause
  */
 export function logErrorCause<E>(
   cause: LazyArg<Cause<E>>,
@@ -42,6 +48,8 @@ export function logErrorCause<E>(
 
 /**
  * Logs the specified message at the fatal log level.
+ *
+ * @tsplus static effect/core/stream/Stream.Ops logFatal
  */
 export function logFatal(
   message: LazyArg<string>,
@@ -52,6 +60,8 @@ export function logFatal(
 
 /**
  * Logs the specified message at the informational log level.
+ *
+ * @tsplus static effect/core/stream/Stream.Ops logInfo
  */
 export function logInfo(
   message: LazyArg<string>,
@@ -62,6 +72,8 @@ export function logInfo(
 
 /**
  * Logs the specified message at the warning log level.
+ *
+ * @tsplus static effect/core/stream/Stream.Ops logWarning
  */
 export function logWarning(
   message: LazyArg<string>,
@@ -72,6 +84,8 @@ export function logWarning(
 
 /**
  * Logs the specified message at the trace log level.
+ *
+ * @tsplus static effect/core/stream/Stream.Ops logTrace
  */
 export function logTrace(
   message: LazyArg<string>,
@@ -82,6 +96,8 @@ export function logTrace(
 
 /**
  * Sets the log level for streams composed after this.
+ *
+ * @tsplus static effect/core/stream/Stream.Ops logLevel
  */
 export function logLevel(
   level: LazyArg<LogLevel>,
@@ -92,6 +108,8 @@ export function logLevel(
 
 /**
  * Adjusts the label for the logging span for streams composed after this.
+ *
+ * @tsplus static effect/core/stream/Stream.Ops logSpan
  */
 export function logSpan(
   label: LazyArg<string>,

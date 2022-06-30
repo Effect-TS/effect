@@ -6,10 +6,10 @@ describe.concurrent("Queue", () => {
       const program = Effect.Do()
         .bind("selfId", () => Effect.fiberId)
         .bind("queue", () => Queue.bounded<number>(3))
-        .bind("fiber", ({ queue }) => queue.take.fork())
+        .bind("fiber", ({ queue }) => queue.take.fork)
         .tap(({ queue }) => waitForSize(queue, -1))
         .tap(({ queue }) => queue.shutdown)
-        .bind("result", ({ fiber }) => fiber.join().sandbox().either())
+        .bind("result", ({ fiber }) => fiber.join.sandbox.either)
 
       const { result, selfId } = await program.unsafeRunPromise()
 
@@ -25,10 +25,10 @@ describe.concurrent("Queue", () => {
         .bind("queue", () => Queue.bounded<number>(2))
         .tap(({ queue }) => queue.offer(1))
         .tap(({ queue }) => queue.offer(1))
-        .bind("fiber", ({ queue }) => queue.offer(1).fork())
+        .bind("fiber", ({ queue }) => queue.offer(1).fork)
         .tap(({ queue }) => waitForSize(queue, 3))
         .tap(({ queue }) => queue.shutdown)
-        .bind("result", ({ fiber }) => fiber.join().sandbox().either())
+        .bind("result", ({ fiber }) => fiber.join.sandbox.either)
 
       const { result, selfId } = await program.unsafeRunPromise()
 
@@ -43,7 +43,7 @@ describe.concurrent("Queue", () => {
         .bind("selfId", () => Effect.fiberId)
         .bind("queue", () => Queue.bounded<number>(1))
         .tap(({ queue }) => queue.shutdown)
-        .bind("result", ({ queue }) => queue.offer(1).sandbox().either())
+        .bind("result", ({ queue }) => queue.offer(1).sandbox.either)
 
       const { result, selfId } = await program.unsafeRunPromise()
 
@@ -58,7 +58,7 @@ describe.concurrent("Queue", () => {
         .bind("selfId", () => Effect.fiberId)
         .bind("queue", () => Queue.bounded<number>(1))
         .tap(({ queue }) => queue.shutdown)
-        .bind("result", ({ queue }) => queue.take.sandbox().either())
+        .bind("result", ({ queue }) => queue.take.sandbox.either)
 
       const { result, selfId } = await program.unsafeRunPromise()
 
@@ -73,7 +73,7 @@ describe.concurrent("Queue", () => {
         .bind("selfId", () => Effect.fiberId)
         .bind("queue", () => Queue.bounded<number>(1))
         .tap(({ queue }) => queue.shutdown)
-        .bind("result", ({ queue }) => queue.takeAll.sandbox().either())
+        .bind("result", ({ queue }) => queue.takeAll.sandbox.either)
 
       const { result, selfId } = await program.unsafeRunPromise()
 
@@ -88,7 +88,7 @@ describe.concurrent("Queue", () => {
         .bind("selfId", () => Effect.fiberId)
         .bind("queue", () => Queue.bounded<number>(1))
         .tap(({ queue }) => queue.shutdown)
-        .bind("result", ({ queue }) => queue.takeUpTo(1).sandbox().either())
+        .bind("result", ({ queue }) => queue.takeUpTo(1).sandbox.either)
 
       const { result, selfId } = await program.unsafeRunPromise()
 
@@ -103,7 +103,7 @@ describe.concurrent("Queue", () => {
         .bind("selfId", () => Effect.fiberId)
         .bind("queue", () => Queue.bounded<number>(1))
         .tap(({ queue }) => queue.shutdown)
-        .bind("result", ({ queue }) => queue.size.sandbox().either())
+        .bind("result", ({ queue }) => queue.size.sandbox.either)
 
       const { result, selfId } = await program.unsafeRunPromise()
 
@@ -116,9 +116,9 @@ describe.concurrent("Queue", () => {
     it("shutdown race condition with offer", async () => {
       const program = Effect.Do()
         .bind("queue", () => Queue.bounded<number>(2))
-        .bind("fiber", ({ queue }) => queue.offer(1).forever().fork())
+        .bind("fiber", ({ queue }) => queue.offer(1).forever.fork)
         .tap(({ queue }) => queue.shutdown)
-        .tap(({ fiber }) => fiber.await())
+        .tap(({ fiber }) => fiber.await)
 
       const result = await program.unsafeRunPromise()
 
@@ -130,9 +130,9 @@ describe.concurrent("Queue", () => {
         .bind("queue", () => Queue.bounded<number>(2))
         .tap(({ queue }) => queue.offer(1))
         .tap(({ queue }) => queue.offer(1))
-        .bind("fiber", ({ queue }) => queue.take.forever().fork())
+        .bind("fiber", ({ queue }) => queue.take.forever.fork)
         .tap(({ queue }) => queue.shutdown)
-        .tap(({ fiber }) => fiber.await())
+        .tap(({ fiber }) => fiber.await)
 
       const result = await program.unsafeRunPromise()
 

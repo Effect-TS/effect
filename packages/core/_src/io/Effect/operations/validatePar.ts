@@ -2,23 +2,16 @@
  * Returns an effect that executes both this effect and the specified effect,
  * in parallel. Combines both Cause<E1>` when both effects fail.
  *
- * @tsplus fluent ets/Effect validatePar
+ * @tsplus static effect/core/io/Effect.Aspects validatePar
+ * @tsplus pipeable effect/core/io/Effect validatePar
  */
-export function validateParNow_<R, E, A, R1, E1, B>(
-  self: Effect<R, E, A>,
+export function validateParNow<R1, E1, B>(
   that: LazyArg<Effect<R1, E1, B>>,
   __tsplusTrace?: string
-): Effect<R | R1, E | E1, Tuple<[A, B]>> {
-  return self.validateWithPar(that, (a, b) => Tuple(a, b))
+) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R | R1, E | E1, Tuple<[A, B]>> =>
+    self.validateWithPar(that, (a, b) => Tuple(a, b))
 }
-
-/**
- * Returns an effect that executes both this effect and the specified effect,
- * in parallel. Combines both Cause<E1>` when both effects fail.
- *
- * @tsplus static ets/Effect/Aspects validatePar
- */
-export const validateParNow = Pipeable(validateParNow_)
 
 /**
  * Feeds elements of type `A` to `f `and accumulates, in parallel, all errors
@@ -27,7 +20,7 @@ export const validateParNow = Pipeable(validateParNow_)
  * This combinator is lossy meaning that if there are errors all successes
  * will be lost. To retain all information please use [[partitionPar]].
  *
- * @tsplus static ets/Effect/Ops validatePar
+ * @tsplus static effect/core/io/Effect.Ops validatePar
  */
 export function validatePar<R, E, A, B>(
   as: LazyArg<Collection<A>>,

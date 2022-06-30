@@ -3,8 +3,8 @@ describe.concurrent("Stream", () => {
     it("guarantee ordering", async () => {
       const stream = Stream(1, 2, 3, 4, 5)
       const program = Effect.struct({
-        flatMap: stream.flatMap((i) => Stream(i, i)).runCollect(),
-        flatMapPar: stream.flatMapPar(1, (i) => Stream(i, i)).runCollect()
+        flatMap: stream.flatMap((i) => Stream(i, i)).runCollect,
+        flatMapPar: stream.flatMapPar(1, (i) => Stream(i, i)).runCollect
       })
 
       const { flatMap, flatMapPar } = await program.unsafeRunPromise()
@@ -16,8 +16,8 @@ describe.concurrent("Stream", () => {
       const stream = Stream(1, 2, 3, 4, 5)
       const program = Random.nextIntBetween(1, 10000).flatMap((n) =>
         Effect.struct({
-          flatMap: stream.flatMap((i) => Stream(i, i)).runCollect(),
-          flatMapPar: stream.flatMapPar(n, (i) => Stream(i, i)).runCollect()
+          flatMap: stream.flatMap((i) => Stream(i, i)).runCollect,
+          flatMapPar: stream.flatMapPar(n, (i) => Stream(i, i)).runCollect
         })
       )
 
@@ -36,10 +36,10 @@ describe.concurrent("Stream", () => {
               Stream.fromEffect(
                 (latch.succeed(undefined) > Effect.never).onInterrupt(() => substreamCancelled.set(true))
               ))
-            .runDrain()
-            .fork())
+            .runDrain
+            .fork)
         .tap(({ latch }) => latch.await())
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ substreamCancelled }) => substreamCancelled.get())
 
       const result = await program.unsafeRunPromise()
@@ -59,8 +59,8 @@ describe.concurrent("Stream", () => {
             Stream.fromEffect(latch.await() > Effect.fail("ouch"))
           )
             .flatMapPar(2, identity)
-            .runDrain()
-            .either())
+            .runDrain
+            .either)
         .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
 
       const { cancelled, result } = await program.unsafeRunPromise()
@@ -81,8 +81,8 @@ describe.concurrent("Stream", () => {
                 Stream.fromEffect(
                   (latch.succeed(undefined) > Effect.never).onInterrupt(() => substreamCancelled.set(true))
                 ))
-              .runDrain()
-              .either()
+              .runDrain
+              .either
         )
         .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
 
@@ -105,8 +105,8 @@ describe.concurrent("Stream", () => {
             Stream.fromEffect(latch.await() > Effect.die(error))
           )
             .flatMapPar(2, identity)
-            .runDrain()
-            .exit())
+            .runDrain
+            .exit)
         .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
 
       const { cancelled, result } = await program.unsafeRunPromise()
@@ -128,8 +128,8 @@ describe.concurrent("Stream", () => {
                 Stream.fromEffect(
                   (latch.succeed(undefined) > Effect.never).onInterrupt(() => substreamCancelled.set(true))
                 ))
-              .runDrain()
-              .exit()
+              .runDrain
+              .exit
         )
         .bind("cancelled", ({ substreamCancelled }) => substreamCancelled.get())
 
@@ -150,7 +150,7 @@ describe.concurrent("Stream", () => {
         .tap(({ inner, push }) =>
           Stream.acquireRelease(push("OuterAcquire").as(inner), () => push("OuterRelease"))
             .flatMapPar(2, identity)
-            .runDrain()
+            .runDrain
         )
         .flatMap(({ effects }) => effects.get())
 

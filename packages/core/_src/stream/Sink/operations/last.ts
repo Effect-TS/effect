@@ -1,7 +1,7 @@
 /**
  * Creates a sink containing the last value.
  *
- * @tsplus static ets/Sink/Ops last
+ * @tsplus static effect/core/stream/Sink.Ops last
  */
 export function last<In>(
   __tsplusTrace?: string

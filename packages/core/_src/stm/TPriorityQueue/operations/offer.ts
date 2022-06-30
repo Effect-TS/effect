@@ -3,16 +3,12 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
 /**
  * Offers the specified value to the queue.
  *
- * @tsplus fluent ets/TPriorityQueue offer
+ * @tsplus static effect/core/stm/TPriorityQueue.Aspects offer
+ * @tsplus pipeable effect/core/stm/TPriorityQueue offer
  */
-export function offer_<A>(self: TPriorityQueue<A>, a: A): USTM<void> {
-  concreteTPriorityQueue(self)
-  return self.map.getAndUpdate((map) => map.set(a, Chunk.single(a))).map(() => STM.unit)
+export function offer<A>(value: A) {
+  return (self: TPriorityQueue<A>): STM<never, never, void> => {
+    concreteTPriorityQueue(self)
+    return self.map.getAndUpdate((map) => map.set(value, Chunk.single(value))).map(() => STM.unit)
+  }
 }
-
-/**
- * Offers the specified value to the queue.
- *
- * @tsplus static ets/TPriorityQueue/Aspects offer
- */
-export const offer = Pipeable(offer_)

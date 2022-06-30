@@ -1,7 +1,7 @@
 import { NumberService, NumberServiceImpl } from "@effect/core/test/stream/Channel/test-utils"
 
-describe("Channel", () => {
-  describe("provide", () => {
+describe.concurrent("Channel", () => {
+  describe.concurrent("provide", () => {
     it("simple provide", async () => {
       const program = Channel.fromEffect(Effect.service(NumberService))
         .provideService(NumberService, new NumberServiceImpl(100))

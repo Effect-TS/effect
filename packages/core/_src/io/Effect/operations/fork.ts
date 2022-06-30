@@ -21,7 +21,7 @@ import { IFork } from "@effect/core/io/Effect/definition/primitives"
  * fibers leak. This behavior is called "auto supervision", and if this
  * behavior is not desired, you may use the `forkDaemon` or `forkIn` methods.
  *
- * @tsplus fluent ets/Effect fork
+ * @tsplus getter effect/core/io/Effect fork
  */
 export function fork<R, E, A>(
   self: Effect<R, E, A>,

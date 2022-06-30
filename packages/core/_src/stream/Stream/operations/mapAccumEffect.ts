@@ -4,25 +4,19 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * Statefully and effectfully maps over the elements of this stream to produce
  * new elements.
  *
- * @tsplus fluent ets/Stream mapAccumEffect
+ * @tsplus static effect/core/stream/Stream.Aspects mapAccumEffect
+ * @tsplus pipeable effect/core/stream/Stream mapAccumEffect
  */
-export function mapAccumEffect_<R, E, A, R2, E2, A2, S>(
-  self: Stream<R, E, A>,
+export function mapAccumEffect<A, R2, E2, A2, S>(
   s: LazyArg<S>,
   f: (s: S, a: A) => Effect<R2, E2, Tuple<[S, A2]>>,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, A2> {
-  concreteStream(self)
-  return new StreamInternal(self.channel >> accumulator(s, f))
+) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A2> => {
+    concreteStream(self)
+    return new StreamInternal(self.channel >> accumulator(s, f))
+  }
 }
-
-/**
- * Statefully and effectfully maps over the elements of this stream to produce
- * new elements.
- *
- * @tsplus static ets/Stream/Aspects mapAccumEffect
- */
-export const mapAccumEffect = Pipeable(mapAccumEffect_)
 
 function accumulator<A, R2, E2, A2, S>(
   s: LazyArg<S>,

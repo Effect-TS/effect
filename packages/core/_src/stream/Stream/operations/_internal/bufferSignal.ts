@@ -6,13 +6,14 @@ export function bufferSignal<R, E, A>(
   __tsplusTrace?: string
 ): Channel<R, unknown, unknown, unknown, E, Chunk<A>, void> {
   return Channel.unwrapScoped(
-    Effect.Do()
-      .bind("queue", () => effect())
-      .bind("start", () => Deferred.make<never, void>())
-      .tap(({ start }) => start.succeed(undefined))
-      .bind("ref", ({ start }) => Ref.make(start))
-      .tap(({ queue, ref }) => (channel() >> producer<E, A>(queue, ref)).runScoped.fork())
-      .map(({ queue }) => consumer<E, A>(queue))
+    Do(($) => {
+      const queue = $(Effect.suspendSucceed(effect))
+      const start = $(Deferred.make<never, void>())
+      $(start.succeed(undefined))
+      const ref = $(Ref.make(start))
+      $((channel() >> producer<E, A>(queue, ref)).runScoped.fork)
+      return consumer(queue)
+    })
   )
 }
 
@@ -65,12 +66,13 @@ function terminate<E, A>(
   __tsplusTrace?: string
 ): Channel<never, E, Chunk<A>, unknown, never, never, unknown> {
   return Channel.fromEffect(
-    Effect.Do()
-      .bind("latch", () => ref.get())
-      .tap(({ latch }) => latch.await())
-      .bind("deferred", () => Deferred.make<never, void>())
-      .tap(({ deferred }) => queue.offer(Tuple(take, deferred)))
-      .tap(({ deferred }) => ref.set(deferred))
-      .map(({ deferred }) => deferred.await())
+    Do(($) => {
+      const latch = $(ref.get())
+      $(latch.await())
+      const deferred = $(Deferred.make<never, void>())
+      $(queue.offer(Tuple(take, deferred)))
+      $(ref.set(deferred))
+      return deferred.await()
+    })
   )
 }

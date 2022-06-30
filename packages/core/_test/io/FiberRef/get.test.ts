@@ -13,8 +13,8 @@ describe.concurrent("FiberRef", () => {
 
     it("returns the correct value for a child", async () => {
       const program = FiberRef.make(initial)
-        .flatMap((fiberRef) => fiberRef.get().fork())
-        .flatMap((fiber) => fiber.join())
+        .flatMap((fiberRef) => fiberRef.get().fork)
+        .flatMap((fiber) => fiber.join)
 
       const result = await Effect.scoped(program).unsafeRunPromise()
 

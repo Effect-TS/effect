@@ -5,8 +5,8 @@ describe.concurrent("Stream", () => {
     it("equivalence with Chunk.take", async () => {
       const stream = Stream(0, 1, 2, 3, 4, 5)
       const program = Effect.struct({
-        streamResult: stream.take(3).runCollect(),
-        chunkResult: stream.runCollect().map((chunk) => chunk.take(3))
+        streamResult: stream.take(3).runCollect,
+        chunkResult: stream.runCollect.map((chunk) => chunk.take(3))
       })
 
       const { chunkResult, streamResult } = await program.unsafeRunPromise()
@@ -17,8 +17,8 @@ describe.concurrent("Stream", () => {
     it("take short circuits", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(false))
-        .bindValue("stream", ({ ref }) => (Stream(1) + Stream.fromEffect(ref.set(true)).drain()).take(0))
-        .tap(({ stream }) => stream.runDrain())
+        .bindValue("stream", ({ ref }) => (Stream(1) + Stream.fromEffect(ref.set(true)).drain).take(0))
+        .tap(({ stream }) => stream.runDrain)
         .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
@@ -27,7 +27,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("take(0) short circuits", async () => {
-      const program = Stream.never.take(0).runCollect()
+      const program = Stream.never.take(0).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -35,7 +35,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("take(1) short circuits", async () => {
-      const program = (Stream(1) + Stream.never).take(1).runCollect()
+      const program = (Stream(1) + Stream.never).take(1).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -47,8 +47,8 @@ describe.concurrent("Stream", () => {
     it("equivalence with Chunk.takeRight", async () => {
       const stream = Stream(0, 1, 2, 3, 4, 5)
       const program = Effect.struct({
-        streamResult: stream.takeRight(3).runCollect(),
-        chunkResult: stream.runCollect().map((chunk) => chunk.takeRight(3))
+        streamResult: stream.takeRight(3).runCollect,
+        chunkResult: stream.runCollect.map((chunk) => chunk.takeRight(3))
       })
 
       const { chunkResult, streamResult } = await program.unsafeRunPromise()
@@ -62,9 +62,9 @@ describe.concurrent("Stream", () => {
       const f = (n: number) => n > 3
       const stream = Stream(0, 1, 2, 3, 4, 5)
       const program = Effect.struct({
-        streamResult: stream.takeUntil(f).runCollect(),
+        streamResult: stream.takeUntil(f).runCollect,
         chunkResult: stream
-          .runCollect()
+          .runCollect
           .map(
             (chunk) => chunk.takeWhile((n) => !f(n)) + chunk.dropWhile((n) => !f(n)).take(1)
           )
@@ -81,12 +81,12 @@ describe.concurrent("Stream", () => {
       const f = (n: number) => Effect.succeed(n > 3)
       const stream = Stream(0, 1, 2, 3, 4, 5)
       const program = Effect.struct({
-        streamResult: stream.takeUntilEffect(f).runCollect(),
-        chunkResult: stream.runCollect().flatMap((chunk) =>
+        streamResult: stream.takeUntilEffect(f).runCollect,
+        chunkResult: stream.runCollect.flatMap((chunk) =>
           chunk
-            .takeWhileEffect((n) => f(n).negate())
+            .takeWhileEffect((n) => f(n).negate)
             .zipWith(
-              chunk.dropWhileEffect((n) => f(n).negate()).map((chunk) => chunk.take(1)),
+              chunk.dropWhileEffect((n) => f(n).negate).map((chunk) => chunk.take(1)),
               (a, b) => a + b
             )
         )
@@ -100,8 +100,8 @@ describe.concurrent("Stream", () => {
     it("laziness on chunks", async () => {
       const program = Stream(1, 2, 3)
         .takeUntilEffect((n) => n === 2 ? Effect.fail("boom") : Effect.succeed(constFalse))
-        .either()
-        .runCollect()
+        .either
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -119,8 +119,8 @@ describe.concurrent("Stream", () => {
       const f = (n: number) => n < 3
       const stream = Stream(0, 1, 2, 3, 4, 5)
       const program = Effect.struct({
-        streamResult: stream.takeWhile(f).runCollect(),
-        chunkResult: stream.runCollect().map((chunk) => chunk.takeWhile(f))
+        streamResult: stream.takeWhile(f).runCollect,
+        chunkResult: stream.runCollect.map((chunk) => chunk.takeWhile(f))
       })
 
       const { chunkResult, streamResult } = await program.unsafeRunPromise()
@@ -132,7 +132,7 @@ describe.concurrent("Stream", () => {
       const program = Stream.fromChunks(Chunk(1), Chunk(2), Chunk(3))
         .mapChunks((chunk) => chunk.flatMap((n) => (n === 2 ? Chunk.empty() : Chunk(n))))
         .takeWhile((n) => n !== 4)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -142,8 +142,8 @@ describe.concurrent("Stream", () => {
     it("takeWhile short circuits", async () => {
       const program = (Stream(1) + Stream("ouch"))
         .takeWhile(constFalse)
-        .runDrain()
-        .either()
+        .runDrain
+        .either
 
       const result = await program.unsafeRunPromise()
 

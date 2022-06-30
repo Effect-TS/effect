@@ -12,7 +12,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("memoized returns the same instance on repeated calls", async () => {
-      const ioMemo = Random.nextInt.memoize()
+      const ioMemo = Random.nextInt.memoize
       const program = ioMemo.flatMap((io) => io.zip(io))
 
       const {

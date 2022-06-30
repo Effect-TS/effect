@@ -5,7 +5,7 @@ describe.concurrent("Stream", () => {
       const stream2 = Stream(4, 5, 6)
       const program = stream1
         .orElse(stream2)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -19,7 +19,7 @@ describe.concurrent("Stream", () => {
       const stream2 = Stream.succeed(2)
       const program = stream1
         .orElseEither(stream2)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -30,7 +30,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("orElseFail", () => {
     it("simple example", async () => {
       const stream = Stream.succeed(1) + Stream.fail("boom")
-      const program = stream.orElseFail("boomer").runCollect().either()
+      const program = stream.orElseFail("boomer").runCollect.either
 
       const result = await program.unsafeRunPromise()
 
@@ -44,7 +44,7 @@ describe.concurrent("Stream", () => {
       const stream2 = Stream.succeed(2)
       const program = stream1
         .orElseOptional(stream2)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -57,7 +57,7 @@ describe.concurrent("Stream", () => {
       const stream = Stream.succeed(1) + Stream.fail(Maybe.none)
       const program = stream
         .orElseSucceed(2)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 

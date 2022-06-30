@@ -3,7 +3,7 @@ describe.concurrent("Stream", () => {
     it("simple example", async () => {
       const program = Stream(1, 2, 3, 4, 5)
         .scan(0, (s, a) => s + a)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -15,7 +15,7 @@ describe.concurrent("Stream", () => {
     it("simple example", async () => {
       const program = Stream(1, 2, 3, 4, 5)
         .scanReduce((s, a) => s + a)
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 

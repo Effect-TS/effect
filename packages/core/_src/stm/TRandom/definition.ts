@@ -4,7 +4,7 @@ export const TRandomSym = Symbol.for("@effect/core/stm/TRandom")
 export type TRandomSym = typeof TRandomSym
 
 /**
- * @tsplus type ets/TRandom
+ * @tsplus type effect/core/stm/TRandom
  */
 export interface TRandom {
   readonly [TRandomSym]: TRandomSym
@@ -18,7 +18,7 @@ export interface TRandom {
 }
 
 /**
- * @tsplus type ets/TRandom/Ops
+ * @tsplus type effect/core/stm/TRandom.Ops
  */
 export interface TRandomOps {
   $: TRandomAspects
@@ -30,6 +30,6 @@ export const TRandom: TRandomOps = {
 }
 
 /**
- * @tsplus type ets/TRandom/Aspects
+ * @tsplus type effect/core/stm/TRandom.Aspects
  */
 export interface TRandomAspects {}

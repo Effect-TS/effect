@@ -3,7 +3,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
 /**
  * A sink that takes the specified number of values.
  *
- * @tsplus static ets/Sink/Ops take
+ * @tsplus static effect/core/stream/Sink.Ops take
  */
 export function take<In>(
   n: number,

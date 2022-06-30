@@ -1,7 +1,7 @@
 /**
  * Lifts an `Maybe` into a `STM`.
  *
- * @tsplus static ets/STM/Ops fromMaybe
+ * @tsplus static effect/core/stm/STM.Ops fromMaybe
  */
 export function fromMaybe<A>(
   option: LazyArg<Maybe<A>>

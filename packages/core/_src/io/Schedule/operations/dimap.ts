@@ -1,20 +1,14 @@
 /**
  * Returns a new schedule that contramaps the input and maps the output.
  *
- * @tsplus fluent ets/Schedule dimap
- * @tsplus fluent ets/Schedule/WithState dimap
+ * @tsplus static effect/core/io/Schedule.Aspects dimap
+ * @tsplus pipeable effect/core/io/Schedule dimap
  */
-export function dimap_<State, Env, In, Out, In2, Out2>(
-  self: Schedule<State, Env, In, Out>,
+export function dimap<In, Out, In2, Out2>(
   f: (in2: In2) => In,
   g: (out: Out) => Out2
-): Schedule<State, Env, In2, Out2> {
-  return self.contramap(f).map(g)
+) {
+  return <State, Env>(
+    self: Schedule<State, Env, In, Out>
+  ): Schedule<State, Env, In2, Out2> => self.contramap(f).map(g)
 }
-
-/**
- * Returns a new schedule that contramaps the input and maps the output.
- *
- * @tsplus static ets/Schedule/Aspects dimap
- */
-export const dimap = Pipeable(dimap_)

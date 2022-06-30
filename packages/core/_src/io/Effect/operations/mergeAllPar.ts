@@ -9,7 +9,7 @@
  * It's unsafe to execute side effects inside `f`, as `f` may be executed
  * more than once for some of `in` elements during effect execution.
  *
- * @tsplus static ets/Effect/Ops mergeAllPar
+ * @tsplus static effect/core/io/Effect.Ops mergeAllPar
  */
 export function mergeAllPar<R, E, A, B>(
   as: LazyArg<Collection<Effect<R, E, A>>>,

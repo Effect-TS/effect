@@ -1,7 +1,7 @@
 import { concreteStream } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
- * @tsplus fluent ets/Stream toPull
+ * @tsplus getter effect/core/stream/Stream toPull
  */
 export function toPull<R, E, A>(
   self: Stream<R, E, A>,

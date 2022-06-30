@@ -9,7 +9,7 @@ describe.concurrent("TQueue", () => {
         const size = $(tq.size)
 
         return size === 5
-      }).commit()
+      }).commit
 
       const result = await tx.unsafeRunPromise()
 
@@ -25,7 +25,7 @@ describe.concurrent("TQueue", () => {
         const size = $(tq.size)
 
         return next === 1 && size === 5
-      }).commit()
+      }).commit
 
       const result = await tx.unsafeRunPromise()
 
@@ -41,7 +41,7 @@ describe.concurrent("TQueue", () => {
         const size = $(tq.size)
 
         return next == Maybe.some(1) && size === 5
-      }).commit()
+      }).commit
 
       const result = await tx.unsafeRunPromise()
 
@@ -54,7 +54,7 @@ describe.concurrent("TQueue", () => {
         const next = $(tq.peekMaybe)
 
         return next.isNone()
-      }).commit()
+      }).commit
 
       const result = await tx.unsafeRunPromise()
 
@@ -71,7 +71,7 @@ describe.concurrent("TQueue", () => {
         const qb2 = $(tq2.isEmpty)
 
         return qb1 === false && qb2 === true
-      }).commit()
+      }).commit
 
       const result = await tx.unsafeRunPromise()
 
@@ -88,7 +88,7 @@ describe.concurrent("TQueue", () => {
         const qb2 = $(tq2.isFull)
 
         return qb1 === true && qb2 === false
-      }).commit()
+      }).commit
 
       const result = await tx.unsafeRunPromise()
 

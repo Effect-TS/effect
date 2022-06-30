@@ -7,7 +7,7 @@ describe.concurrent("Metrics", () => {
 
       const program = Effect.unit / counter >
         Effect.unit / counter >
-        counter.value()
+        counter.value
 
       const result = await program.unsafeRunPromise()
 
@@ -17,7 +17,7 @@ describe.concurrent("Metrics", () => {
     it("direct increment", async () => {
       const counter = Metric.counter("c2").taggedWithLabels(labels)
 
-      const program = counter.increment() > counter.increment() > counter.value()
+      const program = counter.increment > counter.increment > counter.value
 
       const result = await program.unsafeRunPromise()
 
@@ -29,7 +29,7 @@ describe.concurrent("Metrics", () => {
 
       const program = Effect.succeed(10) / counter >
         Effect.succeed(5) / counter >
-        counter.value()
+        counter.value
 
       const result = await program.unsafeRunPromise()
 
@@ -39,7 +39,7 @@ describe.concurrent("Metrics", () => {
     it("direct increment referential transparency", async () => {
       const program = Effect.unit / Metric.counter("c4").taggedWithLabels(labels).fromConst(1) >
         Effect.unit / Metric.counter("c4").taggedWithLabels(labels).fromConst(1) >
-        Metric.counter("c4").taggedWithLabels(labels).value()
+        Metric.counter("c4").taggedWithLabels(labels).value
 
       const result = await program.unsafeRunPromise()
 
@@ -49,7 +49,7 @@ describe.concurrent("Metrics", () => {
     it("custom increment referential transparency", async () => {
       const program = Effect.succeed(10) / Metric.counter("c5").taggedWithLabels(labels) >
         Effect.succeed(5) / Metric.counter("c5").taggedWithLabels(labels) >
-        Metric.counter("c5").taggedWithLabels(labels).value()
+        Metric.counter("c5").taggedWithLabels(labels).value
 
       const result = await program.unsafeRunPromise()
 
@@ -65,7 +65,7 @@ describe.concurrent("Metrics", () => {
             .counter("c6")
             .taggedWithLabels(labels)
             .contramap((input: string) => input.length)
-        > Metric.counter("c6").taggedWithLabels(labels).value()
+        > Metric.counter("c6").taggedWithLabels(labels).value
 
       const result = await program.unsafeRunPromise()
 
@@ -78,7 +78,7 @@ describe.concurrent("Metrics", () => {
       const program = (
         Effect.unit / counter >
           Effect.fail("error") / counter
-      ).ignore() > counter.value()
+      ).ignore > counter.value
 
       const result = await program.unsafeRunPromise()
 
@@ -92,7 +92,7 @@ describe.concurrent("Metrics", () => {
       const program = Effect.succeed("hello") / counter >
         Effect.succeed("!") / counter >
         Effect.succeed("!") / counter >
-        base.tagged("dyn", "!").value()
+        base.tagged("dyn", "!").value
 
       const result = await program.unsafeRunPromise()
 

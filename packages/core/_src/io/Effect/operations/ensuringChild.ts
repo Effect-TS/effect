@@ -3,21 +3,13 @@
  * guaranteeing the specified callback will be invoked, whether or not this
  * effect succeeds.
  *
- * @tsplus fluent ets/Effect ensuringChild
+ * @tsplus static effect/core/io/Effect.Aspects ensuringChild
+ * @tsplus pipeable effect/core/io/Effect ensuringChild
  */
-export function ensuringChild_<R, E, A, R2, X>(
-  self: Effect<R, E, A>,
+export function ensuringChild<R2, X>(
   f: (_: Fiber<any, Chunk<unknown>>) => Effect<R2, never, X>,
   __tsplusTrace?: string
-): Effect<R | R2, E, A> {
-  return self.ensuringChildren((children) => f(Fiber.collectAll(children)))
+) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E, A> =>
+    self.ensuringChildren((children) => f(Fiber.collectAll(children)))
 }
-
-/**
- * Acts on the children of this fiber (collected into a single fiber),
- * guaranteeing the specified callback will be invoked, whether or not
- * this effect succeeds.
- *
- * @tsplus static ets/Effect/Aspects ensuringChild
- */
-export const ensuringChild = Pipeable(ensuringChild_)

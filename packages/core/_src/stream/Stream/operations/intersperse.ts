@@ -3,23 +3,18 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 /**
  * Intersperse stream with provided element.
  *
- * @tsplus fluent ets/Stream intersperse
+ * @tsplus static effect/core/stream/Stream.Aspects intersperse
+ * @tsplus pipeable effect/core/stream/Stream intersperse
  */
-export function intersperse_<R, E, A, A2>(
-  self: Stream<R, E, A>,
+export function intersperse<A2>(
   middle: LazyArg<A2>,
   __tsplusTrace?: string
-): Stream<R, E, A | A2> {
-  concreteStream(self)
-  return new StreamInternal(self.channel >> writer<R, E, A, A2>(middle(), true))
+) {
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A | A2> => {
+    concreteStream(self)
+    return new StreamInternal(self.channel >> writer<R, E, A, A2>(middle(), true))
+  }
 }
-
-/**
- * Intersperse stream with provided element.
- *
- * @tsplus static ets/Stream/Aspects intersperse
- */
-export const intersperse = Pipeable(intersperse_)
 
 function writer<R, E, A, A2>(
   middle: A2,

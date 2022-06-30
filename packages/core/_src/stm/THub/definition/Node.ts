@@ -1,5 +1,5 @@
 /**
- * @tsplus type ets/THub/Node
+ * @tsplus type effect/core/stm/THub/Node
  */
 export interface Node<A> {
   readonly head: A
@@ -7,6 +7,6 @@ export interface Node<A> {
   readonly tail: TRef<Node<A>>
 }
 /**
- * @tsplus type ets/THub/Node/Ops
+ * @tsplus type effect/core/stm/THub/Node.Ops
  */
 export interface NodeOps {}

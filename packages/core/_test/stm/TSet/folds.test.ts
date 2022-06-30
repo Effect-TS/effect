@@ -7,7 +7,7 @@ describe.concurrent("TSet", () => {
 
         return res === 6
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
@@ -18,7 +18,7 @@ describe.concurrent("TSet", () => {
 
         return res === 0
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
@@ -29,7 +29,7 @@ describe.concurrent("TSet", () => {
 
         return res === 6
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
@@ -40,7 +40,7 @@ describe.concurrent("TSet", () => {
 
         return res === 0
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })
@@ -52,7 +52,7 @@ describe.concurrent("TSet", () => {
 
         return res == elems
       })
-      const result = await tx.commit().unsafeRunPromise()
+      const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
     })

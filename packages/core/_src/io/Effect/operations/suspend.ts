@@ -3,7 +3,7 @@
  * effects. When no environment is required (i.e., when `R == unknown`) it is
  * conceptually equivalent to `flatten(succeed(io))`.
  *
- * @tsplus static ets/Effect/Ops suspend
+ * @tsplus static effect/core/io/Effect.Ops suspend
  */
 export function suspend<R, E, A>(
   f: LazyArg<Effect<R, E, A>>,

@@ -1,7 +1,7 @@
 /**
  * A schedule that recurs during the given duration.
  *
- * @tsplus static ets/Schedule/Ops upTo
+ * @tsplus static effect/core/io/Schedule.Ops recurUpTo
  */
 export function recurUpTo(
   duration: Duration

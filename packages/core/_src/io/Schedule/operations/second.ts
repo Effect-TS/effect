@@ -3,8 +3,7 @@
  * into the second element of a tuple. This allows carrying information
  * through this schedule.
  *
- * @tsplus getter ets/Schedule second
- * @tsplus getter ets/Schedule/WithState second
+ * @tsplus getter effect/core/io/Schedule second
  */
 export function second<State, Env, In, Out, X>(
   self: Schedule<State, Env, In, Out>

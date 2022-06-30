@@ -3,7 +3,7 @@ import { ExampleError } from "@effect/core/test/io/Effect/test-utils"
 describe.concurrent("Effect", () => {
   describe.concurrent("isFailure", () => {
     it("returns true when the effect is a failure", async () => {
-      const program = Effect.fail("fail").isFailure()
+      const program = Effect.fail("fail").isFailure
 
       const result = await program.unsafeRunPromise()
 
@@ -11,7 +11,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("returns false when the effect is a success", async () => {
-      const program = Effect.succeed("succeed").isFailure()
+      const program = Effect.succeed("succeed").isFailure
 
       const result = await program.unsafeRunPromise()
 
@@ -21,7 +21,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("isSuccess", () => {
     it("returns false when the effect is a failure", async () => {
-      const program = Effect.fail("fail").isSuccess()
+      const program = Effect.fail("fail").isSuccess
 
       const result = await program.unsafeRunPromise()
 
@@ -29,7 +29,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("returns true when the effect is a success", async () => {
-      const program = Effect.succeed("succeed").isSuccess()
+      const program = Effect.succeed("succeed").isSuccess
 
       const result = await program.unsafeRunPromise()
 
@@ -273,7 +273,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("option", () => {
     it("return success in Some", async () => {
-      const program = Effect.succeed(11).option()
+      const program = Effect.succeed(11).option
 
       const result = await program.unsafeRunPromise()
 
@@ -281,7 +281,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("return failure as None", async () => {
-      const program = Effect.fail(123).option()
+      const program = Effect.fail(123).option
 
       const result = await program.unsafeRunPromise()
 
@@ -289,7 +289,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("not catch throwable", async () => {
-      const program = Effect.die(ExampleError).option()
+      const program = Effect.die(ExampleError).option
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -297,7 +297,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("catch throwable after sandboxing", async () => {
-      const program = Effect.die(ExampleError).sandbox().option()
+      const program = Effect.die(ExampleError).sandbox.option
 
       const result = await program.unsafeRunPromise()
 
@@ -307,7 +307,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("unsome", () => {
     it("fails when given Some error", async () => {
-      const program = Effect.fail(Maybe.some("error")).unsome()
+      const program = Effect.fail(Maybe.some("error")).unsome
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -315,7 +315,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("succeeds with None given None error", async () => {
-      const program = Effect.fail(Maybe.none).unsome()
+      const program = Effect.fail(Maybe.none).unsome
 
       const result = await program.unsafeRunPromise()
 
@@ -323,7 +323,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("succeeds with Some given a value", async () => {
-      const program = Effect.succeed(1).unsome()
+      const program = Effect.succeed(1).unsome
 
       const result = await program.unsafeRunPromise()
 
@@ -351,7 +351,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("someOrFailException", () => {
     it("extracts the optional value", async () => {
-      const program = Effect.some(42).someOrFailException()
+      const program = Effect.some(42).someOrFailException
 
       const result = await program.unsafeRunPromise()
 
@@ -359,7 +359,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("fails when given a None", async () => {
-      const program = Effect.succeed(Maybe.none).someOrFailException()
+      const program = Effect.succeed(Maybe.none).someOrFailException
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -371,8 +371,8 @@ describe.concurrent("Effect", () => {
     it("should handle successes with right", async () => {
       const effect = Effect.succeed(Either.right(42))
       const program = Effect.Do()
-        .bind("actual", () => effect.left.unleft().exit())
-        .bind("expected", () => effect.exit())
+        .bind("actual", () => effect.left.unleft.exit)
+        .bind("expected", () => effect.exit)
 
       const { actual, expected } = await program.unsafeRunPromise()
 
@@ -382,8 +382,8 @@ describe.concurrent("Effect", () => {
     it("should handle successes with left", async () => {
       const effect = Effect.succeed(Either.left(42))
       const program = Effect.Do()
-        .bind("actual", () => effect.left.unleft().exit())
-        .bind("expected", () => effect.exit())
+        .bind("actual", () => effect.left.unleft.exit)
+        .bind("expected", () => effect.exit)
 
       const { actual, expected } = await program.unsafeRunPromise()
 
@@ -393,8 +393,8 @@ describe.concurrent("Effect", () => {
     it("should handle failures", async () => {
       const effect = Effect.fail(42)
       const program = Effect.Do()
-        .bind("actual", () => effect.left.unleft().exit())
-        .bind("expected", () => effect.exit())
+        .bind("actual", () => effect.left.unleft.exit)
+        .bind("expected", () => effect.exit)
 
       const { actual, expected } = await program.unsafeRunPromise()
 
@@ -406,8 +406,8 @@ describe.concurrent("Effect", () => {
     it("should handle successes with right", async () => {
       const effect = Effect.succeed(Either.right(42))
       const program = Effect.Do()
-        .bind("actual", () => effect.right.unright().exit())
-        .bind("expected", () => effect.exit())
+        .bind("actual", () => effect.right.unright.exit)
+        .bind("expected", () => effect.exit)
 
       const { actual, expected } = await program.unsafeRunPromise()
 
@@ -417,8 +417,8 @@ describe.concurrent("Effect", () => {
     it("should handle successes with left", async () => {
       const effect = Effect.succeed(Either.left(42))
       const program = Effect.Do()
-        .bind("actual", () => effect.right.unright().exit())
-        .bind("expected", () => effect.exit())
+        .bind("actual", () => effect.right.unright.exit)
+        .bind("expected", () => effect.exit)
 
       const { actual, expected } = await program.unsafeRunPromise()
 
@@ -428,8 +428,8 @@ describe.concurrent("Effect", () => {
     it("should handle failures", async () => {
       const effect = Effect.fail(42)
       const program = Effect.Do()
-        .bind("actual", () => effect.right.unright().exit())
-        .bind("expected", () => effect.exit())
+        .bind("actual", () => effect.right.unright.exit)
+        .bind("expected", () => effect.exit)
 
       const { actual, expected } = await program.unsafeRunPromise()
 

@@ -1,20 +1,14 @@
 /**
  * Updates a service in the environment of this stream.
  *
- * @tsplus fluent ets/Stream updateService
+ * @tsplus static effect/core/stream/Stream.Aspects updateService
+ * @tsplus pipeable effect/core/stream/Stream updateService
  */
-export function updateService_<R, E, A, T, T1 extends T>(
-  self: Stream<R, E, A>,
+export function updateService<T, T1 extends T>(
   tag: Tag<T>,
   f: (service: T) => T1,
   __tsplusTrace?: string
-): Stream<R | T, E, A> {
-  return self.provideSomeEnvironment((env) => env.add(tag, f(env.unsafeGet(tag))))
+) {
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R | T, E, A> =>
+    self.provideSomeEnvironment((env) => env.add(tag, f(env.unsafeGet(tag))))
 }
-
-/**
- * Updates a service in the environment of this stream.
- *
- * @tsplus static ets/Stream/Aspects updateService
- */
-export const updateService = Pipeable(updateService_)

@@ -11,14 +11,14 @@ describe.concurrent("Effect", () => {
             grafter(
               (latch1.succeed(undefined) > Effect.never)
                 .onInterrupt(() => latch2.succeed(undefined))
-                .fork()
+                .fork
                 .flatMap(() => Effect.never)
                 .map(constVoid)
-                .fork()
+                .fork
             )
           ))
         .tap(({ latch1 }) => latch1.await())
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .tap(({ latch2 }) => latch2.await())
         .map(constTrue)
 

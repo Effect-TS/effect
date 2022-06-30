@@ -35,7 +35,7 @@ describe.concurrent("Effect", () => {
         .bind("queue", () => Queue.unbounded<number>())
         .tap(({ queue }) => queue.offerAll(List(1, 2, 3, 4, 5, 6)))
         .bind("acc", () => Ref.make<number>(0))
-        .tap(({ acc, queue }) => (queue.take < acc.update((n) => n + 1)).repeatUntilEquals(Equivalence.number)(5))
+        .tap(({ acc, queue }) => (queue.take < acc.update((n) => n + 1)).repeatUntilEquals(Equivalence.number, 5))
         .flatMap(({ acc }) => acc.get())
 
       const result = await program.unsafeRunPromise()
@@ -106,7 +106,7 @@ describe.concurrent("Effect", () => {
         .bind("queue", () => Queue.unbounded<number>())
         .tap(({ queue }) => queue.offerAll(List(0, 0, 0, 0, 1, 2)))
         .bind("acc", () => Ref.make<number>(0))
-        .tap(({ acc, queue }) => (queue.take < acc.update((n) => n + 1)).repeatWhileEquals(Equivalence.number)(0))
+        .tap(({ acc, queue }) => (queue.take < acc.update((n) => n + 1)).repeatWhileEquals(Equivalence.number, 0))
         .flatMap(({ acc }) => acc.get())
 
       const result = await program.unsafeRunPromise()

@@ -4,7 +4,7 @@ import { Both, Die, Empty, Fail, Interrupt, Stackless, Then } from "@effect/core
  * Converts the specified `Cause<Maybe<E>>` to an `Maybe[Cause[E]]` by
  * recursively stripping out any failures with the error `None`.
  *
- * @tsplus static ets/Cause/Ops flipCauseMaybe
+ * @tsplus static effect/core/io/Cause.Ops flipCauseMaybe
  */
 export function flipCauseMaybe<E>(cause: Cause<Maybe<E>>): Maybe<Cause<E>> {
   return cause.fold<Maybe<E>, Maybe<Cause<E>>>(

@@ -4,7 +4,7 @@
  * Especially useful for creating "accessor" methods on services' companion
  * objects.
  *
- * @tsplus static ets/STM/Ops service
+ * @tsplus static effect/core/stm/STM.Ops service
  */
 export function service<T>(tag: Tag<T>): STM<T, never, T> {
   return STM.environmentWith((env) => env.unsafeGet(tag))

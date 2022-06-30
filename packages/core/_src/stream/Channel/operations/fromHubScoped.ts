@@ -1,7 +1,7 @@
 /**
- * @tsplus static ets/Channel/Ops fromHubManaged
+ * @tsplus static effect/core/stream/Channel.Ops fromHubScoped
  */
-export function fromHubManaged<Err, Done, Elem>(
+export function fromHubScoped<Err, Done, Elem>(
   hub: Hub<Either<Exit<Err, Done>, Elem>>
 ): Effect<
   Scope,

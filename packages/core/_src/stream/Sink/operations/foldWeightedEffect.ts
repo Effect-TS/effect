@@ -7,7 +7,7 @@
  * sink to cross the `max` cost. See `foldWeightedDecomposeEffect` for a variant
  * that can handle these cases.
  *
- * @tsplus static ets/Sink/Ops foldWeightedEffect
+ * @tsplus static effect/core/stream/Sink.Ops foldWeightedEffect
  */
 export function foldWeightedEffect<R, E, R2, E2, In, S>(
   z: LazyArg<S>,

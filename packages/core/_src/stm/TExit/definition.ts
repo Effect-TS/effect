@@ -1,10 +1,10 @@
 /**
- * @tsplus type ets/TExit
+ * @tsplus type effect/core/stm/TExit
  */
 export type TExit<A, B> = Fail<A> | Die | Interrupt | Succeed<B> | Retry
 
 /**
- * @tsplus type ets/TExit/Ops
+ * @tsplus type effect/core/stm/TExit.Ops
  */
 export interface TExitOps {
   $: TExitAspects
@@ -14,12 +14,12 @@ export const TExit: TExitOps = {
 }
 
 /**
- * @tsplus type ets/TExit/Aspects
+ * @tsplus type effect/core/stm/TExit.Aspects
  */
 export interface TExitAspects {}
 
 /**
- * @tsplus unify ets/TExit
+ * @tsplus unify effect/core/stm/TExit
  */
 export function unifyTExit<X extends TExit<any, any>>(
   self: X
@@ -101,39 +101,39 @@ export class Retry implements Equals {
 }
 
 /**
- * @tsplus static ets/TExit/Ops unit
+ * @tsplus static effect/core/stm/TExit.Ops unit
  */
 export const unit: TExit<never, void> = new Succeed(undefined)
 
 /**
- * @tsplus static ets/TExit/Ops succeed
+ * @tsplus static effect/core/stm/TExit.Ops succeed
  */
 export function succeed<A>(a: A): TExit<never, A> {
   return new Succeed(a)
 }
 
 /**
- * @tsplus static ets/TExit/Ops fail
+ * @tsplus static effect/core/stm/TExit.Ops fail
  */
 export function fail<E>(e: E): TExit<E, never> {
   return new Fail(e)
 }
 
 /**
- * @tsplus static ets/TExit/Ops die
+ * @tsplus static effect/core/stm/TExit.Ops die
  */
 export function die(e: unknown): TExit<never, never> {
   return new Die(e)
 }
 
 /**
- * @tsplus static ets/TExit/Ops interrupt
+ * @tsplus static effect/core/stm/TExit.Ops interrupt
  */
 export function interrupt(fiberId: FiberId): TExit<never, never> {
   return new Interrupt(fiberId)
 }
 
 /**
- * @tsplus static ets/TExit/Ops retry
+ * @tsplus static effect/core/stm/TExit.Ops retry
  */
 export const retry: TExit<never, never> = new Retry()

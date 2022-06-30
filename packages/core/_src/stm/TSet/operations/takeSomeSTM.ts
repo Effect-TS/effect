@@ -3,16 +3,12 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
 /**
  * Transactionally takes all matching values, or retries until there is at least one.
  *
- * @tsplus fluent ets/TSet takeSomeSTM
+ * @tsplus static effect/core/stm/TSet.Aspects takeSomeSTM
+ * @tsplus pipeable effect/core/stm/TSet takeSomeSTM
  */
-export function takeSomeSTM_<A, B, R, E>(self: TSet<A>, pf: (a: A) => STM<R, Maybe<E>, B>): STM<R, E, Chunk<B>> {
-  concreteTSet(self)
-  return self.tmap.takeSomeSTM((kv) => pf(kv.get(0)))
+export function takeSomeSTM<A, R, E, B>(pf: (a: A) => STM<R, Maybe<E>, B>) {
+  return (self: TSet<A>): STM<R, E, Chunk<B>> => {
+    concreteTSet(self)
+    return self.tmap.takeSomeSTM((kv) => pf(kv.get(0)))
+  }
 }
-
-/**
- * Transactionally takes all matching values, or retries until there is at least one.
- *
- * @tsplus static ets/TSet/Aspects takeSomeSTM
- */
-export const takeSomeSTM = Pipeable(takeSomeSTM_)

@@ -5,8 +5,8 @@ export const EntrySym = Symbol.for("@effect/core/stm/STM/Entry")
 export type EntrySym = typeof EntrySym
 
 /**
- * @tsplus type ets/Entry
- * @tsplus companion ets/Entry/Ops
+ * @tsplus type effect/core/stm/STM/Entry
+ * @tsplus companion effect/core/stm/STM/Entry.Ops
  */
 export class Entry {
   readonly [EntrySym]: EntrySym = EntrySym
@@ -15,7 +15,7 @@ export class Entry {
 }
 
 /**
- * @tsplus static ets/Entry/Ops __call
+ * @tsplus static effect/core/stm/STM/Entry.Ops __call
  */
 export function makeEntry<A0>(tref0: TRef<A0>, isNew0: boolean): Entry {
   concreteTRef(tref0)

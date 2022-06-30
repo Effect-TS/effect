@@ -21,7 +21,7 @@ describe.concurrent("TRandom", () => {
             }
             return _ >= tp.get(0) && _ < tp.get(1)
           })
-      )).map(Chunk.$.forAll(identity)).commit()
+      )).map(Chunk.$.forAll(identity)).commit
       const result = await ns.unsafeRunPromise()
 
       assert.isTrue(result)
@@ -36,7 +36,7 @@ describe.concurrent("TRandom", () => {
             }
             return _ >= tp.get(0) && _ < tp.get(1)
           })
-      )).map(Chunk.$.forAll(identity)).commit()
+      )).map(Chunk.$.forAll(identity)).commit
       const result = await ns.unsafeRunPromise()
 
       assert.isTrue(result)

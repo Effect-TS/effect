@@ -10,7 +10,7 @@ import { beginningOfSecond, endOfSecond, nextSecond } from "@effect/core/io/Sche
  *
  * NOTE: `second` parameter is validated lazily. Must be in range 0...59.
  *
- * @tsplus static ets/Schedule secondOfMinute
+ * @tsplus static effect/core/io/Schedule.Ops secondOfMinute
  */
 export function secondOfMinute(
   second: number

@@ -4,26 +4,20 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * Splits elements on a delimiter and transforms the splits into desired
  * output, flattening the resulting chunks into the stream.
  *
- * @tsplus fluent ets/Stream splitOnChunkFlatten
+ * @tsplus static effect/core/stream/Stream.Aspects splitOnChunkFlatten
+ * @tsplus pipeable effect/core/stream/Stream splitOnChunkFlatten
  */
-export function splitOnChunkFlatten_<R, E, A>(
-  self: Stream<R, E, A>,
+export function splitOnChunkFlatten<A>(
   delimiter: LazyArg<Chunk<A>>,
   __tsplusTrace?: string
-): Stream<R, E, A> {
-  concreteStream(self)
-  return Stream.succeed(delimiter).flatMap(
-    (delimiter) => new StreamInternal(self.channel >> next<R, E, A>(delimiter, Maybe.none, 0))
-  )
+) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R, E, A> => {
+    concreteStream(self)
+    return Stream.succeed(delimiter).flatMap(
+      (delimiter) => new StreamInternal(self.channel >> next<R, E, A>(delimiter, Maybe.none, 0))
+    )
+  }
 }
-
-/**
- * Splits elements on a delimiter and transforms the splits into desired
- * output, flattening the resulting chunks into the stream.
- *
- * @tsplus static ets/Stream/Aspects splitOnChunkFlatten
- */
-export const splitOnChunkFlatten = Pipeable(splitOnChunkFlatten_)
 
 function next<R, E, A>(
   delimiter: Chunk<A>,

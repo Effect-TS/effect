@@ -1,7 +1,7 @@
 import { LiveRandom } from "@effect/core/io/Random/operations/live"
 
 /**
- * @tsplus static ets/Random/Ops withSeed
+ * @tsplus static effect/core/io/Random.Ops withSeed
  */
 export function withSeed(seed: number) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>

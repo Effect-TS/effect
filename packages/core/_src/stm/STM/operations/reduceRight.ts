@@ -1,7 +1,7 @@
 /**
  * Folds an `Collection<A>` using an effectual function f, working sequentially from left to right.
  *
- * @tsplus static ets/STM/Ops reduceRight
+ * @tsplus static effect/core/stm/STM.Ops reduceRight
  */
 export function reduceRight_<A, Z, R, E>(
   as: LazyArg<Collection<A>>,

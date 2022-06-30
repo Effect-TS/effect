@@ -3,7 +3,7 @@
  * (unsafely) execute tasks. This is useful for integration with legacy code
  * that must call back into Effect code.
  *
- * @tsplus static ets/Effect/Ops runtime
+ * @tsplus static effect/core/io/Effect.Ops runtime
  */
 export function runtime<R>(__tsplusTrace?: string): Effect<R, never, Runtime<R>> {
   return Effect.environment<R>().flatMap(
@@ -13,7 +13,7 @@ export function runtime<R>(__tsplusTrace?: string): Effect<R, never, Runtime<R>>
 }
 
 /**
- * @tsplus static ets/Effect/Ops defaultRuntimeConfig
+ * @tsplus static effect/core/io/Effect.Ops defaultRuntimeConfig
  */
 export const defaultRuntimeConfig: RuntimeConfig = RuntimeConfig({
   fatal: () => false,
@@ -36,31 +36,31 @@ export const defaultRuntime = new Runtime<never>(
 )
 
 /**
- * @tsplus fluent ets/Effect unsafeRunPromise
- * @tsplus static ets/Effect/Aspects unsafeRunPromise
+ * @tsplus fluent effect/core/io/Effect unsafeRunPromise
+ * @tsplus static effect/core/io/Effect.Aspects unsafeRunPromise
  */
 export const unsafeRunPromise = defaultRuntime.unsafeRunPromise
 
 /**
- * @tsplus fluent ets/Effect unsafeRunAsync
- * @tsplus static ets/Effect/Aspects unsafeRunAsync
+ * @tsplus fluent effect/core/io/Effect unsafeRunAsync
+ * @tsplus static effect/core/io/Effect.Aspects unsafeRunAsync
  */
 export const unsafeRunAsync = defaultRuntime.unsafeRunAsync
 
 /**
- * @tsplus fluent ets/Effect unsafeRunAsyncWith
- * @tsplus static ets/Effect/Aspects unsafeRunAsyncWith
+ * @tsplus fluent effect/core/io/Effect unsafeRunAsyncWith
+ * @tsplus static effect/core/io/Effect.Aspects unsafeRunAsyncWith
  */
 export const unsafeRunAsyncWith = defaultRuntime.unsafeRunAsyncWith
 
 /**
- * @tsplus fluent ets/Effect unsafeRunPromiseExit
- * @tsplus static ets/Effect/Aspects unsafeRunPromiseExit
+ * @tsplus fluent effect/core/io/Effect unsafeRunPromiseExit
+ * @tsplus static effect/core/io/Effect.Aspects unsafeRunPromiseExit
  */
 export const unsafeRunPromiseExit = defaultRuntime.unsafeRunPromiseExit
 
 /**
- * @tsplus fluent ets/Effect unsafeRunWith
- * @tsplus static ets/Effect/Aspects unsafeRunWith
+ * @tsplus fluent effect/core/io/Effect unsafeRunWith
+ * @tsplus static effect/core/io/Effect.Aspects unsafeRunWith
  */
 export const unsafeRunWith = defaultRuntime.unsafeRunWith

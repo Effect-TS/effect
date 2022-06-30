@@ -4,7 +4,7 @@
  *
  * This method can be used to "flatten" nested effects.
  *
- * @tsplus static ets/Effect/Ops flatten
+ * @tsplus static effect/core/io/Effect.Ops flatten
  */
 export function flatten<R, E, R1, E1, A>(
   effect: LazyArg<Effect<R, E, Effect<R1, E1, A>>>,
@@ -19,7 +19,7 @@ export function flatten<R, E, R1, E1, A>(
  *
  * This method can be used to "flatten" nested effects.
  *
- * @tsplus fluent ets/Effect flatten
+ * @tsplus getter effect/core/io/Effect flatten
  */
 export function flattenNow<R, E, R1, E1, A>(
   self: Effect<R, E, Effect<R1, E1, A>>,

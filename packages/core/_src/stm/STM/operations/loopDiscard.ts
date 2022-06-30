@@ -11,7 +11,7 @@
  * }
  * ```
  *
- * @tsplus static ets/STM/Ops loopDiscard
+ * @tsplus static effect/core/stm/STM.Ops loopDiscard
  */
 export function loopDiscard<Z>(
   initial: LazyArg<Z>,

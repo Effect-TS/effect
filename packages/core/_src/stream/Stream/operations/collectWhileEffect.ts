@@ -4,26 +4,20 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * Effectfully transforms all elements of the stream for as long as the
  * specified partial function is defined.
  *
- * @tsplus fluent ets/Stream collectWhileEffect
+ * @tsplus static effect/core/stream/Stream.Aspects collectWhileEffect
+ * @tsplus pipeable effect/core/stream/Stream collectWhileEffect
  */
-export function collectWhileEffect_<R, E, A, R2, E2, A2>(
-  self: Stream<R, E, A>,
+export function collectWhileEffect<A, R2, E2, A2>(
   pf: (a: A) => Maybe<Effect<R2, E2, A2>>,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, A2> {
-  concreteStream(self)
-  return new StreamInternal(
-    self.channel >> loop(Chunk.empty<A>()[Symbol.iterator](), pf)
-  )
+) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A2> => {
+    concreteStream(self)
+    return new StreamInternal(
+      self.channel >> loop(Chunk.empty<A>()[Symbol.iterator](), pf)
+    )
+  }
 }
-
-/**
- * Effectfully transforms all elements of the stream for as long as the
- * specified partial function is defined.
- *
- * @tsplus static ets/Stream/Aspects collectWhileEffect
- */
-export const collectWhileEffect = Pipeable(collectWhileEffect_)
 
 function loop<E, A, R1, E1, A1>(
   chunkIterator: Iterator<A>,

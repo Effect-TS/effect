@@ -1,7 +1,7 @@
 /**
  * Repeats this channel forever.
  *
- * @tsplus fluent ets/Channel repeated
+ * @tsplus getter effect/core/stream/Channel repeated
  */
 export function repeated<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,

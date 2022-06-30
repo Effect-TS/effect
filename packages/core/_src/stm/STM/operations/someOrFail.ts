@@ -1,18 +1,15 @@
 /**
  * Extracts the optional value, or fails with the given error 'e'.
  *
- * @tsplus fluent ets/STM someOrFail
+ * @tsplus static effect/core/stm/STM.Aspects someOrFail
+ * @tsplus pipeable effect/core/stm/STM someOrFail
  */
-export function someOrFail_<R, E, A, E2>(
-  self: STM<R, E, Maybe<A>>,
-  orFail: LazyArg<E2>
-): STM<R, E | E2, A> {
-  return self.flatMap((option) => option.fold(STM.succeed(orFail).flatMap(STM.failNow), STM.succeedNow))
+export function someOrFail<E2>(orFail: LazyArg<E2>) {
+  return <R, E, A>(self: STM<R, E, Maybe<A>>): STM<R, E | E2, A> =>
+    self.flatMap((option) =>
+      option.fold(
+        STM.succeed(orFail).flatMap(STM.failNow),
+        STM.succeedNow
+      )
+    )
 }
-
-/**
- * Extracts the optional value, or fails with the given error 'e'.
- *
- * @tsplus static ets/STM/Aspects someOrFail
- */
-export const someOrFail = Pipeable(someOrFail_)

@@ -21,7 +21,7 @@ describe.concurrent("Stream", () => {
       const stream = Stream.fromChunk(chunk).flatMap((n) => Stream.succeed(n))
       const program = Effect.scoped(
         stream
-          .toQueueUnbounded()
+          .toQueueUnbounded
           .flatMap(
             (queue) => queue.size.repeatWhile((n) => n !== chunk.size + 1) > queue.takeAll
           )

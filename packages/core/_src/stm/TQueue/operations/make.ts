@@ -5,7 +5,7 @@ import { InternalTQueue } from "@effect/core/stm/TQueue/operations/_internal/Int
  * Creates a queue with the specified strategy.
  *
  * @internal
- * @tsplus static ets/TQueue/Ops make
+ * @tsplus static effect/core/stm/TQueue.Ops make
  */
 export function make<A>(
   requestedCapacity: number,

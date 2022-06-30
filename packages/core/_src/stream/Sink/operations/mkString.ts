@@ -1,7 +1,7 @@
 import { constVoid } from "@tsplus/stdlib/data/Function"
 
 /**
- * @tsplus static ets/Sink/Ops mkString
+ * @tsplus static effect/core/stream/Sink.Ops mkString
  */
 export function mkString(
   __tsplusTrace?: string

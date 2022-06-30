@@ -2,20 +2,13 @@
  * Maps each element to an Collection, and flattens the Collections into the
  * output of this stream.
  *
- * @tsplus fluent ets/Stream mapConcat
+ * @tsplus static effect/core/stream/Stream.Aspects mapConcat
+ * @tsplus pipeable effect/core/stream/Stream mapConcat
  */
-export function mapConcat_<R, E, A, A2>(
-  self: Stream<R, E, A>,
+export function mapConcat<A, A2>(
   f: (a: A) => Collection<A2>,
   __tsplusTrace?: string
-): Stream<R, E, A2> {
-  return self.chunksWith((chunk) => chunk.map((chunk) => chunk.flatMap((a) => Chunk.from(f(a)))))
+) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R, E, A2> =>
+    self.chunksWith((chunk) => chunk.map((chunk) => chunk.flatMap((a) => Chunk.from(f(a)))))
 }
-
-/**
- * Maps each element to an Collection, and flattens the Collections into the
- * output of this stream.
- *
- * @tsplus static ets/Stream/Aspects mapConcat
- */
-export const mapConcat = Pipeable(mapConcat_)

@@ -21,9 +21,9 @@ describe.concurrent("Effect", () => {
     })
 
     it("attempt . fail", async () => {
-      const io1 = ExampleErrorFail.either()
+      const io1 = ExampleErrorFail.either
       const io2 = Effect.suspendSucceed(
-        Effect.suspendSucceed(ExampleErrorFail).either()
+        Effect.suspendSucceed(ExampleErrorFail).either
       )
       const program = io1.zip(io2)
 
@@ -36,7 +36,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("deep attempt sync effect error", async () => {
-      const program = deepErrorEffect(100).either()
+      const program = deepErrorEffect(100).either
 
       const result = await program.unsafeRunPromise()
 
@@ -44,7 +44,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("deep attempt fail error", async () => {
-      const program = deepErrorFail(100).either()
+      const program = deepErrorFail(100).either
 
       const result = await program.unsafeRunPromise()
 
@@ -54,7 +54,7 @@ describe.concurrent("Effect", () => {
     it("attempt . sandbox . terminate", async () => {
       const program = Effect.succeed(() => {
         throw ExampleError
-      }).sandbox().either().map((either) => either.mapLeft((cause) => cause.untraced))
+      }).sandbox.either.map((either) => either.mapLeft((cause) => cause.untraced))
 
       const result = await program.unsafeRunPromise()
 
@@ -65,7 +65,7 @@ describe.concurrent("Effect", () => {
       const program = Effect.succeed(() => {
         throw ExampleError
       })
-        .sandbox()
+        .sandbox
         .fold((cause) => Maybe.some(cause.untraced), Maybe.emptyOf)
 
       const result = await program.unsafeRunPromise()
@@ -76,7 +76,7 @@ describe.concurrent("Effect", () => {
     it("catch sandbox terminate", async () => {
       const program = Effect.succeed(() => {
         throw ExampleError
-      }).sandbox().merge().map((cause) => cause.untraced)
+      }).sandbox.merge.map((cause) => cause.untraced)
 
       const result = await program.unsafeRunPromise()
 
@@ -84,7 +84,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("uncaught fail", async () => {
-      const program = ExampleErrorFail.exit()
+      const program = ExampleErrorFail.exit
 
       const result = await program.unsafeRunPromise()
 
@@ -102,7 +102,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("deep uncaught sync effect error", async () => {
-      const program = deepErrorEffect(100).exit()
+      const program = deepErrorEffect(100).exit
 
       const result = await program.unsafeRunPromise()
 
@@ -126,7 +126,7 @@ describe.concurrent("Effect", () => {
             throw InterruptCause3
           })
         )
-        .exit()
+        .exit
         .map((exit) => exit.mapErrorCause((cause) => cause.untraced))
 
       const expectedCause = Cause.fail(ExampleError) +
@@ -156,7 +156,7 @@ describe.concurrent("Effect", () => {
             throw InterruptCause3
           })
         )
-        .exit()
+        .exit
         .map((exit) => exit.mapErrorCause((cause) => cause.untraced))
 
       const expectedCause = Cause.die(ExampleError) +
@@ -172,9 +172,9 @@ describe.concurrent("Effect", () => {
     it("run preserves interruption status", async () => {
       const program = Effect.Do()
         .bind("deferred", () => Deferred.make<never, void>())
-        .bind("fiber", ({ deferred }) => (deferred.succeed(undefined) > Effect.never).fork())
+        .bind("fiber", ({ deferred }) => (deferred.succeed(undefined) > Effect.never).fork)
         .tap(({ deferred }) => deferred.await())
-        .flatMap(({ fiber }) => fiber.interrupt().mapErrorCause((cause) => cause.untraced))
+        .flatMap(({ fiber }) => fiber.interrupt.mapErrorCause((cause) => cause.untraced))
 
       const result = await program.unsafeRunPromise()
 
@@ -183,7 +183,7 @@ describe.concurrent("Effect", () => {
 
     it("run swallows inner interruption", async () => {
       const program = Deferred.make<never, number>()
-        .tap((deferred) => Effect.interrupt.exit() > deferred.succeed(42))
+        .tap((deferred) => Effect.interrupt.exit > deferred.succeed(42))
         .flatMap((deferred) => deferred.await())
 
       const result = await program.unsafeRunPromise()
@@ -205,8 +205,8 @@ describe.concurrent("Effect", () => {
       const cause = Cause.die(new Error("boom"))
       const program = (Effect.sleep((5).seconds) > Effect.succeed(true))
         .timeoutFailCause(cause, (10).millis)
-        .sandbox()
-        .flip()
+        .sandbox
+        .flip
 
       const result = await program.unsafeRunPromise()
 
@@ -214,7 +214,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("timeout repetition of uninterruptible effect", async () => {
-      const program = Effect.unit.uninterruptible().forever().timeout((10).millis)
+      const program = Effect.unit.uninterruptible.forever.timeout((10).millis)
 
       const result = await program.unsafeRunPromise()
 
@@ -222,7 +222,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("timeout in uninterruptible region", async () => {
-      const program = Effect.unit.timeout((20).seconds).uninterruptible()
+      const program = Effect.unit.timeout((20).seconds).uninterruptible
 
       const result = await program.unsafeRunPromise()
 

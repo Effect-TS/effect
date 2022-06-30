@@ -3,7 +3,7 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
 /**
  * Creates a stream by peeling off the "layers" of a value of type `S`.
  *
- * @tsplus static ets/Stream/Ops unfoldChunk
+ * @tsplus static effect/core/stream/Stream.Ops unfoldChunk
  */
 export function unfoldChunk<S, A>(
   s: LazyArg<S>,

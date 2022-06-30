@@ -3,8 +3,8 @@
  * ensuring that their finalizers are run as soon as this workflow completes
  * execution, whether by success, failure, or interruption.
  *
- * @tsplus static ets/Effect/Ops scoped
- * @tsplus fluent ets/Effect scoped
+ * @tsplus static effect/core/io/Effect.Ops scoped
+ * @tsplus fluent effect/core/io/Effect scoped
  */
 export function scoped<R, E, A>(
   effect: LazyArg<Effect<R, E, A>>,

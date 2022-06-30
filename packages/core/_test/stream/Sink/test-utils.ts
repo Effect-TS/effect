@@ -19,9 +19,9 @@ export function sinkRaceLaw<E, A, L>(
   sink2: Sink<never, E, A, L, A>
 ): Effect.UIO<boolean> {
   return Effect.struct({
-    r1: s.run(sink1).either(),
-    r2: s.run(sink2).either(),
-    r: s.run(sink1.raceBoth(sink2)).either()
+    r1: s.run(sink1).either,
+    r2: s.run(sink2).either,
+    r: s.run(sink1.raceBoth(sink2)).either
   }).map(({ r, r1, r2 }) =>
     r.fold(
       () => r1.isLeft() || r2.isLeft(),
@@ -40,9 +40,9 @@ export function zipParLaw<A, B, C, E>(
   sink2: Sink<never, E, A, A, C>
 ): Effect.UIO<boolean> {
   return Effect.struct({
-    zb: s.run(sink1).either(),
-    zc: s.run(sink2).either(),
-    zbc: s.run(sink1.zipPar(sink2)).either()
+    zb: s.run(sink1).either,
+    zc: s.run(sink2).either,
+    zbc: s.run(sink1.zipPar(sink2)).either
   }).map(({ zb, zbc, zc }) =>
     zbc.fold(
       (e) => (zb.isLeft() && zb.left === e) || (zc.isLeft() && zc.left === e),

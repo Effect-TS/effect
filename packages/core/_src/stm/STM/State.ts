@@ -2,18 +2,18 @@ export const STMStateSym = Symbol.for("@effect/core/stm/STM/State")
 export type STMStateSym = typeof STMStateSym
 
 /**
- * @tsplus type ets/STM/State
+ * @tsplus type effect/core/stm/STM/State
  */
 export type State<E, A> = Done<E, A> | Interrupted | Running
 
 /**
- * @tsplus type ets/STM/State/Ops
+ * @tsplus type effect/core/stm/STM/State.Ops
  */
 export interface StateOps {}
 export const State: StateOps = {}
 
 /**
- * @tsplus unify ets/STM/State
+ * @tsplus unify effect/core/stm/STM/State
  */
 export function unifyState<X extends State<any, any>>(
   self: X
@@ -69,14 +69,14 @@ export class Running implements Equals {
 }
 
 /**
- * @tsplus static ets/STM/State/Ops isState
+ * @tsplus static effect/core/stm/STM/State/Ops isState
  */
 export function isState(u: unknown): u is State<unknown, unknown> {
   return typeof u === "object" && u != null && STMStateSym in u
 }
 
 /**
- * @tsplus static ets/STM/State/Ops done
+ * @tsplus static effect/core/stm/STM/State.Ops done
  */
 export function done<E, A>(exit: TExit<E, A>): State<E, A> {
   switch (exit._tag) {
@@ -99,17 +99,17 @@ export function done<E, A>(exit: TExit<E, A>): State<E, A> {
 }
 
 /**
- * @tsplus static ets/STM/State/Ops interrupted
+ * @tsplus static effect/core/stm/STM/State.Ops interrupted
  */
 export const interrupted: State<never, never> = new Interrupted()
 
 /**
- * @tsplus static ets/STM/State/Ops running
+ * @tsplus static effect/core/stm/STM/State.Ops running
  */
 export const running: State<never, never> = new Running()
 
 /**
- * @tsplus fluent ets/STM/State isRunning
+ * @tsplus getter effect/core/stm/STM/State isRunning
  */
 export function isRunning<E, A>(self: State<E, A>): self is Running {
   return self._tag === "Running"

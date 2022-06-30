@@ -2,6 +2,8 @@ import { realFiberId } from "@effect/core/io/FiberId/definition"
 
 /**
  * Convert a `FiberId` into an `Maybe<FiberId>`.
+ *
+ * @tsplus getter effect/core/io/FiberId toMaybe
  */
 export function toMaybe(self: FiberId): Maybe<FiberId> {
   return toMaybeSafe(self).run

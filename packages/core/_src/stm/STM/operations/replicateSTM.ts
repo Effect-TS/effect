@@ -2,19 +2,9 @@
  * Performs this transaction the specified number of times and collects the
  * results.
  *
- * @tsplus fluent ets/STM replicateSTM
+ * @tsplus static effect/core/stm/STM.Aspects replicateSTM
+ * @tsplus pipeable effect/core/stm/STM replicateSTM
  */
-export function replicateSTM_<R, E, A>(
-  self: STM<R, E, A>,
-  n: number
-): STM<R, E, Chunk<A>> {
-  return STM.suspend(STM.collectAll(self.replicate(n)))
+export function replicateSTM(n: number) {
+  return <R, E, A>(self: STM<R, E, A>): STM<R, E, Chunk<A>> => STM.suspend(STM.collectAll(self.replicate(n)))
 }
-
-/**
- * Performs this transaction the specified number of times and collects the
- * results.
- *
- * @tsplus static ets/STM/Aspects replicateSTM
- */
-export const replicateSTM = Pipeable(replicateSTM_)

@@ -1,51 +1,35 @@
 /**
- * @tsplus operator ets/LogLevel <
- * @tsplus fluent ets/LogLevel lt
+ * @tsplus pipeable-operator effect/core/io/LogLevel <
+ * @tsplus static effect/core/io/LogLevel.Aspects lessThen
+ * @tsplus pipeable effect/core/io/LogLevel lessThan
  */
-export function lt_(self: LogLevel, that: LogLevel): boolean {
-  return LogLevel.ord.lt(self, that)
+export function lessThan(that: LogLevel) {
+  return (self: LogLevel): boolean => LogLevel.ord.lt(self, that)
 }
 
 /**
- * @tsplus static ets/LogLevel/Aspects lt
+ * @tsplus pipeable-operator effect/core/io/LogLevel <=
+ * @tsplus static effect/core/io/LogLevel.Aspects lessThanEqual
+ * @tsplus pipeable effect/core/io/LogLevel lessThanEqual
  */
-export const lt = Pipeable(lt_)
-
-/**
- * @tsplus operator ets/LogLevel <=
- * @tsplus fluent ets/LogLevel leq
- */
-export function leq_(self: LogLevel, that: LogLevel): boolean {
-  return LogLevel.ord.leq(self, that)
+export function lessThanEqual(that: LogLevel) {
+  return (self: LogLevel): boolean => LogLevel.ord.leq(self, that)
 }
 
 /**
- * @tsplus static ets/LogLevel/Aspects leq
+ * @tsplus pipeable-operator effect/core/io/LogLevel >
+ * @tsplus static effect/core/io/LogLevel.Aspects greaterThan
+ * @tsplus pipeable effect/core/io/LogLevel greaterThan
  */
-export const leq = Pipeable(leq_)
-
-/**
- * @tsplus operator ets/LogLevel >
- * @tsplus fluent ets/LogLevel gt
- */
-export function gt_(self: LogLevel, that: LogLevel): boolean {
-  return LogLevel.ord.gt(self, that)
+export function greaterThan(that: LogLevel) {
+  return (self: LogLevel): boolean => LogLevel.ord.gt(self, that)
 }
 
 /**
- * @tsplus static ets/LogLevel/Aspects gt
+ * @tsplus pipeable-operator effect/core/io/LogLevel >=
+ * @tsplus static effect/core/io/LogLevel.Aspects greaterThanEqual
+ * @tsplus pipeable effect/core/io/LogLevel greaterThanEqual
  */
-export const gt = Pipeable(gt_)
-
-/**
- * @tsplus operator ets/LogLevel >=
- * @tsplus fluent ets/LogLevel geq
- */
-export function geq_(self: LogLevel, that: LogLevel): boolean {
-  return !LogLevel.ord.lt(self, that)
+export function greaterThanEqual(that: LogLevel) {
+  return (self: LogLevel): boolean => !LogLevel.ord.lt(self, that)
 }
-
-/**
- * @tsplus static ets/LogLevel/Aspects geq
- */
-export const geq = Pipeable(geq_)

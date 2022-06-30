@@ -3,22 +3,17 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 /**
  * Provides a layer to the stream, which translates it to another level.
  *
- * @tsplus fluent ets/Stream provideLayer
+ * @tsplus static effect/core/stream/Stream.Aspects provideLayer
+ * @tsplus pipeable effect/core/stream/Stream provideLayer
  */
-export function provideLayer_<R, E, A, E1, A1>(
-  self: Stream<A, E1, A1>,
+export function provideLayer<R, E, A>(
   layer: LazyArg<Layer<R, E, A>>,
   __tsplusTrace?: string
-): Stream<R, E | E1, A1> {
-  concreteStream(self)
-  return new StreamInternal(
-    Channel.unwrapScoped(layer().build().map((env) => self.channel.provideEnvironment(env)))
-  )
+) {
+  return <E1, A1>(self: Stream<A, E1, A1>): Stream<R, E | E1, A1> => {
+    concreteStream(self)
+    return new StreamInternal(
+      Channel.unwrapScoped(layer().build.map((env) => self.channel.provideEnvironment(env)))
+    )
+  }
 }
-
-/**
- * Provides a layer to the stream, which translates it to another level.
- *
- * @tsplus static ets/Stream/Aspects provideLayer
- */
-export const provideLayer = Pipeable(provideLayer_)

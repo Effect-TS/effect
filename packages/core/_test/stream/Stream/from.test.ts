@@ -4,7 +4,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("fromChunk", () => {
     it("simple example", async () => {
       const chunk = Chunk(1, 2, 3)
-      const program = Stream.fromChunk(chunk).runCollect()
+      const program = Stream.fromChunk(chunk).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -15,7 +15,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("fromChunks", () => {
     it("simple example", async () => {
       const chunks = Chunk(Chunk(1, 2), Chunk(3), Chunk(4, 5, 6))
-      const program = Stream.fromChunks(...chunks).runCollect()
+      const program = Stream.fromChunks(...chunks).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -26,8 +26,8 @@ describe.concurrent("Stream", () => {
       const chunks = Chunk(Chunk.single(1), Chunk.empty<number>(), Chunk.single(2))
       const program = Effect.scoped(
         Stream.fromChunks(...chunks)
-          .toPull()
-          .flatMap((pull) => Effect.forEach(Chunk.range(0, 2), () => pull.either()))
+          .toPull
+          .flatMap((pull) => Effect.forEach(Chunk.range(0, 2), () => pull.either))
       )
 
       const result = await program.unsafeRunPromise()
@@ -44,7 +44,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("fromEffect", () => {
     it("failure", async () => {
-      const program = Stream.fromEffect(Effect.fail("error")).runCollect().either()
+      const program = Stream.fromEffect(Effect.fail("error")).runCollect.either
 
       const result = await program.unsafeRunPromise()
 
@@ -54,7 +54,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("fromEffectMaybe", () => {
     it("emit one element with success", async () => {
-      const program = Stream.fromEffectMaybe(Effect.succeed(5)).runCollect()
+      const program = Stream.fromEffectMaybe(Effect.succeed(5)).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -63,8 +63,8 @@ describe.concurrent("Stream", () => {
 
     it("emit one element with failure", async () => {
       const program = Stream.fromEffectMaybe(Effect.fail(Maybe.some(5)))
-        .runCollect()
-        .either()
+        .runCollect
+        .either
 
       const result = await program.unsafeRunPromise()
 
@@ -72,7 +72,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("do not emit any element", async () => {
-      const program = Stream.fromEffectMaybe(Effect.fail(Maybe.none)).runCollect()
+      const program = Stream.fromEffectMaybe(Effect.fail(Maybe.none)).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -82,7 +82,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("fromIterable", () => {
     it("simple example", async () => {
-      const program = Stream.fromCollection([1, 2, 3]).runCollect()
+      const program = Stream.fromCollection([1, 2, 3]).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -92,7 +92,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("fromIterableEffect", () => {
     it("simple example", async () => {
-      const program = Stream.fromCollectionEffect(Effect.succeed([1, 2, 3])).runCollect()
+      const program = Stream.fromCollectionEffect(Effect.succeed([1, 2, 3])).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -103,7 +103,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("fromSchedule", () => {
     it("simple example", async () => {
       const schedule = Schedule.exponential((5).millis) < Schedule.recurs(5)
-      const program = Stream.fromSchedule(schedule).runCollect()
+      const program = Stream.fromSchedule(schedule).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -125,13 +125,13 @@ describe.concurrent("Stream", () => {
         Effect.Do()
           .bind("fiber", () =>
             Stream.fromQueue(c.queue)
-              .collectWhileSuccess()
-              .unchunks()
+              .collectWhileSuccess
+              .unchunks
               .tap(() => c.proceed)
-              .runCollect()
-              .fork())
+              .runCollect
+              .fork)
           .tap(() => c.offer)
-          .flatMap(({ fiber }) => fiber.join())
+          .flatMap(({ fiber }) => fiber.join)
       )
 
       const result = await program.unsafeRunPromise()
@@ -147,7 +147,7 @@ describe.concurrent("Stream", () => {
           Stream.fromQueue(queue, 2)
             .mapChunks((chunk) => Chunk.single(chunk))
             .take(3)
-            .runCollect()
+            .runCollect
         )
 
       const result = await program.unsafeRunPromise()

@@ -5,7 +5,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
 /**
  * A schedule that always recurs, which returns inputs as outputs.
  *
- * @tsplus static ets/Schedule/Ops identity
+ * @tsplus static effect/core/io/Schedule.Ops identity
  */
 export function identity<A>(): Schedule<void, never, A, A> {
   return makeWithState(

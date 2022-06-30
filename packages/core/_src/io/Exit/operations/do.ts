@@ -1,5 +1,6 @@
 /**
- * @tsplus fluent ets/Exit bind
+ * @tsplus static effect/core/io/Exit.Aspects bind
+ * @tsplus pipeable effect/core/io/Exit bind
  */
 export function bind<E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
@@ -28,7 +29,8 @@ export function bind<E, A, K, N extends string>(
 }
 
 /**
- * @tsplus fluent ets/Exit bindValue
+ * @tsplus static effect/core/io/Exit.Aspects bindValue
+ * @tsplus pipeable effect/core/io/Exit bindValue
  */
 export function bindValue<A, K, N extends string>(
   tag: Exclude<N, keyof K>,
@@ -55,7 +57,7 @@ export function bindValue<A, K, N extends string>(
 }
 
 /**
- * @tsplus static ets/Exit/Ops Do
+ * @tsplus static effect/core/io/Exit.Ops Do
  */
 export function Do() {
   return Exit.succeed({})

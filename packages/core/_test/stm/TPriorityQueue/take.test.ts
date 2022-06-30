@@ -5,7 +5,7 @@ describe.concurrent("TPriorityQueue", () => {
     it("take", async () => {
       const program = TPriorityQueue.from(eventOrd)(as)
         .flatMap((queue) => STM.collectAll(queue.take.replicate(as.size)))
-        .commit()
+        .commit
 
       const result = await program.unsafeRunPromise()
 
@@ -20,7 +20,7 @@ describe.concurrent("TPriorityQueue", () => {
             right: queue.takeAll
           })
         )
-        .commit()
+        .commit
 
       const { left, right } = await program.unsafeRunPromise()
 

@@ -24,7 +24,7 @@ export type SummaryStateSym = typeof SummaryStateSym
  * metric state corresponds to the type of the metric key (`MetricKeyType`).
  * This phantom type parameter is used to tie keys to their expected states.
  *
- * @tsplus type ets/Metrics/MetricState
+ * @tsplus type effect/core/io/Metrics/MetricState
  */
 export interface MetricState<Type> extends Equals {
   readonly [MetricStateSym]: MetricStateSym
@@ -42,7 +42,7 @@ export declare namespace MetricState {
 }
 
 /**
- * @tsplus type ets/Metrics/MetricState/Ops
+ * @tsplus type effect/core/io/Metrics/MetricState.Ops
  */
 export interface MetricStateOps {}
 export const MetricState: MetricStateOps = {}
@@ -196,28 +196,28 @@ export class SummaryState extends BaseMetricState<MetricKeyType.Summary> {
 }
 
 /**
- * @tsplus static ets/Metrics/MetricState/Ops Counter
+ * @tsplus static effect/core/io/Metrics/MetricState.Ops Counter
  */
 export function counter(count: number): MetricState.Counter {
   return new CounterState(count)
 }
 
 /**
- * @tsplus static ets/Metrics/MetricState/Ops Gauge
+ * @tsplus static effect/core/io/Metrics/MetricState.Ops Gauge
  */
 export function gauge(value: number): MetricState.Gauge {
   return new GaugeState(value)
 }
 
 /**
- * @tsplus static ets/Metrics/MetricState/Ops Frequency
+ * @tsplus static effect/core/io/Metrics/MetricState.Ops Frequency
  */
 export function frequency(occurrences: HashMap<string, number>): MetricState.Frequency {
   return new FrequencyState(occurrences)
 }
 
 /**
- * @tsplus static ets/Metrics/MetricState/Ops Histogram
+ * @tsplus static effect/core/io/Metrics/MetricState.Ops Histogram
  */
 export function histogram(
   buckets: Chunk<Tuple<[number, number]>>,
@@ -230,7 +230,7 @@ export function histogram(
 }
 
 /**
- * @tsplus static ets/Metrics/MetricState/Ops Summary
+ * @tsplus static effect/core/io/Metrics/MetricState.Ops Summary
  */
 export function summary(
   error: number,
@@ -244,35 +244,35 @@ export function summary(
 }
 
 /**
- * @tsplus static ets/Metrics/MetricState/Ops isCounterState
+ * @tsplus static effect/core/io/Metrics/MetricState.Ops isCounterState
  */
 export function isCounterState(u: unknown): u is MetricState.Counter {
   return typeof u === "object" && u != null && CounterStateSym in u
 }
 
 /**
- * @tsplus static ets/Metrics/MetricState/Ops isGaugeState
+ * @tsplus static effect/core/io/Metrics/MetricState.Ops isGaugeState
  */
 export function isGaugeState(u: unknown): u is MetricState.Gauge {
   return typeof u === "object" && u != null && GaugeStateSym in u
 }
 
 /**
- * @tsplus static ets/Metrics/MetricState/Ops isFrequencyState
+ * @tsplus static effect/core/io/Metrics/MetricState.Ops isFrequencyState
  */
 export function isFrequencyState(u: unknown): u is MetricState.Frequency {
   return typeof u === "object" && u != null && FrequencyStateSym in u
 }
 
 /**
- * @tsplus static ets/Metrics/MetricState/Ops isHistogramState
+ * @tsplus static effect/core/io/Metrics/MetricState.Ops isHistogramState
  */
 export function isHistogramState(u: unknown): u is MetricState.Histogram {
   return typeof u === "object" && u != null && HistogramStateSym in u
 }
 
 /**
- * @tsplus static ets/Metrics/MetricState/Ops isSummaryState
+ * @tsplus static effect/core/io/Metrics/MetricState.Ops isSummaryState
  */
 export function isSummaryState(u: unknown): u is MetricState.Summary {
   return typeof u === "object" && u != null && SummaryStateSym in u

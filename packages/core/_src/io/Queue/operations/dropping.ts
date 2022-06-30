@@ -8,7 +8,7 @@ import { Strategy } from "@effect/core/io/Queue/operations/strategy"
  * better performance by utilising an optimised version of the underlying
  * `RingBuffer`.
  *
- * @tsplus static ets/Queue/Ops dropping
+ * @tsplus static effect/core/io/Queue.Ops dropping
  */
 export function dropping<A>(
   requestedCapacity: number,

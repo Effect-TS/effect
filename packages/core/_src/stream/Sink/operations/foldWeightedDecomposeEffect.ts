@@ -12,7 +12,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * chunk or a single-valued chunk. In these cases, there is no other choice
  * than to yield a value that will cross the threshold.
  *
- * @tsplus static ets/Sink/Ops foldWeightedDecomposeEffect
+ * @tsplus static effect/core/stream/Sink.Ops foldWeightedDecomposeEffect
  */
 export function foldWeightedDecomposeEffect<R, E, R2, E2, R3, E3, In, S>(
   z: LazyArg<S>,

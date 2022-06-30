@@ -1,15 +1,13 @@
 /**
  * Count the values in the array matching a predicate.
  *
- * @tsplus fluent ets/TArray count
+ * @tsplus static effect/core/stm/TArray.Aspects count
+ * @tsplus pipeable effect/core/stm/TArray count
  */
-export function count_<A>(self: TArray<A>, f: Predicate<A>): USTM<number> {
-  return self.reduce(0, (n, a) => (f(a) ? n + 1 : n))
+export function count<A>(f: Predicate<A>) {
+  return (self: TArray<A>): STM<never, never, number> =>
+    self.reduce(
+      0,
+      (n, a) => (f(a) ? n + 1 : n)
+    )
 }
-
-/**
- * Count the values in the array matching a predicate.
- *
- * @tsplus static ets/TArray/Aspects count
- */
-export const count = Pipeable(count_)

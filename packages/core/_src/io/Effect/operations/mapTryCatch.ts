@@ -2,21 +2,14 @@
  * Returns an effect whose success is mapped by the specified side effecting
  * `f` function, translating any thrown exceptions into typed failed effects.
  *
- * @tsplus fluent ets/Effect mapTryCatch
+ * @tsplus static effect/core/io/Effect.Aspects mapTryCatch
+ * @tsplus pipeable effect/core/io/Effect mapTryCatch
  */
-export function mapTryCatch_<R, E1, E, A, B>(
-  self: Effect<R, E1, A>,
+export function mapTryCatch<A, B, E1>(
   f: (a: A) => B,
-  onThrow: (u: unknown) => E,
+  onThrow: (u: unknown) => E1,
   __tsplusTrace?: string
-): Effect<R, E | E1, B> {
-  return self.flatMap((a) => Effect.tryCatch(() => f(a), onThrow))
+) {
+  return <R, E>(self: Effect<R, E, A>): Effect<R, E | E1, B> =>
+    self.flatMap((a) => Effect.tryCatch(() => f(a), onThrow))
 }
-
-/**
- * Returns an effect whose success is mapped by the specified side effecting
- * `f` function, translating any thrown exceptions into typed failed effects.
- *
- * @tsplus static ets/Effect/Aspects mapTryCatch
- */
-export const mapTryCatch = Pipeable(mapTryCatch_)

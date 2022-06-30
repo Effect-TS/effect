@@ -1,5 +1,5 @@
 /**
- * @tsplus static ets/FiberRef/Ops unsafeMake
+ * @tsplus static effect/core/io/FiberRef.Ops unsafeMake
  */
 export function unsafeMake<A>(
   initial: A,

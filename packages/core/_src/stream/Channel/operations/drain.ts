@@ -2,7 +2,7 @@
  * Returns a new channel which reads all the elements from upstream's output
  * channel and ignores them, then terminates with the upstream result value.
  *
- * @tsplus getter ets/Channel drain
+ * @tsplus getter effect/core/stream/Channel drain
  */
 export function drain<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>

@@ -1,7 +1,7 @@
 import type { Lazy } from "@tsplus/stdlib/data/Function"
 
 /**
- * @tsplus type ets/Logger
+ * @tsplus type effect/core/io/Logger
  */
 export interface Logger<Message, Output> {
   readonly apply: (
@@ -17,7 +17,7 @@ export interface Logger<Message, Output> {
 }
 
 /**
- * @tsplus type ets/Logger/Ops
+ * @tsplus type effect/core/io/Logger.Ops
  */
 export interface LoggerOps {
   $: LoggerAspects
@@ -27,6 +27,6 @@ export const Logger: LoggerOps = {
 }
 
 /**
- * @tsplus type ets/Logger/Aspects
+ * @tsplus type effect/core/io/Logger.Aspects
  */
 export interface LoggerAspects {}

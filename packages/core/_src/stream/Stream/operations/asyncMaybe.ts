@@ -6,7 +6,7 @@ import type { Emit } from "@effect/core/stream/Stream/Emit"
  * synchronously. The optionality of the error type `E` can be used to signal
  * the end of the stream, by setting it to `None`.
  *
- * @tsplus static ets/Stream/Ops asyncMaybe
+ * @tsplus static effect/core/stream/Stream.Ops asyncMaybe
  */
 export function asyncMaybe<R, E, A>(
   register: (emit: Emit<R, E, A, void>) => Maybe<Stream<R, E, A>>,

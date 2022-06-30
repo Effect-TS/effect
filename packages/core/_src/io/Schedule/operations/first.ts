@@ -2,6 +2,8 @@
  * Returns a new schedule that packs the input and output of this schedule
  * into the first element of a tuple. This allows carrying information through
  * this schedule.
+ *
+ * @tsplus getter effect/core/io/Schedule first
  */
 export function first<State, Env, In, Out, X>(
   self: Schedule<State, Env, In, Out>

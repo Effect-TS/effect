@@ -1,7 +1,7 @@
 import type { _Out } from "@effect/core/io/Metrics/MetricKeyType"
 
 /**
- * @tsplus type ets/Metrics/MetricPair
+ * @tsplus type effect/core/io/Metrics/MetricPair
  */
 export interface MetricPair<Type extends MetricKeyType<any, any>> {
   readonly metricKey: MetricKey<Type>
@@ -11,7 +11,7 @@ export interface MetricPair<Type extends MetricKeyType<any, any>> {
 }
 
 /**
- * @tsplus type ets/Metrics/MetricPair/Ops
+ * @tsplus type effect/core/io/Metrics/MetricPair.Ops
  */
 export interface MetricPairOps {}
 export const MetricPair: MetricPairOps = {}
@@ -21,7 +21,7 @@ export declare namespace MetricPair {
 }
 
 /**
- * @tsplus static ets/Metrics/MetricPair/Ops make
+ * @tsplus static effect/core/io/Metrics/MetricPair.Ops make
  */
 export function make<Type extends MetricKeyType<any, any>>(
   metricKey: MetricKey<Type>,
@@ -33,7 +33,7 @@ export function make<Type extends MetricKeyType<any, any>>(
 }
 
 /**
- * @tsplus static ets/Metrics/MetricPair/Ops unsafeMake
+ * @tsplus static effect/core/io/Metrics/MetricPair.Ops unsafeMake
  */
 export function unsafeMake<Type extends MetricKeyType<any, any>>(
   metricKey: MetricKey<Type>,

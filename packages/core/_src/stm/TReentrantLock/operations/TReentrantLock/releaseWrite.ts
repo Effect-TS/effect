@@ -5,7 +5,7 @@ import { InternalWriteLock } from "@effect/core/stm/TReentrantLock/operations/_i
  * Releases a write lock held by this fiber. Succeeds with the outstanding
  * number of write locks held by this fiber.
  *
- * @tsplus getter ets/TReentrantLock releaseWrite
+ * @tsplus getter effect/core/stm/TReentrantLock releaseWrite
  */
 export function releaseWrite(self: TReentrantLock): USTM<number> {
   concreteTReentrantLock(self)

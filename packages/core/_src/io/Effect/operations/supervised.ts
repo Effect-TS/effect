@@ -4,20 +4,13 @@ import { ISupervise } from "@effect/core/io/Effect/definition/primitives"
  * Returns an effect with the behavior of this one, but where all child fibers
  * forked in the effect are reported to the specified supervisor.
  *
- * @tsplus fluent ets/Effect supervised
+ * @tsplus static effect/core/io/Effect.Aspects supervised
+ * @tsplus pipeable effect/core/io/Effect supervised
  */
-export function supervised_<R, E, A, X>(
-  self: Effect<R, E, A>,
+export function supervised<X>(
   supervisor: LazyArg<Supervisor<X>>,
   __tsplusTrace?: string
-): Effect<R, E, A> {
-  return Effect.suspendSucceed(new ISupervise(self, supervisor, __tsplusTrace))
+) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
+    Effect.suspendSucceed(new ISupervise(self, supervisor, __tsplusTrace))
 }
-
-/**
- * Returns an effect with the behavior of this one, but where all child fibers
- * forked in the effect are reported to the specified supervisor.
- *
- * @tsplus static ets/Effect/Aspects supervised
- */
-export const supervised = Pipeable(supervised_)

@@ -3,7 +3,7 @@
  * from inputs using the keying function `key`; if multiple inputs use the
  * same key, they are merged using the `f` function.
  *
- * @tsplus static ets/Sink/Ops collectAllToMap
+ * @tsplus static effect/core/stream/Sink.Ops collectAllToMap
  */
 export function collectAllToMap<In, K>(
   key: (in_: In) => K,

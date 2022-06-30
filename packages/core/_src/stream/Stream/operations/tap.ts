@@ -1,19 +1,12 @@
 /**
  * Adds an effect to consumption of every element of the stream.
  *
- * @tsplus fluent ets/Stream tap
+ * @tsplus static effect/core/stream/Stream.Aspects tap
+ * @tsplus pipeable effect/core/stream/Stream tap
  */
-export function tap_<R, E, A, R2, E2, Z>(
-  self: Stream<R, E, A>,
+export function tap<A, R2, E2, Z>(
   f: (a: A) => Effect<R2, E2, Z>,
   __tsplusTrace?: string
-): Stream<R | R2, E | E2, A> {
-  return self.mapEffect((a) => f(a).as(a))
+) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> => self.mapEffect((a) => f(a).as(a))
 }
-
-/**
- * Adds an effect to consumption of every element of the stream.
- *
- * @tsplus static ets/Stream/Aspects tap
- */
-export const tap = Pipeable(tap_)

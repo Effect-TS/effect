@@ -5,7 +5,7 @@ describe.concurrent("Stream", () => {
       const program = Stream.fromChunks(...chunks)
         .rechunk(2)
         .mapChunks((chunk) => Chunk(chunk))
-        .runCollect()
+        .runCollect
 
       const result = await program.unsafeRunPromise()
 

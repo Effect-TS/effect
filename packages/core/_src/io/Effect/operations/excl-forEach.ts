@@ -20,7 +20,7 @@ import { Exited } from "@effect/core/io/Scope/ReleaseMap/_internal/State"
  * For a parallel version of this method, see `forEachPar`. If you do not need
  * the results, see `forEachDiscard` for a more efficient implementation.
  *
- * @tsplus static ets/Effect/Ops forEach
+ * @tsplus static effect/core/io/Effect.Ops forEach
  */
 export function forEach<A, R, E, B>(
   as: LazyArg<Collection<A>>,
@@ -45,7 +45,7 @@ export function forEach<A, R, E, B>(
  * a second argument that corresponds to the index (starting from 0)
  * of the current element being iterated over.
  *
- * @tsplus static ets/Effect/Ops forEachWithIndex
+ * @tsplus static effect/core/io/Effect.Ops forEachWithIndex
  */
 export function forEachWithIndex<A, R, E, B>(
   as: LazyArg<Collection<A>>,
@@ -74,7 +74,7 @@ export function forEachWithIndex<A, R, E, B>(
  * Equivalent to `unit(forEach(as, f))`, but without the cost of building
  * the list of results.
  *
- * @tsplus static ets/Effect/Ops forEachDiscard
+ * @tsplus static effect/core/io/Effect.Ops forEachDiscard
  */
 export function forEachDiscard<R, E, A, X>(
   as: LazyArg<Collection<A>>,
@@ -102,7 +102,7 @@ function forEachDiscardLoop<R, E, A, X>(
  *
  * For a sequential version of this method, see `forEach`.
  *
- * @tsplus static ets/Effect/Ops forEachPar
+ * @tsplus static effect/core/io/Effect.Ops forEachPar
  */
 export function forEachPar<R, E, A, B>(
   as: LazyArg<Collection<A>>,
@@ -206,7 +206,7 @@ function forEachParN<R, E, A, B>(
  * a second argument that corresponds to the index (starting from 0)
  * of the current element being iterated over.
  *
- * @tsplus static ets/Effect/Ops forEachParWithIndex
+ * @tsplus static effect/core/io/Effect.Ops forEachParWithIndex
  */
 export function forEachParWithIndex<R, E, A, B>(
   as: LazyArg<Collection<A>>,
@@ -242,7 +242,7 @@ export function forEachParWithIndex<R, E, A, B>(
  * able to handle large input sequences. Additionally, interrupts all effects
  * on any failure.
  *
- * @tsplus static ets/Effect/Ops forEachParDiscard
+ * @tsplus static effect/core/io/Effect.Ops forEachParDiscard
  */
 export function forEachParDiscard<R, E, A, X>(
   as: LazyArg<Collection<A>>,
@@ -288,11 +288,11 @@ function forEachParUnboundedDiscard<R, E, A, X>(
                 }
               }
             )
-          ).forkDaemon())
+          ).forkDaemon)
       ).flatMap((fibers) =>
         restore(deferred.await()).foldCauseEffect(
           (cause) =>
-            forEachParUnbounded(fibers, (fiber) => fiber.interrupt()).flatMap(
+            forEachParUnbounded(fibers, (fiber) => fiber.interrupt).flatMap(
               (exits) => {
                 const collected = Exit.collectAllPar(exits)
                 if (collected._tag === "Some" && collected.value._tag === "Failure") {
@@ -303,7 +303,7 @@ function forEachParUnboundedDiscard<R, E, A, X>(
                 return Effect.failCause(cause.stripFailures)
               }
             ),
-          (_) => Effect.forEachDiscard(fibers, (fiber) => fiber.inheritRefs())
+          (_) => Effect.forEachDiscard(fibers, (fiber) => fiber.inheritRefs)
         )
       )
     })
@@ -353,7 +353,7 @@ function forEachParNDiscard<R, E, A, X>(
  * Applies the function `f` to each element of the `Collection<A>` and returns
  * the result in a new `Chunk<B>` using the specified execution strategy.
  *
- * @tsplus static ets/Effect/Ops forEachExec
+ * @tsplus static effect/core/io/Effect.Ops forEachExec
  */
 export function forEachExec<R, E, A, B>(
   as: LazyArg<Collection<A>>,
@@ -364,7 +364,7 @@ export function forEachExec<R, E, A, B>(
   return Effect.suspendSucceed(() => {
     switch (strategy._tag) {
       case "Parallel": {
-        return Effect.forEachPar(as, f).withParallelismUnbounded()
+        return Effect.forEachPar(as, f).withParallelismUnbounded
       }
       case "ParallelN": {
         return Effect.forEachPar(as, f).withParallelism(strategy.n)
@@ -384,7 +384,7 @@ export function forEachExec<R, E, A, B>(
  * Evaluate each effect in the structure from left to right, and collect the
  * results. For a parallel version, see `collectAllPar`.
  *
- * @tsplus static ets/Effect/Ops collectAll
+ * @tsplus static effect/core/io/Effect.Ops collectAll
  */
 export function collectAll<R, E, A>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
@@ -401,7 +401,7 @@ export function collectAll<R, E, A>(
  * Evaluate each effect in the structure in parallel, and collect the
  * results. For a sequential version, see `collectAll`.
  *
- * @tsplus static ets/Effect/Ops collectAllPar
+ * @tsplus static effect/core/io/Effect.Ops collectAllPar
  */
 export function collectAllPar<R, E, A>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
@@ -418,7 +418,7 @@ export function collectAllPar<R, E, A>(
  * Evaluate each effect in the structure from left to right, and discard the
  * results. For a parallel version, see `collectAllParDiscard`.
  *
- * @tsplus static ets/Effect/Ops collectAllDiscard
+ * @tsplus static effect/core/io/Effect.Ops collectAllDiscard
  */
 export function collectAllDiscard<R, E, A>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
@@ -435,7 +435,7 @@ export function collectAllDiscard<R, E, A>(
  * Evaluate each effect in the structure in parallel, and discard the
  * results. For a sequential version, see `collectAllDiscard`.
  *
- * @tsplus static ets/Effect/Ops collectAllParDiscard
+ * @tsplus static effect/core/io/Effect.Ops collectAllParDiscard
  */
 export function collectAllParDiscard<R, E, A>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
@@ -452,7 +452,7 @@ export function collectAllParDiscard<R, E, A>(
  * Evaluate each effect in the structure with `collectAll`, and collect
  * the results with given partial function.
  *
- * @tsplus static ets/Effect/Ops collectAllWith
+ * @tsplus static effect/core/io/Effect.Ops collectAllWith
  */
 export function collectAllWith<R, E, A, B>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
@@ -470,7 +470,7 @@ export function collectAllWith<R, E, A, B>(
  * Evaluate each effect in the structure with `collectAll`, and collect
  * the results with given partial function.
  *
- * @tsplus static ets/Effect/Ops collectAllWithPar
+ * @tsplus static effect/core/io/Effect.Ops collectAllWithPar
  */
 export function collectAllWithPar<R, E, A, B>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
@@ -487,14 +487,14 @@ export function collectAllWithPar<R, E, A, B>(
 /**
  * Evaluate and run each effect in the structure and collect discarding failed ones.
  *
- * @tsplus static ets/Effect/Ops collectAllSuccesses
+ * @tsplus static effect/core/io/Effect.Ops collectAllSuccesses
  */
 export function collectAllSuccesses<R, E, A>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
   __tsplusTrace?: string
 ): Effect<R, never, Chunk<A>> {
   return Effect.collectAllWith(
-    as().map((effect) => effect.exit()),
+    as().map((effect) => effect.exit),
     (exit) => (exit._tag === "Success" ? Maybe.some(exit.value) : Maybe.none)
   )
 }
@@ -506,14 +506,14 @@ export function collectAllSuccesses<R, E, A>(
 /**
  * Evaluate and run each effect in the structure in parallel, and collect discarding failed ones.
  *
- * @tsplus static ets/Effect/Ops collectAllSuccessesPar
+ * @tsplus static effect/core/io/Effect.Ops collectAllSuccessesPar
  */
 export function collectAllSuccessesPar<R, E, A>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
   __tsplusTrace?: string
 ): Effect<R, never, Chunk<A>> {
   return Effect.collectAllWithPar(
-    as().map((effect) => effect.exit()),
+    as().map((effect) => effect.exit),
     (exit) => (exit._tag === "Success" ? Maybe.some(exit.value) : Maybe.none)
   )
 }
@@ -533,7 +533,7 @@ export function fiberJoinAll<E, A>(
 ): Effect<never, E, Chunk<A>> {
   return fiberWaitAll(as)
     .flatMap((exit) => Effect.done(exit))
-    .tap(() => Effect.forEach(as, (fiber) => fiber.inheritRefs()))
+    .tap(() => Effect.forEach(as, (fiber) => fiber.inheritRefs))
 }
 
 /**
@@ -543,7 +543,7 @@ export function fiberWaitAll<E, A>(
   as: LazyArg<Collection<Fiber<E, A>>>,
   __tsplusTrace?: string
 ): Effect<never, never, Exit<E, Chunk<A>>> {
-  return Effect.forEachPar(as, (fiber) => fiber.await().flatMap((exit) => Effect.done(exit))).exit()
+  return Effect.forEachPar(as, (fiber) => fiber.await.flatMap((exit) => Effect.done(exit))).exit
 }
 
 // -----------------------------------------------------------------------------
@@ -569,7 +569,7 @@ export function releaseMapReleaseAll(
           switch (execStrategy._tag) {
             case "Sequential": {
               return Tuple(
-                Effect.forEach(Array.from(s.finalizers()).reverse(), ([_, f]) => s.update(f)(ex).exit()).flatMap((
+                Effect.forEach(Array.from(s.finalizers()).reverse(), ([_, f]) => s.update(f)(ex).exit).flatMap((
                   results
                 ) => Effect.done(Exit.collectAll(results).getOrElse(Exit.unit))),
                 new Exited(s.nextKey, ex, s.update)
@@ -577,7 +577,7 @@ export function releaseMapReleaseAll(
             }
             case "Parallel": {
               return Tuple(
-                Effect.forEachPar(Array.from(s.finalizers()).reverse(), ([_, f]) => s.update(f)(ex).exit()).flatMap((
+                Effect.forEachPar(Array.from(s.finalizers()).reverse(), ([_, f]) => s.update(f)(ex).exit).flatMap((
                   results
                 ) => Effect.done(Exit.collectAllPar(results).getOrElse(Exit.unit))),
                 new Exited(s.nextKey, ex, s.update)
@@ -585,7 +585,7 @@ export function releaseMapReleaseAll(
             }
             case "ParallelN": {
               return Tuple(
-                Effect.forEachPar(Array.from(s.finalizers()).reverse(), ([_, f]) => s.update(f)(ex).exit())
+                Effect.forEachPar(Array.from(s.finalizers()).reverse(), ([_, f]) => s.update(f)(ex).exit)
                   .flatMap((results) => Effect.done(Exit.collectAllPar(results).getOrElse(Exit.unit)))
                   .withParallelism(execStrategy.n) as Effect<never, never, unknown>,
                 new Exited(s.nextKey, ex, s.update)
@@ -595,7 +595,7 @@ export function releaseMapReleaseAll(
         }
       }
     })
-    .flatten()
+    .flatten
 }
 
 // -----------------------------------------------------------------------------
@@ -660,8 +660,8 @@ const UnsafeQueueProto: any = {
             ),
             (deferred) => deferred.interruptAs(fiberId)
           ) > ((this.strategy as Strategy<unknown>) as Strategy<unknown>).shutdown
-      ).unit()
-    }).uninterruptible()
+      ).unit
+    }).uninterruptible
   },
   offer(a: unknown, __tsplusTrace?: string) {
     return Effect.suspendSucceed(() => {

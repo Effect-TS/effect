@@ -2,7 +2,7 @@
  * Atomically modifies the `FiberRef` with the specified function and
  * returns the result.
  *
- * @tsplus fluent ets/FiberRef updateAndGet
+ * @tsplus fluent effect/core/io/FiberRef updateAndGet
  */
 export function updateAndGet_<A, P>(
   self: FiberRef<A, P>,
@@ -19,6 +19,6 @@ export function updateAndGet_<A, P>(
  * Atomically modifies the `FiberRef` with the specified function and
  * returns the result.
  *
- * @tsplus static ets/FiberRef/Aspects updateAndGet
+ * @tsplus static effect/core/io/FiberRef.Aspects updateAndGet
  */
 export const updateAndGet = Pipeable(updateAndGet_)

@@ -1,7 +1,7 @@
 import type { AsyncInputConsumer } from "@effect/core/stream/Channel/SingleProducerAsyncInput"
 
 /**
- * @tsplus static ets/Channel/Ops fromInput
+ * @tsplus static effect/core/stream/Channel.Ops fromInput
  */
 export function fromInput<Err, Elem, Done>(
   input: AsyncInputConsumer<Err, Elem, Done>

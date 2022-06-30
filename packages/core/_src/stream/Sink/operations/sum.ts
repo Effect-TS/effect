@@ -1,7 +1,7 @@
 /**
  * A sink that sums incoming numeric values.
  *
- * @tsplus static ets/Sink/Ops sum
+ * @tsplus static effect/core/stream/Sink.Ops sum
  */
 export function sum(
   __tsplusTrace?: string

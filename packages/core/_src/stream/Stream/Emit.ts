@@ -1,12 +1,12 @@
 /**
- * @tsplus type ets/Stream/Emit
+ * @tsplus type effect/core/stream/Stream/Emit
  */
 export interface Emit<R, E, A, B> extends EmitOps<R, E, A, B> {
   (f: Effect<R, Maybe<E>, Chunk<A>>): Promise<B>
 }
 
 /**
- * @tsplus type ets/Stream/Emit/Ops
+ * @tsplus type effect/core/stream/Stream/Emit.Ops
  */
 export interface EmitOperations {}
 export const Emit: EmitOperations = {}
@@ -68,7 +68,7 @@ export interface EmitOps<R, E, A, B> {
 }
 
 /**
- * @tsplus static ets/Stream/Emit/Ops __call
+ * @tsplus static effect/core/stream/Stream/Emit.Ops __call
  */
 export function apply<R, E, A, B>(
   fn: (f: Effect<R, Maybe<E>, Chunk<A>>) => Promise<B>

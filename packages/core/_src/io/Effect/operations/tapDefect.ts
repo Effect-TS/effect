@@ -1,22 +1,16 @@
 /**
  * Returns an effect that effectually "peeks" at the defect of this effect.
  *
- * @tsplus fluent ets/Effect tapDefect
+ * @tsplus static effect/core/io/Effect.Aspects tapDefect
+ * @tsplus pipeable effect/core/io/Effect tapDefect
  */
-export function tapDefect_<R, E, A, R2, E2, X>(
-  self: Effect<R, E, A>,
+export function tapDefect<R2, E2, X>(
   f: (cause: Cause<never>) => Effect<R2, E2, X>,
   __tsplusTrace?: string
-): Effect<R | R2, E | E2, A> {
-  return self.foldCauseEffect(
-    (cause) => f(cause.stripFailures).zipRight(Effect.failCauseNow(cause)),
-    Effect.succeedNow
-  )
+) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, A> =>
+    self.foldCauseEffect(
+      (cause) => f(cause.stripFailures).zipRight(Effect.failCauseNow(cause)),
+      Effect.succeedNow
+    )
 }
-
-/**
- * Returns an effect that effectually "peeks" at the defect of this effect.
- *
- * @tsplus static ets/Effect/Aspects tapDefect
- */
-export const tapDefect = Pipeable(tapDefect_)

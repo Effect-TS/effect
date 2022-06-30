@@ -1,5 +1,5 @@
 /**
- * @tsplus type ets/LogSpan
+ * @tsplus type effect/core/io/LogSpan
  */
 export interface LogSpan {
   readonly label: string
@@ -7,7 +7,7 @@ export interface LogSpan {
 }
 
 /**
- * @tsplus type ets/LogSpan/Ops
+ * @tsplus type effect/core/io/LogSpan.Ops
  */
 export interface LogSpanOps {
   $: LogSpanAspects
@@ -17,12 +17,12 @@ export const LogSpan: LogSpanOps = {
 }
 
 /**
- * @tsplus type ets/LogSpan/Aspects
+ * @tsplus type effect/core/io/LogSpan.Aspects
  */
 export interface LogSpanAspects {}
 
 /**
- * @tsplus static ets/LogSpan/Ops __call
+ * @tsplus static effect/core/io/LogSpan.Ops __call
  */
 export function apply(label: string, startTime: number): LogSpan {
   return {

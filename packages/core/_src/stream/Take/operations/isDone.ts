@@ -3,7 +3,7 @@ import { concreteTake } from "@effect/core/stream/Take/operations/_internal/Take
 /**
  * Checks if this `take` is done (`Take.end`).
  *
- * @tsplus getter ets/Take isDone
+ * @tsplus getter effect/core/stream/Take isDone
  */
 export function isDone<E, A>(self: Take<E, A>): boolean {
   concreteTake(self)

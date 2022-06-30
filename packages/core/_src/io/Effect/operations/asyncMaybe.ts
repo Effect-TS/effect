@@ -6,7 +6,7 @@
  * function `Effect<R, E, A> => any` must not be called. Otherwise the callback
  * function must be called at most once.
  *
- * @tsplus static ets/Effect/Ops asyncMaybe
+ * @tsplus static effect/core/io/Effect.Ops asyncMaybe
  */
 export function asyncMaybe<R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void) => Maybe<Effect<R, E, A>>,
@@ -26,7 +26,7 @@ export function asyncMaybe<R, E, A>(
  * The list of fibers, that may complete the async callback, is used to
  * provide better diagnostics.
  *
- * @tsplus static ets/Effect/Ops asyncMaybeBlockingOn
+ * @tsplus static effect/core/io/Effect.Ops asyncMaybeBlockingOn
  */
 export function asyncMaybeBlockingOn<R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void) => Maybe<Effect<R, E, A>>,

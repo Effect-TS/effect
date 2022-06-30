@@ -7,7 +7,7 @@ describe.concurrent("Stream", () => {
           "stream",
           ({ ref }) => Stream.fromEffect(ref.getAndUpdate((n) => n + 1)) + Stream.fail(Maybe.none)
         )
-        .flatMap(({ stream }) => stream.retry(Schedule.forever).take(2).runCollect())
+        .flatMap(({ stream }) => stream.retry(Schedule.repeatForever).take(2).runCollect)
 
       const result = await program.unsafeRunPromise()
 
@@ -23,7 +23,7 @@ describe.concurrent("Stream", () => {
               Stream.fromEffect(ref.get()) + Stream.fail(Maybe.none)
             )
           ))
-        .flatMap(({ stream }) => stream.retry(Schedule.forever).take(2).runCollect())
+        .flatMap(({ stream }) => stream.retry(Schedule.repeatForever).take(2).runCollect)
 
       const result = await program.unsafeRunPromise()
 

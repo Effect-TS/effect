@@ -1,7 +1,7 @@
 /**
  * Converts an option on values into an option on errors.
  *
- * @tsplus getter ets/Effect some
+ * @tsplus getter effect/core/io/Effect some
  */
 export function some<R, E, A>(
   self: Effect<R, E, Maybe<A>>,

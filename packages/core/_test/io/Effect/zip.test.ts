@@ -24,8 +24,8 @@ describe.concurrent("Effect", () => {
     it("does not report failure when interrupting loser after it succeeded", async () => {
       const program = Effect.interrupt
         .zipPar(Effect.succeed(1))
-        .sandbox()
-        .either()
+        .sandbox
+        .either
         .map((either) => either.mapLeft((cause) => cause.isInterrupted))
 
       const result = await program.unsafeRunPromise()
@@ -58,31 +58,27 @@ describe.concurrent("Effect", () => {
       assert.strictEqual(result, 150)
     })
 
-    it("does not kill fiber when forked on parent scope", async () => {
-      const program = Effect.Do()
-        .bind("latch1", () => Deferred.make<never, void>())
-        .bind("latch2", () => Deferred.make<never, void>())
-        .bind("latch3", () => Deferred.make<never, void>())
-        .bind("ref", () => Ref.make(false))
-        .bindValue("left", ({ latch1, latch2, latch3, ref }) =>
-          Effect.uninterruptibleMask(
-            ({ restore }) =>
-              latch2.succeed(undefined) >
-                restore(latch1.await() > Effect.succeed("foo")).onInterrupt(() => ref.set(true))
-          ))
-        .bindValue("right", ({ latch3 }) => latch3.succeed(undefined).as(42))
-        .tap(({ latch1, latch2, latch3 }) => (latch2.await() > latch3.await() > latch1.succeed(undefined)).fork())
-        .bind("result", ({ left, right }) => left.fork().zipPar(right))
-        .bindValue("leftInnerFiber", ({ result }) => result.get(0))
-        .bindValue("rightResult", ({ result }) => result.get(1))
-        .bind("leftResult", ({ leftInnerFiber }) => leftInnerFiber.await())
-        .bind("interrupted", ({ ref }) => ref.get())
-
-      const { interrupted, leftResult, rightResult } = await program.unsafeRunPromise()
-
-      assert.isFalse(interrupted)
-      assert.isTrue(leftResult.untraced == Exit.succeed("foo"))
-      assert.strictEqual(rightResult, 42)
-    })
+    it("does not kill fiber when forked on parent scope", () =>
+      Do(($) => {
+        const latch1 = $(Deferred.make<never, void>())
+        const latch2 = $(Deferred.make<never, void>())
+        const latch3 = $(Deferred.make<never, void>())
+        const ref = $(Ref.make(false))
+        const left = Effect.uninterruptibleMask(({ restore }) =>
+          latch2.succeed(undefined)
+            .zipRight(restore(latch1.await() > Effect.succeed("foo")))
+            .onInterrupt(() => ref.set(true))
+        )
+        const right = latch3.succeed(undefined).as(42)
+        $((latch2.await() > latch3.await() > latch1.succeed(undefined)).fork)
+        const result = $(left.fork.zipPar(right))
+        const leftInnerFiber = result.get(0)
+        const rightResult = result.get(1)
+        const leftResult = $(leftInnerFiber.await)
+        const interrupted = $(ref.get())
+        assert.isFalse(interrupted)
+        assert.isTrue(leftResult.untraced == Exit.succeed("foo"))
+        assert.strictEqual(rightResult, 42)
+      }).unsafeRunPromise())
   })
 })

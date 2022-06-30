@@ -7,7 +7,7 @@ import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition"
  * @param maxChunkSize
  *   Maximum number of queued elements to put in one chunk in the stream.
  *
- * @tsplus static ets/Stream/Ops fromQueueWithShutdown
+ * @tsplus static effect/core/stream/Stream.Ops fromQueueWithShutdown
  */
 export function fromQueueWithShutdown<A>(
   queue: LazyArg<Dequeue<A>>,

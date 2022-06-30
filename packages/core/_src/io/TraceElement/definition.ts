@@ -2,12 +2,12 @@ export const TraceElementSym = Symbol.for("@effect/core/io/TraceElement")
 export type TraceElementSym = typeof TraceElementSym
 
 /**
- * @tsplus type ets/TraceElement
+ * @tsplus type effect/core/io/TraceElement
  */
 export type TraceElement = NoLocation | SourceLocation
 
 /**
- * @tsplus type ets/TraceElement/Ops
+ * @tsplus type effect/core/io/TraceElement.Ops
  */
 export interface TraceElementOps {
   $: TraceElementAspects
@@ -17,7 +17,7 @@ export const TraceElement: TraceElementOps = {
 }
 
 /**
- * @tsplus type ets/TraceElement/Aspects
+ * @tsplus type effect/core/io/TraceElement.Aspects
  */
 export interface TraceElementAspects {}
 
@@ -62,23 +62,19 @@ export class SourceLocation implements Equals {
 }
 
 /**
- * @tsplus static ets/TraceElement/Ops isTraceElement
+ * @tsplus static effect/core/io/TraceElement.Ops isTraceElement
  */
 export function isTraceElement(u: unknown): u is TraceElement {
   return typeof u === "object" && u != null && TraceElementSym in u
 }
 
-// -----------------------------------------------------------------------------
-// Constructors
-// -----------------------------------------------------------------------------
-
 /**
- * @tsplus static ets/TraceElement/Ops empty
+ * @tsplus static effect/core/io/TraceElement.Ops empty
  */
 export const empty: TraceElement = new NoLocation()
 
 /**
- * @tsplus static ets/TraceElement/Ops __call
+ * @tsplus static effect/core/io/TraceElement.Ops __call
  */
 export function sourceLocation(
   fileName: string,
@@ -88,14 +84,10 @@ export function sourceLocation(
   return new SourceLocation(fileName, lineNumber, columnNumber)
 }
 
-// -----------------------------------------------------------------------------
-// Operations
-// -----------------------------------------------------------------------------
-
 const LOCATION_REGEX = /^(.*?):(\d*?):(\d*?)$/
 
 /**
- * @tsplus static ets/TraceElement/Ops parse
+ * @tsplus static effect/core/io/TraceElement.Ops parse
  */
 export function parse(trace?: string): TraceElement {
   if (trace) {
@@ -112,7 +104,7 @@ export function parse(trace?: string): TraceElement {
 }
 
 /**
- * @tsplus getter ets/TraceElement stringify
+ * @tsplus getter effect/core/io/TraceElement stringify
  */
 export function stringify(self: TraceElement): string {
   switch (self._tag) {

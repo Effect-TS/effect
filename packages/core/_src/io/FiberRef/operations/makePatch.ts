@@ -3,7 +3,7 @@
  * specified patch type to combine updates to the value in a compositional
  * way.
  *
- * @tsplus static ets/FiberRef/Ops makePatch
+ * @tsplus static effect/core/io/FiberRef.Ops makePatch
  */
 export function makePatch<Value, Patch>(
   initial: Value,

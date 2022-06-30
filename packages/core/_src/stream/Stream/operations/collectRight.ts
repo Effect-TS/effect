@@ -1,7 +1,7 @@
 /**
  * Filters any `Left` values.
  *
- * @tsplus fluent ets/Stream collectRight
+ * @tsplus getter effect/core/stream/Stream collectRight
  */
 export function collectRight<R, E, L, A>(
   self: Stream<R, E, Either<L, A>>,

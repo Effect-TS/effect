@@ -1,21 +1,15 @@
 /**
  * Intersperse and also add a prefix and a suffix.
  *
- * @tsplus fluent ets/Stream intersperseAffixes
+ * @tsplus static effect/core/stream/Stream.Aspects intersperseAffixes
+ * @tsplus pipeable effect/core/stream/Stream intersperseAffixes
  */
-export function intersperseAffixes_<R, E, A, A2>(
-  self: Stream<R, E, A>,
+export function intersperseAffixes<A2>(
   start: LazyArg<A2>,
   middle: LazyArg<A2>,
   end: LazyArg<A2>,
   __tsplusTrace?: string
-): Stream<R, E, A | A2> {
-  return Stream.suspend(Stream(start()) + self.intersperse(middle) + Stream(end()))
+) {
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A | A2> =>
+    Stream.suspend(Stream(start()) + self.intersperse(middle) + Stream(end()))
 }
-
-/**
- * Intersperse and also add a prefix and a suffix.
- *
- * @tsplus static ets/Stream/Aspects intersperseAffixes
- */
-export const intersperseAffixes = Pipeable(intersperseAffixes_)

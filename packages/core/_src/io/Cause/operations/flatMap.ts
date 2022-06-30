@@ -4,24 +4,18 @@ import { Both, Cause, Die, Interrupt, Stackless, Then } from "@effect/core/io/Ca
  * Transforms each error value in this cause to a new cause with the specified
  * function and then flattens the nested causes into a single cause.
  *
- * @tsplus fluent ets/Cause flatMap
+ * @tsplus static effect/core/io/Cause.Aspects flatMap
+ * @tsplus pipeable effect/core/io/Cause flatMap
  */
-export function flatMap_<E, E1>(self: Cause<E>, f: (e: E) => Cause<E1>): Cause<E1> {
-  return self.fold(
-    Cause.empty,
-    (e, trace) => f(e).traced(trace),
-    (d, trace) => new Die(d, trace),
-    (fiberId, trace) => new Interrupt(fiberId, trace),
-    (left, right) => new Then(left, right),
-    (left, right) => new Both(left, right),
-    (cause, stackless) => new Stackless(cause, stackless)
-  )
+export function flatMap<E, E1>(f: (e: E) => Cause<E1>) {
+  return (self: Cause<E>): Cause<E1> =>
+    self.fold(
+      Cause.empty,
+      (e, trace) => f(e).traced(trace),
+      (d, trace) => new Die(d, trace),
+      (fiberId, trace) => new Interrupt(fiberId, trace),
+      (left, right) => new Then(left, right),
+      (left, right) => new Both(left, right),
+      (cause, stackless) => new Stackless(cause, stackless)
+    )
 }
-
-/**
- * Transforms each error value in this cause to a new cause with the specified
- * function and then flattens the nested causes into a single cause.
- *
- * @tsplus static ets/Cause/Aspects flatMap
- */
-export const flatMap = Pipeable(flatMap_)

@@ -26,7 +26,7 @@ describe.concurrent("Queue", () => {
     it("blocks until the required number of elements is available", async () => {
       const program = Effect.Do()
         .bind("queue", () => Queue.bounded<number>(100))
-        .bindValue("updater", ({ queue }) => queue.offer(10).forever())
+        .bindValue("updater", ({ queue }) => queue.offer(10).forever)
         .bindValue("getter", ({ queue }) => queue.takeN(5))
         .flatMap(({ getter, updater }) => getter.race(updater))
 

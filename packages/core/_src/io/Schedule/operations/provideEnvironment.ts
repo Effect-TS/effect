@@ -4,23 +4,13 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * Returns a new schedule with its environment provided to it, so the
  * resulting schedule does not require any environment.
  *
- * @tsplus fluent ets/Schedule provideEnvironment
- * @tsplus fluent ets/Schedule/WithState provideEnvironment
+ * @tsplus static effect/core/io/Schedule.Aspects provideEnvironment
+ * @tsplus pipeable effect/core/io/Schedule provideEnvironment
  */
-export function provideEnvironment_<State, R, In, Out>(
-  self: Schedule<State, R, In, Out>,
-  environment: LazyArg<Env<R>>
-): Schedule<State, never, In, Out> {
-  return makeWithState(
-    self._initial,
-    (now, input, state) => self._step(now, input, state).provideEnvironment(environment)
-  )
+export function provideEnvironment<R>(environment: LazyArg<Env<R>>) {
+  return <State, In, Out>(self: Schedule<State, R, In, Out>): Schedule<State, never, In, Out> =>
+    makeWithState(
+      self._initial,
+      (now, input, state) => self._step(now, input, state).provideEnvironment(environment)
+    )
 }
-
-/**
- * Returns a new schedule with its environment provided to it, so the
- * resulting schedule does not require any environment.
- *
- * @tsplus static ets/Schedule/Aspects provideEnvironment
- */
-export const provideEnvironment = Pipeable(provideEnvironment_)

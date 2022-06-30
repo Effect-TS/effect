@@ -1,4 +1,4 @@
-describe("Chunk", () => {
+describe.concurrent("Chunk", () => {
   it("collectEffect", async () => {
     const chunk = Chunk(0, 1, 2, 3)
 

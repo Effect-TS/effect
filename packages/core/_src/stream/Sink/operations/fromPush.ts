@@ -3,7 +3,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
 /**
  * Creates a sink from a chunk processing function.
  *
- * @tsplus static ets/Sink/Ops fromPush
+ * @tsplus static effect/core/stream/Sink.Ops fromPush
  */
 export function fromPush<R, E, In, L, Z>(
   push: Effect<

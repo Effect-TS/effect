@@ -1,7 +1,7 @@
 /**
  * Requires the option produced by this value to be `None`.
  *
- * @tsplus getter ets/Effect none
+ * @tsplus getter effect/core/io/Effect none
  */
 export function none<R, E, A>(
   self: Effect<R, E, Maybe<A>>,

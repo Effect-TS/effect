@@ -2,20 +2,15 @@
  * Zips this fiber and the specified fiber together, producing a tuple of
  * their output.
  *
- * @tsplus fluent ets/Fiber zip
- * @tsplus fluent ets/RuntimeFiber zip
+ * @tsplus static effect/core/io/Fiber.Aspects zip
+ * @tsplus static effect/core/io/RuntimeFiber.Aspects zip
+ * @tsplus pipeable effect/core/io/Fiber zip
+ * @tsplus pipeable effect/core/io/RuntimeFiber zip
  */
-export function zip_<E, E1, A, A1>(
-  self: Fiber<E, A>,
-  that: Fiber<E1, A1>
-): Fiber<E | E1, Tuple<[A, A1]>> {
-  return self.zipWith(that, (a, b) => Tuple(a, b))
+export function zip<E2, A2>(that: Fiber<E2, A2>) {
+  return <E, A>(self: Fiber<E, A>): Fiber<E | E2, Tuple<[A, A2]>> =>
+    self.zipWith(
+      that,
+      (a, b) => Tuple(a, b)
+    )
 }
-
-/**
- * Zips this fiber and the specified fiber together, producing a tuple of
- * their output.
- *
- * @tsplus static ets/Fiber/Aspects zip
- */
-export const zip = Pipeable(zip_)

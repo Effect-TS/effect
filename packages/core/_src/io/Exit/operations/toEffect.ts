@@ -1,7 +1,7 @@
 /**
  * Converts the `Exit` to an `Effect`.
  *
- * @tsplus fluent ets/Exit toEffect
+ * @tsplus getter effect/core/io/Exit toEffect
  */
 export function toEffect<E, A>(
   self: Exit<E, A>,

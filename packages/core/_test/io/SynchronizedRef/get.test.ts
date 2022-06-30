@@ -101,11 +101,11 @@ describe.concurrent("SynchronizedRef", () => {
         .bind("latch", () => Deferred.make<never, void>())
         .bindValue(
           "makeAndWait",
-          ({ deferred, latch }) => deferred.complete(Ref.Synchronized.make<State>(State.Active)) > latch.await()
+          ({ deferred, latch }) => deferred.complete(Ref.Synchronized.make<State>(State.Active)) > latch.await
         )
-        .bind("fiber", ({ makeAndWait }) => makeAndWait.fork())
+        .bind("fiber", ({ makeAndWait }) => makeAndWait.fork)
         .bind("ref", ({ deferred }) => deferred.await())
-        .tap(({ fiber }) => fiber.interrupt())
+        .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ ref }) => ref.updateAndGetEffect(() => Effect.succeed(State.Closed)))
 
       const result = await program.unsafeRunPromise()

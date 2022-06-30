@@ -8,14 +8,14 @@ describe.concurrent("Effect", () => {
           0,
           (effect) => effect.reject((n) => (n !== 0 ? Maybe.some("partial failed!") : Maybe.none))
         )
-          .sandbox()
-          .either(),
+          .sandbox
+          .either,
         badCase: exactlyOnce(
           1,
           (effect) => effect.reject((n) => (n !== 0 ? Maybe.some("partial failed!") : Maybe.none))
         )
-          .sandbox()
-          .either()
+          .sandbox
+          .either
           .map((either) => either.mapLeft((cause) => cause.failureOrCause))
       })
 
@@ -33,21 +33,21 @@ describe.concurrent("Effect", () => {
           0,
           (effect) => effect.rejectEffect((n) => n !== 0 ? Maybe.some(Effect.succeed("partial failed!")) : Maybe.none)
         )
-          .sandbox()
-          .either(),
+          .sandbox
+          .either,
         partialBadCase: exactlyOnce(
           0,
           (effect) => effect.rejectEffect((n) => n !== 0 ? Maybe.some(Effect.fail("partial failed!")) : Maybe.none)
         )
-          .sandbox()
-          .either()
+          .sandbox
+          .either
           .map((either) => either.mapLeft((cause) => cause.failureOrCause)),
         badCase: exactlyOnce(
           1,
           (effect) => effect.rejectEffect((n) => n !== 0 ? Maybe.some(Effect.fail("partial failed!")) : Maybe.none)
         )
-          .sandbox()
-          .either()
+          .sandbox
+          .either
           .map((either) => either.mapLeft((cause) => cause.failureOrCause))
       })
 

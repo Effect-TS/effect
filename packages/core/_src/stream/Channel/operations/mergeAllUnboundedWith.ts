@@ -1,7 +1,7 @@
 /**
- * @tsplus static ets/Channel/Ops mergeAllUnboundedWith
+ * @tsplus static effect/core/stream/Channel.Ops mergeAllUnboundedWith
  */
-export function mergeAllUnboundedWith_<
+export function mergeAllUnboundedWith<
   Env,
   Env1,
   InErr,
@@ -36,8 +36,3 @@ export function mergeAllUnboundedWith_<
 > {
   return Channel.mergeAllWith(channels, Number.MAX_SAFE_INTEGER, f)
 }
-
-/**
- * @tsplus static ets/Channel/Aspects mergeAllUnboundedWith
- */
-export const mergeAllUnboundedWith = Pipeable(mergeAllUnboundedWith_)
