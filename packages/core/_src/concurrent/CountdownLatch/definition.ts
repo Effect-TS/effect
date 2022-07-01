@@ -57,7 +57,7 @@ export class CountdownLatchInternal {
   /**
    * Returns the current count.
    */
-  count(): Effect<never, never, number> {
+  get count(): Effect<never, never, number> {
     return this._count.get()
   }
 
@@ -65,7 +65,7 @@ export class CountdownLatchInternal {
    * Decrements the count of the latch, releasing all waiting fibers if the
    * count reaches zero.
    */
-  countDown(): Effect<never, never, void> {
+  get countDown(): Effect<never, never, void> {
     return this._count.modify((n) => {
       if (n === 0) {
         return Tuple(Effect.unit, 0)
@@ -80,7 +80,7 @@ export class CountdownLatchInternal {
   /**
    * Causes the current fiber to wait until the latch has counted down to zero.
    */
-  await(): Effect<never, never, void> {
+  get await(): Effect<never, never, void> {
     return this._waiters.await()
   }
 }

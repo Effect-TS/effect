@@ -3,7 +3,7 @@ describe.concurrent("CountdownLatch", () => {
     it("should create a CountdownLatch", () =>
       Do(($) => {
         const latch = $(CountdownLatch.make(100))
-        const result = $(latch.count().exit)
+        const result = $(latch.count.exit)
         assert.isTrue(result == Exit.succeed(100))
       }).unsafeRunPromise())
 
@@ -22,11 +22,11 @@ describe.concurrent("CountdownLatch", () => {
         const deferreds = $(Effect.collectAll(Chunk.fill(10, () => Deferred.make<never, void>())))
         const fiber = $(Effect.forkAll(deferreds.map((deferred) =>
           latch
-            .await()
+            .await
             .zipRight(count.update((n) => n + 1))
             .zipRight(deferred.succeed(undefined))
         )))
-        $(latch.countDown().repeat(Schedule.recurs(99)))
+        $(latch.countDown.repeat(Schedule.recurs(99)))
         $(Effect.forEachDiscard(deferreds, (deferred) => deferred.await()))
         const result = $(fiber.join.zipRight(count.get()))
         assert.strictEqual(result, 10)

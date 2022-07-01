@@ -59,31 +59,31 @@ export class CyclicBarrierInternal {
   /**
    * The number of parties required to trip this barrier.
    */
-  parties(): number {
+  get parties(): number {
     return this._parties
   }
 
   /**
    * The number of parties currently waiting at the barrier.
    */
-  waiting(): Effect<never, never, number> {
+  get waiting(): Effect<never, never, number> {
     return this._waiting.get()
   }
 
   /**
    * Queries if this barrier is in a broken state.
    */
-  isBroken(): Effect<never, never, boolean> {
+  get isBroken(): Effect<never, never, boolean> {
     return this._broken.get()
   }
 
   /**
    * Resets the barrier to its initial state. Breaks any waiting party.
    */
-  reset(): Effect<never, never, void> {
+  get reset(): Effect<never, never, void> {
     return Effect.whenEffect(
       this._waiting.get().map((waiting) => waiting > 0),
-      this.fail()
+      this.fail
     ).zipRight(
       Deferred.make<void, void>()
         .flatMap((deferred) => this._lock.set(deferred))
@@ -97,7 +97,7 @@ export class CyclicBarrierInternal {
    * Waits until all parties have invoked await on this barrier. Fails if the
    * barrier is broken.
    */
-  await(): Effect<never, void, number> {
+  get await(): Effect<never, void, number> {
     return Effect.uninterruptibleMask(({ restore }) =>
       this._broken.get()
         .flatMap((broken) => broken ? Effect.fail(undefined) : Effect.unit)
@@ -106,14 +106,14 @@ export class CyclicBarrierInternal {
             waiting + 1 === this._parties ?
               Tuple(
                 restore(this._action)
-                  .zipRight(this.succeed().as(this._parties - waiting - 1))
-                  .zipLeft(this.reset()),
+                  .zipRight(this.succeed.as(this._parties - waiting - 1))
+                  .zipLeft(this.reset),
                 0
               ) :
               Tuple(
                 this._lock.get().flatMap((lock) =>
                   restore(lock.await())
-                    .onInterrupt(() => this.break())
+                    .onInterrupt(() => this.break)
                     .as(this._parties - waiting - 1)
                 ),
                 waiting + 1
@@ -123,15 +123,15 @@ export class CyclicBarrierInternal {
     )
   }
 
-  private succeed(): Effect<never, never, void> {
+  private get succeed(): Effect<never, never, void> {
     return this._lock.get().flatMap((deferred) => deferred.succeed(undefined).unit)
   }
 
-  private fail(): Effect<never, never, void> {
+  private get fail(): Effect<never, never, void> {
     return this._lock.get().flatMap((deferred) => deferred.fail(undefined).unit)
   }
 
-  private break(): Effect<never, never, void> {
-    return this._broken.set(true).zipRight(this.fail())
+  private get break(): Effect<never, never, void> {
+    return this._broken.set(true).zipRight(this.fail)
   }
 }

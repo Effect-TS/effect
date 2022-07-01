@@ -5,8 +5,8 @@ describe.concurrent("CyclicBarrier", () => {
     it("should create a CyclicBarrier", () =>
       Do(($) => {
         const barrier = $(CyclicBarrier.make(parties))
-        const isBroken = $(barrier.isBroken())
-        const waiting = $(barrier.waiting())
+        const isBroken = $(barrier.isBroken)
+        const waiting = $(barrier.waiting)
         assert.isFalse(isBroken)
         assert.strictEqual(waiting, 0)
       }).unsafeRunPromise())
@@ -16,9 +16,9 @@ describe.concurrent("CyclicBarrier", () => {
     it("releases the barrier", () =>
       Do(($) => {
         const barrier = $(CyclicBarrier.make(2))
-        const fiber1 = $(barrier.await().fork)
+        const fiber1 = $(barrier.await.fork)
         $(fiber1._status.repeatWhile((status) => status._tag !== "Suspended"))
-        const fiber2 = $(barrier.await().fork)
+        const fiber2 = $(barrier.await.fork)
         const ticket1 = $(fiber1.join)
         const ticket2 = $(fiber2.join)
         assert.strictEqual(ticket1, 1)
@@ -29,9 +29,9 @@ describe.concurrent("CyclicBarrier", () => {
       Do(($) => {
         const deferred = $(Deferred.make<never, void>())
         const barrier = $(CyclicBarrier.make(2, deferred.succeed(undefined)))
-        const fiber1 = $(barrier.await().fork)
+        const fiber1 = $(barrier.await.fork)
         $(fiber1._status.repeatWhile((status) => status._tag !== "Suspended"))
-        const fiber2 = $(barrier.await().fork)
+        const fiber2 = $(barrier.await.fork)
         $(fiber1.join)
         $(fiber2.join)
         const isComplete = $(deferred.isDone())
@@ -41,14 +41,14 @@ describe.concurrent("CyclicBarrier", () => {
     it("releases the barrier and cycles", () =>
       Do(($) => {
         const barrier = $(CyclicBarrier.make(2))
-        const fiber1 = $(barrier.await().fork)
+        const fiber1 = $(barrier.await.fork)
         $(fiber1._status.repeatWhile((status) => status._tag !== "Suspended"))
-        const fiber2 = $(barrier.await().fork)
+        const fiber2 = $(barrier.await.fork)
         const ticket1 = $(fiber1.join)
         const ticket2 = $(fiber2.join)
-        const fiber3 = $(barrier.await().fork)
+        const fiber3 = $(barrier.await.fork)
         $(fiber3._status.repeatWhile((status) => status._tag !== "Suspended"))
-        const fiber4 = $(barrier.await().fork)
+        const fiber4 = $(barrier.await.fork)
         const ticket3 = $(fiber3.join)
         const ticket4 = $(fiber4.join)
         assert.strictEqual(ticket1, 1)
@@ -60,11 +60,11 @@ describe.concurrent("CyclicBarrier", () => {
     it("breaks on reset", () =>
       Do(($) => {
         const barrier = $(CyclicBarrier.make(parties))
-        const fiber1 = $(barrier.await().fork)
-        const fiber2 = $(barrier.await().fork)
+        const fiber1 = $(barrier.await.fork)
+        const fiber2 = $(barrier.await.fork)
         $(fiber1._status.repeatWhile((status) => status._tag !== "Suspended"))
         $(fiber2._status.repeatWhile((status) => status._tag !== "Suspended"))
-        $(barrier.reset())
+        $(barrier.reset)
         const result1 = $(fiber1.await)
         const result2 = $(fiber2.await)
         assert.isTrue(result1 == Exit.fail(undefined))
@@ -74,13 +74,13 @@ describe.concurrent("CyclicBarrier", () => {
     it("breaks on party interruption", () =>
       Do(($) => {
         const barrier = $(CyclicBarrier.make(parties))
-        const fiber1 = $(barrier.await().timeout((10).millis).fork)
-        const fiber2 = $(barrier.await().fork)
+        const fiber1 = $(barrier.await.timeout((10).millis).fork)
+        const fiber2 = $(barrier.await.fork)
         $(fiber1._status.repeatWhile((status) => status._tag !== "Suspended"))
         $(fiber2._status.repeatWhile((status) => status._tag !== "Suspended"))
-        const isBroken1 = $(barrier.isBroken())
+        const isBroken1 = $(barrier.isBroken)
         $(Effect.sleep((20).millis))
-        const isBroken2 = $(barrier.isBroken())
+        const isBroken2 = $(barrier.isBroken)
         const result1 = $(fiber1.await)
         const result2 = $(fiber2.await)
         assert.isFalse(isBroken1)
