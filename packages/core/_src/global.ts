@@ -40,6 +40,10 @@ import { CountdownLatch } from "@effect/core/concurrent/CountdownLatch/definitio
  * @tsplus global
  */
 import { CyclicBarrier } from "@effect/core/concurrent/CyclicBarrier/definition"
+/**
+ * @tsplus global
+ */
+import { ReentrantLock } from "@effect/core/concurrent/ReentrantLock/definition"
 
 /**
  * @tsplus global

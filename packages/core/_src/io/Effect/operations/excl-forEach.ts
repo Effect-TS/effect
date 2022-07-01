@@ -81,7 +81,7 @@ export function forEachDiscard<R, E, A, X>(
   f: (a: A) => Effect<R, E, X>,
   __tsplusTrace?: string
 ): Effect<R, E, void> {
-  return Effect.succeed(as).flatMap((Collection) => forEachDiscardLoop(Collection[Symbol.iterator](), f))
+  return Effect.succeed(as).flatMap((collection) => forEachDiscardLoop(collection[Symbol.iterator](), f))
 }
 
 function forEachDiscardLoop<R, E, A, X>(
