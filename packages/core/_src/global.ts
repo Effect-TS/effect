@@ -43,6 +43,10 @@ import { CyclicBarrier } from "@effect/core/concurrent/CyclicBarrier/definition"
 /**
  * @tsplus global
  */
+import { MVar } from "@effect/core/concurrent/MVar/definition"
+/**
+ * @tsplus global
+ */
 import { ReentrantLock } from "@effect/core/concurrent/ReentrantLock/definition"
 
 /**
