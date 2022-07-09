@@ -71,7 +71,7 @@ import { Clock } from "@effect/core/io/Clock/definition"
 /**
  * @tsplus global
  */
-import { DefaultEnv } from "@effect/core/io/DefaultEnv/definition"
+import { DefaultServices } from "@effect/core/io/DefaultServices/definition"
 /**
  * @tsplus global
  */
@@ -312,3 +312,15 @@ import { SubscriptionRef } from "@effect/core/stream/SubscriptionRef/definition"
  * @tsplus global
  */
 import { Take } from "@effect/core/stream/Take/definition"
+/**
+ * @tsplus global
+ */
+import { Gen } from "@effect/core/testing/Gen/definition"
+/**
+ * @tsplus global
+ */
+import { Sample } from "@effect/core/testing/Sample/definition"
+/**
+ * @tsplus global
+ */
+import { Sized } from "@effect/core/testing/Sized"

@@ -114,7 +114,7 @@ export namespace FiberRef {
     ): <R, E, B>(use: Effect<R, E, B>) => Effect<R, E, B>
 
     /**
-     * Returns a managed effect that sets the value associated with the curent
+     * Returns a scoped effect that sets the value associated with the curent
      * fiber to the specified value as its `acquire` action and restores it to its
      * original value as its `release` action.
      */
@@ -125,7 +125,18 @@ export namespace FiberRef {
     ): Effect<Scope, never, void>
 
     /**
-     * Returns an `Effect` that runs with `f` applied to the current fiber.
+     * Returns a scoped effect that updates the value associated with the
+     * current fiber using the specified function and restores it to its
+     * original value when the scope is closed.
+     */
+    locallyScopedWith(
+      this: FiberRef.WithPatch<Value, Patch>,
+      f: (a: Value) => Value,
+      __tsplusTrace?: string
+    ): Effect<Scope, never, void>
+
+    /**
+     * Returns an effect that runs with `f` applied to the current fiber.
      *
      * Guarantees that fiber data is properly restored via `acquireRelease`.
      */

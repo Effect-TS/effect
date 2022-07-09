@@ -87,6 +87,14 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
     ).unit
   }
 
+  locallyScopedWith(
+    this: FiberRef.WithPatch<Value, Patch>,
+    f: (a: Value) => Value,
+    __tsplusTrace?: string
+  ): Effect<Scope, never, void> {
+    return this.getWith((a) => this.locallyScoped(f(a)))
+  }
+
   locallyWith(
     this: FiberRef.WithPatch<Value, Patch>,
     f: (a: Value) => Value,

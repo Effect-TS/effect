@@ -78,7 +78,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("provideLayer", () => {
     it("simple example", async () => {
       const program = Stream.scoped(Effect.service(NumberService))
-        .provideLayer(Layer.succeed(NumberService)(new NumberServiceImpl(10)))
+        .provideLayer(Layer.succeed(NumberService, new NumberServiceImpl(10)))
         .runHead
 
       const result = await program.unsafeRunPromise()
