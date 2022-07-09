@@ -29,10 +29,12 @@ export interface Fiber<E, A> {
 export type RealFiber<E, A> = Fiber.Runtime<E, A> | Fiber.Synthetic<E, A>
 
 export declare namespace Fiber {
-  type Runtime<E, A> = RuntimeFiber<E, A>
-  type Synthetic<E, A> = SyntheticFiber<E, A>
+  export type Runtime<E, A> = RuntimeFiber<E, A>
+  export type Synthetic<E, A> = SyntheticFiber<E, A>
 
-  interface Descriptor {
+  export type Status = FiberStatus
+
+  export interface Descriptor {
     /**
      * The unique identifier of the `Fiber`.
      */
@@ -191,6 +193,42 @@ export class SyntheticFiber<E, A> implements BaseFiber<E, A> {
     readonly _interruptAs: (fiberId: FiberId) => Effect<never, never, Exit<E, A>>
   ) {}
 }
+
+type NonEmptyArrayOrd = Array<Ord<any>> & { readonly 0: Ord<any> }
+
+type TupleOrd<T extends NonEmptyArrayOrd> = {
+  [K in keyof T]: [T[K]] extends [Ord<infer A>] ? A : never
+}
+
+// TODO: remove when incorporated into stdlib
+const tupleOrd = <T extends NonEmptyArrayOrd>(
+  ...ords: T & {
+    readonly 0: Ord<any>
+  }
+): Ord<ForcedTuple<TupleOrd<T>>> =>
+  Ord((first, second) => {
+    let i = 0
+    for (; i < ords.length - 1; i++) {
+      const r = ords[i]!.compare(first[i], second[i])
+      if (r !== 0) {
+        return r
+      }
+    }
+    return ords[i]!.compare(first[i], second[i])
+  })
+
+/**
+ * @tsplus static effect/core/io/Fiber.Ops Ord
+ */
+export const ordFiber: Ord<Fiber.Runtime<unknown, unknown>> = tupleOrd(
+  Ord.number,
+  Ord.number
+).contramap((fiber) =>
+  Tuple(
+    (fiber._id as FiberId.Runtime).startTimeSeconds,
+    (fiber._id as FiberId.Runtime).id
+  )
+)
 
 export function makeSynthetic<E, A>(_: {
   readonly id: FiberId

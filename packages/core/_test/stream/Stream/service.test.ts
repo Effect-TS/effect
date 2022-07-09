@@ -8,7 +8,9 @@ describe.concurrent("Stream", () => {
       const ServiceWithEffect = Tag<ServiceWithEffect>()
 
       const program = Stream.serviceWithEffect(ServiceWithEffect, (_) => _.live)
-        .provideSomeLayer(Layer.succeed(ServiceWithEffect)({ live: Effect.succeed(10) }))
+        .provideSomeLayer(Layer.succeed(ServiceWithEffect, {
+          live: Effect.succeed(10)
+        }))
         .runCollect
 
       const result = await program.unsafeRunPromise()
@@ -25,7 +27,9 @@ describe.concurrent("Stream", () => {
 
       const program = Stream.serviceWithStream(ServiceWithStream, (_) => _.live)
         .provideSomeLayer(
-          Layer.succeed(ServiceWithStream)({ live: Stream.fromCollection(Chunk.range(0, 10)) })
+          Layer.succeed(ServiceWithStream, {
+            live: Stream.fromCollection(Chunk.range(0, 10))
+          })
         )
         .runCollect
 

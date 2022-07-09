@@ -10,7 +10,7 @@ export function retry<S, RIn1, E, X>(schedule: LazyArg<Schedule<S, RIn1, E, X>>)
       const schedule0 = schedule()
       const stateTag = Tag<UpdateState<S>>()
 
-      return Layer.succeed(stateTag)({ state: schedule0._initial }).flatMap((env) =>
+      return Layer.succeed(stateTag, { state: schedule0._initial }).flatMap((env) =>
         loop(self, schedule0, stateTag, env.get(stateTag).state)
       )
     })
