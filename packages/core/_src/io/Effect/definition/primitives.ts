@@ -26,7 +26,7 @@ export type Instruction =
   | ILogged<any>
   | IFiberRefModifyAll<any>
   | IFiberRefLocally<any, any, any, any, any>
-  | IFiberRefDelete
+  | IFiberRefDelete<any, any>
   | IFiberRefWith<any, any, any, any, any>
   | ISetRuntimeConfig
 
@@ -264,7 +264,7 @@ export class IFiberRefModify<A, B, P> extends Base<never, never, B> {
   readonly _tag = "FiberRefModify"
 
   constructor(
-    readonly fiberRef: FiberRef<A, P>,
+    readonly fiberRef: FiberRef.WithPatch<A, P>,
     readonly f: (a: A) => Tuple<[B, A]>,
     readonly trace?: string
   ) {
@@ -281,7 +281,7 @@ export class IFiberRefLocally<V, R, E, A, P> extends Base<R, E, A> {
 
   constructor(
     readonly localValue: V,
-    readonly fiberRef: FiberRef<V, P>,
+    readonly fiberRef: FiberRef.WithPatch<V, P>,
     readonly effect: Effect<R, E, A>,
     readonly trace?: string
   ) {
@@ -293,10 +293,10 @@ export class IFiberRefLocally<V, R, E, A, P> extends Base<R, E, A> {
   }
 }
 
-export class IFiberRefDelete extends Base<never, never, void> {
+export class IFiberRefDelete<A, P> extends Base<never, never, void> {
   readonly _tag = "FiberRefDelete"
 
-  constructor(readonly fiberRef: FiberRef<unknown, unknown>, readonly trace?: string) {
+  constructor(readonly fiberRef: FiberRef.WithPatch<A, P>, readonly trace?: string) {
     super()
   }
 
@@ -309,7 +309,7 @@ export class IFiberRefWith<R, E, A, B, P> extends Base<R, E, B> {
   readonly _tag = "FiberRefWith"
 
   constructor(
-    readonly fiberRef: FiberRef<A, P>,
+    readonly fiberRef: FiberRef.WithPatch<A, P>,
     readonly f: (a: A) => Effect<R, E, B>,
     readonly trace?: string
   ) {
@@ -422,7 +422,7 @@ export class ILogged<A> extends Base<never, never, void> {
     readonly message: Lazy<A>,
     readonly cause: Lazy<Cause<unknown>>,
     readonly overrideLogLevel: Maybe<LogLevel> = Maybe.none,
-    readonly overrideRef1: FiberRef<unknown, unknown> | null = null,
+    readonly overrideRef1: FiberRef.WithPatch<unknown, unknown> | null = null,
     readonly overrideValue1: unknown = null,
     readonly trace?: string
   ) {

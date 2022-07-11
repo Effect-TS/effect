@@ -5,7 +5,7 @@ import { concreteFiberRefs } from "@effect/core/io/FiberRefs/operations/_interna
  *
  * @tsplus getter effect/core/io/FiberRefs fiberRefs
  */
-export function fiberRefs(self: FiberRefs): HashSet<FiberRef<unknown, unknown>> {
+export function fiberRefs(self: FiberRefs): HashSet<FiberRef<unknown>> {
   concreteFiberRefs(self)
   return HashSet.from(self.fiberRefLocals.internalMap.keys())
 }

@@ -7,7 +7,7 @@ import { concreteFiberRefs } from "@effect/core/io/FiberRefs/operations/_interna
  * @tsplus static effect/core/io/FiberRefs.Aspects get
  * @tsplus pipeable effect/core/io/FiberRefs get
  */
-export function get<A, P>(fiberRef: FiberRef<A, P>) {
+export function get<A>(fiberRef: FiberRef<A>) {
   return (self: FiberRefs): Maybe<A> => {
     concreteFiberRefs(self)
     return self.fiberRefLocals.get(fiberRef).map((list) => list.head.get(1) as A)

@@ -5,6 +5,6 @@
  * @tsplus static effect/core/io/FiberRefs.Aspects getOrDefault
  * @tsplus pipeable effect/core/io/FiberRefs getOrDefault
  */
-export function getOrDefault<A, P>(fiberRef: FiberRef<A, P>) {
+export function getOrDefault<A>(fiberRef: FiberRef<A>) {
   return (self: FiberRefs): A => self.get(fiberRef).getOrElse(fiberRef.initial)
 }
