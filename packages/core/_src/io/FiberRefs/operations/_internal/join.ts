@@ -46,8 +46,8 @@ export function joinFiberRefs(self: FiberRefs, that: FiberRefs): FiberRefs {
   return new FiberRefsInternal(fiberRefLocals)
 }
 
-function combine<A, P>(
-  fiberRef: FiberRef<A, P>,
+function combine<A>(
+  fiberRef: FiberRef<A>,
   parentStack: List<Tuple<[FiberId.Runtime, A]>>,
   childStack: List.NonEmpty<Tuple<[FiberId.Runtime, A]>>
 ): List.NonEmpty<A> {

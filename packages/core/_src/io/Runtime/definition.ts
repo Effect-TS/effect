@@ -15,7 +15,7 @@ export class Runtime<R> {
 
     const supervisor = this.runtimeConfig.value.supervisor
 
-    const fiberRefLocals: ImmutableMap<FiberRef<unknown, unknown>, List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>> =
+    const fiberRefLocals: ImmutableMap<FiberRef<unknown>, List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>> =
       ImmutableMap(
         Tuple(FiberRef.currentEnvironment, List.cons(Tuple(fiberId, this.environment), List.nil())),
         Tuple(DefaultEnv.services, List.cons(Tuple(fiberId, DefaultEnv.Services.live), List.nil()))
