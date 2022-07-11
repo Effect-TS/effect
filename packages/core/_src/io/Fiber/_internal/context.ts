@@ -11,17 +11,14 @@ import { scheduleTask } from "@effect/core/support/Scheduler"
 import * as StackTraceBuilder from "@effect/core/support/StackTraceBuilder"
 import { constVoid } from "@tsplus/stdlib/data/Function"
 
-const fiberFailureCauses = LazyValue.make(() => Metric.frequency("effect_fiber_failure_causes"))
-const fiberForkLocations = LazyValue.make(() => Metric.frequency("effect_fiber_fork_locations"))
+const fiberFailureCauses = Metric.frequency("effect_fiber_failure_causes")
+const fiberForkLocations = Metric.frequency("effect_fiber_fork_locations")
 
-const fibersStarted = LazyValue.make(() => Metric.counter("effect_fiber_started"))
-const fiberSuccesses = LazyValue.make(() => Metric.counter("effect_fiber_successes"))
-const fiberFailures = LazyValue.make(() => Metric.counter("effect_fiber_failures"))
+const fibersStarted = Metric.counter("effect_fiber_started")
+const fiberSuccesses = Metric.counter("effect_fiber_successes")
+const fiberFailures = Metric.counter("effect_fiber_failures")
 
-const fiberLifetimes = LazyValue.make(() => {
-  const fiberLifetimeBoundaries = Metric.Histogram.Boundaries.exponential(1, 2, 100)
-  return Metric.histogram("effect_fiber_lifetimes", fiberLifetimeBoundaries)
-})
+const fiberLifetimes = Metric.histogram("effect_fiber_lifetimes", Metric.Histogram.Boundaries.exponential(1, 2, 100))
 
 export class InterruptExit {
   readonly _tag = "InterruptExit"
@@ -97,8 +94,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     this.runtimeConfig = runtimeConfig
     this.interruptStatus = interruptStatus
     if (this.trackMetrics) {
-      fibersStarted.value.unsafeUpdate(1, HashSet.empty())
-      fiberForkLocations.value.unsafeUpdate(this._location.stringify, HashSet.empty())
+      fibersStarted.unsafeUpdate(1, HashSet.empty())
+      fiberForkLocations.unsafeUpdate(this._location.stringify, HashSet.empty())
     }
   }
 
@@ -220,7 +217,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   observeFailure(failure: string): void {
     if (this.trackMetrics) {
-      fiberFailureCauses.value.unsafeUpdate(failure, HashSet.empty())
+      fiberFailureCauses.unsafeUpdate(failure, HashSet.empty())
     }
   }
 
@@ -229,9 +226,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   // ---------------------------------------------------------------------------
 
   unsafeLog(message: () => string, trace?: string): void {
-    const logLevel = this.unsafeGetRef(FiberRef.currentLogLevel.value)
-    const spans = this.unsafeGetRef(FiberRef.currentLogSpan.value)
-    const annotations = this.unsafeGetRef(FiberRef.currentLogAnnotations.value)
+    const logLevel = this.unsafeGetRef(FiberRef.currentLogLevel)
+    const spans = this.unsafeGetRef(FiberRef.currentLogSpan)
+    const annotations = this.unsafeGetRef(FiberRef.currentLogAnnotations)
     const contextMap = this.unsafeGetRefs(this.fiberRefLocals)
 
     this.runtimeConfig.value.loggers.forEach((logger) => {
@@ -257,11 +254,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     trace?: string
   ): void {
     const logLevel = overrideLogLevel.getOrElse(
-      this.unsafeGetRef(FiberRef.currentLogLevel.value)
+      this.unsafeGetRef(FiberRef.currentLogLevel)
     )
 
-    const spans = this.unsafeGetRef(FiberRef.currentLogSpan.value)
-    const annotations = this.unsafeGetRef(FiberRef.currentLogAnnotations.value)
+    const spans = this.unsafeGetRef(FiberRef.currentLogSpan)
+    const annotations = this.unsafeGetRef(FiberRef.currentLogAnnotations)
 
     let contextMap = this.unsafeGetRefs(this.fiberRefLocals)
     if (overrideRef1 != null) {
@@ -881,17 +878,17 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
           const lifetime = endTimeSeconds - startTimeSeconds
 
           if (this.trackMetrics) {
-            fiberLifetimes.value.unsafeUpdate(lifetime, HashSet.empty())
+            fiberLifetimes.unsafeUpdate(lifetime, HashSet.empty())
           }
 
           newExit.fold(
             (cause) => {
               if (this.trackMetrics) {
-                fiberFailures.value.unsafeUpdate(1, HashSet.empty())
+                fiberFailures.unsafeUpdate(1, HashSet.empty())
               }
 
               return cause.fold<E, void>(
-                () => fiberFailureCauses.value.unsafeUpdate("<empty>", HashSet.empty()),
+                () => fiberFailureCauses.unsafeUpdate("<empty>", HashSet.empty()),
                 (failure, _) => {
                   this.observeFailure(
                     typeof failure === "object"
@@ -916,7 +913,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
             },
             () => {
               if (this.trackMetrics) {
-                fiberSuccesses.value.unsafeUpdate(1, HashSet.empty())
+                fiberSuccesses.unsafeUpdate(1, HashSet.empty())
               }
             }
           )
@@ -998,7 +995,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
     const childFiberRefLocals: FiberRefLocals = ImmutableMap.from(childFiberRefLocalEntries)
 
-    const parentScope = forkScope.orElse(this.unsafeGetRef(FiberRef.forkScopeOverride.value)).getOrElse(this._scope)
+    const parentScope = forkScope.orElse(this.unsafeGetRef(FiberRef.forkScopeOverride)).getOrElse(this._scope)
 
     const grandChildren = new Set<FiberContext<unknown, unknown>>()
 
@@ -1012,7 +1009,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
     if (this.runtimeConfig.value.supervisor !== Supervisor.none) {
       this.runtimeConfig.value.supervisor.unsafeOnStart(
-        this.unsafeGetRef(FiberRef.currentEnvironment.value),
+        this.unsafeGetRef(FiberRef.currentEnvironment),
         effect,
         Maybe.some(this),
         childContext
@@ -1405,9 +1402,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     current = instruction(
                       effect.f(
-                        this.unsafeGetRef(FiberRef.forkScopeOverride.value).getOrElse(
-                          this._scope
-                        )
+                        this.unsafeGetRef(FiberRef.forkScopeOverride).getOrElse(this._scope)
                       )
                     )
 
@@ -1415,21 +1410,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   }
 
                   case "OverrideForkScope": {
-                    const oldForkScopeOverride = this.unsafeGetRef(
-                      FiberRef.forkScopeOverride.value
-                    )
+                    const oldForkScopeOverride = this.unsafeGetRef(FiberRef.forkScopeOverride)
 
-                    this.unsafeSetRef(
-                      FiberRef.forkScopeOverride.value,
-                      current.forkScope
-                    )
+                    this.unsafeSetRef(FiberRef.forkScopeOverride, current.forkScope)
 
                     this.unsafeAddFinalizer(
                       Effect.succeed(
-                        this.unsafeSetRef(
-                          FiberRef.forkScopeOverride.value,
-                          oldForkScopeOverride
-                        )
+                        this.unsafeSetRef(FiberRef.forkScopeOverride, oldForkScopeOverride)
                       )
                     )
 

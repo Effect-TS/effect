@@ -1,15 +1,5 @@
 import { RandomSym } from "@effect/core/io/Random/definition"
 
-/**
- * @tsplus static effect/core/io/Random.Ops default
- */
-export const defaultRandom = LazyValue.make(() => new LiveRandom((Math.random() * 4294967296) >>> 0))
-
-/**
- * @tsplus static effect/core/io/Random.Ops live
- */
-export const live = Layer.fromValue(Random.Tag, defaultRandom.value)
-
 export class LiveRandom implements Random {
   readonly [RandomSym]: RandomSym = RandomSym
 
@@ -89,3 +79,13 @@ function shuffleWith<A>(
       .map(({ buffer }) => buffer)
   })
 }
+
+/**
+ * @tsplus static effect/core/io/Random.Ops default
+ */
+export const defaultRandom = new LiveRandom((Math.random() * 4294967296) >>> 0)
+
+/**
+ * @tsplus static effect/core/io/Random.Ops live
+ */
+export const live = Layer.fromValue(Random.Tag, defaultRandom)

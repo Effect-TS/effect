@@ -103,7 +103,7 @@ export function logLevel(level: LogLevel) {
   return <R, E, In, L, Z>(
     sink: Sink<R, E, In, L, Z>,
     __tsplusTrace?: string
-  ): Sink<R, E, In, L, Z> => Sink.unwrapScoped(FiberRef.currentLogLevel.value.locallyScoped(level).as(sink))
+  ): Sink<R, E, In, L, Z> => Sink.unwrapScoped(FiberRef.currentLogLevel.locallyScoped(level).as(sink))
 }
 
 /**
@@ -117,12 +117,10 @@ export function logSpan(label: LazyArg<string>) {
     __tsplusTrace?: string
   ): Sink<R, E, In, L, Z> =>
     Sink.unwrapScoped(
-      FiberRef.currentLogSpan.value.get().flatMap((stack) => {
+      FiberRef.currentLogSpan.get().flatMap((stack) => {
         const now = Date.now()
         const logSpan = LogSpan(label(), now)
-        return FiberRef.currentLogSpan.value
-          .locallyScoped(stack.prepend(logSpan))
-          .as(sink)
+        return FiberRef.currentLogSpan.locallyScoped(stack.prepend(logSpan)).as(sink)
       })
     )
 }
@@ -139,13 +137,9 @@ export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
     __tsplusTrace?: string
   ): Sink<R, E, In, L, Z> =>
     Sink.unwrapScoped(
-      FiberRef.currentLogAnnotations.value
-        .get()
-        .flatMap((annotations) =>
-          FiberRef.currentLogAnnotations.value
-            .locallyScoped(annotations.set(key(), value()))
-            .as(sink)
-        )
+      FiberRef.currentLogAnnotations.get().flatMap((annotations) =>
+        FiberRef.currentLogAnnotations.locallyScoped(annotations.set(key(), value())).as(sink)
+      )
     )
 }
 
@@ -157,5 +151,5 @@ export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
 export function logAnnotations(
   __tsplusTrace?: string
 ): Sink<never, never, unknown, unknown, ImmutableMap<string, string>> {
-  return Sink.fromEffect(FiberRef.currentLogAnnotations.value.get())
+  return Sink.fromEffect(FiberRef.currentLogAnnotations.get())
 }

@@ -33,10 +33,10 @@ export class Global implements CommonScope {
     __tsplusTrace?: string | undefined
   ): boolean {
     if (runtimeConfig.value.flags.isEnabled(RuntimeConfigFlag.EnableFiberRoots)) {
-      _roots.value.add(child)
+      _roots.add(child)
 
       child.unsafeOnDone(() => {
-        _roots.value.delete(child)
+        _roots.delete(child)
       })
     }
     return true
@@ -62,7 +62,7 @@ export class Local implements CommonScope {
  *
  * @tsplus static effect/core/io/FiberScope.Ops global
  */
-export const globalScope = LazyValue.make(() => new Global())
+export const globalScope = new Global()
 
 /**
  * Unsafely creats a new `Scope` from a `Fiber`.
@@ -76,4 +76,4 @@ export function unsafeMake(fiber: FiberContext<any, any>): FiberScope {
 /**
  * @tsplus static effect/core/io/FiberScope.Ops _roots
  */
-export const _roots = LazyValue.make(() => new Set<FiberContext<any, any>>())
+export const _roots = new Set<FiberContext<any, any>>()

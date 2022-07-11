@@ -103,7 +103,7 @@ export function logLevel(
   level: LazyArg<LogLevel>,
   __tsplusTrace?: string
 ): Stream<never, never, void> {
-  return Stream.scoped(FiberRef.currentLogLevel.value.locallyScoped(level()))
+  return Stream.scoped(FiberRef.currentLogLevel.locallyScoped(level()))
 }
 
 /**
@@ -116,10 +116,10 @@ export function logSpan(
   __tsplusTrace?: string
 ): Stream<never, never, void> {
   return Stream.scoped(
-    FiberRef.currentLogSpan.value.get().flatMap((stack) => {
+    FiberRef.currentLogSpan.get().flatMap((stack) => {
       const now = Date.now()
       const logSpan = LogSpan(label(), now)
-      return FiberRef.currentLogSpan.value.locallyScoped(stack.prepend(logSpan))
+      return FiberRef.currentLogSpan.locallyScoped(stack.prepend(logSpan))
     })
   )
 }
