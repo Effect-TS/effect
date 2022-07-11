@@ -18,11 +18,11 @@ export interface DefaultServices {}
 /**
  * @tsplus static effect/core/io/DefaultEnv/Services.Ops live
  */
-export const liveServices = LazyValue.make(() => Env(Clock.Tag, new LiveClock()).add(Random.Tag, Random.default.value))
+export const liveServices = Env(Clock.Tag, new LiveClock()).add(Random.Tag, Random.default)
 
 /**
  * The default services.
  *
  * @tsplus static effect/core/io/DefaultEnv.Ops services
  */
-export const services = LazyValue.make(() => FiberRef.unsafeMakeEnvironment(liveServices.value))
+export const services = FiberRef.unsafeMakeEnvironment(liveServices)

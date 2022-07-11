@@ -230,12 +230,12 @@ export function logTraceCauseMessage<E>(
  */
 export function logSpan(label: LazyArg<string>) {
   return <R, E, A>(effect: Effect<R, E, A>, __tsplusTrace?: string): Effect<R, E, A> =>
-    FiberRef.currentLogSpan.value.get().flatMap((stack) =>
+    FiberRef.currentLogSpan.get().flatMap((stack) =>
       Effect.suspendSucceed(() => {
         const now = Date.now()
         const logSpan = LogSpan(label(), now)
         return effect.apply(
-          FiberRef.currentLogSpan.value.locally(stack.prepend(logSpan))
+          FiberRef.currentLogSpan.locally(stack.prepend(logSpan))
         )
       })
     )
@@ -248,12 +248,12 @@ export function logSpan(label: LazyArg<string>) {
  */
 export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
   return <R, E, A>(effect: Effect<R, E, A>, __tsplusTrace?: string): Effect<R, E, A> =>
-    FiberRef.currentLogAnnotations.value
+    FiberRef.currentLogAnnotations
       .get()
       .flatMap((annotations) =>
         Effect.suspendSucceed(() =>
           effect.apply(
-            FiberRef.currentLogAnnotations.value.locally(
+            FiberRef.currentLogAnnotations.locally(
               annotations.set(key(), value())
             )
           )
@@ -267,7 +267,7 @@ export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
  * @tsplus static effect/core/io/Effect.Ops logAnnotations
  */
 export function logAnnotations(__tsplusTrace?: string): Effect<never, never, ImmutableMap<string, string>> {
-  return FiberRef.currentLogAnnotations.value.get()
+  return FiberRef.currentLogAnnotations.get()
 }
 
 /**

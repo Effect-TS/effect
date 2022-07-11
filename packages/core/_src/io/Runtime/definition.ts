@@ -17,8 +17,8 @@ export class Runtime<R> {
 
     const fiberRefLocals: ImmutableMap<FiberRef<unknown, unknown>, List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>> =
       ImmutableMap(
-        Tuple(FiberRef.currentEnvironment.value, List.cons(Tuple(fiberId, this.environment), List.nil())),
-        Tuple(DefaultEnv.services.value, List.cons(Tuple(fiberId, DefaultEnv.Services.live.value), List.nil()))
+        Tuple(FiberRef.currentEnvironment, List.cons(Tuple(fiberId, this.environment), List.nil())),
+        Tuple(DefaultEnv.services, List.cons(Tuple(fiberId, DefaultEnv.Services.live), List.nil()))
       ) as any
 
     const context: FiberContext<E, A> = new FiberContext(
@@ -29,7 +29,7 @@ export class Runtime<R> {
       new Stack(InterruptStatus.Interruptible.toBoolean)
     )
 
-    FiberScope.global.value.unsafeAdd(this.runtimeConfig, context)
+    FiberScope.global.unsafeAdd(this.runtimeConfig, context)
 
     if (supervisor !== Supervisor.none) {
       supervisor.unsafeOnStart(this.environment, effect, Maybe.none, context)

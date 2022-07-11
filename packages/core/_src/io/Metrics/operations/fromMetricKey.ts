@@ -15,7 +15,7 @@ export function fromMetricKey<Type extends MetricKeyType<any, any>>(
     [Type] extends [{ [_Out]: () => infer Out }] ? Out : never
   > => {
     const fullKey = key.taggedWithLabelSet(extraTags)
-    return Metric.registry.value.get(fullKey)
+    return Metric.registry.get(fullKey)
   }
   return Metric(
     key.keyType,

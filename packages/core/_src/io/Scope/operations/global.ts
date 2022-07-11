@@ -6,11 +6,8 @@ import { CloseableScopeInternal } from "@effect/core/io/Scope/operations/_intern
  *
  * @tsplus static effect/core/io/Scope.Ops global
  */
-export const global: LazyValue<Scope.Closeable> = LazyValue.make(
-  () =>
-    new CloseableScopeInternal(
-      Scope.make,
-      () => Effect.unit,
-      () => Effect.unit
-    )
+export const global: Scope.Closeable = new CloseableScopeInternal(
+  Scope.make,
+  () => Effect.unit,
+  () => Effect.unit
 )

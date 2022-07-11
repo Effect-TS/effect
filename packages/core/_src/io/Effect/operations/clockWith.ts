@@ -5,5 +5,5 @@
  * @tsplus static effect/core/io/Effect.Ops clockWith
  */
 export function clockWith<R, E, A>(f: (clock: Clock) => Effect<R, E, A>, __tsplusTrace?: string): Effect<R, E, A> {
-  return DefaultEnv.services.value.getWith((services) => f(services.get(Clock.Tag)))
+  return DefaultEnv.services.getWith((services) => f(services.get(Clock.Tag)))
 }

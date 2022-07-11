@@ -6,13 +6,13 @@ import type { PCGRandomState } from "@tsplus/stdlib/utilities/RandomPCG"
 /**
  * @tsplus static effect/core/stm/TRandom.Ops default
  */
-export const defaultTRandom = LazyValue.make(() =>
+export const defaultTRandom =
   TRef.make(new RandomPCG((Math.random() * 4294967296) >>> 0).getState()).map((_) => new LiveTRandom(_)).commit
-)
+
 /**
  * @tsplus static effect/core/stm/TRandom.Ops live
  */
-export const live = Layer.fromEffect(TRandom.Tag, defaultTRandom.value)
+export const live = Layer.fromEffect(TRandom.Tag, defaultTRandom)
 
 function rndInt(state: PCGRandomState): Tuple<[number, PCGRandomState]> {
   const prng = new RandomPCG()

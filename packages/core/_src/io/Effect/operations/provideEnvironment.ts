@@ -9,7 +9,7 @@ export function provideEnvironment<R>(environment: LazyArg<Env<R>>, __tsplusTrac
   return <E, A>(self: Effect<R, E, A>): Effect<never, E, A> =>
     Effect.succeed(environment).flatMap((env) =>
       (self as Effect<never, E, A>).apply(
-        FiberRef.currentEnvironment.value.locally(env)
+        FiberRef.currentEnvironment.locally(env)
       )
     )
 }
