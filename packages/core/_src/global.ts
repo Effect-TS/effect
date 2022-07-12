@@ -315,7 +315,15 @@ import { Take } from "@effect/core/stream/Take/definition"
 /**
  * @tsplus global
  */
+import { Annotations } from "@effect/core/testing/Annotations/definition"
+/**
+ * @tsplus global
+ */
 import { Gen } from "@effect/core/testing/Gen/definition"
+/**
+ * @tsplus global
+ */
+import { Live } from "@effect/core/testing/Live"
 /**
  * @tsplus global
  */
@@ -324,3 +332,23 @@ import { Sample } from "@effect/core/testing/Sample/definition"
  * @tsplus global
  */
 import { Sized } from "@effect/core/testing/Sized"
+/**
+ * @tsplus global
+ */
+import { TestConfig } from "@effect/core/testing/TestConfig"
+/**
+ * @tsplus global
+ */
+import { TestEnvironment } from "@effect/core/testing/TestEnvironment"
+/**
+ * @tsplus global
+ */
+import { TestAnnotation } from "@effect/core/testing/TestAnnotation/definition"
+/**
+ * @tsplus global
+ */
+import { TestAnnotationMap } from "@effect/core/testing/TestAnnotationMap/definition"
+/**
+ * @tsplus global
+ */
+import { TestClock } from "@effect/core/testing/TestClock/definition"
