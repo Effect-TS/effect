@@ -34,7 +34,7 @@
     }
   },
   "dependencies": {
-    "@tsplus/stdlib": "*"
+    "@tsplus/stdlib": "^0.2.2"
   },
   "config": {
     "side": [],
