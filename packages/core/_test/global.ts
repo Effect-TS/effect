@@ -3,4 +3,9 @@ import "@effect/core/global"
 /**
  * @tsplus global
  */
-import { assert, describe, it, vi } from "vitest"
+import { assert, describe, vi } from "vitest"
+
+/**
+ * @tsplus global
+ */
+import { it } from "@effect/core/test/test-utils/extend"
