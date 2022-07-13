@@ -1,5 +1,11 @@
 # @effect/printer
 
+## 0.0.3
+
+### Patch Changes
+
+- [#346](https://github.com/Effect-TS/printer/pull/346) [`481e4ff`](https://github.com/Effect-TS/printer/commit/481e4ff89fbe8e2a980d92f8f78638e82aa8e87c) Thanks [@IMax153](https://github.com/IMax153)! - use pipeable for TS+ annotations
+
 ## 0.0.2
 
 ### Patch Changes
