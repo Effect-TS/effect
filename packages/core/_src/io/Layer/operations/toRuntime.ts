@@ -7,7 +7,9 @@
  */
 export function toRuntime(runtimeConfig: RuntimeConfig) {
   return <RIn, E, ROut>(self: Layer<RIn, E, ROut>): Effect<RIn | Scope, E, Runtime<ROut>> =>
-    Effect
-      .scopeWith((scope) => self.buildWithScope(scope))
-      .map((environment) => new Runtime(environment, runtimeConfig))
+    Effect.getFiberRefs()
+      .flatMap((refs) =>
+        Effect.scopeWith((scope) => self.buildWithScope(scope))
+          .map((environment) => new Runtime(environment, runtimeConfig, refs))
+      )
 }
