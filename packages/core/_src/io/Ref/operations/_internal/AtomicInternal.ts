@@ -1,6 +1,5 @@
 import { _A, RefSym } from "@effect/core/io/Ref/definition"
 import { RefInternal } from "@effect/core/io/Ref/operations/_internal/RefInternal"
-import { scheduleTask } from "@effect/core/support/Scheduler"
 
 export class UnsafeAPI<A> {
   constructor(readonly value: AtomicReference<A>) {}
@@ -46,10 +45,6 @@ export class UnsafeAPI<A> {
 
   set(a: A): void {
     return this.value.set(a)
-  }
-
-  setAsync(a: A): void {
-    return scheduleTask(() => this.value.set(a))
   }
 
   update(f: (a: A) => A): void {
@@ -103,8 +98,5 @@ export const AtomicInternal = {
   },
   set<A>(this: AtomicInternal<A>, a: A, __tsplusTrace?: string): Effect.UIO<void> {
     return Effect.succeed(this.unsafe.set(a))
-  },
-  setAsync<A>(this: AtomicInternal<A>, a: A, __tsplusTrace?: string): Effect.UIO<void> {
-    return Effect.succeed(this.unsafe.setAsync(a))
   }
 }

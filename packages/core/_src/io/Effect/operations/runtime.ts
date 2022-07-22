@@ -64,3 +64,15 @@ export const unsafeRunPromiseExit = defaultRuntime.unsafeRunPromiseExit
  * @tsplus static effect/core/io/Effect.Aspects unsafeRunWith
  */
 export const unsafeRunWith = defaultRuntime.unsafeRunWith
+
+/**
+ * @tsplus fluent effect/core/io/Effect unsafeRunSync
+ * @tsplus static effect/core/io/Effect.Aspects unsafeRunSync
+ */
+export const unsafeRunSync = defaultRuntime.unsafeRunSync
+
+/**
+ * @tsplus fluent effect/core/io/Effect unsafeRunSyncExit
+ * @tsplus static effect/core/io/Effect.Aspects unsafeRunSyncExit
+ */
+export const unsafeRunSyncExit = defaultRuntime.unsafeRunSyncExit

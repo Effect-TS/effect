@@ -1,5 +1,11 @@
 import { FiberContext } from "@effect/core/io/Fiber/_internal/context"
+import { StagedScheduler } from "@effect/core/support/Scheduler"
 import { constVoid } from "@tsplus/stdlib/data/Function"
+
+export class AsyncFiber<E, A> {
+  readonly _tag = "AsyncFiber"
+  constructor(readonly fiber: FiberContext<E, A>) {}
+}
 
 export class Runtime<R> {
   constructor(readonly environment: Env<R>, readonly runtimeConfig: RuntimeConfig) {}
@@ -50,6 +56,74 @@ export class Runtime<R> {
     })
 
     return (id) => (k) => this.unsafeRunAsyncWith(context._interruptAs(id), (exit) => k(exit.flatten))
+  }
+
+  unsafeRunSync = <E, A>(
+    effect: Effect<R, E, A>,
+    __tsplusTrace?: string
+  ): A => {
+    const exit = this.unsafeRunSyncExit(effect)
+    if (exit._tag === "Failure") {
+      throw exit.cause.squashWith(identity)
+    }
+    return exit.value
+  }
+
+  unsafeRunSyncExit = <E, A>(
+    effect: Effect<R, E, A>,
+    __tsplusTrace?: string
+  ): Exit<E, A> => {
+    const fiberId = FiberId.unsafeMake(TraceElement.parse(__tsplusTrace))
+
+    const children = new Set<FiberContext<any, any>>()
+
+    const supervisor = this.runtimeConfig.value.supervisor
+
+    const scheduler = new StagedScheduler()
+
+    const fiberRefLocals: ImmutableMap<FiberRef<unknown>, List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>> =
+      ImmutableMap(
+        Tuple(
+          FiberRef.currentEnvironment,
+          List.cons(Tuple(fiberId, this.environment), List.nil())
+        ),
+        Tuple(
+          DefaultServices.currentServices,
+          List.cons(Tuple(fiberId, DefaultServices.live), List.nil())
+        ),
+        Tuple(
+          FiberRef.currentScheduler,
+          List.cons(Tuple(fiberId, scheduler), List.nil())
+        )
+      ) as any
+
+    const context: FiberContext<E, A> = new FiberContext(
+      fiberId,
+      children,
+      fiberRefLocals,
+      this.runtimeConfig,
+      new Stack(InterruptStatus.Interruptible.toBoolean)
+    )
+
+    FiberScope.global.unsafeAdd(this.runtimeConfig, context)
+
+    if (supervisor !== Supervisor.none) {
+      supervisor.unsafeOnStart(this.environment, effect, Maybe.none, context)
+
+      context.unsafeOnDone((exit) => supervisor.unsafeOnEnd(exit.flatten, context))
+    }
+
+    context.nextEffect = effect
+    context.run()
+    scheduler.flush()
+
+    const result = context.unsafePoll()
+
+    if (result.isSome()) {
+      return result.value
+    }
+
+    return Exit.die(new AsyncFiber(context))
   }
 
   /**
