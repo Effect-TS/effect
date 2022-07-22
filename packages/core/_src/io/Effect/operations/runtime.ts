@@ -1,3 +1,5 @@
+import { FiberRefs } from "@effect/core/io/FiberRefs"
+
 /**
  * Returns an effect that accesses the runtime, which can be used to
  * (unsafely) execute tasks. This is useful for integration with legacy code
@@ -6,10 +8,10 @@
  * @tsplus static effect/core/io/Effect.Ops runtime
  */
 export function runtime<R>(__tsplusTrace?: string): Effect<R, never, Runtime<R>> {
-  return Effect.environment<R>().flatMap(
-    (env) => Effect.runtimeConfig.map((config) => new Runtime(env, config)),
-    __tsplusTrace
-  )
+  return Effect.environment<R>()
+    .flatMap((env) =>
+      Effect.getFiberRefs()
+        .flatMap((refs) => Effect.runtimeConfig.map((config) => new Runtime(env, config, refs))), __tsplusTrace)
 }
 
 /**
@@ -32,7 +34,8 @@ export const defaultRuntimeConfig: RuntimeConfig = RuntimeConfig({
 
 export const defaultRuntime = new Runtime<never>(
   Env.empty,
-  defaultRuntimeConfig
+  defaultRuntimeConfig,
+  new FiberRefs(ImmutableMap() as any)
 )
 
 /**

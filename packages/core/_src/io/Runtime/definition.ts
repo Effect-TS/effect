@@ -8,7 +8,7 @@ export class AsyncFiber<E, A> {
 }
 
 export class Runtime<R> {
-  constructor(readonly environment: Env<R>, readonly runtimeConfig: RuntimeConfig) {}
+  constructor(readonly environment: Env<R>, readonly runtimeConfig: RuntimeConfig, readonly fiberRefs: FiberRefs) {}
 
   unsafeRunWith = <E, A>(
     effect: Effect<R, E, A>,
@@ -21,22 +21,17 @@ export class Runtime<R> {
 
     const supervisor = this.runtimeConfig.value.supervisor
 
-    const fiberRefLocals: ImmutableMap<FiberRef<unknown>, List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>> =
-      ImmutableMap(
-        Tuple(
-          FiberRef.currentEnvironment,
-          List.cons(Tuple(fiberId, this.environment), List.nil())
-        ),
-        Tuple(
-          DefaultServices.currentServices,
-          List.cons(Tuple(fiberId, DefaultServices.live), List.nil())
-        )
-      ) as any
+    const fiberRefs = this.fiberRefs
+      .updateAs(
+        fiberId,
+        FiberRef.currentEnvironment,
+        this.environment as Env<never>
+      )
 
     const context: FiberContext<E, A> = new FiberContext(
       fiberId,
       children,
-      fiberRefLocals,
+      fiberRefs,
       this.runtimeConfig,
       new Stack(InterruptStatus.Interruptible.toBoolean)
     )
@@ -81,26 +76,22 @@ export class Runtime<R> {
 
     const scheduler = new StagedScheduler()
 
-    const fiberRefLocals: ImmutableMap<FiberRef<unknown>, List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>> =
-      ImmutableMap(
-        Tuple(
-          FiberRef.currentEnvironment,
-          List.cons(Tuple(fiberId, this.environment), List.nil())
-        ),
-        Tuple(
-          DefaultServices.currentServices,
-          List.cons(Tuple(fiberId, DefaultServices.live), List.nil())
-        ),
-        Tuple(
-          FiberRef.currentScheduler,
-          List.cons(Tuple(fiberId, scheduler), List.nil())
-        )
-      ) as any
+    const fiberRefs = this.fiberRefs
+      .updateAs(
+        fiberId,
+        FiberRef.currentEnvironment,
+        this.environment as Env<never>
+      )
+      .updateAs(
+        fiberId,
+        FiberRef.currentScheduler,
+        scheduler
+      )
 
     const context: FiberContext<E, A> = new FiberContext(
       fiberId,
       children,
-      fiberRefLocals,
+      fiberRefs,
       this.runtimeConfig,
       new Stack(InterruptStatus.Interruptible.toBoolean)
     )
