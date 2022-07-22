@@ -6,6 +6,8 @@ import {
   IFiberRefWith
 } from "@effect/core/io/Effect/definition"
 import { _Patch, _Value, FiberRef, FiberRefSym } from "@effect/core/io/FiberRef/definition"
+import type { Scheduler } from "@effect/core/support/Scheduler"
+import { defaultScheduler } from "@effect/core/support/Scheduler"
 
 export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value, Patch> {
   readonly [FiberRefSym]: FiberRefSym = FiberRefSym
@@ -361,6 +363,11 @@ export function environment<R>(__tsplusTrace?: string): Effect<R, never, Env<R>>
  * @tsplus static effect/core/io/FiberRef.Ops currentEnvironment
  */
 export const currentEnvironment: FiberRef<Env<never>> = FiberRef.unsafeMake(Env.empty)
+
+/**
+ * @tsplus static effect/core/io/FiberRef.Ops currentScheduler
+ */
+export const currentScheduler: FiberRef<Scheduler> = FiberRef.unsafeMake(defaultScheduler)
 
 /**
  * @tsplus static effect/core/io/FiberRef.Ops currentLogAnnotations

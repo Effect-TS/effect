@@ -10,30 +10,32 @@ export function atomically<R, E, A>(
   __tsplusTrace?: string
 ): Effect<R, E, A> {
   return Effect.environmentWithEffect((env: Env<R>) =>
-    Effect.suspendSucceedWith((_, fiberId) => {
-      const v = tryCommitSync(fiberId, self, env)
+    FiberRef.currentScheduler.getWith((scheduler) =>
+      Effect.suspendSucceedWith((_, fiberId) => {
+        const v = tryCommitSync(fiberId, self, env, scheduler)
 
-      switch (v._tag) {
-        case "Done": {
-          throw new Effect.Error(v.exit, __tsplusTrace)
+        switch (v._tag) {
+          case "Done": {
+            throw new Effect.Error(v.exit, __tsplusTrace)
+          }
+          case "Suspend": {
+            const txnId = TxnId()
+            const state = new AtomicReference<State<E, A>>(State.running)
+            const io = Effect.async(
+              tryCommitAsync(v.journal, fiberId, self, txnId, state, env, scheduler)
+            )
+            return Effect.uninterruptibleMask(({ restore }) =>
+              restore(io).catchAllCause((cause) => {
+                state.compareAndSet(State.running, State.interrupted)
+                const currentState = state.get
+                return currentState._tag === "Done"
+                  ? Effect.done(currentState.exit)
+                  : Effect.failCause(cause)
+              })
+            )
+          }
         }
-        case "Suspend": {
-          const txnId = TxnId()
-          const state = new AtomicReference<State<E, A>>(State.running)
-          const io = Effect.async(
-            tryCommitAsync(v.journal, fiberId, self, txnId, state, env)
-          )
-          return Effect.uninterruptibleMask(({ restore }) =>
-            restore(io).catchAllCause((cause) => {
-              state.compareAndSet(State.running, State.interrupted)
-              const currentState = state.get
-              return currentState._tag === "Done"
-                ? Effect.done(currentState.exit)
-                : Effect.failCause(cause)
-            })
-          )
-        }
-      }
-    })
+      })
+    )
   )
 }

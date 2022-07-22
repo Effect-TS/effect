@@ -4,7 +4,7 @@ import { State } from "@effect/core/stm/STM/State"
 import { TryCommit } from "@effect/core/stm/STM/TryCommit"
 import type { TxnId } from "@effect/core/stm/STM/TxnId"
 import { concreteTRef } from "@effect/core/stm/TRef/operations/_internal/TRefInternal"
-import { scheduleTask } from "@effect/core/support/Scheduler"
+import type { Scheduler } from "@effect/core/support/Scheduler"
 
 export type Journal = Map<TRef<unknown>, Entry>
 
@@ -93,11 +93,12 @@ export function execTodos(todos: Map<TxnId, Todo>) {
  */
 export function completeTodos<E, A>(
   exit: Exit<E, A>,
-  journal: Journal
+  journal: Journal,
+  scheduler: Scheduler
 ): TryCommit<E, A> {
   const todos = collectTodos(journal)
   if (todos.size > 0) {
-    scheduleTask(() => execTodos(todos))
+    scheduler.scheduleTask(() => execTodos(todos))
   }
   return TryCommit.done(exit)
 }
@@ -154,7 +155,8 @@ export function tryCommit<R, E, A>(
   fiberId: FiberId,
   stm: STM<R, E, A>,
   state: AtomicReference<State<E, A>>,
-  env: Env<R>
+  env: Env<R>,
+  scheduler: Scheduler
 ): TryCommit<E, A> {
   const journal: Journal = new Map()
   const value = new STMDriver(stm, journal, fiberId, env).run()
@@ -169,16 +171,16 @@ export function tryCommit<R, E, A>(
 
   switch (value._tag) {
     case "Succeed": {
-      return completeTodos(Exit.succeed(value.value), journal)
+      return completeTodos(Exit.succeed(value.value), journal, scheduler)
     }
     case "Fail": {
-      return completeTodos(Exit.fail(value.value), journal)
+      return completeTodos(Exit.fail(value.value), journal, scheduler)
     }
     case "Die": {
-      return completeTodos(Exit.die(value.value), journal)
+      return completeTodos(Exit.die(value.value), journal, scheduler)
     }
     case "Interrupt": {
-      return completeTodos(Exit.interrupt(fiberId), journal)
+      return completeTodos(Exit.interrupt(fiberId), journal, scheduler)
     }
     case "Retry": {
       return TryCommit.suspend(journal)
@@ -189,7 +191,8 @@ export function tryCommit<R, E, A>(
 export function tryCommitSync<R, E, A>(
   fiberId: FiberId,
   stm: STM<R, E, A>,
-  env: Env<R>
+  env: Env<R>,
+  scheduler: Scheduler
 ): TryCommit<E, A> {
   const journal: Journal = new Map()
   const value = new STMDriver(stm, journal, fiberId, env).run()
@@ -203,16 +206,16 @@ export function tryCommitSync<R, E, A>(
 
   switch (value._tag) {
     case "Succeed": {
-      return completeTodos(Exit.succeed(value.value), journal)
+      return completeTodos(Exit.succeed(value.value), journal, scheduler)
     }
     case "Fail": {
-      return completeTodos(Exit.fail(value.value), journal)
+      return completeTodos(Exit.fail(value.value), journal, scheduler)
     }
     case "Die": {
-      return completeTodos(Exit.die(value.value), journal)
+      return completeTodos(Exit.die(value.value), journal, scheduler)
     }
     case "Interrupt": {
-      return completeTodos(Exit.interrupt(fiberId), journal)
+      return completeTodos(Exit.interrupt(fiberId), journal, scheduler)
     }
     case "Retry": {
       return TryCommit.suspend(journal)
@@ -235,13 +238,14 @@ function suspendTryCommit<R, E, A>(
   env: Env<R>,
   k: (_: Effect<R, E, A>) => unknown,
   accum: Journal,
-  journal: Journal
+  journal: Journal,
+  scheduler: Scheduler
 ) {
   // eslint-disable-next-line no-constant-condition
   while (1) {
-    addTodo(txnId, journal, () => tryCommitAsync(undefined, fiberId, stm, txnId, state, env)(k))
+    addTodo(txnId, journal, () => tryCommitAsync(undefined, fiberId, stm, txnId, state, env, scheduler)(k))
     if (isInvalid(journal)) {
-      const v = tryCommit(fiberId, stm, state, env)
+      const v = tryCommit(fiberId, stm, state, env, scheduler)
       switch (v._tag) {
         case "Done": {
           completeTryCommit(v.exit, k)
@@ -270,24 +274,25 @@ export function tryCommitAsync<R, E, A>(
   stm: STM<R, E, A>,
   txnId: TxnId,
   state: AtomicReference<State<E, A>>,
-  env: Env<R>
+  env: Env<R>,
+  scheduler: Scheduler
 ) {
   return (k: (_: Effect<R, E, A>) => unknown) => {
     if (state.get.isRunning) {
       if (journal == null) {
-        const v = tryCommit(fiberId, stm, state, env)
+        const v = tryCommit(fiberId, stm, state, env, scheduler)
         switch (v._tag) {
           case "Done": {
             completeTryCommit(v.exit, k)
             break
           }
           case "Suspend": {
-            suspendTryCommit(fiberId, stm, txnId, state, env, k, v.journal, v.journal)
+            suspendTryCommit(fiberId, stm, txnId, state, env, k, v.journal, v.journal, scheduler)
             break
           }
         }
       } else {
-        suspendTryCommit(fiberId, stm, txnId, state, env, k, journal, journal)
+        suspendTryCommit(fiberId, stm, txnId, state, env, k, journal, journal, scheduler)
       }
     }
   }
