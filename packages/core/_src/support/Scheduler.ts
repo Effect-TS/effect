@@ -9,6 +9,11 @@ export class DefaultScheduler {
     running: false,
     tasks: new DoublyLinkedList<Task>()
   }
+
+  readonly queueMicrotask = typeof queueMicrotask === "function" ?
+    queueMicrotask :
+    (fn: () => void) => Promise.resolve(void 0).then(fn)
+
   starveInternal(depth: number) {
     const toRun = this.scheduled.tasks
     this.scheduled.tasks = new DoublyLinkedList()
@@ -25,7 +30,7 @@ export class DefaultScheduler {
     if (depth >= 2048) {
       setTimeout(() => this.starveInternal(0), 0)
     } else {
-      queueMicrotask(() => this.starveInternal(depth + 1))
+      this.queueMicrotask(() => this.starveInternal(depth + 1))
     }
   }
   scheduleTask(task: Task) {
