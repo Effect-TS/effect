@@ -20,7 +20,7 @@ export function mapOutEffectPar<OutElem, Env1, OutErr1, OutElem1>(
             (queue) => queue.shutdown
           ))
           const errorSignal = $(Deferred.make<OutErr1, never>())
-          const permits = $(Semaphore.make(n))
+          const permits = $(TSemaphore.makeCommit(n))
           const pull = $(self.toPull)
           $(
             pull

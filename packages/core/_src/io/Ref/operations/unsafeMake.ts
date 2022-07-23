@@ -16,6 +16,6 @@ export function unsafeMake<A>(value: A): Ref<A> {
 export function unsafeMakeSynchronized<A>(initial: A): Ref.Synchronized<A> {
   return Object.setPrototypeOf({
     ref: Ref.unsafeMake<A>(initial),
-    semaphore: Semaphore.unsafeMake(1)
+    semaphore: TSemaphore.unsafeMake(1)
   }, SynchronizedInternal)
 }

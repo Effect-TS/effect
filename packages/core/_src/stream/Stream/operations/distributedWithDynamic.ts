@@ -32,7 +32,7 @@ export function distributedWithDynamic<A, E, Z>(
       ))
       const add = $(
         Do(($) => {
-          const queuesLock = $(Semaphore.make(1))
+          const queuesLock = $(TSemaphore.makeCommit(1))
           const newQueue = $(Ref.make<Effect<never, never, Tuple<[UniqueKey, Queue<Exit<Maybe<E>, A>>]>>>(
             Effect.Do()
               .bind("queue", () => Queue.bounded<Exit<Maybe<E>, A>>(maximumLag))

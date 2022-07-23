@@ -21,7 +21,7 @@ export function makeSynchronized<A>(
 ): Effect<never, never, Ref.Synchronized<A>> {
   return Effect.Do()
     .bind("ref", () => Ref.make<A>(value))
-    .bind("semaphore", () => Semaphore.make(1))
+    .bind("semaphore", () => TSemaphore.makeCommit(1))
     .map(({ ref, semaphore }) =>
       Object.setPrototypeOf({
         ref,

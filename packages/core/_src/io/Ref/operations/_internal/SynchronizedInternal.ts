@@ -4,7 +4,7 @@ import { RefInternal } from "@effect/core/io/Ref/operations/_internal/RefInterna
 
 export interface SynchronizedInternal<A> extends Ref.Synchronized<A> {
   readonly ref: Ref<A>
-  readonly semaphore: Semaphore
+  readonly semaphore: TSemaphore
 }
 
 export const SynchronizedInternal = {
