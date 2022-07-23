@@ -47,11 +47,6 @@ import { MVar } from "@effect/core/concurrent/MVar/definition"
 /**
  * @tsplus global
  */
-import { ReentrantLock } from "@effect/core/concurrent/ReentrantLock/definition"
-
-/**
- * @tsplus global
- */
 import { Cause } from "@effect/core/io/Cause/definition"
 /**
  * @tsplus global
@@ -224,10 +219,6 @@ import { Scope } from "@effect/core/io/Scope/definition"
  * @tsplus global
  */
 import { ReleaseMap } from "@effect/core/io/Scope/ReleaseMap/definition"
-/**
- * @tsplus global
- */
-import { Semaphore } from "@effect/core/io/Semaphore/definition"
 /**
  * @tsplus global
  */

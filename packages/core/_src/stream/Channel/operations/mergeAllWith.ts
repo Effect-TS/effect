@@ -55,7 +55,7 @@ export function mergeAllWith<
         ))
         const lastDone = $(Ref.make<Maybe<OutDone>>(Maybe.none))
         const errorSignal = $(Deferred.make<never, void>())
-        const permits = $(Semaphore.make(n))
+        const permits = $(TSemaphore.makeCommit(n))
         const pull = $(channels.toPull)
         const evaluatePull = (pull: Effect<Env | Env1, OutErr | OutErr1, Either<OutDone, OutElem>>) =>
           pull

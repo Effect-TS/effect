@@ -3,7 +3,7 @@ describe.concurrent("Stream", () => {
     it("guarantee ordering no parallelism", async () => {
       const program = Effect.Do()
         .bind("lastExecuted", () => Ref.make(false))
-        .bind("semaphore", () => Semaphore.make(1))
+        .bind("semaphore", () => TSemaphore.makeCommit(1))
         .tap(({ lastExecuted, semaphore }) =>
           Stream(1, 2, 3, 4)
             .flatMapParSwitch(1, (i) =>
@@ -24,7 +24,7 @@ describe.concurrent("Stream", () => {
     it("guarantee ordering with parallelism", async () => {
       const program = Effect.Do()
         .bind("lastExecuted", () => Ref.make(0))
-        .bind("semaphore", () => Semaphore.make(4))
+        .bind("semaphore", () => TSemaphore.makeCommit(4))
         .tap(({ lastExecuted, semaphore }) =>
           Stream.range(1, 13)
             .flatMapParSwitch(4, (i) =>
