@@ -2,8 +2,6 @@
 // - [ ] renderPretty
 // - [ ] squashTrace
 // - [ ] squashTraceWith
-// - [ ] stripFailures
-// - [ ] stripSomeDefects
 
 export const CauseSym = Symbol.for("@effect/core/io/Cause")
 export type CauseSym = typeof CauseSym
@@ -33,7 +31,7 @@ export interface CauseAspects {}
 /**
  * @tsplus unify effect/core/io/Cause
  */
-export function unify<X extends Cause<any>>(
+export function unifyCause<X extends Cause<any>>(
   self: X
 ): Cause<[X] extends [Cause<infer CX>] ? CX : never> {
   return self
