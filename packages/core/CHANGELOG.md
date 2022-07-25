@@ -1,5 +1,37 @@
 # @effect/core
 
+## 0.0.8
+
+### Patch Changes
+
+- [#1247](https://github.com/Effect-TS/core/pull/1247) [`d09830532`](https://github.com/Effect-TS/core/commit/d098305328c46ad2197b5c67b8191f5c00cd653e) Thanks [@IMax153](https://github.com/IMax153)! - add ReentrantLock data type
+
+* [#1247](https://github.com/Effect-TS/core/pull/1247) [`eda002b45`](https://github.com/Effect-TS/core/commit/eda002b45b1af3b56d0632e4b9ea4a03e0d66f5c) Thanks [@IMax153](https://github.com/IMax153)! - add MVar data type
+
+- [#1251](https://github.com/Effect-TS/core/pull/1251) [`323b5af2c`](https://github.com/Effect-TS/core/commit/323b5af2cf9dd4d046a15ecd079e20e8f2d54d5c) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Revise FiberRef design
+
+* [#1250](https://github.com/Effect-TS/core/pull/1250) [`33b6edec4`](https://github.com/Effect-TS/core/commit/33b6edec4739afe8acf49949edb628a34dad6783) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Remove usage of LazyValue
+
+- [#1241](https://github.com/Effect-TS/core/pull/1241) [`0f274d99b`](https://github.com/Effect-TS/core/commit/0f274d99b3c93724945b1b9feff73314a0d25ecd) Thanks [@IMax153](https://github.com/IMax153)! - standardize tsplus annotations to pipe
+
+* [#1249](https://github.com/Effect-TS/core/pull/1249) [`147b91e11`](https://github.com/Effect-TS/core/commit/147b91e11241f4cd068d2ef4031724f21af81f33) Thanks [@IMax153](https://github.com/IMax153)! - add Gen and Sample datatypes
+
+- [#1254](https://github.com/Effect-TS/core/pull/1254) [`b3c811f4c`](https://github.com/Effect-TS/core/commit/b3c811f4cc78ff723d189dbc533af3d5d6398127) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Support Unsafe Sync Execution
+
+* [#1255](https://github.com/Effect-TS/core/pull/1255) [`cd89881d9`](https://github.com/Effect-TS/core/commit/cd89881d909b161dfb9c4ca678b8f9725ad3a9d1) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Preserve Fiber Refs in Runtime
+
+- [#1247](https://github.com/Effect-TS/core/pull/1247) [`c6b1cfc6a`](https://github.com/Effect-TS/core/commit/c6b1cfc6a600ef5d3cbf72da7e96e25c4c14bc1c) Thanks [@IMax153](https://github.com/IMax153)! - add CountdownLatch data type
+
+* [#1258](https://github.com/Effect-TS/core/pull/1258) [`1a01b7740`](https://github.com/Effect-TS/core/commit/1a01b774041316db6f03f8a8d8d2e8dc2793cfb4) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Remove Semaphore and ReentrantLock in favour of TSemaphore and TReentrantLock
+
+- [#1256](https://github.com/Effect-TS/core/pull/1256) [`38f98209f`](https://github.com/Effect-TS/core/commit/38f98209ff78486dcb0f717366ddb0b5446c2eb8) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Improve Scheduler Compatibility
+
+* [#1259](https://github.com/Effect-TS/core/pull/1259) [`3cd8569d6`](https://github.com/Effect-TS/core/commit/3cd8569d6c2459286a4752856766553832fd2cdf) Thanks [@IMax153](https://github.com/IMax153)! - add Cause.stripSomeDefects
+
+- [#1252](https://github.com/Effect-TS/core/pull/1252) [`6b04b1fac`](https://github.com/Effect-TS/core/commit/6b04b1fac4cd161a02dfcea58443257176a81589) Thanks [@IMax153](https://github.com/IMax153)! - add TestClock data type
+
+* [#1247](https://github.com/Effect-TS/core/pull/1247) [`554a50bd2`](https://github.com/Effect-TS/core/commit/554a50bd2105089b49496928b2c9550218f8a360) Thanks [@IMax153](https://github.com/IMax153)! - add CyclicBarrier data type
+
 ## 0.0.7
 
 ### Patch Changes
