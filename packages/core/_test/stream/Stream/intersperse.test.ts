@@ -75,7 +75,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("several from repeat effect (ZIO issue #3729)", async () => {
-      const program = Stream.repeatEffect(Effect.succeed(42))
+      const program = Stream.repeatEffect(Effect.sync(42))
         .map((n) => n.toString())
         .take(4)
         .intersperse("@")
@@ -87,7 +87,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("several from repeat effect chunk single element (ZIO issue #3729)", async () => {
-      const program = Stream.repeatEffectChunk(Effect.succeed(Chunk(42)))
+      const program = Stream.repeatEffectChunk(Effect.sync(Chunk(42)))
         .map((n) => n.toString())
         .intersperse("@")
         .take(4)

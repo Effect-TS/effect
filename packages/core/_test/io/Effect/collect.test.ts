@@ -1,7 +1,7 @@
 describe.concurrent("Effect", () => {
   describe.concurrent("collectAllPar", () => {
     it("returns the list in the same order", async () => {
-      const list = List(1, 2, 3).map((n) => Effect.succeed(n))
+      const list = List(1, 2, 3).map((n) => Effect.sync(n))
       const program = Effect.collectAllPar(list)
 
       const result = await program.unsafeRunPromise()
@@ -25,7 +25,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("collectAllPar - parallelism", () => {
     it("returns results in the same order", async () => {
-      const list = List(1, 2, 3).map((n) => Effect.succeed(n))
+      const list = List(1, 2, 3).map((n) => Effect.sync(n))
       const program = Effect.collectAllPar(list)
         .withParallelism(2)
 
@@ -37,7 +37,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("collectAllParDiscard - parallelism", () => {
     it("preserves failures", async () => {
-      const chunk = Chunk.fill(10, () => Effect.fail(new RuntimeError()))
+      const chunk = Chunk.fill(10, () => Effect.failSync(new RuntimeError()))
       const program = Effect.collectAllParDiscard(chunk).withParallelism(5).flip
 
       const result = await program.unsafeRunPromise()
@@ -50,7 +50,7 @@ describe.concurrent("Effect", () => {
     it("collects the first value for which the effectual function returns Some", async () => {
       const program = Effect.collectFirst(
         Chunk.range(0, 10),
-        (n) => n > 5 ? Effect.succeed(Maybe.some(n)) : Effect.succeed(Maybe.none)
+        (n) => n > 5 ? Effect.sync(Maybe.some(n)) : Effect.sync(Maybe.none)
       )
 
       const result = await program.unsafeRunPromise()

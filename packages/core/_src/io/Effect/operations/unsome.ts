@@ -8,7 +8,7 @@ export function unsome<R, E, A>(
   __tsplusTrace?: string
 ): Effect<R, E, Maybe<A>> {
   return self.foldEffect(
-    (option) => option.fold(Effect.succeedNow(Maybe.none), Effect.failNow),
-    (a) => Effect.succeedNow(Maybe.some(a))
+    (option) => option.fold(Effect.succeed(Maybe.none), Effect.fail),
+    (a) => Effect.succeed(Maybe.some(a))
   )
 }

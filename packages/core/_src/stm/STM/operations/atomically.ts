@@ -30,7 +30,7 @@ export function atomically<R, E, A>(
                 const currentState = state.get
                 return currentState._tag === "Done"
                   ? Effect.done(currentState.exit)
-                  : Effect.failCause(cause)
+                  : Effect.failCauseSync(cause)
               })
             )
           }

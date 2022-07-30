@@ -19,12 +19,12 @@ export function partitionEither<A, R2, E2, A2, A3>(
       .mapEffect(p)
       .distributedWith(2, buffer, (either) =>
         either.fold(
-          () => Effect.succeedNow((_) => _ === 0),
-          () => Effect.succeedNow((_) => _ === 1)
+          () => Effect.succeed((_) => _ === 0),
+          () => Effect.succeed((_) => _ === 1)
         ))
       .flatMap((dequeues) => {
         if (dequeues.length === 2) {
-          return Effect.succeedNow(
+          return Effect.succeed(
             Tuple(
               Stream.fromQueueWithShutdown(dequeues.unsafeHead!)
                 .flattenExitMaybe

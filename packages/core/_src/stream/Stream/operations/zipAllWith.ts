@@ -84,15 +84,15 @@ function pull<A, A2, A3>(
     switch (state._tag) {
       case "DrainLeft": {
         return pullLeft.foldEffect(
-          (err) => Effect.succeedNow(Exit.fail(err)),
-          (leftChunk) => Effect.succeedNow(Exit.succeed(Tuple(leftChunk.map(left), new DrainLeft())))
+          (err) => Effect.succeed(Exit.fail(err)),
+          (leftChunk) => Effect.succeed(Exit.succeed(Tuple(leftChunk.map(left), new DrainLeft())))
         )
       }
       case "DrainRight": {
         return pullRight.foldEffect(
-          (err) => Effect.succeedNow(Exit.fail(err)),
+          (err) => Effect.succeed(Exit.fail(err)),
           (rightChunk) =>
-            Effect.succeedNow(
+            Effect.succeed(
               Exit.succeed(Tuple(rightChunk.map(right), new DrainRight()))
             )
         )
@@ -102,7 +102,7 @@ function pull<A, A2, A3>(
           .unsome
           .zipPar(pullRight.unsome)
           .foldEffect(
-            (err) => Effect.succeedNow(Exit.fail(Maybe.some(err))),
+            (err) => Effect.succeed(Exit.fail(Maybe.some(err))),
             ({ tuple: [l, r] }) => {
               if (l._tag === "Some" && r._tag === "Some") {
                 const leftChunk = l.value
@@ -122,20 +122,20 @@ function pull<A, A2, A3>(
                     pullRight
                   )
                 } else {
-                  return Effect.succeedNow(
+                  return Effect.succeed(
                     Exit.succeed(zipWithChunks(leftChunk, rightChunk, both))
                   )
                 }
               } else if (l._tag === "Some" && r._tag === "None") {
-                return Effect.succeedNow(
+                return Effect.succeed(
                   Exit.succeed(Tuple(l.value.map(left), new DrainLeft()))
                 )
               } else if (l._tag === "None" && r._tag === "Some") {
-                return Effect.succeedNow(
+                return Effect.succeed(
                   Exit.succeed(Tuple(r.value.map(right), new DrainRight()))
                 )
               } else {
-                return Effect.succeedNow(Exit.fail(Maybe.none))
+                return Effect.succeed(Exit.fail(Maybe.none))
               }
             }
           )
@@ -144,11 +144,11 @@ function pull<A, A2, A3>(
         return pullLeft.foldEffect(
           (option) =>
             option.fold(
-              Effect.succeedNow<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(
+              Effect.succeed<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(
                 Exit.succeed(Tuple(state.rightChunk.map(right), new DrainRight()))
               ),
               (err) =>
-                Effect.succeedNow<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(
+                Effect.succeed<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(
                   Exit.fail(Maybe.some(err))
                 )
             ),
@@ -161,7 +161,7 @@ function pull<A, A2, A3>(
               )
               : state.rightChunk.isEmpty
               ? pull(left, right, both)(new PullRight(leftChunk), pullLeft, pullRight)
-              : Effect.succeedNow(
+              : Effect.succeed(
                 Exit.succeed(zipWithChunks(leftChunk, state.rightChunk, both))
               )
         )
@@ -170,11 +170,10 @@ function pull<A, A2, A3>(
         return pullRight.foldEffect(
           (option) =>
             option.fold(
-              Effect.succeedNow<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(
+              Effect.succeed<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(
                 Exit.succeed(Tuple(state.leftChunk.map(left), new DrainLeft()))
               ),
-              (err) =>
-                Effect.succeedNow<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(Exit.fail(Maybe.some(err)))
+              (err) => Effect.succeed<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(Exit.fail(Maybe.some(err)))
             ),
           (rightChunk) =>
             rightChunk.isEmpty
@@ -185,7 +184,7 @@ function pull<A, A2, A3>(
               )
               : state.leftChunk.isEmpty
               ? pull(left, right, both)(new PullLeft(rightChunk), pullLeft, pullRight)
-              : Effect.succeedNow(
+              : Effect.succeed(
                 Exit.succeed(zipWithChunks(state.leftChunk, rightChunk, both))
               )
         )

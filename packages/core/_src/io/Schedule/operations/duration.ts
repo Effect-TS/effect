@@ -12,7 +12,7 @@ export function duration(
   duration: Duration
 ): Schedule<boolean, never, unknown, Duration> {
   return makeWithState(true as boolean, (now, _, state) =>
-    Effect.succeed(
+    Effect.sync(
       state
         ? Tuple(
           false,

@@ -30,7 +30,7 @@ describe.concurrent("Stream", () => {
         Stream.fromEffect(
           counter
             .getAndUpdate((n) => n + 1)
-            .flatMap((n) => (n <= 2 ? Effect.succeed(n) : Effect.fail("boom")))
+            .flatMap((n) => (n <= 2 ? Effect.sync(n) : Effect.failSync("boom")))
         )
           .repeat(Schedule.recurs(3))
           .runDrain
@@ -45,7 +45,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("repeatEffect", () => {
     it("emit elements", async () => {
-      const program = Stream.repeatEffect(Effect.succeed(1)).take(2).runCollect
+      const program = Stream.repeatEffect(Effect.sync(1)).take(2).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -55,7 +55,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("repeatEffectMaybe", () => {
     it("emit elements", async () => {
-      const program = Stream.repeatEffectMaybe(Effect.succeed(1)).take(2).runCollect
+      const program = Stream.repeatEffectMaybe(Effect.sync(1)).take(2).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -68,7 +68,7 @@ describe.concurrent("Stream", () => {
         .bindValue("effect", ({ ref }) =>
           ref
             .updateAndGet((n) => n + 1)
-            .flatMap((n) => (n >= 5 ? Effect.fail(Maybe.none) : Effect.succeed(n))))
+            .flatMap((n) => (n >= 5 ? Effect.failSync(Maybe.none) : Effect.sync(n))))
         .flatMap(({ effect }) => Stream.repeatEffectMaybe(effect).take(10).runCollect)
 
       const result = await program.unsafeRunPromise()
@@ -82,7 +82,7 @@ describe.concurrent("Stream", () => {
         .tap(({ ref }) =>
           Effect.scoped(
             Stream.repeatEffectMaybe(
-              ref.getAndUpdate((n) => n + 1) > Effect.fail(Maybe.none)
+              ref.getAndUpdate((n) => n + 1) > Effect.failSync(Maybe.none)
             )
               .toPull
               .flatMap((pull) => pull.ignore > pull.ignore)
@@ -234,7 +234,7 @@ describe.concurrent("Stream", () => {
 
     it("should perform repetitions in addition to the first execution (one repetition)", async () => {
       const program = Stream.repeatEffectWithSchedule(
-        Effect.succeed(1),
+        Effect.sync(1),
         Schedule.once
       ).runCollect
 
@@ -245,7 +245,7 @@ describe.concurrent("Stream", () => {
 
     it("should perform repetitions in addition to the first execution (zero repetitions)", async () => {
       const program = Stream.repeatEffectWithSchedule(
-        Effect.succeed(1),
+        Effect.sync(1),
         Schedule.stop
       ).runCollect
 

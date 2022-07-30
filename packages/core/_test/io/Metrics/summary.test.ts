@@ -40,8 +40,8 @@ describe.concurrent("Metrics", () => {
         .taggedWithLabels(labels)
         .contramap((s: string) => s.length)
 
-      const program = Effect.succeed("x") / summary >
-        Effect.succeed("xyz") / summary >
+      const program = Effect.sync("x") / summary >
+        Effect.sync("xyz") / summary >
         summary.value
 
       const result = await program.unsafeRunPromise()
@@ -59,8 +59,8 @@ describe.concurrent("Metrics", () => {
         .contramap((s: string) => s.length)
       const summary = base.taggedWith((s) => HashSet(MetricLabel("dyn", s)))
 
-      const program = Effect.succeed("x") / summary >
-        Effect.succeed("xyz") / summary >
+      const program = Effect.sync("x") / summary >
+        Effect.sync("xyz") / summary >
         Effect.struct({
           r0: base.value,
           r1: base.tagged("dyn", "x").value,

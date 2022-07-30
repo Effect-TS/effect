@@ -76,7 +76,7 @@ function pull<A, A2, A3>(
         return pullLeft.unsome
           .zipPar(pullRight.unsome)
           .foldEffect(
-            (err) => Effect.succeedNow(Exit.fail(Maybe.some(err))),
+            (err) => Effect.succeed(Exit.fail(Maybe.some(err))),
             ({ tuple: [left, right] }) => {
               if (left.isSome() && right.isSome()) {
                 const leftChunk = left.value
@@ -88,37 +88,37 @@ function pull<A, A2, A3>(
                 } else if (rightChunk.isEmpty) {
                   return pull(f)(new PullRight(leftChunk), pullLeft, pullRight)
                 } else {
-                  return Effect.succeedNow(
+                  return Effect.succeed(
                     Exit.succeed(zipWithChunksInternal(leftChunk, rightChunk, f))
                   )
                 }
               }
-              return Effect.succeedNow(Exit.fail(Maybe.none))
+              return Effect.succeed(Exit.fail(Maybe.none))
             }
           )
       }
       case "PullLeft": {
         return pullLeft.foldEffect(
-          (err) => Effect.succeedNow(Exit.fail(err)),
+          (err) => Effect.succeed(Exit.fail(err)),
           (leftChunk) =>
             leftChunk.isEmpty
               ? pull(f)(new PullLeft(state.rightChunk), pullLeft, pullRight)
               : state.rightChunk.isEmpty
               ? pull(f)(new PullRight(leftChunk), pullLeft, pullRight)
-              : Effect.succeedNow(
+              : Effect.succeed(
                 Exit.succeed(zipWithChunksInternal(leftChunk, state.rightChunk, f))
               )
         )
       }
       case "PullRight": {
         return pullRight.foldEffect(
-          (err) => Effect.succeedNow(Exit.fail(err)),
+          (err) => Effect.succeed(Exit.fail(err)),
           (rightChunk) =>
             rightChunk.isEmpty
               ? pull(f)(new PullRight(state.leftChunk), pullLeft, pullRight)
               : state.leftChunk.isEmpty
               ? pull(f)(new PullLeft(rightChunk), pullLeft, pullRight)
-              : Effect.succeedNow(
+              : Effect.succeed(
                 Exit.succeed(zipWithChunksInternal(state.leftChunk, rightChunk, f))
               )
         )

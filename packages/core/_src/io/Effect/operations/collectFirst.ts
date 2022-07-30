@@ -9,7 +9,7 @@ export function collectFirst<R, E, A, B>(
   f: (a: A) => Effect<R, E, Maybe<B>>,
   __tsplusTrace?: string
 ): Effect<R, E, Maybe<B>> {
-  return Effect.succeed(as).flatMap((Collection) => loop(Collection[Symbol.iterator](), f))
+  return Effect.sync(as).flatMap((Collection) => loop(Collection[Symbol.iterator](), f))
 }
 
 function loop<R, E, A, B>(

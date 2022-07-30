@@ -20,7 +20,7 @@ export function mapEffect<A, E2, A2>(
       inheritRefs: self.inheritRefs,
       poll: self.poll.flatMap((_) =>
         _.fold(
-          () => Effect.succeedNow(Maybe.none),
+          () => Effect.succeed(Maybe.none),
           (exit) => exit.forEach(f).map(Maybe.some)
         )
       ),

@@ -13,7 +13,7 @@ export function dropWhileEffect_<R, E, A>(
   return Effect.suspendSucceed(() => {
     const iterator = concreteChunkId(self)._arrayLikeIterator()
     let next
-    let dropping: Effect<R, E, boolean> = Effect.succeedNow(true)
+    let dropping: Effect<R, E, boolean> = Effect.succeed(true)
     let builder = Chunk.empty<A>()
 
     while ((next = iterator.next()) && !next.done) {
@@ -23,7 +23,7 @@ export function dropWhileEffect_<R, E, A>(
       while (i < len) {
         const a = array[i]!
         dropping = dropping.flatMap((d) =>
-          (d ? f(a) : Effect.succeedNow(false)).map((b) => {
+          (d ? f(a) : Effect.succeed(false)).map((b) => {
             if (!b) {
               builder = builder.append(a)
             }

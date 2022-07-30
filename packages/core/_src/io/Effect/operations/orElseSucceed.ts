@@ -6,5 +6,5 @@
  * @tsplus pipeable effect/core/io/Effect orElseSucceed
  */
 export function orElseSucceed<A2>(a: LazyArg<A2>, __tsplusTrace?: string) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A | A2> => self.orElse(Effect.succeed(a))
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A | A2> => self.orElse(Effect.sync(a))
 }

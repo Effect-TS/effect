@@ -23,11 +23,11 @@ export function findEffect_<R, E, A>(
       if (i < length) {
         const a = array[i]!
 
-        return f(a).flatMap((r) => r ? Effect.succeedNow(Maybe.some(a)) : loop(iterator, array, i + 1, length))
+        return f(a).flatMap((r) => r ? Effect.succeed(Maybe.some(a)) : loop(iterator, array, i + 1, length))
       } else if (!(next = iterator.next()).done) {
         return loop(iterator, next.value, 0, next.value.length)
       } else {
-        return Effect.succeedNow(Maybe.none)
+        return Effect.succeed(Maybe.none)
       }
     }
 
@@ -36,7 +36,7 @@ export function findEffect_<R, E, A>(
     if (!next.done) {
       return loop(iterator, next.value, 0, next.value.length)
     } else {
-      return Effect.succeedNow(Maybe.none)
+      return Effect.succeed(Maybe.none)
     }
   })
 }

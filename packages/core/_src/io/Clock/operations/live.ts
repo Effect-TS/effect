@@ -4,7 +4,7 @@ export class LiveClock implements Clock {
   readonly [ClockSym]: ClockSym = ClockSym
 
   get currentTime(): Effect<never, never, number> {
-    return Effect.succeed(this.unsafeCurrentTime)
+    return Effect.sync(this.unsafeCurrentTime)
   }
 
   get unsafeCurrentTime(): number {
@@ -12,14 +12,14 @@ export class LiveClock implements Clock {
   }
 
   get scheduler(): Effect<never, never, Clock.Scheduler> {
-    return Effect.succeed(globalScheduler)
+    return Effect.sync(globalScheduler)
   }
 
   sleep(duration: LazyArg<Duration>, __tsplusTrace?: string): Effect<never, never, void> {
-    return Effect.succeed(duration).flatMap((duration) =>
+    return Effect.sync(duration).flatMap((duration) =>
       Effect.asyncInterrupt((cb) => {
         const canceler = globalScheduler.unsafeSchedule(() => cb(Effect.unit), duration)
-        return Either.left(Effect.succeed(canceler))
+        return Either.left(Effect.sync(canceler))
       })
     )
   }

@@ -11,5 +11,5 @@ export function continueOrFailEffect<E1, A, R2, E2, A2>(
   __tsplusTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R | R2, E | E1 | E2, A2> =>
-    self.flatMap((v): Effect<R2, E1 | E2, A2> => pf(v).getOrElse(Effect.fail(e)))
+    self.flatMap((v): Effect<R2, E1 | E2, A2> => pf(v).getOrElse(Effect.failSync(e)))
 }

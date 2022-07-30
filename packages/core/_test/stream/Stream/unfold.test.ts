@@ -11,7 +11,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("unfoldEffect", () => {
     it("simple example", async () => {
-      const program = Stream.unfoldEffect(0, (n) => n < 10 ? Effect.succeed(Maybe.some(Tuple(n, n + 1))) : Effect.none)
+      const program = Stream.unfoldEffect(0, (n) => n < 10 ? Effect.sync(Maybe.some(Tuple(n, n + 1))) : Effect.none)
         .runCollect
 
       const result = await program.unsafeRunPromise()
@@ -35,7 +35,7 @@ describe.concurrent("Stream", () => {
     it("simple example", async () => {
       const program = Stream.unfoldChunkEffect(0, (n) =>
         n < 10
-          ? Effect.succeed(Maybe.some(Tuple(Chunk(n, n + 1), n + 2)))
+          ? Effect.sync(Maybe.some(Tuple(Chunk(n, n + 1), n + 2)))
           : Effect.none).runCollect
 
       const result = await program.unsafeRunPromise()

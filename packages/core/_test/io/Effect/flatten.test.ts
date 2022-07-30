@@ -1,7 +1,7 @@
 describe.concurrent("Effect", () => {
   describe.concurrent("flatten", () => {
     it("fluent/static method consistency", async () => {
-      const effect = Effect.succeed(Effect.succeed("test"))
+      const effect = Effect.sync(Effect.sync("test"))
       const program = Effect.Do()
         .bind("flatten1", () => effect.flatten)
         .bind("flatten2", () => Effect.flatten(effect))
@@ -15,7 +15,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("flattenErrorMaybe", () => {
     it("fails when given Some error", async () => {
-      const program = Effect.fail(Maybe.some("error")).flattenErrorMaybe("default")
+      const program = Effect.failSync(Maybe.some("error")).flattenErrorMaybe("default")
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -23,7 +23,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("fails with default when given None error", async () => {
-      const program = Effect.fail(Maybe.none).flattenErrorMaybe("default")
+      const program = Effect.failSync(Maybe.none).flattenErrorMaybe("default")
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -31,7 +31,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("succeeds when given a value", async () => {
-      const program = Effect.succeed(1).flattenErrorMaybe("default")
+      const program = Effect.sync(1).flattenErrorMaybe("default")
 
       const result = await program.unsafeRunPromise()
 

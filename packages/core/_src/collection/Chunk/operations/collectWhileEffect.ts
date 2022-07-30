@@ -15,13 +15,13 @@ export function collectWhileEffect_<A, R, E, B>(
   switch (self._typeId) {
     case SingletonTypeId: {
       return f(self.a).fold(
-        () => Effect.succeedNow(Chunk.empty()),
+        () => Effect.succeed(Chunk.empty()),
         (b) => b.map(Chunk.single)
       )
     }
     case ArrTypeId: {
       const array = self._arrayLike()
-      let dest: Effect<R, E, Chunk<B>> = Effect.succeedNow(Chunk.empty<B>())
+      let dest: Effect<R, E, Chunk<B>> = Effect.succeed(Chunk.empty<B>())
       for (let i = 0; i < array.length; i++) {
         const rhs = f(array[i]!)
         if (rhs.isSome()) {

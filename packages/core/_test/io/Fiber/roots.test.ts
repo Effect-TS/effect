@@ -24,7 +24,7 @@ describe.concurrent("Fiber", () => {
       // race the real test against a 10 second timer and fail the test if it didn't complete.
       // This delay time may be increased if it turns out this test is flaky.
       const program = Effect.sleep((10).seconds)
-        .zipRight(Effect.succeedNow(false))
+        .zipRight(Effect.succeed(false))
         .race(rootsTest)
 
       const result = await program.unsafeRunPromise()

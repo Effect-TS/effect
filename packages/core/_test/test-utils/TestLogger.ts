@@ -77,7 +77,7 @@ export class LogEntry {
 /**
  * @tsplus static effect/core/test/TestLogger.Ops make
  */
-export const makeTestLogger: Effect.UIO<TestLogger<string, void>> = Effect.succeed(() => {
+export const makeTestLogger: Effect.UIO<TestLogger<string, void>> = Effect.sync(() => {
   const logOutput = new AtomicReference<ImmutableArray<LogEntry>>(ImmutableArray.empty())
   return {
     [TestLoggerId]: TestLoggerId,
@@ -107,7 +107,7 @@ export const makeTestLogger: Effect.UIO<TestLogger<string, void>> = Effect.succe
         )
       )
     },
-    logOutput: Effect.succeed(logOutput.get)
+    logOutput: Effect.sync(logOutput.get)
   }
 })
 

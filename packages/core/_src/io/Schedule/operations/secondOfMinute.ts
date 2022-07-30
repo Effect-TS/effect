@@ -27,6 +27,6 @@ export function secondOfMinute(
     const start = Math.max(beginningOfSecond(sec), now)
     const end = endOfSecond(sec)
     const interval = Interval(start, end)
-    return Effect.succeedNow(Tuple(state + 1, state, Decision.Continue(interval)))
+    return Effect.succeed(Tuple(state + 1, state, Decision.Continue(interval)))
   })
 }

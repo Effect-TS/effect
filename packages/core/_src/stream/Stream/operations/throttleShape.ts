@@ -19,7 +19,7 @@ export function throttleShape<A>(
     self.throttleShapeEffect(
       units,
       duration,
-      (input) => Effect.succeedNow(costFn(input)),
+      (input) => Effect.succeed(costFn(input)),
       burst
     )
 }

@@ -7,5 +7,5 @@ export function makeAs<E, A>(
   fiberId: LazyArg<FiberId>,
   __tsplusTrace?: string
 ): Effect<never, never, Deferred<E, A>> {
-  return Effect.succeed(Deferred.unsafeMake(fiberId()))
+  return Effect.sync(Deferred.unsafeMake(fiberId()))
 }

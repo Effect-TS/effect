@@ -6,7 +6,7 @@ import { SynchronizedInternal } from "@effect/core/io/Ref/operations/_internal/S
  * @tsplus static effect/core/io/Ref.Ops make
  */
 export function makeRef<A>(value: LazyArg<A>, __tsplusTrace?: string): Effect<never, never, Ref<A>> {
-  return Effect.succeed(Ref.unsafeMake(value()))
+  return Effect.sync(Ref.unsafeMake(value()))
 }
 
 /**

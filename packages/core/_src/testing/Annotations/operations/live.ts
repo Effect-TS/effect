@@ -12,11 +12,11 @@ export const live: Layer<never, never, Annotations> = Layer.scoped(
       fiberRef.get().map((map) => map.get(TestAnnotation.fibers)).flatMap((either) => {
         switch (either._tag) {
           case "Left": {
-            return Effect.succeedNow(SortedSet.empty(Fiber.Ord))
+            return Effect.succeed(SortedSet.empty(Fiber.Ord))
           }
           case "Right": {
             return Effect
-              .forEach(either.right, (ref) => Effect.succeed(ref.get))
+              .forEach(either.right, (ref) => Effect.sync(ref.get))
               .map((chunk) =>
                 chunk.reduce(
                   SortedSet.empty(Fiber.Ord),

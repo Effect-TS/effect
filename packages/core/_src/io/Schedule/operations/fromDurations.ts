@@ -21,7 +21,7 @@ export function fromDurations(
   return makeWithState(
     Tuple(Chunk.from([duration, ...durations]), true as boolean),
     (now, _, { tuple: [durations, cont] }) =>
-      Effect.succeed(() => {
+      Effect.sync(() => {
         if (cont) {
           const x = durations.unsafeGet(0)!
           const interval = Interval.after(now + x.millis)

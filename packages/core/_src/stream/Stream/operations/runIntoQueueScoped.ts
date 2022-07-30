@@ -26,7 +26,7 @@ export function runIntoQueueScoped<E1, A>(
       () => Channel.write(Take.end)
     )
     concreteStream(self)
-    return Effect.succeed(queue).flatMap((queue) =>
+    return Effect.sync(queue).flatMap((queue) =>
       (self.channel >> writer)
         .mapOutEffect((take) => queue.offer(take))
         .drain

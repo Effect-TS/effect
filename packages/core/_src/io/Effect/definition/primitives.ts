@@ -5,9 +5,9 @@ export type Instruction =
   | IFlatMap<any, any, any, any, any, any>
   | IFold<any, any, any, any, any, any, any, any, any>
   | IEnsuring<any, any, any, any>
-  | ISucceedNow<any>
-  | IFail<any>
   | ISucceed<any>
+  | IFail<any>
+  | ISync<any>
   | ISucceedWith<any>
   | ISuspend<any, any, any>
   | ISuspendWith<any, any, any>
@@ -50,8 +50,8 @@ export class IFlatMap<R, E, A, R1, E1, A1> extends Base<R | R1, E | E1, A1> {
   }
 }
 
-export class ISucceedNow<A> extends Base<never, never, A> {
-  readonly _tag = "SucceedNow"
+export class ISucceed<A> extends Base<never, never, A> {
+  readonly _tag = "Succeed"
 
   constructor(readonly value: A, readonly trace?: string) {
     super()
@@ -62,8 +62,8 @@ export class ISucceedNow<A> extends Base<never, never, A> {
   }
 }
 
-export class ISucceed<A> extends Base<never, never, A> {
-  readonly _tag = "Succeed"
+export class ISync<A> extends Base<never, never, A> {
+  readonly _tag = "Sync"
 
   constructor(readonly effect: Lazy<A>, readonly trace?: string) {
     super()

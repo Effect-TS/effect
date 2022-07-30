@@ -33,7 +33,7 @@ describe.concurrent("Sink", () => {
   describe.concurrent("drain", () => {
     it("fails if upstream fails", async () => {
       const program = Stream(1)
-        .mapEffect(() => Effect.fail("boom"))
+        .mapEffect(() => Effect.failSync("boom"))
         .run(Sink.drain)
 
       const result = await program.unsafeRunPromiseExit()
@@ -202,7 +202,7 @@ describe.concurrent("Sink", () => {
   describe.concurrent("dropWhileEffect", () => {
     it("happy path", async () => {
       const program = Stream(1, 2, 3, 4, 5, 1, 2, 3, 4, 5)
-        .pipeThrough(Sink.dropWhileEffect((n) => Effect.succeed(n < 3)))
+        .pipeThrough(Sink.dropWhileEffect((n) => Effect.sync(n < 3)))
         .runCollect
 
       const result = await program.unsafeRunPromise()
@@ -212,7 +212,7 @@ describe.concurrent("Sink", () => {
 
     it("error", async () => {
       const program = (Stream(1, 2, 3) + Stream.fail("boom") + Stream(5, 1, 2, 3, 4, 5))
-        .pipeThrough(Sink.dropWhileEffect((n) => Effect.succeed(n < 3)))
+        .pipeThrough(Sink.dropWhileEffect((n) => Effect.sync(n < 3)))
         .either
         .runCollect
 
@@ -304,7 +304,7 @@ describe.concurrent("Sink", () => {
     it("happy path", async () => {
       const program = Effect.Do()
         .bind("closed", () => Ref.make(false))
-        .bindValue("res", ({ closed }) => Effect.acquireRelease(Effect.succeed(100), () => closed.set(true)))
+        .bindValue("res", ({ closed }) => Effect.acquireRelease(Effect.sync(100), () => closed.set(true)))
         .bindValue("sink", ({ closed, res }) =>
           Sink.unwrapScoped(
             res.map((m) => Sink.count().mapEffect((cnt) => closed.get().map((cl) => Tuple(cnt + m, cl))))
@@ -322,7 +322,7 @@ describe.concurrent("Sink", () => {
     it("sad path", async () => {
       const program = Effect.Do()
         .bind("closed", () => Ref.make(false))
-        .bindValue("res", ({ closed }) => Effect.acquireRelease(Effect.succeed(100), () => closed.set(true)))
+        .bindValue("res", ({ closed }) => Effect.acquireRelease(Effect.sync(100), () => closed.set(true)))
         .bindValue("sink", ({ closed, res }) => Sink.unwrapScoped(res.map(() => Sink.succeed("ok"))))
         .bind("finalResult", ({ sink }) => Stream.fail("fail").run(sink))
         .bind("finalState", ({ closed }) => closed.get())
@@ -336,7 +336,7 @@ describe.concurrent("Sink", () => {
 
   describe.concurrent("fromEffect", () => {
     it("result is ok", async () => {
-      const program = Stream(1, 2, 3).run(Sink.fromEffect(Effect.succeed("ok")))
+      const program = Stream(1, 2, 3).run(Sink.fromEffect(Effect.sync("ok")))
 
       const result = await program.unsafeRunPromise()
 

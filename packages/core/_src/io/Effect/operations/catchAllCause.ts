@@ -11,5 +11,5 @@ export function catchAllCause<E, R2, E2, A2>(
   f: (cause: Cause<E>) => Effect<R2, E2, A2>,
   __tsplusTrace?: string
 ) {
-  return <R, A>(self: Effect<R, E, A>): Effect<R | R2, E2, A | A2> => self.foldCauseEffect(f, Effect.succeedNow)
+  return <R, A>(self: Effect<R, E, A>): Effect<R | R2, E2, A | A2> => self.foldCauseEffect(f, Effect.succeed)
 }

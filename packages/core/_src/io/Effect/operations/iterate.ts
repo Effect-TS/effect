@@ -23,7 +23,7 @@ export function iterate<Z>(initial: LazyArg<Z>, cont: (z: Z) => boolean) {
       if (cont(initial0)) {
         return body(initial0).flatMap((z2) => iterate(z2, cont)(body))
       }
-      return Effect.succeedNow(initial0)
+      return Effect.succeed(initial0)
     })
   }
 }

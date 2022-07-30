@@ -15,6 +15,6 @@ export function resetWhen<Out>(f: Predicate<Out>) {
         .flatMap(({ tuple: [state, out, decision] }) =>
           f(out)
             ? self._step(now, input, self._initial)
-            : Effect.succeedNow(Tuple(state, out, decision))
+            : Effect.succeed(Tuple(state, out, decision))
         ))
 }

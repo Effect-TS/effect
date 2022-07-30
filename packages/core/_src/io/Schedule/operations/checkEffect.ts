@@ -20,7 +20,7 @@ export function checkEffect<In, Out, Env1>(
         ._step(now, input, state)
         .flatMap(({ tuple: [state, out, decision] }) =>
           decision._tag === "Done"
-            ? Effect.succeedNow(Tuple(state, out, Decision.Done))
+            ? Effect.succeed(Tuple(state, out, Decision.Done))
             : test(input, out).map((b) =>
               b
                 ? Tuple(state, out, Decision.Continue(decision.interval))

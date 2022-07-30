@@ -29,7 +29,7 @@ function accumulator<A, R2, E2, A2, S>(
         Effect.suspendSucceed(() => {
           const outputChunk = Chunk.builder<A2>()
           const emit = (out: A2) =>
-            Effect.succeed(() => {
+            Effect.sync(() => {
               outputChunk.append(out)
             })
 

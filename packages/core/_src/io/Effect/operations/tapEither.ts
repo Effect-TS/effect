@@ -12,8 +12,8 @@ export function tapEither<E, A, R2, E2, X>(
     self.foldCauseEffect(
       (cause) =>
         cause.failureOrCause.fold(
-          (e) => f(Either.left(e)).zipRight(Effect.failCauseNow(cause)),
-          () => Effect.failCauseNow(cause)
+          (e) => f(Either.left(e)).zipRight(Effect.failCause(cause)),
+          () => Effect.failCause(cause)
         ),
       (a) => f(Either.right(a)).as(a)
     )

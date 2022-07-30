@@ -2,7 +2,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("partitionEither", () => {
     it("allows repeated runs without hanging", async () => {
       const stream = Stream.fromCollection(Chunk.empty<number>())
-        .partitionEither((i) => Effect.succeedNow(i % 2 === 0 ? Either.left(i) : Either.right(i)))
+        .partitionEither((i) => Effect.succeed(i % 2 === 0 ? Either.left(i) : Either.right(i)))
         .map(({ tuple: [evens, odds] }) => evens.mergeEither(odds))
         .flatMap((stream) => stream.runCollect)
       const program = Effect.collectAll(
@@ -19,8 +19,8 @@ describe.concurrent("Stream", () => {
         Stream.range(0, 6)
           .partitionEither((i) =>
             i % 2 === 0
-              ? Effect.succeedNow(Either.left(i))
-              : Effect.succeedNow(Either.right(i))
+              ? Effect.succeed(Either.left(i))
+              : Effect.succeed(Either.right(i))
           )
           .flatMap(({ tuple: [evens, odds] }) =>
             Effect.struct({
@@ -41,8 +41,8 @@ describe.concurrent("Stream", () => {
         (Stream.range(0, 1) + Stream.fail("boom"))
           .partitionEither((i) =>
             i % 2 === 0
-              ? Effect.succeedNow(Either.left(i))
-              : Effect.succeedNow(Either.right(i))
+              ? Effect.succeed(Either.left(i))
+              : Effect.succeed(Either.right(i))
           )
           .flatMap(({ tuple: [evens, odds] }) =>
             Effect.struct({
@@ -64,8 +64,8 @@ describe.concurrent("Stream", () => {
           .partitionEither(
             (i) =>
               i % 2 === 0
-                ? Effect.succeedNow(Either.left(i))
-                : Effect.succeedNow(Either.right(i)),
+                ? Effect.succeed(Either.left(i))
+                : Effect.succeed(Either.right(i)),
             1
           )
           .flatMap(({ tuple: [evens, odds] }) =>

@@ -100,7 +100,7 @@ export class CyclicBarrierInternal {
   get await(): Effect<never, void, number> {
     return Effect.uninterruptibleMask(({ restore }) =>
       this._broken.get()
-        .flatMap((broken) => broken ? Effect.fail(undefined) : Effect.unit)
+        .flatMap((broken) => broken ? Effect.failSync(undefined) : Effect.unit)
         .zipRight(
           this._waiting.modify((waiting) =>
             waiting + 1 === this._parties ?

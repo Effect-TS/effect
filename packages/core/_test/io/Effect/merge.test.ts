@@ -3,7 +3,7 @@ import { constVoid } from "@tsplus/stdlib/data/Function"
 describe.concurrent("Effect", () => {
   describe.concurrent("merge", () => {
     it("on flipped result", async () => {
-      const effect: Effect<never, number, number> = Effect.succeed(1)
+      const effect: Effect<never, number, number> = Effect.sync(1)
       const program = Effect.struct({
         a: effect.merge,
         b: effect.flip.merge
@@ -31,7 +31,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("merge list using function", async () => {
-      const effects = List(3, 5, 7).map(Effect.succeedNow)
+      const effects = List(3, 5, 7).map(Effect.succeed)
       const program = Effect.mergeAll(effects, 1, (b, a) => b + a)
 
       const result = await program.unsafeRunPromise()
@@ -40,7 +40,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("return error if it exists in list", async () => {
-      const effects = List(Effect.unit, Effect.fail(1))
+      const effects = List(Effect.unit, Effect.failSync(1))
       const program = Effect.mergeAll(effects, undefined, constVoid)
 
       const result = await program.unsafeRunPromiseExit()
@@ -65,7 +65,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("merge list using function", async () => {
-      const effects = List(3, 5, 7).map(Effect.succeedNow)
+      const effects = List(3, 5, 7).map(Effect.succeed)
       const program = Effect.mergeAllPar(effects, 1, (b, a) => b + a)
 
       const result = await program.unsafeRunPromise()
@@ -74,7 +74,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("return error if it exists in list", async () => {
-      const effects = List(Effect.unit, Effect.fail(1))
+      const effects = List(Effect.unit, Effect.failSync(1))
       const program = Effect.mergeAllPar(effects, undefined, constVoid)
 
       const result = await program.unsafeRunPromiseExit()

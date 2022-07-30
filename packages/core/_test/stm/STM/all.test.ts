@@ -16,7 +16,7 @@ describe.concurrent("STM", () => {
 
     it("collects a list of transactional effects to a single transaction that produces a list of values", async () => {
       const program = Effect.Do()
-        .bind("iterable", () => Effect.succeed(Chunk.range(1, 100).map((n) => TRef.make(n))))
+        .bind("iterable", () => Effect.sync(Chunk.range(1, 100).map((n) => TRef.make(n))))
         .bind("tRefs", ({ iterable }) => STM.collectAll(iterable).commit)
         .flatMap(({ tRefs }) => Effect.forEachPar(tRefs, (tRef) => tRef.get.commit))
 
@@ -27,7 +27,7 @@ describe.concurrent("STM", () => {
 
     it("collects a chunk of transactional effects to a single transaction that produces a chunk of values", async () => {
       const program = Effect.Do()
-        .bind("iterable", () => Effect.succeed(Chunk.range(1, 100).map((n) => TRef.make(n))))
+        .bind("iterable", () => Effect.sync(Chunk.range(1, 100).map((n) => TRef.make(n))))
         .bind("tRefs", ({ iterable }) => STM.collectAll(Chunk.from(iterable)).commit)
         .flatMap(({ tRefs }) => Effect.forEachPar(tRefs, (tRef) => tRef.get.commit))
 

@@ -1,6 +1,6 @@
 export const makeLiveSystem = () => {
   return {
-    now: Effect.succeed(new Date())
+    now: Effect.sync(new Date())
   }
 }
 export interface System extends ReturnType<typeof makeLiveSystem> {}
@@ -23,7 +23,7 @@ export const makeLiveLogger = Do(($) => {
   return {
     info: (message: string) =>
       sys.now.zip(cnt.get).flatMap(({ tuple: [now, i] }) =>
-        Effect.succeed(console.log(`[${now.toISOString()} - ${i}]: ${message}`))
+        Effect.sync(console.log(`[${now.toISOString()} - ${i}]: ${message}`))
       )
   }
 })
@@ -39,8 +39,8 @@ export const program = Do(($) => {
   const now = $(sys.now)
   const later = $(sys.now)
   $(log.info(`now: ${now.toISOString()}`))
-  $(now.getTime() > later.getTime() ? Effect.fail("no-way" as const) : Effect.unit)
-  $(now.getTime() > later.getTime() ? Effect.fail("really-no-way" as const) : Effect.unit)
+  $(now.getTime() > later.getTime() ? Effect.failSync("no-way" as const) : Effect.unit)
+  $(now.getTime() > later.getTime() ? Effect.failSync("really-no-way" as const) : Effect.unit)
 })
 
 export const main = program.provideSomeLayer(ContextLive)

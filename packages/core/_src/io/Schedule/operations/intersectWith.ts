@@ -51,7 +51,7 @@ export function intersectWith<State1, Env1, In1, Out2>(
                 rDecision.interval,
                 f
               )
-              : Effect.succeedNow(
+              : Effect.succeed(
                 Tuple(Tuple(lState, rState), Tuple.mergeTuple(out, out2), Decision.Done)
               )
         )
@@ -78,7 +78,7 @@ function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
   const combined = f(lInterval, rInterval)
 
   if (combined.isNonEmpty) {
-    return Effect.succeedNow(
+    return Effect.succeed(
       Tuple(
         Tuple(lState, rState),
         Tuple.mergeTuple(out, out2),
@@ -104,7 +104,7 @@ function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
             rInterval,
             f
           )
-          : Effect.succeedNow(
+          : Effect.succeed(
             Tuple(
               Tuple(lState as State, rState),
               Tuple.mergeTuple(out, out2),
@@ -130,7 +130,7 @@ function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
           decision.interval,
           f
         )
-        : Effect.succeedNow(
+        : Effect.succeed(
           Tuple(
             Tuple(lState, rState as State1),
             Tuple.mergeTuple(out, out2),

@@ -3,7 +3,7 @@ import { ExampleError } from "@effect/core/test/io/Effect/test-utils"
 describe.concurrent("Effect", () => {
   describe.concurrent("ignore", () => {
     it("return success as unit", async () => {
-      const program = Effect.succeed(11).ignore
+      const program = Effect.sync(11).ignore
 
       const result = await program.unsafeRunPromise()
 
@@ -11,7 +11,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("return failure as unit", async () => {
-      const program = Effect.fail(123).ignore
+      const program = Effect.failSync(123).ignore
 
       const result = await program.unsafeRunPromise()
 

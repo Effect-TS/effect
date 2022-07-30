@@ -20,8 +20,8 @@ describe.concurrent("Stream", () => {
       const chunk = Chunk(1, 2, 3, 4, 5)
       const stream = Stream.fromCollection(chunk)
       const program = Effect.struct({
-        actual: stream.mapEffect(n => Effect.succeed(f(n))).runCollect,
-        expected: Effect.forEach(chunk, n => Effect.succeed(f(n)))
+        actual: stream.mapEffect(n => Effect.sync(f(n))).runCollect,
+        expected: Effect.forEach(chunk, n => Effect.sync(f(n)))
       })
 
       const { actual, expected } = await program.unsafeRunPromise()
@@ -31,7 +31,7 @@ describe.concurrent("Stream", () => {
 
     it("laziness on chunks", async () => {
       const program = Stream(1, 2, 3)
-        .mapEffect(n => (n === 3 ? Effect.fail("boom") : Effect.succeed(n)))
+        .mapEffect(n => (n === 3 ? Effect.failSync("boom") : Effect.sync(n)))
         .either
         .runCollect
 
@@ -47,7 +47,7 @@ describe.concurrent("Stream", () => {
       const program = Stream.fromChunk(Chunk.range(0, 3))
         .mapEffect(n => {
           builder.append(n)
-          return Effect.succeed(n)
+          return Effect.sync(n)
         })
         .map(n => {
           builder.append(n)
@@ -76,7 +76,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("mapAccumEffect", () => {
     it("happy path", async () => {
       const program = Stream(1, 1, 1)
-        .mapAccumEffect(0, (acc, el) => Effect.succeed(Tuple(acc + el, acc + el)))
+        .mapAccumEffect(0, (acc, el) => Effect.sync(Tuple(acc + el, acc + el)))
         .runCollect
 
       const result = await program.unsafeRunPromise()
@@ -86,7 +86,7 @@ describe.concurrent("Stream", () => {
 
     it("error", async () => {
       const program = Stream(1, 1, 1)
-        .mapAccumEffect(0, () => Effect.fail("ouch"))
+        .mapAccumEffect(0, () => Effect.failSync("ouch"))
         .runCollect
         .either
 
@@ -97,7 +97,7 @@ describe.concurrent("Stream", () => {
 
     it("laziness on chunks", async () => {
       const program = Stream(1, 2, 3)
-        .mapAccumEffect(undefined, (_, el) => el === 3 ? Effect.fail("boom") : Effect.succeed(Tuple(undefined, el)))
+        .mapAccumEffect(undefined, (_, el) => el === 3 ? Effect.failSync("boom") : Effect.sync(Tuple(undefined, el)))
         .either
         .runCollect
 
@@ -114,7 +114,7 @@ describe.concurrent("Stream", () => {
       const f = (n: number) => Chunk(n)
       const stream = Stream(1, 2, 3, 4, 5)
       const program = Effect.struct({
-        actual: stream.mapConcatEffect(n => Effect.succeed(f(n))).runCollect,
+        actual: stream.mapConcatEffect(n => Effect.sync(f(n))).runCollect,
         expected: stream.runCollect.map(chunk => chunk.flatMap(f))
       })
 
@@ -125,7 +125,7 @@ describe.concurrent("Stream", () => {
 
     it("error", async () => {
       const program = Stream(1, 2, 3)
-        .mapConcatEffect(() => Effect.fail("ouch"))
+        .mapConcatEffect(() => Effect.failSync("ouch"))
         .runCollect
         .either
 
@@ -163,7 +163,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("mapEffectPar", () => {
     it("foreachParN equivalence", async () => {
-      const f = (n: number) => Effect.succeed(n + 1)
+      const f = (n: number) => Effect.sync(n + 1)
       const data = Chunk(1, 2, 3, 4, 5)
       const stream = Stream.fromChunk(data)
       const program = Effect.struct({
@@ -216,10 +216,10 @@ describe.concurrent("Stream", () => {
       const data = Chunk(1, 2, 3, 4, 5)
       const program = Effect.struct({
         mapEffect: Stream.fromCollection(data)
-          .mapEffect(Effect.succeedNow)
+          .mapEffect(Effect.succeed)
           .runCollect,
         mapEffectPar: Stream.fromCollection(data)
-          .mapEffectPar(8, Effect.succeedNow)
+          .mapEffectPar(8, Effect.succeed)
           .runCollect
       })
 
@@ -232,7 +232,7 @@ describe.concurrent("Stream", () => {
       const deferred = Deferred.unsafeMake<never, void>(FiberId.none)
       const program = Stream.fromCollection(Chunk.range(0, 100))
         .interruptWhen(deferred.await())
-        .mapEffectPar(8, () => Effect.succeed(1).repeatN(200))
+        .mapEffectPar(8, () => Effect.sync(1).repeatN(200))
         .runDrain
         .exit
         .map(exit => exit.isInterrupted)
@@ -255,7 +255,7 @@ describe.concurrent("Stream", () => {
                 ? (latch1.succeed(undefined) > Effect.never).onInterrupt(() => interrupted.update(n => n + 1))
                 : n === 2
                 ? (latch2.succeed(undefined) > Effect.never).onInterrupt(() => interrupted.update(n => n + 1))
-                : latch1.await() > latch2.await() > Effect.fail("boom"))
+                : latch1.await() > latch2.await() > Effect.failSync("boom"))
             .runDrain
             .exit)
         .bind("count", ({ interrupted }) => interrupted.get())
@@ -268,8 +268,8 @@ describe.concurrent("Stream", () => {
 
     it("propagates correct error with subsequent mapEffectPar call (ZIO issue #4514)", async () => {
       const program = Stream.fromCollection(Chunk.range(1, 50))
-        .mapEffectPar(20, i => i < 10 ? Effect.succeed(i) : Effect.fail("boom"))
-        .mapEffectPar(20, Effect.succeedNow)
+        .mapEffectPar(20, i => i < 10 ? Effect.sync(i) : Effect.failSync("boom"))
+        .mapEffectPar(20, Effect.succeed)
         .runCollect
         .either
 
@@ -296,7 +296,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("mapEffectParUnordered", () => {
     it("mapping with failure is failure", async () => {
       const program = Stream.fromCollection(Chunk.range(0, 3))
-        .mapEffectParUnordered(10, () => Effect.fail("fail"))
+        .mapEffectParUnordered(10, () => Effect.failSync("fail"))
         .runDrain
 
       const result = await program.unsafeRunPromiseExit()

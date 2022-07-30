@@ -7,5 +7,5 @@ export function fromQueue<In>(
   queue: LazyArg<Enqueue<In>>,
   __tsplusTrace?: string
 ): Sink<never, never, In, never, void> {
-  return Sink.unwrap(Effect.succeed(queue).map((q) => Sink.forEachChunk((chunk) => q.offerAll(chunk))))
+  return Sink.unwrap(Effect.sync(queue).map((q) => Sink.forEachChunk((chunk) => q.offerAll(chunk))))
 }

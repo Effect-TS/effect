@@ -5,12 +5,12 @@ describe.concurrent("Effect", () => {
     it("succeed must be lazy", async () => {
       let program
       try {
-        program = Effect.succeed(() => {
+        program = Effect.sync(() => {
           throw new Error("shouldn't happen!")
         })
-        program = Effect.succeed(true)
+        program = Effect.sync(true)
       } catch {
-        program = Effect.succeed(false)
+        program = Effect.sync(false)
       }
 
       const result = await program.unsafeRunPromise()
@@ -24,9 +24,9 @@ describe.concurrent("Effect", () => {
         program = Effect.suspend(() => {
           throw new Error("shouldn't happen!")
         })
-        program = Effect.succeed(true)
+        program = Effect.sync(true)
       } catch {
-        program = Effect.succeed(false)
+        program = Effect.sync(false)
       }
 
       const result = await program.unsafeRunPromise()
@@ -35,7 +35,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("suspendSucceed must be evaluatable", async () => {
-      const program = Effect.suspendSucceed(Effect.succeed(42))
+      const program = Effect.suspendSucceed(Effect.sync(42))
 
       const result = await program.unsafeRunPromise()
 
@@ -81,7 +81,7 @@ describe.concurrent("Effect", () => {
     it("point, bind, map", async () => {
       function fibEffect(n: number): Effect.UIO<number> {
         if (n <= 1) {
-          return Effect.succeed(n)
+          return Effect.sync(n)
         }
         return fibEffect(n - 1).zipWith(fibEffect(n - 2), (a, b) => a + b)
       }
@@ -122,9 +122,9 @@ describe.concurrent("Effect", () => {
     it("sync effect", async () => {
       function sumEffect(n: number): Effect<never, unknown, number> {
         if (n < 0) {
-          return Effect.succeed(0)
+          return Effect.sync(0)
         }
-        return Effect.succeed(n).flatMap((b) => sumEffect(n - 1).map((a) => a + b))
+        return Effect.sync(n).flatMap((b) => sumEffect(n - 1).map((a) => a + b))
       }
 
       const result = await sumEffect(1000).unsafeRunPromise()
@@ -161,7 +161,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("flip must make error into value", async () => {
-      const program = Effect.fail(ExampleError).flip
+      const program = Effect.failSync(ExampleError).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -169,7 +169,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("flip must make value into error", async () => {
-      const program = Effect.succeed(42).flip.either
+      const program = Effect.sync(42).flip.either
 
       const result = await program.unsafeRunPromise()
 
@@ -177,7 +177,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("flipping twice returns the identical value", async () => {
-      const program = Effect.succeed(42).flip.flip
+      const program = Effect.sync(42).flip.flip
 
       const result = await program.unsafeRunPromise()
 

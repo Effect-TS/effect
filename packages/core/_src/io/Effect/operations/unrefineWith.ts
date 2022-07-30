@@ -15,6 +15,6 @@ export function unrefineWith<E, E1, E2>(
       (cause): Effect<R, E1 | E2, A> =>
         cause
           .find((c) => (c.isDieType() ? pf(c.value) : Maybe.none))
-          .fold(Effect.failCauseNow(cause.map(f)), Effect.failNow)
+          .fold(Effect.failCause(cause.map(f)), Effect.fail)
     )
 }

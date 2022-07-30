@@ -15,6 +15,6 @@ export function catchSomeDefect<R2, E2, A2>(
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, A | A2> =>
     self
-      .unrefineWith(pf, Effect.failNow)
+      .unrefineWith(pf, Effect.fail)
       .catchAll((s): Effect<R2, E | E2, A2> => s)
 }

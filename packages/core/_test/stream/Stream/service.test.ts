@@ -9,7 +9,7 @@ describe.concurrent("Stream", () => {
 
       const program = Stream.serviceWithEffect(ServiceWithEffect, (_) => _.live)
         .provideSomeLayer(Layer.succeed(ServiceWithEffect, {
-          live: Effect.succeed(10)
+          live: Effect.sync(10)
         }))
         .runCollect
 

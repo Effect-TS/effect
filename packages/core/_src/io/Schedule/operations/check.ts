@@ -8,5 +8,5 @@
  */
 export function check<In, Out>(test: (input: In, output: Out) => boolean) {
   return <State, Env>(self: Schedule<State, Env, In, Out>): Schedule<State, Env, In, Out> =>
-    self.checkEffect((in1: In, out) => Effect.succeed(test(in1, out)))
+    self.checkEffect((in1: In, out) => Effect.sync(test(in1, out)))
 }

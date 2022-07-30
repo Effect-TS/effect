@@ -12,9 +12,9 @@ export function catchSomeCause<E, R2, E2, A2>(
     self.foldCauseEffect(
       (c): Effect<R2, E | E2, A2> =>
         f(c).fold(
-          () => Effect.failCauseNow(c),
+          () => Effect.failCause(c),
           (a) => a
         ),
-      Effect.succeedNow
+      Effect.succeed
     )
 }

@@ -9,6 +9,6 @@ export function when<R, E, A>(
   __tsplusTrace?: string
 ): Effect<R, E, Maybe<A>> {
   return Effect.suspendSucceed(
-    predicate() ? effect.map(Maybe.some) : Effect.succeedNow(Maybe.none)
+    predicate() ? effect.map(Maybe.some) : Effect.succeed(Maybe.none)
   )
 }

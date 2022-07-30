@@ -5,7 +5,7 @@ import { LiveRandom } from "@effect/core/io/Random/operations/live"
  */
 export function withSeed(seed: number) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
-    Effect.succeed(new LiveRandom(seed)).flatMap((random) =>
+    Effect.sync(new LiveRandom(seed)).flatMap((random) =>
       effect.apply(DefaultServices.currentServices.locally(Env(Random.Tag, random)))
     )
 }

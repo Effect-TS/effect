@@ -8,8 +8,8 @@ describe.concurrent("Effect", () => {
         .tap(({ ref }) => ref.set(2).unless(false))
         .bind("v2", ({ ref }) => ref.get())
         .bindValue("failure", () => new Error("expected"))
-        .tap(({ failure }) => Effect.fail(failure).unless(true))
-        .bind("failed", ({ failure }) => Effect.fail(failure).unless(false).either)
+        .tap(({ failure }) => Effect.failSync(failure).unless(true))
+        .bind("failed", ({ failure }) => Effect.failSync(failure).unless(false).either)
 
       const { failed, failure, v1, v2 } = await program.unsafeRunPromise()
 
@@ -33,8 +33,8 @@ describe.concurrent("Effect", () => {
         .bind("v2", ({ effectRef }) => effectRef.get())
         .bind("c2", ({ conditionRef }) => conditionRef.get())
         .bindValue("failure", () => new Error("expected"))
-        .tap(({ conditionTrue, failure }) => Effect.fail(failure).unlessEffect(conditionTrue))
-        .bind("failed", ({ conditionFalse, failure }) => Effect.fail(failure).unlessEffect(conditionFalse).either)
+        .tap(({ conditionTrue, failure }) => Effect.failSync(failure).unlessEffect(conditionTrue))
+        .bind("failed", ({ conditionFalse, failure }) => Effect.failSync(failure).unlessEffect(conditionFalse).either)
 
       const { c1, c2, failed, failure, v1, v2 } = await program.unsafeRunPromise()
 

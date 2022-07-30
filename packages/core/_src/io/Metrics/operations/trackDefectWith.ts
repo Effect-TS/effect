@@ -11,6 +11,6 @@ export function trackDefectWith<In>(f: (defect: unknown) => In, __tsplusTrace?: 
     self: Metric<Type, In, Out>
   ): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A> => {
     const updater = (defect: unknown): void => self.unsafeUpdate(f(defect), HashSet.empty())
-    return (effect) => effect.tapDefect((cause) => Effect.succeed(cause.defects.forEach(updater)))
+    return (effect) => effect.tapDefect((cause) => Effect.sync(cause.defects.forEach(updater)))
   }
 }

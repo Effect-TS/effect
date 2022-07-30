@@ -7,15 +7,15 @@ describe.concurrent("orElse", () => {
         .bind("plain", () => (Effect.die(error) | Effect.unit).exit)
         .bind("both", () =>
           (
-            Effect.failCause(Cause.both(Cause.interrupt(fiberId), Cause.die(error))) |
+            Effect.failCauseSync(Cause.both(Cause.interrupt(fiberId), Cause.die(error))) |
             Effect.unit
           ).exit)
         .bind("then", () =>
           (
-            Effect.failCause(Cause.then(Cause.interrupt(fiberId), Cause.die(error))) |
+            Effect.failCauseSync(Cause.then(Cause.interrupt(fiberId), Cause.die(error))) |
             Effect.unit
           ).exit)
-        .bind("fail", () => (Effect.fail(error) | Effect.unit).exit)
+        .bind("fail", () => (Effect.failSync(error) | Effect.unit).exit)
 
       const { both, fail, plain, then } = await program.unsafeRunPromise()
 
@@ -26,12 +26,12 @@ describe.concurrent("orElse", () => {
     })
 
     it("left failed and right died with kept cause", async () => {
-      const z1 = Effect.fail(new Error("1"))
+      const z1 = Effect.failSync(new Error("1"))
       const z2 = Effect.die(new Error("2"))
       const program = (z1 | z2).catchAllCause((cause) =>
         cause.isDieType()
-          ? Effect.succeed((cause.value as Error).message === "2")
-          : Effect.succeed(false)
+          ? Effect.sync((cause.value as Error).message === "2")
+          : Effect.sync(false)
       )
 
       const result = await program.unsafeRunPromise()
@@ -40,12 +40,12 @@ describe.concurrent("orElse", () => {
     })
 
     it("left failed and right failed with kept cause", async () => {
-      const z1 = Effect.fail(new Error("1"))
-      const z2 = Effect.fail(new Error("2"))
+      const z1 = Effect.failSync(new Error("1"))
+      const z2 = Effect.failSync(new Error("2"))
       const program = (z1 | z2).catchAllCause((cause) =>
         cause.isFailType()
-          ? Effect.succeed((cause.value as Error).message === "2")
-          : Effect.succeed(false)
+          ? Effect.sync((cause.value as Error).message === "2")
+          : Effect.sync(false)
       )
 
       const result = await program.unsafeRunPromise()
@@ -75,7 +75,7 @@ describe.concurrent("orElse", () => {
 
   describe.concurrent("orElseFail", () => {
     it("executes this effect and returns its value if it succeeds", async () => {
-      const program = Effect.succeed(true).orElseFail(false)
+      const program = Effect.sync(true).orElseFail(false)
 
       const result = await program.unsafeRunPromise()
 
@@ -83,7 +83,7 @@ describe.concurrent("orElse", () => {
     })
 
     it("otherwise fails with the specified error", async () => {
-      const program = Effect.fail(false).orElseFail(true).flip
+      const program = Effect.failSync(false).orElseFail(true).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -93,7 +93,7 @@ describe.concurrent("orElse", () => {
 
   describe.concurrent("orElseOptional", () => {
     it("produces the value of this effect if it succeeds", async () => {
-      const program = Effect.succeed("succeed").orElseOptional(Effect.succeed("orElse"))
+      const program = Effect.sync("succeed").orElseOptional(Effect.sync("orElse"))
 
       const result = await program.unsafeRunPromise()
 
@@ -101,8 +101,8 @@ describe.concurrent("orElse", () => {
     })
 
     it("produces the value of this effect if it fails with some error", async () => {
-      const program = Effect.fail(Maybe.some("fail")).orElseOptional(
-        Effect.succeed("orElse")
+      const program = Effect.failSync(Maybe.some("fail")).orElseOptional(
+        Effect.sync("orElse")
       )
 
       const result = await program.unsafeRunPromiseExit()
@@ -111,7 +111,7 @@ describe.concurrent("orElse", () => {
     })
 
     it("produces the value of the specified effect if it fails with none", async () => {
-      const program = Effect.fail(Maybe.none).orElseOptional(Effect.succeed("orElse"))
+      const program = Effect.failSync(Maybe.none).orElseOptional(Effect.sync("orElse"))
 
       const result = await program.unsafeRunPromise()
 
@@ -121,7 +121,7 @@ describe.concurrent("orElse", () => {
 
   describe.concurrent("orElseSucceed", () => {
     it("executes this effect and returns its value if it succeeds", async () => {
-      const program = Effect.succeed(true).orElseSucceed(false)
+      const program = Effect.sync(true).orElseSucceed(false)
 
       const result = await program.unsafeRunPromise()
 
@@ -129,7 +129,7 @@ describe.concurrent("orElse", () => {
     })
 
     it("otherwise succeeds with the specified value", async () => {
-      const program = Effect.fail(false).orElseSucceed(true)
+      const program = Effect.failSync(false).orElseSucceed(true)
 
       const result = await program.unsafeRunPromise()
 

@@ -30,7 +30,7 @@ describe.concurrent("Sink", () => {
 
   describe.concurrent("collectAllWhileEffect", () => {
     it("should collect elements while the specified effectful predicate holds true", async () => {
-      const sink = Sink.collectAllWhileEffect((n: number) => Effect.succeed(n < 5))
+      const sink = Sink.collectAllWhileEffect((n: number) => Effect.sync(n < 5))
       const program = Stream.fromChunks(
         Chunk(3, 4, 5, 6, 7, 2),
         Chunk.empty(),

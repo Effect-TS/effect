@@ -10,7 +10,7 @@ export function findSink<A>(a: A): Sink<never, void, A, A, A> {
     Maybe.none,
     (option) => option.isNone(),
     (_, v) => (a === v ? Maybe.some(a) : Maybe.none)
-  ).mapEffect((option) => option.fold(Effect.fail(constVoid), Effect.succeedNow))
+  ).mapEffect((option) => option.fold(Effect.failSync(constVoid), Effect.succeed))
 }
 
 export function sinkRaceLaw<E, A, L>(
@@ -87,10 +87,10 @@ class Spy<A> implements Queue<A> {
     return this.queue.awaitShutdown
   }
   get isShutdown(): Effect<never, never, boolean> {
-    return Effect.succeed(this.isShutdownInternal)
+    return Effect.sync(this.isShutdownInternal)
   }
   get shutdown(): Effect<never, never, void> {
-    return Effect.succeed(() => {
+    return Effect.sync(() => {
       this.isShutdownInternal = true
     })
   }

@@ -8,5 +8,5 @@ export function flip<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, A, E> {
-  return self.foldEffect(Effect.succeedNow, Effect.failNow)
+  return self.foldEffect(Effect.succeed, Effect.fail)
 }

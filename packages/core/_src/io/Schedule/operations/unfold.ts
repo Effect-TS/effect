@@ -14,6 +14,6 @@ export function unfold<A>(
 ): Schedule<A, never, unknown, A> {
   return makeWithState(
     initial,
-    (now, _, state) => Effect.succeed(Tuple(f(state), state, Decision.Continue(Interval.after(now))))
+    (now, _, state) => Effect.sync(Tuple(f(state), state, Decision.Continue(Interval.after(now))))
   )
 }

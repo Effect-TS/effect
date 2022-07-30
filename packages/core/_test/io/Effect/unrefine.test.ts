@@ -49,7 +49,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("uses the specified function to convert the `E` into an `E1`", async () => {
-      const failure = Effect.fail("fail")
+      const failure = Effect.failSync("fail")
       const program = failure.unrefineWith(
         (u) => u instanceof IllegalArgumentException ? Maybe.some(u.message) : Maybe.none,
         () => Maybe.none

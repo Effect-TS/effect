@@ -11,5 +11,5 @@
  */
 export function mapErrorCause<E, E2>(f: (cause: Cause<E>) => Cause<E2>, __tsplusTrace?: string) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, E2, A> =>
-    self.foldCauseEffect((c) => Effect.failCauseNow(f(c)), Effect.succeedNow)
+    self.foldCauseEffect((c) => Effect.failCause(f(c)), Effect.succeed)
 }

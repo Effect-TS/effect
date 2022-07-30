@@ -18,7 +18,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("findEffect", () => {
     it("simple example", async () => {
-      const p = (n: number) => Effect.succeed(n === 3)
+      const p = (n: number) => Effect.sync(n === 3)
       const stream = Stream(1, 2, 3, 4, 5)
       const program = Effect.struct({
         actual: stream.findEffect(p).runHead,
@@ -32,7 +32,7 @@ describe.concurrent("Stream", () => {
 
     it("throws correct error", async () => {
       const program = Stream(1, 2, 3, 4)
-        .findEffect((n) => (n === 3 ? Effect.fail("boom") : Effect.succeed(constFalse)))
+        .findEffect((n) => (n === 3 ? Effect.failSync("boom") : Effect.sync(constFalse)))
         .either
         .runCollect
 

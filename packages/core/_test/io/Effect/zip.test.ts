@@ -1,7 +1,7 @@
 describe.concurrent("Effect", () => {
   describe.concurrent("zipFlatten", () => {
     it("is compositional", async () => {
-      const program = Effect.succeed(1) + Effect.unit + Effect.succeed("test") + Effect.succeed(true)
+      const program = Effect.sync(1) + Effect.unit + Effect.sync("test") + Effect.sync(true)
 
       const result = await program.unsafeRunPromise()
 
@@ -23,7 +23,7 @@ describe.concurrent("Effect", () => {
 
     it("does not report failure when interrupting loser after it succeeded", async () => {
       const program = Effect.interrupt
-        .zipPar(Effect.succeed(1))
+        .zipPar(Effect.sync(1))
         .sandbox
         .either
         .map((either) => either.mapLeft((cause) => cause.isInterrupted))
@@ -34,9 +34,9 @@ describe.concurrent("Effect", () => {
     })
 
     it("passes regression 1", async () => {
-      const program = Effect.succeed(1)
-        .zipPar(Effect.succeed(2))
-        .flatMap((tuple) => Effect.succeed(tuple.get(0) + tuple.get(1)))
+      const program = Effect.sync(1)
+        .zipPar(Effect.sync(2))
+        .flatMap((tuple) => Effect.sync(tuple.get(0) + tuple.get(1)))
         .map((n) => n === 3)
 
       const result = await program.unsafeRunPromise()
@@ -47,9 +47,9 @@ describe.concurrent("Effect", () => {
     it("paralellizes simple success values", async () => {
       function countdown(n: number): Effect.UIO<number> {
         return n === 0
-          ? Effect.succeed(0)
-          : Effect.succeed(1)
-            .zipPar(Effect.succeed(2))
+          ? Effect.sync(0)
+          : Effect.sync(1)
+            .zipPar(Effect.sync(2))
             .flatMap((tuple) => countdown(n - 1).map((y) => tuple.get(0) + tuple.get(1) + y))
       }
 
@@ -66,7 +66,7 @@ describe.concurrent("Effect", () => {
         const ref = $(Ref.make(false))
         const left = Effect.uninterruptibleMask(({ restore }) =>
           latch2.succeed(undefined)
-            .zipRight(restore(latch1.await() > Effect.succeed("foo")))
+            .zipRight(restore(latch1.await() > Effect.sync("foo")))
             .onInterrupt(() => ref.set(true))
         )
         const right = latch3.succeed(undefined).as(42)

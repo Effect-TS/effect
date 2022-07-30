@@ -10,7 +10,7 @@ export function filter<A, R, E>(
 ): Effect<R, E, Chunk<A>> {
   return Effect.suspendSucceed(() =>
     as().reduce(
-      Effect.succeed(Chunk.empty<A>()) as Effect<R, E, Chunk<A>>,
+      Effect.sync(Chunk.empty<A>()) as Effect<R, E, Chunk<A>>,
       (io, a) => io.zipWith(Effect.suspendSucceed(f(a)), (acc, b) => (b ? acc.append(a) : acc))
     )
   )

@@ -11,5 +11,5 @@ export function continueOrFail<E1, A, A2>(
   __tsplusTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R, E | E1, A2> =>
-    self.continueOrFailEffect(e, (a) => pf(a).map(Effect.succeedNow))
+    self.continueOrFailEffect(e, (a) => pf(a).map(Effect.succeed))
 }

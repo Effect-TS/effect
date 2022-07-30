@@ -8,7 +8,7 @@ export function some<R, E, A>(
   __tsplusTrace?: string
 ): Effect<R, Maybe<E>, A> {
   return self.foldEffect(
-    (e) => Effect.fail(Maybe.some(e)),
-    (option) => option.fold(Effect.fail(Maybe.none), Effect.succeedNow)
+    (e) => Effect.failSync(Maybe.some(e)),
+    (option) => option.fold(Effect.failSync(Maybe.none), Effect.succeed)
   )
 }

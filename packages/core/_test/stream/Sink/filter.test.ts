@@ -14,7 +14,7 @@ describe.concurrent("Sink", () => {
   describe.concurrent("filterInputEffect", () => {
     it("happy path", async () => {
       const program = Stream.range(1, 10).run(
-        Sink.collectAll<number>().filterInputEffect((n) => Effect.succeed(n % 2 === 0))
+        Sink.collectAll<number>().filterInputEffect((n) => Effect.sync(n % 2 === 0))
       )
 
       const result = await program.unsafeRunPromise()
@@ -26,7 +26,7 @@ describe.concurrent("Sink", () => {
       const program = Stream.range(1, 10)
         .run(
           Sink.collectAll<number>().filterInputEffect(
-            () => Effect.fail("fail") as Effect<never, string, boolean>
+            () => Effect.failSync("fail") as Effect<never, string, boolean>
           )
         )
         .flip

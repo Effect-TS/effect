@@ -152,14 +152,14 @@ export class BackPressure<A> extends BaseStrategy<A> {
         this.unsafeCompleteSubscribers(hub, subscribers)
 
         return isShutdown.get ? Effect.interrupt : deferred.await()
-      }).onInterrupt(() => Effect.succeed(this.unsafeRemove(deferred)))
+      }).onInterrupt(() => Effect.sync(this.unsafeRemove(deferred)))
     })
   }
 
   get shutdown(): Effect<never, never, void> {
     return Effect.Do()
       .bind("fiberId", () => Effect.fiberId)
-      .bind("publishers", () => Effect.succeed(unsafePollAllQueue(this.publishers)))
+      .bind("publishers", () => Effect.sync(unsafePollAllQueue(this.publishers)))
       .tap(({ fiberId, publishers }) =>
         Effect.forEachParDiscard(
           publishers,
@@ -233,7 +233,7 @@ export class Dropping<A> extends BaseStrategy<A> {
     _as: Collection<A>,
     _isShutdown: AtomicBoolean
   ): Effect<never, never, boolean> {
-    return Effect.succeed(false)
+    return Effect.sync(false)
   }
 
   shutdown: Effect<never, never, void> = Effect.unit
@@ -279,7 +279,7 @@ export class Sliding<A> extends BaseStrategy<A> {
     as: Collection<A>,
     _isShutdown: AtomicBoolean
   ): Effect<never, never, boolean> {
-    return Effect.succeed(() => {
+    return Effect.sync(() => {
       this.unsafeSlidingPublish(hub, as)
       this.unsafeCompleteSubscribers(hub, subscribers)
       return true

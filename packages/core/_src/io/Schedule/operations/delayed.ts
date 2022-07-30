@@ -8,5 +8,5 @@
 export function delayed(f: (duration: Duration) => Duration) {
   return <State, Env, In, Out>(
     self: Schedule<State, Env, In, Out>
-  ): Schedule<State, Env, In, Out> => self.delayedEffect((duration) => Effect.succeed(f(duration)))
+  ): Schedule<State, Env, In, Out> => self.delayedEffect((duration) => Effect.sync(f(duration)))
 }

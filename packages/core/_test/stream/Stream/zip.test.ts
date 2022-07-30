@@ -37,7 +37,7 @@ describe.concurrent("Stream", () => {
       const left = Chunk(Chunk(1, 2), Chunk(3, 4), Chunk(5))
       const right = Chunk(Chunk(6, 7), Chunk(8, 9), Chunk(10))
       const program = Effect.struct({
-        chunkResult: Effect.succeed(left.flatten.zip(right.flatten)),
+        chunkResult: Effect.sync(left.flatten.zip(right.flatten)),
         streamResult: Stream.fromChunks(...left)
           .zip(Stream.fromChunks(...right))
           .runCollect

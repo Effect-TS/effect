@@ -3,7 +3,7 @@ export const numbersPar = Effect(0) & Effect(1) & Effect(2)
 
 export const isPositive = (n: number) => n > 0 ? Either("positive") : Either.left("negative")
 
-export const isPositiveEff = (n: number) => n > 0 ? Effect("positive") : Effect.fail("negative")
+export const isPositiveEff = (n: number) => n > 0 ? Effect("positive") : Effect.failSync("negative")
 
 export interface Foo {
   readonly foo: string
@@ -22,11 +22,11 @@ export const switched = (n: number) => {
     case 0:
       return Effect(0 as const)
     case 1:
-      return Effect.fail(1 as const)
+      return Effect.failSync(1 as const)
     case 2:
       return Effect(2 as const)
     case 3:
-      return Effect.fail(3 as const)
+      return Effect.failSync(3 as const)
     case 4:
       return Effect.serviceWithEffect(Bar, ({ bar }) => Effect.die(bar))
     default:
@@ -51,7 +51,7 @@ export const program = (numbers + numbersPar).flatMap(
       Effect.logWarning(`maybe: ${f}`)
 )
 
-export const executeOrDie = Effect.fail("error") | program
+export const executeOrDie = Effect.failSync("error") | program
 
 program.apply(LogLevel(LogLevel.Error)).unsafeRunPromise()
 

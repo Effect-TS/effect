@@ -88,7 +88,7 @@ export function poll<A>(self: Handoff<A>, __tsplusTrace?: string): Effect<never,
       .modify((state) => {
         switch (state._tag) {
           case "Empty": {
-            return Tuple(Effect.succeedNow(Maybe.none), state)
+            return Tuple(Effect.succeed(Maybe.none), state)
           }
           case "Full": {
             return Tuple(

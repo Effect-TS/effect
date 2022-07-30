@@ -26,6 +26,6 @@ export function hourOfDay(
     const start = Math.max(beginningOfHour(hr), now)
     const end = endOfHour(hr)
     const interval = Interval(start, end)
-    return Effect.succeedNow(Tuple(state + 1, state, Decision.Continue(interval)))
+    return Effect.succeed(Tuple(state + 1, state, Decision.Continue(interval)))
   })
 }

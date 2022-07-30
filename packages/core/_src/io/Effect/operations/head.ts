@@ -9,7 +9,7 @@ export function head<R, E, A>(
   __tsplusTrace?: string
 ): Effect<R, Maybe<E>, A> {
   return self.foldEffect(
-    (e) => Effect.fail(Maybe.some(e)),
-    (collection) => Chunk.from(collection).head.fold(Effect.fail(Maybe.none), Effect.succeedNow)
+    (e) => Effect.failSync(Maybe.some(e)),
+    (collection) => Chunk.from(collection).head.fold(Effect.failSync(Maybe.none), Effect.succeed)
   )
 }

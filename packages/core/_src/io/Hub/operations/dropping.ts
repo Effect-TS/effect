@@ -14,7 +14,5 @@ export function dropping<A>(
   requestedCapacity: number,
   __tsplusTrace?: string
 ): Effect<never, never, Hub<A>> {
-  return Effect.succeed(makeBounded<A>(requestedCapacity)).flatMap((atomicHub) =>
-    makeHub(atomicHub, Strategy.Dropping())
-  )
+  return Effect.sync(makeBounded<A>(requestedCapacity)).flatMap((atomicHub) => makeHub(atomicHub, Strategy.Dropping()))
 }

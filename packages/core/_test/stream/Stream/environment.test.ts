@@ -31,7 +31,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("environmentWithEffect", () => {
     it("simple example", async () => {
-      const program = Stream.environmentWithEffect((env: Env<NumberService>) => Effect.succeed(env.get(NumberService)))
+      const program = Stream.environmentWithEffect((env: Env<NumberService>) => Effect.sync(env.get(NumberService)))
         .provideEnvironment(Env(NumberService, new NumberServiceImpl(10)))
         .runHead
         .some
@@ -42,7 +42,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("environmentWithZIO fails", async () => {
-      const program = Stream.environmentWithEffect((_: Env<NumberService>) => Effect.fail("fail"))
+      const program = Stream.environmentWithEffect((_: Env<NumberService>) => Effect.failSync("fail"))
         .provideEnvironment(Env(NumberService, new NumberServiceImpl(10)))
         .runHead
 

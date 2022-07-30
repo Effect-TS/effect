@@ -44,7 +44,7 @@ describe.concurrent("Stream", () => {
           ({ cancelled, latch }) =>
             Sink.foldEffect<never, never, number, List<number>>(List.empty<number>(), constTrue, (acc, el) =>
               el === 1
-                ? Effect.succeedNow(acc.prepend(el))
+                ? Effect.succeed(acc.prepend(el))
                 : (latch.succeed(undefined) > Effect.never).onInterrupt(() => cancelled.set(true)))
         )
         .bind("fiber", ({ sink }) => Stream(1, 1, 2).aggregate(sink).runCollect.fork)
@@ -112,13 +112,13 @@ describe.concurrent("Stream", () => {
         .bind("queue", () => Queue.unbounded<number>())
         .tap(({ queue }) =>
           Stream.range(1, 10)
-            .tap((i) => Effect.when(i === 6, Effect.fail("boom")) > queue.offer(i))
+            .tap((i) => Effect.when(i === 6, Effect.failSync("boom")) > queue.offer(i))
             .aggregateWithin(
               Sink.foldUntil(undefined, 5, constVoid),
               Schedule.repeatForever
             )
             .runDrain
-            .catchAll(() => Effect.succeedNow(undefined))
+            .catchAll(() => Effect.succeed(undefined))
         )
         .bind("value", ({ queue }) => queue.takeAll)
         .tap(({ queue }) => queue.shutdown)
@@ -218,7 +218,7 @@ describe.concurrent("Stream", () => {
           ({ cancelled, latch }) =>
             Sink.foldEffect<never, never, number, List<number>>(List.empty<number>(), constTrue, (acc, el) =>
               el === 1
-                ? Effect.succeedNow(acc.prepend(el))
+                ? Effect.succeed(acc.prepend(el))
                 : (latch.succeed(undefined) > Effect.never).onInterrupt(() => cancelled.set(true)))
         )
         .bind("fiber", ({ sink }) =>

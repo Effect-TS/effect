@@ -13,5 +13,5 @@ function retryNLoop<R, E, A>(
   n: number,
   __tsplusTrace?: string
 ): Effect<R, E, A> {
-  return self.catchAll((e) => n < 0 ? Effect.fail(e) : Effect.yieldNow > retryNLoop(self, n - 1))
+  return self.catchAll((e) => n < 0 ? Effect.failSync(e) : Effect.yieldNow > retryNLoop(self, n - 1))
 }

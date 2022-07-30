@@ -6,5 +6,5 @@
  * @tsplus pipeable effect/core/io/Effect orElseFail
  */
 export function orElseFail<E2>(e: LazyArg<E2>, __tsplusTrace?: string) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E2, A> => self.orElse(Effect.fail(e))
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E2, A> => self.orElse(Effect.failSync(e))
 }

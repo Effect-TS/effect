@@ -3,7 +3,7 @@ describe.concurrent("Chunk", () => {
     const chunk = Chunk(0, 1, 2, 3)
 
     const result = await chunk
-      .collectEffect((n) => (n >= 2 ? Maybe.some(Effect.succeed(n)) : Maybe.none))
+      .collectEffect((n) => (n >= 2 ? Maybe.some(Effect.sync(n)) : Maybe.none))
       .unsafeRunPromise()
 
     assert.isTrue(result == Chunk(2, 3))
@@ -13,7 +13,7 @@ describe.concurrent("Chunk", () => {
     const chunk = Chunk(0, 1, 2, 3, 4)
 
     const result = await chunk
-      .dropWhileEffect((n) => Effect.succeed(n < 2))
+      .dropWhileEffect((n) => Effect.sync(n < 2))
       .unsafeRunPromise()
 
     assert.isTrue(result == Chunk(2, 3, 4))
@@ -23,7 +23,7 @@ describe.concurrent("Chunk", () => {
     const chunk = Chunk(0, 1, 2, 3, 4)
 
     const result = await chunk
-      .filterEffect((n) => Effect.succeed(n >= 2))
+      .filterEffect((n) => Effect.sync(n >= 2))
       .unsafeRunPromise()
 
     assert.isTrue(result == Chunk(2, 3, 4))
@@ -35,7 +35,7 @@ describe.concurrent("Chunk", () => {
 
     const result = await chunk
       .reduceEffect(0, (s, a) =>
-        Effect.succeed(() => {
+        Effect.sync(() => {
           order.push(a)
           return s + a
         }))
@@ -51,7 +51,7 @@ describe.concurrent("Chunk", () => {
 
     const result = await chunk
       .reduceRightEffect(0, (a, s) =>
-        Effect.succeed(() => {
+        Effect.sync(() => {
           order.push(a)
           return a + s
         }))
@@ -65,7 +65,7 @@ describe.concurrent("Chunk", () => {
     const chunk = Chunk(1, 2, 3, 4)
 
     const result = await chunk
-      .findEffect((a) => Effect.succeed(a === 3))
+      .findEffect((a) => Effect.sync(a === 3))
       .fold(
         () => -1,
         (option) =>
@@ -83,7 +83,7 @@ describe.concurrent("Chunk", () => {
     const chunk = Chunk(1, 2, 3, 4)
 
     const result = await chunk
-      .findEffect((a) => Effect.succeed(a === 20))
+      .findEffect((a) => Effect.sync(a === 20))
       .fold(
         () => -1,
         (option) =>
@@ -101,7 +101,7 @@ describe.concurrent("Chunk", () => {
     const chunk = Chunk(1, 2, 3, 4)
 
     const result = await chunk
-      .findEffect((a) => Effect.fail("Error"))
+      .findEffect((a) => Effect.failSync("Error"))
       .unsafeRunPromiseExit()
 
     assert.isTrue(result.untraced == Exit.fail("Error"))

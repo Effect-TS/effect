@@ -9,11 +9,11 @@ export function tryCatchPromise<E, A>(
   onReject: (reason: unknown) => E,
   __tsplusTrace?: string
 ): Effect<never, E, A> {
-  return Effect.succeed(promise).flatMap((promise) =>
+  return Effect.sync(promise).flatMap((promise) =>
     Effect.async<never, E, A>((resolve) => {
       promise
-        .then((a) => resolve(Effect.succeedNow(a)))
-        .catch((e) => resolve(Effect.failNow(onReject(e))))
+        .then((a) => resolve(Effect.succeed(a)))
+        .catch((e) => resolve(Effect.fail(onReject(e))))
     })
   )
 }
@@ -28,11 +28,11 @@ export function tryPromise<A>(
   promise: LazyArg<Promise<A>>,
   __tsplusTrace?: string
 ): Effect<never, unknown, A> {
-  return Effect.succeed(promise).flatMap((promise) =>
+  return Effect.sync(promise).flatMap((promise) =>
     Effect.async<never, unknown, A>((resolve) => {
       promise
-        .then((a) => resolve(Effect.succeedNow(a)))
-        .catch((e) => resolve(Effect.failNow(e)))
+        .then((a) => resolve(Effect.succeed(a)))
+        .catch((e) => resolve(Effect.fail(e)))
     })
   )
 }
@@ -46,10 +46,10 @@ export function promise<A>(
   promise: LazyArg<Promise<A>>,
   __tsplusTrace?: string
 ): Effect<never, never, A> {
-  return Effect.succeed(promise).flatMap((promise) =>
+  return Effect.sync(promise).flatMap((promise) =>
     Effect.async<never, never, A>((resolve) => {
       promise
-        .then((a) => resolve(Effect.succeedNow(a)))
+        .then((a) => resolve(Effect.succeed(a)))
         .catch((e) => resolve(Effect.dieNow(e)))
     })
   )

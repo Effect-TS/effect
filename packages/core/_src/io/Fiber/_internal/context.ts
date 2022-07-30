@@ -110,21 +110,21 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       const result = this.unsafeAddObserverMaybe(cb)
 
       return result == null
-        ? Either.left(Effect.succeed(this.unsafeRemoveObserver(cb)))
-        : Either.right(Effect.succeedNow(result))
+        ? Either.left(Effect.sync(this.unsafeRemoveObserver(cb)))
+        : Either.right(Effect.succeed(result))
     }, this.fiberId)
   }
 
   get _children(): Effect<never, never, Chunk<Fiber.Runtime<any, any>>> {
     return this._evalOnEffect(
-      Effect.succeed(() => {
+      Effect.sync(() => {
         const chunkBuilder = Chunk.builder<Fiber.Runtime<any, any>>()
         for (const child of this.childFibers) {
           chunkBuilder.append(child)
         }
         return chunkBuilder.build()
       }),
-      Effect.succeed(Chunk.empty())
+      Effect.sync(Chunk.empty())
     )
   }
 
@@ -141,7 +141,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   get _poll(): Effect<never, never, Maybe<Exit<E, A>>> {
-    return Effect.succeed(this.unsafePoll())
+    return Effect.sync(this.unsafePoll())
   }
 
   _interruptAs(fiberId: FiberId): Effect<never, never, Exit<E, A>> {
@@ -159,11 +159,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   get _status(): Effect<never, never, FiberStatus> {
-    return Effect.succeed(this.state.get.status)
+    return Effect.sync(this.state.get.status)
   }
 
   get _trace(): Effect<never, never, Trace> {
-    return Effect.succeed(this.unsafeCaptureTrace([]))
+    return Effect.sync(this.unsafeCaptureTrace([]))
   }
 
   _evalOn(
@@ -343,11 +343,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                 (finalizerCause) => {
                   this.popInterruptStatus()
                   this.unsafeAddSuppressed(finalizerCause)
-                  return Effect.failCauseNow(cause)
+                  return Effect.failCause(cause)
                 },
                 () => {
                   this.popInterruptStatus()
-                  return Effect.failCauseNow(cause)
+                  return Effect.failCause(cause)
                 }
               )
             )
@@ -382,10 +382,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   interruptExit: InterruptExit = new InterruptExit((v: any) => {
     if (this.unsafeIsInterruptible) {
       this.popInterruptStatus()
-      return instruction(Effect.succeedNow(v))
+      return instruction(Effect.succeed(v))
     } else {
       return instruction(
-        Effect.succeed(() => {
+        Effect.sync(() => {
           this.popInterruptStatus()
           return v
         })
@@ -429,7 +429,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
         this.state.set(newState)
 
-        const interrupt = Effect.failCause(interruptedCause)
+        const interrupt = Effect.failCauseSync(interruptedCause)
         const asyncCanceler = oldState.asyncCanceler.asyncCanceler
         const effect = asyncCanceler === Effect.unit ? interrupt : asyncCanceler.zipRight(interrupt)
 
@@ -650,7 +650,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   unsafeAddChild(child: FiberContext<any, any>): boolean {
-    return this.unsafeEvalOn(Effect.succeed(this.childFibers.add(child)))
+    return this.unsafeEvalOn(Effect.sync(this.childFibers.add(child)))
   }
 
   unsafePoll(): Maybe<Exit<E, A>> {
@@ -1124,12 +1124,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     break
                   }
 
-                  case "SucceedNow": {
+                  case "Succeed": {
                     current = this.unsafeNextEffect(current.value)
                     break
                   }
 
-                  case "Succeed": {
+                  case "Sync": {
                     current = this.unsafeNextEffect(current.effect())
                     break
                   }
@@ -1245,7 +1245,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                             this.unsafeSetInterrupting(true)
                             current = instruction(
                               canceler.zipRight(
-                                Effect.failCause(this.unsafeClearSuppressed())
+                                Effect.failCauseSync(this.unsafeClearSuppressed())
                               )
                             )
                           } else {
@@ -1333,7 +1333,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     current = instruction(
                       effect.effect.ensuring(
-                        Effect.succeed(this.unsafeSetRef(fiberRef, oldValue))
+                        Effect.sync(this.unsafeSetRef(fiberRef, oldValue))
                       )
                     )
 
@@ -1372,7 +1372,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     })
 
                     this.unsafeAddFinalizer(
-                      Effect.succeed(() => {
+                      Effect.sync(() => {
                         this.runtimeConfig = RuntimeConfig({
                           ...this.runtimeConfig.value,
                           supervisor: oldSupervisor
@@ -1403,7 +1403,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     this.unsafeSetRef(FiberRef.forkScopeOverride, current.forkScope)
 
                     this.unsafeAddFinalizer(
-                      Effect.succeed(
+                      Effect.sync(
                         this.unsafeSetRef(FiberRef.forkScopeOverride, oldForkScopeOverride)
                       )
                     )
@@ -1451,7 +1451,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
               const trace = current.trace
 
               current = instruction(
-                Effect.failCause(this.unsafeClearSuppressed(), trace)
+                Effect.failCauseSync(this.unsafeClearSuppressed(), trace)
               )
 
               // Prevent interruption of interruption
@@ -1476,7 +1476,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
               }
               case "Failure": {
                 const trace = current ? current.trace : undefined
-                current = instruction(Effect.failCause(e.exit.cause, trace))
+                current = instruction(Effect.failCauseSync(e.exit.cause, trace))
                 break
               }
             }

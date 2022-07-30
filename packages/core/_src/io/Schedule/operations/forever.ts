@@ -21,7 +21,7 @@ export function forever<State, Env, In, Out>(
         .flatMap(({ tuple: [state, out, decision] }) =>
           decision._tag === "Done"
             ? step(now, input, self._initial)
-            : Effect.succeedNow(Tuple(state, out, Decision.Continue(decision.interval)))
+            : Effect.succeed(Tuple(state, out, Decision.Continue(decision.interval)))
         )
     }
     return step(now, input, state)

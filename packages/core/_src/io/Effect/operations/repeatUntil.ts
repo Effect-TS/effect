@@ -6,5 +6,5 @@
  * @tsplus pipeable effect/core/io/Effect repeatUntil
  */
 export function repeatUntil<A>(p: Predicate<A>, __tsplusTrace?: string) {
-  return <R, E>(self: Effect<R, E, A>): Effect<R, E, A> => self.repeatUntilEffect((a) => Effect.succeed(p(a)))
+  return <R, E>(self: Effect<R, E, A>): Effect<R, E, A> => self.repeatUntilEffect((a) => Effect.sync(p(a)))
 }

@@ -14,7 +14,7 @@ export function refineOrDieWith<E, E1>(
     self.catchAll((e) =>
       pf(e).fold(
         () => Effect.dieNow(f(e)),
-        (e1) => Effect.failNow(e1)
+        (e1) => Effect.fail(e1)
       )
     )
 }

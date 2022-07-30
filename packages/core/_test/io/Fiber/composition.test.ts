@@ -59,7 +59,7 @@ describe.concurrent("Fiber", () => {
         .tap(({ queue }) => queue.offerAll(Chunk.range(1, 100)))
         .bindValue(
           "worker",
-          ({ queue }) => (n: number) => n === 100 ? Effect.failNow("fail") : queue.offer(n).unit
+          ({ queue }) => (n: number) => n === 100 ? Effect.fail("fail") : queue.offer(n).unit
         )
         .bind("exit", ({ queue, worker }) => shard(queue, 4, worker).exit)
         .tap(({ queue }) => queue.shutdown)

@@ -33,7 +33,7 @@ function loop<E, A, R1, E1, A1>(
   } else {
     return Channel.unwrap(
       pf(next.value).fold(
-        () => Effect.succeed(Channel.unit),
+        () => Effect.sync(Channel.unit),
         effect =>
           effect.map(
             a1 =>

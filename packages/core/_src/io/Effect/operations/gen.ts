@@ -32,7 +32,7 @@ function adapter(_: any, __?: any, ___?: any) {
   if (Maybe.isMaybe(_)) {
     if (__ && typeof __ === "function") {
       return new GenEffect(
-        _._tag === "None" ? Effect.fail(() => __()) : Effect.succeed(() => _.value),
+        _._tag === "None" ? Effect.failSync(() => __()) : Effect.sync(() => _.value),
         ___
       )
     }
@@ -84,7 +84,7 @@ export function genScoped<Eff extends GenEffect<any, any, any>, AEff>(
       state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
     ): Effect<any, any, AEff> {
       if (state.done) {
-        return Effect.succeed(state.value)
+        return Effect.sync(state.value)
       }
       return Effect.suspendSucceed(() => state.value.effect, state.value.trace).flatMap(
         (val) => {
@@ -123,7 +123,7 @@ export function gen<Eff extends GenEffect<any, any, any>, AEff>(
       state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
     ): Effect<any, any, AEff> {
       if (state.done) {
-        return Effect.succeed(state.value)
+        return Effect.sync(state.value)
       }
       return Effect.suspendSucceed(
         () => state.value["effect"] as Effect<any, any, any>,

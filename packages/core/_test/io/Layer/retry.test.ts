@@ -5,7 +5,7 @@ describe.concurrent("Layer", () => {
         .bind("ref", () => Ref.make(0))
         .bindValue(
           "effect",
-          ({ ref }) => ref.update((n) => n + 1) > Effect.fail("fail")
+          ({ ref }) => ref.update((n) => n + 1) > Effect.failSync("fail")
         )
         .bindValue("layer", ({ effect }) => Layer.fromEffectEnvironment(effect).retry(Schedule.recurs(3)))
         .tap(({ layer }) => Effect.scoped(layer.build).ignore)

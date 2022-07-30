@@ -14,7 +14,7 @@ export function scanReduceEffect<A, R2, E2, A2 extends A>(
       Maybe.emptyOf<A2>(),
       (option: Maybe<A2>, a) =>
         option.fold(
-          Effect.succeedNow(Tuple(Maybe.some(a as A2), a as A2)),
+          Effect.succeed(Tuple(Maybe.some(a as A2), a as A2)),
           (a2) => f(a2, a).map((a2) => Tuple(Maybe.some(a2), a2))
         )
     )

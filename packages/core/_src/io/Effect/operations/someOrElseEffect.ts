@@ -9,5 +9,5 @@ export function someOrElseEffect<R2, E2, B>(
   __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, Maybe<A>>): Effect<R | R2, E | E2, A | B> =>
-    (self as Effect<R, E, Maybe<A | B>>).flatMap((option) => option.map(Effect.succeedNow).getOrElse(orElse))
+    (self as Effect<R, E, Maybe<A | B>>).flatMap((option) => option.map(Effect.succeed).getOrElse(orElse))
 }

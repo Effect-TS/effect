@@ -11,7 +11,7 @@ export function parallelErrors<R, E, A>(
     .foldCauseEffect((cause) => {
       const errors = Chunk.from(cause.failures)
       return errors.length === 0
-        ? Effect.failCauseNow(cause as Cause<never>)
-        : Effect.failNow(errors)
-    }, Effect.succeedNow)
+        ? Effect.failCause(cause as Cause<never>)
+        : Effect.fail(errors)
+    }, Effect.succeed)
 }

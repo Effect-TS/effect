@@ -24,7 +24,7 @@ describe.concurrent("Layer", () => {
       // timer and fail the test if the computation doesn't complete. This delay
       // time may be increased if it turns out this test is flaky.
       const program = Effect.sleep((10).seconds)
-        .zipRight(Effect.succeed(constFalse))
+        .zipRight(Effect.sync(constFalse))
         .race(test)
 
       const result = await program.unsafeRunPromise()

@@ -6,5 +6,5 @@
  */
 export function someOrFail<E2>(e: LazyArg<E2>, __tsplusTrace?: string) {
   return <R, E, A>(self: Stream<R, E, Maybe<A>>): Stream<R, E | E2, A> =>
-    self.mapEffect((option) => option.fold(Effect.fail(e), Effect.succeedNow))
+    self.mapEffect((option) => option.fold(Effect.failSync(e), Effect.succeed))
 }

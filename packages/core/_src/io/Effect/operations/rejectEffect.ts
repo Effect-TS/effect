@@ -13,8 +13,8 @@ export function rejectEffect<A, R1, E1>(
   return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E | E1, A> =>
     self.flatMap((a) =>
       pf(a).fold(
-        () => Effect.succeedNow(a),
-        (effect) => effect.flatMap(Effect.failNow)
+        () => Effect.succeed(a),
+        (effect) => effect.flatMap(Effect.fail)
       )
     )
 }

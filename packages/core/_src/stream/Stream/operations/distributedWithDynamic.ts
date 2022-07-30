@@ -36,7 +36,7 @@ export function distributedWithDynamic<A, E, Z>(
           const newQueue = $(Ref.make<Effect<never, never, Tuple<[UniqueKey, Queue<Exit<Maybe<E>, A>>]>>>(
             Effect.Do()
               .bind("queue", () => Queue.bounded<Exit<Maybe<E>, A>>(maximumLag))
-              .bind("id", () => Effect.succeed(distributedWithDynamicId.incrementAndGet()))
+              .bind("id", () => Effect.sync(distributedWithDynamicId.incrementAndGet()))
               .tap(({ id, queue }) => queuesRef.update((map) => map.set(id, queue)))
               .map(({ id, queue }) => Tuple(id, queue))
           ))
@@ -50,7 +50,7 @@ export function distributedWithDynamic<A, E, Z>(
                     Effect.Do()
                       .bind("queue", () => Queue.bounded<Exit<Maybe<E>, A>>(1))
                       .tap(({ queue }) => queue.offer(endTake))
-                      .bind("id", () => Effect.succeed(distributedWithDynamicId.incrementAndGet()))
+                      .bind("id", () => Effect.sync(distributedWithDynamicId.incrementAndGet()))
                       .tap(({ id, queue }) => queuesRef.update((map) => map.set(id, queue)))
                       .map(({ id, queue }) => Tuple(id, queue))
                   )
@@ -98,12 +98,11 @@ function offer<E, A>(
               // Ignore all downstream queues that were shut down and remove
               // them later
               cause.isInterrupted
-                ? Effect.succeedNow(acc.prepend(id))
-                : Effect.failCause(cause),
-            () => Effect.succeedNow(acc)
+                ? Effect.succeed(acc.prepend(id))
+                : Effect.failCauseSync(cause),
+            () => Effect.succeed(acc)
           )
-          : Effect.succeedNow(acc)).flatMap((ids) =>
-          ids.isNil() ? Effect.unit : ref.update((map) => map.removeMany(ids)))
+          : Effect.succeed(acc)).flatMap((ids) => ids.isNil() ? Effect.unit : ref.update((map) => map.removeMany(ids)))
     )
   }).unit
 }

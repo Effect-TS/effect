@@ -73,5 +73,5 @@ function pullNonEmpty<R, E, A>(
   pull: Effect<R, Maybe<E>, Chunk<A>>,
   __tsplusTrace?: string
 ): Effect<R, Maybe<E>, Chunk<A>> {
-  return pull.flatMap((chunk) => chunk.isEmpty ? pullNonEmpty(pull) : Effect.succeedNow(chunk))
+  return pull.flatMap((chunk) => chunk.isEmpty ? pullNonEmpty(pull) : Effect.succeed(chunk))
 }

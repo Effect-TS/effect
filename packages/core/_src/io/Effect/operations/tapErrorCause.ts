@@ -11,7 +11,7 @@ export function tapErrorCause<E, R2, E2, X>(
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, A> =>
     self.foldCauseEffect(
-      (cause) => f(cause).zipRight(Effect.failCauseNow(cause)),
-      Effect.succeedNow
+      (cause) => f(cause).zipRight(Effect.failCause(cause)),
+      Effect.succeed
     )
 }

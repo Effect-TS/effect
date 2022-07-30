@@ -4,7 +4,7 @@ describe.concurrent("Effect", () => {
   describe.concurrent("RTS asynchronous correctness", () => {
     it("simple async must return", async () => {
       const program = Effect.async<never, unknown, number>((cb) => {
-        cb(Effect.succeed(42))
+        cb(Effect.sync(42))
       })
 
       const result = await program.unsafeRunPromise()
@@ -14,7 +14,7 @@ describe.concurrent("Effect", () => {
 
     it("simple asyncEffect must return", async () => {
       const program = Effect.asyncEffect<never, unknown, unknown, never, never, void>((cb) =>
-        Effect.succeed(cb(Effect.succeed(42)))
+        Effect.sync(cb(Effect.sync(42)))
       )
 
       const result = await program.unsafeRunPromise()
@@ -25,15 +25,15 @@ describe.concurrent("Effect", () => {
     it("deep asyncEffect doesn't block", async () => {
       function asyncIO(cont: Effect.UIO<number>): Effect.UIO<number> {
         return Effect.asyncEffect(
-          (cb) => Effect.sleep((5).millis) > cont > Effect.succeed(cb(Effect.succeed(42)))
+          (cb) => Effect.sleep((5).millis) > cont > Effect.sync(cb(Effect.sync(42)))
         )
       }
 
       function stackIOs(count: number): Effect.UIO<number> {
-        return count < 0 ? Effect.succeed(42) : asyncIO(stackIOs(count - 1))
+        return count < 0 ? Effect.sync(42) : asyncIO(stackIOs(count - 1))
       }
 
-      const procNum = Effect.succeed(os.cpus().length)
+      const procNum = Effect.sync(os.cpus().length)
 
       const program = procNum.flatMap((procNum) => stackIOs(procNum))
 
@@ -77,7 +77,7 @@ describe.concurrent("Effect", () => {
             Effect.async<never, never, void>((cb) =>
               runtime.unsafeRunAsync(
                 step.await() >
-                  Effect.succeed(cb(unexpectedPlace.update((list) => list.prepend(1))))
+                  Effect.sync(cb(unexpectedPlace.update((list) => list.prepend(1))))
               )
             )
               .ensuring(
@@ -107,7 +107,7 @@ describe.concurrent("Effect", () => {
           Effect.asyncMaybe<never, never, void>((cb) => {
             runtime.unsafeRunAsync(
               step.await() >
-                Effect.succeed(cb(unexpectedPlace.update((list) => list.prepend(1))))
+                Effect.sync(cb(unexpectedPlace.update((list) => list.prepend(1))))
             )
             return Maybe.some(Effect.unit)
           })
@@ -139,11 +139,11 @@ describe.concurrent("Effect", () => {
 
     it("shallow bind of async chain", async () => {
       const program = Chunk.range(0, 9).reduce(
-        Effect.succeed<number>(0),
+        Effect.sync<number>(0),
         (acc, _) =>
           acc.flatMap((n) =>
             Effect.async((cb) => {
-              cb(Effect.succeed(n + 1))
+              cb(Effect.sync(n + 1))
             })
           )
       )
@@ -161,7 +161,7 @@ describe.concurrent("Effect", () => {
         never,
         string,
         never
-      >((_) => Effect.fail("ouch")).flip
+      >((_) => Effect.failSync("ouch")).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -170,7 +170,7 @@ describe.concurrent("Effect", () => {
 
     it("asyncEffect can defect before registering", async () => {
       const program = Effect.asyncEffect<never, unknown, unknown, never, string, never>((cb) =>
-        Effect.succeed(() => {
+        Effect.sync(() => {
           throw new Error("ouch")
         })
       )

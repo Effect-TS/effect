@@ -7,5 +7,5 @@ export function succeedLeft<A>(
   value: LazyArg<A>,
   __tsplusTrace?: string
 ): Effect<never, never, Either<A, never>> {
-  return Effect.succeed(Either.left(value()))
+  return Effect.sync(Either.left(value()))
 }

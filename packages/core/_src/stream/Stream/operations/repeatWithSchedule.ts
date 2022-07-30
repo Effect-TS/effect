@@ -8,5 +8,5 @@ export function repeatWithSchedule<S, R, A>(
   schedule: LazyArg<Schedule<S, R, A, unknown>>,
   __tsplusTrace?: string
 ): Stream<R, never, A> {
-  return Stream.repeatEffectWithSchedule(Effect.succeed(a), schedule)
+  return Stream.repeatEffectWithSchedule(Effect.sync(a), schedule)
 }

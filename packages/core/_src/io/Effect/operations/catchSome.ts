@@ -13,7 +13,7 @@ export function catchSome<E, R2, E2, A2>(
       (cause): Effect<R2, E | E2, A2> =>
         cause
           .failureOrCause
-          .fold((x) => f(x).getOrElse(Effect.failCauseNow(cause)), Effect.failCauseNow),
-      Effect.succeedNow
+          .fold((x) => f(x).getOrElse(Effect.failCause(cause)), Effect.failCause),
+      Effect.succeed
     )
 }

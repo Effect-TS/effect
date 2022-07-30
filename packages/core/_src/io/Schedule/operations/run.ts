@@ -17,14 +17,14 @@ function runLoop<State, Env, In, Out>(
   acc: Chunk<Out>
 ): Effect<Env, never, Chunk<Out>> {
   if (inputs.length === 0) {
-    return Effect.succeedNow(acc)
+    return Effect.succeed(acc)
   }
   const input = inputs.unprepend()
   return self
     ._step(now, input, state)
     .flatMap(({ tuple: [_, out, decision] }) =>
       decision._tag === "Done"
-        ? Effect.succeed(acc.append(out))
+        ? Effect.sync(acc.append(out))
         : runLoop(
           self,
           decision.interval.startMillis,

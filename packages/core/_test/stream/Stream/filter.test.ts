@@ -18,7 +18,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("filterEffect", () => {
     it("simple example", async () => {
-      const p = (n: number) => Effect.succeed(n % 2 === 0)
+      const p = (n: number) => Effect.sync(n % 2 === 0)
       const stream = Stream(1, 2, 3, 4, 5, 6)
       const program = Effect.struct({
         actual: stream.filterEffect(p).runCollect,
@@ -32,7 +32,7 @@ describe.concurrent("Stream", () => {
 
     it("laziness on chunks", async () => {
       const program = Stream(1, 2, 3, 4)
-        .filterEffect((n) => n === 3 ? Effect.fail("boom") : Effect.succeed(constTrue))
+        .filterEffect((n) => n === 3 ? Effect.failSync("boom") : Effect.sync(constTrue))
         .either
         .runCollect
 
@@ -52,7 +52,7 @@ describe.concurrent("Stream", () => {
       const program = Stream.fromChunk(Chunk.range(0, 3))
         .filterEffect((n) => {
           builder.append(n)
-          return Effect.succeed(true)
+          return Effect.sync(true)
         })
         .map((n) => {
           builder.append(n)

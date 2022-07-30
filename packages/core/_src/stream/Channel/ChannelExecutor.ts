@@ -109,7 +109,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     __tsplusTrace?: string
   ): Effect.RIO<R, unknown> {
     const effect = this.unwindAllFinalizers(
-      Effect.succeed(Exit.unit),
+      Effect.sync(Exit.unit),
       this.doneStack,
       exit
     ).flatMap((exit) => Effect.done(exit))
@@ -160,7 +160,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     const finalizer = this.inProgressFinalizer
     if (finalizer != null) {
       runInProgressFinalizers = finalizer.ensuring(
-        Effect.succeed(this.clearInProgressFinalizer())
+        Effect.sync(this.clearInProgressFinalizer())
       )
     }
 
@@ -170,7 +170,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     const selfFinalizers = this.popAllFinalizers(exit)
     if (selfFinalizers != null) {
       closeSelf = selfFinalizers.ensuring(
-        Effect.succeed(this.clearInProgressFinalizer())
+        Effect.sync(this.clearInProgressFinalizer())
       )
     }
 
@@ -264,7 +264,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 
                   result = ChannelState.Effect(
                     drainer.fork.flatMap((fiber) =>
-                      Effect.succeed(() =>
+                      Effect.sync(() =>
                         this.addFinalizer(
                           (exit) =>
                             fiber.interrupt.zipRight(
@@ -386,7 +386,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
                   currentChannel.value,
                   this.providedEnv,
                   (effect) =>
-                    Effect.succeed(() => {
+                    Effect.sync(() => {
                       const prevLastClose = this.closeLastSubstream == null
                         ? Effect.unit
                         : this.closeLastSubstream
@@ -429,7 +429,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
                 this.currentChannel = currentChannel.channel
 
                 this.addFinalizer(() =>
-                  Effect.succeed(() => {
+                  Effect.sync(() => {
                     this.providedEnv = previousEnv
                   })
                 )
@@ -481,8 +481,8 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 
     return ChannelState.Effect(
       finalizerEffect
-        .ensuring(Effect.succeed(this.clearInProgressFinalizer()))
-        .uninterruptible > Effect.succeed(this.doneSucceed(z))
+        .ensuring(Effect.sync(this.clearInProgressFinalizer()))
+        .uninterruptible > Effect.sync(this.doneSucceed(z))
     )
   }
 
@@ -520,9 +520,9 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 
     return ChannelState.Effect(
       finalizerEffect
-        .ensuring(Effect.succeed(this.clearInProgressFinalizer()))
+        .ensuring(Effect.sync(this.clearInProgressFinalizer()))
         .uninterruptible
-        .zipRight(Effect.succeed(this.doneHalt(cause)))
+        .zipRight(Effect.sync(this.doneHalt(cause)))
     )
   }
 
@@ -540,11 +540,11 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
       Effect.uninterruptibleMask(({ restore }) =>
         restore(this.provide(bracketOut.acquire())).foldCauseEffect(
           (cause) =>
-            Effect.succeed(() => {
+            Effect.sync(() => {
               this.currentChannel = new Fail(() => cause)
             }),
           (out) =>
-            Effect.succeed(() => {
+            Effect.sync(() => {
               this.addFinalizer((exit) => bracketOut.finalizer(out, exit))
               this.currentChannel = new Emit(() => out)
             })
@@ -632,7 +632,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
       Effect.forEachDiscard(
         closeFns,
         (closeFn) =>
-          Effect.succeed(closeFn(subexecutorDone)).flatMap((closeEffect) =>
+          Effect.sync(closeFn(subexecutorDone)).flatMap((closeEffect) =>
             closeEffect != null ? closeEffect : Effect.unit
           )
       )
@@ -854,7 +854,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
       () => {
         const lastClose = this.closeLastSubstream
         if (lastClose != null) {
-          this.addFinalizer(() => Effect.succeed(lastClose))
+          this.addFinalizer(() => Effect.sync(lastClose))
         }
         return this.finishSubexecutorWithCloseEffect(
           self.upstreamDone,

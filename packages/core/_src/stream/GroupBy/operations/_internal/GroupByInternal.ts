@@ -75,7 +75,7 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
                             )
                         ).as(() => (n: number) => n === id)
                       ),
-                      (id) => Effect.succeedNow((n: number) => n === id)
+                      (id) => Effect.succeed((n: number) => n === id)
                     )
                   )
           )
@@ -134,7 +134,7 @@ export class FirstInternal<R, E, K, V, A> extends GroupByInternal<R, E, K, V, A>
           ]
         } = elem
         return i < this.n
-          ? Effect.succeedNow(elem).as(constTrue)
+          ? Effect.succeed(elem).as(constTrue)
           : queue.shutdown.as(constFalse)
       })
       .map((tuple) => tuple.get(0))
@@ -159,7 +159,7 @@ export class FilterInternal<R, E, K, V, A> extends GroupByInternal<R, E, K, V, A
         tuple: [k, queue]
       } = elem
       return this.f(k)
-        ? Effect.succeedNow(elem).as(() => true)
+        ? Effect.succeed(elem).as(() => true)
         : queue.shutdown.as(() => false)
     })
   }

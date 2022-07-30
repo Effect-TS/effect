@@ -55,11 +55,11 @@ function foldEffectInternal<R, E, S, In>(
   __tsplusTrace?: string
 ): Effect<R, E, Tuple<[S, Maybe<Chunk<In>>]>> {
   if (index === length) {
-    return Effect.succeed(Tuple(z, Maybe.none))
+    return Effect.sync(Tuple(z, Maybe.none))
   }
   return f(z, chunk.unsafeGet(index)).flatMap((z1) =>
     cont(z1)
       ? foldEffectInternal<R, E, S, In>(z1, chunk, cont, f, index + 1, length)
-      : Effect.succeed(Tuple(z1, Maybe.some(chunk.drop(index + 1))))
+      : Effect.sync(Tuple(z1, Maybe.some(chunk.drop(index + 1))))
   )
 }

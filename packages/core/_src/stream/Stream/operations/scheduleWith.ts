@@ -45,7 +45,7 @@ function loop<R, R2, E, A, B, C>(
                   loop<R, R2, E, A, B, C>(driver, chunk, f, g, index + 1)
             ) < driver.reset,
         () =>
-          Effect.succeedNow(
+          Effect.succeed(
             Channel.write(Chunk(f(a))) >
               loop<R, R2, E, A, B, C>(driver, chunk, f, g, index + 1)
           )

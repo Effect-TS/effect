@@ -8,7 +8,7 @@ describe.concurrent("Stream", () => {
             () => ref.update((list) => list.prepend("release outer"))
           ) >
             Effect.suspendSucceed(deferred.succeed(undefined) > Effect.never) >
-            Effect.succeed(Stream(1, 2, 3))
+            Effect.sync(Stream(1, 2, 3))
         )
       }
 

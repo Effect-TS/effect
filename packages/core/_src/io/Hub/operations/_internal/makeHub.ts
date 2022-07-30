@@ -30,7 +30,7 @@ const HubProto: any = {
     return Effect.suspendSucceed(
       (this.shutdownFlag as AtomicBoolean).get ?
         Effect.interrupt :
-        Effect.succeed((this.hub as AtomicHub<unknown>).size())
+        Effect.sync((this.hub as AtomicHub<unknown>).size())
     )
   },
   get awaitShutdown() {
@@ -46,7 +46,7 @@ const HubProto: any = {
     }).uninterruptible
   },
   get isShutdown() {
-    return Effect.succeed((this.shutdownFlag as AtomicBoolean).get)
+    return Effect.sync((this.shutdownFlag as AtomicBoolean).get)
   },
   get subscribe() {
     return Effect.acquireRelease(
@@ -70,7 +70,7 @@ const HubProto: any = {
 
       if ((this.hub as AtomicHub<unknown>).publish(a)) {
         this.strategy.unsafeCompleteSubscribers(this.hub, this.subscribers)
-        return Effect.succeedNow(true)
+        return Effect.succeed(true)
       }
 
       return this.strategy.handleSurplus(
@@ -89,7 +89,7 @@ const HubProto: any = {
       const surplus = unsafePublishAll(this.hub, as)
       this.strategy.unsafeCompleteSubscribers(this.hub, this.subscribers)
       if (surplus.isEmpty) {
-        return Effect.succeedNow(true)
+        return Effect.succeed(true)
       }
       return this.strategy.handleSurplus(
         this.hub,

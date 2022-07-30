@@ -188,9 +188,9 @@ export function onInterrupt<R2, X>(
       restore(self).foldCauseEffect(
         (cause) =>
           cause.isInterrupted
-            ? cleanup(cause.interruptors).zipRight(Effect.failCauseNow(cause))
-            : Effect.failCauseNow(cause),
-        Effect.succeedNow
+            ? cleanup(cause.interruptors).zipRight(Effect.failCause(cause))
+            : Effect.failCause(cause),
+        Effect.succeed
       )
     )
 }
@@ -212,11 +212,11 @@ export function onInterruptPolymorphic<R2, E2, X>(
         (cause) =>
           cause.isInterrupted
             ? cleanup(cause.interruptors).foldCauseEffect(
-              (_) => Effect.failCauseNow(_),
-              () => Effect.failCauseNow(cause)
+              (_) => Effect.failCause(_),
+              () => Effect.failCause(cause)
             )
-            : Effect.failCauseNow(cause),
-        Effect.succeedNow
+            : Effect.failCause(cause),
+        Effect.succeed
       )
     )
 }
@@ -227,5 +227,5 @@ export function onInterruptPolymorphic<R2, E2, X>(
  * @tsplus static effect/core/io/Effect.Ops interruptAs
  */
 export function interruptAs(fiberId: LazyArg<FiberId>, __tsplusTrace?: string) {
-  return Effect.failCause(Cause.interrupt(fiberId()))
+  return Effect.failCauseSync(Cause.interrupt(fiberId()))
 }

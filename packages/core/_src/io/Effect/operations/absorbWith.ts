@@ -9,5 +9,5 @@ export function absorbWith<E>(f: (e: E) => unknown, __tsplusTrace?: string) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, unknown, A> =>
     self
       .sandbox
-      .foldEffect((cause) => Effect.failNow(cause.squashWith(f)), Effect.succeedNow)
+      .foldEffect((cause) => Effect.fail(cause.squashWith(f)), Effect.succeed)
 }

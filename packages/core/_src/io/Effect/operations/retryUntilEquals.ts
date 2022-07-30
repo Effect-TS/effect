@@ -10,5 +10,5 @@ export function retryUntilEquals<E>(
   __tsplusTrace?: string
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
-    Effect.succeed(e).flatMap((_) => self.retryUntil((e) => E.equals(_, e)))
+    Effect.sync(e).flatMap((_) => self.retryUntil((e) => E.equals(_, e)))
 }

@@ -12,7 +12,7 @@ export function toPull<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 ): Effect<Env | Scope, never, Effect<Env, OutErr, Either<OutDone, OutElem>>> {
   return Effect.acquireReleaseExit(
-    Effect.succeed(new ChannelExecutor(() => self, undefined, identity)),
+    Effect.sync(new ChannelExecutor(() => self, undefined, identity)),
     (exec, exit) => {
       const finalize = exec.close(exit)
       return finalize == null ? Effect.unit : finalize
@@ -28,12 +28,12 @@ function interpret<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   switch (channelState._tag) {
     case "Done": {
       return exec.getDone().fold(
-        (cause) => Effect.failCause(cause),
-        (done): Effect<Env, OutErr, Either<OutDone, OutElem>> => Effect.succeed(Either.left(done))
+        (cause) => Effect.failCauseSync(cause),
+        (done): Effect<Env, OutErr, Either<OutDone, OutElem>> => Effect.sync(Either.left(done))
       )
     }
     case "Emit": {
-      return Effect.succeed(Either.right(exec.getEmit()))
+      return Effect.sync(Either.right(exec.getEmit()))
     }
     case "Effect": {
       return channelState.effect.zipRight(

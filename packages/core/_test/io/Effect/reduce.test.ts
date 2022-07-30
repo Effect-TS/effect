@@ -3,7 +3,7 @@ import { constVoid } from "@tsplus/stdlib/data/Function"
 describe.concurrent("Effect", () => {
   describe.concurrent("reduce", () => {
     it("with a successful step function sums the list properly", async () => {
-      const program = Effect.reduce(List(1, 2, 3, 4, 5), 0 as number, (acc, curr) => Effect.succeed(acc + curr))
+      const program = Effect.reduce(List(1, 2, 3, 4, 5), 0 as number, (acc, curr) => Effect.sync(acc + curr))
 
       const result = await program.unsafeRunPromise()
 
@@ -11,7 +11,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("with a failing step function returns a failed IO", async () => {
-      const program = Effect.reduce(List(1, 2, 3, 4, 5), 0, () => Effect.fail("fail"))
+      const program = Effect.reduce(List(1, 2, 3, 4, 5), 0, () => Effect.failSync("fail"))
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -23,7 +23,7 @@ describe.concurrent("Effect", () => {
       const program = Effect.reduce(
         list,
         List.empty<number>(),
-        (acc: List<number>, curr) => Effect.succeed(acc.prepend(curr))
+        (acc: List<number>, curr) => Effect.sync(acc.prepend(curr))
       )
 
       const result = await program.unsafeRunPromise()
@@ -34,7 +34,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("reduceRight", () => {
     it("with a successful step function sums the list properly", async () => {
-      const program = Effect.reduceRight(List(1, 2, 3, 4, 5), 0 as number, (acc, curr) => Effect.succeed(acc + curr))
+      const program = Effect.reduceRight(List(1, 2, 3, 4, 5), 0 as number, (acc, curr) => Effect.sync(acc + curr))
 
       const result = await program.unsafeRunPromise()
 
@@ -42,7 +42,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("with a failing step function returns a failed IO", async () => {
-      const program = Effect.reduce(List(1, 2, 3, 4, 5), 0, () => Effect.fail("fail"))
+      const program = Effect.reduce(List(1, 2, 3, 4, 5), 0, () => Effect.failSync("fail"))
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -54,7 +54,7 @@ describe.concurrent("Effect", () => {
       const program = Effect.reduceRight(
         list,
         List.empty<number>(),
-        (curr, acc: List<number>) => Effect.succeed(acc.prepend(curr))
+        (curr, acc: List<number>) => Effect.sync(acc.prepend(curr))
       )
 
       const result = await program.unsafeRunPromise()
@@ -68,7 +68,7 @@ describe.concurrent("Effect", () => {
       const zeroElement = 42
       const nonZero = 43
       const program = Effect.reduceAllPar(
-        Effect.succeed(zeroElement),
+        Effect.sync(zeroElement),
         List.empty<Effect.UIO<number>>(),
         () => nonZero
       )
@@ -79,8 +79,8 @@ describe.concurrent("Effect", () => {
     })
 
     it("reduce list using function", async () => {
-      const zeroElement = Effect.succeed(1)
-      const otherEffects = List(3, 5, 7).map(Effect.succeedNow)
+      const zeroElement = Effect.sync(1)
+      const otherEffects = List(3, 5, 7).map(Effect.succeed)
       const program = Effect.reduceAllPar(
         zeroElement,
         otherEffects,
@@ -93,7 +93,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("return error if zero is an error", async () => {
-      const zeroElement = Effect.fail(1)
+      const zeroElement = Effect.failSync(1)
       const otherEffects = List(Effect.unit, Effect.unit)
       const program = Effect.reduceAllPar(zeroElement, otherEffects, constVoid)
 
@@ -104,7 +104,7 @@ describe.concurrent("Effect", () => {
 
     it("return error if it exists in list", async () => {
       const zeroElement = Effect.unit
-      const effects = List(Effect.unit, Effect.fail(1))
+      const effects = List(Effect.unit, Effect.failSync(1))
       const program = Effect.reduceAllPar(zeroElement, effects, constVoid)
 
       const result = await program.unsafeRunPromiseExit()

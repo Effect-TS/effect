@@ -7,5 +7,5 @@
  */
 export function map<Out, Out2>(f: (out: Out) => Out2) {
   return <State, Env, In>(self: Schedule<State, Env, In, Out>): Schedule<State, Env, In, Out2> =>
-    self.mapEffect((out) => Effect.succeed(f(out)))
+    self.mapEffect((out) => Effect.sync(f(out)))
 }

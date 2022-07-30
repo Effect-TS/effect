@@ -14,8 +14,8 @@ export function tapBoth<E, A, R2, E2, X, R3, E3, X1>(
     self.foldCauseEffect(
       (cause) =>
         cause.failureOrCause.fold(
-          (e) => f(e).zipRight(Effect.failCauseNow(cause)),
-          () => Effect.failCauseNow(cause)
+          (e) => f(e).zipRight(Effect.failCause(cause)),
+          () => Effect.failCause(cause)
         ),
       (a) => g(a).as(a)
     )

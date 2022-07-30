@@ -35,7 +35,7 @@ describe.concurrent("Deferred", () => {
       Do(($) => {
         const deferred = $(Deferred.make<string, number>())
         $(deferred.succeed(1))
-        const success = $(deferred.complete(Effect.succeedNow(9)))
+        const success = $(deferred.complete(Effect.succeed(9)))
         const result = $(deferred.await())
         assert.isFalse(success)
         assert.strictEqual(result, 1)

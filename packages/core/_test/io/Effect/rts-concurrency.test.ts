@@ -4,7 +4,7 @@ import { withLatch } from "@effect/core/test/test-utils/Latch"
 describe.concurrent("Effect", () => {
   describe.concurrent("RTS concurrency correctness", () => {
     it("shallow fork/join identity", async () => {
-      const program = Effect.succeed(42)
+      const program = Effect.sync(42)
         .fork
         .flatMap((fiber) => fiber.join)
 
@@ -140,7 +140,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("race of fail with success", async () => {
-      const program = Effect.fail(42).race(Effect.succeed(24)).either
+      const program = Effect.failSync(42).race(Effect.sync(24)).either
 
       const result = await program.unsafeRunPromise()
 
@@ -148,7 +148,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("race of terminate with success", async () => {
-      const program = Effect.die(new Error()).race(Effect.succeed(24))
+      const program = Effect.die(new Error()).race(Effect.sync(24))
 
       const result = await program.unsafeRunPromise()
 
@@ -156,7 +156,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("race of fail with fail", async () => {
-      const program = Effect.fail(42).race(Effect.fail(24)).either
+      const program = Effect.failSync(42).race(Effect.failSync(24)).either
 
       const result = await program.unsafeRunPromise()
 
@@ -164,7 +164,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("race of value and never", async () => {
-      const program = Effect.succeed(42).race(Effect.never)
+      const program = Effect.sync(42).race(Effect.never)
 
       const result = await program.unsafeRunPromise()
 
@@ -208,8 +208,8 @@ describe.concurrent("Effect", () => {
 
     it("firstSuccessOf of values", async () => {
       const program = Effect.firstSuccessOf([
-        Effect.fail(0),
-        Effect.succeed(100)
+        Effect.failSync(0),
+        Effect.sync(100)
       ]).either
 
       const result = await program.unsafeRunPromise()
@@ -219,8 +219,8 @@ describe.concurrent("Effect", () => {
 
     it("firstSuccessOf of failures", async () => {
       const program = Effect.firstSuccessOf([
-        Effect.fail(0).delay((10).millis),
-        Effect.fail(101)
+        Effect.failSync(0).delay((10).millis),
+        Effect.failSync(101)
       ]).either
 
       const result = await program.unsafeRunPromise()
@@ -230,8 +230,8 @@ describe.concurrent("Effect", () => {
 
     it("firstSuccessOf of failures & 1 success", async () => {
       const program = Effect.firstSuccessOf([
-        Effect.fail(0),
-        Effect.succeed(102).delay((1).millis)
+        Effect.failSync(0),
+        Effect.sync(102).delay((1).millis)
       ]).either
 
       const result = await program.unsafeRunPromise()
@@ -284,7 +284,7 @@ describe.concurrent("Effect", () => {
 
     it("mergeAll", async () => {
       const program = Effect.mergeAll(
-        List("a", "aa", "aaa", "aaaa").map(Effect.succeedNow),
+        List("a", "aa", "aaa", "aaaa").map(Effect.succeed),
         0,
         (b, a) => b + a.length
       )
@@ -304,8 +304,8 @@ describe.concurrent("Effect", () => {
 
     it("reduceAll", async () => {
       const program = Effect.reduceAll(
-        Effect.succeed(1),
-        List(2, 3, 4).map(Effect.succeedNow),
+        Effect.sync(1),
+        List(2, 3, 4).map(Effect.succeed),
         (acc, a) => acc + a
       )
 
@@ -316,7 +316,7 @@ describe.concurrent("Effect", () => {
 
     it("reduceAll - empty list", async () => {
       const program = Effect.reduceAll(
-        Effect.succeed(1),
+        Effect.sync(1),
         List.empty<Effect.UIO<number>>(),
         (acc, a) => acc + a
       )
@@ -327,7 +327,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("timeout of failure", async () => {
-      const program = Effect.fail("uh oh").timeout((1).hours)
+      const program = Effect.failSync("uh oh").timeout((1).hours)
 
       const result = await program.unsafeRunPromiseExit()
 

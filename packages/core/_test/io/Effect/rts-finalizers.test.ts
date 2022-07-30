@@ -5,8 +5,8 @@ describe.concurrent("Effect", () => {
   describe.concurrent("RTS finalizers", () => {
     it("fail ensuring", async () => {
       let finalized = false
-      const program = Effect.fail(ExampleError).ensuring(
-        Effect.succeed(() => {
+      const program = Effect.failSync(ExampleError).ensuring(
+        Effect.sync(() => {
           finalized = true
         })
       )
@@ -19,8 +19,8 @@ describe.concurrent("Effect", () => {
 
     it("fail on error", async () => {
       let finalized = false
-      const program = Effect.fail(ExampleError).onError(() =>
-        Effect.succeed(() => {
+      const program = Effect.failSync(ExampleError).onError(() =>
+        Effect.sync(() => {
           finalized = true
         })
       )
@@ -49,12 +49,12 @@ describe.concurrent("Effect", () => {
 
     it("finalizer errors reported", async () => {
       let reported: Exit<never, number> | undefined
-      const program = Effect.succeed(42)
+      const program = Effect.sync(42)
         .ensuring(Effect.die(ExampleError))
         .fork
         .flatMap((fiber) =>
           fiber.await.flatMap((e) =>
-            Effect.succeed(() => {
+            Effect.sync(() => {
               reported = e
             })
           )
@@ -70,7 +70,7 @@ describe.concurrent("Effect", () => {
     it("acquireUseRelease exit() is usage result", async () => {
       const program = Effect.acquireUseRelease(
         Effect.unit,
-        () => Effect.succeed(42),
+        () => Effect.sync(42),
         () => Effect.unit
       )
 
@@ -106,7 +106,7 @@ describe.concurrent("Effect", () => {
     it("error in just usage", async () => {
       const program = Effect.acquireUseRelease(
         Effect.unit,
-        () => Effect.fail(ExampleError),
+        () => Effect.failSync(ExampleError),
         () => Effect.unit
       )
 

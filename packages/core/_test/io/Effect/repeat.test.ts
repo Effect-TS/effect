@@ -52,7 +52,7 @@ describe.concurrent("Effect", () => {
         .tap(({ input, output }) =>
           (
             input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)
-          ).repeatUntilEffect((n) => Effect.succeed(n === 0))
+          ).repeatUntilEffect((n) => Effect.sync(n === 0))
         )
         .flatMap(({ output }) => output.get())
 
@@ -63,7 +63,7 @@ describe.concurrent("Effect", () => {
 
     it("always evaluates the effect at least once", async () => {
       const program = Ref.make<number>(0)
-        .tap((ref) => ref.update((n) => n + 1).repeatUntilEffect(() => Effect.succeed(true)))
+        .tap((ref) => ref.update((n) => n + 1).repeatUntilEffect(() => Effect.sync(true)))
         .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
@@ -123,7 +123,7 @@ describe.concurrent("Effect", () => {
         .tap(({ input, output }) =>
           (
             input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)
-          ).repeatWhileEffect((v) => Effect.succeed(v >= 0))
+          ).repeatWhileEffect((v) => Effect.sync(v >= 0))
         )
         .flatMap(({ output }) => output.get())
 
@@ -134,7 +134,7 @@ describe.concurrent("Effect", () => {
 
     it("always evaluates effect at least once", async () => {
       const program = Ref.make<number>(0)
-        .tap((ref) => ref.update((n) => n + 1).repeatWhileEffect(() => Effect.succeed(false)))
+        .tap((ref) => ref.update((n) => n + 1).repeatWhileEffect(() => Effect.sync(false)))
         .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()

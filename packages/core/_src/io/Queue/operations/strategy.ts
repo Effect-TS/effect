@@ -37,7 +37,7 @@ export class DroppingStrategy<A> implements Strategy<A> {
     _isShutdown: AtomicBoolean,
     __tsplusTrace?: string
   ): Effect<never, never, boolean> {
-    return Effect.succeedNow(false)
+    return Effect.succeed(false)
   }
 
   unsafeOnQueueEmptySpace(_queue: MutableQueue<A>): void {
@@ -61,7 +61,7 @@ export class SlidingStrategy<A> implements Strategy<A> {
     _isShutdown: AtomicBoolean,
     __tsplusTrace?: string
   ): Effect<never, never, boolean> {
-    return Effect.succeed(() => {
+    return Effect.sync(() => {
       this.unsafeSlidingOffer(queue, as)
       unsafeCompleteTakers(this, queue, takers)
       return true

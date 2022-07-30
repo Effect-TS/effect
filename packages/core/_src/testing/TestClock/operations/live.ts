@@ -14,7 +14,7 @@ export function live(data: TestClock.Data): Layer<Annotations | Live, never, Tes
     Do(($) => {
       const live = $(Effect.service(Live.Tag))
       const annotations = $(Effect.service(Annotations.Tag))
-      const clockState = $(Effect.succeed(Ref.unsafeMake(data)))
+      const clockState = $(Effect.sync(Ref.unsafeMake(data)))
       const warningState = $(Ref.Synchronized.make(WarningData.Start))
       const suspendedWarningState = $(Ref.Synchronized.make(SuspendedWarningData.Start))
       const testClock = new TestClockInternal(

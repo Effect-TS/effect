@@ -8,5 +8,5 @@ import { Strategy } from "@effect/core/io/Hub/operations/strategy"
  * @tsplus static effect/core/io/Hub.Ops unbounded
  */
 export function unbounded<A>(__tsplusTrace?: string): Effect<never, never, Hub<A>> {
-  return Effect.succeed(makeUnbounded<A>()).flatMap((atomicHub) => makeHub(atomicHub, Strategy.Dropping()))
+  return Effect.sync(makeUnbounded<A>()).flatMap((atomicHub) => makeHub(atomicHub, Strategy.Dropping()))
 }

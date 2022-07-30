@@ -35,8 +35,7 @@ describe.concurrent("Effect", () => {
           () =>
             exactlyOnce(
               0,
-              (_) =>
-                _.continueOrFailEffect("value was not 0", (v) => v === 0 ? Maybe.some(Effect.succeed(v)) : Maybe.none)
+              (_) => _.continueOrFailEffect("value was not 0", (v) => v === 0 ? Maybe.some(Effect.sync(v)) : Maybe.none)
             )
               .sandbox
               .either
@@ -47,7 +46,7 @@ describe.concurrent("Effect", () => {
             exactlyOnce(0, (_) =>
               _.continueOrFailEffect("predicate failed!", (n) =>
                 n === 0 ?
-                  Maybe.some(Effect.fail("partial failed!")) :
+                  Maybe.some(Effect.failSync("partial failed!")) :
                   Maybe.none))
               .sandbox
               .either
@@ -58,8 +57,7 @@ describe.concurrent("Effect", () => {
           () =>
             exactlyOnce(
               1,
-              (_) =>
-                _.continueOrFailEffect("value was not 0", (v) => v === 0 ? Maybe.some(Effect.succeed(v)) : Maybe.none)
+              (_) => _.continueOrFailEffect("value was not 0", (v) => v === 0 ? Maybe.some(Effect.sync(v)) : Maybe.none)
             )
               .sandbox
               .either

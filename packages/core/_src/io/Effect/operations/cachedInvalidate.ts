@@ -10,7 +10,7 @@
 export function cachedInvalidate(timeToLive: LazyArg<Duration>, __tsplusTrace?: string) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, never, Tuple<[Effect<never, E, A>, Effect<never, never, void>]>> =>
     Do(($) => {
-      const ttl = $(Effect.succeed(timeToLive))
+      const ttl = $(Effect.sync(timeToLive))
       const environment = $(Effect.environment<R>())
       const cache = $(Ref.Synchronized.make<Maybe<Tuple<[number, Deferred<E, A>]>>>(Maybe.none))
       return Tuple(get(self, ttl, cache).provideEnvironment(environment), invalidate(cache))

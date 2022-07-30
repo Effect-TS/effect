@@ -15,7 +15,7 @@ export function bounded<A>(
   requestedCapacity: number,
   __tsplusTrace?: string
 ): Effect<never, never, Hub<A>> {
-  return Effect.succeed(makeBounded<A>(requestedCapacity)).flatMap((atomicHub) =>
+  return Effect.sync(makeBounded<A>(requestedCapacity)).flatMap((atomicHub) =>
     makeHub(atomicHub, Strategy.BackPressure())
   )
 }

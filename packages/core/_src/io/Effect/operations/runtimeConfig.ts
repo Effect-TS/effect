@@ -4,5 +4,5 @@
  * @tsplus static effect/core/io/Effect.Ops runtimeConfig
  */
 export const runtimeConfig: Effect<never, never, RuntimeConfig> = Effect.suspendSucceedWith(
-  (runtimeConfig, _) => Effect.succeedNow(runtimeConfig)
+  (runtimeConfig, _) => Effect.succeed(runtimeConfig)
 )

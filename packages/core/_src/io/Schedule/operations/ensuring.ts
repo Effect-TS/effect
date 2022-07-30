@@ -19,6 +19,6 @@ export function ensuring<X>(finalizer: Effect<never, never, X>) {
         .flatMap(({ tuple: [state, out, decision] }): Effect<never, never, Tuple<[State, Out, Decision]>> =>
           decision._tag === "Done"
             ? finalizer.as(Tuple(state, out, decision))
-            : Effect.succeedNow(Tuple(state, out, decision))
+            : Effect.succeed(Tuple(state, out, decision))
         ))
 }

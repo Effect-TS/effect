@@ -27,6 +27,6 @@ export function dayOfWeek(
     const start = Math.max(beginningOfDay(d), now)
     const end = endOfDay(d)
     const interval = Interval(start, end)
-    return Effect.succeedNow(Tuple(state + 1, state, Decision.Continue(interval)))
+    return Effect.succeed(Tuple(state + 1, state, Decision.Continue(interval)))
   })
 }

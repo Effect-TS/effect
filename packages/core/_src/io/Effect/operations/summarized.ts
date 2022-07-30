@@ -12,7 +12,7 @@ export function summarized<R2, E2, B, C>(
   __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, Tuple<[C, A]>> =>
-    Effect.succeed(summary).flatMap((summary) =>
+    Effect.sync(summary).flatMap((summary) =>
       Do(($) => {
         const start = $(summary)
         const value = $(self)

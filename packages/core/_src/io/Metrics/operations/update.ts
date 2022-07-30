@@ -8,5 +8,5 @@
  */
 export function update<In>(input: LazyArg<In>, __tsplusTrace?: string) {
   return <Type, Out>(self: Metric<Type, In, Out>): Effect<never, never, void> =>
-    Effect.succeed(self.unsafeUpdate(input(), HashSet.empty()))
+    Effect.sync(self.unsafeUpdate(input(), HashSet.empty()))
 }

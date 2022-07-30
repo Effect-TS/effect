@@ -22,7 +22,7 @@ function loop<A, R, E, S>(
     if (o.isSome()) {
       return loop(o.value.get(1), f, builder.append(o.value.get(0)))
     } else {
-      return Effect.succeedNow(builder)
+      return Effect.succeed(builder)
     }
   })
 }

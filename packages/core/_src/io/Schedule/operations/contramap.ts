@@ -7,5 +7,5 @@
  */
 export function contramap<In, In2>(f: (in2: In2) => In) {
   return <State, Env, Out>(self: Schedule<State, Env, In, Out>): Schedule<State, Env, In2, Out> =>
-    self.contramapEffect((input2) => Effect.succeed(f(input2)))
+    self.contramapEffect((input2) => Effect.sync(f(input2)))
 }

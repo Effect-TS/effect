@@ -29,14 +29,14 @@ export function interleaveWith<R2, E2, A2, R3, E3>(
               .runScoped
               .fork
           )
-          const that0 = $(Effect.succeed(that))
+          const that0 = $(Effect.sync(that))
           concreteStream(that0)
           $(
             (that0.channel.concatMap(Channel.writeChunk) >> producer(right))
               .runScoped
               .fork
           )
-          const b0 = $(Effect.succeed(b))
+          const b0 = $(Effect.sync(b))
           concreteStream(b0)
           return b0.channel.concatMap(Channel.writeChunk) >> process(left, right, false, false)
         })

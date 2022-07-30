@@ -13,7 +13,7 @@ export function mapAccumEffect_<A, B, R, E, S>(
 ): Effect<R, E, Tuple<[S, Chunk<B>]>> {
   return Effect.suspendSucceed(() => {
     const iterator = concreteChunkId(self)._arrayLikeIterator()
-    let dest: Effect<R, E, S> = Effect.succeedNow(s)
+    let dest: Effect<R, E, S> = Effect.succeed(s)
     let builder = Chunk.empty<B>()
     let next
     while ((next = iterator.next()) && !next.done) {
