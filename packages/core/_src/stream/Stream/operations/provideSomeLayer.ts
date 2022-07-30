@@ -10,5 +10,5 @@ export function provideSomeLayer<R, E, A, R1, E1, A1>(
   __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R1 | Exclude<R, A1>, E | E1, A> =>
-    (self as Stream<R1 | A1, E, A>).provideLayer(Layer.environment<R1>().and(layer))
+    (self as Stream<R1 | A1, E, A>).provideLayer(Layer.environment<R1>().merge(layer()))
 }
