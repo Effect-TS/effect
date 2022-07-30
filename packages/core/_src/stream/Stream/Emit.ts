@@ -75,7 +75,7 @@ export function apply<R, E, A, B>(
 ): Emit<R, E, A, B> {
   const ops: EmitOps<R, E, A, B> = {
     chunk(this: Emit<R, E, A, B>, as: Chunk<A>, __tsplusTrace?: string) {
-      return this(Effect.succeedNow(as))
+      return this(Effect.succeed(as))
     },
     die<Err>(this: Emit<R, E, A, B>, err: Err, __tsplusTrace?: string) {
       return this(Effect.die(err))
@@ -94,10 +94,10 @@ export function apply<R, E, A, B>(
       )
     },
     end(this: Emit<R, E, A, B>, __tsplusTrace?: string) {
-      return this(Effect.fail(Maybe.none))
+      return this(Effect.failSync(Maybe.none))
     },
     fail(this: Emit<R, E, A, B>, e: E, __tsplusTrace?: string) {
-      return this(Effect.fail(Maybe.some(e)))
+      return this(Effect.failSync(Maybe.some(e)))
     },
     fromEffect(this: Emit<R, E, A, B>, io: Effect<R, E, A>, __tsplusTrace?: string) {
       return this(
@@ -115,10 +115,10 @@ export function apply<R, E, A, B>(
       return this(io.mapError((e) => Maybe.some(e)))
     },
     halt(this: Emit<R, E, A, B>, cause: Cause<E>, __tsplusTrace?: string) {
-      return this(Effect.failCause(cause.map((e) => Maybe.some(e))))
+      return this(Effect.failCauseSync(cause.map((e) => Maybe.some(e))))
     },
     single(this: Emit<R, E, A, B>, a: A, __tsplusTrace?: string) {
-      return this(Effect.succeedNow(Chunk.single(a)))
+      return this(Effect.succeed(Chunk.single(a)))
     }
   }
 

@@ -6,7 +6,7 @@
 export function track(
   __tsplusTrace?: string
 ): Effect<never, never, Supervisor<Chunk<Fiber.Runtime<any, any>>>> {
-  return Effect.succeed(unsafeTrack)
+  return Effect.sync(unsafeTrack)
 }
 
 // `setInterval` is limited to take delays which are 32-bit values
@@ -20,7 +20,7 @@ export function unsafeTrack(): Supervisor<Chunk<Fiber.Runtime<any, any>>> {
   const interval = new AtomicReference<number | undefined>(undefined)
 
   return new Supervisor(
-    Effect.succeed(Chunk.from(set)),
+    Effect.sync(Chunk.from(set)),
     (_, __, ___, fiber) => {
       if (set.has(fiber)) {
         if (interval.get == null) {

@@ -20,7 +20,7 @@ export function throttleEnforce<A>(
     self.throttleEnforceEffect(
       units,
       duration,
-      (input) => Effect.succeedNow(costFn(input)),
+      (input) => Effect.succeed(costFn(input)),
       burst
     )
 }

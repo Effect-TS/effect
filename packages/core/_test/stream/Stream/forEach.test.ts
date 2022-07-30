@@ -74,7 +74,7 @@ describe.concurrent("Stream", () => {
         .tap(({ ref }) =>
           (
             Stream(true, true, false) + Stream.fromEffect(ref.set(false)).drain
-          ).runForEachWhile(Effect.succeedNow)
+          ).runForEachWhile(Effect.succeed)
         )
         .flatMap(({ ref }) => ref.get())
 

@@ -33,7 +33,7 @@ export function andThenEither<State1, Env1, In1, Out2>(
                   .map(({ tuple: [rState, out, decision] }) =>
                     Tuple(Tuple(lState, rState, false), Either.rightW(out), decision)
                   )
-                : Effect.succeedNow(
+                : Effect.succeed(
                   Tuple(
                     Tuple(lState, state.get(1), true),
                     Either.leftW(out),

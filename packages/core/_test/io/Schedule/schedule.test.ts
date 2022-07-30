@@ -3,14 +3,14 @@
  * with the incremented value in error.
  */
 function alwaysFail(ref: Ref<number>): Effect<never, string, number> {
-  return ref.updateAndGet((n) => n + 1).flatMap((n) => Effect.fail(`Error: ${n}`))
+  return ref.updateAndGet((n) => n + 1).flatMap((n) => Effect.failSync(`Error: ${n}`))
 }
 
 // function checkDelays<State, Env>(
 //   schedule: Schedule.WithState<State, Env, unknown, Duration>
 // ): Effect.RIO<Env, Tuple<[Chunk<Duration>, Chunk<Duration>]>> {
 //   return Effect.Do()
-//     .bind("now", () => Effect.succeed(Date.now()))
+//     .bind("now", () => Effect.sync(Date.now()))
 //     .bindValue("input", () => Chunk(1, 2, 3, 4, 5))
 //     .bind("actual", ({ input, now }) => schedule.run(now, input))
 //     .bind("expected", ({ input, now }) => schedule.delays.run(now, input))
@@ -21,7 +21,7 @@ function alwaysFail(ref: Ref<number>): Effect<never, string, number> {
 //   schedule: Schedule.WithState<State, Env, unknown, number>
 // ): Effect.RIO<Env, Tuple<[Chunk<number>, Chunk<number>]>> {
 //   return Effect.Do()
-//     .bind("now", () => Effect.succeed(Date.now()))
+//     .bind("now", () => Effect.sync(Date.now()))
 //     .bindValue("input", () => Chunk(1, 2, 3, 4, 5))
 //     .bind("actual", ({ input, now }) => schedule.run(now, input))
 //     .bind("expected", ({ input, now }) => schedule.repetitions.run(now, input))
@@ -55,7 +55,7 @@ function alwaysFail(ref: Ref<number>): Effect<never, string, number> {
 //         acc: Chunk<Out>
 //       ): Effect<TestClock & Env, never, Chunk<Out>> {
 //         if (input.length() === 0) {
-//           return Effect.succeed(acc);
+//           return Effect.sync(acc);
 //         }
 //         const head = input.unsafeHead!;
 //         const tail = input.length() === 1 ? List.nil() : input.unsafeTail!;
@@ -128,7 +128,7 @@ describe.concurrent("Schedule", () => {
     })
 
     it.skip("for 'recurWhileEffect(cond)' repeats while the effectful cond still holds", async () => {
-      // const program = repeat(Schedule.recurWhileEffect((n) => Effect.succeed(n > 10)));
+      // const program = repeat(Schedule.recurWhileEffect((n) => Effect.sync(n > 10)));
 
       // const result = await program.unsafeRunPromise();
 
@@ -152,7 +152,7 @@ describe.concurrent("Schedule", () => {
     })
 
     it.skip("for 'recurUntilEffect(cond)' repeats until the effectful cond is satisfied", async () => {
-      // const program = repeat(Schedule.recurUntilEffect((n) => Effect.succeed(n > 10)));
+      // const program = repeat(Schedule.recurUntilEffect((n) => Effect.sync(n > 10)));
 
       // const result = await program.unsafeRunPromise();
 
@@ -178,7 +178,7 @@ describe.concurrent("Schedule", () => {
     })
 
     it.skip("as long as the effectful condition f holds", async () => {
-      // const program = repeat(Schedule.collectWhileEffect((n) => Effect.succeed(n > 10)));
+      // const program = repeat(Schedule.collectWhileEffect((n) => Effect.sync(n > 10)));
 
       // const result = await program.unsafeRunPromise();
 
@@ -194,7 +194,7 @@ describe.concurrent("Schedule", () => {
     })
 
     it.skip("until the effectful condition f fails", async () => {
-      // const program = repeat(Schedule.collectUntilEffect((n) => Effect.succeed(n > 10)));
+      // const program = repeat(Schedule.collectUntilEffect((n) => Effect.sync(n > 10)));
 
       // const result = await program.unsafeRunPromise();
 
@@ -207,8 +207,8 @@ describe.concurrent("Schedule", () => {
       const program = Ref.make(0)
         .flatMap(alwaysFail)
         .foldEffect(
-          (e) => Effect.succeed(e),
-          () => Effect.succeed("it should never be a success")
+          (e) => Effect.sync(e),
+          () => Effect.sync("it should never be a success")
         )
 
       const result = await program.unsafeRunPromise()

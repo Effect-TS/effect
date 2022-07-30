@@ -81,7 +81,7 @@ export function forEachDiscard<R, E, A, X>(
   f: (a: A) => Effect<R, E, X>,
   __tsplusTrace?: string
 ): Effect<R, E, void> {
-  return Effect.succeed(as).flatMap((collection) => forEachDiscardLoop(collection[Symbol.iterator](), f))
+  return Effect.sync(as).flatMap((collection) => forEachDiscardLoop(collection[Symbol.iterator](), f))
 }
 
 function forEachDiscardLoop<R, E, A, X>(
@@ -127,12 +127,12 @@ function forEachParUnbounded<R, E, A, B>(
   __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
   return Effect.suspendSucceed(
-    Effect.succeed<B[]>([]).flatMap((array) =>
+    Effect.sync<B[]>([]).flatMap((array) =>
       forEachParUnboundedDiscard(
         as().map((a, n) => [a, n] as [A, number]),
         ([a, n]) =>
           Effect.suspendSucceed(f(a)).flatMap((b) =>
-            Effect.succeed(() => {
+            Effect.sync(() => {
               array[n] = b
             })
           )
@@ -158,7 +158,7 @@ function forEachParN<R, E, A, B>(
     const size = as0.size
 
     if (size === 0) {
-      return Effect.succeedNow(Chunk.empty())
+      return Effect.succeed(Chunk.empty())
     }
 
     function worker(
@@ -174,7 +174,7 @@ function forEachParN<R, E, A, B>(
             ({ tuple: [a, n] }) =>
               f(a)
                 .tap((b) =>
-                  Effect.succeed(() => {
+                  Effect.sync(() => {
                     array[n] = b
                   })
                 )
@@ -183,7 +183,7 @@ function forEachParN<R, E, A, B>(
         )
     }
 
-    return Effect.succeed(new Array<B>(size)).flatMap((array) =>
+    return Effect.sync(new Array<B>(size)).flatMap((array) =>
       makeBoundedQueue<Tuple<[A, number]>>(size).flatMap((queue) =>
         queue
           .offerAll(as0.zipWithIndex)
@@ -214,12 +214,12 @@ export function forEachParWithIndex<R, E, A, B>(
   __tsplusTrace?: string
 ): Effect<R, E, Chunk<B>> {
   return Effect.suspendSucceed(
-    Effect.succeed<B[]>([]).flatMap((array) =>
+    Effect.sync<B[]>([]).flatMap((array) =>
       Effect.forEachParDiscard(
         as().map((a, n) => [a, n] as [A, number]),
         ([a, n]) =>
           Effect.suspendSucceed(f(a, n)).flatMap((b) =>
-            Effect.succeed(() => {
+            Effect.sync(() => {
               array[n] = b
             })
           )
@@ -278,7 +278,7 @@ function forEachParUnboundedDiscard<R, E, A, X>(
         Effect.forEach(bs, (a) =>
           graft(
             restore(Effect.suspendSucceed(f(a))).foldCauseEffect(
-              (cause) => deferred.fail(undefined) > Effect.failCauseNow(cause),
+              (cause) => deferred.fail(undefined) > Effect.failCause(cause),
               () => {
                 if (ref.incrementAndGet() === size) {
                   deferred.unsafeDone(Effect.unit)
@@ -296,11 +296,11 @@ function forEachParUnboundedDiscard<R, E, A, X>(
               (exits) => {
                 const collected = Exit.collectAllPar(exits)
                 if (collected._tag === "Some" && collected.value._tag === "Failure") {
-                  return Effect.failCause(
+                  return Effect.failCauseSync(
                     Cause.both(cause.stripFailures, collected.value.cause)
                   )
                 }
-                return Effect.failCause(cause.stripFailures)
+                return Effect.failCauseSync(cause.stripFailures)
               }
             ),
           (_) => Effect.forEachDiscard(fibers, (fiber) => fiber.inheritRefs)
@@ -606,7 +606,7 @@ export function makeBoundedQueue<A>(
   requestedCapacity: number,
   __tsplusTrace?: string
 ): Effect<never, never, Queue<A>> {
-  return Effect.succeed(MutableQueue.bounded<A>(requestedCapacity)).flatMap((queue) =>
+  return Effect.sync(MutableQueue.bounded<A>(requestedCapacity)).flatMap((queue) =>
     createQueue(queue, new BackPressureStrategy())
   )
 }
@@ -636,7 +636,7 @@ const UnsafeQueueProto: any = {
     return Effect.suspendSucceed(
       (this.shutdownFlag as AtomicBoolean).get
         ? Effect.interrupt
-        : Effect.succeedNow(
+        : Effect.succeed(
           (this.queue as MutableQueue<unknown>).size - (this.takers as MutableQueue<Deferred<never, unknown>>).size +
             (this.strategy as Strategy<unknown>).surplusSize
         )
@@ -646,7 +646,7 @@ const UnsafeQueueProto: any = {
     return (this.shutdownHook as Deferred<never, void>).await()
   },
   get isShutdown() {
-    return Effect.succeed(() => (this.shutdownFlag as AtomicBoolean).get)
+    return Effect.sync(() => (this.shutdownFlag as AtomicBoolean).get)
   },
   get shutdown() {
     return Effect.suspendSucceedWith((_, fiberId) => {
@@ -681,7 +681,7 @@ const UnsafeQueueProto: any = {
         noRemaining = false
       }
       if (noRemaining) {
-        return Effect.succeedNow(true)
+        return Effect.succeed(true)
       }
       // Not enough takers, offer to the queue
       const succeeded = (this.queue as MutableQueue<unknown>).offer(a)
@@ -691,7 +691,7 @@ const UnsafeQueueProto: any = {
         this.takers as MutableQueue<Deferred<never, unknown>>
       )
       return succeeded
-        ? Effect.succeedNow(true)
+        ? Effect.succeed(true)
         : (this.strategy as Strategy<unknown>).handleSurplus(
           Chunk.single(a),
           this.queue as MutableQueue<unknown>,
@@ -719,7 +719,7 @@ const UnsafeQueueProto: any = {
         unsafeCompleteDeferred(taker, item)
       })
       if (remaining.isEmpty) {
-        return Effect.succeedNow(true)
+        return Effect.succeed(true)
       }
       // Not enough takers, offer to the queue
       const surplus = unsafeOfferAll(this.queue as MutableQueue<unknown>, remaining)
@@ -729,7 +729,7 @@ const UnsafeQueueProto: any = {
         this.takers as MutableQueue<Deferred<never, unknown>>
       )
       return surplus.isEmpty
-        ? Effect.succeedNow(true)
+        ? Effect.succeed(true)
         : (this.strategy as Strategy<unknown>).handleSurplus(
           surplus,
           this.queue as MutableQueue<unknown>,
@@ -749,7 +749,7 @@ const UnsafeQueueProto: any = {
           this.queue as MutableQueue<unknown>,
           this.takers as MutableQueue<Deferred<never, unknown>>
         )
-        return Effect.succeedNow(item)
+        return Effect.succeed(item)
       } else {
         // Add the deferred to takers, then:
         // - Try to take again in case a value was added since
@@ -765,7 +765,7 @@ const UnsafeQueueProto: any = {
           )
           return (this.shutdownFlag as AtomicBoolean).get ? Effect.interrupt : deferred.await()
         }).onInterrupt(() => {
-          return Effect.succeed(unsafeRemove(this.takers as MutableQueue<Deferred<never, unknown>>, deferred))
+          return Effect.sync(unsafeRemove(this.takers as MutableQueue<Deferred<never, unknown>>, deferred))
         })
       }
     })
@@ -774,7 +774,7 @@ const UnsafeQueueProto: any = {
     return Effect.suspendSucceed(() =>
       (this.shutdownFlag as AtomicBoolean).get
         ? Effect.interrupt
-        : Effect.succeed(() => {
+        : Effect.sync(() => {
           const as = unsafePollAll(this.queue as MutableQueue<unknown>)
           ;(this.strategy as Strategy<unknown>).unsafeOnQueueEmptySpace(
             this.queue as MutableQueue<unknown>,
@@ -788,7 +788,7 @@ const UnsafeQueueProto: any = {
     return Effect.suspendSucceed(() =>
       (this.shutdownFlag as AtomicBoolean).get
         ? Effect.interrupt
-        : Effect.succeed(() => {
+        : Effect.sync(() => {
           const as = unsafePollN(this.queue as MutableQueue<unknown>, n)
           ;(this.strategy as Strategy<unknown>).unsafeOnQueueEmptySpace(
             this.queue as MutableQueue<unknown>,
@@ -844,7 +844,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
         this.unsafeOnQueueEmptySpace(queue, takers)
         unsafeCompleteTakers(this, queue, takers)
         return isShutdown.get ? Effect.interrupt : deferred.await()
-      }).onInterrupt(() => Effect.succeed(this.unsafeRemove(deferred)))
+      }).onInterrupt(() => Effect.sync(this.unsafeRemove(deferred)))
     })
   }
 
@@ -902,7 +902,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
   get shutdown(): Effect<never, never, void> {
     return Do(($) => {
       const fiberId = $(Effect.fiberId)
-      const putters = $(Effect.succeed(unsafePollAll(this.putters)))
+      const putters = $(Effect.sync(unsafePollAll(this.putters)))
       $(Effect.forEachPar(
         putters,
         ({ tuple: [_, promise, lastItem] }) => lastItem ? promise.interruptAs(fiberId) : Effect.unit

@@ -45,6 +45,6 @@ function loopInternal<Z, R, E, A>(
           return as
         })
       )
-      : Effect.succeed(ListBuffer.empty())
+      : Effect.sync(ListBuffer.empty())
   })
 }

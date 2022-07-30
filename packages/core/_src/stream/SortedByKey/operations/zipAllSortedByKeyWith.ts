@@ -89,7 +89,7 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
             .unsome
             .zipPar(pullRight.unsome)
             .foldEffect(
-              (e) => Effect.succeedNow(Exit.fail(Maybe.some(e))),
+              (e) => Effect.succeed(Exit.fail(Maybe.some(e))),
               ({ tuple: [a, b] }) => {
                 if (a.isSome() && b.isSome()) {
                   const leftChunk = a.value
@@ -102,7 +102,7 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
                   } else if (rightChunk.isEmpty) {
                     return pull(new PullRight(leftChunk), pullLeft, pullRight)
                   } else {
-                    return Effect.succeedNow(
+                    return Effect.succeed(
                       Exit.succeed(mergeSortedByKeyChunk(leftChunk, rightChunk))
                     )
                   }
@@ -111,7 +111,7 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
 
                   return leftChunk.isEmpty
                     ? pull(new DrainLeft(), pullLeft, pullRight)
-                    : Effect.succeedNow(
+                    : Effect.succeed(
                       Exit.succeed(
                         Tuple(
                           leftChunk.map(({ tuple: [k, a] }) => Tuple(k, left(a))),
@@ -124,7 +124,7 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
 
                   return rightChunk.isEmpty
                     ? pull(new DrainLeft(), pullLeft, pullRight)
-                    : Effect.succeedNow(
+                    : Effect.succeed(
                       Exit.succeed(
                         Tuple(
                           rightChunk.map(({ tuple: [k, b] }) => Tuple(k, right(b))),
@@ -133,7 +133,7 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
                       )
                     )
                 } else {
-                  return Effect.succeedNow(Exit.fail(Maybe.none))
+                  return Effect.succeed(Exit.fail(Maybe.none))
                 }
               }
             )
@@ -149,7 +149,7 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
                   never,
                   Exit<Maybe<E>, Tuple<[Chunk<Tuple<[K, C2]>>, DrainRight]>>
                 > =>
-                  Effect.succeedNow(
+                  Effect.succeed(
                     Exit.succeed(
                       Tuple(
                         rightChunk.map(({ tuple: [k, b] }) => Tuple(k, right(b))),
@@ -157,12 +157,12 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
                       )
                     )
                   ),
-                (e) => Effect.succeedNow(Exit.fail(Maybe.some(e)))
+                (e) => Effect.succeed(Exit.fail(Maybe.some(e)))
               ),
             (leftChunk) =>
               leftChunk.isEmpty
                 ? pull(new PullLeft(rightChunk), pullLeft, pullRight)
-                : Effect.succeedNow(
+                : Effect.succeed(
                   Exit.succeed(mergeSortedByKeyChunk(leftChunk, rightChunk))
                 )
           )
@@ -178,7 +178,7 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
                   never,
                   Exit<Maybe<E2>, Tuple<[Chunk<Tuple<[K, C1]>>, DrainLeft]>>
                 > =>
-                  Effect.succeedNow(
+                  Effect.succeed(
                     Exit.succeed(
                       Tuple(
                         leftChunk.map(({ tuple: [k, a] }) => Tuple(k, left(a))),
@@ -186,12 +186,12 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
                       )
                     )
                   ),
-                (e) => Effect.succeedNow(Exit.fail(Maybe.some(e)))
+                (e) => Effect.succeed(Exit.fail(Maybe.some(e)))
               ),
             (rightChunk) =>
               rightChunk.isEmpty
                 ? pull(new PullRight(leftChunk), pullLeft, pullRight)
-                : Effect.succeedNow(
+                : Effect.succeed(
                   Exit.succeed(mergeSortedByKeyChunk(leftChunk, rightChunk))
                 )
           )

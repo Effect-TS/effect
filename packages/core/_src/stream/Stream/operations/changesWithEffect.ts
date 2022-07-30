@@ -29,7 +29,7 @@ function writer<R, E, A, R2, E2>(
           Tuple(last, Chunk.empty<A>()),
           ({ tuple: [option, as] }, a) =>
             option.fold(
-              Effect.succeedNow(Tuple(Maybe.some(a), as.append(a))),
+              Effect.succeed(Tuple(Maybe.some(a), as.append(a))),
               (value) => f(value, a).map((b) => b ? Tuple(Maybe.some(a), as) : Tuple(Maybe.some(a), as.append(a)))
             )
         )

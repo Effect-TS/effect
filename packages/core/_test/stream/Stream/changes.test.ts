@@ -23,7 +23,7 @@ describe.concurrent("Stream", () => {
       const stream = Stream(1, 2, 3, 3, 4, 5)
       const program = Effect.struct({
         actual: stream
-          .changesWithEffect((l, r) => Effect.succeed(l === r))
+          .changesWithEffect((l, r) => Effect.sync(l === r))
           .runCollect
           .map((chunk) => List.from(chunk)),
         expected: stream.runCollect.map((as) =>

@@ -9,6 +9,6 @@
 export function map<A, B>(f: (a: A) => B) {
   return <E>(self: Fiber<E, A>): Fiber<E, B> =>
     self.mapEffect(
-      (a) => Effect.succeedNow(f(a))
+      (a) => Effect.succeed(f(a))
     )
 }

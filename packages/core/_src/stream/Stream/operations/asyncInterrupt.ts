@@ -24,7 +24,7 @@ export function asyncInterrupt<R, E, A>(
         ))
       .bind("runtime", () => Effect.runtime<R>())
       .bind("eitherStream", ({ output, runtime }) =>
-        Effect.succeed<Either<Effect<R, never, void>, Stream<R, E, A>>>(
+        Effect.sync<Either<Effect<R, never, void>, Stream<R, E, A>>>(
           register(
             Emit(async (k) => {
               try {

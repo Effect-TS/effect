@@ -113,7 +113,7 @@ describe.concurrent("TSemaphore", () => {
       const called = vi.fn()
       const program = Effect.Do()
         .bind("semaphore", () => TSemaphore.make(0).commit)
-        .bindValue("effect", ({ semaphore }) => Effect.succeed(() => called()).apply(semaphore.withPermit))
+        .bindValue("effect", ({ semaphore }) => Effect.sync(() => called()).apply(semaphore.withPermit))
         .bind("fiber", ({ effect }) => effect.fork)
         .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ fiber }) => fiber.join)

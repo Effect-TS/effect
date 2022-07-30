@@ -10,6 +10,6 @@ export function forkWithErrorHandler<E, X>(
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, never, Fiber.Runtime<E, A>> =>
     self
-      .onError((cause) => cause.failureOrCause.fold(handler, Effect.failCauseNow))
+      .onError((cause) => cause.failureOrCause.fold(handler, Effect.failCause))
       .fork
 }

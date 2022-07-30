@@ -10,7 +10,7 @@ function equalSamples<A, B>(
   right: Sample<never, B>
 ): Effect<never, never, boolean> {
   return !Equals.equals(left.value, right.value) ?
-    Effect.succeed(false) :
+    Effect.sync(false) :
     equalShrinks(left.shrink, right.shrink)
 }
 
@@ -23,9 +23,9 @@ function equalShrinks<A, B>(
       return equalSamples(left.value, right.value)
     }
     if (left.isNone() && right.isNone()) {
-      return Effect.succeedNow(true)
+      return Effect.succeed(true)
     }
-    return Effect.succeedNow(false)
+    return Effect.succeed(false)
   }).runFold(true, (a, b) => a && b)
 }
 
@@ -55,13 +55,13 @@ describe.concurrent("Sample", () => {
         sample.flatMap((a) => f(a).flatMap(g))
       ))
       assert.isTrue(result)
-    }).unsafeRunPromise(), 10_000)
+    }).unsafeRunPromise(), 15_000)
 
   it("traverse fusion", () =>
     Do(($) => {
       const sample = Sample.shrinkIntegral(0)(5)
-      const f = (n: number): Effect<never, never, number> => Effect.succeed(n + 2)
-      const g = (n: number): Effect<never, never, number> => Effect.succeed(n * 3)
+      const f = (n: number): Effect<never, never, number> => Effect.sync(n + 2)
+      const g = (n: number): Effect<never, never, number> => Effect.sync(n * 3)
       const result = $(equalEffects(
         sample.forEach((a) => f(a).flatMap(g)),
         sample.forEach(f).flatMap((sample) => sample.forEach(g))

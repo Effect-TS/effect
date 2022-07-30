@@ -10,6 +10,6 @@ export function reduce<A, Z, R, E>(
   __tsplusTrace?: string
 ): Effect<R, E, Z> {
   return Effect.suspendSucceed(
-    as().reduce(Effect.succeed(z) as Effect<R, E, Z>, (acc, el) => acc.flatMap((a) => f(a, el)))
+    as().reduce(Effect.sync(z) as Effect<R, E, Z>, (acc, el) => acc.flatMap((a) => f(a, el)))
   )
 }

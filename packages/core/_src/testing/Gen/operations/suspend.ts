@@ -5,5 +5,5 @@
  * @tsplus static effect/core/testing/Gen.Ops suspend
  */
 export function suspend<R, A>(gen: LazyArg<Gen<R, A>>): Gen<R, A> {
-  return Gen.fromEffect(Effect.succeed(gen)).flatten
+  return Gen.fromEffect(Effect.sync(gen)).flatten
 }

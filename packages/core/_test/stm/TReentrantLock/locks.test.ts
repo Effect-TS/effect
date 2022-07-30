@@ -6,7 +6,7 @@ describe.concurrent("TReentrantLock", () => {
     it("1 read lock", async () => {
       const program = Do(($) => {
         const lock = $(TReentrantLock.make().commit)
-        const count = $(Effect.scoped(lock.readLock.flatMap((count) => Effect.succeed(count))))
+        const count = $(Effect.scoped(lock.readLock.flatMap((count) => Effect.sync(count))))
 
         return count === 1
       })
@@ -21,7 +21,7 @@ describe.concurrent("TReentrantLock", () => {
         const lock = $(TReentrantLock.make().commit)
         const count = $(
           Effect.scoped(
-            lock.readLock.flatMap(() => Effect.scoped(lock.readLock.flatMap((count) => Effect.succeed(count))))
+            lock.readLock.flatMap(() => Effect.scoped(lock.readLock.flatMap((count) => Effect.sync(count))))
           )
         )
 
@@ -193,7 +193,7 @@ describe.concurrent("TReentrantLock", () => {
           Effect.scoped(
             lock.readLock.flatMap(() =>
               wlatch.succeed(undefined) >
-                Effect.scoped(lock.writeLock.flatMap((count) => Effect.succeed(count)))
+                Effect.scoped(lock.writeLock.flatMap((count) => Effect.sync(count)))
             )
           ).fork
         )

@@ -7,5 +7,5 @@
  */
 export function addDelay<Out>(f: (out: Out) => Duration) {
   return <State, Env, In>(self: Schedule<State, Env, In, Out>): Schedule<State, Env, In, Out> =>
-    self.addDelayEffect((out) => Effect.succeed(f(out)))
+    self.addDelayEffect((out) => Effect.sync(f(out)))
 }

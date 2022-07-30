@@ -9,7 +9,7 @@ export function unright<R, B, E, A>(
   __tsplusTrace?: string
 ): Effect<R, E, Either<B, A>> {
   return self.foldEffect(
-    (either) => either.fold((b) => Effect.succeedNow(Either.left(b)), Effect.failNow),
-    (a) => Effect.succeedNow(Either.right(a))
+    (either) => either.fold((b) => Effect.succeed(Either.left(b)), Effect.fail),
+    (a) => Effect.succeed(Either.right(a))
   )
 }

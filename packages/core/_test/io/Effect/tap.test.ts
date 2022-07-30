@@ -37,7 +37,7 @@ describe.concurrent("Effect", () => {
     it("effectually peeks at the failure of this effect", async () => {
       const program = Ref.make(0)
         .tap((ref) =>
-          Effect.fail(42)
+          Effect.failSync(42)
             .tapEither((either) =>
               either.fold(
                 (n) => ref.set(n),
@@ -56,7 +56,7 @@ describe.concurrent("Effect", () => {
     it("effectually peeks at the success of this effect", async () => {
       const program = Ref.make(0)
         .tap((ref) =>
-          Effect.succeed(42)
+          Effect.sync(42)
             .tapEither((either) =>
               either.fold(
                 () => ref.set(-1),

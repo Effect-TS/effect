@@ -4,4 +4,4 @@
  *
  * @tsplus static effect/core/io/Fiber.Ops roots
  */
-export const roots: Effect<never, never, Chunk<Fiber.Runtime<any, any>>> = Effect.succeed(Chunk.from(FiberScope._roots))
+export const roots: Effect<never, never, Chunk<Fiber.Runtime<any, any>>> = Effect.sync(Chunk.from(FiberScope._roots))

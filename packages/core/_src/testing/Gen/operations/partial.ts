@@ -19,8 +19,8 @@ export function partial<NER extends Record<string, Gen<any, any>>>(
       Gen.unwrap(
         Effect.ifEffect(
           Random.nextBoolean,
-          Effect.succeed(b.zipWith(gen, (r, a) => ({ ...r, [k]: a }))),
-          Effect.succeed(b)
+          Effect.sync(b.zipWith(gen, (r, a) => ({ ...r, [k]: a }))),
+          Effect.sync(b)
         )
       ),
     Gen.constant({}) as Gen<any, any>

@@ -42,7 +42,7 @@ export function debounce<R, E, A>(
     Stream.unwrap(
       Effect.transplant((grafter) =>
         Do(($) => {
-          const duration = $(Effect.succeed(duration0))
+          const duration = $(Effect.sync(duration0))
           const handoff = $(Handoff.make<HandoffSignal<E, A>>())
 
           function enqueue(last: Chunk<A>, __tsplusTrace?: string) {
@@ -116,7 +116,7 @@ export function debounce<R, E, A>(
                       exit.fold(
                         (cause) => current.interrupt.as(Channel.failCause(cause)),
                         (chunk) =>
-                          Effect.succeedNow(
+                          Effect.succeed(
                             Channel.write(chunk) > consumer(new Current(current))
                           )
                       ),

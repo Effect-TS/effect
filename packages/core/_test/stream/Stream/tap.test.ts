@@ -17,7 +17,7 @@ describe.concurrent("Stream", () => {
 
     it("laziness on chunks", async () => {
       const program = Stream(1, 2, 3)
-        .tap((n) => Effect.when(n === 3, Effect.fail("fail")))
+        .tap((n) => Effect.when(n === 3, Effect.failSync("fail")))
         .either
         .runCollect
 

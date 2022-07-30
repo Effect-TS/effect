@@ -24,7 +24,7 @@ export function windowed(
   return makeWithState(
     Tuple(Maybe.emptyOf(), 0),
     (now, input, { tuple: [option, n] }) =>
-      Effect.succeed(
+      Effect.sync(
         option.fold(
           () =>
             Tuple(

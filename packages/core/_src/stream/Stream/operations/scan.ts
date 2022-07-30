@@ -13,6 +13,6 @@ export function scan<S, A>(
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, S> =>
     self.scanEffect(
       s,
-      (s, a) => Effect.succeedNow(f(s, a))
+      (s, a) => Effect.succeed(f(s, a))
     )
 }

@@ -19,7 +19,7 @@ export function foldEffect<Out, Env1, Z>(
         ._step(now, input, s)
         .flatMap(({ tuple: [s, out, decision] }): Effect<Env | Env1, never, Tuple<[Tuple<[State, Z]>, Z, Decision]>> =>
           decision._tag === "Done"
-            ? Effect.succeed(Tuple(Tuple(s, z), z, decision))
+            ? Effect.sync(Tuple(Tuple(s, z), z, decision))
             : f(z, out).map((z2) => Tuple(Tuple(s, z2), z, decision))
         ))
 }

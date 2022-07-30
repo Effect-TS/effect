@@ -20,7 +20,7 @@ export function modifyDelayEffect<Out, Env1>(
       (now, input, state) =>
         self._step(now, input, state).flatMap(({ tuple: [state, out, decision] }) => {
           if (decision._tag === "Done") {
-            return Effect.succeedNow(Tuple(state, out, decision))
+            return Effect.succeed(Tuple(state, out, decision))
           }
 
           const delay = Interval(now, decision.interval.startMillis).size

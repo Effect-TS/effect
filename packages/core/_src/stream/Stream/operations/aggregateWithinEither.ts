@@ -67,7 +67,7 @@ export function aggregateWithinEither<A, R2, E2, A2, S, R3, B, C>(
       > = Channel.unwrap(
         sinkLeftovers.getAndSet(Chunk.empty<A | A2>()).flatMap((leftovers) =>
           leftovers.isNonEmpty
-            ? consumed.set(true).zipRight(Effect.succeed(Channel.write(leftovers) > handoffConsumer))
+            ? consumed.set(true).zipRight(Effect.sync(Channel.write(leftovers) > handoffConsumer))
             : handoff.take.map((signal) => {
               switch (signal._tag) {
                 case "Emit": {

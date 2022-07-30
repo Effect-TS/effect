@@ -61,8 +61,8 @@ export function mergeAllWith<
           pull
             .flatMap((either) =>
               either.fold(
-                (done) => Effect.succeed(Maybe.some(done)),
-                (out) => queue.offer(Effect.succeedNow(Either.right(out))).as(Maybe.none)
+                (done) => Effect.sync(Maybe.some(done)),
+                (out) => queue.offer(Effect.succeed(Either.right(out))).as(Maybe.none)
               )
             )
             .repeatUntil((option) => option.isSome())
@@ -72,7 +72,7 @@ export function mergeAllWith<
             )
             .catchAllCause(
               (cause) =>
-                queue.offer(Effect.failCause(cause)).zipRight(errorSignal.succeed(undefined).unit)
+                queue.offer(Effect.failCauseSync(cause)).zipRight(errorSignal.succeed(undefined).unit)
             )
         $(
           pull
@@ -80,7 +80,7 @@ export function mergeAllWith<
               (cause) =>
                 getChildren
                   .flatMap(Fiber.interruptAll)
-                  .zipRight(queue.offer(Effect.failCause(cause)).as(false)),
+                  .zipRight(queue.offer(Effect.failCauseSync(cause)).as(false)),
               (either) =>
                 either.fold(
                   (outDone) =>
@@ -96,10 +96,10 @@ export function mergeAllWith<
                             .get()
                             .flatMap((option) =>
                               option.fold(
-                                queue.offer(Effect.succeed(Either.left(outDone))),
+                                queue.offer(Effect.sync(Either.left(outDone))),
                                 (lastDone) =>
                                   queue.offer(
-                                    Effect.succeed(Either.left(f(lastDone, outDone)))
+                                    Effect.sync(Either.left(f(lastDone, outDone)))
                                   )
                               )
                             )

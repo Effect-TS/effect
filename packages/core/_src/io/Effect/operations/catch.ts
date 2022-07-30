@@ -15,7 +15,7 @@ export function _catch<N extends keyof E, K extends E[N] & string, E, R1, E1, A1
       if (tag in e && e[tag] === k) {
         return f(e as any)
       }
-      return Effect.failNow(e as any)
+      return Effect.fail(e as any)
     })
 }
 

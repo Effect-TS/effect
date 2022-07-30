@@ -11,5 +11,5 @@ export function fromChunkHubScopedWithShutdown<A>(
   hub: LazyArg<Hub<Chunk<A>>>,
   __tsplusTrace?: string
 ): Effect<Scope, never, Stream<never, never, A>> {
-  return Effect.succeed(hub).flatMap((hub) => Stream.fromChunkHubScoped(hub).ensuring(hub.shutdown))
+  return Effect.sync(hub).flatMap((hub) => Stream.fromChunkHubScoped(hub).ensuring(hub.shutdown))
 }

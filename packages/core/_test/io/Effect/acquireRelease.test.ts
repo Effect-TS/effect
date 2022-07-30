@@ -4,8 +4,8 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("release", () => Ref.make(false))
         .bind("result", ({ release }) =>
-          Effect.succeed(42).acquireUseRelease(
-            (n) => Effect.succeed(n + 1),
+          Effect.sync(42).acquireUseRelease(
+            (n) => Effect.sync(n + 1),
             () => release.set(true)
           ))
         .bind("released", ({ release }) => release.get())
@@ -20,8 +20,8 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("release", () => Ref.make(false))
         .bind("result", ({ release }) =>
-          Effect.succeed(42).acquireUseRelease(
-            (n) => Effect.succeed(n + 1),
+          Effect.sync(42).acquireUseRelease(
+            (n) => Effect.sync(n + 1),
             () => release.set(true)
           ).disconnect)
         .bind("released", ({ release }) => release.get())
@@ -39,8 +39,8 @@ describe.concurrent("Effect", () => {
         .bind("release", () => Ref.make(false))
         .bind("result", ({ release }) =>
           Effect.acquireUseReleaseDiscard(
-            Effect.succeed(42),
-            Effect.succeed(0),
+            Effect.sync(42),
+            Effect.sync(0),
             release.set(true)
           ))
         .bind("released", ({ release }) => release.get())
@@ -56,8 +56,8 @@ describe.concurrent("Effect", () => {
         .bind("release", () => Ref.make(false))
         .bind("result", ({ release }) =>
           Effect.acquireUseReleaseDiscard(
-            Effect.succeed(42),
-            Effect.succeed(0),
+            Effect.sync(42),
+            Effect.sync(0),
             release.set(true)
           ).disconnect)
         .bind("released", ({ release }) => release.get())
@@ -75,8 +75,8 @@ describe.concurrent("Effect", () => {
         .bind("release", () => Ref.make(false))
         .bind("result", ({ release }) =>
           Effect.acquireUseReleaseExit(
-            Effect.succeed(42),
-            () => Effect.succeed(0),
+            Effect.sync(42),
+            () => Effect.sync(0),
             () => release.set(true)
           ).disconnect)
         .bind("released", ({ release }) => release.get())
@@ -92,14 +92,14 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("exit", () =>
           Effect.acquireUseReleaseExit(
-            Effect.succeed(42),
-            () => Effect.fail("use failed"),
+            Effect.sync(42),
+            () => Effect.failSync("use failed"),
             () => Effect.die(releaseDied)
           ).exit)
         .flatMap(({ exit }) =>
           exit.foldEffect(
-            (cause) => Effect.succeed(cause),
-            () => Effect.fail("effect should have failed")
+            (cause) => Effect.sync(cause),
+            () => Effect.failSync("effect should have failed")
           )
         )
 
@@ -114,8 +114,8 @@ describe.concurrent("Effect", () => {
         .bind("release", () => Ref.make(false))
         .bind("result", ({ release }) =>
           Effect.acquireUseReleaseExit(
-            Effect.succeed(42),
-            () => Effect.succeed(0),
+            Effect.sync(42),
+            () => Effect.sync(0),
             () => release.set(true)
           ).disconnect)
         .bind("released", ({ release }) => release.get())
@@ -131,16 +131,16 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("exit", () =>
           Effect.acquireUseReleaseExit(
-            Effect.succeed(42),
-            () => Effect.fail("use failed"),
+            Effect.sync(42),
+            () => Effect.failSync("use failed"),
             () => Effect.die(releaseDied)
           )
             .disconnect
             .exit)
         .flatMap(({ exit }) =>
           exit.foldEffect(
-            (cause) => Effect.succeed(cause),
-            () => Effect.fail("effect should have failed")
+            (cause) => Effect.sync(cause),
+            () => Effect.failSync("effect should have failed")
           )
         )
 
@@ -156,7 +156,7 @@ describe.concurrent("Effect", () => {
         .bind("release", () => Ref.make(false))
         .bind("exit", ({ release }) =>
           Effect.acquireUseReleaseExit(
-            Effect.succeed(42),
+            Effect.sync(42),
             (): Effect<never, unknown, unknown> => {
               throw releaseDied
             },
@@ -166,8 +166,8 @@ describe.concurrent("Effect", () => {
             .exit)
         .bind("cause", ({ exit }) =>
           exit.foldEffect(
-            (cause) => Effect.succeed(cause),
-            () => Effect.fail("effect should have failed")
+            (cause) => Effect.sync(cause),
+            () => Effect.failSync("effect should have failed")
           ))
         .bind("released", ({ release }) => release.get())
 

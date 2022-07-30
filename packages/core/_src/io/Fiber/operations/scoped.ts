@@ -9,5 +9,5 @@ export function scoped<E, A>(
   self: Fiber<E, A>,
   __tsplusTrace?: string
 ): Effect<Scope, never, Fiber<E, A>> {
-  return Effect.acquireRelease(Effect.succeedNow(self), (fiber) => fiber.interrupt)
+  return Effect.acquireRelease(Effect.succeed(self), (fiber) => fiber.interrupt)
 }

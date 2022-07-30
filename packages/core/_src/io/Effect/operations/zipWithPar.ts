@@ -40,15 +40,17 @@ function coordinate<E, B, X, Y>(
         loser.interruptAs(fiberId).flatMap((loserExit) =>
           loserExit.fold(
             (loserCause) =>
-              leftWinner ? Effect.failCause(winnerCause & loserCause) : Effect.failCause(loserCause & winnerCause),
-            () => Effect.failCause(winnerCause)
+              leftWinner ?
+                Effect.failCauseSync(winnerCause & loserCause) :
+                Effect.failCauseSync(loserCause & winnerCause),
+            () => Effect.failCauseSync(winnerCause)
           )
         ),
       (a) =>
         loser.await.flatMap((loserExit) =>
           loserExit.fold<E, Y, Effect<never, E, B>>(
-            (loserCause) => Effect.failCause(loserCause),
-            (b) => winner.inheritRefs > loser.inheritRefs > Effect.succeed(f(a, b))
+            (loserCause) => Effect.failCauseSync(loserCause),
+            (b) => winner.inheritRefs > loser.inheritRefs > Effect.sync(f(a, b))
           )
         )
     )

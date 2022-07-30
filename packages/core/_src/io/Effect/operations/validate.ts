@@ -29,7 +29,7 @@ export function validate<R, E, A, B>(
 ): Effect<R, Chunk<E>, Chunk<B>> {
   return Effect.partition(as, f).flatMap(({ tuple: [es, bs] }) =>
     es.isEmpty
-      ? Effect.succeedNow(Chunk.from(bs))
-      : Effect.fail(es)
+      ? Effect.succeed(Chunk.from(bs))
+      : Effect.failSync(es)
   )
 }

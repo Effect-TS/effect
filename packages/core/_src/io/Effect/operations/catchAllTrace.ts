@@ -8,5 +8,5 @@ export function catchAllTrace<E, R2, E2, A2>(
   h: (tuple: Tuple<[E, Trace]>) => Effect<R2, E2, A2>,
   __tsplusTrace?: string
 ) {
-  return <R, A>(self: Effect<R, E, A>): Effect<R | R2, E2, A | A2> => self.foldTraceEffect(h, Effect.succeedNow)
+  return <R, A>(self: Effect<R, E, A>): Effect<R | R2, E2, A | A2> => self.foldTraceEffect(h, Effect.succeed)
 }

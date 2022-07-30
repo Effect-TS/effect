@@ -32,7 +32,7 @@ function loop<E, A, R1, E1, A1>(
   } else {
     return Channel.unwrap(
       pf(next.value).fold(
-        () => Effect.succeed(loop(chunkIterator, pf)),
+        () => Effect.sync(loop(chunkIterator, pf)),
         effect =>
           effect.map(
             a1 =>

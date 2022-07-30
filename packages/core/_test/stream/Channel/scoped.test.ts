@@ -1,7 +1,7 @@
 describe.concurrent("Channel", () => {
   describe.concurrent("scoped", () => {
     it("failure", async () => {
-      const program = Channel.scoped(Effect.fail("error")).runCollect
+      const program = Channel.scoped(Effect.failSync("error")).runCollect
 
       const result = await program.unsafeRunPromiseExit()
 

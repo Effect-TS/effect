@@ -20,7 +20,7 @@ export function foldWeightedEffect<R, E, R2, E2, In, S>(
     z,
     costFn,
     max,
-    (i) => Effect.succeedNow(Chunk.single(i)),
+    (i) => Effect.succeed(Chunk.single(i)),
     f
   )
 }

@@ -53,7 +53,7 @@ describe.concurrent("Effect", () => {
         .bind("output", () => Ref.make<number>(0))
         .tap(({ input, output }) =>
           (input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)).flipWith(
-            (effect) => effect.retryUntilEffect((n) => Effect.succeed(n === 0))
+            (effect) => effect.retryUntilEffect((n) => Effect.sync(n === 0))
           )
         )
         .flatMap(({ output }) => output.get())
@@ -68,7 +68,7 @@ describe.concurrent("Effect", () => {
         .tap((ref) =>
           ref
             .update((n) => n + 1)
-            .flipWith((effect) => effect.retryUntilEffect(() => Effect.succeed(true)))
+            .flipWith((effect) => effect.retryUntilEffect(() => Effect.sync(true)))
         )
         .flatMap((ref) => ref.get())
 
@@ -130,7 +130,7 @@ describe.concurrent("Effect", () => {
         .bind("output", () => Ref.make<number>(0))
         .tap(({ input, output }) =>
           (input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)).flipWith(
-            (effect) => effect.retryWhileEffect((n) => Effect.succeed(n >= 0))
+            (effect) => effect.retryWhileEffect((n) => Effect.sync(n >= 0))
           )
         )
         .flatMap(({ output }) => output.get())
@@ -145,7 +145,7 @@ describe.concurrent("Effect", () => {
         .tap((ref) =>
           ref
             .update((n) => n + 1)
-            .flipWith((effect) => effect.retryWhileEffect(() => Effect.succeed(false)))
+            .flipWith((effect) => effect.retryWhileEffect(() => Effect.sync(false)))
         )
         .flatMap((ref) => ref.get())
 

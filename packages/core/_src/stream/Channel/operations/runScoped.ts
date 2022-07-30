@@ -11,7 +11,7 @@ export function runScoped<Env, InErr, InDone, OutErr, OutDone>(
   self: Channel<Env, InErr, unknown, InDone, OutErr, never, OutDone>
 ): Effect<Env | Scope, OutErr, OutDone> {
   return Effect.acquireReleaseExit(
-    Effect.succeed(new ChannelExecutor(() => self, undefined, identity)),
+    Effect.sync(new ChannelExecutor(() => self, undefined, identity)),
     (exec, exit) => {
       const finalize = exec.close(exit)
       return finalize != null ? finalize : Effect.unit

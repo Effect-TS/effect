@@ -25,7 +25,7 @@ export function fixed(
   number
 > {
   return makeWithState(Tuple(Maybe.emptyOf(), 0), (now, _, { tuple: [option, n] }) =>
-    Effect.succeed(() => {
+    Effect.sync(() => {
       const interval0 = interval()
       const intervalMillis = interval0.millis
       return option.fold(

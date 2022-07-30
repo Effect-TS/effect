@@ -67,7 +67,7 @@ describe.concurrent("Sink", () => {
   describe.concurrent("foldEffect", () => {
     it("empty", async () => {
       const program = Stream.empty
-        .transduce(Sink.foldEffect<never, never, number, number>(0, constTrue, (a, b) => Effect.succeed(a + b)))
+        .transduce(Sink.foldEffect<never, never, number, number>(0, constTrue, (a, b) => Effect.sync(a + b)))
         .runCollect
 
       const result = await program.unsafeRunPromise()
@@ -90,7 +90,7 @@ describe.concurrent("Sink", () => {
                 Sink.foldEffect<never, never, number, number>(
                   0,
                   constTrue,
-                  (_, a) => effects.update((list) => list.prepend(a)) > Effect.succeed(30)
+                  (_, a) => effects.update((list) => list.prepend(a)) > Effect.sync(30)
                 )
               )
               .runCollect)
@@ -114,7 +114,7 @@ describe.concurrent("Sink", () => {
       it("equivalence with List.reduce", async () => {
         const program = Effect.struct({
           sinkResult: Stream(1, 2, 3)
-            .run(Sink.foldLeftEffect<never, never, number, string>("", (s, n) => Effect.succeed(s + n)))
+            .run(Sink.foldLeftEffect<never, never, number, string>("", (s, n) => Effect.sync(s + n)))
             .exit,
           foldResult: Stream(1, 2, 3)
             .runFold(List.empty<number>(), (acc, el) => acc.prepend(el))
@@ -146,7 +146,7 @@ describe.concurrent("Sink", () => {
     it("should fold until the effectful predicate is satisfied", async () => {
       const program = Stream(1, 1, 1, 1, 1, 1)
         .transduce(
-          Sink.foldUntilEffect<never, never, number, number>(0, 3, (n, a) => Effect.succeedNow(n + a))
+          Sink.foldUntilEffect<never, never, number, number>(0, 3, (n, a) => Effect.succeed(n + a))
         )
         .runCollect
 
@@ -231,9 +231,9 @@ describe.concurrent("Sink", () => {
         .transduce(
           Sink.foldWeightedEffect(
             List.empty<number>(),
-            (_, x: number) => Effect.succeed(x * 2),
+            (_, x: number) => Effect.sync(x * 2),
             12 as number,
-            (acc: List<number>, el) => Effect.succeed(acc.prepend(el))
+            (acc: List<number>, el) => Effect.sync(acc.prepend(el))
           )
         )
         .map((list: List<number>) => list.reverse)
@@ -256,10 +256,10 @@ describe.concurrent("Sink", () => {
         .transduce(
           Sink.foldWeightedDecomposeEffect(
             List.empty<number>(),
-            (_, i) => Effect.succeedNow(i),
+            (_, i) => Effect.succeed(i),
             4,
-            (i) => Effect.succeedNow(i > 1 ? Chunk(i - 1, 1) : Chunk(1)),
-            (acc: List<number>, el) => Effect.succeedNow(acc.prepend(el))
+            (i) => Effect.succeed(i > 1 ? Chunk(i - 1, 1) : Chunk(1)),
+            (acc: List<number>, el) => Effect.succeed(acc.prepend(el))
           )
         )
         .map((list) => list.reverse)
@@ -280,10 +280,10 @@ describe.concurrent("Sink", () => {
         .transduce(
           Sink.foldWeightedDecomposeEffect(
             0 as number,
-            (_, n: number) => Effect.succeedNow(n),
+            (_, n: number) => Effect.succeed(n),
             1000,
-            (n) => Effect.succeedNow(Chunk.single(n)),
-            (a, b) => Effect.succeedNow(a + b)
+            (n) => Effect.succeed(Chunk.single(n)),
+            (a, b) => Effect.succeed(a + b)
           )
         )
         .runCollect

@@ -8,8 +8,8 @@ describe.concurrent("Effect", () => {
         .tap(({ ref }) => Effect.when(true, ref.set(2)))
         .bind("v2", ({ ref }) => ref.get())
         .bindValue("failure", () => new Error("expected"))
-        .tap(({ failure }) => Effect.when(false, Effect.fail(failure)))
-        .bind("failed", ({ failure }) => Effect.when(true, Effect.fail(failure)).either)
+        .tap(({ failure }) => Effect.when(false, Effect.failSync(failure)))
+        .bind("failed", ({ failure }) => Effect.when(true, Effect.failSync(failure)).either)
 
       const { failed, failure, v1, v2 } = await program.unsafeRunPromise()
 
@@ -49,14 +49,14 @@ describe.concurrent("Effect", () => {
         .bind("ref", () => Ref.make(false))
         .tap(({ ref }) =>
           Effect.whenCaseEffect(
-            Effect.succeed(v1),
+            Effect.sync(v1),
             (option) => option._tag === "Some" ? Maybe.some(ref.set(true)) : Maybe.none
           )
         )
         .bind("res1", ({ ref }) => ref.get())
         .tap(({ ref }) =>
           Effect.whenCaseEffect(
-            Effect.succeed(v2),
+            Effect.sync(v2),
             (option) => option._tag === "Some" ? Maybe.some(ref.set(true)) : Maybe.none
           )
         )
@@ -83,10 +83,10 @@ describe.concurrent("Effect", () => {
         .bind("v2", ({ effectRef }) => effectRef.get())
         .bind("c2", ({ conditionRef }) => conditionRef.get())
         .bindValue("failure", () => new Error("expected"))
-        .tap(({ conditionFalse, failure }) => Effect.whenEffect(conditionFalse, Effect.fail(failure)))
+        .tap(({ conditionFalse, failure }) => Effect.whenEffect(conditionFalse, Effect.failSync(failure)))
         .bind(
           "failed",
-          ({ conditionTrue, failure }) => Effect.whenEffect(conditionTrue, Effect.fail(failure)).either
+          ({ conditionTrue, failure }) => Effect.whenEffect(conditionTrue, Effect.failSync(failure)).either
         )
 
       const { c1, c2, failed, failure, v1, v2 } = await program.unsafeRunPromise()

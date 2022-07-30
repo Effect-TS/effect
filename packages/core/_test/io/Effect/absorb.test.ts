@@ -1,6 +1,6 @@
 const ExampleError = new Error("Oh noes!")
 
-const ExampleErrorFail = Effect.fail(ExampleError)
+const ExampleErrorFail = Effect.failSync(ExampleError)
 const ExampleErrorDie = Effect.die(() => {
   throw ExampleError
 })
@@ -21,7 +21,7 @@ describe.concurrent("Effect", () => {
 
     test("on success", () =>
       Do(($) => {
-        const result = $(Effect.succeed(1).absorbWith(() => ExampleError))
+        const result = $(Effect.sync(1).absorbWith(() => ExampleError))
         assert.strictEqual(result, 1)
       }))
   })

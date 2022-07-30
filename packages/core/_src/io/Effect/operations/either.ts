@@ -15,7 +15,7 @@ export function either<R, E, A>(
   __tsplusTrace?: string
 ): Effect<R, never, Either<E, A>> {
   return self.foldEffect(
-    (e) => Effect.succeedNow(Either.left(e)),
-    (a) => Effect.succeedNow(Either.right(a))
+    (e) => Effect.succeed(Either.left(e)),
+    (a) => Effect.succeed(Either.right(a))
   )
 }

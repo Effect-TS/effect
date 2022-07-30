@@ -36,7 +36,7 @@ describe.concurrent("Queue", () => {
         .tap(({ queue, values }) =>
           values
             .map((n) => queue.offer(n))
-            .reduce(Effect.succeed(false), (acc, curr) => acc > curr)
+            .reduce(Effect.sync(false), (acc, curr) => acc > curr)
         )
         .tap(({ queue }) => queue.offer(5).fork)
         .tap(({ queue }) => waitForSize(queue, 5))

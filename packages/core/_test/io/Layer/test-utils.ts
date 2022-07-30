@@ -15,7 +15,7 @@ export function makeRef(): Effect<never, never, Ref<Chunk<string>>> {
 
 export class Service1 {
   get one(): Effect<never, never, number> {
-    return Effect.succeedNow(1)
+    return Effect.succeed(1)
   }
 }
 
@@ -39,7 +39,7 @@ export function makeLayer1(
 
 export class Service2 {
   get two(): Effect<never, never, number> {
-    return Effect.succeedNow(2)
+    return Effect.succeed(2)
   }
 }
 
@@ -63,7 +63,7 @@ export function makeLayer2(
 
 export class Service3 {
   get three(): Effect<never, never, number> {
-    return Effect.succeedNow(3)
+    return Effect.succeed(3)
   }
 }
 

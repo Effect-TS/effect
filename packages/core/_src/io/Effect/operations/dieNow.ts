@@ -6,5 +6,5 @@
  * @tsplus static effect/core/io/Effect.Ops dieNow
  */
 export function dieNow(defect: unknown, __tsplusTrace?: string): Effect<never, never, never> {
-  return Effect.failCause(Cause.die(defect, Trace.none))
+  return Effect.failCauseSync(Cause.die(defect, Trace.none))
 }

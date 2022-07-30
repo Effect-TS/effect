@@ -34,7 +34,7 @@ describe.concurrent("Sink", () => {
   describe.concurrent("mapEffect", () => {
     it("happy path", async () => {
       const program = Stream.range(1, 10).run(
-        Sink.succeed(1).mapEffect((n) => Effect.succeed(n + 1))
+        Sink.succeed(1).mapEffect((n) => Effect.sync(n + 1))
       )
 
       const result = await program.unsafeRunPromise()
@@ -44,7 +44,7 @@ describe.concurrent("Sink", () => {
 
     it("failure", async () => {
       const program = Stream.range(1, 10)
-        .run(Sink.succeed(1).mapEffect(() => Effect.fail("fail")))
+        .run(Sink.succeed(1).mapEffect(() => Effect.failSync("fail")))
         .flip
 
       const result = await program.unsafeRunPromise()

@@ -2,7 +2,7 @@ describe.concurrent("TMap", () => {
   describe.concurrent("bug #4648", () => {
     it("avoid NullPointerException caused by race condition", async () => {
       const tx = Do(($) => {
-        const keys = $(Effect.succeed(Chunk.fill(10, identity)))
+        const keys = $(Effect.sync(Chunk.fill(10, identity)))
         const map = $(TMap.fromIterable(keys.zipWithIndex).commit)
         const exit = $(
           Effect.forEachDiscard(keys, (k) =>

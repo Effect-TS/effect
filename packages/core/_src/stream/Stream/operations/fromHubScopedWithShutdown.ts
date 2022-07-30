@@ -17,7 +17,7 @@ export function fromHubScopedWithShutdown<A>(
   maxChunkSize = DEFAULT_CHUNK_SIZE,
   __tsplusTrace?: string
 ): Effect<Scope, never, Stream<never, never, A>> {
-  return Effect.succeed(hub).flatMap((hub) =>
+  return Effect.sync(hub).flatMap((hub) =>
     Stream.fromHubScoped(hub, maxChunkSize).map((stream) => stream.ensuring(hub.shutdown))
   )
 }

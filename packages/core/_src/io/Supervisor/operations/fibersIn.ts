@@ -6,9 +6,9 @@
 export function fibersIn(
   ref: AtomicReference<SortedSet<Fiber.Runtime<any, any>>>
 ): Effect<never, never, Supervisor<SortedSet<Fiber.Runtime<any, any>>>> {
-  return Effect.succeed(
+  return Effect.sync(
     new Supervisor(
-      Effect.succeed(() => ref.get),
+      Effect.sync(() => ref.get),
       (_environment, _effect, _parent, fiber) => {
         const set = ref.get
         ref.set(set.add(fiber))

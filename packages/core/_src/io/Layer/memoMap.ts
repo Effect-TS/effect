@@ -20,7 +20,7 @@ export class MemoMap {
     layer: Layer<RIn, E, ROut>,
     scope: LazyArg<Scope>
   ): Effect<RIn, E, Env<ROut>> {
-    return Effect.succeed(scope).flatMap((scope) =>
+    return Effect.sync(scope).flatMap((scope) =>
       this.ref.modifyEffect((map) => {
         const inMap = Maybe.fromNullable(map.get(layer))
 
@@ -37,7 +37,7 @@ export class MemoMap {
               )
             )
 
-            return Effect.succeed(Tuple(cached, map))
+            return Effect.sync(Tuple(cached, map))
           }
           case "None": {
             return Do(($) => {
@@ -57,7 +57,7 @@ export class MemoMap {
                             return (
                               deferred.failCause(exit.cause) >
                                 innerScope.close(exit) >
-                                Effect.failCause(exit.cause)
+                                Effect.failCauseSync(exit.cause)
                             )
                           }
                           case "Success": {
@@ -104,7 +104,7 @@ export class MemoMap {
 export function makeMemoMap(): Effect<never, never, MemoMap> {
   return Ref.Synchronized.make<
     Map<Layer<any, any, any>, Tuple<[Effect.IO<any, any>, Scope.Finalizer]>>
-  >(new Map()).flatMap((r) => Effect.succeed(new MemoMap(r)))
+  >(new Map()).flatMap((r) => Effect.sync(new MemoMap(r)))
 }
 
 /**
@@ -145,13 +145,13 @@ export function buildWithScope(scope: LazyArg<Scope>, __tsplusTrace?: string) {
 export function withScope(scope: LazyArg<Scope>, __tsplusTrace?: string) {
   return <RIn, E, ROut>(self: Layer<RIn, E, ROut>): Effect<never, never, (_: MemoMap) => Effect<RIn, E, Env<ROut>>> =>
     Match.tag(instruction(self), {
-      LayerApply: (_) => Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((memoMap: MemoMap) => _.self),
+      LayerApply: (_) => Effect.sync<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((memoMap: MemoMap) => _.self),
       LayerExtendScope: (_) =>
-        Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((memoMap: MemoMap) =>
+        Effect.sync<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((memoMap: MemoMap) =>
           Effect.scopeWith((scope) => memoMap.getOrElseMemoize(_.self, scope))
         ),
       LayerFold: (_) =>
-        Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
+        Effect.sync<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
           (memoMap: MemoMap) =>
             memoMap.getOrElseMemoize(_.self, scope).foldCauseEffect(
               (e) => memoMap.getOrElseMemoize(_.failure(e), scope),
@@ -159,19 +159,19 @@ export function withScope(scope: LazyArg<Scope>, __tsplusTrace?: string) {
             )
         ),
       LayerFresh: (_) =>
-        Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
+        Effect.sync<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
           (__: MemoMap) => _.self.buildWithScope(scope)
         ),
       LayerScoped: (_) =>
-        Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
+        Effect.sync<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
           (__: MemoMap) => scope().extend(_.self)
         ),
       LayerSuspend: (_) =>
-        Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
+        Effect.sync<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
           (memoMap: MemoMap) => memoMap.getOrElseMemoize(_.self(), scope)
         ),
       LayerTo: (_) =>
-        Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
+        Effect.sync<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
           (memoMap: MemoMap) =>
             memoMap
               .getOrElseMemoize(_.self, scope)
@@ -182,7 +182,7 @@ export function withScope(scope: LazyArg<Scope>, __tsplusTrace?: string) {
               )
         ),
       LayerZipWithPar: (_) =>
-        Effect.succeed<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
+        Effect.sync<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
           (memoMap: MemoMap) =>
             memoMap
               .getOrElseMemoize(_.self, scope)

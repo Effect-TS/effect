@@ -61,5 +61,5 @@ export function bindValue<
  * @tsplus static effect/core/stream/Channel.Ops Do
  */
 export function Do(): Channel<never, unknown, unknown, unknown, never, never, {}> {
-  return Channel.fromEffect(Effect.succeedNow({}))
+  return Channel.fromEffect(Effect.succeed({}))
 }

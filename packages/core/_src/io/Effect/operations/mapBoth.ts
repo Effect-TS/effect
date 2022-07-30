@@ -12,7 +12,7 @@ export function mapBoth<E, A, E2, A2>(
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R, E2, A2> =>
     self.foldEffect(
-      (e) => Effect.failNow(f(e)),
-      (a) => Effect.succeedNow(g(a))
+      (e) => Effect.fail(f(e)),
+      (a) => Effect.succeed(g(a))
     )
 }

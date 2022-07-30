@@ -5,8 +5,8 @@ describe.concurrent("Effect", () => {
     it("determines whether any element satisfies the effectual predicate", async () => {
       const list = List(1, 2, 3, 4, 5)
       const program = Effect.struct({
-        result1: Effect.exists(list, (n) => Effect.succeed(n > 3)),
-        result2: Effect.exists(list, (n) => Effect.succeed(n > 5))
+        result1: Effect.exists(list, (n) => Effect.sync(n > 3)),
+        result2: Effect.exists(list, (n) => Effect.sync(n > 5))
       })
 
       const { result1, result2 } = await program.unsafeRunPromise()
@@ -20,8 +20,8 @@ describe.concurrent("Effect", () => {
     it("determines whether all elements satisfy the effectual predicate", async () => {
       const list = List(1, 2, 3, 4, 5, 6)
       const program = Effect.struct({
-        result1: Effect.forAll(list, (n) => Effect.succeed(n > 3)),
-        result2: Effect.forAll(list, (n) => Effect.succeed(n > 0))
+        result1: Effect.forAll(list, (n) => Effect.sync(n > 3)),
+        result2: Effect.forAll(list, (n) => Effect.sync(n > 0))
       })
 
       const { result1, result2 } = await program.unsafeRunPromise()
@@ -33,7 +33,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("iterate", () => {
     it("iterates with the specified effectual function", async () => {
-      const program = Effect.iterate(100, (n) => n > 0)((n) => Effect.succeed(n - 1))
+      const program = Effect.iterate(100, (n) => n > 0)((n) => Effect.sync(n - 1))
 
       const result = await program.unsafeRunPromise()
 
@@ -64,7 +64,7 @@ describe.concurrent("Effect", () => {
         0,
         (n) => n < 5,
         (n) => n + 2
-      )((n) => Effect.succeed(n * 3))
+      )((n) => Effect.sync(n * 3))
 
       const result = await program.unsafeRunPromise()
 
@@ -92,7 +92,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("replicate", () => {
     it("zero", async () => {
-      const program = Effect.collectAll(Effect.succeed(12).replicate(0))
+      const program = Effect.collectAll(Effect.sync(12).replicate(0))
 
       const result = await program.unsafeRunPromise()
 
@@ -100,7 +100,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("negative", async () => {
-      const program = Effect.collectAll(Effect.succeed(12).replicate(-2))
+      const program = Effect.collectAll(Effect.sync(12).replicate(-2))
 
       const result = await program.unsafeRunPromise()
 
@@ -108,7 +108,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("positive", async () => {
-      const program = Effect.collectAll(Effect.succeed(12).replicate(2))
+      const program = Effect.collectAll(Effect.sync(12).replicate(2))
 
       const result = await program.unsafeRunPromise()
 
@@ -119,7 +119,7 @@ describe.concurrent("Effect", () => {
   describe.concurrent("forEach", () => {
     it("returns the list of results", async () => {
       const list = List(1, 2, 3, 4, 5, 6)
-      const program = Effect.forEach(list, (n) => Effect.succeed(n + 1))
+      const program = Effect.forEach(list, (n) => Effect.sync(n + 1))
 
       const result = await program.unsafeRunPromise()
 
@@ -133,7 +133,7 @@ describe.concurrent("Effect", () => {
         .bind("result", ({ ref }) =>
           Effect.forEach(
             list,
-            (s) => ref.update((list) => list.prepend(s)) > Effect.succeed(Number.parseInt(s))
+            (s) => ref.update((list) => list.prepend(s)) > Effect.sync(Number.parseInt(s))
           ))
         .bind("effects", ({ ref }) => ref.get().map((list) => list.reverse))
 
@@ -146,7 +146,7 @@ describe.concurrent("Effect", () => {
     it("fails if one of the effects fails", async () => {
       const list = List("1", "h", "3")
       const program = Effect.forEach(list, (s) =>
-        Effect.succeed(() => {
+        Effect.sync(() => {
           const n = Number.parseInt(s)
           if (Number.isNaN(n)) {
             throw new IllegalArgumentException()
@@ -191,7 +191,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("forEach for Maybe", () => {
     it("succeeds with None given None", async () => {
-      const program = Effect.forEachMaybe(Maybe.emptyOf<string>(), (s) => Effect.succeed(s.length))
+      const program = Effect.forEachMaybe(Maybe.emptyOf<string>(), (s) => Effect.sync(s.length))
 
       const result = await program.unsafeRunPromise()
 
@@ -199,7 +199,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("succeeds with Some given Some", async () => {
-      const program = Effect.forEachMaybe(Maybe.some("success"), (s) => Effect.succeed(s.length))
+      const program = Effect.forEachMaybe(Maybe.some("success"), (s) => Effect.sync(s.length))
 
       const result = await program.unsafeRunPromise()
 
@@ -208,7 +208,7 @@ describe.concurrent("Effect", () => {
 
     it("fails if the optional effect fails", async () => {
       const program = Effect.forEachMaybe(Maybe.some("help"), (s) =>
-        Effect.succeed(() => {
+        Effect.sync(() => {
           const n = Number.parseInt(s)
           if (Number.isNaN(n)) {
             throw new IllegalArgumentException()
@@ -226,7 +226,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("forEachPar", () => {
     it("runs single task", async () => {
-      const program = Effect.forEachPar(List(2), (n) => Effect.succeed(n * 2))
+      const program = Effect.forEachPar(List(2), (n) => Effect.sync(n * 2))
 
       const result = await program.unsafeRunPromise()
 
@@ -234,7 +234,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("runs two tasks", async () => {
-      const program = Effect.forEachPar(List(2, 3), (n) => Effect.succeed(n * 2))
+      const program = Effect.forEachPar(List(2, 3), (n) => Effect.sync(n * 2))
 
       const result = await program.unsafeRunPromise()
 
@@ -243,7 +243,7 @@ describe.concurrent("Effect", () => {
 
     it("runs many tasks", async () => {
       const chunk = Chunk.range(1, 100)
-      const program = Effect.forEachPar(chunk, (n) => Effect.succeed(n * 2))
+      const program = Effect.forEachPar(chunk, (n) => Effect.sync(n * 2))
 
       const result = await program.unsafeRunPromise()
 
@@ -253,7 +253,7 @@ describe.concurrent("Effect", () => {
     it("runs a task that fails", async () => {
       const program = Effect.forEachPar(
         Chunk.range(1, 10),
-        (n) => n === 5 ? Effect.fail("boom") : Effect.succeed(n * 2)
+        (n) => n === 5 ? Effect.failSync("boom") : Effect.sync(n * 2)
       )
         .flip
 
@@ -265,10 +265,10 @@ describe.concurrent("Effect", () => {
     it("runs two failed tasks", async () => {
       const program = Effect.forEachPar(Chunk.range(1, 10), (n) =>
         n === 5
-          ? Effect.fail("boom1")
+          ? Effect.failSync("boom1")
           : n === 8
-          ? Effect.fail("boom2")
-          : Effect.succeed(n * 2)).flip
+          ? Effect.failSync("boom2")
+          : Effect.sync(n * 2)).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -278,7 +278,7 @@ describe.concurrent("Effect", () => {
     it("runs a task that dies", async () => {
       const program = Effect.forEachPar(
         Chunk.range(1, 10),
-        (n) => n === 5 ? Effect.dieMessage("boom") : Effect.succeed(n * 2)
+        (n) => n === 5 ? Effect.dieMessage("boom") : Effect.sync(n * 2)
       )
 
       const result = await program.unsafeRunPromiseExit()
@@ -287,7 +287,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("runs a task that is interrupted", async () => {
-      const program = Effect.forEachPar(Chunk.range(1, 10), (n) => n === 5 ? Effect.interrupt : Effect.succeed(n * 2))
+      const program = Effect.forEachPar(Chunk.range(1, 10), (n) => n === 5 ? Effect.interrupt : Effect.sync(n * 2))
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -296,7 +296,7 @@ describe.concurrent("Effect", () => {
 
     it("runs a task that throws an unsuspended exception", async () => {
       const program = Effect.forEachPar(List(1), (n) =>
-        Effect.succeed(() => {
+        Effect.sync(() => {
           throw new Error(n.toString())
         }))
 
@@ -309,7 +309,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("returns results in the same order", async () => {
-      const program = Effect.forEachPar(List("1", "2", "3"), (s) => Effect.succeed(Number.parseInt(s)))
+      const program = Effect.forEachPar(List("1", "2", "3"), (s) => Effect.sync(Number.parseInt(s)))
 
       const result = await program.unsafeRunPromise()
 
@@ -317,7 +317,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("returns results in the same order for Chunk", async () => {
-      const program = Effect.forEachPar(Chunk("1", "2", "3"), (s) => Effect.succeed(Number.parseInt(s)))
+      const program = Effect.forEachPar(Chunk("1", "2", "3"), (s) => Effect.sync(Number.parseInt(s)))
 
       const result = await program.unsafeRunPromise()
 
@@ -358,7 +358,7 @@ describe.concurrent("Effect", () => {
 
     it("propagates error", async () => {
       const list = List(1, 2, 3, 4, 5, 6)
-      const program = Effect.forEachPar(list, (n) => n % 2 !== 0 ? Effect.succeed(n) : Effect.fail("not odd")).flip
+      const program = Effect.forEachPar(list, (n) => n % 2 !== 0 ? Effect.sync(n) : Effect.failSync("not odd")).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -372,8 +372,8 @@ describe.concurrent("Effect", () => {
         .bindValue("actions", ({ deferred, ref }) =>
           List(
             Effect.never,
-            Effect.succeed(1),
-            Effect.fail("C"),
+            Effect.sync(1),
+            Effect.failSync("C"),
             (deferred.await() > ref.set(true)).as(1)
           ))
         .bind("e", ({ actions }) => Effect.forEachPar(actions, identity).flip)
@@ -401,7 +401,7 @@ describe.concurrent("Effect", () => {
   describe.concurrent("forEachPar - parallelism", () => {
     it("returns the list of results in the appropriate order", async () => {
       const list = List(1, 2, 3)
-      const program = Effect.forEachPar(list, (n) => Effect.succeed(n.toString()))
+      const program = Effect.forEachPar(list, (n) => Effect.sync(n.toString()))
         .withParallelism(2)
 
       const result = await program.unsafeRunPromise()
@@ -412,7 +412,7 @@ describe.concurrent("Effect", () => {
     it("works on large lists", async () => {
       const n = 10
       const chunk = Chunk.range(0, 100000)
-      const program = Effect.forEachPar(chunk, (n) => Effect.succeed(n))
+      const program = Effect.forEachPar(chunk, (n) => Effect.sync(n))
         .withParallelism(n)
 
       const result = await program.unsafeRunPromise()
@@ -437,7 +437,7 @@ describe.concurrent("Effect", () => {
 
     it("propagates error", async () => {
       const list = List(1, 2, 3, 4, 5, 6)
-      const program = Effect.forEachPar(list, (n) => n % 2 !== 0 ? Effect.succeed(n) : Effect.fail("not odd"))
+      const program = Effect.forEachPar(list, (n) => n % 2 !== 0 ? Effect.sync(n) : Effect.failSync("not odd"))
         .withParallelism(4)
         .either
 
@@ -449,8 +449,8 @@ describe.concurrent("Effect", () => {
     it("interrupts effects on first failure", async () => {
       const actions = List(
         Effect.never,
-        Effect.succeed(1),
-        Effect.fail("C")
+        Effect.sync(1),
+        Effect.failSync("C")
       )
       const program = Effect.forEachPar(actions, identity).withParallelism(4).either
 
@@ -473,7 +473,7 @@ describe.concurrent("Effect", () => {
             (count) =>
               Effect.when(count === 3, trigger.succeed(undefined)) >
                 trigger.await() >
-                Effect.fail(n)
+                Effect.failSync(n)
           )
       }
 
@@ -540,7 +540,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("forkAll", () => {
     it("returns the list of results in the same order", async () => {
-      const list = List(1, 2, 3).map((n) => Effect.succeed(n))
+      const list = List(1, 2, 3).map((n) => Effect.sync(n))
       const program = Effect.forkAll(list)
         .flatMap((fiber) => fiber.join)
 
@@ -551,7 +551,7 @@ describe.concurrent("Effect", () => {
 
     it("happy-path", async () => {
       const chunk = Chunk.range(1, 1000)
-      const program = Effect.forkAll(chunk.map((n) => Effect.succeed(n)))
+      const program = Effect.forkAll(chunk.map((n) => Effect.sync(n)))
         .flatMap((fiber) => fiber.join)
 
       const result = await program.unsafeRunPromise()
@@ -570,7 +570,7 @@ describe.concurrent("Effect", () => {
 
     it("propagate failures", async () => {
       const boom = new Error()
-      const fail = Effect.fail(boom)
+      const fail = Effect.failSync(boom)
       const program = Effect.forkAll(List(fail)).flatMap((fiber) => fiber.join.flip)
 
       const result = await program.unsafeRunPromise()
@@ -588,8 +588,8 @@ describe.concurrent("Effect", () => {
 
       const program = Effect.Do()
         .bind("fiber1", () => Effect.forkAll(List(die)))
-        .bind("fiber2", () => Effect.forkAll(List(die, Effect.succeed(42))))
-        .bind("fiber3", () => Effect.forkAll(List(die, Effect.succeed(42), Effect.never)))
+        .bind("fiber2", () => Effect.forkAll(List(die, Effect.sync(42))))
+        .bind("fiber3", () => Effect.forkAll(List(die, Effect.sync(42), Effect.never)))
         .bind("result1", ({ fiber1 }) => joinDefect(fiber1).map((cause) => cause.untraced))
         .bind("result2", ({ fiber2 }) => joinDefect(fiber2).map((cause) => cause.untraced))
         .bind("result3", ({ fiber3 }) => joinDefect(fiber3).map((cause) => cause.untraced))
@@ -619,7 +619,7 @@ describe.concurrent("Effect", () => {
     it("infers correctly with error type", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
-        .bindValue("worker", () => Effect.fail(new RuntimeError("fail")).forever)
+        .bindValue("worker", () => Effect.failSync(new RuntimeError("fail")).forever)
         .bindValue("workers", ({ worker }) => Chunk.fill(4, () => worker))
         .bind("fiber", ({ workers }) => Effect.forkAll(workers))
         .tap(({ fiber }) => fiber.interrupt)

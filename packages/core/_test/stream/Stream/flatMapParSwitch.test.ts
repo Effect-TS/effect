@@ -85,7 +85,7 @@ describe.concurrent("Stream", () => {
             Stream.fromEffect(
               (latch.succeed(undefined) > Effect.never).onInterrupt(() => substreamCancelled.set(true))
             ),
-            Stream.fromEffect(latch.await() > Effect.fail("ouch"))
+            Stream.fromEffect(latch.await() > Effect.failSync("ouch"))
           )
             .flatMapParSwitch(2, identity)
             .runDrain
@@ -105,7 +105,7 @@ describe.concurrent("Stream", () => {
         .bind(
           "result",
           ({ latch, substreamCancelled }) =>
-            (Stream(undefined) + Stream.fromEffect(latch.await() > Effect.fail("ouch")))
+            (Stream(undefined) + Stream.fromEffect(latch.await() > Effect.failSync("ouch")))
               .flatMapParSwitch(2, () =>
                 Stream.fromEffect(
                   (latch.succeed(undefined) > Effect.never).onInterrupt(() => substreamCancelled.set(true))

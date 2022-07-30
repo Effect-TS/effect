@@ -25,12 +25,12 @@ export function mapOutEffectPar<OutElem, Env1, OutErr1, OutElem1>(
           $(
             pull
               .foldCauseEffect(
-                (cause) => queue.offer(Effect.failCause(cause)),
+                (cause) => queue.offer(Effect.failCauseSync(cause)),
                 (either) =>
                   either.fold(
                     (outDone) =>
                       Effect.unit.apply(permits.withPermits(n)).interruptible >
-                        queue.offer(Effect.succeed(Either.left(outDone))),
+                        queue.offer(Effect.sync(Either.left(outDone))),
                     (outElem) =>
                       Do(($) => {
                         const deferred = $(Deferred.make<OutErr1, OutElem1>())

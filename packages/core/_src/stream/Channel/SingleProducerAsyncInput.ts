@@ -209,10 +209,10 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
               )
             }
             case ErrorTypeId: {
-              return Tuple(Effect.succeed(onError(state.cause)), state)
+              return Tuple(Effect.sync(onError(state.cause)), state)
             }
             case DoneTypeId: {
-              return Tuple(Effect.succeed(onDone(state.a)), state)
+              return Tuple(Effect.sync(onDone(state.a)), state)
             }
             case EmptyTypeId: {
               return Tuple(

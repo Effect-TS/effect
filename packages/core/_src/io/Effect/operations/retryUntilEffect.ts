@@ -13,7 +13,7 @@ export function retryUntilEffect<R1, E>(
     self.catchAll((e) =>
       f(e).flatMap((b) =>
         b ?
-          Effect.fail(e) :
+          Effect.failSync(e) :
           Effect.yieldNow > self.retryUntilEffect(f)
       )
     )

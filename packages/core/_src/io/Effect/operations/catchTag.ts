@@ -20,6 +20,6 @@ export function catchTag<
       if ("_tag" in e && e["_tag"] === k) {
         return f(e as any)
       }
-      return Effect.failNow(e as any)
+      return Effect.fail(e as any)
     })
 }

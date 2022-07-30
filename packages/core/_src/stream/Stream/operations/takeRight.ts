@@ -15,7 +15,7 @@ export function takeRight(n: number, __tsplusTrace?: string) {
     concreteStream(self)
     return new StreamInternal(
       Channel.unwrap(
-        Effect.succeed(new RingBufferNew<A>(n)).map((queue) => {
+        Effect.sync(new RingBufferNew<A>(n)).map((queue) => {
           const reader: Channel<
             never,
             E,

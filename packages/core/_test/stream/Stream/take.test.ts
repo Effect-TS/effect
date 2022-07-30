@@ -78,7 +78,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("takeUntilEffect", () => {
     it("equivalence with negated Chunk.takeWhileEffect", async () => {
-      const f = (n: number) => Effect.succeed(n > 3)
+      const f = (n: number) => Effect.sync(n > 3)
       const stream = Stream(0, 1, 2, 3, 4, 5)
       const program = Effect.struct({
         streamResult: stream.takeUntilEffect(f).runCollect,
@@ -99,7 +99,7 @@ describe.concurrent("Stream", () => {
 
     it("laziness on chunks", async () => {
       const program = Stream(1, 2, 3)
-        .takeUntilEffect((n) => n === 2 ? Effect.fail("boom") : Effect.succeed(constFalse))
+        .takeUntilEffect((n) => n === 2 ? Effect.failSync("boom") : Effect.sync(constFalse))
         .either
         .runCollect
 

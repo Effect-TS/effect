@@ -10,8 +10,8 @@ export function scoped<R, E, A>(
     Scope.make.flatMap((scope) =>
       Effect.uninterruptibleMask(({ restore }) =>
         restore(scope.extend(effect)).foldCauseEffect(
-          (cause) => scope.close(Exit.failCause(cause)) > Effect.failCause(cause),
-          (out) => Effect.succeedNow(Tuple(out, scope))
+          (cause) => scope.close(Exit.failCause(cause)) > Effect.failCauseSync(cause),
+          (out) => Effect.succeed(Tuple(out, scope))
         )
       )
     ),

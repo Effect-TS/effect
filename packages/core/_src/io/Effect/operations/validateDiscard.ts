@@ -12,6 +12,6 @@ export function validateDiscard<R, E, A, X>(
   return Effect.partition(as, f).flatMap(({ tuple: [es, _] }) =>
     es.isEmpty
       ? Effect.unit
-      : Effect.fail(es)
+      : Effect.failSync(es)
   )
 }

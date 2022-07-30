@@ -8,7 +8,7 @@
 export function mapError<E, E2>(f: (e: E) => E2, __tsplusTrace?: string) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, E2, A> =>
     self.foldCauseEffect(
-      (cause) => cause.failureOrCause.fold((e) => Effect.failNow(f(e)), Effect.failCauseNow),
-      Effect.succeedNow
+      (cause) => cause.failureOrCause.fold((e) => Effect.fail(f(e)), Effect.failCause),
+      Effect.succeed
     )
 }

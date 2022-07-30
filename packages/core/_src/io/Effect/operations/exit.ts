@@ -12,8 +12,8 @@ export function exit<R, E, A>(
 ): Effect<R, never, Exit<E, A>> {
   return new IFold(
     self,
-    (cause) => Effect.succeedNow(Exit.failCause(cause)),
-    (success) => Effect.succeedNow(Exit.succeed(success)),
+    (cause) => Effect.succeed(Exit.failCause(cause)),
+    (success) => Effect.succeed(Exit.succeed(success)),
     __tsplusTrace
   )
 }

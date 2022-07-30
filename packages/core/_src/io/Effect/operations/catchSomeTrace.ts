@@ -14,9 +14,9 @@ export function catchSomeTrace<E, R2, E2, A2>(
         cause
           .failureTraceOrCause
           .fold(
-            (tuple) => f(tuple).getOrElse(Effect.failCauseNow(cause)),
-            Effect.failCauseNow
+            (tuple) => f(tuple).getOrElse(Effect.failCause(cause)),
+            Effect.failCause
           ),
-      Effect.succeedNow
+      Effect.succeed
     )
 }

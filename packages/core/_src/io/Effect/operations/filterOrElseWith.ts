@@ -20,5 +20,5 @@ export function filterOrElseWith<A, R1, E1, A1>(
   __tsplusTrace?: string | undefined
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E | E1, A | A1> =>
-    self.flatMap((a) => (f(a) ? Effect.succeedNow<A | A1>(a) : orElse(a)))
+    self.flatMap((a) => (f(a) ? Effect.succeed<A | A1>(a) : orElse(a)))
 }

@@ -3,7 +3,7 @@
  *
  * @tsplus static effect/core/io/Effect.Ops unit
  */
-export const unit: Effect<never, never, void> = Effect.succeedNow(undefined)
+export const unit: Effect<never, never, void> = Effect.succeed(undefined)
 
 /**
  * An effect that succeeds with a unit value.
@@ -11,7 +11,7 @@ export const unit: Effect<never, never, void> = Effect.succeedNow(undefined)
  * @tsplus static effect/core/io/Effect.Ops unitTraced
  */
 export function unitTraced(__tsplusTrace?: string): Effect<never, never, void> {
-  return Effect.succeedNow(undefined)
+  return Effect.succeed(undefined)
 }
 
 /**

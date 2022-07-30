@@ -3,7 +3,7 @@ import { NumberService } from "@effect/core/test/io/Effect/test-utils"
 describe.concurrent("Effect", () => {
   describe.concurrent("serviceWith", () => {
     it("effectfully accesses a service in the environment", async () => {
-      const program = Effect.serviceWithEffect(NumberService, ({ n }) => Effect.succeed(n + 3))
+      const program = Effect.serviceWithEffect(NumberService, ({ n }) => Effect.sync(n + 3))
         .provideEnvironment(Env(NumberService, { n: 0 }))
 
       const result = await program.unsafeRunPromise()

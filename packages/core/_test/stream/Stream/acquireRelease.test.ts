@@ -6,7 +6,7 @@ describe.concurrent("Stream", () => {
         .bindValue(
           "stream",
           ({ done }) =>
-            Stream.acquireRelease(Effect.succeed(Chunk.range(0, 2)), () => done.set(true)).flatMap((chunk) =>
+            Stream.acquireRelease(Effect.sync(Chunk.range(0, 2)), () => done.set(true)).flatMap((chunk) =>
               Stream.fromCollection(chunk)
             )
         )
@@ -25,7 +25,7 @@ describe.concurrent("Stream", () => {
         .bindValue(
           "stream",
           ({ done }) =>
-            Stream.acquireRelease(Effect.succeed(Chunk.range(0, 3)), () => done.set(true))
+            Stream.acquireRelease(Effect.sync(Chunk.range(0, 3)), () => done.set(true))
               .flatMap((chunk) => Stream.fromCollection(chunk))
               .take(2)
         )

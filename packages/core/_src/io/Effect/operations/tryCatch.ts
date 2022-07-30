@@ -11,9 +11,9 @@ export function tryCatch<E, A>(
 ): Effect<never, E, A> {
   return Effect.suspendSucceed(() => {
     try {
-      return Effect.succeed(attempt)
+      return Effect.sync(attempt)
     } catch (error) {
-      return Effect.failNow(onThrow(error))
+      return Effect.fail(onThrow(error))
     }
   })
 }

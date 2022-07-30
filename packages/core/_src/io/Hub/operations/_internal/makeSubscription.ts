@@ -46,7 +46,7 @@ export function unsafeMakeSubscription<A>(
     size: Effect.suspendSucceed(
       shutdownFlag.get
         ? Effect.interrupt
-        : Effect.succeedNow(subscription.size())
+        : Effect.succeed(subscription.size())
     ),
     awaitShutdown: shutdownHook.await(),
     shutdown: Effect.suspendSucceedWith((_, fiberId) => {
@@ -54,11 +54,11 @@ export function unsafeMakeSubscription<A>(
       return Effect.whenEffect(
         shutdownHook.succeed(undefined),
         Effect.forEachPar(unsafePollAll(pollers), (deferred) => deferred.interruptAs(fiberId)) >
-          Effect.succeed(subscription.unsubscribe()) >
-          Effect.succeed(strategy.unsafeOnHubEmptySpace(hub, subscribers))
+          Effect.sync(subscription.unsubscribe()) >
+          Effect.sync(strategy.unsafeOnHubEmptySpace(hub, subscribers))
       ).unit
     }).uninterruptible,
-    isShutdown: Effect.succeed(shutdownFlag.get),
+    isShutdown: Effect.sync(shutdownFlag.get),
     take: Effect.suspendSucceedWith((_, fiberId) => {
       if (shutdownFlag.get) {
         return Effect.interrupt
@@ -78,10 +78,10 @@ export function unsafeMakeSubscription<A>(
             pollers
           )
           return shutdownFlag.get ? Effect.interrupt : deferred.await()
-        }).onInterrupt(() => Effect.succeed(unsafeRemove(pollers, deferred)))
+        }).onInterrupt(() => Effect.sync(unsafeRemove(pollers, deferred)))
       } else {
         strategy.unsafeOnHubEmptySpace(hub, subscribers)
-        return Effect.succeedNow(message)
+        return Effect.succeed(message)
       }
     }),
     takeAll: Effect.suspendSucceed(() => {
@@ -92,7 +92,7 @@ export function unsafeMakeSubscription<A>(
         ? unsafePollAllSubscription(subscription)
         : Chunk.empty<A>()
       strategy.unsafeOnHubEmptySpace(hub, subscribers)
-      return Effect.succeedNow(as)
+      return Effect.succeed(as)
     }),
     takeUpTo(max: number, __tsplusTrace?: string) {
       return Effect.suspendSucceed(() => {
@@ -103,7 +103,7 @@ export function unsafeMakeSubscription<A>(
           ? unsafePollN(subscription, max)
           : Chunk.empty<A>()
         strategy.unsafeOnHubEmptySpace(hub, subscribers)
-        return Effect.succeedNow(as)
+        return Effect.succeed(as)
       })
     }
   }

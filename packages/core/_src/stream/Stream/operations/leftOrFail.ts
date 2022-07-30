@@ -6,5 +6,5 @@
  */
 export function leftOrFail<E2>(e: LazyArg<E2>, __tsplusTrace?: string) {
   return <R, E, A, A2>(self: Stream<R, E, Either<A, A2>>): Stream<R, E | E2, A> =>
-    self.mapEffect((either) => either.fold(Effect.succeedNow, () => Effect.fail(e)))
+    self.mapEffect((either) => either.fold(Effect.succeed, () => Effect.failSync(e)))
 }

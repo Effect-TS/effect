@@ -15,7 +15,7 @@ export function sliding<A>(
   requestedCapacity: number,
   __tsplusTrace?: string
 ): Effect<never, never, Queue<A>> {
-  return Effect.succeed(MutableQueue.bounded<A>(requestedCapacity)).flatMap((queue) =>
+  return Effect.sync(MutableQueue.bounded<A>(requestedCapacity)).flatMap((queue) =>
     Queue.create(queue, Strategy.Sliding())
   )
 }

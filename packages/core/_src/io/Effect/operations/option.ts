@@ -9,7 +9,7 @@ export function option<R, E, A>(
   __tsplusTrace?: string
 ): Effect<R, never, Maybe<A>> {
   return self.foldEffect(
-    () => Effect.succeedNow(Maybe.none),
-    (a) => Effect.succeedNow(Maybe.some(a))
+    () => Effect.succeed(Maybe.none),
+    (a) => Effect.succeed(Maybe.some(a))
   )
 }

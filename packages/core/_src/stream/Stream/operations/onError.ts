@@ -13,5 +13,5 @@ export function onError<E, R2, Z>(
   __tsplusTrace?: string
 ) {
   return <R, A>(self: Stream<R, E, A>): Stream<R | R2, E, A> =>
-    self.catchAllCause((cause) => Stream.fromEffect(cleanup(cause) > Effect.failCause(cause)))
+    self.catchAllCause((cause) => Stream.fromEffect(cleanup(cause) > Effect.failCauseSync(cause)))
 }

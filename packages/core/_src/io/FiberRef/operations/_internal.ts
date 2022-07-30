@@ -237,7 +237,7 @@ export function makeWith<Value, Patch>(
   __tsplusTrace?: string
 ): Effect<Scope, never, FiberRef.WithPatch<Value, Patch>> {
   return Effect.acquireRelease(
-    Effect.succeed(ref).tap((ref) => ref.update(identity)),
+    Effect.sync(ref).tap((ref) => ref.update(identity)),
     (ref) => ref.delete()
   )
 }
@@ -406,7 +406,7 @@ export const forkScopeOverride: FiberRef<Maybe<FiberScope>> = FiberRef.unsafeMak
  */
 export function provideEnvironment<R>(environment: LazyArg<Env<R>>, __tsplusTrace?: string) {
   return <E, A>(self: Effect<R, E, A>): Effect<never, E, A> =>
-    Effect.succeed(environment).flatMap((env) =>
+    Effect.sync(environment).flatMap((env) =>
       (self as Effect<never, E, A>).apply(
         FiberRef.currentEnvironment.locally(env as Env<never>)
       )
@@ -432,7 +432,7 @@ export function service<T>(
   tag: Tag<T>,
   __tsplusTrace?: string
 ): Effect<T, never, T> {
-  return Effect.serviceWithEffect(tag, Effect.succeedNow)
+  return Effect.serviceWithEffect(tag, Effect.succeed)
 }
 
 /**

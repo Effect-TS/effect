@@ -44,7 +44,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("fromEffect", () => {
     it("failure", async () => {
-      const program = Stream.fromEffect(Effect.fail("error")).runCollect.either
+      const program = Stream.fromEffect(Effect.failSync("error")).runCollect.either
 
       const result = await program.unsafeRunPromise()
 
@@ -54,7 +54,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("fromEffectMaybe", () => {
     it("emit one element with success", async () => {
-      const program = Stream.fromEffectMaybe(Effect.succeed(5)).runCollect
+      const program = Stream.fromEffectMaybe(Effect.sync(5)).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -62,7 +62,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("emit one element with failure", async () => {
-      const program = Stream.fromEffectMaybe(Effect.fail(Maybe.some(5)))
+      const program = Stream.fromEffectMaybe(Effect.failSync(Maybe.some(5)))
         .runCollect
         .either
 
@@ -72,7 +72,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("do not emit any element", async () => {
-      const program = Stream.fromEffectMaybe(Effect.fail(Maybe.none)).runCollect
+      const program = Stream.fromEffectMaybe(Effect.failSync(Maybe.none)).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -92,7 +92,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("fromIterableEffect", () => {
     it("simple example", async () => {
-      const program = Stream.fromCollectionEffect(Effect.succeed([1, 2, 3])).runCollect
+      const program = Stream.fromCollectionEffect(Effect.sync([1, 2, 3])).runCollect
 
       const result = await program.unsafeRunPromise()
 

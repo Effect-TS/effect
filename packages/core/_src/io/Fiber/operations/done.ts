@@ -8,10 +8,10 @@ import { makeSynthetic } from "@effect/core/io/Fiber/definition"
 export function done<E, A>(exit: Exit<E, A>): Fiber<E, A> {
   return makeSynthetic({
     id: FiberId.none,
-    await: Effect.succeedNow(exit),
-    children: Effect.succeedNow(Chunk.empty()),
+    await: Effect.succeed(exit),
+    children: Effect.succeed(Chunk.empty()),
     inheritRefs: Effect.unit,
-    poll: Effect.succeedNow(Maybe.some(exit)),
-    interruptAs: () => Effect.succeedNow(exit)
+    poll: Effect.succeed(Maybe.some(exit)),
+    interruptAs: () => Effect.succeed(exit)
   })
 }

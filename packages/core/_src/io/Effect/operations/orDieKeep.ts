@@ -5,7 +5,7 @@
  */
 export function orDieKeep<R, E, A>(self: Effect<R, E, A>, __tsplusTrace?: string) {
   return self.foldCauseEffect(
-    (cause) => Effect.failCauseNow(cause.flatMap(Cause.die)),
-    Effect.succeedNow
+    (cause) => Effect.failCause(cause.flatMap(Cause.die)),
+    Effect.succeed
   )
 }

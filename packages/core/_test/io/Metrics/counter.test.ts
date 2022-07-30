@@ -27,8 +27,8 @@ describe.concurrent("Metrics", () => {
     it("custom increment by value as aspect", async () => {
       const counter = Metric.counter("c3").taggedWithLabels(labels)
 
-      const program = Effect.succeed(10) / counter >
-        Effect.succeed(5) / counter >
+      const program = Effect.sync(10) / counter >
+        Effect.sync(5) / counter >
         counter.value
 
       const result = await program.unsafeRunPromise()
@@ -47,8 +47,8 @@ describe.concurrent("Metrics", () => {
     })
 
     it("custom increment referential transparency", async () => {
-      const program = Effect.succeed(10) / Metric.counter("c5").taggedWithLabels(labels) >
-        Effect.succeed(5) / Metric.counter("c5").taggedWithLabels(labels) >
+      const program = Effect.sync(10) / Metric.counter("c5").taggedWithLabels(labels) >
+        Effect.sync(5) / Metric.counter("c5").taggedWithLabels(labels) >
         Metric.counter("c5").taggedWithLabels(labels).value
 
       const result = await program.unsafeRunPromise()
@@ -57,11 +57,11 @@ describe.concurrent("Metrics", () => {
     })
 
     it("custom increment with contramap", async () => {
-      const program = Effect.succeed("hello") / Metric
+      const program = Effect.sync("hello") / Metric
             .counter("c6")
             .taggedWithLabels(labels)
             .contramap((input: string) => input.length) >
-        Effect.succeed("!") / Metric
+        Effect.sync("!") / Metric
             .counter("c6")
             .taggedWithLabels(labels)
             .contramap((input: string) => input.length)
@@ -77,7 +77,7 @@ describe.concurrent("Metrics", () => {
 
       const program = (
         Effect.unit / counter >
-          Effect.fail("error") / counter
+          Effect.failSync("error") / counter
       ).ignore > counter.value
 
       const result = await program.unsafeRunPromise()
@@ -89,9 +89,9 @@ describe.concurrent("Metrics", () => {
       const base = Metric.counter("c8").tagged("static", "0").fromConst(1)
       const counter = base.taggedWith((input: string) => HashSet(MetricLabel("dyn", input)))
 
-      const program = Effect.succeed("hello") / counter >
-        Effect.succeed("!") / counter >
-        Effect.succeed("!") / counter >
+      const program = Effect.sync("hello") / counter >
+        Effect.sync("!") / counter >
+        Effect.sync("!") / counter >
         base.tagged("dyn", "!").value
 
       const result = await program.unsafeRunPromise()

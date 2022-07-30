@@ -11,7 +11,7 @@ export function driver<State, Env, In, Out>(
 ): Effect<never, never, Driver<State, Env, In, Out>> {
   return Ref.make<Tuple<[Maybe<Out>, State]>>(Tuple(Maybe.none, self._initial)).map((ref) => {
     const last: Effect<never, NoSuchElement, Out> = ref.get().flatMap(({ tuple: [element, _] }) =>
-      element.fold(Effect.fail(new NoSuchElement()), (out) => Effect.succeed(out))
+      element.fold(Effect.failSync(new NoSuchElement()), (out) => Effect.sync(out))
     )
 
     const reset: Effect<never, never, void> = ref.set(Tuple(Maybe.none, self._initial))
@@ -33,7 +33,7 @@ function next<State, Env, In, Out>(
       .bind("decision", ({ now, state }) => self._step(now, input, state))
       .flatMap(({ now, decision: { tuple: [state, out, decision] } }) =>
         decision._tag === "Done"
-          ? ref.set(Tuple(Maybe.some(out), state)) > Effect.fail(Maybe.none)
+          ? ref.set(Tuple(Maybe.some(out), state)) > Effect.failSync(Maybe.none)
           : ref.set(Tuple(Maybe.some(out), state)) >
             Effect.sleep(new Duration(decision.interval.startMillis - now)).as(out)
       )

@@ -11,5 +11,5 @@ export function timeoutFailCause<E1>(
   __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E | E1, A> =>
-    self.timeoutTo(Effect.failCause(cause), Effect.succeedNow, duration).flatten
+    self.timeoutTo(Effect.failCauseSync(cause), Effect.succeed, duration).flatten
 }

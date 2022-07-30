@@ -144,7 +144,7 @@ function takeRemainderLoop<A>(
   __tsplusTrace?: string
 ): Effect<never, never, Chunk<A>> {
   if (max < min) {
-    return Effect.succeedNow(acc)
+    return Effect.succeed(acc)
   }
   return self.takeUpTo(max).flatMap((bs) => {
     const remaining = min - bs.length
@@ -164,7 +164,7 @@ function takeRemainderLoop<A>(
       )
     }
 
-    return Effect.succeedNow(acc + bs)
+    return Effect.succeed(acc + bs)
   })
 }
 

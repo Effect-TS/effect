@@ -9,7 +9,7 @@ export function collectAllN<In>(
   n: number,
   __tsplusTrace?: string
 ): Sink<never, never, In, In, Chunk<In>> {
-  return Sink.fromEffect(Effect.succeed(Chunk.builder<In>()))
+  return Sink.fromEffect(Effect.sync(Chunk.builder<In>()))
     .flatMap((cb) => Sink.foldUntil<In, ChunkBuilder<In>>(cb, n, (builder, input) => builder.append(input)))
     .map((builder) => builder.build())
 }

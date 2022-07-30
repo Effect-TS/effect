@@ -17,6 +17,6 @@ export function catchNonFatalOrDie<E, R2, E2, A2>(
               Effect.dieNow(e) :
               f(e)
           ),
-      Effect.succeedNow
+      Effect.succeed
     )
 }

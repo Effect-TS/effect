@@ -10,7 +10,7 @@ export function tapDefect<R2, E2, X>(
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, A> =>
     self.foldCauseEffect(
-      (cause) => f(cause.stripFailures).zipRight(Effect.failCauseNow(cause)),
-      Effect.succeedNow
+      (cause) => f(cause.stripFailures).zipRight(Effect.failCause(cause)),
+      Effect.succeed
     )
 }

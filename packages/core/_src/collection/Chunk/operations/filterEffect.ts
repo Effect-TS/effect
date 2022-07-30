@@ -14,7 +14,7 @@ export function filterEffect_<R, E, A>(
   return Effect.suspendSucceed(() => {
     const iterator = concreteChunkId(self)._arrayLikeIterator()
     let next
-    let dest: Effect<R, E, Chunk<A>> = Effect.succeedNow(Chunk.empty<A>())
+    let dest: Effect<R, E, Chunk<A>> = Effect.succeed(Chunk.empty<A>())
 
     while ((next = iterator.next()) && !next.done) {
       const array = next.value

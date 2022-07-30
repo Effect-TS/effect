@@ -8,5 +8,5 @@ export function fromMaybe<A>(
   option: LazyArg<Maybe<A>>,
   __tsplusTrace?: string
 ): Effect<never, Maybe<never>, A> {
-  return Effect.succeed(option).flatMap((option) => option.fold(Effect.fail(Maybe.none), Effect.succeedNow))
+  return Effect.sync(option).flatMap((option) => option.fold(Effect.failSync(Maybe.none), Effect.succeed))
 }

@@ -63,7 +63,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("should fail immediately", async () => {
-      const program = Stream.fromEffect(Effect.fail(Maybe.none))
+      const program = Stream.fromEffect(Effect.failSync(Maybe.none))
         .debounce((100_000_000).millis)
         .runCollect
         .either

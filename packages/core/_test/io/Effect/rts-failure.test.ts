@@ -52,7 +52,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("attempt . sandbox . terminate", async () => {
-      const program = Effect.succeed(() => {
+      const program = Effect.sync(() => {
         throw ExampleError
       }).sandbox.either.map((either) => either.mapLeft((cause) => cause.untraced))
 
@@ -62,7 +62,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("fold . sandbox . terminate", async () => {
-      const program = Effect.succeed(() => {
+      const program = Effect.sync(() => {
         throw ExampleError
       })
         .sandbox
@@ -74,7 +74,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("catch sandbox terminate", async () => {
-      const program = Effect.succeed(() => {
+      const program = Effect.sync(() => {
         throw ExampleError
       }).sandbox.merge.map((cause) => cause.untraced)
 
@@ -92,7 +92,7 @@ describe.concurrent("Effect", () => {
     })
 
     it("uncaught sync effect error", async () => {
-      const program = Effect.succeed(() => {
+      const program = Effect.sync(() => {
         throw ExampleError
       })
 
@@ -110,19 +110,19 @@ describe.concurrent("Effect", () => {
     })
 
     it("catch failing finalizers with fail", async () => {
-      const program = Effect.fail(ExampleError)
+      const program = Effect.failSync(ExampleError)
         .ensuring(
-          Effect.succeed(() => {
+          Effect.sync(() => {
             throw InterruptCause1
           })
         )
         .ensuring(
-          Effect.succeed(() => {
+          Effect.sync(() => {
             throw InterruptCause2
           })
         )
         .ensuring(
-          Effect.succeed(() => {
+          Effect.sync(() => {
             throw InterruptCause3
           })
         )
@@ -142,17 +142,17 @@ describe.concurrent("Effect", () => {
     it("catch failing finalizers with terminate", async () => {
       const program = Effect.die(ExampleError)
         .ensuring(
-          Effect.succeed(() => {
+          Effect.sync(() => {
             throw InterruptCause1
           })
         )
         .ensuring(
-          Effect.succeed(() => {
+          Effect.sync(() => {
             throw InterruptCause2
           })
         )
         .ensuring(
-          Effect.succeed(() => {
+          Effect.sync(() => {
             throw InterruptCause3
           })
         )
@@ -193,7 +193,7 @@ describe.concurrent("Effect", () => {
 
     it("timeout a long computation", async () => {
       const program = (
-        Effect.sleep((5).seconds) > Effect.succeed(true)
+        Effect.sleep((5).seconds) > Effect.sync(true)
       ).timeoutFail(false, (10).millis)
 
       const result = await program.unsafeRunPromiseExit()
@@ -203,7 +203,7 @@ describe.concurrent("Effect", () => {
 
     it("timeout a long computation with a cause", async () => {
       const cause = Cause.die(new Error("boom"))
-      const program = (Effect.sleep((5).seconds) > Effect.succeed(true))
+      const program = (Effect.sleep((5).seconds) > Effect.sync(true))
         .timeoutFailCause(cause, (10).millis)
         .sandbox
         .flip
@@ -230,8 +230,8 @@ describe.concurrent("Effect", () => {
     })
 
     it("catchAllCause", async () => {
-      const program = (Effect.succeed(42) > Effect.fail("uh oh")).catchAllCause(
-        Effect.succeedNow
+      const program = (Effect.sync(42) > Effect.failSync("uh oh")).catchAllCause(
+        Effect.succeed
       )
 
       const result = await program.unsafeRunPromise()

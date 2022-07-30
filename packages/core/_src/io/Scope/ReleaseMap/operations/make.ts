@@ -6,7 +6,7 @@ import { Running } from "@effect/core/io/Scope/ReleaseMap/_internal/State"
  *
  * @tsplus static effect/core/io/ReleaseMap.Ops make
  */
-export const make = Effect.succeed(unsafeMake)
+export const make = Effect.sync(unsafeMake)
 
 /**
  * Unsafely creates a new `ReleaseMap`.

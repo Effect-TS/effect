@@ -72,7 +72,7 @@ function fold<R, E, R2, E2, R3, E3, In, S>(
   __tsplusTrace?: string
 ): Effect<R | R2 | R3, E | E2 | E3, Tuple<[S, number, boolean, Chunk<In>]>> {
   if (index === input.length) {
-    return Effect.succeed(Tuple(s, cost, dirty, Chunk.empty<In>()))
+    return Effect.sync(Tuple(s, cost, dirty, Chunk.empty<In>()))
   }
 
   const elem = input.unsafeGet(index)
@@ -95,7 +95,7 @@ function fold<R, E, R2, E2, R3, E3, In, S>(
         if (decomposed.length <= 1 && dirty) {
           // If the state is dirty and `elem` cannot be decomposed, we stop folding
           // and include `elem` in the leftovers.
-          return Effect.succeed(Tuple(s, cost, dirty, input.drop(index)))
+          return Effect.sync(Tuple(s, cost, dirty, input.drop(index)))
         }
         // `elem` got decomposed, so we will recurse with the decomposed elements pushed
         // into the chunk we're processing and see if we can aggregate further.

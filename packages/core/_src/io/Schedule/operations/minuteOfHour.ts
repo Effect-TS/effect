@@ -27,6 +27,6 @@ export function minuteOfHour(
     const start = Math.max(beginningOfMinute(min), now)
     const end = endOfMinute(min)
     const interval = Interval(start, end)
-    return Effect.succeedNow(Tuple(state + 1, state, Decision.Continue(interval)))
+    return Effect.succeed(Tuple(state + 1, state, Decision.Continue(interval)))
   })
 }

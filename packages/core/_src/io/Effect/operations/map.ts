@@ -5,5 +5,5 @@
  * @tsplus pipeable effect/core/io/Effect map
  */
 export function map<A, B>(f: (a: A) => B, __tsplusTrace?: string) {
-  return <R, E>(self: Effect<R, E, A>): Effect<R, E, B> => self.flatMap((a) => Effect.succeedNow(f(a)))
+  return <R, E>(self: Effect<R, E, A>): Effect<R, E, B> => self.flatMap((a) => Effect.succeed(f(a)))
 }

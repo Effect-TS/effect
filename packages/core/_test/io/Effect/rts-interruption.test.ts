@@ -5,7 +5,7 @@ describe.concurrent("Effect", () => {
   describe.concurrent("RTS interruption", () => {
     it("sync forever is interruptible", async () => {
       const program = Effect.Do()
-        .bind("fiber", () => Effect.succeed(1).forever.fork)
+        .bind("fiber", () => Effect.sync(1).forever.fork)
         .flatMap(({ fiber }) => fiber.interrupt)
         .map(constTrue)
 
@@ -75,7 +75,7 @@ describe.concurrent("Effect", () => {
         .bind("deferred", () => Deferred.make<never, void>())
         .bind("fiber", ({ deferred }) =>
           Effect.acquireUseRelease(
-            deferred.succeed(undefined) > awaiter.await() > Effect.succeed(1),
+            deferred.succeed(undefined) > awaiter.await() > Effect.sync(1),
             () => Effect.unit,
             () => Effect.unit
           ).forkDaemon)
@@ -279,7 +279,7 @@ describe.concurrent("Effect", () => {
         .bind("deferred", () => Deferred.make<never, boolean>())
         .bind("fiber", ({ cont, deferred }) =>
           (cont.succeed(undefined) > Effect.never)
-            .catchAll(Effect.failNow)
+            .catchAll(Effect.fail)
             .ensuring(deferred.succeed(true))
             .fork)
         .tap(({ cont }) => cont.await())
@@ -374,7 +374,7 @@ describe.concurrent("Effect", () => {
           withLatch((release) =>
             (release > Effect.never)
               .ensuring(
-                (Effect.unit > Effect.fail("uh oh")).catchAll(() => recovered.set(true))
+                (Effect.unit > Effect.failSync("uh oh")).catchAll(() => recovered.set(true))
               )
               .fork
           ))
@@ -565,7 +565,9 @@ describe.concurrent("Effect", () => {
     })
 
     it("cause reflects interruption", async () => {
-      const program = withLatch((release) => (release > Effect.fail("foo")).fork).flatMap((fiber) => fiber.interrupt)
+      const program = withLatch((release) => (release > Effect.failSync("foo")).fork).flatMap((fiber) =>
+        fiber.interrupt
+      )
 
       const result = await program.unsafeRunPromise()
 
@@ -668,14 +670,14 @@ describe.concurrent("Effect", () => {
 
     it("effectAsyncInterrupt cancelation", async () => {
       const program = Effect.Do()
-        .bind("ref", () => Effect.succeed(new AtomicNumber(0)))
+        .bind("ref", () => Effect.sync(new AtomicNumber(0)))
         .bindValue("effect", ({ ref }) =>
           Effect.asyncInterrupt(() => {
             ref.incrementAndGet()
-            return Either.left(Effect.succeed(ref.decrementAndGet()))
+            return Either.left(Effect.sync(ref.decrementAndGet()))
           }))
         .tap(({ effect }) => Effect.unit.race(effect))
-        .flatMap(({ ref }) => Effect.succeed(ref.get))
+        .flatMap(({ ref }) => Effect.sync(ref.get))
 
       const result = await program.unsafeRunPromise()
 

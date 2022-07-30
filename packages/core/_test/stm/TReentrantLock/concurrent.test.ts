@@ -3,7 +3,7 @@ describe.concurrent("ReentrantLock", () => {
     Effect.scoped(
       Do(($) => {
         const lock = $(TReentrantLock.make().commit)
-        const count = $(lock.withLockScoped.flatMap(Effect.succeedNow))
+        const count = $(lock.withLockScoped.flatMap(Effect.succeed))
         assert.strictEqual(count, 1)
       })
     ).unsafeRunPromise())
@@ -12,7 +12,7 @@ describe.concurrent("ReentrantLock", () => {
     Effect.scoped(
       Do(($) => {
         const lock = $(TReentrantLock.make().commit)
-        const count = $(lock.withLockScoped.zipRight(lock.withLockScoped.flatMap(Effect.succeedNow)))
+        const count = $(lock.withLockScoped.zipRight(lock.withLockScoped.flatMap(Effect.succeed)))
         assert.strictEqual(count, 2)
       })
     ).unsafeRunPromise())

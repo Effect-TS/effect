@@ -19,5 +19,5 @@ export function filterOrFail<E1, A>(
   error: LazyArg<E1>,
   __tsplusTrace?: string
 ) {
-  return <R, E>(self: Effect<R, E, A>): Effect<R, E | E1, A> => Effect.$.filterOrElse(f, Effect.fail(error))(self)
+  return <R, E>(self: Effect<R, E, A>): Effect<R, E | E1, A> => Effect.$.filterOrElse(f, Effect.failSync(error))(self)
 }

@@ -33,7 +33,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("whenEffect", () => {
     it("returns the stream if the effectful condition is satisfied", async () => {
       const program = Stream.whenEffect(
-        Effect.succeed(constTrue),
+        Effect.sync(constTrue),
         Stream.range(0, 10)
       ).runCollect
 
@@ -44,7 +44,7 @@ describe.concurrent("Stream", () => {
 
     it("returns an empty stream if the effectful condition is not satisfied", async () => {
       const program = Stream.whenEffect(
-        Effect.succeed(constFalse),
+        Effect.sync(constFalse),
         Stream.range(0, 10)
       ).runCollect
 
@@ -56,7 +56,7 @@ describe.concurrent("Stream", () => {
     it("fails if the effectful condition fails", async () => {
       const error = new RuntimeError("boom")
       const program = Stream.whenEffect(
-        Effect.fail(error),
+        Effect.failSync(error),
         Stream.range(0, 10)
       ).runDrain
 
@@ -118,7 +118,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("whenCaseEffect", () => {
     it("returns the resulting stream if the given partial function is defined for the given effectful value", async () => {
       const program = Stream.whenCaseEffect(
-        Effect.succeed(Maybe.some(5)),
+        Effect.sync(Maybe.some(5)),
         (n: Maybe<number>) => (n.isSome() ? Maybe.some(Stream(n.value)) : Maybe.none)
       ).runCollect
 
@@ -141,7 +141,7 @@ describe.concurrent("Stream", () => {
     it("fails if the effectful value is a failure", async () => {
       const error = new RuntimeError("boom")
       const program = Stream.whenCaseEffect(
-        Effect.fail(error),
+        Effect.failSync(error),
         (n: Maybe<number>) => n.isSome() ? Maybe.some(Stream(n)) : Maybe.none
       ).runCollect
 

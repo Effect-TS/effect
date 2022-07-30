@@ -10,19 +10,19 @@ export class LiveRandom implements Random {
   }
 
   get next(): Effect<never, never, number> {
-    return Effect.succeed(this.PRNG.number())
+    return Effect.sync(this.PRNG.number())
   }
 
   get nextBoolean(): Effect<never, never, boolean> {
-    return this.next.flatMap((n) => Effect.succeed(n > 0.5))
+    return this.next.flatMap((n) => Effect.sync(n > 0.5))
   }
 
   get nextInt(): Effect<never, never, number> {
-    return Effect.succeed(this.PRNG.integer(0))
+    return Effect.sync(this.PRNG.integer(0))
   }
 
   nextRange(low: number, high: number, __tsplusTrace?: string): Effect<never, never, number> {
-    return this.next.flatMap((n) => Effect.succeed((high - low) * n + low))
+    return this.next.flatMap((n) => Effect.sync((high - low) * n + low))
   }
 
   nextIntBetween(
@@ -30,7 +30,7 @@ export class LiveRandom implements Random {
     high: number,
     __tsplusTrace?: string
   ): Effect<never, never, number> {
-    return Effect.succeed(() => this.PRNG.integer(high - low) + low)
+    return Effect.sync(() => this.PRNG.integer(high - low) + low)
   }
 
   shuffle<A>(
@@ -51,7 +51,7 @@ function shuffleWith<A>(
 
     return Effect.Do()
       .bind("buffer", () =>
-        Effect.succeed(() => {
+        Effect.sync(() => {
           const buffer: Array<A> = []
           for (const element of collection0) {
             buffer.push(element)
@@ -62,7 +62,7 @@ function shuffleWith<A>(
         "swap",
         ({ buffer }) =>
           (i1: number, i2: number) =>
-            Effect.succeed(() => {
+            Effect.sync(() => {
               const tmp = buffer[i1]!
               buffer[i1] = buffer[i2]!
               buffer[i2] = tmp

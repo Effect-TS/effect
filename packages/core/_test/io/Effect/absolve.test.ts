@@ -2,7 +2,7 @@ describe.concurrent("Effect", () => {
   describe.concurrent("absolve", () => {
     it("fluent/static method consistency", () =>
       Do(($) => {
-        const ioEither = Effect.succeed(Either.right("test"))
+        const ioEither = Effect.sync(Either.right("test"))
         const abs1 = $(ioEither.absolve)
         const abs2 = $(Effect.absolve(ioEither))
         assert.strictEqual(abs1, "test")

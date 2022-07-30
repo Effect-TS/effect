@@ -11,5 +11,5 @@ export function provideService<T>(
   __tsplusTrace?: string
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<Exclude<R, T>, E, A> =>
-    self.provideServiceEffect(tag, Effect.succeed(resource))
+    self.provideServiceEffect(tag, Effect.sync(resource))
 }

@@ -6,5 +6,5 @@
  */
 export function tapError<E, RIn2, E2, X>(f: (e: E) => Effect<RIn2, E2, X>) {
   return <RIn, ROut>(self: Layer<RIn, E, ROut>): Layer<RIn | RIn2, E | E2, ROut> =>
-    self.catchAll((e) => Layer.fromEffectEnvironment(f(e).flatMap(() => Effect.failNow(e))))
+    self.catchAll((e) => Layer.fromEffectEnvironment(f(e).flatMap(() => Effect.fail(e))))
 }

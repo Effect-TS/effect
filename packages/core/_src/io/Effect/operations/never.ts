@@ -11,5 +11,5 @@ export const never: Effect<never, never, never> = Effect.asyncInterrupt<never, n
   const interval = setInterval(() => {
     //
   }, MAX_SET_TIMEOUT_VALUE)
-  return Either.left(Effect.succeed(clearInterval(interval)))
+  return Either.left(Effect.sync(clearInterval(interval)))
 })

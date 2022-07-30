@@ -10,5 +10,5 @@ export function scanReduce<A, A2 extends A>(
   __tsplusTrace?: string
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, A2> =>
-    self.scanReduceEffect((curr, next) => Effect.succeedNow(f(curr, next)))
+    self.scanReduceEffect((curr, next) => Effect.succeed(f(curr, next)))
 }

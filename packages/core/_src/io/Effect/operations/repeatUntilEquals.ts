@@ -11,5 +11,5 @@ export function repeatUntilEquals<A>(
   __tsplusTrace?: string
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R, E, A> =>
-    Effect.succeed(a).flatMap((a) => self.repeatUntil((_) => E.equals(_, a)))
+    Effect.sync(a).flatMap((a) => self.repeatUntil((_) => E.equals(_, a)))
 }

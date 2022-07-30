@@ -70,5 +70,5 @@ export function bindValue<N extends string, K, A>(
  * @tsplus static effect/core/io/Effect.Ops Do
  */
 export function Do(): Effect<never, never, {}> {
-  return Effect.succeedNow({})
+  return Effect.succeed({})
 }

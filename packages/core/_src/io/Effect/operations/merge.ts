@@ -8,5 +8,5 @@ export function merge<R, E, A>(
   self: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<R, never, E | A> {
-  return self.foldEffect((e) => Effect.succeedNow(e), Effect.succeedNow)
+  return self.foldEffect((e) => Effect.succeed(e), Effect.succeed)
 }

@@ -16,7 +16,7 @@ export function reduceRightEffect_<A, R, E, S>(
     return f(self.a, s)
   }
   return (self as Chunk<A>).reduceRight(
-    Effect.succeedNow(s) as Effect<R, E, S>,
+    Effect.succeed(s) as Effect<R, E, S>,
     (a, s) => s.flatMap((s1) => f(a, s1))
   )
 }

@@ -25,7 +25,7 @@ export function addIfOpen(finalizer: Scope.Finalizer, __tsplusTrace?: string) {
           case "Running": {
             const finalizers = s.finalizers().set(s.nextKey, finalizer)
             return Tuple(
-              Effect.succeed(() => Maybe.some(s.nextKey)),
+              Effect.sync(() => Maybe.some(s.nextKey)),
               new Running(next(s.nextKey), finalizers, s.update)
             )
           }

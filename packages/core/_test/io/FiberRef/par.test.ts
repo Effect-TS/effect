@@ -33,8 +33,8 @@ describe.concurrent("FiberRef", () => {
       const program = Effect.Do()
         .bind("fiberRef", () => FiberRef.make(initial))
         .bindValue("success", ({ fiberRef }) => fiberRef.set(update))
-        .bindValue("failure1", ({ fiberRef }) => fiberRef.set(update).zipRight(Effect.failNow(":-(")))
-        .bindValue("failure2", ({ fiberRef }) => fiberRef.set(update).zipRight(Effect.failNow(":-O")))
+        .bindValue("failure1", ({ fiberRef }) => fiberRef.set(update).zipRight(Effect.fail(":-(")))
+        .bindValue("failure2", ({ fiberRef }) => fiberRef.set(update).zipRight(Effect.fail(":-O")))
         .tap(({ failure1, failure2, success }) => success.zipPar(failure1.zipPar(failure2)).orElse(Effect.unit))
         .flatMap(({ fiberRef }) => fiberRef.get())
 

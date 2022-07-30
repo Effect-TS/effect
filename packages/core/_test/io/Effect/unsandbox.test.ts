@@ -1,13 +1,13 @@
 describe.concurrent("Effect", () => {
   describe.concurrent("unsandbox", () => {
     it("unwraps exception", async () => {
-      const failure = Effect.fail(Cause.fail(new Error("fail")))
-      const success = Effect.succeed(100)
+      const failure = Effect.failSync(Cause.fail(new Error("fail")))
+      const success = Effect.sync(100)
       const program = Effect.Do()
         .bind("message", () =>
           failure.unsandbox.foldEffect(
-            (e) => Effect.succeed(e.message),
-            () => Effect.succeed("unexpected")
+            (e) => Effect.sync(e.message),
+            () => Effect.sync("unexpected")
           ))
         .bind("result", () => success.unsandbox)
 
@@ -19,11 +19,11 @@ describe.concurrent("Effect", () => {
 
     it("no information is lost during composition", async () => {
       function cause<R, E>(effect: Effect<R, E, never>): Effect<R, never, Cause<E>> {
-        return effect.foldCauseEffect(Effect.succeedNow, Effect.failNow)
+        return effect.foldCauseEffect(Effect.succeed, Effect.fail)
       }
       const c = Cause.fail("oh no")
       const program = cause(
-        Effect.failCause(c)
+        Effect.failCauseSync(c)
           .sandbox
           .mapErrorCause((e) => e.untraced)
           .unsandbox

@@ -117,11 +117,11 @@ export class TestClockInternal extends LiveClock {
       this.annotations.get(TestAnnotation.fibers).flatMap((either) => {
         switch (either._tag) {
           case "Left": {
-            return Effect.succeedNow(SortedSet.empty(Fiber.Ord))
+            return Effect.succeed(SortedSet.empty(Fiber.Ord))
           }
           case "Right": {
             return Effect
-              .forEach(either.right, (ref) => Effect.succeed(ref.get))
+              .forEach(either.right, (ref) => Effect.sync(ref.get))
               .map((chunk) => chunk.reduce(SortedSet.empty(Fiber.Ord), (a, b) => a.union(b)))
               .map((set) => set.filter((fiber) => !(fiber.id == descriptor.id)))
           }
@@ -146,13 +146,13 @@ export class TestClockInternal extends LiveClock {
           fiber._status.flatMap((status) => {
             switch (status._tag) {
               case "Done": {
-                return Effect.succeedNow(map.set(fiber.id, status))
+                return Effect.succeed(map.set(fiber.id, status))
               }
               case "Suspended": {
-                return Effect.succeedNow(map.set(fiber.id, status))
+                return Effect.succeed(map.set(fiber.id, status))
               }
               default: {
-                return Effect.fail(undefined)
+                return Effect.failSync(undefined)
               }
             }
           })
@@ -185,7 +185,7 @@ export class TestClockInternal extends LiveClock {
     return this.warningState.updateSomeEffect((warningData) => {
       switch (warningData._tag) {
         case "Start": {
-          return Maybe.some(Effect.succeedNow(WarningData.Done))
+          return Maybe.some(Effect.succeed(WarningData.Done))
         }
         case "Pending": {
           return Maybe.some(warningData.fiber.interrupt.as(WarningData.Done))
@@ -205,8 +205,8 @@ export class TestClockInternal extends LiveClock {
       .zip(this.live.provide(Clock.sleep((5).millis)).zipRight(this.freeze))
       .flatMap(({ tuple: [first, last] }) =>
         first == last ?
-          Effect.succeedNow(first) :
-          Effect.fail(undefined)
+          Effect.succeed(first) :
+          Effect.failSync(undefined)
       )
   }
 

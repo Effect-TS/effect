@@ -4,7 +4,7 @@ describe.concurrent("Effect", () => {
       function effect(ref: Ref<number>) {
         return ref
           .get()
-          .flatMap((n) => n < 10 ? ref.update((n) => n + 1) > Effect.fail("Ouch") : Effect.succeed(n))
+          .flatMap((n) => n < 10 ? ref.update((n) => n + 1) > Effect.failSync("Ouch") : Effect.sync(n))
       }
 
       const program = Ref.make(0).flatMap((ref) => effect(ref).eventually)

@@ -53,7 +53,7 @@ export const Metric: MetricOps = function<Type, In, Out>(
 ): Metric<Type, In, Out> {
   const metric: Metric<Type, In, Out> = Object.assign(
     <R, E, A extends In>(effect: Effect<R, E, A>, __tsplusTrace?: string): Effect<R, E, A> =>
-      effect.tap((a) => Effect.succeed(unsafeUpdate(a, HashSet.empty()))),
+      effect.tap((a) => Effect.sync(unsafeUpdate(a, HashSet.empty()))),
     {
       [MetricSym]: MetricSym,
       keyType,

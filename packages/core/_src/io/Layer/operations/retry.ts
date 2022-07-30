@@ -42,7 +42,7 @@ function update<S, RIn, E, X>(
     Clock.currentTime.flatMap((now) =>
       schedule._step(now, e, s).flatMap(({ tuple: [state, _, decision] }) =>
         decision._tag === "Done"
-          ? Effect.fail(e)
+          ? Effect.failSync(e)
           : Clock.sleep(new Duration(decision.interval.startMillis - now)).as({
             state
           })

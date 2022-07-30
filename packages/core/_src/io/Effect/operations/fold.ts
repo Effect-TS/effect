@@ -13,7 +13,7 @@ export function fold<E, A, A2, A3>(
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R, never, A2 | A3> =>
     self.foldEffect(
-      (e) => Effect.succeedNow(failure(e)),
-      (a) => Effect.succeedNow(success(a))
+      (e) => Effect.succeed(failure(e)),
+      (a) => Effect.succeed(success(a))
     )
 }

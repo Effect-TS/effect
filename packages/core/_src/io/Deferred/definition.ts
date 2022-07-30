@@ -43,7 +43,7 @@ function interruptJoiner<E, A>(
   joiner: (a: Effect.IO<E, A>) => void,
   __tsplusTrace?: string
 ): Effect<never, never, void> {
-  return Effect.succeed(() => {
+  return Effect.sync(() => {
     const state = self.state.get
     if (state._tag === "Pending") {
       self.state.set(DeferredState.pending(state.joiners.filter((j) => j !== joiner)))
@@ -108,7 +108,7 @@ export class DeferredInternal<E, A> {
     effect: Effect<never, E, A>,
     __tsplusTrace?: string | undefined
   ): Effect<never, never, boolean> {
-    return Effect.succeed(() => {
+    return Effect.sync(() => {
       const state = this.state.get
       switch (state._tag) {
         case "Done": {
@@ -154,7 +154,7 @@ export class DeferredInternal<E, A> {
    * fibers waiting on the value of the deferred.
    */
   fail<E, A>(this: Deferred<E, A>, e: LazyArg<E>, __tsplusTrace?: string | undefined): Effect<never, never, boolean> {
-    return this.completeWith(Effect.fail(e), __tsplusTrace)
+    return this.completeWith(Effect.failSync(e), __tsplusTrace)
   }
 
   /**
@@ -166,7 +166,7 @@ export class DeferredInternal<E, A> {
     cause: LazyArg<Cause<E>>,
     __tsplusTrace?: string | undefined
   ): Effect<never, never, boolean> {
-    return this.completeWith(Effect.failCause(cause))
+    return this.completeWith(Effect.failCauseSync(cause))
   }
 
   /**
@@ -194,7 +194,7 @@ export class DeferredInternal<E, A> {
    * already been completed with a value or an error and false otherwise.
    */
   isDone<E, A>(this: Deferred<E, A>, __tsplusTrace?: string | undefined): Effect<never, never, boolean> {
-    return Effect.succeed(this.state.get._tag === "Done")
+    return Effect.sync(this.state.get._tag === "Done")
   }
 
   /**
@@ -205,7 +205,7 @@ export class DeferredInternal<E, A> {
     this: Deferred<E, A>,
     __tsplusTrace?: string | undefined
   ): Effect<never, never, Maybe<Effect<never, E, A>>> {
-    return Effect.succeed(() => {
+    return Effect.sync(() => {
       const state = this.state.get
       switch (state._tag) {
         case "Pending": {
@@ -226,7 +226,7 @@ export class DeferredInternal<E, A> {
     value: LazyArg<A>,
     __tsplusTrace?: string | undefined
   ): Effect<never, never, boolean> {
-    return this.completeWith(Effect.succeed(value))
+    return this.completeWith(Effect.sync(value))
   }
 
   /**

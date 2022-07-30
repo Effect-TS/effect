@@ -11,6 +11,6 @@ export function repeatUntilEffect<A, R1>(
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E, A> =>
     self.flatMap((a) =>
-      f(a).flatMap((b) => b ? Effect.succeedNow(a) : Effect.yieldNow.zipRight(self.repeatUntilEffect(f)))
+      f(a).flatMap((b) => b ? Effect.succeed(a) : Effect.yieldNow.zipRight(self.repeatUntilEffect(f)))
     )
 }

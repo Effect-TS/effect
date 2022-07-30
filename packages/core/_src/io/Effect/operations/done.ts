@@ -10,7 +10,7 @@ export function done<E, A>(
   return Effect.suspendSucceed(() => {
     const exit0 = exit()
     return exit0._tag === "Success"
-      ? Effect.succeedNow(exit0.value)
-      : Effect.failCauseNow(exit0.cause)
+      ? Effect.succeed(exit0.value)
+      : Effect.failCause(exit0.cause)
   })
 }

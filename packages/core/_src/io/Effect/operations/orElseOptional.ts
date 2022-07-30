@@ -11,5 +11,5 @@ export function orElseOptional<R, E, A, R2, E2, A2>(
   __tsplusTrace?: string
 ) {
   return (self: Effect<R, Maybe<E>, A>): Effect<R | R2, Maybe<E | E2>, A | A2> =>
-    self.catchAll((option) => option.fold(that, (e) => Effect.failNow(Maybe.some<E | E2>(e))))
+    self.catchAll((option) => option.fold(that, (e) => Effect.fail(Maybe.some<E | E2>(e))))
 }

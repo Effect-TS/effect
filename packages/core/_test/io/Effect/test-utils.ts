@@ -3,7 +3,7 @@ export const InterruptCause1 = new Error("Oh noes 1!")
 export const InterruptCause2 = new Error("Oh noes 2!")
 export const InterruptCause3 = new Error("Oh noes 3!")
 
-export const ExampleErrorFail = Effect.fail(ExampleError)
+export const ExampleErrorFail = Effect.failSync(ExampleError)
 export const ExampleErrorDie = Effect.die(() => {
   throw ExampleError
 })
@@ -16,7 +16,7 @@ export const NumberService = Tag<NumberService>()
 
 export function asyncExampleError<A>(): Effect<never, unknown, A> {
   return Effect.async((cb) => {
-    cb(Effect.fail(ExampleError))
+    cb(Effect.failSync(ExampleError))
   })
 }
 
@@ -32,9 +32,9 @@ export function exactlyOnce<R, A, A1>(
 ): Effect<R, string, A1> {
   return Ref.make(0).flatMap((ref) =>
     Effect.Do()
-      .bind("res", () => f(ref.update((n) => n + 1) > Effect.succeed(value)))
+      .bind("res", () => f(ref.update((n) => n + 1) > Effect.sync(value)))
       .bind("count", () => ref.get())
-      .tap(({ count }) => count !== 1 ? Effect.fail("Accessed more than once") : Effect.unit)
+      .tap(({ count }) => count !== 1 ? Effect.failSync("Accessed more than once") : Effect.unit)
       .map(({ res }) => res)
   )
 }
@@ -55,7 +55,7 @@ export function fib(n: number): number {
 
 export function concurrentFib(n: number): Effect<never, never, number> {
   if (n <= 1) {
-    return Effect.succeed(n)
+    return Effect.sync(n)
   }
   return Do(($) => {
     const fiber1 = $(concurrentFib(n - 1).fork)
@@ -77,7 +77,7 @@ export function deepErrorEffect(n: number): Effect<never, unknown, void> {
 
 export function deepErrorFail(n: number): Effect<never, unknown, void> {
   if (n === 0) {
-    return Effect.fail(ExampleError)
+    return Effect.failSync(ExampleError)
   }
   return Effect.unit > deepErrorFail(n - 1)
 }
@@ -94,5 +94,5 @@ export function deepMapEffect(n: number): Effect<never, never, number> {
       )
     )
   }
-  return loop(n, Effect.succeed(0))
+  return loop(n, Effect.sync(0))
 }

@@ -12,5 +12,5 @@ export function cond<E, A>(
   error: LazyArg<E>,
   __tsplusTrace?: string
 ): Effect<never, E, A> {
-  return Effect.suspendSucceed(() => predicate() ? Effect.succeed(result) : Effect.fail(error))
+  return Effect.suspendSucceed(() => predicate() ? Effect.sync(result) : Effect.failSync(error))
 }

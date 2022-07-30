@@ -10,7 +10,7 @@ describe.concurrent("SynchronizedRef", () => {
     it("happy path", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.Synchronized.make(current))
-        .bind("v1", ({ ref }) => ref.modifyEffect(() => Effect.succeed(Tuple("hello", update))))
+        .bind("v1", ({ ref }) => ref.modifyEffect(() => Effect.sync(Tuple("hello", update))))
         .bind("v2", ({ ref }) => ref.get())
 
       const { v1, v2 } = await program.unsafeRunPromise()
@@ -20,7 +20,7 @@ describe.concurrent("SynchronizedRef", () => {
     })
 
     it("with failure", async () => {
-      const program = Ref.Synchronized.make(current).flatMap((ref) => ref.modifyEffect(() => Effect.fail(failure)))
+      const program = Ref.Synchronized.make(current).flatMap((ref) => ref.modifyEffect(() => Effect.failSync(failure)))
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -35,7 +35,7 @@ describe.concurrent("SynchronizedRef", () => {
         .bind("r1", ({ ref }) =>
           ref.modifySomeEffect("state doesn't change", (state) =>
             state.isClosed()
-              ? Maybe.some(Effect.succeed(Tuple("changed", State.Changed)))
+              ? Maybe.some(Effect.sync(Tuple("changed", State.Changed)))
               : Maybe.none))
         .bind("v1", ({ ref }) => ref.get())
 
@@ -51,15 +51,15 @@ describe.concurrent("SynchronizedRef", () => {
         .bind("r1", ({ ref }) =>
           ref.modifySomeEffect("state doesn't change", (state) =>
             state.isActive()
-              ? Maybe.some(Effect.succeed(Tuple("changed", State.Changed)))
+              ? Maybe.some(Effect.sync(Tuple("changed", State.Changed)))
               : Maybe.none))
         .bind("v1", ({ ref }) => ref.get())
         .bind("r2", ({ ref }) =>
           ref.modifySomeEffect("state doesn't change", (state) =>
             state.isActive()
-              ? Maybe.some(Effect.succeed(Tuple("changed", State.Changed)))
+              ? Maybe.some(Effect.sync(Tuple("changed", State.Changed)))
               : state.isChanged()
-              ? Maybe.some(Effect.succeed(Tuple("closed", State.Closed)))
+              ? Maybe.some(Effect.sync(Tuple("closed", State.Closed)))
               : Maybe.none))
         .bind("v2", ({ ref }) => ref.get())
 
@@ -77,7 +77,7 @@ describe.concurrent("SynchronizedRef", () => {
         .bind("r", ({ ref }) =>
           ref
             .modifySomeEffect("state doesn't change", (state) =>
-              state.isClosed() ? Maybe.some(Effect.fail(failure)) : Maybe.none)
+              state.isClosed() ? Maybe.some(Effect.failSync(failure)) : Maybe.none)
             .orDieWith(() =>
               new Error()
             ))
@@ -93,7 +93,7 @@ describe.concurrent("SynchronizedRef", () => {
       const program = Ref.Synchronized.make<State>(State.Active).flatMap((ref) =>
         ref.modifySomeEffect(
           "state doesn't change",
-          (state) => state.isActive() ? Maybe.some(Effect.fail(failure)) : Maybe.none
+          (state) => state.isActive() ? Maybe.some(Effect.failSync(failure)) : Maybe.none
         )
       )
 

@@ -12,9 +12,9 @@ export function tapErrorTrace<R2, E2, X>(
     self.foldCauseEffect(
       (cause) =>
         cause.failureTraceOrCause.fold(
-          ({ tuple: [_, trace] }) => f(trace).zipRight(Effect.failCauseNow(cause)),
-          () => Effect.failCauseNow(cause)
+          ({ tuple: [_, trace] }) => f(trace).zipRight(Effect.failCause(cause)),
+          () => Effect.failCause(cause)
         ),
-      Effect.succeedNow
+      Effect.succeed
     )
 }
