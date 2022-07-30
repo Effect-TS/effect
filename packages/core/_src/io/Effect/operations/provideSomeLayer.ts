@@ -12,6 +12,6 @@ export function provideSomeLayer<R1, E1, A1>(
   return <R, E, A>(self: Effect<R, E, A>): Effect<R1 | Exclude<R, A1>, E | E1, A> =>
     // @ts-expect-error
     self.provideLayer(
-      Layer.environment<Exclude<R, A1>>() + layer
+      Layer.environment<Exclude<R, A1>>().merge(layer())
     )
 }

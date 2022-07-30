@@ -12,5 +12,5 @@ export function provideSomeLayer<R0, R2, OutErr2>(
     self: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ): Channel<R0 | Exclude<R, R2>, InErr, InElem, InDone, OutErr | OutErr2, OutElem, OutDone> =>
     // @ts-expect-error
-    self.provideLayer(Layer.environment<Exclude<R, R2>>().and(layer()))
+    self.provideLayer(Layer.environment<Exclude<R, R2>>().merge(layer()))
 }
