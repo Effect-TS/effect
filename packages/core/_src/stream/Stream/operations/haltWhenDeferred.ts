@@ -23,7 +23,7 @@ export function haltWhenDeferred<E2, Z>(
       void
     > = Channel.unwrap(
       deferred()
-        .poll()
+        .poll
         .map((option) =>
           option.fold(
             Channel.readWith(

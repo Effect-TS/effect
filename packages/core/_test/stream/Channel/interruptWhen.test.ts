@@ -1,81 +1,78 @@
 describe.concurrent("Channel", () => {
   describe.concurrent("interruptWhen", () => {
     describe.concurrent("deferred", () => {
-      it("interrupts the current element", async () => {
-        const program = Effect.Do()
-          .bind("interrupted", () => Ref.make(false))
-          .bind("latch", () => Deferred.make<never, void>())
-          .bind("halt", () => Deferred.make<never, void>())
-          .bind("started", () => Deferred.make<never, void>())
-          .bind("fiber", ({ halt, interrupted, latch, started }) =>
+      it("interrupts the current element", () =>
+        Do(($) => {
+          const interrupted = $(Ref.make(false))
+          const latch = $(Deferred.make<never, void>())
+          const halt = $(Deferred.make<never, void>())
+          const started = $(Deferred.make<never, void>())
+          const fiber = $(
             Channel.fromEffect(
-              (started.succeed(undefined) > latch.await()).onInterrupt(() => interrupted.set(true))
+              started.succeed(undefined)
+                .zipRight(latch.await)
+                .onInterrupt(() => interrupted.set(true))
             )
               .interruptWhenDeferred(halt)
               .runDrain
-              .fork)
-          .tap(({ halt, started }) => started.await() > halt.succeed(undefined))
-          .tap(({ fiber }) => fiber.await)
-          .flatMap(({ interrupted }) => interrupted.get())
+              .fork
+          )
+          $(started.await.zipRight(halt.succeed(undefined)))
+          $(fiber.await)
+          const result = $(interrupted.get())
+          assert.isTrue(result)
+        }).unsafeRunPromise())
 
-        const result = await program.unsafeRunPromise()
-
-        assert.isTrue(result)
-      })
-
-      it("propagates errors", async () => {
-        const program = Deferred.make<string, never>()
-          .tap((deferred) => deferred.fail("fail"))
-          .flatMap((deferred) =>
-            (Channel.write(1) > Channel.fromEffect(Effect.never))
-              .interruptWhen(deferred.await())
+      it("propagates errors", () =>
+        Do(($) => {
+          const deferred = $(Deferred.make<string, never>())
+          $(deferred.fail("fail"))
+          const result = $(
+            Channel.write(1)
+              .zipRight(Channel.fromEffect(Effect.never))
+              .interruptWhen(deferred.await)
               .runDrain
               .either
           )
-
-        const result = await program.unsafeRunPromise()
-
-        assert.isTrue(result == Either.left("fail"))
-      })
+          assert.isTrue(result == Either.left("fail"))
+        }).unsafeRunPromiseExit())
     })
 
     describe.concurrent("io", () => {
-      it("interrupts the current element", async () => {
-        const program = Effect.Do()
-          .bind("interrupted", () => Ref.make(false))
-          .bind("latch", () => Deferred.make<never, void>())
-          .bind("halt", () => Deferred.make<never, void>())
-          .bind("started", () => Deferred.make<never, void>())
-          .bind("fiber", ({ halt, interrupted, latch, started }) =>
+      it("interrupts the current element", () =>
+        Do(($) => {
+          const interrupted = $(Ref.make(false))
+          const latch = $(Deferred.make<never, void>())
+          const halt = $(Deferred.make<never, void>())
+          const started = $(Deferred.make<never, void>())
+          const fiber = $(
             Channel.fromEffect(
-              (started.succeed(undefined) > latch.await()).onInterrupt(() => interrupted.set(true))
+              started.succeed(undefined)
+                .zipRight(latch.await)
+                .onInterrupt(() => interrupted.set(true))
             )
-              .interruptWhen(halt.await())
+              .interruptWhen(halt.await)
               .runDrain
-              .fork)
-          .tap(({ halt, started }) => started.await() > halt.succeed(undefined))
-          .tap(({ fiber }) => fiber.await)
-          .flatMap(({ interrupted }) => interrupted.get())
+              .fork
+          )
+          $(started.await.zipRight(halt.succeed(undefined)))
+          $(fiber.await)
+          const result = $(interrupted.get())
+          assert.isTrue(result)
+        }).unsafeRunPromise())
 
-        const result = await program.unsafeRunPromise()
-
-        assert.isTrue(result)
-      })
-
-      it("propagates errors", async () => {
-        const program = Deferred.make<string, never>()
-          .tap((deferred) => deferred.fail("fail"))
-          .flatMap((deferred) =>
+      it("propagates errors", () =>
+        Do(($) => {
+          const deferred = $(Deferred.make<string, never>())
+          $(deferred.fail("fail"))
+          const result = $(
             Channel.fromEffect(Effect.never)
-              .interruptWhen(deferred.await())
+              .interruptWhen(deferred.await)
               .runDrain
               .either
           )
-
-        const result = await program.unsafeRunPromise()
-
-        assert.isTrue(result == Either.left("fail"))
-      })
+          assert.isTrue(result == Either.left("fail"))
+        }).unsafeRunPromiseExit())
     })
   })
 })

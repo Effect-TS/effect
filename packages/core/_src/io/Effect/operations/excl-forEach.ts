@@ -290,7 +290,7 @@ function forEachParUnboundedDiscard<R, E, A, X>(
             )
           ).forkDaemon)
       ).flatMap((fibers) =>
-        restore(deferred.await()).foldCauseEffect(
+        restore(deferred.await).foldCauseEffect(
           (cause) =>
             forEachParUnbounded(fibers, (fiber) => fiber.interrupt).flatMap(
               (exits) => {
@@ -643,7 +643,7 @@ const UnsafeQueueProto: any = {
     )
   },
   get awaitShutdown() {
-    return (this.shutdownHook as Deferred<never, void>).await()
+    return (this.shutdownHook as Deferred<never, void>).await
   },
   get isShutdown() {
     return Effect.sync(() => (this.shutdownFlag as AtomicBoolean).get)
@@ -763,7 +763,7 @@ const UnsafeQueueProto: any = {
             this.queue as MutableQueue<unknown>,
             this.takers as MutableQueue<Deferred<never, unknown>>
           )
-          return (this.shutdownFlag as AtomicBoolean).get ? Effect.interrupt : deferred.await()
+          return (this.shutdownFlag as AtomicBoolean).get ? Effect.interrupt : deferred.await
         }).onInterrupt(() => {
           return Effect.sync(unsafeRemove(this.takers as MutableQueue<Deferred<never, unknown>>, deferred))
         })
@@ -843,7 +843,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
         this.unsafeOffer(as, deferred)
         this.unsafeOnQueueEmptySpace(queue, takers)
         unsafeCompleteTakers(this, queue, takers)
-        return isShutdown.get ? Effect.interrupt : deferred.await()
+        return isShutdown.get ? Effect.interrupt : deferred.await
       }).onInterrupt(() => Effect.sync(this.unsafeRemove(deferred)))
     })
   }

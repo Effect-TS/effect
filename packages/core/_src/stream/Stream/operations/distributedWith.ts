@@ -19,7 +19,7 @@ export function distributedWith<A>(
       self
         .distributedWithDynamic(
           maximumLag,
-          (a) => deferred.await().flatMap((f) => f(a)),
+          (a) => deferred.await.flatMap((f) => f(a)),
           () => Effect.unit
         )
         .flatMap((next) =>

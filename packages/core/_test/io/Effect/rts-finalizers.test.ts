@@ -227,10 +227,10 @@ describe.concurrent("Effect", () => {
         .bind("deferred1", () => Deferred.make<never, void>())
         .bind("deferred2", () => Deferred.make<never, number>())
         .bind("fiber", ({ deferred1, deferred2, ref }) =>
-          (deferred1.succeed(undefined) > deferred2.await())
+          (deferred1.succeed(undefined) > deferred2.await)
             .ensuring(ref.set(true) > Effect.sleep((10).millis))
             .fork)
-        .tap(({ deferred1 }) => deferred1.await())
+        .tap(({ deferred1 }) => deferred1.await)
         .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ ref }) => ref.get())
 

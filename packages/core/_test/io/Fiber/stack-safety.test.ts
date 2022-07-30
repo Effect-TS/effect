@@ -4,28 +4,22 @@ const fibers = Chunk.fill(100_000, () => Fiber.unit)
 
 describe.concurrent("Fiber", () => {
   describe.concurrent("stack safety", () => {
-    it("awaitAll", async () => {
-      const program = Fiber.awaitAll(fibers).map(constTrue)
+    it("awaitAll", () =>
+      Do(($) => {
+        const result = $(Fiber.awaitAll(fibers).map(constTrue))
+        assert.isTrue(result)
+      }).unsafeRunPromise(), 20_000)
 
-      const result = await program.unsafeRunPromise()
+    it("joinAll", () =>
+      Do(($) => {
+        const result = $(Fiber.joinAll(fibers).map(constTrue))
+        assert.isTrue(result)
+      }).unsafeRunPromise(), 20_000)
 
-      assert.isTrue(result)
-    }, 20_000)
-
-    it("joinAll", async () => {
-      const program = Fiber.joinAll(fibers).map(constTrue)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result)
-    }, 20_000)
-
-    it("collectAll", async () => {
-      const program = Fiber.collectAll(fibers).join.map(constTrue)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result)
-    }, 20_000)
+    it("collectAll", () =>
+      Do(($) => {
+        const result = $(Fiber.collectAll(fibers).join.map(constTrue))
+        assert.isTrue(result)
+      }).unsafeRunPromise(), 20_000)
   })
 })

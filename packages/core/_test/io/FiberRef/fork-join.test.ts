@@ -1,94 +1,68 @@
 const initial = "initial"
 const update = "update"
 
+function increment(x: number): number {
+  return x + 1
+}
+
 describe.concurrent("FiberRef", () => {
   describe.concurrent("initialValue", () => {
-    it("its value is inherited on join", async () => {
-      const program = Effect.Do()
-        .bind("fiberRef", () => FiberRef.make(initial))
-        .bind("child", ({ fiberRef }) => fiberRef.set(update).fork)
-        .tap(({ child }) => child.join)
-        .flatMap(({ fiberRef }) => fiberRef.get())
+    it("its value is inherited on join", () =>
+      Do(($) => {
+        const fiberRef = $(FiberRef.make(initial))
+        const child = $(fiberRef.set(update).fork)
+        $(child.join)
+        const result = $(fiberRef.get)
+        assert.strictEqual(result, update)
+      }).scoped.unsafeRunPromise())
 
-      const result = await Effect.scoped(program).unsafeRunPromise()
-
-      assert.strictEqual(result, update)
-    })
-
-    it("initial value is always available", async () => {
-      const program = Effect.Do()
-        .bind("child", () => FiberRef.make(initial).fork)
-        .bind("fiberRef", ({ child }) => child.await.flatMap((_) => Effect.done(_)))
-        .flatMap(({ fiberRef }) => fiberRef.get())
-
-      const result = await Effect.scoped(program).unsafeRunPromise()
-
-      assert.strictEqual(result, initial)
-    })
+    it("initial value is always available", () =>
+      Do(($) => {
+        const child = $(FiberRef.make(initial).fork)
+        const fiberRef = $(child.await.flatMap((exit) => Effect.done(exit)))
+        const result = $(fiberRef.get)
+        assert.strictEqual(result, initial)
+      }).scoped.unsafeRunPromise())
   })
 
   describe.concurrent("fork", () => {
-    it("fork function is applied on fork - 1", async () => {
-      function increment(x: number): number {
-        return x + 1
-      }
+    it("fork function is applied on fork - 1", () =>
+      Do(($) => {
+        const fiberRef = $(FiberRef.make(0, increment))
+        const child = $(Effect.unit.fork)
+        $(child.join)
+        const result = $(fiberRef.get)
+        assert.strictEqual(result, 1)
+      }).scoped.unsafeRunPromise())
 
-      const program = Effect.Do()
-        .bind("fiberRef", () => FiberRef.make(0, increment))
-        .bind("child", () => Effect.unit.fork)
-        .tap(({ child }) => child.join)
-        .flatMap(({ fiberRef }) => fiberRef.get())
-
-      const result = await Effect.scoped(program).unsafeRunPromise()
-
-      assert.strictEqual(result, 1)
-    })
-
-    it("fork function is applied on fork - 2", async () => {
-      function increment(x: number): number {
-        return x + 1
-      }
-
-      const program = Effect.Do()
-        .bind("fiberRef", () => FiberRef.make(0, increment))
-        .bind("child", () =>
-          Effect.unit
-            .fork
-            .flatMap((fiber) => fiber.join)
-            .fork)
-        .tap(({ child }) => child.join)
-        .flatMap(({ fiberRef }) => fiberRef.get())
-
-      const result = await Effect.scoped(program).unsafeRunPromise()
-
-      assert.strictEqual(result, 2)
-    })
+    it("fork function is applied on fork - 2", () =>
+      Do(($) => {
+        const fiberRef = $(FiberRef.make(0, increment))
+        const child = $(Effect.unit.fork.flatMap((fiber) => fiber.join).fork)
+        $(child.join)
+        const result = $(fiberRef.get)
+        assert.strictEqual(result, 2)
+      }).scoped.unsafeRunPromise())
   })
 
   describe.concurrent("join", () => {
-    it("join function is applied on join - 1", async () => {
-      const program = Effect.Do()
-        .bind("fiberRef", () => FiberRef.make(0, identity, Math.max))
-        .bind("child", ({ fiberRef }) => fiberRef.update((_) => _ + 1).fork)
-        .tap(({ child }) => child.join)
-        .flatMap(({ fiberRef }) => fiberRef.get())
+    it("join function is applied on join - 1", () =>
+      Do(($) => {
+        const fiberRef = $(FiberRef.make(0, identity, Math.max))
+        const child = $(fiberRef.update(increment).fork)
+        $(child.join)
+        const result = $(fiberRef.get)
+        assert.strictEqual(result, 1)
+      }).scoped.unsafeRunPromise())
 
-      const result = await Effect.scoped(program).unsafeRunPromise()
-
-      assert.strictEqual(result, 1)
-    })
-
-    it("join function is applied on join - 2", async () => {
-      const program = Effect.Do()
-        .bind("fiberRef", () => FiberRef.make(0, identity, Math.max))
-        .bind("child", ({ fiberRef }) => fiberRef.update((_) => _ + 1).fork)
-        .tap(({ fiberRef }) => fiberRef.update((_) => _ + 2))
-        .tap(({ child }) => child.join)
-        .flatMap(({ fiberRef }) => fiberRef.get())
-
-      const result = await Effect.scoped(program).unsafeRunPromise()
-
-      assert.strictEqual(result, 2)
-    })
+    it("join function is applied on join - 2", () =>
+      Do(($) => {
+        const fiberRef = $(FiberRef.make(0, identity, Math.max))
+        const child = $(fiberRef.update(increment).fork)
+        $(fiberRef.update((n) => n + 2))
+        $(child.join)
+        const result = $(fiberRef.get)
+        assert.strictEqual(result, 2)
+      }).scoped.unsafeRunPromise())
   })
 })

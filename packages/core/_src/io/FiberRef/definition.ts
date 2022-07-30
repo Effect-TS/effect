@@ -55,21 +55,26 @@ export namespace FiberRef {
     readonly patch: (patch: Patch) => (oldValue: Value) => Value
 
     /**
-     * The initial patch that is applied to the value of the `FiberRef` when a new
-     * fiber is forked.
+     * Reads the value associated with the current fiber. Returns initial value if
+     * no value was `set` or inherited from parent.
      */
-    readonly fork: Patch
+    readonly get: Effect<never, never, Value>
 
     /**
      * Deletes the ref value
      */
-    delete(this: FiberRef.WithPatch<Value, Patch>, __tsplusTrace?: string): Effect<never, never, void>
+    readonly delete: Effect<never, never, void>
 
     /**
-     * Reads the value associated with the current fiber. Returns initial value if
-     * no value was `set` or inherited from parent.
+     * Reset the value of a `FiberRef` back to its initial value.
      */
-    get(this: FiberRef.WithPatch<Value, Patch>, __tsplusTrace?: string): Effect<never, never, Value>
+    readonly reset: Effect<never, never, void>
+
+    /**
+     * The initial patch that is applied to the value of the `FiberRef` when a new
+     * fiber is forked.
+     */
+    readonly fork: Patch
 
     /**
      * Atomically modifies the `XFiberRef` with the specified function and
@@ -186,11 +191,6 @@ export namespace FiberRef {
       f: (a: Value) => Maybe<Tuple<[B, Value]>>,
       __tsplusTrace?: string
     ): Effect<never, never, B>
-
-    /**
-     * Reset the value of a `FiberRef` back to its initial value.
-     */
-    reset(this: FiberRef.WithPatch<Value, Patch>, __tsplusTrace?: string): Effect<never, never, void>
 
     /**
      * Atomically modifies the `FiberRef` with the specified function and

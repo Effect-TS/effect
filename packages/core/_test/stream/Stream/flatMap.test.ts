@@ -73,7 +73,7 @@ describe.concurrent("Stream", () => {
             .flatMap(identity)
             .runDrain
             .fork)
-        .tap(({ latch }) => latch.await())
+        .tap(({ latch }) => latch.await)
         .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ effects }) => effects.get())
 

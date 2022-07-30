@@ -48,7 +48,7 @@ export function unsafeMakeSubscription<A>(
         ? Effect.interrupt
         : Effect.succeed(subscription.size())
     ),
-    awaitShutdown: shutdownHook.await(),
+    awaitShutdown: shutdownHook.await,
     shutdown: Effect.suspendSucceedWith((_, fiberId) => {
       shutdownFlag.set(true)
       return Effect.whenEffect(
@@ -77,7 +77,7 @@ export function unsafeMakeSubscription<A>(
             subscription,
             pollers
           )
-          return shutdownFlag.get ? Effect.interrupt : deferred.await()
+          return shutdownFlag.get ? Effect.interrupt : deferred.await
         }).onInterrupt(() => Effect.sync(unsafeRemove(pollers, deferred)))
       } else {
         strategy.unsafeOnHubEmptySpace(hub, subscribers)

@@ -3,30 +3,24 @@ const update = "update"
 
 describe.concurrent("FiberRef", () => {
   describe.concurrent("modify", () => {
-    it("changes value", async () => {
-      const program = Effect.Do()
-        .bind("fiberRef", () => FiberRef.make(initial))
-        .bind("value1", ({ fiberRef }) => fiberRef.modify(() => Tuple(1, update)))
-        .bind("value2", ({ fiberRef }) => fiberRef.get())
-
-      const { value1, value2 } = await Effect.scoped(program).unsafeRunPromise()
-
-      assert.strictEqual(value1, 1)
-      assert.strictEqual(value2, update)
-    })
+    it("changes value", () =>
+      Do(($) => {
+        const fiberRef = $(FiberRef.make(initial))
+        const value1 = $(fiberRef.modify(() => Tuple(1, update)))
+        const value2 = $(fiberRef.get)
+        assert.strictEqual(value1, 1)
+        assert.strictEqual(value2, update)
+      }).scoped.unsafeRunPromise())
   })
 
   describe.concurrent("modifySome", () => {
-    it("not changes value", async () => {
-      const program = Effect.Do()
-        .bind("fiberRef", () => FiberRef.make(initial))
-        .bind("value1", ({ fiberRef }) => fiberRef.modifySome(2, () => Maybe.none))
-        .bind("value2", ({ fiberRef }) => fiberRef.get())
-
-      const { value1, value2 } = await Effect.scoped(program).unsafeRunPromise()
-
-      assert.strictEqual(value1, 2)
-      assert.strictEqual(value2, initial)
-    })
+    it("not changes value", () =>
+      Do(($) => {
+        const fiberRef = $(FiberRef.make(initial))
+        const value1 = $(fiberRef.modifySome(2, () => Maybe.none))
+        const value2 = $(fiberRef.get)
+        assert.strictEqual(value1, 2)
+        assert.strictEqual(value2, initial)
+      }).scoped.unsafeRunPromise())
   })
 })

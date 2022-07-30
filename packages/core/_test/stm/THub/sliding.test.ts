@@ -16,7 +16,7 @@ describe.concurrent("THub", () => {
             ).fork
           )
 
-          $(deferred.await())
+          $(deferred.await)
           $(Effect.forEach(as.sortBy(Ord.number), (a) => hub.publish(a).commit).fork)
 
           const values = $(subscriber.join)
@@ -54,8 +54,8 @@ describe.concurrent("THub", () => {
             ).fork
           )
 
-          $(deferred1.await())
-          $(deferred2.await())
+          $(deferred1.await)
+          $(deferred2.await)
           $(Effect.forEach(as.sortBy(Ord.number), (a) => hub.publish(a).commit).fork)
 
           const values1 = $(subscriber1.join)
@@ -94,8 +94,8 @@ describe.concurrent("THub", () => {
             ).fork
           )
 
-          $(deferred1.await())
-          $(deferred2.await())
+          $(deferred1.await)
+          $(deferred2.await)
           $(Effect.forEach(as.sortBy(Ord.number), (a) => hub.publish(a).commit).fork)
           $(Effect.forEach(as.map((_) => -_).sortBy(Ord.number), (a) => hub.publish(a).commit).fork)
 
@@ -103,9 +103,8 @@ describe.concurrent("THub", () => {
           const values2 = $(subscriber2.join)
 
           return values1.filter((_) => _ < 0).sortBy(Ord.number) == values1.filter((_) => _ < 0) &&
-            values1.filter((_) => _ > 0).sortBy(Ord.number) == values1.filter((_) => _ > 0) && values2.filter((_) =>
-                _ < 0
-              ) == values2.filter((_) => _ < 0).sortBy(Ord.number) &&
+            values1.filter((_) => _ > 0).sortBy(Ord.number) == values1.filter((_) => _ > 0) &&
+            values2.filter((_) => _ < 0) == values2.filter((_) => _ < 0).sortBy(Ord.number) &&
             values2.filter((_) => _ > 0) == values2.filter((_) => _ > 0).sortBy(Ord.number)
         })).map(Chunk.$.forAll(identity))
 

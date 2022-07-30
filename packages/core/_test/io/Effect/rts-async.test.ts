@@ -57,9 +57,9 @@ describe.concurrent("Effect", () => {
           )
             .disconnect
             .fork)
-        .tap(({ acquire }) => acquire.await())
+        .tap(({ acquire }) => acquire.await)
         .tap(({ fiber }) => fiber.interruptFork)
-        .flatMap(({ release }) => release.await())
+        .flatMap(({ release }) => release.await)
 
       const result = await program.unsafeRunPromise()
 
@@ -76,7 +76,7 @@ describe.concurrent("Effect", () => {
           ({ runtime, step, unexpectedPlace }) =>
             Effect.async<never, never, void>((cb) =>
               runtime.unsafeRunAsync(
-                step.await() >
+                step.await >
                   Effect.sync(cb(unexpectedPlace.update((list) => list.prepend(1))))
               )
             )
@@ -106,7 +106,7 @@ describe.concurrent("Effect", () => {
         .bind("fork", ({ runtime, step, unexpectedPlace }) =>
           Effect.asyncMaybe<never, never, void>((cb) => {
             runtime.unsafeRunAsync(
-              step.await() >
+              step.await >
                 Effect.sync(cb(unexpectedPlace.update((list) => list.prepend(1))))
             )
             return Maybe.some(Effect.unit)

@@ -55,12 +55,15 @@ describe.concurrent("Effect", () => {
         .bind("deferred", () => Deferred.make<never, void>())
         .bind("fiber", ({ deferred }) =>
           Effect.acquireUseRelease(
-            deferred.succeed(undefined) < awaiter.await(),
+            deferred.succeed(undefined).zipLeft(awaiter.await),
             () => Effect.unit,
             () => Effect.unit
           ).forkDaemon)
         .flatMap(
-          ({ deferred, fiber }) => deferred.await() > fiber.interrupt.timeoutTo(42, () => 0, (1).seconds)
+          ({ deferred, fiber }) =>
+            deferred
+              .await
+              .zipRight(fiber.interrupt.timeoutTo(42, () => 0, (1).seconds))
         )
 
       const result = await program.unsafeRunPromise()
@@ -75,12 +78,12 @@ describe.concurrent("Effect", () => {
         .bind("deferred", () => Deferred.make<never, void>())
         .bind("fiber", ({ deferred }) =>
           Effect.acquireUseRelease(
-            deferred.succeed(undefined) > awaiter.await() > Effect.sync(1),
+            deferred.succeed(undefined) > awaiter.await > Effect.sync(1),
             () => Effect.unit,
             () => Effect.unit
           ).forkDaemon)
         .flatMap(
-          ({ deferred, fiber }) => deferred.await() > fiber.interrupt.timeoutTo(42, () => 0, (1).seconds)
+          ({ deferred, fiber }) => deferred.await > fiber.interrupt.timeoutTo(42, () => 0, (1).seconds)
         )
 
       const result = await program.unsafeRunPromise()
@@ -127,9 +130,9 @@ describe.concurrent("Effect", () => {
             () => deferred1.succeed(undefined) > Effect.never,
             () => deferred2.succeed(undefined) > Effect.unit
           ).fork)
-        .tap(({ deferred1 }) => deferred1.await())
+        .tap(({ deferred1 }) => deferred1.await)
         .tap(({ fiber }) => fiber.interrupt)
-        .tap(({ deferred2 }) => deferred2.await())
+        .tap(({ deferred2 }) => deferred2.await)
         .timeoutTo(42, () => 0, (1).seconds)
 
       const result = await program.unsafeRunPromise()
@@ -149,7 +152,7 @@ describe.concurrent("Effect", () => {
             ).fork
           ))
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ done }) => done.await().timeoutTo(42, () => 0, (60).seconds))
+        .flatMap(({ done }) => done.await.timeoutTo(42, () => 0, (60).seconds))
 
       const result = await program.unsafeRunPromise()
 
@@ -163,13 +166,13 @@ describe.concurrent("Effect", () => {
         .bind("deferred3", () => Deferred.make<never, void>())
         .bind("fiber", ({ deferred1, deferred2, deferred3 }) =>
           Effect.acquireUseRelease(
-            deferred1.succeed(undefined) > deferred2.await(),
+            deferred1.succeed(undefined) > deferred2.await,
             () => Effect.unit,
-            () => deferred3.await()
+            () => deferred3.await
           )
             .disconnect
             .fork)
-        .tap(({ deferred1 }) => deferred1.await())
+        .tap(({ deferred1 }) => deferred1.await)
         .bind("result", ({ fiber }) => fiber.interrupt)
         .tap(({ deferred3 }) => deferred3.succeed(undefined))
 
@@ -185,13 +188,13 @@ describe.concurrent("Effect", () => {
         .bind("deferred3", () => Deferred.make<never, void>())
         .bind("fiber", ({ deferred1, deferred2, deferred3 }) =>
           Effect.acquireUseReleaseExit(
-            deferred1.succeed(undefined) > deferred2.await(),
+            deferred1.succeed(undefined) > deferred2.await,
             () => Effect.unit,
-            () => deferred3.await()
+            () => deferred3.await
           )
             .disconnect
             .fork)
-        .tap(({ deferred1 }) => deferred1.await())
+        .tap(({ deferred1 }) => deferred1.await)
         .bind("result", ({ fiber }) => fiber.interrupt)
         .tap(({ deferred3 }) => deferred3.succeed(undefined))
 
@@ -242,9 +245,9 @@ describe.concurrent("Effect", () => {
           )
             .disconnect
             .fork)
-        .tap(({ deferred1 }) => deferred1.await())
+        .tap(({ deferred1 }) => deferred1.await)
         .tap(({ fiber }) => fiber.interrupt)
-        .tap(({ deferred2 }) => deferred2.await())
+        .tap(({ deferred2 }) => deferred2.await)
         .timeoutTo(false, () => true, (10).seconds)
 
       const result = await program.unsafeRunPromise()
@@ -266,7 +269,7 @@ describe.concurrent("Effect", () => {
               .fork
           ))
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ done }) => done.await().timeoutTo(false, () => true, (10).seconds))
+        .flatMap(({ done }) => done.await.timeoutTo(false, () => true, (10).seconds))
 
       const result = await program.unsafeRunPromise()
 
@@ -282,9 +285,9 @@ describe.concurrent("Effect", () => {
             .catchAll(Effect.fail)
             .ensuring(deferred.succeed(true))
             .fork)
-        .tap(({ cont }) => cont.await())
+        .tap(({ cont }) => cont.await)
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ deferred }) => deferred.await())
+        .flatMap(({ deferred }) => deferred.await)
 
       const result = await program.unsafeRunPromise()
 
@@ -301,9 +304,9 @@ describe.concurrent("Effect", () => {
               Effect.descriptor.flatMap((descriptor) => deferred1.succeed(descriptor.interrupters.size > 0))
             )
             .fork)
-        .tap(({ deferred2 }) => deferred2.await())
+        .tap(({ deferred2 }) => deferred2.await)
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ deferred1 }) => deferred1.await())
+        .flatMap(({ deferred1 }) => deferred1.await)
 
       const result = await program.unsafeRunPromise()
 
@@ -323,7 +326,7 @@ describe.concurrent("Effect", () => {
           Effect.uninterruptibleMask(({ restore }) =>
             restore(
               Effect.uninterruptibleMask(({ restore }) =>
-                restore(latch1.succeed(undefined) > latch2.await()).onExit((exit) =>
+                restore(latch1.succeed(undefined) > latch2.await).onExit((exit) =>
                   exits.update((list) => list.prepend(exit))
                 )
               ) > Effect.unit
@@ -332,7 +335,7 @@ describe.concurrent("Effect", () => {
               .flatMap((exit) => exits.update((list) => list.prepend(exit)))
               .fork
           ))
-        .tap(({ fiber, latch1 }) => latch1.await() > fiber.interrupt)
+        .tap(({ fiber, latch1 }) => latch1.await > fiber.interrupt)
         .flatMap(({ exits }) => exits.get().map(process))
 
       const result = await program.unsafeRunPromise()
@@ -358,7 +361,7 @@ describe.concurrent("Effect", () => {
               (p.succeed(undefined) > Effect.never).onInterrupt(() => ref.update((n) => n + 1))
         )
         .bind("raced", ({ cont1, cont2, make }) => make(cont1).race(make(cont2)).fork)
-        .tap(({ cont1, cont2 }) => cont1.await() > cont2.await())
+        .tap(({ cont1, cont2 }) => cont1.await > cont2.await)
         .tap(({ raced }) => raced.interrupt)
         .flatMap(({ ref }) => ref.get())
 
@@ -528,11 +531,11 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("deferred", () => Deferred.make<never, void>())
         .bind("fiber", ({ deferred }) =>
-          (deferred.succeed(undefined) > awaiter1.await())
-            .ensuring(awaiter2.await())
+          (deferred.succeed(undefined) > awaiter1.await)
+            .ensuring(awaiter2.await)
             .disconnect
             .fork)
-        .tap(({ deferred }) => deferred.await())
+        .tap(({ deferred }) => deferred.await)
         .flatMap(({ fiber }) => fiber.interrupt)
 
       const result = await program.unsafeRunPromise()
@@ -554,9 +557,9 @@ describe.concurrent("Effect", () => {
             )
             .disconnect
             .fork)
-        .tap(({ deferred1 }) => deferred1.await())
+        .tap(({ deferred1 }) => deferred1.await)
         .tap(({ fiber }) => fiber.interrupt)
-        .tap(({ deferred2 }) => deferred2.await())
+        .tap(({ deferred2 }) => deferred2.await)
         .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()
@@ -611,12 +614,12 @@ describe.concurrent("Effect", () => {
         .bind("fiber", ({ latch1, latch2, ref }) =>
           Effect.acquireUseRelease(
             latch1.succeed(undefined),
-            () => latch2.await() > Effect.sleep((10).millis) > ref.set(true).unit,
+            () => latch2.await > Effect.sleep((10).millis) > ref.set(true).unit,
             () => Effect.unit
           )
             .uninterruptible
             .fork)
-        .tap(({ latch1 }) => latch1.await())
+        .tap(({ latch1 }) => latch1.await)
         .tap(({ latch2 }) => latch2.succeed(undefined))
         .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ ref }) => ref.get())
@@ -656,10 +659,10 @@ describe.concurrent("Effect", () => {
         )
         .bindValue(
           "parent",
-          ({ child, deferred }) => child.uninterruptible.fork > deferred.await()
+          ({ child, deferred }) => child.uninterruptible.fork > deferred.await
         )
         .bind("fiber", ({ parent }) => parent.fork)
-        .tap(({ deferred }) => deferred.await())
+        .tap(({ deferred }) => deferred.await)
         .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ ref }) => ref.get())
 

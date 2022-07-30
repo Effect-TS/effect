@@ -13,7 +13,7 @@ export const RefInternal = {
    * Atomically writes the specified value to the `Ref`, returning the value
    * immediately before modification.
    */
-  getAndSet<A>(this: Ref<A>, a: A, __tsplusTrace?: string): Effect.UIO<A> {
+  getAndSet<A>(this: Ref<A>, a: A, __tsplusTrace?: string): Effect<never, never, A> {
     return this.modify((v) => Tuple(v, a))
   },
 
@@ -21,7 +21,7 @@ export const RefInternal = {
    * Atomically modifies the `Ref` with the specified function, returning the
    * value immediately before modification.
    */
-  getAndUpdate<A>(this: Ref<A>, f: (a: A) => A, __tsplusTrace?: string): Effect.UIO<A> {
+  getAndUpdate<A>(this: Ref<A>, f: (a: A) => A, __tsplusTrace?: string): Effect<never, never, A> {
     return this.modify((v) => Tuple(v, f(v)))
   },
 
@@ -30,7 +30,11 @@ export const RefInternal = {
    * returning the value immediately before modification. If the function is
    * undefined on the current value it doesn't change it.
    */
-  getAndUpdateSome<A>(this: Ref<A>, pf: (a: A) => Maybe<A>, __tsplusTrace?: string): Effect.UIO<A> {
+  getAndUpdateSome<A>(
+    this: Ref<A>,
+    pf: (a: A) => Maybe<A>,
+    __tsplusTrace?: string
+  ): Effect<never, never, A> {
     return this.modify((v) => Tuple(v, pf(v).getOrElse(v)))
   },
 
@@ -45,14 +49,14 @@ export const RefInternal = {
     fallback: B,
     pf: (a: A) => Maybe<Tuple<[B, A]>>,
     __tsplusTrace?: string
-  ): Effect.UIO<B> {
+  ): Effect<never, never, B> {
     return this.modify((v) => pf(v).getOrElse(Tuple(fallback, v)))
   },
 
   /**
    * Atomically modifies the `Ref` with the specified function.
    */
-  update<A>(this: Ref<A>, f: (a: A) => A, __tsplusTrace?: string): Effect.UIO<void> {
+  update<A>(this: Ref<A>, f: (a: A) => A, __tsplusTrace?: string): Effect<never, never, void> {
     return this.modify((v) => Tuple(undefined as void, f(v)))
   },
 
@@ -60,7 +64,7 @@ export const RefInternal = {
    * Atomically modifies the `Ref` with the specified function and returns the
    * updated value.
    */
-  updateAndGet<A>(this: Ref<A>, f: (a: A) => A, __tsplusTrace?: string): Effect.UIO<A> {
+  updateAndGet<A>(this: Ref<A>, f: (a: A) => A, __tsplusTrace?: string): Effect<never, never, A> {
     return this.modify(v => {
       const result = f(v)
 
@@ -72,7 +76,11 @@ export const RefInternal = {
    * Atomically modifies the `Ref` with the specified partial function. If the
    * function is undefined on the current value it doesn't change it.
    */
-  updateSome<A>(this: Ref<A>, pf: (a: A) => Maybe<A>, __tsplusTrace?: string): Effect.UIO<void> {
+  updateSome<A>(
+    this: Ref<A>,
+    pf: (a: A) => Maybe<A>,
+    __tsplusTrace?: string
+  ): Effect<never, never, void> {
     return this.modify((v) => Tuple(undefined as void, pf(v).getOrElse(v)))
   },
 
@@ -81,7 +89,11 @@ export const RefInternal = {
    * function is undefined on the current value it returns the old value without
    * changing it.
    */
-  updateSomeAndGet<A>(this: Ref<A>, pf: (a: A) => Maybe<A>, __tsplusTrace?: string): Effect.UIO<A> {
+  updateSomeAndGet<A>(
+    this: Ref<A>,
+    pf: (a: A) => Maybe<A>,
+    __tsplusTrace?: string
+  ): Effect<never, never, A> {
     return this.modify(v => {
       const result = pf(v).getOrElse(v)
 

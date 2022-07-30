@@ -116,7 +116,7 @@ export function logSpan(
   __tsplusTrace?: string
 ): Stream<never, never, void> {
   return Stream.scoped(
-    FiberRef.currentLogSpan.get().flatMap((stack) => {
+    FiberRef.currentLogSpan.get.flatMap((stack) => {
       const now = Date.now()
       const logSpan = LogSpan(label(), now)
       return FiberRef.currentLogSpan.locallyScoped(stack.prepend(logSpan))

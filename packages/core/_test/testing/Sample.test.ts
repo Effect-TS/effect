@@ -55,7 +55,7 @@ describe.concurrent("Sample", () => {
         sample.flatMap((a) => f(a).flatMap(g))
       ))
       assert.isTrue(result)
-    }).unsafeRunPromise(), 15_000)
+    }).unsafeRunPromise(), 10_000)
 
   it("traverse fusion", () =>
     Do(($) => {

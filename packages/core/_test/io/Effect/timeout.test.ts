@@ -11,7 +11,7 @@ describe.concurrent("Effect", () => {
     it("returns `None` otherwise", async () => {
       const deferred = Deferred.unsafeMake<never, void>(FiberId.none)
       const program = deferred
-        .await()
+        .await
         .uninterruptible
         .disconnect
         .timeout((10).millis)

@@ -36,7 +36,7 @@ describe.concurrent("Stream", () => {
             )
             .buffer(2))
         .bind("chunk", ({ stream }) => stream.take(2).runCollect)
-        .tap(({ latch }) => latch.await())
+        .tap(({ latch }) => latch.await)
         .bind("list", ({ ref }) => ref.get())
 
       const { chunk, list } = await program.unsafeRunPromise()
@@ -73,7 +73,7 @@ describe.concurrent("Stream", () => {
           "stream1",
           ({ latch1, latch2 }) =>
             Stream(0) +
-            Stream.fromEffect(latch1.await()).flatMap(() =>
+            Stream.fromEffect(latch1.await).flatMap(() =>
               Stream.range(1, 17).rechunk(1).ensuring(latch2.succeed(undefined))
             )
         )
@@ -81,19 +81,22 @@ describe.concurrent("Stream", () => {
           "stream2",
           ({ latch3, latch4 }) =>
             Stream(0) +
-            Stream.fromEffect(latch3.await()).flatMap(() =>
+            Stream.fromEffect(latch3.await).flatMap(() =>
               Stream.range(17, 25).rechunk(1).ensuring(latch4.succeed(undefined))
             )
         )
         .bindValue("stream3", () => Stream(-1))
-        .bindValue("stream", ({ stream1, stream2, stream3 }) => (stream1 + stream2 + stream3).bufferDropping(8))
+        .bindValue(
+          "stream",
+          ({ stream1, stream2, stream3 }) => (stream1 + stream2 + stream3).bufferDropping(8)
+        )
         .flatMap(({ latch1, latch2, latch3, latch4, ref, stream }) =>
           Effect.scoped(
             stream.toPull.flatMap((as) =>
               Effect.Do()
                 .bind("zero", () => as)
                 .tap(() => latch1.succeed(undefined))
-                .tap(() => latch2.await())
+                .tap(() => latch2.await)
                 .tap(() =>
                   as
                     .flatMap((a) => ref.update((list) => List.from(a) + list))
@@ -101,7 +104,7 @@ describe.concurrent("Stream", () => {
                 )
                 .bind("snapshot1", () => ref.get())
                 .tap(() => latch3.succeed(undefined))
-                .tap(() => latch4.await())
+                .tap(() => latch4.await)
                 .tap(() =>
                   as
                     .flatMap((a) => ref.update((list) => List.from(a) + list))
@@ -147,22 +150,29 @@ describe.concurrent("Stream", () => {
           "stream1",
           ({ latch1, latch2 }) =>
             Stream(0) +
-            Stream.fromEffect(latch1.await()).flatMap(() => Stream.range(1, 17).ensuring(latch2.succeed(undefined)))
+            Stream.fromEffect(latch1.await).flatMap(() =>
+              Stream.range(1, 17).ensuring(latch2.succeed(undefined))
+            )
         )
         .bindValue(
           "stream2",
           ({ latch3, latch4 }) =>
-            Stream.fromEffect(latch3.await()).flatMap(() => Stream.range(17, 25).ensuring(latch4.succeed(undefined)))
+            Stream.fromEffect(latch3.await).flatMap(() =>
+              Stream.range(17, 25).ensuring(latch4.succeed(undefined))
+            )
         )
         .bindValue("stream3", () => Stream(-1))
-        .bindValue("stream", ({ stream1, stream2, stream3 }) => (stream1 + stream2 + stream3).bufferSliding(8))
+        .bindValue(
+          "stream",
+          ({ stream1, stream2, stream3 }) => (stream1 + stream2 + stream3).bufferSliding(8)
+        )
         .flatMap(({ latch1, latch2, latch3, latch4, ref, stream }) =>
           Effect.scoped(
             stream.toPull.flatMap((as) =>
               Effect.Do()
                 .bind("zero", () => as)
                 .tap(() => latch1.succeed(undefined))
-                .tap(() => latch2.await())
+                .tap(() => latch2.await)
                 .tap(() =>
                   as
                     .flatMap((a) => ref.update((list) => List.from(a) + list))
@@ -170,7 +180,7 @@ describe.concurrent("Stream", () => {
                 )
                 .bind("snapshot1", () => ref.get())
                 .tap(() => latch3.succeed(undefined))
-                .tap(() => latch4.await())
+                .tap(() => latch4.await)
                 .tap(() =>
                   as
                     .flatMap((a) => ref.update((list) => List.from(a) + list))
@@ -185,7 +195,9 @@ describe.concurrent("Stream", () => {
 
       assert.isTrue(zero == Chunk(0))
       assert.isTrue(snapshot1 == List(16, 15, 14, 13, 12, 11, 10, 9))
-      assert.isTrue(snapshot2 == List(-1, 24, 23, 22, 21, 20, 19, 18, 16, 15, 14, 13, 12, 11, 10, 9))
+      assert.isTrue(
+        snapshot2 == List(-1, 24, 23, 22, 21, 20, 19, 18, 16, 15, 14, 13, 12, 11, 10, 9)
+      )
     })
   })
 
@@ -224,7 +236,7 @@ describe.concurrent("Stream", () => {
             .rechunk(1000)
             .bufferUnbounded)
         .bind("chunk", ({ stream }) => stream.take(2).runCollect)
-        .tap(({ latch }) => latch.await())
+        .tap(({ latch }) => latch.await)
         .bind("list", ({ ref }) => ref.get())
 
       const { chunk, list } = await program.unsafeRunPromise()
@@ -275,7 +287,7 @@ describe.concurrent("Stream", () => {
             )
             .bufferChunks(2))
         .bind("chunk", ({ stream }) => stream.take(2).runCollect)
-        .tap(({ latch }) => latch.await())
+        .tap(({ latch }) => latch.await)
         .bind("list", ({ ref }) => ref.get())
 
       const { chunk, list } = await program.unsafeRunPromise()

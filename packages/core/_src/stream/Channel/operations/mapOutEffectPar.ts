@@ -35,20 +35,20 @@ export function mapOutEffectPar<OutElem, Env1, OutErr1, OutElem1>(
                       Do(($) => {
                         const deferred = $(Deferred.make<OutErr1, OutElem1>())
                         const latch = $(Deferred.make<never, void>())
-                        $(queue.offer(deferred.await().map(Either.right)))
+                        $(queue.offer(deferred.await.map(Either.right)))
                         $(
                           permits
                             .withPermit(
                               latch.succeed(undefined) >
                                 errorSignal
-                                  .await()
+                                  .await
                                   .raceFirst(f(outElem))
                                   .tapErrorCause((cause) => errorSignal.failCause(cause))
                                   .intoDeferred(deferred)
                             )
                             .fork
                         )
-                        $(latch.await())
+                        $(latch.await)
                       })
                   )
               )

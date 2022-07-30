@@ -11,6 +11,6 @@ export function memoize<R, E, A>(
   return Do(($) => {
     const deferred = $(Deferred.make<E, A>())
     const complete = $(self.intoDeferred(deferred).once)
-    return complete.zipRight(deferred.await())
+    return complete.zipRight(deferred.await)
   })
 }

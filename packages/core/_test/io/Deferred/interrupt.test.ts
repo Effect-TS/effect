@@ -3,7 +3,7 @@ describe.concurrent("Promise", () => {
     it("interrupt a deferred", () =>
       Do(($) => {
         const deferred = $(Deferred.make<string, number>())
-        const result = $(deferred.interrupt())
+        const result = $(deferred.interrupt)
         assert.isTrue(result)
       }).unsafeRunPromise())
   })

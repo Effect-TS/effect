@@ -93,7 +93,7 @@ export function peel<R2, E2, A2, Z>(
         .tapErrorCause((cause) => deferred.failCause(cause))
         .runScoped(consumer)
         .forkScoped
-        .flatMap(() => deferred.await())
+        .flatMap(() => deferred.await)
         .map((z) => Tuple(z, new StreamInternal(producer)))
     }).flatten
 }

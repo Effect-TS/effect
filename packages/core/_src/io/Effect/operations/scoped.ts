@@ -4,10 +4,10 @@
  * execution, whether by success, failure, or interruption.
  *
  * @tsplus static effect/core/io/Effect.Ops scoped
- * @tsplus fluent effect/core/io/Effect scoped
+ * @tsplus getter effect/core/io/Effect scoped
  */
 export function scoped<R, E, A>(
-  effect: LazyArg<Effect<R, E, A>>,
+  effect: Effect<R, E, A>,
   __tsplusTrace?: string
 ): Effect<Exclude<R, Scope>, E, A> {
   return Scope.make.flatMap((scope) => scope.use(effect))

@@ -18,7 +18,7 @@ export function asyncEffect<R, E, A, R2, E2, X>(
             .catchAllCause((cause) => deferred.failCause(cause as Cause<E | E2>))
         )
           .fork
-          .zipRight(restore(deferred.await()))
+          .zipRight(restore(deferred.await))
       )
     )
   })

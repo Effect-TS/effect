@@ -5,7 +5,7 @@
  * @tsplus static effect/core/io/Effect.Ops parallelism
  */
 export function parallelism(__tsplusTrace?: string): Effect<never, never, Maybe<number>> {
-  return FiberRef.currentParallelism.get()
+  return FiberRef.currentParallelism.get
 }
 
 /**

@@ -2,23 +2,23 @@ export function withLatch<R, E, A>(
   f: (release: Effect.UIO<void>) => Effect<R, E, A>
 ): Effect<R, E, A> {
   return Deferred.make<never, void>().flatMap(
-    (latch) => f(latch.succeed(undefined).unit) < latch.await()
+    (latch) => f(latch.succeed(undefined).unit).zipLeft(latch.await)
   )
 }
 
 export function withLatchAwait<R, E, A>(
   f: (release: Effect.UIO<void>, await: Effect.UIO<void>) => Effect<R, E, A>
 ): Effect<R, E, A> {
-  return Effect.Do()
-    .bind("ref", () => Ref.make(true))
-    .bind("latch", () => Deferred.make<never, void>())
-    .bind("result", ({ latch, ref }) =>
+  return Do(($) => {
+    const ref = $(Ref.make(true))
+    const latch = $(Deferred.make<never, void>())
+    const result = $(
       f(
         latch.succeed(undefined).unit,
-        Effect.uninterruptibleMask(
-          ({ restore }) => ref.set(false) > restore(latch.await())
-        )
-      ))
-    .tap(({ latch, ref }) => Effect.whenEffect(ref.get(), latch.await()))
-    .map(({ result }) => result)
+        Effect.uninterruptibleMask(({ restore }) => ref.set(false).zipRight(restore(latch.await)))
+      )
+    )
+    $(Effect.whenEffect(ref.get(), latch.await))
+    return result
+  })
 }

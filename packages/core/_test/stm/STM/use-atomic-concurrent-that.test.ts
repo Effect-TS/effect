@@ -59,7 +59,7 @@ describe.concurrent("STM", () => {
           .tap(() => barrier.await())
           .bind("oldValue", ({ tref2 }) => tref2.get.commit)
           .tap(({ tref1 }) => tref1.set(43).commit)
-          .tap(({ done }) => done.await())
+          .tap(({ done }) => done.await)
           .bind("newValue", ({ tref2 }) => tref2.get.commit)
           .bind("join", ({ fiber }) => fiber.join)
 

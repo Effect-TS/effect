@@ -4,7 +4,7 @@ describe.concurrent("Deferred", () => {
       Do(($) => {
         const deferred = $(Deferred.make<string, number>())
         $(deferred.succeed(0))
-        const result = $(deferred.isDone())
+        const result = $(deferred.isDone)
         assert.isTrue(result)
       }).unsafeRunPromise())
 
@@ -12,7 +12,7 @@ describe.concurrent("Deferred", () => {
       Do(($) => {
         const deferred = $(Deferred.make<string, number>())
         $(deferred.fail("failure"))
-        const result = $(deferred.isDone())
+        const result = $(deferred.isDone)
         assert.isTrue(result)
       }).unsafeRunPromiseExit())
   })

@@ -173,7 +173,7 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("deferred", () => Deferred.make<never, void>())
         .bind("fiber", ({ deferred }) => (deferred.succeed(undefined) > Effect.never).fork)
-        .tap(({ deferred }) => deferred.await())
+        .tap(({ deferred }) => deferred.await)
         .flatMap(({ fiber }) => fiber.interrupt.mapErrorCause((cause) => cause.untraced))
 
       const result = await program.unsafeRunPromise()
@@ -184,7 +184,7 @@ describe.concurrent("Effect", () => {
     it("run swallows inner interruption", async () => {
       const program = Deferred.make<never, number>()
         .tap((deferred) => Effect.interrupt.exit > deferred.succeed(42))
-        .flatMap((deferred) => deferred.await())
+        .flatMap((deferred) => deferred.await)
 
       const result = await program.unsafeRunPromise()
 

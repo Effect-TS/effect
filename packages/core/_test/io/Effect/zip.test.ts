@@ -66,11 +66,11 @@ describe.concurrent("Effect", () => {
         const ref = $(Ref.make(false))
         const left = Effect.uninterruptibleMask(({ restore }) =>
           latch2.succeed(undefined)
-            .zipRight(restore(latch1.await() > Effect.sync("foo")))
+            .zipRight(restore(latch1.await > Effect.sync("foo")))
             .onInterrupt(() => ref.set(true))
         )
         const right = latch3.succeed(undefined).as(42)
-        $((latch2.await() > latch3.await() > latch1.succeed(undefined)).fork)
+        $((latch2.await > latch3.await > latch1.succeed(undefined)).fork)
         const result = $(left.fork.zipPar(right))
         const leftInnerFiber = result.get(0)
         const rightResult = result.get(1)

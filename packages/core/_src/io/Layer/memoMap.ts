@@ -80,7 +80,7 @@ export class MemoMap {
               )
               const memoized = Tuple(
                 deferred
-                  .await()
+                  .await
                   .onExit((exit) =>
                     exit.fold(
                       () => Effect.unit,

@@ -34,7 +34,7 @@ describe.concurrent("CyclicBarrier", () => {
         const fiber2 = $(barrier.await.fork)
         $(fiber1.join)
         $(fiber2.join)
-        const isComplete = $(deferred.isDone())
+        const isComplete = $(deferred.isDone)
         assert.isTrue(isComplete)
       }).unsafeRunPromise())
 

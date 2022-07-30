@@ -1,4 +1,9 @@
-import type { IAsync, IFold, Instruction, IRaceWith } from "@effect/core/io/Effect/definition/primitives"
+import type {
+  IAsync,
+  IFold,
+  Instruction,
+  IRaceWith
+} from "@effect/core/io/Effect/definition/primitives"
 import { instruction } from "@effect/core/io/Effect/definition/primitives"
 import { CancelerState } from "@effect/core/io/Fiber/_internal/cancelerState"
 import type { Callback } from "@effect/core/io/Fiber/_internal/fiberState"
@@ -15,7 +20,10 @@ const fibersStarted = Metric.counter("effect_fiber_started")
 const fiberSuccesses = Metric.counter("effect_fiber_successes")
 const fiberFailures = Metric.counter("effect_fiber_failures")
 
-const fiberLifetimes = Metric.histogram("effect_fiber_lifetimes", Metric.Histogram.Boundaries.exponential(1, 2, 100))
+const fiberLifetimes = Metric.histogram(
+  "effect_fiber_lifetimes",
+  Metric.Histogram.Boundaries.exponential(1, 2, 100)
+)
 
 export class InterruptExit {
   readonly _tag = "InterruptExit"
@@ -53,7 +61,10 @@ export type Frame =
   | IFold<any, any, any, any, any, any, any, any, any>
   | ApplyFrame
 
-export type FiberRefLocals = ImmutableMap<FiberRef<any>, List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>>
+export type FiberRefLocals = ImmutableMap<
+  FiberRef<any>,
+  List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>
+>
 
 export const catastrophicFailure = new AtomicBoolean(false)
 
@@ -136,7 +147,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
       const childFiberRefs = new FiberRefs(this.fiberRefs.locals)
 
-      return Effect.updateFiberRefs((_, parentFiberRefs) => parentFiberRefs.joinAs(this._id, childFiberRefs))
+      return Effect.updateFiberRefs((_, parentFiberRefs) =>
+        parentFiberRefs.joinAs(this._id, childFiberRefs)
+      )
     })
   }
 
@@ -184,7 +197,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         this._evalOn(
           effect.provideEnvironment(environment).intoDeferred(deferred),
           orElse.provideEnvironment(environment).intoDeferred(deferred)
-        ).zipRight(deferred.await())
+        ).zipRight(deferred.await)
       )
     )
   }
@@ -856,7 +869,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
           const newExit = interruptorsCause === Cause.empty
             ? exit
-            : exit.mapErrorCause((cause) => cause.contains(interruptorsCause) ? cause : cause + interruptorsCause)
+            : exit.mapErrorCause((cause) =>
+              cause.contains(interruptorsCause) ? cause : cause + interruptorsCause
+            )
 
           //  We are truly "unsafeTryDone" because the scope has been closed
           this.state.set(FiberState.Done(newExit))
@@ -983,7 +998,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
     const childFiberRefs: FiberRefs = new FiberRefs(ImmutableMap.from(childFiberRefLocalEntries))
 
-    const parentScope = forkScope.orElse(this.unsafeGetRef(FiberRef.forkScopeOverride)).getOrElse(this._scope)
+    const parentScope = forkScope.orElse(this.unsafeGetRef(FiberRef.forkScopeOverride)).getOrElse(
+      this._scope
+    )
 
     const grandChildren = new Set<FiberContext<unknown, unknown>>()
 
@@ -1003,7 +1020,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         childContext
       )
 
-      childContext.unsafeOnDone((exit) => this.runtimeConfig.value.supervisor.unsafeOnEnd(exit.flatten, childContext))
+      childContext.unsafeOnDone((exit) =>
+        this.runtimeConfig.value.supervisor.unsafeOnEnd(exit.flatten, childContext)
+      )
     }
 
     const childEffect = !parentScope.unsafeAdd(this.runtimeConfig, childContext)
@@ -1061,7 +1080,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
   unsafeRunLater(instr: Instruction): void {
     this.nextEffect = instr
-    this.unsafeGetRef(FiberRef.currentScheduler).scheduleTask(() => this.runUntil(this.runtimeConfig.value.maxOp))
+    this.unsafeGetRef(FiberRef.currentScheduler).scheduleTask(() =>
+      this.runUntil(this.runtimeConfig.value.maxOp)
+    )
   }
 
   /**
