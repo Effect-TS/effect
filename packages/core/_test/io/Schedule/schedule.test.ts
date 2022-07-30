@@ -242,7 +242,7 @@ describe.concurrent("Schedule", () => {
             .ensuring(deferred.succeed(undefined))
         )
         .bind("value", ({ ref }) => ref.get())
-        .bind("finalizerValue", ({ deferred }) => deferred.poll())
+        .bind("finalizerValue", ({ deferred }) => deferred.poll)
 
       const { finalizerValue, value } = await program.unsafeRunPromise()
 

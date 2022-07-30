@@ -112,7 +112,7 @@ export class CyclicBarrierInternal {
               ) :
               Tuple(
                 this._lock.get().flatMap((lock) =>
-                  restore(lock.await())
+                  restore(lock.await)
                     .onInterrupt(() => this.break)
                     .as(this._parties - waiting - 1)
                 ),

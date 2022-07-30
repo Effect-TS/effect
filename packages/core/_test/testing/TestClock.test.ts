@@ -89,7 +89,7 @@ describe.concurrent("TestClock", () => {
         .flatMap((n) => Effect.when(n === 0, latch.succeed(undefined)))
       $(countdown.repeat(Schedule.fixed((2).seconds)).delay((1).seconds).fork)
       $(TestClock.adjust((5).seconds))
-      const result = $(latch.await())
+      const result = $(latch.await)
       assert.isUndefined(result)
     }))
 
@@ -100,7 +100,7 @@ describe.concurrent("TestClock", () => {
       const result = $(
         effect
           .zipLeft(deferred.succeed(undefined))
-          .zipPar(deferred.await().zipRight(effect))
+          .zipPar(deferred.await.zipRight(effect))
       )
       assert.isTrue(result == Tuple(1000, 2000))
     }))

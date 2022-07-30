@@ -332,7 +332,7 @@ describe.concurrent("Effect", () => {
             identity
           ).fork
         )
-        .flatMap((deferred) => deferred.await())
+        .flatMap((deferred) => deferred.await)
         .map(constTrue)
 
       const result = await program.unsafeRunPromise()
@@ -348,7 +348,7 @@ describe.concurrent("Effect", () => {
             identity
           ).fork
         )
-        .flatMap((deferred) => deferred.await())
+        .flatMap((deferred) => deferred.await)
         .map(constTrue)
 
       const result = await program.unsafeRunPromise()
@@ -374,7 +374,7 @@ describe.concurrent("Effect", () => {
             Effect.never,
             Effect.sync(1),
             Effect.failSync("C"),
-            (deferred.await() > ref.set(true)).as(1)
+            (deferred.await > ref.set(true)).as(1)
           ))
         .bind("e", ({ actions }) => Effect.forEachPar(actions, identity).flip)
         .bind("v", ({ ref }) => ref.get())
@@ -427,7 +427,7 @@ describe.concurrent("Effect", () => {
             .withParallelism(2)
             .fork
         )
-        .flatMap((deferred) => deferred.await())
+        .flatMap((deferred) => deferred.await)
         .map(constTrue)
 
       const result = await program.unsafeRunPromise()
@@ -472,7 +472,7 @@ describe.concurrent("Effect", () => {
           .flatMap(
             (count) =>
               Effect.when(count === 3, trigger.succeed(undefined)) >
-                trigger.await() >
+                trigger.await >
                 Effect.failSync(n)
           )
       }

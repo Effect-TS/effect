@@ -5,7 +5,11 @@ describe.concurrent("Stream", () => {
     it("simple example", async () => {
       const program = Stream(1, 1, 1, 1)
         .aggregate(
-          Sink.foldUntil<number, Chunk<number>>(Chunk.empty<number>(), 3, (acc, el) => acc.prepend(el))
+          Sink.foldUntil<number, Chunk<number>>(
+            Chunk.empty<number>(),
+            3,
+            (acc, el) => acc.prepend(el)
+          )
         )
         .runCollect
 
@@ -42,13 +46,19 @@ describe.concurrent("Stream", () => {
         .bindValue(
           "sink",
           ({ cancelled, latch }) =>
-            Sink.foldEffect<never, never, number, List<number>>(List.empty<number>(), constTrue, (acc, el) =>
-              el === 1
-                ? Effect.succeed(acc.prepend(el))
-                : (latch.succeed(undefined) > Effect.never).onInterrupt(() => cancelled.set(true)))
+            Sink.foldEffect<never, never, number, List<number>>(
+              List.empty<number>(),
+              constTrue,
+              (acc, el) =>
+                el === 1
+                  ? Effect.succeed(acc.prepend(el))
+                  : latch.succeed(undefined)
+                    .zipRight(Effect.never)
+                    .onInterrupt(() => cancelled.set(true))
+            )
         )
         .bind("fiber", ({ sink }) => Stream(1, 1, 2).aggregate(sink).runCollect.fork)
-        .tap(({ latch }) => latch.await())
+        .tap(({ latch }) => latch.await)
         .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ cancelled }) => cancelled.get())
 
@@ -63,10 +73,12 @@ describe.concurrent("Stream", () => {
         .bind("cancelled", () => Ref.make(false))
         .bindValue("sink", ({ cancelled, latch }) =>
           Sink.fromEffect(
-            (latch.succeed(undefined) > Effect.never).onInterrupt(() => cancelled.set(true))
+            latch.succeed(undefined)
+              .zipRight(Effect.never)
+              .onInterrupt(() => cancelled.set(true))
           ))
         .bind("fiber", ({ sink }) => Stream(1, 1, 2).aggregate(sink).runCollect.fork)
-        .tap(({ latch }) => latch.await())
+        .tap(({ latch }) => latch.await)
         .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ cancelled }) => cancelled.get())
 
@@ -140,7 +152,7 @@ describe.concurrent("Stream", () => {
       //             .tap(() => c.proceed)
       //             .flattenTake()
       //             .aggregateWithin(Sink.last(), Schedule.fixed((100).millis))
-      //             .interruptWhen(deferred.await())
+      //             .interruptWhen(deferred)
       //             .take(2)
       //             .runCollect
       //             .fork)
@@ -216,17 +228,23 @@ describe.concurrent("Stream", () => {
         .bindValue(
           "sink",
           ({ cancelled, latch }) =>
-            Sink.foldEffect<never, never, number, List<number>>(List.empty<number>(), constTrue, (acc, el) =>
-              el === 1
-                ? Effect.succeed(acc.prepend(el))
-                : (latch.succeed(undefined) > Effect.never).onInterrupt(() => cancelled.set(true)))
+            Sink.foldEffect<never, never, number, List<number>>(
+              List.empty<number>(),
+              constTrue,
+              (acc, el) =>
+                el === 1
+                  ? Effect.succeed(acc.prepend(el))
+                  : latch.succeed(undefined)
+                    .zipRight(Effect.never)
+                    .onInterrupt(() => cancelled.set(true))
+            )
         )
         .bind("fiber", ({ sink }) =>
           Stream(1, 1, 2)
             .aggregateWithinEither(sink, Schedule.spaced((30).minutes))
             .runCollect
             .fork)
-        .tap(({ latch }) => latch.await())
+        .tap(({ latch }) => latch.await)
         .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ cancelled }) => cancelled.get())
 
@@ -241,14 +259,16 @@ describe.concurrent("Stream", () => {
         .bind("cancelled", () => Ref.make(false))
         .bindValue("sink", ({ cancelled, latch }) =>
           Sink.fromEffect(
-            (latch.succeed(undefined) > Effect.never).onInterrupt(() => cancelled.set(true))
+            latch.succeed(undefined)
+              .zipRight(Effect.never)
+              .onInterrupt(() => cancelled.set(true))
           ))
         .bind("fiber", ({ sink }) =>
           Stream(1, 1, 2)
             .aggregateWithinEither(sink, Schedule.spaced((30).minutes))
             .runCollect
             .fork)
-        .tap(({ latch }) => latch.await())
+        .tap(({ latch }) => latch.await)
         .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ cancelled }) => cancelled.get())
 

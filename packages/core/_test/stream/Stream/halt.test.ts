@@ -6,8 +6,8 @@ describe.concurrent("Stream", () => {
         .bind("latch", () => Deferred.make<never, void>())
         .bind("halt", () => Deferred.make<never, void>())
         .tap(({ halt, interrupted, latch }) =>
-          Stream.fromEffect(latch.await().onInterrupt(() => interrupted.set(true)))
-            .haltWhen(halt.await())
+          Stream.fromEffect(latch.await.onInterrupt(() => interrupted.set(true)))
+            .haltWhen(halt.await)
             .runDrain
             .fork
         )
@@ -24,7 +24,7 @@ describe.concurrent("Stream", () => {
       const program = Effect.Do()
         .bind("halt", () => Deferred.make<string, never>())
         .tap(({ halt }) => halt.fail("fail"))
-        .flatMap(({ halt }) => Stream(0).forever.haltWhen(halt.await()).runDrain.either)
+        .flatMap(({ halt }) => Stream(0).forever.haltWhen(halt.await).runDrain.either)
 
       const result = await program.unsafeRunPromise()
 
@@ -39,7 +39,7 @@ describe.concurrent("Stream", () => {
         .bind("latch", () => Deferred.make<never, void>())
         .bind("halt", () => Deferred.make<never, void>())
         .tap(({ halt, interrupted, latch }) =>
-          Stream.fromEffect(latch.await().onInterrupt(() => interrupted.set(true)))
+          Stream.fromEffect(latch.await.onInterrupt(() => interrupted.set(true)))
             .haltWhenDeferred(halt)
             .runDrain
             .fork

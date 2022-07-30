@@ -17,7 +17,7 @@ describe.concurrent("Effect", () => {
           (latch.succeed(undefined) > Effect.die(new Error()))
             .zipPar(Effect.never)
             .fork)
-        .tap(({ latch }) => latch.await())
+        .tap(({ latch }) => latch.await)
         .flatMap(({ fiber }) =>
           fiber
             .interrupt
@@ -34,7 +34,7 @@ describe.concurrent("Effect", () => {
     it("calls provided function when task fails", async () => {
       const program = Deferred.make<never, void>()
         .tap((deferred) => Effect.failSync(undefined).forkWithErrorHandler((e) => deferred.succeed(e).unit))
-        .flatMap((deferred) => deferred.await())
+        .flatMap((deferred) => deferred.await)
         .map(constTrue)
 
       const result = await program.unsafeRunPromise()

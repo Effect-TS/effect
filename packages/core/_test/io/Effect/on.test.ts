@@ -50,9 +50,9 @@ describe.concurrent("Effect", () => {
                 : Effect.unit
             )
             .fork)
-        .tap(({ latch1 }) => latch1.await())
+        .tap(({ latch1 }) => latch1.await)
         .tap(({ fiber }) => fiber.interrupt)
-        .tap(({ latch2 }) => latch2.await())
+        .tap(({ latch2 }) => latch2.await)
         .map(constTrue)
 
       const result = await program.unsafeRunPromise()

@@ -97,7 +97,10 @@ describe.concurrent("Stream", () => {
 
     it("laziness on chunks", async () => {
       const program = Stream(1, 2, 3)
-        .mapAccumEffect(undefined, (_, el) => el === 3 ? Effect.failSync("boom") : Effect.sync(Tuple(undefined, el)))
+        .mapAccumEffect(
+          undefined,
+          (_, el) => el === 3 ? Effect.failSync("boom") : Effect.sync(Tuple(undefined, el))
+        )
         .either
         .runCollect
 
@@ -200,10 +203,13 @@ describe.concurrent("Stream", () => {
         .bind("latch", () => Deferred.make<never, void>())
         .bind("fiber", ({ interrupted, latch }) =>
           Stream(undefined)
-            .mapEffectPar(1, () => (latch.succeed(undefined) > Effect.never).onInterrupt(() => interrupted.set(true)))
+            .mapEffectPar(1, () =>
+              latch.succeed(undefined)
+                .zipRight(Effect.never)
+                .onInterrupt(() => interrupted.set(true)))
             .runDrain
             .fork)
-        .tap(({ latch }) => latch.await())
+        .tap(({ latch }) => latch.await)
         .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ interrupted }) => interrupted.get())
 
@@ -231,7 +237,7 @@ describe.concurrent("Stream", () => {
     it("awaits children fibers properly", async () => {
       const deferred = Deferred.unsafeMake<never, void>(FiberId.none)
       const program = Stream.fromCollection(Chunk.range(0, 100))
-        .interruptWhen(deferred.await())
+        .interruptWhen(deferred.await)
         .mapEffectPar(8, () => Effect.sync(1).repeatN(200))
         .runDrain
         .exit
@@ -252,10 +258,16 @@ describe.concurrent("Stream", () => {
           Stream(1, 2, 3)
             .mapEffectPar(3, n =>
               n === 1
-                ? (latch1.succeed(undefined) > Effect.never).onInterrupt(() => interrupted.update(n => n + 1))
+                ? latch1
+                  .succeed(undefined)
+                  .zipRight(Effect.never)
+                  .onInterrupt(() => interrupted.update(n => n + 1))
                 : n === 2
-                ? (latch2.succeed(undefined) > Effect.never).onInterrupt(() => interrupted.update(n => n + 1))
-                : latch1.await() > latch2.await() > Effect.failSync("boom"))
+                ? latch2
+                  .succeed(undefined)
+                  .zipRight(Effect.never)
+                  .onInterrupt(() => interrupted.update(n => n + 1))
+                : latch1.await.zipRight(latch2.await).zipRight(Effect.failSync("boom")))
             .runDrain
             .exit)
         .bind("count", ({ interrupted }) => interrupted.get())

@@ -29,15 +29,14 @@ export function live(size: number): Layer<never, never, Sized> {
   return Layer.scoped(
     Sized.Tag,
     FiberRef.make(size).map((fiberRef): Sized => ({
-      size: fiberRef.get(),
+      size: fiberRef.get,
       withSize: (size) => fiberRef.locally(size),
       withSizeGen: (size) =>
         (gen) =>
           Gen(
-            Stream.fromEffect(fiberRef.get()).flatMap((oldSize) =>
-              Stream.scoped(fiberRef.locallyScoped(size)) > gen.sample.mapEffect(
-                (a) => fiberRef.set(oldSize).as(a)
-              )
+            Stream.fromEffect(fiberRef.get).flatMap((oldSize) =>
+              Stream.scoped(fiberRef.locallyScoped(size))
+                .crossRight(gen.sample.mapEffect((a) => fiberRef.set(oldSize).as(a)))
             )
           )
     }))

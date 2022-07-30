@@ -26,7 +26,7 @@ export function raceAll<R1, E1, A1>(
           ))
           const inheritRefs = (res: Tuple<[A | A1, Fiber<E | E1, A | A1>]>) => res.get(1).inheritRefs.as(res.get(0))
           return $(
-            restore(done.await().flatMap(inheritRefs)).onInterrupt(() =>
+            restore(done.await.flatMap(inheritRefs)).onInterrupt(() =>
               fs.reduce(Effect.unit, (io, fiber) => io < fiber.interrupt)
             )
           )

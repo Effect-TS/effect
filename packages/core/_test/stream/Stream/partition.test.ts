@@ -38,7 +38,8 @@ describe.concurrent("Stream", () => {
 
     it("errors", async () => {
       const program = Effect.scoped(
-        (Stream.range(0, 1) + Stream.fail("boom"))
+        Stream.range(0, 1)
+          .concat(Stream.fail("boom"))
           .partitionEither((i) =>
             i % 2 === 0
               ? Effect.succeed(Either.left(i))
@@ -76,12 +77,13 @@ describe.concurrent("Stream", () => {
                 evens
                   .tap(
                     (i) =>
-                      ref.update((list) => list.prepend(i)) >
+                      ref.update((list) => list.prepend(i)).zipRight(
                         Effect.when(i === 2, latch.succeed(undefined))
+                      )
                   )
                   .runDrain
                   .fork)
-              .tap(({ latch }) => latch.await())
+              .tap(({ latch }) => latch.await)
               .bind("snapshot1", ({ ref }) => ref.get())
               .bind("other", () => odds.runCollect)
               .tap(({ fiber }) => fiber.await)

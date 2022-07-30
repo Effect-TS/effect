@@ -169,15 +169,17 @@ describe.concurrent("Stream", () => {
         .bind("deferred", () => Deferred.make<never, number>())
         .bind("latch", () => Deferred.make<never, void>())
         .bind("fiber", ({ deferred, latch }) =>
-          (stream0 + Stream.fromEffect(deferred.await()) + Stream(2))
+          stream0
+            .concat(Stream.fromEffect(deferred.await))
+            .concat(Stream(2))
             .zipWithLatest(
-              Stream(1, 1).ensuring(latch.succeed(undefined)) + stream1,
+              Stream(1, 1).ensuring(latch.succeed(undefined)).concat(stream1),
               (_, n) => n
             )
             .take(3)
             .runCollect
             .fork)
-        .tap(({ latch }) => latch.await())
+        .tap(({ latch }) => latch.await)
         .tap(({ deferred }) => deferred.succeed(2))
         .flatMap(({ fiber }) => fiber.join)
 

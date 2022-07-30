@@ -34,7 +34,7 @@ const HubProto: any = {
     )
   },
   get awaitShutdown() {
-    return (this.shutdownHook as Deferred<never, void>).await()
+    return (this.shutdownHook as Deferred<never, void>).await
   },
   get shutdown() {
     return Effect.suspendSucceedWith((_, fiberId) => {

@@ -43,12 +43,12 @@ export function offer<A>(value: A, __tsplusTrace?: string) {
           switch (state._tag) {
             case "Empty": {
               return Tuple(
-                state.notifyConsumer.succeed(undefined) > deferred.await(),
+                state.notifyConsumer.succeed(undefined) > deferred.await,
                 new Full(value, deferred)
               )
             }
             case "Full": {
-              return Tuple(state.notifyProducer.await() > self.offer(value), state)
+              return Tuple(state.notifyProducer.await > self.offer(value), state)
             }
           }
         })
@@ -65,7 +65,7 @@ export function take<A>(self: Handoff<A>, __tsplusTrace?: string): Effect<never,
       .modify((state) => {
         switch (state._tag) {
           case "Empty": {
-            return Tuple(state.notifyConsumer.await() > self.take, state)
+            return Tuple(state.notifyConsumer.await > self.take, state)
           }
           case "Full": {
             return Tuple(

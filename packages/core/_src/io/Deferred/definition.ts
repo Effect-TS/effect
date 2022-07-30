@@ -65,7 +65,7 @@ export class DeferredInternal<E, A> {
    * Retrieves the value of the promise, suspending the fiber running the action
    * until the result is available.
    */
-  await<E, A>(this: Deferred<E, A>, __tsplusTrace?: string | undefined): Effect<never, E, A> {
+  get await(): Effect<never, E, A> {
     return Effect.asyncInterruptBlockingOn((k) => {
       const state = this.state.get
 
@@ -153,7 +153,11 @@ export class DeferredInternal<E, A> {
    * Fails the deferred with the specified error, which will be propagated to all
    * fibers waiting on the value of the deferred.
    */
-  fail<E, A>(this: Deferred<E, A>, e: LazyArg<E>, __tsplusTrace?: string | undefined): Effect<never, never, boolean> {
+  fail<E, A>(
+    this: Deferred<E, A>,
+    e: LazyArg<E>,
+    __tsplusTrace?: string | undefined
+  ): Effect<never, never, boolean> {
     return this.completeWith(Effect.failSync(e), __tsplusTrace)
   }
 
@@ -173,7 +177,7 @@ export class DeferredInternal<E, A> {
    * Completes the deferred with interruption. This will interrupt all fibers
    * waiting on the value of the deferred as by the fiber calling this method.
    */
-  interrupt<E, A>(this: Deferred<E, A>, __tsplusTrace?: string | undefined): Effect<never, never, boolean> {
+  get interrupt(): Effect<never, never, boolean> {
     return Effect.fiberId.flatMap((id) => this.completeWith(Effect.interruptAs(id)))
   }
 
@@ -193,7 +197,7 @@ export class DeferredInternal<E, A> {
    * Checks for completion of this `Promise`. Produces true if this promise has
    * already been completed with a value or an error and false otherwise.
    */
-  isDone<E, A>(this: Deferred<E, A>, __tsplusTrace?: string | undefined): Effect<never, never, boolean> {
+  get isDone(): Effect<never, never, boolean> {
     return Effect.sync(this.state.get._tag === "Done")
   }
 
@@ -201,10 +205,7 @@ export class DeferredInternal<E, A> {
    * Checks for completion of this `Deferred`. Returns the result effect if this
    * deferred has already been completed or a `None` otherwise.
    */
-  poll<E, A>(
-    this: Deferred<E, A>,
-    __tsplusTrace?: string | undefined
-  ): Effect<never, never, Maybe<Effect<never, E, A>>> {
+  get poll(): Effect<never, never, Maybe<Effect<never, E, A>>> {
     return Effect.sync(() => {
       const state = this.state.get
       switch (state._tag) {

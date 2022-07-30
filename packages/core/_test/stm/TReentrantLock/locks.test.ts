@@ -1,5 +1,9 @@
-const pollSchedule = <E, A>(): Schedule<Tuple<[number, void]>, never, Maybe<Exit<E, A>>, Maybe<Exit<E, A>>> =>
-  (Schedule.recurs(100) > Schedule.identity<Maybe<Exit<E, A>>>()).whileOutput((_) => _.isNone())
+const pollSchedule = <E, A>(): Schedule<
+  Tuple<[number, void]>,
+  never,
+  Maybe<Exit<E, A>>,
+  Maybe<Exit<E, A>>
+> => (Schedule.recurs(100) > Schedule.identity<Maybe<Exit<E, A>>>()).whileOutput((_) => _.isNone())
 
 describe.concurrent("TReentrantLock", () => {
   describe.concurrent("locks", () => {
@@ -21,7 +25,9 @@ describe.concurrent("TReentrantLock", () => {
         const lock = $(TReentrantLock.make().commit)
         const count = $(
           Effect.scoped(
-            lock.readLock.flatMap(() => Effect.scoped(lock.readLock.flatMap((count) => Effect.sync(count))))
+            lock.readLock.flatMap(() =>
+              Effect.scoped(lock.readLock.flatMap((count) => Effect.sync(count)))
+            )
           )
         )
 
@@ -42,17 +48,19 @@ describe.concurrent("TReentrantLock", () => {
 
         $(
           Effect.scoped(
-            lock.readLock.flatMap((count) => mlatch.succeed(undefined) > rlatch.await().as(count))
+            lock.readLock.flatMap((count) =>
+              mlatch.succeed(undefined).zipRight(rlatch.await.as(count))
+            )
           ).fork
         )
 
-        $(mlatch.await())
+        $(mlatch.await)
 
         const reader2 = $(
           Effect.scoped(lock.readLock.flatMap((count) => wlatch.succeed(undefined).as(count))).fork
         )
 
-        $(wlatch.await())
+        $(wlatch.await)
 
         const count = $(reader2.join)
 
@@ -73,15 +81,17 @@ describe.concurrent("TReentrantLock", () => {
 
         $(
           Effect.scoped(
-            lock.writeLock.flatMap((count) => rlatch.succeed(undefined) > wlatch.await().as(count))
+            lock.writeLock.flatMap((count) =>
+              rlatch.succeed(undefined).zipRight(wlatch.await.as(count))
+            )
           ).fork
         )
 
-        $(rlatch.await())
+        $(rlatch.await)
 
         const reader = $((mlatch.succeed(undefined) > Effect.scoped(lock.readLock)).fork)
 
-        $(mlatch.await())
+        $(mlatch.await)
 
         const locks = $(lock.readLocks.zipWith(lock.writeLocks, (a, b) => a + b).commit)
         const option = $(reader.poll.repeat(pollSchedule()))
@@ -107,15 +117,17 @@ describe.concurrent("TReentrantLock", () => {
 
         $(
           Effect.scoped(
-            lock.writeLock.flatMap((count) => rlatch.succeed(undefined) > wlatch.await().as(count))
+            lock.writeLock.flatMap((count) =>
+              rlatch.succeed(undefined).zipRight(wlatch.await.as(count))
+            )
           ).fork
         )
 
-        $(rlatch.await())
+        $(rlatch.await)
 
-        const reader = $((mlatch.succeed(undefined) > Effect.scoped(lock.writeLock)).fork)
+        const reader = $(mlatch.succeed(undefined).zipRight(Effect.scoped(lock.writeLock)).fork)
 
-        $(mlatch.await())
+        $(mlatch.await)
 
         const locks = $(lock.readLocks.zipWith(lock.writeLocks, (a, b) => a + b).commit)
         const option = $(reader.poll.repeat(pollSchedule()))
@@ -139,7 +151,9 @@ describe.concurrent("TReentrantLock", () => {
         const rcount = $(Effect.scoped(
           lock.writeLock.flatMap(() =>
             Effect.scoped(
-              lock.readLock.flatMap((count) => lock.writeLocks.commit.flatMap((_) => ref.set(_)).as(count))
+              lock.readLock.flatMap((count) =>
+                lock.writeLocks.commit.flatMap((_) => ref.set(_)).as(count)
+              )
             )
           )
         ))
@@ -160,7 +174,9 @@ describe.concurrent("TReentrantLock", () => {
         const rcount = $(Effect.scoped(
           lock.readLock.flatMap(() =>
             Effect.scoped(
-              lock.writeLock.flatMap((count) => lock.writeLocks.commit.flatMap((_) => ref.set(_)).as(count))
+              lock.writeLock.flatMap((count) =>
+                lock.writeLocks.commit.flatMap((_) => ref.set(_)).as(count)
+              )
             )
           )
         ))
@@ -183,11 +199,13 @@ describe.concurrent("TReentrantLock", () => {
 
         $(
           Effect.scoped(
-            lock.readLock.flatMap((count) => mlatch.succeed(undefined) > rlatch.await().as(count))
+            lock.readLock.flatMap((count) =>
+              mlatch.succeed(undefined).zipRight(rlatch.await.as(count))
+            )
           ).fork
         )
 
-        $(mlatch.await())
+        $(mlatch.await)
 
         const writer = $(
           Effect.scoped(
@@ -198,7 +216,7 @@ describe.concurrent("TReentrantLock", () => {
           ).fork
         )
 
-        $(wlatch.await())
+        $(wlatch.await)
 
         const option = $(writer.poll.repeat(pollSchedule))
 

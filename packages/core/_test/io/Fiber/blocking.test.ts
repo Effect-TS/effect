@@ -1,23 +1,19 @@
+import { constVoid } from "@tsplus/stdlib/data/Function"
+
 describe.concurrent("Fiber", () => {
   describe.concurrent("track blockingOn", () => {
-    it("in await", async () => {
-      const program = Effect.Do()
-        .bind("f1", () => Effect.never.fork)
-        .bind("f2", ({ f1 }) => f1.await.fork)
-        .bind("blockingOn", ({ f2 }) =>
-          f2._status
-            .continueOrFail(
-              () => undefined,
-              (status) =>
-                status._tag === "Suspended"
-                  ? Maybe.some(status.blockingOn)
-                  : Maybe.none
-            )
-            .eventually)
-
-      const { blockingOn, f1 } = await program.unsafeRunPromise()
-
-      assert.isTrue(blockingOn == f1.id)
-    })
+    it("in await", () =>
+      Do(($) => {
+        const fiber1 = $(Effect.never.fork)
+        const fiber2 = $(fiber1.await.fork)
+        const blockingOn = $(
+          fiber2._status
+            .continueOrFail(constVoid, (status) =>
+              status._tag === "Suspended"
+                ? Maybe.some(status.blockingOn)
+                : Maybe.none).eventually
+        )
+        assert.isTrue(blockingOn == fiber1.id)
+      }).unsafeRunPromise())
   })
 })

@@ -50,7 +50,7 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
         .bind("add", ({ decider, out }) =>
           this.stream.mapEffect(this.key).distributedWithDynamic(
             this.buffer,
-            ({ tuple: [k, v] }) => decider.await().flatMap((f) => f(k, v)),
+            ({ tuple: [k, v] }) => decider.await.flatMap((f) => f(k, v)),
             (exit) => out.offer(exit)
           ))
         .tap(({ add, decider, out, ref }) =>

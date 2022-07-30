@@ -84,7 +84,7 @@ export function mergeAllWith<
               (either) =>
                 either.fold(
                   (outDone) =>
-                    errorSignal.await().raceWith(
+                    errorSignal.await.raceWith(
                       permits.withPermits(n)(Effect.unit),
                       (_, permitAcquisition) =>
                         getChildren
@@ -113,15 +113,15 @@ export function mergeAllWith<
                             Effect.scoped(
                               channel
                                 .toPull
-                                .flatMap((pull) => evaluatePull(pull).race(errorSignal.await()))
+                                .flatMap((pull) => evaluatePull(pull).race(errorSignal.await))
                             ))
                           .tap(({ latch, raceIOs }) =>
                             permits
                               .withPermit(latch.succeed(undefined) > raceIOs)
                               .fork
                           )
-                          .tap(({ latch }) => latch.await())
-                          .bind("errored", () => errorSignal.isDone())
+                          .tap(({ latch }) => latch.await)
+                          .bind("errored", () => errorSignal.isDone)
                           .map(({ errored }) => !errored)
                       }
                       case "BufferSliding": {
@@ -142,8 +142,8 @@ export function mergeAllWith<
                                 .toPull
                                 .flatMap((pull) =>
                                   evaluatePull(pull)
-                                    .race(errorSignal.await())
-                                    .race(canceler.await())
+                                    .race(errorSignal.await)
+                                    .race(canceler.await)
                                 )
                             ))
                           .tap(({ latch, raceIOs }) =>
@@ -151,8 +151,8 @@ export function mergeAllWith<
                               .withPermit(latch.succeed(undefined) > raceIOs)
                               .fork
                           )
-                          .tap(({ latch }) => latch.await())
-                          .bind("errored", () => errorSignal.isDone())
+                          .tap(({ latch }) => latch.await)
+                          .bind("errored", () => errorSignal.isDone)
                           .map(({ errored }) => !errored)
                       }
                     }

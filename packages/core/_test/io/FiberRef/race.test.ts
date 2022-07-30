@@ -9,123 +9,84 @@ const loseTimeAndCpu: Effect.UIO<void> = (
 
 describe.concurrent("FiberRef", () => {
   describe.concurrent("race", () => {
-    it("its value is inherited after simple race", async () => {
-      const program = Effect.Do()
-        .bind("fiberRef", () => FiberRef.make(initial))
-        .tap(({ fiberRef }) => fiberRef.set(update1).race(fiberRef.set(update2)))
-        .flatMap(({ fiberRef }) => fiberRef.get())
+    it("its value is inherited after simple race", () =>
+      Do(($) => {
+        const fiberRef = $(FiberRef.make(initial))
+        $(fiberRef.set(update1).race(fiberRef.set(update2)))
+        const result = $(fiberRef.get)
+        assert.isTrue(new RegExp(`${update1}|${update2}`).test(result))
+      }).scoped.unsafeRunPromise())
 
-      const result = await Effect.scoped(program).unsafeRunPromise()
+    it("its value is inherited after a race with a bad winner", () =>
+      Do(($) => {
+        const fiberRef = $(FiberRef.make(initial))
+        const badWinner = fiberRef.set(update1).zipRight(Effect.fail("ups"))
+        const goodLoser = fiberRef.set(update2).zipRight(loseTimeAndCpu)
+        $(badWinner.race(goodLoser))
+        const result = $(fiberRef.get)
+        assert.isTrue(new RegExp(update2).test(result))
+      }).scoped.unsafeRunPromise())
 
-      assert.isTrue(new RegExp(`${update1}|${update2}`).test(result))
-    })
+    it("its value is not inherited after a race of losers", () =>
+      Do(($) => {
+        const fiberRef = $(FiberRef.make(initial))
+        const loser1 = fiberRef.set(update1).zipRight(Effect.fail("ups1"))
+        const loser2 = fiberRef.set(update2).zipRight(Effect.fail("ups2"))
+        $(loser1.race(loser2).ignore)
+        const result = $(fiberRef.get)
+        assert.strictEqual(result, initial)
+      }).scoped.unsafeRunPromise())
 
-    it("its value is inherited after a race with a bad winner", async () => {
-      const program = Effect.Do()
-        .bind("fiberRef", () => FiberRef.make(initial))
-        .bindValue(
-          "badWinner",
-          ({ fiberRef }) => fiberRef.set(update1) > Effect.failSync("ups")
-        )
-        .bindValue(
-          "goodLoser",
-          ({ fiberRef }) => fiberRef.set(update2) > loseTimeAndCpu
-        )
-        .tap(({ badWinner, goodLoser }) => badWinner.race(goodLoser))
-        .flatMap(({ fiberRef }) => fiberRef.get())
+    it("its value is inherited in a trivial race", () =>
+      Do(($) => {
+        const fiberRef = $(FiberRef.make(initial))
+        $(fiberRef.set(update).raceAll(Chunk.empty<Effect.UIO<void>>()))
+        const result = $(fiberRef.get)
+        assert.strictEqual(result, update)
+      }).scoped.unsafeRunPromise())
 
-      const value = await Effect.scoped(program).unsafeRunPromise()
+    it("the value of the winner is inherited when racing two effects with raceAll", () =>
+      Do(($) => {
+        const fiberRef = $(FiberRef.make(initial))
+        const latch = $(Deferred.make<never, void>())
+        const winner1 = fiberRef.set(update1).zipRight(latch.succeed(undefined))
+        const loser1 = latch.await.zipRight(fiberRef.set(update2)).zipRight(loseTimeAndCpu)
+        $(loser1.raceAll([winner1]))
+        const value1 = $(fiberRef.get.zipLeft(fiberRef.set(initial)))
+        const winner2 = fiberRef.set(update1)
+        const loser2 = fiberRef.set(update2).zipRight(Effect.fail(":-O"))
+        $(loser2.raceAll([winner2]))
+        const value2 = $(fiberRef.get.zipLeft(fiberRef.set(initial)))
+        assert.strictEqual(value1, update1)
+        assert.strictEqual(value2, update1)
+      }).scoped.unsafeRunPromise())
 
-      assert.isTrue(new RegExp(update2).test(value))
-    })
+    it("the value of the winner is inherited when racing many effects with raceAll", () =>
+      Do(($) => {
+        const n = 63
+        const fiberRef = $(FiberRef.make(initial))
+        const latch = $(Deferred.make<never, void>())
+        const winner1 = fiberRef.set(update1).zipRight(latch.succeed(undefined))
+        const losers1 = latch.await
+          .zipRight(fiberRef.set(update2))
+          .zipRight(loseTimeAndCpu).replicate(n)
+        $(winner1.raceAll(losers1))
+        const value1 = $(fiberRef.get.zipLeft(fiberRef.set(initial)))
+        const winner2 = fiberRef.set(update1)
+        const losers2 = fiberRef.set(update1).zipRight(Effect.fail(":-O")).replicate(n)
+        $(winner2.raceAll(losers2))
+        const value2 = $(fiberRef.get.zipLeft(fiberRef.set(initial)))
+        assert.strictEqual(value1, update1)
+        assert.strictEqual(value2, update1)
+      }).scoped.unsafeRunPromise())
 
-    it("its value is not inherited after a race of losers", async () => {
-      const program = Effect.Do()
-        .bind("fiberRef", () => FiberRef.make(initial))
-        .bindValue("loser1", ({ fiberRef }) => fiberRef.set(update1).zipRight(Effect.fail("ups1")))
-        .bindValue("loser2", ({ fiberRef }) => fiberRef.set(update2).zipRight(Effect.fail("ups2")))
-        .tap(({ loser1, loser2 }) => loser1.race(loser2).ignore)
-        .flatMap(({ fiberRef }) => fiberRef.get())
-
-      const result = await Effect.scoped(program).unsafeRunPromise()
-
-      assert.strictEqual(result, initial)
-    })
-
-    it("its value is inherited in a trivial race", async () => {
-      const program = FiberRef.make(initial)
-        .tap((fiberRef) => fiberRef.set(update).raceAll(Chunk.empty<Effect.UIO<void>>()))
-        .flatMap((fiberRef) => fiberRef.get())
-
-      const result = await Effect.scoped(program).unsafeRunPromise()
-
-      assert.strictEqual(result, update)
-    })
-
-    it("the value of the winner is inherited when racing two effects with raceAll", async () => {
-      const program = Effect.Do()
-        .bind("fiberRef", () => FiberRef.make(initial))
-        .bind("latch", () => Deferred.make<never, void>())
-        .bindValue(
-          "winner1",
-          ({ fiberRef, latch }) => fiberRef.set(update1) > latch.succeed(undefined)
-        )
-        .bindValue(
-          "loser1",
-          ({ fiberRef, latch }) => latch.await() > fiberRef.set(update2) > loseTimeAndCpu
-        )
-        .tap(({ loser1, winner1 }) => loser1.raceAll([winner1]))
-        .bind("value1", ({ fiberRef }) => fiberRef.get() < fiberRef.set(initial))
-        .bindValue("winner2", ({ fiberRef }) => fiberRef.set(update1))
-        .bindValue(
-          "loser2",
-          ({ fiberRef }) => fiberRef.set(update2) > Effect.failSync(":-O")
-        )
-        .tap(({ loser2, winner2 }) => loser2.raceAll([winner2]))
-        .bind("value2", ({ fiberRef }) => fiberRef.get() < fiberRef.set(initial))
-
-      const { value1, value2 } = await Effect.scoped(program).unsafeRunPromise()
-
-      assert.strictEqual(value1, update1)
-      assert.strictEqual(value2, update1)
-    })
-
-    it("the value of the winner is inherited when racing many effects with raceAll", async () => {
-      const program = Effect.Do()
-        .bind("fiberRef", () => FiberRef.make(initial))
-        .bindValue("n", () => 63)
-        .bind("latch", () => Deferred.make<never, void>())
-        .bindValue(
-          "winner1",
-          ({ fiberRef, latch }) => fiberRef.set(update1) > latch.succeed(undefined)
-        )
-        .bindValue(
-          "losers1",
-          ({ fiberRef, latch, n }) => (latch.await() > fiberRef.set(update2) > loseTimeAndCpu).replicate(n)
-        )
-        .tap(({ losers1, winner1 }) => winner1.raceAll(losers1))
-        .bind("value1", ({ fiberRef }) => fiberRef.get() < fiberRef.set(initial))
-        .bindValue("winner2", ({ fiberRef }) => fiberRef.set(update1))
-        .bindValue("losers2", ({ fiberRef, n }) => (fiberRef.set(update1) > Effect.failSync(":-O")).replicate(n))
-        .tap(({ losers2, winner2 }) => winner2.raceAll(losers2))
-        .bind("value2", ({ fiberRef }) => fiberRef.get() < fiberRef.set(initial))
-
-      const { value1, value2 } = await Effect.scoped(program).unsafeRunPromise()
-
-      assert.strictEqual(value1, update1)
-      assert.strictEqual(value2, update1)
-    })
-
-    it("nothing gets inherited when racing failures with raceAll", async () => {
-      const program = Effect.Do()
-        .bind("fiberRef", () => FiberRef.make(initial))
-        .bindValue("loser", ({ fiberRef }) => fiberRef.set(update).zipRight(Effect.fail("darn")))
-        .tap(({ loser }) => loser.raceAll(Chunk.fill(63, () => loser)) | Effect.unit)
-        .flatMap(({ fiberRef }) => fiberRef.get())
-
-      const result = await Effect.scoped(program).unsafeRunPromise()
-
-      assert.strictEqual(result, initial)
-    })
+    it("nothing gets inherited when racing failures with raceAll", () =>
+      Do(($) => {
+        const fiberRef = $(FiberRef.make(initial))
+        const loser = fiberRef.set(update).zipRight(Effect.fail("darn"))
+        $(loser.raceAll(Chunk.fill(63, () => loser)).orElse(Effect.unit))
+        const result = $(fiberRef.get)
+        assert.strictEqual(result, initial)
+      }).scoped.unsafeRunPromise())
   })
 })

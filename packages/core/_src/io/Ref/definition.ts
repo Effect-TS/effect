@@ -49,38 +49,42 @@ export interface Ref<A> {
    * return value for the modification. This is a more powerful version of
    * `update`.
    */
-  modify<B>(this: this, f: (a: A) => Tuple<[B, A]>, __tsplusTrace?: string): Effect.UIO<B>
+  modify<B>(this: this, f: (a: A) => Tuple<[B, A]>, __tsplusTrace?: string): Effect<never, never, B>
 
   /**
    * Writes a new value to the `Ref`, with a guarantee of immediate consistency
    * (at some cost to performance).
    */
-  set(this: this, a: A, __tsplusTrace?: string): Effect.UIO<void>
+  set(this: this, a: A, __tsplusTrace?: string): Effect<never, never, void>
 
   /**
    * Writes a new value to the `Ref` without providing a guarantee of immediate
    * consistency.
    */
-  setAsync(this: this, a: A, __tsplusTrace?: string): Effect.UIO<void>
+  setAsync(this: this, a: A, __tsplusTrace?: string): Effect<never, never, void>
 
   /**
    * Atomically writes the specified value to the `Ref`, returning the value
    * immediately before modification.
    */
-  getAndSet(this: this, a: A, __tsplusTrace?: string): Effect.UIO<A>
+  getAndSet(this: this, a: A, __tsplusTrace?: string): Effect<never, never, A>
 
   /**
    * Atomically modifies the `Ref` with the specified function, returning the
    * value immediately before modification.
    */
-  getAndUpdate(this: this, f: (a: A) => A, __tsplusTrace?: string): Effect.UIO<A>
+  getAndUpdate(this: this, f: (a: A) => A, __tsplusTrace?: string): Effect<never, never, A>
 
   /**
    * Atomically modifies the `Ref` with the specified partial function,
    * returning the value immediately before modification. If the function is
    * undefined on the current value it doesn't change it.
    */
-  getAndUpdateSome(this: this, pf: (a: A) => Maybe<A>, __tsplusTrace?: string): Effect.UIO<A>
+  getAndUpdateSome(
+    this: this,
+    pf: (a: A) => Maybe<A>,
+    __tsplusTrace?: string
+  ): Effect<never, never, A>
 
   /**
    * Atomically modifies the `Ref` with the specified partial function, which
@@ -88,31 +92,40 @@ export interface Ref<A> {
    * the current value otherwise it returns a default value. This is a more
    * powerful version of `updateSome`.
    */
-  modifySome<B>(this: this, fallback: B, pf: (a: A) => Maybe<Tuple<[B, A]>>, __tsplusTrace?: string): Effect.UIO<B>
+  modifySome<B>(
+    this: this,
+    fallback: B,
+    pf: (a: A) => Maybe<Tuple<[B, A]>>,
+    __tsplusTrace?: string
+  ): Effect<never, never, B>
 
   /**
    * Atomically modifies the `Ref` with the specified function.
    */
-  update(this: this, f: (a: A) => A, __tsplusTrace?: string): Effect.UIO<void>
+  update(this: this, f: (a: A) => A, __tsplusTrace?: string): Effect<never, never, void>
 
   /**
    * Atomically modifies the `Ref` with the specified function and returns the
    * updated value.
    */
-  updateAndGet(this: this, f: (a: A) => A, __tsplusTrace?: string): Effect.UIO<A>
+  updateAndGet(this: this, f: (a: A) => A, __tsplusTrace?: string): Effect<never, never, A>
 
   /**
    * Atomically modifies the `Ref` with the specified partial function. If the
    * function is undefined on the current value it doesn't change it.
    */
-  updateSome(this: this, pf: (a: A) => Maybe<A>, __tsplusTrace?: string): Effect.UIO<void>
+  updateSome(this: this, pf: (a: A) => Maybe<A>, __tsplusTrace?: string): Effect<never, never, void>
 
   /**
    * Atomically modifies the `Ref` with the specified partial function. If the
    * function is undefined on the current value it returns the old value without
    * changing it.
    */
-  updateSomeAndGet(this: this, pf: (a: A) => Maybe<A>, __tsplusTrace?: string): Effect.UIO<A>
+  updateSomeAndGet(
+    this: this,
+    pf: (a: A) => Maybe<A>,
+    __tsplusTrace?: string
+  ): Effect<never, never, A>
 }
 
 export declare namespace Ref {
@@ -165,7 +178,11 @@ export declare namespace Ref {
     /**
      * Atomically modifies the `Ref.Synchronized` with the specified function.
      */
-    updateEffect<R, E>(this: this, f: (a: A) => Effect<R, E, A>, __tsplusTrace?: string): Effect<R, E, void>
+    updateEffect<R, E>(
+      this: this,
+      f: (a: A) => Effect<R, E, A>,
+      __tsplusTrace?: string
+    ): Effect<R, E, void>
 
     /**
      * Atomically modifies the `Ref.Synchronized` with the specified function,

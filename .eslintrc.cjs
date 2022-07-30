@@ -31,6 +31,7 @@ module.exports = {
           // The TypeScript configuration of dprint
           // See also https://dprint.dev/plugins/typescript/config/,
           "indentWidth": 2,
+          "lineWidth": 100,
           "semiColons": "asi",
           "quoteStyle": "alwaysDouble",
           "trailingCommas": "never",

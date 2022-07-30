@@ -6,111 +6,97 @@ const failure = "failure"
 
 describe.concurrent("SynchronizedRef", () => {
   describe.concurrent("simple", () => {
-    it("get", async () => {
-      const program = Ref.Synchronized.make(current).flatMap((ref) => ref.get())
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, current)
-    })
+    it("get", () =>
+      Do(($) => {
+        const result = $(Ref.Synchronized.make(current).flatMap((ref) => ref.get()))
+        assert.strictEqual(result, current)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("getAndUpdateEffect", () => {
-    it("happy path", async () => {
-      const program = Effect.Do()
-        .bind("ref", () => Ref.Synchronized.make(current))
-        .bind("v1", ({ ref }) => ref.getAndUpdateEffect(() => Effect.sync(update)))
-        .bind("v2", ({ ref }) => ref.get())
+    it("happy path", () =>
+      Do(($) => {
+        const ref = $(Ref.Synchronized.make(current))
+        const v1 = $(ref.getAndUpdateEffect(() => Effect.succeed(update)))
+        const v2 = $(ref.get())
+        assert.strictEqual(v1, current)
+        assert.strictEqual(v2, update)
+      }).unsafeRunPromise())
 
-      const { v1, v2 } = await program.unsafeRunPromise()
-
-      assert.strictEqual(v1, current)
-      assert.strictEqual(v2, update)
-    })
-
-    it("with failure", async () => {
-      const program = Ref.Synchronized.make(current).flatMap((ref) =>
-        ref.getAndUpdateEffect(() => Effect.failSync(failure))
-      )
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result.untraced == Exit.fail(failure))
-    })
+    it("with failure", () =>
+      Do(($) => {
+        const ref = $(Ref.Synchronized.make(current))
+        const result = $(ref.getAndUpdateEffect(() => Effect.fail(failure)).exit)
+        assert.isTrue(result.untraced == Exit.fail(failure))
+      }).unsafeRunPromiseExit())
   })
 
   describe.concurrent("getAndUpdateSomeEffect", () => {
-    it("happy path", async () => {
-      const program = Effect.Do()
-        .bind("ref", () => Ref.Synchronized.make<State>(State.Active))
-        .bind(
-          "v1",
-          ({ ref }) =>
-            ref.getAndUpdateSomeEffect((state) =>
-              state.isClosed() ? Maybe.some(Effect.sync(State.Changed)) : Maybe.none
-            )
+    it("happy path", () =>
+      Do(($) => {
+        const ref = $(Ref.Synchronized.make<State>(State.Active))
+        const v1 = $(
+          ref.getAndUpdateSomeEffect((state) =>
+            state.isClosed() ?
+              Maybe.some(Effect.succeed(State.Changed)) :
+              Maybe.none
+          )
         )
-        .bind("v2", ({ ref }) => ref.get())
+        const v2 = $(ref.get())
+        assert.deepEqual(v1, State.Active)
+        assert.deepEqual(v2, State.Active)
+      }).unsafeRunPromise())
 
-      const { v1, v2 } = await program.unsafeRunPromise()
-
-      assert.deepEqual(v1, State.Active)
-      assert.deepEqual(v2, State.Active)
-    })
-
-    it("twice", async () => {
-      const program = Effect.Do()
-        .bind("ref", () => Ref.Synchronized.make<State>(State.Active))
-        .bind(
-          "v1",
-          ({ ref }) =>
-            ref.getAndUpdateSomeEffect((state) =>
-              state.isActive() ? Maybe.some(Effect.sync(State.Changed)) : Maybe.none
-            )
+    it("twice", () =>
+      Do(($) => {
+        const ref = $(Ref.Synchronized.make<State>(State.Active))
+        const v1 = $(
+          ref.getAndUpdateSomeEffect((state) =>
+            state.isActive() ?
+              Maybe.some(Effect.sync(State.Changed)) :
+              Maybe.none
+          )
         )
-        .bind("v2", ({ ref }) =>
+        const v2 = $(
           ref.getAndUpdateSomeEffect((state) =>
             state.isClosed()
               ? Maybe.some(Effect.sync(State.Active))
               : state.isChanged()
               ? Maybe.some(Effect.sync(State.Closed))
               : Maybe.none
-          ))
-        .bind("v3", ({ ref }) => ref.get())
-
-      const { v1, v2, v3 } = await program.unsafeRunPromise()
-
-      assert.deepEqual(v1, State.Active)
-      assert.deepEqual(v2, State.Changed)
-      assert.deepEqual(v3, State.Closed)
-    })
-
-    it("with failure", async () => {
-      const program = Ref.Synchronized.make<State>(State.Active).flatMap((ref) =>
-        ref.getAndUpdateSomeEffect((state) => state.isActive() ? Maybe.some(Effect.failSync(failure)) : Maybe.none)
-      )
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result.untraced == Exit.fail(failure))
-    })
-
-    it("interrupt parent fiber and update", async () => {
-      const program = Effect.Do()
-        .bind("deferred", () => Deferred.make<never, Ref.Synchronized<State>>())
-        .bind("latch", () => Deferred.make<never, void>())
-        .bindValue(
-          "makeAndWait",
-          ({ deferred, latch }) => deferred.complete(Ref.Synchronized.make<State>(State.Active)) > latch.await
+          )
         )
-        .bind("fiber", ({ makeAndWait }) => makeAndWait.fork)
-        .bind("ref", ({ deferred }) => deferred.await())
-        .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ ref }) => ref.updateAndGetEffect(() => Effect.sync(State.Closed)))
+        const v3 = $(ref.get())
+        assert.deepEqual(v1, State.Active)
+        assert.deepEqual(v2, State.Changed)
+        assert.deepEqual(v3, State.Closed)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("with failure", () =>
+      Do(($) => {
+        const ref = $(Ref.Synchronized.make<State>(State.Active))
+        const result = $(
+          ref.getAndUpdateSomeEffect((state) =>
+            state.isActive() ?
+              Maybe.some(Effect.failSync(failure)) :
+              Maybe.none
+          ).exit
+        )
+        assert.isTrue(result.untraced == Exit.fail(failure))
+      }).unsafeRunPromiseExit())
 
-      assert.deepEqual(result, State.Closed)
-    })
+    it("interrupt parent fiber and update", () =>
+      Do(($) => {
+        const deferred = $(Deferred.make<never, Ref.Synchronized<State>>())
+        const latch = $(Deferred.make<never, void>())
+        const makeAndWait = deferred
+          .complete(Ref.Synchronized.make<State>(State.Active))
+          .zipRight(latch.await)
+        const fiber = $(makeAndWait.fork)
+        const ref = $(deferred.await)
+        $(fiber.interrupt)
+        const result = $(ref.updateAndGetEffect(() => Effect.succeed(State.Closed)))
+        assert.deepEqual(result, State.Closed)
+      }).unsafeRunPromise())
   })
 })

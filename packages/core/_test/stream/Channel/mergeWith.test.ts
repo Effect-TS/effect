@@ -67,7 +67,7 @@ describe.concurrent("Channel", () => {
             Channel.fromEffect(
               (latch.succeed(undefined) > Effect.never).onInterrupt(() => interrupted.set(true))
             )
-          const right = Channel.write(2) > Channel.fromEffect(latch.await())
+          const right = Channel.write(2) > Channel.fromEffect(latch.await)
           const merged = left.mergeWith(
             right,
             (exit) => MergeDecision.done(Effect.done(exit)),

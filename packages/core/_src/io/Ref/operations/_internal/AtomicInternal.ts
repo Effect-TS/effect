@@ -90,13 +90,17 @@ export const AtomicInternal = {
   get [RefSym](): RefSym {
     return RefSym
   },
-  get<A>(this: AtomicInternal<A>, __tsplusTrace?: string): Effect.UIO<A> {
+  get<A>(this: AtomicInternal<A>, __tsplusTrace?: string): Effect<never, never, A> {
     return Effect.sync(this.unsafe.get)
   },
-  modify<A, B>(this: AtomicInternal<A>, f: (a: A) => Tuple<[B, A]>, __tsplusTrace?: string): Effect.UIO<B> {
+  modify<A, B>(
+    this: AtomicInternal<A>,
+    f: (a: A) => Tuple<[B, A]>,
+    __tsplusTrace?: string
+  ): Effect<never, never, B> {
     return Effect.sync(this.unsafe.modify(f))
   },
-  set<A>(this: AtomicInternal<A>, a: A, __tsplusTrace?: string): Effect.UIO<void> {
+  set<A>(this: AtomicInternal<A>, a: A, __tsplusTrace?: string): Effect<never, never, void> {
     return Effect.sync(this.unsafe.set(a))
   }
 }

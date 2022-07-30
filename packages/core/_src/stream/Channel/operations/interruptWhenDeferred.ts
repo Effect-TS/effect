@@ -16,5 +16,5 @@ export function interruptWhenDeferred<
   return <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ): Channel<Env, InErr, InElem, InDone, OutErr | OutErr1, OutElem, OutDone | OutDone1> =>
-    self.interruptWhen(deferred().await())
+    self.interruptWhen(deferred().await)
 }

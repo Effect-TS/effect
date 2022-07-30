@@ -226,9 +226,10 @@ describe.concurrent("Sink", () => {
     it("should access the environment with the provided sink", async () => {
       const StringTag = Tag<string>()
       const program = Stream("ignore this").run(
-        Sink.environmentWithSink((env: Env<string>) => Sink.succeed(env.get(StringTag))).provideEnvironment(
-          Env(StringTag, "use this")
-        )
+        Sink.environmentWithSink((env: Env<string>) => Sink.succeed(env.get(StringTag)))
+          .provideEnvironment(
+            Env(StringTag, "use this")
+          )
       )
 
       const result = await program.unsafeRunPromise()
@@ -239,10 +240,13 @@ describe.concurrent("Sink", () => {
 
   describe.concurrent("collectAllWhileWith", () => {
     it("example 1", async () => {
-      const program = Effect.forEach(List(1, 3, 20), (chunkSize) =>
-        Stream.fromChunk(Chunk.range(1, 10))
-          .rechunk(chunkSize)
-          .run(Sink.sum().collectAllWhileWith(-1, constTrue, (a, b) => a + b)))
+      const program = Effect.forEach(
+        List(1, 3, 20),
+        (chunkSize) =>
+          Stream.fromChunk(Chunk.range(1, 10))
+            .rechunk(chunkSize)
+            .run(Sink.sum().collectAllWhileWith(-1, constTrue, (a, b) => a + b))
+      )
 
       const result = await program.unsafeRunPromise()
 
@@ -256,7 +260,7 @@ describe.concurrent("Sink", () => {
         (acc: List<number>, a) => (a.isSome() ? acc.prepend(a.value) : acc)
       ).map((list: List<number>) => list.reverse)
       const stream = Stream.fromChunk(Chunk.range(1, 100))
-      const program = (stream + stream).rechunk(3).run(sink)
+      const program = (stream.concat(stream)).rechunk(3).run(sink)
 
       const result = await program.unsafeRunPromise()
 
@@ -304,10 +308,15 @@ describe.concurrent("Sink", () => {
     it("happy path", async () => {
       const program = Effect.Do()
         .bind("closed", () => Ref.make(false))
-        .bindValue("res", ({ closed }) => Effect.acquireRelease(Effect.sync(100), () => closed.set(true)))
+        .bindValue(
+          "res",
+          ({ closed }) => Effect.acquireRelease(Effect.sync(100), () => closed.set(true))
+        )
         .bindValue("sink", ({ closed, res }) =>
           Sink.unwrapScoped(
-            res.map((m) => Sink.count().mapEffect((cnt) => closed.get().map((cl) => Tuple(cnt + m, cl))))
+            res.map((m) =>
+              Sink.count().mapEffect((cnt) => closed.get().map((cl) => Tuple(cnt + m, cl)))
+            )
           ))
         .bind("resAndState", ({ sink }) => Stream(1, 2, 3).run(sink))
         .bind("finalState", ({ closed }) => closed.get())
@@ -322,8 +331,12 @@ describe.concurrent("Sink", () => {
     it("sad path", async () => {
       const program = Effect.Do()
         .bind("closed", () => Ref.make(false))
-        .bindValue("res", ({ closed }) => Effect.acquireRelease(Effect.sync(100), () => closed.set(true)))
-        .bindValue("sink", ({ closed, res }) => Sink.unwrapScoped(res.map(() => Sink.succeed("ok"))))
+        .bindValue("res", ({ closed }) =>
+          Effect.acquireRelease(
+            Effect.sync(100),
+            () => closed.set(true)
+          ))
+        .bindValue("sink", ({ res }) => Sink.unwrapScoped(res.map(() => Sink.succeed("ok"))))
         .bind("finalResult", ({ sink }) => Stream.fail("fail").run(sink))
         .bind("finalState", ({ closed }) => closed.get())
 
@@ -381,10 +394,10 @@ describe.concurrent("Sink", () => {
         .bind("fiber", ({ deferred1, deferred2, hub }) =>
           Effect.scoped(
             hub.subscribe.flatMap(
-              (s) => deferred1.succeed(undefined) > deferred2.await() > s.takeAll
+              (s) => deferred1.succeed(undefined).zipRight(deferred2.await).zipRight(s.takeAll)
             )
           ).fork)
-        .tap(({ deferred1 }) => deferred1.await())
+        .tap(({ deferred1 }) => deferred1.await)
         .tap(({ hub }) => Stream(1, 2, 3).run(Sink.fromHub(hub)))
         .tap(({ deferred2 }) => deferred2.succeed(undefined))
         .flatMap(({ fiber }) => fiber.join)

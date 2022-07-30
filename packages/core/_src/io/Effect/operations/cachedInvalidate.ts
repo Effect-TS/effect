@@ -46,7 +46,7 @@ function get<R, E, A>(
                 : Maybe.none
           )
         )
-        .flatMap((a) => a._tag === "None" ? Effect.die("Bug") : restore(a.value.get(1).await()))
+        .flatMap((a) => a._tag === "None" ? Effect.die("Bug") : restore(a.value.get(1).await))
     )
   )
 }

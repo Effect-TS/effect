@@ -3,42 +3,33 @@ const update = "update"
 
 describe.concurrent("FiberRef", () => {
   describe.concurrent("updateAndGet", () => {
-    it("changes value", async () => {
-      const program = Effect.Do()
-        .bind("fiberRef", () => FiberRef.make(initial))
-        .bind("value1", ({ fiberRef }) => fiberRef.updateAndGet(() => update))
-        .bind("value2", ({ fiberRef }) => fiberRef.get())
-
-      const { value1, value2 } = await Effect.scoped(program).unsafeRunPromise()
-
-      assert.strictEqual(value1, update)
-      assert.strictEqual(value2, update)
-    })
+    it("changes value", () =>
+      Do(($) => {
+        const fiberRef = $(FiberRef.make(initial))
+        const value1 = $(fiberRef.updateAndGet(() => update))
+        const value2 = $(fiberRef.get)
+        assert.strictEqual(value1, update)
+        assert.strictEqual(value2, update)
+      }).scoped.unsafeRunPromise())
   })
 
   describe.concurrent("updateSomeAndGet", () => {
-    it("changes value", async () => {
-      const program = Effect.Do()
-        .bind("fiberRef", () => FiberRef.make(initial))
-        .bind("value1", ({ fiberRef }) => fiberRef.updateSomeAndGet(() => Maybe.some(update)))
-        .bind("value2", ({ fiberRef }) => fiberRef.get())
+    it("changes value", () =>
+      Do(($) => {
+        const fiberRef = $(FiberRef.make(initial))
+        const value1 = $(fiberRef.updateSomeAndGet(() => Maybe.some(update)))
+        const value2 = $(fiberRef.get)
+        assert.strictEqual(value1, update)
+        assert.strictEqual(value2, update)
+      }).scoped.unsafeRunPromise())
 
-      const { value1, value2 } = await Effect.scoped(program).unsafeRunPromise()
-
-      assert.strictEqual(value1, update)
-      assert.strictEqual(value2, update)
-    })
-
-    it("does not change value", async () => {
-      const program = Effect.Do()
-        .bind("fiberRef", () => FiberRef.make(initial))
-        .bind("value1", ({ fiberRef }) => fiberRef.updateSomeAndGet(() => Maybe.none))
-        .bind("value2", ({ fiberRef }) => fiberRef.get())
-
-      const { value1, value2 } = await Effect.scoped(program).unsafeRunPromise()
-
-      assert.strictEqual(value1, initial)
-      assert.strictEqual(value2, initial)
-    })
+    it("does not change value", () =>
+      Do(($) => {
+        const fiberRef = $(FiberRef.make(initial))
+        const value1 = $(fiberRef.updateSomeAndGet(() => Maybe.none))
+        const value2 = $(fiberRef.get)
+        assert.strictEqual(value1, initial)
+        assert.strictEqual(value2, initial)
+      }).scoped.unsafeRunPromise())
   })
 })

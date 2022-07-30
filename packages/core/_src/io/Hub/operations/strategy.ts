@@ -151,7 +151,7 @@ export class BackPressure<A> extends BaseStrategy<A> {
         this.unsafeOnHubEmptySpace(hub, subscribers)
         this.unsafeCompleteSubscribers(hub, subscribers)
 
-        return isShutdown.get ? Effect.interrupt : deferred.await()
+        return isShutdown.get ? Effect.interrupt : deferred.await
       }).onInterrupt(() => Effect.sync(this.unsafeRemove(deferred)))
     })
   }

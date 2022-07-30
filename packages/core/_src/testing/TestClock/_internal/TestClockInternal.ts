@@ -74,7 +74,7 @@ export class TestClockInternal extends LiveClock {
         return Tuple(false, data)
       }).flatMap((shouldAwait) =>
         shouldAwait ?
-          this.warningStart.zipRight(deferred.await()) :
+          this.warningStart.zipRight(deferred.await) :
           deferred.succeed(undefined)
       )
     ).unit

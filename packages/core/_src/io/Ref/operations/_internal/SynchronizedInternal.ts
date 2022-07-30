@@ -21,7 +21,7 @@ export const SynchronizedInternal = {
   /**
    * Reads the value from the `Ref`.
    */
-  get<A>(this: SynchronizedInternal<A>, __tsplusTrace?: string): Effect.UIO<A> {
+  get<A>(this: SynchronizedInternal<A>, __tsplusTrace?: string): Effect<never, never, A> {
     return this.ref.get()
   },
   /**
@@ -46,14 +46,18 @@ export const SynchronizedInternal = {
    * Writes a new value to the `Ref`, with a guarantee of immediate
    * consistency (at some cost to performance).
    */
-  set<A>(this: SynchronizedInternal<A>, a: A, __tsplusTrace?: string): Effect.UIO<void> {
+  set<A>(this: SynchronizedInternal<A>, a: A, __tsplusTrace?: string): Effect<never, never, void> {
     return this.semaphore.withPermit(this.ref.set(a))
   },
   /**
    * Writes a new value to the `Ref` without providing a guarantee of
    * immediate consistency.
    */
-  setAsync<A>(this: SynchronizedInternal<A>, a: A, __tsplusTrace?: string): Effect.UIO<void> {
+  setAsync<A>(
+    this: SynchronizedInternal<A>,
+    a: A,
+    __tsplusTrace?: string
+  ): Effect<never, never, void> {
     return this.semaphore.withPermit(this.ref.setAsync(a))
   },
   /**
@@ -77,9 +81,15 @@ export const SynchronizedInternal = {
     pf: (a: A) => Maybe<Effect<R, E, A>>,
     __tsplusTrace?: string
   ): Effect<R, E, A> {
-    return this.modifyEffect(v => pf(v).getOrElse(Effect.succeed(v)).map((result) => Tuple(v, result)))
+    return this.modifyEffect(v =>
+      pf(v).getOrElse(Effect.succeed(v)).map((result) => Tuple(v, result))
+    )
   },
-  modify<A, B>(this: SynchronizedInternal<A>, f: (a: A) => Tuple<[B, A]>, __tsplusTrace?: string): Effect.UIO<B> {
+  modify<A, B>(
+    this: SynchronizedInternal<A>,
+    f: (a: A) => Tuple<[B, A]>,
+    __tsplusTrace?: string
+  ): Effect<never, never, B> {
     return this.modifyEffect((a) => Effect.succeed(f(a)))
   },
   /**
@@ -128,7 +138,9 @@ export const SynchronizedInternal = {
     pf: (a: A) => Maybe<Effect<R, E, A>>,
     __tsplusTrace?: string
   ): Effect<R, E, void> {
-    return this.modifyEffect(v => pf(v).getOrElse(Effect.succeed(v)).map(result => Tuple(undefined as void, result)))
+    return this.modifyEffect(v =>
+      pf(v).getOrElse(Effect.succeed(v)).map(result => Tuple(undefined as void, result))
+    )
   },
 
   /**
@@ -141,6 +153,8 @@ export const SynchronizedInternal = {
     pf: (a: A) => Maybe<Effect<R, E, A>>,
     __tsplusTrace?: string
   ): Effect<R, E, A> {
-    return this.modifyEffect(v => pf(v).getOrElse(Effect.succeed(v)).map(result => Tuple(result, result)))
+    return this.modifyEffect(v =>
+      pf(v).getOrElse(Effect.succeed(v)).map(result => Tuple(result, result))
+    )
   }
 }

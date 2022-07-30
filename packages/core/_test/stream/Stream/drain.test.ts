@@ -20,7 +20,10 @@ describe.concurrent("Stream", () => {
     it("isn't too eager", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
-        .bind("res", ({ ref }) => (Stream(1).tap((n) => ref.set(n)) + Stream.fail("fail")).runDrain.either)
+        .bind(
+          "res",
+          ({ ref }) => (Stream(1).tap((n) => ref.set(n)) + Stream.fail("fail")).runDrain.either
+        )
         .bind("refRes", ({ ref }) => ref.get())
 
       const { refRes, res } = await program.unsafeRunPromise()
@@ -33,7 +36,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("drainFork", () => {
     it("runs the other stream in the background", async () => {
       const program = Deferred.make<never, void>().flatMap((latch) =>
-        Stream.fromEffect(latch.await())
+        Stream.fromEffect(latch.await)
           .drainFork(Stream.fromEffect(latch.succeed(undefined)))
           .runDrain
           .map(constTrue)
@@ -49,10 +52,12 @@ describe.concurrent("Stream", () => {
         .bind("backgroundInterrupted", () => Ref.make(constFalse))
         .bind("latch", () => Deferred.make<never, void>())
         .tap(({ backgroundInterrupted, latch }) =>
-          (Stream(1, 2, 3) + Stream.fromEffect(latch.await()).drain)
+          (Stream(1, 2, 3) + Stream.fromEffect(latch.await).drain)
             .drainFork(
               Stream.fromEffect(
-                (latch.succeed(undefined) > Effect.never).onInterrupt(() => backgroundInterrupted.set(true))
+                latch.succeed(undefined)
+                  .zipRight(Effect.never)
+                  .onInterrupt(() => backgroundInterrupted.set(true))
               )
             )
             .runDrain

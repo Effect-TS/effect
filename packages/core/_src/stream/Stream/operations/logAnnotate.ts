@@ -10,7 +10,7 @@ export function logAnnotate(
   __tsplusTrace?: string
 ): Stream<never, never, void> {
   return Stream.scoped(
-    FiberRef.currentLogAnnotations.get().flatMap((annotations) =>
+    FiberRef.currentLogAnnotations.get.flatMap((annotations) =>
       FiberRef.currentLogAnnotations.locallyScoped(
         annotations.set(key(), value())
       )

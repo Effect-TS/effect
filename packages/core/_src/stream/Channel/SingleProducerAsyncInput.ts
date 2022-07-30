@@ -99,7 +99,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
     return this.ref
       .modify((state) =>
         state._typeId === EmptyTypeId
-          ? Tuple(state.notifyProducer.await(), state)
+          ? Tuple(state.notifyProducer.await, state)
           : Tuple(Effect.unit, state)
       )
       .flatten
@@ -135,7 +135,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
               return Tuple(Effect.interrupt, state)
             }
             case EmptyTypeId: {
-              return Tuple(state.notifyProducer.await(), state)
+              return Tuple(state.notifyProducer.await, state)
             }
           }
         })
@@ -160,7 +160,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
             return Tuple(Effect.interrupt, state)
           }
           case EmptyTypeId: {
-            return Tuple(state.notifyProducer.await(), state)
+            return Tuple(state.notifyProducer.await, state)
           }
         }
       })
@@ -184,7 +184,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
             return Tuple(Effect.interrupt, state)
           }
           case EmptyTypeId: {
-            return Tuple(state.notifyProducer.await(), state)
+            return Tuple(state.notifyProducer.await, state)
           }
         }
       })
@@ -203,7 +203,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
             case EmitTypeId: {
               return Tuple(
                 deferred
-                  .await()
+                  .await
                   .foldCause(onError, (either) => either.fold(onDone, onElement)),
                 new StateEmit(state.notifyConsumers.append(deferred))
               )
@@ -218,7 +218,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
               return Tuple(
                 state.notifyProducer.succeed(undefined) >
                   deferred
-                    .await()
+                    .await
                     .foldCause(onError, (either) => either.fold(onDone, onElement)),
                 new StateEmit(ImmutableQueue.single(deferred))
               )

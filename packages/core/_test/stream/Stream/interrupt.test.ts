@@ -16,7 +16,7 @@ describe.concurrent("Stream", () => {
         .bindValue("stream3", ({ deferred, stream1, stream2 }) =>
           stream1
             .zipWithLatest(stream2, (a, b) => Tuple(a, b))
-            .interruptWhen(deferred.await())
+            .interruptWhen(deferred.await)
             .take(3))
         .tap(({ stream3 }) => stream3.runDrain)
         .map(constTrue)
@@ -34,12 +34,14 @@ describe.concurrent("Stream", () => {
         .bind("started", () => Deferred.make<never, void>())
         .bind("fiber", ({ halt, interrupted, latch, started }) =>
           Stream.fromEffect(
-            (started.succeed(undefined) > latch.await()).onInterrupt(() => interrupted.set(true))
+            started.succeed(undefined)
+              .zipRight(latch.await)
+              .onInterrupt(() => interrupted.set(true))
           )
-            .interruptWhen(halt.await())
+            .interruptWhen(halt.await)
             .runDrain
             .fork)
-        .tap(({ halt, started }) => started.await() > halt.succeed(undefined))
+        .tap(({ halt, started }) => started.await.zipRight(halt.succeed(undefined)))
         .tap(({ fiber }) => fiber.await)
         .flatMap(({ interrupted }) => interrupted.get())
 
@@ -54,7 +56,7 @@ describe.concurrent("Stream", () => {
         .tap(({ halt }) => halt.fail("fail"))
         .flatMap(({ halt }) =>
           Stream.fromEffect(Effect.never)
-            .interruptWhen(halt.await())
+            .interruptWhen(halt.await)
             .runDrain
             .either
         )
@@ -94,7 +96,9 @@ describe.concurrent("Stream", () => {
       const program = Effect.Do()
         .bind("halt", () => Deferred.make<string, never>())
         .tap(({ halt }) => halt.fail("fail"))
-        .flatMap(({ halt }) => Stream.fromEffect(Effect.never).interruptWhenDeferred(halt).runDrain.either)
+        .flatMap(({ halt }) =>
+          Stream.fromEffect(Effect.never).interruptWhenDeferred(halt).runDrain.either
+        )
 
       const result = await program.unsafeRunPromise()
 

@@ -8,7 +8,7 @@ describe.concurrent("Channel", () => {
           Channel.fromEffect(deferred.succeed(undefined) > Effect.never)
             .runDrain
             .onExit((exit) => ref.set(exit))
-            .raceEither(deferred.await())
+            .raceEither(deferred.await)
         )
         const result = $(ref.get())
         assert.isTrue(result.isInterrupted)

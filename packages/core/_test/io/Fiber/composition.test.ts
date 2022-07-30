@@ -82,9 +82,9 @@ describe.concurrent("Fiber", () => {
             .uninterruptible
             .zipRight(Effect.never))
         .bind("fiber", ({ a }) => a.fork)
-        .tap(({ latch1 }) => latch1.await())
+        .tap(({ latch1 }) => latch1.await)
         .tap(({ fiber }) => fiber.interrupt)
-        .tap(({ latch2 }) => latch2.await())
+        .tap(({ latch2 }) => latch2.await)
         .exit
 
       const result = await program.unsafeRunPromise()

@@ -8,10 +8,10 @@ describe.concurrent("Stream", () => {
           Stream(1, 2, 3, 4)
             .flatMapParSwitch(1, (i) =>
               i > 3
-                ? Stream.acquireRelease(Effect.unit, () => lastExecuted.set(true)).flatMap(() => Stream.empty)
-                : Stream.scoped(semaphore.withPermitScoped).flatMap(
-                  () => Stream.never
-                ))
+                ? Stream.acquireRelease(Effect.unit, () => lastExecuted.set(true))
+                  .flatMap(() => Stream.empty)
+                : Stream.scoped(semaphore.withPermitScoped)
+                  .flatMap(() => Stream.never))
             .runDrain
         )
         .flatMap(({ lastExecuted, semaphore }) => semaphore.withPermit(lastExecuted.get()))
@@ -29,9 +29,8 @@ describe.concurrent("Stream", () => {
           Stream.range(1, 13)
             .flatMapParSwitch(4, (i) =>
               i > 8
-                ? Stream.acquireRelease(Effect.unit, () => lastExecuted.update((n) => n + 1)).flatMap(() =>
-                  Stream.empty
-                )
+                ? Stream.acquireRelease(Effect.unit, () => lastExecuted.update((n) => n + 1))
+                  .flatMap(() => Stream.empty)
                 : Stream.scoped(semaphore.withPermitScoped).flatMap(
                   () => Stream.never
                 ))
@@ -63,11 +62,13 @@ describe.concurrent("Stream", () => {
           Stream(undefined)
             .flatMapParSwitch(1, () =>
               Stream.fromEffect(
-                (latch.succeed(undefined) > Effect.never).onInterrupt(() => substreamCancelled.set(true))
+                latch.succeed(undefined)
+                  .zipRight(Effect.never)
+                  .onInterrupt(() => substreamCancelled.set(true))
               ))
             .runDrain
             .fork)
-        .tap(({ latch }) => latch.await())
+        .tap(({ latch }) => latch.await)
         .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ substreamCancelled }) => substreamCancelled.get())
 
@@ -83,9 +84,11 @@ describe.concurrent("Stream", () => {
         .bind("result", ({ latch, substreamCancelled }) =>
           Stream(
             Stream.fromEffect(
-              (latch.succeed(undefined) > Effect.never).onInterrupt(() => substreamCancelled.set(true))
+              latch.succeed(undefined)
+                .zipRight(Effect.never)
+                .onInterrupt(() => substreamCancelled.set(true))
             ),
-            Stream.fromEffect(latch.await() > Effect.failSync("ouch"))
+            Stream.fromEffect(latch.await.zipRight(Effect.failSync("ouch")))
           )
             .flatMapParSwitch(2, identity)
             .runDrain
@@ -105,10 +108,13 @@ describe.concurrent("Stream", () => {
         .bind(
           "result",
           ({ latch, substreamCancelled }) =>
-            (Stream(undefined) + Stream.fromEffect(latch.await() > Effect.failSync("ouch")))
+            Stream(undefined)
+              .concat(Stream.fromEffect(latch.await.zipRight(Effect.failSync("ouch"))))
               .flatMapParSwitch(2, () =>
                 Stream.fromEffect(
-                  (latch.succeed(undefined) > Effect.never).onInterrupt(() => substreamCancelled.set(true))
+                  latch.succeed(undefined)
+                    .zipRight(Effect.never)
+                    .onInterrupt(() => substreamCancelled.set(true))
                 ))
               .runDrain
               .either
@@ -129,9 +135,11 @@ describe.concurrent("Stream", () => {
         .bind("result", ({ latch, substreamCancelled }) =>
           Stream(
             Stream.fromEffect(
-              (latch.succeed(undefined) > Effect.never).onInterrupt(() => substreamCancelled.set(true))
+              latch.succeed(undefined)
+                .zipRight(Effect.never)
+                .onInterrupt(() => substreamCancelled.set(true))
             ),
-            Stream.fromEffect(latch.await() > Effect.die(error))
+            Stream.fromEffect(latch.await.zipRight(Effect.die(error)))
           )
             .flatMapPar(2, identity)
             .runDrain
@@ -152,10 +160,13 @@ describe.concurrent("Stream", () => {
         .bind(
           "result",
           ({ latch, substreamCancelled }) =>
-            (Stream(undefined) + Stream.fromEffect(latch.await() > Effect.die(error)))
+            Stream(undefined)
+              .concat(Stream.fromEffect(latch.await.zipRight(Effect.die(error))))
               .flatMapParSwitch(2, () =>
                 Stream.fromEffect(
-                  (latch.succeed(undefined) > Effect.never).onInterrupt(() => substreamCancelled.set(true))
+                  latch.succeed(undefined)
+                    .zipRight(Effect.never)
+                    .onInterrupt(() => substreamCancelled.set(true))
                 ))
               .runDrain
               .exit
@@ -175,7 +186,10 @@ describe.concurrent("Stream", () => {
           "push",
           ({ effects }) => (label: string) => effects.update((list) => list.prepend(label))
         )
-        .bindValue("inner", ({ push }) => Stream.acquireRelease(push("InnerAcquire"), () => push("InnerRelease")))
+        .bindValue(
+          "inner",
+          ({ push }) => Stream.acquireRelease(push("InnerAcquire"), () => push("InnerRelease"))
+        )
         .tap(({ inner, push }) =>
           Stream.acquireRelease(push("OuterAcquire").as(inner), () => push("OuterRelease"))
             .flatMapParSwitch(2, identity)

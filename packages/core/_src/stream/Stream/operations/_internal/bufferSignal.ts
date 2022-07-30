@@ -68,11 +68,11 @@ function terminate<E, A>(
   return Channel.fromEffect(
     Do(($) => {
       const latch = $(ref.get())
-      $(latch.await())
+      $(latch.await)
       const deferred = $(Deferred.make<never, void>())
       $(queue.offer(Tuple(take, deferred)))
       $(ref.set(deferred))
-      return deferred.await()
+      return deferred.await
     })
   )
 }

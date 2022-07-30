@@ -30,8 +30,9 @@ describe.concurrent("Stream", () => {
 
     it("Some", async () => {
       const chunk = Chunk(1, 2, 3, 4, 5)
-      const program = Stream.asyncMaybe<never, never, number>(() => Maybe.some(Stream.fromChunk(chunk)))
-        .runCollect
+      const program =
+        Stream.asyncMaybe<never, never, number>(() => Maybe.some(Stream.fromChunk(chunk)))
+          .runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -98,7 +99,7 @@ describe.concurrent("Stream", () => {
             .take(chunk.size)
             .runCollect
             .fork)
-        .tap(({ latch }) => latch.await())
+        .tap(({ latch }) => latch.await)
         .flatMap(({ fiber }) => fiber.join)
 
       const result = await program.unsafeRunPromise()
@@ -140,7 +141,7 @@ describe.concurrent("Stream", () => {
     //       }, 5)
     //     )
     //     .bind("run", ({ stream }) =>
-    //       stream.run(Sink.take(1) > Sink.fromEffect(deferred.await())).fork
+    //       stream.run(Sink.take(1) > Sink.fromEffect(deferred)).fork
     //     )
     //     .tap(({ refCount }) => refCount.get.repeat(Schedule.recurWhile((n) => n !== 7)))
     //     .bind("isDone", ({ refDone }) => refDone.get)
@@ -168,7 +169,7 @@ describe.concurrent("Stream", () => {
             .take(chunk.size)
             .run(Sink.collectAll<number>())
             .fork)
-        .tap(({ latch }) => latch.await())
+        .tap(({ latch }) => latch.await)
         .flatMap(({ fiber }) => fiber.join)
 
       const result = await program.unsafeRunPromise()
@@ -216,15 +217,18 @@ describe.concurrent("Stream", () => {
       const program = Effect.Do()
         .bind("cancelled", () => Ref.make(false))
         .bind("latch", () => Deferred.make<never, void>())
-        .bind("fiber", ({ cancelled, latch }) =>
-          Stream.asyncInterrupt<never, never, void>((emit) => {
-            emit.chunk(Chunk.single(undefined))
-            return Either.left(cancelled.set(true))
-          })
-            .tap(() => latch.succeed(undefined))
-            .runDrain
-            .fork)
-        .tap(({ latch }) => latch.await())
+        .bind(
+          "fiber",
+          ({ cancelled, latch }) =>
+            Stream.asyncInterrupt<never, never, void>((emit) => {
+              emit.chunk(Chunk.single(undefined))
+              return Either.left(cancelled.set(true))
+            })
+              .tap(() => latch.succeed(undefined))
+              .runDrain
+              .fork
+        )
+        .tap(({ latch }) => latch.await)
         .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ cancelled }) => cancelled.get())
 
@@ -235,8 +239,9 @@ describe.concurrent("Stream", () => {
 
     it("Right", async () => {
       const chunk = Chunk(1, 2, 3, 4, 5)
-      const program = Stream.asyncInterrupt<never, never, number>(() => Either.right(Stream.fromChunk(chunk)))
-        .runCollect
+      const program =
+        Stream.asyncInterrupt<never, never, number>(() => Either.right(Stream.fromChunk(chunk)))
+          .runCollect
 
       const result = await program.unsafeRunPromise()
 

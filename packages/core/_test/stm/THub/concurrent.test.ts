@@ -16,7 +16,7 @@ describe.concurrent("THub", () => {
             ).fork
           )
 
-          $(deferred.await())
+          $(deferred.await)
           $(Effect.forEach(as.take(n), (a) => hub.publish(a).commit).fork)
 
           const values = $(subscriber.join)
@@ -53,8 +53,8 @@ describe.concurrent("THub", () => {
             ).fork
           )
 
-          $(deferred1.await())
-          $(deferred2.await())
+          $(deferred1.await)
+          $(deferred2.await)
           $(Effect.forEach(as.take(n), (a) => hub.publish(a).commit).fork)
 
           const values1 = $(subscriber1.join)
@@ -92,8 +92,8 @@ describe.concurrent("THub", () => {
             ).fork
           )
 
-          $(deferred1.await())
-          $(deferred2.await())
+          $(deferred1.await)
+          $(deferred2.await)
           $(Effect.forEach(as.take(n), (a) => hub.publish(a).commit).fork)
           $(Effect.forEach(as.take(n).map((_) => -_), (a) => hub.publish(a).commit).fork)
 

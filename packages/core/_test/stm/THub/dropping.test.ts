@@ -16,7 +16,7 @@ describe.concurrent("THub", () => {
             ).fork
           )
 
-          $(deferred.await())
+          $(deferred.await)
           $(Effect.forEach(as.take(n), (a) => hub.publish(a).commit).fork)
 
           const values = $(subscriber.join)
@@ -53,8 +53,8 @@ describe.concurrent("THub", () => {
             ).fork
           )
 
-          $(deferred1.await())
-          $(deferred2.await())
+          $(deferred1.await)
+          $(deferred2.await)
           $(Effect.forEach(as.take(n), (a) => hub.publish(a).commit).fork)
 
           const values1 = $(subscriber1.join)
@@ -92,20 +92,20 @@ describe.concurrent("THub", () => {
             ).fork
           )
 
-          $(deferred1.await())
-          $(deferred2.await())
+          $(deferred1.await)
+          $(deferred2.await)
           $(Effect.forEach(as, (a) => hub.publish(a).commit).fork)
           $(Effect.forEach(as.map((_) => -_), (a) => hub.publish(a).commit).fork)
 
           const values1 = $(subscriber1.join)
           const values2 = $(subscriber2.join)
 
-          return values1.filter((_) => _ > 0) == as.take(values1.filter((_) => _ > 0).size) && values1.filter((_) =>
-                _ < 0
-              ) == as.map((_) => -_).take(values1.filter((_) => _ < 0).size) &&
-            values2.filter((_) => _ > 0) == as.take(values2.filter((_) => _ > 0).size) && values2.filter((_) =>
-                _ < 0
-              ) == as.map((_) => -_).take(values2.filter((_) => _ < 0).size)
+          return values1.filter((_) => _ > 0) == as.take(values1.filter((_) => _ > 0).size) &&
+            values1.filter((_) => _ < 0) ==
+              as.map((_) => -_).take(values1.filter((_) => _ < 0).size) &&
+            values2.filter((_) => _ > 0) == as.take(values2.filter((_) => _ > 0).size) &&
+            values2.filter((_) => _ < 0) ==
+              as.map((_) => -_).take(values2.filter((_) => _ < 0).size)
         })).map(Chunk.$.forAll(identity))
 
       const result = await tx.unsafeRunPromise()

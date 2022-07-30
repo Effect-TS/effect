@@ -3,7 +3,7 @@ describe.concurrent("Promise", () => {
     it("a deferred that is not completed yet", () =>
       Do(($) => {
         const deferred = $(Deferred.make<string, number>())
-        const result = $(deferred.poll())
+        const result = $(deferred.poll)
         assert.isTrue(result.isNone())
       }).unsafeRunPromise())
 
@@ -11,7 +11,7 @@ describe.concurrent("Promise", () => {
       Do(($) => {
         const deferred = $(Deferred.make<string, number>())
         $(deferred.succeed(12))
-        const result = $(deferred.poll().someOrFail("fail").flatten.exit)
+        const result = $(deferred.poll.someOrFail("fail").flatten.exit)
         assert.isTrue(result == Exit.succeed(12))
       }).unsafeRunPromise())
 
@@ -19,15 +19,15 @@ describe.concurrent("Promise", () => {
       Do(($) => {
         const deferred = $(Deferred.make<string, number>())
         $(deferred.fail("failure"))
-        const result = $(deferred.poll().someOrFail("fail").flatten.exit)
+        const result = $(deferred.poll.someOrFail("fail").flatten.exit)
         assert.isTrue(result.isFailure())
       }).unsafeRunPromise())
 
     it("a deferred that is interrupted", () =>
       Do(($) => {
         const deferred = $(Deferred.make<string, number>())
-        $(deferred.interrupt())
-        const result = $(deferred.poll().someOrFail("fail").flatten.exit)
+        $(deferred.interrupt)
+        const result = $(deferred.poll.someOrFail("fail").flatten.exit)
         assert.isTrue(result.isInterrupted)
       }).unsafeRunPromise())
   })

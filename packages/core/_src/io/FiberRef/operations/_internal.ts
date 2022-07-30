@@ -31,18 +31,26 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
     f: (a: Value) => Tuple<[B, Value]>,
     __tsplusTrace?: string
   ): Effect<never, never, B> {
-    return new IFiberRefModify(this, f, __tsplusTrace)
+    return new IFiberRefModify(this, f)
   }
 
-  delete(this: FiberRef.WithPatch<Value, Patch>, __tsplusTrace?: string | undefined): Effect<never, never, void> {
-    return new IFiberRefDelete(this, __tsplusTrace)
-  }
-
-  get(this: FiberRef.WithPatch<Value, Patch>, __tsplusTrace?: string): Effect<never, never, Value> {
+  get get(): Effect<never, never, Value> {
     return this.modify((a) => Tuple(a, a))
   }
 
-  getAndSet(this: FiberRef.WithPatch<Value, Patch>, value: Value, __tsplusTrace?: string): Effect<never, never, Value> {
+  get delete(): Effect<never, never, void> {
+    return new IFiberRefDelete(this)
+  }
+
+  get reset(): Effect<never, never, void> {
+    return this.set(this.initial)
+  }
+
+  getAndSet(
+    this: FiberRef.WithPatch<Value, Patch>,
+    value: Value,
+    __tsplusTrace?: string
+  ): Effect<never, never, Value> {
     return this.modify((v) => Tuple(v, value))
   }
 
@@ -84,7 +92,7 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
     __tsplusTrace?: string
   ): Effect<Scope, never, void> {
     return Effect.acquireRelease(
-      this.get().flatMap((old) => this.set(value).as(old)),
+      this.get.flatMap((old) => this.set(value).as(old)),
       (a) => this.set(a)
     ).unit
   }
@@ -128,10 +136,6 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
     __tsplusTrace?: string
   ): Effect<never, never, B> {
     return this.modify((v) => f(v).getOrElse(Tuple(def, v)))
-  }
-
-  reset(this: FiberRef.WithPatch<Value, Patch>, __tsplusTrace?: string): Effect<never, never, void> {
-    return this.set(this.initial)
   }
 
   updateAndGet(
@@ -238,7 +242,7 @@ export function makeWith<Value, Patch>(
 ): Effect<Scope, never, FiberRef.WithPatch<Value, Patch>> {
   return Effect.acquireRelease(
     Effect.sync(ref).tap((ref) => ref.update(identity)),
-    (ref) => ref.delete()
+    (ref) => ref.delete
   )
 }
 
@@ -356,7 +360,7 @@ export function acquireRelease<R, E, A, R2, X>(
  * @tsplus static effect/core/io/Effect.Ops environment
  */
 export function environment<R>(__tsplusTrace?: string): Effect<R, never, Env<R>> {
-  return Effect.suspendSucceed(FiberRef.currentEnvironment.get() as Effect<never, never, Env<R>>)
+  return Effect.suspendSucceed(FiberRef.currentEnvironment.get as Effect<never, never, Env<R>>)
 }
 
 /**
@@ -372,7 +376,9 @@ export const currentScheduler: FiberRef<Scheduler> = FiberRef.unsafeMake(default
 /**
  * @tsplus static effect/core/io/FiberRef.Ops currentLogAnnotations
  */
-export const currentLogAnnotations: FiberRef<ImmutableMap<string, string>> = FiberRef.unsafeMake(ImmutableMap.empty())
+export const currentLogAnnotations: FiberRef<ImmutableMap<string, string>> = FiberRef.unsafeMake(
+  ImmutableMap.empty()
+)
 
 /**
  * @tsplus static effect/core/io/FiberRef.Ops currentLogLevel
@@ -387,7 +393,9 @@ export const currentLogSpan: FiberRef<List<LogSpan>> = FiberRef.unsafeMake(List.
 /**
  * @tsplus static effect/core/io/FiberRef.Ops currentParallelism
  */
-export const currentParallelism: FiberRef<Maybe<number>> = FiberRef.unsafeMake(Maybe.emptyOf<number>())
+export const currentParallelism: FiberRef<Maybe<number>> = FiberRef.unsafeMake(
+  Maybe.emptyOf<number>()
+)
 
 /**
  * @tsplus static effect/core/io/FiberRef.Ops forkScopeOverride
@@ -450,6 +458,6 @@ export function serviceWithEffect<T, R, E, A>(
   __tsplusTrace?: string
 ): Effect<R | T, E, A> {
   return Effect.suspendSucceed(
-    FiberRef.currentEnvironment.get().flatMap((env) => f(env.unsafeGet(tag)))
+    FiberRef.currentEnvironment.get.flatMap((env) => f(env.unsafeGet(tag)))
   )
 }

@@ -81,6 +81,6 @@ export class CountdownLatchInternal {
    * Causes the current fiber to wait until the latch has counted down to zero.
    */
   get await(): Effect<never, never, void> {
-    return this._waiters.await()
+    return this._waiters.await
   }
 }

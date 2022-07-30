@@ -19,6 +19,6 @@ export function memoizeF<R, E, A, B>(
             (deferred) => Effect.succeed(Tuple(deferred, map))
           )
         })
-          .flatMap((deferred) => deferred.await())
+          .flatMap((deferred) => deferred.await)
   )
 }
