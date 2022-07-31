@@ -1,7 +1,7 @@
 describe.concurrent("Queue", () => {
   describe.concurrent("poll", () => {
     it("poll on empty queue", async () => {
-      const program = Queue.bounded<number>(5).flatMap((queue) => queue.poll())
+      const program = Queue.bounded<number>(5).flatMap((queue) => queue.poll)
 
       const result = await program.unsafeRunPromise()
 
@@ -14,7 +14,7 @@ describe.concurrent("Queue", () => {
         .bindValue("iter", () => Chunk.range(1, 4))
         .tap(({ iter, queue }) => queue.offerAll(iter))
         .tap(({ queue }) => queue.takeAll)
-        .flatMap(({ queue }) => queue.poll())
+        .flatMap(({ queue }) => queue.poll)
 
       const result = await program.unsafeRunPromise()
 
@@ -26,10 +26,10 @@ describe.concurrent("Queue", () => {
         .bind("queue", () => Queue.bounded<number>(5))
         .bindValue("iter", () => Chunk.range(1, 2))
         .tap(({ iter, queue }) => queue.offerAll(iter))
-        .bind("t1", ({ queue }) => queue.poll())
-        .bind("t2", ({ queue }) => queue.poll())
-        .bind("t3", ({ queue }) => queue.poll())
-        .bind("t4", ({ queue }) => queue.poll())
+        .bind("t1", ({ queue }) => queue.poll)
+        .bind("t2", ({ queue }) => queue.poll)
+        .bind("t3", ({ queue }) => queue.poll)
+        .bind("t4", ({ queue }) => queue.poll)
 
       const { t1, t2, t3, t4 } = await program.unsafeRunPromise()
 

@@ -63,13 +63,13 @@ describe.concurrent("TestClock", () => {
     Do(($) => {
       const queue = $(Queue.unbounded<void>())
       $(queue.offer(undefined).delay((60).minutes).forever.fork)
-      const a = $(queue.poll().map((maybe) => maybe.isNone()))
+      const a = $(queue.poll.map((maybe) => maybe.isNone()))
       $(TestClock.adjust((60).minutes))
       const b = $(queue.take.as(true))
-      const c = $(queue.poll().map((maybe) => maybe.isNone()))
+      const c = $(queue.poll.map((maybe) => maybe.isNone()))
       $(TestClock.adjust((60).minutes))
       const d = $(queue.take.as(true))
-      const e = $(queue.poll().map((maybe) => maybe.isNone()))
+      const e = $(queue.poll.map((maybe) => maybe.isNone()))
       assert.isTrue(a && b && c && d && e)
     }))
 
