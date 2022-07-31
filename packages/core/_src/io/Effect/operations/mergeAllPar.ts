@@ -14,10 +14,11 @@
 export function mergeAllPar<R, E, A, B>(
   as: LazyArg<Collection<Effect<R, E, A>>>,
   zero: LazyArg<B>,
-  f: (b: B, a: A) => B,
-  __tsplusTrace?: string
+  f: (b: B, a: A) => B
 ): Effect<R, E, B> {
-  return Ref.make(zero).flatMap((acc) =>
-    Effect.forEachParDiscard(as, (effect) => effect.flatMap((a) => acc.update((b) => f(b, a)))).flatMap(() => acc.get())
-  )
+  return Ref.make(zero)
+    .flatMap((acc) =>
+      Effect.forEachParDiscard(as, (effect) => effect.flatMap((a) => acc.update((b) => f(b, a))))
+        .flatMap(() => acc.get())
+    )
 }

@@ -4,13 +4,14 @@
  * @tsplus static effect/core/stream/Stream.Ops fromChunkQueue
  */
 export function fromChunkQueue<A>(
-  queue: LazyArg<Dequeue<Chunk<A>>>,
-  __tsplusTrace?: string
+  queue: LazyArg<Dequeue<Chunk<A>>>
 ): Stream<never, never, A> {
   return Stream.repeatEffectChunkMaybe(() => {
     const queue0 = queue()
     return queue0.take.catchAllCause((cause) =>
-      queue0.isShutdown.flatMap((isShutdown) => isShutdown && cause.isInterrupted ? Pull.end : Pull.failCause(cause))
+      queue0.isShutdown.flatMap((isShutdown) =>
+        isShutdown && cause.isInterrupted ? Pull.end : Pull.failCause(cause)
+      )
     )
   })
 }

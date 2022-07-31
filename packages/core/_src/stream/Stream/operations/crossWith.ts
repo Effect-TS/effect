@@ -10,8 +10,8 @@
  */
 export function crossWith<R2, E2, B, A, C>(
   that: LazyArg<Stream<R2, E2, B>>,
-  f: (a: A, b: B) => C,
-  __tsplusTrace?: string
+  f: (a: A, b: B) => C
 ) {
-  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, C> => self.flatMap((a) => that().map((b) => f(a, b)))
+  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, C> =>
+    self.flatMap((a) => that().map((b) => f(a, b)))
 }

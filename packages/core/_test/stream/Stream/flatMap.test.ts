@@ -163,12 +163,15 @@ describe.concurrent("Stream", () => {
     it("exit signal", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(constFalse))
-        .bindValue("inner", ({ ref }) =>
-          Stream.acquireReleaseExit(Effect.unit, (_, exit) =>
-            exit.fold(
-              () => ref.set(true),
-              () => Effect.unit
-            )).flatMap(() => Stream.fail("ouch")))
+        .bindValue(
+          "inner",
+          ({ ref }) =>
+            Stream.acquireReleaseExit(Effect.unit, (_, exit) =>
+              exit.fold(
+                () => ref.set(true),
+                () => Effect.unit
+              )).flatMap(() => Stream.fail("ouch"))
+        )
         .tap(({ inner }) =>
           Stream.succeed(constVoid)
             .flatMap(() => inner)

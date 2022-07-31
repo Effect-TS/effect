@@ -8,8 +8,7 @@ import { realFiber } from "@effect/core/io/Fiber/definition"
  * @tsplus getter effect/core/io/RuntimeFiber inheritRefs
  */
 export function inheritRefs<E, A>(
-  self: Fiber<E, A>,
-  __tsplusTrace?: string
+  self: Fiber<E, A>
 ): Effect<never, never, void> {
   realFiber(self)
   return self._inheritRefs

@@ -1,4 +1,7 @@
-import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import {
+  concreteSink,
+  SinkInternal
+} from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Repeatedly runs the sink for as long as its results satisfy the predicate
@@ -11,8 +14,7 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
 export function collectAllWhileWith<Z, S>(
   z: LazyArg<S>,
   p: Predicate<Z>,
-  f: (s: S, z: Z) => S,
-  __tsplusTrace?: string
+  f: (s: S, z: Z) => S
 ) {
   return <R, E, In, L extends In>(self: Sink<R, E, In, L, Z>): Sink<R, E, In, L, S> => {
     concreteSink(self)
@@ -48,8 +50,7 @@ function loop<R, E, In, L extends In, Z, S>(
   upstreamDoneRef: Ref<boolean>,
   currentResult: S,
   p: Predicate<Z>,
-  f: (s: S, z: Z) => S,
-  __tsplusTrace?: string
+  f: (s: S, z: Z) => S
 ): Channel<R, never, Chunk<In>, unknown, E, Chunk<L>, S> {
   concreteSink(self)
   return self.channel.doneCollect.foldChannel(

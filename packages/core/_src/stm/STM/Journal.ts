@@ -243,7 +243,11 @@ function suspendTryCommit<R, E, A>(
 ) {
   // eslint-disable-next-line no-constant-condition
   while (1) {
-    addTodo(txnId, journal, () => tryCommitAsync(undefined, fiberId, stm, txnId, state, env, scheduler)(k))
+    addTodo(
+      txnId,
+      journal,
+      () => tryCommitAsync(undefined, fiberId, stm, txnId, state, env, scheduler)(k)
+    )
     if (isInvalid(journal)) {
       const v = tryCommit(fiberId, stm, state, env, scheduler)
       switch (v._tag) {

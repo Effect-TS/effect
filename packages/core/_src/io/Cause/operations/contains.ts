@@ -9,6 +9,9 @@ export function contains<E1>(that: Cause<E1>) {
     if ((self as Cause<E | E1>) === that) {
       return true
     }
-    return self.foldLeft<E, boolean>(false, (acc, cause) => Maybe.some(acc || Equals.equals(cause, that)))
+    return self.foldLeft<E, boolean>(
+      false,
+      (acc, cause) => Maybe.some(acc || Equals.equals(cause, that))
+    )
   }
 }

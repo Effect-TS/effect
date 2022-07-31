@@ -5,8 +5,7 @@
  * @tsplus getter effect/core/io/Effect unright
  */
 export function unright<R, B, E, A>(
-  self: Effect<R, Either<B, E>, A>,
-  __tsplusTrace?: string
+  self: Effect<R, Either<B, E>, A>
 ): Effect<R, E, Either<B, A>> {
   return self.foldEffect(
     (either) => either.fold((b) => Effect.succeed(Either.left(b)), Effect.fail),

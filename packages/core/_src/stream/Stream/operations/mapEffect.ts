@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Maps over elements of the stream with the specified effectful function.
@@ -7,8 +10,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus pipeable effect/core/stream/Stream mapEffect
  */
 export function mapEffect<A, R1, E1, B>(
-  f: (a: A) => Effect<R1, E1, B>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R1, E1, B>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R1, E | E1, B> => {
     concreteStream(self)

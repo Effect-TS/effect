@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Takes all elements of the stream until the specified predicate evaluates to
@@ -7,7 +10,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus static effect/core/stream/Stream.Aspects takeUntil
  * @tsplus pipeable effect/core/stream/Stream takeUntil
  */
-export function takeUntil<A>(f: Predicate<A>, __tsplusTrace?: string) {
+export function takeUntil<A>(f: Predicate<A>) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, A> => {
     const loop: Channel<R, E, Chunk<A>, unknown, E, Chunk<A>, unknown> = Channel.readWith(
       (chunk: Chunk<A>) => {

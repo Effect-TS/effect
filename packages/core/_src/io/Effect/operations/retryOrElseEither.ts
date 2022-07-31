@@ -10,11 +10,8 @@ import type { Driver } from "@effect/core/io/Schedule"
  */
 export function retryOrElseEither<S, R1, E, A1, R2, E2, A2>(
   policy: LazyArg<Schedule<S, R1, E, A1>>,
-  orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
-  __tsplusTrace?: string
-): <R, A>(
-  self: Effect<R, E, A>
-) => Effect<R | R1 | R2, E | E2, Either<A2, A>> {
+  orElse: (e: E, out: A1) => Effect<R2, E2, A2>
+): <R, A>(self: Effect<R, E, A>) => Effect<R | R1 | R2, E | E2, Either<A2, A>> {
   return <R, A>(
     self: Effect<R, E, A>
   ): Effect<R | R1 | R2, E | E2, Either<A2, A>> =>

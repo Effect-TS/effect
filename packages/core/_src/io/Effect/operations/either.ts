@@ -10,10 +10,7 @@
  *
  * @tsplus getter effect/core/io/Effect either
  */
-export function either<R, E, A>(
-  self: Effect<R, E, A>,
-  __tsplusTrace?: string
-): Effect<R, never, Either<E, A>> {
+export function either<R, E, A>(self: Effect<R, E, A>): Effect<R, never, Either<E, A>> {
   return self.foldEffect(
     (e) => Effect.succeed(Either.left(e)),
     (a) => Effect.succeed(Either.right(a))

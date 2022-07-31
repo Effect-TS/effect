@@ -24,30 +24,33 @@ export function fixed(
   unknown,
   number
 > {
-  return makeWithState(Tuple(Maybe.emptyOf(), 0), (now, _, { tuple: [option, n] }) =>
-    Effect.sync(() => {
-      const interval0 = interval()
-      const intervalMillis = interval0.millis
-      return option.fold(
-        () =>
-          Tuple(
-            Tuple(Maybe.some(Tuple(now, now + intervalMillis)), n + 1),
-            n,
-            Decision.Continue(Interval.after(now + intervalMillis))
-          ),
-        ({ tuple: [startMillis, lastRun] }) => {
-          const runningBehind = now > (lastRun + intervalMillis)
-          const boundary = interval0 == (0).millis
-            ? interval0
-            : new Duration(intervalMillis - ((now - startMillis) % intervalMillis))
-          const sleepTime = boundary == (0).millis ? interval0 : boundary
-          const nextRun = runningBehind ? now : now + sleepTime.millis
-          return Tuple(
-            Tuple(Maybe.some(Tuple(startMillis, nextRun)), n + 1),
-            n,
-            Decision.Continue(Interval.after(nextRun))
-          )
-        }
-      )
-    }))
+  return makeWithState(
+    Tuple(Maybe.emptyOf(), 0),
+    (now, _, { tuple: [option, n] }) =>
+      Effect.sync(() => {
+        const interval0 = interval()
+        const intervalMillis = interval0.millis
+        return option.fold(
+          () =>
+            Tuple(
+              Tuple(Maybe.some(Tuple(now, now + intervalMillis)), n + 1),
+              n,
+              Decision.Continue(Interval.after(now + intervalMillis))
+            ),
+          ({ tuple: [startMillis, lastRun] }) => {
+            const runningBehind = now > (lastRun + intervalMillis)
+            const boundary = interval0 == (0).millis
+              ? interval0
+              : new Duration(intervalMillis - ((now - startMillis) % intervalMillis))
+            const sleepTime = boundary == (0).millis ? interval0 : boundary
+            const nextRun = runningBehind ? now : now + sleepTime.millis
+            return Tuple(
+              Tuple(Maybe.some(Tuple(startMillis, nextRun)), n + 1),
+              n,
+              Decision.Continue(Interval.after(nextRun))
+            )
+          }
+        )
+      })
+  )
 }

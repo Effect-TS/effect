@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 import { RingBufferNew } from "@effect/core/support/RingBufferNew"
 
 /**
@@ -7,7 +10,7 @@ import { RingBufferNew } from "@effect/core/support/RingBufferNew"
  * @tsplus static effect/core/stream/Stream.Aspects takeRight
  * @tsplus pipeable effect/core/stream/Stream takeRight
  */
-export function takeRight(n: number, __tsplusTrace?: string) {
+export function takeRight(n: number) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => {
     if (n <= 0) {
       return Stream.empty

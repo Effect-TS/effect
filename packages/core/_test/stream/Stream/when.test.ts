@@ -26,7 +26,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(error))
+      assert.isTrue(result == Exit.die(error))
     })
   })
 
@@ -62,7 +62,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(error))
+      assert.isTrue(result == Exit.fail(error))
     })
   })
 
@@ -100,7 +100,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(error))
+      assert.isTrue(result == Exit.die(error))
     })
 
     it("dies if the given partial function throws an exception", async () => {
@@ -111,7 +111,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(error))
+      assert.isTrue(result == Exit.die(error))
     })
   })
 
@@ -147,18 +147,19 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(error))
+      assert.isTrue(result == Exit.fail(error))
     })
 
     it("dies if the given partial function throws an exception", async () => {
       const error = new RuntimeError("boom")
-      const program = Stream.whenCaseEffect(Effect.unit, (): Maybe<Stream<never, unknown, unknown>> => {
-        throw error
-      }).runCollect
+      const program =
+        Stream.whenCaseEffect(Effect.unit, (): Maybe<Stream<never, unknown, unknown>> => {
+          throw error
+        }).runCollect
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(error))
+      assert.isTrue(result == Exit.die(error))
     })
   })
 })

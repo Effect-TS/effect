@@ -57,7 +57,9 @@ export function mergeAllWith<
         const errorSignal = $(Deferred.make<never, void>())
         const permits = $(TSemaphore.makeCommit(n))
         const pull = $(channels.toPull)
-        const evaluatePull = (pull: Effect<Env | Env1, OutErr | OutErr1, Either<OutDone, OutElem>>) =>
+        const evaluatePull = (
+          pull: Effect<Env | Env1, OutErr | OutErr1, Either<OutDone, OutElem>>
+        ) =>
           pull
             .flatMap((either) =>
               either.fold(
@@ -68,11 +70,15 @@ export function mergeAllWith<
             .repeatUntil((option) => option.isSome())
             .flatMap((option) =>
               option.fold(Effect.unit, (outDone) =>
-                lastDone.update((_) => _.fold(Maybe.some(outDone), (lastDone) => Maybe.some(f(lastDone, outDone)))))
+                lastDone.update((_) =>
+                  _.fold(Maybe.some(outDone), (lastDone) => Maybe.some(f(lastDone, outDone)))
+                ))
             )
             .catchAllCause(
               (cause) =>
-                queue.offer(Effect.failCauseSync(cause)).zipRight(errorSignal.succeed(undefined).unit)
+                queue.offer(Effect.failCauseSync(cause)).zipRight(
+                  errorSignal.succeed(undefined).unit
+                )
             )
         $(
           pull

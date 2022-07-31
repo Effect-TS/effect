@@ -9,5 +9,6 @@
 export function mapError<OutErr, OutErr2>(f: (err: OutErr) => OutErr2) {
   return <Env, InErr, InElem, InDone, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-  ): Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone> => self.mapErrorCause((cause) => cause.map(f))
+  ): Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone> =>
+    self.mapErrorCause((cause) => cause.map(f))
 }

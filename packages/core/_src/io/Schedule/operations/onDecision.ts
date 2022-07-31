@@ -16,5 +16,7 @@ export function onDecision<State, Out, Env1, X>(
     makeWithState(self._initial, (now, input, state) =>
       self
         ._step(now, input, state)
-        .flatMap(({ tuple: [state, out, decision] }) => f(state, out, decision).as(Tuple(state, out, decision))))
+        .flatMap(({ tuple: [state, out, decision] }) =>
+          f(state, out, decision).as(Tuple(state, out, decision))
+        ))
 }

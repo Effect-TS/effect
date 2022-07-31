@@ -5,8 +5,7 @@
  * @tsplus static effect/core/stream/Sink.Ops fromQueueWithShutdown
  */
 export function fromQueueWithShutdown<In>(
-  queue: LazyArg<Enqueue<In>>,
-  __tsplusTrace?: string
+  queue: LazyArg<Enqueue<In>>
 ): Sink<never, never, In, never, void> {
   return Sink.unwrapScoped(
     Effect.acquireRelease(Effect.sync(queue), (q) => q.shutdown).map((q) => Sink.fromQueue(q))

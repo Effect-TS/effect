@@ -5,8 +5,7 @@
  * @tsplus getter effect/core/stream/Stream mkString
  */
 export function mkString<R, E, A>(
-  self: Stream<R, E, A>,
-  __tsplusTrace?: string
+  self: Stream<R, E, A>
 ): Effect<R, E, string> {
   return self.run(Sink.mkString())
 }

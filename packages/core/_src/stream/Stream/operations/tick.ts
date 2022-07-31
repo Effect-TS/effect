@@ -7,8 +7,7 @@ import { constVoid } from "@tsplus/stdlib/data/Function"
  * @tsplus static effect/core/stream/Stream.Ops tick
  */
 export function tick(
-  interval: LazyArg<Duration>,
-  __tsplusTrace?: string
+  interval: LazyArg<Duration>
 ): Stream<never, never, void> {
   return Stream.repeatWithSchedule(constVoid, Schedule.spaced(interval))
 }

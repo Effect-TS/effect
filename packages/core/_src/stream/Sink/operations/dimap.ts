@@ -7,8 +7,7 @@
  */
 export function dimap<In, In1, Z, Z1>(
   f: (input: In1) => In,
-  g: (z: Z) => Z1,
-  __tsplusTrace?: string
+  g: (z: Z) => Z1
 ) {
   return <R, E, L>(self: Sink<R, E, In, L, Z>): Sink<R, E, In1, L, Z1> => self.contramap(f).map(g)
 }

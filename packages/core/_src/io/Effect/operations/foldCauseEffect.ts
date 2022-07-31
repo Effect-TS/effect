@@ -9,9 +9,8 @@ import { IFold } from "@effect/core/io/Effect/definition/primitives"
  */
 export function foldCauseEffect<E, A, R2, E2, A2, R3, E3, A3>(
   failure: (cause: Cause<E>) => Effect<R2, E2, A2>,
-  success: (a: A) => Effect<R3, E3, A3>,
-  __tsplusTrace?: string
+  success: (a: A) => Effect<R3, E3, A3>
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R | R2 | R3, E2 | E3, A2 | A3> =>
-    new IFold(self, failure, success, __tsplusTrace)
+    new IFold(self, failure, success)
 }

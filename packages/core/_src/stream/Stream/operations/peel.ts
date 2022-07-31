@@ -28,8 +28,7 @@ export class End {
  * @tsplus pipeable effect/core/stream/Stream peel
  */
 export function peel<R2, E2, A2, Z>(
-  sink: LazyArg<Sink<R2, E2, A2, A2, Z>>,
-  __tsplusTrace?: string
+  sink: LazyArg<Sink<R2, E2, A2, A2, Z>>
 ) {
   return <R, E extends E2, A extends A2>(
     self: Stream<R, E, A>

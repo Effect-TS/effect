@@ -6,8 +6,7 @@
  */
 export function tryCatchPromise<E, A>(
   promise: LazyArg<Promise<A>>,
-  onReject: (reason: unknown) => E,
-  __tsplusTrace?: string
+  onReject: (reason: unknown) => E
 ): Effect<never, E, A> {
   return Effect.sync(promise).flatMap((promise) =>
     Effect.async<never, E, A>((resolve) => {
@@ -25,8 +24,7 @@ export function tryCatchPromise<E, A>(
  * @tsplus static effect/core/io/Effect.Ops tryPromise
  */
 export function tryPromise<A>(
-  promise: LazyArg<Promise<A>>,
-  __tsplusTrace?: string
+  promise: LazyArg<Promise<A>>
 ): Effect<never, unknown, A> {
   return Effect.sync(promise).flatMap((promise) =>
     Effect.async<never, unknown, A>((resolve) => {
@@ -43,8 +41,7 @@ export function tryPromise<A>(
  * @tsplus static effect/core/io/Effect.Ops promise
  */
 export function promise<A>(
-  promise: LazyArg<Promise<A>>,
-  __tsplusTrace?: string
+  promise: LazyArg<Promise<A>>
 ): Effect<never, never, A> {
   return Effect.sync(promise).flatMap((promise) =>
     Effect.async<never, never, A>((resolve) => {

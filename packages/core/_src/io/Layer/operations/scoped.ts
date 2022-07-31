@@ -5,8 +5,7 @@
  */
 export function scoped<T, R, E, T1 extends T>(
   tag: Tag<T>,
-  effect: LazyArg<Effect<R, E, T1>>,
-  __tsplusTrace?: string
+  effect: LazyArg<Effect<R, E, T1>>
 ): Layer<Exclude<R, Scope>, E, T> {
   return Layer.scopedEnvironment(Effect.suspendSucceed(effect).map((service) => Env(tag, service)))
 }

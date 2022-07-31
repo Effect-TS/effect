@@ -82,8 +82,7 @@ export namespace FiberRef {
      */
     getAndUpdate(
       this: FiberRef.WithPatch<Value, Patch>,
-      f: (a: Value) => Value,
-      __tsplusTrace?: string
+      f: (a: Value) => Value
     ): Effect<never, never, Value>
 
     /**
@@ -93,8 +92,7 @@ export namespace FiberRef {
      */
     getAndUpdateSome(
       this: FiberRef.WithPatch<Value, Patch>,
-      pf: (a: Value) => Maybe<Value>,
-      __tsplusTrace?: string
+      pf: (a: Value) => Maybe<Value>
     ): Effect<never, never, Value>
 
     /**
@@ -103,8 +101,7 @@ export namespace FiberRef {
      */
     getWith<R, E, B>(
       this: FiberRef.WithPatch<Value, Patch>,
-      f: (a: Value) => Effect<R, E, B>,
-      __tsplusTrace?: string
+      f: (a: Value) => Effect<R, E, B>
     ): Effect<R, E, B>
 
     /**
@@ -114,8 +111,7 @@ export namespace FiberRef {
      */
     locally(
       this: FiberRef.WithPatch<Value, Patch>,
-      value: Value,
-      __tsplusTrace?: string
+      value: Value
     ): <R, E, B>(use: Effect<R, E, B>) => Effect<R, E, B>
 
     /**
@@ -125,8 +121,7 @@ export namespace FiberRef {
      */
     locallyScoped(
       this: FiberRef.WithPatch<Value, Patch>,
-      value: Value,
-      __tsplusTrace?: string
+      value: Value
     ): Effect<Scope, never, void>
 
     /**
@@ -136,8 +131,7 @@ export namespace FiberRef {
      */
     locallyScopedWith(
       this: FiberRef.WithPatch<Value, Patch>,
-      f: (a: Value) => Value,
-      __tsplusTrace?: string
+      f: (a: Value) => Value
     ): Effect<Scope, never, void>
 
     /**
@@ -147,8 +141,7 @@ export namespace FiberRef {
      */
     locallyWith(
       this: FiberRef.WithPatch<Value, Patch>,
-      f: (a: Value) => Value,
-      __tsplusTrace?: string
+      f: (a: Value) => Value
     ): <R, E, B>(effect: Effect<R, E, B>) => Effect<R, E, B>
 
     /**
@@ -156,8 +149,7 @@ export namespace FiberRef {
      */
     update(
       this: FiberRef.WithPatch<Value, Patch>,
-      f: (a: Value) => Value,
-      __tsplusTrace?: string
+      f: (a: Value) => Value
     ): Effect<never, never, void>
 
     /**
@@ -166,8 +158,7 @@ export namespace FiberRef {
      * version of `update`.
      */
     modify<B>(
-      f: (a: Value) => Tuple<[B, Value]>,
-      __tsplusTrace?: string
+      f: (a: Value) => Tuple<[B, Value]>
     ): Effect<never, never, B>
 
     /**
@@ -175,8 +166,7 @@ export namespace FiberRef {
      */
     set(
       this: FiberRef.WithPatch<Value, Patch>,
-      value: Value,
-      __tsplusTrace?: string
+      value: Value
     ): Effect<never, never, void>
 
     /**
@@ -188,8 +178,7 @@ export namespace FiberRef {
     modifySome<B>(
       this: FiberRef.WithPatch<Value, Patch>,
       def: B,
-      f: (a: Value) => Maybe<Tuple<[B, Value]>>,
-      __tsplusTrace?: string
+      f: (a: Value) => Maybe<Tuple<[B, Value]>>
     ): Effect<never, never, B>
 
     /**
@@ -198,8 +187,7 @@ export namespace FiberRef {
      */
     updateAndGet(
       this: FiberRef.WithPatch<Value, Patch>,
-      f: (a: Value) => Value,
-      __tsplusTrace?: string
+      f: (a: Value) => Value
     ): Effect<never, never, Value>
 
     /**
@@ -208,8 +196,7 @@ export namespace FiberRef {
      */
     updateSome(
       this: FiberRef.WithPatch<Value, Patch>,
-      pf: (a: Value) => Maybe<Value>,
-      __tsplusTrace?: string
+      pf: (a: Value) => Maybe<Value>
     ): Effect<never, never, void>
 
     /**
@@ -219,8 +206,7 @@ export namespace FiberRef {
      */
     updateSomeAndGet(
       this: FiberRef.WithPatch<Value, Patch>,
-      pf: (a: Value) => Maybe<Value>,
-      __tsplusTrace?: string
+      pf: (a: Value) => Maybe<Value>
     ): Effect<never, never, Value>
   }
 }

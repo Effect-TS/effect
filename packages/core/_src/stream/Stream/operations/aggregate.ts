@@ -17,8 +17,8 @@
  * @tsplus pipeable effect/core/stream/Stream aggregate
  */
 export function aggregate<R, E, A, R2, E2, A2, B>(
-  sink: LazyArg<Sink<R2, E | E2, A | A2, A2, B>>,
-  __tsplusTrace?: string
+  sink: LazyArg<Sink<R2, E | E2, A | A2, A2, B>>
 ) {
-  return (self: Stream<R, E, A>): Stream<R | R2, E | E2, B> => self.aggregateWithin(sink, Schedule.recurs(0))
+  return (self: Stream<R, E, A>): Stream<R | R2, E | E2, B> =>
+    self.aggregateWithin(sink, Schedule.recurs(0))
 }

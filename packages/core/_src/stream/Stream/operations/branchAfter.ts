@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 interface Pipeline<R, E, A, R2, E2, B> {
   (stream: Stream<R, E, A>): Stream<R2, E2, B>
@@ -13,8 +16,7 @@ interface Pipeline<R, E, A, R2, E2, B> {
  */
 export function branchAfter<R, E, A, R2, E2, B>(
   n: number,
-  f: (output: Chunk<A>) => Pipeline<R, E, A, R2, E2, B>,
-  __tsplusTrace?: string
+  f: (output: Chunk<A>) => Pipeline<R, E, A, R2, E2, B>
 ) {
   return (self: Stream<R, E, A>): Stream<R | R2, E | E2, B> => {
     concreteStream(self)
@@ -27,8 +29,7 @@ export function branchAfter<R, E, A, R2, E2, B>(
 function collecting<R, E, A, R2, E2, B>(
   buffer: Chunk<A>,
   n: number,
-  f: (output: Chunk<A>) => Pipeline<R, E, A, R2, E2, B>,
-  __tsplusTrace?: string
+  f: (output: Chunk<A>) => Pipeline<R, E, A, R2, E2, B>
 ): Channel<R | R2, E, Chunk<A>, unknown, E | E2, Chunk<B>, unknown> {
   return Channel.readWithCause(
     (chunk: Chunk<A>) => {

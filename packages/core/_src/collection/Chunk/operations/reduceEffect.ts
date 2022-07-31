@@ -8,8 +8,7 @@ import { concreteChunk, SingletonTypeId } from "@tsplus/stdlib/collections/Chunk
 export function reduceEffect_<A, R, E, S>(
   self: Chunk<A>,
   s: S,
-  f: (s: S, a: A) => Effect<R, E, S>,
-  __tsplusTrace?: string
+  f: (s: S, a: A) => Effect<R, E, S>
 ): Effect<R, E, S> {
   concreteChunk(self)
   if (self._typeId === SingletonTypeId) {

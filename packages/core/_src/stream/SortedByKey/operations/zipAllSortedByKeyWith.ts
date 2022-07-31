@@ -48,10 +48,11 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
   that: LazyArg<SortedByKey<R2, E2, K, A2>>,
   left: (a: A) => C1,
   right: (b: A2) => C2,
-  both: (a: A, b: A2) => C3,
-  __tsplusTrace?: string
+  both: (a: A, b: A2) => C3
 ) {
-  return <R, E>(self: SortedByKey<R, E, K, A>): Stream<R | R2, E | E2, Tuple<[K, C1 | C2 | C3]>> => {
+  return <R, E>(
+    self: SortedByKey<R, E, K, A>
+  ): Stream<R | R2, E | E2, Tuple<[K, C1 | C2 | C3]>> => {
     const pull = (
       state: State<K, A, A2>,
       pullLeft: Effect<R, Maybe<E>, Chunk<Tuple<[K, A]>>>,

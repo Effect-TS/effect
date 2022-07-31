@@ -4,5 +4,6 @@
  * @tsplus pipeable effect/core/testing/Gen stringN
  */
 export function stringN(n: number) {
-  return <R>(char: Gen<R, string>): Gen<R, string> => char.chunkOfN(n).map((chunk) => chunk.join(""))
+  return <R>(char: Gen<R, string>): Gen<R, string> =>
+    char.chunkOfN(n).map((chunk) => chunk.join(""))
 }

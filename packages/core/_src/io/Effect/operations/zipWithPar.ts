@@ -9,8 +9,7 @@ import { IRaceWith } from "@effect/core/io/Effect/definition/primitives"
  */
 export function zipWithPar<R2, E2, A2, A, B>(
   that: LazyArg<Effect<R2, E2, A2>>,
-  f: (a: A, b: A2) => B,
-  __tsplusTrace?: string
+  f: (a: A, b: A2) => B
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R | R2, E | E2, B> => {
     const g = (b: A2, a: A) => f(a, b)

@@ -42,38 +42,38 @@ export interface Ref<A> {
   /**
    * Reads the value from the `Ref`.
    */
-  get(this: this, __tsplusTrace?: string): Effect.UIO<A>
+  get(this: this): Effect.UIO<A>
 
   /**
    * Atomically modifies the `Ref` with the specified function, which computes a
    * return value for the modification. This is a more powerful version of
    * `update`.
    */
-  modify<B>(this: this, f: (a: A) => Tuple<[B, A]>, __tsplusTrace?: string): Effect<never, never, B>
+  modify<B>(this: this, f: (a: A) => Tuple<[B, A]>): Effect<never, never, B>
 
   /**
    * Writes a new value to the `Ref`, with a guarantee of immediate consistency
    * (at some cost to performance).
    */
-  set(this: this, a: A, __tsplusTrace?: string): Effect<never, never, void>
+  set(this: this, a: A): Effect<never, never, void>
 
   /**
    * Writes a new value to the `Ref` without providing a guarantee of immediate
    * consistency.
    */
-  setAsync(this: this, a: A, __tsplusTrace?: string): Effect<never, never, void>
+  setAsync(this: this, a: A): Effect<never, never, void>
 
   /**
    * Atomically writes the specified value to the `Ref`, returning the value
    * immediately before modification.
    */
-  getAndSet(this: this, a: A, __tsplusTrace?: string): Effect<never, never, A>
+  getAndSet(this: this, a: A): Effect<never, never, A>
 
   /**
    * Atomically modifies the `Ref` with the specified function, returning the
    * value immediately before modification.
    */
-  getAndUpdate(this: this, f: (a: A) => A, __tsplusTrace?: string): Effect<never, never, A>
+  getAndUpdate(this: this, f: (a: A) => A): Effect<never, never, A>
 
   /**
    * Atomically modifies the `Ref` with the specified partial function,
@@ -82,8 +82,7 @@ export interface Ref<A> {
    */
   getAndUpdateSome(
     this: this,
-    pf: (a: A) => Maybe<A>,
-    __tsplusTrace?: string
+    pf: (a: A) => Maybe<A>
   ): Effect<never, never, A>
 
   /**
@@ -95,26 +94,25 @@ export interface Ref<A> {
   modifySome<B>(
     this: this,
     fallback: B,
-    pf: (a: A) => Maybe<Tuple<[B, A]>>,
-    __tsplusTrace?: string
+    pf: (a: A) => Maybe<Tuple<[B, A]>>
   ): Effect<never, never, B>
 
   /**
    * Atomically modifies the `Ref` with the specified function.
    */
-  update(this: this, f: (a: A) => A, __tsplusTrace?: string): Effect<never, never, void>
+  update(this: this, f: (a: A) => A): Effect<never, never, void>
 
   /**
    * Atomically modifies the `Ref` with the specified function and returns the
    * updated value.
    */
-  updateAndGet(this: this, f: (a: A) => A, __tsplusTrace?: string): Effect<never, never, A>
+  updateAndGet(this: this, f: (a: A) => A): Effect<never, never, A>
 
   /**
    * Atomically modifies the `Ref` with the specified partial function. If the
    * function is undefined on the current value it doesn't change it.
    */
-  updateSome(this: this, pf: (a: A) => Maybe<A>, __tsplusTrace?: string): Effect<never, never, void>
+  updateSome(this: this, pf: (a: A) => Maybe<A>): Effect<never, never, void>
 
   /**
    * Atomically modifies the `Ref` with the specified partial function. If the
@@ -123,8 +121,7 @@ export interface Ref<A> {
    */
   updateSomeAndGet(
     this: this,
-    pf: (a: A) => Maybe<A>,
-    __tsplusTrace?: string
+    pf: (a: A) => Maybe<A>
   ): Effect<never, never, A>
 }
 
@@ -137,8 +134,7 @@ export declare namespace Ref {
      */
     modifyEffect<R, E, B>(
       this: this,
-      f: (a: A) => Effect<R, E, Tuple<[B, A]>>,
-      __tsplusTrace?: string
+      f: (a: A) => Effect<R, E, Tuple<[B, A]>>
     ): Effect<R, E, B>
 
     /**
@@ -147,8 +143,7 @@ export declare namespace Ref {
      */
     getAndUpdateEffect<R, E>(
       this: this,
-      f: (a: A) => Effect<R, E, A>,
-      __tsplusTrace?: string
+      f: (a: A) => Effect<R, E, A>
     ): Effect<R, E, A>
 
     /**
@@ -158,8 +153,7 @@ export declare namespace Ref {
      */
     getAndUpdateSomeEffect<R, E>(
       this: this,
-      pf: (a: A) => Maybe<Effect<R, E, A>>,
-      __tsplusTrace?: string
+      pf: (a: A) => Maybe<Effect<R, E, A>>
     ): Effect<R, E, A>
 
     /**
@@ -171,8 +165,7 @@ export declare namespace Ref {
     modifySomeEffect<R, E, B>(
       this: this,
       fallback: B,
-      pf: (a: A) => Maybe<Effect<R, E, Tuple<[B, A]>>>,
-      __tsplusTrace?: string
+      pf: (a: A) => Maybe<Effect<R, E, Tuple<[B, A]>>>
     ): Effect<R, E, B>
 
     /**
@@ -180,8 +173,7 @@ export declare namespace Ref {
      */
     updateEffect<R, E>(
       this: this,
-      f: (a: A) => Effect<R, E, A>,
-      __tsplusTrace?: string
+      f: (a: A) => Effect<R, E, A>
     ): Effect<R, E, void>
 
     /**
@@ -190,8 +182,7 @@ export declare namespace Ref {
      */
     updateAndGetEffect<R, E>(
       this: this,
-      f: (a: A) => Effect<R, E, A>,
-      __tsplusTrace?: string
+      f: (a: A) => Effect<R, E, A>
     ): Effect<R, E, A>
 
     /**
@@ -201,8 +192,7 @@ export declare namespace Ref {
      */
     updateSomeEffect<R, E>(
       this: this,
-      pf: (a: A) => Maybe<Effect<R, E, A>>,
-      __tsplusTrace?: string
+      pf: (a: A) => Maybe<Effect<R, E, A>>
     ): Effect<R, E, void>
 
     /**
@@ -212,8 +202,7 @@ export declare namespace Ref {
      */
     updateSomeAndGetEffect<R, E>(
       this: this,
-      pf: (a: A) => Maybe<Effect<R, E, A>>,
-      __tsplusTrace?: string
+      pf: (a: A) => Maybe<Effect<R, E, A>>
     ): Effect<R, E, A>
   }
 }

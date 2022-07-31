@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Transforms all elements of the stream for as long as the specified partial
@@ -7,7 +10,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus static effect/core/stream/Stream.Aspects collectWhile
  * @tsplus pipeable effect/core/stream/Stream collectWhile
  */
-export function collectWhile<A, A1>(pf: (a: A) => Maybe<A1>, __tsplusTrace?: string) {
+export function collectWhile<A, A1>(pf: (a: A) => Maybe<A1>) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, A1> => {
     const loop: Channel<
       R,

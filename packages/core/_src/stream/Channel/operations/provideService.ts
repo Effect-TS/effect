@@ -7,8 +7,7 @@
  */
 export function provideService<T, T1 extends T>(
   tag: Tag<T>,
-  service: LazyArg<T1>,
-  __tsplusTrace?: string
+  service: LazyArg<T1>
 ) {
   return <R, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>

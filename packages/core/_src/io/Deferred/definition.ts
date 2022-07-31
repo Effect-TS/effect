@@ -40,8 +40,7 @@ export const Deferred: DeferredOps = {
 
 function interruptJoiner<E, A>(
   self: Deferred<E, A>,
-  joiner: (a: Effect.IO<E, A>) => void,
-  __tsplusTrace?: string
+  joiner: (a: Effect.IO<E, A>) => void
 ): Effect<never, never, void> {
   return Effect.sync(() => {
     const state = self.state.get
@@ -90,8 +89,7 @@ export class DeferredInternal<E, A> {
    */
   complete<E, A>(
     this: Deferred<E, A>,
-    effect: Effect<never, E, A>,
-    __tsplusTrace?: string | undefined
+    effect: Effect<never, E, A>
   ): Effect<never, never, boolean> {
     return effect.intoDeferred(this)
   }
@@ -105,8 +103,7 @@ export class DeferredInternal<E, A> {
    */
   completeWith<E, A>(
     this: Deferred<E, A>,
-    effect: Effect<never, E, A>,
-    __tsplusTrace?: string | undefined
+    effect: Effect<never, E, A>
   ): Effect<never, never, boolean> {
     return Effect.sync(() => {
       const state = this.state.get
@@ -131,8 +128,7 @@ export class DeferredInternal<E, A> {
    */
   die<E, A>(
     this: Deferred<E, A>,
-    defect: LazyArg<unknown>,
-    __tsplusTrace?: string | undefined
+    defect: LazyArg<unknown>
   ): Effect<never, never, boolean> {
     return this.completeWith(Effect.die(defect))
   }
@@ -143,8 +139,7 @@ export class DeferredInternal<E, A> {
    */
   done<E, A>(
     this: Deferred<E, A>,
-    exit: LazyArg<Exit<E, A>>,
-    __tsplusTrace?: string | undefined
+    exit: LazyArg<Exit<E, A>>
   ): Effect<never, never, boolean> {
     return this.completeWith(Effect.done(exit))
   }
@@ -155,10 +150,9 @@ export class DeferredInternal<E, A> {
    */
   fail<E, A>(
     this: Deferred<E, A>,
-    e: LazyArg<E>,
-    __tsplusTrace?: string | undefined
+    e: LazyArg<E>
   ): Effect<never, never, boolean> {
-    return this.completeWith(Effect.failSync(e), __tsplusTrace)
+    return this.completeWith(Effect.failSync(e))
   }
 
   /**
@@ -167,8 +161,7 @@ export class DeferredInternal<E, A> {
    */
   failCause<E, A>(
     this: Deferred<E, A>,
-    cause: LazyArg<Cause<E>>,
-    __tsplusTrace?: string | undefined
+    cause: LazyArg<Cause<E>>
   ): Effect<never, never, boolean> {
     return this.completeWith(Effect.failCauseSync(cause))
   }
@@ -187,8 +180,7 @@ export class DeferredInternal<E, A> {
    */
   interruptAs<E, A>(
     this: Deferred<E, A>,
-    fiberId: LazyArg<FiberId>,
-    __tsplusTrace?: string | undefined
+    fiberId: LazyArg<FiberId>
   ): Effect<never, never, boolean> {
     return this.completeWith(Effect.interruptAs(fiberId))
   }
@@ -224,8 +216,7 @@ export class DeferredInternal<E, A> {
    */
   succeed<E, A>(
     this: Deferred<E, A>,
-    value: LazyArg<A>,
-    __tsplusTrace?: string | undefined
+    value: LazyArg<A>
   ): Effect<never, never, boolean> {
     return this.completeWith(Effect.sync(value))
   }

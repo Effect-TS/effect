@@ -8,8 +8,7 @@ import { concreteStream } from "@effect/core/stream/Stream/operations/_internal/
  * @tsplus pipeable effect/core/stream/Stream runIntoQueueElementsScoped
  */
 export function runIntoQueueElementsScoped<E1, A>(
-  queue: LazyArg<Enqueue<Exit<Maybe<E1>, A>>>,
-  __tsplusTrace?: string
+  queue: LazyArg<Enqueue<Exit<Maybe<E1>, A>>>
 ) {
   return <R, E extends E1>(self: Stream<R, E, A>): Effect<R | Scope, E | E1, void> => {
     const writer: Channel<

@@ -10,8 +10,7 @@ import { releaseMapReleaseAll } from "@effect/core/io/Effect/operations/excl-for
  */
 export function releaseAll(
   ex: Exit<unknown, unknown>,
-  execStrategy: ExecutionStrategy,
-  __tsplusTrace?: string
+  execStrategy: ExecutionStrategy
 ) {
   return (self: ReleaseMap): Effect<never, never, unknown> => {
     return releaseMapReleaseAll(self, ex, execStrategy)

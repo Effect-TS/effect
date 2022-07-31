@@ -6,8 +6,10 @@
  * @tsplus static effect/core/io/Metrics/Metric.Aspects trackAll
  * @tsplus pipeable effect/core/io/Metrics/Metric trackAll
  */
-export function trackAll<In>(input: LazyArg<In>, __tsplusTrace?: string) {
-  return <Type, Out>(self: Metric<Type, In, Out>): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A> => {
+export function trackAll<In>(input: LazyArg<In>) {
+  return <Type, Out>(
+    self: Metric<Type, In, Out>
+  ): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A> => {
     return (effect) =>
       effect.map((a) => {
         self.unsafeUpdate(input(), HashSet.empty())

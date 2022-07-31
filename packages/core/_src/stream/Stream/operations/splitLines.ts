@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Splits strings on newlines. Handles both Windows newlines (`\r\n`) and UNIX
@@ -7,8 +10,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus static effect/core/stream/Stream.Ops splitLines
  */
 export function splitLines<R, E>(
-  self: Stream<R, E, string>,
-  __tsplusTrace?: string
+  self: Stream<R, E, string>
 ): Stream<R, E, string> {
   concreteStream(self)
   return new StreamInternal(self.channel >> next<E>(Maybe.none, false))
@@ -16,8 +18,7 @@ export function splitLines<R, E>(
 
 function next<E>(
   leftover: Maybe<string>,
-  wasSplitCRLF: boolean,
-  __tsplusTrace?: string
+  wasSplitCRLF: boolean
 ): Channel<never, E, Chunk<string>, unknown, E, Chunk<string>, unknown> {
   return Channel.readWithCause(
     (incomingChunk: Chunk<string>) => {

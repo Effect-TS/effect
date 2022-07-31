@@ -24,8 +24,14 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("effectRef", () => Ref.make(0))
         .bind("conditionRef", () => Ref.make(0))
-        .bindValue("conditionTrue", ({ conditionRef }) => conditionRef.update((n) => n + 1).as(true))
-        .bindValue("conditionFalse", ({ conditionRef }) => conditionRef.update((n) => n + 1).as(false))
+        .bindValue(
+          "conditionTrue",
+          ({ conditionRef }) => conditionRef.update((n) => n + 1).as(true)
+        )
+        .bindValue(
+          "conditionFalse",
+          ({ conditionRef }) => conditionRef.update((n) => n + 1).as(false)
+        )
         .tap(({ conditionTrue, effectRef }) => effectRef.set(1).unlessEffect(conditionTrue))
         .bind("v1", ({ effectRef }) => effectRef.get())
         .bind("c1", ({ conditionRef }) => conditionRef.get())
@@ -34,7 +40,11 @@ describe.concurrent("Effect", () => {
         .bind("c2", ({ conditionRef }) => conditionRef.get())
         .bindValue("failure", () => new Error("expected"))
         .tap(({ conditionTrue, failure }) => Effect.failSync(failure).unlessEffect(conditionTrue))
-        .bind("failed", ({ conditionFalse, failure }) => Effect.failSync(failure).unlessEffect(conditionFalse).either)
+        .bind(
+          "failed",
+          ({ conditionFalse, failure }) =>
+            Effect.failSync(failure).unlessEffect(conditionFalse).either
+        )
 
       const { c1, c2, failed, failure, v1, v2 } = await program.unsafeRunPromise()
 

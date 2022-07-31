@@ -6,8 +6,7 @@
  */
 export function forEachMaybe<R, E, A, B>(
   maybe: Maybe<A>,
-  f: (a: A) => Effect<R, E, B>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R, E, B>
 ): Effect<R, E, Maybe<B>> {
   return maybe.fold(Effect.none, (a) => f(a).map(Maybe.some))
 }

@@ -4,8 +4,7 @@ import { utfEncodeFor } from "@effect/core/stream/Stream/operations/_internal/ut
  * @tsplus getter effect/core/stream/Stream utf8Encode
  */
 export function utf8Encode<R, E>(
-  self: Stream<R, E, string>,
-  __tsplusTrace?: string
+  self: Stream<R, E, string>
 ): Stream<R, E, number> {
   return self.via(utfEncodeFor())
 }

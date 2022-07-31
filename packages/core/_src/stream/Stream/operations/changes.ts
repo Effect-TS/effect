@@ -6,8 +6,7 @@
  * @tsplus getter effect/core/stream/Stream changes
  */
 export function changes<R, E, A>(
-  self: Stream<R, E, A>,
-  __tsplusTrace?: string
+  self: Stream<R, E, A>
 ): Stream<R, E, A> {
   return self.changesWith((x, y) => x === y)
 }

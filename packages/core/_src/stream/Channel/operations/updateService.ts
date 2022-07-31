@@ -6,8 +6,7 @@
  */
 export function updateService<T, T1 extends T>(
   tag: Tag<T>,
-  f: (resource: T) => T1,
-  __tsplusTrace?: string
+  f: (resource: T) => T1
 ) {
   return <R, InErr, InDone, OutElem, OutErr, OutDone>(
     self: Channel<R, InErr, unknown, InDone, OutErr, OutElem, OutDone>

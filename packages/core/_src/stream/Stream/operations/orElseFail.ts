@@ -7,8 +7,7 @@
  * @tsplus pipeable effect/core/stream/Stream orElseFail
  */
 export function orElseFail<E2>(
-  e: LazyArg<E2>,
-  __tsplusTrace?: string
+  e: LazyArg<E2>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E2, A> => self | Stream.fail(e)
 }

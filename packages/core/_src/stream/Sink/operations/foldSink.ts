@@ -1,4 +1,7 @@
-import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import {
+  concreteSink,
+  SinkInternal
+} from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * @tsplus static effect/core/stream/Sink.Aspects foldSink
@@ -21,10 +24,11 @@ export function foldSink_<
   Z2
 >(
   failure: (err: E) => Sink<R1, E1, In1, L1, Z1>,
-  success: (z: Z) => Sink<R2, E2, In2, L2, Z2>,
-  __tsplusTrace?: string
+  success: (z: Z) => Sink<R2, E2, In2, L2, Z2>
 ) {
-  return <R>(self: Sink<R, E, In, L, Z>): Sink<R | R1 | R2, E1 | E2, In1 & In2, L1 | L2, Z1 | Z2> => {
+  return <R>(
+    self: Sink<R, E, In, L, Z>
+  ): Sink<R | R1 | R2, E1 | E2, In1 & In2, L1 | L2, Z1 | Z2> => {
     concreteSink(self)
     return new SinkInternal(
       self.channel.doneCollect.foldChannel(

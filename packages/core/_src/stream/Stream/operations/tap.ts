@@ -5,8 +5,8 @@
  * @tsplus pipeable effect/core/stream/Stream tap
  */
 export function tap<A, R2, E2, Z>(
-  f: (a: A) => Effect<R2, E2, Z>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R2, E2, Z>
 ) {
-  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> => self.mapEffect((a) => f(a).as(a))
+  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> =>
+    self.mapEffect((a) => f(a).as(a))
 }

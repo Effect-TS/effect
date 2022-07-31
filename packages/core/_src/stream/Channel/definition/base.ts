@@ -67,7 +67,9 @@ export interface ChannelAspects {}
 /**
  * @tsplus unify effect/core/stream/Channel
  */
-export function unifyChannel<X extends Channel<any, any, any, any, any, any, any>>(self: X): Channel<
+export function unifyChannel<X extends Channel<any, any, any, any, any, any, any>>(
+  self: X
+): Channel<
   [X] extends [{ [_Env]: () => infer Env }] ? Env : never,
   [X] extends [{ [_InErr]: (_: infer InErr) => void }] ? InErr : never,
   [X] extends [{ [_InElem]: (_: infer InElem) => void }] ? InElem : never,

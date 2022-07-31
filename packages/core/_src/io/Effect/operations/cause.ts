@@ -5,8 +5,7 @@
  * @tsplus getter effect/core/io/Effect cause
  */
 export function cause<R, E, A>(
-  self: Effect<R, E, A>,
-  __tsplusTrace?: string
+  self: Effect<R, E, A>
 ): Effect<R, never, Cause<E>> {
   return self.foldCause(identity, () => Cause.empty)
 }

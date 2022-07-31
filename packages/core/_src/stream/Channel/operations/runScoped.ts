@@ -16,7 +16,9 @@ export function runScoped<Env, InErr, InDone, OutErr, OutDone>(
       const finalize = exec.close(exit)
       return finalize != null ? finalize : Effect.unit
     }
-  ).flatMap((exec) => Effect.suspendSucceed(interpret(exec.run() as ChannelState<Env, OutErr>, exec)))
+  ).flatMap((exec) =>
+    Effect.suspendSucceed(interpret(exec.run() as ChannelState<Env, OutErr>, exec))
+  )
 }
 
 function interpret<Env, InErr, InDone, OutErr, OutDone>(

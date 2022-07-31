@@ -54,7 +54,7 @@ describe.concurrent("Effect", () => {
     it("attempt . sandbox . terminate", async () => {
       const program = Effect.sync(() => {
         throw ExampleError
-      }).sandbox.either.map((either) => either.mapLeft((cause) => cause.untraced))
+      }).sandbox.either.map((either) => either.mapLeft((cause) => cause))
 
       const result = await program.unsafeRunPromise()
 
@@ -66,7 +66,7 @@ describe.concurrent("Effect", () => {
         throw ExampleError
       })
         .sandbox
-        .fold((cause) => Maybe.some(cause.untraced), Maybe.emptyOf)
+        .fold((cause) => Maybe.some(cause), Maybe.emptyOf)
 
       const result = await program.unsafeRunPromise()
 
@@ -76,7 +76,7 @@ describe.concurrent("Effect", () => {
     it("catch sandbox terminate", async () => {
       const program = Effect.sync(() => {
         throw ExampleError
-      }).sandbox.merge.map((cause) => cause.untraced)
+      }).sandbox.merge.map((cause) => cause)
 
       const result = await program.unsafeRunPromise()
 
@@ -88,7 +88,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.untraced == Exit.fail(ExampleError))
+      assert.isTrue(result == Exit.fail(ExampleError))
     })
 
     it("uncaught sync effect error", async () => {
@@ -98,7 +98,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(ExampleError))
+      assert.isTrue(result == Exit.die(ExampleError))
     })
 
     it("deep uncaught sync effect error", async () => {
@@ -106,7 +106,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.untraced == Exit.fail(ExampleError))
+      assert.isTrue(result == Exit.fail(ExampleError))
     })
 
     it("catch failing finalizers with fail", async () => {
@@ -127,7 +127,7 @@ describe.concurrent("Effect", () => {
           })
         )
         .exit
-        .map((exit) => exit.mapErrorCause((cause) => cause.untraced))
+        .map((exit) => exit.mapErrorCause((cause) => cause))
 
       const expectedCause = Cause.fail(ExampleError) +
         Cause.die(InterruptCause1) +
@@ -136,7 +136,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.untraced == Exit.failCause(expectedCause))
+      assert.isTrue(result == Exit.failCause(expectedCause))
     })
 
     it("catch failing finalizers with terminate", async () => {
@@ -157,7 +157,7 @@ describe.concurrent("Effect", () => {
           })
         )
         .exit
-        .map((exit) => exit.mapErrorCause((cause) => cause.untraced))
+        .map((exit) => exit.mapErrorCause((cause) => cause))
 
       const expectedCause = Cause.die(ExampleError) +
         Cause.die(InterruptCause1) +
@@ -166,7 +166,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.untraced == Exit.failCause(expectedCause))
+      assert.isTrue(result == Exit.failCause(expectedCause))
     })
 
     it("run preserves interruption status", async () => {
@@ -174,7 +174,7 @@ describe.concurrent("Effect", () => {
         .bind("deferred", () => Deferred.make<never, void>())
         .bind("fiber", ({ deferred }) => (deferred.succeed(undefined) > Effect.never).fork)
         .tap(({ deferred }) => deferred.await)
-        .flatMap(({ fiber }) => fiber.interrupt.mapErrorCause((cause) => cause.untraced))
+        .flatMap(({ fiber }) => fiber.interrupt.mapErrorCause((cause) => cause))
 
       const result = await program.unsafeRunPromise()
 
@@ -198,7 +198,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(false))
+      assert.isTrue(result == Exit.fail(false))
     })
 
     it("timeout a long computation with a cause", async () => {
@@ -210,7 +210,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.untraced == cause)
+      assert.isTrue(result == cause)
     })
 
     it("timeout repetition of uninterruptible effect", async () => {
@@ -236,7 +236,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.untraced == Cause.fail("uh oh"))
+      assert.isTrue(result == Cause.fail("uh oh"))
     })
 
     it("exception in promise does not kill fiber", async () => {
@@ -246,7 +246,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(ExampleError))
+      assert.isTrue(result == Exit.die(ExampleError))
     })
   })
 })

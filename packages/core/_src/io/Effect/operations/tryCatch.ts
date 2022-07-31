@@ -6,8 +6,7 @@
  */
 export function tryCatch<E, A>(
   attempt: LazyArg<A>,
-  onThrow: (u: unknown) => E,
-  __tsplusTrace?: string
+  onThrow: (u: unknown) => E
 ): Effect<never, E, A> {
   return Effect.suspendSucceed(() => {
     try {

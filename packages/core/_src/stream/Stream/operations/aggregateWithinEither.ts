@@ -3,7 +3,10 @@ import type { SinkInternal } from "@effect/core/stream/Sink/operations/_internal
 import { concreteSink } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff"
 import { HandoffSignal } from "@effect/core/stream/Stream/operations/_internal/HandoffSignal"
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 import { SinkEndReason } from "@effect/core/stream/Stream/SinkEndReason"
 
 /**
@@ -26,8 +29,7 @@ import { SinkEndReason } from "@effect/core/stream/Stream/SinkEndReason"
  */
 export function aggregateWithinEither<A, R2, E2, A2, S, R3, B, C>(
   sink: LazyArg<Sink<R2, E2, A | A2, A2, B>>,
-  schedule: LazyArg<Schedule<S, R3, Maybe<B>, C>>,
-  __tsplusTrace?: string
+  schedule: LazyArg<Schedule<S, R3, Maybe<B>, C>>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2 | R3, E | E2, Either<C, B>> => {
     type EndReason = SinkEndReason
@@ -51,7 +53,8 @@ export function aggregateWithinEither<A, R2, E2, A2, S, R3, B, C>(
         never,
         unknown
       > = Channel.readWithCause(
-        (input: Chunk<A>) => Channel.fromEffect(handoff.offer(HandoffSignal.Emit(input))) > handoffProducer,
+        (input: Chunk<A>) =>
+          Channel.fromEffect(handoff.offer(HandoffSignal.Emit(input))) > handoffProducer,
         (cause) => Channel.fromEffect(handoff.offer(HandoffSignal.Halt(cause))),
         () => Channel.fromEffect(handoff.offer(HandoffSignal.End(SinkEndReason.UpstreamEnd)))
       )
@@ -71,7 +74,8 @@ export function aggregateWithinEither<A, R2, E2, A2, S, R3, B, C>(
             : handoff.take.map((signal) => {
               switch (signal._tag) {
                 case "Emit": {
-                  return Channel.fromEffect(consumed.set(true)) > Channel.write(signal.elements) > handoffConsumer
+                  return Channel.fromEffect(consumed.set(true)) > Channel.write(signal.elements) >
+                    handoffConsumer
                 }
                 case "Halt": {
                   return Channel.failCause(signal.error)
@@ -82,7 +86,8 @@ export function aggregateWithinEither<A, R2, E2, A2, S, R3, B, C>(
                       consumed.get().map((p) =>
                         p ?
                           Channel.fromEffect(sinkEndReason.set(SinkEndReason.ScheduleEnd)) :
-                          Channel.fromEffect(sinkEndReason.set(SinkEndReason.ScheduleEnd)) > handoffConsumer
+                          Channel.fromEffect(sinkEndReason.set(SinkEndReason.ScheduleEnd)) >
+                            handoffConsumer
                       ) :
                       Channel.fromEffect(sinkEndReason.set(signal.reason))
                   ) as Channel<
@@ -105,7 +110,9 @@ export function aggregateWithinEither<A, R2, E2, A2, S, R3, B, C>(
       concreteSink(sink0)
       const stream = Do(($) => {
         $((self.channel >> handoffProducer).runScoped.forkScoped)
-        const sinkFiber = $(handoffConsumer.pipeToOrFail(sink0.channel).doneCollect.runScoped.forkScoped)
+        const sinkFiber = $(
+          handoffConsumer.pipeToOrFail(sink0.channel).doneCollect.runScoped.forkScoped
+        )
         const scheduleFiber = $(timeout(scheduleDriver, Maybe.none).forkScoped)
         return new StreamInternal(
           scheduledAggregator(
@@ -146,8 +153,7 @@ function handleSide<S, R, R2, E, A, A2, B, C>(
   forkSink: Effect<Scope | R, never, Fiber.Runtime<E, Tuple<[Chunk<Chunk<A2>>, B]>>>,
   leftovers: Chunk<Chunk<A | A2>>,
   b: B,
-  c: Maybe<C>,
-  __tsplusTrace?: string
+  c: Maybe<C>
 ): Channel<
   R | R2,
   unknown,
@@ -201,7 +207,9 @@ function handleSide<S, R, R2, E, A, A2, B, C>(
           }
           case "UpstreamEnd": {
             return Channel.unwrap(
-              consumed.get().map((p) => p ? Channel.write(Chunk.single(Either.right(b))) : Channel.unit)
+              consumed.get().map((p) =>
+                p ? Channel.write(Chunk.single(Either.right(b))) : Channel.unit
+              )
             )
           }
         }
@@ -219,8 +227,7 @@ function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
   handoffProducer: Channel<never, E2, Chunk<A>, unknown, never, never, unknown>,
   handoffConsumer: Channel<never, unknown, unknown, unknown, E2, Chunk<A | A2>, void>,
   sinkFiber: Fiber.Runtime<E2, Tuple<[Chunk<Chunk<A | A2>>, B]>>,
-  scheduleFiber: Fiber.Runtime<Maybe<never>, C>,
-  __tsplusTrace?: string
+  scheduleFiber: Fiber.Runtime<Maybe<never>, C>
 ): Channel<
   R2 | R3,
   unknown,
@@ -244,22 +251,23 @@ function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
     sinkFiber.join.raceWith(
       scheduleFiber.join,
       (sinkExit, scheduleFiber) =>
-        scheduleFiber.interrupt > Effect.done(sinkExit).map(({ tuple: [leftovers, b] }) =>
-          handleSide(
-            sink,
-            handoff,
-            sinkEndReason,
-            sinkLeftovers,
-            scheduleDriver,
-            consumed,
-            handoffProducer,
-            handoffConsumer,
-            forkSink,
-            leftovers,
-            b,
-            Maybe.none
-          )
-        ),
+        scheduleFiber.interrupt >
+          Effect.done(sinkExit).map(({ tuple: [leftovers, b] }) =>
+            handleSide(
+              sink,
+              handoff,
+              sinkEndReason,
+              sinkLeftovers,
+              scheduleDriver,
+              consumed,
+              handoffProducer,
+              handoffConsumer,
+              forkSink,
+              leftovers,
+              b,
+              Maybe.none
+            )
+          ),
       (scheduleExit, sinkFiber) =>
         Effect.done(scheduleExit).foldCauseEffect(
           (cause) =>

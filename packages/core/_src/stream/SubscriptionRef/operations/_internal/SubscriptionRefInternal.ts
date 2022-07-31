@@ -22,26 +22,25 @@ export const SubscriptionRefInternal = {
   get changes(): Stream.UIO<unknown> {
     return Stream.unwrapScoped(
       (this as unknown as SubscriptionRefInternal<unknown>).ref.modifyEffect(a =>
-        Stream.fromHubScoped((this as unknown as SubscriptionRefInternal<unknown>).hub).map(stream =>
-          Tuple(Stream(a).concat(stream), a)
+        Stream.fromHubScoped((this as unknown as SubscriptionRefInternal<unknown>).hub).map(
+          stream => Tuple(Stream(a).concat(stream), a)
         )
       )
     )
   },
-  get<A>(this: SubscriptionRefInternal<A>, __tsplusTrace?: string): Effect.UIO<A> {
+  get<A>(this: SubscriptionRefInternal<A>): Effect.UIO<A> {
     return this.ref.get()
   },
   modifyEffect<R, E, A, B>(
     this: SubscriptionRefInternal<A>,
-    f: (a: A) => Effect<R, E, Tuple<[B, A]>>,
-    __tsplusTrace?: string
+    f: (a: A) => Effect<R, E, Tuple<[B, A]>>
   ): Effect<R, E, B> {
     return this.ref.modifyEffect(a => f(a).tap((tp) => this.hub.publish(tp.get(1))))
   },
-  set<A>(this: SubscriptionRefInternal<A>, a: A, __tsplusTrace?: string): Effect.UIO<void> {
+  set<A>(this: SubscriptionRefInternal<A>, a: A): Effect.UIO<void> {
     return this.ref.set(a)
   },
-  setAsync<A>(this: SubscriptionRefInternal<A>, a: A, __tsplusTrace?: string): Effect.UIO<void> {
+  setAsync<A>(this: SubscriptionRefInternal<A>, a: A): Effect.UIO<void> {
     return this.ref.setAsync(a)
   }
 }

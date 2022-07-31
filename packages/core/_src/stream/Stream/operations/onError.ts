@@ -9,8 +9,7 @@
  * @tsplus pipeable effect/core/stream/Stream onError
  */
 export function onError<E, R2, Z>(
-  cleanup: (cause: Cause<E>) => Effect<R2, never, Z>,
-  __tsplusTrace?: string
+  cleanup: (cause: Cause<E>) => Effect<R2, never, Z>
 ) {
   return <R, A>(self: Stream<R, E, A>): Stream<R | R2, E, A> =>
     self.catchAllCause((cause) => Stream.fromEffect(cleanup(cause) > Effect.failCauseSync(cause)))

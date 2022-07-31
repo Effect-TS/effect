@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Repeats the entire stream using the specified schedule. The stream will
@@ -12,8 +15,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 export function repeatWith<A, S, R2, B, C1, C2>(
   schedule: LazyArg<Schedule<S, R2, unknown, B>>,
   f: (a: A) => C1,
-  g: (b: B) => C2,
-  __tsplusTrace?: string
+  g: (b: B) => C2
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E, C1 | C2> =>
     new StreamInternal(

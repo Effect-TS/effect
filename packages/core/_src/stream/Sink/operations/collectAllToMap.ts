@@ -7,8 +7,7 @@
  */
 export function collectAllToMap<In, K>(
   key: (in_: In) => K,
-  f: (in1: In, in2: In) => In,
-  __tsplusTrace?: string
+  f: (in1: In, in2: In) => In
 ): Sink<never, never, In, never, HashMap<K, In>> {
   return Sink.foldLeftChunks(HashMap.empty<K, In>(), (acc, as) =>
     as.reduce(acc, (acc, a) => {

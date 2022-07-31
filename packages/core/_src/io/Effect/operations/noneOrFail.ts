@@ -4,9 +4,6 @@
  *
  * @tsplus static effect/core/io/Effect.Ops noneOrFail
  */
-export function noneOrFail<E>(
-  option: LazyArg<Maybe<E>>,
-  __tsplusTrace?: string
-): Effect<never, E, void> {
+export function noneOrFail<E>(option: LazyArg<Maybe<E>>): Effect<never, E, void> {
   return Effect.getOrFailDiscard(option).flip
 }

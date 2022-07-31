@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Throttles the chunks of this stream according to the given bandwidth
@@ -15,8 +18,7 @@ export function throttleEnforceEffect<A, R2, E2>(
   units: number,
   duration: LazyArg<Duration>,
   costFn: (input: Chunk<A>) => Effect<R2, E2, number>,
-  burst = 0,
-  __tsplusTrace?: string
+  burst = 0
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> => {
     concreteStream(self)
@@ -38,8 +40,7 @@ function loop<E, A, R2, E2>(
   costFn: (input: Chunk<A>) => Effect<R2, E2, number>,
   burst: number,
   tokens: number,
-  timestamp: number,
-  __tsplusTrace?: string
+  timestamp: number
 ): Channel<R2, E | E2, Chunk<A>, unknown, E | E2, Chunk<A>, void> {
   return Channel.readWith(
     (input: Chunk<A>) =>

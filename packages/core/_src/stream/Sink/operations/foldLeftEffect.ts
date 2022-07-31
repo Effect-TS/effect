@@ -8,8 +8,7 @@ import { constTrue } from "@tsplus/stdlib/data/Function"
  */
 export function foldLeftEffect<R, E, In, S>(
   z: LazyArg<S>,
-  f: (s: S, input: In) => Effect<R, E, S>,
-  __tsplusTrace?: string
+  f: (s: S, input: In) => Effect<R, E, S>
 ): Sink<R, E, In, In, S> {
   return Sink.foldEffect(z, constTrue, f)
 }

@@ -12,8 +12,7 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  */
 export function asyncInterrupt<R, E, A>(
   register: (emit: Emit<R, E, A, void>) => Either<Effect<R, never, void>, Stream<R, E, A>>,
-  outputBuffer = 16,
-  __tsplusTrace?: string
+  outputBuffer = 16
 ): Stream<R, E, A> {
   return Stream.unwrapScoped(
     Effect.Do()
@@ -23,24 +22,27 @@ export function asyncInterrupt<R, E, A>(
           (queue) => queue.shutdown
         ))
       .bind("runtime", () => Effect.runtime<R>())
-      .bind("eitherStream", ({ output, runtime }) =>
-        Effect.sync<Either<Effect<R, never, void>, Stream<R, E, A>>>(
-          register(
-            Emit(async (k) => {
-              try {
-                runtime.unsafeRunPromise(
-                  Take.fromPull(k).flatMap((take) => output.offer(take))
-                )
-              } catch (e: unknown) {
-                if (isFiberFailure(e)) {
-                  if (!e.cause.isInterrupted) {
-                    throw e
+      .bind(
+        "eitherStream",
+        ({ output, runtime }) =>
+          Effect.sync<Either<Effect<R, never, void>, Stream<R, E, A>>>(
+            register(
+              Emit(async (k) => {
+                try {
+                  runtime.unsafeRunPromise(
+                    Take.fromPull(k).flatMap((take) => output.offer(take))
+                  )
+                } catch (e: unknown) {
+                  if (isFiberFailure(e)) {
+                    if (!e.cause.isInterrupted) {
+                      throw e
+                    }
                   }
                 }
-              }
-            })
+              })
+            )
           )
-        ))
+      )
       .map(({ eitherStream, output }) =>
         eitherStream.fold(
           (canceler) => {

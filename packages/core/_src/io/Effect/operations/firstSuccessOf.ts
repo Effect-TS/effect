@@ -4,10 +4,7 @@
  *
  * @tsplus static effect/core/io/Effect.Ops firstSuccessOf
  */
-export function firstSuccessOf<R, E, A>(
-  effects: Collection<Effect<R, E, A>>,
-  __tsplusTrace?: string
-): Effect<R, E, A> {
+export function firstSuccessOf<R, E, A>(effects: Collection<Effect<R, E, A>>): Effect<R, E, A> {
   return Effect.suspendSucceed(() => {
     const chunk = Chunk.from(effects)
     if (chunk.length <= 0) {

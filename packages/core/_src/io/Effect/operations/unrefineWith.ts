@@ -7,8 +7,7 @@
  */
 export function unrefineWith<E, E1, E2>(
   pf: (u: unknown) => Maybe<E1>,
-  f: (e: E) => E2,
-  __tsplusTrace?: string
+  f: (e: E) => E2
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, E1 | E2, A> =>
     self.catchAllCause(

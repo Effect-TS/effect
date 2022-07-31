@@ -7,11 +7,9 @@ import { IFiberRefModifyAll } from "@effect/core/io/Effect/definition/primitives
  * @tsplus static effect/core/io/Effect.Ops updateFiberRefs
  */
 export function updateFiberRefs(
-  f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs) => FiberRefs,
-  __tsplusTrace?: string
+  f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs) => FiberRefs
 ): Effect<never, never, void> {
   return new IFiberRefModifyAll(
-    (fiberId, fiberRefs) => Tuple(undefined, f(fiberId, fiberRefs)),
-    __tsplusTrace
+    (fiberId, fiberRefs) => Tuple(undefined, f(fiberId, fiberRefs))
   )
 }

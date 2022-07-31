@@ -6,7 +6,7 @@
  * @tsplus static effect/core/io/Metrics/Metric.Aspects trackDurationWith
  * @tsplus pipeable effect/core/io/Metrics/Metric trackDurationWith
  */
-export function trackDurationWith<In>(f: (duration: Duration) => In, __tsplusTrace?: string) {
+export function trackDurationWith<In>(f: (duration: Duration) => In) {
   return <Type, Out>(
     self: Metric<Type, In, Out>
   ): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A> => {

@@ -29,7 +29,9 @@ describe.concurrent("Ref", () => {
   describe.concurrent("updateSome", () => {
     it("simple", async () => {
       const program = Ref.make<State>(State.Active)
-        .tap((ref) => ref.updateSome((state) => state.isClosed() ? Maybe.some(State.Changed) : Maybe.none))
+        .tap((ref) =>
+          ref.updateSome((state) => state.isClosed() ? Maybe.some(State.Changed) : Maybe.none)
+        )
         .flatMap((ref) => ref.get())
 
       const result = await program.unsafeRunPromise()
@@ -40,7 +42,9 @@ describe.concurrent("Ref", () => {
     it("twice", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make<State>(State.Active))
-        .tap(({ ref }) => ref.updateSome((state) => state.isActive() ? Maybe.some(State.Changed) : Maybe.none))
+        .tap(({ ref }) =>
+          ref.updateSome((state) => state.isActive() ? Maybe.some(State.Changed) : Maybe.none)
+        )
         .bind("v1", ({ ref }) => ref.get())
         .tap(({ ref }) =>
           ref.updateSome((state) =>
@@ -76,7 +80,10 @@ describe.concurrent("Ref", () => {
         .bind("ref", () => Ref.make<State>(State.Active))
         .bind(
           "v1",
-          ({ ref }) => ref.updateSomeAndGet((state) => state.isActive() ? Maybe.some(State.Changed) : Maybe.none)
+          ({ ref }) =>
+            ref.updateSomeAndGet((state) =>
+              state.isActive() ? Maybe.some(State.Changed) : Maybe.none
+            )
         )
         .bind("v2", ({ ref }) =>
           ref.updateSomeAndGet((state) =>

@@ -8,6 +8,6 @@
  * @tsplus static effect/core/stream/Stream.Aspects haltAfter
  * @tsplus pipeable effect/core/stream/Stream haltAfter
  */
-export function haltAfter(duration: LazyArg<Duration>, __tsplusTrace?: string) {
+export function haltAfter(duration: LazyArg<Duration>) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => self.haltWhen(Effect.sleep(duration))
 }

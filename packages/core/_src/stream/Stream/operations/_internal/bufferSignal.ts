@@ -2,8 +2,7 @@ export function bufferSignal<R, E, A>(
   effect: LazyArg<
     Effect<Scope, never, Queue<Tuple<[Take<E, A>, Deferred<never, void>]>>>
   >,
-  channel: LazyArg<Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown>>,
-  __tsplusTrace?: string
+  channel: LazyArg<Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown>>
 ): Channel<R, unknown, unknown, unknown, E, Chunk<A>, void> {
   return Channel.unwrapScoped(
     Do(($) => {
@@ -19,8 +18,7 @@ export function bufferSignal<R, E, A>(
 
 function producer<E, A>(
   queue: Queue<Tuple<[Take<E, A>, Deferred<never, void>]>>,
-  ref: Ref<Deferred<never, void>>,
-  __tsplusTrace?: string
+  ref: Ref<Deferred<never, void>>
 ): Channel<never, E, Chunk<A>, unknown, never, never, unknown> {
   return Channel.readWith(
     (input: Chunk<A>) =>
@@ -36,8 +34,7 @@ function producer<E, A>(
 }
 
 function consumer<E, A>(
-  queue: Queue<Tuple<[Take<E, A>, Deferred<never, void>]>>,
-  __tsplusTrace?: string
+  queue: Queue<Tuple<[Take<E, A>, Deferred<never, void>]>>
 ): Channel<never, unknown, unknown, unknown, E, Chunk<A>, void> {
   const process: Channel<
     never,
@@ -62,8 +59,7 @@ function consumer<E, A>(
 function terminate<E, A>(
   queue: Queue<Tuple<[Take<E, A>, Deferred<never, void>]>>,
   ref: Ref<Deferred<never, void>>,
-  take: Take<E, A>,
-  __tsplusTrace?: string
+  take: Take<E, A>
 ): Channel<never, E, Chunk<A>, unknown, never, never, unknown> {
   return Channel.fromEffect(
     Do(($) => {

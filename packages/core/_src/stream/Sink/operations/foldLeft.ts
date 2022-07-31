@@ -7,8 +7,7 @@ import { constTrue } from "@tsplus/stdlib/data/Function"
  */
 export function foldLeft<In, S>(
   z: LazyArg<S>,
-  f: (s: S, input: In) => S,
-  __tsplusTrace?: string
+  f: (s: S, input: In) => S
 ): Sink<never, never, In, never, S> {
   return Sink.fold(z, constTrue, f).dropLeftover
 }

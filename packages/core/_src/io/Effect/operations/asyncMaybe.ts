@@ -9,8 +9,7 @@
  * @tsplus static effect/core/io/Effect.Ops asyncMaybe
  */
 export function asyncMaybe<R, E, A>(
-  register: (callback: (_: Effect<R, E, A>) => void) => Maybe<Effect<R, E, A>>,
-  __tsplusTrace?: string
+  register: (callback: (_: Effect<R, E, A>) => void) => Maybe<Effect<R, E, A>>
 ): Effect<R, E, A> {
   return asyncMaybeBlockingOn(register, FiberId.none)
 }
@@ -30,8 +29,7 @@ export function asyncMaybe<R, E, A>(
  */
 export function asyncMaybeBlockingOn<R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void) => Maybe<Effect<R, E, A>>,
-  blockingOn: FiberId,
-  __tsplusTrace?: string
+  blockingOn: FiberId
 ): Effect<R, E, A> {
   return Effect.asyncInterruptBlockingOn(
     (cb) => register(cb).fold(Either.left(Effect.unit), Either.right),

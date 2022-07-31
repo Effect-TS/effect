@@ -5,8 +5,7 @@
  * @tsplus getter effect/core/stream/Stream flattenExit
  */
 export function flattenExit<R, E, E2, A>(
-  self: Stream<R, E, Exit<E2, A>>,
-  __tsplusTrace?: string
+  self: Stream<R, E, Exit<E2, A>>
 ): Stream<R, E | E2, A> {
   return self.mapEffect((exit) => Effect.done(exit))
 }

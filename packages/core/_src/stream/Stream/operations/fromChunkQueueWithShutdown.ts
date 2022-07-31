@@ -5,8 +5,9 @@
  * @tsplus static effect/core/stream/Stream.Ops fromChunkQueueWithShutdown
  */
 export function fromChunkQueueWithShutdown<R, E, A>(
-  queue: LazyArg<Dequeue<Chunk<A>>>,
-  __tsplusTrace?: string
+  queue: LazyArg<Dequeue<Chunk<A>>>
 ): Stream<R, E, A> {
-  return Stream.succeed(queue).flatMap((queue) => Stream.fromChunkQueue(queue).ensuring(queue.shutdown))
+  return Stream.succeed(queue).flatMap((queue) =>
+    Stream.fromChunkQueue(queue).ensuring(queue.shutdown)
+  )
 }

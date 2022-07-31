@@ -100,7 +100,11 @@ describe.concurrent("STM", () => {
           .bind("receiver", () => TRef.makeCommit(0))
           .bindValue("toReceiver", ({ receiver, sender }) => transfer(receiver, sender, 150))
           .bindValue("toSender", ({ receiver, sender }) => transfer(sender, receiver, 150))
-          .bind("fiber", ({ toReceiver, toSender }) => Effect.forkAll(Chunk.fill(10, () => toReceiver > toSender)))
+          .bind(
+            "fiber",
+            ({ toReceiver, toSender }) =>
+              Effect.forkAll(Chunk.fill(10, () => toReceiver > toSender))
+          )
           .tap(({ sender }) => sender.update((n) => n + 50).commit)
           .tap(({ fiber }) => fiber.join)
           .bind("senderValue", ({ sender }) => sender.get.commit)
@@ -136,8 +140,14 @@ describe.concurrent("STM", () => {
         const program = Effect.Do()
           .bind("sender", () => TRef.makeCommit(50))
           .bind("receiver", () => TRef.makeCommit(0))
-          .bindValue("toReceiver", ({ receiver, sender }) => transfer(receiver, sender, 100).repeatN(9))
-          .bindValue("toSender", ({ receiver, sender }) => transfer(sender, receiver, 100).repeatN(9))
+          .bindValue(
+            "toReceiver",
+            ({ receiver, sender }) => transfer(receiver, sender, 100).repeatN(9)
+          )
+          .bindValue(
+            "toSender",
+            ({ receiver, sender }) => transfer(sender, receiver, 100).repeatN(9)
+          )
           .bind("fiber", ({ toReceiver, toSender }) => toReceiver.zipPar(toSender).fork)
           .tap(({ sender }) => sender.update((n) => n + 50).commit)
           .tap(({ fiber }) => fiber.join)
@@ -236,7 +246,7 @@ describe.concurrent("STM", () => {
         const { observe, selfId } = await program.unsafeRunPromise()
 
         assert.isTrue(
-          observe.mapLeft((cause) => cause.untraced) ==
+          observe.mapLeft((cause) => cause) ==
             Either.left(Cause.interrupt(selfId))
         )
       })
@@ -244,7 +254,9 @@ describe.concurrent("STM", () => {
 
     it("Using `continueOrRetry` filter and map simultaneously the value produced by the transaction", async () => {
       const program = STM.succeed(Chunk.range(1, 20))
-        .continueOrRetry((chunk) => chunk.forAll((n) => n > 0) ? Maybe.some("positive") : Maybe.none)
+        .continueOrRetry((chunk) =>
+          chunk.forAll((n) => n > 0) ? Maybe.some("positive") : Maybe.none
+        )
         .commit
 
       const result = await program.unsafeRunPromise()
@@ -254,7 +266,9 @@ describe.concurrent("STM", () => {
 
     it("Using `continueOrRetrySTM` filter and map simultaneously the value produced by the transaction", async () => {
       const program = STM.succeed(Chunk.range(1, 20))
-        .continueOrRetrySTM((chunk) => chunk.forAll((n) => n > 0) ? Maybe.some(STM.succeed("positive")) : Maybe.none)
+        .continueOrRetrySTM((chunk) =>
+          chunk.forAll((n) => n > 0) ? Maybe.some(STM.succeed("positive")) : Maybe.none
+        )
         .commit
 
       const result = await program.unsafeRunPromise()

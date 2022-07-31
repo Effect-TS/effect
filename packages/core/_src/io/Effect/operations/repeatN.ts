@@ -7,7 +7,7 @@
  * @tsplus static effect/core/io/Effect.Aspects repeatN
  * @tsplus pipeable effect/core/io/Effect repeatN
  */
-export function repeatN(n: number, __tsplusTrace?: string) {
+export function repeatN(n: number) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> => Effect.suspendSucceed(loop(self, n))
 }
 

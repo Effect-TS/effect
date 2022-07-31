@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Statefully and effectfully maps over the elements of this stream to produce
@@ -9,8 +12,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  */
 export function scanEffect<A, S, R2, E2>(
   s: LazyArg<S>,
-  f: (s: S, a: A) => Effect<R2, E2, S>,
-  __tsplusTrace?: string
+  f: (s: S, a: A) => Effect<R2, E2, S>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, S> =>
     new StreamInternal(

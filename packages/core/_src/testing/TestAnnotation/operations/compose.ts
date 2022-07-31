@@ -1,7 +1,10 @@
 /**
  * @tsplus static effect/core/testing/TestAnnotation.Ops compose
  */
-export function compose<A>(left: Either<number, Chunk<A>>, right: Either<number, Chunk<A>>): Either<number, Chunk<A>> {
+export function compose<A>(
+  left: Either<number, Chunk<A>>,
+  right: Either<number, Chunk<A>>
+): Either<number, Chunk<A>> {
   if (left.isLeft() && right.isLeft()) {
     return Either.left(left.left + right.left)
   }

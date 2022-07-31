@@ -5,7 +5,9 @@
  *
  * @tsplus static effect/core/io/Metrics/Metric.Ops timer
  */
-export function timer(name: string): Metric<MetricKeyType.Histogram, Duration, MetricState.Histogram> {
+export function timer(
+  name: string
+): Metric<MetricKeyType.Histogram, Duration, MetricState.Histogram> {
   const boundaries = Metric.Histogram.Boundaries.exponential(1, 2, 100)
   const base = Metric.histogram(name, boundaries).tagged("time_unit", "milliseconds")
   return base.contramap((duration) => duration.millis)

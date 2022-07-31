@@ -10,7 +10,9 @@ import { ILayerTo } from "@effect/core/io/Layer/definition"
  * @tsplus pipeable effect/core/io/Layer provideTo
  */
 export function provideTo<RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>) {
-  return <RIn, E, ROut>(self: Layer<RIn, E, ROut>): Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut2> =>
+  return <RIn, E, ROut>(
+    self: Layer<RIn, E, ROut>
+  ): Layer<RIn | Exclude<RIn2, ROut>, E | E2, ROut2> =>
     new ILayerTo(
       Layer.environment<Exclude<RIn2, ROut>>().merge(self),
       // @ts-expect-error

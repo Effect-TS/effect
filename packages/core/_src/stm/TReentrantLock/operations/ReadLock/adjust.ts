@@ -14,11 +14,15 @@ export function adjust(fiberId: FiberId, adjust: number) {
     const newTotal = total + adjust
 
     if (newTotal < 0) {
-      throw new Error(`Defect: Fiber ${fiberId} releasing read lock it does not hold: ${self.readers}`)
+      throw new Error(
+        `Defect: Fiber ${fiberId} releasing read lock it does not hold: ${self.readers}`
+      )
     }
 
     return TReentrantLock.ReadLock(
-      newTotal === 0 ? self.readers.remove(fiberId) : self.readers.modify(fiberId, (_) => Maybe.some(newTotal))
+      newTotal === 0 ?
+        self.readers.remove(fiberId) :
+        self.readers.modify(fiberId, (_) => Maybe.some(newTotal))
     )
   }
 }

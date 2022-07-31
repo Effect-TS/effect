@@ -61,7 +61,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.mapLeft((cause) => cause.untraced) == Either.left(Cause.die(error)))
+      assert.isTrue(result == Either.left(Cause.die(error)))
     })
   })
 

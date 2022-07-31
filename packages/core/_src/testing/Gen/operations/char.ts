@@ -57,7 +57,11 @@ export const char16: Gen<never, string> = _char(0x0000, 0xffff, indexToPrintable
 /**
  * @tsplus static effect/core/testing/Gen.Ops fullUnicodeChar
  */
-export const fullUnicodeChar: Gen<never, string> = _char(0x0000, 0x10ffff - gapSize, unicodeToCharCode)
+export const fullUnicodeChar: Gen<never, string> = _char(
+  0x0000,
+  0x10ffff - gapSize,
+  unicodeToCharCode
+)
 
 /**
  * A generator of numeric characters. Shrinks toward '0'.

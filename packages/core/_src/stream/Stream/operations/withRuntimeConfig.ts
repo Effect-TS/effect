@@ -6,8 +6,7 @@
  * @tsplus pipeable effect/core/stream/Stream withRuntimeConfig
  */
 export function withRuntimeConfig(
-  runtimeConfig: LazyArg<RuntimeConfig>,
-  __tsplusTrace?: string
+  runtimeConfig: LazyArg<RuntimeConfig>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> =>
     Stream.fromEffect(Effect.runtimeConfig).flatMap(

@@ -6,8 +6,7 @@
  * @tsplus pipeable effect/core/stream/Stream scanReduceEffect
  */
 export function scanReduceEffect<A, R2, E2, A2 extends A>(
-  f: (a2: A2, a: A) => Effect<R2, E2, A2>,
-  __tsplusTrace?: string
+  f: (a2: A2, a: A) => Effect<R2, E2, A2>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A2> =>
     self.mapAccumEffect(

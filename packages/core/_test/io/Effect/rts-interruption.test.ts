@@ -28,7 +28,9 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind(
           "fiber",
-          () => Effect.asyncEffect<never, unknown, unknown, never, never, never>(() => Effect.never).fork
+          () =>
+            Effect.asyncEffect<never, unknown, unknown, never, never, never>(() => Effect.never)
+              .fork
         )
         .flatMap(({ fiber }) => fiber.interrupt)
         .map(() => 42)
@@ -83,7 +85,8 @@ describe.concurrent("Effect", () => {
             () => Effect.unit
           ).forkDaemon)
         .flatMap(
-          ({ deferred, fiber }) => deferred.await > fiber.interrupt.timeoutTo(42, () => 0, (1).seconds)
+          ({ deferred, fiber }) =>
+            deferred.await > fiber.interrupt.timeoutTo(42, () => 0, (1).seconds)
         )
 
       const result = await program.unsafeRunPromise()
@@ -301,7 +304,9 @@ describe.concurrent("Effect", () => {
         .bind("fiber", ({ deferred1, deferred2 }) =>
           (deferred2.succeed(undefined) > Effect.never)
             .ensuring(
-              Effect.descriptor.flatMap((descriptor) => deferred1.succeed(descriptor.interrupters.size > 0))
+              Effect.descriptor.flatMap((descriptor) =>
+                deferred1.succeed(descriptor.interrupters.size > 0)
+              )
             )
             .fork)
         .tap(({ deferred2 }) => deferred2.await)
@@ -315,26 +320,29 @@ describe.concurrent("Effect", () => {
 
     it("interrupted cause persists after catching", async () => {
       function process(list: List<Exit<never, any>>): List<Exit<never, any>> {
-        return list.map((exit) => exit.mapErrorCause((cause) => cause.untraced))
+        return list.map((exit) => exit.mapErrorCause((cause) => cause))
       }
 
       const program = Effect.Do()
         .bind("latch1", () => Deferred.make<never, void>())
         .bind("latch2", () => Deferred.make<never, void>())
         .bind("exits", () => Ref.make<List<Exit<never, any>>>(List.empty()))
-        .bind("fiber", ({ exits, latch1, latch2 }) =>
-          Effect.uninterruptibleMask(({ restore }) =>
-            restore(
-              Effect.uninterruptibleMask(({ restore }) =>
-                restore(latch1.succeed(undefined) > latch2.await).onExit((exit) =>
-                  exits.update((list) => list.prepend(exit))
-                )
-              ) > Effect.unit
+        .bind(
+          "fiber",
+          ({ exits, latch1, latch2 }) =>
+            Effect.uninterruptibleMask(({ restore }) =>
+              restore(
+                Effect.uninterruptibleMask(({ restore }) =>
+                  restore(latch1.succeed(undefined) > latch2.await).onExit((exit) =>
+                    exits.update((list) => list.prepend(exit))
+                  )
+                ) > Effect.unit
+              )
+                .exit
+                .flatMap((exit) => exits.update((list) => list.prepend(exit)))
+                .fork
             )
-              .exit
-              .flatMap((exit) => exits.update((list) => list.prepend(exit)))
-              .fork
-          ))
+        )
         .tap(({ fiber, latch1 }) => latch1.await > fiber.interrupt)
         .flatMap(({ exits }) => exits.get().map(process))
 
@@ -392,16 +400,19 @@ describe.concurrent("Effect", () => {
     it("recovery of interruptible", async () => {
       const program = Effect.Do()
         .bind("recovered", () => Ref.make(false))
-        .bind("fiber", ({ recovered }) =>
-          withLatch((release) =>
-            (release > Effect.never.interruptible)
-              .foldCauseEffect(
-                (cause) => recovered.set(cause.isInterrupted),
-                () => recovered.set(false)
-              )
-              .uninterruptible
-              .fork
-          ))
+        .bind(
+          "fiber",
+          ({ recovered }) =>
+            withLatch((release) =>
+              (release > Effect.never.interruptible)
+                .foldCauseEffect(
+                  (cause) => recovered.set(cause.isInterrupted),
+                  () => recovered.set(false)
+                )
+                .uninterruptible
+                .fork
+            )
+        )
         .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ recovered }) => recovered.get())
 
@@ -413,19 +424,22 @@ describe.concurrent("Effect", () => {
     it("sandbox of interruptible", async () => {
       const program = Effect.Do()
         .bind("recovered", () => Ref.make(Maybe.emptyOf<Either<boolean, any>>()))
-        .bind("fiber", ({ recovered }) =>
-          withLatch((release) =>
-            (release > Effect.never.interruptible)
-              .sandbox
-              .either
-              .flatMap((either) =>
-                recovered.set(
-                  Maybe.some(either.mapLeft((cause) => cause.isInterrupted))
+        .bind(
+          "fiber",
+          ({ recovered }) =>
+            withLatch((release) =>
+              (release > Effect.never.interruptible)
+                .sandbox
+                .either
+                .flatMap((either) =>
+                  recovered.set(
+                    Maybe.some(either.mapLeft((cause) => cause.isInterrupted))
+                  )
                 )
-              )
-              .uninterruptible
-              .fork
-          ))
+                .uninterruptible
+                .fork
+            )
+        )
         .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ recovered }) => recovered.get())
 
@@ -437,14 +451,17 @@ describe.concurrent("Effect", () => {
     it("run of interruptible", async () => {
       const program = Effect.Do()
         .bind("recovered", () => Ref.make(Maybe.emptyOf<boolean>()))
-        .bind("fiber", ({ recovered }) =>
-          withLatch((release) =>
-            (release > Effect.never.interruptible)
-              .exit
-              .flatMap((exit) => recovered.set(Maybe.some(exit.isInterrupted)))
-              .uninterruptible
-              .fork
-          ))
+        .bind(
+          "fiber",
+          ({ recovered }) =>
+            withLatch((release) =>
+              (release > Effect.never.interruptible)
+                .exit
+                .flatMap((exit) => recovered.set(Maybe.some(exit.isInterrupted)))
+                .uninterruptible
+                .fork
+            )
+        )
         .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ recovered }) => recovered.get())
 
@@ -550,13 +567,16 @@ describe.concurrent("Effect", () => {
         .bind("ref", () => Ref.make(false))
         .bind("deferred1", () => Deferred.make<never, void>())
         .bind("deferred2", () => Deferred.make<never, void>())
-        .bind("fiber", ({ deferred1, deferred2, ref }) =>
-          (deferred1.succeed(undefined) > Effect.never)
-            .ensuring(
-              ref.set(true) > Effect.sleep((10).millis) > deferred2.succeed(undefined)
-            )
-            .disconnect
-            .fork)
+        .bind(
+          "fiber",
+          ({ deferred1, deferred2, ref }) =>
+            (deferred1.succeed(undefined) > Effect.never)
+              .ensuring(
+                ref.set(true) > Effect.sleep((10).millis) > deferred2.succeed(undefined)
+              )
+              .disconnect
+              .fork
+        )
         .tap(({ deferred1 }) => deferred1.await)
         .tap(({ fiber }) => fiber.interrupt)
         .tap(({ deferred2 }) => deferred2.await)
@@ -568,9 +588,9 @@ describe.concurrent("Effect", () => {
     })
 
     it("cause reflects interruption", async () => {
-      const program = withLatch((release) => (release > Effect.failSync("foo")).fork).flatMap((fiber) =>
-        fiber.interrupt
-      )
+      const program = withLatch((release) => (release > Effect.failSync("foo")).fork).flatMap((
+        fiber
+      ) => fiber.interrupt)
 
       const result = await program.unsafeRunPromise()
 
@@ -578,7 +598,7 @@ describe.concurrent("Effect", () => {
       if (isInterruptedOnly) {
         assert.isTrue(isInterruptedOnly)
       } else {
-        assert.isTrue(result.untraced == Exit.fail("foo"))
+        assert.isTrue(result == Exit.fail("foo"))
       }
     })
 
@@ -655,7 +675,8 @@ describe.concurrent("Effect", () => {
         .bind("deferred", () => Deferred.make<never, void>())
         .bindValue(
           "child",
-          ({ deferred, ref }) => deferred.succeed(undefined) > Effect.sleep((10).millis) > ref.set(true)
+          ({ deferred, ref }) =>
+            deferred.succeed(undefined) > Effect.sleep((10).millis) > ref.set(true)
         )
         .bindValue(
           "parent",

@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Splits elements based on a predicate.
@@ -6,7 +9,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus static effect/core/stream/Stream.Aspects split
  * @tsplus pipeable effect/core/stream/Stream split
  */
-export function split<A>(f: Predicate<A>, __tsplusTrace?: string) {
+export function split<A>(f: Predicate<A>) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, Chunk<A>> => {
     concreteStream(self)
     return new StreamInternal(self.channel >> loop<R, E, A>(Chunk.empty(), f))
@@ -16,8 +19,7 @@ export function split<A>(f: Predicate<A>, __tsplusTrace?: string) {
 function splitInternal<R, E, A>(
   leftovers: Chunk<A>,
   input: Chunk<A>,
-  f: Predicate<A>,
-  __tsplusTrace?: string
+  f: Predicate<A>
 ): Channel<R, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown> {
   const {
     tuple: [chunk, remaining]
@@ -30,8 +32,7 @@ function splitInternal<R, E, A>(
 
 function loop<R, E, A>(
   leftovers: Chunk<A>,
-  f: Predicate<A>,
-  __tsplusTrace?: string
+  f: Predicate<A>
 ): Channel<R, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown> {
   return Channel.readWith(
     (input: Chunk<A>) => splitInternal<R, E, A>(leftovers, input, f),

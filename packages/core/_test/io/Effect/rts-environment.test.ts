@@ -5,7 +5,10 @@ describe.concurrent("Effect", () => {
     it("provide is modular", async () => {
       const program = Effect.Do()
         .bind("v1", () => Effect.service(NumberService))
-        .bind("v2", () => Effect.service(NumberService).provideEnvironment(Env(NumberService, { n: 2 })))
+        .bind(
+          "v2",
+          () => Effect.service(NumberService).provideEnvironment(Env(NumberService, { n: 2 }))
+        )
         .bind("v3", () => Effect.service(NumberService))
         .provideEnvironment(Env(NumberService, { n: 4 }))
 

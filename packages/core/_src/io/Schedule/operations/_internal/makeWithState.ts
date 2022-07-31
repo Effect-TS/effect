@@ -23,8 +23,7 @@ export function makeWithState<State, Env, In, Out>(
   step: (
     now: number,
     input: In,
-    state: State,
-    __tsplusTrace?: string
+    state: State
   ) => Effect<Env, never, Tuple<[State, Out, Decision]>>
 ): Schedule<State, Env, In, Out> {
   return new ScheduleWithStateInternal(initial, step)

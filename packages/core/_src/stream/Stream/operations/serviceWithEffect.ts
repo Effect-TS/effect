@@ -6,8 +6,7 @@
  */
 export function serviceWithEffect<T, R, E, A>(
   tag: Tag<T>,
-  f: (resource: T) => Effect<R, E, A>,
-  __tsplusTrace?: string
+  f: (resource: T) => Effect<R, E, A>
 ): Stream<R | T, E, A> {
   return Stream.fromEffect(Effect.serviceWithEffect(tag, f))
 }

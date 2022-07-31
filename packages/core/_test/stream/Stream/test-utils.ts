@@ -41,7 +41,8 @@ export function chunkCoordination<A>(
     .bind("ref", () =>
       Ref.make<List<List<Exit<Maybe<never>, Chunk<A>>>>>(
         List.from(chunks.take(chunks.length - 1)).map((chunk) => List(Exit.succeed(chunk))).concat(
-          chunks.last.fold(List.empty(), (chunk) => List(List(Exit.succeed(chunk), Exit.fail(Maybe.none))))
+          chunks.last.fold(List.empty(), (chunk) =>
+            List(List(Exit.succeed(chunk), Exit.fail(Maybe.none))))
         )
       ))
     .map(({ ps, queue, ref }) => ({

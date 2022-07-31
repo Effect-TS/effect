@@ -6,8 +6,7 @@
  * @tsplus pipeable effect/core/io/Effect withFinalizerExit
  */
 export function withFinalizerExit<R2, X>(
-  finalizer: (exit: Exit<unknown, unknown>) => Effect<R2, never, X>,
-  __tsplusTrace?: string
+  finalizer: (exit: Exit<unknown, unknown>) => Effect<R2, never, X>
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2 | Scope, E, A> =>
     Effect.acquireReleaseExit(self, (_, exit) => finalizer(exit))

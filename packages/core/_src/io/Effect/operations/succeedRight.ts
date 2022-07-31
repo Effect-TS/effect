@@ -4,8 +4,7 @@
  * @tsplus static effect/core/io/Effect.Ops right
  */
 export function succeedRight<A>(
-  value: LazyArg<A>,
-  __tsplusTrace?: string
+  value: LazyArg<A>
 ): Effect<never, never, Either<never, A>> {
   return Effect.sync(Either.right(value()))
 }

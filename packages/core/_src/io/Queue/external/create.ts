@@ -10,6 +10,5 @@ export { createQueue } from "@effect/core/io/Effect/operations/excl-forEach"
  */
 export const create: <A>(
   queue: MutableQueue<A>,
-  strategy: Strategy<A>,
-  __tsplusTrace?: string | undefined
+  strategy: Strategy<A>
 ) => Effect<never, never, Queue<A>> = createQueue

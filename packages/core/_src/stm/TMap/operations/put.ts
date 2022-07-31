@@ -1,14 +1,26 @@
 import type { Journal } from "@effect/core/stm/STM/Journal"
-import { concreteTArray, InternalTArray } from "@effect/core/stm/TArray/operations/_internal/InternalTArray"
+import {
+  concreteTArray,
+  InternalTArray
+} from "@effect/core/stm/TArray/operations/_internal/InternalTArray"
 import { concreteTMap } from "@effect/core/stm/TMap/operations/_internal/InternalTMap"
 
 const LOAD_FACTOR = .75 as const
 
-function resize<K, V>(self: TMap<K, V>, journal: Journal, buckets: TArray<List<Tuple<[K, V]>>>, k: K, v: V): void {
+function resize<K, V>(
+  self: TMap<K, V>,
+  journal: Journal,
+  buckets: TArray<List<Tuple<[K, V]>>>,
+  k: K,
+  v: V
+): void {
   concreteTArray(buckets)
   const capacity = buckets.chunk.length
   const newCapacity = capacity << 1
-  const newBuckets: Array<List<Tuple<[K, V]>>> = Array.from({ length: newCapacity }, () => List.nil())
+  const newBuckets: Array<List<Tuple<[K, V]>>> = Array.from(
+    { length: newCapacity },
+    () => List.nil()
+  )
   let i = 0
 
   while (i < capacity) {

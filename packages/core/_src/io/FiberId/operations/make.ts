@@ -5,21 +5,16 @@ const _fiberCounter = new AtomicNumber(0)
 /**
  * @tsplus static effect/core/io/FiberId.Ops __call
  */
-export function make(
-  id: number,
-  startTimeSeconds: number,
-  location: TraceElement
-): FiberId {
-  return new RuntimeFiberId(id, startTimeSeconds, location)
+export function make(id: number, startTimeSeconds: number): FiberId {
+  return new RuntimeFiberId(id, startTimeSeconds)
 }
 
 /**
  * @tsplus static effect/core/io/FiberId.Ops unsafeMake
  */
-export function unsafeMake(location: TraceElement): FiberId.Runtime {
+export function unsafeMake(): FiberId.Runtime {
   return new RuntimeFiberId(
     _fiberCounter.getAndIncrement(),
-    Math.floor(new Date().getTime() / 1000),
-    location
+    Math.floor(new Date().getTime() / 1000)
   )
 }

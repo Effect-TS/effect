@@ -52,8 +52,7 @@ export class Suspended implements Equals {
     readonly interrupting: boolean,
     readonly interruptible: boolean,
     readonly asyncs: number,
-    readonly blockingOn: FiberId,
-    readonly asyncTrace: TraceElement
+    readonly blockingOn: FiberId
   ) {}
 
   [Hash.sym](): number {
@@ -65,7 +64,7 @@ export class Suspended implements Equals {
           Hash.unknown(this.interruptible),
           Hash.combine(
             Hash.number(this.asyncs),
-            Hash.combine(Hash.unknown(this.blockingOn), Hash.unknown(this.asyncTrace))
+            Hash.unknown(this.blockingOn)
           )
         )
       )
@@ -110,10 +109,9 @@ export function statusSuspended(
   interrupting: boolean,
   interruptible: boolean,
   asyncs: number,
-  blockingOn: FiberId,
-  asyncTrace: TraceElement
+  blockingOn: FiberId
 ): FiberStatus {
-  return new Suspended(interrupting, interruptible, asyncs, blockingOn, asyncTrace)
+  return new Suspended(interrupting, interruptible, asyncs, blockingOn)
 }
 
 /**
@@ -152,8 +150,7 @@ export function withInterrupting(
         newInterrupting,
         self.interruptible,
         self.asyncs,
-        self.blockingOn,
-        self.asyncTrace
+        self.blockingOn
       )
     }
   }

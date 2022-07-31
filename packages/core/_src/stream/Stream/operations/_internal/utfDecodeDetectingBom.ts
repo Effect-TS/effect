@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 type DecodingChannel<R, E> = Channel<
   R,
@@ -14,8 +17,7 @@ export function utfDecodeDetectingBom<R, E>(
   bomSize: number,
   processBom: (
     bom: Chunk<number>
-  ) => Tuple<[Chunk<number>, (stream: Stream<R, E, number>) => Stream<R, E, string>]>,
-  __tsplusTrace?: string
+  ) => Tuple<[Chunk<number>, (stream: Stream<R, E, number>) => Stream<R, E, string>]>
 ) {
   return (stream: Stream<R, E, number>): Stream<R, E, string> => {
     concreteStream(stream)
@@ -29,8 +31,7 @@ export function utfDecodeDetectingBom<R, E>(
 }
 
 function passThrough<R, E>(
-  decodingPipeline: (stream: Stream<R, E, number>) => Stream<R, E, string>,
-  __tsplusTrace?: string
+  decodingPipeline: (stream: Stream<R, E, number>) => Stream<R, E, string>
 ): DecodingChannel<R, E> {
   return Channel.readWith(
     (received: Chunk<number>) => {
@@ -48,8 +49,7 @@ function lookingForBom<R, E>(
   bomSize: number,
   processBom: (
     bom: Chunk<number>
-  ) => Tuple<[Chunk<number>, (stream: Stream<R, E, number>) => Stream<R, E, string>]>,
-  __tsplusTrace?: string
+  ) => Tuple<[Chunk<number>, (stream: Stream<R, E, number>) => Stream<R, E, string>]>
 ): DecodingChannel<R, E> {
   return Channel.readWith(
     (received: Chunk<number>) => {

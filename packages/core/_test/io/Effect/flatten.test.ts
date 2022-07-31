@@ -19,7 +19,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail("error"))
+      assert.isTrue(result == Exit.fail("error"))
     })
 
     it("fails with default when given None error", async () => {
@@ -27,7 +27,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail("default"))
+      assert.isTrue(result == Exit.fail("default"))
     })
 
     it("succeeds when given a value", async () => {

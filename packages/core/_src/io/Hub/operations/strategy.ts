@@ -135,7 +135,8 @@ abstract class BaseStrategy<A> implements Strategy<A> {
  * are published and received by other subscribers.
  */
 export class BackPressure<A> extends BaseStrategy<A> {
-  publishers: MutableQueue<readonly [A, Deferred<never, boolean>, boolean]> = MutableQueue.unbounded()
+  publishers: MutableQueue<readonly [A, Deferred<never, boolean>, boolean]> = MutableQueue
+    .unbounded()
 
   handleSurplus(
     hub: AtomicHub<A>,

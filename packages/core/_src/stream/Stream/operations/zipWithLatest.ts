@@ -12,8 +12,7 @@
  */
 export function zipWithLatest<R2, E2, A2, A, A3>(
   that: LazyArg<Stream<R2, E2, A2>>,
-  f: (a: A, a2: A2) => A3,
-  __tsplusTrace?: string
+  f: (a: A, a2: A2) => A3
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A3> =>
     Stream.fromPull(
@@ -25,9 +24,11 @@ export function zipWithLatest<R2, E2, A2, A, A3>(
             left.raceWith(
               right,
               (leftDone, rightFiber) =>
-                Effect.done(leftDone).zipWith(rightFiber.join, (left, right) => Tuple(left, right, true)),
+                Effect.done(leftDone).zipWith(rightFiber.join, (left, right) =>
+                  Tuple(left, right, true)),
               (rightDone, leftFiber) =>
-                Effect.done(rightDone).zipWith(leftFiber.join, (right, left) => Tuple(left, right, false))
+                Effect.done(rightDone).zipWith(leftFiber.join, (right, left) =>
+                  Tuple(left, right, false))
             )
           )
             .flatMap(({ tuple: [l, r, leftFirst] }) =>
@@ -37,8 +38,12 @@ export function zipWithLatest<R2, E2, A2, A, A3>(
                 (latest) =>
                   Stream.fromChunk(
                     leftFirst
-                      ? r.map((a2) => f(l.unsafeGet(l.size - 1), a2))
-                      : l.map((a) => f(a, r.unsafeGet(r.size - 1)))
+                      ? r.map((a2) =>
+                        f(l.unsafeGet(l.size - 1), a2)
+                      )
+                      : l.map((a) =>
+                        f(a, r.unsafeGet(r.size - 1))
+                      )
                   ) +
                   Stream.repeatEffectMaybe(left)
                     .mergeEither(Stream.repeatEffectMaybe(right))
@@ -70,8 +75,7 @@ export function zipWithLatest<R2, E2, A2, A, A3>(
 }
 
 function pullNonEmpty<R, E, A>(
-  pull: Effect<R, Maybe<E>, Chunk<A>>,
-  __tsplusTrace?: string
+  pull: Effect<R, Maybe<E>, Chunk<A>>
 ): Effect<R, Maybe<E>, Chunk<A>> {
   return pull.flatMap((chunk) => chunk.isEmpty ? pullNonEmpty(pull) : Effect.succeed(chunk))
 }

@@ -5,7 +5,9 @@ import { SynchronizedInternal } from "@effect/core/io/Ref/operations/_internal/S
  *
  * @tsplus static effect/core/io/Ref.Ops make
  */
-export function makeRef<A>(value: LazyArg<A>, __tsplusTrace?: string): Effect<never, never, Ref<A>> {
+export function makeRef<A>(
+  value: LazyArg<A>
+): Effect<never, never, Ref<A>> {
   return Effect.sync(Ref.unsafeMake(value()))
 }
 
@@ -16,16 +18,11 @@ export function makeRef<A>(value: LazyArg<A>, __tsplusTrace?: string): Effect<ne
  * @tsplus static effect/core/io/Ref/Synchronized.Ops __call
  */
 export function makeSynchronized<A>(
-  value: LazyArg<A>,
-  __tsplusTrace?: string
+  value: LazyArg<A>
 ): Effect<never, never, Ref.Synchronized<A>> {
-  return Effect.Do()
-    .bind("ref", () => Ref.make<A>(value))
-    .bind("semaphore", () => TSemaphore.makeCommit(1))
-    .map(({ ref, semaphore }) =>
-      Object.setPrototypeOf({
-        ref,
-        semaphore
-      }, SynchronizedInternal)
-    )
+  return Do(($) => {
+    const ref = $(Ref.make<A>(value))
+    const semaphore = $(TSemaphore.makeCommit(1))
+    return Object.setPrototypeOf({ ref, semaphore }, SynchronizedInternal)
+  })
 }

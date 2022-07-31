@@ -8,6 +8,6 @@
  * @tsplus getter effect/core/io/Fiber join
  * @tsplus getter effect/core/io/RuntimeFiber join
  */
-export function join<E, A>(self: Fiber<E, A>, __tsplusTrace?: string): Effect<never, E, A> {
+export function join<E, A>(self: Fiber<E, A>): Effect<never, E, A> {
   return self.await.flatMap((exit) => Effect.done(exit)) < self.inheritRefs
 }

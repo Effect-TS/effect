@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Statefully maps over the elements of this stream to produce new elements.
@@ -8,8 +11,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  */
 export function mapAccum<A, S, A1>(
   s: LazyArg<S>,
-  f: (s: S, a: A) => Tuple<[S, A1]>,
-  __tsplusTrace?: string
+  f: (s: S, a: A) => Tuple<[S, A1]>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, A1> =>
     Stream.succeed(s).flatMap((s) => {
@@ -20,8 +22,7 @@ export function mapAccum<A, S, A1>(
 
 function accumulator<E, A, S, A1>(
   current: S,
-  f: (s: S, a: A) => Tuple<[S, A1]>,
-  __tsplusTrace?: string
+  f: (s: S, a: A) => Tuple<[S, A1]>
 ): Channel<never, E, Chunk<A>, unknown, E, Chunk<A1>, void> {
   return Channel.readWith(
     (input: Chunk<A>) => {

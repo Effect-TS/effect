@@ -1,4 +1,7 @@
-import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import {
+  concreteSink,
+  SinkInternal
+} from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Creates a sink that produces values until one verifies the predicate `f`.
@@ -7,10 +10,11 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
  * @tsplus pipeable effect/core/stream/Sink untilOutputEffect
  */
 export function untilOutputEffect<R2, E2, Z>(
-  f: (z: Z) => Effect<R2, E2, boolean>,
-  __tsplusTrace?: string
+  f: (z: Z) => Effect<R2, E2, boolean>
 ) {
-  return <R, E, In, L extends In>(self: Sink<R, E, In, L, Z>): Sink<R | R2, E | E2, In, L, Maybe<Z>> => {
+  return <R, E, In, L extends In>(
+    self: Sink<R, E, In, L, Z>
+  ): Sink<R | R2, E | E2, In, L, Maybe<Z>> => {
     concreteSink(self)
     return new SinkInternal(
       Channel.fromEffect(Ref.make(Chunk.empty<In>()).zip(Ref.make(false))).flatMap(

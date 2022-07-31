@@ -4,8 +4,7 @@
  * @tsplus static effect/core/io/Effect.Ops scopeWith
  */
 export function scopeWith<R, E, A>(
-  f: (scope: Scope) => Effect<R, E, A>,
-  __tsplusTrace?: string
+  f: (scope: Scope) => Effect<R, E, A>
 ): Effect<R | Scope, E, A> {
   return Effect.serviceWithEffect(Scope.Tag, f)
 }

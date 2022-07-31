@@ -11,7 +11,7 @@ import { next } from "@effect/core/io/Scope/ReleaseMap/operations/_internal/next
  * @tsplus static effect/core/io/ReleaseMap.Aspects addIfOpen
  * @tsplus pipeable effect/core/io/ReleaseMap addIfOpen
  */
-export function addIfOpen(finalizer: Scope.Finalizer, __tsplusTrace?: string) {
+export function addIfOpen(finalizer: Scope.Finalizer) {
   return (self: ReleaseMap): Effect<never, never, Maybe<number>> =>
     self.ref
       .modify((s) => {

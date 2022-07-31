@@ -8,14 +8,15 @@ import { Both, Cause, Die, Interrupt, Stackless, Then } from "@effect/core/io/Ca
  * @tsplus pipeable effect/core/io/Cause flatMap
  */
 export function flatMap<E, E1>(f: (e: E) => Cause<E1>) {
-  return (self: Cause<E>): Cause<E1> =>
-    self.fold(
+  return (self: Cause<E>): Cause<E1> => {
+    return self.fold(
       Cause.empty,
-      (e, trace) => f(e).traced(trace),
-      (d, trace) => new Die(d, trace),
-      (fiberId, trace) => new Interrupt(fiberId, trace),
+      (e) => f(e),
+      (d) => new Die(d),
+      (fiberId) => new Interrupt(fiberId),
       (left, right) => new Then(left, right),
       (left, right) => new Both(left, right),
       (cause, stackless) => new Stackless(cause, stackless)
     )
+  }
 }

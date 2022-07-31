@@ -12,7 +12,9 @@ export function delays<State, Env, In, Out>(
   return makeWithState(self._initial, (now, input, state) =>
     self
       ._step(now, input, state)
-      .flatMap(({ tuple: [state, _, decision] }): Effect<never, never, Tuple<[State, Duration, Decision]>> =>
+      .flatMap((
+        { tuple: [state, _, decision] }
+      ): Effect<never, never, Tuple<[State, Duration, Decision]>> =>
         decision._tag === "Done"
           ? Effect.succeed(Tuple(state, (0).millis, decision))
           : Effect.succeed(

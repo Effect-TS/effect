@@ -6,8 +6,7 @@
  * @tsplus pipeable effect/core/stream/Stream via
  */
 export function via<R, E, A, R1, E1, A1>(
-  f: (a: Stream<R, E, A>) => Stream<R1, E1, A1>,
-  __tsplusTrace?: string
+  f: (a: Stream<R, E, A>) => Stream<R1, E1, A1>
 ) {
   return (self: Stream<R, E, A>): Stream<R1, E1, A1> => Stream.suspend(f(self))
 }

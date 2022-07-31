@@ -9,8 +9,7 @@ import {
  * @tsplus static effect/core/stream/SubscriptionRef.Ops __call
  */
 export function make<A>(
-  value: LazyArg<A>,
-  __tsplusTrace?: string
+  value: LazyArg<A>
 ): Effect<never, never, SubscriptionRef<A>> {
   return Effect.suspendSucceed(
     Effect.struct({

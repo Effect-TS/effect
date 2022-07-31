@@ -19,8 +19,7 @@ export function foldWeightedDecomposeEffect<R, E, R2, E2, R3, E3, In, S>(
   costFn: (s: S, input: In) => Effect<R, E, number>,
   max: number,
   decompose: (input: In) => Effect<R2, E2, Chunk<In>>,
-  f: (s: S, input: In) => Effect<R3, E3, S>,
-  __tsplusTrace?: string
+  f: (s: S, input: In) => Effect<R3, E3, S>
 ): Sink<R | R2 | R3, E | E2 | E3, In, In, S> {
   return Sink.suspend(new SinkInternal(go(z(), costFn, max, decompose, f, false, 0)))
 }
@@ -32,8 +31,7 @@ function go<R, E, R2, E2, R3, E3, In, S>(
   decompose: (input: In) => Effect<R2, E2, Chunk<In>>,
   f: (s: S, input: In) => Effect<R3, E3, S>,
   dirty: boolean,
-  cost: number,
-  __tsplusTrace?: string
+  cost: number
 ): Channel<R | R2 | R3, E | E2 | E3, Chunk<In>, unknown, E | E2 | E3, Chunk<In>, S> {
   return Channel.readWith(
     (chunk: Chunk<In>) =>
@@ -68,8 +66,7 @@ function fold<R, E, R2, E2, R3, E3, In, S>(
   f: (s: S, input: In) => Effect<R3, E3, S>,
   dirty: boolean,
   cost: number,
-  index: number,
-  __tsplusTrace?: string
+  index: number
 ): Effect<R | R2 | R3, E | E2 | E3, Tuple<[S, number, boolean, Chunk<In>]>> {
   if (index === input.length) {
     return Effect.sync(Tuple(s, cost, dirty, Chunk.empty<In>()))
@@ -81,7 +78,9 @@ function fold<R, E, R2, E2, R3, E3, In, S>(
     .map((addedCost) => cost + addedCost)
     .flatMap((total) => {
       if (total <= max) {
-        return f(s, elem).flatMap((s) => fold(input, s, costFn, max, decompose, f, true, total, index + 1))
+        return f(s, elem).flatMap((s) =>
+          fold(input, s, costFn, max, decompose, f, true, total, index + 1)
+        )
       }
 
       return decompose(elem).flatMap((decomposed) => {

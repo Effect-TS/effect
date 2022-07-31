@@ -8,8 +8,7 @@
  */
 export function mapEffectParUnordered<A, R1, E1, B>(
   n: number,
-  f: (a: A) => Effect<R1, E1, B>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R1, E1, B>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R1, E | E1, B> =>
     self.flatMapPar(

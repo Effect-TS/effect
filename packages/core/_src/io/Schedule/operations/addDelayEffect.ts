@@ -8,6 +8,8 @@
 export function addDelayEffect<Out, Env1>(
   f: (out: Out) => Effect<Env1, never, Duration>
 ) {
-  return <State, Env, In>(self: Schedule<State, Env, In, Out>): Schedule<State, Env | Env1, In, Out> =>
+  return <State, Env, In>(
+    self: Schedule<State, Env, In, Out>
+  ): Schedule<State, Env | Env1, In, Out> =>
     self.modifyDelayEffect((out, duration) => f(out).map((_) => duration + _))
 }

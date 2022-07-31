@@ -5,10 +5,7 @@
  * @tsplus static effect/core/io/Effect.Aspects provideSomeEnvironment
  * @tsplus pipeable effect/core/io/Effect provideSomeEnvironment
  */
-export function provideSomeEnvironment<R0, R>(
-  f: (r0: Env<R0>) => Env<R>,
-  __tsplusTrace?: string
-) {
+export function provideSomeEnvironment<R0, R>(f: (r0: Env<R0>) => Env<R>) {
   return <E, A>(self: Effect<R, E, A>): Effect<R0, E, A> =>
     Effect.environmentWithEffect((r0: Env<R0>) => self.provideEnvironment(f(r0)))
 }

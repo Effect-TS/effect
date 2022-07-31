@@ -14,10 +14,7 @@
  * @tsplus static effect/core/io/Effect.Ops iterate
  */
 export function iterate<Z>(initial: LazyArg<Z>, cont: (z: Z) => boolean) {
-  return <R, E>(
-    body: (z: Z) => Effect<R, E, Z>,
-    __tsplusTrace?: string
-  ): Effect<R, E, Z> => {
+  return <R, E>(body: (z: Z) => Effect<R, E, Z>): Effect<R, E, Z> => {
     return Effect.suspendSucceed(() => {
       const initial0 = initial()
       if (cont(initial0)) {

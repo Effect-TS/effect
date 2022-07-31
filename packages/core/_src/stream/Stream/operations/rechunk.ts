@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Re-chunks the elements of the stream into chunks of `n` elements each. The
@@ -7,7 +10,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus static effect/core/stream/Stream.Aspects rechunk
  * @tsplus pipeable effect/core/stream/Stream rechunk
  */
-export function rechunk(n: number, __tsplusTrace?: string) {
+export function rechunk(n: number) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => {
     concreteStream(self)
     return new StreamInternal(self.channel >> process<R, E, A>(new Rechunker(n), n))
@@ -77,9 +80,7 @@ class Rechunker<A> {
     return undefined
   }
 
-  emitIfNotEmpty(
-    __tsplusTrace?: string
-  ): Channel<never, unknown, unknown, unknown, never, Chunk<A>, void> {
+  emitIfNotEmpty(): Channel<never, unknown, unknown, unknown, never, Chunk<A>, void> {
     if (this.pos !== 0) {
       return Channel.write(this.builder.build())
     } else {

@@ -3,7 +3,12 @@ import { hasSameElements } from "@effect/core/test/stm/TMap/test-utils"
 describe.concurrent("TMap", () => {
   describe.concurrent("factories", () => {
     it("apply", async () => {
-      const tx = TMap.make(Tuple.make("a", 1), Tuple.make("b", 2), Tuple.make("c", 2), Tuple.make("b", 3))
+      const tx = TMap.make(
+        Tuple.make("a", 1),
+        Tuple.make("b", 2),
+        Tuple.make("c", 2),
+        Tuple.make("b", 3)
+      )
         .flatMap((_) => _.toList)
         .map((_) =>
           hasSameElements(
@@ -25,7 +30,12 @@ describe.concurrent("TMap", () => {
     })
 
     it("fromIterable", async () => {
-      const tx = TMap.fromIterable([Tuple.make("a", 1), Tuple.make("b", 2), Tuple.make("c", 2), Tuple.make("b", 3)])
+      const tx = TMap.fromIterable([
+        Tuple.make("a", 1),
+        Tuple.make("b", 2),
+        Tuple.make("c", 2),
+        Tuple.make("b", 3)
+      ])
         .flatMap((_) => _.toList).map((_) =>
           hasSameElements(
             _,

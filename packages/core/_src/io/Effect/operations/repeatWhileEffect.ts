@@ -6,8 +6,8 @@
  * @tsplus pipeable effect/core/io/Effect repeatWhileEffect
  */
 export function repeatWhileEffect<R1, A>(
-  f: (a: A) => Effect<R1, never, boolean>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R1, never, boolean>
 ) {
-  return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E, A> => self.repeatUntilEffect((a) => f(a).negate)
+  return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E, A> =>
+    self.repeatUntilEffect((a) => f(a).negate)
 }

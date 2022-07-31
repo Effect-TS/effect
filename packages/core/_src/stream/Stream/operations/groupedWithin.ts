@@ -7,8 +7,7 @@
  */
 export function groupedWithin(
   chunkSize: number,
-  within: LazyArg<Duration>,
-  __tsplusTrace?: string
+  within: LazyArg<Duration>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, Chunk<A>> =>
     self.aggregateWithin(

@@ -5,8 +5,7 @@
  * @tsplus static effect/core/io/Effect.Ops withChildren
  */
 export function withChildren<R, E, A>(
-  get: (children: Effect<never, never, Chunk<Fiber.Runtime<any, any>>>) => Effect<R, E, A>,
-  __tsplusTrace?: string
+  get: (children: Effect<never, never, Chunk<Fiber.Runtime<any, any>>>) => Effect<R, E, A>
 ): Effect<R, E, A> {
   return Supervisor.track().flatMap((supervisor) =>
     get(

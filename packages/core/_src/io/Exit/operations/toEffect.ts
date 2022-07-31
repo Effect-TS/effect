@@ -4,8 +4,7 @@
  * @tsplus getter effect/core/io/Exit toEffect
  */
 export function toEffect<E, A>(
-  self: Exit<E, A>,
-  __tsplusTrace?: string
+  self: Exit<E, A>
 ): Effect<never, E, A> {
   switch (self._tag) {
     case "Failure":

@@ -3,7 +3,9 @@ import { constFalse, constTrue } from "@tsplus/stdlib/data/Function"
 describe.concurrent("Sink", () => {
   describe.concurrent("untilOutputEffect", () => {
     it("with head sink", async () => {
-      const sink = Sink.head<number>().untilOutputEffect((h) => Effect.sync(h.fold(constFalse, (n) => n >= 10)))
+      const sink = Sink.head<number>().untilOutputEffect((h) =>
+        Effect.sync(h.fold(constFalse, (n) => n >= 10))
+      )
       const program = Effect.forEach(
         Chunk(1, 3, 7, 20),
         (n) => Stream.fromCollection(Chunk.range(1, 100)).rechunk(n).run(sink)
@@ -20,7 +22,9 @@ describe.concurrent("Sink", () => {
     })
 
     it("take sink across multiple chunks", async () => {
-      const sink = Sink.take<number>(4).untilOutputEffect((c) => Effect.sync(c.reduce(0, (a, b) => a + b) > 10))
+      const sink = Sink.take<number>(4).untilOutputEffect((c) =>
+        Effect.sync(c.reduce(0, (a, b) => a + b) > 10)
+      )
       const program = Stream.fromCollection(Chunk.range(1, 8))
         .rechunk(2)
         .run(sink)
@@ -42,7 +46,9 @@ describe.concurrent("Sink", () => {
 
     it("unsatisfied condition terminates with none", async () => {
       const program = Stream.fromCollection(Chunk(1, 2)).run(
-        Sink.head<number>().untilOutputEffect((option) => Effect.sync(option.fold(constFalse, (n) => n >= 3)))
+        Sink.head<number>().untilOutputEffect((option) =>
+          Effect.sync(option.fold(constFalse, (n) => n >= 3))
+        )
       )
 
       const result = await program.unsafeRunPromise()

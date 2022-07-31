@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Unwraps `Exit` values that also signify end-of-stream by failing with `None`.
@@ -12,8 +15,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus getter effect/core/stream/Stream flattenExitMaybe
  */
 export function flattenExitMaybe<R, E, A>(
-  self: Stream<R, E, Exit<Maybe<E>, A>>,
-  __tsplusTrace?: string
+  self: Stream<R, E, Exit<Maybe<E>, A>>
 ): Stream<R, E, A> {
   const process: Channel<
     R,
@@ -41,7 +43,8 @@ function processChunk<R, E, A>(
   } = chunk.splitWhere((exit) => !exit.isSuccess())
   const next = rest.head.fold(cont, (exit) =>
     exit.fold(
-      (cause) => Cause.flipCauseMaybe(cause).fold(Channel.unit, (cause) => Channel.failCause(cause)),
+      (cause) =>
+        Cause.flipCauseMaybe(cause).fold(Channel.unit, (cause) => Channel.failCause(cause)),
       () => Channel.unit
     ))
   return (

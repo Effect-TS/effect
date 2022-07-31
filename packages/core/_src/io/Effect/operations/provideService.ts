@@ -7,8 +7,7 @@
  */
 export function provideService<T>(
   tag: Tag<T>,
-  resource: LazyArg<T>,
-  __tsplusTrace?: string
+  resource: LazyArg<T>
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<Exclude<R, T>, E, A> =>
     self.provideServiceEffect(tag, Effect.sync(resource))

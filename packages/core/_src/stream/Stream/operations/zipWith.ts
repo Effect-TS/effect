@@ -11,8 +11,7 @@ import { zipChunks } from "@effect/core/stream/Stream/operations/_internal/zipCh
  */
 export function zipWith<R2, E2, A2, A, A3>(
   that: LazyArg<Stream<R2, E2, A2>>,
-  f: (a: A, a2: A2) => A3,
-  __tsplusTrace?: string
+  f: (a: A, a2: A2) => A3
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A3> =>
     self.zipWithChunks(that, (leftChunk, rightChunk) => zipChunks(leftChunk, rightChunk, f))

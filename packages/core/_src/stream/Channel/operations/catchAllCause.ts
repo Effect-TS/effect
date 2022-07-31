@@ -17,7 +17,9 @@ export function catchAllCause<
   OutErr1,
   OutElem1,
   OutDone1
->(f: (cause: Cause<OutErr>) => Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>) {
+>(
+  f: (cause: Cause<OutErr>) => Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
+) {
   return <Env, InErr, InElem, InDone, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ): Channel<

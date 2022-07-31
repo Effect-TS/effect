@@ -6,18 +6,16 @@
  */
 export function filterOrElse<A, B extends A, R1, E1, A1>(
   f: Refinement<A, B>,
-  effect: LazyArg<Effect<R1, E1, A1>>,
-  __tsplusTrace?: string
+  effect: LazyArg<Effect<R1, E1, A1>>
 ): <R, E>(self: Effect<R, E, A>) => Effect<R | R1, E | E1, B | A1>
 export function filterOrElse<A, R1, E1, A1>(
   f: Predicate<A>,
-  effect: LazyArg<Effect<R1, E1, A1>>,
-  __tsplusTrace?: string
+  effect: LazyArg<Effect<R1, E1, A1>>
 ): <R, E>(self: Effect<R, E, A>) => Effect<R | R1, E | E1, A | A1>
 export function filterOrElse<A, R1, E1, A1>(
   f: Predicate<A>,
-  effect: LazyArg<Effect<R1, E1, A1>>,
-  __tsplusTrace?: string
+  effect: LazyArg<Effect<R1, E1, A1>>
 ) {
-  return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E | E1, A | A1> => Effect.$.filterOrElseWith(f, effect)(self)
+  return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E | E1, A | A1> =>
+    Effect.$.filterOrElseWith(f, effect)(self)
 }

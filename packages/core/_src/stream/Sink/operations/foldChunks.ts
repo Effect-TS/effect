@@ -11,8 +11,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
 export function foldChunks<In, S>(
   z: LazyArg<S>,
   cont: Predicate<S>,
-  f: (s: S, input: Chunk<In>) => S,
-  __tsplusTrace?: string
+  f: (s: S, input: Chunk<In>) => S
 ): Sink<never, never, In, unknown, S> {
   return Sink.suspend(new SinkInternal(reader(z(), cont, f)))
 }
@@ -20,8 +19,7 @@ export function foldChunks<In, S>(
 function reader<S, In>(
   z: S,
   cont: Predicate<S>,
-  f: (s: S, input: Chunk<In>) => S,
-  __tsplusTrace?: string
+  f: (s: S, input: Chunk<In>) => S
 ): Channel<never, never, Chunk<In>, unknown, never, never, S> {
   return cont(z)
     ? Channel.readWith(

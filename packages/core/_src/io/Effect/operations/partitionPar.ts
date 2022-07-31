@@ -9,10 +9,9 @@ import { partitionMap } from "@effect/core/io/Effect/operations/_internal/partit
  */
 export function partitionPar<R, E, A, B>(
   as: LazyArg<Collection<A>>,
-  f: (a: A) => Effect<R, E, B>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R, E, B>
 ): Effect<R, never, Tuple<[Chunk<E>, Chunk<B>]>> {
-  return Effect.suspendSucceed(Effect.forEachPar(as, (a) => f(a).either)).map(
-    (chunk) => partitionMap(chunk, identity)
-  )
+  return Effect.suspendSucceed(
+    Effect.forEachPar(as, (a) => f(a).either)
+  ).map((chunk) => partitionMap(chunk, identity))
 }

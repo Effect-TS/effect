@@ -6,8 +6,7 @@
  */
 export function filterNotPar<A, R, E>(
   as: Collection<A>,
-  f: (a: A) => Effect<R, E, boolean>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R, E, boolean>
 ): Effect<R, E, Chunk<A>> {
   return Effect.filterPar(as, (x) => f(x).map((b) => !b))
 }

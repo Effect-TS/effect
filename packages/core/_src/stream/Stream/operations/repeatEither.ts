@@ -7,8 +7,7 @@
  * @tsplus pipeable effect/core/stream/Stream repeatEither
  */
 export function repeatEither<S, R2, B>(
-  schedule: LazyArg<Schedule<S, R2, unknown, B>>,
-  __tsplusTrace?: string
+  schedule: LazyArg<Schedule<S, R2, unknown, B>>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E, Either<B, A>> =>
     self.repeatWith(

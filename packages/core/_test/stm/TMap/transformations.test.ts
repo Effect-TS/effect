@@ -21,7 +21,11 @@ describe.concurrent("TMap", () => {
         const tmap = $(TMap.fromIterable(elems))
         const list = $(tmap.toList)
 
-        return hasSameElements(list, Equivalence.tuple(Equivalence.string, Equivalence.number), elems)
+        return hasSameElements(
+          list,
+          Equivalence.tuple(Equivalence.string, Equivalence.number),
+          elems
+        )
       })
       const result = await tx.commit.unsafeRunPromise()
 
@@ -34,7 +38,11 @@ describe.concurrent("TMap", () => {
         const tmap = $(TMap.fromIterable(elems))
         const chunk = $(tmap.toChunk)
 
-        return hasSameElements(chunk.toList, Equivalence.tuple(Equivalence.string, Equivalence.number), elems)
+        return hasSameElements(
+          chunk.toList,
+          Equivalence.tuple(Equivalence.string, Equivalence.number),
+          elems
+        )
       })
       const result = await tx.commit.unsafeRunPromise()
 
@@ -93,7 +101,11 @@ describe.concurrent("TMap", () => {
     it("transform with keys with negative hash codes", async () => {
       const tx = Do(($) => {
         const tmap = $(
-          TMap.make(Tuple(new HashContainer(-1), 1), Tuple(new HashContainer(-2), 2), Tuple(new HashContainer(-3), 3))
+          TMap.make(
+            Tuple(new HashContainer(-1), 1),
+            Tuple(new HashContainer(-2), 2),
+            Tuple(new HashContainer(-3), 3)
+          )
         )
 
         $(tmap.transform((kv) => Tuple(new HashContainer(kv.get(0).i * -2), kv.get(1) * 2)))
@@ -103,7 +115,11 @@ describe.concurrent("TMap", () => {
         return hasSameElements(
           res,
           Equivalence.tuple(Equivalence(Equals.equals), Equivalence.number),
-          List(Tuple(new HashContainer(2), 2), Tuple(new HashContainer(4), 4), Tuple(new HashContainer(6), 6))
+          List(
+            Tuple(new HashContainer(2), 2),
+            Tuple(new HashContainer(4), 4),
+            Tuple(new HashContainer(6), 6)
+          )
         )
       })
       const result = await tx.commit.unsafeRunPromise()
@@ -119,7 +135,11 @@ describe.concurrent("TMap", () => {
 
         const res = $(tmap.toList)
 
-        return hasSameElements(res, Equivalence.tuple(Equivalence.string, Equivalence.number), List(Tuple("key", 6)))
+        return hasSameElements(
+          res,
+          Equivalence.tuple(Equivalence.string, Equivalence.number),
+          List(Tuple("key", 6))
+        )
       })
       const result = await tx.commit.unsafeRunPromise()
 
@@ -130,7 +150,9 @@ describe.concurrent("TMap", () => {
       const tx = Do(($) => {
         const tmap = $(TMap.make(Tuple("a", 1), Tuple("aa", 2), Tuple("aaa", 3)))
 
-        $(tmap.transformSTM((kv) => STM.succeed(Tuple(kv.get(0).replaceAll("a", "b"), kv.get(1) * 2))))
+        $(tmap.transformSTM((kv) =>
+          STM.succeed(Tuple(kv.get(0).replaceAll("a", "b"), kv.get(1) * 2))
+        ))
 
         const res = $(tmap.toList)
 
@@ -153,7 +175,11 @@ describe.concurrent("TMap", () => {
 
         const res = $(tmap.toList)
 
-        return hasSameElements(res, Equivalence.tuple(Equivalence.string, Equivalence.number), List(Tuple("key", 6)))
+        return hasSameElements(
+          res,
+          Equivalence.tuple(Equivalence.string, Equivalence.number),
+          List(Tuple("key", 6))
+        )
       })
       const result = await tx.commit.unsafeRunPromise()
 

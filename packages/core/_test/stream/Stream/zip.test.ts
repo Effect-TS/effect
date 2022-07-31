@@ -74,7 +74,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(error))
+      assert.isTrue(result == Exit.die(error))
     })
   })
 

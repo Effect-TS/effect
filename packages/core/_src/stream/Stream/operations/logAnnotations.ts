@@ -3,8 +3,6 @@
  *
  * @tsplus static effect/core/stream/Stream.Ops logAnnotations
  */
-export function logAnnotations(
-  __tsplusTrace?: string
-): Stream<never, never, ImmutableMap<string, string>> {
+export function logAnnotations(): Stream<never, never, ImmutableMap<string, string>> {
   return Stream.fromEffect(FiberRef.currentLogAnnotations.get)
 }

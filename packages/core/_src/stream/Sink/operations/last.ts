@@ -3,8 +3,6 @@
  *
  * @tsplus static effect/core/stream/Sink.Ops last
  */
-export function last<In>(
-  __tsplusTrace?: string
-): Sink<never, never, In, In, Maybe<In>> {
+export function last<In>(): Sink<never, never, In, In, Maybe<In>> {
   return Sink.foldLeft(Maybe.emptyOf<In>(), (_, input) => Maybe.some(input))
 }

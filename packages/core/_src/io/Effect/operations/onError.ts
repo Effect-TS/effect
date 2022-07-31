@@ -6,8 +6,7 @@
  * @tsplus pipeable effect/core/io/Effect onError
  */
 export function onError<E, R2, X>(
-  cleanup: (cause: Cause<E>) => Effect<R2, never, X>,
-  __tsplusTrace?: string
+  cleanup: (cause: Cause<E>) => Effect<R2, never, X>
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R | R2, E, A> =>
     self.onExit(

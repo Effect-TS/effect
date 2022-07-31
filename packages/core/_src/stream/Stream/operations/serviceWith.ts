@@ -5,8 +5,7 @@
  */
 export function serviceWith<T, A>(
   tag: Tag<T>,
-  f: (resource: T) => A,
-  __tsplusTrace?: string
+  f: (resource: T) => A
 ): Stream<T, never, A> {
   return Stream.fromEffect(Effect.serviceWith(tag, f))
 }

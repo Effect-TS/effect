@@ -13,8 +13,7 @@
  * @tsplus pipeable effect/core/stream/Stream retry
  */
 export function retry<E, S, R2, Z>(
-  schedule: LazyArg<Schedule<S, R2, E, Z>>,
-  __tsplusTrace?: string
+  schedule: LazyArg<Schedule<S, R2, E, Z>>
 ) {
   return <R, A>(self: Stream<R, E, A>): Stream<R | R2, E, A> =>
     Stream.unwrap(

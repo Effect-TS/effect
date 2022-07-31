@@ -7,8 +7,7 @@ import { concreteTake } from "@effect/core/stream/Take/operations/_internal/Take
  * @tsplus pipeable effect/core/stream/Take tap
  */
 export function tap<A, R, E, E1, X>(
-  f: (chunk: Chunk<A>) => Effect<R, E1, X>,
-  __tsplusTrace?: string
+  f: (chunk: Chunk<A>) => Effect<R, E1, X>
 ) {
   return (self: Take<E, A>): Effect<R, E1, void> => {
     concreteTake(self)

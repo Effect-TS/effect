@@ -8,8 +8,7 @@
  * @tsplus static effect/core/io/Effect.Ops async
  */
 export function _async<R, E, A>(
-  register: (callback: (_: Effect<R, E, A>) => void) => void,
-  __tsplusTrace?: string
+  register: (callback: (_: Effect<R, E, A>) => void) => void
 ): Effect<R, E, A> {
   return asyncBlockingOn(register, FiberId.none)
 }
@@ -30,8 +29,7 @@ export { _async as async }
  */
 export function asyncBlockingOn<R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void) => void,
-  blockingOn: FiberId,
-  __tsplusTrace?: string
+  blockingOn: FiberId
 ): Effect<R, E, A> {
   return Effect.asyncMaybeBlockingOn((cb) => {
     register(cb)

@@ -10,8 +10,7 @@
  */
 export function broadcastedQueues(
   n: number,
-  maximumLag: number,
-  __tsplusTrace?: string
+  maximumLag: number
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Effect<R | Scope, never, Chunk<Dequeue<Take<E, A>>>> =>
     Do(($) => {

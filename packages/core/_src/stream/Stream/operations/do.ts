@@ -25,6 +25,6 @@ export function bindValue<N extends string, K, A>(
 /**
  * @tsplus static effect/core/stream/Stream.Ops Do
  */
-export function Do(__tsplusTrace?: string): Stream<never, never, {}> {
+export function Do(): Stream<never, never, {}> {
   return Stream.fromEffect(Effect.succeed({}))
 }

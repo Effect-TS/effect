@@ -10,7 +10,7 @@ export const unit: Effect<never, never, void> = Effect.succeed(undefined)
  *
  * @tsplus static effect/core/io/Effect.Ops unitTraced
  */
-export function unitTraced(__tsplusTrace?: string): Effect<never, never, void> {
+export function unitTraced(): Effect<never, never, void> {
   return Effect.succeed(undefined)
 }
 
@@ -19,6 +19,6 @@ export function unitTraced(__tsplusTrace?: string): Effect<never, never, void> {
  *
  * @tsplus getter effect/core/io/Effect unit
  */
-export function unit_<R, E, X>(self: Effect<R, E, X>, __tsplusTrace?: string): Effect<R, E, void> {
+export function unit_<R, E, X>(self: Effect<R, E, X>): Effect<R, E, void> {
   return self > Effect.unit
 }

@@ -6,10 +6,7 @@
  * @tsplus static effect/core/io/Effect.Aspects intoDeferred
  * @tsplus pipeable effect/core/io/Effect intoDeferred
  */
-export function intoDeferred<E, A>(
-  deferred: LazyArg<Deferred<E, A>>,
-  __tsplusTrace?: string
-) {
+export function intoDeferred<E, A>(deferred: LazyArg<Deferred<E, A>>) {
   return <R>(self: Effect<R, E, A>): Effect<R, never, boolean> =>
     Effect.uninterruptibleMask(({ restore }) =>
       restore(self)

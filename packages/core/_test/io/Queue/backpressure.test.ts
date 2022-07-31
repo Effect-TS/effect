@@ -24,7 +24,9 @@ describe.concurrent("Queue", () => {
         .bind("fiber", ({ queue, values }) => Effect.forkAll(values.map((n) => queue.offer(n))))
         .tap(({ queue }) => waitForSize(queue, 10))
         .bind("output", () => Ref.make(Chunk.empty<number>()))
-        .tap(({ output, queue }) => queue.take.flatMap((i) => output.update((chunk) => chunk.append(i))).repeatN(9))
+        .tap(({ output, queue }) =>
+          queue.take.flatMap((i) => output.update((chunk) => chunk.append(i))).repeatN(9)
+        )
         .bind("chunk", ({ output }) => output.get())
         .tap(({ fiber }) => fiber.join)
 

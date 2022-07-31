@@ -16,8 +16,7 @@
 export function zipAllSortedByKeyLeft<K, R2, E2, A2, A>(
   ord: Ord<K>,
   that: LazyArg<SortedByKey<R2, E2, K, A2>>,
-  def: LazyArg<A>,
-  __tsplusTrace?: string
+  def: LazyArg<A>
 ) {
   return <R, E>(self: SortedByKey<R, E, K, A>): Stream<R | R2, E | E2, Tuple<[K, A]>> =>
     self.zipAllSortedByKeyWith(ord, that, identity, def, (a, _) => a)

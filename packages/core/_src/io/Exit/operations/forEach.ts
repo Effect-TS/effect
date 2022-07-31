@@ -6,8 +6,7 @@
  * @tsplus pipeable effect/core/io/Exit forEach
  */
 export function forEach<A, R, E1, B>(
-  f: (a: A) => Effect<R, E1, B>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R, E1, B>
 ) {
   return <E>(self: Exit<E, A>): Effect<R, never, Exit<E | E1, B>> => {
     switch (self._tag) {

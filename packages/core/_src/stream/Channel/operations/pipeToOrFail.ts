@@ -17,11 +17,12 @@ export function pipeToOrFail<
   return <Env, InErr, InElem, InDone, OutErr>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ): Channel<Env | Env2, InErr, InElem, InDone, OutErr2, OutElem2, OutDone2> => {
-    const reader: Channel<Env, OutErr, OutElem, OutDone, never, OutElem, OutDone> = Channel.readWith(
-      (outElem) => Channel.write(outElem) > reader,
-      (outErr) => Channel.failCause(Cause.die(new ChannelError(outErr))),
-      (outDone) => Channel.succeedNow(outDone)
-    )
+    const reader: Channel<Env, OutErr, OutElem, OutDone, never, OutElem, OutDone> = Channel
+      .readWith(
+        (outElem) => Channel.write(outElem) > reader,
+        (outErr) => Channel.failCause(Cause.die(new ChannelError(outErr))),
+        (outDone) => Channel.succeedNow(outDone)
+      )
 
     const writer: Channel<
       Env2,

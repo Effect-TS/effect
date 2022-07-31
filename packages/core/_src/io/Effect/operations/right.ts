@@ -5,8 +5,7 @@
  * @tsplus getter effect/core/io/Effect right
  */
 export function right<R, E, A, B>(
-  self: Effect<R, E, Either<A, B>>,
-  __tsplusTrace?: string
+  self: Effect<R, E, Either<A, B>>
 ): Effect<R, Either<A, E>, B> {
   return self.foldEffect(
     (e) => Effect.failSync(Either.right(e)),

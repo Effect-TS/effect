@@ -7,8 +7,7 @@
  */
 export function provideService<T, T1 extends T>(
   tag: Tag<T>,
-  service: LazyArg<T1>,
-  __tsplusTrace?: string
+  service: LazyArg<T1>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<Exclude<R, T>, E, A> =>
     Stream.succeed(service).flatMap((service) =>

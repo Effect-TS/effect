@@ -4,6 +4,7 @@
  *
  * @tsplus getter effect/core/io/Metrics/Metric trackError
  */
-export function trackError<Type, In, Out>(self: Metric<Type, In, Out>, __tsplusTrace?: string) {
-  return <R, E extends In, A>(effect: Effect<R, E, A>): Effect<R, E, A> => self.trackErrorWith((a: In) => a)(effect)
+export function trackError<Type, In, Out>(self: Metric<Type, In, Out>) {
+  return <R, E extends In, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
+    self.trackErrorWith((a: In) => a)(effect)
 }

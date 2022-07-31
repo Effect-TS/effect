@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Concatenates the specified stream with this stream, resulting in a stream
@@ -10,8 +13,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus pipeable effect/core/stream/Stream concat
  */
 export function concat<R1, E1, A1>(
-  that: LazyArg<Stream<R1, E1, A1>>,
-  __tsplusTrace?: string
+  that: LazyArg<Stream<R1, E1, A1>>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R1, E | E1, A | A1> => {
     concreteStream(self)

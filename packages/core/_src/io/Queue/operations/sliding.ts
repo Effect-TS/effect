@@ -12,8 +12,7 @@ import { Strategy } from "@effect/core/io/Queue/operations/strategy"
  * @tsplus static effect/core/io/Queue.Ops sliding
  */
 export function sliding<A>(
-  requestedCapacity: number,
-  __tsplusTrace?: string
+  requestedCapacity: number
 ): Effect<never, never, Queue<A>> {
   return Effect.sync(MutableQueue.bounded<A>(requestedCapacity)).flatMap((queue) =>
     Queue.create(queue, Strategy.Sliding())

@@ -13,8 +13,7 @@
 export function timeoutTo<A, B, B1>(
   def: LazyArg<B1>,
   f: (a: A) => B,
-  duration: LazyArg<Duration>,
-  __tsplusTrace?: string
+  duration: LazyArg<Duration>
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R, E, B | B1> =>
     self.map(f).raceFirst(

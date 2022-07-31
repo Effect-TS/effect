@@ -5,8 +5,7 @@
  * @tsplus getter effect/core/io/Effect absolve
  */
 export function absolveNow<R, E, A>(
-  self: Effect<R, E, Either<E, A>>,
-  __tsplusTrace?: string
+  self: Effect<R, E, Either<E, A>>
 ): Effect<R, E, A> {
   return Effect.absolve(self)
 }
@@ -18,8 +17,7 @@ export function absolveNow<R, E, A>(
  * @tsplus static effect/core/io/Effect.Ops absolve
  */
 export function absolve<R, E, A>(
-  self: LazyArg<Effect<R, E, Either<E, A>>>,
-  __tsplusTrace?: string
+  self: LazyArg<Effect<R, E, Either<E, A>>>
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(self).flatMap((either) => Effect.fromEither(either))
 }

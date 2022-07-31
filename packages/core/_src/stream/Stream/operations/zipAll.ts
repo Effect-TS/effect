@@ -11,8 +11,7 @@
 export function zipAll<R2, E2, A2, A>(
   that: LazyArg<Stream<R2, E2, A2>>,
   defaultLeft: LazyArg<A>,
-  defaultRight: LazyArg<A2>,
-  __tsplusTrace?: string
+  defaultRight: LazyArg<A2>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, Tuple<[A, A2]>> =>
     self.zipAllWith(

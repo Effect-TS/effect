@@ -5,10 +5,7 @@ import { TxnId } from "@effect/core/stm/STM/TxnId"
 /**
  * @tsplus static effect/core/stm/STM.Ops atomically
  */
-export function atomically<R, E, A>(
-  self: STM<R, E, A>,
-  __tsplusTrace?: string
-): Effect<R, E, A> {
+export function atomically<R, E, A>(self: STM<R, E, A>): Effect<R, E, A> {
   return Effect.environmentWithEffect((env: Env<R>) =>
     FiberRef.currentScheduler.getWith((scheduler) =>
       Effect.suspendSucceedWith((_, fiberId) => {
@@ -16,7 +13,7 @@ export function atomically<R, E, A>(
 
         switch (v._tag) {
           case "Done": {
-            throw new Effect.Error(v.exit, __tsplusTrace)
+            throw new Effect.Error(v.exit)
           }
           case "Suspend": {
             const txnId = TxnId()

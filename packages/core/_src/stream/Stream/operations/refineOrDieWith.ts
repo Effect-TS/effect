@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Keeps some of the errors, and terminates the fiber with the rest, using the
@@ -9,8 +12,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  */
 export function refineOrDieWith<E, E2>(
   pf: (e: E) => Maybe<E2>,
-  f: (e: E) => unknown,
-  __tsplusTrace?: string
+  f: (e: E) => unknown
 ) {
   return <R, A>(self: Stream<R, E, A>): Stream<R, E2, A> => {
     concreteStream(self)

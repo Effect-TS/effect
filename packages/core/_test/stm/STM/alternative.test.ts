@@ -31,7 +31,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail("right"))
+      assert.isTrue(result == Exit.fail("right"))
     })
   })
 
@@ -142,7 +142,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail("left"))
+      assert.isTrue(result == Exit.fail("left"))
     })
 
     it("fails if right fails", async () => {
@@ -150,7 +150,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail("right"))
+      assert.isTrue(result == Exit.fail("right"))
     })
   })
 })

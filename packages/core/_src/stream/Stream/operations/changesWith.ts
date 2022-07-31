@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Returns a new stream that only emits elements that are not equal to the
@@ -8,7 +11,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus static effect/core/stream/Stream.Aspects changesWith
  * @tsplus pipeable effect/core/stream/Stream changesWith
  */
-export function changesWith<A>(f: (x: A, y: A) => boolean, __tsplusTrace?: string) {
+export function changesWith<A>(f: (x: A, y: A) => boolean) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, A> => {
     concreteStream(self)
     return new StreamInternal(self.channel >> writer<R, E, A>(Maybe.none, f))

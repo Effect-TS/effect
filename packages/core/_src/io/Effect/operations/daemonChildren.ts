@@ -6,15 +6,6 @@ import { IOverrideForkScope } from "@effect/core/io/Effect/definition/primitives
  *
  * @tsplus getter effect/core/io/Effect daemonChildren
  */
-export function daemonChildren<R, E, A>(
-  self: Effect<R, E, A>,
-  __tsplusTrace?: string
-): Effect<R, E, A> {
-  return Effect.suspendSucceed(
-    new IOverrideForkScope(
-      self,
-      Maybe.some(FiberScope.global),
-      __tsplusTrace
-    )
-  )
+export function daemonChildren<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
+  return Effect.suspendSucceed(new IOverrideForkScope(self, Maybe.some(FiberScope.global)))
 }

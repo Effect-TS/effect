@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Performs the specified operation with the channel underlying this stream.
@@ -9,8 +12,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 export function channelWith<R, E, A, R1, E1, A1>(
   f: (
     channel: Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown>
-  ) => Channel<R1, unknown, unknown, unknown, E1, Chunk<A1>, unknown>,
-  __tsplusTrace?: string
+  ) => Channel<R1, unknown, unknown, unknown, E1, Chunk<A1>, unknown>
 ) {
   return (self: Stream<R, E, A>): Stream<R | R1, E | E1, A1> => {
     concreteStream(self)

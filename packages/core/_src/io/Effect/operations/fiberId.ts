@@ -4,4 +4,5 @@
  *
  * @tsplus static effect/core/io/Effect.Ops fiberId
  */
-export const fiberId: Effect<never, never, FiberId> = Effect.descriptor.map((descriptor) => descriptor.id)
+export const fiberId: Effect<never, never, FiberId> = Effect.descriptor
+  .map((descriptor) => descriptor.id)

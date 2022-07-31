@@ -11,7 +11,8 @@ describe.concurrent("Effect", () => {
 
     it("accumulate errors and ignore successes", async () => {
       const chunk = Chunk.range(0, 10)
-      const program = Effect.validate(chunk, (n) => n % 2 === 0 ? Effect.sync(n) : Effect.failSync(n)).flip
+      const program =
+        Effect.validate(chunk, (n) => n % 2 === 0 ? Effect.sync(n) : Effect.failSync(n)).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -32,7 +33,7 @@ describe.concurrent("Effect", () => {
       const result = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result.mapLeft((cause) => cause.untraced) ==
+        result.mapLeft((cause) => cause) ==
           Either.left(Cause.fail(2))
       )
     })
@@ -43,7 +44,7 @@ describe.concurrent("Effect", () => {
       const result = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result.mapLeft((cause) => cause.untraced) ==
+        result.mapLeft((cause) => cause) ==
           Either.left(Cause.fail(1) + Cause.fail(2))
       )
     })
@@ -72,7 +73,8 @@ describe.concurrent("Effect", () => {
 
     it("accumulate errors and ignore successes", async () => {
       const chunk = Chunk.range(0, 10)
-      const program = Effect.validatePar(chunk, (n) => n % 2 === 0 ? Effect.sync(n) : Effect.failSync(n)).flip
+      const program =
+        Effect.validatePar(chunk, (n) => n % 2 === 0 ? Effect.sync(n) : Effect.failSync(n)).flip
 
       const result = await program.unsafeRunPromise()
 
@@ -118,7 +120,10 @@ describe.concurrent("Effect", () => {
       const chunk = Chunk.range(1, 10)
       const program = Effect.Do()
         .bind("counter", () => Ref.make<number>(0))
-        .bind("result", ({ counter }) => Effect.validateFirst(chunk, (n) => counter.update((n) => n + 1) > f(n)))
+        .bind(
+          "result",
+          ({ counter }) => Effect.validateFirst(chunk, (n) => counter.update((n) => n + 1) > f(n))
+        )
         .bind("count", ({ counter }) => counter.get())
 
       const { count, result } = await program.unsafeRunPromise()

@@ -78,7 +78,8 @@ describe.concurrent("Effect", () => {
         .bindValue("right", ({ inc, latch2Start }) => plus1(latch2Start, inc))
         .bind("fiber", ({ left, right }) => left.race(right).fork)
         .tap(
-          ({ fiber, latch1Start, latch2Start }) => latch1Start.await > latch2Start.await > fiber.interrupt
+          ({ fiber, latch1Start, latch2Start }) =>
+            latch1Start.await > latch2Start.await > fiber.interrupt
         )
         .flatMap(({ interruptionRef }) => interruptionRef.get())
 
@@ -331,7 +332,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail("uh oh"))
+      assert.isTrue(result == Exit.fail("uh oh"))
     })
 
     it("timeout of terminate", async () => {
@@ -339,7 +340,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(ExampleError))
+      assert.isTrue(result == Exit.die(ExampleError))
     })
   })
 })

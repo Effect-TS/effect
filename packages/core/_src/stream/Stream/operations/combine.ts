@@ -1,5 +1,8 @@
 import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff"
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Combines the elements from this stream and the specified stream by
@@ -21,8 +24,7 @@ export function combine<R, E, A, R2, E2, A2, S, A3>(
     s: S,
     pullLeft: Effect<R, Maybe<E>, A>,
     pullRight: Effect<R2, Maybe<E2>, A2>
-  ) => Effect<R | R2, never, Exit<Maybe<E | E2>, Tuple<[A3, S]>>>,
-  __tsplusTrace?: string
+  ) => Effect<R | R2, never, Exit<Maybe<E | E2>, Tuple<[A3, S]>>>
 ) {
   return (self: Stream<R, E, A>): Stream<R | R2, E | E2, A3> =>
     new StreamInternal(
@@ -41,12 +43,15 @@ export function combine<R, E, A, R2, E2, A2, S, A3>(
           const that0 = that()
           concreteStream(that0)
           $(
-            (that0.channel.concatMap((chunk) => Channel.writeChunk(chunk)) >> producer(right, latchR))
+            (that0.channel.concatMap((chunk) => Channel.writeChunk(chunk)) >>
+              producer(right, latchR))
               .runScoped
               .fork
           )
           const pullLeft = latchL.offer(undefined) > left.take.flatMap((exit) => Effect.done(exit))
-          const pullRight = latchR.offer(undefined) > right.take.flatMap((exit) => Effect.done(exit))
+          const pullRight = latchR.offer(undefined) > right.take.flatMap((exit) =>
+            Effect.done(exit)
+          )
           const stream = Stream.unfoldEffect(s, (s) =>
             f(s, pullLeft, pullRight).flatMap((exit) => Effect.done(exit).unsome))
           concreteStream(stream)
@@ -58,8 +63,7 @@ export function combine<R, E, A, R2, E2, A2, S, A3>(
 
 function producer<Err, Elem>(
   handoff: Handoff<Exit<Maybe<Err>, Elem>>,
-  latch: Handoff<void>,
-  __tsplusTrace?: string
+  latch: Handoff<void>
 ): Channel<never, Err, Elem, unknown, never, never, unknown> {
   return (
     Channel.fromEffect(latch.take) >

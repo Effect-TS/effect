@@ -100,10 +100,12 @@ describe.concurrent("THub", () => {
           const values1 = $(subscriber1.join)
           const values2 = $(subscriber2.join)
 
-          return values1.filter((_) => _ > 0) == as.take(n) && values1.filter((_) => _ < 0) == as.take(n).map((_) =>
-                -_
-              ) &&
-            values2.filter((_) => _ > 0) == as.take(n) && values2.filter((_) => _ < 0) == as.take(n).map((_) => -_)
+          return values1.filter((_) => _ > 0) == as.take(n) && values1.filter((_) =>
+                _ < 0
+              ) == as.take(n).map((_) => -_) &&
+            values2.filter((_) => _ > 0) == as.take(n) && values2.filter((_) =>
+                _ < 0
+              ) == as.take(n).map((_) => -_)
         })).map(Chunk.$.forAll(identity))
 
       const result = await tx.unsafeRunPromise()

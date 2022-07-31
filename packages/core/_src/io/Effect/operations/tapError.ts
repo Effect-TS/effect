@@ -5,8 +5,7 @@
  * @tsplus pipeable effect/core/io/Effect tapError
  */
 export function tapError<E, R2, E2, X>(
-  f: (e: E) => Effect<R2, E2, X>,
-  __tsplusTrace?: string
+  f: (e: E) => Effect<R2, E2, X>
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, A> =>
     self.foldCauseEffect(

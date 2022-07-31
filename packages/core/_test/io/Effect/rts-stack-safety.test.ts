@@ -42,7 +42,10 @@ describe.concurrent("Effect", () => {
     })
 
     it("deep absolve/attempt is identity", async () => {
-      const program = Chunk.range(0, 1000).reduce(Effect.sync(42), (acc, _) => Effect.absolve(acc.either))
+      const program = Chunk.range(0, 1000).reduce(
+        Effect.sync(42),
+        (acc, _) => Effect.absolve(acc.either)
+      )
 
       const result = await program.unsafeRunPromise()
 

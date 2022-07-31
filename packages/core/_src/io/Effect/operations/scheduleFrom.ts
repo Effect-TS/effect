@@ -11,8 +11,7 @@ import type { Driver } from "@effect/core/io/Schedule"
  */
 export function scheduleFrom<S, R1, A, A1>(
   a: LazyArg<A>,
-  schedule: LazyArg<Schedule<S, R1, A, A1>>,
-  __tsplusTrace?: string
+  schedule: LazyArg<Schedule<S, R1, A, A1>>
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E, A1> =>
     Effect.suspendSucceed(() => {
@@ -22,7 +21,7 @@ export function scheduleFrom<S, R1, A, A1>(
     })
 }
 
-function scheduleFromLoop<R, E, A>(self: Effect<R, E, A>, value: A, __tsplusTrace?: string) {
+function scheduleFromLoop<R, E, A>(self: Effect<R, E, A>, value: A) {
   return <S, R1, B>(driver: Driver<S, R1, A, B>): Effect<R | R1, E, B> =>
     driver.next(value).foldEffect(
       () => driver.last.orDie,

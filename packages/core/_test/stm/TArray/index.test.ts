@@ -1,4 +1,12 @@
-import { boom, largePrime, makeRepeats, makeStair, makeTArray, N, n } from "@effect/core/test/stm/TArray/test-utils"
+import {
+  boom,
+  largePrime,
+  makeRepeats,
+  makeStair,
+  makeTArray,
+  N,
+  n
+} from "@effect/core/test/stm/TArray/test-utils"
 import { constTrue } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("TArray", () => {
@@ -144,7 +152,9 @@ describe.concurrent("TArray", () => {
             .indexWhere((n) => n % largePrime === 0)
             .commit
             .fork)
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => 1)).commit)
+        .tap(({ tArray }) =>
+          STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => 1)).commit
+        )
         .flatMap(({ findFiber }) => findFiber.join)
 
       const result = await program.unsafeRunPromise()
@@ -192,7 +202,9 @@ describe.concurrent("TArray", () => {
             .indexWhereSTM((n) => STM.succeed(n % largePrime === 0))
             .commit
             .fork)
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => 1)).commit)
+        .tap(({ tArray }) =>
+          STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => 1)).commit
+        )
         .flatMap(({ findFiber }) => findFiber.join)
 
       const result = await program.unsafeRunPromise()

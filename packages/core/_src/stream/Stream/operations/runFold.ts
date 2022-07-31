@@ -9,8 +9,7 @@ import { constTrue } from "@tsplus/stdlib/data/Function"
  */
 export function runFold<S, A>(
   s: LazyArg<S>,
-  f: (s: S, a: A) => S,
-  __tsplusTrace?: string
+  f: (s: S, a: A) => S
 ) {
   return <R, E>(self: Stream<R, E, A>): Effect<R, E, S> =>
     Effect.scoped(

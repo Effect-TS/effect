@@ -4,9 +4,6 @@
  *
  * @tsplus getter effect/core/io/Effect awaitAllChildren
  */
-export function awaitAllChildren<R, E, A>(
-  self: Effect<R, E, A>,
-  __tsplusTrace?: string
-): Effect<R, E, A> {
+export function awaitAllChildren<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
   return self.ensuringChildren((fibers) => Fiber.awaitAll(fibers))
 }

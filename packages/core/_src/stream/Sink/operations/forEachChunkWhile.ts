@@ -7,8 +7,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * @tsplus static effect/core/stream/Sink.Ops forEachChunkWhile
  */
 export function forEachChunkWhile<R, E, In>(
-  f: (input: Chunk<In>) => Effect<R, E, boolean>,
-  __tsplusTrace?: string
+  f: (input: Chunk<In>) => Effect<R, E, boolean>
 ): Sink<R, E, In, In, void> {
   const reader: Channel<
     R,
@@ -19,7 +18,8 @@ export function forEachChunkWhile<R, E, In>(
     Chunk<In>,
     void
   > = Channel.readWith(
-    (input: Chunk<In>) => Channel.fromEffect(f(input)).flatMap((cont) => (cont ? reader : Channel.unit)),
+    (input: Chunk<In>) =>
+      Channel.fromEffect(f(input)).flatMap((cont) => (cont ? reader : Channel.unit)),
     (err) => Channel.fail(err),
     () => Channel.unit
   )

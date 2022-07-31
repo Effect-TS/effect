@@ -6,18 +6,16 @@
  */
 export function filterOrDie<A, B extends A>(
   f: Refinement<A, B>,
-  defect: LazyArg<unknown>,
-  __tsplusTrace?: string
+  defect: LazyArg<unknown>
 ): <R, E>(self: Effect<R, E, A>) => Effect<R, E, A>
 export function filterOrDie<A>(
   f: Predicate<A>,
-  defect: LazyArg<unknown>,
-  __tsplusTrace?: string
+  defect: LazyArg<unknown>
 ): <R, E>(self: Effect<R, E, A>) => Effect<R, E, A>
 export function filterOrDie<A>(
   f: Predicate<A>,
-  defect: LazyArg<unknown>,
-  __tsplusTrace?: string
+  defect: LazyArg<unknown>
 ) {
-  return <R, E>(self: Effect<R, E, A>): Effect<R, E, A> => Effect.$.filterOrElse(f, Effect.die(defect))(self)
+  return <R, E>(self: Effect<R, E, A>): Effect<R, E, A> =>
+    Effect.$.filterOrElse(f, Effect.die(defect))(self)
 }

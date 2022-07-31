@@ -8,9 +8,9 @@ import { realCause } from "@effect/core/io/Cause/definition"
  */
 export function fold<E, Z>(
   onEmptyCause: LazyArg<Z>,
-  onFailCause: (e: E, trace: Trace) => Z,
-  onDieCause: (e: unknown, trace: Trace) => Z,
-  onInterruptCause: (fiberId: FiberId, trace: Trace) => Z,
+  onFailCause: (e: E) => Z,
+  onDieCause: (e: unknown) => Z,
+  onInterruptCause: (fiberId: FiberId) => Z,
   onThenCause: (x: Z, y: Z) => Z,
   onBothCause: (x: Z, y: Z) => Z,
   onStacklessCause: (z: Z, stackless: boolean) => Z
@@ -31,9 +31,9 @@ export function fold<E, Z>(
 function foldSafe<E, Z>(
   self: Cause<E>,
   onEmptyCause: LazyArg<Z>,
-  onFailCause: (e: E, trace: Trace) => Z,
-  onDieCause: (e: unknown, trace: Trace) => Z,
-  onInterruptCause: (fiberId: FiberId, trace: Trace) => Z,
+  onFailCause: (e: E) => Z,
+  onDieCause: (e: unknown) => Z,
+  onInterruptCause: (fiberId: FiberId) => Z,
   onThenCause: (x: Z, y: Z) => Z,
   onBothCause: (x: Z, y: Z) => Z,
   onStacklessCause: (z: Z, stackless: boolean) => Z
@@ -44,13 +44,13 @@ function foldSafe<E, Z>(
       return Eval.succeed(onEmptyCause)
     }
     case "Fail": {
-      return Eval.succeed(onFailCause(self.value, self.trace))
+      return Eval.succeed(onFailCause(self.value))
     }
     case "Die": {
-      return Eval.succeed(onDieCause(self.value, self.trace))
+      return Eval.succeed(onDieCause(self.value))
     }
     case "Interrupt": {
-      return Eval.succeed(onInterruptCause(self.fiberId, self.trace))
+      return Eval.succeed(onInterruptCause(self.fiberId))
     }
     case "Both": {
       return Eval.suspend(

@@ -10,9 +10,9 @@ export function mapDequeue<A, B>(dequeue: Dequeue<A>, f: (a: A) => B): Dequeue<B
     isShutdown: dequeue.isShutdown,
     take: dequeue.take.map((a) => f(a)),
     takeAll: dequeue.takeAll.map((chunk) => chunk.map((a) => f(a))),
-    takeUpTo(this, max, __tsplusTrace) {
+    takeUpTo(this, max) {
       return dequeue.takeUpTo(max).map((chunk) => chunk.map((a) => f(a)))
     }
   }
-  return Object.assign(Object.create(QueueProto), base)
+  return Object.setPrototypeOf(base, QueueProto)
 }

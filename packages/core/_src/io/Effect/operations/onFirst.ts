@@ -5,9 +5,6 @@
  *
  * @tsplus getter effect/core/io/Effect onFirst
  */
-export function onFirst<R, E, A>(
-  self: Effect<R, E, A>,
-  __tsplusTrace?: string
-): Effect<R, E, Tuple<[A, Env<R>]>> {
+export function onFirst<R, E, A>(self: Effect<R, E, A>): Effect<R, E, Tuple<[A, Env<R>]>> {
   return self.zip(Effect.environment<R>())
 }

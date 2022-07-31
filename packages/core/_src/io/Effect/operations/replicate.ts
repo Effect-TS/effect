@@ -16,6 +16,6 @@ export function replicate<R, E, A>(
  * @tsplus static effect/core/io/Effect.Aspects replicate
  * @tsplus pipeable effect/core/io/Effect replicate
  */
-export function replicateNow(n: number, __tsplusTrace?: string) {
+export function replicateNow(n: number) {
   return <R, E, A>(self: Effect<R, E, A>): Chunk<Effect<R, E, A>> => Effect.replicate(n, self)
 }

@@ -1,4 +1,7 @@
-import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import {
+  concreteSink,
+  SinkInternal
+} from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Accesses the environment of the sink in the context of a sink.
@@ -6,8 +9,7 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
  * @tsplus static effect/core/stream/Sink.Ops environmentWithSink
  */
 export function environmentWithSink<R0, R, E, In, L, Z>(
-  f: (env: Env<R0>) => Sink<R, E, In, L, Z>,
-  __tsplusTrace?: string
+  f: (env: Env<R0>) => Sink<R, E, In, L, Z>
 ): Sink<R0 | R, E, In, L, Z> {
   return new SinkInternal(
     Channel.unwrap(

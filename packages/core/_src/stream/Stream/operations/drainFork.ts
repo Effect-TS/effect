@@ -7,8 +7,7 @@
  * @tsplus pipeable effect/core/stream/Stream drainFork
  */
 export function drainFork<R2, E2, Z>(
-  other: LazyArg<Stream<R2, E2, Z>>,
-  __tsplusTrace?: string
+  other: LazyArg<Stream<R2, E2, Z>>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> =>
     Stream.fromEffect(Deferred.make<E | E2, never>()).flatMap(

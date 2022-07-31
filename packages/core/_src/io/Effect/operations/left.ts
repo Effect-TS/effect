@@ -4,10 +4,7 @@
  *
  * @tsplus getter effect/core/io/Effect left
  */
-export function left<R, E, A, B>(
-  self: Effect<R, E, Either<A, B>>,
-  __tsplusTrace?: string
-): Effect<R, Either<E, B>, A> {
+export function left<R, E, A, B>(self: Effect<R, E, Either<A, B>>): Effect<R, Either<E, B>, A> {
   return self.foldEffect(
     (e) => Effect.failSync(Either.left(e)),
     (either) => either.fold(Effect.succeed, (b) => Effect.failSync(Either.right(b)))

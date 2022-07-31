@@ -13,8 +13,7 @@ export function foldWeightedEffect<R, E, R2, E2, In, S>(
   z: LazyArg<S>,
   costFn: (s: S, input: In) => Effect<R, E, number>,
   max: number,
-  f: (s: S, input: In) => Effect<R2, E2, S>,
-  __tsplusTrace?: string
+  f: (s: S, input: In) => Effect<R2, E2, S>
 ): Sink<R | R2, E | E2, In, In, S> {
   return Sink.foldWeightedDecomposeEffect(
     z,

@@ -65,7 +65,10 @@ describe.concurrent("STM", () => {
         )
         .bind("result1", ({ tRef }) => tRef.get)
         .tap(({ tRef }) =>
-          STM.whenCase(Maybe.some(0), (option) => option._tag === "Some" ? Maybe.some(tRef.set(true)) : Maybe.none)
+          STM.whenCase(
+            Maybe.some(0),
+            (option) => option._tag === "Some" ? Maybe.some(tRef.set(true)) : Maybe.none
+          )
         )
         .bind("result2", ({ tRef }) => tRef.get)
         .commit

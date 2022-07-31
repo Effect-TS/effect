@@ -7,8 +7,7 @@
  */
 export function provideServiceEffect<T, R1, E1>(
   tag: Tag<T>,
-  effect: Effect<R1, E1, T>,
-  __tsplusTrace?: string
+  effect: Effect<R1, E1, T>
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R1 | Exclude<R, T>, E | E1, A> =>
     Effect.environmentWithEffect((env: Env<R1 | Exclude<R, T>>) =>

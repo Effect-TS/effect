@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Performs an effectful filter and map in a single step.
@@ -7,8 +10,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus pipeable effect/core/stream/Stream collectEffect
  */
 export function collectEffect<A, R2, E2, A2>(
-  pf: (a: A) => Maybe<Effect<R2, E2, A2>>,
-  __tsplusTrace?: string
+  pf: (a: A) => Maybe<Effect<R2, E2, A2>>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A2> => {
     concreteStream(self)

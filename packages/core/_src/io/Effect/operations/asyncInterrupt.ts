@@ -15,10 +15,11 @@ import { IAsync } from "@effect/core/io/Effect/definition/primitives"
  * @tsplus static effect/core/io/Effect.Ops asyncInterrupt
  */
 export function asyncInterrupt<R, E, A>(
-  register: (callback: (_: Effect<R, E, A>) => void) => Either<Effect<R, never, void>, Effect<R, E, A>>,
-  __tsplusTrace?: string
+  register: (
+    callback: (_: Effect<R, E, A>) => void
+  ) => Either<Effect<R, never, void>, Effect<R, E, A>>
 ): Effect<R, E, A> {
-  return Effect.suspendSucceed(new IAsync(register, () => FiberId.none, __tsplusTrace))
+  return Effect.suspendSucceed(new IAsync(register, () => FiberId.none))
 }
 
 /**
@@ -39,9 +40,10 @@ export function asyncInterrupt<R, E, A>(
  * @tsplus static effect/core/io/Effect.Ops asyncInterruptBlockingOn
  */
 export function asyncInterruptBlockingOn<R, E, A>(
-  register: (callback: (_: Effect<R, E, A>) => void) => Either<Effect<R, never, void>, Effect<R, E, A>>,
-  blockingOn: LazyArg<FiberId>,
-  __tsplusTrace?: string
+  register: (
+    callback: (_: Effect<R, E, A>) => void
+  ) => Either<Effect<R, never, void>, Effect<R, E, A>>,
+  blockingOn: LazyArg<FiberId>
 ): Effect<R, E, A> {
-  return Effect.suspendSucceed(new IAsync(register, blockingOn, __tsplusTrace))
+  return Effect.suspendSucceed(new IAsync(register, blockingOn))
 }

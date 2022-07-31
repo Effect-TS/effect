@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Splits elements on a delimiter and transforms the splits into desired
@@ -8,8 +11,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus pipeable effect/core/stream/Stream splitOnChunkFlatten
  */
 export function splitOnChunkFlatten<A>(
-  delimiter: LazyArg<Chunk<A>>,
-  __tsplusTrace?: string
+  delimiter: LazyArg<Chunk<A>>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, A> => {
     concreteStream(self)
@@ -22,8 +24,7 @@ export function splitOnChunkFlatten<A>(
 function next<R, E, A>(
   delimiter: Chunk<A>,
   leftover: Maybe<Chunk<A>>,
-  delimiterIndex: number,
-  __tsplusTrace?: string
+  delimiterIndex: number
 ): Channel<R, E, Chunk<A>, unknown, E, Chunk<A>, unknown> {
   return Channel.readWithCause(
     (inputChunk: Chunk<A>) => {

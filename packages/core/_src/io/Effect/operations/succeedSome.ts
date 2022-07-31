@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/io/Effect.Ops some
  */
-export function succeedSome<A>(value: LazyArg<A>, __tsplusTrace?: string): Effect<never, never, Maybe<A>> {
+export function succeedSome<A>(
+  value: LazyArg<A>
+): Effect<never, never, Maybe<A>> {
   return Effect.sync(Maybe.some(value()))
 }

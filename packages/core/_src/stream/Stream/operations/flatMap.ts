@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Returns a stream made of the concatenation in strict order of all the
@@ -8,8 +11,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus pipeable effect/core/stream/Stream flatMap
  */
 export function flatMap<A, R2, E2, B>(
-  f: (a: A) => Stream<R2, E2, B>,
-  __tsplusTrace?: string
+  f: (a: A) => Stream<R2, E2, B>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, B> => {
     concreteStream(self)

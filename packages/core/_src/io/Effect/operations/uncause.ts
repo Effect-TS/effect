@@ -8,8 +8,7 @@
  * @tsplus getter effect/core/io/Effect uncause
  */
 export function uncause<R, E>(
-  self: Effect<R, never, Cause<E>>,
-  __tsplusTrace?: string
+  self: Effect<R, never, Cause<E>>
 ): Effect<R, E, void> {
   return self.flatMap((cause) => cause.isEmpty ? Effect.unit : Effect.failCause(cause))
 }

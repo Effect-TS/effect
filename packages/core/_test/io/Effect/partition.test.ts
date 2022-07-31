@@ -26,7 +26,10 @@ describe.concurrent("Effect", () => {
 
     it("collects failures and successes", async () => {
       const chunk = Chunk.range(0, 9)
-      const program = Effect.partition(chunk, (n) => n % 2 === 0 ? Effect.failSync(n) : Effect.sync(n))
+      const program = Effect.partition(
+        chunk,
+        (n) => n % 2 === 0 ? Effect.failSync(n) : Effect.sync(n)
+      )
 
       const {
         tuple: [left, right]
@@ -75,7 +78,10 @@ describe.concurrent("Effect", () => {
 
     it("collects failures and successes", async () => {
       const chunk = Chunk.range(0, 9)
-      const program = Effect.partitionPar(chunk, (n) => n % 2 === 0 ? Effect.failSync(n) : Effect.sync(n))
+      const program = Effect.partitionPar(
+        chunk,
+        (n) => n % 2 === 0 ? Effect.failSync(n) : Effect.sync(n)
+      )
 
       const {
         tuple: [left, right]
@@ -115,7 +121,10 @@ describe.concurrent("Effect", () => {
 
     it("collects failures and successes", async () => {
       const list = Chunk.range(0, 9)
-      const program = Effect.partitionPar(list, (n) => n % 2 === 0 ? Effect.failSync(n) : Effect.sync(n))
+      const program = Effect.partitionPar(
+        list,
+        (n) => n % 2 === 0 ? Effect.failSync(n) : Effect.sync(n)
+      )
         .withParallelism(3)
 
       const {

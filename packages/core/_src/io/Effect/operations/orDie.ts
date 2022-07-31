@@ -4,9 +4,6 @@
  *
  * @tsplus getter effect/core/io/Effect orDie
  */
-export function orDie<R, E, A>(
-  self: Effect<R, E, A>,
-  __tsplusTrace?: string
-): Effect<R, never, A> {
+export function orDie<R, E, A>(self: Effect<R, E, A>): Effect<R, never, A> {
   return self.orDieWith(identity)
 }

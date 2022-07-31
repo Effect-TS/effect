@@ -11,10 +11,7 @@ export type SubexecutorSym = typeof SubexecutorSym
  */
 export interface Subexecutor<R> {
   readonly [SubexecutorSym]: SubexecutorSym
-  readonly close: (
-    exit: Exit<unknown, unknown>,
-    __tsplusTrace?: string
-  ) => Effect<R, never, unknown> | undefined
+  readonly close: (exit: Exit<unknown, unknown>) => Effect<R, never, unknown> | undefined
   readonly enqueuePullFromChild: (child: PullFromChild<R>) => Subexecutor<R>
 }
 
@@ -44,10 +41,7 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
     readonly onEmit: (_: unknown) => ChildExecutorDecision
   ) {}
 
-  close(
-    exit: Exit<unknown, unknown>,
-    __tsplusTrace?: string
-  ): Effect<R, never, unknown> | undefined {
+  close(exit: Exit<unknown, unknown>): Effect<R, never, unknown> | undefined {
     const fin1 = this.upstreamExecutor.close(exit)
     const fins = this.activeChildExecutors
       .map((child) => (child != null ? child.childExecutor.close(exit) : undefined))
@@ -66,7 +60,9 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
         }
       }
     )
-    return result == null ? result : result.flatMap((exit) => Effect.done(exit)) as Effect<R, never, unknown>
+    return result == null ?
+      result :
+      result.flatMap((exit) => Effect.done(exit)) as Effect<R, never, unknown>
   }
 
   enqueuePullFromChild(child: PullFromChild<R>): Subexecutor<R> {
@@ -98,10 +94,7 @@ export class PullFromChild<R> implements Subexecutor<R> {
     readonly onEmit: (_: unknown) => ChildExecutorDecision
   ) {}
 
-  close(
-    exit: Exit<unknown, unknown>,
-    __tsplusTrace?: string
-  ): Effect<R, never, unknown> | undefined {
+  close(exit: Exit<unknown, unknown>): Effect<R, never, unknown> | undefined {
     const fin1 = this.childExecutor.close(exit)
     const fin2 = this.parentSubexecutor.close(exit)
 
@@ -139,10 +132,7 @@ export class DrainChildExecutors<R> implements Subexecutor<R> {
     readonly onPull: (_: UpstreamPullRequest<unknown>) => UpstreamPullStrategy<unknown>
   ) {}
 
-  close(
-    exit: Exit<unknown, unknown>,
-    __tsplusTrace?: string
-  ): Effect<R, never, unknown> | undefined {
+  close(exit: Exit<unknown, unknown>): Effect<R, never, unknown> | undefined {
     const fin1 = this.upstreamExecutor.close(exit)
     const fins = this.activeChildExecutors
       .map((child) => (child != null ? child.childExecutor.close(exit) : undefined))
@@ -184,10 +174,7 @@ export class Emit<R> implements Subexecutor<R> {
 
   constructor(readonly value: unknown, readonly next: Subexecutor<R>) {}
 
-  close(
-    exit: Exit<unknown, unknown>,
-    __tsplusTrace?: string
-  ): Effect<R, never, unknown> | undefined {
+  close(exit: Exit<unknown, unknown>): Effect<R, never, unknown> | undefined {
     return this.next.close(exit)
   }
 

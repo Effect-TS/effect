@@ -74,7 +74,10 @@ describe.concurrent("Fiber", () => {
       const program = Effect.Do()
         .bind("latch1", () => Deferred.make<never, void>())
         .bind("latch2", () => Deferred.make<never, void>())
-        .bindValue("c", ({ latch2 }) => Effect.never.interruptible.onInterrupt(() => latch2.succeed(undefined)))
+        .bindValue(
+          "c",
+          ({ latch2 }) => Effect.never.interruptible.onInterrupt(() => latch2.succeed(undefined))
+        )
         .bindValue("a", ({ c, latch1 }) =>
           latch1
             .succeed(undefined)

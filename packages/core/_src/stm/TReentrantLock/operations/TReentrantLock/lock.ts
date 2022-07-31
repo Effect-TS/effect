@@ -5,6 +5,6 @@
  * See `TReentrantLock.writeLock`.
  * @tsplus getter effect/core/stm/TReentrantLock lock
  */
-export function lock(self: TReentrantLock, __tsplusTrace?: string): Effect<Scope, never, number> {
+export function lock(self: TReentrantLock): Effect<Scope, never, number> {
   return self.writeLock
 }

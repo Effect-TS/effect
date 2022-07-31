@@ -7,8 +7,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * @tsplus static effect/core/stream/Sink.Ops forEachWhile
  */
 export function forEachWhile<R, E, In>(
-  f: (input: In) => Effect<R, E, boolean>,
-  __tsplusTrace?: string
+  f: (input: In) => Effect<R, E, boolean>
 ): Sink<R, E, In, In, void> {
   const process: Channel<
     R,
@@ -31,8 +30,7 @@ function go<R, E, In>(
   chunk: Chunk<In>,
   index: number,
   length: number,
-  cont: Channel<R, E, Chunk<In>, unknown, E, Chunk<In>, void>,
-  __tsplusTrace?: string
+  cont: Channel<R, E, Chunk<In>, unknown, E, Chunk<In>, void>
 ): Channel<R, E, Chunk<In>, unknown, E, Chunk<In>, void> {
   return index === length
     ? cont

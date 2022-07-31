@@ -10,9 +10,8 @@ import { Strategy } from "@effect/core/io/Hub/operations/strategy"
  *
  * @tsplus static effect/core/io/Hub.Ops dropping
  */
-export function dropping<A>(
-  requestedCapacity: number,
-  __tsplusTrace?: string
-): Effect<never, never, Hub<A>> {
-  return Effect.sync(makeBounded<A>(requestedCapacity)).flatMap((atomicHub) => makeHub(atomicHub, Strategy.Dropping()))
+export function dropping<A>(requestedCapacity: number): Effect<never, never, Hub<A>> {
+  return Effect.sync(makeBounded<A>(requestedCapacity)).flatMap((atomicHub) =>
+    makeHub(atomicHub, Strategy.Dropping())
+  )
 }

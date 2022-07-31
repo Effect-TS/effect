@@ -6,8 +6,7 @@
  * @tsplus static effect/core/stream/Stream.Ops fromSchedule
  */
 export function fromSchedule<S, R, A>(
-  schedule: LazyArg<Schedule<S, R, unknown, A>>,
-  __tsplusTrace?: string
+  schedule: LazyArg<Schedule<S, R, unknown, A>>
 ): Stream<R, never, A> {
   return Stream.unwrap(
     schedule()

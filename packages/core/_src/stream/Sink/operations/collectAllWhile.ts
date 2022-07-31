@@ -5,8 +5,7 @@
  * @tsplus static effect/core/stream/Sink.Ops collectAllWhile
  */
 export function collectAllWhile<In>(
-  p: Predicate<In>,
-  __tsplusTrace?: string
+  p: Predicate<In>
 ): Sink<never, never, In, In, Chunk<In>> {
   return Sink.fold<In, Tuple<[List<In>, boolean]>>(
     Tuple(List.empty<In>(), true),

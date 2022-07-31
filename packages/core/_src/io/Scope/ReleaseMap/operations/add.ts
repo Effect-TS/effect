@@ -9,7 +9,7 @@
  * @tsplus static effect/core/io/ReleaseMap.Aspects add
  * @tsplus pipeable effect/core/io/ReleaseMap add
  */
-export function add(finalizer: Scope.Finalizer, __tsplusTrace?: string) {
+export function add(finalizer: Scope.Finalizer) {
   return (self: ReleaseMap): Effect<never, never, Scope.Finalizer> =>
     self.addIfOpen(finalizer).map((_) =>
       _.fold(

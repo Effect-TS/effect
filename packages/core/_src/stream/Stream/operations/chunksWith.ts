@@ -6,8 +6,8 @@
  * @tsplus pipeable effect/core/stream/Stream chunksWith
  */
 export function chunksWith<R, E, A, R1, E1, A1>(
-  f: (stream: Stream<R, E, Chunk<A>>) => Stream<R1, E1, Chunk<A1>>,
-  __tsplusTrace?: string
+  f: (stream: Stream<R, E, Chunk<A>>) => Stream<R1, E1, Chunk<A1>>
 ) {
-  return (self: Stream<R, E, A>): Stream<R | R1, E | E1, A1> => Stream.suspend(f(self.chunks).unchunks)
+  return (self: Stream<R, E, A>): Stream<R | R1, E | E1, A1> =>
+    Stream.suspend(f(self.chunks).unchunks)
 }

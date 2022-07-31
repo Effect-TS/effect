@@ -24,7 +24,7 @@ describe.concurrent("Channel", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail("hello"))
+      assert.isTrue(result == Exit.fail("hello"))
     })
   })
 })

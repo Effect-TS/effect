@@ -6,7 +6,9 @@ describe.concurrent("Stream", () => {
         .map((n) => n.toString())
       const program = Stream.fromCollection(words)
         .groupByKey(identity, 8192)
-        .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size).toNative)))
+        .mergeGroupBy((k, s) =>
+          Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size).toNative))
+        )
         .runCollect
         .map((chunk) => new Map([...chunk]))
 
@@ -25,7 +27,9 @@ describe.concurrent("Stream", () => {
       const program = Stream.fromCollection(words)
         .groupByKey(identity, 1050)
         .first(2)
-        .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size).toNative)))
+        .mergeGroupBy((k, s) =>
+          Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size).toNative))
+        )
         .runCollect
         .map((chunk) => new Map([...chunk]))
 
@@ -42,7 +46,9 @@ describe.concurrent("Stream", () => {
       const program = Stream.fromCollection(words)
         .groupByKey(identity, 1050)
         .filter((n) => n <= 5)
-        .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size).toNative)))
+        .mergeGroupBy((k, s) =>
+          Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size).toNative))
+        )
         .runCollect
         .map((chunk) => new Map([...chunk]))
 
@@ -113,7 +119,10 @@ describe.concurrent("Stream", () => {
     it("emits elements properly when a failure occurs", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(Chunk.empty<Chunk<number>>()))
-        .bindValue("streamChunks", () => Stream.fromChunks(Chunk(1, 2, 3, 4), Chunk(5, 6, 7), Chunk(8)))
+        .bindValue(
+          "streamChunks",
+          () => Stream.fromChunks(Chunk(1, 2, 3, 4), Chunk(5, 6, 7), Chunk(8))
+        )
         .bindValue("stream", ({ streamChunks }) => (streamChunks + Stream.fail("ouch")).grouped(3))
         .bind("either", ({ ref, stream }) =>
           stream

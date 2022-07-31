@@ -12,8 +12,7 @@
  */
 export function repeatOrElse<S, R1, A, B, E, R2, E2>(
   schedule: LazyArg<Schedule<S, R1, A, B>>,
-  orElse: (e: E, option: Maybe<B>) => Effect<R2, E2, B>,
-  __tsplusTrace?: string
+  orElse: (e: E, option: Maybe<B>) => Effect<R2, E2, B>
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R | R1 | R2, E2, B> =>
     Effect.$.repeatOrElseEither(schedule, orElse)(self).map((either) => either.merge)

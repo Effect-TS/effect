@@ -3,9 +3,6 @@
  *
  * @tsplus getter effect/core/io/Effect ignore
  */
-export function ignore<R, E, A>(
-  self: Effect<R, E, A>,
-  __tsplusTrace?: string
-): Effect<R, never, void> {
+export function ignore<R, E, A>(self: Effect<R, E, A>): Effect<R, never, void> {
   return self.fold(() => undefined, () => undefined)
 }

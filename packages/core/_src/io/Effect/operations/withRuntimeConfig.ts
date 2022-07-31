@@ -6,8 +6,7 @@
  */
 export function withRuntimeConfig<R, E, A>(
   runtimeConfig: LazyArg<RuntimeConfig>,
-  effect: LazyArg<Effect<R, E, A>>,
-  __tsplusTrace?: string
+  effect: LazyArg<Effect<R, E, A>>
 ): Effect<R, E, A> {
   return Effect.runtimeConfig.flatMap((currentRuntimeConfig) =>
     Effect.acquireUseReleaseDiscard(
@@ -26,8 +25,7 @@ export function withRuntimeConfig<R, E, A>(
  * @tsplus pipeable effect/core/io/Effect withRuntimeConfig
  */
 export function withRuntimeConfigNow(
-  runtimeConfig: LazyArg<RuntimeConfig>,
-  __tsplusTrace?: string
+  runtimeConfig: LazyArg<RuntimeConfig>
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> => withRuntimeConfig(runtimeConfig, self)
 }

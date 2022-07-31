@@ -5,7 +5,7 @@ import { Exited, Running } from "@effect/core/io/Scope/ReleaseMap/_internal/Stat
  * @tsplus static effect/core/io/ReleaseMap.Aspects remove
  * @tsplus pipeable effect/core/io/ReleaseMap remove
  */
-export function remove(key: number, __tsplusTrace?: string) {
+export function remove(key: number) {
   return (self: ReleaseMap): Effect<never, never, Maybe<Scope.Finalizer>> =>
     self.ref.modify((s) => {
       switch (s._tag) {

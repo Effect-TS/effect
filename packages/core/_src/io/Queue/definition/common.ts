@@ -8,7 +8,7 @@ export interface Enqueue<A> extends CommonQueue<A> {
   /**
    * Places one value in the queue.
    */
-  offer(this: this, a: A, __tsplusTrace?: string): Effect<never, never, boolean>
+  offer(this: this, a: A): Effect<never, never, boolean>
   /**
    * For Bounded Queue: uses the `BackPressure` Strategy, places the values in
    * the queue and always returns true. If the queue has reached capacity, then
@@ -24,7 +24,7 @@ export interface Enqueue<A> extends CommonQueue<A> {
    * For Dropping Queue: uses `Dropping` Strategy, It places the values in the
    * queue but if there is no room it will not enqueue them and return false.
    */
-  offerAll(this: this, as: Collection<A>, __tsplusTrace?: string): Effect<never, never, boolean>
+  offerAll(this: this, as: Collection<A>): Effect<never, never, boolean>
 }
 
 export const QueueSym = Symbol.for("@effect/core/io/Queue")
@@ -63,11 +63,11 @@ export interface CommonQueue<A> {
   /**
    * Checks whether the queue is currently full.
    */
-  isFull(this: this, __tsplusTrace?: string): Effect<never, never, boolean>
+  isFull(this: this): Effect<never, never, boolean>
   /**
    * Checks whether the queue is currently empty.
    */
-  isEmpty(this: this, __tsplusTrace?: string): Effect<never, never, boolean>
+  isEmpty(this: this): Effect<never, never, boolean>
 }
 
 export interface Dequeue<A> extends CommonQueue<A> {
@@ -88,7 +88,7 @@ export interface Dequeue<A> extends CommonQueue<A> {
   /**
    * Takes up to max number of values from the queue.
    */
-  takeUpTo(this: this, max: number, __tsplusTrace?: string): Effect<never, never, Chunk<A>>
+  takeUpTo(this: this, max: number): Effect<never, never, Chunk<A>>
   /**
    * Takes a number of elements from the queue between the specified minimum and
    * maximum. If there are fewer than the minimum number of elements available,
@@ -100,30 +100,30 @@ export interface Dequeue<A> extends CommonQueue<A> {
    * than the specified number of elements available, it suspends until they
    * become available.
    */
-  takeN(this: this, n: number, __tsplusTrace?: string): Effect<never, never, Chunk<A>>
+  takeN(this: this, n: number): Effect<never, never, Chunk<A>>
   /**
    * Take the head option of values in the queue.
    */
-  poll(this: this, __tsplusTrace?: string): Effect<never, never, Maybe<A>>
+  poll(this: this): Effect<never, never, Maybe<A>>
 }
 
 export const CommonProto = {
   get [QueueSym](): QueueSym {
     return QueueSym
   },
-  isFull<A>(this: Enqueue<A> | Dequeue<A>, __tsplusTrace?: string) {
+  isFull<A>(this: Enqueue<A> | Dequeue<A>) {
     return this.size.map((size) => size === this.capacity)
   },
-  isEmpty<A>(this: Queue<A>, __tsplusTrace?: string): Effect<never, never, boolean> {
+  isEmpty<A>(this: Queue<A>): Effect<never, never, boolean> {
     return this.size.map((size) => size === 0)
   }
 }
 
 export const DequeueProto = {
-  poll<A>(this: Dequeue<A>, __tsplusTrace?: string): Effect<never, never, Maybe<A>> {
+  poll<A>(this: Dequeue<A>): Effect<never, never, Maybe<A>> {
     return this.takeUpTo(1).map((chunk) => chunk.head)
   },
-  takeN<A>(this: Dequeue<A>, n: number, __tsplusTrace?: string): Effect<never, never, Chunk<A>> {
+  takeN<A>(this: Dequeue<A>, n: number): Effect<never, never, Chunk<A>> {
     return this.takeBetween(n, n)
   },
   takeBetween<A>(this: Dequeue<A>, min: number, max: number): Effect<never, never, Chunk<A>> {
@@ -140,8 +140,7 @@ function takeRemainderLoop<A>(
   self: Dequeue<A>,
   min: number,
   max: number,
-  acc: Chunk<A>,
-  __tsplusTrace?: string
+  acc: Chunk<A>
 ): Effect<never, never, Chunk<A>> {
   if (max < min) {
     return Effect.succeed(acc)

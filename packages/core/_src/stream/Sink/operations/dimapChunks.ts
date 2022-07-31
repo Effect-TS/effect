@@ -7,8 +7,8 @@
  */
 export function dimapChunks<In, In1, Z, Z1>(
   f: (input: Chunk<In1>) => Chunk<In>,
-  g: (z: Z) => Z1,
-  __tsplusTrace?: string
+  g: (z: Z) => Z1
 ) {
-  return <R, E, L>(self: Sink<R, E, In, L, Z>): Sink<R, E, In1, L, Z1> => self.contramapChunks(f).map(g)
+  return <R, E, L>(self: Sink<R, E, In, L, Z>): Sink<R, E, In1, L, Z1> =>
+    self.contramapChunks(f).map(g)
 }

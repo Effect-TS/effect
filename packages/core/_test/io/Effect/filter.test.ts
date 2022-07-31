@@ -26,7 +26,8 @@ describe.concurrent("Effect", () => {
         .bind("ref", () => Ref.make(Chunk.empty<number>()))
         .bind(
           "results",
-          ({ ref }) => Effect.filterNot(chunk, (n) => ref.update((c) => c.prepend(n)).as(n % 2 === 0))
+          ({ ref }) =>
+            Effect.filterNot(chunk, (n) => ref.update((c) => c.prepend(n)).as(n % 2 === 0))
         )
         .bind("effects", ({ ref }) => ref.get().map((c) => c.reverse))
 
@@ -97,14 +98,20 @@ describe.concurrent("Effect", () => {
         .bind(
           "goodCase",
           () =>
-            exactlyOnce(0, Effect.$.filterOrElse((n) => n === 0, Effect.failSync("predicate failed!")))
+            exactlyOnce(
+              0,
+              Effect.$.filterOrElse((n) => n === 0, Effect.failSync("predicate failed!"))
+            )
               .sandbox
               .either
         )
         .bind(
           "badCase",
           () =>
-            exactlyOnce(1, Effect.$.filterOrElse((n) => n === 0, Effect.failSync("predicate failed!")))
+            exactlyOnce(
+              1,
+              Effect.$.filterOrElse((n) => n === 0, Effect.failSync("predicate failed!"))
+            )
               .sandbox
               .either
               .map((either) => either.mapLeft((cause) => cause.failureOrCause))
@@ -120,15 +127,21 @@ describe.concurrent("Effect", () => {
   describe.concurrent("filterOrFail", () => {
     it("returns failure ignoring value", async () => {
       const program = Effect.Do()
-        .bind("goodCase", () =>
-          exactlyOnce(0, Effect.$.filterOrFail((n) => n === 0, "predicate failed!"))
-            .sandbox
-            .either)
-        .bind("badCase", () =>
-          exactlyOnce(1, Effect.$.filterOrFail((n) => n === 0, "predicate failed!"))
-            .sandbox
-            .either
-            .map((either) => either.mapLeft((cause) => cause.failureOrCause)))
+        .bind(
+          "goodCase",
+          () =>
+            exactlyOnce(0, Effect.$.filterOrFail((n) => n === 0, "predicate failed!"))
+              .sandbox
+              .either
+        )
+        .bind(
+          "badCase",
+          () =>
+            exactlyOnce(1, Effect.$.filterOrFail((n) => n === 0, "predicate failed!"))
+              .sandbox
+              .either
+              .map((either) => either.mapLeft((cause) => cause.failureOrCause))
+        )
 
       const { badCase, goodCase } = await program.unsafeRunPromise()
 

@@ -4,8 +4,7 @@
  * @tsplus getter effect/core/io/Effect timed
  */
 export function timed<R, E, A>(
-  self: Effect<R, E, A>,
-  __tsplusTrace?: string
+  self: Effect<R, E, A>
 ): Effect<R, E, Tuple<[Duration, A]>> {
   return self.timedWith(Clock.currentTime)
 }

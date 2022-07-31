@@ -79,7 +79,9 @@ describe.concurrent("Stream", () => {
                   .tap(() => queue.offer(3))
                   .bind("result3", () => pull)
                   .bind("end", () => Clock.currentTime)
-                  .map(({ end, result1, result2, result3 }) => Tuple(end - start, Tuple(result1, result2, result3)))
+                  .map(({ end, result1, result2, result3 }) =>
+                    Tuple(end - start, Tuple(result1, result2, result3))
+                  )
               )
           )
         )

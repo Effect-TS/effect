@@ -8,8 +8,7 @@
  * @tsplus getter effect/core/stream/Stream either
  */
 export function either<R, E, A>(
-  self: Stream<R, E, A>,
-  __tsplusTrace?: string
+  self: Stream<R, E, A>
 ): Stream<R, never, Either<E, A>> {
   return self.map(Either.right).catchAll((e) => Stream(Either.left(e)))
 }

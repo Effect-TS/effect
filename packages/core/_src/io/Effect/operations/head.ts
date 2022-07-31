@@ -4,10 +4,7 @@
  *
  * @tsplus getter effect/core/io/Effect head
  */
-export function head<R, E, A>(
-  self: Effect<R, E, Collection<A>>,
-  __tsplusTrace?: string
-): Effect<R, Maybe<E>, A> {
+export function head<R, E, A>(self: Effect<R, E, Collection<A>>): Effect<R, Maybe<E>, A> {
   return self.foldEffect(
     (e) => Effect.failSync(Maybe.some(e)),
     (collection) => Chunk.from(collection).head.fold(Effect.failSync(Maybe.none), Effect.succeed)

@@ -5,8 +5,7 @@
  * @tsplus getter effect/core/stream/Stream toQueueUnbounded
  */
 export function toQueueUnbounded<R, E, A>(
-  self: Stream<R, E, A>,
-  __tsplusTrace?: string
+  self: Stream<R, E, A>
 ): Effect<R | Scope, never, Dequeue<Take<E, A>>> {
   return Effect.acquireRelease(
     Queue.unbounded<Take<E, A>>(),

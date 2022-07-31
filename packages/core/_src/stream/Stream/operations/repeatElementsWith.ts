@@ -1,5 +1,8 @@
 import type { Driver } from "@effect/core/io/Schedule/Driver"
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Repeats each element of the stream using the provided schedule. When the
@@ -19,8 +22,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 export function repeatElementsWith<A, S, R2, B, C1, C2>(
   schedule: LazyArg<Schedule<S, R2, unknown, B>>,
   f: (a: A) => C1,
-  g: (b: B) => C2,
-  __tsplusTrace?: string
+  g: (b: B) => C2
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E, C1 | C2> => {
     concreteStream(self)
@@ -56,8 +58,7 @@ function feed<R, E, A, R2, B, C1, C2>(
   driver: Driver<unknown, R2, unknown, B>,
   f: (a: A) => C1,
   g: (b: B) => C2,
-  input: Chunk<A>,
-  __tsplusTrace?: string
+  input: Chunk<A>
 ): Channel<R | R2, E, Chunk<A>, unknown, E, Chunk<C1 | C2>, void> {
   return input.head.fold(
     loop,
@@ -73,8 +74,7 @@ function step<R, E, A, R2, B, C1, C2>(
   f: (a: A) => C1,
   g: (b: B) => C2,
   input: Chunk<A>,
-  value: A,
-  __tsplusTrace?: string
+  value: A
 ): Channel<R | R2, E, Chunk<A>, unknown, E, Chunk<C1 | C2>, void> {
   const advance = driver
     .next(value)

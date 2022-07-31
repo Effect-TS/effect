@@ -8,8 +8,7 @@
  */
 export function retryOrElse<S, R1, E, A1, R2, E2, A2>(
   policy: LazyArg<Schedule<S, R1, E, A1>>,
-  orElse: (e: E, out: A1) => Effect<R2, E2, A2>,
-  __tsplusTrace?: string
+  orElse: (e: E, out: A1) => Effect<R2, E2, A2>
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R | R1 | R2, E | E2, A | A2> =>
     Effect.$.retryOrElseEither(policy, orElse)(self).map((either) => either.merge)

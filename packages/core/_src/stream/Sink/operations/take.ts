@@ -6,8 +6,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * @tsplus static effect/core/stream/Sink.Ops take
  */
 export function take<In>(
-  n: number,
-  __tsplusTrace?: string
+  n: number
 ): Sink<never, never, In, In, Chunk<In>> {
   return Sink.foldChunks<In, Chunk<In>>(
     Chunk.empty(),

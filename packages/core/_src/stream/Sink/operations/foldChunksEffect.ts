@@ -11,8 +11,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
 export function foldChunksEffect<R, E, S, In>(
   z: LazyArg<S>,
   cont: Predicate<S>,
-  f: (s: S, input: Chunk<In>) => Effect<R, E, S>,
-  __tsplusTrace?: string
+  f: (s: S, input: Chunk<In>) => Effect<R, E, S>
 ): Sink<R, E, In, never, S> {
   return Sink.suspend(new SinkInternal(reader(z(), cont, f)))
 }
@@ -20,12 +19,12 @@ export function foldChunksEffect<R, E, S, In>(
 function reader<R, E, S, In>(
   z: S,
   cont: Predicate<S>,
-  f: (s: S, input: Chunk<In>) => Effect<R, E, S>,
-  __tsplusTrace?: string
+  f: (s: S, input: Chunk<In>) => Effect<R, E, S>
 ): Channel<R, E, Chunk<In>, unknown, E, never, S> {
   return cont(z)
     ? Channel.readWith(
-      (chunk: Chunk<In>) => Channel.fromEffect(f(z, chunk)).flatMap((nextS) => reader<R, E, S, In>(nextS, cont, f)),
+      (chunk: Chunk<In>) =>
+        Channel.fromEffect(f(z, chunk)).flatMap((nextS) => reader<R, E, S, In>(nextS, cont, f)),
       (err) => Channel.fail(err),
       () => Channel.succeedNow(z)
     )

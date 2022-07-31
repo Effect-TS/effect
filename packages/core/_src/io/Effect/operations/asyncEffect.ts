@@ -5,8 +5,7 @@
  * @tsplus static effect/core/io/Effect.Ops asyncEffect
  */
 export function asyncEffect<R, E, A, R2, E2, X>(
-  register: (callback: (_: Effect<R, E, A>) => void) => Effect<R2, E2, X>,
-  __tsplusTrace?: string
+  register: (callback: (_: Effect<R, E, A>) => void) => Effect<R2, E2, X>
 ): Effect<R | R2, E | E2, A> {
   return Do(($) => {
     const deferred = $(Deferred.make<E | E2, A>())

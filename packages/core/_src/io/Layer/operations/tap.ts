@@ -6,5 +6,7 @@
  */
 export function tap<ROut, RIn2, E2, X>(f: (_: Env<ROut>) => Effect<RIn2, E2, X>) {
   return <RIn, E>(self: Layer<RIn, E, ROut>): Layer<RIn | RIn2, E | E2, ROut> =>
-    self.flatMap((environment) => Layer.fromEffectEnvironment(f(environment).map(() => environment)))
+    self.flatMap((environment) =>
+      Layer.fromEffectEnvironment(f(environment).map(() => environment))
+    )
 }

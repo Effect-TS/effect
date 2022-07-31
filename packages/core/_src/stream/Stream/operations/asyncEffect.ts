@@ -12,8 +12,7 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  */
 export function asyncEffect<R, E, A, Z>(
   register: (emit: Emit<R, E, A, void>) => Effect<R, E, Z>,
-  outputBuffer = 16,
-  __tsplusTrace?: string
+  outputBuffer = 16
 ): Stream<R, E, A> {
   return new StreamInternal(
     Channel.unwrapScoped(

@@ -9,8 +9,7 @@ import { concreteStream } from "@effect/core/stream/Stream/operations/_internal/
  * @tsplus pipeable effect/core/stream/Stream run
  */
 export function run<A, R2, E2, Z>(
-  sink: LazyArg<Sink<R2, E2, A, unknown, Z>>,
-  __tsplusTrace?: string
+  sink: LazyArg<Sink<R2, E2, A, unknown, Z>>
 ) {
   return <R, E>(self: Stream<R, E, A>): Effect<R | R2, E | E2, Z> => {
     concreteStream(self)

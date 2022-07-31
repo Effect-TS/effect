@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Switches over to the stream produced by the provided function in case this
@@ -9,8 +12,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus pipeable effect/core/stream/Stream catchAllCause
  */
 export function catchAllCause<E, R2, E2, A2>(
-  f: (cause: Cause<E>) => Stream<R2, E2, A2>,
-  __tsplusTrace?: string
+  f: (cause: Cause<E>) => Stream<R2, E2, A2>
 ) {
   return <R, A>(self: Stream<R, E, A>): Stream<R | R2, E2, A | A2> => {
     concreteStream(self)

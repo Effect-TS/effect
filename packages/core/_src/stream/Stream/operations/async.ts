@@ -9,8 +9,7 @@ import type { Emit } from "@effect/core/stream/Stream/Emit"
  */
 export function _async<R, E, A>(
   register: (emit: Emit<R, E, A, void>) => void,
-  outputBuffer = 16,
-  __tsplusTrace?: string
+  outputBuffer = 16
 ): Stream<R, E, A> {
   return Stream.asyncMaybe((callback) => {
     register(callback)

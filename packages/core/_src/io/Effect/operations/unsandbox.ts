@@ -6,6 +6,6 @@
  *
  * @tsplus getter effect/core/io/Effect unsandbox
  */
-export function unsandbox<R, E, A>(self: Effect<R, Cause<E>, A>, __tsplusTrace?: string) {
+export function unsandbox<R, E, A>(self: Effect<R, Cause<E>, A>) {
   return self.mapErrorCause((cause) => cause.flatten)
 }

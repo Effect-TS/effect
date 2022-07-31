@@ -149,7 +149,10 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
         switch (state._typeId) {
           case EmitTypeId: {
             return Tuple(
-              Effect.forEachDiscard(state.notifyConsumers, (promise) => promise.succeed(Either.left(a))),
+              Effect.forEachDiscard(
+                state.notifyConsumers,
+                (promise) => promise.succeed(Either.left(a))
+              ),
               new StateDone(a)
             )
           }
@@ -235,7 +238,11 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
  *
  * @tsplus static effect/core/stream/Channel/SingleProducerAsyncInput.Ops make
  */
-export function make<Err, Elem, Done>(): Effect<never, never, SingleProducerAsyncInput<Err, Elem, Done>> {
+export function make<Err, Elem, Done>(): Effect<
+  never,
+  never,
+  SingleProducerAsyncInput<Err, Elem, Done>
+> {
   return Deferred.make<never, void>()
     .flatMap((deferred) => Ref.make<State<Err, Elem, Done>>(new StateEmpty(deferred)))
     .map((ref) => new SingleProducerAsyncInput(ref))

@@ -90,7 +90,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.untraced == Exit.fail("boom"))
+      assert.isTrue(result == Exit.fail("boom"))
     })
   })
 
@@ -158,7 +158,7 @@ describe.concurrent("Stream", () => {
       const { called, exit } = await program.unsafeRunPromise()
 
       assert.isTrue(called)
-      assert.isTrue(exit.untraced == Exit.fail("boom"))
+      assert.isTrue(exit == Exit.fail("boom"))
     })
   })
 })

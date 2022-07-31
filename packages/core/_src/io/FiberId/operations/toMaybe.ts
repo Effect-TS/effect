@@ -23,10 +23,13 @@ function toMaybeSafe(self: FiberId): Eval<Maybe<FiberId>> {
       for (const fiberId of self.fiberIds) {
         base = base.zipWith(
           Eval.suspend(toMaybeSafe(fiberId)),
-          (fiberIds, optionFiberId) => optionFiberId._tag === "Some" ? fiberIds.add(optionFiberId.value) : fiberIds
+          (fiberIds, optionFiberId) =>
+            optionFiberId._tag === "Some" ? fiberIds.add(optionFiberId.value) : fiberIds
         )
       }
-      return base.map((fiberIds) => fiberIds.size === 0 ? Maybe.none : Maybe.some(FiberId.combineAll(fiberIds)))
+      return base.map((fiberIds) =>
+        fiberIds.size === 0 ? Maybe.none : Maybe.some(FiberId.combineAll(fiberIds))
+      )
     }
   }
 }

@@ -34,7 +34,9 @@ describe.concurrent("TArray", () => {
     it("happy-path", async () => {
       const program = makeTArray(1, 42)
         .commit
-        .flatMap((tArray) => (tArray.updateSTM(0, (n) => STM.succeed(-n)) > valuesOf(tArray)).commit)
+        .flatMap((tArray) =>
+          (tArray.updateSTM(0, (n) => STM.succeed(-n)) > valuesOf(tArray)).commit
+        )
 
       const result = await program.unsafeRunPromise()
 

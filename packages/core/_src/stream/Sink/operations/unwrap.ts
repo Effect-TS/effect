@@ -1,4 +1,7 @@
-import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import {
+  concreteSink,
+  SinkInternal
+} from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Creates a sink produced from an effect.
@@ -6,8 +9,7 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
  * @tsplus static effect/core/stream/Sink.Ops unwrap
  */
 export function unwrap<R, E, In, L, Z>(
-  effect: LazyArg<Effect<R, E, Sink<R, E, In, L, Z>>>,
-  __tsplusTrace?: string
+  effect: LazyArg<Effect<R, E, Sink<R, E, In, L, Z>>>
 ): Sink<R, E, In, L, Z> {
   return new SinkInternal(
     Channel.unwrap(

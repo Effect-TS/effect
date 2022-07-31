@@ -7,8 +7,7 @@
  */
 export function scan<S, A>(
   s: LazyArg<S>,
-  f: (s: S, a: A) => S,
-  __tsplusTrace?: string
+  f: (s: S, a: A) => S
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, S> =>
     self.scanEffect(

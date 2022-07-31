@@ -31,10 +31,13 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("environmentWithEffect", () => {
     it("simple example", async () => {
-      const program = Stream.environmentWithEffect((env: Env<NumberService>) => Effect.sync(env.get(NumberService)))
-        .provideEnvironment(Env(NumberService, new NumberServiceImpl(10)))
-        .runHead
-        .some
+      const program =
+        Stream.environmentWithEffect((env: Env<NumberService>) =>
+          Effect.sync(env.get(NumberService))
+        )
+          .provideEnvironment(Env(NumberService, new NumberServiceImpl(10)))
+          .runHead
+          .some
 
       const result = await program.unsafeRunPromise()
 
@@ -42,22 +45,26 @@ describe.concurrent("Stream", () => {
     })
 
     it("environmentWithZIO fails", async () => {
-      const program = Stream.environmentWithEffect((_: Env<NumberService>) => Effect.failSync("fail"))
-        .provideEnvironment(Env(NumberService, new NumberServiceImpl(10)))
-        .runHead
+      const program =
+        Stream.environmentWithEffect((_: Env<NumberService>) => Effect.failSync("fail"))
+          .provideEnvironment(Env(NumberService, new NumberServiceImpl(10)))
+          .runHead
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail("fail"))
+      assert.isTrue(result == Exit.fail("fail"))
     })
   })
 
   describe.concurrent("environmentWithStream", () => {
     it("environmentWithStream", async () => {
-      const program = Stream.environmentWithStream((env: Env<NumberService>) => Stream.succeed(env.get(NumberService)))
-        .provideEnvironment(Env(NumberService, new NumberServiceImpl(10)))
-        .runHead
-        .some
+      const program =
+        Stream.environmentWithStream((env: Env<NumberService>) =>
+          Stream.succeed(env.get(NumberService))
+        )
+          .provideEnvironment(Env(NumberService, new NumberServiceImpl(10)))
+          .runHead
+          .some
 
       const result = await program.unsafeRunPromise()
 
@@ -71,7 +78,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail("fail"))
+      assert.isTrue(result == Exit.fail("fail"))
     })
   })
 

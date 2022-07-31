@@ -9,8 +9,7 @@
 export function foldUntilEffect<R, E, In, S>(
   z: LazyArg<S>,
   max: number,
-  f: (s: S, input: In) => Effect<R, E, S>,
-  __tsplusTrace?: string
+  f: (s: S, input: In) => Effect<R, E, S>
 ): Sink<R, E, In, In, S> {
   return Sink.foldEffect(
     Tuple(z(), 0),

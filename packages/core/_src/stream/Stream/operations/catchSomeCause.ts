@@ -7,8 +7,7 @@
  * @tsplus pipeable effect/core/stream/Stream catchSomeCause
  */
 export function catchSomeCause<E, R2, E2, A2>(
-  pf: (cause: Cause<E>) => Maybe<Stream<R2, E2, A2>>,
-  __tsplusTrace?: string
+  pf: (cause: Cause<E>) => Maybe<Stream<R2, E2, A2>>
 ) {
   return <R, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A | A2> =>
     self.catchAllCause(

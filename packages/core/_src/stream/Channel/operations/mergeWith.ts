@@ -149,7 +149,9 @@ export function mergeWith_<
                   (elem) =>
                     Effect.sync(
                       Channel.write(elem) >
-                        Channel.fromEffect(pull.forkDaemon).flatMap((leftFiber) => go(both(leftFiber, fiber)))
+                        Channel.fromEffect(pull.forkDaemon).flatMap((leftFiber) =>
+                          go(both(leftFiber, fiber))
+                        )
                     )
                 )
             )

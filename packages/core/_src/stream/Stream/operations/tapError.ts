@@ -5,8 +5,7 @@
  * @tsplus pipeable effect/core/stream/Stream tapError
  */
 export function tapError<E, R2, E2, Z>(
-  f: (e: E) => Effect<R2, E2, Z>,
-  __tsplusTrace?: string
+  f: (e: E) => Effect<R2, E2, Z>
 ) {
   return <R, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> =>
     self.catchAll((e) => Stream.fromEffect(f(e)) > Stream.fail(e))

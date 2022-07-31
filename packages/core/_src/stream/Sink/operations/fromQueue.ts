@@ -4,8 +4,7 @@
  * @tsplus static effect/core/stream/Sink.Ops fromQueue
  */
 export function fromQueue<In>(
-  queue: LazyArg<Enqueue<In>>,
-  __tsplusTrace?: string
+  queue: LazyArg<Enqueue<In>>
 ): Sink<never, never, In, never, void> {
   return Sink.unwrap(Effect.sync(queue).map((q) => Sink.forEachChunk((chunk) => q.offerAll(chunk))))
 }

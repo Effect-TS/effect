@@ -4,8 +4,7 @@
  * @tsplus static effect/core/stream/Stream.Ops fromEffect
  */
 export function fromEffect<R, E, A>(
-  effect: LazyArg<Effect<R, E, A>>,
-  __tsplusTrace?: string
+  effect: LazyArg<Effect<R, E, A>>
 ): Stream<R, E, A> {
   return Stream.fromEffectMaybe(effect().mapError(Maybe.some))
 }

@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Emits the provided chunk before emitting any other value.
@@ -7,8 +10,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus pipeable effect/core/stream/Stream prepend
  */
 export function prepend<A2>(
-  values: LazyArg<Chunk<A2>>,
-  __tsplusTrace?: string
+  values: LazyArg<Chunk<A2>>
 ) {
   return <R, E, A>(stream: Stream<R, E, A>): Stream<R, E, A | A2> => {
     concreteStream(stream)

@@ -5,10 +5,7 @@
  * @tsplus static effect/core/io/Effect.Aspects onTermination
  * @tsplus pipeable effect/core/io/Effect onTermination
  */
-export function onTermination<R2, X>(
-  cleanup: (cause: Cause<never>) => Effect<R2, never, X>,
-  __tsplusTrace?: string
-) {
+export function onTermination<R2, X>(cleanup: (cause: Cause<never>) => Effect<R2, never, X>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E, A> =>
     Effect.acquireUseReleaseExit(
       Effect.unit,

@@ -12,8 +12,7 @@ export function asyncScoped<R, E, A>(
   register: (
     f: (effect: Effect<R, Maybe<E>, Chunk<A>>) => void
   ) => Effect<R | Scope, E, unknown>,
-  outputBuffer = 16,
-  __tsplusTrace?: string
+  outputBuffer = 16
 ): Stream<R, E, A> {
   return Stream.scoped(
     Do(($) => {

@@ -4,7 +4,7 @@
  * @tsplus static effect/core/stream/Stream.Aspects timeout
  * @tsplus pipeable effect/core/stream/Stream timeout
  */
-export function timeout(duration: LazyArg<Duration>, __tsplusTrace?: string) {
+export function timeout(duration: LazyArg<Duration>) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> =>
     Stream.succeed(duration).flatMap((duration) =>
       Stream.fromPull(

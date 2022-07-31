@@ -6,8 +6,7 @@
  * @tsplus pipeable effect/core/stream/Stream provideSomeEnvironment
  */
 export function provideSomeEnvironment<R0, R>(
-  f: (r0: Env<R0>) => Env<R>,
-  __tsplusTrace?: string
+  f: (r0: Env<R0>) => Env<R>
 ) {
   return <E, A>(self: Stream<R, E, A>): Stream<R0, E, A> =>
     Stream.environmentWithStream((env: Env<R0>) => self.provideEnvironment(f(env)))

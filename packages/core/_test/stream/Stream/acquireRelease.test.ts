@@ -6,9 +6,9 @@ describe.concurrent("Stream", () => {
         .bindValue(
           "stream",
           ({ done }) =>
-            Stream.acquireRelease(Effect.sync(Chunk.range(0, 2)), () => done.set(true)).flatMap((chunk) =>
-              Stream.fromCollection(chunk)
-            )
+            Stream.acquireRelease(Effect.sync(Chunk.range(0, 2)), () => done.set(true)).flatMap((
+              chunk
+            ) => Stream.fromCollection(chunk))
         )
         .bind("result", ({ stream }) => stream.runCollect)
         .bind("released", ({ done }) => done.get())

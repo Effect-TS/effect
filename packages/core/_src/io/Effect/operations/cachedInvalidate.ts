@@ -7,8 +7,10 @@
  * @tsplus static effect/core/io/Effect.Aspects cachedInvalidate
  * @tsplus pipeable effect/core/io/Effect cachedInvalidate
  */
-export function cachedInvalidate(timeToLive: LazyArg<Duration>, __tsplusTrace?: string) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R, never, Tuple<[Effect<never, E, A>, Effect<never, never, void>]>> =>
+export function cachedInvalidate(timeToLive: LazyArg<Duration>) {
+  return <R, E, A>(
+    self: Effect<R, E, A>
+  ): Effect<R, never, Tuple<[Effect<never, E, A>, Effect<never, never, void>]>> =>
     Do(($) => {
       const ttl = $(Effect.sync(timeToLive))
       const environment = $(Effect.environment<R>())

@@ -8,8 +8,7 @@ import { Exited, Running } from "@effect/core/io/Scope/ReleaseMap/_internal/Stat
  * @tsplus pipeable effect/core/io/ReleaseMap updateAll
  */
 export function updateAll(
-  f: (finalizer: Scope.Finalizer) => Scope.Finalizer,
-  __tsplusTrace?: string
+  f: (finalizer: Scope.Finalizer) => Scope.Finalizer
 ) {
   return (self: ReleaseMap): Effect<never, never, void> =>
     self.ref.update((state) => {

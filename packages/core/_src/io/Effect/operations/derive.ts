@@ -69,10 +69,7 @@ export function deriveLifted<T>(
 }
 
 export type DerivedAccessM<T, Gens extends keyof T> = {
-  [k in Gens]: <R_, E_, A_>(
-    f: (_: T[k]) => Effect<R_, E_, A_>,
-    __tsplusTrace?: string
-  ) => Effect<R_ | T, E_, A_>
+  [k in Gens]: <R_, E_, A_>(f: (_: T[k]) => Effect<R_, E_, A_>) => Effect<R_ | T, E_, A_>
 }
 
 /**
@@ -85,7 +82,7 @@ export function deriveAccessEffect<T>(
     const ret = {} as any
 
     for (const k of generics) {
-      ret[k] = (f: any, trace?: string) => Effect.serviceWithEffect(S, (h) => f(h[k]), trace)
+      ret[k] = (f: any, trace?: string) => Effect.serviceWithEffect(S, (h) => f(h[k]))
     }
 
     return ret as any
@@ -93,10 +90,7 @@ export function deriveAccessEffect<T>(
 }
 
 export type DerivedAccess<T, Gens extends keyof T> = {
-  [k in Gens]: <A_>(
-    f: (_: T[k]) => A_,
-    __tsplusTrace?: string
-  ) => Effect<T, never, A_>
+  [k in Gens]: <A_>(f: (_: T[k]) => A_) => Effect<T, never, A_>
 }
 
 /**
@@ -109,7 +103,7 @@ export function deriveAccess<T>(
     const ret = {} as any
 
     for (const k of generics) {
-      ret[k] = (f: any, trace?: string) => Effect.serviceWith(S, (h) => f(h[k]), trace)
+      ret[k] = (f: any, trace?: string) => Effect.serviceWith(S, (h) => f(h[k]))
     }
 
     return ret as any

@@ -21,11 +21,15 @@ describe.concurrent("Channel", () => {
     it("merge with different types", async () => {
       const left = Channel.write(1) >
         Channel.fromEffect(
-          Effect.attempt("whatever").refineOrDie((e) => e instanceof RuntimeError ? Maybe.some(e) : Maybe.none)
+          Effect.attempt("whatever").refineOrDie((e) =>
+            e instanceof RuntimeError ? Maybe.some(e) : Maybe.none
+          )
         )
       const right = Channel.write(2) >
         Channel.fromEffect(
-          Effect.attempt(true).refineOrDie((e) => e instanceof IllegalStateException ? Maybe.some(e) : Maybe.none)
+          Effect.attempt(true).refineOrDie((e) =>
+            e instanceof IllegalStateException ? Maybe.some(e) : Maybe.none
+          )
         )
       const program = left
         .mergeWith(
@@ -50,14 +54,18 @@ describe.concurrent("Channel", () => {
       const program = left
         .mergeWith(
           right,
-          (exit) => MergeDecision.await((exit2) => Effect.done(exit).flip.zip(Effect.done(exit2).flip).flip),
-          (exit2) => MergeDecision.await((exit) => Effect.done(exit).flip.zip(Effect.done(exit2).flip).flip)
+          (exit) =>
+            MergeDecision.await((exit2) =>
+              Effect.done(exit).flip.zip(Effect.done(exit2).flip).flip
+            ),
+          (exit2) =>
+            MergeDecision.await((exit) => Effect.done(exit).flip.zip(Effect.done(exit2).flip).flip)
         )
         .runDrain
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(Tuple("boom", true)))
+      assert.isTrue(result == Exit.fail(Tuple("boom", true)))
     })
 
     it("interrupts losing side", async () => {

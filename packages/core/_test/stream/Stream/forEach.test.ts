@@ -26,7 +26,11 @@ describe.concurrent("Stream", () => {
     it("with bigger data set", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
-        .tap(({ ref }) => Stream.fromCollection(Chunk.fill(1000, () => 1)).runForEach((n) => ref.update((m) => n + m)))
+        .tap(({ ref }) =>
+          Stream.fromCollection(Chunk.fill(1000, () => 1)).runForEach((n) =>
+            ref.update((m) => n + m)
+          )
+        )
         .flatMap(({ ref }) => ref.get())
 
       const result = await program.unsafeRunPromise()

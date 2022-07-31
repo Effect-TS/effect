@@ -4,7 +4,7 @@
  *
  * @tsplus static effect/core/io/Effect.Ops parallelism
  */
-export function parallelism(__tsplusTrace?: string): Effect<never, never, Maybe<number>> {
+export function parallelism(): Effect<never, never, Maybe<number>> {
   return FiberRef.currentParallelism.get
 }
 
@@ -15,8 +15,7 @@ export function parallelism(__tsplusTrace?: string): Effect<never, never, Maybe<
  * @tsplus static effect/core/io/Effect.Ops parallelismWith
  */
 export function parallelismWith<R, E, A>(
-  f: (parallelism: Maybe<number>) => Effect<R, E, A>,
-  __tsplusTrace?: string
+  f: (parallelism: Maybe<number>) => Effect<R, E, A>
 ): Effect<R, E, A> {
   return FiberRef.currentParallelism.getWith(f)
 }
@@ -28,7 +27,7 @@ export function parallelismWith<R, E, A>(
  * @tsplus static effect/core/io/Effect.Aspects withParallelism
  * @tsplus pipeable effect/core/io/Effect withParallelism
  */
-export function withParallelism(n: number, __tsplusTrace?: string) {
+export function withParallelism(n: number) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
     Effect.suspendSucceed(
       self.apply(FiberRef.currentParallelism.locally(Maybe.some(n)))
@@ -41,10 +40,7 @@ export function withParallelism(n: number, __tsplusTrace?: string) {
  *
  * @tsplus getter effect/core/io/Effect withParallelismUnbounded
  */
-export function withParallelismUnbounded<R, E, A>(
-  self: Effect<R, E, A>,
-  __tsplusTrace?: string
-) {
+export function withParallelismUnbounded<R, E, A>(self: Effect<R, E, A>) {
   return Effect.suspendSucceed(
     self.apply(FiberRef.currentParallelism.locally(Maybe.none))
   )

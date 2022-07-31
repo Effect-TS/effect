@@ -1,4 +1,11 @@
-import { boom, largePrime, makeStairWithHoles, makeTArray, N, n } from "@effect/core/test/stm/TArray/test-utils"
+import {
+  boom,
+  largePrime,
+  makeStairWithHoles,
+  makeTArray,
+  N,
+  n
+} from "@effect/core/test/stm/TArray/test-utils"
 
 describe.concurrent("TArray", () => {
   describe.concurrent("collectFirst", () => {
@@ -60,7 +67,9 @@ describe.concurrent("TArray", () => {
             )
             .commit
             .fork)
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => Maybe.some(1))).commit)
+        .tap(({ tArray }) =>
+          STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => Maybe.some(1))).commit
+        )
         .flatMap(({ findFiber }) => findFiber.join)
 
       const result = await program.unsafeRunPromise()
@@ -94,7 +103,9 @@ describe.concurrent("TArray", () => {
     it("succeeds for empty", async () => {
       const program = makeTArray(0, Maybe.emptyOf<number>())
         .commit
-        .flatMap((tArray) => tArray.collectFirstSTM((option) => Maybe.some(STM.succeed(option))).commit)
+        .flatMap((tArray) =>
+          tArray.collectFirstSTM((option) => Maybe.some(STM.succeed(option))).commit
+        )
 
       const result = await program.unsafeRunPromise()
 
@@ -131,7 +142,9 @@ describe.concurrent("TArray", () => {
             )
             .commit
             .fork)
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => Maybe.some(1))).commit)
+        .tap(({ tArray }) =>
+          STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => Maybe.some(1))).commit
+        )
         .flatMap(({ findFiber }) => findFiber.join)
 
       const result = await program.unsafeRunPromise()

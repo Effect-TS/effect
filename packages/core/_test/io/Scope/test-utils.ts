@@ -7,7 +7,9 @@ export function resource(
     .as(id)
     .uninterruptible
     .ensuring(
-      Effect.scopeWith((scope) => scope.addFinalizer(ref.update((chunk) => chunk.append(Action.Release(id)))))
+      Effect.scopeWith((scope) =>
+        scope.addFinalizer(ref.update((chunk) => chunk.append(Action.Release(id))))
+      )
     )
 }
 

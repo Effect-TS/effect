@@ -5,7 +5,7 @@
  * @tsplus static effect/core/stream/Stream.Aspects toHub
  * @tsplus pipeable effect/core/stream/Stream toHub
  */
-export function toHub(capacity: number, __tsplusTrace?: string) {
+export function toHub(capacity: number) {
   return <R, E, A>(self: Stream<R, E, A>): Effect<R | Scope, never, Hub<Take<E, A>>> =>
     Effect.acquireRelease(
       Hub.bounded<Take<E, A>>(capacity),

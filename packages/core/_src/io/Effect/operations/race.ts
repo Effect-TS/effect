@@ -17,13 +17,11 @@
  * @tsplus static effect/core/io/Effect.Aspects race
  * @tsplus pipeable effect/core/io/Effect race
  */
-export function race<R2, E2, A2>(
-  that: LazyArg<Effect<R2, E2, A2>>,
-  __tsplusTrace?: string
-) {
+export function race<R2, E2, A2>(that: LazyArg<Effect<R2, E2, A2>>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, A | A2> =>
     Effect.descriptorWith((descriptor) => {
       const parentFiberId = descriptor.id
+
       function maybeDisconnect<R, E, A>(io: LazyArg<Effect<R, E, A>>) {
         return Effect.uninterruptibleMask(({ force }) => force(io))
       }
@@ -55,10 +53,7 @@ export function race<R2, E2, A2>(
  * @tsplus static effect/core/io/Effect.Aspects raceEither
  * @tsplus pipeable effect/core/io/Effect raceEither
  */
-export function raceEither<R2, E2, A2>(
-  that: LazyArg<Effect<R2, E2, A2>>,
-  __tsplusTrace?: string
-) {
+export function raceEither<R2, E2, A2>(that: LazyArg<Effect<R2, E2, A2>>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, Either<A, A2>> =>
     self.map(Either.left).race(that().map(Either.right))
 }
@@ -78,13 +73,9 @@ export function raceEither<R2, E2, A2>(
  * @tsplus static effect/core/io/Effect.Aspects raceFirst
  * @tsplus pipeable effect/core/io/Effect raceFirst
  */
-export function raceFirst<R2, E2, A2>(
-  that: LazyArg<Effect<R2, E2, A2>>,
-  __tsplusTrace?: string
-) {
+export function raceFirst<R2, E2, A2>(that: LazyArg<Effect<R2, E2, A2>>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E2 | E, A2 | A> =>
-    self
-      .exit
+    self.exit
       .race(that().exit)
       .flatMap((a) => Effect.done(a as Exit<E | E2, A | A2>))
 }

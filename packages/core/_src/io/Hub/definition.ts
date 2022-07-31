@@ -15,13 +15,13 @@ export interface Hub<A> extends Enqueue<A> {
    * Publishes a message to the hub, returning whether the message was published
    * to the hub.
    */
-  readonly publish: (a: A, __tsplusTrace?: string) => Effect<never, never, boolean>
+  readonly publish: (a: A) => Effect<never, never, boolean>
 
   /**
    * Publishes all of the specified messages to the hub, returning whether they
    * were published to the hub.
    */
-  readonly publishAll: (as: Collection<A>, __tsplusTrace?: string) => Effect<never, never, boolean>
+  readonly publishAll: (as: Collection<A>) => Effect<never, never, boolean>
 
   /**
    * Subscribes to receive messages from the hub. The resulting subscription can

@@ -6,8 +6,10 @@
  */
 export function filterPar<A, R, E>(
   as: Collection<A>,
-  f: (a: A) => Effect<R, E, boolean>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R, E, boolean>
 ): Effect<R, E, Chunk<A>> {
-  return Effect.forEachPar(as, (a) => f(a).map((b) => (b ? Maybe.some(a) : Maybe.none))).map((chunk) => chunk.compact)
+  return Effect.forEachPar(
+    as,
+    (a) => f(a).map((b) => (b ? Maybe.some(a) : Maybe.none))
+  ).map((chunk) => chunk.compact)
 }

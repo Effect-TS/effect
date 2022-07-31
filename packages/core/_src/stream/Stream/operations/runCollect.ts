@@ -4,8 +4,7 @@
  * @tsplus getter effect/core/stream/Stream runCollect
  */
 export function runCollect<R, E, A>(
-  self: Stream<R, E, A>,
-  __tsplusTrace?: string
+  self: Stream<R, E, A>
 ): Effect<R, E, Chunk<A>> {
   return self.run(Sink.collectAll())
 }

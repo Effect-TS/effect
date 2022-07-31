@@ -4,6 +4,6 @@
  *
  * @tsplus static effect/core/io/Scope.Ops parallel
  */
-export function parallel(__tsplusTrace?: string): Effect<never, never, Scope.Closeable> {
+export function parallel(): Effect<never, never, Scope.Closeable> {
   return Scope.makeWith(ExecutionStrategy.Parallel)
 }

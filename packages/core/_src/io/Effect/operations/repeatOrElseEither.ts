@@ -14,8 +14,7 @@ import type { Driver } from "@effect/core/io/Schedule"
  */
 export function repeatOrElseEither<S, R1, A, B, E, R2, E2, C>(
   schedule: LazyArg<Schedule<S, R1, A, B>>,
-  orElse: (e: E, option: Maybe<B>) => Effect<R2, E2, C>,
-  __tsplusTrace?: string
+  orElse: (e: E, option: Maybe<B>) => Effect<R2, E2, C>
 ): <R>(self: Effect<R, E, A>) => Effect<R | R1 | R2, E2, Either<C, B>> {
   return <R>(self: Effect<R, E, A>): Effect<R | R1 | R2, E2, Either<C, B>> =>
     Effect.suspendSucceed(() => {

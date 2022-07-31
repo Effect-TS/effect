@@ -7,8 +7,7 @@ import { realFiber } from "@effect/core/io/Fiber/definition"
  * @tsplus getter effect/core/io/RuntimeFiber children
  */
 export function children<E, A>(
-  self: Fiber<E, A>,
-  __tsplusTrace?: string
+  self: Fiber<E, A>
 ): Effect<never, never, Chunk<Fiber.Runtime<any, any>>> {
   realFiber(self)
   return self._children

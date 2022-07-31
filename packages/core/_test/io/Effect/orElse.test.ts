@@ -2,7 +2,7 @@ describe.concurrent("orElse", () => {
   describe.concurrent("orElse", () => {
     it("does not recover from defects", async () => {
       const error = new Error("died")
-      const fiberId = FiberId(0, 123, TraceElement.empty)
+      const fiberId = FiberId(0, 123)
       const program = Effect.Do()
         .bind("plain", () => (Effect.die(error) | Effect.unit).exit)
         .bind("both", () =>
@@ -19,10 +19,10 @@ describe.concurrent("orElse", () => {
 
       const { both, fail, plain, then } = await program.unsafeRunPromise()
 
-      assert.isTrue(plain.untraced == Exit.die(error))
-      assert.isTrue(both.untraced == Exit.die(error))
-      assert.isTrue(then.untraced == Exit.die(error))
-      assert.isTrue(fail.untraced == Exit.succeed(undefined))
+      assert.isTrue(plain == Exit.die(error))
+      assert.isTrue(both == Exit.die(error))
+      assert.isTrue(then == Exit.die(error))
+      assert.isTrue(fail == Exit.succeed(undefined))
     })
 
     it("left failed and right died with kept cause", async () => {
@@ -107,7 +107,7 @@ describe.concurrent("orElse", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(Maybe.some("fail")))
+      assert.isTrue(result == Exit.fail(Maybe.some("fail")))
     })
 
     it("produces the value of the specified effect if it fails with none", async () => {

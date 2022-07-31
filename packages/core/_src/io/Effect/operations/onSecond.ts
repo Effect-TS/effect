@@ -5,9 +5,6 @@
  *
  * @tsplus getter effect/core/io/Effect onSecond
  */
-export function onSecond<R, E, A>(
-  self: Effect<R, E, A>,
-  __tsplusTrace?: string
-): Effect<R, E, Tuple<[Env<R>, A]>> {
+export function onSecond<R, E, A>(self: Effect<R, E, A>): Effect<R, E, Tuple<[Env<R>, A]>> {
   return Effect.environment<R>().zip(self)
 }

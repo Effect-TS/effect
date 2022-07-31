@@ -3,4 +3,7 @@
  *
  * @tsplus static effect/core/io/Schedule.Ops repeatForever
  */
-export const repeatForever: Schedule<number, never, unknown, number> = Schedule.unfold(0, (n) => n + 1)
+export const repeatForever: Schedule<number, never, unknown, number> = Schedule.unfold(
+  0,
+  (n) => n + 1
+)

@@ -6,9 +6,6 @@
  * @tsplus getter effect/core/io/Fiber interrupt
  * @tsplus getter effect/core/io/RuntimeFiber interrupt
  */
-export function interrupt<E, A>(
-  self: Fiber<E, A>,
-  __tsplusTrace?: string
-): Effect<never, never, Exit<E, A>> {
+export function interrupt<E, A>(self: Fiber<E, A>): Effect<never, never, Exit<E, A>> {
   return Effect.fiberId.flatMap((fiberId) => self.interruptAs(fiberId))
 }

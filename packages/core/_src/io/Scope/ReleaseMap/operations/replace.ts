@@ -8,7 +8,7 @@ import { Exited, Running } from "@effect/core/io/Scope/ReleaseMap/_internal/Stat
  * @tsplus static effect/core/io/ReleaseMap.Aspects replace
  * @tsplus pipeable effect/core/io/ReleaseMap replace
  */
-export function replace(key: number, finalizer: Scope.Finalizer, __tsplusTrace?: string) {
+export function replace(key: number, finalizer: Scope.Finalizer) {
   return (self: ReleaseMap): Effect<never, never, Maybe<Scope.Finalizer>> =>
     self.ref
       .modify((s) => {

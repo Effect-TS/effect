@@ -7,6 +7,6 @@ import { ISync } from "@effect/core/io/Effect/definition/primitives"
  * @tsplus static effect/core/io/Effect.Ops __call
  * @tsplus static effect/core/io/Effect.Ops sync
  */
-export function sync<A>(f: LazyArg<A>, __tsplusTrace?: string): Effect<never, never, A> {
-  return new ISync(f, __tsplusTrace)
+export function sync<A>(f: LazyArg<A>): Effect<never, never, A> {
+  return new ISync(f)
 }

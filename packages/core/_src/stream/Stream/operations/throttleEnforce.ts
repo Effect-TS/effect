@@ -13,8 +13,7 @@ export function throttleEnforce<A>(
   units: number,
   duration: LazyArg<Duration>,
   costFn: (input: Chunk<A>) => number,
-  burst = 0,
-  __tsplusTrace?: string
+  burst = 0
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, A> =>
     self.throttleEnforceEffect(

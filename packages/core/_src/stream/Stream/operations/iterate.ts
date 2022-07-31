@@ -6,8 +6,7 @@
  */
 export function iterate<A>(
   a: LazyArg<A>,
-  f: (a: A) => A,
-  __tsplusTrace?: string
+  f: (a: A) => A
 ): Stream<never, never, A> {
   return Stream.unfold(a, (a) => Maybe.some(Tuple(a, f(a))))
 }

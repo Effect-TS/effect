@@ -6,8 +6,7 @@
  */
 export function repeatEffectWithSchedule<S, R, E, A>(
   effect: LazyArg<Effect<R, E, A>>,
-  schedule: LazyArg<Schedule<S, R, A, unknown>>,
-  __tsplusTrace?: string
+  schedule: LazyArg<Schedule<S, R, A, unknown>>
 ): Stream<R, E, A> {
   return Stream.succeed(Tuple(effect(), schedule())).flatMap(
     ({ tuple: [effect, schedule] }) =>

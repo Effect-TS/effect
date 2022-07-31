@@ -4,8 +4,7 @@
  * @tsplus static effect/core/stream/Stream.Ops fromCollectionEffect
  */
 export function fromCollectionEffect<R, E, A>(
-  collection: LazyArg<Effect<R, E, Collection<A>>>,
-  __tsplusTrace?: string
+  collection: LazyArg<Effect<R, E, Collection<A>>>
 ): Stream<R, E, A> {
   return Stream.fromEffect(collection).mapConcat(identity)
 }

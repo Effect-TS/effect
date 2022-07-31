@@ -27,7 +27,9 @@ describe.concurrent("Sink", () => {
         Chunk.empty<number>(),
         Chunk(7, 8, 9, 10)
       )
-      const headAndCount = Sink.head<number>().flatMap((head) => Sink.count().map((count) => Tuple(head, count)))
+      const headAndCount = Sink.head<number>().flatMap((head) =>
+        Sink.count().map((count) => Tuple(head, count))
+      )
       const program = Stream.fromChunks(...chunks).run(headAndCount)
 
       const {
@@ -35,7 +37,10 @@ describe.concurrent("Sink", () => {
       } = await program.unsafeRunPromise()
 
       assert.isTrue(head == chunks.flatten.head)
-      assert.strictEqual(count + head.fold(0, () => 1), chunks.map((chunk) => chunk.size).reduce(0, (a, b) => a + b))
+      assert.strictEqual(
+        count + head.fold(0, () => 1),
+        chunks.map((chunk) => chunk.size).reduce(0, (a, b) => a + b)
+      )
     })
 
     // TODO(Mike/Max): implement after Gen

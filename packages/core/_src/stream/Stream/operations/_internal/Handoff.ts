@@ -25,7 +25,7 @@ export class Full<A> {
 /**
  * @tsplus static effect/core/stream/Stream/Handoff.Ops make
  */
-export function make<A>(__tsplusTrace?: string): Effect<never, never, Handoff<A>> {
+export function make<A>(): Effect<never, never, Handoff<A>> {
   return Deferred.make<never, void>()
     .flatMap((deferred) => Ref.make<HandoffState<A>>(new Empty(deferred)))
     .map((state) => new Handoff(state))
@@ -35,7 +35,7 @@ export function make<A>(__tsplusTrace?: string): Effect<never, never, Handoff<A>
  * @tsplus static effect/core/stream/Stream/Handoff.Aspects offer
  * @tsplus pipeable effect/core/stream/Stream/Handoff offer
  */
-export function offer<A>(value: A, __tsplusTrace?: string) {
+export function offer<A>(value: A) {
   return (self: Handoff<A>): Effect<never, never, void> =>
     Deferred.make<never, void>().flatMap((deferred) =>
       self.ref
@@ -59,7 +59,7 @@ export function offer<A>(value: A, __tsplusTrace?: string) {
 /**
  * @tsplus getter effect/core/stream/Stream/Handoff take
  */
-export function take<A>(self: Handoff<A>, __tsplusTrace?: string): Effect<never, never, A> {
+export function take<A>(self: Handoff<A>): Effect<never, never, A> {
   return Deferred.make<never, void>().flatMap((deferred) =>
     self.ref
       .modify((state) => {
@@ -82,7 +82,7 @@ export function take<A>(self: Handoff<A>, __tsplusTrace?: string): Effect<never,
 /**
  * @tsplus getter effect/core/stream/Stream/Handoff poll
  */
-export function poll<A>(self: Handoff<A>, __tsplusTrace?: string): Effect<never, never, Maybe<A>> {
+export function poll<A>(self: Handoff<A>): Effect<never, never, Maybe<A>> {
   return Deferred.make<never, void>().flatMap((deferred) =>
     self.ref
       .modify((state) => {

@@ -3,9 +3,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
 /**
  * @tsplus static effect/core/stream/Sink.Ops collectAll
  */
-export function collectAll<In>(
-  __tsplusTrace?: string
-): Sink<never, never, In, never, Chunk<In>> {
+export function collectAll<In>(): Sink<never, never, In, never, Chunk<In>> {
   return new SinkInternal(loop(Chunk.empty()))
 }
 

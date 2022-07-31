@@ -10,6 +10,6 @@ describe.concurrent("Channel", () => {
   it("fail", () =>
     Do(($) => {
       const result = $(Channel.fail("uh oh").runCollect.exit)
-      assert.isTrue(result.untraced == Exit.fail("uh oh"))
+      assert.isTrue(result == Exit.fail("uh oh"))
     }).unsafeRunPromiseExit())
 })

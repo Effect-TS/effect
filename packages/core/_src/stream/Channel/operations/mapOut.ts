@@ -8,11 +8,12 @@ export function mapOut<OutElem, OutElem2>(f: (o: OutElem) => OutElem2) {
   return <Env, InErr, InElem, InDone, OutErr, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone> => {
-    const reader: Channel<Env, OutErr, OutElem, OutDone, OutErr, OutElem2, OutDone> = Channel.readWith(
-      (outElem) => Channel.write(f(outElem)) > reader,
-      (outErr) => Channel.fail(outErr),
-      (outDone) => Channel.succeedNow(outDone)
-    )
+    const reader: Channel<Env, OutErr, OutElem, OutDone, OutErr, OutElem2, OutDone> = Channel
+      .readWith(
+        (outElem) => Channel.write(f(outElem)) > reader,
+        (outErr) => Channel.fail(outErr),
+        (outDone) => Channel.succeedNow(outDone)
+      )
     return self >> reader
   }
 }

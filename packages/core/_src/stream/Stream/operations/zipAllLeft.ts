@@ -10,8 +10,7 @@
  */
 export function zipAllLeft<A, R2, E2, A2>(
   that: LazyArg<Stream<R2, E2, A2>>,
-  def: LazyArg<A>,
-  __tsplusTrace?: string
+  def: LazyArg<A>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> =>
     self.zipAllWith(
