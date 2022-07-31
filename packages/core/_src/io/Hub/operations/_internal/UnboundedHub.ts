@@ -1,5 +1,5 @@
 import type { AtomicHub } from "@effect/core/io/Hub/operations/_internal/AtomicHub"
-import { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription"
+import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription"
 
 class Node<A> {
   constructor(
@@ -21,11 +21,11 @@ export class UnboundedHub<A> implements AtomicHub<A> {
     this.publisherTail = this.publisherHead
   }
 
-  isEmpty(): boolean {
+  get isEmpty(): boolean {
     return this.publisherHead === this.publisherTail
   }
 
-  isFull(): boolean {
+  get isFull(): boolean {
     return false
   }
 
@@ -48,7 +48,7 @@ export class UnboundedHub<A> implements AtomicHub<A> {
     return Chunk.empty()
   }
 
-  size(): number {
+  get size(): number {
     return this.publisherIndex - this.subscribersIndex
   }
 
@@ -72,17 +72,16 @@ export class UnboundedHub<A> implements AtomicHub<A> {
   }
 }
 
-class UnboundedHubSubscription<A> extends Subscription<A> {
+class UnboundedHubSubscription<A> implements Subscription<A> {
   constructor(
     private self: UnboundedHub<A>,
     private subscriberHead: Node<A>,
     private subscriberIndex: number,
     private unsubscribed: boolean
   ) {
-    super()
   }
 
-  isEmpty(): boolean {
+  get isEmpty(): boolean {
     if (this.unsubscribed) {
       return true
     }
@@ -160,7 +159,7 @@ class UnboundedHubSubscription<A> extends Subscription<A> {
     return builder
   }
 
-  size() {
+  get size() {
     if (this.unsubscribed) {
       return 0
     }

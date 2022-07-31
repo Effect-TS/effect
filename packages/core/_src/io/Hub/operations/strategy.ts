@@ -87,7 +87,7 @@ abstract class BaseStrategy<A> implements Strategy<A> {
   ): void {
     let keepPolling = true
 
-    while (keepPolling && !subscription.isEmpty()) {
+    while (keepPolling && !subscription.isEmpty) {
       const poller = pollers.poll(EmptyMutableQueue)!
 
       if (poller === EmptyMutableQueue) {
@@ -176,7 +176,7 @@ export class BackPressure<A> extends BaseStrategy<A> {
   ): void {
     let keepPolling = true
 
-    while (keepPolling && !hub.isFull()) {
+    while (keepPolling && !hub.isFull) {
       const publisher = this.publishers.poll(EmptyMutableQueue)!
 
       if (publisher === EmptyMutableQueue) {

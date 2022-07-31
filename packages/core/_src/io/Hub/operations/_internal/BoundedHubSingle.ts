@@ -1,5 +1,5 @@
 import type { AtomicHub } from "@effect/core/io/Hub/operations/_internal/AtomicHub"
-import { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription"
+import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription"
 
 export class BoundedHubSingle<A> implements AtomicHub<A> {
   publisherIndex = 0
@@ -9,16 +9,16 @@ export class BoundedHubSingle<A> implements AtomicHub<A> {
 
   readonly capacity = 1
 
-  isEmpty(): boolean {
+  get isEmpty(): boolean {
     return this.subscribers === 0
   }
 
-  isFull(): boolean {
-    return !this.isEmpty()
+  get isFull(): boolean {
+    return !this.isEmpty
   }
 
   publish(a: A): boolean {
-    if (this.isFull()) {
+    if (this.isFull) {
       return false
     }
 
@@ -45,12 +45,12 @@ export class BoundedHubSingle<A> implements AtomicHub<A> {
     }
   }
 
-  size(): number {
-    return this.isEmpty() ? 0 : 1
+  get size(): number {
+    return this.isEmpty ? 0 : 1
   }
 
   slide(): void {
-    if (this.isFull()) {
+    if (this.isFull) {
       this.subscribers = 0
       this.value = null as unknown as A
     }
@@ -63,16 +63,15 @@ export class BoundedHubSingle<A> implements AtomicHub<A> {
   }
 }
 
-class BoundedHubSingleSubscription<A> extends Subscription<A> {
+class BoundedHubSingleSubscription<A> implements Subscription<A> {
   constructor(
     private self: BoundedHubSingle<A>,
     private subscriberIndex: number,
     private unsubscribed: boolean
   ) {
-    super()
   }
 
-  isEmpty(): boolean {
+  get isEmpty(): boolean {
     return (
       this.unsubscribed ||
       this.self.subscribers === 0 ||
@@ -81,7 +80,7 @@ class BoundedHubSingleSubscription<A> extends Subscription<A> {
   }
 
   poll<D>(default_: D): A | D {
-    if (this.isEmpty()) {
+    if (this.isEmpty) {
       return default_
     }
 
@@ -99,7 +98,7 @@ class BoundedHubSingleSubscription<A> extends Subscription<A> {
   }
 
   pollUpTo(n: number): Chunk<A> {
-    if (this.isEmpty() || n < 1) {
+    if (this.isEmpty || n < 1) {
       return Chunk.empty()
     }
 
@@ -116,8 +115,8 @@ class BoundedHubSingleSubscription<A> extends Subscription<A> {
     return Chunk.single(a)
   }
 
-  size() {
-    return this.isEmpty() ? 0 : 1
+  get size() {
+    return this.isEmpty ? 0 : 1
   }
 
   unsubscribe(): void {

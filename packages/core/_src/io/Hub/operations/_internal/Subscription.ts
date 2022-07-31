@@ -1,7 +1,7 @@
-export abstract class Subscription<A> {
-  abstract isEmpty(): boolean
-  abstract poll<D>(default_: D): A | D
-  abstract pollUpTo(n: number): Chunk<A>
-  abstract size(): number
-  abstract unsubscribe(): void
+export interface Subscription<A> {
+  get isEmpty(): boolean
+  poll<D>(default_: D): A | D
+  pollUpTo(n: number): Chunk<A>
+  get size(): number
+  unsubscribe(): void
 }
