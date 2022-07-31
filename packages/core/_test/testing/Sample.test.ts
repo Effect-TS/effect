@@ -35,7 +35,7 @@ describe.concurrent("Sample", () => {
       const sample = Sample.shrinkIntegral(0)(5)
       const result = $(equalSamples(sample.flatMap(Sample.noShrink), sample))
       assert.isTrue(result)
-    }).unsafeRunPromise(), 10_000)
+    }).unsafeRunPromise(), 30_000)
 
   it("monad right identity", () =>
     Do(($) => {
@@ -43,7 +43,7 @@ describe.concurrent("Sample", () => {
       const f = (n: number): Sample<never, number> => Sample.shrinkIntegral(0)(n)
       const result = $(equalSamples(Sample.noShrink(n).flatMap(f), f(n)))
       assert.isTrue(result)
-    }).unsafeRunPromise(), 10_000)
+    }).unsafeRunPromise(), 30_000)
 
   it("monad associativity", () =>
     Do(($) => {
@@ -55,7 +55,7 @@ describe.concurrent("Sample", () => {
         sample.flatMap((a) => f(a).flatMap(g))
       ))
       assert.isTrue(result)
-    }).unsafeRunPromise(), 10_000)
+    }).unsafeRunPromise(), 30_000)
 
   it("traverse fusion", () =>
     Do(($) => {
@@ -67,5 +67,5 @@ describe.concurrent("Sample", () => {
         sample.forEach(f).flatMap((sample) => sample.forEach(g))
       ))
       assert.isTrue(result)
-    }).unsafeRunPromise(), 10_000)
+    }).unsafeRunPromise(), 30_000)
 })
