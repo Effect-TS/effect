@@ -32,12 +32,12 @@ export interface Ref<A> {
   /**
    * Internal Discriminator
    */
-  readonly [RefSym]: RefSym
+  get [RefSym](): RefSym
 
   /**
    * Internal Variance Marker
    */
-  readonly [_A]: () => A
+  get [_A](): (_: never) => A
 
   /**
    * Reads the value from the `Ref`.
@@ -56,12 +56,6 @@ export interface Ref<A> {
    * (at some cost to performance).
    */
   set(this: this, a: A): Effect<never, never, void>
-
-  /**
-   * Writes a new value to the `Ref` without providing a guarantee of immediate
-   * consistency.
-   */
-  setAsync(this: this, a: A): Effect<never, never, void>
 
   /**
    * Atomically writes the specified value to the `Ref`, returning the value
@@ -127,6 +121,11 @@ export interface Ref<A> {
 
 export declare namespace Ref {
   export interface Synchronized<A> extends Ref<A> {
+    /**
+     * Internal Discriminator
+     */
+    get [SynchronizedSym](): SynchronizedSym
+
     /**
      * Atomically modifies the `Ref.Synchronized` with the specified function,
      * which computes a return value for the modification. This is a more

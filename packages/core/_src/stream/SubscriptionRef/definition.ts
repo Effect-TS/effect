@@ -13,7 +13,7 @@ export interface SubscriptionRef<A> extends Ref.Synchronized<A> {
   /**
    * Internal Discriminator
    */
-  readonly [SubscriptionRefSym]: SubscriptionRefSym
+  get [SubscriptionRefSym](): SubscriptionRefSym
 
   /**
    * A stream containing the current value of the `Ref` as well as all changes

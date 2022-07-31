@@ -23,6 +23,6 @@ export function makeSynchronized<A>(
   return Do(($) => {
     const ref = $(Ref.make<A>(value))
     const semaphore = $(TSemaphore.makeCommit(1))
-    return Object.setPrototypeOf({ ref, semaphore }, SynchronizedInternal)
+    return new SynchronizedInternal(ref, semaphore)
   })
 }

@@ -12,14 +12,11 @@ export function make<A>(
   value: LazyArg<A>
 ): Effect<never, never, SubscriptionRef<A>> {
   return Effect.suspendSucceed(
-    Effect.struct({
-      ref: Ref.Synchronized.make(value),
-      hub: Hub.unbounded<A>()
-    }).map(({ hub, ref }) =>
-      Object.setPrototypeOf({
-        ref,
-        hub
-      }, SubscriptionRefInternal)
-    )
+    Do(($) => {
+      const ref = $(Ref.make(value))
+      const hub = $(Hub.unbounded<A>())
+      const sem = $(TSemaphore.makeCommit(1))
+      return new SubscriptionRefInternal(ref, hub, sem)
+    })
   )
 }
