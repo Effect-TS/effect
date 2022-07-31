@@ -13,9 +13,9 @@ export function onDecision<State, Out, Env1, X>(
   f: (state: State, out: Out, decision: Decision) => Effect<Env1, never, X>
 ) {
   return <Env, In>(self: Schedule<State, Env, In, Out>): Schedule<State, Env | Env1, In, Out> =>
-    makeWithState(self._initial, (now, input, state) =>
+    makeWithState(self.initial, (now, input, state) =>
       self
-        ._step(now, input, state)
+        .step(now, input, state)
         .flatMap(({ tuple: [state, out, decision] }) =>
           f(state, out, decision).as(Tuple(state, out, decision))
         ))

@@ -8,12 +8,11 @@ export class ScheduleWithStateInternal<State, Env, In, Out> {
   readonly [_Out]!: () => Out
   readonly [_State]!: State
   constructor(
-    readonly _initial: State,
-    readonly _step: (
-      _now: number,
-      _in: In,
-      _state: State,
-      _etsTrace?: string
+    readonly initial: State,
+    readonly step: (
+      now: number,
+      input: In,
+      state: State
     ) => Effect<Env, never, Tuple<[State, Out, Decision]>>
   ) {}
 }

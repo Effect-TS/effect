@@ -1,5 +1,5 @@
 import { Decision } from "@effect/core/io/Schedule/Decision"
-import type { Interval } from "@effect/core/io/Schedule/Interval"
+import type { Intervals } from "@effect/core/io/Schedule/Intervals"
 import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
 
@@ -13,7 +13,7 @@ import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
  */
 export function unionWith<State1, Env1, In1, Out2>(
   that: Schedule<State1, Env1, In1, Out2>,
-  f: (x: Interval, y: Interval) => Interval
+  f: (x: Intervals, y: Intervals) => Intervals
 ) {
   return <State, Env, In, Out>(self: Schedule<State, Env, In, Out>): Schedule<
     Tuple<[State, State1]>,
@@ -21,9 +21,9 @@ export function unionWith<State1, Env1, In1, Out2>(
     In & In1,
     MergeTuple<Out, Out2>
   > =>
-    makeWithState(Tuple(self._initial, that._initial), (now, input, state) => {
-      const left = self._step(now, input, state.get(0))
-      const right = that._step(now, input, state.get(1))
+    makeWithState(Tuple(self.initial, that.initial), (now, input, state) => {
+      const left = self.step(now, input, state.get(0))
+      const right = that.step(now, input, state.get(1))
       return left.zipWith(
         right,
         ({ tuple: [lState, l, lDecision] }, { tuple: [rState, r, rDecision] }) => {
@@ -34,18 +34,18 @@ export function unionWith<State1, Env1, In1, Out2>(
             return Tuple(
               Tuple(lState, rState),
               Tuple.mergeTuple(l, r),
-              Decision.Continue(rDecision.interval)
+              Decision.Continue(rDecision.intervals)
             )
           }
           if (lDecision._tag === "Continue" && rDecision._tag === "Done") {
             return Tuple(
               Tuple(lState, rState),
               Tuple.mergeTuple(l, r),
-              Decision.Continue(lDecision.interval)
+              Decision.Continue(lDecision.intervals)
             )
           }
           if (lDecision._tag === "Continue" && rDecision._tag === "Continue") {
-            const combined = f(lDecision.interval, rDecision.interval)
+            const combined = f(lDecision.intervals, rDecision.intervals)
             return Tuple(
               Tuple(lState, rState),
               Tuple.mergeTuple(l, r),

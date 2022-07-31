@@ -30,13 +30,13 @@ export function windowed(
             Tuple(
               Tuple(Maybe.some(now), n + 1),
               n,
-              Decision.Continue(Interval.after(now + millis))
+              Decision.continueWith(Interval.after(now + millis))
             ),
           (startMillis) =>
             Tuple(
               Tuple(Maybe.some(startMillis), n + 1),
               n,
-              Decision.Continue(
+              Decision.continueWith(
                 Interval.after(now + (millis - ((now - startMillis) % millis)))
               )
             )

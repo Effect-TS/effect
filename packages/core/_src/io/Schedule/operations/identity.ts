@@ -10,6 +10,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
 export function identity<A>(): Schedule<void, never, A, A> {
   return makeWithState(
     undefined as void,
-    (now, input, state) => Effect.sync(Tuple(state, input, Decision.Continue(Interval.after(now))))
+    (now, input, state) =>
+      Effect.sync(Tuple(state, input, Decision.continueWith(Interval.after(now))))
   )
 }

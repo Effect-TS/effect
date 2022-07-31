@@ -10,7 +10,7 @@ export function retry<S, RIn1, E, X>(schedule: LazyArg<Schedule<S, RIn1, E, X>>)
       const schedule0 = schedule()
       const stateTag = Tag<UpdateState<S>>()
 
-      return Layer.succeed(stateTag, { state: schedule0._initial }).flatMap((env) =>
+      return Layer.succeed(stateTag, { state: schedule0.initial }).flatMap((env) =>
         loop(self, schedule0, stateTag, env.get(stateTag).state)
       )
     })
@@ -42,10 +42,10 @@ function update<S, RIn, E, X>(
   return Layer.fromEffect(
     stateTag,
     Clock.currentTime.flatMap((now) =>
-      schedule._step(now, e, s).flatMap(({ tuple: [state, _, decision] }) =>
+      schedule.step(now, e, s).flatMap(({ tuple: [state, _, decision] }) =>
         decision._tag === "Done"
           ? Effect.failSync(e)
-          : Clock.sleep(new Duration(decision.interval.startMillis - now)).as({
+          : Clock.sleep(new Duration(decision.intervals.start - now)).as({
             state
           })
       )

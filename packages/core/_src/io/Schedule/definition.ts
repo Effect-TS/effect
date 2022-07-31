@@ -47,14 +47,11 @@ export interface Schedule<State, Env, In, Out> {
   readonly [_Env]: () => Env
   readonly [_In]: (_: In) => void
   readonly [_Out]: () => Out
-
-  readonly _initial: State
-
-  readonly _step: (
-    _now: number,
-    _in: In,
-    _state: State,
-    _trace?: string
+  readonly initial: State
+  readonly step: (
+    now: number,
+    input: In,
+    state: State,
   ) => Effect<Env, never, Tuple<[State, Out, Decision]>>
 }
 

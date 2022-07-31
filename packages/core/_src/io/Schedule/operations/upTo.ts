@@ -7,5 +7,6 @@
 export function upTo(duration: Duration) {
   return <State, Env, In, Out>(
     self: Schedule<State, Env, In, Out>
-  ): Schedule<Tuple<[State, Maybe<number>]>, Env, In, Out> => self < Schedule.recurUpTo(duration)
+  ): Schedule<Tuple<[State, Maybe<number>]>, Env, In, Out> =>
+    self.zipLeft(Schedule.recurUpTo(duration))
 }

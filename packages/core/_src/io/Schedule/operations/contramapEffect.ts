@@ -14,7 +14,7 @@ export function contramapEffect<In, Env1, In2>(
     self: Schedule<State, Env, In, Out>
   ): Schedule<State, Env | Env1, In2, Out> =>
     makeWithState(
-      self._initial,
-      (now, input2, state) => f(input2).flatMap((input) => self._step(now, input, state))
+      self.initial,
+      (now, input2, state) => f(input2).flatMap((input) => self.step(now, input, state))
     )
 }

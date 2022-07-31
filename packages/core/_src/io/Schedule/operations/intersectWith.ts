@@ -1,5 +1,5 @@
 import { Decision } from "@effect/core/io/Schedule/Decision"
-import type { Interval } from "@effect/core/io/Schedule/Interval"
+import type { Intervals } from "@effect/core/io/Schedule/Intervals"
 import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
 
@@ -13,7 +13,7 @@ import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
  */
 export function intersectWith<State1, Env1, In1, Out2>(
   that: Schedule<State1, Env1, In1, Out2>,
-  f: (x: Interval, y: Interval) => Interval
+  f: (x: Intervals, y: Intervals) => Intervals
 ) {
   return <State, Env, In, Out>(self: Schedule<State, Env, In, Out>): Schedule<
     Tuple<[State, State1]>,
@@ -21,39 +21,37 @@ export function intersectWith<State1, Env1, In1, Out2>(
     In & In1,
     MergeTuple<Out, Out2>
   > =>
-    makeWithState(Tuple(self._initial, that._initial), (now, input, state) => {
-      const left = self._step(now, input, state.get(0))
-      const right = that._step(now, input, state.get(1))
+    makeWithState(Tuple(self.initial, that.initial), (now, input, state) => {
+      const left = self.step(now, input, state.get(0))
+      const right = that.step(now, input, state.get(1))
 
       return left
         .zipWith(right, (a, b) => Tuple(a, b))
         .flatMap(
           ({
             tuple: [
-              {
-                tuple: [lState, out, lDecision]
-              },
-              {
-                tuple: [rState, out2, rDecision]
-              }
+              { tuple: [lState, out, lDecision] },
+              { tuple: [rState, out2, rDecision] }
             ]
-          }) =>
-            lDecision._tag === "Continue" && rDecision._tag === "Continue"
-              ? intersectWithLoop(
+          }) => {
+            if (lDecision._tag === "Continue" && rDecision._tag === "Continue") {
+              return intersectWithLoop(
                 self,
                 that,
                 input,
                 lState,
                 out,
-                lDecision.interval,
+                lDecision.intervals,
                 rState,
                 out2,
-                rDecision.interval,
+                rDecision.intervals,
                 f
               )
-              : Effect.succeed(
-                Tuple(Tuple(lState, rState), Tuple.mergeTuple(out, out2), Decision.Done)
-              )
+            }
+            return Effect.succeed(
+              Tuple(Tuple(lState, rState), Tuple.mergeTuple(out, out2), Decision.Done)
+            )
+          }
         )
     })
 }
@@ -64,11 +62,11 @@ function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
   input: In & In1,
   lState: State,
   out: Out,
-  lInterval: Interval,
+  lInterval: Intervals,
   rState: State1,
   out2: Out2,
-  rInterval: Interval,
-  f: (x: Interval, y: Interval) => Interval
+  rInterval: Intervals,
+  f: (x: Intervals, y: Intervals) => Intervals
 ): Effect<
   Env | Env1,
   never,
@@ -86,55 +84,65 @@ function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
     )
   }
 
-  if (lInterval < rInterval) {
+  if (lInterval.lessThan(rInterval)) {
     return self
-      ._step(lInterval.endMillis, input, lState)
-      .flatMap(({ tuple: [lState, out, decision] }) =>
-        decision._tag === "Continue"
-          ? intersectWithLoop(
-            self,
-            that,
-            input,
-            lState as State,
-            out,
-            decision.interval,
-            rState,
-            out2,
-            rInterval,
-            f
-          )
-          : Effect.succeed(
+      .step(lInterval.end, input, lState)
+      .flatMap(({ tuple: [lState, out, decision] }) => {
+        switch (decision._tag) {
+          case "Done": {
+            return Effect.succeed(
+              Tuple(
+                Tuple(lState, rState),
+                Tuple.mergeTuple(out, out2),
+                Decision.Done
+              )
+            )
+          }
+          case "Continue": {
+            return intersectWithLoop(
+              self,
+              that,
+              input,
+              lState,
+              out,
+              decision.intervals,
+              rState,
+              out2,
+              rInterval,
+              f
+            )
+          }
+        }
+      })
+  }
+
+  return that
+    .step(rInterval.end, input, rState)
+    .flatMap(({ tuple: [rState, out2, decision] }) => {
+      switch (decision._tag) {
+        case "Done": {
+          return Effect.succeed(
             Tuple(
-              Tuple(lState as State, rState),
+              Tuple(lState, rState),
               Tuple.mergeTuple(out, out2),
               Decision.Done
             )
           )
-      )
-  }
-
-  return that
-    ._step(rInterval.endMillis, input, rState)
-    .flatMap(({ tuple: [rState, out2, decision] }) =>
-      decision._tag === "Continue"
-        ? intersectWithLoop(
-          self,
-          that,
-          input,
-          lState,
-          out,
-          lInterval,
-          rState as State1,
-          out2,
-          decision.interval,
-          f
-        )
-        : Effect.succeed(
-          Tuple(
-            Tuple(lState, rState as State1),
-            Tuple.mergeTuple(out, out2),
-            Decision.Done
+        }
+        case "Continue": {
+          return intersectWithLoop(
+            self,
+            that,
+            input,
+            lState,
+            out,
+            lInterval,
+            rState,
+            out2,
+            decision.intervals,
+            f
           )
-        )
-    )
+        }
+      }
+    })
 }

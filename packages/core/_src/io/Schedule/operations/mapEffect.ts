@@ -13,9 +13,9 @@ export function mapEffect<Out, Env1, Out2>(
   return <State, Env, In>(
     self: Schedule<State, Env, In, Out>
   ): Schedule<State, Env | Env1, In, Out2> =>
-    makeWithState(self._initial, (now, input, state) =>
+    makeWithState(self.initial, (now, input, state) =>
       self
-        ._step(now, input, state)
+        .step(now, input, state)
         .flatMap(({ tuple: [state, out, decision] }) =>
           f(out).map((out2) => Tuple(state, out2, decision))
         ))

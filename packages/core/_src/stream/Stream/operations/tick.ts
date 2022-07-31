@@ -9,5 +9,5 @@ import { constVoid } from "@tsplus/stdlib/data/Function"
 export function tick(
   interval: LazyArg<Duration>
 ): Stream<never, never, void> {
-  return Stream.repeatWithSchedule(constVoid, Schedule.spaced(interval))
+  return Stream.repeatWithSchedule(constVoid, Schedule.spaced(interval()))
 }

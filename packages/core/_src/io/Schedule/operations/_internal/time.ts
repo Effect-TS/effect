@@ -22,7 +22,7 @@ export function endOfSecond(now: number): number {
 
 export function nextSecond(now: number, second: number): number {
   const date = new Date(now)
-  if (date.getSeconds() == second) {
+  if (date.getSeconds() === second) {
     return now
   }
   if (date.getSeconds() < second) {
@@ -125,12 +125,12 @@ export function endOfDay(now: number): number {
   return date.setDate(date.getDate() + 1)
 }
 
-export function nextDay(now: number, day: number): number {
+export function nextDay(now: number, dayOfWeek: number): number {
   const date = new Date(now)
-  if (date.getDay() === day) {
+  if (date.getDay() === dayOfWeek) {
     return now
   }
-  return date.setDate(date.getDate() + ((7 + 7 - date.getDay()) % 7))
+  return date.setDate(date.getDate() + ((7 + dayOfWeek - date.getDay()) % 7))
 }
 
 export function nextDayOfMonth(now: number, day: number): number {

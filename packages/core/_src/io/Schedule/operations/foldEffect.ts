@@ -14,9 +14,9 @@ export function foldEffect<Out, Env1, Z>(
   return <State, Env, In>(
     self: Schedule<State, Env, In, Out>
   ): Schedule<Tuple<[State, Z]>, Env | Env1, In, Z> =>
-    makeWithState(Tuple(self._initial, z), (now, input, { tuple: [s, z] }) =>
+    makeWithState(Tuple(self.initial, z), (now, input, { tuple: [s, z] }) =>
       self
-        ._step(now, input, s)
+        .step(now, input, s)
         .flatMap((
           { tuple: [s, out, decision] }
         ): Effect<Env | Env1, never, Tuple<[Tuple<[State, Z]>, Z, Decision]>> =>

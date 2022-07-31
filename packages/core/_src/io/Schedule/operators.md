@@ -15,7 +15,6 @@ The `tsplus` operators implemented for `Schedule` should be reviewed to ensure t
 | `+`       | `choose`        |
 | `/`       | `andThen`       |
 | `%`       | `andThenEither` |
-| `\|`      | `either`        |
-| `\|\|`    | `chooseMerge`   |
+| `\|\|`    | `union`         |
 | `>`       | `zipRight`      |
 | `<`       | `zipLeft`       |

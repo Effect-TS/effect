@@ -1,4 +1,4 @@
-import { Decision } from "@effect/core/io/Schedule/Decision"
+import type { Decision } from "@effect/core/io/Schedule/Decision"
 import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
 
 /**
@@ -10,18 +10,18 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
 export function forever<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>
 ): Schedule<State, Env, In, Out> {
-  return makeWithState(self._initial, (now, input, state) => {
+  return makeWithState(self.initial, (now, input, state) => {
     function step(
       now: number,
       input: In,
       state: State
     ): Effect<Env, never, Tuple<[State, Out, Decision]>> {
       return self
-        ._step(now, input, state)
+        .step(now, input, state)
         .flatMap(({ tuple: [state, out, decision] }) =>
           decision._tag === "Done"
-            ? step(now, input, self._initial)
-            : Effect.succeed(Tuple(state, out, Decision.Continue(decision.interval)))
+            ? step(now, input, self.initial)
+            : Effect.succeed(Tuple(state, out, decision))
         )
     }
     return step(now, input, state)

@@ -14,7 +14,7 @@ export function tapInput<Env1, In1, X>(
     self: Schedule<State, Env, In, Out>
   ): Schedule<State, Env | Env1, In & In1, Out> =>
     makeWithState(
-      self._initial,
-      (now, input, state) => f(input) > self._step(now, input, state)
+      self.initial,
+      (now, input, state) => f(input).zipRight(self.step(now, input, state))
     )
 }

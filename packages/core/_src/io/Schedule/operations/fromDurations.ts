@@ -27,12 +27,12 @@ export function fromDurations(
           const interval = Interval.after(now + x.millis)
 
           if (durations.length >= 2) {
-            return Tuple(Tuple(durations.drop(1), true), x, Decision.Continue(interval))
+            return Tuple(Tuple(durations.drop(1), true), x, Decision.continueWith(interval))
           }
 
           const y = durations.drop(1)
 
-          return Tuple(Tuple(y.prepend(x), false), x, Decision.Continue(interval))
+          return Tuple(Tuple(y.prepend(x), false), x, Decision.continueWith(interval))
         }
 
         return Tuple(Tuple(durations, false), (0).millis, Decision.Done)

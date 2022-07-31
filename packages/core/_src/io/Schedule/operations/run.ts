@@ -6,31 +6,37 @@
  */
 export function run<In>(now: number, input: Collection<In>) {
   return <State, Env, Out>(self: Schedule<State, Env, In, Out>): Effect<Env, never, Chunk<Out>> =>
-    runLoop(self, now, ListBuffer.from(input), self._initial, Chunk.empty<Out>())
+    runLoop(self, now, List.from(input), self.initial, Chunk.empty<Out>())
 }
 
 function runLoop<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>,
   now: number,
-  inputs: ListBuffer<In>,
+  inputs: List<In>,
   state: State,
   acc: Chunk<Out>
 ): Effect<Env, never, Chunk<Out>> {
-  if (inputs.length === 0) {
+  if (inputs.isNil()) {
     return Effect.succeed(acc)
   }
-  const input = inputs.unprepend()
+  const input = inputs.head
+  const nextInputs = inputs.tail
   return self
-    ._step(now, input, state)
-    .flatMap(({ tuple: [_, out, decision] }) =>
-      decision._tag === "Done"
-        ? Effect.sync(acc.append(out))
-        : runLoop(
-          self,
-          decision.interval.startMillis,
-          inputs,
-          state,
-          acc.append(out)
-        )
-    )
+    .step(now, input, state)
+    .flatMap(({ tuple: [state, out, decision] }) => {
+      switch (decision._tag) {
+        case "Done": {
+          return Effect.sync(acc.append(out))
+        }
+        case "Continue": {
+          return runLoop(
+            self,
+            decision.intervals.start,
+            nextInputs,
+            state,
+            acc.append(out)
+          )
+        }
+      }
+    })
 }

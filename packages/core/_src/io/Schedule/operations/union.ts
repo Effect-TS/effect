@@ -4,10 +4,11 @@ import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
  * Returns a new schedule that performs a geometric union on the intervals
  * defined by both schedules.
  *
- * @tsplus static effect/core/io/Schedule.Aspects either
- * @tsplus pipeable effect/core/io/Schedule either
+ * @tsplus pipeable-operator effect/core/io/Schedule ||
+ * @tsplus static effect/core/io/Schedule.Aspects union
+ * @tsplus pipeable effect/core/io/Schedule union
  */
-export function either<State1, Env1, In1, Out2>(
+export function union<State1, Env1, In1, Out2>(
   that: Schedule<State1, Env1, In1, Out2>
 ) {
   return <State, Env, In, Out>(self: Schedule<State, Env, In, Out>): Schedule<
@@ -15,5 +16,5 @@ export function either<State1, Env1, In1, Out2>(
     Env | Env1,
     In & In1,
     MergeTuple<Out, Out2>
-  > => self.union(that)
+  > => self.unionWith(that, (x, y) => x.union(y))
 }

@@ -10,7 +10,7 @@ export function resetAfter(duration: Duration) {
     self: Schedule<State, Env, In, Out>
   ): Schedule<Tuple<[State, Maybe<number>]>, Env, In, Out> =>
     self
-      .zip(Schedule.elapsed)
+      .intersect(Schedule.elapsed)
       .resetWhen(({ tuple: [, _] }) => (_ as Duration) >= duration)
       .map((out) => out.get(0) as Out)
 }
