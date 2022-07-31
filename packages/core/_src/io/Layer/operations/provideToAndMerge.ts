@@ -7,7 +7,7 @@
  * @tsplus static effect/core/io/Layer.Aspects provideToAndMerge
  * @tsplus pipeable effect/core/io/Layer provideToAndMerge
  */
-export function andTo<RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>) {
+export function provideToAndMerge<RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>) {
   return <RIn, E, ROut>(
     self: Layer<RIn, E, ROut>
   ): Layer<RIn | Exclude<RIn2, ROut>, E2 | E, ROut | ROut2> => self.merge(self.provideTo(that))
