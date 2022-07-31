@@ -11,5 +11,7 @@ export function addDelayEffect<Out, Env1>(
   return <State, Env, In>(
     self: Schedule<State, Env, In, Out>
   ): Schedule<State, Env | Env1, In, Out> =>
-    self.modifyDelayEffect((out, duration) => f(out).map((_) => duration + _))
+    self.modifyDelayEffect((out, duration) =>
+      f(out).map((delay) => new Duration(duration.millis + delay.millis))
+    )
 }

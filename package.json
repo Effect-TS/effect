@@ -38,7 +38,7 @@
     "@repo-tooling/eslint-plugin-dprint": "^0.0.4",
     "@tsplus/installer": "0.0.128",
     "@tsplus/stdlib": "0.2.2",
-    "@types/node": "^18.6.2",
+    "@types/node": "^18.6.3",
     "@types/rimraf": "^3.0.2",
     "@typescript-eslint/eslint-plugin": "^5.31.0",
     "@typescript-eslint/parser": "^5.31.0",
@@ -59,7 +59,7 @@
     "typescript": "^4.7.4",
     "ultra-runner": "^3.10.5",
     "vite": "^3.0.4",
-    "vitest": "0.19.1"
+    "vitest": "0.20.2"
   },
   "resolutions": {
     "eslint-plugin-codegen": "patch:eslint-plugin-codegen@npm:0.16.1#.yarn/patches/eslint-plugin-codegen-npm-0.16.1-87770191cd"

@@ -19,20 +19,18 @@ export function bothInOut<State1, Env1, In2, Out2>(
     Tuple<[Out, Out2]>
   > =>
     makeWithState(
-      Tuple(self._initial, that._initial),
+      Tuple(self.initial, that.initial),
       (now, { tuple: [in1, in2] }, state) =>
         self
-          ._step(now, in1, state.get(0))
+          .step(now, in1, state.get(0))
           .zipWith(
-            that._step(now, in2, state.get(1)),
+            that.step(now, in2, state.get(1)),
             (
               { tuple: [lState, out, lDecision] },
               { tuple: [rState, out2, rDecision] }
             ) => {
               if (lDecision._tag === "Continue" && rDecision._tag === "Continue") {
-                const interval = lDecision.interval
-                  .union(rDecision.interval)
-                  .getOrElse(lDecision.interval.min(rDecision.interval))
+                const interval = lDecision.intervals.union(rDecision.intervals)
                 return Tuple(
                   Tuple(lState, rState),
                   Tuple(out, out2),

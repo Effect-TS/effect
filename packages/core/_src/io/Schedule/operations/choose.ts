@@ -19,7 +19,7 @@ export function choose<State1, Env1, In2, Out2>(
     Either<Out, Out2>
   > =>
     makeWithState(
-      Tuple(self._initial, that._initial),
+      Tuple(self.initial, that.initial),
       (
         now,
         either,
@@ -32,13 +32,13 @@ export function choose<State1, Env1, In2, Out2>(
         either.fold(
           (input) =>
             self
-              ._step(now, input, state.get(0))
+              .step(now, input, state.get(0))
               .map(({ tuple: [lState, out, decision] }) =>
                 Tuple(Tuple(lState, state.get(1)), Either.left(out), decision)
               ),
           (input2) =>
             that
-              ._step(now, input2, that._initial)
+              .step(now, input2, that.initial)
               .map(({ tuple: [rState, out2, decision] }) =>
                 Tuple(Tuple(state.get(0), rState), Either.right(out2), decision)
               )

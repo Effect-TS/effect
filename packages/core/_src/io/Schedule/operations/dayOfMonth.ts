@@ -19,8 +19,8 @@ import {
  */
 export function dayOfMonth(
   day: number
-): Schedule<number, never, unknown, number> {
-  return makeWithState(0, (now, _, state) => {
+): Schedule<Tuple<[number, number]>, never, unknown, number> {
+  return makeWithState(Tuple(Number.MIN_SAFE_INTEGER, 0), (now, _, state) => {
     if (!Number.isInteger(day) || day < 1 || 31 < day) {
       return Effect.die(
         new IllegalArgumentException(
@@ -28,10 +28,12 @@ export function dayOfMonth(
         )
       )
     }
-    const d = nextDayOfMonth(now, day)
-    const start = Math.max(beginningOfDay(d), now)
-    const end = endOfDay(d)
+    const { tuple: [end0, n] } = state
+    const now0 = Math.max(end0, now)
+    const day0 = nextDayOfMonth(now0, day)
+    const start = Math.max(beginningOfDay(day0), now0)
+    const end = endOfDay(day0)
     const interval = Interval(start, end)
-    return Effect.succeed(Tuple(state + 1, state, Decision.Continue(interval)))
+    return Effect.succeed(Tuple(Tuple(end, n + 1), n, Decision.continueWith(interval)))
   })
 }

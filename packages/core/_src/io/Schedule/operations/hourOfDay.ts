@@ -17,8 +17,8 @@ import {
  */
 export function hourOfDay(
   hour: number
-): Schedule<number, never, unknown, number> {
-  return makeWithState(0, (now, _, state) => {
+): Schedule<Tuple<[number, number]>, never, unknown, number> {
+  return makeWithState(Tuple(Number.MIN_SAFE_INTEGER, 0), (now, _, state) => {
     if (!Number.isInteger(hour) || hour < 0 || 23 < hour) {
       return Effect.die(
         new IllegalArgumentException(
@@ -26,10 +26,12 @@ export function hourOfDay(
         )
       )
     }
-    const hr = nextHour(now, hour)
-    const start = Math.max(beginningOfHour(hr), now)
-    const end = endOfHour(hr)
+    const { tuple: [end0, n] } = state
+    const now0 = Math.max(end0, now)
+    const hour0 = nextHour(now0, hour)
+    const start = Math.max(beginningOfHour(hour0), now0)
+    const end = endOfHour(hour0)
     const interval = Interval(start, end)
-    return Effect.succeed(Tuple(state + 1, state, Decision.Continue(interval)))
+    return Effect.succeed(Tuple(Tuple(end, n + 1), n, Decision.continueWith(interval)))
   })
 }

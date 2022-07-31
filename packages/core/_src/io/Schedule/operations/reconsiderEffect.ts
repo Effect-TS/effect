@@ -19,9 +19,9 @@ export function reconsiderEffect<State, Out, Env1, Out2>(
 ) {
   return <Env, In>(self: Schedule<State, Env, In, Out>): Schedule<State, Env | Env1, In, Out2> =>
     makeWithState(
-      self._initial,
+      self.initial,
       (now, input, state) =>
-        self._step(now, input, state).flatMap(({ tuple: [state, out, decision] }) =>
+        self.step(now, input, state).flatMap(({ tuple: [state, out, decision] }) =>
           decision._tag === "Done"
             ? f(state, out, decision).map((either) =>
               either.fold(
@@ -32,7 +32,7 @@ export function reconsiderEffect<State, Out, Env1, Out2>(
             : f(state, out, decision).map((either) =>
               either.fold(
                 (out2) => Tuple(state, out2, Decision.Done),
-                ({ tuple: [out2, interval] }) => Tuple(state, out2, Decision.Continue(interval))
+                ({ tuple: [out2, interval] }) => Tuple(state, out2, Decision.continueWith(interval))
               )
             )
         )

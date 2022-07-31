@@ -2,7 +2,6 @@
  * Returns a new schedule that chooses between two schedules with a common
  * output.
  *
- * @tsplus pipeable-operator effect/core/io/Schedule ||
  * @tsplus static effect/core/io/Schedule.Aspects chooseMerge
  * @tsplus pipeable effect/core/io/Schedule chooseMerge
  */

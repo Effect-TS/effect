@@ -35,7 +35,7 @@ export function fixed(
             Tuple(
               Tuple(Maybe.some(Tuple(now, now + intervalMillis)), n + 1),
               n,
-              Decision.Continue(Interval.after(now + intervalMillis))
+              Decision.continueWith(Interval.after(now + intervalMillis))
             ),
           ({ tuple: [startMillis, lastRun] }) => {
             const runningBehind = now > (lastRun + intervalMillis)
@@ -47,7 +47,7 @@ export function fixed(
             return Tuple(
               Tuple(Maybe.some(Tuple(startMillis, nextRun)), n + 1),
               n,
-              Decision.Continue(Interval.after(nextRun))
+              Decision.continueWith(Interval.after(nextRun))
             )
           }
         )

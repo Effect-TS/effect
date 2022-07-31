@@ -9,12 +9,12 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  */
 export function resetWhen<Out>(f: Predicate<Out>) {
   return <State, Env, In>(self: Schedule<State, Env, In, Out>): Schedule<State, Env, In, Out> =>
-    makeWithState(self._initial, (now, input, state) =>
+    makeWithState(self.initial, (now, input, state) =>
       self
-        ._step(now, input, state)
+        .step(now, input, state)
         .flatMap(({ tuple: [state, out, decision] }) =>
           f(out)
-            ? self._step(now, input, self._initial)
+            ? self.step(now, input, self.initial)
             : Effect.succeed(Tuple(state, out, decision))
         ))
 }

@@ -16,23 +16,26 @@ export function modifyDelayEffect<Out, Env1>(
     self: Schedule<State, Env, In, Out>
   ): Schedule<State, Env | Env1, In, Out> =>
     makeWithState(
-      self._initial,
+      self.initial,
       (now, input, state) =>
-        self._step(now, input, state).flatMap(({ tuple: [state, out, decision] }) => {
-          if (decision._tag === "Done") {
-            return Effect.succeed(Tuple(state, out, decision))
+        self.step(now, input, state).flatMap(({ tuple: [state, out, decision] }) => {
+          switch (decision._tag) {
+            case "Done": {
+              return Effect.succeed(Tuple(state, out, decision))
+            }
+            case "Continue": {
+              const intervals = decision.intervals
+              const delay = Interval(now, intervals.start).size
+              return f(out, delay).map((duration) => {
+                const oldStart = intervals.start
+                const newStart = now + duration.millis
+                const delta = newStart - oldStart
+                const newEnd = Math.min(Math.max(0, intervals.end + delta), Number.MAX_SAFE_INTEGER)
+                const newInterval = Interval(newStart, newEnd)
+                return Tuple(state, out, Decision.continueWith(newInterval))
+              })
+            }
           }
-
-          const delay = Interval(now, decision.interval.startMillis).size
-
-          return f(out, delay).map((duration) => {
-            const oldStart = decision.interval.startMillis
-            const newStart = now + duration.millis
-            const delta = newStart - oldStart
-            const newEnd = decision.interval.endMillis + delta
-            const newInterval = Interval(newStart, newEnd)
-            return Tuple(state, out, Decision.Continue(newInterval))
-          })
         })
     )
 }

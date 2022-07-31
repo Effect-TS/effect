@@ -18,8 +18,8 @@ import {
  */
 export function minuteOfHour(
   minute: number
-): Schedule<number, never, unknown, number> {
-  return makeWithState(0, (now, _, state) => {
+): Schedule<Tuple<[number, number]>, never, unknown, number> {
+  return makeWithState(Tuple(Number.MIN_SAFE_INTEGER, 0), (now, _, state) => {
     if (!Number.isInteger(minute) || minute < 0 || 59 < minute) {
       return Effect.die(
         new IllegalArgumentException(
@@ -27,10 +27,12 @@ export function minuteOfHour(
         )
       )
     }
-    const min = nextMinute(now, minute)
-    const start = Math.max(beginningOfMinute(min), now)
-    const end = endOfMinute(min)
+    const { tuple: [end0, n] } = state
+    const now0 = Math.max(end0, now)
+    const minute0 = nextMinute(Math.max(end0, now0), minute)
+    const start = Math.max(beginningOfMinute(minute0), now0)
+    const end = endOfMinute(minute0)
     const interval = Interval(start, end)
-    return Effect.succeed(Tuple(state + 1, state, Decision.Continue(interval)))
+    return Effect.succeed(Tuple(Tuple(end, n + 1), n, Decision.continueWith(interval)))
   })
 }

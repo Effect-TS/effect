@@ -17,7 +17,7 @@ export function duration(
         ? Tuple(
           false,
           duration,
-          Decision.Continue(Interval.after(now + duration.millis))
+          Decision.continueWith(Interval.after(now + duration.millis))
         )
         : Tuple(false, (0).millis, Decision.Done)
     ))

@@ -15,9 +15,9 @@ export function ensuring<X>(finalizer: Effect<never, never, X>) {
   return <State, Env, In, Out>(
     self: Schedule<State, Env, In, Out>
   ): Schedule<State, Env, In, Out> =>
-    makeWithState(self._initial, (now, input, state) =>
+    makeWithState(self.initial, (now, input, state) =>
       self
-        ._step(now, input, state)
+        .step(now, input, state)
         .flatMap((
           { tuple: [state, out, decision] }
         ): Effect<never, never, Tuple<[State, Out, Decision]>> =>

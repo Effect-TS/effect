@@ -13,11 +13,11 @@ export function provideService<T, T1 extends T>(tag: Tag<T>, service: LazyArg<T1
     self: Schedule<State, R | T, In, Out>
   ): Schedule<State, Exclude<R, T>, In, Out> =>
     makeWithState(
-      self._initial,
+      self.initial,
       (now, input, state) =>
         Effect.environmentWithEffect((env: Env<Exclude<R, T>>) =>
           self
-            ._step(now, input, state)
+            .step(now, input, state)
             .provideEnvironment(env.add(tag, service()))
         )
     )

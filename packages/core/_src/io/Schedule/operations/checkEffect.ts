@@ -15,16 +15,22 @@ export function checkEffect<In, Out, Env1>(
   return <State, Env>(
     self: Schedule<State, Env, In, Out>
   ): Schedule<State, Env | Env1, In, Out> =>
-    makeWithState(self._initial, (now, input, state) =>
+    makeWithState(self.initial, (now, input, state) =>
       self
-        ._step(now, input, state)
-        .flatMap(({ tuple: [state, out, decision] }) =>
-          decision._tag === "Done"
-            ? Effect.succeed(Tuple(state, out, Decision.Done))
-            : test(input, out).map((b) =>
-              b
-                ? Tuple(state, out, Decision.Continue(decision.interval))
-                : Tuple(state, out, Decision.Done)
-            )
-        ))
+        .step(now, input, state)
+        .flatMap(({ tuple: [state, out, decision] }) => {
+          switch (decision._tag) {
+            case "Done": {
+              return Effect.succeed(Tuple(state, out, Decision.Done))
+            }
+            case "Continue": {
+              return test(input, out).map((cont) => {
+                if (cont) {
+                  return Tuple(state, out, decision)
+                }
+                return Tuple(state, out, Decision.Done)
+              })
+            }
+          }
+        }))
 }

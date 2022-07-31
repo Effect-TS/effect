@@ -107,8 +107,8 @@ export function isNonEmpty(self: Interval): boolean {
  */
 export function intersect(that: Interval) {
   return (self: Interval): Interval => {
-    const start = Ord.number.min(self.startMillis, that.startMillis)
-    const end = Ord.number.max(self.endMillis, that.endMillis)
+    const start = Math.max(self.startMillis, that.startMillis)
+    const end = Math.min(self.endMillis, that.endMillis)
     return Interval(start, end)
   }
 }

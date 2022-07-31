@@ -17,12 +17,12 @@ export function compose<Out, State1, Env1, Out2>(
   return <State, Env, In>(
     self: Schedule<State, Env, In, Out>
   ): Schedule<Tuple<[State, State1]>, Env | Env1, In, Out2> =>
-    makeWithState(Tuple(self._initial, that._initial), (now, input, state) =>
+    makeWithState(Tuple(self.initial, that.initial), (now, input, state) =>
       self
-        ._step(now, input, state.get(0))
+        .step(now, input, state.get(0))
         .flatMap(({ tuple: [lState, out, lDecision] }) =>
           that
-            ._step(now, out, state.get(1))
+            .step(now, out, state.get(1))
             .map(({ tuple: [rState, out2, rDecision] }) =>
               lDecision._tag === "Done"
                 ? Tuple(Tuple(lState, rState), out2, Decision.Done)
@@ -31,7 +31,7 @@ export function compose<Out, State1, Env1, Out2>(
                 : Tuple(
                   Tuple(lState, rState),
                   out2,
-                  Decision.Continue(lDecision.interval.max(rDecision.interval))
+                  Decision.Continue(lDecision.intervals.max(rDecision.intervals))
                 )
             )
         ))
