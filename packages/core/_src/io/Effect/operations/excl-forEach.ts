@@ -1,4 +1,5 @@
-import { _In, _Out, QueueProto } from "@effect/core/io/Queue/definition"
+import { Effect } from "@effect/core/io/Effect/definition/base"
+import { _In, _Out, QueueSym } from "@effect/core/io/Queue/definition"
 import { unsafeCompleteDeferred } from "@effect/core/io/Queue/operations/_internal/unsafeCompleteDeferred"
 import { unsafeCompleteTakers } from "@effect/core/io/Queue/operations/_internal/unsafeCompleteTakers"
 import { unsafeOfferAll } from "@effect/core/io/Queue/operations/_internal/unsafeOfferAll"
@@ -8,6 +9,9 @@ import { unsafeRemove } from "@effect/core/io/Queue/operations/_internal/unsafeR
 import type { Strategy } from "@effect/core/io/Queue/operations/strategy"
 import type { State } from "@effect/core/io/Scope/ReleaseMap/_internal/State"
 import { Exited } from "@effect/core/io/Scope/ReleaseMap/_internal/State"
+import { Chunk } from "@tsplus/stdlib/collections/Chunk"
+import type { Collection } from "@tsplus/stdlib/collections/Collection"
+import { Maybe } from "@tsplus/stdlib/data/Maybe"
 
 // -----------------------------------------------------------------------------
 // forEach
@@ -614,55 +618,31 @@ export function createQueue<A>(
   )
 }
 
-const UnsafeQueueProto: any = {
-  ...QueueProto,
-  get capacity() {
-    return (this.queue as MutableQueue<unknown>).capacity
-  },
-  get size() {
-    return Effect.suspendSucceed(
-      (this.shutdownFlag as AtomicBoolean).get
-        ? Effect.interrupt
-        : Effect.succeed(
-          (this.queue as MutableQueue<unknown>).size -
-            (this.takers as MutableQueue<Deferred<never, unknown>>).size +
-            (this.strategy as Strategy<unknown>).surplusSize
-        )
-    )
-  },
-  get awaitShutdown() {
-    return (this.shutdownHook as Deferred<never, void>).await
-  },
-  get isShutdown() {
-    return Effect.sync(() => (this.shutdownFlag as AtomicBoolean).get)
-  },
-  get shutdown() {
-    return Effect.suspendSucceedWith((_, fiberId) => {
-      ;(this.shutdownFlag as AtomicBoolean).set(true)
-      return Effect.whenEffect(
-        (this.shutdownHook as Deferred<never, void>).succeed(undefined),
-        () =>
-          Effect.forEachParDiscard(
-            unsafePollAll(
-              (this.takers as MutableQueue<Deferred<never, unknown>>) as MutableQueue<
-                Deferred<never, unknown>
-              >
-            ),
-            (deferred) => deferred.interruptAs(fiberId)
-          ) > ((this.strategy as Strategy<unknown>) as Strategy<unknown>).shutdown
-      ).unit
-    }).uninterruptible
-  },
-  offer(a: unknown) {
+class QueueImpl<A> implements Queue<A> {
+  get [_In](): (_: A) => unknown {
+    return (a) => a
+  }
+  get [QueueSym](): QueueSym {
+    return QueueSym
+  }
+  get [_Out](): (_: never) => A {
+    return (a) => a
+  }
+  constructor(
+    readonly queue: MutableQueue<A>,
+    readonly takers: MutableQueue<Deferred<never, A>>,
+    readonly shutdownHook: Deferred<never, void>,
+    readonly shutdownFlag: AtomicBoolean,
+    readonly strategy: Strategy<A>
+  ) {}
+  offer(this: this, a: A): Effect<never, never, boolean> {
     return Effect.suspendSucceed(() => {
-      if ((this.shutdownFlag as AtomicBoolean).get) {
+      if (this.shutdownFlag.get) {
         return Effect.interrupt
       }
       let noRemaining: boolean
-      if ((this.queue as MutableQueue<unknown>).isEmpty) {
-        const taker = (this.takers as MutableQueue<Deferred<never, unknown>>).poll(
-          EmptyMutableQueue
-        )
+      if (this.queue.isEmpty) {
+        const taker = this.takers.poll(EmptyMutableQueue)
         if (taker !== EmptyMutableQueue) {
           unsafeCompleteDeferred(taker, a)
           noRemaining = true
@@ -676,36 +656,31 @@ const UnsafeQueueProto: any = {
         return Effect.succeed(true)
       }
       // Not enough takers, offer to the queue
-      const succeeded = (this.queue as MutableQueue<unknown>).offer(a)
+      const succeeded = this.queue.offer(a)
       unsafeCompleteTakers(
-        this.strategy as Strategy<unknown>,
-        this.queue as MutableQueue<unknown>,
-        this.takers as MutableQueue<Deferred<never, unknown>>
+        this.strategy,
+        this.queue,
+        this.takers
       )
       return succeeded
         ? Effect.succeed(true)
-        : (this.strategy as Strategy<unknown>).handleSurplus(
+        : this.strategy.handleSurplus(
           Chunk.single(a),
-          this.queue as MutableQueue<unknown>,
-          this.takers as MutableQueue<Deferred<never, unknown>>,
-          this.shutdownFlag as AtomicBoolean
+          this.queue,
+          this.takers,
+          this.shutdownFlag
         )
     })
-  },
-  offerAll(as: Collection<unknown>) {
+  }
+  offerAll(this: this, as: Collection<A>): Effect<never, never, boolean> {
     return Effect.suspendSucceed(() => {
-      if ((this.shutdownFlag as AtomicBoolean).get) {
+      if (this.shutdownFlag.get) {
         return Effect.interrupt
       }
       const as0 = Chunk.from(as)
-      const pTakers = (this.queue as MutableQueue<unknown>).isEmpty
-        ? unsafePollN(
-          (this.takers as MutableQueue<Deferred<never, unknown>>) as MutableQueue<
-            Deferred<never, unknown>
-          >,
-          as0.size
-        )
-        : Chunk.empty<Deferred<never, unknown>>()
+      const pTakers = this.queue.isEmpty
+        ? unsafePollN(this.takers, as0.size)
+        : Chunk.empty<Deferred<never, A>>()
       const {
         tuple: [forTakers, remaining]
       } = as0.splitAt(pTakers.size)
@@ -716,32 +691,67 @@ const UnsafeQueueProto: any = {
         return Effect.succeed(true)
       }
       // Not enough takers, offer to the queue
-      const surplus = unsafeOfferAll(this.queue as MutableQueue<unknown>, remaining)
+      const surplus = unsafeOfferAll(this.queue, remaining)
       unsafeCompleteTakers(
-        this.strategy as Strategy<unknown>,
-        this.queue as MutableQueue<unknown>,
-        this.takers as MutableQueue<Deferred<never, unknown>>
+        this.strategy,
+        this.queue,
+        this.takers
       )
       return surplus.isEmpty
         ? Effect.succeed(true)
-        : (this.strategy as Strategy<unknown>).handleSurplus(
+        : this.strategy.handleSurplus(
           surplus,
-          this.queue as MutableQueue<unknown>,
-          this.takers as MutableQueue<Deferred<never, unknown>>,
-          this.shutdownFlag as AtomicBoolean
+          this.queue,
+          this.takers,
+          this.shutdownFlag
         )
     })
-  },
-  get take() {
+  }
+  get capacity(): number {
+    return (this.queue as MutableQueue<unknown>).capacity
+  }
+  get size(): Effect<never, never, number> {
+    return Effect.suspendSucceed(
+      this.shutdownFlag.get
+        ? Effect.interrupt
+        : Effect.succeed(this.queue.size - this.takers.size + this.strategy.surplusSize)
+    )
+  }
+  get awaitShutdown(): Effect<never, never, void> {
+    return this.shutdownHook.await
+  }
+  get isShutdown(): Effect<never, never, boolean> {
+    return Effect.sync(() => this.shutdownFlag.get)
+  }
+  get shutdown(): Effect<never, never, void> {
     return Effect.suspendSucceedWith((_, fiberId) => {
-      if ((this.shutdownFlag as AtomicBoolean).get) {
+      this.shutdownFlag.set(true)
+      return Effect.whenEffect(
+        this.shutdownHook.succeed(undefined),
+        () =>
+          Effect.forEachParDiscard(
+            unsafePollAll(this.takers),
+            (deferred) => deferred.interruptAs(fiberId)
+          ) > this.strategy.shutdown
+      ).unit
+    }).uninterruptible
+  }
+  get isFull(): Effect<never, never, boolean> {
+    return this.size.map((size) => size === this.capacity)
+  }
+  get isEmpty(): Effect<never, never, boolean> {
+    return this.size.map((size) => size === 0)
+  }
+  get take(): Effect<never, never, A> {
+    return Effect.suspendSucceedWith((_, fiberId) => {
+      if (this.shutdownFlag.get) {
         return Effect.interrupt
       }
-      const item = (this.queue as MutableQueue<unknown>).poll(EmptyMutableQueue)
+      const item = this.queue.poll(EmptyMutableQueue)
       if (item !== EmptyMutableQueue) {
-        ;(this.strategy as Strategy<unknown>).unsafeOnQueueEmptySpace(
-          this.queue as MutableQueue<unknown>,
-          this.takers as MutableQueue<Deferred<never, unknown>>
+        this.strategy.unsafeOnQueueEmptySpace(
+          this.queue,
+          this.takers
         )
         return Effect.succeed(item)
       } else {
@@ -749,50 +759,86 @@ const UnsafeQueueProto: any = {
         // - Try to take again in case a value was added since
         // - Wait for the deferred to be completed
         // - Clean up resources in case of interruption
-        const deferred = Deferred.unsafeMake<never, unknown>(fiberId)
+        const deferred = Deferred.unsafeMake<never, A>(fiberId)
         return Effect.suspendSucceed(() => {
-          ;(this.takers as MutableQueue<Deferred<never, unknown>>).offer(deferred)
+          this.takers.offer(deferred)
           unsafeCompleteTakers(
-            this.strategy as Strategy<unknown>,
-            this.queue as MutableQueue<unknown>,
-            this.takers as MutableQueue<Deferred<never, unknown>>
+            this.strategy,
+            this.queue,
+            this.takers
           )
-          return (this.shutdownFlag as AtomicBoolean).get ? Effect.interrupt : deferred.await
+          return this.shutdownFlag.get ? Effect.interrupt : deferred.await
         }).onInterrupt(() => {
           return Effect.sync(
-            unsafeRemove(this.takers as MutableQueue<Deferred<never, unknown>>, deferred)
+            unsafeRemove(this.takers, deferred)
           )
         })
       }
     })
-  },
-  get takeAll() {
+  }
+  get takeAll(): Effect<never, never, Chunk<A>> {
+    return Effect.suspendSucceed(() =>
+      this.shutdownFlag.get
+        ? Effect.interrupt
+        : Effect.sync(() => {
+          const as = unsafePollAll(this.queue)
+          this.strategy.unsafeOnQueueEmptySpace(this.queue, this.takers)
+          return as
+        })
+    )
+  }
+  takeUpTo(this: this, max: number): Effect<never, never, Chunk<A>> {
     return Effect.suspendSucceed(() =>
       (this.shutdownFlag as AtomicBoolean).get
         ? Effect.interrupt
         : Effect.sync(() => {
-          const as = unsafePollAll(this.queue as MutableQueue<unknown>)
-          ;(this.strategy as Strategy<unknown>).unsafeOnQueueEmptySpace(
-            this.queue as MutableQueue<unknown>,
-            this.takers as MutableQueue<Deferred<never, unknown>>
+          const as = unsafePollN(this.queue, max)
+          this.strategy.unsafeOnQueueEmptySpace(
+            this.queue,
+            this.takers
           )
           return as
         })
     )
-  },
-  takeUpTo(n: number) {
-    return Effect.suspendSucceed(() =>
-      (this.shutdownFlag as AtomicBoolean).get
-        ? Effect.interrupt
-        : Effect.sync(() => {
-          const as = unsafePollN(this.queue as MutableQueue<unknown>, n)
-          ;(this.strategy as Strategy<unknown>).unsafeOnQueueEmptySpace(
-            this.queue as MutableQueue<unknown>,
-            this.takers as MutableQueue<Deferred<never, unknown>>
+  }
+  takeRemainderLoop<A>(
+    self: Dequeue<A>,
+    min: number,
+    max: number,
+    acc: Chunk<A>
+  ): Effect<never, never, Chunk<A>> {
+    if (max < min) {
+      return Effect.succeed(acc)
+    }
+    return self.takeUpTo(max).flatMap((bs) => {
+      const remaining = min - bs.length
+
+      if (remaining === 1) {
+        return self.take.map((b) => (acc + bs).append(b))
+      }
+
+      if (remaining > 1) {
+        return self.take.flatMap((b) =>
+          this.takeRemainderLoop(
+            self,
+            remaining - 1,
+            max - bs.length - 1,
+            (acc + bs).append(b)
           )
-          return as
-        })
-    )
+        )
+      }
+
+      return Effect.succeed(acc + bs)
+    })
+  }
+  takeBetween(this: this, min: number, max: number): Effect<never, never, Chunk<A>> {
+    return Effect.suspendSucceed(this.takeRemainderLoop(this, min, max, Chunk.empty()))
+  }
+  takeN(this: this, n: number): Effect<never, never, Chunk<A>> {
+    return this.takeBetween(n, n)
+  }
+  get poll(): Effect<never, never, Maybe<A>> {
+    return this.takeUpTo(1).map((chunk) => chunk.head)
   }
 }
 
@@ -803,13 +849,7 @@ export function unsafeCreateQueue<A>(
   shutdownFlag: AtomicBoolean,
   strategy: Strategy<A>
 ): Queue<A> {
-  return Object.setPrototypeOf({
-    queue,
-    takers,
-    shutdownHook,
-    shutdownFlag,
-    strategy
-  }, UnsafeQueueProto)
+  return new QueueImpl(queue, takers, shutdownHook, shutdownFlag, strategy)
 }
 
 export function makeBackPressureStrategy<A>() {

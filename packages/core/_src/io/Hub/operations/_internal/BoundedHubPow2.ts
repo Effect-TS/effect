@@ -1,5 +1,5 @@
 import type { AtomicHub } from "@effect/core/io/Hub/operations/_internal/AtomicHub"
-import { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription"
+import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription"
 
 export class BoundedHubPow2<A> implements AtomicHub<A> {
   array: Array<A>
@@ -18,16 +18,16 @@ export class BoundedHubPow2<A> implements AtomicHub<A> {
     this.capacity = requestedCapacity
   }
 
-  isEmpty(): boolean {
+  get isEmpty(): boolean {
     return this.publisherIndex === this.subscribersIndex
   }
 
-  isFull(): boolean {
+  get isFull(): boolean {
     return this.publisherIndex === this.subscribersIndex + this.capacity
   }
 
   publish(a: A): boolean {
-    if (this.isFull()) {
+    if (this.isFull) {
       return false
     }
 
@@ -68,7 +68,7 @@ export class BoundedHubPow2<A> implements AtomicHub<A> {
     return asArray.drop(iteratorIndex - 1)
   }
 
-  size(): number {
+  get size(): number {
     return this.publisherIndex - this.subscribersIndex
   }
 
@@ -87,16 +87,15 @@ export class BoundedHubPow2<A> implements AtomicHub<A> {
   }
 }
 
-class BoundedHubPow2Subscription<A> extends Subscription<A> {
+class BoundedHubPow2Subscription<A> implements Subscription<A> {
   constructor(
     private self: BoundedHubPow2<A>,
     private subscriberIndex: number,
     private unsubscribed: boolean
   ) {
-    super()
   }
 
-  isEmpty(): boolean {
+  get isEmpty(): boolean {
     return (
       this.unsubscribed ||
       this.self.publisherIndex === this.subscriberIndex ||
@@ -163,7 +162,7 @@ class BoundedHubPow2Subscription<A> extends Subscription<A> {
     return builder.build()
   }
 
-  size() {
+  get size() {
     if (this.unsubscribed) {
       return 0
     }

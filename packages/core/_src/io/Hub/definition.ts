@@ -9,26 +9,26 @@ export type HubSym = typeof HubSym
  * @tsplus type effect/core/io/Hub
  */
 export interface Hub<A> extends Enqueue<A> {
-  readonly [HubSym]: HubSym
+  get [HubSym](): HubSym
 
   /**
    * Publishes a message to the hub, returning whether the message was published
    * to the hub.
    */
-  readonly publish: (a: A) => Effect<never, never, boolean>
+  publish(this: this, a: A): Effect<never, never, boolean>
 
   /**
    * Publishes all of the specified messages to the hub, returning whether they
    * were published to the hub.
    */
-  readonly publishAll: (as: Collection<A>) => Effect<never, never, boolean>
+  publishAll(this: this, as: Collection<A>): Effect<never, never, boolean>
 
   /**
    * Subscribes to receive messages from the hub. The resulting subscription can
    * be evaluated multiple times within the scope to take a message from the hub
    * each time.
    */
-  readonly subscribe: Effect<Scope, never, Dequeue<A>>
+  get subscribe(): Effect<Scope, never, Dequeue<A>>
 }
 
 /**

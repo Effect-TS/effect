@@ -1,10 +1,10 @@
 import { _In, _Out } from "@effect/core/io/Queue/definition/symbols"
 
-export interface Enqueue<A> extends CommonQueue<A> {
+export interface Enqueue<A> extends CommonQueue {
   /**
    * Internal Variance Marker
    */
-  get [_In](): (_: A) => void
+  get [_In](): (_: A) => unknown
   /**
    * Places one value in the queue.
    */
@@ -30,7 +30,7 @@ export interface Enqueue<A> extends CommonQueue<A> {
 export const QueueSym = Symbol.for("@effect/core/io/Queue")
 export type QueueSym = typeof QueueSym
 
-export interface CommonQueue<A> {
+export interface CommonQueue {
   /**
    * Internal Discriminator
    */
@@ -70,11 +70,11 @@ export interface CommonQueue<A> {
   get isEmpty(): Effect<never, never, boolean>
 }
 
-export interface Dequeue<A> extends CommonQueue<A> {
+export interface Dequeue<A> extends CommonQueue {
   /**
    * Internal Variance Marker
    */
-  get [_Out](): () => A
+  get [_Out](): (_: never) => A
   /**
    * Removes the oldest value in the queue. If the queue is empty, this will
    * return a computation that resumes when an item has been added to the queue.
@@ -107,68 +107,6 @@ export interface Dequeue<A> extends CommonQueue<A> {
   get poll(): Effect<never, never, Maybe<A>>
 }
 
-export const CommonProto = {
-  get [QueueSym](): QueueSym {
-    return QueueSym
-  },
-  get isFull(): Effect<never, never, boolean> {
-    return (this as unknown as Enqueue<unknown> | Dequeue<unknown>).size.map((size) =>
-      size === (this as unknown as Enqueue<unknown> | Dequeue<unknown>).capacity
-    )
-  },
-  get isEmpty(): Effect<never, never, boolean> {
-    return (this as unknown as Queue<unknown>).size.map((size) => size === 0)
-  }
-}
-
-export const DequeueProto = {
-  get poll(): Effect<never, never, Maybe<unknown>> {
-    return (this as Dequeue<unknown>).takeUpTo(1).map((chunk) => chunk.head)
-  },
-  takeN<A>(this: Dequeue<A>, n: number): Effect<never, never, Chunk<A>> {
-    return this.takeBetween(n, n)
-  },
-  takeBetween<A>(this: Dequeue<A>, min: number, max: number): Effect<never, never, Chunk<A>> {
-    return Effect.suspendSucceed(takeRemainderLoop(this, min, max, Chunk.empty()))
-  }
-}
-
-export const QueueProto = /* #__PURE__ */ {
-  ...CommonProto,
-  ...DequeueProto
-}
-
-function takeRemainderLoop<A>(
-  self: Dequeue<A>,
-  min: number,
-  max: number,
-  acc: Chunk<A>
-): Effect<never, never, Chunk<A>> {
-  if (max < min) {
-    return Effect.succeed(acc)
-  }
-  return self.takeUpTo(max).flatMap((bs) => {
-    const remaining = min - bs.length
-
-    if (remaining === 1) {
-      return self.take.map((b) => (acc + bs).append(b))
-    }
-
-    if (remaining > 1) {
-      return self.take.flatMap((b) =>
-        takeRemainderLoop(
-          self,
-          remaining - 1,
-          max - bs.length - 1,
-          (acc + bs).append(b)
-        )
-      )
-    }
-
-    return Effect.succeed(acc + bs)
-  })
-}
-
 /**
  * A `Queue` is a lightweight, asynchronous queue into which values can be
  * enqueued and of which elements can be dequeued.
@@ -191,7 +129,3 @@ export const Queue: QueueOps = {
  * @tsplus type effect/core/io/Queue.Aspects
  */
 export interface QueueAspects {}
-
-export type AbstractQueue<K, P> = {
-  -readonly [k in keyof K as k extends (keyof P) | symbol ? never : k]: K[k]
-} extends infer Q ? Q : never

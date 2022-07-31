@@ -2,11 +2,11 @@ import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subs
 
 export interface AtomicHub<A> {
   readonly capacity: number
-  isEmpty(): boolean
-  isFull(): boolean
+  get isEmpty(): boolean
+  get isFull(): boolean
   publish(a: A): boolean
   publishAll(as: Collection<A>): Chunk<A>
-  size(): number
+  get size(): number
   slide(): void
   subscribe(): Subscription<A>
 }
