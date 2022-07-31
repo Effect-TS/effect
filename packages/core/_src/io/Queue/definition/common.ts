@@ -63,11 +63,11 @@ export interface CommonQueue<A> {
   /**
    * Checks whether the queue is currently full.
    */
-  isFull(this: this): Effect<never, never, boolean>
+  get isFull(): Effect<never, never, boolean>
   /**
    * Checks whether the queue is currently empty.
    */
-  isEmpty(this: this): Effect<never, never, boolean>
+  get isEmpty(): Effect<never, never, boolean>
 }
 
 export interface Dequeue<A> extends CommonQueue<A> {
@@ -104,24 +104,26 @@ export interface Dequeue<A> extends CommonQueue<A> {
   /**
    * Take the head option of values in the queue.
    */
-  poll(this: this): Effect<never, never, Maybe<A>>
+  get poll(): Effect<never, never, Maybe<A>>
 }
 
 export const CommonProto = {
   get [QueueSym](): QueueSym {
     return QueueSym
   },
-  isFull<A>(this: Enqueue<A> | Dequeue<A>) {
-    return this.size.map((size) => size === this.capacity)
+  get isFull(): Effect<never, never, boolean> {
+    return (this as unknown as Enqueue<unknown> | Dequeue<unknown>).size.map((size) =>
+      size === (this as unknown as Enqueue<unknown> | Dequeue<unknown>).capacity
+    )
   },
-  isEmpty<A>(this: Queue<A>): Effect<never, never, boolean> {
-    return this.size.map((size) => size === 0)
+  get isEmpty(): Effect<never, never, boolean> {
+    return (this as unknown as Queue<unknown>).size.map((size) => size === 0)
   }
 }
 
 export const DequeueProto = {
-  poll<A>(this: Dequeue<A>): Effect<never, never, Maybe<A>> {
-    return this.takeUpTo(1).map((chunk) => chunk.head)
+  get poll(): Effect<never, never, Maybe<unknown>> {
+    return (this as Dequeue<unknown>).takeUpTo(1).map((chunk) => chunk.head)
   },
   takeN<A>(this: Dequeue<A>, n: number): Effect<never, never, Chunk<A>> {
     return this.takeBetween(n, n)

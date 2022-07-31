@@ -94,11 +94,11 @@ class Spy<A> implements Queue<A> {
       this.isShutdownInternal = true
     })
   }
-  isFull(__tsplusTrace?: string | undefined): Effect<never, never, boolean> {
-    return this.queue.isFull()
+  get isFull(): Effect<never, never, boolean> {
+    return this.queue.isFull
   }
-  isEmpty(__tsplusTrace?: string | undefined): Effect<never, never, boolean> {
-    return this.queue.isEmpty()
+  get isEmpty(): Effect<never, never, boolean> {
+    return this.queue.isEmpty
   }
   get take(): Effect<never, never, A> {
     return this.queue.take
@@ -115,7 +115,7 @@ class Spy<A> implements Queue<A> {
   takeN(n: number, __tsplusTrace?: string | undefined): Effect<never, never, Chunk<A>> {
     return this.queue.takeN(n)
   }
-  poll(__tsplusTrace?: string | undefined): Effect<never, never, Maybe<A>> {
-    return this.queue.poll()
+  get poll(): Effect<never, never, Maybe<A>> {
+    return this.queue.poll
   }
 }
