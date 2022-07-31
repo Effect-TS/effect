@@ -3,6 +3,6 @@
  *
  * @tsplus static effect/core/stream/Stream.Ops service
  */
-export function service<T>(tag: Tag<T>, __tsplusTrace?: string): Stream<T, never, T> {
+export function service<T>(tag: Tag<T>): Stream<T, never, T> {
   return Stream.serviceWith(tag, identity)
 }

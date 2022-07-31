@@ -9,5 +9,7 @@ export function exponential(
   base: Duration,
   factor = 2.0
 ): Schedule<number, never, unknown, Duration> {
-  return Schedule.delayed(Schedule.repeatForever.map((i) => new Duration(base.millis * Math.pow(factor, i))))
+  return Schedule.delayed(
+    Schedule.repeatForever.map((i) => new Duration(base.millis * Math.pow(factor, i)))
+  )
 }

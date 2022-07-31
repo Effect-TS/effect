@@ -100,7 +100,8 @@ export namespace Effect {
     readonly exit: Exit<E, A>
     readonly trace?: string
   }
-  export type Success<T extends Effect<any, any, any>> = [T] extends [Effect<infer R, infer E, infer A>] ? A : never
+  export type Success<T extends Effect<any, any, any>> = [T] extends
+    [Effect<infer R, infer E, infer A>] ? A : never
 }
 
 export abstract class Base<R, E, A> implements Effect<R, E, A> {

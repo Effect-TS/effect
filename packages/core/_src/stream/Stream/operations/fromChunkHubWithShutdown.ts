@@ -6,8 +6,7 @@
  * @tsplus static effect/core/stream/Stream.Ops fromChunkHubWithShutdown
  */
 export function fromChunkHubWithShutdown<A>(
-  hub: LazyArg<Hub<Chunk<A>>>,
-  __tsplusTrace?: string
+  hub: LazyArg<Hub<Chunk<A>>>
 ): Stream<never, never, A> {
   return Stream.succeed(hub).flatMap((hub) => Stream.fromChunkHub(hub).ensuring(hub.shutdown))
 }

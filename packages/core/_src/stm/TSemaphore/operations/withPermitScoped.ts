@@ -4,9 +4,6 @@
  *
  * @tsplus getter effect/core/stm/TSemaphore withPermitScoped
  */
-export function withPermitScoped(
-  self: TSemaphore,
-  __tsplusTrace?: string
-): Effect<Scope, never, void> {
+export function withPermitScoped(self: TSemaphore): Effect<Scope, never, void> {
   return self.withPermitsScoped(1)
 }

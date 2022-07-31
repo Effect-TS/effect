@@ -23,8 +23,7 @@ export function foldWeightedDecompose<S, In>(
   costFn: (s: S, input: In) => number,
   max: number,
   decompose: (input: In) => Chunk<In>,
-  f: (s: S, input: In) => S,
-  __tsplusTrace?: string
+  f: (s: S, input: In) => S
 ): Sink<never, never, In, In, S> {
   return Sink.suspend(new SinkInternal(go(z(), costFn, decompose, f, false, 0, max)))
 }
@@ -36,8 +35,7 @@ function go<S, In>(
   f: (s: S, input: In) => S,
   dirty: boolean,
   cost: number,
-  max: number,
-  __tsplusTrace?: string
+  max: number
 ): Channel<never, never, Chunk<In>, unknown, never, Chunk<In>, S> {
   return Channel.readWith(
     (chunk: Chunk<In>) => {
@@ -69,8 +67,7 @@ function fold<S, In>(
   dirty: boolean,
   cost: number,
   max: number,
-  index: number,
-  __tsplusTrace?: string
+  index: number
 ): Tuple<[S, number, boolean, Chunk<In>]> {
   if (index === input.length) {
     return Tuple(s, cost, dirty, Chunk.empty<In>())

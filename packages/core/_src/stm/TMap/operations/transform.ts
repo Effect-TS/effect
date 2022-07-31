@@ -16,7 +16,10 @@ export function transform<K, V>(f: (kv: Tuple<[K, V]>) => Tuple<[K, V]>) {
       concreteTArray(buckets)
 
       const capacity = buckets.chunk.length
-      const newBuckets: Array<List<Tuple<[K, V]>>> = Array.from({ length: capacity }, () => List.nil())
+      const newBuckets: Array<List<Tuple<[K, V]>>> = Array.from(
+        { length: capacity },
+        () => List.nil()
+      )
       let i = 0
       let newSize = 0
 

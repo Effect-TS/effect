@@ -139,7 +139,8 @@ export function makeTestConsole(
     output: () => consoleState.get().map((state) => state.output),
     outputError: () => consoleState.get().map((state) => state.outputError),
     clearInput: () => consoleState.update((state) => ({ ...state, input: List.empty<string>() })),
-    clearOutput: () => consoleState.update((state) => ({ ...state, output: ImmutableArray.empty<string>() })),
+    clearOutput: () =>
+      consoleState.update((state) => ({ ...state, output: ImmutableArray.empty<string>() })),
     save: () => consoleState.get().map((state) => consoleState.set(state))
   }
 }

@@ -61,8 +61,7 @@ export class RuntimeFiberId implements FiberId.Runtime, Equals {
 
   constructor(
     readonly id: number,
-    readonly startTimeSeconds: number,
-    readonly location: TraceElement
+    readonly startTimeSeconds: number
   ) {}
 
   [Hash.sym](): number {
@@ -70,13 +69,19 @@ export class RuntimeFiberId implements FiberId.Runtime, Equals {
       Hash.string(this._tag),
       Hash.combine(
         Hash.number(this.id),
-        Hash.combine(Hash.number(this.startTimeSeconds), Hash.unknown(this.location))
+        Hash.number(this.startTimeSeconds)
       )
     )
   }
 
   [Equals.sym](that: unknown): boolean {
-    return isFiberId(that) && this[Hash.sym]() === that[Hash.sym]()
+    if (isFiberId(that)) {
+      realFiberId(that)
+      return this._tag === that._tag &&
+        this.id === that.id &&
+        this.startTimeSeconds === that.startTimeSeconds
+    }
+    return false
   }
 }
 

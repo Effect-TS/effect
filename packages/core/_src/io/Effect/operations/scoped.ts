@@ -7,8 +7,7 @@
  * @tsplus getter effect/core/io/Effect scoped
  */
 export function scoped<R, E, A>(
-  effect: Effect<R, E, A>,
-  __tsplusTrace?: string
+  effect: Effect<R, E, A>
 ): Effect<Exclude<R, Scope>, E, A> {
   return Scope.make.flatMap((scope) => scope.use(effect))
 }

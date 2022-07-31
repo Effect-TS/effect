@@ -6,9 +6,6 @@ import { constVoid } from "@tsplus/stdlib/data/Function"
  *
  * @tsplus static effect/core/io/Effect.Ops getOrFailDiscard
  */
-export function getOrFailDiscard<A>(
-  option: LazyArg<Maybe<A>>,
-  __tsplusTrace?: string
-): Effect<never, void, A> {
+export function getOrFailDiscard<A>(option: LazyArg<Maybe<A>>): Effect<never, void, A> {
   return Effect.getOrFailWith(option, constVoid)
 }

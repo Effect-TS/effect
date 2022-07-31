@@ -5,8 +5,7 @@
  */
 export function mapEffectDiscard_<A, R, E, B>(
   self: Chunk<A>,
-  f: (a: A) => Effect<R, E, B>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R, E, B>
 ): Effect<R, E, void> {
   return Effect.forEachDiscard(self, f)
 }

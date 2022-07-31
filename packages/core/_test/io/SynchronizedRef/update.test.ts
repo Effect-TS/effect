@@ -7,7 +7,9 @@ const failure = "failure"
 describe.concurrent("SynchronizedRef", () => {
   describe.concurrent("updateAndGetEffect", () => {
     it("happy path", async () => {
-      const program = Ref.Synchronized.make(current).flatMap((ref) => ref.updateAndGetEffect(() => Effect.sync(update)))
+      const program = Ref.Synchronized.make(current).flatMap((ref) =>
+        ref.updateAndGetEffect(() => Effect.sync(update))
+      )
 
       const result = await program.unsafeRunPromise()
 
@@ -21,14 +23,16 @@ describe.concurrent("SynchronizedRef", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(failure))
+      assert.isTrue(result == Exit.fail(failure))
     })
   })
 
   describe.concurrent("updateSomeAndGetEffect", () => {
     it("happy path", async () => {
       const program = Ref.Synchronized.make<State>(State.Active).flatMap((ref) =>
-        ref.updateSomeAndGetEffect((state) => state.isClosed() ? Maybe.some(Effect.sync(State.Changed)) : Maybe.none)
+        ref.updateSomeAndGetEffect((state) =>
+          state.isClosed() ? Maybe.some(Effect.sync(State.Changed)) : Maybe.none
+        )
       )
 
       const result = await program.unsafeRunPromise()
@@ -63,12 +67,14 @@ describe.concurrent("SynchronizedRef", () => {
 
     it("with failure", async () => {
       const program = Ref.Synchronized.make<State>(State.Active).flatMap((ref) =>
-        ref.updateSomeAndGetEffect((state) => state.isActive() ? Maybe.some(Effect.failSync(failure)) : Maybe.none)
+        ref.updateSomeAndGetEffect((state) =>
+          state.isActive() ? Maybe.some(Effect.failSync(failure)) : Maybe.none
+        )
       )
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(failure))
+      assert.isTrue(result == Exit.fail(failure))
     })
   })
 })

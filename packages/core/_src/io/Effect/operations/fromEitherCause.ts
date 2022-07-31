@@ -3,9 +3,6 @@
  *
  * @tsplus static effect/core/io/Effect.Ops fromEitherCause
  */
-export function fromEitherCause<E, A>(
-  either: LazyArg<Either<Cause<E>, A>>,
-  __tsplusTrace?: string
-): Effect<never, E, A> {
+export function fromEitherCause<E, A>(either: LazyArg<Either<Cause<E>, A>>): Effect<never, E, A> {
   return Effect.sync(either).flatMap((either) => either.fold(Effect.failCause, Effect.succeed))
 }

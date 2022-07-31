@@ -5,8 +5,7 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  * @tsplus static effect/core/stream/Channel.Ops toStream
  */
 export function toStream<Env, OutErr, OutElem, OutDone>(
-  self: Channel<Env, unknown, unknown, unknown, OutErr, Chunk<OutElem>, OutDone>,
-  __tsplusTrace?: string
+  self: Channel<Env, unknown, unknown, unknown, OutErr, Chunk<OutElem>, OutDone>
 ): Stream<Env, OutErr, OutElem> {
   return new StreamInternal(self)
 }

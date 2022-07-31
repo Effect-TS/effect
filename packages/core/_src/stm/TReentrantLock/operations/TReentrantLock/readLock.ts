@@ -4,8 +4,10 @@
  * @tsplus getter effect/core/stm/TReentrantLock readLock
  */
 export function readLock(
-  self: TReentrantLock,
-  __tsplusTrace?: string
+  self: TReentrantLock
 ): Effect<Scope, never, number> {
-  return Effect.acquireRelease(self.acquireRead.commit, (_) => self.releaseRead.commit, __tsplusTrace)
+  return Effect.acquireRelease(
+    self.acquireRead.commit,
+    (_) => self.releaseRead.commit
+  )
 }

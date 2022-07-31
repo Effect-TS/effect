@@ -21,10 +21,7 @@ export function loop<Z>(
   cont: (z: Z) => boolean,
   inc: (z: Z) => Z
 ) {
-  return <R, E, A>(
-    body: (z: Z) => Effect<R, E, A>,
-    __tsplusTrace?: string
-  ): Effect<R, E, Chunk<A>> => {
+  return <R, E, A>(body: (z: Z) => Effect<R, E, A>): Effect<R, E, Chunk<A>> => {
     return loopInternal(initial, cont, inc, body).map((listBuffer) => Chunk.from(listBuffer))
   }
 }
@@ -33,8 +30,7 @@ function loopInternal<Z, R, E, A>(
   initial: LazyArg<Z>,
   cont: (z: Z) => boolean,
   inc: (z: Z) => Z,
-  body: (z: Z) => Effect<R, E, A>,
-  __tsplusTrace?: string
+  body: (z: Z) => Effect<R, E, A>
 ): Effect<R, E, ListBuffer<A>> {
   return Effect.suspendSucceed(() => {
     const initial0 = initial()

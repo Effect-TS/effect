@@ -8,9 +8,6 @@ import { IFlatMap } from "@effect/core/io/Effect/definition/primitives"
  * @tsplus static effect/core/io/Effect.Aspects flatMap
  * @tsplus pipeable effect/core/io/Effect flatMap
  */
-export function flatMap<A, R1, E1, B>(
-  f: (a: A) => Effect<R1, E1, B>,
-  __tsplusTrace?: string
-) {
-  return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E | E1, B> => new IFlatMap(self, f, __tsplusTrace)
+export function flatMap<A, R1, E1, B>(f: (a: A) => Effect<R1, E1, B>) {
+  return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E | E1, B> => new IFlatMap(self, f)
 }

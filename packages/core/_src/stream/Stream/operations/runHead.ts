@@ -5,8 +5,7 @@
  * @tsplus getter effect/core/stream/Stream runHead
  */
 export function runHead<R, E, A>(
-  self: Stream<R, E, A>,
-  __tsplusTrace?: string
+  self: Stream<R, E, A>
 ): Effect<R, E, Maybe<A>> {
   return self.run(Sink.head())
 }

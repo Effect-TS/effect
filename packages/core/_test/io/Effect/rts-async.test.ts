@@ -46,17 +46,20 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("release", () => Deferred.make<never, void>())
         .bind("acquire", () => Deferred.make<never, void>())
-        .bind("fiber", ({ acquire, release }) =>
-          Effect.asyncEffect<never, unknown, unknown, never, never, never>(() =>
-            // This will never complete because we never call the callback
-            Effect.acquireUseReleaseDiscard(
-              acquire.succeed(undefined),
-              Effect.never,
-              release.succeed(undefined)
+        .bind(
+          "fiber",
+          ({ acquire, release }) =>
+            Effect.asyncEffect<never, unknown, unknown, never, never, never>(() =>
+              // This will never complete because we never call the callback
+              Effect.acquireUseReleaseDiscard(
+                acquire.succeed(undefined),
+                Effect.never,
+                release.succeed(undefined)
+              )
             )
-          )
-            .disconnect
-            .fork)
+              .disconnect
+              .fork
+        )
         .tap(({ acquire }) => acquire.await)
         .tap(({ fiber }) => fiber.interruptFork)
         .flatMap(({ release }) => release.await)
@@ -103,23 +106,26 @@ describe.concurrent("Effect", () => {
         .bind("step", () => Deferred.make<never, void>())
         .bind("unexpectedPlace", () => Ref.make<List<number>>(List.empty()))
         .bind("runtime", () => Effect.runtime<never>())
-        .bind("fork", ({ runtime, step, unexpectedPlace }) =>
-          Effect.asyncMaybe<never, never, void>((cb) => {
-            runtime.unsafeRunAsync(
-              step.await >
-                Effect.sync(cb(unexpectedPlace.update((list) => list.prepend(1))))
-            )
-            return Maybe.some(Effect.unit)
-          })
-            .flatMap(() =>
-              Effect.async<never, never, void>(() => {
-                // The callback is never called so this never completes
-                runtime.unsafeRunAsync(step.succeed(undefined))
-              })
-            )
-            .ensuring(unexpectedPlace.update((list) => list.prepend(2)))
-            .uninterruptible
-            .forkDaemon)
+        .bind(
+          "fork",
+          ({ runtime, step, unexpectedPlace }) =>
+            Effect.asyncMaybe<never, never, void>((cb) => {
+              runtime.unsafeRunAsync(
+                step.await >
+                  Effect.sync(cb(unexpectedPlace.update((list) => list.prepend(1))))
+              )
+              return Maybe.some(Effect.unit)
+            })
+              .flatMap(() =>
+                Effect.async<never, never, void>(() => {
+                  // The callback is never called so this never completes
+                  runtime.unsafeRunAsync(step.succeed(undefined))
+                })
+              )
+              .ensuring(unexpectedPlace.update((list) => list.prepend(2)))
+              .uninterruptible
+              .forkDaemon
+        )
         .bind("result", ({ fork }) => fork.interrupt.timeout((1).seconds))
         .bind("unexpected", ({ unexpectedPlace }) => unexpectedPlace.get())
 

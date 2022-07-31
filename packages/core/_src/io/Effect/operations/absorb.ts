@@ -4,6 +4,6 @@
  *
  * @tsplus getter effect/core/io/Effect absorb
  */
-export function absorb<R, E, A>(self: Effect<R, E, A>, __tsplusTrace?: string) {
+export function absorb<R, E, A>(self: Effect<R, E, A>) {
   return self.absorbWith(identity)
 }

@@ -5,6 +5,7 @@
  * @tsplus static effect/core/io/Effect.Aspects repeatWhile
  * @tsplus pipeable effect/core/io/Effect repeatWhile
  */
-export function repeatWhile<A>(f: Predicate<A>, __tsplusTrace?: string) {
-  return <R, E>(self: Effect<R, E, A>): Effect<R, E, A> => self.repeatWhileEffect((a) => Effect.sync(f(a)))
+export function repeatWhile<A>(f: Predicate<A>) {
+  return <R, E>(self: Effect<R, E, A>): Effect<R, E, A> =>
+    self.repeatWhileEffect((a) => Effect.sync(f(a)))
 }

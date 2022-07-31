@@ -41,7 +41,8 @@ const HubProto: any = {
       ;(this.shutdownFlag as AtomicBoolean).set(true)
       return Effect.whenEffect(
         (this.shutdownHook as Deferred<never, void>).succeed(undefined),
-        (this.scope as Scope.Closeable).close(Exit.interrupt(fiberId)) > (this.strategy as Strategy<unknown>).shutdown
+        (this.scope as Scope.Closeable).close(Exit.interrupt(fiberId)) >
+          (this.strategy as Strategy<unknown>).shutdown
       ).unit
     }).uninterruptible
   },
@@ -56,13 +57,13 @@ const HubProto: any = {
       (dequeue) => dequeue.shutdown
     )
   },
-  offer(a: unknown, __tsplusTrace?: string): Effect<never, never, boolean> {
+  offer(a: unknown): Effect<never, never, boolean> {
     return this.publish(a)
   },
-  offerAll(as: Collection<unknown>, __tsplusTrace?: string): Effect<never, never, boolean> {
+  offerAll(as: Collection<unknown>): Effect<never, never, boolean> {
     return this.publishAll(as)
   },
-  publish(a: unknown, __tsplusTrace?: string) {
+  publish(a: unknown) {
     return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
         return Effect.interrupt
@@ -81,7 +82,7 @@ const HubProto: any = {
       )
     })
   },
-  publishAll(as: Collection<unknown>, __tsplusTrace?: string) {
+  publishAll(as: Collection<unknown>) {
     return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
         return Effect.interrupt

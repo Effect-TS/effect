@@ -8,8 +8,7 @@
  * @tsplus pipeable effect/core/io/RuntimeFiber mapFiber
  */
 export function mapFiber<E, E1, A, B>(
-  f: (a: A) => Fiber<E1, B>,
-  __tsplusTrace?: string
+  f: (a: A) => Fiber<E1, B>
 ) {
   return (self: Fiber<E, A>): Effect<never, never, Fiber<E | E1, B>> =>
     self.await.map((exit) =>

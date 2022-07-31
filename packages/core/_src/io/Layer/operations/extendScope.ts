@@ -9,8 +9,7 @@ import { ILayerExtendScope } from "@effect/core/io/Layer/definition"
  * @tsplus getter effect/core/io/Layer extendScope
  */
 export function extendScope<RIn, E, ROut>(
-  self: Layer<RIn, E, ROut>,
-  __tsplusTrace?: string
+  self: Layer<RIn, E, ROut>
 ): Layer<RIn | Scope, E, ROut> {
   return new ILayerExtendScope(self)
 }

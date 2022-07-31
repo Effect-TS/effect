@@ -17,10 +17,10 @@ export const FiberScope: FiberScopeOps = {}
 
 export interface CommonScope {
   readonly fiberId: FiberId
+
   readonly unsafeAdd: (
     runtimeConfig: RuntimeConfig,
-    child: FiberContext<any, any>,
-    __tsplusTrace?: string
+    child: FiberContext<any, any>
   ) => boolean
 }
 
@@ -29,8 +29,7 @@ export class Global implements CommonScope {
 
   unsafeAdd(
     runtimeConfig: RuntimeConfig,
-    child: FiberContext<any, any>,
-    __tsplusTrace?: string | undefined
+    child: FiberContext<any, any>
   ): boolean {
     if (runtimeConfig.value.flags.isEnabled(RuntimeConfigFlag.EnableFiberRoots)) {
       _roots.add(child)
@@ -45,10 +44,10 @@ export class Global implements CommonScope {
 
 export class Local implements CommonScope {
   constructor(readonly fiberId: FiberId, readonly parent: FiberContext<any, any>) {}
+
   unsafeAdd(
     _runtimeConfig: RuntimeConfig,
-    child: FiberContext<any, any>,
-    __tsplusTrace?: string | undefined
+    child: FiberContext<any, any>
   ): boolean {
     const parent = this.parent
     return parent != null && parent.unsafeAddChild(child)

@@ -25,7 +25,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(error))
+      assert.isTrue(result == Exit.die(error))
     })
 
     it("error propagation 2", async () => {
@@ -36,7 +36,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(error))
+      assert.isTrue(result == Exit.die(error))
     })
 
     it("interruption propagation 1", async () => {
@@ -204,7 +204,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(error))
+      assert.isTrue(result == Exit.die(error))
     })
 
     it("error propagation 2", async () => {
@@ -218,7 +218,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(error))
+      assert.isTrue(result == Exit.die(error))
     })
 
     it("interruption propagation 1", async () => {

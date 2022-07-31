@@ -1,4 +1,10 @@
-import { as, b, eventEq, eventOrd, eventPredicate } from "@effect/core/test/stm/TPriorityQueue/test-utils"
+import {
+  as,
+  b,
+  eventEq,
+  eventOrd,
+  eventPredicate
+} from "@effect/core/test/stm/TPriorityQueue/test-utils"
 
 describe.concurrent("TPriorityQueue", () => {
   describe.concurrent("retainIf", () => {

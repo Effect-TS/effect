@@ -18,11 +18,12 @@ export function collect<
   return (
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone> => {
-    const collector: Channel<Env, OutErr, OutElem, OutDone, OutErr, OutElem2, OutDone> = Channel.readWith(
-      (out) => pf(out).fold(collector, (out2) => Channel.write(out2) > collector),
-      (e) => Channel.fail(e),
-      (z) => Channel.succeedNow(z)
-    )
+    const collector: Channel<Env, OutErr, OutElem, OutDone, OutErr, OutElem2, OutDone> = Channel
+      .readWith(
+        (out) => pf(out).fold(collector, (out2) => Channel.write(out2) > collector),
+        (e) => Channel.fail(e),
+        (z) => Channel.succeedNow(z)
+      )
     return self >> collector
   }
 }

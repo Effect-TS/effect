@@ -72,7 +72,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(1))
+      assert.isTrue(result == Exit.fail(1))
     })
   })
   describe.concurrent("reduceAll", () => {

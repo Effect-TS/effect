@@ -5,8 +5,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * @tsplus static effect/core/stream/Channel.Ops toSink
  */
 export function toSink<Env, InErr, InElem, OutErr, OutElem, OutDone>(
-  self: Channel<Env, InErr, Chunk<InElem>, unknown, OutErr, Chunk<OutElem>, OutDone>,
-  __tsplusTrace?: string
+  self: Channel<Env, InErr, Chunk<InElem>, unknown, OutErr, Chunk<OutElem>, OutDone>
 ): Sink<Env, OutErr, InElem, OutElem, OutDone> {
   return new SinkInternal(self)
 }

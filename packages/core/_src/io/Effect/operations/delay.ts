@@ -5,6 +5,6 @@
  * @tsplus static effect/core/io/Effect.Aspects delay
  * @tsplus pipeable effect/core/io/Effect delay
  */
-export function delay(duration: LazyArg<Duration>, __tsplusTrace?: string) {
+export function delay(duration: LazyArg<Duration>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> => Clock.sleep(duration) > self
 }

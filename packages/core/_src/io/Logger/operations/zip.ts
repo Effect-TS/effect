@@ -12,10 +12,9 @@ export function zip<Message1, Output1>(that: Logger<Message1, Output1>) {
   return <Message, Output>(
     self: Logger<Message, Output>
   ): Logger<Message & Message1, MergeTuple<Output, Output1>> => ({
-    apply: (trace, fiberId, logLevel, message, cause, context, spans, annotations) =>
+    apply: (fiberId, logLevel, message, cause, context, spans, annotations) =>
       Tuple.mergeTuple(
         self.apply(
-          trace,
           fiberId,
           logLevel,
           message,
@@ -25,7 +24,6 @@ export function zip<Message1, Output1>(that: Logger<Message1, Output1>) {
           annotations
         ),
         that.apply(
-          trace,
           fiberId,
           logLevel,
           message,

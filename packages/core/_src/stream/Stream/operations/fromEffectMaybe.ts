@@ -7,8 +7,7 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  * @tsplus static effect/core/stream/Stream.Ops fromEffectMaybe
  */
 export function fromEffectMaybe<R, E, A>(
-  effect: LazyArg<Effect<R, Maybe<E>, A>>,
-  __tsplusTrace?: string
+  effect: LazyArg<Effect<R, Maybe<E>, A>>
 ): Stream<R, E, A> {
   return new StreamInternal(
     Channel.unwrap(

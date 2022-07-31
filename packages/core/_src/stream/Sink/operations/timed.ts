@@ -5,8 +5,7 @@
  * @tsplus getter effect/core/stream/Sink timed
  */
 export function withDuration<R, E, In, L, Z>(
-  self: Sink<R, E, In, L, Z>,
-  __tsplusTrace?: string
+  self: Sink<R, E, In, L, Z>
 ): Sink<R, E, In, L, Tuple<[Z, Duration]>> {
   return self.summarized(Clock.currentTime, (start, end) => new Duration(end - start))
 }
@@ -16,8 +15,6 @@ export function withDuration<R, E, In, L, Z>(
  *
  * @tsplus static effect/core/stream/Sink.Aspects timed
  */
-export function timed(
-  __tsplusTrace?: string
-): Sink<never, never, unknown, never, Duration> {
+export function timed(): Sink<never, never, unknown, never, Duration> {
   return Sink.drain().timed.map((tuple) => tuple.get(1))
 }

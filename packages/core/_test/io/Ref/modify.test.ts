@@ -35,18 +35,24 @@ describe.concurrent("Ref", () => {
     it("twice", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make<State>(State.Active))
-        .bind("v1", ({ ref }) =>
-          ref.modifySome("doesn't change the state", (state) =>
-            state.isActive()
-              ? Maybe.some(Tuple("changed", State.Changed))
-              : Maybe.none))
-        .bind("v2", ({ ref }) =>
-          ref.modifySome("doesn't change the state", (state) =>
-            state.isActive()
-              ? Maybe.some(Tuple("changed", State.Changed))
-              : state.isChanged()
-              ? Maybe.some(Tuple("closed", State.Closed))
-              : Maybe.none))
+        .bind(
+          "v1",
+          ({ ref }) =>
+            ref.modifySome("doesn't change the state", (state) =>
+              state.isActive()
+                ? Maybe.some(Tuple("changed", State.Changed))
+                : Maybe.none)
+        )
+        .bind(
+          "v2",
+          ({ ref }) =>
+            ref.modifySome("doesn't change the state", (state) =>
+              state.isActive()
+                ? Maybe.some(Tuple("changed", State.Changed))
+                : state.isChanged()
+                ? Maybe.some(Tuple("closed", State.Closed))
+                : Maybe.none)
+        )
 
       const { v1, v2 } = await program.unsafeRunPromise()
 

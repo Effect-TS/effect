@@ -10,15 +10,13 @@ export function fromPush<R, E, In, L, Z>(
     R | Scope,
     never,
     (input: Maybe<Chunk<In>>) => Effect<R, Tuple<[Either<E, Z>, Chunk<L>]>, void>
-  >,
-  __tsplusTrace?: string
+  >
 ): Sink<R, E, In, L, Z> {
   return new SinkInternal(Channel.unwrapScoped(push.map(pull)))
 }
 
 function pull<R, E, In, L, Z>(
-  push: (option: Maybe<Chunk<In>>) => Effect<R, Tuple<[Either<E, Z>, Chunk<L>]>, void>,
-  __tsplusTrace?: string
+  push: (option: Maybe<Chunk<In>>) => Effect<R, Tuple<[Either<E, Z>, Chunk<L>]>, void>
 ): Channel<R, never, Chunk<In>, unknown, E, Chunk<L>, Z> {
   return Channel.readWith(
     (input: Chunk<In>) =>

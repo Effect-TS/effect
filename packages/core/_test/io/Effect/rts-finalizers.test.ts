@@ -1,4 +1,9 @@
-import { asyncExampleError, asyncUnit, ExampleError, ExampleErrorFail } from "@effect/core/test/io/Effect/test-utils"
+import {
+  asyncExampleError,
+  asyncUnit,
+  ExampleError,
+  ExampleErrorFail
+} from "@effect/core/test/io/Effect/test-utils"
 import { constTrue } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Effect", () => {
@@ -13,7 +18,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(ExampleError))
+      assert.isTrue(result == Exit.fail(ExampleError))
       assert.isTrue(finalized)
     })
 
@@ -27,7 +32,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(ExampleError))
+      assert.isTrue(result == Exit.fail(ExampleError))
       assert.isTrue(finalized)
     })
 
@@ -38,7 +43,7 @@ describe.concurrent("Effect", () => {
         .ensuring(Effect.die(e3))
         .sandbox
         .flip
-        .map((cause) => cause.untraced)
+        .map((cause) => cause)
 
       const result = await program.unsafeRunPromise()
 
@@ -88,7 +93,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(ExampleError))
+      assert.isTrue(result == Exit.fail(ExampleError))
     })
 
     it("error in just release", async () => {
@@ -100,7 +105,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(ExampleError))
+      assert.isTrue(result == Exit.die(ExampleError))
     })
 
     it("error in just usage", async () => {
@@ -112,7 +117,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(ExampleError))
+      assert.isTrue(result == Exit.fail(ExampleError))
     })
 
     it("rethrown caught error in acquisition", async () => {
@@ -138,7 +143,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(ExampleError))
+      assert.isTrue(result == Exit.die(ExampleError))
     })
 
     it("rethrown caught error in usage", async () => {
@@ -152,7 +157,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(ExampleError))
+      assert.isTrue(result == Exit.fail(ExampleError))
     })
 
     it("test eval of async fail", async () => {
@@ -167,16 +172,16 @@ describe.concurrent("Effect", () => {
         asyncUnit<never>()
       )
       const program = Effect.Do()
-        .bind("a1", () => io1.exit.map((exit) => exit.untraced))
-        .bind("a2", () => io2.exit.map((exit) => exit.untraced))
+        .bind("a1", () => io1.exit.map((exit) => exit))
+        .bind("a2", () => io2.exit.map((exit) => exit))
         .bind("a3", () =>
           Effect.absolve(io1.either)
             .exit
-            .map((exit) => exit.untraced))
+            .map((exit) => exit))
         .bind("a4", () =>
           Effect.absolve(io2.either)
             .exit
-            .map((exit) => exit.untraced))
+            .map((exit) => exit))
 
       const { a1, a2, a3, a4 } = await program.unsafeRunPromise()
 
@@ -205,11 +210,15 @@ describe.concurrent("Effect", () => {
             () => log("start 2") > Effect.sleep((10).millis) > log("release 2")
           ).fork)
         .tap(({ ref }) =>
-          (ref.get() < Effect.sleep((1).millis)).repeatUntil((list) => list.find((s) => s === "start 1").isSome())
+          (ref.get() < Effect.sleep((1).millis)).repeatUntil((list) =>
+            list.find((s) => s === "start 1").isSome()
+          )
         )
         .tap(({ fiber }) => fiber.interrupt)
         .tap(({ ref }) =>
-          (ref.get() < Effect.sleep((1).millis)).repeatUntil((list) => list.find((s) => s === "release 2").isSome())
+          (ref.get() < Effect.sleep((1).millis)).repeatUntil((list) =>
+            list.find((s) => s === "release 2").isSome()
+          )
         )
         .flatMap(({ ref }) => ref.get())
 
@@ -226,10 +235,13 @@ describe.concurrent("Effect", () => {
         .bind("ref", () => Ref.make(false))
         .bind("deferred1", () => Deferred.make<never, void>())
         .bind("deferred2", () => Deferred.make<never, number>())
-        .bind("fiber", ({ deferred1, deferred2, ref }) =>
-          (deferred1.succeed(undefined) > deferred2.await)
-            .ensuring(ref.set(true) > Effect.sleep((10).millis))
-            .fork)
+        .bind(
+          "fiber",
+          ({ deferred1, deferred2, ref }) =>
+            (deferred1.succeed(undefined) > deferred2.await)
+              .ensuring(ref.set(true) > Effect.sleep((10).millis))
+              .fork
+        )
         .tap(({ deferred1 }) => deferred1.await)
         .tap(({ fiber }) => fiber.interrupt)
         .flatMap(({ ref }) => ref.get())

@@ -21,62 +21,48 @@ export class LiveRandom implements Random {
     return Effect.sync(this.PRNG.integer(0))
   }
 
-  nextRange(low: number, high: number, __tsplusTrace?: string): Effect<never, never, number> {
+  nextRange(low: number, high: number): Effect<never, never, number> {
     return this.next.flatMap((n) => Effect.sync((high - low) * n + low))
   }
 
-  nextIntBetween(
-    low: number,
-    high: number,
-    __tsplusTrace?: string
-  ): Effect<never, never, number> {
+  nextIntBetween(low: number, high: number): Effect<never, never, number> {
     return Effect.sync(() => this.PRNG.integer(high - low) + low)
   }
 
-  shuffle<A>(
-    collection: LazyArg<Collection<A>>,
-    __tsplusTrace?: string
-  ): Effect<never, never, Collection<A>> {
+  shuffle<A>(collection: LazyArg<Collection<A>>): Effect<never, never, Collection<A>> {
     return shuffleWith(collection, (n) => this.nextIntBetween(0, n))
   }
 }
 
 function shuffleWith<A>(
   collection: LazyArg<Collection<A>>,
-  nextIntBounded: (n: number) => Effect<never, never, number>,
-  __tsplusTrace?: string
+  nextIntBounded: (n: number) => Effect<never, never, number>
 ): Effect<never, never, Collection<A>> {
   return Effect.suspendSucceed(() => {
     const collection0 = collection()
 
-    return Effect.Do()
-      .bind("buffer", () =>
-        Effect.sync(() => {
-          const buffer: Array<A> = []
-          for (const element of collection0) {
-            buffer.push(element)
-          }
-          return buffer
-        }))
-      .bindValue(
-        "swap",
-        ({ buffer }) =>
-          (i1: number, i2: number) =>
-            Effect.sync(() => {
-              const tmp = buffer[i1]!
-              buffer[i1] = buffer[i2]!
-              buffer[i2] = tmp
-              return buffer
-            })
-      )
-      .tap(({ buffer, swap }) => {
-        const ns: Array<number> = []
-        for (let i = buffer.length; i >= 2; i = i - 1) {
-          ns.push(i)
+    return Do(($) => {
+      const buffer = $(Effect.sync(() => {
+        const buffer: Array<A> = []
+        for (const element of collection0) {
+          buffer.push(element)
         }
-        return Effect.forEachDiscard(ns, (n) => nextIntBounded(n).flatMap((k) => swap(n - 1, k)))
-      })
-      .map(({ buffer }) => buffer)
+        return buffer
+      }))
+      const swap = (i1: number, i2: number) =>
+        Effect.sync(() => {
+          const tmp = buffer[i1]!
+          buffer[i1] = buffer[i2]!
+          buffer[i2] = tmp
+          return buffer
+        })
+      const ns: Array<number> = []
+      for (let i = buffer.length; i >= 2; i = i - 1) {
+        ns.push(i)
+      }
+      $(Effect.forEachDiscard(ns, (n) => nextIntBounded(n).flatMap((k) => swap(n - 1, k))))
+      return buffer
+    })
   })
 }
 

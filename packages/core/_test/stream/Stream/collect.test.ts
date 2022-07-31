@@ -22,7 +22,9 @@ describe.concurrent("Stream", () => {
         Either.right(2),
         Either.left(3)
       )
-        .collectEffect((either) => either.isRight() ? Maybe.some(Effect.sync(either.right * 2)) : Maybe.none)
+        .collectEffect((either) =>
+          either.isRight() ? Maybe.some(Effect.sync(either.right * 2)) : Maybe.none
+        )
         .runCollect
 
       const result = await program.unsafeRunPromise()
@@ -52,7 +54,9 @@ describe.concurrent("Stream", () => {
         Chunk(Either.left(1), Either.right(2)),
         Chunk(Either.left(3), Either.right(4))
       )
-        .collectEffect((either) => either.isRight() ? Maybe.some(Effect.failSync("ouch")) : Maybe.none)
+        .collectEffect((either) =>
+          either.isRight() ? Maybe.some(Effect.failSync("ouch")) : Maybe.none
+        )
         .runDrain
         .either
 
@@ -63,7 +67,9 @@ describe.concurrent("Stream", () => {
 
     it("laziness on chunks", async () => {
       const program = Stream(1, 2, 3, 4)
-        .collectEffect((n) => n === 3 ? Maybe.some(Effect.failSync("boom")) : Maybe.some(Effect.sync(n)))
+        .collectEffect((n) =>
+          n === 3 ? Maybe.some(Effect.failSync("boom")) : Maybe.some(Effect.sync(n))
+        )
         .either
         .runCollect
 
@@ -151,7 +157,9 @@ describe.concurrent("Stream", () => {
         Maybe.none,
         Maybe.some(4)
       )
-        .collectWhileEffect((option) => option.isSome() ? Maybe.some(Effect.sync(option.value * 2)) : Maybe.none)
+        .collectWhileEffect((option) =>
+          option.isSome() ? Maybe.some(Effect.sync(option.value * 2)) : Maybe.none
+        )
         .runCollect
 
       const result = await program.unsafeRunPromise()
@@ -161,7 +169,9 @@ describe.concurrent("Stream", () => {
 
     it("short circuits", async () => {
       const program = (Stream(Maybe.some(1)) + Stream.fail("ouch"))
-        .collectWhileEffect((option) => option.isNone() ? Maybe.some(Effect.succeed(1)) : Maybe.none)
+        .collectWhileEffect((option) =>
+          option.isNone() ? Maybe.some(Effect.succeed(1)) : Maybe.none
+        )
         .runDrain
         .either
 
@@ -178,7 +188,9 @@ describe.concurrent("Stream", () => {
         Maybe.none,
         Maybe.some(4)
       )
-        .collectWhileEffect((option) => option.isSome() ? Maybe.some(Effect.failSync("ouch")) : Maybe.none)
+        .collectWhileEffect((option) =>
+          option.isSome() ? Maybe.some(Effect.failSync("ouch")) : Maybe.none
+        )
         .runDrain
         .either
 
@@ -189,7 +201,9 @@ describe.concurrent("Stream", () => {
 
     it("laziness on chunks", async () => {
       const program = Stream(1, 2, 3, 4)
-        .collectWhileEffect((n) => n === 3 ? Maybe.some(Effect.failSync("boom")) : Maybe.some(Effect.sync(n)))
+        .collectWhileEffect((n) =>
+          n === 3 ? Maybe.some(Effect.failSync("boom")) : Maybe.some(Effect.sync(n))
+        )
         .either
         .runCollect
 

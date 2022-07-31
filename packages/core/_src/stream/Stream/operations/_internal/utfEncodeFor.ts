@@ -1,10 +1,12 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import type { TextEncoder } from "util"
 
 export function utfEncodeFor(
-  bom: Chunk<number> = Chunk.empty<number>(),
-  __tsplusTrace?: string
+  bom: Chunk<number> = Chunk.empty<number>()
 ) {
   return <R, E>(stream: Stream<R, E, string>): Stream<R, E, number> => {
     concreteStream(stream)

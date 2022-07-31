@@ -7,8 +7,7 @@
  */
 export function validateWith<A, R1, E1, B, C>(
   that: LazyArg<Effect<R1, E1, B>>,
-  f: (a: A, b: B) => C,
-  __tsplusTrace?: string
+  f: (a: A, b: B) => C
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E | E1, C> =>
     self

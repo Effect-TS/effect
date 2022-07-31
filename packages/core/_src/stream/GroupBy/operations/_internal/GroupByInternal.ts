@@ -23,8 +23,7 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
    * arbitrary order.
    */
   apply<R1, E1, A1>(
-    f: (k: K, stream: Stream<never, E, V>) => Stream<R1, E1, A1>,
-    __tsplusTrace?: string
+    f: (k: K, stream: Stream<never, E, V>) => Stream<R1, E1, A1>
   ): Stream<R | R1, E | E1, A1> {
     return this.grouped().flatMapPar(
       Number.MAX_SAFE_INTEGER,
@@ -33,12 +32,13 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
     )
   }
 
-  grouped(
-    __tsplusTrace?: string
-  ): Stream<R, E, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>> {
+  grouped(): Stream<R, E, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>> {
     return Stream.unwrapScoped(
       Effect.Do()
-        .bind("decider", () => Deferred.make<never, (k: K, v: V) => Effect<never, never, Predicate<UniqueKey>>>())
+        .bind(
+          "decider",
+          () => Deferred.make<never, (k: K, v: V) => Effect<never, never, Predicate<UniqueKey>>>()
+        )
         .bind("out", () =>
           Effect.acquireRelease(
             Queue.bounded<Exit<Maybe<E>, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>>>(
@@ -87,14 +87,14 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
   /**
    * Only consider the first `n` groups found in the stream.
    */
-  first(n: number, __tsplusTrace?: string): GroupByInternal<R, E, K, V, A> {
+  first(n: number): GroupByInternal<R, E, K, V, A> {
     return new FirstInternal(this.stream, this.key, this.buffer, n)
   }
 
   /**
    * Filter the groups to be processed.
    */
-  filter(f: Predicate<K>, __tsplusTrace?: string): GroupByInternal<R, E, K, V, A> {
+  filter(f: Predicate<K>): GroupByInternal<R, E, K, V, A> {
     return new FilterInternal(this.stream, this.key, this.buffer, f)
   }
 }
@@ -118,9 +118,7 @@ export class FirstInternal<R, E, K, V, A> extends GroupByInternal<R, E, K, V, A>
     super(stream, key, buffer)
   }
 
-  grouped(
-    __tsplusTrace?: string
-  ): Stream<R, E, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>> {
+  grouped(): Stream<R, E, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>> {
     return super
       .grouped()
       .zipWithIndex
@@ -151,9 +149,7 @@ export class FilterInternal<R, E, K, V, A> extends GroupByInternal<R, E, K, V, A
     super(stream, key, buffer)
   }
 
-  grouped(
-    __tsplusTrace?: string
-  ): Stream<R, E, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>> {
+  grouped(): Stream<R, E, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>> {
     return super.grouped().filterEffect((elem) => {
       const {
         tuple: [k, queue]

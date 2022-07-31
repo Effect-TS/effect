@@ -8,10 +8,10 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  * @tsplus pipeable effect/core/stream/Stream repeat
  */
 export function repeatNow<S, R2, B>(
-  schedule: LazyArg<Schedule<S, R2, unknown, B>>,
-  __tsplusTrace?: string
+  schedule: LazyArg<Schedule<S, R2, unknown, B>>
 ) {
-  return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E, A> => self.repeatEither(schedule).collectRight
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E, A> =>
+    self.repeatEither(schedule).collectRight
 }
 
 /**
@@ -20,8 +20,7 @@ export function repeatNow<S, R2, B>(
  * @tsplus static effect/core/stream/Stream.Ops repeat
  */
 export function repeat<A>(
-  a: LazyArg<A>,
-  __tsplusTrace?: string
+  a: LazyArg<A>
 ): Stream<never, never, A> {
   return new StreamInternal(
     Channel.succeed(a).flatMap((a) => Channel.write(Chunk.single(a)).repeated)

@@ -50,7 +50,6 @@ export function isTestLogger(u: unknown): u is TestLogger<unknown, unknown> {
  */
 export class LogEntry {
   constructor(
-    readonly trace: TraceElement,
     readonly fiberId: FiberId,
     readonly logLevel: LogLevel,
     readonly message: Lazy<string>,
@@ -62,7 +61,6 @@ export class LogEntry {
 
   call<A>(logger: Logger<string, A>): A {
     return logger.apply(
-      this.trace,
       this.fiberId,
       this.logLevel,
       this.message,
@@ -82,7 +80,6 @@ export const makeTestLogger: Effect.UIO<TestLogger<string, void>> = Effect.sync(
   return {
     [TestLoggerId]: TestLoggerId,
     apply: (
-      trace,
       fiberId,
       logLevel,
       message,
@@ -95,7 +92,6 @@ export const makeTestLogger: Effect.UIO<TestLogger<string, void>> = Effect.sync(
       logOutput.set(
         oldState.append(
           new LogEntry(
-            trace,
             fiberId,
             logLevel,
             message,

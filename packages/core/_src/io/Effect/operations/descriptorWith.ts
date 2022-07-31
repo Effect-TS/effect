@@ -7,8 +7,7 @@ import { IDescriptor } from "@effect/core/io/Effect/definition/primitives"
  * @tsplus static effect/core/io/Effect.Ops descriptorWith
  */
 export function descriptorWith<R, E, A>(
-  f: (descriptor: Fiber.Descriptor) => Effect<R, E, A>,
-  __tsplusTrace?: string
+  f: (descriptor: Fiber.Descriptor) => Effect<R, E, A>
 ): Effect<R, E, A> {
-  return new IDescriptor(f, __tsplusTrace)
+  return new IDescriptor(f)
 }

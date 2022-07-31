@@ -12,9 +12,9 @@ export function stripSomeDefects(pf: (defect: unknown) => unknown) {
   return <E>(cause: Cause<E>): Maybe<Cause<E>> =>
     cause.fold<E, Maybe<Cause<E>>>(
       Maybe.some(Cause.empty),
-      (e, trace) => Maybe.some(Cause.fail(e, trace)),
-      (t, trace) => pf(t) ? Maybe.none : Maybe.some(Cause.die(t, trace)),
-      (fiberId, trace) => Maybe.some(Cause.interrupt(fiberId, trace)),
+      (e) => Maybe.some(Cause.fail(e)),
+      (t) => pf(t) ? Maybe.none : Maybe.some(Cause.die(t)),
+      (fiberId) => Maybe.some(Cause.interrupt(fiberId)),
       (x, y) => {
         if (x.isSome() && y.isSome()) {
           return Maybe.some(Cause.then(x.value, y.value))

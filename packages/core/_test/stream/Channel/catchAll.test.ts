@@ -9,7 +9,7 @@ describe.concurrent("Channel", () => {
             .runCollect
             .exit
         )
-        assert.isTrue(result.untraced == Exit.fail("error2"))
+        assert.isTrue(result == Exit.fail("error2"))
       }).unsafeRunPromise())
   })
 })

@@ -5,8 +5,7 @@
  * @tsplus static effect/core/io/Effect.Ops sleep
  */
 export function sleep(
-  duration: LazyArg<Duration>,
-  __tsplusTrace?: string
+  duration: LazyArg<Duration>
 ): Effect<never, never, void> {
   return Clock.sleep(duration)
 }

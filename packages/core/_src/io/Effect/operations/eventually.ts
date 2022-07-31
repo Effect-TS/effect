@@ -4,9 +4,6 @@
  *
  * @tsplus getter effect/core/io/Effect eventually
  */
-export function eventually<R, E, A>(
-  self: Effect<R, E, A>,
-  __tsplusTrace?: string
-): Effect<R, never, A> {
+export function eventually<R, E, A>(self: Effect<R, E, A>): Effect<R, never, A> {
   return self.orElse(Effect.yieldNow.zipRight(self.eventually))
 }

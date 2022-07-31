@@ -6,8 +6,7 @@ import { ISetRuntimeConfig } from "@effect/core/io/Effect/definition/primitives"
  * @tsplus static effect/core/io/Effect.Ops setRuntimeConfig
  */
 export function setRuntimeConfig(
-  runtimeConfig: LazyArg<RuntimeConfig>,
-  __tsplusTrace?: string
+  runtimeConfig: LazyArg<RuntimeConfig>
 ): Effect<never, never, void> {
-  return Effect.suspendSucceed(new ISetRuntimeConfig(runtimeConfig(), __tsplusTrace))
+  return Effect.suspendSucceed(new ISetRuntimeConfig(runtimeConfig()))
 }

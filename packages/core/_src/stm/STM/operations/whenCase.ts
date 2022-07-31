@@ -6,8 +6,7 @@
  */
 export function whenCase<R, E, A, B>(
   a: LazyArg<A>,
-  pf: (a: A) => Maybe<STM<R, E, B>>,
-  __tsplusTrace?: string
+  pf: (a: A) => Maybe<STM<R, E, B>>
 ): STM<R, E, Maybe<B>> {
   return STM.suspend(
     pf(a())

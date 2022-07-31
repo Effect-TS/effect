@@ -23,9 +23,6 @@ import { IFork } from "@effect/core/io/Effect/definition/primitives"
  *
  * @tsplus getter effect/core/io/Effect fork
  */
-export function fork<R, E, A>(
-  self: Effect<R, E, A>,
-  __tsplusTrace?: string
-): Effect<R, never, Fiber.Runtime<E, A>> {
-  return new IFork(self, () => Maybe.none, __tsplusTrace)
+export function fork<R, E, A>(self: Effect<R, E, A>): Effect<R, never, Fiber.Runtime<E, A>> {
+  return new IFork(self, () => Maybe.none)
 }

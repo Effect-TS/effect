@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Halts the evaluation of this stream when the provided IO completes. The
@@ -14,8 +17,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus pipeable effect/core/stream/Stream haltWhen
  */
 export function haltWhen<R2, E2, Z>(
-  io: LazyArg<Effect<R2, E2, Z>>,
-  __tsplusTrace?: string
+  io: LazyArg<Effect<R2, E2, Z>>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> => {
     concreteStream(self)
@@ -30,8 +32,7 @@ export function haltWhen<R2, E2, Z>(
 }
 
 function writer<R, E, A, R2, E2, Z>(
-  fiber: Fiber<E2, Z>,
-  __tsplusTrace?: string
+  fiber: Fiber<E2, Z>
 ): Channel<R | R2, E, Chunk<A>, unknown, E | E2, Chunk<A>, void> {
   return Channel.unwrap(
     fiber.poll.map((option) =>

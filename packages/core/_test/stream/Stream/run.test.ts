@@ -59,7 +59,10 @@ describe.concurrent("Stream", () => {
     it("properly closes the resources", async () => {
       const program = Effect.Do()
         .bind("closed", () => Ref.make(false))
-        .bindValue("res", ({ closed }) => Effect.acquireRelease(Effect.sync(1), () => closed.set(true)))
+        .bindValue(
+          "res",
+          ({ closed }) => Effect.acquireRelease(Effect.sync(1), () => closed.set(true))
+        )
         .bindValue("stream", ({ res }) => Stream.scoped(res).flatMap((a) => Stream(a, a, a)))
         .bind("collectAndCheck", ({ closed, stream }) =>
           Effect.scoped(

@@ -9,10 +9,11 @@ import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision"
  */
 export function raceBoth<R1, E1, In1, L1, Z1>(
   that: LazyArg<Sink<R1, E1, In1, L1, Z1>>,
-  capacity = 16,
-  __tsplusTrace?: string
+  capacity = 16
 ) {
-  return <R, E, In, L, Z>(self: Sink<R, E, In, L, Z>): Sink<R | R1, E | E1, In & In1, L | L1, Either<Z, Z1>> =>
+  return <R, E, In, L, Z>(
+    self: Sink<R, E, In, L, Z>
+  ): Sink<R | R1, E | E1, In & In1, L | L1, Either<Z, Z1>> =>
     self.raceWith(
       that,
       (selfDone) =>

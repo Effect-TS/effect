@@ -7,8 +7,8 @@
  * @tsplus pipeable effect/core/io/Effect tapSome
  */
 export function tapSome<A, R1, E1, X>(
-  pf: (a: A) => Maybe<Effect<R1, E1, X>>,
-  __tsplusTrace?: string
+  pf: (a: A) => Maybe<Effect<R1, E1, X>>
 ) {
-  return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E | E1, A> => self.tap((a) => pf(a).getOrElse(Effect.unit))
+  return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E | E1, A> =>
+    self.tap((a) => pf(a).getOrElse(Effect.unit))
 }

@@ -5,7 +5,7 @@
  * @tsplus static effect/core/stream/Stream.Aspects toQueueSliding
  * @tsplus pipeable effect/core/stream/Stream toQueueSliding
  */
-export function toQueueSliding(capacity = 2, __tsplusTrace?: string) {
+export function toQueueSliding(capacity = 2) {
   return <R, E, A>(self: Stream<R, E, A>): Effect<R | Scope, never, Dequeue<Take<E, A>>> =>
     Effect.acquireRelease(
       Queue.sliding<Take<E, A>>(capacity),

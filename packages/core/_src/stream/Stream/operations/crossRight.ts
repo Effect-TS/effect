@@ -10,8 +10,7 @@
  * @tsplus pipeable effect/core/stream/Stream crossRight
  */
 export function crossRight<R2, E2, A2>(
-  that: LazyArg<Stream<R2, E2, A2>>,
-  __tsplusTrace?: string
+  that: LazyArg<Stream<R2, E2, A2>>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A2> =>
     self.cross(that).map((tuple) => tuple.get(1))

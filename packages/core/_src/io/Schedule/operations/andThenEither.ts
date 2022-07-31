@@ -26,7 +26,11 @@ export function andThenEither<State1, Env1, In1, Out2>(
             ._step(now, input, state.get(0))
             .flatMap((
               { tuple: [lState, out, decision] }
-            ): Effect<Env | Env1, never, Tuple<[Tuple<[State, State1, boolean]>, Either<Out, Out2>, Decision]>> =>
+            ): Effect<
+              Env | Env1,
+              never,
+              Tuple<[Tuple<[State, State1, boolean]>, Either<Out, Out2>, Decision]>
+            > =>
               decision._tag === "Done"
                 ? that
                   ._step(now, input, state.get(1))

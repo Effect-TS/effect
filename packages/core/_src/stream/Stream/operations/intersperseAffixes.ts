@@ -7,8 +7,7 @@
 export function intersperseAffixes<A2>(
   start: LazyArg<A2>,
   middle: LazyArg<A2>,
-  end: LazyArg<A2>,
-  __tsplusTrace?: string
+  end: LazyArg<A2>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A | A2> =>
     Stream.suspend(Stream(start()) + self.intersperse(middle) + Stream(end()))

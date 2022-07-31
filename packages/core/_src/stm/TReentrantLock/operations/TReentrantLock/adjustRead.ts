@@ -25,7 +25,9 @@ export function adjustRead(delta: number) {
         const newTotal = lock.readLocks + delta
 
         if (newTotal < 0) {
-          throw new Error(`Defect: Fiber ${fiberId} releasing read locks it does not hold, newTotal: ${newTotal}`)
+          throw new Error(
+            `Defect: Fiber ${fiberId} releasing read locks it does not hold, newTotal: ${newTotal}`
+          )
         }
 
         self.data.unsafeSet(TReentrantLock.WriteLock(lock.writeLocks, newTotal, fiberId), journal)

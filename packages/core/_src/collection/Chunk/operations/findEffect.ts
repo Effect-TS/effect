@@ -8,8 +8,7 @@ import { concreteChunkId } from "@tsplus/stdlib/collections/Chunk/definition"
  */
 export function findEffect_<R, E, A>(
   self: Chunk<A>,
-  f: (a: A) => Effect<R, E, boolean>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R, E, boolean>
 ): Effect<R, E, Maybe<A>> {
   return Effect.suspendSucceed(() => {
     const iterator = concreteChunkId(self)._arrayLikeIterator()
@@ -23,7 +22,9 @@ export function findEffect_<R, E, A>(
       if (i < length) {
         const a = array[i]!
 
-        return f(a).flatMap((r) => r ? Effect.succeed(Maybe.some(a)) : loop(iterator, array, i + 1, length))
+        return f(a).flatMap((r) =>
+          r ? Effect.succeed(Maybe.some(a)) : loop(iterator, array, i + 1, length)
+        )
       } else if (!(next = iterator.next()).done) {
         return loop(iterator, next.value, 0, next.value.length)
       } else {

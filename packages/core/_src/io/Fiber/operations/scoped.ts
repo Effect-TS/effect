@@ -6,8 +6,7 @@
  * @tsplus getter effect/core/io/RuntimeFiber scoped
  */
 export function scoped<E, A>(
-  self: Fiber<E, A>,
-  __tsplusTrace?: string
+  self: Fiber<E, A>
 ): Effect<Scope, never, Fiber<E, A>> {
   return Effect.acquireRelease(Effect.succeed(self), (fiber) => fiber.interrupt)
 }

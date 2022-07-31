@@ -7,14 +7,22 @@ describe.concurrent("Effect", () => {
         .bind(
           "goodCase",
           () =>
-            exactlyOnce(0, (_) => _.continueOrFail("value was not 0", (v) => v === 0 ? Maybe.some(v) : Maybe.none))
+            exactlyOnce(
+              0,
+              (_) =>
+                _.continueOrFail("value was not 0", (v) => v === 0 ? Maybe.some(v) : Maybe.none)
+            )
               .sandbox
               .either
         )
         .bind(
           "badCase",
           () =>
-            exactlyOnce(1, (_) => _.continueOrFail("value was not 0", (v) => v === 0 ? Maybe.some(v) : Maybe.none))
+            exactlyOnce(
+              1,
+              (_) =>
+                _.continueOrFail("value was not 0", (v) => v === 0 ? Maybe.some(v) : Maybe.none)
+            )
               .sandbox
               .either
               .map((either) => either.mapLeft((cause) => cause.failureOrCause))
@@ -35,7 +43,9 @@ describe.concurrent("Effect", () => {
           () =>
             exactlyOnce(
               0,
-              (_) => _.continueOrFailEffect("value was not 0", (v) => v === 0 ? Maybe.some(Effect.sync(v)) : Maybe.none)
+              (_) =>
+                _.continueOrFailEffect("value was not 0", (v) =>
+                  v === 0 ? Maybe.some(Effect.sync(v)) : Maybe.none)
             )
               .sandbox
               .either
@@ -57,11 +67,15 @@ describe.concurrent("Effect", () => {
           () =>
             exactlyOnce(
               1,
-              (_) => _.continueOrFailEffect("value was not 0", (v) => v === 0 ? Maybe.some(Effect.sync(v)) : Maybe.none)
+              (_) =>
+                _.continueOrFailEffect("value was not 0", (v) =>
+                  v === 0 ? Maybe.some(Effect.sync(v)) : Maybe.none)
             )
               .sandbox
               .either
-              .map((either) => either.mapLeft((cause) => cause.failureOrCause))
+              .map((either) =>
+                either.mapLeft((cause) => cause.failureOrCause)
+              )
         )
 
       const { badCase, goodCase, partialBadCase } = await program.unsafeRunPromise()

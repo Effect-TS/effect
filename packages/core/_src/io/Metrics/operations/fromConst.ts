@@ -7,5 +7,6 @@
  * @tsplus pipeable effect/core/io/Metrics/Metric fromConst
  */
 export function fromConst<In>(input: LazyArg<In>) {
-  return <Type, Out>(self: Metric<Type, In, Out>): Metric<Type, unknown, Out> => self.contramap(input)
+  return <Type, Out>(self: Metric<Type, In, Out>): Metric<Type, unknown, Out> =>
+    self.contramap(input)
 }

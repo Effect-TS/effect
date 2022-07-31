@@ -11,11 +11,14 @@ import type { UniqueKey } from "@effect/core/stream/GroupBy/definition"
 export function distributedWith<A>(
   n: number,
   maximumLag: number,
-  decide: (a: A) => Effect<never, never, Predicate<number>>,
-  __tsplusTrace?: string
+  decide: (a: A) => Effect<never, never, Predicate<number>>
 ) {
-  return <R, E>(self: Stream<R, E, A>): Effect<R | Scope, never, List<Dequeue<Exit<Maybe<E>, A>>>> =>
-    Deferred.make<never, (a: A) => Effect<never, never, Predicate<UniqueKey>>>().flatMap((deferred) =>
+  return <R, E>(
+    self: Stream<R, E, A>
+  ): Effect<R | Scope, never, List<Dequeue<Exit<Maybe<E>, A>>>> =>
+    Deferred.make<never, (a: A) => Effect<never, never, Predicate<UniqueKey>>>().flatMap((
+      deferred
+    ) =>
       self
         .distributedWithDynamic(
           maximumLag,
@@ -24,7 +27,9 @@ export function distributedWith<A>(
         )
         .flatMap((next) =>
           Effect.collectAll(
-            Chunk.range(0, n - 1).map((id) => next.map(({ tuple: [key, queue] }) => Tuple(Tuple(key, id), queue)))
+            Chunk.range(0, n - 1).map((id) =>
+              next.map(({ tuple: [key, queue] }) => Tuple(Tuple(key, id), queue))
+            )
           ).flatMap((entries) => {
             const {
               tuple: [mappings, queues]

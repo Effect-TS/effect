@@ -7,8 +7,7 @@
  */
 export function mapBoth<E, E2, A, A2>(
   f: (e: E) => E2,
-  g: (a: A) => A2,
-  __tsplusTrace?: string
+  g: (a: A) => A2
 ) {
   return <R>(self: Stream<R, E, A>): Stream<R, E2, A2> => self.mapError(f).map(g)
 }

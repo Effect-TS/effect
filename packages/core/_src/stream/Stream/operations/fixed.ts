@@ -5,6 +5,7 @@
  * @tsplus static effect/core/stream/Stream.Aspects fixed
  * @tsplus pipeable effect/core/stream/Stream fixed
  */
-export function fixed(duration: LazyArg<Duration>, __tsplusTrace?: string) {
-  return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => self.schedule(Schedule.fixed(duration))
+export function fixed(duration: LazyArg<Duration>) {
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> =>
+    self.schedule(Schedule.fixed(duration))
 }

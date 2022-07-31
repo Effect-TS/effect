@@ -18,6 +18,8 @@ function loop<S, R, E, A>(
   f: (s: S) => Effect<R, E, Maybe<Tuple<[Chunk<A>, S]>>>
 ): Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown> {
   return Channel.unwrap(
-    f(s()).map((option) => option.fold(Channel.unit, ({ tuple: [as, s] }) => Channel.write(as) > loop(s, f)))
+    f(s()).map((option) =>
+      option.fold(Channel.unit, ({ tuple: [as, s] }) => Channel.write(as) > loop(s, f))
+    )
   )
 }

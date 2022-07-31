@@ -6,15 +6,14 @@
  * @tsplus static effect/core/io/Effect.Ops suspend
  */
 export function suspend<R, E, A>(
-  f: LazyArg<Effect<R, E, A>>,
-  __tsplusTrace?: string
+  f: LazyArg<Effect<R, E, A>>
 ): Effect<R, unknown, A> {
   return Effect.suspendSucceedWith((runtimeConfig) => {
     try {
       return f()
     } catch (error) {
       if (!runtimeConfig.value.fatal(error)) {
-        throw new Effect.Error(Exit.fail(error), __tsplusTrace)
+        throw new Effect.Error(Exit.fail(error))
       }
       throw error
     }

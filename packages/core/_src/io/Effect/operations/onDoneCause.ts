@@ -4,8 +4,7 @@
  */
 export function onDoneCause<E, A, R1, X1, R2, X2>(
   error: (e: Cause<E>) => Effect<R1, never, X1>,
-  success: (a: A) => Effect<R2, never, X2>,
-  __tsplusTrace?: string
+  success: (a: A) => Effect<R2, never, X2>
 ) {
   return <R>(self: Effect<R, E, A>): Effect.RIO<R | R1 | R2, void> =>
     Effect.uninterruptibleMask(({ restore }) =>

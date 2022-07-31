@@ -27,7 +27,9 @@ describe.concurrent("Sink", () => {
     })
 
     it("immediate termination", async () => {
-      const program = Stream.range(1, 10).run(Sink.fold<number, number>(0, constFalse, (a, b) => a + b))
+      const program = Stream.range(1, 10).run(
+        Sink.fold<number, number>(0, constFalse, (a, b) => a + b)
+      )
 
       const result = await program.unsafeRunPromise()
 
@@ -67,7 +69,9 @@ describe.concurrent("Sink", () => {
   describe.concurrent("foldEffect", () => {
     it("empty", async () => {
       const program = Stream.empty
-        .transduce(Sink.foldEffect<never, never, number, number>(0, constTrue, (a, b) => Effect.sync(a + b)))
+        .transduce(
+          Sink.foldEffect<never, never, number, number>(0, constTrue, (a, b) => Effect.sync(a + b))
+        )
         .runCollect
 
       const result = await program.unsafeRunPromise()
@@ -107,14 +111,16 @@ describe.concurrent("Sink", () => {
       assert.isTrue(result1 == Exit.succeed(Tuple(Chunk(0), List.empty())))
       assert.isTrue(result2 == Exit.succeed(Tuple(Chunk(30), List(1))))
       assert.isTrue(result3 == Exit.succeed(Tuple(Chunk(30), List(2, 1))))
-      assert.isTrue(result4.untraced == Exit.fail("ouch"))
+      assert.isTrue(result4 == Exit.fail("ouch"))
     })
 
     describe.concurrent("foldLeftEffect", () => {
       it("equivalence with List.reduce", async () => {
         const program = Effect.struct({
           sinkResult: Stream(1, 2, 3)
-            .run(Sink.foldLeftEffect<never, never, number, string>("", (s, n) => Effect.sync(s + n)))
+            .run(
+              Sink.foldLeftEffect<never, never, number, string>("", (s, n) => Effect.sync(s + n))
+            )
             .exit,
           foldResult: Stream(1, 2, 3)
             .runFold(List.empty<number>(), (acc, el) => acc.prepend(el))

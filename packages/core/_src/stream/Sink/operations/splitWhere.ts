@@ -1,4 +1,7 @@
-import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import {
+  concreteSink,
+  SinkInternal
+} from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Splits the sink on the specified predicate, returning a new sink that
@@ -8,7 +11,7 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
  * @tsplus static effect/core/stream/Sink.Aspects splitWhere
  * @tsplus pipeable effect/core/stream/Sink splitWhere
  */
-export function splitWhere<In1>(f: Predicate<In1>, __tsplusTrace?: string) {
+export function splitWhere<In1>(f: Predicate<In1>) {
   return <R, E, In, L extends In1, Z>(self: Sink<R, E, In, L, Z>): Sink<R, E, In & In1, In1, Z> => {
     concreteSink(self)
     return new SinkInternal(

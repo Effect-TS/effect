@@ -1,4 +1,11 @@
-import { acquire1, makeLayer1, makeLayer2, makeLayer3, makeRef, release1 } from "@effect/core/test/io/Layer/test-utils"
+import {
+  acquire1,
+  makeLayer1,
+  makeLayer2,
+  makeLayer3,
+  makeRef,
+  release1
+} from "@effect/core/test/io/Layer/test-utils"
 
 describe.concurrent("Layer", () => {
   describe.concurrent("fresh", () => {
@@ -49,7 +56,8 @@ describe.concurrent("Layer", () => {
         .bindValue("layer3", ({ ref }) => makeLayer3(ref))
         .bindValue(
           "env",
-          ({ layer1, layer2, layer3 }) => (layer1.fresh >> (layer2 + (layer1 >> layer3).fresh)).build
+          ({ layer1, layer2, layer3 }) =>
+            (layer1.fresh >> (layer2 + (layer1 >> layer3).fresh)).build
         )
         .tap(({ env }) => Effect.scoped(env))
         .flatMap(({ ref }) => ref.get())

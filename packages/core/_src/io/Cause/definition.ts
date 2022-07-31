@@ -155,7 +155,7 @@ export class Fail<E> implements Cause<E>, Equals {
   readonly [CauseSym]: CauseSym = CauseSym
   readonly [_E]!: () => E
 
-  constructor(readonly value: E, readonly trace: Trace) {}
+  constructor(readonly value: E) {}
 
   [Hash.sym](): number {
     return Hash.combine(Hash.string(this._tag), Hash.unknown(this.value))
@@ -191,7 +191,7 @@ export class Die implements Cause<never>, Equals {
   readonly [CauseSym]: CauseSym = CauseSym
   readonly [_E]!: () => never
 
-  constructor(readonly value: unknown, readonly trace: Trace) {}
+  constructor(readonly value: unknown) {}
 
   [Hash.sym](): number {
     return Hash.combine(Hash.string(this._tag), Hash.unknown(this.value))
@@ -227,7 +227,7 @@ export class Interrupt implements Cause<never>, Equals {
   readonly [CauseSym]: CauseSym = CauseSym
   readonly [_E]!: () => never
 
-  constructor(readonly fiberId: FiberId, readonly trace: Trace) {}
+  constructor(readonly fiberId: FiberId) {}
 
   [Hash.sym](): number {
     return Hash.combine(Hash.string(this._tag), Hash.unknown(this.fiberId))
@@ -396,22 +396,22 @@ export const empty: Cause<never> = new Empty()
 /**
  * @tsplus static effect/core/io/Cause.Ops die
  */
-export function die(defect: unknown, trace: Trace = Trace.none): Cause<never> {
-  return new Die(defect, trace)
+export function die(defect: unknown): Cause<never> {
+  return new Die(defect)
 }
 
 /**
  * @tsplus static effect/core/io/Cause.Ops fail
  */
-export function fail<E>(error: E, trace: Trace = Trace.none): Cause<E> {
-  return new Fail(error, trace)
+export function fail<E>(error: E): Cause<E> {
+  return new Fail(error)
 }
 
 /**
  * @tsplus static effect/core/io/Cause.Ops interrupt
  */
-export function interrupt(fiberId: FiberId, trace: Trace = Trace.none): Cause<never> {
-  return new Interrupt(fiberId, trace)
+export function interrupt(fiberId: FiberId): Cause<never> {
+  return new Interrupt(fiberId)
 }
 
 /**

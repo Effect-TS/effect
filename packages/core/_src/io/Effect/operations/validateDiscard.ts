@@ -6,8 +6,7 @@
  */
 export function validateDiscard<R, E, A, X>(
   as: LazyArg<Collection<A>>,
-  f: (a: A) => Effect<R, E, X>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R, E, X>
 ): Effect<R, Chunk<E>, void> {
   return Effect.partition(as, f).flatMap(({ tuple: [es, _] }) =>
     es.isEmpty

@@ -6,8 +6,8 @@
  * @tsplus pipeable effect/core/stream/Stream runForEachScoped
  */
 export function runForEachScoped<A, R1, E1, Z>(
-  f: (a: A) => Effect<R1, E1, Z>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R1, E1, Z>
 ) {
-  return <R, E>(self: Stream<R, E, A>): Effect<R | R1 | Scope, E | E1, void> => self.runScoped(Sink.forEach(f))
+  return <R, E>(self: Stream<R, E, A>): Effect<R | R1 | Scope, E | E1, void> =>
+    self.runScoped(Sink.forEach(f))
 }

@@ -9,8 +9,7 @@
 export function mkStringAffixes(
   start: LazyArg<string>,
   middle: LazyArg<string>,
-  end: LazyArg<string>,
-  __tsplusTrace?: string
+  end: LazyArg<string>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Effect<R, E, string> =>
     self.intersperseAffixes(

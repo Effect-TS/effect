@@ -5,8 +5,7 @@
  * @tsplus static effect/core/stream/Sink.Ops collectAllWhileEffect
  */
 export function collectAllWhileEffect<R, E, In>(
-  p: (input: In) => Effect<R, E, boolean>,
-  __tsplusTrace?: string
+  p: (input: In) => Effect<R, E, boolean>
 ): Sink<R, E, In, In, Chunk<In>> {
   return Sink.foldEffect<R, E, In, Tuple<[List<In>, boolean]>>(
     Tuple(List.empty<In>(), true),

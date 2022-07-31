@@ -48,7 +48,10 @@ describe.concurrent("Ref", () => {
         .bind("ref", () => Ref.make<State>(State.Active))
         .bind(
           "v1",
-          ({ ref }) => ref.getAndUpdateSome((state) => state.isClosed() ? Maybe.some(State.Changed) : Maybe.none)
+          ({ ref }) =>
+            ref.getAndUpdateSome((state) =>
+              state.isClosed() ? Maybe.some(State.Changed) : Maybe.none
+            )
         )
         .bind("v2", ({ ref }) => ref.get())
 
@@ -63,7 +66,10 @@ describe.concurrent("Ref", () => {
         .bind("ref", () => Ref.make<State>(State.Active))
         .bind(
           "v1",
-          ({ ref }) => ref.getAndUpdateSome((state) => state.isActive() ? Maybe.some(State.Changed) : Maybe.none)
+          ({ ref }) =>
+            ref.getAndUpdateSome((state) =>
+              state.isActive() ? Maybe.some(State.Changed) : Maybe.none
+            )
         )
         .bind("v2", ({ ref }) =>
           ref.getAndUpdateSome((state) =>

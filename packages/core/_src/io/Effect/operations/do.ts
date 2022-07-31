@@ -6,8 +6,7 @@
  */
 export function bind<N extends string, K, R2, E2, A>(
   tag: Exclude<N, keyof K>,
-  f: (_: K) => Effect<R2, E2, A>,
-  __tsplusTrace?: string
+  f: (_: K) => Effect<R2, E2, A>
 ) {
   return <R, E>(self: Effect<R, E, K>): Effect<
     R | R2,
@@ -39,11 +38,7 @@ export function bind<N extends string, K, R2, E2, A>(
  * @tsplus static effect/core/io/Effect.Aspects bindValue
  * @tsplus pipeable effect/core/io/Effect bindValue
  */
-export function bindValue<N extends string, K, A>(
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => A,
-  __tsplusTrace?: string
-) {
+export function bindValue<N extends string, K, A>(tag: Exclude<N, keyof K>, f: (_: K) => A) {
   return <R, E>(self: Effect<R, E, K>): Effect<
     R,
     E,

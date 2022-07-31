@@ -34,7 +34,15 @@ export function flatMapStream<R, E, A, R2, A2>(
           }
         }
       }).reduce(
-        Channel.unit as Channel<R2, unknown, unknown, unknown, never, Chunk<Either<boolean, A2>>, unknown>,
+        Channel.unit as Channel<
+          R2,
+          unknown,
+          unknown,
+          unknown,
+          never,
+          Chunk<Either<boolean, A2>>,
+          unknown
+        >,
         (a, b) => a.zipRight(b)
       ),
     constVoid,

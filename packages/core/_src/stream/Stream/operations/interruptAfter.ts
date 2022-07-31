@@ -6,8 +6,8 @@
  * @tsplus pipeable effect/core/stream/Stream interruptAfter
  */
 export function interruptAfter(
-  duration: LazyArg<Duration>,
-  __tsplusTrace?: string
+  duration: LazyArg<Duration>
 ) {
-  return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => self.interruptWhen(Effect.sleep(duration))
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> =>
+    self.interruptWhen(Effect.sleep(duration))
 }

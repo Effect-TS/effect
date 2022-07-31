@@ -26,7 +26,9 @@ export class FiberRefs {
     const fiberRefLocals = Chunk.from(childFiberRefs).reduce(
       parentFiberRefs,
       (parentFiberRefs, { tuple: [fiberRef, childStack] }) => {
-        const parentStack = parentFiberRefs.get(fiberRef).getOrElse(List.empty<Tuple<[FiberId.Runtime, unknown]>>())
+        const parentStack = parentFiberRefs.get(fiberRef).getOrElse(
+          List.empty<Tuple<[FiberId.Runtime, unknown]>>()
+        )
 
         const values: List.NonEmpty<unknown> = combine(fiberRef, parentStack, childStack)
 
@@ -47,7 +49,10 @@ export class FiberRefs {
         if (parentStack.isNil()) {
           newStack = List.cons(Tuple(id, fiberRef.patch(patch)(fiberRef.initial)), List.nil())
         } else {
-          newStack = List.cons(Tuple(id, fiberRef.patch(patch)(parentStack.head.get(1))), parentStack.tail)
+          newStack = List.cons(
+            Tuple(id, fiberRef.patch(patch)(parentStack.head.get(1))),
+            parentStack.tail
+          )
         }
 
         return parentFiberRefs.set(fiberRef, newStack)
@@ -70,17 +75,24 @@ export class FiberRefs {
   }
 
   get setAll() {
-    return Effect.forEachDiscard(this.fiberRefs, (fiberRef) => fiberRef.set(this.getOrDefault(fiberRef)))
+    return Effect.forEachDiscard(
+      this.fiberRefs,
+      (fiberRef) => fiberRef.set(this.getOrDefault(fiberRef))
+    )
   }
 
   updateAs<A>(fiberId: FiberId.Runtime, fiberRef: FiberRef<A>, value: A) {
-    const oldStack = this.locals.get(fiberRef).getOrElse(List.empty<Tuple<[FiberId.Runtime, unknown]>>())
+    const oldStack = this.locals.get(fiberRef).getOrElse(
+      List.empty<Tuple<[FiberId.Runtime, unknown]>>()
+    )
     const newStack = oldStack.isNil()
       ? List.cons(Tuple(fiberId, value), List.nil())
       : oldStack.head.get(0).equals(fiberId)
       ? List.cons(Tuple(fiberId, value), oldStack.tail)
       : List.cons(Tuple(fiberId, value), oldStack)
-    return new FiberRefs(this.locals.set(fiberRef, newStack as List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>))
+    return new FiberRefs(
+      this.locals.set(fiberRef, newStack as List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>)
+    )
   }
 }
 

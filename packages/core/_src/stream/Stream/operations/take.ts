@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Takes the specified number of elements from this stream.
@@ -6,7 +9,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus static effect/core/stream/Stream.Aspects take
  * @tsplus pipeable effect/core/stream/Stream take
  */
-export function take(n: number, __tsplusTrace?: string) {
+export function take(n: number) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => {
     if (!Number.isInteger(n)) {
       return Stream.die(new IllegalArgumentException(`${n} must be an integer`))
@@ -19,8 +22,7 @@ export function take(n: number, __tsplusTrace?: string) {
 }
 
 function loop<R, E, A>(
-  n: number,
-  __tsplusTrace?: string
+  n: number
 ): Channel<R, E, Chunk<A>, unknown, E, Chunk<A>, unknown> {
   return Channel.readWith(
     (chunk: Chunk<A>) => {

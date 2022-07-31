@@ -6,6 +6,9 @@
  *
  * @tsplus static effect/core/io/Effect.Ops serviceWith
  */
-export function serviceWith<T, A>(tag: Tag<T>, f: (a: T) => A, __tsplusTrace?: string): Effect<T, never, A> {
+export function serviceWith<T, A>(
+  tag: Tag<T>,
+  f: (a: T) => A
+): Effect<T, never, A> {
   return Effect.serviceWithEffect(tag, (a) => Effect.succeed(f(a)))
 }

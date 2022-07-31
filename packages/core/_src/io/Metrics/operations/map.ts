@@ -6,7 +6,7 @@
  * @tsplus static effect/core/io/Metrics/Metric map
  * @tsplus pipeable effect/core/io/Metrics/Metric map
  */
-export function map<Out, Out2>(f: (out: Out) => Out2, __tsplusTrace?: string) {
+export function map<Out, Out2>(f: (out: Out) => Out2) {
   return <Type, In>(self: Metric<Type, In, Out>): Metric<Type, In, Out2> =>
     Metric(
       self.keyType,

@@ -9,8 +9,8 @@
  * @tsplus pipeable effect/core/stream/Stream repeatElements
  */
 export function repeatElements<S, R2, B>(
-  schedule: LazyArg<Schedule<S, R2, unknown, B>>,
-  __tsplusTrace?: string
+  schedule: LazyArg<Schedule<S, R2, unknown, B>>
 ) {
-  return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E, A> => self.repeatElementsEither(schedule).collectRight
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E, A> =>
+    self.repeatElementsEither(schedule).collectRight
 }

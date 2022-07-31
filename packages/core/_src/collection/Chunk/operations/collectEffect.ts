@@ -1,4 +1,9 @@
-import { ArrTypeId, Chunk, concreteChunk, SingletonTypeId } from "@tsplus/stdlib/collections/Chunk/definition"
+import {
+  ArrTypeId,
+  Chunk,
+  concreteChunk,
+  SingletonTypeId
+} from "@tsplus/stdlib/collections/Chunk/definition"
 
 /**
  * Returns a filtered, mapped subset of the elements of this chunk based on a
@@ -8,8 +13,7 @@ import { ArrTypeId, Chunk, concreteChunk, SingletonTypeId } from "@tsplus/stdlib
  */
 export function collectEffect_<A, R, E, B>(
   self: Chunk<A>,
-  f: (a: A) => Maybe<Effect<R, E, B>>,
-  __tsplusTrace?: string
+  f: (a: A) => Maybe<Effect<R, E, B>>
 ): Effect<R, E, Chunk<B>> {
   concreteChunk(self)
 

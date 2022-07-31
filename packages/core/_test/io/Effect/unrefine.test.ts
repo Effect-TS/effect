@@ -3,21 +3,25 @@ describe.concurrent("Effect", () => {
     it("converts some fiber failures into errors", async () => {
       const message = "division by zero"
       const defect = Effect.die(new IllegalArgumentException(message))
-      const program = defect.unrefine((u) => u instanceof IllegalArgumentException ? Maybe.some(u.message) : Maybe.none)
+      const program = defect.unrefine((u) =>
+        u instanceof IllegalArgumentException ? Maybe.some(u.message) : Maybe.none
+      )
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(message))
+      assert.isTrue(result == Exit.fail(message))
     })
 
     it("leaves the rest", async () => {
       const error = new IllegalArgumentException("division by zero")
       const defect = Effect.die(error)
-      const program = defect.unrefine((u) => u instanceof RuntimeError ? Maybe.some(u.message) : Maybe.none)
+      const program = defect.unrefine((u) =>
+        u instanceof RuntimeError ? Maybe.some(u.message) : Maybe.none
+      )
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(error))
+      assert.isTrue(result == Exit.die(error))
     })
   })
 
@@ -32,7 +36,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(message))
+      assert.isTrue(result == Exit.fail(message))
     })
 
     it("leaves the rest", async () => {
@@ -45,7 +49,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(error))
+      assert.isTrue(result == Exit.die(error))
     })
 
     it("uses the specified function to convert the `E` into an `E1`", async () => {
@@ -57,7 +61,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(Maybe.none))
+      assert.isTrue(result == Exit.fail(Maybe.none))
     })
   })
 })

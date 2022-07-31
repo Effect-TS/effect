@@ -8,8 +8,7 @@ export interface Strategy<A> {
     as: Chunk<A>,
     queue: MutableQueue<A>,
     takers: MutableQueue<Deferred<never, A>>,
-    isShutdown: AtomicBoolean,
-    __tsplusTrace?: string
+    isShutdown: AtomicBoolean
   ) => Effect<never, never, boolean>
 
   readonly unsafeOnQueueEmptySpace: (
@@ -34,8 +33,7 @@ export class DroppingStrategy<A> implements Strategy<A> {
     _as: Chunk<A>,
     _queue: MutableQueue<A>,
     _takers: MutableQueue<Deferred<never, A>>,
-    _isShutdown: AtomicBoolean,
-    __tsplusTrace?: string
+    _isShutdown: AtomicBoolean
   ): Effect<never, never, boolean> {
     return Effect.succeed(false)
   }
@@ -58,8 +56,7 @@ export class SlidingStrategy<A> implements Strategy<A> {
     as: Chunk<A>,
     queue: MutableQueue<A>,
     takers: MutableQueue<Deferred<never, A>>,
-    _isShutdown: AtomicBoolean,
-    __tsplusTrace?: string
+    _isShutdown: AtomicBoolean
   ): Effect<never, never, boolean> {
     return Effect.sync(() => {
       this.unsafeSlidingOffer(queue, as)

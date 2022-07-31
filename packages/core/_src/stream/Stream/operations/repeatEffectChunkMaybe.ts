@@ -5,8 +5,7 @@
  * @tsplus static effect/core/stream/Stream.Ops repeatEffectChunkMaybe
  */
 export function repeatEffectChunkMaybe<R, E, A>(
-  effect: LazyArg<Effect<R, Maybe<E>, Chunk<A>>>,
-  __tsplusTrace?: string
+  effect: LazyArg<Effect<R, Maybe<E>, Chunk<A>>>
 ): Stream<R, E, A> {
   return Stream.unfoldChunkEffect(effect, (eff) =>
     eff

@@ -7,8 +7,7 @@
  */
 export function timeoutFailCause<E1>(
   cause: LazyArg<Cause<E1>>,
-  duration: LazyArg<Duration>,
-  __tsplusTrace?: string
+  duration: LazyArg<Duration>
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E | E1, A> =>
     self.timeoutTo(Effect.failCauseSync(cause), Effect.succeed, duration).flatten

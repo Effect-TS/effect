@@ -6,8 +6,7 @@
  * @tsplus pipeable effect/core/stream/Stream scanReduce
  */
 export function scanReduce<A, A2 extends A>(
-  f: (a2: A2, a: A) => A2,
-  __tsplusTrace?: string
+  f: (a2: A2, a: A) => A2
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, A2> =>
     self.scanReduceEffect((curr, next) => Effect.succeed(f(curr, next)))

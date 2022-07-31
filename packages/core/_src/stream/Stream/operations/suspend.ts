@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Returns a lazily constructed stream.
@@ -6,8 +9,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus static effect/core/stream/Stream.Ops suspend
  */
 export function suspend<R, E, A>(
-  stream: LazyArg<Stream<R, E, A>>,
-  __tsplusTrace?: string
+  stream: LazyArg<Stream<R, E, A>>
 ): Stream<R, E, A> {
   return new StreamInternal(
     Channel.suspend(() => {

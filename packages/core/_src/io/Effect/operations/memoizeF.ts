@@ -4,8 +4,7 @@
  * @tsplus static effect/core/io/Effect.Ops memoize
  */
 export function memoizeF<R, E, A, B>(
-  f: (a: A) => Effect<R, E, B>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R, E, B>
 ): Effect<never, never, (a: A) => Effect<R, E, B>> {
   return Ref.Synchronized.make(new Map<A, Deferred<E, B>>()).map(
     (ref) =>

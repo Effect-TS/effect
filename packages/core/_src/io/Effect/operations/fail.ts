@@ -4,6 +4,6 @@
  *
  * @tsplus static effect/core/io/Effect.Ops fail
  */
-export function fail<E>(error: E, __tsplusTrace?: string): Effect<never, E, never> {
-  return Effect.failCause(Cause.fail(error, Trace.none))
+export function fail<E>(error: E): Effect<never, E, never> {
+  return Effect.failCause(Cause.fail(error))
 }

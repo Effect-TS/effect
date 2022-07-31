@@ -28,8 +28,7 @@ export function zipWithChunks<R2, E2, A2, A, A3>(
   f: (
     leftChunk: Chunk<A>,
     rightChunk: Chunk<A2>
-  ) => Tuple<[Chunk<A3>, Either<Chunk<A>, Chunk<A2>>]>,
-  __tsplusTrace?: string
+  ) => Tuple<[Chunk<A3>, Either<Chunk<A>, Chunk<A2>>]>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A3> =>
     self.combineChunks(that, (): State<A, A2> => new PullBoth(), pull(f))
@@ -41,8 +40,7 @@ function zipWithChunksInternal<A, A2, A3>(
   f: (
     leftChunk: Chunk<A>,
     rightChunk: Chunk<A2>
-  ) => Tuple<[Chunk<A3>, Either<Chunk<A>, Chunk<A2>>]>,
-  __tsplusTrace?: string
+  ) => Tuple<[Chunk<A3>, Either<Chunk<A>, Chunk<A2>>]>
 ): Tuple<[Chunk<A3>, State<A, A2>]> {
   const {
     tuple: [out, either]
@@ -68,8 +66,7 @@ function pull<A, A2, A3>(
   return <R, R2, E, E2>(
     state: State<A, A2>,
     pullLeft: Effect<R, Maybe<E>, Chunk<A>>,
-    pullRight: Effect<R2, Maybe<E2>, Chunk<A2>>,
-    __tsplusTrace?: string
+    pullRight: Effect<R2, Maybe<E2>, Chunk<A2>>
   ): Effect<R | R2, never, Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>> => {
     switch (state._tag) {
       case "PullBoth": {

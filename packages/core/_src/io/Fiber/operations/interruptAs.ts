@@ -19,7 +19,7 @@ export function interruptAs(fiberId: FiberId): Fiber<never, never> {
  * @tsplus pipeable effect/core/io/Fiber interruptAs
  * @tsplus pipeable effect/core/io/RuntimeFiber interruptAs
  */
-export function interruptAsNow(fiberId: FiberId, __tsplusTrace?: string) {
+export function interruptAsNow(fiberId: FiberId) {
   return <E, A>(self: Fiber<E, A>): Effect<never, never, Exit<E, A>> => {
     realFiber(self)
     return self._interruptAs(fiberId)

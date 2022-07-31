@@ -4,8 +4,7 @@
  * @tsplus static effect/core/stream/Sink.Ops fromHub
  */
 export function fromHub<In>(
-  hub: LazyArg<Hub<In>>,
-  __tsplusTrace?: string
+  hub: LazyArg<Hub<In>>
 ): Sink<never, never, In, never, void> {
   return Sink.fromQueue(hub)
 }

@@ -25,13 +25,13 @@ describe.concurrent("Effect", () => {
       const program = cause(
         Effect.failCauseSync(c)
           .sandbox
-          .mapErrorCause((e) => e.untraced)
+          .mapErrorCause((e) => e)
           .unsandbox
       )
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.untraced == c)
+      assert.isTrue(result == c)
     })
   })
 })

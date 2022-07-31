@@ -13,7 +13,7 @@ export const RefInternal = {
    * Atomically writes the specified value to the `Ref`, returning the value
    * immediately before modification.
    */
-  getAndSet<A>(this: Ref<A>, a: A, __tsplusTrace?: string): Effect<never, never, A> {
+  getAndSet<A>(this: Ref<A>, a: A): Effect<never, never, A> {
     return this.modify((v) => Tuple(v, a))
   },
 
@@ -21,7 +21,7 @@ export const RefInternal = {
    * Atomically modifies the `Ref` with the specified function, returning the
    * value immediately before modification.
    */
-  getAndUpdate<A>(this: Ref<A>, f: (a: A) => A, __tsplusTrace?: string): Effect<never, never, A> {
+  getAndUpdate<A>(this: Ref<A>, f: (a: A) => A): Effect<never, never, A> {
     return this.modify((v) => Tuple(v, f(v)))
   },
 
@@ -32,8 +32,7 @@ export const RefInternal = {
    */
   getAndUpdateSome<A>(
     this: Ref<A>,
-    pf: (a: A) => Maybe<A>,
-    __tsplusTrace?: string
+    pf: (a: A) => Maybe<A>
   ): Effect<never, never, A> {
     return this.modify((v) => Tuple(v, pf(v).getOrElse(v)))
   },
@@ -47,8 +46,7 @@ export const RefInternal = {
   modifySome<B, A>(
     this: Ref<A>,
     fallback: B,
-    pf: (a: A) => Maybe<Tuple<[B, A]>>,
-    __tsplusTrace?: string
+    pf: (a: A) => Maybe<Tuple<[B, A]>>
   ): Effect<never, never, B> {
     return this.modify((v) => pf(v).getOrElse(Tuple(fallback, v)))
   },
@@ -56,7 +54,7 @@ export const RefInternal = {
   /**
    * Atomically modifies the `Ref` with the specified function.
    */
-  update<A>(this: Ref<A>, f: (a: A) => A, __tsplusTrace?: string): Effect<never, never, void> {
+  update<A>(this: Ref<A>, f: (a: A) => A): Effect<never, never, void> {
     return this.modify((v) => Tuple(undefined as void, f(v)))
   },
 
@@ -64,7 +62,7 @@ export const RefInternal = {
    * Atomically modifies the `Ref` with the specified function and returns the
    * updated value.
    */
-  updateAndGet<A>(this: Ref<A>, f: (a: A) => A, __tsplusTrace?: string): Effect<never, never, A> {
+  updateAndGet<A>(this: Ref<A>, f: (a: A) => A): Effect<never, never, A> {
     return this.modify(v => {
       const result = f(v)
 
@@ -78,8 +76,7 @@ export const RefInternal = {
    */
   updateSome<A>(
     this: Ref<A>,
-    pf: (a: A) => Maybe<A>,
-    __tsplusTrace?: string
+    pf: (a: A) => Maybe<A>
   ): Effect<never, never, void> {
     return this.modify((v) => Tuple(undefined as void, pf(v).getOrElse(v)))
   },
@@ -91,12 +88,10 @@ export const RefInternal = {
    */
   updateSomeAndGet<A>(
     this: Ref<A>,
-    pf: (a: A) => Maybe<A>,
-    __tsplusTrace?: string
+    pf: (a: A) => Maybe<A>
   ): Effect<never, never, A> {
     return this.modify(v => {
       const result = pf(v).getOrElse(v)
-
       return Tuple(result, result)
     })
   }

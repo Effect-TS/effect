@@ -4,8 +4,7 @@
  * @tsplus static effect/core/stream/Sink.Ops log
  */
 export function log(
-  message: LazyArg<string>,
-  __tsplusTrace?: string
+  message: LazyArg<string>
 ): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.log(message))
 }
@@ -16,8 +15,7 @@ export function log(
  * @tsplus static effect/core/stream/Sink.Ops logDebug
  */
 export function logDebug(
-  message: LazyArg<string>,
-  __tsplusTrace?: string
+  message: LazyArg<string>
 ): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logDebug(message))
 }
@@ -28,8 +26,7 @@ export function logDebug(
  * @tsplus static effect/core/stream/Sink.Ops logError
  */
 export function logError(
-  message: LazyArg<string>,
-  __tsplusTrace?: string
+  message: LazyArg<string>
 ): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logError(message))
 }
@@ -40,8 +37,7 @@ export function logError(
  * @tsplus static effect/core/stream/Sink.Ops logErrorCause
  */
 export function logErrorCause(
-  cause: LazyArg<Cause<unknown>>,
-  __tsplusTrace?: string
+  cause: LazyArg<Cause<unknown>>
 ): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logErrorCause(cause))
 }
@@ -52,8 +48,7 @@ export function logErrorCause(
  * @tsplus static effect/core/stream/Sink.Ops logFatal
  */
 export function logFatal(
-  message: LazyArg<string>,
-  __tsplusTrace?: string
+  message: LazyArg<string>
 ): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logFatal(message))
 }
@@ -64,8 +59,7 @@ export function logFatal(
  * @tsplus static effect/core/stream/Sink.Ops logInfo
  */
 export function logInfo(
-  message: LazyArg<string>,
-  __tsplusTrace?: string
+  message: LazyArg<string>
 ): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logInfo(message))
 }
@@ -76,8 +70,7 @@ export function logInfo(
  * @tsplus static effect/core/stream/Sink.Ops logTrace
  */
 export function logTrace(
-  message: LazyArg<string>,
-  __tsplusTrace?: string
+  message: LazyArg<string>
 ): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logTrace(message))
 }
@@ -88,8 +81,7 @@ export function logTrace(
  * @tsplus static effect/core/stream/Sink.Ops logWarning
  */
 export function logWarning(
-  message: LazyArg<string>,
-  __tsplusTrace?: string
+  message: LazyArg<string>
 ): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logWarning(message))
 }
@@ -101,9 +93,9 @@ export function logWarning(
  */
 export function logLevel(level: LogLevel) {
   return <R, E, In, L, Z>(
-    sink: Sink<R, E, In, L, Z>,
-    __tsplusTrace?: string
-  ): Sink<R, E, In, L, Z> => Sink.unwrapScoped(FiberRef.currentLogLevel.locallyScoped(level).as(sink))
+    sink: Sink<R, E, In, L, Z>
+  ): Sink<R, E, In, L, Z> =>
+    Sink.unwrapScoped(FiberRef.currentLogLevel.locallyScoped(level).as(sink))
 }
 
 /**
@@ -113,8 +105,7 @@ export function logLevel(level: LogLevel) {
  */
 export function logSpan(label: LazyArg<string>) {
   return <R, E, In, L, Z>(
-    sink: Sink<R, E, In, L, Z>,
-    __tsplusTrace?: string
+    sink: Sink<R, E, In, L, Z>
   ): Sink<R, E, In, L, Z> =>
     Sink.unwrapScoped(
       FiberRef.currentLogSpan.get.flatMap((stack) => {
@@ -133,8 +124,7 @@ export function logSpan(label: LazyArg<string>) {
  */
 export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
   return <R, E, In, L, Z>(
-    sink: Sink<R, E, In, L, Z>,
-    __tsplusTrace?: string
+    sink: Sink<R, E, In, L, Z>
   ): Sink<R, E, In, L, Z> =>
     Sink.unwrapScoped(
       FiberRef.currentLogAnnotations.get.flatMap((annotations) =>
@@ -148,8 +138,12 @@ export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
  *
  * @tsplus static effect/core/stream/Sink.Ops logAnnotations
  */
-export function logAnnotations(
-  __tsplusTrace?: string
-): Sink<never, never, unknown, unknown, ImmutableMap<string, string>> {
+export function logAnnotations(): Sink<
+  never,
+  never,
+  unknown,
+  unknown,
+  ImmutableMap<string, string>
+> {
   return Sink.fromEffect(FiberRef.currentLogAnnotations.get)
 }

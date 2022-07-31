@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Takes all elements of the stream until the specified effectual predicate
@@ -8,8 +11,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus pipeable effect/core/stream/Stream takeUntilEffect
  */
 export function takeUntilEffect<A, R2, E2>(
-  f: (a: A) => Effect<R2, E2, boolean>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R2, E2, boolean>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> => {
     concreteStream(self)

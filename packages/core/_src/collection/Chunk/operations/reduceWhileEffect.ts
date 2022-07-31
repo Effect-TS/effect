@@ -10,8 +10,7 @@ export function reduceWhileEffect_<A, R, E, S>(
   self: Chunk<A>,
   s: S,
   pred: (s: S) => boolean,
-  f: (s: S, a: A) => Effect<R, E, S>,
-  __tsplusTrace?: string
+  f: (s: S, a: A) => Effect<R, E, S>
 ): Effect<R, E, S> {
   const iterator = concreteChunkId(self)._arrayLikeIterator()
   const next = iterator.next()
@@ -41,8 +40,7 @@ function loop<A, R, E, S>(
   i: number,
   length: number,
   pred: (s: S) => boolean,
-  f: (s: S, a: A) => Effect<R, E, S>,
-  __tsplusTrace?: string
+  f: (s: S, a: A) => Effect<R, E, S>
 ): Effect<R, E, S> {
   if (i < length) {
     if (pred(s)) {

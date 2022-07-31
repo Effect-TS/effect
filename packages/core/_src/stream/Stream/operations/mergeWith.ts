@@ -1,5 +1,8 @@
 import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision"
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 import { TerminationStrategy } from "@effect/core/stream/Stream/TerminationStrategy"
 
 /**
@@ -16,8 +19,7 @@ export function mergeWith<R2, E2, A, A2, A3>(
   that: LazyArg<Stream<R2, E2, A2>>,
   left: (a: A) => A3,
   right: (a2: A2) => A3,
-  strategy: LazyArg<TerminationStrategy> = () => TerminationStrategy.Both,
-  __tsplusTrace?: string
+  strategy: LazyArg<TerminationStrategy> = () => TerminationStrategy.Both
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A3> =>
     new StreamInternal(
@@ -37,8 +39,7 @@ export function mergeWith<R2, E2, A, A2, A3>(
 
 function handler<R, E>(terminate: boolean) {
   return (
-    exit: Exit<E, unknown>,
-    __tsplusTrace?: string
+    exit: Exit<E, unknown>
   ): MergeDecision<R, E, unknown, E, unknown> => {
     return terminate || !exit.isSuccess()
       ? MergeDecision.done(Effect.done(exit))

@@ -5,8 +5,7 @@
  */
 export function when<R, E, A>(
   predicate: LazyArg<boolean>,
-  effect: Effect<R, E, A>,
-  __tsplusTrace?: string
+  effect: Effect<R, E, A>
 ): Effect<R, E, Maybe<A>> {
   return Effect.suspendSucceed(
     predicate() ? effect.map(Maybe.some) : Effect.succeed(Maybe.none)

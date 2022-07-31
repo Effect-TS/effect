@@ -5,8 +5,7 @@
  * @tsplus pipeable effect/core/io/Effect timedWith
  */
 export function timedWith<R1, E1>(
-  milliseconds: LazyArg<Effect<R1, E1, number>>,
-  __tsplusTrace?: string
+  milliseconds: LazyArg<Effect<R1, E1, number>>
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R1, E | E1, Tuple<[Duration, A]>> =>
     self.summarized(milliseconds, (start, end) => new Duration(end - start))

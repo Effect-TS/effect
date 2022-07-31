@@ -15,7 +15,7 @@ export class LiveClock implements Clock {
     return Effect.sync(globalScheduler)
   }
 
-  sleep(duration: LazyArg<Duration>, __tsplusTrace?: string): Effect<never, never, void> {
+  sleep(duration: LazyArg<Duration>): Effect<never, never, void> {
     return Effect.sync(duration).flatMap((duration) =>
       Effect.asyncInterrupt((cb) => {
         const canceler = globalScheduler.unsafeSchedule(() => cb(Effect.unit), duration)

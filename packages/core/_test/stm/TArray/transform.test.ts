@@ -11,7 +11,9 @@ describe.concurrent("TArray", () => {
             .commit
             .fork)
         .tap(({ transformFiber }) => transformFiber.join)
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, (ab) => ab + "+c")).commit)
+        .tap(({ tArray }) =>
+          STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, (ab) => ab + "+c")).commit
+        )
         .bind("first", ({ tArray }) => tArray.get(0).commit)
         .bind("last", ({ tArray }) => tArray.get(N - 1).commit)
         .map(({ first, last }) => Tuple(first, last))
@@ -32,7 +34,9 @@ describe.concurrent("TArray", () => {
             .commit
             .fork)
         .tap(({ transformFiber }) => transformFiber.join)
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, (ab) => ab + "+c")).commit)
+        .tap(({ tArray }) =>
+          STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, (ab) => ab + "+c")).commit
+        )
         .bind("first", ({ tArray }) => tArray.get(0).commit)
         .bind("last", ({ tArray }) => tArray.get(N - 1).commit)
         .map(({ first, last }) => Tuple(first, last))

@@ -1,4 +1,8 @@
-import type { STMOnFailure, STMOnRetry, STMOnSuccess } from "@effect/core/stm/STM/definition/primitives"
+import type {
+  STMOnFailure,
+  STMOnRetry,
+  STMOnSuccess
+} from "@effect/core/stm/STM/definition/primitives"
 import { concreteSTM } from "@effect/core/stm/STM/definition/primitives"
 import type { Journal } from "@effect/core/stm/STM/Journal"
 

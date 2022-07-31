@@ -6,8 +6,7 @@ import { utfDecodeDetectingBom } from "@effect/core/stream/Stream/operations/_in
  * @tsplus getter effect/core/stream/Stream utf8Decode
  */
 export function utf8Decode<R, E>(
-  self: Stream<R, E, number>,
-  __tsplusTrace?: string
+  self: Stream<R, E, number>
 ): Stream<R, E, string> {
   return self.via(
     utfDecodeDetectingBom<R, E>(3, (bom) =>

@@ -7,8 +7,7 @@
  * @tsplus getter effect/core/io/RuntimeFiber interruptFork
  */
 export function interruptFork<E, A>(
-  self: Fiber<E, A>,
-  __tsplusTrace?: string
+  self: Fiber<E, A>
 ): Effect<never, never, void> {
   return self.interrupt.forkDaemon.unit
 }

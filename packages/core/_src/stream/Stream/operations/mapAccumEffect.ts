@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Statefully and effectfully maps over the elements of this stream to produce
@@ -9,8 +12,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  */
 export function mapAccumEffect<A, R2, E2, A2, S>(
   s: LazyArg<S>,
-  f: (s: S, a: A) => Effect<R2, E2, Tuple<[S, A2]>>,
-  __tsplusTrace?: string
+  f: (s: S, a: A) => Effect<R2, E2, Tuple<[S, A2]>>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A2> => {
     concreteStream(self)
@@ -20,8 +22,7 @@ export function mapAccumEffect<A, R2, E2, A2, S>(
 
 function accumulator<A, R2, E2, A2, S>(
   s: LazyArg<S>,
-  f: (s: S, a: A) => Effect<R2, E2, Tuple<[S, A2]>>,
-  __tsplusTrace?: string
+  f: (s: S, a: A) => Effect<R2, E2, Tuple<[S, A2]>>
 ): Channel<R2, unknown, Chunk<A>, unknown, E2, Chunk<A2>, unknown> {
   return Channel.readWith(
     (chunk: Chunk<A>) =>
@@ -33,15 +34,18 @@ function accumulator<A, R2, E2, A2, S>(
               outputChunk.append(out)
             })
 
-          return Effect.reduce(chunk, s, (s, a) => f(s, a).flatMap(({ tuple: [s, a2] }) => emit(a2).as(s))).fold(
-            (failure) => {
-              const partialResult = outputChunk.build()
-              return partialResult.isNonEmpty
-                ? Channel.write(partialResult) > Channel.fail(failure)
-                : Channel.fail(failure)
-            },
-            (out) => Channel.write(outputChunk.build()) > accumulator(out, f)
-          )
+          return Effect.reduce(chunk, s, (s, a) =>
+            f(s, a).flatMap(({ tuple: [s, a2] }) =>
+              emit(a2).as(s)
+            )).fold(
+              (failure) => {
+                const partialResult = outputChunk.build()
+                return partialResult.isNonEmpty
+                  ? Channel.write(partialResult) > Channel.fail(failure)
+                  : Channel.fail(failure)
+              },
+              (out) => Channel.write(outputChunk.build()) > accumulator(out, f)
+            )
         })
       ),
     (err) => Channel.fail(err),

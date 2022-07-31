@@ -8,8 +8,7 @@ import { constTrue } from "@tsplus/stdlib/data/Function"
  */
 export function foldLeftChunks<In, S>(
   z: LazyArg<S>,
-  f: (s: S, input: Chunk<In>) => S,
-  __tsplusTrace?: string
+  f: (s: S, input: Chunk<In>) => S
 ): Sink<never, never, In, never, S> {
   return Sink.foldChunks(z, constTrue, f).dropLeftover
 }

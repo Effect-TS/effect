@@ -5,9 +5,6 @@ import { constFalse, constTrue } from "@tsplus/stdlib/data/Function"
  *
  * @tsplus getter effect/core/io/Effect isFailure
  */
-export function isFailure<R, E, A>(
-  self: Effect<R, E, A>,
-  __tsplusTrace?: string
-): Effect<R, never, boolean> {
+export function isFailure<R, E, A>(self: Effect<R, E, A>): Effect<R, never, boolean> {
   return self.fold(constTrue, constFalse)
 }

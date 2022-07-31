@@ -7,8 +7,7 @@
  */
 export function refineOrDieWith<E, E1>(
   pf: (e: E) => Maybe<E1>,
-  f: (e: E) => unknown,
-  __tsplusTrace?: string
+  f: (e: E) => unknown
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, E1, A> =>
     self.catchAll((e) =>

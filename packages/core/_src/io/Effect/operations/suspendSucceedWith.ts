@@ -10,8 +10,7 @@ import { ISuspendWith } from "@effect/core/io/Effect/definition/primitives"
  * @tsplus static effect/core/io/Effect.Ops suspendSucceedWith
  */
 export function suspendSucceedWith<R, E, A>(
-  f: (runtimeConfig: RuntimeConfig, fiberId: FiberId) => Effect<R, E, A>,
-  __tsplusTrace?: string
+  f: (runtimeConfig: RuntimeConfig, fiberId: FiberId) => Effect<R, E, A>
 ): Effect<R, E, A> {
-  return new ISuspendWith(f, __tsplusTrace)
+  return new ISuspendWith(f)
 }

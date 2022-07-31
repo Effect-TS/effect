@@ -7,8 +7,7 @@
  */
 export function timeoutFailCause<E2>(
   cause: LazyArg<Cause<E2>>,
-  duration: LazyArg<Duration>,
-  __tsplusTrace?: string
+  duration: LazyArg<Duration>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E | E2, A> =>
     Stream.succeed(Tuple(cause(), duration())).flatMap(

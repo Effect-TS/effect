@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Effectfully transforms all elements of the stream for as long as the
@@ -8,8 +11,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus pipeable effect/core/stream/Stream collectWhileEffect
  */
 export function collectWhileEffect<A, R2, E2, A2>(
-  pf: (a: A) => Maybe<Effect<R2, E2, A2>>,
-  __tsplusTrace?: string
+  pf: (a: A) => Maybe<Effect<R2, E2, A2>>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A2> => {
     concreteStream(self)

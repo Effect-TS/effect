@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Effect.Ops setFiberRefs
  */
-export function setFiberRefs(fiberRefs: LazyArg<FiberRefs>, __tsplusTrace?: string): Effect<never, never, void> {
+export function setFiberRefs(
+  fiberRefs: LazyArg<FiberRefs>
+): Effect<never, never, void> {
   return Effect.suspendSucceed(fiberRefs().setAll)
 }

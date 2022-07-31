@@ -36,7 +36,10 @@ describe.concurrent("STM", () => {
     })
 
     it("long collectSTM chains", async () => {
-      const program = chain(10000, (stm) => stm.continueOrRetrySTM((n) => Maybe.some(STM.succeed(n + 1))))
+      const program = chain(
+        10000,
+        (stm) => stm.continueOrRetrySTM((n) => Maybe.some(STM.succeed(n + 1)))
+      )
 
       const result = await program.unsafeRunPromise()
 
@@ -98,7 +101,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(10000))
+      assert.isTrue(result == Exit.fail(10000))
     })
 
     it("long orElse chains", async () => {

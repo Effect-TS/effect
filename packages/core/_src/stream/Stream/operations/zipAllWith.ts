@@ -38,8 +38,7 @@ export function zipAllWith<R2, E2, A2, A, A3>(
   that: LazyArg<Stream<R2, E2, A2>>,
   left: (a: A) => A3,
   right: (a2: A2) => A3,
-  both: (a: A, a2: A2) => A3,
-  __tsplusTrace?: string
+  both: (a: A, a2: A2) => A3
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A3> =>
     self.combineChunks(
@@ -52,8 +51,7 @@ export function zipAllWith<R2, E2, A2, A, A3>(
 function zipWithChunks<A, A2, A3>(
   leftChunk: Chunk<A>,
   rightChunk: Chunk<A2>,
-  f: (a: A, a2: A2) => A3,
-  __tsplusTrace?: string
+  f: (a: A, a2: A2) => A3
 ): Tuple<[Chunk<A3>, State<A, A2>]> {
   const {
     tuple: [out, either]
@@ -78,8 +76,7 @@ function pull<A, A2, A3>(
   return <R, E, R2, E2>(
     state: State<A, A2>,
     pullLeft: Effect<R, Maybe<E>, Chunk<A>>,
-    pullRight: Effect<R2, Maybe<E2>, Chunk<A2>>,
-    __tsplusTrace?: string
+    pullRight: Effect<R2, Maybe<E2>, Chunk<A2>>
   ): Effect<R | R2, never, Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>> => {
     switch (state._tag) {
       case "DrainLeft": {
@@ -173,7 +170,10 @@ function pull<A, A2, A3>(
               Effect.succeed<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(
                 Exit.succeed(Tuple(state.leftChunk.map(left), new DrainLeft()))
               ),
-              (err) => Effect.succeed<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(Exit.fail(Maybe.some(err)))
+              (err) =>
+                Effect.succeed<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(
+                  Exit.fail(Maybe.some(err))
+                )
             ),
           (rightChunk) =>
             rightChunk.isEmpty

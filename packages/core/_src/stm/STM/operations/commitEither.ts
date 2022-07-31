@@ -4,9 +4,6 @@
  *
  * @tsplus getter effect/core/stm/STM commitEither
  */
-export function commitEither<R, E, A>(
-  self: STM<R, E, A>,
-  __tsplusTrace?: string
-): Effect<R, E, A> {
+export function commitEither<R, E, A>(self: STM<R, E, A>): Effect<R, E, A> {
   return self.either.commit.absolve
 }

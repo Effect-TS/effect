@@ -6,7 +6,7 @@
  * @tsplus static effect/core/stream/Stream.Aspects broadcast
  * @tsplus pipeable effect/core/stream/Stream broadcast
  */
-export function broadcast(n: number, maximumLag: number, __tsplusTrace?: string) {
+export function broadcast(n: number, maximumLag: number) {
   return <R, E, A>(self: Stream<R, E, A>): Effect<R | Scope, never, Chunk<Stream<never, E, A>>> =>
     self
       .broadcastedQueues(n, maximumLag)

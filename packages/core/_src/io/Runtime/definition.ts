@@ -8,14 +8,17 @@ export class AsyncFiber<E, A> {
 }
 
 export class Runtime<R> {
-  constructor(readonly environment: Env<R>, readonly runtimeConfig: RuntimeConfig, readonly fiberRefs: FiberRefs) {}
+  constructor(
+    readonly environment: Env<R>,
+    readonly runtimeConfig: RuntimeConfig,
+    readonly fiberRefs: FiberRefs
+  ) {}
 
   unsafeRunWith = <E, A>(
     effect: Effect<R, E, A>,
-    k: (exit: Exit<E, A>) => void,
-    __tsplusTrace?: string
+    k: (exit: Exit<E, A>) => void
   ): ((fiberId: FiberId) => (_: (exit: Exit<E, A>) => void) => void) => {
-    const fiberId = FiberId.unsafeMake(TraceElement.parse(__tsplusTrace))
+    const fiberId = FiberId.unsafeMake()
 
     const children = new Set<FiberContext<any, any>>()
 
@@ -50,12 +53,12 @@ export class Runtime<R> {
       k(exit.flatten)
     })
 
-    return (id) => (k) => this.unsafeRunAsyncWith(context._interruptAs(id), (exit) => k(exit.flatten))
+    return (id) =>
+      (k) => this.unsafeRunAsyncWith(context._interruptAs(id), (exit) => k(exit.flatten))
   }
 
   unsafeRunSync = <E, A>(
-    effect: Effect<R, E, A>,
-    __tsplusTrace?: string
+    effect: Effect<R, E, A>
   ): A => {
     const exit = this.unsafeRunSyncExit(effect)
     if (exit._tag === "Failure") {
@@ -65,10 +68,9 @@ export class Runtime<R> {
   }
 
   unsafeRunSyncExit = <E, A>(
-    effect: Effect<R, E, A>,
-    __tsplusTrace?: string
+    effect: Effect<R, E, A>
   ): Exit<E, A> => {
-    const fiberId = FiberId.unsafeMake(TraceElement.parse(__tsplusTrace))
+    const fiberId = FiberId.unsafeMake()
 
     const children = new Set<FiberContext<any, any>>()
 
@@ -123,7 +125,7 @@ export class Runtime<R> {
    * This method is effectful and should only be invoked at the edges of your
    * program.
    */
-  unsafeRunAsync = <E, A>(effect: Effect<R, E, A>, __tsplusTrace?: string): void => {
+  unsafeRunAsync = <E, A>(effect: Effect<R, E, A>): void => {
     return this.unsafeRunAsyncWith(effect, constVoid)
   }
 
@@ -136,8 +138,7 @@ export class Runtime<R> {
    */
   unsafeRunAsyncWith = <E, A>(
     effect: Effect<R, E, A>,
-    k: (exit: Exit<E, A>) => void,
-    __tsplusTrace?: string
+    k: (exit: Exit<E, A>) => void
   ): void => {
     this.unsafeRunWith(effect, k)
   }
@@ -151,8 +152,7 @@ export class Runtime<R> {
    * program.
    */
   unsafeRunPromise = <E, A>(
-    effect: Effect<R, E, A>,
-    __tsplusTrace?: string
+    effect: Effect<R, E, A>
   ): Promise<A> => {
     return new Promise((resolve, reject) => {
       this.unsafeRunAsyncWith(effect, (exit) => {
@@ -178,8 +178,7 @@ export class Runtime<R> {
    * program.
    */
   unsafeRunPromiseExit = <E, A>(
-    effect: Effect<R, E, A>,
-    __tsplusTrace?: string
+    effect: Effect<R, E, A>
   ): Promise<Exit<E, A>> => {
     return new Promise((resolve) => {
       this.unsafeRunAsyncWith(effect, (exit) => {

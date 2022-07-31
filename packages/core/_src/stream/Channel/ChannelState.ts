@@ -125,8 +125,7 @@ export function channelStateRead<R, _E>(
  * @tsplus fluent effect/core/stream/Channel/State effectOrUnit
  */
 export function effectOrUnit<R, E>(
-  self: ChannelState<R, E>,
-  __tsplusTrace?: string
+  self: ChannelState<R, E>
 ): Effect<R, E, unknown> {
   concreteChannelState(self)
   return self._tag === "Effect" ? self.effect : Effect.unit
@@ -136,8 +135,7 @@ export function effectOrUnit<R, E>(
  * @tsplus fluent effect/core/stream/Channel/State effectOrUndefinedIgnored
  */
 export function effectOrUndefinedIgnored<R, E>(
-  self: ChannelState<R, E>,
-  __tsplusTrace?: string
+  self: ChannelState<R, E>
 ): Effect<R, never, void> | undefined {
   concreteChannelState(self)
   return self._tag === "Effect" ? self.effect.ignore.unit : undefined

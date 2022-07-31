@@ -7,8 +7,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * @tsplus static effect/core/stream/Sink.Ops forEach
  */
 export function forEach<R, E, In, Z>(
-  f: (input: In) => Effect<R, E, Z>,
-  __tsplusTrace?: string
+  f: (input: In) => Effect<R, E, Z>
 ): Sink<R, E, In, never, void> {
   const process: Channel<
     R,

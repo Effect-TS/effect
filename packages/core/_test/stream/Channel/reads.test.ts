@@ -26,7 +26,9 @@ describe.concurrent("Channel", () => {
         tuple: [chunk, _]
       } = await program.unsafeRunPromise()
 
-      assert.isTrue(chunk == Chunk(new Whatever(1), new Whatever(2), new Whatever(3), new Whatever(4)))
+      assert.isTrue(
+        chunk == Chunk(new Whatever(1), new Whatever(2), new Whatever(3), new Whatever(4))
+      )
     })
 
     it("pipeline", async () => {
@@ -56,7 +58,9 @@ describe.concurrent("Channel", () => {
 
       const program = (
         ((Channel.writeAll(1, 2) >> mapper((i: number) => i)) >>
-          mapper((i: number) => List(i, i)).concatMap((list) => Channel.writeAll(...list).as(undefined))) >>
+          mapper((i: number) => List(i, i)).concatMap((list) =>
+            Channel.writeAll(...list).as(undefined)
+          )) >>
         effect
       ).runCollect
 
@@ -121,10 +125,16 @@ describe.concurrent("Channel", () => {
         .tap((events) => {
           const event = (label: string) => events.update((chunk) => chunk.append(label))
 
-          const left = Channel.acquireUseReleaseOut(event("Acquire outer"), () => event("Release outer")).concatMap(
+          const left = Channel.acquireUseReleaseOut(
+            event("Acquire outer"),
+            () => event("Release outer")
+          ).concatMap(
             () =>
               Channel.writeAll(1, 2, 3).concatMap((i) =>
-                Channel.acquireUseReleaseOut(event(`Acquire ${i}`).as(i), () => event(`Release ${i}`))
+                Channel.acquireUseReleaseOut(
+                  event(`Acquire ${i}`).as(i),
+                  () => event(`Release ${i}`)
+                )
               )
           )
 

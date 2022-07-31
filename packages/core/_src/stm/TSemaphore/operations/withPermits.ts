@@ -7,7 +7,7 @@
  * @tsplus static effect/core/stm/TSemaphore.Aspects withPermits
  * @tsplus pipeable effect/core/stm/TSemaphore withPermits
  */
-export function withPermits(permits: number, __tsplusTrace?: string) {
+export function withPermits(permits: number) {
   return (self: TSemaphore): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A> => {
     return (effect) =>
       Effect.uninterruptibleMask(

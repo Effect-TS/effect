@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Drops the specified number of elements from this stream.
@@ -6,7 +9,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus static effect/core/stream/Stream.Aspects drop
  * @tsplus pipeable effect/core/stream/Stream drop
  */
-export function drop(n: number, __tsplusTrace?: string) {
+export function drop(n: number) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => {
     concreteStream(self)
     return new StreamInternal(self.channel >> loop<R, E, A>(n))

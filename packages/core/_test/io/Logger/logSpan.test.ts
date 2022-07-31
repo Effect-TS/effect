@@ -10,7 +10,9 @@ describe.concurrent("Logger", () => {
       const result = await program.unsafeRunPromise()
 
       assert.strictEqual(result.array.length, 1)
-      assert.isTrue(result[0].flatMap((_) => _.spans.head.map((_) => _.label)) == Maybe.some("initial segment"))
+      assert.isTrue(
+        result[0].flatMap((_) => _.spans.head.map((_) => _.label)) == Maybe.some("initial segment")
+      )
     })
   })
 })

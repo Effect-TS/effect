@@ -9,8 +9,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
 export function fold<In, S>(
   z: LazyArg<S>,
   cont: Predicate<S>,
-  f: (s: S, input: In) => S,
-  __tsplusTrace?: string
+  f: (s: S, input: In) => S
 ): Sink<never, never, In, In, S> {
   return Sink.suspend(new SinkInternal(reader(z(), cont, f)))
 }
@@ -18,8 +17,7 @@ export function fold<In, S>(
 function reader<S, In>(
   z: S,
   cont: Predicate<S>,
-  f: (s: S, input: In) => S,
-  __tsplusTrace?: string
+  f: (s: S, input: In) => S
 ): Channel<never, never, Chunk<In>, unknown, never, Chunk<In>, S> {
   return !cont(z)
     ? Channel.succeedNow(z)
@@ -41,8 +39,7 @@ function foldChunkSplit<S, In>(
   z: S,
   chunk: Chunk<In>,
   cont: Predicate<S>,
-  f: (s: S, input: In) => S,
-  __tsplusTrace?: string
+  f: (s: S, input: In) => S
 ): Tuple<[S, Chunk<In>]> {
   return foldInternal(z, chunk, cont, f, 0, chunk.length)
 }
@@ -53,8 +50,7 @@ function foldInternal<S, In>(
   cont: Predicate<S>,
   f: (s: S, input: In) => S,
   index: number,
-  length: number,
-  __tsplusTrace?: string
+  length: number
 ): Tuple<[S, Chunk<In>]> {
   if (index === length) {
     return Tuple(z, Chunk.empty<In>())

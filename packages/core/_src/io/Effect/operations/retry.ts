@@ -8,8 +8,8 @@
  * @tsplus pipeable effect/core/io/Effect retry
  */
 export function retry<S, R1, E, B>(
-  policy: LazyArg<Schedule<S, R1, E, B>>,
-  __tsplusTrace?: string
+  policy: LazyArg<Schedule<S, R1, E, B>>
 ) {
-  return <R, A>(self: Effect<R, E, A>): Effect<R | R1, E, A> => self.retryOrElse(policy, (e, _) => Effect.failSync(e))
+  return <R, A>(self: Effect<R, E, A>): Effect<R | R1, E, A> =>
+    self.retryOrElse(policy, (e, _) => Effect.failSync(e))
 }

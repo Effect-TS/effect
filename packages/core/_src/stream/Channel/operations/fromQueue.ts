@@ -15,7 +15,8 @@ function fromQueueInternal<Err, Elem, Done>(
       (exit) =>
         exit.fold(
           (cause) => Channel.failCause(cause),
-          (done): Channel<never, unknown, unknown, unknown, Err, Elem, Done> => Channel.succeedNow(done)
+          (done): Channel<never, unknown, unknown, unknown, Err, Elem, Done> =>
+            Channel.succeedNow(done)
         ),
       (elem) => Channel.write(elem) > fromQueueInternal<Err, Elem, Done>(queue)
     )

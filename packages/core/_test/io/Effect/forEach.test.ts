@@ -157,7 +157,8 @@ describe.concurrent("Effect", () => {
       const result = await program.unsafeRunPromiseExit()
 
       assert.isTrue(
-        result.isFailure() && result.cause.isDieType() && result.cause.value instanceof IllegalArgumentException
+        result.isFailure() && result.cause.isDieType() &&
+          result.cause.value instanceof IllegalArgumentException
       )
     })
   })
@@ -178,7 +179,10 @@ describe.concurrent("Effect", () => {
       const list = List(1, 2, 3, 4, 5)
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
-        .bindValue("effect", ({ ref }) => Effect.forEachDiscard(list, (n) => ref.update((_) => _ + n)))
+        .bindValue(
+          "effect",
+          ({ ref }) => Effect.forEachDiscard(list, (n) => ref.update((_) => _ + n))
+        )
         .tap(({ effect }) => effect)
         .tap(({ effect }) => effect)
         .flatMap(({ ref }) => ref.get())
@@ -219,7 +223,8 @@ describe.concurrent("Effect", () => {
       const result = await program.unsafeRunPromiseExit()
 
       assert.isTrue(
-        result.isFailure() && result.cause.isDieType() && result.cause.value instanceof IllegalArgumentException
+        result.isFailure() && result.cause.isDieType() &&
+          result.cause.value instanceof IllegalArgumentException
       )
     })
   })
@@ -287,7 +292,10 @@ describe.concurrent("Effect", () => {
     })
 
     it("runs a task that is interrupted", async () => {
-      const program = Effect.forEachPar(Chunk.range(1, 10), (n) => n === 5 ? Effect.interrupt : Effect.sync(n * 2))
+      const program = Effect.forEachPar(
+        Chunk.range(1, 10),
+        (n) => n === 5 ? Effect.interrupt : Effect.sync(n * 2)
+      )
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -317,7 +325,10 @@ describe.concurrent("Effect", () => {
     })
 
     it("returns results in the same order for Chunk", async () => {
-      const program = Effect.forEachPar(Chunk("1", "2", "3"), (s) => Effect.sync(Number.parseInt(s)))
+      const program = Effect.forEachPar(
+        Chunk("1", "2", "3"),
+        (s) => Effect.sync(Number.parseInt(s))
+      )
 
       const result = await program.unsafeRunPromise()
 
@@ -358,7 +369,9 @@ describe.concurrent("Effect", () => {
 
     it("propagates error", async () => {
       const list = List(1, 2, 3, 4, 5, 6)
-      const program = Effect.forEachPar(list, (n) => n % 2 !== 0 ? Effect.sync(n) : Effect.failSync("not odd")).flip
+      const program =
+        Effect.forEachPar(list, (n) => n % 2 !== 0 ? Effect.sync(n) : Effect.failSync("not odd"))
+          .flip
 
       const result = await program.unsafeRunPromise()
 
@@ -388,7 +401,10 @@ describe.concurrent("Effect", () => {
     it("does not kill fiber when forked on the parent scope", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
-        .bind("fibers", ({ ref }) => Effect.forEachPar(Chunk.range(1, 100), () => ref.update((_) => _ + 1).fork))
+        .bind(
+          "fibers",
+          ({ ref }) => Effect.forEachPar(Chunk.range(1, 100), () => ref.update((_) => _ + 1).fork)
+        )
         .tap(({ fibers }) => Effect.forEach(fibers, (fiber) => fiber.await))
         .flatMap(({ ref }) => ref.get())
 
@@ -437,9 +453,10 @@ describe.concurrent("Effect", () => {
 
     it("propagates error", async () => {
       const list = List(1, 2, 3, 4, 5, 6)
-      const program = Effect.forEachPar(list, (n) => n % 2 !== 0 ? Effect.sync(n) : Effect.failSync("not odd"))
-        .withParallelism(4)
-        .either
+      const program =
+        Effect.forEachPar(list, (n) => n % 2 !== 0 ? Effect.sync(n) : Effect.failSync("not odd"))
+          .withParallelism(4)
+          .either
 
       const result = await program.unsafeRunPromise()
 
@@ -481,7 +498,10 @@ describe.concurrent("Effect", () => {
         .bind("started", () => Ref.make(0))
         .bind("trigger", () => Deferred.make<never, void>())
         .flatMap(({ started, trigger }) =>
-          Effect.forEachParDiscard(Chunk.range(1, 3), (n) => task(started, trigger, n).uninterruptible).foldCause(
+          Effect.forEachParDiscard(
+            Chunk.range(1, 3),
+            (n) => task(started, trigger, n).uninterruptible
+          ).foldCause(
             (cause) => cause.failures,
             () => List.empty<number>()
           )
@@ -529,7 +549,10 @@ describe.concurrent("Effect", () => {
     it("runs all effects", async () => {
       const list = List(1, 2, 3, 4, 5)
       const program = Ref.make<List<number>>(List.empty())
-        .tap((ref) => Effect.forEachParDiscard(list, (n) => ref.update((list) => list.prepend(n))).withParallelism(2))
+        .tap((ref) =>
+          Effect.forEachParDiscard(list, (n) => ref.update((list) => list.prepend(n)))
+            .withParallelism(2)
+        )
         .flatMap((ref) => ref.get().map((list) => list.reverse))
 
       const result = await program.unsafeRunPromise()
@@ -590,9 +613,9 @@ describe.concurrent("Effect", () => {
         .bind("fiber1", () => Effect.forkAll(List(die)))
         .bind("fiber2", () => Effect.forkAll(List(die, Effect.sync(42))))
         .bind("fiber3", () => Effect.forkAll(List(die, Effect.sync(42), Effect.never)))
-        .bind("result1", ({ fiber1 }) => joinDefect(fiber1).map((cause) => cause.untraced))
-        .bind("result2", ({ fiber2 }) => joinDefect(fiber2).map((cause) => cause.untraced))
-        .bind("result3", ({ fiber3 }) => joinDefect(fiber3).map((cause) => cause.untraced))
+        .bind("result1", ({ fiber1 }) => joinDefect(fiber1).map((cause) => cause))
+        .bind("result2", ({ fiber2 }) => joinDefect(fiber2).map((cause) => cause))
+        .bind("result3", ({ fiber3 }) => joinDefect(fiber3).map((cause) => cause))
 
       const { result1, result2, result3 } = await program.unsafeRunPromise()
 

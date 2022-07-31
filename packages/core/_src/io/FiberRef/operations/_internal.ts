@@ -28,8 +28,7 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
    * version of `update`.
    */
   modify<B>(
-    f: (a: Value) => Tuple<[B, Value]>,
-    __tsplusTrace?: string
+    f: (a: Value) => Tuple<[B, Value]>
   ): Effect<never, never, B> {
     return new IFiberRefModify(this, f)
   }
@@ -48,48 +47,42 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
 
   getAndSet(
     this: FiberRef.WithPatch<Value, Patch>,
-    value: Value,
-    __tsplusTrace?: string
+    value: Value
   ): Effect<never, never, Value> {
     return this.modify((v) => Tuple(v, value))
   }
 
   getAndUpdate(
     this: FiberRef.WithPatch<Value, Patch>,
-    f: (a: Value) => Value,
-    __tsplusTrace?: string
+    f: (a: Value) => Value
   ): Effect<never, never, Value> {
     return this.modify((v) => Tuple(v, f(v)))
   }
 
   getAndUpdateSome(
     this: FiberRef.WithPatch<Value, Patch>,
-    pf: (a: Value) => Maybe<Value>,
-    __tsplusTrace?: string
+    pf: (a: Value) => Maybe<Value>
   ): Effect<never, never, Value> {
     return this.modify((v) => Tuple(v, pf(v).getOrElse(v)))
   }
 
   getWith<R, E, B>(
     this: FiberRef.WithPatch<Value, Patch>,
-    f: (a: Value) => Effect<R, E, B>,
-    __tsplusTrace?: string
+    f: (a: Value) => Effect<R, E, B>
   ): Effect<R, E, B> {
-    return new IFiberRefWith(this, f, __tsplusTrace)
+    return new IFiberRefWith(this, f)
   }
 
   locally(
     this: FiberRef.WithPatch<Value, Patch>,
-    value: Value,
-    __tsplusTrace?: string
+    value: Value
   ): <R, E, B>(use: Effect<R, E, B>) => Effect<R, E, B> {
-    return (use) => new IFiberRefLocally(value, this, use, __tsplusTrace)
+    return (use) => new IFiberRefLocally(value, this, use)
   }
 
   locallyScoped(
     this: FiberRef.WithPatch<Value, Patch>,
-    value: Value,
-    __tsplusTrace?: string
+    value: Value
   ): Effect<Scope, never, void> {
     return Effect.acquireRelease(
       this.get.flatMap((old) => this.set(value).as(old)),
@@ -99,32 +92,28 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
 
   locallyScopedWith(
     this: FiberRef.WithPatch<Value, Patch>,
-    f: (a: Value) => Value,
-    __tsplusTrace?: string
+    f: (a: Value) => Value
   ): Effect<Scope, never, void> {
     return this.getWith((a) => this.locallyScoped(f(a)))
   }
 
   locallyWith(
     this: FiberRef.WithPatch<Value, Patch>,
-    f: (a: Value) => Value,
-    __tsplusTrace?: string
+    f: (a: Value) => Value
   ): <R, E, B>(effect: Effect<R, E, B>) => Effect<R, E, B> {
     return (effect) => this.getWith((a) => effect.apply(this.locally(f(a))))
   }
 
   update(
     this: FiberRef.WithPatch<Value, Patch>,
-    f: (a: Value) => Value,
-    __tsplusTrace?: string
+    f: (a: Value) => Value
   ): Effect<never, never, void> {
     return this.modify((v) => Tuple(undefined, f(v)))
   }
 
   set(
     this: FiberRef.WithPatch<Value, Patch>,
-    value: Value,
-    __tsplusTrace?: string
+    value: Value
   ): Effect<never, never, void> {
     return this.modify(() => Tuple(undefined, value))
   }
@@ -132,16 +121,14 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
   modifySome<B>(
     this: FiberRef.WithPatch<Value, Patch>,
     def: B,
-    f: (a: Value) => Maybe<Tuple<[B, Value]>>,
-    __tsplusTrace?: string
+    f: (a: Value) => Maybe<Tuple<[B, Value]>>
   ): Effect<never, never, B> {
     return this.modify((v) => f(v).getOrElse(Tuple(def, v)))
   }
 
   updateAndGet(
     this: FiberRef.WithPatch<Value, Patch>,
-    f: (a: Value) => Value,
-    __tsplusTrace?: string
+    f: (a: Value) => Value
   ): Effect<never, never, Value> {
     return this.modify((v) => {
       const result = f(v)
@@ -151,8 +138,7 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
 
   updateSome(
     this: FiberRef.WithPatch<Value, Patch>,
-    pf: (a: Value) => Maybe<Value>,
-    __tsplusTrace?: string
+    pf: (a: Value) => Maybe<Value>
   ): Effect<never, never, void> {
     return this.modify((v) => Tuple(undefined, pf(v).getOrElse(v)))
   }
@@ -164,8 +150,7 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
    */
   updateSomeAndGet(
     this: FiberRef.WithPatch<Value, Patch>,
-    pf: (a: Value) => Maybe<Value>,
-    __tsplusTrace?: string
+    pf: (a: Value) => Maybe<Value>
   ): Effect<never, never, Value> {
     return this.modify((v) => {
       const result = pf(v).getOrElse(v)
@@ -191,8 +176,7 @@ export function concreteFiberRef<Value, Patch>(
 export function make<A>(
   initial: A,
   fork: (a: A) => A = identity,
-  join: (left: A, right: A) => A = (_, a) => a,
-  __tsplusTrace?: string
+  join: (left: A, right: A) => A = (_, a) => a
 ): Effect<Scope, never, FiberRef<A>> {
   return FiberRef.makeWith(
     FiberRef.unsafeMake(initial, fork, join)
@@ -207,8 +191,7 @@ export function make<A>(
  * @tsplus static effect/core/io/FiberRef.Ops makeEnvironment
  */
 export function makeEnvironment<A>(
-  initial: LazyArg<Service.Env<A>>,
-  __tsplusTrace?: string
+  initial: LazyArg<Service.Env<A>>
 ): Effect<Scope, never, FiberRef.WithPatch<Service.Env<A>, Service.Patch<A, A>>> {
   return FiberRef.makeWith(FiberRef.unsafeMakeEnvironment(initial()))
 }
@@ -225,8 +208,7 @@ export function makePatch<Value, Patch>(
   diff: (oldValue: Value, newValue: Value) => Patch,
   combine: (first: Patch, second: Patch) => Patch,
   patch: (patch: Patch) => (oldValue: Value) => Value,
-  fork: Patch,
-  __tsplusTrace?: string
+  fork: Patch
 ): Effect<Scope, never, FiberRef.WithPatch<Value, Patch>> {
   return FiberRef.makeWith(
     FiberRef.unsafeMakePatch(initial, diff, combine, patch, fork)
@@ -237,8 +219,7 @@ export function makePatch<Value, Patch>(
  * @tsplus static effect/core/io/FiberRef.Ops makeWith
  */
 export function makeWith<Value, Patch>(
-  ref: LazyArg<FiberRef.WithPatch<Value, Patch>>,
-  __tsplusTrace?: string
+  ref: LazyArg<FiberRef.WithPatch<Value, Patch>>
 ): Effect<Scope, never, FiberRef.WithPatch<Value, Patch>> {
   return Effect.acquireRelease(
     Effect.sync(ref).tap((ref) => ref.update(identity)),
@@ -308,8 +289,7 @@ export function unsafeMakePatch<Value, Patch>(
  * @tsplus static effect/core/io/Effect.Ops addFinalizerExit
  */
 export function addFinalizerExit<R, X>(
-  finalizer: (exit: Exit<unknown, unknown>) => Effect<R, never, X>,
-  __tsplusTrace?: string
+  finalizer: (exit: Exit<unknown, unknown>) => Effect<R, never, X>
 ): Effect<R | Scope, never, void> {
   return Do(($) => {
     const environment = $(Effect.environment<R>())
@@ -327,8 +307,7 @@ export function addFinalizerExit<R, X>(
  */
 export function acquireReleaseExit<R, E, A, R2, X>(
   acquire: LazyArg<Effect<R, E, A>>,
-  release: (a: A, exit: Exit<unknown, unknown>) => Effect<R2, never, X>,
-  __tsplusTrace?: string
+  release: (a: A, exit: Exit<unknown, unknown>) => Effect<R2, never, X>
 ): Effect<R | R2 | Scope, E, A> {
   return Effect.suspendSucceed(acquire)
     .tap((a) => Effect.addFinalizerExit((exit) => release(a, exit)))
@@ -348,10 +327,9 @@ export function acquireReleaseExit<R, E, A, R2, X>(
  */
 export function acquireRelease<R, E, A, R2, X>(
   acquire: LazyArg<Effect<R, E, A>>,
-  release: (a: A) => Effect<R2, never, X>,
-  __tsplusTrace?: string
+  release: (a: A) => Effect<R2, never, X>
 ): Effect<R | R2 | Scope, E, A> {
-  return Effect.acquireReleaseExit(acquire, (a, _) => release(a), __tsplusTrace)
+  return Effect.acquireReleaseExit(acquire, (a, _) => release(a))
 }
 
 /**
@@ -359,7 +337,7 @@ export function acquireRelease<R, E, A, R2, X>(
  *
  * @tsplus static effect/core/io/Effect.Ops environment
  */
-export function environment<R>(__tsplusTrace?: string): Effect<R, never, Env<R>> {
+export function environment<R>(): Effect<R, never, Env<R>> {
   return Effect.suspendSucceed(FiberRef.currentEnvironment.get as Effect<never, never, Env<R>>)
 }
 
@@ -412,7 +390,7 @@ export const forkScopeOverride: FiberRef<Maybe<FiberScope>> = FiberRef.unsafeMak
  * @tsplus static effect/core/io/Effect.Aspects provideEnvironment
  * @tsplus pipeable effect/core/io/Effect provideEnvironment
  */
-export function provideEnvironment<R>(environment: LazyArg<Env<R>>, __tsplusTrace?: string) {
+export function provideEnvironment<R>(environment: LazyArg<Env<R>>) {
   return <E, A>(self: Effect<R, E, A>): Effect<never, E, A> =>
     Effect.sync(environment).flatMap((env) =>
       (self as Effect<never, E, A>).apply(
@@ -437,8 +415,7 @@ export const scope: Effect<Scope, never, Scope> = Effect.service(Scope.Tag)
  * @tsplus static effect/core/io/Effect.Ops service
  */
 export function service<T>(
-  tag: Tag<T>,
-  __tsplusTrace?: string
+  tag: Tag<T>
 ): Effect<T, never, T> {
   return Effect.serviceWithEffect(tag, Effect.succeed)
 }
@@ -454,8 +431,7 @@ export function service<T>(
  */
 export function serviceWithEffect<T, R, E, A>(
   tag: Tag<T>,
-  f: (a: T) => Effect<R, E, A>,
-  __tsplusTrace?: string
+  f: (a: T) => Effect<R, E, A>
 ): Effect<R | T, E, A> {
   return Effect.suspendSucceed(
     FiberRef.currentEnvironment.get.flatMap((env) => f(env.unsafeGet(tag)))

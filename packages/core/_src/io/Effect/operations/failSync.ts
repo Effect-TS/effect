@@ -4,6 +4,6 @@
  *
  * @tsplus static effect/core/io/Effect.Ops failSync
  */
-export function failSync<E>(error: LazyArg<E>, __tsplusTrace?: string): Effect<never, E, never> {
-  return Effect.failCauseSync(Cause.fail(error(), Trace.none))
+export function failSync<E>(error: LazyArg<E>): Effect<never, E, never> {
+  return Effect.failCauseSync(Cause.fail(error()))
 }

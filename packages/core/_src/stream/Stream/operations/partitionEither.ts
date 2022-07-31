@@ -7,8 +7,7 @@
  */
 export function partitionEither<A, R2, E2, A2, A3>(
   p: (a: A) => Effect<R2, E2, Either<A2, A3>>,
-  buffer = 16,
-  __tsplusTrace?: string
+  buffer = 16
 ) {
   return <R, E>(self: Stream<R, E, A>): Effect<
     R | R2 | Scope,

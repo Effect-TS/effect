@@ -11,8 +11,9 @@ import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition"
  */
 export function fromQueueWithShutdown<A>(
   queue: LazyArg<Dequeue<A>>,
-  maxChunkSize = DEFAULT_CHUNK_SIZE,
-  __tsplusTrace?: string
+  maxChunkSize = DEFAULT_CHUNK_SIZE
 ): Stream<never, never, A> {
-  return Stream.succeed(queue).flatMap((queue) => Stream.fromQueue(queue, maxChunkSize).ensuring(queue.shutdown))
+  return Stream.succeed(queue).flatMap((queue) =>
+    Stream.fromQueue(queue, maxChunkSize).ensuring(queue.shutdown)
+  )
 }

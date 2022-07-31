@@ -3,7 +3,11 @@ import { constVoid } from "@tsplus/stdlib/data/Function"
 describe.concurrent("Effect", () => {
   describe.concurrent("reduce", () => {
     it("with a successful step function sums the list properly", async () => {
-      const program = Effect.reduce(List(1, 2, 3, 4, 5), 0 as number, (acc, curr) => Effect.sync(acc + curr))
+      const program = Effect.reduce(
+        List(1, 2, 3, 4, 5),
+        0 as number,
+        (acc, curr) => Effect.sync(acc + curr)
+      )
 
       const result = await program.unsafeRunPromise()
 
@@ -15,7 +19,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail("fail"))
+      assert.isTrue(result == Exit.fail("fail"))
     })
 
     it("run sequentially from left to right", async () => {
@@ -34,7 +38,11 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("reduceRight", () => {
     it("with a successful step function sums the list properly", async () => {
-      const program = Effect.reduceRight(List(1, 2, 3, 4, 5), 0 as number, (acc, curr) => Effect.sync(acc + curr))
+      const program = Effect.reduceRight(
+        List(1, 2, 3, 4, 5),
+        0 as number,
+        (acc, curr) => Effect.sync(acc + curr)
+      )
 
       const result = await program.unsafeRunPromise()
 
@@ -46,7 +54,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail("fail"))
+      assert.isTrue(result == Exit.fail("fail"))
     })
 
     it("run sequentially from right to left", async () => {
@@ -99,7 +107,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(1))
+      assert.isTrue(result == Exit.fail(1))
     })
 
     it("return error if it exists in list", async () => {
@@ -109,7 +117,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(1))
+      assert.isTrue(result == Exit.fail(1))
     })
   })
 })

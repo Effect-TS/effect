@@ -7,8 +7,7 @@ import { ISucceedWith } from "@effect/core/io/Effect/definition/primitives"
  * @tsplus static effect/core/io/Effect.Ops succeedWith
  */
 export function succeedWith<A>(
-  f: (runtimeConfig: RuntimeConfig, fiberId: FiberId) => A,
-  __tsplusTrace?: string
+  f: (runtimeConfig: RuntimeConfig, fiberId: FiberId) => A
 ): Effect<never, never, A> {
-  return new ISucceedWith(f, __tsplusTrace)
+  return new ISucceedWith(f)
 }

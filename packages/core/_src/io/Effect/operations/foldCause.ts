@@ -7,8 +7,7 @@
  */
 export function foldCause<E, A, A2, A3>(
   failure: (cause: Cause<E>) => A2,
-  success: (a: A) => A3,
-  __tsplusTrace?: string
+  success: (a: A) => A3
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R, never, A2 | A3> =>
     self.foldCauseEffect(

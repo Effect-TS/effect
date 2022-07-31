@@ -6,8 +6,9 @@
  * @tsplus static effect/core/stream/Stream.Ops fromChunkHubScoped
  */
 export function fromChunkHubScoped<A>(
-  hub: LazyArg<Hub<Chunk<A>>>,
-  __tsplusTrace?: string
+  hub: LazyArg<Hub<Chunk<A>>>
 ): Effect<Scope, never, Stream<never, never, A>> {
-  return Effect.sync(hub).flatMap((hub) => hub.subscribe.map((queue) => Stream.fromChunkQueue(queue)))
+  return Effect.sync(hub).flatMap((hub) =>
+    hub.subscribe.map((queue) => Stream.fromChunkQueue(queue))
+  )
 }

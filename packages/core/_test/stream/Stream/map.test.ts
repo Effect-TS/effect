@@ -275,7 +275,7 @@ describe.concurrent("Stream", () => {
       const { count, result } = await program.unsafeRunPromise()
 
       assert.strictEqual(count, 2)
-      assert.isTrue(result.untraced == Exit.fail("boom"))
+      assert.isTrue(result == Exit.fail("boom"))
     })
 
     it("propagates correct error with subsequent mapEffectPar call (ZIO issue #4514)", async () => {
@@ -301,7 +301,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.untraced == Exit.fail("boom"))
+      assert.isTrue(result == Exit.fail("boom"))
     })
   })
 
@@ -313,7 +313,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail("fail"))
+      assert.isTrue(result == Exit.fail("fail"))
     })
   })
 })

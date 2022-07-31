@@ -4,7 +4,7 @@
  * @tsplus static effect/core/io/Schedule.Aspects run
  * @tsplus pipeable effect/core/io/Schedule run
  */
-export function run<In>(now: number, input: Collection<In>, __tsplusTrace?: string) {
+export function run<In>(now: number, input: Collection<In>) {
   return <State, Env, Out>(self: Schedule<State, Env, In, Out>): Effect<Env, never, Chunk<Out>> =>
     runLoop(self, now, ListBuffer.from(input), self._initial, Chunk.empty<Out>())
 }

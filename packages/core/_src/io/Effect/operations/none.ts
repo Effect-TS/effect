@@ -3,10 +3,7 @@
  *
  * @tsplus getter effect/core/io/Effect none
  */
-export function none<R, E, A>(
-  self: Effect<R, E, Maybe<A>>,
-  __tsplusTrace?: string
-): Effect<R, Maybe<E>, void> {
+export function none<R, E, A>(self: Effect<R, E, Maybe<A>>): Effect<R, Maybe<E>, void> {
   return self.foldEffect(
     (e) => Effect.failSync(Maybe.some(e)),
     (option) => option.fold(Effect.succeed(undefined), () => Effect.failSync(Maybe.none))

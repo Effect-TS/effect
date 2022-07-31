@@ -10,8 +10,7 @@ import { ISuspend } from "@effect/core/io/Effect/definition/primitives"
  * @tsplus static effect/core/io/Effect.Ops suspendSucceed
  */
 export function suspendSucceed<R, E, A>(
-  effect: LazyArg<Effect<R, E, A>>,
-  __tsplusTrace?: string
+  effect: LazyArg<Effect<R, E, A>>
 ): Effect<R, E, A> {
-  return new ISuspend(effect, __tsplusTrace)
+  return new ISuspend(effect)
 }

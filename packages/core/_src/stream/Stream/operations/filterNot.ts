@@ -6,13 +6,11 @@
  * @tsplus pipeable effect/core/stream/Stream filterNot
  */
 export function filterNot<A, B extends A>(
-  f: Refinement<A, B>,
-  __tsplusTrace?: string
+  f: Refinement<A, B>
 ): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A>
 export function filterNot<A>(
-  f: Predicate<A>,
-  __tsplusTrace?: string
+  f: Predicate<A>
 ): <R, E>(self: Stream<R, E, A>) => Stream<R, E, A>
-export function filterNot<A>(f: Predicate<A>, __tsplusTrace?: string) {
+export function filterNot<A>(f: Predicate<A>) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, A> => self.filter((a) => !f(a))
 }

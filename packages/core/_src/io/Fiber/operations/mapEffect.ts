@@ -9,8 +9,7 @@ import { makeSynthetic } from "@effect/core/io/Fiber/definition"
  * @tsplus pipeable effect/core/io/RuntimeFiber mapEffect
  */
 export function mapEffect<A, E2, A2>(
-  f: (a: A) => Effect<never, E2, A2>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<never, E2, A2>
 ) {
   return <E>(self: Fiber<E, A>): Fiber<E | E2, A2> =>
     makeSynthetic({

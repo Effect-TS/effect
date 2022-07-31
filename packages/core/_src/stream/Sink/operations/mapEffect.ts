@@ -1,4 +1,7 @@
-import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import {
+  concreteSink,
+  SinkInternal
+} from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Effectfully transforms this sink's result.
@@ -7,8 +10,7 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
  * @tsplus pipeable effect/core/stream/Sink mapEffect
  */
 export function mapEffect<R2, E2, Z, Z2>(
-  f: (z: Z) => Effect<R2, E2, Z2>,
-  __tsplusTrace?: string
+  f: (z: Z) => Effect<R2, E2, Z2>
 ) {
   return <R, E, In, L>(self: Sink<R, E, In, L, Z>): Sink<R | R2, E | E2, In, L, Z2> => {
     concreteSink(self)

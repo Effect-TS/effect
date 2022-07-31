@@ -32,7 +32,9 @@ describe.concurrent("Sink", () => {
     })
 
     it("error", async () => {
-      const sink = Sink.fail("ouch").contramapChunks((chunk: Chunk<string>) => chunk.map((s) => Number.parseInt(s)))
+      const sink = Sink.fail("ouch").contramapChunks((chunk: Chunk<string>) =>
+        chunk.map((s) => Number.parseInt(s))
+      )
       const program = Stream("1", "2", "3").run(sink).either
 
       const result = await program.unsafeRunPromise()
@@ -43,7 +45,9 @@ describe.concurrent("Sink", () => {
 
   describe.concurrent("contramapEffect", () => {
     it("happy path", async () => {
-      const sink = Sink.collectAll<number>().contramapEffect((s: string) => Effect.attempt(Number.parseInt(s)))
+      const sink = Sink.collectAll<number>().contramapEffect((s: string) =>
+        Effect.attempt(Number.parseInt(s))
+      )
       const program = Stream("1", "2", "3").run(sink)
 
       const result = await program.unsafeRunPromise()
@@ -52,7 +56,9 @@ describe.concurrent("Sink", () => {
     })
 
     it("error", async () => {
-      const sink = Sink.fail("ouch").contramapEffect((s: string) => Effect.attempt(Number.parseInt(s)))
+      const sink = Sink.fail("ouch").contramapEffect((s: string) =>
+        Effect.attempt(Number.parseInt(s))
+      )
       const program = Stream("1", "2", "3").run(sink).either
 
       const result = await program.unsafeRunPromise()
@@ -75,7 +81,7 @@ describe.concurrent("Sink", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(error))
+      assert.isTrue(result == Exit.fail(error))
     })
   })
 
@@ -120,7 +126,7 @@ describe.concurrent("Sink", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(error))
+      assert.isTrue(result == Exit.fail(error))
     })
   })
 })

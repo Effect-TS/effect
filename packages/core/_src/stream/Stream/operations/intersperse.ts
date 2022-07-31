@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Intersperse stream with provided element.
@@ -7,8 +10,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus pipeable effect/core/stream/Stream intersperse
  */
 export function intersperse<A2>(
-  middle: LazyArg<A2>,
-  __tsplusTrace?: string
+  middle: LazyArg<A2>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A | A2> => {
     concreteStream(self)

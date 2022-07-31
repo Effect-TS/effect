@@ -94,7 +94,7 @@ export function unsafeMakeSubscription<A>(
       strategy.unsafeOnHubEmptySpace(hub, subscribers)
       return Effect.succeed(as)
     }),
-    takeUpTo(max: number, __tsplusTrace?: string) {
+    takeUpTo(max: number) {
       return Effect.suspendSucceed(() => {
         if (shutdownFlag.get) {
           return Effect.interrupt
@@ -107,5 +107,5 @@ export function unsafeMakeSubscription<A>(
       })
     }
   }
-  return Object.assign(Object.create(QueueProto), base)
+  return Object.setPrototypeOf(base, QueueProto)
 }

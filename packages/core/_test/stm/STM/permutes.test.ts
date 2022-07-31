@@ -22,7 +22,11 @@ describe.concurrent("STM", () => {
         .bind("tRef2", () => TRef.makeCommit(2))
         .bind("oldValue1", ({ tRef1 }) => tRef1.get.commit)
         .bind("oldValue2", ({ tRef2 }) => tRef2.get.commit)
-        .bind("fiber", ({ tRef1, tRef2 }) => Effect.forkAll(Chunk.fill(100, () => permutation(tRef1, tRef2).commit)))
+        .bind(
+          "fiber",
+          ({ tRef1, tRef2 }) =>
+            Effect.forkAll(Chunk.fill(100, () => permutation(tRef1, tRef2).commit))
+        )
         .tap(({ fiber }) => fiber.join)
         .bind("value1", ({ tRef1 }) => tRef1.get.commit)
         .bind("value2", ({ tRef2 }) => tRef2.get.commit)

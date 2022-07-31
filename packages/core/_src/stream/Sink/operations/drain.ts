@@ -5,9 +5,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  *
  * @tsplus static effect/core/stream/Sink.Ops drain
  */
-export function drain(
-  __tsplusTrace?: string
-): Sink<never, never, unknown, never, void> {
+export function drain(): Sink<never, never, unknown, never, void> {
   const loop: Channel<
     never,
     never,

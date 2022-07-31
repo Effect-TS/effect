@@ -10,8 +10,7 @@ import { concreteTake } from "@effect/core/stream/Take/operations/_internal/Take
 export function fold<E, A, Z>(
   end: Z,
   error: (cause: Cause<E>) => Z,
-  value: (chunk: Chunk<A>) => Z,
-  __tsplusTrace?: string
+  value: (chunk: Chunk<A>) => Z
 ) {
   return (self: Take<E, A>): Z => {
     concreteTake(self)

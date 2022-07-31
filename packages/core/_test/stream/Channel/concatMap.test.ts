@@ -58,7 +58,7 @@ describe.concurrent("Channel", () => {
             .runCollect
             .exit
         )
-        assert.isTrue(result.untraced == Exit.fail("error"))
+        assert.isTrue(result == Exit.fail("error"))
       }).unsafeRunPromiseExit())
 
     it("upstream acquireReleaseOut + downstream failure", () =>
@@ -74,7 +74,7 @@ describe.concurrent("Channel", () => {
           })
         )
         const { tuple: [exit, events] } = result
-        assert.isTrue(exit.untraced == Exit.fail("error"))
+        assert.isTrue(exit == Exit.fail("error"))
         assert.isTrue(events == Chunk("Acquired", "Released"))
       }).unsafeRunPromiseExit())
 
@@ -87,7 +87,7 @@ describe.concurrent("Channel", () => {
             .runCollect
             .exit
         )
-        assert.isTrue(result.untraced == Exit.fail("error"))
+        assert.isTrue(result == Exit.fail("error"))
       }).unsafeRunPromiseExit())
 
     it("concatMap with failure then flatMap", () =>
@@ -99,7 +99,7 @@ describe.concurrent("Channel", () => {
             .runCollect
             .exit
         )
-        assert.isTrue(result.untraced == Exit.fail("error"))
+        assert.isTrue(result == Exit.fail("error"))
       }).unsafeRunPromiseExit())
 
     it("multiple concatMaps with failure in first and catchAll in second", () =>
@@ -111,7 +111,7 @@ describe.concurrent("Channel", () => {
             .runCollect
             .exit
         )
-        assert.isTrue(result.untraced == Exit.fail("error2"))
+        assert.isTrue(result == Exit.fail("error2"))
       }).unsafeRunPromiseExit())
 
     it("done value combination", () =>

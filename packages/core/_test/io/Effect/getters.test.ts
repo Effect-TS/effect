@@ -51,7 +51,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(Either.right("right")))
+      assert.isTrue(result == Exit.fail(Either.right("right")))
     })
 
     it("on failure", async () => {
@@ -59,7 +59,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(Either.left("fail")))
+      assert.isTrue(result == Exit.fail(Either.left("fail")))
     })
   })
 
@@ -77,7 +77,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(Either.left("left")))
+      assert.isTrue(result == Exit.fail(Either.left("left")))
     })
 
     it("on failure", async () => {
@@ -85,7 +85,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(Either.right("fail")))
+      assert.isTrue(result == Exit.fail(Either.right("fail")))
     })
   })
 
@@ -103,7 +103,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(Maybe.none))
+      assert.isTrue(result == Exit.fail(Maybe.none))
     })
 
     it("fails when given an exception", async () => {
@@ -112,7 +112,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(Maybe.some(error)))
+      assert.isTrue(result == Exit.fail(Maybe.some(error)))
     })
   })
 
@@ -122,7 +122,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(Maybe.none))
+      assert.isTrue(result == Exit.fail(Maybe.none))
     })
 
     it("on None succeeds with undefined", async () => {
@@ -139,7 +139,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(Maybe.some(error)))
+      assert.isTrue(result == Exit.fail(Maybe.some(error)))
     })
   })
 
@@ -203,7 +203,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(ExampleError))
+      assert.isTrue(result == Exit.fail(ExampleError))
     })
   })
 
@@ -231,7 +231,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(ExampleError))
+      assert.isTrue(result == Exit.fail(ExampleError))
     })
   })
 
@@ -249,7 +249,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(ExampleError))
+      assert.isTrue(result == Exit.fail(ExampleError))
     })
   })
 
@@ -263,7 +263,9 @@ describe.concurrent("Effect", () => {
     })
 
     it("side effect unit in option test", async () => {
-      const program = Effect.getOrFailDiscard(Maybe.none).catchAll(() => Effect.sync("controlling unit side-effect"))
+      const program = Effect.getOrFailDiscard(Maybe.none).catchAll(() =>
+        Effect.sync("controlling unit side-effect")
+      )
 
       const result = await program.unsafeRunPromise()
 
@@ -293,7 +295,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(ExampleError))
+      assert.isTrue(result == Exit.die(ExampleError))
     })
 
     it("catch throwable after sandboxing", async () => {
@@ -311,7 +313,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail("error"))
+      assert.isTrue(result == Exit.fail("error"))
     })
 
     it("succeeds with None given None error", async () => {
@@ -345,7 +347,10 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.isFailure() && result.cause.isFailType() && result.cause.value instanceof NoSuchElement)
+      assert.isTrue(
+        result.isFailure() && result.cause.isFailType() &&
+          result.cause.value instanceof NoSuchElement
+      )
     })
   })
 
@@ -363,7 +368,10 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.isFailure() && result.cause.isFailType() && result.cause.value instanceof NoSuchElement)
+      assert.isTrue(
+        result.isFailure() && result.cause.isFailType() &&
+          result.cause.value instanceof NoSuchElement
+      )
     })
   })
 
@@ -376,7 +384,7 @@ describe.concurrent("Effect", () => {
 
       const { actual, expected } = await program.unsafeRunPromise()
 
-      assert.isTrue(actual.untraced == expected.untraced)
+      assert.isTrue(actual == expected)
     })
 
     it("should handle successes with left", async () => {
@@ -387,7 +395,7 @@ describe.concurrent("Effect", () => {
 
       const { actual, expected } = await program.unsafeRunPromise()
 
-      assert.isTrue(actual.untraced == expected.untraced)
+      assert.isTrue(actual == expected)
     })
 
     it("should handle failures", async () => {
@@ -398,7 +406,7 @@ describe.concurrent("Effect", () => {
 
       const { actual, expected } = await program.unsafeRunPromise()
 
-      assert.isTrue(actual.untraced == expected.untraced)
+      assert.isTrue(actual == expected)
     })
   })
 
@@ -411,7 +419,7 @@ describe.concurrent("Effect", () => {
 
       const { actual, expected } = await program.unsafeRunPromise()
 
-      assert.isTrue(actual.untraced == expected.untraced)
+      assert.isTrue(actual == expected)
     })
 
     it("should handle successes with left", async () => {
@@ -422,7 +430,7 @@ describe.concurrent("Effect", () => {
 
       const { actual, expected } = await program.unsafeRunPromise()
 
-      assert.isTrue(actual.untraced == expected.untraced)
+      assert.isTrue(actual == expected)
     })
 
     it("should handle failures", async () => {
@@ -433,7 +441,7 @@ describe.concurrent("Effect", () => {
 
       const { actual, expected } = await program.unsafeRunPromise()
 
-      assert.isTrue(actual.untraced == expected.untraced)
+      assert.isTrue(actual == expected)
     })
   })
 })

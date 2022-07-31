@@ -4,7 +4,9 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("counter", () => Ref.make<number>(0))
         .bindValue("increment", ({ counter }) => counter.updateAndGet((n) => n + 1))
-        .flatMap(({ increment }) => increment.summarized(increment, (start, end) => Tuple(start, end)))
+        .flatMap(({ increment }) =>
+          increment.summarized(increment, (start, end) => Tuple(start, end))
+        )
 
       const {
         tuple: [

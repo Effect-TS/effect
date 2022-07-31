@@ -3,9 +3,6 @@
  *
  * @tsplus getter effect/core/stm/STM negate
  */
-export function negate<R, E>(
-  self: STM<R, E, boolean>,
-  __tsplusTrace?: string
-): STM<R, E, boolean> {
+export function negate<R, E>(self: STM<R, E, boolean>): STM<R, E, boolean> {
   return self.map((b) => !b)
 }

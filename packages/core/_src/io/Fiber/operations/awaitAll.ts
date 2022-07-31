@@ -4,8 +4,7 @@
  * @tsplus static effect/core/io/Fiber.Ops awaitAll
  */
 export function awaitAll(
-  fibers: Collection<Fiber<any, any>>,
-  __tsplusTrace?: string
+  fibers: Collection<Fiber<any, any>>
 ): Effect<never, never, void> {
   return Fiber.collectAll(fibers).await.unit
 }

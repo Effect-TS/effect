@@ -7,8 +7,7 @@
  */
 export function mapTryCatch<A, B, E1>(
   f: (a: A) => B,
-  onThrow: (u: unknown) => E1,
-  __tsplusTrace?: string
+  onThrow: (u: unknown) => E1
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R, E | E1, B> =>
     self.flatMap((a) => Effect.tryCatch(() => f(a), onThrow))

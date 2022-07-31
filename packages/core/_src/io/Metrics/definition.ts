@@ -1,4 +1,7 @@
-import type { HistogramBoundaries, HistogramBoundariesOps } from "@effect/core/io/Metrics/Boundaries"
+import type {
+  HistogramBoundaries,
+  HistogramBoundariesOps
+} from "@effect/core/io/Metrics/Boundaries"
 
 export const MetricSym = Symbol.for("@effect/core/io/Metric")
 export type MetricSym = typeof MetricSym
@@ -28,7 +31,7 @@ export interface Metric<Type, In, Out> {
   readonly unsafeUpdate: (input: In, extraTags: HashSet<MetricLabel>) => void
   readonly unsafeValue: (extraTags: HashSet<MetricLabel>) => Out
 
-  <R, E, A extends In>(effect: Effect<R, E, A>, __tsplusTrace?: string): Effect<R, E, A>
+  <R, E, A extends In>(effect: Effect<R, E, A>): Effect<R, E, A>
 }
 
 /**
@@ -52,7 +55,7 @@ export const Metric: MetricOps = function<Type, In, Out>(
   unsafeValue: (extraTags: HashSet<MetricLabel>) => Out
 ): Metric<Type, In, Out> {
   const metric: Metric<Type, In, Out> = Object.assign(
-    <R, E, A extends In>(effect: Effect<R, E, A>, __tsplusTrace?: string): Effect<R, E, A> =>
+    <R, E, A extends In>(effect: Effect<R, E, A>): Effect<R, E, A> =>
       effect.tap((a) => Effect.sync(unsafeUpdate(a, HashSet.empty()))),
     {
       [MetricSym]: MetricSym,
@@ -67,8 +70,12 @@ export const Metric: MetricOps = function<Type, In, Out>(
 export declare namespace Metric {
   export interface Counter<In> extends Metric<MetricKeyType.Counter, In, MetricState.Counter> {}
   export interface Gauge<In> extends Metric<MetricKeyType.Gauge, In, MetricState.Gauge> {}
-  export interface Frequency<In> extends Metric<MetricKeyType.Frequency, In, MetricState.Frequency> {}
-  export interface Histogram<In> extends Metric<MetricKeyType.Histogram, In, MetricState.Histogram> {}
+  export interface Frequency<In>
+    extends Metric<MetricKeyType.Frequency, In, MetricState.Frequency>
+  {}
+  export interface Histogram<In>
+    extends Metric<MetricKeyType.Histogram, In, MetricState.Histogram>
+  {}
   export interface Summary<In> extends Metric<MetricKeyType.Summary, In, MetricState.Summary> {}
 
   export namespace Histogram {
@@ -84,7 +91,9 @@ export const metricAspects: MetricAspects = {}
 /**
  * @tsplus static effect/core/io/Metrics/Metric.Ops Histogram
  */
-export const histogramBoundaries: { readonly Boundaries: HistogramBoundariesOps } = { Boundaries: {} }
+export const histogramBoundaries: { readonly Boundaries: HistogramBoundariesOps } = {
+  Boundaries: {}
+}
 
 /**
  * @tsplus type effect/core/io/Metrics/Metric.Aspects

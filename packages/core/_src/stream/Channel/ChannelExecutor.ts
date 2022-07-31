@@ -1,7 +1,11 @@
 import type { ChannelStateRead } from "@effect/core/stream/Channel/ChannelState"
 import { ChannelState, concreteChannelState } from "@effect/core/stream/Channel/ChannelState"
 import type { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision"
-import type { BracketOut, Continuation, Ensuring } from "@effect/core/stream/Channel/definition/primitives"
+import type {
+  BracketOut,
+  Continuation,
+  Ensuring
+} from "@effect/core/stream/Channel/definition/primitives"
 import {
   concrete,
   concreteContinuation,
@@ -10,7 +14,11 @@ import {
   Fail,
   SucceedNow
 } from "@effect/core/stream/Channel/definition/primitives"
-import type { DrainChildExecutors, PullFromChild, PullFromUpstream } from "@effect/core/stream/Channel/Subexecutor"
+import type {
+  DrainChildExecutors,
+  PullFromChild,
+  PullFromUpstream
+} from "@effect/core/stream/Channel/Subexecutor"
 import { concreteSubexecutor, Subexecutor } from "@effect/core/stream/Channel/Subexecutor"
 import { UpstreamPullRequest } from "@effect/core/stream/Channel/UpstreamPullRequest"
 import type { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy"
@@ -78,8 +86,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 
   private restorePipe(
     exit: Exit<unknown, unknown>,
-    prev: ErasedExecutor<R> | undefined,
-    __tsplusTrace?: string
+    prev: ErasedExecutor<R> | undefined
   ): Effect<R, never, unknown> | undefined {
     const currInput = this.input
     this.input = prev
@@ -105,8 +112,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   }
 
   private popAllFinalizers(
-    exit: Exit<unknown, unknown>,
-    __tsplusTrace?: string
+    exit: Exit<unknown, unknown>
   ): Effect.RIO<R, unknown> {
     const effect = this.unwindAllFinalizers(
       Effect.sync(Exit.unit),
@@ -152,10 +158,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     return effect != null ? effect : Effect.unit
   }
 
-  close(
-    exit: Exit<unknown, unknown>,
-    __tsplusTrace?: string
-  ): Effect.RIO<R, unknown> | undefined {
+  close(exit: Exit<unknown, unknown>): Effect.RIO<R, unknown> | undefined {
     let runInProgressFinalizers: Effect.RIO<R, unknown> | undefined = undefined
     const finalizer = this.inProgressFinalizer
     if (finalizer != null) {
@@ -164,7 +167,9 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
       )
     }
 
-    const closeSubexecutors = this.activeSubexecutor == null ? undefined : this.activeSubexecutor.close(exit)
+    const closeSubexecutors = this.activeSubexecutor == null ?
+      undefined :
+      this.activeSubexecutor.close(exit)
 
     let closeSelf: Effect.RIO<R, unknown> | undefined = undefined
     const selfFinalizers = this.popAllFinalizers(exit)
@@ -371,7 +376,9 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 
               case "Emit": {
                 this.emitted = currentChannel.out()
-                this.currentChannel = this.activeSubexecutor != null ? undefined : new SucceedNow(undefined)
+                this.currentChannel = this.activeSubexecutor != null ?
+                  undefined :
+                  new SucceedNow(undefined)
                 result = ChannelState.Emit
                 break
               }
@@ -554,8 +561,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   }
 
   private provide<R, OutErr, OutDone>(
-    effect: Effect<R, OutErr, OutDone>,
-    __tsplusTrace?: string
+    effect: Effect<R, OutErr, OutDone>
   ): Effect<R, OutErr, OutDone> {
     return this.providedEnv == null
       ? effect
@@ -575,8 +581,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 
   private runFinalizers(
     finalizers: List<(exit: Exit<unknown, unknown>) => Effect.RIO<R, unknown>>,
-    exit: Exit<unknown, unknown>,
-    __tsplusTrace?: string
+    exit: Exit<unknown, unknown>
   ): Effect.RIO<R, unknown> | undefined {
     return finalizers.length === 0
       ? undefined
@@ -591,9 +596,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
         .flatMap((exit) => Effect.done(exit as Exit<never, unknown>))
   }
 
-  private runSubexecutor(
-    __tsplusTrace?: string
-  ): ChannelState<R, unknown> | undefined {
+  private runSubexecutor(): ChannelState<R, unknown> | undefined {
     const subexecutor = this.activeSubexecutor!
     concreteSubexecutor(subexecutor)
     switch (subexecutor._tag) {
@@ -646,10 +649,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     return state
   }
 
-  finishWithExit(
-    exit: Exit<unknown, unknown>,
-    __tsplusTrace?: string
-  ): Effect<R, unknown, unknown> {
+  finishWithExit(exit: Exit<unknown, unknown>): Effect<R, unknown, unknown> {
     const state = exit.fold(
       (cause) => this.doneHalt(cause),
       (a) => this.doneSucceed(a)
@@ -890,7 +890,9 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
         } = this.applyUpstreamPullStrategy(
           true,
           rest,
-          self.onPull(UpstreamPullRequest.NoUpstream(rest.reduce(0, (acc, a) => a != null ? acc + 1 : acc)))
+          self.onPull(
+            UpstreamPullRequest.NoUpstream(rest.reduce(0, (acc, a) => a != null ? acc + 1 : acc))
+          )
         )
 
         this.replaceSubexecutor(
@@ -1027,8 +1029,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 
 export function readUpstream<R, E, A>(
   r: ChannelStateRead<R, E>,
-  cont: LazyArg<Effect<R, E, A>>,
-  __tsplusTrace?: string
+  cont: LazyArg<Effect<R, E, A>>
 ): Effect<R, E, A> {
   const readStack = new Stack(r as ChannelStateRead<R, unknown>)
   return read(readStack, cont)
@@ -1036,8 +1037,7 @@ export function readUpstream<R, E, A>(
 
 function read<R, E, A>(
   readStack: Stack<ChannelState.Read<R, unknown>>,
-  cont: LazyArg<Effect<R, E, A>>,
-  __tsplusTrace?: string
+  cont: LazyArg<Effect<R, E, A>>
 ): Effect<R, E, A> {
   const current = readStack.value
   let newReadStack = readStack.previous

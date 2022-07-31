@@ -6,8 +6,7 @@
  * @tsplus pipeable effect/core/io/Effect validate
  */
 export function validateNow<R1, E1, B>(
-  that: LazyArg<Effect<R1, E1, B>>,
-  __tsplusTrace?: string
+  that: LazyArg<Effect<R1, E1, B>>
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R1, E | E1, Tuple<[A, B]>> =>
     self.validateWith(that, (a, b) => Tuple(a, b))
@@ -24,8 +23,7 @@ export function validateNow<R1, E1, B>(
  */
 export function validate<R, E, A, B>(
   as: LazyArg<Collection<A>>,
-  f: (a: A) => Effect<R, E, B>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R, E, B>
 ): Effect<R, Chunk<E>, Chunk<B>> {
   return Effect.partition(as, f).flatMap(({ tuple: [es, bs] }) =>
     es.isEmpty

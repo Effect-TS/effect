@@ -4,9 +4,6 @@
  *
  * @tsplus getter effect/core/io/Effect merge
  */
-export function merge<R, E, A>(
-  self: Effect<R, E, A>,
-  __tsplusTrace?: string
-): Effect<R, never, E | A> {
+export function merge<R, E, A>(self: Effect<R, E, A>): Effect<R, never, E | A> {
   return self.foldEffect((e) => Effect.succeed(e), Effect.succeed)
 }

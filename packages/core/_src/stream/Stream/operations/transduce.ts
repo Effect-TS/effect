@@ -1,5 +1,8 @@
 import { concreteSink } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Applies the transducer to the stream and emits its outputs.
@@ -8,8 +11,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus pipeable effect/core/stream/Stream transduce
  */
 export function transduce<R2, E2, A, Z>(
-  sink: LazyArg<Sink<R2, E2, A, A, Z>>,
-  __tsplusTrace?: string
+  sink: LazyArg<Sink<R2, E2, A, A, Z>>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, Z> => {
     concreteStream(self)
@@ -83,8 +85,7 @@ export function transduce<R2, E2, A, Z>(
 
 function concatAndGet<A>(
   leftovers: AtomicReference<Chunk<Chunk<A>>>,
-  chunk: Chunk<Chunk<A>>,
-  __tsplusTrace?: string
+  chunk: Chunk<Chunk<A>>
 ): Chunk<Chunk<A>> {
   const ls = leftovers.get
   const concat = ls + chunk.filter((c) => c.isNonEmpty)

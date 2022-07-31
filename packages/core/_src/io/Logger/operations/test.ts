@@ -5,7 +5,6 @@
 export function test<Message>(input: Message) {
   return <Output>(self: Logger<Message, Output>): Output =>
     self.apply(
-      TraceElement.empty,
       FiberId.none,
       LogLevel.Info,
       () => input,

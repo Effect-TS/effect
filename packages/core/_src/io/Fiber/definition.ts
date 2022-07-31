@@ -140,26 +140,19 @@ export interface RuntimeFiber<E, A> extends BaseFiber<E, A> {
   readonly _id: FiberId.Runtime
 
   /**
-   * The location the fiber was forked from.
-   */
-  readonly _location: TraceElement
-
-  /**
    * The status of the fiber.
    */
   readonly _status: Effect<never, never, FiberStatus>
-
-  /**
-   * The trace of the fiber.
-   */
-  readonly _trace: Effect<never, never, Trace>
 
   /**
    * Evaluates the specified effect on the fiber. If this is not possible,
    * because the fiber has already ended life, then the specified alternate
    * effect will be executed instead.
    */
-  readonly _evalOn: (effect: Effect<never, never, any>, orElse: Effect<never, never, any>) => Effect<never, never, void>
+  readonly _evalOn: (
+    effect: Effect<never, never, any>,
+    orElse: Effect<never, never, any>
+  ) => Effect<never, never, void>
 
   /**
    * A fully-featured, but much slower version of `evalOn`, which is useful

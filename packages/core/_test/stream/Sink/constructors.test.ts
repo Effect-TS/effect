@@ -38,7 +38,7 @@ describe.concurrent("Sink", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail("boom"))
+      assert.isTrue(result == Exit.fail("boom"))
     })
   })
 

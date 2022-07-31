@@ -104,6 +104,6 @@ describe.concurrent("Chunk", () => {
       .findEffect((a) => Effect.failSync("Error"))
       .unsafeRunPromiseExit()
 
-    assert.isTrue(result.untraced == Exit.fail("Error"))
+    assert.isTrue(result == Exit.fail("Error"))
   })
 })

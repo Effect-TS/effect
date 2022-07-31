@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Creates a stream that groups on adjacent keys, calculated by function f.
@@ -6,7 +9,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus static effect/core/stream/Stream.Aspects groupAdjacentBy
  * @tsplus pipeable effect/core/stream/Stream groupAdjacentBy
  */
-export function groupAdjacentBy<A, K>(f: (a: A) => K, __tsplusTrace?: string) {
+export function groupAdjacentBy<A, K>(f: (a: A) => K) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, Tuple<[K, Chunk<A>]>> => {
     concreteStream(self)
     return new StreamInternal(self.channel >> chunkAdjacent<E, A, K>(Maybe.none, f))
@@ -15,8 +18,7 @@ export function groupAdjacentBy<A, K>(f: (a: A) => K, __tsplusTrace?: string) {
 
 function chunkAdjacent<E, A, K>(
   buffer: Maybe<Tuple<[K, Chunk<A>]>>,
-  f: (a: A) => K,
-  __tsplusTrace?: string
+  f: (a: A) => K
 ): Channel<never, E, Chunk<A>, unknown, E, Chunk<Tuple<[K, Chunk<A>]>>, unknown> {
   return Channel.readWithCause(
     (chunk: Chunk<A>) => {
@@ -33,8 +35,7 @@ function chunkAdjacent<E, A, K>(
 function go<A, K>(
   input: Chunk<A>,
   state: Maybe<Tuple<[K, Chunk<A>]>>,
-  f: (a: A) => K,
-  __tsplusTrace?: string
+  f: (a: A) => K
 ): Tuple<[Chunk<Tuple<[K, Chunk<A>]>>, Maybe<Tuple<[K, Chunk<A>]>>]> {
   return input.reduce(
     Tuple(Chunk.empty<Tuple<[K, Chunk<A>]>>(), state),

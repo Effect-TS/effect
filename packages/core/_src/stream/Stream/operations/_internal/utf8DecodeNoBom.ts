@@ -1,11 +1,13 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 const emptyByteChunk = Chunk.empty<number>()
 const emptyStringChunk = Chunk.empty<string>()
 
 export function utf8DecodeNoBom<R, E>(
-  stream: Stream<R, E, number>,
-  __tsplusTrace?: string
+  stream: Stream<R, E, number>
 ): Stream<R, E, string> {
   concreteStream(stream)
   return new StreamInternal(
@@ -14,8 +16,7 @@ export function utf8DecodeNoBom<R, E>(
 }
 
 function readThenTransduce<R, E>(
-  buffer: Chunk<number>,
-  __tsplusTrace?: string
+  buffer: Chunk<number>
 ): Channel<R, E, Chunk<number>, unknown, E, Chunk<string>, unknown> {
   return Channel.readWith(
     (received: Chunk<number>) => {
@@ -62,7 +63,8 @@ function computeSplitIndex(chunk: Chunk<number>): number {
 
   if (
     size >= 1 &&
-    List(is2ByteStart, is3ByteStart, is4ByteStart).find((f) => f(chunk.unsafeGet(size - 1))).isSome()
+    List(is2ByteStart, is3ByteStart, is4ByteStart).find((f) => f(chunk.unsafeGet(size - 1)))
+      .isSome()
   ) {
     return size - 1
   }

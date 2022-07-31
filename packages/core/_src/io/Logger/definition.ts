@@ -5,7 +5,6 @@ import type { Lazy } from "@tsplus/stdlib/data/Function"
  */
 export interface Logger<Message, Output> {
   readonly apply: (
-    trace: TraceElement,
     fiberId: FiberId,
     logLevel: LogLevel,
     message: Lazy<Message>,

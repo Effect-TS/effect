@@ -9,14 +9,16 @@ describe.concurrent("SubscriptionRef", () => {
       const deferred1 = $(Deferred.make<never, void>())
       const deferred2 = $(Deferred.make<never, void>())
       const subscriber1 = $(
-        subscriptionRef.changes.tap(_ => deferred1.succeed(undefined as void)).take(3).runCollect.fork
+        subscriptionRef.changes.tap(_ => deferred1.succeed(undefined as void)).take(3).runCollect
+          .fork
       )
 
       $(deferred1.await)
 
       $(subscriptionRef.update((_) => _ + 1))
       const subscriber2 = $(
-        subscriptionRef.changes.tap(_ => deferred2.succeed(undefined as void)).take(2).runCollect.fork
+        subscriptionRef.changes.tap(_ => deferred2.succeed(undefined as void)).take(2).runCollect
+          .fork
       )
       $(deferred2.await)
       $(subscriptionRef.update((_) => _ + 1))
@@ -36,14 +38,16 @@ describe.concurrent("SubscriptionRef", () => {
       const deferred1 = $(Deferred.make<never, void>())
       const deferred2 = $(Deferred.make<never, void>())
       const subscriber1 = $(
-        subscriptionRef.changes.tap(_ => deferred1.succeed(undefined as void)).take(5).runCollect.fork
+        subscriptionRef.changes.tap(_ => deferred1.succeed(undefined as void)).take(5).runCollect
+          .fork
       )
 
       $(deferred1.await)
 
       $(subscriptionRef.update((_) => _ + 1))
       const subscriber2 = $(
-        subscriptionRef.changes.tap(_ => deferred2.succeed(undefined as void)).take(2).runCollect.fork
+        subscriptionRef.changes.tap(_ => deferred2.succeed(undefined as void)).take(2).runCollect
+          .fork
       )
       $(deferred2.await)
       $(subscriptionRef.update((_) => _ + 1))

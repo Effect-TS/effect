@@ -7,16 +7,14 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  */
 export function unfoldChunk<S, A>(
   s: LazyArg<S>,
-  f: (s: S) => Maybe<Tuple<[Chunk<A>, S]>>,
-  __tsplusTrace?: string
+  f: (s: S) => Maybe<Tuple<[Chunk<A>, S]>>
 ): Stream<never, never, A> {
   return new StreamInternal(Channel.suspend(loop(s, f)))
 }
 
 function loop<S, A>(
   s: LazyArg<S>,
-  f: (s: S) => Maybe<Tuple<[Chunk<A>, S]>>,
-  __tsplusTrace?: string
+  f: (s: S) => Maybe<Tuple<[Chunk<A>, S]>>
 ): Channel<never, unknown, unknown, unknown, never, Chunk<A>, unknown> {
   return f(s()).fold(
     Channel.unit,

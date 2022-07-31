@@ -1,6 +1,12 @@
 import type { MetricHook } from "@effect/core/io/Metrics/MetricHook"
 import type { _In, _Out } from "@effect/core/io/Metrics/MetricKeyType"
-import { CounterKey, FrequencyKey, GaugeKey, HistogramKey, SummaryKey } from "@effect/core/io/Metrics/MetricKeyType"
+import {
+  CounterKey,
+  FrequencyKey,
+  GaugeKey,
+  HistogramKey,
+  SummaryKey
+} from "@effect/core/io/Metrics/MetricKeyType"
 
 export class MetricRegistry {
   private map = MutableHashMap.empty<MetricKey<MetricKeyType.Untyped>, MetricHook.Root>()

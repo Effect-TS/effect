@@ -7,8 +7,7 @@
  * @tsplus pipeable effect/core/stream/Stream orElseEither
  */
 export function orElseEither<R2, E2, A2>(
-  that: LazyArg<Stream<R2, E2, A2>>,
-  __tsplusTrace?: string
+  that: LazyArg<Stream<R2, E2, A2>>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, Either<A, A2>> =>
     self.map(Either.left) | that().map(Either.right)

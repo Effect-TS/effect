@@ -31,20 +31,29 @@ describe.concurrent("Effect", () => {
       const program = Effect.struct({
         goodCase: exactlyOnce(
           0,
-          (effect) => effect.rejectEffect((n) => n !== 0 ? Maybe.some(Effect.sync("partial failed!")) : Maybe.none)
+          (effect) =>
+            effect.rejectEffect((n) =>
+              n !== 0 ? Maybe.some(Effect.sync("partial failed!")) : Maybe.none
+            )
         )
           .sandbox
           .either,
         partialBadCase: exactlyOnce(
           0,
-          (effect) => effect.rejectEffect((n) => n !== 0 ? Maybe.some(Effect.failSync("partial failed!")) : Maybe.none)
+          (effect) =>
+            effect.rejectEffect((n) =>
+              n !== 0 ? Maybe.some(Effect.failSync("partial failed!")) : Maybe.none
+            )
         )
           .sandbox
           .either
           .map((either) => either.mapLeft((cause) => cause.failureOrCause)),
         badCase: exactlyOnce(
           1,
-          (effect) => effect.rejectEffect((n) => n !== 0 ? Maybe.some(Effect.failSync("partial failed!")) : Maybe.none)
+          (effect) =>
+            effect.rejectEffect((n) =>
+              n !== 0 ? Maybe.some(Effect.failSync("partial failed!")) : Maybe.none
+            )
         )
           .sandbox
           .either

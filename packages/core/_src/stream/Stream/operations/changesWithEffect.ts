@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Returns a new stream that only emits elements that are not equal to the
@@ -9,8 +12,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus pipeable effect/core/stream/Stream changesWithEffect
  */
 export function changesWithEffect<A, R2, E2>(
-  f: (x: A, y: A) => Effect<R2, E2, boolean>,
-  __tsplusTrace?: string
+  f: (x: A, y: A) => Effect<R2, E2, boolean>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> => {
     concreteStream(self)
@@ -30,11 +32,15 @@ function writer<R, E, A, R2, E2>(
           ({ tuple: [option, as] }, a) =>
             option.fold(
               Effect.succeed(Tuple(Maybe.some(a), as.append(a))),
-              (value) => f(value, a).map((b) => b ? Tuple(Maybe.some(a), as) : Tuple(Maybe.some(a), as.append(a)))
+              (value) =>
+                f(value, a).map((b) =>
+                  b ? Tuple(Maybe.some(a), as) : Tuple(Maybe.some(a), as.append(a))
+                )
             )
         )
       ).flatMap(
-        ({ tuple: [newLast, newChunk] }) => Channel.write(newChunk) > writer<R, E, A, R2, E2>(newLast, f)
+        ({ tuple: [newLast, newChunk] }) =>
+          Channel.write(newChunk) > writer<R, E, A, R2, E2>(newLast, f)
       ),
     (cause) => Channel.failCause(cause),
     () => Channel.unit

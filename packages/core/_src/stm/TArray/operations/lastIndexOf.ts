@@ -6,5 +6,6 @@
  * @tsplus pipeable effect/core/stm/TArray lastIndexOf
  */
 export function lastIndexOf<A>(equivalence: Equivalence<A>, value: A) {
-  return (self: TArray<A>): STM<never, never, number> => self.lastIndexOfFrom(equivalence, value, self.length - 1)
+  return (self: TArray<A>): STM<never, never, number> =>
+    self.lastIndexOfFrom(equivalence, value, self.length - 1)
 }

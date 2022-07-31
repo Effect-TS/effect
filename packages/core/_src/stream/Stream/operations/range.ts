@@ -10,8 +10,7 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
 export function range(
   min: number,
   max: number,
-  chunkSize = DEFAULT_CHUNK_SIZE,
-  __tsplusTrace?: string
+  chunkSize = DEFAULT_CHUNK_SIZE
 ): Stream<never, never, number> {
   return Stream.suspend(new StreamInternal(go(min, max, chunkSize)))
 }

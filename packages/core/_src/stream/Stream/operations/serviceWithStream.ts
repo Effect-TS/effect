@@ -6,8 +6,7 @@
  */
 export function serviceWithStream<T, R, E, A>(
   tag: Tag<T>,
-  f: (resource: T) => Stream<R, E, A>,
-  __tsplusTrace?: string
+  f: (resource: T) => Stream<R, E, A>
 ): Stream<R | T, E, A> {
   return Stream.service(tag).flatMap(f)
 }

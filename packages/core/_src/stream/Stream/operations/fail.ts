@@ -4,8 +4,7 @@
  * @tsplus static effect/core/stream/Stream.Ops fail
  */
 export function fail<E>(
-  error: LazyArg<E>,
-  __tsplusTrace?: string
+  error: LazyArg<E>
 ): Stream<never, E, never> {
   return Stream.fromEffect(Effect.failSync(error))
 }

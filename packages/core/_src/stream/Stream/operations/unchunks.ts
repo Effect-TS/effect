@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Takes a stream that emits chunks of values and submerges the chunks into the
@@ -6,7 +9,9 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  *
  * @tsplus getter effect/core/stream/Stream unchunks
  */
-export function unchunks<R, E, A>(self: Stream<R, E, Chunk<A>>, __tsplusTrace?: string): Stream<R, E, A> {
+export function unchunks<R, E, A>(
+  self: Stream<R, E, Chunk<A>>
+): Stream<R, E, A> {
   concreteStream(self)
   return new StreamInternal(self.channel.mapOut((chunk) => chunk.flatten))
 }

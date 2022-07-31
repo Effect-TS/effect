@@ -226,14 +226,6 @@ import { Supervisor } from "@effect/core/io/Supervisor/definition"
 /**
  * @tsplus global
  */
-import { Trace } from "@effect/core/io/Trace/definition"
-/**
- * @tsplus global
- */
-import { TraceElement } from "@effect/core/io/TraceElement/definition"
-/**
- * @tsplus global
- */
 import { STM, USTM } from "@effect/core/stm/STM/definition/base"
 /**
  * @tsplus global

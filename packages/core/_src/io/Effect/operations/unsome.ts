@@ -4,8 +4,7 @@
  * @tsplus getter effect/core/io/Effect unsome
  */
 export function unsome<R, E, A>(
-  self: Effect<R, Maybe<E>, A>,
-  __tsplusTrace?: string
+  self: Effect<R, Maybe<E>, A>
 ): Effect<R, E, Maybe<A>> {
   return self.foldEffect(
     (option) => option.fold(Effect.succeed(Maybe.none), Effect.fail),

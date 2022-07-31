@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 import { RingBufferNew } from "@effect/core/support/RingBufferNew"
 
 /**
@@ -7,7 +10,7 @@ import { RingBufferNew } from "@effect/core/support/RingBufferNew"
  * @tsplus static effect/core/stream/Stream.Aspects sliding
  * @tsplus pipeable effect/core/stream/Stream sliding
  */
-export function sliding(chunkSize: number, stepSize = 1, __tsplusTrace?: string) {
+export function sliding(chunkSize: number, stepSize = 1) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, Chunk<A>> => {
     if (chunkSize <= 0 || stepSize <= 0) {
       return Stream.die(
@@ -29,8 +32,7 @@ function reader<E, A>(
   chunkSize: number,
   stepSize: number,
   queue: RingBufferNew<A>,
-  queueSize: number,
-  __tsplusTrace?: string
+  queueSize: number
 ): Channel<never, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown> {
   return Channel.readWithCause(
     (input: Chunk<A>) =>
@@ -62,8 +64,7 @@ function emitOnStreamEnd<E, A>(
   stepSize: number,
   queue: RingBufferNew<A>,
   queueSize: number,
-  channelEnd: Channel<never, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown>,
-  __tsplusTrace?: string
+  channelEnd: Channel<never, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown>
 ): Channel<never, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown> {
   if (queueSize < chunkSize) {
     const items = queue.toChunk()

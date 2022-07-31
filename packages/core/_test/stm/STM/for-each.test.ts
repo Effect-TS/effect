@@ -30,7 +30,9 @@ describe.concurrent("STM", () => {
       const input = Chunk(1, 2, 3, 4, 5)
       const program = Effect.Do()
         .bind("tRef", () => TRef.makeCommit(Chunk.empty<number>()))
-        .tap(({ tRef }) => STM.forEach(input, (n) => tRef.update((chunk) => chunk.append(n))).commit)
+        .tap(({ tRef }) =>
+          STM.forEach(input, (n) => tRef.update((chunk) => chunk.append(n))).commit
+        )
         .flatMap(({ tRef }) => tRef.get.commit)
 
       const result = await program.unsafeRunPromise()
@@ -127,7 +129,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(1))
+      assert.isTrue(result == Exit.fail(1))
     })
   })
 })

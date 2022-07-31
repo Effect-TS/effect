@@ -6,8 +6,7 @@
  */
 export function retryUntilEquals<E>(
   E: Equivalence<E>,
-  e: LazyArg<E>,
-  __tsplusTrace?: string
+  e: LazyArg<E>
 ) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
     Effect.sync(e).flatMap((_) => self.retryUntil((e) => E.equals(_, e)))

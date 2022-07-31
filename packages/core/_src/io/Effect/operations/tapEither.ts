@@ -5,8 +5,7 @@
  * @tsplus pipeable effect/core/io/Effect tapEither
  */
 export function tapEither<E, A, R2, E2, X>(
-  f: (either: Either<E, A>) => Effect<R2, E2, X>,
-  __tsplusTrace?: string
+  f: (either: Either<E, A>) => Effect<R2, E2, X>
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R | R2, E | E2, A> =>
     self.foldCauseEffect(

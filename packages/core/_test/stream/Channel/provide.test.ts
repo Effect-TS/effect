@@ -42,7 +42,9 @@ describe.concurrent("Channel", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.get(0) == Chunk(Tuple(new NumberServiceImpl(100), new NumberServiceImpl(200))))
+      assert.isTrue(
+        result.get(0) == Chunk(Tuple(new NumberServiceImpl(100), new NumberServiceImpl(200)))
+      )
       assert.isUndefined(result.get(1))
     })
 

@@ -6,8 +6,7 @@
  */
 export function unfoldEffect<A, R, E, S>(
   s: S,
-  f: (s: S) => Effect<R, E, Maybe<Tuple<[A, S]>>>,
-  __tsplusTrace?: string
+  f: (s: S) => Effect<R, E, Maybe<Tuple<[A, S]>>>
 ): Effect<R, E, Chunk<A>> {
   return loop(s, f, Chunk.empty())
 }
@@ -15,8 +14,7 @@ export function unfoldEffect<A, R, E, S>(
 function loop<A, R, E, S>(
   s: S,
   f: (s: S) => Effect<R, E, Maybe<Tuple<[A, S]>>>,
-  builder: Chunk<A>,
-  __tsplusTrace?: string
+  builder: Chunk<A>
 ): Effect<R, E, Chunk<A>> {
   return f(s).flatMap((o) => {
     if (o.isSome()) {

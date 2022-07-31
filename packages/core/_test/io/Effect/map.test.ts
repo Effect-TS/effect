@@ -42,7 +42,8 @@ describe.concurrent("Effect", () => {
       const result = await program.unsafeRunPromiseExit()
 
       assert.isTrue(
-        result.isFailure() && result.cause.isDieType() && result.cause.value instanceof IllegalArgumentException
+        result.isFailure() && result.cause.isDieType() &&
+          result.cause.value instanceof IllegalArgumentException
       )
     })
   })

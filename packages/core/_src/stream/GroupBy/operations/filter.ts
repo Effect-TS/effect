@@ -6,7 +6,7 @@ import { concreteGroupBy } from "@effect/core/stream/GroupBy/operations/_interna
  * @tsplus static effect/core/stream/GroupBy.Aspects filter
  * @tsplus pipeable effect/core/stream/GroupBy filter
  */
-export function filter<K>(f: Predicate<K>, __tsplusTrace?: string) {
+export function filter<K>(f: Predicate<K>) {
   return <R, E, V, A>(self: GroupBy<R, E, K, V, A>): GroupBy<R, E, K, V, A> => {
     concreteGroupBy(self)
     return self.filter(f)

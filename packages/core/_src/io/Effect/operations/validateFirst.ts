@@ -6,8 +6,7 @@
  */
 export function validateFirst<R, E, A, B>(
   as: LazyArg<Collection<A>>,
-  f: (a: A) => Effect<R, E, B>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R, E, B>
 ): Effect<R, Chunk<E>, B> {
   return Effect.forEach(as, (a) => f(a).flip).flip
 }

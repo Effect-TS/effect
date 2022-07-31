@@ -7,7 +7,9 @@ import type { PCGRandomState } from "@tsplus/stdlib/utilities/RandomPCG"
  * @tsplus static effect/core/stm/TRandom.Ops default
  */
 export const defaultTRandom =
-  TRef.make(new RandomPCG((Math.random() * 4294967296) >>> 0).getState()).map((_) => new LiveTRandom(_)).commit
+  TRef.make(new RandomPCG((Math.random() * 4294967296) >>> 0).getState()).map((_) =>
+    new LiveTRandom(_)
+  ).commit
 
 /**
  * @tsplus static effect/core/stm/TRandom.Ops live
@@ -22,7 +24,10 @@ function rndInt(state: PCGRandomState): Tuple<[number, PCGRandomState]> {
   return Tuple(prng.integer(0), prng.getState())
 }
 
-function rndIntBetween(low: number, high: number): (state: PCGRandomState) => Tuple<[number, PCGRandomState]> {
+function rndIntBetween(
+  low: number,
+  high: number
+): (state: PCGRandomState) => Tuple<[number, PCGRandomState]> {
   return (state: PCGRandomState) => {
     const prng = new RandomPCG()
 
@@ -66,17 +71,11 @@ export class LiveTRandom implements TRandom {
     return this.next.flatMap((n) => STM.succeed((high - low) * n + low))
   }
 
-  nextIntBetween(
-    low: number,
-    high: number
-  ): USTM<number> {
+  nextIntBetween(low: number, high: number): USTM<number> {
     return this.withState(rndIntBetween(low, high))
   }
 
-  shuffle<A>(
-    collection: LazyArg<Collection<A>>,
-    __tsplusTrace?: string
-  ): USTM<Collection<A>> {
+  shuffle<A>(collection: LazyArg<Collection<A>>): USTM<Collection<A>> {
     return shuffleWith(collection, (n) => this.nextIntBetween(0, n))
   }
 }

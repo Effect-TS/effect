@@ -1,5 +1,8 @@
 import { bufferSignal } from "@effect/core/stream/Stream/operations/_internal/bufferSignal"
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Allows a faster producer to progress independently of a slower consumer by
@@ -13,7 +16,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus static effect/core/stream/Stream.Aspects bufferDropping
  * @tsplus pipeable effect/core/stream/Stream bufferDropping
  */
-export function bufferDropping(capacity: number, __tsplusTrace?: string) {
+export function bufferDropping(capacity: number) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => {
     const queue = Effect.acquireRelease(
       Queue.dropping<Tuple<[Take<E, A>, Deferred<never, void>]>>(capacity),

@@ -1,4 +1,12 @@
-import { Both, Die, Empty, Fail, Interrupt, Stackless, Then } from "@effect/core/io/Cause/definition"
+import {
+  Both,
+  Die,
+  Empty,
+  Fail,
+  Interrupt,
+  Stackless,
+  Then
+} from "@effect/core/io/Cause/definition"
 
 /**
  * Converts the specified `Cause<Maybe<E>>` to an `Maybe[Cause[E]]` by
@@ -9,9 +17,9 @@ import { Both, Die, Empty, Fail, Interrupt, Stackless, Then } from "@effect/core
 export function flipCauseMaybe<E>(cause: Cause<Maybe<E>>): Maybe<Cause<E>> {
   return cause.fold<Maybe<E>, Maybe<Cause<E>>>(
     Maybe.some(new Empty()),
-    (failureMaybe, trace) => failureMaybe.map((e) => new Fail(e, trace)),
-    (defect, trace) => Maybe.some(new Die(defect, trace)),
-    (fiberId, trace) => Maybe.some(new Interrupt(fiberId, trace)),
+    (failureMaybe) => failureMaybe.map((e) => new Fail(e)),
+    (defect) => Maybe.some(new Die(defect)),
+    (fiberId) => Maybe.some(new Interrupt(fiberId)),
     (left, right) => {
       if (left._tag === "Some" && right._tag === "Some") {
         return Maybe.some(new Then(left.value, right.value))

@@ -16,12 +16,16 @@ const distributedWithDynamicId = new AtomicNumber(0)
 export function distributedWithDynamic<A, E, Z>(
   maximumLag: number,
   decide: (a: A) => Effect<never, never, (key: UniqueKey) => boolean>,
-  done: (exit: Exit<Maybe<E>, never>) => Effect<never, never, Z> = () => Effect.unit as Effect<never, never, Z>,
-  __tsplusTrace?: string
+  done: (exit: Exit<Maybe<E>, never>) => Effect<never, never, Z> = () =>
+    Effect.unit as Effect<never, never, Z>
 ) {
   return <R>(
     self: Stream<R, E, A>
-  ): Effect<R | Scope, never, Effect<never, never, Tuple<[UniqueKey, Dequeue<Exit<Maybe<E>, A>>]>>> =>
+  ): Effect<
+    R | Scope,
+    never,
+    Effect<never, never, Tuple<[UniqueKey, Dequeue<Exit<Maybe<E>, A>>]>>
+  > =>
     Do(($) => {
       const queuesRef = $(Effect.acquireRelease(
         Ref.make<HashMap<UniqueKey, Queue<Exit<Maybe<E>, A>>>>(HashMap.empty()),
@@ -33,13 +37,15 @@ export function distributedWithDynamic<A, E, Z>(
       const add = $(
         Do(($) => {
           const queuesLock = $(TSemaphore.makeCommit(1))
-          const newQueue = $(Ref.make<Effect<never, never, Tuple<[UniqueKey, Queue<Exit<Maybe<E>, A>>]>>>(
-            Effect.Do()
-              .bind("queue", () => Queue.bounded<Exit<Maybe<E>, A>>(maximumLag))
-              .bind("id", () => Effect.sync(distributedWithDynamicId.incrementAndGet()))
-              .tap(({ id, queue }) => queuesRef.update((map) => map.set(id, queue)))
-              .map(({ id, queue }) => Tuple(id, queue))
-          ))
+          const newQueue = $(
+            Ref.make<Effect<never, never, Tuple<[UniqueKey, Queue<Exit<Maybe<E>, A>>]>>>(
+              Effect.Do()
+                .bind("queue", () => Queue.bounded<Exit<Maybe<E>, A>>(maximumLag))
+                .bind("id", () => Effect.sync(distributedWithDynamicId.incrementAndGet()))
+                .tap(({ id, queue }) => queuesRef.update((map) => map.set(id, queue)))
+                .map(({ id, queue }) => Tuple(id, queue))
+            )
+          )
           const finalize = (endTake: Exit<Maybe<E>, never>) =>
             // Make sure that no queues are currently being added
             queuesLock.withPermit(
@@ -60,7 +66,9 @@ export function distributedWithDynamic<A, E, Z>(
                   Effect.forEach(queues, (queue) =>
                     queue
                       .offer(endTake)
-                      .catchSomeCause((cause) => cause.isInterrupted ? Maybe.some(Effect.unit) : Maybe.none))
+                      .catchSomeCause((cause) =>
+                        cause.isInterrupted ? Maybe.some(Effect.unit) : Maybe.none
+                      ))
                 )
                 .tap(() => done(endTake))
                 .unit
@@ -84,25 +92,28 @@ export function distributedWithDynamic<A, E, Z>(
 function offer<E, A>(
   ref: Ref<HashMap<UniqueKey, Queue<Exit<Maybe<E>, A>>>>,
   decide: (a: A) => Effect<never, never, (key: UniqueKey) => boolean>,
-  a: A,
-  __tsplusTrace?: string
+  a: A
 ): Effect<never, E, void> {
   return Do(($) => {
     const shouldProcess = $(decide(a))
     const queues = $(ref.get())
     $(
-      Effect.reduce(queues, List.empty<UniqueKey>(), (acc: List<UniqueKey>, { tuple: [id, queue] }) =>
-        shouldProcess(id)
-          ? queue.offer(Exit.succeed(a)).foldCauseEffect(
-            (cause) =>
-              // Ignore all downstream queues that were shut down and remove
-              // them later
-              cause.isInterrupted
-                ? Effect.succeed(acc.prepend(id))
-                : Effect.failCauseSync(cause),
-            () => Effect.succeed(acc)
-          )
-          : Effect.succeed(acc)).flatMap((ids) => ids.isNil() ? Effect.unit : ref.update((map) => map.removeMany(ids)))
+      Effect.reduce(
+        queues,
+        List.empty<UniqueKey>(),
+        (acc: List<UniqueKey>, { tuple: [id, queue] }) =>
+          shouldProcess(id)
+            ? queue.offer(Exit.succeed(a)).foldCauseEffect(
+              (cause) =>
+                // Ignore all downstream queues that were shut down and remove
+                // them later
+                cause.isInterrupted
+                  ? Effect.succeed(acc.prepend(id))
+                  : Effect.failCauseSync(cause),
+              () => Effect.succeed(acc)
+            )
+            : Effect.succeed(acc)
+      ).flatMap((ids) => ids.isNil() ? Effect.unit : ref.update((map) => map.removeMany(ids)))
     )
   }).unit
 }

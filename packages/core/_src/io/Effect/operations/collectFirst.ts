@@ -6,16 +6,14 @@
  */
 export function collectFirst<R, E, A, B>(
   as: LazyArg<Collection<A>>,
-  f: (a: A) => Effect<R, E, Maybe<B>>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R, E, Maybe<B>>
 ): Effect<R, E, Maybe<B>> {
   return Effect.sync(as).flatMap((Collection) => loop(Collection[Symbol.iterator](), f))
 }
 
 function loop<R, E, A, B>(
   iterator: Iterator<A, any, undefined>,
-  f: (a: A) => Effect<R, E, Maybe<B>>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R, E, Maybe<B>>
 ): Effect<R, E, Maybe<B>> {
   const next = iterator.next()
   return next.done

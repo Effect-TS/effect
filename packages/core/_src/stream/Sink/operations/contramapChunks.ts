@@ -1,4 +1,7 @@
-import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import {
+  concreteSink,
+  SinkInternal
+} from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Transforms this sink's input chunks. `f` must preserve chunking-invariance.
@@ -7,8 +10,7 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
  * @tsplus pipeable effect/core/stream/Sink contramapChunks
  */
 export function contramapChunks<In, In1>(
-  f: (input: Chunk<In1>) => Chunk<In>,
-  __tsplusTrace?: string
+  f: (input: Chunk<In1>) => Chunk<In>
 ) {
   return <R, E, L, Z>(self: Sink<R, E, In, L, Z>): Sink<R, E, In1, L, Z> => {
     const loop: Channel<

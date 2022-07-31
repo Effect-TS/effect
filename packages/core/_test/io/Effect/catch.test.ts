@@ -8,7 +8,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.succeed(message))
+      assert.isTrue(result == Exit.succeed(message))
     })
   })
 
@@ -26,11 +26,13 @@ describe.concurrent("Effect", () => {
 
     it("leaves errors", async () => {
       const error = new IllegalArgumentException("division by zero")
-      const program = Effect.failSync(error).catchAllDefect((e) => Effect.sync((e as Error).message))
+      const program = Effect.failSync(error).catchAllDefect((e) =>
+        Effect.sync((e as Error).message)
+      )
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(error))
+      assert.isTrue(result == Exit.fail(error))
     })
 
     it("leaves values", async () => {
@@ -66,7 +68,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(error))
+      assert.isTrue(result == Exit.die(error))
     })
 
     it("leaves errors", async () => {
@@ -79,7 +81,7 @@ describe.concurrent("Effect", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(error))
+      assert.isTrue(result == Exit.fail(error))
     })
 
     it("leaves values", async () => {

@@ -7,8 +7,7 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  * @tsplus getter effect/core/stream/Stream bufferUnbounded
  */
 export function bufferUnbounded<R, E, A>(
-  self: Stream<R, E, A>,
-  __tsplusTrace?: string
+  self: Stream<R, E, A>
 ): Stream<R, E, A> {
   const queue = self.toQueueUnbounded
   return new StreamInternal(

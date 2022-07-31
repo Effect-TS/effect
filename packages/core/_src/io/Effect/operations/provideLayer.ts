@@ -4,10 +4,7 @@
  * @tsplus static effect/core/io/Effect.Aspects provideLayer
  * @tsplus pipeable effect/core/io/Effect provideLayer
  */
-export function provideLayer<R, E, A>(
-  layer: Layer<R, E, A>,
-  __tsplusTrace?: string
-) {
+export function provideLayer<R, E, A>(layer: Layer<R, E, A>) {
   return <E1, A1>(self: Effect<A, E1, A1>): Effect<R, E | E1, A1> =>
     Effect.acquireUseReleaseExit(
       Scope.make,

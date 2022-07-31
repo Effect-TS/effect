@@ -4,9 +4,6 @@
  * @tsplus static effect/core/io/Effect.Aspects refineOrDie
  * @tsplus pipeable effect/core/io/Effect refineOrDie
  */
-export function refineOrDie<E, E1>(
-  pf: (e: E) => Maybe<E1>,
-  __tsplusTrace?: string
-) {
+export function refineOrDie<E, E1>(pf: (e: E) => Maybe<E1>) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, E1, A> => self.refineOrDieWith(pf, identity)
 }

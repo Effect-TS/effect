@@ -6,8 +6,7 @@
  */
 export function when<R, E, A>(
   b: LazyArg<boolean>,
-  stream: LazyArg<Stream<R, E, A>>,
-  __tsplusTrace?: string
+  stream: LazyArg<Stream<R, E, A>>
 ): Stream<R, E, A> {
   return Stream.whenEffect(Effect.sync(b), stream)
 }

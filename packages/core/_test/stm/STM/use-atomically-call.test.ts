@@ -16,7 +16,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail("oh no!"))
+        assert.isTrue(result == Exit.fail("oh no!"))
       })
     })
 
@@ -56,7 +56,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail("Error2"))
+        assert.isTrue(result == Exit.fail("Error2"))
       })
     })
 
@@ -117,7 +117,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail("bye bye world"))
+      assert.isTrue(result == Exit.fail("bye bye world"))
     })
 
     it("filter filters a collection using an effectual predicate", async () => {
@@ -125,7 +125,11 @@ describe.concurrent("STM", () => {
         .bind("ref", () => TRef.make(Chunk.empty<number>()))
         .bind(
           "results",
-          ({ ref }) => STM.filter([2, 4, 6, 3, 5, 6], (n) => ref.update((chunk) => chunk.append(n)).as(n % 2 === 0))
+          ({ ref }) =>
+            STM.filter(
+              [2, 4, 6, 3, 5, 6],
+              (n) => ref.update((chunk) => chunk.append(n)).as(n % 2 === 0)
+            )
         )
         .bind("effects", ({ ref }) => ref.get)
         .commit
@@ -143,7 +147,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(ExampleError))
+      assert.isTrue(result == Exit.die(ExampleError))
     })
 
     it("filterOrDieMessage dies with message when predicate fails ", async () => {
@@ -220,7 +224,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail(ExampleError))
+        assert.isTrue(result == Exit.fail(ExampleError))
       })
     })
 
@@ -231,7 +235,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail(ExampleError))
+      assert.isTrue(result == Exit.fail(ExampleError))
     })
 
     it("flatMapError to flatMap from one error to another", async () => {
@@ -241,7 +245,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail("log: -1"))
+      assert.isTrue(result == Exit.fail("log: -1"))
     })
 
     it("flatten", async () => {
@@ -264,7 +268,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail("oh no!"))
+        assert.isTrue(result == Exit.fail("oh no!"))
       })
 
       it("with no error and default to value", async () => {
@@ -274,7 +278,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail("default error"))
+        assert.isTrue(result == Exit.fail("default error"))
       })
     })
 
@@ -324,7 +328,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail("fail"))
+        assert.isTrue(result == Exit.fail("fail"))
       })
 
       it("run sequentially from left to right", async () => {
@@ -344,7 +348,8 @@ describe.concurrent("STM", () => {
 
     describe.concurrent("foldRight", () => {
       it("with a successful step function sums the list properly", async () => {
-        const program = STM.reduceRight(List(1, 2, 3, 4, 5), 0, (acc, n) => STM.succeed(acc + n)).commit
+        const program =
+          STM.reduceRight(List(1, 2, 3, 4, 5), 0, (acc, n) => STM.succeed(acc + n)).commit
 
         const result = await program.unsafeRunPromise()
 
@@ -356,7 +361,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail("fail"))
+        assert.isTrue(result == Exit.fail("fail"))
       })
 
       it("run sequentially from right to left", async () => {
@@ -388,7 +393,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail(Maybe.none))
+        assert.isTrue(result == Exit.fail(Maybe.none))
       })
 
       it("returns the Error around Some", async () => {
@@ -398,7 +403,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail(Maybe.some("my error")))
+        assert.isTrue(result == Exit.fail(Maybe.some("my error")))
       })
     })
 
@@ -442,7 +447,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail(Either.right("right")))
+        assert.isTrue(result == Exit.fail(Either.right("right")))
       })
 
       it("on failure", async () => {
@@ -450,7 +455,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail(Either.left("fail")))
+        assert.isTrue(result == Exit.fail(Either.left("fail")))
       })
 
       it("lifting a value", async () => {
@@ -486,7 +491,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail("-1 as string"))
+        assert.isTrue(result == Exit.fail("-1 as string"))
       })
     })
 
@@ -497,7 +502,7 @@ describe.concurrent("STM", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail("oh no!"))
+      assert.isTrue(result == Exit.fail("oh no!"))
     })
 
     describe.concurrent("merge", () => {
@@ -532,7 +537,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail(Maybe.some(ExampleError)))
+        assert.isTrue(result == Exit.fail(Maybe.some(ExampleError)))
       })
 
       it("when A is Some(a)", async () => {
@@ -540,7 +545,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail(Maybe.none))
+        assert.isTrue(result == Exit.fail(Maybe.none))
       })
 
       it("lifting a value", async () => {
@@ -580,7 +585,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail("my error"))
+        assert.isTrue(result == Exit.fail("my error"))
       })
 
       it("a None in E into None in A", async () => {
@@ -614,7 +619,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.die(ExampleError))
+        assert.isTrue(result == Exit.die(ExampleError))
       })
 
       it("when succeed should keep going", async () => {
@@ -680,7 +685,8 @@ describe.concurrent("STM", () => {
 
       it("collects failures and successes", async () => {
         const input = Chunk.range(0, 9)
-        const program = STM.partition(input, (n) => n % 2 === 0 ? STM.fail(n) : STM.succeed(n)).commit
+        const program =
+          STM.partition(input, (n) => n % 2 === 0 ? STM.fail(n) : STM.succeed(n)).commit
 
         const {
           tuple: [left, right]
@@ -722,7 +728,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail("partial failed"))
+        assert.isTrue(result == Exit.fail("partial failed"))
       })
     })
 
@@ -744,7 +750,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail("partial failed"))
+        assert.isTrue(result == Exit.fail("partial failed"))
       })
     })
 
@@ -788,7 +794,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail(Either.left("left")))
+        assert.isTrue(result == Exit.fail(Either.left("left")))
       })
 
       it("on failure", async () => {
@@ -796,7 +802,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail(Either.right("fail")))
+        assert.isTrue(result == Exit.fail(Either.right("fail")))
       })
 
       it("lifting a value", async () => {
@@ -822,7 +828,7 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.untraced == Exit.fail(Maybe.none))
+        assert.isTrue(result == Exit.fail(Maybe.none))
       })
 
       it("fails when given an exception", async () => {
@@ -964,7 +970,10 @@ describe.concurrent("STM", () => {
 
         const result = await program.unsafeRunPromiseExit()
 
-        assert.isTrue(result.isFailure() && result.cause.isFailType() && result.cause.value instanceof NoSuchElement)
+        assert.isTrue(
+          result.isFailure() && result.cause.isFailType() &&
+            result.cause.value instanceof NoSuchElement
+        )
       })
     })
 
@@ -981,7 +990,9 @@ describe.concurrent("STM", () => {
         const program = STM.Do()
           .bind("counter", () => TRef.make(0))
           .bindValue("increment", ({ counter }) => counter.updateAndGet((n) => n + 1))
-          .flatMap(({ increment }) => increment.summarized(increment, (start, end) => Tuple(start, end)))
+          .flatMap(({ increment }) =>
+            increment.summarized(increment, (start, end) => Tuple(start, end))
+          )
           .commit
 
         const {

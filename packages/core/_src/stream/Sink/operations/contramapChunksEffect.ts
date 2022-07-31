@@ -1,4 +1,7 @@
-import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import {
+  concreteSink,
+  SinkInternal
+} from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 
 /**
  * Effectfully transforms this sink's input chunks. `f` must preserve
@@ -8,8 +11,7 @@ import { concreteSink, SinkInternal } from "@effect/core/stream/Sink/operations/
  * @tsplus pipeable effect/core/stream/Sink contramapChunksEffect
  */
 export function contramapChunksEffect<In0, R2, E2, In2>(
-  f: (input: Chunk<In0>) => Effect<R2, E2, Chunk<In2>>,
-  __tsplusTrace?: string
+  f: (input: Chunk<In0>) => Effect<R2, E2, Chunk<In2>>
 ) {
   return <R, E, L, Z>(self: Sink<R, E, In2, L, Z>): Sink<R | R2, E | E2, In0, L, Z> => {
     const loop: Channel<
@@ -21,7 +23,8 @@ export function contramapChunksEffect<In0, R2, E2, In2>(
       Chunk<In2>,
       unknown
     > = Channel.readWith(
-      (chunk: Chunk<In0>) => Channel.fromEffect(f(chunk)).flatMap((chunk) => Channel.write(chunk)) > loop,
+      (chunk: Chunk<In0>) =>
+        Channel.fromEffect(f(chunk)).flatMap((chunk) => Channel.write(chunk)) > loop,
       (err) => Channel.fail(() => err),
       (done) => Channel.succeed(done)
     )

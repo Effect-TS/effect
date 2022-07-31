@@ -9,8 +9,7 @@ import { TerminationStrategy } from "@effect/core/stream/Stream//TerminationStra
  */
 export function mergeRight<R2, E2, A2>(
   that: LazyArg<Stream<R2, E2, A2>>,
-  strategy: LazyArg<TerminationStrategy> = () => TerminationStrategy.Both,
-  __tsplusTrace?: string
+  strategy: LazyArg<TerminationStrategy> = () => TerminationStrategy.Both
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A2> =>
     self.drain.merge(

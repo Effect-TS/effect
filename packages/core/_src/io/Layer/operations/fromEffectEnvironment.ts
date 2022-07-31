@@ -7,8 +7,7 @@ import { ILayerApply } from "@effect/core/io/Layer/definition"
  * @tsplus static effect/core/io/Layer.Ops fromEffectEnvironment
  */
 export function fromEffectEnvironment<R, E, A>(
-  effect: LazyArg<Effect<R, E, Env<A>>>,
-  __tsplusTrace?: string
+  effect: LazyArg<Effect<R, E, Env<A>>>
 ): Layer<R, E, A> {
   return Layer.suspend(new ILayerApply(effect()))
 }

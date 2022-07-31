@@ -5,10 +5,7 @@
  * @tsplus static effect/core/io/Effect.Aspects forEachEffect
  * @tsplus pipeable effect/core/io/Effect forEachEffect
  */
-export function forEachEffect<A, R1, E1, B>(
-  f: (a: A) => Effect<R1, E1, B>,
-  __tsplusTrace?: string
-) {
+export function forEachEffect<A, R1, E1, B>(f: (a: A) => Effect<R1, E1, B>) {
   return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E1, Maybe<B>> =>
     self.foldCauseEffect(
       () => Effect.none,

@@ -14,7 +14,7 @@ describe.concurrent("Queue", () => {
       const { result, selfId } = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result.mapLeft((cause) => cause.untraced) ==
+        result.mapLeft((cause) => cause) ==
           Either.left(Cause.interrupt(selfId))
       )
     })
@@ -33,7 +33,7 @@ describe.concurrent("Queue", () => {
       const { result, selfId } = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result.mapLeft((cause) => cause.untraced) ==
+        result.mapLeft((cause) => cause) ==
           Either.left(Cause.interrupt(selfId))
       )
     })
@@ -48,7 +48,7 @@ describe.concurrent("Queue", () => {
       const { result, selfId } = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result.mapLeft((cause) => cause.untraced) ==
+        result.mapLeft((cause) => cause) ==
           Either.left(Cause.interrupt(selfId))
       )
     })
@@ -63,7 +63,7 @@ describe.concurrent("Queue", () => {
       const { result, selfId } = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result.mapLeft((cause) => cause.untraced) ==
+        result.mapLeft((cause) => cause) ==
           Either.left(Cause.interrupt(selfId))
       )
     })
@@ -78,7 +78,7 @@ describe.concurrent("Queue", () => {
       const { result, selfId } = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result.mapLeft((cause) => cause.untraced) ==
+        result.mapLeft((cause) => cause) ==
           Either.left(Cause.interrupt(selfId))
       )
     })
@@ -93,7 +93,7 @@ describe.concurrent("Queue", () => {
       const { result, selfId } = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result.mapLeft((cause) => cause.untraced) ==
+        result.mapLeft((cause) => cause) ==
           Either.left(Cause.interrupt(selfId))
       )
     })
@@ -108,7 +108,7 @@ describe.concurrent("Queue", () => {
       const { result, selfId } = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result.mapLeft((cause) => cause.untraced) ==
+        result.mapLeft((cause) => cause) ==
           Either.left(Cause.interrupt(selfId))
       )
     })

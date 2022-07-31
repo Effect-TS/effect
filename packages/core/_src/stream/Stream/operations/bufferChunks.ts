@@ -9,7 +9,7 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  * @tsplus static effect/core/stream/Stream.Aspects bufferChunks
  * @tsplus pipeable effect/core/stream/Stream bufferChunks
  */
-export function bufferChunks(capacity: number, __tsplusTrace?: string) {
+export function bufferChunks(capacity: number) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => {
     const queue = self.toQueue(capacity)
     return new StreamInternal(

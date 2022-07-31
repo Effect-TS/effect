@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Composes this stream with the specified stream to create a cartesian
@@ -11,8 +14,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus pipeable effect/core/stream/Stream cross
  */
 export function cross<R2, E2, A2>(
-  that: LazyArg<Stream<R2, E2, A2>>,
-  __tsplusTrace?: string
+  that: LazyArg<Stream<R2, E2, A2>>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, Tuple<[A, A2]>> => {
     concreteStream(self)

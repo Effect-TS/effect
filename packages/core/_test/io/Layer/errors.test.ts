@@ -15,7 +15,10 @@ describe.concurrent("Layer", () => {
         .bind("ref", () => makeRef())
         .bindValue("layer1", ({ ref }) => makeLayer1(ref))
         .bindValue("layer2", ({ ref }) => makeLayer2(ref))
-        .bindValue("env", ({ layer1, layer2 }) => ((layer1 >> Layer.fail("failed!")) | layer2).build)
+        .bindValue(
+          "env",
+          ({ layer1, layer2 }) => ((layer1 >> Layer.fail("failed!")) | layer2).build
+        )
         .bind("fiber", ({ env }) => Effect.scoped(env))
         .flatMap(({ ref }) => ref.get())
 
@@ -45,7 +48,10 @@ describe.concurrent("Layer", () => {
       const layer1 = Layer.fail("foo")
       const layer2 = Layer.succeed(BarTag, { bar: "bar" })
       const layer3 = Layer.succeed(BazTag, { baz: "baz" })
-      const layer4 = Layer.scoped(ScopedTag, Effect.scoped(Effect.acquireRelease(sleep, () => sleep)))
+      const layer4 = Layer.scoped(
+        ScopedTag,
+        Effect.scoped(Effect.acquireRelease(sleep, () => sleep))
+      )
 
       const program = Effect.unit
         .provideLayer(layer1 + (layer2 + layer3 > layer4))

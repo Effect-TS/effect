@@ -5,8 +5,7 @@
  * @tsplus static effect/core/io/Effect.Ops fromFiberEffect
  */
 export function fromFiberEffect<R, E, A>(
-  fiber: LazyArg<Effect<R, E, Fiber<E, A>>>,
-  __tsplusTrace?: string
+  fiber: LazyArg<Effect<R, E, Fiber<E, A>>>
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(fiber().flatMap((fiber) => fiber.join))
 }

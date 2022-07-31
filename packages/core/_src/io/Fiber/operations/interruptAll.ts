@@ -4,8 +4,7 @@
  * @tsplus static effect/core/io/Fiber.Ops interruptAll
  */
 export function interruptAll(
-  fibers: Collection<Fiber<any, any>>,
-  __tsplusTrace?: string
+  fibers: Collection<Fiber<any, any>>
 ): Effect<never, never, void> {
   return Effect.fiberId.flatMap((fiberId) => Fiber.interruptAllAs(fibers, fiberId))
 }

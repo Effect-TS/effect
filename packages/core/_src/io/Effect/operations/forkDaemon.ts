@@ -7,11 +7,8 @@ import { IFork } from "@effect/core/io/Effect/definition/primitives"
  *
  * @tsplus getter effect/core/io/Effect forkDaemon
  */
-export function forkDaemon<R, E, A>(
-  self: Effect<R, E, A>,
-  __tsplusTrace?: string
-): Effect<R, never, Fiber.Runtime<E, A>> {
+export function forkDaemon<R, E, A>(self: Effect<R, E, A>): Effect<R, never, Fiber.Runtime<E, A>> {
   return Effect.suspendSucceed(
-    new IFork(self, () => Maybe.some(FiberScope.global), __tsplusTrace)
+    new IFork(self, () => Maybe.some(FiberScope.global))
   )
 }

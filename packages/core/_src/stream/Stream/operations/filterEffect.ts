@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Effectfully filters the elements emitted by this stream.
@@ -7,8 +10,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus pipeable effect/core/stream/Stream filterEffect
  */
 export function filterEffect<A, R1, E1>(
-  f: (a: A) => Effect<R1, E1, boolean>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R1, E1, boolean>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R1, E | E1, A> => {
     concreteStream(self)

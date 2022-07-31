@@ -7,8 +7,7 @@
  */
 export function noneOrFailWith<E, A>(
   option: LazyArg<Maybe<A>>,
-  f: (a: A) => E,
-  __tsplusTrace?: string
+  f: (a: A) => E
 ): Effect<never, E, void> {
   return Effect.getOrFailDiscard(option).flip.mapError(f)
 }

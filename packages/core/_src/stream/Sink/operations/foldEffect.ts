@@ -9,8 +9,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
 export function foldEffect<R, E, In, S>(
   z: LazyArg<S>,
   cont: Predicate<S>,
-  f: (s: S, input: In) => Effect<R, E, S>,
-  __tsplusTrace?: string
+  f: (s: S, input: In) => Effect<R, E, S>
 ): Sink<R, E, In, In, S> {
   return Sink.suspend(new SinkInternal(reader(z(), cont, f)))
 }
@@ -18,8 +17,7 @@ export function foldEffect<R, E, In, S>(
 function reader<R, E, S, In>(
   z: S,
   cont: Predicate<S>,
-  f: (s: S, input: In) => Effect<R, E, S>,
-  __tsplusTrace?: string
+  f: (s: S, input: In) => Effect<R, E, S>
 ): Channel<R, E, Chunk<In>, unknown, E, Chunk<In>, S> {
   if (!cont(z)) {
     return Channel.succeedNow(z)
@@ -39,8 +37,7 @@ function foldChunkSplitEffect<R, E, S, In>(
   z: S,
   chunk: Chunk<In>,
   cont: Predicate<S>,
-  f: (s: S, input: In) => Effect<R, E, S>,
-  __tsplusTrace?: string
+  f: (s: S, input: In) => Effect<R, E, S>
 ): Effect<R, E, Tuple<[S, Maybe<Chunk<In>>]>> {
   return foldEffectInternal(z, chunk, cont, f, 0, chunk.length)
 }
@@ -51,8 +48,7 @@ function foldEffectInternal<R, E, S, In>(
   cont: Predicate<S>,
   f: (s: S, input: In) => Effect<R, E, S>,
   index: number,
-  length: number,
-  __tsplusTrace?: string
+  length: number
 ): Effect<R, E, Tuple<[S, Maybe<Chunk<In>>]>> {
   if (index === length) {
     return Effect.sync(Tuple(z, Maybe.none))

@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Interrupts the evaluation of this stream when the provided deferred
@@ -11,8 +14,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus pipeable effect/core/stream/Stream interruptWhenDeferred
  */
 export function interruptWhenDeferred<E2, Z>(
-  promise: LazyArg<Deferred<E2, Z>>,
-  __tsplusTrace?: string
+  promise: LazyArg<Deferred<E2, Z>>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E | E2, A> => {
     concreteStream(self)

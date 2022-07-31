@@ -2,7 +2,12 @@ describe.concurrent("Stream", () => {
   describe.concurrent("sliding", () => {
     it("returns a sliding window", async () => {
       const result = Chunk(Chunk(1, 2), Chunk(2, 3), Chunk(3, 4), Chunk(4, 5))
-      const stream0 = Stream.fromChunks(Chunk.empty<number>(), Chunk(1), Chunk.empty<number>(), Chunk(2, 3, 4, 5))
+      const stream0 = Stream.fromChunks(
+        Chunk.empty<number>(),
+        Chunk(1),
+        Chunk.empty<number>(),
+        Chunk(2, 3, 4, 5)
+      )
       const stream1 = Stream.empty + Stream(1) + Stream.empty + Stream(2) + Stream(3, 4, 5)
       const stream2 = Stream(1) + Stream.empty + Stream(2) + Stream.empty + Stream(3, 4, 5)
       const stream3 = Stream.fromChunk(Chunk(1)) + Stream.fromChunk(Chunk(2)) + Stream(3, 4, 5)
@@ -67,8 +72,14 @@ describe.concurrent("Stream", () => {
     it("emits elements properly when a failure occurs", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(Chunk.empty<Chunk<number>>()))
-        .bindValue("streamChunks", () => Stream.fromChunks(Chunk(1, 2, 3, 4), Chunk(5, 6, 7), Chunk(8)))
-        .bindValue("stream", ({ streamChunks }) => (streamChunks + Stream.fail("ouch")).sliding(3, 3))
+        .bindValue(
+          "streamChunks",
+          () => Stream.fromChunks(Chunk(1, 2, 3, 4), Chunk(5, 6, 7), Chunk(8))
+        )
+        .bindValue(
+          "stream",
+          ({ streamChunks }) => (streamChunks + Stream.fail("ouch")).sliding(3, 3)
+        )
         .bind("either", ({ ref, stream }) =>
           stream
             .mapEffect((chunk) => ref.update((_) => _.append(chunk)))

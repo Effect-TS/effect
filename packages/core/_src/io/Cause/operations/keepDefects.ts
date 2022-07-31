@@ -10,7 +10,7 @@ export function keepDefects<E>(self: Cause<E>): Maybe<Cause<never>> {
   return self.fold<E, Maybe<Cause<never>>>(
     () => Maybe.none,
     () => Maybe.none,
-    (e, trace) => Maybe.some(new Die(e, trace)),
+    (e) => Maybe.some(new Die(e)),
     () => Maybe.none,
     (left, right) => {
       if (left._tag === "Some" && right._tag === "Some") {

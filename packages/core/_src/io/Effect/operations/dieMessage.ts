@@ -5,9 +5,6 @@
  *
  * @tsplus static effect/core/io/Effect.Ops dieMessage
  */
-export function dieMessage(
-  message: LazyArg<string>,
-  __tsplusTrace?: string
-): Effect<never, never, never> {
+export function dieMessage(message: LazyArg<string>): Effect<never, never, never> {
   return Effect.failCauseSync(Cause.stackless(Cause.die(new RuntimeError(message()))))
 }

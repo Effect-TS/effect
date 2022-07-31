@@ -7,5 +7,5 @@ import { Fail } from "@effect/core/io/Cause/definition"
  * @tsplus pipeable effect/core/io/Cause map
  */
 export function map<E, E1>(f: (e: E) => E1) {
-  return (self: Cause<E>): Cause<E1> => self.flatMap((e) => new Fail(f(e), Trace.none))
+  return (self: Cause<E>): Cause<E1> => self.flatMap((e) => new Fail(f(e)))
 }

@@ -6,7 +6,7 @@
  * @tsplus static effect/core/io/Metrics/Metric.Aspects trackSuccessWith
  * @tsplus pipeable effect/core/io/Metrics/Metric trackSuccessWith
  */
-export function trackSuccessWith<In, In2>(f: (value: In2) => In, __tsplusTrace?: string) {
+export function trackSuccessWith<In, In2>(f: (value: In2) => In) {
   return <Type, Out>(
     self: Metric<Type, In, Out>
   ): <R, E, A extends In2>(effect: Effect<R, E, A>) => Effect<R, E, A> => {

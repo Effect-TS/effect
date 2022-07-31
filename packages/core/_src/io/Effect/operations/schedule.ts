@@ -8,8 +8,8 @@
  * @tsplus pipeable effect/core/io/Effect schedule
  */
 export function schedule<S, R1, A1>(
-  schedule: LazyArg<Schedule<S, R1, any, A1>>,
-  __tsplusTrace?: string
+  schedule: LazyArg<Schedule<S, R1, any, A1>>
 ) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R | R1, E, A1> => self.scheduleFrom(undefined, schedule)
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R | R1, E, A1> =>
+    self.scheduleFrom(undefined, schedule)
 }

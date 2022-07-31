@@ -18,10 +18,7 @@ export function loopDiscard<Z>(
   cont: (z: Z) => boolean,
   inc: (z: Z) => Z
 ) {
-  return <R, E, X>(
-    body: (z: Z) => Effect<R, E, X>,
-    __tsplusTrace?: string
-  ): Effect<R, E, void> => {
+  return <R, E, X>(body: (z: Z) => Effect<R, E, X>): Effect<R, E, void> => {
     return Effect.suspendSucceed(() => {
       const initial0 = initial()
       return cont(initial0)

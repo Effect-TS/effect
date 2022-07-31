@@ -7,8 +7,7 @@
 export function reduceAllPar<R, E, A>(
   a: LazyArg<Effect<R, E, A>>,
   as: LazyArg<Collection<Effect<R, E, A>>>,
-  f: (acc: A, a: A) => A,
-  __tsplusTrace?: string
+  f: (acc: A, a: A) => A
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(
     Effect.mergeAllPar<R, E, A, Maybe<A>>(

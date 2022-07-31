@@ -5,7 +5,7 @@
  * @tsplus static effect/core/stream/Stream.Aspects toQueue
  * @tsplus pipeable effect/core/stream/Stream toQueue
  */
-export function toQueue(capacity = 2, __tsplusTrace?: string) {
+export function toQueue(capacity = 2) {
   return <R, E, A>(self: Stream<R, E, A>): Effect<R | Scope, never, Dequeue<Take<E, A>>> =>
     Effect.acquireRelease(
       Queue.bounded<Take<E, A>>(capacity),

@@ -9,5 +9,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  */
 export function provideSomeEnvironment<R0, R>(f: (env0: Env<R0>) => Env<R>) {
   return <State, In, Out>(self: Schedule<State, R, In, Out>): Schedule<State, R0, In, Out> =>
-    makeWithState(self._initial, (now, input, state) => self._step(now, input, state).provideSomeEnvironment(f))
+    makeWithState(
+      self._initial,
+      (now, input, state) => self._step(now, input, state).provideSomeEnvironment(f)
+    )
 }

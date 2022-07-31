@@ -7,8 +7,7 @@
  */
 export function repeatUntilEquals<A>(
   E: Equivalence<A>,
-  a: LazyArg<A>,
-  __tsplusTrace?: string
+  a: LazyArg<A>
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R, E, A> =>
     Effect.sync(a).flatMap((a) => self.repeatUntil((_) => E.equals(_, a)))

@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Halts the evaluation of this stream when the provided deferred resolves.
@@ -9,8 +12,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  * @tsplus pipeable effect/core/stream/Stream haltWhenDeferred
  */
 export function haltWhenDeferred<E2, Z>(
-  deferred: LazyArg<Deferred<E2, Z>>,
-  __tsplusTrace?: string
+  deferred: LazyArg<Deferred<E2, Z>>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E | E2, A> => {
     const writer: Channel<

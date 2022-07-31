@@ -6,8 +6,7 @@
  * @tsplus pipeable effect/core/io/Effect onExit
  */
 export function onExit<E, A, R2, X>(
-  cleanup: (exit: Exit<E, A>) => Effect<R2, never, X>,
-  __tsplusTrace?: string
+  cleanup: (exit: Exit<E, A>) => Effect<R2, never, X>
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R | R2, E, A> =>
     Effect.acquireUseReleaseExit(

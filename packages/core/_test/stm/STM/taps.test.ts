@@ -67,7 +67,9 @@ describe.concurrent("STM", () => {
         const tapSuccess = $(TDeferred.make<never, number>())
         const tapError = $(TDeferred.make<never, string>())
         const succeededSTM: STM<never, string, number> = STM.fail("error")
-        const result = $(succeededSTM.tapBoth(e => tapError.succeed(e), a => tapSuccess.succeed(a)).either)
+        const result = $(
+          succeededSTM.tapBoth(e => tapError.succeed(e), a => tapSuccess.succeed(a)).either
+        )
         const tappedError = $(tapError.await)
 
         return result == Either.left("error") && tappedError === "error"

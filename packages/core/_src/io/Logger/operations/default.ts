@@ -2,7 +2,7 @@
  * @tsplus static effect/core/io/Logger.Ops default
  */
 export const defaultLogger: Logger<string, string> = {
-  apply: (trace, fiberId, logLevel, message, cause0, context, spans, annotations) => {
+  apply: (fiberId, logLevel, message, cause0, context, spans, annotations) => {
     const cause = cause0()
     const now = new Date()
     const nowMillis = now.getTime()
@@ -31,12 +31,6 @@ export const defaultLogger: Logger<string, string> = {
         }
         output = output + span.render(nowMillis)
       }
-    }
-
-    if (trace._tag === "SourceLocation") {
-      const location = `${trace.fileName}:${trace.lineNumber}:${trace.columnNumber}`
-      output = output + " location="
-      output = appendQuoted(location, output)
     }
 
     if (annotations.size > 0) {

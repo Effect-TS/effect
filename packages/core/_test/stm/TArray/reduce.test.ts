@@ -10,7 +10,9 @@ describe.concurrent("TArray", () => {
             .reduce(0, (acc, n) => acc + n)
             .commit
             .fork)
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, (n) => n + 1)).commit)
+        .tap(({ tArray }) =>
+          STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, (n) => n + 1)).commit
+        )
         .flatMap(({ sum1Fiber }) => sum1Fiber.join)
 
       const result = await program.unsafeRunPromise()
@@ -28,7 +30,9 @@ describe.concurrent("TArray", () => {
             .reduceSTM(0, (acc, n) => STM.succeed(acc + n))
             .commit
             .fork)
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, (n) => n + 1)).commit)
+        .tap(({ tArray }) =>
+          STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, (n) => n + 1)).commit
+        )
         .flatMap(({ sum1Fiber }) => sum1Fiber.join)
 
       const result = await program.unsafeRunPromise()
@@ -90,7 +94,9 @@ describe.concurrent("TArray", () => {
             .reduceMaybe((a, b) => a + b)
             .commit
             .fork)
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => 1)).commit)
+        .tap(({ tArray }) =>
+          STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => 1)).commit
+        )
         .flatMap(({ findFiber }) => findFiber.join)
 
       const result = await program.unsafeRunPromise()
@@ -138,7 +144,9 @@ describe.concurrent("TArray", () => {
             .reduceMaybeSTM((a, b) => STM.succeed(a + b))
             .commit
             .fork)
-        .tap(({ tArray }) => STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => 1)).commit)
+        .tap(({ tArray }) =>
+          STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => 1)).commit
+        )
         .flatMap(({ findFiber }) => findFiber.join)
 
       const result = await program.unsafeRunPromise()

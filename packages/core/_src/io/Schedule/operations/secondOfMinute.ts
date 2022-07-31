@@ -1,7 +1,11 @@
 import { Decision } from "@effect/core/io/Schedule/Decision"
 import { Interval } from "@effect/core/io/Schedule/Interval"
 import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
-import { beginningOfSecond, endOfSecond, nextSecond } from "@effect/core/io/Schedule/operations/_internal/time"
+import {
+  beginningOfSecond,
+  endOfSecond,
+  nextSecond
+} from "@effect/core/io/Schedule/operations/_internal/time"
 
 /**
  * Cron-like schedule that recurs every specified `second` of each minute. It

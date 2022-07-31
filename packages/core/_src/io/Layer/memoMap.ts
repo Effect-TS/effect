@@ -43,7 +43,9 @@ export class MemoMap {
             return Do(($) => {
               const observers = $(Ref.Synchronized.make(0))
               const deferred = $(Deferred.make<E, Env<ROut>>())
-              const finalizerRef = $(Ref.Synchronized.make<Scope.Finalizer>(() => constant(Effect.unit)))
+              const finalizerRef = $(
+                Ref.Synchronized.make<Scope.Finalizer>(() => constant(Effect.unit))
+              )
               const resource = Effect.uninterruptibleMask(({ restore }) =>
                 Effect.Do()
                   .bindValue("outerScope", () => scope)
@@ -69,7 +71,9 @@ export class MemoMap {
                             )
                               .zipRight(observers.update((n) => n + 1))
                               .zipRight(
-                                outerScope.addFinalizerExit((e) => finalizerRef.get().flatMap((fin) => fin(e)))
+                                outerScope.addFinalizerExit((e) =>
+                                  finalizerRef.get().flatMap((fin) => fin(e))
+                                )
                               )
                               .zipRight(deferred.succeed(exit.value))
                               .as(exit.value)
@@ -112,10 +116,7 @@ export function makeMemoMap(): Effect<never, never, MemoMap> {
  *
  * @tsplus getter effect/core/io/Layer build
  */
-export function build<RIn, E, ROut>(
-  self: Layer<RIn, E, ROut>,
-  __tsplusTrace?: string
-): Effect<RIn | Scope, E, Env<ROut>> {
+export function build<RIn, E, ROut>(self: Layer<RIn, E, ROut>): Effect<RIn | Scope, E, Env<ROut>> {
   return Effect.serviceWithEffect(Scope.Tag, (scope) => self.buildWithScope(scope))
 }
 
@@ -129,7 +130,7 @@ export function build<RIn, E, ROut>(
  * @tsplus static effect/core/io/Layer.Aspects buildWithScope
  * @tsplus pipeable effect/core/io/Layer buildWithScope
  */
-export function buildWithScope(scope: LazyArg<Scope>, __tsplusTrace?: string) {
+export function buildWithScope(scope: LazyArg<Scope>) {
   return <RIn, E, ROut>(self: Layer<RIn, E, ROut>): Effect<RIn, E, Env<ROut>> =>
     Do(($) => {
       const memoMap = $(makeMemoMap())
@@ -142,10 +143,13 @@ export function buildWithScope(scope: LazyArg<Scope>, __tsplusTrace?: string) {
  * @tsplus static effect/core/io/Layer.Aspects withScope
  * @tsplus pipeable effect/core/io/Layer withScope
  */
-export function withScope(scope: LazyArg<Scope>, __tsplusTrace?: string) {
-  return <RIn, E, ROut>(self: Layer<RIn, E, ROut>): Effect<never, never, (_: MemoMap) => Effect<RIn, E, Env<ROut>>> =>
+export function withScope(scope: LazyArg<Scope>) {
+  return <RIn, E, ROut>(
+    self: Layer<RIn, E, ROut>
+  ): Effect<never, never, (_: MemoMap) => Effect<RIn, E, Env<ROut>>> =>
     Match.tag(instruction(self), {
-      LayerApply: (_) => Effect.sync<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((memoMap: MemoMap) => _.self),
+      LayerApply: (_) =>
+        Effect.sync<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((memoMap: MemoMap) => _.self),
       LayerExtendScope: (_) =>
         Effect.sync<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((memoMap: MemoMap) =>
           Effect.scopeWith((scope) => memoMap.getOrElseMemoize(_.self, scope))
@@ -178,7 +182,7 @@ export function withScope(scope: LazyArg<Scope>, __tsplusTrace?: string) {
               .flatMap((r) =>
                 memoMap
                   .getOrElseMemoize(_.that, scope)
-                  .provideEnvironment(r, __tsplusTrace)
+                  .provideEnvironment(r)
               )
         ),
       LayerZipWithPar: (_) =>

@@ -12,7 +12,7 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  * @tsplus static effect/core/stream/Stream.Aspects buffer
  * @tsplus pipeable effect/core/stream/Stream buffer
  */
-export function buffer(capacity: number, __tsplusTrace?: string) {
+export function buffer(capacity: number) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => {
     const queue = self.toQueueOfElements(capacity)
     return new StreamInternal(
@@ -27,8 +27,11 @@ export function buffer(capacity: number, __tsplusTrace?: string) {
           void
         > = Channel.fromEffect(queue.take).flatMap((exit) =>
           exit.fold(
-            (cause) => Cause.flipCauseMaybe<E>(cause).fold(() => Channel.unit, (cause) => Channel.failCause(cause)),
-            (a) => Channel.write(Chunk.single(a)) > process
+            (cause) =>
+              Cause.flipCauseMaybe<E>(cause).fold(() => Channel.unit, (cause) =>
+                Channel.failCause(cause)),
+            (a) =>
+              Channel.write(Chunk.single(a)) > process
           )
         )
         return process

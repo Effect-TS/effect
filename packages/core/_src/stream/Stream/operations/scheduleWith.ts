@@ -1,5 +1,8 @@
 import type { Driver } from "@effect/core/io/Schedule/Driver"
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Schedules the output of the stream using the provided `schedule` and emits
@@ -12,8 +15,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
 export function scheduleWith<S, R2, A, B, C>(
   schedule: LazyArg<Schedule<S, R2, A, B>>,
   f: (a: A) => C,
-  g: (b: B) => C,
-  __tsplusTrace?: string
+  g: (b: B) => C
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E, C> => {
     concreteStream(self)

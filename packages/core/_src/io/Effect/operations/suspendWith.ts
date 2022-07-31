@@ -6,15 +6,14 @@
  * @tsplus static effect/core/io/Effect.Ops suspendWith
  */
 export function suspendWith<R, A>(
-  f: (runtimeConfig: RuntimeConfig, fiberId: FiberId) => Effect<R, never, A>,
-  __tsplusTrace?: string
+  f: (runtimeConfig: RuntimeConfig, fiberId: FiberId) => Effect<R, never, A>
 ): Effect.RIO<R, A> {
   return Effect.suspendSucceedWith((runtimeConfig, fiberId) => {
     try {
       return f(runtimeConfig, fiberId)
     } catch (error) {
       if (!runtimeConfig.value.fatal(error)) {
-        throw new Effect.Error(Exit.fail(error), __tsplusTrace)
+        throw new Effect.Error(Exit.fail(error))
       }
       throw error
     }

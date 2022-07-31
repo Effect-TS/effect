@@ -9,7 +9,7 @@ export function takeSomeSTM<K, V, R, E, A>(
 ) {
   return (self: TMap<K, V>): STM<R, E, Chunk<A>> =>
     // todo: rewrite to STM<R, E, NonEmptyChunk<A>>
-    self.findAllSTM((kv) => pf(kv).map((a) => Tuple(kv.get(0), a))).map(Chunk.from).continueOrRetry((_) =>
-      Maybe.fromPredicate(_, (c) => c.size > 0)
+    self.findAllSTM((kv) => pf(kv).map((a) => Tuple(kv.get(0), a))).map(Chunk.from).continueOrRetry(
+      (_) => Maybe.fromPredicate(_, (c) => c.size > 0)
     ).flatMap((both) => self.deleteAll(both.map((_) => _.get(0))).as(both.map((_) => _.get(1))))
 }

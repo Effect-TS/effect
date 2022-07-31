@@ -17,7 +17,10 @@ describe.concurrent("Stream", () => {
     it("take short circuits", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(false))
-        .bindValue("stream", ({ ref }) => (Stream(1) + Stream.fromEffect(ref.set(true)).drain).take(0))
+        .bindValue(
+          "stream",
+          ({ ref }) => (Stream(1) + Stream.fromEffect(ref.set(true)).drain).take(0)
+        )
         .tap(({ stream }) => stream.runDrain)
         .flatMap(({ ref }) => ref.get())
 

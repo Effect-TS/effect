@@ -6,8 +6,7 @@
  * @tsplus pipeable effect/core/stream/Stream mapConcat
  */
 export function mapConcat<A, A2>(
-  f: (a: A) => Collection<A2>,
-  __tsplusTrace?: string
+  f: (a: A) => Collection<A2>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, A2> =>
     self.chunksWith((chunk) => chunk.map((chunk) => chunk.flatMap((a) => Chunk.from(f(a)))))

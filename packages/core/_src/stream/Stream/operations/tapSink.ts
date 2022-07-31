@@ -1,4 +1,7 @@
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 import { TerminationStrategy } from "@effect/core/stream/Stream/TerminationStrategy"
 
 /**
@@ -9,8 +12,7 @@ import { TerminationStrategy } from "@effect/core/stream/Stream/TerminationStrat
  * @tsplus pipeable effect/core/stream/Stream tapSink
  */
 export function tapSink<R2, E2, A, X, Z>(
-  sink: LazyArg<Sink<R2, E2, A, X, Z>>,
-  __tsplusTrace?: string
+  sink: LazyArg<Sink<R2, E2, A, X, Z>>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> =>
     Stream.fromEffect(Queue.bounded<Take<E | E2, A>>(1)).flatMap((queue) => {

@@ -4,8 +4,10 @@
  * @tsplus getter effect/core/stm/TReentrantLock writeLock
  */
 export function writeLock(
-  self: TReentrantLock,
-  __tsplusTrace?: string
+  self: TReentrantLock
 ): Effect<Scope, never, number> {
-  return Effect.acquireRelease(self.acquireWrite.commit, (_) => self.releaseWrite.commit, __tsplusTrace)
+  return Effect.acquireRelease(
+    self.acquireWrite.commit,
+    (_) => self.releaseWrite.commit
+  )
 }

@@ -9,8 +9,7 @@
 export function cond<E, A>(
   predicate: LazyArg<boolean>,
   result: LazyArg<A>,
-  error: LazyArg<E>,
-  __tsplusTrace?: string
+  error: LazyArg<E>
 ): Effect<never, E, A> {
   return Effect.suspendSucceed(() => predicate() ? Effect.sync(result) : Effect.failSync(error))
 }

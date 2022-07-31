@@ -22,8 +22,7 @@ export function isStreamTimeoutError(u: unknown): u is StreamTimeoutError {
  */
 export function timeoutTo<R2, E2, A2>(
   duration: LazyArg<Duration>,
-  that: LazyArg<Stream<R2, E2, A2>>,
-  __tsplusTrace?: string
+  that: LazyArg<Stream<R2, E2, A2>>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A | A2> =>
     self

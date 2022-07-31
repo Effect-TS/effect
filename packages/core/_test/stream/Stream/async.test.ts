@@ -281,7 +281,7 @@ describe.concurrent("Stream", () => {
     //     isDone <- refDone.get
     //     exit   <- run.interrupt
     //   } yield assert(isDone)(isFalse) &&
-    //     assert(exit.untraced)(failsCause(containsCause(Cause.interrupt(selfId))))
+    //     assert(exit)(failsCause(containsCause(Cause.interrupt(selfId))))
     // })
   })
 })

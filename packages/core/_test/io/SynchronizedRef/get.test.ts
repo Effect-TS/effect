@@ -27,7 +27,7 @@ describe.concurrent("SynchronizedRef", () => {
       Do(($) => {
         const ref = $(Ref.Synchronized.make(current))
         const result = $(ref.getAndUpdateEffect(() => Effect.fail(failure)).exit)
-        assert.isTrue(result.untraced == Exit.fail(failure))
+        assert.isTrue(result == Exit.fail(failure))
       }).unsafeRunPromiseExit())
   })
 
@@ -82,7 +82,7 @@ describe.concurrent("SynchronizedRef", () => {
               Maybe.none
           ).exit
         )
-        assert.isTrue(result.untraced == Exit.fail(failure))
+        assert.isTrue(result == Exit.fail(failure))
       }).unsafeRunPromiseExit())
 
     it("interrupt parent fiber and update", () =>

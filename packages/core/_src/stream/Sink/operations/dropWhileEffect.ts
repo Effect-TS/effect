@@ -4,8 +4,7 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * @tsplus static effect/core/stream/Sink.Ops dropWhileEffect
  */
 export function dropWhileEffect<R, E, In>(
-  p: (input: In) => Effect<R, E, boolean>,
-  __tsplusTrace?: string
+  p: (input: In) => Effect<R, E, boolean>
 ): Sink<R, E, In, In, unknown> {
   const loop: Channel<
     R,

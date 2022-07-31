@@ -77,7 +77,7 @@ describe.concurrent("Effect", () => {
         const leftResult = $(leftInnerFiber.await)
         const interrupted = $(ref.get())
         assert.isFalse(interrupted)
-        assert.isTrue(leftResult.untraced == Exit.succeed("foo"))
+        assert.isTrue(leftResult == Exit.succeed("foo"))
         assert.strictEqual(rightResult, 42)
       }).unsafeRunPromise())
   })

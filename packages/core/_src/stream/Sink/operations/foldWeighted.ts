@@ -13,8 +13,7 @@ export function foldWeighted<In, S>(
   z: LazyArg<S>,
   costFn: (s: S, input: In) => number,
   max: number,
-  f: (s: S, input: In) => S,
-  __tsplusTrace?: string
+  f: (s: S, input: In) => S
 ): Sink<never, never, In, In, S> {
   return Sink.foldWeightedDecompose(z, costFn, max, Chunk.single, f)
 }

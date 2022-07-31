@@ -8,8 +8,7 @@ import { realFiber } from "@effect/core/io/Fiber/definition"
  * @tsplus getter effect/core/io/RuntimeFiber await
  */
 export function _await<E, A>(
-  self: Fiber<E, A>,
-  __tsplusTrace?: string
+  self: Fiber<E, A>
 ): Effect<never, never, Exit<E, A>> {
   realFiber(self)
   return self._await

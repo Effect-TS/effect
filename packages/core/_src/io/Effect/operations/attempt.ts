@@ -4,16 +4,13 @@
  *
  * @tsplus static effect/core/io/Effect.Ops attempt
  */
-export function attempt<A>(
-  f: LazyArg<A>,
-  __tsplusTrace?: string
-): Effect<never, unknown, A> {
+export function attempt<A>(f: LazyArg<A>): Effect<never, unknown, A> {
   return Effect.succeedWith((runtimeConfig) => {
     try {
       return f()
     } catch (error) {
       if (!runtimeConfig.value.fatal(error)) {
-        throw new Effect.Error(Exit.fail(error), __tsplusTrace)
+        throw new Effect.Error(Exit.fail(error))
       }
       throw error
     }

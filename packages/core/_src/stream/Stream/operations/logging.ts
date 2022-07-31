@@ -4,8 +4,7 @@
  * @tsplus static effect/core/stream/Stream.Ops log
  */
 export function log(
-  message: LazyArg<string>,
-  __tsplusTrace?: string
+  message: LazyArg<string>
 ): Stream<never, never, void> {
   return Stream.fromEffect(Effect.log(message))
 }
@@ -16,8 +15,7 @@ export function log(
  * @tsplus static effect/core/stream/Stream.Ops logDebug
  */
 export function logDebug(
-  message: LazyArg<string>,
-  __tsplusTrace?: string
+  message: LazyArg<string>
 ): Stream<never, never, void> {
   return Stream.fromEffect(Effect.logDebug(message))
 }
@@ -28,8 +26,7 @@ export function logDebug(
  * @tsplus static effect/core/stream/Stream.Ops logError
  */
 export function logError(
-  message: LazyArg<string>,
-  __tsplusTrace?: string
+  message: LazyArg<string>
 ): Stream<never, never, void> {
   return Stream.fromEffect(Effect.logError(message))
 }
@@ -40,8 +37,7 @@ export function logError(
  * @tsplus static effect/core/stream/Stream.Ops logErrorCause
  */
 export function logErrorCause<E>(
-  cause: LazyArg<Cause<E>>,
-  __tsplusTrace?: string
+  cause: LazyArg<Cause<E>>
 ): Stream<never, never, void> {
   return Stream.fromEffect(Effect.logErrorCause(cause))
 }
@@ -52,8 +48,7 @@ export function logErrorCause<E>(
  * @tsplus static effect/core/stream/Stream.Ops logFatal
  */
 export function logFatal(
-  message: LazyArg<string>,
-  __tsplusTrace?: string
+  message: LazyArg<string>
 ): Stream<never, never, void> {
   return Stream.fromEffect(Effect.logFatal(message))
 }
@@ -64,8 +59,7 @@ export function logFatal(
  * @tsplus static effect/core/stream/Stream.Ops logInfo
  */
 export function logInfo(
-  message: LazyArg<string>,
-  __tsplusTrace?: string
+  message: LazyArg<string>
 ): Stream<never, never, void> {
   return Stream.fromEffect(Effect.logInfo(message))
 }
@@ -76,8 +70,7 @@ export function logInfo(
  * @tsplus static effect/core/stream/Stream.Ops logWarning
  */
 export function logWarning(
-  message: LazyArg<string>,
-  __tsplusTrace?: string
+  message: LazyArg<string>
 ): Stream<never, never, void> {
   return Stream.fromEffect(Effect.logWarning(message))
 }
@@ -88,8 +81,7 @@ export function logWarning(
  * @tsplus static effect/core/stream/Stream.Ops logTrace
  */
 export function logTrace(
-  message: LazyArg<string>,
-  __tsplusTrace?: string
+  message: LazyArg<string>
 ): Stream<never, never, void> {
   return Stream.fromEffect(Effect.logTrace(message))
 }
@@ -100,8 +92,7 @@ export function logTrace(
  * @tsplus static effect/core/stream/Stream.Ops logLevel
  */
 export function logLevel(
-  level: LazyArg<LogLevel>,
-  __tsplusTrace?: string
+  level: LazyArg<LogLevel>
 ): Stream<never, never, void> {
   return Stream.scoped(FiberRef.currentLogLevel.locallyScoped(level()))
 }
@@ -112,8 +103,7 @@ export function logLevel(
  * @tsplus static effect/core/stream/Stream.Ops logSpan
  */
 export function logSpan(
-  label: LazyArg<string>,
-  __tsplusTrace?: string
+  label: LazyArg<string>
 ): Stream<never, never, void> {
   return Stream.scoped(
     FiberRef.currentLogSpan.get.flatMap((stack) => {

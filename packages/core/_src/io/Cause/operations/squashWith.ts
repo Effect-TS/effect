@@ -12,10 +12,11 @@ export function squashWith<E>(f: (e: E) => unknown) {
       .map(f)
       .getOrElse(() => {
         if (self.isInterrupted) {
-          const fibers = self.interruptors.flatMap((fiberId) => fiberId.ids.map((n) => `#${n}`)).reduce(
-            "",
-            (acc, id) => `${acc}, ${id}`
-          )
+          const fibers = self.interruptors.flatMap((fiberId) => fiberId.ids.map((n) => `#${n}`))
+            .reduce(
+              "",
+              (acc, id) => `${acc}, ${id}`
+            )
           return new InterruptedException(`Interrupted by fibers: ${fibers}`)
         }
         return self.defects.head.getOrElse(new InterruptedException())

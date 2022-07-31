@@ -7,8 +7,7 @@ import { concreteChunkId } from "@tsplus/stdlib/collections/Chunk/definition"
  */
 export function dropWhileEffect_<R, E, A>(
   self: Chunk<A>,
-  f: (a: A) => Effect<R, E, boolean>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R, E, boolean>
 ): Effect<R, E, Chunk<A>> {
   return Effect.suspendSucceed(() => {
     const iterator = concreteChunkId(self)._arrayLikeIterator()

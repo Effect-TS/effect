@@ -7,11 +7,13 @@ import { FiberRefs } from "@effect/core/io/FiberRefs"
  *
  * @tsplus static effect/core/io/Effect.Ops runtime
  */
-export function runtime<R>(__tsplusTrace?: string): Effect<R, never, Runtime<R>> {
+export function runtime<R>(): Effect<R, never, Runtime<R>> {
   return Effect.environment<R>()
-    .flatMap((env) =>
-      Effect.getFiberRefs()
-        .flatMap((refs) => Effect.runtimeConfig.map((config) => new Runtime(env, config, refs))), __tsplusTrace)
+    .flatMap(
+      (env) =>
+        Effect.getFiberRefs()
+          .flatMap((refs) => Effect.runtimeConfig.map((config) => new Runtime(env, config, refs)))
+    )
 }
 
 /**

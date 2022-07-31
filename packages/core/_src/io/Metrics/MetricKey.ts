@@ -78,7 +78,10 @@ export function frequency(name: string): MetricKey.Frequency {
  *
  * @tsplus static effect/core/io/Metrics/MetricKey.Ops Histogram
  */
-export function histogram(name: string, boundaries: Metric.Histogram.Boundaries): MetricKey.Histogram {
+export function histogram(
+  name: string,
+  boundaries: Metric.Histogram.Boundaries
+): MetricKey.Histogram {
   return new MetricKey(name, MetricKeyType.Histogram(boundaries))
 }
 
@@ -118,7 +121,8 @@ export function tagged(key: string, value: string) {
  * @tsplus pipeable effect/core/io/Metrics/MetricKey taggedWithLabels
  */
 export function taggedWithLabels(extraTags: Collection<MetricLabel>) {
-  return <Type>(self: MetricKey<Type>): MetricKey<Type> => self.taggedWithLabelSet(HashSet.from(extraTags))
+  return <Type>(self: MetricKey<Type>): MetricKey<Type> =>
+    self.taggedWithLabelSet(HashSet.from(extraTags))
 }
 
 /**

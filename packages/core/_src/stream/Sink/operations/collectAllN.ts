@@ -5,11 +5,10 @@ import type { ChunkBuilder } from "@tsplus/stdlib/collections/Chunk/builder"
  *
  * @tsplus static effect/core/stream/Sink.Ops collectAllN
  */
-export function collectAllN<In>(
-  n: number,
-  __tsplusTrace?: string
-): Sink<never, never, In, In, Chunk<In>> {
+export function collectAllN<In>(n: number): Sink<never, never, In, In, Chunk<In>> {
   return Sink.fromEffect(Effect.sync(Chunk.builder<In>()))
-    .flatMap((cb) => Sink.foldUntil<In, ChunkBuilder<In>>(cb, n, (builder, input) => builder.append(input)))
+    .flatMap((cb) =>
+      Sink.foldUntil<In, ChunkBuilder<In>>(cb, n, (builder, input) => builder.append(input))
+    )
     .map((builder) => builder.build())
 }

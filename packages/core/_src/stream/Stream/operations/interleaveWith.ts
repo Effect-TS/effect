@@ -1,5 +1,8 @@
 import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff"
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 
 /**
  * Combines this stream and the specified stream deterministically using the
@@ -14,8 +17,7 @@ import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/opera
  */
 export function interleaveWith<R2, E2, A2, R3, E3>(
   that: LazyArg<Stream<R2, E2, A2>>,
-  b: LazyArg<Stream<R3, E3, boolean>>,
-  __tsplusTrace?: string
+  b: LazyArg<Stream<R3, E3, boolean>>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2 | R3, E | E2 | E3, A | A2> => {
     concreteStream(self)
@@ -46,8 +48,7 @@ export function interleaveWith<R2, E2, A2, R3, E3>(
 }
 
 function producer<E, E2, E3, A, A2>(
-  handoff: Handoff<Take<E | E2 | E3, A | A2>>,
-  __tsplusTrace?: string
+  handoff: Handoff<Take<E | E2 | E3, A | A2>>
 ): Channel<never, E | E2 | E3, A | A2, unknown, never, never, void> {
   return Channel.readWithCause(
     (value: A | A2) =>
@@ -62,8 +63,7 @@ function process<E, E2, E3, A, A2>(
   left: Handoff<Take<E | E2 | E3, A | A2>>,
   right: Handoff<Take<E | E2 | E3, A | A2>>,
   leftDone: boolean,
-  rightDone: boolean,
-  __tsplusTrace?: string
+  rightDone: boolean
 ): Channel<never, E | E2 | E3, boolean, unknown, E | E2 | E3, Chunk<A | A2>, void> {
   return Channel.readWithCause(
     (bool: boolean) => {

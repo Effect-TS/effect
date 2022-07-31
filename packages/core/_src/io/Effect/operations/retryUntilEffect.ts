@@ -5,10 +5,7 @@
  * @tsplus static effect/core/io/Effect.Aspects retryUntilEffect
  * @tsplus pipeable effect/core/io/Effect retryUntilEffect
  */
-export function retryUntilEffect<R1, E>(
-  f: (e: E) => Effect<R1, never, boolean>,
-  __tsplusTrace?: string
-) {
+export function retryUntilEffect<R1, E>(f: (e: E) => Effect<R1, never, boolean>) {
   return <R, A>(self: Effect<R, E, A>): Effect<R | R1, E, A> =>
     self.catchAll((e) =>
       f(e).flatMap((b) =>

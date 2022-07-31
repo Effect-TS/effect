@@ -1,6 +1,9 @@
 import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff"
 import { HandoffSignal } from "@effect/core/stream/Stream/operations/_internal/HandoffSignal"
-import { concreteStream, StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import {
+  concreteStream,
+  StreamInternal
+} from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 import { SinkEndReason } from "@effect/core/stream/Stream/SinkEndReason"
 
 type DebounceState<E, A> = NotStarted | Previous<A> | Current<E, A>
@@ -35,8 +38,7 @@ class Current<E, A> {
  * @tsplus pipeable effect/core/stream/Stream debounce
  */
 export function debounce<R, E, A>(
-  duration0: LazyArg<Duration>,
-  __tsplusTrace?: string
+  duration0: LazyArg<Duration>
 ) {
   return (self: Stream<R, E, A>): Stream<R, E, A> =>
     Stream.unwrap(
@@ -45,8 +47,10 @@ export function debounce<R, E, A>(
           const duration = $(Effect.sync(duration0))
           const handoff = $(Handoff.make<HandoffSignal<E, A>>())
 
-          function enqueue(last: Chunk<A>, __tsplusTrace?: string) {
-            return grafter(Clock.sleep(duration).as(last).fork).map((fiber) => consumer(new Previous(fiber)))
+          function enqueue(last: Chunk<A>) {
+            return grafter(Clock.sleep(duration).as(last).fork).map((fiber) =>
+              consumer(new Previous(fiber))
+            )
           }
 
           const producer: Channel<
@@ -74,8 +78,7 @@ export function debounce<R, E, A>(
           )
 
           function consumer(
-            state: DebounceState<E, A>,
-            __tsplusTrace?: string
+            state: DebounceState<E, A>
           ): Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown> {
             return Channel.unwrap(() => {
               switch (state._tag) {

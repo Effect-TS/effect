@@ -6,8 +6,7 @@
  * @tsplus pipeable effect/core/stream/Stream runForEach
  */
 export function runForEach<R, E, A, R2, E2, Z>(
-  f: (a: A) => Effect<R2, E2, Z>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R2, E2, Z>
 ) {
   return <R, E>(self: Stream<R, E, A>): Effect<R | R2, E | E2, void> =>
     self.run(

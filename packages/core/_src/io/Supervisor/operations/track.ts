@@ -3,9 +3,7 @@
  *
  * @tsplus static effect/core/io/Supervisor.Ops track
  */
-export function track(
-  __tsplusTrace?: string
-): Effect<never, never, Supervisor<Chunk<Fiber.Runtime<any, any>>>> {
+export function track(): Effect<never, never, Supervisor<Chunk<Fiber.Runtime<any, any>>>> {
   return Effect.sync(unsafeTrack)
 }
 

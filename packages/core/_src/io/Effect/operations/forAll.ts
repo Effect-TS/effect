@@ -6,16 +6,14 @@
  */
 export function forAll<R, E, A>(
   as: LazyArg<Collection<A>>,
-  f: (a: A) => Effect<R, E, boolean>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R, E, boolean>
 ): Effect<R, E, boolean> {
   return Effect.sync(as).flatMap((Collection) => loop(Collection[Symbol.iterator](), f))
 }
 
 function loop<R, E, A>(
   iterator: Iterator<A>,
-  f: (a: A) => Effect<R, E, boolean>,
-  __tsplusTrace?: string
+  f: (a: A) => Effect<R, E, boolean>
 ): Effect<R, E, boolean> {
   const next = iterator.next()
   return next.done

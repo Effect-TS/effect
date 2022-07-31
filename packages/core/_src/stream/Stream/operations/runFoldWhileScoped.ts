@@ -11,8 +11,7 @@
 export function runFoldWhileScoped<S, A>(
   s: LazyArg<S>,
   cont: Predicate<S>,
-  f: (s: S, a: A) => S,
-  __tsplusTrace?: string
+  f: (s: S, a: A) => S
 ) {
   return <R, E>(self: Stream<R, E, A>): Effect<R | Scope, E, S> =>
     self.runScoped(

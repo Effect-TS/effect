@@ -8,7 +8,9 @@
  * @tsplus static effect/core/stream/Stream.Aspects broadcastedQueuesDynamic
  * @tsplus pipeable effect/core/stream/Stream broadcastedQueuesDynamic
  */
-export function broadcastedQueuesDynamic(maximumLag: number, __tsplusTrace?: string) {
-  return <R, E, A>(self: Stream<R, E, A>): Effect<R | Scope, never, Effect<Scope, never, Dequeue<Take<E, A>>>> =>
+export function broadcastedQueuesDynamic(maximumLag: number) {
+  return <R, E, A>(
+    self: Stream<R, E, A>
+  ): Effect<R | Scope, never, Effect<Scope, never, Dequeue<Take<E, A>>>> =>
     self.toHub(maximumLag).map((hub) => hub.subscribe)
 }

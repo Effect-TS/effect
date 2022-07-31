@@ -74,7 +74,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.fail("boom"))
+      assert.isTrue(result == Exit.fail("boom"))
     })
 
     it("fails the foreground stream if the background fails with a defect", async () => {
@@ -83,7 +83,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result.untraced == Exit.die(error))
+      assert.isTrue(result == Exit.die(error))
     })
   })
 })
