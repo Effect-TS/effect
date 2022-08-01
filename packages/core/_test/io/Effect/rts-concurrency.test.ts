@@ -54,7 +54,7 @@ describe.concurrent("Effect", () => {
         .bind("ref", () => Ref.make(false))
         .bind("fiber1", ({ ref }) => child(ref).forkDaemon.fork)
         .bind("fiber2", ({ fiber1 }) => fiber1.join)
-        .bind("result", ({ ref }) => ref.get())
+        .bind("result", ({ ref }) => ref.get)
         .tap(({ fiber2 }) => fiber2.interrupt)
 
       const { result } = await program.unsafeRunPromise()
@@ -81,7 +81,7 @@ describe.concurrent("Effect", () => {
           ({ fiber, latch1Start, latch2Start }) =>
             latch1Start.await > latch2Start.await > fiber.interrupt
         )
-        .flatMap(({ interruptionRef }) => interruptionRef.get())
+        .flatMap(({ interruptionRef }) => interruptionRef.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -133,7 +133,7 @@ describe.concurrent("Effect", () => {
             )
           )
         )
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -196,10 +196,10 @@ describe.concurrent("Effect", () => {
                 .tap((fiber) => fibers.update((set) => set.add(fiber)))
             )
         )
-        .bindValue("awaitAll", ({ fibers }) => fibers.get().flatMap((set) => Fiber.awaitAll(set)))
+        .bindValue("awaitAll", ({ fibers }) => fibers.get.flatMap((set) => Fiber.awaitAll(set)))
         .tap(({ effect }) => effect.race(effect))
         .flatMap(
-          ({ awaitAll, latch, ref }) => latch.succeed(undefined) > awaitAll > ref.get()
+          ({ awaitAll, latch, ref }) => latch.succeed(undefined) > awaitAll > ref.get
         )
 
       const result = await program.unsafeRunPromise()

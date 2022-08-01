@@ -8,7 +8,7 @@ describe.concurrent("Ref", () => {
     it("simple", async () => {
       const program = Ref.make(current)
         .tap((ref) => ref.update(() => update))
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -32,7 +32,7 @@ describe.concurrent("Ref", () => {
         .tap((ref) =>
           ref.updateSome((state) => state.isClosed() ? Maybe.some(State.Changed) : Maybe.none)
         )
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -45,7 +45,7 @@ describe.concurrent("Ref", () => {
         .tap(({ ref }) =>
           ref.updateSome((state) => state.isActive() ? Maybe.some(State.Changed) : Maybe.none)
         )
-        .bind("v1", ({ ref }) => ref.get())
+        .bind("v1", ({ ref }) => ref.get)
         .tap(({ ref }) =>
           ref.updateSome((state) =>
             state.isActive()
@@ -55,7 +55,7 @@ describe.concurrent("Ref", () => {
               : Maybe.none
           )
         )
-        .bind("v2", ({ ref }) => ref.get())
+        .bind("v2", ({ ref }) => ref.get)
 
       const { v1, v2 } = await program.unsafeRunPromise()
 

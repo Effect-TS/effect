@@ -10,7 +10,7 @@ describe.concurrent("Channel", () => {
             .onExit((exit) => ref.set(exit))
             .raceEither(deferred.await)
         )
-        const result = $(ref.get())
+        const result = $(ref.get)
         assert.isTrue(result.isInterrupted)
       }).unsafeRunPromise())
   })

@@ -57,8 +57,7 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
           decider.succeed(
             () =>
               (k: K, _: V) =>
-                ref
-                  .get()
+                ref.get
                   .map((map) => map.get(k))
                   .flatMap((option) =>
                     option.fold(

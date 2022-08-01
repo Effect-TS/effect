@@ -60,7 +60,7 @@ describe.concurrent("Stream", () => {
         .bind("fiber", ({ sink }) => Stream(1, 1, 2).aggregate(sink).runCollect.fork)
         .tap(({ latch }) => latch.await)
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ cancelled }) => cancelled.get())
+        .flatMap(({ cancelled }) => cancelled.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -80,7 +80,7 @@ describe.concurrent("Stream", () => {
         .bind("fiber", ({ sink }) => Stream(1, 1, 2).aggregate(sink).runCollect.fork)
         .tap(({ latch }) => latch.await)
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ cancelled }) => cancelled.get())
+        .flatMap(({ cancelled }) => cancelled.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -246,7 +246,7 @@ describe.concurrent("Stream", () => {
             .fork)
         .tap(({ latch }) => latch.await)
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ cancelled }) => cancelled.get())
+        .flatMap(({ cancelled }) => cancelled.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -270,7 +270,7 @@ describe.concurrent("Stream", () => {
             .fork)
         .tap(({ latch }) => latch.await)
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ cancelled }) => cancelled.get())
+        .flatMap(({ cancelled }) => cancelled.get)
 
       const result = await program.unsafeRunPromise()
 

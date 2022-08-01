@@ -43,7 +43,7 @@ describe.concurrent("Stream", () => {
             .fork)
         .tap(({ halt, started }) => started.await.zipRight(halt.succeed(undefined)))
         .tap(({ fiber }) => fiber.await)
-        .flatMap(({ interrupted }) => interrupted.get())
+        .flatMap(({ interrupted }) => interrupted.get)
 
       const result = await program.unsafeRunPromise()
 

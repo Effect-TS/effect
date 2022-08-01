@@ -12,7 +12,7 @@ describe.concurrent("Layer", () => {
           ({ effect }) => Layer.fromEffectEnvironment(effect).retry(Schedule.recurs(3))
         )
         .tap(({ layer }) => Effect.scoped(layer.build).ignore)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

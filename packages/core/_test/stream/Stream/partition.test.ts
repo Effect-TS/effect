@@ -84,10 +84,10 @@ describe.concurrent("Stream", () => {
                   .runDrain
                   .fork)
               .tap(({ latch }) => latch.await)
-              .bind("snapshot1", ({ ref }) => ref.get())
+              .bind("snapshot1", ({ ref }) => ref.get)
               .bind("other", () => odds.runCollect)
               .tap(({ fiber }) => fiber.await)
-              .bind("snapshot2", ({ ref }) => ref.get())
+              .bind("snapshot2", ({ ref }) => ref.get)
           )
       )
 

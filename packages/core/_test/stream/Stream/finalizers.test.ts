@@ -10,7 +10,7 @@ describe.concurrent("Stream", () => {
             .ensuring(log.update(event("ensuring")))
             .runDrain
         )
-        .flatMap(({ log }) => log.get())
+        .flatMap(({ log }) => log.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -39,7 +39,7 @@ describe.concurrent("Stream", () => {
             .ensuring(entry("Ensuring"))
             .runDrain
         )
-        .flatMap(({ log }) => log.get())
+        .flatMap(({ log }) => log.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -63,7 +63,7 @@ describe.concurrent("Stream", () => {
               .flatMap(() => Effect.unit)
           )
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

@@ -52,7 +52,7 @@ describe.concurrent("Effect", () => {
             (n) => n + 1
           )((n) => ref.update((list) => list.prepend(n)))
         )
-        .flatMap(({ ref }) => ref.get().map((list) => list.reverse))
+        .flatMap(({ ref }) => ref.get.map((list) => list.reverse))
 
       const result = await program.unsafeRunPromise()
 
@@ -82,7 +82,7 @@ describe.concurrent("Effect", () => {
             (n) => n + 1
           )((n) => ref.update((list) => list.prepend(n)))
         )
-        .flatMap((ref) => ref.get().map((list) => list.reverse))
+        .flatMap((ref) => ref.get.map((list) => list.reverse))
 
       const result = await program.unsafeRunPromise()
 
@@ -135,7 +135,7 @@ describe.concurrent("Effect", () => {
             list,
             (s) => ref.update((list) => list.prepend(s)) > Effect.sync(Number.parseInt(s))
           ))
-        .bind("effects", ({ ref }) => ref.get().map((list) => list.reverse))
+        .bind("effects", ({ ref }) => ref.get.map((list) => list.reverse))
 
       const { effects, result } = await program.unsafeRunPromise()
 
@@ -168,7 +168,7 @@ describe.concurrent("Effect", () => {
       const list = List(1, 2, 3, 4, 5)
       const program = Ref.make<List<number>>(List.empty())
         .tap((ref) => Effect.forEachDiscard(list, (n) => ref.update((list) => list.prepend(n))))
-        .flatMap((ref) => ref.get().map((list) => list.reverse))
+        .flatMap((ref) => ref.get.map((list) => list.reverse))
 
       const result = await program.unsafeRunPromise()
 
@@ -185,7 +185,7 @@ describe.concurrent("Effect", () => {
         )
         .tap(({ effect }) => effect)
         .tap(({ effect }) => effect)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -390,7 +390,7 @@ describe.concurrent("Effect", () => {
             (deferred.await > ref.set(true)).as(1)
           ))
         .bind("e", ({ actions }) => Effect.forEachPar(actions, identity).flip)
-        .bind("v", ({ ref }) => ref.get())
+        .bind("v", ({ ref }) => ref.get)
 
       const { e, v } = await program.unsafeRunPromise()
 
@@ -406,7 +406,7 @@ describe.concurrent("Effect", () => {
           ({ ref }) => Effect.forEachPar(Chunk.range(1, 100), () => ref.update((_) => _ + 1).fork)
         )
         .tap(({ fibers }) => Effect.forEach(fibers, (fiber) => fiber.await))
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -516,7 +516,7 @@ describe.concurrent("Effect", () => {
       const list = List(1, 2, 3, 4, 5)
       const program = Ref.make<List<number>>(List.empty())
         .tap((ref) => Effect.forEachParDiscard(list, (n) => ref.update((list) => list.prepend(n))))
-        .flatMap((ref) => ref.get().map((list) => list.reverse))
+        .flatMap((ref) => ref.get.map((list) => list.reverse))
 
       const result = await program.unsafeRunPromise()
 
@@ -527,7 +527,7 @@ describe.concurrent("Effect", () => {
       const list = Chunk(1, 2, 3, 4, 5)
       const program = Ref.make<List<number>>(List.empty())
         .tap((ref) => Effect.forEachParDiscard(list, (n) => ref.update((list) => list.prepend(n))))
-        .flatMap((ref) => ref.get().map((list) => list.reverse))
+        .flatMap((ref) => ref.get.map((list) => list.reverse))
 
       const result = await program.unsafeRunPromise()
 
@@ -553,7 +553,7 @@ describe.concurrent("Effect", () => {
           Effect.forEachParDiscard(list, (n) => ref.update((list) => list.prepend(n)))
             .withParallelism(2)
         )
-        .flatMap((ref) => ref.get().map((list) => list.reverse))
+        .flatMap((ref) => ref.get.map((list) => list.reverse))
 
       const result = await program.unsafeRunPromise()
 
@@ -632,7 +632,7 @@ describe.concurrent("Effect", () => {
         .bindValue("workers", ({ worker }) => Chunk.fill(4, () => worker))
         .bind("fiber", ({ workers }) => Effect.forkAll(workers))
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -646,7 +646,7 @@ describe.concurrent("Effect", () => {
         .bindValue("workers", ({ worker }) => Chunk.fill(4, () => worker))
         .bind("fiber", ({ workers }) => Effect.forkAll(workers))
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

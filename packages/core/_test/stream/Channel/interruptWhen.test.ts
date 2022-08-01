@@ -19,7 +19,7 @@ describe.concurrent("Channel", () => {
           )
           $(started.await.zipRight(halt.succeed(undefined)))
           $(fiber.await)
-          const result = $(interrupted.get())
+          const result = $(interrupted.get)
           assert.isTrue(result)
         }).unsafeRunPromise())
 
@@ -57,7 +57,7 @@ describe.concurrent("Channel", () => {
           )
           $(started.await.zipRight(halt.succeed(undefined)))
           $(fiber.await)
-          const result = $(interrupted.get())
+          const result = $(interrupted.get)
           assert.isTrue(result)
         }).unsafeRunPromise())
 

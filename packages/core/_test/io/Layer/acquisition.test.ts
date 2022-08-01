@@ -25,13 +25,13 @@ describe.concurrent("Layer", () => {
           ChunkTag,
           Effect.acquireRelease(
             Ref.make(Chunk.empty<string>()),
-            (ref) => ref.get().flatMap((_) => testRef.set(_))
+            (ref) => ref.get.flatMap((_) => testRef.set(_))
           ).tap(() => Effect.unit)
         )
         $(Effect.scoped(layer
           .build
           .flatMap((env) => env.get(ChunkTag).update((chunk) => chunk.append("test")))))
-        const result = $(testRef.get())
+        const result = $(testRef.get)
         assert.isTrue(result == Chunk.single("test"))
       }).unsafeRunPromise())
   })

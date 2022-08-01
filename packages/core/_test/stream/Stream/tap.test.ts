@@ -7,7 +7,7 @@ describe.concurrent("Stream", () => {
           Stream(1, 1)
             .tap((m) => ref.update((n) => n + m))
             .runCollect)
-        .bind("sum", ({ ref }) => ref.get())
+        .bind("sum", ({ ref }) => ref.get)
 
       const { result, sum } = await program.unsafeRunPromise()
 
@@ -42,7 +42,7 @@ describe.concurrent("Stream", () => {
             .tapError((err) => ref.update((s) => s + err))
             .runCollect
             .either)
-        .bind("err", ({ ref }) => ref.get())
+        .bind("err", ({ ref }) => ref.get)
 
       const { err, result } = await program.unsafeRunPromise()
 
@@ -58,7 +58,7 @@ describe.concurrent("Stream", () => {
         .bindValue("sink", ({ ref }) => Sink.forEach((m: number) => ref.update((n) => n + m)))
         .bindValue("stream", ({ sink }) => Stream(1, 1, 2, 3, 5, 8).tapSink(sink))
         .bind("elements", ({ stream }) => stream.runCollect)
-        .bind("done", ({ ref }) => ref.get())
+        .bind("done", ({ ref }) => ref.get)
 
       const { done, elements } = await program.unsafeRunPromise()
 
@@ -75,7 +75,7 @@ describe.concurrent("Stream", () => {
             .mapEffect((m) => ref.update((n) => n + m)))
         .bindValue("stream", ({ sink }) => Stream(1, 1, 2, 3, 5, 8).tapSink(sink))
         .bind("elements", ({ stream }) => stream.runCollect)
-        .bind("done", ({ ref }) => ref.get())
+        .bind("done", ({ ref }) => ref.get)
 
       const { done, elements } = await program.unsafeRunPromise()
 
@@ -101,7 +101,7 @@ describe.concurrent("Stream", () => {
         .bindValue("sink", ({ ref }) => Sink.forEach((m: number) => ref.update((n) => n + m)))
         .bindValue("stream", () => Stream(1, 2, 3, 4, 5).rechunk(1).forever)
         .bind("elements", ({ sink, stream }) => stream.tapSink(sink).take(3).runDrain)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

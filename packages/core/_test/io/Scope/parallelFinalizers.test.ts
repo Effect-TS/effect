@@ -15,7 +15,7 @@ describe.concurrent("Scope", () => {
               )
           )
         )
-        const result = $(ref.get())
+        const result = $(ref.get)
         assert.isTrue(result.take(2).find((action) => action == Action.Acquire(1)).isSome())
         assert.isTrue(result.take(2).find((action) => action == Action.Acquire(2)).isSome())
         assert.isTrue(result.drop(2).take(2).find((action) => action == Action.Use(1)).isSome())

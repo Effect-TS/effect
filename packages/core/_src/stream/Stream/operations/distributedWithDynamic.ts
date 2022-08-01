@@ -31,7 +31,7 @@ export function distributedWithDynamic<A, E, Z>(
         Ref.make<HashMap<UniqueKey, Queue<Exit<Maybe<E>, A>>>>(HashMap.empty()),
         (map) =>
           map
-            .get()
+            .get
             .flatMap((queues) => Effect.forEach(queues, ({ tuple: [, queue] }) => queue.shutdown))
       ))
       const add = $(
@@ -61,7 +61,7 @@ export function distributedWithDynamic<A, E, Z>(
                       .map(({ id, queue }) => Tuple(id, queue))
                   )
                 )
-                .bind("queues", () => queuesRef.get().map((map) => map.values))
+                .bind("queues", () => queuesRef.get.map((map) => map.values))
                 .tap(({ queues }) =>
                   Effect.forEach(queues, (queue) =>
                     queue
@@ -82,7 +82,7 @@ export function distributedWithDynamic<A, E, Z>(
               )
               .fork
           )
-          return queuesLock.withPermit(newQueue.get().flatten)
+          return queuesLock.withPermit(newQueue.get.flatten)
         })
       )
       return add
@@ -96,7 +96,7 @@ function offer<E, A>(
 ): Effect<never, E, void> {
   return Do(($) => {
     const shouldProcess = $(decide(a))
-    const queues = $(ref.get())
+    const queues = $(ref.get)
     $(
       Effect.reduce(
         queues,

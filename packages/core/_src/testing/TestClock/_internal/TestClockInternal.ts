@@ -34,7 +34,7 @@ export class TestClockInternal extends LiveClock {
    * Returns the current clock time in milliseconds.
    */
   get currentTime(): Effect<never, never, number> {
-    return this.clockState.get().map((data) => data.instant)
+    return this.clockState.get.map((data) => data.instant)
   }
 
   /**
@@ -42,7 +42,7 @@ export class TestClockInternal extends LiveClock {
    * restore the `TestClock` state to the saved state
    */
   get save(): Effect<never, never, Effect<never, never, void>> {
-    return this.clockState.get().map((data) => this.clockState.set(data))
+    return this.clockState.get.map((data) => this.clockState.set(data))
   }
 
   /**
@@ -85,7 +85,7 @@ export class TestClockInternal extends LiveClock {
    * resume.
    */
   get sleeps(): Effect<never, never, List<number>> {
-    return this.clockState.get().map((data) => data.sleeps.map((_) => _.get(0)))
+    return this.clockState.get.map((data) => data.sleeps.map((_) => _.get(0)))
   }
 
   /**

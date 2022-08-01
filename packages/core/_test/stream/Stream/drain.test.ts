@@ -10,7 +10,7 @@ describe.concurrent("Stream", () => {
             .drain
             .runDrain
         )
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -24,7 +24,7 @@ describe.concurrent("Stream", () => {
           "res",
           ({ ref }) => (Stream(1).tap((n) => ref.set(n)) + Stream.fail("fail")).runDrain.either
         )
-        .bind("refRes", ({ ref }) => ref.get())
+        .bind("refRes", ({ ref }) => ref.get)
 
       const { refRes, res } = await program.unsafeRunPromise()
 
@@ -62,7 +62,7 @@ describe.concurrent("Stream", () => {
             )
             .runDrain
         )
-        .flatMap(({ backgroundInterrupted }) => backgroundInterrupted.get())
+        .flatMap(({ backgroundInterrupted }) => backgroundInterrupted.get)
 
       const result = await program.unsafeRunPromise()
 

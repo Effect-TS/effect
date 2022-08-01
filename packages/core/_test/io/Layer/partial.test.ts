@@ -38,7 +38,7 @@ describe.concurrent("Layer", () => {
         (env) => {
           const s = env.get(StringTag)
           const ref = env.get(NumberRefTag)
-          return Env(FooTag, { ref, string: s, get: ref.get().map((i) => Tuple(i, s)) })
+          return Env(FooTag, { ref, string: s, get: ref.get.map((i) => Tuple(i, s)) })
         }
       )
 
@@ -73,7 +73,7 @@ describe.concurrent("Layer", () => {
         (env) => {
           const s = env.get(StringTag)
           const ref = env.get(NumberRefTag)
-          return Env(FooTag, { ref, string: s, get: ref.get().map((i) => Tuple(i, s)) })
+          return Env(FooTag, { ref, string: s, get: ref.get.map((i) => Tuple(i, s)) })
         }
       )
 
@@ -84,7 +84,7 @@ describe.concurrent("Layer", () => {
 
       const program = Effect.serviceWithEffect(FooTag, (_) => _.get)
         .flatMap(({ tuple: [i1, s] }) =>
-          Effect.serviceWithEffect(NumberRefTag, (ref) => ref.get()).map((i2) => Tuple(i1, i2, s))
+          Effect.serviceWithEffect(NumberRefTag, (ref) => ref.get).map((i2) => Tuple(i1, i2, s))
         )
         .provideLayer(layer)
 

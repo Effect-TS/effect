@@ -12,7 +12,7 @@ describe.concurrent("Effect", () => {
             )
           )
         )
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -31,7 +31,7 @@ describe.concurrent("Effect", () => {
             .sandbox
             .ignore
         )
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

@@ -11,7 +11,7 @@ describe.concurrent("Effect", () => {
             (n) => n === 0
           )
         )
-        .flatMap(({ output }) => output.get())
+        .flatMap(({ output }) => output.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -21,7 +21,7 @@ describe.concurrent("Effect", () => {
     it("repeatUntil always evaluates effect at least once", async () => {
       const program = Ref.make<number>(0)
         .tap((ref) => ref.update((n) => n + 1).repeatUntil(constTrue))
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -38,7 +38,7 @@ describe.concurrent("Effect", () => {
         .tap(({ acc, queue }) =>
           (queue.take < acc.update((n) => n + 1)).repeatUntilEquals(Equivalence.number, 5)
         )
-        .flatMap(({ acc }) => acc.get())
+        .flatMap(({ acc }) => acc.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -56,7 +56,7 @@ describe.concurrent("Effect", () => {
             input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)
           ).repeatUntilEffect((n) => Effect.sync(n === 0))
         )
-        .flatMap(({ output }) => output.get())
+        .flatMap(({ output }) => output.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -66,7 +66,7 @@ describe.concurrent("Effect", () => {
     it("always evaluates the effect at least once", async () => {
       const program = Ref.make<number>(0)
         .tap((ref) => ref.update((n) => n + 1).repeatUntilEffect(() => Effect.sync(true)))
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -84,7 +84,7 @@ describe.concurrent("Effect", () => {
             (n) => n >= 0
           )
         )
-        .flatMap(({ output }) => output.get())
+        .flatMap(({ output }) => output.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -94,7 +94,7 @@ describe.concurrent("Effect", () => {
     it("always evaluates the effect at least once", async () => {
       const program = Ref.make<number>(0)
         .tap((ref) => ref.update((n) => n + 1).repeatWhile(constFalse))
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -111,7 +111,7 @@ describe.concurrent("Effect", () => {
         .tap(({ acc, queue }) =>
           (queue.take < acc.update((n) => n + 1)).repeatWhileEquals(Equivalence.number, 0)
         )
-        .flatMap(({ acc }) => acc.get())
+        .flatMap(({ acc }) => acc.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -129,7 +129,7 @@ describe.concurrent("Effect", () => {
             input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)
           ).repeatWhileEffect((v) => Effect.sync(v >= 0))
         )
-        .flatMap(({ output }) => output.get())
+        .flatMap(({ output }) => output.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -139,7 +139,7 @@ describe.concurrent("Effect", () => {
     it("always evaluates effect at least once", async () => {
       const program = Ref.make<number>(0)
         .tap((ref) => ref.update((n) => n + 1).repeatWhileEffect(() => Effect.sync(false)))
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

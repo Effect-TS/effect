@@ -16,7 +16,7 @@ describe.concurrent("Layer", () => {
             )
           )
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

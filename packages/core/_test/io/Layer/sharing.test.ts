@@ -25,7 +25,7 @@ describe.concurrent("Layer", () => {
             ((layer1.map(identity) >> layer2) + (layer1 >> layer3)).build
         )
         .tap(({ env }) => Effect.scoped(env))
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -51,7 +51,7 @@ describe.concurrent("Layer", () => {
             ((layer1.mapError(identity) >> layer2) >> (layer1 >> layer3)).build
         )
         .tap(({ env }) => Effect.scoped(env))
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -76,7 +76,7 @@ describe.concurrent("Layer", () => {
           ({ layer1, layer2, layer3 }) => ((layer1.orDie >> layer2) >> (layer1 >> layer3)).build
         )
         .tap(({ env }) => Effect.scoped(env))
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

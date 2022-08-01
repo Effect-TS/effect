@@ -135,14 +135,14 @@ describe.concurrent("Effect", () => {
     it("deep effects", async () => {
       function incLeft(n: number, ref: Ref<number>): Effect.UIO<number> {
         if (n <= 0) {
-          return ref.get()
+          return ref.get
         }
         return incLeft(n - 1, ref) < ref.update((n) => n + 1)
       }
 
       function incRight(n: number, ref: Ref<number>): Effect.UIO<number> {
         if (n <= 0) {
-          return ref.get()
+          return ref.get
         }
         return ref.update((n) => n + 1) > incRight(n - 1, ref)
       }

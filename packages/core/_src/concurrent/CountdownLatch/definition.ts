@@ -58,7 +58,7 @@ export class CountdownLatchInternal {
    * Returns the current count.
    */
   get count(): Effect<never, never, number> {
-    return this._count.get()
+    return this._count.get
   }
 
   /**

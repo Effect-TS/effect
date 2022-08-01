@@ -17,7 +17,7 @@ describe.concurrent("Stream", () => {
         const fiber = $(stream(ref, deferred).runDrain.fork)
         $(deferred.await)
         $(fiber.interrupt)
-        const result = $(ref.get())
+        const result = $(ref.get)
         assert.isTrue(result.reverse == List("acquire outer", "release outer"))
       }).unsafeRunPromise())
   })

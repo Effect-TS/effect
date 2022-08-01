@@ -4,9 +4,9 @@ describe.concurrent("Effect", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
         .tap(({ ref }) => Effect.when(false, ref.set(1)))
-        .bind("v1", ({ ref }) => ref.get())
+        .bind("v1", ({ ref }) => ref.get)
         .tap(({ ref }) => Effect.when(true, ref.set(2)))
-        .bind("v2", ({ ref }) => ref.get())
+        .bind("v2", ({ ref }) => ref.get)
         .bindValue("failure", () => new Error("expected"))
         .tap(({ failure }) => Effect.when(false, Effect.failSync(failure)))
         .bind("failed", ({ failure }) => Effect.when(true, Effect.failSync(failure)).either)
@@ -31,14 +31,14 @@ describe.concurrent("Effect", () => {
             (option) => option._tag === "Some" ? Maybe.some(ref.set(true)) : Maybe.none
           )
         )
-        .bind("res1", ({ ref }) => ref.get())
+        .bind("res1", ({ ref }) => ref.get)
         .tap(({ ref }) =>
           Effect.whenCase(
             v2,
             (option) => option._tag === "Some" ? Maybe.some(ref.set(true)) : Maybe.none
           )
         )
-        .bind("res2", ({ ref }) => ref.get())
+        .bind("res2", ({ ref }) => ref.get)
 
       const { res1, res2 } = await program.unsafeRunPromise()
 
@@ -59,14 +59,14 @@ describe.concurrent("Effect", () => {
             (option) => option._tag === "Some" ? Maybe.some(ref.set(true)) : Maybe.none
           )
         )
-        .bind("res1", ({ ref }) => ref.get())
+        .bind("res1", ({ ref }) => ref.get)
         .tap(({ ref }) =>
           Effect.whenCaseEffect(
             Effect.sync(v2),
             (option) => option._tag === "Some" ? Maybe.some(ref.set(true)) : Maybe.none
           )
         )
-        .bind("res2", ({ ref }) => ref.get())
+        .bind("res2", ({ ref }) => ref.get)
 
       const { res1, res2 } = await program.unsafeRunPromise()
 
@@ -89,11 +89,11 @@ describe.concurrent("Effect", () => {
           ({ conditionRef }) => conditionRef.update((n) => n + 1).as(false)
         )
         .tap(({ conditionFalse, effectRef }) => Effect.whenEffect(conditionFalse, effectRef.set(1)))
-        .bind("v1", ({ effectRef }) => effectRef.get())
-        .bind("c1", ({ conditionRef }) => conditionRef.get())
+        .bind("v1", ({ effectRef }) => effectRef.get)
+        .bind("c1", ({ conditionRef }) => conditionRef.get)
         .tap(({ conditionTrue, effectRef }) => Effect.whenEffect(conditionTrue, effectRef.set(2)))
-        .bind("v2", ({ effectRef }) => effectRef.get())
-        .bind("c2", ({ conditionRef }) => conditionRef.get())
+        .bind("v2", ({ effectRef }) => effectRef.get)
+        .bind("c2", ({ conditionRef }) => conditionRef.get)
         .bindValue("failure", () => new Error("expected"))
         .tap(({ conditionFalse, failure }) =>
           Effect.whenEffect(conditionFalse, Effect.failSync(failure))

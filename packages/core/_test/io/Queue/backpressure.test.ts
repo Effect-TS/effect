@@ -9,7 +9,7 @@ describe.concurrent("Queue", () => {
         .bind("refSuspended", () => Ref.make(true))
         .bind("fiber", ({ queue, refSuspended }) => (queue.offer(2) > refSuspended.set(false)).fork)
         .tap(({ queue }) => waitForSize(queue, 11))
-        .bind("isSuspended", ({ refSuspended }) => refSuspended.get())
+        .bind("isSuspended", ({ refSuspended }) => refSuspended.get)
         .tap(({ fiber }) => fiber.interrupt)
 
       const { isSuspended } = await program.unsafeRunPromise()
@@ -27,7 +27,7 @@ describe.concurrent("Queue", () => {
         .tap(({ output, queue }) =>
           queue.take.flatMap((i) => output.update((chunk) => chunk.append(i))).repeatN(9)
         )
-        .bind("chunk", ({ output }) => output.get())
+        .bind("chunk", ({ output }) => output.get)
         .tap(({ fiber }) => fiber.join)
 
       const { chunk, values } = await program.unsafeRunPromise()

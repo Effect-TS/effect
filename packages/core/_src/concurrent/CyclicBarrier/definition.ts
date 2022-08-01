@@ -67,14 +67,14 @@ export class CyclicBarrierInternal {
    * The number of parties currently waiting at the barrier.
    */
   get waiting(): Effect<never, never, number> {
-    return this._waiting.get()
+    return this._waiting.get
   }
 
   /**
    * Queries if this barrier is in a broken state.
    */
   get isBroken(): Effect<never, never, boolean> {
-    return this._broken.get()
+    return this._broken.get
   }
 
   /**
@@ -82,7 +82,7 @@ export class CyclicBarrierInternal {
    */
   get reset(): Effect<never, never, void> {
     return Effect.whenEffect(
-      this._waiting.get().map((waiting) => waiting > 0),
+      this._waiting.get.map((waiting) => waiting > 0),
       this.fail
     ).zipRight(
       Deferred.make<void, void>()
@@ -99,7 +99,7 @@ export class CyclicBarrierInternal {
    */
   get await(): Effect<never, void, number> {
     return Effect.uninterruptibleMask(({ restore }) =>
-      this._broken.get()
+      this._broken.get
         .flatMap((broken) => broken ? Effect.failSync(undefined) : Effect.unit)
         .zipRight(
           this._waiting.modify((waiting) =>
@@ -111,7 +111,7 @@ export class CyclicBarrierInternal {
                 0
               ) :
               Tuple(
-                this._lock.get().flatMap((lock) =>
+                this._lock.get.flatMap((lock) =>
                   restore(lock.await)
                     .onInterrupt(() => this.break)
                     .as(this._parties - waiting - 1)
@@ -124,11 +124,11 @@ export class CyclicBarrierInternal {
   }
 
   private get succeed(): Effect<never, never, void> {
-    return this._lock.get().flatMap((deferred) => deferred.succeed(undefined).unit)
+    return this._lock.get.flatMap((deferred) => deferred.succeed(undefined).unit)
   }
 
   private get fail(): Effect<never, never, void> {
-    return this._lock.get().flatMap((deferred) => deferred.fail(undefined).unit)
+    return this._lock.get.flatMap((deferred) => deferred.fail(undefined).unit)
   }
 
   private get break(): Effect<never, never, void> {

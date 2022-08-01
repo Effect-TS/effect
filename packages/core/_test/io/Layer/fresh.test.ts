@@ -15,7 +15,7 @@ describe.concurrent("Layer", () => {
         .bindValue("layer", ({ ref }) => makeLayer1(ref))
         .bindValue("env", ({ layer }) => (layer + layer.fresh).build)
         .tap(({ env }) => Effect.scoped(env))
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -28,7 +28,7 @@ describe.concurrent("Layer", () => {
         .bindValue("layer", ({ ref }) => makeLayer1(ref))
         .bindValue("env", ({ layer }) => (layer >> layer.fresh).build)
         .tap(({ env }) => Effect.scoped(env))
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -41,7 +41,7 @@ describe.concurrent("Layer", () => {
         .bindValue("layer", ({ ref }) => makeLayer1(ref))
         .bindValue("env", ({ layer }) => (layer + layer + (layer + layer).fresh).build)
         .tap(({ env }) => Effect.scoped(env))
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -60,7 +60,7 @@ describe.concurrent("Layer", () => {
             (layer1.fresh >> (layer2 + (layer1 >> layer3).fresh)).build
         )
         .tap(({ env }) => Effect.scoped(env))
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

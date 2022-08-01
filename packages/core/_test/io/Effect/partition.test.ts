@@ -43,7 +43,7 @@ describe.concurrent("Effect", () => {
       const chunk = Chunk(2, 4, 6, 3, 5, 6)
       const program = Ref.make<List<number>>(List.empty())
         .tap((ref) => Effect.partition(chunk, (n) => ref.update((list) => list.prepend(n))))
-        .flatMap((ref) => ref.get().map((list) => list.reverse))
+        .flatMap((ref) => ref.get.map((list) => list.reverse))
 
       const result = await program.unsafeRunPromise()
 

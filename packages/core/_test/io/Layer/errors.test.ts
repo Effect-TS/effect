@@ -20,7 +20,7 @@ describe.concurrent("Layer", () => {
           ({ layer1, layer2 }) => ((layer1 >> Layer.fail("failed!")) | layer2).build
         )
         .bind("fiber", ({ env }) => Effect.scoped(env))
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

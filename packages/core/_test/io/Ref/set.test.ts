@@ -6,7 +6,7 @@ describe.concurrent("Ref", () => {
     it("simple", async () => {
       const program = Ref.make(current)
         .tap((ref) => ref.set(update))
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

@@ -11,7 +11,7 @@ describe.concurrent("SynchronizedRef", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.Synchronized.make(current))
         .bind("v1", ({ ref }) => ref.modifyEffect(() => Effect.sync(Tuple("hello", update))))
-        .bind("v2", ({ ref }) => ref.get())
+        .bind("v2", ({ ref }) => ref.get)
 
       const { v1, v2 } = await program.unsafeRunPromise()
 
@@ -42,7 +42,7 @@ describe.concurrent("SynchronizedRef", () => {
                 ? Maybe.some(Effect.sync(Tuple("changed", State.Changed)))
                 : Maybe.none)
         )
-        .bind("v1", ({ ref }) => ref.get())
+        .bind("v1", ({ ref }) => ref.get)
 
       const { r1, v1 } = await program.unsafeRunPromise()
 
@@ -61,7 +61,7 @@ describe.concurrent("SynchronizedRef", () => {
                 ? Maybe.some(Effect.sync(Tuple("changed", State.Changed)))
                 : Maybe.none)
         )
-        .bind("v1", ({ ref }) => ref.get())
+        .bind("v1", ({ ref }) => ref.get)
         .bind(
           "r2",
           ({ ref }) =>
@@ -72,7 +72,7 @@ describe.concurrent("SynchronizedRef", () => {
                 ? Maybe.some(Effect.sync(Tuple("closed", State.Closed)))
                 : Maybe.none)
         )
-        .bind("v2", ({ ref }) => ref.get())
+        .bind("v2", ({ ref }) => ref.get)
 
       const { r1, r2, v1, v2 } = await program.unsafeRunPromise()
 
@@ -92,7 +92,7 @@ describe.concurrent("SynchronizedRef", () => {
             .orDieWith(() =>
               new Error()
             ))
-        .bind("v", ({ ref }) => ref.get())
+        .bind("v", ({ ref }) => ref.get)
 
       const { r, v } = await program.unsafeRunPromise()
 

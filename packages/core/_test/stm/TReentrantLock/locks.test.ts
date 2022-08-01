@@ -157,7 +157,7 @@ describe.concurrent("TReentrantLock", () => {
             )
           )
         ))
-        const wcount = $(ref.get())
+        const wcount = $(ref.get)
 
         return rcount === 1 && wcount === 1
       })
@@ -180,7 +180,7 @@ describe.concurrent("TReentrantLock", () => {
             )
           )
         ))
-        const wcount = $(ref.get())
+        const wcount = $(ref.get)
 
         return rcount === 1 && wcount === 1
       })

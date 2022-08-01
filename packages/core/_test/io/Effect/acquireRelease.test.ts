@@ -8,7 +8,7 @@ describe.concurrent("Effect", () => {
             (n) => Effect.sync(n + 1),
             () => release.set(true)
           ))
-        .bind("released", ({ release }) => release.get())
+        .bind("released", ({ release }) => release.get)
 
       const { released, result } = await program.unsafeRunPromise()
 
@@ -24,7 +24,7 @@ describe.concurrent("Effect", () => {
             (n) => Effect.sync(n + 1),
             () => release.set(true)
           ).disconnect)
-        .bind("released", ({ release }) => release.get())
+        .bind("released", ({ release }) => release.get)
 
       const { released, result } = await program.unsafeRunPromise()
 
@@ -43,7 +43,7 @@ describe.concurrent("Effect", () => {
             Effect.sync(0),
             release.set(true)
           ))
-        .bind("released", ({ release }) => release.get())
+        .bind("released", ({ release }) => release.get)
 
       const { released, result } = await program.unsafeRunPromise()
 
@@ -60,7 +60,7 @@ describe.concurrent("Effect", () => {
             Effect.sync(0),
             release.set(true)
           ).disconnect)
-        .bind("released", ({ release }) => release.get())
+        .bind("released", ({ release }) => release.get)
 
       const { released, result } = await program.unsafeRunPromise()
 
@@ -79,7 +79,7 @@ describe.concurrent("Effect", () => {
             () => Effect.sync(0),
             () => release.set(true)
           ).disconnect)
-        .bind("released", ({ release }) => release.get())
+        .bind("released", ({ release }) => release.get)
 
       const { released, result } = await program.unsafeRunPromise()
 
@@ -118,7 +118,7 @@ describe.concurrent("Effect", () => {
             () => Effect.sync(0),
             () => release.set(true)
           ).disconnect)
-        .bind("released", ({ release }) => release.get())
+        .bind("released", ({ release }) => release.get)
 
       const { released, result } = await program.unsafeRunPromise()
 
@@ -169,7 +169,7 @@ describe.concurrent("Effect", () => {
             (cause) => Effect.sync(cause),
             () => Effect.failSync("effect should have failed")
           ))
-        .bind("released", ({ release }) => release.get())
+        .bind("released", ({ release }) => release.get)
 
       const { cause, released } = await program.unsafeRunPromise()
 

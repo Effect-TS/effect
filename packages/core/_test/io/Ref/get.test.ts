@@ -6,7 +6,7 @@ const update = "new value"
 describe.concurrent("Ref", () => {
   describe.concurrent("get", () => {
     it("simple", async () => {
-      const program = Ref.make(current).flatMap((ref) => ref.get())
+      const program = Ref.make(current).flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -19,7 +19,7 @@ describe.concurrent("Ref", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(current))
         .bind("v1", ({ ref }) => ref.getAndSet(update))
-        .bind("v2", ({ ref }) => ref.get())
+        .bind("v2", ({ ref }) => ref.get)
 
       const { v1, v2 } = await program.unsafeRunPromise()
 
@@ -33,7 +33,7 @@ describe.concurrent("Ref", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(current))
         .bind("v1", ({ ref }) => ref.getAndUpdate(() => update))
-        .bind("v2", ({ ref }) => ref.get())
+        .bind("v2", ({ ref }) => ref.get)
 
       const { v1, v2 } = await program.unsafeRunPromise()
 
@@ -53,7 +53,7 @@ describe.concurrent("Ref", () => {
               state.isClosed() ? Maybe.some(State.Changed) : Maybe.none
             )
         )
-        .bind("v2", ({ ref }) => ref.get())
+        .bind("v2", ({ ref }) => ref.get)
 
       const { v1, v2 } = await program.unsafeRunPromise()
 
@@ -79,7 +79,7 @@ describe.concurrent("Ref", () => {
               ? Maybe.some(State.Closed)
               : Maybe.none
           ))
-        .bind("v3", ({ ref }) => ref.get())
+        .bind("v3", ({ ref }) => ref.get)
 
       const { v1, v2, v3 } = await program.unsafeRunPromise()
 

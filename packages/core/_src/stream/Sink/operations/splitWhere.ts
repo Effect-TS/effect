@@ -20,7 +20,7 @@ export function splitWhere<In1>(f: Predicate<In1>) {
           .pipeToOrFail(self.channel)
           .doneCollect
           .flatMap(({ tuple: [leftovers, z] }) =>
-            Channel.fromEffect(ref.get()).flatMap(
+            Channel.fromEffect(ref.get).flatMap(
               (leftover) => Channel.write(leftover + leftovers.flatten) > Channel.succeed(z)
             )
           )

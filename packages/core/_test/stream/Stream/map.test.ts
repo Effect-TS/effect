@@ -211,7 +211,7 @@ describe.concurrent("Stream", () => {
             .fork)
         .tap(({ latch }) => latch.await)
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ interrupted }) => interrupted.get())
+        .flatMap(({ interrupted }) => interrupted.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -270,7 +270,7 @@ describe.concurrent("Stream", () => {
                 : latch1.await.zipRight(latch2.await).zipRight(Effect.failSync("boom")))
             .runDrain
             .exit)
-        .bind("count", ({ interrupted }) => interrupted.get())
+        .bind("count", ({ interrupted }) => interrupted.get)
 
       const { count, result } = await program.unsafeRunPromise()
 

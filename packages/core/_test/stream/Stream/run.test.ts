@@ -28,7 +28,7 @@ describe.concurrent("Stream", () => {
           )
             .flatten
             .runHead)
-        .bind("result", ({ ref }) => ref.get())
+        .bind("result", ({ ref }) => ref.get)
 
       const { head, result } = await program.unsafeRunPromise()
 
@@ -68,9 +68,9 @@ describe.concurrent("Stream", () => {
           Effect.scoped(
             stream
               .runScoped(Sink.collectAll)
-              .flatMap((r) => closed.get().map((b) => Tuple(r, b)))
+              .flatMap((r) => closed.get.map((b) => Tuple(r, b)))
           ))
-        .bind("finalState", ({ closed }) => closed.get())
+        .bind("finalState", ({ closed }) => closed.get)
 
       const { collectAndCheck, finalState } = await program.unsafeRunPromise()
 
