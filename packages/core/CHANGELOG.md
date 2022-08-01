@@ -1,5 +1,25 @@
 # @effect/core
 
+## 0.0.9
+
+### Patch Changes
+
+- [#1260](https://github.com/Effect-TS/core/pull/1260) [`b6e519708`](https://github.com/Effect-TS/core/commit/b6e519708b84087dcd7dc375bfe14c4aafa1d32e) Thanks [@IMax153](https://github.com/IMax153)! - rename core Effect constructors
+
+* [#1262](https://github.com/Effect-TS/core/pull/1262) [`6fd41df72`](https://github.com/Effect-TS/core/commit/6fd41df72becda659ca2b5cc5e71e87450a165c3) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Remove Compile Time Tracing
+
+- [#1260](https://github.com/Effect-TS/core/pull/1260) [`2a7393e8d`](https://github.com/Effect-TS/core/commit/2a7393e8dd56b317a69c1f39cb4d3c907185bb74) Thanks [@IMax153](https://github.com/IMax153)! - convert Deferred and FiberRef to use getters
+
+* [#1262](https://github.com/Effect-TS/core/pull/1262) [`bb1c8686c`](https://github.com/Effect-TS/core/commit/bb1c8686ca70028be5e3347362330f2829539396) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Backport https://github.com/zio/zio/pull/7088 and change Ref to use classes
+
+- [#1260](https://github.com/Effect-TS/core/pull/1260) [`027c1025f`](https://github.com/Effect-TS/core/commit/027c1025f4fafd043f730178e92bdd3e0fcd09ff) Thanks [@IMax153](https://github.com/IMax153)! - rename Layer combinators for clarity
+
+* [#1262](https://github.com/Effect-TS/core/pull/1262) [`ba632ab75`](https://github.com/Effect-TS/core/commit/ba632ab75035949d53326390a4ce87af340c5f07) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Switch Ref#get to be a getter
+
+- [#1263](https://github.com/Effect-TS/core/pull/1263) [`b79cb2816`](https://github.com/Effect-TS/core/commit/b79cb2816e65384e57afaab78dbf794862f89126) Thanks [@IMax153](https://github.com/IMax153)! - fix bugs in Schedule
+
+* [#1262](https://github.com/Effect-TS/core/pull/1262) [`19006d289`](https://github.com/Effect-TS/core/commit/19006d289b0d95c93cda8989da8c8d86baaac666) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Use Getters in Queue
+
 ## 0.0.8
 
 ### Patch Changes
