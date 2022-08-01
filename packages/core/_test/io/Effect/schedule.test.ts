@@ -12,7 +12,7 @@ describe.concurrent("Effect", () => {
           () => Schedule.spaced((10).millis) && Schedule.recurs(5)
         )
         .tap(({ effect, schedule }) => effect.schedule(schedule))
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

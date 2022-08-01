@@ -91,7 +91,7 @@ export class AtomicInternal<A> implements Ref<A> {
     return RefSym
   }
 
-  get(this: this): Effect<never, never, A> {
+  get get(): Effect<never, never, A> {
     return Effect.sync(this.unsafe.get)
   }
 

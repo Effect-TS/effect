@@ -13,9 +13,7 @@ export function timeoutFailCause<E2>(
     Stream.succeed(Tuple(cause(), duration())).flatMap(
       ({ tuple: [cause, duration] }) =>
         Stream.fromPull(
-          self
-            .toPull
-            .map((pull) => pull.timeoutFailCause(cause.map(Maybe.some), duration))
+          self.toPull.map((pull) => pull.timeoutFailCause(cause.map(Maybe.some), duration))
         )
     )
 }

@@ -210,17 +210,17 @@ describe.concurrent("Effect", () => {
             () => log("start 2") > Effect.sleep((10).millis) > log("release 2")
           ).fork)
         .tap(({ ref }) =>
-          (ref.get() < Effect.sleep((1).millis)).repeatUntil((list) =>
+          (ref.get < Effect.sleep((1).millis)).repeatUntil((list) =>
             list.find((s) => s === "start 1").isSome()
           )
         )
         .tap(({ fiber }) => fiber.interrupt)
         .tap(({ ref }) =>
-          (ref.get() < Effect.sleep((1).millis)).repeatUntil((list) =>
+          (ref.get < Effect.sleep((1).millis)).repeatUntil((list) =>
             list.find((s) => s === "release 2").isSome()
           )
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -244,7 +244,7 @@ describe.concurrent("Effect", () => {
         )
         .tap(({ deferred1 }) => deferred1.await)
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

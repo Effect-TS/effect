@@ -344,7 +344,7 @@ describe.concurrent("Effect", () => {
             )
         )
         .tap(({ fiber, latch1 }) => latch1.await > fiber.interrupt)
-        .flatMap(({ exits }) => exits.get().map(process))
+        .flatMap(({ exits }) => exits.get.map(process))
 
       const result = await program.unsafeRunPromise()
 
@@ -371,7 +371,7 @@ describe.concurrent("Effect", () => {
         .bind("raced", ({ cont1, cont2, make }) => make(cont1).race(make(cont2)).fork)
         .tap(({ cont1, cont2 }) => cont1.await > cont2.await)
         .tap(({ raced }) => raced.interrupt)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -390,7 +390,7 @@ describe.concurrent("Effect", () => {
               .fork
           ))
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ recovered }) => recovered.get())
+        .flatMap(({ recovered }) => recovered.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -414,7 +414,7 @@ describe.concurrent("Effect", () => {
             )
         )
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ recovered }) => recovered.get())
+        .flatMap(({ recovered }) => recovered.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -441,7 +441,7 @@ describe.concurrent("Effect", () => {
             )
         )
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ recovered }) => recovered.get())
+        .flatMap(({ recovered }) => recovered.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -463,7 +463,7 @@ describe.concurrent("Effect", () => {
             )
         )
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ recovered }) => recovered.get())
+        .flatMap(({ recovered }) => recovered.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -489,7 +489,7 @@ describe.concurrent("Effect", () => {
               .fork
           ))
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ counter }) => counter.get())
+        .flatMap(({ counter }) => counter.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -512,7 +512,7 @@ describe.concurrent("Effect", () => {
               .fork
           ))
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -535,7 +535,7 @@ describe.concurrent("Effect", () => {
               .fork
           ))
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -580,7 +580,7 @@ describe.concurrent("Effect", () => {
         .tap(({ deferred1 }) => deferred1.await)
         .tap(({ fiber }) => fiber.interrupt)
         .tap(({ deferred2 }) => deferred2.await)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -619,7 +619,7 @@ describe.concurrent("Effect", () => {
               ) < release2
           ))
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -642,7 +642,7 @@ describe.concurrent("Effect", () => {
         .tap(({ latch1 }) => latch1.await)
         .tap(({ latch2 }) => latch2.succeed(undefined))
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -662,7 +662,7 @@ describe.concurrent("Effect", () => {
             )
         )
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -685,7 +685,7 @@ describe.concurrent("Effect", () => {
         .bind("fiber", ({ parent }) => parent.fork)
         .tap(({ deferred }) => deferred.await)
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

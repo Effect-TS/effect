@@ -124,7 +124,7 @@ describe.concurrent("Effect", () => {
           "result",
           ({ counter }) => Effect.validateFirst(chunk, (n) => counter.update((n) => n + 1) > f(n))
         )
-        .bind("count", ({ counter }) => counter.get())
+        .bind("count", ({ counter }) => counter.get)
 
       const { count, result } = await program.unsafeRunPromise()
 

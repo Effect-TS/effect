@@ -19,7 +19,7 @@ export class SynchronizedInternal<A> implements Ref.Synchronized<A> {
     f: (a: A) => Effect<R, E, Tuple<[B, A]>>
   ): Effect<R, E, B> {
     return this.semaphore.withPermit(
-      this.get().flatMap(f).flatMap((tp) => {
+      this.get.flatMap(f).flatMap((tp) => {
         const { tuple: [b, a] } = tp
 
         return this.ref.set(a).as(b)
@@ -57,8 +57,8 @@ export class SynchronizedInternal<A> implements Ref.Synchronized<A> {
       pf(v).getOrElse(Effect.succeed(v)).map(result => Tuple(result, result))
     )
   }
-  get(this: this): Effect<never, never, A> {
-    return this.ref.get()
+  get get(): Effect<never, never, A> {
+    return this.ref.get
   }
   modify<B>(this: this, f: (a: A) => Tuple<[B, A]>): Effect<never, never, B> {
     return this.modifyEffect((a) => Effect.succeed(f(a)))

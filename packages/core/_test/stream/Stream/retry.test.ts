@@ -20,7 +20,7 @@ describe.concurrent("Stream", () => {
         .bindValue("stream", ({ ref }) =>
           Stream.unwrapScoped(
             Effect.addFinalizer(ref.getAndUpdate((n) => n + 1)).as(
-              Stream.fromEffect(ref.get()) + Stream.fail(Maybe.none)
+              Stream.fromEffect(ref.get) + Stream.fail(Maybe.none)
             )
           ))
         .flatMap(({ stream }) => stream.retry(Schedule.repeatForever).take(2).runCollect)

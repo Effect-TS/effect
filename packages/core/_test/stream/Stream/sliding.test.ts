@@ -85,7 +85,7 @@ describe.concurrent("Stream", () => {
             .mapEffect((chunk) => ref.update((_) => _.append(chunk)))
             .runCollect
             .either)
-        .bind("result", ({ ref }) => ref.get())
+        .bind("result", ({ ref }) => ref.get)
 
       const { either, result } = await program.unsafeRunPromise()
 

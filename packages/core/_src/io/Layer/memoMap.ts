@@ -72,7 +72,7 @@ export class MemoMap {
                               .zipRight(observers.update((n) => n + 1))
                               .zipRight(
                                 outerScope.addFinalizerExit((e) =>
-                                  finalizerRef.get().flatMap((fin) => fin(e))
+                                  finalizerRef.get.flatMap((fin) => fin(e))
                                 )
                               )
                               .zipRight(deferred.succeed(exit.value))
@@ -91,7 +91,7 @@ export class MemoMap {
                       () => observers.update((n) => n + 1)
                     )
                   ),
-                (e: Exit<unknown, unknown>) => finalizerRef.get().flatMap((fin) => fin(e))
+                (e: Exit<unknown, unknown>) => finalizerRef.get.flatMap((fin) => fin(e))
               )
               return Tuple(resource, layer.isFresh ? map : map.set(layer, memoized))
             })

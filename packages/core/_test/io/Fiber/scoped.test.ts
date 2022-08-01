@@ -14,7 +14,7 @@ describe.concurrent("Fiber", () => {
         ))
         $(Effect.scoped(fiber.scoped))
         $(fiber.await)
-        const result = $(ref.get())
+        const result = $(ref.get)
         assert.isTrue(result)
       }).unsafeRunPromise())
   })

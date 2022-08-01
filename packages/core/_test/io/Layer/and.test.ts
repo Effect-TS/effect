@@ -20,7 +20,7 @@ describe.concurrent("Layer", () => {
         .bindValue("layer", ({ ref }) => makeLayer1(ref))
         .bindValue("env", ({ layer }) => (layer + layer).build)
         .tap(({ env }) => Effect.scoped(env))
-        .bind("actual", ({ ref }) => ref.get())
+        .bind("actual", ({ ref }) => ref.get)
 
       const { actual } = await program.unsafeRunPromise()
 
@@ -48,7 +48,7 @@ describe.concurrent("Layer", () => {
         .bindValue("layer2", ({ ref }) => makeLayer2(ref))
         .bindValue("env", ({ layer1, layer2 }) => (layer1 + layer2).build)
         .tap(({ env }) => Effect.scoped(env))
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

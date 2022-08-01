@@ -52,7 +52,7 @@ describe.concurrent("Channel", () => {
               () => Channel.unit
             )
           }
-          return inner() > Channel.fromEffect(ref.get())
+          return inner() > Channel.fromEffect(ref.get)
         }
       )
 
@@ -113,7 +113,7 @@ describe.concurrent("Channel", () => {
 
           return conduit.run
         })
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -144,7 +144,7 @@ describe.concurrent("Channel", () => {
 
           return (left >> right).runDrain
         })
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

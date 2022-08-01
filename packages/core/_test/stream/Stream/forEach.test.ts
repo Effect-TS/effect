@@ -16,7 +16,7 @@ describe.concurrent("Stream", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
         .tap(({ ref }) => Stream(1, 1, 1, 1, 1).runForEach((n) => ref.update((m) => n + m)))
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -31,7 +31,7 @@ describe.concurrent("Stream", () => {
             ref.update((m) => n + m)
           )
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -49,7 +49,7 @@ describe.concurrent("Stream", () => {
             ref.modify((sum) => sum >= expected ? Tuple(false, sum) : Tuple(true, sum + a))
           )
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -65,7 +65,7 @@ describe.concurrent("Stream", () => {
             ref.modify((sum) => sum >= expected ? Tuple(false, sum) : Tuple(true, sum + a))
           )
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -80,7 +80,7 @@ describe.concurrent("Stream", () => {
             Stream(true, true, false) + Stream.fromEffect(ref.set(false)).drain
           ).runForEachWhile(Effect.succeed)
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

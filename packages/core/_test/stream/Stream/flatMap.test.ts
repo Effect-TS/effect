@@ -75,7 +75,7 @@ describe.concurrent("Stream", () => {
             .fork)
         .tap(({ latch }) => latch.await)
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ effects }) => effects.get())
+        .flatMap(({ effects }) => effects.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -107,7 +107,7 @@ describe.concurrent("Stream", () => {
             )
         )
         .tap(({ stream }) => stream.runDrain)
-        .flatMap(({ effects }) => effects.get())
+        .flatMap(({ effects }) => effects.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -144,7 +144,7 @@ describe.concurrent("Stream", () => {
             .tap(() => push("use2"))
             .flatMap(() => Stream.acquireRelease(push("open3"), () => push("close3"))))
         .tap(({ stream }) => stream.runDrain)
-        .flatMap(({ effects }) => effects.get())
+        .flatMap(({ effects }) => effects.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -179,7 +179,7 @@ describe.concurrent("Stream", () => {
             .either
             .unit
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -198,7 +198,7 @@ describe.concurrent("Stream", () => {
           ({ push }) => Stream.finalizer(push(1)) > Stream.finalizer(push(2))
         )
         .tap(({ stream }) => Effect.scoped(stream.toPull.flatten))
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -221,7 +221,7 @@ describe.concurrent("Stream", () => {
             stream
               .toPull
               .provideService(Scope.Tag, scope)
-              .flatMap((pull) => pull > scope.close(Exit.unit) > ref.get())
+              .flatMap((pull) => pull > scope.close(Exit.unit) > ref.get)
           )
         )
 

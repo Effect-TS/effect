@@ -33,7 +33,7 @@ export function exactlyOnce<R, A, A1>(
   return Ref.make(0).flatMap((ref) =>
     Effect.Do()
       .bind("res", () => f(ref.update((n) => n + 1) > Effect.sync(value)))
-      .bind("count", () => ref.get())
+      .bind("count", () => ref.get)
       .tap(({ count }) => count !== 1 ? Effect.failSync("Accessed more than once") : Effect.unit)
       .map(({ res }) => res)
   )

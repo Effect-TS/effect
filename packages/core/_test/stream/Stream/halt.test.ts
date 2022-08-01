@@ -13,7 +13,7 @@ describe.concurrent("Stream", () => {
         )
         .tap(({ halt }) => halt.succeed(undefined))
         .tap(({ latch }) => latch.succeed(undefined))
-        .flatMap(({ interrupted }) => interrupted.get())
+        .flatMap(({ interrupted }) => interrupted.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -46,7 +46,7 @@ describe.concurrent("Stream", () => {
         )
         .tap(({ halt }) => halt.succeed(undefined))
         .tap(({ latch }) => latch.succeed(undefined))
-        .flatMap(({ interrupted }) => interrupted.get())
+        .flatMap(({ interrupted }) => interrupted.get)
 
       const result = await program.unsafeRunPromise()
 

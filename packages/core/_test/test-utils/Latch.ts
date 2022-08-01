@@ -18,7 +18,7 @@ export function withLatchAwait<R, E, A>(
         Effect.uninterruptibleMask(({ restore }) => ref.set(false).zipRight(restore(latch.await)))
       )
     )
-    $(Effect.whenEffect(ref.get(), latch.await))
+    $(Effect.whenEffect(ref.get, latch.await))
     return result
   })
 }

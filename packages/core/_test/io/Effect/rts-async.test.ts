@@ -93,7 +93,7 @@ describe.concurrent("Effect", () => {
               .forkDaemon
         )
         .bind("result", ({ fork }) => fork.interrupt.timeout((1).seconds))
-        .bind("unexpected", ({ unexpectedPlace }) => unexpectedPlace.get())
+        .bind("unexpected", ({ unexpectedPlace }) => unexpectedPlace.get)
 
       const { result, unexpected } = await program.unsafeRunPromise()
 
@@ -127,7 +127,7 @@ describe.concurrent("Effect", () => {
               .forkDaemon
         )
         .bind("result", ({ fork }) => fork.interrupt.timeout((1).seconds))
-        .bind("unexpected", ({ unexpectedPlace }) => unexpectedPlace.get())
+        .bind("unexpected", ({ unexpectedPlace }) => unexpectedPlace.get)
 
       const { result, unexpected } = await program.unsafeRunPromise()
 

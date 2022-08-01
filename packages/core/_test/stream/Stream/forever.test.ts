@@ -8,7 +8,7 @@ describe.concurrent("Stream", () => {
             .forever
             .runForEachWhile(() => ref.modify((sum) => Tuple(sum >= 9 ? false : true, sum + 1)))
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

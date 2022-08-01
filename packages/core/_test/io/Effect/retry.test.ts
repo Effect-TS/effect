@@ -11,7 +11,7 @@ describe.concurrent("Effect", () => {
             (effect) => effect.retryUntil((n) => n === 0)
           )
         )
-        .flatMap(({ output }) => output.get())
+        .flatMap(({ output }) => output.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -21,7 +21,7 @@ describe.concurrent("Effect", () => {
     it("runs at least once", async () => {
       const program = Ref.make<number>(0)
         .tap((ref) => ref.update((n) => n + 1).flipWith((effect) => effect.retryUntil(constTrue)))
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -40,7 +40,7 @@ describe.concurrent("Effect", () => {
             effect.retryUntilEquals(Equivalence.number, 5)
           )
         )
-        .flatMap(({ acc }) => acc.get())
+        .flatMap(({ acc }) => acc.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -58,7 +58,7 @@ describe.concurrent("Effect", () => {
             (effect) => effect.retryUntilEffect((n) => Effect.sync(n === 0))
           )
         )
-        .flatMap(({ output }) => output.get())
+        .flatMap(({ output }) => output.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -72,7 +72,7 @@ describe.concurrent("Effect", () => {
             .update((n) => n + 1)
             .flipWith((effect) => effect.retryUntilEffect(() => Effect.sync(true)))
         )
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -90,7 +90,7 @@ describe.concurrent("Effect", () => {
             (effect) => effect.retryWhile((n) => n >= 0)
           )
         )
-        .flatMap(({ output }) => output.get())
+        .flatMap(({ output }) => output.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -100,7 +100,7 @@ describe.concurrent("Effect", () => {
     it("runs at least once", async () => {
       const program = Ref.make<number>(0)
         .tap((ref) => ref.update((n) => n + 1).flipWith((effect) => effect.retryWhile(constFalse)))
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -119,7 +119,7 @@ describe.concurrent("Effect", () => {
             effect.retryWhileEquals(Equivalence.number, 0)
           )
         )
-        .flatMap(({ acc }) => acc.get())
+        .flatMap(({ acc }) => acc.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -137,7 +137,7 @@ describe.concurrent("Effect", () => {
             (effect) => effect.retryWhileEffect((n) => Effect.sync(n >= 0))
           )
         )
-        .flatMap(({ output }) => output.get())
+        .flatMap(({ output }) => output.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -151,7 +151,7 @@ describe.concurrent("Effect", () => {
             .update((n) => n + 1)
             .flipWith((effect) => effect.retryWhileEffect(() => Effect.sync(false)))
         )
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

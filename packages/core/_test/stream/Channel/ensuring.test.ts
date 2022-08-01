@@ -9,7 +9,7 @@ describe.concurrent("Channel", () => {
           .ensuring(event("Release11"))
           .ensuring(event("Release12")) >
           Channel.fromEffect(event("Acquire2")).ensuring(event("Release2"))
-        return channel.runDrain > events.get()
+        return channel.runDrain > events.get
       })
 
       const result = await program.unsafeRunPromise()
@@ -28,10 +28,10 @@ describe.concurrent("Channel", () => {
         ).ensuring(event("ReleaseOuter"))
 
         return Effect.scoped(
-          channel.toPull.flatMap((pull) => pull.exit > events.get())
+          channel.toPull.flatMap((pull) => pull.exit > events.get)
         ).flatMap((eventsInManaged) =>
           events
-            .get()
+            .get
             .map((eventsAfterManaged) => Tuple(eventsInManaged, eventsAfterManaged))
         )
       })
@@ -71,7 +71,7 @@ describe.concurrent("Channel", () => {
           .concatMap((i) => Channel.write(new Second(i)).ensuring(event("Second write")))
           .ensuring(event("Second concatMap"))
 
-        return conduit.runCollect.zipFlatten(events.get())
+        return conduit.runCollect.zipFlatten(events.get)
       })
 
       const {
@@ -113,7 +113,7 @@ describe.concurrent("Channel", () => {
             .concatMap((n) => Channel.write(n).ensuring(push(`close ${n}`)))
             .runDrain
         )
-        .flatMap(({ effects }) => effects.get())
+        .flatMap(({ effects }) => effects.get)
 
       const result = await program.unsafeRunPromise()
 

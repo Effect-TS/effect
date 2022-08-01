@@ -63,7 +63,7 @@ function terminate<E, A>(
 ): Channel<never, E, Chunk<A>, unknown, never, never, unknown> {
   return Channel.fromEffect(
     Do(($) => {
-      const latch = $(ref.get())
+      const latch = $(ref.get)
       $(latch.await)
       const deferred = $(Deferred.make<never, void>())
       $(queue.offer(Tuple(take, deferred)))

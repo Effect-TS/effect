@@ -21,7 +21,7 @@ describe.concurrent("Layer", () => {
         .bindValue("env", ({ layer1, layer2 }) => (layer1 + layer2).build)
         .bind("fiber", ({ env }) => Effect.scoped(env).fork)
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -41,7 +41,7 @@ describe.concurrent("Layer", () => {
         .bindValue("env", ({ layer1, layer2 }) => (layer1 >> layer2).build)
         .bind("fiber", ({ env }) => Effect.scoped(env).fork)
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -65,7 +65,7 @@ describe.concurrent("Layer", () => {
         )
         .bind("fiber", ({ env }) => Effect.scoped(env).fork)
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

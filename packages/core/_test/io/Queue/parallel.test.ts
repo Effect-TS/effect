@@ -29,7 +29,7 @@ describe.concurrent("Queue", () => {
         .tap(({ output, queue }) =>
           queue.take.flatMap((i) => output.update((list) => list.append(i))).repeatN(9)
         )
-        .bind("chunk", ({ output }) => output.get())
+        .bind("chunk", ({ output }) => output.get)
         .tap(({ fiber }) => fiber.join)
 
       const { chunk, values } = await program.unsafeRunPromise()

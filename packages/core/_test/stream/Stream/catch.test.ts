@@ -47,7 +47,7 @@ describe.concurrent("Stream", () => {
             .runCollect
             .exit
         )
-        .flatMap(({ finalizers }) => finalizers.get())
+        .flatMap(({ finalizers }) => finalizers.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -68,7 +68,7 @@ describe.concurrent("Stream", () => {
         .flatMap(({ finalizers, stream }) =>
           stream
             .drain
-            .catchAllCause(() => Stream.fromEffect(finalizers.get()))
+            .catchAllCause(() => Stream.fromEffect(finalizers.get))
             .runCollect
         )
 
@@ -86,7 +86,7 @@ describe.concurrent("Stream", () => {
             .runDrain
             .exit
         )
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -153,7 +153,7 @@ describe.concurrent("Stream", () => {
             .onError(() => ref.set(true))
             .runDrain
             .exit)
-        .bind("called", ({ ref }) => ref.get())
+        .bind("called", ({ ref }) => ref.get)
 
       const { called, exit } = await program.unsafeRunPromise()
 

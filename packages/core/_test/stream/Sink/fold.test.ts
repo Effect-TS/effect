@@ -98,7 +98,7 @@ describe.concurrent("Sink", () => {
                 )
               )
               .runCollect)
-          .bind("result", ({ effects }) => effects.get())
+          .bind("result", ({ effects }) => effects.get)
           .map(({ exit, result }) => Tuple(exit, result))
           .exit
       }

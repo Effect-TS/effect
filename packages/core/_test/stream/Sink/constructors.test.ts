@@ -315,11 +315,11 @@ describe.concurrent("Sink", () => {
         .bindValue("sink", ({ closed, res }) =>
           Sink.unwrapScoped(
             res.map((m) =>
-              Sink.count().mapEffect((cnt) => closed.get().map((cl) => Tuple(cnt + m, cl)))
+              Sink.count().mapEffect((cnt) => closed.get.map((cl) => Tuple(cnt + m, cl)))
             )
           ))
         .bind("resAndState", ({ sink }) => Stream(1, 2, 3).run(sink))
-        .bind("finalState", ({ closed }) => closed.get())
+        .bind("finalState", ({ closed }) => closed.get)
 
       const { finalState, resAndState } = await program.unsafeRunPromise()
 
@@ -338,7 +338,7 @@ describe.concurrent("Sink", () => {
           ))
         .bindValue("sink", ({ res }) => Sink.unwrapScoped(res.map(() => Sink.succeed("ok"))))
         .bind("finalResult", ({ sink }) => Stream.fail("fail").run(sink))
-        .bind("finalState", ({ closed }) => closed.get())
+        .bind("finalState", ({ closed }) => closed.get)
 
       const { finalResult, finalState } = await program.unsafeRunPromise()
 

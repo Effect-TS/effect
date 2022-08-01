@@ -73,9 +73,9 @@ describe.concurrent("Stream", () => {
     //     )
     //     .bind("run", ({ stream }) => stream.run(Sink.take(1) > Sink.never).fork)
     //     .tap(({ refCount }) =>
-    //       refCount.get().repeat(Schedule.recurWhile((n) => n !== 7))
+    //       refCount.get.repeat(Schedule.recurWhile((n) => n !== 7))
     //     )
-    //     .bind("isDone", ({ refDone }) => refDone.get())
+    //     .bind("isDone", ({ refDone }) => refDone.get)
     //     .tap(({ run }) => run.interrupt())
 
     //   const { isDone } = await program.unsafeRunPromise()
@@ -230,7 +230,7 @@ describe.concurrent("Stream", () => {
         )
         .tap(({ latch }) => latch.await)
         .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ cancelled }) => cancelled.get())
+        .flatMap(({ cancelled }) => cancelled.get)
 
       const result = await program.unsafeRunPromise()
 

@@ -11,7 +11,7 @@ describe.concurrent("Stream", () => {
             ) => Stream.fromCollection(chunk))
         )
         .bind("result", ({ stream }) => stream.runCollect)
-        .bind("released", ({ done }) => done.get())
+        .bind("released", ({ done }) => done.get)
 
       const { released, result } = await program.unsafeRunPromise()
 
@@ -30,7 +30,7 @@ describe.concurrent("Stream", () => {
               .take(2)
         )
         .bind("result", ({ stream }) => stream.runCollect)
-        .bind("released", ({ done }) => done.get())
+        .bind("released", ({ done }) => done.get)
 
       const { released, result } = await program.unsafeRunPromise()
 
@@ -46,7 +46,7 @@ describe.concurrent("Stream", () => {
             Stream(1) + Stream.acquireRelease(acquired.set(true), () => Effect.unit)
           ).take(0))
         .bind("result", ({ stream }) => stream.runDrain)
-        .flatMap(({ acquired }) => acquired.get())
+        .flatMap(({ acquired }) => acquired.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -62,7 +62,7 @@ describe.concurrent("Stream", () => {
             .runDrain
             .exit
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -73,11 +73,11 @@ describe.concurrent("Stream", () => {
       const program = Effect.struct({
         leftAssoc: Stream.acquireRelease(Ref.make(true), (ref) => ref.set(false))
           .flatMap((ref) => Stream.succeed(ref))
-          .flatMap((ref) => Stream.fromEffect(ref.get()))
+          .flatMap((ref) => Stream.fromEffect(ref.get))
           .runCollect
           .map((chunk) => chunk.unsafeHead),
         rightAssoc: Stream.acquireRelease(Ref.make(true), (ref) => ref.set(false))
-          .flatMap((ref) => Stream.succeed(ref).flatMap((ref) => Stream.fromEffect(ref.get())))
+          .flatMap((ref) => Stream.succeed(ref).flatMap((ref) => Stream.fromEffect(ref.get)))
           .runCollect
           .map((chunk) => chunk.unsafeHead)
       })

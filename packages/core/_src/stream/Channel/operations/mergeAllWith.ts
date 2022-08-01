@@ -98,17 +98,15 @@ export function mergeAllWith<
                           .zipRight(permitAcquisition.interrupt.as(false)),
                       (_, failureAwait) =>
                         failureAwait.interrupt >
-                          lastDone
-                            .get()
-                            .flatMap((option) =>
-                              option.fold(
-                                queue.offer(Effect.sync(Either.left(outDone))),
-                                (lastDone) =>
-                                  queue.offer(
-                                    Effect.sync(Either.left(f(lastDone, outDone)))
-                                  )
-                              )
+                          lastDone.get.flatMap((option) =>
+                            option.fold(
+                              queue.offer(Effect.sync(Either.left(outDone))),
+                              (lastDone) =>
+                                queue.offer(
+                                  Effect.sync(Either.left(f(lastDone, outDone)))
+                                )
                             )
+                          )
                     ),
                   (channel) => {
                     switch (mergeStrategy._tag) {

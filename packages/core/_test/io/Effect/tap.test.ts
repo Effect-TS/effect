@@ -7,7 +7,7 @@ describe.concurrent("Effect", () => {
           Effect.dieMessage("die")
             .tapErrorCause(() => ref.set(true))
             .exit)
-        .bind("effect", ({ ref }) => ref.get())
+        .bind("effect", ({ ref }) => ref.get)
 
       const { effect, result } = await program.unsafeRunPromise()
 
@@ -24,7 +24,7 @@ describe.concurrent("Effect", () => {
           Effect.dieMessage("die")
             .tapDefect(() => ref.set(true))
             .exit)
-        .bind("effect", ({ ref }) => ref.get())
+        .bind("effect", ({ ref }) => ref.get)
 
       const { effect, result } = await program.unsafeRunPromise()
 
@@ -46,7 +46,7 @@ describe.concurrent("Effect", () => {
             )
             .exit
         )
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -65,7 +65,7 @@ describe.concurrent("Effect", () => {
             )
             .exit
         )
-        .flatMap((ref) => ref.get())
+        .flatMap((ref) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -82,7 +82,7 @@ describe.concurrent("Effect", () => {
           ({ ref }) =>
             ref.set(true).as(42).tapSome((): Maybe<Effect<never, never, never>> => Maybe.emptyOf())
         )
-        .bind("effect", ({ ref }) => ref.get())
+        .bind("effect", ({ ref }) => ref.get)
 
       const { effect, result } = await program.unsafeRunPromise()
 
@@ -98,7 +98,7 @@ describe.concurrent("Effect", () => {
             .set(10)
             .as(42)
             .tapSome((n) => Maybe.some(ref.set(n))))
-        .bind("effect", ({ ref }) => ref.get())
+        .bind("effect", ({ ref }) => ref.get)
 
       const { effect, result } = await program.unsafeRunPromise()
 

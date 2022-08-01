@@ -8,7 +8,7 @@ describe.concurrent("Scope", () => {
         $(Effect.scoped(
           resource(1, ref).flatMap((id) => ref.update((chunk) => chunk.append(Action.Use(id))))
         ))
-        const result = $(ref.get())
+        const result = $(ref.get)
         assert.isTrue(
           result == Chunk(
             Action.Acquire(1),

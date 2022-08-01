@@ -18,7 +18,7 @@ describe.concurrent("Channel", () => {
                     () => MergeDecision.awaitConst(Effect.unit)
                   )
                   return (refReader(source) >> twoWriters)
-                    .mapEffect(() => dest.get())
+                    .mapEffect(() => dest.get)
                     .run
                     .map((result) => {
                       let missing = HashSet.from(data)
@@ -57,7 +57,7 @@ describe.concurrent("Channel", () => {
                     () => MergeDecision.awaitConst(Effect.unit)
                   )
                   return (refReader(source) >> twoWriters)
-                    .mapEffect(() => dest.get())
+                    .mapEffect(() => dest.get)
                     .run
                     .map((result) => {
                       const expected = HashSet.from(data.map(f))

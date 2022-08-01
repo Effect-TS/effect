@@ -9,7 +9,7 @@ describe.concurrent("Ref", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(current))
         .bind("v1", ({ ref }) => ref.modify(() => Tuple("hello", update)))
-        .bind("v2", ({ ref }) => ref.get())
+        .bind("v2", ({ ref }) => ref.get)
 
       const { v1, v2 } = await program.unsafeRunPromise()
 

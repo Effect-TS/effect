@@ -11,7 +11,7 @@ describe.concurrent("Effect", () => {
             ).fork > latch.await
           ).uninterruptible
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

@@ -33,7 +33,7 @@ export function asyncScoped<R, E, A>(
       }))
       const done = $(Ref.make(false))
       return done
-        .get()
+        .get
         .flatMap((isDone) =>
           isDone
             ? Pull.end

@@ -83,7 +83,7 @@ export function aggregateWithinEither<A, R2, E2, A2, S, R3, B, C>(
                 case "End": {
                   return (
                     signal.reason._tag === "ScheduleEnd" ?
-                      consumed.get().map((p) =>
+                      consumed.get.map((p) =>
                         p ?
                           Channel.fromEffect(sinkEndReason.set(SinkEndReason.ScheduleEnd)) :
                           Channel.fromEffect(sinkEndReason.set(SinkEndReason.ScheduleEnd)) >
@@ -165,12 +165,12 @@ function handleSide<S, R, R2, E, A, A2, B, C>(
 > {
   return Channel.unwrap(
     sinkLeftovers.set(leftovers.flatten) >
-      sinkEndReason.get().map((reason) => {
+      sinkEndReason.get.map((reason) => {
         switch (reason._tag) {
           case "ScheduleEnd": {
             return Channel.unwrapScoped(
               Do(($) => {
-                const isConsumed = $(consumed.get())
+                const isConsumed = $(consumed.get)
                 const sinkFiber = $(forkSink)
                 const scheduleFiber = $(timeout(scheduleDriver, Maybe.some(b)).forkScoped)
                 const toWrite = c.fold(
@@ -207,7 +207,7 @@ function handleSide<S, R, R2, E, A, A2, B, C>(
           }
           case "UpstreamEnd": {
             return Channel.unwrap(
-              consumed.get().map((p) =>
+              consumed.get.map((p) =>
                 p ? Channel.write(Chunk.single(Either.right(b))) : Channel.unit
               )
             )

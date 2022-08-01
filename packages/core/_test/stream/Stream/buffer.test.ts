@@ -37,7 +37,7 @@ describe.concurrent("Stream", () => {
             .buffer(2))
         .bind("chunk", ({ stream }) => stream.take(2).runCollect)
         .tap(({ latch }) => latch.await)
-        .bind("list", ({ ref }) => ref.get())
+        .bind("list", ({ ref }) => ref.get)
 
       const { chunk, list } = await program.unsafeRunPromise()
 
@@ -102,7 +102,7 @@ describe.concurrent("Stream", () => {
                     .flatMap((a) => ref.update((list) => List.from(a) + list))
                     .repeatN(7)
                 )
-                .bind("snapshot1", () => ref.get())
+                .bind("snapshot1", () => ref.get)
                 .tap(() => latch3.succeed(undefined))
                 .tap(() => latch4.await)
                 .tap(() =>
@@ -110,7 +110,7 @@ describe.concurrent("Stream", () => {
                     .flatMap((a) => ref.update((list) => List.from(a) + list))
                     .repeatN(7)
                 )
-                .bind("snapshot2", () => ref.get())
+                .bind("snapshot2", () => ref.get)
             )
           )
         )
@@ -178,7 +178,7 @@ describe.concurrent("Stream", () => {
                     .flatMap((a) => ref.update((list) => List.from(a) + list))
                     .repeatN(7)
                 )
-                .bind("snapshot1", () => ref.get())
+                .bind("snapshot1", () => ref.get)
                 .tap(() => latch3.succeed(undefined))
                 .tap(() => latch4.await)
                 .tap(() =>
@@ -186,7 +186,7 @@ describe.concurrent("Stream", () => {
                     .flatMap((a) => ref.update((list) => List.from(a) + list))
                     .repeatN(7)
                 )
-                .bind("snapshot2", () => ref.get())
+                .bind("snapshot2", () => ref.get)
             )
           )
         )
@@ -237,7 +237,7 @@ describe.concurrent("Stream", () => {
             .bufferUnbounded)
         .bind("chunk", ({ stream }) => stream.take(2).runCollect)
         .tap(({ latch }) => latch.await)
-        .bind("list", ({ ref }) => ref.get())
+        .bind("list", ({ ref }) => ref.get)
 
       const { chunk, list } = await program.unsafeRunPromise()
 
@@ -288,7 +288,7 @@ describe.concurrent("Stream", () => {
             .bufferChunks(2))
         .bind("chunk", ({ stream }) => stream.take(2).runCollect)
         .tap(({ latch }) => latch.await)
-        .bind("list", ({ ref }) => ref.get())
+        .bind("list", ({ ref }) => ref.get)
 
       const { chunk, list } = await program.unsafeRunPromise()
 

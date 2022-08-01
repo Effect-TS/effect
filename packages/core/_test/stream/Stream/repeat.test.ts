@@ -18,7 +18,7 @@ describe.concurrent("Stream", () => {
             .runDrain
             .fork)
         .tap(({ fiber }) => fiber.join)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -88,7 +88,7 @@ describe.concurrent("Stream", () => {
               .flatMap((pull) => pull.ignore > pull.ignore)
           )
         )
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -127,7 +127,7 @@ describe.concurrent("Stream", () => {
             .runDrain
             .fork)
         .tap(({ fiber }) => fiber.join)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 
@@ -211,7 +211,7 @@ describe.concurrent("Stream", () => {
           )
             .take(2)
             .runDrain)
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

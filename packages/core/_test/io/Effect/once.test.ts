@@ -5,7 +5,7 @@ describe.concurrent("Effect", () => {
         .bind("ref", () => Ref.make<number>(0))
         .bind("effect", ({ ref }) => ref.update((n) => n + 1).once)
         .tap(({ effect }) => Effect.collectAllPar(effect.replicate(100)))
-        .flatMap(({ ref }) => ref.get())
+        .flatMap(({ ref }) => ref.get)
 
       const result = await program.unsafeRunPromise()
 

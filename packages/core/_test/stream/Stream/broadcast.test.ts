@@ -56,10 +56,10 @@ describe.concurrent("Stream", () => {
                   .runDrain
                   .fork)
               .tap(({ latch }) => latch.await)
-              .bind("snapshot1", ({ ref }) => ref.get())
+              .bind("snapshot1", ({ ref }) => ref.get)
               .tap(() => streams.unsafeGet(1)!.runDrain)
               .tap(({ fib }) => fib.await)
-              .bind("snapshot2", ({ ref }) => ref.get())
+              .bind("snapshot2", ({ ref }) => ref.get)
           )
       )
 

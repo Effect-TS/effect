@@ -21,7 +21,7 @@ export class SubscriptionRefInternal<A> implements SubscriptionRef<A> {
   get changes(): Stream.UIO<A> {
     return Stream.unwrapScoped(
       this.semaphore.withPermit(
-        this.ref.get().flatMap((a) =>
+        this.ref.get.flatMap((a) =>
           Stream.fromHubScoped(this.hub).map((stream) => Stream(a).concat(stream))
         )
       )
@@ -29,7 +29,7 @@ export class SubscriptionRefInternal<A> implements SubscriptionRef<A> {
   }
   modifyEffect<R, E, B>(this: this, f: (a: A) => Effect<R, E, Tuple<[B, A]>>): Effect<R, E, B> {
     return this.semaphore.withPermit(
-      this.get().flatMap(f).flatMap((tp) => {
+      this.get.flatMap(f).flatMap((tp) => {
         const { tuple: [b, a] } = tp
 
         return this.ref.set(a).as(b).tap(() => this.hub.publish(a))
@@ -67,8 +67,8 @@ export class SubscriptionRefInternal<A> implements SubscriptionRef<A> {
       pf(v).getOrElse(Effect.succeed(v)).map(result => Tuple(result, result))
     )
   }
-  get(this: this): Effect<never, never, A> {
-    return this.ref.get()
+  get get(): Effect<never, never, A> {
+    return this.ref.get
   }
   modify<B>(this: this, f: (a: A) => Tuple<[B, A]>): Effect<never, never, B> {
     return this.modifyEffect((a) => Effect.succeed(f(a)))

@@ -8,7 +8,7 @@ describe.concurrent("SynchronizedRef", () => {
   describe.concurrent("simple", () => {
     it("get", () =>
       Do(($) => {
-        const result = $(Ref.Synchronized.make(current).flatMap((ref) => ref.get()))
+        const result = $(Ref.Synchronized.make(current).flatMap((ref) => ref.get))
         assert.strictEqual(result, current)
       }).unsafeRunPromise())
   })
@@ -18,7 +18,7 @@ describe.concurrent("SynchronizedRef", () => {
       Do(($) => {
         const ref = $(Ref.Synchronized.make(current))
         const v1 = $(ref.getAndUpdateEffect(() => Effect.succeed(update)))
-        const v2 = $(ref.get())
+        const v2 = $(ref.get)
         assert.strictEqual(v1, current)
         assert.strictEqual(v2, update)
       }).unsafeRunPromise())
@@ -42,7 +42,7 @@ describe.concurrent("SynchronizedRef", () => {
               Maybe.none
           )
         )
-        const v2 = $(ref.get())
+        const v2 = $(ref.get)
         assert.deepEqual(v1, State.Active)
         assert.deepEqual(v2, State.Active)
       }).unsafeRunPromise())
@@ -66,7 +66,7 @@ describe.concurrent("SynchronizedRef", () => {
               : Maybe.none
           )
         )
-        const v3 = $(ref.get())
+        const v3 = $(ref.get)
         assert.deepEqual(v1, State.Active)
         assert.deepEqual(v2, State.Changed)
         assert.deepEqual(v3, State.Closed)

@@ -82,7 +82,7 @@ describe.concurrent("Channel", () => {
             () =>
               MergeDecision.done(
                 interrupted
-                  .get()
+                  .get
                   .flatMap((b) => (b ? Effect.unit : Effect.failSync(undefined)))
               )
           )

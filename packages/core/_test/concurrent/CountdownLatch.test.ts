@@ -28,7 +28,7 @@ describe.concurrent("CountdownLatch", () => {
         )))
         $(latch.countDown.repeat(Schedule.recurs(99)))
         $(Effect.forEachDiscard(deferreds, (deferred) => deferred.await))
-        const result = $(fiber.join.zipRight(count.get()))
+        const result = $(fiber.join.zipRight(count.get))
         assert.strictEqual(result, 10)
       }).unsafeRunPromise())
   })

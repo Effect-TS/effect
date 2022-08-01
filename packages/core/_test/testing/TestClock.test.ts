@@ -4,7 +4,7 @@ describe.concurrent("TestClock", () => {
       const ref = $(Ref.make(false))
       $(ref.set(true).delay((10).hours).fork)
       $(TestClock.adjust((11).hours))
-      const result = $(ref.get())
+      const result = $(ref.get)
       assert.isTrue(result)
     }))
 
@@ -13,7 +13,7 @@ describe.concurrent("TestClock", () => {
       const ref = $(Ref.make(false))
       $(ref.set(true).delay((10).hours).fork)
       $(TestClock.adjust((9).hours))
-      const result = $(ref.get())
+      const result = $(ref.get)
       assert.isFalse(result)
     }))
 
@@ -23,7 +23,7 @@ describe.concurrent("TestClock", () => {
       $(ref.update((s) => s + "World!").delay((3).hours).fork)
       $(ref.update((s) => s + "Hello, ").delay((1).hours).fork)
       $(TestClock.adjust((4).hours))
-      const result = $(ref.get())
+      const result = $(ref.get)
       assert.strictEqual(result, "Hello, World!")
     }))
 
@@ -32,7 +32,7 @@ describe.concurrent("TestClock", () => {
       const ref = $(Ref.make(false))
       $(ref.set(true).delay((10).hours).fork)
       $(TestClock.setTime(new Date(0).getTime() + (11).hours.millis))
-      const result = $(ref.get())
+      const result = $(ref.get)
       assert.isTrue(result)
     }))
 

@@ -21,7 +21,7 @@ describe.concurrent("Stream", () => {
             Stream.finalizer(log.update((list) => list.prepend("first")))
           ).runDrain
         )
-        .flatMap((log) => log.get())
+        .flatMap((log) => log.get)
 
       const result = await program.unsafeRunPromise()
 
