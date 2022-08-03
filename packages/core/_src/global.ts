@@ -74,6 +74,10 @@ import { Deferred } from "@effect/core/io/Deferred/definition"
 /**
  * @tsplus global
  */
+import { Differ } from "@effect/core/io/Differ/definition"
+/**
+ * @tsplus global
+ */
 import { TDeferred } from "@effect/core/stm/TDeferred/definition"
 /**
  * @tsplus global

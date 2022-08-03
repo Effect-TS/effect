@@ -16,21 +16,20 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
 
   constructor(
     readonly initial: Value,
-    readonly diff: (oldValue: Value, newValue: Value) => Patch,
-    readonly combine: (first: Patch, second: Patch) => Patch,
-    readonly patch: (patch: Patch) => (oldValue: Value) => Value,
+    readonly differ: Differ<Value, Patch>,
     readonly fork: Patch
   ) {}
 
-  /**
-   * Atomically modifies the `FiberRef` with the specified function, which
-   * computes a return value for the modification. This is a more powerful
-   * version of `update`.
-   */
-  modify<B>(
-    f: (a: Value) => Tuple<[B, Value]>
-  ): Effect<never, never, B> {
-    return new IFiberRefModify(this, f)
+  diff(oldValue: Value, newValue: Value): Patch {
+    return this.differ.diff(oldValue, newValue)
+  }
+
+  combine(first: Patch, second: Patch): Patch {
+    return this.differ.combine(first, second)
+  }
+
+  patch(patch: Patch) {
+    return (oldValue: Value): Value => this.differ.patch(patch, oldValue)
   }
 
   get get(): Effect<never, never, Value> {
@@ -43,6 +42,17 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
 
   get reset(): Effect<never, never, void> {
     return this.set(this.initial)
+  }
+
+  /**
+   * Atomically modifies the `FiberRef` with the specified function, which
+   * computes a return value for the modification. This is a more powerful
+   * version of `update`.
+   */
+  modify<B>(
+    f: (a: Value) => Tuple<[B, Value]>
+  ): Effect<never, never, B> {
+    return new IFiberRefModify(this, f)
   }
 
   getAndSet(
@@ -205,14 +215,10 @@ export function makeEnvironment<A>(
  */
 export function makePatch<Value, Patch>(
   initial: Value,
-  diff: (oldValue: Value, newValue: Value) => Patch,
-  combine: (first: Patch, second: Patch) => Patch,
-  patch: (patch: Patch) => (oldValue: Value) => Value,
+  differ: Differ<Value, Patch>,
   fork: Patch
 ): Effect<Scope, never, FiberRef.WithPatch<Value, Patch>> {
-  return FiberRef.makeWith(
-    FiberRef.unsafeMakePatch(initial, diff, combine, patch, fork)
-  )
+  return FiberRef.makeWith(FiberRef.unsafeMakePatch(initial, differ, fork))
 }
 
 /**
@@ -233,13 +239,11 @@ export function makeWith<Value, Patch>(
 export function unsafeMake<A>(
   initial: A,
   fork: (a: A) => A = identity,
-  join: (left: A, right: A) => A = (_, a) => a
+  join: (left: A, right: A) => A = (_, right) => right
 ): FiberRef<A> {
   return FiberRef.unsafeMakePatch<A, (a: A) => A>(
     initial,
-    (_, newValue) => () => newValue,
-    (first, second) => (value) => second(first(value)),
-    (patch) => (value) => join(value, patch(value)),
+    Differ.updateWith(join),
     fork
   )
 }
@@ -250,13 +254,7 @@ export function unsafeMake<A>(
 export function unsafeMakeEnvironment<A>(
   initial: Service.Env<A>
 ): FiberRef.WithPatch<Service.Env<A>, Service.Patch<A, A>> {
-  return new FiberRefInternal(
-    initial,
-    Service.Patch.diff,
-    (first, second) => first.combine(second),
-    (patch) => (value) => patch.patch(value),
-    Service.Patch.empty()
-  )
+  return FiberRef.unsafeMakePatch(initial, Differ.environment(), Service.Patch.empty())
 }
 
 /**
@@ -264,18 +262,10 @@ export function unsafeMakeEnvironment<A>(
  */
 export function unsafeMakePatch<Value, Patch>(
   initial: Value,
-  diff: (oldValue: Value, newValue: Value) => Patch,
-  combine: (first: Patch, second: Patch) => Patch,
-  patch: (patch: Patch) => (oldValue: Value) => Value,
+  differ: Differ<Value, Patch>,
   fork: Patch
 ): FiberRef.WithPatch<Value, Patch> {
-  return new FiberRefInternal(
-    initial,
-    diff,
-    combine,
-    patch,
-    fork
-  )
+  return new FiberRefInternal(initial, differ, fork)
 }
 
 //
