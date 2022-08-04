@@ -1,3 +1,5 @@
+import { DurationInternal } from "@tsplus/stdlib/data/Duration"
+
 /**
  * Returns the sink that executes this one and times its execution in
  * milliseconds.
@@ -7,7 +9,7 @@
 export function withDuration<R, E, In, L, Z>(
   self: Sink<R, E, In, L, Z>
 ): Sink<R, E, In, L, Tuple<[Z, Duration]>> {
-  return self.summarized(Clock.currentTime, (start, end) => new Duration(end - start))
+  return self.summarized(Clock.currentTime, (start, end) => new DurationInternal(end - start))
 }
 
 /**

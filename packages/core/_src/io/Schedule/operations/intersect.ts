@@ -1,5 +1,3 @@
-import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
-
 /**
  * Returns a new schedule that performs a geometric intersection on the
  * intervals defined by both schedules.
@@ -15,6 +13,6 @@ export function intersect<State1, Env1, In1, Out2>(
     Tuple<[State, State1]>,
     Env | Env1,
     In & In1,
-    MergeTuple<Out, Out2>
+    Tuple<[Out, Out2]>
   > => self.intersectWith(that, (x, y) => x.intersect(y))
 }

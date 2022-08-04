@@ -1,3 +1,5 @@
+import { DurationInternal } from "@tsplus/stdlib/data/Duration"
+
 export const IntervalSym = Symbol.for("@effect/core/io/Schedule/Interval")
 export type IntervalSym = typeof IntervalSym
 
@@ -117,7 +119,7 @@ export function intersect(that: Interval) {
  * @tsplus getter effect/core/io/Schedule/Interval size
  */
 export function size(self: Interval): Duration {
-  return new Duration(self.endMillis - self.startMillis)
+  return new DurationInternal(self.endMillis - self.startMillis)
 }
 
 /**

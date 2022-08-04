@@ -195,7 +195,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("forEach for Maybe", () => {
     it("succeeds with None given None", async () => {
-      const program = Effect.forEachMaybe(Maybe.emptyOf<string>(), (s) => Effect.sync(s.length))
+      const program = Effect.forEachMaybe(Maybe.empty<string>(), (s) => Effect.sync(s.length))
 
       const result = await program.unsafeRunPromise()
 

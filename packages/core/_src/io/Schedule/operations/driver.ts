@@ -1,4 +1,5 @@
 import { Driver } from "@effect/core/io/Schedule/Driver"
+import { DurationInternal } from "@tsplus/stdlib/data/Duration"
 
 /**
  * Returns a driver that can be used to step the schedule, appropriately
@@ -38,7 +39,7 @@ function next<State, Env, In, Out>(
           .zipRight(Effect.failSync(Maybe.none))
         : ref.set(Tuple(Maybe.some(out), state))
           .zipRight(
-            Effect.sleep(new Duration(decision.intervals.start - now)).as(out)
+            Effect.sleep(new DurationInternal(decision.intervals.start - now)).as(out)
           )
     )
 }

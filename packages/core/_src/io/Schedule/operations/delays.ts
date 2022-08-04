@@ -1,5 +1,6 @@
 import type { Decision } from "@effect/core/io/Schedule/Decision"
 import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
+import { DurationInternal } from "@tsplus/stdlib/data/Duration"
 
 /**
  * Returns a new schedule that outputs the delay between each occurence.
@@ -23,7 +24,7 @@ export function delays<State, Env, In, Out>(
             return Effect.succeed(
               Tuple(
                 state,
-                new Duration(decision.intervals.start - now),
+                new DurationInternal(decision.intervals.start - now),
                 decision
               )
             )

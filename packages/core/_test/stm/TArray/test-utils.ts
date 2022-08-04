@@ -13,7 +13,7 @@ export function makeStair(n: number): STM<never, never, TArray<number>> {
 
 export function makeStairWithHoles(n: number): STM<never, never, TArray<Maybe<number>>> {
   return TArray.from(
-    Chunk.range(1, n).map((i) => i % 3 === 0 ? Maybe.emptyOf<number>() : Maybe.some(i))
+    Chunk.range(1, n).map((i) => i % 3 === 0 ? Maybe.empty<number>() : Maybe.some(i))
   )
 }
 

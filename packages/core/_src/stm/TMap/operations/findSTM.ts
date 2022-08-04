@@ -9,7 +9,7 @@ export function findSTM<K, V, R, E, A>(
   f: (kv: Tuple<[K, V]>) => STM<R, Maybe<E>, A>
 ) {
   return (self: TMap<K, V>): STM<R, E, Maybe<A>> =>
-    self.foldSTM(Maybe.emptyOf<A>(), (a, kv) => {
+    self.foldSTM(Maybe.empty<A>(), (a, kv) => {
       if (a.isNone()) {
         return f(kv).foldSTM((_) => _.fold(STM.none, (e) => STM.fail(e)), STM.some)
       }

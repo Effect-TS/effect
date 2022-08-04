@@ -423,7 +423,7 @@ describe.concurrent("Effect", () => {
 
     it("sandbox of interruptible", async () => {
       const program = Effect.Do()
-        .bind("recovered", () => Ref.make(Maybe.emptyOf<Either<boolean, any>>()))
+        .bind("recovered", () => Ref.make(Maybe.empty<Either<boolean, any>>()))
         .bind(
           "fiber",
           ({ recovered }) =>
@@ -450,7 +450,7 @@ describe.concurrent("Effect", () => {
 
     it("run of interruptible", async () => {
       const program = Effect.Do()
-        .bind("recovered", () => Ref.make(Maybe.emptyOf<boolean>()))
+        .bind("recovered", () => Ref.make(Maybe.empty<boolean>()))
         .bind(
           "fiber",
           ({ recovered }) =>

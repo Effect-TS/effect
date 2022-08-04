@@ -1,3 +1,5 @@
+import { DurationInternal } from "@tsplus/stdlib/data/Duration"
+
 /**
  * Retries constructing this layer according to the specified schedule.
  *
@@ -45,7 +47,7 @@ function update<S, RIn, E, X>(
       schedule.step(now, e, s).flatMap(({ tuple: [state, _, decision] }) =>
         decision._tag === "Done"
           ? Effect.failSync(e)
-          : Clock.sleep(new Duration(decision.intervals.start - now)).as({
+          : Clock.sleep(new DurationInternal(decision.intervals.start - now)).as({
             state
           })
       )

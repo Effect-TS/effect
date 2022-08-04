@@ -10,7 +10,7 @@ export function scanReduceEffect<A, R2, E2, A2 extends A>(
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A2> =>
     self.mapAccumEffect(
-      Maybe.emptyOf<A2>(),
+      Maybe.empty<A2>(),
       (option: Maybe<A2>, a) =>
         option.fold(
           Effect.succeed(Tuple(Maybe.some(a as A2), a as A2)),

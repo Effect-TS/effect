@@ -9,7 +9,7 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
 export function findLastSTM<E, A>(f: (a: A) => STM<never, E, boolean>) {
   return (self: TArray<A>): STM<never, E, Maybe<A>> => {
     concreteTArray(self)
-    const init = Tuple(Maybe.emptyOf<A>(), self.chunk.length - 1)
+    const init = Tuple(Maybe.empty<A>(), self.chunk.length - 1)
     const cont = (s: Tuple<[Maybe<A>, number]>) => s.get(0).isNone() && s.get(1) >= 0
     return STM.iterate(
       init,

@@ -1,7 +1,6 @@
 import { Decision } from "@effect/core/io/Schedule/Decision"
 import type { Intervals } from "@effect/core/io/Schedule/Intervals"
 import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
-import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
 
 /**
  * Returns a new schedule that combines this schedule with the specified
@@ -19,7 +18,7 @@ export function intersectWith<State1, Env1, In1, Out2>(
     Tuple<[State, State1]>,
     Env | Env1,
     In & In1,
-    MergeTuple<Out, Out2>
+    Tuple<[Out, Out2]>
   > =>
     makeWithState(Tuple(self.initial, that.initial), (now, input, state) => {
       const left = self.step(now, input, state.get(0))
@@ -49,7 +48,7 @@ export function intersectWith<State1, Env1, In1, Out2>(
               )
             }
             return Effect.succeed(
-              Tuple(Tuple(lState, rState), Tuple.mergeTuple(out, out2), Decision.Done)
+              Tuple(Tuple(lState, rState), Tuple.make(out, out2), Decision.Done)
             )
           }
         )
@@ -70,7 +69,7 @@ function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
 ): Effect<
   Env | Env1,
   never,
-  Tuple<[Tuple<[State, State1]>, MergeTuple<Out, Out2>, Decision]>
+  Tuple<[Tuple<[State, State1]>, Tuple<[Out, Out2]>, Decision]>
 > {
   const combined = f(lInterval, rInterval)
 
@@ -78,7 +77,7 @@ function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
     return Effect.succeed(
       Tuple(
         Tuple(lState, rState),
-        Tuple.mergeTuple(out, out2),
+        Tuple.make(out, out2),
         Decision.Continue(combined)
       )
     )
@@ -93,7 +92,7 @@ function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
             return Effect.succeed(
               Tuple(
                 Tuple(lState, rState),
-                Tuple.mergeTuple(out, out2),
+                Tuple.make(out, out2),
                 Decision.Done
               )
             )
@@ -124,7 +123,7 @@ function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
           return Effect.succeed(
             Tuple(
               Tuple(lState, rState),
-              Tuple.mergeTuple(out, out2),
+              Tuple.make(out, out2),
               Decision.Done
             )
           )

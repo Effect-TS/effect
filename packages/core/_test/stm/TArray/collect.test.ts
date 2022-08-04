@@ -28,7 +28,7 @@ describe.concurrent("TArray", () => {
     })
 
     it("succeeds for empty", async () => {
-      const program = makeTArray(0, Maybe.emptyOf<number>())
+      const program = makeTArray(0, Maybe.empty<number>())
         .commit
         .flatMap((tArray) => tArray.collectFirst((option) => Maybe.some(option)).commit)
 
@@ -101,7 +101,7 @@ describe.concurrent("TArray", () => {
     })
 
     it("succeeds for empty", async () => {
-      const program = makeTArray(0, Maybe.emptyOf<number>())
+      const program = makeTArray(0, Maybe.empty<number>())
         .commit
         .flatMap((tArray) =>
           tArray.collectFirstSTM((option) => Maybe.some(STM.succeed(option))).commit

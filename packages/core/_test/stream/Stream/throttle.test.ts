@@ -1,8 +1,10 @@
+import { DurationInternal } from "@tsplus/stdlib/data/Duration"
+
 describe.concurrent("Stream", () => {
   describe.concurrent("throttleEnforce", () => {
     it("free elements", async () => {
       const program = Stream(1, 2, 3, 4)
-        .throttleEnforce(0, new Duration(Number.MAX_SAFE_INTEGER), () => 0)
+        .throttleEnforce(0, new DurationInternal(Number.MAX_SAFE_INTEGER), () => 0)
         .runCollect
 
       const result = await program.unsafeRunPromise()
@@ -12,7 +14,7 @@ describe.concurrent("Stream", () => {
 
     it("no bandwidth", async () => {
       const program = Stream(1, 2, 3, 4)
-        .throttleEnforce(0, new Duration(Number.MAX_SAFE_INTEGER), () => 1)
+        .throttleEnforce(0, new DurationInternal(Number.MAX_SAFE_INTEGER), () => 1)
         .runCollect
 
       const result = await program.unsafeRunPromise()
@@ -24,7 +26,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("throttleShape", () => {
     it("free elements", async () => {
       const program = Stream(1, 2, 3, 4)
-        .throttleShape(1, new Duration(Number.MAX_SAFE_INTEGER), () => 0)
+        .throttleShape(1, new DurationInternal(Number.MAX_SAFE_INTEGER), () => 0)
         .runCollect
 
       const result = await program.unsafeRunPromise()

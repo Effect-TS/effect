@@ -5,7 +5,7 @@
  */
 export function unsome<R, E, A>(self: STM<R, Maybe<E>, A>): STM<R, E, Maybe<A>> {
   return self.foldSTM(
-    (option) => option.fold(STM.succeedNow(Maybe.emptyOf<A>()), STM.failNow),
+    (option) => option.fold(STM.succeedNow(Maybe.empty<A>()), STM.failNow),
     (a) => STM.succeedNow(Maybe.some(a))
   )
 }

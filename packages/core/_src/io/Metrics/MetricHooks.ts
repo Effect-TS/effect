@@ -1,3 +1,5 @@
+import { DurationInternal } from "@tsplus/stdlib/data/Duration"
+
 /**
  * @tsplus type effect/core/io/Metrics/MetricHooks.Ops
  */
@@ -152,7 +154,7 @@ export function summary(key: MetricKey.Summary): MetricHook.Summary {
       const item = values[i]
       if (item != null) {
         const { tuple: [t, v] } = item
-        const age = new Duration(now - t)
+        const age = new DurationInternal(now - t)
         if (age.millis >= 0 && age <= maxAge) {
           builder.append(v)
         }

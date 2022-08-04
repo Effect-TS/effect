@@ -11,6 +11,6 @@
 export function updateWith<K, V>(k: K, f: (v: Maybe<V>) => Maybe<V>) {
   return (self: TMap<K, V>): STM<never, never, Maybe<V>> =>
     self.get(k).flatMap((_) =>
-      f(_).fold(self.delete(k).as(Maybe.emptyOf<V>()), (v) => self.put(k, v).as(Maybe.some(v)))
+      f(_).fold(self.delete(k).as(Maybe.empty<V>()), (v) => self.put(k, v).as(Maybe.some(v)))
     )
 }

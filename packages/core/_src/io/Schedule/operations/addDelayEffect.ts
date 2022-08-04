@@ -1,3 +1,5 @@
+import { DurationInternal } from "@tsplus/stdlib/data/Duration"
+
 /**
  * Returns a new schedule with the given effectfully computed delay added to
  * every interval defined by this schedule.
@@ -12,6 +14,6 @@ export function addDelayEffect<Out, Env1>(
     self: Schedule<State, Env, In, Out>
   ): Schedule<State, Env | Env1, In, Out> =>
     self.modifyDelayEffect((out, duration) =>
-      f(out).map((delay) => new Duration(duration.millis + delay.millis))
+      f(out).map((delay) => new DurationInternal(duration.millis + delay.millis))
     )
 }

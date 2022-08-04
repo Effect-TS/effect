@@ -33,7 +33,7 @@ export function raceWith<R1, E1, In1, L1, Z1, E, Z, Z2>(
           () => MergeDecision.await((exit) => Effect.done(exit)),
           (done) => MergeDecision.done(Effect.done(done))
         )
-        return new SinkInternal(channel)
+        return new SinkInternal<R | R1, E | E1, In & In1, L | L1, Z2>(channel)
       })
     )
 }
