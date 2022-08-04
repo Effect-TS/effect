@@ -108,10 +108,6 @@ export class CompositeFiberId implements FiberId, Equals {
   }
 }
 
-// -----------------------------------------------------------------------------
-// Utilities
-// -----------------------------------------------------------------------------
-
 /**
  * Checks if the specified unknown value is a `FiberId`.
  *

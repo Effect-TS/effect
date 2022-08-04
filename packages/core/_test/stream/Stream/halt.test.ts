@@ -1,101 +1,98 @@
+import { chunkCoordination } from "@effect/core/test/stream/Stream/test-utils"
+
 describe.concurrent("Stream", () => {
   describe.concurrent("haltWhen", () => {
-    it("halts after the current element", async () => {
-      const program = Effect.Do()
-        .bind("interrupted", () => Ref.make(false))
-        .bind("latch", () => Deferred.make<never, void>())
-        .bind("halt", () => Deferred.make<never, void>())
-        .tap(({ halt, interrupted, latch }) =>
-          Stream.fromEffect(latch.await.onInterrupt(() => interrupted.set(true)))
-            .haltWhen(halt.await)
-            .runDrain
-            .fork
-        )
-        .tap(({ halt }) => halt.succeed(undefined))
-        .tap(({ latch }) => latch.succeed(undefined))
-        .flatMap(({ interrupted }) => interrupted.get)
+    it("halts after the current element", () =>
+      Do(($) => {
+        const interrupted = $(Ref.make(false))
+        const latch = $(Deferred.make<never, void>())
+        const halt = $(Deferred.make<never, void>())
+        const stream = Stream
+          .fromEffect(latch.await.onInterrupt(() => interrupted.set(true)))
+          .haltWhen(halt.await)
+        $(stream.runDrain.fork)
+        $(halt.succeed(undefined))
+        $(latch.succeed(undefined))
+        const result = $(interrupted.get)
+        assert.isFalse(result)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isFalse(result)
-    })
-
-    it("propagates errors", async () => {
-      const program = Effect.Do()
-        .bind("halt", () => Deferred.make<string, never>())
-        .tap(({ halt }) => halt.fail("fail"))
-        .flatMap(({ halt }) => Stream(0).forever.haltWhen(halt.await).runDrain.either)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Either.left("fail"))
-    })
+    it("propagates errors", () =>
+      Do(($) => {
+        const halt = $(Deferred.make<string, never>())
+        const stream = Stream(0).forever.haltWhen(halt.await)
+        $(halt.fail("fail"))
+        const result = $(stream.runDrain.either)
+        assert.isTrue(result == Either.left("fail"))
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("haltWhenDeferred", () => {
-    it("halts after the current element", async () => {
-      const program = Effect.Do()
-        .bind("interrupted", () => Ref.make(false))
-        .bind("latch", () => Deferred.make<never, void>())
-        .bind("halt", () => Deferred.make<never, void>())
-        .tap(({ halt, interrupted, latch }) =>
-          Stream.fromEffect(latch.await.onInterrupt(() => interrupted.set(true)))
-            .haltWhenDeferred(halt)
-            .runDrain
-            .fork
-        )
-        .tap(({ halt }) => halt.succeed(undefined))
-        .tap(({ latch }) => latch.succeed(undefined))
-        .flatMap(({ interrupted }) => interrupted.get)
+    it("halts after the current element", () =>
+      Do(($) => {
+        const interrupted = $(Ref.make(false))
+        const latch = $(Deferred.make<never, void>())
+        const halt = $(Deferred.make<never, void>())
+        const stream = Stream
+          .fromEffect(latch.await.onInterrupt(() => interrupted.set(true)))
+          .haltWhenDeferred(halt)
+        $(stream.runDrain.fork)
+        $(halt.succeed(undefined))
+        $(latch.succeed(undefined))
+        const result = $(interrupted.get)
+        assert.isFalse(result)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isFalse(result)
-    })
-
-    it("propagates errors", async () => {
-      const program = Effect.Do()
-        .bind("halt", () => Deferred.make<string, never>())
-        .tap(({ halt }) => halt.fail("fail"))
-        .flatMap(({ halt }) => Stream(0).forever.haltWhenDeferred(halt).runDrain.either)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Either.left("fail"))
-    })
+    it("propagates errors", () =>
+      Do(($) => {
+        const halt = $(Deferred.make<string, void>())
+        const stream = Stream(0).forever.haltWhenDeferred(halt)
+        $(halt.fail("fail"))
+        const result = $(stream.runDrain.either)
+        assert.isTrue(result == Either.left("fail"))
+      }).unsafeRunPromise())
   })
 
-  // TODO(Mike/Max): implement after TestClock
-  // describe.concurrent("haltAfter", () => {
-  //   it("halts after given duration", async () => {
-  //     assertWithChunkCoordination(List(Chunk(1), Chunk(2), Chunk(3), Chunk(4))) { c =>
-  //       assertM(
-  //         for {
-  //           fiber <- ZStream
-  //                      .fromQueue(c.queue)
-  //                      .collectWhileSuccess
-  //                      .haltAfter(5.seconds)
-  //                      .tap(_ => c.proceed)
-  //                      .runCollect
-  //                      .fork
-  //           _      <- c.offer *> TestClock.adjust(3.seconds) *> c.awaitNext
-  //           _      <- c.offer *> TestClock.adjust(3.seconds) *> c.awaitNext
-  //           _      <- c.offer *> TestClock.adjust(3.seconds) *> c.awaitNext
-  //           _      <- c.offer
-  //           result <- fiber.join
-  //         } yield result
-  //       )(equalTo(Chunk(Chunk(1), Chunk(2), Chunk(3))))
-  //     }
-  //   })
+  describe.concurrent("haltAfter", () => {
+    it.effect("halts after given duration", () =>
+      Do(($) => {
+        const chunks = List(Chunk(1), Chunk(2), Chunk(3), Chunk(4))
+        const coordination = $(chunkCoordination(chunks))
+        const stream = Stream.fromQueue(coordination.queue)
+          .collectWhileSuccess
+          .haltAfter((5).seconds)
+          .tap(() => coordination.proceed)
+        const fiber = $(stream.runCollect.fork)
+        $(
+          coordination.offer
+            .zipRight(TestClock.adjust((3).seconds))
+            .zipRight(coordination.awaitNext)
+        )
+        $(
+          coordination.offer
+            .zipRight(TestClock.adjust((3).seconds))
+            .zipRight(coordination.awaitNext)
+        )
+        $(
+          coordination.offer
+            .zipRight(TestClock.adjust((3).seconds))
+            .zipRight(coordination.awaitNext)
+        )
+        $(coordination.offer)
+        const result = $(fiber.join)
+        const expected = Chunk(Chunk(1), Chunk(2), Chunk(3))
+        assert.isTrue(result == expected)
+      }))
 
-  //   it("will process first chunk", async () => {
-  //     for {
-  //       queue  <- Queue.unbounded[Int]
-  //       fiber  <- ZStream.fromQueue(queue).haltAfter(5.seconds).runCollect.fork
-  //       _      <- TestClock.adjust(6.seconds)
-  //       _      <- queue.offer(1)
-  //       result <- fiber.join
-  //     } yield assert(result)(equalTo(Chunk(1)))
-  //   })
-  // })
+    it.effect("will process first chunk", () =>
+      Do(($) => {
+        const queue = $(Queue.unbounded<number>())
+        const stream = Stream.fromQueue(queue).haltAfter((5).seconds)
+        const fiber = $(stream.runCollect.fork)
+        $(TestClock.adjust((6).seconds))
+        $(queue.offer(1))
+        const result = $(fiber.join)
+        assert.isTrue(result == Chunk(1))
+      }))
+  })
 })

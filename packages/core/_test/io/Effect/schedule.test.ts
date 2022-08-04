@@ -1,22 +1,19 @@
+import { DurationInternal } from "@tsplus/stdlib/data/Duration"
+
 describe.concurrent("Effect", () => {
   describe.concurrent("schedule", () => {
-    it("runs effect for each recurrence of the schedule", async () => {
-      const program = Effect.Do()
-        .bind("ref", () => Ref.make<List<number>>(List.empty()))
-        .bindValue(
-          "effect",
-          ({ ref }) => Clock.currentTime.flatMap((n) => ref.update((list) => list.prepend(n)))
+    it.effect("runs effect for each recurrence of the schedule", () =>
+      Do(($) => {
+        const ref = $(Ref.make(List.empty<Duration>()))
+        const effect = Clock.currentTime.flatMap((duration) =>
+          ref.update((list) => list.prepend(new DurationInternal(duration)))
         )
-        .bindValue(
-          "schedule",
-          () => Schedule.spaced((10).millis) && Schedule.recurs(5)
-        )
-        .tap(({ effect, schedule }) => effect.schedule(schedule))
-        .flatMap(({ ref }) => ref.get)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result.length, 5)
-    })
+        const schedule = Schedule.spaced((1).seconds).intersect(Schedule.recurs(5))
+        $(effect.schedule(schedule).fork)
+        $(TestClock.adjust((5).seconds))
+        const value = $(ref.get.map((list) => list.reverse))
+        const expected = List((1).seconds, (2).seconds, (3).seconds, (4).seconds, (5).seconds)
+        assert.isTrue(value == expected)
+      }))
   })
 })

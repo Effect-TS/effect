@@ -1,218 +1,250 @@
+// import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff"
+// import { chunkCoordination } from "@effect/core/test/stream/Stream/test-utils"
+
 describe.concurrent("Stream", () => {
   describe.concurrent("groupBy", () => {
-    it("values", async () => {
-      const words = Chunk.fill(10, () => Chunk.range(0, 10))
-        .flatten
-        .map((n) => n.toString())
-      const program = Stream.fromCollection(words)
-        .groupByKey(identity, 8192)
-        .mergeGroupBy((k, s) =>
-          Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size).toNative))
+    it("values", () =>
+      Do(($) => {
+        const words = Chunk.fill(10, () => Chunk.range(0, 10))
+          .flatten
+          .map((n) => n.toString())
+        const stream = Stream.fromCollection(words)
+          .groupByKey(identity, 8192)
+          .mergeGroupBy((k, s) =>
+            Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size).toNative))
+          )
+        const result = $(stream.runCollect.map((chunk) => new Map(chunk.toArray)))
+        const expected = new Map(
+          Chunk.range(0, 10).map((n) => Tuple(n.toString(), 10).toNative).toArray
         )
-        .runCollect
-        .map((chunk) => new Map([...chunk]))
+        assert.deepStrictEqual(result, expected)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-      const expected = new Map([
-        ...Chunk.range(0, 10).map((n) => Tuple(n.toString(), 10).toNative)
-      ])
-
-      assert.deepStrictEqual(result, expected)
-    })
-
-    it("first", async () => {
-      const words = Chunk.fill(10, () => Chunk.range(0, 10))
-        .flatten
-        .map((n) => n.toString())
-      const program = Stream.fromCollection(words)
-        .groupByKey(identity, 1050)
-        .first(2)
-        .mergeGroupBy((k, s) =>
-          Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size).toNative))
+    it("first", () =>
+      Do(($) => {
+        const words = Chunk.fill(10, () => Chunk.range(0, 10))
+          .flatten
+          .map((n) => n.toString())
+        const stream = Stream.fromCollection(words)
+          .groupByKey(identity, 1050)
+          .first(2)
+          .mergeGroupBy((k, s) =>
+            Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size).toNative))
+          )
+        const result = $(stream.runCollect.map((chunk) => new Map(chunk.toArray)))
+        const expected = new Map(
+          Chunk.range(0, 1).map((n) => Tuple(n.toString(), 10).toNative).toArray
         )
-        .runCollect
-        .map((chunk) => new Map([...chunk]))
+        assert.deepStrictEqual(result, expected)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-      const expected = new Map([
-        ...Chunk.range(0, 1).map((n) => Tuple(n.toString(), 10).toNative)
-      ])
+    it("filter", () =>
+      Do(($) => {
+        const words = Chunk.fill(10, () => Chunk.range(0, 10)).flatten
+        const stream = Stream.fromCollection(words)
+          .groupByKey(identity, 1050)
+          .filter((n) => n <= 5)
+          .mergeGroupBy((k, s) =>
+            Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size).toNative))
+          )
+        const result = $(stream.runCollect.map((chunk) => new Map(chunk.toArray)))
+        const expected = new Map(Chunk.range(0, 5).map((n) => Tuple(n, 10).toNative).toArray)
+        assert.deepStrictEqual(result, expected)
+      }).unsafeRunPromise())
 
-      assert.deepStrictEqual(result, expected)
-    })
-
-    it("filter", async () => {
-      const words = Chunk.fill(10, () => Chunk.range(0, 10)).flatten
-      const program = Stream.fromCollection(words)
-        .groupByKey(identity, 1050)
-        .filter((n) => n <= 5)
-        .mergeGroupBy((k, s) =>
-          Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size).toNative))
-        )
-        .runCollect
-        .map((chunk) => new Map([...chunk]))
-
-      const result = await program.unsafeRunPromise()
-      const expected = new Map([
-        ...Chunk.range(0, 5).map((n) => Tuple(n, 10).toNative)
-      ])
-
-      assert.deepStrictEqual(result, expected)
-    })
-
-    it("outer errors", async () => {
-      const words = Chunk("abc", "test", "test", "foo")
-      const program = (Stream.fromCollection(words) + Stream.fail("boom"))
-        .groupByKey(identity)
-        .mergeGroupBy((_, s) => s.drain)
-        .runCollect
-        .either
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Either.left("boom"))
-    })
+    it("outer errors", () =>
+      Do(($) => {
+        const words = Chunk("abc", "test", "test", "foo")
+        const stream = (Stream.fromCollection(words) + Stream.fail("boom"))
+          .groupByKey(identity)
+          .mergeGroupBy((_, s) => s.drain)
+        const result = $(stream.runCollect.either)
+        assert.isTrue(result == Either.left("boom"))
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("grouped", () => {
-    it("sanity", async () => {
-      const program = Stream(1, 2, 3, 4, 5)
-        .grouped(2)
-        .runCollect
+    it("sanity", () =>
+      Do(($) => {
+        const stream = Stream(1, 2, 3, 4, 5).grouped(2)
+        const result = $(stream.runCollect)
+        const expected = Chunk(Chunk(1, 2), Chunk(3, 4), Chunk(5))
+        assert.isTrue(result == expected)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("group size is correct", () =>
+      Do(($) => {
+        const stream = Stream.range(0, 100).grouped(10).map((chunk) => chunk.size)
+        const result = $(stream.runCollect)
+        assert.isTrue(result == Chunk.fill(10, () => 10))
+      }).unsafeRunPromise())
 
-      assert.isTrue(result == Chunk(Chunk(1, 2), Chunk(3, 4), Chunk(5)))
-    })
+    it("doesn't emit empty chunks", () =>
+      Do(($) => {
+        const stream = Stream.fromCollection(Chunk.empty<number>()).grouped(5)
+        const result = $(stream.runCollect)
+        assert.isTrue(result.isEmpty)
+      }).unsafeRunPromise())
 
-    it("group size is correct", async () => {
-      const program = Stream.range(0, 100)
-        .grouped(10)
-        .map((chunk) => chunk.size)
-        .runCollect
+    it("is equivalent to Chunk.grouped", () =>
+      Do(($) => {
+        const stream = Stream.range(1, 10)
+        const result1 = $(stream.grouped(2).runCollect)
+        const chunk = $(stream.runCollect)
+        const result2 = chunk.grouped(2)
+        assert.isTrue(result1 == result2)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Chunk.fill(10, () => 10))
-    })
-
-    it("doesn't emit empty chunks", async () => {
-      const program = Stream.fromCollection(Chunk.empty<number>()).grouped(5).runCollect
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result.isEmpty)
-    })
-
-    it("is equivalent to Chunk#grouped", async () => {
-      const stream = Stream.range(1, 10)
-      const program = Effect.Do()
-        .bind("result1", () => stream.grouped(2).runCollect)
-        .bind("partial", () => stream.runCollect)
-        .bindValue("result2", ({ partial }) => partial.grouped(2))
-
-      const { result1, result2 } = await program.unsafeRunPromise()
-
-      assert.isTrue(result1 == result2)
-    })
-
-    it("emits elements properly when a failure occurs", async () => {
-      const program = Effect.Do()
-        .bind("ref", () => Ref.make(Chunk.empty<Chunk<number>>()))
-        .bindValue(
-          "streamChunks",
-          () => Stream.fromChunks(Chunk(1, 2, 3, 4), Chunk(5, 6, 7), Chunk(8))
-        )
-        .bindValue("stream", ({ streamChunks }) => (streamChunks + Stream.fail("ouch")).grouped(3))
-        .bind("either", ({ ref, stream }) =>
-          stream
-            .mapEffect((chunk) => ref.update((cs) => cs.append(chunk)))
-            .runCollect
-            .either)
-        .bind("result", ({ ref }) => ref.get)
-
-      const { either, result } = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Chunk(Chunk(1, 2, 3), Chunk(4, 5, 6), Chunk(7, 8)))
-      assert.isTrue(either == Either.left("ouch"))
-    })
+    it("emits elements properly when a failure occurs", () =>
+      Do(($) => {
+        const ref = $(Ref.make(Chunk.empty<Chunk<number>>()))
+        const streamChunks = Stream.fromChunks(Chunk(1, 2, 3, 4), Chunk(5, 6, 7), Chunk(8))
+        const stream = streamChunks.concat(Stream.fail("ouch")).grouped(3)
+          .mapEffect((chunk) => ref.update((chunks) => chunks.append(chunk)))
+        const either = $(stream.runCollect.either)
+        const result = $(ref.get)
+        assert.isTrue(result == Chunk(Chunk(1, 2, 3), Chunk(4, 5, 6), Chunk(7, 8)))
+        assert.isTrue(either == Either.left("ouch"))
+      }).unsafeRunPromise())
   })
 
-  // TODO(Mike/Max): implement after TestClock
-  // describe.concurrent("groupedWithin", () => {
-  //   it("group based on time passed", async () => {
-  //     assertWithChunkCoordination(List(Chunk(1, 2), Chunk(3, 4), Chunk.single(5))) { c =>
-  //       val stream = ZStream
-  //         .fromQueue(c.queue)
-  //         .collectWhileSuccess
-  //         .flattenChunks
-  //         .groupedWithin(10, 2.seconds)
-  //         .tap(_ => c.proceed)
+  describe.concurrent("groupedWithin", () => {
+    // TODO(Mike/Max): Something in TestClock is causing the next two tests
+    // to hang, specifically inside `TestClock.awaitSuspended`
 
-  //       assertM(for {
-  //         f      <- stream.runCollect.fork
-  //         _      <- c.offer *> TestClock.adjust(2.seconds) *> c.awaitNext
-  //         _      <- c.offer *> TestClock.adjust(2.seconds) *> c.awaitNext
-  //         _      <- c.offer
-  //         result <- f.join
-  //       } yield result)(equalTo(Chunk(Chunk(1, 2), Chunk(3, 4), Chunk(5))))
-  //     }
-  //   })
+    // it.effect("group based on time passed", () =>
+    //   Do(($) => {
+    //     const chunks = List(Chunk(1, 2), Chunk(3, 4), Chunk(5))
+    //     const coordination = $(chunkCoordination(chunks))
+    //     const stream = Stream.fromQueue(coordination.queue)
+    //       .collectWhileSuccess
+    //       .flattenChunks
+    //       .groupedWithin(10, (2).seconds)
+    //       .tap(() => coordination.proceed)
+    //     const fiber = $(stream.runCollect.fork)
+    //     console.log("HERE 1")
+    //     $(
+    //       coordination.offer
+    //         .zipRight(Effect.log("HERE INNER 1"))
+    //         .zipRight(TestClock.adjust((2).seconds))
+    //         .zipRight(Effect.log("HERE INNER 1"))
+    //         .zipRight(coordination.awaitNext)
+    //         .zipRight(Effect.log("HERE INNER 3"))
+    //     )
+    //     console.log("HERE 2")
+    //     $(
+    //       coordination.offer
+    //         .zipRight(TestClock.adjust((2).seconds))
+    //         .zipRight(coordination.awaitNext)
+    //     )
+    //     console.log("HERE 3")
+    //     $(coordination.offer)
+    //     console.log("HERE 4")
+    //     const result = $(fiber.join.timeout((5).seconds))
+    //     assert.isTrue(result == Chunk(Chunk(1, 2), Chunk(3, 4), Chunk(5)))
+    //   }))
 
-  //   it("group based on time passed (#5013)", async () => {
-  //     val chunkResult = Chunk(
-  //       Chunk(1, 2, 3),
-  //       Chunk(4, 5, 6),
-  //       Chunk(7, 8, 9),
-  //       Chunk(10, 11, 12, 13, 14, 15, 16, 17, 18, 19),
-  //       Chunk(20, 21, 22, 23, 24, 25, 26, 27, 28, 29)
-  //     )
+    // it.effect("group based on time passed (ZIO #5013)", () =>
+    //   Do(($) => {
+    //     const chunks = Chunk.range(1, 29).map(Chunk.single).toList
+    //     const coordination = $(chunkCoordination(chunks))
+    //     const latch = $(Handoff.make<void>())
+    //     const ref = $(Ref.make(0))
+    //     const sink = Sink.take(5)
+    //     const stream = Stream.fromQueue(coordination.queue)
+    //       .collectWhileSuccess
+    //       .flattenChunks
+    //       .tap(() => coordination.proceed)
+    //       .groupedWithin(10, (3).seconds)
+    //       .tap((chunk) =>
+    //         ref.update((n) => n + chunk.size)
+    //           .zipRight(latch.offer(undefined))
+    //       )
+    //     const fiber = $(stream.run(sink).fork)
+    //     $(
+    //       coordination.offer
+    //         .zipRight(TestClock.adjust((1).seconds))
+    //         .zipRight(coordination.awaitNext)
+    //     )
+    //     $(
+    //       coordination.offer
+    //         .zipRight(TestClock.adjust((1).seconds))
+    //         .zipRight(coordination.awaitNext)
+    //     )
+    //     $(
+    //       coordination.offer
+    //         .zipRight(TestClock.adjust((1).seconds))
+    //         .zipRight(coordination.awaitNext)
+    //     )
+    //     const result0 = $(latch.take.zipRight(ref.get))
+    //     $(
+    //       coordination.offer
+    //         .zipRight(TestClock.adjust((1).seconds))
+    //         .zipRight(coordination.awaitNext)
+    //     )
+    //     $(
+    //       coordination.offer
+    //         .zipRight(TestClock.adjust((1).seconds))
+    //         .zipRight(coordination.awaitNext)
+    //     )
+    //     $(
+    //       coordination.offer
+    //         .zipRight(TestClock.adjust((1).seconds))
+    //         .zipRight(coordination.awaitNext)
+    //     )
+    //     const result1 = $(latch.take.zipRight(ref.get))
+    //     $(
+    //       coordination.offer
+    //         .zipRight(TestClock.adjust((1).seconds))
+    //         .zipRight(coordination.awaitNext)
+    //     )
+    //     $(
+    //       coordination.offer
+    //         .zipRight(TestClock.adjust((1).seconds))
+    //         .zipRight(coordination.awaitNext)
+    //     )
+    //     $(
+    //       coordination.offer
+    //         .zipRight(TestClock.adjust((1).seconds))
+    //         .zipRight(coordination.awaitNext)
+    //     )
+    //     const result2 = $(latch.take.zipRight(ref.get))
+    //     // This part is to make sure schedule clock is being restarted
+    //     // when the specified amount of elements has been reached
+    //     $(
+    //       TestClock.adjust((2).seconds)
+    //         .zipRight(coordination.offer.zipRight(coordination.awaitNext).repeatN(9))
+    //     )
+    //     const result3 = $(latch.take.zipRight(ref.get))
+    //     $(
+    //       coordination.offer
+    //         .zipRight(coordination.awaitNext)
+    //         .zipRight(TestClock.adjust((2).seconds))
+    //         .zipRight(coordination.offer.zipRight(coordination.awaitNext).repeatN(8))
+    //     )
+    //     const result4 = $(latch.take.zipRight(ref.get))
+    //     const result = $(fiber.join)
+    //     const expected = Chunk(
+    //       Chunk(1, 2, 3),
+    //       Chunk(4, 5, 6),
+    //       Chunk(7, 8, 9),
+    //       Chunk(10, 11, 12, 13, 14, 15, 16, 17, 18, 19),
+    //       Chunk(20, 21, 22, 23, 24, 25, 26, 27, 28, 29)
+    //     )
+    //     assert.isTrue(result == expected)
+    //     assert.strictEqual(result0, 3)
+    //     assert.strictEqual(result1, 6)
+    //     assert.strictEqual(result2, 9)
+    //     assert.strictEqual(result3, 19)
+    //     assert.strictEqual(result4, 29)
+    //   }))
 
-  //     assertWithChunkCoordination((1 to 29).map(Chunk.single).toList) { c =>
-  //       for {
-  //         latch <- ZStream.Handoff.make[Unit]
-  //         ref   <- Ref.make(0)
-  //         fiber <- ZStream
-  //                    .fromQueue(c.queue)
-  //                    .collectWhileSuccess
-  //                    .flattenChunks
-  //                    .tap(_ => c.proceed)
-  //                    .groupedWithin(10, 3.seconds)
-  //                    .tap(chunk => ref.update(_ + chunk.size) *> latch.offer(()))
-  //                    .run(ZSink.take(5))
-  //                    .fork
-  //         _       <- c.offer *> TestClock.adjust(1.second) *> c.awaitNext
-  //         _       <- c.offer *> TestClock.adjust(1.second) *> c.awaitNext
-  //         _       <- c.offer *> TestClock.adjust(1.second) *> c.awaitNext
-  //         result0 <- latch.take *> ref.get
-  //         _       <- c.offer *> TestClock.adjust(1.second) *> c.awaitNext
-  //         _       <- c.offer *> TestClock.adjust(1.second) *> c.awaitNext
-  //         _       <- c.offer *> TestClock.adjust(1.second) *> c.awaitNext
-  //         result1 <- latch.take *> ref.get
-  //         _       <- c.offer *> TestClock.adjust(1.second) *> c.awaitNext
-  //         _       <- c.offer *> TestClock.adjust(1.second) *> c.awaitNext
-  //         _       <- c.offer *> TestClock.adjust(1.second) *> c.awaitNext
-  //         result2 <- latch.take *> ref.get
-  //         // This part is to make sure schedule clock is being restarted
-  //         // when the specified amount of elements has been reached
-  //         _       <- TestClock.adjust(2.second) *> (c.offer *> c.awaitNext).repeatN(9)
-  //         result3 <- latch.take *> ref.get
-  //         _       <- c.offer *> c.awaitNext *> TestClock.adjust(2.second) *> (c.offer *> c.awaitNext).repeatN(8)
-  //         result4 <- latch.take *> ref.get
-  //         result  <- fiber.join
-  //       } yield assert(result)(equalTo(chunkResult)) &&
-  //         assert(result0)(equalTo(3)) &&
-  //         assert(result1)(equalTo(6)) &&
-  //         assert(result2)(equalTo(9)) &&
-  //         assert(result3)(equalTo(19)) &&
-  //         assert(result4)(equalTo(29))
-  //     }
-  //   })
-
-  //   it("group immediately when chunk size is reached", async () => {
-  //     assertM(ZStream(1, 2, 3, 4).groupedWithin(2, 10.seconds).runCollect)(
-  //       equalTo(Chunk(Chunk(1, 2), Chunk(3, 4), Chunk()))
-  //     )
-  //   })
-  // })
+    it("group immediately when chunk size is reached", () =>
+      Do(($) => {
+        const stream = Stream(1, 2, 3, 4).groupedWithin(2, (10).seconds)
+        const result = $(stream.runCollect)
+        const expected = Chunk(Chunk(1, 2), Chunk(3, 4))
+        assert.isTrue(result == expected)
+      }).unsafeRunPromise())
+  })
 })

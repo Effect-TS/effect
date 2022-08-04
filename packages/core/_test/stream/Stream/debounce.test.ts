@@ -1,128 +1,121 @@
+import { chunkCoordination } from "@effect/core/test/stream/Stream/test-utils"
+
 describe.concurrent("Stream", () => {
   describe.concurrent("debounce", () => {
-    // TODO(Mike/Max): implement after TestClock
-    it.skip("should drop earlier chunks within waitTime", async () => {
-      //   assertWithChunkCoordination(List(Chunk(1), Chunk(3, 4), Chunk(5), Chunk(6, 7))) { c =>
-      //     val stream = ZStream
-      //       .fromQueue(c.queue)
-      //       .collectWhileSuccess
-      //       .debounce(1.second)
-      //       .tap(_ => c.proceed)
-      //     assertM(for {
-      //       fiber  <- stream.runCollect.fork
-      //       _      <- c.offer.fork
-      //       _      <- (Clock.sleep(500.millis) *> c.offer).fork
-      //       _      <- (Clock.sleep(2.seconds) *> c.offer).fork
-      //       _      <- (Clock.sleep(2500.millis) *> c.offer).fork
-      //       _      <- TestClock.adjust(3500.millis)
-      //       result <- fiber.join
-      //     } yield result)(equalTo(Chunk(Chunk(3, 4), Chunk(6, 7))))
-      //   }
-    })
+    it.effect("should drop earlier chunks within waitTime", () =>
+      Do(($) => {
+        const chunks = List(Chunk(1), Chunk(3, 4), Chunk(5), Chunk(6, 7))
+        const coordination = $(chunkCoordination(chunks))
+        const stream = Stream.fromQueue(coordination.queue)
+          .collectWhileSuccess
+          .debounce((1).seconds)
+          .tap(() => coordination.proceed)
+        const fiber = $(stream.runCollect.fork)
+        $(coordination.offer.fork)
+        $(Clock.sleep((500).millis).zipRight(coordination.offer).fork)
+        $(Clock.sleep((2).seconds).zipRight(coordination.offer).fork)
+        $(Clock.sleep((2500).millis).zipRight(coordination.offer).fork)
+        $(TestClock.adjust((3500).millis))
+        const result = $(fiber.join)
+        assert.isTrue(result == Chunk(Chunk(3, 4), Chunk(6, 7)))
+      }))
 
-    // TODO(Mike/Max): implement after TestClock
-    it.skip("should take latest chunk within waitTime", async () => {
-      // assertWithChunkCoordination(List(Chunk(1, 2), Chunk(3, 4), Chunk(5, 6))) { c =>
-      //   val stream = ZStream
-      //     .fromQueue(c.queue)
-      //     .collectWhileSuccess
-      //     .debounce(1.second)
-      //     .tap(_ => c.proceed)
-      //   assertM(for {
-      //     fiber  <- stream.runCollect.fork
-      //     _      <- c.offer *> c.offer *> c.offer
-      //     _      <- TestClock.adjust(1.second)
-      //     result <- fiber.join
-      //   } yield result)(equalTo(Chunk(Chunk(5, 6))))
-      // }
-    })
+    it.effect("should take latest chunk within waitTime", () =>
+      Do(($) => {
+        const chunks = List(Chunk(1, 2), Chunk(3, 4), Chunk(5, 6))
+        const coordination = $(chunkCoordination(chunks))
+        const stream = Stream.fromQueue(coordination.queue)
+          .collectWhileSuccess
+          .debounce((1).seconds)
+          .tap(() => coordination.proceed)
+        const fiber = $(stream.runCollect.fork)
+        $(coordination.offer.repeatN(3))
+        $(TestClock.adjust((1).seconds))
+        const result = $(fiber.join)
+        assert.isTrue(result == Chunk(Chunk(5, 6)))
+      }))
 
-    // TODO(Mike/Max): implement after TestClock
-    it.skip("should work properly with parallelization", async () => {
-      // assertWithChunkCoordination(List(Chunk(1), Chunk(2), Chunk(3))) { c =>
-      //   val stream = ZStream
-      //     .fromQueue(c.queue)
-      //     .collectWhileSuccess
-      //     .debounce(1.second)
-      //     .tap(_ => c.proceed)
-      //   assertM(for {
-      //     fiber  <- stream.runCollect.fork
-      //     _      <- ZIO.collectAllParDiscard(List(c.offer, c.offer, c.offer))
-      //     _      <- TestClock.adjust(1.second)
-      //     result <- fiber.join
-      //   } yield result)(hasSize(equalTo(1)))
-    })
+    it.effect("should work properly with parallelization", () =>
+      Do(($) => {
+        const chunks = List(Chunk(1), Chunk(2), Chunk(3))
+        const coordination = $(chunkCoordination(chunks))
+        const stream = Stream.fromQueue(coordination.queue)
+          .collectWhileSuccess
+          .debounce((1).seconds)
+          .tap(() => coordination.proceed)
+        const fiber = $(stream.runCollect.fork)
+        $(Effect.collectAllParDiscard(coordination.offer.replicate(3)))
+        $(TestClock.adjust((1).seconds))
+        const result = $(fiber.join)
+        assert.strictEqual(result.length, 1)
+      }))
 
-    // TODO(Mike/Max): implement after TestClock
-    it.skip("should handle empty chunks properly", async () => {
-      // for {
-      //   fiber  <- ZStream(1, 2, 3).fixed(500.millis).debounce(1.second).runCollect.fork
-      //   _      <- TestClock.adjust(3.seconds)
-      //   result <- fiber.join
-      // } yield assert(result)(equalTo(Chunk(3)))
-    })
+    it.effect("should handle empty chunks properly", () =>
+      Do(($) => {
+        const stream = Stream(1, 2, 3).fixed((500).millis).debounce((1).seconds)
+        const fiber = $(stream.runCollect.fork)
+        $(TestClock.adjust((3).seconds))
+        const result = $(fiber.join)
+        assert.isTrue(result == Chunk(3))
+      }))
 
-    it("should fail immediately", async () => {
-      const program = Stream.fromEffect(Effect.failSync(Maybe.none))
-        .debounce((100_000_000).millis)
-        .runCollect
-        .either
+    it("should fail immediately", () =>
+      Do(($) => {
+        const stream = Stream.fromEffect(Effect.failSync(Maybe.none))
+          .debounce((100_000_000).millis)
+        const result = $(stream.runCollect.either)
+        assert.isTrue(result == Either.left(Maybe.none))
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("should work with empty streams", () =>
+      Do(($) => {
+        const stream = Stream.empty.debounce((100_000_000).millis)
+        const result = $(stream.runCollect)
+        assert.isTrue(result.isEmpty)
+      }).unsafeRunPromise())
 
-      assert.isTrue(result == Either.left(Maybe.none))
-    })
+    it.effect("should pick last element from every chunk", () =>
+      Do(($) => {
+        const stream = Stream(1, 2, 3).debounce((1).seconds)
+        const fiber = $(stream.runCollect.fork)
+        $(TestClock.adjust((1).seconds))
+        const result = $(fiber.join)
+        assert.isTrue(result == Chunk(3))
+      }))
 
-    it("should work with empty streams", async () => {
-      const program = Stream.empty.debounce((100_000_000).millis).runCollect
+    it.effect("should interrupt fibers properly", () =>
+      Do(($) => {
+        const chunks = List(Chunk(1), Chunk(2), Chunk(3))
+        const coordination = $(chunkCoordination(chunks))
+        const stream = Stream.fromQueue(coordination.queue)
+          .tap(() => coordination.proceed)
+          .flatMap((exit) => Stream.fromEffectMaybe(Effect.done(exit)))
+          .flattenCollection
+          .debounce((200).millis)
+          .interruptWhen(Effect.never)
+          .take(1)
+        const fiber = $(stream.runCollect.fork)
+        $(
+          coordination.offer
+            .zipRight(TestClock.adjust((100).millis))
+            .zipRight(coordination.awaitNext)
+            .repeatN(3)
+        )
+        const result = $(fiber.join)
+        assert.isTrue(result == Chunk(3))
+      }))
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result.isEmpty)
-    })
-
-    // TODO(Mike/Max): implement after TestClock
-    it.skip("should pick last element from every chunk", async () => {
-      // assertM(for {
-      //   fiber  <- ZStream(1, 2, 3).debounce(1.second).runCollect.fork
-      //   _      <- TestClock.adjust(1.second)
-      //   result <- fiber.join
-      // } yield result)(equalTo(Chunk(3)))
-    })
-
-    // TODO(Mike/Max): implement after TestClock
-    it.skip("should interrupt fibers properly", async () => {
-      // assertWithChunkCoordination(List(Chunk(1), Chunk(2), Chunk(3))) { c =>
-      //   for {
-      //     fib <- ZStream
-      //              .fromQueue(c.queue)
-      //              .tap(_ => c.proceed)
-      //              .flatMap(ex => ZStream.fromZIOMaybe(ZIO.done(ex)))
-      //              .flattenChunks
-      //              .debounce(200.millis)
-      //              .interruptWhen(ZIO.never)
-      //              .take(1)
-      //              .runCollect
-      //              .fork
-      //     _       <- (c.offer *> TestClock.adjust(100.millis) *> c.awaitNext).repeatN(3)
-      //     _       <- TestClock.adjust(100.millis)
-      //     results <- fib.join
-      //   } yield assert(results)(equalTo(Chunk(3)))
-      // }
-    })
-
-    // TODO(Mike/Max): implement after TestClock
-    it.skip("should interrupt children fiber on stream interruption", async () => {
-      // for {
-      //   ref <- Ref.make(false)
-      //   fiber <- (ZStream.fromZIO(ZIO.unit) ++ ZStream.fromZIO(ZIO.never.onInterrupt(ref.set(true))))
-      //              .debounce(800.millis)
-      //              .runDrain()
-      //              .fork
-      //   _     <- TestClock.adjust(1.minute)
-      //   _     <- fiber.interrupt
-      //   value <- ref.get
-      // } yield assert(value)(equalTo(true))
-    })
+    it.effect("should interrupt children fiber on stream interruption", () =>
+      Do(($) => {
+        const ref = $(Ref.make(false))
+        const stream = Stream.fromEffect(Effect.unit)
+          .concat(Stream.fromEffect(Effect.never.onInterrupt(() => ref.set(true))))
+          .debounce((800).millis)
+        const fiber = $(stream.runDrain.fork)
+        $(TestClock.adjust((1).minutes))
+        $(fiber.interrupt)
+        const result = $(ref.get)
+        assert.isTrue(result)
+      }))
   })
 })

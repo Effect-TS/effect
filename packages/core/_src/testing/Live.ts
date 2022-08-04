@@ -47,7 +47,10 @@ export const Live: LiveOps = {
 export const defaultLive = Layer.fromEffect(
   Live.Tag,
   Effect.environmentWith<never, Live>((env) => ({
-    provide: DefaultServices.currentServices.locallyWith((_) => _.merge(env))
+    provide: (effect) =>
+      effect.apply(
+        DefaultServices.currentServices.locallyWith((_) => _.merge(env))
+      )
   }))
 )
 
