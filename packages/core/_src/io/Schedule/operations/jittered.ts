@@ -1,3 +1,5 @@
+import { DurationInternal } from "@tsplus/stdlib/data/Duration"
+
 /**
  * Returns a new schedule that randomly modifies the size of the intervals of
  * this schedule.
@@ -16,7 +18,7 @@ export function jittered(min: number, max: number) {
       Random.next.map((random) => {
         const d = duration.millis
         const jittered = d * min * (1 - random) + d * max * random
-        return new Duration(jittered)
+        return new DurationInternal(jittered)
       })
     )
 }

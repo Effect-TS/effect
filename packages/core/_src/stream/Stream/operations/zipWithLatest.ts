@@ -21,7 +21,20 @@ export function zipWithLatest<R2, E2, A2, A, A3>(
         const right = $(that().toPull.map(pullNonEmpty))
         return $(
           Stream.fromEffectMaybe(
-            left.raceWith(
+            left.raceWith<
+              R,
+              Maybe<E>,
+              Chunk<A>,
+              R2,
+              Maybe<E2>,
+              Chunk<A2>,
+              never,
+              Maybe<E | E2>,
+              Tuple<[Chunk<A>, Chunk<A2>, boolean]>,
+              never,
+              Maybe<E | E2>,
+              Tuple<[Chunk<A>, Chunk<A2>, boolean]>
+            >(
               right,
               (leftDone, rightFiber) =>
                 Effect.done(leftDone).zipWith(rightFiber.join, (left, right) =>

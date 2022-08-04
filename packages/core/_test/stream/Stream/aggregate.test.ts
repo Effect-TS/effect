@@ -100,7 +100,7 @@ describe.concurrent("Stream", () => {
         )
         .map((list) => list.reverse)
         .runCollect
-        .map((chunk) => List.from(chunk).flatten())
+        .map((chunk) => List.from(chunk).flatten)
 
       const result = await program.unsafeRunPromise()
 
@@ -291,7 +291,7 @@ describe.concurrent("Stream", () => {
         )
         .collect((either) => either.isRight() ? Maybe.some(either.right) : Maybe.none)
         .runCollect
-        .map((chunk) => List.from(chunk).flatten())
+        .map((chunk) => List.from(chunk).flatten)
 
       const result = await program.unsafeRunPromise()
 

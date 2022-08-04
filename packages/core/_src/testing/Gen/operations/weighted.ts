@@ -27,7 +27,7 @@ function getGreaterThanEqual<K, V>(map: SortedMap<K, V>, key: K): Maybe<V> {
   concreteSortedMap(map)
   const cmp = map.tree.ord.compare
   let n = map.tree.root
-  let lastValue = Maybe.emptyOf<V>()
+  let lastValue = Maybe.empty<V>()
   while (n) {
     const d = cmp(key, n.key)
     if (d <= 0) {

@@ -42,7 +42,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.toImmutableArray == lists.flatten().toImmutableArray)
+      assert.isTrue(result.toImmutableArray == lists.flatten.toImmutableArray)
     })
   })
 

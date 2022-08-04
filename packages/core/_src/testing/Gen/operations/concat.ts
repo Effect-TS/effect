@@ -9,7 +9,7 @@
  */
 export function concat<R2, A2>(that: Gen<R2, A2>) {
   return <R, A>(self: Gen<R, A>): Gen<R | R2, A | A2> =>
-    Gen(
+    Gen<R | R2, A | A2>(
       self.sample.concat(that.sample)
     )
 }

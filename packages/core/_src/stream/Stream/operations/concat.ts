@@ -17,7 +17,7 @@ export function concat<R1, E1, A1>(
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R1, E | E1, A | A1> => {
     concreteStream(self)
-    return new StreamInternal(
+    return new StreamInternal<R | R1, E | E1, A | A1>(
       self.channel.zipRight(() => {
         const that0 = that()
         concreteStream(that0)

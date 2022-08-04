@@ -1,3 +1,5 @@
+import { DurationInternal } from "@tsplus/stdlib/data/Duration"
+
 /**
  * Returns an aspect that will update this metric with the duration that the
  * effect takes to execute. To call this method, you must supply a function
@@ -15,7 +17,7 @@ export function trackDurationWith<In>(f: (duration: Duration) => In) {
         const startTime = Date.now()
         return effect.map((a) => {
           const endTime = Date.now()
-          const duration = new Duration(endTime - startTime)
+          const duration = new DurationInternal(endTime - startTime)
           self.unsafeUpdate(f(duration), HashSet.empty())
           return a
         })

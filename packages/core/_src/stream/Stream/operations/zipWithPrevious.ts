@@ -8,7 +8,7 @@ export function zipWithPrevious<R, E, A>(
   self: Stream<R, E, A>
 ): Stream<R, E, Tuple<[Maybe<A>, A]>> {
   return self.mapAccum(
-    Maybe.emptyOf<A>(),
+    Maybe.empty<A>(),
     (prev, next) => Tuple(Maybe.some(next), Tuple(prev, next))
   )
 }

@@ -372,7 +372,7 @@ export const currentLogSpan: FiberRef<List<LogSpan>> = FiberRef.unsafeMake(List.
  * @tsplus static effect/core/io/FiberRef.Ops currentParallelism
  */
 export const currentParallelism: FiberRef<Maybe<number>> = FiberRef.unsafeMake(
-  Maybe.emptyOf<number>()
+  Maybe.empty<number>()
 )
 
 /**
@@ -380,7 +380,7 @@ export const currentParallelism: FiberRef<Maybe<number>> = FiberRef.unsafeMake(
  */
 export const forkScopeOverride: FiberRef<Maybe<FiberScope>> = FiberRef.unsafeMake(
   Maybe.none,
-  () => Maybe.emptyOf<FiberScope>()
+  () => Maybe.empty<FiberScope>()
 )
 
 /**

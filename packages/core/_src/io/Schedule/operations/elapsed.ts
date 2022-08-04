@@ -1,6 +1,7 @@
 import { Decision } from "@effect/core/io/Schedule/Decision"
 import { Interval } from "@effect/core/io/Schedule/Interval"
 import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
+import { DurationInternal } from "@tsplus/stdlib/data/Duration"
 
 /**
  * A schedule that occurs everywhere, which returns the total elapsed duration
@@ -13,14 +14,15 @@ export const elapsed: Schedule<
   never,
   unknown,
   Duration
-> = makeWithState(Maybe.emptyOf(), (now, _, state) =>
+> = makeWithState(Maybe.empty(), (now, _, state) =>
   Effect.sync(
     state.fold(
-      () => Tuple(Maybe.some(now), new Duration(0), Decision.continueWith(Interval.after(now))),
+      () =>
+        Tuple(Maybe.some(now), new DurationInternal(0), Decision.continueWith(Interval.after(now))),
       (start) =>
         Tuple(
           Maybe.some(start),
-          new Duration(now - start),
+          new DurationInternal(now - start),
           Decision.continueWith(Interval.after(now))
         )
     )

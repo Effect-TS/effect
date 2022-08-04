@@ -1,9 +1,11 @@
+import { DurationInternal } from "@tsplus/stdlib/data/Duration"
 import { constFalse, constTrue } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Stream", () => {
   describe.concurrent("timeout", () => {
     it("succeed", async () => {
-      const program = Stream.succeed(1).timeout(new Duration(Number.MAX_SAFE_INTEGER)).runCollect
+      const program =
+        Stream.succeed(1).timeout(new DurationInternal(Number.MAX_SAFE_INTEGER)).runCollect
 
       const result = await program.unsafeRunPromise()
 
@@ -68,7 +70,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("timeoutTo", () => {
     it("succeed", async () => {
       const program = Stream.range(0, 5)
-        .timeoutTo(new Duration(Number.MAX_SAFE_INTEGER), Stream.succeed(-1))
+        .timeoutTo(new DurationInternal(Number.MAX_SAFE_INTEGER), Stream.succeed(-1))
         .runCollect
 
       const result = await program.unsafeRunPromise()

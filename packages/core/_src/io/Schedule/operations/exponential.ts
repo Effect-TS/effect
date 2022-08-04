@@ -1,3 +1,5 @@
+import { DurationInternal } from "@tsplus/stdlib/data/Duration"
+
 /**
  * A schedule that always recurs, but will wait a certain amount between
  * repetitions, given by `base * factor.pow(n)`, where `n` is the number of
@@ -10,6 +12,6 @@ export function exponential(
   factor = 2.0
 ): Schedule<number, never, unknown, Duration> {
   return Schedule.delayed(
-    Schedule.repeatForever.map((i) => new Duration(base.millis * Math.pow(factor, i)))
+    Schedule.repeatForever.map((i) => new DurationInternal(base.millis * Math.pow(factor, i)))
   )
 }

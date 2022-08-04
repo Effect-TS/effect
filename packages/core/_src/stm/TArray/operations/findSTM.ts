@@ -9,7 +9,7 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
 export function findSTM<E, A>(f: (a: A) => STM<never, E, boolean>) {
   return (self: TArray<A>): STM<never, E, Maybe<A>> => {
     concreteTArray(self)
-    const init = Tuple(Maybe.emptyOf<A>(), 0)
+    const init = Tuple(Maybe.empty<A>(), 0)
     const cont = (s: Tuple<[Maybe<A>, number]>) => s.get(0).isNone() && s.get(1) < self.chunk.length
     return STM.iterate(
       init,

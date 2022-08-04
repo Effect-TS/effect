@@ -14,6 +14,6 @@ export function prepend<A2>(
 ) {
   return <R, E, A>(stream: Stream<R, E, A>): Stream<R, E, A | A2> => {
     concreteStream(stream)
-    return new StreamInternal(Channel.write(values) > stream.channel)
+    return new StreamInternal<R, E, A | A2>(Channel.write(values) > stream.channel)
   }
 }

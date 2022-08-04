@@ -6,6 +6,7 @@ import {
   run,
   runCollect
 } from "@effect/core/test/io/Schedule/test-utils"
+import { DurationInternal } from "@tsplus/stdlib/data/Duration"
 import { constVoid } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Schedule", () => {
@@ -145,7 +146,7 @@ describe.concurrent("Schedule", () => {
           s === "KeepTryingError"
         )
         const program = io.retryOrElseEither(strategy, (s, n) =>
-          TestClock.currentTime.map((now) => Tuple(new Duration(now), s, n)))
+          TestClock.currentTime.map((now) => Tuple(new DurationInternal(now), s, n)))
         const result = $(run(program))
         const expected = Tuple((800).millis, "GiveUpError", 4)
         assert.isTrue(result == Either.left(expected))

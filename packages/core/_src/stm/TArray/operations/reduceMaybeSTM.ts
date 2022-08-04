@@ -8,7 +8,7 @@
 export function reduceMaybeSTM<E, A>(f: (x: A, y: A) => STM<never, E, A>) {
   return (self: TArray<A>): STM<never, E, Maybe<A>> =>
     self.reduceSTM(
-      Maybe.emptyOf<A>(),
+      Maybe.empty<A>(),
       (acc, a) => acc.fold(STM.some(a), (acc) => f(acc, a).map(Maybe.some))
     )
 }

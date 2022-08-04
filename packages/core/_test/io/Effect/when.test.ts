@@ -21,7 +21,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("whenCase", () => {
     it("executes correct branch only", async () => {
-      const v1 = Maybe.emptyOf<number>()
+      const v1 = Maybe.empty<number>()
       const v2 = Maybe.some(0)
       const program = Effect.Do()
         .bind("ref", () => Ref.make(false))
@@ -49,7 +49,7 @@ describe.concurrent("Effect", () => {
 
   describe.concurrent("whenCaseEffect", () => {
     it("executes condition effect and correct branch", async () => {
-      const v1 = Maybe.emptyOf<number>()
+      const v1 = Maybe.empty<number>()
       const v2 = Maybe.some(0)
       const program = Effect.Do()
         .bind("ref", () => Ref.make(false))

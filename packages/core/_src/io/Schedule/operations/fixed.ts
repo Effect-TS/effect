@@ -1,6 +1,7 @@
 import { Decision } from "@effect/core/io/Schedule/Decision"
 import { Interval } from "@effect/core/io/Schedule/Interval"
 import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
+import { DurationInternal } from "@tsplus/stdlib/data/Duration"
 
 /**
  * A schedule that recurs on a fixed interval. Returns the number of
@@ -25,7 +26,7 @@ export function fixed(
   number
 > {
   return makeWithState(
-    Tuple(Maybe.emptyOf(), 0),
+    Tuple(Maybe.empty(), 0),
     (now, _, { tuple: [option, n] }) =>
       Effect.sync(() => {
         const interval0 = interval()
@@ -41,7 +42,7 @@ export function fixed(
             const runningBehind = now > (lastRun + intervalMillis)
             const boundary = interval0 == (0).millis
               ? interval0
-              : new Duration(intervalMillis - ((now - startMillis) % intervalMillis))
+              : new DurationInternal(intervalMillis - ((now - startMillis) % intervalMillis))
             const sleepTime = boundary == (0).millis ? interval0 : boundary
             const nextRun = runningBehind ? now : now + sleepTime.millis
             return Tuple(

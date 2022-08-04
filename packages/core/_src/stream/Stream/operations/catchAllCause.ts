@@ -16,7 +16,7 @@ export function catchAllCause<E, R2, E2, A2>(
 ) {
   return <R, A>(self: Stream<R, E, A>): Stream<R | R2, E2, A | A2> => {
     concreteStream(self)
-    return new StreamInternal(
+    return new StreamInternal<R | R2, E2, A | A2>(
       self.channel.catchAllCause((cause) => {
         const stream = f(cause)
         concreteStream(stream)

@@ -1,5 +1,6 @@
 import { concurrentFib, ExampleError, fib } from "@effect/core/test/io/Effect/test-utils"
 import { withLatch } from "@effect/core/test/test-utils/Latch"
+import { DurationInternal } from "@tsplus/stdlib/data/Duration"
 
 describe.concurrent("Effect", () => {
   describe.concurrent("RTS concurrency correctness", () => {
@@ -121,7 +122,7 @@ describe.concurrent("Effect", () => {
 
     it("supervise fibers", async () => {
       function makeChild(n: number): Effect.UIO<Fiber<never, void>> {
-        return (Effect.sleep(new Duration(20 * n)) > Effect.never).fork
+        return (Effect.sleep(new DurationInternal(20 * n)) > Effect.never).fork
       }
 
       const program = Ref.make(0)

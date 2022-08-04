@@ -11,7 +11,7 @@ export function findLast<A>(f: Predicate<A>) {
     STM.Effect((journal) => {
       concreteTArray(self)
       let i = self.chunk.length - 1
-      let res = Maybe.emptyOf<A>()
+      let res = Maybe.empty<A>()
       while (res.isNone() && i >= 0) {
         const a = self.chunk.unsafeGet(i)!.unsafeGet(journal)
         if (f(a)) {

@@ -2,6 +2,7 @@ import {
   concreteStream,
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import { DurationInternal } from "@tsplus/stdlib/data/Duration"
 
 /**
  * Delays the chunks of this stream according to the given bandwidth
@@ -54,7 +55,7 @@ function loop<E, A, R2, E2>(
             const available = sum < 0 ? max : Math.min(sum, max)
             const remaining = available - weight
             const waitCycles = remaining >= 0 ? 0 : -remaining / units
-            const delay = new Duration(Math.floor(waitCycles * duration.millis))
+            const delay = new DurationInternal(Math.floor(waitCycles * duration.millis))
 
             return delay > (0).millis
               ? Channel.fromEffect(Clock.sleep(delay)) >

@@ -13,7 +13,7 @@ describe.concurrent("Effect", () => {
     it("error in sync effect", async () => {
       const program = Effect.attempt(() => {
         throw ExampleError
-      }).fold(Maybe.some, Maybe.emptyOf)
+      }).fold(Maybe.some, Maybe.empty)
 
       const result = await program.unsafeRunPromise()
 
@@ -66,7 +66,7 @@ describe.concurrent("Effect", () => {
         throw ExampleError
       })
         .sandbox
-        .fold((cause) => Maybe.some(cause), Maybe.emptyOf)
+        .fold((cause) => Maybe.some(cause), Maybe.empty)
 
       const result = await program.unsafeRunPromise()
 

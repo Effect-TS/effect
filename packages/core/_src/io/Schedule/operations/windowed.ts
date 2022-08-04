@@ -22,7 +22,7 @@ export function windowed(
 ): Schedule<Tuple<[Maybe<number>, number]>, never, unknown, number> {
   const millis = interval.millis
   return makeWithState(
-    Tuple(Maybe.emptyOf(), 0),
+    Tuple(Maybe.empty(), 0),
     (now, input, { tuple: [option, n] }) =>
       Effect.sync(
         option.fold(

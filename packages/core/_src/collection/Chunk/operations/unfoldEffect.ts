@@ -2,7 +2,7 @@
  * Constructs a `Chunk` by repeatedly applying the effectual function `f` as
  * long as it returns `Some`.
  *
- * @tsplus static Chunk/Ops unfoldEffect
+ * @tsplus static Chunk.Ops unfoldEffect
  */
 export function unfoldEffect<A, R, E, S>(
   s: S,

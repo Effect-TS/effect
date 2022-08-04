@@ -59,7 +59,7 @@ describe.concurrent("STM", () => {
         .bind("tRef", () => TRef.make(false))
         .tap(({ tRef }) =>
           STM.whenCase(
-            Maybe.emptyOf<number>(),
+            Maybe.empty<number>(),
             (option) => option._tag === "Some" ? Maybe.some(tRef.set(true)) : Maybe.none
           )
         )
@@ -84,7 +84,7 @@ describe.concurrent("STM", () => {
         .bind("tRef", () => TRef.make(false))
         .tap(({ tRef }) =>
           STM.whenCaseSTM(
-            STM.succeed(Maybe.emptyOf<number>()),
+            STM.succeed(Maybe.empty<number>()),
             (option) => option._tag === "Some" ? Maybe.some(tRef.set(true)) : Maybe.none
           )
         )

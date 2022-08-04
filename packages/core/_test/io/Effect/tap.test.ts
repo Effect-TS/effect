@@ -80,7 +80,7 @@ describe.concurrent("Effect", () => {
         .bind(
           "result",
           ({ ref }) =>
-            ref.set(true).as(42).tapSome((): Maybe<Effect<never, never, never>> => Maybe.emptyOf())
+            ref.set(true).as(42).tapSome((): Maybe<Effect<never, never, never>> => Maybe.empty())
         )
         .bind("effect", ({ ref }) => ref.get)
 

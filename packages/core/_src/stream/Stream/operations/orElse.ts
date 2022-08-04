@@ -17,7 +17,7 @@ export function orElse<R2, E2, A2>(
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E2, A | A2> => {
     concreteStream(self)
-    return new StreamInternal(
+    return new StreamInternal<R | R2, E2, A | A2>(
       self.channel.orElse(() => {
         const that0 = that()
         concreteStream(that0)
