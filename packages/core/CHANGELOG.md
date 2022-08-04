@@ -1,5 +1,11 @@
 # @effect/core
 
+## 0.0.10
+
+### Patch Changes
+
+- [#1265](https://github.com/Effect-TS/core/pull/1265) [`614bdfbcc`](https://github.com/Effect-TS/core/commit/614bdfbcced76ab310407d0f1b23a327c057ae31) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Updates and Fix to Schedule zip-like ops
+
 ## 0.0.9
 
 ### Patch Changes
