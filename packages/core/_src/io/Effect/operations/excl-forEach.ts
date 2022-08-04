@@ -9,7 +9,7 @@ import { unsafeRemove } from "@effect/core/io/Queue/operations/_internal/unsafeR
 import type { Strategy } from "@effect/core/io/Queue/operations/strategy"
 import type { State } from "@effect/core/io/Scope/ReleaseMap/_internal/State"
 import { Exited } from "@effect/core/io/Scope/ReleaseMap/_internal/State"
-import { Chunk } from "@tsplus/stdlib/collections/Chunk"
+import { ArrTypeId, Chunk, concreteChunk, SingletonTypeId } from "@tsplus/stdlib/collections/Chunk"
 import type { Collection } from "@tsplus/stdlib/collections/Collection"
 import { Maybe } from "@tsplus/stdlib/data/Maybe"
 
@@ -465,6 +465,46 @@ export function collectAllWithPar<R, E, A, B>(
   pf: (a: A) => Maybe<B>
 ): Effect<R, E, Chunk<B>> {
   return Effect.collectAllPar(as).map((chunk) => chunk.collect(pf))
+}
+
+// -----------------------------------------------------------------------------
+// collectAllWithEffect
+// -----------------------------------------------------------------------------
+
+/**
+ * Returns a filtered, mapped subset of the elements of this chunk based on a
+ * partial function.
+ *
+ * @tsplus static effect/core/io/Effect.Ops collectAllWithEffect
+ */
+export function collectAllWithEffect<A, R, E, B>(
+  self: Collection<A>,
+  f: (a: A) => Maybe<Effect<R, E, B>>
+): Effect<R, E, Chunk<B>> {
+  const chunk = Chunk.from(self)
+  concreteChunk(chunk)
+  switch (chunk._typeId) {
+    case SingletonTypeId: {
+      return f(chunk.a).fold(
+        () => Effect.succeed(Chunk.empty()),
+        (b) => b.map(Chunk.single)
+      )
+    }
+    case ArrTypeId: {
+      const array = chunk._arrayLike()
+      let dest: Effect<R, E, Chunk<B>> = Effect.succeed(Chunk.empty<B>())
+      for (let i = 0; i < array.length; i++) {
+        const rhs = f(array[i]!)
+        if (rhs.isSome()) {
+          dest = dest.zipWith(rhs.value, (a, b) => a.append(b))
+        }
+      }
+      return dest
+    }
+    default: {
+      return collectAllWithEffect(chunk._materialize(), f)
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------

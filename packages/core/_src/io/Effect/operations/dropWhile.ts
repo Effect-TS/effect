@@ -1,16 +1,17 @@
-import { concreteChunkId } from "@tsplus/stdlib/collections/Chunk/definition"
+import { concreteChunkId } from "@tsplus/stdlib/collections/Chunk"
 
 /**
  * Drops all elements so long as the predicate returns true.
  *
- * @tsplus fluent Chunk dropWhileEffect
+ * @tsplus static effect/core/io/Effect.Ops dropWhile
  */
-export function dropWhileEffect_<R, E, A>(
-  self: Chunk<A>,
+export function dropWhile<R, E, A>(
+  self: Collection<A>,
   f: (a: A) => Effect<R, E, boolean>
 ): Effect<R, E, Chunk<A>> {
   return Effect.suspendSucceed(() => {
-    const iterator = concreteChunkId(self)._arrayLikeIterator()
+    const chunk = Chunk.from(self)
+    const iterator = concreteChunkId(chunk)._arrayLikeIterator()
     let next
     let dropping: Effect<R, E, boolean> = Effect.succeed(true)
     let builder = Chunk.empty<A>()
@@ -35,10 +36,3 @@ export function dropWhileEffect_<R, E, A>(
     return dropping.map(() => builder)
   })
 }
-
-/**
- * Drops all elements so long as the predicate returns true.
- *
- * @tsplus static Chunk/Aspects dropWhileEffect
- */
-export const dropWhileEffect = Pipeable(dropWhileEffect_)

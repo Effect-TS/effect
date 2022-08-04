@@ -1,17 +1,18 @@
-import type { IterableArrayLike } from "@tsplus/stdlib/collections/Chunk/definition"
-import { concreteChunkId } from "@tsplus/stdlib/collections/Chunk/definition"
+import type { IterableArrayLike } from "@tsplus/stdlib/collections/Chunk"
+import { concreteChunkId } from "@tsplus/stdlib/collections/Chunk"
 
 /**
  * Returns the first element that satisfies the effectful predicate.
  *
- * @tsplus fluent Chunk findEffect
+ * @tsplus static effect/core/io/Effect.Ops find
  */
-export function findEffect_<R, E, A>(
-  self: Chunk<A>,
+export function find<R, E, A>(
+  self: Collection<A>,
   f: (a: A) => Effect<R, E, boolean>
 ): Effect<R, E, Maybe<A>> {
   return Effect.suspendSucceed(() => {
-    const iterator = concreteChunkId(self)._arrayLikeIterator()
+    const chunk = Chunk.from(self)
+    const iterator = concreteChunkId(chunk)._arrayLikeIterator()
     let next: IteratorResult<IterableArrayLike<A>, any>
     const loop = (
       iterator: Iterator<IterableArrayLike<A>>,
@@ -31,9 +32,7 @@ export function findEffect_<R, E, A>(
         return Effect.succeed(Maybe.none)
       }
     }
-
     next = iterator.next()
-
     if (!next.done) {
       return loop(iterator, next.value, 0, next.value.length)
     } else {
@@ -41,10 +40,3 @@ export function findEffect_<R, E, A>(
     }
   })
 }
-
-/**
- * Returns the first element that satisfies the effectful predicate.
- *
- * @tsplus static Chunk/Aspects findEffect
- */
-export const findEffect = Pipeable(findEffect_)

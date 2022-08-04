@@ -22,7 +22,7 @@ describe.concurrent("Stream", () => {
       const stream = Stream(1, 2, 3, 4, 5)
       const program = Effect.struct({
         actual: stream.findEffect(p).runHead,
-        expected: stream.runCollect.flatMap((chunk) => chunk.findEffect(p))
+        expected: stream.runCollect.flatMap((chunk) => Effect.find(chunk, p))
       })
 
       const { actual, expected } = await program.unsafeRunPromise()

@@ -86,10 +86,9 @@ describe.concurrent("Stream", () => {
       const program = Effect.struct({
         streamResult: stream.takeUntilEffect(f).runCollect,
         chunkResult: stream.runCollect.flatMap((chunk) =>
-          chunk
-            .takeWhileEffect((n) => f(n).negate)
+          Effect.takeWhile(chunk, (n) => f(n).negate)
             .zipWith(
-              chunk.dropWhileEffect((n) => f(n).negate).map((chunk) => chunk.take(1)),
+              Effect.dropWhile(chunk, (n) => f(n).negate).map((chunk) => chunk.take(1)),
               (a, b) => a + b
             )
         )

@@ -17,8 +17,7 @@ export function dropWhileEffect<R, E, In>(
   > = Channel.readWith(
     (input: Chunk<In>) =>
       Channel.unwrap(
-        input
-          .dropWhileEffect(p)
+        Effect.dropWhile(input, p)
           .map((leftover) =>
             leftover.isEmpty
               ? loop

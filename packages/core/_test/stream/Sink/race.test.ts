@@ -7,7 +7,7 @@ describe.concurrent("Sink", () => {
         .bind(
           "ints",
           () =>
-            Chunk.unfoldEffect(
+            Effect.unfold(
               0,
               (n) =>
                 Random.nextIntBetween(0, 10).map((i) =>

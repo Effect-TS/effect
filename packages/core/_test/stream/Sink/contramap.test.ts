@@ -88,7 +88,7 @@ describe.concurrent("Sink", () => {
   describe.concurrent("contramapChunksEffect", () => {
     it("happy path", async () => {
       const sink = Sink.collectAll<number>().contramapChunksEffect(
-        (chunk: Chunk<string>) => chunk.mapEffect((s) => Effect.attempt(Number.parseInt(s)))
+        (chunk: Chunk<string>) => Effect.forEach(chunk, (s) => Effect.attempt(Number.parseInt(s)))
       )
       const program = Stream("1", "2", "3").run(sink)
 
@@ -99,7 +99,7 @@ describe.concurrent("Sink", () => {
 
     it("error", async () => {
       const sink = Sink.fail("ouch").contramapChunksEffect((chunk: Chunk<string>) =>
-        chunk.mapEffect((s) => Effect.attempt(Number.parseInt(s)))
+        Effect.forEach(chunk, (s) => Effect.attempt(Number.parseInt(s)))
       )
       const program = Stream("1", "2", "3").run(sink).either
 
@@ -112,15 +112,14 @@ describe.concurrent("Sink", () => {
       const error = new Error("woops")
       const sink = Sink.collectAll<number>().contramapChunksEffect(
         (chunk: Chunk<string>) =>
-          chunk.mapEffect((s) =>
+          Effect.forEach(chunk, (s) =>
             Effect.attempt(() => {
               const n = Number.parseInt(s)
               if (Number.isNaN(n)) {
                 throw error
               }
               return n
-            })
-          )
+            }))
       )
       const program = Stream("1", "a").run(sink)
 
