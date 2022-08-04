@@ -8,5 +8,5 @@ export function contramapEffect<In0, R2, E2, In2>(
   f: (input: In0) => Effect<R2, E2, In2>
 ) {
   return <R, E, L, Z>(self: Sink<R, E, In2, L, Z>): Sink<R | R2, E | E2, In0, L, Z> =>
-    self.contramapChunksEffect((chunk) => chunk.mapEffect(f))
+    self.contramapChunksEffect((chunk) => Effect.forEach(chunk, f))
 }

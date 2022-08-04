@@ -1,4 +1,3 @@
-export * as chunk from "@effect/core/collection/Chunk"
 export * as countdownLatch from "@effect/core/concurrent/CountdownLatch"
 export * as cyclicBarrier from "@effect/core/concurrent/CyclicBarrier"
 export * as mVar from "@effect/core/concurrent/MVar"

@@ -10,9 +10,7 @@ import {
  * @tsplus static effect/core/stream/Stream.Aspects findEffect
  * @tsplus pipeable effect/core/stream/Stream findEffect
  */
-export function findEffect<R1, E1, A>(
-  f: (a: A) => Effect<R1, E1, boolean>
-) {
+export function findEffect<R1, E1, A>(f: (a: A) => Effect<R1, E1, boolean>) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R1, E | E1, A> => {
     const loop: Channel<
       R1,
@@ -25,8 +23,7 @@ export function findEffect<R1, E1, A>(
     > = Channel.readWith(
       (chunk: Chunk<A>) =>
         Channel.unwrap(
-          chunk
-            .findEffect(f)
+          Effect.find(chunk, f)
             .map((option) => option.fold(loop, (a) => Channel.write(Chunk.single(a))))
         ),
       (e) => Channel.fail(e),

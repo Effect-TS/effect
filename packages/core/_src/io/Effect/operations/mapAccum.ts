@@ -1,18 +1,19 @@
-import { concreteChunkId } from "@tsplus/stdlib/collections/Chunk/definition"
+import { concreteChunkId } from "@tsplus/stdlib/collections/Chunk"
 
 /**
  * Statefully and effectfully maps over the elements of this chunk to produce
  * new elements.
  *
- * @tsplus fluent Chunk mapAccumEffect
+ * @tsplus static effect/core/io/Effect.Ops mapAccum
  */
-export function mapAccumEffect_<A, B, R, E, S>(
-  self: Chunk<A>,
+export function mapAccum<A, B, R, E, S>(
+  self: Collection<A>,
   s: S,
   f: (s: S, a: A) => Effect<R, E, Tuple<[S, B]>>
 ): Effect<R, E, Tuple<[S, Chunk<B>]>> {
   return Effect.suspendSucceed(() => {
-    const iterator = concreteChunkId(self)._arrayLikeIterator()
+    const chunk = Chunk.from(self)
+    const iterator = concreteChunkId(chunk)._arrayLikeIterator()
     let dest: Effect<R, E, S> = Effect.succeed(s)
     let builder = Chunk.empty<B>()
     let next
@@ -34,11 +35,3 @@ export function mapAccumEffect_<A, B, R, E, S>(
     return dest.map((s) => Tuple(s, builder))
   })
 }
-
-/**
- * Statefully and effectfully maps over the elements of this chunk to produce
- * new elements.
- *
- * @tsplus static Chunk/Aspects mapAccumEffect
- */
-export const mapAccumEffect = Pipeable(mapAccumEffect_)
