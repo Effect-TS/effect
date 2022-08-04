@@ -1,28 +1,17 @@
 describe.concurrent("Effect", () => {
   describe.concurrent("timeout disconnect", () => {
-    it("returns `Some` with the produced value if the effect completes before the timeout elapses", async () => {
-      const program = Effect.unit.disconnect.timeout((100).millis)
+    it("returns `Some` with the produced value if the effect completes before the timeout elapses", () =>
+      Do(($) => {
+        const result = $(Effect.unit.disconnect.timeout((100).millis))
+        assert.isTrue(result == Maybe.some(undefined))
+      }))
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.some(undefined))
-    })
-
-    it("returns `None` otherwise", async () => {
-      const deferred = Deferred.unsafeMake<never, void>(FiberId.none)
-      const program = deferred
-        .await
-        .uninterruptible
-        .disconnect
-        .timeout((10).millis)
-        .fork
-        .tap(() => Effect.sleep((100).millis))
-        .flatMap((fiber) => fiber.join)
-
-      const result = await program.unsafeRunPromise()
-      await deferred.succeed(undefined).unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.none)
-    })
+    it.effect("returns `None` otherwise", () =>
+      Do(($) => {
+        const fiber = $(Effect.never.uninterruptible.disconnect.timeout((100).millis).fork)
+        $(TestClock.adjust((100).millis))
+        const result = $(fiber.join)
+        assert.isTrue(result == Maybe.none)
+      }))
   })
 })

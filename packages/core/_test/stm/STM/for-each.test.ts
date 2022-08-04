@@ -1,135 +1,96 @@
+import { constVoid } from "@tsplus/stdlib/data/Function"
+
 describe.concurrent("STM", () => {
   describe.concurrent("forEach", () => {
-    it("performs an action on each list element and return a single transaction that contains the result", async () => {
-      const list = List(1, 2, 3, 4, 5)
-      const program = Effect.Do()
-        .bind("tRef", () => TRef.makeCommit(0))
-        .tap(({ tRef }) => STM.forEach(list, (n) => tRef.update((_) => _ + n)).commit)
-        .flatMap(({ tRef }) => tRef.get.commit)
+    it("performs an action on each list element and return a single transaction that contains the result", () =>
+      Do(($) => {
+        const list = List(1, 2, 3, 4, 5)
+        const tref = $(TRef.makeCommit(0))
+        $(STM.forEach(list, (n) => tref.update((a) => a + n)).commit)
+        const result = $(tref.get.commit)
+        assert.strictEqual(result, list.reduce(0, (acc, n) => acc + n))
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, list.reduce(0, (acc, n) => acc + n))
-    })
-
-    it("performs an action on each chunk element and return a single transaction that contains the result", async () => {
-      const chunk = Chunk(1, 2, 3, 4, 5)
-      const program = Effect.Do()
-        .bind("tRef", () => TRef.makeCommit(0))
-        .tap(({ tRef }) => STM.forEach(chunk, (n) => tRef.update((_) => _ + n)).commit)
-        .flatMap(({ tRef }) => tRef.get.commit)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, chunk.reduce(0, (acc, n) => acc + n))
-    })
+    it("performs an action on each chunk element and return a single transaction that contains the result", () =>
+      Do(($) => {
+        const chunk = Chunk(1, 2, 3, 4, 5)
+        const tref = $(TRef.makeCommit(0))
+        $(STM.forEach(chunk, (n) => tref.update((a) => a + n)).commit)
+        const result = $(tref.get.commit)
+        assert.strictEqual(result, chunk.reduce(0, (acc, n) => acc + n))
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("forEachDiscard", () => {
-    it("performs actions in order given a list", async () => {
-      const input = Chunk(1, 2, 3, 4, 5)
-      const program = Effect.Do()
-        .bind("tRef", () => TRef.makeCommit(Chunk.empty<number>()))
-        .tap(({ tRef }) =>
-          STM.forEach(input, (n) => tRef.update((chunk) => chunk.append(n))).commit
-        )
-        .flatMap(({ tRef }) => tRef.get.commit)
+    it("performs actions in order given a list", () =>
+      Do(($) => {
+        const input = Chunk(1, 2, 3, 4, 5)
+        const tref = $(TRef.makeCommit(Chunk.empty<number>()))
+        $(STM.forEach(input, (n) => tref.update((chunk) => chunk.append(n))).commit)
+        const result = $(tref.get.commit)
+        assert.isTrue(result == input)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == input)
-    })
-
-    it("performs actions in order given a chunk", async () => {
-      const input = List(1, 2, 3, 4, 5)
-      const program = Effect.Do()
-        .bind("tRef", () => TRef.makeCommit<List<number>>(List.empty()))
-        .tap(({ tRef }) => STM.forEach(input, (n) => tRef.update((list) => list.prepend(n))).commit)
-        .flatMap(({ tRef }) => tRef.get.map((list) => list.reverse).commit)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == input)
-    })
+    it("performs actions in order given a chunk", () =>
+      Do(($) => {
+        const input = List(1, 2, 3, 4, 5)
+        const tref = $(TRef.makeCommit(List.empty<number>()))
+        $(STM.forEach(input, (n) => tref.update((list) => list.prepend(n))).commit)
+        const result = $(tref.get.commit)
+        assert.isTrue(result == input.reverse)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("collectAll", () => {
-    // TODO: implement after TQueue
-    it.skip("correct ordering", async () => {
-      // val tx = for {
-      //   tq  <- TQueue.bounded[Int](3)
-      //   _   <- tq.offer(1)
-      //   _   <- tq.offer(2)
-      //   _   <- tq.offer(3)
-      //   ans <- ZSTM.collectAll(List(tq.take, tq.take, tq.take))
-      // } yield ans
-      // assertM(tx.commit)(equalTo(List(1, 2, 3)))
-    })
+    it("correct ordering", () =>
+      Do(($) => {
+        const queue = $(TQueue.bounded<number>(3))
+        $(queue.offer(1))
+        $(queue.offer(2))
+        $(queue.offer(3))
+        const result = $(STM.collectAll(queue.take.replicate(3)))
+        assert.isTrue(result == Chunk(1, 2, 3))
+      }).commit.unsafeRunPromise())
   })
 
   describe.concurrent("reduceAll", () => {
-    it("should reduce all elements to a single value", async () => {
-      const program = STM.reduceAll(
-        STM.succeed(1),
-        List(2, 3, 4).map(STM.succeedNow),
-        (acc, a) => acc + a
-      ).commit
+    it("should reduce all elements to a single value", () =>
+      Do(($) => {
+        const list = List(2, 3, 4).map(STM.succeedNow)
+        const result = $(STM.reduceAll(STM.succeedNow(1), list, (a, b) => a + b).commit)
+        assert.strictEqual(result, 10)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 10)
-    })
-
-    it("should handle an empty iterable", async () => {
-      const program = STM.reduceAll(
-        STM.succeed(1),
-        List.empty<STM<never, never, number>>(),
-        (acc, a) => acc + a
-      ).commit
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 1)
-    })
+    it("should handle an empty iterable", () =>
+      Do(($) => {
+        const list = List.empty<STM<never, never, number>>()
+        const result = $(STM.reduceAll(STM.succeedNow(1), list, (a, b) => a + b).commit)
+        assert.strictEqual(result, 1)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("mergeAll", () => {
-    it("return zero element on empty input", async () => {
-      const zeroElement = 42
-      const nonZero = 43
-      const program = STM.mergeAll(
-        List.empty<STM<never, never, number>>(),
-        zeroElement,
-        () => nonZero
-      ).commit
+    it("return zero element on empty input", () =>
+      Do(($) => {
+        const zeroElement = 42
+        const nonZero = 43
+        const list = List.empty<STM<never, never, number>>()
+        const result = $(STM.mergeAll(list, zeroElement, () => nonZero).commit)
+        assert.strictEqual(result, zeroElement)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("merge list using function", () =>
+      Do(($) => {
+        const list = List(3, 5, 7).map(STM.succeedNow)
+        const result = $(STM.mergeAll(list, 1, (a, b) => a + b).commit)
+        assert.strictEqual(result, 1 + 3 + 5 + 7)
+      }).unsafeRunPromise())
 
-      assert.strictEqual(result, zeroElement)
-    })
-
-    it("merge list using function", async () => {
-      const program = STM.mergeAll(
-        List(3, 5, 7).map(STM.succeedNow),
-        1,
-        (a, b) => a + b
-      ).commit
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 1 + 3 + 5 + 7)
-    })
-
-    it("return error if it exists in list", async () => {
-      const program = STM.mergeAll(
-        List(STM.unit, STM.fail(1)),
-        undefined,
-        () => undefined
-      ).commit
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.fail(1))
-    })
+    it("return error if it exists in list", () =>
+      Do(($) => {
+        const list = List(STM.unit, STM.fail(1))
+        const result = $(STM.mergeAll(list, constVoid, constVoid).commit.exit)
+        assert.isTrue(result == Exit.fail(1))
+      }).unsafeRunPromiseExit())
   })
 })

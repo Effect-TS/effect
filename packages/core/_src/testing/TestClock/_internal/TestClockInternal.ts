@@ -2,6 +2,7 @@ import { LiveClock } from "@effect/core/io/Clock"
 import type { Live } from "@effect/core/testing/Live"
 import { SuspendedWarningData } from "@effect/core/testing/TestClock/_internal/SuspendedWarningData"
 import { WarningData } from "@effect/core/testing/TestClock/_internal/WarningData"
+import { constVoid } from "@tsplus/stdlib/data/Function"
 
 /**
  * The warning message that will be displayed if a test is using time but is
@@ -123,7 +124,7 @@ export class TestClockInternal extends LiveClock {
             return Effect
               .forEach(either.right, (ref) => Effect.sync(ref.get))
               .map((chunk) => chunk.reduce(SortedSet.empty(Fiber.Ord), (a, b) => a.union(b)))
-              .map((set) => set.filter((fiber) => !(fiber.id == descriptor.id)))
+              .map((set) => set.filter((fiber) => !(fiber.id.equals(descriptor.id))))
           }
         }
       })
@@ -202,11 +203,11 @@ export class TestClockInternal extends LiveClock {
    */
   private get suspended(): Effect<never, void, HashMap<FiberId, Fiber.Status>> {
     return this.freeze
-      .zip(this.live.provide(Clock.sleep((5).millis)).zipRight(this.freeze))
+      .zip(this.live.provide(Effect.sleep((5).millis)).zipRight(this.freeze))
       .flatMap(({ tuple: [first, last] }) =>
-        first == last ?
+        first.equals(last) ?
           Effect.succeed(first) :
-          Effect.failSync(undefined)
+          Effect.failSync(constVoid)
       )
   }
 
@@ -217,8 +218,9 @@ export class TestClockInternal extends LiveClock {
     return this.suspendedWarningStart.zipRight(
       this.suspended
         .zipWith(
-          this.live.provide(Clock.sleep((10).millis)).zipRight(this.suspended),
-          (a, b) => a == b
+          this.live.provide(Effect.sleep((10).millis))
+            .zipRight(this.suspended),
+          (a, b) => a.equals(b)
         )
         .filterOrFail(identity, undefined)
         .eventually

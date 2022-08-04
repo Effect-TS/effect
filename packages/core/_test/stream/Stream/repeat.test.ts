@@ -1,109 +1,86 @@
+import { constVoid } from "@tsplus/stdlib/data/Function"
+
 describe.concurrent("Stream", () => {
   describe.concurrent("repeat", () => {
-    it("simple example", async () => {
-      const program = Stream(1).repeat(Schedule.recurs(4)).runCollect
+    it("simple example", () =>
+      Do(($) => {
+        const schedule = Schedule.recurs(4)
+        const stream = Stream(1).repeat(schedule)
+        const result = $(stream.runCollect)
+        assert.isTrue(result == Chunk(1, 1, 1, 1, 1))
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("short circuits", () =>
+      Do(($) => {
+        const ref = $(Ref.make(List.empty<number>()))
+        const effect = ref.update((list) => list.prepend(1))
+        const schedule = Schedule.spaced((10).millis)
+        const stream = Stream.fromEffect(effect).repeat(schedule).take(2)
+        $(stream.runDrain)
+        const result = $(ref.get)
+        assert.isTrue(result == Chunk(1, 1))
+      }).unsafeRunPromise())
 
-      assert.isTrue(result == Chunk(1, 1, 1, 1, 1))
-    })
-
-    it("short circuits", async () => {
-      const program = Effect.Do()
-        .bind("ref", () => Ref.make<List<number>>(List.empty()))
-        .bind("fiber", ({ ref }) =>
-          Stream.fromEffect(ref.update((list) => list.prepend(1)))
-            .repeat(Schedule.spaced((10).millis))
-            .take(2)
-            .runDrain
-            .fork)
-        .tap(({ fiber }) => fiber.join)
-        .flatMap(({ ref }) => ref.get)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Chunk(1, 1))
-    })
-
-    it("does not swallow errors on a repetition", async () => {
-      const program = Ref.make(0).flatMap((counter) =>
-        Stream.fromEffect(
-          counter
-            .getAndUpdate((n) => n + 1)
-            .flatMap((n) => (n <= 2 ? Effect.sync(n) : Effect.failSync("boom")))
-        )
-          .repeat(Schedule.recurs(3))
-          .runDrain
-          .exit
-      )
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Exit.fail("boom"))
-    })
+    it("does not swallow errors on a repetition", () =>
+      Do(($) => {
+        const ref = $(Ref.make(0))
+        const effect = ref.getAndUpdate((n) => n + 1)
+          .flatMap((n) => (n <= 2 ? Effect.succeed(n) : Effect.fail("boom")))
+        const schedule = Schedule.recurs(3)
+        const stream = Stream.fromEffect(effect).repeat(schedule)
+        const result = $(stream.runDrain.exit)
+        assert.isTrue(result == Exit.fail("boom"))
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("repeatEffect", () => {
-    it("emit elements", async () => {
-      const program = Stream.repeatEffect(Effect.sync(1)).take(2).runCollect
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Chunk(1, 1))
-    })
+    it("emit elements", () =>
+      Do(($) => {
+        const effect = Effect.succeed(1)
+        const stream = Stream.repeatEffect(effect).take(2)
+        const result = $(stream.runCollect)
+        assert.isTrue(result == Chunk(1, 1))
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("repeatEffectMaybe", () => {
-    it("emit elements", async () => {
-      const program = Stream.repeatEffectMaybe(Effect.sync(1)).take(2).runCollect
+    it("emit elements", () =>
+      Do(($) => {
+        const effect = Effect.succeed(1)
+        const stream = Stream.repeatEffectMaybe(effect).take(2)
+        const result = $(stream.runCollect)
+        assert.isTrue(result == Chunk(1, 1))
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("emit elements until pull fails with None", () =>
+      Do(($) => {
+        const ref = $(Ref.make(0))
+        const effect = ref.updateAndGet((n) => n + 1)
+          .flatMap((n) => (n >= 5 ? Effect.fail(Maybe.none) : Effect.succeed(n)))
+        const stream = Stream.repeatEffectMaybe(effect).take(10)
+        const result = $(stream.runCollect)
+        assert.isTrue(result == Chunk(1, 2, 3, 4))
+      }).unsafeRunPromise())
 
-      assert.isTrue(result == Chunk(1, 1))
-    })
-
-    it("emit elements until pull fails with None", async () => {
-      const program = Effect.Do()
-        .bind("ref", () => Ref.make(0))
-        .bindValue("effect", ({ ref }) =>
-          ref
-            .updateAndGet((n) => n + 1)
-            .flatMap((n) => (n >= 5 ? Effect.failSync(Maybe.none) : Effect.sync(n))))
-        .flatMap(({ effect }) => Stream.repeatEffectMaybe(effect).take(10).runCollect)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Chunk(1, 2, 3, 4))
-    })
-
-    it("stops evaluating the effect once it fails with None", async () => {
-      const program = Effect.Do()
-        .bind("ref", () => Ref.make(0))
-        .tap(({ ref }) =>
-          Effect.scoped(
-            Stream.repeatEffectMaybe(
-              ref.getAndUpdate((n) => n + 1) > Effect.failSync(Maybe.none)
-            )
-              .toPull
-              .flatMap((pull) => pull.ignore > pull.ignore)
-          )
-        )
-        .flatMap(({ ref }) => ref.get)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 1)
-    })
+    it("stops evaluating the effect once it fails with None", () =>
+      Do(($) => {
+        const ref = $(Ref.make(0))
+        const effect = ref.getAndUpdate((n) => n + 1).zipRight(Effect.fail(Maybe.none))
+        const stream = Stream.repeatEffectMaybe(effect).toPull
+          .flatMap((pull) => pull.ignore.zipRight(pull.ignore))
+        $(Effect.scoped(stream))
+        const result = $(ref.get)
+        assert.strictEqual(result, 1)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("repeatEither", () => {
-    it("emits schedule output", async () => {
-      const program = Stream(1).repeatEither(Schedule.recurs(4)).runCollect
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(
-        result == Chunk(
+    it("emits schedule output", () =>
+      Do(($) => {
+        const schedule = Schedule.recurs(4)
+        const stream = Stream(1).repeatEither(schedule)
+        const result = $(stream.runCollect)
+        const expected = Chunk(
           Either.right(1),
           Either.right(1),
           Either.left(0),
@@ -114,51 +91,37 @@ describe.concurrent("Stream", () => {
           Either.right(1),
           Either.left(3)
         )
-      )
-    })
+        assert.isTrue(result == expected)
+      }).unsafeRunPromise())
 
-    it("short circuits", async () => {
-      const program = Effect.Do()
-        .bind("ref", () => Ref.make<List<number>>(List.empty()))
-        .bind("fiber", ({ ref }) =>
-          Stream.fromEffect(ref.update((list) => list.prepend(1)))
-            .repeatEither(Schedule.spaced((10).millis))
-            .take(3)
-            .runDrain
-            .fork)
-        .tap(({ fiber }) => fiber.join)
-        .flatMap(({ ref }) => ref.get)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Chunk(1, 1))
-    })
+    it("short circuits", () =>
+      Do(($) => {
+        const ref = $(Ref.make(List.empty<number>()))
+        const effect = ref.update((list) => list.prepend(1))
+        const schedule = Schedule.spaced((10).millis)
+        const stream = Stream.fromEffect(effect).repeatEither(schedule).take(3)
+        $(stream.runDrain)
+        const result = $(ref.get)
+        assert.isTrue(result == Chunk(1, 1))
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("repeatElements", () => {
-    it("repeatElementsWith", async () => {
-      const program = Stream("A", "B", "C")
-        .repeatElementsWith(
-          Schedule.recurs(0) > Schedule.fromFunction(() => 123),
-          identity,
-          (n) => n.toString()
-        )
-        .runCollect
+    it("repeatElementsWith", () =>
+      Do(($) => {
+        const schedule = Schedule.recurs(0).zipRight(Schedule.fromFunction(() => 123))
+        const f = (n: number) => n.toString()
+        const stream = Stream("A", "B", "C").repeatElementsWith(schedule, identity, f)
+        const result = $(stream.runCollect)
+        assert.isTrue(result == Chunk("A", "123", "B", "123", "C", "123"))
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Chunk("A", "123", "B", "123", "C", "123"))
-    })
-
-    it("repeatElementsEither", async () => {
-      const program = Stream("A", "B", "C")
-        .repeatElementsEither(Schedule.recurs(0) > Schedule.fromFunction(() => 123))
-        .runCollect
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(
-        result == Chunk(
+    it("repeatElementsEither", () =>
+      Do(($) => {
+        const schedule = Schedule.recurs(0).zipRight(Schedule.fromFunction(() => 123))
+        const stream = Stream("A", "B", "C").repeatElementsEither(schedule)
+        const result = $(stream.runCollect)
+        const expected = Chunk(
           Either.right("A"),
           Either.left(123),
           Either.right("B"),
@@ -166,112 +129,88 @@ describe.concurrent("Stream", () => {
           Either.right("C"),
           Either.left(123)
         )
-      )
-    })
+        assert.isTrue(result == expected)
+      }).unsafeRunPromise())
 
-    it("repeated && assert spaced", async () => {
-      const program = Stream("A", "B", "C").repeatElements(Schedule.once).runCollect
+    it("repeated && assert spaced", () =>
+      Do(($) => {
+        const stream = Stream("A", "B", "C").repeatElements(Schedule.once)
+        const result = $(stream.runCollect)
+        assert.isTrue(result == Chunk("A", "A", "B", "B", "C", "C"))
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("short circuits in schedule", () =>
+      Do(($) => {
+        const stream = Stream("A", "B", "C").repeatElements(Schedule.once).take(4)
+        const result = $(stream.runCollect)
+        assert.isTrue(result == Chunk("A", "A", "B", "B"))
+      }).unsafeRunPromise())
 
-      assert.isTrue(result == Chunk("A", "A", "B", "B", "C", "C"))
-    })
-
-    it("short circuits in schedule", async () => {
-      const program = Stream("A", "B", "C")
-        .repeatElements(Schedule.once)
-        .take(4)
-        .runCollect
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Chunk("A", "A", "B", "B"))
-    })
-
-    it("short circuits after schedule", async () => {
-      const program = Stream("A", "B", "C")
-        .repeatElements(Schedule.once)
-        .take(3)
-        .runCollect
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Chunk("A", "A", "B"))
-    })
+    it("short circuits after schedule", () =>
+      Do(($) => {
+        const stream = Stream("A", "B", "C").repeatElements(Schedule.once).take(3)
+        const result = $(stream.runCollect)
+        assert.isTrue(result == Chunk("A", "A", "B"))
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("repeatEffectWithSchedule", () => {
-    it("succeed", async () => {
-      const program = Effect.Do()
-        .bind("ref", () => Ref.make<List<number>>(List.empty()))
-        .bind("fiber", ({ ref }) =>
-          Stream.repeatEffectWithSchedule(
-            ref.update((list) => list.prepend(1)),
-            Schedule.spaced((10).millis)
-          )
-            .take(2)
-            .runDrain)
-        .flatMap(({ ref }) => ref.get)
+    it("succeed", () =>
+      Do(($) => {
+        const ref = $(Ref.make(List.empty<number>()))
+        const effect = ref.update((list) => list.prepend(1))
+        const schedule = Schedule.spaced((10).millis)
+        const stream = Stream.repeatEffectWithSchedule(effect, schedule)
+        $(stream.take(2).runDrain)
+        const result = $(ref.get)
+        assert.isTrue(result == Chunk(1, 1))
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("allow schedule rely on effect value", () =>
+      Do(($) => {
+        const length = 20
+        const ref = $(Ref.make(0))
+        const effect = ref.getAndUpdate((n) => n + 1).filterOrFail((n) => n <= length, constVoid)
+        const schedule = Schedule.identity<number>().whileInput((n) => n < length)
+        const stream = Stream.repeatEffectWithSchedule(effect, schedule)
+        const result = $(stream.runCollect)
+        assert.isTrue(result == Chunk.range(0, length))
+      }).unsafeRunPromise())
 
-      assert.isTrue(result == Chunk(1, 1))
-    })
+    it("should perform repetitions in addition to the first execution (one repetition)", () =>
+      Do(($) => {
+        const effect = Effect.succeed(1)
+        const schedule = Schedule.once
+        const stream = Stream.repeatEffectWithSchedule(effect, schedule)
+        const result = $(stream.runCollect)
+        assert.isTrue(result == Chunk(1, 1))
+      }).unsafeRunPromise())
 
-    // TODO(Mike/Max): re-enable once pipeable overloads are fixed
-    // it("allow schedule rely on effect value", async () => {
-    //   const length = 20
-    //   const program = Effect.Do()
-    //     .bind("ref", () => Ref.make(0))
-    //     .bindValue("effect", ({ ref }) => ref.getAndUpdate((n) => n + 1).filterOrFail((n) => n <= length, undefined))
-    //     .bindValue("schedule", () => Schedule.identity<number>().whileInput((n) => n < length))
-    //     .flatMap(({ effect, schedule }) => Stream.repeatEffectWithSchedule(effect, schedule).runCollect)
+    it("should perform repetitions in addition to the first execution (zero repetitions)", () =>
+      Do(($) => {
+        const effect = Effect.succeed(1)
+        const schedule = Schedule.stop
+        const stream = Stream.repeatEffectWithSchedule(effect, schedule)
+        const result = $(stream.runCollect)
+        assert.isTrue(result == Chunk(1))
+      }).unsafeRunPromise())
 
-    //   const result = await program.unsafeRunPromise()
-
-    //   assert.isTrue(result == Chunk.range(0, length))
-    // })
-
-    it("should perform repetitions in addition to the first execution (one repetition)", async () => {
-      const program = Stream.repeatEffectWithSchedule(
-        Effect.sync(1),
-        Schedule.once
-      ).runCollect
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Chunk(1, 1))
-    })
-
-    it("should perform repetitions in addition to the first execution (zero repetitions)", async () => {
-      const program = Stream.repeatEffectWithSchedule(
-        Effect.sync(1),
-        Schedule.stop
-      ).runCollect
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Chunk(1))
-    })
-
-    // TODO(Max/Mike): implement after TestClock
-    it.skip("emits before delaying according to the schedule", async () => {
-      // val interval = 1.second
-      // for {
-      //   collected <- Ref.make(0)
-      //   effect     = ZIO.unit
-      //   schedule   = Schedule.spaced(interval)
-      //   streamFiber <- ZStream
-      //                    .repeatZIOWithSchedule(effect, schedule)
-      //                    .tap(_ => collected.update(_ + 1))
-      //                    .runDrain()
-      //                    .fork
-      //   _                      <- TestClock.adjust(0.seconds)
-      //   nrCollectedImmediately <- collected.get
-      //   _                      <- TestClock.adjust(1.seconds)
-      //   nrCollectedAfterDelay  <- collected.get
-      //   _                      <- streamFiber.interrupt
-      // } yield assert(nrCollectedImmediately)(equalTo(1)) && assert(nrCollectedAfterDelay)(equalTo(2))
-    })
+    it.effect("emits before delaying according to the schedule", () =>
+      Do(($) => {
+        const interval = (1).seconds
+        const collected = $(Ref.make(0))
+        const effect = Effect.unit
+        const schedule = Schedule.spaced(interval)
+        const stream = Stream.repeatEffectWithSchedule(effect, schedule)
+          .tap(() => collected.update((n) => n + 1))
+        const fiber = $(stream.runDrain.fork)
+        $(TestClock.adjust((0).seconds))
+        const collectedImmediately = $(collected.get)
+        $(TestClock.adjust((1).seconds))
+        const collectedAfterDelay = $(collected.get)
+        $(fiber.interrupt)
+        assert.strictEqual(collectedImmediately, 1)
+        assert.strictEqual(collectedAfterDelay, 2)
+      }))
   })
 })

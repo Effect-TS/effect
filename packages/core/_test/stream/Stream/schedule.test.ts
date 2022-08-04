@@ -1,44 +1,54 @@
 describe.concurrent("Stream", () => {
   describe.concurrent("schedule", () => {
-    // TODO(Mike/Max): implement after TestClock
-    it.skip("simple example", async () => {
-      // const program = Effect.Do()
-      //   .bind("start", () => Clock.currentTime)
-      //   .bind("fiber", ({ start }) =>
-      //     Stream.range(1, 9)
-      //       .schedule(Schedule.fixed(Duration(10)))
-      //       .mapEffect((n) => Clock.currentTime.map((now) => Tuple(n, now - start)))
-      //       .runCollect
-      //       .fork()
-      //   )
-      //   .flatMap(({ fiber }) => fiber.join)
-      // const result = await program.unsafeRunPromise()
-      // expected = Chunk((1, 100L), (2, 200L), (3, 300L), (4, 400L), (5, 500L), (6, 600L), (7, 700L), (8, 800L))
-    })
+    it.effect("simple example", () =>
+      Do(($) => {
+        const start = $(Clock.currentTime)
+        const schedule = Schedule.fixed((100).millis)
+        const stream = Stream.range(1, 9)
+          .schedule(schedule)
+          .mapEffect((n) => Clock.currentTime.map((now) => Tuple(n, now - start)))
+        const fiber = $(stream.runCollect.fork)
+        $(TestClock.adjust((800).millis))
+        const result = $(fiber.join)
+        const expected = Chunk(
+          Tuple(1, 100),
+          Tuple(2, 200),
+          Tuple(3, 300),
+          Tuple(4, 400),
+          Tuple(5, 500),
+          Tuple(6, 600),
+          Tuple(7, 700),
+          Tuple(8, 800)
+        )
+        assert.isTrue(result == expected)
+      }))
   })
 
   describe.concurrent("scheduleWith", () => {
-    // TODO(Mike/Max): implement after TestClock
-    it.skip("simple example", async () => {
-      // assertM(
-      //   ZStream("A", "B", "C", "A", "B", "C")
-      //     .scheduleWith(Schedule.recurs(2) *> Schedule.fromFunction((_) => "Done"))(
-      //       _.toLowerCase,
-      //       identity
-      //     )
-      //     .runCollect
-      // )(equalTo(Chunk("a", "b", "c", "Done", "a", "b", "c", "Done")))
-    })
+    it.effect("simple example", () =>
+      Do(($) => {
+        const f = (s: string) => s.toLowerCase()
+        const schedule = Schedule.recurs(2).zipRight(Schedule.fromFunction(() => "Done"))
+        const stream = Stream("A", "B", "C", "A", "B", "C").scheduleWith(schedule, f, identity)
+        const result = $(stream.runCollect)
+        const expected = Chunk("a", "b", "c", "Done", "a", "b", "c", "Done")
+        assert.isTrue(result == expected)
+      }))
   })
 
   describe.concurrent("scheduleEither", () => {
-    // TODO(Mike/Max): implement after TestClock
-    it.skip("simple example", async () => {
-      //   assertM(
-      //     ZStream("A", "B", "C")
-      //       .scheduleEither(Schedule.recurs(2) *> Schedule.fromFunction((_) => "!"))
-      //       .runCollect
-      //   )(equalTo(Chunk(Right("A"), Right("B"), Right("C"), Left("!"))))
-    })
+    it.effect("simple example", () =>
+      Do(($) => {
+        const schedule = Schedule.recurs(2).zipRight(Schedule.fromFunction(() => "!"))
+        const stream = Stream("A", "B", "C").scheduleEither(schedule)
+        const result = $(stream.runCollect)
+        const expected = Chunk(
+          Either.right("A"),
+          Either.right("B"),
+          Either.right("C"),
+          Either.left("!")
+        )
+        assert.isTrue(result == expected)
+      }))
   })
 })
