@@ -8,6 +8,6 @@
 export function continueOrRetry<R, E, A, A2>(pf: (a: A) => Maybe<A2>) {
   return <R, E>(self: STM<R, E, A>): STM<R, E, A2> =>
     self.continueOrRetrySTM(
-      (x) => pf(x).map(STM.succeedNow)
+      (x) => pf(x).map(STM.succeed)
     )
 }

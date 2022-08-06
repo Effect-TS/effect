@@ -22,6 +22,6 @@ function contramapInEffectReader<Env1, InErr, InElem0, InElem, InDone>(
       Channel.fromEffect(f(inElem)).flatMap((elem) => Channel.write(elem)) >
         contramapInEffectReader<Env1, InErr, InElem0, InElem, InDone>(f),
     (inErr) => Channel.fail(inErr),
-    (inDone) => Channel.succeedNow(inDone)
+    (inDone) => Channel.succeed(inDone)
   )
 }

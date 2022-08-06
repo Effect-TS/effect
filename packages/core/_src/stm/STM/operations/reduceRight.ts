@@ -10,7 +10,7 @@ export function reduceRight_<A, Z, R, E>(
 ): STM<R, E, Z> {
   return STM.suspend(
     Chunk.from(as()).reduceRight(
-      STM.succeed(z) as STM<R, E, Z>,
+      STM.sync(z) as STM<R, E, Z>,
       (el, acc) => acc.flatMap((a) => f(el, a))
     )
   )

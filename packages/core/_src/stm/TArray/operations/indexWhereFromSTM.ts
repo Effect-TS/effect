@@ -13,7 +13,7 @@ export function indexWhereFromSTM<E, A>(
 ) {
   return (self: TArray<A>): STM<never, E, number> => {
     if (from < 0) {
-      return STM.succeedNow(-1)
+      return STM.succeed(-1)
     }
     return forIndex(self, from, f)
   }
@@ -30,6 +30,6 @@ function forIndex<E, A>(
       .unsafeGet(index)!
       .get
       .flatMap(f)
-      .flatMap((result) => result ? STM.succeedNow(index) : forIndex(self, index + 1, f))
-    : STM.succeedNow(-1)
+      .flatMap((result) => result ? STM.succeed(index) : forIndex(self, index + 1, f))
+    : STM.succeed(-1)
 }

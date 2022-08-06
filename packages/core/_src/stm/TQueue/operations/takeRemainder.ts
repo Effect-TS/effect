@@ -5,7 +5,7 @@
 export function takeRemainder<A>(min: number, max: number, acc: Chunk<A>) {
   return (self: TQueue<A>): STM<never, never, Chunk<A>> => {
     if (max < min) {
-      return STM.succeedNow(acc)
+      return STM.succeed(acc)
     }
 
     return self.takeUpTo(max).flatMap((bs) => {

@@ -25,7 +25,7 @@ export function doneCollect<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone
   return Channel.suspend(() => {
     const builder = Chunk.builder<OutElem>()
     return (self >> reader<Env, OutErr, OutElem, OutDone>(builder)).flatMap((z) =>
-      Channel.succeed(Tuple(builder.build(), z))
+      Channel.sync(Tuple(builder.build(), z))
     )
   })
 }
@@ -35,10 +35,10 @@ function reader<Env, OutErr, OutElem, OutDone>(
 ): Channel<Env, OutErr, OutElem, OutDone, OutErr, never, OutDone> {
   return Channel.readWith(
     (outElem) =>
-      Channel.succeed(() => {
+      Channel.sync(() => {
         builder.append(outElem)
       }) > reader<Env, OutErr, OutElem, OutDone>(builder),
     (outErr) => Channel.fail(outErr),
-    (outDone) => Channel.succeedNow(outDone)
+    (outDone) => Channel.succeed(outDone)
   )
 }

@@ -19,7 +19,7 @@ export function takeWhile<A>(f: Predicate<A>) {
         return more ? Channel.write(taken) > loop : Channel.write(taken)
       },
       (err) => Channel.fail(err),
-      (done) => Channel.succeed(done)
+      (done) => Channel.sync(done)
     )
     concreteStream(self)
     return new StreamInternal(self.channel >> loop)

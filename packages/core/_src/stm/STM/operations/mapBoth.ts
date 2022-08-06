@@ -9,6 +9,6 @@ export function mapBoth<E, E1, A, A1>(g: (e: E) => E1, f: (a: A) => A1) {
   return <R>(self: STM<R, E, A>): STM<R, E1, A1> =>
     self.foldSTM(
       (e) => STM.fail(g(e)),
-      (a) => STM.succeedNow(f(a))
+      (a) => STM.succeed(f(a))
     )
 }

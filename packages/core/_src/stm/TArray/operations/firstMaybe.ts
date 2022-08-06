@@ -8,6 +8,6 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
 export function firstMaybe<A>(self: TArray<A>): USTM<Maybe<A>> {
   concreteTArray(self)
   return self.chunk.isEmpty
-    ? STM.succeedNow(Maybe.none)
+    ? STM.succeed(Maybe.none)
     : self.chunk.unsafeHead!.get.map(Maybe.some)
 }

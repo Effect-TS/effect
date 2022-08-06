@@ -2,7 +2,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("toQueue", () => {
     it("toQueue", async () => {
       const chunk = Chunk.range(0, 50)
-      const stream = Stream.fromChunk(chunk).flatMap((n) => Stream.succeed(n))
+      const stream = Stream.fromChunk(chunk).flatMap((n) => Stream.sync(n))
       const program = Effect.scoped(
         stream
           .toQueue(1000)
@@ -18,7 +18,7 @@ describe.concurrent("Stream", () => {
 
     it("toQueueUnbounded", async () => {
       const chunk = Chunk.range(0, 50)
-      const stream = Stream.fromChunk(chunk).flatMap((n) => Stream.succeed(n))
+      const stream = Stream.fromChunk(chunk).flatMap((n) => Stream.sync(n))
       const program = Effect.scoped(
         stream
           .toQueueUnbounded

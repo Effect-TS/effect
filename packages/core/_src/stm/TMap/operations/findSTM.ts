@@ -14,6 +14,6 @@ export function findSTM<K, V, R, E, A>(
         return f(kv).foldSTM((_) => _.fold(STM.none, (e) => STM.fail(e)), STM.some)
       }
 
-      return STM.succeedNow(a)
+      return STM.succeed(a)
     })
 }

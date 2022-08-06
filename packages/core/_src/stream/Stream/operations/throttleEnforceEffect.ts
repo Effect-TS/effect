@@ -23,7 +23,7 @@ export function throttleEnforceEffect<A, R2, E2>(
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> => {
     concreteStream(self)
     return new StreamInternal(
-      Channel.succeed(duration)
+      Channel.sync(duration)
         .zip(Channel.fromEffect(Clock.currentTime))
         .flatMap(
           ({ tuple: [duration, timestamp] }) =>

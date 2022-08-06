@@ -4,6 +4,6 @@
  *
  * @tsplus static effect/core/io/Layer.Ops succeedEnvironment
  */
-export function succeedEnvironment<A>(a: LazyArg<Env<A>>): Layer<never, never, A> {
+export function succeedEnvironment<A>(a: Env<A>): Layer<never, never, A> {
   return Layer.fromEffectEnvironment(Effect.sync(a))
 }

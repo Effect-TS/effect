@@ -182,7 +182,7 @@ export function mergeAllWith<
           (cause) => Channel.failCause(cause),
           (either) =>
             either.fold(
-              (outDone) => Channel.succeedNow(outDone),
+              (outDone) => Channel.succeed(outDone),
               (outElem) => Channel.write(outElem) > consumer
             )
         )

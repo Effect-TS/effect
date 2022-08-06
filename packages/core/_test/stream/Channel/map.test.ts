@@ -1,7 +1,7 @@
 describe.concurrent("Channel", () => {
   describe.concurrent("map", () => {
     it("map", async () => {
-      const program = Channel.succeed(1)
+      const program = Channel.sync(1)
         .map((n) => n + 1)
         .runCollect
 

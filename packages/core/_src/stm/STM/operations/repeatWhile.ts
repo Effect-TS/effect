@@ -17,5 +17,5 @@
  */
 export function repeatWhile<A>(f: Predicate<A>) {
   return <R, E>(self: STM<R, E, A>): STM<R, E, A> =>
-    self.flatMap((a) => (f(a) ? self.repeatWhile(f) : STM.succeedNow(a)))
+    self.flatMap((a) => (f(a) ? self.repeatWhile(f) : STM.succeed(a)))
 }

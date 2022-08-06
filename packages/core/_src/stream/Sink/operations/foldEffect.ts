@@ -20,7 +20,7 @@ function reader<R, E, S, In>(
   f: (s: S, input: In) => Effect<R, E, S>
 ): Channel<R, E, Chunk<In>, unknown, E, Chunk<In>, S> {
   if (!cont(z)) {
-    return Channel.succeedNow(z)
+    return Channel.succeed(z)
   }
   return Channel.readWith(
     (chunk: Chunk<In>) =>
@@ -29,7 +29,7 @@ function reader<R, E, S, In>(
           leftovers.fold(reader(nextS, cont, f), (leftover) => Channel.write(leftover).as(nextS))
       ),
     (err) => Channel.fail(err),
-    () => Channel.succeedNow(z)
+    () => Channel.succeed(z)
   )
 }
 

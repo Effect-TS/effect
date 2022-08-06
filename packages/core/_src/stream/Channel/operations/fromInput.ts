@@ -10,7 +10,7 @@ export function fromInput<Err, Elem, Done>(
     input.takeWith(
       (cause) => Channel.failCause(cause),
       (elem) => Channel.write(elem) > fromInput(input),
-      (done) => Channel.succeedNow(done)
+      (done) => Channel.succeed(done)
     )
   )
 }

@@ -14,7 +14,7 @@ export function orElse<R1, E1, A1>(that: LazyArg<STM<R1, E1, A1>>) {
     (new STMEffect((journal) => prepareResetJournal(journal)) as STM<never, never, Lazy<unknown>>)
       .flatMap((reset) =>
         self
-          .orTry(STM.succeed(reset()) > that())
-          .catchAll(() => STM.succeed(reset()) > that())
+          .orTry(STM.sync(reset()).zipRight(that()))
+          .catchAll(() => STM.sync(reset()).zipRight(that()))
       )
 }

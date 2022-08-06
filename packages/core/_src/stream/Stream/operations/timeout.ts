@@ -6,7 +6,7 @@
  */
 export function timeout(duration: LazyArg<Duration>) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> =>
-    Stream.succeed(duration).flatMap((duration) =>
+    Stream.sync(duration).flatMap((duration) =>
       Stream.fromPull(
         self.toPull.map((pull) => pull.timeoutFail(Maybe.none, duration))
       )

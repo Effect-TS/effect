@@ -5,6 +5,6 @@
  */
 export function fromEither<E, A>(e: LazyArg<Either<E, A>>): STM<never, E, A> {
   return STM.suspend(() => {
-    return e().fold(STM.failNow, STM.succeedNow)
+    return e().fold(STM.failNow, STM.succeed)
   })
 }

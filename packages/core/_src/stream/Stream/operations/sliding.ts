@@ -19,7 +19,7 @@ export function sliding(chunkSize: number, stepSize = 1) {
         )
       )
     }
-    return Stream.succeed(new RingBufferNew<A>(chunkSize)).flatMap((queue) => {
+    return Stream.sync(new RingBufferNew<A>(chunkSize)).flatMap((queue) => {
       concreteStream(self)
       return new StreamInternal(
         self.channel >> reader<E, A>(chunkSize, stepSize, queue, 0)

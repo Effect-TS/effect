@@ -22,7 +22,7 @@ export function collect<
       .readWith(
         (out) => pf(out).fold(collector, (out2) => Channel.write(out2) > collector),
         (e) => Channel.fail(e),
-        (z) => Channel.succeedNow(z)
+        (z) => Channel.succeed(z)
       )
     return self >> collector
   }

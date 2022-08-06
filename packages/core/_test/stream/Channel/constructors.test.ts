@@ -1,7 +1,7 @@
 describe.concurrent("Channel", () => {
   it("succeed", () =>
     Do(($) => {
-      const result = $(Channel.succeed(1).runCollect)
+      const result = $(Channel.sync(1).runCollect)
       const { tuple: [chunk, z] } = result
       assert.isTrue(chunk.isEmpty)
       assert.strictEqual(z, 1)

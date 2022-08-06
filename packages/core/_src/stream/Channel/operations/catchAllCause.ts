@@ -41,5 +41,5 @@ export function catchAllCause<
       OutDone | OutDone1,
       OutErr,
       OutDone | OutDone1
-    >(self, new ContinuationK(Channel.succeedNow, f))
+    >(self, new ContinuationK(Channel.succeed, f))
 }

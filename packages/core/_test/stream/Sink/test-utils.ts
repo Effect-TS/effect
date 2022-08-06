@@ -74,47 +74,61 @@ class Spy<A> implements Queue<A> {
   offer(a: A, __tsplusTrace?: string | undefined) {
     return this.queue.offer(a)
   }
+
   offerAll(as: Collection<A>, __tsplusTrace?: string | undefined) {
     return this.queue.offerAll(as)
   }
+
   get capacity(): number {
     return this.queue.capacity
   }
+
   get size(): Effect<never, never, number> {
     return this.queue.size
   }
+
   get awaitShutdown(): Effect<never, never, void> {
     return this.queue.awaitShutdown
   }
+
   get isShutdown(): Effect<never, never, boolean> {
     return Effect.sync(this.isShutdownInternal)
   }
+
   get shutdown(): Effect<never, never, void> {
     return Effect.sync(() => {
       this.isShutdownInternal = true
     })
   }
+
   get isFull(): Effect<never, never, boolean> {
     return this.queue.isFull
   }
+
   get isEmpty(): Effect<never, never, boolean> {
     return this.queue.isEmpty
   }
+
   get take(): Effect<never, never, A> {
     return this.queue.take
   }
+
   get takeAll(): Effect<never, never, Chunk<A>> {
     return this.queue.takeAll
   }
+
   takeUpTo(max: number, __tsplusTrace?: string | undefined): Effect<never, never, Chunk<A>> {
     return this.queue.takeUpTo(max)
   }
+
   takeBetween(min: number, max: number): Effect<never, never, Chunk<A>> {
     return this.queue.takeBetween(min, max)
   }
+
   takeN(n: number, __tsplusTrace?: string | undefined): Effect<never, never, Chunk<A>> {
     return this.queue.takeN(n)
   }
+
   get poll(): Effect<never, never, Maybe<A>> {
     return this.queue.poll
   }

@@ -6,6 +6,6 @@
 export function some<R, E, A>(self: STM<R, E, Maybe<A>>): STM<R, Maybe<E>, A> {
   return self.foldSTM(
     (e) => STM.fail(Maybe.some(e)),
-    (option) => option.fold(STM.fail(Maybe.none), STM.succeedNow)
+    (option) => option.fold(STM.fail(Maybe.none), STM.succeed)
   )
 }

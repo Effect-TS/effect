@@ -1,47 +1,41 @@
 describe.concurrent("Sink", () => {
   describe.concurrent("flatMap", () => {
-    it("non-empty input", async () => {
-      const program = Stream(1, 2, 3).run(
-        Sink.head<number>().flatMap((x) => Sink.succeed(x))
-      )
+    it("non-empty input", () =>
+      Do(($) => {
+        const sink = Sink.head<number>().flatMap((x) => Sink.succeed(x))
+        const stream = Stream(1, 2, 3)
+        const result = $(stream.run(sink))
+        assert.isTrue(result == Maybe.some(1))
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("empty input", () =>
+      Do(($) => {
+        const sink = Sink.head<number>().flatMap((x) => Sink.succeed(x))
+        const stream = Stream.empty
+        const result = $(stream.run(sink))
+        assert.isTrue(result == Maybe.none)
+      }).unsafeRunPromise())
 
-      assert.isTrue(result == Maybe.some(1))
-    })
-
-    it("empty input", async () => {
-      const program = Stream.empty.run(
-        Sink.head<number>().flatMap((x) => Sink.succeed(x))
-      )
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.none)
-    })
-
-    it("with leftovers", async () => {
-      const chunks = Chunk(
-        Chunk(1, 2),
-        Chunk(3, 4, 5),
-        Chunk.empty<number>(),
-        Chunk(7, 8, 9, 10)
-      )
-      const headAndCount = Sink.head<number>().flatMap((head) =>
-        Sink.count().map((count) => Tuple(head, count))
-      )
-      const program = Stream.fromChunks(...chunks).run(headAndCount)
-
-      const {
-        tuple: [head, count]
-      } = await program.unsafeRunPromise()
-
-      assert.isTrue(head == chunks.flatten.head)
-      assert.strictEqual(
-        count + head.fold(0, () => 1),
-        chunks.map((chunk) => chunk.size).reduce(0, (a, b) => a + b)
-      )
-    })
+    it("with leftovers", () =>
+      Do(($) => {
+        const chunks = Chunk(
+          Chunk(1, 2),
+          Chunk(3, 4, 5),
+          Chunk.empty<number>(),
+          Chunk(7, 8, 9, 10)
+        )
+        const sink = Sink.head<number>().flatMap((head) =>
+          Sink.count().map((count) => Tuple(head, count))
+        )
+        const stream = Stream.fromChunks(...chunks)
+        const result = $(stream.run(sink))
+        const { tuple: [head, count] } = result
+        assert.isTrue(head == chunks.flatten.head)
+        assert.strictEqual(
+          count + head.fold(0, () => 1),
+          chunks.map((chunk) => chunk.size).reduce(0, (a, b) => a + b)
+        )
+      }).unsafeRunPromise())
 
     // TODO(Mike/Max): implement after Gen
     // test("leftovers are kept in order") {

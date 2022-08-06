@@ -9,6 +9,6 @@ export function right<R, E, A, B>(
 ): STM<R, Either<A, E>, B> {
   return self.foldSTM(
     (e) => STM.fail(Either.right(e)),
-    (either) => either.fold((a) => STM.fail(Either.left(a)), STM.succeedNow)
+    (either) => either.fold((a) => STM.fail(Either.left(a)), STM.succeed)
   )
 }

@@ -42,11 +42,11 @@ export function foldSink_<
             const leftoversRef = new AtomicReference(
               leftovers.filter((chunk): chunk is Chunk<L1 | L2> => chunk.isNonEmpty)
             )
-            const refReader = Channel.succeed(
+            const refReader = Channel.sync(
               leftoversRef.getAndSet(Chunk.empty())
             ).flatMap((chunk) => Channel.writeChunk(chunk as unknown as Chunk<Chunk<In1 & In2>>))
             const passThrough = Channel.identity<never, Chunk<In1 & In2>, unknown>()
-            const continuationSink = (refReader > passThrough).pipeTo(() => {
+            const continuationSink = refReader.zipRight(passThrough).pipeTo(() => {
               const result = success(z)
               concreteSink(result)
               return result.channel
@@ -56,8 +56,9 @@ export function foldSink_<
               .doneCollect
               .flatMap(
                 ({ tuple: [newLeftovers, z1] }) =>
-                  Channel.succeed(leftoversRef.get).flatMap((chunk) => Channel.writeChunk(chunk)) >
-                    Channel.writeChunk(newLeftovers).as(z1)
+                  Channel.sync(leftoversRef.get)
+                    .flatMap((chunk) => Channel.writeChunk(chunk))
+                    .zipRight(Channel.writeChunk(newLeftovers).as(z1))
               )
           })
       )

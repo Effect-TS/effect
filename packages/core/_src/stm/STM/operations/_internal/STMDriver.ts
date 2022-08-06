@@ -121,7 +121,7 @@ export class STMDriver<R, E, A> {
           case "STMProvide": {
             this.envStack = new Stack(k.f(this.envStack.value), this.envStack)
             curr = k.stm.ensuring(
-              STM.succeed(() => {
+              STM.sync(() => {
                 this.envStack = this.envStack.previous!
               })
             )

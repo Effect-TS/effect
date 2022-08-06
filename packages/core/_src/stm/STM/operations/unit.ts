@@ -11,5 +11,5 @@ export const unit_: USTM<void> = STM.succeed(undefined)
  * @tsplus getter effect/core/stm/STM unit
  */
 export function unit<R, E, X>(self: STM<R, E, X>): STM<R, E, void> {
-  return self > STM.unit
+  return self.zipRight(STM.unit)
 }

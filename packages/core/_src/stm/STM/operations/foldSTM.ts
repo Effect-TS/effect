@@ -13,5 +13,5 @@ export function foldSTM<E, R1, E1, A1, A, R2, E2, A2>(
     self
       .map(Either.right)
       .catchAll((e) => g(e).map(Either.left))
-      .flatMap((either) => either.fold(STM.succeedNow, f))
+      .flatMap((either) => either.fold(STM.succeed, f))
 }

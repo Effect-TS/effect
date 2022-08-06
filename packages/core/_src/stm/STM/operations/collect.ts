@@ -20,6 +20,6 @@ export function collect<R, E, A, B>(
 export function collectNow<A, B>(pf: (a: A) => Maybe<B>) {
   return <R, E>(self: STM<R, E, A>): STM<R, E, B> =>
     self.collectSTM(
-      (_) => STM.succeedNow(pf(_))
+      (_) => STM.succeed(pf(_))
     )
 }

@@ -8,7 +8,7 @@
 export function fold<E, C, A, B>(g: (e: E) => C, f: (a: A) => B) {
   return <R>(self: STM<R, E, A>): STM<R, never, B | C> =>
     self.foldSTM(
-      (e) => STM.succeedNow(g(e)),
-      (a) => STM.succeedNow(f(a))
+      (e) => STM.succeed(g(e)),
+      (a) => STM.succeed(f(a))
     )
 }

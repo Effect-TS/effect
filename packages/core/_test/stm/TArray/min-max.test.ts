@@ -2,46 +2,34 @@ import { makeStair, n } from "@effect/core/test/stm/TArray/test-utils"
 
 describe.concurrent("TArray", () => {
   describe.concurrent("maxMaybe", () => {
-    it("computes correct maximum", async () => {
-      const program = makeStair(n)
-        .commit
-        .flatMap((tArray) => tArray.maxMaybe(Ord.number).commit)
+    it("computes correct maximum", () =>
+      Do(($) => {
+        const array = $(makeStair(n).commit)
+        const result = $(array.maxMaybe(Ord.number).commit)
+        assert.isTrue(result == Maybe.some(n))
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.some(n))
-    })
-
-    it("returns none for an empty array", async () => {
-      const program = TArray.empty<number>()
-        .commit
-        .flatMap((tArray) => tArray.maxMaybe(Ord.number).commit)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.none)
-    })
+    it("returns none for an empty array", () =>
+      Do(($) => {
+        const array = $(TArray.empty<number>().commit)
+        const result = $(array.maxMaybe(Ord.number).commit)
+        assert.isTrue(result == Maybe.none)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("minMaybe", () => {
-    it("computes correct minimum", async () => {
-      const program = makeStair(n)
-        .commit
-        .flatMap((tArray) => tArray.minMaybe(Ord.number).commit)
+    it("computes correct minimum", () =>
+      Do(($) => {
+        const array = $(makeStair(n).commit)
+        const result = $(array.minMaybe(Ord.number).commit)
+        assert.isTrue(result == Maybe.some(1))
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.some(1))
-    })
-
-    it("returns none for an empty array", async () => {
-      const program = TArray.empty<number>()
-        .commit
-        .flatMap((tArray) => tArray.maxMaybe(Ord.number).commit)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.none)
-    })
+    it("returns none for an empty array", () =>
+      Do(($) => {
+        const array = $(TArray.empty<number>().commit)
+        const result = $(array.maxMaybe(Ord.number).commit)
+        assert.isTrue(result == Maybe.none)
+      }).unsafeRunPromise())
   })
 })

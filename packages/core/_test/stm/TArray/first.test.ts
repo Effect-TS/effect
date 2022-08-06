@@ -2,24 +2,18 @@ import { makeStair, n } from "@effect/core/test/stm/TArray/test-utils"
 
 describe.concurrent("TArray", () => {
   describe.concurrent("firstMaybe", () => {
-    it("retrieves the first item", async () => {
-      const program = makeStair(n)
-        .commit
-        .flatMap((tArray) => tArray.firstMaybe.commit)
+    it("retrieves the first item", () =>
+      Do(($) => {
+        const array = $(makeStair(n).commit)
+        const result = $(array.firstMaybe.commit)
+        assert.isTrue(result == Maybe.some(1))
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.some(1))
-    })
-
-    it("is none for an empty array", async () => {
-      const program = TArray.empty<number>()
-        .commit
-        .flatMap((tArray) => tArray.firstMaybe.commit)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.none)
-    })
+    it("is none for an empty array", () =>
+      Do(($) => {
+        const array = $(TArray.empty<number>().commit)
+        const result = $(array.firstMaybe.commit)
+        assert.isTrue(result == Maybe.none)
+      }).unsafeRunPromise())
   })
 })

@@ -14,7 +14,7 @@ export function mapAccum<A, S, A1>(
   f: (s: S, a: A) => Tuple<[S, A1]>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, A1> =>
-    Stream.succeed(s).flatMap((s) => {
+    Stream.sync(s).flatMap((s) => {
       concreteStream(self)
       return new StreamInternal(self.channel >> accumulator<E, A, S, A1>(s, f))
     })

@@ -8,6 +8,6 @@ export function mapError<E, E1>(f: (a: E) => E1) {
   return <R, A>(self: STM<R, E, A>): STM<R, E1, A> =>
     self.foldSTM(
       (e) => STM.fail(f(e)),
-      STM.succeedNow
+      STM.succeed
     )
 }

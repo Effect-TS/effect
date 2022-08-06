@@ -72,7 +72,7 @@ export function mapOutEffectPar<OutElem, Env1, OutErr1, OutElem1>(
             (cause) => Channel.failCause(cause),
             (either) =>
               either.fold(
-                (outDone) => Channel.succeedNow(outDone),
+                (outDone) => Channel.succeed(outDone),
                 (outElem) => Channel.write(outElem) > consumer
               )
           )

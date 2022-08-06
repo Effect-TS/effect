@@ -10,6 +10,6 @@ export function ensuring<R1, B>(finalizer: STM<R1, never, B>) {
   return <R, E, A>(self: STM<R, E, A>): STM<R | R1, E, A> =>
     self.foldSTM(
       (e) => finalizer > STM.fail(e),
-      (a) => finalizer > STM.succeedNow(a)
+      (a) => finalizer > STM.succeed(a)
     )
 }

@@ -33,7 +33,7 @@ export function transduce<R2, E2, A, Z>(
         > = Channel.readWith(
           (chunk: Chunk<A>) => Channel.write(chunk) > upstreamMarker,
           (err) => Channel.fail(err),
-          (done) => Channel.succeed(upstreamDone.set(true)) > Channel.succeedNow(done)
+          (done) => Channel.sync(upstreamDone.set(true)) > Channel.succeed(done)
         )
 
         const buffer: Channel<
@@ -51,7 +51,7 @@ export function transduce<R2, E2, A, Z>(
             return Channel.readWith(
               (chunk: Chunk<A>) => Channel.write(chunk) > buffer,
               (err) => Channel.fail(err),
-              (done) => Channel.succeedNow(done)
+              (done) => Channel.succeed(done)
             )
           }
 
@@ -69,7 +69,7 @@ export function transduce<R2, E2, A, Z>(
           Chunk<Z>,
           void
         > = sink0.channel.doneCollect.flatMap(({ tuple: [leftover, z] }) =>
-          Channel.succeed(
+          Channel.sync(
             Tuple(upstreamDone.get, concatAndGet(leftovers, leftover))
           ).flatMap(({ tuple: [done, newLeftovers] }) => {
             const nextChannel = done && newLeftovers.isEmpty ? Channel.unit : transducer

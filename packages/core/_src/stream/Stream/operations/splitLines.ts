@@ -92,8 +92,8 @@ function next<E>(
       ),
     (done) =>
       leftover.fold(
-        Channel.succeed(done),
-        (value) => Channel.write(Chunk.single(value)) > Channel.succeed(done)
+        Channel.sync(done),
+        (value) => Channel.write(Chunk.single(value)) > Channel.sync(done)
       )
   )
 }

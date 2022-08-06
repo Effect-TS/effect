@@ -21,7 +21,7 @@ export function splitWhere<In1>(f: Predicate<In1>) {
           .doneCollect
           .flatMap(({ tuple: [leftovers, z] }) =>
             Channel.fromEffect(ref.get).flatMap(
-              (leftover) => Channel.write(leftover + leftovers.flatten) > Channel.succeed(z)
+              (leftover) => Channel.write(leftover + leftovers.flatten) > Channel.sync(z)
             )
           )
       )
@@ -59,6 +59,6 @@ function splitter<E, A>(
       return Channel.write(left) > Channel.fromEffect(leftovers.set(right))
     },
     (cause) => Channel.failCause(cause),
-    (done) => Channel.succeed(done)
+    (done) => Channel.sync(done)
   )
 }

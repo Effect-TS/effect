@@ -11,7 +11,7 @@ export function drain<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     .readWithCause(
       () => drainer,
       (cause) => Channel.failCause(cause),
-      Channel.succeedNow
+      Channel.succeed
     )
   return self >> drainer
 }

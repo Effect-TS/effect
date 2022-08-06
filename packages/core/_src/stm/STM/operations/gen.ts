@@ -39,7 +39,7 @@ export function gen<Eff extends GenSTM<any, any, any>, AEff>(
       state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
     ): STM<any, any, AEff> {
       if (state.done) {
-        return STM.succeedNow(state.value)
+        return STM.succeed(state.value)
       }
       return state.value["stm"].flatMap((val) => {
         const next = iterator.next(val)

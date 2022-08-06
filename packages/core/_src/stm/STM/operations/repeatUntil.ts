@@ -16,5 +16,5 @@
  */
 export function repeatUntil<A>(f: Predicate<A>) {
   return <R, E>(self: STM<R, E, A>): STM<R, E, A> =>
-    self.flatMap((a) => (f(a) ? STM.succeedNow(a) : self.repeatUntil(f)))
+    self.flatMap((a) => (f(a) ? STM.succeed(a) : self.repeatUntil(f)))
 }

@@ -18,7 +18,7 @@ export function dropRight(n: number) {
     if (n <= 0) {
       return self
     }
-    return Stream.succeed(new RingBufferNew<A>(n)).flatMap((queue) => {
+    return Stream.sync(new RingBufferNew<A>(n)).flatMap((queue) => {
       const reader: Channel<
         never,
         E,

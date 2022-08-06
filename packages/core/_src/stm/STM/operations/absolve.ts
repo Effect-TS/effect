@@ -8,5 +8,5 @@
 export function absolve<R, E, E1, A>(
   self: STM<R, E, Either<E1, A>>
 ): STM<R, E | E1, A> {
-  return self.flatMap((either) => either.fold(STM.failNow, STM.succeedNow))
+  return self.flatMap((either) => either.fold(STM.failNow, STM.succeed))
 }

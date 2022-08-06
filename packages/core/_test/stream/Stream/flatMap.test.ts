@@ -5,8 +5,8 @@ describe.concurrent("Stream", () => {
     it("deep flatMap stack safety", async () => {
       function fib(n: number): Stream<never, never, number> {
         return n <= 1
-          ? Stream.succeed(n)
-          : fib(n - 1).flatMap((a) => fib(n - 2).flatMap((b) => Stream.succeed(a + b)))
+          ? Stream.sync(n)
+          : fib(n - 1).flatMap((a) => fib(n - 2).flatMap((b) => Stream.sync(a + b)))
       }
 
       const program = fib(20).runCollect
@@ -173,7 +173,7 @@ describe.concurrent("Stream", () => {
               )).flatMap(() => Stream.fail("ouch"))
         )
         .tap(({ inner }) =>
-          Stream.succeed(constVoid)
+          Stream.sync(constVoid)
             .flatMap(() => inner)
             .runDrain
             .either
