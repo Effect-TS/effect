@@ -17,7 +17,7 @@ describe.concurrent("Channel", () => {
 
       const left = Channel.writeAll(1, 2, 3)
       const right = Channel.read<number>()
-        .catchAll(() => Channel.succeedNow(4))
+        .catchAll(() => Channel.succeed(4))
         .flatMap((i) => Channel.write(new Whatever(i)))
       const conduit = left >> (right > right > right > right)
       const program = conduit.runCollect
@@ -91,10 +91,10 @@ describe.concurrent("Channel", () => {
             return n > 0
               ? Channel.readWith(
                 (i: number) => Channel.write(i) > readIntsN(n - 1),
-                () => Channel.succeedNow("EOF"),
-                () => Channel.succeedNow("EOF")
+                () => Channel.succeed("EOF"),
+                () => Channel.succeed("EOF")
               )
-              : Channel.succeedNow("end")
+              : Channel.succeed("end")
           }
 
           function sum(

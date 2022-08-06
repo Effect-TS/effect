@@ -8,7 +8,7 @@ export function unright<R, B, E, A>(
   self: STM<R, Either<B, E>, A>
 ): STM<R, E, Either<B, A>> {
   return self.foldSTM(
-    (either) => either.fold((b) => STM.succeedNow(Either.left(b)), STM.failNow),
-    (a) => STM.succeedNow(Either.right(a))
+    (either) => either.fold((b) => STM.succeed(Either.left(b)), STM.failNow),
+    (a) => STM.succeed(Either.right(a))
   )
 }

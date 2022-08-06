@@ -11,6 +11,6 @@ export function map<OutDone, OutDone2>(f: (out: OutDone) => OutDone2) {
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone2> =>
     self.flatMap(
-      (z) => Channel.succeed(f(z))
+      (z) => Channel.sync(f(z))
     )
 }

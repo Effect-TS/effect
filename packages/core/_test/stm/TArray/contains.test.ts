@@ -2,38 +2,25 @@ import { makeStair, n } from "@effect/core/test/stm/TArray/test-utils"
 
 describe.concurrent("TArray", () => {
   describe.concurrent("contains", () => {
-    it("true when in the array", async () => {
-      const program = makeStair(n)
-        .commit
-        .flatMap((tArray) => tArray.contains(Equivalence.number, 3).commit)
+    it("true when in the array", () =>
+      Do(($) => {
+        const array = $(makeStair(n).commit)
+        const result = $(array.contains(Equivalence.number, 3).commit)
+        assert.isTrue(result)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("false when not in the array", () =>
+      Do(($) => {
+        const array = $(makeStair(n).commit)
+        const result = $(array.contains(Equivalence.number, n + 1).commit)
+        assert.isFalse(result)
+      }).unsafeRunPromise())
 
-      assert.isTrue(result)
-    })
-
-    it("false when not in the array", async () => {
-      const program = makeStair(n)
-        .commit
-        .flatMap((tArray) =>
-          tArray
-            .contains(Equivalence.number, n + 1)
-            .commit
-        )
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isFalse(result)
-    })
-
-    it("false for empty array", async () => {
-      const program = TArray.empty<number>()
-        .commit
-        .flatMap((tArray) => tArray.contains(Equivalence.number, 0).commit)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isFalse(result)
-    })
+    it("false for empty array", () =>
+      Do(($) => {
+        const array = $(TArray.empty<number>().commit)
+        const result = $(array.contains(Equivalence.number, 0).commit)
+        assert.isFalse(result)
+      }).unsafeRunPromise())
   })
 })

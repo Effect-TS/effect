@@ -20,7 +20,7 @@ describe.concurrent("STM", () => {
 
     it("accumulate successes", async () => {
       const input = Chunk.range(0, 9)
-      const program = STM.validate(input, STM.succeedNow)
+      const program = STM.validate(input, STM.succeed)
         .commit
 
       const result = await program.unsafeRunPromise()

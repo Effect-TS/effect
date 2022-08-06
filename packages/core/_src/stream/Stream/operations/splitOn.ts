@@ -6,7 +6,7 @@
  */
 export function splitOn(delimiter: LazyArg<string>) {
   return <R, E>(self: Stream<R, E, string>): Stream<R, E, string> =>
-    Stream.succeed(delimiter).flatMap((delimiter) =>
+    Stream.sync(delimiter).flatMap((delimiter) =>
       self
         .map((s) => Chunk.from(s))
         .unchunks

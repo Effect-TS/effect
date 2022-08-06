@@ -3,4 +3,4 @@
  *
  * @tsplus static effect/core/stream/Stream.Ops unit
  */
-export const unit: Stream<never, never, void> = Stream.succeed(() => undefined)
+export const unit: Stream<never, never, void> = Stream.sync(() => undefined)

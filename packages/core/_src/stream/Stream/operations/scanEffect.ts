@@ -16,7 +16,7 @@ export function scanEffect<A, S, R2, E2>(
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, S> =>
     new StreamInternal(
-      Channel.succeed(s).flatMap((s) =>
+      Channel.sync(s).flatMap((s) =>
         Channel.write(Chunk.single(s)).zipRight(() => {
           const stream = self.mapAccumEffect(s, (s, a) => f(s, a).map((s) => Tuple(s, s)))
           concreteStream(stream)

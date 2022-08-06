@@ -21,5 +21,5 @@ export const live: Layer<DefaultServices, never, TestEnvironment> = Annotations.
  */
 export interface TestEnvironmentOps extends Layer<never, never, TestEnvironment> {}
 export const TestEnvironment: TestEnvironmentOps = Layer
-  .succeedEnvironment(DefaultServices.live)
+  .syncEnvironment(DefaultServices.live)
   .provideToAndMerge(live)

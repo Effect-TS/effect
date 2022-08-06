@@ -34,6 +34,6 @@ function loop<R, E, A>(
         : Channel.write(taken)
     },
     (err) => Channel.fail(err),
-    (done) => Channel.succeed(done)
+    (done) => Channel.sync(done)
   )
 }

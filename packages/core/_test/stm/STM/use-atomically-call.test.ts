@@ -304,8 +304,8 @@ describe.concurrent("STM", () => {
 
     it("foldSTM to fold over the `STM` effect, and handle failure and success", async () => {
       const program = STM.Do()
-        .bind("result1", () => STM.succeed("yes").foldSTM(() => STM.succeed("no"), STM.succeedNow))
-        .bind("result2", () => STM.fail("no").foldSTM(STM.succeedNow, () => STM.succeed("yes")))
+        .bind("result1", () => STM.succeed("yes").foldSTM(() => STM.succeed("no"), STM.succeed))
+        .bind("result2", () => STM.fail("no").foldSTM(STM.succeed, () => STM.succeed("yes")))
         .commit
 
       const { result1, result2 } = await program.unsafeRunPromise()
@@ -661,7 +661,7 @@ describe.concurrent("STM", () => {
     describe.concurrent("partition", () => {
       it("collects only successes", async () => {
         const input = Chunk.range(0, 9)
-        const program = STM.partition(input, STM.succeedNow).commit
+        const program = STM.partition(input, STM.succeed).commit
 
         const {
           tuple: [left, right]

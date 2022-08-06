@@ -72,5 +72,5 @@ export function bindValue<A, K, N extends string>(
  * @tsplus static effect/core/stm/STM.Ops Do
  */
 export function Do(): STM<never, never, {}> {
-  return STM.succeedNow({})
+  return STM.succeed({})
 }

@@ -11,7 +11,7 @@ export function lastIndexOfFrom<A>(equivalence: Equivalence<A>, value: A, end: n
   return (self: TArray<A>): USTM<number> => {
     concreteTArray(self)
     if (end >= self.chunk.length) {
-      return STM.succeedNow(-1)
+      return STM.succeed(-1)
     }
     return STM.Effect((journal) => {
       let i = end

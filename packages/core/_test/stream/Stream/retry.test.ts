@@ -50,7 +50,7 @@ describe.concurrent("Stream", () => {
         const stream = Stream.fromEffect(effect)
           .flatMap((attemptNumber) =>
             attemptNumber === 3 || attemptNumber === 5 ?
-              Stream.succeed(attemptNumber) :
+              Stream.sync(attemptNumber) :
               Stream.fail(Maybe.none)
           )
           .forever

@@ -11,7 +11,7 @@ export function forEachDiscard<R, E, A, X>(
   as: LazyArg<Collection<A>>,
   f: (a: A) => STM<R, E, X>
 ): STM<R, E, void> {
-  return STM.succeed(as).flatMap((Collection) => loop(Collection[Symbol.iterator](), f))
+  return STM.sync(as).flatMap((collection) => loop(collection[Symbol.iterator](), f))
 }
 
 function loop<R, E, A, X>(

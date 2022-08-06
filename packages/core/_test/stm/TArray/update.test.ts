@@ -46,7 +46,7 @@ describe.concurrent("TArray", () => {
     it("dies with ArrayIndexOutOfBounds when index is out of bounds", async () => {
       const program = makeTArray(1, 42)
         .commit
-        .flatMap((tArray) => tArray.updateSTM(-1, STM.succeedNow).commit)
+        .flatMap((tArray) => tArray.updateSTM(-1, STM.succeed).commit)
 
       const result = await program.unsafeRunPromiseExit()
 

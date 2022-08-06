@@ -20,7 +20,7 @@ export function filterOrElseWith<A, R2, E2, A2>(
     self.flatMap(
       (a): STM<R2, E2, A | A2> =>
         f(a) ?
-          STM.succeedNow(a) :
+          STM.succeed(a) :
           STM.suspend((orElse as (a: A) => STM<R2, E2, A2>)(a))
     )
 }

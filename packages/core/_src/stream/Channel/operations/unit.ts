@@ -1,10 +1,8 @@
-import { constVoid } from "@tsplus/stdlib/data/Function"
-
 /**
  * @tsplus static effect/core/stream/Channel.Ops unit
  */
 export const unit: Channel<never, unknown, unknown, unknown, never, never, void> = Channel.succeed(
-  constVoid
+  undefined
 )
 
 /**

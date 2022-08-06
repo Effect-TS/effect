@@ -23,6 +23,6 @@ export function repeat<A>(
   a: LazyArg<A>
 ): Stream<never, never, A> {
   return new StreamInternal(
-    Channel.succeed(a).flatMap((a) => Channel.write(Chunk.single(a)).repeated)
+    Channel.sync(a).flatMap((a) => Channel.write(Chunk.single(a)).repeated)
   )
 }

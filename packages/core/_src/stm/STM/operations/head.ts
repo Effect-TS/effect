@@ -10,7 +10,7 @@ export function head<R, E, A>(self: STM<R, E, Collection<A>>): STM<R, Maybe<E>, 
     (x) => {
       const it = x[Symbol.iterator]()
       const next = it.next()
-      return next.done ? STM.fail(Maybe.none) : STM.succeedNow(next.value)
+      return next.done ? STM.fail(Maybe.none) : STM.succeed(next.value)
     }
   )
 }

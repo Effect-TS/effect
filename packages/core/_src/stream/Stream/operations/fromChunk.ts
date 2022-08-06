@@ -9,6 +9,6 @@ export function fromChunk<A>(
   chunk: LazyArg<Chunk<A>>
 ): Stream<never, never, A> {
   return new StreamInternal(
-    Channel.succeed(chunk).flatMap((chunk) => chunk.isEmpty ? Channel.unit : Channel.write(chunk))
+    Channel.sync(chunk).flatMap((chunk) => chunk.isEmpty ? Channel.unit : Channel.write(chunk))
   )
 }

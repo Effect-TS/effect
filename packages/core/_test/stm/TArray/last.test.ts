@@ -2,98 +2,71 @@ import { makeRepeats, makeStair, n } from "@effect/core/test/stm/TArray/test-uti
 
 describe.concurrent("TArray", () => {
   describe.concurrent("lastIndexOf", () => {
-    it("correct index if in array", async () => {
-      const program = makeRepeats(3, 3)
-        .commit
-        .flatMap((tArray) => tArray.lastIndexOf(Equivalence.number, 2).commit)
+    it("correct index if in array", () =>
+      Do(($) => {
+        const array = $(makeRepeats(3, 3).commit)
+        const result = $(array.lastIndexOf(Equivalence.number, 2).commit)
+        assert.strictEqual(result, 7)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("-1 for empty", () =>
+      Do(($) => {
+        const array = $(TArray.empty<number>().commit)
+        const result = $(array.lastIndexOf(Equivalence.number, 1).commit)
+        assert.strictEqual(result, -1)
+      }).unsafeRunPromise())
 
-      assert.strictEqual(result, 7)
-    })
-
-    it("-1 for empty", async () => {
-      const program = TArray.empty<number>()
-        .commit
-        .flatMap((tArray) => tArray.lastIndexOf(Equivalence.number, 1).commit)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, -1)
-    })
-
-    it("-1 for absent", async () => {
-      const program = makeRepeats(3, 3)
-        .commit
-        .flatMap((tArray) => tArray.lastIndexOf(Equivalence.number, 4).commit)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, -1)
-    })
+    it("-1 for absent", () =>
+      Do(($) => {
+        const array = $(makeRepeats(3, 3).commit)
+        const result = $(array.lastIndexOf(Equivalence.number, 4).commit)
+        assert.strictEqual(result, -1)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("lastIndexOfFrom", () => {
-    it("correct index if in array, with limit", async () => {
-      const program = makeRepeats(3, 3)
-        .commit
-        .flatMap((tArray) => tArray.lastIndexOfFrom(Equivalence.number, 2, 6).commit)
+    it("correct index if in array, with limit", () =>
+      Do(($) => {
+        const array = $(makeRepeats(3, 3).commit)
+        const result = $(array.lastIndexOfFrom(Equivalence.number, 2, 6).commit)
+        assert.strictEqual(result, 4)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("-1 if absent before limit", () =>
+      Do(($) => {
+        const array = $(makeRepeats(3, 3).commit)
+        const result = $(array.lastIndexOfFrom(Equivalence.number, 3, 1).commit)
+        assert.strictEqual(result, -1)
+      }).unsafeRunPromise())
 
-      assert.strictEqual(result, 4)
-    })
+    it("-1 for negative offset", () =>
+      Do(($) => {
+        const array = $(makeRepeats(3, 3).commit)
+        const result = $(array.lastIndexOfFrom(Equivalence.number, 2, -1).commit)
+        assert.strictEqual(result, -1)
+      }).unsafeRunPromise())
 
-    it("-1 if absent before limit", async () => {
-      const program = makeRepeats(3, 3)
-        .commit
-        .flatMap((tArray) => tArray.lastIndexOfFrom(Equivalence.number, 3, 1).commit)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, -1)
-    })
-
-    it("-1 for negative offset", async () => {
-      const program = makeRepeats(3, 3)
-        .commit
-        .flatMap((tArray) => tArray.lastIndexOfFrom(Equivalence.number, 2, -1).commit)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, -1)
-    })
-
-    it("-1 for too high offset", async () => {
-      const program = makeRepeats(3, 3)
-        .commit
-        .flatMap((tArray) => tArray.lastIndexOfFrom(Equivalence.number, 2, 9).commit)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, -1)
-    })
+    it("-1 for too high offset", () =>
+      Do(($) => {
+        const array = $(makeRepeats(3, 3).commit)
+        const result = $(array.lastIndexOfFrom(Equivalence.number, 2, 9).commit)
+        assert.strictEqual(result, -1)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("lastMaybe", () => {
-    it("retrieves the last entry", async () => {
-      const program = makeStair(n)
-        .commit
-        .flatMap((tArray) => tArray.lastMaybe.commit)
+    it("retrieves the last entry", () =>
+      Do(($) => {
+        const array = $(makeStair(n).commit)
+        const result = $(array.lastMaybe.commit)
+        assert.isTrue(result == Maybe.some(n))
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.some(n))
-    })
-
-    it("is none for an empty array", async () => {
-      const program = TArray.empty<number>()
-        .commit
-        .flatMap((tArray) => tArray.lastMaybe.commit)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.none)
-    })
+    it("is none for an empty array", () =>
+      Do(($) => {
+        const array = $(TArray.empty<number>().commit)
+        const result = $(array.lastMaybe.commit)
+        assert.isTrue(result == Maybe.none)
+      }).unsafeRunPromise())
   })
 })

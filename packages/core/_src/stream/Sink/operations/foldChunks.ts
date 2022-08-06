@@ -28,7 +28,7 @@ function reader<S, In>(
         return reader(nextS, cont, f)
       },
       (err) => Channel.fail(() => err),
-      () => Channel.succeedNow(z)
+      () => Channel.succeed(z)
     )
-    : Channel.succeedNow(z)
+    : Channel.succeed(z)
 }

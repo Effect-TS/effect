@@ -12,7 +12,7 @@ export function mapOut<OutElem, OutElem2>(f: (o: OutElem) => OutElem2) {
       .readWith(
         (outElem) => Channel.write(f(outElem)) > reader,
         (outErr) => Channel.fail(outErr),
-        (outDone) => Channel.succeedNow(outDone)
+        (outDone) => Channel.succeed(outDone)
       )
     return self >> reader
   }

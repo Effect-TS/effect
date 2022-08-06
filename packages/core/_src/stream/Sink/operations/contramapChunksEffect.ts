@@ -26,7 +26,7 @@ export function contramapChunksEffect<In0, R2, E2, In2>(
       (chunk: Chunk<In0>) =>
         Channel.fromEffect(f(chunk)).flatMap((chunk) => Channel.write(chunk)) > loop,
       (err) => Channel.fail(() => err),
-      (done) => Channel.succeed(done)
+      (done) => Channel.sync(done)
     )
     concreteSink(self)
     return new SinkInternal(loop.pipeToOrFail(self.channel))

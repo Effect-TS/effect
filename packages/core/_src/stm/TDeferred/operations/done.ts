@@ -9,8 +9,8 @@ export function done<E, A>(value: Either<E, A>) {
     concreteTDeferred(self)
     return self.ref.get.flatMap((_) =>
       _.isSome() ?
-        STM.succeedNow(false) :
-        self.ref.set(Maybe.some(value)) > STM.succeedNow(true)
+        STM.succeed(false) :
+        self.ref.set(Maybe.some(value)) > STM.succeed(true)
     )
   }
 }

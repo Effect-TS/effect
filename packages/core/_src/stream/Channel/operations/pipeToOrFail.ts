@@ -21,7 +21,7 @@ export function pipeToOrFail<
       .readWith(
         (outElem) => Channel.write(outElem) > reader,
         (outErr) => Channel.failCause(Cause.die(new ChannelError(outErr))),
-        (outDone) => Channel.succeedNow(outDone)
+        (outDone) => Channel.succeed(outDone)
       )
 
     const writer: Channel<
@@ -38,7 +38,7 @@ export function pipeToOrFail<
         cause.isDieType() && isChannelError(cause.value)
           ? Channel.fail(cause.value.error as OutErr2)
           : Channel.failCause(cause),
-      (outDone) => Channel.succeedNow(outDone)
+      (outDone) => Channel.succeed(outDone)
     )
 
     return ((self >> reader) >> that()) >> writer

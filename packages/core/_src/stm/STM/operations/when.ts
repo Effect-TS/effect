@@ -8,6 +8,6 @@ export function when<R, E, A>(
   effect: STM<R, E, A>
 ): STM<R, E, Maybe<A>> {
   return STM.suspend(
-    predicate() ? effect.map(Maybe.some) : STM.succeedNow(Maybe.none)
+    predicate() ? effect.map(Maybe.some) : STM.succeed(Maybe.none)
   )
 }

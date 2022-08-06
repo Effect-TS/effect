@@ -2,9 +2,9 @@ describe.concurrent("Channel", () => {
   describe.concurrent("flatMap", () => {
     it("simple", async () => {
       const program = Channel.Do()
-        .bind("x", () => Channel.succeed(1))
-        .bind("y", ({ x }) => Channel.succeed(x * 2))
-        .bind("z", ({ x, y }) => Channel.succeed(x + y))
+        .bind("x", () => Channel.sync(1))
+        .bind("y", ({ x }) => Channel.sync(x * 2))
+        .bind("z", ({ x, y }) => Channel.sync(x + y))
         .map(({ x, y, z }) => x + y + z)
         .runCollect
 

@@ -28,7 +28,7 @@ export function collectWhile<A, A1>(pf: (a: A) => Maybe<A1>) {
           : Channel.write(mapped)
       },
       (err) => Channel.fail(err),
-      (done) => Channel.succeed(done)
+      (done) => Channel.sync(done)
     )
     concreteStream(self)
     return new StreamInternal(self.channel >> loop)

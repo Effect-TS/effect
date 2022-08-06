@@ -12,7 +12,7 @@ export function collectFirstSTM_<A, E, B>(
     .find((a) => pf(a).isSome())
     .flatMap((option) =>
       option.fold(
-        (): STM<never, E, Maybe<B>> => STM.none,
+        STM.none,
         (a) =>
           pf(a)
             .map((stm) => stm.map(Maybe.some))

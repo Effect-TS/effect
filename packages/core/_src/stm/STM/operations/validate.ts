@@ -13,7 +13,7 @@ export function validate<R, E, A, B>(
 ): STM<R, Chunk<E>, Chunk<B>> {
   return STM.partition(as, f).flatMap(({ tuple: [es, bs] }) =>
     es.isEmpty
-      ? STM.succeedNow(Chunk.from(bs))
+      ? STM.succeed(Chunk.from(bs))
       : STM.fail(es)
   )
 }

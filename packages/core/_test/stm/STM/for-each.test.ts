@@ -56,15 +56,15 @@ describe.concurrent("STM", () => {
   describe.concurrent("reduceAll", () => {
     it("should reduce all elements to a single value", () =>
       Do(($) => {
-        const list = List(2, 3, 4).map(STM.succeedNow)
-        const result = $(STM.reduceAll(STM.succeedNow(1), list, (a, b) => a + b).commit)
+        const list = List(2, 3, 4).map(STM.succeed)
+        const result = $(STM.reduceAll(STM.succeed(1), list, (a, b) => a + b).commit)
         assert.strictEqual(result, 10)
       }).unsafeRunPromise())
 
     it("should handle an empty iterable", () =>
       Do(($) => {
         const list = List.empty<STM<never, never, number>>()
-        const result = $(STM.reduceAll(STM.succeedNow(1), list, (a, b) => a + b).commit)
+        const result = $(STM.reduceAll(STM.succeed(1), list, (a, b) => a + b).commit)
         assert.strictEqual(result, 1)
       }).unsafeRunPromise())
   })
@@ -81,7 +81,7 @@ describe.concurrent("STM", () => {
 
     it("merge list using function", () =>
       Do(($) => {
-        const list = List(3, 5, 7).map(STM.succeedNow)
+        const list = List(3, 5, 7).map(STM.succeed)
         const result = $(STM.mergeAll(list, 1, (a, b) => a + b).commit)
         assert.strictEqual(result, 1 + 3 + 5 + 7)
       }).unsafeRunPromise())

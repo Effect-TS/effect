@@ -10,7 +10,7 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
 export function indexWhereFrom<A>(f: Predicate<A>, from: number) {
   return (self: TArray<A>): STM<never, never, number> => {
     if (from < 0) {
-      return STM.succeedNow(-1)
+      return STM.succeed(-1)
     }
     return STM.Effect((journal) => {
       let i = from

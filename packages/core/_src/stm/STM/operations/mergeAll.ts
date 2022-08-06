@@ -10,6 +10,6 @@ export function mergeAll<R, E, A, B>(
   f: (b: B, a: A) => B
 ): STM<R, E, B> {
   return STM.suspend(() =>
-    as().reduce(STM.succeed(zero) as STM<R, E, B>, (acc, a) => acc.zipWith(a, f))
+    as().reduce(STM.sync(zero) as STM<R, E, B>, (acc, a) => acc.zipWith(a, f))
   )
 }

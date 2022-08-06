@@ -6,5 +6,5 @@
  * @tsplus pipeable effect/core/stm/STM orElseSucceed
  */
 export function orElseSucceed<A1>(a: LazyArg<A1>) {
-  return <R, E, A>(self: STM<R, E, A>): STM<R, E, A | A1> => self | STM.succeed(a)
+  return <R, E, A>(self: STM<R, E, A>): STM<R, E, A | A1> => self.orElse(STM.sync(a))
 }

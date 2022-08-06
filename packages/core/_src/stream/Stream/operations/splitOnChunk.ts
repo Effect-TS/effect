@@ -15,7 +15,7 @@ export function splitOnChunk<A>(
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, Chunk<A>> => {
     concreteStream(self)
-    return Stream.succeed(delimiter).flatMap(
+    return Stream.sync(delimiter).flatMap(
       (delimiter) => new StreamInternal(self.channel >> next<R, E, A>(delimiter, Maybe.none, 0))
     )
   }
@@ -66,8 +66,8 @@ function next<R, E, A>(
       ),
     (done) =>
       leftover.fold(
-        Channel.succeed(done),
-        (chunk) => Channel.write(Chunk.single(chunk)) > Channel.succeed(done)
+        Channel.sync(done),
+        (chunk) => Channel.write(Chunk.single(chunk)) > Channel.sync(done)
       )
   )
 }

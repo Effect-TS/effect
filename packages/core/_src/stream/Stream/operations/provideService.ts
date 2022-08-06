@@ -10,7 +10,7 @@ export function provideService<T, T1 extends T>(
   service: LazyArg<T1>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<Exclude<R, T>, E, A> =>
-    Stream.succeed(service).flatMap((service) =>
+    Stream.sync(service).flatMap((service) =>
       Stream.environmentWithStream((env: Env<Exclude<R, T>>) =>
         self.provideEnvironment(env.add(tag, service) as Env<R>)
       )

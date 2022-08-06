@@ -65,7 +65,7 @@ describe.concurrent("Stream", () => {
       const error = Error("ouch")
       const program = Stream(1)
         .flatMap(() =>
-          Stream.succeed(() => {
+          Stream.sync(() => {
             throw error
           })
         )

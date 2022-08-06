@@ -9,6 +9,6 @@
 export function seek<A>(f: (a: A) => boolean) {
   return (self: TQueue<A>): STM<never, never, A> =>
     self.take.flatMap(
-      (b) => f(b) ? STM.succeedNow(b) : self.seek(f)
+      (b) => f(b) ? STM.succeed(b) : self.seek(f)
     )
 }

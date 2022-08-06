@@ -8,7 +8,7 @@ export function collectFirst<R, E, A, B>(
   as: LazyArg<Collection<A>>,
   f: (a: A) => STM<R, E, Maybe<B>>
 ): STM<R, E, Maybe<B>> {
-  return STM.succeed(as).flatMap((Collection) => loop(Collection[Symbol.iterator](), f))
+  return STM.sync(as).flatMap((collection) => loop(collection[Symbol.iterator](), f))
 }
 
 function loop<R, E, A, B>(

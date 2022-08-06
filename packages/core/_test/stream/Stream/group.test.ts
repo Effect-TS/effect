@@ -122,7 +122,6 @@ describe.concurrent("Stream", () => {
     //       .groupedWithin(10, (2).seconds)
     //       .tap(() => coordination.proceed)
     //     const fiber = $(stream.runCollect.fork)
-    //     console.log("HERE 1")
     //     $(
     //       coordination.offer
     //         .zipRight(Effect.log("HERE INNER 1"))
@@ -131,15 +130,12 @@ describe.concurrent("Stream", () => {
     //         .zipRight(coordination.awaitNext)
     //         .zipRight(Effect.log("HERE INNER 3"))
     //     )
-    //     console.log("HERE 2")
     //     $(
     //       coordination.offer
     //         .zipRight(TestClock.adjust((2).seconds))
     //         .zipRight(coordination.awaitNext)
     //     )
-    //     console.log("HERE 3")
     //     $(coordination.offer)
-    //     console.log("HERE 4")
     //     const result = $(fiber.join.timeout((5).seconds))
     //     assert.isTrue(result == Chunk(Chunk(1, 2), Chunk(3, 4), Chunk(5)))
     //   }))

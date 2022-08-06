@@ -7,7 +7,7 @@
 export function fromChunkQueueWithShutdown<R, E, A>(
   queue: LazyArg<Dequeue<Chunk<A>>>
 ): Stream<R, E, A> {
-  return Stream.succeed(queue).flatMap((queue) =>
+  return Stream.sync(queue).flatMap((queue) =>
     Stream.fromChunkQueue(queue).ensuring(queue.shutdown)
   )
 }

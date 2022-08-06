@@ -20,6 +20,6 @@ function mapOutEffectReader<Env, Env1, OutErr, OutErr1, OutElem, OutElem1, OutDo
       Channel.fromEffect(f(outElem)).flatMap((out) => Channel.write(out)) >
         mapOutEffectReader<Env, Env1, OutErr, OutErr1, OutElem, OutElem1, OutDone>(f),
     (outErr) => Channel.fail(outErr),
-    (outDone) => Channel.succeedNow(outDone)
+    (outDone) => Channel.succeed(outDone)
   )
 }

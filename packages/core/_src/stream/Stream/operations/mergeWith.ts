@@ -23,7 +23,7 @@ export function mergeWith<R2, E2, A, A2, A3>(
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A3> =>
     new StreamInternal(
-      Channel.succeed(strategy).flatMap((strategy) => {
+      Channel.sync(strategy).flatMap((strategy) => {
         const leftStream = self.map(left)
         const rightStream = that().map(right)
         concreteStream(leftStream)

@@ -2,7 +2,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("right", () => {
     it("simple example", async () => {
       const program = (
-        Stream.succeed(Either.right(1)) + Stream.succeed(Either.left(0))
+        Stream.sync(Either.right(1)) + Stream.sync(Either.left(0))
       ).right
         .runCollect
         .either
@@ -15,7 +15,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("rightOrFail", () => {
     it("simple example", async () => {
-      const program = (Stream.succeed(Either.right(1)) + Stream.succeed(Either.left(0)))
+      const program = (Stream.sync(Either.right(1)) + Stream.sync(Either.left(0)))
         .rightOrFail(-1)
         .runCollect
         .either
@@ -29,7 +29,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("some", () => {
     it("simple example", async () => {
       const program = (
-        Stream.succeed(Maybe.some(1)) + Stream.succeed(Maybe.none)
+        Stream.sync(Maybe.some(1)) + Stream.sync(Maybe.none)
       ).some
         .runCollect
         .either
@@ -42,7 +42,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("someOrElse", () => {
     it("simple example", async () => {
-      const program = (Stream.succeed(Maybe.some(1)) + Stream.succeed(Maybe.none))
+      const program = (Stream.sync(Maybe.some(1)) + Stream.sync(Maybe.none))
         .someOrElse(-1)
         .runCollect
 
@@ -54,7 +54,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("someOrFail", () => {
     it("simple example", async () => {
-      const program = (Stream.succeed(Maybe.some(1)) + Stream.succeed(Maybe.none))
+      const program = (Stream.sync(Maybe.some(1)) + Stream.sync(Maybe.none))
         .someOrFail(-1)
         .runCollect
         .either

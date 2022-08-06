@@ -20,7 +20,7 @@ function reader<S, In>(
   f: (s: S, input: In) => S
 ): Channel<never, never, Chunk<In>, unknown, never, Chunk<In>, S> {
   return !cont(z)
-    ? Channel.succeedNow(z)
+    ? Channel.succeed(z)
     : Channel.readWith(
       (chunk: Chunk<In>) => {
         const {
@@ -31,7 +31,7 @@ function reader<S, In>(
           : reader<S, In>(nextS, cont, f)
       },
       (err) => Channel.fail(() => err),
-      () => Channel.succeedNow(z)
+      () => Channel.succeed(z)
     )
 }
 

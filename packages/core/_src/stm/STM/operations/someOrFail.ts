@@ -8,8 +8,8 @@ export function someOrFail<E2>(orFail: LazyArg<E2>) {
   return <R, E, A>(self: STM<R, E, Maybe<A>>): STM<R, E | E2, A> =>
     self.flatMap((option) =>
       option.fold(
-        STM.succeed(orFail).flatMap(STM.failNow),
-        STM.succeedNow
+        STM.sync(orFail).flatMap(STM.failNow),
+        STM.succeed
       )
     )
 }

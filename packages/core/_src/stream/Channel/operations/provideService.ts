@@ -12,7 +12,7 @@ export function provideService<T, T1 extends T>(
   return <R, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ): Channel<Exclude<R, T>, InErr, InElem, InDone, OutErr, OutElem, OutDone> =>
-    Channel.succeed(service).flatMap((service) =>
+    Channel.sync(service).flatMap((service) =>
       Channel.environment<Exclude<R, T>>().flatMap((env) =>
         self.provideEnvironment(
           env.add(tag, service) as Env<R>

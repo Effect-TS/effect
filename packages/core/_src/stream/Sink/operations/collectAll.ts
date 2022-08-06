@@ -13,6 +13,6 @@ function loop<In>(
   return Channel.readWithCause(
     (chunk: Chunk<In>) => loop<In>(acc + chunk),
     (cause) => Channel.failCause(cause),
-    () => Channel.succeed(acc)
+    () => Channel.sync(acc)
   )
 }

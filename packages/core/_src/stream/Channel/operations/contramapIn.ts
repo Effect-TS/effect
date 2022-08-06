@@ -15,6 +15,6 @@ function contramapInReader<InErr, InElem0, InElem, InDone>(
   return Channel.readWith(
     (inElem) => Channel.write(f(inElem)) > contramapInReader<InErr, InElem0, InElem, InDone>(f),
     (inErr) => Channel.fail(inErr),
-    (inDone) => Channel.succeedNow(inDone)
+    (inDone) => Channel.succeed(inDone)
   )
 }

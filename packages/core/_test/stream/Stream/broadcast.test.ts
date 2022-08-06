@@ -39,7 +39,7 @@ describe.concurrent("Stream", () => {
     it("backPressure", async () => {
       const program = Effect.scoped(
         Stream.range(0, 5)
-          .flatMap((n) => Stream.succeed(n))
+          .flatMap((n) => Stream.sync(n))
           .broadcast(2, 2)
           .flatMap((streams) =>
             Effect.Do()

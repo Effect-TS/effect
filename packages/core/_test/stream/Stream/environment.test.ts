@@ -60,7 +60,7 @@ describe.concurrent("Stream", () => {
     it("environmentWithStream", async () => {
       const program =
         Stream.environmentWithStream((env: Env<NumberService>) =>
-          Stream.succeed(env.get(NumberService))
+          Stream.sync(env.get(NumberService))
         )
           .provideEnvironment(Env(NumberService, new NumberServiceImpl(10)))
           .runHead

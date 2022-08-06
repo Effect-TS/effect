@@ -9,190 +9,137 @@ import {
 
 describe.concurrent("TArray", () => {
   describe.concurrent("collectFirst", () => {
-    it("finds and transforms correctly", async () => {
-      const program = makeStairWithHoles(n)
-        .commit
-        .flatMap((tArray) =>
-          tArray
-            .collectFirst((option) =>
-              option.isSome() && option.value > 2
-                ? Maybe.some(option.value.toString())
-                : Maybe.none
-            )
-            .commit
+    it("finds and transforms correctly", () =>
+      Do(($) => {
+        const array = $(makeStairWithHoles(n).commit)
+        const result = $(
+          array.collectFirst((option) =>
+            option.isSome() && option.value > 2
+              ? Maybe.some(option.value.toString())
+              : Maybe.none
+          ).commit
         )
+        assert.isTrue(result == Maybe.some("4"))
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("succeeds for empty", () =>
+      Do(($) => {
+        const array = $(makeTArray(0, Maybe.empty<number>()).commit)
+        const result = $(array.collectFirst((option) => Maybe.some(option)).commit)
+        assert.isTrue(result == Maybe.none)
+      }).unsafeRunPromise())
 
-      assert.isTrue(result == Maybe.some("4"))
-    })
-
-    it("succeeds for empty", async () => {
-      const program = makeTArray(0, Maybe.empty<number>())
-        .commit
-        .flatMap((tArray) => tArray.collectFirst((option) => Maybe.some(option)).commit)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.none)
-    })
-
-    it("fails to find absent", async () => {
-      const program = makeStairWithHoles(n)
-        .commit
-        .flatMap((tArray) =>
-          tArray
-            .collectFirst((option) =>
-              option.isSome() && option.value > n
-                ? Maybe.some(option.value.toString())
-                : Maybe.none
-            )
-            .commit
+    it("fails to find absent", () =>
+      Do(($) => {
+        const array = $(makeStairWithHoles(n).commit)
+        const result = $(
+          array.collectFirst((option) =>
+            option.isSome() && option.value > n
+              ? Maybe.some(option.value.toString())
+              : Maybe.none
+          ).commit
         )
+        assert.isTrue(result == Maybe.none)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.none)
-    })
-
-    it("is atomic", async () => {
-      const program = Effect.Do()
-        .bind("tArray", () => makeStairWithHoles(N).commit)
-        .bind("findFiber", ({ tArray }) =>
-          tArray
-            .collectFirst((option) =>
-              option.isSome() && option.value % largePrime === 0
-                ? Maybe.some(option.value.toString())
-                : Maybe.none
-            )
-            .commit
-            .fork)
-        .tap(({ tArray }) =>
-          STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => Maybe.some(1))).commit
+    it("is atomic", () =>
+      Do(($) => {
+        const array = $(makeStairWithHoles(N).commit)
+        const fiber = $(
+          array.collectFirst((option) =>
+            option.isSome() && option.value % largePrime === 0
+              ? Maybe.some(option.value.toString())
+              : Maybe.none
+          ).commit.fork
         )
-        .flatMap(({ findFiber }) => findFiber.join)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(
-        result == Maybe.some(largePrime.toString()) ||
-          result == Maybe.none
-      )
-    })
+        $(STM.forEach(Chunk.range(0, N - 1), (i) => array.update(i, () => Maybe.some(1))).commit)
+        const result = $(fiber.join)
+        assert.isTrue(
+          result == Maybe.some(largePrime.toString()) ||
+            result == Maybe.none
+        )
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("collectFirstSTM", () => {
-    it("finds and transforms correctly", async () => {
-      const program = makeStairWithHoles(n)
-        .commit
-        .flatMap((tArray) =>
-          tArray
-            .collectFirstSTM((option) =>
-              option.isSome() && option.value > 2
-                ? Maybe.some(STM.succeed(option.value.toString()))
-                : Maybe.none
+    it("finds and transforms correctly", () =>
+      Do(($) => {
+        const array = $(makeStairWithHoles(n).commit)
+        const result = $(
+          array.collectFirstSTM((option) =>
+            option.isSome() && option.value > 2
+              ? Maybe.some(STM.succeed(option.value.toString()))
+              : Maybe.none
+          ).commit
+        )
+        assert.isTrue(result == Maybe.some("4"))
+      }).unsafeRunPromise())
+
+    it("succeeds for empty", () =>
+      Do(($) => {
+        const array = $(makeTArray(0, Maybe.empty<number>()).commit)
+        const result = $(array.collectFirstSTM((option) => Maybe.some(STM.succeed(option))).commit)
+        assert.isTrue(result == Maybe.none)
+      }).unsafeRunPromise())
+
+    it("fails to find absent", () =>
+      Do(($) => {
+        const array = $(makeStairWithHoles(n).commit)
+        const result = $(
+          array.collectFirstSTM((option) =>
+            option.isSome() && option.value > n
+              ? Maybe.some(STM.succeed(option.value.toString()))
+              : Maybe.none
+          ).commit
+        )
+        assert.isTrue(result == Maybe.none)
+      }).unsafeRunPromise())
+
+    it("is atomic", () =>
+      Do(($) => {
+        const array = $(makeStairWithHoles(N).commit)
+        const fiber = $(
+          array.collectFirstSTM((option) =>
+            option.isSome() && option.value % largePrime === 0
+              ? Maybe.some(STM.succeed(option.value.toString()))
+              : Maybe.none
+          ).commit.fork
+        )
+        $(STM.forEach(Chunk.range(0, N - 1), (i) => array.update(i, () => Maybe.some(1))).commit)
+        const result = $(fiber.join)
+        assert.isTrue(
+          result == Maybe.some(largePrime.toString()) ||
+            result == Maybe.none
+        )
+      }).unsafeRunPromise())
+
+    it("fails on errors before result found", () =>
+      Do(($) => {
+        const array = $(makeStairWithHoles(n).commit)
+        const result = $(
+          array.collectFirstSTM((option) =>
+            option.fold(
+              Maybe.some(STM.fail(boom)),
+              (i) => i > 2 ? Maybe.some(STM.succeed(i.toString)) : Maybe.none
             )
-            .commit
+          ).commit.flip
         )
+        assert.deepEqual(result, boom)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.some("4"))
-    })
-
-    it("succeeds for empty", async () => {
-      const program = makeTArray(0, Maybe.empty<number>())
-        .commit
-        .flatMap((tArray) =>
-          tArray.collectFirstSTM((option) => Maybe.some(STM.succeed(option))).commit
+    it("succeeds on errors after result found", () =>
+      Do(($) => {
+        const array = $(makeStairWithHoles(n).commit)
+        const result = $(
+          array.collectFirstSTM((option) =>
+            option.isSome() && option.value > 2
+              ? Maybe.some(STM.succeed(option.value.toString()))
+              : option.isSome() && option.value === 7
+              ? Maybe.some(STM.fail(boom))
+              : Maybe.none
+          ).commit
         )
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.none)
-    })
-
-    it("fails to find absent", async () => {
-      const program = makeStairWithHoles(n)
-        .commit
-        .flatMap((tArray) =>
-          tArray
-            .collectFirstSTM((option) =>
-              option.isSome() && option.value > n
-                ? Maybe.some(STM.succeed(option.value.toString()))
-                : Maybe.none
-            )
-            .commit
-        )
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.none)
-    })
-
-    it("is atomic", async () => {
-      const program = Effect.Do()
-        .bind("tArray", () => makeStairWithHoles(N).commit)
-        .bind("findFiber", ({ tArray }) =>
-          tArray
-            .collectFirstSTM((option) =>
-              option.isSome() && option.value % largePrime === 0
-                ? Maybe.some(STM.succeed(option.value.toString()))
-                : Maybe.none
-            )
-            .commit
-            .fork)
-        .tap(({ tArray }) =>
-          STM.forEach(Chunk.range(0, N - 1), (i) => tArray.update(i, () => Maybe.some(1))).commit
-        )
-        .flatMap(({ findFiber }) => findFiber.join)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(
-        result == Maybe.some(largePrime.toString()) ||
-          result == Maybe.none
-      )
-    })
-
-    it("fails on errors before result found", async () => {
-      const program = makeStairWithHoles(n)
-        .commit
-        .flatMap((tArray) =>
-          tArray
-            .collectFirstSTM((option) =>
-              option.fold(
-                Maybe.some(STM.fail(boom)),
-                (i) => i > 2 ? Maybe.some(STM.succeed(i.toString)) : Maybe.none
-              )
-            )
-            .commit
-            .flip
-        )
-
-      const result = await program.unsafeRunPromise()
-
-      assert.deepEqual(result, boom)
-    })
-
-    it("succeeds on errors after result found", async () => {
-      const program = makeStairWithHoles(n)
-        .commit
-        .flatMap((tArray) =>
-          tArray
-            .collectFirstSTM((option) =>
-              option.isSome() && option.value > 2
-                ? Maybe.some(STM.succeed(option.value.toString()))
-                : option.isSome() && option.value === 7
-                ? Maybe.some(STM.fail(boom))
-                : Maybe.none
-            )
-            .commit
-        )
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.some("4"))
-    })
+        assert.isTrue(result == Maybe.some("4"))
+      }).unsafeRunPromise())
   })
 })

@@ -26,7 +26,7 @@ function reader<R, E, S, In>(
       (chunk: Chunk<In>) =>
         Channel.fromEffect(f(z, chunk)).flatMap((nextS) => reader<R, E, S, In>(nextS, cont, f)),
       (err) => Channel.fail(err),
-      () => Channel.succeedNow(z)
+      () => Channel.succeed(z)
     )
-    : Channel.succeedNow(z)
+    : Channel.succeed(z)
 }
