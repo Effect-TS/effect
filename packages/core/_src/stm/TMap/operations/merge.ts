@@ -1,6 +1,7 @@
 /**
- * merges the key/value pair matching the specified predicate, and uses the
- * provided function to extract a value out of it.
+ * If the key `k` is not already associated with a value, stores the provided
+ * value, otherwise merge the existing value with the new one using function
+ * `f` and store the result
  *
  * @tsplus static effect/core/stm/TMap.Aspects merge
  * @tsplus pipeable effect/core/stm/TMap merge

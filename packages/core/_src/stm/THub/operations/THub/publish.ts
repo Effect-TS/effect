@@ -3,8 +3,8 @@ import type { Node } from "@effect/core/stm/THub/definition/Node"
 import { concreteTHub } from "@effect/core/stm/THub/operations/_internal/InternalTHub"
 
 /**
- * Publishes a value to the hub, returning whether the value was published to the
- * queue.
+ * Publishes a message to the hub, returning whether the message was published
+ * to the hub.
  *
  * @tsplus static effect/core/stm/THub.Aspects publish
  * @tsplus pipeable effect/core/stm/THub publish

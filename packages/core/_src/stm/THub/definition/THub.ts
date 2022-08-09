@@ -15,8 +15,8 @@ export declare namespace THub {
 }
 
 /**
- * A `THub` is a transactional queue. Offerors can offer values to the queue
- * and takers can take values from the queue.
+ * A `THub` is a transactional message hub. Publishers can publish messages to
+ * the hub and subscribers can subscribe to take messages from the hub.
  *
  * @tsplus type effect/core/stm/THub
  */
@@ -54,6 +54,8 @@ export interface Sliding {
 }
 
 /**
+ * A strategy that retries if the hub is at capacity.
+ *
  * @tsplus static effect/core/stm/THub.Ops BackPressure
  */
 export const BackPressure: THub.Strategy = {
@@ -61,6 +63,8 @@ export const BackPressure: THub.Strategy = {
 }
 
 /**
+ * A strategy that drops new messages if the hub is at capacity.
+ *
  * @tsplus static effect/core/stm/THub.Ops Dropping
  */
 export const Dropping: THub.Strategy = {
@@ -68,6 +72,8 @@ export const Dropping: THub.Strategy = {
 }
 
 /**
+ * A strategy that drops old messages if the hub is at capacity.
+ *
  * @tsplus static effect/core/stm/THub.Ops Sliding
  */
 export const Sliding: THub.Strategy = {

@@ -9,7 +9,7 @@ import {
 describe.concurrent("TPriorityQueue", () => {
   describe.concurrent("removeIf", () => {
     it("removeIf", async () => {
-      const program = TPriorityQueue.from(eventOrd)(as)
+      const program = TPriorityQueue.fromIterable(eventOrd)(as)
         .tap((queue) => queue.removeIf(eventPredicate))
         .flatMap((queue) => queue.toChunk)
         .commit

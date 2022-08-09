@@ -5,6 +5,8 @@ export const _A = Symbol.for("@effect/core/stm/TSet/A")
 export type _A = typeof _A
 
 /**
+ * Transactional set implemented on top of TMap.
+ *
  * @tsplus type effect/core/stm/TSet
  */
 export interface TSet<A> {
