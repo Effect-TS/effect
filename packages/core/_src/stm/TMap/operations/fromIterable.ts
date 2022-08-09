@@ -35,7 +35,7 @@ function allocate<K, V>(capacity: number, data: List<Tuple<[K, V]>>): USTM<TMap<
 }
 
 /**
- * Retrieves value associated with given key.
+ * Makes a new `TMap` initialized with provided iterable.
  *
  * @tsplus static effect/core/stm/TMap.Ops fromIterable
  */

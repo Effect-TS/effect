@@ -1,6 +1,6 @@
 // codegen:start {preset: barrel, include: ./operations/*.ts, prefix: "@effect/core/stm/TPriorityQueue"}
 export * from "@effect/core/stm/TPriorityQueue/operations/empty"
-export * from "@effect/core/stm/TPriorityQueue/operations/from"
+export * from "@effect/core/stm/TPriorityQueue/operations/fromIterable"
 export * from "@effect/core/stm/TPriorityQueue/operations/isEmpty"
 export * from "@effect/core/stm/TPriorityQueue/operations/isNonEmpty"
 export * from "@effect/core/stm/TPriorityQueue/operations/make"
@@ -17,4 +17,5 @@ export * from "@effect/core/stm/TPriorityQueue/operations/takeMaybe"
 export * from "@effect/core/stm/TPriorityQueue/operations/takeUpTo"
 export * from "@effect/core/stm/TPriorityQueue/operations/toChunk"
 export * from "@effect/core/stm/TPriorityQueue/operations/toImmutableArray"
+export * from "@effect/core/stm/TPriorityQueue/operations/toList"
 // codegen:end

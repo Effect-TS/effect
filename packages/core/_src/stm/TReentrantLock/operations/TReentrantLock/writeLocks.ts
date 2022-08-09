@@ -1,7 +1,7 @@
 import { concreteTReentrantLock } from "@effect/core/stm/TReentrantLock/operations/_internal/InternalTReentrantLock"
 
 /**
- * Determines if a write lock is held by some fiber.
+ * Computes the number of write locks held by fibers.
  *
  * @tsplus getter effect/core/stm/TReentrantLock writeLocks
  */

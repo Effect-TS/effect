@@ -8,6 +8,9 @@ export const _V = Symbol.for("@effect/core/stm/TMap/V")
 export type _V = typeof _V
 
 /**
+ * Transactional map implemented on top of TRef and TArray. Resolves
+ * conflicts via chaining.
+ *
  * @tsplus type effect/core/stm/TMap
  */
 export interface TMap<K, V> {

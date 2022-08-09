@@ -1,7 +1,7 @@
 import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/InternalTSet"
 
 /**
- * retains elements matching predicate.
+ * Retains elements matching predicate.
  *
  * @tsplus static effect/core/stm/TSet.Aspects retainIfDiscard
  * @tsplus pipeable effect/core/stm/TSet retainIfDiscard

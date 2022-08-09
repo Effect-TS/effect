@@ -4,5 +4,6 @@
  * @tsplus static effect/core/stm/TPriorityQueue.Ops make
  */
 export function make<A>(ord: Ord<A>) {
-  return (...data: Array<A>): STM<never, never, TPriorityQueue<A>> => TPriorityQueue.from(ord)(data)
+  return (...data: Array<A>): STM<never, never, TPriorityQueue<A>> =>
+    TPriorityQueue.fromIterable(ord)(data)
 }

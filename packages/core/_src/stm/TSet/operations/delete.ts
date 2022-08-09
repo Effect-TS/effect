@@ -1,7 +1,7 @@
 import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/InternalTSet"
 
 /**
- * Removes binding for given key.
+ * Removes a single element from the set.
  *
  * @tsplus static effect/core/stm/TSet.Aspects delete
  * @tsplus pipeable effect/core/stm/TSet delete

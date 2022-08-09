@@ -1,4 +1,7 @@
 /**
+ * Publishes all of the specified messages to the hub, returning whether they
+ * were published to the hub.
+ *
  * @tsplus static effect/core/stm/THub.Aspects publishAll
  * @tsplus pipeable effect/core/stm/THub publishAll
  */

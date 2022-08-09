@@ -1,5 +1,6 @@
 /**
- * Removes elements from the set.
+ * Atomically transforms the set into the intersection of itself and the
+ * provided set.
  *
  * @tsplus static effect/core/stm/TSet.Aspects intersect
  * @tsplus pipeable effect/core/stm/TSet intersect

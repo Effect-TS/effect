@@ -1,8 +1,7 @@
 import { concreteTDequeue } from "@effect/core/stm/THub/operations/_internal/InternalTDequeue"
 
 /**
- * Views the next element in the queue without removing it, retrying if the
- * queue is empty.
+ * Shuts down the queue.
  *
  * @tsplus getter effect/core/stm/THub/TDequeue shutdown
  */

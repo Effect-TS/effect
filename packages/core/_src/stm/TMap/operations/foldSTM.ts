@@ -1,6 +1,5 @@
 /**
- * folds the key/value pair matching the specified predicate, and uses the
- * provided effectful function to extract a value out of it.
+ * Atomically folds using a transactional function.
  *
  * @tsplus static effect/core/stm/TMap.Aspects foldSTM
  * @tsplus pipeable effect/core/stm/TMap foldSTM
